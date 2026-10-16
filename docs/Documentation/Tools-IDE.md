@@ -51,10 +51,10 @@ Exit codes: **0** every piece of every shipped theme loads; **1** at least one i
 ## addin_test.mjs
 {: #addin-test }
 
-    node scripts/addin_test.mjs [--only <regex>] [--port N] [--jobs N] [--timeout S]
+    node scripts/addin_test.mjs [--only <regex>] [--jobs N] [--timeout S]
                                 [--ide <path>] [--show|--hide]
 
-Runs the add-in scenarios under `test/addin/`. Each scenario file is a `node:test` file and one **lane**, listed in `test/addin/lanes.mjs`; run it with [`addin-test.bat`](Tools#addin-testbat), because on its own a scenario skips itself. A lane runs in its own process, with its own DevTools port, work folder and private copy of the twinBASIC install, so a test add-in never loads into your own IDE and two lanes never share one.
+Runs the add-in scenarios under `test/addin/`. Each scenario file is a `node:test` file and one **lane**, listed in `test/addin/lanes.mjs`; run it with [`addin-test.bat`](Tools#addin-testbat), because on its own a scenario skips itself. A lane runs in its own process, with its own slot from [`tbbroker`](Tools-Compiler#tbbroker) (a private desktop), work folder and private copy of the twinBASIC install, so a test add-in never loads into your own IDE and two lanes never share one. Each IDE's DevTools port is one Windows picks.
 
 A scenario builds the add-ins it tests into its copy, opens a project and operates the IDE: it clicks, presses keys, types, and reads the add-ins' tool windows, message boxes, notifications, the code editor and the Debug Console. The seventeen lanes take about two minutes together:
 
@@ -72,8 +72,7 @@ A scenario builds the add-ins it tests into its copy, opens a project and operat
 | Flag | Effect |
 |---|---|
 | `--only <regex>` | Run only the lanes whose name matches. A lane's name is its file's name without `.test.mjs`. |
-| `--port <n>` | Base DevTools port. Default 9560; the lanes get the first free ports from *n*. A port is free when nothing listens on it and no other run has claimed it: each run claims its ports with a lock file in `%TEMP%\tb-ports`. |
-| `--jobs <n>` | Lanes at once. Default 2. |
+| `--jobs <n>` | Lanes at once. Default 2. Each lane takes its slot as it starts, and gives it back when it ends. |
 | `--timeout <secs>` | A lane still running after this long is ended and counted as failed. Default 600. |
 | `--ide <path>` | The `twinBASIC.exe` to copy, found as for [`tbbuild.mjs`](Tools-Compiler#tbbuild). |
 | `--show` / `--hide` | As for [`tbbuild.mjs`](Tools-Compiler#tbbuild). |
@@ -91,32 +90,32 @@ Exit codes: **0** every lane passed, and the registry is as it was found; **1** 
 ## ide_test.mjs
 {: #ide-test }
 
-    node scripts/ide_test.mjs [--only <regex>] [--port N] [--jobs N] [--timeout S]
+    node scripts/ide_test.mjs [--only <regex>] [--jobs N] [--timeout S]
                               [--ide <path>] [--show|--hide]
 
 Runs the IDE scenarios under `test/ide/`: the scenarios that operate the IDE itself, such as the debugger, Export Project and the Packages dialog, rather than an add-in. It is the same runner as [`addin_test.mjs`](#addin-test), with the same flags, lanes, registry handling and exit codes. Each file listed in `test/ide/lanes.mjs` is one **lane**, run by [`ide-test.bat`](Tools#ide-testbat). Run on its own, a scenario skips itself.
 
-The only differences are the suite and the default base port, 9660. The rules of `addin_test.mjs` apply unchanged: every IDE has a private `APPDATA` and `TB_ADDIN_TEST` set to `1`, and an IDE is ended by its process id, never by its image name.
+The only difference is the suite. The rules of `addin_test.mjs` apply unchanged: every IDE has a private `APPDATA` and `TB_ADDIN_TEST` set to `1`, and an IDE is ended by its process id, never by its image name.
 
 Exit codes: **0** every lane passed, and the registry is as it was found; **1** a lane failed, or the run was interrupted; **2** the harness could not run: a refused command line, no IDE (or one older than BETA 1007), no matching lane, a registry it could not record, or a crash after which the registry was put back; **3** the registry or a work folder was not put back, or the recent list or a remembered build target names a lane's folder (see the lines above), at the end of a run or after a crash, which wins over a 1 because the registry is what to repair.
 
 ## try_help_addin.mjs
 {: #try-help-addin }
 
-    node scripts/try_help_addin.mjs [--project <dir>] [--port N] [--ide <path>]
+    node scripts/try_help_addin.mjs [--project <dir>] [--ide <path>]
 
 Opens an IDE on your own desktop with the help add-in in `add-in/` built and loaded, to try it by hand, and waits until the IDE is closed. Run `build.bat` first: the pane's pages come from the built site, `docs/_site`, served on `localhost`.
 
 The IDE is set up as a lane of [`addin_test.mjs`](#addin-test) is. The add-in goes into a private copy of the twinBASIC install in the temp folder, never into the install's `addins\` or `%APPDATA%\twinBASIC\addins\`, and the IDE has a private `APPDATA`, so none of your own add-ins loads into it. `TB_ADDIN_TEST` is `1`, so *Open in browser* prints `open <url>` to the Debug Console and starts nothing. This IDE is on your desktop; the IDE that builds the add-in first runs on a private desktop.
 
-`--project` names the exported project to open, by default `test/addin/helphost`, the help lane's host. It is opened as a staged copy, so edits made in the IDE are not kept. `--port` is where the search for the IDE's DevTools port starts, 9590 by default. Closing the IDE, or Ctrl+C, puts back the IDE's project state and file association and the add-in's saved settings (`tbDocsHelp`) and deletes the copy.
+`--project` names the exported project to open, by default `test/addin/helphost`, the help lane's host. It is opened as a staged copy, so edits made in the IDE are not kept. Closing the IDE, or Ctrl+C, puts back the IDE's project state and file association and the add-in's saved settings (`tbDocsHelp`) and deletes the copy.
 
 Exit codes: **0** the IDE was closed, and the registry is as it was found; **1** the add-in did not build, or the project does not compile; **2** the tool could not run: a refused command line, no IDE, no built site, a registry it could not record, or a crash; **3** the registry or the work folder was not put back (see the lines above).
 
 ## shoot_docs.mjs
 {: #shoot-docs }
 
-    node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--port N] [--ide <path>] [--svg] [--bundles <dir>]
+    node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--ide <path>] [--svg] [--bundles <dir>]
 
 Takes the documentation's screenshots of the IDE, so that one run regenerates them after a new BETA. Each picture belongs to a *setup*, one IDE brought to a known state. A setup's IDE is started only when one of its pictures is selected. Run `build.bat` first: the help setup's pane pages come from the built site, `docs/_site`, served on `localhost`.
 
@@ -153,8 +152,8 @@ Flags:
 
 - `--only` takes the pictures whose path under the output folder matches a regular expression, such as `Menu_File` or `IDE/Menu/`, each in both themes. `--out` is the folder those paths are under, `docs` by default.
 - `--diffs` names a folder, outside `docs`, for a difference picture of each updated picture: the file on disk, the new picture and their difference side by side, with the region that differs magnified underneath. A matching pixel is dark grey; a differing one is yellow for one grey level, shading to red for large differences. File names end in `.dark` or `.light`. A `.capture-<n>` file is written for each two captures of one state that disagree, and a `.noise` file for a picture left as it is because it differs from the file only by that variation.
-- `--jobs` is how many IDEs run at once, 6 by default and at most 16. Each runs on a private desktop with a port, a work folder and an install copy of its own. The setups wait in a queue, the longest first, and the three long ones (no-project, sample and customcontrols) are cut into three parts, each in an IDE of its own. Every line of output starts with the setup or part it is from. `--jobs 1` runs each setup whole, one after another.
-- `--port` is where the search for DevTools ports starts, 9700 by default. Each IDE claims the first free one; the help setup claims three: the IDE's, the detached window's, and one for the IDE that builds the add-in, whose browser process can hold its port for a while after that IDE ends. The add-in's saved settings (`tbDocsHelp`) are emptied for the run and, with the IDE's project state, put back at the end.
+- `--jobs` is how many IDEs run at once, 6 by default and at most 16. Each runs on a private desktop (a slot from [`tbbroker`](Tools-Compiler#tbbroker)) with a work folder and an install copy of its own, and a DevTools port Windows picks. The setups wait in a queue, the longest first, and the three long ones (no-project, sample and customcontrols) are cut into three parts, each in an IDE of its own. Every line of output starts with the setup or part it is from. `--jobs 1` runs each setup whole, one after another.
+- The help setup's slot also carries a port from the broker for the add-in's detached window, which the add-in has to be told before it binds it. The add-in's saved settings (`tbDocsHelp`) are emptied for the run and, with the IDE's project state, put back at the end.
 - `--svg` also draws each picture as SVG, from the page as it stands at the capture, and writes it beside the PNG as `X.svg` when it is close enough to the PNG (see [A picture as SVG](Authoring#a-picture-as-svg)). It needs Python with fontTools. What the SVG is drawn from --- the page's layout, styles and measurements --- is saved for each picture as a *bundle* in the folder `--bundles` names, `.svgshot-bundles` in the repository by default, so that [`replay.mjs`](#replay) can draw the SVG again without the IDE. Git ignores that folder, and it must stay outside `docs`: a bundle holds the Windows user name.
 
 Exit codes: **0** every picture was written or was unchanged; **1** a picture failed (an element was not found, the page showed the user name, or a light picture was more than 32 pixels off the dark one's size), the add-in did not build, or the demo project does not compile; **2** the tool could not run: a refused command line, no IDE, no built site, a registry it could not record, or a crash; **3** the registry or the work folder was not put back (see the lines above).

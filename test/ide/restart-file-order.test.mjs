@@ -93,7 +93,7 @@ function layout(file) {
 async function selfReport(file) {
   const run = await launchOnDesktop({
     exe: file,
-    desktop: `rfo-${process.pid}`,
+    tag: "restart-file-order self-report",
     env: { ...process.env },
     dialogs: "close",
   });

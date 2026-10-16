@@ -4,7 +4,7 @@
 // "bundle" folder, so that the converter can be developed offline without starting
 // an IDE again.
 //
-//     node scripts/svgshot/probe.mjs [--out <dir>] [--only ide|menu-file] [--port N] [--ide <twinBASIC.exe>]
+//     node scripts/svgshot/probe.mjs [--out <dir>] [--only ide|menu-file] [--ide <twinBASIC.exe>]
 //
 // It opens the IDE as shoot_docs.mjs's `project` setup does (test/addin/helpdemo
 // open, no add-in; the demo's module in the editor; the page's options at their
@@ -31,22 +31,13 @@
 import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import path from "node:path";
-import {
-  choiceOption,
-  die,
-  exitOnCrash,
-  numberOption,
-  parseCli,
-  printHelpAndExit,
-  withUsageError,
-} from "../../lib/cli.mjs";
+import { choiceOption, die, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { removeTree } from "../lib/tb-ide-copy.mjs";
-import { shutdownIde, sleep } from "../lib/tb-ide.mjs";
+import { leaseSlot, shutdownIde, sleep } from "../lib/tb-ide.mjs";
 import { buildNumber, findIde, unsupportedIde } from "../lib/tb-install.mjs";
 import { Lane } from "../lib/tb-lane.mjs";
 import { clickAt, openFile, pressKey, waitFor } from "../lib/tb-operate.mjs";
-import { claimPorts } from "../lib/tb-ports.mjs";
 import { finishTidy, startTidy } from "../lib/tb-registry.mjs";
 
 const DEMO = path.join(REPO_ROOT, "test", "addin", "helpdemo");
@@ -137,7 +128,7 @@ const STYLES = [
   "object-fit",
 ];
 
-const USAGE = `usage: node scripts/svgshot/probe.mjs [--out <dir>] [--only ide|menu-file] [--port N] [--ide <twinBASIC.exe>] [-h, --help]
+const USAGE = `usage: node scripts/svgshot/probe.mjs [--out <dir>] [--only ide|menu-file] [--ide <twinBASIC.exe>] [-h, --help]
 
 Opens the IDE as shoot_docs.mjs's project setup does, on a private desktop, and
 saves what an SVG converter needs from the IDE's page into one bundle folder per
@@ -148,7 +139,6 @@ The two states are ide (the whole page) and menu-file (the File menu open).
   --out <dir>      the folder the bundles go under, as <dir>/<state>/ (default
                    a folder named svgshot-bundles in the temp folder)
   --only <state>   only that state: ide or menu-file
-  --port <n>       the IDE's DevTools port: the first free one from n (default 9800)
   --ide <path>     the twinBASIC.exe to copy (default: $TB_IDE, else the
                    newest twinBASIC_IDE_BETA_* on the Desktop)
   -h, --help       print this text and exit
@@ -165,7 +155,6 @@ const { values } = withUsageError(() =>
     options: {
       out: { type: "string" },
       only: { type: "string" },
-      port: { type: "string" },
       ide: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -177,9 +166,6 @@ const only =
   values.only === undefined
     ? null
     : withUsageError(() => choiceOption(values.only, { option: "--only", choices: STATES }));
-const firstPort = withUsageError(() =>
-  numberOption(values.port ?? "9800", { option: "--port", integer: true, min: 1, max: 65535 }),
-);
 const outRoot = path.resolve(values.out ?? path.join(tmpdir(), "svgshot-bundles"));
 const ide = findIde(values.ide || undefined);
 if (unsupportedIde(ide)) die(2, unsupportedIde(ide));
@@ -1127,13 +1113,15 @@ async function takeBundle(c, state, extraMeta, buildLabel) {
 // ------------------------------------------------------------ run
 
 mkdirSync(outRoot, { recursive: true });
-let ports;
+// The run's slot (tbbroker): the IDE's private desktop, and the number the work
+// folder is keyed to; held until the probe ends.
+let slot;
 try {
-  ports = await claimPorts(1, { from: firstPort });
+  slot = await leaseSlot({ tag: "svgshot probe" });
 } catch (e) {
   die(2, e.message);
 }
-const root = path.join(tmpdir(), "tbshoot-svg", String(ports[0]));
+const root = path.join(tmpdir(), "tbshoot-svg", String(slot.slot));
 try {
   removeTree(root);
 } catch (e) {
@@ -1143,7 +1131,15 @@ mkdirSync(root, { recursive: true });
 const tidy = startTidy({ prefixes: [root] });
 if (!tidy) die(2, "could not record the registry, so it could not be put back afterwards");
 
-const lane = new Lane({ name: "svgshot", port: ports[0], work: root, ide, show: false, browserArgs: BROWSER_ARGS });
+const lane = new Lane({
+  name: "svgshot",
+  slot: slot.slot,
+  desktop: slot.desktop,
+  work: root,
+  ide,
+  show: false,
+  browserArgs: BROWSER_ARGS,
+});
 
 const endIde = () => {
   if (lane.run) shutdownIde(lane.run);
@@ -1164,7 +1160,7 @@ const watcher = setInterval(() => {
   if (lane.run && !toldPid) {
     toldPid = true;
     say(
-      `IDE pid ${lane.run.pid} on a private desktop, DevTools port ${ports[0]} (end it by pid: taskkill /PID ${lane.run.pid} /T /F)`,
+      `IDE pid ${lane.run.pid} on ${slot.desktop}, DevTools port ${lane.run.port} (end it by pid: taskkill /PID ${lane.run.pid} /T /F)`,
     );
   }
 }, 100);

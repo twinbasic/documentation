@@ -126,7 +126,7 @@ The tests the toolchain has to pass. Twenty-seven steps, each stopping the run i
 9. [`test/compact-image.test.mjs`](Tools-Toolchain-Tests#compact-image-test) --- unit tests for what an embedded image keeps: an editor's metadata goes, a notice of ownership and terms stays. The half that runs [`imagestrip`](Tools-IDE#imagestrip) is skipped unless its exe is named.
 10. [`test/svgshot.test.mjs`](Tools-Toolchain-Tests#svgshot-test) --- unit tests that an SVG screenshot is written on one line, that its underlines are placed as Chromium places them, that a background image is sized by its bytes, that a frame's page is placed inside its frame, that a web font is found and cut as the page uses it, that the page's own `<svg>` icons are found and kept apart, and that a colour filter is baked into the colours it paints.
 11. [`test/example-batches.test.mjs`](Tools-Toolchain-Tests#example-batches-test) --- runs `check_examples.mjs`'s probes, which test how samples are batched and how a crashed batch is cut down, without an IDE.
-12. [`test/ports.test.mjs`](Tools-Toolchain-Tests#ports-test) --- unit tests for how the harness claims the DevTools ports its IDEs use, and for the temp folder and profile an IDE on a port leaves behind, without an IDE.
+12. [`test/ide-folders.test.mjs`](Tools-Toolchain-Tests#ide-folders-test) --- unit tests for the temp folder and profile an IDE leaves behind, and that ending it removes them and no other folder, without an IDE.
 13. [`test/broker.test.mjs`](Tools-Toolchain-Tests#broker-test) --- tests [`tbbroker`](Tools-Compiler#tbbroker), which hands out private desktops, slots and ports, and its Node client. Skipped unless `TBBROKER_EXE` names a built broker.
 14. [`test/addin-project.test.mjs`](Tools-Toolchain-Tests#addin-project-test) --- unit tests for how the build packs the help add-in's project file: exactly the files git tracks in `add-in/`, never `Resources/HELP/`, the same bytes from any checkout.
 15. [`test/indexer.test.mjs`](Tools-Toolchain-Tests#indexer-test) --- unit tests for the package indexer: the VB6 preprocessing, the files of a package, the `api.json` built from them (sorted by code unit, nested types by their path, values and fields in declaration order, the same bytes from the same files) and the differ that compares two of them.
@@ -156,7 +156,7 @@ POSIX:
       && node --test test/compact-image.test.mjs \
       && node --test test/svgshot.test.mjs \
       && node --test test/example-batches.test.mjs \
-      && node --test test/ports.test.mjs \
+      && node --test test/ide-folders.test.mjs \
       && node --test test/broker.test.mjs \
       && node --test test/addin-project.test.mjs \
       && node --test test/indexer.test.mjs \

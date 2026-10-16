@@ -794,7 +794,7 @@ describe("imagestrip", { skip: toolSkip }, () => {
     const launched = await launchOnDesktop({
       exe: EXE,
       args,
-      desktop: "imagestrip-test",
+      tag: "compact-image.test imagestrip",
       env: process.env,
       stdout: out,
       stderr: err,

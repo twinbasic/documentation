@@ -2,7 +2,7 @@
 // properties in the form designer's Properties panel as a person does, saves, and prints what the
 // IDE wrote for the control into Form1.tbform.
 //
-//   node test/package-tests/xCalendar/probe/designer.mjs [--port N] [--edit Name=text ...] [--out FILE]
+//   node test/package-tests/xCalendar/probe/designer.mjs [--edit Name=text ...] [--out FILE]
 //
 // Why: the control keeps its design-time values in a property bag (its ReadProperties and
 // WriteProperties), and what the IDE stores in the form's designer file for it cannot be written by
@@ -12,11 +12,12 @@
 // run time.
 //
 // The IDE is the newest twinBASIC_IDE_BETA_<n> on the Desktop, in a lane's own copy of the install
-// with the lane's own APPDATA (scripts/lib/tb-lane.mjs), on a private desktop.
+// with the lane's own APPDATA (scripts/lib/tb-lane.mjs), on a private desktop the lane takes from
+// tbbroker.
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../../../../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../../../../lib/cli.mjs";
 import { sleep } from "../../../../scripts/lib/tb-ide.mjs";
 import { findIde } from "../../../../scripts/lib/tb-install.mjs";
 import { Lane } from "../../../../scripts/lib/tb-lane.mjs";
@@ -25,13 +26,12 @@ import { wrapProbe } from "../../../../scripts/lib/tb-probe.mjs";
 import { unpackProject } from "../../../../scripts/lib/tb-project.mjs";
 import { stageTree } from "./stage.mjs";
 
-const USAGE = `usage: node test/package-tests/xCalendar/probe/designer.mjs [--port N] [--edit Name=text ...] [--out FILE] [-h, --help]
+const USAGE = `usage: node test/package-tests/xCalendar/probe/designer.mjs [--edit Name=text ...] [--out FILE] [-h, --help]
 
 Opens the probe's project in an IDE, selects xCalendar1 in Form1's designer, types each --edit
 value into the Properties panel's cell for that property (Name=text), saves the project and prints
 the control's entry in the Form1.tbform the IDE wrote.
 
-  --port N       the IDE's DevTools port (default 9915; ports 9910 to 9940 are this probe's)
   --edit N=T     a property and the text to type in its cell; repeatable
   --out FILE     also write the saved Form1.tbform to FILE
   -h, --help     print this text and exit
@@ -47,7 +47,6 @@ const { values } = withUsageError(
   () =>
     parseCli(process.argv.slice(2), {
       options: {
-        port: { type: "string", default: "9915" },
         edit: { type: "string", multiple: true },
         out: { type: "string" },
         help: { type: "boolean", short: "h" },
@@ -58,27 +57,23 @@ const { values } = withUsageError(
   usageError,
 );
 if (values.help) printHelpAndExit(USAGE);
-const port = withUsageError(
-  () => numberOption(values.port, { option: "--port", integer: true, min: 1024, max: 65535 }),
-  usageError,
-);
 
 const ide = findIde();
 if (!ide) {
   console.error("designer: no twinBASIC_IDE_BETA_<n> on the Desktop (TB_IDE names one)");
   process.exit(2);
 }
-const work = path.join(tmpdir(), "xcal-designer", String(port));
+const work = path.join(tmpdir(), "xcal-designer", String(process.pid));
 rmSync(work, { recursive: true, force: true });
 mkdirSync(work, { recursive: true });
-const tree = await stageTree({ key: `d${port}` });
+const tree = await stageTree({ key: `d${process.pid}` });
 // tbrun adds the TbRun module the probe writes with; an IDE opening the tree needs it too.
 {
   const probe = path.join(tree, "Sources", "Probe.twin");
   const wrapped = wrapProbe([{ name: "Probe.twin", text: readFileSync(probe, "utf8") }]);
   for (const f of wrapped.files) writeFileSync(path.join(tree, "Sources", f.name), f.text, "utf8");
 }
-const lane = new Lane({ name: "xcal-designer", port, work, ide });
+const lane = new Lane({ name: "xcal-designer", work, ide });
 
 const GLOBALS = "getCurrentFormEditorGlobals()";
 let code = 0;

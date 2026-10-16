@@ -34,7 +34,7 @@ import { helpArchiveSkips } from "../../builder/help-archive-step.mjs";
 import { createStaticHandler } from "../../builder/static-files.mjs";
 import { writeHelpArchive } from "../../lib/help-archive.mjs";
 import { attach } from "../../scripts/lib/tb-cdp.mjs";
-import { sleep } from "../../scripts/lib/tb-ide.mjs";
+import { leaseSlot, sleep } from "../../scripts/lib/tb-ide.mjs";
 import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
 import {
@@ -52,7 +52,6 @@ import {
   typeText,
   waitFor,
 } from "../../scripts/lib/tb-operate.mjs";
-import { claimPorts } from "../../scripts/lib/tb-ports.mjs";
 import { hoverLink, hoverText, mouseAway, restMouse } from "./hover.mjs";
 import { frameEval, frameOf, serveLoopback } from "./pages.mjs";
 import { scenario } from "./scenario.mjs";
@@ -384,7 +383,9 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       }
     }
     await lane.addAddin(src);
-    [windowPort] = await claimPorts(1, { from: 9760 });
+    // A port the add-in is told before it binds it, so one the broker hands out
+    // (WIP.Broker.md); held, with its slot, until this process ends.
+    ({ port: windowPort } = await leaseSlot({ tag: "help.test detached window", port: true }));
     c = await lane.open(HOST, { env: ideEnv(0) });
     pages = await pagesOrigin(null);
     await openFile(c, FILE, { line: 5, column: 9 });

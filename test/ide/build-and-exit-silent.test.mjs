@@ -52,7 +52,7 @@ scenario("--buildAndExit32 without a window to look at", (lane) => {
       src: SOURCE,
       stage: path.join(dir, "src"),
       project,
-      settings: { "project.id": laneProjectId(6, lane.port) },
+      settings: { "project.id": laneProjectId(6, lane.slot) },
       prepare: (tree) => {
         if (!callUnused) return;
         const file = path.join(tree, "Sources", "Startup.twin");
@@ -78,7 +78,7 @@ scenario("--buildAndExit32 without a window to look at", (lane) => {
       exe: lane.copy(),
       arg: "--buildAndExit32",
       args: [...IDE_FLAGS, project],
-      desktop: `ide-test-bae-${lane.port}-${name}`,
+      tag: `ide-test build-and-exit ${name}`,
       env: {
         ...process.env,
         APPDATA: lane.appdataDir(),

@@ -144,11 +144,11 @@ import {
   runRefusal,
 } from "./lib/example-run.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
-import { wantShow } from "./lib/tb-ide.mjs";
+import { leaseSlot, wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { packTree, unpackProject } from "./lib/tb-project.mjs";
 import { downloadPackage } from "../indexer/lib/twinserv-client.mjs";
-import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
+import { alive, finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
@@ -162,7 +162,6 @@ const { values } = withUsageError(
         only: { type: "string" },
         report: { type: "string" },
         jobs: { type: "string" },
-        port: { type: "string" },
         batch: { type: "string" },
         ide: { type: "string" },
         census: { type: "boolean", default: false },
@@ -200,7 +199,6 @@ InputBox, or contains End, or is not slot=sub, is refused without being built.
   --report <file>  group the findings of a saved \`--propose --json\` survey by
                    diagnostic, section, undeclared symbol and page; no compiler
   --jobs <n>       concurrent IDE lanes (default 4)
-  --port <n>       base DevTools port (default 9480)
   --batch <n>      samples per generated project (default 120)
   --ide <path>     twinBASIC.exe (default: $TB_IDE, else the newest on the Desktop)
   --build          also build each project that compiles without errors; a project
@@ -228,26 +226,16 @@ if (values.help) printHelpAndExit(USAGE);
 
 // The values are read before anything runs. --report, --census and --propose
 // are three modes of one run, and --apply is a part of --propose.
-const { only, jobs, basePort, batchSize } = withUsageError(
+const { only, jobs, batchSize } = withUsageError(
   () => {
     refuseTogether(values, ["report", "census", "propose"]);
     refuseTogether(values, ["show", "hide"]);
     if (values.apply && !values.propose)
       throw new CliError("conflict", "--apply needs --propose", { option: "--apply" });
     const jobs = numberOption(values.jobs ?? String(DEFAULT_JOBS), { option: "--jobs", integer: true, min: 1 });
-    const basePort = numberOption(values.port ?? "9480", { option: "--port", integer: true, min: 1, max: 65535 });
-    // Lane i builds on port basePort + i (runAll).
-    if (basePort + jobs - 1 > 65535) {
-      throw new CliError(
-        "conflict",
-        `--port ${basePort} with --jobs ${jobs} needs ports up to ${basePort + jobs - 1}, past 65535`,
-        { option: "--port" },
-      );
-    }
     return {
       only: values.only ? regexOption(values.only, { option: "--only" }) : null,
       jobs,
-      basePort,
       batchSize: numberOption(values.batch ?? String(DEFAULT_BATCH), { option: "--batch", integer: true, min: 1 }),
     };
   },
@@ -692,7 +680,7 @@ function recordRun(staged, cap) {
 }
 
 /** Build one staged batch; returns per-fence errors, or a crash marker. */
-async function buildStaged(staged, port) {
+async function buildStaged(staged, slot) {
   // A run batch is built and its [RunAfterBuild] Sub is run, in every mode. The
   // run is over when the dispatcher says it is done, or when the console has
   // been quiet for RUN_QUIET_MS: long enough to outlast a pause in an LLVM
@@ -705,7 +693,7 @@ async function buildStaged(staged, port) {
     compileProject({
       project: staged.proj,
       ide: IDE,
-      port,
+      slot,
       show: wantShow({ show: values.show, hide: values.hide }),
       build: BUILD || !!run,
       llvm: LLVM,
@@ -784,16 +772,17 @@ async function buildStaged(staged, port) {
 /**
  * A lane: where a batch is built, and where what isolating it finds goes.
  *
- * This one stages each batch into the lane's own workspace and builds it on the
- * lane's port. The probes hand `runBatch` a fake, whose builds crash on sets of
- * samples a probe chooses -- which is how isolation is tested without an IDE,
- * and without a crash that needs two real samples to happen.
+ * This one stages each batch into the lane's own workspace and builds it in the
+ * lane's slot (its private desktop, from tbbroker). The probes hand `runBatch` a
+ * fake, whose builds crash on sets of samples a probe chooses -- which is how
+ * isolation is tested without an IDE, and without a crash that needs two real
+ * samples to happen.
  */
-function laneOf(port, work) {
+function laneOf(slot, work) {
   return {
     async build(batch) {
       const staged = stageBatch(batch, work);
-      const result = await buildStaged(staged, port);
+      const result = await buildStaged(staged, slot);
       if (!values.keep) rmSync(staged.dir, { recursive: true, force: true });
       return result;
     },
@@ -803,21 +792,26 @@ function laneOf(port, work) {
   };
 }
 
-/** Run every batch across `jobs` lanes, each with its own port and workspace. */
+/** Run every batch across `jobs` lanes, each with its own slot and workspace. */
 async function runAll(batches, work) {
   const queue = [...batches];
   const results = [];
   const lanes = Array.from({ length: Math.min(jobs, queue.length) }, async (_, i) => {
-    // A lane owns its port AND its workspace. Two IDEs pointed at one source
-    // tree both wedge and neither ever returns -- distinct ports are not
+    // A lane owns its slot AND its workspace. Two IDEs pointed at one source
+    // tree both wedge and neither ever returns -- distinct ports were not
     // enough, which cost two runs to learn.
     const laneWork = path.join(work, `lane${i}`);
     mkdirSync(laneWork, { recursive: true });
-    const lane = laneOf(basePort + i, laneWork);
-    while (queue.length) {
-      const batch = queue.shift();
-      process.stderr.write(`  building ${batch.fences.length} sample(s) [${batch.project}] on lane ${i}\n`);
-      results.push(await runBatch(batch, lane));
+    const slot = await leaseSlot({ tag: `check_examples lane ${i}` });
+    try {
+      const lane = laneOf(slot, laneWork);
+      while (queue.length) {
+        const batch = queue.shift();
+        process.stderr.write(`  building ${batch.fences.length} sample(s) [${batch.project}] on lane ${i}\n`);
+        results.push(await runBatch(batch, lane));
+      }
+    } finally {
+      await slot.release();
     }
   });
   await Promise.all(lanes);
@@ -1099,26 +1093,21 @@ async function main() {
     alone: (members) => members.some((f) => DECLARES_MAIN.test(f.content)),
   }).map((b) => ({ ...b, run: true }));
   const batches = [...restBatches, ...runBatches];
-  const work = path.join(tmpdir(), "tbexamples", String(basePort));
-  try {
-    rmSync(work, { recursive: true, force: true });
-  } catch (e) {
-    // Something still holds a project here: an IDE on a private desktop, where
-    // nothing on screen says so, and the bare EPERM names a folder, not a cause.
-    // A run that dies no longer leaves one -- each IDE runs inside its
-    // launcher's job, which ends when the run does (WIP.Harness.md, "The IDE
-    // runs inside a job") -- so the likely owner is an IDE from a run of the
-    // harness from before that, or a compiler orphaned by one.
-    if (e.code !== "EPERM" && e.code !== "EBUSY") throw e;
-    console.error(
-      `check_examples: cannot clear ${work} (${e.code}).\n` +
-        "  An IDE from an earlier run on this --port still has it open: look for\n" +
-        "  twinBASIC.exe processes whose command line names a project under that folder,\n" +
-        "  and for twinBASIC_win32_noDEP.exe compilers whose parent has gone. Stop them,\n" +
-        "  and run again -- or pass a different --port.",
-    );
-    process.exit(2);
+  // The run's folder is named for this process, so that runs at once never share
+  // one. A folder an earlier run left, whose process has ended, goes; one that
+  // cannot be removed yet is still held by something of that run's (an IDE from
+  // before each IDE ran in its launcher's job, WIP.Harness.md, "The IDE runs
+  // inside a job"), and is left for a later run.
+  const runs = path.join(tmpdir(), "tbexamples");
+  for (const name of existsSync(runs) ? readdirSync(runs) : []) {
+    if (!/^\d+$/.test(name) || alive(Number(name))) continue;
+    try {
+      rmSync(path.join(runs, name), { recursive: true, force: true });
+    } catch {
+      // still held
+    }
   }
+  const work = path.join(runs, String(process.pid));
   mkdirSync(work, { recursive: true });
   await fetchEmbedded(new Set(batches.map((b) => b.project)));
 
@@ -1140,8 +1129,8 @@ async function main() {
   // of them: compileProject never tidies, because each build restoring its own
   // snapshot would put back whatever the registry held when that lane happened
   // to start. Everything is under `work`,
-  // so one sweep by that folder at the end takes the lot -- and the sweep here
-  // at the start takes whatever a run on this --port left when it died.
+  // so one sweep by that folder at the end takes the lot; what a run that died
+  // left, startTidy sweeps by that run's own folders.
   tidy = startTidy({ prefixes: [work] });
 
   const t0 = Date.now();

@@ -46,7 +46,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { portTaken, sleep } from "../../scripts/lib/tb-ide.mjs";
+import { sleep } from "../../scripts/lib/tb-ide.mjs";
 import {
   answerMessageBox,
   clickAt,
@@ -161,8 +161,6 @@ scenario("the code editor and its panels", (lane) => {
 
   // Starts the lane's IDE on the project, with its page guarded, and opens Editing.twin.
   async function start() {
-    // An ended IDE's WebView2 can hold the DevTools port for a while.
-    for (let i = 0; i < 150 && (await portTaken(lane.port)); i++) await sleep(200);
     c = await lane.open(PROJECT);
     await c.evaluate(GUARD_JS);
     await openFile(c, EDITING, { line: MAIN, column: 1 });

@@ -100,7 +100,7 @@ import {
 } from "./lib/attribute-sweep.mjs";
 import { SITE_LIST, renderSite } from "./lib/attribute-sites.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
-import { sleep, wantShow } from "./lib/tb-ide.mjs";
+import { leaseSlot, sleep, wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { packTree } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
@@ -145,8 +145,8 @@ accepts, laid against Reference/Attributes.md.
                       a token-table name and more only where it was recognised;
                       a shape known to be required is always tried)
   --no-tokens         do not add the compiler's token-table names
-  --jobs <n>          concurrent IDE lanes (default 4)
-  --port <n>          first DevTools port; a lane uses one more each (default 9560)
+  --jobs <n>          concurrent IDE lanes (default 4), each on a private desktop
+                      of its own from tbbroker
   --batch-size <n>    probes per project (default 400)
   --verify <n>        afterwards rebuild n random probes in fresh batches and
                       compare with the first answer (default 0)
@@ -154,7 +154,7 @@ accepts, laid against Reference/Attributes.md.
   --dump-results <file>
                       also write every result, raw, as JSON
   --work <dir>        where projects are staged; must be under the system temp
-                      folder (default %TEMP%/tbsweep/<port>)
+                      folder (default %TEMP%/tbsweep/<process id>)
   --keep              keep the staged projects
   --preflight         build only the canaries, baselines and controls, and stop
   --dry-run           count the probes and build nothing
@@ -185,7 +185,6 @@ const { values } = withUsageError(
         forms: { type: "string" },
         "no-tokens": { type: "boolean", default: false },
         jobs: { type: "string" },
-        port: { type: "string" },
         "batch-size": { type: "string" },
         verify: { type: "string" },
         out: { type: "string" },
@@ -227,16 +226,11 @@ const opt = withUsageError(() => {
       throw new CliError("bad-value", `unknown site: ${s} (--list-sites names them)`, { option: "--sites", value: s });
     }
   }
-  const basePort = numberOption(values.port ?? "9560", { option: "--port", integer: true, min: 1, max: 65535 });
   const jobs = numberOption(values.jobs ?? "4", { option: "--jobs", integer: true, min: 1 });
-  // A lane takes the port after the last one's.
-  if (basePort + jobs - 1 > 65535) {
-    throw new CliError("conflict", `--port ${basePort} with --jobs ${jobs} runs past port 65535`, { option: "--port" });
-  }
   // startTidy sweeps and restores registry entries under folders only the
   // harness writes to, and refuses one outside the temp folder (asTempFolder), so
   // the tidy would be lost for every build of the run.
-  const workRoot = path.resolve(values.work ?? path.join(tmpdir(), "tbsweep", String(basePort)));
+  const workRoot = path.resolve(values.work ?? path.join(tmpdir(), "tbsweep", String(process.pid)));
   const tmpRoot = path.resolve(tmpdir());
   if (
     workRoot.toLowerCase() === tmpRoot.toLowerCase() ||
@@ -251,7 +245,6 @@ const opt = withUsageError(() => {
     forms,
     names,
     sites,
-    basePort,
     workRoot,
     jobs,
     batchSize: numberOption(values.batchSize ?? "400", { option: "--batch-size", integer: true, min: 4 }),
@@ -414,7 +407,7 @@ async function buildOnce(probes, lane) {
       r = await compileProject({
         project: staged.proj,
         ide: IDE,
-        port: lane.port,
+        slot: lane.slot,
         show: SHOW,
         ...(opt.timeout ? { timeout: opt.timeout * 1000 } : {}),
       });
@@ -457,7 +450,18 @@ async function runAll(probes, label) {
   const lanes = Array.from({ length: Math.min(opt.jobs, queue.length) }, async (_, i) => {
     const work = path.join(workRoot, `lane${i}`);
     mkdirSync(work, { recursive: true });
-    const lane = { port: opt.basePort + i, work };
+    const lane = { slot: await leaseSlot({ tag: `sweep_attributes lane ${i}` }), work };
+    try {
+      await runLane(lane, i);
+    } finally {
+      await lane.slot.release();
+    }
+  });
+  await Promise.allSettled(lanes);
+  return results;
+
+  // A lane takes batches until the queue is empty or the run is cut short.
+  async function runLane(lane, i) {
     while (queue.length && !stats.cutShort) {
       const batch = queue.shift();
       try {
@@ -472,9 +476,7 @@ async function runAll(probes, label) {
       done += batch.length;
       say(`  ${label}: ${done}/${probes.length} probes (lane ${i})`);
     }
-  });
-  await Promise.allSettled(lanes);
-  return results;
+  }
 }
 
 // -------------------------------------------------------------- the sweep
@@ -522,7 +524,8 @@ function planStage2() {
  * every site with no attribute and with an unknown one.
  */
 async function preflight() {
-  const lane = { port: opt.basePort, work: path.join(workRoot, "lane0") };
+  // Its slot goes back at the end, or with the process when a check stops the run.
+  const lane = { slot: await leaseSlot({ tag: "sweep_attributes preflight" }), work: path.join(workRoot, "lane0") };
   mkdirSync(lane.work, { recursive: true });
 
   // The canaries beside nothing. They must draw what this file records, or every
@@ -558,6 +561,7 @@ async function preflight() {
   for (const [k, v] of verdict.voidSites) voidSites.set(k, v);
   for (const [k, v] of verdict.controlState) controlState.set(k, v);
   for (const [k, v] of verdict.controlSig) controlSig.set(k, v);
+  await lane.slot.release();
 }
 
 // ------------------------------------------------------------------ report

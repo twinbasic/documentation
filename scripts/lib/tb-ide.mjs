@@ -9,10 +9,11 @@
 // twinBASIC project without the IDE in front of you", for the history.
 
 import { execFile, execFileSync, spawn } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { connectBroker } from "./tb-broker.mjs";
 import { attach } from "./tb-cdp.mjs";
 import { click, pagePicture } from "./tb-click.mjs";
 import { removeTree, removeTreeAsync } from "./tb-ide-copy.mjs";
@@ -96,6 +97,88 @@ export function killTree(pid) {
   }
 }
 
+// ------------------------------------------------------------ slots and desktops
+
+// Every private desktop, and the number each run names its folders and ids by, come from
+// tbbroker (WIP.Broker.md): one broker for every tool on the machine, which makes each desktop
+// once and hands it from one launch to the next. A desktop made for every launch is never freed
+// by the desktop compositor, and within a day or two of tests every window on the screen lags.
+// The process shares one connection to it, and a lease taken on that connection ends when it is
+// released, or handed to a process and that process ends, or when this process ends.
+//
+// TB_BROKER=off does without it, for the one launch that cannot use it: building the broker
+// (scripts/tbbroker.mjs install). Each launch then makes a desktop of its own, as before.
+const NO_BROKER = process.env.TB_BROKER === "off";
+let brokerConnection = null;
+let noBrokerSerial = 0;
+
+function sharedBroker() {
+  if (!brokerConnection) {
+    brokerConnection = connectBroker({ client: path.basename(process.argv[1] ?? "node") }).then(
+      (b) => {
+        // The broker went away: the next lease reconnects, and starts one if need be.
+        b.onLost = () => {
+          brokerConnection = null;
+        };
+        return b;
+      },
+      (e) => {
+        brokerConnection = null;
+        throw e;
+      },
+    );
+  }
+  return brokerConnection;
+}
+
+/**
+ * A slot from the broker: a private desktop that is this run's alone while it holds it, a
+ * number to name its folders, ids and work by (unique among the slots held on the machine),
+ * and a port when `port` asks for one. It is held until `release()`, or until `handTo(pid)`
+ * has handed it to a process and that process has ended, or until this process ends.
+ *
+ * @param {object} [o]
+ * @param {string} [o.tag]    what it is for, shown by `tbbroker status`
+ * @param {boolean} [o.port]  a port as well, chosen before it is bound (an IDE's DevTools port
+ *                            is not: launchIde lets Windows pick it)
+ * @returns {Promise<{slot: number, desktop: string, port: number, handTo: (pid: number) => Promise<void>, release: () => Promise<void>}>}
+ *   Waits while every slot is taken.
+ */
+export async function leaseSlot({ tag = "", port = false } = {}) {
+  if (NO_BROKER) {
+    if (port) throw new Error("a port needs tbbroker, and TB_BROKER=off");
+    const n = ++noBrokerSerial;
+    // Far above any slot the broker hands out (32 by default), and within laneProjectId's 24 bits.
+    const slot = 0x100000 + ((process.pid * 64 + n) % 0xe00000);
+    const none = async () => {};
+    return { slot, desktop: `tbnobroker-${process.pid}-${n}`, port: 0, handTo: none, release: none };
+  }
+  const b = await sharedBroker();
+  const r = await b.lease({ tag, port, wait: true });
+  let released = false;
+  const release = async () => {
+    if (released) return;
+    released = true;
+    await b.release(r.lease).catch(() => {
+      /* the connection is gone, and the lease with it */
+    });
+  };
+  return {
+    slot: r.slot,
+    desktop: r.desktop,
+    port: r.port,
+    release,
+    async handTo(pid) {
+      try {
+        await b.hold(r.lease, pid);
+      } catch {
+        // the process has ended already, so nothing is left on the desktop to keep it for
+      }
+      await release();
+    },
+  };
+}
+
 /**
  * Start the IDE on one project, with a DevTools port open.
  *
@@ -124,20 +207,30 @@ export function killTree(pid) {
  *                            the IDE starts as from its icon: the splash, then
  *                            the New / Open Project dialog, every menu in its
  *                            no-project state
- * @param {number} o.port     DevTools port; also keys the WebView2 profile
- *                            folder and the private desktop's name
+ * @param {object} [o.slot]   a slot from leaseSlot that the caller holds: the IDE goes on its
+ *                            desktop, and its temp folder and WebView2 profile are named by
+ *                            its number. Without one the IDE gets a slot of its own, held for
+ *                            as long as the IDE runs (with `keep`, past this process's end)
+ * @param {number} [o.port]   a DevTools port to open; by default the IDE's WebView2 binds one
+ *                            Windows picks, and the result's `port` says which
  * @param {boolean} [o.show]  on the user's desktop instead of a private one
  * @param {boolean} [o.keep]  the IDE is to outlive this Node process
- * A port something already listens on is refused. The harness attaches to
- * whatever page answers on its port, so if another IDE already holds it, that
- * IDE is the one the harness would read and operate --- and other sessions on
- * the same machine run this harness too, on ports of their own choosing.
- * An IDE ended a moment ago
- * holds its port a little longer than it lives: 13 and 16 ms after
- * shutdownIde, and once two seconds. So the port gets ten seconds to come
- * free before the launch is refused. The refusal names the process listening
- * on the port, or, when none is, the error the bind got: Windows refuses a
- * port it has reserved with EACCES.
+ *
+ * **The DevTools port is not chosen in advance.** WebView2 is given
+ * `--remote-debugging-port=0` (after the IDE's own argument; the last one wins), binds a
+ * port Windows picks, and writes it to `EBWebView\DevToolsActivePort` in its profile
+ * folder, which is this IDE's alone: so IDEs started together never meet on a port, and
+ * nor does an IDE meet a port some other program was given. A fixed port collided often,
+ * since on the dev box Windows hands out any port above 1024 to whatever asks for one.
+ *
+ * A `port` given by the caller is refused when something already listens on it.
+ * The harness attaches to whatever page answers on its port, so if another IDE
+ * already holds it, that IDE is the one the harness would read and operate. An
+ * IDE ended a moment ago holds its port a little longer than it lives: 13 and
+ * 16 ms after shutdownIde, and once two seconds. So the port gets ten seconds to
+ * come free before the launch is refused. The refusal names the process
+ * listening on the port, or, when none is, the error the bind got: Windows
+ * refuses a port it has reserved with EACCES.
  *
  * @param {object} [o.env]    extra environment for the IDE. ADDIN_TEST_ENV is
  *                            set to "1" unless this names it; a value of
@@ -150,15 +243,18 @@ export function killTree(pid) {
  *                            Only a test of the very thing a flag guards leaves
  *                            one out, and it puts back what it writes: the recent
  *                            list's test (test/ide/recent-projects-copies.test.mjs)
- * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null, folders: string[]}>}
+ * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null, folders: string[], port: number | null, slot: number, desktop: string | null}>}
  *   `pid` is the IDE's own. `folders` are its temp folder and WebView2 profile,
- *   which shutdownIde removes. Throws when the port is taken, or when the
- *   launch fails.
+ *   which shutdownIde removes. `port` is its DevTools port, for attachIde, or
+ *   null when the IDE never opened one within a minute. `desktop` is the private
+ *   desktop it is on (null with `show`). Throws when a given port is taken, or
+ *   when the launch fails.
  */
 export async function launchIde({
   exe,
   project,
-  port,
+  slot = null,
+  port = null,
   show = false,
   keep = false,
   env = {},
@@ -168,32 +264,28 @@ export async function launchIde({
   // Before anything starts: an IDE older than the flags would write the user's settings.
   const tooOld = unsupportedIde(exe);
   if (tooOld) throw new Error(tooOld);
-  const waitFrom = Date.now();
-  for (;;) {
-    const code = await portTaken(port);
-    if (!code) break;
-    if (Date.now() - waitFrom > 10 * 1000) {
-      const holder = portListeners(port);
-      throw new Error(
-        holder
-          ? `DevTools port ${port} is in use: ${holder} listens on it. Another IDE has it, perhaps ` +
-              "one another session started, and this one could be mistaken for it. Pass a different --port."
-          : `DevTools port ${port} cannot be bound (${code}), though nothing listens on it: Windows ` +
-              "may have reserved it (netsh int ipv4 show excludedportrange protocol=tcp). Pass a " +
-              "different --port.",
-      );
-    }
-    await sleep(100);
+  if (port != null) await waitForPort(port);
+  const own = slot ? null : await leaseSlot({ tag: `IDE ${path.basename(project || exe)}` });
+  const s = slot ?? own;
+  try {
+    return await startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags });
+  } catch (e) {
+    await own?.release();
+    throw e;
   }
+}
+
+// launchIde once the slot is settled; `own` is the slot when it is launchIde's own to hand on.
+async function startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags }) {
   const exeWin = exe.split("/").join("\\");
   const target = project ? path.resolve(project).split("/").join("\\") : "";
-  // Each IDE has a temp folder of its own, emptied at each launch on its port
+  // Each IDE has a temp folder of its own, emptied at each launch in its slot
   // and removed when the IDE ends (shutdownIde).
-  const ideTemp = path.join(process.env.TEMP, `tbbuild-tmp-${port}`);
+  const ideTemp = path.join(process.env.TEMP, `tbbuild-tmp-${s.slot}`);
   // The WebView2 profile, 28 MB once the IDE has run. Emptied here as well, for
   // what a run that was killed left behind, and removed when the IDE ends
   // (shutdownIde), so that a run leaves neither folder.
-  const ideProfile = path.join(process.env.TEMP, `tbbuild-wv2-${port}`);
+  const ideProfile = path.join(process.env.TEMP, `tbbuild-wv2-${s.slot}`);
   for (const dir of [ideTemp, ideProfile]) {
     try {
       rmSync(dir, { recursive: true, force: true });
@@ -205,19 +297,25 @@ export async function launchIde({
   // What shutdownIde removes once the IDE is gone: only these two, which this
   // function has just made or emptied, never a folder a caller names.
   const folders = [ideTemp, ideProfile];
+  const started = Date.now();
   // Node leaves out of a child's environment any variable whose value is
   // undefined, so `env` can remove one as well as set it.
   const fullEnv = {
     ...process.env,
     TEMP: ideTemp,
     TMP: ideTemp,
-    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [`--remote-debugging-port=${port}`, "--remote-allow-origins=*", browserArgs]
+    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [
+      `--remote-debugging-port=${port ?? 0}`,
+      "--remote-allow-origins=*",
+      browserArgs,
+    ]
       .filter(Boolean)
       .join(" "),
     WEBVIEW2_USER_DATA_FOLDER: ideProfile,
     [ADDIN_TEST_ENV]: "1",
     ...env,
   };
+  const found = (pid) => (port != null ? Promise.resolve(port) : devToolsPort(ideProfile, pid, started));
 
   if (show) {
     const child = spawn(exeWin, [...flags, ...(target ? [target] : [])], {
@@ -233,7 +331,9 @@ export async function launchIde({
       child.once("error", (e) => reject(new Error(`could not start the IDE: ${e.message}`)));
     });
     child.unref();
-    return { pid: child.pid, launcher: null, folders };
+    // The slot names its folders; the IDE outlives nothing here, so it keeps the slot.
+    await own?.handTo(child.pid);
+    return { pid: child.pid, launcher: null, folders, port: await found(child.pid), slot: s.slot, desktop: null };
   }
 
   // lib/tb-launch.ps1 does the Win32 calls Node cannot -- CreateDesktop,
@@ -257,22 +357,75 @@ export async function launchIde({
   // anything could attach to it, because the launcher died with tbbuild and
   // took the job with it. With the launcher detached from Node instead,
   // PowerShell exited at once, without a pid and without a word on stderr.
+  //
+  // The slot goes with whichever lives as long as the IDE: the launcher, or a
+  // kept IDE itself.
+  let launched;
   try {
-    const { pid, launcher } = await launchOnDesktop({
+    launched = await launchOnDesktop({
       exe: exeWin,
       arg: target,
       args: flags,
-      desktop: `tbbuild-${port}`,
+      desktop: s.desktop,
       job: !keep,
       env: fullEnv,
     });
-    return { pid, launcher, folders };
   } catch (e) {
     // No IDE started, so nothing holds the folders and nothing else would remove them.
     for (const dir of folders) rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
     throw new Error(
       `could not start the IDE on a private desktop:\n${e.message}\n(--show runs it on your own desktop instead)`,
     );
+  }
+  const { pid, launcher } = launched;
+  await own?.handTo(keep ? pid : launcher.pid);
+  return { pid, launcher, folders, port: await found(pid), slot: s.slot, desktop: s.desktop };
+}
+
+// The DevTools port the IDE's WebView2 opened: the first line of DevToolsActivePort in its
+// profile, written once its browser process has bound the port. Only a file written since the
+// launch counts, in case a folder could not be emptied. Null when the IDE ends, or a minute
+// passes, without one.
+async function devToolsPort(profile, pid, since) {
+  const file = path.join(profile, "EBWebView", "DevToolsActivePort");
+  const until = Date.now() + 60 * 1000;
+  while (Date.now() < until) {
+    try {
+      if (statSync(file).mtimeMs >= since - 2000) {
+        const n = Number(readFileSync(file, "utf8").split(/\r?\n/)[0]);
+        if (Number.isInteger(n) && n > 0) return n;
+      }
+    } catch {
+      // not written yet
+    }
+    try {
+      process.kill(pid, 0);
+    } catch {
+      return null;
+    }
+    await sleep(100);
+  }
+  return null;
+}
+
+// A DevTools port the caller chose: wait up to ten seconds for it to come free (see launchIde).
+async function waitForPort(port) {
+  const waitFrom = Date.now();
+  for (;;) {
+    const code = await portTaken(port);
+    if (!code) break;
+    if (Date.now() - waitFrom > 10 * 1000) {
+      const holder = portListeners(port);
+      throw new Error(
+        holder
+          ? `DevTools port ${port} is in use: ${holder} listens on it. Another IDE has it, perhaps ` +
+              "one another session started, and this one could be mistaken for it. Pass a different --port."
+          : `DevTools port ${port} cannot be bound (${code}), though nothing listens on it: Windows ` +
+              "may have reserved it (netsh int ipv4 show excludedportrange protocol=tcp). Pass a " +
+              "different --port.",
+      );
+    }
+    await sleep(100);
   }
 }
 
@@ -301,7 +454,12 @@ const BOOTSTRAP = "$s = $env:TBBUILD_SCRIPT; Remove-Item Env:TBBUILD_SCRIPT; & (
  * @param {object} o
  * @param {string} o.exe      the program, a Windows path
  * @param {string} [o.arg]    its one argument; none when empty
- * @param {string} o.desktop  the private desktop's name
+ * @param {string} [o.desktop]  the private desktop, from a slot the caller holds (leaseSlot).
+ *                            Without one the program gets a slot of its own, held for as
+ *                            long as the program runs; the result's `desktop` names it, for
+ *                            desktopWindows and captureWindow. Never a name made up here:
+ *                            every desktop comes from the broker
+ * @param {string} [o.tag]    what a slot of its own is for, shown by `tbbroker status`
  * @param {boolean} [o.job]   false for no job, for a program that is to outlive
  *                            this Node process
  * @param {object} o.env      its whole environment
@@ -315,14 +473,29 @@ const BOOTSTRAP = "$s = $env:TBBUILD_SCRIPT; Remove-Item Env:TBBUILD_SCRIPT; & (
  * @param {"close"} [o.dialogs] look for dialog boxes the program (or anything in its
  *                            job) opens on the desktop, record each, and close it
  *                            by pressing OK, so that the program can go on
- * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess, exited: Promise<number | null>, finished: Promise<{code: number | null, dialogs: {title: string, text: string}[]}>}>}
+ * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess, desktop: string, exited: Promise<number | null>, finished: Promise<{code: number | null, dialogs: {title: string, text: string}[]}>}>}
  *   `exited` settles with the program's exit code when it ends, or null when
  *   the launcher ended without one -- killed, or failed. `finished` settles at
  *   the same time with that code and the dialogs recorded, in the order they
  *   opened (empty without `dialogs`). Throws, with the launcher's error, when
  *   the program did not start.
  */
-export async function launchOnDesktop({ exe, arg = "", args, desktop, job = true, env, cwd, stdout, stderr, dialogs }) {
+export async function launchOnDesktop({ exe, desktop, tag, job = true, ...rest }) {
+  const own = desktop ? null : await leaseSlot({ tag: tag ?? path.basename(exe) });
+  let run;
+  try {
+    run = await startOnDesktop({ exe, desktop: desktop ?? own.desktop, job, ...rest });
+  } catch (e) {
+    await own?.release();
+    throw e;
+  }
+  // The slot goes with whichever lives as long as the program: the launcher, which holds
+  // its job, or the program itself when it has none.
+  await own?.handTo(job ? run.launcher.pid : run.pid);
+  return run;
+}
+
+async function startOnDesktop({ exe, arg = "", args, desktop, job, env, cwd, stdout, stderr, dialogs }) {
   const script = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
   // -EncodedCommand is UTF-16 in base64, 2.7 characters to each of the script's,
   // and a command line stops at 32,767: the script outgrew that at about 12,000
@@ -388,7 +561,7 @@ export async function launchOnDesktop({ exe, arg = "", args, desktop, job = true
     return { code: m ? Number(m[1]) : null, dialogs: found };
   });
   const exited = finished.then((f) => f.code);
-  return { pid, launcher: ps, exited, finished };
+  return { pid, launcher: ps, desktop, exited, finished };
 }
 
 // Runs tb-launch.ps1 in its window mode (TBBUILD_WINDOWS) on a private desktop and returns
@@ -429,10 +602,10 @@ function onDesktopWindows(desktop, vars) {
 }
 
 /**
- * The windows on a private desktop that launchOnDesktop (or launchIde, whose desktop is
- * `tbbuild-<port>`) made and still holds open: every top-level window, and with `children`
- * the child windows of each visible one, as tb-launch.ps1 describes them. A desktop is the
- * process's own, so every window on it is the program's or a process it started.
+ * The windows on a private desktop that launchOnDesktop or launchIde started a program on (the
+ * `desktop` each returns) while the program runs: every top-level window, and with `children`
+ * the child windows of each visible one, as tb-launch.ps1 describes them. A desktop is leased
+ * to one run at a time, so every window on it is the program's or a process it started.
  *
  * @param {string} desktop
  * @param {object} [o]
@@ -504,9 +677,9 @@ export function keptIdeLines(pid) {
  *
  * Once the process is gone its temp folder and WebView2 profile are removed
  * (`ide.folders`, which launchIde made): without that every run left both under
- * %TEMP%, 28 MB of profile for each port it used. A process still alive keeps
+ * %TEMP%, 28 MB of profile for each IDE. A process still alive keeps
  * its folders, since they are in use. A folder that cannot be removed is
- * reported on stderr and left; launchIde empties it when the port is next used.
+ * reported on stderr and left; launchIde empties it when the slot is next used.
  */
 export function shutdownIde(ide) {
   if (!ide) return;
@@ -617,6 +790,8 @@ export function waitForExit(pid, timeoutMs) {
  * gets none.
  */
 export async function attachIde(port, { tries = 60 } = {}) {
+  // launchIde's port is null when the IDE never opened one.
+  if (!port) return null;
   for (let i = 0; i < tries; i++) {
     await sleep(1000);
     let c;

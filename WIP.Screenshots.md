@@ -172,7 +172,7 @@ as the IDE's own pop-up list, beside the select.
 
 ## The tool
 
-`scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--port N] [--ide <path>] [--jobs N] [--diffs <dir>] [--svg]`,
+`scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--ide <path>] [--jobs N] [--diffs <dir>] [--svg]`,
 Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool could not run,
 3 not put back.
 
@@ -190,8 +190,9 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   below). A setup is `{name, start, prepare}`.
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
-- **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE on its own claimed ports and
-  private desktop, and splits the big setups into parts, longest first; a full run with `--svg` is
+- **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE in a slot of its own from
+  `tbbroker` (a private desktop; the help setup's slot also carries the detached window's port)
+  with a DevTools port Windows picks, and splits the big setups into parts, longest first; a full run with `--svg` is
   about 17 minutes in both themes on BETA 1005: the jobs add up to about 5,900 s, and the longest
   part, `forms-chapter`, takes about 450 s on its own, so six IDEs cannot do much better.
   `--jobs 1` runs one IDE per setup in table order. Per-run

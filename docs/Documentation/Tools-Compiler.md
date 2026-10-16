@@ -28,18 +28,20 @@ twinBASIC has no command-line build. None of the compiler executable's verbs ---
 | Flag | Effect |
 |---|---|
 | `--ide <path>` | Path to `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` folder on `%USERPROFILE%\Desktop`. **No install path is hardcoded in this tooling**, because one contains a username, so an install kept elsewhere needs one of those two. **The tools run BETA 1007 or later**: an older install on the Desktop is passed over, and one named here or by `TB_IDE` is refused, with exit 2, before an IDE starts. |
-| `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder, the IDE's temp folder (`%TEMP%\tbbuild-tmp-<n>`, its `TEMP` and `TMP`) and the private desktop, so runs on distinct ports can go at once. Both folders (`%TEMP%\tbbuild-tmp-<n>` and the user-data folder, `%TEMP%\tbbuild-wv2-<n>`, about 28 MB) are emptied when the IDE starts and removed once it has ended. A port another IDE already holds is refused after ten seconds. |
+| `--port <n>` | DevTools port. By default the IDE's WebView2 binds a port Windows picks, so runs at once never meet on a port. A port given here that another IDE already holds is refused after ten seconds. |
 | `--arch <target>` | `win32` or `win64`. Default `win32`. Diagnostics can differ, because `#If Win64` and the size of `LongPtr` change what compiles. The target is set on every run, whatever the IDE last used for the project; a switch restarts the compiler and adds a few seconds. When the target is not `win32`, or the IDE remembered another, the report starts with a `target:` line. |
 | `--timeout <secs>` | Give up waiting for the compile to settle. Default 180. |
 | `--build` | After a compile with no errors, build the project as the toolbar's Build button does, and print `built: <file>` after the summary line. The given file is never changed (see below). |
 | `--llvm` | `--build` with the project's compiler options set to `+llvm`. Refused, with exit 2, on a Community or Personal licence, which would silently build with the default compiler. A plain `--build` is the control for an `--llvm` run. |
 | `--json` | Emit one JSON object instead of lines of text: the target, counts, diagnostic rows, the text of any alert the IDE opened (dismissed so the compile can go on), `built` (the file a build wrote, or null) and `buildLog`. |
-| `--keep` | Leave the IDE running and print its pid as `ide-pid: <n>`, then the `taskkill` command that ends it and every process it started, for cmd and PowerShell and for Git Bash (`//PID`). The IDE's registry entries for the project and its folders under `%TEMP%` are left as they are, since the IDE is still using them; ending it does not remove them, and the next run on the same port empties them. |
+| `--keep` | Leave the IDE running and print its pid as `ide-pid: <n>`, then the `taskkill` command that ends it and every process it started, for cmd and PowerShell and for Git Bash (`//PID`). The IDE's registry entries for the project and its folders under `%TEMP%` are left as they are, since the IDE is still using them; ending it does not remove them, and the next run in the same slot empties them. The slot stays the kept IDE's until it is closed. |
 | `--show` / `--hide` | Run the IDE on your own desktop, where you can watch it, or on a private one, where it cannot take focus. Hidden is the default unless `TBBUILD_SHOW` is set to something other than `0`, `false` or `no`. |
 
 **A compile does not generate code, and a build does.** LLVM code generation can refuse a construct the compiler's front end accepts ("a feature used in your code is not yet supported with the LLVM compiler"), so a clean compile says nothing about an LLVM build. `--build` and `--llvm` press Build after the compile and read the build log.
 
-A packed project's default build path opens a *Save* dialog that the private desktop hides. So either flag first exports the project into `%TEMP%\tbbuild\<port>\src`, packs a copy with an explicit build path under `%TEMP%\tbbuild\<port>\out` and a project id of its own, and opens that copy. Once the run is over the copy and its sources are removed, and so is the whole folder when nothing was built. After a build that succeeded, `%TEMP%\tbbuild\<port>\out` stays, because it holds the file `built:` names; the next run on that port replaces it.
+A packed project's default build path opens a *Save* dialog that the private desktop hides. So either flag first exports the project into `%TEMP%\tbbuild\<slot>\src`, packs a copy with an explicit build path under `%TEMP%\tbbuild\<slot>\out` and a project id of its own, and opens that copy. Once the run is over the copy and its sources are removed, and so is the whole folder when nothing was built. After a build that succeeded, `%TEMP%\tbbuild\<slot>\out` stays, because it holds the file `built:` names; the next run in that slot replaces it.
+
+**Each run has a slot of its own** from [`tbbroker`](#tbbroker): a private desktop, and the number its folders and project id are named by, which no other run on the machine holds at the same time. The IDE's temp folder (`%TEMP%\tbbuild-tmp-<slot>`, its `TEMP` and `TMP`) and WebView2 user-data folder (`%TEMP%\tbbuild-wv2-<slot>`, about 28 MB) are emptied when the IDE starts and removed once it has ended. The first run after you log on starts the broker.
 
 - A project with compile errors is not built: the report is the compile's, with exit 1.
 - A build that fails, or that ends the compiler with a native exception, prints the build log on stdout and the failing line on stderr, and exits 5.
@@ -47,7 +49,7 @@ A packed project's default build path opens a *Save* dialog that the private des
 
 **It runs the IDE on a private Windows desktop**, because the IDE calls `HostForceFocus()` when it loads and takes the keyboard whatever window style it starts with. The cost: a wedged IDE there is invisible until you run again visible. Export `TBBUILD_SHOW=1` while you work interactively, and leave it unset for unattended runs.
 
-**One IDE handles one project.** Loading a second project into a running IDE wedges it, so each project gets a fresh IDE, at roughly 6 to 8 seconds whatever its size. To make a batch of probes fast, run them at once on distinct `--port` values. Keep a question that might crash the compiler in a project of its own, so one bad probe cannot cost the others their answer.
+**One IDE handles one project.** Loading a second project into a running IDE wedges it, so each project gets a fresh IDE, at roughly 6 to 8 seconds whatever its size. To make a batch of probes fast, run them at once: each run has a slot and a DevTools port of its own. Keep a question that might crash the compiler in a project of its own, so one bad probe cannot cost the others their answer.
 
 **The IDE it starts ends with it.** The IDE runs inside a Windows job object, so when `tbbuild` ends --- finished, failed, or stopped with Ctrl+C --- every process the IDE started ends too, a restarting compiler included. The exceptions are `--keep`, where the IDE lives until you close it, and `--show`, where it starts on your desktop without the job.
 
@@ -56,13 +58,13 @@ A packed project's default build path opens a *Save* dialog that the private des
 Eight files under `scripts/lib/` belong to it and are never run directly:
 
 - `tb-build.mjs` --- `tbbuild` without its command line. Its `compileProject` returns a project's diagnostics as an array, so `check_examples.mjs` and `sweep_attributes.mjs` build many projects in one process. It never exits the process and never restores the registry: its caller does both.
-- `tb-ide.mjs` --- what `tb-build.mjs` and `tbrun.mjs` share: starting the IDE with its two command-line flags (`IDE_FLAGS`), attaching to it, waiting for the compile, and reading the diagnostics.
+- `tb-ide.mjs` --- what `tb-build.mjs` and `tbrun.mjs` share: taking a slot from [`tbbroker`](#tbbroker) (`leaseSlot`), starting the IDE with its two command-line flags (`IDE_FLAGS`) and reading back the DevTools port it opened, attaching to it, waiting for the compile, and reading the diagnostics.
 - `tb-ide-console.mjs` --- reads the IDE's DEBUG CONSOLE, where `tbrun` finds what a probe printed.
 - `tb-run.mjs` --- presses Build and reads that console until a `[RunAfterBuild]` Sub has finished, and checks what was erased for a failed build. `tbrun` and `check_examples.mjs`'s `check_run` both capture a run with it.
 - `tb-install.mjs` --- finds the install and reads its build number from `ide\build.js`, the folder name being the fallback. It passes over an install older than BETA 1007 and says why one named by hand may not run.
 - `tb-registry.mjs` --- records and restores the project state and the file association above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page. [`check_tb_registry.mjs`](#check-tb-registry) is its self-test.
 - `tb-cdp.mjs` --- a minimal CDP client over Node's global `WebSocket`, not puppeteer, whose `connect()` hangs while a pending `alert()` blocks the renderer. Every call has a time limit, so a blocked page ends a run with a message.
-- `tb-launch.ps1` --- the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object. `tb-ide.mjs` passes its text through `-EncodedCommand`, so the execution policy does not apply.
+- `tb-launch.ps1` --- the Win32 calls Node cannot make without a native FFI addon: `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop the slot names (its `CreateDesktop` opens the broker's desktop of that name), and the job object. `tb-ide.mjs` passes its text through `-EncodedCommand`, so the execution policy does not apply.
 
 Exit codes: **0** the project compiled without errors; **1** the project has errors; **2** a refused command line (a path that is not a `.twinproj` included), a project file that cannot be read (empty, cut short or not a project: it is read before an IDE starts, and the message names the file and the fault), no IDE or one older than BETA 1007, an IDE that did not start or expose a debug port, a project that could not be exported or packed, an `--llvm` run on a Community or Personal licence, or a crash; **3** the compile never settled: the IDE did not report the project open, or its diagnostics did not match its status bar; **4** the project crashes the compiler; **5** the build failed after a clean compile.
 
@@ -173,7 +175,7 @@ A defect that is a compile-time diagnostic is a **compile case** instead: a line
 
 | Flag | Effect |
 |---|---|
-| `--port <n>` | DevTools port for the IDE. Default 9346. The staging folder and project id are keyed to it, so runs on distinct ports never share a workspace. A port another IDE holds is refused, as for `tbbuild`. |
+| `--port <n>` | DevTools port for the IDE; by default one Windows picks. A port another IDE holds is refused, as for `tbbuild`. The staging folder (`%TEMP%\tbrun\<slot>`) and project id are keyed to the run's slot from [`tbbroker`](#tbbroker), so runs at once never share a workspace; `--json`'s `exe` names the built file. |
 | `--arch <target>` | `win32` or `win64`. Default `win32`, set on every run, as for `tbbuild`. A `win64` probe runs as a 64-bit process. |
 | `--timeout <secs>` | Give up waiting for console output. Default 120. |
 | `--quiet <ms>` | How long the console must stop changing before the output counts as complete, when the probe has not returned. Default 2500. Raise it well above that for a probe that drives an out-of-process server, which can take longer to start. |
@@ -206,9 +208,9 @@ finish harvests both: pass `--no-reap` there and sweep once at the end.
 
 Like `tbbuild`, it leaves the IDE's registry entries as it found them: it deletes every entry
 under its own temp folder once the IDE has exited, and again at the start of a run, which
-clears what an earlier run on the same port left behind. **A probe builds for the
+clears what an earlier run in the same slot left behind. **A probe builds for the
 target `--arch` names**, whatever the IDE remembers, so a kept IDE switched to `win64` does
-not make later runs on the same port build 64-bit.
+not make later runs build 64-bit.
 
 Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, an LLVM run on a Community or Personal licence, an `--exe` run with no exe built, `--tests` on a project with no case or with a `[TestCase]` it cannot call (one with parameters, a **Function**, or one outside a `[TestFixture]` module), or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project; **5** the probe ended before it returned, its output printed all the same; **6** under `--exe`, the exe exited with a code other than 0, the Application event log records that it faulted, it opened a box (which `tbrun` closed), or it was still running after `--timeout` and was ended, its output, exit code, fault and boxes printed all the same; **7** under `--tests`, a case failed, every case's line printed all the same. A run that would exit 5 exits 5 whatever the exe did.
 
@@ -221,7 +223,7 @@ Exit codes: **0** the probe ran and its output was captured; **1** the project h
 
 Builds the project of `bugs/build-writes-compiler-addresses/` twice and compares the two exes. It is the measurement behind that reproducer's entry in `BUGS-TO-REPORT.md`: two builds of one unchanged project differ in more than the PE time stamp and checksum. Each exe starts its `.data` section with a deflate-compressed block, and inflated, the blocks of two builds differ in two values that look like heap addresses: 4 bytes each in a win32 exe, and the low 6 bytes of a 64-bit value in a win64 exe. Like [`tbbuild.mjs`](#tbbuild), it needs a twinBASIC install and Windows, and it is outside every gate and outside CI.
 
-Each build is made in a fresh IDE, one after the other on one port, from a project staged again each time into the same folders under `%TEMP%\tbprobe-build-twice\<port>\`, so no path can be what differs. The exe is copied out as soon as the build is done.
+Each build is made in a fresh IDE, one after the other in one slot from [`tbbroker`](#tbbroker), from a project staged again each time into the same folders under `%TEMP%\tbprobe-build-twice\<slot>\`, so no path can be what differs. The exe is copied out as soon as the build is done.
 
 The output, in order:
 
@@ -237,12 +239,12 @@ The two blocks are aligned on the end of their padding, so data shifted because 
 |---|---|
 | `--arch <a>` | `win32` or `win64`, the target to build for. Default `win32`. |
 | `--ide <path>` | Path to `twinBASIC.exe`, found as for `tbbuild`. |
-| `--port <n>` | The first DevTools port to try. Default 9800. The IDE takes the first free port from it. |
+| `--port <n>` | The IDE's DevTools port; by default one Windows picks. |
 | `--timeout <secs>` | The wait for a compile to settle, and again for a build. Default 180. |
 | `--keep-files <dir>` | Copy the two exes into `<dir>` (made if missing) as `<arch>-1.exe` and `<arch>-2.exe`. Nothing already in the folder is removed. |
 | `--vb6` | Build the reproducer's `vb6/` project twice with VB6 instead, and print every range that differs outside the time stamp and the checksum, by section; a VB6 exe has no deflate-compressed block. VB6 is found as for [`vb6run.mjs`](Tools-Defects#vb6run) (`VB6_EXE`, else the standard install folders) and started only through `scripts/lib/vb6.mjs`, never from a shell. It builds with Unattended Execution, as `bug_repro.mjs vb6` does. Both builds use one folder, because VB6 stores the folder's name in the exe. `--arch`, `--ide` and `--port` are refused with it. |
 
-Exit codes: **0** the compared bytes are equal, the two decompressed blocks or, with `--vb6`, the two files outside the time stamp and the checksum; **1** they differ, so the defect is there; **2** a refused command line, no IDE or no VB6, no free port, an IDE that did not start, a project that did not compile or build, a block that does not inflate to its stated size or is not there, or a crash.
+Exit codes: **0** the compared bytes are equal, the two decompressed blocks or, with `--vb6`, the two files outside the time stamp and the checksum; **1** they differ, so the defect is there; **2** a refused command line, no IDE or no VB6, no slot from `tbbroker`, an IDE that did not start, a project that did not compile or build, a block that does not inflate to its stated size or is not there, or a crash.
 
 ## check_tb_registry.mjs
 {: #check-tb-registry }

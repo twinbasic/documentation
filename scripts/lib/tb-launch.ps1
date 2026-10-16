@@ -8,7 +8,8 @@
 #
 #   TBBUILD_EXE      the executable
 #   TBBUILD_ARG      its single argument, or empty for none
-#   TBBUILD_DESKTOP  desktop name to create
+#   TBBUILD_DESKTOP  the private desktop's name: a slot's, from tbbroker (WIP.Broker.md),
+#                    which already holds it; CreateDesktop opens a desktop that exists
 #   TBBUILD_JOB      "0" for no job -- a --keep IDE, which must outlive the run
 #
 # Optional, and without them nothing below changes:
@@ -550,8 +551,10 @@ public static class TbLaunch {
 }
 '@
 
-# The desktop lives as long as this handle does, which is as long as this
-# process does -- hence the wait at the end.
+# The slot's desktop, which tbbroker holds for as long as it runs; this handle
+# is for the dialog closer, and goes with this process. Under TB_BROKER=off it
+# is the only handle, so the desktop lives as long as this process -- hence the
+# wait at the end.
 $hDesk = [TbLaunch]::Desktop($desktop)
 
 # The job. KILL_ON_JOB_CLOSE is the whole point; breakaway is not allowed, so

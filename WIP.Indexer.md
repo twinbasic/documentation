@@ -239,8 +239,8 @@ cache.
   lists that several batches would all touch --- the landing page's, and a type page's list of
   its members --- are left to one agent per package after its batches finish.
 - **The check step compiles before a person reads.** One agent per package runs
-  `check_examples --only` on the section, at a port of its own (9700 up, clear of the
-  harness's default 9480), and fixes the pages. A contributed package without a
+  `check_examples --only` on the section (each run's lanes take slots of their own from
+  `tbbroker`, so agents at once never meet), and fixes the pages. A contributed package without a
   `contributed-<Package>` template cannot be compiled, and the agent says so. **It also runs
   the doubts the other agents return**: the workflow passes their results into its prompt,
   and it settles each one a run can on a scratch page (`zz-probe.md`, every line expecting

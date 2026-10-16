@@ -562,18 +562,18 @@ project size** --- a one-file template and the template that carries the whole o
 land at about six seconds, because what is being paid for is IDE startup and not compilation.
 Time it before quoting it.
 
-**Concurrency works and is the route to a fast probe suite.** Distinct `--port` values give
-distinct DevTools ports, WebView2 user-data folders, temp folders and private desktops, so instances do
-not collide. Three projects: **26 s sequentially, 10 s in parallel**, with each run
+**Concurrency works and is the route to a fast probe suite.** Each run takes a slot from
+`tbbroker` ([WIP.Broker.md](WIP.Broker.md)) --- a private desktop, and the number its WebView2
+user-data folder, temp folder and work folder are named by --- and its IDE's DevTools port is
+one Windows picks, so instances do not collide. Fixed ports collided often: Windows hands out
+ports from 1024 up on the dev box, so a compiler's or a browser's socket could sit on one. Three projects: **26 s sequentially, 10 s in parallel**, with each run
 reporting its own diagnostics and no bleed between them.
 
-**A port another IDE holds is refused.** The harness attaches to whatever page answers on
-its port, so an IDE already there --- another lane's, or another session's, since several
-sessions run this harness on one machine with ports of their own choosing --- would be the
-one read and operated. `launchIde` binds the port for a moment first, and gives up after
-ten seconds with a message saying which port and why. The wait is for the lane's own
-previous IDE: after `shutdownIde` a port comes free in about 15 ms, and once took two
-seconds.
+**A port given with `--port` that another IDE holds is refused.** The harness attaches to
+whatever page answers on its port, so an IDE already there would be the one read and
+operated. `launchIde` binds a given port for a moment first, and gives up after ten seconds
+with a message saying which port and why. A port Windows picks needs none of that: no other
+socket can have it.
 
 ### Capturing what a probe prints, not just whether it compiles
 
@@ -690,10 +690,9 @@ new entry. **The IDE escapes that continued text twice**
 console shows.
 
 `tbrun` settles on the wrapper's sentinel, or else on a quiet period, so no probe has to print
-a marker of its own. Distinct `--port` values let probes run concurrently, exactly as
-`tbbuild`'s do.
+a marker of its own. Probes run concurrently, exactly as `tbbuild`'s do.
 
-**Two things make that safe.** The workspace and `project.id` are keyed to `--port`, so a
+**Two things make that safe.** The workspace and `project.id` are keyed to the run's slot, so a
 second run cannot delete the first one's tree; and shutdown is a kill by the pid the launch
 returned --- `tbbuild` reports it as `ide-pid:` in text and `idePid` in `--json` for a caller
 that inherits a kept IDE --- rather than a machine-wide `taskkill /F /T /IM twinBASIC.exe`,
@@ -1351,7 +1350,7 @@ of its own, so the IDE inherits the launcher's; the IDE starts the compiler,
 `twinBASIC_win32_noDEP.exe`, as a direct child; and the add-in runs inside the compiler's
 process. The toolbar's restart button ends the compiler and starts a new process, and the
 add-in that process loads reads `1` too. The control, `WEBVIEW2_USER_DATA_FOLDER`, arrives
-with the lane's port in it.
+with the lane's slot in it.
 
 **The console gives back exactly what was printed, a whole line at a time.** `PrintText`
 stores an add-in's text escaped, `<b>` as `&lt;b&gt;` and `&` as `&amp;`, and `readConsole`
@@ -1367,9 +1366,10 @@ start with the word is not taken for one.
 **`addin-test.bat` runs [scripts/addin_test.mjs](scripts/addin_test.mjs) over the lanes in
 [test/addin/lanes.mjs](test/addin/lanes.mjs).** A lane is one scenario file, a `node:test`
 file, and the runner starts each in a process of its own (`node --test`), a few at a time
-(`--jobs`, default 2), handing it its lane in `TB_ADDIN_LANE`: a DevTools port (`--port`,
-default 9560, plus the lane's index), a work folder at `%TEMP%\tbaddin\<port>`, and the
-install to copy. What the scenario does with that is
+(`--jobs`, default 2), handing it its lane in `TB_ADDIN_LANE`: a slot from `tbbroker` (its
+private desktop and number; the runner leases it as the lane starts and hands it to the lane's
+process), a work folder at `%TEMP%\tbaddin\<runner's pid>\<lane>`, and the install to copy.
+Each IDE's DevTools port is one Windows picks; `lane.port` is the open IDE's. What the scenario does with that is
 [scripts/lib/tb-lane.mjs](scripts/lib/tb-lane.mjs): it makes the lane's copy of the install
 on first use, exports an install sample project (`addSample("Sample 15")`, the install only
 read), builds an add-in and puts it in the copy (`addAddin`), and opens a project (`open`),
@@ -1523,7 +1523,7 @@ probe lanes:
   twice and a different id; the third is the control, `closeProject` and then `Lane.open`
   with `env: { TB_ADDIN_TEST: undefined }`, and asserts an empty `Environ$` and `(unset)`.
   The probe opens nothing, so running an IDE without the variable is safe. Two IDEs in one
-  lane need no change to the runner, and the second takes the same port once the first has
+  lane need no change to the runner, and the second takes the lane's slot once the first has
   been ended.
 
 **Timing:** the thirteen lanes other than widgets (24 s alone) take about two minutes at the default two at a time

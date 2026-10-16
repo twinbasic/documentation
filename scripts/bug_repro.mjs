@@ -71,9 +71,10 @@
 //  3. AN IDE THAT RUNS MANY REPRODUCERS OWNS THE REGISTRY TIDY ONCE. Under
 //     `verify` this process calls startTidy for every lane, so the tbbuild and
 //     tbrun children (which find TB_REGISTRY_OWNER set) leave the registry alone,
-//     and nothing a lane that finishes first puts back is another's entry. The
-//     lanes use ports base, base+1, ..., which key the work folders tbbuild and
-//     tbrun use, as in check_examples.
+//     and nothing a lane that finishes first puts back is another's entry. Each
+//     tbbuild and tbrun takes a slot of its own from tbbroker (WIP.Broker.md),
+//     which keys its work folder under %TEMP%\tbbuild or %TEMP%\tbrun, so the
+//     tidy sweeps those two folders whole.
 //  4. `run` STAGES A COPY, never the tree: it adds Sources/TbRunProbe.twin, a
 //     module whose [RunAfterBuild] Sub clears the console and calls Main. With
 //     --exe that module is left out, because tbrun runs Sub Main in the built exe
@@ -232,8 +233,8 @@ Commands:
 Options:
   --ide <path>      twinBASIC.exe (default: $TB_IDE, else the newest
                     twinBASIC_IDE_BETA_* on the Desktop)
-  --port <n>        DevTools port to start the IDE on (default 9440); with verify
-                    the first of the lanes' ports
+  --port <n>        DevTools port to start the IDE on (default: one Windows picks);
+                    compile, build, run
   --arch <target>   win32 or win64 (default win32); compile, build and run
   --timeout <secs>  as tbbuild's and tbrun's; with a cli reproducer, the time
                     limit on each command of the compiler executable, which runs
@@ -242,8 +243,7 @@ Options:
                     (default 30)
   --llvm            build with LLVM; build and run
   --exe             run also runs the built exe and prints what it writes; run
-  --jobs <n>        reproducers to run at once, on ports base, base+1, ... (default
-                    1); verify
+  --jobs <n>        reproducers to run at once (default 1); verify
   --keep            leave the IDE running; its pid is printed; compile, build, run.
                     With vb6, keep the work folder and print where it is
   --show, --hide    show the IDE on the desktop, or keep it on a private one
@@ -296,7 +296,7 @@ const APPLIES = {
   build: ["ide", "port", "arch", "timeout", "keep", "show", "hide", "llvm"],
   run: ["ide", "port", "arch", "timeout", "keep", "show", "hide", "llvm", "exe"],
   vb6: ["vb6", "timeout", "keep"],
-  verify: ["ide", "port", "timeout", "jobs", "show", "hide"],
+  verify: ["ide", "timeout", "jobs", "show", "hide"],
   file: ["existing", "marked"],
 };
 // parseCli keys an option by its camelCase name (`--with-vb6` is `withVb6`).
@@ -349,7 +349,10 @@ const { port, arch, timeout, jobs, template, slugs, title, issue } = withUsageEr
     throw new CliError("conflict", "--show and --hide cannot be given together", { options: ["--show", "--hide"] });
   }
   const read = {
-    port: numberOption(values.port ?? "9440", { option: "--port", integer: true, min: 1, max: 65535 }),
+    port:
+      values.port === undefined
+        ? null
+        : numberOption(values.port, { option: "--port", integer: true, min: 1, max: 65535 }),
     arch: values.arch === undefined ? undefined : choiceOption(values.arch, { option: "--arch", choices: TARGETS }),
     timeout: values.timeout === undefined ? undefined : numberOption(values.timeout, { option: "--timeout", above: 0 }),
     jobs: numberOption(values.jobs ?? "1", { option: "--jobs", integer: true, min: 1 }),
@@ -358,9 +361,6 @@ const { port, arch, timeout, jobs, template, slugs, title, issue } = withUsageEr
         ? null
         : choiceOption(values.template, { option: "--template", choices: ["console", ...reproTemplates()] }),
   };
-  if (read.port + read.jobs - 1 > 65535) {
-    throw new CliError("bad-number", `--port ${read.port} with --jobs ${read.jobs} runs past port 65535`);
-  }
   const named = command === "verify" ? args : args.slice(0, 1);
   let issue;
   if (command === "file") {
@@ -910,8 +910,7 @@ const limitFor = (secs, own) => ((secs ?? own) + 240) * 1000;
 
 const ideFlags = (o) => [
   ...(o.ide ? ["--ide", o.ide] : []),
-  "--port",
-  String(o.port),
+  ...(o.port ? ["--port", String(o.port)] : []),
   ...(o.arch ? ["--arch", o.arch] : []),
   ...(o.timeout !== undefined ? ["--timeout", String(o.timeout)] : []),
   ...(o.show ? ["--show"] : []),
@@ -944,7 +943,8 @@ async function compileOrBuild(slug, o) {
  */
 async function runProbe(slug, o) {
   const p = where(slug);
-  const stage = path.join(tmpdir(), "bugrepro", String(o.port), slug);
+  // Keyed to this process and its lane, so that runs and lanes at once never share a stage.
+  const stage = path.join(tmpdir(), "bugrepro", `${process.pid}-${o.lane ?? 0}`, slug);
   const imagesDir = o.images ? `${stage}.images` : null;
   rmSync(stage, { recursive: true, force: true });
   if (imagesDir) {
@@ -1095,7 +1095,7 @@ async function runCli(slug, repro, o) {
         run = await launchOnDesktop({
           exe,
           args: argv,
-          desktop: `bugrepro-cli-${process.pid}`,
+          tag: `bug_repro cli ${path.basename(exe)}`,
           env: process.env,
           stdout: outFile,
           stderr: errFile,
@@ -1300,7 +1300,7 @@ function mismatches(repro, r) {
 // One reproducer: pack it, run what repro.json says, judge the result.
 async function verifyOne(slug, repro, lane) {
   if (repro.mode === "manual") return { slug, status: "manual", detail: repro.steps ?? "(no steps recorded)" };
-  const o = { ide: values.ide, port: lane, arch: repro.arch, timeout, show: values.show, hide: values.hide };
+  const o = { ide: values.ide, lane, arch: repro.arch, timeout, show: values.show, hide: values.hide };
   // The pictures of a run that is judged by them are staged in the temp folder, and never kept in the tree.
   let imagesDir = null;
   try {
@@ -1420,9 +1420,9 @@ async function verifyLanes(slugs, repros) {
     mkdirSync(path.dirname(log), { recursive: true });
     writeFileSync(log, r.out);
     const lines = r.out.split(/\r?\n/);
-    // A lane's report is the block from its "--- <name> (port <n>): ..." line to the next lane's.
+    // A lane's report is the block from its "--- <name> (<desktop>): ..." line to the next lane's.
     const block = (lane) => {
-      const start = lines.findIndex((l) => l.startsWith(`--- ${lane} (port `));
+      const start = lines.findIndex((l) => l.startsWith(`--- ${lane} (`));
       if (start < 0) return null;
       const end = lines.findIndex((l, i) => i > start && l.startsWith("--- "));
       return lines.slice(start, end < 0 ? lines.length : end);
@@ -1497,13 +1497,9 @@ async function verify() {
   const lanes = Math.min(jobs, Math.max(all.length, 1));
   if (automatic.length || all.some((s) => repros.get(s).mode === "cli")) findTools(values.ide);
   if (automatic.length) {
-    const ports = Array.from({ length: lanes }, (_, i) => port + i);
     tidy = startTidy({
       paths: automatic.map((s) => where(s).twinproj),
-      prefixes: ports.flatMap((n) => [
-        path.join(tmpdir(), "tbbuild", String(n)),
-        path.join(tmpdir(), "tbrun", String(n)),
-      ]),
+      prefixes: [path.join(tmpdir(), "tbbuild"), path.join(tmpdir(), "tbrun")],
     });
   }
   const results = [];
@@ -1516,13 +1512,13 @@ async function verify() {
     );
   };
   // Lane reproducers run last, through their suites' runners, which take their
-  // lanes' ports and own the registry while they run.
+  // lanes' slots and own the registry while they run.
   const byLane = all.filter((s) => repros.get(s).mode === "lane");
   const queue = all.filter((s) => !byLane.includes(s));
   const lane = async (index) => {
     while (queue.length) {
       const slug = queue.shift();
-      report(await verifyOne(slug, repros.get(slug), port + index));
+      report(await verifyOne(slug, repros.get(slug), index));
     }
   };
   try {

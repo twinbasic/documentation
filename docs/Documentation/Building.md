@@ -79,7 +79,7 @@ Do not drop `--check-audit-index` when typing the underlying build command: with
       && node --test test/compact-image.test.mjs \
       && node --test test/svgshot.test.mjs \
       && node --test test/example-batches.test.mjs \
-      && node --test test/ports.test.mjs \
+      && node --test test/ide-folders.test.mjs \
       && node --test test/broker.test.mjs \
       && node --test test/addin-project.test.mjs \
       && node --test test/indexer.test.mjs \

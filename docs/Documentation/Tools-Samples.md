@@ -18,7 +18,7 @@ Compiles the documentation's own code samples, and surveys and probes where the 
 {: #check-examples }
 
     node scripts/check_examples.mjs [--only <regex>] [--census] [--propose [--apply]]
-                                    [--report <file>] [--jobs N] [--port N] [--batch N]
+                                    [--report <file>] [--jobs N] [--batch N]
                                     [--ide <path>] [--build | --llvm] [--keep] [--verbose]
                                     [--json]
 
@@ -41,8 +41,7 @@ Each marked sample is generated into its own `Module tbx_<hash>`, packed with a 
 | `--propose` | Compile the unmarked samples too, and list the ones that would pass. An unmarked sample that fails does not fail the run; a marked one does. It ends with the grouping `--report` prints. |
 | `--apply` | With `--propose`, add the bare marker to the fences that passed in that run. It never touches a fence that already carries markup, so a re-run is a no-op. Read the diff. |
 | `--report <file>` | Group the findings of a survey saved with `--propose --json`: by diagnostic, section, unresolved name, wrapper and page. It needs no compiler, so the slow run happens once and the grouping can be iterated on. |
-| `--jobs <n>` | Concurrent IDE lanes. Default 4. Each lane has its own port, workspace and private desktop. |
-| `--port <n>` | Base DevTools port. Default 9480; lane *n* uses base + *n*. |
+| `--jobs <n>` | Concurrent IDE lanes. Default 4. Each lane has its own workspace and slot from [`tbbroker`](Tools-Compiler#tbbroker) (a private desktop), and each IDE a DevTools port Windows picks. |
 | `--batch <n>` | Upper bound on samples per generated project. Default 120. The batcher packs fewer when there are lanes to fill. |
 | `--ide <path>` | `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop. |
 | `--build` | Also build each project that compiles without errors. A project whose build fails is cut down, as for a crash, to the samples that fail it. A project whose compile has errors is not built: the run names its first error and counts its samples as "compiled but not built". |
@@ -106,7 +105,7 @@ Exit codes: **0** every marked sample compiles, or none is marked (`--report` al
 ## package_tests.mjs
 {: #package-tests }
 
-    node scripts/package_tests.mjs (<Package> ... | --all-packages) [--arch win32|win64|both] [--port N] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json]
+    node scripts/package_tests.mjs (<Package> ... | --all-packages) [--arch win32|win64|both] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json]
 
 It runs the packages named, each matched to its folder in any case (`tbregexp` is `tbRegExp`), or with `--all-packages` every package that has a test project; a whole run takes several minutes a package, so it is never the default. With neither, or with both, it refuses and lists the packages that have a test project.
 
@@ -190,7 +189,7 @@ Exit codes: **0** the report was produced, **2** a refused command line, no inst
 {: #sweep-attributes }
 
     node scripts/sweep_attributes.mjs [--ide <twinBASIC.exe>] [--names <a,b,...>] [--sites <a,b,...>]
-                                      [--forms bare|smart|all] [--no-tokens] [--jobs <n>] [--port <n>]
+                                      [--forms bare|smart|all] [--no-tokens] [--jobs <n>]
                                       [--batch-size <n>] [--verify <n>] [--out <file>]
                                       [--dump-results <file>] [--work <dir>] [--keep] [--preflight]
                                       [--dry-run] [--list-sites] [--show | --hide] [--timeout <secs>]
@@ -215,7 +214,7 @@ The names come from every entry in `Attributes.md`, every name in the compiler's
 | `--names`, `--sites` | Restrict to these attribute names (any case) or site ids. `--list-sites` prints the ids. |
 | `--forms` | `bare`, `smart` (the default) or `all`. Smart gives every documented attribute every argument shape, a token-table name its bare form, and more shapes only where a site recognised it. A shape known to be required is always tried. |
 | `--no-tokens` | Leave out the token table. |
-| `--jobs`, `--port` | Concurrent IDE lanes (default 4) and the first DevTools port; a lane uses one more each (default 9560). |
+| `--jobs` | Concurrent IDE lanes (default 4), each in a slot of its own from [`tbbroker`](Tools-Compiler#tbbroker). |
 | `--batch-size` | Probes per project (default 400). |
 | `--verify N` | Rebuild N random probes and compare. |
 | `--out <file>` | Write the Markdown report there. Without it the report goes to standard output. |

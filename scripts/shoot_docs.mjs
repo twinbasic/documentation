@@ -18,9 +18,10 @@
 //
 // The tool is a table of shots, and each shot names the setup (one IDE, started
 // one way) it is taken in. A setup is started only when a shot in it is
-// selected. Up to --jobs of them run at once, each IDE on a port, a work folder
-// and a private desktop of its own, and no state is shared between them but the
-// registry, which is put back once for the whole run:
+// selected. Up to --jobs of them run at once, each IDE with a work folder and a
+// slot (a private desktop, from tbbroker) of its own and a DevTools port Windows
+// picks, and no state is shared between them but the registry, which is put back
+// once for the whole run:
 //
 //   help        the help add-in built into the copy, and test/addin/helpdemo
 //               open; the pane's pages come from the built site, docs/_site, served
@@ -174,6 +175,7 @@ import {
   desktopWindows,
   killTree,
   launchOnDesktop,
+  leaseSlot,
   shutdownIde,
   sleep,
   waitForCompile,
@@ -197,8 +199,15 @@ import {
   waitFor,
   waitForEditAnswer,
 } from "./lib/tb-operate.mjs";
-import { claimPorts } from "./lib/tb-ports.mjs";
-import { deleteSettings, finishTidy, restoreKeys, settingsKey, snapshotKeys, startTidy } from "./lib/tb-registry.mjs";
+import {
+  alive,
+  deleteSettings,
+  finishTidy,
+  restoreKeys,
+  settingsKey,
+  snapshotKeys,
+  startTidy,
+} from "./lib/tb-registry.mjs";
 
 const SETTINGS = "tbDocsHelp";
 const PANE = "tbDocsHelpPane";
@@ -231,7 +240,7 @@ const SCALE = 2;
 const LCD_TEXT = "--disable-lcd-text";
 const BROWSER_ARGS = `--force-device-scale-factor=1 ${LCD_TEXT}`;
 
-const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--port N] [--ide <twinBASIC.exe>] [--svg] [-h, --help]
+const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--ide <twinBASIC.exe>] [--svg] [-h, --help]
 
 Takes the pictures of the IDE that the documentation shows, from IDEs on a
 private desktop, at 2x, each in the IDE's dark theme (X.png) and then in its Light
@@ -296,11 +305,6 @@ name.
                    customcontrols) are split into parts that each get an IDE of their own; every
                    line is prefixed with its setup or part. With --jobs 1 each
                    setup runs in one IDE, one after another, in the table's order
-  --port <n>       the first IDE's DevTools port: the first free ones from n
-                   (default 9700); every IDE takes one, the help setup three, the
-                   detached window's and the building IDE's after its own, and the
-                   global-search and designer setups two, the building IDE's after
-                   its own
   --ide <path>     the twinBASIC.exe to copy (default: $TB_IDE, else the
                    newest twinBASIC_IDE_BETA_* on the Desktop)
   --svg            also write each picture as SVG beside its PNG (X.svg),
@@ -337,7 +341,6 @@ const { values } = withUsageError(() =>
       diffs: { type: "string" },
       bundles: { type: "string" },
       jobs: { type: "string" },
-      port: { type: "string" },
       ide: { type: "string" },
       svg: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
@@ -349,9 +352,6 @@ if (values.help) printHelpAndExit(USAGE);
 const only = values.only === undefined ? null : withUsageError(() => regexOption(values.only, { option: "--only" }));
 const jobCount = withUsageError(() =>
   numberOption(values.jobs ?? "6", { option: "--jobs", integer: true, min: 1, max: 16 }),
-);
-const firstPort = withUsageError(() =>
-  numberOption(values.port ?? "9700", { option: "--port", integer: true, min: 1, max: 65535 }),
 );
 const outRoot = path.resolve(values.out ?? DEFAULT_OUT);
 const diffsRoot = values.diffs === undefined ? null : path.resolve(values.diffs);
@@ -968,17 +968,19 @@ const setRecents = (c, entries) =>
 
 // ---------------------------------------------------------------- setups
 
-// A setup is one IDE: `ports` it claims, `start` which opens it and returns the
-// connection, `prepare` which brings it to a state the shots start from and
-// returns their context. `run` holds the lane, the ports, the work folder and
-// what the setup has to put back.
+// A setup is one IDE: `start` which opens it and returns the connection,
+// `prepare` which brings it to a state the shots start from and returns their
+// context, and `port` when it needs a port chosen before it is bound (the help
+// add-in's detached window), which its slot then carries. `run` holds the lane,
+// its slot (tbbroker: the IDE's private desktop), the work folder and what the
+// setup has to put back.
 
 const demoLines = () => readFileSync(DEMO_SOURCE, "utf8").split("\n");
 
 // ---- help
 
 async function startHelp(run) {
-  const { lane, ports, work } = run;
+  const { lane, slot, work } = run;
   const files = createStaticHandler(SITE);
   run.server = await serveLoopback((req, res) => files(req, res));
   run.origin = `http://localhost:${run.server.port}`;
@@ -991,15 +993,13 @@ async function startHelp(run) {
     recursive: true,
     filter: (f) => ![path.join(ADDIN, "Build"), path.join(ADDIN, "Resources", "HELP")].includes(f),
   });
-  // On a port of its own: the building IDE's WebView2 can keep listening on its
-  // port for longer than launchIde waits (ten seconds) after the IDE ends.
-  await lane.addAddin(src, { show: false, port: ports[2] });
+  await lane.addAddin(src, { show: false });
   run.step = "open";
   say(run.name, `opening ${path.relative(REPO_ROOT, DEMO)}`);
   return lane.open(DEMO, {
     env: {
       TB_DOCS_HELP_SITE: run.origin,
-      TB_DOCS_HELP_WINDOW_PORT: String(ports[1]),
+      TB_DOCS_HELP_WINDOW_PORT: String(slot.port),
       TB_DOCS_HELP_REAL_TITLEBAR: "0",
     },
   });
@@ -1021,7 +1021,7 @@ async function prepareHelp(run) {
   const ctx = {
     c,
     origin,
-    windowPort: run.ports[1],
+    windowPort: run.slot.port,
     addinLines,
     results: async () => (await listViewItems(c, { toolWindow: PANE, css: "#helpResults" })).map((i) => i.text),
   };
@@ -1152,15 +1152,15 @@ async function prepareFusion(run) {
 // pictures have always had it. Its options are saved with SaveSetting, under GS_SETTINGS,
 // which the run records first and puts back.
 
-// Builds Sample 15 into the lane's copy of the install, on the setup's second port (the
-// building IDE's, as the help setup builds); returns the sample's exported tree.
+// Builds Sample 15 into the lane's copy of the install, as the help setup builds; returns
+// the sample's exported tree.
 async function buildGlobalSearch(run) {
-  const { lane, ports } = run;
+  const { lane } = run;
   run.step = "build";
   say(run.name, `building Sample 15, the Global Search add-in, into a copy of ${ide}`);
   // the install is only read: the sample is exported into the work folder
   const src = lane.exportSample("Sample 15");
-  await lane.addAddin(src, { show: false, port: ports[1] });
+  await lane.addAddin(src, { show: false });
   return src;
 }
 
@@ -1339,7 +1339,7 @@ async function startFormsChapter(run) {
 // The IDE's desktop, where a previewed form's window shows, and a folder for its captures.
 async function prepareFormsChapter(run) {
   const ctx = await prepareWithDesigners(run);
-  ctx.desktop = `tbbuild-${run.ports[0]}`;
+  ctx.desktop = run.lane.desktop;
   ctx.windows = path.join(run.work, "windows");
   mkdirSync(ctx.windows, { recursive: true });
   return ctx;
@@ -1394,43 +1394,42 @@ async function clearUserFromConsole(c) {
 }
 
 const SETUPS = {
-  help: { ports: 3, start: startHelp, prepare: prepareHelp },
-  "global-search": { ports: 2, start: startGlobalSearch, prepare: prepareGlobalSearch },
-  sample6: { ports: 1, start: startSample6, prepare: prepareSample },
-  designer: { ports: 2, start: startDesigner, prepare: prepareDesigner },
-  forms: { ports: 1, start: (run) => startDesigner(run, { addin: false }), prepare: prepareWithDesigners },
-  "forms-chapter": { ports: 1, start: startFormsChapter, prepare: prepareFormsChapter },
-  customcontrols: { ports: 1, start: startCustomControls, prepare: prepareWithDesigners },
-  code: { ports: 1, start: startCode, prepare: prepareSample },
-  sample9: { ports: 1, start: startSample9, prepare: prepareSample },
-  featuremap: { ports: 1, start: startFeatureMap, prepare: prepareSample },
-  "code-chapter": { ports: 1, start: startCodeChapter, prepare: prepareSample },
-  debugging: { ports: 1, start: (run) => startCodeChapter(run, { extra: DEBUGGING }), prepare: prepareSample },
-  project: { ports: 1, start: startProject, prepare: prepareProject },
-  community: { ports: 1, start: startProject, prepare: prepareCommunity },
-  splash: { ports: 1, start: startProject, prepare: prepareProject },
-  sample: { ports: 1, start: startSample, prepare: prepareSample },
-  settings: { ports: 1, start: startSettings("base"), prepare: prepareSample },
-  "settings-symbols": { ports: 1, start: startSettings("symbols"), prepare: prepareSample },
+  help: { port: true, start: startHelp, prepare: prepareHelp },
+  "global-search": { start: startGlobalSearch, prepare: prepareGlobalSearch },
+  sample6: { start: startSample6, prepare: prepareSample },
+  designer: { start: startDesigner, prepare: prepareDesigner },
+  forms: { start: (run) => startDesigner(run, { addin: false }), prepare: prepareWithDesigners },
+  "forms-chapter": { start: startFormsChapter, prepare: prepareFormsChapter },
+  customcontrols: { start: startCustomControls, prepare: prepareWithDesigners },
+  code: { start: startCode, prepare: prepareSample },
+  sample9: { start: startSample9, prepare: prepareSample },
+  featuremap: { start: startFeatureMap, prepare: prepareSample },
+  "code-chapter": { start: startCodeChapter, prepare: prepareSample },
+  debugging: { start: (run) => startCodeChapter(run, { extra: DEBUGGING }), prepare: prepareSample },
+  project: { start: startProject, prepare: prepareProject },
+  community: { start: startProject, prepare: prepareCommunity },
+  splash: { start: startProject, prepare: prepareProject },
+  sample: { start: startSample, prepare: prepareSample },
+  settings: { start: startSettings("base"), prepare: prepareSample },
+  "settings-symbols": { start: startSettings("symbols"), prepare: prepareSample },
   "settings-webview2": {
-    ports: 1,
     start: startSettings("webview2", { keepForm: true, stage: DESIGNER_WEBVIEW2 }),
     prepare: prepareWithDesigners,
   },
-  "settings-fusion": { ports: 1, start: startSettings("fusion"), prepare: prepareFusion },
-  glyphs: { ports: 1, start: startSample, prepare: prepareSample },
-  "no-project": { ports: 1, start: startNoProject, prepare: prepareNoProject },
-  programs: { ports: 1, start: startPrograms, prepare: preparePrograms },
-  codelens: { ports: 1, start: startCodeLens, prepare: prepareSample },
-  memory: { ports: 1, start: startMemory, prepare: prepareSample },
-  package: { ports: 1, start: startPackage, prepare: prepareSample },
-  fusion: { ports: 1, start: startFusion, prepare: prepareSample },
-  "package-server": { ports: 1, start: startPackageServer, prepare: preparePackageServer },
-  "settings-linked": { ports: 1, start: startSettings("linked"), prepare: prepareSample },
-  "package-check": { ports: 1, start: startPackageCheck, prepare: prepareSample },
-  import: { ports: 1, start: startImport, prepare: prepareSample },
-  webpage: { ports: 1, start: startProject, prepare: prepareWebpage },
-  web: { ports: 1, start: startWeb, prepare: prepareWeb },
+  "settings-fusion": { start: startSettings("fusion"), prepare: prepareFusion },
+  glyphs: { start: startSample, prepare: prepareSample },
+  "no-project": { start: startNoProject, prepare: prepareNoProject },
+  programs: { start: startPrograms, prepare: preparePrograms },
+  codelens: { start: startCodeLens, prepare: prepareSample },
+  memory: { start: startMemory, prepare: prepareSample },
+  package: { start: startPackage, prepare: prepareSample },
+  fusion: { start: startFusion, prepare: prepareSample },
+  "package-server": { start: startPackageServer, prepare: preparePackageServer },
+  "settings-linked": { start: startSettings("linked"), prepare: prepareSample },
+  "package-check": { start: startPackageCheck, prepare: prepareSample },
+  import: { start: startImport, prepare: prepareSample },
+  webpage: { start: startProject, prepare: prepareWebpage },
+  web: { start: startWeb, prepare: prepareWeb },
 };
 
 // ---------------------------------------------------------------- the shots of the no-project setup
@@ -8840,13 +8839,16 @@ async function preparePrograms(run) {
     throw new Error(`ShotPrograms did not build: ${built.message ?? built.file}`);
   }
   say(run.name, `built ${path.basename(built.file)}`);
+  // The programs' own desktop, a second slot of the job's (endRun gives it back), and the
+  // IDE's, where a program run from the IDE shows.
+  const programs = await leaseSlot({ tag: `shoot_docs ${run.name} programs` });
+  run.more.push(programs);
   return {
     c,
     exe: built.file,
     signals: run.signals,
-    // the programs' own desktop, and the IDE's, where a program run from the IDE shows
-    desktop: `tbshoot-programs-${run.ports[0]}`,
-    ideDesktop: `tbbuild-${run.ports[0]}`,
+    desktop: programs.desktop,
+    ideDesktop: run.lane.desktop,
   };
 }
 
@@ -10191,7 +10193,7 @@ function paste(whole, part, x, y) {
 }
 
 async function prepareWebpage(run) {
-  return { ...(await prepareProject(run)), port: run.ports[0] };
+  return { ...(await prepareProject(run)), port: run.lane.port };
 }
 
 const webpageShot = {
@@ -10262,15 +10264,19 @@ const webpageShot = {
 
 async function startWeb(run) {
   run.step = "open";
-  const port = run.ports[0];
   const exe = await puppeteer.executablePath();
   if (!existsSync(exe)) throw new Error(`no Chrome at ${exe}: run npm install`);
   say(run.name, "starting Chrome");
+  // Port 0: Chrome binds one Windows picks and writes it to DevToolsActivePort in its
+  // profile, which is this job's alone, as an IDE's WebView2 does (launchIde).
+  const profile = path.join(run.work, "chrome");
+  const portFile = path.join(profile, "DevToolsActivePort");
+  rmSync(portFile, { force: true });
   const browser = await launchOnDesktop({
     exe,
     args: [
-      `--remote-debugging-port=${port}`,
-      `--user-data-dir=${path.join(run.work, "chrome")}`,
+      "--remote-debugging-port=0",
+      `--user-data-dir=${profile}`,
       "--no-first-run",
       "--no-default-browser-check",
       "--force-device-scale-factor=1",
@@ -10283,7 +10289,7 @@ async function startWeb(run) {
       "--disable-renderer-backgrounding",
       "about:blank",
     ],
-    desktop: `tbshoot-web-${port}`,
+    tag: `shoot_docs ${run.name} Chrome`,
     env: process.env,
   });
   // ended as an IDE is, by the lane: by its process id, with every process it started
@@ -10292,7 +10298,8 @@ async function startWeb(run) {
     null,
     async () => {
       try {
-        return await attach(port, "about:blank");
+        const port = Number(readFileSync(portFile, "utf8").split(/\r?\n/)[0]);
+        return port > 0 ? await attach(port, "about:blank") : null;
       } catch {
         return null;
       }
@@ -11017,7 +11024,6 @@ function planJobs() {
         setup: name,
         shots,
         weight: JOB_SECONDS[name + p.suffix] ?? shots.length * 10,
-        ports: [],
       });
     }
   }
@@ -11027,29 +11033,19 @@ function planJobs() {
 }
 const jobs = planJobs();
 
-let ports;
-try {
-  ports = await claimPorts(
-    jobs.reduce((n, job) => n + SETUPS[job.setup].ports, 0),
-    { from: firstPort },
-  );
-} catch (e) {
-  die(2, e.message);
-}
-{
-  let at = 0;
-  for (const job of jobs) {
-    job.ports = ports.slice(at, at + SETUPS[job.setup].ports);
-    at += job.ports.length;
+// The run's folder is named for this process, so that runs at once never share one; each job
+// takes its slot from tbbroker as it starts (runJob). A folder an earlier run left, whose
+// process has ended, goes.
+const runs = path.join(tmpdir(), "tbshoot-docs");
+for (const name of existsSync(runs) ? readdirSync(runs) : []) {
+  if (!/^\d+$/.test(name) || alive(Number(name))) continue;
+  try {
+    removeTree(path.join(runs, name));
+  } catch {
+    // still in use: a later run tries again
   }
 }
-
-const root = path.join(tmpdir(), "tbshoot-docs", String(ports[0]));
-try {
-  removeTree(root);
-} catch (e) {
-  die(2, `${root} could not be emptied (${e.code}): is an IDE from an earlier run still open?`);
-}
+const root = path.join(runs, String(process.pid));
 mkdirSync(root, { recursive: true });
 const tidy = startTidy({ prefixes: [root] });
 if (!tidy) die(2, "could not record the registry, so it could not be put back afterwards");
@@ -11237,6 +11233,7 @@ async function endRun(run) {
     complain(run.name, e.message);
   }
   run.server?.close();
+  for (const slot of [run.slot, ...run.more]) await slot.release();
 }
 
 // What a setup's page holds once it is prepared and that its shots change: the editor's
@@ -11274,7 +11271,10 @@ async function runJob(job) {
   const run = {
     name: job.name,
     step: "start",
-    ports: job.ports,
+    // the job's slot: the IDE's private desktop, and a port when the setup needs one
+    slot: await leaseSlot({ tag: `shoot_docs ${job.name}`, port: !!setup.port }),
+    // any more slots a setup takes (endRun gives them back)
+    more: [],
     work: path.join(root, job.name),
     lane: null,
     server: null,
@@ -11283,7 +11283,8 @@ async function runJob(job) {
   mkdirSync(run.work, { recursive: true });
   run.lane = new Lane({
     name: `shoot-${job.name}`,
-    port: job.ports[0],
+    slot: run.slot.slot,
+    desktop: run.slot.desktop,
     work: run.work,
     ide,
     show: false,

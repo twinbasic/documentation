@@ -730,9 +730,10 @@ that fails only the second is one LLVM cannot generate code for.
   batch again before halving, and every part the halving builds the same way: a build can
   fail once and pass when repeated, as one that reported nothing for 120 s did in a full
   `--llvm` run.
-- **Each IDE has a temp folder of its own**, `%TEMP%\tbbuild-tmp-<port>`, set as its `TEMP`
-  and `TMP` by `launchIde`, emptied at each launch on the port and removed when the IDE
-  ends, so that concurrent runs share nothing and a run leaves nothing behind.
+- **Each IDE has a temp folder of its own**, `%TEMP%\tbbuild-tmp-<slot>`, set as its `TEMP`
+  and `TMP` by `launchIde`, emptied at each launch in the slot and removed when the IDE
+  ends, so that concurrent runs share nothing and a run leaves nothing behind. Each lane
+  holds a slot from `tbbroker` for the whole run ([WIP.Broker.md](WIP.Broker.md)).
 - **A build adds three collision rules a compile does not have**, each checked on BETA 1005 (`--build --only` over the pages that hold such samples builds clean):
   - **`expect-error` samples are batched apart.** One such sample (Option.md, TB5079) left
     the 129 samples beside it unbuilt, since a project with an error is not built.
@@ -777,13 +778,12 @@ that fails only the second is one LLVM cannot generate code for.
   / `InputBox` and refused, not discovered at the timeout.
 - **Two IDEs must not hold one source tree.** `tbbuild` takes the project directory as given
   and does not stage a copy the way `tbrun` does, so two concurrent builds pointed at the
-  same folder --- distinct `--port`s, distinct desktops, everything else correct --- both
-  wedge and neither ever returns. Each lane owns a workspace, not just a port.
-- **A run that dies mid-batch leaves its lanes' IDEs running**, on desktops nobody can see,
-  holding the projects they opened under `tbexamples\<port>`. The next run on that port then
-  fails its first step, clearing that folder, with a bare `EPERM`. The harness says what the
-  `EPERM` means; stop the `twinBASIC.exe` processes whose command line names a project under
-  that folder (by pid, never by image name), or run on another `--port`.
+  same folder --- distinct ports, distinct desktops, everything else correct --- both
+  wedge and neither ever returns. Each lane owns a workspace, not just a slot.
+- **A run's folder is named for its process**, `tbexamples\<pid>`, so runs at once never
+  share one; a later run removes the folders of runs whose process has ended, and leaves one
+  it cannot remove yet. Before each IDE ran in its launcher's job, a run that died left its
+  lanes' IDEs running on desktops nobody could see, holding that folder.
 - **Batches are packed in process by impexp** (`packTree` in `scripts/lib/tb-project.mjs`),
   never by the compiler executable's `import`, which exits 999 with nothing written on a
   tree holding an embedded package and 0 after the failures it reports;

@@ -9,8 +9,6 @@
 //       --all-packages    every package with a test project; a run of all of them takes several
 //                         minutes a package, so it is never the default
 //       --arch <a>        win32, win64 or both (default both)
-//       --port <n>        the first DevTools port to try (default 9620); the run claims the first
-//                         free one from there (scripts/lib/tb-ports.mjs)
 //       --timeout <secs>  how long one case may take (default 60)
 //       --hang-timeout <secs>  how long a case expect.json says never returns is given (default 20)
 //       --update          write expect.json from this run, for the architectures run
@@ -81,7 +79,6 @@ import {
   projectCases,
   runAllText,
 } from "./lib/package-test-cases.mjs";
-import { claimPorts } from "./lib/tb-ports.mjs";
 import { unpackProject } from "./lib/tb-project.mjs";
 
 const ROOT = path.join(REPO_ROOT, "test", "package-tests");
@@ -90,7 +87,7 @@ const TBRUN = path.join(REPO_ROOT, "scripts", "tbrun.mjs");
 const CACHE = path.join(tmpdir(), "tb-twinserv");
 const WORK = path.join(tmpdir(), "tb-package-tests");
 
-const USAGE = `usage: node scripts/package_tests.mjs (<Package> ... | --all-packages) [--arch win32|win64|both] [--port N] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json] [-h, --help]
+const USAGE = `usage: node scripts/package_tests.mjs (<Package> ... | --all-packages) [--arch win32|win64|both] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json] [-h, --help]
 
 Runs package test projects under test/package-tests/ with tbrun --tests, each
 with its package embedded, and judges every case against the package's
@@ -100,7 +97,6 @@ and passes) or changed. Name one or more packages (in any case), or pass
 
   --all-packages          run every package's test project
   --arch <a>              win32, win64 or both (default both)
-  --port <n>              the first DevTools port to try (default 9620)
   --timeout <secs>        how long one case may take (default 60)
   --hang-timeout <secs>   how long a case that never returns is given (default 20)
   --update                write expect.json from this run, for the architectures run
@@ -119,7 +115,6 @@ const { values, positionals } = withUsageError(
     parseCli(process.argv.slice(2), {
       options: {
         arch: { type: "string" },
-        port: { type: "string" },
         timeout: { type: "string" },
         "hang-timeout": { type: "string" },
         update: { type: "boolean", default: false },
@@ -141,7 +136,6 @@ const opts = withUsageError(
       choiceOption(values.arch ?? "both", { option: "--arch", choices: [...ARCHES, "both"] }) === "both"
         ? ARCHES
         : [values.arch],
-    port: numberOption(values.port ?? "9620", { option: "--port", integer: true, min: 1, max: 65535 }),
     timeout: numberOption(values.timeout ?? "60", { option: "--timeout", above: 0 }),
     hangTimeout: numberOption(values.hangTimeout ?? "20", { option: "--hang-timeout", above: 0 }),
   }),
@@ -166,7 +160,6 @@ if (missing.length) {
 const packages = values.allPackages ? known : [...new Set(positionals.map((p) => byLower.get(p.toLowerCase())))];
 if (!packages.length) die(2, "test/package-tests/ holds no test project");
 
-const [port] = await claimPorts(1, { from: opts.port });
 const say = (s) => {
   if (!values.json) console.log(s);
 };
@@ -180,7 +173,7 @@ for (const pkg of packages) {
   report.push(r);
   if (r.cases.some((c) => c.verdict !== "documented")) failed = true;
 }
-if (values.json) console.log(JSON.stringify({ port, packages: report }, null, 2));
+if (values.json) console.log(JSON.stringify({ packages: report }, null, 2));
 process.exit(failed ? 1 : 0);
 
 // ---------------------------------------------------------------- one package
@@ -306,11 +299,12 @@ async function ensurePackage(settings) {
   }
 }
 
-// The project staged as WORK/<label>-<arch>-<port>, with the package embedded, and with the
-// resources given (the run-time project's Resources/, byte for byte).
+// The project staged as WORK/<label>-<arch>-<pid>, with the package embedded, and with the
+// resources given (the run-time project's Resources/, byte for byte). The pid keeps runs at
+// once apart; each tbrun takes a slot (a desktop and its work folder) of its own from tbbroker.
 function stageTree(label, pkg, arch, template, files, resources = []) {
   const settings = testSettings(template, pkg);
-  const tree = path.join(WORK, `${label}-${arch}-${port}`);
+  const tree = path.join(WORK, `${label}-${arch}-${process.pid}`);
   rmSync(tree, { recursive: true, force: true });
   mkdirSync(path.join(tree, "Sources"), { recursive: true });
   writeFileSync(path.join(tree, "Settings"), `${JSON.stringify(settings, null, "\t")}\n`, "utf8");
@@ -334,7 +328,7 @@ function stageTree(label, pkg, arch, template, files, resources = []) {
 
 // tbrun --tests --json on some of the cases; its cases in the order asked.
 function tbrunCases(tree, arch, names, timeoutSecs) {
-  const args = [TBRUN, tree, "--tests", "--json", "--arch", arch, "--port", String(port)];
+  const args = [TBRUN, tree, "--tests", "--json", "--arch", arch];
   args.push("--timeout", String(timeoutSecs), "--only", names.join(","));
   if (values.ide) args.push("--ide", values.ide);
   const r = spawnSync(process.execPath, args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });

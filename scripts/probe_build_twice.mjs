@@ -16,7 +16,7 @@
 // the block by 4 and changes about 44 bytes of .text.
 //
 // Each build is made in an IDE of its own (an IDE reused for a second project
-// wedges), on one port, from a project staged again before each build into the
+// wedges), in one slot (tbbroker), from a project staged again before each build into the
 // same folders with the same build path, so that no path can be what differs. The
 // exe is copied out as soon as the build is done. --vb6 does the same with VB6,
 // for the reproducer's vb6/ project, whose exe has no such block, and prints every
@@ -39,9 +39,8 @@ import {
   withUsageError,
 } from "../lib/cli.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
-import { TARGETS } from "./lib/tb-ide.mjs";
+import { leaseSlot, TARGETS } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
-import { claimPorts } from "./lib/tb-ports.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import {
@@ -66,14 +65,12 @@ function cleanUp() {
     try {
       rmSync(work, { recursive: true, force: true });
     } catch {
-      // a file still held open; the next run on this port empties the folder
+      // a file still held open; the next run in this slot empties the folder
     }
     work = null;
   }
 }
 exitOnCrash(cleanUp);
-
-const DEFAULT_PORT = 9800;
 
 const USAGE = `usage: node scripts/probe_build_twice.mjs [--arch win32|win64] [--ide <twinBASIC.exe>] [--port N] [--timeout S] [--keep-files <dir>] [--vb6] [-h, --help]
 
@@ -95,8 +92,7 @@ reported, and ends the probe.
   --arch <a>         win32 or win64, the target to build for (default win32)
   --ide <path>       twinBASIC.exe (default: $TB_IDE, else the newest
                      twinBASIC_IDE_BETA_* on the Desktop)
-  --port <n>         DevTools port of the IDE (default ${DEFAULT_PORT}); the first free port from
-                     it is used
+  --port <n>         DevTools port of the IDE (default: one Windows picks)
   --timeout <secs>   give up waiting for a compile, and again for a build (default 180)
   --keep-files <dir> copy the two exes into <dir>, made if it is missing, as
                      <arch>-1.exe and <arch>-2.exe (vb6-1.exe and vb6-2.exe with --vb6)
@@ -112,7 +108,7 @@ Exit codes:
      two files outside the time stamp and the checksum
   1  they differ: the defect is there
   2  the probe could not do its job: a refused command line, no IDE or no VB6, no
-     free port, an IDE that did not start, a project that did not compile or
+     slot from tbbroker, an IDE that did not start, a project that did not compile or
      build, a block that does not inflate to its stated size or is not there, or
      a crash`;
 
@@ -140,7 +136,10 @@ const { arch, port, timeout } = withUsageError(() => {
   for (const name of ["arch", "ide", "port"]) refuseTogether(values, ["vb6", name]);
   return {
     arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
-    port: numberOption(values.port ?? String(DEFAULT_PORT), { option: "--port", integer: true, min: 1, max: 65535 }),
+    port:
+      values.port === undefined
+        ? null
+        : numberOption(values.port, { option: "--port", integer: true, min: 1, max: 65535 }),
     timeout: numberOption(values.timeout ?? "180", { option: "--timeout", above: 0 }) * 1000,
   };
 }, usageError);
@@ -474,13 +473,13 @@ async function buildTwinBasic() {
     );
   }
   if (!existsSync(path.join(SOURCE, "Settings"))) throw new Fail(`the reproducer's source is missing: ${SOURCE}`);
-  let lanePort;
+  let slot;
   try {
-    [lanePort] = await claimPorts(1, { from: port });
+    slot = await leaseSlot({ tag: "probe_build_twice" });
   } catch (e) {
     throw new Fail(e.message);
   }
-  work = path.join(tmpdir(), "tbprobe-build-twice", String(lanePort));
+  work = path.join(tmpdir(), "tbprobe-build-twice", String(slot.slot));
   rmSync(work, { recursive: true, force: true });
   mkdirSync(work, { recursive: true });
   tidy = startTidy({ prefixes: [work] });
@@ -488,7 +487,7 @@ async function buildTwinBasic() {
   mkdirSync(copies, { recursive: true });
   console.log(
     `BETA ${buildNumber(ide) ?? "?"}, ${arch}: two builds of bugs/build-writes-compiler-addresses, ` +
-      `each in an IDE of its own on port ${lanePort}`,
+      `each in an IDE of its own on ${slot.desktop}`,
   );
 
   const files = [];
@@ -503,13 +502,14 @@ async function buildTwinBasic() {
       project,
       settings: {
         "project.buildPath": path.join(out, "${ProjectName}_${Architecture}.${FileExtension}"),
-        "project.id": laneProjectId(6, lanePort),
+        "project.id": laneProjectId(6, slot.slot),
       },
     });
     const r = await compileProject({
       project,
       ide,
-      port: lanePort,
+      slot,
+      port,
       arch,
       timeout,
       buildTimeout: timeout,

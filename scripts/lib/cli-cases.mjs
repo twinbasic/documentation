@@ -34,7 +34,7 @@ const CASES = [
   { tool: "scripts/tbbuild.mjs", args: ["--port"], exit: 2, stderr: /^--port needs a value\nusage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["--timeout", "--keep"], exit: 2, stderr: /^--timeout needs a value\nusage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/check_examples.mjs", args: ["--jobs"], exit: 2, stderr: "check_examples: --jobs needs a value\n" },
-  { tool: "scripts/check_examples.mjs", args: ["--port", "--json"], exit: 2, stderr: "check_examples: --port needs a value\n" },
+  { tool: "scripts/check_examples.mjs", args: ["--batch", "--json"], exit: 2, stderr: "check_examples: --batch needs a value\n" },
   { tool: "scripts/census_attributes.mjs", args: ["--out"], exit: 2, stderr: "--out needs a value\n" },
   { tool: "scripts/census_attributes.mjs", args: ["--exported", "--json"], exit: 2, stderr: "--exported needs a value\n" },
   { tool: "scripts/census_attributes.mjs", args: ["--src", "x"], exit: 2, stderr: "unknown option: --src\n" },
@@ -611,9 +611,8 @@ bad(
 {
   const tool = "scripts/sweep_attributes.mjs";
   bad(tool, ["--jobs", "0"], thenUsage(NOT_COUNT("--jobs", 0), tool));
-  bad(tool, ["--port", "0"], thenUsage(NOT_PORT(0), tool));
-  bad(tool, ["--port=65536"], thenUsage(NOT_PORT(65536), tool));
-  bad(tool, ["--port", "65535", "--jobs", "2"], thenUsage("--port 65535 with --jobs 2 runs past port 65535", tool));
+  // Its lanes take their desktops from tbbroker and their DevTools ports from Windows: no --port.
+  bad(tool, ["--port", "9560"], thenUsage("unknown option: --port", tool));
   bad(tool, ["--batch-size", "3"], thenUsage("--batch-size expects a whole number of at least 4, got: 3", tool));
   bad(tool, ["--verify=-1"], thenUsage(NOT_WHOLE("--verify", -1), tool));
   bad(tool, ["--timeout", "0"], thenUsage(NOT_ABOVE_ZERO("--timeout", 0), tool));
@@ -662,11 +661,8 @@ bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE(
   bad(tool, ["run", "no-such-bug", "--timeout", "0"], thenUsage(NOT_ABOVE_ZERO("--timeout", 0), tool));
   bad(tool, ["run", "no-such-bug", "--arch", "WIN32"], thenUsage("--arch expects win32 or win64, got: WIN32", tool));
   bad(tool, ["verify", "--jobs", "0"], thenUsage(NOT_COUNT("--jobs", 0), tool));
-  bad(
-    tool,
-    ["verify", "--port", "65535", "--jobs", "2"],
-    thenUsage("--port 65535 with --jobs 2 runs past port 65535", tool),
-  );
+  // verify's runs each take a slot of their own from tbbroker, and their ports from Windows.
+  bad(tool, ["verify", "--port", "9440", "--jobs", "2"], thenUsage("--port does not apply to verify", tool));
   bad(
     tool,
     ["compile", "no-such-bug", "--show", "--hide"],
@@ -747,8 +743,8 @@ bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE(
 }
 
 bad("scripts/addin_test.mjs", ["--only", "("], REGEX_REASON("--only", "("));
-bad("scripts/addin_test.mjs", ["--port", "0"], NOT_PORT(0) + "\n");
-bad("scripts/addin_test.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
+// The lane runners' lanes take their desktops from tbbroker and their ports from Windows.
+bad("scripts/addin_test.mjs", ["--port", "9560"], "unknown option: --port\n");
 bad("scripts/addin_test.mjs", ["--jobs", "0"], NOT_COUNT("--jobs", 0) + "\n");
 bad("scripts/addin_test.mjs", ["--jobs=1.5"], NOT_COUNT("--jobs", 1.5) + "\n");
 bad(
@@ -764,8 +760,7 @@ bad(
 bad("scripts/addin_test.mjs", ["--show", "--hide"], "--show and --hide cannot be given together\n");
 
 bad("scripts/ide_test.mjs", ["--only", "("], REGEX_REASON("--only", "("));
-bad("scripts/ide_test.mjs", ["--port", "0"], NOT_PORT(0) + "\n");
-bad("scripts/ide_test.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
+bad("scripts/ide_test.mjs", ["--port", "9660"], "unknown option: --port\n");
 bad("scripts/ide_test.mjs", ["--jobs", "0"], NOT_COUNT("--jobs", 0) + "\n");
 bad("scripts/ide_test.mjs", ["--jobs=1.5"], NOT_COUNT("--jobs", 1.5) + "\n");
 bad(
@@ -780,10 +775,8 @@ bad(
 );
 bad("scripts/ide_test.mjs", ["--show", "--hide"], "--show and --hide cannot be given together\n");
 
-bad("scripts/try_help_addin.mjs", ["--port", "0"], NOT_PORT(0) + "\n");
-bad("scripts/try_help_addin.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
-bad("scripts/shoot_docs.mjs", ["--port", "0"], NOT_PORT(0) + "\n");
-bad("scripts/shoot_docs.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
+bad("scripts/try_help_addin.mjs", ["--port", "9590"], "unknown option: --port\n");
+bad("scripts/shoot_docs.mjs", ["--port", "9700"], "unknown option: --port\n");
 bad("scripts/shoot_docs.mjs", ["--only", "("], REGEX_REASON("--only", "("));
 bad("scripts/shoot_docs.mjs", ["--jobs", "0"], "--jobs expects a whole number from 1 to 16, got: 0\n");
 bad("scripts/shoot_docs.mjs", ["--jobs=17"], "--jobs expects a whole number from 1 to 16, got: 17\n");
@@ -800,9 +793,8 @@ bad("scripts/shoot_docs.mjs", ["--jobs=17"], "--jobs expects a whole number from
   const say = (message) => `check_examples: ${message}\n`;
   bad(tool, ["--jobs", "abc"], say(NOT_COUNT("--jobs", "abc")));
   bad(tool, ["--batch", "0"], say(NOT_COUNT("--batch", 0)));
-  bad(tool, ["--port", "0"], say(NOT_PORT(0)));
-  bad(tool, ["--port=65536"], say(NOT_PORT(65536)));
-  bad(tool, ["--port", "65534", "--jobs", "3"], say("--port 65534 with --jobs 3 needs ports up to 65536, past 65535"));
+  // Its lanes take their desktops from tbbroker and their ports from Windows.
+  bad(tool, ["--port", "9480"], say("unknown option: --port"));
   bad(
     tool,
     ["--only", "("],

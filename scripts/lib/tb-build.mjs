@@ -28,7 +28,10 @@
 // IDE's launcher in a job of its own (launchIde), so an IDE also goes when the
 // process does -- a run that is stopped leaves none of its lanes' IDEs behind.
 //
-// Concurrency: calls on different ports are independent and can run at once. It
+// Concurrency: calls are independent and can run at once, each IDE on a slot (a private
+// desktop, from tbbroker) and a DevTools port of its own, in different slots when the
+// callers pass theirs. A caller that passes its slot with `keep` hands it to the kept IDE
+// (`slot.handTo(result.idePid)`), so that the slot is held for as long as the IDE runs. It
 // ends its IDE with shutdownIdeAsync, because shutdownIde's blocking wait
 // (up to five seconds) would freeze every other call's CDP timers; whatever is
 // thrown inside the IDE or CDP code from an event callback is the process's, not
@@ -53,7 +56,9 @@ import { captureRun, checkCapture } from "./tb-run.mjs";
  * @param {object} o
  * @param {string} o.project   the packed .twinproj
  * @param {string} o.ide       twinBASIC.exe
- * @param {number} [o.port]    DevTools port to start the IDE on (default 9333)
+ * @param {object} [o.slot]    the slot (leaseSlot in tb-ide.mjs) the caller holds, whose
+ *   desktop the IDE goes on; by default the IDE gets one of its own (launchIde)
+ * @param {number} [o.port]    DevTools port to start the IDE on; by default one Windows picks
  * @param {string} [o.arch]    win32 or win64 (default win32): the target to compile for
  * @param {number} [o.timeout] ms to wait for the compile (default COMPILE_TIMEOUT)
  * @param {boolean} [o.show]   on the user's desktop instead of a private one
@@ -91,7 +96,8 @@ import { captureRun, checkCapture } from "./tb-run.mjs";
 export async function compileProject({
   project,
   ide,
-  port = 9333,
+  slot = null,
+  port = null,
   arch = TARGETS[0],
   timeout = COMPILE_TIMEOUT,
   show = false,
@@ -120,11 +126,11 @@ export async function compileProject({
   });
   try {
     try {
-      handle = await launchIde({ exe: ide, project, port, show, keep });
+      handle = await launchIde({ exe: ide, project, slot, port, show, keep });
     } catch (e) {
       return result(2, { message: e.message });
     }
-    c = await attachIde(port);
+    c = await attachIde(handle.port);
     if (!c) return result(2, { message: "the IDE never exposed a debug port" });
 
     let outcome = compileOutcome(await waitForCompile(c, { project, timeout }), { name: project });

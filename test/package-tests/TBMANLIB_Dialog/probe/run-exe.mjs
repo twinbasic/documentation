@@ -1,11 +1,12 @@
 // Runs a built probe exe on a private desktop, WITHOUT tbrun --exe's dialog closer.
 //
-//   node test/package-tests/TBMANLIB_Dialog/probe/run-exe.mjs <exe> <probe-ids> [--timeout S] [--desktop NAME]
+//   node test/package-tests/TBMANLIB_Dialog/probe/run-exe.mjs <exe> <probe-ids> [--timeout S]
 //
 // tbrun --exe closes every dialog the exe opens within 250 ms by pressing its OK button, which
 // would race the probe's own automation (src/Auto.twin) and answer the Yes/No boxes itself. This
-// runner starts the exe the same way tbrun does (launchOnDesktop: a private desktop, in a
-// kill-on-close job, so nothing appears on the user's desktop) but with no `dialogs` option, and
+// runner starts the exe the same way tbrun does (launchOnDesktop: a private desktop from
+// tbbroker, held while the exe runs, in a kill-on-close job, so nothing appears on the user's
+// desktop) but with no `dialogs` option, and
 // reads what the exe wrote with TbRun.Out from the file TBRUN_OUT names. A run that is still going
 // after the timeout is ended by its pid (the job takes its children with it), and the windows it
 // left on the desktop are listed.
@@ -24,13 +25,12 @@ import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError }
 import { captureWindow, desktopWindows, killTree, launchOnDesktop } from "../../../../scripts/lib/tb-ide.mjs";
 import { faultText, recordedFault } from "../../../../scripts/lib/win-fault.mjs";
 
-const USAGE = `usage: node test/package-tests/TBMANLIB_Dialog/probe/run-exe.mjs <exe> <probe-ids> [--timeout S] [--desktop NAME] [-h, --help]
+const USAGE = `usage: node test/package-tests/TBMANLIB_Dialog/probe/run-exe.mjs <exe> <probe-ids> [--timeout S] [-h, --help]
 
 Runs the TBMANLIB_Dialog probe exe on a private desktop, with the scenarios <probe-ids> names
 (comma-separated, as listed at the top of src/Probe.twin), and prints what they report.
 
   --timeout S      end the exe after S seconds (default 25)
-  --desktop NAME   the private desktop's name (default dlgprobe-<pid>)
   -h, --help       print this text and exit
 
 Exit codes:
@@ -45,7 +45,6 @@ const { values, positionals } = withUsageError(
     parseCli(process.argv.slice(2), {
       options: {
         timeout: { type: "string", default: "25" },
-        desktop: { type: "string" },
         help: { type: "boolean", short: "h" },
       },
       positionals: 2,
@@ -58,7 +57,6 @@ const timeoutS = withUsageError(() => numberOption(values.timeout, { option: "--
 
 const [exe, probe] = positionals;
 const timeoutMs = timeoutS * 1000;
-const desktop = values.desktop || `dlgprobe-${process.pid}`;
 const outFile = path.join(tmpdir(), `dlgprobe-out-${process.pid}.txt`);
 const workDir = path.join(tmpdir(), `dlgprobe${process.pid}`);
 rmSync(outFile, { force: true });
@@ -66,9 +64,11 @@ const since = Date.now();
 
 const run = await launchOnDesktop({
   exe: path.resolve(exe),
-  desktop,
+  tag: `TBMANLIB_Dialog probe ${probe}`,
   env: { ...process.env, TBRUN_OUT: outFile, PROBE: probe, PROBE_TAG: String(process.pid) },
 });
+// The exe's desktop, held for as long as it runs.
+const { desktop } = run;
 
 // With SHOTS=<dir>: poll the desktop, and photograph each new visible dialog or menu window.
 const shotsDir = process.env.SHOTS;

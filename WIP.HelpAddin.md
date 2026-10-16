@@ -501,8 +501,9 @@ has the harness side of each item.
    [scripts/lib/tb-ide.mjs](scripts/lib/tb-ide.mjs), shared by `tbbuild`, `tbrun` and
    `check_examples`. Every CDP call has a time limit, and the connection records and
    dismisses `alert()` dialogs. An alert already open before the harness attached is the one
-   case it cannot handle, and it says so. `launchIde` refuses a DevTools port another IDE
-   holds, since the harness would otherwise operate that IDE.
+   case it cannot handle, and it says so. Every IDE's DevTools port is one Windows picks, read
+   back from its profile, and its desktop comes from `tbbroker` ([WIP.Broker.md](WIP.Broker.md)),
+   so the harness never operates another run's IDE.
 2. **A private IDE for every lane:** [scripts/lib/tb-ide-copy.mjs](scripts/lib/tb-ide-copy.mjs),
    described in [WIP.Harness.md, A private IDE for every
    lane](WIP.Harness.md#a-private-ide-for-every-lane). It is a copy, not hardlinks: a session

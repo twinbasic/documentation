@@ -235,9 +235,34 @@ connection, a held process keeping it until it ends, release with a held process
 finding a desktop still in use and waiting for it. Run it with
 `TBBROKER_EXE=%LOCALAPPDATA%\tbbroker\tbbroker.exe node --test test/broker.test.mjs`.
 
-## Not done here
+## How this repository's tools use it
 
-The tools do not use the broker yet. Moving them --- `launchIde` and `launchOnDesktop` in
-`scripts/lib/tb-ide.mjs` leasing their desktops and slots, DevTools port 0, `tb-ports.mjs` and the
-per-tool default ports retired, the desktop names built from ports and pids retired --- and
-`tblaunch`'s client are launcher-re's work (owner, 2026-10-16), from this file.
+Every tool here takes its desktops and slots through `scripts/lib/tb-ide.mjs`, which holds one
+broker connection per process:
+
+- **`leaseSlot({tag, port})`** returns `{slot, desktop, port, handTo(pid), release()}`; it waits
+  while every slot is taken. `handTo` holds the lease for a process and lets go of the
+  connection's claim, so the lease ends with that process.
+- **`launchOnDesktop`** without a `desktop` leases a slot of its own and hands it to the launcher
+  (or, with no job, to the program); its result's `desktop` is what `desktopWindows` and
+  `captureWindow` take while the program runs. With a `desktop`, the caller's slot is used.
+- **`launchIde`** with a caller's `slot` (a lane, a tool's run) uses its desktop and names the
+  IDE's temp folder and WebView2 profile by its number (`tbbuild-tmp-<slot>`,
+  `tbbuild-wv2-<slot>`); without one it leases its own and hands it on as `launchOnDesktop`
+  does (to the IDE itself under `keep`). The DevTools port is 0 unless the caller gives one,
+  and the result's `port` is read from `EBWebView\DevToolsActivePort`, accepted only when written
+  since the launch.
+- **Tools that name work folders** lease first and key them by the slot (`tbbuild`, `tbrun`,
+  `probe_build_twice`, `try_help_addin`, `svgshot/probe`), or by their own pid when lanes come
+  and go (`lane-runner`, `check_examples`, `shoot_docs`, `sweep_attributes`, `package_tests`,
+  the package-test probes), removing the folders of runs whose process has ended.
+- **The lane runners** lease a lane's slot as the lane starts and hand it to the lane's process
+  (`TB_ADDIN_LANE` carries `slot` and `desktop`); a `Lane` made outside a runner leases its own on
+  first use and releases it in `close()`.
+- **A port chosen in advance** is a slot's `port`: the help add-in's detached window
+  (`TB_DOCS_HELP_WINDOW_PORT`, in `help.test.mjs` and `shoot_docs`'s help setup). shoot_docs' web
+  setup starts Chrome with port 0 too, and reads `DevToolsActivePort` from its profile.
+- **`TB_BROKER=off`** does without the broker (a desktop of its own for each launch, named
+  `tbnobroker-<pid>-<n>`), for `node scripts/tbbroker.mjs install`'s own build only.
+
+`tblaunch`'s client is launcher-re's work (owner, 2026-10-16), from this file.

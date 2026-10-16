@@ -5,7 +5,7 @@
 //
 //       --ide <path>      twinBASIC.exe (default: $TB_IDE, else the newest
 //                         %USERPROFILE%/Desktop/twinBASIC_IDE_BETA_*)
-//       --port <n>        DevTools port to start the IDE on (default 9333)
+//       --port <n>        DevTools port to start the IDE on (default: one Windows picks)
 //       --arch <target>   win32 or win64 (default win32): the target to
 //                         compile for. #If Win64 and LongPtr's size change
 //                         what compiles, and a project opens in whatever
@@ -79,7 +79,7 @@ import {
 } from "../lib/cli.mjs";
 import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
-import { COMPILE_TIMEOUT, keptIdeLines, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
+import { COMPILE_TIMEOUT, keptIdeLines, leaseSlot, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { checkProject, laneProjectId, stageProject, unpackProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
@@ -93,7 +93,8 @@ With --build or --llvm it then builds the project.
 
   --ide <path>      twinBASIC.exe (default: $TB_IDE, else the newest
                     twinBASIC_IDE_BETA_* on the Desktop)
-  --port <n>        DevTools port to start the IDE on (default 9333)
+  --port <n>        DevTools port to start the IDE on (default: one Windows
+                    picks, so runs at once never meet on a port)
   --arch <target>   win32 or win64 (default win32)
   --timeout <secs>  give up waiting for the compile (default 180)
   --build           after a compile with no errors, build the project and print
@@ -159,7 +160,10 @@ if (values.help) printHelpAndExit(USAGE);
 const { port, arch, timeout } = withUsageError(() => {
   refuseTogether(values, ["show", "hide"]);
   return {
-    port: numberOption(values.port ?? "9333", { option: "--port", integer: true, min: 1, max: 65535 }),
+    port:
+      values.port === undefined
+        ? null
+        : numberOption(values.port, { option: "--port", integer: true, min: 1, max: 65535 }),
     arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
     timeout: numberOption(values.timeout ?? String(COMPILE_TIMEOUT / 1000), { option: "--timeout", above: 0 }) * 1000,
   };
@@ -244,10 +248,18 @@ let tidy = null;
 // sweeps, is the folder under the temp directory and not the given path.
 let target = path.resolve(proj);
 let work = null;
+// The run's slot (tbbroker, WIP.Broker.md): the private desktop its IDE goes on, and the
+// number its work folder and project id are keyed to, which no other run on the machine
+// holds while this one does.
+let slot;
+try {
+  slot = await leaseSlot({ tag: `tbbuild ${path.basename(proj)}` });
+} catch (e) {
+  die(2, e.message);
+}
 if (build) {
-  // Keyed to --port, as tbrun's is: the port is what already differs between
-  // runs going on at once.
-  work = path.join(tmpdir(), "tbbuild", String(port));
+  // Keyed to the slot, as tbrun's is.
+  work = path.join(tmpdir(), "tbbuild", String(slot.slot));
   rmSync(work, { recursive: true, force: true });
   const out = path.join(work, "out");
   mkdirSync(out, { recursive: true });
@@ -273,7 +285,7 @@ if (build) {
       project: target,
       settings: {
         "project.buildPath": path.join(out, "${ProjectName}_${Architecture}.${FileExtension}"),
-        "project.id": laneProjectId(3, port),
+        "project.id": laneProjectId(3, slot.slot),
         ...(llvm ? { "compiler.debugOptions": "+llvm", "compiler.buildOptions": "+llvm" } : {}),
       },
     });
@@ -286,8 +298,8 @@ if (!keep) tidy = startTidy(work ? { prefixes: [work] } : { paths: [target] });
 
 // The staged copy is of no use once the run is over, and neither is anything in
 // the work folder after a run that built nothing. A build that succeeded keeps
-// its out\ folder, which holds the exe that "built:" names; the next run on this
-// port replaces it. One that cannot be removed is reported and left.
+// its out\ folder, which holds the exe that "built:" names; the next run in this
+// slot replaces it. One that cannot be removed is reported and left.
 function removeWork(dir, built) {
   try {
     if (!built) {
@@ -309,7 +321,20 @@ function removeWork(dir, built) {
 // tidy does not rely on that.
 let r;
 try {
-  r = await compileProject({ project: work ? target : proj, ide: IDE, port, arch, timeout, show, keep, build, llvm });
+  r = await compileProject({
+    project: work ? target : proj,
+    ide: IDE,
+    slot,
+    port,
+    arch,
+    timeout,
+    show,
+    keep,
+    build,
+    llvm,
+  });
+  // A kept IDE keeps the slot after this run has ended, until it is closed.
+  if (keep && r.idePid) await slot.handTo(r.idePid);
 } finally {
   finishTidy(tidy);
   // After the tidy, which names paths under the work folder, and with the IDE

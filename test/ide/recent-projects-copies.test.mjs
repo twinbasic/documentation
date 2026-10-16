@@ -35,7 +35,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { IDE_FLAGS, portTaken, sleep } from "../../scripts/lib/tb-ide.mjs";
+import { IDE_FLAGS, sleep } from "../../scripts/lib/tb-ide.mjs";
 import { packTree } from "../../scripts/lib/tb-project.mjs";
 import { IDE_SETTINGS_KEY, norm, restoreKeys, snapshotKeys } from "../../scripts/lib/tb-registry.mjs";
 import { scenario } from "../addin/scenario.mjs";
@@ -104,11 +104,7 @@ scenario("the recent-projects list", (lane) => {
   test("opening a project fills the slots that held nothing with copies of the last entry", async (t) => {
     let values;
     for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
-      if (attempt > 1) {
-        await lane.closeProject();
-        // The ended IDE's WebView2 can hold the DevTools port for a while.
-        for (let i = 0; i < 150 && (await portTaken(lane.port)); i++) await sleep(200);
-      }
+      if (attempt > 1) await lane.closeProject();
       values = await openC();
       t.diagnostic(`attempt ${attempt}: "0" and "1" ${norm(values["1"] ?? "") === norm(A) ? "as set" : "disturbed"}`);
       if (norm(values["0"] ?? "") === norm(C) && norm(values["1"] ?? "") === norm(A)) break;

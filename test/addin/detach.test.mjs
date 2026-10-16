@@ -39,7 +39,7 @@ const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "detach");
 // The IDE's TEMP is a folder of the harness's own (launchIde in tb-ide.mjs), and
 // the add-in builds its user data folder from the TEMP it finds.
-const ideTemp = (lane) => path.join(process.env.TEMP ?? tmpdir(), `tbbuild-tmp-${lane.port}`);
+const ideTemp = (lane) => path.join(process.env.TEMP ?? tmpdir(), `tbbuild-tmp-${lane.slot}`);
 // DETACH_NOUDF=1 leaves the control's user data folder unset: the variant that
 // shows where the runtime puts it then.
 const NOUDF = !!process.env.DETACH_NOUDF;

@@ -2,7 +2,7 @@
 //
 //     node scripts/tbrun.mjs <source-dir> [options]
 //
-//       --port <n>        DevTools port to start the IDE on (default 9346)
+//       --port <n>        DevTools port to start the IDE on (default: one Windows picks)
 //       --arch <target>   win32 or win64 (default win32): the target to build
 //                         for, and so the process the probe runs in -- a win64
 //                         probe runs in the IDE's 64-bit compiler
@@ -119,8 +119,9 @@
 //     EPERM from a script that had touched no such path. Worse, shutdown was
 //     `taskkill /F /T /IM twinBASIC.exe`, which is machine-wide: it ended
 //     every concurrent run's IDE, and the IDE you had open yourself. The work
-//     directory and the project.id are now keyed to --port, and the IDE is
-//     killed by the pid its launch returned.
+//     directory and the project.id are now keyed to the run's slot from
+//     tbbroker (WIP.Broker.md), and the IDE is killed by the pid its launch
+//     returned.
 //  7. A COM SERVER THE PROBE STARTED IS NOT A CHILD OF ANYTHING WE OWN.
 //     CreateObject("Excel.Application") is activated by DCOM, so the EXCEL.EXE
 //     that appears has svchost.exe for a parent -- measured. No tree kill can
@@ -153,6 +154,7 @@ import {
   killTree,
   launchIde,
   launchOnDesktop,
+  leaseSlot,
   llvmLicence,
   setBuildTarget,
   shutdownIde,
@@ -177,7 +179,8 @@ writes to the DEBUG CONSOLE. With --tests it builds nothing, and runs the
 project's own test cases instead.
 
   --ide <path>        as tbbuild's
-  --port <n>          DevTools port to start the IDE on (default 9346)
+  --port <n>          DevTools port to start the IDE on (default: one Windows
+                      picks, so runs at once never meet on a port)
   --arch <target>     win32 or win64 (default win32)
   --timeout <secs>    give up waiting for console output (default 120); with
                       --tests, how long each case may run: one still running
@@ -271,7 +274,10 @@ const { port, arch, timeoutMs, quietMs } = withUsageError(
     refuseTogether(values, ["exe", "tests"]);
     if (values.only !== undefined && !values.tests) throw new CliError("needs-option", "--only needs --tests");
     return {
-      port: numberOption(values.port ?? "9346", { option: "--port", integer: true, min: 1, max: 65535 }),
+      port:
+        values.port === undefined
+          ? null
+          : numberOption(values.port, { option: "--port", integer: true, min: 1, max: 65535 }),
       arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
       timeoutMs: numberOption(values.timeout ?? "120", { option: "--timeout", above: 0 }) * 1000,
       quietMs: numberOption(values.quiet ?? "2500", { option: "--quiet", integer: true, min: 0 }),
@@ -315,17 +321,24 @@ if (!ide || !existsSync(ide)) {
 
 // ------------------------------------------------- pin the build output (1)
 
-// (6) The workspace is keyed to --port, which is already the thing that has to
-// differ between concurrent runs -- the IDE's DevTools port, its WebView2 user
-// data folder and its private desktop are all keyed to it in tb-ide. Sharing
-// one %TEMP%/tbrun/src meant the second run deleted the first one's tree.
-const runKey = String(port);
+// (6) The workspace is keyed to the run's slot (tbbroker, WIP.Broker.md), which no
+// other run on the machine holds while this one does; the IDE's private desktop
+// and WebView2 user data folder are the slot's too. Sharing one %TEMP%/tbrun/src
+// meant the second run deleted the first one's tree. The built file's path is in
+// the --json report (`exe`) for a caller that wants it.
+let slot;
+try {
+  slot = await leaseSlot({ tag: `tbrun ${path.basename(srcDir)}` });
+} catch (e) {
+  die(2, `tbrun: ${e.message}`);
+}
+const runKey = String(slot.slot);
 const work = path.join(tmpdir(), "tbrun", runKey);
 rmSync(work, { recursive: true, force: true });
 mkdirSync(work, { recursive: true });
 
 // Staged into a temp copy rather than edited in place, with buildPath pinned to
-// the run's own out folder and a project.id keyed to the port
+// the run's own out folder and a project.id keyed to the slot
 // (lib/tb-project.mjs). The file is named as the IDE's own template names it,
 // so the build type and the target are in the name (1).
 const stage = path.join(work, "src");
@@ -409,7 +422,7 @@ try {
     project: projPath,
     settings: {
       "project.buildPath": buildPath,
-      "project.id": laneProjectId(0, port),
+      "project.id": laneProjectId(0, slot.slot),
       ...(compilerOptions === undefined
         ? {}
         : { "compiler.debugOptions": compilerOptions, "compiler.buildOptions": compilerOptions }),
@@ -464,7 +477,7 @@ const processesBefore = snapshotProcesses();
 // Everything this run opens is under `work`, so the IDE's registry entries for
 // it -- its saved project state, see lib/tb-registry.mjs --
 // is swept by that folder once the IDE has exited, along with any an earlier
-// run on this port left behind. Not under --keep: a kept IDE is still writing.
+// run in this slot left behind. Not under --keep: a kept IDE is still writing.
 const tidy = values.keep ? null : startTidy({ prefixes: [work] });
 
 let ideRun = null;
@@ -481,6 +494,7 @@ try {
   ideRun = await launchIde({
     exe: ide,
     project: projPath,
+    slot,
     port,
     keep: values.keep,
     show: wantShow({ show: values.show, hide: values.hide }),
@@ -488,8 +502,10 @@ try {
 } catch (e) {
   failBuild(2, e.message);
 }
+// A kept IDE keeps the slot after this run has ended, until it is closed.
+if (values.keep) await slot.handTo(ideRun.pid);
 
-const cdp = await attachIde(port);
+const cdp = await attachIde(ideRun.port);
 if (!cdp) failBuild(2, "the IDE never exposed a debug port");
 
 let outcome = compileOutcome(await waitForCompile(cdp, { project: projPath, timeout: COMPILE_TIMEOUT }), {
@@ -737,7 +753,7 @@ async function runExe() {
   try {
     run = await launchOnDesktop({
       exe: file,
-      desktop: `tbrun-exe-${port}`,
+      tag: `tbrun --exe ${path.basename(file)}`,
       env: { ...process.env, TBRUN_OUT: outFile },
       dialogs: "close",
     });

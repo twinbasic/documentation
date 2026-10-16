@@ -114,7 +114,7 @@ scenario("Export Project", (lane) => {
     const run = await launchOnDesktop({
       exe: compilerExe(lane.copy()),
       args: ["import", packed, `${out}\\`, "--overwrite"],
-      desktop: `ide-test-cli-${lane.port}`,
+      tag: "ide-test export, the command line's import",
       env: process.env,
       stdout: path.join(root, "import.out"),
       stderr: path.join(root, "import.err"),

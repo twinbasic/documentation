@@ -34,7 +34,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { portTaken, sleep } from "../../scripts/lib/tb-ide.mjs";
+import { sleep } from "../../scripts/lib/tb-ide.mjs";
 import { clickAt, pressKey, typeText, waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "../addin/scenario.mjs";
 
@@ -90,8 +90,6 @@ scenario("customising the IDE", (lane) => {
   // A new IDE with no project, its New / Open dialog cancelled and its page guarded.
   async function startIde() {
     if (lane.run) await lane.closeProject();
-    // An ended IDE's WebView2 can hold the DevTools port for a while.
-    for (let i = 0; i < 150 && (await portTaken(lane.port)); i++) await sleep(200);
     c = await lane.openNoProject();
     const ready = await waitFor(
       c,

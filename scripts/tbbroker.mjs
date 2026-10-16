@@ -62,7 +62,9 @@ if (built) {
   const r = spawnSync(
     process.execPath,
     [path.join(ROOT, "scripts", "tbbuild.mjs"), path.join(ROOT, "scripts", "broker", "tbbroker.twinproj"), "--build"],
-    { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },
+    // The one build that cannot lease from the broker, since it may be what is being built:
+    // TB_BROKER=off gives the IDE a desktop of its own, as every launch had before.
+    { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"], env: { ...process.env, TB_BROKER: "off" } },
   );
   process.stdout.write(r.stdout ?? "");
   const m = /^built: (.+)$/m.exec(r.stdout ?? "");

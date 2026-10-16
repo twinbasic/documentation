@@ -496,9 +496,9 @@
 <!-- t14 -->
 <g id="node49" class="node">
 <title>t14</title>
-<g id="a_node49"><a xlink:href="Tools-Toolchain-Tests#ports-test" xlink:title="Runs unit tests for the claiming of DevTools ports, so that runs started together never take the same port.">
-<path fill="#fef7e0" stroke="#f9ab00" d="M262.47,-313.4C262.47,-313.4 213.53,-313.4 213.53,-313.4 209.93,-313.4 206.33,-309.8 206.33,-306.2 206.33,-306.2 206.33,-299 206.33,-299 206.33,-295.4 209.93,-291.8 213.53,-291.8 213.53,-291.8 262.47,-291.8 262.47,-291.8 266.07,-291.8 269.67,-295.4 269.67,-299 269.67,-299 269.67,-306.2 269.67,-306.2 269.67,-309.8 266.07,-313.4 262.47,-313.4"/>
-<text xml:space="preserve" text-anchor="middle" x="238" y="-299.3" font-family="Inter,system-ui,-apple-system,Segoe UI,sans-serif" font-size="11.00">ports.test</text>
+<g id="a_node49"><a xlink:href="Tools-Toolchain-Tests#ide-folders-test" xlink:title="Runs unit tests for the temp folder and profile an IDE leaves, and that ending the IDE removes them and no other folder.">
+<path fill="#fef7e0" stroke="#f9ab00" d="M277.5,-313.4C277.5,-313.4 198.5,-313.4 198.5,-313.4 194.9,-313.4 191.3,-309.8 191.3,-306.2 191.3,-306.2 191.3,-299 191.3,-299 191.3,-295.4 194.9,-291.8 198.5,-291.8 198.5,-291.8 277.5,-291.8 277.5,-291.8 281.1,-291.8 284.7,-295.4 284.7,-299 284.7,-299 284.7,-306.2 284.7,-306.2 284.7,-309.8 281.1,-313.4 277.5,-313.4"/>
+<text xml:space="preserve" text-anchor="middle" x="238" y="-299.3" font-family="Inter,system-ui,-apple-system,Segoe UI,sans-serif" font-size="11.00">ide&#45;folders.test</text>
 </a>
 </g>
 </g>
