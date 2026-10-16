@@ -64,7 +64,7 @@
 //
 // Needs a twinBASIC install and Windows with a private desktop, like
 // examples.bat, so it is outside every gate and outside CI.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseAttributes } from "./lib/attributes-doc.mjs";
@@ -103,7 +103,7 @@ import { compileProject } from "./lib/tb-build.mjs";
 import { leaseSlot, sleep, wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { packTree } from "./lib/tb-project.mjs";
-import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
+import { alive, finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import {
   CliError,
   choiceOption,
@@ -885,6 +885,19 @@ async function main() {
     return 0;
   }
   const started = Date.now();
+  // The default folder is named for this process, so that runs at once never
+  // share one. A folder an earlier run left there, whose process has ended, goes.
+  if (!values.work) {
+    const runs = path.dirname(workRoot);
+    for (const name of existsSync(runs) ? readdirSync(runs) : []) {
+      if (!/^\d+$/.test(name) || alive(Number(name))) continue;
+      try {
+        rmSync(path.join(runs, name), { recursive: true, force: true });
+      } catch {
+        // still in use: a later run tries again
+      }
+    }
+  }
   mkdirSync(workRoot, { recursive: true });
   tidy = startTidy({ prefixes: [workRoot] });
   let verify = null;
