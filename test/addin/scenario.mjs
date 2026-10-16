@@ -19,6 +19,27 @@ import { after, describe, test } from "node:test";
 import { addinLane } from "../../scripts/lib/tb-lane.mjs";
 
 /**
+ * The size a scenario gives the IDE's page, in CSS pixels. The IDE opens its
+ * window at the size the user's own IDE last left in the registry (the Window
+ * key, which the harness neither sets nor changes), so the page can be as
+ * small as 800 by 600 (a 1200 by 900 window at 150%). A tool window then
+ * floats over the toolbar's buttons and most of the code editor, which the
+ * scenarios click and hover.
+ */
+export const PAGE = { width: 1600, height: 1000 };
+
+/**
+ * Give the IDE's page `size` (PAGE by default), whatever the window's size, at
+ * the display's own density. A tool window first shown after this is centred
+ * in it. Call it as soon as the IDE is open, before any tool window shows.
+ *
+ * @param {object} c  the connection, Lane.open's
+ * @param {{ width: number, height: number }} [size]
+ */
+export const fixPageSize = (c, size = PAGE) =>
+  c.send("Emulation.setDeviceMetricsOverride", { ...size, deviceScaleFactor: 0, mobile: false });
+
+/**
  * A describe block with this file's lane.
  *
  * `fn` declares the block's hooks and tests, as a describe callback does, and
