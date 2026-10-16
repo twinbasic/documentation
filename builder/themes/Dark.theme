@@ -458,7 +458,7 @@ ToolWindowBodyForeColor: 								rgb(214, 214, 214);
 TreeItemHoverBackColor:       							rgb(113, 113, 113);
 TreeItemSelectedBackColor:    							rgb(70, 70, 70);
 TreeItemSelectedForeColor:						white;
-VariablesPanelHoverTooltipBackColor: 					rgb(255 255 255);
+VariablesPanelHoverTooltipBackColor: 					#393939;
 VariablesPanelVariableNameFontWeight: 					bold;
 VariablesPanelVariableNameForeColor: 					#c586c0;
 VirtualDocBackColor:									rgb(36, 33, 33);
