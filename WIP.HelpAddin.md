@@ -917,6 +917,14 @@ not: a restart saves a harness about a second against opening a new IDE.
      it; check it with puppeteer over the offline tree at 500, 900 and 1400 px in both themes.
    - F1 pressed while the focus is in the page goes to the page, not to the add-in, so a
      lookup from there goes through the search box.
+   - **The pane's first floating size** is `min(480px, 85vw)` by `min(640px, 85vh)`,
+     the root's `suggestedWidth` and `suggestedHeight`. `toolWindowSetVisible` in `main.js`
+     copies them into the floating panel's `style` the first time the window shows floating,
+     when the IDE has no saved place for it (`floatingToolWindowsData`), and then centres the
+     panel by its laid-out size, so a CSS `min()` works. A plain 640px was taller than the page
+     of a 1200 by 900 IDE window at 150% (800 by 600): the IDE centred it at a negative
+     `top`, its title bar partly above the page, and it covered the toolbar. The lane checks 480 by 640 in a
+     page of 1600 by 1000, and 480 by 510, inside the page, in one of 800 by 600.
 
    **The pane has an id of its own**, never none: every window given no id is the same
    window. **And it outlives the add-in.** Every compiler restart, which every switch of
@@ -1064,11 +1072,12 @@ not: a restart saves a harness about a second against opening a new IDE.
      fixed size, 1600 by 1000** (`fixPageSize`, `Emulation.setDeviceMetricsOverride`), as soon
      as each IDE opens. The IDE opens its window at the size the user's own IDE last left in
      the `Window` key (`twinBASIC_IDE\Window`), which the harness neither sets nor changes: at
-     1200 by 900, not maximized, at 150%, the page is 800 by 600, the pane first floats at 480
+     1200 by 900, not maximized, at 150%, the page is 800 by 600, the pane then floated at 480
      by 640, centred, over the toolbar's buttons and most of the editor, and the Help button,
      the restart button and every mouse case after them failed. That happened on BETA 1005
      too (the same pictures on 14 October, before 1007 was installed), so it was the key, not
-     a build.
+     a build. The pane's first size now fits such a page (increment 2), but it still covers
+     most of it, so the fixed size stays.
 7. **A detached window**, tested by the `help` and `help-offline` lanes on BETA 1007
    (owner's request): the pane can be moved to another monitor. The owner's choices: the add-in shows a window of its own, a twinBASIC Form holding the
    WebView2 package's control (P19), rather than a `window.open` from the page, which would

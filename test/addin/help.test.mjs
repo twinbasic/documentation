@@ -71,6 +71,8 @@ const FILE = "/HelpHost/Sources/Cases.twin";
 const PANE = "tbDocsHelpPane";
 // The page height the hover test emulates, so that a hover reaches past the editor.
 const SHORT_PAGE = 480;
+// A page as small as a user's IDE window makes it: 1200 by 900 at 150%.
+const SMALL_PAGE = { width: 800, height: 600 };
 
 const addinLines = async (c, mark) => linesSince(c, mark, { prefix: "[tbDocsHelp] " });
 
@@ -216,6 +218,22 @@ function docsThemeFault(state, group, where) {
   const want = { theme: group, background: group, pane: true };
   return JSON.stringify(got) === JSON.stringify(want) ? "" : `${where}: ${JSON.stringify(state)}`;
 }
+
+// The floating panel that holds the pane, as a box in the page, with the page's
+// size; null while the pane is docked or has no panel.
+const floatingBox = (c) =>
+  c.evaluate(`(() => {
+  const w = toolWindowsById[${JSON.stringify(PANE)}];
+  const p = w?.shadowDom.host.closest(".floatingPanel");
+  if (!p) return null;
+  const r = p.getBoundingClientRect();
+  return { left: r.left, top: r.top, width: r.width, height: r.height, page: [innerWidth, innerHeight] };
+})()`);
+// Whether a floatingBox is wholly inside its page: "" when it is.
+const boxFault = (b) =>
+  b.left >= 0 && b.top >= 0 && b.left + b.width <= b.page[0] && b.top + b.height <= b.page[1]
+    ? ""
+    : "the pane's floating panel is not inside the page";
 
 async function at(c, line, column) {
   await setCursor(c, line, column);
@@ -500,6 +518,13 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       await f1Shows(url);
     });
   }
+
+  test("in a page of 1600 by 1000 the pane first floats at 480 by 640, inside the page", async () => {
+    const box = await floatingBox(c);
+    assert.ok(box, "the pane is not floating");
+    assert.deepEqual([box.width, box.height], [480, 640], JSON.stringify(box));
+    assert.equal(boxFault(box), "", JSON.stringify(box));
+  });
 
   test("a selection is looked up as selected", async () => {
     // "Print" alone is the bare name, where the cursor would give Debug.Print.
@@ -1913,10 +1938,18 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     win = null;
     await lane.closeProject();
     c = await lane.open(HOST, { env: ideEnv(1) });
-    await fixPageSize(c);
+    // This IDE first shows the pane in a page of 800 by 600, the IDE window of
+    // 1200 by 900 at 150%, where 480 by 640 would be taller than the page: the
+    // pane is capped at 85% of it, and centred inside it.
+    await fixPageSize(c, SMALL_PAGE);
     pages = await pagesOrigin(null);
     await click(c, "addinButton-tbDocsHelp");
     assert.ok(await waitFor(c, async (c) => (await toolWindow(c, PANE))?.visible), "the pane is not showing");
+    const small = await floatingBox(c);
+    assert.ok(small, "the pane is not floating");
+    assert.deepEqual([small.width, small.height], [480, 510], JSON.stringify(small));
+    assert.equal(boxFault(small), "", JSON.stringify(small));
+    await fixPageSize(c);
     const mark = await detach();
     const frame = await windowFrame(mark);
     assert.equal(frame?.chrome, "native");

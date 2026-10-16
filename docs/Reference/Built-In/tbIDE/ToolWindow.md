@@ -49,6 +49,17 @@ Useful for accessing a single child element by ID without holding a separate `As
 
 [**RootDomElement**](#rootdomelement) accepts `.Properties.suggestedWidth` and `.Properties.suggestedHeight` (CSS-length strings like `"400px"`). These are *one-shot* hints --- used the **first time** the tool window opens as a floating pane; once the user resizes (or after position persistence kicks in through [**ToolWindows.Add**](ToolWindows#add)'s persistence ID), the IDE remembers the user's chosen size and the suggested values are ignored.
 
+The IDE sets each value as the floating pane's CSS `width` or `height`, then centres the pane in its window. So any CSS length works, including `vw` and `vh`, which are relative to the IDE's window. A pane that should fit in a small IDE window can cap its size with `min()`:
+
+```tb
+With myWindow.RootDomElement
+    .Properties.suggestedWidth = "min(480px, 85vw)"
+    .Properties.suggestedHeight = "min(640px, 85vh)"
+End With
+```
+
+With fixed sizes only, a pane opened in a small IDE window is larger than the window.
+
 > [!NOTE]
 > Set `suggestedWidth` / `suggestedHeight` before the first time the pane becomes visible. If the pane has previously been opened by this user (and a persistence ID was supplied to [**ToolWindows.Add**](ToolWindows#add)), the IDE-remembered size wins.
 

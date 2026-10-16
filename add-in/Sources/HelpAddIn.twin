@@ -279,9 +279,12 @@ Private Class HelpAddIn
         Pane.Title = "TWINBASIC HELP"
         Pane.ApplyCss StrConv(LoadResDataInternal("pane.css", "STYLESHEETS"), VbStrConv.vbFromUTF8)
         With Pane.RootDomElement
-            ' Used only the first time the pane opens floating.
-            .Properties.suggestedWidth = "480px"
-            .Properties.suggestedHeight = "640px"
+            ' Used only the first time the pane opens floating: the IDE puts
+            ' them in the floating panel's style and centres it. Capped at
+            ' 85% of the IDE's page, so that in a small IDE window the pane
+            ' is not taller than the window, its title bar off the top.
+            .Properties.suggestedWidth = "min(480px, 85vw)"
+            .Properties.suggestedHeight = "min(640px, 85vh)"
             .Properties.style.height = "100%"
             With .ChildDomElements.Add("helpWrap", "div")
                 With .ChildDomElements.Add("helpBar", "div")
