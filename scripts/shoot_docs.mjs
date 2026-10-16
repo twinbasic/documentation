@@ -10289,7 +10289,8 @@ async function startWeb(run) {
       "--disable-renderer-backgrounding",
       "about:blank",
     ],
-    tag: `shoot_docs ${run.name} Chrome`,
+    // the job's own desktop: no IDE runs in this setup
+    desktop: run.slot.desktop,
     env: process.env,
   });
   // ended as an IDE is, by the lane: by its process id, with every process it started
