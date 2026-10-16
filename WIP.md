@@ -24,6 +24,7 @@ one covering what you are about to change.
 | retake the documentation's IDE screenshots, or change the tool that takes them | [WIP.Screenshots.md](WIP.Screenshots.md) --- `shoot_docs.mjs`: the setups, cut-outs, the annotation overlay and the owner's decisions |
 | work on the IDE help add-in, or on testing IDE add-ins by machine | [WIP.HelpAddin.md](WIP.HelpAddin.md) --- the plan, the IDE facts it rests on, and the probes still open |
 | find the documentation work a new twinBASIC build leaves, or change the package indexer (`indexer/`) | [WIP.Indexer.md](WIP.Indexer.md) --- the store and the snapshots, the one shared scanner, `api.json` format 3, the owner's decisions and the open items |
+| look up what a `TBnnnn` diagnostic code is, or document a compiler warning | [upstream/twinbasic-diagnostic-ids.h](upstream/twinbasic-diagnostic-ids.h) --- the compiler's full list of diagnostic codes and their internal names, from Wayne Phillips (current as of BETA 1007); `docs/Features/Compiler-IDE/Compiler-Warnings.md` is the public page for the warnings |
 | run a use-case evaluation round | [eval/README.md](eval/README.md) --- start every evaluator with `eval/run_case.mjs`, **never as a subagent**: a subagent inherits this session's `CLAUDE.md`, and with it this file, which is the answer key the corpus withholds |
 
 The rule that decides where a new note belongs: **this file says what to do, a

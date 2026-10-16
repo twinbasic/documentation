@@ -292,7 +292,9 @@ tracks type names only.
 `Reference/Core/Option.md`'s module-level example shows that `Option Explicit` makes an
 undeclared variable an error, so it carries `expect-error=TB5079`. **Assert the code, not
 only the failure**: a renumbering in a future BETA then fails the gate loudly and somebody
-updates it, which beats a sample that quietly stops demonstrating anything.
+updates it, which beats a sample that quietly stops demonstrating anything. Which code means
+what is in [upstream/twinbasic-diagnostic-ids.h](upstream/twinbasic-diagnostic-ids.h), the
+compiler's own list.
 
 ## Template projects
 
