@@ -15,7 +15,9 @@
 //     never into the install's addins\ or %APPDATA%\twinBASIC\addins\, and the
 //     IDE gets an APPDATA of its own there, so none of the user's add-ins loads.
 //   * The IDE's registry entries and the add-in's SaveSetting key (tbDocsHelp)
-//     are recorded first and put back once the IDE is closed.
+//     are recorded first and put back once the IDE is closed. The window
+//     geometry is not: the IDE is on the user's desktop, and where the user
+//     leaves it is the user's choice.
 //   * The test switch is on, as in every IDE the harness starts, so Open in
 //     browser prints `open <url>` to the DEBUG CONSOLE and starts nothing. The
 //     pane's pages come from the built site, docs/_site, served on localhost.
@@ -105,7 +107,9 @@ try {
   die(2, `${work} could not be emptied (${e.code}): is an IDE from an earlier run still open?`);
 }
 mkdirSync(work, { recursive: true });
-const tidy = startTidy({ prefixes: [work] });
+// The IDE is on the user's desktop and the user's to move and resize, so the
+// window geometry it leaves in the registry is kept (`window: false`).
+const tidy = startTidy({ prefixes: [work], window: false });
 if (!tidy) die(2, "could not record the registry, so it could not be put back afterwards");
 const settingsBefore = snapshotKeys([settingsKey(SETTINGS)]);
 

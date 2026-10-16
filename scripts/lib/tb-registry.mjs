@@ -14,6 +14,17 @@
 //   * An IDE started from an install the association does not point at
 //     re-points `.twinproj` at itself, which matters once a harness runs
 //     private copies of the IDE (WIP.HelpAddin.md, Stage 1 item 2).
+//   * The IDE's window geometry, `twinBASIC_IDE\Window` (Left, Top, Width,
+//     Height, State, RealTitlebar), is the user's: the user's own IDE opens
+//     at it. No flag guards it. In BETA 1007 the executable writes Left, Top,
+//     Width, Height and State as soon as its window is resized, maximized or
+//     restored, on a private desktop too, and the page's ChangeWindowSetting,
+//     which runs at start-up and on every options change, writes RealTitlebar
+//     when the page's option differs from it. An idle IDE, a move alone, a
+//     graceful exit and taskkill write nothing, and no harness path resizes
+//     a window, so a run is not expected to change it. It is put back all the
+//     same, because the IDE's own code can write it and nothing outside the
+//     IDE can stop it.
 //
 // The rule is: leave everything as it was found.
 //
@@ -30,6 +41,10 @@
 //     IDE copy's, and putting them back would point at a deleted folder. They
 //     are then put back pointing at the newest install on the Desktop
 //     (findIde; owner, 2026-10-10), and left as they are only when there is none.
+//   * The Window key is put back the same way, value by value and only where
+//     it differs, as the first run found it. A run whose IDE is the user's to
+//     move (try_help_addin: on the user's desktop, closed by the user) passes
+//     `window: false`, and then no run of the group puts it back.
 //
 // The recent list, the remembered build targets and the theme are not put
 // back: the flags keep the IDE from writing them. ideLists and
@@ -49,7 +64,7 @@
 // a run found may be another run's IDE copy's, and one run's IDE that is still
 // open writes its project's state after the other run removed it. So the runs
 // share one record, in %TEMP%\tb-registry\<key>: the first run to start writes
-// what it finds (base.json: the association keys), each run adds its own
+// what it finds (base.json: the association keys and the Window key), each run adds its own
 // folders and named projects (<pid>-<n>.json), and a run that ends while
 // another is still running only marks its own record finished. The last one to
 // end puts back for all of them, once no IDE of any of them is running. A
@@ -77,6 +92,9 @@ import { findIde } from "./tb-install.mjs";
 
 export const IDE_SETTINGS_KEY = "Software\\VB and VBA Program Settings\\twinBASIC_IDE";
 export const ASSOCIATION_KEYS = ["Software\\Classes\\.twinproj", "Software\\Classes\\twinBASIC.ProjectFile"];
+
+/** The key the IDE keeps its window's geometry in, under its settings key `root`. */
+export const windowKey = (root = IDE_SETTINGS_KEY) => `${root}\\Window`;
 
 // No `${` and no backtick anywhere in this script: it is a JavaScript template
 // literal, and either one would end or splice it. A registry path separator is
@@ -364,8 +382,8 @@ export const SETTINGS_ROOT = "Software\\VB and VBA Program Settings";
  *
  * The IDE's own application name is refused. That key holds all of the IDE's
  * settings, which a run's IDEs do not write (IDE_FLAGS in tb-ide.mjs); the
- * part of it they do write, ProjectState, is put back by startTidy and
- * finishTidy, never as a whole.
+ * parts of it they can write, ProjectState and Window, are put back by
+ * startTidy and finishTidy, never the key as a whole.
  */
 export function settingsKey(app) {
   const name = String(app ?? "");
@@ -373,7 +391,7 @@ export function settingsKey(app) {
   if (name.toLowerCase() === "twinbasic_ide") {
     throw new Error(
       "refusing the IDE's own settings key: a run's IDEs do not write it, " +
-        "and the tidy puts back the project state they do",
+        "and the tidy puts back the project state and the window geometry they can",
     );
   }
   return `${SETTINGS_ROOT}\\${name}`;
@@ -497,8 +515,18 @@ export function alive(pid) {
  * @param {string} [o.root]        the IDE's settings key (default IDE_SETTINGS_KEY)
  * @param {string[]} [o.keys]      the association keys (default ASSOCIATION_KEYS);
  *                                 the self-test passes scratch keys for both
+ * @param {boolean} [o.window]     false when the run's IDE is the user's to move
+ *                                 and close (try_help_addin), so that the geometry
+ *                                 it leaves stays: then no run that ends with this
+ *                                 one puts the Window key back
  */
-export function startTidy({ paths = [], prefixes = [], root = IDE_SETTINGS_KEY, keys = ASSOCIATION_KEYS } = {}) {
+export function startTidy({
+  paths = [],
+  prefixes = [],
+  root = IDE_SETTINGS_KEY,
+  keys = ASSOCIATION_KEYS,
+  window = true,
+} = {}) {
   const owner = Number(process.env.TB_REGISTRY_OWNER);
   if (owner && owner !== process.pid && alive(owner)) return null;
   process.env.TB_REGISTRY_OWNER = String(process.pid);
@@ -514,12 +542,13 @@ export function startTidy({ paths = [], prefixes = [], root = IDE_SETTINGS_KEY, 
         for (const r of others) rmSync(r.file, { force: true });
       }
       if (alone || !existsSync(path.join(dir, BASE))) {
-        const base = { keys: snapshotKeys(keys) };
+        const base = { keys: snapshotKeys(keys), window: snapshotKeys([windowKey(root)]) };
         base.keysInTemp = namesTempFolder(base.keys);
         writeFileSync(path.join(dir, BASE), JSON.stringify(base));
       }
       if (prefixes.length) restoreProjects({ root, entries: [] }, { prefixes });
       const record = { pid: process.pid, started: Date.now(), prefixes, finished: false };
+      if (!window) record.keepWindow = true;
       record.projects = snapshotProjects(paths, { root }).entries;
       writeFileSync(tidy.file, JSON.stringify(record));
       return tidy;
@@ -537,10 +566,11 @@ export function startTidy({ paths = [], prefixes = [], root = IDE_SETTINGS_KEY, 
  * run has exited -- shutdownIde waits for that. A second call returns what the
  * first did.
  *
- * @returns {{projectState: number, association: number | null}
+ * @returns {{projectState: number, association: number | null, window: number | null}
  *           | {deferred: number[]} | null} what was written, or the pids of the
  *           runs still running, one of which will put it back; null on a failure,
- *           which is warned about
+ *           which is warned about. `window` is null when it was left as it is: a
+ *           run passed `window: false`, or there is no record of how it was found
  */
 export function finishTidy(tidy) {
   if (!tidy) return null;
@@ -569,7 +599,8 @@ export function finishTidy(tidy) {
 // What finishTidy does as the last run: every run's folders swept, every
 // run's named projects put back -- the oldest record of a project is the one
 // made before any run touched it -- and the association as the first run found
-// it. Null when they could not be put back; the records are then kept, and the
+// it, and the Window key likewise, unless a run's IDE was the user's to move.
+// Null when they could not be put back; the records are then kept, and the
 // next run to start alone sweeps their folders.
 function putBackAll(tidy, all) {
   let base = null;
@@ -606,7 +637,9 @@ function putBackAll(tidy, all) {
               "began, at another run's copy of the IDE, and no install was found, so it is left as it is now",
       );
     }
-    done = { ...p, association: keys ? restoreKeys(keys) : null };
+    const association = keys ? restoreKeys(keys) : null;
+    const keepWindow = all.some((r) => r.keepWindow);
+    done = { ...p, association, window: base?.window && !keepWindow ? restoreKeys(base.window) : null };
   } catch (e) {
     console.error(`warning: could not tidy the IDE's registry entries after this run: ${e.message}`);
     return null;

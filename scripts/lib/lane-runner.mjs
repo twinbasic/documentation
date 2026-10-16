@@ -39,8 +39,9 @@
 //     it writes neither the user's settings nor the recent list. One process
 //     owns what is left (lib/tb-registry.mjs). This one records it before the
 //     first lane starts, and the lanes inherit TB_REGISTRY_OWNER and leave it
-//     alone. Once every lane has ended it puts back the IDE's project state
-//     and the .twinproj association, then checks that nothing under the lanes'
+//     alone. Once every lane has ended it puts back the IDE's project state,
+//     the .twinproj association and the IDE's window geometry (the Window key,
+//     which the user's own IDE opens at), then checks that nothing under the lanes'
 //     folders is left in the IDE's lists or the build targets it remembers --
 //     unless another harness run is still running, which then puts back for
 //     both.
@@ -431,8 +432,8 @@ export async function runLanes({ tool, suite: SUITE, workDir, usage: USAGE, subj
       ? `registry and work folders: ${problems.length} problem(s)\n  ${problems.join("\n  ")}`
       : tidied.deferred
         ? `registry: left for the run still running to put back (pid ${tidied.deferred.join(", ")})${settingsNote}`
-        : `registry: put back (${tidied.projectState} project-state and ${tidied.association ?? "no"} ` +
-          `association writes); nothing names the lanes' folders${settingsNote}`;
+        : `registry: put back (${tidied.projectState} project-state, ${tidied.association ?? "no"} ` +
+          `association and ${tidied.window ?? "no"} window writes); nothing names the lanes' folders${settingsNote}`;
   }
 
   const { tidied, problems } = putBack();

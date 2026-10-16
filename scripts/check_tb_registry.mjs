@@ -27,6 +27,10 @@
 //   * the association keys: a value changed, one added, one deleted, a subkey
 //     added, and a key that did not exist before created by the run;
 //   * that a second restore writes nothing at all;
+//   * the window geometry (the Window key): values changed, added and deleted
+//     put back with one write each, an untouched key not written, a key the
+//     run created deleted, and a key left as it is when a run of the group
+//     passed `window: false` (try_help_addin, whose IDE is the user's to move);
 //   * the build targets the IDE remembers, read and never written: the entries
 //     under a harness temp folder, in both separators, listed; the user's and
 //     the lookalike folder's not; a value that is not JSON, and no value,
@@ -230,8 +234,14 @@ try {
   assert.deepEqual(R.rememberedTargets([TEMPDIR], { root: ROOT }), [], "no value, nothing listed");
   assert.throws(() => R.rememberedTargets(["C:\\"], { root: ROOT }), /outside/);
 
-  // The whole tidy leaves the options, the build targets and the recent list as they are.
+  // The whole tidy leaves the options, the build targets and the recent list as they are,
+  // and puts the window geometry back value by value.
   const asIde = (o) => JSON.stringify(o, undefined, "\t");
+  const WINDOW = R.windowKey(ROOT);
+  assert.equal(WINDOW, ROOT + "\\Window");
+  const geometry = { RealTitlebar: "0", Left: "846", Top: "407", Width: "1200", Height: "900", State: "0" };
+  setValues(WINDOW, geometry);
+  const windowBefore = R.snapshotKeys([WINDOW]);
   setValues(SETTINGS, { [MEMORY]: JSON.stringify(memory), GENERAL: asIde({ colorTheme: "Dark" }) });
   const whole = R.startTidy({ root: ROOT, keys: [ASSOC], paths: [USER], prefixes: [TEMPDIR] });
   setValues(ROOT + "\\ProjectState", { [USER]: "RUN-STATE", [PROBE]: "T4" });
@@ -239,12 +249,36 @@ try {
     [MEMORY]: JSON.stringify({ ...memory, [USER]: "win32" }),
     GENERAL: asIde({ colorTheme: "light" }),
   });
+  // A resize writes the four numbers; an options change writes RealTitlebar.
+  setValues(WINDOW, { Left: "100", Top: "100", Width: "1600", Height: "1200", RealTitlebar: "1", Extra: "added" });
+  deleteValues(WINDOW, ["State"]);
   const done = R.finishTidy(whole);
-  assert.deepEqual(Object.keys(done).sort(), ["association", "projectState"]);
+  assert.deepEqual(Object.keys(done).sort(), ["association", "projectState", "window"]);
   assert.equal(R.snapshotProjects([USER], { root: ROOT }).entries[0].state, "USER-STATE", "a named project's state");
   assert.equal(readValue(SETTINGS, MEMORY), JSON.stringify({ ...memory, [USER]: "win32" }), "targets are not touched");
   assert.equal(readValue(SETTINGS, "GENERAL"), asIde({ colorTheme: "light" }), "options are not touched");
+  assert.deepEqual(R.snapshotKeys([WINDOW]), windowBefore, "the window geometry is as it was found");
+  assert.equal(done.window, 7, "one write for each value changed, added or deleted, and none for the rest");
   deleteValues(SETTINGS, [MEMORY, "GENERAL"]);
+
+  // A window key nobody touched is not written; one the run created goes; one a
+  // run whose IDE is the user's to move (window: false) leaves is kept, whichever
+  // run of the group ends last.
+  const untouched = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  assert.equal(R.finishTidy(untouched).window, 0, "an untouched window key is not written");
+  ps("$hk.DeleteSubKeyTree($in.key)", { key: WINDOW });
+  const created = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  setValues(WINDOW, geometry);
+  assert.equal(R.finishTidy(created).window, 1);
+  assert.deepEqual(R.snapshotKeys([WINDOW]), [{ path: WINDOW, snap: null }], "a window key the run created goes");
+  setValues(WINDOW, geometry);
+  const lanes = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  const tryIt = R.startTidy({ root: ROOT, keys: [ASSOC], window: false });
+  setValues(WINDOW, { Width: "1600" });
+  assert.ok(R.finishTidy(tryIt).deferred, "the user's run ends first");
+  assert.equal(R.finishTidy(lanes).window, null, "the last run leaves the geometry the user's IDE left");
+  assert.equal(readValue(WINDOW, "Width"), "1600");
+  setValues(WINDOW, geometry);
 
   // ------------------------------------------------ an association another run's copy held
   // startTidy and finishTidy, the whole tidy, on the scratch keys. TB_IDE stands in for the
