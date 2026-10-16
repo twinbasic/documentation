@@ -126,6 +126,7 @@ const ROW_JS = (name) => `(() => {
   const q = row.innerDiv.getBoundingClientRect();
   return { value: row.customRenderData.value, x: q.x + q.width * 0.6, y: q.y + Math.min(q.height, 20) / 2 };
 })()`;
+const TOOLTIP_GONE_JS = `(() => { const t = document.getElementById("hoverTooltip"); return !t || !t.classList.contains("visibleTooltip"); })()`;
 const EDIT_BOX_JS = `(() => { const e = document.getElementById("renameInput"); return e ? e.value : null; })()`;
 const HOVER_JS = `(() => {
   const h = [...document.querySelectorAll(".monaco-hover")].find((e) => !e.classList.contains("hidden") && e.getBoundingClientRect().height > 4);
@@ -202,6 +203,11 @@ scenario("running and debugging", (lane) => {
   }
   const row = (name) => c.evaluate(ROW_JS(name));
   async function doubleClickRow(name) {
+    // The panel's tooltip for the row the mouse was left on (#hoverTooltip) lies over the rows
+    // below it and takes the clicks meant for them, so the mouse is moved off the panel and the
+    // tooltip waited out first.
+    await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 10, y: 300 });
+    assert.ok(await waitFor(c, () => c.evaluate(TOOLTIP_GONE_JS)), "the Variables panel's tooltip never went");
     const r = await row(name);
     assert.ok(r, `the Variables panel has no row ${name}`);
     await clickAt(c, r.x, r.y);
