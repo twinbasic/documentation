@@ -1,0 +1,13 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^painted, BackColor = &H808080, pixel = &H808080$",
+      "^BackColor set to &HFF, pixel = &H808080$",
+      "^after InvalidateRect and UpdateWindow, pixel = &H808080$",
+      "^after Visible = False, True, pixel = &HFF$"
+    ]
+  },
+  "issue": 2520
+}

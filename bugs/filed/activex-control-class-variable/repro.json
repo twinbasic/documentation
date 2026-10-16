@@ -1,0 +1,26 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Dim sc As New ScriptControl: sc\\.Language = \"JScript\"\\s+91\\s+Object variable or With block variable not set$",
+      "^Dim sc As New ScriptControl: sc\\.Eval\\(\"1 \\+ 2\"\\) =\\s+91\\s+Object variable or With block variable not set$",
+      "^Private ModuleSc As New ScriptControl \\(module level\\): ModuleSc\\.Language\\s+91\\s+Object variable or With block variable not set$",
+      "^Public Sc As New ScriptControl \\(class field\\): h\\.Sc\\.Language\\s+91\\s+Object variable or With block variable not set$",
+      "^Dim sc As ScriptControl: Set sc = New ScriptControl\\s+-2147467262\\s+No such interface supported$",
+      "^Dim sc As ScriptControl: Set sc = CreateObject\\(\"MSScriptControl\\.ScriptControl\"\\)\\s+-2147467262\\s+No such interface supported$",
+      "^Dim o As Object: Set o = New ScriptControl\\s+0\\s*$",
+      "^Dim sc As ScriptControl: Set sc = o\\s+-2147467262\\s+No such interface supported$",
+      "^Object variable: o\\.Eval\\(\"1 \\+ 2\"\\) = 3\\s+0\\s*$",
+      "^IScriptControl variable: i\\.Eval\\(\"1 \\+ 2\"\\) = 3\\s+0\\s*$",
+      "^Dim w As Winsock: Set w = New Winsock\\s+-2147467262\\s+No such interface supported$",
+      "^Dim wa As New Winsock: wa\\.LocalPort\\s+91\\s+Object variable or With block variable not set$",
+      "^Dim wo As Object: Set wo = New Winsock\\s+0\\s*$",
+      "^Dim cd As CommonDialog: Set cd = New CommonDialog\\s+-2147467262\\s+No such interface supported$",
+      "^Dim cdo As Object: Set cdo = New CommonDialog\\s+0\\s*$",
+      "^Dim d As New Scripting\\.Dictionary: d\\.Add, d\\.Count = 1\\s+0\\s*$",
+      "^Dim c As New ADODB\\.Connection: ConnectionString = x\\s+0\\s*$"
+    ]
+  },
+  "issue": 2522
+}

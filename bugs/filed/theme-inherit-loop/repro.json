@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:customising",
+  "tests": [
+    "two themes that inherit each other freeze the page, and choosing one fails with a stack overflow"
+  ],
+  "steps": "1. Start the twinBASIC IDE. In %APPDATA%\\twinBASIC\\themes write LoopA.theme with the lines inherits: LoopB; and MenuBackColor: rgb(1, 1, 1); and LoopB.theme with inherits: LoopA; and MenuBackColor: rgb(2, 2, 2);\n2. Choose Window > Theme > Reload from disk. The IDE stops responding for about seven seconds.\n3. Open Window > Theme. LoopB is listed as LoopB (undefined).\n4. Choose LoopA. Nothing on screen changes: the IDE's page raises an uncaught RangeError: Maximum call stack size exceeded, which nothing on screen reports, and the previous theme's colours stay.\n5. Remove the loop from the files and restart the IDE to recover.",
+  "issue": 2526
+}

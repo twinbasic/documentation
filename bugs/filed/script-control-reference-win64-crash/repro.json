@@ -1,0 +1,8 @@
+{
+  "mode": "compile",
+  "arch": "win64",
+  "expect": {
+    "exit": 4
+  },
+  "issue": 2523
+}

@@ -1,0 +1,18 @@
+{
+  "mode": "run",
+  "arch": "win64",
+  "llvm": true,
+  "exe": true,
+  "expect": {
+    "exit": 5,
+    "output": [
+      "^--- exe: exit -1073741819 \\(0xC0000005\\)$",
+      "^--- exe: exception 0xc0000005 in KERNELBASE\\.dll"
+    ],
+    "absent": [
+      "^Count = 5$",
+      "^--- exe: exit 5$"
+    ]
+  },
+  "issue": 2514
+}
