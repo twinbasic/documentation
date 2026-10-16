@@ -60,7 +60,7 @@ See [Packages](../../Features/Packages/). [References and packages](Projects/Ref
 
 How the compiler reports each of its warnings in this project. The dialog lists every warning by its code and message, and each one can be set to **WARNING**, **HINT**, **INFO**, **IGNORE** or **ERROR**. In a new project, TB0015 and TB0030 are at **HINT**; TB0018 to TB0021, TB0024, TB0025 and TB0029 are at **IGNORE**; and every other warning is at **WARNING**.
 
-The [**IgnoreWarnings**](../Core/Attributes#ignorewarnings), [**EnforceWarnings**](../Core/Attributes#enforcewarnings) and [**EnforceErrors**](../Core/Attributes#enforceerrors) attributes override these settings in a class, a module or a procedure. [Compiler Warnings](../../Features/Compiler-IDE/Compiler-Warnings) describes some of the warnings. In the `Settings` file the setting is `project.warnings`, which holds a list of codes for each level: `errors`, `hints`, `ignored`, `info` and `warnings`.
+The [**IgnoreWarnings**](../Core/Attributes#ignorewarnings), [**EnforceWarnings**](../Core/Attributes#enforcewarnings) and [**EnforceErrors**](../Core/Attributes#enforceerrors) attributes override these settings in a class, a module or a procedure. [Compiler Warnings](../../Features/Compiler-IDE/Compiler-Warnings) describes each warning. In the `Settings` file the setting is `project.warnings`, which holds a list of codes for each level: `errors`, `hints`, `ignored`, `info` and `warnings`.
 
 ## Project ID
 
