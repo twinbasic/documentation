@@ -904,14 +904,23 @@ puts back, or what a test blocks:
 - **The `.twinproj` association** (`Software\Classes\.twinproj` and `twinBASIC.ProjectFile`),
   which the executable registers, not the page, when it starts from a path other than the
   registered one: a lane's private copy re-points it at the copy.
-- **The `Window` key**, written by `ChangeWindowSetting`. A scenario that moves the window
-  blocks the call in its page (`test/ide/*.test.mjs`, `GUARD_JS`).
+- **The `Window` key** (`Left`, `Top`, `Width`, `Height`, `State`, `RealTitlebar`), the
+  geometry the user's own IDE opens its window at. On BETA 1007 the executable writes the four
+  numbers and `State` the moment its window is resized, maximized or restored, on a private
+  desktop as much as on the user's; a move alone, an idle IDE, a graceful close (the window's
+  close button, or `--buildAndExit32`'s own exit) and `taskkill /F` write nothing (key
+  timestamps, through a probe of each). The page's `ChangeWindowSetting("RealTitlebar", ...)`
+  runs in `changedIdeOptions`, at start-up and on every options change (a theme switch, a font
+  size, any toggle), and writes the value when the page's `showRealTitlebar` differs from it;
+  with the same value it writes nothing. No harness path resizes an IDE's window, and the
+  `test/ide` scenarios that change options block the call in their page (`GUARD_JS`). The tidy
+  puts the key back all the same (below).
 - **`RemoveRecentsList`**, which the start page and the error dialogs call. `shoot_docs.mjs`
   and the `test/ide` scenarios block it in their pages.
 - **`SaveIDESetting("PUBLISHER", ...)`**, the package publisher's name and password, which
   has no guard (`savePublisherInfo`). No harness path publishes a package.
 
-**The tidy still has two jobs, and the rule is still to leave everything as it was found:**
+**What the tidy does, by the rule to leave everything as it was found:**
 
 - **A folder only the harness writes to is swept by prefix**, from `ProjectState` ---
   `check_examples`' and `tbrun`'s work folders. The sweep also runs at the start of a run, which
@@ -927,6 +936,14 @@ puts back, or what a test blocks:
   through a day of launches of that build). It rewrites them when its own path differs, which
   is why starting a lane's private copy re-points the association at the copy ([A private
   IDE for every lane](#a-private-ide-for-every-lane)).
+- **The `Window` key is restored the same way**, value by value and only where it differs,
+  as the first run found it, so a run that leaves it alone writes nothing (`window: 0` in
+  `finishTidy`'s result, and the lane runner's line says how many window writes it made). It
+  is put back although no harness path is known to change it, because the IDE's own code
+  writes it (a resize, an options change) and no flag stops that. `try_help_addin` passes
+  `window: false`: its IDE is on the user's desktop, the user moves and closes it, and the
+  geometry it leaves is the user's. Its record says so (`keepWindow`), and then no run that
+  ends with it puts the key back, whichever is last.
 
 **The recent list and the remembered build targets are checked and never repaired** (the
 theme and the other options are not written, so there is nothing to check).
@@ -962,13 +979,13 @@ a `tbrun` beside a lane run, another session's --- cannot each put back on their
 association one found may be another run's IDE copy's, and an IDE of the first run that is
 still open writes its project's state after the second run removed it. So the runs share one
 record in `%TEMP%\tb-registry\<key>`, read and written one run at a time under its `busy`
-folder: the first run to start records the association (`base.json`); every run adds its
+folder: the first run to start records the association and the `Window` key (`base.json`); every run adds its
 folders and named projects (`<pid>-<n>.json`); a run that ends while another is running marks
 its record finished, puts nothing back and gets `{ deferred: [pids] }` from `finishTidy`,
 which the lane runner reports instead of checking the lists; and the last run to end puts
 back for all, a named project from its oldest record. A record whose process died unfinished
-is swept by folder when the next run starts alone, and its record of the association is
-dropped, since it may be days old. `check_tb_registry.mjs` plays out both. `tbbuild --keep`
+is swept by folder when the next run starts alone, and its record of the association and the
+`Window` key is dropped, since it may be days old. `check_tb_registry.mjs` plays out both. `tbbuild --keep`
 takes no part, so its IDE can still write its project state after the last run has put it back.
 
 **Why .NET through PowerShell and not `reg.exe`.** Node has no registry API. `reg.exe`
@@ -1003,7 +1020,9 @@ The harness's IDEs do not write the list (`--no-update-recent-files`), so they c
   and a check of the tidy runs its fixture cases one at a time for this reason.
 - An IDE the user has open, or one of another session's runs started without the flags, is
   not controlled by any of this, which is why a check of the registry waits until no other
-  session's run is going.
+  session's run is going. A window the user resizes in his own IDE while a run is going is
+  put back to its old geometry when the run ends, since the tidy cannot tell whose IDE wrote
+  the `Window` key.
 
 **An association that names the temp folder is put back pointing at the newest install.** A
 run that starts while another run's IDE copy is open finds the association pointing at that
@@ -1018,8 +1037,10 @@ association as the IDEs set it and says so.
 **Verified** by [scripts/check_tb_registry.mjs](scripts/check_tb_registry.mjs), which plays
 out a run on a scratch key and checks every rule above, the guards and the ownership rule
 included: a named project's state, the sweep of a folder in both separators and a lookalike
-folder's survival, the association, two runs at once, a run that died, and that the tidy
-leaves the recent list, the options and the remembered targets exactly as they are. It is not
+folder's survival, the association, the `Window` key (changed, added and deleted values, an
+untouched key not written, a created key deleted, `window: false` honoured by the run that
+ends last), two runs at once, a run that died, and that the tidy leaves the recent list, the
+options and the remembered targets exactly as they are. It writes only its scratch keys. It is not
 a gate: it needs Windows and a real registry, and the CI runners are Ubuntu. Run it after
 changing `tb-registry.mjs`.
 
@@ -1390,9 +1411,28 @@ choose which lanes may run together (below). A lane's output is held until it en
 printed whole, so two lanes' reports never interleave. `--timeout` (default 600 s) ends a
 lane still running; its process's job takes the IDE with it.
 
+**Every IDE a lane opens has a page of 1600 by 1000 CSS pixels**, in `ide-test` and
+`addin-test` alike. `Lane.open` and `Lane.openNoProject` call `fixPageSize`
+(`Emulation.setDeviceMetricsOverride`, `deviceScaleFactor: 0`, so at the display's own
+density) as soon as they attach, before the compile settles and before any tool window
+shows; `PAGE` and `fixPageSize` are in `scripts/lib/tb-lane.mjs`. The reason: the IDE opens
+its window at the geometry in the user's `Window` key, which the harness puts back but never
+sets, and the private desktop has the display's size, so the window opens there unmoved and
+unclamped. At the user's 1200 by 900, 150%, the page is 800 by 606, where a tool window floats
+over the toolbar's buttons and most of the code editor, and a scenario that clicks or hovers
+there passes on one machine and fails on another. A lane in `lanes.mjs` names another size
+with `page` (`null` keeps the window's own), `Lane.open` takes `page` for one IDE (the help
+lane's 800 by 600 case), and `fixPageSize(c, size)` changes it while the IDE is open (the
+help lane's short page for its hover case). Only a runner's lane has the size by default
+(`addinLane`): a `Lane` made elsewhere (`try_help_addin`, whose IDE is on the user's desktop;
+`shoot_docs` and `svgshot/probe`, which set 1280 by 880 at 2x themselves) leaves the page
+alone unless it is given `page`.
+
 **The runner owns the registry, and checks it afterwards.** It calls `startTidy` with every
 lane's folder before the first lane starts, so the lanes inherit `TB_REGISTRY_OWNER` and
-leave the registry alone, and `finishTidy` once the last has ended. Then it checks rather
+leave the registry alone, and `finishTidy` once the last has ended, which puts back the
+project state, the association and the `Window` key; the summary line counts the writes of
+each. Then it checks rather
 than trusts: no project-state or recent-list entry may name a lane's folder, no build target
 may be remembered for one (both read only: an IDE with `IDE_FLAGS` writes neither, so an
 entry means the flags failed), and the add-ins' settings must be as recorded. Any failure

@@ -522,6 +522,9 @@ has the harness side of each item.
      points into the temp folder.
    - It deletes the `ProjectState` values the run created. Match paths with either separator:
      some tools store them with forward slashes (`C:/Users/.../Temp/tbprobe/...`).
+   - It saves the IDE's `Window` key, the geometry the user's own IDE opens at, and puts it
+     back value by value, because the IDE writes it when its window is resized and when an
+     options change flips `RealTitlebar`.
    - Every lane IDE gets `--no-save-ide-settings` and `--no-update-recent-files`, so the
      recent list, the theme, the panel layouts and the build target remembered for each
      project path are never written, and a lane cannot inherit `win64` from an earlier
@@ -1068,16 +1071,16 @@ not: a restart saves a harness about a second against opening a new IDE.
    - **In the lanes**, the floating pane covers the middle of the code editor, so the cases
      move it against the window's right edge before the mouse rests anywhere; and a hover
      left open covers the toolbar, so each mouse case moves the mouse away at its end.
-     `test/addin/hover.mjs` holds the helpers both lanes use. **The IDE's page is given a
-     fixed size, 1600 by 1000** (`fixPageSize`, `Emulation.setDeviceMetricsOverride`), as soon
-     as each IDE opens. The IDE opens its window at the size the user's own IDE last left in
-     the `Window` key (`twinBASIC_IDE\Window`), which the harness neither sets nor changes: at
-     1200 by 900, not maximized, at 150%, the page is 800 by 600, the pane then floated at 480
-     by 640, centred, over the toolbar's buttons and most of the editor, and the Help button,
-     the restart button and every mouse case after them failed. That happened on BETA 1005
-     too (the same pictures on 14 October, before 1007 was installed), so it was the key, not
-     a build. The pane's first size now fits such a page (increment 2), but it still covers
-     most of it, so the fixed size stays.
+     `test/addin/hover.mjs` holds the helpers both lanes use. **The IDE's page is 1600 by
+     1000**, as in every lane of `addin-test` and `ide-test` ([WIP.Harness.md, The add-in test
+     runner](WIP.Harness.md#the-add-in-test-runner)): `Lane.open` fixes it as it attaches. The
+     IDE opens its window at the size the user's own IDE last left in the `Window` key
+     (`twinBASIC_IDE\Window`), which the harness puts back but never sets: at 1200 by 900, not
+     maximized, at 150%, the page is 800 by 600, the pane floats at 480 by 640, centred, over
+     the toolbar's buttons and most of the editor, and the Help button, the restart button and
+     every mouse case after them fail. The pane's first size fits such a page (increment 2),
+     but it still covers most of it, so the fixed size stays. The lane's second IDE is opened
+     with `page` 800 by 600 for the case that checks the pane's first size there.
 7. **A detached window**, tested by the `help` and `help-offline` lanes on BETA 1007
    (owner's request): the pane can be moved to another monitor. The owner's choices: the add-in shows a window of its own, a twinBASIC Form holding the
    WebView2 package's control (P19), rather than a `window.open` from the page, which would

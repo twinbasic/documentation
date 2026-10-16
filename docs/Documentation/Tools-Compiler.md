@@ -53,7 +53,7 @@ A packed project's default build path opens a *Save* dialog that the private des
 
 **The IDE it starts ends with it.** The IDE runs inside a Windows job object, so when `tbbuild` ends --- finished, failed, or stopped with Ctrl+C --- every process the IDE started ends too, a restarting compiler included. The exceptions are `--keep`, where the IDE lives until you close it, and `--show`, where it starts on your desktop without the job.
 
-**It leaves the IDE's own settings as it found them.** Every IDE it starts is given `--no-save-ide-settings` and `--no-update-recent-files`, so it writes none of the registry values your own IDE uses for its options, its recent-projects list or its remembered build targets. It still saves the project's state (open tabs, watch expressions, Debug Console history) under the same key. Once the IDE has exited, `tbbuild` deletes the entries the run created and gives a project of yours its old values back. The `.twinproj` file association is restored too, if the IDE changed it. [`check_examples.mjs`](Tools-Samples#check-examples) and [`sweep_attributes.mjs`](Tools-Samples#sweep-attributes) do this once for all their lanes.
+**It leaves the IDE's own settings as it found them.** Every IDE it starts is given `--no-save-ide-settings` and `--no-update-recent-files`, so it writes none of the registry values your own IDE uses for its options, its recent-projects list or its remembered build targets. It still saves the project's state (open tabs, watch expressions, Debug Console history) under the same key. Once the IDE has exited, `tbbuild` deletes the entries the run created and gives a project of yours its old values back. The `.twinproj` file association is restored too, if the IDE changed it, and so is the size and place your own IDE opens its window at (the `Window` key), which the IDE rewrites whenever its window is resized. [`check_examples.mjs`](Tools-Samples#check-examples) and [`sweep_attributes.mjs`](Tools-Samples#sweep-attributes) do this once for all their lanes.
 
 Eight files under `scripts/lib/` belong to it and are never run directly:
 
@@ -62,7 +62,7 @@ Eight files under `scripts/lib/` belong to it and are never run directly:
 - `tb-ide-console.mjs` --- reads the IDE's DEBUG CONSOLE, where `tbrun` finds what a probe printed.
 - `tb-run.mjs` --- presses Build and reads that console until a `[RunAfterBuild]` Sub has finished, and checks what was erased for a failed build. `tbrun` and `check_examples.mjs`'s `check_run` both capture a run with it.
 - `tb-install.mjs` --- finds the install and reads its build number from `ide\build.js`, the folder name being the fallback. It passes over an install older than BETA 1007 and says why one named by hand may not run.
-- `tb-registry.mjs` --- records and restores the project state and the file association above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page. [`check_tb_registry.mjs`](#check-tb-registry) is its self-test.
+- `tb-registry.mjs` --- records and restores the project state, the file association and the window's geometry above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page. [`check_tb_registry.mjs`](#check-tb-registry) is its self-test.
 - `tb-cdp.mjs` --- a minimal CDP client over Node's global `WebSocket`, not puppeteer, whose `connect()` hangs while a pending `alert()` blocks the renderer. Every call has a time limit, so a blocked page ends a run with a message.
 - `tb-launch.ps1` --- the Win32 calls Node cannot make without a native FFI addon: `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop the slot names (its `CreateDesktop` opens the broker's desktop of that name), and the job object. `tb-ide.mjs` passes its text through `-EncodedCommand`, so the execution policy does not apply.
 
@@ -265,6 +265,9 @@ that:
 - a file association that pointed into the temp folder when a run began --- at another run's
   private copy of the IDE --- is put back pointing at the newest install, or left as it is
   when there is none;
+- the window's geometry (the `Window` key) is put back value by value, an untouched key is not
+  written, a key the run created is deleted, and the key is left as it is when a run of
+  [`try_help_addin.mjs`](Tools-IDE#try-help-addin), whose IDE you move yourself, ended with it;
 - the module refuses to sweep outside the temp folder or restore a key near the root of the
   registry.
 
