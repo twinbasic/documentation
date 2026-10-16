@@ -11,9 +11,12 @@
 // is, value by value with the type of each, before it writes anything, and puts
 // it back with restoreKeys after the lane's IDE has exited, even when a test
 // failed. The runner's own tidy (startTidy and finishTidy in
-// scripts/lib/tb-registry.mjs) only keeps no more copies of a path than the key
-// had and drops every path under a lane's folder, so it is not relied on for
-// this. All three project paths are inside the lane's work folder.
+// scripts/lib/tb-registry.mjs) does not touch the recent list, since every
+// other IDE of the harness is started with --no-update-recent-files, so it is
+// not relied on for this. THIS IDE IS THE ONE THAT IS NOT: it is started with
+// IDE_FLAGS less that flag (it keeps --no-save-ide-settings), because the list
+// is what the test reads. All three project paths are inside the lane's work
+// folder.
 //
 // Any other IDE that opens a project while this runs, another lane's or another
 // session's, writes the same key and spoils the shape the test looks for. So
@@ -22,9 +25,8 @@
 // but B in the slots below, is the defect gone, and fails the test at once.
 //
 // If the test fails after an IDE update, the IDE has changed: update the entry
-// in BUGS-TO-REPORT.md or bugs/filed/, WIP.Harness.md and
-// scripts/lib/tb-registry.mjs (which say a short list trips it), and then this
-// file.
+// in BUGS-TO-REPORT.md or bugs/filed/ and WIP.Harness.md (which says a short list
+// trips it), and then this file.
 //
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.
 
@@ -33,7 +35,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { portTaken, sleep } from "../../scripts/lib/tb-ide.mjs";
+import { IDE_FLAGS, portTaken, sleep } from "../../scripts/lib/tb-ide.mjs";
 import { packTree } from "../../scripts/lib/tb-project.mjs";
 import { IDE_SETTINGS_KEY, norm, restoreKeys, snapshotKeys } from "../../scripts/lib/tb-registry.mjs";
 import { scenario } from "../addin/scenario.mjs";
@@ -89,7 +91,7 @@ scenario("the recent-projects list", (lane) => {
   // list read if it never does.
   async function openC() {
     setList();
-    await lane.open(SOURCE, { folder: folder("C") });
+    await lane.open(SOURCE, { folder: folder("C"), flags: IDE_FLAGS.filter((f) => f !== "--no-update-recent-files") });
     let values = {};
     for (let i = 0; i < 50; i++) {
       values = listNow();

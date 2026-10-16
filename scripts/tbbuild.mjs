@@ -77,7 +77,7 @@ import {
   refuseTogether,
   withUsageError,
 } from "../lib/cli.mjs";
-import { findIde } from "./lib/tb-install.mjs";
+import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { COMPILE_TIMEOUT, keptIdeLines, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
@@ -214,8 +214,14 @@ try {
 } catch (e) {
   die(2, e.message);
 }
-// A named IDE that is not there is refused here, naming the path, as tbrun and
-// addin_test refuse it, rather than left for the launch to fail on.
+// An IDE older than the build the flags need (tb-install's MIN_BUILD) is refused
+// here, before anything is started, and a named IDE that is not there is refused
+// naming the path, as tbrun and addin_test refuse it, rather than left for the
+// launch to fail on.
+if (unsupportedIde(IDE)) {
+  console.error(unsupportedIde(IDE));
+  process.exit(2);
+}
 if (!IDE || !existsSync(IDE)) {
   console.error(
     (IDE ? `no twinBASIC IDE at ${IDE}: ` : "no twinBASIC IDE found: ") +
@@ -226,11 +232,12 @@ if (!IDE || !existsSync(IDE)) {
 
 let tidy = null;
 
-// The IDE puts the project at the top of the user's recent list and saves
-// state for it -- see lib/tb-registry.mjs, and WIP.Harness.md for the numbers.
-// Both go back as they were once the IDE has exited: an entry the run created
-// is deleted, and the user's own project, if this was one, gets its old state
-// back. Not under --keep, because a kept IDE is still writing; and not when
+// The IDE saves state for the project it opens (the recent list and its
+// settings are not written: launchIde gives it IDE_FLAGS) -- see
+// lib/tb-registry.mjs, and WIP.Harness.md for the numbers. It goes back as it
+// was once the IDE has exited: an entry the run created is deleted, and the
+// user's own project, if this was one, gets its old state back. Not under
+// --keep, because a kept IDE is still writing; and not when
 // another process owns the tidy (startTidy then returns null), as a tool that
 // runs many builds does for every lane.
 // A build stages the project first, so what the IDE opens, and so what the tidy

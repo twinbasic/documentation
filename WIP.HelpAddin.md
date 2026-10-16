@@ -18,8 +18,10 @@ a detached window, a settings panel, and only the packages the project reference
   a `pane` parameter, with which a page shows without the site's navigation and header
   (Stage 4, increment 2).
 
-A fact about the IDE that a probe lane tests is stated for **BETA 1005**, the build the lanes
-run on. A name or a quoted text can be searched for in the one-line `ide/main.js`; no byte
+A fact about the IDE that a probe lane tests is stated for **BETA 1005**, the build it was
+last checked on. The lanes run on the newest install, BETA 1007 or later (the oldest build
+any tool runs; `MIN_BUILD` in `scripts/lib/tb-install.mjs`), and a lane that fails there says
+the fact has changed. A name or a quoted text can be searched for in the one-line `ide/main.js`; no byte
 offset is given, because offsets move with every build. Each fact is one of three kinds:
 
 - stated plainly: read in the IDE's code or registry;
@@ -151,7 +153,8 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
 - **The build target picks the compiler, and the compiler picks the folder (P7).** The IDE
   remembers the target of each project in the shared registry, as one JSON object in
   `IDESettings\targetArchitectureMemory` keyed by project path, and opens a project in the
-  target remembered for it --- or, with none, in the first on its list, win32. With a
+  target remembered for it --- or, with none, in the first on its list, win32. (A harness
+  IDE reads the value and never writes it: `--no-save-ide-settings`.) With a
   differently named DLL in each folder, a project with no memory got
   `twinBASIC_win32_noDEP.exe`, which loaded `addins\win32` alone; a project remembered as
   win64 got `twinBASIC_win64_noDEP.exe` with `twinBASIC_nativedbg_win64.exe`, which tried
@@ -448,10 +451,11 @@ offline site itself instead (Stage 4, increment 5), so this route is not taken.
   `IDESettings` (13 values --- `GENERAL`, `GENERAL2`, `LAYOUTv2`, `WEBPANEL_SETTINGS`,
   `targetArchitectureMemory`, the licence values, ...), `ProjectState` (one value per project
   ever opened), `RecentlyOpened` (21 values) and `Window` (6). Every IDE a user runs shares
-  them, and so does every IDE a harness starts. A harness that opens temp projects fills
-  `ProjectState` with them and pushes the user's own recent projects out of
-  `RecentlyOpened`, so every harness tool puts the registry back ([Stage
-  1](#stage-1-testing-add-ins-by-machine)).
+  them, and so does every IDE a harness starts. Every IDE a harness starts is given
+  `--no-save-ide-settings` and `--no-update-recent-files` (`IDE_FLAGS` in
+  [tb-ide.mjs](scripts/lib/tb-ide.mjs)), which keep it from writing `IDESettings` and
+  `RecentlyOpened`. It still writes `ProjectState` for the temp projects it opens, so every
+  harness tool puts that back ([Stage 1](#stage-1-testing-add-ins-by-machine)).
 - **The `.twinproj` association** is `HKCU\Software\Classes\.twinproj` →
   `twinBASIC.ProjectFile`, and it points at the newest install's `twinBASIC.exe`. **The IDE
   rewrites `DefaultIcon` and `shell\open\command` when its path differs** (an IDE copy in
@@ -515,19 +519,18 @@ has the harness side of each item.
    - It saves `HKCU\Software\Classes\.twinproj` and `twinBASIC.ProjectFile` before a run and
      restores them once the last lane has ended, and never puts back an association that
      points into the temp folder.
-   - It deletes the `ProjectState` values the run created and restores the whole
-     `RecentlyOpened` list as found. Match paths with either separator: some tools store them
-     with forward slashes (`C:/Users/.../Temp/tbprobe/...`). A full list loses its oldest
-     entry for every project a run opens.
-   - It puts back the build target the IDE remembers for each project path, because a lane
-     that inherits `win64` builds and loads the wrong bitness.
+   - It deletes the `ProjectState` values the run created. Match paths with either separator:
+     some tools store them with forward slashes (`C:/Users/.../Temp/tbprobe/...`).
+   - Every lane IDE gets `--no-save-ide-settings` and `--no-update-recent-files`, so the
+     recent list, the theme, the panel layouts and the build target remembered for each
+     project path are never written, and a lane cannot inherit `win64` from an earlier
+     one. The runner reads the recent list and the remembered targets afterwards and
+     fails the run (exit 3) if either names a lane's folder.
    - The add-in runner (item 7) records the `SaveSetting` keys a lane names and puts them back.
    - Every IDE a lane starts, the add-in builds' included, gets an `APPDATA` of the lane's
      own, `<work>\appdata`, and the lane checks afterwards that the IDE's add-ins folder is
      under it (`checkAddinsRoot` in `tb-ide-addins.mjs`). So the user's add-ins never load
      into a test IDE, and the user need not move them out to run the tests.
-   - A recent list shorter than 21 entries gets its empty slots filled with copies of the
-     last entry (an IDE bug, in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md)).
 
    The complete answer would be a separate Windows account for test runs, which only the
    user can create.
@@ -886,8 +889,8 @@ not: a restart saves a harness about a second against opening a new IDE.
      out the IDE's group from its panel colour, not from the API, checks every page's
      `data-theme`, and switches the theme with the IDE's own commands
      (`executeIdeCommand("tbTheme_SwitchToLightMode")`, `...DarkMode`),
-     which save it in `twinBASIC_IDE\IDESettings\GENERAL` (`colorTheme`), where the user's
-     own IDE reads it; the registry tidy puts that one entry back (`restoreTheme`).
+     whose save to `twinBASIC_IDE\IDESettings\GENERAL` (`colorTheme`), where the user's own
+     IDE reads it, `--no-save-ide-settings` stops.
      **In the detached window the frame's storage throws** (`SecurityError`, both storages,
      BETA 1005): the window's page is a `data:` URL (`NavigateToString`), so the docs frame is a
      frame of another site under an opaque top-level origin, with a DevTools target of its own

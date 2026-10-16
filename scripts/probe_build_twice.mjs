@@ -40,7 +40,7 @@ import {
 } from "../lib/cli.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { TARGETS } from "./lib/tb-ide.mjs";
-import { buildNumber, findIde } from "./lib/tb-install.mjs";
+import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { claimPorts } from "./lib/tb-ports.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
@@ -465,6 +465,8 @@ function compareBuilds([fileA, fileB], { vb6 }) {
 
 async function buildTwinBasic() {
   const ide = findIde(values.ide);
+  const tooOld = unsupportedIde(ide);
+  if (tooOld) throw new Fail(tooOld);
   if (!ide || !existsSync(ide)) {
     throw new Fail(
       (ide ? `no twinBASIC IDE at ${ide}: ` : "no twinBASIC IDE found: ") +

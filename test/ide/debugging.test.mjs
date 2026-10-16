@@ -21,9 +21,11 @@
 // prints "main end"; and a Function Answer that nothing calls, for F6. The tests find its lines
 // by their @ marks.
 //
-// THE IDE SAVES ITS OPTIONS AND PANEL LAYOUT IN THE USER'S OWN REGISTRY (HKCU\Software\VB and VBA
-// Program Settings\twinBASIC_IDE\IDESettings). So, as soon as the project is open, the page's
-// hostAppObject is replaced by a proxy whose SaveIDESetting, ChangeWindowSetting and recent-list
+// THE IDE IS STARTED WITH --no-save-ide-settings and --no-update-recent-files (IDE_FLAGS in
+// scripts/lib/tb-ide.mjs), so it writes none of its options or panel layout to the user's own
+// registry (HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE\IDESettings). The flags do not
+// guard the Window key or the removals from the recent list. So, as soon as the project is open,
+// the page's hostAppObject is replaced by a proxy whose ChangeWindowSetting and RemoveRecentsList
 // calls do nothing, as memory.test.mjs does. NO TEST OPENS A BROWSER: the error panel's Search
 // Online calls root.Shell with a "cmd.exe /c start" command line, so root.Shell is replaced by a
 // recorder at the same time, and before() fails, before any run, if the recorder is not in place.
@@ -84,12 +86,12 @@ const EDIT = at("EDIT");
 const ABORTING = "[EDIT & CONTINUE] not yet supported.  Aborting.";
 const NOT_FOUND = "RunCodeUnderCursor: failed to identify the procedure at the cursor position.";
 
-// Blocks every call that writes the user's registry, and records every command line the page
+// Blocks every call the flags do not guard that writes the user's registry, and records every command line the page
 // passes to root.Shell instead of running it (see the top of this file).
 const GUARD_JS = `(() => {
   if (!window.__guarded) {
     window.__guarded = true;
-    const blocked = new Set(["SaveIDESetting", "ChangeWindowSetting", "AddRecentsList", "RemoveRecentsList"]);
+    const blocked = new Set(["ChangeWindowSetting", "RemoveRecentsList"]);
     hostAppObject = new Proxy(hostAppObject, {
       get(target, key) {
         if (blocked.has(key)) return async () => undefined;

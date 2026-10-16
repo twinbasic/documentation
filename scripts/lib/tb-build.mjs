@@ -11,10 +11,11 @@
 //
 //   * It never exits the process, and it throws only for a fault of its own
 //     (an unexpected exception); a build that fails comes back as a result.
-//   * It never tidies the registry. The IDE writes its recent list and project
-//     state as it runs, and `startTidy` / `finishTidy` (lib/tb-registry.mjs)
-//     put them back once EVERY IDE of a run has gone; a call that tidied would
-//     do it in the middle of the other lanes' builds.
+//   * It never tidies the registry. The IDE writes its project state as it
+//     runs (not its settings or recent list: launchIde gives it IDE_FLAGS), and
+//     `startTidy` / `finishTidy` (lib/tb-registry.mjs) put that back once EVERY
+//     IDE of a run has gone; a call that tidied would do it in the middle of
+//     the other lanes' builds.
 //   * It does not check that the project or the IDE exists. The command line
 //     refuses those with a usage error; a caller with a bad path gets code 3
 //     after the timeout, exactly as tbbuild does. Nor does it read the project

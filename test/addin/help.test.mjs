@@ -709,9 +709,11 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   });
 
   // Through the IDE's own commands for its theme menu, which tell the compiler,
-  // and so the add-in, of the change (OnChangedTheme). The IDE saves the theme
-  // where the user's own IDE reads it; the run's registry tidy puts it back
-  // (restoreTheme in scripts/lib/tb-registry.mjs).
+  // and so the add-in, of the change (OnChangedTheme). The IDE's save of the
+  // theme, where the user's own IDE reads it, is guarded by the
+  // --no-save-ide-settings every harness IDE has (IDE_FLAGS in
+  // scripts/lib/tb-ide.mjs), so the registry keeps the user's theme. The test
+  // switches it back at the end for the tests after it.
   test("a theme change loads the page again in the new theme", async () => {
     const page = "/tB/Modules/Interaction/MsgBox";
     const was = await themeGroup(c);

@@ -173,7 +173,7 @@ export async function buildAddin({
           throw failure(2, e.message);
         });
       // Set even for win32, the target a path with no memory opens in: an entry
-      // the tidy missed would otherwise decide the build without a word. The
+      // somebody left would otherwise decide the build without a word. The
       // switch restarts the compiler, which compiles the add-in again.
       let switched;
       try {

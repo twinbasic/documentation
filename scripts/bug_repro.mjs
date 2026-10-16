@@ -141,7 +141,7 @@ import {
   imagesKeyProblem,
   writeComparison,
 } from "./lib/repro-images.mjs";
-import { buildNumber, compilerExe, findIde } from "./lib/tb-install.mjs";
+import { buildNumber, compilerExe, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { packTree } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import {
@@ -860,6 +860,8 @@ function vb6Problem(slug) {
 
 function findTools(ide) {
   const exe = findIde(ide);
+  const tooOld = unsupportedIde(exe);
+  if (tooOld) throw new Fail(tooOld);
   if (!exe || !existsSync(exe)) {
     throw new Fail(
       (exe ? `no twinBASIC IDE at ${exe}: ` : "no twinBASIC IDE found: ") +

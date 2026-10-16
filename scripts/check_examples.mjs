@@ -145,7 +145,7 @@ import {
 } from "./lib/example-run.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
-import { buildNumber, findIde } from "./lib/tb-install.mjs";
+import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { packTree, unpackProject } from "./lib/tb-project.mjs";
 import { downloadPackage } from "../indexer/lib/twinserv-client.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
@@ -1040,6 +1040,11 @@ async function main() {
     process.exit(findings.some((f) => !f.advisory) ? 1 : 0);
   }
 
+  const tooOld = unsupportedIde(IDE);
+  if (tooOld) {
+    console.error(tooOld);
+    process.exit(2);
+  }
   if (!IDE) {
     console.error(
       "no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
@@ -1130,8 +1135,8 @@ async function main() {
     say(`  ${wantRun} sample(s) marked \`${RUN_MARKER}\` are built and run, in ${runBatches.length} project(s)`);
   }
 
-  // Every lane's IDE records its projects in the user's recent list and saved
-  // project state (lib/tb-registry.mjs). This process owns the tidying for all
+  // Every lane's IDE records its projects in the user's saved project state
+  // (lib/tb-registry.mjs). This process owns the tidying for all
   // of them: compileProject never tidies, because each build restoring its own
   // snapshot would put back whatever the registry held when that lane happened
   // to start. Everything is under `work`,

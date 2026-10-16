@@ -39,7 +39,8 @@ Exit codes:
   2  the harness could not run: a refused command line, no IDE, no matching lane, a
      registry it could not record, or a crash after which the registry was put back
   3  the registry or a work folder was not put back, at the end of a run or after a
-     crash; see the lines above`;
+     crash, or the IDE's recent list or remembered build targets name a lane's
+     folder; see the lines above`;
 
 await runLanes({
   tool: "ide-test",

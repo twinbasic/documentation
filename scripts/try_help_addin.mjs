@@ -33,7 +33,7 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { serveLoopback } from "../test/addin/pages.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { shutdownIde } from "./lib/tb-ide.mjs";
-import { findIde } from "./lib/tb-install.mjs";
+import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
 import { claimPorts } from "./lib/tb-ports.mjs";
 import { alive, finishTidy, restoreKeys, settingsKey, snapshotKeys, startTidy } from "./lib/tb-registry.mjs";
@@ -87,6 +87,7 @@ const firstPort = withUsageError(() =>
 const project = path.resolve(values.project ?? HOST);
 
 const ide = findIde(values.ide || undefined);
+if (unsupportedIde(ide)) die(2, unsupportedIde(ide));
 if (!ide || !existsSync(ide)) {
   die(
     2,

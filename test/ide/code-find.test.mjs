@@ -16,10 +16,12 @@
 // set by clicking their boxes, and records what each press of Find Next gives: the selection, an
 // IDE message box (answered No when it has a No, else OK) or a javascript alert.
 //
-// THE IDE SAVES ITS OPTIONS IN THE USER'S OWN REGISTRY (HKCU\Software\VB and VBA Program
-// Settings\twinBASIC_IDE\IDESettings), the Find What history and the panel's place among them. So,
-// as soon as the project is open, the page's hostAppObject is replaced by a proxy whose
-// SaveIDESetting, ChangeWindowSetting and recent-list calls do nothing, as customising.test.mjs
+// THE IDE IS STARTED WITH --no-save-ide-settings and --no-update-recent-files (IDE_FLAGS in
+// scripts/lib/tb-ide.mjs), so it writes none of its options, the Find What history or the panel's
+// place among them to the user's own registry (HKCU\Software\VB and VBA Program
+// Settings\twinBASIC_IDE\IDESettings). The flags do not guard the Window key or the removals from
+// the recent list. So, as soon as the project is open, the page's hostAppObject is replaced by a
+// proxy whose ChangeWindowSetting and RemoveRecentsList calls do nothing, as customising.test.mjs
 // does. Nothing here reaches SaveSetting, so lanes.mjs names no settings for this lane.
 //
 // The tests share the lane's IDE in order. Each test states what BETA 1005 does; the tests named
@@ -68,11 +70,11 @@ const SEARCHED = "The specified region has been searched.";
 const END_OF_SCOPE = "End of search scope has been reached; do you want to continue from the beginning?";
 const isBox = (x, text) => typeof x === "string" && x.startsWith("BOX ") && x.includes(text);
 
-// Blocks every call that writes the user's registry (see the top of this file).
+// Blocks every call the flags do not guard that writes the user's registry (see the top of this file).
 const GUARD_JS = `(() => {
   if (window.__guarded) return;
   window.__guarded = true;
-  const blocked = new Set(["SaveIDESetting", "ChangeWindowSetting", "AddRecentsList", "RemoveRecentsList"]);
+  const blocked = new Set(["ChangeWindowSetting", "RemoveRecentsList"]);
   hostAppObject = new Proxy(hostAppObject, {
     get(target, key) {
       if (blocked.has(key)) return async () => undefined;

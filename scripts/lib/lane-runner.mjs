@@ -22,8 +22,10 @@
 //
 // Exit: 0 every lane passed and the registry is as it was found, 1 a lane
 // failed or the run was interrupted, 2 the harness could not run (a refused
-// command line included) or crashed, 3 the registry or the work folders could
-// not be put back (the registry is what to repair, so 3 wins over 1).
+// command line included, or an IDE older than tb-install's MIN_BUILD) or
+// crashed, 3 the registry or the work folders could not be put back, or the
+// IDE's recent list or remembered build targets name a lane's folder (the
+// registry is what to repair, so 3 wins over 1).
 //
 // Not a gate, for the reasons examples.bat is not one: it needs Windows and a
 // twinBASIC install.
@@ -35,13 +37,15 @@
 // only hands each file its lane (LANE_ENV), runs the files a few at a time, and
 // owns what they share:
 //
-//   * THE REGISTRY. One process owns it per run (lib/tb-registry.mjs). This
-//     one records it before the first lane starts, and the lanes inherit
-//     TB_REGISTRY_OWNER and leave it alone. Once every lane has ended it
-//     puts back the IDE's lists, the .twinproj association and the build
-//     targets the IDE remembers, then checks that nothing under the lanes'
-//     folders is left -- unless another harness run is still running, which
-//     then puts back for both.
+//   * THE REGISTRY. Every IDE a lane starts has IDE_FLAGS (lib/tb-ide.mjs), so
+//     it writes neither the user's settings nor the recent list. One process
+//     owns what is left (lib/tb-registry.mjs). This one records it before the
+//     first lane starts, and the lanes inherit TB_REGISTRY_OWNER and leave it
+//     alone. Once every lane has ended it puts back the IDE's project state
+//     and the .twinproj association, then checks that nothing under the lanes'
+//     folders is left in the IDE's lists or the build targets it remembers --
+//     unless another harness run is still running, which then puts back for
+//     both.
 //   * THE LANES' SETTINGS. SaveSetting writes under HKCU\Software\VB and VBA
 //     Program Settings\<app>, the same key as any installed copy of the
 //     program that saves it. A lane names the applications its program saves
@@ -76,7 +80,7 @@ import {
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { removeTree } from "./tb-ide-copy.mjs";
 import { wantShow } from "./tb-ide.mjs";
-import { buildNumber, findIde } from "./tb-install.mjs";
+import { buildNumber, findIde, unsupportedIde } from "./tb-install.mjs";
 import { LANE_ENV } from "./tb-lane.mjs";
 import { claimPorts } from "./tb-ports.mjs";
 import {
@@ -85,13 +89,13 @@ import {
   finishTidy,
   ideLists,
   norm,
+  rememberedTargets,
   restoreKeys,
   SETTINGS_ROOT,
   settingsKey,
   snapshotKeys,
   startTidy,
   subkeyNames,
-  sweepArchitectureMemory,
 } from "./tb-registry.mjs";
 
 /**
@@ -154,6 +158,8 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
   // ---------------------------------------------------------------- refusals
 
   const ide = findIde(values.ide || undefined);
+  const tooOld = unsupportedIde(ide);
+  if (tooOld) die(2, tooOld);
   if (!ide || !existsSync(ide)) {
     die(
       2,
@@ -372,11 +378,13 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
 
     // The check that the run left nothing: an entry naming a lane's folder in the
     // IDE's lists, a build target remembered for one, or settings that differ
-    // from what was recorded. Another session's IDE that is open meanwhile
-    // can write its own copy of the recent list back, which is the one way an
-    // entry could return (WIP.Harness.md).
-    // While another run is still running, the lists and the build targets are
-    // that run's to put back (lib/tb-registry.mjs), so they are not checked.
+    // from what was recorded. Only the project state is put back; the recent
+    // list and the remembered targets are not written by an IDE started with
+    // IDE_FLAGS, so an entry in either means the flags did not do their work
+    // (or another session's IDE, started without them, wrote it) and is read
+    // here, not repaired.
+    // While another run is still running, the project state is that run's to
+    // put back (lib/tb-registry.mjs), so the lists are not checked.
     const folders = lanes.map((l) => norm(l.work) + "\\");
     try {
       if (!tidied?.deferred) {
@@ -385,8 +393,12 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
           (p) => p && folders.some((f) => norm(p).startsWith(f)),
         );
         if (left.length) problems.push(`the IDE's lists still name the lanes' folders: ${left.join(", ")}`);
-        const targets = sweepArchitectureMemory(lanes.map((l) => l.work));
-        if (targets) problems.push(`${targets} build target(s) were still remembered for the lanes' folders`);
+        const targets = rememberedTargets(lanes.map((l) => l.work));
+        if (targets.length) {
+          problems.push(
+            `${targets.length} build target(s) were remembered for the lanes' folders: ${targets.join(", ")}`,
+          );
+        }
       }
       const settingsAfter = snapshotSettings();
       for (let i = 0; i < apps.length; i++) {
@@ -428,8 +440,8 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
       ? `registry and work folders: ${problems.length} problem(s)\n  ${problems.join("\n  ")}`
       : tidied.deferred
         ? `registry: left for the run still running to put back (pid ${tidied.deferred.join(", ")})${settingsNote}`
-        : `registry: put back (${tidied.projectState} project-state, ${tidied.recentlyOpened} recent-list ` +
-          `and ${tidied.association ?? "no"} association writes); nothing names the lanes' folders${settingsNote}`;
+        : `registry: put back (${tidied.projectState} project-state and ${tidied.association ?? "no"} ` +
+          `association writes); nothing names the lanes' folders${settingsNote}`;
   }
 
   const { tidied, problems } = putBack();

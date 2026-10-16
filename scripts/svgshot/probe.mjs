@@ -43,7 +43,7 @@ import {
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { removeTree } from "../lib/tb-ide-copy.mjs";
 import { shutdownIde, sleep } from "../lib/tb-ide.mjs";
-import { buildNumber, findIde } from "../lib/tb-install.mjs";
+import { buildNumber, findIde, unsupportedIde } from "../lib/tb-install.mjs";
 import { Lane } from "../lib/tb-lane.mjs";
 import { clickAt, openFile, pressKey, waitFor } from "../lib/tb-operate.mjs";
 import { claimPorts } from "../lib/tb-ports.mjs";
@@ -182,6 +182,7 @@ const firstPort = withUsageError(() =>
 );
 const outRoot = path.resolve(values.out ?? path.join(tmpdir(), "svgshot-bundles"));
 const ide = findIde(values.ide || undefined);
+if (unsupportedIde(ide)) die(2, unsupportedIde(ide));
 if (!ide || !existsSync(ide)) {
   die(
     2,
@@ -243,18 +244,17 @@ const VISIBLE_TEXT = `(() => {
 })()`;
 
 // Keeps the user's machine out of the page, in the page only: the IDE's options at
-// their defaults, no saved panel layouts or keyboard groups, empty recent lists, and
-// the calls that save any of it replaced by calls that do nothing.
+// their defaults, no saved panel layouts or keyboard groups, and empty recent lists.
+// The IDE is started with IDE_FLAGS, so it saves nothing of it; RemoveRecentsList,
+// which the flags do not guard, is replaced by a call that does nothing.
 const PAGE_DEFAULTS = `(() => {
-  const blocked = new Set(["SaveIDESetting", "AddRecentsList", "RemoveRecentsList"]);
+  const blocked = new Set(["RemoveRecentsList"]);
   hostAppObject = new Proxy(hostAppObject, {
     get(target, key) {
       if (blocked.has(key)) return async () => undefined;
       return Reflect.get(target, key);
     },
   });
-  saveIDEOptions = () => {};
-  saveIDEOptions2 = () => {};
   const differed = [];
   for (const o of ideOptionsSchema) {
     const now = JSON.stringify(liveIDEOptions[o.name]);

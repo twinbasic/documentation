@@ -143,7 +143,7 @@ import {
   refuseTogether,
   withUsageError,
 } from "../lib/cli.mjs";
-import { findIde } from "./lib/tb-install.mjs";
+import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import {
   COMPILE_TIMEOUT,
   TARGETS,
@@ -307,6 +307,8 @@ const REAP_IMAGES = ["excel", "winword", "powerpnt", "msaccess", "outlook", "one
 // One install builds the tree. --ide, then TB_IDE, then the newest BETA on the
 // Desktop, as for every other tool here.
 const ide = findIde(values.ide || undefined);
+const tooOld = unsupportedIde(ide);
+if (tooOld) die(2, tooOld);
 if (!ide || !existsSync(ide)) {
   die(2, "no twinBASIC IDE found. Pass --ide <twinBASIC.exe> or set TB_IDE.");
 }
@@ -460,8 +462,8 @@ function builtFile() {
 const processesBefore = snapshotProcesses();
 
 // Everything this run opens is under `work`, so the IDE's registry entries for
-// it -- its recent list and its saved project state, see lib/tb-registry.mjs --
-// are swept by that folder once the IDE has exited, along with any an earlier
+// it -- its saved project state, see lib/tb-registry.mjs --
+// is swept by that folder once the IDE has exited, along with any an earlier
 // run on this port left behind. Not under --keep: a kept IDE is still writing.
 const tidy = values.keep ? null : startTidy({ prefixes: [work] });
 

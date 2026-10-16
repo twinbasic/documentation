@@ -215,9 +215,11 @@ export class Lane {
    *                              writes into the project's folder
    * @param {string} [o.buildPath]  the project's build path (default <work>\out\<name>.exe),
    *                              for a build whose output path is shown
+   * @param {string[]} [o.flags]  the IDE's command-line flags, as launchIde takes them
+   *                              (default IDE_FLAGS)
    * @returns {Promise<object>} the connection (attachIde's), which the tb-operate.mjs calls take
    */
-  async open(src, { timeout = COMPILE_TIMEOUT, env = {}, folder = this.work, buildPath = null } = {}) {
+  async open(src, { timeout = COMPILE_TIMEOUT, env = {}, folder = this.work, buildPath = null, flags } = {}) {
     if (this.run) throw new Error(`lane ${this.name} has a project open already: one IDE at a time`);
     const exe = this.copy();
     mkdirSync(folder, { recursive: true });
@@ -239,6 +241,7 @@ export class Lane {
       show: this.show,
       env: { APPDATA: appdata, ...env },
       browserArgs: this.browserArgs,
+      flags,
     });
     Object.assign(this, { src, project });
     this.c = await attachIde(this.port);
@@ -311,7 +314,8 @@ export class Lane {
    * and Ctrl+F1 do (setBuildTarget in tb-ide.mjs), and wait for the compile
    * under it. A switch restarts the compiler in the target's bitness, and the
    * new one loads the add-ins in addins\<arch> (P7). The IDE remembers the
-   * target for the project's path, which the runner's registry tidy deletes.
+   * target for the project's path, which an IDE started with IDE_FLAGS does not
+   * save.
    *
    * @returns {Promise<number>} the process id of the compiler now running
    */

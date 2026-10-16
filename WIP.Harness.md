@@ -851,58 +851,102 @@ into its own `out` folder under the IDE's own name,
 `${SourcePath}\Build\...`, not from the variables. The name is looked for after the build
 rather than assumed, because `${FileExtension}` follows the build type.
 
-**A switch writes the IDE's remembered target for the project's path**, so the registry tidy
-has to put it back. Under a harness folder the entry is swept, as every entry there is. A
-named project --- `tbbuild` on one of the user's own --- has its entry snapshotted and
-restored, as its saved state is ([What a run leaves in the
-registry](#what-a-run-leaves-in-the-registry-and-putting-it-back)). Two limits. Under `--keep`
-nothing is tidied, so a kept IDE's switch stays remembered. And the IDE's own save is an
-unguarded read-modify-write of one JSON value (`setProjectLastUsedTargetArchitecture`), so two
-IDEs switching at the same moment can lose one another's entry --- harmless for a harness
-path, which the next sweep deletes anyway.
+**A switch of target is not saved.** The IDE saves the target it last built a project for
+(`setProjectLastUsedTargetArchitecture`, called from the build box's `onchange`), and
+`--no-save-ide-settings` stops it, so a harness switch leaves `targetArchitectureMemory`
+as it was ([What a run leaves in the registry](#what-a-run-leaves-in-the-registry-and-putting-it-back)).
 
 ## What a run leaves in the registry, and putting it back
 
-**Every IDE the harness starts writes to the user's own settings.** They live under
-`HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE`, and the same key serves every
-installed build. An IDE records each project it opens as a `ProjectState` value (open tabs,
-watch expressions, DEBUG CONSOLE history: up to 34 KB for a real project) and moves it to
-the top of `RecentlyOpened`, a 21-slot list. Nothing removes either, so harness temp projects
-accumulate and push the user's own recent projects out of the IDE entirely. One `examples.bat`
-run adds 41 values and fills the list.
+**Every IDE the harness starts is given two flags, and BETA 1007 is the oldest build any tool
+runs.** An IDE keeps all its settings in the registry, under
+`HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE` (`IDESettings`, `ProjectState`,
+`RecentlyOpened`, `Window`; there is no settings file), and the same key serves every
+installed build. Left to itself, an IDE a harness starts writes the user's options (the theme
+included), panel layouts, keyboard groups, the build target it remembers for each project
+path, its recent list and its licence answers. BETA 1007's IDE has the command-line flags
+that stop it:
 
-[scripts/lib/tb-registry.mjs](scripts/lib/tb-registry.mjs) puts it back. **The rule is to
-leave everything as it was found**, and it takes four forms:
+| flag | stops |
+|---|---|
+| `--no-save-ide-settings` | every `hostAppObject.SaveIDESetting` call in the IDE's page: `GENERAL` (the theme), `GENERAL2`, `LAYOUT`, `LAYOUTv2`, `ACTIVE_PANEL_LAYOUT_NAME`, `CUSTOM_PANEL_LAYOUTS`, the keyboard groups, `WEBPANEL_SETTINGS`, `FORMS_windowsPalette`, `targetArchitectureMemory`, `LicenceKey` and the licence and error-reporting agreements |
+| `--no-update-recent-files` | the three `AddRecentsList` calls (a project loaded, saved as, and the retry of a save that failed) |
 
-- **A folder only the harness writes to is swept by prefix** --- `check_examples`' and
-  `tbrun`'s work folders. The sweep also runs at the start of a run, which catches what an
-  earlier run left when it died. A prefix must lie inside the temp folder, or it is refused:
-  a caller passing the wrong folder cannot sweep away real projects.
+`IDE_FLAGS` in [scripts/lib/tb-ide.mjs](scripts/lib/tb-ide.mjs) holds both. `launchIde` passes
+them on both branches (the argv array of `--show`, and `launchOnDesktop`'s `args` on a private
+desktop), and `test/ide/build-and-exit-silent.test.mjs`, which starts the IDE itself with
+`--buildAndExit32`, passes them too. Nothing else starts a `twinBASIC.exe`. Three facts about
+the command line, read in `ide/main2.js`: a `--` flag may stand anywhere; an unknown one is
+ignored without a word, so a misspelt flag protects nothing; and the parser allows one
+positional argument, the project, so a second gives the modal "Bad command line syntax" box,
+which nobody answers on a private desktop (and a trailing space is read as an empty second
+argument, the trap noted at `launchIde`). **Never pass `--reset-ide-settings`**: it writes
+empty `GENERAL` and `GENERAL2` to the real registry, even after `--no-save-ide-settings`.
+
+**The floor is `MIN_BUILD` (1007) in [scripts/lib/tb-install.mjs](scripts/lib/tb-install.mjs)**
+(owner: "we never run anything before that"), because an older IDE ignores both flags and
+writes the settings. There is no fallback for older builds and no switch to allow one.
+`findIde` passes over an install older than that on the Desktop; `unsupportedIde` says why an
+install given by `--ide` or `TB_IDE` may not run, and every tool that starts an IDE refuses
+it as a harness failure (exit 2) before anything starts; `launchIde` refuses it again, as the
+last resort. The build is read by `buildNumber`, which is the one place: `ide/build.js` beside
+the executable (`var tbVersionInfo = 'twinBASIC IDE BETA 1007';`), else the folder name
+`twinBASIC_IDE_BETA_<n>`. A lane's copy of an install ([next section](#a-private-ide-for-every-lane))
+carries both, so it reads as its source does. A build that neither gives is not refused here;
+it is whatever the path checks say. The control for a probe is therefore BETA 1007 itself,
+never an older build kept on the Desktop.
+
+**What the flags do not guard** is what the tidy ([scripts/lib/tb-registry.mjs](scripts/lib/tb-registry.mjs))
+puts back, or what a test blocks:
+
+- **`ProjectState`**, written by `SaveProjectMetaState`: each project an IDE opens leaves
+  its open tabs, watch expressions and DEBUG CONSOLE history (up to 34 KB for a real
+  project). Nothing removes them, so harness temp projects would accumulate.
+- **The `.twinproj` association** (`Software\Classes\.twinproj` and `twinBASIC.ProjectFile`),
+  which the executable registers, not the page, when it starts from a path other than the
+  registered one: a lane's private copy re-points it at the copy.
+- **The `Window` key**, written by `ChangeWindowSetting`. A scenario that moves the window
+  blocks the call in its page (`test/ide/*.test.mjs`, `GUARD_JS`).
+- **`RemoveRecentsList`**, which the start page and the error dialogs call. `shoot_docs.mjs`
+  and the `test/ide` scenarios block it in their pages.
+- **`SaveIDESetting("PUBLISHER", ...)`**, the package publisher's name and password, which
+  has no guard (`savePublisherInfo`). No harness path publishes a package.
+
+**The tidy still has two jobs, and the rule is still to leave everything as it was found:**
+
+- **A folder only the harness writes to is swept by prefix**, from `ProjectState` ---
+  `check_examples`' and `tbrun`'s work folders. The sweep also runs at the start of a run, which
+  catches what an earlier run left when it died. A prefix must lie inside the temp folder, or it
+  is refused: a caller passing the wrong folder cannot sweep away real projects.
 - **A named project is restored, not deleted.** `tbbuild` is pointed at the user's own
   projects too, and deleting one of those entries would throw away somebody's open tabs and
   watches. So it snapshots the project's entry first, and afterwards puts back the old state
-  and the old place in the list if there was one, and deletes the entry only if there was
-  not.
+  if there was one, and deletes the entry only if there was not.
 - **The `.twinproj` association is restored value by value**, writing only what differs,
   so an untouched key is never written. The IDE does not rewrite it on every launch (key
   timestamps show `DefaultIcon` and `shell\open\command` last written at installation,
   through a day of launches of that build). It rewrites them when its own path differs, which
   is why starting a lane's private copy re-points the association at the copy ([A private
   IDE for every lane](#a-private-ide-for-every-lane)).
-- **The build target the IDE remembers for each project is deleted under the same
-  folders**, before the run and after it. The IDE keeps the target it last built a project
-  for as one JSON object in `IDESettings\targetArchitectureMemory`, keyed by the project's
-  path, and a project it opens again starts in that target. A harness path is used run
-  after run, so one run's entry would decide every later run's target without a word.
-  `sweepArchitectureMemory` deletes the entries under the run's folders and leaves every
-  other entry alone, the user's among them. Opening a project only reads its entry; one is
-  written when the target of an open project changes, which `--arch` does ([Building for
-  win64](#building-for-win64)). So a **named** project's entry is snapshotted and put back as
-  its saved state is, by `restoreArchitectureMemory`: its old value in its old place, and any
-  other spelling of its path the IDE saved deleted. The object is edited in JavaScript and
-  written back with `JSON.stringify`, which is how the IDE writes it, so the other entries
-  keep their exact text and order, and the write is refused if the value changed after it
-  was read.
+
+**The recent list and the remembered build targets are checked and never repaired** (the
+theme and the other options are not written, so there is nothing to check).
+`ideLists` and `rememberedTargets` only read. The lane runner calls them after the put-back
+and fails the run (exit 3) when an entry names a lane's folder, because that means the flags
+did not do their work, or an IDE started without them (another session's, an older install's)
+wrote it. A repair would hide exactly that. `test/ide/recent-projects-copies.test.mjs` is the
+one test that must see the recent list change, so its IDE gets `IDE_FLAGS` less
+`--no-update-recent-files` (`flags` in `Lane.open`), and the test records and restores the key
+itself.
+
+**A build target is never saved by a harness IDE, and is still read.** A project opens in the
+target the IDE remembers for its path (`IDESettings\targetArchitectureMemory`, one JSON object
+keyed by project path), and in win32, the box's first option, when it remembers none. The
+harness's IDEs never write the value, so a harness path (`tbrun`'s work folder is keyed to
+its port, and is used run after run) never gains an entry; a named project the user opened in
+win64 in his own IDE does have one. So `setBuildTarget` still sets the target on every run,
+win32 included: otherwise that entry would decide the build, and nothing would say so
+([Building for win64](#building-for-win64)).
 
 **One process owns the registry per run.** `check_examples` and `sweep_attributes` run four
 lanes of builds at once, in one process (`compileProject`, which never tidies); each
@@ -915,20 +959,18 @@ tidied, because the kept IDE is still writing. `shutdownIde` waits for the IDE's
 be gone before anything is tidied, because `taskkill` only asks.
 
 **The last of several runs puts back for all of them.** Two runs at once --- two `ide_test`,
-a `tbrun` beside a lane run, another session's --- cannot each put back on their own. An IDE
-holds the recent list in memory and writes all of it back when it opens a project, so a run
-whose IDE is still open writes the other run's entries back after that run removed them (two
-`ide_test` runs fail with exit 3 this way, each naming the other's lane folder). So the runs
-share one record in `%TEMP%\tb-registry\<key>`, read and written one run at a time under its
-`busy` folder: the first run to start records the recent list, the association and the theme
-(`base.json`); every run adds its folders and named projects (`<pid>-<n>.json`); a run that
-ends while another is running marks its record finished, puts nothing back and gets `{
-deferred: [pids] }` from `finishTidy`, which the lane runner reports instead of checking the
-lists; and the last run to end puts back for all, a named project from its oldest record. A
-record whose process died unfinished is swept by folder when the next run starts alone, and
-its record of the theme and recent list is dropped, since it may be days old.
-`check_tb_registry.mjs` plays out both. `tbbuild --keep` takes no part, so its IDE can still
-write the lists after the last run has put them back.
+a `tbrun` beside a lane run, another session's --- cannot each put back on their own: the
+association one found may be another run's IDE copy's, and an IDE of the first run that is
+still open writes its project's state after the second run removed it. So the runs share one
+record in `%TEMP%\tb-registry\<key>`, read and written one run at a time under its `busy`
+folder: the first run to start records the association (`base.json`); every run adds its
+folders and named projects (`<pid>-<n>.json`); a run that ends while another is running marks
+its record finished, puts nothing back and gets `{ deferred: [pids] }` from `finishTidy`,
+which the lane runner reports instead of checking the lists; and the last run to end puts
+back for all, a named project from its oldest record. A record whose process died unfinished
+is swept by folder when the next run starts alone, and its record of the association is
+dropped, since it may be days old. `check_tb_registry.mjs` plays out both. `tbbuild --keep`
+takes no part, so its IDE can still write its project state after the last run has put it back.
 
 **Why .NET through PowerShell and not `reg.exe`.** Node has no registry API. `reg.exe`
 prints value names in the console code page when its output is piped, so a path containing a
@@ -948,23 +990,21 @@ inline in the `.mjs` rather than a second `.ps1`, like `tbrun`'s process snapsho
   shallower than three segments is refused, in JavaScript and again inside the script.
 - **Every delete tolerates a missing value.** Concurrent runs deleting one value race: one
   deletes it and the next `DeleteValue` throws "No value exists with that name". That would
-  abort the whole tidy, recent list included.
+  abort the whole tidy.
 
 **The IDE has its own bug with the recent list**, in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md):
 when the list has fewer than 21 entries, the IDE fills every empty slot with a copy of the
-last one. The tidy leaves a short list whenever it removes harness projects, so the next
-project the user opens trips it. A new installation has the same list, and it cannot be fixed
-from outside the IDE.
+last one. A new installation has the same list, and it cannot be fixed from outside the IDE.
+The harness's IDEs do not write the list (`--no-update-recent-files`), so they cannot cause it.
 
 **Two limits remain, both about IDEs the tidy does not own:**
 
 - Two *standalone* `tbbuild`s on the same project at once: the second sees the first's entry
   as the user's, and puts it back. `check_examples` is immune, because its lanes are owned,
   and a check of the tidy runs its fixture cases one at a time for this reason.
-- An IDE the user has open reads the recent list when it starts and writes its whole copy
-  back when it opens a project, so it can bring back harness entries that were tidied after
-  it started. So can an IDE of a run from another session, which is why a check of the
-  registry waits until no other session's run is going.
+- An IDE the user has open, or one of another session's runs started without the flags, is
+  not controlled by any of this, which is why a check of the registry waits until no other
+  session's run is going.
 
 **An association that names the temp folder is put back pointing at the newest install.** A
 run that starts while another run's IDE copy is open finds the association pointing at that
@@ -976,31 +1016,15 @@ it did, `finishTidy` puts it back with every path to a copy's `twinBASIC.exe` re
 writes when it is next started. With no install outside the temp folder it leaves the
 association as the IDEs set it and says so.
 
-**The recent list is put back as it was found, not only swept.** On a real list the IDE
-changes it by itself while a run's projects are on it, in two ways, both in
-[BUGS-TO-REPORT.md](BUGS-TO-REPORT.md): it fills a short list's empty slots with copies of
-its last entry, and a full list loses its oldest entry for every project the run opens (an
-add-in run that began with one entry ended with seventeen copies of it). So
-`snapshotProjects` records the whole list, and `restoreProjects`, after deleting the run's
-entries and putting a named project back in its place as before, keeps no more copies of any
-path than the list had, and puts the entries that fell off the end back there. A change made
-for any other reason is kept: a project the user opened meanwhile stays on top. **An entry in
-the temp folder is not brought back**, because it belongs to some run, whose own tidy may have
-removed it meanwhile; bringing it back would leave that run's entry in the list for good.
-That is also why a run that starts with another run's leftovers in the list can end without
-them.
-
 **Verified** by [scripts/check_tb_registry.mjs](scripts/check_tb_registry.mjs), which plays
 out a run on a scratch key and checks every rule above, the guards and the ownership rule
-included. For the recent list it has five cases: the copies of a short list's last entry, a
-full list's lost entries, a project opened meanwhile, copies that were there before the run,
-and another run's entry that its tidy removed meanwhile. It is not a gate: it needs Windows
-and a real registry, and the CI runners are Ubuntu. Run it after changing `tb-registry.mjs`.
+included: a named project's state, the sweep of a folder in both separators and a lookalike
+folder's survival, the association, two runs at once, a run that died, and that the tidy
+leaves the recent list, the options and the remembered targets exactly as they are. It is not
+a gate: it needs Windows and a real registry, and the CI runners are Ubuntu. Run it after
+changing `tb-registry.mjs`.
 
-End to end, the 14 fixture cases, run one at a time, a full `examples.bat` run and an add-in
-run leave `ProjectState`, the recent list, the association keys and `IDESettings` exactly as
-they were, value for value (compared through hashes, so the comparison copies no value out of
-the registry), also with the user's own projects planted in the recent list.
+END-TO-END-PLACEHOLDER
 
 ## A private IDE for every lane
 
@@ -1023,8 +1047,8 @@ IDEs keeps the user's out ([The add-in test runner](#the-add-in-test-runner)).
   after a `tbbuild` and a `tbrun`. A compile also left the per-user `%APPDATA%\twinBASIC` unchanged; that folder
   holds the user's downloaded packages and empty `addins`, `locale` and `themes` folders, and
   is shared by every install. So a compile's whole footprint outside its temp folders is the
-  registry, which [the tidy](#what-a-run-leaves-in-the-registry-and-putting-it-back)
-  puts back.
+  registry, which the flags and [the tidy](#what-a-run-leaves-in-the-registry-and-putting-it-back)
+  keep as it was.
 - **The copy is isolated.** Asked which add-ins it had loaded (`loadedAddins`, below), the
   real install's compiler answered `GlobalSearchAddIn AddIn` and the copy's answered
   nothing. All 14 fixture cases gave the same output from the copy as from the real install,
@@ -1369,9 +1393,10 @@ lane still running; its process's job takes the IDE with it.
 **The runner owns the registry, and checks it afterwards.** It calls `startTidy` with every
 lane's folder before the first lane starts, so the lanes inherit `TB_REGISTRY_OWNER` and
 leave the registry alone, and `finishTidy` once the last has ended. Then it checks rather
-than trusts: no project-state or recent-list entry may name a lane's folder, a second sweep
-of the remembered build targets must find none, and the add-ins' settings must be as
-recorded. Any failure is exit code 3, which wins over a lane's failure (1): the registry is what to repair.
+than trusts: no project-state or recent-list entry may name a lane's folder, no build target
+may be remembered for one (both read only: an IDE with `IDE_FLAGS` writes neither, so an
+entry means the flags failed), and the add-ins' settings must be as recorded. Any failure
+is exit code 3, which wins over a lane's failure (1): the registry is what to repair.
 While another harness run is still running, the lists and targets are that run's to put back
 and are not checked; the report line says which pid.
 

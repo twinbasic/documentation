@@ -17,6 +17,7 @@ import { attach } from "./tb-cdp.mjs";
 import { click, pagePicture } from "./tb-click.mjs";
 import { removeTree, removeTreeAsync } from "./tb-ide-copy.mjs";
 import { consoleMark, keepClears, keptClears, linesSince, readConsole } from "./tb-ide-console.mjs";
+import { unsupportedIde } from "./tb-install.mjs";
 import { watchCompiles } from "./tb-wire.mjs";
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -38,6 +39,30 @@ export const normPath = (p) => p.split("\\").join("/").toLowerCase();
  * and every add-in that compiler loads, including after the compiler restarts.
  */
 export const ADDIN_TEST_ENV = "TB_ADDIN_TEST";
+
+/**
+ * The two command-line flags every IDE the harness starts is given (BETA 1007
+ * and later; tb-install's MIN_BUILD is the oldest build the tools run).
+ *
+ * `--no-save-ide-settings` keeps the IDE from writing its settings to the
+ * registry: its options (the theme included), panel layouts, keyboard groups,
+ * the build target it remembers for a project, the licence key and agreements.
+ * `--no-update-recent-files` keeps it from adding a project to the recent list.
+ * They leave some writes unguarded. lib/tb-registry.mjs puts back two of them:
+ * ProjectState and the `.twinproj` association the executable registers. The
+ * other two happen only when the page is operated: the Window key, written when
+ * an option that lives there changes, and removals from the recent list, made
+ * from the start page and some error boxes. The page guards in shoot_docs,
+ * svgshot/probe and test/ide block those calls.
+ *
+ * Never add `--reset-ide-settings` here or anywhere: it writes empty options to
+ * the real registry even after `--no-save-ide-settings`.
+ *
+ * A flag may stand anywhere on the command line; the one positional argument is
+ * the project. An unknown `--` flag is ignored, and a second positional gives a
+ * modal "Bad command line syntax" box nobody can answer on a private desktop.
+ */
+export const IDE_FLAGS = ["--no-update-recent-files", "--no-save-ide-settings"];
 
 /**
  * Whether the IDE goes on the user's desktop or on a private one.
@@ -121,12 +146,28 @@ export function killTree(pid) {
  *                            DevTools ones, e.g. "--force-device-scale-factor=1"
  *                            to lay the page out at 100% whatever the display's
  *                            scaling
+ * @param {string[]} [o.flags]  the IDE's own command-line flags (default IDE_FLAGS).
+ *                            Only a test of the very thing a flag guards leaves
+ *                            one out, and it puts back what it writes: the recent
+ *                            list's test (test/ide/recent-projects-copies.test.mjs)
  * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null, folders: string[]}>}
  *   `pid` is the IDE's own. `folders` are its temp folder and WebView2 profile,
  *   which shutdownIde removes. Throws when the port is taken, or when the
  *   launch fails.
  */
-export async function launchIde({ exe, project, port, show = false, keep = false, env = {}, browserArgs = "" }) {
+export async function launchIde({
+  exe,
+  project,
+  port,
+  show = false,
+  keep = false,
+  env = {},
+  browserArgs = "",
+  flags = IDE_FLAGS,
+}) {
+  // Before anything starts: an IDE older than the flags would write the user's settings.
+  const tooOld = unsupportedIde(exe);
+  if (tooOld) throw new Error(tooOld);
   const waitFrom = Date.now();
   for (;;) {
     const code = await portTaken(port);
@@ -179,7 +220,11 @@ export async function launchIde({ exe, project, port, show = false, keep = false
   };
 
   if (show) {
-    const child = spawn(exeWin, target ? [target] : [], { detached: true, stdio: "ignore", env: fullEnv });
+    const child = spawn(exeWin, [...flags, ...(target ? [target] : [])], {
+      detached: true,
+      stdio: "ignore",
+      env: fullEnv,
+    });
     // A spawn that fails is reported by an 'error' event, not a throw, and an
     // 'error' nothing listens for ends this process with exit 1, which tbbuild
     // and tbrun define as compile errors. 'spawn' says the IDE started.
@@ -216,6 +261,7 @@ export async function launchIde({ exe, project, port, show = false, keep = false
     const { pid, launcher } = await launchOnDesktop({
       exe: exeWin,
       arg: target,
+      args: flags,
       desktop: `tbbuild-${port}`,
       job: !keep,
       env: fullEnv,
@@ -450,8 +496,8 @@ export function keptIdeLines(pid) {
  * End an IDE started by launchIde, and the launcher holding its desktop, and
  * wait until the IDE's process is gone.
  *
- * The wait is for whatever runs next. The IDE writes its recent list and
- * project state to the registry while it runs, and taskkill only asks for the
+ * The wait is for whatever runs next. The IDE writes its project state to the
+ * registry while it runs, and taskkill only asks for the
  * end of a process: tidying the registry before the process has actually gone
  * could lose to one last write. It is normally over in well under a second,
  * and it gives up after five.
@@ -1046,9 +1092,11 @@ const TARGET_JS = `(() => {
  * compile under it to settle.
  *
  * A project opens in the target the IDE remembers for its path
- * (IDESettings\targetArchitectureMemory, which lib/tb-registry.mjs tidies),
- * and in win32, the box's first option, when it remembers none. So a caller
- * that means a target sets it, even win32: otherwise an entry somebody left
+ * (IDESettings\targetArchitectureMemory), and in win32, the box's first
+ * option, when it remembers none. The harness's IDEs never write that value
+ * (IDE_FLAGS), but they read the one the user's own IDE wrote, and a named
+ * project --- tbbuild on one of the user's own --- may have an entry there. So
+ * a caller that means a target sets it, even win32: otherwise that entry
  * decides the build, and nothing says so.
  *
  * The switch is the IDE's own tbBuild_SwitchToWin64 and tbBuild_SwitchToWin32

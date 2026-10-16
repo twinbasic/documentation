@@ -101,7 +101,7 @@ import {
 import { SITE_LIST, renderSite } from "./lib/attribute-sites.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { sleep, wantShow } from "./lib/tb-ide.mjs";
-import { buildNumber, findIde } from "./lib/tb-install.mjs";
+import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { packTree } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import {
@@ -270,6 +270,7 @@ const die = (code, msg) => {
 
 // ------------------------------------------------------------- the install
 const IDE = findIde(values.ide);
+if (!values.dryRun && unsupportedIde(IDE)) die(EXIT_ERROR, unsupportedIde(IDE));
 if (!values.dryRun && (!IDE || !existsSync(IDE))) {
   die(
     EXIT_ERROR,

@@ -27,7 +27,7 @@ twinBASIC has no command-line build. None of the compiler executable's verbs ---
 
 | Flag | Effect |
 |---|---|
-| `--ide <path>` | Path to `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` folder on `%USERPROFILE%\Desktop`. **No install path is hardcoded in this tooling**, because one contains a username, so an install kept elsewhere needs one of those two. |
+| `--ide <path>` | Path to `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` folder on `%USERPROFILE%\Desktop`. **No install path is hardcoded in this tooling**, because one contains a username, so an install kept elsewhere needs one of those two. **The tools run BETA 1007 or later**: an older install on the Desktop is passed over, and one named here or by `TB_IDE` is refused, with exit 2, before an IDE starts. |
 | `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder, the IDE's temp folder (`%TEMP%\tbbuild-tmp-<n>`, its `TEMP` and `TMP`) and the private desktop, so runs on distinct ports can go at once. Both folders (`%TEMP%\tbbuild-tmp-<n>` and the user-data folder, `%TEMP%\tbbuild-wv2-<n>`, about 28 MB) are emptied when the IDE starts and removed once it has ended. A port another IDE already holds is refused after ten seconds. |
 | `--arch <target>` | `win32` or `win64`. Default `win32`. Diagnostics can differ, because `#If Win64` and the size of `LongPtr` change what compiles. The target is set on every run, whatever the IDE last used for the project; a switch restarts the compiler and adds a few seconds. When the target is not `win32`, or the IDE remembered another, the report starts with a `target:` line. |
 | `--timeout <secs>` | Give up waiting for the compile to settle. Default 180. |
@@ -51,19 +51,20 @@ A packed project's default build path opens a *Save* dialog that the private des
 
 **The IDE it starts ends with it.** The IDE runs inside a Windows job object, so when `tbbuild` ends --- finished, failed, or stopped with Ctrl+C --- every process the IDE started ends too, a restarting compiler included. The exceptions are `--keep`, where the IDE lives until you close it, and `--show`, where it starts on your desktop without the job.
 
-**It leaves the IDE's own settings as it found them.** Every IDE it starts writes to the registry keys your own IDE uses: the project's saved state (open tabs, watch expressions, Debug Console history), its place in the recent-projects list, and, after a target switch, its remembered target. Once the IDE has exited, `tbbuild` deletes the entries the run created and gives a project of yours its old values back. The `.twinproj` file association is restored too, if the IDE changed it. [`check_examples.mjs`](Tools-Samples#check-examples) and [`sweep_attributes.mjs`](Tools-Samples#sweep-attributes) do this once for all their lanes.
+**It leaves the IDE's own settings as it found them.** Every IDE it starts is given `--no-save-ide-settings` and `--no-update-recent-files`, so it writes none of the registry values your own IDE uses for its options, its recent-projects list or its remembered build targets. It still saves the project's state (open tabs, watch expressions, Debug Console history) under the same key. Once the IDE has exited, `tbbuild` deletes the entries the run created and gives a project of yours its old values back. The `.twinproj` file association is restored too, if the IDE changed it. [`check_examples.mjs`](Tools-Samples#check-examples) and [`sweep_attributes.mjs`](Tools-Samples#sweep-attributes) do this once for all their lanes.
 
-Seven files under `scripts/lib/` belong to it and are never run directly:
+Eight files under `scripts/lib/` belong to it and are never run directly:
 
 - `tb-build.mjs` --- `tbbuild` without its command line. Its `compileProject` returns a project's diagnostics as an array, so `check_examples.mjs` and `sweep_attributes.mjs` build many projects in one process. It never exits the process and never restores the registry: its caller does both.
-- `tb-ide.mjs` --- what `tb-build.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics.
+- `tb-ide.mjs` --- what `tb-build.mjs` and `tbrun.mjs` share: starting the IDE with its two command-line flags (`IDE_FLAGS`), attaching to it, waiting for the compile, and reading the diagnostics.
 - `tb-ide-console.mjs` --- reads the IDE's DEBUG CONSOLE, where `tbrun` finds what a probe printed.
 - `tb-run.mjs` --- presses Build and reads that console until a `[RunAfterBuild]` Sub has finished, and checks what was erased for a failed build. `tbrun` and `check_examples.mjs`'s `check_run` both capture a run with it.
-- `tb-registry.mjs` --- records and restores the registry entries above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page. [`check_tb_registry.mjs`](#check-tb-registry) is its self-test.
+- `tb-install.mjs` --- finds the install and reads its build number from `ide\build.js`, the folder name being the fallback. It passes over an install older than BETA 1007 and says why one named by hand may not run.
+- `tb-registry.mjs` --- records and restores the project state and the file association above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page. [`check_tb_registry.mjs`](#check-tb-registry) is its self-test.
 - `tb-cdp.mjs` --- a minimal CDP client over Node's global `WebSocket`, not puppeteer, whose `connect()` hangs while a pending `alert()` blocks the renderer. Every call has a time limit, so a blocked page ends a run with a message.
 - `tb-launch.ps1` --- the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object. `tb-ide.mjs` passes its text through `-EncodedCommand`, so the execution policy does not apply.
 
-Exit codes: **0** the project compiled without errors; **1** the project has errors; **2** a refused command line (a path that is not a `.twinproj` included), a project file that cannot be read (empty, cut short or not a project: it is read before an IDE starts, and the message names the file and the fault), no IDE, an IDE that did not start or expose a debug port, a project that could not be exported or packed, an `--llvm` run on a Community or Personal licence, or a crash; **3** the compile never settled: the IDE did not report the project open, or its diagnostics did not match its status bar; **4** the project crashes the compiler; **5** the build failed after a clean compile.
+Exit codes: **0** the project compiled without errors; **1** the project has errors; **2** a refused command line (a path that is not a `.twinproj` included), a project file that cannot be read (empty, cut short or not a project: it is read before an IDE starts, and the message names the file and the fault), no IDE or one older than BETA 1007, an IDE that did not start or expose a debug port, a project that could not be exported or packed, an `--llvm` run on a Community or Personal licence, or a crash; **3** the compile never settled: the IDE did not report the project open, or its diagnostics did not match its status bar; **4** the project crashes the compiler; **5** the build failed after a clean compile.
 
 ## tbrun.mjs
 {: #tbrun }
@@ -254,14 +255,11 @@ entries back after [`tbbuild.mjs`](#tbbuild), [`tbrun.mjs`](#tbrun),
 run on a scratch copy of the IDE's keys, under `HKCU\Software\tbharness-selftest`, and checks
 that:
 
-- a project of yours that the run opened gets its saved state and its place in the recent
-  list back, the run's own entries go, the file association is restored, and a second restore
-  writes nothing;
-- the recent list loses the copies of the last entry the IDE puts in a short list's empty
-  slots, and gets back the oldest entry a full list loses for each project a run opens;
-- remembered build targets under the run's folder go, and every other one stays, in its order
-  and exact text;
-- the IDE's theme, which an add-in scenario switches, comes back, and no other option changes;
+- a project of yours that the run opened gets its saved state back, the run's own entries go,
+  the file association is restored, and a second restore writes nothing;
+- the recent list, the options (the theme included) and the remembered build targets are left
+  exactly as they are, because an IDE started with the two flags does not write them, and
+  the read-only listing of the targets under the run's folders finds them in both separators;
 - a file association that pointed into the temp folder when a run began --- at another run's
   private copy of the IDE --- is put back pointing at the newest install, or left as it is
   when there is none;

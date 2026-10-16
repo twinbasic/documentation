@@ -127,6 +127,13 @@ const CASES = [
   { tool: "scripts/addin_test.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
   { tool: "scripts/addin_test.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
   { tool: "scripts/addin_test.mjs", args: ["--ide", "no-such.exe"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
+  // An IDE older than BETA 1007 is refused before anything starts: it ignores the flags every
+  // harness IDE is given and would write the user's settings. The build is read from the folder's
+  // name when the file is not there.
+  { tool: "scripts/addin_test.mjs", args: ["--ide", "twinBASIC_IDE_BETA_1005/twinBASIC.exe"], exit: 2, stderr: /^the twinBASIC IDE at twinBASIC_IDE_BETA_1005.twinBASIC\.exe is BETA 1005, and the tools run BETA 1007 or later: / },
+  { tool: "scripts/ide_test.mjs", args: ["--ide", "twinBASIC_IDE_BETA_1005/twinBASIC.exe"], exit: 2, stderr: /^the twinBASIC IDE at twinBASIC_IDE_BETA_1005.twinBASIC\.exe is BETA 1005, and the tools run BETA 1007 or later: / },
+  { tool: "scripts/try_help_addin.mjs", args: ["--ide", "twinBASIC_IDE_BETA_1005/twinBASIC.exe"], exit: 2, stderr: /^the twinBASIC IDE at twinBASIC_IDE_BETA_1005.twinBASIC\.exe is BETA 1005, and the tools run BETA 1007 or later: / },
+  { tool: "scripts/shoot_docs.mjs", args: ["--ide", "twinBASIC_IDE_BETA_1005/twinBASIC.exe"], exit: 2, stderr: /^the twinBASIC IDE at twinBASIC_IDE_BETA_1005.twinBASIC\.exe is BETA 1005, and the tools run BETA 1007 or later: / },
   { tool: "scripts/ide_test.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/ide_test\.mjs / },
   { tool: "scripts/ide_test.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
   { tool: "scripts/ide_test.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },

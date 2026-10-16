@@ -78,7 +78,9 @@ Measured:
     page (`HostGetRecentsList`, `HostGetVB6RecentProjects`), nothing read or written;
   - the IDE's settings (View's ticks, IDE Options' values, the debugger options, the language
     tick, user panel layouts) live in `HKCU\...\twinBASIC_IDE\IDESettings`, not in the lane's
-    private APPDATA — see Machine state in the pictures;
+    private APPDATA — see Machine state in the pictures. The IDE is started with
+    `--no-save-ide-settings` and `--no-update-recent-files` (`IDE_FLAGS`), so it writes none
+    of it;
   - the licence line on About (`LICENCE: tB Licence: NOT READY` when the licence check has not
     finished) — the same section;
   - the Windows user name: the visible-text check (text boxes included) covers every picture,
@@ -369,8 +371,8 @@ whose project does not refer to the VB package.
   into the page's `licenceKey` and passes it to each compiler it starts; the compiler answers
   with the edition and hands the key back, and the IDE saves it only when it differs. The tool
   sets `licenceKey = ""` in the page and restarts the compiler with the toolbar's button: the
-  registry value is never read, changed or removed by the tool, and the save call is one
-  `PAGE_DEFAULTS` has made do nothing. `doCommunityNagScreens` runs; its only screen is dated
+  registry value is never read, changed or removed by the tool, and the save is one
+  `--no-save-ide-settings` stops (`LicenceKey`). `doCommunityNagScreens` runs; its only screen is dated
   1-7 January 2026.
 - **`Services_Limited`** (setup `community`): LIMITED is never a lasting state. The page draws it
   for about 0.6 s while a compiler starts (its own connection up, the page then connecting FS,
@@ -572,8 +574,9 @@ Taken on BETA 1005.
 
 - **The IDE's settings** (View's ticks, IDE Options' values, the debugger options, user panel
   layouts and keyboard groups) are set to their defaults **in the page only** — `liveIDEOptions`
-  and the like, in memory, never saved — so no picture shows the user's choices and nothing is
-  written to the registry.
+  and the like, in memory, never saved (`--no-save-ide-settings`, and the page's `PAGE_DEFAULTS`
+  also blocks `RemoveRecentsList`, which the flags do not guard) — so no picture shows the
+  user's choices and nothing is written to the registry.
 - **About's licence line**: the tool waits for `licenceIsSet` before opening About, so it shows
   the edition, never NOT READY.
 - **The language tick** stays on whatever language the IDE runs in.

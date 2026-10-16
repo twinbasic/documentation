@@ -133,8 +133,7 @@ the failure path is what the pages are least likely to have been checked against
 program that opens a `MsgBox` or waits for a user at a form cannot be run this way.
 Several at once run from one process that owns the registry tidy --- `startTidy` and
 `finishTidy` in `scripts/lib/tb-registry.mjs` --- so that the `tbrun` children leave the
-registry alone; round 10's four did not, and left one probe project in the IDE's recent list
-19 times.
+registry alone.
 
 **A command-line program is run at a real command prompt, not through a pipe.** Build it
 with `tbrun`, then run the `.exe` in a console of its own and read the console's screen

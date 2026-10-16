@@ -272,7 +272,7 @@ Tests twinBASIC IDE add-ins by machine: it builds each add-in under test, loads 
 
 **It is not one of the gates**, for the reasons `examples.bat` is not, and is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows.
 
-Exit codes, those of [`addin_test.mjs`](Tools-IDE#addin-test): **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed, **3** the registry or a work folder was not put back.
+Exit codes, those of [`addin_test.mjs`](Tools-IDE#addin-test): **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed (an IDE older than BETA 1007 included), **3** the registry or a work folder was not put back, or the recent list or a remembered build target names a lane's folder.
 
 ### ide-test.bat
 {: #ide-testbat }
@@ -287,7 +287,7 @@ Tests the twinBASIC IDE itself by machine: it opens a project in an IDE, operate
 
 **It is not one of the gates**, for the reasons `examples.bat` is not, and is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows.
 
-Exit codes, those of [`ide_test.mjs`](Tools-IDE#ide-test): **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed, **3** the registry or a work folder was not put back.
+Exit codes, those of [`ide_test.mjs`](Tools-IDE#ide-test): **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed (an IDE older than BETA 1007 included), **3** the registry or a work folder was not put back, or the recent list or a remembered build target names a lane's folder.
 
 ### try-help-addin.bat
 {: #try-help-addinbat }

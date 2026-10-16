@@ -12,13 +12,15 @@
 // The custom theme files go only into the lane's own APPDATA (<work>\appdata\twinBASIC\themes), which
 // the IDE reads as its common themes folder.
 //
-// THE IDE SAVES ITS OPTIONS IN THE USER'S OWN REGISTRY, HKCU\Software\VB and VBA Program
+// THE IDE WOULD SAVE ITS OPTIONS IN THE USER'S OWN REGISTRY, HKCU\Software\VB and VBA Program
 // Settings\twinBASIC_IDE\IDESettings, whatever its APPDATA is: choosing a theme writes colorTheme, and
 // the keyboard dialog and menu write CUSTOM_KEYBOARD_SHORTCUT_GROUPS and
-// ACTIVE_KEYBOARD_SHORTCUT_GROUPS. So, as soon as each IDE's page has loaded and before anything is
-// chosen, the page's hostAppObject is replaced by a proxy whose SaveIDESetting, ChangeWindowSetting
-// and recent-list calls do nothing (as shoot_docs.mjs's PAGE_DEFAULTS does). Nothing here reaches
-// SaveSetting, so lanes.mjs names no settings for this lane.
+// ACTIVE_KEYBOARD_SHORTCUT_GROUPS. Every IDE the harness starts has --no-save-ide-settings and
+// --no-update-recent-files (IDE_FLAGS in scripts/lib/tb-ide.mjs), which guard those. They do not guard
+// the Window key or the removals from the recent list, so, as soon as each IDE's page has loaded and
+// before anything is chosen, the page's hostAppObject is replaced by a proxy whose
+// ChangeWindowSetting and RemoveRecentsList calls do nothing (as shoot_docs.mjs's PAGE_DEFAULTS does
+// for the second). Nothing here reaches SaveSetting, so lanes.mjs names no settings for this lane.
 //
 // The tests share the lane's IDE in order: the first two run in an IDE started with one custom theme,
 // AtStart (inherits light); the third starts a new IDE with a Dark.theme beside it; the fourth uses
@@ -59,7 +61,7 @@ const THEME_STATE_JS = `(() => {
 const GUARD_JS = `(() => {
   if (window.__guarded) return;
   window.__guarded = true;
-  const blocked = new Set(["SaveIDESetting", "ChangeWindowSetting", "AddRecentsList", "RemoveRecentsList"]);
+  const blocked = new Set(["ChangeWindowSetting", "RemoveRecentsList"]);
   hostAppObject = new Proxy(hostAppObject, {
     get(target, key) {
       if (blocked.has(key)) return async () => undefined;

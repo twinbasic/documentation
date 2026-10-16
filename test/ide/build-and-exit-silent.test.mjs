@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { launchOnDesktop, shutdownIde } from "../../scripts/lib/tb-ide.mjs";
+import { IDE_FLAGS, launchOnDesktop, shutdownIde } from "../../scripts/lib/tb-ide.mjs";
 import { laneProjectId, stageProject } from "../../scripts/lib/tb-project.mjs";
 import { scenario } from "../addin/scenario.mjs";
 
@@ -77,7 +77,7 @@ scenario("--buildAndExit32 without a window to look at", (lane) => {
     const run = await launchOnDesktop({
       exe: lane.copy(),
       arg: "--buildAndExit32",
-      args: [project],
+      args: [...IDE_FLAGS, project],
       desktop: `ide-test-bae-${lane.port}-${name}`,
       env: {
         ...process.env,

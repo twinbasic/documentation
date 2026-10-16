@@ -118,9 +118,11 @@
 //     page, in the page only (the no-project and project setups): the IDE's
 //     options are set to their defaults, the saved panel layouts and keyboard
 //     groups are dropped and the recent lists are replaced by lists of the
-//     tool's own. Nothing in the page is saved: the calls that write the IDE's
-//     settings and the recent list are replaced by calls that do nothing before
-//     the options are changed. The language is the one the IDE runs in.
+//     tool's own. Nothing in the page is saved: the IDE is started with
+//     IDE_FLAGS (--no-save-ide-settings, --no-update-recent-files), and the one
+//     call on the recent list they do not guard, RemoveRecentsList, is replaced
+//     by a call that does nothing before the options are changed. The language
+//     is the one the IDE runs in.
 //
 // A menu is captured as a cut-out: the bar item and its drop-downs are kept, as
 // the IDE draws them, and the rest of the page, background included, is
@@ -181,7 +183,7 @@ import { svgOfPage } from "./svgshot/capture.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
 import { holdsUserName, judgeSvg, SVG_FAITHFUL, writeSvg } from "./svgshot/keep.mjs";
 import { unpackProject } from "./lib/tb-project.mjs";
-import { findIde } from "./lib/tb-install.mjs";
+import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
 import {
   click,
@@ -369,6 +371,7 @@ for (const [option, root] of [
 if (bundlesRoot) useSubsetCache(path.join(bundlesRoot, "subsets"));
 
 const ide = findIde(values.ide || undefined);
+if (unsupportedIde(ide)) die(2, unsupportedIde(ide));
 if (!ide || !existsSync(ide)) {
   die(
     2,
@@ -913,24 +916,22 @@ async function fixPageSize(c) {
   await frames(c);
 }
 
-// Keeps the user's machine out of the pictures, in the IDE's page only. First the
-// calls that write the IDE's settings and the recent list are replaced by calls
-// that do nothing, and the functions that save the options too, so that nothing
-// below is saved, now or when the IDE ends. Then the IDE's options go back to
-// their defaults, the saved panel layouts and keyboard groups go, the panel
-// features are all allowed, and the recent lists are the tool's own. The language
-// is left as the IDE runs it, and so are the options the schema does not list.
-// Returns what differed from the defaults.
+// Keeps the user's machine out of the pictures, in the IDE's page only. The IDE
+// is started with IDE_FLAGS, so it saves no setting and adds nothing to the
+// recent list, now or when it ends; the one call that touches the list and is
+// not guarded, RemoveRecentsList, is replaced by a call that does nothing. Then
+// the IDE's options go back to their defaults, the saved panel layouts and
+// keyboard groups go, the panel features are all allowed, and the recent lists
+// are the tool's own. The language is left as the IDE runs it, and so are the
+// options the schema does not list. Returns what differed from the defaults.
 const PAGE_DEFAULTS = `(() => {
-  const blocked = new Set(["SaveIDESetting", "AddRecentsList", "RemoveRecentsList"]);
+  const blocked = new Set(["RemoveRecentsList"]);
   hostAppObject = new Proxy(hostAppObject, {
     get(target, key) {
       if (blocked.has(key)) return async () => undefined;
       return Reflect.get(target, key);
     },
   });
-  saveIDEOptions = () => {};
-  saveIDEOptions2 = () => {};
   const differed = [];
   for (const o of ideOptionsSchema) {
     const now = JSON.stringify(liveIDEOptions[o.name]);
