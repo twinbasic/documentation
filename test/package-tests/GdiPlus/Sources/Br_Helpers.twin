@@ -1,0 +1,68 @@
+' Helpers of the brush, pen and path cases (Br_*). Not a fixture: no case is in it.
+Module Br_Helpers
+
+    ' A bitmap of the size, cleared to opaque white.
+    Public Function Br_White(ByVal Width As Long, ByVal Height As Long) As Bitmap
+        Dim bmp As Bitmap = Bitmap(CSng(Width), CSng(Height))
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear Color(255, 255, 255, 255)
+        Return bmp
+    End Function
+
+    ' The colour of a pixel of the bitmap, as &HAARRGGBB.
+    Public Function Br_Px(ByVal Bmp As Bitmap, ByVal X As Long, ByVal Y As Long) As Long
+        Dim c As Color = Bmp.Pixel(X, Y)
+        Return c.argb
+    End Function
+
+    ' The colour of a pixel, as text for a report.
+    Public Function Br_Hex(ByVal Argb As Long) As String
+        Return Right$("00000000" & Hex$(Argb), 8)
+    End Function
+
+    ' The red channel of a pixel.
+    Public Function Br_Red(ByVal Bmp As Bitmap, ByVal X As Long, ByVal Y As Long) As Long
+        Dim c As Color = Bmp.Pixel(X, Y)
+        Return c.R
+    End Function
+
+    ' A row of a bitmap as text: # for a pixel that is not opaque white, . for one that is.
+    Public Function Br_Row(ByVal Bmp As Bitmap, ByVal Y As Long, ByVal X0 As Long, ByVal X1 As Long) As String
+        Dim x As Long, s As String
+        For x = X0 To X1
+            If Br_Px(Bmp, x, Y) = &HFFFFFFFF Then s = s & "." Else s = s & "#"
+        Next
+        Return s
+    End Function
+
+    ' A column of a bitmap as text, as Br_Row.
+    Public Function Br_Column(ByVal Bmp As Bitmap, ByVal X As Long, ByVal Y0 As Long, ByVal Y1 As Long) As String
+        Dim y As Long, s As String
+        For y = Y0 To Y1
+            If Br_Px(Bmp, X, y) = &HFFFFFFFF Then s = s & "." Else s = s & "#"
+        Next
+        Return s
+    End Function
+
+    ' True when the channel values are within the tolerance of each other (antialiasing, rounding).
+    Public Function Br_Near(ByVal Expected As Long, ByVal Actual As Long, ByVal Tolerance As Long) As Boolean
+        Return Abs(Expected - Actual) <= Tolerance
+    End Function
+
+    ' A path of a 10 by 10 rectangle at the origin.
+    Public Function Br_Square() As GraphicsPath
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddRectangle 0, 0, 10, 10
+        Return p
+    End Function
+
+    ' Four corners of a square of the size, as the points of a gradient path.
+    Public Sub Br_Corners(ByRef Corners() As GpPointF, ByVal Size As Single)
+        ReDim Corners(0 To 3)
+        Corners(0) = GpPointF(0, 0)
+        Corners(1) = GpPointF(Size, 0)
+        Corners(2) = GpPointF(Size, Size)
+        Corners(3) = GpPointF(0, Size)
+    End Sub
+
+End Module

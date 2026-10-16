@@ -39,16 +39,20 @@ All the properties are read-only and return a value from the byte.
 **ReservedFlag1**, **ReservedFlag2**
 : **Boolean** values of the two reserved flags.
 
+<!-- test: Br_PathDataTests.PathPointType_Properties_ReadTheByte -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim t As PathPointType
 t._value = PathPointTypeBezier Or PathPointTypeCloseSubpath
 Debug.Print CLng(t.PointType) & " " & t.CloseSubpath & " " & t.PathMarker      ' 3 True False
 ```
+<!-- /test -->
 
+<!-- test: none -- a defect of the twinBASIC compiler (BETA 1005) and not of the package; the way round it is checked by the case after this callout -->
 > [!WARNING] BETA 1005
 > Reading a property of an element of an array, as in `types(i).CloseSubpath`, stops the program with an access violation. Copy the element to a variable and read the property of that. A type held in a variable or in a field of a **TypedPoint** is read without trouble.
 
+<!-- test: Br_PathDataTests.PathPointType_ReadThroughAVariable_OfAnArrayElement -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -58,6 +62,7 @@ p.GetTypes types
 Dim t As PathPointType = types(4)
 Debug.Print CLng(t.PointType) & " " & t.CloseSubpath      ' 1 True
 ```
+<!-- /test -->
 
 ## See Also
 

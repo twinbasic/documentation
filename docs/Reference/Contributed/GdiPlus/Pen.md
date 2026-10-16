@@ -39,8 +39,11 @@ Each form can also be written with **New**: *pen* **= New Pen**( ... ). The two 
 *unit*
 : *optional* A [**GpUnit**](Enumerations/GpUnit) for the unit of *width*. The default is **UnitWorld**.
 
+<!-- test: Br_PenTests.New_WorldWidth_ScalesWithTheTransformation, Br_PenTests.New_PixelWidth_IgnoresTheTransformation, Br_PenTests.New_Defaults_WidthOneAndSolid -->
 With **UnitWorld**, the width is in the units of the drawing surface, so a transformation of the [**Graphics**](Graphics) scales the line: after **ScaleTransform** 3, 3 a pen of width 1 draws a line 3 pixels wide. With **UnitPixel**, the pen is 1 pixel wide whatever the transformation.
+<!-- /test -->
 
+<!-- test: Br_BrushColourTests.Pen_RGBForm_VBColour_UsesThatColour, Br_BrushColourTests.Pen_RGBForm_VBColour_DrawsThatColour, Br_BrushColourTests.Pen_RGBProperty_Let_TakesAVBColour, Br_BrushColourTests.Pen_RGBProperty_Get_ReturnsAVBColour, Br_BrushColourTests.Pen_Set_RGBForm_VBColour_UsesThatColour -->
 > [!WARNING] 0.9.45.0
 > The *rgb* form reads its **Long** as `&H00RRGGBB`, not as a VB colour, and drops the alpha: `Pen(vbRed)` and `Pen(RGB(255, 0, 0))` draw in blue. [**IBrush**](IBrush#colours) lists what else is not translated. The same holds for [**Set**](#set) and [**RGB**](#rgb) with a **Long**. Use the **Color** forms.
 
@@ -90,7 +93,9 @@ Debug.Print column
 
 Syntax: *copy* **=** *pen*.**Clone**( )
 
+<!-- test: Br_PenTests.Clone_IsIndependent -->
 Returns a new **Pen** with the same settings. Changing the copy does not change the original.
+<!-- /test -->
 
 ## General
 
@@ -110,7 +115,9 @@ Returns a [**GpPenType**](Enumerations/GpPenType) value for what the pen paints 
 
 Syntax: *pen*.**Color** [ **=** *color* ]
 
+<!-- test: Br_PenTests.Color_NonSolidPen_ReadsZero_AndSettingMakesItSolid -->
 Gets or sets the colour of the pen, as a **Color**. Setting it turns a pen that was made from another kind of brush into a solid colour pen. For a pen that is not of a solid colour, the value read is 0.
+<!-- /test -->
 
 ### RGB
 
@@ -130,8 +137,11 @@ Sets the colour and the width in one call. The *rgb* form takes `&H00RRGGBB`.
 
 Syntax: *pen*.**Brush** [ **=** *brush* ]
 
+<!-- test: Br_PenTests.Brush_ReturnsABrushOfTheSameClass -->
 Gets or sets the [**Brush**](IBrush) that the pen paints with. Reading it returns a new brush of the same class as the one the pen was made from.
+<!-- /test -->
 
+<!-- test: Br_PenTests.Brush_AfterEarlierFailure_ReturnsTheBrush, Br_PenTests.CustomStartCap_AfterEarlierFailure_ReturnsTheCap -->
 > [!NOTE] 0.9.45.0
 > A property that returns an object, such as **Brush**, **CustomStartCap** and **CustomEndCap**, returns **Nothing** while **LastResult** is not **Ok**, even when the failure was an earlier call. Call **ClearResult** first.
 
@@ -202,6 +212,7 @@ Syntax: *pen*.**CustomStartCap** [ **=** *cap* ]
 
 Gets or sets a [**CustomLineCap**](CustomLineCap), or an [**ArrowCap**](ArrowCap), for the start of a line. Setting one makes the start cap **LineCapCustom**. Reading returns a cap object, or **Nothing** when the pen has none.
 
+<!-- test: Br_PenTests.CustomStartCap_ArrowCap_ReturnsAUsableCap, Br_PenTests.CustomStartCap_CustomLineCap_ReturnsTheCap -->
 > [!WARNING] 0.9.45.0
 > A pen with an **ArrowCap** returns an **ArrowCap** from **CustomStartCap** that is not usable: its members report **InvalidParameter** in **LastResult** and return 0. A plain **CustomLineCap** is returned correctly.
 
@@ -211,9 +222,11 @@ Syntax: *pen*.**CustomEndCap** [ **=** *cap* ]
 
 Sets a [**CustomLineCap**](CustomLineCap), or an [**ArrowCap**](ArrowCap), for the end of a line, and makes the end cap **LineCapCustom**.
 
+<!-- test: Br_PenTests.CustomEndCap_Get_ReturnsTheCap, Br_PenTests.CustomEndCap_Get_WithACustomStartCap_ReturnsTheCap -->
 > [!WARNING] 0.9.45.0
-> Reading **CustomEndCap** raises error 91 and returns **Nothing**, and it replaces the custom start cap of the pen with the end cap: a failed read changes the pen. Only assigning works.
+> Reading **CustomEndCap** raises error 91, or error 438 when the pen has a custom start cap too, and returns **Nothing**. Only assigning works.
 
+<!-- test: Br_PenTests.Caps_StartEndAndDashCaps_AreSetTogetherOrApart, Br_PenTests.StartCap_Round_IsDrawnRoundAndTheEndFlat -->
 The example draws a line with a round start cap and a flat end cap. **#** is a pixel of the pen.
 
 ```tb check_build check_run
@@ -251,6 +264,7 @@ Debug.Print linePen.StartCap & " " & linePen.EndCap
 ' 1 19 3
 ' 2 2
 ```
+<!-- /test -->
 
 ## Dashes
 
@@ -290,6 +304,7 @@ Syntax: *count* **=** *pen*.**CompoundArrayCount**
 
 Returns the number of values of the compound array, 0 for a pen that is not compound.
 
+<!-- test: Br_PenTests.DashStyle_Dash_HasTwoLengths_AndCustomPatternSetsCustom, Br_PenTests.DashStyle_Dash_IsDrawnAsDashes, Br_PenTests.CompoundArray_DrawsParallelLines -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 
@@ -346,6 +361,7 @@ Debug.Print row
 ' 4
 ' ..##....##..
 ```
+<!-- /test -->
 
 ## Joins and alignment
 
@@ -367,6 +383,7 @@ Syntax: *pen*.**Alignment** [ **=** *alignment* ]
 
 Gets or sets the [**GpPenAlignment**](Enumerations/GpPenAlignment). With **PenAlignmentCenter**, the default, the line of a shape is centred on its edge. With **PenAlignmentInset**, the whole width of the pen lies inside the shape.
 
+<!-- test: Br_PenTests.MiterLimit_BelowOneBecomesOne, Br_PenTests.Alignment_Inset_KeepsTheLineInsideTheShape -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 
@@ -416,6 +433,7 @@ Next
 ' ..............
 ' ..............
 ```
+<!-- /test -->
 
 ## Transformations
 
@@ -427,6 +445,7 @@ Syntax: *pen*.**Transform** [ **=** *matrix* ]
 
 Sets the transformation of the pen to a [**Matrix**](Matrix). Reading it should return a copy of the matrix.
 
+<!-- test: Br_PenTests.Transform_Get_ReturnsTheMatrix -->
 > [!NOTE] 0.9.45.0
 > Reading **Transform** always fails: it returns **Nothing** and **LastResult** becomes **InvalidParameter**. Keep the matrix that was set.
 
@@ -462,6 +481,7 @@ Syntax: *pen*.**RotateTransform**( *angle* [, *order*] )
 
 Rotates the pen by *angle* degrees clockwise.
 
+<!-- test: Br_PenTests.ScaleTransform_ThickensTheLine_AndResetTransformRestoresIt -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 
@@ -495,6 +515,7 @@ Debug.Print column
 ' 2 True
 ' .........##.........
 ```
+<!-- /test -->
 
 ## See Also
 

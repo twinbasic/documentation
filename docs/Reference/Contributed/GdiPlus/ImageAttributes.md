@@ -80,6 +80,7 @@ A colour matrix changes the colour of every pixel with a linear transformation: 
 
 In the `m(i, j)` array of the package, the first index *i* picks the output component and the second index *j* the input component. The indexes 0 to 3 stand for red, green, blue and alpha. The input index 4 is the constant 1, so `m(i, 4)` adds a constant to the component *i*. `m(2, 0) = 1` adds the red of the input to the blue of the output. A variable declared **As ColorMatrix** is all zeros, and a matrix of zeros makes every colour black, so a program starts from the identity matrix, which has 1 in `m(i, i)`.
 
+<!-- test: Im_AttributeTests.ColorMatrix_FirstIndexIsTheOutputComponent, Im_AttributeTests.ColorMatrix_FifthColumnAddsAConstant -->
 > [!NOTE] 0.9.45.0
 > The C++ matrix has its indexes the other way round, `M[input][output]`, so `M[0][2]` of C++ is `m(2, 0)` here. The package swaps the indexes to match the memory layout.
 
@@ -234,6 +235,7 @@ Syntax: *status* **=** *attrs*.**SetColorKey**( *rgbLow*, *rgbHigh* [ , *type* ]
 
 Makes the pixels whose colour lies in the range (every channel at or above *colorLow* and at or below *colorHigh*) transparent. Use the same colour twice to key out one colour.
 
+<!-- test: Im_AttributeTests.ColorKey_ColorFormKeysOutTheColour, Im_AttributeTests.ColorKey_LongFormTakesAVbColour, Im_AttributeTests.ColorKey_LongFormTakesRrggbbAsDocumented -->
 > [!WARNING] 0.9.45.0
 > The **Long** form reads its arguments as `&H00RRGGBB`, not as a VB colour. `SetColorKey RGB(200, 100, 50), RGB(200, 100, 50)` keys out a different colour, as red and blue are exchanged. Use the **Color** form, or write the value as `&HRRGGBB`.
 

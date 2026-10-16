@@ -1,0 +1,8 @@
+' An implementation of GdiPlusAbort that never asks GDI+ to stop.
+Class Gr_NeverAbort
+    Implements GdiPlusAbort
+
+    Private Function GdiPlusAbort_Abort() As Long Implements GdiPlusAbort.Abort
+        Return 0
+    End Function
+End Class

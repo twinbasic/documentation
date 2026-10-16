@@ -12,6 +12,7 @@ Specifies options for the start-up of GDI+.
 
 GDI+ version 1 ignores these values. They apply when the **GdiplusVersion** of the [**GdiplusStartupInput**](../Types/GdiplusStartupInput) is 2 or higher. The default input of the **GdiPlusUser** constructor function uses **GdiplusStartupDefault**.
 
+<!-- test: Gr_LibraryTests.GdiplusStartupParams_ReservedMembers_AreSingleBits, Gr_LibraryTests.GdiplusStartupParams_ReservedMembers_FollowReserved0 -->
 > [!NOTE] 0.9.45.0
 > **GdiplusStartupReserved1** and **GdiplusStartupReserved2** have the values 5 and 6, because the package gives no value to them and they follow **GdiplusStartupReserved0**. They are not single bits.
 

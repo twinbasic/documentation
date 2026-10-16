@@ -1,0 +1,534 @@
+' Fx_EffectTests: the image effects (Effect and its eleven classes) and their parameter types.
+' The effects are applied to bitmaps of GdiPlus; the cases check what each one stores and returns.
+[TestFixture]
+Module Fx_EffectTests
+
+    ' ---- Effect.Parameters: the getter without a size
+
+    [TestCase]
+    Public Sub Blur_ParametersGetWithoutSize_ReturnsTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As Blur = Blur(5!, False)
+        Dim p As BlurParams = fx.Parameters
+        Expect.AreEqual 0, fx.LastResult, "Blur.LastResult after reading Parameters without a size"
+        Expect.AreEqual 5, p.radius, "Blur.Parameters.radius read without a size"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sharpen_ParametersGetWithoutSize_ReturnsTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As Sharpen = Sharpen(5!, 50!)
+        Dim p As SharpenParams = fx.Parameters
+        Expect.AreEqual 0, fx.LastResult, "Sharpen.LastResult after reading Parameters without a size"
+        Expect.AreEqual 5, p.radius, "Sharpen.Parameters.radius read without a size"
+        Expect.AreEqual 50, p.amount, "Sharpen.Parameters.amount read without a size"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BrightnessContrast_ParametersGetWithoutSize_ReturnsTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As BrightnessContrast = BrightnessContrast(10, 20)
+        Dim p As BrightnessContrastParams = fx.Parameters
+        Expect.AreEqual 0, fx.LastResult, "BrightnessContrast.LastResult after reading Parameters without a size"
+        Expect.AreEqual 10, p.brightness, "BrightnessContrast.Parameters.brightness read without a size"
+        Expect.AreEqual 20, p.contrast, "BrightnessContrast.Parameters.contrast read without a size"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HueSaturationLightness_ParametersGetWithoutSize_ReturnsTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As HueSaturationLightness = HueSaturationLightness(120, -20, 10)
+        Dim p As HueSaturationLightnessParams = fx.Parameters
+        Expect.AreEqual 0, fx.LastResult, "HueSaturationLightness.LastResult after reading Parameters without a size"
+        Expect.AreEqual 120, p.hue, "HueSaturationLightness.Parameters.hue read without a size"
+        Expect.AreEqual -20, p.saturation, "HueSaturationLightness.Parameters.saturation read without a size"
+        Expect.AreEqual 10, p.lightness, "HueSaturationLightness.Parameters.lightness read without a size"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Levels_ParametersGetWithoutSize_ReturnsTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As Levels = Levels(80, 50, 20)
+        Dim p As LevelsParams = fx.Parameters
+        Expect.AreEqual 0, fx.LastResult, "Levels.LastResult after reading Parameters without a size"
+        Expect.AreEqual 80, p.highight, "Levels.Parameters.highight read without a size"
+        Expect.AreEqual 50, p.midtone, "Levels.Parameters.midtone read without a size"
+        Expect.AreEqual 20, p.shadow, "Levels.Parameters.shadow read without a size"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Tint_ParametersGetWithoutSize_ReturnsTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As Tint = Tint(100, 50)
+        Dim p As TintParams = fx.Parameters
+        Expect.AreEqual 0, fx.LastResult, "Tint.LastResult after reading Parameters without a size"
+        Expect.AreEqual 100, p.hue, "Tint.Parameters.hue read without a size"
+        Expect.AreEqual 50, p.amount, "Tint.Parameters.amount read without a size"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorBalance_ParametersGetWithoutSize_ReturnsTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As ColorBalance = ColorBalance(10, -20, 30)
+        Dim p As ColorBalanceParams = fx.Parameters
+        Expect.AreEqual 0, fx.LastResult, "ColorBalance.LastResult after reading Parameters without a size"
+        Expect.AreEqual 10, p.cyanRed, "ColorBalance.Parameters.cyanRed read without a size"
+        Expect.AreEqual -20, p.magentaGreen, "ColorBalance.Parameters.magentaGreen read without a size"
+        Expect.AreEqual 30, p.yellowBlue, "ColorBalance.Parameters.yellowBlue read without a size"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorCurve_ParametersGetWithoutSize_ReturnsTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As ColorCurve = ColorCurve(AdjustContrast, CurveChannelRed, 20)
+        Dim p As ColorCurveParams = fx.Parameters
+        Expect.AreEqual 0, fx.LastResult, "ColorCurve.LastResult after reading Parameters without a size"
+        Expect.AreEqual 2, p.adjustment, "ColorCurve.Parameters.adjustment read without a size"
+        Expect.AreEqual 1, p.channel, "ColorCurve.Parameters.channel read without a size"
+        Expect.AreEqual 20, p.value, "ColorCurve.Parameters.value read without a size"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorMatrixEffect_ParametersGetWithoutSize_ReturnsTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cm As ColorMatrix = Fx_Identity()
+        cm.m(2, 0) = 1
+        Dim fx As ColorMatrixEffect = ColorMatrixEffect()
+        fx.Parameters = cm
+        Dim back As ColorMatrix = fx.Parameters
+        Expect.AreEqual 0, fx.LastResult, "ColorMatrixEffect.LastResult after reading Parameters without a size"
+        Expect.AreEqual 1, back.m(2, 0), "ColorMatrixEffect.Parameters.m(2, 0) read without a size"
+        Expect.AreEqual 1, back.m(1, 1), "ColorMatrixEffect.Parameters.m(1, 1) read without a size"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorLUT_ParametersGetWithoutSize_ReturnsTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim tables As ColorLUTParams
+        Dim i As Long
+        For i = 0 To 255
+            tables.lutB.b(i) = 255 - i
+            tables.lutG.b(i) = i
+            tables.lutR.b(i) = i
+            tables.lutA.b(i) = i
+        Next
+        Dim fx As ColorLUT = ColorLUT()
+        fx.Parameters = tables
+        Dim p As ColorLUTParams = fx.Parameters
+        Expect.AreEqual 0, fx.LastResult, "ColorLUT.LastResult after reading Parameters without a size"
+        Expect.AreEqual 245, p.lutB.b(10), "ColorLUT.Parameters.lutB.b(10) read without a size"
+        Expect.AreEqual 10, p.lutG.b(10), "ColorLUT.Parameters.lutG.b(10) read without a size"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RedEyeCorrection_ParametersGetWithoutSize_SetsNoError()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As RedEyeCorrection = RedEyeCorrection()
+        Dim p As RedEyeCorrectionParams = fx.Parameters
+        Expect.AreEqual 0, fx.LastResult, "RedEyeCorrection.LastResult after reading Parameters without a size"
+        Expect.Done
+    End Sub
+
+    ' ---- Effect.ParameterSize
+
+    [TestCase]
+    Public Sub ParameterSize_BrightnessContrast_IsTheSizeOfItsParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As BrightnessContrast = BrightnessContrast(10, 20)
+        Expect.AreEqual LenB(Of BrightnessContrastParams), fx.ParameterSize, "BrightnessContrast.ParameterSize"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParameterSize_ColorMatrixEffect_IsTheSizeOfItsParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As ColorMatrixEffect = ColorMatrixEffect()
+        Expect.AreEqual LenB(Of ColorMatrix), fx.ParameterSize, "ColorMatrixEffect.ParameterSize"
+        Expect.Done
+    End Sub
+
+    ' ---- the constructors that take a parameters structure
+
+    [TestCase]
+    Public Sub ColorBalance_NewWithParams_StoresTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As ColorBalance = ColorBalance(ColorBalanceParams(10, -20, 30))
+        Expect.AreEqual 0, fx.LastResult, "ColorBalance.LastResult after ColorBalance(params)"
+        Dim p As ColorBalanceParams = fx.Parameters(LenB(Of ColorBalanceParams))
+        Expect.AreEqual 10, p.cyanRed, "cyanRed after ColorBalance(params)"
+        Expect.AreEqual -20, p.magentaGreen, "magentaGreen after ColorBalance(params)"
+        Expect.AreEqual 30, p.yellowBlue, "yellowBlue after ColorBalance(params)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorCurve_NewWithParams_StoresTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As ColorCurve = ColorCurve(ColorCurveParams(AdjustContrast, CurveChannelRed, 20))
+        Expect.AreEqual 0, fx.LastResult, "ColorCurve.LastResult after ColorCurve(params)"
+        Dim p As ColorCurveParams = fx.Parameters(LenB(Of ColorCurveParams))
+        Expect.AreEqual 2, p.adjustment, "adjustment after ColorCurve(params)"
+        Expect.AreEqual 1, p.channel, "channel after ColorCurve(params)"
+        Expect.AreEqual 20, p.value, "value after ColorCurve(params)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorLUT_NewWithParams_StoresTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim tables As ColorLUTParams
+        Dim i As Long
+        For i = 0 To 255
+            tables.lutB.b(i) = 255 - i
+            tables.lutG.b(i) = i
+            tables.lutR.b(i) = i
+            tables.lutA.b(i) = i
+        Next
+        Dim fx As ColorLUT = ColorLUT(tables)
+        Expect.AreEqual 0, fx.LastResult, "ColorLUT.LastResult after ColorLUT(params)"
+        Dim p As ColorLUTParams = fx.Parameters(LenB(Of ColorLUTParams))
+        Expect.AreEqual 245, p.lutB.b(10), "lutB.b(10) after ColorLUT(params)"
+        Expect.AreEqual 10, p.lutA.b(10), "lutA.b(10) after ColorLUT(params)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorMatrixEffect_NewWithParams_StoresTheMatrix()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cm As ColorMatrix = Fx_Identity()
+        cm.m(2, 0) = 1
+        Dim fx As ColorMatrixEffect = ColorMatrixEffect(cm)
+        Expect.AreEqual 0, fx.LastResult, "ColorMatrixEffect.LastResult after ColorMatrixEffect(params)"
+        Dim back As ColorMatrix = fx.Parameters(LenB(Of ColorMatrix))
+        Expect.AreEqual 1, back.m(2, 0), "m(2, 0) after ColorMatrixEffect(params)"
+        Expect.AreEqual 1, back.m(1, 1), "m(1, 1) after ColorMatrixEffect(params)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HueSaturationLightness_NewWithParams_StoresTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As HueSaturationLightness = HueSaturationLightness(HueSaturationLightnessParams(120, -20, 10))
+        Expect.AreEqual 0, fx.LastResult, "HueSaturationLightness.LastResult after HueSaturationLightness(params)"
+        Dim p As HueSaturationLightnessParams = fx.Parameters(LenB(Of HueSaturationLightnessParams))
+        Expect.AreEqual 120, p.hue, "hue after HueSaturationLightness(params)"
+        Expect.AreEqual -20, p.saturation, "saturation after HueSaturationLightness(params)"
+        Expect.AreEqual 10, p.lightness, "lightness after HueSaturationLightness(params)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Levels_NewWithParams_StoresTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As Levels = Levels(LevelsParams(80, 50, 20))
+        Expect.AreEqual 0, fx.LastResult, "Levels.LastResult after Levels(params)"
+        Dim p As LevelsParams = fx.Parameters(LenB(Of LevelsParams))
+        Expect.AreEqual 80, p.highight, "highlight level after Levels(params)"
+        Expect.AreEqual 50, p.midtone, "midtone after Levels(params)"
+        Expect.AreEqual 20, p.shadow, "shadow after Levels(params)"
+        Expect.Done
+    End Sub
+
+    ' ---- the constructors that take the individual values
+
+    [TestCase]
+    Public Sub ColorBalance_NewWithValues_StoresTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As ColorBalance = ColorBalance(10, -20, 30)
+        Expect.AreEqual 0, fx.LastResult, "ColorBalance.LastResult after ColorBalance(10, -20, 30)"
+        Dim p As ColorBalanceParams = fx.Parameters(LenB(Of ColorBalanceParams))
+        Expect.AreEqual 10, p.cyanRed, "cyanRed after ColorBalance(10, -20, 30)"
+        Expect.AreEqual -20, p.magentaGreen, "magentaGreen after ColorBalance(10, -20, 30)"
+        Expect.AreEqual 30, p.yellowBlue, "yellowBlue after ColorBalance(10, -20, 30)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorCurve_NewWithValues_StoresTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As ColorCurve = ColorCurve(AdjustContrast, CurveChannelRed, 20)
+        Expect.AreEqual 0, fx.LastResult, "ColorCurve.LastResult after ColorCurve(AdjustContrast, CurveChannelRed, 20)"
+        Dim p As ColorCurveParams = fx.Parameters(LenB(Of ColorCurveParams))
+        Expect.AreEqual 2, p.adjustment, "adjustment after the three-value form"
+        Expect.AreEqual 1, p.channel, "channel after the three-value form"
+        Expect.AreEqual 20, p.value, "value after the three-value form"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HueSaturationLightness_NewWithValues_StoresTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As HueSaturationLightness = HueSaturationLightness(120, -20, 10)
+        Expect.AreEqual 0, fx.LastResult, "HueSaturationLightness.LastResult after HueSaturationLightness(120, -20, 10)"
+        Dim p As HueSaturationLightnessParams = fx.Parameters(LenB(Of HueSaturationLightnessParams))
+        Expect.AreEqual 120, p.hue, "hue after the three-value form"
+        Expect.AreEqual -20, p.saturation, "saturation after the three-value form"
+        Expect.AreEqual 10, p.lightness, "lightness after the three-value form"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Levels_NewWithValues_StoresTheParameters()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As Levels = Levels(80, 50, 20)
+        Expect.AreEqual 0, fx.LastResult, "Levels.LastResult after Levels(80, 50, 20)"
+        Dim p As LevelsParams = fx.Parameters(LenB(Of LevelsParams))
+        Expect.AreEqual 80, p.highight, "highlight level after the three-value form"
+        Expect.AreEqual 50, p.midtone, "midtone after the three-value form"
+        Expect.AreEqual 20, p.shadow, "shadow after the three-value form"
+        Expect.Done
+    End Sub
+
+    ' ---- ColorLUT: the four-array form and ColorLUTParams( )
+
+    [TestCase]
+    Public Sub ColorLUT_NewWithFourArrays_TakesTheAlphaTableFromLutA()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim lutB(0 To 255) As Byte, lutG(0 To 255) As Byte, lutR(0 To 255) As Byte, lutA(0 To 255) As Byte
+        Dim i As Long
+        For i = 0 To 255
+            lutB(i) = 255 - i
+            lutG(i) = i
+            lutR(i) = i
+            lutA(i) = i
+        Next
+        Dim fx As ColorLUT = ColorLUT(lutB, lutG, lutR, lutA)
+        Expect.AreEqual 0, fx.LastResult, "ColorLUT.LastResult after the four-array form"
+        Dim p As ColorLUTParams = fx.Parameters(LenB(Of ColorLUTParams))
+        Expect.AreEqual 245, p.lutB.b(10), "lutB.b(10) after the four-array form"
+        Expect.AreEqual 10, p.lutG.b(10), "lutG.b(10) after the four-array form"
+        Expect.AreEqual 10, p.lutR.b(10), "lutR.b(10) after the four-array form"
+        Expect.AreEqual 10, p.lutA.b(10), "lutA.b(10) after the four-array form"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorLUTParams_FromFourArrays_TakesTheAlphaTableFromLutA()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim lutB(0 To 255) As Byte, lutG(0 To 255) As Byte, lutR(0 To 255) As Byte, lutA(0 To 255) As Byte
+        Dim i As Long
+        For i = 0 To 255
+            lutB(i) = 255 - i
+            lutG(i) = i
+            lutR(i) = i
+            lutA(i) = i
+        Next
+        Dim p As ColorLUTParams = ColorLUTParams(lutB, lutG, lutR, lutA)
+        Expect.AreEqual 245, p.lutB.b(10), "lutB.b(10) of ColorLUTParams(...)"
+        Expect.AreEqual 10, p.lutG.b(10), "lutG.b(10) of ColorLUTParams(...)"
+        Expect.AreEqual 10, p.lutR.b(10), "lutR.b(10) of ColorLUTParams(...)"
+        Expect.AreEqual 10, p.lutA.b(10), "lutA.b(10) of ColorLUTParams(...)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorLUT_ApplyEffectWithFourArrays_KeepsAlphaWithTheIdentityTable()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim lutB(0 To 255) As Byte, lutG(0 To 255) As Byte, lutR(0 To 255) As Byte, lutA(0 To 255) As Byte
+        Dim i As Long
+        For i = 0 To 255
+            lutB(i) = 255 - i
+            lutG(i) = i
+            lutR(i) = i
+            lutA(i) = i
+        Next
+        Dim bmp As Bitmap = Fx_Flat(200, 100, 50)
+        Expect.AreEqual 0, bmp.ApplyEffect(ColorLUT(lutB, lutG, lutR, lutA), GpRect(0, 0, 4, 4)), "ApplyEffect with the four-array ColorLUT"
+        Expect.AreEqual "FFC864CD", Fx_Px(bmp), "pixel after inverting blue and keeping alpha, red and green"
+        Expect.Done
+    End Sub
+
+    ' ---- RedEyeCorrection
+
+    [TestCase]
+    Public Sub RedEyeCorrection_NewWithParams_StoresTheAreas()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As RedEyeCorrectionParams
+        Expect.AreEqual 0, p.Allocate(2), "Allocate(2)"
+        Set p.Area(1) = GpRect(0, 0, 5, 5)
+        Set p.Area(2) = GpRect(5, 5, 4, 4)
+        Dim fx As RedEyeCorrection = RedEyeCorrection(p)
+        Expect.AreEqual 0, fx.LastResult, "RedEyeCorrection.LastResult after RedEyeCorrection(params)"
+        Dim bmp As Bitmap = Fx_FlatSized(10, 220, 20, 20)
+        Expect.AreEqual 0, bmp.ApplyEffect(fx, GpRect(0, 0, 10, 10)), "ApplyEffect with a RedEyeCorrection made from parameters"
+        p.Free
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RedEyeCorrection_NewKeywordWithParams_StoresTheAreas()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As RedEyeCorrectionParams
+        Expect.AreEqual 0, p.Allocate(1), "Allocate(1)"
+        Set p.Area(1) = GpRect(0, 0, 10, 10)
+        Dim fx As RedEyeCorrection = New RedEyeCorrection(p)
+        Expect.AreEqual 0, fx.LastResult, "RedEyeCorrection.LastResult after New RedEyeCorrection(params)"
+        Dim bmp As Bitmap = Fx_FlatSized(10, 220, 20, 20)
+        Expect.AreEqual 0, bmp.ApplyEffect(fx, GpRect(0, 0, 10, 10)), "ApplyEffect with a RedEyeCorrection made from parameters"
+        p.Free
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RedEyeCorrection_ParametersGet_AfterSettingAreas_ReturnsTheAreaCount()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As RedEyeCorrectionParams
+        Expect.AreEqual 0, p.Allocate(2), "Allocate(2)"
+        Set p.Area(1) = GpRect(0, 0, 5, 5)
+        Set p.Area(2) = GpRect(5, 5, 4, 4)
+        Dim fx As RedEyeCorrection = RedEyeCorrection()
+        fx.Parameters = p
+        fx.ClearResult
+        Dim back As RedEyeCorrectionParams = fx.Parameters(LenB(Of RedEyeCorrectionParams))
+        Expect.AreEqual 0, fx.LastResult, "RedEyeCorrection.LastResult after reading Parameters with a size"
+        Expect.AreEqual 2, back.numberOfAreas, "numberOfAreas read back"
+        p.Free
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RedEyeCorrection_ApplyEffectWithoutAreas_ReturnsInvalidParameter()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fx As RedEyeCorrection = RedEyeCorrection()
+        Expect.AreEqual Ok, fx.LastResult, "RedEyeCorrection.LastResult after RedEyeCorrection()"
+        Dim bmp As Bitmap = Fx_FlatSized(10, 220, 20, 20)
+        Expect.AreEqual InvalidParameter, bmp.ApplyEffect(fx, GpRect(0, 0, 10, 10)), "ApplyEffect with a RedEyeCorrection that has no areas"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RedEyeCorrection_ParametersLet_StoresTheAreas()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As RedEyeCorrectionParams
+        Expect.AreEqual 0, p.Allocate(2), "Allocate(2)"
+        Set p.Area(1) = GpRect(0, 0, 5, 5)
+        Set p.Area(2) = GpRect(5, 5, 4, 4)
+        Dim fx As RedEyeCorrection = RedEyeCorrection()
+        fx.Parameters = p
+        Expect.AreEqual 0, fx.LastResult, "RedEyeCorrection.LastResult after setting Parameters"
+        Dim bmp As Bitmap = Fx_FlatSized(10, 220, 20, 20)
+        Expect.AreEqual 0, bmp.ApplyEffect(fx, GpRect(0, 0, 10, 10)), "ApplyEffect after setting the areas"
+        p.Free
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RedEyeCorrectionParams_FromArray_CopiesTheAreas()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim areas(1 To 2) As GpRect
+        areas(1) = GpRect(0, 0, 5, 5)
+        areas(2) = GpRect(5, 5, 4, 4)
+        Dim p As RedEyeCorrectionParams = RedEyeCorrectionParams(areas)
+        Expect.AreEqual 2, p.numberOfAreas, "numberOfAreas of RedEyeCorrectionParams(areas)"
+        Expect.AreEqual 5, p.Area(1).Width, "Area(1).Width of RedEyeCorrectionParams(areas)"
+        Expect.AreEqual 5, p.Area(2).X, "Area(2).X of RedEyeCorrectionParams(areas)"
+        p.Free
+        Expect.Done
+    End Sub
+
+    ' ---- ColorMatrix: the output component is the first index
+
+    [TestCase]
+    Public Sub ColorMatrix_FirstIndexIsTheOutputComponent_ImageAttributes()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim src As Bitmap = Bitmap(4!, 4!)
+        src.Pixel(1, 1) = Color(255, 200, 100, 40)
+        Dim dst As Bitmap = Bitmap(4!, 4!)
+        Dim g As Graphics = Graphics(dst)
+        Dim ia As ImageAttributes = New ImageAttributes()
+        Dim cm As ColorMatrix = Fx_Identity()
+        cm.m(2, 2) = 0
+        cm.m(2, 0) = 1                      ' blue = red
+        ia.SetColorMatrix cm
+        g.DrawImage src, GpRect(0, 0, 4, 4), GpRect(0, 0, 4, 4), UnitPixel, ia
+        Expect.AreEqual "FFC864C8", Fx_Px(dst), "m(2, 0) = 1 makes blue from red"
+
+        Dim cm2 As ColorMatrix = Fx_Identity()
+        cm2.m(0, 0) = 0
+        cm2.m(0, 2) = 1                     ' red = blue
+        ia.SetColorMatrix cm2
+        g.Clear Color(0, 0, 0, 0)
+        g.DrawImage src, GpRect(0, 0, 4, 4), GpRect(0, 0, 4, 4), UnitPixel, ia
+        Expect.AreEqual "FF286428", Fx_Px(dst), "m(0, 2) = 1 makes red from blue"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorMatrix_FirstIndexIsTheOutputComponent_ColorMatrixEffect()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cm As ColorMatrix = Fx_Identity()
+        cm.m(2, 2) = 0
+        cm.m(2, 0) = 1                      ' blue = red
+        Dim fx As ColorMatrixEffect = ColorMatrixEffect()
+        fx.Parameters = cm
+        Dim bmp As Bitmap = Fx_Flat(200, 100, 40)
+        Expect.AreEqual 0, bmp.ApplyEffect(fx, GpRect(0, 0, 4, 4)), "ApplyEffect with m(2, 0) = 1"
+        Expect.AreEqual "FFC864C8", Fx_Px(bmp), "m(2, 0) = 1 makes blue from red"
+
+        Dim cm2 As ColorMatrix = Fx_Identity()
+        cm2.m(0, 0) = 0
+        cm2.m(0, 2) = 1                     ' red = blue
+        fx.Parameters = cm2
+        Dim bmp2 As Bitmap = Fx_Flat(200, 100, 40)
+        Expect.AreEqual 0, bmp2.ApplyEffect(fx, GpRect(0, 0, 4, 4)), "ApplyEffect with m(0, 2) = 1"
+        Expect.AreEqual "FF286428", Fx_Px(bmp2), "m(0, 2) = 1 makes red from blue"
+        Expect.Done
+    End Sub
+
+    ' ---- LevelsParams: the first field
+
+    [TestCase]
+    Public Sub LevelsParams_HighightField_HoldsTheHighlightLevel()
+        Expect.Begin
+        Dim p As LevelsParams = LevelsParams(90, 10, 5)
+        Expect.AreEqual 90, p.highight, "LevelsParams(90, 10, 5).highight"
+        Expect.AreEqual 10, p.midtone, "LevelsParams(90, 10, 5).midtone"
+        Expect.AreEqual 5, p.shadow, "LevelsParams(90, 10, 5).shadow"
+        Expect.Done
+    End Sub
+
+End Module

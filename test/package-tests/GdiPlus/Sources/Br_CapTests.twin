@@ -1,0 +1,258 @@
+' CustomLineCap and ArrowCap: construction, properties, stroke caps, and the cap as drawn.
+[TestFixture]
+Module Br_CapTests
+
+    Private Function SmallCap(Optional ByVal BaseCap As GpLineCap = LineCapFlat, Optional ByVal BaseInset As Long = 0) As CustomLineCap
+        Dim fill As GraphicsPath = New GraphicsPath()
+        fill.AddRectangle -1, -1, 2, 1
+        Dim noStroke As GraphicsPath
+        Return New CustomLineCap(fill, noStroke, BaseCap, BaseInset)
+    End Function
+
+    ' ---- CustomLineCap
+
+    [TestCase]
+    Public Sub CustomLineCap_New_BaseInset_KeepsTheFraction()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As CustomLineCap = SmallCap(LineCapFlat, 1.5)
+        Expect.AreEqual 1.5!, cap.BaseInset, "BaseInset of a cap made with the base inset 1.5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomLineCap_BaseInset_Property_TakesASingle()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As CustomLineCap = SmallCap()
+        cap.BaseInset = 0.5
+        Expect.AreEqual 0.5!, cap.BaseInset, "BaseInset after it was set to 0.5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomLineCap_Properties_RoundTrip()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As CustomLineCap = SmallCap(LineCapRound, 1)
+        Expect.AreEqual CLng(LineCapRound), CLng(cap.BaseCap), "BaseCap of a cap made with LineCapRound"
+        Expect.AreEqual 1!, cap.BaseInset, "BaseInset of a cap made with the base inset 1"
+        Expect.AreEqual 1!, cap.WidthScale, "default WidthScale"
+        Expect.AreEqual CLng(LineJoinMiter), CLng(cap.StrokeJoin), "default StrokeJoin"
+        cap.BaseCap = LineCapSquare
+        cap.WidthScale = 2
+        cap.StrokeJoin = LineJoinBevel
+        Expect.AreEqual CLng(LineCapSquare), CLng(cap.BaseCap), "BaseCap after it was set"
+        Expect.AreEqual 2!, cap.WidthScale, "WidthScale after it was set"
+        Expect.AreEqual CLng(LineJoinBevel), CLng(cap.StrokeJoin), "StrokeJoin after it was set"
+        Dim copy As CustomLineCap = cap.Clone()
+        Expect.AreEqual 2!, copy.WidthScale, "WidthScale of the clone"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomLineCap_StrokeCap_SetsBothEnds()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As CustomLineCap = SmallCap()
+        Expect.AreEqual CLng(LineCapFlat), CLng(cap.StartStrokeCap), "default StartStrokeCap"
+        cap.StrokeCap = LineCapRound
+        Dim startCap As GpLineCap, endCap As GpLineCap
+        Expect.AreEqual CLng(Ok), CLng(cap.GetStrokeCaps(startCap, endCap)), "status of GetStrokeCaps"
+        Expect.AreEqual CLng(LineCapRound), CLng(startCap), "start stroke cap after StrokeCap = LineCapRound"
+        Expect.AreEqual CLng(LineCapRound), CLng(endCap), "end stroke cap after StrokeCap = LineCapRound"
+        Expect.AreEqual CLng(LineCapRound), CLng(cap.EndStrokeCap), "EndStrokeCap after StrokeCap = LineCapRound"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomLineCap_StartStrokeCap_Let_Returns()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As CustomLineCap = SmallCap()
+        cap.StartStrokeCap = LineCapRound
+        Expect.AreEqual CLng(LineCapRound), CLng(cap.StartStrokeCap), "StartStrokeCap after it was set"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomLineCap_EndStrokeCap_Let_Returns()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As CustomLineCap = SmallCap()
+        cap.EndStrokeCap = LineCapRound
+        Expect.AreEqual CLng(LineCapRound), CLng(cap.EndStrokeCap), "EndStrokeCap after it was set"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomLineCap_SetStrokeCaps_WithACap_Returns()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As CustomLineCap = SmallCap()
+        Expect.AreEqual CLng(Ok), CLng(cap.SetStrokeCaps(LineCapRound, LineCapSquare)), "status of SetStrokeCaps(LineCapRound, LineCapSquare)"
+        Expect.AreEqual CLng(LineCapRound), CLng(cap.StartStrokeCap), "StartStrokeCap after SetStrokeCaps"
+        Expect.AreEqual CLng(LineCapSquare), CLng(cap.EndStrokeCap), "EndStrokeCap after SetStrokeCaps"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomLineCap_SetStrokeCaps_WithNoCaps_ChangesNothing()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As CustomLineCap = SmallCap()
+        cap.StrokeCap = LineCapRound
+        Expect.AreEqual CLng(Ok), CLng(cap.SetStrokeCaps()), "status of SetStrokeCaps with no caps"
+        Expect.AreEqual CLng(LineCapRound), CLng(cap.StartStrokeCap), "StartStrokeCap after SetStrokeCaps with no caps"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomLineCap_EndCap_IsDrawn()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim linePen As Pen = Pen(Color(255, 255, 0, 0), 2)
+        linePen.CustomEndCap = SmallCap()
+        Dim bmp As Bitmap = Br_White(30, 10)
+        Dim g As Graphics = Graphics(bmp)
+        g.DrawLine linePen, 2, 5, 20, 5
+        Expect.AreEqual "..................##..........", Br_Row(bmp, 3, 0, 29), "row 3 of a line with a small rectangle as its end cap"
+        Expect.AreEqual "..##################..........", Br_Row(bmp, 4, 0, 29), "row 4 of the line"
+        Expect.AreEqual "..................##..........", Br_Row(bmp, 6, 0, 29), "row 6 of the line"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomLineCap_BaseInset_EndsTheLineEarly()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As CustomLineCap = SmallCap()
+        cap.BaseInset = 3
+        Dim linePen As Pen = Pen(Color(255, 255, 0, 0), 2)
+        linePen.CustomEndCap = cap
+        Dim bmp As Bitmap = Br_White(30, 10)
+        Dim g As Graphics = Graphics(bmp)
+        g.DrawLine linePen, 2, 5, 20, 5
+        Expect.AreEqual "..############....##..........", Br_Row(bmp, 4, 0, 29), "row 4 of a line whose cap has the base inset 3"
+        Expect.Done
+    End Sub
+
+    ' ---- ArrowCap
+
+    [TestCase]
+    Public Sub ArrowCap_New_HeightComesBeforeWidth()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As ArrowCap = ArrowCap(3, 4)
+        Expect.AreEqual 3!, cap.Height, "Height of ArrowCap(3, 4)"
+        Expect.AreEqual 4!, cap.Width, "Width of ArrowCap(3, 4)"
+        Expect.AreEqual True, cap.FillState, "FillState of ArrowCap(3, 4)"
+        Expect.AreEqual CLng(LineCapTriangle), CLng(cap.BaseCap), "BaseCap of a new arrow cap"
+        Dim sized As ArrowCap = ArrowCap(GpSizeF(9, 8), False)
+        Expect.AreEqual 9!, sized.Width, "Width of ArrowCap(GpSizeF(9, 8))"
+        Expect.AreEqual 8!, sized.Height, "Height of ArrowCap(GpSizeF(9, 8))"
+        Expect.AreEqual False, sized.FillState, "FillState of ArrowCap(GpSizeF(9, 8), False)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ArrowCap_Properties_RoundTrip()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As ArrowCap = ArrowCap(3, 4)
+        cap.Height = 7
+        cap.Width = 5
+        cap.FillState = False
+        Expect.AreEqual 7!, cap.Height, "Height after it was set"
+        Expect.AreEqual 5!, cap.Width, "Width after it was set"
+        Expect.AreEqual False, cap.FillState, "FillState after it was set"
+        Dim size As GpSizeF = cap.Size
+        Expect.AreEqual 5!, size.Width, "Size.Width"
+        Expect.AreEqual 7!, size.Height, "Size.Height"
+        cap.Size = GpSizeF(9, 8)
+        Expect.AreEqual 9!, cap.Width, "Width after Size was set"
+        Expect.AreEqual 8!, cap.Height, "Height after Size was set"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ArrowCap_Clone_ReturnsAUsableCopy()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As ArrowCap = ArrowCap(3, 4)
+        Dim copy As ArrowCap = cap.Clone()
+        Expect.AreEqual 3!, copy.Height, "Height of the clone"
+        Expect.AreEqual 4!, copy.Width, "Width of the clone"
+        Expect.AreEqual True, copy.FillState, "FillState of the clone"
+        Expect.AreEqual CLng(Ok), CLng(copy.LastResult), "LastResult of the clone after reading its properties"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ArrowCap_MiddleInset_Get_ReturnsTheSetting()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As ArrowCap = ArrowCap(3, 4)
+        cap.MiddleInset = 1.5
+        Expect.AreEqual 1.5!, cap.MiddleInset, "MiddleInset after it was set to 1.5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ArrowCap_StartStrokeCap_Let_Returns()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As ArrowCap = ArrowCap(3, 4)
+        cap.StartStrokeCap = LineCapRound
+        Expect.AreEqual CLng(LineCapRound), CLng(cap.StartStrokeCap), "StartStrokeCap of an arrow cap after it was set"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ArrowCap_EndStrokeCap_Let_Returns()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As ArrowCap = ArrowCap(3, 4)
+        cap.EndStrokeCap = LineCapRound
+        Expect.AreEqual CLng(LineCapRound), CLng(cap.EndStrokeCap), "EndStrokeCap of an arrow cap after it was set"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ArrowCap_SetStrokeCaps_WithACap_Returns()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As ArrowCap = ArrowCap(3, 4)
+        Expect.AreEqual CLng(Ok), CLng(cap.SetStrokeCaps(LineCapRound, LineCapSquare)), "status of SetStrokeCaps on an arrow cap"
+        Expect.AreEqual CLng(LineCapRound), CLng(cap.StartStrokeCap), "StartStrokeCap of an arrow cap after SetStrokeCaps"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ArrowCap_StrokeCap_SetsBothEnds()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cap As ArrowCap = ArrowCap(3, 4)
+        cap.StrokeCap = LineCapRound
+        Expect.AreEqual CLng(LineCapRound), CLng(cap.StartStrokeCap), "StartStrokeCap of an arrow cap after StrokeCap = LineCapRound"
+        Expect.AreEqual CLng(LineCapRound), CLng(cap.EndStrokeCap), "EndStrokeCap of an arrow cap after StrokeCap = LineCapRound"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ArrowCap_EndCap_IsDrawnAsAnArrowhead()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim linePen As Pen = Pen(Color(255, 255, 0, 0), 2)
+        linePen.CustomEndCap = ArrowCap(3, 3, True)
+        Dim bmp As Bitmap = Br_White(36, 12)
+        Dim g As Graphics = Graphics(bmp)
+        g.DrawLine linePen, 2, 6, 30, 6
+        Expect.AreEqual "....##..........", Br_Row(bmp, 4, 20, 35), "row 4, columns 20 to 35, of a line with an arrowhead end cap"
+        Expect.AreEqual "########........", Br_Row(bmp, 5, 20, 35), "row 5"
+        Expect.AreEqual "##########......", Br_Row(bmp, 6, 20, 35), "row 6"
+        Expect.AreEqual "....####........", Br_Row(bmp, 7, 20, 35), "row 7"
+        Expect.Done
+    End Sub
+
+End Module

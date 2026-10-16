@@ -1,0 +1,201 @@
+' The Long (rgb) forms of the brushes and of Pen: a VB colour handed to them (vbRed, RGB(...), a system colour).
+[TestFixture]
+Module Br_BrushColourTests
+
+    Private Declare PtrSafe Function GetSysColor Lib "user32" (ByVal nIndex As Long) As Long
+
+    ' &HAARRGGBB of an opaque COLORREF (&H00BBGGRR).
+    Private Function ArgbOfColorref(ByVal Colorref As Long) As Long
+        Return &HFF000000 Or ((Colorref And &HFF&) * &H10000) Or (Colorref And &HFF00&) Or ((Colorref And &HFF0000) \ &H10000)
+    End Function
+
+    ' The pixel a brush paints over opaque white.
+    Private Function Painted(ByVal Fill As Brush) As Long
+        Dim bmp As Bitmap = Br_White(4, 4)
+        Dim g As Graphics = Graphics(bmp)
+        g.FillRectangle Fill, 0, 0, 4, 4
+        Return Br_Px(bmp, 1, 1)
+    End Function
+
+    [TestCase]
+    Public Sub SolidBrush_VBColour_PaintsThatColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Expect.AreEqual "FFFF0000", Br_Hex(Painted(SolidBrush(vbRed))), "pixel painted by SolidBrush(vbRed)"
+        Expect.AreEqual "FF0000FF", Br_Hex(Painted(SolidBrush(vbBlue))), "pixel painted by SolidBrush(vbBlue)"
+        Expect.AreEqual "FFFF0000", Br_Hex(Painted(SolidBrush(RGB(255, 0, 0)))), "pixel painted by SolidBrush(RGB(255, 0, 0))"
+        Expect.AreEqual "FF0A141E", Br_Hex(Painted(SolidBrush(RGB(10, 20, 30)))), "pixel painted by SolidBrush(RGB(10, 20, 30))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SolidBrush_SystemColour_IsTranslated()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Const COLOR_BTNFACE As Long = 15
+        Dim face As Long = ArgbOfColorref(GetSysColor(COLOR_BTNFACE))
+        Expect.AreEqual Br_Hex(face), Br_Hex(Painted(SolidBrush(vbButtonFace))), "pixel painted by SolidBrush(vbButtonFace), the button face colour"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SolidBrush_RGBForm_IsOpaque()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As SolidBrush = SolidBrush(&H80112233)
+        Dim c As Color = brush.Color
+        Expect.AreEqual 255, CLng(c.A), "alpha of SolidBrush(&H80112233), a Long with a non-zero top byte"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SolidBrush_CColorTransparent_PaintsNothing()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(4!, 4!)
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear Color(255, 0, 0, 255)
+        g.FillRectangle SolidBrush(CColor.Transparent), 0, 0, 4, 4
+        Expect.AreEqual "FF0000FF", Br_Hex(Br_Px(bmp, 1, 1)), "pixel of a blue bitmap after filling it with SolidBrush(CColor.Transparent)"
+        g.Clear Color(255, 0, 0, 255)
+        g.FillRectangle SolidBrush(Color(CColor.Transparent)), 0, 0, 4, 4
+        Expect.AreEqual "FF0000FF", Br_Hex(Br_Px(bmp, 1, 1)), "pixel of a blue bitmap after filling it with SolidBrush(Color(CColor.Transparent))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SolidBrush_RGBProperty_Let_TakesAVBColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As SolidBrush = SolidBrush(Color(255, 0, 0, 0))
+        brush.RGB = vbRed
+        Dim c As Color = brush.Color
+        Expect.AreEqual "FFFF0000", Br_Hex(c.argb), "Color of a SolidBrush after RGB = vbRed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SolidBrush_RGBProperty_Get_ReturnsAVBColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As SolidBrush = SolidBrush(Color(255, 255, 0, 0))
+        Expect.AreEqual vbRed, brush.RGB, "RGB of a SolidBrush whose Color is opaque red, as a VB colour"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HatchBrush_RGBForm_VBColour_UsesThatColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As HatchBrush = New HatchBrush(HatchStyleCross, vbRed, vbBlue)
+        Dim fore As Color = brush.ForegroundColor
+        Dim back As Color = brush.BackgroundColor
+        Expect.AreEqual "FFFF0000", Br_Hex(fore.argb), "ForegroundColor of HatchBrush(HatchStyleCross, vbRed, vbBlue)"
+        Expect.AreEqual "FF0000FF", Br_Hex(back.argb), "BackgroundColor of HatchBrush(HatchStyleCross, vbRed, vbBlue)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LinearGradientBrush_RGBForm_VBColour_UsesThatColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = New LinearGradientBrush(GpRectF(0, 0, 10, 4), vbRed, vbBlue, LinearGradientModeHorizontal)
+        Dim colors() As Color = brush.LinearColors
+        Expect.AreEqual "FFFF0000", Br_Hex(colors(1).argb), "start colour of a gradient made with vbRed, vbBlue"
+        Expect.AreEqual "FF0000FF", Br_Hex(colors(2).argb), "end colour of a gradient made with vbRed, vbBlue"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LinearGradientBrush_RGBForm_Points_VBColour_UsesThatColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = New LinearGradientBrush(GpPointF(0, 0), GpPointF(10, 0), vbRed, vbBlue)
+        Dim colors() As Color = brush.LinearColors
+        Expect.AreEqual "FFFF0000", Br_Hex(colors(1).argb), "start colour of a two-point gradient made with vbRed, vbBlue"
+        Expect.AreEqual "FF0000FF", Br_Hex(colors(2).argb), "end colour of a two-point gradient made with vbRed, vbBlue"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LinearGradientBrush_SetLinearColors_RGBForm_VBColour_UsesThatColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = New LinearGradientBrush(GpRectF(0, 0, 10, 4), Color(255, 0, 0, 0), Color(255, 255, 255, 255), LinearGradientModeHorizontal)
+        brush.SetLinearColors vbRed, vbBlue
+        Dim colors() As Color = brush.LinearColors
+        Expect.AreEqual "FFFF0000", Br_Hex(colors(1).argb), "start colour after SetLinearColors vbRed, vbBlue"
+        Expect.AreEqual "FF0000FF", Br_Hex(colors(2).argb), "end colour after SetLinearColors vbRed, vbBlue"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PathGradientBrush_CenterRGB_VBColour_UsesThatColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim corners() As GpPointF
+        Br_Corners corners, 10
+        Dim brush As PathGradientBrush = New PathGradientBrush(corners)
+        brush.CenterRGB = vbRed
+        Dim c As Color = brush.CenterColor
+        Expect.AreEqual "FFFF0000", Br_Hex(c.argb), "CenterColor after CenterRGB = vbRed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pen_RGBForm_VBColour_UsesThatColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim linePen As Pen = Pen(vbRed, 2)
+        Dim c As Color = linePen.Color
+        Expect.AreEqual "FFFF0000", Br_Hex(c.argb), "Color of Pen(vbRed, 2)"
+        Dim rgbPen As Pen = Pen(RGB(0, 0, 255))
+        c = rgbPen.Color
+        Expect.AreEqual "FF0000FF", Br_Hex(c.argb), "Color of Pen(RGB(0, 0, 255))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pen_RGBForm_VBColour_DrawsThatColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Br_White(8, 8)
+        Dim g As Graphics = Graphics(bmp)
+        g.DrawLine Pen(vbRed, 2), 0, 4, 8, 4
+        Expect.AreEqual "FFFF0000", Br_Hex(Br_Px(bmp, 4, 4)), "pixel on a line drawn with Pen(vbRed, 2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pen_RGBProperty_Let_TakesAVBColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim linePen As Pen = Pen(Color(255, 0, 0, 0))
+        linePen.RGB = vbRed
+        Dim c As Color = linePen.Color
+        Expect.AreEqual "FFFF0000", Br_Hex(c.argb), "Color of a Pen after RGB = vbRed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pen_RGBProperty_Get_ReturnsAVBColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim linePen As Pen = Pen(Color(255, 255, 0, 0))
+        Expect.AreEqual vbRed, linePen.RGB, "RGB of a Pen whose Color is opaque red, as a VB colour"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pen_Set_RGBForm_VBColour_UsesThatColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim linePen As Pen = Pen(Color(255, 0, 0, 0))
+        linePen.Set vbRed, 3
+        Dim c As Color = linePen.Color
+        Expect.AreEqual "FFFF0000", Br_Hex(c.argb), "Color of a Pen after Set vbRed, 3"
+        Expect.AreEqual 3!, linePen.Width, "Width of a Pen after Set vbRed, 3"
+        Expect.Done
+    End Sub
+
+End Module

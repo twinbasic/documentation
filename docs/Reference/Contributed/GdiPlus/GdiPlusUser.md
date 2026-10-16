@@ -21,6 +21,7 @@ Dim bmp As Bitmap = Bitmap(64!, 64!)
 Debug.Print bmp.LastResult                                       ' 0
 ```
 
+<!-- test: Gr_LibraryTests.GdiPlusUser_BitmapOfTwoWholeNumbers_IsCreated, Gr_LibraryTests.GdiPlusUser_BitmapOfSinglesOrWithFormat_IsCreated -->
 > [!WARNING] 0.9.45.0
 > Two whole numbers without a format do not create a bitmap of that size. `Bitmap(64, 64)` binds to the form that takes a GDI bitmap handle and a palette handle, treats 64 and 64 as handles, and returns an unusable object with **LastResult** 7 (**Win32Error**), without any error being raised. Pass **Single** values: `Bitmap(64!, 64!)`, or give a format, as in `Bitmap(64, 64, PixelFormat32bppARGB)`. [**Bitmap**](Bitmap#creating) has the details.
 
@@ -42,9 +43,11 @@ The module function **GdiPlusUser** and the `New` form take the same arguments.
 *output*
 : *required* A [**GdiplusStartupOutput**](Types/GdiplusStartupOutput) that receives the hook and unhook functions of GDI+. Needed when *input* has **SuppressBackgroundThread** set.
 
+<!-- test: Gr_LibraryTests.GdiPlusUser_InstanceWhileRunning_WithInvalidInput_ReportsFailure -->
 > [!NOTE] 0.9.45.0
 > Every instance calls GDI+ to start with its own arguments, not only the first. A later instance given an invalid *input* reports the failure in its **LastResult**, although GDI+ is already running.
 
+<!-- test: Gr_LibraryTests.GdiPlusUser_ReleasingTheLastInstance_KeepsGdiPlusRunning -->
 > [!NOTE] 0.9.45.0
 > Releasing the last instance does not shut GDI+ down: objects that exist keep working, and new ones can still be made. GDI+ stays started until the program ends.
 
@@ -101,6 +104,7 @@ Syntax: *user*.**TestControlNoICM**( *noICM* As **Boolean** ) As **GpStatus**
 
 Meant to switch two debugging switches of GDI+: bilinear scaling forced for every scaled image, and the colour management turned off.
 
+<!-- test: Gr_LibraryTests.TestControlForceBilinear_Method_ReturnsOk, Gr_LibraryTests.TestControlNoICM_Method_ReturnsOk, Gr_LibraryTests.TestControl_ModuleFunctions_ReturnOk -->
 > [!WARNING] 0.9.45.0
 > Both methods call themselves without end. Calling either on a **GdiPlusUser** ends the program with a stack overflow. Call the module functions of the same names, [**TestControlForceBilinear**](Helpers#testcontrolforcebilinear) and [**TestControlNoICM**](Helpers#testcontrolnoicm), which do what the methods were written to do.
 

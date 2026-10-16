@@ -29,12 +29,15 @@ Syntax: *brush* **= New HatchBrush**( *hatchStyle*, *foreRgb*, *backRgb* )
 *foreRgb*, *backRgb*
 : *required* **Long** values for the same colours, as `&H00RRGGBB`. The alpha values are always 255.
 
+<!-- test: Br_BrushTests.HatchBrush_Function_ColorForm_Returns, Br_BrushTests.HatchBrush_Function_RGBForm_Returns -->
 > [!WARNING] 0.9.45.0
-> The function **HatchBrush**( ), the form without **New**, calls itself and never returns. Use **New HatchBrush**.
+> The function **HatchBrush**( ), the form without **New**, calls itself until the program stops with a stack overflow. Use **New HatchBrush**.
 
+<!-- test: Br_BrushColourTests.HatchBrush_RGBForm_VBColour_UsesThatColour -->
 > [!WARNING] 0.9.45.0
 > The *foreRgb* and *backRgb* form reads each **Long** as `&H00RRGGBB`, not as a VB colour, and drops the alpha: `vbRed` is blue. [**IBrush**](IBrush#colours) lists what else is not translated. Use the **Color** form.
 
+<!-- test: Br_BrushTests.HatchBrush_New_PaintsTheTile -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 
@@ -54,6 +57,7 @@ Debug.Print row
 ' Output:
 ' FBBB
 ```
+<!-- /test -->
 
 ### Clone
 

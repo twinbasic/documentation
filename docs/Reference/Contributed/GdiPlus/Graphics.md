@@ -36,6 +36,7 @@ A **Graphics** object is created with a package function of the same name as the
 
 A **Graphics** object does not own its target. The device context or window must stay valid for as long as the object exists. A **Graphics** object created for an image keeps a reference to the image, so the image is not released before the **Graphics** object.
 
+<!-- test: none -- GDI+ is already started in the process of the test runner, so an object made with no GdiPlusUser alive does not fail with status 18 there -->
 > [!NOTE] 0.9.45.0
 > The package needs a [**GdiPlusUser**](GdiPlusUser) object to be alive for as long as any GDI+ object exists. A program creates one before the first **Graphics** object and keeps it.
 
@@ -55,6 +56,7 @@ Creates a **Graphics** object that draws on an image.
 
 Drawing on a bitmap changes the pixels of the bitmap. The three forms are the same.
 
+<!-- test: Gr_GraphicsTests.Graphics_NothingImage_ReportsError, Gr_GraphicsTests.NewGraphics_NothingImage_ReportsError, Gr_GraphicsTests.Graphics_NothingImage_DrawingFailsWithInvalidParameter -->
 > [!NOTE] 0.9.45.0
 > The function and the constructor with a value of **Nothing** do not report an error. They return an object whose **LastResult** is **Ok**, and every drawing call on it then fails with **InvalidParameter**.
 
@@ -198,6 +200,7 @@ Sub Form_Resize()
 End Sub
 ```
 
+<!-- test: none -- GDI+ is already started in the process of the test runner, so a Graphics made before the first use of a Dim As New GdiPlusUser variable does not fail with status 18 there; it fails only in a program that has not started GDI+ yet -->
 > [!WARNING] 0.9.45.0
 > A **GdiPlusUser** declared with **Dim ... As New** is not created until the variable is first used, so the GDI+ objects that are created before that fail with **GdiplusNotInitialized** (18). Declare the variable and set it with `Set mGdiPlus = GdiPlusUser()` in the **Load** event, as above.
 
@@ -254,6 +257,7 @@ Fills the whole drawing surface with a colour. The colour replaces what was ther
 *rgb*
 : *required* A **Long** colour.
 
+<!-- test: Gr_GraphicsTests.Clear_VBColourRed_FillsRed, Gr_GraphicsTests.Clear_RGBFunction_FillsThatColour, Gr_GraphicsTests.Clear_CColorTransparent_KeepsAlpha, Gr_GraphicsTests.Clear_ColorForm_FillsExactColour -->
 > [!WARNING] 0.9.45.0
 > The *rgb* form reads its **Long** as `&H00RRGGBB`, not as a VB colour: `Clear(vbRed)` and `Clear(RGB(255, 0, 0))` fill with blue. It also forces the alpha value to 255, so a [**CColor**](Enumerations/CColor) member passed to it loses its alpha. Pass a **Color**, as in `Clear(Color(255, 0, 0))`.
 
@@ -283,6 +287,7 @@ The methods that draw outlines take a [**Pen**](Pen) first. The outline is centr
 
 Almost every method exists in two sets of overloads. The floating-point set takes **Single**, [**GpPointF**](Types/GpPointF), [**GpSizeF**](Types/GpSizeF) and [**GpRectF**](Types/GpRectF), and arrays of them. The integer set takes **Long**, [**GpPoint**](Types/GpPoint), [**GpSize**](Types/GpSize) and [**GpRect**](Types/GpRect), and arrays of them. The two never mix in one call. When a method has overloads that take plain coordinates, the integer one has the suffix `I`: **DrawLineI**. The overloads with a point, a size or a rectangle have the same name in both sets.
 
+<!-- test: Gr_GraphicsTests.DrawLine_WholeNumbers_DrawsBetweenThePoints -->
 > [!NOTE] 0.9.45.0
 > A whole number written in the source is a **Long**, but the call `DrawLine(pen, 0, 5, 15, 5)` takes the floating-point overload: **Long** converts to **Single**. Call the `I` method to use the integer set with plain coordinates.
 
@@ -653,8 +658,9 @@ Draws a string.
 
 The text methods have no integer overloads.
 
+<!-- test: Gr_GraphicsTests.Font_AssignedToAVariableOfTheStdoleType_Fails, Gr_GraphicsTests.Font_AssignedToAGdiPlusFontVariable_IsUsable, Gr_GraphicsTests.DrawString_PrefixedFont_Draws, compile GrQualifiedFontCompiles, compile GrNewBareFontIsNotThePackagesClass -->
 > [!NOTE] 0.9.45.0
-> **Font** is also the name of the standard font type of the **stdole** library. A program that references both writes the package's class as `GdiPlus.Font`, as in `Dim f As GdiPlus.Font = GdiPlus.Font("Segoe UI", 12)`. Without the prefix the function does not return a usable font.
+> **Font** is also the name of the standard font type of the **stdole** library. A variable declared `As Font` has that type, and the package's font cannot be assigned to it: the assignment raises error -2147467262, *No such interface supported*. Declare the variable with the prefix, as in `Dim f As GdiPlus.Font = GdiPlus.Font("Segoe UI", 12)`. The function `Font(...)` itself needs no prefix.
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -712,6 +718,7 @@ Draws characters, or glyphs of the font, at positions that the program gives. Th
 *matrix*
 : *required* A [**Matrix**](Matrix) that transforms the glyph positions, or **Nothing**.
 
+<!-- test: compile GrDriverStringSolidBrushVariable, compile GrDriverStringZeroFlags, compile GrDriverStringBrushVariableCompiles, Gr_GraphicsTests.DrawDriverString_BrushVariableAndOptions_Draws -->
 > [!NOTE] 0.9.45.0
 > A call that passes a **SolidBrush** variable, or the number 0 as *flags*, can match both the *str* and the *glyphs* overloads, and the compiler then reports that it cannot tell the overloads apart. Declare the brush variable as `Brush`, and pass the flags as a variable of the type **GpDriverStringOptions**.
 
@@ -965,8 +972,9 @@ Draws an image, or a part of it.
 
 The last form needs GDI+ 1.1, which Windows 7 and later have. Of the overloads with plain coordinates, only the ones with a position, with a position and a size, and with a position and a source part have the integer method **DrawImageI**.
 
+<!-- test: Gr_GraphicsTests.DrawImage_DestRectF_ScalesTheImage, Gr_GraphicsTests.DrawImage_DestRect_ScalesTheImage, Gr_GraphicsTests.DrawImage_ThreeFloatPointsAndSourcePart_DrawsTheImage, Gr_GraphicsTests.DrawImage_XYWidthHeight_ScalesTheImage, Gr_GraphicsTests.DrawImage_DestRectAndSourceRect_DrawsThePart, Gr_GraphicsTests.DrawImage_ThreeIntegerPointsAndSourcePart_DrawsTheImage -->
 > [!WARNING] 0.9.45.0
-> The calls `DrawImage(image, rect)`, with a **GpRectF** or a **GpRect**, and `DrawImage(image, destPoints, srcX, srcY, srcWidth, srcHeight, srcUnit)` with an array of **GpPointF** do not return. Use the overload with *x*, *y*, *width* and *height* (or **DrawImageI**), the one with *destRect* and *srcRect*, or the integer form of the second call.
+> The calls `DrawImage(image, rect)`, with a **GpRectF** or a **GpRect**, end a 32-bit program with an access violation. `DrawImage(image, destPoints, srcX, srcY, srcWidth, srcHeight, srcUnit)` with an array of **GpPointF** does the same in a 32-bit and in a 64-bit program. Use the overload with *x*, *y*, *width* and *height* (or **DrawImageI**), the one with *destRect* and *srcRect*, or the integer form of the second call.
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -1324,6 +1332,7 @@ Syntax: *region* **=** *graphics*.**Clip**
 
 Returns the clipping area as a [**Region**](Region).
 
+<!-- test: Gr_GraphicsTests.Clip_Get_ReturnsTheClippingRegion, Gr_GraphicsTests.ClipBounds_AfterSetClip_ReturnsTheRectangle -->
 > [!NOTE] 0.9.45.0
 > Reading **Clip** always fails: it returns **Nothing** and **LastResult** becomes **InvalidParameter**. To read the clipping area, read **ClipBounds**, or keep the [**Region**](Region) that the program passed to **SetClip**.
 
@@ -1424,8 +1433,9 @@ Returns **True** when a point, or any part of a rectangle, is inside the visible
 *rect*
 : *required* A [**GpRectF**](Types/GpRectF) or a [**GpRect**](Types/GpRect).
 
+<!-- test: Gr_GraphicsTests.IsVisible_GpPointF_ReturnsWhetherThePointIsInside, Gr_GraphicsTests.IsVisible_Alternatives_Work -->
 > [!WARNING] 0.9.45.0
-> The call with a **GpPointF**, `IsVisible(point)`, does not return. Use the call with *x* and *y*, or the **GpPoint** form.
+> The call with a **GpPointF**, `IsVisible(point)`, ends a 32-bit program with an access violation. In a 64-bit program it works. Use the call with *x* and *y*, or the **GpPoint** form.
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -1636,6 +1646,7 @@ Syntax: *status* **=** *graphics*.**GetTransform**( *matrix* )
 *matrix*
 : *required* A [**Matrix**](Matrix).
 
+<!-- test: Gr_GraphicsTests.Transform_Get_ReturnsTheWorldTransformation, Gr_GraphicsTests.GetTransform_CopiesTheWorldTransformation -->
 > [!NOTE] 0.9.45.0
 > Reading **Transform** always fails: it returns **Nothing** and **LastResult** becomes **InvalidParameter**. Create a **Matrix** with `Matrix()` and read the transformation with **GetTransform**.
 
@@ -1725,6 +1736,7 @@ Shears the coordinates: each x moves by *shearX* times y, and each y by *shearY*
 *order*
 : *optional* A [**GpMatrixOrder**](Enumerations/GpMatrixOrder). The default is **MatrixOrderPrepend**.
 
+<!-- test: Gr_GraphicsTests.ShearTransform_ShearsTheCoordinates, Gr_GraphicsTests.MultiplyTransform_ShearMatrix_ShearsTheCoordinates -->
 > [!WARNING] 0.9.45.0
 > The method always returns **InvalidParameter** and leaves the transformation as it was. To shear, pass a [**Matrix**](Matrix) with the factors in its off-diagonal elements, `Matrix(1, shearY, shearX, 1, 0, 0)`, to **MultiplyTransform**.
 

@@ -1,0 +1,281 @@
+' GdiPlus, Image: saving with encoder parameters, the palette, properties, encoder parameter lists
+' and cloning. A Bitmap is used wherever a picture is needed, since an Image of a file has no
+' pixel access and Bitmap inherits every member tested here.
+[TestFixture]
+Module Im_ImageTests
+
+    ' ---- Save, SaveAdd, SaveAddImage
+
+    [TestCase]
+    Public Sub Save_EmptyParameterArrayWritesFile()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim path As String = Im_Dir() & "\save-empty.png"
+        Dim bmp As Bitmap = Im_Noisy(16, 16)
+        Dim ep(0 To 0) As GpEncoderParameter          ' element 0 is the dummy: no parameters
+        Dim st As GpStatus = bmp.Save(path, ImageCodecPNG(), ep)
+        Expect.AreEqual 0, CLng(st), "Save of a PNG with the one-element parameter array (no parameters) returns (0 is Ok)"
+        Expect.IsTrue Im_Len(path) > 0, "Save of a PNG with the one-element parameter array writes a file of more than 0 bytes (its length is " & Im_Len(path) & ")"
+        Set bmp = Nothing
+        Im_Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Save_JpegQualityChangesFileSize()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim low As String = Im_Dir() & "\quality-10.jpg"
+        Dim high As String = Im_Dir() & "\quality-100.jpg"
+        Dim bmp As Bitmap = Im_Noisy(64, 64)
+        Dim quality As Long
+        Dim ep(0 To 1) As GpEncoderParameter
+        ep(1).Guid = EncoderQuality()
+        ep(1)._count = 1
+        ep(1)._type = EncoderParameterValueTypeLong
+        ep(1)._address = VarPtr(quality)
+        quality = 10
+        Dim st1 As GpStatus = bmp.Save(low, ImageCodecJPG(), ep)
+        quality = 100
+        Dim st2 As GpStatus = bmp.Save(high, ImageCodecJPG(), ep)
+        Expect.AreEqual 0, CLng(st1), "Save of a JPEG with a quality of 10 returns (0 is Ok)"
+        Expect.AreEqual 0, CLng(st2), "Save of a JPEG with a quality of 100 returns (0 is Ok)"
+        Dim sizeLow As Long = Im_Len(low)
+        Dim sizeHigh As Long = Im_Len(high)
+        Expect.IsTrue sizeLow > 0 And sizeHigh > 0, "Save of a JPEG writes a file (sizes " & sizeLow & " and " & sizeHigh & ")"
+        Expect.IsTrue sizeLow < sizeHigh, "a JPEG saved with a quality of 10 is smaller than one saved with 100 (sizes " & sizeLow & " and " & sizeHigh & ")"
+        Set bmp = Nothing
+        Im_Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Save_ParameterArrayStartingAtOneIsRefused()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim path As String = Im_Dir() & "\save-lbound1.png"
+        Dim bmp As Bitmap = Im_Noisy(8, 8)
+        Dim ep(1 To 2) As GpEncoderParameter
+        Dim st As GpStatus = bmp.Save(path, ImageCodecPNG(), ep)
+        Expect.AreEqual 2, CLng(st), "Save with a parameter array whose lower bound is 1 returns (2 is InvalidParameter)"
+        Set bmp = Nothing
+        Im_Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveAdd_MultiFrameTiffHasTwoFrames()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim path As String = Im_Dir() & "\multi.tif"
+        Dim first As Bitmap = Im_Noisy(16, 16)
+        Dim second As Bitmap = Im_Noisy(16, 16)
+        Dim flag As Long
+        Dim ep(0 To 1) As GpEncoderParameter
+        ep(1).Guid = EncoderSaveFlag()
+        ep(1)._count = 1
+        ep(1)._type = EncoderParameterValueTypeLong
+        ep(1)._address = VarPtr(flag)
+        flag = EncoderValueMultiFrame
+        Dim st1 As GpStatus = first.Save(path, ImageCodecTIF(), ep)
+        flag = EncoderValueFrameDimensionPage
+        Dim st2 As GpStatus = first.SaveAddImage(second, ep)
+        flag = EncoderValueFlush
+        Dim st3 As GpStatus = first.SaveAdd(ep)
+        Expect.AreEqual 0, CLng(st1), "Save of the first frame of a multi-frame TIFF returns (0 is Ok)"
+        Expect.AreEqual 0, CLng(st2), "SaveAddImage of the second frame returns (0 is Ok)"
+        Expect.AreEqual 0, CLng(st3), "SaveAdd that flushes the file returns (0 is Ok)"
+        Set first = Nothing
+        Set second = Nothing
+        Dim loaded As GdiPlus.Image = GdiPlus.Image(path)
+        Expect.AreEqual 2, CLng(loaded.FrameCount(FrameDimensionPage())), "the page count of the TIFF written with Save, SaveAddImage and SaveAdd"
+        Set loaded = Nothing
+        Im_Clean
+        Expect.Done
+    End Sub
+
+    ' ---- Palette
+
+    [TestCase]
+    Public Sub Palette_LetChangesThePicture()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = New Bitmap(4!, 4!, PixelFormat8bppIndexed)
+        Dim before As Long = bmp.Pixel(0, 0).argb
+        Dim pal(1 To 1) As ColorPalette
+        pal(1).flags = 0
+        pal(1).count = 256
+        Dim i As Long
+        For i = 0 To 255
+            pal(1).entries(i) = &HFF112233
+        Next
+        bmp.Palette = pal
+        Expect.AreEqual 0, CLng(bmp.LastResult), "setting Palette of an 8-bit indexed bitmap leaves LastResult (0 is Ok)"
+        Expect.AreEqual &HFF112233, bmp.Pixel(0, 0).argb, "the colour of a pixel of an 8-bit indexed bitmap after Palette is set to one colour (it was " & Hex$(before) & ")"
+        Expect.Done
+    End Sub
+
+    ' ---- Properties
+
+    [TestCase]
+    Public Sub PropertyItem_GetReturnsTheItem()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = New Bitmap(4!, 4!)
+        Dim text() As Byte = StrConv("A test picture" & vbNullChar, vbFromUnicode)
+        Dim item As GpPropertyItem
+        item.Id = PropertyTagImageDescription
+        item._type = PropertyTagTypeASCII
+        item._length = UBound(text) + 1
+        item._address = VarPtr(text(0))
+        bmp.PropertyItem = item
+        Expect.AreEqual 1, CLng(bmp.PropertyCount), "PropertyCount after PropertyItem is set"
+        Dim items() As GpPropertyItem = bmp.PropertyItem(PropertyTagImageDescription)
+        Expect.AreEqual 1, UBound(items) - LBound(items) + 1, "the number of elements of the array that PropertyItem returns"
+        Dim got As GpPropertyItem = items(1)
+        Expect.AreEqual PropertyTagImageDescription, got.Id, "the Id of the item that PropertyItem returns"
+        Expect.AreEqual "A test picture", Replace(got.TheASCII, vbNullChar, ""), "the text of the item that PropertyItem returns, without its null characters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PropertyItem_PropertyOfTheReturnedElement()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = New Bitmap(4!, 4!)
+        Dim text() As Byte = StrConv("A test picture" & vbNullChar, vbFromUnicode)
+        Dim item As GpPropertyItem
+        item.Id = PropertyTagImageDescription
+        item._type = PropertyTagTypeASCII
+        item._length = UBound(text) + 1
+        item._address = VarPtr(text(0))
+        bmp.PropertyItem = item
+        Dim items() As GpPropertyItem = bmp.PropertyItem(PropertyTagImageDescription)
+        Expect.AreEqual PropertyTagImageDescription, items(1).Id, "the Id field of items(1) of the array that PropertyItem returns"
+        Expect.AreEqual "A test picture", Replace(items(1).TheASCII, vbNullChar, ""), "the TheASCII property of items(1) of the array that PropertyItem returns"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetAllPropertyItems_ReturnsEveryItem()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = New Bitmap(4!, 4!)
+        Dim text() As Byte = StrConv("First" & vbNullChar, vbFromUnicode)
+        Dim ratio(0 To 1) As Long
+        ratio(0) = 7
+        ratio(1) = 2
+        Dim item As GpPropertyItem
+        item.Id = PropertyTagImageDescription
+        item._type = PropertyTagTypeASCII
+        item._length = UBound(text) + 1
+        item._address = VarPtr(text(0))
+        bmp.PropertyItem = item
+        item.Id = PropertyTagXResolution
+        item._type = PropertyTagTypeRational
+        item._length = 8
+        item._address = VarPtr(ratio(0))
+        bmp.PropertyItem = item
+        Dim items() As GpPropertyItem = bmp.GetAllPropertyItems()
+        Expect.AreEqual 2, UBound(items) - LBound(items) + 1, "the number of elements of the array that GetAllPropertyItems returns"
+        Dim a As GpPropertyItem = items(LBound(items))
+        Dim b As GpPropertyItem = items(UBound(items))
+        Expect.IsTrue (a.Id = PropertyTagImageDescription And b.Id = PropertyTagXResolution) Or (a.Id = PropertyTagXResolution And b.Id = PropertyTagImageDescription), "the Ids of the two items that GetAllPropertyItems returns (" & Hex$(a.Id) & " and " & Hex$(b.Id) & ")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PropertyItem_RemoveTakesTheItemAway()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = New Bitmap(4!, 4!)
+        Dim text() As Byte = StrConv("Gone" & vbNullChar, vbFromUnicode)
+        Dim item As GpPropertyItem
+        item.Id = PropertyTagImageDescription
+        item._type = PropertyTagTypeASCII
+        item._length = UBound(text) + 1
+        item._address = VarPtr(text(0))
+        bmp.PropertyItem = item
+        Expect.AreEqual 0, CLng(bmp.RemovePropertyItem(PropertyTagImageDescription)), "RemovePropertyItem returns (0 is Ok)"
+        Expect.AreEqual 0, CLng(bmp.PropertyCount), "PropertyCount after RemovePropertyItem"
+        Expect.Done
+    End Sub
+
+    ' ---- Encoder parameter list
+
+    [TestCase]
+    Public Sub GetEncoderParameterList_JpegListsTheQuality()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = New Bitmap(4!, 4!)
+        Dim ps() As GpEncoderParameter = bmp.GetEncoderParameterList(ImageCodecJPG())
+        Expect.AreEqual 0, CLng(bmp.LastResult), "GetEncoderParameterList for the JPEG encoder leaves LastResult (0 is Ok)"
+        Dim found As Boolean
+        Dim i As Long
+        For i = LBound(ps) To UBound(ps)
+            Dim one As GpEncoderParameter = ps(i)
+            If one.Guid.Data1 = EncoderQuality().Data1 Then found = True
+        Next
+        Expect.IsTrue found, "the parameters that GetEncoderParameterList returns for the JPEG encoder include EncoderQuality"
+        Expect.Done
+    End Sub
+
+    ' ---- The VB class of the same name
+
+    [TestCase]
+    Public Sub BareImage_FunctionWorksUnqualified()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim img As GdiPlus.Image = Image(Im_Dir() & "\no-such-file.png")
+        Expect.AreEqual "Image", TypeName(img), "TypeName of the result of the function Image(filename) written without GdiPlus."
+        Expect.AreEqual 3, CLng(img.LastResult), "LastResult of Image(filename) of a missing file (3 is OutOfMemory)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BareImage_VariableCannotHoldABitmap()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = New Bitmap(4!, 4!)
+        Dim vbImage As Image
+        On Error Resume Next
+        Set vbImage = bmp
+        Dim errNumber As Long = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual &H80004002, errNumber, "Err.Number of assigning a Bitmap to a variable declared As Image, which is the VB class"
+        Expect.Done
+    End Sub
+
+    ' ---- Clone
+
+    [TestCase]
+    Public Sub Clone_OfABitmapIsAnImage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = New Bitmap(4!, 3!)
+        Dim img As GdiPlus.Image = bmp
+        Dim copy As GdiPlus.Image = img.Clone()
+        Expect.AreEqual 0, CLng(img.LastResult), "Clone of an Image that holds a Bitmap leaves LastResult (0 is Ok)"
+        Expect.AreEqual "Image", TypeName(copy), "TypeName of Image.Clone of a Bitmap"
+        Expect.AreEqual 4, CLng(copy.Width), "Width of Image.Clone of a Bitmap"
+        Expect.AreEqual 3, CLng(copy.Height), "Height of Image.Clone of a Bitmap"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_WholeBitmapWithItsRectangle()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = New Bitmap(4!, 3!)
+        bmp.Pixel(2, 1) = Color(255, 1, 2, 3)
+        Dim whole As Bitmap = bmp.Clone(GpRect(0, 0, 4, 3), PixelFormat32bppARGB)
+        Expect.AreEqual 0, CLng(bmp.LastResult), "Bitmap.Clone with the full rectangle leaves LastResult (0 is Ok)"
+        Expect.AreEqual 4, CLng(whole.Width), "Width of Bitmap.Clone with the full rectangle"
+        Expect.AreEqual 3, CLng(whole.Height), "Height of Bitmap.Clone with the full rectangle"
+        Expect.AreEqual &HFF010203, whole.Pixel(2, 1).argb, "the pixel of Bitmap.Clone with the full rectangle"
+        bmp.Pixel(2, 1) = Color(255, 9, 9, 9)
+        Expect.AreEqual &HFF010203, whole.Pixel(2, 1).argb, "the pixel of the copy after the original is changed"
+        Expect.Done
+    End Sub
+
+End Module

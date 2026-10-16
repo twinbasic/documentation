@@ -45,6 +45,7 @@ Syntax: *path* **= GraphicsPath(** *points*(), *types*() [, *fillMode* ] **)**
 
 These forms create a path from existing point data: a [**PathData**](PathData), an array of [**TypedPoint**](Types/TypedPoint), or an array of **GpPointF** or **GpPoint** together with an array of [**PathPointType**](Types/PathPointType) of the same length.
 
+<!-- test: Br_PathTests.New_PathData_CreatesThePath, Br_PathTests.New_TypedPoints_CreatesThePath, Br_PathTests.New_PointsAndTypes_CreatesThePath, Br_PathTests.New_GpPointsAndTypes_CreatesThePath, Br_PathTests.GetPoints_EmptyPath_RaisesUnspecifiedError -->
 > [!WARNING] 0.9.45.0
 > The forms that take point data do not create the path they are given. The call reports no error, and the path is empty: **PointCount** is 0, and a call of **GetPoints** on it raises an error. With an array of **GpPoint** the call records **OutOfMemory** in a 64-bit program and stops a 32-bit program with an access violation. Build the path with the **Add** methods instead.
 
@@ -55,6 +56,7 @@ Syntax: *path*.**Clone** **As GraphicsPath**
 
 Returns a new path with the same points, point types and fill mode. A change to one path does not change the other.
 
+<!-- test: Br_PathTests.Clone_IsIndependent -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -63,6 +65,7 @@ Dim c As GraphicsPath = p.Clone
 p.AddRectangle 0, 0, 5, 5
 Debug.Print p.PointCount & " " & c.PointCount                     ' 8 4
 ```
+<!-- /test -->
 
 ## Properties
 
@@ -75,6 +78,7 @@ A [**GpFillmode**](Enumerations/GpFillmode) that decides which areas of a path t
 
 With **FillModeAlternate**, a point is inside if a ray from it to infinity crosses an odd number of the path's lines. With **FillModeWinding**, a point is inside if the lines crossed do not cancel out, counting a line one way as +1 and the other way as -1. Two rectangles added to a path run in the same direction. The inner one is a hole with the alternate mode and is filled with the winding mode:
 
+<!-- test: Br_PathTests.FillMode_WindingFillsTheInnerRectangleAlternateDoesNot -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -84,6 +88,7 @@ Debug.Print p.IsVisible(5, 5)         ' False
 p.FillMode = FillModeWinding
 Debug.Print p.IsVisible(5, 5)         ' True
 ```
+<!-- /test -->
 
 ### PointCount
 {: .no_toc }
@@ -99,6 +104,7 @@ Syntax: *path*.**LastPoint** **As GpPointF**
 
 The last point of the path: the end of the last figure. An empty path has no last point and the property records an error in **LastResult**.
 
+<!-- test: Br_PathTests.LastPoint_IsTheEndOfTheLastFigure -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -106,6 +112,7 @@ p.AddLine 0, 0, 10, 20
 Dim pt As GpPointF = p.LastPoint
 Debug.Print pt.X & " " & pt.Y         ' 10 20
 ```
+<!-- /test -->
 
 ### PathData
 {: .no_toc }
@@ -114,6 +121,7 @@ Syntax: *path*.**PathData** **As PathData**
 
 Returns the points and point types of the path as a [**PathData**](PathData).
 
+<!-- test: Br_PathTests.PathData_Get_ReturnsThePoints -->
 > [!NOTE] 0.9.45.0
 > The property returns **Nothing** and records **InvalidParameter** in **LastResult**, whatever the path holds. Read the points with [**GetPoints**](#getpoints) and the point types with [**GetTypes**](#gettypes).
 
@@ -121,6 +129,7 @@ Returns the points and point types of the path as a [**PathData**](PathData).
 
 This example makes a path of two figures, closes the second, and lists the types the points get. A type is a number: 0 begins a figure, 1 is a line, 3 is part of a Bézier curve, and the letters show the close flag **c** and the marker flag **m**.
 
+<!-- test: Br_PathTests.Types_OfTwoFiguresWithAClosedOneAndAMarker -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -141,6 +150,7 @@ For i = 1 To UBound(ty)
 Next
 Debug.Print s                         ' 0 1 0 1 1cm
 ```
+<!-- /test -->
 
 ### Reset
 {: .no_toc }
@@ -222,6 +232,7 @@ Syntax: *path*.**AddLines(** *points*() **)** **As GpStatus**
 
 Adds a series of connected lines through the points.
 
+<!-- test: Br_PathTests.Lines_AddLines_AndBeziers_PointCounts -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -232,6 +243,7 @@ pts(1) = GpPointF(20, 0): pts(2) = GpPointF(30, 10): pts(3) = GpPointF(20, 20)
 p.AddLines pts
 Debug.Print p.PointCount                                       ' 5
 ```
+<!-- /test -->
 
 ### AddArc
 {: .no_toc }
@@ -277,6 +289,7 @@ Syntax: *path*.**AddBeziers(** *points*() **)** **As GpStatus**
 
 Adds a series of connected Bézier curves.
 
+<!-- test: Br_PathTests.AddBeziers_NeedsThreeNPlusOnePoints -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -290,6 +303,7 @@ Debug.Print q.AddBeziers(pts) & " " & q.PointCount             ' 0 7
 Dim r(1 To 3) As GpPointF
 Debug.Print q.AddBeziers(r)                                    ' 2
 ```
+<!-- /test -->
 
 ### AddCurve
 {: .no_toc }
@@ -319,6 +333,7 @@ Syntax: *path*.**AddClosedCurve(** *points*() [, *tension* ] **)** **As GpStatus
 
 Adds a closed cardinal spline through the points. It is a figure of its own.
 
+<!-- test: Br_PathTests.Curves_PointCounts -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim pts(1 To 3) As GpPointF
@@ -330,6 +345,7 @@ Dim c As GraphicsPath = GraphicsPath()
 c.AddClosedCurve pts
 Debug.Print c.PointCount                                       ' 10
 ```
+<!-- /test -->
 
 ## Adding shapes
 
@@ -386,6 +402,7 @@ Syntax: *path*.**AddPolygon(** *points*() **)** **As GpStatus**
 
 Adds a closed polygon, as a figure of its own. The last point need not repeat the first.
 
+<!-- test: Br_PathTests.Shapes_PointCounts -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -396,6 +413,7 @@ tri(1) = GpPointF(40, 0): tri(2) = GpPointF(50, 0): tri(3) = GpPointF(45, 8)
 p.AddPolygon tri
 Debug.Print p.PointCount                                       ' 20
 ```
+<!-- /test -->
 
 ### AddPath
 {: .no_toc }
@@ -459,6 +477,7 @@ Syntax: *path*.**Transform(** *matrix* **)** **As GpStatus**
 
 Multiplies each point by the matrix.
 
+<!-- test: Br_PathTests.Transform_MultipliesEveryPoint -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -468,6 +487,7 @@ p.Transform m
 Dim pt As GpPointF = p.LastPoint
 Debug.Print pt.X & " " & pt.Y         ' 14 26
 ```
+<!-- /test -->
 
 ### Flatten
 {: .no_toc }
@@ -482,6 +502,7 @@ Syntax: *path*.**Flatten(** [ *matrix* ], [ *flatness* ] **)** **As GpStatus**
 
 Replaces every curve with a series of straight lines. The curve information is lost.
 
+<!-- test: Br_PathTests.Flatten_ReplacesTheCurvesWithLines -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -504,6 +525,7 @@ For i = 1 To UBound(ty)
 Next
 Debug.Print (p.PointCount > 13) & " " & n         ' True 0
 ```
+<!-- /test -->
 
 ### Widen
 {: .no_toc }
@@ -518,6 +540,7 @@ Syntax: *path*.**Widen(** *pen*, [ *matrix* ], [ *flatness* ] **)** **As GpStatu
 
 Replaces the path with the outline of the area that the pen paints when it draws the path. The outline is flattened and its fill mode is **FillModeWinding**.
 
+<!-- test: Br_PathTests.Widen_ReplacesTheLineWithTheOutlineOfItsStroke -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -529,6 +552,7 @@ Dim b As GpRectF
 p.GetWorldBounds b, Nothing, Nothing
 Debug.Print b.Y & " " & b.Height                  ' -1 2
 ```
+<!-- /test -->
 
 ### Outline
 {: .no_toc }
@@ -540,6 +564,7 @@ Syntax: *path*.**Outline(** [ *matrix* ], [ *flatness* ] **)** **As GpStatus**
 
 Flattens the path and replaces it with the outline of the area that **FillModeWinding** fills. Where figures overlap, only the outer boundary remains.
 
+<!-- test: Br_PathTests.Outline_KeepsTheOuterBoundaryOfOverlappingFigures -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -564,6 +589,7 @@ For i = 1 To UBound(ty)
 Next
 Debug.Print n                                     ' 1
 ```
+<!-- /test -->
 
 ### Warp
 {: .no_toc }
@@ -589,6 +615,7 @@ Syntax: *path*.**Warp(** *destPoints*(), *srcX*, *srcY*, *srcWidth*, *srcHeight*
 
 Warps the path so that the source rectangle fills the quadrilateral given by the destination points, and flattens it. The curve information is lost.
 
+<!-- test: Br_PathTests.Warp_MapsTheSourceRectangleToTheQuadrilateral -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -601,6 +628,7 @@ Dim b As GpRectF
 p.GetWorldBounds b, Nothing, Nothing
 Debug.Print Round(b.Width, 2) & " " & Round(b.Height, 2)      ' 20 10
 ```
+<!-- /test -->
 
 ## Reading a path
 
@@ -612,6 +640,7 @@ Syntax: *path*.**GetPoints(** *points*() **)** **As GpStatus**
 *points*
 : *required* A dynamic array of **GpPointF** or **GpPoint**. The call sizes it to the number of points, with indexes 1 to **PointCount**, and fills it.
 
+<!-- test: Br_PathTests.GetPoints_EmptyPath_RaisesUnspecifiedError -->
 > [!NOTE] 0.9.45.0
 > On an empty path the call raises run-time error -2147467259, *Unspecified error*. Check **PointCount** first.
 
@@ -623,9 +652,11 @@ Syntax: *path*.**GetTypes(** *types*() **)** **As GpStatus**
 *types*
 : *required* A dynamic array of [**PathPointType**](Types/PathPointType). The call sizes it to the number of points, with indexes 1 to **PointCount**, and fills it.
 
+<!-- test: Br_PathTests.GetTypes_EmptyPath_RaisesUnspecifiedError -->
 > [!NOTE] 0.9.45.0
 > On an empty path the call raises run-time error -2147467259, *Unspecified error*. Check **PointCount** first.
 
+<!-- test: Br_PathTests.GetPoints_ListsThePointsFromIndexOne -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -638,6 +669,7 @@ For i = 1 To UBound(pts)
 Next
 Debug.Print s                         ' (1,2) (11,2) (11,22) (1,22)
 ```
+<!-- /test -->
 
 ### GetWorldBounds
 {: .no_toc }
@@ -655,6 +687,7 @@ Syntax: *path*.**GetWorldBounds(** *bounds*, *matrix*, *pen* **)** **As GpStatus
 
 Finds a rectangle that holds the path. The rectangle need not be the smallest one: for a curve it can be larger than the curve, and with a pen it can be much larger than the line.
 
+<!-- test: Br_PathTests.GetWorldBounds_OfARectangle -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -663,6 +696,7 @@ Dim b As GpRectF
 p.GetWorldBounds b, Nothing, Nothing
 Debug.Print b.X & " " & b.Y & " " & b.Width & " " & b.Height   ' 1 2 10 20
 ```
+<!-- /test -->
 
 ## Hit testing
 
@@ -700,6 +734,7 @@ Syntax: *path*.**IsOutlineVisibleI(** *x*, *y*, *pen*, [ *g* ] **)** **As Boolea
 
 The other arguments are as for **IsVisible**. Returns **True** when the point touches the outline of the path, drawn with the pen.
 
+<!-- test: Br_PathTests.IsVisible_AndIsOutlineVisible -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim p As GraphicsPath = GraphicsPath()
@@ -708,9 +743,11 @@ Dim pn As Pen = Pen(Color(255, 255, 0, 0), 2)
 Debug.Print p.IsVisible(5, 5) & " " & p.IsVisible(15, 15)               ' True False
 Debug.Print p.IsOutlineVisible(0, 5, pn) & " " & p.IsOutlineVisible(5, 5, pn)    ' True False
 ```
+<!-- /test -->
 
 ## Example
 
+<!-- test: Br_PathTests.FillPath_FillsTheShape -->
 This example fills a heart-shaped path made of two arcs and a polygon, then reads two pixels back to show which areas are filled and which are not.
 
 ```tb check_build check_run
@@ -732,6 +769,7 @@ g.FillPath sb, p
 Debug.Print Hex$(bmp.Pixel(20, 20).G)      ' 0
 Debug.Print Hex$(bmp.Pixel(2, 2).G)        ' FF
 ```
+<!-- /test -->
 
 ## See Also
 

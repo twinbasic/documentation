@@ -20,6 +20,7 @@ The type mirrors the GDI+ [LevelsParams](https://learn.microsoft.com/en-us/windo
 | **midtone** | **Long** | The midtone adjustment, from -100 to 100. 0 changes nothing. |
 | **shadow** | **Long** | The shadow level, from 0 to 100. 0 leaves the bottom of the range alone. It has to be lower than the highlight level. |
 
+<!-- test: Fx_EffectTests.LevelsParams_HighightField_HoldsTheHighlightLevel, compile LevelsParamsHighlightField -->
 > [!NOTE] 0.9.45.0
 > The first field is named **highight**, with the letter l missing, and the field **highlight** does not exist. The argument of the function **LevelsParams** is spelled correctly.
 

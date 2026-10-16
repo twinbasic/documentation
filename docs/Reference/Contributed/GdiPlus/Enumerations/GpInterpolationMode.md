@@ -12,6 +12,7 @@ Specifies the algorithm that is used when images are scaled or rotated.
 
 The setting is the **InterpolationMode** property of [**Graphics**](../Graphics). The first four members have the values of [GpQualityMode](GpQualityMode).
 
+<!-- test: Gr_GraphicsTests.InterpolationMode_HighQuality_ReadsBackAsBicubic, Gr_GraphicsTests.InterpolationMode_LowQualityAndDefault_ReadBackAsBilinear -->
 > [!NOTE] timeless
 > GDI+ replaces some of the values when they are set. A **Graphics** object that was given **InterpolationModeHighQuality** returns **InterpolationModeHighQualityBicubic** when the property is read again, and one that was given **InterpolationModeLowQuality** or **InterpolationModeDefault** returns **InterpolationModeBilinear**.
 

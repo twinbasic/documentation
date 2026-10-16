@@ -12,6 +12,7 @@ Selects how a drawn colour is combined with the colour already on the surface.
 
 The setting is the **CompositingMode** property of [**Graphics**](../Graphics). It matters only for colours that are not fully opaque.
 
+<!-- test: Gr_GraphicsTests.DrawString_ClearTypeGridFitWithSourceCopy_ReturnsInvalidParameter -->
 > [!NOTE] timeless
 > Text drawn with [**TextRenderingHintClearTypeGridFit**](GpTextRenderingHint) cannot be combined with **CompositingModeSourceCopy**. This is a limit of GDI+.
 

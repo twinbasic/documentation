@@ -12,6 +12,7 @@ Gives the bit mask that selects a channel of an ARGB value.
 
 Each mask is `&HFF` shifted left by the matching member of [ColorShift](ColorShift). No public member takes or returns this enumeration.
 
+<!-- test: Im_TypeTests.ColorMask_AlphaShiftOfTheMaskedValueIsMinusOne -->
 > [!NOTE] 0.9.45.0
 > **AlphaMask** has the sign bit set, so shifting the masked value right by **AlphaShift** copies the sign bit and gives -1 for an alpha of 255. Mask the result with `&HFF` again, or use the **Alpha** property of a [**Color**](../Types/Color).
 

@@ -1,0 +1,217 @@
+' PathData: a container of points and point types, and PathPointType, the type of one point.
+[TestFixture]
+Module Br_PathDataTests
+
+    Private Function LineType() As PathPointType
+        Dim t As PathPointType
+        t._value = PathPointTypeLine
+        Return t
+    End Function
+
+    ' The three points (3, 4), (5, 6), (7, 8), all of the line type.
+    Private Function Filled() As PathData
+        Dim d As PathData = PathData(3)
+        d.Point(1) = GpPointF(3, 4)
+        d.Point(2) = GpPointF(5, 6)
+        d.Point(3) = GpPointF(7, 8)
+        d.Type(1) = LineType()
+        d.Type(2) = LineType()
+        d.Type(3) = LineType()
+        Return d
+    End Function
+
+    ' ---- creating and sizing
+
+    [TestCase]
+    Public Sub New_Count_AndAllocate()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim a As PathData = PathData(3)
+        Dim b As PathData = New PathData
+        Expect.AreEqual 3, a.Count, "Count of PathData(3)"
+        Expect.AreEqual 0, b.Count, "Count of New PathData"
+        Expect.AreEqual CLng(Ok), CLng(b.Allocate(5)), "status of Allocate(5)"
+        Expect.AreEqual 5, b.Count, "Count after Allocate(5)"
+        Expect.AreEqual 0, CLng(b.Allocate(0)), "status of Allocate(0)"
+        Expect.AreEqual 0, b.Count, "Count after Allocate(0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_TypedPoints_CopiesThem()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim tp(1 To 3) As TypedPoint
+        tp(1).pos = GpPointF(0, 0)
+        tp(2).pos = GpPointF(10, 0)
+        tp(3).pos = GpPointF(10, 10)
+        tp(2).type._value = PathPointTypeLine
+        tp(3).type._value = PathPointTypeLine
+        Dim d As PathData = PathData(tp)
+        Dim pts() As GpPointF = d.Points
+        Expect.AreEqual 3, d.Count, "Count of a PathData made from three typed points"
+        Expect.AreEqual 10!, pts(3).X, "X of the third point"
+        Expect.AreEqual 10!, pts(3).Y, "Y of the third point"
+        Expect.Done
+    End Sub
+
+    ' ---- reading through the views
+
+    [TestCase]
+    Public Sub Points_AndTypes_AreViewsFromIndexOne()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim d As PathData = Filled()
+        Dim pts() As GpPointF = d.Points
+        Dim ty() As PathPointType = d.Types
+        Expect.AreEqual 1, LBound(pts), "lower bound of Points"
+        Expect.AreEqual 3, UBound(pts), "upper bound of Points"
+        Expect.AreEqual 5!, pts(2).X, "X of the second point"
+        Expect.AreEqual 6!, pts(2).Y, "Y of the second point"
+        Expect.AreEqual 1, CLng(ty(2)._value), "type byte of the second point"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointsPtr_AndTypesPtr_AreZeroWithoutRoom()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim noRoom As PathData = New PathData
+        Expect.IsTrue noRoom.PointsPtr = 0, "PointsPtr of a PathData with no room"
+        Expect.IsTrue noRoom.TypesPtr = 0, "TypesPtr of a PathData with no room"
+        Dim d As PathData = Filled()
+        Expect.IsTrue d.PointsPtr <> 0, "PointsPtr of a PathData with room"
+        Expect.IsTrue d.TypesPtr <> 0, "TypesPtr of a PathData with room"
+        Expect.Done
+    End Sub
+
+    ' ---- the 32-bit access violation
+
+    [TestCase]
+    Public Sub Point_Get_ReturnsThePoint()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim d As PathData = Filled()
+        Dim p As GpPointF = d.Point(2)
+        Expect.AreEqual 5!, p.X, "X of Point(2)"
+        Expect.AreEqual 6!, p.Y, "Y of Point(2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TypedPoint_Get_ReturnsThePointAndItsType()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim d As PathData = Filled()
+        Dim tp As TypedPoint = d.TypedPoint(2)
+        Expect.AreEqual 5!, tp.pos.X, "X of TypedPoint(2)"
+        Expect.AreEqual 1, CLng(tp.type._value), "type byte of TypedPoint(2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TypedPoints_Get_ReturnsACopy()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim d As PathData = Filled()
+        Dim all() As TypedPoint = d.TypedPoints
+        Expect.AreEqual 3, UBound(all), "upper bound of TypedPoints"
+        Expect.AreEqual 7!, all(3).pos.X, "X of the third typed point"
+        Expect.Done
+    End Sub
+
+    ' ---- indexes outside 1 to Count
+
+    [TestCase]
+    Public Sub Type_Get_OutOfRange_ReturnsZero()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim d As PathData = Filled()
+        Dim t As PathPointType = d.Type(0)
+        Expect.AreEqual 0, CLng(t._value), "type byte of Type(0)"
+        t = d.Type(4)
+        Expect.AreEqual 0, CLng(t._value), "type byte of Type(4) of three points"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Point_Let_OutOfRange_LeavesTheMemoryBesideTheArrayAlone()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim d As PathData = Filled()
+        Dim before As Long, after As Long
+        GetMem4 d.PointsPtr + 24, before
+        d.Point(4) = GpPointF(1234.5, 6789.25)
+        GetMem4 d.PointsPtr + 24, after
+        Expect.IsTrue before = after, "the four bytes after the three points of a PathData are as they were after Point(4) was set"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Type_Let_OutOfRange_LeavesTheMemoryBesideTheArrayAlone()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim d As PathData = PathData(8)
+        Dim before As Byte, after As Byte
+        GetMem1 d.TypesPtr + 8, before
+        Dim t As PathPointType
+        t._value = 7
+        d.Type(9) = t
+        GetMem1 d.TypesPtr + 8, after
+        Expect.IsTrue before = after, "the byte after the eight types of a PathData is as it was after Type(9) was set"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TypedPoint_Let_OutOfRange_LeavesTheMemoryBesideTheArraysAlone()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim d As PathData = PathData(8)
+        Dim beforePoints As Long, afterPoints As Long
+        Dim beforeTypes As Byte, afterTypes As Byte
+        GetMem4 d.PointsPtr + 64, beforePoints
+        GetMem1 d.TypesPtr + 8, beforeTypes
+        Dim tp As TypedPoint
+        tp.pos = GpPointF(1234.5, 6789.25)
+        tp.type._value = 7
+        d.TypedPoint(9) = tp
+        GetMem4 d.PointsPtr + 64, afterPoints
+        GetMem1 d.TypesPtr + 8, afterTypes
+        Expect.IsTrue beforePoints = afterPoints, "the four bytes after the eight points of a PathData are as they were after TypedPoint(9) was set"
+        Expect.IsTrue beforeTypes = afterTypes, "the byte after the eight types of a PathData is as it was after TypedPoint(9) was set"
+        Expect.Done
+    End Sub
+
+    ' ---- PathPointType
+
+    [TestCase]
+    Public Sub PathPointType_Properties_ReadTheByte()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim t As PathPointType
+        t._value = PathPointTypeBezier Or PathPointTypeCloseSubpath
+        Expect.AreEqual CLng(PathPointTypeBezier), CLng(t.PointType), "PointType of a closing Bezier point"
+        Expect.AreEqual True, t.CloseSubpath, "CloseSubpath of a closing Bezier point"
+        Expect.AreEqual False, t.PathMarker, "PathMarker of a closing Bezier point"
+        t._value = PathPointTypeLine Or PathPointTypePathMarker
+        Expect.AreEqual CLng(PathPointTypeLine), CLng(t.PointType), "PointType of a marker line point"
+        Expect.AreEqual True, t.PathMarker, "PathMarker of a marker line point"
+        Expect.AreEqual False, t.CloseSubpath, "CloseSubpath of a marker line point"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PathPointType_ReadThroughAVariable_OfAnArrayElement()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddRectangle 0, 0, 5, 5
+        Dim types() As PathPointType
+        p.GetTypes types
+        Dim t As PathPointType = types(4)
+        Expect.AreEqual CLng(PathPointTypeLine), CLng(t.PointType), "PointType of the fourth point of a rectangle"
+        Expect.AreEqual True, t.CloseSubpath, "CloseSubpath of the fourth point of a rectangle"
+        Expect.Done
+    End Sub
+
+End Module

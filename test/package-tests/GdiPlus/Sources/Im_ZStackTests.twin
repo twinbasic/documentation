@@ -1,0 +1,19 @@
+' GdiPlus, Image.Palette: reading it overflows the stack in a build of this package. After a stack
+' overflow the cases that follow have been seen not to return, so this fixture is the last file.
+[TestFixture]
+Module Im_ZStackTests
+
+    [TestCase]
+    Public Sub Palette_GetReturnsThePalette()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = New Bitmap(4!, 4!, PixelFormat8bppIndexed)
+        Dim pal() As ColorPalette = bmp.Palette
+        Expect.AreEqual 0, CLng(bmp.LastResult), "Palette of an 8-bit indexed bitmap leaves LastResult (0 is Ok)"
+        Expect.AreEqual 1, UBound(pal) - LBound(pal) + 1, "the number of elements of the array that Palette of an 8-bit indexed bitmap returns"
+        Dim one As ColorPalette = pal(LBound(pal))
+        Expect.AreEqual 256, one.count, "the count of the palette of an 8-bit indexed bitmap"
+        Expect.Done
+    End Sub
+
+End Module

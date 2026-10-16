@@ -1,0 +1,172 @@
+' Ty_GpPointTests: the GpPoint type (page Types/GpPoint).
+[TestFixture]
+Module Ty_GpPointTests
+
+    [TestCase]
+    Public Sub GpPoint_IsEightBytes()
+        Expect.Begin
+        Dim p As GpPoint
+        Expect.AreEqual 8, LenB(p), "LenB of a GpPoint"
+        Expect.Done
+    End Sub
+
+    ' ---- Creating
+
+    [TestCase]
+    Public Sub GpPoint_FormsGiveTheDocumentedValues()
+        Expect.Begin
+        Dim p As GpPoint = GpPoint(3, 4)
+        Expect.AreEqual "3,4", p.X & "," & p.Y, "GpPoint(3, 4)"
+        Dim blank As GpPoint = GpPoint()
+        Expect.AreEqual "0,0", blank.X & "," & blank.Y, "GpPoint()"
+        Dim declared As GpPoint
+        Expect.AreEqual "0,0", declared.X & "," & declared.Y, "a variable declared with Dim"
+        Dim fromSize As GpPoint = GpPoint(GpSize(7, 8))
+        Expect.AreEqual "7,8", fromSize.X & "," & fromSize.Y, "GpPoint(GpSize(7, 8))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpPoint_OfGpPointFRoundsHalvesToEven()
+        Expect.Begin
+        Dim rounded As GpPoint = GpPoint(GpPointF(2.5, 3.5))
+        Expect.AreEqual "2,4", rounded.X & "," & rounded.Y, "GpPoint(GpPointF(2.5, 3.5))"
+        Dim negative As GpPoint = GpPoint(GpPointF(-2.5, -3.5))
+        Expect.AreEqual "-2,-4", negative.X & "," & negative.Y, "GpPoint(GpPointF(-2.5, -3.5))"
+        Expect.Done
+    End Sub
+
+    ' ---- Fields and properties
+
+    [TestCase]
+    Public Sub Zero_IsTrueOnlyForBothCoordinatesZero()
+        Expect.Begin
+        Expect.IsTrue GpPoint(0, 0).Zero, "Zero of (0, 0)"
+        Expect.IsFalse GpPoint(0, 1).Zero, "Zero of (0, 1)"
+        Expect.IsFalse GpPoint(1, 0).Zero, "Zero of (1, 0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Transposed_ExchangesTheCoordinatesAndLeavesThePoint()
+        Expect.Begin
+        Dim p As GpPoint = GpPoint(3, 4)
+        Dim t As GpPoint = p.Transposed
+        Expect.AreEqual "4,3", t.X & "," & t.Y, "Transposed of (3, 4)"
+        Expect.AreEqual "3,4", p.X & "," & p.Y, "the point after Transposed"
+        Expect.Done
+    End Sub
+
+    ' ---- Conversion
+
+    [TestCase]
+    Public Sub AsGpPointF_ReturnsTheSameCoordinates()
+        Expect.Begin
+        Dim f As GpPointF = GpPoint(3, 4).AsGpPointF()
+        Expect.AreEqual "3,4", f.X & "," & f.Y, "AsGpPointF of (3, 4)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetFrom_RoundsAGpPointF()
+        Expect.Begin
+        Dim p As GpPoint
+        p.SetFrom GpPointF(2.6, -2.6)
+        Expect.AreEqual "3,-3", p.X & "," & p.Y, "SetFrom GpPointF(2.6, -2.6)"
+        p.SetFrom GpPointF(2.5, 3.5)
+        Expect.AreEqual "2,4", p.X & "," & p.Y, "SetFrom GpPointF(2.5, 3.5) (halves to the even number)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AsPOINT_And_SetFromPOINT_ConvertToAndFromThePointStructure()
+        Expect.Begin
+        Dim winPoint As GDIP_POINT = GpPoint(3, -4).AsPOINT()
+        Expect.AreEqual "3,-4", winPoint.x & "," & winPoint.y, "AsPOINT of (3, -4)"
+        Dim p As GpPoint
+        winPoint.x = 11: winPoint.y = 12
+        p.SetFromPOINT winPoint
+        Expect.AreEqual "11,12", p.X & "," & p.Y, "SetFromPOINT of (11, 12)"
+        Expect.Done
+    End Sub
+
+    ' ---- Add and Sub change the point, Sum and Diff do not
+
+    [TestCase]
+    Public Sub Add_ChangesThePoint()
+        Expect.Begin
+        Dim p As GpPoint = GpPoint(3, 4)
+        p.Add GpPoint(10, 10)
+        Expect.AreEqual "13,14", p.X & "," & p.Y, "the point (3, 4) after Add GpPoint(10, 10)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sub_ChangesThePoint()
+        Expect.Begin
+        Dim p As GpPoint = GpPoint(13, 14)
+        p.Sub GpPoint(1, 1)
+        Expect.AreEqual "12,13", p.X & "," & p.Y, "the point (13, 14) after Sub GpPoint(1, 1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Transpose_ExchangesTheCoordinatesOfThePoint()
+        Expect.Begin
+        Dim p As GpPoint = GpPoint(13, 12)
+        p.Transpose
+        Expect.AreEqual "12,13", p.X & "," & p.Y, "the point (13, 12) after Transpose"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SumAndDiff_ReturnNewPointsAndLeaveThePoint()
+        Expect.Begin
+        Dim p As GpPoint = GpPoint(3, 4)
+        Dim s As GpPoint = p.Sum(GpPoint(1, 1))
+        Dim d As GpPoint = p.Diff(GpPoint(1, 1))
+        Expect.AreEqual "4,5", s.X & "," & s.Y, "Sum of (3, 4) and (1, 1)"
+        Expect.AreEqual "2,3", d.X & "," & d.Y, "Diff of (3, 4) and (1, 1)"
+        Expect.AreEqual "3,4", p.X & "," & p.Y, "the point after Sum and Diff"
+        Expect.Done
+    End Sub
+
+    ' ---- DotProd
+
+    [TestCase]
+    Public Sub DotProd_IsXTimesXPlusYTimesY()
+        Expect.Begin
+        Dim p As GpPoint = GpPoint(3, 4)
+        Expect.AreEqual 700000, p.DotProd(GpPoint(100000, 100000)), "DotProd of (3, 4) and (100000, 100000)"
+        Expect.AreEqual 11, p.DotProd(GpPoint(1, 2)), "DotProd of (3, 4) and (1, 2)"
+        Expect.Done
+    End Sub
+
+    ' The result is a LongLong, so a product above the range of a Long should be returned, not raise an error.
+    [TestCase]
+    Public Sub DotProd_ProductAboveTheRangeOfALongIsReturned()
+        Expect.Begin
+        Dim p As GpPoint = GpPoint(50000, 0)
+        Dim errNumber As Long
+        Dim product As LongLong
+        On Error Resume Next
+        Err.Clear
+        product = p.DotProd(GpPoint(50000, 0))
+        errNumber = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 0, errNumber, "Err.Number after DotProd of (50000, 0) and (50000, 0)"
+        Expect.AreEqual 2500000000^, product, "DotProd of (50000, 0) and (50000, 0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Equals_ComparesBothCoordinates()
+        Expect.Begin
+        Dim p As GpPoint = GpPoint(3, 4)
+        Expect.IsTrue p.Equals(GpPoint(3, 4)), "Equals of (3, 4) and (3, 4)"
+        Expect.IsFalse p.Equals(GpPoint(3, 5)), "Equals of (3, 4) and (3, 5)"
+        Expect.IsFalse p.Equals(GpPoint(4, 4)), "Equals of (3, 4) and (4, 4)"
+        Expect.Done
+    End Sub
+
+End Module

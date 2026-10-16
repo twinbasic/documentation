@@ -41,8 +41,11 @@ Syntax: *format* **= GenericDefaultStringFormat**( )
 
 Syntax: *format* **= GenericTypographicStringFormat**( )
 
+<!-- test: Fx_StringFormatTests.GenericFormats_HaveTheDocumentedSettings -->
 **GenericDefaultStringFormat** returns the format that GDI+ uses when none is given. It has no flags, near alignment and trimming to a whole character. **GenericTypographicStringFormat** returns a format for typographic layout, with the flags **NoFitBlackBox**, **LineLimit** and **NoClip** and no trimming.
+<!-- /test -->
 
+<!-- test: Fx_StringFormatTests.GenericDefaultStringFormat_ChangeIsSeenByEveryLaterCall, Fx_StringFormatTests.GenericDefaultStringFormat_CloneIsNotShared, Fx_StringFormatTests.GenericTypographicStringFormat_ChangeIsSeenByEveryLaterCall -->
 > [!NOTE] 0.9.45.0
 > Both functions return the shared generic format of GDI+, not a copy. Changing the object changes the generic format for the whole program, and a later call returns the changed format. Call [**Clone**](#clone) and change the copy instead.
 
@@ -122,6 +125,7 @@ Syntax: *format*.**Alignment** [ **=** *alignment* ]
 
 Returns or sets the alignment.
 
+<!-- test: Fx_StringFormatTests.Alignment_GetAfterSettingCenter_ReturnsCenter, Fx_StringFormatTests.Alignment_GetAfterSettingFar_ReturnsFar, Fx_StringFormatTests.Alignment_Get_LeavesLastResultOk, Fx_StringFormatTests.IsAlignmentCenter_AfterSettingCenter_IsTrue, Fx_StringFormatTests.IsAlignmentFar_AfterSettingFar_IsTrue, Fx_StringFormatTests.Alignment_SetFar_PlacesTheTextAtTheRightEdge -->
 > [!WARNING] 0.9.45.0
 > Reading **Alignment** fails. It returns **StringAlignmentNear** (0) whatever the alignment is, and sets **LastResult** to **InvalidParameter**. The read-only properties **IsAlignmentNear**, **IsAlignmentCenter** and **IsAlignmentFar** are wrong for the same reason: **IsAlignmentNear** always returns **True**, and the other two always return **False**. Setting the alignment works, with the property or with the **SetAlignment...** methods, so keep the value in a variable if the program needs to read it back. If the error strategy is **RaiseErrors**, the read raises an error.
 >
@@ -344,6 +348,7 @@ Syntax: *status* **=** *format*.**GetTabStops**( *count*, *firstTabOffset*, *tab
 
 The first form returns the tab stops as a one-based array of **Single** values. The second form fills an array that the caller has made and returns a [**GpStatus**](Enumerations/GpStatus).
 
+<!-- test: Fx_StringFormatTests.GetTabStops_FirstForm_ReturnsTheFirstTabOffset, Fx_StringFormatTests.GetTabStops_FirstForm_ReturnsTheTabStops, Fx_StringFormatTests.GetTabStops_SecondForm_ReturnsTheFirstTabOffsetAndTheStops -->
 > [!WARNING] 0.9.45.0
 > The first form of **GetTabStops** does not return the first tab offset: the variable passed for *firstTabOffset* receives 0, whatever offset was set. The array it returns is correct. The second form returns the offset correctly, so use it when the offset is needed.
 >
@@ -368,6 +373,7 @@ The first form returns the tab stops as a one-based array of **Single** values. 
 
 Digit substitution draws the digits 0 to 9 of a string with the digits of another script, such as Arabic-Indic digits. The language says which script. The methods are [**GpStringDigitSubstitute**](Enumerations/GpStringDigitSubstitute) values: **StringDigitSubstituteUser** follows the user's regional settings, **StringDigitSubstituteNone** turns the substitution off, **StringDigitSubstituteNational** uses the digits of the official language of the locale and **StringDigitSubstituteTraditional** uses the digits of the user's native script, which can be a different language. A language identifier is an **Integer**, such as 1033 for US English.
 
+<!-- test: Fx_StringFormatTests.SetDigitSubstitutionUser_KeepsTheLanguage, Fx_StringFormatTests.SetDigitSubstitutionNone_KeepsTheLanguage, Fx_StringFormatTests.SetDigitSubstitutionNational_KeepsTheLanguage, Fx_StringFormatTests.SetDigitSubstitutionTraditional_KeepsTheLanguage, Fx_StringFormatTests.DigitSubstitutionLanguage_Let_KeepsTheMethod, Fx_StringFormatTests.DigitSubstitutionMethod_Let_KeepsTheLanguage, Fx_StringFormatTests.SetDigitSubstitution_SetsLanguageAndMethodTogether -->
 > [!WARNING] 0.9.45.0
 > Setting one half of the substitution resets the other. **SetDigitSubstitutionUser**, **SetDigitSubstitutionNone**, **SetDigitSubstitutionNational** and **SetDigitSubstitutionTraditional** set the language to 0, and setting **DigitSubstitutionLanguage** sets the method to **StringDigitSubstituteUser**. To change one half and keep the other, set the method with **DigitSubstitutionMethod**, or set both with **SetDigitSubstitution**.
 >
@@ -432,6 +438,7 @@ Each function returns **True** when the method is the value in its name.
 
 A format can name up to 32 ranges of characters in a string. [**Graphics.MeasureCharacterRanges**](Graphics) then returns one [**Region**](Region) for each range, which covers the space that the characters of the range take when the string is laid out. A range is a [**CharacterRange**](Types/CharacterRange).
 
+<!-- test: Fx_StringFormatTests.MeasurableCharacterRanges_MoreThan32_ReturnsValueOverflow -->
 > [!NOTE] timeless
 > GDI+ accepts at most 32 ranges. A call with more returns **ValueOverflow** and leaves the earlier ranges in place.
 

@@ -46,6 +46,7 @@ Each form can also be written with **New**: *brush* **= New LinearGradientBrush*
 
 The form with only a rectangle and two colours runs the gradient along the diagonal from the top left corner to the bottom right corner, like **LinearGradientModeForwardDiagonal**. A new brush has the wrap mode **WrapModeTile**.
 
+<!-- test: Br_BrushColourTests.LinearGradientBrush_RGBForm_VBColour_UsesThatColour, Br_BrushColourTests.LinearGradientBrush_RGBForm_Points_VBColour_UsesThatColour, Br_BrushColourTests.LinearGradientBrush_SetLinearColors_RGBForm_VBColour_UsesThatColour -->
 > [!WARNING] 0.9.45.0
 > The forms with *rgb1* and *rgb2* read each **Long** as `&H00RRGGBB`, not as a VB colour, and drop the alpha: `vbRed` is blue. [**IBrush**](IBrush#colours) lists what else is not translated. Use the **Color** forms.
 
@@ -91,6 +92,7 @@ Syntax: *colors* **=** *brush*.**LinearColors**
 
 Returns the start colour and the end colour, as an array of **Color**.
 
+<!-- test: Br_GradientBrushTests.Linear_LinearColors_HasTwoElements, Br_GradientBrushTests.Linear_LinearColors_ReturnsStartThenEnd -->
 > [!NOTE] 0.9.45.0
 > The array runs from 0 to 2, and its element 0 is not used: the start colour is element 1 and the end colour element 2.
 
@@ -98,7 +100,9 @@ Returns the start colour and the end colour, as an array of **Color**.
 
 Syntax: *colors* **=** *brush*.**LinearRGBs**
 
+<!-- test: Br_GradientBrushTests.Linear_LinearRGBs_AreCompleteARGBValues, Br_GradientBrushTests.Linear_LinearRGBs_HasTwoElements -->
 Returns the same two colours as an array of **Long**, laid out as the array of **LinearColors**. Each value is a complete `&HAARRGGBB` colour, with its alpha, and not a `&H00RRGGBB` value.
+<!-- /test -->
 
 ### Rectangle, RectangleI
 
@@ -154,8 +158,9 @@ Syntax: *brush*.**SetBlend**( *blendFactors*(1), *blendPositions*(1), *count* )
 
 Sets the blend factors, and returns a [**GpStatus**](Enumerations/GpStatus). A blend factor is a **Single** from 0 to 1: the share of the end colour at a position, with the rest from the start colour. A position is a **Single** from 0 at the start of the gradient to 1 at its end. The first position must be 0 and the last 1. The first form takes two arrays of the same length. The second form takes the first element of each array by reference and the number of elements to read.
 
+<!-- test: Br_GradientBrushTests.Linear_SetBlend_TwoArrays_Returns, Br_GradientBrushTests.Linear_SetBlend_FirstElementsAndCount_SetsTheBlend -->
 > [!WARNING] 0.9.45.0
-> The form with two arrays never returns. Use the form with the first elements and the count, as the example does.
+> The form with two arrays stops the program with an access violation. Use the form with the first elements and the count, as the example does.
 
 ### GetBlend
 
@@ -179,8 +184,9 @@ Syntax: *brush*.**SetInterpolationColors**( *presetColors*(1), *blendPositions*(
 
 Sets preset colours, and returns a [**GpStatus**](Enumerations/GpStatus). The gradient takes the colour at each position, and blends between them. The first position must be 0 and the last 1. Like **SetBlend**, the first form takes two arrays and the second form takes the first elements by reference and a count. The preset colours replace the start and the end colour for the drawing; [**LinearColors**](#linearcolors) still returns those two.
 
+<!-- test: Br_GradientBrushTests.Linear_SetInterpolationColors_TwoArrays_Returns, Br_GradientBrushTests.Linear_SetInterpolationColors_FirstElementsAndCount_SetsTheColours -->
 > [!WARNING] 0.9.45.0
-> The form with two arrays never returns. Use the form with the first elements and the count.
+> The form with two arrays stops the program with an access violation. Use the form with the first elements and the count.
 
 ### GetInterpolationColors
 
@@ -194,7 +200,9 @@ Reads the preset colours and their positions. The first form sizes the two array
 
 Syntax: *brush*.**SetBlendBellShape**( *focus* [, *scale*] )
 
+<!-- test: Br_GradientBrushTests.Linear_BlendBellShape_PeaksAtTheFocus -->
 Makes the colour reach the end colour at *focus*, a **Single** from 0 to 1 along the gradient, and fall back to the start colour on both sides, with a smooth bell-shaped curve. *scale*, a **Single** from 0 to 1, is how fast the colour falls off from *focus*; the default is 1. Returns a [**GpStatus**](Enumerations/GpStatus).
+<!-- /test -->
 
 ### SetBlendTriangularShape
 
@@ -244,12 +252,15 @@ Syntax: *brush*.**WrapMode** [ **=** *wrapMode* ]
 
 Gets or sets what the brush does outside its line: a [**GpWrapMode**](Enumerations/GpWrapMode) value. The default is **WrapModeTile**.
 
+<!-- test: Br_GradientBrushTests.Linear_WrapMode_TileRepeatsAndFlipMirrors -->
 | Value | Outside the gradient |
 |:------|:---------------------|
 | **WrapModeTile** | The gradient repeats, from the start colour again. |
 | **WrapModeTileFlipX**, **WrapModeTileFlipXY** | The gradient repeats, mirrored every second time, so that the colour runs back from the end colour. |
 | **WrapModeTileFlipY** | Like **WrapModeTile**. |
+<!-- /test -->
 
+<!-- test: Br_GradientBrushTests.Linear_WrapMode_Clamp_IsRefused -->
 > [!NOTE] 0.9.45.0
 > **WrapModeClamp** is refused: **LastResult** becomes **InvalidParameter** and the wrap mode is not changed.
 
@@ -294,6 +305,7 @@ Syntax: *brush*.**Transform** [ **=** *matrix* ]
 
 Sets the transformation of the brush to a [**Matrix**](Matrix). Reading it should return a copy of the matrix.
 
+<!-- test: Br_GradientBrushTests.Linear_Transform_Get_ReturnsTheMatrix -->
 > [!NOTE] 0.9.45.0
 > Reading **Transform** always fails: it returns **Nothing** and **LastResult** becomes **InvalidParameter**. Use [**GetTransform**](#gettransform).
 
@@ -301,7 +313,9 @@ Sets the transformation of the brush to a [**Matrix**](Matrix). Reading it shoul
 
 Syntax: *brush*.**GetTransform**( *matrix* )
 
+<!-- test: Br_GradientBrushTests.Linear_GetTransform_CopiesTheMatrix -->
 Copies the transformation of the brush into *matrix*, a **Matrix** that the caller created.
+<!-- /test -->
 
 ### ResetTransform
 

@@ -1,0 +1,246 @@
+' The library: GdiPlusUser, GdiPlusBase, GdiPlusAbort, the module functions, GdiplusStartupParams and GpStatus.
+[TestFixture]
+Module Gr_LibraryTests
+
+    ' ---- GdiPlusUser
+
+    [TestCase]
+    Public Sub GdiPlusUser_BitmapOfTwoWholeNumbers_IsCreated()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(64, 64)
+        Expect.AreEqual 0, CLng(bmp.LastResult), "LastResult of Bitmap(64, 64)"
+        Expect.AreEqual 64, CLng(bmp.Width), "Width of Bitmap(64, 64)"
+        Expect.AreEqual 64, CLng(bmp.Height), "Height of Bitmap(64, 64)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GdiPlusUser_BitmapOfSinglesOrWithFormat_IsCreated()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim a As Bitmap = Bitmap(64!, 64!)
+        Expect.AreEqual 0, CLng(a.LastResult), "LastResult of Bitmap(64!, 64!)"
+        Expect.AreEqual 64, CLng(a.Width), "Width of Bitmap(64!, 64!)"
+        Dim b As Bitmap = Bitmap(64, 64, PixelFormat32bppARGB)
+        Expect.AreEqual 0, CLng(b.LastResult), "LastResult of Bitmap(64, 64, PixelFormat32bppARGB)"
+        Expect.AreEqual 64, CLng(b.Height), "Height of Bitmap(64, 64, PixelFormat32bppARGB)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GdiPlusUser_InstanceWhileRunning_WithInvalidInput_ReportsFailure()
+        Expect.Begin
+        Dim first As GdiPlusUser = GdiPlusUser()
+        Expect.AreEqual 0, CLng(first.LastResult), "LastResult of the first GdiPlusUser"
+        Dim bad As GdiplusStartupInput
+        bad.GdiplusVersion = 99
+        Dim second As GdiPlusUser = GdiPlusUser(bad)
+        Expect.AreEqual CLng(UnsupportedGdiplusVersion), CLng(second.LastResult), "LastResult of a second GdiPlusUser given GdiplusVersion 99 while the first is alive"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GdiPlusUser_ReleasingTheLastInstance_KeepsGdiPlusRunning()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(8, 8)
+        Dim g As Graphics = Graphics(bmp)
+        Set user = Nothing
+        Expect.AreEqual 0, CLng(g.Clear(Color(255, 0, 0))), "status of Clear on a Graphics made before the last GdiPlusUser was released"
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 1, 1)), "pixel after that Clear"
+        Dim later As Bitmap = Bitmap(8!, 8!)
+        Expect.AreEqual 0, CLng(later.LastResult), "LastResult of a Bitmap made after the last GdiPlusUser was released"
+        Dim again As GdiPlusUser = GdiPlusUser()
+        Expect.AreEqual 0, CLng(again.LastResult), "LastResult of a GdiPlusUser made after the last one was released"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TestControlForceBilinear_Method_ReturnsOk()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Expect.AreEqual 0, CLng(user.TestControlForceBilinear(False)), "status of GdiPlusUser.TestControlForceBilinear(False)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TestControlNoICM_Method_ReturnsOk()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Expect.AreEqual 0, CLng(user.TestControlNoICM(False)), "status of GdiPlusUser.TestControlNoICM(False)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TestControl_ModuleFunctions_ReturnOk()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Expect.AreEqual 0, CLng(TestControlNoICM(False)), "status of the module function TestControlNoICM(False)"
+        Expect.AreEqual 0, CLng(TestControlForceBilinear(False)), "status of the module function TestControlForceBilinear(False)"
+        Expect.Done
+    End Sub
+
+    ' ---- GdiPlusBase
+
+    [TestCase]
+    Public Sub Alloc_ThroughAClass_ReturnsABlock()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim block As LongPtr = GdiPlusUser.Alloc(64)
+        Expect.IsTrue block <> 0, "GdiPlusUser.Alloc(64) returns a block"
+        If block <> 0 Then GdiPlusUser.Free block
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Image_AssignedToAVariableOfTheVbType_Fails()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(4, 4)
+        Dim img As Image
+        On Error Resume Next
+        Set img = bmp
+        Dim failed As Boolean = (Err.Number <> 0) Or (img Is Nothing)
+        On Error GoTo 0
+        Expect.IsTrue failed, "assigning a Bitmap to a variable declared As Image (the control class of the VB package) raises an error or leaves Nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Image_AssignedToAGdiPlusImageVariable_IsUsable()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(4, 4)
+        Dim img As GdiPlus.Image = bmp
+        Expect.IsTrue Not (img Is Nothing), "a Bitmap assigned to a variable declared As GdiPlus.Image"
+        Dim named As GdiPlus.Image = Image(Gr_Folder() & "\no such file.png")
+        Expect.IsTrue Not (named Is Nothing), "the function Image(...) assigned to a GdiPlus.Image variable returns an object"
+        Expect.Done
+    End Sub
+
+    ' ---- GdiPlusAbort
+
+    [TestCase]
+    Public Sub SetAbort_ThenDrawingTheImage_Works()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim src As Bitmap = Gr_White(4, 4)
+        Dim stopper As Gr_NeverAbort = New Gr_NeverAbort
+        Expect.AreEqual 0, CLng(src.SetAbort(stopper)), "status of Bitmap.SetAbort with a GdiPlusAbort that never asks to stop"
+        Dim dst As Bitmap = Gr_Clear(8, 8)
+        Dim g As Graphics = Graphics(dst)
+        Expect.AreEqual 0, CLng(g.DrawImage(src, 0, 0, 4, 4)), "status of DrawImage of the image that was given the abort object"
+        Expect.AreEqual "FFFFFFFF", Gr_Hex(Gr_Px(dst, 1, 1)), "pixel of the drawn image"
+        Expect.Done
+    End Sub
+
+    ' ---- the module functions
+
+    [TestCase]
+    Public Sub IsCanonicalPixelFormat_PremultipliedFormats_AreCanonical()
+        Expect.Begin
+        Expect.IsTrue IsCanonicalPixelFormat(PixelFormat32bppARGB), "32bppARGB is canonical"
+        Expect.IsTrue IsCanonicalPixelFormat(PixelFormat64bppARGB), "64bppARGB is canonical"
+        Expect.IsTrue IsCanonicalPixelFormat(PixelFormat32bppPARGB), "32bppPARGB is canonical"
+        Expect.IsTrue IsCanonicalPixelFormat(PixelFormat64bppPARGB), "64bppPARGB is canonical"
+        Expect.IsFalse IsCanonicalPixelFormat(PixelFormat24bppRGB), "24bppRGB is not canonical"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GdipCreateStreamOnFile_ExistingFile_ReturnsAStream()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim path As String = Gr_Folder() & "\Gr_stream.tmp"
+        Dim f As Integer = FreeFile
+        Open path For Binary As #f
+        Put #f, , CByte(65)
+        Close #f
+        Dim stream As GDIP_IStream
+        Dim st As Long = GdipCreateStreamOnFile(StrPtr(path), &H80000000, stream)
+        Expect.AreEqual 0, st, "status of GdipCreateStreamOnFile for an existing file, opened for reading"
+        Expect.IsTrue Not (stream Is Nothing), "GdipCreateStreamOnFile stores a stream"
+        Set stream = Nothing
+        Kill path
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PropertyTag_ConstantsAbove8000_AreNotNegativeInLong()
+        Expect.Begin
+        Dim tag As Long = PropertyTagCopyright
+        Expect.AreEqual &H8298&, tag, "PropertyTagCopyright assigned to a Long, expected 33432 (&H8298)"
+        Dim exif As Long = PropertyTagExifIFD
+        Expect.AreEqual &H8769&, exif, "PropertyTagExifIFD assigned to a Long, expected 34665 (&H8769)"
+        Dim small As Long = PropertyTagImageDescription
+        Expect.AreEqual &H10E&, small, "PropertyTagImageDescription assigned to a Long, expected 270 (&H10E)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemovePropertyItem_HighPropertyTag_RemovesTheItem()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(4!, 4!)
+        Dim text() As Byte = StrConv("(c) test" & vbNullChar, vbFromUnicode)
+        Dim item As GpPropertyItem
+        item.Id = &H8298&
+        item._type = PropertyTagTypeASCII
+        item._length = UBound(text) + 1
+        item._address = VarPtr(text(0))
+        bmp.PropertyItem = item
+        Expect.AreEqual 1, CLng(bmp.PropertyCount), "PropertyCount after setting the property &H8298"
+        Expect.AreEqual 0, CLng(bmp.RemovePropertyItem(PropertyTagCopyright)), "status of RemovePropertyItem(PropertyTagCopyright)"
+        Expect.AreEqual 0, CLng(bmp.PropertyCount), "PropertyCount after RemovePropertyItem(PropertyTagCopyright)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemovePropertyItem_HighPropertyTagConvertedToLong_RemovesTheItem()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(4!, 4!)
+        Dim text() As Byte = StrConv("(c) test" & vbNullChar, vbFromUnicode)
+        Dim item As GpPropertyItem
+        item.Id = &H8298&
+        item._type = PropertyTagTypeASCII
+        item._length = UBound(text) + 1
+        item._address = VarPtr(text(0))
+        bmp.PropertyItem = item
+        Expect.AreEqual 0, CLng(bmp.RemovePropertyItem(PropertyTagCopyright And &HFFFF&)), "status of RemovePropertyItem(PropertyTagCopyright And &HFFFF&)"
+        Expect.AreEqual 0, CLng(bmp.PropertyCount), "PropertyCount after RemovePropertyItem(PropertyTagCopyright And &HFFFF&)"
+        Expect.Done
+    End Sub
+
+    ' ---- the enumerations
+
+    [TestCase]
+    Public Sub GdiplusStartupParams_ReservedMembers_AreSingleBits()
+        Expect.Begin
+        Dim v1 As Long = GdiplusStartupReserved1
+        Dim v2 As Long = GdiplusStartupReserved2
+        Expect.IsTrue v1 <> 0 And (v1 And (v1 - 1)) = 0, "GdiplusStartupReserved1 is a single bit, as a member of a flags enumeration is"
+        Expect.IsTrue v2 <> 0 And (v2 And (v2 - 1)) = 0, "GdiplusStartupReserved2 is a single bit, as a member of a flags enumeration is"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GdiplusStartupParams_ReservedMembers_FollowReserved0()
+        Expect.Begin
+        Expect.AreEqual 4, CLng(GdiplusStartupReserved0), "GdiplusStartupReserved0"
+        Expect.AreEqual 5, CLng(GdiplusStartupReserved1), "GdiplusStartupReserved1, which has no value of its own"
+        Expect.AreEqual 6, CLng(GdiplusStartupReserved2), "GdiplusStartupReserved2, which has no value of its own"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpStatus_ImageFromMissingFile_IsInvalidParameter()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(Gr_Folder() & "\no such file.png")
+        Expect.AreEqual CLng(InvalidParameter), CLng(bmp.LastResult), "LastResult of a Bitmap made from a file that does not exist"
+        Expect.Done
+    End Sub
+
+End Module

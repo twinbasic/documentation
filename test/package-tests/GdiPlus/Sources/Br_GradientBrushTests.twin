@@ -1,0 +1,405 @@
+' LinearGradientBrush and PathGradientBrush: colours, blends, wrap mode, the path and the transformation.
+[TestFixture]
+Module Br_GradientBrushTests
+
+    Private Function Linear() As LinearGradientBrush
+        Return New LinearGradientBrush(GpRectF(0, 0, 10, 2), Color(255, 0, 0, 0), Color(255, 255, 255, 255), LinearGradientModeHorizontal)
+    End Function
+
+    ' A path gradient over a 10 by 10 square, white in the middle and black at the edge.
+    Private Function PathGradient() As PathGradientBrush
+        Dim corners() As GpPointF
+        Br_Corners corners, 10
+        Dim brush As PathGradientBrush = New PathGradientBrush(corners)
+        brush.CenterColor = Color(255, 255, 255, 255)
+        Dim edge(1 To 1) As Color
+        edge(1) = Color(255, 0, 0, 0)
+        brush.SurroundColors = edge
+        Return brush
+    End Function
+
+    ' ---- LinearGradientBrush
+
+    [TestCase]
+    Public Sub Linear_LinearColors_HasTwoElements()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = New LinearGradientBrush(GpPointF(0, 0), GpPointF(10, 0), Color(255, 255, 0, 0), Color(255, 0, 0, 255))
+        Dim colors() As Color = brush.LinearColors
+        Expect.AreEqual 2, UBound(colors) - LBound(colors) + 1, "number of elements of the array LinearColors returns, for a start and an end colour"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Linear_LinearColors_ReturnsStartThenEnd()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = New LinearGradientBrush(GpPointF(0, 0), GpPointF(10, 0), Color(255, 255, 0, 0), Color(255, 0, 0, 255))
+        Dim colors() As Color = brush.LinearColors
+        Expect.AreEqual "FFFF0000", Br_Hex(colors(1).argb), "colour at index 1 of LinearColors"
+        Expect.AreEqual "FF0000FF", Br_Hex(colors(2).argb), "colour at index 2 of LinearColors"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Linear_LinearRGBs_HasTwoElements()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = New LinearGradientBrush(GpPointF(0, 0), GpPointF(10, 0), Color(255, 255, 0, 0), Color(255, 0, 0, 255))
+        Dim values() As Long = brush.LinearRGBs
+        Expect.AreEqual 2, UBound(values) - LBound(values) + 1, "number of elements of the array LinearRGBs returns, for a start and an end colour"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Linear_LinearRGBs_AreCompleteARGBValues()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = New LinearGradientBrush(GpPointF(0, 0), GpPointF(10, 0), Color(128, 255, 0, 0), Color(64, 0, 0, 255))
+        Dim values() As Long = brush.LinearRGBs
+        Expect.AreEqual "80FF0000", Br_Hex(values(1)), "value at index 1 of LinearRGBs"
+        Expect.AreEqual "400000FF", Br_Hex(values(2)), "value at index 2 of LinearRGBs"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Linear_SetBlend_TwoArrays_Returns()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = Linear()
+        Dim factors(1 To 3) As Single, positions(1 To 3) As Single
+        factors(1) = 0: factors(2) = 1: factors(3) = 0
+        positions(1) = 0: positions(2) = 0.5: positions(3) = 1
+        Expect.AreEqual CLng(Ok), CLng(brush.SetBlend(factors, positions)), "status of SetBlend with two arrays"
+        Expect.AreEqual 3, brush.BlendCount, "BlendCount after SetBlend with three factors"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Linear_SetBlend_FirstElementsAndCount_SetsTheBlend()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = Linear()
+        Dim factors(1 To 3) As Single, positions(1 To 3) As Single
+        factors(1) = 0: factors(2) = 1: factors(3) = 0
+        positions(1) = 0: positions(2) = 0.5: positions(3) = 1
+        Expect.AreEqual CLng(Ok), CLng(brush.SetBlend(factors(1), positions(1), 3)), "status of SetBlend with the first elements and a count"
+        Expect.AreEqual 3, brush.BlendCount, "BlendCount after SetBlend with three factors"
+        Dim bmp As Bitmap = Bitmap(10!, 2!)
+        Dim g As Graphics = Graphics(bmp)
+        g.FillRectangle brush, 0, 0, 10, 2
+        Expect.IsTrue Br_Near(0, Br_Red(bmp, 0, 0), 4), "red at x = 0 of a black-white-black blend: " & Br_Red(bmp, 0, 0)
+        Expect.IsTrue Br_Near(255, Br_Red(bmp, 5, 0), 30), "red at x = 5 of a black-white-black blend: " & Br_Red(bmp, 5, 0)
+        Dim f2() As Single, p2() As Single
+        Expect.AreEqual CLng(Ok), CLng(brush.GetBlend(f2, p2)), "status of GetBlend"
+        Expect.AreEqual 3, UBound(f2), "upper bound of the factors GetBlend returns"
+        Expect.AreEqual 0.5!, p2(2), "second position GetBlend returns"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Linear_SetInterpolationColors_TwoArrays_Returns()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = Linear()
+        Dim colors(1 To 3) As Color
+        colors(1) = Color(255, 255, 0, 0): colors(2) = Color(255, 0, 255, 0): colors(3) = Color(255, 0, 0, 255)
+        Dim positions(1 To 3) As Single
+        positions(1) = 0: positions(2) = 0.5: positions(3) = 1
+        Expect.AreEqual CLng(Ok), CLng(brush.SetInterpolationColors(colors, positions)), "status of SetInterpolationColors with two arrays"
+        Expect.AreEqual 3, brush.InterpolationColorCount, "InterpolationColorCount after setting three colours"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Linear_SetInterpolationColors_FirstElementsAndCount_SetsTheColours()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = Linear()
+        Dim colors(1 To 3) As Color
+        colors(1) = Color(255, 255, 0, 0): colors(2) = Color(255, 0, 255, 0): colors(3) = Color(255, 0, 0, 255)
+        Dim positions(1 To 3) As Single
+        positions(1) = 0: positions(2) = 0.5: positions(3) = 1
+        Expect.AreEqual CLng(Ok), CLng(brush.SetInterpolationColors(colors(1), positions(1), 3)), "status of SetInterpolationColors with the first elements and a count"
+        Expect.AreEqual 3, brush.InterpolationColorCount, "InterpolationColorCount after setting three colours"
+        Dim bmp As Bitmap = Bitmap(10!, 2!)
+        Dim g As Graphics = Graphics(bmp)
+        g.FillRectangle brush, 0, 0, 10, 2
+        Expect.AreEqual "FFFF0000", Br_Hex(Br_Px(bmp, 0, 0)), "pixel at x = 0 of a red-green-blue blend"
+        Expect.AreEqual "FF00FF00", Br_Hex(Br_Px(bmp, 5, 0)), "pixel at x = 5 of a red-green-blue blend"
+        Dim c2() As Color, p2() As Single
+        Expect.AreEqual CLng(Ok), CLng(brush.GetInterpolationColors(c2, p2)), "status of GetInterpolationColors"
+        Expect.AreEqual "FF00FF00", Br_Hex(c2(2).argb), "second colour GetInterpolationColors returns"
+        Dim lc() As Color = brush.LinearColors
+        Expect.AreEqual "FF000000", Br_Hex(lc(1).argb), "LinearColors start colour, which preset colours do not replace"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Linear_BlendBellShape_PeaksAtTheFocus()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = Linear()
+        Expect.AreEqual CLng(Ok), CLng(brush.SetBlendBellShape(0.5)), "status of SetBlendBellShape"
+        Dim bmp As Bitmap = Bitmap(10!, 2!)
+        Dim g As Graphics = Graphics(bmp)
+        g.FillRectangle brush, 0, 0, 10, 2
+        Expect.IsTrue Br_Red(bmp, 5, 0) > Br_Red(bmp, 1, 0) + 100, "red at the focus is well above red near the start: " & Br_Red(bmp, 5, 0) & " and " & Br_Red(bmp, 1, 0)
+        Expect.IsTrue Br_Red(bmp, 5, 0) > Br_Red(bmp, 9, 0) + 100, "red at the focus is well above red near the end: " & Br_Red(bmp, 5, 0) & " and " & Br_Red(bmp, 9, 0)
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Linear_WrapMode_Clamp_IsRefused()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = Linear()
+        brush.WrapMode = WrapModeClamp
+        Expect.AreEqual CLng(InvalidParameter), CLng(brush.LastResult), "LastResult after WrapMode = WrapModeClamp"
+        Expect.AreEqual CLng(WrapModeTile), CLng(brush.WrapMode), "WrapMode after the refused change"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Linear_WrapMode_TileRepeatsAndFlipMirrors()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = New LinearGradientBrush(GpRectF(0, 0, 10, 10), Color(255, 0, 0, 0), Color(255, 255, 255, 255), LinearGradientModeHorizontal)
+        Dim bmp As Bitmap = Bitmap(20!, 2!)
+        Dim g As Graphics = Graphics(bmp)
+        Expect.AreEqual CLng(WrapModeTile), CLng(brush.WrapMode), "default WrapMode"
+        g.FillRectangle brush, 0, 0, 20, 2
+        Expect.IsTrue Br_Red(bmp, 10, 0) < 60, "red at the start of the second tile with WrapModeTile: " & Br_Red(bmp, 10, 0)
+        brush.WrapMode = WrapModeTileFlipX
+        g.FillRectangle brush, 0, 0, 20, 2
+        Expect.IsTrue Br_Red(bmp, 10, 0) > 200, "red at the start of the second tile with WrapModeTileFlipX: " & Br_Red(bmp, 10, 0)
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Linear_Transform_Get_ReturnsTheMatrix()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = Linear()
+        brush.TranslateTransform 5, 0
+        Dim m As Matrix = brush.Transform
+        Expect.IsFalse m Is Nothing, "Transform returns a matrix"
+        If Not m Is Nothing Then Expect.AreEqual 5!, m.OffsetX, "OffsetX of Transform after TranslateTransform 5, 0"
+        Expect.AreEqual CLng(Ok), CLng(brush.LastResult), "LastResult after reading Transform"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Linear_GetTransform_CopiesTheMatrix()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = Linear()
+        brush.TranslateTransform 5, 0
+        Dim m As Matrix = New Matrix()
+        Expect.AreEqual CLng(Ok), CLng(brush.GetTransform(m)), "status of GetTransform"
+        Expect.IsTrue Br_Near(5000, CLng(m.OffsetX * 1000), 2), "OffsetX from GetTransform after TranslateTransform 5, 0: " & m.OffsetX
+        brush.ResetTransform
+        brush.GetTransform m
+        Expect.AreEqual 0!, m.OffsetX, "OffsetX from GetTransform after ResetTransform"
+        Expect.Done
+    End Sub
+
+    ' ---- PathGradientBrush
+
+    [TestCase]
+    Public Sub Path_New_SinglePoint_ReportsTheFailure()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim one(0 To 0) As GpPointF
+        one(0) = GpPointF(1, 1)
+        Dim brush As PathGradientBrush = New PathGradientBrush(one)
+        Expect.IsTrue brush.LastResult <> Ok, "LastResult of a PathGradientBrush made from a single point"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_New_SinglePoint_LaterCallsFailWithInvalidParameter()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim one(0 To 0) As GpPointF
+        one(0) = GpPointF(1, 1)
+        Dim brush As PathGradientBrush = New PathGradientBrush(one)
+        Dim n As Long = brush.PointCount
+        Expect.AreEqual CLng(InvalidParameter), CLng(brush.LastResult), "LastResult after PointCount of a brush made from a single point"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_SurroundColors_Get_ReturnsWhatWasSet()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As PathGradientBrush = PathGradient()
+        Dim colors() As Color = brush.SurroundColors
+        Expect.AreEqual "FF000000", Br_Hex(colors(1).argb), "first colour of SurroundColors"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_SurroundColors_OneColourPaintsTheWholeBoundary()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As PathGradientBrush = PathGradient()
+        Dim bmp As Bitmap = Bitmap(10!, 10!)
+        Dim g As Graphics = Graphics(bmp)
+        g.FillRectangle brush, 0, 0, 10, 10
+        Expect.AreEqual 4, brush.SurroundColorCount, "SurroundColorCount after setting one colour"
+        Expect.IsTrue Br_Red(bmp, 0, 5) < 20, "red on the left edge: " & Br_Red(bmp, 0, 5)
+        Expect.IsTrue Br_Red(bmp, 5, 5) > 235, "red in the middle: " & Br_Red(bmp, 5, 5)
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_SurroundColors_TooManyColours_IsRefused()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As PathGradientBrush = PathGradient()
+        Dim colors(1 To 5) As Color
+        Dim i As Long
+        For i = 1 To 5
+            colors(i) = Color(255, 255, 0, 0)
+        Next
+        brush.SurroundColors = colors
+        Expect.AreEqual CLng(InvalidParameter), CLng(brush.LastResult), "LastResult after setting five surround colours for four points"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_GraphicsPath_Get_IsNotImplemented()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As PathGradientBrush = PathGradient()
+        Dim p As GraphicsPath = brush.GraphicsPath
+        Expect.AreEqual CLng(NotImplemented), CLng(brush.LastResult), "LastResult after reading GraphicsPath"
+        Expect.IsTrue p Is Nothing, "GraphicsPath read returns Nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_GraphicsPath_Let_IsNotImplemented()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As PathGradientBrush = PathGradient()
+        brush.GraphicsPath = Br_Square()
+        Expect.AreEqual CLng(NotImplemented), CLng(brush.LastResult), "LastResult after assigning GraphicsPath"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_FocusScales_AndCenterPoint_RoundTrip()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As PathGradientBrush = PathGradient()
+        Expect.AreEqual CLng(Ok), CLng(brush.SetFocusScales(0.5, 0.25)), "status of SetFocusScales"
+        Dim fx As Single, fy As Single
+        Expect.AreEqual CLng(Ok), CLng(brush.GetFocusScales(fx, fy)), "status of GetFocusScales"
+        Expect.AreEqual 0.5!, fx, "x focus scale"
+        Expect.AreEqual 0.25!, fy, "y focus scale"
+        brush.CenterPoint = GpPointF(2, 3)
+        Dim c As GpPointF = brush.CenterPoint
+        Expect.AreEqual 2!, c.X, "CenterPoint.X"
+        Expect.AreEqual 3!, c.Y, "CenterPoint.Y"
+        Dim r As GpRectF = brush.Rectangle
+        Expect.AreEqual 10!, r.Width, "width of Rectangle"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_SetBlend_Returns()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As PathGradientBrush = PathGradient()
+        Dim factors(1 To 3) As Single, positions(1 To 3) As Single
+        factors(1) = 0: factors(2) = 0.5: factors(3) = 1
+        positions(1) = 0: positions(2) = 0.5: positions(3) = 1
+        Expect.AreEqual CLng(Ok), CLng(brush.SetBlend(factors, positions)), "status of SetBlend"
+        Expect.AreEqual 3, brush.BlendCount, "BlendCount after SetBlend with three factors"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_SetInterpolationColors_Returns()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As PathGradientBrush = PathGradient()
+        Dim colors(1 To 3) As Color
+        colors(1) = Color(255, 255, 0, 0): colors(2) = Color(255, 0, 255, 0): colors(3) = Color(255, 0, 0, 255)
+        Dim positions(1 To 3) As Single
+        positions(1) = 0: positions(2) = 0.5: positions(3) = 1
+        Expect.AreEqual CLng(Ok), CLng(brush.SetInterpolationColors(colors, positions)), "status of SetInterpolationColors"
+        Expect.AreEqual 3, brush.InterpolationColorCount, "InterpolationColorCount after setting three colours"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_GetInterpolationColors_WithoutPresetColours_IsWrongState()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As PathGradientBrush = PathGradient()
+        Dim c() As Color, p() As Single
+        Expect.AreEqual 0, brush.InterpolationColorCount, "InterpolationColorCount of a new brush"
+        Expect.AreEqual CLng(WrongState), CLng(brush.GetInterpolationColors(c, p)), "status of GetInterpolationColors without preset colours"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_BlendShapes_ReturnOk()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As PathGradientBrush = PathGradient()
+        Expect.AreEqual CLng(Ok), CLng(brush.SetBlendTriangularShape(0.5)), "status of SetBlendTriangularShape"
+        Expect.AreEqual CLng(Ok), CLng(brush.SetBlendBellShape(0.5)), "status of SetBlendBellShape"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_WrapMode_ClampDrawsNothingOutsideAndTileRepeats()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As PathGradientBrush = PathGradient()
+        Dim bmp As Bitmap = Bitmap(30!, 10!)
+        Dim g As Graphics = Graphics(bmp)
+        Expect.AreEqual CLng(WrapModeClamp), CLng(brush.WrapMode), "default WrapMode of the form with points"
+        g.Clear Color(255, 255, 0, 255)
+        g.FillRectangle brush, 0, 0, 30, 10
+        Expect.AreEqual "FFFF00FF", Br_Hex(Br_Px(bmp, 15, 5)), "pixel outside the path with WrapModeClamp"
+        brush.WrapMode = WrapModeTile
+        g.Clear Color(255, 255, 0, 255)
+        g.FillRectangle brush, 0, 0, 30, 10
+        Expect.IsTrue Br_Px(bmp, 15, 5) <> &HFFFF00FF, "pixel outside the path with WrapModeTile is not the cleared colour"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_Transform_Get_ReturnsTheMatrix()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As PathGradientBrush = PathGradient()
+        brush.TranslateTransform 3, 4
+        Dim m As Matrix = brush.Transform
+        Expect.IsFalse m Is Nothing, "Transform returns a matrix"
+        If Not m Is Nothing Then
+            Expect.AreEqual 3!, m.OffsetX, "OffsetX of Transform after TranslateTransform 3, 4"
+            Expect.AreEqual 4!, m.OffsetY, "OffsetY of Transform after TranslateTransform 3, 4"
+        End If
+        Expect.AreEqual CLng(Ok), CLng(brush.LastResult), "LastResult after reading Transform"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_FromGraphicsPath_CountsAllThePoints()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddEllipse 0, 0, 10, 10
+        Dim brush As PathGradientBrush = New PathGradientBrush(p)
+        Expect.AreEqual CLng(Ok), CLng(brush.LastResult), "LastResult of a PathGradientBrush made from an ellipse path"
+        Expect.AreEqual 13, brush.PointCount, "PointCount of a brush made from an ellipse path"
+        Expect.Done
+    End Sub
+
+End Module

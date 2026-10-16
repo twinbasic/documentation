@@ -25,10 +25,15 @@ Each form is also available as **New RedEyeCorrection**( ... ) with the same arg
 *params*
 : *required* A [**RedEyeCorrectionParams**](Types/RedEyeCorrectionParams): the number of areas and the memory that holds their rectangles.
 
-A constructor that fails creates an unusable object whose **LastResult** tells why. The effect created without arguments has no areas, and [**Bitmap.ApplyEffect**](Bitmap#applyeffect) refuses to apply it: the call returns 2 (**InvalidParameter**).
+A constructor that fails creates an unusable object whose **LastResult** tells why.
 
+<!-- test: Fx_EffectTests.RedEyeCorrection_ApplyEffectWithoutAreas_ReturnsInvalidParameter -->
+The effect created without arguments has no areas, and [**Bitmap.ApplyEffect**](Bitmap#applyeffect) refuses to apply it: the call returns 2 (**InvalidParameter**).
+<!-- /test -->
+
+<!-- test: Fx_EffectTests.RedEyeCorrection_NewWithParams_StoresTheAreas, Fx_EffectTests.RedEyeCorrection_NewKeywordWithParams_StoresTheAreas, Fx_EffectTests.RedEyeCorrection_ParametersLet_StoresTheAreas -->
 > [!WARNING] 0.9.45.0
-> The form with *params* does not work. In a 64-bit program it stops the program with an access violation, and in a 32-bit program it sets **LastResult** to 2 (**InvalidParameter**), and so does a later **ApplyEffect** with the effect. The parameters are not set in either case. Setting [**Parameters**](#parameters) on an effect fails the same way.
+> In a 64-bit program the form with *params* stops the program with an access violation. A 32-bit program is not affected. To work in both, create the effect without arguments and set [**Parameters**](#parameters), which works in both.
 
 ## Parameters
 
@@ -38,8 +43,9 @@ Syntax: *params* **=** *fx*.**Parameters**( *size* )
 
 Gets or sets the [**RedEyeCorrectionParams**](Types/RedEyeCorrectionParams). The setter creates the GDI+ effect again and sets the parameters on the new one, with the size `LenB(Of RedEyeCorrectionParams)` plus the size of the rectangles.
 
+<!-- test: Fx_EffectTests.RedEyeCorrection_ParametersGetWithoutSize_SetsNoError, Fx_EffectTests.RedEyeCorrection_ParametersGet_AfterSettingAreas_ReturnsTheAreaCount, Fx_EffectTests.RedEyeCorrection_ParametersLet_StoresTheAreas -->
 > [!WARNING] 0.9.45.0
-> The getter returns zeros and sets **LastResult** to 2 (**InvalidParameter**) unless it is given *size*. See [**Effect**](Effect#parameters).
+> The getter returns zeros and sets **LastResult** to 2 (**InvalidParameter**) unless it is given *size*. On an effect that has areas it does so even with *size*, so the areas cannot be read back: keep the **RedEyeCorrectionParams** that was set. See [**Effect**](Effect#parameters).
 
 The areas are described by a structure whose methods allocate and fill the rectangles; the page of [**RedEyeCorrectionParams**](Types/RedEyeCorrectionParams) shows them.
 

@@ -1,0 +1,445 @@
+' Ty_ColorTests: the Color type, its module functions, and the way the Long overloads of the drawing
+' methods read a colour (page Types/Color).
+[TestFixture]
+Module Ty_ColorTests
+
+    Private Declare PtrSafe Function OleTranslateColor Lib "oleaut32" (ByVal clr As Long, ByVal hpal As LongPtr, ByRef colorref As Long) As Long
+    Private Declare PtrSafe Function GetSysColor Lib "user32" (ByVal nIndex As Long) As Long
+
+    [TestCase]
+    Public Sub Color_HoldsOneLongField()
+        Expect.Begin
+        Dim c As Color
+        Expect.AreEqual 4, LenB(c), "LenB of a Color"
+        c.argb = &H11223344
+        Expect.AreEqual "11223344", Ty_Hex8(c.Value), "Value after the field argb was set to &H11223344"
+        Expect.AreEqual "17 34 51 68", c.Alpha & " " & c.Red & " " & c.Green & " " & c.Blue, "Alpha Red Green Blue after argb was set to &H11223344: the top byte is alpha, then red, green and blue"
+        Expect.Done
+    End Sub
+
+    ' ---- A declared colour
+
+    [TestCase]
+    Public Sub Declared_IsTransparentBlackNotBlack()
+        Expect.Begin
+        Dim c As Color
+        Expect.AreEqual "00000000", Ty_Hex8(c.Value), "Value of a variable declared with Dim c As Color"
+        Expect.IsTrue c.IsNull, "IsNull of a variable declared with Dim c As Color"
+        Expect.AreEqual "FF000000", Ty_Hex8(Color().Value), "Value of Color() (opaque black)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Declared_DrawsNothing()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim c As Color
+        Dim sb As SolidBrush = New SolidBrush(c)
+        Dim px As Color = Ty_FillOver(Color(255, 255, 255), sb)
+        Expect.AreEqual "FFFFFFFF", Ty_Hex8(px.Value), "pixel of a white bitmap after FillRectangle with a SolidBrush of a declared Color"
+        Expect.Done
+    End Sub
+
+    ' ---- Creating
+
+    [TestCase]
+    Public Sub Color_ChannelsAreMaskedWithoutError()
+        Expect.Begin
+        On Error Resume Next
+        Err.Clear
+        Dim c As Color = Color(300, -1, 0, 256)
+        Dim errNumber As Long = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual "2CFF0000", Ty_Hex8(c.Value), "Value of Color(300, -1, 0, 256)"
+        Expect.AreEqual 0, errNumber, "Err.Number after Color(300, -1, 0, 256)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Color_FormsGiveTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual "FF223344", Ty_Hex8(Color(&H22, &H33, &H44).Value), "Value of Color(&H22, &H33, &H44)"
+        Expect.AreEqual "11223344", Ty_Hex8(Color(&H11, &H22, &H33, &H44).Value), "Value of Color(&H11, &H22, &H33, &H44)"
+        Expect.AreEqual "80112233", Ty_Hex8(Color(&H80112233).Value), "Value of Color(&H80112233)"
+        Expect.AreEqual "FFFF0000", Ty_Hex8(Color(CColor.Red).Value), "Value of Color(CColor.Red)"
+        Expect.AreEqual "FF000000", Ty_Hex8(Color().Value), "Value of Color()"
+        Expect.IsTrue NoColor().IsNull, "NoColor().IsNull"
+        Expect.AreEqual "00000000", Ty_Hex8(NoColor().Value), "Value of NoColor()"
+        Expect.Done
+    End Sub
+
+    ' ---- Channels
+
+    [TestCase]
+    Public Sub Channels_GettersAndAliasesAgree()
+        Expect.Begin
+        Dim c As Color = Color(&H11, &H22, &H33, &H44)
+        Expect.AreEqual "17 34 51 68", c.Alpha & " " & c.Red & " " & c.Green & " " & c.Blue, "Alpha Red Green Blue of Color(&H11, &H22, &H33, &H44)"
+        Expect.AreEqual "17 34 51 68", c.A & " " & c.R & " " & c.G & " " & c.B, "A R G B of Color(&H11, &H22, &H33, &H44)"
+        c.Red = 200: c.Green = 100: c.Blue = 50: c.Alpha = 25
+        Expect.AreEqual "19C86432", Ty_Hex8(c.Value), "Value after Red = 200, Green = 100, Blue = 50, Alpha = 25"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Channels_SetterOutOfRangeRaisesOverflowAndKeepsTheColour()
+        Expect.Begin
+        Dim c As Color = Color(&H11, &H22, &H33, &H44)
+        Dim errNumber As Long
+        On Error Resume Next
+        Err.Clear
+        c.Alpha = 300
+        errNumber = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 6, errNumber, "Err.Number after Alpha = 300"
+        Expect.AreEqual "11223344", Ty_Hex8(c.Value), "Value after Alpha = 300 raised an error"
+        Expect.Done
+    End Sub
+
+    ' ---- The whole value
+
+    [TestCase]
+    Public Sub Value_AndArgbFieldAreTheSame()
+        Expect.Begin
+        Dim c As Color
+        c.Value = &H80FF0000
+        Expect.AreEqual "80FF0000", Ty_Hex8(c.argb), "argb after Value = &H80FF0000"
+        Expect.IsFalse c.IsNull, "IsNull of &H80FF0000"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsTransparent_IsTrueOnlyForTheExactValue()
+        Expect.Begin
+        Expect.IsTrue Color(CColor.Transparent).IsTransparent, "IsTransparent of Color(CColor.Transparent)"
+        Expect.AreEqual "00FFFFFF", Ty_Hex8(Color(CColor.Transparent).Value), "Value of Color(CColor.Transparent)"
+        Expect.IsFalse Color(0, 0, 0, 0).IsTransparent, "IsTransparent of Color(0, 0, 0, 0)"
+        Expect.Done
+    End Sub
+
+    ' ---- Windows colours
+
+    [TestCase]
+    Public Sub RGB_And_BGR_ReturnTheTwoLayouts()
+        Expect.Begin
+        Dim c As Color = Color(&H22, &H33, &H44)
+        Expect.AreEqual "00223344", Ty_Hex8(c.RGB), "RGB of Color(&H22, &H33, &H44)"
+        Expect.AreEqual "00443322", Ty_Hex8(c.BGR), "BGR of Color(&H22, &H33, &H44)"
+        Expect.AreEqual Ty_Hex8(VBA.RGB(&H22, &H33, &H44)), Ty_Hex8(c.BGR), "BGR of Color(&H22, &H33, &H44) against VBA.RGB(&H22, &H33, &H44)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BGR_SetterTakesAColorrefAndMakesTheColourOpaque()
+        Expect.Begin
+        Dim c As Color
+        c.BGR = VBA.RGB(&H22, &H33, &H44)
+        Expect.AreEqual "FF223344", Ty_Hex8(c.Value), "Value after BGR = RGB(&H22, &H33, &H44)"
+        Dim red As Color
+        red.BGR = vbRed
+        Expect.AreEqual "FFFF0000", Ty_Hex8(red.Value), "Value after BGR = vbRed"
+        Expect.Done
+    End Sub
+
+    ' A VB system colour is not a COLORREF: BGR keeps the colour numbers, so the colour that Windows uses is not the result.
+    [TestCase]
+    Public Sub BGR_SystemColourIsNotTranslated()
+        Expect.Begin
+        Dim c As Color
+        c.BGR = vbButtonFace
+        Dim buttonFace As Long = GetSysColor(15)
+        Dim windows As Color
+        windows.BGR = buttonFace
+        Expect.IsTrue c.Value <> windows.Value, "BGR = vbButtonFace gives the colour Windows uses for a button face (" & Ty_Hex8(c.Value) & ")"
+        Expect.AreEqual "FF0F0000", Ty_Hex8(c.Value), "Value after BGR = vbButtonFace (&H8000000F)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BGR_AfterOleTranslateColorGivesTheSystemColour()
+        Expect.Begin
+        Dim translated As Long
+        Expect.AreEqual 0, OleTranslateColor(vbButtonFace, 0, translated), "OleTranslateColor of vbButtonFace"
+        Dim c As Color
+        c.BGR = translated
+        Dim windows As Color = Color(255, GetSysColor(15) And &HFF, (GetSysColor(15) And &HFF00&) \ &H100, (GetSysColor(15) And &HFF0000) \ &H10000)
+        Expect.AreEqual Ty_Hex8(windows.Value), Ty_Hex8(c.Value), "Value after BGR = the OleTranslateColor result of vbButtonFace"
+        Expect.Done
+    End Sub
+
+    ' The methods that take a plain Long colour read &H00RRGGBB and make it opaque.
+    [TestCase]
+    Public Sub SolidBrush_LongIsReadAsRGB()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim px As Color = Ty_FillOver(Color(255, 255, 255), SolidBrush(&H112233))
+        Expect.AreEqual "FF112233", Ty_Hex8(px.Value), "pixel after FillRectangle with SolidBrush(&H112233)"
+        Dim blue As Color = Ty_FillOver(Color(255, 255, 255), SolidBrush(vbRed))
+        Expect.AreEqual "FF0000FF", Ty_Hex8(blue.Value), "pixel after FillRectangle with SolidBrush(vbRed): blue, because the Long is read as &H00RRGGBB"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pen_LongIsReadAsRGB()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim px As Color = Ty_LineOver(Color(255, 255, 255), Pen(&H112233))
+        Expect.AreEqual "FF112233", Ty_Hex8(px.Value), "pixel on the line of Pen(&H112233)"
+        Dim blue As Color = Ty_LineOver(Color(255, 255, 255), Pen(vbRed))
+        Expect.AreEqual "FF0000FF", Ty_Hex8(blue.Value), "pixel on the line of Pen(vbRed): blue"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_LongIsReadAsRGB()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Expect.AreEqual "FF112233", Ty_Hex8(Ty_ClearedWithLong(&H112233).Value), "pixel after Graphics.Clear &H112233"
+        Expect.AreEqual "FF0000FF", Ty_Hex8(Ty_ClearedWithLong(vbRed).Value), "pixel after Graphics.Clear vbRed: blue"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SolidBrush_LongMakesTheColourOpaque()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim px As Color = Ty_FillOver(Color(0, 0, 0), SolidBrush(&H80FF0000))
+        Expect.AreEqual "FFFF0000", Ty_Hex8(px.Value), "pixel over black after SolidBrush(&H80FF0000): the alpha 80 is dropped, so the red is opaque"
+        Dim half As Color = Ty_FillOver(Color(0, 0, 0), New SolidBrush(Color(&H80FF0000)))
+        Expect.AreEqual "FF800000", Ty_Hex8(half.Value), "pixel over black after SolidBrush(Color(&H80FF0000)): half red"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SolidBrush_ColorWithBgrSetDrawsTheVisualBasicColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim c As Color
+        c.BGR = vbRed
+        Dim px As Color = Ty_FillOver(Color(255, 255, 255), New SolidBrush(c))
+        Expect.AreEqual "FFFF0000", Ty_Hex8(px.Value), "pixel after SolidBrush of a Color whose BGR was set to vbRed"
+        Dim viaColor As Color = Ty_FillOver(Color(255, 255, 255), New SolidBrush(Color(255, 0, 0)))
+        Expect.AreEqual "FFFF0000", Ty_Hex8(viaColor.Value), "pixel after SolidBrush(Color(255, 0, 0))"
+        Expect.Done
+    End Sub
+
+    ' ---- AsCOLORREF, FromCOLORREF, SetFromCOLORREF
+
+    [TestCase]
+    Public Sub AsCOLORREF_ReturnsAColorref()
+        Expect.Begin
+        Dim c As Color = Color(&H22, &H33, &H44)
+        Expect.AreEqual "00443322", Ty_Hex8(c.AsCOLORREF()), "AsCOLORREF of Color(&H22, &H33, &H44) (a COLORREF is &H00BBGGRR)"
+        Expect.AreEqual Ty_Hex8(VBA.RGB(&H22, &H33, &H44)), Ty_Hex8(c.AsCOLORREF()), "AsCOLORREF of Color(&H22, &H33, &H44) against VBA.RGB(&H22, &H33, &H44)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FromCOLORREF_ReadsAColorref()
+        Expect.Begin
+        Expect.AreEqual "FF223344", Ty_Hex8(FromCOLORREF(VBA.RGB(&H22, &H33, &H44)).Value), "Value of FromCOLORREF(RGB(&H22, &H33, &H44))"
+        Expect.AreEqual "FFFF0000", Ty_Hex8(FromCOLORREF(vbRed).Value), "Value of FromCOLORREF(vbRed)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetFromCOLORREF_ReadsAColorref()
+        Expect.Begin
+        Dim c As Color
+        c.SetFromCOLORREF VBA.RGB(&H22, &H33, &H44)
+        Expect.AreEqual "FF223344", Ty_Hex8(c.Value), "Value after SetFromCOLORREF RGB(&H22, &H33, &H44)"
+        Dim red As Color
+        red.SetFromCOLORREF vbRed
+        Expect.AreEqual "FFFF0000", Ty_Hex8(red.Value), "Value after SetFromCOLORREF vbRed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Colorref_WorkaroundsConvertCorrectly()
+        Expect.Begin
+        Dim viaBgr As Color
+        viaBgr.BGR = VBA.RGB(&H22, &H33, &H44)
+        Expect.AreEqual "FF223344", Ty_Hex8(viaBgr.Value), "Value after BGR = RGB(&H22, &H33, &H44)"
+        Dim cr As Long = &H443322
+        Dim byHand As Color = Color(255, cr And &HFF, (cr And &HFF00&) \ &H100, (cr And &HFF0000) \ &H10000)
+        Expect.AreEqual "FF223344", Ty_Hex8(byHand.Value), "Value of the hand-written conversion of the COLORREF &H443322"
+        Expect.Done
+    End Sub
+
+    ' ---- Red, green and blue as numbers
+
+    [TestCase]
+    Public Sub GetRGB_ReturnsTheChannelsInTheGivenType()
+        Expect.Begin
+        Dim c As Color = Color(&H80, 255, 100, 7)
+        Dim rb As Byte, gb As Byte, bb As Byte
+        c.GetRGBB rb, gb, bb
+        Expect.AreEqual "255 100 7", rb & " " & gb & " " & bb, "GetRGBB of Color(&H80, 255, 100, 7)"
+        Dim ri As Integer, gi As Integer, bi As Integer
+        c.GetRGBI ri, gi, bi
+        Expect.AreEqual "255 100 7", ri & " " & gi & " " & bi, "GetRGBI of Color(&H80, 255, 100, 7)"
+        Dim rl As Long, gl As Long, bl As Long
+        c.GetRGBL rl, gl, bl
+        Expect.AreEqual "255 100 7", rl & " " & gl & " " & bl, "GetRGBL of Color(&H80, 255, 100, 7)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetRGBSAndD_ReturnPercentages()
+        Expect.Begin
+        Dim c As Color = Color(&H80, 255, 0, 51)
+        Dim rs As Single, gs As Single, bs As Single
+        c.GetRGBS rs, gs, bs
+        Ty_Near 100, rs, 0.001, "red of GetRGBS of Color(&H80, 255, 0, 51)"
+        Ty_Near 0, gs, 0.001, "green of GetRGBS of Color(&H80, 255, 0, 51)"
+        Ty_Near 20, bs, 0.001, "blue of GetRGBS of Color(&H80, 255, 0, 51)"
+        Dim rd As Double, gd As Double, bd As Double
+        c.GetRGBD rd, gd, bd
+        Ty_Near 100, rd, 0.001, "red of GetRGBD of Color(&H80, 255, 0, 51)"
+        Ty_Near 20, bd, 0.001, "blue of GetRGBD of Color(&H80, 255, 0, 51)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetRGB_ClampsAndKeepsTheAlpha()
+        Expect.Begin
+        Dim c As Color = Color(&H80, 255, 0, 0)
+        c.SetRGB 300, -5, 128
+        Expect.AreEqual "80FF0080", Ty_Hex8(c.Value), "Value after SetRGB 300, -5, 128 on a colour with alpha &H80"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetRGBD_TakesPercentagesClampsAndKeepsTheAlpha()
+        Expect.Begin
+        Dim c As Color = Color(&H80, 255, 255, 255)
+        c.SetRGBD 100, 0, 0
+        Expect.AreEqual "80FF0000", Ty_Hex8(c.Value), "Value after SetRGBD 100, 0, 0 on a colour with alpha &H80"
+        c.SetRGBD 150, -20, 50
+        Expect.AreEqual "80FF007F", Ty_Hex8(c.Value), "Value after SetRGBD 150, -20, 50 (clamped to 0 to 100)"
+        Expect.Done
+    End Sub
+
+    ' ---- Hexadecimal text
+
+    [TestCase]
+    Public Sub AsHex_ReturnsUpperCaseText()
+        Expect.Begin
+        Dim c As Color = Color(&H1A, &H2B, &H3C, &H4D)
+        Expect.AreEqual "#2B3C4D", c.AsHexRGB(), "AsHexRGB of Color(&H1A, &H2B, &H3C, &H4D)"
+        Expect.AreEqual "#2B3C4D1A", c.AsHexRGBA(), "AsHexRGBA of Color(&H1A, &H2B, &H3C, &H4D)"
+        Expect.Done
+    End Sub
+
+    ' ---- Hue, saturation and lightness
+
+    [TestCase]
+    Public Sub GetHSL_ReturnsHueInDegreesAndPercentages()
+        Expect.Begin
+        Dim orange As Color = Color(255, 128, 0)
+        Dim h As Single, s As Single, l As Single
+        orange.GetHSL h, s, l
+        Ty_Near 30, h, 0.6, "hue of GetHSL of Color(255, 128, 0)"
+        Ty_Near 100, s, 0.1, "saturation of GetHSL of Color(255, 128, 0)"
+        Ty_Near 50, l, 0.1, "lightness of GetHSL of Color(255, 128, 0)"
+        Dim a As Single
+        Dim half As Color = Color(&H80, 255, 128, 0)
+        half.GetHSLA h, s, l, a
+        Ty_Near 50, a, 1, "alpha of GetHSLA of a colour with alpha &H80"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetHSL_KeepsTheAlphaAndSetHSLASetsIt()
+        Expect.Begin
+        Dim c As Color = Color(255, 255, 255)
+        c.SetHSL 120, 100, 50
+        Expect.AreEqual "FF00FF00", Ty_Hex8(c.Value), "Value after SetHSL 120, 100, 50 on an opaque colour"
+        c.SetHSLA 240, 100, 50, 100
+        Expect.AreEqual "FF0000FF", Ty_Hex8(c.Value), "Value after SetHSLA 240, 100, 50, 100"
+        Dim declared As Color
+        declared.SetHSL 120, 100, 50
+        Expect.AreEqual "0000FF00", Ty_Hex8(declared.Value), "Value after SetHSL on a variable declared with Dim (alpha stays 0)"
+        declared.SetHSLA 120, 100, 50, 100
+        Expect.AreEqual "FF00FF00", Ty_Hex8(declared.Value), "Value after SetHSLA 120, 100, 50, 100 on the same variable"
+        Expect.Done
+    End Sub
+
+    ' ---- RotatedHue, RotateHue
+
+    [TestCase]
+    Public Sub RotatedHue_KeepsTheAlpha()
+        Expect.Begin
+        Dim green As Color = Color(255, 0, 0).RotatedHue(120)
+        Expect.AreEqual "FF00FF00", Ty_Hex8(green.Value), "Value of Color(255, 0, 0).RotatedHue(120)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RotateHue_KeepsTheAlpha()
+        Expect.Begin
+        Dim c As Color = Color(255, 0, 0)
+        c.RotateHue 120
+        Expect.AreEqual "FF00FF00", Ty_Hex8(c.Value), "Value of Color(255, 0, 0) after RotateHue 120"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RotatedHue_ByZeroKeepsTheAlpha()
+        Expect.Begin
+        Dim same As Color = Color(255, 0, 0).RotatedHue(0)
+        Expect.AreEqual "FFFF0000", Ty_Hex8(same.Value), "Value of Color(255, 0, 0).RotatedHue(0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RotatedHue_ColoursAreTheRotatedOnesWhenTheAlphaIsSetAgain()
+        Expect.Begin
+        Dim red As Color = Color(255, 0, 0)
+        Dim green As Color = red.RotatedHue(120)
+        green.Alpha = red.Alpha
+        Expect.AreEqual "FF00FF00", Ty_Hex8(green.Value), "Value of RotatedHue(120) of red after its Alpha is set again"
+        Dim negative As Color = red.RotatedHue(-120)
+        negative.Alpha = 255
+        Expect.AreEqual "FF0000FF", Ty_Hex8(negative.Value), "Value of RotatedHue(-120) of red after its Alpha is set to 255"
+        Dim over As Color = red.RotatedHue(480)
+        over.Alpha = 255
+        Expect.AreEqual "FF00FF00", Ty_Hex8(over.Value), "Value of RotatedHue(480) of red after its Alpha is set to 255"
+        Expect.Done
+    End Sub
+
+    ' ---- Inverting
+
+    [TestCase]
+    Public Sub Inverse_IsTheNegativeAndKeepsTheAlpha()
+        Expect.Begin
+        Dim c As Color = Color(&H80, &H22, &H33, &H44)
+        Expect.AreEqual "80DDCCBB", Ty_Hex8(c.Inverse.Value), "Value of Inverse of Color(&H80, &H22, &H33, &H44)"
+        c.Invert
+        Expect.AreEqual "80DDCCBB", Ty_Hex8(c.Value), "Value after Invert"
+        Dim z As Color
+        z.Inverse = Color(10, 20, 30)
+        Expect.AreEqual "FFF5EBE1", Ty_Hex8(z.Value), "Value after Inverse = Color(10, 20, 30) on a declared variable"
+        Expect.Done
+    End Sub
+
+    ' ---- Functions
+
+    [TestCase]
+    Public Sub MakeARGB_MasksEachChannel()
+        Expect.Begin
+        Expect.AreEqual "01020304", Ty_Hex8(MakeARGB(1, 2, 3, 4)), "MakeARGB(1, 2, 3, 4)"
+        Expect.AreEqual "00FF0304", Ty_Hex8(MakeARGB(256, -1, 3, 4)), "MakeARGB(256, -1, 3, 4)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HueToValue_FollowsTheHslAlgorithm()
+        Expect.Begin
+        Ty_Near 0.56, HueToValue(0.1, 0.2, 0.8), 0.0001, "HueToValue(0.1, 0.2, 0.8)"
+        Ty_Near 0.8, HueToValue(0.5, 0.2, 0.8), 0.0001, "HueToValue(0.5, 0.2, 0.8)"
+        Ty_Near 0.2, HueToValue(0.9, 0.2, 0.8), 0.0001, "HueToValue(0.9, 0.2, 0.8)"
+        Expect.Done
+    End Sub
+
+End Module

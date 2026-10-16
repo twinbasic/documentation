@@ -1,0 +1,124 @@
+' GdiPlus, images: what the cases of Im_* share. Files go only under
+' %TEMP%\tbdocs-package-tests\GdiPlus\im, which Im_Clean empties.
+Module Im_Files
+
+    Private Declare PtrSafe Function ZFromHBitmap Lib "gdiplus" Alias "GdipCreateBitmapFromHBITMAP" (ByVal hbm As LongPtr, ByVal hpal As LongPtr, nb As LongPtr) As Long
+    Private Declare PtrSafe Function ZSaveImage Lib "gdiplus" Alias "GdipSaveImageToFile" (ByVal img As LongPtr, ByVal path As LongPtr, clsid As GDIP_UUID, ByVal ep As LongPtr) As Long
+    Private Declare PtrSafe Function ZDispose Lib "gdiplus" Alias "GdipDisposeImage" (ByVal img As LongPtr) As Long
+    Private Declare PtrSafe Function ZDeleteObject Lib "gdi32" Alias "DeleteObject" (ByVal h As LongPtr) As Long
+    Private Declare PtrSafe Function ZCreateEnhMetaFile Lib "gdi32" Alias "CreateEnhMetaFileW" (ByVal hdcRef As LongPtr, ByVal fileName As LongPtr, ByVal rc As LongPtr, ByVal desc As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ZCloseEnhMetaFile Lib "gdi32" Alias "CloseEnhMetaFile" (ByVal hdc As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ZRectangle Lib "gdi32" Alias "Rectangle" (ByVal hdc As LongPtr, ByVal l As Long, ByVal t As Long, ByVal r As Long, ByVal b As Long) As Long
+    Private Declare PtrSafe Function ZCreateSolidBrush Lib "gdi32" Alias "CreateSolidBrush" (ByVal c As Long) As LongPtr
+    Private Declare PtrSafe Function ZSelectObject Lib "gdi32" Alias "SelectObject" (ByVal hdc As LongPtr, ByVal h As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ZCreateCompatibleDC Lib "gdi32" Alias "CreateCompatibleDC" (ByVal hdc As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ZDeleteEnhMetaFile Lib "gdi32" Alias "DeleteEnhMetaFile" (ByVal h As LongPtr) As Long
+    Private Declare PtrSafe Function ZCreateMetaFile Lib "gdi32" Alias "CreateMetaFileW" (ByVal name As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ZCloseMetaFile Lib "gdi32" Alias "CloseMetaFile" (ByVal hdc As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ZDeleteDC Lib "gdi32" Alias "DeleteDC" (ByVal hdc As LongPtr) As Long
+
+    Private Declare PtrSafe Sub ZMoveMemory Lib "kernel32" Alias "RtlMoveMemory" (ByVal dst As LongPtr, ByVal src As LongPtr, ByVal cb As LongPtr)
+
+    Public Sub Im_Copy(ByVal dst As LongPtr, ByVal src As LongPtr, ByVal cb As LongPtr)
+        ZMoveMemory dst, src, cb
+    End Sub
+
+    ' The folder of the cases, made when it is not there.
+    Public Function Im_Dir() As String
+        Dim p As String = Environ$("TEMP") & "\tbdocs-package-tests"
+        On Error Resume Next
+        MkDir p
+        p = p & "\GdiPlus"
+        MkDir p
+        p = p & "\im"
+        MkDir p
+        Return p
+    End Function
+
+    ' Deletes every file of the folder; a file that is still open stays.
+    Public Sub Im_Clean()
+        Dim d As String = Im_Dir()
+        Dim names() As String
+        ReDim names(0 To 63)
+        Dim n As Long = 0
+        On Error Resume Next
+        Dim f As String = Dir$(d & "\*.*")
+        Do While Len(f) > 0 And n < 64
+            names(n) = f
+            n = n + 1
+            f = Dir$()
+        Loop
+        Dim i As Long
+        For i = 0 To n - 1
+            Kill d & "\" & names(i)
+        Next
+    End Sub
+
+    ' The size of a file, or -1 when there is none.
+    Public Function Im_Len(ByVal path As String) As Long
+        Dim n As Long = -1
+        On Error Resume Next
+        n = FileLen(path)
+        If Err.Number <> 0 Then n = -1
+        Return n
+    End Function
+
+    ' A picture with a lot of detail, so that a JPEG of it is larger at a higher quality.
+    Public Function Im_Noisy(ByVal w As Long, ByVal h As Long) As Bitmap
+        Dim bmp As Bitmap = New Bitmap(CSng(w), CSng(h))
+        Dim x As Long, y As Long
+        For y = 0 To h - 1
+            For x = 0 To w - 1
+                bmp.Pixel(x, y) = Color(255, (x * 37 + y * 91) And 255, ((x * 17) Xor (y * 53)) And 255, (x * y + x) And 255)
+            Next
+        Next
+        Return bmp
+    End Function
+
+    ' Writes a bitmap as a PNG without Image.Save; returns 0 when the file was written.
+    Public Function Im_SavePng(bmp As Bitmap, ByVal path As String) As Long
+        Dim hbm As LongPtr, nb As LongPtr
+        bmp.GetHBitmap Color(255, 255, 255, 255), hbm
+        Dim st As Long = ZFromHBitmap(hbm, 0, nb)
+        If st = 0 Then
+            Dim clsid As GDIP_UUID = ImageCodecPNG()
+            st = ZSaveImage(nb, StrPtr(path), clsid, 0)
+            ZDispose nb
+        End If
+        ZDeleteObject hbm
+        Return st
+    End Function
+
+    ' The handle of an enhanced metafile with one red rectangle; a file name makes GDI write it there.
+    Public Function Im_RedRectangleEmf(ByVal width As Long, ByVal height As Long, Optional ByVal path As String = "") As LongPtr
+        Dim dc As LongPtr
+        If Len(path) > 0 Then dc = ZCreateEnhMetaFile(0, StrPtr(path), 0, 0) Else dc = ZCreateEnhMetaFile(0, 0, 0, 0)
+        Dim brush As LongPtr = ZCreateSolidBrush(&HFF)
+        Dim old As LongPtr = ZSelectObject(dc, brush)
+        ZRectangle dc, 0, 0, width, height
+        ZSelectObject dc, old
+        ZDeleteObject brush
+        Return ZCloseEnhMetaFile(dc)
+    End Function
+
+    ' The handle of a Windows metafile in memory with one rectangle.
+    Public Function Im_RectangleWmf(ByVal width As Long, ByVal height As Long) As LongPtr
+        Dim dc As LongPtr = ZCreateMetaFile(0)
+        ZRectangle dc, 0, 0, width, height
+        Return ZCloseMetaFile(dc)
+    End Function
+
+    Public Sub Im_DeleteEmf(ByVal hemf As LongPtr)
+        ZDeleteEnhMetaFile hemf
+    End Sub
+
+    ' A device context to record a metafile for; Im_ReleaseDc gives it back.
+    Public Function Im_MakeDc() As LongPtr
+        Return ZCreateCompatibleDC(0)
+    End Function
+
+    Public Sub Im_ReleaseDc(ByVal dc As LongPtr)
+        ZDeleteDC dc
+    End Sub
+
+End Module

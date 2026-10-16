@@ -24,6 +24,7 @@ Syntax: *codecs* **= GetImageDecoders**( )
 
 Return an array of [**GpImageCodecInfo**](Types/GpImageCodecInfo), one element for each installed encoder or decoder, with the lower bound 1.
 
+<!-- test: Im_CodecTests.GetImageEncoders_ReturnsTheInstalledEncoders, Im_CodecTests.GetImageDecoders_ReturnsTheInstalledDecoders, Im_CodecTests.GetImageEncodersSize_ListsTheEncodersInABuffer -->
 > [!WARNING] 0.9.45.0
 > Both functions stop the program with an access violation, in 32-bit and 64-bit programs. They give GDI+ the array variable itself as the buffer to fill, so GDI+ overwrites the array descriptor. Use the declared functions below, which work.
 
@@ -48,6 +49,7 @@ Syntax: *status* **= GetImageDecoders**( *count*, *size*, *buffer* )
 
 These are direct declarations of the GDI+ functions, and return a [**GpStatus**](Enumerations/GpStatus). The buffer receives *count* consecutive **GpImageCodecInfo** structures, followed by the strings they point to. A program reads an element by copying `LenB(Of GpImageCodecInfo)` bytes from the buffer into a variable of that type. The buffer must stay alive for as long as the strings are used.
 
+<!-- test: Im_CodecTests.Text_PropertiesHaveNoTerminatingNull, Im_CodecTests.Text_PropertiesHoldTheTextBeforeTheNull -->
 > [!WARNING] 0.9.45.0
 > The string properties of [**GpImageCodecInfo**](Types/GpImageCodecInfo) (**FormatDescription**, **MimeType**, **FilenameExtension** and the others) end with a null character, so `info.FormatDescription = "PNG"` is **False**. Remove it with `Replace(text, vbNullChar, "")`, as the example does.
 
@@ -173,6 +175,7 @@ An encoder accepts parameters, such as the quality of a JPEG. Each parameter is 
 | **EncoderSaveFlag** | Whether the save starts or continues a multi-frame file. |
 | **EncoderColorSpace**, **EncoderImageItems**, **EncoderSaveAsCMYK** | Colour space, extra data items and CMYK saving (GDI+ 1.1). |
 
+<!-- test: Im_ImageTests.Save_EmptyParameterArrayWritesFile, Im_ImageTests.Save_JpegQualityChangesFileSize, Im_ImageTests.Save_ParameterArrayStartingAtOneIsRefused, Im_ImageTests.SaveAdd_MultiFrameTiffHasTwoFrames -->
 > [!WARNING] 0.9.45.0
 > **Image.Save** cannot pass encoder parameters to the encoder, so these IDs cannot be used to change how a picture is saved. The call reads the parameters from memory before the array, and either returns an error, ignores them, or stops the program. See the warning at [**Image.Save**](Image#save); [**Bitmap**](Bitmap#saving) shows a way to save a PNG without parameters.
 

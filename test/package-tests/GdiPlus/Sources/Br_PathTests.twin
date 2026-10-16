@@ -1,0 +1,385 @@
+' GraphicsPath: construction from point data, the figures, reading a path back, hit testing and the operations on a path.
+[TestFixture]
+Module Br_PathTests
+
+    ' The error number of a run-time error, 0 for none.
+    Private Function CaughtError(ByVal Path As GraphicsPath, ByVal What As String) As Long
+        Dim pts() As GpPointF
+        Dim ty() As PathPointType
+        On Error Resume Next
+        If What = "points" Then Path.GetPoints pts Else Path.GetTypes ty
+        CaughtError = Err.Number
+        Err.Clear
+    End Function
+
+    ' ---- creating a path from point data
+
+    [TestCase]
+    Public Sub New_PathData_CreatesThePath()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim d As PathData = PathData(3)
+        d.Point(1) = GpPointF(0, 0)
+        d.Point(2) = GpPointF(10, 0)
+        d.Point(3) = GpPointF(10, 10)
+        Dim t As PathPointType
+        t._value = PathPointTypeStart
+        d.Type(1) = t
+        t._value = PathPointTypeLine
+        d.Type(2) = t
+        d.Type(3) = t
+        Dim p As GraphicsPath = GraphicsPath(d)
+        Expect.AreEqual 3, p.PointCount, "PointCount of a path made from a PathData of three points"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_TypedPoints_CreatesThePath()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim tp(1 To 3) As TypedPoint
+        tp(1).pos = GpPointF(0, 0)
+        tp(2).pos = GpPointF(10, 0)
+        tp(3).pos = GpPointF(10, 10)
+        tp(1).type._value = PathPointTypeStart
+        tp(2).type._value = PathPointTypeLine
+        tp(3).type._value = PathPointTypeLine
+        Dim p As GraphicsPath = GraphicsPath(tp)
+        Expect.AreEqual 3, p.PointCount, "PointCount of a path made from three typed points"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_PointsAndTypes_CreatesThePath()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim pts(1 To 3) As GpPointF
+        pts(1) = GpPointF(0, 0): pts(2) = GpPointF(10, 0): pts(3) = GpPointF(10, 10)
+        Dim ty(1 To 3) As PathPointType
+        ty(1)._value = PathPointTypeStart
+        ty(2)._value = PathPointTypeLine
+        ty(3)._value = PathPointTypeLine
+        Dim p As GraphicsPath = GraphicsPath(pts, ty)
+        Expect.AreEqual 3, p.PointCount, "PointCount of a path made from three GpPointF and their types"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_GpPointsAndTypes_CreatesThePath()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim pts(1 To 3) As GpPoint
+        pts(1) = GpPoint(0, 0): pts(2) = GpPoint(10, 0): pts(3) = GpPoint(10, 10)
+        Dim ty(1 To 3) As PathPointType
+        ty(1)._value = PathPointTypeStart
+        ty(2)._value = PathPointTypeLine
+        ty(3)._value = PathPointTypeLine
+        Dim p As GraphicsPath = GraphicsPath(pts, ty)
+        Expect.AreEqual CLng(Ok), CLng(p.LastResult), "LastResult of a path made from three GpPoint and their types"
+        Expect.AreEqual 3, p.PointCount, "PointCount of a path made from three GpPoint and their types"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PathData_Get_ReturnsThePoints()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = Br_Square()
+        Dim d As PathData = p.PathData
+        Expect.IsFalse d Is Nothing, "PathData returns an object for a path of four points"
+        If Not d Is Nothing Then Expect.AreEqual 4, d.Count, "Count of the PathData of a rectangle"
+        Expect.AreEqual CLng(Ok), CLng(p.LastResult), "LastResult after reading PathData"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetPoints_EmptyPath_RaisesUnspecifiedError()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        Expect.AreEqual -2147467259, CaughtError(p, "points"), "error raised by GetPoints on an empty path"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetTypes_EmptyPath_RaisesUnspecifiedError()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        Expect.AreEqual -2147467259, CaughtError(p, "types"), "error raised by GetTypes on an empty path"
+        Expect.Done
+    End Sub
+
+    ' ---- figures, markers and reading a path back
+
+    [TestCase]
+    Public Sub Types_OfTwoFiguresWithAClosedOneAndAMarker()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddLine 0, 0, 5, 5
+        p.StartFigure
+        p.AddLine 10, 10, 15, 15
+        p.AddLine 15, 15, 20, 10
+        p.CloseFigure
+        p.SetMarker
+        Dim ty() As PathPointType
+        p.GetTypes ty
+        Dim t As PathPointType
+        Dim i As Long, s As String
+        For i = 1 To UBound(ty)
+            t = ty(i)
+            s = s & CLng(t.PointType) & IIf(t.CloseSubpath, "c", "") & IIf(t.PathMarker, "m", "") & " "
+        Next
+        Expect.AreEqual "0 1 0 1 1cm ", s, "types of the points of a path of two figures, the second closed and the last point a marker"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Shapes_PointCounts()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddRectangle 0, 0, 10, 10
+        Expect.AreEqual 4, p.PointCount, "PointCount after AddRectangle"
+        p.AddEllipse 20, 0, 10, 10
+        Expect.AreEqual 17, p.PointCount, "PointCount after AddEllipse (13 points)"
+        Dim tri(1 To 3) As GpPointF
+        tri(1) = GpPointF(40, 0): tri(2) = GpPointF(50, 0): tri(3) = GpPointF(45, 8)
+        p.AddPolygon tri
+        Expect.AreEqual 20, p.PointCount, "PointCount after AddPolygon of three points"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lines_AddLines_AndBeziers_PointCounts()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddLine 0, 0, 10, 10
+        Expect.AreEqual 2, p.PointCount, "PointCount after AddLine"
+        Dim pts(1 To 3) As GpPointF
+        pts(1) = GpPointF(20, 0): pts(2) = GpPointF(30, 10): pts(3) = GpPointF(20, 20)
+        p.AddLines pts
+        Expect.AreEqual 5, p.PointCount, "PointCount after AddLines of three points to a figure"
+        Dim b As GraphicsPath = New GraphicsPath()
+        b.AddBezier 0, 0, 5, 10, 15, 10, 20, 0
+        Expect.AreEqual 4, b.PointCount, "PointCount after AddBezier"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AddBeziers_NeedsThreeNPlusOnePoints()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim pts(1 To 7) As GpPointF
+        pts(1) = GpPointF(0, 0): pts(2) = GpPointF(5, 10): pts(3) = GpPointF(15, 10): pts(4) = GpPointF(20, 0)
+        pts(5) = GpPointF(25, -10): pts(6) = GpPointF(35, -10): pts(7) = GpPointF(40, 0)
+        Dim q As GraphicsPath = New GraphicsPath()
+        Expect.AreEqual CLng(Ok), CLng(q.AddBeziers(pts)), "status of AddBeziers with seven points"
+        Expect.AreEqual 7, q.PointCount, "PointCount after AddBeziers with seven points"
+        Dim r(1 To 3) As GpPointF
+        Expect.AreEqual CLng(InvalidParameter), CLng(q.AddBeziers(r)), "status of AddBeziers with three points"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Curves_PointCounts()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim pts(1 To 3) As GpPointF
+        pts(1) = GpPointF(0, 0): pts(2) = GpPointF(5, 10): pts(3) = GpPointF(10, 0)
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddCurve pts
+        Expect.AreEqual 7, p.PointCount, "PointCount after AddCurve of three points"
+        Dim c As GraphicsPath = New GraphicsPath()
+        c.AddClosedCurve pts
+        Expect.AreEqual 10, c.PointCount, "PointCount after AddClosedCurve of three points"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_IsIndependent()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddRectangle 1, 2, 10, 20
+        Dim c As GraphicsPath = p.Clone
+        p.AddRectangle 0, 0, 5, 5
+        Expect.AreEqual 8, p.PointCount, "PointCount of the original after a rectangle was added"
+        Expect.AreEqual 4, c.PointCount, "PointCount of the clone"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FillMode_WindingFillsTheInnerRectangleAlternateDoesNot()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddRectangle 0, 0, 10, 10
+        p.AddRectangle 2, 2, 6, 6
+        Expect.AreEqual False, p.IsVisible(5, 5), "IsVisible of the inner rectangle with FillModeAlternate"
+        p.FillMode = FillModeWinding
+        Expect.AreEqual True, p.IsVisible(5, 5), "IsVisible of the inner rectangle with FillModeWinding"
+        p.Reset
+        Expect.AreEqual CLng(FillModeAlternate), CLng(p.FillMode), "FillMode after Reset"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LastPoint_IsTheEndOfTheLastFigure()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddLine 0, 0, 10, 20
+        Dim pt As GpPointF = p.LastPoint
+        Expect.AreEqual 10!, pt.X, "LastPoint.X"
+        Expect.AreEqual 20!, pt.Y, "LastPoint.Y"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetPoints_ListsThePointsFromIndexOne()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddRectangle 1, 2, 10, 20
+        Dim pts() As GpPointF
+        p.GetPoints pts
+        Expect.AreEqual 1, LBound(pts), "lower bound of GetPoints"
+        Expect.AreEqual 4, UBound(pts), "upper bound of GetPoints"
+        Expect.AreEqual 11!, pts(2).X, "X of the second point"
+        Expect.AreEqual 22!, pts(3).Y, "Y of the third point"
+        Expect.Done
+    End Sub
+
+    ' ---- changing a path
+
+    [TestCase]
+    Public Sub Transform_MultipliesEveryPoint()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddLine 1, 1, 2, 2
+        Dim m As Matrix = Matrix(2, 0, 0, 3, 10, 20)
+        p.Transform m
+        Dim pt As GpPointF = p.LastPoint
+        Expect.AreEqual 14!, pt.X, "LastPoint.X after Transform"
+        Expect.AreEqual 26!, pt.Y, "LastPoint.Y after Transform"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Flatten_ReplacesTheCurvesWithLines()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddEllipse 0, 0, 100, 100
+        Dim it As PathIterator = PathIterator(p)
+        Expect.IsTrue it.HasCurve, "HasCurve of an ellipse"
+        p.Flatten
+        Expect.IsTrue p.PointCount > 13, "PointCount of a flattened ellipse: " & p.PointCount
+        Dim flat As PathIterator = PathIterator(p)
+        Expect.IsFalse flat.HasCurve, "HasCurve of a flattened ellipse"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Widen_ReplacesTheLineWithTheOutlineOfItsStroke()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddLine 0, 0, 10, 0
+        p.Widen Pen(Color(255, 255, 0, 0), 2)
+        Expect.AreEqual 4, p.PointCount, "PointCount of a widened line"
+        Expect.AreEqual CLng(FillModeWinding), CLng(p.FillMode), "FillMode of a widened line"
+        Dim b As GpRectF
+        p.GetWorldBounds b, Nothing, Nothing
+        Expect.AreEqual -1!, b.Y, "Y of the bounds of a widened line"
+        Expect.AreEqual 2!, b.Height, "Height of the bounds of a widened line"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Outline_KeepsTheOuterBoundaryOfOverlappingFigures()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddRectangle 0, 0, 10, 10
+        p.AddRectangle 5, 5, 10, 10
+        p.FillMode = FillModeWinding
+        Dim before As PathIterator = PathIterator(p)
+        Expect.AreEqual 2, before.SubpathCount, "figures before Outline"
+        p.Outline
+        Dim after As PathIterator = PathIterator(p)
+        Expect.AreEqual 1, after.SubpathCount, "figures after Outline"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Warp_MapsTheSourceRectangleToTheQuadrilateral()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddRectangle 0, 0, 10, 10
+        Dim dst(1 To 4) As GpPointF
+        dst(1) = GpPointF(0, 0): dst(2) = GpPointF(20, 0)
+        dst(3) = GpPointF(0, 10): dst(4) = GpPointF(20, 10)
+        Expect.AreEqual CLng(Ok), CLng(p.Warp(dst, GpRectF(0, 0, 10, 10))), "status of Warp"
+        Dim b As GpRectF
+        p.GetWorldBounds b, Nothing, Nothing
+        Expect.AreEqual 20!, CSng(Round(b.Width, 2)), "width of the bounds after Warp"
+        Expect.AreEqual 10!, CSng(Round(b.Height, 2)), "height of the bounds after Warp"
+        Expect.Done
+    End Sub
+
+    ' ---- bounds and hit testing
+
+    [TestCase]
+    Public Sub GetWorldBounds_OfARectangle()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddRectangle 1, 2, 10, 20
+        Dim b As GpRectF
+        p.GetWorldBounds b, Nothing, Nothing
+        Expect.AreEqual 1!, b.X, "X of the bounds"
+        Expect.AreEqual 2!, b.Y, "Y of the bounds"
+        Expect.AreEqual 10!, b.Width, "Width of the bounds"
+        Expect.AreEqual 20!, b.Height, "Height of the bounds"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsVisible_AndIsOutlineVisible()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = Br_Square()
+        Dim pn As Pen = Pen(Color(255, 255, 0, 0), 2)
+        Expect.AreEqual True, p.IsVisible(5, 5), "IsVisible inside the rectangle"
+        Expect.AreEqual False, p.IsVisible(15, 15), "IsVisible outside the rectangle"
+        Expect.AreEqual True, p.IsOutlineVisible(0, 5, pn), "IsOutlineVisible on the edge"
+        Expect.AreEqual False, p.IsOutlineVisible(5, 5, pn), "IsOutlineVisible inside"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FillPath_FillsTheShape()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Br_White(40, 40)
+        Dim g As Graphics = Graphics(bmp)
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddArc 4, 6, 16, 16, 180, 180
+        p.AddArc 20, 6, 16, 16, 180, 180
+        Dim tip(1 To 3) As GpPointF
+        tip(1) = GpPointF(36, 14): tip(2) = GpPointF(20, 36): tip(3) = GpPointF(4, 14)
+        p.AddLines tip
+        p.CloseFigure
+        g.FillPath SolidBrush(Color(255, 255, 0, 0)), p
+        Expect.AreEqual "FFFF0000", Br_Hex(Br_Px(bmp, 20, 20)), "pixel inside the heart"
+        Expect.AreEqual "FFFFFFFF", Br_Hex(Br_Px(bmp, 2, 2)), "pixel outside the heart"
+        Expect.Done
+    End Sub
+
+End Module

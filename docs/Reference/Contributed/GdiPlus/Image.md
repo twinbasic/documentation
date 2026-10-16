@@ -14,8 +14,9 @@ An **Image** holds either raster data or a recorded sequence of drawing commands
 * TOC
 {:toc}
 
+<!-- test: compile ImBareNewImageTakesNoArguments, compile ImBareImageHasTheVbMembers, compile ImQualifiedImageHasNoVbMembers, compile ImQualifiedNewCompiles, compile ImQualifiedFunctionCompiles, Im_ImageTests.BareImage_FunctionWorksUnqualified, Im_ImageTests.BareImage_VariableCannotHoldABitmap -->
 > [!NOTE] 0.9.45.0
-> A project that references the **VB** package (every default project does) also has a VB control class named **Image**. A bare `Image` in a declaration means the VB class, so write `GdiPlus.Image` for the class and for the function that creates it, as the samples on this page do. [**Bitmap**](Bitmap) and [**Metafile**](Metafile) have no such clash.
+> A project that references the **VB** package (every default project does) also has a VB control class named **Image**. A bare `Image` as a type, as in `Dim img As Image`, means the VB class: `New Image(filename)` does not compile, because the VB class takes no arguments, and assigning a [**Bitmap**](Bitmap) to such a variable raises error -2147467262 (*No such interface supported*) at run time. Write `GdiPlus.Image` for the type, as the samples on this page do. The function **Image**( *filename* ) works without the prefix. [**Bitmap**](Bitmap) and [**Metafile**](Metafile) have no such clash.
 
 ```tb check_build hidden
 Module ImagePageSaver
@@ -96,6 +97,7 @@ Syntax: *copy* **=** *img*.**Clone**( )
 
 Returns a new **Image** that holds a copy of the picture. The copy is an **Image**, even when the original is a [**Bitmap**](Bitmap) or a [**Metafile**](Metafile).
 
+<!-- test: compile ImBitmapCloneWithoutArguments, compile ImImageCloneWithoutArguments, Im_ImageTests.Clone_OfABitmapIsAnImage, Im_ImageTests.Clone_WholeBitmapWithItsRectangle -->
 > [!NOTE] 0.9.45.0
 > [**Bitmap**](Bitmap#clone) and [**Metafile**](Metafile) declare their own **Clone**, and on a **Bitmap** the no-argument form is not available: the call does not compile. To copy a whole **Bitmap**, use [**Bitmap.Clone**](Bitmap#clone) with the full rectangle.
 
@@ -119,10 +121,11 @@ Syntax: *status* **=** *img*.**Save**( *stream*, *clsidEncoder*, *encoderParams*
 : *required* The class ID of the encoder, which also selects the file format.
 
 *encoderParams*
-: *required* An array of [**GpEncoderParameter**](Types/GpEncoderParameter). The call expects its lower bound to be 0, and element 0 to be a dummy that is not filled in; the parameters follow from element 1. Any other lower bound returns **InvalidParameter**.
+: *required* An array of [**GpEncoderParameter**](Types/GpEncoderParameter). The call expects its lower bound to be 0, and element 0 to be a dummy that is not filled in; the parameters follow from element 1. In a 64-bit program, any other lower bound returns **InvalidParameter**.
 
+<!-- test: Im_ImageTests.Save_EmptyParameterArrayWritesFile, Im_ImageTests.Save_JpegQualityChangesFileSize, Im_ImageTests.Save_ParameterArrayStartingAtOneIsRefused, Im_ImageTests.SaveAdd_MultiFrameTiffHasTwoFrames -->
 > [!WARNING] 0.9.45.0
-> **Save** does not work with an encoder parameter array. The call stores the parameter count in memory that lies before the array, and gives GDI+ a pointer to that place, so GDI+ reads its parameters from memory the array does not own. With `Dim ep(0 To 0) As GpEncoderParameter` the call returns **InvalidParameter** and leaves an empty file. With a longer array it returns **Ok** in 64-bit programs while GDI+ ignores the parameters (a JPEG saved with a quality of 10 has the same size as one saved with 100), and in 32-bit programs it raises an access violation or does not return. **SaveAdd** and **SaveAddImage** build their argument in the same way. [**Bitmap**](Bitmap#saving) shows how to write a PNG without calling **Save**.
+> **Save** does not work with an encoder parameter array. The call stores the parameter count in memory that lies before the array, and gives GDI+ a pointer to that place, so GDI+ reads its parameters from memory the array does not own. In 32-bit programs every call with a parameter array raises an access violation and the program stops. In 64-bit programs, with `Dim ep(0 To 0) As GpEncoderParameter` the call returns **InvalidParameter** and leaves an empty file, and with a longer array it returns **Ok** while GDI+ ignores the parameters (a JPEG saved with a quality of 10 has the same size as one saved with 100). **SaveAdd** and **SaveAddImage** build their argument in the same way: after such a **Save** in a 64-bit program they return **Win32Error**, and no frame is added. [**Bitmap**](Bitmap#saving) shows how to write a PNG without calling **Save**.
 
 ### SaveAdd
 
@@ -237,6 +240,7 @@ Syntax: *img*.**Palette** **=** *pal*
 
 The getter is meant to return the palette as an array of [**ColorPalette**](Types/ColorPalette), and the setter to take one.
 
+<!-- test: Im_ZStackTests.Palette_GetReturnsThePalette, Im_ImageTests.Palette_LetChangesThePicture -->
 > [!WARNING] 0.9.45.0
 > Reading **Palette** overflows the stack, in 32-bit and 64-bit programs, and the process stops. The setter calls the GDI+ function that reads a palette, not the one that writes it, and so does not change the picture. To get a palette, use [**ImageAttributes.GetAdjustedPalette**](ImageAttributes#getadjustedpalette) or fill a [**ColorPalette**](Types/ColorPalette) yourself, and give it to [**Bitmap.ConvertFormat**](Bitmap#convertformat).
 
@@ -374,8 +378,9 @@ Syntax: *img*.**PropertyItem** **=** *item*
 
 The getter returns the property with the ID *propId* as an array of [**GpPropertyItem**](Types/GpPropertyItem) that holds one element, at index 1. The setter takes one **GpPropertyItem** and sets that property on the picture, adding it when it is not there. Its [**Id**](Types/GpPropertyItem), type, length and the address of its value must be filled in.
 
-> [!WARNING] 0.9.45.0
-> Reading an element of the array that **PropertyItem** returns stops the process with an access violation, because the array is built in a way that the element access cannot use. Only `UBound` and `LBound` of the array work. **GetAllPropertyItems** returns its array in the same way and has the same defect. The setter, **PropertyCount**, **PropertyIdList** and **RemovePropertyItem** work.
+<!-- test: Im_ImageTests.PropertyItem_PropertyOfTheReturnedElement, Im_ImageTests.PropertyItem_GetReturnsTheItem, Im_ImageTests.GetAllPropertyItems_ReturnsEveryItem, Im_ImageTests.PropertyItem_RemoveTakesTheItemAway -->
+> [!WARNING] BETA 1005
+> A property of an element of the array that **PropertyItem** returns, such as `items(1).TheASCII`, stops the process with an access violation, as it does for an element of any array of a user-defined type. An element can be read as a whole or by a field: `items(1).Id` works, and so does `Dim got As GpPropertyItem = items(1)` followed by `got.TheASCII`. **GetAllPropertyItems** returns its array in the same way, and the same holds for it. The setter, **PropertyCount**, **PropertyIdList** and **RemovePropertyItem** work.
 
 ### RemovePropertyItem
 
@@ -419,12 +424,13 @@ Syntax: *params* **=** *img*.**GetEncoderParameterList**( *clsidEncoder* )
 
 Returns the parameters that the encoder with the class ID *clsidEncoder* accepts for this picture, as an array of [**GpEncoderParameter**](Types/GpEncoderParameter).
 
+<!-- test: Im_ImageTests.GetEncoderParameterList_JpegListsTheQuality -->
 > [!WARNING] 0.9.45.0
 > **GetEncoderParameterList** stops the process with an access violation in 32-bit and 64-bit programs. The call hands GDI+ the address of a temporary variable in place of the buffer, so GDI+ overwrites the stack.
 
 ## Items of image data
 
-Some formats store data beside the pixels. **FindFirstItem**, **FindNextItem** and **GetItemData** enumerate and read it, with a [**GpImageItemData**](Types/GpImageItemData) in an array of one element. These members need GDI+ 1.1 and Windows 7 or later, and only the codecs that provide such data return any. The array is built as for **PropertyItem**, so its element cannot be read.
+Some formats store data beside the pixels. **FindFirstItem**, **FindNextItem** and **GetItemData** enumerate and read it, with a [**GpImageItemData**](Types/GpImageItemData) in an array of one element. These members need GDI+ 1.1 and Windows 7 or later, and only the codecs that provide such data return any. The array is built as for **PropertyItem**, and the warning under it applies.
 
 ### FindFirstItem
 

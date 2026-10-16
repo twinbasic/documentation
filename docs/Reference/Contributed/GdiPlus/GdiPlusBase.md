@@ -20,6 +20,7 @@ A **GdiPlusBase** cannot be created. Create one of the classes that inherit from
 
 ## Last result
 
+<!-- test: Gr_BaseTests.LastResult_AfterAFailedCall_IsTheStatus, Gr_BaseTests.LastResult_ASuccessfulCall_DoesNotClearIt, Gr_BaseTests.GetLastResult_ReturnsTheStatusAndClearsIt -->
 ### LastResult
 
 Syntax: *object*.**LastResult** As **GpStatus**
@@ -55,6 +56,7 @@ Debug.Print bmp.LastResult                                       ' 2 -- a good c
 Debug.Print bmp.GetLastResult()                                  ' 2
 Debug.Print bmp.LastResult                                       ' 0
 ```
+<!-- /test -->
 
 ## Memory
 
@@ -65,6 +67,7 @@ Syntax: *class*.**Free**( *pointer* As **LongPtr** )
 
 Static members. **Alloc** reserves a block of *size* bytes with the allocator of GDI+ and returns its address, or 0. **Free** releases a block that **Alloc** returned. They are for the buffers that GDI+ itself hands over to or takes from a program.
 
+<!-- test: compile GrBaseAllocIsNotRecognised, compile GrUserAllocCompiles, Gr_LibraryTests.Alloc_ThroughAClass_ReturnsABlock -->
 > [!NOTE] 0.9.45.0
 > Call them through a class that inherits from **GdiPlusBase**, as in `GdiPlusUser.Alloc(64)`. The name `GdiPlusBase.Alloc` is not recognised.
 
@@ -77,6 +80,7 @@ GdiPlusUser.Free block
 
 ## Error handling
 
+<!-- test: Gr_BaseTests.GdipErrorHandlingStrategy_Default_IgnoresErrors, Gr_BaseTests.RaiseErrors_AFailedCall_RaisesTheStatusPlusTheBase, Gr_BaseTests.RaiseErrors_ACodeBase_IsAddedToTheStatus, Gr_BaseTests.HandleErrors_AFailedCall_CallsTheHandler -->
 By default a failure is only recorded in **LastResult**. Three variables of the package, shared by all objects, choose another behaviour.
 
 ### GdipErrorHandlingStrategy
@@ -135,6 +139,7 @@ Dim c As Color = bmp.Pixel(100, 100)       ' outside the bitmap
 Debug.Print LastFailure                                          ' Bitmap 2
 GdipErrorHandlingStrategy = IgnoreErrors
 ```
+<!-- /test -->
 
 ## Protected members
 

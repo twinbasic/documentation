@@ -33,12 +33,14 @@ Syntax: *data* **= New PathData**
 
 **New PathData** with no arguments creates an object with room for no points. The function form has no version without arguments. Call [**Allocate**](#allocate) to give it room.
 
+<!-- test: Br_PathDataTests.New_Count_AndAllocate -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim a As PathData = PathData(3)
 Dim b As PathData = New PathData
 Debug.Print a.Count & " " & b.Count                    ' 3 0
 ```
+<!-- /test -->
 
 ## Members
 
@@ -69,9 +71,11 @@ Syntax: *data*.**Point(** *index* **)** [ **=** *point* ]
 
 Reads or sets the point with the given index, a [**GpPointF**](Types/GpPointF). Reading an index outside 1 to **Count** returns a point at 0, 0.
 
+<!-- test: Br_PathDataTests.Point_Get_ReturnsThePoint, Br_PathDataTests.TypedPoint_Get_ReturnsThePointAndItsType, Br_PathDataTests.TypedPoints_Get_ReturnsACopy -->
 > [!WARNING] 0.9.45.0
 > Reading **Point** stops a 32-bit program with an access violation, whatever the index is, as long as it is in range. A 64-bit program reads correctly. The same is true of **TypedPoint** and of **TypedPoints**, which read points through it. In a program that is built in both widths, read the points with [**Points**](#points), which works in both.
 
+<!-- test: Br_PathDataTests.Point_Let_OutOfRange_LeavesTheMemoryBesideTheArrayAlone, Br_PathDataTests.Type_Let_OutOfRange_LeavesTheMemoryBesideTheArrayAlone, Br_PathDataTests.TypedPoint_Let_OutOfRange_LeavesTheMemoryBesideTheArraysAlone -->
 > [!WARNING] 0.9.45.0
 > Setting **Point**, **Type** or **TypedPoint** does not check the index. A value outside 1 to **Count** is written to the memory next to the arrays and raises no error.
 
@@ -80,7 +84,9 @@ Reads or sets the point with the given index, a [**GpPointF**](Types/GpPointF). 
 
 Syntax: *data*.**Type(** *index* **)** [ **=** *type* ]
 
+<!-- test: Br_PathDataTests.Type_Get_OutOfRange_ReturnsZero -->
 Reads or sets the [**PathPointType**](Types/PathPointType) of the point with the given index. Reading an index outside 1 to **Count** returns a type of 0.
+<!-- /test -->
 
 ### TypedPoint
 {: .no_toc }
@@ -117,10 +123,13 @@ Syntax: *data*.**PointsPtr** **As LongPtr**
 
 Syntax: *data*.**TypesPtr** **As LongPtr**
 
+<!-- test: Br_PathDataTests.PointsPtr_AndTypesPtr_AreZeroWithoutRoom -->
 The addresses of the first point and of the first type, for a call of a Windows function. The address is 0 when the object has no room.
+<!-- /test -->
 
 The example fills a **PathData** and reads it through the views:
 
+<!-- test: Br_PathDataTests.Points_AndTypes_AreViewsFromIndexOne -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim d As PathData = PathData(3)
@@ -139,9 +148,11 @@ Dim ty() As PathPointType = d.Types
 Debug.Print LBound(pts) & " " & UBound(pts)               ' 1 3
 Debug.Print pts(2).X & "," & pts(2).Y & " " & ty(2)._value        ' 5,6 1
 ```
+<!-- /test -->
 
 A **PathData** is also created from an array of typed points:
 
+<!-- test: Br_PathDataTests.New_TypedPoints_CopiesThem -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 Dim tp(1 To 3) As TypedPoint
@@ -155,6 +166,7 @@ Dim d As PathData = PathData(tp)
 Dim pts() As GpPointF = d.Points
 Debug.Print d.Count & " " & pts(3).X & "," & pts(3).Y      ' 3 10,10
 ```
+<!-- /test -->
 
 ## See Also
 

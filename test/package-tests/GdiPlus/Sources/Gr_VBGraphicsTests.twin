@@ -1,0 +1,184 @@
+' VBGraphics: the Line, Circle and PSet statements and the properties they read.
+[TestFixture]
+Module Gr_VBGraphicsTests
+
+    Private Const Red As Long = &HFFFF0000
+    Private Const White As Long = &HFFFFFFFF
+
+    Private Function Canvas(ByRef Gfx As VBGraphics) As Bitmap
+        Dim bmp As Bitmap = Bitmap(40!, 40!)
+        Set Gfx = VBGraphics(bmp)
+        Gfx.Clear Color(255, 255, 255, 255)
+        Return bmp
+    End Function
+
+    ' ---- colours
+
+    [TestCase]
+    Public Sub Line_ARGBColour_Draws()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As VBGraphics
+        Dim bmp As Bitmap = Canvas(g)
+        g.Line (2, 5)-(30, 5), &HFFFF0000
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 10, 5)), "pixel on a line drawn in &HFFFF0000"
+        Expect.AreEqual "FFFFFFFF", Gr_Hex(Gr_Px(bmp, 10, 8)), "pixel away from the line"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Line_VBColourRed_DrawsRed()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As VBGraphics
+        Dim bmp As Bitmap = Canvas(g)
+        g.Line (2, 5)-(30, 5), vbRed
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 10, 5)), "pixel on a line drawn in vbRed with the default UseTransparentAlpha"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Line_VBColourWithoutTransparentAlpha_DrawsThatColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As VBGraphics
+        Dim bmp As Bitmap = Canvas(g)
+        g.UseTransparentAlpha = False
+        g.Line (2, 5)-(30, 5), vbRed
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 10, 5)), "pixel on a line drawn in vbRed with UseTransparentAlpha False"
+        g.Line (2, 9)-(30, 9), RGB(10, 20, 30)
+        Expect.AreEqual "FF0A141E", Gr_Hex(Gr_Px(bmp, 10, 9)), "pixel on a line drawn in RGB(10, 20, 30) with UseTransparentAlpha False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Line_AlphaZeroColour_IsInvisibleWithTransparentAlpha()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As VBGraphics
+        Dim bmp As Bitmap = Canvas(g)
+        g.Line (2, 5)-(30, 5), &HFF0000
+        Expect.AreEqual "FFFFFFFF", Gr_Hex(Gr_Px(bmp, 10, 5)), "pixel on a line drawn in &HFF0000 (alpha 0) with the default UseTransparentAlpha"
+        g.UseTransparentAlpha = False
+        g.Line (2, 9)-(30, 9), &HFF0000
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 10, 9)), "pixel on a line drawn in &HFF0000 (alpha 0) with UseTransparentAlpha False"
+        Expect.Done
+    End Sub
+
+    ' ---- DrawWidth
+
+    [TestCase]
+    Public Sub DrawWidth_BeforeFirstDraw_ReadsOne()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As VBGraphics
+        Dim bmp As Bitmap = Canvas(g)
+        g.ClearResult
+        Expect.AreEqual 1, CLng(g.DrawWidth), "DrawWidth of a new VBGraphics"
+        Expect.AreEqual 0, CLng(g.LastResult), "LastResult after reading DrawWidth of a new VBGraphics"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawWidth_AssignedBeforeFirstDraw_IsKept()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As VBGraphics
+        Dim bmp As Bitmap = Canvas(g)
+        g.ClearResult
+        g.DrawWidth = 4
+        Expect.AreEqual 4, CLng(g.DrawWidth), "DrawWidth after assigning 4 to a new VBGraphics"
+        Expect.AreEqual 0, CLng(g.LastResult), "LastResult after assigning DrawWidth of a new VBGraphics"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawWidth_AfterFirstDraw_CanBeChanged()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As VBGraphics
+        Dim bmp As Bitmap = Canvas(g)
+        g.PSet (10, 10), &HFFFF0000
+        g.ClearResult
+        Expect.AreEqual 1, CLng(g.DrawWidth), "DrawWidth after a first PSet"
+        g.DrawWidth = 4
+        Expect.AreEqual 4, CLng(g.DrawWidth), "DrawWidth after assigning 4 once the first PSet is done"
+        Expect.Done
+    End Sub
+
+    ' ---- Line with B and BF
+
+    [TestCase]
+    Public Sub Line_BoxFilled_FillsFromTheFirstCorner()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As VBGraphics
+        Dim bmp As Bitmap = Canvas(g)
+        g.Line (5, 5)-(15, 15), &HFFFF0000, BF
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 10, 10)), "pixel inside the box (5, 5)-(15, 15) drawn with BF"
+        Expect.AreEqual "FFFFFFFF", Gr_Hex(Gr_Px(bmp, 10, 22)), "pixel below the box"
+        Dim first As Long, last As Long
+        Gr_Rows bmp, Red, first, last
+        Expect.AreEqual 5, first, "first row with red pixels after BF (5, 5)-(15, 15)"
+        Expect.AreEqual 15, last, "last row with red pixels after BF (5, 5)-(15, 15)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Line_BoxOutline_DrawsTheCorners()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As VBGraphics
+        Dim bmp As Bitmap = Canvas(g)
+        g.Line (5, 5)-(15, 15), &HFFFF0000, B
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 10, 5)), "pixel on the top edge of the box"
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 10, 15)), "pixel on the bottom edge of the box"
+        Expect.AreEqual "FFFFFFFF", Gr_Hex(Gr_Px(bmp, 10, 10)), "pixel inside an unfilled box"
+        Expect.Done
+    End Sub
+
+    ' ---- Circle
+
+    [TestCase]
+    Public Sub Circle_StartAndEnd_DrawAnArc()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As VBGraphics
+        Dim bmp As Bitmap = Canvas(g)
+        g.ClearResult
+        g.Circle (20, 20), 8, &HFFFF0000, 0, 3.14
+        Expect.AreEqual 0, CLng(g.LastResult), "LastResult after Circle with start and end"
+        Expect.IsTrue Gr_CountNot(bmp, White) > 0, "pixels drawn by Circle with start 0 and end 3.14"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Circle_Full_DrawsTheOutline()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As VBGraphics
+        Dim bmp As Bitmap = Canvas(g)
+        g.Circle (20, 20), 8, &HFFFF0000
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 20, 12)), "pixel on the top of the circle"
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 28, 20)), "pixel on the right of the circle"
+        Expect.AreEqual "FFFFFFFF", Gr_Hex(Gr_Px(bmp, 20, 20)), "pixel in the centre of an unfilled circle"
+        Expect.Done
+    End Sub
+
+    ' ---- PSet
+
+    [TestCase]
+    Public Sub PSet_SetsOnlyThePixel()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As VBGraphics
+        Dim bmp As Bitmap = Canvas(g)
+        g.PSet (10, 10), &HFFFF0000
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 10, 10)), "pixel at the PSet point"
+        Expect.AreEqual "FFFFFFFF", Gr_Hex(Gr_Px(bmp, 10, 11)), "pixel below the PSet point"
+        Expect.AreEqual "FFFFFFFF", Gr_Hex(Gr_Px(bmp, 10, 9)), "pixel above the PSet point"
+        Expect.AreEqual "FFFFFFFF", Gr_Hex(Gr_Px(bmp, 11, 10)), "pixel right of the PSet point"
+        Expect.Done
+    End Sub
+
+End Module

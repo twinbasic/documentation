@@ -38,6 +38,7 @@ Each form is also available as **New ColorCurve**( ... ) with the same arguments
 
 A constructor that fails creates an unusable object whose **LastResult** tells why.
 
+<!-- test: Fx_EffectTests.ColorCurve_NewWithParams_StoresTheParameters, Fx_EffectTests.ColorCurve_NewWithValues_StoresTheParameters -->
 > [!WARNING] 0.9.45.0
 > The form with *params* stops the program with an access violation, in 32-bit and 64-bit programs. The forms without arguments and with the three values work. To use a structure, create the effect without arguments and set [**Parameters**](#parameters).
 
@@ -49,6 +50,7 @@ Syntax: *params* **=** *fx*.**Parameters**( *size* )
 
 Gets or sets the [**ColorCurveParams**](Types/ColorCurveParams).
 
+<!-- test: Fx_EffectTests.ColorCurve_ParametersGetWithoutSize_ReturnsTheParameters -->
 > [!WARNING] 0.9.45.0
 > The getter returns zeros and sets **LastResult** to 2 (**InvalidParameter**) unless it is given *size*, the size of the structure: `fx.Parameters(LenB(Of ColorCurveParams))`. See [**Effect**](Effect#parameters).
 

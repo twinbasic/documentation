@@ -1,0 +1,288 @@
+' Fx_StringFormatTests: StringFormat.
+[TestFixture]
+Module Fx_StringFormatTests
+
+    ' ---- the generic formats are GDI+'s shared statics
+
+    [TestCase]
+    Public Sub GenericDefaultStringFormat_ChangeIsSeenByEveryLaterCall()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim d As StringFormat = GenericDefaultStringFormat()
+        Expect.IsFalse d.NoWrap, "NoWrap of the generic default format at the start"
+        d.NoWrap = True
+        Expect.IsTrue GenericDefaultStringFormat().NoWrap, "NoWrap of a later GenericDefaultStringFormat() after changing the first"
+        d.NoWrap = False
+        Expect.IsFalse GenericDefaultStringFormat().NoWrap, "NoWrap of the generic default format after it is set back"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GenericDefaultStringFormat_CloneIsNotShared()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim mine As StringFormat = GenericDefaultStringFormat().Clone()
+        mine.NoWrap = True
+        Expect.IsFalse GenericDefaultStringFormat().NoWrap, "NoWrap of the generic default format after changing a clone"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GenericTypographicStringFormat_ChangeIsSeenByEveryLaterCall()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim t As StringFormat = GenericTypographicStringFormat()
+        Expect.IsTrue t.LineLimit, "LineLimit of the generic typographic format"
+        t.LineLimit = False
+        Expect.IsFalse GenericTypographicStringFormat().LineLimit, "LineLimit of a later GenericTypographicStringFormat() after changing the first"
+        t.LineLimit = True
+        Expect.IsTrue GenericTypographicStringFormat().LineLimit, "LineLimit of the generic typographic format after it is set back"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GenericFormats_HaveTheDocumentedSettings()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim d As StringFormat = GenericDefaultStringFormat()
+        Expect.AreEqual 0, d.Flags, "Flags of the generic default format"
+        Expect.IsTrue d.IsTrimmingCharacter, "IsTrimmingCharacter of the generic default format"
+        Dim t As StringFormat = GenericTypographicStringFormat()
+        Expect.IsTrue t.NoFitBlackBox, "NoFitBlackBox of the generic typographic format"
+        Expect.IsTrue t.LineLimit, "LineLimit of the generic typographic format"
+        Expect.IsTrue t.NoClip, "NoClip of the generic typographic format"
+        Expect.IsTrue t.IsTrimmingNone, "IsTrimmingNone of the generic typographic format"
+        Expect.Done
+    End Sub
+
+    ' ---- Alignment
+
+    [TestCase]
+    Public Sub Alignment_GetAfterSettingCenter_ReturnsCenter()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        sf.Alignment = StringAlignmentCenter
+        Expect.AreEqual StringAlignmentCenter, sf.Alignment, "Alignment after setting StringAlignmentCenter"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alignment_GetAfterSettingFar_ReturnsFar()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        sf.SetAlignmentFar
+        Expect.AreEqual StringAlignmentFar, sf.Alignment, "Alignment after SetAlignmentFar"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alignment_Get_LeavesLastResultOk()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        sf.Alignment = StringAlignmentCenter
+        Dim a As GpStringAlignment = sf.Alignment
+        Expect.AreEqual Ok, sf.LastResult, "LastResult after reading Alignment"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsAlignmentCenter_AfterSettingCenter_IsTrue()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        sf.SetAlignmentCenter
+        Expect.IsTrue sf.IsAlignmentCenter, "IsAlignmentCenter after SetAlignmentCenter"
+        Expect.IsFalse sf.IsAlignmentNear, "IsAlignmentNear after SetAlignmentCenter"
+        Expect.IsFalse sf.IsAlignmentFar, "IsAlignmentFar after SetAlignmentCenter"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsAlignmentFar_AfterSettingFar_IsTrue()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        sf.Alignment = StringAlignmentFar
+        Expect.IsTrue sf.IsAlignmentFar, "IsAlignmentFar after setting StringAlignmentFar"
+        Expect.IsFalse sf.IsAlignmentNear, "IsAlignmentNear after setting StringAlignmentFar"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alignment_SetFar_PlacesTheTextAtTheRightEdge()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(100!, 30!)
+        Dim g As Graphics = Graphics(bmp)
+        Dim f As GdiPlus.Font = Font(GenericSansSerif(), 12!)
+        Dim black As SolidBrush = SolidBrush(Color(255, 0, 0, 0))
+        Dim sf As StringFormat = StringFormat()
+        sf.SetAlignmentFar
+        g.Clear Color(255, 255, 255, 255)
+        g.DrawString "I", f, GpRectF(0, 0, 100, 30), sf, black
+        Dim x As Long, y As Long, inkLeft As Boolean, inkRight As Boolean
+        For y = 0 To 29
+            For x = 0 To 99
+                If bmp.Pixel(x, y).R < 128 Then
+                    If x < 50 Then inkLeft = True Else inkRight = True
+                End If
+            Next
+        Next
+        Expect.IsFalse inkLeft, "dark pixels in the left half with far alignment"
+        Expect.IsTrue inkRight, "dark pixels in the right half with far alignment"
+        Expect.Done
+    End Sub
+
+    ' ---- tab stops
+
+    Private Function Fx_FormatWithTabs() As StringFormat
+        Dim sf As StringFormat = StringFormat()
+        Dim tabs(0 To 1) As Single
+        tabs(0) = 4: tabs(1) = 8
+        sf.SetTabStops 5, tabs
+        Return sf
+    End Function
+
+    [TestCase]
+    Public Sub GetTabStops_FirstForm_ReturnsTheFirstTabOffset()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = Fx_FormatWithTabs()
+        Dim first As Single
+        Dim got() As Single = sf.GetTabStops(first)
+        Expect.AreEqual 5, first, "the first tab offset returned by GetTabStops(firstTabOffset)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetTabStops_FirstForm_ReturnsTheTabStops()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = Fx_FormatWithTabs()
+        Dim first As Single
+        Dim got() As Single = sf.GetTabStops(first)
+        Expect.AreEqual 1, LBound(got), "lower bound of the array of tab stops"
+        Expect.AreEqual 2, UBound(got), "upper bound of the array of tab stops"
+        Expect.AreEqual 4, got(1), "first tab stop"
+        Expect.AreEqual 8, got(2), "second tab stop"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetTabStops_SecondForm_ReturnsTheFirstTabOffsetAndTheStops()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = Fx_FormatWithTabs()
+        Expect.AreEqual 2, sf.TabStopCount, "TabStopCount"
+        Dim first As Single
+        Dim back(0 To 1) As Single
+        Expect.AreEqual Ok, sf.GetTabStops(2, first, back(0)), "GetTabStops(2, first, back(0))"
+        Expect.AreEqual 5, first, "the first tab offset of the second form"
+        Expect.AreEqual 4, back(0), "first tab stop of the second form"
+        Expect.AreEqual 8, back(1), "second tab stop of the second form"
+        Expect.Done
+    End Sub
+
+    ' ---- digit substitution
+
+    [TestCase]
+    Public Sub SetDigitSubstitutionUser_KeepsTheLanguage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        sf.SetDigitSubstitution 1031, StringDigitSubstituteNational
+        sf.SetDigitSubstitutionUser
+        Expect.AreEqual 1031, sf.DigitSubstitutionLanguage, "language after SetDigitSubstitutionUser"
+        Expect.AreEqual StringDigitSubstituteUser, sf.DigitSubstitutionMethod, "method after SetDigitSubstitutionUser"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetDigitSubstitutionNone_KeepsTheLanguage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        sf.SetDigitSubstitution 1031, StringDigitSubstituteNational
+        sf.SetDigitSubstitutionNone
+        Expect.AreEqual 1031, sf.DigitSubstitutionLanguage, "language after SetDigitSubstitutionNone"
+        Expect.AreEqual StringDigitSubstituteNone, sf.DigitSubstitutionMethod, "method after SetDigitSubstitutionNone"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetDigitSubstitutionNational_KeepsTheLanguage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        sf.SetDigitSubstitution 1031, StringDigitSubstituteNone
+        sf.SetDigitSubstitutionNational
+        Expect.AreEqual 1031, sf.DigitSubstitutionLanguage, "language after SetDigitSubstitutionNational"
+        Expect.AreEqual StringDigitSubstituteNational, sf.DigitSubstitutionMethod, "method after SetDigitSubstitutionNational"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetDigitSubstitutionTraditional_KeepsTheLanguage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        sf.SetDigitSubstitution 1031, StringDigitSubstituteNational
+        sf.SetDigitSubstitutionTraditional
+        Expect.AreEqual 1031, sf.DigitSubstitutionLanguage, "language after SetDigitSubstitutionTraditional"
+        Expect.AreEqual StringDigitSubstituteTraditional, sf.DigitSubstitutionMethod, "method after SetDigitSubstitutionTraditional"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DigitSubstitutionLanguage_Let_KeepsTheMethod()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        sf.SetDigitSubstitution 1031, StringDigitSubstituteNational
+        sf.DigitSubstitutionLanguage = 1033
+        Expect.AreEqual 1033, sf.DigitSubstitutionLanguage, "language after setting DigitSubstitutionLanguage"
+        Expect.AreEqual StringDigitSubstituteNational, sf.DigitSubstitutionMethod, "method after setting DigitSubstitutionLanguage"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DigitSubstitutionMethod_Let_KeepsTheLanguage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        sf.SetDigitSubstitution 1031, StringDigitSubstituteNational
+        sf.DigitSubstitutionMethod = StringDigitSubstituteTraditional
+        Expect.AreEqual 1031, sf.DigitSubstitutionLanguage, "language after setting DigitSubstitutionMethod"
+        Expect.AreEqual StringDigitSubstituteTraditional, sf.DigitSubstitutionMethod, "method after setting DigitSubstitutionMethod"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetDigitSubstitution_SetsLanguageAndMethodTogether()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        Expect.AreEqual Ok, sf.SetDigitSubstitution(1031, StringDigitSubstituteNational), "SetDigitSubstitution(1031, National)"
+        Expect.AreEqual 1031, sf.DigitSubstitutionLanguage, "language after SetDigitSubstitution"
+        Expect.AreEqual StringDigitSubstituteNational, sf.DigitSubstitutionMethod, "method after SetDigitSubstitution"
+        Expect.Done
+    End Sub
+
+    ' ---- measurable character ranges
+
+    [TestCase]
+    Public Sub MeasurableCharacterRanges_MoreThan32_ReturnsValueOverflow()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim sf As StringFormat = StringFormat()
+        Dim many(0 To 32) As CharacterRange
+        Expect.AreEqual Ok, sf.SetMeasurableCharacterRanges(32, many(0)), "SetMeasurableCharacterRanges with 32 ranges"
+        Expect.AreEqual ValueOverflow, sf.SetMeasurableCharacterRanges(33, many(0)), "SetMeasurableCharacterRanges with 33 ranges"
+        Expect.AreEqual 32, sf.MeasurableCharacterRangeCount, "MeasurableCharacterRangeCount after the refused call"
+        Expect.Done
+    End Sub
+
+End Module

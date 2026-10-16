@@ -1,0 +1,126 @@
+' GdiPlusBase: the last result and the error handling that every class of the package inherits.
+[TestFixture]
+Module Gr_BaseTests
+
+    Private mFailure As String
+
+    ' The handler of the HandleErrors case: records the type of the object and its status.
+    Public Function Gr_OnError(ByVal Obj As GdiPlusBase) As Variant
+        mFailure = TypeName(Obj) & " " & Obj.LastResult
+    End Function
+
+    ' A bitmap and a read outside it, which fails with InvalidParameter.
+    Private Function ReadOutside(ByVal Bmp As Bitmap) As Color
+        Return Bmp.Pixel(100, 100)
+    End Function
+
+    ' ---- LastResult
+
+    [TestCase]
+    Public Sub LastResult_AfterAFailedCall_IsTheStatus()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(8!, 8!)
+        Expect.AreEqual 0, CLng(bmp.LastResult), "LastResult of a new Bitmap"
+        Expect.AreEqual "Ok", bmp.Status, "Status of a new Bitmap"
+        Dim c As Color = ReadOutside(bmp)
+        Expect.AreEqual CLng(InvalidParameter), CLng(bmp.LastResult), "LastResult after reading a pixel outside the bitmap"
+        Expect.AreEqual "Invalid Parameter", bmp.Status, "Status after reading a pixel outside the bitmap"
+        Expect.AreEqual "Invalid Parameter" & vbCrLf, bmp.StatusNL, "StatusNL after reading a pixel outside the bitmap"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LastResult_ASuccessfulCall_DoesNotClearIt()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(8!, 8!)
+        Dim c As Color = ReadOutside(bmp)
+        c = bmp.Pixel(1, 1)
+        Expect.AreEqual CLng(InvalidParameter), CLng(bmp.LastResult), "LastResult after a good call that follows a failed one"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetLastResult_ReturnsTheStatusAndClearsIt()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(8!, 8!)
+        Dim c As Color = ReadOutside(bmp)
+        Expect.AreEqual CLng(InvalidParameter), CLng(bmp.GetLastResult()), "GetLastResult after a failed call"
+        Expect.AreEqual 0, CLng(bmp.LastResult), "LastResult after GetLastResult"
+        c = ReadOutside(bmp)
+        Expect.AreEqual CLng(InvalidParameter), CLng(bmp.ClearResult()), "ClearResult after a failed call"
+        Expect.AreEqual 0, CLng(bmp.LastResult), "LastResult after ClearResult"
+        Expect.Done
+    End Sub
+
+    ' ---- the error handling
+
+    [TestCase]
+    Public Sub GdipErrorHandlingStrategy_Default_IgnoresErrors()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Expect.AreEqual CLng(IgnoreErrors), CLng(GdipErrorHandlingStrategy), "the default GdipErrorHandlingStrategy"
+        Expect.AreEqual 3300, CLng(GdipErrorCodeBase), "the default GdipErrorCodeBase"
+        Dim bmp As Bitmap = Bitmap(8!, 8!)
+        On Error Resume Next
+        Dim c As Color = ReadOutside(bmp)
+        Dim raised As Long = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 0, raised, "the error number of a failed call under IgnoreErrors"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseErrors_AFailedCall_RaisesTheStatusPlusTheBase()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(8!, 8!)
+        GdipErrorHandlingStrategy = RaiseErrors
+        On Error Resume Next
+        Dim c As Color = ReadOutside(bmp)
+        Dim number As Long = Err.Number
+        Dim source As String = Err.Source
+        Dim description As String = Err.Description
+        On Error GoTo 0
+        GdipErrorHandlingStrategy = IgnoreErrors
+        Expect.AreEqual 3302, number, "the error number of a failed call under RaiseErrors"
+        Expect.AreEqual "GdiPlus:Bitmap", source, "the error source of a failed call under RaiseErrors"
+        Expect.AreEqual "2", description, "the error description of a failed call under RaiseErrors"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseErrors_ACodeBase_IsAddedToTheStatus()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(8!, 8!)
+        Dim oldBase As Long = GdipErrorCodeBase
+        GdipErrorCodeBase = 5000
+        GdipErrorHandlingStrategy = RaiseErrors
+        On Error Resume Next
+        Dim c As Color = ReadOutside(bmp)
+        Dim number As Long = Err.Number
+        On Error GoTo 0
+        GdipErrorHandlingStrategy = IgnoreErrors
+        GdipErrorCodeBase = oldBase
+        Expect.AreEqual 5002, number, "the error number of a failed call under RaiseErrors with GdipErrorCodeBase 5000"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HandleErrors_AFailedCall_CallsTheHandler()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(8!, 8!)
+        mFailure = ""
+        GdipErrorHandlingStrategy = HandleErrors
+        GdipErrorHandler = CType(Of GdipErrorHandler)(AddressOf Gr_OnError)
+        Dim c As Color = ReadOutside(bmp)
+        GdipErrorHandlingStrategy = IgnoreErrors
+        Expect.AreEqual "Bitmap 2", mFailure, "the type and status the handler received for a failed call under HandleErrors"
+        Expect.Done
+    End Sub
+
+End Module

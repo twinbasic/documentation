@@ -1,0 +1,462 @@
+' Graphics: creating it, clearing, the world transformation, the clipping area and the calls that do not return.
+[TestFixture]
+Module Gr_GraphicsTests
+
+    ' A source image of 4 x 2 pixels, the left half red and the right half blue.
+    Private Function Source() As Bitmap
+        Dim src As Bitmap = Bitmap(4, 2, PixelFormat32bppARGB)
+        Dim gs As Graphics = Graphics(src)
+        gs.Clear Color(255, 0, 0)
+        gs.FillRectangle SolidBrush(Color(0, 0, 255)), 2, 0, 2, 2
+        Return src
+    End Function
+
+    ' A transparent destination of 20 x 10 pixels, with the settings that make the scaled pixels exact.
+    Private Function Target(ByRef Gfx As Graphics) As Bitmap
+        Dim dst As Bitmap = Bitmap(20, 10, PixelFormat32bppARGB)
+        Set Gfx = Graphics(dst)
+        Gfx.InterpolationMode = InterpolationModeNearestNeighbor
+        Gfx.PixelOffsetMode = PixelOffsetModeHalf
+        Return dst
+    End Function
+
+    ' ---- creating
+
+    [TestCase]
+    Public Sub Graphics_NothingImage_ReportsError()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As Graphics = Graphics(Nothing)
+        Expect.IsTrue g.LastResult <> Ok, "LastResult of Graphics(Nothing) is an error status"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NewGraphics_NothingImage_ReportsError()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As Graphics = New Graphics(Nothing)
+        Expect.IsTrue g.LastResult <> Ok, "LastResult of New Graphics(Nothing) is an error status"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Graphics_NothingImage_DrawingFailsWithInvalidParameter()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As Graphics = Graphics(Nothing)
+        Expect.AreEqual CLng(InvalidParameter), CLng(g.Clear(Color(0, 0, 255))), "Clear on a Graphics made from Nothing returns InvalidParameter"
+        Expect.Done
+    End Sub
+
+    ' ---- Clear
+
+    [TestCase]
+    Public Sub Clear_VBColourRed_FillsRed()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(4, 4)
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear vbRed
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 1, 1)), "pixel after Clear(vbRed)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_RGBFunction_FillsThatColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(4, 4)
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear RGB(255, 0, 0)
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 1, 1)), "pixel after Clear(RGB(255, 0, 0))"
+        g.Clear RGB(10, 20, 30)
+        Expect.AreEqual "FF0A141E", Gr_Hex(Gr_Px(bmp, 1, 1)), "pixel after Clear(RGB(10, 20, 30))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_CColorTransparent_KeepsAlpha()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(4, 4)
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear CColor.Transparent
+        Dim c As Color = bmp.Pixel(1, 1)
+        Expect.AreEqual 0, CLng(c.A), "alpha of a white bitmap after Clear(CColor.Transparent)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_ColorForm_FillsExactColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(4, 4)
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear Color(255, 0, 0)
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 1, 1)), "pixel after Clear(Color(255, 0, 0))"
+        g.Clear Color(0, 0, 0, 0)
+        Expect.AreEqual 0, CLng(bmp.Pixel(1, 1).A), "alpha after Clear(Color(0, 0, 0, 0))"
+        Expect.Done
+    End Sub
+
+    ' ---- DrawLine
+
+    [TestCase]
+    Public Sub DrawLine_WholeNumbers_DrawsBetweenThePoints()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(16, 12)
+        Dim g As Graphics = Graphics(bmp)
+        g.SmoothingMode = SmoothingModeNone
+        Dim p As Pen = Pen(Color(255, 0, 0), 1)
+        Expect.AreEqual 0, CLng(g.DrawLine(p, 0, 5, 15, 5)), "status of DrawLine(pen, 0, 5, 15, 5)"
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 0, 5)), "pixel at the start of the line"
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 15, 5)), "pixel at the end of the line"
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp, 8, 5)), "pixel in the middle of the line"
+        Expect.AreEqual "FFFFFFFF", Gr_Hex(Gr_Px(bmp, 8, 6)), "pixel below the line"
+        Dim bmp2 As Bitmap = Gr_White(16, 12)
+        Dim g2 As Graphics = Graphics(bmp2)
+        g2.SmoothingMode = SmoothingModeNone
+        g2.DrawLineI p, 0, 5, 15, 5
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(bmp2, 8, 5)), "pixel in the middle of the line of DrawLineI"
+        Expect.Done
+    End Sub
+
+    ' ---- text
+
+    [TestCase]
+    Public Sub DrawString_PrefixedFont_Draws()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_Clear(120, 40)
+        Dim g As Graphics = Graphics(bmp)
+        Dim f As GdiPlus.Font = GdiPlus.Font("Arial", 14)
+        Expect.AreEqual 0, CLng(g.DrawString("Text", f, 10, 5, SolidBrush(Color(0, 0, 0)))), "status of DrawString with GdiPlus.Font(""Arial"", 14)"
+        Expect.IsTrue Gr_CountNot(bmp, 0) > 20, "pixels drawn by DrawString with GdiPlus.Font(""Arial"", 14)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Font_AssignedToAVariableOfTheStdoleType_Fails()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim f As Font
+        On Error Resume Next
+        Set f = Font("Arial", 14)
+        Dim failed As Boolean = (Err.Number <> 0) Or (f Is Nothing)
+        On Error GoTo 0
+        Expect.IsTrue failed, "assigning Font(""Arial"", 14) to a variable declared As Font (the stdole type) raises an error or leaves Nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Font_AssignedToAGdiPlusFontVariable_IsUsable()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim f As GdiPlus.Font = Font("Arial", 14)
+        Expect.AreEqual 0, CLng(f.LastResult), "LastResult of Font(""Arial"", 14) assigned to a GdiPlus.Font variable"
+        Dim bmp As Bitmap = Gr_Clear(120, 40)
+        Dim g As Graphics = Graphics(bmp)
+        Expect.AreEqual 0, CLng(g.DrawString("Text", f, 10, 5, SolidBrush(Color(0, 0, 0)))), "status of DrawString with that font"
+        Expect.IsTrue Gr_CountNot(bmp, 0) > 20, "pixels drawn with that font"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawString_ClearTypeGridFitWithSourceCopy_ReturnsInvalidParameter()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim f As GdiPlus.Font = GdiPlus.Font("Arial", 14)
+        Dim black As SolidBrush = SolidBrush(Color(0, 0, 0))
+
+        Dim bmp As Bitmap = Gr_Clear(120, 40)
+        Dim g As Graphics = Graphics(bmp)
+        g.TextRenderingHint = TextRenderingHintClearTypeGridFit
+        g.CompositingMode = CompositingModeSourceOver
+        Expect.AreEqual 0, CLng(g.DrawString("Text", f, 10, 5, black)), "status of DrawString with ClearTypeGridFit and SourceOver"
+        Expect.IsTrue Gr_CountNot(bmp, 0) > 20, "pixels drawn with ClearTypeGridFit and SourceOver"
+
+        Dim bmp2 As Bitmap = Gr_Clear(120, 40)
+        Dim g2 As Graphics = Graphics(bmp2)
+        g2.TextRenderingHint = TextRenderingHintClearTypeGridFit
+        g2.CompositingMode = CompositingModeSourceCopy
+        Expect.AreEqual CLng(InvalidParameter), CLng(g2.DrawString("Text", f, 10, 5, black)), "status of DrawString with ClearTypeGridFit and SourceCopy"
+        Expect.AreEqual 0, Gr_CountNot(bmp2, 0), "pixels drawn with ClearTypeGridFit and SourceCopy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawDriverString_BrushVariableAndOptions_Draws()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_Clear(60, 30)
+        Dim g As Graphics = Graphics(bmp)
+        Dim f As GdiPlus.Font = GdiPlus.Font("Arial", 14)
+        Dim brush As Brush = SolidBrush(Color(0, 0, 0))
+        Dim options As GpDriverStringOptions
+        options = DriverStringOptionsCmapLookup
+        Dim noMatrix As Matrix = Nothing
+        Expect.AreEqual 0, CLng(g.DrawDriverString("Hi", f, brush, GpPointF(5, 5), options, noMatrix)), "status of DrawDriverString with a Brush variable and a GpDriverStringOptions variable"
+        Expect.IsTrue Gr_CountNot(bmp, 0) > 5, "pixels drawn by DrawDriverString"
+        Expect.Done
+    End Sub
+
+    ' ---- DrawImage forms that do not return
+
+    [TestCase]
+    Public Sub DrawImage_DestRectAndSourceRect_DrawsThePart()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim src As Bitmap = Source()
+        Dim g As Graphics
+        Dim dst As Bitmap = Target(g)
+        Expect.AreEqual 0, CLng(g.DrawImage(src, GpRectF(10, 2, 6, 4), GpRectF(2, 0, 2, 2), UnitPixel)), "status of DrawImage(image, destRect, srcRect, UnitPixel)"
+        Expect.AreEqual "FF0000FF", Gr_Hex(Gr_Px(dst, 10, 2)), "pixel at the top left of the destination: the blue half of the image"
+        Expect.AreEqual "FF0000FF", Gr_Hex(Gr_Px(dst, 15, 5)), "pixel at the bottom right of the destination"
+        Expect.AreEqual 0, Gr_Px(dst, 16, 5), "pixel right of the destination"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawImage_DestRectF_ScalesTheImage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim src As Bitmap = Source()
+        Dim g As Graphics
+        Dim dst As Bitmap = Target(g)
+        Expect.AreEqual 0, CLng(g.DrawImage(src, GpRectF(1, 1, 8, 4))), "status of DrawImage(image, GpRectF) 1, 1, 8, 4"
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(dst, 3, 3)), "left half of the scaled image"
+        Expect.AreEqual "FF0000FF", Gr_Hex(Gr_Px(dst, 7, 3)), "right half of the scaled image"
+        Expect.AreEqual 0, Gr_Px(dst, 9, 3), "pixel right of the scaled image"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawImage_DestRect_ScalesTheImage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim src As Bitmap = Source()
+        Dim g As Graphics
+        Dim dst As Bitmap = Target(g)
+        Expect.AreEqual 0, CLng(g.DrawImage(src, GpRect(1, 1, 8, 4))), "status of DrawImage(image, GpRect) 1, 1, 8, 4"
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(dst, 3, 3)), "left half of the scaled image"
+        Expect.AreEqual "FF0000FF", Gr_Hex(Gr_Px(dst, 7, 3)), "right half of the scaled image"
+        Expect.AreEqual 0, Gr_Px(dst, 9, 3), "pixel right of the scaled image"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawImage_ThreeFloatPointsAndSourcePart_DrawsTheImage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim src As Bitmap = Source()
+        Dim g As Graphics
+        Dim dst As Bitmap = Target(g)
+        Dim pts(0 To 2) As GpPointF
+        pts(0) = GpPointF(1, 1)
+        pts(1) = GpPointF(9, 1)
+        pts(2) = GpPointF(1, 5)
+        Expect.AreEqual 0, CLng(g.DrawImage(src, pts, 0, 0, 4, 2, UnitPixel)), "status of DrawImage(image, destPoints (GpPointF), 0, 0, 4, 2, UnitPixel)"
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(dst, 3, 3)), "left half of the image"
+        Expect.AreEqual "FF0000FF", Gr_Hex(Gr_Px(dst, 7, 3)), "right half of the image"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawImage_ThreeIntegerPointsAndSourcePart_DrawsTheImage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim src As Bitmap = Source()
+        Dim g As Graphics
+        Dim dst As Bitmap = Target(g)
+        Dim pts(0 To 2) As GpPoint
+        pts(0) = GpPoint(1, 1)
+        pts(1) = GpPoint(9, 1)
+        pts(2) = GpPoint(1, 5)
+        Expect.AreEqual 0, CLng(g.DrawImage(src, pts, 0, 0, 4, 2, UnitPixel)), "status of DrawImage(image, destPoints (GpPoint), 0, 0, 4, 2, UnitPixel)"
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(dst, 3, 3)), "left half of the image"
+        Expect.AreEqual "FF0000FF", Gr_Hex(Gr_Px(dst, 7, 3)), "right half of the image"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawImage_XYWidthHeight_ScalesTheImage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim src As Bitmap = Source()
+        Dim g As Graphics
+        Dim dst As Bitmap = Target(g)
+        Expect.AreEqual 0, CLng(g.DrawImage(src, 1, 1, 8, 4)), "status of DrawImage(image, 1, 1, 8, 4)"
+        Expect.AreEqual "FFFF0000", Gr_Hex(Gr_Px(dst, 3, 3)), "left half of the scaled image"
+        Expect.AreEqual "FF0000FF", Gr_Hex(Gr_Px(dst, 7, 3)), "right half of the scaled image"
+        Expect.Done
+    End Sub
+
+    ' ---- clipping
+
+    [TestCase]
+    Public Sub Clip_Get_ReturnsTheClippingRegion()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(40, 40)
+        Dim g As Graphics = Graphics(bmp)
+        g.SetClip GpRect(5, 5, 12, 8)
+        g.ClearResult
+        Dim r As Region = g.Clip
+        Expect.IsTrue Not (r Is Nothing), "Clip returns a Region after SetClip"
+        Expect.AreEqual 0, CLng(g.LastResult), "LastResult after reading Clip"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClipBounds_AfterSetClip_ReturnsTheRectangle()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(40, 40)
+        Dim g As Graphics = Graphics(bmp)
+        g.SetClip GpRect(5, 5, 12, 8)
+        Dim b As GpRectF = g.ClipBounds
+        Expect.IsTrue b.X = 5 And b.Y = 5 And b.Width = 12 And b.Height = 8, "ClipBounds after SetClip(GpRect(5, 5, 12, 8))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsVisible_GpPointF_ReturnsWhetherThePointIsInside()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(40, 40)
+        Dim g As Graphics = Graphics(bmp)
+        g.SetClip GpRect(5, 5, 12, 8)
+        Expect.IsTrue g.IsVisible(GpPointF(6, 6)), "IsVisible(GpPointF(6, 6)) inside the clipping rectangle"
+        Expect.IsFalse g.IsVisible(GpPointF(2, 2)), "IsVisible(GpPointF(2, 2)) outside the clipping rectangle"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsVisible_Alternatives_Work()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(40, 40)
+        Dim g As Graphics = Graphics(bmp)
+        g.SetClip GpRect(5, 5, 12, 8)
+        Expect.IsTrue g.IsVisible(6, 6), "IsVisible(6, 6) inside the clipping rectangle"
+        Expect.IsFalse g.IsVisible(2, 2), "IsVisible(2, 2) outside the clipping rectangle"
+        Expect.IsTrue g.IsVisible(GpPoint(6, 6)), "IsVisible(GpPoint(6, 6)) inside the clipping rectangle"
+        Expect.IsFalse g.IsVisible(GpPoint(2, 2)), "IsVisible(GpPoint(2, 2)) outside the clipping rectangle"
+        Expect.Done
+    End Sub
+
+    ' ---- the world transformation
+
+    [TestCase]
+    Public Sub Transform_Get_ReturnsTheWorldTransformation()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(10, 10)
+        Dim g As Graphics = Graphics(bmp)
+        g.TranslateTransform 3, 4
+        g.ClearResult
+        Dim m As Matrix = g.Transform
+        Expect.IsTrue Not (m Is Nothing), "Graphics.Transform returns a Matrix"
+        If Not (m Is Nothing) Then
+            Expect.AreEqual 3, CLng(m.OffsetX), "OffsetX of the matrix that Transform returns after TranslateTransform 3, 4"
+            Expect.AreEqual 4, CLng(m.OffsetY), "OffsetY of the matrix that Transform returns after TranslateTransform 3, 4"
+        End If
+        Expect.AreEqual 0, CLng(g.LastResult), "LastResult after reading Transform"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetTransform_CopiesTheWorldTransformation()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(10, 10)
+        Dim g As Graphics = Graphics(bmp)
+        g.TranslateTransform 3, 4
+        Dim m As Matrix = Matrix()
+        Expect.AreEqual 0, CLng(g.GetTransform(m)), "status of GetTransform"
+        Expect.AreEqual 3, CLng(m.OffsetX), "OffsetX of the matrix GetTransform fills"
+        Expect.AreEqual 4, CLng(m.OffsetY), "OffsetY of the matrix GetTransform fills"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShearTransform_ShearsTheCoordinates()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(8, 8)
+        Dim g As Graphics = Graphics(bmp)
+        Expect.AreEqual 0, CLng(g.ShearTransform(0.5, 0)), "status of ShearTransform(0.5, 0)"
+        Dim pts(1 To 1) As GpPointF
+        pts(1) = GpPointF(1, 2)
+        g.TransformPoints CoordinateSpaceDevice, CoordinateSpaceWorld, pts
+        Expect.AreEqual 2, CLng(pts(1).X), "X of the point (1, 2) after ShearTransform(0.5, 0): x moves by half of y"
+        Expect.AreEqual 2, CLng(pts(1).Y), "Y of the point (1, 2) after ShearTransform(0.5, 0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MultiplyTransform_ShearMatrix_ShearsTheCoordinates()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Gr_White(8, 8)
+        Dim g As Graphics = Graphics(bmp)
+        Expect.AreEqual 0, CLng(g.MultiplyTransform(Matrix(1, 0, 0.5, 1, 0, 0))), "status of MultiplyTransform with a shear matrix"
+        Dim pts(1 To 1) As GpPointF
+        pts(1) = GpPointF(1, 2)
+        g.TransformPoints CoordinateSpaceDevice, CoordinateSpaceWorld, pts
+        Expect.AreEqual 2, CLng(pts(1).X), "X of the point (1, 2) after multiplying by Matrix(1, 0, 0.5, 1, 0, 0)"
+        Expect.AreEqual 2, CLng(pts(1).Y), "Y of the point (1, 2) after multiplying by Matrix(1, 0, 0.5, 1, 0, 0)"
+        Expect.Done
+    End Sub
+
+    ' ---- modes that GDI+ replaces
+
+    [TestCase]
+    Public Sub InterpolationMode_HighQuality_ReadsBackAsBicubic()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As Graphics = Graphics(Gr_White(4, 4))
+        g.InterpolationMode = InterpolationModeHighQuality
+        Expect.AreEqual CLng(InterpolationModeHighQualityBicubic), CLng(g.InterpolationMode), "InterpolationMode after setting InterpolationModeHighQuality"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InterpolationMode_LowQualityAndDefault_ReadBackAsBilinear()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As Graphics = Graphics(Gr_White(4, 4))
+        g.InterpolationMode = InterpolationModeLowQuality
+        Expect.AreEqual CLng(InterpolationModeBilinear), CLng(g.InterpolationMode), "InterpolationMode after setting InterpolationModeLowQuality"
+        g.InterpolationMode = InterpolationModeNearestNeighbor
+        g.InterpolationMode = InterpolationModeDefault
+        Expect.AreEqual CLng(InterpolationModeBilinear), CLng(g.InterpolationMode), "InterpolationMode after setting InterpolationModeDefault"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SmoothingMode_HighQuality_ReadsBackAsAntiAlias()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As Graphics = Graphics(Gr_White(4, 4))
+        g.SmoothingMode = SmoothingModeHighQuality
+        Expect.AreEqual CLng(SmoothingModeAntiAlias), CLng(g.SmoothingMode), "SmoothingMode after setting SmoothingModeHighQuality"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SmoothingMode_HighSpeedAndDefault_ReadBackAsNone()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As Graphics = Graphics(Gr_White(4, 4))
+        g.SmoothingMode = SmoothingModeHighSpeed
+        Expect.AreEqual CLng(SmoothingModeNone), CLng(g.SmoothingMode), "SmoothingMode after setting SmoothingModeHighSpeed"
+        g.SmoothingMode = SmoothingModeAntiAlias
+        g.SmoothingMode = SmoothingModeDefault
+        Expect.AreEqual CLng(SmoothingModeNone), CLng(g.SmoothingMode), "SmoothingMode after setting SmoothingModeDefault"
+        Expect.Done
+    End Sub
+
+End Module

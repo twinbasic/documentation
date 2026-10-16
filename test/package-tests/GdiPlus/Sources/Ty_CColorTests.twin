@@ -1,0 +1,271 @@
+' Ty_CColorTests: the CColor enumeration (page Enumerations/CColor). The member values are those of the
+' CSS named colours, with Transparent (&H00FFFFFF) added.
+[TestFixture]
+Module Ty_CColorTests
+
+    Private Sub Member(ByVal Name As String, ByVal Actual As Long, ByVal Expected As Long)
+        Expect.AreEqual Ty_Hex8(Expected), Ty_Hex8(Actual), "CColor." & Name
+    End Sub
+
+    [TestCase]
+    Public Sub Members_HaveTheCssValues()
+        Expect.Begin
+        Member "AliceBlue", CColor.AliceBlue, &HFFF0F8FF
+        Member "AntiqueWhite", CColor.AntiqueWhite, &HFFFAEBD7
+        Member "Aqua", CColor.Aqua, &HFF00FFFF
+        Member "Aquamarine", CColor.Aquamarine, &HFF7FFFD4
+        Member "Azure", CColor.Azure, &HFFF0FFFF
+        Member "Beige", CColor.Beige, &HFFF5F5DC
+        Member "Bisque", CColor.Bisque, &HFFFFE4C4
+        Member "Black", CColor.Black, &HFF000000
+        Member "BlanchedAlmond", CColor.BlanchedAlmond, &HFFFFEBCD
+        Member "Blue", CColor.Blue, &HFF0000FF
+        Member "BlueViolet", CColor.BlueViolet, &HFF8A2BE2
+        Member "Brown", CColor.Brown, &HFFA52A2A
+        Member "BurlyWood", CColor.BurlyWood, &HFFDEB887
+        Member "CadetBlue", CColor.CadetBlue, &HFF5F9EA0
+        Member "Chartreuse", CColor.Chartreuse, &HFF7FFF00
+        Member "Chocolate", CColor.Chocolate, &HFFD2691E
+        Member "Coral", CColor.Coral, &HFFFF7F50
+        Member "CornflowerBlue", CColor.CornflowerBlue, &HFF6495ED
+        Member "Cornsilk", CColor.Cornsilk, &HFFFFF8DC
+        Member "Crimson", CColor.Crimson, &HFFDC143C
+        Member "Cyan", CColor.Cyan, &HFF00FFFF
+        Member "DarkBlue", CColor.DarkBlue, &HFF00008B
+        Member "DarkCyan", CColor.DarkCyan, &HFF008B8B
+        Member "DarkGoldenrod", CColor.DarkGoldenrod, &HFFB8860B
+        Member "DarkGray", CColor.DarkGray, &HFFA9A9A9
+        Member "DarkGreen", CColor.DarkGreen, &HFF006400
+        Member "DarkKhaki", CColor.DarkKhaki, &HFFBDB76B
+        Member "DarkMagenta", CColor.DarkMagenta, &HFF8B008B
+        Member "DarkOliveGreen", CColor.DarkOliveGreen, &HFF556B2F
+        Member "DarkOrange", CColor.DarkOrange, &HFFFF8C00
+        Member "DarkOrchid", CColor.DarkOrchid, &HFF9932CC
+        Member "DarkRed", CColor.DarkRed, &HFF8B0000
+        Member "DarkSalmon", CColor.DarkSalmon, &HFFE9967A
+        Member "DarkSlateBlue", CColor.DarkSlateBlue, &HFF483D8B
+        Member "DarkSlateGray", CColor.DarkSlateGray, &HFF2F4F4F
+        Member "DarkTurquoise", CColor.DarkTurquoise, &HFF00CED1
+        Member "DarkViolet", CColor.DarkViolet, &HFF9400D3
+        Member "DeepPink", CColor.DeepPink, &HFFFF1493
+        Member "DeepSkyBlue", CColor.DeepSkyBlue, &HFF00BFFF
+        Member "DimGray", CColor.DimGray, &HFF696969
+        Member "DodgerBlue", CColor.DodgerBlue, &HFF1E90FF
+        Member "Firebrick", CColor.Firebrick, &HFFB22222
+        Member "FloralWhite", CColor.FloralWhite, &HFFFFFAF0
+        Member "ForestGreen", CColor.ForestGreen, &HFF228B22
+        Member "Fuchsia", CColor.Fuchsia, &HFFFF00FF
+        Member "Gainsboro", CColor.Gainsboro, &HFFDCDCDC
+        Member "GhostWhite", CColor.GhostWhite, &HFFF8F8FF
+        Member "Gold", CColor.Gold, &HFFFFD700
+        Member "Goldenrod", CColor.Goldenrod, &HFFDAA520
+        Member "Gray", CColor.Gray, &HFF808080
+        Member "Green", CColor.Green, &HFF008000
+        Member "GreenYellow", CColor.GreenYellow, &HFFADFF2F
+        Member "Honeydew", CColor.Honeydew, &HFFF0FFF0
+        Member "HotPink", CColor.HotPink, &HFFFF69B4
+        Member "IndianRed", CColor.IndianRed, &HFFCD5C5C
+        Member "Indigo", CColor.Indigo, &HFF4B0082
+        Member "Ivory", CColor.Ivory, &HFFFFFFF0
+        Member "Khaki", CColor.Khaki, &HFFF0E68C
+        Member "Lavender", CColor.Lavender, &HFFE6E6FA
+        Member "LavenderBlush", CColor.LavenderBlush, &HFFFFF0F5
+        Member "LawnGreen", CColor.LawnGreen, &HFF7CFC00
+        Member "LemonChiffon", CColor.LemonChiffon, &HFFFFFACD
+        Member "LightBlue", CColor.LightBlue, &HFFADD8E6
+        Member "LightCoral", CColor.LightCoral, &HFFF08080
+        Member "LightCyan", CColor.LightCyan, &HFFE0FFFF
+        Member "LightGoldenrodYellow", CColor.LightGoldenrodYellow, &HFFFAFAD2
+        Member "LightGray", CColor.LightGray, &HFFD3D3D3
+        Member "LightGreen", CColor.LightGreen, &HFF90EE90
+        Member "LightPink", CColor.LightPink, &HFFFFB6C1
+        Member "LightSalmon", CColor.LightSalmon, &HFFFFA07A
+        Member "LightSeaGreen", CColor.LightSeaGreen, &HFF20B2AA
+        Member "LightSkyBlue", CColor.LightSkyBlue, &HFF87CEFA
+        Member "LightSlateGray", CColor.LightSlateGray, &HFF778899
+        Member "LightSteelBlue", CColor.LightSteelBlue, &HFFB0C4DE
+        Member "LightYellow", CColor.LightYellow, &HFFFFFFE0
+        Member "Lime", CColor.Lime, &HFF00FF00
+        Member "LimeGreen", CColor.LimeGreen, &HFF32CD32
+        Member "Linen", CColor.Linen, &HFFFAF0E6
+        Member "Magenta", CColor.Magenta, &HFFFF00FF
+        Member "Maroon", CColor.Maroon, &HFF800000
+        Member "MediumAquamarine", CColor.MediumAquamarine, &HFF66CDAA
+        Member "MediumBlue", CColor.MediumBlue, &HFF0000CD
+        Member "MediumOrchid", CColor.MediumOrchid, &HFFBA55D3
+        Member "MediumPurple", CColor.MediumPurple, &HFF9370DB
+        Member "MediumSeaGreen", CColor.MediumSeaGreen, &HFF3CB371
+        Member "MediumSlateBlue", CColor.MediumSlateBlue, &HFF7B68EE
+        Member "MediumSpringGreen", CColor.MediumSpringGreen, &HFF00FA9A
+        Member "MediumTurquoise", CColor.MediumTurquoise, &HFF48D1CC
+        Member "MediumVioletRed", CColor.MediumVioletRed, &HFFC71585
+        Member "MidnightBlue", CColor.MidnightBlue, &HFF191970
+        Member "MintCream", CColor.MintCream, &HFFF5FFFA
+        Member "MistyRose", CColor.MistyRose, &HFFFFE4E1
+        Member "Moccasin", CColor.Moccasin, &HFFFFE4B5
+        Member "NavajoWhite", CColor.NavajoWhite, &HFFFFDEAD
+        Member "Navy", CColor.Navy, &HFF000080
+        Member "OldLace", CColor.OldLace, &HFFFDF5E6
+        Member "Olive", CColor.Olive, &HFF808000
+        Member "OliveDrab", CColor.OliveDrab, &HFF6B8E23
+        Member "Orange", CColor.Orange, &HFFFFA500
+        Member "OrangeRed", CColor.OrangeRed, &HFFFF4500
+        Member "Orchid", CColor.Orchid, &HFFDA70D6
+        Member "PaleGoldenrod", CColor.PaleGoldenrod, &HFFEEE8AA
+        Member "PaleGreen", CColor.PaleGreen, &HFF98FB98
+        Member "PaleTurquoise", CColor.PaleTurquoise, &HFFAFEEEE
+        Member "PaleVioletRed", CColor.PaleVioletRed, &HFFDB7093
+        Member "PapayaWhip", CColor.PapayaWhip, &HFFFFEFD5
+        Member "PeachPuff", CColor.PeachPuff, &HFFFFDAB9
+        Member "Peru", CColor.Peru, &HFFCD853F
+        Member "Pink", CColor.Pink, &HFFFFC0CB
+        Member "Plum", CColor.Plum, &HFFDDA0DD
+        Member "PowderBlue", CColor.PowderBlue, &HFFB0E0E6
+        Member "Purple", CColor.Purple, &HFF800080
+        Member "Red", CColor.Red, &HFFFF0000
+        Member "RosyBrown", CColor.RosyBrown, &HFFBC8F8F
+        Member "RoyalBlue", CColor.RoyalBlue, &HFF4169E1
+        Member "SaddleBrown", CColor.SaddleBrown, &HFF8B4513
+        Member "Salmon", CColor.Salmon, &HFFFA8072
+        Member "SandyBrown", CColor.SandyBrown, &HFFF4A460
+        Member "SeaGreen", CColor.SeaGreen, &HFF2E8B57
+        Member "SeaShell", CColor.SeaShell, &HFFFFF5EE
+        Member "Sienna", CColor.Sienna, &HFFA0522D
+        Member "Silver", CColor.Silver, &HFFC0C0C0
+        Member "SkyBlue", CColor.SkyBlue, &HFF87CEEB
+        Member "SlateBlue", CColor.SlateBlue, &HFF6A5ACD
+        Member "SlateGray", CColor.SlateGray, &HFF708090
+        Member "Snow", CColor.Snow, &HFFFFFAFA
+        Member "SpringGreen", CColor.SpringGreen, &HFF00FF7F
+        Member "SteelBlue", CColor.SteelBlue, &HFF4682B4
+        Member "Tan", CColor.Tan, &HFFD2B48C
+        Member "Teal", CColor.Teal, &HFF008080
+        Member "Thistle", CColor.Thistle, &HFFD8BFD8
+        Member "Tomato", CColor.Tomato, &HFFFF6347
+        Member "Transparent", CColor.Transparent, &H00FFFFFF
+        Member "Turquoise", CColor.Turquoise, &HFF40E0D0
+        Member "Violet", CColor.Violet, &HFFEE82EE
+        Member "Wheat", CColor.Wheat, &HFFF5DEB3
+        Member "White", CColor.White, &HFFFFFFFF
+        Member "WhiteSmoke", CColor.WhiteSmoke, &HFFF5F5F5
+        Member "Yellow", CColor.Yellow, &HFFFFFF00
+        Member "YellowGreen", CColor.YellowGreen, &HFF9ACD32
+        Expect.Done
+    End Sub
+
+    ' CSS: darkseagreen is #8FBC8F.
+    [TestCase]
+    Public Sub DarkSeaGreen_HasTheCssValue()
+        Expect.Begin
+        Member "DarkSeaGreen", CColor.DarkSeaGreen, &HFF8FBC8F
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Members_CanBeWrittenWithoutTheEnumerationName()
+        Expect.Begin
+        Expect.AreEqual "FFFFA500", Ty_Hex8(Color(Orange).Value), "Value of Color(Orange)"
+        Expect.AreEqual "FFFFFFFF", Ty_Hex8(Color(White).Value), "Value of Color(White)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Color_KeepsAllFourBytesOfAMember()
+        Expect.Begin
+        Dim orange As Color = Color(CColor.Orange)
+        Expect.AreEqual "FFFFA500", Ty_Hex8(orange.Value), "Value of Color(CColor.Orange)"
+        Expect.AreEqual "255 255 165 0", orange.Alpha & " " & orange.Red & " " & orange.Green & " " & orange.Blue, "Alpha Red Green Blue of Color(CColor.Orange)"
+        Expect.AreEqual "0000A5FF", Ty_Hex8(orange.BGR), "BGR of Color(CColor.Orange)"
+        Dim transparent As Color = Color(CColor.Transparent)
+        Expect.AreEqual "00FFFFFF", Ty_Hex8(transparent.Value), "Value of Color(CColor.Transparent)"
+        Expect.Done
+    End Sub
+
+    ' ---- A member given to a method that has a Long overload
+
+    [TestCase]
+    Public Sub SolidBrush_TransparentMemberDrawsNothing()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim px As Color = Ty_FillOver(Color(0, 0, 0), SolidBrush(CColor.Transparent))
+        Expect.AreEqual "FF000000", Ty_Hex8(px.Value), "pixel of a black bitmap after FillRectangle with SolidBrush(CColor.Transparent)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SolidBrush_ColorOfTransparentMemberDrawsNothing()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim px As Color = Ty_FillOver(Color(0, 0, 0), SolidBrush(Color(CColor.Transparent)))
+        Expect.AreEqual "FF000000", Ty_Hex8(px.Value), "pixel of a black bitmap after FillRectangle with SolidBrush(Color(CColor.Transparent))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SolidBrush_OpaqueMemberHasItsColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim red As Color = Ty_FillOver(Color(255, 255, 255), SolidBrush(CColor.Red))
+        Expect.AreEqual "FFFF0000", Ty_Hex8(red.Value), "pixel after SolidBrush(CColor.Red)"
+        Dim orange As Color = Ty_FillOver(Color(255, 255, 255), SolidBrush(CColor.Orange))
+        Expect.AreEqual "FFFFA500", Ty_Hex8(orange.Value), "pixel after SolidBrush(CColor.Orange)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pen_TransparentMemberDrawsNothing()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim px As Color = Ty_LineOver(Color(0, 0, 0), Pen(CColor.Transparent))
+        Expect.AreEqual "FF000000", Ty_Hex8(px.Value), "pixel of a black bitmap on the line of Pen(CColor.Transparent)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pen_ColorOfTransparentMemberDrawsNothing()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim px As Color = Ty_LineOver(Color(0, 0, 0), Pen(Color(CColor.Transparent)))
+        Expect.AreEqual "FF000000", Ty_Hex8(px.Value), "pixel of a black bitmap on the line of Pen(Color(CColor.Transparent))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_TransparentMemberClearsToTransparent()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim px As Color = Ty_ClearedWithLong(CColor.Transparent)
+        Expect.AreEqual 0, px.Alpha, "alpha of the pixel after Graphics.Clear CColor.Transparent"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_ColorOfTransparentMemberClearsToTransparent()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim px As Color = Ty_ClearedWith(Color(CColor.Transparent))
+        Expect.AreEqual 0, px.Alpha, "alpha of the pixel after Graphics.Clear Color(CColor.Transparent)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_OpaqueMemberHasItsColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Expect.AreEqual "FFFF0000", Ty_Hex8(Ty_ClearedWithLong(CColor.Red).Value), "pixel after Graphics.Clear CColor.Red"
+        Expect.Done
+    End Sub
+
+    ' ---- A member is not a VB colour
+
+    [TestCase]
+    Public Sub Members_AreNotVisualBasicColours()
+        Expect.Begin
+        Expect.IsTrue CColor.Red <> vbRed, "CColor.Red differs from vbRed"
+        Expect.AreEqual "FFFF0000", Ty_Hex8(CColor.Red), "CColor.Red (alpha, then red in the second byte)"
+        Expect.AreEqual "000000FF", Ty_Hex8(vbRed), "vbRed (red in the lowest byte)"
+        Expect.AreEqual Ty_Hex8(vbRed), Ty_Hex8(Color(CColor.Red).BGR), "BGR of Color(CColor.Red) against vbRed"
+        Expect.Done
+    End Sub
+
+End Module

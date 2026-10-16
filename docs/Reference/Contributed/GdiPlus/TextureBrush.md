@@ -43,9 +43,11 @@ Each form of **TextureBrush** can also be written with **New**: *brush* **= New 
 *imageAttributes*
 : *optional* The [**ImageAttributes**](ImageAttributes) that are applied to the image when the brush draws. The default is none.
 
+<!-- test: Br_BrushTests.TextureBrushI_UsesTheLongRectangle, Br_BrushTests.TextureBrush_NewWithSixNumbers_IsTheSingleForm -->
 > [!NOTE] 0.9.45.0
 > The constructor with **Long** values has a seventh parameter, a **Long** that is ignored, so that a call with six numbers is read as the one with **Single** values. **TextureBrushI** is the function for it, and it is the only form without **New**.
 
+<!-- test: Br_BrushTests.TextureBrush_Tile_RepeatsFromTheOrigin -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 
@@ -76,6 +78,7 @@ Debug.Print brush.LastResult & " " & brush.Type & " " & brush.WrapMode
 ' BWBWBW
 ' 0 2 0
 ```
+<!-- /test -->
 
 ### Clone
 
@@ -85,6 +88,7 @@ Returns a new **TextureBrush** with the same tile, wrap mode and transformation.
 
 ## The tile
 
+<!-- test: Br_BrushTests.TextureBrush_Rectangle_UsesThePartOfTheImage -->
 The example takes the 2-by-2 square at the lower right of a 4-by-4 image as the tile.
 
 ```tb check_build check_run
@@ -115,6 +119,7 @@ Debug.Print whole.Width & " " & whole.Height
 ' FF787800 FFB47800 FF787800 FFB47800 
 ' 2 2
 ```
+<!-- /test -->
 
 ### Image
 
@@ -130,6 +135,7 @@ Syntax: *brush*.**WrapMode** [ **=** *wrapMode* ]
 
 Gets or sets what the brush does outside the first tile: a [**GpWrapMode**](Enumerations/GpWrapMode) value.
 
+<!-- test: Br_BrushTests.TextureBrush_WrapMode_FlipXMirrorsAndClampDrawsOnce -->
 | Value | Outside the first tile |
 |:------|:-----------------------|
 | **WrapModeTile** | The tile repeats. |
@@ -172,6 +178,7 @@ Next
 ' RG....
 ' BW....
 ```
+<!-- /test -->
 
 ## Transformations
 
@@ -183,6 +190,7 @@ Syntax: *brush*.**Transform** [ **=** *matrix* ]
 
 Sets the transformation of the brush to a [**Matrix**](Matrix). Reading it should return a copy of the matrix.
 
+<!-- test: Br_BrushTests.TextureBrush_Transform_Get_ReturnsTheMatrix -->
 > [!NOTE] 0.9.45.0
 > Reading **Transform** always fails: it returns **Nothing** and **LastResult** becomes **InvalidParameter**. Use [**GetTransform**](#gettransform).
 
@@ -190,7 +198,9 @@ Sets the transformation of the brush to a [**Matrix**](Matrix). Reading it shoul
 
 Syntax: *brush*.**GetTransform**( *matrix* )
 
+<!-- test: Br_BrushTests.TextureBrush_GetTransform_CopiesTheMatrix -->
 Copies the transformation of the brush into *matrix*, a **Matrix** that the caller created.
+<!-- /test -->
 
 ### ResetTransform
 
@@ -236,6 +246,7 @@ Syntax: *brush*.**ShearTransform**( *shearX*, *shearY* [, *order*] )
 
 Shears the tiles: *shearX* is the amount that x grows for each unit of y, and *shearY* the amount that y grows for each unit of x.
 
+<!-- test: Br_BrushTests.TextureBrush_TranslateTransform_MovesTheTiles -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 
@@ -269,6 +280,7 @@ Next
 ' GRGRGR
 ' WBWBWB
 ```
+<!-- /test -->
 
 ## Type
 

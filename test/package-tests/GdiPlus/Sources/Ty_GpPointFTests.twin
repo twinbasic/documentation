@@ -1,0 +1,247 @@
+' Ty_GpPointFTests: the GpPointF type (page Types/GpPointF).
+[TestFixture]
+Module Ty_GpPointFTests
+
+    [TestCase]
+    Public Sub GpPointF_IsEightBytes()
+        Expect.Begin
+        Dim p As GpPointF
+        Expect.AreEqual 8, LenB(p), "LenB of a GpPointF"
+        Expect.Done
+    End Sub
+
+    ' ---- Creating
+
+    [TestCase]
+    Public Sub GpPointF_FormsGiveTheDocumentedValues()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(3, 4)
+        Expect.AreEqual "3,4", p.X & "," & p.Y, "GpPointF(3, 4)"
+        Expect.IsTrue GpPointF().Zero, "Zero of GpPointF()"
+        Dim declared As GpPointF
+        Expect.IsTrue declared.Zero, "Zero of a variable declared with Dim"
+        Dim fromInt As GpPointF = GpPointF(GpPoint(7, 8))
+        Expect.AreEqual "7,8", fromInt.X & "," & fromInt.Y, "GpPointF(GpPoint(7, 8))"
+        Dim fromSize As GpPointF = GpPointF(GpSizeF(1.5, 2.5))
+        Expect.AreEqual "1.5,2.5", fromSize.X & "," & fromSize.Y, "GpPointF(GpSizeF(1.5, 2.5))"
+        Expect.Done
+    End Sub
+
+    ' ---- Fields and properties
+
+    [TestCase]
+    Public Sub Zero_IsTrueOnlyForExactlyZero()
+        Expect.Begin
+        Expect.IsTrue GpPointF(0, 0).Zero, "Zero of (0, 0)"
+        Expect.IsFalse GpPointF(0, 0.001).Zero, "Zero of (0, 0.001)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Length_IsTheSquareRootOfTheSumOfSquares()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(3, 4)
+        Ty_Near 5, p.Length, 0.0001, "Length of (3, 4)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Length_SetScalesTheVectorKeepingItsDirection()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(3, 4)
+        p.Length = 10
+        Ty_Near 6, p.X, 0.0001, "X of (3, 4) after Length = 10"
+        Ty_Near 8, p.Y, 0.0001, "Y of (3, 4) after Length = 10"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Length_SetToZeroZeroesBothCoordinates()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(3, 4)
+        p.Length = 0
+        Expect.IsTrue p.Zero, "Zero of (3, 4) after Length = 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Length_SetOfAVectorShorterThanTwiceEpsilonChangesNothing()
+        Expect.Begin
+        Dim zero As GpPointF
+        zero.Length = 5
+        Expect.IsTrue zero.Zero, "Zero of (0, 0) after Length = 5"
+        Dim tiny As GpPointF = GpPointF(0.00000001!, 0)
+        tiny.Length = 5
+        Ty_Near 0.00000001, tiny.X, 0.000000001, "X of (1E-8, 0) after Length = 5 (shorter than 2 * REAL_EPSILON)"
+        Ty_Near 0, tiny.Y, 0.000000001, "Y of (1E-8, 0) after Length = 5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Transposed_ExchangesTheCoordinates()
+        Expect.Begin
+        Expect.AreEqual 2, GpPointF(1, 2).Transposed.X, "X of Transposed of (1, 2)"
+        Expect.AreEqual 1, GpPointF(1, 2).Transposed.Y, "Y of Transposed of (1, 2)"
+        Expect.Done
+    End Sub
+
+    ' ---- Conversion
+
+    [TestCase]
+    Public Sub AsGpPoint_RoundsHalvesToEven()
+        Expect.Begin
+        Dim whole As GpPoint = GpPointF(2.5, 3.5).AsGpPoint()
+        Expect.AreEqual "2,4", whole.X & "," & whole.Y, "AsGpPoint of (2.5, 3.5)"
+        Dim other As GpPoint = GpPointF(2.6, -2.6).AsGpPoint()
+        Expect.AreEqual "3,-3", other.X & "," & other.Y, "AsGpPoint of (2.6, -2.6)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetFrom_TakesAGpPoint()
+        Expect.Begin
+        Dim p As GpPointF
+        p.SetFrom GpPoint(5, 6)
+        Expect.AreEqual "5,6", p.X & "," & p.Y, "SetFrom GpPoint(5, 6)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AsPOINT_RoundsAndSetFromPOINTConverts()
+        Expect.Begin
+        Dim winPoint As GDIP_POINT = GpPointF(9.2, 1.7).AsPOINT()
+        Expect.AreEqual "9,2", winPoint.x & "," & winPoint.y, "AsPOINT of (9.2, 1.7)"
+        Dim halves As GDIP_POINT = GpPointF(2.5, 3.5).AsPOINT()
+        Expect.AreEqual "2,4", halves.x & "," & halves.y, "AsPOINT of (2.5, 3.5) (halves to the even number)"
+        Dim p As GpPointF
+        winPoint.x = 11: winPoint.y = 12
+        p.SetFromPOINT winPoint
+        Expect.AreEqual "11,12", p.X & "," & p.Y, "SetFromPOINT of (11, 12)"
+        Expect.Done
+    End Sub
+
+    ' ---- Modifying methods
+
+    [TestCase]
+    Public Sub Add_ChangesThePoint()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(3, 4)
+        p.Add GpPointF(1, 1)
+        Expect.AreEqual "4,5", p.X & "," & p.Y, "the point (3, 4) after Add GpPointF(1, 1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sub_ChangesThePoint()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(4, 5)
+        p.Sub GpPointF(1, 1)
+        Expect.AreEqual "3,4", p.X & "," & p.Y, "the point (4, 5) after Sub GpPointF(1, 1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Scale_MultipliesBothCoordinates()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(3, 4)
+        p.Scale 2
+        Expect.AreEqual "6,8", p.X & "," & p.Y, "the point (3, 4) after Scale 2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Scale_CallFormMultipliesBothCoordinates()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(3, 4)
+        Call p.Scale(2)
+        Expect.AreEqual "6,8", p.X & "," & p.Y, "the point (3, 4) after Call p.Scale(2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Scale2_MultipliesEachCoordinateByItsOwnFactor()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(6, 8)
+        p.Scale2 1, 3
+        Expect.AreEqual "6,24", p.X & "," & p.Y, "the point (6, 8) after Scale2 1, 3"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InvScale_And_InvScale2_Divide()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(6, 24)
+        p.InvScale 2
+        Expect.AreEqual "3,12", p.X & "," & p.Y, "the point (6, 24) after InvScale 2"
+        p.InvScale2 3, 12
+        Expect.AreEqual "1,1", p.X & "," & p.Y, "the point (3, 12) after InvScale2 3, 12"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Transpose_ExchangesTheCoordinatesOfThePoint()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(1, 2)
+        p.Transpose
+        Expect.AreEqual "2,1", p.X & "," & p.Y, "the point (1, 2) after Transpose"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Normalize_SetsTheLengthToOneAndKeepsTheDirection()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(3, 4)
+        p.Normalize
+        Ty_Near 0.6, p.X, 0.0001, "X of (3, 4) after Normalize"
+        Ty_Near 0.8, p.Y, 0.0001, "Y of (3, 4) after Normalize"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Normalize_LeavesAZeroVector()
+        Expect.Begin
+        Dim p As GpPointF
+        p.Normalize
+        Expect.IsTrue p.Zero, "Zero of (0, 0) after Normalize"
+        Expect.Done
+    End Sub
+
+    ' ---- Query methods
+
+    [TestCase]
+    Public Sub SumDiffProdQuot_ReturnNewPointsAndLeaveThePoint()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(3, 4)
+        Dim s As GpPointF = p.Sum(GpPointF(1, 1))
+        Expect.AreEqual "4,5", s.X & "," & s.Y, "Sum of (3, 4) and (1, 1)"
+        Dim d As GpPointF = p.Diff(GpPointF(1, 1))
+        Expect.AreEqual "2,3", d.X & "," & d.Y, "Diff of (3, 4) and (1, 1)"
+        Dim pr As GpPointF = p.Prod(2)
+        Expect.AreEqual "6,8", pr.X & "," & pr.Y, "Prod(2) of (3, 4)"
+        Dim pr2 As GpPointF = p.Prod2(2, 3)
+        Expect.AreEqual "6,12", pr2.X & "," & pr2.Y, "Prod2(2, 3) of (3, 4)"
+        Dim q As GpPointF = p.Quot(2)
+        Expect.AreEqual "1.5,2", q.X & "," & q.Y, "Quot(2) of (3, 4)"
+        Dim q2 As GpPointF = p.Quot2(2, 4)
+        Expect.AreEqual "1.5,1", q2.X & "," & q2.Y, "Quot2(2, 4) of (3, 4)"
+        Expect.AreEqual "3,4", p.X & "," & p.Y, "the point after the query methods"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DotProd_IsXTimesXPlusYTimesY()
+        Expect.Begin
+        Expect.AreEqual 10, GpPointF(3, 4).DotProd(GpPointF(2, 1)), "DotProd of (3, 4) and (2, 1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Equals_IsExact()
+        Expect.Begin
+        Dim p As GpPointF = GpPointF(3, 4)
+        Expect.IsTrue p.Equals(GpPointF(3, 4)), "Equals of (3, 4) and (3, 4)"
+        Expect.IsFalse p.Equals(GpPointF(3, 4.0001)), "Equals of (3, 4) and (3, 4.0001)"
+        Expect.Done
+    End Sub
+
+End Module

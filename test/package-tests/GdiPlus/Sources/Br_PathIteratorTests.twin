@@ -1,0 +1,281 @@
+' PathIterator: the figures, the marker sections, the runs of one point type, and copying points out.
+[TestFixture]
+Module Br_PathIteratorTests
+
+    ' A rectangle, a marker, a line, then an ellipse in a figure of its own: 19 points, three figures.
+    Private Function ThreeFigures() As GraphicsPath
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddRectangle 0, 0, 10, 10
+        p.SetMarker
+        p.AddLine 20, 20, 30, 30
+        p.StartFigure
+        p.AddEllipse 40, 40, 10, 10
+        Return p
+    End Function
+
+    ' ---- the properties
+
+    [TestCase]
+    Public Sub Count_SubpathCount_AndHasCurve()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Expect.AreEqual 19, it.Count, "Count"
+        Expect.AreEqual 3, it.SubpathCount, "SubpathCount"
+        Expect.AreEqual True, it.HasCurve, "HasCurve"
+        Dim noFigures As PathIterator = PathIterator(New GraphicsPath())
+        Expect.AreEqual 0, noFigures.SubpathCount, "SubpathCount of an empty path"
+        Expect.Done
+    End Sub
+
+    ' ---- figures
+
+    [TestCase]
+    Public Sub NextSubpath_UDT_ListsTheFigures()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Dim sp As SubPath
+        Dim s As String
+        Do
+            sp = it.NextSubpath()
+            If sp.resultCount = 0 Then Exit Do
+            s = s & sp.startIndex & ".." & sp.endIndex & " " & sp.isClosed & "; "
+        Loop
+        Expect.AreEqual "0..3 True; 4..5 False; 6..18 True; ", s, "figures listed by NextSubpath"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextSubpath_Direct_ListsTheFigures()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddRectangle 0, 0, 10, 10
+        p.AddLine 20, 20, 30, 30
+        Dim it As PathIterator = PathIterator(p)
+        Dim first As Long, last As Long, closed As Boolean, n As Long
+        n = it.NextSubpath(first, last, closed)
+        Expect.AreEqual "4 0 3 True", n & " " & first & " " & last & " " & closed, "first figure, as count, first index, last index and closed"
+        n = it.NextSubpath(first, last, closed)
+        Expect.AreEqual "2 4 5 False", n & " " & first & " " & last & " " & closed, "second figure"
+        n = it.NextSubpath(first, last, closed)
+        Expect.AreEqual 0, n, "count at the end of the path"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Rewind_StartsAgain()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Dim sp As SubPath = it.NextSubpath()
+        sp = it.NextSubpath()
+        Expect.AreEqual CLng(Ok), CLng(it.Rewind()), "status of Rewind"
+        sp = it.NextSubpath()
+        Expect.AreEqual 0, sp.startIndex, "start index of the first figure after Rewind"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextSubpathPath_UDT_ReturnsTheFigure()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Dim sp As SubPathPath = it.NextSubpathPath()
+        Expect.IsFalse sp.path Is Nothing, "path of the first figure"
+        If Not sp.path Is Nothing Then Expect.AreEqual 4, sp.path.PointCount, "PointCount of the first figure, a rectangle"
+        Expect.AreEqual True, sp.isClosed, "isClosed of the first figure"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextSubpathPath_Direct_ReturnsTheFigure()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Dim figure As GraphicsPath
+        Dim closed As Boolean
+        Dim n As Long = it.NextSubpathPath(figure, closed)
+        Expect.AreEqual 4, n, "count of the first figure"
+        Expect.IsFalse figure Is Nothing, "path of the first figure"
+        If Not figure Is Nothing Then Expect.AreEqual 4, figure.PointCount, "PointCount of the first figure, a rectangle"
+        Expect.Done
+    End Sub
+
+    ' ---- sections between markers
+
+    [TestCase]
+    Public Sub NextMarker_UDT_ListsTheSections()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Dim mk As Marker
+        Dim s As String
+        Do
+            mk = it.NextMarker()
+            If mk.resultCount = 0 Then Exit Do
+            s = s & mk.startIndex & ".." & mk.endIndex & "; "
+        Loop
+        Expect.AreEqual "0..3; 4..18; ", s, "sections listed by NextMarker"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextMarker_Direct_ListsTheSections()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Dim first As Long, last As Long
+        Expect.AreEqual 4, it.NextMarker(first, last), "count of the first section"
+        Expect.AreEqual "0 3", first & " " & last, "indexes of the first section"
+        Expect.AreEqual 15, it.NextMarker(first, last), "count of the second section"
+        Expect.AreEqual "4 18", first & " " & last, "indexes of the second section"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextMarkerPath_UDT_ReturnsTheSection()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Dim mp As MarkerPath = it.NextMarkerPath()
+        Expect.IsFalse mp.path Is Nothing, "path of the first section"
+        If Not mp.path Is Nothing Then Expect.AreEqual 4, mp.path.PointCount, "PointCount of the first section"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextMarkerPath_Direct_ReturnsTheCount()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Dim section As GraphicsPath
+        Expect.AreEqual 4, it.NextMarkerPath(section), "count of the first section"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextMarkerPath_Direct_ReturnsAUsablePath()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Dim section As GraphicsPath
+        Dim n As Long = it.NextMarkerPath(section)
+        Expect.IsFalse section Is Nothing, "path of the first section"
+        If Not section Is Nothing Then Expect.AreEqual 4, section.PointCount, "PointCount of the first section"
+        Expect.Done
+    End Sub
+
+    ' ---- runs of one type
+
+    [TestCase]
+    Public Sub NextPathType_UDT_ListsTheRunsOfAFigure()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        p.AddLine 0, 0, 10, 0
+        p.AddBezier 10, 0, 12, 5, 14, 5, 16, 0
+        Dim it As PathIterator = PathIterator(p)
+        Dim sp As SubPath = it.NextSubpath()
+        Dim run As PathType
+        Dim s As String
+        Do
+            run = it.NextPathType()
+            If run.resultCount = 0 Then Exit Do
+            s = s & CLng(run.type.PointType) & ": " & run.startIndex & ".." & run.endIndex & "; "
+        Loop
+        Expect.AreEqual "1: 0..1; 3: 1..4; ", s, "runs of a line followed by a Bezier curve"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextPathType_BeforeNextSubpath_ReturnsZero()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Dim run As PathType = it.NextPathType()
+        Expect.AreEqual 0, run.resultCount, "resultCount of NextPathType before NextSubpath"
+        Expect.Done
+    End Sub
+
+    ' ---- copying points
+
+    [TestCase]
+    Public Sub Enumerate_UDT_CopiesTheWholePathOrAPart()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        Dim pts(1 To 3) As GpPointF
+        pts(1) = GpPointF(0, 0): pts(2) = GpPointF(10, 0): pts(3) = GpPointF(10, 10)
+        p.AddLines pts
+        Dim it As PathIterator = PathIterator(p)
+        Dim all As TypedPoints = it.Enumerate()
+        Expect.AreEqual "3 3", all.resultCount & " " & UBound(all.points), "count and upper bound of Enumerate()"
+        Dim part As TypedPoints = it.Enumerate(1, 2)
+        Expect.AreEqual 2, part.resultCount, "count of Enumerate(1, 2)"
+        Expect.AreEqual 10!, part.points(1).pos.X, "X of the first point of Enumerate(1, 2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enumerate_Direct_SizesTheArraysFromOne()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim p As GraphicsPath = New GraphicsPath()
+        Dim pts(1 To 3) As GpPointF
+        pts(1) = GpPointF(0, 0): pts(2) = GpPointF(10, 0): pts(3) = GpPointF(10, 10)
+        p.AddLines pts
+        Dim it As PathIterator = PathIterator(p)
+        Dim outPts() As GpPointF
+        Dim outTypes() As PathPointType
+        Expect.AreEqual 3, it.Enumerate(outPts, outTypes), "count Enumerate returns"
+        Expect.AreEqual 1, LBound(outPts), "lower bound of the points"
+        Expect.AreEqual 3, UBound(outTypes), "upper bound of the types"
+        Expect.AreEqual 10!, outPts(3).Y, "Y of the third point"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enumerate_OnlyOneIndex_IsRefused()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Dim part As TypedPoints = it.Enumerate(1)
+        Expect.AreEqual CLng(InvalidParameter), CLng(it.LastResult), "LastResult after Enumerate with a start index only"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enumerate_EmptyPath_RaisesUnspecifiedError()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(New GraphicsPath())
+        Dim errUDT As Long, errDirect As Long
+        Dim all As TypedPoints
+        On Error Resume Next
+        all = it.Enumerate()
+        errUDT = Err.Number
+        Err.Clear
+        Dim outPts() As GpPointF
+        Dim outTypes() As PathPointType
+        Dim n As Long = it.Enumerate(outPts, outTypes)
+        errDirect = Err.Number
+        Err.Clear
+        On Error GoTo 0
+        Expect.AreEqual -2147467259, errUDT, "error raised by the UDT form of Enumerate on an empty path"
+        Expect.AreEqual -2147467259, errDirect, "error raised by the direct form of Enumerate on an empty path"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyData_DoesWhatEnumerateDoes()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim it As PathIterator = PathIterator(ThreeFigures())
+        Dim part As TypedPoints = it.CopyData(0, 3)
+        Expect.AreEqual 4, part.resultCount, "count of CopyData(0, 3)"
+        Expect.Done
+    End Sub
+
+End Module

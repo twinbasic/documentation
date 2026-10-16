@@ -25,6 +25,7 @@ Syntax: *cached* **= New CachedBitmap**( *bitmap*, *gr* )
 
 A constructor that fails creates an unusable object whose **LastResult** tells why.
 
+<!-- test: Im_CachedBitmapTests.Draw_OnGraphicsOfTheSameFormat, Im_CachedBitmapTests.Draw_OnGraphicsOfAnotherFormatIsWrongState -->
 > [!NOTE] 0.9.45.0
 > A **CachedBitmap** is valid for the **Graphics** it was made for, and for another with the same pixel format. If the format of the destination changes (for example, the display resolution or colour depth changes), the cached copy has to be made again, and drawing it on a destination with another format fails with **WrongState**.
 

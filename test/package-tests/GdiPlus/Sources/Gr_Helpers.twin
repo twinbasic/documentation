@@ -1,0 +1,69 @@
+' Helpers of the graphics and library cases (Gr_*). Not a fixture: no case is in it.
+Module Gr_Helpers
+
+    ' A bitmap of the size, cleared to opaque white.
+    Public Function Gr_White(ByVal Width As Long, ByVal Height As Long) As Bitmap
+        Dim bmp As Bitmap = Bitmap(CSng(Width), CSng(Height))
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear Color(255, 255, 255, 255)
+        Return bmp
+    End Function
+
+    ' A bitmap of the size, transparent.
+    Public Function Gr_Clear(ByVal Width As Long, ByVal Height As Long) As Bitmap
+        Return Bitmap(CSng(Width), CSng(Height))
+    End Function
+
+    ' The colour of a pixel of the bitmap, as &HAARRGGBB.
+    Public Function Gr_Px(ByVal Bmp As Bitmap, ByVal X As Long, ByVal Y As Long) As Long
+        Dim c As Color = Bmp.Pixel(X, Y)
+        Return c.argb
+    End Function
+
+    ' The colour of a pixel, as text for a report.
+    Public Function Gr_Hex(ByVal Argb As Long) As String
+        Return Right$("00000000" & Hex$(Argb), 8)
+    End Function
+
+    ' The number of pixels of the bitmap that are not the colour.
+    Public Function Gr_CountNot(ByVal Bmp As Bitmap, ByVal Argb As Long) As Long
+        Dim x As Long, y As Long, n As Long
+        For y = 0 To CLng(Bmp.Height) - 1
+            For x = 0 To CLng(Bmp.Width) - 1
+                If Gr_Px(Bmp, x, y) <> Argb Then n = n + 1
+            Next
+        Next
+        Return n
+    End Function
+
+    ' The first and last rows of the bitmap that hold a pixel of the colour; -1, -1 when there is none.
+    Public Sub Gr_Rows(ByVal Bmp As Bitmap, ByVal Argb As Long, ByRef First As Long, ByRef Last As Long)
+        Dim x As Long, y As Long
+        First = -1
+        Last = -1
+        For y = 0 To CLng(Bmp.Height) - 1
+            For x = 0 To CLng(Bmp.Width) - 1
+                If Gr_Px(Bmp, x, y) = Argb Then
+                    If First = -1 Then First = y
+                    Last = y
+                    Exit For
+                End If
+            Next
+        Next
+    End Sub
+
+    ' True when the two numbers differ by no more than the tolerance.
+    Public Function Gr_Near(ByVal Expected As Double, ByVal Actual As Double, ByVal Tolerance As Double) As Boolean
+        Return Abs(Expected - Actual) <= Tolerance
+    End Function
+
+    ' The folder the cases write to: created when it is missing.
+    Public Function Gr_Folder() As String
+        Dim p As String = Environ$("TEMP") & "\tbdocs-package-tests"
+        If Dir$(p, vbDirectory) = "" Then MkDir p
+        p = p & "\GdiPlus"
+        If Dir$(p, vbDirectory) = "" Then MkDir p
+        Return p
+    End Function
+
+End Module

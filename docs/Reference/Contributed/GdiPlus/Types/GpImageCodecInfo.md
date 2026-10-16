@@ -12,6 +12,7 @@ A description of an image codec: its class ID, the format it handles, its names 
 
 The codec lists of [**ImageCodec**](../ImageCodec#listing-the-codecs) are arrays of this type. It mirrors the GDI+ [ImageCodecInfo](https://learn.microsoft.com/en-us/windows/win32/api/gdiplusimaging/nl-gdiplusimaging-imagecodecinfo) class, and has the same layout. The text properties read strings in the buffer that GDI+ filled, so the buffer has to stay alive.
 
+<!-- test: Im_CodecTests.Text_PropertiesHaveNoTerminatingNull, Im_CodecTests.Text_PropertiesHoldTheTextBeforeTheNull -->
 > [!WARNING] 0.9.45.0
 > The text properties (**CodecName**, **DllName**, **FormatDescription**, **FilenameExtension** and **MimeType**) return their string with the terminating null character included, so `info.MimeType = "image/png"` is **False**. Remove it with `Replace(text, vbNullChar, "")`.
 

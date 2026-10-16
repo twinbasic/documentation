@@ -12,6 +12,7 @@ Describes a font by its family, size, style and unit, for drawing and measuring 
 
 A **Font** object is what [**Graphics.DrawString**](Graphics) and [**Graphics.MeasureString**](Graphics) take to draw and measure text. It holds one [**FontFamily**](FontFamily), a size, a style such as bold or italic, and the unit of the size. A **Font** is read-only after it is created: to change the size or the style, create another one. The class mirrors the GDI+ [Font](https://learn.microsoft.com/en-us/windows/win32/api/gdiplusheaders/nl-gdiplusheaders-font) class.
 
+<!-- test: Fx_FontTests.Font_VariableDeclaredAsFont_HoldsAGdiPlusFont, compile NewFontWithoutPrefix -->
 > [!NOTE] 0.9.45.0
 > In a project that references OLE Automation, which is the default, **Font** is also the name of a type of that library. A variable declared **As Font** therefore holds the OLE type, and assigning a GDI+ font to it raises run-time error -2147467262, *No such interface supported*. Declare the variable **As GdiPlus.Font**. The function **Font**( ) in the examples below resolves to the package without a prefix. A **New Font**( ... ) expression does not compile without the prefix either (TB5074), so write **New GdiPlus.Font**( ... ).
 
@@ -41,6 +42,7 @@ Syntax: *font* **= Font**( *familyName*, *emSize* [, *style* [, *unit* [, *fontC
 *fontCollection*
 : *optional* A [**FontCollection**](FontCollection) in which to look for the family. When it is omitted, the installed fonts are searched.
 
+<!-- test: Fx_FontTests.Font_FromAFamilyName_KeepsSizeStyleAndUnit, Fx_FontTests.Font_UnknownFamilyName_FallsBackToGenericSansSerif -->
 A *familyName* that is not found does not make the font unavailable. The font is created in the generic sans serif family instead, as the GDI+ C++ class does, and [**LastResult**](GdiPlusBase) stays **Ok**. To find out whether a name exists, create a [**FontFamily**](FontFamily) from it and read [**IsAvailable**](FontFamily#isavailable).
 
 ```tb check_build check_run
@@ -57,6 +59,7 @@ Dim g As GdiPlus.Font = Font("No such family", 20, FontStyleItalic, UnitPixel)
 Debug.Print g.IsAvailable                                                  ' True
 Debug.Print g.Family.FamilyName = GenericSansSerif().FamilyName            ' True
 ```
+<!-- /test -->
 
 ### From a family
 
@@ -65,6 +68,7 @@ Syntax: *font* **= Font**( *family*, *emSize* [, *style* [, *unit* [, *fontColle
 *family*
 : *required* A [**FontFamily**](FontFamily).
 
+<!-- test: Fx_FontTests.Font_FromAnUnavailableFamily_IsNotAvailable -->
 The other parameters are as for a family name. A *family* that is not available gives a font that is not available: [**IsAvailable**](#isavailable) returns **False** and **LastResult** is **InvalidParameter**. So does an *emSize* of 0 or less.
 
 ```tb check_build check_run
@@ -80,6 +84,7 @@ Dim bad As GdiPlus.Font = Font(FontFamily("No such family"), 12!)
 Debug.Print bad.IsAvailable    ' False
 Debug.Print bad.LastResult     ' 2
 ```
+<!-- /test -->
 
 ### From a device context
 
@@ -156,7 +161,9 @@ Returns the [**GpUnit**](Enumerations/GpUnit) value of [**Size**](#size).
 
 ## Metrics
 
+<!-- test: Fx_FontTests.Font_AscentAndLineSpacing_AreScaledFromTheDesignMetrics -->
 The metrics of a font come from its family's design-unit values ([**EmHeight**](FontFamily#emheight), [**CellAscent**](FontFamily#cellascent), [**CellDescent**](FontFamily#celldescent) and [**LineSpacing**](FontFamily#linespacing) of the family, for the font's style), scaled by the font's size. [**Ascent**](#ascent), [**Descent**](#descent) and [**LineSpacing**](#linespacing) are in the font's [**Unit**](#unit); [**GetHeight**](#getheight) is in pixels or in the unit of a **Graphics** object. They return 0 when the family's metrics cannot be read.
+<!-- /test -->
 
 ### Ascent
 {: .no_toc }
@@ -192,6 +199,7 @@ Syntax: *height* **=** *font*.**GetHeight**( *dpi* )
 *dpi*
 : *required* A **Single** with the number of pixels per inch of the device.
 
+<!-- test: Fx_FontTests.Font_GetHeight_ScalesWithTheResolutionForPoints -->
 Returns a **Single** with the line spacing of the font. With *dpi*, the result is in pixels for a device of that resolution. A font in pixels has the same height at every resolution, and a font in points has a height proportional to the resolution, equal to [**LineSpacing**](#linespacing) at 72 pixels per inch.
 
 ```tb check_build check_run
@@ -206,6 +214,7 @@ Debug.Print Abs(pt.GetHeight(72!) - pt.LineSpacing) < 0.01       ' True
 Debug.Print Abs(pt.GetHeight(144!) - 2 * pt.LineSpacing) < 0.01  ' True
 Debug.Print px.Ascent > 0 And px.Descent > 0                     ' True
 ```
+<!-- /test -->
 
 ## Interoperating with GDI
 
@@ -226,6 +235,7 @@ Syntax: *status* **=** *font*.**GetLogFontW**( *graphics*, *logfont* )
 *logfont*
 : *required* A **LOGFONTA** or **LOGFONTW** structure that receives the description.
 
+<!-- test: Fx_FontTests.Font_GetLogFontW_GivesANegativeHeightForAPixelFont -->
 Returns a **LOGFONTA** or **LOGFONTW** structure (the package's `GDIP_LOGFONTA` and `GDIP_LOGFONTW` types) that describes the font, in a form that the GDI function **CreateFontIndirect** accepts. The second form of each fills a structure that the caller owns and returns a [**GpStatus**](Enumerations/GpStatus). The height is negative: a pixel font of 20 pixels gives -20.
 
 ```tb check_build check_run
@@ -238,6 +248,7 @@ Dim lf As Any = f.GetLogFontW(g)
 Debug.Print lf.LFHeight   ' -20
 Debug.Print lf.LFWeight   ' 700
 ```
+<!-- /test -->
 
 ## See Also
 

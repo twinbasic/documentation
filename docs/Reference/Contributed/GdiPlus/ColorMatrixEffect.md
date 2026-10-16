@@ -27,6 +27,7 @@ Each form is also available as **New ColorMatrixEffect**( ... ) with the same ar
 
 A constructor that fails creates an unusable object whose **LastResult** tells why. The effect created without arguments has the default matrix of GDI+.
 
+<!-- test: Fx_EffectTests.ColorMatrixEffect_NewWithParams_StoresTheMatrix -->
 > [!WARNING] 0.9.45.0
 > The form with *params* stops the program with an access violation, in 32-bit and 64-bit programs. Create the effect without arguments and set [**Parameters**](#parameters).
 
@@ -38,6 +39,7 @@ Syntax: *params* **=** *fx*.**Parameters**( *size* )
 
 Gets or sets the [**ColorMatrix**](Types/ColorMatrix).
 
+<!-- test: Fx_EffectTests.ColorMatrixEffect_ParametersGetWithoutSize_ReturnsTheParameters -->
 > [!WARNING] 0.9.45.0
 > The getter returns zeros and sets **LastResult** to 2 (**InvalidParameter**) unless it is given *size*, the size of the structure: `fx.Parameters(LenB(Of ColorMatrix))`. See [**Effect**](Effect#parameters).
 

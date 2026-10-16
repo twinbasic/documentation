@@ -76,6 +76,7 @@ Each form is also available as **New Bitmap**( ... ) with the same arguments.
 
 A constructor that fails creates an unusable object whose **LastResult** tells why: a resource that does not exist gives **InvalidParameter**.
 
+<!-- test: Im_BitmapTests.New_TwoIntegerArgumentsMakeABitmap, Im_BitmapTests.New_NewKeywordWithTwoIntegerArguments, Im_BitmapTests.New_SingleArgumentsMakeABitmapOfThatSize -->
 > [!WARNING] 0.9.45.0
 > Two integer arguments do not create a bitmap of that size. `Bitmap(8, 6)` binds to the form that takes a GDI bitmap handle and a palette handle, treats 8 and 6 as handles, and returns an unusable object with **LastResult** 7 (**Win32Error**), without any error being raised. Pass **Single** values: `Bitmap(8!, 6!)`, or give a format, as in `Bitmap(8, 6, PixelFormat32bppARGB)`. The same goes for **New Bitmap**.
 
@@ -137,6 +138,7 @@ Syntax: *copy* **=** *bmp*.**Clone**( *x*, *y*, *width*, *height*, *format* )
 
 Returns a new **Bitmap** with the pixels of that part, converted to *format*. The rectangle must lie inside the bitmap. The copy does not share memory with the original.
 
+<!-- test: compile ImBitmapCloneWithoutArguments, Im_BitmapTests.Clone_WholeBitmapWithItsRectangleKeepsPixels -->
 > [!NOTE] 0.9.45.0
 > The no-argument **Clone** of [**Image**](Image#clone) is hidden: `bmp.Clone()` on a **Bitmap** does not compile. Copy the whole bitmap by giving its rectangle.
 
@@ -256,15 +258,16 @@ Syntax: *status* **=** *bmp*.**ConvertFormat**( *format*, *ditherType*, *palette
 : *required* A [**PaletteType**](Enumerations/PaletteType) for a conversion to an indexed format.
 
 *palette*
-: *required* A [**ColorPalette**](Types/ColorPalette) that supplies the colours when *paletteType* is **PaletteTypeCustom**, and receives them for some other types.
+: *required* A [**ColorPalette**](Types/ColorPalette) that supplies the colours of the converted bitmap. Fill in its **count** and **entries** whatever *paletteType* is.
 
 *alphaThresholdPercent*
 : *required* A **Single** from 0 to 100: the alpha value, in percent, below which a pixel becomes transparent in a format that has only on-off transparency.
 
 Converts the bitmap itself, in place, to the new pixel format. It needs GDI+ 1.1 (Windows 7 or later). A conversion that GDI+ refuses returns an error and leaves the bitmap as it was.
 
-> [!NOTE] 0.9.45.0
-> The fixed palette types, such as **PaletteTypeFixedBW**, need a *palette* that GDI+ has prepared. A blank [**ColorPalette**](Types/ColorPalette) makes the call fail with **InvalidParameter**. A palette that the program fills in itself works with **PaletteTypeCustom**, as below.
+<!-- test: Im_BitmapTests.ConvertFormat_FixedBWWithABlankPalette, Im_BitmapTests.ConvertFormat_OptimalWithABlankPalette, Im_BitmapTests.ConvertFormat_FixedPaletteTypeWithAFilledPalette, Im_BitmapTests.ConvertFormat_CustomPaletteFilledByTheProgram -->
+> [!WARNING] 0.9.45.0
+> The call always hands GDI+ the *palette* it is given, so *paletteType* does not make GDI+ choose the colours: **PaletteTypeFixedBW**, **PaletteTypeOptimal** and the other types work only with a palette whose **count** and **entries** the program has filled in. With a blank [**ColorPalette**](Types/ColorPalette) the call returns **Ok**, the converted bitmap has a palette with no usable colours, and its pixels come out black (**PaletteTypeFixedBW**) or transparent (**PaletteTypeOptimal**). The sample below fills in a palette of two colours for **PaletteTypeCustom**.
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -407,9 +410,11 @@ Debug.Print Hex$(flat.Pixel(1, 1).argb)
 
 A bitmap saves with [**Image.Save**](Image#save), **SaveAdd** and **SaveAddImage**, which a **Bitmap** inherits.
 
+<!-- test: Im_ImageTests.Save_EmptyParameterArrayWritesFile, Im_ImageTests.Save_JpegQualityChangesFileSize, Im_ImageTests.Save_ParameterArrayStartingAtOneIsRefused, Im_ImageTests.SaveAdd_MultiFrameTiffHasTwoFrames -->
 > [!WARNING] 0.9.45.0
-> **Save** does not work with the encoder parameter array that it requires: the call returns **InvalidParameter** and leaves an empty file for an array of one element, ignores the parameters for a longer one in a 64-bit program, and stops a 32-bit program. The warning at [**Image.Save**](Image#save) gives the details.
+> **Save** does not work with the encoder parameter array that it requires. In a 64-bit program the call returns **InvalidParameter** and leaves an empty file for an array of one element, and ignores the parameters of a longer one. A 32-bit program stops with an access violation. The warning at [**Image.Save**](Image#save) gives the details.
 
+<!-- test: Im_BitmapTests.Load_PngWrittenThroughTheNativeCall -->
 A picture can still be saved without parameters by passing a GDI bitmap made with [**GetHBitmap**](#gethbitmap) to GDI+ and calling its save function directly. The module below does that for a PNG. It flattens the picture over white, because the intermediate GDI bitmap has no alpha channel.
 
 ```tb check_build slot=file projname=gdiplus-bitmap-save
@@ -462,6 +467,7 @@ Debug.Print Hex$(loaded.Pixel(3, 3).argb)
 ' 0 16 8
 ' FFC86432
 ```
+<!-- /test -->
 
 ## Example
 

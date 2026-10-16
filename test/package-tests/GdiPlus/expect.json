@@ -1,0 +1,643 @@
+{
+  "version": "0.9.45.0",
+  "cases": {
+    "Gr_GraphicsTests.Graphics_NothingImage_ReportsError": {
+      "fails": "1 of 1 checks failed: LastResult of Graphics(Nothing) is an error status: expected True, got False"
+    },
+    "Gr_GraphicsTests.NewGraphics_NothingImage_ReportsError": {
+      "fails": "1 of 1 checks failed: LastResult of New Graphics(Nothing) is an error status: expected True, got False"
+    },
+    "Gr_GraphicsTests.Clear_VBColourRed_FillsRed": {
+      "fails": "1 of 1 checks failed: pixel after Clear(vbRed): expected \"FFFF0000\", got \"FF0000FF\""
+    },
+    "Gr_GraphicsTests.Clear_RGBFunction_FillsThatColour": {
+      "fails": "2 of 2 checks failed: pixel after Clear(RGB(255, 0, 0)): expected \"FFFF0000\", got \"FF0000FF\"; pixel after Clear(RGB(10, 20, 30)): expected \"FF0A141E\", got \"FF1E140A\""
+    },
+    "Gr_GraphicsTests.Clear_CColorTransparent_KeepsAlpha": {
+      "fails": "1 of 1 checks failed: alpha of a white bitmap after Clear(CColor.Transparent): expected 0, got 255"
+    },
+    "Gr_GraphicsTests.DrawImage_DestRectF_ScalesTheImage": {
+      "win32": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      },
+      "win64": "pass"
+    },
+    "Gr_GraphicsTests.DrawImage_DestRect_ScalesTheImage": {
+      "win32": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      },
+      "win64": "pass"
+    },
+    "Gr_GraphicsTests.DrawImage_ThreeFloatPointsAndSourcePart_DrawsTheImage": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Gr_GraphicsTests.Clip_Get_ReturnsTheClippingRegion": {
+      "fails": "2 of 2 checks failed: Clip returns a Region after SetClip: expected True, got False; LastResult after reading Clip: expected 0, got 2"
+    },
+    "Gr_GraphicsTests.IsVisible_GpPointF_ReturnsWhetherThePointIsInside": {
+      "win32": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      },
+      "win64": "pass"
+    },
+    "Gr_GraphicsTests.Transform_Get_ReturnsTheWorldTransformation": {
+      "fails": "2 of 2 checks failed: Graphics.Transform returns a Matrix: expected True, got False; LastResult after reading Transform: expected 0, got 2"
+    },
+    "Gr_GraphicsTests.ShearTransform_ShearsTheCoordinates": {
+      "fails": "2 of 3 checks failed: status of ShearTransform(0.5, 0): expected 0, got 2; X of the point (1, 2) after ShearTransform(0.5, 0): x moves by half of y: expected 2, got 1"
+    },
+    "Gr_LibraryTests.GdiPlusUser_BitmapOfTwoWholeNumbers_IsCreated": {
+      "fails": "3 of 3 checks failed: LastResult of Bitmap(64, 64): expected 0, got 7; Width of Bitmap(64, 64): expected 64, got 0; Height of Bitmap(64, 64): expected 64, got 0"
+    },
+    "Gr_LibraryTests.TestControlForceBilinear_Method_ReturnsOk": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+    },
+    "Gr_LibraryTests.TestControlNoICM_Method_ReturnsOk": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+    },
+    "Gr_LibraryTests.SetAbort_ThenDrawingTheImage_Works": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Gr_LibraryTests.IsCanonicalPixelFormat_PremultipliedFormats_AreCanonical": {
+      "fails": "2 of 5 checks failed: 32bppPARGB is canonical: expected True, got False; 64bppPARGB is canonical: expected True, got False"
+    },
+    "Gr_LibraryTests.GdipCreateStreamOnFile_ExistingFile_ReturnsAStream": {
+      "fails": "2 of 2 checks failed: status of GdipCreateStreamOnFile for an existing file, opened for reading: expected 0, got 6; GdipCreateStreamOnFile stores a stream: expected True, got False"
+    },
+    "Gr_LibraryTests.PropertyTag_ConstantsAbove8000_AreNotNegativeInLong": {
+      "fails": "2 of 3 checks failed: PropertyTagCopyright assigned to a Long, expected 33432 (&H8298): expected 33432, got -32104; PropertyTagExifIFD assigned to a Long, expected 34665 (&H8769): expected 34665, got -30871"
+    },
+    "Gr_LibraryTests.RemovePropertyItem_HighPropertyTag_RemovesTheItem": {
+      "fails": "2 of 3 checks failed: status of RemovePropertyItem(PropertyTagCopyright): expected 0, got 19; PropertyCount after RemovePropertyItem(PropertyTagCopyright): expected 0, got 1"
+    },
+    "Gr_LibraryTests.GdiplusStartupParams_ReservedMembers_AreSingleBits": {
+      "fails": "2 of 2 checks failed: GdiplusStartupReserved1 is a single bit, as a member of a flags enumeration is: expected True, got False; GdiplusStartupReserved2 is a single bit, as a member of a flags enumeration is: expected True, got False"
+    },
+    "Gr_MatrixTests.Matrix_RectFAndPoint_MovesTheRectangleToThePoint": {
+      "fails": "1 of 2 checks failed: the bottom-right corner of the 10 by 10 rectangle maps to (15, 15): expected True, got False"
+    },
+    "Gr_MatrixTests.Matrix_RectAndPoint_MovesTheRectangleToThePoint": {
+      "fails": "1 of 2 checks failed: the bottom-right corner of the 10 by 10 rectangle maps to (15, 15): expected True, got False"
+    },
+    "Gr_MatrixTests.OffsetX_Assign_ChangesOnlyDx": {
+      "fails": "1 of 2 checks failed: OffsetY after assigning 7 to OffsetX: expected 4, got 0"
+    },
+    "Gr_MatrixTests.OffsetY_Assign_ChangesOnlyDy": {
+      "fails": "2 of 2 checks failed: OffsetX after assigning 9 to OffsetY: expected 3, got 9; OffsetY after assigning 9: expected 9, got 0"
+    },
+    "Gr_MatrixTests.Scale_StatementWithParentheses_Scales": {
+      "fails": "2 of 2 checks failed: m11 after the statement m.Scale(2, 3) (a defect of twinBASIC BETA 1005, not of the package): expected 2, got 1; m22 after the statement m.Scale(2, 3) (a defect of twinBASIC BETA 1005, not of the package): expected 3, got 1"
+    },
+    "Gr_MatrixTests.Transform_GetOnMatrix_ReturnsTheMatrix": {
+      "fails": "1 of 2 checks failed: Transform read through ITransformable on a Matrix returns a Matrix: expected True, got False"
+    },
+    "Gr_MatrixTests.Transform_GetOnGraphics_ThroughTheInterface_ReturnsTheMatrix": {
+      "fails": "2 of 2 checks failed: Transform read through ITransformable on a Graphics returns a Matrix: expected True, got False; LastResult of the Graphics after reading Transform: expected 0, got 2"
+    },
+    "Gr_MatrixTests.Transform_GetOnGradientBrush_ThroughTheInterface_ReturnsTheMatrix": {
+      "fails": "2 of 2 checks failed: Transform read through ITransformable on a LinearGradientBrush returns a Matrix: expected True, got False; LastResult of the brush after reading Transform: expected 0, got 2"
+    },
+    "Gr_VBGraphicsTests.Line_VBColourRed_DrawsRed": {
+      "fails": "1 of 1 checks failed: pixel on a line drawn in vbRed with the default UseTransparentAlpha: expected \"FFFF0000\", got \"FFFFFFFF\""
+    },
+    "Gr_VBGraphicsTests.Line_VBColourWithoutTransparentAlpha_DrawsThatColour": {
+      "fails": "2 of 2 checks failed: pixel on a line drawn in vbRed with UseTransparentAlpha False: expected \"FFFF0000\", got \"FF0000FF\"; pixel on a line drawn in RGB(10, 20, 30) with UseTransparentAlpha False: expected \"FF0A141E\", got \"FF1E140A\""
+    },
+    "Gr_VBGraphicsTests.DrawWidth_BeforeFirstDraw_ReadsOne": {
+      "fails": "2 of 2 checks failed: DrawWidth of a new VBGraphics: expected 1, got 0; LastResult after reading DrawWidth of a new VBGraphics: expected 0, got 2"
+    },
+    "Gr_VBGraphicsTests.DrawWidth_AssignedBeforeFirstDraw_IsKept": {
+      "fails": "2 of 2 checks failed: DrawWidth after assigning 4 to a new VBGraphics: expected 4, got 0; LastResult after assigning DrawWidth of a new VBGraphics: expected 0, got 2"
+    },
+    "Gr_VBGraphicsTests.Line_BoxFilled_FillsFromTheFirstCorner": {
+      "fails": "3 of 4 checks failed: pixel inside the box (5, 5)-(15, 15) drawn with BF: expected \"FFFF0000\", got \"FFFFFFFF\"; pixel below the box: expected \"FFFFFFFF\", got \"FFFF0000\"; last row with red pixels after BF (5, 5)-(15, 15): expected 15, got 24"
+    },
+    "Gr_VBGraphicsTests.Circle_StartAndEnd_DrawAnArc": {
+      "fails": "2 of 2 checks failed: LastResult after Circle with start and end: expected 0, got 6; pixels drawn by Circle with start 0 and end 3.14: expected True, got False"
+    },
+    "Gr_VBGraphicsTests.PSet_SetsOnlyThePixel": {
+      "fails": "1 of 4 checks failed: pixel below the PSet point: expected \"FFFFFFFF\", got \"FFFF0000\""
+    },
+    "Br_BrushColourTests.SolidBrush_VBColour_PaintsThatColour": {
+      "fails": "4 of 4 checks failed: pixel painted by SolidBrush(vbRed): expected \"FFFF0000\", got \"FF0000FF\"; pixel painted by SolidBrush(vbBlue): expected \"FF0000FF\", got \"FFFF0000\"; pixel painted by SolidBrush(RGB(255, 0, 0)): expected \"FFFF0000\", got \"FF0000FF\"; pixel painted by SolidBrush(RGB(10, 20, 30)): expected \"FF0A141E\", got \"FF1E140A\""
+    },
+    "Br_BrushColourTests.SolidBrush_SystemColour_IsTranslated": {
+      "fails": "1 of 1 checks failed: pixel painted by SolidBrush(vbButtonFace), the button face colour: expected \"FFF0F0F0\", got \"FF00000F\""
+    },
+    "Br_BrushColourTests.SolidBrush_CColorTransparent_PaintsNothing": {
+      "fails": "1 of 2 checks failed: pixel of a blue bitmap after filling it with SolidBrush(CColor.Transparent): expected \"FF0000FF\", got \"FFFFFFFF\""
+    },
+    "Br_BrushColourTests.SolidBrush_RGBProperty_Let_TakesAVBColour": {
+      "fails": "1 of 1 checks failed: Color of a SolidBrush after RGB = vbRed: expected \"FFFF0000\", got \"FF0000FF\""
+    },
+    "Br_BrushColourTests.SolidBrush_RGBProperty_Get_ReturnsAVBColour": {
+      "fails": "1 of 1 checks failed: RGB of a SolidBrush whose Color is opaque red, as a VB colour: expected 255, got 16711680"
+    },
+    "Br_BrushColourTests.HatchBrush_RGBForm_VBColour_UsesThatColour": {
+      "fails": "2 of 2 checks failed: ForegroundColor of HatchBrush(HatchStyleCross, vbRed, vbBlue): expected \"FFFF0000\", got \"FF0000FF\"; BackgroundColor of HatchBrush(HatchStyleCross, vbRed, vbBlue): expected \"FF0000FF\", got \"FFFF0000\""
+    },
+    "Br_BrushColourTests.LinearGradientBrush_RGBForm_VBColour_UsesThatColour": {
+      "fails": "2 of 2 checks failed: start colour of a gradient made with vbRed, vbBlue: expected \"FFFF0000\", got \"FF0000FF\"; end colour of a gradient made with vbRed, vbBlue: expected \"FF0000FF\", got \"FFFF0000\""
+    },
+    "Br_BrushColourTests.LinearGradientBrush_RGBForm_Points_VBColour_UsesThatColour": {
+      "fails": "2 of 2 checks failed: start colour of a two-point gradient made with vbRed, vbBlue: expected \"FFFF0000\", got \"FF0000FF\"; end colour of a two-point gradient made with vbRed, vbBlue: expected \"FF0000FF\", got \"FFFF0000\""
+    },
+    "Br_BrushColourTests.LinearGradientBrush_SetLinearColors_RGBForm_VBColour_UsesThatColour": {
+      "fails": "2 of 2 checks failed: start colour after SetLinearColors vbRed, vbBlue: expected \"FFFF0000\", got \"FF0000FF\"; end colour after SetLinearColors vbRed, vbBlue: expected \"FF0000FF\", got \"FFFF0000\""
+    },
+    "Br_BrushColourTests.PathGradientBrush_CenterRGB_VBColour_UsesThatColour": {
+      "fails": "1 of 1 checks failed: CenterColor after CenterRGB = vbRed: expected \"FFFF0000\", got \"FF0000FF\""
+    },
+    "Br_BrushColourTests.Pen_RGBForm_VBColour_UsesThatColour": {
+      "fails": "2 of 2 checks failed: Color of Pen(vbRed, 2): expected \"FFFF0000\", got \"FF0000FF\"; Color of Pen(RGB(0, 0, 255)): expected \"FF0000FF\", got \"FFFF0000\""
+    },
+    "Br_BrushColourTests.Pen_RGBForm_VBColour_DrawsThatColour": {
+      "fails": "1 of 1 checks failed: pixel on a line drawn with Pen(vbRed, 2): expected \"FFFF0000\", got \"FF0000FF\""
+    },
+    "Br_BrushColourTests.Pen_RGBProperty_Let_TakesAVBColour": {
+      "fails": "1 of 1 checks failed: Color of a Pen after RGB = vbRed: expected \"FFFF0000\", got \"FF0000FF\""
+    },
+    "Br_BrushColourTests.Pen_RGBProperty_Get_ReturnsAVBColour": {
+      "fails": "1 of 1 checks failed: RGB of a Pen whose Color is opaque red, as a VB colour: expected 255, got 16711680"
+    },
+    "Br_BrushColourTests.Pen_Set_RGBForm_VBColour_UsesThatColour": {
+      "fails": "1 of 2 checks failed: Color of a Pen after Set vbRed, 3: expected \"FFFF0000\", got \"FF0000FF\""
+    },
+    "Br_BrushTests.Clone_AfterEarlierFailure_ReturnsTheCopy": {
+      "fails": "1 of 1 checks failed: Clone of a brush that recorded an earlier failure returns a copy: expected False, got True"
+    },
+    "Br_BrushTests.TextureBrush_Image_AfterEarlierFailure_ReturnsTheImage": {
+      "fails": "1 of 2 checks failed: Image of a brush that recorded an earlier failure returns the image: expected False, got True"
+    },
+    "Br_BrushTests.Type_PathGradientBrush_ReturnsPathGradient": {
+      "fails": "(runtime error -353703420: Assertion FAILED)"
+    },
+    "Br_BrushTests.HatchBrush_Function_ColorForm_Returns": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+    },
+    "Br_BrushTests.HatchBrush_Function_RGBForm_Returns": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+    },
+    "Br_BrushTests.TextureBrush_Transform_Get_ReturnsTheMatrix": {
+      "fails": "2 of 2 checks failed: Transform returns a matrix: expected False, got True; LastResult after reading Transform: expected 0, got 2"
+    },
+    "Br_CapTests.CustomLineCap_New_BaseInset_KeepsTheFraction": {
+      "fails": "1 of 1 checks failed: BaseInset of a cap made with the base inset 1.5: expected 1.5, got 2"
+    },
+    "Br_CapTests.CustomLineCap_StartStrokeCap_Let_Returns": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+    },
+    "Br_CapTests.CustomLineCap_EndStrokeCap_Let_Returns": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+    },
+    "Br_CapTests.CustomLineCap_SetStrokeCaps_WithACap_Returns": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+    },
+    "Br_CapTests.ArrowCap_Clone_ReturnsAUsableCopy": {
+      "fails": "4 of 4 checks failed: Height of the clone: expected 3, got 0; Width of the clone: expected 4, got 0; FillState of the clone: expected True, got False; LastResult of the clone after reading its properties: expected 0, got 2"
+    },
+    "Br_CapTests.ArrowCap_MiddleInset_Get_ReturnsTheSetting": {
+      "fails": "1 of 1 checks failed: MiddleInset after it was set to 1.5: expected 1.5, got 0"
+    },
+    "Br_CapTests.ArrowCap_StartStrokeCap_Let_Returns": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+    },
+    "Br_CapTests.ArrowCap_EndStrokeCap_Let_Returns": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+    },
+    "Br_CapTests.ArrowCap_SetStrokeCaps_WithACap_Returns": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+    },
+    "Br_GradientBrushTests.Linear_LinearColors_HasTwoElements": {
+      "fails": "1 of 1 checks failed: number of elements of the array LinearColors returns, for a start and an end colour: expected 2, got 3"
+    },
+    "Br_GradientBrushTests.Linear_LinearRGBs_HasTwoElements": {
+      "fails": "1 of 1 checks failed: number of elements of the array LinearRGBs returns, for a start and an end colour: expected 2, got 3"
+    },
+    "Br_GradientBrushTests.Linear_SetBlend_TwoArrays_Returns": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Br_GradientBrushTests.Linear_SetInterpolationColors_TwoArrays_Returns": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Br_GradientBrushTests.Linear_Transform_Get_ReturnsTheMatrix": {
+      "fails": "2 of 2 checks failed: Transform returns a matrix: expected False, got True; LastResult after reading Transform: expected 0, got 2"
+    },
+    "Br_GradientBrushTests.Path_New_SinglePoint_ReportsTheFailure": {
+      "fails": "1 of 1 checks failed: LastResult of a PathGradientBrush made from a single point: expected True, got False"
+    },
+    "Br_GradientBrushTests.Path_SurroundColors_Get_ReturnsWhatWasSet": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+    },
+    "Br_GradientBrushTests.Path_SetBlend_Returns": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Br_GradientBrushTests.Path_SetInterpolationColors_Returns": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Br_GradientBrushTests.Path_Transform_Get_ReturnsTheMatrix": {
+      "fails": "2 of 2 checks failed: Transform returns a matrix: expected False, got True; LastResult after reading Transform: expected 0, got 2"
+    },
+    "Br_PathDataTests.Point_Get_ReturnsThePoint": {
+      "win32": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      },
+      "win64": "pass"
+    },
+    "Br_PathDataTests.TypedPoint_Get_ReturnsThePointAndItsType": {
+      "win32": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      },
+      "win64": "pass"
+    },
+    "Br_PathDataTests.TypedPoints_Get_ReturnsACopy": {
+      "win32": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      },
+      "win64": "pass"
+    },
+    "Br_PathDataTests.Point_Let_OutOfRange_LeavesTheMemoryBesideTheArrayAlone": {
+      "fails": "1 of 1 checks failed: the four bytes after the three points of a PathData are as they were after Point(4) was set: expected True, got False"
+    },
+    "Br_PathDataTests.Type_Let_OutOfRange_LeavesTheMemoryBesideTheArrayAlone": {
+      "fails": "1 of 1 checks failed: the byte after the eight types of a PathData is as it was after Type(9) was set: expected True, got False"
+    },
+    "Br_PathDataTests.TypedPoint_Let_OutOfRange_LeavesTheMemoryBesideTheArraysAlone": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Br_PathIteratorTests.NextSubpathPath_UDT_ReturnsTheFigure": {
+      "fails": "aborted"
+    },
+    "Br_PathIteratorTests.NextSubpathPath_Direct_ReturnsTheFigure": {
+      "fails": "2 of 3 checks failed: count of the first figure: expected 4, got 0; PointCount of the first figure, a rectangle: expected 4, got 0"
+    },
+    "Br_PathIteratorTests.NextMarkerPath_UDT_ReturnsTheSection": {
+      "fails": "aborted"
+    },
+    "Br_PathIteratorTests.NextMarkerPath_Direct_ReturnsTheCount": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Br_PathIteratorTests.NextMarkerPath_Direct_ReturnsAUsablePath": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Br_PathTests.New_PathData_CreatesThePath": {
+      "fails": "1 of 1 checks failed: PointCount of a path made from a PathData of three points: expected 3, got 0"
+    },
+    "Br_PathTests.New_TypedPoints_CreatesThePath": {
+      "fails": "1 of 1 checks failed: PointCount of a path made from three typed points: expected 3, got 0"
+    },
+    "Br_PathTests.New_PointsAndTypes_CreatesThePath": {
+      "fails": "1 of 1 checks failed: PointCount of a path made from three GpPointF and their types: expected 3, got 0"
+    },
+    "Br_PathTests.New_GpPointsAndTypes_CreatesThePath": {
+      "win32": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      },
+      "win64": {
+        "fails": "2 of 2 checks failed: LastResult of a path made from three GpPoint and their types: expected 0, got 3; PointCount of a path made from three GpPoint and their types: expected 3, got 0"
+      }
+    },
+    "Br_PathTests.PathData_Get_ReturnsThePoints": {
+      "fails": "2 of 2 checks failed: PathData returns an object for a path of four points: expected False, got True; LastResult after reading PathData: expected 0, got 2"
+    },
+    "Br_PenTests.Brush_AfterEarlierFailure_ReturnsTheBrush": {
+      "fails": "1 of 2 checks failed: Brush of a pen that recorded an earlier failure returns the brush: expected False, got True"
+    },
+    "Br_PenTests.CustomStartCap_AfterEarlierFailure_ReturnsTheCap": {
+      "fails": "1 of 2 checks failed: CustomStartCap of a pen that recorded an earlier failure returns the cap: expected False, got True"
+    },
+    "Br_PenTests.CustomStartCap_ArrowCap_ReturnsAUsableCap": {
+      "fails": "3 of 4 checks failed: Height of the arrow cap CustomStartCap returns: expected 3, got 0; Width of the arrow cap CustomStartCap returns: expected 4, got 0; LastResult of the arrow cap CustomStartCap returns: expected 0, got 2"
+    },
+    "Br_PenTests.CustomEndCap_Get_ReturnsTheCap": {
+      "fails": "2 of 3 checks failed: error raised by reading CustomEndCap: expected 0, got 91; CustomEndCap returns the cap: expected False, got True"
+    },
+    "Br_PenTests.CustomEndCap_Get_WithACustomStartCap_ReturnsTheCap": {
+      "fails": "2 of 2 checks failed: error raised by reading CustomEndCap of a pen with a custom start cap and a custom end cap: expected 0, got 438; CustomEndCap returns the cap: expected False, got True"
+    },
+    "Br_PenTests.Transform_Get_ReturnsTheMatrix": {
+      "fails": "2 of 2 checks failed: Transform returns a matrix: expected False, got True; LastResult after reading Transform: expected 0, got 2"
+    },
+    "NewFontWithoutPrefix": {
+      "fails": "expected none on Fx_CompileTests.twin line 5, got TB5074, TB5032"
+    },
+    "LevelsParamsHighlightField": {
+      "fails": "expected none on Fx_CompileTests.twin line 10, got TB5027"
+    },
+    "Fx_EffectTests.Blur_ParametersGetWithoutSize_ReturnsTheParameters": {
+      "fails": "2 of 2 checks failed: Blur.LastResult after reading Parameters without a size: expected 0, got 2; Blur.Parameters.radius read without a size: expected 5, got 0"
+    },
+    "Fx_EffectTests.Sharpen_ParametersGetWithoutSize_ReturnsTheParameters": {
+      "fails": "3 of 3 checks failed: Sharpen.LastResult after reading Parameters without a size: expected 0, got 2; Sharpen.Parameters.radius read without a size: expected 5, got 0; Sharpen.Parameters.amount read without a size: expected 50, got 0"
+    },
+    "Fx_EffectTests.BrightnessContrast_ParametersGetWithoutSize_ReturnsTheParameters": {
+      "fails": "3 of 3 checks failed: BrightnessContrast.LastResult after reading Parameters without a size: expected 0, got 2; BrightnessContrast.Parameters.brightness read without a size: expected 10, got 0; BrightnessContrast.Parameters.contrast read without a size: expected 20, got 0"
+    },
+    "Fx_EffectTests.HueSaturationLightness_ParametersGetWithoutSize_ReturnsTheParameters": {
+      "fails": "4 of 4 checks failed: HueSaturationLightness.LastResult after reading Parameters without a size: expected 0, got 2; HueSaturationLightness.Parameters.hue read without a size: expected 120, got 0; HueSaturationLightness.Parameters.saturation read without a size: expected -20, got 0; HueSaturationLightness.Parameters.lightness read without a size: expected 10, got 0"
+    },
+    "Fx_EffectTests.Levels_ParametersGetWithoutSize_ReturnsTheParameters": {
+      "fails": "4 of 4 checks failed: Levels.LastResult after reading Parameters without a size: expected 0, got 2; Levels.Parameters.highight read without a size: expected 80, got 0; Levels.Parameters.midtone read without a size: expected 50, got 0; Levels.Parameters.shadow read without a size: expected 20, got 0"
+    },
+    "Fx_EffectTests.Tint_ParametersGetWithoutSize_ReturnsTheParameters": {
+      "fails": "3 of 3 checks failed: Tint.LastResult after reading Parameters without a size: expected 0, got 2; Tint.Parameters.hue read without a size: expected 100, got 0; Tint.Parameters.amount read without a size: expected 50, got 0"
+    },
+    "Fx_EffectTests.ColorBalance_ParametersGetWithoutSize_ReturnsTheParameters": {
+      "fails": "4 of 4 checks failed: ColorBalance.LastResult after reading Parameters without a size: expected 0, got 2; ColorBalance.Parameters.cyanRed read without a size: expected 10, got 0; ColorBalance.Parameters.magentaGreen read without a size: expected -20, got 0; ColorBalance.Parameters.yellowBlue read without a size: expected 30, got 0"
+    },
+    "Fx_EffectTests.ColorCurve_ParametersGetWithoutSize_ReturnsTheParameters": {
+      "fails": "4 of 4 checks failed: ColorCurve.LastResult after reading Parameters without a size: expected 0, got 2; ColorCurve.Parameters.adjustment read without a size: expected 2, got 0; ColorCurve.Parameters.channel read without a size: expected 1, got 0; ColorCurve.Parameters.value read without a size: expected 20, got 0"
+    },
+    "Fx_EffectTests.ColorMatrixEffect_ParametersGetWithoutSize_ReturnsTheParameters": {
+      "fails": "3 of 3 checks failed: ColorMatrixEffect.LastResult after reading Parameters without a size: expected 0, got 2; ColorMatrixEffect.Parameters.m(2, 0) read without a size: expected 1, got 0; ColorMatrixEffect.Parameters.m(1, 1) read without a size: expected 1, got 0"
+    },
+    "Fx_EffectTests.ColorLUT_ParametersGetWithoutSize_ReturnsTheParameters": {
+      "fails": "3 of 3 checks failed: ColorLUT.LastResult after reading Parameters without a size: expected 0, got 2; ColorLUT.Parameters.lutB.b(10) read without a size: expected 245, got 0; ColorLUT.Parameters.lutG.b(10) read without a size: expected 10, got 0"
+    },
+    "Fx_EffectTests.RedEyeCorrection_ParametersGetWithoutSize_SetsNoError": {
+      "fails": "1 of 1 checks failed: RedEyeCorrection.LastResult after reading Parameters without a size: expected 0, got 2"
+    },
+    "Fx_EffectTests.ParameterSize_BrightnessContrast_IsTheSizeOfItsParameters": {
+      "fails": "1 of 1 checks failed: BrightnessContrast.ParameterSize: expected 8, got 0"
+    },
+    "Fx_EffectTests.ParameterSize_ColorMatrixEffect_IsTheSizeOfItsParameters": {
+      "fails": "1 of 1 checks failed: ColorMatrixEffect.ParameterSize: expected 100, got 0"
+    },
+    "Fx_EffectTests.ColorBalance_NewWithParams_StoresTheParameters": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Fx_EffectTests.ColorCurve_NewWithParams_StoresTheParameters": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Fx_EffectTests.ColorLUT_NewWithParams_StoresTheParameters": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Fx_EffectTests.ColorMatrixEffect_NewWithParams_StoresTheMatrix": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Fx_EffectTests.HueSaturationLightness_NewWithParams_StoresTheParameters": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Fx_EffectTests.Levels_NewWithParams_StoresTheParameters": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Fx_EffectTests.ColorLUT_NewWithFourArrays_TakesTheAlphaTableFromLutA": {
+      "fails": "1 of 5 checks failed: lutA.b(10) after the four-array form: expected 10, got 245"
+    },
+    "Fx_EffectTests.ColorLUTParams_FromFourArrays_TakesTheAlphaTableFromLutA": {
+      "fails": "1 of 4 checks failed: lutA.b(10) of ColorLUTParams(...): expected 10, got 245"
+    },
+    "Fx_EffectTests.ColorLUT_ApplyEffectWithFourArrays_KeepsAlphaWithTheIdentityTable": {
+      "fails": "1 of 2 checks failed: pixel after inverting blue and keeping alpha, red and green: expected \"FFC864CD\", got \"00C864CD\""
+    },
+    "Fx_EffectTests.RedEyeCorrection_NewWithParams_StoresTheAreas": {
+      "win32": "pass",
+      "win64": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      }
+    },
+    "Fx_EffectTests.RedEyeCorrection_NewKeywordWithParams_StoresTheAreas": {
+      "win32": "pass",
+      "win64": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      }
+    },
+    "Fx_EffectTests.RedEyeCorrection_ParametersGet_AfterSettingAreas_ReturnsTheAreaCount": {
+      "fails": "2 of 3 checks failed: RedEyeCorrection.LastResult after reading Parameters with a size: expected 0, got 2; numberOfAreas read back: expected 2, got 0"
+    },
+    "Fx_EffectTests.RedEyeCorrectionParams_FromArray_CopiesTheAreas": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Fx_FontCollectionTests.InstalledFontCollection_Create_ReturnsACollection": {
+      "fails": "2 of 2 checks failed: Err.Number after InstalledFontCollection() (Object doesn't support this property or method): expected 0, got 438; InstalledFontCollection() returns an object: expected False, got True"
+    },
+    "Fx_FontCollectionTests.InstalledFontCollection_New_ReturnsACollection": {
+      "fails": "2 of 2 checks failed: Err.Number after New InstalledFontCollection (Object doesn't support this property or method): expected 0, got 438; New InstalledFontCollection returns an object: expected False, got True"
+    },
+    "Fx_FontCollectionTests.InstalledFontCollection_FamilyCount_CountsTheInstalledFamilies": {
+      "fails": "1 of 1 checks failed: InstalledFontCollection() returned Nothing"
+    },
+    "Fx_FontCollectionTests.InstalledFontCollection_Families_IsOneBasedAndHoldsAnArialFamily": {
+      "fails": "1 of 1 checks failed: InstalledFontCollection() returned Nothing"
+    },
+    "Fx_FontCollectionTests.PrivateFontCollection_Create_ReturnsAnEmptyCollection": {
+      "fails": "2 of 2 checks failed: Err.Number after PrivateFontCollection() (Object doesn't support this property or method): expected 0, got 438; PrivateFontCollection() returns an object: expected False, got True"
+    },
+    "Fx_FontCollectionTests.PrivateFontCollection_New_ReturnsACollection": {
+      "fails": "2 of 2 checks failed: Err.Number after New PrivateFontCollection (Object doesn't support this property or method): expected 0, got 438; New PrivateFontCollection returns an object: expected False, got True"
+    },
+    "Fx_FontCollectionTests.PrivateFontCollection_AddFontFile_AddsTheFamilyOfTheFile": {
+      "fails": "1 of 1 checks failed: PrivateFontCollection() returned Nothing"
+    },
+    "Fx_FontCollectionTests.PrivateFontCollection_AddFontFile_MissingFile_ReturnsFileNotFound": {
+      "fails": "1 of 1 checks failed: PrivateFontCollection() returned Nothing"
+    },
+    "Fx_FontCollectionTests.PrivateFontCollection_FontFromTheCollection_IsAvailable": {
+      "fails": "1 of 1 checks failed: PrivateFontCollection() returned Nothing"
+    },
+    "Fx_FontTests.FamilyName_OfAnInstalledFamily_EqualsTheNameGiven": {
+      "fails": "1 of 2 checks failed: FontFamily(\"Arial\").FamilyName: expected \"Arial\", got \"Arial"
+    },
+    "Fx_FontTests.FamilyName_OfAGenericFamily_HasNoNulCharacter": {
+      "fails": "1 of 2 checks failed: position of a NUL character in GenericSansSerif().FamilyName: expected 0, got 21"
+    },
+    "Fx_FontTests.Font_VariableDeclaredAsFont_HoldsAGdiPlusFont": {
+      "fails": "1 of 1 checks failed: Err.Number after assigning a GDI+ font to a variable declared As Font (No such interface supported): expected 0, got -2147467262"
+    },
+    "Fx_StringFormatTests.Alignment_GetAfterSettingCenter_ReturnsCenter": {
+      "fails": "1 of 1 checks failed: Alignment after setting StringAlignmentCenter: expected 1, got 0"
+    },
+    "Fx_StringFormatTests.Alignment_GetAfterSettingFar_ReturnsFar": {
+      "fails": "1 of 1 checks failed: Alignment after SetAlignmentFar: expected 2, got 0"
+    },
+    "Fx_StringFormatTests.Alignment_Get_LeavesLastResultOk": {
+      "fails": "1 of 1 checks failed: LastResult after reading Alignment: expected 0, got 2"
+    },
+    "Fx_StringFormatTests.IsAlignmentCenter_AfterSettingCenter_IsTrue": {
+      "fails": "2 of 3 checks failed: IsAlignmentCenter after SetAlignmentCenter: expected True, got False; IsAlignmentNear after SetAlignmentCenter: expected False, got True"
+    },
+    "Fx_StringFormatTests.IsAlignmentFar_AfterSettingFar_IsTrue": {
+      "fails": "2 of 2 checks failed: IsAlignmentFar after setting StringAlignmentFar: expected True, got False; IsAlignmentNear after setting StringAlignmentFar: expected False, got True"
+    },
+    "Fx_StringFormatTests.GetTabStops_FirstForm_ReturnsTheFirstTabOffset": {
+      "fails": "1 of 1 checks failed: the first tab offset returned by GetTabStops(firstTabOffset): expected 5, got 0"
+    },
+    "Fx_StringFormatTests.SetDigitSubstitutionUser_KeepsTheLanguage": {
+      "fails": "1 of 2 checks failed: language after SetDigitSubstitutionUser: expected 1031, got 0"
+    },
+    "Fx_StringFormatTests.SetDigitSubstitutionNone_KeepsTheLanguage": {
+      "fails": "1 of 2 checks failed: language after SetDigitSubstitutionNone: expected 1031, got 0"
+    },
+    "Fx_StringFormatTests.SetDigitSubstitutionNational_KeepsTheLanguage": {
+      "fails": "1 of 2 checks failed: language after SetDigitSubstitutionNational: expected 1031, got 0"
+    },
+    "Fx_StringFormatTests.SetDigitSubstitutionTraditional_KeepsTheLanguage": {
+      "fails": "1 of 2 checks failed: language after SetDigitSubstitutionTraditional: expected 1031, got 0"
+    },
+    "Fx_StringFormatTests.DigitSubstitutionLanguage_Let_KeepsTheMethod": {
+      "fails": "1 of 2 checks failed: method after setting DigitSubstitutionLanguage: expected 2, got 0"
+    },
+    "Ty_CColorTests.DarkSeaGreen_HasTheCssValue": {
+      "fails": "1 of 1 checks failed: CColor.DarkSeaGreen: expected \"FF8FBC8F\", got \"FF8FBC8B\""
+    },
+    "Ty_CColorTests.SolidBrush_TransparentMemberDrawsNothing": {
+      "fails": "1 of 1 checks failed: pixel of a black bitmap after FillRectangle with SolidBrush(CColor.Transparent): expected \"FF000000\", got \"FFFFFFFF\""
+    },
+    "Ty_CColorTests.Pen_TransparentMemberDrawsNothing": {
+      "fails": "1 of 1 checks failed: pixel of a black bitmap on the line of Pen(CColor.Transparent): expected \"FF000000\", got \"FFFFFFFF\""
+    },
+    "Ty_CColorTests.Clear_TransparentMemberClearsToTransparent": {
+      "fails": "1 of 1 checks failed: alpha of the pixel after Graphics.Clear CColor.Transparent: expected 0, got 255"
+    },
+    "Ty_ColorTests.AsCOLORREF_ReturnsAColorref": {
+      "fails": "2 of 2 checks failed: AsCOLORREF of Color(&H22, &H33, &H44) (a COLORREF is &H00BBGGRR): expected \"00443322\", got \"00223344\"; AsCOLORREF of Color(&H22, &H33, &H44) against VBA.RGB(&H22, &H33, &H44): expected \"00443322\", got \"00223344\""
+    },
+    "Ty_ColorTests.FromCOLORREF_ReadsAColorref": {
+      "fails": "2 of 2 checks failed: Value of FromCOLORREF(RGB(&H22, &H33, &H44)): expected \"FF223344\", got \"FF443322\"; Value of FromCOLORREF(vbRed): expected \"FFFF0000\", got \"FF0000FF\""
+    },
+    "Ty_ColorTests.SetFromCOLORREF_ReadsAColorref": {
+      "fails": "2 of 2 checks failed: Value after SetFromCOLORREF RGB(&H22, &H33, &H44): expected \"FF223344\", got \"FF443322\"; Value after SetFromCOLORREF vbRed: expected \"FFFF0000\", got \"FF0000FF\""
+    },
+    "Ty_ColorTests.RotatedHue_KeepsTheAlpha": {
+      "fails": "1 of 1 checks failed: Value of Color(255, 0, 0).RotatedHue(120): expected \"FF00FF00\", got \"0000FF00\""
+    },
+    "Ty_ColorTests.RotateHue_KeepsTheAlpha": {
+      "fails": "1 of 1 checks failed: Value of Color(255, 0, 0) after RotateHue 120: expected \"FF00FF00\", got \"0000FF00\""
+    },
+    "Ty_GpPointTests.DotProd_ProductAboveTheRangeOfALongIsReturned": {
+      "fails": "2 of 2 checks failed: Err.Number after DotProd of (50000, 0) and (50000, 0): expected 0, got 6; DotProd of (50000, 0) and (50000, 0): expected 2500000000, got 0"
+    },
+    "Ty_GpRectFTests.GpRectFFrom_ReadsTheLongEdgesStructure": {
+      "fails": "1 of 1 checks failed: GpRectFFrom of a GDIP_RECT with the edges 1, 2, 11, 22: expected \"1,2,10,20\", got \"0,0,0,0\""
+    },
+    "Ty_GpSizeFTests.GpSizeFFrom_ReadsTheSizeStructure": {
+      "fails": "1 of 1 checks failed: GpSizeFFrom of a GDIP_SIZE of 9 by 10: expected \"9,10\", got \"0,0\""
+    },
+    "Ty_GpSizeTests.GpSizeFrom_ReadsTheSizeStructure": {
+      "fails": "1 of 1 checks failed: GpSizeFrom of a GDIP_SIZE of 9 by 10: expected \"9,10\", got \"0,0\""
+    },
+    "Ty_StartupTests.Function_StartupParametersFormGivesVersionTwo": {
+      "win32": {
+        "fails": "2 of 2 checks failed: GdiplusVersion of GdiplusStartupInput(GdiplusStartupNoSetRound): expected 2, got 1; StartupParameters of GdiplusStartupInput(GdiplusStartupNoSetRound): expected 1, got 0"
+      },
+      "win64": "pass"
+    },
+    "Ty_StartupTests.Function_VersionFormGivesThatVersion": {
+      "win32": {
+        "fails": "2 of 2 checks failed: GdiplusVersion of GdiplusStartupInput(3, GdiplusStartupDefault): expected 3, got 2; StartupParameters of GdiplusStartupInput(3, GdiplusStartupDefault): expected 0, got 3"
+      },
+      "win64": "pass"
+    },
+    "Ty_StartupTests.ModuleFunctions_HookAndUnhookWithALongPtrToken": {
+      "fails": "2 of 2 checks failed: the status of the module function NotificationHook(token) after GDI+ was started with the output: expected 0, got 1; the token that the module function NotificationHook returned: expected True, got False"
+    },
+    "Ty_StartupTests.NotificationHookProc_DoesNotWriteBeyondTheToken": {
+      "win32": "pass",
+      "win64": {
+        "fails": "1 of 2 checks failed: the four bytes after the Long token variable after NotificationHookProc wrote the token: expected \"12345678\", got \"00000000\""
+      }
+    },
+    "Im_AttributeTests.ColorKey_LongFormTakesAVbColour": {
+      "fails": "1 of 1 checks failed: the pixel of the colour 200, 100, 50 after SetColorKey with RGB(200, 100, 50) twice (black means keyed out; the value is a VB colour): expected -16777216, got -3644366"
+    },
+    "Im_BitmapTests.New_TwoIntegerArgumentsMakeABitmap": {
+      "fails": "3 of 3 checks failed: LastResult of Bitmap(8, 6) with two Integer arguments (0 is Ok, 7 is Win32Error): expected 0, got 7; Width of Bitmap(8, 6): expected 8, got 0; Height of Bitmap(8, 6): expected 6, got 0"
+    },
+    "Im_BitmapTests.New_NewKeywordWithTwoIntegerArguments": {
+      "fails": "2 of 2 checks failed: LastResult of New Bitmap(8, 6) with two Integer arguments (0 is Ok, 7 is Win32Error): expected 0, got 7; Width of New Bitmap(8, 6): expected 8, got 0"
+    },
+    "Im_BitmapTests.ConvertFormat_FixedBWWithABlankPalette": {
+      "fails": "1 of 3 checks failed: the white pixel after the conversion with PaletteTypeFixedBW and a blank palette: expected -1, got -16777216"
+    },
+    "Im_BitmapTests.ConvertFormat_OptimalWithABlankPalette": {
+      "fails": "1 of 2 checks failed: the pixel of a bitmap of one colour after the conversion with PaletteTypeOptimal and a blank palette: expected -3644366, got 0"
+    },
+    "Im_CodecTests.GetImageEncoders_ReturnsTheInstalledEncoders": {
+      "hangs": true
+    },
+    "Im_CodecTests.GetImageDecoders_ReturnsTheInstalledDecoders": {
+      "hangs": true
+    },
+    "Im_CodecTests.Text_PropertiesHaveNoTerminatingNull": {
+      "fails": "4 of 4 checks failed: FormatDescription of the PNG encoder equals \"PNG\" (its length is 4): expected True, got False; MimeType of the PNG encoder equals \"image/png\" (its length is 10): expected True, got False; FilenameExtension of the PNG encoder equals \"*.PNG\" (its length is 6): expected True, got False; CodecName of the PNG encoder equals \"Built-in PNG Codec\" (its length is 19): expected True, got False"
+    },
+    "Im_ImageTests.Save_EmptyParameterArrayWritesFile": {
+      "win32": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      },
+      "win64": {
+        "fails": "2 of 2 checks failed: Save of a PNG with the one-element parameter array (no parameters) returns (0 is Ok): expected 0, got 2; Save of a PNG with the one-element parameter array writes a file of more than 0 bytes (its length is 0): expected True, got False"
+      }
+    },
+    "Im_ImageTests.Save_JpegQualityChangesFileSize": {
+      "win32": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      },
+      "win64": {
+        "fails": "1 of 4 checks failed: a JPEG saved with a quality of 10 is smaller than one saved with 100 (sizes 2910 and 2910): expected True, got False"
+      }
+    },
+    "Im_ImageTests.Save_ParameterArrayStartingAtOneIsRefused": {
+      "win32": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      },
+      "win64": "pass"
+    },
+    "Im_ImageTests.SaveAdd_MultiFrameTiffHasTwoFrames": {
+      "win32": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+      },
+      "win64": {
+        "fails": "3 of 4 checks failed: SaveAddImage of the second frame returns (0 is Ok): expected 0, got 7; SaveAdd that flushes the file returns (0 is Ok): expected 0, got 7; the page count of the TIFF written with Save, SaveAddImage and SaveAdd: expected 2, got 1"
+      }
+    },
+    "Im_ImageTests.Palette_LetChangesThePicture": {
+      "fails": "2 of 2 checks failed: setting Palette of an 8-bit indexed bitmap leaves LastResult (0 is Ok): expected 0, got 2; the colour of a pixel of an 8-bit indexed bitmap after Palette is set to one colour (it was FF000000): expected -15654349, got -16777216"
+    },
+    "Im_ImageTests.PropertyItem_PropertyOfTheReturnedElement": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Im_ImageTests.GetEncoderParameterList_JpegListsTheQuality": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)"
+    },
+    "Im_MetafileTests.New_FromFileName": {
+      "fails": "1 of 2 checks failed: Err.Number of Metafile(filename) (Type mismatch): expected 0, got 13"
+    },
+    "Im_MetafileTests.New_RecordingToFileNameWithReferenceDc": {
+      "fails": "1 of 1 checks failed: Err.Number of Metafile(filename, referenceHdc) (Type mismatch): expected 0, got 13"
+    },
+    "Im_MetafileTests.New_RecordingWithReferenceDcAndType": {
+      "fails": "1 of 1 checks failed: Err.Number of Metafile(referenceHdc, EmfTypeEmfPlusOnly) (Type mismatch): expected 0, got 13"
+    },
+    "Im_MetafileTests.New_ReferenceDcAloneRecords": {
+      "fails": "1 of 1 checks failed: LastResult of Metafile(referenceHdc) (0 is Ok, 1 is GenericError): expected 0, got 1"
+    },
+    "Im_MetafileTests.ConvertToEmfPlus_WithoutFileNameOrStream": {
+      "fails": "1 of 1 checks failed: Err.Number of ConvertToEmfPlus(g) (Type mismatch): expected 0, got 13"
+    },
+    "Im_TypeTests.GpPropertyItem_TheSByteReadsASignedByte": {
+      "fails": "1 of 2 checks failed: TheSByte of an item of the type signed byte that holds 5: expected 5, got 0"
+    },
+    "Im_TypeTests.GpPropertyItem_TheSShortReadsASignedShort": {
+      "fails": "1 of 2 checks failed: TheSShort of an item of the type signed short that holds -300: expected -300, got 0"
+    },
+    "Im_TypeTests.GpPropertyItem_TheSLongReadsASignedLong": {
+      "fails": "1 of 2 checks failed: TheSLong of an item of the type signed long that holds -100000: expected -100000, got 0"
+    },
+    "Im_TypeTests.GpPropertyItem_TheDoubleReadsADouble": {
+      "fails": "1 of 2 checks failed: TheDouble of an item of the type double that holds 2.5: expected 2.5, got 0"
+    },
+    "Im_TypeTests.GpPropertyItem_AsDoubleCoversTheSignedAndDoubleTypes": {
+      "fails": "4 of 4 checks failed: AsDouble of an item of the type signed byte that holds 5: expected 5, got 0; AsDouble of an item of the type signed short that holds -300: expected -300, got 0; AsDouble of an item of the type signed long that holds -100000: expected -100000, got 0; AsDouble of an item of the type double that holds 2.5: expected 2.5, got 0"
+    },
+    "Im_TypeTests.GpPropertyItem_GetSRationalReadsASignedRational": {
+      "fails": "2 of 2 checks failed: the numerator that GetSRational reads from an item that holds -7/2: expected -7, got 0; the denominator that GetSRational reads from an item that holds -7/2: expected 2, got 0"
+    },
+    "Im_TypeTests.ColorPalette_FunctionCopiesTheColours": {
+      "fails": "2 of 4 checks failed: entries(0) of ColorPalette(PaletteFlagsGrayScale, colours): expected -16777216, got 0; entries(1) of ColorPalette(PaletteFlagsGrayScale, colours): expected -1, got 0"
+    },
+    "Im_ZStackTests.Palette_GetReturnsThePalette": {
+      "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+    }
+  }
+}

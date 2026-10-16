@@ -1,0 +1,202 @@
+' GdiPlus, the imaging types: GpPropertyItem readers, ColorPalette and ColorMask. A property item
+' is described by hand: its type, its length and the address of a variable that holds the value.
+[TestFixture]
+Module Im_TypeTests
+
+    [TestCase]
+    Public Sub GpPropertyItem_TheSByteReadsASignedByte()
+        Expect.Begin
+        Dim v As Byte = 5
+        Dim item As GpPropertyItem
+        item.Id = PropertyTagImageDescription
+        item._type = PropertyTagTypeSByte
+        item._length = 1
+        item._address = VarPtr(v)
+        Expect.IsTrue item.IsSByte, "IsSByte of an item of the type signed byte"
+        Expect.AreEqual 5, item.TheSByte, "TheSByte of an item of the type signed byte that holds 5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpPropertyItem_TheSShortReadsASignedShort()
+        Expect.Begin
+        Dim v As Integer = -300
+        Dim item As GpPropertyItem
+        item.Id = PropertyTagImageDescription
+        item._type = PropertyTagTypeSShort
+        item._length = 2
+        item._address = VarPtr(v)
+        Expect.IsTrue item.IsSShort, "IsSShort of an item of the type signed short"
+        Expect.AreEqual -300, item.TheSShort, "TheSShort of an item of the type signed short that holds -300"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpPropertyItem_TheSLongReadsASignedLong()
+        Expect.Begin
+        Dim v As Long = -100000
+        Dim item As GpPropertyItem
+        item.Id = PropertyTagImageDescription
+        item._type = PropertyTagTypeSLong
+        item._length = 4
+        item._address = VarPtr(v)
+        Expect.IsTrue item.IsSLong, "IsSLong of an item of the type signed long"
+        Expect.AreEqual -100000, item.TheSLong, "TheSLong of an item of the type signed long that holds -100000"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpPropertyItem_TheDoubleReadsADouble()
+        Expect.Begin
+        Dim v As Double = 2.5
+        Dim item As GpPropertyItem
+        item.Id = PropertyTagImageDescription
+        item._type = PropertyTagTypeDouble
+        item._length = 8
+        item._address = VarPtr(v)
+        Expect.IsTrue item.IsDouble, "IsDouble of an item of the type double"
+        Expect.AreEqual 2.5, item.TheDouble, "TheDouble of an item of the type double that holds 2.5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpPropertyItem_AsDoubleCoversTheSignedAndDoubleTypes()
+        Expect.Begin
+        Dim sb As Byte = 5
+        Dim ss As Integer = -300
+        Dim sl As Long = -100000
+        Dim d As Double = 2.5
+        Dim item As GpPropertyItem
+        item.Id = PropertyTagImageDescription
+
+        item._type = PropertyTagTypeSByte
+        item._length = 1
+        item._address = VarPtr(sb)
+        Expect.AreEqual 5, item.AsDouble, "AsDouble of an item of the type signed byte that holds 5"
+
+        item._type = PropertyTagTypeSShort
+        item._length = 2
+        item._address = VarPtr(ss)
+        Expect.AreEqual -300, item.AsDouble, "AsDouble of an item of the type signed short that holds -300"
+
+        item._type = PropertyTagTypeSLong
+        item._length = 4
+        item._address = VarPtr(sl)
+        Expect.AreEqual -100000, item.AsDouble, "AsDouble of an item of the type signed long that holds -100000"
+
+        item._type = PropertyTagTypeDouble
+        item._length = 8
+        item._address = VarPtr(d)
+        Expect.AreEqual 2.5, item.AsDouble, "AsDouble of an item of the type double that holds 2.5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpPropertyItem_TheSRationalReadsASignedRational()
+        Expect.Begin
+        Dim ratio(0 To 1) As Long
+        ratio(0) = -7
+        ratio(1) = 2
+        Dim item As GpPropertyItem
+        item.Id = PropertyTagXResolution
+        item._type = PropertyTagTypeSRational
+        item._length = 8
+        item._address = VarPtr(ratio(0))
+        Expect.AreEqual -3.5, item.TheSRational, "TheSRational of an item that holds -7/2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpPropertyItem_GetSRationalReadsASignedRational()
+        Expect.Begin
+        Dim ratio(0 To 1) As Long
+        ratio(0) = -7
+        ratio(1) = 2
+        Dim item As GpPropertyItem
+        item.Id = PropertyTagXResolution
+        item._type = PropertyTagTypeSRational
+        item._length = 8
+        item._address = VarPtr(ratio(0))
+        Dim num As Long, denom As Long
+        item.GetSRational num, denom
+        Expect.AreEqual -7, num, "the numerator that GetSRational reads from an item that holds -7/2"
+        Expect.AreEqual 2, denom, "the denominator that GetSRational reads from an item that holds -7/2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpPropertyItem_UnsignedReadersWork()
+        Expect.Begin
+        Dim b As Byte = 200
+        Dim s As Integer = -1                ' 65535 as an unsigned short
+        Dim ratio(0 To 1) As Long
+        ratio(0) = 7
+        ratio(1) = 2
+        Dim item As GpPropertyItem
+        item.Id = PropertyTagImageDescription
+
+        item._type = PropertyTagTypeByte
+        item._length = 1
+        item._address = VarPtr(b)
+        Expect.AreEqual 200, item.TheByte, "TheByte of an item of the type byte that holds 200"
+
+        item._type = PropertyTagTypeShort
+        item._length = 2
+        item._address = VarPtr(s)
+        Expect.AreEqual 65535, item.TheShort, "TheShort of an item of the type short that holds 65535"
+
+        item._type = PropertyTagTypeRational
+        item._length = 8
+        item._address = VarPtr(ratio(0))
+        Expect.AreEqual 3.5, item.TheRational, "TheRational of an item that holds 7/2"
+        Expect.Done
+    End Sub
+
+    ' ---- ColorPalette
+
+    [TestCase]
+    Public Sub ColorPalette_FunctionCopiesTheColours()
+        Expect.Begin
+        Dim colours(0 To 1) As Long
+        colours(0) = &HFF000000
+        colours(1) = &HFFFFFFFF
+        Dim made As ColorPalette = ColorPalette(PaletteFlagsGrayScale, colours)
+        Expect.AreEqual 2, made.count, "count of ColorPalette(PaletteFlagsGrayScale, colours) for two colours"
+        Expect.AreEqual CLng(PaletteFlagsGrayScale), CLng(made.flags), "flags of ColorPalette(PaletteFlagsGrayScale, colours)"
+        Expect.AreEqual &HFF000000, made.entries(0), "entries(0) of ColorPalette(PaletteFlagsGrayScale, colours)"
+        Expect.AreEqual &HFFFFFFFF, made.entries(1), "entries(1) of ColorPalette(PaletteFlagsGrayScale, colours)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorPalette_EntriesSetOneAtATimeAreKept()
+        Expect.Begin
+        Dim pal As ColorPalette
+        pal.flags = PaletteFlagsGrayScale
+        pal.count = 2
+        pal.entries(0) = &HFF000000
+        pal.entries(1) = &HFFFFFFFF
+        Expect.AreEqual 2, pal.count, "count of a palette filled in by hand"
+        Expect.AreEqual &HFFFFFFFF, pal.entries(1), "entries(1) of a palette filled in by hand"
+        Expect.Done
+    End Sub
+
+    ' ---- ColorMask
+
+    [TestCase]
+    Public Sub ColorMask_AlphaShiftOfTheMaskedValueIsMinusOne()
+        Expect.Begin
+        Dim argb As Long = CColor.Orange
+        Expect.AreEqual &HFF000000, AlphaMask, "AlphaMask"
+        Expect.AreEqual &HFF0000, RedMask, "RedMask"
+        Expect.AreEqual &HFF00&, GreenMask, "GreenMask"
+        Expect.AreEqual &HFF&, BlueMask, "BlueMask"
+        Expect.AreEqual 255, (argb And RedMask) >> RedShift, "the red of CColor.Orange through RedMask and RedShift"
+        Expect.AreEqual 165, (argb And GreenMask) >> GreenShift, "the green of CColor.Orange through GreenMask and GreenShift"
+        Expect.AreEqual -1, (argb And AlphaMask) >> AlphaShift, "the alpha of CColor.Orange through AlphaMask and AlphaShift (the sign bit is copied)"
+        Expect.AreEqual 255, ((argb And AlphaMask) >> AlphaShift) And &HFF, "the alpha of CColor.Orange through AlphaMask, AlphaShift and &HFF"
+        Expect.AreEqual 255, Color(argb).Alpha, "Alpha of Color(CColor.Orange)"
+        Expect.Done
+    End Sub
+
+End Module

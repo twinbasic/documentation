@@ -43,6 +43,7 @@ Syntax: *params* **=** *fx*.**Parameters**( *size* )
 
 Gets or sets the [**TintParams**](Types/TintParams).
 
+<!-- test: Fx_EffectTests.Tint_ParametersGetWithoutSize_ReturnsTheParameters -->
 > [!WARNING] 0.9.45.0
 > The getter returns zeros and sets **LastResult** to 2 (**InvalidParameter**) unless it is given *size*, the size of the structure: `fx.Parameters(LenB(Of TintParams))`. See [**Effect**](Effect#parameters).
 

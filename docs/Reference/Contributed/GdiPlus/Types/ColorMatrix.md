@@ -28,6 +28,7 @@ The array is indexed by the **output** component first and the **input** compone
 | **m**(**j**, 4) | adds the value, as a fraction of 255, to channel **j** |
 | **m**(4, 4) | 1 |
 
+<!-- test: Fx_EffectTests.ColorMatrix_FirstIndexIsTheOutputComponent_ImageAttributes, Fx_EffectTests.ColorMatrix_FirstIndexIsTheOutputComponent_ColorMatrixEffect -->
 > [!NOTE] 0.9.45.0
 > The two indexes are the reverse of the C++ `ColorMatrix`, where `m[i][j]` has the input row first: the array is stored so that its memory layout is the one GDI+ expects. To add a value to red, set **m**(0, 4), not `m[4][0]`.
 

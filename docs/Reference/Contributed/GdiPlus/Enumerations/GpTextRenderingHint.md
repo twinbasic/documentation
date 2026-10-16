@@ -12,6 +12,7 @@ Specifies the process used to render text, which affects the quality of the text
 
 A process that gives higher quality is generally slower than one that gives lower quality. **TextRenderingHintClearTypeGridFit** gives the best quality for most LCD monitors and relatively small font sizes. **TextRenderingHintAntiAlias** gives the best quality for rotated text.
 
+<!-- test: Gr_GraphicsTests.DrawString_ClearTypeGridFitWithSourceCopy_ReturnsInvalidParameter -->
 > [!NOTE] timeless
 > **TextRenderingHintClearTypeGridFit** cannot be used together with [**CompositingModeSourceCopy**](GpCompositingMode).
 

@@ -11,7 +11,10 @@ has_toc: false
 
 A colour with an alpha (opacity) channel and red, green and blue channels of 8 bits each.
 
+<!-- test: Ty_ColorTests.Color_HoldsOneLongField -->
 **Color** is the colour that pens, brushes, **Clear** and the drawing methods take, and that **GetPixel** returns. It holds one **Long** field, **argb**, laid out as `&HAARRGGBB`: alpha in the top byte, then red, green and blue. Alpha 255 is opaque and 0 is fully transparent. It mirrors the `Color` class of the GDI+ C++ wrapper.
+<!-- /test -->
+
 
 | Byte of **argb** | Channel | Shift |
 |---|---|---|
@@ -22,6 +25,7 @@ A colour with an alpha (opacity) channel and red, green and blue channels of 8 b
 
 The common named colours (`CColor.Red`, `CColor.AliceBlue`, ...) are in the enumeration [**CColor**](../Enumerations/CColor); each is an opaque colour in this layout, except **Transparent**.
 
+<!-- test: Ty_ColorTests.Declared_IsTransparentBlackNotBlack, Ty_ColorTests.Declared_DrawsNothing -->
 > [!NOTE] 0.9.45.0
 > A variable declared with `Dim c As Color` holds 0: a fully transparent black, not black. Drawing with it shows nothing. Create colours with the module function **Color**, which gives an opaque colour.
 
@@ -33,6 +37,7 @@ Syntax: **Color**( *r*, *g*, *b* ) \
 Syntax: **Color**( *a*, *r*, *g*, *b* ) \
 Syntax: **Color**( *argb* )
 
+<!-- test: Ty_ColorTests.Color_FormsGiveTheDocumentedValues -->
 The module functions **Color** and **NoColor** return a new colour.
 
 **Color**( ) returns opaque black, `&HFF000000`. **NoColor**( ) returns 0, which is transparent black and is what **IsNull** tests for.
@@ -45,7 +50,9 @@ The module functions **Color** and **NoColor** return a new colour.
 
 *argb*
 : *required* A **Long** that is stored as it is, in the layout `&HAARRGGBB`. A member of [**CColor**](../Enumerations/CColor) is accepted.
+<!-- /test -->
 
+<!-- test: Ty_ColorTests.Color_ChannelsAreMaskedWithoutError -->
 > [!NOTE] 0.9.45.0
 > The channel arguments are masked with `&HFF` and are not checked: `Color(300, -1, 0, 256)` is `&H2CFF0000`. No error is raised.
 
@@ -68,9 +75,11 @@ Debug.Print Hex$(Color(300, -1, 0, 256).Value)                   ' 2CFF0000
 
 Syntax: *color*.**Alpha** [ = *value* ] As **Integer**
 
+<!-- test: Ty_ColorTests.Channels_GettersAndAliasesAgree, Ty_ColorTests.Channels_SetterOutOfRangeRaisesOverflowAndKeepsTheColour -->
 Returns or sets one channel. **A**, **R**, **G** and **B** are the same four properties under shorter names.
 
 The getters return an **Integer** from 0 to 255. The setters take a **Byte**: a value outside 0 to 255 raises error 6, *Overflow*, and the colour is not changed.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -90,6 +99,7 @@ Debug.Print Err.Number                                                    ' 6
 
 Syntax: *color*.**Value** [ = *argb* ] As **Long**
 
+<!-- test: Ty_ColorTests.Value_AndArgbFieldAreTheSame, Ty_ColorTests.IsTransparent_IsTrueOnlyForTheExactValue -->
 Returns or sets the colour as `&HAARRGGBB`. The field **argb** holds the same number.
 
 ### IsNull
@@ -103,6 +113,7 @@ Read-only. **True** when the value is 0.
 Syntax: *color*.**IsTransparent** As **Boolean**
 
 Read-only. **True** only when the value is exactly `&H00FFFFFF`, the value of **CColor.Transparent**. A colour with alpha 0 and other channels is not reported as transparent.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -122,17 +133,23 @@ Windows and Visual Basic keep a colour as a `COLORREF`, `&H00BBGGRR`, with red i
 
 Syntax: *color*.**RGB** As **Long**
 
+<!-- test: Ty_ColorTests.RGB_And_BGR_ReturnTheTwoLayouts -->
 Read-only. Returns the colour as `&H00RRGGBB`, without the alpha channel.
+<!-- /test -->
 
 ### BGR
 
 Syntax: *color*.**BGR** [ = *colorref* ] As **Long**
 
+<!-- test: Ty_ColorTests.RGB_And_BGR_ReturnTheTwoLayouts, Ty_ColorTests.BGR_SetterTakesAColorrefAndMakesTheColourOpaque -->
 Returns the colour as a `COLORREF`, `&H00BBGGRR`, which is the value of the `RGB` function and of a Visual Basic colour constant such as `vbRed`. Setting it takes a `COLORREF` and gives an opaque colour. This is the conversion to use for Windows colours.
+<!-- /test -->
 
+<!-- test: Ty_ColorTests.BGR_SystemColourIsNotTranslated, Ty_ColorTests.BGR_AfterOleTranslateColorGivesTheSystemColour -->
 > [!NOTE] 0.9.45.0
-> **BGR** converts the colour values only. The system colours of Visual Basic, such as `vbButtonFace` (`&H8000000F`), are not translated to the colours that Windows currently uses: the setter gives a nearly black blue. Translate them first with the Windows function `OleTranslateColor`.
+> **BGR** converts the colour values only. The system colours of Visual Basic, such as `vbButtonFace` (`&H8000000F`), are not translated to the colours that Windows currently uses: the setter gives a nearly black red. Translate them first with the Windows function `OleTranslateColor`.
 
+<!-- test: Ty_ColorTests.SolidBrush_LongIsReadAsRGB, Ty_ColorTests.Pen_LongIsReadAsRGB, Ty_ColorTests.Clear_LongIsReadAsRGB, Ty_ColorTests.SolidBrush_LongMakesTheColourOpaque, Ty_ColorTests.SolidBrush_ColorWithBgrSetDrawsTheVisualBasicColour -->
 > [!NOTE] 0.9.45.0
 > The methods of the package that take a plain **Long** colour (such as the constructors of **SolidBrush** and **Pen**) read it as `&H00RRGGBB`, not as a `COLORREF`, and make it opaque. `SolidBrush(vbRed)` is blue. Pass `Color(...)`, or a **Color** whose **BGR** you have set, to draw a Visual Basic colour.
 
@@ -140,6 +157,7 @@ Returns the colour as a `COLORREF`, `&H00BBGGRR`, which is the value of the `RGB
 
 Syntax: *color*.**AsCOLORREF**( ) As **Long**
 
+<!-- test: Ty_ColorTests.AsCOLORREF_ReturnsAColorref -->
 > [!WARNING] 0.9.45.0
 > **AsCOLORREF** returns `&H00RRGGBB`, the same as **RGB**, and not a `COLORREF`: red and blue are the wrong way round for Windows. Use **BGR**.
 
@@ -148,6 +166,7 @@ Syntax: *color*.**AsCOLORREF**( ) As **Long**
 Syntax: **FromCOLORREF**( *colorref* ) As **Color** \
 Syntax: *color*.**SetFromCOLORREF**( *colorref* )
 
+<!-- test: Ty_ColorTests.FromCOLORREF_ReadsAColorref, Ty_ColorTests.SetFromCOLORREF_ReadsAColorref, Ty_ColorTests.Colorref_WorkaroundsConvertCorrectly -->
 > [!WARNING] 0.9.45.0
 > Both read the argument as `&H00RRGGBB` and swap red and blue: `FromCOLORREF(vbRed)` is blue. To convert a `COLORREF`, set **BGR** on a colour, or write `Color(255, c And &HFF, (c And &HFF00&) \ &H100, (c And &HFF0000) \ &H10000)`.
 
@@ -172,26 +191,34 @@ Syntax: *color*.**GetRGBB**( *r* As **Byte**, *g* As **Byte**, *b* As **Byte** )
 Syntax: *color*.**GetRGBI**( *r* As **Integer**, *g* As **Integer**, *b* As **Integer** ) \
 Syntax: *color*.**GetRGBL**( *r* As **Long**, *g* As **Long**, *b* As **Long** )
 
+<!-- test: Ty_ColorTests.GetRGB_ReturnsTheChannelsInTheGivenType -->
 Return the three channels, 0 to 255, in variables of the given type.
+<!-- /test -->
 
 ### GetRGBS, GetRGBD
 
 Syntax: *color*.**GetRGBS**( *r* As **Single**, *g* As **Single**, *b* As **Single** ) \
 Syntax: *color*.**GetRGBD**( *r* As **Double**, *g* As **Double**, *b* As **Double** )
 
+<!-- test: Ty_ColorTests.GetRGBSAndD_ReturnPercentages -->
 Return the three channels as percentages: 0 to 100.
+<!-- /test -->
 
 ### SetRGB
 
 Syntax: *color*.**SetRGB**( *r*, *g*, *b* )
 
+<!-- test: Ty_ColorTests.SetRGB_ClampsAndKeepsTheAlpha -->
 Sets the three channels from **Long** values, 0 to 255. A value outside the range is clamped to it. The alpha channel is not changed.
+<!-- /test -->
 
 ### SetRGBD
 
 Syntax: *color*.**SetRGBD**( *r*, *g*, *b* )
 
+<!-- test: Ty_ColorTests.SetRGBD_TakesPercentagesClampsAndKeepsTheAlpha -->
 Sets the three channels from **Double** values given as percentages, 0 to 100, clamped to that range. The alpha channel is not changed.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -215,7 +242,9 @@ Debug.Print Hex$(c.Value)                                        ' 80FF0000
 Syntax: *color*.**AsHexRGB**( ) As **String** \
 Syntax: *color*.**AsHexRGBA**( ) As **String**
 
+<!-- test: Ty_ColorTests.AsHex_ReturnsUpperCaseText -->
 Return the colour as `#rrggbb`, or as `#rrggbbaa`, in upper case hexadecimal.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -233,14 +262,18 @@ Hue is in degrees, from 0 up to but not including 360. Saturation, lightness and
 Syntax: *color*.**GetHSL**( *h* As **Single**, *s* As **Single**, *l* As **Single** ) \
 Syntax: *color*.**GetHSLA**( *h* As **Single**, *s* As **Single**, *l* As **Single**, *a* As **Single** )
 
+<!-- test: Ty_ColorTests.GetHSL_ReturnsHueInDegreesAndPercentages -->
 Return the hue, saturation and lightness, and for **GetHSLA** the alpha as well.
+<!-- /test -->
 
 ### SetHSL, SetHSLA
 
 Syntax: *color*.**SetHSL**( *h*, *s*, *l* ) \
 Syntax: *color*.**SetHSLA**( *h*, *s*, *l*, *a* )
 
+<!-- test: Ty_ColorTests.SetHSL_KeepsTheAlphaAndSetHSLASetsIt -->
 Set the channels from a hue, saturation and lightness, clamped to their ranges. **SetHSL** keeps the alpha of the colour; **SetHSLA** sets it from *a*. A colour declared with `Dim` has alpha 0, so call **SetHSLA**, or set **Alpha**, to make it visible.
+<!-- /test -->
 
 ### RotatedHue, RotateHue
 
@@ -249,6 +282,7 @@ Syntax: *color*.**RotateHue**( *degrees* )
 
 **RotatedHue** returns the colour with its hue turned by *degrees*, which may be negative or above 360. **RotateHue** changes the colour itself.
 
+<!-- test: Ty_ColorTests.RotatedHue_KeepsTheAlpha, Ty_ColorTests.RotateHue_KeepsTheAlpha, Ty_ColorTests.RotatedHue_ByZeroKeepsTheAlpha, Ty_ColorTests.RotatedHue_ColoursAreTheRotatedOnesWhenTheAlphaIsSetAgain -->
 > [!WARNING] 0.9.45.0
 > For any angle other than 0 the result has alpha 0, so it is invisible: `Color(255, 0, 0).RotatedHue(120)` is `&H0000FF00`. After **RotateHue** the colour itself is transparent. Set **Alpha** again on the result.
 
@@ -275,6 +309,7 @@ Debug.Print Hex$(green.Value)                                    ' FF00FF00
 
 Syntax: *color*.**Inverse** [ = *source* ] As **Color**
 
+<!-- test: Ty_ColorTests.Inverse_IsTheNegativeAndKeepsTheAlpha -->
 Returns the colour with each of red, green and blue replaced by 255 less its value: the negative of the colour. The alpha channel is kept. Setting it makes the colour the inverse of *source*.
 
 ### Invert
@@ -282,6 +317,7 @@ Returns the colour with each of red, green and blue replaced by 255 less its val
 Syntax: *color*.**Invert**
 
 Replaces the colour by its inverse.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -300,13 +336,17 @@ Debug.Print Hex$(z.Value)                                        ' FFF5EBE1
 
 Syntax: **MakeARGB**( *a*, *r*, *g*, *b* ) As **Long**
 
+<!-- test: Ty_ColorTests.MakeARGB_MasksEachChannel -->
 Returns `&HAARRGGBB` from four **Long** values. Each is masked with `&HFF`.
+<!-- /test -->
 
 ### HueToValue
 
 Syntax: **HueToValue**( *hue*, *m1*, *m2* ) As **Single**
 
+<!-- test: Ty_ColorTests.HueToValue_FollowsTheHslAlgorithm -->
 The helper step of the conversion from hue to a channel, as in the HSL algorithm of CSS. *hue* is a fraction of a full turn from -1 to 1; *m1* and *m2* are the two lightness-derived values, 0 to 1, and the result is in the same range.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
