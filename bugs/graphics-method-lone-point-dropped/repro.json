@@ -1,0 +1,22 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^--- complete forms, called$",
+      "^Line F=4 \\(1,2\\)-\\(3,4\\) C=0$",
+      "^Scale F=4 \\(1,2\\)-\\(3,4\\)$",
+      "^Scale F=0 \\(0,0\\)-\\(0,0\\)$",
+      "^Foo 2,3$",
+      "^--- one point, dropped$",
+      "^--- plain call forms, called$",
+      "^Line F=7 \\(1,2\\)-\\(3,4\\) C=5$",
+      "^Scale F=7 \\(1,2\\)-\\(3,4\\)$",
+      "^done$"
+    ],
+    "absent": [
+      "^Line F=\\d+ \\(2,3\\)",
+      "^Scale F=\\d+ \\(2,3\\)"
+    ]
+  }
+}

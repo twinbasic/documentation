@@ -1,0 +1,13 @@
+[COMCreatable(False)]
+Class Widget
+    Public N As Long
+
+    [DefaultMember]
+    Property Let Value(ByVal v As Long)
+        N = v
+    End Property
+
+    Property Get Value() As Long
+        Return N
+    End Property
+End Class

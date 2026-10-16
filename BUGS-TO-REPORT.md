@@ -3595,3 +3595,216 @@ The page throws `TypeError: Cannot read properties of undefined (reading '0')` i
 Severity: low. Nothing is lost; the empty designer is misleading.
 
 <!-- Reproducer: bugs/form-bad-json-empty-designer/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "a form file with bad JSON opens an empty designer that adds no control, and Save leaves the file as it was", which passes on BETA 1005, on the lane's second project, test/ide/probes/forms-badjson, which the lane opens accepting its two errors, TB5246 and TB5247). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md, under the .tbform file; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N9). -->
+
+---
+
+## A UDT of more than 4 bytes passed `ByVal` from an array element corrupts the stack in a 32-bit build, and the calling procedure ends in an access violation
+
+**Describe the bug**
+In a 32-bit build, passing an element of a UDT array `ByVal` (`Take a(1)` for `Sub Take(ByVal p As Pair)`, where `Pair` holds two `Long`s) runs the procedure with the right value, but leaves the stack wrong, and the calling procedure ends in an access violation as it returns. The IDE run stops with `NATIVE EXCEPTION: ACCESS_VIOLATION` at the `Sub` line of the caller, and a built exe exits with code 0xC0000005 and no message box. In the debugger's test mode (the `evaluate` request with `isTest`, which `tbrun --tests` uses) the same code never returns. Only a UDT of 5 bytes or more is affected. Observed with `tbrun` (IDE run, `--exe` and `--tests`). Found while documenting the GdiPlus package, where `g.DrawLine pen, pts(1), pts(2)` with `pts` an array of the 8-byte `GpPointF` never returns.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-array-element-byval-argument-stack.twinproj` (attached as `udt-array-element-byval-argument-stack.zip`). Its module `Startup` is:
+   ```
+   Public Type Pair
+       X As Long
+       Y As Long
+   End Type
+
+   Public Sub Take(ByVal p As Pair)
+       Debug.Print "in Take " & p.X
+   End Sub
+
+   Public Sub Main()
+       Dim a(1 To 3) As Pair
+       a(1).X = 5
+       Take a(1)
+       Debug.Print "after call"
+   End Sub
+   ```
+2. Run the project in the IDE (F5), as a 32-bit project (the default).
+3. The DEBUG CONSOLE prints `in Take 5` and `after call`, then `NATIVE EXCEPTION: ACCESS_VIOLATION /Startup.twin; Startup.Main`, and the run ends. Build an exe and run it from a command prompt: it ends with -1073741819 (0xC0000005).
+
+**Expected behavior**
+`Main` returns normally, as it does when `Take` is given a scalar `Pair` variable, or a copy of the element made first. Passing a UDT `ByVal` is a twinBASIC extension (VB6 refuses the declaration: *User-defined type may not be passed ByVal*), so there is no VB6 behaviour to compare with.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+These fail the same way: a UDT of 5 bytes (a `Long` and a `Byte`), 8 bytes (two `Long`s; a `Double`; a `LongLong`), 12, 16 and 32 bytes; a local fixed-size, a dynamic (`ReDim`) and a module-level array; a two-dimensional array; the argument written `Take (a(1))` or `Call Take(a(1))`; and a `Function` in place of the `Sub`. These are right: a UDT of 4 bytes or less (a `Long`, two `Integer`s, three `Byte`s, a pointer), a scalar UDT variable, an array element copied to a variable first (`e = a(1)`, `Take e`), a `ByRef` parameter, and an element of an array declared inside a UDT (`h.Arr(1)`). A 64-bit build is right, and so is a build with LLVM, 32-bit and 64-bit. In the test mode the code does not return, so `tbrun --tests` reports "no answer" after its time-out and runs none of the cases after it.
+
+Severity: high for a 32-bit program. The call itself works, and the fault comes later, when the procedure returns, so it is hard to trace; with LLVM or a 64-bit build, or by copying the element to a variable first, it does not happen.
+
+Not tried: a `Property Let` or a method of a class with such a parameter, an `Optional` or `ParamArray` parameter, an element of an array that is a member of a class, a UDT with a method declared in it (the case that found it has none), and the generated code.
+
+<!-- Reproducer: bugs/udt-array-element-byval-argument-stack/ (mode run, 32-bit: the console has `in Take 5`, `after call` and NATIVE EXCEPTION: ACCESS_VIOLATION, and tbrun exits 5); verified on BETA 1005 by `bug_repro.mjs verify`. Controls, all returning normally (checked in a scratch project of 11 sizes and shapes, not kept): `run --arch win64`, `run --llvm` and `run --llvm --arch win64`, and the 4-byte and scalar cases listed above; `run --exe` ends 0xC0000005. Pages: docs/Features/Language/UDTs.md and docs/Reference/Core/Type.md (the `ByVal` UDT parameter) should carry a WARNING labelled BETA 1005; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus (indexer/.packages/contributed/GdiPlus): the DrawLine samples that pass pts(1), pts(2). -->
+
+---
+
+## Calling a method or a property of a UDT on an element of an array of that UDT ends in an access violation
+
+**Describe the bug**
+A method or property declared inside a `Type` (a twinBASIC extension), called on an element of an array of that type (`a(1).Sum`, `a(1).Bump`), ends in an access violation: `NATIVE EXCEPTION: ACCESS_VIOLATION` in the IDE run, error -2147467259 in a `[TestCase]`, and 0xC0000005 in a built exe. It happens for a local, static, module-level, dynamic and parameter array, in 32-bit and 64-bit builds, whatever the UDT's size (one byte included) and even when the method does not touch `Me`. The same call on a scalar variable, on a UDT member of another UDT, or on an element of an array declared inside a UDT works. In a build with LLVM the call does not fail, but gives wrong results. Observed with the reproducer's regression tests (`tbrun --tests`), `tbrun` and `tbrun --exe`. Found while documenting the GdiPlus package, where `types(1).CloseSubpath` on the `PathPointType` array that `GraphicsPath.GetTypes` returns, and `pts(1).Diff(pts(2))` on `GpPointF`, end this way.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-array-element-method-call-crash.twinproj` (attached as `udt-array-element-method-call-crash.zip`). Its module `Startup` declares the UDT `Pair`, with a property `Sum`, a `Sub` `Bump`, a `Function` `Const1` that ignores `Me` and a `Function` `Diff`. Its module `RegressionTests` holds one `[TestCase]` for each way of calling them, asserting the correct result. The central one is:
+   ```
+   Dim a(1 To 3) As Pair
+   a(1).X = 5
+   Debug.Print "a(1).Sum = " & a(1).Sum
+   ```
+2. Run it (F5). `Sub Main` stops with `NATIVE EXCEPTION: ACCESS_VIOLATION` at the line of `a(1).Sum`.
+3. Run its test cases (`node scripts/tbrun.mjs <exported-source-dir> --tests`; BETA 1005 has no way to run them in the IDE): 12 of the 18 fail with `(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)`.
+
+**Expected behavior**
+`a(1).Sum` returns 5, as `p.Sum` does for a scalar `Pair` variable `p`, and `a(1).Bump` increments `a(1).X`. UDT methods are a twinBASIC extension (VB6 has no methods in a `Type`), so there is no VB6 behaviour to compare with.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Each of these fails: a property, a `Sub`, a `Function` that ignores `Me`, and a `Function` that takes a UDT argument (`a(1).Diff(a(2))`); a lower bound of 0 or 1; a variable index; the element as a `With` object; a static array; a dynamic array; a module-level array; and an array parameter (`b(1).Sum` in a procedure that takes `ByRef b() As Pair`); a UDT of one `Byte`. These work: a scalar variable; a UDT member of a UDT (`h.One.Sum`); an element of an array declared inside a UDT (`h.Many(1).Sum`); an element copied to a variable first; and the element's plain fields (`a(1).X`). A UDT passed `ByVal` from an array element is a different defect, with an entry of its own (`udt-array-element-byval-argument-stack`): it needs no method, and the fault comes after the call returns.
+
+With LLVM (`tbrun --llvm`): the property of an element of a 32-bit build returns garbage (`17820977` for a UDT holding 5 and 0), and in a 64-bit build returns the right value; in both builds `a(1).Bump` runs but leaves `a(1).X` unchanged, as if it worked on a copy. A scalar variable is right in both. LLVM also cannot compile a method called on an element of an array inside a UDT (`h.A(1).Bump`: "a feature used in your code is not yet supported").
+
+Severity: high for any program that keeps UDTs with methods in an array, which a loop over points or rectangles does: it ends at the first call, with no hint why. Copying the element to a variable first (`e = a(i)`, `e.Sum`) avoids it, for a method that does not change the element.
+
+Not tried: a generic UDT (member procedures are not supported on generic UDTs), a UDT with `Type_Assignment`, an array of arrays, an array of UDTs held in a `Variant`, the call through `Declare` members, and the generated code.
+
+<!-- Reproducer: bugs/udt-array-element-method-call-crash/ (mode test: `tbrun --tests` runs the 18 [TestCase]s of RegressionTests; expect lists the six PASS controls and the twelve FAIL lines with the access violation, 32-bit); verified on BETA 1005 by `bug_repro.mjs verify`, and the same twelve fail with `run --arch win64`. The LLVM and exe results are from scratch probes (p4/p7: scenarios of a Sub per case with a Select Case on a Const), not kept. Pages: docs/Features/Language/UDTs.md and docs/Reference/Core/Type.md ("Member procedures") should carry a WARNING labelled BETA 1005; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus (GpPointF, GpRect, PathPointType); GdiPlus's own landing page should say the same in its section on those types, and the samples that call members on array elements copy the element first. -->
+
+---
+
+## A call of a method named `Line` or `Scale` with one parenthesised point, `o.Scale (2, 3)`, is accepted and silently dropped
+
+**Describe the bug**
+The compiler reads a call of a method named `Line` or `Scale` as the graphics syntax (documented in the language reference, *Line, Circle, PSet, Scale*), whatever the type of the object: `o.Scale (x1, y1)-(x2, y2)` calls the method with a *Flags* value first. The documentation says `Scale` takes two points or nothing, and a `Line` needs its second point. A call with one point, `o.Scale (2, 3)`, `o.Line (2, 3)`, or the same written without the space (`o.Scale(2, 3)`), is accepted with no diagnostic and compiled to nothing: the method is not called and no error is raised. VB6 gives *Syntax error* for the same call of a procedure named `Line` (`Module1.Line (2, 3)`). With a single value in the parentheses, `o.Scale (2)`, the compiler reports TB5212 *Too many close brackets*. Observed with `tbrun`, in the IDE run, and for a class method and for a method declared inside a `Type`. Found while documenting the GdiPlus package, whose `GpPointF` and `GpSizeF` have members named `Scale`: `p.Scale(2)` is a syntax error there.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `graphics-method-lone-point-dropped.twinproj` (attached as `graphics-method-lone-point-dropped.zip`, with the VB6 project as `graphics-method-lone-point-dropped-vb6.zip`). Its class `Plotter` has `Line` and `Scale` methods with the parameters the compiler passes for the graphics syntax (*Flags* first), and a method `Foo`; each prints its arguments. The calls of its module `Startup`, abridged, are:
+   ```
+   Public Sub Main()
+       Dim p As New Plotter
+       p.Line (1, 2)-(3, 4)
+       p.Scale (1, 2)-(3, 4)
+       p.Foo(2, 3)
+       Debug.Print "--- one point"
+       p.Line (2, 3)
+       p.Scale (2, 3)
+       p.Line(2, 3)
+       p.Scale(2, 3)
+       Debug.Print "done"
+   End Sub
+   ```
+2. Run it (F5).
+3. The DEBUG CONSOLE prints `Line F=4 (1,2)-(3,4) C=0`, `Scale F=4 (1,2)-(3,4)` and `Foo 2,3` for the first three calls, then `--- one point` and `done` with nothing between: the four one-point calls did not call the methods, and raised no error. Add `p.Scale (2)` to see TB5212 and TB5069 at the closing parenthesis.
+
+**Expected behavior**
+A syntax error for the one-point call, as VB6 gives (*Compile Error: Syntax error*; the attached VB6 project holds what VB6 accepts and lists its refusals), or the method called. A call that vanishes silently is the worst of the three: the program runs and the effect is missing. The one-value error would be clearer if it said that a method named `Scale` or `Line` is read as the graphics syntax.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same in a 64-bit build and with LLVM. A method declared inside a `Type` behaves the same (`Sub Scale(ByVal sx!, ByVal sy!)` called as `s.Scale(2, 3)` leaves the UDT unchanged). A method of any other name (`Foo`, `Move`, `Point`, `PaintPicture`, `Drag`, `ZOrder`, `Show`, `Hide`, `TextWidth`, `Refresh`, `SetFocus`, `Cls`) is called with parentheses or without. `o.Circle(2, 3)` and `o.PSet(2, 3)` are refused (TB5075 and TB5103), as is `o.Print(2, 3)` (TB5182), so those are not silent. What works for `Line` and `Scale`: `Call o.Scale(2, 3)`, and `o.Scale 2, 3` with no parentheses. VB6 does not allow a procedure named `Scale` at all, and allows `Line` only in a module, where it can only be called with the graphics syntax; so twinBASIC code that follows VB6 never meets this, and code in the new style, such as GdiPlus's UDT methods named `Scale`, does.
+
+Severity: medium. An effect that does not happen, with no message, but only for the two names and only for a parenthesised call that is not complete. Writing the call with `Call`, or without parentheses, avoids it.
+
+Not tried: a `Function` with these names used in an expression (`x = o.Scale(2, 3)`), a late-bound call through `Object`, and `Circle`, `PSet` with other argument counts.
+
+<!-- Reproducer: bugs/graphics-method-lone-point-dropped/ (mode run: expect lists the printed lines of the complete forms and the plain forms, and absent `Line F=... (2,3)` and `Scale F=... (2,3)`); verified on BETA 1005 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints what VB6 accepts; its refusals (a lone point, the plain list and Call for a procedure named Line, and Scale as a procedure name) are in the comments of vb6/Module1.bas and were each checked by building them. The other names, the Type method, the 64-bit and LLVM results are from scratch probes, not kept. Page: docs/Reference/Core/Graphics-Methods.md, under "Scale" and "Line", should carry a WARNING labelled BETA 1005 for the dropped call and a NOTE for the one-value syntax error (which is by design: the compiler reads the graphics syntax from the name); remove the WARNING when a fix is released. Found 2026-10-16 while documenting GdiPlus (GpPointF.Scale, GpSizeF.Scale: a one-argument call is TB5212, so those samples write `p.Scale 2`). -->
+
+---
+
+## Assigning to an object-typed member of a UDT without `Set`, including through the object's default member, is a codegen error that fails the build
+
+**Describe the bug**
+A let-assignment (no `Set`) to a UDT member whose type is a class compiles with no diagnostic, and the build then fails: `[LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #17`, `[LINKER] FAILED due to compilation errors`, and no exe is made; the IDE run does not start. This includes `h.o = 5` where the member's class has a default member, which sets the value of `h.o`: valid VB6, and working in twinBASIC for a local variable or a field of a class. Without a default member the same statement (`h.o = p`, or `h.o = New Widget`) is the same codegen error, where a local variable gets error 91 at run time. Observed with `tbbuild`, `tbbuild --build` and `tbrun`. Found while documenting the GdiPlus package, whose `PathIterator.NextSubpathPath` and `NextMarkerPath` contain `NextSubpathPath.path = New GraphicsPath(gpsp.path)`: the build of any project that uses them reports the codegen error for them (there the build still makes the exe).
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-object-member-let-assignment-codegen.twinproj` (attached as `udt-object-member-let-assignment-codegen.zip`, with the VB6 project as `udt-object-member-let-assignment-codegen-vb6.zip`). Its class `Widget` has a field `N` and a default property `Value` that sets and gets `N`. Its module `Startup` is:
+   ```
+   Public Type Holder
+       o As Widget
+   End Type
+
+   Public Sub Main()
+       Dim h As Holder
+       Set h.o = New Widget
+       h.o = 5
+       Debug.Print "N = " & h.o.N
+   End Sub
+   ```
+2. Compile the project: no diagnostic. Run it (F5) or build it.
+3. The DEBUG CONSOLE prints `[LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #17` and `[BUILD] failed`; `Main` does not run.
+
+**Expected behavior**
+`h.o = 5` sets `h.o.N` to 5, as it does for `q = 5` with a local `q As Widget`, and in VB6 (the attached project prints `h.o = 5 (default member): N = 5`). For a class with no default member, VB6 raises error 91 at run time (*Object variable or With block variable not set*), as twinBASIC does for a local variable; the compiler should at least report a diagnostic at the statement, and not a codegen error that names the procedure.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same codegen error for: a UDT variable, an element of an array of the UDT (`a(1).o = 5`), a member of a nested UDT (`h.in1.o = 5`), and the function-result variable of a function that returns the UDT (`Next1.path = New GP(g.path)`, as in GdiPlus); with a default member (`= 5`) and without one (`= p`, `= Nothing`, `= New Widget`); in 32-bit and 64-bit builds; and with LLVM, where it is "a feature used in your code is not yet supported with the LLVM compiler" for the whole procedure. Right: `Set h.o = p`; a local variable (`q = 5` runs; `q = p` without a default member raises 91); a field of a class (`c.o = 5` runs; `c.o = p` raises 91); a UDT member typed `Object` (`h.ob = p` runs) and one typed `Variant` (raises 438, *Object doesn't support this property or method*). A local `q = New Widget` gets warning TB0022 (*assignment to class that does not seem to offer a default property-put member*) at compile time; the UDT-member case gets no diagnostic of any kind.
+
+Severity: medium. The failure is at build time, so nothing runs wrongly, but the message names only the procedure, and the statement can be a plain default-member assignment that VB6 accepts. Writing `Set h.o = ...` with a new object, or `h.o.Value = 5`, avoids it.
+
+Not tried: a member typed with an interface, a generic class, a `Property Let` of the default member that takes an index, and the generated code.
+
+<!-- Reproducer: bugs/udt-object-member-let-assignment-codegen/ (mode build: tbbuild --build exits 5 and the output names the codegen error in 'Startup.Mainrootmain'); verified on BETA 1005 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints N = 5 for the default member, 6 for the local, and error 91 for a class with no default member. The other variants (nested, array element, function result, win64, LLVM, Object and Variant members) are from scratch probes, not kept. Page: docs/Reference/Core/Type.md (and docs/Features/Language/UDTs.md) should carry a NOTE labelled BETA 1005: the error cannot be missed and loses nothing; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus: PathIterator.NextSubpathPath and NextMarkerPath (indexer/.packages/contributed/GdiPlus/sources/GdiPlus/PathIterator.twin) assign a GraphicsPath to a member of their result UDT without Set, which is the package's own mistake as well as this report. -->
+
+---
+
+## Assigning `Me` as a whole value inside a method of a UDT is a codegen error that fails the build
+
+**Describe the bug**
+Inside a method or property declared in a `Type` (a twinBASIC extension), an assignment whose right-hand side is `Me` itself (`Copy = Me`, `Return Me`, `t = Me`, `Dim t As R = Me`) compiles with no diagnostic, and the build fails once the method is called: `[LINKER] compilation (codegen) error detected in 'Startup.Copy' at line #15`, `[LINKER] FAILED due to compilation errors`, and the IDE run does not start. Observed with `tbbuild --build` and `tbrun`. Found while documenting the GdiPlus package, where `GpPointF.Normalized` and `OffsetBy`, `OffsetByPt`, `InflatedBy` and `InflatedByPt` of `GpRect` and `GpRectF` (nine members) begin with `<name> = Me` and cannot be built into a program that calls them.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-method-assign-me-codegen.twinproj` (attached as `udt-method-assign-me-codegen.zip`). Its module `Startup` is:
+   ```
+   Public Type R
+       X As Long
+       Y As Long
+
+       Function Copy() As R
+           Copy = Me
+       End Function
+   End Type
+
+   Public Sub Main()
+       Dim a As R, b As R
+       a.X = 7
+       a.Y = 8
+       b = a.Copy()
+       Debug.Print b.X & ", " & b.Y
+   End Sub
+   ```
+2. Compile the project: no diagnostic. Run it (F5) or build it.
+3. The DEBUG CONSOLE prints `[LINKER] compilation (codegen) error detected in 'Startup.Copy' at line #15` and `[BUILD] failed`; `Main` does not run.
+
+**Expected behavior**
+`Copy` returns a copy of the UDT, so `Main` prints `7, 8`. UDT methods are a twinBASIC extension (VB6 has no methods in a `Type`), so there is no VB6 behaviour to compare with.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same codegen error for `Return Me`, for a local (`Dim t As R: t = Me`), for `Dim t As R = Me`, for `Property Get Copy() As R: Copy = Me`, for a `ByRef` parameter (`o = Me`), and for a `Variant` (`v = Me`), in 32-bit and 64-bit builds. With LLVM the build prints "a feature used in your code is not yet supported with the LLVM compiler" for the method. These are right: a method that is never called (it is not compiled), `Me.X`, passing `Me` to a `ByVal` parameter (`TakeR Me`), `Me` on the left (`Me = other`), copying field by field (`Copy.X = Me.X`), and a module function that copies a parameter (`Cp = v`).
+
+Severity: medium. The failure is at build time, with a message that names the procedure only. Copying the fields one by one avoids it.
+
+Not tried: `Me` passed to a `ByRef` parameter, `Me` in a `Type_Assignment` member, and the generated code.
+
+<!-- Reproducer: bugs/udt-method-assign-me-codegen/ (mode build: tbbuild --build exits 5 and the output names the codegen error in 'Startup.Copy'); verified on BETA 1005 by `bug_repro.mjs verify`. The variants, win64 and LLVM are from a scratch probe (one #If scenario per form), not kept. Page: docs/Reference/Core/Type.md ("Member procedures") should carry a NOTE labelled BETA 1005: the error cannot be missed and loses nothing; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus (GpPointF.Normalized; OffsetBy, OffsetByPt, InflatedBy, InflatedByPt on GpRect and GpRectF). -->

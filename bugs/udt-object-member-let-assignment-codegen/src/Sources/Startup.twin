@@ -1,0 +1,21 @@
+' A let-assignment (no Set) to a member of a UDT that is of a class type. Here the class has a
+' default member, so this is the VB6 idiom for setting its Value: VB6 runs it and leaves
+' N = 5. In twinBASIC the project compiles with no diagnostic, and the build then fails with
+' "compilation (codegen) error detected in 'Startup.Mainrootmain'". The same assignment to
+' a local variable or to a field of a class works. So does Set h.o = ..., which is the
+' way round it; without a default member (and without Set), h.o = p is the same codegen
+' error, where a local variable gets error 91 at run time.
+Module Startup
+
+    Public Type Holder
+        o As Widget
+    End Type
+
+    Public Sub Main()
+        Dim h As Holder
+        Set h.o = New Widget
+        h.o = 5
+        Debug.Print "N = " & h.o.N
+    End Sub
+
+End Module

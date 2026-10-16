@@ -1,0 +1,50 @@
+' A UDT with methods and properties declared in the Type (a twinBASIC extension), and
+' the arrays and holders that RegressionTests calls them through.
+Module Startup
+
+    Public Type Pair
+        X As Long
+        Y As Long
+
+        Property Get Sum() As Long
+            Return Me.X + Me.Y
+        End Property
+
+        Sub Bump()
+            Me.X += 1
+        End Sub
+
+        Function Const1() As Long
+            Return 1
+        End Function
+
+        Function Diff(ByVal other As Pair) As Pair
+            Diff.X = Me.X - other.X
+            Diff.Y = Me.Y - other.Y
+        End Function
+    End Type
+
+    ' One byte, as GdiPlus's PathPointType is.
+    Public Type Flags
+        Value As Byte
+
+        Property Get IsClosed() As Boolean
+            Return (Me.Value And &H80) <> 0
+        End Property
+    End Type
+
+    Public Type Holder
+        One As Pair
+        Many(1 To 3) As Pair
+    End Type
+
+    Public ModuleLevel(1 To 3) As Pair
+
+    Public Sub Main()
+        Dim a(1 To 3) As Pair
+        a(1).X = 5
+        Debug.Print "a(1).X = " & a(1).X
+        Debug.Print "a(1).Sum = " & a(1).Sum
+    End Sub
+
+End Module
