@@ -58,6 +58,12 @@ End Type
 
 UDTs of these types are still stack allocated structs that can be used with standard Win32 APIs.
 
+> [!WARNING] BETA 1005
+> A method or property of a UDT called on an element of an array of the UDT, such as `a(1).Sum`, ends the program with an access violation, in 32-bit and 64-bit builds. A variable of the type, a UDT member of another UDT, and an element of an array declared inside a UDT are not affected. Copy the element to a variable first.
+
+> [!NOTE] BETA 1005
+> Assigning **Me** whole inside a method of a UDT, as in `Copy = Me` or `Return Me`, is a code generation error that fails the build once the method is called. Copy the members one by one.
+
 ## Custom UDT Packing
 
 If you've done extensive work with the Windows API, every so often you'll come across user-defined types that have an extraneous member added called pad, padding, reserved, etc, that doesn't appear in the documentation for that type. This is the result of the UDT applying packing rules different from the default.
