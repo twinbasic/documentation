@@ -10,14 +10,14 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-Reference for every executable in the documentation repository. This page covers the nine Windows batch wrappers at the repository root, the conventions every command-line tool shares, and the configuration files the tools read. The tools themselves --- the Node and Python scripts under `scripts/`, the twinBASIC programs [`imagestrip`](Tools-IDE#imagestrip) and [`impexp`](Tools-Compiler#impexp), `tbdocs` and its flags, and the PDF render driver --- are on seven pages, grouped by what they work on. For the day-to-day workflow, see [Building and Deployment](Building). To modify the build pipeline, see [tbdocs Internals](Builder).
+Reference for every executable in the documentation repository. This page covers the nine Windows batch wrappers at the repository root, the conventions every command-line tool shares, and the configuration files the tools read. The tools themselves --- the Node and Python scripts under `scripts/`, the twinBASIC programs [`imagestrip`](Tools-IDE#imagestrip), [`impexp`](Tools-Compiler#impexp) and [`tbbroker`](Tools-Compiler#tbbroker), `tbdocs` and its flags, and the PDF render driver --- are on seven pages, grouped by what they work on. For the day-to-day workflow, see [Building and Deployment](Building). To modify the build pipeline, see [tbdocs Internals](Builder).
 
 * TOC goes here
 {:toc}
 
 ## Tool groups
 
-![Eight rounded boxes, one per group of tools, each holding a smaller rounded box for every tool in the group. Batch wrappers holds the nine .bat files at the repository root. Build and Generation holds tbdocs, render-book, compare_trees and the generators of committed files. Site Checks holds the link, freshness, diagram and accessibility checks. Toolchain Tests, the largest group, holds the gates test.bat runs. Compiler Harness holds tbbuild, tbrun, impexp and the probes of the harness itself. Code Samples and Attributes holds check_examples and the three attribute tools. IDE Automation holds the add-in and IDE test runners, try_help_addin, shoot_docs, imagestrip, probe_ide_image_labels, probe_theme_semicolon and the SVG replay. Defect Reproducers holds bug_repro and vb6run. Each group's name links to its page, and each tool's box to its entry.](Images/Tools-Groups.svg)
+![Eight rounded boxes, one per group of tools, each holding a smaller rounded box for every tool in the group. Batch wrappers holds the nine .bat files at the repository root. Build and Generation holds tbdocs, render-book, compare_trees and the generators of committed files. Site Checks holds the link, freshness, diagram and accessibility checks. Toolchain Tests, the largest group, holds the gates test.bat runs. Compiler Harness holds tbbuild, tbrun, impexp, tbbroker and the probes of the harness itself. Code Samples and Attributes holds check_examples and the three attribute tools. IDE Automation holds the add-in and IDE test runners, try_help_addin, shoot_docs, imagestrip, probe_ide_image_labels, probe_theme_semicolon and the SVG replay. Defect Reproducers holds bug_repro and vb6run. Each group's name links to its page, and each tool's box to its entry.](Images/Tools-Groups.svg)
 
 - [Build and Generation Tools](Tools-Build) -- `tbdocs`, the PDF render driver, the build comparison, and the generators of committed files.
 - [Site Checks](Tools-Site-Checks) -- the link, freshness, diagram and accessibility checks over a built site.
@@ -48,11 +48,12 @@ A tool that reads its command line through `lib/cli.mjs` and takes search terms,
 
 All ten sit at the repository root, beside `package.json`. Each uses `@pushd "%~dp0"` to run from that root wherever it is invoked, and each entry below gives the POSIX equivalent of what it runs. The equivalents have no `pushd`, so **run them from the repository root**: `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy)'s default source root and every path given to [`render-book.mjs`](Tools-Build#bookrender-bookmjs) resolve against the working directory.
 
-`examples.bat`, `package-tests.bat`, `addin-test.bat`, `ide-test.bat` and `try-help-addin.bat` have no POSIX equivalent. They need a twinBASIC install and drive the IDE, so they run only on Windows and are not part of the site build. Four other tools are Windows-specific for the same reason and are not part of the build either:
+`examples.bat`, `package-tests.bat`, `addin-test.bat`, `ide-test.bat` and `try-help-addin.bat` have no POSIX equivalent. They need a twinBASIC install and drive the IDE, so they run only on Windows and are not part of the site build. These tools are Windows-specific for the same reason and are not part of the build either:
 
 - [`scripts/tbbuild.mjs`](Tools-Compiler#tbbuild) and [`scripts/tbrun.mjs`](Tools-Compiler#tbrun) drive the twinBASIC IDE.
 - [`census_attributes.mjs`](Tools-Samples#census-attributes) unpacks the packages of a twinBASIC install. It is cross-platform when given an already-exported tree with `--exported`.
 - [`imagestrip`](Tools-IDE#imagestrip) is a twinBASIC program.
+- [`tbbroker`](Tools-Compiler#tbbroker) is a twinBASIC program that hands out private desktops.
 
 The twinBASIC edition of [`impexp`](Tools-Compiler#impexp) is a Windows program too. Built, it needs no twinBASIC install, Node or Python to run.
 
@@ -112,7 +113,7 @@ A local pass of [`check_a11y.mjs`](Tools-Site-Checks#check-a11y) does not predic
 
     test.bat
 
-The tests the toolchain has to pass. Twenty-six steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Twenty-seven steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy) --- verifies the publish allowlist still refuses the types it should. Needs neither a browser nor a built tree.
 2. [`scripts/check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
@@ -126,20 +127,21 @@ The tests the toolchain has to pass. Twenty-six steps, each stopping the run if 
 10. [`test/svgshot.test.mjs`](Tools-Toolchain-Tests#svgshot-test) --- unit tests that an SVG screenshot is written on one line, that its underlines are placed as Chromium places them, that a background image is sized by its bytes, that a frame's page is placed inside its frame, that a web font is found and cut as the page uses it, that the page's own `<svg>` icons are found and kept apart, and that a colour filter is baked into the colours it paints.
 11. [`test/example-batches.test.mjs`](Tools-Toolchain-Tests#example-batches-test) --- runs `check_examples.mjs`'s probes, which test how samples are batched and how a crashed batch is cut down, without an IDE.
 12. [`test/ports.test.mjs`](Tools-Toolchain-Tests#ports-test) --- unit tests for how the harness claims the DevTools ports its IDEs use, and for the temp folder and profile an IDE on a port leaves behind, without an IDE.
-13. [`test/addin-project.test.mjs`](Tools-Toolchain-Tests#addin-project-test) --- unit tests for how the build packs the help add-in's project file: exactly the files git tracks in `add-in/`, never `Resources/HELP/`, the same bytes from any checkout.
-14. [`test/indexer.test.mjs`](Tools-Toolchain-Tests#indexer-test) --- unit tests for the package indexer: the VB6 preprocessing, the files of a package, the `api.json` built from them (sorted by code unit, nested types by their path, values and fields in declaration order, the same bytes from the same files) and the differ that compares two of them.
-15. [`scripts/check_regex_safety.mjs`](Tools-Toolchain-Tests#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
-16. [`scripts/check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
-17. [`scripts/check_page_baseline.mjs`](Tools-Toolchain-Tests#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
-18. [`scripts/check_book_coverage.mjs`](Tools-Toolchain-Tests#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
-19. [`scripts/check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests) --- verifies every NOTE and WARNING of a contributed package's section names the test cases behind it, and that each package test project is in order.
-20. [`scripts/check_symbol_index.mjs`](Tools-Toolchain-Tests#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-21. [`scripts/check_twin_parsers.mjs`](Tools-Toolchain-Tests#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
-22. [`scripts/check_attribute_sweep.mjs`](Tools-Toolchain-Tests#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
-23. [`scripts/check_cli.mjs`](Tools-Toolchain-Tests#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-24. [`scripts/check_pdf_shims_equiv.mjs`](Tools-Toolchain-Tests#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, have each of them in their shim's table of targets, and run.
-25. [`scripts/check_impexp_parity.mjs`](Tools-Toolchain-Tests#check-impexp-parity) --- verifies the editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI. It compares the twinBASIC edition too, when `IMPEXP_EXE` names its built exe.
-26. [`scripts/check_axe_patch_equiv.mjs`](Tools-Toolchain-Tests#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+13. [`test/broker.test.mjs`](Tools-Toolchain-Tests#broker-test) --- tests [`tbbroker`](Tools-Compiler#tbbroker), which hands out private desktops, slots and ports, and its Node client. Skipped unless `TBBROKER_EXE` names a built broker.
+14. [`test/addin-project.test.mjs`](Tools-Toolchain-Tests#addin-project-test) --- unit tests for how the build packs the help add-in's project file: exactly the files git tracks in `add-in/`, never `Resources/HELP/`, the same bytes from any checkout.
+15. [`test/indexer.test.mjs`](Tools-Toolchain-Tests#indexer-test) --- unit tests for the package indexer: the VB6 preprocessing, the files of a package, the `api.json` built from them (sorted by code unit, nested types by their path, values and fields in declaration order, the same bytes from the same files) and the differ that compares two of them.
+16. [`scripts/check_regex_safety.mjs`](Tools-Toolchain-Tests#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
+17. [`scripts/check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
+18. [`scripts/check_page_baseline.mjs`](Tools-Toolchain-Tests#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
+19. [`scripts/check_book_coverage.mjs`](Tools-Toolchain-Tests#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
+20. [`scripts/check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests) --- verifies every NOTE and WARNING of a contributed package's section names the test cases behind it, and that each package test project is in order.
+21. [`scripts/check_symbol_index.mjs`](Tools-Toolchain-Tests#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
+22. [`scripts/check_twin_parsers.mjs`](Tools-Toolchain-Tests#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
+23. [`scripts/check_attribute_sweep.mjs`](Tools-Toolchain-Tests#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
+24. [`scripts/check_cli.mjs`](Tools-Toolchain-Tests#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+25. [`scripts/check_pdf_shims_equiv.mjs`](Tools-Toolchain-Tests#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, have each of them in their shim's table of targets, and run.
+26. [`scripts/check_impexp_parity.mjs`](Tools-Toolchain-Tests#check-impexp-parity) --- verifies the editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI. It compares the twinBASIC edition too, when `IMPEXP_EXE` names its built exe.
+27. [`scripts/check_axe_patch_equiv.mjs`](Tools-Toolchain-Tests#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -155,6 +157,7 @@ POSIX:
       && node --test test/svgshot.test.mjs \
       && node --test test/example-batches.test.mjs \
       && node --test test/ports.test.mjs \
+      && node --test test/broker.test.mjs \
       && node --test test/addin-project.test.mjs \
       && node --test test/indexer.test.mjs \
       && node scripts/check_regex_safety.mjs \
@@ -172,7 +175,7 @@ POSIX:
 
 Exit codes: **0** every step passed; otherwise the code of the step that stopped the run, as that step's entry gives it.
 
-**Twenty-two of the twenty-six cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `indexer/` or `test/`, the site's scripts in `docs/assets/js/`, the help add-in's source in `add-in/`, a contributed package's section, a wrapper, or a workflow. Both CI workflows run all twenty-six unconditionally.
+**All but four cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `indexer/` or `test/`, the site's scripts in `docs/assets/js/`, the help add-in's source in `add-in/`, a contributed package's section, a wrapper, or a workflow. Both CI workflows run every step unconditionally.
 
 The four exceptions are [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions), [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists), which reads this page, [`check_lint.mjs`](Tools-Toolchain-Tests#check-lint), which lints the site's scripts in `docs/assets/js/`, and [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests), which reads the callouts of the contributed packages' sections.
 

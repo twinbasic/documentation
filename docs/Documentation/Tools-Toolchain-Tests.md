@@ -295,6 +295,20 @@ Starts no IDE. No browser, no built tree, about 2 s.
 
 Exit codes: **0** every test passed, **1** a test failed.
 
+## broker.test.mjs
+{: #broker-test }
+
+    set TBBROKER_EXE=%LOCALAPPDATA%\tbbroker\tbbroker.exe
+    node --test test/broker.test.mjs
+
+Tests [`tbbroker`](Tools-Compiler#tbbroker), which hands out private desktops, slots and ports, and its Node client, `scripts/lib/tb-broker.mjs`. It needs a built broker and Windows, so it reports itself skipped unless `TBBROKER_EXE` names the exe; no gate builds it, and CI never sets the variable. Each run starts brokers on pipes and desktop names of its own, never your broker, and stops them.
+
+It checks that one broker serves a pipe and a second start finds it, the exit codes of `start`, `status` and `stop`, and that the client starts a broker when none answers; that a slot's desktop is made once and handed out again; that a lease ends when its connection closes, or, with a process held for it, when that process ends; that a lease is refused to a connection that did not take it and for a process that is not there; that with every slot taken a lease fails, or waits its turn; that a port skips the leased ones and one something listens on; that a request the broker cannot read is answered; that a desktop left with a window on it (Notepad, on that desktop) is not handed out until the window goes; and that a broker started while a desktop of its pool is still in use waits for it to empty.
+
+Starts no IDE. No browser, no built tree, about 7 s.
+
+Exit codes: **0** every test passed, or the file was skipped, **1** a test failed.
+
 ## addin-project.test.mjs
 {: #addin-project-test }
 

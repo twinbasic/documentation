@@ -103,6 +103,12 @@ node --test test/example-batches.test.mjs
 @rem Starts no IDE. No tree, no browser, about 2 s.
 node --test test/ports.test.mjs
 @if errorlevel 1 goto :fail
+@rem tbbroker (scripts/broker/, WIP.Broker.md) and its client, scripts/lib/tb-broker.mjs:
+@rem leases, held processes, waiting, ports, desktops left with windows on them, a
+@rem restarted broker. Skipped unless TBBROKER_EXE names a built broker. Each run
+@rem starts brokers on pipes and desktop names of its own. Starts no IDE; about 7 s.
+node --test test/broker.test.mjs
+@if errorlevel 1 goto :fail
 @rem Unit tests for builder/addin-project.mjs, which packs add-in/ into the
 @rem help add-in's project file the build publishes: the project holds
 @rem exactly the files git tracks there, never Resources/HELP/, and the same

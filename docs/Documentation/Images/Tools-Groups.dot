@@ -109,12 +109,12 @@ digraph tools_groups {
         label="Compiler Harness"
         c1 [label="tbbuild"]            c2 [label="tbrun"]
         c3 [label="impexp"] c4 [label="check_tb_registry"]
-        c6 [label="probe_build_twice"]
-        cp1 [style=invis label=""]  cp2 [style=invis label=""]
-        c1 -> c3 -> cp1 -> cp2
+        c7 [label="tbbroker"]           c6 [label="probe_build_twice"]
+        cp2 [style=invis label=""]
+        c1 -> c3 -> c7 -> cp2
         c2 -> c4 -> c6
         { rank=same; c3 c4 }
-        { rank=same; cp1 c6 }
+        { rank=same; c7 c6 }
     }
 
     // ---- row 3 ----
@@ -134,16 +134,17 @@ digraph tools_groups {
         t21 [label="check_cli"]            t22 [label="check_pdf_shims_equiv"]
         t23 [label="check_impexp_parity"]  t24 [label="check_axe_patch_equiv"]
         t25 [label="indexer.test"]          t26 [label="check_package_tests"]
+        t27 [label="broker.test"]
         t1 -> t5 -> t9  -> t13 -> t17 -> t21 -> t25
         t2 -> t6 -> t10 -> t14 -> t18 -> t22 -> t26
-        t3 -> t7 -> t11 -> t15 -> t19 -> t23
+        t3 -> t7 -> t11 -> t15 -> t19 -> t23 -> t27
         t4 -> t8 -> t12 -> t16 -> t20 -> t24
         { rank=same; t5  t6  t7  t8  }
         { rank=same; t9  t10 t11 t12 }
         { rank=same; t13 t14 t15 t16 }
         { rank=same; t17 t18 t19 t20 }
         { rank=same; t21 t22 t23 t24 }
-        { rank=same; t25 t26 }
+        { rank=same; t25 t26 t27 }
     }
 
     // ---- row 4 ----
@@ -292,6 +293,8 @@ digraph tools_groups {
         tooltip="Unpacks a .twinproj or .twinpack into source files and packs them back, with the same commands as the compiler's own command line. A Node edition, a Python edition and a twinBASIC edition behave the same."]
     c4 [URL="Tools-Compiler#check-tb-registry"
         tooltip="Tests the code that restores the registry entries of the IDE after a harness run, on a scratch copy of the keys."]
+    c7 [URL="Tools-Compiler#tbbroker"
+        tooltip="A twinBASIC program that hands out private desktops, slots and ports to the tools that start IDEs and programs, and takes them back when the processes using them end."]
     c6 [URL="Tools-Compiler#probe-build-twice"
         tooltip="Builds one project twice in fresh IDEs and compares the two exes, to show what differs between builds of an unchanged project."]
 
@@ -347,6 +350,8 @@ digraph tools_groups {
          tooltip="Runs unit tests for the package indexer: VB6 preprocessing, package files, the api.json model and the differ."]
     t26 [URL="Tools-Toolchain-Tests#check-package-tests"
          tooltip="Verifies that every NOTE and WARNING of a contributed package's section names the test cases behind it, and that each package test project is in order."]
+    t27 [URL="Tools-Toolchain-Tests#broker-test"
+         tooltip="Tests tbbroker and its Node client: leases, held processes, waiting, ports, and desktops left with windows on them. Skipped unless a built broker is named."]
 
     e1 [URL="Tools-Samples#check-examples"
         tooltip="Compiles the code samples marked check_build and reports each diagnostic against the page line it came from. Samples marked check_run are also run."]

@@ -15,6 +15,7 @@ one covering what you are about to change.
 | write or restructure a page under `docs/IDE/` | [WIP.IDE.md](WIP.IDE.md) --- the plan for finishing the IDE section: its structure, conventions, fact sources and chapter workflow |
 | document a specific package | that package's own file, listed under [Package API notes](#package-api-notes) |
 | run or change the twinBASIC compiler harness | [WIP.Harness.md](WIP.Harness.md) --- `export`, the attribute census, `tbbuild`, `tbrun`, the add-in test runner |
+| start an IDE or a program on a private desktop, choose a port for one, or change `tbbroker` | [WIP.Broker.md](WIP.Broker.md) --- the broker every tool gets its desktops, slots and ports from: the protocol a client is written from, and why desktops are never made per launch |
 | change `builder/`, `scripts/`, or any gate | [WIP.Build.md](WIP.Build.md) --- the pipeline and why each gate exists |
 | touch fonts, diagrams, or the PDF's type | [WIP.Typography.md](WIP.Typography.md), then [WIP.Fonts.md](WIP.Fonts.md) for the generator |
 | change the accessibility scan | [WIP.A11y.md](WIP.A11y.md) --- the axe scan, the sample, the fingerprint gate |
@@ -398,7 +399,7 @@ must never do: [WIP.Typography.md](WIP.Typography.md).
 ### Tooling is JavaScript
 
 Everything under `scripts/`, `builder/`, `lib/`, `book/`, `eval/`, `wisdom/` and `indexer/` is
-Node.js, and a new tool joins them there. Four files and two folders are not, each
+Node.js, and a new tool joins them there. Four files and three folders are not, each
 for a stated reason rather than by oversight: `scripts/impexp.py` is a published download
 offered to readers rather than tooling, `scripts/build_fonts.py` stays Python
 because the JavaScript HarfBuzz build produces wrong CFF2 metrics
@@ -421,6 +422,15 @@ and run `node scripts/check_impexp_parity.mjs` with `IMPEXP_EXE` set to its exe,
 `--self-test` and command sequence are its tests: no gate can build it, so nothing else will.
 **A change to what impexp does, or to its self-test, is made in all three editions** in one
 commit; CI compares only the Node and Python ones.
+`scripts/broker/` is a twinBASIC program too, `tbbroker`, which hands out private desktops,
+slots and ports to every tool on the machine, launcher-re's `tblaunch` among them, and needs
+desktops, process handles and overlapped pipes, which Node cannot make without a native addon
+(owner: twinBASIC). It is laid out as imagestrip is. After a change to its `src/`, pack it
+(`node scripts/impexp.mjs import scripts/broker/tbbroker.twinproj scripts/broker/src --overwrite`),
+install it with `node scripts/tbbroker.mjs install`, and run `test/broker.test.mjs` with
+`TBBROKER_EXE` set to `%LOCALAPPDATA%\tbbroker\tbbroker.exe`: no gate can build it.
+**No tool makes a desktop of its own once the tools are moved onto it**: each leases one
+([WIP.Broker.md](WIP.Broker.md)).
 The full accounting, and what the two ports gained, is in [WIP.Build.md](WIP.Build.md).
 
 ### The package indexer

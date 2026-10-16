@@ -301,3 +301,19 @@ No gate can build it, so `check_impexp_parity.mjs` compares it only when `IMPEXP
 The Node edition is also a library. `scripts/lib/tb-project.mjs` imports its `exportProject` and `importProject`, which every tool that unpacks or packs a project calls, among them [`tbbuild.mjs`](#tbbuild), [`tbrun.mjs`](#tbrun), [`check_examples.mjs`](Tools-Samples#check-examples), [`census_attributes.mjs`](Tools-Samples#census-attributes) and [`bug_repro.mjs`](Tools-Defects#bug-repro). The site build imports its `packFiles`, which packs a list of files held in memory as `importProject` packs the same files in a folder, to pack the [help add-in's project file](Tools-Build#the-help-add-ins-project-file) and the contributed packages' test projects. `impexp.mjs` is the one module under `scripts/` that `builder/` may import (`biome.jsonc` refuses any other), so [`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) watches it.
 
 Exit codes: the table in [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) gives every code. The three editions share these codes, which differ from those of the other tools here.
+
+## tbbroker
+{: #tbbroker }
+
+    node scripts/tbbroker.mjs install
+    %LOCALAPPDATA%\tbbroker\tbbroker.exe [start | status | stop]
+
+A small twinBASIC program that hands out what a tool needs to start an IDE or a program out of sight --- a private desktop, a slot number to name its folders by, and a port when one must be chosen before it is bound --- and takes each back once the processes using it have ended. Every tool on the machine asks the same broker, over the named pipe `\\.\pipe\tbbroker-<user name>`, one JSON object per line. A desktop is made once and handed from one launch to the next, because Windows never frees what the desktop compositor keeps for a desktop that has gone, and a desktop made for every launch slows every window on the screen within a day or two of tests.
+
+The broker runs until you log off or stop it. A client that finds no broker starts one with `tbbroker start`, which starts it detached, out of the client's process tree and job, and returns once it answers. `status` prints what it holds as one line of JSON: its slots and their desktops (free, leased, or *dirty*: left with windows on them, and not handed out until those have gone), its leases, and who holds them. `stop` ends it, and voids every lease it holds.
+
+The program is `scripts/broker/src/`, an exported project tree, and `scripts/broker/tbbroker.twinproj`, packed from it, laid out as [`imagestrip`](Tools-IDE#imagestrip) is. `node scripts/tbbroker.mjs install` builds it with [`tbbuild.mjs`](#tbbuild) and installs it as `%LOCALAPPDATA%\tbbroker\tbbroker.exe`, where every client looks for it (`TBBROKER_EXE` names another); `--exe <file>` installs an exe already built. A broker that runs keeps running the exe it started from until it is stopped. The Node client is `scripts/lib/tb-broker.mjs`, and [`broker.test.mjs`](Tools-Toolchain-Tests#broker-test) tests both.
+
+Its options (for `start` and `--serve`, which is what `start` runs) are `--pipe <name>`, `--prefix <text>` (the desktops are `<text>1`, `<text>2`..., default `tbpool-`), `--max <n>` (default 32), `--ports <a-b>` or `none` (default 48000--48199) and `--log <file>` or `none` (default `%LOCALAPPDATA%\tbbroker\tbbroker.log`).
+
+Exit codes: **0** done --- it runs (`start`), answered (`status`) or has stopped (`stop`); **1** it could not be started, or did not answer; **2** a refused command line; **3** `--serve` only: another broker already serves the pipe; **4** `status` and `stop`: no broker runs. `tbbroker.mjs install` exits **0** installed, **1** the build failed, **2** a refused command line, an `--exe` that is not a file, or a crash.
