@@ -5,7 +5,7 @@
 Module RunAll
 
     Public Sub Main()
-        Expect.StartRun "GdiPlus 0.9.45.0: 554 test cases"
+        Expect.StartRun "GdiPlus 0.9.45.0: 556 test cases"
         On Error Resume Next
         Expect.StartCase
         Err.Clear
@@ -984,6 +984,14 @@ Module RunAll
         Expect.EndCase "Gr_GraphicsTests.DrawString_ClearTypeGridFitWithSourceCopy_ReturnsInvalidParameter", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
+        Gr_GraphicsTests.DrawString_SystemDefaultWithSourceCopy_ReturnsInvalidParameterUnderClearType
+        Expect.EndCase "Gr_GraphicsTests.DrawString_SystemDefaultWithSourceCopy_ReturnsInvalidParameterUnderClearType", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        Gr_GraphicsTests.DrawString_OtherHintsWithSourceCopy_Draw
+        Expect.EndCase "Gr_GraphicsTests.DrawString_OtherHintsWithSourceCopy_Draw", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
         Gr_GraphicsTests.DrawDriverString_BrushVariableAndOptions_Draws
         Expect.EndCase "Gr_GraphicsTests.DrawDriverString_BrushVariableAndOptions_Draws", Err.Number, Err.Description
         Expect.StartCase
@@ -1156,10 +1164,6 @@ Module RunAll
         Expect.EndCase "Gr_MatrixTests.Offset_Assign_ChangesBoth", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
-        Gr_MatrixTests.Scale_StatementWithParentheses_Scales
-        Expect.EndCase "Gr_MatrixTests.Scale_StatementWithParentheses_Scales", Err.Number, Err.Description
-        Expect.StartCase
-        Err.Clear
         Gr_MatrixTests.Scale_OtherSpellings_Scale
         Expect.EndCase "Gr_MatrixTests.Scale_OtherSpellings_Scale", Err.Number, Err.Description
         Expect.StartCase
@@ -1266,6 +1270,8 @@ Module RunAll
         Err.Clear
         Im_BitmapTests.Clone_WholeBitmapWithItsRectangleKeepsPixels
         Expect.EndCase "Im_BitmapTests.Clone_WholeBitmapWithItsRectangleKeepsPixels", Err.Number, Err.Description
+        Expect.Skip "Im_BitmapTests.InitializePalette_FixedBW_FillsThePalette", "it ends in a native exception in version 0.9.45.0"
+        Expect.Skip "Im_BitmapTests.InitializePalette_OptimalWithABitmap_FillsThePalette", "it ends in a native exception in version 0.9.45.0"
         Expect.StartCase
         Err.Clear
         Im_BitmapTests.ConvertFormat_FixedBWWithABlankPalette
@@ -1348,7 +1354,6 @@ Module RunAll
         Err.Clear
         Im_ImageTests.PropertyItem_GetReturnsTheItem
         Expect.EndCase "Im_ImageTests.PropertyItem_GetReturnsTheItem", Err.Number, Err.Description
-        Expect.Skip "Im_ImageTests.PropertyItem_PropertyOfTheReturnedElement", "it ends in a native exception in version 0.9.45.0"
         Expect.StartCase
         Err.Clear
         Im_ImageTests.GetAllPropertyItems_ReturnsEveryItem
@@ -1561,20 +1566,20 @@ Module RunAll
         Expect.EndCase "Ty_ColorTests.BGR_AfterOleTranslateColorGivesTheSystemColour", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
-        Ty_ColorTests.SolidBrush_LongIsReadAsRGB
-        Expect.EndCase "Ty_ColorTests.SolidBrush_LongIsReadAsRGB", Err.Number, Err.Description
+        Ty_ColorTests.SolidBrush_LongIsAColorref
+        Expect.EndCase "Ty_ColorTests.SolidBrush_LongIsAColorref", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
-        Ty_ColorTests.Pen_LongIsReadAsRGB
-        Expect.EndCase "Ty_ColorTests.Pen_LongIsReadAsRGB", Err.Number, Err.Description
+        Ty_ColorTests.Pen_LongIsAColorref
+        Expect.EndCase "Ty_ColorTests.Pen_LongIsAColorref", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
-        Ty_ColorTests.Clear_LongIsReadAsRGB
-        Expect.EndCase "Ty_ColorTests.Clear_LongIsReadAsRGB", Err.Number, Err.Description
+        Ty_ColorTests.Clear_LongIsAColorref
+        Expect.EndCase "Ty_ColorTests.Clear_LongIsAColorref", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
-        Ty_ColorTests.SolidBrush_LongMakesTheColourOpaque
-        Expect.EndCase "Ty_ColorTests.SolidBrush_LongMakesTheColourOpaque", Err.Number, Err.Description
+        Ty_ColorTests.SolidBrush_LongIsOpaque
+        Expect.EndCase "Ty_ColorTests.SolidBrush_LongIsOpaque", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         Ty_ColorTests.SolidBrush_ColorWithBgrSetDrawsTheVisualBasicColour

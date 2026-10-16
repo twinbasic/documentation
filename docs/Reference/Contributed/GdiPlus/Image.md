@@ -376,9 +376,11 @@ Syntax: *items* **=** *img*.**PropertyItem**( *propId* )
 
 Syntax: *img*.**PropertyItem** **=** *item*
 
+<!-- test: Im_ImageTests.PropertyItem_GetReturnsTheItem -->
 The getter returns the property with the ID *propId* as an array of [**GpPropertyItem**](Types/GpPropertyItem) that holds one element, at index 1. The setter takes one **GpPropertyItem** and sets that property on the picture, adding it when it is not there. Its [**Id**](Types/GpPropertyItem), type, length and the address of its value must be filled in.
+<!-- /test -->
 
-<!-- test: Im_ImageTests.PropertyItem_PropertyOfTheReturnedElement, Im_ImageTests.PropertyItem_GetReturnsTheItem, Im_ImageTests.GetAllPropertyItems_ReturnsEveryItem, Im_ImageTests.PropertyItem_RemoveTakesTheItemAway -->
+<!-- test: none -- a twinBASIC defect (BETA 1005), not the package's -->
 > [!WARNING] BETA 1005
 > A property of an element of the array that **PropertyItem** returns, such as `items(1).TheASCII`, stops the process with an access violation, as it does for an element of any array of a user-defined type. An element can be read as a whole or by a field: `items(1).Id` works, and so does `Dim got As GpPropertyItem = items(1)` followed by `got.TheASCII`. **GetAllPropertyItems** returns its array in the same way, and the same holds for it. The setter, **PropertyCount**, **PropertyIdList** and **RemovePropertyItem** work.
 
@@ -386,13 +388,17 @@ The getter returns the property with the ID *propId* as an array of [**GpPropert
 
 Syntax: *status* **=** *img*.**RemovePropertyItem**( *propId* )
 
+<!-- test: Im_ImageTests.PropertyItem_RemoveTakesTheItemAway -->
 Removes the property with that ID.
+<!-- /test -->
 
 ### GetAllPropertyItems
 
 Syntax: *items* **=** *img*.**GetAllPropertyItems**( )
 
+<!-- test: Im_ImageTests.GetAllPropertyItems_ReturnsEveryItem -->
 Returns all properties as an array of [**GpPropertyItem**](Types/GpPropertyItem). See the warning under **PropertyItem**.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -450,7 +456,11 @@ Syntax: *status* **=** *img*.**GetItemData**( *item*( ) )
 
 Syntax: *status* **=** *img*.**SetAbort**( *pIAbort* )
 
-GDI+ declares this function, but does not implement it in versions 1.0 and 1.1: it does nothing useful. The argument is a **GdiPlusAbort** object.
+GDI+ declares this function, but does not implement it in versions 1.0 and 1.1. The argument is a [**GdiPlusAbort**](GdiPlusAbort) object.
+
+<!-- test: Gr_LibraryTests.SetAbort_ThenDrawingTheImage_Works -->
+> [!WARNING] 0.9.45.0
+> Do not call it. An image that has been given an object with **SetAbort**, one that never asks to stop included, ends the program with an access violation in GDI+ the next time it is drawn, in a 32-bit and in a 64-bit program.
 
 ## Example
 

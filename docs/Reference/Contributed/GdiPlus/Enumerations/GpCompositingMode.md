@@ -12,9 +12,9 @@ Selects how a drawn colour is combined with the colour already on the surface.
 
 The setting is the **CompositingMode** property of [**Graphics**](../Graphics). It matters only for colours that are not fully opaque.
 
-<!-- test: Gr_GraphicsTests.DrawString_ClearTypeGridFitWithSourceCopy_ReturnsInvalidParameter -->
+<!-- test: Gr_GraphicsTests.DrawString_ClearTypeGridFitWithSourceCopy_ReturnsInvalidParameter, Gr_GraphicsTests.DrawString_SystemDefaultWithSourceCopy_ReturnsInvalidParameterUnderClearType, Gr_GraphicsTests.DrawString_OtherHintsWithSourceCopy_Draw -->
 > [!NOTE] timeless
-> Text drawn with [**TextRenderingHintClearTypeGridFit**](GpTextRenderingHint) cannot be combined with **CompositingModeSourceCopy**. This is a limit of GDI+.
+> Text drawn with ClearType cannot be combined with **CompositingModeSourceCopy**: **DrawString** returns **InvalidParameter** and draws nothing. That is the hint [**TextRenderingHintClearTypeGridFit**](GpTextRenderingHint) and, when Windows smooths fonts with ClearType, which is its default setting, also [**TextRenderingHintSystemDefault**](GpTextRenderingHint). The other four hints draw. This is a limit of GDI+.
 
 | Member | Value | Description |
 |:-------|:------|:------------|

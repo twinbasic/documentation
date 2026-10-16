@@ -134,6 +134,10 @@ Syntax: **InitializePalette**( *palette* As **ColorPalette**, *paletteType*, *op
 
 Fills *palette* with colours of the kind *paletteType* ([**PaletteType**](Enumerations/PaletteType)). *optimalColors* is the number of colours to find. For the optimal types, the colours are chosen by median cut from *bitmap*. The palette must have its **count** set to the number of entries it can hold; if it has too few, the call fails.
 
+<!-- test: Im_BitmapTests.InitializePalette_FixedBW_FillsThePalette, Im_BitmapTests.InitializePalette_OptimalWithABitmap_FillsThePalette -->
+> [!WARNING] 0.9.45.0
+> The call ends the program with an access violation, in a 32-bit and in a 64-bit program, with the bitmap and without it. Set the **count** and the **entries** of the [**ColorPalette**](Types/ColorPalette) in the program instead; [**Bitmap.ConvertFormat**](Bitmap#convertformat) takes a palette filled in that way.
+
 ### EmfToWmfBits
 
 Syntax: **EmfToWmfBits**( *hEmf* As **LongPtr**, *cbData16* As **Long**, *pData16* As **Byte** [, *mapMode* [, *flags* ]] ) As **Long**

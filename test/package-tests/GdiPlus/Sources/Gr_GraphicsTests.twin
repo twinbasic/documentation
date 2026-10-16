@@ -2,6 +2,11 @@
 [TestFixture]
 Module Gr_GraphicsTests
 
+    Private Const SPI_GETFONTSMOOTHING As Long = &H4A
+    Private Const SPI_GETFONTSMOOTHINGTYPE As Long = &H200A
+    Private Const FE_FONTSMOOTHINGCLEARTYPE As Long = 2
+    Private Declare PtrSafe Function SystemParametersInfoW Lib "user32" (ByVal uiAction As Long, ByVal uiParam As Long, ByRef pvParam As Long, ByVal fWinIni As Long) As Long
+
     ' A source image of 4 x 2 pixels, the left half red and the right half blue.
     Private Function Source() As Bitmap
         Dim src As Bitmap = Bitmap(4, 2, PixelFormat32bppARGB)
@@ -183,6 +188,60 @@ Module Gr_GraphicsTests
         g2.CompositingMode = CompositingModeSourceCopy
         Expect.AreEqual CLng(InvalidParameter), CLng(g2.DrawString("Text", f, 10, 5, black)), "status of DrawString with ClearTypeGridFit and SourceCopy"
         Expect.AreEqual 0, Gr_CountNot(bmp2, 0), "pixels drawn with ClearTypeGridFit and SourceCopy"
+        Expect.Done
+    End Sub
+
+    ' SystemDefault follows the smoothing that Windows is set to. It is ClearType, and fails with SourceCopy, when
+    ' font smoothing is on and its type is ClearType; with any other setting nothing is checked.
+    [TestCase]
+    Public Sub DrawString_SystemDefaultWithSourceCopy_ReturnsInvalidParameterUnderClearType()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim smoothing As Long, smoothingType As Long
+        SystemParametersInfoW SPI_GETFONTSMOOTHING, 0, smoothing, 0
+        SystemParametersInfoW SPI_GETFONTSMOOTHINGTYPE, 0, smoothingType, 0
+        If smoothing <> 0 And smoothingType = FE_FONTSMOOTHINGCLEARTYPE Then
+            Dim f As GdiPlus.Font = GdiPlus.Font("Arial", 14)
+            Dim black As SolidBrush = SolidBrush(Color(0, 0, 0))
+
+            Dim bmp As Bitmap = Gr_Clear(120, 40)
+            Dim g As Graphics = Graphics(bmp)
+            g.TextRenderingHint = TextRenderingHintSystemDefault
+            g.CompositingMode = CompositingModeSourceOver
+            Expect.AreEqual 0, CLng(g.DrawString("Text", f, 10, 5, black)), "status of DrawString with SystemDefault and SourceOver"
+            Expect.IsTrue Gr_CountNot(bmp, 0) > 20, "pixels drawn with SystemDefault and SourceOver"
+
+            Dim bmp2 As Bitmap = Gr_Clear(120, 40)
+            Dim g2 As Graphics = Graphics(bmp2)
+            g2.TextRenderingHint = TextRenderingHintSystemDefault
+            g2.CompositingMode = CompositingModeSourceCopy
+            Expect.AreEqual CLng(InvalidParameter), CLng(g2.DrawString("Text", f, 10, 5, black)), "status of DrawString with SystemDefault (ClearType is the system's smoothing) and SourceCopy"
+            Expect.AreEqual 0, Gr_CountNot(bmp2, 0), "pixels drawn with SystemDefault (ClearType is the system's smoothing) and SourceCopy"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawString_OtherHintsWithSourceCopy_Draw()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim f As GdiPlus.Font = GdiPlus.Font("Arial", 14)
+        Dim black As SolidBrush = SolidBrush(Color(0, 0, 0))
+        Dim hints(1 To 4) As Long
+        Dim names(1 To 4) As String
+        hints(1) = TextRenderingHintSingleBitPerPixelGridFit: names(1) = "SingleBitPerPixelGridFit"
+        hints(2) = TextRenderingHintSingleBitPerPixel: names(2) = "SingleBitPerPixel"
+        hints(3) = TextRenderingHintAntiAliasGridFit: names(3) = "AntiAliasGridFit"
+        hints(4) = TextRenderingHintAntiAlias: names(4) = "AntiAlias"
+        Dim i As Long
+        For i = 1 To 4
+            Dim bmp As Bitmap = Gr_Clear(120, 40)
+            Dim g As Graphics = Graphics(bmp)
+            g.TextRenderingHint = hints(i)
+            g.CompositingMode = CompositingModeSourceCopy
+            Expect.AreEqual 0, CLng(g.DrawString("Text", f, 10, 5, black)), "status of DrawString with " & names(i) & " and SourceCopy"
+            Expect.IsTrue Gr_CountNot(bmp, 0) > 20, "pixels drawn with " & names(i) & " and SourceCopy"
+        Next i
         Expect.Done
     End Sub
 

@@ -167,44 +167,45 @@ Module Ty_ColorTests
         Expect.Done
     End Sub
 
-    ' The methods that take a plain Long colour read &H00RRGGBB and make it opaque.
+    ' A Visual Basic colour is a COLORREF, &H00BBGGRR, as RGB() and vbRed give. The methods that take a plain Long colour should read it so.
     [TestCase]
-    Public Sub SolidBrush_LongIsReadAsRGB()
+    Public Sub SolidBrush_LongIsAColorref()
         Expect.Begin
         Dim user As GdiPlusUser = GdiPlusUser()
-        Dim px As Color = Ty_FillOver(Color(255, 255, 255), SolidBrush(&H112233))
-        Expect.AreEqual "FF112233", Ty_Hex8(px.Value), "pixel after FillRectangle with SolidBrush(&H112233)"
-        Dim blue As Color = Ty_FillOver(Color(255, 255, 255), SolidBrush(vbRed))
-        Expect.AreEqual "FF0000FF", Ty_Hex8(blue.Value), "pixel after FillRectangle with SolidBrush(vbRed): blue, because the Long is read as &H00RRGGBB"
+        Dim px As Color = Ty_FillOver(Color(255, 255, 255), SolidBrush(VBA.RGB(&H11, &H22, &H33)))
+        Expect.AreEqual "FF112233", Ty_Hex8(px.Value), "pixel after FillRectangle with SolidBrush(RGB(&H11, &H22, &H33))"
+        Dim red As Color = Ty_FillOver(Color(255, 255, 255), SolidBrush(vbRed))
+        Expect.AreEqual "FFFF0000", Ty_Hex8(red.Value), "pixel after FillRectangle with SolidBrush(vbRed)"
         Expect.Done
     End Sub
 
     [TestCase]
-    Public Sub Pen_LongIsReadAsRGB()
+    Public Sub Pen_LongIsAColorref()
         Expect.Begin
         Dim user As GdiPlusUser = GdiPlusUser()
-        Dim px As Color = Ty_LineOver(Color(255, 255, 255), Pen(&H112233))
-        Expect.AreEqual "FF112233", Ty_Hex8(px.Value), "pixel on the line of Pen(&H112233)"
-        Dim blue As Color = Ty_LineOver(Color(255, 255, 255), Pen(vbRed))
-        Expect.AreEqual "FF0000FF", Ty_Hex8(blue.Value), "pixel on the line of Pen(vbRed): blue"
+        Dim px As Color = Ty_LineOver(Color(255, 255, 255), Pen(VBA.RGB(&H11, &H22, &H33)))
+        Expect.AreEqual "FF112233", Ty_Hex8(px.Value), "pixel on the line of Pen(RGB(&H11, &H22, &H33))"
+        Dim red As Color = Ty_LineOver(Color(255, 255, 255), Pen(vbRed))
+        Expect.AreEqual "FFFF0000", Ty_Hex8(red.Value), "pixel on the line of Pen(vbRed)"
         Expect.Done
     End Sub
 
     [TestCase]
-    Public Sub Clear_LongIsReadAsRGB()
+    Public Sub Clear_LongIsAColorref()
         Expect.Begin
         Dim user As GdiPlusUser = GdiPlusUser()
-        Expect.AreEqual "FF112233", Ty_Hex8(Ty_ClearedWithLong(&H112233).Value), "pixel after Graphics.Clear &H112233"
-        Expect.AreEqual "FF0000FF", Ty_Hex8(Ty_ClearedWithLong(vbRed).Value), "pixel after Graphics.Clear vbRed: blue"
+        Expect.AreEqual "FF112233", Ty_Hex8(Ty_ClearedWithLong(VBA.RGB(&H11, &H22, &H33)).Value), "pixel after Graphics.Clear RGB(&H11, &H22, &H33)"
+        Expect.AreEqual "FFFF0000", Ty_Hex8(Ty_ClearedWithLong(vbRed).Value), "pixel after Graphics.Clear vbRed"
         Expect.Done
     End Sub
 
+    ' A COLORREF has no alpha channel, so the colour that a Long gives is opaque.
     [TestCase]
-    Public Sub SolidBrush_LongMakesTheColourOpaque()
+    Public Sub SolidBrush_LongIsOpaque()
         Expect.Begin
         Dim user As GdiPlusUser = GdiPlusUser()
-        Dim px As Color = Ty_FillOver(Color(0, 0, 0), SolidBrush(&H80FF0000))
-        Expect.AreEqual "FFFF0000", Ty_Hex8(px.Value), "pixel over black after SolidBrush(&H80FF0000): the alpha 80 is dropped, so the red is opaque"
+        Dim px As Color = Ty_FillOver(Color(0, 0, 0), SolidBrush(vbBlue))
+        Expect.AreEqual "FF0000FF", Ty_Hex8(px.Value), "pixel over black after SolidBrush(vbBlue): an opaque blue"
         Dim half As Color = Ty_FillOver(Color(0, 0, 0), New SolidBrush(Color(&H80FF0000)))
         Expect.AreEqual "FF800000", Ty_Hex8(half.Value), "pixel over black after SolidBrush(Color(&H80FF0000)): half red"
         Expect.Done

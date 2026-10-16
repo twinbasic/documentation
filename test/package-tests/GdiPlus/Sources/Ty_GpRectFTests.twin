@@ -1,5 +1,5 @@
 ' Ty_GpRectFTests: the GpRectF type (page Types/GpRectF). The methods OffsetBy, OffsetByPt, InflatedBy and
-' InflatedByPt are not called here: a program that names one does not link (compile/Ty_CompileTests.twin).
+' InflatedByPt are not called here: a program that names one does not link (a twinBASIC defect, BETA 1005).
 [TestFixture]
 Module Ty_GpRectFTests
 

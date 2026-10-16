@@ -213,9 +213,11 @@ Syntax: *matrix*.**Scale(** *sx*, *sy*, [ *order* ] **)** **As GpStatus**
 *order*
 : *optional* A [**GpMatrixOrder**](Enumerations/GpMatrixOrder), **MatrixOrderPrepend** by default.
 
+<!-- test: Gr_MatrixTests.Scale_OtherSpellings_Scale -->
 Combines a scaling with the matrix.
+<!-- /test -->
 
-<!-- test: Gr_MatrixTests.Scale_StatementWithParentheses_Scales, Gr_MatrixTests.Scale_OtherSpellings_Scale -->
+<!-- test: none -- a twinBASIC defect (BETA 1005), not the package's -->
 > [!WARNING] BETA 1005
 > A call of **Scale** written as a statement, with its arguments in parentheses and without **Call**, does nothing and raises no error: `m.Scale(2, 3)` leaves the matrix as it was. The same call written `m.Scale 2, 3`, `Call m.Scale(2, 3)` or `status = m.Scale(2, 3)` works. This is the case for a method of any class that is named **Scale**.
 

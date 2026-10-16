@@ -149,9 +149,9 @@ Returns the colour as a `COLORREF`, `&H00BBGGRR`, which is the value of the `RGB
 > [!NOTE] 0.9.45.0
 > **BGR** converts the colour values only. The system colours of Visual Basic, such as `vbButtonFace` (`&H8000000F`), are not translated to the colours that Windows currently uses: the setter gives a nearly black red. Translate them first with the Windows function `OleTranslateColor`.
 
-<!-- test: Ty_ColorTests.SolidBrush_LongIsReadAsRGB, Ty_ColorTests.Pen_LongIsReadAsRGB, Ty_ColorTests.Clear_LongIsReadAsRGB, Ty_ColorTests.SolidBrush_LongMakesTheColourOpaque, Ty_ColorTests.SolidBrush_ColorWithBgrSetDrawsTheVisualBasicColour -->
-> [!NOTE] 0.9.45.0
-> The methods of the package that take a plain **Long** colour (such as the constructors of **SolidBrush** and **Pen**) read it as `&H00RRGGBB`, not as a `COLORREF`, and make it opaque. `SolidBrush(vbRed)` is blue. Pass `Color(...)`, or a **Color** whose **BGR** you have set, to draw a Visual Basic colour.
+<!-- test: Ty_ColorTests.SolidBrush_LongIsAColorref, Ty_ColorTests.Pen_LongIsAColorref, Ty_ColorTests.Clear_LongIsAColorref, Ty_ColorTests.SolidBrush_LongIsOpaque, Ty_ColorTests.SolidBrush_ColorWithBgrSetDrawsTheVisualBasicColour -->
+> [!WARNING] 0.9.45.0
+> The methods of the package that take a plain **Long** colour (such as the constructors of **SolidBrush** and **Pen**, and **Graphics.Clear**) read it as `&H00RRGGBB`, not as a `COLORREF`, and make it opaque. A Visual Basic colour, such as `vbRed` or the result of `RGB`, is a `COLORREF`, so `SolidBrush(vbRed)` is blue. Write `Color(r, g, b)` instead, or set **BGR** on a **Color**, to draw a Visual Basic colour.
 
 ### AsCOLORREF
 

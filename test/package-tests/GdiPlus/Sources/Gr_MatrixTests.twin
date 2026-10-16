@@ -71,19 +71,7 @@ Module Gr_MatrixTests
         Expect.Done
     End Sub
 
-    ' ---- Scale as a statement
-
-    [TestCase]
-    Public Sub Scale_StatementWithParentheses_Scales()
-        Expect.Begin
-        Dim user As GdiPlusUser = GdiPlusUser()
-        Dim m As Matrix = Matrix()
-        m.Scale(2, 3)
-        Dim e() As Single = m.Elements
-        Expect.AreEqual 2, CLng(e(1)), "m11 after the statement m.Scale(2, 3) (a defect of twinBASIC BETA 1005, not of the package)"
-        Expect.AreEqual 3, CLng(e(4)), "m22 after the statement m.Scale(2, 3) (a defect of twinBASIC BETA 1005, not of the package)"
-        Expect.Done
-    End Sub
+    ' ---- Scale
 
     [TestCase]
     Public Sub Scale_OtherSpellings_Scale()

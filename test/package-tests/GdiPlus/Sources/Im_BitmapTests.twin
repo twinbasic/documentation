@@ -51,6 +51,35 @@ Module Im_BitmapTests
     End Sub
 
     [TestCase]
+    Public Sub InitializePalette_FixedBW_FillsThePalette()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim pal As ColorPalette
+        pal.count = 2
+        Dim st As GpStatus = InitializePalette(pal, PaletteTypeFixedBW, 2, False)
+        Expect.AreEqual 0, CLng(st), "InitializePalette of a palette of two entries with PaletteTypeFixedBW, without a bitmap, returns (0 is Ok)"
+        Expect.AreEqual "FF000000", Ty_Hex8(pal.entries(0)), "first entry of the palette after InitializePalette with PaletteTypeFixedBW (black)"
+        Expect.AreEqual "FFFFFFFF", Ty_Hex8(pal.entries(1)), "second entry of the palette after InitializePalette with PaletteTypeFixedBW (white)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InitializePalette_OptimalWithABitmap_FillsThePalette()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(4!, 4!)
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear Color(255, 200, 100, 50)
+        Set g = Nothing
+        Dim pal As ColorPalette
+        pal.count = 16
+        Dim st As GpStatus = InitializePalette(pal, PaletteTypeOptimal, 16, False, bmp)
+        Expect.AreEqual 0, CLng(st), "InitializePalette of a palette of 16 entries with PaletteTypeOptimal and a bitmap returns (0 is Ok)"
+        Expect.AreEqual 16, CLng(pal.count), "count of the palette after InitializePalette with PaletteTypeOptimal and a bitmap"
+        Expect.Done
+    End Sub
+
+    [TestCase]
     Public Sub ConvertFormat_FixedBWWithABlankPalette()
         Expect.Begin
         Dim user As GdiPlusUser = GdiPlusUser()

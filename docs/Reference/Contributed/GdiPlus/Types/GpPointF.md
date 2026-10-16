@@ -154,7 +154,7 @@ These change the point they are called on.
 > [!NOTE] 0.9.45.0
 > **Add** and **Sub** change the point they are called on. Before version 0.9.0.43 they returned the result and left the point alone. Use [**Sum**](#sum-diff) and [**Diff**](#sum-diff) to get a new point.
 
-<!-- test: compile PointFScaleWithParenthesesIsASyntaxError, compile PointFScaleWithoutParenthesesIsAccepted, compile PointFScaleWithCallIsAccepted, compile PointFScale2IsAccepted, Ty_GpPointFTests.Scale_MultipliesBothCoordinates, Ty_GpPointFTests.Scale_CallFormMultipliesBothCoordinates -->
+<!-- test: none -- a twinBASIC defect (BETA 1005), not the package's -->
 > [!NOTE] 0.9.45.0, BETA 1005
 > The compiler reads `p.Scale(2)` as the start of a `Scale` statement and reports a syntax error. Write `p.Scale 2` or `Call p.Scale(2)`. **Scale2**, **InvScale** and the other methods are not affected.
 
@@ -170,7 +170,7 @@ Adds *other* to the point, or subtracts it.
 Syntax: *point*.**Scale** *factor* \
 Syntax: *point*.**Scale2**( *xFactor*, *yFactor* )
 
-<!-- test: Ty_GpPointFTests.Scale_MultipliesBothCoordinates, Ty_GpPointFTests.Scale2_MultipliesEachCoordinateByItsOwnFactor -->
+<!-- test: Ty_GpPointFTests.Scale_MultipliesBothCoordinates, Ty_GpPointFTests.Scale_CallFormMultipliesBothCoordinates, Ty_GpPointFTests.Scale2_MultipliesEachCoordinateByItsOwnFactor -->
 Multiplies both coordinates by *factor* (**Single**), or **X** by *xFactor* and **Y** by *yFactor*.
 <!-- /test -->
 

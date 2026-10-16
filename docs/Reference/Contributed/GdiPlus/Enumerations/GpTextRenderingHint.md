@@ -12,9 +12,9 @@ Specifies the process used to render text, which affects the quality of the text
 
 A process that gives higher quality is generally slower than one that gives lower quality. **TextRenderingHintClearTypeGridFit** gives the best quality for most LCD monitors and relatively small font sizes. **TextRenderingHintAntiAlias** gives the best quality for rotated text.
 
-<!-- test: Gr_GraphicsTests.DrawString_ClearTypeGridFitWithSourceCopy_ReturnsInvalidParameter -->
+<!-- test: Gr_GraphicsTests.DrawString_ClearTypeGridFitWithSourceCopy_ReturnsInvalidParameter, Gr_GraphicsTests.DrawString_SystemDefaultWithSourceCopy_ReturnsInvalidParameterUnderClearType, Gr_GraphicsTests.DrawString_OtherHintsWithSourceCopy_Draw -->
 > [!NOTE] timeless
-> **TextRenderingHintClearTypeGridFit** cannot be used together with [**CompositingModeSourceCopy**](GpCompositingMode).
+> **TextRenderingHintClearTypeGridFit** cannot be used together with [**CompositingModeSourceCopy**](GpCompositingMode): **DrawString** returns **InvalidParameter** and draws nothing. The same holds for **TextRenderingHintSystemDefault** when Windows smooths fonts with ClearType, which is its default setting. The other four hints can be used with **CompositingModeSourceCopy**.
 
 | Member | Value | Description |
 |:-------|:------|:------------|

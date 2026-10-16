@@ -139,24 +139,6 @@ Module Im_ImageTests
     End Sub
 
     [TestCase]
-    Public Sub PropertyItem_PropertyOfTheReturnedElement()
-        Expect.Begin
-        Dim user As GdiPlusUser = GdiPlusUser()
-        Dim bmp As Bitmap = New Bitmap(4!, 4!)
-        Dim text() As Byte = StrConv("A test picture" & vbNullChar, vbFromUnicode)
-        Dim item As GpPropertyItem
-        item.Id = PropertyTagImageDescription
-        item._type = PropertyTagTypeASCII
-        item._length = UBound(text) + 1
-        item._address = VarPtr(text(0))
-        bmp.PropertyItem = item
-        Dim items() As GpPropertyItem = bmp.PropertyItem(PropertyTagImageDescription)
-        Expect.AreEqual PropertyTagImageDescription, items(1).Id, "the Id field of items(1) of the array that PropertyItem returns"
-        Expect.AreEqual "A test picture", Replace(items(1).TheASCII, vbNullChar, ""), "the TheASCII property of items(1) of the array that PropertyItem returns"
-        Expect.Done
-    End Sub
-
-    [TestCase]
     Public Sub GetAllPropertyItems_ReturnsEveryItem()
         Expect.Begin
         Dim user As GdiPlusUser = GdiPlusUser()
