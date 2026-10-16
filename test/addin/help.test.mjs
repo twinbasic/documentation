@@ -37,6 +37,7 @@ import { attach } from "../../scripts/lib/tb-cdp.mjs";
 import { leaseSlot, sleep } from "../../scripts/lib/tb-ide.mjs";
 import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
+import { fixPageSize, PAGE } from "../../scripts/lib/tb-lane.mjs";
 import {
   click,
   clickAt,
@@ -54,7 +55,7 @@ import {
 } from "../../scripts/lib/tb-operate.mjs";
 import { hoverLink, hoverText, mouseAway, restMouse } from "./hover.mjs";
 import { frameEval, frameOf, serveLoopback } from "./pages.mjs";
-import { fixPageSize, PAGE, scenario } from "./scenario.mjs";
+import { scenario } from "./scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -404,10 +405,10 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     // A port the add-in is told before it binds it, so one the broker hands out
     // (WIP.Broker.md); held, with its slot, until this process ends.
     ({ port: windowPort } = await leaseSlot({ tag: "help.test detached window", port: true }));
+    // The lane gives the page 1600 by 1000 (PAGE): in a page as small as the
+    // user's IDE window can make it, the pane, which first floats at 480 by 640,
+    // covers the toolbar's buttons and the editor.
     c = await lane.open(HOST, { env: ideEnv(0) });
-    // In a page as small as the user's IDE window can make it, the pane, which
-    // first floats at 480 by 640, covers the toolbar's buttons and the editor.
-    await fixPageSize(c);
     pages = await pagesOrigin(null);
     await openFile(c, FILE, { line: 5, column: 9 });
   });
@@ -1937,11 +1938,10 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     win?.close();
     win = null;
     await lane.closeProject();
-    c = await lane.open(HOST, { env: ideEnv(1) });
     // This IDE first shows the pane in a page of 800 by 600, the IDE window of
     // 1200 by 900 at 150%, where 480 by 640 would be taller than the page: the
     // pane is capped at 85% of it, and centred inside it.
-    await fixPageSize(c, SMALL_PAGE);
+    c = await lane.open(HOST, { env: ideEnv(1), page: SMALL_PAGE });
     pages = await pagesOrigin(null);
     await click(c, "addinButton-tbDocsHelp");
     assert.ok(await waitFor(c, async (c) => (await toolWindow(c, PANE))?.visible), "the pane is not showing");
@@ -1949,7 +1949,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.ok(small, "the pane is not floating");
     assert.deepEqual([small.width, small.height], [480, 510], JSON.stringify(small));
     assert.equal(boxFault(small), "", JSON.stringify(small));
-    await fixPageSize(c);
+    await fixPageSize(c, PAGE);
     const mark = await detach();
     const frame = await windowFrame(mark);
     assert.equal(frame?.chrome, "native");

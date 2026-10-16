@@ -28,7 +28,7 @@ import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
 import { click, clickAt, pressKey, toolWindow, waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { frameEval, frameOf, serveLoopback } from "./pages.mjs";
-import { fixPageSize, scenario } from "./scenario.mjs";
+import { scenario } from "./scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = path.join(HERE, "host");
@@ -113,10 +113,9 @@ scenario("P3, P4 and P12: HTML and a web page in a tool window", (lane) => {
     pages = await servePages();
     origin = `http://localhost:${pages.port}/`;
     await lane.addAddin(PROBE);
+    // The lane gives the page 1600 by 1000: in a page as small as the user's IDE
+    // window can make it, the tool window floats over the probe's toolbar buttons.
     c = await lane.open(HOST, { env: { TB_PANES_URL: `${origin}a.html` } });
-    // In a page as small as the user's IDE window can make it, the tool window
-    // floats over the probe's toolbar buttons.
-    await fixPageSize(c);
     await c.send("Runtime.enable");
     c.on((m) => {
       if (m.method !== "Runtime.exceptionThrown") return;

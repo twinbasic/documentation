@@ -23,6 +23,19 @@
 // A scenario file gets its lane through scenario() in test/addin/scenario.mjs,
 // which shows the outline of one. Outside the runner addinLane() returns null
 // and the scenario is skipped, so a bare `node --test` never starts an IDE.
+//
+// Every IDE a runner's lane opens has a page of PAGE, 1600 by 1000 CSS pixels,
+// from the moment the lane attaches to it, whatever the window's size. The IDE
+// opens its window at the geometry the user's own IDE last left in the registry
+// (the Window key, which the harness puts back but never sets), so without it
+// the page is whatever the user's window makes it: 800 by 600 for a 1200 by
+// 900 window at 150%, where a tool window floats over the toolbar's buttons and
+// most of the code editor, which the scenarios click and hover, and a scenario
+// passes on one machine and fails on another. A lane in lanes.mjs can name
+// another size with `page` (null for the window's own), and Lane.open takes one
+// for a single IDE; fixPageSize changes it while the IDE is open. A Lane made
+// outside the runner (try_help_addin, shoot_docs) leaves the page alone unless
+// it is given a `page`.
 
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
@@ -49,10 +62,25 @@ import { laneProjectId, stageProject, unpackProject } from "./tb-project.mjs";
 /** The environment variable the runner hands a lane to its scenario file in. */
 export const LANE_ENV = "TB_ADDIN_LANE";
 
-/** The lane this process runs in, or null outside the runner. */
+/** The size a runner's lane gives each IDE's page, in CSS pixels (see the top of this file). */
+export const PAGE = Object.freeze({ width: 1600, height: 1000 });
+
+/**
+ * Give the IDE's page `size`, whatever the window's size, at the display's own
+ * density (Emulation.setDeviceMetricsOverride with deviceScaleFactor 0). A tool
+ * window first shown after this is centred in it. The size holds until it is
+ * changed again or the connection closes.
+ *
+ * @param {object} c  the connection, Lane.open's
+ * @param {{ width: number, height: number }} [size]  PAGE by default
+ */
+export const fixPageSize = (c, size = PAGE) =>
+  c.send("Emulation.setDeviceMetricsOverride", { ...size, deviceScaleFactor: 0, mobile: false });
+
+/** The lane this process runs in, or null outside the runner. Its page is PAGE unless the runner names another. */
 export function addinLane() {
   const raw = process.env[LANE_ENV];
-  return raw ? new Lane(JSON.parse(raw)) : null;
+  return raw ? new Lane({ page: PAGE, ...JSON.parse(raw) }) : null;
 }
 
 export class Lane {
@@ -66,9 +94,12 @@ export class Lane {
    * @param {boolean} [o.show]  IDEs on the user's desktop instead of a private one
    * @param {string} [o.browserArgs]  more WebView2 browser arguments for every IDE
    *   the lane opens, as launchIde takes them
+   * @param {{ width: number, height: number } | null} [o.page]  the size each IDE's
+   *   page is given as the lane attaches to it (fixPageSize); null, the default,
+   *   leaves the window's own. addinLane gives a runner's lane PAGE
    */
-  constructor({ name, slot = null, desktop = null, work, ide, show = false, browserArgs = "" }) {
-    Object.assign(this, { name, slot, desktop, work, ide, show, browserArgs });
+  constructor({ name, slot = null, desktop = null, work, ide, show = false, browserArgs = "", page = null }) {
+    Object.assign(this, { name, slot, desktop, work, ide, show, browserArgs, page });
     this.port = null; // the open IDE's DevTools port
     this.lease = null; // the slot, as launchIde takes it (leased())
     this.exe = null; // the lane's copy of the install, made on first use
@@ -234,9 +265,14 @@ export class Lane {
    *                              for a build whose output path is shown
    * @param {string[]} [o.flags]  the IDE's command-line flags, as launchIde takes them
    *                              (default IDE_FLAGS)
+   * @param {{ width: number, height: number } | null} [o.page]  the page's size for this
+   *                              IDE (default the lane's `page`); null leaves the window's own
    * @returns {Promise<object>} the connection (attachIde's), which the tb-operate.mjs calls take
    */
-  async open(src, { timeout = COMPILE_TIMEOUT, env = {}, folder = this.work, buildPath = null, flags } = {}) {
+  async open(
+    src,
+    { timeout = COMPILE_TIMEOUT, env = {}, folder = this.work, buildPath = null, flags, page = this.page } = {},
+  ) {
     if (this.run) throw new Error(`lane ${this.name} has a project open already: one IDE at a time`);
     const exe = this.copy();
     const slot = await this.leased();
@@ -264,6 +300,7 @@ export class Lane {
     Object.assign(this, { src, project, port: this.run.port });
     this.c = await attachIde(this.port);
     if (!this.c) throw new Error(`lane ${this.name}: the IDE never exposed a debug port`);
+    if (page) await fixPageSize(this.c, page);
     this.checkCompile(await waitForCompile(this.c, { project, timeout }), src);
     // Checked against whatever APPDATA the IDE was given: `env` can name another.
     const given = "APPDATA" in env ? env.APPDATA : appdata;
@@ -282,9 +319,10 @@ export class Lane {
    *
    * @param {object} [o]
    * @param {object} [o.env]  extra environment for the IDE, as for open
+   * @param {{ width: number, height: number } | null} [o.page]  as for open
    * @returns {Promise<object>} the connection (attachIde's)
    */
-  async openNoProject({ env = {} } = {}) {
+  async openNoProject({ env = {}, page = this.page } = {}) {
     if (this.run) throw new Error(`lane ${this.name} has an IDE open already: one IDE at a time`);
     const exe = this.copy();
     this.run = await launchIde({
@@ -297,6 +335,7 @@ export class Lane {
     Object.assign(this, { src: null, project: null, port: this.run.port });
     this.c = await attachIde(this.port);
     if (!this.c) throw new Error(`lane ${this.name}: the IDE never exposed a debug port`);
+    if (page) await fixPageSize(this.c, page);
     return this.c;
   }
 

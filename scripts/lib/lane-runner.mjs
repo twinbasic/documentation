@@ -53,6 +53,11 @@
 //     its program starts from its defaults, and put back at the end. Lanes
 //     that name the same application never run at once.
 //
+//   * THE PAGE'S SIZE. Every IDE a lane opens has a page of 1600 by 1000 CSS
+//     pixels (PAGE in lib/tb-lane.mjs), so that no scenario depends on the
+//     size the user's own IDE last left its window at; a lane names another
+//     with `page` in lanes.mjs.
+//
 // Ctrl+C ends the lanes and still puts the registry back.
 //
 // What only the add-in tool has to say about its lanes (the add-ins' own
@@ -159,6 +164,11 @@ export async function runLanes({ tool, suite: SUITE, workDir, usage: USAGE, subj
       l.settings.forEach(settingsKey);
     } catch (e) {
       die(2, `lane ${l.name}: ${e.message}`);
+    }
+    const p = l.page;
+    const side = (n) => Number.isInteger(n) && n > 0;
+    if (p !== undefined && p !== null && !(side(p?.width) && side(p?.height))) {
+      die(2, `lane ${l.name}: page is ${JSON.stringify(p)}, not null or { width, height } in whole CSS pixels`);
     }
   }
 
@@ -287,7 +297,9 @@ export async function runLanes({ tool, suite: SUITE, workDir, usage: USAGE, subj
         return;
       }
       console.log(`  ${l.name}: started on ${slot.desktop}`);
+      // `page` only when lanes.mjs names one: addinLane gives every other lane PAGE.
       const lane = { name: l.name, slot: slot.slot, desktop: slot.desktop, work: l.work, ide, show };
+      if (l.page !== undefined) lane.page = l.page;
       const child = spawn(process.execPath, ["--test", "--test-reporter=spec", path.join(SUITE, l.file)], {
         cwd: REPO_ROOT,
         stdio: ["ignore", "pipe", "pipe"],
