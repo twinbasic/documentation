@@ -20,7 +20,7 @@ Syntax: **Kill** *pathname*
 
 An error occurs when **Kill** is used to delete an open file.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > Each of these failures of **Kill** raises run-time error -2147467259 (`&H80004005`), where VB6 raises the numbered error shown:
 >
 > - 53 (*File not found*) when no file matches *pathname*;

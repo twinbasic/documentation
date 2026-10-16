@@ -64,10 +64,10 @@ MenuBackColor:                  red;
 SymbolClassTextDecoration:      underline;
 ```
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > A file named `Dark.theme` or `Light.theme` in `%APPDATA%\twinBASIC\themes` breaks the inheritance of every custom theme. The IDE ignores the file's contents, but still counts it, and so it never links the themes to their parents. Every custom theme, and **Classic (Light)** with them, is listed as `(undefined)` in place of **Light** or **Dark**. Choosing one gives the dark base with only that theme's own properties changed, and **Reload from disk** no longer applies the edits you make. No error is shown. To change one of the shipped themes, give your file another name and inherit from the shipped theme: `inherits: dark;`.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > Two themes that inherit from each other freeze the IDE. For example, `LoopA` has the line `inherits: LoopB;`, and `LoopB` has `inherits: LoopA;`. When the IDE starts, or when you choose **Reload from disk**, it stops responding for several seconds. Choosing one of the two themes afterwards changes nothing on screen, because the IDE fails before it applies the theme. Never let a chain of `inherits:` lines return to a theme in it. To recover, remove the loop from the files and restart the IDE.
 
 ### The format of a theme file

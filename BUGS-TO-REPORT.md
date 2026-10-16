@@ -208,7 +208,7 @@ The slots that held nothing stay empty, as they do when the key does not exist a
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: cosmetic, but it shows on a new installation, which is exactly when the list has empty slots.
@@ -260,7 +260,7 @@ A build switch for unattended use should report the diagnostics on stdout or std
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: it makes the switch unusable for the one job it exists for, because it is silent, falsely green and hangs on the case worth catching.
@@ -315,7 +315,7 @@ The implementation is accepted, as it is without the attribute. If `[PreserveSig
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: an interface the language lets you declare cannot be implemented at all, and the diagnostic asks for the signature that is already written.
@@ -343,7 +343,7 @@ Every file and folder is written, however long its path, as `export` already rea
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: an `export` to a deep folder writes part of the tree and exits 0, and the errors it prints blame permissions and storage space. `LongPathsEnabled` is 1 on the machine this was measured on, so the Windows setting does not rescue it.
@@ -386,7 +386,7 @@ No window opens from a command-line verb. The command prints the problem (`ERROR
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: an unattended `export`, `settings` or `readme` never finishes, and once the box is closed every one of them exits 0 and `export` reports success, so a script that tests the exit code or `... DONE` is fooled as well.
@@ -425,7 +425,7 @@ The files that would be overwritten are found first, as `import` does, and a ref
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: a refused export leaves the folder a mixture of the old tree and the project.
@@ -461,7 +461,7 @@ Relative paths and paths with forward slashes work for `export` and for the outp
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: ordinary relative and forward-slashed paths fail, with messages that say the file or folder does not exist.
@@ -511,7 +511,7 @@ Either the export deletes nothing when it cannot empty the whole folder, or it r
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: a partly emptied folder, with the only record in the Debug Console. On a Git working copy it breaks the repository, because Git makes its object files read-only.
@@ -554,7 +554,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Moving past the failing line with **Set Next Statement** (Ctrl+F9) instead, each F5 then advances one line. An earlier run by hand, followed to the end, saw the pending step last until the procedure returned; what differed there is not known, and in the lane the step is used up by the one stop, as above.
@@ -583,7 +583,7 @@ The imported package is ticked, as after the online import, so that **Apply** is
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: the package is imported but not referenced, and nothing says so.
@@ -621,7 +621,7 @@ After the **Apply**, builds and runs use v2, as they do when the same replacemen
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: the project builds and runs the old package after the user has replaced it.
@@ -668,7 +668,7 @@ A diagnostic that names the type argument and the call that supplied it. The `>`
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: a diagnostic that points at correct code. `Max` uses `>` on a type parameter with nothing to say which types it accepts, which is how the problem arises.
@@ -703,7 +703,7 @@ The run ends, as it does without the attribute, with no restart of the compiler.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: low; the IDE recovers, but the project is compiled again, and LLVM-compiled code run in the IDE is not recommended anyway. Without the attribute the run ends with no restart. In a built exe, with or without LLVM, `End` ends the program with exit code 0.
@@ -748,7 +748,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: medium. It applies to a debug run compiled with LLVM, which Project Settings itself does not recommend, and it ends the run; nothing wrong is computed. Turning LLVM off for the debug run avoids it.
@@ -801,7 +801,7 @@ The compiler refuses the declaration, because an interface cannot have the ident
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: low; it takes a deliberate copy of `IUnknown`'s identifier, but the compiler accepts it silently and the failure is a crash.
@@ -853,7 +853,7 @@ Compile Error in File '...\Module1.bas', Line 16 : Function or interface marked 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: low, since a project can declare its own copy of the interface, but the failure is silent without a handler and the compiler gives no sign that the call is not what it appears to be.
@@ -919,7 +919,7 @@ An error on the declaration of `Big`, TB5001 as for every other element type: th
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 VB6 has no array constants, so there is no VB6 project.
@@ -961,7 +961,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 What does not reproduce it: evaluating nothing at the first stop, after which F5 stops again at once, in `Main` on the line after `DoEvents` (`Loop`), where `? 1` prints `1`; and a break that lands in the program's own code rather than in `DoEvents`, where the Debug Console and watches work. A name that the package's procedure cannot see, such as a local of `Main`, ends the program as `? 1` does.
@@ -1002,7 +1002,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 What does not reproduce it: `tot` after leading spaces, which opens the list with `total`; and a dot after `?` and a space, `? items.`, which opens the list with the `Collection`'s members, so only the names are missing there. With Ctrl+Space at the end of the line, `Touch tot`, an argument of a Sub call, opens the list with `total`, and `Call Tou` and `total = to` open none, so names are missing after `Call` and on the right of an assignment as well. Typed key by key, `Call Tou` goes wrong sooner, for a separate reason: the space after `Call` accepts the list's first entry, and the line becomes `CallByDispId()`. With no program running, Ctrl+Space gives the same results: `Mai` offers `Main`, and `? Mai` opens no list.
@@ -1045,7 +1045,7 @@ Each line stays as it is typed, as it does in the code editor. The code editor's
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 What does not reproduce it: a word that is already the list's first entry, and not a procedure, keeps its space, so `total = 6` stays as it is. `? total` and `Debug.Print total` stay as they are. Escape before the space closes the list, and the space is then typed. With the IDE's IntelliSense mode set to LEGACY or MANUAL, the list does not open while the first word of a line is typed, and `Print total` and `Call Touch(total)` stay as they are.
@@ -1084,7 +1084,7 @@ Nothing from the compiler's own memory ends up in the exe, and the padding after
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The values are addresses in the compiler process. After a build with the IDE left open, a read-only query of the memory map of the IDE's child processes (`VirtualQueryEx`; nothing was read from their memory) found both values of that build's exe in committed, private, read-write memory of the compiler process: `twinBASIC_win64_noDEP.exe` for a win64 build, and `twinBASIC_win32_noDEP.exe` for a win32 build. In the IDE's other child processes, both values fell in free address space. For win64 this is conclusive: only 3 of 200,000 random values below 2^47 fell in that process's committed memory. For win32 it is weaker, since 20,497 of 200,000 random 32-bit values did too.
@@ -1125,7 +1125,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 What did not reproduce it: `Host.CurrentProject.RootFolder.Parent`, the parent of the project's folder, reads fine, and its `Path` is `twinbasic:/`, the file system's root. An add-in that reads neither does not crash.
@@ -1183,7 +1183,7 @@ The numbers in the table, with VB6's descriptions, as for the 5 cases that alrea
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 This extends #2345, which reports the first row of the table, and is part of #56. `FileCopy` raises VB6's numbers, since #2451 fixed it.
@@ -1221,7 +1221,7 @@ Error 55 for a file open `For Output`, `Append`, `Binary` or `Random`, with its 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: low, but silent. No error is raised, and the file's attributes change where VB6 leaves them alone: the file stays read-only until its attributes are set back.
@@ -1313,7 +1313,7 @@ A compile error on each `As New` of an `Interface`, TB5074 as for `New` on one: 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 VB6 has no comparison: a VB6 project cannot declare an `Interface`, and the interfaces of the type libraries it references are hidden from it, as #2486 said.
@@ -1472,7 +1472,7 @@ Each call fails with `E_POINTER` (`&H80004003`), which twinBASIC raises as a run
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 VB6 crashes too. The same calls on the connection point of a VB6 class with an event, made through `DispCallFunc` (the VB6 project is attached as `connection-point-null-pointer-crash-vb6.zip`; the environment variable `CASE`, 1 to 8, picks the call, and 2 is `GetConnectionInterface` with a null pointer), each end the exe with an access violation, `0xC0000005` in `MSVBVM60.DLL`. As for #2488, a fix costs no compatibility: no program depends on the crash.
@@ -1748,7 +1748,7 @@ The error number VB6 raises for each code in the table, with VB6's description, 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 twinBASIC already raises VB6's number for `DISP_E_MEMBERNOTFOUND` (438), `DISP_E_TYPEMISMATCH` (13), `E_INVALIDARG` (5), `DISP_E_OVERFLOW` (6), `DISP_E_DIVBYZERO` (11), `DISP_E_BADVARTYPE` (458), `DISP_E_PARAMNOTFOUND` (448) and an `HRESULT` of the form `&H800A....` (its low word, 424 for `&H800A01A8`). `E_POINTER`, `E_FAIL`, `E_UNEXPECTED` and `&H8007000D` are raised as themselves by both, from a statement.
@@ -1920,7 +1920,7 @@ End Module
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 What does not reproduce it: `Err.Raise Number` with the number in a variable or a parameter, with or without a source and a description; a run-time error the member does not raise itself, such as a division by zero (11) or `Collection.Item` with an index past its end (9), which arrive as themselves; any early-bound call. What does: `Err.Raise` with a constant number, with or without a constant source and description (`Err.Raise 5`, `Err.Raise 1234` as well as 380); the `Error` statement; a `Property Let`; a late-bound statement and `CallByName` alike; the built exe as well as an IDE run. The `&H80020009` is what `IDispatch::Invoke` returns when the member raised an error, with the error in the `EXCEPINFO`; so the constant-number form seems to leave the `EXCEPINFO` without the number the caller reads, which is an inference.
@@ -1975,7 +1975,7 @@ A code other than 0 from every run that ends `... FAILED`, as the last line of #
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 A successful `export` and `import` end `... DONE` and exit 0, as they should.
@@ -2022,7 +2022,7 @@ An expression that cannot be shown, such as `? p`, which has no single value to 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 What does not reproduce it, on BETA 1005: a watch on `p`, a watch on `p.X`, and **Variables**, which shows `p` and its fields. Seen with a `Private Type` declared in the module; other declarations of the type were not tried.
@@ -2030,34 +2030,6 @@ What does not reproduce it, on BETA 1005: a watch on `p`, a watch on `p.X`, and 
 Severity: low. The console reports a failed build for a line that only asks to print a structure.
 
 <!-- Reproducer: bugs/console-print-udt-linker-error/ (mode lane: `ide-test.bat --only watches`, test/ide/watches.test.mjs, whose first three tests assert the fixed watch and whose last asserts the ? p defect; the lane passes while the bug is there); its Startup.twin is test/ide/probes/watches/Sources/Startup.twin with a different header comment. Verified on BETA 1005 by `bug_repro.mjs verify` through the lane. Follow-up to #2485 ("A watch on a variable of a user-defined type fails with a codegen error, and the Debug Console reports a linker error at every stop"), closed as fixed. No documentation page states it. When fixed: update the last test of test/ide/watches.test.mjs to assert the new message, and retire the reproducer. -->
-
----
-
-## The IDE's `styles.css` labels a GIF and a JPEG `image/png`, and two PNGs `/png`
-
-**Describe the bug**
-Four of the images that the IDE's `ide\styles.css` embeds as base64 `data:` URIs are labelled with a media type their bytes do not have: two PNGs are labelled `/png`, which is not a media type, and a GIF and a JPEG are labelled `image/png`. The other 171 images embedded in the `.css` files under `ide\` are labelled with the type they have.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `ide\styles.css`, in the folder of the twinBASIC installation, in a text editor. There is no project to attach: the defect is in the installation's own file.
-2. Line 2947, in the rule of `.treeExpanded` and `.sectionExpanderIcon`, reads `background-image: url('data:/png;base64,iVBORw0KGgo...')`. Decode the base64: its first eight bytes are `89 50 4E 47 0D 0A 1A 0A`, the signature of a PNG. Line 2952, in the rule of `.treeExpanded1`, is labelled `/png` in the same way, and is also a PNG.
-3. Line 3917, in the rule of `#progressSpinner` and `.progressSpinnerIcon`, reads `url('data:image/png;base64,R0lGODlh...')`. Decode the base64: it starts with `GIF89a`, the signature of a GIF.
-4. Line 7412, in the rule of `.vipGold1_autoWeighingSystemsLogo`, reads `url('data:image/png;base64,/9j/4AAQ...')`. Decode the base64: it starts with `FF D8 FF E0`, the start of a JPEG.
-
-**Expected behavior**
-Each `data:` URI names the type of its bytes, as the other 171 do: `image/png` for the two PNGs, `image/gif` for the GIF and `image/jpeg` for the JPEG. A media type is `type/subtype`, so `/png` is not one.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-No other `.css` file under `ide\` has a mislabelled image, the Monaco editor's `editor.main.css` included. Images embedded in the IDE's `.js` and `.htm` files were not checked.
-
-Severity: low. Chromium identifies an image by its bytes, so all four pictures show: in headless Chrome 148, each of the four URIs loads as an `<img>` at its own size, and as a `background-image` draws the same pixels as the URI with the correct label. The IDE's own WebView2 was not tested.
-
-<!-- Reproducer: bugs/ide-stylesheet-image-labels/ (mode probe: scripts/probe_ide_image_labels.mjs reads every .css file under the install's ide folder through stripFile in scripts/lib/compact-image.mjs and prints one line for each image whose label differs from its bytes; exit 1 while the defect is there). No project and no zip, as for the filed "The IDE has written the same name twice into project files it ships". `verify` reproduces on BETA 1005. The Chrome check is not scripted (headless Chrome from scripts/lib/browser.mjs, 2026-10-10: each URI loaded as an Image, and an element screenshot of a box with it as background compared byte for byte with the same box under the correct label). Found by imagestrip, which relabels each image by its bytes and reports it. Stated in docs/Documentation/Tools.md's imagestrip section ("In BETA 1005, the IDE's `styles.css` has a GIF and a JPEG labelled `image/png`, and two PNGs labelled `/png`...") and in WIP.Build.md's bullet "An image is named by its bytes"; when fixed, update both and the comments in scripts/lib/compact-image.mjs that name the IDE's labels. Tools.md's probe_ide_image_labels.mjs section goes with the reproducer when it is deleted. -->
 
 ---
 
@@ -2104,7 +2076,7 @@ The error is passed to the caller's handler whichever of the two procedures is c
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 On BETA 1005 every case of the table was run on its own, in the IDE and in a 32-bit exe. A 64-bit exe of cases 4 and 5 on BETA 1005 does what the 32-bit one does.
@@ -2144,7 +2116,7 @@ The selection is re-indented, as it is when it starts on any other line: the for
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The cause, read from `ide\main.js` and `ide\main2.js`: `provideDocumentRangeFormattingEdits` declares the start line with `const` and then decrements it (`o--`) in the loop that moves the start up over the lines ending in `_`, which throws as soon as the selection starts on a continuation line. The rejection reaches `window.onunhandledrejection` in `main2.js`, which alerts *IDE startup failure* and calls `hostAppObject.CloseWindow` unless `reportIDEerrorsToDebugConsole` is set, and only `startNow`, the start without a project, sets it. So in an IDE opened with its project, any unhandled rejection in the page closes the IDE.
@@ -2181,7 +2153,7 @@ The second press selects the `Module` at line 1, column 1. The start of the file
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The cause, read from `ide\main.js`: `doFindMatch` takes the character before and the character after a match with `charAt`, and treats each as a boundary when its `charCodeAt(0)` is below 128 and it is not a letter or a digit. Before the first character of the text searched, `charAt` returns an empty string, whose `charCodeAt(0)` is `NaN`, so the match is taken to be inside a word and is skipped. The same code skips a match that ends at the last character of the text searched; that, and a match that starts exactly at the caret (the text searched starts there), were not tried.
@@ -2208,7 +2180,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The cause, read from `ide\main.js`: the Find Next code lower-cases the text searched (`toLowerCase`) when Match Case is clear, and `createRegexFromUserString` builds the expression from the pattern as typed, adding only the `m` flag. A class such as `\D` (not a digit) matches lower-case text as before, so `/\Dim/` still finds `Dim`: only a literal capital letter fails.
@@ -2242,7 +2214,7 @@ The match is selected, from the line break to the end of `End Sub`, and the next
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The cause, read from `ide\main.js`: `doFindMatch` turns the start of the match into a line and a column, but puts its end on the same line, at the start column plus the match's length. For a match that holds a line break that column lies past the end of the line, and the editor shortens the selection to the line's end. The next search starts from that place, which is before the match, and finds it again. The match starts at the line break because the IDE adds the `m` flag, so `^` also matches inside the line break. A match within one line, such as `/sub$/i`, is selected properly.
@@ -2268,7 +2240,7 @@ The alert gives the reason, such as `Invalid RegExp: Invalid regular expression:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The cause, read from `ide\main.js`: `createRegexFromUserString` calls `alert("Invalid RegExp:", e.message)`. `alert` shows its first argument only, so the message is dropped; `alert("Invalid RegExp: " + e.message)` would show it.
@@ -2295,7 +2267,7 @@ When Selected Text can no longer be used, the panel ticks Current File, as Ctrl+
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Ticking another scope, such as Current Procedure, recovers. Severity: low. The message suggests that the file holds no further match, while the search did not look.
@@ -2334,7 +2306,7 @@ Plain text, with the code and the message apart: `{WARNING} /<Project>/Sources/H
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The cause, read from `ide\main.js`: the panel adds each diagnostic with the caption `"<span>" + code + "</span>" + message`, the `<span>` styling the code, and `generateCopyPasteTextForProblem` copies the caption as it is, labelling severity 1 `{ERROR}` and every other severity `{WARNING}`. Copy All Errors copies the errors with the same `<span>`.
@@ -2369,7 +2341,7 @@ The module's row expands to its members, `Main` and `Plain`, as the panel's filt
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The symbols reach the panel's `syncSymbols` with `children: []` for every type, so either the compiler sends no members or the IDE drops them before the panel; which of the two was not settled.
@@ -2404,7 +2376,7 @@ The caret on the declaration line, at the name, as Go To Definition does for a l
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: low. The declaration is one line above the caret, and in view.
@@ -2428,7 +2400,7 @@ Escape leaves only the first cursor, as it does in the Monaco editor the code ed
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Escape is not among the keys the IDE stops before they reach Monaco (`monacoApplyKeyDownFilter`), and the IDE does not refer to Monaco's command for it, `removeSecondaryCursors`; where the key goes was not settled.
@@ -2470,7 +2442,7 @@ The box turned red, as it is for an expression the debugger cannot evaluate, sin
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The throw is in the box's `evaluate` callback (`BigInt(a)` in `createHexEditor`, `ide/main.js`).
@@ -2503,7 +2475,7 @@ The Address column showing the whole address, `&H0000004232CFF438` or `&H4232CFF
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The pane is made with `createHexEditor(r, {stream: n, addressBits: 32, columns: 16})` whatever the build target (`_hexEditorPanel`, `ide/main.js`), and the label of each row is masked to `addressBits`. The cell that takes the focus has the whole address in its `data-addr`, and the reads use it.
@@ -2530,7 +2502,7 @@ The cells of unreadable memory drawn as unreadable (blank and grey, the `invalid
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 `invalidMem` is set only through the stream's `onInvalidate`, which only a demonstration stream in `ide/main.js` calls.
@@ -2562,7 +2534,7 @@ The box turned red, since a negative number is not an address; or the number rea
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The base address is kept as a signed `BigInt`; only each row's label is masked.
@@ -2588,7 +2560,7 @@ The menu at the caret, as Shift+F10 opens a context menu elsewhere in Windows an
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The command calls `showContextMenuMonaco({clientX: 0, clientY: 0})` (`ide/main.js`).
@@ -2626,7 +2598,7 @@ The tab tinted as soon as it opens, as the Project Explorer row is.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 `syncFileDiagnosticsToExplorer` (`ide/main.js`) sets the tab's class only when the file has an open tab at the time; opening a tab does not read the file's cached counts.
@@ -2655,7 +2627,7 @@ The box holding the whole value, `"it's"`, and leaving it with nothing typed cha
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 `onVariableDblClick` (`ide/main.js`) builds the box as HTML, `"<input id='renameInput' ... value='" + value + "' ...>"`, so the apostrophe ends the attribute; the box's `onblur` sends `setVariable` with whatever the box holds. A value with double quotes (`"say ""hi"""`) is shown and kept correctly. Escape leaves the variable as it was.
@@ -2692,7 +2664,7 @@ A hover that does not run a Sub: it has no value to show, so no hover, or the co
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The hover sends `evaluate` with `context: "hover"` and the expression `t.Bump`. A hover also runs a Function or a Property Get to show its value (`t.Doubled`, `Level1(n)`), which is how the hover is meant to work; for a Sub nothing is shown that could justify running it. Hovering over a variable, such as `Value` in `t.Value`, shows `t.Value:   6` and changes nothing.
@@ -2732,7 +2704,7 @@ The run aborted, as the message says and as the same edit at a breakpoint does: 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 What runs is what the panel's **Stop** button runs: it ends only the failing procedure, which #2441 reports. Main runs on with code that the edit has since changed in the editor but not in the program.
@@ -2760,7 +2732,7 @@ The row showing the value the variable now holds, as it does for a Long.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The row is redrawn from the answer to the `setVariable` request (`body.value`), so that answer holds `0` and `#12:00:00 AM#`. With `-1.5E+20` the row showed `2.19923962666636E-315`, which suggests the answer is read from the wrong type. Currency, Boolean, Variant and enum rows show the edit at once.
@@ -2805,7 +2777,7 @@ A stop in `Main` on `Debug.Print "m2"`, the line after the call, as Step Out giv
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The same for every caller tried: `Main` and another Sub, with the call made directly, inside `Select Case`, `If` or `For`, and a Function call in an assignment.
@@ -2832,7 +2804,7 @@ A message that the project has compile errors, naming the line with the error, o
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 With the error in `Main` itself there is no panel; the DEBUG CONSOLE prints `[LINKER] compilation (codegen) error detected in '{temp_component}.{temp_procedure}' at line #1` and `(compile error: codegen error; check for compilation errors)`.
@@ -2871,7 +2843,7 @@ F6 running the procedure from any column of any of its lines, its `End` line inc
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The IDE sends `runCodeUnderCursor` with the line and column, and the message is the compiler's answer. The procedure's own `Sub` line works at every column tried, right of that limit included. A trailing comment on the `End Sub` line moves the limit to where the comment starts. The check looks like a range test that compares the column with the end of the range on every line.
@@ -2898,7 +2870,7 @@ The query URL-encoded (`encodeURIComponent`), so that the search is for the whol
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The button's handler (`showErrorWidget`, `ide/main.js`) is `root.Shell('cmd.exe /c start "link" "https://www.google.com/search?q=' + e + '"')`, with `e` the header and description joined by spaces.
@@ -2948,7 +2920,7 @@ A diagnostic, or a compiled project. An array that the compiler cannot use as a 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Severity: high for a project that has the declaration. The compiler crashes on every attempt and restarts into the same crash, so the IDE reports nothing else about the project, and the line has to be found and removed by hand. No wrong code is produced.
@@ -3014,7 +2986,7 @@ With the contributed package Generics 1.0.0.0, `Dim t As Any = New TupleOf2(Of S
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Not tried: a generic class from a compiler package, such as `EventLog(Of T1, T2)` of WinEventLogLib.
@@ -3075,7 +3047,7 @@ A diagnostic for `New ZPriv`, `Dim ... As New ZPriv` and `New Locked` outside th
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Not tried: a `Private Sub New` in a class of a package built from the project's own `Packages` folder compared with one installed from a `.twinpack` file, and `New` through `CreateObject` (the class is `[COMCreatable(False)]` here).
@@ -3105,7 +3077,7 @@ Each spacing command an undo step that marks the form changed, as every other Fo
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The designer sends no `onChanged` or `onSignificantChange` for a spacing command. `formDesginer_RemoveSpacingHorizontal`, `formDesginer_RemoveSpacingVertical` and `formDesigner_AdjustSpacingOfSelectedControls_Horizontal` / `_Vertical` (`ide/main.js`) never call `undoPoint`, which `alignControlsLeft` calls at its end. A later change, such as an arrow key on another control, writes the whole surface into the form, the spaced positions included.
@@ -3133,7 +3105,7 @@ The new sizes saved, as an Align command's new positions are.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 After step 2 the designer's form state (`state.item.form`, what Save writes) still holds `Height: 30`. With an arrow key on another control between steps 2 and 3, the form opens again with the 24s. A click on the form's background between them saves them too.
@@ -3160,7 +3132,7 @@ Keys in the zoom box changing only the zoom.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Each press sends `onChanged` and `onSignificantChange`, as an arrow key in the designer does. At 100 % display scaling a press moves a control 1 pixel. With two controls selected, Up twice and Down twice make four undo steps.
@@ -3188,7 +3160,7 @@ The lock marked as a change to the form and saved with it, as the grid options, 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 `lockTheControl` (`ide/main.js`) is called by the lock commands with an argument that skips `IDEOptionsChanged`, and they make no undo point; by the code, the form's context menu's Lock all controls and Unlock all controls are the same, which was not tested. Lock Controls, an arrow key on another control and Ctrl+S keep the lock.
@@ -3215,7 +3187,7 @@ The controls centred on the selection's centre: Left 130 (the selection spans 10
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 `alignControlsCenterHorizontal` (`ide/main.js`) takes its line from `getTopLeftOfAllControls`, which returns the smallest left and the smallest top, and `alignControlsCenterVertical` from `getTopRightOfAllControls().y`. Align > Left, Right, Top and Bottom are right. The command is an undo step, so Ctrl+Z puts the controls back.
@@ -3243,7 +3215,7 @@ The TextBox at Left 40 and Top 53, centred in the Frame, as the same commands gi
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 `tbFormDesigner_CenterSelectedGroupInContainerHorizontal` (`ide/main.js`) reads the container's size with `getBoundingClientRect()`, which is the zoomed size, and compares it with the controls' unzoomed positions. Three controls on the form spanning 10 to 350, centred horizontally at 50 %, moved by -80 instead of +20.
@@ -3270,7 +3242,7 @@ PROPERTIES showing and taking the same unit: pixels on a CustomControls form, wh
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 `cacheParentScaleModeInfo` (`ide/main.js`) takes a form with no `ScaleMode`, as a CustomControls form is, to be in `vbTwips` and multiplies by 15 for the display. On a VB form in twips, Command1 at 10 pixels shows Left 150, and typing 450 moves it to 30 pixels.
@@ -3298,7 +3270,7 @@ No change and no undo step until something on the form changes, as a click on on
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 After step 3 the designer sends `onChanged` and `onSignificantChange`. It writes the surface into the form state, so at a display scaling other than 100 % a position the surface rounds to a device pixel changes in what Save writes: at 150 %, Check1's `Top` of 55 became 54.6667. It does not happen every time: in the trials one try in four did not do it, when Escape had first closed an open File menu, and in the reproducer's first four runs two plain tries in seven did not. A click on a control, a Format menu opened and closed, and the grid panel shown and left do not do it.
@@ -3326,7 +3298,7 @@ Ctrl+A selecting the box's text, as it does in every other text box.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 With the designer focused, Ctrl+A selects every control, as it should. In a PROPERTIES box the key is consumed and does neither.
@@ -3352,7 +3324,7 @@ The alignment only. A menu bar opened by Alt alone, when it is released with no 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Alt pressed and held alone opens the menu bar before it is released. With the arrow's key events carrying the Alt flag but no key event for Alt itself, the menu bar opens on the arrow's key-up.
@@ -3380,7 +3352,7 @@ One question; YES makes both controls the array, Check1(0) and Check1(1).
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Answering NO to the first question asks nothing more and keeps the old name. Renaming to the name of an existing array (Command1 to Command2, with Command2(0) and Command2(1) on the form) asks nothing and makes Command2(2).
@@ -3407,7 +3379,7 @@ The name refused with a message, or made into an identifier as `My Form` is.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 `a.b` gives `Class [a.b]`, and `My Form` gives `Class [My Form]` and a form whose `Name` is `[My Form]`.
@@ -3433,7 +3405,7 @@ A third Zoom Out going to 25 %, the box's smallest value.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 `tbFormDesigner_ZoomDecrease` (`ide/main.js`) steps only `if (zoomSelect.selectedIndex > 1)`, and 25 % is index 0. The same commands scale the zoom by `g_textScaleFactor` the opposite way from the zoom box (`value * (textScale/100)` against `value / (textScale/100)`), which matters only when the Windows text size is above 100 %; that is not reported here, since it could not be tested.
@@ -3459,7 +3431,7 @@ No line in the tooltip of a designer's entry, since a designer has none.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The designer's `onSignificantChange` handler calls `updateHistory(uri, <form name>)` with no line, and the tooltip is built as `<path> [line: <line>]`. An edit inside a procedure of a code file gives an entry whose tooltip reads `[line: 5]`. A double-click on the form's entry opens the designer, as it should.
@@ -3485,7 +3457,7 @@ The designer of frmDeep opened, as Shift+F7 does for a form in `Sources`.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 `switchToFormPart` (`ide/main.js`) replaces the first `.twin` in the whole path with `.tbform`, giving `Sources/v1.tbform.forms/frmDeep.twin`, which does not exist. From the designer the first `.tbform` in the path is the file's own, so that direction works.
@@ -3511,7 +3483,7 @@ The same seven tools as the docked Toolbox.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The rule that hides the other tools for a report (`.reportDesignerMode ...`) applies only inside `#bodyInner`, where the docked Toolbox is; a floating panel is outside it.
@@ -3537,7 +3509,7 @@ The notification only, with no tab; or the file shown read-only, as View As JSON
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The IDE never reports the file as opened (the open's completion callback is not called), and the page throws a `TypeError` in a websocket request handler.
@@ -3565,7 +3537,7 @@ The designer not opened, with the notification, or a message in the designer tha
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The page throws `TypeError: Cannot read properties of undefined (reading '0')` in `formDesigner_syncToState` when the designer opens, and `addControl` throws at the double-click. A `.tbform` with no `FormDesignerId` opens normally.
@@ -3609,7 +3581,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 These fail the same way: a UDT of 5 bytes (a `Long` and a `Byte`), 8 bytes (two `Long`s; a `Double`; a `LongLong`), 12, 16 and 32 bytes; a local fixed-size, a dynamic (`ReDim`) and a module-level array; a two-dimensional array; the argument written `Take (a(1))` or `Call Take(a(1))`; and a `Function` in place of the `Sub`. These are right: a UDT of 4 bytes or less (a `Long`, two `Integer`s, three `Byte`s, a pointer), a scalar UDT variable, an array element copied to a variable first (`e = a(1)`, `Take e`), a `ByRef` parameter, and an element of an array declared inside a UDT (`h.Arr(1)`). A 64-bit build is right, and so is a build with LLVM, 32-bit and 64-bit. In the test mode the code does not return, so `tbrun --tests` reports "no answer" after its time-out and runs none of the cases after it.
@@ -3643,7 +3615,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Each of these fails: a property, a `Sub`, a `Function` that ignores `Me`, and a `Function` that takes a UDT argument (`a(1).Diff(a(2))`); a lower bound of 0 or 1; a variable index; the element as a `With` object; a static array; a dynamic array; a module-level array; and an array parameter (`b(1).Sum` in a procedure that takes `ByRef b() As Pair`); a UDT of one `Byte`. These work: a scalar variable; a UDT member of a UDT (`h.One.Sum`); an element of an array declared inside a UDT (`h.Many(1).Sum`); an element copied to a variable first; and the element's plain fields (`a(1).X`). A UDT passed `ByVal` from an array element is a different defect, with an entry of its own (`udt-array-element-byval-argument-stack`): it needs no method, and the fault comes after the call returns.
@@ -3688,7 +3660,7 @@ A syntax error for the one-point call, as VB6 gives (*Compile Error: Syntax erro
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The same in a 64-bit build and with LLVM. A method declared inside a `Type` behaves the same (`Sub Scale(ByVal sx!, ByVal sy!)` called as `s.Scale(2, 3)` leaves the UDT unchanged). A method of any other name (`Foo`, `Move`, `Point`, `PaintPicture`, `Drag`, `ZOrder`, `Show`, `Hide`, `TextWidth`, `Refresh`, `SetFocus`, `Cls`) is called with parentheses or without. `o.Circle(2, 3)` and `o.PSet(2, 3)` are refused (TB5075 and TB5103), as is `o.Print(2, 3)` (TB5182), so those are not silent. What works for `Line` and `Scale`: `Call o.Scale(2, 3)`, and `o.Scale 2, 3` with no parentheses. VB6 does not allow a procedure named `Scale` at all, and allows `Line` only in a module, where it can only be called with the graphics syntax; so twinBASIC code that follows VB6 never meets this, and code in the new style, such as GdiPlus's UDT methods named `Scale`, does.
@@ -3729,7 +3701,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The same codegen error for: a UDT variable, an element of an array of the UDT (`a(1).o = 5`), a member of a nested UDT (`h.in1.o = 5`), and the function-result variable of a function that returns the UDT (`Next1.path = New GP(g.path)`, as in GdiPlus); with a default member (`= 5`) and without one (`= p`, `= Nothing`, `= New Widget`); in 32-bit and 64-bit builds; and with LLVM, where it is "a feature used in your code is not yet supported with the LLVM compiler" for the whole procedure. Right: `Set h.o = p`; a local variable (`q = 5` runs; `q = p` without a default member raises 91); a field of a class (`c.o = 5` runs; `c.o = p` raises 91); a UDT member typed `Object` (`h.ob = p` runs) and one typed `Variant` (raises 438, *Object doesn't support this property or method*). A local `q = New Widget` gets warning TB0022 (*assignment to class that does not seem to offer a default property-put member*) at compile time; the UDT-member case gets no diagnostic of any kind.
@@ -3776,7 +3748,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 The same codegen error for `Return Me`, for a local (`Dim t As R: t = Me`), for `Dim t As R = Me`, for `Property Get Copy() As R: Copy = Me`, for a `ByRef` parameter (`o = Me`), and for a `Variant` (`v = Me`), in 32-bit and 64-bit builds. With LLVM the build prints "a feature used in your code is not yet supported with the LLVM compiler" for the method. These are right: a method that is never called (it is not compiled), `Me.X`, passing `Me` to a `ByVal` parameter (`TakeR Me`), `Me` on the left (`Me = other`), copying field by field (`Copy.X = Me.X`), and a module function that copies a parameter (`Cp = v`).
@@ -3835,7 +3807,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 Found by the documentation's `List.md` sample for TBMANLIB_Diagnostic 1.0.0.1, whose `List(Of T).SetItem` has this shape (the package's own defect is the `Before = 1` that raises the error). The number is right and only the text differs, so a program that tests `Err.Number` is not affected. A plain `Collection` Add and Remove, `Err.Raise 5` and an `Insert 0` on an empty list (the same Add) give the right text in the same run. The trigger was not narrowed further than the three conditions: the `Collection` alone in a module, with six forms of the `On Error Resume Next` block, gives the right text, and so does a copy of the package's `SetItem` with its `If Err.Number <> 0` form. A second `Dim b As New Cls(Of String)` local fails the same way.
@@ -3894,7 +3866,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1007
 
 **Additional context**
 These are right in the same LLVM builds: the second parameter `ByRef ... As Long`, `Byte`, `Single`, `Currency`, `Date`, `Object`, `Double`, `String`, `Variant` or `LongPtr`; `ByVal ... As Boolean` or `As Integer`; the `ByRef Boolean` placed before `x`; no such parameter; a `Do` loop with `i = i + x`; a `For` without `Step`; and a literal `Step`. These are wrong too: `Step x * 1`, `Step y` for a second `ByVal` parameter, a local copied from `x`, the `ByRef` parameter `Optional` or required, and the argument passed or left out. A `Sub` and a class method are wrong in the same way, and so are a `ByVal Single` step and a `Long` step with an `Integer` loop variable. A `ByVal Integer`, `Double` or `Currency` step is right, and so is a `ByRef` Enum, a `ByRef` UDT holding a Boolean, a `ByRef Variant` or a `ByRef` Boolean array in the position of the 16-bit parameter.

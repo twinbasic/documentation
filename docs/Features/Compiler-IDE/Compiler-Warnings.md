@@ -53,8 +53,8 @@ Option Explicit Off
 
 Module Tally
     Sub Count()
-        total = total + 1
-        Debug.Print total
+        hits = hits + 1
+        Debug.Print hits
     End Sub
 End Module
 ```

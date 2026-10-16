@@ -120,14 +120,14 @@ A search that reaches the end of its scope with **Down** asks **End of search sc
 
 A search with **All**, a project search, and **Replace All** end with **The specified region has been searched.** After a **Replace All**, a second box says how many replacements were made: **N replacements were made.**, or **1 replacement was made.** With no scope ticked, the panel says **Scope not selected**.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > After a search of **Selected Text**, moving the caret leaves **Selected Text** ticked but greyed out, and **Current File** is no longer ticked. **Find Next** then says at once that the end of the search scope has been reached. Tick **Current File** again to search on.
 
 ## Match text
 
 A plain search ignores case unless **Match Case** is ticked.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > **Whole Word Only** never finds a match that starts at the very first character of the file. For example, searching for `Module` with **Whole Word Only** skips a `Module` on line 1, column 1. A **Replace All** with **Whole Word Only** leaves that word unchanged. Search without **Whole Word Only**, and check the first line yourself.
 
 ### Pattern matching
@@ -150,13 +150,13 @@ With **Match Regular Expressions**, **Find What** is a JavaScript regular expres
 
 If **Find What** is not in the `/pattern/flags` form, a box says **Invalid format. Expecting /pattern/flags**. If the pattern is not a valid expression, a box says **Invalid RegExp:**.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > A regular expression that has a capital letter finds nothing unless it has the `i` flag. The search runs on the text of the file turned into small letters, and the pattern is left as written. `/End Sub/` finds nothing and reports **The specified region has been searched.**, while `/end sub/` and `/End Sub/i` find every `End Sub`. Write the pattern in small letters, or add the `i` flag.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > A regular expression whose match spans a line break, such as `/^\s+end sub$/`, selects nothing. The selection is an empty one at the end of the line before the match, and **Find Next** stays there. Search for one line at a time.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > The **Invalid RegExp:** box leaves out the reason. It shows the words and nothing after them.
 
 ## Search the whole project

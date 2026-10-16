@@ -163,13 +163,12 @@ digraph tools_groups {
         label="IDE Automation"
         i1 [label="addin_test"]     i2 [label="ide_test"]
         i3 [label="try_help_addin"] i4 [label="shoot_docs"]
-        i5 [label="imagestrip"]     i6 [label="probe_ide_image_labels"]
-        i7 [label="svgshot/replay"] i8 [label="probe_theme_semicolon"]
+        i5 [label="imagestrip"]     i8 [label="probe_theme_semicolon"]
+        i7 [label="svgshot/replay"]
         i1 -> i3 -> i5 -> i7
-        i2 -> i4 -> i6 -> i8
+        i2 -> i4 -> i8
         { rank=same; i3 i4 }
-        { rank=same; i5 i6 }
-        { rank=same; i7 i8 }
+        { rank=same; i5 i8 }
     }
     subgraph cluster_defects {
         margin=12
@@ -374,8 +373,6 @@ digraph tools_groups {
         tooltip="Takes the screenshots of the IDE for the documentation, so that one run regenerates them after a new BETA."]
     i5 [URL="Tools-IDE#imagestrip"
         tooltip="A twinBASIC console program that copies a CSS or SVG file, keeping the pixels and ownership notices of embedded images and dropping editor metadata."]
-    i6 [URL="Tools-IDE#probe-ide-image-labels"
-        tooltip="Lists the images in the style sheets of the IDE that are labelled with a media type their bytes do not have."]
     i7 [URL="Tools-IDE#replay"
         tooltip="Draws the SVG of each picture again from its saved bundle, with the converter as it is now. Starts no IDE and takes no picture."]
     i8 [URL="Tools-IDE#probe-theme-semicolon"

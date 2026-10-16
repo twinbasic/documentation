@@ -57,28 +57,28 @@ Building with LLVM does not currently work on Windows 7; Windows 10 or 11 is rec
 
 The main feature not yet supported is passing an error up to the calling procedure. A fix is planned.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > An error that occurs in a procedure with no error handler is not passed to its caller when either of the two procedures is compiled with LLVM: the caller's own `On Error` statement does not catch it. A run in the IDE ends without a message. A built program stops as it does for an unhandled error when only the caller is compiled with LLVM. When the procedure that has no handler is compiled with LLVM, the program shows a box that names the procedure but no error, and then ends with an access violation. Without LLVM, and in VB6, the caller's handler catches the error.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > An error handler in a procedure compiled with LLVM cannot read an error raised with [**Err.Raise**](../tB/Modules/ErrObject/Raise) in that procedure: **Err.Number** returns -353703423 (`&HEAEAEA01`), **Err.Source** is empty, and **Err.Description** is the generic "Application-defined or object-defined error". An error that a statement causes, such as a division by zero, is read correctly.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > A **Double** addition, subtraction, multiplication or exponentiation (`^`) that overflows raises no error in code compiled with LLVM: the result of the first three is infinity (`1.#INF` or `-1.#INF`) and the result of `^` is 0, where the same code compiled without LLVM raises error 6, *Overflow*, as VB6 does. [**FloatingPointErrorChecks(True)**](../tB/Core/Attributes#floatingpointerrorchecks) does not change this. A **Double** division that overflows, and a division by zero, still raise their errors. After either, under `On Error Resume Next`, the variable that was to receive the result keeps its old value; without LLVM it holds infinity.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > Code compiled with LLVM rounds a **Single** or **Double** that is exactly halfway between two integers away from zero when it converts the value to an integer type: in [**CLng**](../tB/Modules/Conversion/CLng), **CInt** and **CLngLng** of a variable, in an assignment to an **Integer** or **Long**, and in the operands of [**\\**](../tB/Core/IntegerDivide). With a **Double** variable holding 2.5, `CLng(x)` is 3, and with -0.5 it is -1. Without LLVM the value is rounded to the even integer, 2 and 0, as VB6 does. A constant expression such as `CLng(2.5)`, a **Variant** argument, and [**Round**](../tB/Modules/Math/Round), **Int** and **Fix** are not affected.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > A program built with LLVM ends with an access violation (0xC0000005) and no message box at the first [**GoSub**](../tB/Core/GoSub-Return) it runs, in a 32-bit and in a 64-bit build. A run in the IDE is not affected, and neither is a program built without LLVM. Replace the **GoSub** with a call to a **Private Sub**.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > In a 64-bit build with LLVM, a call to a [**Declare**](../tB/Core/Declare)d procedure that passes `ByVal 0&` for its eighth parameter, declared `ByRef` with a 32-bit type such as **Long**, to give the procedure a NULL pointer, can end with an access violation (0xC0000005) and no message box, in the procedure. The eighth parameter of **WideCharToMultiByte** is one such case. Whether the call fails depends on what the stack held before it. The same override for the first to seventh parameters is right. Declare the parameter `ByVal ... As LongPtr` instead. It affects a built exe and a run in the IDE with LLVM turned on, and not a 32-bit build or a build without LLVM.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > A call that passes an argument with `ByVal` for a `ByRef` parameter of a twinBASIC [**Sub**](../tB/Core/Sub) or [**Function**](../tB/Core/Function), such as `Take ByVal 0&` for `Sub Take(ByRef h As Long)`, does not compile with LLVM, in a 32-bit and in a 64-bit build. The build prints `[LLVM] codegen error occurred when compiling '<procedure>': Call parameter type does not match function signature!`, still makes the program, and the procedure that contains the call does not run: a 64-bit program ends with an access violation (0xC0000005) when it enters that procedure, and a 32-bit program skips the procedure and can fault later. Without LLVM the call passes a NULL pointer. VB6 refuses the call with the error *Type mismatch*. Pass a variable for the parameter instead.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > In a procedure that has a `ByVal` **Long** or **Single** parameter and, after it, a `ByRef` parameter declared `As Boolean` or `As Integer`, a [**For...Next**](../tB/Core/For-Next) loop whose **Step** is that `ByVal` parameter (or a variable set from it) runs with a wrong step, or with a wrong start or end when those are parameters too. The wrong value depends on where the caller's argument for the `ByRef` parameter is stored: 20 in a 64-bit build and 25 in a 32-bit build when it is a local variable of the caller, other values when it is a module-level variable or an array element. `For i = 1 To 7 Step x` with `x` equal to 3 and a local variable passed runs once, not three times. No error is raised, so the loop silently gives a wrong result. It affects a **Sub**, a **Function** and a class method, a built exe and a run in the IDE with LLVM turned on, in a 32-bit and in a 64-bit build, and not a build without LLVM. Whether a larger procedure shows it can depend on its other statements. A second parameter that is `ByRef ... As Long` (or **Byte**, **Single**, **Double**, **Currency**, **Date**, **String**, **Variant**, an Enum, a UDT, an array, an object or a pointer), `ByVal ... As Boolean`, a `ByRef ... As Boolean` placed before the step parameter, a step parameter of type **Integer**, **Double** or **Currency**, a `Do` loop, a loop with no **Step** and a loop with a literal **Step** are right. Declare the second parameter `ByVal`, or place it before the step parameter.
 
 Code compiled with LLVM ignores [**Debug.Assert**](../tB/Modules/Debug#assert): the statement does not stop, and its condition is not evaluated.
@@ -111,7 +111,7 @@ Public Sub DoNotOptimizeMe()
 End Sub
 ```
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > A run in the IDE with LLVM turned on for the whole project under **Compiler Options (DEBUG)** ends with an access violation when a procedure marked `[CompilerOptions("")]` calls a procedure that is compiled with LLVM, and `Sub Main` reaches the marked procedure: it calls it, or calls a procedure that does. A marked procedure that `Sub Main` does not reach is not affected, and neither is a built program.
 
 The same attribute can also turn LLVM on for chosen procedures when it is off in Project Settings. List the flags, separated by commas: `+llvm`, `+optimize` and `+optimizesize`, then `+` and the name of each CPU instruction set to use. Each flag is the direct equivalent of an option in Project Settings:

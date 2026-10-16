@@ -294,7 +294,7 @@ The restriction to modules is not an oversight. Folding a call to a method would
 
 Calls are folded only when **Constant Function Folding** is set to **Yes** in [Project Settings](../IDE/Project-Settings#constant-function-folding). A **Property Get** in a module folds as a function does. On a **Sub** the attribute is accepted and has no effect.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > The compiler also accepts the attribute on a **Declare Function**. With **Constant Function Folding** on, a call to such a function whose arguments are all constants crashes the compiler during the build, though the project compiles without an error.
 
 <!-- BETA 1005 (tbrun --exe, counting calls through a module counter): with
@@ -1201,7 +1201,7 @@ The procedure runs whatever the project's modules and procedures are called: a m
 > [!NOTE]
 > VB6 refuses a module that has the project's name, with *Name conflicts with existing module, project, or object library*. It allows a procedure named like its module.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > The compiler also accepts the attribute on a generic **Sub**, such as `Sub Signed(Of T)()`, and counts it as the project's one **[RunAfterBuild]**. The build gives no error or warning, and the DEBUG CONSOLE reports the procedure as executed, but its body does not run.
 
 <!-- BETA 1005 (tbbuild --build): a [RunAfterBuild] Boolean Function and a
@@ -1220,7 +1220,7 @@ Runs the function before the project's startup object. Returning **True** suppre
 
 A **Function** is the usual form, returning a **Boolean**. A **Function** of another type, or a **Property Get**, works the same way: a result of 0 or **Nothing** lets startup proceed, and any other result suppresses the startup object. A **Sub** runs too, and then the startup object never runs.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > On a generic procedure, such as `Sub Pre(Of T)()`, the project compiles without an error, but building it crashes the compiler.
 
 <!-- BETA 1005 (tbrun --exe, TbRun.Out): "pre ran" then "Main ran" when Main

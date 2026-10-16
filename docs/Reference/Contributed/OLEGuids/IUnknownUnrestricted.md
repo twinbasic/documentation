@@ -32,7 +32,7 @@ A pointer that **QueryInterface** returns comes with a reference, which the call
 <!-- /test -->
 
 <!-- test: UnknownTests.QueryInterface_UnsupportedInterfaceOfClassObjectSetsPointerToZero, UnknownTests.QueryInterface_UnsupportedInterfaceOfCollectionSetsPointerToZero -->
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > When the interface is not supported, the COM contract sets *ppvObject* to 0. An object of a class that the project compiles --- a class, a form, a control --- returns `E_NOINTERFACE` and leaves the variable as it was. The runtime's own objects, such as a **Collection**, set it to 0, as every object of VB6 does. Set the variable to 0 before the call, and test the result rather than the pointer.
 
 ```tb check_run

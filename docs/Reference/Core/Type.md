@@ -102,16 +102,16 @@ twinBASIC extends classic VBA's **Type** in several ways. UDTs remain stack-allo
 
 **Member procedures.** [**Sub**](Sub), [**Function**](Function), and [**Property**](Property) procedures may appear inside `Type ... End Type`, and are called through any variable of the type. Inside a member procedure, other members of the same UDT must be accessed with the explicit `Me.` prefix.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > A member procedure called on an element of an array of the UDT, such as `a(1).Sum` or `a(1).Diff(a(2))`, ends the program with an access violation, in 32-bit and 64-bit builds. This holds for local, static, module-level, dynamic and parameter arrays, and in a **With** block. A variable of the type, a UDT member of another UDT, and an element of an array declared inside a UDT are not affected. Copy the element to a variable first.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > Assigning **Me** whole inside a member procedure, as in `Copy = Me`, `Return Me` or `t = Me`, is a code generation error that fails the build once the procedure is called. `Me.X`, passing **Me** as an argument, and `Me = other` are not affected. Copy the members one by one.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > A UDT larger than 4 bytes passed **ByVal** from an element of an array, as in `Take a(1)` for `Sub Take(ByVal p As Pair)`, damages the stack in a 32-bit build: the procedure receives the right value, and the calling procedure ends with an access violation when it returns. A UDT of 4 bytes or less, a variable, an element copied to a variable first, and a **ByRef** parameter are not affected, nor are 64-bit and LLVM builds. VB6 does not accept a UDT passed **ByVal**.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > Assigning without **Set** to a member of a UDT whose type is a class, as in `h.o = 5` for a class with a default member, is a code generation error that fails the build. VB6 assigns the default member. Use `Set h.o = ...` to assign the object, or name the default member, as in `h.o.Value = 5`.
 
 **Lifecycle and operator hooks.** Well-known member names are connected by the compiler:

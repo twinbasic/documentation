@@ -380,8 +380,8 @@ Syntax: *img*.**PropertyItem** **=** *item*
 The getter returns the property with the ID *propId* as an array of [**GpPropertyItem**](Types/GpPropertyItem) that holds one element, at index 1. The setter takes one **GpPropertyItem** and sets that property on the picture, adding it when it is not there. Its [**Id**](Types/GpPropertyItem), type, length and the address of its value must be filled in.
 <!-- /test -->
 
-<!-- test: none -- a twinBASIC defect (BETA 1005), not the package's -->
-> [!WARNING] BETA 1005
+<!-- test: none -- a twinBASIC defect (BETA 1007), not the package's -->
+> [!WARNING] BETA 1007
 > A property of an element of the array that **PropertyItem** returns, such as `items(1).TheASCII`, stops the process with an access violation, as it does for an element of any array of a user-defined type. An element can be read as a whole or by a field: `items(1).Id` works, and so does `Dim got As GpPropertyItem = items(1)` followed by `got.TheASCII`. **GetAllPropertyItems** returns its array in the same way, and the same holds for it. The setter, **PropertyCount**, **PropertyIdList** and **RemovePropertyItem** work.
 
 ### RemovePropertyItem

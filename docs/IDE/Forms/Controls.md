@@ -124,7 +124,7 @@ There are three ways to make an array:
 
 The last two give the new controls the highest **Index** plus one, and turn a lone original with **Index** -1 into index 0. Choosing an event of a member in the [EVENTS tab](Properties#events) inserts a handler with an `Index As Integer` argument, such as `Private Sub Command2_GotFocus(Index As Integer)`.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > The box that asks about the control array comes twice when you give a control the name of a single control. The first **YES** sets the other control's **Index** to 0 and leaves the renamed control's name unchanged, and the same box comes again. The second **YES** renames the control to `X(1)`. Answer **YES** both times. **NO** puts the old name back.
 
 ## Names and code

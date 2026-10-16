@@ -50,10 +50,10 @@ None of the controls is the reference. The first control you clicked has no spec
 
 **Center (Horizontal)** and **Center (Vertical)** have no keys. **To Grid** has none either. It rounds the **Left** and **Top** of each selected control down to the grid, and rounds the size down too: a control 24 pixels high becomes 20 with a 10-pixel grid. It acts at once, even when **Align Controls To Grid** is off.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > **Center (Horizontal)** and **Center (Vertical)** do not centre the controls on the middle of the selection. They centre each control on the left edge, or the top edge, of the selection. Three controls 100 pixels wide at **Left** 10, 140 and 250 all end at **Left** -40, their middles on 10, and may end outside their container. To line up the middles of a group, align the edges and then type the **Left** or **Top** values in [PROPERTIES](Properties). **Center In Container** centres a group in its container correctly at a zoom of 100 %.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > Each <kbd>Alt</kbd>+arrow also opens the IDE's menu bar when you release the keys. The controls are aligned all the same, and nothing is lost. If the menu bar is in the way, align with the **Format → Align** commands or the toolbar buttons instead.
 
 ## Make the controls the same size
@@ -71,7 +71,7 @@ None of the controls is the reference. The first control you clicked has no spec
 
 A command changes nothing when the controls already have the same size.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > **Make Same Size** changes the controls on the surface and marks the form changed, but it does not reach the saved form. If you press <kbd>Ctrl</kbd>+<kbd>S</kbd>, close the tab and open the form again, the controls have their old sizes. A later change, such as moving a control with an arrow key, saves the new sizes with it. After you use **Make Same Size**, make such a change before you save, or type the **Width** and **Height** values in [PROPERTIES](Properties) instead.
 
 ## Space the controls evenly
@@ -100,14 +100,14 @@ For example, take three controls 100 pixels wide with **Left** 10, 140 and 250, 
 
 The spacing commands compare positions that count from each control's own parent. Controls in different containers therefore give odd results. For example, **Remove** on a text box in a frame and a button on the form places the button at the text box's right edge as counted from the frame's corner, not from the form's.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > **Horizontal Spacing** and **Vertical Spacing** move the controls on the surface, but do not mark the form changed and do not make an undo step. <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not undo them. If you close the tab, the IDE asks no question, and the form opens again with the old positions. The new positions are saved only when a later real change follows, for example moving a control with an arrow key, because that change saves the whole surface. After you use these commands, make such a change before you save, and check the positions in [PROPERTIES](Properties). To go back, type the old **Left** or **Top** values there.
 
 ## Center in the container
 
 **Center In Container (Horizontally)** and **Center In Container (Vertically)** move the selection as a group, so that the group's bounding box is centred in the container the controls share. The controls keep their positions relative to one another. They work for one control or for many, and need all of them to have the same parent. If they do not, nothing moves and a notification says so.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > **Center In Container** reads the width of the container as it is drawn, so at a zoom other than 100 % it moves the controls to the wrong place. At 50 %, a text box in a frame ended at **Left** -9.98 instead of 40, and the group on the form moved by -80 instead of 20. Set the zoom to 100 % before you use the command.
 
 ## Bring to front and send to back

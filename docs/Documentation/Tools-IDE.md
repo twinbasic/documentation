@@ -14,29 +14,12 @@ Operates the twinBASIC IDE to test add-ins and the IDE itself, to try the help a
 * TOC goes here
 {:toc}
 
-## probe_ide_image_labels.mjs
-{: #probe-ide-image-labels }
-
-    node scripts/probe_ide_image_labels.mjs [--ide <twinBASIC.exe>]
-
-Lists the images that the twinBASIC IDE's style sheets label with a media type their bytes do not have. It is the check behind the `BUGS-TO-REPORT.md` entry whose reproducer is `bugs/ide-stylesheet-image-labels/`: the IDE's `styles.css` embeds images as `data:` URIs, and some are labelled `image/png` while their bytes are a GIF or a JPEG, or labelled `/png` (no `image` before the slash) while their bytes are a PNG. It starts no IDE and writes nothing, but it needs an unpacked twinBASIC install. It is outside every gate and CI.
-
-It reads every `.css` file under the install's `ide` folder and passes each to `stripFile` of `scripts/lib/compact-image.mjs` (the reference for [`imagestrip`](#imagestrip)), which names each embedded image by its bytes and reports each label it would change. The probe prints those reports and discards the stripped output.
-
-| Flag | Effect |
-|---|---|
-| `--ide <path>` | Path to `twinBASIC.exe`, found as for `tbbuild`. The `.css` files read are those under the `ide` folder beside it. |
-
-The output is one line for each mislabelled image, `<file> line <n>: labelled <label>, the bytes are <kind>`, with the file relative to the install, and a summary line, `<n> of <total> images in the IDE's stylesheets are mislabelled (BETA <build>)`, or `none of the <total> images in the IDE's stylesheets is mislabelled (BETA <build>)`. Any other `stripFile` report, such as base64 that cannot be read, is printed as a `note:` line and does not count.
-
-Exit codes: **0** every embedded image is labelled with the type its bytes have; **1** at least one is not; **2** a refused command line, no IDE, no `ide` folder, no style sheet or no embedded image in it to check, or a crash.
-
 ## probe_theme_semicolon.mjs
 {: #probe-theme-semicolon }
 
     node scripts/probe_theme_semicolon.mjs [--ide <twinBASIC.exe>]
 
-Lists the properties that the twinBASIC IDE silently drops when it loads the theme files it ships. It is the check behind the `BUGS-TO-REPORT.md` entry whose reproducer is `bugs/theme-missing-semicolon/`: in BETA 1005, line 63 of `Dark.theme` and of `Light.theme` is `DiagnosticsGroupFontSize: 90%` with no `;`, so it runs into the next line, and the loader loses both `DiagnosticsGroupFontSize` and `DiagnosticsGroupFontWeight`. It starts no IDE and no program and writes nothing, but it needs an unpacked twinBASIC install. It is outside every gate and CI.
+Lists the properties that the twinBASIC IDE silently drops when it loads the theme files it ships. It is the check behind the `BUGS-TO-REPORT.md` entry whose reproducer is `bugs/theme-missing-semicolon/`: in BETA 1007, line 63 of `Dark.theme` and of `Light.theme` is `DiagnosticsGroupFontSize: 90%` with no `;`, so it runs into the next line, and the loader loses both `DiagnosticsGroupFontSize` and `DiagnosticsGroupFontWeight`. It starts no IDE and no program and writes nothing, but it needs an unpacked twinBASIC install. It is outside every gate and CI.
 
 It reads every `.theme` file in the install's `themes` folder and cuts each one as `applyThemeData` in the IDE's `ide\main.js` does. The loader removes the `/* */` comments, cuts the text at each `;` followed by a space, a tab or a line end, removes the line breaks from each piece, cuts each piece at each `: ` and `:` followed by a tab, and keeps the piece only if that gives exactly two parts. Any other piece is dropped without a message.
 
@@ -233,10 +216,10 @@ Build it in the IDE, which writes `Build\imagestrip_win32.exe` beside the projec
 
     node scripts/tbbuild.mjs scripts/imagestrip/imagestrip.twinproj --build
 
-It prints one summary line to standard output, naming the input as it was given, and one line for each report to standard error. For `styles.css` of BETA 1005:
+It prints one summary line to standard output, naming the input as it was given, and one line for each report to standard error. For a style sheet `site.css` that embeds 140 images, one of them a PNG labelled `/png`:
 
-    styles.css: 140 images, 90 stripped, 4 relabelled; 1042091 -> 870074 bytes
-    styles.css:2947: labelled /png, but is a PNG; now labelled image/png
+    site.css: 140 images, 90 stripped, 1 relabelled; 1042091 -> 870074 bytes
+    site.css:2947: labelled /png, but is a PNG; now labelled image/png
 
 The images counted include an SVG file itself and each image inside another. *Stripped* counts those that lost something of their own, and *relabelled* those whose label changed. A report on an image inside another names the line of the outermost `data:` URI around it. Both streams can be redirected, as [Writing a command-line tool](../../Features/Project-Configuration/Project-Types#writing-a-command-line-tool-output-exit-code-and-arguments) describes. The program has no `--help`: run without arguments, it prints its usage to standard error and exits 2.
 

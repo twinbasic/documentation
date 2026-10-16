@@ -168,8 +168,8 @@ What both strip was decided by the owner:
   GIF all but its comments; an SVG all but its declaration, an empty DOCTYPE, comments and
   metadata; and any profile, comment or metadata that gives a value to an author or a rights
   field stays whole, as does an EXIF that turns the picture.
-- **An image is named by its bytes.** The IDE labels a JPEG and a GIF `image/png`, and two
-  PNGs `/png` (BETA 1005).
+- **An image is named by its bytes**, because a `data:` URI's label can name another type, or
+  none (`/png`).
 - **Recursive, so that CSS and SVG are handled alike.** An SVG image is stripped as an SVG
   file is, images inside it included; one of the IDE's Illustrator icons holds a PNG with a
   2.6 KB ICC profile in base64 broken by CR LF, which is why base64 is read as a browser

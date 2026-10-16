@@ -19,7 +19,7 @@ The **ArrayListLib** contributed package is a list class for twinBASIC, in place
 
 This section documents version 1.6.151.1, which is the version on TWINSERV, published under the Unlicense.
 
-> [!NOTE] 1.6.151.1, BETA 1005
+> [!NOTE] 1.6.151.1, BETA 1007
 > The package does not compile, so a project that references it does not build (error TB5001, in a 32-bit and in a 64-bit build). **ArrayList** passes the addresses of two items, as **Long** values, to its private procedure **VSwap**, which declares both parameters as `ByRef` structures, in **Reverse** (`ArrayList.twin`, line 297) and in the two quicksort procedures that **Sort** calls (lines 585 and 602). **MemMoveBSTR**, a private procedure of the module **LibMemoryEx**, passes an address to **LSetByVal** in the same way (`Modules/LibMemoryEx.twin`, line 104), and **LSetByVal** declares its parameter as a `ByRef` structure that holds a string pointer. A pointer passed for a structure has to be passed `ByVal`. The behaviour described on these pages is that of the package with the two arguments of each **VSwap** call passed `ByVal`, and with **LSetByVal** taking the address as a **LongPtr** and putting it in a structure of its own. That copy builds in 32-bit and in 64-bit programs, and both give the same results.
 
 > [!WARNING] 1.6.151.1

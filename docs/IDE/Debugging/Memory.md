@@ -38,12 +38,12 @@ The debugger evaluates the expression in the box as it does a watch, so the box 
 - An **array**: the text is replaced with `VarPtr(`*expression*`)`, and the pane shows the array variable.
 - Any other result is a number, and **the number itself is the address**. The name of a **Long** variable therefore shows the memory at the address the variable *holds*, not the memory of the variable. That is what a **LongPtr** holding an address needs. For a variable's own bytes, enter `VarPtr(`*name*`)`.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > A result that is not a whole number --- the name of a **Double**, a **Boolean** or a variable of a user-defined type --- gives no address and does not turn the box red. The rows stay as they were, and the DEBUG CONSOLE prints an *IDE internal error* such as `Uncaught SyntaxError: Cannot convert 1.5 to a BigInt`. Enter `VarPtr(`*name*`)` for such a variable.
 
 The pane starts its first row at that address exactly, and the cell at the address takes the keyboard focus. An expression that cannot be evaluated --- an unknown name, an empty box, anything entered while the program is not paused --- turns the box red and leaves the rows as they were.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > A negative number is taken as an address too. With -8, the first row is labelled `&HFFFFFFF8` and the rows after it `&H00000008`, `&H00000018` and so on. None of them can be read.
 
 The table shows what each kind of expression gives in a 32-bit program paused after these lines:
@@ -86,7 +86,7 @@ Below, `s` holds "Hello twinBASIC". After `s` is entered, the box reads `StrPtr(
 
 `??` in the value cells, and `·` in the text column, mark memory the program cannot read.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > `??` and `·` are also what a cell shows while its bytes are still being read, so unreadable memory looks the same as memory not read yet. Memory that keeps showing `??` cannot be read.
 
 ## Display formats and columns
@@ -106,7 +106,7 @@ The formats of two and four bytes show each value as a number, so the hexadecima
 
 The second list, **Cols 8**, **Cols 12**, **Cols 16**, **Cols 24** or **Cols 32**, sets the number of values in a row. A row therefore covers more bytes in the larger formats: 16 in **Byte (Hex)** at **Cols 16**, 32 in an **Integer** format and 64 in a **Long** format. The address column steps by the same amount, and is written as `&H` and eight hexadecimal digits.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > The address column of a 64-bit program shows only the low 32 bits of each address. The bytes shown are those at the whole address, but an address of `&H4232CFF438` is labelled `&H32CFF438`, which is another address. Do not copy an address from the column in a 64-bit program; print it with `Hex(VarPtr(`*name*`))` instead.
 
 The text column on the right always shows every byte of the row, one character each. A byte from 32 to 126 shows as its ASCII character, and any other byte as a dot.

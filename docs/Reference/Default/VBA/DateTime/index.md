@@ -58,7 +58,7 @@ Debug.Print DateAdd("m", 1, #1/31/2026#)          ' 2/28/2026 -- clamped to last
 Debug.Print DateDiff("d", #1/1/2026#, #5/9/2026#) ' 128
 ```
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > **DateAdd** does not clamp to the last day of the month, and the first line of the sample prints `3/3/2026`. VB6 prints `2/28/2026`. [**DateAdd**](DateAdd) describes the cases.
 
 ## Calendar selection
