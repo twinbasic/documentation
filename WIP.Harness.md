@@ -1044,8 +1044,6 @@ options and the remembered targets exactly as they are. It writes only its scrat
 a gate: it needs Windows and a real registry, and the CI runners are Ubuntu. Run it after
 changing `tb-registry.mjs`.
 
-END-TO-END-PLACEHOLDER
-
 ## A private IDE for every lane
 
 **The compiler loads every DLL in `<install>\addins\win32` or `\win64` as it starts.** A
