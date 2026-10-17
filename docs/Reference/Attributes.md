@@ -1055,7 +1055,7 @@ When set, a global instance of the class is created when the application starts.
 
 This attribute is equivalent to the `VB_PredeclaredId` attribute in VBx .cls files.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > In an ActiveX build, the class is marked `appobject` in the type library as well as `predeclid`, which is what [AppObject](#appobject) gives it, so a client that references the library treats the members of the class as global names.
 
 <!-- BETA 1005, ActiveX DLL dumped with TLI: [PredeclaredId] and [AppObject]

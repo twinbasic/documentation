@@ -80,7 +80,7 @@ The references of a package are not visible to the project that uses it. A progr
 The package is built for 32-bit programs. The window procedure that **cSubClass** installs is passed to **SetWindowLong** as a **Long**, which a 64-bit program cannot hold.
 
 <!-- test: none -- the compiler refuses the package as a whole in a 64-bit build, which no case of a project can state -->
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1007
 > A project that embeds TBMANLIB and is built for 64-bit programs (**Win64**) does not compile. The compiler reports TB5001 in `cSubClass.twin`, *Validation of call to 'SetWindowLong' failed. Argument for 'dwNewLong': cannot coerce type 'Callback' to 'Long'*, even when the program uses nothing of the package. The package can be used in 32-bit programs only.
 
 The other components are available to 32-bit programs.

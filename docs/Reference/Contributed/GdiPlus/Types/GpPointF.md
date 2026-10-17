@@ -86,7 +86,7 @@ Syntax: *point*.**Normalized** As **GpPointF**
 Returns the vector scaled to length 1.
 
 <!-- test: none -- the linker rejects the program, and the compile-case runner sees only the diagnostics of the editor -->
-> [!NOTE] 0.9.45.0, BETA 1005
+> [!NOTE] 0.9.45.0, BETA 1007
 > A program that names **Normalized** does not link: the linker reports a code generation error in `Types.Normalized`. Use [**Normalize**](#normalize) on a copy of the point instead.
 
 ### Transposed
@@ -155,8 +155,13 @@ These change the point they are called on.
 > **Add** and **Sub** change the point they are called on. Before version 0.9.0.43 they returned the result and left the point alone. Use [**Sum**](#sum-diff) and [**Diff**](#sum-diff) to get a new point.
 
 <!-- test: none -- a twinBASIC defect (BETA 1005), not the package's -->
-> [!NOTE] 0.9.45.0, BETA 1005
+> [!NOTE] 0.9.45.0, BETA 1007
 > The compiler reads `p.Scale(2)` as the start of a `Scale` statement and reports a syntax error. Write `p.Scale 2` or `Call p.Scale(2)`. **Scale2**, **InvScale** and the other methods are not affected.
+>
+> ```tb check_build expect-error=TB5212
+> Dim p As GpPointF = GpPointF(3, 4)
+> p.Scale(2)
+> ```
 
 ### Add, Sub
 

@@ -124,8 +124,21 @@ The plain call forms are not rewritten. `o.Line 99, 1, 2, 3, 4, 5` and `Call o.L
 > [!WARNING] BETA 1007
 > A call of **Scale** or **Line** with a single point in parentheses, such as `o.Scale (2, 3)`, `o.Scale(2, 3)` or `o.Line (2, 3)`, compiles and does nothing: the method is not called and no error is raised. VB6 reports a syntax error. Write the call with **Call**, or without parentheses: `Call o.Scale(2, 3)` or `o.Scale 2, 3`.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1007
 > A call of **Scale** or **Line** with a single value in parentheses, such as `o.Scale(2)`, is error TB5212, because the compiler reads the graphics syntax from the method name. Write `Call o.Scale(2)` or `o.Scale 2`.
+>
+> ```tb check_build expect-error=TB5212 slot=file
+> Class ScalePlotter
+>     Public Sub Scale(Optional ByVal Flags As Long, Optional ByVal X1 As Single, Optional ByVal Y1 As Single, _
+>                      Optional ByVal X2 As Single, Optional ByVal Y2 As Single)
+>     End Sub
+>
+>     Public Sub Test()
+>         Dim o As New ScalePlotter
+>         o.Scale(2)
+>     End Sub
+> End Class
+> ```
 
 > [!NOTE]
 > VB6 reserves some of these names. It accepts a **Public Sub Line** in a module and a qualified call such as `Module1.Line (1, 2)-(3, 4), 5, B`, and passes the same flags as above to it. It refuses a bare `Line (1, 2)-(3, 4)` in a module, with the error *Method not valid without suitable object*, and it does not accept a procedure named **Circle**, **PSet** or **Scale** at all. In twinBASIC a procedure may have any of the four names, and a bare call in a module reaches the module's procedure.
