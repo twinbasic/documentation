@@ -105,7 +105,7 @@ The **Import from file...** button under the lists opens the Windows **Open** di
 - On **Available COM References**, and on **Enabled Libraries**, it asks for a type library. The IDE copies the file into the project as `ImportedTypeLibraries/<file name>`, and adds it to the references at once, ticked.
 - On **Available Packages**, it asks for a `.twinpack` file. The package is added to the **Available Packages** list. [Importing a Package from a TWINPACK File](../../../Features/Packages/Importing-TWINPACK) gives the steps.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > A package imported with **Import from file...** is listed but not ticked, so the project does not use it. Tick it yourself after the import.
 
 > [!NOTE] BETA 1005

@@ -195,7 +195,7 @@ End Sub
 
 A **Declare** of a function from a legacy system DLL that twinBASIC calls in its modern replacement instead: *use of legacy OLEPRO32.DLL has been redirected to OLEAUT32.DLL*. It is at **HINT** by default.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > In a project whose `project.warnings` setting names no level for TB0015, as in a new project, TB0015 is reported as a warning, although the Compiler Warnings list shows it at **HINT**.
 
 ```tb check_build slot=module
@@ -245,7 +245,7 @@ Public Sub Convert()
 End Sub
 ```
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > A member of another enumeration, written as a constant (`day = vbOK`), converts without a warning.
 
 ### TB0020: Suspicious Interface Conversion
@@ -266,7 +266,7 @@ End Sub
 
 Reports an implicit conversion between an enumeration and a numeric type. It is at **IGNORE** by default.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > None of these conversions draws TB0021. A whole number assigned to a variable of an enumeration, or an enumeration value assigned to a **Long**, converts without a warning. A **Double**, **Single**, **Currency** or **Variant** assigned to a variable of an enumeration draws [TB0019](#tb0019-implicit-enumeration-conversion), and an enumeration value assigned to an **Integer**, **Byte** or **Single** draws [TB0018](#tb0018-implicit-narrowing-conversion).
 
 ### TB0022: Suspicious Assignment
@@ -400,11 +400,17 @@ Debug.Print i
 
 Reports a duplicate definition as a warning: *Duplicate definition, consider changing the name to be unique*. A name declared twice in one module, procedure, **Enum** or **Type** is error TB5134 instead.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > The Compiler Warnings list of Project Settings shows this warning with the code TB0032, the code of [Unused Line Label](#tb0032-unused-line-label).
 
 <!-- BETA 1007 (tbbuild, every warning set to WARNING in project.warnings): none of
      these drew TB0010, TB0011, TB0017, TB0021, TB0027, TB0028 or TB0033.
+     BETA 1010 (tbbuild, [EnforceWarnings] in a project with no project.warnings):
+     the four NOTEs hold: TB0015 is a WARNING; `day = vbOK` draws nothing and
+     `day = answer` TB0019; TB0021 is not drawn by Integer, Byte, Long or a literal
+     to an Enum, an Enum to Long, ByRef Long or Enum arguments; Double, Single,
+     Currency and Variant to an Enum draw TB0019 and TB0018, an Enum to Integer,
+     Byte or Single TB0018; ide/main.js lists the Duplicate definition row as TB0032.
      TB0010: two Declares of one entry point under two names in one module (same and
        different signatures, Declare and DeclareWide, "kernel32" and "kernel32.dll"),
        one name in two modules, a Declare in a Class and a Module.

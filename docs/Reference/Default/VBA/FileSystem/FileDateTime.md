@@ -16,7 +16,7 @@ Syntax: **FileDateTime(** *pathname* **)**
 *pathname*
 : *required* String expression that specifies a file name. The *pathname* may include the directory or folder, and the drive.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > **FileDateTime** raises run-time error -2147467259 (`&H80004005`) for a file that does not exist, where VB6 raises 53 (*File not found*).
 
 ### Example

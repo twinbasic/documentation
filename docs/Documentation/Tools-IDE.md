@@ -19,7 +19,7 @@ Operates the twinBASIC IDE to test add-ins and the IDE itself, to try the help a
 
     node scripts/probe_theme_semicolon.mjs [--ide <twinBASIC.exe>]
 
-Lists the properties that the twinBASIC IDE silently drops when it loads the theme files it ships. It is the check behind the `BUGS-TO-REPORT.md` entry whose reproducer is `bugs/theme-missing-semicolon/`: in BETA 1007, line 63 of `Dark.theme` and of `Light.theme` is `DiagnosticsGroupFontSize: 90%` with no `;`, so it runs into the next line, and the loader loses both `DiagnosticsGroupFontSize` and `DiagnosticsGroupFontWeight`. It starts no IDE and no program and writes nothing, but it needs an unpacked twinBASIC install. It is outside every gate and CI.
+Lists the properties that the twinBASIC IDE silently drops when it loads the theme files it ships. It is the check behind the `BUGS-TO-REPORT.md` entry whose reproducer is `bugs/theme-missing-semicolon/`: in BETA 1010, line 63 of `Dark.theme` and of `Light.theme` is `DiagnosticsGroupFontSize: 90%` with no `;`, so it runs into the next line, and the loader loses both `DiagnosticsGroupFontSize` and `DiagnosticsGroupFontWeight`. It starts no IDE and no program and writes nothing, but it needs an unpacked twinBASIC install. It is outside every gate and CI.
 
 It reads every `.theme` file in the install's `themes` folder and cuts each one as `applyThemeData` in the IDE's `ide\main.js` does. The loader removes the `/* */` comments, cuts the text at each `;` followed by a space, a tab or a line end, removes the line breaks from each piece, cuts each piece at each `: ` and `:` followed by a tab, and keeps the piece only if that gives exactly two parts. Any other piece is dropped without a message.
 

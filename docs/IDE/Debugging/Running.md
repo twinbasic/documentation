@@ -45,7 +45,7 @@ At a run-time error, **End** ends only the procedure that failed; see [Traps](Br
 
 In a form that is waiting for input, and in a loop that holds only `DoEvents`, there is no line of yours to stop at. The IDE opens a file of the VB package, `IdleMessageLoopBreak.twin`, and stops in its procedure `IdleMessageLoopBreakpoint`. With a form waiting for input, a line typed in the console works there. Press <kbd>F5</kbd> and the program stops again in the same file. Press it once more to run on.
 
-> [!WARNING] BETA 1007
+> [!WARNING] BETA 1010
 > A program that is stopped by **Break** in a loop that holds only `DoEvents` ends with a native access violation as soon as the IDE evaluates anything. A line typed in the console does it, even `? 1`, and so does any watch, because the IDE evaluates every watch at every stop. The DEBUG CONSOLE prints `NATIVE EXCEPTION: ACCESS_VIOLATION`, and the IDE stays in the paused state, with the arrow on the VB package's line and **Stop** and the step commands enabled, although the program has ended. Do not use **Break** on a loop that holds only `DoEvents`. Put a statement in the loop and a [breakpoint](Breakpoints-and-Stepping#breakpoints) on it instead. If the IDE is already in that state, **Restart the compiler** in the toolbar puts it right.
 
 ## What Start runs
@@ -69,7 +69,7 @@ Start shows no dialog for a compile error, and it opens no panel. The [DIAGNOSTI
 - **In a procedure that `Main` calls.** The console shows `[LINKER] compilation (codegen) error detected in 'Startup.Main' at line #42`, where 42 is the line of the call. The editor opens `Main`'s module and stops at its `Sub` line with the error panel, titled **ERROR OCCURRED**. Nothing in `Main` has run.
 - **In `Main` itself.** No panel opens. The console shows `[LINKER] compilation (codegen) error detected in '{temp_component}.{temp_procedure}' at line #1`, then `(compile error: codegen error; check for compilation errors)`, and the program is idle again.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > The panel for a compile error gives the description `COMPILATION (CODEGEN) ERROR AT LINE #42.  PLEASE REPORT THIS ERROR TO https://git.io/JMh6S`, and the line it names is the line of the call, not the line of the error. A compile error in your code is not a defect to report. Read the real error in the DIAGNOSTICS panel and fix it.
 
 ## Run Or Preview
@@ -89,7 +89,7 @@ A preview is also a debug session. A breakpoint in `Form_Load` stops it, and a c
 - A caret at module level, outside a procedure: `RunCodeUnderCursor: failed to identify the procedure at the cursor position.`
 - With no editor active: `runCodeUnderCursor failed: no active text editor.`
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > <kbd>F6</kbd> also gives `failed to identify the procedure at the cursor position.` when the caret is on the procedure's `End Sub` or `End Function` line, or on another of its lines at or past the column where that `End` line ends. A comment at the end of the `End` line moves that limit to where the comment starts. Nothing runs. Put the caret nearer the start of a line of the procedure.
 
 The CodeLens **▶ run** link above a procedure runs it by another route: [CodeLens](../Code/IntelliSense#codelens) describes it. [Testing with Assert](../../../Tutorials/Testing-with-Assert) uses both.
@@ -119,7 +119,7 @@ A `Shell` that runs from a line you type in the console makes a box too, with no
 - **Opening a form designer.** The IDE tells the compiler to end the program if it is busy. A form program that is waiting for input ends, with `form terminate` and no `Form_Unload`. A loop with no `DoEvents` keeps running, and so does a program that is paused.
 - **Editing the code.** See the next section.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > An `End` statement in a procedure that LLVM compiles ends the run, and then the console shows `restarting from MEMORY [<project>]`: the IDE restarts the compiler and compiles the project again. The IDE recovers by itself. Remove the `End` statement, or compile the procedure without LLVM, to avoid the restart.
 
 ## Editing while the program runs

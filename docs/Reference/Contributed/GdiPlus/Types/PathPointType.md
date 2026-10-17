@@ -48,8 +48,8 @@ Debug.Print CLng(t.PointType) & " " & t.CloseSubpath & " " & t.PathMarker      '
 ```
 <!-- /test -->
 
-<!-- test: none -- a defect of the twinBASIC compiler (BETA 1007) and not of the package; the way round it is checked by the case after this callout -->
-> [!WARNING] BETA 1007
+<!-- test: none -- a defect of the twinBASIC compiler (BETA 1010) and not of the package; the way round it is checked by the case after this callout -->
+> [!WARNING] BETA 1010
 > Reading a property of an element of an array, as in `types(i).CloseSubpath`, stops the program with an access violation. Copy the element to a variable and read the property of that. A type held in a variable or in a field of a **TypedPoint** is read without trouble.
 
 <!-- test: Br_PathDataTests.PathPointType_ReadThroughAVariable_OfAnArrayElement -->

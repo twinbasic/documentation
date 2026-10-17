@@ -24,7 +24,7 @@ ChDir "D:\TMP" ' Make "D:\TMP" the current folder.
 ChDrive "D"    ' Make "D" the current drive. 
 ```
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > **ChDir** raises run-time error -2147467259 (`&H80004005`) for a *path* that does not exist, where VB6 raises 76 (*Path not found*).
 
 <!--

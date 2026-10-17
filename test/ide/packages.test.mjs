@@ -12,7 +12,7 @@
 // that nobody sees. OpenPackage puts the real hostAppObject back as it answers,
 // and every other read goes to the real HostReadFileDataBase64.
 //
-// Each test states what BETA 1007 does. If a test fails after an IDE update,
+// Each test states what BETA 1010 does. If a test fails after an IDE update,
 // the IDE has changed: update the matching entry in BUGS-TO-REPORT.md or bugs/filed/ and the
 // two Packages pages under docs/Features/Packages, and then this file.
 //

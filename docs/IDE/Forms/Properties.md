@@ -70,7 +70,7 @@ A property has the editor that suits its type. A value is committed as the table
 
 If the compiler is busy when you open a property page, the IDE says *Backend compiler seems to be busy. Check there isn't a modal dialog box open behind the IDE window.*
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > <kbd>Ctrl</kbd>+<kbd>A</kbd> does nothing in a property box. It does not select the text, and the selection of the controls on the form is unchanged. Text that you type is added to the text already in the box.
 
 ### Colours
@@ -125,7 +125,7 @@ For example, a button at **Left** 10 and **Top** 50 pixels, 100 pixels wide and 
 
 A value you type is taken in the same unit. Typing **Left** 450 on that form moves the button to 30 pixels. A font size, **Opacity**, **DrawWidth** and other properties that are not positions show as they are.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > The pane shows **Left**, **Top**, **Width** and **Height** of a control on a CustomControls form multiplied by 15, as if the form were in twips, but takes the value you type as pixels. A button at **Left** 20 pixels shows 300. Typing 40 moves it to 40 pixels, and the box then shows 600. Do not type the value the pane shows. Type pixels, as the readouts on the surface show them.
 
 ## See Also

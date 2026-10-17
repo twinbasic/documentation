@@ -21,7 +21,7 @@ If the specified file is open when the **FileLen** function is called, the value
 > [!NOTE]
 > Use the [LOF](LOF) function to obtain the length of an open file.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > **FileLen** raises run-time error -2147467259 (`&H80004005`) for a file that does not exist, where VB6 raises 53 (*File not found*).
 
 ### Example

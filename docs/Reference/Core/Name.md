@@ -22,7 +22,7 @@ The **Name** statement renames a file and moves it to a different directory or f
 
 Using **Name** on an open file produces an error. An open file must be closed before renaming it. **Name** arguments cannot include multiple-character (`*`) and single-character (`?`) wildcards.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > Each of these failures of **Name** raises run-time error -2147467259 (`&H80004005`), where VB6 raises the numbered error shown:
 >
 > - 53 (*File not found*) when *oldpathname* does not exist;

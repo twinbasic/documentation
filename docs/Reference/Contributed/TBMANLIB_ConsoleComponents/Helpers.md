@@ -260,7 +260,7 @@ Debug.Print columns(0) & " " & columns(1) & " " & columns(2)
 
 The output is that of a console of 80 columns by 25 rows, which is also the size that a program without a console gets.
 
-> [!NOTE] 1.0.0.1, BETA 1007
+> [!NOTE] 1.0.0.1, BETA 1010
 > A program that references the packages TBMANLIB_ConsoleCore and TBMANLIB_ConsoleComponents cannot read what the members that give a **ConsoleRect** or a **ConsolePosition** return: the compiler refuses the members of the value and its assignment to a variable of the type. The members that give a **Long** or an array of **Long** compile. A **cLayoutHelper** cannot be made with the **cConsole** of the published package at all; see [The two packages](./#the-two-packages).
 <!-- /test -->
 

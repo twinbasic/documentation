@@ -13,7 +13,7 @@ The base class of the two classes that hold a set of font families: [**Installed
 A **FontCollection** is not created on its own. It gives its two derived classes the members that list the families in the collection. A variable declared **As FontCollection** can hold either of them, which is how the *fontCollection* parameter of [**FontFamily**](FontFamily) and of [**Font**](Font) accepts both. The class mirrors the GDI+ [FontCollection](https://learn.microsoft.com/en-us/windows/win32/api/gdiplusheaders/nl-gdiplusheaders-fontcollection) class.
 
 <!-- test: Fx_FontCollectionTests.InstalledFontCollection_Create_ReturnsACollection, Fx_FontCollectionTests.InstalledFontCollection_New_ReturnsACollection, Fx_FontCollectionTests.InstalledFontCollection_FamilyCount_CountsTheInstalledFamilies, Fx_FontCollectionTests.InstalledFontCollection_Families_IsOneBasedAndHoldsAnArialFamily, Fx_FontCollectionTests.PrivateFontCollection_Create_ReturnsAnEmptyCollection, Fx_FontCollectionTests.PrivateFontCollection_New_ReturnsACollection, Fx_FontCollectionTests.PrivateFontCollection_AddFontFile_AddsTheFamilyOfTheFile, Fx_FontCollectionTests.PrivateFontCollection_AddFontFile_MissingFile_ReturnsFileNotFound, Fx_FontCollectionTests.PrivateFontCollection_FontFromTheCollection_IsAvailable -->
-> [!WARNING] 0.9.45.0, BETA 1007
+> [!WARNING] 0.9.45.0, BETA 1010
 > Neither derived class can be created, so none of the members on this page can be used. See the warning on [**InstalledFontCollection**](InstalledFontCollection#creating) and on [**PrivateFontCollection**](PrivateFontCollection#creating). The rest of this page describes the members as the source defines them.
 
 ## Creating

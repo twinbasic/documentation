@@ -23,7 +23,7 @@
 // RemoveRecentsList calls do nothing, as code-editor.test.mjs does. Nothing here reaches
 // SaveSetting, so lanes.mjs names no settings for this lane.
 //
-// The tests share the lane's IDE in order. Each test states what BETA 1007 does; the tests named
+// The tests share the lane's IDE in order. Each test states what BETA 1010 does; the tests named
 // "control" pass whether or not the defects are fixed. If another fails after an IDE update, the
 // IDE has changed: update the entry in BUGS-TO-REPORT.md, or its report in bugs/filed/, the
 // callout on docs/IDE/Memory.md that names it, and then this file.

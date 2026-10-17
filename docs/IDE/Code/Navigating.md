@@ -38,7 +38,7 @@ Where the caret lands:
 | A member of a package, or of the VBA library | A new tab with the package's source. The tab is read-only. |
 | A keyword, or text in a string | Nowhere. |
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > <kbd>Ctrl</kbd>+<kbd>Up</kbd> and <kbd>Ctrl</kbd>+<kbd>Down</kbd>, and Go To Definition for most names, land on the line after the declaration, not on the declaration itself. Press <kbd>Up</kbd> once to reach it.
 
 <kbd>Ctrl</kbd>+click does not follow a name, and the editor has no Peek Definition.
@@ -99,7 +99,7 @@ The **OUTLINE** panel lists the symbols of the file you are editing. It is empty
 
 ![The Outline pane listing the two top level items of the open file, the module MainModule and the class GlobalSearchAddIn.](../Images/Outline_1.png){:width="300" height="96"}
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > The Outline lists only the top-level types of a file, such as the module or the classes. The procedures, fields and properties inside them are missing, rows have no expand arrow, and the filters of the **...** menu below change nothing you can see. To go to a procedure, use the [combo boxes](Editor#the-navigation-combo-boxes).
 
 The **...** button in the header of the panel opens a menu of eleven items that you tick. The IDE keeps them for each project.

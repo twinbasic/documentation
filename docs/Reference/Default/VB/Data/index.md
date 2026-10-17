@@ -80,7 +80,7 @@ Determines how the control's border is drawn by the OS. A member of [**Appearanc
 
 The fill colour of the band behind the [**Caption**](#caption), as an **OLE_COLOR**. Defaults to the system window-background colour.
 
-> [!WARNING] BETA 1007
+> [!WARNING] BETA 1010
 > Assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. Check a colour that comes from user input before assigning it.
 
 ### BOFAction
@@ -165,7 +165,7 @@ The **StdFont** used to render [**Caption**](#caption). The convenience properti
 
 The text colour for the caption, as an **OLE_COLOR**. Defaults to the system window-text colour. A disabled control draws the caption in the system grey-text colour instead.
 
-> [!WARNING] BETA 1007
+> [!WARNING] BETA 1010
 > Assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. Check a colour that comes from user input before assigning it.
 
 ### Height

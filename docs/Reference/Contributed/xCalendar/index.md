@@ -51,7 +51,7 @@ Debug.Print cal.Year
 ```
 
 <!-- test: compile ProjectNameIsNotAType, compile QualifiedClassNameIsAType -->
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > `Dim cal As xCalendar` fails with TB5139, *[xCalendar] is a project or library, not a datatype*.
 >
 > ```tb check_build expect-error=TB5139
@@ -67,7 +67,7 @@ Debug.Print d, m   ' 2 1
 ```
 
 <!-- test: compile BareShortLengthIsAmbiguous, compile BareLongLengthIsAmbiguous, compile QualifiedDayLengthMemberIsAccepted, compile QualifiedMonthLengthMemberIsAccepted -->
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > `ShortLength` and `LongLength` written alone fail with TB5073, *'ShortLength' is ambiguous*.
 >
 > ```tb check_build expect-error=TB5073
@@ -400,7 +400,7 @@ A method is called as *object*.**Name**. None takes an argument or returns a val
 <!-- /test -->
 
 <!-- test: MethodTests.NextMonth_FromJanuary31_SelectsTheLastDayOfFebruary, MethodTests.PreviousMonth_FromMarch31_SelectsTheLastDayOfFebruary, MethodTests.NextYear_FromFebruary29_SelectsFebruary28, MethodTests.PreviousYear_FromFebruary29_SelectsFebruary28 -->
-> [!WARNING] BETA 1007
+> [!WARNING] BETA 1010
 > [**DateAdd**](../../../Modules/DateTime/DateAdd) with the interval `"m"`, `"q"` or `"yyyy"` does not stop at the end of a shorter month: the date overflows into the next month. **NextMonth**, **PreviousMonth**, **NextYear** and **PreviousYear** call **DateAdd**, so **NextMonth** from January 31, 2026 selects March 3, 2026, **PreviousMonth** from March 31, 2026 selects March 3, 2026, and **NextYear** from February 29, 2024 selects March 1, 2025. VB6 gives the last day of the shorter month in every such case: February 28, 2026 for the first one.
 
 ### NextDay
@@ -414,7 +414,7 @@ Selects the day after the selected one.
 {: .no_toc }
 
 <!-- test: MethodTests.NextMonth_SelectsTheSameDayOneMonthAfter, MethodTests.NextMonth_FromJanuary31_SelectsTheLastDayOfFebruary, MethodTests.NextMonth_FromFebruary28_SelectsMarch28 -->
-Selects the same day one month after the selected one, or the last day of that month when it has no such day, so January 31 gives February 28 or 29. The change stays: **NextMonth** from February 28 gives March 28, not March 31. In BETA 1007 the result differs for the 29th to the 31st: see the warning at the start of this section.
+Selects the same day one month after the selected one, or the last day of that month when it has no such day, so January 31 gives February 28 or 29. The change stays: **NextMonth** from February 28 gives March 28, not March 31. In BETA 1010 the result differs for the 29th to the 31st: see the warning at the start of this section.
 <!-- /test -->
 
 ### NextWeek
@@ -428,7 +428,7 @@ Selects the day seven days after the selected one.
 {: .no_toc }
 
 <!-- test: MethodTests.NextYear_SelectsTheSameDayOneYearAfter, MethodTests.NextYear_FromFebruary29_SelectsFebruary28 -->
-Selects the same day one year after the selected one, or February 28 when the selected day is February 29 and the next year is not a leap year. In BETA 1007 the result differs for February 29: see the warning at the start of this section.
+Selects the same day one year after the selected one, or February 28 when the selected day is February 29 and the next year is not a leap year. In BETA 1010 the result differs for February 29: see the warning at the start of this section.
 <!-- /test -->
 
 ### PreviousDay

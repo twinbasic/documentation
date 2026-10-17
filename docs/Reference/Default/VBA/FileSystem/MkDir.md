@@ -16,7 +16,7 @@ Syntax: **MkDir** *path*
 *path*
 : A string expression that identifies the directory or folder to be created. The *path* may include the drive. If no drive is specified, **MkDir** creates the new directory or folder on the current drive.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > **MkDir** raises run-time error -2147467259 (`&H80004005`) when it fails. VB6 raises 75 (*Path/File access error*) when *path* already exists, and 76 (*Path not found*) when the folder that would hold it does not exist.
 
 ### See Also

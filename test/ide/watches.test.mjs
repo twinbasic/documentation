@@ -6,7 +6,7 @@
 // error to the DEBUG CONSOLE. The watches are added with the page's
 // addNewWatchExpression, which the WATCHES panel's own input calls.
 //
-// Each test states what BETA 1007 does. If one fails after an IDE update, the IDE
+// Each test states what BETA 1010 does. If one fails after an IDE update, the IDE
 // has changed: for ? p, update the report "`? p` in the Debug Console, where `p` is
 // a user-defined type, fails with a codegen error and a linker error"
 // (bugs/console-print-udt-linker-error/), a follow-up to twinbasic/twinbasic#2485,

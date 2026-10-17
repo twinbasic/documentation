@@ -19,7 +19,7 @@ Syntax: **FileAttr(** *filenumber* **,** *returntype* **)**
 *returntype*
 : *required* **Integer** indicating the type of information to return. Must be **1** to return the file access mode.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > **FileAttr** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
 
 ### Return Values

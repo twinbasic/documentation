@@ -29,7 +29,7 @@ esc.Execute text
 Debug.Print text  ' aZZb
 ```
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > [**Self**](Self) and the four property setters ([**AsciiBase**](AsciiBase), [**EscapeString**](EscapeString), [**IsAsciiCharacter**](IsAsciiCharacter) and [**ReplacementString**](ReplacementString) with **Let**) are declared **Friend**, for [**Create**](Create) to use. A project that references the package can call them too, so the properties of an instance can be changed after it is created.
 
 <!-- /test -->

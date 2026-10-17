@@ -78,7 +78,7 @@ The set of edges of the parent that the **MultiFrame**'s corresponding edges fol
 
 The background colour of the **MultiFrame**'s drawing surface, as an **OLE_COLOR**. Defaults to the system window-background colour. Visible only where the contained frames do not fully cover the extent --- e.g. when their **MultiFrameSize**s sum to less than 100%.
 
-> [!WARNING] BETA 1007
+> [!WARNING] BETA 1010
 > Assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. Check a colour that comes from user input before assigning it.
 
 ### Container

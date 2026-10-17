@@ -294,7 +294,7 @@ The restriction to modules is not an oversight. Folding a call to a method would
 
 Calls are folded only when **Constant Function Folding** is set to **Yes** in [Project Settings](../IDE/Project-Settings#constant-function-folding). A **Property Get** in a module folds as a function does. On a **Sub** the attribute is accepted and has no effect.
 
-> [!WARNING] BETA 1007
+> [!WARNING] BETA 1010
 > The compiler also accepts the attribute on a **Declare Function**. With **Constant Function Folding** on, a call to such a function whose arguments are all constants crashes the compiler during the build, though the project compiles without an error.
 
 <!-- BETA 1005 (tbrun --exe, counting calls through a module counter): with
@@ -1055,10 +1055,10 @@ When set, a global instance of the class is created when the application starts.
 
 This attribute is equivalent to the `VB_PredeclaredId` attribute in VBx .cls files.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > In an ActiveX build, the class is marked `appobject` in the type library as well as `predeclid`, which is what [AppObject](#appobject) gives it, so a client that references the library treats the members of the class as global names.
 
-<!-- BETA 1005, ActiveX DLL dumped with TLI: [PredeclaredId] and [AppObject]
+<!-- BETA 1005 and 1010, ActiveX DLL dumped with TLI: [PredeclaredId] and [AppObject]
      on a Class both give coclass TYPEFLAGS 0xB (appobject, cancreate,
      predeclid); found independently by the vb6-import lane's type library
      check. The compiler also accepts the attribute on an Interface (the name
@@ -1201,7 +1201,7 @@ The procedure runs whatever the project's modules and procedures are called: a m
 > [!NOTE]
 > VB6 refuses a module that has the project's name, with *Name conflicts with existing module, project, or object library*. It allows a procedure named like its module.
 
-> [!WARNING] BETA 1007
+> [!WARNING] BETA 1010
 > The compiler also accepts the attribute on a generic **Sub**, such as `Sub Signed(Of T)()`, and counts it as the project's one **[RunAfterBuild]**. The build gives no error or warning, and the DEBUG CONSOLE reports the procedure as executed, but its body does not run.
 
 <!-- BETA 1005 (tbbuild --build): a [RunAfterBuild] Boolean Function and a
@@ -1220,15 +1220,17 @@ Runs the function before the project's startup object. Returning **True** suppre
 
 A **Function** is the usual form, returning a **Boolean**. A **Function** of another type, or a **Property Get**, works the same way: a result of 0 or **Nothing** lets startup proceed, and any other result suppresses the startup object. A **Sub** runs too, and then the startup object never runs.
 
-> [!WARNING] BETA 1007
-> On a generic procedure, such as `Sub Pre(Of T)()`, the project compiles without an error, but building it crashes the compiler.
+> [!NOTE] BETA 1010
+> The attribute is not allowed on a generic procedure, such as `Sub Pre(Of T)()`. The project compiles in the editor without an error, but building it fails with the message *Build FAILED due to invalid RunBeforeStartupObject procedure*.
 
 <!-- BETA 1005 (tbrun --exe, TbRun.Out): "pre ran" then "Main ran" when Main
      runs. Boolean False/True: Main runs/does not; Long 0/1: runs/does not;
      stdole.IUnknown Nothing/an object: runs/does not; Property Get As Long 1:
-     does not; a Sub, a Static Sub and a Private Sub run and Main does not. The
-     crash: tbbuild --build exit 5, ACCESS_VIOLATION, for `Public Sub Pre(Of T)()`
-     alone. Bug: runbeforestartupobject-generic-crash in BUGS-TO-REPORT.md. -->
+     does not; a Sub, a Static Sub and a Private Sub run and Main does not.
+     BETA 1010 (tbbuild --build, win32 and win64): the build of `Public Sub
+     Pre(Of T)()` and of a generic Function fails with the message above; the
+     same procedures without the attribute, and `Pre()` with it, build. The
+     compile alone reports 0 diagnostics. -->
 
 The CEF package uses it to intercept the sub-process launches Chromium makes of the host executable, which must not run the application's own `Sub Main`:
 

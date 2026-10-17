@@ -41,7 +41,7 @@ Syntax: *object*.**QueryInterface** *riid*, *ppvObject*
 
 Returns `S_OK` and a pointer with one reference added for the caller, or `E_NOINTERFACE` (`&H80004002`) and a null pointer.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > An object of a class that the project compiles --- a class, a form, a control --- returns `E_NOINTERFACE` for an interface it does not support but leaves *ppvObject* as it was, instead of setting it to a null pointer. The runtime's own objects, such as a **Collection**, set it to a null pointer, as every object of VB6 does. A caller tests the result, not the pointer.
 
 Three rules govern the answer:
@@ -163,7 +163,7 @@ A class never needs to implement **IUnknown**: the compiler gives every class an
 
 `Implements stdole.IUnknown` compiles, and the class works as before. A project's own **Interface** that carries the identifier of **IUnknown** and extends another interface also compiles, and a class can implement it.
 
-> [!WARNING] BETA 1007
+> [!WARNING] BETA 1010
 > That interface is unusable. **Set** to a variable of that type gives the object's ordinary **IUnknown** pointer, which has only the three methods of **IUnknown**. Calling a method the interface declares after them ends the program with an access violation, and any unsaved data is lost. The compiler gives no diagnostic. Give the identifier of **IUnknown** only to an interface declared **Extends Nothing** with the three methods of **IUnknown**, as in [Calling it from twinBASIC](#calling-it-from-twinbasic); otherwise use `stdole.IUnknown`.
 
 ## Example

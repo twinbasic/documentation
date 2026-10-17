@@ -22,7 +22,7 @@ To import a package directly from a TWINPACK file (instead of using TWINSERV), f
 - press the **Import from file...** button:
 
   ![A callout numbered 4 marking the Import from file button below the Available Packages list](Images/e35d5955-9e70-4d6e-abd7-748558da75ba.png){:width="862" height="150"}
-- choose the TWINPACK file you want to import. The package is added to the **Available Packages** list, but BETA 1007 does not tick it: tick it yourself. It then appears, ticked, on the **Enabled Libraries** tab, marked `[EMBEDDED-PACKAGE]`:
+- choose the TWINPACK file you want to import. The package is added to the **Available Packages** list, but BETA 1010 does not tick it: tick it yourself. It then appears, ticked, on the **Enabled Libraries** tab, marked `[EMBEDDED-PACKAGE]`:
 
   ![The Enabled Libraries list with the CSharpishStringFormater and FilePropertyExplorer packages ticked and marked EMBEDDED-PACKAGE](Images/f2fd8374-fe46-40b0-8c66-2443df4dc5b3.png){:width="995" height="257"}
 - press **Apply Changes**

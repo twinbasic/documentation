@@ -24,7 +24,7 @@ The shorthand reads at run time as a chain of `Item("name")` lookups against the
 > [!IMPORTANT]
 > This interface is **`[COMExtensible(True)]`**. Property names are resolved against the live DOM element at run time, not declared statically on the interface. The compiler does not validate names --- a typo (`.innerTxt = "..."` instead of `.innerText = "..."`) fails silently or throws at run time. The accepted set is **every DOM property of the underlying tag**, plus any custom-widget extensions; the reference does not enumerate it.
 
-> [!NOTE] BETA 1007
+> [!NOTE] BETA 1010
 > A property whose name starts with `on` is ignored. `.onclick = "..."` sets nothing, and the call returns without an error. Register a listener with [**HtmlElement.AddEventListener**](HtmlElement#addeventlistener) instead.
 
 > [!IMPORTANT]
