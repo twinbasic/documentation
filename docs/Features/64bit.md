@@ -16,7 +16,7 @@ Using the [Fusion](Fusion) feature, it is also possible to use both 32bit and 64
 
 The [build configuration](../tB/IDE/Reference/Toolbar#build-configuration) box on the toolbar chooses between a 32-bit and a 64-bit build: **win32** or **win64**. <kbd>Ctrl</kbd>+<kbd>F1</kbd> switches to **win64**, and <kbd>Ctrl</kbd>+<kbd>F2</kbd> switches back to **win32**. The IDE remembers the choice for each project.
 
-The two builds write different files. The default [Build Output Path](../tB/IDE/Project-Settings#build-output-path) ends in `${ProjectName}_${Architecture}.${FileExtension}`, and `${Architecture}` is `win32` or `win64`. So a Standard DLL project named `MathGreetLib` builds `Build\MathGreetLib_win32.dll` in one mode and `Build\MathGreetLib_win64.dll` in the other.
+The two builds write different files. The default [Build Output Path](../tB/IDE/Project-Settings#build-output-path) ends in `${ProjectName}_${Architecture}.${FileExtension}`, and `${Architecture}` is `win32` or `win64`. So a Standard DLL project named `MathGreetLib` builds `Build\MathGreetLib_win32.dll` in one mode and `Build\MathGreetLib_win64.dll` in the other. The variable `${Bitness}` is `32` or `64` for the same two modes, for a path that names only the number.
 
 ## Example Syntax
 

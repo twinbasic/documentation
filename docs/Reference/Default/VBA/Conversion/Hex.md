@@ -42,4 +42,4 @@ MyHex = Hex(459)    ' Returns "1CB".
 
 ### See Also
 
-- [Oct](Oct), [Str](Str) functions
+- [Bin](Bin), [Oct](Oct), [Str](Str) functions

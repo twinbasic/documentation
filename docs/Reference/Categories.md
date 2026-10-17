@@ -261,6 +261,7 @@ Procedures that coerce an expression to a specific type:
 
 Procedures that convert between numbers and strings:
 
+* [Bin$, Bin](../tB/Modules/Conversion/Bin) - binary string representation of a number
 * [Hex$, Hex](../tB/Modules/Conversion/Hex) - hexadecimal string representation of a number
 * [Oct$, Oct](../tB/Modules/Conversion/Oct) - octal string representation of a number
 * [Str$, Str](../tB/Modules/Conversion/Str) - decimal string representation of a number
@@ -343,6 +344,7 @@ Procedures that return modified strings:
 
 Procedures that convert between numbers and strings:
 
+* [Bin$, Bin](../tB/Modules/Conversion/Bin) - binary string representation of a number
 * [CStr](../tB/Modules/Conversion/CStr) - coerce a value to **String** (locale-aware)
 * [Hex$, Hex](../tB/Modules/Conversion/Hex) - hexadecimal string representation of a number
 * [Oct$, Oct](../tB/Modules/Conversion/Oct) - octal string representation of a number

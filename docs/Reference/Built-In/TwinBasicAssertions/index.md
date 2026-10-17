@@ -4,7 +4,7 @@ parent: Built-In Packages
 nav_order: 4
 permalink: /tB/Packages/Assert/
 has_toc: false
-indexed_from: beta-x-1005
+indexed_from: beta-x-1010
 ---
 
 # Assert Package

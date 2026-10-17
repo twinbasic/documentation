@@ -129,7 +129,14 @@ A reference to a [**Data**](../Data/) control (or other **DataSource** provider)
 ### Dock
 {: .no_toc }
 
-Where the **Image** is docked within its container. A member of [**DockModeConstants**](../../VBRUN/Constants/DockModeConstants): **vbDockNone** (default), **vbDockLeft**, **vbDockTop**, **vbDockRight**, **vbDockBottom**, or **vbDockFill**. Docked images ignore [**Anchors**](#anchors).
+Where the **Image** is docked within its container. A member of [**DockModeConstants**](../../VBRUN/Constants/DockModeConstants): **vbDockNone** (default), **vbDockLeft**, **vbDockTop**, **vbDockRight**, **vbDockBottom**, or **vbDockFill**. Docked images ignore [**Anchors**](#anchors). Several controls docked to the same container are ordered by [**DockOrder**](#dockorder).
+
+### DockOrder
+{: .no_toc }
+
+The order in which the **Image** is docked among the docked controls of its container. A **Long**, default 0. A control with a lower value is docked first and so lies nearer the container's edge; controls with equal values are docked in the order they were added to the form. A negative value is allowed. Setting the property at run time lays out the container again at once. An **Image** whose [**Dock**](#dock) is **vbDockNone** ignores it.
+
+A control docked first takes the whole of its edge, and a later control is placed in what remains: of a left-docked and a top-docked control, the one with the lower value spans the full height or width. A control docked with **vbDockFill** takes the space that remains when its turn comes, so give it the largest value of the docked controls to leave the edges to the others.
 
 ### DragIcon
 {: .no_toc }

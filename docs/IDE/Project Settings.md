@@ -23,7 +23,7 @@ The name that code uses for the project, as a namespace. When the build produces
 
 ## Project Description
 
-The description of the type library, when the build produces one. It can include the variables `${Architecture}`, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}` and `${VersionRevision}`. In the `Settings` file it is `project.description`.
+The description of the type library, when the build produces one. It can include the variables `${Bitness}`, `${Architecture}`, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}` and `${VersionRevision}`. In the `Settings` file it is `project.description`.
 
 ## Application Title
 
@@ -72,13 +72,13 @@ When set to **Yes**, the type library that the build produces takes the [Project
 
 ## Build Output Path
 
-The full path of the file the compiler creates. Its description in the dialog lists these variables: `${SourcePath}`, the folder that holds the `.twinproj` file, and `${ProjectName}`, `${ProjectID}`, `${FileExtension}`, `${Architecture}`, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}` and `${VersionRevision}`. `${Architecture}` is `win32` or `win64`, whichever the toolbar's [build configuration](Reference/Toolbar#build-configuration) box is set to. The IDE add-in samples use one more that the description leaves out, `${IdePath}`, the folder the IDE is installed in: their `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}` builds straight into the IDE's own `addins` folder, which works until the IDE has loaded the add-in --- see [Rebuilding an addin the IDE has loaded](../Packages/tbIDE/#rebuilding-an-addin-the-ide-has-loaded).
+The full path of the file the compiler creates. Its description in the dialog lists these variables: `${SourcePath}`, the folder that holds the `.twinproj` file, and `${ProjectName}`, `${ProjectID}`, `${FileExtension}`, `${Bitness}`, `${Architecture}`, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}` and `${VersionRevision}`. `${Architecture}` is `win32` or `win64`, whichever the toolbar's [build configuration](Reference/Toolbar#build-configuration) box is set to, and `${Bitness}` is the matching `32` or `64`, so `${ProjectName}_${Bitness}.${FileExtension}` names `MathGreetLib_32.dll` or `MathGreetLib_64.dll`. The IDE add-in samples use one more that the description leaves out, `${IdePath}`, the folder the IDE is installed in: their `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}` builds straight into the IDE's own `addins` folder, which works until the IDE has loaded the add-in --- see [Rebuilding an addin the IDE has loaded](../Packages/tbIDE/#rebuilding-an-addin-the-ide-has-loaded).
 
 Every project template sets it to `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`: a `Build` folder beside the `.twinproj` file, and a different file name for each architecture. A Standard DLL project named `MathGreetLib` builds `Build\MathGreetLib_win32.dll` or `Build\MathGreetLib_win64.dll`, and a `Declare` that calls it has to name that file --- see [Calling a Standard DLL from VBA or Excel](../../Features/Project-Configuration/Project-Types#calling-a-standard-dll-from-vba-or-excel). In the `Settings` file it is `project.buildPath`.
 
 ## ActiveX Fusion Host EXE Output Path
 
-The full path of the host EXE that the compiler creates for [Fusion](../../Features/Fusion): the separate program that ActiveX controls run in. It can use the same variables as [Build Output Path](#build-output-path), except that `${Architecture}` is `win32host` or `win64host`. When it is not set, the compiler uses *Build Output Path* when it needs the file. A built program expects the host EXE in its own folder. For a host EXE kept anywhere else, the program has to set `App.FusionHostEXEPath` as it starts --- see [Runtime Behaviour and Deployment](../../Features/Fusion#runtime-behaviour-and-deployment). In the `Settings` file it is `project.fusionBuildPath`.
+The full path of the host EXE that the compiler creates for [Fusion](../../Features/Fusion): the separate program that ActiveX controls run in. It can use the same variables as [Build Output Path](#build-output-path), except that `${Architecture}` is `win32host` or `win64host`. `${Bitness}` is `32` or `64`, as in *Build Output Path*. When it is not set, the compiler uses *Build Output Path* when it needs the file. A built program expects the host EXE in its own folder. For a host EXE kept anywhere else, the program has to set `App.FusionHostEXEPath` as it starts --- see [Runtime Behaviour and Deployment](../../Features/Fusion#runtime-behaviour-and-deployment). In the `Settings` file it is `project.fusionBuildPath`.
 
 ## Build Type
 {: index_also="standard exe; create an ActiveX DLL; create ActiveX DLL" }

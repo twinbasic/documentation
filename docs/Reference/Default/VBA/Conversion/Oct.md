@@ -42,4 +42,4 @@ MyOct = Oct(459)    ' Returns "713".
 
 ### See Also
 
-- [Hex](Hex), [Str](Str) functions
+- [Bin](Bin), [Hex](Hex), [Str](Str) functions

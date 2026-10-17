@@ -9,7 +9,7 @@ exclude_from_docs:
   - EventLogAPIs
 exclude_kinds:
   - Declare
-indexed_from: beta-x-1005
+indexed_from: beta-x-1010
 ---
 
 # WinEventLogLib Package
