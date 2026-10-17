@@ -56,6 +56,11 @@ Next
 
 ## Properties
 
+### Anchors
+{: .no_toc }
+
+The set of edges of the parent that the directory list box's corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object. While [**IntegralHeight**](#integralheight) is **True**, the height is a whole number of rows, so the list box may end a little short of the position the anchors give it.
+
 ### Appearance
 {: .no_toc }
 
@@ -80,6 +85,18 @@ Determines whether the previously focused control's [**Validate**](#validate) ev
 {: .no_toc }
 
 A read-only [**ControlTypeConstants**](../../VBRUN/Constants/ControlTypeConstants) value identifying this control as a directory list box. Always **vbDirListBox**.
+
+### Dock
+{: .no_toc }
+
+Where the directory list box is docked within its container. A member of [**DockModeConstants**](../../VBRUN/Constants/DockModeConstants): **vbDockNone** (default), **vbDockLeft**, **vbDockTop**, **vbDockRight**, **vbDockBottom**, or **vbDockFill**. Docked directory list boxes ignore [**Anchors**](#anchors). Several controls docked to the same container are ordered by [**DockOrder**](#dockorder). While [**IntegralHeight**](#integralheight) is **True**, the height is a whole number of rows, so a directory list box docked to the left or right edge may end a little short of the container's other edge.
+
+### DockOrder
+{: .no_toc }
+
+The order in which the directory list box is docked among the docked controls of its container. A **Long**, default 0. A control with a lower value is docked first and so lies nearer the container's edge; controls with equal values are docked in the order they were added to the form. A negative value is allowed. Setting the property at run time lays out the container again at once. A directory list box whose [**Dock**](#dock) is **vbDockNone** ignores it.
+
+A control docked first takes the whole of its edge, and a later control is placed in what remains: of a left-docked and a top-docked control, the one with the lower value spans the full height or width. A control docked with **vbDockFill** takes the space that remains when its turn comes, so give it the largest value of the docked controls to leave the edges to the others.
 
 ### DragIcon
 {: .no_toc }
