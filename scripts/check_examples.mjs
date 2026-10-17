@@ -116,10 +116,14 @@ import {
   CANARY_FILES,
   DEFAULT_BATCH,
   DEFAULT_JOBS,
+  applyExclusions,
+  canaryBatchStage,
   canaryProblem,
+  canaryVerdict,
   crashedIn,
   diagKind,
   embeddedPackages,
+  exclusionProblems,
   joinConcatGroups,
   makeBatches,
   runBatch,
@@ -153,6 +157,8 @@ import { alive, finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
+// The samples each mode leaves out, by package (applyExclusions).
+const EXCLUSIONS = path.join(REPO_ROOT, "test", "example-exclusions.json");
 
 // ---------------------------------------------------------------- arguments
 
@@ -252,6 +258,32 @@ const AS_JSON = values.json;
 const LLVM = values.llvm;
 // --llvm is a build, so the one switch the rest of the file reads is BUILD.
 const BUILD = values.build || LLVM;
+// The key of this run's entries in test/example-exclusions.json.
+const EXCLUSION_MODE = LLVM ? "llvm" : BUILD ? "build" : "compile";
+
+/** The exclusion list, checked; a list that cannot be read or has a wrong shape ends the run with exit 2. */
+function readExclusions() {
+  let list;
+  try {
+    list = JSON.parse(readFileSync(EXCLUSIONS, "utf8"));
+  } catch (e) {
+    console.error(`check_examples: cannot read test/example-exclusions.json: ${e.message}`);
+    process.exit(2);
+  }
+  const problems = exclusionProblems(list);
+  for (const packages of problems.length ? [] : Object.values(list)) {
+    for (const pkg of Object.keys(packages)) {
+      if (!templateResolves(TEMPLATES, `contributed-${pkg}`) && !templateResolves(TEMPLATES, pkg)) {
+        problems.push(`${pkg}: neither a contributed package with a template nor a template`);
+      }
+    }
+  }
+  if (problems.length) {
+    console.error(`check_examples: test/example-exclusions.json:\n${problems.map((p) => `  ${p}`).join("\n")}`);
+    process.exit(2);
+  }
+  return list;
+}
 // The procedure a [DllExport] attribute is on, for a run that builds.
 const DLL_EXPORT_NAME = /\[\s*DllExport\b[^\]]*\][\s_]*(?:(?:Public|Private|Friend)\s+)?(?:Function|Sub)\s+(\w+)/gi;
 // A sample's own `Sub Main`, which a class body may not hold and a build has to
@@ -681,6 +713,37 @@ function recordRun(staged, cap) {
 }
 
 /** Build one staged batch; returns per-fence errors, or a crash marker. */
+/**
+ * Take one batch of an exclusion's canary to its stage, once: no second build,
+ * no halving. Returns the stage it failed at, or null (canaryBatchStage).
+ */
+async function buildCanary(batch, slot, work) {
+  const staged = stageBatch(batch, work);
+  const run = staged.runs.length
+    ? { done: (lines) => lines.some((l) => l.trim() === RUN_DONE), quietMs: RUN_QUIET_MS, timeoutMs: RUN_TIMEOUT_MS }
+    : null;
+  const r = await compileProject({
+    project: staged.proj,
+    ide: IDE,
+    slot,
+    show: wantShow({ show: values.show, hide: values.hide }),
+    build: BUILD || !!run,
+    llvm: LLVM,
+    run,
+  });
+  if (!values.keep) rmSync(staged.dir, { recursive: true, force: true });
+  const parsed = run && r.code === 0 ? parseRun(r.run.captured, staged.runs.length) : null;
+  let failedAt;
+  try {
+    // What a clear erased comes first: the run starts by clearing the console.
+    const log = [...(r.run?.erased ?? []), ...(r.buildLog ?? [])];
+    failedAt = canaryBatchStage({ code: r.code, message: r.message, log, run: parsed });
+  } catch (e) {
+    throw new Error(`tbbuild exited ${r.code} on ${staged.proj}\n${e.message}`);
+  }
+  return { canary: batch.canary, failedAt };
+}
+
 async function buildStaged(staged, slot) {
   // A run batch is built and its [RunAfterBuild] Sub is run, in every mode. The
   // run is over when the dispatcher says it is done, or when the console has
@@ -808,8 +871,11 @@ async function runAll(batches, work) {
       const lane = laneOf(slot, laneWork);
       while (queue.length) {
         const batch = queue.shift();
-        process.stderr.write(`  building ${batch.fences.length} sample(s) [${batch.project}] on lane ${i}\n`);
-        results.push(await runBatch(batch, lane));
+        process.stderr.write(
+          `  building ${batch.fences.length} sample(s) [${batch.project}]${batch.canary ? " (canary)" : ""} on lane ${i}\n`,
+        );
+        // A canary's batch is taken to its stage once and judged as a whole.
+        results.push(batch.canary ? await buildCanary(batch, slot, laneWork) : await runBatch(batch, lane));
       }
     } finally {
       await slot.release();
@@ -1067,10 +1133,19 @@ async function main() {
   // sample's own ("'Main' is ambiguous"), which a compile accepts; so a run that
   // builds gives such a unit a project of its own without the template's.
   const alone = BUILD ? (members) => members.some((f) => DECLARES_MAIN.test(f.content)) : null;
+  // The samples this mode does not take to a stage (test/example-exclusions.json),
+  // and the canary of each package and stage, batched apart so that its failure
+  // breaks no batch (applyExclusions).
+  const exclusions = applyExclusions(selected, readExclusions()[EXCLUSION_MODE] ?? {});
+  if (!only) {
+    for (const id of exclusions.unknown) {
+      say(`  note: test/example-exclusions.json lists ${id} under ${EXCLUSION_MODE}, which is no sample`);
+    }
+  }
   // A `check_run` sample is built apart from everything else, whatever the mode,
   // since only a build runs [RunAfterBuild]: its batches get a dispatcher and
   // are built and run. A `projname` group holding one goes there whole.
-  const { run: runList, rest: restList } = partitionRun(selected);
+  const { run: runList, rest: restList } = partitionRun(exclusions.kept);
   const errorPages = new Set(restList.filter(expectsError).map((f) => f.rel));
   const hiddenOfErrorPage = (f) => f.flags.has(HIDDEN_MARKER) && errorPages.has(f.rel);
   const restBatches = BUILD
@@ -1093,7 +1168,18 @@ async function main() {
     jobs,
     alone: (members) => members.some((f) => DECLARES_MAIN.test(f.content)),
   }).map((b) => ({ ...b, run: true }));
-  const batches = [...restBatches, ...runBatches];
+  const canaryBatches = exclusions.canaries.flatMap((c) => {
+    const { run, rest } = partitionRun(c.fences);
+    return [
+      ...makeBatches(rest, { batchSize, jobs, alone }).map((b) => ({ ...b, canary: c.key })),
+      ...makeBatches(run, { batchSize, jobs, alone: (m) => m.some((f) => DECLARES_MAIN.test(f.content)) }).map((b) => ({
+        ...b,
+        run: true,
+        canary: c.key,
+      })),
+    ];
+  });
+  const batches = [...canaryBatches, ...restBatches, ...runBatches];
   // The run's folder is named for this process, so that runs at once never share
   // one. A folder an earlier run left, whose process has ended, goes; one that
   // cannot be removed yet is still held by something of that run's (an IDE from
@@ -1120,7 +1206,7 @@ async function main() {
       (staged ? `, ${staged} staged file(s)` : ""),
   );
 
-  const wantRun = selected.filter(isRunFence).length;
+  const wantRun = exclusions.kept.filter(isRunFence).length;
   if (wantRun) {
     say(`  ${wantRun} sample(s) marked \`${RUN_MARKER}\` are built and run, in ${runBatches.length} project(s)`);
   }
@@ -1137,7 +1223,7 @@ async function main() {
   // the whole run, so the server is never one a lane's compiler starts in its
   // IDE's job, which would end with that lane's IDE and take the cache from every
   // other lane, and never ends between batches (lib/tb-llvm-cache.mjs).
-  const toBuild = BUILD ? selected : runList;
+  const toBuild = BUILD ? exclusions.kept : runList;
   let llvmLease = null;
   if (LLVM || toBuild.some((f) => asksForLlvm({}, f.content))) {
     try {
@@ -1178,8 +1264,11 @@ async function main() {
   }
 
   const passed = [];
+  const canaryIds = new Set(exclusions.canaries.flatMap((c) => [...c.ids]));
   for (const fence of selected) {
     if (fence.isResource) continue; // a staged file, not a sample
+    // Not built, or judged as its canary's batches are.
+    if (exclusions.notBuilt.has(fence.id) || canaryIds.has(fence.id)) continue;
     if (crashed.has(fence.id)) continue; // reported already, and never a pass
     const diags = (errorsById.get(fence.id) ?? []).filter((d) => d.severity === "ERROR");
 
@@ -1222,7 +1311,7 @@ async function main() {
     if (!diags.length) {
       if (!blamed.has(fence.id)) {
         passed.push(fence);
-        if (isRunFence(fence)) judgeRun(fence);
+        if (isRunFence(fence) && !exclusions.notRun.has(fence.id)) judgeRun(fence);
       }
       continue;
     }
@@ -1273,6 +1362,24 @@ async function main() {
     }
   }
 
+  // Each package and stage's canary, judged on all its batches (canaryVerdict).
+  // One that fails at its stage is what its exclusion expects: a line, and no
+  // finding. One that gets through it, or fails at build before its run, is a
+  // finding: re-probe the package's exclusions.
+  const canaryLines = [];
+  for (const c of exclusions.canaries) {
+    const failedAt = results.filter((r) => r.canary === c.key).map((r) => r.failedAt);
+    const verdict = canaryVerdict(c, failedAt);
+    if (!verdict.finding) canaryLines.push(verdict.text);
+    else {
+      addFinding(
+        c.fences.find((f) => c.ids.has(f.id)),
+        verdict.text,
+        `test/example-exclusions.json, ${EXCLUSION_MODE}.${c.pkg}.${c.stage}`,
+      );
+    }
+  }
+
   // A broken template fails the run. It is not a finding against any one page,
   // so it would otherwise print and be ignored -- which is the worst outcome,
   // because a template that does not compile makes every sample in it fail.
@@ -1288,10 +1395,15 @@ async function main() {
       summarise({ selected: samples.length, passed: passed.length, findings });
     }
     say(
-      `\ncheck_examples: ${samples.length} sample(s), ${passed.length} compile, ` +
+      `\ncheck_examples: ${samples.length} sample(s), ` +
+        (exclusions.notBuilt.size || exclusions.notRun.size
+          ? `${exclusions.notBuilt.size} excluded from the build, ${exclusions.notRun.size} from the run, `
+          : "") +
+        `${passed.length} compile, ` +
         `${real} finding(s), ${secs}s` +
         (real ? "" : " -- clean"),
     );
+    for (const line of canaryLines) say(line);
     if (wantRun) {
       say(
         `${runStats.ran} run sample(s) ran, ${runStats.matched} without a finding` +

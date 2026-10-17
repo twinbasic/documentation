@@ -65,6 +65,8 @@ Each template also carries a **stage set**: a module declaring the control insta
 
 **A sample can compile and still fail the build.** The front end accepts constructs that code generation refuses, so `--build` presses Build on each project that compiled without errors, and `--llvm` does the same with LLVM switched on. A build can fail once and pass when repeated, so a failed build is repeated once, and only a second failure counts. `tbbuild` reports a failed build as exit 5 and names no sample, so the project is cut by halving, as for a crash, until one sample is left or the samples a failure needs together are found. The finding says "fails the build", and its second line says "the LLVM build" under `--llvm` and "the build" otherwise.
 
+**`test/example-exclusions.json` names the samples a mode does not take to a stage**, by mode, package and stage: `build`, or `compiler-run` (the run in the compiler after a build), or `exe-run` (which `examples.bat` runs no exe for, and ignores). A stage's value is `"*"`, when no sample of the package can be checked there, or a list of sample ids. Each package and stage has a canary, taken to that stage once: all of the package's samples for `"*"`, the first listed id for a list. When it fails there as expected, the run prints one line saying so. When it gets through, or its build fails before a run stage, the run reports a finding and exits 1, and the package is due to be checked again without its entry.
+
 A build refuses three things a compile accepts, so batches are arranged around them:
 
 - an `expect-error` sample is batched apart from the samples that should build;

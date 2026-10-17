@@ -363,11 +363,6 @@ reports a result at all. The traffic wait takes about five seconds less per proj
 fallback: `tbbuild` on a one-file template takes 6 s, and a full `examples.bat` about 220 s
 (2,297 samples on four lanes, BETA 1005).
 
-Known: **`--llvm`, four projects at a time, can leave a build hanging** (4 of 52 builds in
-one run): the build starts and then reports nothing for 120 s. One at a time, the same
-projects build. `examples.bat` builds a failed batch a second time for this reason; `tbbuild`
-does not.
-
 **The mechanics are one library, [scripts/lib/tb-ide.mjs](scripts/lib/tb-ide.mjs)**:
 starting the IDE, attaching, waiting for the compile, reading the diagnostics and the DEBUG
 CONSOLE, clicking, building, and ending the process tree. `tbbuild` and `tbrun` are command lines

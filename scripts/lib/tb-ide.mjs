@@ -1358,11 +1358,14 @@ const BUILD_START = "[BUILD] Starting...";
 const BUILD_OK = /^\[LINKER\] SUCCESS created output file '(.+)'$/;
 const PACKAGE_FILE = /^\[BUILD\] Creating TWINPACK file '(.+)'$/;
 const PACKAGE_OK = "[BUILD] successful.";
-// The last is LLVM's refusal of a procedure, which has no bracketed prefix:
+// The last two are LLVM's refusal of a procedure: one with no bracketed prefix,
 // "LLVM compilation error in 'Probe.Stopper': Unable to compile due to use of
-// datatype that is not yet supported for LLVM compilation" (BETA 1005).
+// datatype that is not yet supported for LLVM compilation" (BETA 1005), and one
+// written when a [RunAfterBuild] run compiles a procedure it calls, "[LLVM]
+// codegen error occurred when compiling 'Bitmap.New': Call parameter type does
+// not match function signature!" (BETA 1010), after which the run stops.
 export const BUILD_FAILED =
-  /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error|^LLVM compilation error in /;
+  /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error|^LLVM compilation error in |^\[LLVM\] codegen error occurred when compiling /;
 // A compiler that crashes while building -- as one did under LLVM --
 // writes "<n> <time> NATIVE EXCEPTION: ..." and then restarts, and the build
 // never reports again. The line carries the console's own prefix, so it is not
