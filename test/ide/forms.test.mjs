@@ -56,7 +56,7 @@
 // calls do nothing, as debugging.test.mjs does; the tests float the HISTORY and TOOLBOX panels.
 // Nothing here copies to the clipboard or reaches SaveSetting, so lanes.mjs names no settings.
 //
-// The tests share the lane's IDE in order. Each test states what BETA 1005 does; the tests named
+// The tests share the lane's IDE in order. Each test states what BETA 1007 does; the tests named
 // "control" pass whether or not the defects are fixed. If another fails after an IDE update, the
 // IDE has changed: update the entry in BUGS-TO-REPORT.md, or its report in bugs/filed/, the
 // callout on the page of docs/IDE/Forms/ or docs/IDE/Reports/ that carries it, and then this file.

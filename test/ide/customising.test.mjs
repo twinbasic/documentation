@@ -24,7 +24,7 @@
 //
 // The tests share the lane's IDE in order: the first two run in an IDE started with one custom theme,
 // AtStart (inherits light); the third starts a new IDE with a Dark.theme beside it; the fourth uses
-// whichever IDE is open. Each test states what BETA 1005 does. If one fails after an IDE update, the
+// whichever IDE is open. Each test states what BETA 1007 does. If one fails after an IDE update, the
 // IDE has changed: update the entry in BUGS-TO-REPORT.md, or its report in bugs/filed/, the WARNING on
 // docs/IDE/Customising/Themes.md or Keyboard-Shortcuts.md, and then this file.
 //

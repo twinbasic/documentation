@@ -27,7 +27,7 @@
 // LoadTypeLibEx and REGKIND_NONE, by a 64-bit PowerShell (typeLibrary), which
 // cannot run the 32-bit DLL's code.
 //
-// Each test states what BETA 1005 does. If one fails after an IDE update, the
+// Each test states what BETA 1007 does. If one fails after an IDE update, the
 // IDE has changed: update the FAQ's VB6-import answer
 // (docs/Miscellaneous/FAQs.md), the entry "Some VB6 attribute lines have no
 // effect in a built type library" in BUGS-TO-REPORT.md or bugs/filed/, and

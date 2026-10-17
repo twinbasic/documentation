@@ -33,7 +33,7 @@
 //
 // The tests share the lane's IDE in order. The edits the last tests make (a letter typed at the end
 // of the @EDIT comment, a line that does not compile in Direct) are not undone. Each test states
-// what BETA 1005 does; the tests named "control" pass whether or not the defects are fixed. If
+// what BETA 1007 does; the tests named "control" pass whether or not the defects are fixed. If
 // another fails after an IDE update, the IDE has changed: update the entry in BUGS-TO-REPORT.md, or
 // its report in bugs/filed/, the callout on the page of docs/IDE/Debugging/ that carries it, and
 // then this file.
