@@ -701,6 +701,15 @@ compile has no errors, through `compileProject`'s `build` option, and `--llvm` (
 `compiler.debugOptions`. A plain `--build` run is the control for an `--llvm` one: a sample
 that fails only the second is one LLVM cannot generate code for.
 
+**A run that builds with LLVM holds one lease on the LLVM cache server for its whole length**
+(`holdLlvmCache`, [WIP.Harness.md](WIP.Harness.md#the-llvm-cache-server-and-the-lease-every-llvm-run-holds)):
+under `--llvm`, or when a sample it builds turns LLVM on for a procedure. Taken after the
+install check and before the first lane starts, released once every lane's IDE has ended.
+Without it the first lane's compiler starts the server as its own child, in that lane's IDE's
+job, and when that IDE ends every other lane's compiler loses its cache, restarts and abandons
+its build, which the run reports as a harness failure. The lanes are in the run's own process,
+so the one lease covers them all, and the server does not end between batches.
+
 - **A failed build is a crash, for isolation.** `compileProject` returns code 5 and
   `buildStaged` turns it into `{ crashed: true, buildFailed: true, named: <empty set> }`.
   Nothing in a build log names a sample, so `runBatch` halves the batch, and `together`

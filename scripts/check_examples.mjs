@@ -145,6 +145,7 @@ import {
 } from "./lib/example-run.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { leaseSlot, wantShow } from "./lib/tb-ide.mjs";
+import { asksForLlvm, holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { packTree, unpackProject } from "./lib/tb-project.mjs";
 import { downloadPackage } from "../indexer/lib/twinserv-client.mjs";
@@ -1131,6 +1132,22 @@ async function main() {
   // to start. Everything is under `work`,
   // so one sweep by that folder at the end takes the lot; what a run that died
   // left, startTidy sweeps by that run's own folders.
+  // A run that builds with LLVM -- under --llvm, or because a sample it builds
+  // turns LLVM on for a procedure -- holds one lease on the LLVM cache server for
+  // the whole run, so the server is never one a lane's compiler starts in its
+  // IDE's job, which would end with that lane's IDE and take the cache from every
+  // other lane, and never ends between batches (lib/tb-llvm-cache.mjs).
+  const toBuild = BUILD ? selected : runList;
+  let llvmLease = null;
+  if (LLVM || toBuild.some((f) => asksForLlvm({}, f.content))) {
+    try {
+      llvmLease = await holdLlvmCache(IDE);
+    } catch (e) {
+      console.error(`check_examples: ${e.message}`);
+      process.exit(2);
+    }
+  }
+
   tidy = startTidy({ prefixes: [work] });
 
   const t0 = Date.now();
@@ -1142,6 +1159,7 @@ async function main() {
     finishTidy(tidy);
     process.exit(2);
   }
+  await llvmLease?.release();
   finishTidy(tidy);
   tidy = null;
   const secs = ((Date.now() - t0) / 1000).toFixed(1);

@@ -39,6 +39,8 @@ twinBASIC has no command-line build. None of the compiler executable's verbs ---
 
 **A compile does not generate code, and a build does.** LLVM code generation can refuse a construct the compiler's front end accepts ("a feature used in your code is not yet supported with the LLVM compiler"), so a clean compile says nothing about an LLVM build. `--build` and `--llvm` press Build after the compile and read the build log.
 
+**A build with LLVM in it holds a lease on twinBASIC's LLVM cache server** (`scripts/lib/tb-llvm-cache.mjs`), from before the IDE starts until it has ended. The server is one process that every compiler on the machine shares; without a lease the first compiler to need it starts it inside its own IDE's job, and it ends with that IDE, under every other run that is using it. With a lease it is started outside every IDE and ends about 15 seconds after the last lease is released. `--json` gives the lease as `llvmCache`.
+
 A packed project's default build path opens a *Save* dialog that the private desktop hides. So either flag first exports the project into `%TEMP%\tbbuild\<slot>\src`, packs a copy with an explicit build path under `%TEMP%\tbbuild\<slot>\out` and a project id of its own, and opens that copy. Once the run is over the copy and its sources are removed, and so is the whole folder when nothing was built. After a build that succeeded, `%TEMP%\tbbuild\<slot>\out` stays, because it holds the file `built:` names; the next run in that slot replaces it.
 
 **Each run has a slot of its own** from [`tbbroker`](#tbbroker): a private desktop, and the number its folders and project id are named by, which no other run on the machine holds at the same time. The IDE's temp folder (`%TEMP%\tbbuild-tmp-<slot>`, its `TEMP` and `TMP`) and WebView2 user-data folder (`%TEMP%\tbbuild-wv2-<slot>`, about 28 MB) are emptied when the IDE starts and removed once it has ended. The first run after you log on starts the broker.
@@ -152,7 +154,8 @@ in the Debug Console as `A&amp;`, and `tbrun` captures what the console shows.
 `compiler.buildOptions`, which the exe is. `--compiler-options` sets both to any other
 string, such as `"+llvm +optimize"`. A run that uses LLVM --- through either option, the
 tree's own settings or a procedure's `[CompilerOptions]` --- is refused when the IDE shows a
-Community or Personal licence, which would silently test the default compiler instead.
+Community or Personal licence, which would silently test the default compiler instead. Such a
+run also holds a lease on the LLVM cache server while its IDE runs, as `tbbuild`'s does.
 
 **`--exe` also runs the exe the build wrote**, after the probe has run in the IDE.
 

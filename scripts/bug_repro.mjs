@@ -143,6 +143,7 @@ import {
   writeComparison,
 } from "./lib/repro-images.mjs";
 import { buildNumber, compilerExe, findIde, unsupportedIde } from "./lib/tb-install.mjs";
+import { holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { packTree } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import {
@@ -1495,7 +1496,18 @@ async function verify() {
   }
   const automatic = all.filter((s) => ["compile", "build", "run", "test"].includes(repros.get(s).mode));
   const lanes = Math.min(jobs, Math.max(all.length, 1));
-  if (automatic.length || all.some((s) => repros.get(s).mode === "cli")) findTools(values.ide);
+  const ide = automatic.length || all.some((s) => repros.get(s).mode === "cli") ? findTools(values.ide) : null;
+  // Reproducers built with LLVM: each tbbuild and tbrun holds its own lease on
+  // the LLVM cache server, and this run holds one for its whole length, so the
+  // server never ends between them (lib/tb-llvm-cache.mjs).
+  let llvmLease = null;
+  if (automatic.some((s) => repros.get(s).llvm)) {
+    try {
+      llvmLease = await holdLlvmCache(ide);
+    } catch (e) {
+      throw new Fail(e.message);
+    }
+  }
   if (automatic.length) {
     tidy = startTidy({
       paths: automatic.map((s) => where(s).twinproj),
@@ -1524,6 +1536,7 @@ async function verify() {
   try {
     await Promise.all(Array.from({ length: lanes }, (_, i) => lane(i)));
   } finally {
+    await llvmLease?.release();
     finishTidy(tidy);
     tidy = null;
   }

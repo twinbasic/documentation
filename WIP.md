@@ -430,6 +430,9 @@ install it with `node scripts/tbbroker.mjs install`, and run `test/broker.test.m
 `TBBROKER_EXE` set to `%LOCALAPPDATA%\tbbroker\tbbroker.exe`: no gate can build it.
 **No tool makes a desktop of its own**: each leases one
 ([WIP.Broker.md](WIP.Broker.md)).
+`scripts/lib/llvm-cache/`, the lease on twinBASIC's LLVM cache server with its probes (one of them
+PowerShell), is vendored from the launcher repository at the commit its `VENDORED.md` names, and is
+changed only there: never edit the copy, and Biome leaves it alone.
 The full accounting, and what the two ports gained, is in [WIP.Build.md](WIP.Build.md).
 
 ### The package indexer

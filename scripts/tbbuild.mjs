@@ -64,7 +64,7 @@
 // scripts/gen_attribute_probes.mjs -- but it does not know anything about
 // them. See WIP.Harness.md, "Compiling a twinBASIC project without the IDE in
 // front of you".
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -81,6 +81,7 @@ import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { COMPILE_TIMEOUT, keptIdeLines, leaseSlot, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
+import { asksForLlvm, holdLlvmCache, leaseReport } from "./lib/tb-llvm-cache.mjs";
 import { checkProject, laneProjectId, stageProject, unpackProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
@@ -248,6 +249,15 @@ let tidy = null;
 // sweeps, is the folder under the temp directory and not the given path.
 let target = path.resolve(proj);
 let work = null;
+let usesLlvm = false;
+// The text of every .twin file under dir, in its subfolders too.
+function twinText(dir) {
+  if (!existsSync(dir)) return "";
+  return readdirSync(dir, { recursive: true })
+    .filter((rel) => rel.toLowerCase().endsWith(".twin"))
+    .map((rel) => readFileSync(path.join(dir, rel), "utf8"))
+    .join("\n");
+}
 // The run's slot (tbbroker, WIP.Broker.md): the private desktop its IDE goes on, and the
 // number its work folder and project id are keyed to, which no other run on the machine
 // holds while this one does.
@@ -279,7 +289,7 @@ if (build) {
   }
   // Under --llvm the options are the run's and the exe's alike, as tbrun's are.
   try {
-    stageProject({
+    const staged = stageProject({
       src,
       stage: path.join(work, "stage"),
       project: target,
@@ -289,6 +299,23 @@ if (build) {
         ...(llvm ? { "compiler.debugOptions": "+llvm", "compiler.buildOptions": "+llvm" } : {}),
       },
     });
+    // A build is what generates LLVM code, so only a build asks for LLVM: under
+    // --llvm, or because the project's own options or a procedure's do.
+    usesLlvm = llvm || asksForLlvm(staged.settings, twinText(path.join(src, "Sources")));
+  } catch (e) {
+    removeWork(work, null);
+    die(2, e.message);
+  }
+}
+// A build with LLVM in it holds a lease on the LLVM cache server from before its
+// IDE starts until that IDE has ended, so the server is never one its IDE's
+// compiler starts in the IDE's job, which would end with it and take the cache
+// from every other run on the machine (lib/tb-llvm-cache.mjs). A kept IDE's
+// lease ends with this process.
+let llvmLease = null;
+if (usesLlvm) {
+  try {
+    llvmLease = await holdLlvmCache(IDE);
   } catch (e) {
     removeWork(work, null);
     die(2, e.message);
@@ -336,6 +363,8 @@ try {
   // A kept IDE keeps the slot after this run has ended, until it is closed.
   if (keep && r.idePid) await slot.handTo(r.idePid);
 } finally {
+  // compileProject has ended the IDE, unless --keep.
+  if (!keep) await llvmLease?.release();
   finishTidy(tidy);
   // After the tidy, which names paths under the work folder, and with the IDE
   // gone. Not under --keep: that IDE still has the staged project open.
@@ -372,6 +401,7 @@ function jsonReport(res) {
     dialogs: res.dialogs,
     built: res.built,
     buildLog: res.buildLog,
+    llvmCache: leaseReport(llvmLease),
   };
 }
 if (asJson) {

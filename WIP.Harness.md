@@ -796,6 +796,56 @@ to, and the VB6 idiom, a `Debug.Assert` whose condition sets a variable, fails u
 `--llvm`, because LLVM-compiled code skips `Debug.Assert` in the IDE too. A tree with a
 `TbRun` module of its own keeps it, and its wrapper sets no flag.
 
+### The LLVM cache server, and the lease every LLVM run holds
+
+**An LLVM build uses a cache server, a process of its own:**
+`<install>\bin\twinBASIC_win64.exe --threads=<n> --keepalive=0|1 --cache=1`. Every compiler on
+the machine finds it through one machine-wide pipe,
+`\\.\pipe\twinBASIC.LLVMCache.Registration.v<n>` (`v6` for BETA 1005 to 1010; the name is read
+from the install's compiler DLL), so one server serves every IDE, of any install whose DLL
+names the same pipe. A compiler that needs the server and finds none starts it **as its own
+child**, so it lives in that IDE's job (kill-on-close, no breakaway: [The IDE runs inside a
+job](#the-ide-runs-inside-a-job)). When that IDE ends, the server ends with it, and every other
+IDE's compiler writes `[LLVM] The LLVM cache process has terminated abruptly.  Restarting the
+compiler...`, restarts and abandons its build. Runs at once without a lease therefore stop with
+exit 2 in one of these ways: "the run wrote no [tbx-run] line", "the IDE never reported ... as open",
+"the IDE never showed its licence", "the build started and reported nothing for 120 s".
+
+**So every tool that builds with LLVM holds a lease on the server** before its IDE starts,
+through `holdLlvmCache` in [scripts/lib/tb-llvm-cache.mjs](scripts/lib/tb-llvm-cache.mjs), over
+the library vendored in `scripts/lib/llvm-cache/` (its `README.md` states the contract, and its
+`VENDORED.md` the commit it was copied from). When no server answers, the library starts one
+detached, outside every IDE's job, under a start lock, so that two tools starting at once start
+one server. The server counts the processes registered with it, not their connections; a lease
+is a small holder process of the tool's own, registered with the server, and releasing it ends
+the holder, as does the tool ending however it ends. The server ends about 15 s after the last
+registered process has ended. A server of another install on the same pipe is used: the pipe's
+name is the protocol, and BETA 1007 and 1010 share `v6`.
+
+Where the lease is taken, always after the arguments and the install have been checked, with the
+install the tool found (`findIde`), never a searched one:
+
+- **`tbbuild`**, for a build with LLVM in it: `--llvm`, or `+llvm` in the project's own compiler
+  options, or a procedure's `[CompilerOptions("... +llvm ...")]` (`asksForLlvm`). Released once
+  `compileProject` has ended the IDE; a kept IDE's lease ends with `tbbuild`. A compile without
+  `--build` generates no LLVM code and takes none.
+- **`tbrun`**, for a run with LLVM in it (`--llvm`, a `--compiler-options` string with `+llvm`,
+  or the project's or a procedure's own), released in its `shutdown`, after the IDE has ended.
+- **`check_examples`**, once for its whole run, when it builds with LLVM (`--llvm`, or a sample
+  it builds that turns LLVM on for a procedure): its lanes are in its own process, so one lease
+  covers them all, and the server never ends between batches.
+- **`bug_repro verify`**, once for its run when a reproducer it runs has `llvm: true`; each
+  `tbbuild` and `tbrun` it starts holds its own as well.
+
+A failure to take a lease is a harness failure, exit 2, with the reason. A run without LLVM
+takes none. The `--json` reports of `tbbuild` and `tbrun` give the lease as `llvmCache`
+(`pipe`, `serverPid`, `started`), or null.
+
+The library starts the server from the tool's own Node process. Node puts a child it spawns
+detached in no job, so the server outlives the tool's own job too; a tool started inside a job
+that allows no breakaway would still have the server in that job (the vendored README's open
+item).
+
 ### Building for win64
 
 **`tbrun` and `tbbuild` take `--arch win32|win64`, and set it on every run, win32

@@ -25,6 +25,9 @@
       "!book/lib/paged.browser.js",
       "!book/lib/outline.mjs",
       "!book/lib/postprocesser.mjs",
+      // Copied byte for byte from the launcher repository and changed only
+      // there (its VENDORED.md), so its style is that repository's.
+      "!scripts/lib/llvm-cache",
       // Workflow scripts, not modules: the agent Workflow engine runs each as
       // a function body, so it ends in a top-level `return`, which no module
       // parser accepts. check_regex_safety.mjs still reads their regexes,

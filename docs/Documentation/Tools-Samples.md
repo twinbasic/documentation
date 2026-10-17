@@ -45,7 +45,7 @@ Each marked sample is generated into its own `Module tbx_<hash>`, packed with a 
 | `--batch <n>` | Upper bound on samples per generated project. Default 120. The batcher packs fewer when there are lanes to fill. |
 | `--ide <path>` | `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop. |
 | `--build` | Also build each project that compiles without errors. A project whose build fails is cut down, as for a crash, to the samples that fail it. A project whose compile has errors is not built: the run names its first error and counts its samples as "compiled but not built". |
-| `--llvm` | Build with LLVM (implies `--build`) by setting each project's compiler options to `+llvm`. It needs a Professional or Ultimate licence and exits 2 without one. A sample that fails under `--llvm` but not under a plain `--build` is one LLVM cannot generate code for. |
+| `--llvm` | Build with LLVM (implies `--build`) by setting each project's compiler options to `+llvm`. It needs a Professional or Ultimate licence and exits 2 without one. A sample that fails under `--llvm` but not under a plain `--build` is one LLVM cannot generate code for. The run holds one lease on the LLVM cache server, which every lane's compiler shares, for its whole length, so that the server never ends with one lane's IDE. |
 | `--keep` | Leave the generated projects on disk and print where. |
 | `--verbose` | Report warnings as well as errors. Only errors ever fail the run. |
 | `--json` | One object on stdout; every report line moves to stderr. |

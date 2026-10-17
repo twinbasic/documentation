@@ -163,6 +163,7 @@ import {
   wantShow,
 } from "./lib/tb-ide.mjs";
 import { readConsole } from "./lib/tb-ide-console.mjs";
+import { asksForLlvm, holdLlvmCache, leaseReport } from "./lib/tb-llvm-cache.mjs";
 import { sentinelIndex, wrapProbe } from "./lib/tb-probe.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
@@ -437,10 +438,7 @@ try {
   wasTemplate = /\$\{/.test(staged.original["project.buildPath"] ?? "");
   projectName = String(staged.settings["project.name"] ?? "");
   // Any LLVM in the run: the project's options, or a procedure's own.
-  usesLlvm =
-    /\+llvm\b/i.test(
-      `${staged.settings["compiler.debugOptions"] ?? ""} ${staged.settings["compiler.buildOptions"] ?? ""}`,
-    ) || /\[\s*CompilerOptions\s*\(\s*"[^"]*\+llvm/i.test(sourceText);
+  usesLlvm = asksForLlvm(staged.settings, sourceText);
 } catch (e) {
   die(2, e.message);
 }
@@ -467,6 +465,19 @@ function builtFile() {
 }
 
 // ---------------------------------------------------------------- compile
+
+// A run with LLVM in it holds a lease on the LLVM cache server from before its
+// IDE starts until that IDE has ended (shutdown), so the server is never one its
+// IDE's compiler starts in the IDE's job, which would end with it and take the
+// cache from every other run on the machine (lib/tb-llvm-cache.mjs).
+let llvmLease = null;
+if (usesLlvm) {
+  try {
+    llvmLease = await holdLlvmCache(ide);
+  } catch (e) {
+    die(2, `tbrun: ${e.message}`);
+  }
+}
 
 // (7) Taken before the IDE starts, so anything in it is somebody else's and is
 // never a candidate for harvesting. Cheap enough to be unconditional (~0.4 s
@@ -641,7 +652,17 @@ const exeRun = values.exe ? await runExe() : null;
 if (values.json) {
   console.log(
     JSON.stringify(
-      { exe: builtFile(), arch, lines: shown, returned, licence, exeRun, idePid: ideRun?.pid ?? null, reaped },
+      {
+        exe: builtFile(),
+        arch,
+        lines: shown,
+        returned,
+        licence,
+        llvmCache: leaseReport(llvmLease),
+        exeRun,
+        idePid: ideRun?.pid ?? null,
+        reaped,
+      },
       null,
       2,
     ),
@@ -711,7 +732,15 @@ async function runCases() {
   if (values.json) {
     console.log(
       JSON.stringify(
-        { arch, cases: results, diagnostics: outcome.rows, licence, idePid: ideRun?.pid ?? null, reaped },
+        {
+          arch,
+          cases: results,
+          diagnostics: outcome.rows,
+          licence,
+          llvmCache: leaseReport(llvmLease),
+          idePid: ideRun?.pid ?? null,
+          reaped,
+        },
         null,
         2,
       ),
@@ -796,6 +825,7 @@ function dialogText({ title, text }) {
 function shutdown() {
   if (values.keep) return null; // the IDE is the caller's problem now
   shutdownIde(ideRun);
+  llvmLease?.releaseSync();
   finishTidy(tidy);
   return values.noReap ? null : reapOrphans();
 }
