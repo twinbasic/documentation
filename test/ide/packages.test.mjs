@@ -320,7 +320,7 @@ scenario("Replacing an embedded package", (lane) => {
   // Wait until the compiler has settled, with no errors unless `errors`: with
   // the package unticked, Main no longer compiles.
   async function settle({ errors = false } = {}) {
-    const waited = await waitForCompile(c, { project: lane.project, timeout: 90 * 1000 });
+    const waited = await waitForCompile(c, { project: lane.project });
     const outcome = compileOutcome(waited, { name: lane.project });
     assert.ok(outcome.ok, `the compiler did not settle: ${outcome.message}`);
     if (!errors) assert.equal(outcome.counts[0], 0, `the compile has errors: ${outcome.rows.join("\n")}`);

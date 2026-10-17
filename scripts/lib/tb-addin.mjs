@@ -29,7 +29,6 @@ import path from "node:path";
 import {
   attachIde,
   buildProject,
-  COMPILE_TIMEOUT,
   compileOutcome,
   launchIde,
   leaseSlot,
@@ -123,8 +122,9 @@ function failure(exitCode, message) {
  *                             compiler then loads the add-ins under
  *                             <appdata>\twinBASIC\addins rather than the user's
  *                             own (P6), which checkAddinsRoot confirms
- * @param {number} [o.timeout] milliseconds for the compile to settle, and again
- *                             for the build (default COMPILE_TIMEOUT)
+ * @param {number} [o.timeout] milliseconds for the compile phase (default:
+ *                             test/harness.json's compile)
+ * @param {number} [o.buildTimeout] milliseconds for the build (default: its build)
  * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
  *   `diagnostics` holds the warnings, hints and infos; `log` is the build log
  * @throws an Error with an `exitCode` (see failure above); a compile error's
@@ -138,18 +138,19 @@ export async function buildAddin({
   arch = "win32",
   show = false,
   appdata,
-  timeout = COMPILE_TIMEOUT,
+  timeout,
+  buildTimeout,
 }) {
   if (!TARGETS.includes(arch)) throw failure(2, `no such build target: "${arch}"`);
   const own = slot ? null : await leaseSlot({ tag: `add-in build ${path.basename(src)}` });
   try {
-    return await buildIn(slot ?? own, { ide, src, work, arch, show, appdata, timeout });
+    return await buildIn(slot ?? own, { ide, src, work, arch, show, appdata, timeout, buildTimeout });
   } finally {
     await own?.release();
   }
 }
 
-async function buildIn(slot, { ide, src, work, arch, show, appdata, timeout }) {
+async function buildIn(slot, { ide, src, work, arch, show, appdata, timeout, buildTimeout }) {
   const project = path.join(work, "addin.twinproj");
   mkdirSync(path.join(work, "out"), { recursive: true });
   let dll;
@@ -200,7 +201,7 @@ async function buildIn(slot, { ide, src, work, arch, show, appdata, timeout }) {
       if (outcome.counts[0] > 0) {
         throw failure(1, [...outcome.rows, summaryLine(outcome.counts)].join("\n"));
       }
-      built = await buildProject(c, { timeout });
+      built = await buildProject(c, { timeout: buildTimeout });
       built.diagnostics = outcome.rows;
     } finally {
       c.close();

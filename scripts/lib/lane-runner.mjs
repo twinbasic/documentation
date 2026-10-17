@@ -82,6 +82,7 @@ import {
   withUsageError,
 } from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
+import { checkHarness } from "./harness-settings.mjs";
 import { removeTree } from "./tb-ide-copy.mjs";
 import { leaseSlot, wantShow } from "./tb-ide.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./tb-install.mjs";
@@ -141,6 +142,12 @@ export async function runLanes({ tool, suite: SUITE, workDir, usage: USAGE, subj
 
   // ---------------------------------------------------------------- refusals
 
+  // test/harness.json gives every lane's waits their limits (test/harness.md).
+  try {
+    checkHarness();
+  } catch (e) {
+    die(2, e.message);
+  }
   const ide = findIde(values.ide || undefined);
   const tooOld = unsupportedIde(ide);
   if (tooOld) die(2, tooOld);

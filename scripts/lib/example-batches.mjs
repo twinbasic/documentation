@@ -11,6 +11,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
+import { EXCLUSION_MODES, EXCLUSION_STAGES, exclusionProblems } from "./harness-settings.mjs";
+import { LLVM_REFUSAL } from "./tb-ide.mjs";
 import {
   BODY_SLOTS,
   CONCAT_KEY,
@@ -337,68 +339,33 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
 
 // ----------------------------------------------------------------- exclusions
 //
-// test/example-exclusions.json lists, by mode, package and stage, the samples a
-// run of that mode does not take to that stage, because the package fails there
-// by itself: under LLVM, GdiPlus's and tbRegExp's compiler run (the compile, for
-// the [RunAfterBuild] run, of `Bitmap.New` and of `StaticRegex.AppendStr`, after
-// the exe has linked). A stage's value is "*", no sample of the package
-// can be checked at that stage, or a list of sample ids (`Reference/.../Page.md#2`).
+// The exclusions of test/harness.json (test/harness.md is their contract, and
+// lib/harness-settings.mjs reads and checks them) list, by mode, package and
+// stage, the samples a run of that mode does not take to that stage, because the
+// package fails there by itself: under LLVM, GdiPlus and tbRegExp at `build` (the
+// compile, for the [RunAfterBuild] run, of `Bitmap.New` and of
+// `StaticRegex.AppendStr`, which LLVM refuses after the exe has linked).
 //
 // The stages: `build` first (under `compile`, the compile reporting errors); then
 // `compiler-run`, the compiler's own run of the [RunAfterBuild] Sub, and `exe-run`,
 // the exe's run, each after `build` and independent of the other. check_examples
 // runs no exe, and accepts and ignores `exe-run`. A `build` exclusion skips both
-// runs; a run exclusion still builds, and that build must pass. Only a failed
-// build, a crash or a run that never returns fails a stage; wrong output is a
-// finding.
+// runs; a run exclusion still builds, and that build must pass. An LLVM refusal
+// is a `build` failure wherever it is printed; `compiler-run` fails only by a
+// crash, a compiler restart or a run that never returns. Wrong output is a
+// finding, never a failed stage.
 //
 // Each package and stage has a canary, taken to that stage once per run with no
 // halving and no retry, and expected to fail there: for "*", all of the
 // package's samples there, batched as the run batches them; for a list, its
-// first listed id, alone.
+// first listed id, alone. A `build` canary is taken as far as its code is
+// compiled: through the compiler run's compile, in a batch with a run.
 
-/** The modes the exclusion list is keyed by: a compile, a `--build`, an `--llvm` build. */
-export const EXCLUSION_MODES = ["compile", "build", "llvm"];
-/** The stages: `build`, then either run. */
-export const EXCLUSION_STAGES = ["build", "compiler-run", "exe-run"];
+export { EXCLUSION_MODES, EXCLUSION_STAGES, exclusionProblems };
 
 /** The package an exclusion names a sample by: a contributed package's name, else its template's. */
 export const exclusionPackage = (fence) =>
   fence.project?.startsWith("contributed-") ? fence.project.slice("contributed-".length) : fence.project;
-
-/**
- * What is wrong with an exclusion list's shape, as a list of sentences.
- * @param {unknown} list  the parsed file
- */
-export function exclusionProblems(list) {
-  const isMap = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-  if (!isMap(list)) return ["it is not an object keyed by mode"];
-  const problems = [];
-  for (const [mode, packages] of Object.entries(list)) {
-    if (!EXCLUSION_MODES.includes(mode)) {
-      problems.push(`${mode}: not a mode (${EXCLUSION_MODES.join(", ")})`);
-      continue;
-    }
-    if (!isMap(packages)) {
-      problems.push(`${mode}: not an object keyed by package`);
-      continue;
-    }
-    for (const [pkg, stages] of Object.entries(packages)) {
-      if (!isMap(stages) || !Object.keys(stages).length) {
-        problems.push(`${mode}.${pkg}: not an object keyed by stage`);
-        continue;
-      }
-      for (const [stage, rule] of Object.entries(stages)) {
-        const where = `${mode}.${pkg}.${stage}`;
-        if (!EXCLUSION_STAGES.includes(stage)) problems.push(`${where}: not a stage (${EXCLUSION_STAGES.join(", ")})`);
-        else if (mode === "compile" && stage !== "build") problems.push(`${where}: compile has no stage but build`);
-        const ok = rule === "*" || (Array.isArray(rule) && rule.length && rule.every((id) => typeof id === "string"));
-        if (!ok) problems.push(`${where}: neither "*" nor a list of sample ids`);
-      }
-    }
-  }
-  return problems;
-}
 
 /** A copy of a fence that is built and not run: its `check_run` marker taken off. */
 const unrun = (f) => (isRunFence(f) ? { ...f, flags: new Set([...f.flags].filter((x) => x !== RUN_MARKER)) } : f);
@@ -504,30 +471,30 @@ export function applyExclusions(fences, rules = {}) {
 }
 
 /**
- * The stage a failed build's failure line belongs to. A line the console holds
- * after `[BUILD] Executing '...'` is the compiler's run's, whatever it says: the
- * exe has linked, and the compiler compiles again for its own run (BETA 1010
- * writes tbRegExp's `LLVM compilation error in 'StaticRegex.AppendStr'` there,
- * after `[LINKER] SUCCESS`, and GdiPlus's `[LLVM] codegen error occurred when
- * compiling 'Bitmap.New'`). So is the codegen line or the compiler restarting
- * anywhere. Anything else is `build`.
+ * The stage a failed build's failure line belongs to (test/harness.md). An LLVM
+ * refusal (LLVM_REFUSAL) is `build` wherever it is printed, before `[BUILD]
+ * Executing '...'` or after it, linked exe or not: BETA 1010 writes tbRegExp's
+ * `LLVM compilation error in 'StaticRegex.AppendStr'` and GdiPlus's `[LLVM]
+ * codegen error occurred when compiling 'Bitmap.New'` after Executing, when the
+ * compiler compiles the [RunAfterBuild] Sub's code for its own run. The compiler
+ * restarting is `compiler-run` anywhere. Any other line is `compiler-run` when
+ * the console holds it after Executing, and `build` before.
  *
  * @param {string} line  the failure line
  * @param {string[]} [log]  the console's lines, in order
  */
 export function failureStage(line, log = []) {
-  if (/^\[LLVM\] codegen error occurred when compiling |Restarting the compiler/.test(line ?? "")) {
-    return "compiler-run";
-  }
+  if (LLVM_REFUSAL.test(line ?? "")) return "build";
+  if (/Restarting the compiler/.test(line ?? "")) return "compiler-run";
   const started = log.findIndex((l) => /^\[BUILD\] Executing '/.test(l));
   return started >= 0 && log.indexOf(line, started) > started ? "compiler-run" : "build";
 }
 
 /**
  * The stage a canary's batch failed at, from its one build: compile errors and
- * a crash are `build`, a failed build is where its line is (failureStage), and a
- * run that did not finish (it never began, stopped, or a sample did not return)
- * is `compiler-run`. Null when it got through.
+ * a crash are `build`, a failed build is where its line is (failureStage, so an
+ * LLVM refusal is `build`), and a run that did not finish (it never began,
+ * stopped, or a sample did not return) is `compiler-run`. Null when it got through.
  *
  * @param {{ code: number, message?: string, log?: string[], run?: { done: boolean } | null }} r
  *   compileProject's code, message and build log, and the parsed run of a run batch
@@ -866,8 +833,8 @@ async function isolateCrash(batch, named, lane, failed = false, detail = "") {
  * Build a batch, and build it once more if the build failed after a clean
  * compile.
  *
- * A build can fail once and pass when repeated: one that reported nothing for
- * 120 s, once in a full --llvm run. A failure is believed only if the same
+ * A build can fail once and pass when repeated: one met its limit (test/harness.json's
+ * `build`) reporting nothing, once in a full --llvm run. A failure is believed only if the same
  * batch fails twice running, and so is each part the halving that follows builds.
  */
 async function buildTwiceOnFailure(batch, lane) {
@@ -2188,16 +2155,27 @@ export async function runProbes(say) {
   ) {
     failures.push("exclusions: the shape check accepts a bad list or refuses a good one");
   }
-  // 9: the stage of a failure line: by its words, or by coming after the run started.
+  // 9: the stage of a failure line: an LLVM refusal is build wherever it is, with or
+  //    without [LLVM]; a restart is compiler-run; any other line by where it is.
   const codegen = "[LLVM] codegen error occurred when compiling 'Bitmap.New': Call parameter type does not match";
+  const codegenBare = "codegen error occurred when compiling 'Img.New': Call parameter type does not match";
   const refused = "LLVM compilation error in 'StaticRegex.AppendStr': a feature used in your code is not yet supported";
+  const refusedTagged = `[LLVM] ${refused}`;
   const linked = ["[BUILD] Starting...", "[LINKER] SUCCESS created output file 'x.exe'"];
-  const ranLog = [...linked, "[BUILD] Executing 'P.tbxRun.tbxRunAll'...", refused];
+  const executing = "[BUILD] Executing 'P.tbxRun.tbxRunAll'...";
+  const ranLog = [...linked, executing, refused];
+  const ranCodegen = [...linked, executing, codegen];
+  const otherAfter = "[BUILD] failed";
   if (
-    failureStage(codegen) !== "compiler-run" ||
+    failureStage(codegen) !== "build" ||
+    failureStage(codegen, ranCodegen) !== "build" ||
+    failureStage(codegenBare, ["[BUILD] Starting...", codegenBare, linked[1]]) !== "build" ||
     failureStage(refused) !== "build" ||
+    failureStage(refusedTagged, [...linked, executing, refusedTagged]) !== "build" ||
     failureStage(refused, ["[BUILD] Starting...", refused]) !== "build" ||
-    failureStage(refused, ranLog) !== "compiler-run" ||
+    failureStage(refused, ranLog) !== "build" ||
+    failureStage(otherAfter, [...linked, executing, otherAfter]) !== "compiler-run" ||
+    failureStage(otherAfter, ["[BUILD] Starting...", otherAfter]) !== "build" ||
     failureStage("[LLVM] The LLVM cache process has terminated abruptly.  Restarting the compiler...") !==
       "compiler-run"
   ) {
@@ -2213,9 +2191,10 @@ export async function runProbes(say) {
   if (
     canaryBatchStage({ code: 1 }) !== "build" ||
     canaryBatchStage({ code: 4 }) !== "build" ||
-    canaryBatchStage({ code: 5, message: codegen }) !== "compiler-run" ||
+    canaryBatchStage({ code: 5, message: codegen }) !== "build" ||
+    canaryBatchStage({ code: 5, message: codegen, log: ranCodegen }) !== "build" ||
     canaryBatchStage({ code: 5, message: refused }) !== "build" ||
-    canaryBatchStage({ code: 5, message: refused, log: ranLog }) !== "compiler-run" ||
+    canaryBatchStage({ code: 5, message: refused, log: ranLog }) !== "build" ||
     canaryBatchStage({ code: 0, run: { done: false } }) !== "compiler-run" ||
     canaryBatchStage({ code: 0, run: { done: true } }) !== null ||
     canaryBatchStage({ code: 0 }) !== null ||

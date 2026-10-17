@@ -101,6 +101,7 @@ import {
 import { SITE_LIST, renderSite } from "./lib/attribute-sites.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { leaseSlot, sleep, wantShow } from "./lib/tb-ide.mjs";
+import { checkHarness } from "./lib/harness-settings.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { packTree } from "./lib/tb-project.mjs";
 import { alive, finishTidy, startTidy } from "./lib/tb-registry.mjs";
@@ -160,7 +161,8 @@ accepts, laid against Reference/Attributes.md.
   --dry-run           count the probes and build nothing
   --list-sites        print the site ids and exit
   --show, --hide      show the IDEs on the desktop, or keep them private
-  --timeout <secs>    how long to wait for one build to settle (default 180)
+  --timeout <secs>    the compile's limit for one build (default: test/harness.json's
+                      compile, test/harness.md)
   -h, --help          print this text and exit
 
 A report is written even when the run is cut short, and says so at the top.
@@ -262,6 +264,14 @@ const die = (code, msg) => {
 };
 
 // ------------------------------------------------------------- the install
+// test/harness.json gives each build's compile its limit (test/harness.md).
+if (!values.dryRun) {
+  try {
+    checkHarness();
+  } catch (e) {
+    die(EXIT_ERROR, e.message);
+  }
+}
 const IDE = findIde(values.ide);
 if (!values.dryRun && unsupportedIde(IDE)) die(EXIT_ERROR, unsupportedIde(IDE));
 if (!values.dryRun && (!IDE || !existsSync(IDE))) {

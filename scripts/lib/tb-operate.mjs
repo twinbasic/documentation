@@ -15,7 +15,7 @@
 // document.querySelector cannot see into.
 
 import { click, clickAt, targetJs } from "./tb-click.mjs";
-import { awaitNewCompiler, COMPILE_TIMEOUT, compilerPid, sleep, waitForCompile } from "./tb-ide.mjs";
+import { awaitNewCompiler, compilerPid, sleep, waitForCompile } from "./tb-ide.mjs";
 import { linesSince } from "./tb-ide-console.mjs";
 
 // ------------------------------------------------------------------ finding
@@ -303,7 +303,7 @@ export async function openedUrls(c, { since = null } = {}) {
  * @returns {Promise<{pid: number, waited: object}>} the new compiler's process
  *   id, and waitForCompile's result for its compile
  */
-export async function restartCompiler(c, { project, timeout = COMPILE_TIMEOUT }) {
+export async function restartCompiler(c, { project, timeout }) {
   const before = await compilerPid(c);
   if (!before) throw new Error("the IDE has no compiler process to restart");
   await click(c, "restartIcon");

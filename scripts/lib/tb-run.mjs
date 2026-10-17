@@ -11,7 +11,8 @@
 // erases the IDE's build log and could erase a failure with it -- so each clear's
 // erasure is kept (keepClears) and read back.
 
-import { BUILD_FAILED, pressBuild } from "./tb-ide.mjs";
+import { secondsText, timeoutMs } from "./harness-settings.mjs";
+import { BUILD_FAILED, LLVM_REFUSAL, pressBuild } from "./tb-ide.mjs";
 import { keepClears, keptClears, readConsole } from "./tb-ide-console.mjs";
 import { timing, timingsOn } from "./tb-timings.mjs";
 
@@ -38,9 +39,13 @@ export function strip(text, raw = null) {
 /**
  * Press Build and read the console until the run is over.
  *
- * The run is over when `done(lines)` says so, when the console has stopped
- * changing for `quietMs` after the first line, or at `timeoutMs`. A caller whose
- * Sub ends with a marker line passes a `done` that looks for it; one that cannot
+ * Three limits, each a phase of test/harness.md. The build runs from the press
+ * to `[BUILD] Executing '...'`, within `buildMs`; a build that writes a failure
+ * line and no Executing line ends two seconds after it. From Executing the run
+ * is over when `done(lines)` says so, when the console has not changed for
+ * `quietMs` counted from the later of Executing and its last change (a run that
+ * prints nothing ends too), or at `runMs` after Executing. A caller whose Sub
+ * ends with a marker line passes a `done` that looks for it; one that cannot
  * says `() => false` and relies on the quiet period.
  *
  * It throws, with a message that says why, when the IDE has no
@@ -48,16 +53,27 @@ export function strip(text, raw = null) {
  * cannot be pressed, or the page no longer holds what the clears erased.
  *
  * @param {object} c  a tb-cdp connection, the project compiled clean
- * @param {object} o
+ * @param {object} [o]
  * @param {(lines: string[]) => boolean} [o.done]
- * @param {number} o.quietMs
- * @param {number} o.timeoutMs
- * @returns {Promise<{captured: string[], last: string, erased: string[], timedOut: boolean}>}
+ * @param {number} [o.buildMs]  default: test/harness.json's `build` (TB_BUILD_TIMEOUT)
+ * @param {number} [o.runMs]    default: its `compilerRun` (TB_COMPILER_RUN_TIMEOUT)
+ * @param {number} [o.quietMs]  default: its `compilerRunQuiet` (TB_COMPILER_RUN_QUIET)
+ * @returns {Promise<{captured: string[], last: string, erased: string[], timedOut: boolean,
+ *   ended: "done" | "quiet" | "failed" | "build-timeout" | "run-timeout", limitMs: number | null}>}
  *   `captured` is the console after the run; `last` the same, unsplit; `erased`
  *   every line a clear removed, oldest first; `timedOut` is true when the wait
- *   ended at `timeoutMs`
+ *   ended at a limit, `ended` says how it ended, and `limitMs` is the limit that
+ *   ended it
  */
-export async function captureRun(c, { done = () => false, quietMs, timeoutMs }) {
+export async function captureRun(
+  c,
+  {
+    done = () => false,
+    buildMs = timeoutMs("build"),
+    runMs = timeoutMs("compilerRun"),
+    quietMs = timeoutMs("compilerRunQuiet"),
+  } = {},
+) {
   // Keep what each clear erases, for the check after the run.
   if (!(await keepClears(c))) {
     throw new Error(
@@ -72,22 +88,37 @@ export async function captureRun(c, { done = () => false, quietMs, timeoutMs }) 
   const started = Date.now();
   let last = "",
     lastChange = Date.now(),
-    seen = false,
-    timedOut = true,
-    ended = "timeout";
-  // For tb-timings.mjs only: when the build's first line, its link line and the
-  // Sub's Executing line were first seen, in the console or in what a clear erased.
+    failedAt = null,
+    ended = null,
+    limitMs = null;
+  // When the build's first line, its link line and the Sub's Executing line were
+  // first seen, in the console or in what a clear erased. `exec` ends the build
+  // phase and starts the run's; the other two are for tb-timings.mjs only.
   const marks = { start: null, linked: null, exec: null };
   const markLines = async (now) => {
-    if (!timingsOn) return;
+    if (marks.exec !== null && !timingsOn) return;
     const text = [...((await keptClears(c).catch(() => null)) ?? []), now].join("\n");
     const at = Date.now();
     if (marks.start === null && text.includes("[BUILD] Starting...")) marks.start = at;
     if (marks.linked === null && /\[LINKER\] SUCCESS created output file/.test(text)) marks.linked = at;
     if (marks.exec === null && /\[BUILD\] Executing '/.test(text)) marks.exec = at;
+    if (marks.exec === null && failedAt === null && text.split("\n").some((l) => BUILD_FAILED.test(l.trim()))) {
+      failedAt = at;
+    }
   };
-  while (Date.now() - started < timeoutMs) {
-    await sleep(400);
+  for (;;) {
+    // A poll never sleeps past the active limit, so a short one is met as given.
+    const due =
+      marks.exec === null
+        ? started + buildMs
+        : Math.min(marks.exec + runMs, Math.max(marks.exec, lastChange) + quietMs + 1);
+    await sleep(Math.min(400, Math.max(0, due - Date.now())));
+    // As buildProject does: a build not seen to reach Executing by its limit has met it.
+    if (marks.exec === null && Date.now() - started >= buildMs) {
+      ended = "build-timeout";
+      limitMs = buildMs;
+      break;
+    }
     const now = await readConsole(c);
     if (now === null) {
       throw new Error(
@@ -96,30 +127,49 @@ export async function captureRun(c, { done = () => false, quietMs, timeoutMs }) 
           "falling back to scraping the pane, which silently truncates.",
       );
     }
+    const at = Date.now();
     if (now !== last) {
       last = now;
-      lastChange = Date.now();
+      lastChange = at;
       await markLines(now);
-      const lines = strip(now);
-      if (lines.length) seen = true;
-      if (done(lines)) {
-        timedOut = false;
+      if (marks.exec !== null && done(strip(now))) {
         ended = "done";
         break;
       }
-    } else if (seen && Date.now() - lastChange > quietMs) {
-      timedOut = false;
+    }
+    if (marks.exec === null) {
+      // The build: it ends with Executing, or fails, or meets its limit.
+      if (failedAt !== null && at - failedAt > 2000) {
+        ended = "failed";
+        break;
+      }
+      if (at - started >= buildMs) {
+        ended = "build-timeout";
+        limitMs = buildMs;
+        break;
+      }
+      continue;
+    }
+    // The run, from Executing.
+    if (at - Math.max(marks.exec, lastChange) > quietMs) {
       ended = "quiet";
       break;
     }
+    if (at - marks.exec >= runMs) {
+      ended = "run-timeout";
+      limitMs = runMs;
+      break;
+    }
   }
+  const timedOut = limitMs !== null;
   const rel = (at, from) => (at === null || from === null ? null : at - from);
   timing(
     "run",
     {
       ended,
       quietMs,
-      timeoutMs,
+      buildLimitMs: buildMs,
+      runLimitMs: runMs,
       pressMs: started - pressed,
       startMs: rel(marks.start, started),
       buildMs: rel(marks.linked, marks.start),
@@ -138,7 +188,7 @@ export async function captureRun(c, { done = () => false, quietMs, timeoutMs }) 
         "a failure they erased cannot be ruled out",
     );
   }
-  return { captured, last, erased: kept.flatMap((text) => text.split("\n")), timedOut };
+  return { captured, last, erased: kept.flatMap((text) => text.split("\n")), timedOut, ended, limitMs };
 }
 
 /**
@@ -153,22 +203,40 @@ export async function captureRun(c, { done = () => false, quietMs, timeoutMs }) 
  * calls that fails code generation is reported straight after the "[BUILD]
  * Executing '<project>.<module>.<Sub>'..." line, before the Sub's first
  * statement, so its Debug.Cls erases the report and the Sub stops where it calls
- * that procedure (measured). A failure line among what the clears
- * erased counts only after the last Executing line: before it is the build's own
- * log, which ended in success or the Sub would not have run.
+ * that procedure (measured). A failure line among what the clears erased counts
+ * after the last Executing line; before it is the build's own log, which ended in
+ * success or the Sub would not have run -- except for an LLVM refusal
+ * (LLVM_REFUSAL), which fails the build wherever it is, an exe linked or not
+ * (test/harness.md).
  *
  * @param {string[]} captured  from captureRun
  * @param {string[]} erased    from captureRun
  * @returns {{started: number, buildFailed: string | undefined, lost: string | undefined}}
  *   `started` is the index in `erased` of the last Executing line, or -1;
  *   `buildFailed` the first failure line left in the console; `lost` the first
- *   failure line a clear erased after the run started
+ *   failure line a clear erased after the run started, or else the first LLVM
+ *   refusal a clear erased anywhere
  */
 export function checkCapture(captured, erased) {
   const started = erased.findLastIndex((l) => /^\[BUILD\] Executing '/.test(l));
+  const after = started < 0 ? undefined : erased.slice(started + 1).find((l) => BUILD_FAILED.test(l));
   return {
     started,
     buildFailed: captured.find((l) => BUILD_FAILED.test(l)),
-    lost: started < 0 ? undefined : erased.slice(started + 1).find((l) => BUILD_FAILED.test(l)),
+    lost: after ?? erased.find((l) => LLVM_REFUSAL.test(l)),
   };
+}
+
+/**
+ * The message of a capture whose build met its limit (`build-timeout`), or
+ * undefined. That is a failed build, reported as a timeout; a run that meets its
+ * own limit is a run that never returned, which the caller judges from what it printed.
+ * @param {{ended: string, limitMs: number | null}} capture  from captureRun
+ */
+export function buildTimeoutMessage(capture) {
+  if (capture.ended !== "build-timeout") return undefined;
+  return (
+    `timeout: the build did not reach [BUILD] Executing within ${secondsText(capture.limitMs)} of the press ` +
+    "(test/harness.json's build; --build-timeout or TB_BUILD_TIMEOUT overrides it)"
+  );
 }

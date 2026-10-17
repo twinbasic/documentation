@@ -6,9 +6,17 @@
 //       --arch <target>   win32 or win64 (default win32): the target to build
 //                         for, and so the process the probe runs in -- a win64
 //                         probe runs in the IDE's 64-bit compiler
-//       --timeout <secs>  give up waiting for console output (default 120)
-//       --quiet <ms>      output is complete after this long with no change
-//                         (default 2500)
+//       --compile-timeout <secs>  the compile's limit, from the project reported
+//                         open to the compile settled
+//       --build-timeout <secs>  the build's limit, from the press to [BUILD] Executing
+//       --compiler-run-timeout <secs>  the probe's run's limit, from Executing
+//       --compiler-run-quiet <secs>  the run is over after this long with no
+//                         output, counted from Executing or the last output
+//       --exe-run-timeout <secs>  with --exe, the exe's limit
+//       --timeout <secs>  both --compiler-run-timeout and --exe-run-timeout; with
+//                         --tests, each case's limit. Each limit's default is
+//                         test/harness.json's (test/harness.md), or its
+//                         TB_<PHASE> variable
 //       --json            emit one JSON object instead of text
 //       --raw             do not strip the console's timestamp column
 //       --keep            leave the IDE running afterwards, and print its pid
@@ -40,12 +48,13 @@
 // it crashed -- a build that fails after a clean compile included, and a
 // [RunAfterBuild] Sub that fails code generation, since the probe never runs,
 // and a procedure the probe calls that fails it, since the probe stops at the
-// call -- 3 no output: the build produced none in the console before the
-// timeout, or the probe ran and printed none after its last Debug.Cls -- 4 the
+// call, an LLVM refusal anywhere in the log, a build that met its limit, and a
+// test/harness.json missing or malformed -- 3 no output: the build produced none
+// in the console, or the probe ran and printed none after its last Debug.Cls -- 4 the
 // compiler crashed, or restarted twice, while compiling the project -- 5 the
 // probe ended before it returned, its output printed all the same -- 6 with
 // --exe, the exe exited with a code other than 0, the event log records that it
-// faulted, it opened a box, or it was still running after --timeout; its
+// faulted, it opened a box, or it was still running at its limit; its
 // output, exit code, fault and boxes printed all the same -- 7 with --tests, a
 // case failed.
 //
@@ -144,9 +153,9 @@ import {
   refuseTogether,
   withUsageError,
 } from "../lib/cli.mjs";
+import { HarnessError, optionSeconds, secondsText, timeoutMs } from "./lib/harness-settings.mjs";
 import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import {
-  COMPILE_TIMEOUT,
   TARGETS,
   attachIde,
   compileOutcome,
@@ -167,13 +176,13 @@ import { asksForLlvm, holdLlvmCache, leaseReport } from "./lib/tb-llvm-cache.mjs
 import { sentinelIndex, wrapProbe } from "./lib/tb-probe.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
-import { captureRun, checkCapture, strip } from "./lib/tb-run.mjs";
+import { buildTimeoutMessage, captureRun, checkCapture, strip } from "./lib/tb-run.mjs";
 import { caseLine, findCases, judgeCompiles, runTest } from "./lib/tb-tests.mjs";
 import { faultText, recordedFault } from "./lib/win-fault.mjs";
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe | --tests [--only <names>]] [-h, --help]
+const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--compile-timeout S] [--build-timeout S] [--compiler-run-timeout S] [--compiler-run-quiet S] [--exe-run-timeout S] [--timeout S] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe | --tests [--only <names>]] [-h, --help]
 
 Builds an exported twinBASIC source tree in the IDE, runs it, and prints what it
 writes to the DEBUG CONSOLE. With --tests it builds nothing, and runs the
@@ -183,12 +192,28 @@ project's own test cases instead.
   --port <n>          DevTools port to start the IDE on (default: one Windows
                       picks, so runs at once never meet on a port)
   --arch <target>     win32 or win64 (default win32)
-  --timeout <secs>    give up waiting for console output (default 120); with
-                      --tests, how long each case may run: one still running
-                      then is reported "no answer", and the cases after it
-                      "not run", since the compiler cannot stop it
-  --quiet <ms>        output is complete after this long with no change
-                      (default 2500)
+  --compile-timeout <secs>
+                      the compile's limit, from the project reported open to
+                      the compile settled (default: test/harness.json's
+                      compile, or TB_COMPILE_TIMEOUT)
+  --build-timeout <secs>
+                      the build's limit, from the press to [BUILD] Executing
+                      (default: its build, or TB_BUILD_TIMEOUT)
+  --compiler-run-timeout <secs>
+                      the probe's run's limit, from Executing (default: its
+                      compilerRun, or TB_COMPILER_RUN_TIMEOUT); with --tests,
+                      how long each case may run: one still running then is
+                      reported "no answer", and the cases after it "not run",
+                      since the compiler cannot stop it
+  --compiler-run-quiet <secs>
+                      the run is over after this long with no output, counted
+                      from Executing or the last output, when the probe has not
+                      returned (default: its compilerRunQuiet, or
+                      TB_COMPILER_RUN_QUIET)
+  --exe-run-timeout <secs>
+                      with --exe, the exe's limit (default: its exeRun, or
+                      TB_EXE_RUN_TIMEOUT)
+  --timeout <secs>    both --compiler-run-timeout and --exe-run-timeout
   --json              emit one JSON object instead of text
   --raw               do not strip the console's timestamp column
   --keep              leave the IDE running afterwards, and print its pid
@@ -222,18 +247,21 @@ Exit codes:
   1  the project has compile errors; the diagnostics are printed
   2  a refused command line (a source folder that is missing or has no Settings file
      included), no IDE, an IDE that did not start, a compile that never
-     settled, a build that failed after a clean compile, a probe that never ran or
-     stopped at a procedure that failed code generation, an --llvm run on a
+     settled or met its limit, a build that failed after a clean compile (an LLVM
+     refusal anywhere in its log, an exe linked or not, and a build that met its
+     limit included), a probe that never ran or stopped at a procedure that failed
+     code generation, test/harness.json missing or malformed, a TB_<PHASE> variable
+     that is not a number of seconds greater than 0, an --llvm run on a
      Community or Personal licence, an --exe run with no exe built, --tests on a
      project with no case or with a [TestCase] it cannot call, or a crash
-  3  no output: the console held none before the timeout, or the probe printed none
+  3  no output: the console held none, or the probe printed none
      after its last Debug.Cls
   4  the compiler crashed, or restarted twice, while compiling the project
   5  the probe ended before it returned (End, or an error that ended the run); what
      it printed is printed all the same
   6  --exe: the exe exited with a code other than 0, the event log records that it
      faulted, it opened a box (closed by tbrun, as an unhandled error opens one), or it
-     was still running after --timeout and was ended; its output, exit code, fault and
+     was still running at its limit and was ended; its output, exit code, fault and
      boxes are printed all the same
   7  --tests: a case failed; every case's line is printed all the same`;
 
@@ -244,7 +272,11 @@ const { values, positionals } = withUsageError(
         port: { type: "string" },
         arch: { type: "string" },
         timeout: { type: "string" },
-        quiet: { type: "string" },
+        "compile-timeout": { type: "string" },
+        "build-timeout": { type: "string" },
+        "compiler-run-timeout": { type: "string" },
+        "compiler-run-quiet": { type: "string" },
+        "exe-run-timeout": { type: "string" },
         ide: { type: "string" },
         "reap-images": { type: "string" },
         "compiler-options": { type: "string" },
@@ -268,9 +300,11 @@ const { values, positionals } = withUsageError(
 if (values.help) printHelpAndExit(USAGE);
 
 // The values are read before anything starts.
-const { port, arch, timeoutMs, quietMs } = withUsageError(
+const { port, arch, seconds } = withUsageError(
   () => {
     refuseTogether(values, ["show", "hide"]);
+    refuseTogether(values, ["timeout", "compiler-run-timeout"]);
+    refuseTogether(values, ["timeout", "exe-run-timeout"]);
     refuseTogether(values, ["llvm", "compiler-options"]);
     refuseTogether(values, ["exe", "tests"]);
     if (values.only !== undefined && !values.tests) throw new CliError("needs-option", "--only needs --tests");
@@ -280,12 +314,27 @@ const { port, arch, timeoutMs, quietMs } = withUsageError(
           ? null
           : numberOption(values.port, { option: "--port", integer: true, min: 1, max: 65535 }),
       arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
-      timeoutMs: numberOption(values.timeout ?? "120", { option: "--timeout", above: 0 }) * 1000,
-      quietMs: numberOption(values.quiet ?? "2500", { option: "--quiet", integer: true, min: 0 }),
+      seconds: {
+        compile: optionSeconds(values, ["compile-timeout"]),
+        build: optionSeconds(values, ["build-timeout"]),
+        compilerRun: optionSeconds(values, ["compiler-run-timeout", "timeout"]),
+        compilerRunQuiet: optionSeconds(values, ["compiler-run-quiet"]),
+        exeRun: optionSeconds(values, ["exe-run-timeout", "timeout"]),
+      },
     };
   },
   { format: (err) => `${err.message}\n${USAGE}` },
 );
+
+// The limits, in ms: the option, else the TB_<PHASE> variable, else
+// test/harness.json, whose faults are exit 2 (lib/harness-settings.mjs).
+let limits;
+try {
+  limits = Object.fromEntries(Object.entries(seconds).map(([key, s]) => [key, timeoutMs(key, s)]));
+} catch (e) {
+  if (!(e instanceof HarnessError)) throw e;
+  die(2, e.message);
+}
 
 if (!positionals.length) die(2, USAGE);
 
@@ -519,7 +568,7 @@ if (values.keep) await slot.handTo(ideRun.pid);
 const cdp = await attachIde(ideRun.port);
 if (!cdp) failBuild(2, "the IDE never exposed a debug port");
 
-let outcome = compileOutcome(await waitForCompile(cdp, { project: projPath, timeout: COMPILE_TIMEOUT }), {
+let outcome = compileOutcome(await waitForCompile(cdp, { project: projPath, timeout: limits.compile }), {
   name: projPath,
 });
 if (!outcome.ok) failBuild(outcome.code === 4 ? 4 : 2, outcome.message);
@@ -529,7 +578,7 @@ if (!outcome.ok) failBuild(outcome.code === 4 ? 4 : 2, outcome.message);
 // IDE's 64-bit compiler, twinBASIC_win64_noDEP.exe, as a 64-bit process:
 // on BETA 1005 LenB of a LongPtr is 8 and PROCESSOR_ARCHITECTURE reads AMD64.
 try {
-  const target = await setBuildTarget(cdp, arch, { project: projPath, timeout: COMPILE_TIMEOUT });
+  const target = await setBuildTarget(cdp, arch, { project: projPath, timeout: limits.compile });
   // Only a target the IDE remembered is worth a word: a new path opens in win32.
   if (target.from !== TARGETS[0]) {
     console.error(`note: the IDE remembered ${target.from} for this path; the probe is built for ${arch}`);
@@ -560,6 +609,7 @@ if (values.tests) await runCases();
 // --------------------------------------------- build the exe, read the console
 
 let captured = null,
+  capture = null,
   shown = null,
   erased = null,
   failure = null;
@@ -568,10 +618,12 @@ try {
   // settles on the sentinel, or else a quiet period: lib/tb-run.mjs.
   const run = await captureRun(cdp, {
     done: (lines) => wrap.wrapped && sentinelIndex(lines) >= 0,
-    quietMs,
-    timeoutMs,
+    buildMs: limits.build,
+    runMs: limits.compilerRun,
+    quietMs: limits.compilerRunQuiet,
   });
   captured = run.captured;
+  capture = run;
   erased = run.erased;
   // --raw changes what is printed, never what is checked. BUILD_FAILED needs a
   // line that starts where the console's text does, and a line holding only a
@@ -595,6 +647,14 @@ if (failure) die(2, `tbrun: ${failure}`);
 // nothing in the Sub runs, Debug.Cls included. BUILD_FAILED is buildProject's
 // list of failure lines, the code-generation one among them.
 const { started, buildFailed, lost } = checkCapture(captured, erased);
+// A build that met its limit failed, and says so as a timeout.
+const buildTimedOut = buildTimeoutMessage(capture);
+if (buildTimedOut && buildFailed === undefined && !lost) {
+  die(
+    2,
+    `tbrun: ${buildTimedOut}` + (shown.length ? `; the console held:\n${shown.map((l) => `  ${l}`).join("\n")}` : ""),
+  );
+}
 if (buildFailed !== undefined) {
   die(
     2,
@@ -639,7 +699,7 @@ if (!printed && started >= 0 && returned !== false) {
 if (!captured.length && started < 0) {
   die(
     3,
-    "tbrun: the build produced no console output before the timeout.\n" +
+    "tbrun: the build produced no console output.\n" +
       (hasHook
         ? "  The [RunAfterBuild] Sub may not have run -- check the IDE for a modal."
         : "  There is no [RunAfterBuild] Sub to produce any.") +
@@ -671,7 +731,7 @@ if (values.json) {
   for (const l of shown) console.log(l);
   if (exeRun) {
     console.log(
-      `--- exe: ${exeRun.timedOut ? "still running after --timeout, ended" : `exit ${exitText(exeRun.exitCode)}`}`,
+      `--- exe: ${exeRun.timedOut ? `still running after ${secondsText(limits.exeRun)}, ended` : `exit ${exitText(exeRun.exitCode)}`}`,
     );
     if (exeRun.fault) console.log(`--- exe: ${faultText(exeRun.fault)}`);
     for (const d of exeRun.dialogs) console.log(`--- exe: a box, closed: ${dialogText(d)}`);
@@ -685,10 +745,18 @@ if (returned === false) {
     5,
     `tbrun: the probe ended before it returned${started >= 0 ? "" : ", and the run's start was not seen"}: ` +
       "End, or an error that ended the run without a report -- as one raised with no handler in " +
-      "LLVM-compiled code does. Or it was still running, silent, after --quiet ms; raise --quiet for a slow probe.",
+      "LLVM-compiled code does. Or it was still running, silent, after the run's quiet period " +
+      `(${secondsText(limits.compilerRunQuiet)}) or its limit (${secondsText(limits.compilerRun)}); ` +
+      "raise --compiler-run-quiet or --compiler-run-timeout for a slow probe.",
   );
 }
-if (exeRun?.timedOut) die(6, `tbrun: the exe was still running after --timeout, and was ended.`);
+if (exeRun?.timedOut) {
+  die(
+    6,
+    `tbrun: timeout: the exe was still running after ${secondsText(limits.exeRun)}, and was ended ` +
+      "(test/harness.json's exeRun; --exe-run-timeout or TB_EXE_RUN_TIMEOUT overrides it).",
+  );
+}
 if (exeRun && exeRun.exitCode !== 0) die(6, `tbrun: the exe exited with code ${exitText(exeRun.exitCode)}.`);
 if (exeRun?.fault) die(6, `tbrun: the exe exited with code 0, and the event log records that it faulted.`);
 if (exeRun?.dialogs.length) die(6, `tbrun: the exe opened a box, which tbrun closed: an unhandled error opens one.`);
@@ -700,8 +768,8 @@ process.exit(0);
 
 // --tests: the compile cases judged by the diagnostics the compile reported, and
 // each [TestCase] Sub run in the compiler's test mode (lib/tb-tests.mjs), one at a
-// time, --timeout each. A project with errors runs none of them, and says so for
-// each. A case that is still running at --timeout is reported "no answer" and the
+// time, the compilerRun limit each. A project with errors runs none of them, and says so for
+// each. A case that is still running at that limit is reported "no answer" and the
 // cases after it are reported "not run", not sent: the compiler cannot cancel it.
 // The diagnostics follow the cases' lines, which are what a reproducer's expect
 // reads. Never returns.
@@ -709,7 +777,7 @@ async function runCases() {
   const results = judgeCompiles(cases.compiles, outcome.rows).map((r) => ({ ...r }));
   const errors = outcome.counts[0] > 0;
   try {
-    // A case still running at --timeout cannot be stopped, and the compiler's main thread refuses every
+    // A case still running at its limit cannot be stopped, and the compiler's main thread refuses every
     // request until it ends ("main thread is busy"), so the cases after it are not sent.
     let stalled = null;
     for (const t of cases.tests) {
@@ -717,7 +785,7 @@ async function runCases() {
       if (errors) results.push({ name, pass: false, detail: "not run: the project has compile errors" });
       else if (stalled) results.push({ name, pass: false, detail: `not run: ${stalled} did not return` });
       else {
-        const r = await runTest(cdp, t, timeoutMs);
+        const r = await runTest(cdp, t, limits.compilerRun);
         results.push({ name, ...r });
         if (r.timedOut) stalled = name;
       }
@@ -764,7 +832,7 @@ async function runCases() {
 // appended to the file TBRUN_OUT names.
 //
 // An unhandled error opens a box and waits for it, so the launcher closes every
-// box the exe opens and records it; without that the exe sat until --timeout.
+// box the exe opens and records it; without that the exe sat until its limit.
 // The box is the only sign of the error: in BETA 1005 a plain exe exits with
 // code 0 once it is closed ("Run-time error '11' Division by zero"), and an
 // LLVM-compiled one ("_TB_ERROR_HANDLER", "unhandled error in ProbeMod.Oops")
@@ -793,7 +861,7 @@ async function runExe() {
   const timedOut = await Promise.race([
     run.exited.then(() => false),
     new Promise((r) => {
-      timer = setTimeout(() => r(true), timeoutMs);
+      timer = setTimeout(() => r(true), limits.exeRun);
     }),
   ]);
   clearTimeout(timer);

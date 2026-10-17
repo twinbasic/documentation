@@ -640,7 +640,8 @@ const warned = new Set();
 const EXPECT_KEYS = {
   compile: ["exit", "diagnostics", "noDiagnostics"],
   build: ["exit", "message"],
-  run: ["exit", "output", "absent", "imagesDiffer"],
+  // `message` is what tbrun writes to stderr, a failed build's lines included.
+  run: ["exit", "output", "absent", "message", "imagesDiffer"],
   cli: ["exit", "output", "absent"],
   probe: ["exit", "output", "absent"],
   test: ["exit", "output", "absent"],

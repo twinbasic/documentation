@@ -964,7 +964,7 @@ scenario("designing forms and reports", (lane) => {
     assert.deepEqual(await boxes(), []);
     const { file, code } = await codeOf("1bad.twin");
     assert.match(code, /^Class 1bad$/m);
-    const outcome = compileOutcome(await waitForCompile(c, { project: lane.project, timeout: 60 * 1000 }), {
+    const outcome = compileOutcome(await waitForCompile(c, { project: lane.project }), {
       name: "the forms probe",
     });
     t.diagnostic(J(outcome.rows ?? outcome.message));

@@ -710,39 +710,16 @@ job, and when that IDE ends every other lane's compiler loses its cache, restart
 its build, which the run reports as a harness failure. The lanes are in the run's own process,
 so the one lease covers them all, and the server does not end between batches.
 
-**`test/example-exclusions.json` lists the samples a mode does not take to a stage**, keyed by
-mode (`compile`, `build`, `llvm`), then by package (a contributed package's name, or a
-template's for any other sample), then by stage. A stage's value is `"*"`, no sample of the
-package can be checked at that stage, or a list of sample ids
-(`Reference/Contributed/GdiPlus/Bitmap.md#2`, the id a finding prints). The stages are
-`build` (under `compile`, its only stage: the compile reports errors), then `compiler-run`,
-the compiler's own run of the `[RunAfterBuild]` Sub, and `exe-run`, the exe's run, each after
-`build` and independent of the other. `check_examples` runs no exe: it accepts `exe-run`
-entries and ignores them. A `build` exclusion leaves the samples out of the batches; a
-`compiler-run` exclusion builds them as samples that are not run, and that build must pass.
-The canary below takes its own samples out of both.
-**Only a failed build, a crash or a run that never returns fails a stage; wrong output never
-does**, and stays a finding. The logic is `applyExclusions`, `failureStage`,
-`canaryBatchStage` and `canaryVerdict` in `lib/example-batches.mjs`.
-
-**Each package and stage has a canary**, taken to its stage once per run with no halving and
-no retry: for `"*"`, all of the package's samples there, batched as the run batches them; for a
-list, its first listed id, alone. It is expected to fail at that stage. One that does gives a
-line, "GdiPlus: canary failed at compiler-run as expected, 283 samples not run" (`not built` for
-`build`), and no finding. One that gets through is a finding, "GdiPlus: canary passed
-compiler-run: re-probe its exclusions", and so is one whose build fails before a run stage,
-"GdiPlus: canary failed at build, before compiler-run: re-probe its exclusions"; either exits 1.
-Re-probing is running the package without its entry: its samples go back in if they pass, or
-the entry becomes a list of the ones that still fail. Nothing re-probes by itself. An id the
-list names that no sample has is a note in a run without `--only`.
-
-**Where a failure line comes after `[BUILD] Executing '...'`, the stage is `compiler-run`**,
-whatever it says: the exe has linked, and the compiler compiles again for its own run. Under
-LLVM on BETA 1010 both packages in the list fail there, after `[LINKER] SUCCESS`: GdiPlus with
-`[LLVM] codegen error occurred when compiling 'Bitmap.New': ...`, and tbRegExp with `LLVM
-compilation error in 'StaticRegex.AppendStr': ...`. The run stops before the dispatcher prints
-anything. `BUILD_FAILED` in `tb-ide.mjs` matches both lines, so outside the list such a batch
-is isolated and its samples reported as failing the build, not as a harness failure.
+**`test/harness.json`'s exclusions name the samples a mode does not take to a stage, and
+its timeouts each phase's limit**; [test/harness.md](test/harness.md) is the contract for both
+(the modes, the stages, an LLVM refusal as a `build` failure wherever it is printed, the
+canary and its lines, and each phase's key, option and variable). `lib/harness-settings.mjs`
+reads and checks the file; `check_examples` refuses a fault in it with exit 2. The exclusion
+logic is `applyExclusions`, `failureStage`, `canaryBatchStage` and `canaryVerdict` in
+`lib/example-batches.mjs`. `check_examples` runs no exe, so it accepts `exe-run` entries and
+ignores them, and a `build` canary's run batches are taken through the compiler run's compile,
+where LLVM refuses the code a `[RunAfterBuild]` Sub reaches. Outside the list a batch with an
+LLVM refusal is isolated, and its samples reported as failing the build, as any failed build is.
 
 - **A failed build is a crash, for isolation.** `compileProject` returns code 5 and
   `buildStaged` turns it into `{ crashed: true, buildFailed: true, named: <empty set> }`.
@@ -771,8 +748,8 @@ is isolated and its samples reported as failing the build, not as a harness fail
   clear after its mark erased in front of the console, so Tools.md's own tbrun sample builds.
 - **A failed build is believed when it repeats.** `buildTwiceOnFailure` builds a failed
   batch again before halving, and every part the halving builds the same way: a build can
-  fail once and pass when repeated, as one that reported nothing for 120 s did in a full
-  `--llvm` run.
+  fail once and pass when repeated, as one that met its `build` limit reporting nothing did
+  in a full `--llvm` run.
 - **Each IDE has a temp folder of its own**, `%TEMP%\tbbuild-tmp-<slot>`, set as its `TEMP`
   and `TMP` by `launchIde`, emptied at each launch in the slot and removed when the IDE
   ends, so that concurrent runs share nothing and a run leaves nothing behind. Each lane

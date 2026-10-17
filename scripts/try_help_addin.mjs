@@ -35,6 +35,7 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { serveLoopback } from "../test/addin/pages.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { leaseSlot, shutdownIde } from "./lib/tb-ide.mjs";
+import { checkHarness } from "./lib/harness-settings.mjs";
 import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
 import { alive, finishTidy, restoreKeys, settingsKey, snapshotKeys, startTidy } from "./lib/tb-registry.mjs";
@@ -80,6 +81,12 @@ const { values } = withUsageError(() =>
 if (values.help) printHelpAndExit(USAGE);
 const project = path.resolve(values.project ?? HOST);
 
+// test/harness.json gives the IDE's waits their limits (test/harness.md).
+try {
+  checkHarness();
+} catch (e) {
+  die(2, e.message);
+}
 const ide = findIde(values.ide || undefined);
 if (unsupportedIde(ide)) die(2, unsupportedIde(ide));
 if (!ide || !existsSync(ide)) {

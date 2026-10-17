@@ -40,7 +40,6 @@
 
 import path from "node:path";
 import {
-  COMPILE_TIMEOUT,
   TARGETS,
   attachIde,
   buildProject,
@@ -51,7 +50,7 @@ import {
   shutdownIdeAsync,
   waitForCompile,
 } from "./tb-ide.mjs";
-import { captureRun, checkCapture } from "./tb-run.mjs";
+import { buildTimeoutMessage, captureRun, checkCapture } from "./tb-run.mjs";
 import { timing } from "./tb-timings.mjs";
 
 /**
@@ -62,7 +61,8 @@ import { timing } from "./tb-timings.mjs";
  *   desktop the IDE goes on; by default the IDE gets one of its own (launchIde)
  * @param {number} [o.port]    DevTools port to start the IDE on; by default one Windows picks
  * @param {string} [o.arch]    win32 or win64 (default win32): the target to compile for
- * @param {number} [o.timeout] ms to wait for the compile (default COMPILE_TIMEOUT)
+ * @param {number} [o.timeout] ms for the compile phase, from the project reported open
+ *   to the compile settled (default waitForCompile's: test/harness.json's `compile`)
  * @param {boolean} [o.show]   on the user's desktop instead of a private one
  * @param {boolean} [o.keep]   leave the IDE running, and report its pid
  * @param {boolean} [o.build]  after a compile with no errors, build the project
@@ -73,8 +73,9 @@ import { timing } from "./tb-timings.mjs";
  * @param {boolean} [o.llvm]   refuse a licence that does not compile user code
  *   with LLVM. It checks the licence and changes no setting; the project's
  *   own `compiler.buildOptions` is what asks for LLVM
- * @param {number} [o.buildTimeout] ms to wait for the build (default buildProject's)
- * @param {{done?: (lines: string[]) => boolean, quietMs: number, timeoutMs: number} | null} [o.run]
+ * @param {number} [o.buildTimeout] ms for the build, from the press to its end (default:
+ *   test/harness.json's `build`); with `run`, to [BUILD] Executing
+ * @param {{done?: (lines: string[]) => boolean, runMs?: number, quietMs?: number} | null} [o.run]
  *   after a clean compile, build the project and run its [RunAfterBuild] Sub
  *   and capture what it writes (captureRun in lib/tb-run.mjs), in place of
  *   `build`'s own wait, which ends before the Sub's output has arrived. The
@@ -86,9 +87,11 @@ import { timing } from "./tb-timings.mjs";
  *   run?: {captured: string[], last: string, erased: string[], timedOut: boolean},
  * }>} `code` is tbbuild's exit code: 0 clean, 1 the project has errors, 2 the IDE
  *   could not be started or attached or the licence refuses LLVM, 3 the compile
- *   never settled, 4 the project crashes the compiler, 5 the build failed after
- *   a clean compile (with `run`, also a Sub that failed code generation, or a
- *   failure a Debug.Cls erased after the run started). `message` is what tbbuild
+ *   never settled (or met the `compile` limit), 4 the project crashes the
+ *   compiler, 5 the build failed after a clean compile: a failure line, an LLVM
+ *   refusal anywhere in the log (an exe linked or not), or the `build` limit
+ *   (with `run`, also a Sub that failed code generation, or a failure a
+ *   Debug.Cls erased after the run started). `message` is what tbbuild
  *   prints on stderr for 2 to 5 and is empty otherwise: for 5 the failing line
  *   of the log. `counts` is errors, warnings, hints, infos. `crashFiles` names,
  *   for 4, the files the compiler died parsing. `built` is the file a
@@ -101,7 +104,7 @@ export async function compileProject({
   slot = null,
   port = null,
   arch = TARGETS[0],
-  timeout = COMPILE_TIMEOUT,
+  timeout,
   show = false,
   keep = false,
   build = false,
@@ -178,12 +181,12 @@ export async function compileProject({
     if (run) {
       let capture;
       try {
-        capture = await captureRun(c, run);
+        capture = await captureRun(c, { buildMs: buildTimeout, ...run });
       } catch (e) {
         return result(2, { ...found, message: e.message });
       }
       const { buildFailed, lost } = checkCapture(capture.captured, capture.erased);
-      const failure = buildFailed ?? lost;
+      const failure = buildFailed ?? lost ?? buildTimeoutMessage(capture);
       if (failure !== undefined) {
         return result(5, { ...found, message: failure, buildLog: capture.captured, run: capture });
       }

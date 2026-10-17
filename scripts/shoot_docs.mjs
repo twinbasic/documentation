@@ -169,7 +169,6 @@ import { removeTree } from "./lib/tb-ide-copy.mjs";
 import {
   awaitNewCompiler,
   buildProject,
-  COMPILE_TIMEOUT,
   captureWindow,
   compilerPid,
   desktopWindows,
@@ -185,6 +184,7 @@ import { svgOfPage } from "./svgshot/capture.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
 import { holdsUserName, judgeSvg, SVG_FAITHFUL, writeSvg } from "./svgshot/keep.mjs";
 import { unpackProject } from "./lib/tb-project.mjs";
+import { checkHarness } from "./lib/harness-settings.mjs";
 import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
 import {
@@ -370,6 +370,12 @@ for (const [option, root] of [
 // The fonts' cuts are kept beside the bundles, as replay.mjs keeps them (fonts.mjs).
 if (bundlesRoot) useSubsetCache(path.join(bundlesRoot, "subsets"));
 
+// test/harness.json gives the IDE's waits their limits (test/harness.md).
+try {
+  checkHarness();
+} catch (e) {
+  die(2, e.message);
+}
 const ide = findIde(values.ide || undefined);
 if (unsupportedIde(ide)) die(2, unsupportedIde(ide));
 if (!ide || !existsSync(ide)) {
@@ -9520,7 +9526,7 @@ async function applyChanges({ c, lane }) {
   await clickInModal(c, "Apply Changes");
   await awaitNewCompiler(c, before, { why: "Apply Changes" });
   try {
-    lane.checkCompile(await waitForCompile(c, { project: lane.project, timeout: COMPILE_TIMEOUT }), "the sample");
+    lane.checkCompile(await waitForCompile(c, { project: lane.project }), "the sample");
   } catch (e) {
     // the DEBUG CONSOLE's lines about a crash, which the message only counts
     const lines = await c.evaluate(

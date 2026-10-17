@@ -804,7 +804,7 @@ job](#the-ide-runs-inside-a-job)). When that IDE ends, the server ends with it, 
 IDE's compiler writes `[LLVM] The LLVM cache process has terminated abruptly.  Restarting the
 compiler...`, restarts and abandons its build. Runs at once without a lease therefore stop with
 exit 2 in one of these ways: "the run wrote no [tbx-run] line", "the IDE never reported ... as open",
-"the IDE never showed its licence", "the build started and reported nothing for 120 s".
+"the IDE never showed its licence", "timeout: the build started and did not end within ...".
 
 **So every tool that builds with LLVM holds a lease on the server** before its IDE starts,
 through `holdLlvmCache` in [scripts/lib/tb-llvm-cache.mjs](scripts/lib/tb-llvm-cache.mjs), over
@@ -841,6 +841,34 @@ detached in no job, so the server outlives the tool's own job too; a tool starte
 that allows no breakaway would still have the server in that job (the vendored README's open
 item).
 
+### Timeouts: `test/harness.json`
+
+**Every limit a phase has comes from `test/harness.json`'s `timeouts`**, in seconds, and no
+default stays in the code; [test/harness.md](test/harness.md) is the contract (each phase's start
+and end, the values, the precedence). `scripts/lib/harness-settings.mjs` reads the file once per
+process and resolves a limit: the tool's option, then the variable, then the file. A missing or
+malformed file, and a variable that is not a number of seconds greater than 0, is exit 2.
+
+| phase | key | where | option | variable |
+|---|---|---|---|---|
+| project open | `projectOpen` | `waitForCompile`, from the call to the project reported open | none | none |
+| compile | `compile` | `waitForCompile`, from the project reported open to the compile settled | `--compile-timeout` (tbbuild's `--timeout` too) | `TB_COMPILE_TIMEOUT` |
+| build | `build` | `buildProject`, the press to linked or failed; `captureRun`, the press to `[BUILD] Executing` | `--build-timeout` | `TB_BUILD_TIMEOUT` |
+| compiler run | `compilerRun` | `captureRun`, from Executing; `tbrun --tests`, each case | `--compiler-run-timeout` (tbrun's `--timeout` too) | `TB_COMPILER_RUN_TIMEOUT` |
+| quiet period | `compilerRunQuiet` | `captureRun`, from the later of Executing and the last output | `--compiler-run-quiet` | `TB_COMPILER_RUN_QUIET` |
+| exe run | `exeRun` | `tbrun --exe` | `--exe-run-timeout` (tbrun's `--timeout` too) | `TB_EXE_RUN_TIMEOUT` |
+
+`tbbuild` has the compile and build options, `check_examples` those and the two run options,
+`tbrun` all five; the lanes, `shoot_docs` and `try-help-addin` have none, and read the variables.
+A limit that ends a wait is reported as a timeout: `tbbuild` exits 3 for the compile's and 5 for
+the build's, `tbrun` 2 for either, and 6 for the exe's. A compiler run that meets its limit is a
+run that never returned (`tbrun` exit 5, a `check_examples` finding). The waits that are no
+phase keep their numbers in the code: the licence and overlay before a press (`pressBuild`,
+60 s), a compiler restart (`awaitNewCompiler`, 60 s), the licence's name (`llvmLicence`, 15 s),
+a crash's file name (`awaitCrashName`, 5 s), `waitForCompile`'s 5 s stand-still and 300 ms
+early quiet, the two seconds a failure line is given before a build is taken as failed, and the
+operation waits of the lanes and `shoot_docs`.
+
 ### Timing each phase: `TB_TIMINGS`
 
 **Set `TB_TIMINGS=<file>` and every tool that goes through `tb-ide.mjs` appends one JSON line per
@@ -855,7 +883,7 @@ Unset, nothing is written and nothing else changes.
 What it showed on BETA 1010 (350 compiles: `check_examples --build` and `--llvm`, every
 `addin_test` lane, `tbbuild`/`tbrun` probes on both arches), median / p95 / max in seconds: IDE
 start to project open 2.85 / 3.46 / 4.04; the compiler's own compile, `compilationStarted` to the
-last file's diagnostics, 0.03 / 0.08 / 0.30; the whole wait `COMPILE_TIMEOUT` bounds 3.33 / 5.34 /
+last file's diagnostics, 0.03 / 0.08 / 0.30; the whole compile wait, project load included, 3.33 / 5.34 /
 13.8, its tail the 5 s stand-still `waitForCompile` needs when a package's own files have errors
 (WinReg, ArrayListLib), where the early path never agrees; a build, Build pressed to linked, at
 most 1.0 (4.97 with LLVM); a `[RunAfterBuild]` run at most 0.83 (25.3 with LLVM, one of them

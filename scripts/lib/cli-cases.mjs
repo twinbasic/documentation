@@ -586,8 +586,42 @@ for (const [tool, first] of [
   bad(tool, [first, "--timeout=-1"], thenUsage(NOT_ABOVE_ZERO("--timeout", -1), tool));
   bad(tool, [first, "--arch", "WIN32"], thenUsage("--arch expects win32 or win64, got: WIN32", tool));
   bad(tool, [first, "--show", "--hide"], thenUsage("--show and --hide cannot be given together", tool));
+  // The timeouts of test/harness.md, in seconds, decimals allowed.
+  bad(tool, [first, "--compile-timeout", "0"], thenUsage(NOT_ABOVE_ZERO("--compile-timeout", 0), tool));
+  bad(tool, [first, "--build-timeout=abc"], thenUsage(NOT_ABOVE_ZERO("--build-timeout", "abc"), tool));
 }
-bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet=-1"], thenUsage(NOT_WHOLE("--quiet", -1), "scripts/tbrun.mjs"));
+bad(
+  "scripts/tbbuild.mjs",
+  ["x.twinproj", "--compile-timeout", "5", "--timeout", "5"],
+  thenUsage("--compile-timeout and --timeout cannot be given together", "scripts/tbbuild.mjs"),
+);
+bad(
+  "scripts/tbbuild.mjs",
+  ["x.twinproj", "--compiler-run-timeout", "5"],
+  thenUsage("unknown option: --compiler-run-timeout", "scripts/tbbuild.mjs"),
+);
+{
+  const tool = "scripts/tbrun.mjs";
+  bad(
+    tool,
+    ["no-such-dir", "--compiler-run-timeout", "0"],
+    thenUsage(NOT_ABOVE_ZERO("--compiler-run-timeout", 0), tool),
+  );
+  bad(tool, ["no-such-dir", "--compiler-run-quiet=-1"], thenUsage(NOT_ABOVE_ZERO("--compiler-run-quiet", -1), tool));
+  bad(tool, ["no-such-dir", "--exe-run-timeout", "abc"], thenUsage(NOT_ABOVE_ZERO("--exe-run-timeout", "abc"), tool));
+  bad(
+    tool,
+    ["no-such-dir", "--timeout", "5", "--exe-run-timeout", "5"],
+    thenUsage("--timeout and --exe-run-timeout cannot be given together", tool),
+  );
+  // --quiet <ms> is gone: --compiler-run-quiet <secs> replaces it.
+  bad(tool, ["no-such-dir", "--quiet", "2500"], thenUsage("unknown option: --quiet", tool));
+}
+bad(
+  "scripts/check_examples.mjs",
+  ["--compiler-run-quiet", "0"],
+  "check_examples: --compiler-run-quiet expects a number greater than 0, got: 0\n",
+);
 bad(
   "scripts/tbrun.mjs",
   ["no-such-dir", "--llvm", "--compiler-options", "+llvm"],
@@ -621,7 +655,6 @@ bad(
   bad(tool, ["--work=/"], new RegExp(`^--work must be under .+, not .+\\nusage: node ${literal(tool)} `));
   bad(tool, ["--show", "--hide"], thenUsage("--show and --hide cannot be given together", tool));
 }
-bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE("--quiet", 1.5), "scripts/tbrun.mjs"));
 
 // bug_repro follows the message with its usage. It reads and checks its command
 // line before it looks for a reproducer or an IDE, and the reproducers it is

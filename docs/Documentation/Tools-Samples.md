@@ -65,7 +65,7 @@ Each template also carries a **stage set**: a module declaring the control insta
 
 **A sample can compile and still fail the build.** The front end accepts constructs that code generation refuses, so `--build` presses Build on each project that compiled without errors, and `--llvm` does the same with LLVM switched on. A build can fail once and pass when repeated, so a failed build is repeated once, and only a second failure counts. `tbbuild` reports a failed build as exit 5 and names no sample, so the project is cut by halving, as for a crash, until one sample is left or the samples a failure needs together are found. The finding says "fails the build", and its second line says "the LLVM build" under `--llvm` and "the build" otherwise.
 
-**`test/example-exclusions.json` names the samples a mode does not take to a stage**, by mode, package and stage: `build`, or `compiler-run` (the run in the compiler after a build), or `exe-run` (which `examples.bat` runs no exe for, and ignores). A stage's value is `"*"`, when no sample of the package can be checked there, or a list of sample ids. Each package and stage has a canary, taken to that stage once: all of the package's samples for `"*"`, the first listed id for a list. When it fails there as expected, the run prints one line saying so. When it gets through, or its build fails before a run stage, the run reports a finding and exits 1, and the package is due to be checked again without its entry.
+**`test/harness.json` names the samples a mode does not take to a stage, and each phase's limit**, which the options `--compile-timeout`, `--build-timeout`, `--compiler-run-timeout` and `--compiler-run-quiet` override. An LLVM refusal fails the build wherever it is printed, and each excluded package has a canary that says when it is fixed: [test/harness.md](https://github.com/twinbasic/documentation/blob/main/test/harness.md) is the file's contract.
 
 A build refuses three things a compile accepts, so batches are arranged around them:
 
@@ -224,7 +224,7 @@ The names come from every entry in `Attributes.md`, every name in the compiler's
 | `--work`, `--keep` | Where projects are staged, which must be under the system temp folder, and whether to keep them. |
 | `--preflight` | Build only the canaries, baselines and controls, and stop. About 20 seconds, and the way to check a change to a site. |
 | `--dry-run` | Count the probes and build nothing. |
-| `--timeout <secs>` | How long to wait for one build to settle. Default 180. |
+| `--timeout <secs>` | The compile's limit for one build. Default: `compile` in `test/harness.json`. |
 | `--show` / `--hide` | As for [`tbbuild.mjs`](Tools-Compiler#tbbuild). |
 
 **An Enum member cannot be tested.** On a line of its own inside an Enum, a bracket group is not an attribute but a member named by its text, so that form compiles whatever it names, an attribute that applies nowhere included; written inline, every attribute is refused. The site is voided, and a target on an Enum member is reported as one the sweep could not test.

@@ -1,6 +1,0 @@
-{
-  "llvm": {
-    "GdiPlus": { "compiler-run": "*", "exe-run": "*" },
-    "tbRegExp": { "compiler-run": "*" }
-  }
-}

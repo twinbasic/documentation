@@ -123,7 +123,6 @@ import {
   crashedIn,
   diagKind,
   embeddedPackages,
-  exclusionProblems,
   joinConcatGroups,
   makeBatches,
   runBatch,
@@ -147,6 +146,7 @@ import {
   partitionRun,
   runRefusal,
 } from "./lib/example-run.mjs";
+import { HarnessError, HARNESS_NAME, optionSeconds, readHarness, timeoutMs } from "./lib/harness-settings.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { timing } from "./lib/tb-timings.mjs";
 import { leaseSlot, wantShow } from "./lib/tb-ide.mjs";
@@ -158,8 +158,6 @@ import { alive, finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
-// The samples each mode leaves out, by package (applyExclusions).
-const EXCLUSIONS = path.join(REPO_ROOT, "test", "example-exclusions.json");
 
 // ---------------------------------------------------------------- arguments
 
@@ -172,6 +170,10 @@ const { values } = withUsageError(
         jobs: { type: "string" },
         batch: { type: "string" },
         ide: { type: "string" },
+        "compile-timeout": { type: "string" },
+        "build-timeout": { type: "string" },
+        "compiler-run-timeout": { type: "string" },
+        "compiler-run-quiet": { type: "string" },
         census: { type: "boolean", default: false },
         propose: { type: "boolean", default: false },
         apply: { type: "boolean", default: false },
@@ -215,6 +217,10 @@ InputBox, or contains End, or is not slot=sub, is refused without being built.
                    Ultimate licence, and --build alone is its control
   --keep           leave the generated projects on disk and say where
   --show, --hide   as tbbuild's
+  --compile-timeout <secs>, --build-timeout <secs>, --compiler-run-timeout <secs>,
+  --compiler-run-quiet <secs>
+                   each phase's limit, over test/harness.json's and its
+                   TB_<PHASE> variable (test/harness.md)
   --verbose        also print warnings, not only errors
   --json           one JSON object instead of a report
   -h, --help       print this text and exit
@@ -228,13 +234,15 @@ Exit codes:
      printed something other than the page says; the report names each
   2  the harness could not run: a refused command line, a failed self-test probe, no
      IDE, an unreadable --report file, a work folder it could not clear,
-     an --llvm run on a Community or Personal licence, or a crash`;
+     test/harness.json missing or malformed (its exclusions included), a TB_<PHASE>
+     variable that is not a number of seconds greater than 0, an --llvm run on a
+     Community or Personal licence, or a crash`;
 
 if (values.help) printHelpAndExit(USAGE);
 
 // The values are read before anything runs. --report, --census and --propose
 // are three modes of one run, and --apply is a part of --propose.
-const { only, jobs, batchSize } = withUsageError(
+const { only, jobs, batchSize, seconds } = withUsageError(
   () => {
     refuseTogether(values, ["report", "census", "propose"]);
     refuseTogether(values, ["show", "hide"]);
@@ -245,6 +253,12 @@ const { only, jobs, batchSize } = withUsageError(
       only: values.only ? regexOption(values.only, { option: "--only" }) : null,
       jobs,
       batchSize: numberOption(values.batch ?? String(DEFAULT_BATCH), { option: "--batch", integer: true, min: 1 }),
+      seconds: {
+        compile: optionSeconds(values, ["compile-timeout"]),
+        build: optionSeconds(values, ["build-timeout"]),
+        compilerRun: optionSeconds(values, ["compiler-run-timeout"]),
+        compilerRunQuiet: optionSeconds(values, ["compiler-run-quiet"]),
+      },
     };
   },
   { format: (err) => `check_examples: ${err.message}` },
@@ -259,20 +273,27 @@ const AS_JSON = values.json;
 const LLVM = values.llvm;
 // --llvm is a build, so the one switch the rest of the file reads is BUILD.
 const BUILD = values.build || LLVM;
-// The key of this run's entries in test/example-exclusions.json.
+// The key of this run's entries in test/harness.json's exclusions.
 const EXCLUSION_MODE = LLVM ? "llvm" : BUILD ? "build" : "compile";
 
-/** The exclusion list, checked; a list that cannot be read or has a wrong shape ends the run with exit 2. */
+// test/harness.json (test/harness.md), read and checked before anything runs:
+// the exclusions, and each phase's limit in ms -- the option, else the
+// TB_<PHASE> variable, else the file. A fault in either is exit 2.
+let HARNESS, LIMITS;
+try {
+  HARNESS = readHarness();
+  LIMITS = Object.fromEntries(Object.entries(seconds).map(([key, s]) => [key, timeoutMs(key, s)]));
+} catch (e) {
+  if (!(e instanceof HarnessError)) throw e;
+  console.error(`check_examples: ${e.message}`);
+  process.exit(2);
+}
+
+/** The exclusions, each package checked against the templates; a package with neither ends the run with exit 2. */
 function readExclusions() {
-  let list;
-  try {
-    list = JSON.parse(readFileSync(EXCLUSIONS, "utf8"));
-  } catch (e) {
-    console.error(`check_examples: cannot read test/example-exclusions.json: ${e.message}`);
-    process.exit(2);
-  }
-  const problems = exclusionProblems(list);
-  for (const packages of problems.length ? [] : Object.values(list)) {
+  const list = HARNESS.exclusions;
+  const problems = [];
+  for (const packages of Object.values(list)) {
     for (const pkg of Object.keys(packages)) {
       if (!templateResolves(TEMPLATES, `contributed-${pkg}`) && !templateResolves(TEMPLATES, pkg)) {
         problems.push(`${pkg}: neither a contributed package with a template nor a template`);
@@ -280,7 +301,7 @@ function readExclusions() {
     }
   }
   if (problems.length) {
-    console.error(`check_examples: test/example-exclusions.json:\n${problems.map((p) => `  ${p}`).join("\n")}`);
+    console.error(`check_examples: ${HARNESS_NAME}, exclusions:\n${problems.map((p) => `  ${p}`).join("\n")}`);
     process.exit(2);
   }
   return list;
@@ -674,9 +695,13 @@ const IDE = findIde(values.ide);
 // between.
 let tidy = null;
 
-// How a run batch's wait ends (see buildStaged), in milliseconds.
-const RUN_QUIET_MS = 8000;
-const RUN_TIMEOUT_MS = 180000;
+// How a run batch's wait ends (see buildStaged): its sentinel, or the run's
+// quiet period or limit from test/harness.json (LIMITS).
+const runWait = () => ({
+  done: (lines) => lines.some((l) => l.trim() === RUN_DONE),
+  runMs: LIMITS.compilerRun,
+  quietMs: LIMITS.compilerRunQuiet,
+});
 
 // What each run sample did, by fence id, from the last build of a project that
 // held it: its share of the lines the dispatcher wrote, and the sample that
@@ -733,9 +758,7 @@ const timingBatch = (batch, staged) =>
 async function buildCanary(batch, slot, work) {
   const staged = stageBatch(batch, work);
   timingBatch(batch, staged);
-  const run = staged.runs.length
-    ? { done: (lines) => lines.some((l) => l.trim() === RUN_DONE), quietMs: RUN_QUIET_MS, timeoutMs: RUN_TIMEOUT_MS }
-    : null;
+  const run = staged.runs.length ? runWait() : null;
   const r = await compileProject({
     project: staged.proj,
     ide: IDE,
@@ -744,6 +767,8 @@ async function buildCanary(batch, slot, work) {
     build: BUILD || !!run,
     llvm: LLVM,
     run,
+    timeout: LIMITS.compile,
+    buildTimeout: LIMITS.build,
   });
   if (!values.keep) rmSync(staged.dir, { recursive: true, force: true });
   const parsed = run && r.code === 0 ? parseRun(r.run.captured, staged.runs.length) : null;
@@ -761,12 +786,10 @@ async function buildCanary(batch, slot, work) {
 async function buildStaged(staged, slot) {
   // A run batch is built and its [RunAfterBuild] Sub is run, in every mode. The
   // run is over when the dispatcher says it is done, or when the console has
-  // been quiet for RUN_QUIET_MS: long enough to outlast a pause in an LLVM
-  // build's log, since a quiet period that ends inside one reads as a run that
-  // never started.
-  const run = staged.runs.length
-    ? { done: (lines) => lines.some((l) => l.trim() === RUN_DONE), quietMs: RUN_QUIET_MS, timeoutMs: RUN_TIMEOUT_MS }
-    : null;
+  // been quiet for the run's quiet period, counted from [BUILD] Executing or the
+  // run's last output, whichever is later, so that a pause in an LLVM build's log
+  // never ends it (captureRun).
+  const run = staged.runs.length ? runWait() : null;
   const compile = () =>
     compileProject({
       project: staged.proj,
@@ -776,6 +799,8 @@ async function buildStaged(staged, slot) {
       build: BUILD || !!run,
       llvm: LLVM,
       run,
+      timeout: LIMITS.compile,
+      buildTimeout: LIMITS.build,
     });
   let r = await compile();
   // A run that wrote no marker at all, or stopped without finishing and without
@@ -1148,13 +1173,13 @@ async function main() {
   // sample's own ("'Main' is ambiguous"), which a compile accepts; so a run that
   // builds gives such a unit a project of its own without the template's.
   const alone = BUILD ? (members) => members.some((f) => DECLARES_MAIN.test(f.content)) : null;
-  // The samples this mode does not take to a stage (test/example-exclusions.json),
+  // The samples this mode does not take to a stage (test/harness.json's exclusions),
   // and the canary of each package and stage, batched apart so that its failure
   // breaks no batch (applyExclusions).
   const exclusions = applyExclusions(selected, readExclusions()[EXCLUSION_MODE] ?? {});
   if (!only) {
     for (const id of exclusions.unknown) {
-      say(`  note: test/example-exclusions.json lists ${id} under ${EXCLUSION_MODE}, which is no sample`);
+      say(`  note: ${HARNESS_NAME} lists ${id} under exclusions.${EXCLUSION_MODE}, which is no sample`);
     }
   }
   // A `check_run` sample is built apart from everything else, whatever the mode,
@@ -1390,7 +1415,7 @@ async function main() {
       addFinding(
         c.fences.find((f) => c.ids.has(f.id)),
         verdict.text,
-        `test/example-exclusions.json, ${EXCLUSION_MODE}.${c.pkg}.${c.stage}`,
+        `${HARNESS_NAME}, exclusions.${EXCLUSION_MODE}.${c.pkg}.${c.stage}`,
       );
     }
   }

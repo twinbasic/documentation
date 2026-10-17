@@ -13,6 +13,7 @@ import { mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { secondsText, timeoutMs } from "./harness-settings.mjs";
 import { connectBroker } from "./tb-broker.mjs";
 import { attach } from "./tb-cdp.mjs";
 import { click, pagePicture } from "./tb-click.mjs";
@@ -1040,12 +1041,6 @@ export async function awaitCrashName(c, crash, { timeout = 5000 } = {}) {
   return crash;
 }
 
-/**
- * How long, in milliseconds, the harness gives a compile to settle when its
- * caller names no time of its own. tbbuild's header states it in seconds.
- */
-export const COMPILE_TIMEOUT = 180 * 1000;
-
 // How long a compile that the wire saw end must stay the latest one before
 // waitForCompile believes it. Every keystroke starts a compile a few ms after
 // it, so a wait that begins just after an edit could otherwise take the compile
@@ -1076,16 +1071,22 @@ const EARLY_QUIET_MS = 300;
  *   resolved before comparing, because the IDE echoes the resolved path it was
  *   given: compared as typed, a relative path never matched, and the IDE was
  *   never reported open.
- * @param {number} o.timeout          milliseconds
+ * @param {number} [o.timeout]        milliseconds for the compile phase, from the
+ *   project reported open to the compile settled (default: test/harness.json's
+ *   `compile`, or TB_COMPILE_TIMEOUT). The wait for the project to be reported
+ *   open, from the call, is the file's `projectOpen`, which has no override.
  * @returns {Promise<{loaded: boolean, crash: object | null, safe: boolean, drops: number,
- *                    last: string | null, blocked: boolean, early: boolean}>}
+ *                    last: string | null, blocked: boolean, early: boolean,
+ *                    timedOut: "projectOpen" | "compile" | null, limitMs: number}>}
  *   `safe` is true when the IDE had fallen into Safe Mode; `last` is the final sample, as the JSON string readBuildState returned;
  *   `blocked` is attachIde's `pageBlocked`; `early` is true when `c.wire` saw
  *   the compile end and the sample agreed with it, and false when the sample
- *   stood still for five seconds instead
+ *   stood still for five seconds instead; `timedOut` names the phase whose
+ *   limit ended the wait, and `limitMs` is that limit
  */
-export async function waitForCompile(c, { project, timeout }) {
+export async function waitForCompile(c, { project, timeout = timeoutMs("compile") }) {
   const want = normPath(path.resolve(project));
+  const openLimit = timeoutMs("projectOpen");
   const t0 = Date.now();
   const wire = c.wire ?? null;
   const before = wire?.mark();
@@ -1108,8 +1109,11 @@ export async function waitForCompile(c, { project, timeout }) {
   // time, not in samples, for the same reason.
   let due = t0 + 1000;
   let next = due;
-  while (Date.now() - t0 < timeout) {
-    const ms = Math.max(0, next - Date.now());
+  // The phase's deadline: projectOpen from the call until the project is
+  // reported open, then compile from that moment.
+  const deadline = () => (loadedAt === null ? t0 + openLimit : loadedAt + timeout);
+  while (Date.now() < deadline()) {
+    const ms = Math.max(0, Math.min(next, deadline()) - Date.now());
     await (wire ? wire.changed(ms) : sleep(ms));
     const now = Date.now();
     const scheduled = now >= due;
@@ -1178,6 +1182,8 @@ export async function waitForCompile(c, { project, timeout }) {
     }
     last = s;
   }
+  const timedOut = ended !== "timeout" ? null : loadedAt === null ? "projectOpen" : "compile";
+  const limitMs = timedOut === "projectOpen" ? openLimit : timeout;
   if (timingsOn) {
     // The compile as the wire saw it, and as the samples did: `settledAt` is
     // when the sample first showed the final state (for a wait that ended by
@@ -1197,6 +1203,8 @@ export async function waitForCompile(c, { project, timeout }) {
       "compile",
       {
         ended,
+        timedOut,
+        projectOpen: openLimit,
         timeout,
         waitMs: doneAt - t0,
         loadMs: loadedAt === null ? null : loadedAt - t0,
@@ -1213,7 +1221,7 @@ export async function waitForCompile(c, { project, timeout }) {
       c,
     );
   }
-  return { loaded, crash, safe, drops, last, blocked: !!c.pageBlocked, early };
+  return { loaded, crash, safe, drops, last, blocked: !!c.pageBlocked, early, timedOut, limitMs };
 }
 
 /**
@@ -1229,7 +1237,7 @@ export async function waitForCompile(c, { project, timeout }) {
  *   as the array `message` prints on its `last parsing:` line, the files the
  *   compiler died parsing.
  */
-export function compileOutcome({ loaded, crash, safe, drops, last, blocked }, { name }) {
+export function compileOutcome({ loaded, crash, safe, drops, last, blocked, timedOut = null, limitMs }, { name }) {
   // A crash is reported by the file the compiler died parsing, because in a batch
   // of generated probes that name is the whole answer: it says which sample to
   // take out, and a caller bisecting the batch has somewhere to start.
@@ -1266,10 +1274,21 @@ export function compileOutcome({ loaded, crash, safe, drops, last, blocked }, { 
       code: 3,
       message:
         `the IDE never reported ${name} as open` +
+        (timedOut === "projectOpen" ? ` within ${secondsText(limitMs)} (test/harness.json's projectOpen)` : "") +
         (blocked
           ? "\nIts page did not answer when the harness attached. A dialog it opened before then " +
             "is the likely cause, and one cannot be answered over CDP; --show puts it on screen."
           : ""),
+    };
+  }
+  // A compile still moving at its limit is a timeout, whatever its last sample said.
+  if (timedOut === "compile") {
+    return {
+      ok: false,
+      code: 3,
+      message:
+        `timeout: the compile of ${name} did not settle within ${secondsText(limitMs)} of the project opening ` +
+        "(test/harness.json's compile; --compile-timeout or TB_COMPILE_TIMEOUT overrides it)",
     };
   }
 
@@ -1422,14 +1441,18 @@ const BUILD_START = "[BUILD] Starting...";
 const BUILD_OK = /^\[LINKER\] SUCCESS created output file '(.+)'$/;
 const PACKAGE_FILE = /^\[BUILD\] Creating TWINPACK file '(.+)'$/;
 const PACKAGE_OK = "[BUILD] successful.";
-// The last two are LLVM's refusal of a procedure: one with no bracketed prefix,
-// "LLVM compilation error in 'Probe.Stopper': Unable to compile due to use of
-// datatype that is not yet supported for LLVM compilation" (BETA 1005), and one
-// written when a [RunAfterBuild] run compiles a procedure it calls, "[LLVM]
+// LLVM's refusal of a procedure, with or without an "[LLVM] " prefix: "LLVM
+// compilation error in 'Probe.Stopper': Unable to compile due to use of datatype
+// that is not yet supported for LLVM compilation" (BETA 1005), and "[LLVM]
 // codegen error occurred when compiling 'Bitmap.New': Call parameter type does
-// not match function signature!" (BETA 1010), after which the run stops.
+// not match function signature!" (BETA 1010, written when a [RunAfterBuild] run
+// compiles a procedure it calls, after which the run stops). It fails the build
+// wherever it is printed, before [LINKER] SUCCESS or after [BUILD] Executing,
+// even when an exe was linked (test/harness.md).
+export const LLVM_REFUSAL = /^(?:\[LLVM\] )?(?:LLVM compilation error in |codegen error occurred when compiling )'/;
+// Every line that fails a build, LLVM_REFUSAL's included.
 export const BUILD_FAILED =
-  /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error|^LLVM compilation error in |^\[LLVM\] codegen error occurred when compiling /;
+  /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error|^(?:\[LLVM\] )?(?:LLVM compilation error in |codegen error occurred when compiling )'/;
 // A compiler that crashes while building -- as one did under LLVM --
 // writes "<n> <time> NATIVE EXCEPTION: ..." and then restarts, and the build
 // never reports again. The line carries the console's own prefix, so it is not
@@ -1533,17 +1556,23 @@ export async function pressBuild(c, { timeout = 60 * 1000 } = {}) {
  * build log to say how it went.
  *
  * A binary, an EXE or a DLL, has succeeded when its log shows the linker's
- * SUCCESS line, and a package when its log names the TWINPACK file and then
- * says the build was successful.
+ * SUCCESS line and no LLVM refusal, and a package when its log names the
+ * TWINPACK file and then says the build was successful. An LLVM refusal
+ * (LLVM_REFUSAL) anywhere in the log read fails the build, linked or not: the
+ * log is read whole on every pass, so the lines printed before the link line
+ * are in the same read as it. The wait ends at the link line, so a refusal that
+ * a [RunAfterBuild] run prints after it is seen only if it is already there;
+ * captureRun is what waits for that run.
  *
  * @param {object} c                  a tb-cdp connection
  * @param {object} [o]
- * @param {number} [o.timeout]        milliseconds (default 120000)
+ * @param {number} [o.timeout]        milliseconds, from the press to the build's
+ *   end (default: test/harness.json's `build`, or TB_BUILD_TIMEOUT)
  * @returns {Promise<{ok: boolean, file?: string, message?: string, log: string[]}>}
  *   `file` is the path the log says the build created; `log` is the console
  *   from the build's first line on
  */
-export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
+export async function buildProject(c, { timeout = timeoutMs("build") } = {}) {
   const mark = await consoleMark(c);
   if (!mark) {
     return {
@@ -1582,13 +1611,20 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
       c,
     );
   while (Date.now() - t0 < timeout) {
-    await sleep(250);
+    // A poll never sleeps past the limit, so a short one is met as given.
+    await sleep(Math.min(250, Math.max(0, t0 + timeout - Date.now())));
+    if (Date.now() - t0 >= timeout) break;
     const lines = await buildLines(c, mark, keeping ? clearsBefore : null);
     const start = lines.indexOf(BUILD_START);
     if (start < 0) continue;
     startAt ??= Date.now();
     log = lines.slice(start);
     const ok = log.map((l) => BUILD_OK.exec(l)).find(Boolean);
+    const refusal = log.find((l) => LLVM_REFUSAL.test(l));
+    if (ok && refusal) {
+      note("refused");
+      return { ok: false, file: ok[1], message: refusal, log };
+    }
     if (ok) {
       note("linked");
       return { ok: true, file: ok[1], log };
@@ -1613,9 +1649,12 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
   return {
     ok: false,
     log,
-    message: log.length
-      ? `the build started and reported nothing for ${timeout / 1000} s`
-      : `the build did not start in ${timeout / 1000} s -- is a dialog open? A template ` +
-        "buildPath opens a Save dialog, which the private desktop hides",
+    timedOut: true,
+    message:
+      (log.length
+        ? `timeout: the build started and did not end within ${secondsText(timeout)}`
+        : `timeout: the build did not start within ${secondsText(timeout)} -- is a dialog open? A template ` +
+          "buildPath opens a Save dialog, which the private desktop hides") +
+      " (test/harness.json's build; --build-timeout or TB_BUILD_TIMEOUT overrides it)",
   };
 }

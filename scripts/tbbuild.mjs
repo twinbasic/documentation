@@ -11,7 +11,12 @@
 //                         what compiles, and a project opens in whatever
 //                         target the IDE remembers for its path, so the
 //                         target is set on every run, win32 included.
-//       --timeout <secs>  give up waiting for the compile (default 180)
+//       --compile-timeout <secs>, --timeout <secs>
+//                         the compile phase's limit, from the project reported
+//                         open to the compile settled (default: test/harness.json's
+//                         compile, or TB_COMPILE_TIMEOUT)
+//       --build-timeout <secs>  the build's limit, from the press to its end
+//                         (default: its build, or TB_BUILD_TIMEOUT)
 //       --build           after a compile with no errors, build the project, as
 //                         the toolbar's Build button does, and report the
 //                         build log. The project is exported and packed again
@@ -35,7 +40,8 @@
 // Exit codes: 0 clean, 1 the project has errors, 2 the harness could not run (a
 // refused command line, or a project file that cannot be read, included) or
 // crashed, 3 the compile never settled, 4 the project crashes the compiler,
-// 5 the build failed after a clean compile.
+// 5 the build failed after a clean compile (an LLVM refusal in its log, an exe
+// linked or not, and the build's limit included).
 //
 // ---------------------------------------------------------------- why this
 //
@@ -79,7 +85,8 @@ import {
 } from "../lib/cli.mjs";
 import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
-import { COMPILE_TIMEOUT, keptIdeLines, leaseSlot, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
+import { HarnessError, optionSeconds, timeoutMs } from "./lib/harness-settings.mjs";
+import { keptIdeLines, leaseSlot, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { asksForLlvm, holdLlvmCache, leaseReport } from "./lib/tb-llvm-cache.mjs";
 import { checkProject, laneProjectId, stageProject, unpackProject } from "./lib/tb-project.mjs";
@@ -87,7 +94,7 @@ import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/tbbuild.mjs <project.twinproj> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--build | --llvm] [--json] [--keep] [--show|--hide] [-h, --help]
+const USAGE = `usage: node scripts/tbbuild.mjs <project.twinproj> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--compile-timeout S] [--build-timeout S] [--build | --llvm] [--json] [--keep] [--show|--hide] [-h, --help]
 
 Compiles a packed .twinproj in the twinBASIC IDE and prints its diagnostics.
 With --build or --llvm it then builds the project.
@@ -97,7 +104,13 @@ With --build or --llvm it then builds the project.
   --port <n>        DevTools port to start the IDE on (default: one Windows
                     picks, so runs at once never meet on a port)
   --arch <target>   win32 or win64 (default win32)
-  --timeout <secs>  give up waiting for the compile (default 180)
+  --compile-timeout <secs>, --timeout <secs>
+                    the compile's limit, from the project reported open to the
+                    compile settled (default: test/harness.json's compile, or
+                    TB_COMPILE_TIMEOUT)
+  --build-timeout <secs>
+                    the build's limit, from the press to its end (default: its
+                    build, or TB_BUILD_TIMEOUT)
   --build           after a compile with no errors, build the project and print
                     \`built: <file>\`; the project is exported and packed again
                     with a build path in a private folder, and the given file is
@@ -118,12 +131,15 @@ Exit codes:
   2  a refused command line (a path that is not a .twinproj included), a project file
      that cannot be read (empty, cut short or not a project at all), no IDE, an IDE
      that did not start or expose a debug port, a project that could not be exported
-     or packed, an --llvm run on a Community or Personal licence, or a crash
-  3  the compile never settled: the IDE did not report the project open, or its
-     diagnostics did not match its status bar
+     or packed, an --llvm run on a Community or Personal licence, test/harness.json
+     missing or malformed, a TB_<PHASE> variable that is not a number of seconds
+     greater than 0, or a crash
+  3  the compile never settled: the IDE did not report the project open in time, the
+     compile met its limit, or its diagnostics did not match its status bar
   4  the project crashes the compiler
-  5  the build failed after a clean compile; the build log is printed on stdout and
-     the failing line on stderr`;
+  5  the build failed after a clean compile, an LLVM refusal in its log or the
+     build's limit included, an exe linked or not; the build log is printed on
+     stdout and the failing line on stderr`;
 
 function usage() {
   console.error(USAGE);
@@ -140,6 +156,8 @@ const { values, positionals } = withUsageError(
         port: { type: "string" },
         arch: { type: "string" },
         timeout: { type: "string" },
+        "compile-timeout": { type: "string" },
+        "build-timeout": { type: "string" },
         build: { type: "boolean", default: false },
         llvm: { type: "boolean", default: false },
         json: { type: "boolean", default: false },
@@ -158,17 +176,30 @@ if (values.help) printHelpAndExit(USAGE);
 // The values are read before anything starts. A NaN timeout would end
 // waitForCompile's loop before its first pass, which then reports that the IDE
 // never opened the project.
-const { port, arch, timeout } = withUsageError(() => {
+const { port, arch, compileSeconds, buildSeconds } = withUsageError(() => {
   refuseTogether(values, ["show", "hide"]);
+  refuseTogether(values, ["compile-timeout", "timeout"]);
   return {
     port:
       values.port === undefined
         ? null
         : numberOption(values.port, { option: "--port", integer: true, min: 1, max: 65535 }),
     arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
-    timeout: numberOption(values.timeout ?? String(COMPILE_TIMEOUT / 1000), { option: "--timeout", above: 0 }) * 1000,
+    compileSeconds: optionSeconds(values, ["compile-timeout", "timeout"]),
+    buildSeconds: optionSeconds(values, ["build-timeout"]),
   };
 }, usageError);
+
+// The limits: the option, else the TB_<PHASE> variable, else test/harness.json,
+// whose faults are exit 2 (lib/harness-settings.mjs, test/harness.md).
+let timeout, buildTimeout;
+try {
+  timeout = timeoutMs("compile", compileSeconds);
+  buildTimeout = timeoutMs("build", buildSeconds);
+} catch (e) {
+  if (!(e instanceof HarnessError)) throw e;
+  die(2, e.message);
+}
 
 // An install path is a home directory, so it is never hardcoded here: pass
 // --ide, set TB_IDE, or let tb-install find the newest BETA on the Desktop,
@@ -355,6 +386,7 @@ try {
     port,
     arch,
     timeout,
+    buildTimeout,
     show,
     keep,
     build,

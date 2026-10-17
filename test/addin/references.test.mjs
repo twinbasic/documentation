@@ -389,7 +389,7 @@ scenario("P20: the packages a project references, in the virtual file system", (
     );
     assert.ok(closed, "the Settings editor stayed open");
     await sleep(2000);
-    const waited = await waitForCompile(c, { project: lane.project, timeout: 90 * 1000 });
+    const waited = await waitForCompile(c, { project: lane.project });
     const outcome = compileOutcome(waited, { name: lane.project });
     assert.ok(outcome.ok, `the compiler did not settle: ${outcome.message}`);
     assert.equal(outcome.counts[0], 0, `the compile has errors: ${outcome.rows.join("\n")}`);

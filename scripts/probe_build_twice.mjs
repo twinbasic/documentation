@@ -40,6 +40,7 @@ import {
 } from "../lib/cli.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { leaseSlot, TARGETS } from "./lib/tb-ide.mjs";
+import { checkHarness } from "./lib/harness-settings.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
@@ -93,7 +94,8 @@ reported, and ends the probe.
   --ide <path>       twinBASIC.exe (default: $TB_IDE, else the newest
                      twinBASIC_IDE_BETA_* on the Desktop)
   --port <n>         DevTools port of the IDE (default: one Windows picks)
-  --timeout <secs>   give up waiting for a compile, and again for a build (default 180)
+  --timeout <secs>   the compile's limit, and the build's (default: test/harness.json's
+                     compile and build, test/harness.md)
   --keep-files <dir> copy the two exes into <dir>, made if it is missing, as
                      <arch>-1.exe and <arch>-2.exe (vb6-1.exe and vb6-2.exe with --vb6)
   --vb6              build the vb6/ project of the reproducer twice with VB6
@@ -140,7 +142,8 @@ const { arch, port, timeout } = withUsageError(() => {
       values.port === undefined
         ? null
         : numberOption(values.port, { option: "--port", integer: true, min: 1, max: 65535 }),
-    timeout: numberOption(values.timeout ?? "180", { option: "--timeout", above: 0 }) * 1000,
+    timeout:
+      values.timeout === undefined ? undefined : numberOption(values.timeout, { option: "--timeout", above: 0 }) * 1000,
   };
 }, usageError);
 const keepFiles = values.keepFiles ? path.resolve(values.keepFiles) : null;
@@ -463,6 +466,12 @@ function compareBuilds([fileA, fileB], { vb6 }) {
 // ----------------------------------------------------------------- the builds
 
 async function buildTwinBasic() {
+  // test/harness.json gives the compile and the build their limits (test/harness.md).
+  try {
+    checkHarness();
+  } catch (e) {
+    throw new Fail(e.message);
+  }
   const ide = findIde(values.ide);
   const tooOld = unsupportedIde(ide);
   if (tooOld) throw new Fail(tooOld);

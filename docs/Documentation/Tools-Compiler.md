@@ -18,7 +18,8 @@ Compiles, builds and runs twinBASIC projects by operating the twinBASIC IDE on a
 {: #tbbuild }
 
     node scripts/tbbuild.mjs <project.twinproj> [--ide <twinBASIC.exe>] [--port N]
-                             [--arch win32|win64] [--timeout S] [--build | --llvm]
+                             [--arch win32|win64] [--compile-timeout S] [--build-timeout S]
+                             [--build | --llvm]
                              [--json] [--keep] [--show|--hide]
 
 Compiles a `.twinproj` and prints its diagnostics, with no IDE window to click through. Use it to check a claim about the language: write a one-module project that uses the construct where you are asking about, run this, and read what comes back. Windows only; not part of the site build.
@@ -30,12 +31,15 @@ twinBASIC has no command-line build. None of the compiler executable's verbs ---
 | `--ide <path>` | Path to `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` folder on `%USERPROFILE%\Desktop`. **No install path is hardcoded in this tooling**, because one contains a username, so an install kept elsewhere needs one of those two. **The tools run BETA 1007 or later**: an older install on the Desktop is passed over, and one named here or by `TB_IDE` is refused, with exit 2, before an IDE starts. |
 | `--port <n>` | DevTools port. By default the IDE's WebView2 binds a port Windows picks, so runs at once never meet on a port. A port given here that another IDE already holds is refused after ten seconds. |
 | `--arch <target>` | `win32` or `win64`. Default `win32`. Diagnostics can differ, because `#If Win64` and the size of `LongPtr` change what compiles. The target is set on every run, whatever the IDE last used for the project; a switch restarts the compiler and adds a few seconds. When the target is not `win32`, or the IDE remembered another, the report starts with a `target:` line. |
-| `--timeout <secs>` | Give up waiting for the compile to settle. Default 180. |
+| `--compile-timeout <secs>`, `--timeout <secs>` | The compile's limit, from the project reported open to the compile settled. Default: `compile` in `test/harness.json`, or `TB_COMPILE_TIMEOUT`. |
+| `--build-timeout <secs>` | The build's limit, from Build pressed to its end. Default: `build` in `test/harness.json`, or `TB_BUILD_TIMEOUT`. |
 | `--build` | After a compile with no errors, build the project as the toolbar's Build button does, and print `built: <file>` after the summary line. The given file is never changed (see below). |
 | `--llvm` | `--build` with the project's compiler options set to `+llvm`. Refused, with exit 2, on a Community or Personal licence, which would silently build with the default compiler. A plain `--build` is the control for an `--llvm` run. |
 | `--json` | Emit one JSON object instead of lines of text: the target, counts, diagnostic rows, the text of any alert the IDE opened (dismissed so the compile can go on), `built` (the file a build wrote, or null) and `buildLog`. |
 | `--keep` | Leave the IDE running and print its pid as `ide-pid: <n>`, then the `taskkill` command that ends it and every process it started, for cmd and PowerShell and for Git Bash (`//PID`). The IDE's registry entries for the project and its folders under `%TEMP%` are left as they are, since the IDE is still using them; ending it does not remove them, and the next run in the same slot empties them. The slot stays the kept IDE's until it is closed. |
 | `--show` / `--hide` | Run the IDE on your own desktop, where you can watch it, or on a private one, where it cannot take focus. Hidden is the default unless `TBBUILD_SHOW` is set to something other than `0`, `false` or `no`. |
+
+**Every limit comes from `test/harness.json`**, in seconds, which the twinBASIC launcher reads too; an option beats its `TB_<PHASE>` variable, which beats the file. [test/harness.md](https://github.com/twinbasic/documentation/blob/main/test/harness.md) is its contract.
 
 **A compile does not generate code, and a build does.** LLVM code generation can refuse a construct the compiler's front end accepts ("a feature used in your code is not yet supported with the LLVM compiler"), so a clean compile says nothing about an LLVM build. `--build` and `--llvm` press Build after the compile and read the build log.
 
@@ -68,13 +72,16 @@ Eight files under `scripts/lib/` belong to it and are never run directly:
 - `tb-cdp.mjs` --- a minimal CDP client over Node's global `WebSocket`, not puppeteer, whose `connect()` hangs while a pending `alert()` blocks the renderer. Every call has a time limit, so a blocked page ends a run with a message.
 - `tb-launch.ps1` --- the Win32 calls Node cannot make without a native FFI addon: `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop the slot names (its `CreateDesktop` opens the broker's desktop of that name), and the job object. `tb-ide.mjs` passes its text through `-EncodedCommand`, so the execution policy does not apply.
 
-Exit codes: **0** the project compiled without errors; **1** the project has errors; **2** a refused command line (a path that is not a `.twinproj` included), a project file that cannot be read (empty, cut short or not a project: it is read before an IDE starts, and the message names the file and the fault), no IDE or one older than BETA 1007, an IDE that did not start or expose a debug port, a project that could not be exported or packed, an `--llvm` run on a Community or Personal licence, or a crash; **3** the compile never settled: the IDE did not report the project open, or its diagnostics did not match its status bar; **4** the project crashes the compiler; **5** the build failed after a clean compile.
+Exit codes: **0** the project compiled without errors; **1** the project has errors; **2** a refused command line (a path that is not a `.twinproj` included), a project file that cannot be read (empty, cut short or not a project: it is read before an IDE starts, and the message names the file and the fault), no IDE or one older than BETA 1007, an IDE that did not start or expose a debug port, a project that could not be exported or packed, an `--llvm` run on a Community or Personal licence, a missing or malformed `test/harness.json`, a `TB_<PHASE>` variable that is not a number of seconds greater than 0, or a crash; **3** the compile never settled: the IDE did not report the project open in time, the compile met its limit, or its diagnostics did not match its status bar; **4** the project crashes the compiler; **5** the build failed after a clean compile: a failure line, an LLVM refusal anywhere in the log (an exe linked or not), or the build's limit.
 
 ## tbrun.mjs
 {: #tbrun }
 
-    node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64] [--timeout S]
-                           [--quiet MS] [--json] [--raw] [--keep] [--no-reap]
+    node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64]
+                           [--compile-timeout S] [--build-timeout S]
+                           [--compiler-run-timeout S] [--compiler-run-quiet S]
+                           [--exe-run-timeout S] [--timeout S]
+                           [--json] [--raw] [--keep] [--no-reap]
                            [--reap-images a,b] [--show|--hide]
                            [--llvm | --compiler-options S] [--exe | --tests]
 
@@ -131,7 +138,7 @@ file. A probe that leaves a form loaded has returned too, and `tbrun` prints the
 
 `tbrun` warns when it cannot add the wrapper --- the Sub is in a class, takes parameters, or
 is one of several marked --- and the check is then off. A probe that stays silent for longer
-than `--quiet` also ends the wait without the marker, so raise `--quiet` for a slow one.
+than `--compiler-run-quiet` also ends the wait without the marker, so raise it for a slow one.
 
 **The capture is complete however much a probe prints.** `tbrun` reads the console's backing
 array, not the pane, which is a virtualised list holding only the rows that fit. `Debug.Cls`
@@ -161,7 +168,7 @@ run also holds a lease on the LLVM cache server while its IDE runs, as `tbbuild`
 
 - It starts the exe on a private desktop and closes every box the exe opens by pressing OK,
   printing the box's title and text: an unhandled error in an exe opens a box and waits. It
-  ends the exe at `--timeout`.
+  ends the exe at `--exe-run-timeout`.
 - The exe runs its `Sub Main`, not the `[RunAfterBuild]` Sub, so a probe for both gives the
   tree a `Main` that calls the probe, and leaves out the template's own module with an empty
   `Main`.
@@ -180,12 +187,15 @@ A defect that is a compile-time diagnostic is a **compile case** instead: a line
 |---|---|
 | `--port <n>` | DevTools port for the IDE; by default one Windows picks. A port another IDE holds is refused, as for `tbbuild`. The staging folder (`%TEMP%\tbrun\<slot>`) and project id are keyed to the run's slot from [`tbbroker`](#tbbroker), so runs at once never share a workspace; `--json`'s `exe` names the built file. |
 | `--arch <target>` | `win32` or `win64`. Default `win32`, set on every run, as for `tbbuild`. A `win64` probe runs as a 64-bit process. |
-| `--timeout <secs>` | Give up waiting for console output. Default 120. |
-| `--quiet <ms>` | How long the console must stop changing before the output counts as complete, when the probe has not returned. Default 2500. Raise it well above that for a probe that drives an out-of-process server, which can take longer to start. |
+| `--compile-timeout <secs>`, `--build-timeout <secs>` | As for `tbbuild`; the build's limit runs to `[BUILD] Executing`. |
+| `--compiler-run-timeout <secs>` | The probe's run's limit, from `[BUILD] Executing`. Default: `compilerRun` in `test/harness.json`, or `TB_COMPILER_RUN_TIMEOUT`. |
+| `--compiler-run-quiet <secs>` | How long the console must stop changing, counted from `[BUILD] Executing` or the last output, before the output counts as complete when the probe has not returned. Default: `compilerRunQuiet`, or `TB_COMPILER_RUN_QUIET`. Raise it for a probe that drives an out-of-process server, which can take longer to start. |
+| `--exe-run-timeout <secs>` | Under `--exe`, the exe's limit. Default: `exeRun`, or `TB_EXE_RUN_TIMEOUT`. |
+| `--timeout <secs>` | Both `--compiler-run-timeout` and `--exe-run-timeout`. |
 | `--llvm` | Compile the whole probe, and the exe, with LLVM. The same as `--compiler-options +llvm`. |
 | `--compiler-options <s>` | The project's compiler options, for the run and the exe. |
 | `--exe` | Also run the built exe; print what it writes with `TbRun.Out`, its exit code, the fault the event log records for it, and the boxes it opened, each closed with OK. |
-| `--tests` | Build nothing: judge the compile cases and run each `[TestCase]` Sub in the compiler's test mode, printing `PASS` or `FAIL` for each. `--timeout` is the limit on each case, not on the run. A case still running at the limit is reported as `no answer from the compiler`, and the cases after it as `not run: <case> did not return`: the compiler cannot stop a case, and refuses every other request (`main thread is busy`) until it ends. Run the cases after it again in a new `tbrun` with `--only`. Not with `--exe`. |
+| `--tests` | Build nothing: judge the compile cases and run each `[TestCase]` Sub in the compiler's test mode, printing `PASS` or `FAIL` for each. `--compiler-run-timeout` (or `--timeout`) is the limit on each case, not on the run. A case still running at the limit is reported as `no answer from the compiler`, and the cases after it as `not run: <case> did not return`: the compiler cannot stop a case, and refuses every other request (`main thread is busy`) until it ends. Run the cases after it again in a new `tbrun` with `--only`. Not with `--exe`. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
 | `--json` | One object with the path of the built file, the target, the captured lines, whether the probe returned, the licence an LLVM run checked, the exe's run, the IDE pid and anything reaped. |
 | `--keep` | Leave the IDE running and print its pid as `ide-pid: <n>` (with `--json`, `idePid`) and the `taskkill` commands, as for `tbbuild`. Implies `--no-reap`, and leaves the IDE's registry entries for the probe as they are. |
@@ -215,7 +225,7 @@ clears what an earlier run in the same slot left behind. **A probe builds for th
 target `--arch` names**, whatever the IDE remembers, so a kept IDE switched to `win64` does
 not make later runs build 64-bit.
 
-Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, an LLVM run on a Community or Personal licence, an `--exe` run with no exe built, `--tests` on a project with no case or with a `[TestCase]` it cannot call (one with parameters, a **Function**, or one outside a `[TestFixture]` module), or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project; **5** the probe ended before it returned, its output printed all the same; **6** under `--exe`, the exe exited with a code other than 0, the Application event log records that it faulted, it opened a box (which `tbrun` closed), or it was still running after `--timeout` and was ended, its output, exit code, fault and boxes printed all the same; **7** under `--tests`, a case failed, every case's line printed all the same. A run that would exit 5 exits 5 whatever the exe did.
+Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE, an IDE that did not start, a compile that never settled or met its limit, a build that failed after a clean compile (an LLVM refusal anywhere in its log, an exe linked or not, and the build's limit included), a probe that never ran or stopped at a procedure that failed code generation, a missing or malformed `test/harness.json`, a `TB_<PHASE>` variable that is not a number of seconds greater than 0, an LLVM run on a Community or Personal licence, an `--exe` run with no exe built, `--tests` on a project with no case or with a `[TestCase]` it cannot call (one with parameters, a **Function**, or one outside a `[TestFixture]` module), or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project; **5** the probe ended before it returned, its output printed all the same; **6** under `--exe`, the exe exited with a code other than 0, the Application event log records that it faulted, it opened a box (which `tbrun` closed), or it was still running at its limit and was ended, its output, exit code, fault and boxes printed all the same; **7** under `--tests`, a case failed, every case's line printed all the same. A run that would exit 5 exits 5 whatever the exe did.
 
 ## probe_build_twice.mjs
 {: #probe-build-twice }
@@ -243,7 +253,7 @@ The two blocks are aligned on the end of their padding, so data shifted because 
 | `--arch <a>` | `win32` or `win64`, the target to build for. Default `win32`. |
 | `--ide <path>` | Path to `twinBASIC.exe`, found as for `tbbuild`. |
 | `--port <n>` | The IDE's DevTools port; by default one Windows picks. |
-| `--timeout <secs>` | The wait for a compile to settle, and again for a build. Default 180. |
+| `--timeout <secs>` | The compile's limit, and the build's. Default: `compile` and `build` in `test/harness.json`. |
 | `--keep-files <dir>` | Copy the two exes into `<dir>` (made if missing) as `<arch>-1.exe` and `<arch>-2.exe`. Nothing already in the folder is removed. |
 | `--vb6` | Build the reproducer's `vb6/` project twice with VB6 instead, and print every range that differs outside the time stamp and the checksum, by section; a VB6 exe has no deflate-compressed block. VB6 is found as for [`vb6run.mjs`](Tools-Defects#vb6run) (`VB6_EXE`, else the standard install folders) and started only through `scripts/lib/vb6.mjs`, never from a shell. It builds with Unattended Execution, as `bug_repro.mjs vb6` does. Both builds use one folder, because VB6 stores the folder's name in the exe. `--arch`, `--ide` and `--port` are refused with it. |
 

@@ -4,11 +4,8 @@
   "llvm": true,
   "exe": true,
   "expect": {
-    "exit": 5,
-    "output": [
-      "^\\[LLVM\\] codegen error occurred when compiling 'Startup\\.Caller': Call parameter type does not match function signature!$",
-      "^--- exe: exit -1073741819 \\(0xC0000005\\)$"
-    ],
+    "exit": 2,
+    "message": "\\[LLVM\\] codegen error occurred when compiling 'Startup\\.Caller': Call parameter type does not match function signature!",
     "absent": [
       "^Caller = 7$",
       "^--- exe: exit 7$"

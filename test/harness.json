@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "exclusions": {
+    "llvm": {
+      "GdiPlus": { "build": "*" },
+      "tbRegExp": { "build": "*" },
+      "BigNumberLib": { "compiler-run": ["Reference/Contributed/BigNumberLib/BigNumber.md#4"] },
+      "console": { "compiler-run": ["Reference/COM-Interfaces/IErrorInfo.md#4"] },
+      "Fmt": {
+        "compiler-run": [
+          "Reference/Contributed/Fmt/FormerEntryPoint/FormerStringFormat.md#3",
+          "Reference/Contributed/Fmt/IStringFormatIdentifier.md#2"
+        ]
+      },
+      "form": { "compiler-run": ["Reference/Core/Graphics-Methods.md#4"] },
+      "TBMANLIB": { "compiler-run": ["Reference/Contributed/TBMANLIB/ToolsArray.md#11"] },
+      "TBMANLIB_Aes": {
+        "compiler-run": ["Reference/Contributed/TBMANLIB_Aes/cAes.md#4", "Reference/Contributed/TBMANLIB_Aes/cAes.md#13"]
+      },
+      "TBMANLIB_Diagnostic": {
+        "compiler-run": [
+          "Reference/Contributed/TBMANLIB_Diagnostic/DiagnosticEngine.md#4",
+          "Reference/Contributed/TBMANLIB_Diagnostic/Dictionary.md#1",
+          "Reference/Contributed/TBMANLIB_Diagnostic/List.md#5"
+        ]
+      },
+      "TBMANLIB_Dialog": {
+        "compiler-run": [
+          "Reference/Contributed/TBMANLIB_Dialog/cDialogFindReplace.md#7",
+          "Reference/Contributed/TBMANLIB_Dialog/cDialogPrint.md#12"
+        ]
+      },
+      "TBMANLIB_Xml": { "compiler-run": ["Reference/Contributed/TBMANLIB_Xml/cXml.md#19"] },
+      "tbFileSysTools": { "compiler-run": ["Reference/Contributed/tbFileSysTools/Drive.md#1"] },
+      "tsJson": { "compiler-run": ["Reference/Contributed/tsJson/Json.md#8"] },
+      "tsPwGen": {
+        "compiler-run": [
+          "Reference/Contributed/tsPwGen/PwGenOptions.md#2",
+          "Reference/Contributed/tsPwGen/PwGenRandom.md#6"
+        ]
+      }
+    }
+  },
+  "timeouts": {
+    "projectOpen": 15,
+    "handshake": 10,
+    "load": 120,
+    "setup": 30,
+    "compile": 30,
+    "licence": 60,
+    "build": 15,
+    "compilerRun": 60,
+    "compilerRunQuiet": 8,
+    "exeRun": 60
+  }
+}
