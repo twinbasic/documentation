@@ -1601,6 +1601,13 @@ function parseQueue(text) {
     if (from >= end || !bare(lines[from]).startsWith("## ")) {
       throw new Fail(`${rel(QUEUE)}: the entry after line ${sep + 1} does not begin with a "## " title`);
     }
+    // Two titles between one pair of `---` lines would be filed, moved and
+    // deleted as one entry.
+    for (let i = from + 1; i < to; i++) {
+      if (bare(lines[i]).startsWith("## ")) {
+        throw new Fail(`${rel(QUEUE)}: line ${i + 1} starts a second entry with no "---" line before it`);
+      }
+    }
     return { k, sep, end, from, to, title: bare(lines[from]) };
   });
   const seen = new Set();
