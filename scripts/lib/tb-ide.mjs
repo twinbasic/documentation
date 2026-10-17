@@ -19,6 +19,7 @@ import { click, pagePicture } from "./tb-click.mjs";
 import { removeTree, removeTreeAsync } from "./tb-ide-copy.mjs";
 import { consoleMark, keepClears, keptClears, linesSince, readConsole } from "./tb-ide-console.mjs";
 import { unsupportedIde } from "./tb-install.mjs";
+import { timing, timingProject, timingsOn } from "./tb-timings.mjs";
 import { watchCompiles } from "./tb-wire.mjs";
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -265,10 +266,18 @@ export async function launchIde({
   const tooOld = unsupportedIde(exe);
   if (tooOld) throw new Error(tooOld);
   if (port != null) await waitForPort(port);
+  const t0 = Date.now();
   const own = slot ? null : await leaseSlot({ tag: `IDE ${path.basename(project || exe)}` });
   const s = slot ?? own;
   try {
-    return await startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags });
+    const leased = Date.now();
+    const started = await startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags });
+    timing("launch", {
+      project: project ? path.resolve(project) : null,
+      leaseMs: leased - t0,
+      ms: Date.now() - leased,
+    });
+    return started;
   } catch (e) {
     await own?.release();
     throw e;
@@ -1089,6 +1098,10 @@ export async function waitForCompile(c, { project, timeout }) {
     safe = false,
     agreed = null,
     early = false;
+  // For tb-timings.mjs only: when the project was reported open, and why the wait ended.
+  let loadedAt = null,
+    ended = "timeout";
+  timingProject(c, path.resolve(project));
   // Samples come once a second, as they always have, and only those count a
   // drop of the status: a sample taken early, because the wire saw a compile
   // end, could otherwise count one flap twice. Standing still is measured in
@@ -1110,23 +1123,30 @@ export async function waitForCompile(c, { project, timeout }) {
     }
     const v = JSON.parse(s);
     if (!loaded) {
-      if (v.p && normPath(v.p) === want) loaded = true;
-      else continue;
+      if (v.p && normPath(v.p) === want) {
+        loaded = true;
+        loadedAt = now;
+      } else continue;
     }
     if (v.crash) {
       // Caught on sight, but reported with the file the compiler died parsing,
       // which only a later crash names -- see awaitCrashName.
       crash = await awaitCrashName(c, v.crash);
+      ended = "crash";
       break;
     }
     if (v.safe) {
       safe = true;
       last = s;
+      ended = "safe";
       break;
     }
     const up = v.st === "tB Services: OPERATIONAL";
     if (up) seenUp = true;
-    else if (seenUp && scheduled && ++drops >= 2) break;
+    else if (seenUp && scheduled && ++drops >= 2) {
+      ended = "drops";
+      break;
+    }
     if (wire) {
       // The wire's compile ends with its last source file, and the sample must
       // show the same counts before it is believed: the page draws a little
@@ -1142,6 +1162,7 @@ export async function waitForCompile(c, { project, timeout }) {
         else if (now - agreed.at >= EARLY_QUIET_MS) {
           last = s;
           early = true;
+          ended = "early";
           break;
         }
         next = Math.min(next, agreed.at + EARLY_QUIET_MS);
@@ -1151,8 +1172,46 @@ export async function waitForCompile(c, { project, timeout }) {
       }
     }
     if (!up || s !== last) stableSince = now;
-    else if (now - stableSince >= 5000) break;
+    else if (now - stableSince >= 5000) {
+      ended = "still";
+      break;
+    }
     last = s;
+  }
+  if (timingsOn) {
+    // The compile as the wire saw it, and as the samples did: `settledAt` is
+    // when the sample first showed the final state (for a wait that ended by
+    // standing still) or when the wire and the sample first agreed (early).
+    const history = wire?.compiles() ?? [];
+    const w = history.at(-1) ?? null;
+    const doneAt = Date.now();
+    const settledAt = ended === "early" ? agreed?.at : ended === "still" ? stableSince : null;
+    let counts = null;
+    try {
+      const v = JSON.parse(last ?? "null");
+      if (v) counts = [v.e, v.w, v.h, v.i].map(Number);
+    } catch {
+      /* no sample */
+    }
+    timing(
+      "compile",
+      {
+        ended,
+        timeout,
+        waitMs: doneAt - t0,
+        loadMs: loadedAt === null ? null : loadedAt - t0,
+        settleMs: settledAt == null || loadedAt === null ? null : settledAt - loadedAt,
+        wireSeq: w?.seq ?? null,
+        wireMs: w?.started && w?.ended ? w.ended - w.started : null,
+        wireStartFromWait: w?.started ? w.started - t0 : null,
+        wireFiles: w?.files ?? null,
+        // Every compile the wire saw, as [seq, start from the wait's start, ms, files].
+        wire: history.map((h) => [h.seq, h.started - t0, h.ended === null ? null : h.ended - h.started, h.files]),
+        drops,
+        counts,
+      },
+      c,
+    );
   }
   return { loaded, crash, safe, drops, last, blocked: !!c.pageBlocked, early };
 }
@@ -1299,10 +1358,15 @@ export async function setBuildTarget(c, arch, { project, timeout }) {
   if (!before.options.includes(arch)) {
     throw new Error(`the build configuration box offers ${before.options.join(", ")}, not ${arch}`);
   }
-  if (before.value === arch) return { from: before.value, waited: null };
+  if (before.value === arch) {
+    timing("target", { arch, from: before.value, restartMs: null }, c);
+    return { from: before.value, waited: null };
+  }
   if (!before.pid) throw new Error("the IDE has no compiler process to restart for another target");
+  const t0 = Date.now();
   await c.evaluate(`buildConfigSelector.value = ${JSON.stringify(arch)}; buildConfigSelector.onchange()`);
   await awaitNewCompiler(c, before.pid, { why: `switching the build target to ${arch}` });
+  timing("target", { arch, from: before.value, restartMs: Date.now() - t0 }, c);
   const now = await read();
   if (now?.value !== arch) throw new Error(`the build target went back to ${now?.value} after the switch`);
   return { from: before.value, waited: await waitForCompile(c, { project, timeout }) };
@@ -1493,24 +1557,47 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
   // already on record before this build are not this build's.
   const keeping = await keepClears(c).catch(() => false);
   const clearsBefore = keeping ? ((await keptClears(c)) ?? []).length : 0;
+  const tPress = Date.now();
   try {
     await pressBuild(c);
   } catch (e) {
+    timing("build", { ended: "press", pressMs: Date.now() - tPress }, c);
     return { ok: false, log: [], message: e.message };
   }
   const t0 = Date.now();
   let log = [],
-    failedAt = 0;
+    failedAt = 0,
+    startAt = null;
+  // For tb-timings.mjs: from the press to the build's first line, and from there to its end.
+  const note = (ended) =>
+    timing(
+      "build",
+      {
+        ended,
+        timeout,
+        pressMs: t0 - tPress,
+        startMs: startAt === null ? null : startAt - t0,
+        buildMs: startAt === null ? null : Date.now() - startAt,
+      },
+      c,
+    );
   while (Date.now() - t0 < timeout) {
     await sleep(250);
     const lines = await buildLines(c, mark, keeping ? clearsBefore : null);
     const start = lines.indexOf(BUILD_START);
     if (start < 0) continue;
+    startAt ??= Date.now();
     log = lines.slice(start);
     const ok = log.map((l) => BUILD_OK.exec(l)).find(Boolean);
-    if (ok) return { ok: true, file: ok[1], log };
+    if (ok) {
+      note("linked");
+      return { ok: true, file: ok[1], log };
+    }
     const pkg = log.findIndex((l) => PACKAGE_FILE.test(l));
-    if (pkg >= 0 && log.includes(PACKAGE_OK, pkg)) return { ok: true, file: PACKAGE_FILE.exec(log[pkg])[1], log };
+    if (pkg >= 0 && log.includes(PACKAGE_OK, pkg)) {
+      note("package");
+      return { ok: true, file: PACKAGE_FILE.exec(log[pkg])[1], log };
+    }
     // Not every such line need end the build -- the strings include "[BUILD]
     // failed to use project.iconForm setting", and whether a build goes on
     // after that one has not been seen -- so one decides only after two
@@ -1518,9 +1605,11 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
     const failed = (l) => BUILD_FAILED.test(l) || BUILD_CRASHED.test(l);
     if (!failedAt && log.some(failed)) failedAt = Date.now();
     if (failedAt && Date.now() - failedAt > 2000) {
+      note("failed");
       return { ok: false, message: log.find(failed), log };
     }
   }
+  note("timeout");
   return {
     ok: false,
     log,

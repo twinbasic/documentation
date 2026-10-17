@@ -7,6 +7,8 @@ export function watchCompiles(c) {
   let seq = 0;
   let expected = [];
   let waiters = [];
+  // The last few compiles, for tb-timings.mjs (`compiles`).
+  const history = [];
   const socks = new Set();
   const wake = () => {
     const w = waiters;
@@ -17,7 +19,9 @@ export function watchCompiles(c) {
   const take = (o, id) => {
     if (o.event === "compilationStarted") {
       socks.add(id);
-      cur = { seq: ++seq, gen, done: new Map() };
+      cur = { seq: ++seq, gen, done: new Map(), started: Date.now() };
+      history.push(cur);
+      if (history.length > 10) history.shift();
     } else if (o.method === "textDocument/publishDiagnostics" && cur && o.params?.uri) {
       socks.add(id);
       const p = o.params;
@@ -51,7 +55,17 @@ export function watchCompiles(c) {
       if (!Array.isArray(uris) || !complete(uris)) return null;
       const counts = [0, 0, 0, 0];
       for (const { n } of cur.done.values()) for (let k = 0; k < 4; k++) counts[k] += n[k] || 0;
-      return { seq: cur.seq, counts, at: Math.max(...uris.map((u) => cur.done.get(u).at)) };
+      // `started` is when the compile's compilationStarted arrived (tb-timings.mjs).
+      return { seq: cur.seq, counts, at: Math.max(...uris.map((u) => cur.done.get(u).at)), started: cur.started };
+    },
+    // The last few compiles as the wire saw them, oldest first, for
+    // tb-timings.mjs: when each started, when its last file's diagnostics
+    // arrived, and how many files had them.
+    compiles() {
+      return history.map((h) => {
+        const ats = [...h.done.values()].map((d) => d.at);
+        return { seq: h.seq, started: h.started, ended: ats.length ? Math.max(...ats) : null, files: ats.length };
+      });
     },
     changed(ms) {
       return new Promise((resolve) => {

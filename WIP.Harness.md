@@ -841,6 +841,26 @@ detached in no job, so the server outlives the tool's own job too; a tool starte
 that allows no breakaway would still have the server in that job (the vendored README's open
 item).
 
+### Timing each phase: `TB_TIMINGS`
+
+**Set `TB_TIMINGS=<file>` and every tool that goes through `tb-ide.mjs` appends one JSON line per
+phase to that file** (`scripts/lib/tb-timings.mjs`): `launch` (slot lease and IDE start),
+`compile` (`waitForCompile`: load, the compile as the wire saw it, and how the wait ended:
+`early`, `still`, `safe`, `drops`, `crash` or `timeout`), `target`, `build` (`buildProject`),
+`run` (`captureRun`: press, build, link, Executing, last output), `project` (`compileProject`'s
+whole call) and, in `check_examples`, `batch` (what the batch holds). Every line has `at`, `pid`,
+`tool`, `phase` and `project`, and is appended whole, so lanes and processes share one file.
+Unset, nothing is written and nothing else changes.
+
+What it showed on BETA 1010 (350 compiles: `check_examples --build` and `--llvm`, every
+`addin_test` lane, `tbbuild`/`tbrun` probes on both arches), median / p95 / max in seconds: IDE
+start to project open 2.85 / 3.46 / 4.04; the compiler's own compile, `compilationStarted` to the
+last file's diagnostics, 0.03 / 0.08 / 0.30; the whole wait `COMPILE_TIMEOUT` bounds 3.33 / 5.34 /
+13.8, its tail the 5 s stand-still `waitForCompile` needs when a package's own files have errors
+(WinReg, ArrayListLib), where the early path never agrees; a build, Build pressed to linked, at
+most 1.0 (4.97 with LLVM); a `[RunAfterBuild]` run at most 0.83 (25.3 with LLVM, one of them
+printing for 15 s and finishing). None reached a timeout.
+
 ### Building for win64
 
 **`tbrun` and `tbbuild` take `--arch win32|win64`, and set it on every run, win32

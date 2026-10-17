@@ -38,6 +38,7 @@
 // one call's, so a tool that runs many calls installs a handler through
 // exitOnCrash's cleanup (see sweep_attributes.mjs's `salvage`).
 
+import path from "node:path";
 import {
   COMPILE_TIMEOUT,
   TARGETS,
@@ -51,6 +52,7 @@ import {
   waitForCompile,
 } from "./tb-ide.mjs";
 import { captureRun, checkCapture } from "./tb-run.mjs";
+import { timing } from "./tb-timings.mjs";
 
 /**
  * @param {object} o
@@ -109,7 +111,12 @@ export async function compileProject({
 }) {
   let handle = null;
   let c = null;
-  const result = (code, fields = {}) => ({
+  const t0 = Date.now();
+  const result = (code, fields = {}) => {
+    timing("project", { project: path.resolve(project), code, arch, llvm, build, run: !!run, ms: Date.now() - t0 });
+    return outcomeOf(code, fields);
+  };
+  const outcomeOf = (code, fields) => ({
     code,
     message: "",
     rows: [],

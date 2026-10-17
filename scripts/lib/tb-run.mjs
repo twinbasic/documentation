@@ -13,6 +13,7 @@
 
 import { BUILD_FAILED, pressBuild } from "./tb-ide.mjs";
 import { keepClears, keptClears, readConsole } from "./tb-ide-console.mjs";
+import { timing, timingsOn } from "./tb-timings.mjs";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -65,13 +66,26 @@ export async function captureRun(c, { done = () => false, quietMs, timeoutMs }) 
     );
   }
   // A real press/release pair; element.click() is ignored.
+  const pressed = Date.now();
   await pressBuild(c);
 
   const started = Date.now();
   let last = "",
     lastChange = Date.now(),
     seen = false,
-    timedOut = true;
+    timedOut = true,
+    ended = "timeout";
+  // For tb-timings.mjs only: when the build's first line, its link line and the
+  // Sub's Executing line were first seen, in the console or in what a clear erased.
+  const marks = { start: null, linked: null, exec: null };
+  const markLines = async (now) => {
+    if (!timingsOn) return;
+    const text = [...((await keptClears(c).catch(() => null)) ?? []), now].join("\n");
+    const at = Date.now();
+    if (marks.start === null && text.includes("[BUILD] Starting...")) marks.start = at;
+    if (marks.linked === null && /\[LINKER\] SUCCESS created output file/.test(text)) marks.linked = at;
+    if (marks.exec === null && /\[BUILD\] Executing '/.test(text)) marks.exec = at;
+  };
   while (Date.now() - started < timeoutMs) {
     await sleep(400);
     const now = await readConsole(c);
@@ -85,17 +99,37 @@ export async function captureRun(c, { done = () => false, quietMs, timeoutMs }) 
     if (now !== last) {
       last = now;
       lastChange = Date.now();
+      await markLines(now);
       const lines = strip(now);
       if (lines.length) seen = true;
       if (done(lines)) {
         timedOut = false;
+        ended = "done";
         break;
       }
     } else if (seen && Date.now() - lastChange > quietMs) {
       timedOut = false;
+      ended = "quiet";
       break;
     }
   }
+  const rel = (at, from) => (at === null || from === null ? null : at - from);
+  timing(
+    "run",
+    {
+      ended,
+      quietMs,
+      timeoutMs,
+      pressMs: started - pressed,
+      startMs: rel(marks.start, started),
+      buildMs: rel(marks.linked, marks.start),
+      toExecMs: rel(marks.exec, marks.linked),
+      runMs: rel(lastChange, marks.exec),
+      lastChangeMs: lastChange - started,
+      waitMs: Date.now() - started,
+    },
+    c,
+  );
   const captured = strip(last);
   const kept = await keptClears(c);
   if (!kept) {

@@ -148,6 +148,7 @@ import {
   runRefusal,
 } from "./lib/example-run.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
+import { timing } from "./lib/tb-timings.mjs";
 import { leaseSlot, wantShow } from "./lib/tb-ide.mjs";
 import { asksForLlvm, holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
@@ -712,6 +713,18 @@ function recordRun(staged, cap) {
   }
 }
 
+/** What a staged batch holds, for TB_TIMINGS (lib/tb-timings.mjs). */
+const timingBatch = (batch, staged) =>
+  timing("batch", {
+    project: path.resolve(staged.proj),
+    template: batch.project,
+    samples: batch.fences.length,
+    runs: staged.runs.length,
+    canary: !!batch.canary,
+    llvm: LLVM,
+    build: BUILD,
+  });
+
 /** Build one staged batch; returns per-fence errors, or a crash marker. */
 /**
  * Take one batch of an exclusion's canary to its stage, once: no second build,
@@ -719,6 +732,7 @@ function recordRun(staged, cap) {
  */
 async function buildCanary(batch, slot, work) {
   const staged = stageBatch(batch, work);
+  timingBatch(batch, staged);
   const run = staged.runs.length
     ? { done: (lines) => lines.some((l) => l.trim() === RUN_DONE), quietMs: RUN_QUIET_MS, timeoutMs: RUN_TIMEOUT_MS }
     : null;
@@ -846,6 +860,7 @@ function laneOf(slot, work) {
   return {
     async build(batch) {
       const staged = stageBatch(batch, work);
+      timingBatch(batch, staged);
       const result = await buildStaged(staged, slot);
       if (!values.keep) rmSync(staged.dir, { recursive: true, force: true });
       return result;
