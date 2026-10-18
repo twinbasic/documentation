@@ -586,13 +586,11 @@ The probe is a module with a `[RunAfterBuild]` Sub, which the IDE runs once the 
 linked. Reader-facing documentation is the [`tbrun.mjs` entry in
 Tools-Compiler.md](docs/Documentation/Tools-Compiler.md#tbrun).
 
-**The script owns the tree because of a silent trap.** A project whose `project.buildPath`
-is still the default `${SourcePath}\Build\...` template opens a native *Save* dialog when
-you build it. On the private desktop that dialog is invisible and unreachable, so the build
-simply never happens --- and **the WebView2 renderer stays responsive throughout**, so
-`Runtime.evaluate` answers normally and every health check says the IDE is fine. `tbrun`
-pins the path in its staged copy, which is why it insists on a source tree it can edit
-rather than a packed project it cannot.
+**The script owns the tree** so that it can pin `project.buildPath` in its staged copy and
+know where the built file is, which is why it insists on a source tree it can edit rather than
+a packed project it cannot. The default `${SourcePath}\Build\...` path opens no dialog: a
+project opened from a `.twinproj` with it builds, and the compiler makes `Build\` itself
+(BETA 1010 and 1007, packed by `impexp` or from the template, in a new folder, built twice).
 
 Rules it follows:
 
@@ -935,11 +933,10 @@ built it, not in the binary:
 The first three are decided when compiling; the last three can only come from the running
 process, and they agree.
 
-**The build path's folder has to be explicit; its file name need not be.** `tbrun` builds
+**The build path's file name need not be explicit.** `tbrun` builds
 into its own `out` folder under the IDE's own name,
 `${ProjectName}_${Architecture}.${FileExtension}`, giving `ArchProbe_win32.exe` and
-`ArchProbe_win64.exe` with no Save dialog --- so the trap above comes from the default
-`${SourcePath}\Build\...`, not from the variables. The name is looked for after the build
+`ArchProbe_win64.exe`. The name is looked for after the build
 rather than assumed, because `${FileExtension}` follows the build type.
 
 **A switch of target is not saved.** The IDE saves the target it last built a project for
