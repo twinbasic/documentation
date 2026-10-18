@@ -417,6 +417,63 @@ none, which `New Project.md` also shows).
   button before the export, and emptied again afterwards; the shot is the setup's last. The
   times are set in the page (`fixConsoleTimes`). Both lines fit with no scrolling.
 
+## The "Building" chapter
+
+Six setups, their fixtures under `test/shots/building/`, copied from the Building lanes'
+`test/ide/probes/building-{exe,ax,pkg}`: `exe` is Program, a Standard EXE whose Sub Main waits a
+minute (so that a second build finds its file in use), `ax` is ShotActiveX, an ActiveX DLL whose
+class has GUIDs of its own (`B01D...B001` to `B003`, not the lanes', so that a lane and a shot run
+at once never share a registration), and `pkg` is MyPackage, a PRIVATE package. Each project is
+staged in a folder of the tool's own on `PACKAGE_ROOT` named for its setup (`C:\tbshots\Building`
+and so on), with the templates' build path, so that a console line names no user; the setup's
+`end` removes the folder once its IDE has ended. Its 14 pictures
+are under `docs/IDE/Building/Images/`.
+
+- **`building`** (exe): the console after a build, a failed build and a build refused by the
+  running exe, the configuration box's list, and the safe-mode box. **`building-new`**: an IDE with
+  no project, then New Project's Standard EXE tile, Open and Continue, for the box Build opens on a
+  project with no file. **`building-ax`**: Clean after a build of `ax`. **`building-hklm`**: `ax`
+  with Register DLLs to HKLM, packed before an IDE with no project starts and opened from the
+  Recent list by the warning's picture (the IDE is not elevated, so nothing registers).
+  **`building-llvm`**: `exe` with `+llvm`. **`building-pkg`**: `pkg`.
+- **The console is floated 900 wide and grown a row at a time until the picture's lines show
+  whole** (`fitConsole`): its rows are in a `.listItems` box that clips them, and its list keeps
+  copies of rows that are not shown, so a row or a link is judged by where it is drawn
+  (`elementFromPoint` for a link). Then it settles, and only then are its times set in the page,
+  and the LOCKED BY pid set to 4120 (the page's own example): a resize draws the rows again.
+- **The console's scroll bar thumb is put at the top of its track in the page**
+  (`fixConsoleThumb`). Its lines fit, so the thumb is the track's whole height, but the console
+  leaves it a few pixels up or down where an earlier length of the list put it, differently from
+  run to run; the shot fails if the thumb is not the whole track.
+- **The IDE behind the console is hidden for the capture**, its ancestors' other children marked
+  and set `visibility: hidden`, on a ground of the panel's colour, with no shadow. The SVG
+  otherwise draws the IDE under the panel, and the editor there is laid out a pixel taller or
+  shorter from run to run. It is not a cut-out (`keep`): that sets everything inside the panel
+  visible, and the console's hidden copies of its rows would show over the real ones.
+- **The locked exe is started with Launch EXE** (a real click; the compiler runs it on the IDE's
+  desktop) and ended with Terminate after the capture; the shot waits for the exe's end by its pid
+  and the console's `exited` line, and ends it by its pid if it still runs.
+- **Safe_Mode** opens the box with a click and chooses with Down and Enter, twice (win64, then
+  safeMode, each a compiler restart), and goes back with Ctrl+F2. **Configuration_List** is the
+  toolbar's group between its splitters, the list a replica (`listClip`); the Light theme's list
+  is shorter.
+- **Every ActiveX build is followed by Clean**, in a `finally`. The HKLM project's Clean shows the
+  Delete It And Continue box, whose Cancel stops it, and the DLL (registered nowhere) is deleted from
+  the setup's folder. A setup's `end`, run once its IDE has ended, checks that none of the
+  fixture's keys (`axShotKeys`: class, interface, type library and ProgID, both views, HKCU and
+  HKLM) exists, and reports one that does; nothing removes a key.
+- **Compiling** holds the build's last progress event (-1) in the page until the capture, so the
+  box stays at the 0.0% the compiler sends before it (LLVM sends no other value). The setup leases
+  the LLVM cache before its IDE starts (`holdLlvmCache`) and its `end` releases it; a Community or
+  Personal licence fails the setup.
+- **Nothing reaches the package server**: `building-pkg` installs the Building lanes' `guard`
+  (CDP blocks `*everythingaccess*`, the page's XMLHttpRequest and fetch send nowhere and record), and
+  each picture fails on a recorded request or a `[PUBLISH] attempting` line. The saved publisher
+  name and password are emptied in the page; Publish_Confirm sets a made-up publisher
+  (`ExamplePublisher`) and a session id in the page and cancels the box; Publish_Result is the
+  IDE's own `showModalNotification` with the success text. The pane floats at the bottom left, out
+  from behind the boxes.
+
 ## Special IDE states
 
 - **`Services_Unavailable`**: the badge in the `no-project` setup. With no project the badge's

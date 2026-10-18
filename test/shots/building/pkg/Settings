@@ -1,0 +1,29 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Package TWINPACK",
+	"project.description": "Greeting functions",
+	"project.id": "{EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA00}",
+	"project.licence": "MIT",
+	"project.name": "MyPackage",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"versionMajor": 2,
+			"versionMinor": 0
+		}
+	],
+	"project.versionMajor": 1,
+	"project.versionMinor": 0,
+	"project.warnings": {
+		"errors": [],
+		"ignored": []
+	},
+	"runtime.useUnicodeStandardLibrary": true,
+	"project.packageVisibility": "PRIVATE"
+}

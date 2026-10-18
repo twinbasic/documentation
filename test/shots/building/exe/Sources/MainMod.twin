@@ -1,0 +1,11 @@
+Module MainMod
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal ms As Long)
+
+    ' Runs for a minute at most, so that a second build finds its file in use.
+    Public Sub Main()
+        Dim i As Long
+        For i = 1 To 600
+            Sleep 100
+        Next
+    End Sub
+End Module

@@ -184,11 +184,14 @@ import { dropBundle, writeBundle } from "./svgshot/bundle.mjs";
 import { svgOfPage } from "./svgshot/capture.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
 import { holdsUserName, judgeSvg, SVG_FAITHFUL, writeSvg } from "./svgshot/keep.mjs";
-import { unpackProject } from "./lib/tb-project.mjs";
+import { stageProject, unpackProject } from "./lib/tb-project.mjs";
+import { holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
+import { guard, presentKeys, press, serverRequests } from "../test/ide/building-kit.mjs";
 import { checkHarness } from "./lib/harness-settings.mjs";
 import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
 import {
+  answerMessageBox,
   click,
   clickAt,
   editorText,
@@ -978,7 +981,10 @@ const setRecents = (c, entries) =>
 // A setup is one IDE: `start` which opens it and returns the connection,
 // `prepare` which brings it to a state the shots start from and returns their
 // context, and `port` when it needs a port chosen before it is bound (the help
-// add-in's detached window), which its slot then carries. `run` holds the lane,
+// add-in's detached window), which its slot then carries; `end`, when given, runs
+// once the IDE has ended, whatever happened, to check or give back what the setup
+// holds (a lease, the registry the Building setups' ActiveX builds wrote and
+// cleaned). `run` holds the lane,
 // its slot (tbbroker: the IDE's private desktop), the work folder and what the
 // setup has to put back.
 
@@ -1469,6 +1475,25 @@ const SETUPS = {
   projects: { start: startProjects(), prepare: prepareSample },
   "projects-refs": { start: startProjects({ refs: true }), prepare: prepareProjectsRefs },
   "projects-start": { start: startNoProject, prepare: prepareNoProject },
+  building: { start: (run) => startBuilding("exe", "Building")(run), prepare: prepareSample, end: endBuilding },
+  "building-new": { start: startNoProject, prepare: prepareBuildingNew },
+  "building-ax": {
+    start: (run) => startBuilding("ax", "BuildingActiveX")(run),
+    prepare: prepareBuildingAx,
+    end: endBuilding,
+  },
+  "building-hklm": { start: startBuildingHklm, prepare: prepareNoProject, end: endBuilding },
+  "building-llvm": {
+    start: (run) =>
+      startBuilding("exe", "BuildingLLVM", { settings: { "compiler.buildOptions": "+llvm" }, llvm: true })(run),
+    prepare: prepareBuildingLlvm,
+    end: endBuilding,
+  },
+  "building-pkg": {
+    start: (run) => startBuilding("pkg", "BuildingPackage")(run),
+    prepare: prepareBuildingPkg,
+    end: endBuilding,
+  },
   customcontrols: { start: startCustomControls, prepare: prepareWithDesigners },
   code: { start: startCode, prepare: prepareSample },
   sample9: { start: startSample9, prepare: prepareSample },
@@ -6388,6 +6413,857 @@ const RECENT_GONE = [
   "C:\\Projects\\Inventory\\Inventory.twinproj",
   "C:\\Projects\\MyProject\\MyProject.twinproj",
   "C:\\Projects\\Reports\\Reports.twinproj",
+];
+
+// ---------------------------------------------------------------- the Building chapter
+
+// The pictures of docs/IDE/Building/ (setups building, building-new, building-ax,
+// building-hklm, building-llvm and building-pkg). The fixtures are test/shots/building/: exe
+// (Program, a Standard EXE whose Sub Main waits a minute), ax (ShotActiveX, an ActiveX DLL with
+// one class of fixed GUIDs) and pkg (MyPackage, a PRIVATE package). Each project is staged in a
+// folder of the tool's own on PACKAGE_ROOT, named for its setup, with the templates' build
+// path, so that the DEBUG CONSOLE's lines name no user: the files a build writes go into that
+// folder's Build. Every picture builds what it shows and leaves the IDE as it found it.
+
+const BUILDING = path.join(REPO_ROOT, "test", "shots", "building");
+const BD_IMAGE = (name) => `IDE/Building/Images/${name}.png`;
+const BD_FILE = (rest) => `/Program/${rest}`;
+const BD_BUILD_PATH = "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}";
+// The folder a setup's project is staged in, emptied first.
+const buildingFolder = (name) => {
+  const dir = path.join(PACKAGE_ROOT, name);
+  rmSync(dir, { recursive: true, force: true });
+  return dir;
+};
+// The setup's folder, recorded for its `end`, which removes it.
+const runFolder = (run, name) => {
+  run.buildingDir = buildingFolder(name);
+  return run.buildingDir;
+};
+
+// A copy of the fixture `name` in the work folder, its Settings changed by `settings`.
+function stageBuilding(run, name, settings = {}) {
+  const src = path.join(run.work, `${name}-src`);
+  rmSync(src, { recursive: true, force: true });
+  cpSync(path.join(BUILDING, name), src, { recursive: true });
+  const file = path.join(src, "Settings");
+  const s = JSON.parse(readFileSync(file, "utf8"));
+  writeFileSync(file, `${JSON.stringify({ ...s, ...settings }, null, "\t")}\n`);
+  return src;
+}
+
+// `llvm`: the LLVM cache server leased before the IDE starts, so that it is never one this
+// IDE's compiler starts in its own job (tb-llvm-cache.mjs); the setup's `end` releases it.
+const startBuilding =
+  (name, folder, { settings = {}, llvm = false } = {}) =>
+  async (run) => {
+    if (llvm) run.lease = await holdLlvmCache(ide);
+    run.step = "open";
+    const dir = runFolder(run, folder);
+    say(run.name, `opening ${path.relative(REPO_ROOT, path.join(BUILDING, name))} in ${dir}`);
+    return run.lane.open(stageBuilding(run, name, settings), { folder: dir, buildPath: BD_BUILD_PATH });
+  };
+
+// The keys a build of the ax fixture can write, in HKCU and HKLM, both views: its class's
+// GUIDs, its ProgID and its type library, whose id is the project's.
+const AX_SHOT_IDS = ["B001", "B002", "B003"].map((x) => `{B01D0000-0000-4000-8000-00000000${x}}`);
+function axShotKeys(projectId) {
+  const rel = [
+    ...AX_SHOT_IDS.flatMap((g) => [
+      `CLSID\\${g}`,
+      `Interface\\${g}`,
+      `WOW6432Node\\CLSID\\${g}`,
+      `WOW6432Node\\Interface\\${g}`,
+    ]),
+    `TypeLib\\${projectId}`,
+    `WOW6432Node\\TypeLib\\${projectId}`,
+    "ShotActiveX.MyClass",
+  ];
+  return ["HKCU\\Software\\Classes", "HKLM\\Software\\Classes"].flatMap((r) => rel.map((k) => `${r}\\${k}`));
+}
+
+// The ax project's keys, from the id the lane gave it, and a check that none exists yet.
+async function prepareBuildingAx(run) {
+  const ctx = await prepareSample(run);
+  const id = await run.c.evaluate(`new Promise((done) => getProjectSettings((s) => done(s["project.id"])))`, {
+    awaitPromise: true,
+  });
+  run.axKeys = axShotKeys(id);
+  const left = presentKeys(run.axKeys);
+  if (left.length) throw new Error(`the ax fixture's keys exist before any build: ${left.join(", ")}`);
+  return ctx;
+}
+
+// At a setup's end, its IDE gone: a key of the ax fixture's still in the registry is reported,
+// never removed (nothing here writes the registry), the LLVM lease is released, and the
+// setup's folder on PACKAGE_ROOT is removed (PACKAGE_ROOT itself stays when it was there before
+// the run).
+async function endBuilding(run) {
+  run.lease?.release();
+  if (run.buildingDir) rmSync(run.buildingDir, { recursive: true, force: true });
+  if (run.axKeys) {
+    const left = presentKeys(run.axKeys);
+    if (left.length) throw new Error(`the ax fixture's keys are in the registry: ${left.join(", ")}`);
+    say(run.name, "none of the ax fixture's registry keys exists, in HKCU or HKLM");
+  }
+}
+
+// building-hklm: the ax fixture with Register DLLs to HKLM, packed into its folder before an
+// IDE with no project starts, and opened from the Recent list by the picture of the warning
+// the IDE shows as it opens it (the IDE is not elevated). Nothing registers: HKLM refuses.
+const hklmProject = () => path.join(PACKAGE_ROOT, "BuildingHKLM", "project.twinproj");
+async function startBuildingHklm(run) {
+  const dir = runFolder(run, "BuildingHKLM");
+  mkdirSync(dir, { recursive: true });
+  stageProject({
+    src: stageBuilding(run, "ax", { "project.dllRegisterLocalMachine": true }),
+    stage: path.join(run.work, "hklm-stage"),
+    project: hklmProject(),
+    settings: { "project.buildPath": BD_BUILD_PATH, "project.id": "{B01D0000-0000-4000-8000-00000000B0F0}" },
+  });
+  run.axKeys = axShotKeys("{B01D0000-0000-4000-8000-00000000B0F0}");
+  const left = presentKeys(run.axKeys);
+  if (left.length) throw new Error(`the ax fixture's keys exist before any build: ${left.join(", ")}`);
+  return startNoProject(run);
+}
+
+// building-pkg: the package server blocked in the page and by CDP for the whole setup
+// (building-kit.mjs's guard, which also records any request), and the saved publisher name
+// and password emptied, in the page only.
+async function prepareBuildingPkg(run) {
+  const ctx = await prepareSample(run);
+  await guard(run.c);
+  await run.c.evaluate(`packagePublisherName = ""; packagePublisherPassword = ""; packagePublisherSessionID = ""`);
+  return ctx;
+}
+
+// building-llvm: LLVM needs a licence that allows it, which the lane's IDE reads from the
+// user's settings; a Community or Personal one refuses the build, and the setup with it.
+async function prepareBuildingLlvm(run) {
+  const ctx = await prepareSample(run);
+  const { c } = run;
+  if (
+    !(await waitFor(c, () => c.evaluate("licenceIsSet === true && !!compilerLicence.innerText"), {
+      timeout: 60000,
+      interval: 250,
+    }))
+  ) {
+    throw new Error("the compiler never answered the licence check");
+  }
+  const edition = await c.evaluate("compilerLicence.innerText");
+  if (/COMMUNITY|PERSONAL/i.test(edition)) throw new Error(`the licence (${edition}) refuses an LLVM build`);
+  return ctx;
+}
+
+// Throws when the page has made a request to the package server, or started a publish.
+async function noServerRequests(c) {
+  const seen = await serverRequests(c);
+  if (seen.length) throw new Error(`a request to the package server: ${seen.join(", ")}`);
+  if ((await consoleText(c)).includes("[PUBLISH] attempting")) throw new Error("a publish was started");
+}
+
+// building-new: the IDE with no project, then New Project's Standard EXE tile, Open, and
+// Continue in New Project Options, as a person makes a project: it has no file.
+async function prepareBuildingNew(run) {
+  const ctx = await prepareNoProject(run);
+  const { c } = run;
+  await command(c, "tbProject_New");
+  if (!(await waitModal(c, "New / Open", { timeout: 10000 }))) throw new Error("New Project opened no dialog");
+  await dialogStill(c);
+  const tile = await c.evaluate(`(() => {
+  const e = [...document.querySelectorAll(".frontPageListViewItem")].find((x) => x.getBoundingClientRect().width && x.innerText.trim().startsWith("Standard EXE"));
+  const r = e && e.getBoundingClientRect();
+  return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+})()`);
+  if (!tile) throw new Error("the New tab has no Standard EXE tile");
+  await clickAt(c, tile.x, tile.y);
+  await clickInModal(c, "Open", ".msgBoxButton");
+  if (!(await waitModal(c, "New Project Options", { timeout: 60000 }))) {
+    throw new Error("Open on Standard EXE did not show the New Project Options dialog");
+  }
+  await dialogStill(c);
+  await closeModal(c, "Continue");
+  if (
+    !(await waitFor(c, async () => (await c.evaluate("licenceIsSet === true")) && !(await modals(c)).length, {
+      timeout: 60000,
+      interval: 250,
+    }))
+  ) {
+    throw new Error("the new project's compiler never answered the licence check");
+  }
+  // the new project's form opens in the editor a while after its compiler answers
+  await dialogStill(c, { ms: 1500, timeout: 20000, root: "document.body", what: "IDE" });
+  // and is closed: its designer's grid, behind the box, is drawn a little differently each
+  // time, which changed the picture's SVG
+  await closeTabs(c, [], { discard: true });
+  await parkMouse(c);
+  return ctx;
+}
+
+// The DEBUG CONSOLE floated on its own, wide enough for a build's longest line, and emptied.
+const BD_CONSOLE = { width: 900, height: 96 };
+async function buildConsole(c) {
+  await floatPanel(c, "DEBUG CONSOLE", BD_CONSOLE);
+  await clearConsole(c);
+}
+
+// The floated console grown a line at a time until `lines` lines show whole in it: it draws
+// its lines in a box of its own (.listItems), which clips them, with a scroll bar of its own.
+async function fitConsole(c, lines) {
+  const hidden = () =>
+    c.evaluate(`(() => {
+  const p = document.querySelector(${JSON.stringify(panelSel("DEBUG CONSOLE"))});
+  const box = p.querySelector(".listItems").getBoundingClientRect();
+  const rows = [...p.querySelectorAll(".listItems .listitem")].map((e) => e.getBoundingClientRect()).filter((r) => r.height);
+  if (rows.length >= ${lines} && rows.every((r) => r.top >= box.top && r.bottom <= box.bottom)) return false;
+  p.style.height = (p.getBoundingClientRect().height + (rows[0]?.height ?? 20)) + "px";
+  return true;
+})()`);
+  for (let i = 0; i < 12 && (await hidden()); i++) await frames(c);
+  if (await hidden()) throw new Error(`the DEBUG CONSOLE does not show its ${lines} lines`);
+  // the console draws its lines again after a resize: what is clicked or set in the page is
+  // clicked or set after
+  await dialogStill(c, {
+    ms: 500,
+    root: `document.querySelector(${JSON.stringify(panelSel("DEBUG CONSOLE"))})`,
+    what: "console",
+  });
+}
+
+// The console's scroll bar thumb put at the top of its track, in the page. Its lines fit, so
+// the thumb is the track's whole height, but the console leaves it where an earlier length of
+// the list put it (a few pixels up or down, differing from run to run).
+async function fixConsoleThumb(c) {
+  const ok = await c.evaluate(`(() => {
+  const p = document.querySelector(${JSON.stringify(panelSel("DEBUG CONSOLE"))});
+  const thumb = p.querySelector(".scrollBackV > div:nth-child(2) > div");
+  if (!thumb || thumb.style.height !== "100%") return false;
+  thumb.style.top = "0px";
+  return true;
+})()`);
+  if (!ok) throw new Error("the DEBUG CONSOLE's scroll bar thumb is not the whole track");
+}
+
+// The floated console grown to show its `lines` lines, its times and scroll bar set, captured;
+// `fix` sets what else changes from run to run, in the page.
+async function consolePicture(c, name, lines, fix = null) {
+  await fitConsole(c, lines);
+  if (fix) await fix();
+  await fixConsoleTimes(c);
+  await fixConsoleThumb(c);
+  await parkMouse(c);
+  await frames(c);
+  // the IDE behind the panel hidden, on a ground of the panel's colour: the SVG would
+  // otherwise hold it, and its editor is laid out a pixel taller or shorter from run to run.
+  // Not a cut-out (`keep`), which shows every element inside the panel, and the console
+  // keeps hidden copies of its rows there
+  const sel = panelSel("DEBUG CONSOLE");
+  const ground = await groundOf(c, `${sel} .sectionBody`);
+  if (!ground) throw new Error("the DEBUG CONSOLE has no background colour");
+  await c.evaluate(`(() => {
+  for (let e = document.querySelector(${JSON.stringify(sel)}); e.parentElement; e = e.parentElement)
+    for (const s of e.parentElement.children) if (s !== e) s.setAttribute("data-tb-behind", "");
+  const s = document.createElement("style");
+  s.id = "tbBehind";
+  s.textContent = ${JSON.stringify(`[data-tb-behind],[data-tb-behind] *{visibility:hidden !important}html,body,#bodyInner{background:${ground} !important;background-image:none !important}.floatingPanel{box-shadow:none !important}`)};
+  document.head.appendChild(s);
+})()`);
+  try {
+    await frames(c);
+    return await capture(c, name, snapOut(await rectOf(c, sel)), { away: () => parkMouse(c) });
+  } finally {
+    await c.evaluate(`(() => {
+  document.getElementById("tbBehind")?.remove();
+  for (const e of document.querySelectorAll("[data-tb-behind]")) e.removeAttribute("data-tb-behind");
+})()`);
+    await frames(c);
+  }
+}
+
+// The console's link `text`, clicked with the mouse: the one drawn where the mouse reaches it
+// (the console's list keeps copies of its rows that are not shown).
+async function consoleLink(c, text) {
+  const p = await c.evaluate(`(() => {
+  const links = [...document.querySelectorAll(".debugConsoleOuter a")].filter((x) => x.textContent.replace(/\\s+/g, " ").trim() === ${JSON.stringify(text)});
+  for (const e of links.reverse()) {
+    const r = e.getBoundingClientRect();
+    if (!r.width) continue;
+    const x = r.x + r.width / 2, y = r.y + r.height / 2;
+    const at = document.elementFromPoint(x, y);
+    if (at && e.contains(at)) return { x, y };
+  }
+  return null;
+})()`);
+  if (!p) throw new Error(`the DEBUG CONSOLE shows no ${text} link`);
+  await clickAt(c, p.x, p.y);
+}
+
+// The console's lines since `mark` once one matches `re`.
+async function consoleLine(c, mark, re, timeout = 15000) {
+  const lines = await waitFor(
+    c,
+    async () => {
+      const l = await linesSince(c, mark);
+      return l.some((x) => re.test(x)) && l;
+    },
+    { timeout, interval: 150 },
+  );
+  if (!lines) {
+    throw new Error(
+      `the DEBUG CONSOLE printed no line matching ${re}, only: ${(await linesSince(c, mark)).join(" / ")}`,
+    );
+  }
+  return lines.map((l) => l.trim()).find((x) => re.test(x));
+}
+
+// The pid in LOCKED BY's line, set in the page to the one the page's text names.
+const LOCKED_PID = 4120;
+const fixLockedPid = (c) =>
+  c.evaluate(`(() => {
+  const walk = document.createTreeWalker(document.querySelector(".debugConsoleOuter"), NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) n.nodeValue = n.nodeValue.replace(/\\(pid \\d+\\)/, "(pid ${LOCKED_PID})");
+})()`);
+
+const processAlive = (pid) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// The build configuration box's value, and the IDE settled after a switch: the compiler
+// has the project and nothing covers the IDE.
+const configValue = (c) => c.evaluate("buildConfigSelector.value");
+async function configSettled(c, value) {
+  const ok = await waitFor(
+    c,
+    async () =>
+      (await configValue(c)) === value &&
+      (value === "nocompile" || (await c.evaluate("licenceIsSet === true && !(lockUICount > 0)"))) &&
+      !(await modals(c)).some((m) => /Please wait/i.test(m.title)),
+    { timeout: 90000, interval: 250 },
+  );
+  if (!ok) throw new Error(`the build configuration did not settle at ${value}: ${await configValue(c)}`);
+}
+
+// The box opened with a real click, and the next entry chosen with the keys, as a person does.
+async function configDown(c) {
+  const b = await rectOf(c, "#buildConfigSelector");
+  await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+  await sleep(300);
+  await pressKey(c, "ArrowDown");
+  await pressKey(c, "Enter");
+}
+
+// The modal whose text holds `text`: its box (the top one of them).
+const modalHolding = (c, text) =>
+  c.evaluate(`(() => {
+  const m = [...document.querySelectorAll(".modalDialogContainer")].filter((x) => x.getBoundingClientRect().width && x.innerText.includes(${JSON.stringify(text)})).pop();
+  const r = m && m.getBoundingClientRect();
+  return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+
+// A capture of the modal holding `text`, the focus out of it.
+async function modalPicture(c, name, text) {
+  await c.evaluate("document.activeElement?.blur?.()");
+  await parkMouse(c);
+  await frames(c);
+  const box = await modalHolding(c, text);
+  if (!box) throw new Error(`no dialog holds "${text}"`);
+  return capture(c, name, snapOut(box), { away: () => parkMouse(c) });
+}
+
+// The PACKAGE PUBLISHING pane floated, as View > Package Publishing shows it.
+const publishingPane = (c) => floatPanel(c, "PACKAGE PUBLISHING", { width: 300, height: 330, left: 20, top: 520 });
+
+// A real click on the smallest element of the top dialog whose text starts with `text`.
+async function clickInModalStarting(c, text) {
+  const p = await c.evaluate(`(() => {
+  const m = [...document.querySelectorAll(".modalDialogContainer")].filter((x) => x.getBoundingClientRect().width).pop();
+  const area = (e) => e.getBoundingClientRect().width * e.getBoundingClientRect().height;
+  const e = m && [...m.querySelectorAll("*")].filter((x) => area(x) && x.textContent.trim().startsWith(${JSON.stringify(text)})).sort((a, b) => area(a) - area(b))[0];
+  const r = e && e.getBoundingClientRect();
+  return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+})()`);
+  if (!p) throw new Error(`nothing in the top dialog starts "${text}"`);
+  await clickAt(c, p.x, p.y);
+}
+
+// A real click on the element of the PACKAGE PUBLISHING pane whose text is `text`.
+async function paneLink(c, text) {
+  const p = await c.evaluate(`(() => {
+  const e = [...document.querySelectorAll(${JSON.stringify(`${panelSel("PACKAGE PUBLISHING")} *`)})].find((x) => x.children.length === 0 && x.textContent.trim() === ${JSON.stringify(text)} && x.getBoundingClientRect().width);
+  const r = e && e.getBoundingClientRect();
+  return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+})()`);
+  if (!p) throw new Error(`the PACKAGE PUBLISHING pane has no ${text}`);
+  await clickAt(c, p.x, p.y);
+}
+
+// The sign-in box opened from the pane's SIGN IN, once it shows.
+async function signInBox(c) {
+  await publishingPane(c);
+  await paneLink(c, "SIGN IN");
+  if (!(await waitModal(c, "Publisher Login", { timeout: 10000 }))) throw new Error("SIGN IN opened no box");
+  await dialogStill(c);
+}
+
+// The text box `id` of the sign-in box emptied and `text` typed into it, with real keys.
+async function signInType(c, id, text) {
+  const b = await rectOf(c, `#${id}`);
+  if (!b) throw new Error(`the sign-in box shows no #${id}`);
+  await clickAt(c, b.x + 10, b.y + b.height / 2);
+  await c.evaluate(`document.getElementById(${JSON.stringify(id)}).select()`);
+  await pressKey(c, "Backspace");
+  if (text) await typeText(c, text);
+}
+
+// The tab LOGIN or REGISTER of the sign-in box, chosen with a click unless it shows.
+async function signInTab(c, tab) {
+  const login = () => c.evaluate(`!!document.querySelector(".isLogin")`);
+  if ((await login()) === (tab === "LOGIN")) return;
+  await clickInModal(c, tab);
+  if (!(await waitFor(c, async () => (await login()) === (tab === "LOGIN"), { timeout: 3000, interval: 100 }))) {
+    throw new Error(`the sign-in box did not switch to ${tab}`);
+  }
+}
+
+// The success text of a publish, as the IDE shows it (ide/main.js).
+const PUBLISH_SUCCESS = "[PUBLISH] successful.  Your package should appear in the package manager database shortly.";
+// The made-up publisher of the pictures.
+const SHOT_PUBLISHER = "ExamplePublisher";
+
+// The hook that holds an LLVM build's last progress event (-1, which closes the Compiling...
+// box) until the picture is taken; the events before it pass.
+const HOLD_BUILD_END = `(() => {
+  const proto = Object.getPrototypeOf(debugSocket);
+  if (!window.__realBuildProgress) {
+    window.__realBuildProgress = proto.event_setBuildProgress;
+    proto.event_setBuildProgress = function (e) {
+      if (window.__holdBuildEnd && e.body.percent10 === -10) { window.__heldBuild = [this, e]; return; }
+      return window.__realBuildProgress.call(this, e);
+    };
+  }
+  window.__holdBuildEnd = true;
+  window.__heldBuild = null;
+})()`;
+const RELEASE_BUILD_END = `(() => {
+  window.__holdBuildEnd = false;
+  const h = window.__heldBuild;
+  window.__heldBuild = null;
+  if (h) window.__realBuildProgress.call(h[0], h[1]);
+  return !!h;
+})()`;
+
+const buildingShots = [
+  {
+    // a project made by New Project, never saved: the box Build opens; Cancel
+    out: BD_IMAGE("Save_First"),
+    setup: "building-new",
+    async take({ c }) {
+      await resetUi(c);
+      const b = await rectOf(c, "#buildIcon");
+      await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+      if (!(await waitFor(c, () => modalHolding(c, "You must first save"), { timeout: 10000, interval: 150 }))) {
+        throw new Error("Build on a project with no file asked nothing");
+      }
+      await dialogStill(c);
+      try {
+        return await modalPicture(c, "Save_First", "You must first save");
+      } finally {
+        await closeModal(c, "Cancel");
+      }
+    },
+  },
+  {
+    // a build of the exe: the console's three lines, the links on the last
+    out: BD_IMAGE("Console_Exe"),
+    setup: "building",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        await buildConsole(c);
+        const r = await press(c, "build");
+        if (!r.lines.some((l) => l.startsWith("[LINKER] SUCCESS"))) throw new Error(`the build failed: ${r.lines}`);
+        return await consolePicture(c, "Console_Exe", 3);
+      } finally {
+        await clearConsole(c);
+        await unfloatPanel(c, "DEBUG CONSOLE");
+      }
+    },
+  },
+  {
+    // NoSuchProcedure 1 typed into Sub Main, its error listed, then Build: the failure lines;
+    // the edit undone after
+    out: BD_IMAGE("Console_Failed"),
+    setup: "building",
+    async take({ c }) {
+      await resetUi(c);
+      await openFile(c, BD_FILE("Sources/MainMod.twin"));
+      try {
+        return await editedThenUndone(c, async () => {
+          const at = await caretOn(c, "Public Sub Main()");
+          await setCursor(c, at.line, 9999);
+          await pressKey(c, "Enter");
+          await typeText(c, "NoSuchProcedure 1");
+          await pressKey(c, "Escape");
+          if (!(await waitFor(c, async () => (await diagCounts(c))[0] > 0, { timeout: 30000, interval: 250 }))) {
+            throw new Error("the call to NoSuchProcedure was not listed as an error");
+          }
+          await buildConsole(c);
+          const r = await press(c, "build");
+          if (r.lines.at(-1) !== "[BUILD] failed") throw new Error(`the build did not fail: ${r.lines}`);
+          return await consolePicture(c, "Console_Failed", 4);
+        });
+      } finally {
+        await clearConsole(c);
+        await unfloatPanel(c, "DEBUG CONSOLE");
+        await closeTabs(c, [], { discard: true });
+        await waitCounts(c, [0, 0, 0, 0]);
+      }
+    },
+  },
+  {
+    // the exe built and started with Launch EXE, then Build again: LOCKED BY and the red
+    // Terminate link, the pid the page's; Terminate after, and the exe ended by its pid if
+    // it still runs
+    out: BD_IMAGE("Console_Locked"),
+    setup: "building",
+    async take({ c }) {
+      await resetUi(c);
+      let pid = null;
+      try {
+        await buildConsole(c);
+        const r = await press(c, "build");
+        if (!r.lines.some((l) => l.startsWith("[LINKER] SUCCESS"))) throw new Error(`the build failed: ${r.lines}`);
+        await fitConsole(c, 3);
+        const mark = await consoleMark(c);
+        await consoleLink(c, "Launch EXE");
+        pid = Number((await consoleLine(c, mark, /\[SHELL\] process \d+ started/)).match(/process (\d+)/)[1]);
+        await clearConsole(c);
+        const locked = await press(c, "build");
+        if (!locked.lines.includes("LOCKED BY:")) throw new Error(`the second build was not refused: ${locked.lines}`);
+        return await consolePicture(c, "Console_Locked", 5, () => fixLockedPid(c));
+      } finally {
+        if (pid) {
+          const mark = await consoleMark(c);
+          await consoleLink(c, "Terminate").catch((e) => complain(c.shot.name, e.message));
+          await waitFor(c, async () => !processAlive(pid), { timeout: 10000, interval: 200 });
+          // the compiler's line for the exe's end, before the console is emptied
+          await consoleLine(c, mark, /exited with code/, 10000).catch((e) => complain(c.shot.name, e.message));
+          if (processAlive(pid)) {
+            const printed = (await linesSince(c, mark)).join(" / ");
+            complain(
+              c.shot.name,
+              `Terminate left the exe running (the console printed: ${printed}): ending pid ${pid}`,
+            );
+            killTree(pid);
+          }
+        }
+        await clearConsole(c);
+        await unfloatPanel(c, "DEBUG CONSOLE");
+      }
+    },
+  },
+  {
+    // the build configuration box with its list open (the list a replica: the OS draws the
+    // real one), win32 chosen
+    out: BD_IMAGE("Configuration_List"),
+    setup: "building",
+    async take({ c }) {
+      await resetUi(c);
+      if ((await configValue(c)) !== "win32") throw new Error(`the box shows ${await configValue(c)}`);
+      // the toolbar's group of the box: from the splitter before it to the one after Build
+      // (the box, Restart, Clean and Build)
+      const group = await c.evaluate(`(() => {
+  const kids = [...buildConfigSelector.parentElement.children];
+  const i = kids.indexOf(buildConfigSelector);
+  const before = kids.slice(0, i).reverse().find((e) => e.classList.contains("toolbarSplitter"));
+  const after = kids.slice(i).find((e) => e.classList.contains("toolbarSplitter"));
+  if (!before || !after) return null;
+  const a = before.getBoundingClientRect(), b = after.getBoundingClientRect();
+  return { x: a.x, right: b.x + b.width };
+})()`);
+      if (!group) throw new Error("the build configuration box has no splitter on each side");
+      const bar = await toolbarRect(c);
+      const area = { x: group.x, y: bar.y, width: group.right - group.x, height: bar.height };
+      return listClip(c, "Configuration_List", area, [{ type: "list", select: { css: "#buildConfigSelector" } }]);
+    },
+  },
+  {
+    // the box set to safeMode with the keys (Down twice from win32): the box the IDE shows
+    // once the project is open in safe mode; OK, and Ctrl+F2 back to win32
+    out: BD_IMAGE("Safe_Mode"),
+    setup: "building",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        await configDown(c);
+        await configSettled(c, "win64");
+        await configDown(c);
+        if (!(await waitFor(c, () => modalHolding(c, "SafeMode is designed"), { timeout: 90000, interval: 250 }))) {
+          throw new Error("safeMode showed no box");
+        }
+        await dialogStill(c, { ms: 500 });
+        return await modalPicture(c, "Safe_Mode", "SafeMode is designed");
+      } finally {
+        if (await modalHolding(c, "SafeMode is designed")) await closeModal(c, "OK");
+        await pressKey(c, "F2", { ctrl: true });
+        await configSettled(c, "win32");
+        await resetUi(c);
+      }
+    },
+  },
+  {
+    // the ax fixture built (registered in HKCU), the console emptied, then Clean: its lines;
+    // a build that Clean did not follow is cleaned after
+    out: BD_IMAGE("Console_Clean"),
+    setup: "building-ax",
+    async take({ c }) {
+      await resetUi(c);
+      let built = false;
+      try {
+        await buildConsole(c);
+        const b = await press(c, "build");
+        built = true;
+        if (!b.lines.some((l) => /^\[REGISTER\] .* returned OK$/.test(l)))
+          throw new Error(`the build failed: ${b.lines}`);
+        await clearConsole(c);
+        const r = await press(c, "clean");
+        built = false;
+        if (
+          r.lines.at(-1) !== "[BUILD-CLEAN] build cleanup completed." ||
+          !r.lines.some((l) => l.startsWith("[UNREGISTER]"))
+        ) {
+          throw new Error(`Clean did not deregister and delete: ${r.lines}`);
+        }
+        return await consolePicture(c, "Console_Clean", 3);
+      } finally {
+        if (built) await press(c, "clean");
+        await clearConsole(c);
+        await unfloatPanel(c, "DEBUG CONSOLE");
+      }
+    },
+  },
+  {
+    // the HKLM project opened from the Recent list: the first of the two warnings it shows;
+    // Continue Anyway to each, and the project open
+    out: BD_IMAGE("HKLM_Warning"),
+    setup: "building-hklm",
+    async take({ c }) {
+      await resetUi(c);
+      const project = hklmProject();
+      await setRecents(c, [{ name: project, projectPath: project }]);
+      let shown = false;
+      try {
+        await command(c, "tbProject_OpenRecent");
+        if (!(await waitModal(c, "New / Open", { timeout: 10000 }))) throw new Error("Open Recent opened no dialog");
+        await dialogStill(c);
+        const row = await c.evaluate(`(() => {
+  const e = [...document.querySelectorAll(".frontPageListViewItem")].find((x) => x.getBoundingClientRect().width && x.textContent.trim() === ${JSON.stringify(project)});
+  const r = e && e.getBoundingClientRect();
+  return r ? { x: r.x + r.width / 3, y: r.y + r.height / 2 } : null;
+})()`);
+        if (!row) throw new Error("the Recent tab does not list the project");
+        await mouseMove(c, row.x, row.y);
+        for (const clickCount of [1, 2]) {
+          for (const type of ["mousePressed", "mouseReleased"]) {
+            await c.send("Input.dispatchMouseEvent", {
+              type,
+              x: row.x,
+              y: row.y,
+              button: "left",
+              buttons: type === "mousePressed" ? 1 : 0,
+              clickCount,
+            });
+          }
+        }
+        if (!(await waitFor(c, () => modalHolding(c, "HKEY_LOCAL_MACHINE"), { timeout: 60000, interval: 150 }))) {
+          throw new Error("the project opened with no HKLM warning");
+        }
+        shown = true;
+        await dialogStill(c, { ms: 500 });
+        return await modalPicture(c, "HKLM_Warning", "HKEY_LOCAL_MACHINE");
+      } finally {
+        if (shown) {
+          // each warning answered as it shows; the load waits for them
+          let quiet = 0;
+          for (let i = 0; i < 200 && quiet < 12; i++) {
+            if (await modalHolding(c, "HKEY_LOCAL_MACHINE")) {
+              await answerMessageBox(c, "Continue Anyway");
+              quiet = 0;
+            } else if ((await c.evaluate("licenceIsSet === true")) && !(await modals(c)).length) quiet++;
+            await sleep(250);
+          }
+        }
+        await setRecents(c, []);
+        await resetUi(c);
+      }
+    },
+  },
+  {
+    // the HKLM project built twice, the second build's deregistration failed: the box;
+    // Cancel, then Clean (its box cancelled too) and the DLL deleted from the setup's folder
+    out: BD_IMAGE("Delete_It_And_Continue"),
+    setup: "building-hklm",
+    async take({ c }) {
+      await resetUi(c);
+      const dll = path.join(path.dirname(hklmProject()), "Build", "ShotActiveX_win32.dll");
+      rmSync(dll, { force: true });
+      try {
+        const first = await press(c, "build");
+        if (first.lines.at(-1) !== "[BUILD] failed" || !first.lines.some((l) => l.startsWith("[REGISTER]"))) {
+          throw new Error(`the first build did not fail to register: ${first.lines}`);
+        }
+        const second = await press(c, "build");
+        if (!second.boxes.some((b) => b.includes("unable to unregister"))) {
+          throw new Error(`the second build asked nothing: ${second.lines} ${second.boxes}`);
+        }
+        await dialogStill(c, { ms: 500 });
+        return await modalPicture(c, "Delete_It_And_Continue", "unable to unregister");
+      } finally {
+        if (await modalHolding(c, "unable to unregister")) await closeModal(c, "Cancel");
+        const r = await press(c, "clean");
+        if (r.boxes.length) await closeModal(c, "Cancel");
+        rmSync(dll, { force: true });
+        await resetUi(c);
+      }
+    },
+  },
+  {
+    // an LLVM build with its last progress event held: the Compiling... box
+    out: BD_IMAGE("Compiling"),
+    setup: "building-llvm",
+    async take({ c }) {
+      await resetUi(c);
+      await c.evaluate(HOLD_BUILD_END);
+      try {
+        await press(c, "build");
+        if (!(await waitFor(c, () => c.evaluate("!!window.__heldBuild"), { timeout: 60000, interval: 100 }))) {
+          throw new Error("the LLVM build never ended");
+        }
+        if (!(await modalHolding(c, "Compiling"))) throw new Error("the LLVM build showed no Compiling... box");
+        await dialogStill(c, { ms: 500 });
+        return await modalPicture(c, "Compiling", "Compiling");
+      } finally {
+        await c.evaluate(RELEASE_BUILD_END);
+        if (
+          !(await waitFor(c, async () => !(await modals(c)).length && (await c.evaluate("lockUICount")) === 0, {
+            timeout: 10000,
+            interval: 100,
+          }))
+        ) {
+          // what is left closed from the page, as the lane does, so that the IDE can go on
+          complain(c.shot.name, "the Compiling... box stayed after the build's end was let through");
+          failed = 1;
+          for (let i = 0; i < 3 && (await c.evaluate("modalDialogs.length")) > 0; i++) {
+            await c.evaluate("hideModalDialog()");
+          }
+        }
+      }
+    },
+  },
+  {
+    // the sign-in box on LOGIN, a made-up name typed, Remember password ticked; Cancel
+    out: BD_IMAGE("SignIn_Login"),
+    setup: "building-pkg",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        await signInBox(c);
+        await signInTab(c, "LOGIN");
+        await signInType(c, "PublisherUserIdLogin", SHOT_PUBLISHER);
+        await signInType(c, "PublisherPasswordLogin", "");
+        const remember = await c.evaluate(`(() => {
+  const g = document.getElementById("PublisherLoginGroup");
+  const i = g && [...g.querySelectorAll("input[type=checkbox]")].find((x) => x.getBoundingClientRect().width);
+  const r = i && i.getBoundingClientRect();
+  return r ? { checked: i.checked, x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+})()`);
+        if (!remember) throw new Error("the LOGIN form has no Remember password box");
+        if (!remember.checked) await clickAt(c, remember.x, remember.y);
+        await dialogStill(c);
+        return await modalPicture(c, "SignIn_Login", "Remember password");
+      } finally {
+        if (await modalHolding(c, "Remember password")) await closeModal(c, "Cancel");
+        await unfloatPanel(c, "PACKAGE PUBLISHING");
+        await noServerRequests(c);
+      }
+    },
+  },
+  {
+    // the sign-in box on REGISTER, SIGN UP pressed with a username of three letters: the
+    // error under the form; Cancel
+    out: BD_IMAGE("SignIn_Register"),
+    setup: "building-pkg",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        await signInBox(c);
+        await signInTab(c, "REGISTER");
+        await signInType(c, "PublisherUserId", "abc");
+        await clickInModalStarting(c, "SIGN UP");
+        const error = "ERROR: Username must be at least 4 characters long";
+        if (!(await waitFor(c, () => modalHolding(c, error), { timeout: 5000, interval: 100 }))) {
+          throw new Error("SIGN UP showed no error for a username of three letters");
+        }
+        await dialogStill(c);
+        return await modalPicture(c, "SignIn_Register", error);
+      } finally {
+        if (await modalHolding(c, "Remember password")) await closeModal(c, "Cancel");
+        await unfloatPanel(c, "PACKAGE PUBLISHING");
+        await noServerRequests(c);
+      }
+    },
+  },
+  {
+    // a login made up in the page (a session id and a publisher's name), then PUBLISH THIS
+    // PACKAGE: the confirmation; Cancel, and the login undone
+    out: BD_IMAGE("Publish_Confirm"),
+    setup: "building-pkg",
+    async take({ c }) {
+      await resetUi(c);
+      await c.evaluate(
+        `packagePublisherName = ${JSON.stringify(SHOT_PUBLISHER)}; packagePublisherSessionID = "not-a-real-session"`,
+      );
+      try {
+        await publishingPane(c);
+        await paneLink(c, "PUBLISH THIS PACKAGE");
+        if (!(await waitFor(c, () => modalHolding(c, "Do you want to proceed?"), { timeout: 30000, interval: 200 }))) {
+          throw new Error("PUBLISH THIS PACKAGE asked nothing");
+        }
+        await dialogStill(c);
+        return await modalPicture(c, "Publish_Confirm", "Do you want to proceed?");
+      } finally {
+        if (await modalHolding(c, "Do you want to proceed?")) await closeModal(c, "Cancel");
+        await c.evaluate(`packagePublisherName = ""; packagePublisherSessionID = ""`);
+        await unfloatPanel(c, "PACKAGE PUBLISHING");
+        await noServerRequests(c);
+      }
+    },
+  },
+  {
+    // the box a publish's result is shown in, with the success text, shown by the IDE's own
+    // showModalNotification (nothing is uploaded); OK
+    out: BD_IMAGE("Publish_Result"),
+    setup: "building-pkg",
+    async take({ c }) {
+      await resetUi(c);
+      await c.evaluate(`showModalNotification(${JSON.stringify(PUBLISH_SUCCESS)})`);
+      try {
+        if (!(await waitFor(c, () => modalHolding(c, "[PUBLISH] successful"), { timeout: 5000, interval: 100 }))) {
+          throw new Error("showModalNotification showed no box");
+        }
+        await dialogStill(c);
+        return await modalPicture(c, "Publish_Result", "[PUBLISH] successful");
+      } finally {
+        if (await modalHolding(c, "[PUBLISH] successful")) await closeModal(c, "OK");
+        await noServerRequests(c);
+      }
+    },
+  },
 ];
 
 // The editor and the Project Explorer alone, side by side, for the preview tab.
@@ -11835,6 +12711,7 @@ const SHOTS = [
   ...formShots,
   ...formsChapterShots,
   ...projectsShots,
+  ...buildingShots,
   ...customControlsShots,
   ...customControlsCodeShots,
   ...codeShots,
@@ -11906,6 +12783,12 @@ const JOB_SECONDS = {
   projects: 120,
   "projects-refs": 20,
   "projects-start": 20,
+  building: 90,
+  "building-new": 25,
+  "building-ax": 25,
+  "building-hklm": 40,
+  "building-llvm": 20,
+  "building-pkg": 30,
   customcontrols: 54,
   "customcontrols-2": 53,
   "customcontrols-3": 35,
@@ -12306,6 +13189,15 @@ async function runJob(job) {
     failed = Math.max(failed, own ? 1 : 2);
   }
   await endRun(run);
+  // what a setup checks or gives back once its IDE has ended
+  if (setup.end) {
+    try {
+      await setup.end(run);
+    } catch (e) {
+      complain(job.name, e.message);
+      failed = Math.max(failed, 1);
+    }
+  }
   say(job.name, `done in ${((Date.now() - started) / 1000).toFixed(1)} s`);
 }
 
