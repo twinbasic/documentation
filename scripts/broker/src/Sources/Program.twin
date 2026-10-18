@@ -8,7 +8,7 @@ Module Program
     Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
 
     Public Sub Main()
-        ExitProcess BrokerMain.Command(Arguments())
+        ExitProcess BrokerMain.RunArgs(Arguments())
     End Sub
 
     ' The arguments after the program's name, as the C runtime splits them.

@@ -2,7 +2,7 @@
 ' and programs, and takes them back when the processes using them end. See WIP.Broker.md.
 '
 ' The broker's command line. tbbroker's Sub Main (Program.twin) and tblaunch's `broker` command
-' both call Command. Every module whose name starts with Broker but BrokerHost is compiled into
+' both call RunArgs. Every module whose name starts with Broker but BrokerHost is compiled into
 ' tblaunch as it is, so what differs between the two programs is in BrokerHost, which each of
 ' them has its own of: the name in messages, the output, the version's suffix and the server's
 ' command line.
@@ -67,14 +67,14 @@ Module BrokerMain
 
     ' Runs the broker's command line, argv being the arguments after the program's name (after
     ' tblaunch's `broker`), and returns the exit code.
-    Public Function Command(ByVal argv As Collection) As Long
+    Public Function RunArgs(ByVal argv As Collection) As Long
         On Error GoTo Crashed
-        Command = Run(argv)
+        RunArgs = Run(argv)
         Exit Function
     Crashed:
         BrokerText.Log "crashed: " & Err.Description
         BrokerHost.WriteErr BrokerHost.PROGRAM_NAME & ": " & Err.Description
-        Command = EXIT_FAILED
+        RunArgs = EXIT_FAILED
     End Function
 
     Private Function Usage() As String
