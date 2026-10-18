@@ -68,6 +68,7 @@ With a *filename* or a *stream* in front, the recording is written there as it i
 
 A constructor that fails creates an unusable object whose **LastResult** tells why.
 
+<!-- test: Im_MetafileTests.New_FromFileName, Im_MetafileTests.New_RecordingToFileNameWithReferenceDc, Im_MetafileTests.New_RecordingWithReferenceDcAndType, Im_MetafileTests.New_ReferenceDcAloneRecords, Im_MetafileTests.New_FromEmfHandlePlaysBack, Im_MetafileTests.New_FromWmfHandleWithAPlaceableHeader, Im_MetafileTests.Image_LoadsAMetafileFile -->
 > [!WARNING] 0.9.45.0
 > The constructors that take a file name (`Metafile(filename)`, `Metafile(filename, header)`, and the recording forms with a file name) and the forms that record with a *referenceHdc* and a *type* raise run-time error 13 (*Type mismatch*): they pass a **String** to a GDI+ function that expects a pointer. An unhandled error ends the program. `Metafile(referenceHdc)` with nothing else does not record either: it binds to the *hEmf* form, treats the device context as a metafile handle, and returns an unusable object with **LastResult** 1 (**GenericError**). Of the constructors, the *hEmf* and *hWmf* forms work. To load a metafile from a file, use [**Image**](Image#creating): `GdiPlus.Image(filename)` returns an **Image** whose [**Type**](Image#type) is **ImageTypeMetafile**, which can be drawn, and whose header [**GetMetafileHeader**](#metafileheader) reads.
 
@@ -207,6 +208,7 @@ Syntax: *status* **=** *mf*.**ConvertToEmfPlus**( *refGraphics* [ , *conversionF
 
 Converts an EMF metafile into an EMF+ metafile. The **Metafile** itself becomes the converted one. It needs GDI+ 1.1 (Windows 7 or later).
 
+<!-- test: Im_MetafileTests.ConvertToEmfPlus_WithoutFileNameOrStream, Im_MetafileTests.ConvertToEmfPlus_WithFileName -->
 > [!WARNING] 0.9.45.0
 > The form without a file name or a stream raises run-time error 13 (*Type mismatch*), as the constructors above do. The *filename* form works.
 

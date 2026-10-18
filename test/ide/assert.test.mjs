@@ -4,7 +4,7 @@
 // line before and after the assertion and after the call, as the runner in
 // docs/Tutorials/Testing-with-Assert.md does.
 //
-// Each test states what BETA 1005 does. If one fails after an IDE update, the
+// Each test states what BETA 1010 does. If one fails after an IDE update, the
 // IDE has changed: update the NOTE under "Running the tests" in
 // Testing-with-Assert.md and the filed report of
 // twinbasic/twinbasic#2441 in bugs/filed/, and then this file.

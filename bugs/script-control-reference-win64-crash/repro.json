@@ -1,7 +1,0 @@
-{
-  "mode": "compile",
-  "arch": "win64",
-  "expect": {
-    "exit": 4
-  }
-}

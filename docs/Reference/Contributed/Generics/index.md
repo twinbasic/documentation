@@ -103,7 +103,7 @@ End Module
 <!-- /test -->
 
 <!-- test: compile NewWithoutDeclaration -->
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > **New** with a generic class from a package compiles only when some declaration in the project or the package names the same class with the same type arguments. A variable declared with the tuple's type is such a declaration. Without one, `Dim t As Any = New TupleOf2(Of String, Long)("a", 2)` fails with TB5074, *Could not bind to parameterized constructor of class 'TupleOf2'*, and so does **New** assigned to an **Object** or **Variant** variable or passed as an argument. A generic class declared in the project's own code is not affected. Assign the tuple to a variable of its own type first; that variable can then be assigned to an **Object** or **Variant** variable, through which the items are read late-bound:
 >
 > ```tb check_build check_run
@@ -159,7 +159,7 @@ Three kinds of type cannot be used:
 > The constructor stores each item with `=`, not with **Set**, so creating a tuple of an object type fails. For **Object**, which compiles, **New** raises run-time error 91, *Object variable or With block variable not set*, even when the item passed is **Nothing**. A class whose default member takes an argument, such as **Collection**, fails to compile, with TB5092 *Missing argument 'Index'* reported in the package's source.
 
 <!-- test: none -- the compiler crashes, so no program and no case can run; bugs/generic-array-type-argument-crash holds the reproducer -->
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > A tuple type with an array as a type argument, such as `TupleOf1(Of Long())`, crashes the compiler wherever it is written: in a declaration, a parameter, a function's result type or after **New**. The compiler restarts and crashes again, so nothing in the project compiles until the line is removed. The same happens with a generic class declared in a project's own code.
 
 ## TupleOf4

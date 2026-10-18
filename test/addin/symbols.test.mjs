@@ -6,7 +6,7 @@
 // as the code editor's intellisense does (getLiveDebugIntellisenseMonaco).
 // Only page script can ask any of them; the add-in API has no such call.
 //
-// Each test states what BETA 1005 does. If one fails after an IDE update, the
+// Each test states what BETA 1010 does. If one fails after an IDE update, the
 // IDE has changed: update P5 in WIP.HelpAddin.md, and then this file.
 //
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.

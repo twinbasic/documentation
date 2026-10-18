@@ -18,7 +18,7 @@ Compiles the documentation's own code samples, and surveys and probes where the 
 {: #check-examples }
 
     node scripts/check_examples.mjs [--only <regex>] [--census] [--propose [--apply]]
-                                    [--report <file>] [--jobs N] [--port N] [--batch N]
+                                    [--report <file>] [--jobs N] [--batch N]
                                     [--ide <path>] [--build | --llvm] [--keep] [--verbose]
                                     [--json]
 
@@ -41,12 +41,11 @@ Each marked sample is generated into its own `Module tbx_<hash>`, packed with a 
 | `--propose` | Compile the unmarked samples too, and list the ones that would pass. An unmarked sample that fails does not fail the run; a marked one does. It ends with the grouping `--report` prints. |
 | `--apply` | With `--propose`, add the bare marker to the fences that passed in that run. It never touches a fence that already carries markup, so a re-run is a no-op. Read the diff. |
 | `--report <file>` | Group the findings of a survey saved with `--propose --json`: by diagnostic, section, unresolved name, wrapper and page. It needs no compiler, so the slow run happens once and the grouping can be iterated on. |
-| `--jobs <n>` | Concurrent IDE lanes. Default 4. Each lane has its own port, workspace and private desktop. |
-| `--port <n>` | Base DevTools port. Default 9480; lane *n* uses base + *n*. |
+| `--jobs <n>` | Concurrent IDE lanes. Default 4. Each lane has its own workspace and slot from [`tbbroker`](Tools-Compiler#tbbroker) (a private desktop), and each IDE a DevTools port Windows picks. |
 | `--batch <n>` | Upper bound on samples per generated project. Default 120. The batcher packs fewer when there are lanes to fill. |
 | `--ide <path>` | `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop. |
 | `--build` | Also build each project that compiles without errors. A project whose build fails is cut down, as for a crash, to the samples that fail it. A project whose compile has errors is not built: the run names its first error and counts its samples as "compiled but not built". |
-| `--llvm` | Build with LLVM (implies `--build`) by setting each project's compiler options to `+llvm`. It needs a Professional or Ultimate licence and exits 2 without one. A sample that fails under `--llvm` but not under a plain `--build` is one LLVM cannot generate code for. |
+| `--llvm` | Build with LLVM (implies `--build`) by setting each project's compiler options to `+llvm`. It needs a Professional or Ultimate licence and exits 2 without one. A sample that fails under `--llvm` but not under a plain `--build` is one LLVM cannot generate code for. The run holds one lease on the LLVM cache server, which every lane's compiler shares, for its whole length, so that the server never ends with one lane's IDE. |
 | `--keep` | Leave the generated projects on disk and print where. |
 | `--verbose` | Report warnings as well as errors. Only errors ever fail the run. |
 | `--json` | One object on stdout; every report line moves to stderr. |
@@ -65,6 +64,8 @@ Each template also carries a **stage set**: a module declaring the control insta
 **A sample can take the compiler down**, and one in this corpus does. twinBASIC runs the compiler in the same process as user code, so in a batch of a hundred a crash costs the other ninety-nine their result. `tbbuild` reports a crash as exit 4 and names the file the compiler was parsing when it died. That file's sample is built on its own and the rest of the batch without it, which usually costs two extra builds. When no sample is named, the batch is split in half repeatedly until the offending sample is alone (O(log n) extra builds). A crash that needs several samples at once is searched for as a set, and all of them are reported. The finding names the sample or set and points at `BUGS-TO-REPORT.md`.
 
 **A sample can compile and still fail the build.** The front end accepts constructs that code generation refuses, so `--build` presses Build on each project that compiled without errors, and `--llvm` does the same with LLVM switched on. A build can fail once and pass when repeated, so a failed build is repeated once, and only a second failure counts. `tbbuild` reports a failed build as exit 5 and names no sample, so the project is cut by halving, as for a crash, until one sample is left or the samples a failure needs together are found. The finding says "fails the build", and its second line says "the LLVM build" under `--llvm` and "the build" otherwise.
+
+**`test/harness.json` names the samples a mode does not take to a stage, and each phase's limit**, which the options `--compile-timeout`, `--build-timeout`, `--compiler-run-timeout` and `--compiler-run-quiet` override. An LLVM refusal fails the build wherever it is printed, and each excluded package has a canary that says when it is fixed: [test/harness.md](https://github.com/twinbasic/documentation/blob/main/test/harness.md) is the file's contract.
 
 A build refuses three things a compile accepts, so batches are arranged around them:
 
@@ -106,7 +107,7 @@ Exit codes: **0** every marked sample compiles, or none is marked (`--report` al
 ## package_tests.mjs
 {: #package-tests }
 
-    node scripts/package_tests.mjs (<Package> ... | --all-packages) [--arch win32|win64|both] [--port N] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json]
+    node scripts/package_tests.mjs (<Package> ... | --all-packages) [--arch win32|win64|both] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json]
 
 It runs the packages named, each matched to its folder in any case (`tbregexp` is `tbRegExp`), or with `--all-packages` every package that has a test project; a whole run takes several minutes a package, so it is never the default. With neither, or with both, it refuses and lists the packages that have a test project.
 
@@ -137,12 +138,12 @@ Generates twinBASIC probe projects from the `Applicable to:` lines in `Reference
 
 A misplaced attribute comes back as `This attribute is not supported in this context` (TB5155) or `Syntax error.  No handler for this symbol` (TB5182). Which of the two arrives says nothing about whether the attribute exists, only that it is not accepted there.
 
-Up to three trees come out, on two contracts that must not be mixed:
+The trees that come out are on two contracts that must not be mixed:
 
 | Tree | Contract |
 |---|---|
 | `<out_dir>` | `AttributeProbes` --- every probe is expected to compile, so a diagnostic naming a probe module is a documentation defect. |
-| `<out_dir>-2` | `AttributeProbes2` --- the same contract, for targets that cannot share a project (one `[RunAfterBuild]` per project). |
+| `<out_dir>-2`, `<out_dir>-3`, ... | `AttributeProbes2`, `AttributeProbes3`, ... --- the same contract, one for each further target of an attribute a project may hold only once (one `[RunAfterBuild]` per project). |
 | `<out_dir>-explore` | `AttributeExplore` --- **a diagnostic is the answer.** Questions the page cannot settle; each source file carries its own header saying how to read its result. |
 
 Red in `AttributeProbes` is a defect; red in `AttributeExplore` is a result.
@@ -164,7 +165,7 @@ Exit codes: **0** the probe project and the key were written, **2** a refused co
 
 Reports, for every attribute the twinBASIC packages use, **which enclosing construct and which kind of declaration it decorates**. It unpacks each package of an IDE install with [`impexp.mjs`](Tools-Compiler#impexp), scans the `.twin` sources, and writes a Markdown or JSON report. No arguments are needed: it finds the newest `twinBASIC_IDE_BETA_*` as [`tbbuild.mjs`](Tools-Compiler#tbbuild) does and caches the export under the build number. It is not part of the site build.
 
-Against BETA 1005 that is 661 files, 9,744 attribute sites and 55 distinct attributes.
+Against BETA 1010 that is 661 files, 9,788 attribute sites and 55 distinct attributes.
 
 **A census is evidence, not applicability.** It says where an attribute *is* used, never where it *may* be used, and the two differ in both directions. The packages contain no use of `[Hidden]` on a whole **Class**, yet the compiler accepts one. They contain many on **Class** and **Interface** members, yet the compiler refuses the same attribute on the **Interface** lines inside a **CoClass**. To find out what the compiler accepts, use [`gen_attribute_probes.mjs`](#gen-attribute-probes) and [`tbbuild.mjs`](Tools-Compiler#tbbuild), which ask it directly.
 
@@ -190,7 +191,7 @@ Exit codes: **0** the report was produced, **2** a refused command line, no inst
 {: #sweep-attributes }
 
     node scripts/sweep_attributes.mjs [--ide <twinBASIC.exe>] [--names <a,b,...>] [--sites <a,b,...>]
-                                      [--forms bare|smart|all] [--no-tokens] [--jobs <n>] [--port <n>]
+                                      [--forms bare|smart|all] [--no-tokens] [--jobs <n>]
                                       [--batch-size <n>] [--verify <n>] [--out <file>]
                                       [--dump-results <file>] [--work <dir>] [--keep] [--preflight]
                                       [--dry-run] [--list-sites] [--show | --hide] [--timeout <secs>]
@@ -215,7 +216,7 @@ The names come from every entry in `Attributes.md`, every name in the compiler's
 | `--names`, `--sites` | Restrict to these attribute names (any case) or site ids. `--list-sites` prints the ids. |
 | `--forms` | `bare`, `smart` (the default) or `all`. Smart gives every documented attribute every argument shape, a token-table name its bare form, and more shapes only where a site recognised it. A shape known to be required is always tried. |
 | `--no-tokens` | Leave out the token table. |
-| `--jobs`, `--port` | Concurrent IDE lanes (default 4) and the first DevTools port; a lane uses one more each (default 9560). |
+| `--jobs` | Concurrent IDE lanes (default 4), each in a slot of its own from [`tbbroker`](Tools-Compiler#tbbroker). |
 | `--batch-size` | Probes per project (default 400). |
 | `--verify N` | Rebuild N random probes and compare. |
 | `--out <file>` | Write the Markdown report there. Without it the report goes to standard output. |
@@ -223,7 +224,7 @@ The names come from every entry in `Attributes.md`, every name in the compiler's
 | `--work`, `--keep` | Where projects are staged, which must be under the system temp folder, and whether to keep them. |
 | `--preflight` | Build only the canaries, baselines and controls, and stop. About 20 seconds, and the way to check a change to a site. |
 | `--dry-run` | Count the probes and build nothing. |
-| `--timeout <secs>` | How long to wait for one build to settle. Default 180. |
+| `--timeout <secs>` | The compile's limit for one build. Default: `compile` in `test/harness.json`. |
 | `--show` / `--hide` | As for [`tbbuild.mjs`](Tools-Compiler#tbbuild). |
 
 **An Enum member cannot be tested.** On a line of its own inside an Enum, a bracket group is not an attribute but a member named by its text, so that form compiles whatever it names, an attribute that applies nowhere included; written inline, every attribute is refused. The site is voided, and a target on an Enum member is reported as one the sweep could not test.

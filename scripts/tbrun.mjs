@@ -2,13 +2,21 @@
 //
 //     node scripts/tbrun.mjs <source-dir> [options]
 //
-//       --port <n>        DevTools port to start the IDE on (default 9346)
+//       --port <n>        DevTools port to start the IDE on (default: one Windows picks)
 //       --arch <target>   win32 or win64 (default win32): the target to build
 //                         for, and so the process the probe runs in -- a win64
 //                         probe runs in the IDE's 64-bit compiler
-//       --timeout <secs>  give up waiting for console output (default 120)
-//       --quiet <ms>      output is complete after this long with no change
-//                         (default 2500)
+//       --compile-timeout <secs>  the compile's limit, from the project reported
+//                         open to the compile settled
+//       --build-timeout <secs>  the build's limit, from the press to [BUILD] Executing
+//       --compiler-run-timeout <secs>  the probe's run's limit, from Executing
+//       --compiler-run-quiet <secs>  the run is over after this long with no
+//                         output, counted from Executing or the last output
+//       --exe-run-timeout <secs>  with --exe, the exe's limit
+//       --timeout <secs>  both --compiler-run-timeout and --exe-run-timeout; with
+//                         --tests, each case's limit. Each limit's default is
+//                         test/harness.json's (test/harness.md), or its
+//                         TB_<PHASE> variable
 //       --json            emit one JSON object instead of text
 //       --raw             do not strip the console's timestamp column
 //       --keep            leave the IDE running afterwards, and print its pid
@@ -40,12 +48,13 @@
 // it crashed -- a build that fails after a clean compile included, and a
 // [RunAfterBuild] Sub that fails code generation, since the probe never runs,
 // and a procedure the probe calls that fails it, since the probe stops at the
-// call -- 3 no output: the build produced none in the console before the
-// timeout, or the probe ran and printed none after its last Debug.Cls -- 4 the
+// call, an LLVM refusal anywhere in the log, a build that met its limit, and a
+// test/harness.json missing or malformed -- 3 no output: the build produced none
+// in the console, or the probe ran and printed none after its last Debug.Cls -- 4 the
 // compiler crashed, or restarted twice, while compiling the project -- 5 the
 // probe ended before it returned, its output printed all the same -- 6 with
 // --exe, the exe exited with a code other than 0, the event log records that it
-// faulted, it opened a box, or it was still running after --timeout; its
+// faulted, it opened a box, or it was still running at its limit; its
 // output, exit code, fault and boxes printed all the same -- 7 with --tests, a
 // case failed.
 //
@@ -82,7 +91,7 @@
 //     its own out folder before importing, which makes the trap unreachable
 //     (lib/tb-project.mjs, shared with the add-in harness). The file name is
 //     the IDE's own `${ProjectName}_${Architecture}.${FileExtension}`, so it
-//     says what was built: on BETA 1005 those variables in an explicit
+//     says what was built: on BETA 1010 those variables in an explicit
 //     folder open no dialog, and a win32 build of the staged project gives
 //     DocSamples_win32.exe.
 //  2. A JAVASCRIPT .click() ON THE BUILD BUTTON DOES NOTHING. `#buildIcon` is
@@ -107,7 +116,7 @@
 //     the console stops changing, which works for any probe. But a probe that
 //     stops early also stops changing the console: End does, and so does an
 //     error raised in LLVM-compiled code with no handler, which ends the run
-//     without a word (BETA 1005, plain code too). So the staged copy calls the
+//     without a word (BETA 1010, plain code too). So the staged copy calls the
 //     probe's Sub from a wrapper that prints a sentinel once it returns
 //     (lib/tb-probe.mjs). Its absence is exit 5; its arrival ends the wait
 //     without the quiet period. Only the IDE's line about forms still loaded
@@ -119,8 +128,9 @@
 //     EPERM from a script that had touched no such path. Worse, shutdown was
 //     `taskkill /F /T /IM twinBASIC.exe`, which is machine-wide: it ended
 //     every concurrent run's IDE, and the IDE you had open yourself. The work
-//     directory and the project.id are now keyed to --port, and the IDE is
-//     killed by the pid its launch returned.
+//     directory and the project.id are now keyed to the run's slot from
+//     tbbroker (WIP.Broker.md), and the IDE is killed by the pid its launch
+//     returned.
 //  7. A COM SERVER THE PROBE STARTED IS NOT A CHILD OF ANYTHING WE OWN.
 //     CreateObject("Excel.Application") is activated by DCOM, so the EXCEL.EXE
 //     that appears has svchost.exe for a parent -- measured. No tree kill can
@@ -143,9 +153,9 @@ import {
   refuseTogether,
   withUsageError,
 } from "../lib/cli.mjs";
-import { findIde } from "./lib/tb-install.mjs";
+import { HarnessError, optionSeconds, secondsText, timeoutMs } from "./lib/harness-settings.mjs";
+import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import {
-  COMPILE_TIMEOUT,
   TARGETS,
   attachIde,
   compileOutcome,
@@ -153,6 +163,7 @@ import {
   killTree,
   launchIde,
   launchOnDesktop,
+  leaseSlot,
   llvmLicence,
   setBuildTarget,
   shutdownIde,
@@ -161,30 +172,48 @@ import {
   wantShow,
 } from "./lib/tb-ide.mjs";
 import { readConsole } from "./lib/tb-ide-console.mjs";
+import { asksForLlvm, holdLlvmCache, leaseReport } from "./lib/tb-llvm-cache.mjs";
 import { sentinelIndex, wrapProbe } from "./lib/tb-probe.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
-import { captureRun, checkCapture, strip } from "./lib/tb-run.mjs";
+import { buildTimeoutMessage, captureRun, checkCapture, strip } from "./lib/tb-run.mjs";
 import { caseLine, findCases, judgeCompiles, runTest } from "./lib/tb-tests.mjs";
 import { faultText, recordedFault } from "./lib/win-fault.mjs";
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe | --tests [--only <names>]] [-h, --help]
+const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--compile-timeout S] [--build-timeout S] [--compiler-run-timeout S] [--compiler-run-quiet S] [--exe-run-timeout S] [--timeout S] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe | --tests [--only <names>]] [-h, --help]
 
 Builds an exported twinBASIC source tree in the IDE, runs it, and prints what it
 writes to the DEBUG CONSOLE. With --tests it builds nothing, and runs the
 project's own test cases instead.
 
   --ide <path>        as tbbuild's
-  --port <n>          DevTools port to start the IDE on (default 9346)
+  --port <n>          DevTools port to start the IDE on (default: one Windows
+                      picks, so runs at once never meet on a port)
   --arch <target>     win32 or win64 (default win32)
-  --timeout <secs>    give up waiting for console output (default 120); with
-                      --tests, how long each case may run: one still running
-                      then is reported "no answer", and the cases after it
-                      "not run", since the compiler cannot stop it
-  --quiet <ms>        output is complete after this long with no change
-                      (default 2500)
+  --compile-timeout <secs>
+                      the compile's limit, from the project reported open to
+                      the compile settled (default: test/harness.json's
+                      compile, or TB_COMPILE_TIMEOUT)
+  --build-timeout <secs>
+                      the build's limit, from the press to [BUILD] Executing
+                      (default: its build, or TB_BUILD_TIMEOUT)
+  --compiler-run-timeout <secs>
+                      the probe's run's limit, from Executing (default: its
+                      compilerRun, or TB_COMPILER_RUN_TIMEOUT); with --tests,
+                      how long each case may run: one still running then is
+                      reported "no answer", and the cases after it "not run",
+                      since the compiler cannot stop it
+  --compiler-run-quiet <secs>
+                      the run is over after this long with no output, counted
+                      from Executing or the last output, when the probe has not
+                      returned (default: its compilerRunQuiet, or
+                      TB_COMPILER_RUN_QUIET)
+  --exe-run-timeout <secs>
+                      with --exe, the exe's limit (default: its exeRun, or
+                      TB_EXE_RUN_TIMEOUT)
+  --timeout <secs>    both --compiler-run-timeout and --exe-run-timeout
   --json              emit one JSON object instead of text
   --raw               do not strip the console's timestamp column
   --keep              leave the IDE running afterwards, and print its pid
@@ -218,18 +247,21 @@ Exit codes:
   1  the project has compile errors; the diagnostics are printed
   2  a refused command line (a source folder that is missing or has no Settings file
      included), no IDE, an IDE that did not start, a compile that never
-     settled, a build that failed after a clean compile, a probe that never ran or
-     stopped at a procedure that failed code generation, an --llvm run on a
+     settled or met its limit, a build that failed after a clean compile (an LLVM
+     refusal anywhere in its log, an exe linked or not, and a build that met its
+     limit included), a probe that never ran or stopped at a procedure that failed
+     code generation, test/harness.json missing or malformed, a TB_<PHASE> variable
+     that is not a number of seconds greater than 0, an --llvm run on a
      Community or Personal licence, an --exe run with no exe built, --tests on a
      project with no case or with a [TestCase] it cannot call, or a crash
-  3  no output: the console held none before the timeout, or the probe printed none
+  3  no output: the console held none, or the probe printed none
      after its last Debug.Cls
   4  the compiler crashed, or restarted twice, while compiling the project
   5  the probe ended before it returned (End, or an error that ended the run); what
      it printed is printed all the same
   6  --exe: the exe exited with a code other than 0, the event log records that it
      faulted, it opened a box (closed by tbrun, as an unhandled error opens one), or it
-     was still running after --timeout and was ended; its output, exit code, fault and
+     was still running at its limit and was ended; its output, exit code, fault and
      boxes are printed all the same
   7  --tests: a case failed; every case's line is printed all the same`;
 
@@ -240,7 +272,11 @@ const { values, positionals } = withUsageError(
         port: { type: "string" },
         arch: { type: "string" },
         timeout: { type: "string" },
-        quiet: { type: "string" },
+        "compile-timeout": { type: "string" },
+        "build-timeout": { type: "string" },
+        "compiler-run-timeout": { type: "string" },
+        "compiler-run-quiet": { type: "string" },
+        "exe-run-timeout": { type: "string" },
         ide: { type: "string" },
         "reap-images": { type: "string" },
         "compiler-options": { type: "string" },
@@ -264,21 +300,41 @@ const { values, positionals } = withUsageError(
 if (values.help) printHelpAndExit(USAGE);
 
 // The values are read before anything starts.
-const { port, arch, timeoutMs, quietMs } = withUsageError(
+const { port, arch, seconds } = withUsageError(
   () => {
     refuseTogether(values, ["show", "hide"]);
+    refuseTogether(values, ["timeout", "compiler-run-timeout"]);
+    refuseTogether(values, ["timeout", "exe-run-timeout"]);
     refuseTogether(values, ["llvm", "compiler-options"]);
     refuseTogether(values, ["exe", "tests"]);
     if (values.only !== undefined && !values.tests) throw new CliError("needs-option", "--only needs --tests");
     return {
-      port: numberOption(values.port ?? "9346", { option: "--port", integer: true, min: 1, max: 65535 }),
+      port:
+        values.port === undefined
+          ? null
+          : numberOption(values.port, { option: "--port", integer: true, min: 1, max: 65535 }),
       arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
-      timeoutMs: numberOption(values.timeout ?? "120", { option: "--timeout", above: 0 }) * 1000,
-      quietMs: numberOption(values.quiet ?? "2500", { option: "--quiet", integer: true, min: 0 }),
+      seconds: {
+        compile: optionSeconds(values, ["compile-timeout"]),
+        build: optionSeconds(values, ["build-timeout"]),
+        compilerRun: optionSeconds(values, ["compiler-run-timeout", "timeout"]),
+        compilerRunQuiet: optionSeconds(values, ["compiler-run-quiet"]),
+        exeRun: optionSeconds(values, ["exe-run-timeout", "timeout"]),
+      },
     };
   },
   { format: (err) => `${err.message}\n${USAGE}` },
 );
+
+// The limits, in ms: the option, else the TB_<PHASE> variable, else
+// test/harness.json, whose faults are exit 2 (lib/harness-settings.mjs).
+let limits;
+try {
+  limits = Object.fromEntries(Object.entries(seconds).map(([key, s]) => [key, timeoutMs(key, s)]));
+} catch (e) {
+  if (!(e instanceof HarnessError)) throw e;
+  die(2, e.message);
+}
 
 if (!positionals.length) die(2, USAGE);
 
@@ -307,23 +363,32 @@ const REAP_IMAGES = ["excel", "winword", "powerpnt", "msaccess", "outlook", "one
 // One install builds the tree. --ide, then TB_IDE, then the newest BETA on the
 // Desktop, as for every other tool here.
 const ide = findIde(values.ide || undefined);
+const tooOld = unsupportedIde(ide);
+if (tooOld) die(2, tooOld);
 if (!ide || !existsSync(ide)) {
   die(2, "no twinBASIC IDE found. Pass --ide <twinBASIC.exe> or set TB_IDE.");
 }
 
 // ------------------------------------------------- pin the build output (1)
 
-// (6) The workspace is keyed to --port, which is already the thing that has to
-// differ between concurrent runs -- the IDE's DevTools port, its WebView2 user
-// data folder and its private desktop are all keyed to it in tb-ide. Sharing
-// one %TEMP%/tbrun/src meant the second run deleted the first one's tree.
-const runKey = String(port);
+// (6) The workspace is keyed to the run's slot (tbbroker, WIP.Broker.md), which no
+// other run on the machine holds while this one does; the IDE's private desktop
+// and WebView2 user data folder are the slot's too. Sharing one %TEMP%/tbrun/src
+// meant the second run deleted the first one's tree. The built file's path is in
+// the --json report (`exe`) for a caller that wants it.
+let slot;
+try {
+  slot = await leaseSlot({ tag: `tbrun ${path.basename(srcDir)}` });
+} catch (e) {
+  die(2, `tbrun: ${e.message}`);
+}
+const runKey = String(slot.slot);
 const work = path.join(tmpdir(), "tbrun", runKey);
 rmSync(work, { recursive: true, force: true });
 mkdirSync(work, { recursive: true });
 
 // Staged into a temp copy rather than edited in place, with buildPath pinned to
-// the run's own out folder and a project.id keyed to the port
+// the run's own out folder and a project.id keyed to the slot
 // (lib/tb-project.mjs). The file is named as the IDE's own template names it,
 // so the build type and the target are in the name (1).
 const stage = path.join(work, "src");
@@ -393,7 +458,7 @@ if (values.tests) {
 // A packing failure is the harness's, exit 2.
 // The project's compiler options: compiler.debugOptions are what the
 // [RunAfterBuild] run is compiled with, and compiler.buildOptions what the exe
-// is -- on BETA 1005, +llvm in the build options alone leaves the run's
+// is -- on BETA 1010, +llvm in the build options alone leaves the run's
 // Debug.Assert evaluated.
 const compilerOptions = values.llvm ? "+llvm" : values.compilerOptions;
 let wasTemplate = false,
@@ -407,7 +472,7 @@ try {
     project: projPath,
     settings: {
       "project.buildPath": buildPath,
-      "project.id": laneProjectId(0, port),
+      "project.id": laneProjectId(0, slot.slot),
       ...(compilerOptions === undefined
         ? {}
         : { "compiler.debugOptions": compilerOptions, "compiler.buildOptions": compilerOptions }),
@@ -422,10 +487,7 @@ try {
   wasTemplate = /\$\{/.test(staged.original["project.buildPath"] ?? "");
   projectName = String(staged.settings["project.name"] ?? "");
   // Any LLVM in the run: the project's options, or a procedure's own.
-  usesLlvm =
-    /\+llvm\b/i.test(
-      `${staged.settings["compiler.debugOptions"] ?? ""} ${staged.settings["compiler.buildOptions"] ?? ""}`,
-    ) || /\[\s*CompilerOptions\s*\(\s*"[^"]*\+llvm/i.test(sourceText);
+  usesLlvm = asksForLlvm(staged.settings, sourceText);
 } catch (e) {
   die(2, e.message);
 }
@@ -453,6 +515,19 @@ function builtFile() {
 
 // ---------------------------------------------------------------- compile
 
+// A run with LLVM in it holds a lease on the LLVM cache server from before its
+// IDE starts until that IDE has ended (shutdown), so the server is never one its
+// IDE's compiler starts in the IDE's job, which would end with it and take the
+// cache from every other run on the machine (lib/tb-llvm-cache.mjs).
+let llvmLease = null;
+if (usesLlvm) {
+  try {
+    llvmLease = await holdLlvmCache(ide);
+  } catch (e) {
+    die(2, `tbrun: ${e.message}`);
+  }
+}
+
 // (7) Taken before the IDE starts, so anything in it is somebody else's and is
 // never a candidate for harvesting. Cheap enough to be unconditional (~0.4 s
 // against a ~10 s run) and skipping it under --no-reap would only make the two
@@ -460,9 +535,9 @@ function builtFile() {
 const processesBefore = snapshotProcesses();
 
 // Everything this run opens is under `work`, so the IDE's registry entries for
-// it -- its recent list and its saved project state, see lib/tb-registry.mjs --
-// are swept by that folder once the IDE has exited, along with any an earlier
-// run on this port left behind. Not under --keep: a kept IDE is still writing.
+// it -- its saved project state, see lib/tb-registry.mjs --
+// is swept by that folder once the IDE has exited, along with any an earlier
+// run in this slot left behind. Not under --keep: a kept IDE is still writing.
 const tidy = values.keep ? null : startTidy({ prefixes: [work] });
 
 let ideRun = null;
@@ -479,6 +554,7 @@ try {
   ideRun = await launchIde({
     exe: ide,
     project: projPath,
+    slot,
     port,
     keep: values.keep,
     show: wantShow({ show: values.show, hide: values.hide }),
@@ -486,11 +562,13 @@ try {
 } catch (e) {
   failBuild(2, e.message);
 }
+// A kept IDE keeps the slot after this run has ended, until it is closed.
+if (values.keep) await slot.handTo(ideRun.pid);
 
-const cdp = await attachIde(port);
+const cdp = await attachIde(ideRun.port);
 if (!cdp) failBuild(2, "the IDE never exposed a debug port");
 
-let outcome = compileOutcome(await waitForCompile(cdp, { project: projPath, timeout: COMPILE_TIMEOUT }), {
+let outcome = compileOutcome(await waitForCompile(cdp, { project: projPath, timeout: limits.compile }), {
   name: projPath,
 });
 if (!outcome.ok) failBuild(outcome.code === 4 ? 4 : 2, outcome.message);
@@ -498,9 +576,9 @@ if (!outcome.ok) failBuild(outcome.code === 4 ? 4 : 2, outcome.message);
 // The target, set on every run, win32 included (setBuildTarget says why). The
 // probe runs in the compiler that builds it, so under win64 it runs in the
 // IDE's 64-bit compiler, twinBASIC_win64_noDEP.exe, as a 64-bit process:
-// on BETA 1005 LenB of a LongPtr is 8 and PROCESSOR_ARCHITECTURE reads AMD64.
+// on BETA 1010 LenB of a LongPtr is 8 and PROCESSOR_ARCHITECTURE reads AMD64.
 try {
-  const target = await setBuildTarget(cdp, arch, { project: projPath, timeout: COMPILE_TIMEOUT });
+  const target = await setBuildTarget(cdp, arch, { project: projPath, timeout: limits.compile });
   // Only a target the IDE remembered is worth a word: a new path opens in win32.
   if (target.from !== TARGETS[0]) {
     console.error(`note: the IDE remembered ${target.from} for this path; the probe is built for ${arch}`);
@@ -531,6 +609,7 @@ if (values.tests) await runCases();
 // --------------------------------------------- build the exe, read the console
 
 let captured = null,
+  capture = null,
   shown = null,
   erased = null,
   failure = null;
@@ -539,10 +618,12 @@ try {
   // settles on the sentinel, or else a quiet period: lib/tb-run.mjs.
   const run = await captureRun(cdp, {
     done: (lines) => wrap.wrapped && sentinelIndex(lines) >= 0,
-    quietMs,
-    timeoutMs,
+    buildMs: limits.build,
+    runMs: limits.compilerRun,
+    quietMs: limits.compilerRunQuiet,
   });
   captured = run.captured;
+  capture = run;
   erased = run.erased;
   // --raw changes what is printed, never what is checked. BUILD_FAILED needs a
   // line that starts where the console's text does, and a line holding only a
@@ -566,6 +647,14 @@ if (failure) die(2, `tbrun: ${failure}`);
 // nothing in the Sub runs, Debug.Cls included. BUILD_FAILED is buildProject's
 // list of failure lines, the code-generation one among them.
 const { started, buildFailed, lost } = checkCapture(captured, erased);
+// A build that met its limit failed, and says so as a timeout.
+const buildTimedOut = buildTimeoutMessage(capture);
+if (buildTimedOut && buildFailed === undefined && !lost) {
+  die(
+    2,
+    `tbrun: ${buildTimedOut}` + (shown.length ? `; the console held:\n${shown.map((l) => `  ${l}`).join("\n")}` : ""),
+  );
+}
 if (buildFailed !== undefined) {
   die(
     2,
@@ -610,7 +699,7 @@ if (!printed && started >= 0 && returned !== false) {
 if (!captured.length && started < 0) {
   die(
     3,
-    "tbrun: the build produced no console output before the timeout.\n" +
+    "tbrun: the build produced no console output.\n" +
       (hasHook
         ? "  The [RunAfterBuild] Sub may not have run -- check the IDE for a modal."
         : "  There is no [RunAfterBuild] Sub to produce any.") +
@@ -623,7 +712,17 @@ const exeRun = values.exe ? await runExe() : null;
 if (values.json) {
   console.log(
     JSON.stringify(
-      { exe: builtFile(), arch, lines: shown, returned, licence, exeRun, idePid: ideRun?.pid ?? null, reaped },
+      {
+        exe: builtFile(),
+        arch,
+        lines: shown,
+        returned,
+        licence,
+        llvmCache: leaseReport(llvmLease),
+        exeRun,
+        idePid: ideRun?.pid ?? null,
+        reaped,
+      },
       null,
       2,
     ),
@@ -632,7 +731,7 @@ if (values.json) {
   for (const l of shown) console.log(l);
   if (exeRun) {
     console.log(
-      `--- exe: ${exeRun.timedOut ? "still running after --timeout, ended" : `exit ${exitText(exeRun.exitCode)}`}`,
+      `--- exe: ${exeRun.timedOut ? `still running after ${secondsText(limits.exeRun)}, ended` : `exit ${exitText(exeRun.exitCode)}`}`,
     );
     if (exeRun.fault) console.log(`--- exe: ${faultText(exeRun.fault)}`);
     for (const d of exeRun.dialogs) console.log(`--- exe: a box, closed: ${dialogText(d)}`);
@@ -646,10 +745,18 @@ if (returned === false) {
     5,
     `tbrun: the probe ended before it returned${started >= 0 ? "" : ", and the run's start was not seen"}: ` +
       "End, or an error that ended the run without a report -- as one raised with no handler in " +
-      "LLVM-compiled code does. Or it was still running, silent, after --quiet ms; raise --quiet for a slow probe.",
+      "LLVM-compiled code does. Or it was still running, silent, after the run's quiet period " +
+      `(${secondsText(limits.compilerRunQuiet)}) or its limit (${secondsText(limits.compilerRun)}); ` +
+      "raise --compiler-run-quiet or --compiler-run-timeout for a slow probe.",
   );
 }
-if (exeRun?.timedOut) die(6, `tbrun: the exe was still running after --timeout, and was ended.`);
+if (exeRun?.timedOut) {
+  die(
+    6,
+    `tbrun: timeout: the exe was still running after ${secondsText(limits.exeRun)}, and was ended ` +
+      "(test/harness.json's exeRun; --exe-run-timeout or TB_EXE_RUN_TIMEOUT overrides it).",
+  );
+}
 if (exeRun && exeRun.exitCode !== 0) die(6, `tbrun: the exe exited with code ${exitText(exeRun.exitCode)}.`);
 if (exeRun?.fault) die(6, `tbrun: the exe exited with code 0, and the event log records that it faulted.`);
 if (exeRun?.dialogs.length) die(6, `tbrun: the exe opened a box, which tbrun closed: an unhandled error opens one.`);
@@ -661,8 +768,8 @@ process.exit(0);
 
 // --tests: the compile cases judged by the diagnostics the compile reported, and
 // each [TestCase] Sub run in the compiler's test mode (lib/tb-tests.mjs), one at a
-// time, --timeout each. A project with errors runs none of them, and says so for
-// each. A case that is still running at --timeout is reported "no answer" and the
+// time, the compilerRun limit each. A project with errors runs none of them, and says so for
+// each. A case that is still running at that limit is reported "no answer" and the
 // cases after it are reported "not run", not sent: the compiler cannot cancel it.
 // The diagnostics follow the cases' lines, which are what a reproducer's expect
 // reads. Never returns.
@@ -670,7 +777,7 @@ async function runCases() {
   const results = judgeCompiles(cases.compiles, outcome.rows).map((r) => ({ ...r }));
   const errors = outcome.counts[0] > 0;
   try {
-    // A case still running at --timeout cannot be stopped, and the compiler's main thread refuses every
+    // A case still running at its limit cannot be stopped, and the compiler's main thread refuses every
     // request until it ends ("main thread is busy"), so the cases after it are not sent.
     let stalled = null;
     for (const t of cases.tests) {
@@ -678,7 +785,7 @@ async function runCases() {
       if (errors) results.push({ name, pass: false, detail: "not run: the project has compile errors" });
       else if (stalled) results.push({ name, pass: false, detail: `not run: ${stalled} did not return` });
       else {
-        const r = await runTest(cdp, t, timeoutMs);
+        const r = await runTest(cdp, t, limits.compilerRun);
         results.push({ name, ...r });
         if (r.timedOut) stalled = name;
       }
@@ -693,7 +800,15 @@ async function runCases() {
   if (values.json) {
     console.log(
       JSON.stringify(
-        { arch, cases: results, diagnostics: outcome.rows, licence, idePid: ideRun?.pid ?? null, reaped },
+        {
+          arch,
+          cases: results,
+          diagnostics: outcome.rows,
+          licence,
+          llvmCache: leaseReport(llvmLease),
+          idePid: ideRun?.pid ?? null,
+          reaped,
+        },
         null,
         2,
       ),
@@ -717,8 +832,8 @@ async function runCases() {
 // appended to the file TBRUN_OUT names.
 //
 // An unhandled error opens a box and waits for it, so the launcher closes every
-// box the exe opens and records it; without that the exe sat until --timeout.
-// The box is the only sign of the error: in BETA 1005 a plain exe exits with
+// box the exe opens and records it; without that the exe sat until its limit.
+// The box is the only sign of the error: in BETA 1010 a plain exe exits with
 // code 0 once it is closed ("Run-time error '11' Division by zero"), and an
 // LLVM-compiled one ("_TB_ERROR_HANDLER", "unhandled error in ProbeMod.Oops")
 // then dies of an access violation. The event log's record of a fault is read
@@ -735,7 +850,7 @@ async function runExe() {
   try {
     run = await launchOnDesktop({
       exe: file,
-      desktop: `tbrun-exe-${port}`,
+      tag: `tbrun --exe ${path.basename(file)}`,
       env: { ...process.env, TBRUN_OUT: outFile },
       dialogs: "close",
     });
@@ -746,7 +861,7 @@ async function runExe() {
   const timedOut = await Promise.race([
     run.exited.then(() => false),
     new Promise((r) => {
-      timer = setTimeout(() => r(true), timeoutMs);
+      timer = setTimeout(() => r(true), limits.exeRun);
     }),
   ]);
   clearTimeout(timer);
@@ -778,6 +893,7 @@ function dialogText({ title, text }) {
 function shutdown() {
   if (values.keep) return null; // the IDE is the caller's problem now
   shutdownIde(ideRun);
+  llvmLease?.releaseSync();
   finishTidy(tidy);
   return values.noReap ? null : reapOrphans();
 }

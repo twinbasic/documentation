@@ -29,9 +29,9 @@ import path from "node:path";
 import {
   attachIde,
   buildProject,
-  COMPILE_TIMEOUT,
   compileOutcome,
   launchIde,
+  leaseSlot,
   normPath,
   setBuildTarget,
   shutdownIde,
@@ -113,15 +113,18 @@ function failure(exitCode, message) {
  * @param {string} o.src       the add-in's exported tree, holding Settings and Sources
  * @param {string} o.work      the lane's work folder; the staged tree, the
  *                             .twinproj and out\<project name>.dll go in it
- * @param {number} o.port      the lane's DevTools port
+ * @param {object} [o.slot]    the lane's slot (leaseSlot in tb-ide.mjs), whose desktop the
+ *                             IDE goes on and whose number keys the project id; by default
+ *                             one of the build's own
  * @param {string} [o.arch]    the build target, "win32" (the default) or "win64"
  * @param {boolean} [o.show]   on the user's desktop instead of a private one
  * @param {string} [o.appdata] a folder to start the IDE with as its APPDATA. Its
  *                             compiler then loads the add-ins under
  *                             <appdata>\twinBASIC\addins rather than the user's
  *                             own (P6), which checkAddinsRoot confirms
- * @param {number} [o.timeout] milliseconds for the compile to settle, and again
- *                             for the build (default COMPILE_TIMEOUT)
+ * @param {number} [o.timeout] milliseconds for the compile phase (default:
+ *                             test/harness.json's compile)
+ * @param {number} [o.buildTimeout] milliseconds for the build (default: its build)
  * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
  *   `diagnostics` holds the warnings, hints and infos; `log` is the build log
  * @throws an Error with an `exitCode` (see failure above); a compile error's
@@ -131,13 +134,23 @@ export async function buildAddin({
   ide,
   src,
   work,
-  port,
+  slot = null,
   arch = "win32",
   show = false,
   appdata,
-  timeout = COMPILE_TIMEOUT,
+  timeout,
+  buildTimeout,
 }) {
   if (!TARGETS.includes(arch)) throw failure(2, `no such build target: "${arch}"`);
+  const own = slot ? null : await leaseSlot({ tag: `add-in build ${path.basename(src)}` });
+  try {
+    return await buildIn(slot ?? own, { ide, src, work, arch, show, appdata, timeout, buildTimeout });
+  } finally {
+    await own?.release();
+  }
+}
+
+async function buildIn(slot, { ide, src, work, arch, show, appdata, timeout, buildTimeout }) {
   const project = path.join(work, "addin.twinproj");
   mkdirSync(path.join(work, "out"), { recursive: true });
   let dll;
@@ -149,7 +162,7 @@ export async function buildAddin({
       project,
       settings: (original) => {
         dll = path.join(work, "out", `${original["project.name"]}.dll`);
-        return { "project.buildPath": dll, "project.id": laneProjectId(1, port) };
+        return { "project.buildPath": dll, "project.id": laneProjectId(1, slot.slot) };
       },
     });
   } catch (e) {
@@ -160,10 +173,10 @@ export async function buildAddin({
     throw failure(2, `${src} builds a ${type ?? "project of no stated type"}, and an add-in ` + "is a Standard DLL");
   }
 
-  const run = await launchIde({ exe: ide, project, port, show, env: appdata ? { APPDATA: appdata } : {} });
+  const run = await launchIde({ exe: ide, project, slot, show, env: appdata ? { APPDATA: appdata } : {} });
   let built;
   try {
-    const c = await attachIde(port);
+    const c = await attachIde(run.port);
     if (!c) throw failure(2, "the IDE never exposed a debug port");
     try {
       let outcome = compileOutcome(await waitForCompile(c, { project, timeout }), { name: project });
@@ -173,7 +186,7 @@ export async function buildAddin({
           throw failure(2, e.message);
         });
       // Set even for win32, the target a path with no memory opens in: an entry
-      // the tidy missed would otherwise decide the build without a word. The
+      // somebody left would otherwise decide the build without a word. The
       // switch restarts the compiler, which compiles the add-in again.
       let switched;
       try {
@@ -188,7 +201,7 @@ export async function buildAddin({
       if (outcome.counts[0] > 0) {
         throw failure(1, [...outcome.rows, summaryLine(outcome.counts)].join("\n"));
       }
-      built = await buildProject(c, { timeout });
+      built = await buildProject(c, { timeout: buildTimeout });
       built.diagnostics = outcome.rows;
     } finally {
       c.close();

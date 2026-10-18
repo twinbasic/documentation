@@ -38,6 +38,7 @@ Each form is also available as **New Levels**( ... ) with the same arguments.
 
 A constructor that fails creates an unusable object whose **LastResult** tells why.
 
+<!-- test: Fx_EffectTests.Levels_NewWithParams_StoresTheParameters, Fx_EffectTests.Levels_NewWithValues_StoresTheParameters -->
 > [!WARNING] 0.9.45.0
 > The form with *params* stops the program with an access violation, in 32-bit and 64-bit programs. The forms without arguments and with the three values work. To use a structure, create the effect without arguments and set [**Parameters**](#parameters).
 
@@ -49,9 +50,11 @@ Syntax: *params* **=** *fx*.**Parameters**( *size* )
 
 Gets or sets the [**LevelsParams**](Types/LevelsParams).
 
+<!-- test: Fx_EffectTests.LevelsParams_HighightField_HoldsTheHighlightLevel, compile LevelsParamsHighlightField -->
 > [!NOTE] 0.9.45.0
 > The first field of **LevelsParams** is named **highight**, with the letter l missing. Write `params.highight`.
 
+<!-- test: Fx_EffectTests.Levels_ParametersGetWithoutSize_ReturnsTheParameters -->
 > [!WARNING] 0.9.45.0
 > The getter returns zeros and sets **LastResult** to 2 (**InvalidParameter**) unless it is given *size*, the size of the structure: `fx.Parameters(LenB(Of LevelsParams))`. See [**Effect**](Effect#parameters).
 

@@ -4,7 +4,7 @@
 // exports into, and every folder a junction in one points to, is inside the
 // lane's work folder: one of the behaviours tested deletes through a junction.
 //
-// Each test states what BETA 1005 does. If one fails after an IDE update,
+// Each test states what BETA 1010 does. If one fails after an IDE update,
 // the IDE has changed: update the matching entry in BUGS-TO-REPORT.md or
 // bugs/filed/, and then this file.
 //
@@ -114,7 +114,7 @@ scenario("Export Project", (lane) => {
     const run = await launchOnDesktop({
       exe: compilerExe(lane.copy()),
       args: ["import", packed, `${out}\\`, "--overwrite"],
-      desktop: `ide-test-cli-${lane.port}`,
+      tag: "ide-test export, the command line's import",
       env: process.env,
       stdout: path.join(root, "import.out"),
       stderr: path.join(root, "import.err"),

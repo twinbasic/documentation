@@ -3,11 +3,15 @@
 Module PathTests
 
     ' GetRelativePath(base, base & "\x\y.txt") is the relative path "x\y.txt" whatever the length
-    ' of base is. Nothing is created: the paths name nothing that exists.
+    ' of base is. Nothing is created: the paths name nothing that exists. The last folder of base
+    ' is padding whose length depends on where the sandbox is, so a result that names it names it
+    ' as <last folder of base>, and a wrong result reads the same in every sandbox.
     Private Function RelativeBelow(ByVal Length As Long) As String
         Dim base As String
+        Dim leaf As String
         base = Sandbox.PathOfLength(Sandbox.Root() & "\GetRelativePath", Length)
-        RelativeBelow = GetRelativePath(base, base & "\x\y.txt")
+        leaf = Mid$(base, InStrRev(base, "\") + 1)
+        RelativeBelow = Replace(GetRelativePath(base, base & "\x\y.txt"), "\" & leaf & "\", "\<last folder of base>\")
     End Function
 
     [TestCase]

@@ -67,7 +67,7 @@ The new file goes into the selected folder, or into the folder of the selected f
 
 **Add Folder** and **Add Other File** are not moved to `Sources`: a file made with **Add Other File** while a file in `Resources/CUSTOM` is selected is made in `Resources/CUSTOM`.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > **Add Other File**, and **Paste**, in the `Packages` folder create nothing. The notification says *cannot create files inside the root resources folder*, which names the wrong folder. A file that was cut and then pasted there is deleted: see [Cut, copy and paste](Files-and-Folders#cut-copy-and-paste).
 
 ## What the new files hold
@@ -102,7 +102,7 @@ The `.twin` files are written as UTF-8 with Windows line endings. The `.bas` and
 
 A file with any extension but the three below is copied into the project unchanged. It goes into the selected folder, or the folder of the selected file, or `Sources` if nothing is selected. The IDE does not ask when a file of the same name is there already: the new file replaces it.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > Importing a file with the name of a file already in the project crashes the compiler, whether or not the file is open. The Debug Console prints `NATIVE EXCEPTION: ACCESS_VIOLATION`, and the IDE restarts the compiler. When the file is open in a tab, the project then holds the imported text, but the tab keeps the old text. If you edit the tab and press <kbd>Ctrl</kbd>+<kbd>S</kbd>, the old text with your edit is saved over the import. Close the tab of a file before you import a file with its name.
 
 ### Projects and packages
@@ -115,7 +115,7 @@ The tree shows the project's folders and files but not its `Packages`, `Settings
 
 **Import** writes each ticked file at the same path in the current project, and makes the folders for it. A file already at that path is replaced with no question. If the import fails, a box says **Import failed. Please check the DEBUG CONSOLE for details of the errors that occurred.**
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > Importing a project's files replaces a file of the same path without a question, and closes the tab open on it first. Unsaved changes in that tab are lost, and so is the saved copy of the file, because the import also saves the project. Do not tick a file whose path is already in your project.
 
 This is for taking files from another project. To open a whole VB6 project as a new twinBASIC project, use **File → Open Project...** on its `.vbp`, or the **Import from VBP...** and **Import from folder...** tiles of the [New Project](../Project/New) dialog. The [FAQ](../../../FAQ#vb6-import) describes the VB6 import. A package is added as a package in [Project Settings](References-and-Packages#available-packages), not here.
@@ -124,7 +124,7 @@ This is for taking files from another project. To open a whole VB6 project as a 
 
 When every file of the command is done, the IDE saves the project, as if you had pressed <kbd>Ctrl</kbd>+<kbd>S</kbd>. For a project with no file yet, the **Save As** dialog opens instead. Cancelling it leaves the file imported and the project unsaved.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > An import saves the project, with the unsaved changes of every open editor, although you did not ask for a save. **Cancel** in the **Import from twinproj...** dialog does the same, and then the IDE restarts its compiler.
 ## Resources
 
@@ -136,7 +136,7 @@ The IDE has no resource editors. An icon, a bitmap, a cursor, another image or a
 
 ![The Project Explorer's ICON folder open to two entries, MyOwnIcon.ico above twinBASIC.ico, beside the Toolbox and a form open in the designer.](../../Miscellaneous/Images/8611d12a-d7a6-48cc-9544-cb27c5299aa5.png){:width="642" height="461"}
 
-<!-- SHOT projects-resource-preview: a preview tab open on Resources/ICON/AppIcon.ico, the icon drawn in the tab, the tree beside it with ICON open -->
+![The editor with a tab named AppIcon.ico, the twinBASIC icon drawn in the middle of it, beside the Project Explorer. In the tree, Resources is open over ICON and MANIFEST, and ICON is open over AppIcon.ico, which is selected.](Images/Resource_Preview.png){:width="898" height="302"}
 
 The compiler decides which folder names are resource types. The [FAQ](../../../FAQ#resources) lists them. To add a resource of another type, make a folder with its name under `Resources`: choose **Add Folder** with `Resources` selected. Then select the new folder and use **Import...**. A file that is imported over a resource of the same name replaces it.
 
@@ -148,7 +148,7 @@ The [FAQ](../../../FAQ#app-icon) describes how the program gets its icon, from t
 
 If the file exists already, a box says **File already exists:** and gives the path. **Replace it** writes the template over the file and selects its tab. **Cancel** selects the tab of the existing file.
 
-<!-- SHOT projects-resource-exists: the box "File already exists: /MyProject/RESOURCES/MANIFEST/#1.xml" with Replace it and Cancel -->
+![The box File already exists: /MyProject/RESOURCES/MANIFEST/#1.xml, with the folder Resources written in capitals, and the buttons Replace it and Cancel.](Images/Resource_Exists.png){:width="369" height="158"}
 
 ### Visual Styles Manifest
 {: index="visual styles" }

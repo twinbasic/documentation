@@ -21,7 +21,7 @@ declared in the package's `xCalendar.tbcontrol`.
 
 ```sh
 node test/package-tests/xCalendar/probe/probe.mjs 1 2,3 4,5 6,7,8 9 10 11,12 13 14
-node test/package-tests/xCalendar/probe/probe.mjs --arch win64 --port 9911 1 2,3 4,5 6,7,8 9 10 11,12 13 14
+node test/package-tests/xCalendar/probe/probe.mjs --arch win64 1 2,3 4,5 6,7,8 9 10 11,12 13 14
 node test/package-tests/xCalendar/probe/probe.mjs --shots <dir> 15 15b
 node test/package-tests/xCalendar/probe/probe.mjs p2,p3 p5,p7 p9 p10 p11 p12 p13 p14 p18 p19 p20,p21 p24,p25 p29 p33 p22x
 node test/package-tests/xCalendar/probe/probe.mjs 16 17
@@ -44,9 +44,8 @@ every month has, goes June, July, August, with two `NewMonth`), where a key sent
 (scenario 12, `12x`) is one step. The package has no code for a list's keys, so that is the lists'
 own doing, and it is why `12z` ends in March, not February.
 
-Ports 9910 to 9940 are this probe's; `--port` keys the IDE's DevTools port, the work folders
-(`%TEMP%\xcal-probe\tree-<port>`) and the private desktop's name, so two runs with different ports can
-run at once.
+Runs at once never meet: the work folders are named for the process (`%TEMP%\xcal-probe\tree-<pid>`),
+and the build and each run of the exe take a private desktop of their own from `tbbroker`.
 
 - [`stage.mjs`](stage.mjs) writes the project: the `contributed-xCalendar` sample template's Settings,
   the package embedded under `Packages/xCalendar`, and `src/`.

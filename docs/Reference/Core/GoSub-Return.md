@@ -24,7 +24,7 @@ Use **GoSub** and **Return** anywhere in a procedure, but **GoSub** and the corr
 > [!NOTE]
 > **GoSub...Return** cannot enter or exit [**Sub**](Sub) procedures.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > A program built with [LLVM](../../LLVM/Getting-Started) ends with an access violation (0xC0000005) and no message box at the first **GoSub** it runs, in a 32-bit and in a 64-bit build. A program built without LLVM, and a run in the IDE, are not affected.
 
 > [!TIP]

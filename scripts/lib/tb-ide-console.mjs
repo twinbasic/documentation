@@ -133,7 +133,7 @@ export async function linesSince(c, mark = null, { prefix } = {}) {
 }
 
 // What each clear erased. The page's global clearDebugConsole() empties the
-// console, and BETA 1005's main.js calls it by name from the compiler's
+// console, and BETA 1010's main.js calls it by name from the compiler's
 // event_clearDebugConsole, which a program's Debug.Cls raises, from the pane's
 // Clear command, and on closing the project. So a wrapper assigned to that
 // global sees each of those clears, and reads the console as readConsole does,

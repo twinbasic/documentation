@@ -1,0 +1,307 @@
+' Ty_GpRectTests: the GpRect type (page Types/GpRect). The methods OffsetBy, OffsetByPt, InflatedBy and
+' InflatedByPt are not called here: a program that names one does not link (a twinBASIC defect, BETA 1005).
+[TestFixture]
+Module Ty_GpRectTests
+
+    Private Function Box(ByRef R As GpRect) As String
+        Box = R.X & "," & R.Y & "," & R.Width & "," & R.Height
+    End Function
+
+    [TestCase]
+    Public Sub GpRect_IsSixteenBytes()
+        Expect.Begin
+        Dim r As GpRect
+        Expect.AreEqual 16, LenB(r), "LenB of a GpRect"
+        Expect.Done
+    End Sub
+
+    ' ---- Creating
+
+    [TestCase]
+    Public Sub GpRect_FormsGiveTheDocumentedValues()
+        Expect.Begin
+        Dim r As GpRect = GpRect(10, 20, 30, 40)
+        Expect.AreEqual "10,20,30,40", Box(r), "GpRect(10, 20, 30, 40)"
+        Dim blank As GpRect = GpRect()
+        Expect.AreEqual "0,0,0,0", Box(blank), "GpRect()"
+        Dim declared As GpRect
+        Expect.AreEqual "0,0,0,0", Box(declared), "a variable declared with Dim"
+        Dim xy As GpRect = GpRect(5, 6)
+        Expect.AreEqual "5,6,0,0", Box(xy), "GpRect(5, 6)"
+        Dim loc As GpRect = GpRect(GpPoint(5, 6))
+        Expect.AreEqual "5,6,0,0", Box(loc), "GpRect(GpPoint(5, 6))"
+        Dim p As GpRect = GpRect(GpPoint(5, 6), GpSize(7, 8))
+        Expect.AreEqual "5,6,7,8", Box(p), "GpRect(GpPoint(5, 6), GpSize(7, 8))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpRect_OfGpRectFRoundsHalvesToEven()
+        Expect.Begin
+        Dim q As GpRect = GpRect(GpRectF(1.5, 2.5, 3.5, 4.5))
+        Expect.AreEqual "2,2,4,4", Box(q), "GpRect(GpRectF(1.5, 2.5, 3.5, 4.5))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpRect_OfTheEdgesStructureTakesWidthAndHeightAsDifferences()
+        Expect.Begin
+        Dim edges As GDIP_RECT
+        edges.Left = 1: edges.Top = 2: edges.Right = 11: edges.Bottom = 22
+        Dim e As GpRect = GpRect(edges)
+        Expect.AreEqual "1,2,10,20", Box(e), "GpRect of a GDIP_RECT with the edges 1, 2, 11, 22"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpRectFrom_ReadsTheSingleEdgesStructure()
+        Expect.Begin
+        Dim edges As GDIP_RECTF
+        edges.Left = 1.5: edges.Top = 2.5: edges.Right = 11.5: edges.Bottom = 22.5
+        Dim e As GpRect = GpRectFrom(edges)
+        Expect.AreEqual "2,2,10,20", Box(e), "GpRectFrom of a GDIP_RECTF with the edges 1.5, 2.5, 11.5, 22.5"
+        Expect.Done
+    End Sub
+
+    ' ---- Fields and properties
+
+    [TestCase]
+    Public Sub Location_And_Size_AreIndependent()
+        Expect.Begin
+        Dim r As GpRect = GpRect(10, 20, 30, 40)
+        r.Location = GpPoint(0, 0)
+        Expect.AreEqual "0,0,30,40", Box(r), "the rectangle 10, 20, 30, 40 after Location = (0, 0)"
+        r.Size = GpSize(3, 4)
+        Expect.AreEqual "0,0,3,4", Box(r), "the rectangle after Size = 3 by 4"
+        Dim loc As GpPoint = r.Location
+        Expect.AreEqual "0,0", loc.X & "," & loc.Y, "Location of the rectangle"
+        Dim sz As GpSize = r.Size
+        Expect.AreEqual "3,4", sz.Width & "," & sz.Height, "Size of the rectangle"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Edges_AreXYAndXPlusWidthYPlusHeight()
+        Expect.Begin
+        Dim r As GpRect = GpRect(10, 20, 30, 40)
+        Expect.AreEqual "10,20,40,60", r.Left & "," & r.Top & "," & r.Right & "," & r.Bottom, "Left Top Right Bottom of (10, 20, 30, 40)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Corners_AreThePointsOfTheRectangle()
+        Expect.Begin
+        Dim r As GpRect = GpRect(10, 20, 30, 40)
+        Dim tl As GpPoint = r.TopLeft
+        Dim tr As GpPoint = r.TopRight
+        Dim bl As GpPoint = r.BottomLeft
+        Dim br As GpPoint = r.BottomRight
+        Expect.AreEqual "10,20", tl.X & "," & tl.Y, "TopLeft of (10, 20, 30, 40)"
+        Expect.AreEqual "40,20", tr.X & "," & tr.Y, "TopRight of (10, 20, 30, 40)"
+        Expect.AreEqual "10,60", bl.X & "," & bl.Y, "BottomLeft of (10, 20, 30, 40)"
+        Expect.AreEqual "40,60", br.X & "," & br.Y, "BottomRight of (10, 20, 30, 40)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsEmptyArea_IsTrueForZeroOrNegativeWidthOrHeight()
+        Expect.Begin
+        Expect.IsTrue GpRect(1, 1, 0, 5).IsEmptyArea, "IsEmptyArea of a rectangle with width 0"
+        Expect.IsTrue GpRect(1, 1, 5, 0).IsEmptyArea, "IsEmptyArea of a rectangle with height 0"
+        Expect.IsTrue GpRect(1, 1, -2, 5).IsEmptyArea, "IsEmptyArea of a rectangle with width -2"
+        Expect.IsFalse GpRect(10, 20, 30, 40).IsEmptyArea, "IsEmptyArea of (10, 20, 30, 40)"
+        Expect.Done
+    End Sub
+
+    ' ---- Conversion
+
+    [TestCase]
+    Public Sub AsGpRectF_ReturnsTheSameRectangle()
+        Expect.Begin
+        Dim f As GpRectF = GpRect(10, 20, 30, 40).AsGpRectF()
+        Expect.AreEqual "40,60", f.Right & "," & f.Bottom, "Right and Bottom of AsGpRectF of (10, 20, 30, 40)"
+        Expect.AreEqual "10,20", f.X & "," & f.Y, "X and Y of AsGpRectF of (10, 20, 30, 40)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetFrom_RoundsAGpRectF()
+        Expect.Begin
+        Dim r As GpRect
+        r.SetFrom GpRectF(1.5, 2.5, 3.5, 4.5)
+        Expect.AreEqual "2,2,4,4", Box(r), "SetFrom GpRectF(1.5, 2.5, 3.5, 4.5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AsRECT_AsRECTF_ToRECT_ReturnTheEdges()
+        Expect.Begin
+        Dim r As GpRect = GpRect(10, 20, 30, 40)
+        Dim edges As GDIP_RECT = r.AsRECT()
+        Expect.AreEqual "10,20,40,60", edges.Left & "," & edges.Top & "," & edges.Right & "," & edges.Bottom, "AsRECT of (10, 20, 30, 40)"
+        Dim edgesF As GDIP_RECTF = r.AsRECTF()
+        Expect.AreEqual "10,20,40,60", edgesF.Left & "," & edgesF.Top & "," & edgesF.Right & "," & edgesF.Bottom, "AsRECTF of (10, 20, 30, 40)"
+        Dim written As GDIP_RECT
+        r.ToRECT written
+        Expect.AreEqual "10,20,40,60", written.Left & "," & written.Top & "," & written.Right & "," & written.Bottom, "ToRECT of (10, 20, 30, 40)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetFromRECT_And_SetFromRECTF_SetPositionAndSize()
+        Expect.Begin
+        Dim r As GpRect
+        Dim edges As GDIP_RECT
+        edges.Left = 1: edges.Top = 2: edges.Right = 11: edges.Bottom = 22
+        r.SetFromRECT edges
+        Expect.AreEqual "1,2,10,20", Box(r), "SetFromRECT of the edges 1, 2, 11, 22"
+        Dim edgesF As GDIP_RECTF
+        edgesF.Left = 1.5: edgesF.Top = 2.5: edgesF.Right = 11.5: edgesF.Bottom = 22.5
+        r.SetFromRECTF edgesF
+        Expect.AreEqual "2,2,10,20", Box(r), "SetFromRECTF of the edges 1.5, 2.5, 11.5, 22.5 (rounded)"
+        Expect.Done
+    End Sub
+
+    ' ---- Modifying methods
+
+    [TestCase]
+    Public Sub Offset_And_OffsetPt_MoveTheRectangle()
+        Expect.Begin
+        Dim r As GpRect = GpRect(10, 20, 30, 40)
+        r.Offset 1, 2
+        Expect.AreEqual "11,22,30,40", Box(r), "(10, 20, 30, 40) after Offset 1, 2"
+        r.OffsetPt GpPoint(-1, -2)
+        Expect.AreEqual "10,20,30,40", Box(r), "the rectangle after OffsetPt (-1, -2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Inflate_And_InflatePt_MoveTheEdgesApart()
+        Expect.Begin
+        Dim r As GpRect = GpRect(10, 20, 30, 40)
+        r.Inflate 5, 6
+        Expect.AreEqual "5,14,40,52", Box(r), "(10, 20, 30, 40) after Inflate 5, 6"
+        r.InflatePt GpPoint(-5, -6)
+        Expect.AreEqual "10,20,30,40", Box(r), "the rectangle after InflatePt (-5, -6)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Intersect_SetsTheIntersection()
+        Expect.Begin
+        Dim a As GpRect = GpRect(0, 0, 10, 10)
+        Dim overlaps As Boolean = a.Intersect(GpRect(5, 5, 10, 10))
+        Expect.IsTrue overlaps, "Intersect of (0, 0, 10, 10) and (5, 5, 10, 10)"
+        Expect.AreEqual "5,5,5,5", Box(a), "(0, 0, 10, 10) after Intersect with (5, 5, 10, 10)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Intersect_OfRectanglesThatDoNotOverlapGivesNegativeSize()
+        Expect.Begin
+        Dim b As GpRect = GpRect(5, 5, 10, 10)
+        Dim overlaps As Boolean = b.Intersect(GpRect(100, 100, 5, 5))
+        Expect.IsFalse overlaps, "Intersect of (5, 5, 10, 10) and (100, 100, 5, 5)"
+        Expect.AreEqual "-85,-85", b.Width & "," & b.Height, "Width and Height after the intersection of rectangles that do not overlap"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unite_SetsTheBoundingRectangle()
+        Expect.Begin
+        Dim u As GpRect = GpRect(0, 0, 10, 10)
+        Dim notEmpty As Boolean = u.Unite(GpRect(5, 5, 10, 10))
+        Expect.IsTrue notEmpty, "Unite of (0, 0, 10, 10) and (5, 5, 10, 10)"
+        Expect.AreEqual "0,0,15,15", Box(u), "(0, 0, 10, 10) after Unite with (5, 5, 10, 10)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unite_OfTwoEmptyRectanglesAtTheSameLocationIsFalse()
+        Expect.Begin
+        Expect.IsFalse GpRect(1, 1).Unite(GpRect(1, 1)), "Unite of two empty rectangles at (1, 1)"
+        Dim apart As GpRect = GpRect(1, 1, 0, 0)
+        Dim notEmpty As Boolean = apart.Unite(GpRect(5, 5, 0, 0))
+        Expect.IsTrue notEmpty, "Unite of empty rectangles at (1, 1) and (5, 5)"
+        Expect.AreEqual "1,1,4,4", Box(apart), "the empty rectangle at (1, 1) after Unite with the empty rectangle at (5, 5)"
+        Dim withReal As GpRect = GpRect(1, 1, 0, 0)
+        Expect.IsTrue withReal.Unite(GpRect(10, 10, 5, 5)), "Unite of an empty rectangle at (1, 1) and (10, 10, 5, 5)"
+        Expect.AreEqual "1,1,14,14", Box(withReal), "the empty rectangle after Unite with (10, 10, 5, 5): it counts as the point (1, 1)"
+        Expect.Done
+    End Sub
+
+    ' ---- Query methods
+
+    [TestCase]
+    Public Sub Equals_ComparesPositionAndSize()
+        Expect.Begin
+        Dim r As GpRect = GpRect(10, 20, 30, 40)
+        Expect.IsTrue r.Equals(GpRect(10, 20, 30, 40)), "Equals of equal rectangles"
+        Expect.IsFalse r.Equals(GpRect(10, 20, 30, 41)), "Equals of rectangles of different height"
+        Expect.IsFalse r.Equals(GpRect(11, 20, 30, 40)), "Equals of rectangles at different X"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Contains2_And_ContainsPt_IncludeLeftAndTopEdgesButNotRightAndBottom()
+        Expect.Begin
+        Dim r As GpRect = GpRect(10, 20, 30, 40)
+        Expect.IsTrue r.Contains2(10, 20), "Contains2 of the top left corner"
+        Expect.IsFalse r.Contains2(40, 60), "Contains2 of the bottom right corner (X + Width, Y + Height)"
+        Expect.IsFalse r.Contains2(40, 30), "Contains2 of a point on the right edge"
+        Expect.IsFalse r.Contains2(20, 60), "Contains2 of a point on the bottom edge"
+        Expect.IsTrue r.ContainsPt(GpPoint(39, 59)), "ContainsPt of (39, 59)"
+        Expect.IsFalse r.ContainsPt(GpPoint(9, 20)), "ContainsPt of (9, 20)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Contains_CountsSharingAnEdgeAsWithin()
+        Expect.Begin
+        Dim r As GpRect = GpRect(10, 20, 30, 40)
+        Expect.IsTrue r.Contains(GpRect(11, 21, 5, 5)), "Contains of a rectangle inside"
+        Expect.IsTrue r.Contains(GpRect(10, 20, 30, 40)), "Contains of the same rectangle"
+        Expect.IsTrue r.Contains(GpRect(35, 55, 5, 5)), "Contains of a rectangle that shares the right and bottom edges"
+        Expect.IsFalse r.Contains(GpRect(5, 5, 30, 40)), "Contains of a rectangle that sticks out"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IntersectsWith_RectanglesThatOnlyTouchDoNotOverlap()
+        Expect.Begin
+        Dim r As GpRect = GpRect(10, 20, 30, 40)
+        Expect.IsFalse r.IntersectsWith(GpRect(40, 60, 5, 5)), "IntersectsWith of a rectangle at the bottom right corner"
+        Expect.IsFalse r.IntersectsWith(GpRect(40, 20, 5, 5)), "IntersectsWith of a rectangle that touches the right edge"
+        Expect.IsTrue r.IntersectsWith(GpRect(30, 40, 30, 40)), "IntersectsWith of an overlapping rectangle"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IntersectedWith_And_UnitedWith_ReturnNewRectangles()
+        Expect.Begin
+        Dim r As GpRect = GpRect(10, 20, 30, 40)
+        Dim i As GpRect = r.IntersectedWith(GpRect(30, 40, 30, 40))
+        Expect.AreEqual "30,40,10,20", Box(i), "IntersectedWith of (10, 20, 30, 40) and (30, 40, 30, 40)"
+        Dim u As GpRect = r.UnitedWith(GpRect(30, 40, 30, 40))
+        Expect.AreEqual "10,20,50,60", Box(u), "UnitedWith of (10, 20, 30, 40) and (30, 40, 30, 40)"
+        Expect.AreEqual "10,20,30,40", Box(r), "the rectangle after IntersectedWith and UnitedWith"
+        Dim apart As GpRect = r.IntersectedWith(GpRect(100, 100, 5, 5))
+        Expect.IsTrue apart.Width < 0 Or apart.Height < 0, "IntersectedWith of rectangles that do not overlap has a negative width or height"
+        Expect.Done
+    End Sub
+
+    ' ---- Free-standing functions
+
+    [TestCase]
+    Public Sub Intersection_And_Union_SetTheResult()
+        Expect.Begin
+        Dim c As GpRect
+        Expect.IsTrue Intersection(c, GpRect(0, 0, 10, 10), GpRect(5, 5, 10, 10)), "Intersection of (0, 0, 10, 10) and (5, 5, 10, 10)"
+        Expect.AreEqual "5,5,5,5", Box(c), "the result of Intersection"
+        Expect.IsTrue Union(c, GpRect(0, 0, 10, 10), GpRect(5, 5, 10, 10)), "Union of (0, 0, 10, 10) and (5, 5, 10, 10)"
+        Expect.AreEqual "0,0,15,15", Box(c), "the result of Union"
+        Expect.IsFalse Intersection(c, GpRect(0, 0, 10, 10), GpRect(50, 50, 10, 10)), "Intersection of rectangles that do not overlap"
+        Expect.Done
+    End Sub
+
+End Module

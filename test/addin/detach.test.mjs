@@ -14,7 +14,7 @@
 // The tests also count the msedgewebview2.exe processes under that folder
 // before the IDE starts and after it ends.
 //
-// Each test states what BETA 1005 does. If one fails after an IDE update, the
+// Each test states what BETA 1010 does. If one fails after an IDE update, the
 // IDE has changed: update the plan for detaching the help pane in
 // WIP.HelpAddin.md, and then this file.
 //
@@ -39,7 +39,7 @@ const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "detach");
 // The IDE's TEMP is a folder of the harness's own (launchIde in tb-ide.mjs), and
 // the add-in builds its user data folder from the TEMP it finds.
-const ideTemp = (lane) => path.join(process.env.TEMP ?? tmpdir(), `tbbuild-tmp-${lane.port}`);
+const ideTemp = (lane) => path.join(process.env.TEMP ?? tmpdir(), `tbbuild-tmp-${lane.slot}`);
 // DETACH_NOUDF=1 leaves the control's user data folder unset: the variant that
 // shows where the runtime puts it then.
 const NOUDF = !!process.env.DETACH_NOUDF;

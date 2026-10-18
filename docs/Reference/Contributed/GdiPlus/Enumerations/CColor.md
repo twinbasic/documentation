@@ -10,16 +10,29 @@ permalink: /tB/Packages/Contributed/GdiPlus/Enumerations/CColor
 
 Names 140 common colours, and one fully transparent colour, as 32-bit ARGB values.
 
-This enumeration belongs to the package; GDI+ has no counterpart. Each member is a **Long** in the layout of a [**Color**](../Types/Color): alpha in the highest byte, then red, green and blue. Every member is opaque (alpha 255), except **Transparent**. The names and the red, green and blue values are those of the named colours of HTML and CSS.
+This enumeration belongs to the package; GDI+ has no counterpart. Each member is a **Long** in the layout of a [**Color**](../Types/Color): alpha in the highest byte, then red, green and blue. Every member is opaque (alpha 255), except **Transparent**.
 
+<!-- test: Ty_CColorTests.Members_HaveTheCssValues -->
+The names and the red, green and blue values are those of the named colours of HTML and CSS, except those of **DarkSeaGreen**.
+<!-- /test -->
+
+<!-- test: Ty_CColorTests.Members_CanBeWrittenWithoutTheEnumerationName, Ty_CColorTests.Color_KeepsAllFourBytesOfAMember -->
 A member can be written with or without the name of the enumeration: `White` or `CColor.White`. The exact way to use one is to give it to the **Color** function, as in `Color(CColor.Orange)`, which keeps all four bytes.
+<!-- /test -->
 
+<!-- test: Ty_CColorTests.DarkSeaGreen_HasTheCssValue -->
+> [!WARNING] 0.9.45.0
+> **DarkSeaGreen** is `&HFF8FBC8B`, which is `#8FBC8B`. The colour of that name in HTML and CSS is `#8FBC8F`, so the blue channel is 4 less than it should be.
+
+<!-- test: Ty_CColorTests.SolidBrush_TransparentMemberDrawsNothing, Ty_CColorTests.SolidBrush_ColorOfTransparentMemberDrawsNothing, Ty_CColorTests.SolidBrush_OpaqueMemberHasItsColour, Ty_CColorTests.Pen_TransparentMemberDrawsNothing, Ty_CColorTests.Pen_ColorOfTransparentMemberDrawsNothing, Ty_CColorTests.Clear_TransparentMemberClearsToTransparent, Ty_CColorTests.Clear_ColorOfTransparentMemberClearsToTransparent, Ty_CColorTests.Clear_OpaqueMemberHasItsColour -->
 > [!WARNING] 0.9.45.0
 > A member passed straight to a method that has an overload taking a **Long** (the *rgb* parameters of **SolidBrush**, **Pen**, **Graphics.Clear** and others) binds to that overload, which reads the value as `&H00RRGGBB` and sets the alpha to 255. The red, green and blue of an opaque member come out right, but the alpha is lost: `SolidBrush(CColor.Transparent)` is opaque white, not transparent. Write `SolidBrush(Color(CColor.Transparent))` instead.
 
+<!-- test: Ty_CColorTests.Members_AreNotVisualBasicColours -->
 > [!NOTE] 0.9.45.0
 > A **CColor** member is not a VB colour. A VB colour constant such as **vbRed**, and the result of **RGB**, put red in the lowest byte and have no alpha. The **BGR** property of a **Color** returns its value in that layout.
 
+<!-- test: Ty_CColorTests.Members_HaveTheCssValues -->
 | Member | Value | Description |
 |:-------|:------|:------------|
 | **AliceBlue**{: #AliceBlue } | `&HFFF0F8FF` | Opaque, `#F0F8FF`. |
@@ -55,7 +68,7 @@ A member can be written with or without the name of the enumeration: `White` or 
 | **DarkOrchid**{: #DarkOrchid } | `&HFF9932CC` | Opaque, `#9932CC`. |
 | **DarkRed**{: #DarkRed } | `&HFF8B0000` | Opaque, `#8B0000`. |
 | **DarkSalmon**{: #DarkSalmon } | `&HFFE9967A` | Opaque, `#E9967A`. |
-| **DarkSeaGreen**{: #DarkSeaGreen } | `&HFF8FBC8B` | Opaque, `#8FBC8B`. |
+| **DarkSeaGreen**{: #DarkSeaGreen } | `&HFF8FBC8B` | Opaque, `#8FBC8B` (CSS: `#8FBC8F`). |
 | **DarkSlateBlue**{: #DarkSlateBlue } | `&HFF483D8B` | Opaque, `#483D8B`. |
 | **DarkSlateGray**{: #DarkSlateGray } | `&HFF2F4F4F` | Opaque, `#2F4F4F`. |
 | **DarkTurquoise**{: #DarkTurquoise } | `&HFF00CED1` | Opaque, `#00CED1`. |
@@ -163,6 +176,7 @@ A member can be written with or without the name of the enumeration: `White` or 
 | **WhiteSmoke**{: #WhiteSmoke } | `&HFFF5F5F5` | Opaque, `#F5F5F5`. |
 | **Yellow**{: #Yellow } | `&HFFFFFF00` | Opaque, `#FFFF00`. |
 | **YellowGreen**{: #YellowGreen } | `&HFF9ACD32` | Opaque, `#9ACD32`. |
+<!-- /test -->
 
 ## Used by
 

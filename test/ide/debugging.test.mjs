@@ -21,9 +21,11 @@
 // prints "main end"; and a Function Answer that nothing calls, for F6. The tests find its lines
 // by their @ marks.
 //
-// THE IDE SAVES ITS OPTIONS AND PANEL LAYOUT IN THE USER'S OWN REGISTRY (HKCU\Software\VB and VBA
-// Program Settings\twinBASIC_IDE\IDESettings). So, as soon as the project is open, the page's
-// hostAppObject is replaced by a proxy whose SaveIDESetting, ChangeWindowSetting and recent-list
+// THE IDE IS STARTED WITH --no-save-ide-settings and --no-update-recent-files (IDE_FLAGS in
+// scripts/lib/tb-ide.mjs), so it writes none of its options or panel layout to the user's own
+// registry (HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE\IDESettings). The flags do not
+// guard the Window key or the removals from the recent list. So, as soon as the project is open,
+// the page's hostAppObject is replaced by a proxy whose ChangeWindowSetting and RemoveRecentsList
 // calls do nothing, as memory.test.mjs does. NO TEST OPENS A BROWSER: the error panel's Search
 // Online calls root.Shell with a "cmd.exe /c start" command line, so root.Shell is replaced by a
 // recorder at the same time, and before() fails, before any run, if the recorder is not in place.
@@ -31,7 +33,7 @@
 //
 // The tests share the lane's IDE in order. The edits the last tests make (a letter typed at the end
 // of the @EDIT comment, a line that does not compile in Direct) are not undone. Each test states
-// what BETA 1005 does; the tests named "control" pass whether or not the defects are fixed. If
+// what BETA 1010 does; the tests named "control" pass whether or not the defects are fixed. If
 // another fails after an IDE update, the IDE has changed: update the entry in BUGS-TO-REPORT.md, or
 // its report in bugs/filed/, the callout on the page of docs/IDE/Debugging/ that carries it, and
 // then this file.
@@ -84,12 +86,12 @@ const EDIT = at("EDIT");
 const ABORTING = "[EDIT & CONTINUE] not yet supported.  Aborting.";
 const NOT_FOUND = "RunCodeUnderCursor: failed to identify the procedure at the cursor position.";
 
-// Blocks every call that writes the user's registry, and records every command line the page
+// Blocks every call the flags do not guard that writes the user's registry, and records every command line the page
 // passes to root.Shell instead of running it (see the top of this file).
 const GUARD_JS = `(() => {
   if (!window.__guarded) {
     window.__guarded = true;
-    const blocked = new Set(["SaveIDESetting", "ChangeWindowSetting", "AddRecentsList", "RemoveRecentsList"]);
+    const blocked = new Set(["ChangeWindowSetting", "RemoveRecentsList"]);
     hostAppObject = new Proxy(hostAppObject, {
       get(target, key) {
         if (blocked.has(key)) return async () => undefined;
@@ -124,6 +126,7 @@ const ROW_JS = (name) => `(() => {
   const q = row.innerDiv.getBoundingClientRect();
   return { value: row.customRenderData.value, x: q.x + q.width * 0.6, y: q.y + Math.min(q.height, 20) / 2 };
 })()`;
+const TOOLTIP_GONE_JS = `(() => { const t = document.getElementById("hoverTooltip"); return !t || !t.classList.contains("visibleTooltip"); })()`;
 const EDIT_BOX_JS = `(() => { const e = document.getElementById("renameInput"); return e ? e.value : null; })()`;
 const HOVER_JS = `(() => {
   const h = [...document.querySelectorAll(".monaco-hover")].find((e) => !e.classList.contains("hidden") && e.getBoundingClientRect().height > 4);
@@ -200,6 +203,11 @@ scenario("running and debugging", (lane) => {
   }
   const row = (name) => c.evaluate(ROW_JS(name));
   async function doubleClickRow(name) {
+    // The panel's tooltip for the row the mouse was left on (#hoverTooltip) lies over the rows
+    // below it and takes the clicks meant for them, so the mouse is moved off the panel and the
+    // tooltip waited out first.
+    await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 10, y: 300 });
+    assert.ok(await waitFor(c, () => c.evaluate(TOOLTIP_GONE_JS)), "the Variables panel's tooltip never went");
     const r = await row(name);
     assert.ok(r, `the Variables panel has no row ${name}`);
     await clickAt(c, r.x, r.y);

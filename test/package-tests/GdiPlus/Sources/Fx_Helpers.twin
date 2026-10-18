@@ -1,0 +1,38 @@
+' Fx_Helpers: what the effect, font and text cases of GdiPlus share.
+Module Fx_Helpers
+
+    ' A 4 by 4 bitmap of one opaque colour.
+    Public Function Fx_Flat(ByVal R As Long, ByVal G As Long, ByVal B As Long) As Bitmap
+        Dim bmp As Bitmap = Bitmap(4!, 4!)
+        Dim gr As Graphics = Graphics(bmp)
+        gr.Clear Color(255, R, G, B)
+        Return bmp
+    End Function
+
+    ' A square bitmap of one opaque colour.
+    Public Function Fx_FlatSized(ByVal Size As Long, ByVal R As Long, ByVal G As Long, ByVal B As Long) As Bitmap
+        Dim bmp As Bitmap = Bitmap(CSng(Size), CSng(Size))
+        Dim gr As Graphics = Graphics(bmp)
+        gr.Clear Color(255, R, G, B)
+        Return bmp
+    End Function
+
+    ' The colour of pixel (1, 1) as AARRGGBB hex text.
+    Public Function Fx_Px(bmp As Bitmap) As String
+        Fx_Px = Right$("00000000" & Hex$(bmp.Pixel(1, 1).argb), 8)
+    End Function
+
+    ' A colour matrix with 1 on the diagonal.
+    Public Function Fx_Identity() As ColorMatrix
+        Dim i As Long
+        For i = 0 To 4
+            Fx_Identity.m(i, i) = 1
+        Next
+    End Function
+
+    ' The folder of the cases that write files.
+    Public Function Fx_Folder() As String
+        Fx_Folder = Environ$("TEMP") & "\tbdocs-package-tests\GdiPlus"
+    End Function
+
+End Module

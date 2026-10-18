@@ -50,7 +50,7 @@ DateAdd("m", 1, "31-Jan-95")
 
 In this case, **DateAdd** returns 28-Feb-95, not 31-Feb-95. If *date* is 31-Jan-96, it returns 29-Feb-96 because 1996 is a leap year.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > **DateAdd** with the "m", "q" or "yyyy" interval does not stop at the last day of a shorter month: it counts the extra days into the next month and raises no error. `DateAdd("m", 1, "31-Jan-95")` returns 3-Mar-95, `DateAdd("m", -1, #3/31/2026#)` returns 3-Mar-2026, and `DateAdd("yyyy", 1, #2/29/2024#)` returns 1-Mar-2025. VB6 returns 28-Feb-95, 28-Feb-2026 and 28-Feb-2025.
 
 If the calculated date would precede the year 100, an error occurs.

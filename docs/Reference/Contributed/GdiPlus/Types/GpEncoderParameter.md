@@ -12,6 +12,7 @@ One parameter of an image encoder: an identifier, a type, and a list of values.
 
 Encoder parameters tell an encoder how to write a picture, for instance the quality of a JPEG. [**Image.GetEncoderParameterList**](../Image#getencoderparameterlist) returns the parameters an encoder accepts, and [**Image.Save**](../Image#save) takes an array of them. The identifiers come from the functions of [**ImageCodec**](../ImageCodec#encoder-parameters). The type mirrors the GDI+ [EncoderParameter](https://learn.microsoft.com/en-us/windows/win32/api/gdiplusimaging/ns-gdiplusimaging-encoderparameter) structure. It is 28 bytes long in a 32-bit program and 32 bytes in a 64-bit one.
 
+<!-- test: Im_ImageTests.Save_JpegQualityChangesFileSize, Im_ImageTests.GetEncoderParameterList_JpegListsTheQuality -->
 > [!WARNING] 0.9.45.0
 > **Image.Save** and **Image.GetEncoderParameterList** do not work, so a program cannot pass these parameters to an encoder or get them from one. See the warnings on [**Image**](../Image#save).
 

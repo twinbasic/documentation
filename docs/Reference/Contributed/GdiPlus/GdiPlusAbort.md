@@ -30,6 +30,7 @@ Syntax: *object*.**Abort**( ) As **Long**
 
 GDI+ calls it from time to time during a long operation on the image. Returning a value other than 0 asks GDI+ to stop the operation; returning 0 lets it go on.
 
+<!-- test: Gr_LibraryTests.SetAbort_ThenDrawingTheImage_Works -->
 > [!WARNING] 0.9.45.0
 > Do not use this interface. GDI+ 1.0 and 1.1 do not implement the aborts, and an image that has been given an implementation with **SetAbort** causes an access violation in GDI+ the next time it is drawn.
 

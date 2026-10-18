@@ -11,9 +11,14 @@ has_toc: false
 
 A point or two-dimensional vector with **Single** coordinates.
 
+<!-- test: Ty_GpPointFTests.GpPointF_IsEightBytes -->
 **GpPointF** is the point that the **Single** overloads of the drawing methods take. It is 8 bytes: the fields **X** and **Y**, followed by methods that read and change them. The integer counterpart is [**GpPoint**](GpPoint); a size is a [**GpSizeF**](GpSizeF) and a rectangle a [**GpRectF**](GpRectF). It mirrors the `PointF` class of the GDI+ C++ wrapper.
+<!-- /test -->
 
+
+<!-- test: Ty_GpPointFTests.GpPointF_FormsGiveTheDocumentedValues -->
 A variable declared with `Dim` starts at (0, 0).
+<!-- /test -->
 
 ## Creating
 
@@ -22,6 +27,7 @@ Syntax: **GpPointF**( *x*, *y* ) \
 Syntax: **GpPointF**( *point* ) \
 Syntax: **GpPointF**( *size* )
 
+<!-- test: Ty_GpPointFTests.GpPointF_FormsGiveTheDocumentedValues -->
 The module function **GpPointF** returns a new point. A **GpPointF** has no constructor of the `New` form.
 
 *x*, *y*
@@ -34,6 +40,7 @@ The module function **GpPointF** returns a new point. A **GpPointF** has no cons
 : *required* A [**GpSizeF**](GpSizeF). The new point takes **X** from its **Width** and **Y** from its **Height**.
 
 With no arguments the point is (0, 0).
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -56,15 +63,21 @@ The coordinates, as **Single** fields. Assign them directly.
 
 Syntax: *point*.**Zero** As **Boolean**
 
+<!-- test: Ty_GpPointFTests.Zero_IsTrueOnlyForExactlyZero -->
 Read-only. **True** when both coordinates are exactly 0.
+<!-- /test -->
 
 ### Length
 
 Syntax: *point*.**Length** [ = *value* ] As **Single**
 
+<!-- test: Ty_GpPointFTests.Length_IsTheSquareRootOfTheSumOfSquares, Ty_GpPointFTests.Length_SetScalesTheVectorKeepingItsDirection -->
 Returns the length of the vector, the square root of **X** squared plus **Y** squared. Setting it scales the vector to the given length and keeps its direction.
+<!-- /test -->
 
+<!-- test: Ty_GpPointFTests.Length_SetToZeroZeroesBothCoordinates, Ty_GpPointFTests.Length_SetOfAVectorShorterThanTwiceEpsilonChangesNothing -->
 Setting **Length** to 0 sets both coordinates to 0, and the direction is lost. Setting the length of a zero vector, or of one shorter than twice [**REAL_EPSILON**](../Helpers#real_epsilon), changes nothing.
+<!-- /test -->
 
 ### Normalized
 
@@ -72,14 +85,17 @@ Syntax: *point*.**Normalized** As **GpPointF**
 
 Returns the vector scaled to length 1.
 
-> [!NOTE] 0.9.45.0, BETA 1005
+<!-- test: none -- the linker rejects the program, and the compile-case runner sees only the diagnostics of the editor -->
+> [!NOTE] 0.9.45.0, BETA 1010
 > A program that names **Normalized** does not link: the linker reports a code generation error in `Types.Normalized`. Use [**Normalize**](#normalize) on a copy of the point instead.
 
 ### Transposed
 
 Syntax: *point*.**Transposed** As **GpPointF**
 
+<!-- test: Ty_GpPointFTests.Transposed_ExchangesTheCoordinates -->
 Read-only. Returns a point with **X** and **Y** exchanged.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -98,20 +114,26 @@ Debug.Print GpPointF(1, 2).Transposed.X              ' 2
 
 Syntax: *point*.**AsGpPoint**( ) As **GpPoint**
 
+<!-- test: Ty_GpPointFTests.AsGpPoint_RoundsHalvesToEven -->
 Returns the point with its coordinates rounded to whole numbers. Halves go to the even number: 2.5 becomes 2 and 3.5 becomes 4.
+<!-- /test -->
 
 ### SetFrom
 
 Syntax: *point*.**SetFrom**( *source* )
 
+<!-- test: Ty_GpPointFTests.SetFrom_TakesAGpPoint -->
 Sets both coordinates from a [**GpPoint**](GpPoint).
+<!-- /test -->
 
 ### AsPOINT, SetFromPOINT
 
 Syntax: *point*.**AsPOINT**( ) As **GDIP_POINT** \
 Syntax: *point*.**SetFromPOINT**( *source* As **GDIP_POINT** )
 
+<!-- test: Ty_GpPointFTests.AsPOINT_RoundsAndSetFromPOINTConverts -->
 Convert to and from a structure of two **Long** fields `x` and `y`, which is the layout of the Windows `POINT`. The structure is declared as **GDIP_POINT**. **AsPOINT** rounds as **AsGpPoint** does.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -128,11 +150,18 @@ Debug.Print winPoint.x & "," & winPoint.y            ' 9,2
 
 These change the point they are called on.
 
+<!-- test: Ty_GpPointFTests.Add_ChangesThePoint, Ty_GpPointFTests.Sub_ChangesThePoint, Ty_GpPointFTests.SumDiffProdQuot_ReturnNewPointsAndLeaveThePoint -->
 > [!NOTE] 0.9.45.0
 > **Add** and **Sub** change the point they are called on. Before version 0.9.0.43 they returned the result and left the point alone. Use [**Sum**](#sum-diff) and [**Diff**](#sum-diff) to get a new point.
 
-> [!NOTE] 0.9.45.0, BETA 1005
+<!-- test: none -- a twinBASIC defect (BETA 1005), not the package's -->
+> [!NOTE] 0.9.45.0, BETA 1010
 > The compiler reads `p.Scale(2)` as the start of a `Scale` statement and reports a syntax error. Write `p.Scale 2` or `Call p.Scale(2)`. **Scale2**, **InvScale** and the other methods are not affected.
+>
+> ```tb check_build expect-error=TB5212
+> Dim p As GpPointF = GpPointF(3, 4)
+> p.Scale(2)
+> ```
 
 ### Add, Sub
 
@@ -146,26 +175,34 @@ Adds *other* to the point, or subtracts it.
 Syntax: *point*.**Scale** *factor* \
 Syntax: *point*.**Scale2**( *xFactor*, *yFactor* )
 
+<!-- test: Ty_GpPointFTests.Scale_MultipliesBothCoordinates, Ty_GpPointFTests.Scale_CallFormMultipliesBothCoordinates, Ty_GpPointFTests.Scale2_MultipliesEachCoordinateByItsOwnFactor -->
 Multiplies both coordinates by *factor* (**Single**), or **X** by *xFactor* and **Y** by *yFactor*.
+<!-- /test -->
 
 ### InvScale, InvScale2
 
 Syntax: *point*.**InvScale**( *divisor* ) \
 Syntax: *point*.**InvScale2**( *xDivisor*, *yDivisor* )
 
+<!-- test: Ty_GpPointFTests.InvScale_And_InvScale2_Divide -->
 Divides both coordinates by *divisor*, or **X** by *xDivisor* and **Y** by *yDivisor*.
+<!-- /test -->
 
 ### Transpose
 
 Syntax: *point*.**Transpose**
 
+<!-- test: Ty_GpPointFTests.Transpose_ExchangesTheCoordinatesOfThePoint -->
 Exchanges **X** and **Y**.
+<!-- /test -->
 
 ### Normalize
 
 Syntax: *point*.**Normalize**
 
+<!-- test: Ty_GpPointFTests.Normalize_SetsTheLengthToOneAndKeepsTheDirection, Ty_GpPointFTests.Normalize_LeavesAZeroVector -->
 Sets the length to 1 and keeps the direction. A zero vector stays as it is.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -215,13 +252,17 @@ Returns the point with its coordinates divided.
 
 Syntax: *point*.**DotProd**( *other* As **GpPointF** ) As **Single**
 
+<!-- test: Ty_GpPointFTests.DotProd_IsXTimesXPlusYTimesY -->
 Returns the dot product, `X * other.X + Y * other.Y`.
+<!-- /test -->
 
 ### Equals
 
 Syntax: *point*.**Equals**( *other* As **GpPointF** ) As **Boolean**
 
+<!-- test: Ty_GpPointFTests.Equals_IsExact -->
 **True** when both coordinates are exactly equal to those of *other*.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()

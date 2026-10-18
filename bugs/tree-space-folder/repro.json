@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["Space on a selected folder neither closes nor opens it"],
+  "steps": "1. In Project Explorer's file view, open Sources and Sources/Helpers and select Helpers.\n2. Press Space: Helpers stays open, and stays selected."
+}

@@ -1,0 +1,153 @@
+' Regression tests: each [TestCase] calls a method or property of a UDT in one way and asserts
+' the correct result. Where the UDT is an element of an array (a local, static, module-level,
+' dynamic or parameter array) the call ends in an access violation in a 32-bit and a 64-bit
+' build; the controls (a scalar variable, a UDT field, an array inside a UDT, an element copied
+' to a variable first, a plain field of the element) pass.
+[TestFixture]
+Module RegressionTests
+
+    ' --- controls: these pass ---
+
+    [TestCase]
+    Public Sub Scalar_PropertyGet()
+        Dim p As Pair
+        p.X = 5
+        Assert.Strict.AreEqual 5, p.Sum
+    End Sub
+
+    [TestCase]
+    Public Sub Scalar_Sub()
+        Dim p As Pair
+        p.X = 5
+        p.Bump
+        Assert.Strict.AreEqual 6, p.X
+    End Sub
+
+    [TestCase]
+    Public Sub UdtField_PropertyGet()
+        Dim h As Holder
+        h.One.X = 5
+        Assert.Strict.AreEqual 5, h.One.Sum
+    End Sub
+
+    [TestCase]
+    Public Sub ArrayInUdtField_Element_PropertyGet()
+        Dim h As Holder
+        h.Many(1).X = 5
+        Assert.Strict.AreEqual 5, h.Many(1).Sum
+    End Sub
+
+    [TestCase]
+    Public Sub ElementCopiedFirst_PropertyGet()
+        Dim a(1 To 3) As Pair
+        a(1).X = 5
+        Dim p As Pair
+        p = a(1)
+        Assert.Strict.AreEqual 5, p.Sum
+    End Sub
+
+    [TestCase]
+    Public Sub Element_Field()
+        Dim a(1 To 3) As Pair
+        a(1).X = 5
+        Assert.Strict.AreEqual 5, a(1).X
+    End Sub
+
+    ' --- the defect: a method or property called on an array element ---
+
+    [TestCase]
+    Public Sub LocalArray_Element_PropertyGet()
+        Dim a(1 To 3) As Pair
+        a(1).X = 5
+        Assert.Strict.AreEqual 5, a(1).Sum
+    End Sub
+
+    [TestCase]
+    Public Sub LocalArray_Element_Sub()
+        Dim a(1 To 3) As Pair
+        a(1).X = 5
+        a(1).Bump
+        Assert.Strict.AreEqual 6, a(1).X
+    End Sub
+
+    [TestCase]
+    Public Sub LocalArray_Element_FunctionThatIgnoresMe()
+        Dim a(1 To 3) As Pair
+        Assert.Strict.AreEqual 1, a(1).Const1()
+    End Sub
+
+    [TestCase]
+    Public Sub LocalArray_Element_FunctionWithUdtArgument()
+        Dim a(1 To 3) As Pair
+        Dim d As Pair
+        a(1).X = 5
+        a(2).X = 2
+        d = a(1).Diff(a(2))
+        Assert.Strict.AreEqual 3, d.X
+    End Sub
+
+    [TestCase]
+    Public Sub LocalArray_LowerBoundZero_Element_PropertyGet()
+        Dim a(0 To 2) As Pair
+        a(0).X = 5
+        Assert.Strict.AreEqual 5, a(0).Sum
+    End Sub
+
+    [TestCase]
+    Public Sub LocalArray_VariableIndex_Element_PropertyGet()
+        Dim a(1 To 3) As Pair
+        Dim i As Long
+        i = 2
+        a(i).X = 5
+        Assert.Strict.AreEqual 5, a(i).Sum
+    End Sub
+
+    [TestCase]
+    Public Sub LocalArray_WithElement_PropertyGet()
+        Dim a(1 To 3) As Pair
+        a(2).X = 5
+        With a(2)
+            Assert.Strict.AreEqual 5, .Sum
+        End With
+    End Sub
+
+    [TestCase]
+    Public Sub StaticArray_Element_PropertyGet()
+        Static a(1 To 3) As Pair
+        a(1).X = 5
+        Assert.Strict.AreEqual 5, a(1).Sum
+    End Sub
+
+    [TestCase]
+    Public Sub DynamicArray_Element_PropertyGet()
+        Dim a() As Pair
+        ReDim a(1 To 3)
+        a(1).X = 5
+        Assert.Strict.AreEqual 5, a(1).Sum
+    End Sub
+
+    [TestCase]
+    Public Sub ModuleLevelArray_Element_PropertyGet()
+        ModuleLevel(1).X = 5
+        Assert.Strict.AreEqual 5, ModuleLevel(1).Sum
+    End Sub
+
+    [TestCase]
+    Public Sub ArrayParameter_Element_PropertyGet()
+        Dim a(1 To 3) As Pair
+        a(1).X = 5
+        Assert.Strict.AreEqual 5, SumOfFirst(a)
+    End Sub
+
+    Private Function SumOfFirst(ByRef b() As Pair) As Long
+        SumOfFirst = b(1).Sum
+    End Function
+
+    [TestCase]
+    Public Sub OneByteUdt_Element_PropertyGet()
+        Dim f(0 To 3) As Flags
+        f(1).Value = &H80
+        Assert.Strict.AreEqual True, f(1).IsClosed
+    End Sub
+
+End Module

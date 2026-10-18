@@ -123,7 +123,7 @@ dilute a category the fixture is supposed to hold at an exact, meaningful number
 
 The scenarios that test twinBASIC IDE add-ins by operating an IDE, run with
 `addin-test.bat`. Each `*.test.mjs` is a `node:test` file and one lane of the run: it gets
-its own DevTools port, work folder and private copy of the twinBASIC install from
+its own private desktop (a slot from `tbbroker`), work folder and private copy of the twinBASIC install from
 [`scripts/lib/tb-lane.mjs`](../scripts/lib/tb-lane.mjs), builds the add-ins it tests into
 that copy, and opens `host/`, the project a scenario works in. `host/` holds two modules
 with the word `needle` in them, placed for Sample 15's search to find; change them and

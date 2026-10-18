@@ -1,0 +1,26 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.Scalar_PropertyGet$",
+      "^PASS RegressionTests\\.Scalar_Sub$",
+      "^PASS RegressionTests\\.UdtField_PropertyGet$",
+      "^PASS RegressionTests\\.ArrayInUdtField_Element_PropertyGet$",
+      "^PASS RegressionTests\\.ElementCopiedFirst_PropertyGet$",
+      "^PASS RegressionTests\\.Element_Field$",
+      "^FAIL RegressionTests\\.LocalArray_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.LocalArray_Element_Sub: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.LocalArray_Element_FunctionThatIgnoresMe: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.LocalArray_Element_FunctionWithUdtArgument: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.LocalArray_LowerBoundZero_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.LocalArray_VariableIndex_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.LocalArray_WithElement_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.StaticArray_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.DynamicArray_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.ModuleLevelArray_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.ArrayParameter_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.OneByteUdt_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$"
+    ]
+  }
+}

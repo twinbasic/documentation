@@ -50,6 +50,7 @@ Syntax: *params* **=** *effect*.**Parameters**( *size* )
 
 The setter replaces the parameters. The getter reads them, and needs *size*, the size of the parameters structure in bytes (`LenB(Of BlurParams)`).
 
+<!-- test: Fx_EffectTests.Blur_ParametersGetWithoutSize_ReturnsTheParameters, Fx_EffectTests.Sharpen_ParametersGetWithoutSize_ReturnsTheParameters, Fx_EffectTests.BrightnessContrast_ParametersGetWithoutSize_ReturnsTheParameters, Fx_EffectTests.HueSaturationLightness_ParametersGetWithoutSize_ReturnsTheParameters, Fx_EffectTests.Levels_ParametersGetWithoutSize_ReturnsTheParameters, Fx_EffectTests.Tint_ParametersGetWithoutSize_ReturnsTheParameters, Fx_EffectTests.ColorBalance_ParametersGetWithoutSize_ReturnsTheParameters, Fx_EffectTests.ColorCurve_ParametersGetWithoutSize_ReturnsTheParameters, Fx_EffectTests.ColorMatrixEffect_ParametersGetWithoutSize_ReturnsTheParameters, Fx_EffectTests.ColorLUT_ParametersGetWithoutSize_ReturnsTheParameters, Fx_EffectTests.RedEyeCorrection_ParametersGetWithoutSize_SetsNoError -->
 > [!WARNING] 0.9.45.0
 > Without *size*, the getter returns a structure of zeros and sets **LastResult** to 2 (**InvalidParameter**), because GDI+ is given a buffer size of 0. Pass the size every time: `blur.Parameters(LenB(Of BlurParams)).radius`.
 
@@ -102,6 +103,7 @@ Syntax: *n* **=** *effect*.**ParameterSize**
 
 Returns the size in bytes of the parameters that the effect takes, as GDI+ states it.
 
+<!-- test: Fx_EffectTests.ParameterSize_BrightnessContrast_IsTheSizeOfItsParameters, Fx_EffectTests.ParameterSize_ColorMatrixEffect_IsTheSizeOfItsParameters -->
 > [!WARNING] 0.9.45.0
 > **ParameterSize** always returns 0. The property assigns the status of the call, not the size, to its return value. Use `LenB(Of BlurParams)` and the like instead.
 

@@ -30,7 +30,7 @@
 //   7. In an Enum body a bracket group alone on its line is a MEMBER, whatever
 //      is inside the brackets: `[Hidden]` is the member Hidden, `[Description("x")]`
 //      a member of that name. An Enum member has no attribute site of its own
-//      (BETA 1005; probes in scripts/check_twin_parsers.mjs).
+//      (BETA 1010; probes in scripts/check_twin_parsers.mjs).
 //
 // Only TYPE blocks are tracked for the enclosing construct. Procedures are
 // deliberately not pushed: an Interface prototype (`Sub Ping()`) has no body and

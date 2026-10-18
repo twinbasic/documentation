@@ -231,7 +231,7 @@ The four [**VbCallType**](../../tB/Modules/Constants/VbCallType) values are the 
 | The object is **Nothing** | 91, *Object variable or With block variable not set* |
 | **CallByName** on a value that is not an object | 424, *Object required* |
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > A call that fails inside **Invoke** can be made twice, so its side effects happen twice and nothing says so. VB6 makes the call once. A failed property assignment is followed by a second **Invoke** with *wFlags* 3. A call with more arguments than a **Sub** takes runs the **Sub**, then fails with error 13, and a late-bound statement does this twice. Code that implements **Invoke** must not change state before it can still fail.
 
 > [!NOTE]

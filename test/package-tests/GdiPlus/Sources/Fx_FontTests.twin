@@ -1,0 +1,167 @@
+' Fx_FontTests: Font and FontFamily.
+' A family name is "Arial", which every Windows installation has.
+[TestFixture]
+Module Fx_FontTests
+
+    ' ---- FontFamily.FamilyName
+
+    [TestCase]
+    Public Sub FamilyName_OfAnInstalledFamily_EqualsTheNameGiven()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim ff As FontFamily = FontFamily("Arial")
+        Expect.IsTrue ff.IsAvailable, "FontFamily(""Arial"").IsAvailable"
+        Expect.AreEqual "Arial", ff.FamilyName, "FontFamily(""Arial"").FamilyName"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FamilyName_OfAGenericFamily_HasNoNulCharacter()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim name As String = GenericSansSerif().FamilyName
+        Expect.IsTrue Len(name) > 0, "GenericSansSerif().FamilyName is not empty"
+        Expect.AreEqual 0, InStr(name, vbNullChar), "position of a NUL character in GenericSansSerif().FamilyName"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FamilyName_WithTheNulRemoved_IsFoundByFontFamily()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim name As String = Replace(GenericSansSerif().FamilyName, vbNullChar, "")
+        Expect.IsTrue FontFamily(name).IsAvailable, "FontFamily(""" & name & """).IsAvailable"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FamilyName_WithTheNul_IsFoundByFontFamilyAndFont()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim name As String = GenericSansSerif().FamilyName
+        Expect.IsTrue FontFamily(name).IsAvailable, "FontFamily(FamilyName with its NUL).IsAvailable"
+        Dim f As GdiPlus.Font = Font(name, 12!)
+        Expect.IsTrue f.IsAvailable, "Font(FamilyName with its NUL, 12).IsAvailable"
+        Expect.Done
+    End Sub
+
+    ' ---- FontFamily
+
+    [TestCase]
+    Public Sub FontFamily_UnknownName_IsNotAvailable()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim missing As FontFamily = FontFamily("No such family")
+        Expect.IsFalse missing.IsAvailable, "IsAvailable of an unknown family"
+        Expect.AreEqual FontFamilyNotFound, missing.LastResult, "LastResult after creating an unknown family"
+        Expect.IsFalse missing.IsBoldAvailable, "IsBoldAvailable of an unknown family"
+        Expect.AreEqual InvalidParameter, missing.LastResult, "LastResult after a member of an unknown family"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GenericFamilies_AreCreatedOnceAndAreAvailable()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim a As FontFamily = GenericSansSerif()
+        Expect.IsTrue a.IsAvailable, "GenericSansSerif().IsAvailable"
+        Expect.IsTrue a Is GenericSansSerif(), "GenericSansSerif() returns the same object each time"
+        Expect.IsFalse GenericSerif() Is GenericSansSerif(), "GenericSerif() is another object than GenericSansSerif()"
+        Expect.IsTrue GenericMonospace().IsAvailable, "GenericMonospace().IsAvailable"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Font_AscentAndLineSpacing_AreScaledFromTheDesignMetrics()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim ff As FontFamily = GenericSansSerif()
+        Dim em As Long = ff.EmHeight(FontStyleRegular)
+        Dim f As GdiPlus.Font = Font(ff, 20!, FontStyleRegular, UnitPixel)
+        Expect.IsTrue em > 0, "EmHeight is positive"
+        Expect.IsTrue Abs(f.Ascent - 20! * ff.CellAscent(FontStyleRegular) / em) < 0.01, "Ascent = Size * CellAscent / EmHeight"
+        Expect.IsTrue Abs(f.Descent - 20! * ff.CellDescent(FontStyleRegular) / em) < 0.01, "Descent = Size * CellDescent / EmHeight"
+        Expect.IsTrue Abs(f.LineSpacing - 20! * ff.LineSpacing(FontStyleRegular) / em) < 0.01, "LineSpacing = Size * LineSpacing / EmHeight"
+        Expect.Done
+    End Sub
+
+    ' ---- Font
+
+    [TestCase]
+    Public Sub Font_FromAFamilyName_KeepsSizeStyleAndUnit()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim f As GdiPlus.Font = Font("Arial", 12!, FontStyleBold, UnitPixel)
+        Expect.IsTrue f.IsAvailable, "IsAvailable"
+        Expect.AreEqual 12, f.Size, "Size"
+        Expect.AreEqual FontStyleBold, f.Style, "Style"
+        Expect.AreEqual UnitPixel, f.Unit, "Unit"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Font_UnknownFamilyName_FallsBackToGenericSansSerif()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim f As GdiPlus.Font = Font("No such family", 20, FontStyleItalic, UnitPixel)
+        Expect.IsTrue f.IsAvailable, "IsAvailable of a font of an unknown family name"
+        Expect.AreEqual GenericSansSerif().FamilyName, f.Family.FamilyName, "the family of a font of an unknown family name"
+        Expect.AreEqual Ok, f.LastResult, "LastResult of a font of an unknown family name"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Font_FromAnUnavailableFamily_IsNotAvailable()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bad As GdiPlus.Font = Font(FontFamily("No such family"), 12!)
+        Expect.IsFalse bad.IsAvailable, "IsAvailable of a font made from an unavailable family"
+        Expect.AreEqual InvalidParameter, bad.LastResult, "LastResult of a font made from an unavailable family"
+        Dim zero As GdiPlus.Font = Font(GenericSerif(), 0!)
+        Expect.IsFalse zero.IsAvailable, "IsAvailable of a font of size 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Font_GetHeight_ScalesWithTheResolutionForPoints()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim px As GdiPlus.Font = Font(GenericSansSerif(), 20!, FontStyleRegular, UnitPixel)
+        Expect.IsTrue Abs(px.GetHeight(96!) - px.LineSpacing) < 0.01, "a pixel font has its LineSpacing at 96 dpi"
+        Expect.IsTrue Abs(px.GetHeight(300!) - px.LineSpacing) < 0.01, "a pixel font has its LineSpacing at 300 dpi"
+        Dim pt As GdiPlus.Font = Font(GenericSansSerif(), 10!, FontStyleRegular, UnitPoint)
+        Expect.IsTrue Abs(pt.GetHeight(72!) - pt.LineSpacing) < 0.01, "a point font has its LineSpacing at 72 dpi"
+        Expect.IsTrue Abs(pt.GetHeight(144!) - 2 * pt.LineSpacing) < 0.01, "a point font is twice as high at 144 dpi"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Font_GetLogFontW_GivesANegativeHeightForAPixelFont()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim f As GdiPlus.Font = Font(GenericSansSerif(), 20!, FontStyleBold, UnitPixel)
+        Dim bmp As Bitmap = Bitmap(10!, 10!)
+        Dim g As Graphics = Graphics(bmp)
+        Dim lf As GDIP_LOGFONTW = f.GetLogFontW(g)
+        Expect.AreEqual -20, lf.lfHeight, "LOGFONTW height of a 20 pixel font"
+        Expect.AreEqual 700, lf.lfWeight, "LOGFONTW weight of a bold font"
+        Expect.Done
+    End Sub
+
+    ' ---- the name Font, shared with the OLE Automation library
+
+    [TestCase]
+    Public Sub Font_VariableDeclaredAsFont_HoldsAGdiPlusFont()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim f As Font
+        On Error Resume Next
+        Set f = Font(GenericSansSerif(), 12!)
+        Dim n As Long = Err.Number
+        Dim d As String = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 0, n, "Err.Number after assigning a GDI+ font to a variable declared As Font (" & d & ")"
+        Expect.Done
+    End Sub
+
+End Module

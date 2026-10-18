@@ -1,19 +1,17 @@
 // The lane runner behind scripts/addin_test.mjs (addin-test.bat) and
 // scripts/ide_test.mjs (ide-test.bat): every lane listed in a suite's lanes.mjs,
-// each a node:test file run in a process of its own, with its own DevTools port,
-// work folder and copy of the twinBASIC install.
+// each a node:test file run in a process of its own, with its own slot (a
+// private desktop from tbbroker, WIP.Broker.md), work folder and copy of the
+// twinBASIC install. Each IDE's DevTools port is one Windows picks (launchIde).
 //
 // The two tools differ only in what they are given: the suite folder, their
-// name, the work folder under the temp directory, the default base port, and
-// the usage text. Everything else, the options included, is here, so the two
-// cannot drift apart. The entry scripts call exitOnCrash() before calling
-// runLanes().
+// name, the work folder under the temp directory, and the usage text.
+// Everything else, the options included, is here, so the two cannot drift
+// apart. The entry scripts call exitOnCrash() before calling runLanes().
 //
 // Options, as each tool's usage text states them:
 //
 //       --only <regex>    only the lanes whose name matches
-//       --port <n>        base DevTools port; the lanes get the first free ones
-//                         from n (lib/tb-ports.mjs)
 //       --jobs <n>        lanes at once (default 2)
 //       --timeout <secs>  a lane still running after this long is ended (default 600)
 //       --ide <path>      the twinBASIC.exe to copy (default: $TB_IDE, else the
@@ -22,8 +20,10 @@
 //
 // Exit: 0 every lane passed and the registry is as it was found, 1 a lane
 // failed or the run was interrupted, 2 the harness could not run (a refused
-// command line included) or crashed, 3 the registry or the work folders could
-// not be put back (the registry is what to repair, so 3 wins over 1).
+// command line included, or an IDE older than tb-install's MIN_BUILD) or
+// crashed, 3 the registry or the work folders could not be put back, or the
+// IDE's recent list or remembered build targets name a lane's folder (the
+// registry is what to repair, so 3 wins over 1).
 //
 // Not a gate, for the reasons examples.bat is not one: it needs Windows and a
 // twinBASIC install.
@@ -35,13 +35,16 @@
 // only hands each file its lane (LANE_ENV), runs the files a few at a time, and
 // owns what they share:
 //
-//   * THE REGISTRY. One process owns it per run (lib/tb-registry.mjs). This
-//     one records it before the first lane starts, and the lanes inherit
-//     TB_REGISTRY_OWNER and leave it alone. Once every lane has ended it
-//     puts back the IDE's lists, the .twinproj association and the build
-//     targets the IDE remembers, then checks that nothing under the lanes'
-//     folders is left -- unless another harness run is still running, which
-//     then puts back for both.
+//   * THE REGISTRY. Every IDE a lane starts has IDE_FLAGS (lib/tb-ide.mjs), so
+//     it writes neither the user's settings nor the recent list. One process
+//     owns what is left (lib/tb-registry.mjs). This one records it before the
+//     first lane starts, and the lanes inherit TB_REGISTRY_OWNER and leave it
+//     alone. Once every lane has ended it puts back the IDE's project state,
+//     the .twinproj association and the IDE's window geometry (the Window key,
+//     which the user's own IDE opens at), then checks that nothing under the lanes'
+//     folders is left in the IDE's lists or the build targets it remembers --
+//     unless another harness run is still running, which then puts back for
+//     both.
 //   * THE LANES' SETTINGS. SaveSetting writes under HKCU\Software\VB and VBA
 //     Program Settings\<app>, the same key as any installed copy of the
 //     program that saves it. A lane names the applications its program saves
@@ -49,6 +52,11 @@
 //     the first lane starts, deleted before each lane that names them, so that
 //     its program starts from its defaults, and put back at the end. Lanes
 //     that name the same application never run at once.
+//
+//   * THE PAGE'S SIZE. Every IDE a lane opens has a page of 1600 by 1000 CSS
+//     pixels (PAGE in lib/tb-lane.mjs), so that no scenario depends on the
+//     size the user's own IDE last left its window at; a lane names another
+//     with `page` in lanes.mjs.
 //
 // Ctrl+C ends the lanes and still puts the registry back.
 //
@@ -60,7 +68,7 @@
 // need to refuse while one is there.
 
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -74,24 +82,24 @@ import {
   withUsageError,
 } from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
+import { checkHarness } from "./harness-settings.mjs";
 import { removeTree } from "./tb-ide-copy.mjs";
-import { wantShow } from "./tb-ide.mjs";
-import { buildNumber, findIde } from "./tb-install.mjs";
+import { leaseSlot, wantShow } from "./tb-ide.mjs";
+import { buildNumber, findIde, unsupportedIde } from "./tb-install.mjs";
 import { LANE_ENV } from "./tb-lane.mjs";
-import { claimPorts } from "./tb-ports.mjs";
 import {
   alive,
   deleteSettings,
   finishTidy,
   ideLists,
   norm,
+  rememberedTargets,
   restoreKeys,
   SETTINGS_ROOT,
   settingsKey,
   snapshotKeys,
   startTidy,
   subkeyNames,
-  sweepArchitectureMemory,
 } from "./tb-registry.mjs";
 
 /**
@@ -102,27 +110,14 @@ import {
  * @param {string} o.tool     the tool's name in messages ("addin-test")
  * @param {string} o.suite    the suite folder, holding lanes.mjs and the scenario files
  * @param {string} o.workDir  the folder under the temp directory the lanes' work folders go in
- * @param {number} o.defaultPort  the base DevTools port when --port is not given
  * @param {string} o.usage    the tool's whole usage text, printed by --help and on a refused command line
  * @param {string} o.subject  what a lane's scenario operates, as a noun in messages ("add-in")
  */
-// Ports as a short list: runs of consecutive ones as a range, "9560-9563, 9565".
-function portList(ports) {
-  const runs = [];
-  for (const p of ports) {
-    const last = runs.at(-1);
-    if (last && p === last[1] + 1) last[1] = p;
-    else runs.push([p, p]);
-  }
-  return runs.map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`)).join(", ");
-}
-
-export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage: USAGE, subject }) {
+export async function runLanes({ tool, suite: SUITE, workDir, usage: USAGE, subject }) {
   const { values } = withUsageError(() =>
     parseCli(process.argv.slice(2), {
       options: {
         only: { type: "string" },
-        port: { type: "string" },
         jobs: { type: "string" },
         timeout: { type: "string" },
         ide: { type: "string" },
@@ -135,16 +130,10 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
   );
   if (values.help) printHelpAndExit(USAGE);
   // setTimeout takes at most 2147483647 ms, so a lane's timeout is at most 2147483 s.
-  const { only, basePort, jobs, laneTimeout } = withUsageError(() => {
+  const { only, jobs, laneTimeout } = withUsageError(() => {
     refuseTogether(values, ["show", "hide"]);
     return {
       only: values.only ? regexOption(values.only, { option: "--only" }) : null,
-      basePort: numberOption(values.port ?? String(defaultPort), {
-        option: "--port",
-        integer: true,
-        min: 1,
-        max: 65535,
-      }),
       jobs: numberOption(values.jobs ?? "2", { option: "--jobs", integer: true, min: 1 }),
       laneTimeout: numberOption(values.timeout ?? "600", { option: "--timeout", above: 0, max: 2147483 }) * 1000,
     };
@@ -153,7 +142,15 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
 
   // ---------------------------------------------------------------- refusals
 
+  // test/harness.json gives every lane's waits their limits (test/harness.md).
+  try {
+    checkHarness();
+  } catch (e) {
+    die(2, e.message);
+  }
   const ide = findIde(values.ide || undefined);
+  const tooOld = unsupportedIde(ide);
+  if (tooOld) die(2, tooOld);
   if (!ide || !existsSync(ide)) {
     die(
       2,
@@ -175,20 +172,26 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
     } catch (e) {
       die(2, `lane ${l.name}: ${e.message}`);
     }
+    const p = l.page;
+    const side = (n) => Number.isInteger(n) && n > 0;
+    if (p !== undefined && p !== null && !(side(p?.width) && side(p?.height))) {
+      die(2, `lane ${l.name}: page is ${JSON.stringify(p)}, not null or { width, height } in whole CSS pixels`);
+    }
   }
 
-  // Each lane gets a port of its own, the first free ones from the base: a port
-  // another run has claimed, or that something listens on, is passed over.
-  let ports;
-  try {
-    ports = await claimPorts(lanes.length, { from: basePort });
-  } catch (e) {
-    die(2, e.message);
+  // The run's folders are under one named for this process, so that runs of the
+  // tool at once never share one; each lane takes its slot from the broker as it
+  // starts (runLane). A folder an earlier run left, whose process has ended, goes.
+  const runDir = path.join(tmpdir(), workDir, String(process.pid));
+  for (const name of existsSync(path.dirname(runDir)) ? readdirSync(path.dirname(runDir)) : []) {
+    if (!/^\d+$/.test(name) || alive(Number(name))) continue;
+    try {
+      removeTree(path.join(path.dirname(runDir), name));
+    } catch {
+      // still in use: the next run tries again
+    }
   }
-  lanes.forEach((l, i) => {
-    l.port = ports[i];
-    l.work = path.join(tmpdir(), workDir, String(ports[i]));
-  });
+  for (const l of lanes) l.work = path.join(runDir, l.name.replace(/[^A-Za-z0-9._-]+/g, "-"));
 
   // ---------------------------------------------------------------- the registry
 
@@ -256,8 +259,8 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
   // ---------------------------------------------------------------- the lanes
 
   console.log(
-    `${tool}: BETA ${buildNumber(ide) ?? "?"}, ${lanes.length} lane(s) on ports ${portList(ports)}, ` +
-      `${Math.min(jobs, lanes.length)} at a time`,
+    `${tool}: BETA ${buildNumber(ide) ?? "?"}, ${lanes.length} lane(s), ` +
+      `${Math.min(jobs, lanes.length)} at a time, in ${runDir}`,
   );
 
   process.on("SIGINT", () => {
@@ -269,7 +272,16 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
 
   // A lane's output is held until it ends and then printed whole, so that two
   // lanes' reports never interleave.
-  function runLane(l) {
+  // The lane's slot is taken as it starts, and handed to its process: the broker
+  // holds it for as long as that process runs.
+  async function runLane(l) {
+    let slot;
+    try {
+      slot = await leaseSlot({ tag: `${tool} ${l.name}` });
+    } catch (e) {
+      process.stdout.write(`\n--- ${l.name}: FAILED\nno slot for the lane: ${e.message}\n`);
+      return { code: null, out: "", lane: l };
+    }
     return new Promise((resolve) => {
       const t0 = Date.now();
       let finished = false;
@@ -281,7 +293,8 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
         // node:test reports a test once it ends, so a lane ended in the middle
         // of one, as a timeout or Ctrl+C ends it, has usually printed nothing.
         const report = r.out.trimEnd() || "(the lane printed nothing before it ended)";
-        process.stdout.write(`\n--- ${l.name} (port ${l.port}): ${verdict} in ${secs} s\n${report}\n`);
+        process.stdout.write(`\n--- ${l.name} (${slot.desktop}): ${verdict} in ${secs} s\n${report}\n`);
+        slot.release();
         resolve({ ...r, lane: l });
       };
       try {
@@ -290,13 +303,17 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
         finish({ code: null, out: `could not clear the settings of ${l.settings.join(", ")}: ${e.message}` });
         return;
       }
-      console.log(`  ${l.name}: started on port ${l.port}`);
+      console.log(`  ${l.name}: started on ${slot.desktop}`);
+      // `page` only when lanes.mjs names one: addinLane gives every other lane PAGE.
+      const lane = { name: l.name, slot: slot.slot, desktop: slot.desktop, work: l.work, ide, show };
+      if (l.page !== undefined) lane.page = l.page;
       const child = spawn(process.execPath, ["--test", "--test-reporter=spec", path.join(SUITE, l.file)], {
         cwd: REPO_ROOT,
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
-        env: { ...process.env, [LANE_ENV]: JSON.stringify({ name: l.name, port: l.port, work: l.work, ide, show }) },
+        env: { ...process.env, [LANE_ENV]: JSON.stringify(lane) },
       });
+      if (child.pid) slot.handTo(child.pid);
       children.add(child);
       let out = "",
         timedOut = false;
@@ -372,11 +389,13 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
 
     // The check that the run left nothing: an entry naming a lane's folder in the
     // IDE's lists, a build target remembered for one, or settings that differ
-    // from what was recorded. Another session's IDE that is open meanwhile
-    // can write its own copy of the recent list back, which is the one way an
-    // entry could return (WIP.Harness.md).
-    // While another run is still running, the lists and the build targets are
-    // that run's to put back (lib/tb-registry.mjs), so they are not checked.
+    // from what was recorded. Only the project state is put back; the recent
+    // list and the remembered targets are not written by an IDE started with
+    // IDE_FLAGS, so an entry in either means the flags did not do their work
+    // (or another session's IDE, started without them, wrote it) and is read
+    // here, not repaired.
+    // While another run is still running, the project state is that run's to
+    // put back (lib/tb-registry.mjs), so the lists are not checked.
     const folders = lanes.map((l) => norm(l.work) + "\\");
     try {
       if (!tidied?.deferred) {
@@ -385,8 +404,12 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
           (p) => p && folders.some((f) => norm(p).startsWith(f)),
         );
         if (left.length) problems.push(`the IDE's lists still name the lanes' folders: ${left.join(", ")}`);
-        const targets = sweepArchitectureMemory(lanes.map((l) => l.work));
-        if (targets) problems.push(`${targets} build target(s) were still remembered for the lanes' folders`);
+        const targets = rememberedTargets(lanes.map((l) => l.work));
+        if (targets.length) {
+          problems.push(
+            `${targets.length} build target(s) were remembered for the lanes' folders: ${targets.join(", ")}`,
+          );
+        }
       }
       const settingsAfter = snapshotSettings();
       for (let i = 0; i < apps.length; i++) {
@@ -428,8 +451,8 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
       ? `registry and work folders: ${problems.length} problem(s)\n  ${problems.join("\n  ")}`
       : tidied.deferred
         ? `registry: left for the run still running to put back (pid ${tidied.deferred.join(", ")})${settingsNote}`
-        : `registry: put back (${tidied.projectState} project-state, ${tidied.recentlyOpened} recent-list ` +
-          `and ${tidied.association ?? "no"} association writes); nothing names the lanes' folders${settingsNote}`;
+        : `registry: put back (${tidied.projectState} project-state, ${tidied.association ?? "no"} ` +
+          `association and ${tidied.window ?? "no"} window writes); nothing names the lanes' folders${settingsNote}`;
   }
 
   const { tidied, problems } = putBack();

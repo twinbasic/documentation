@@ -57,7 +57,7 @@ The **Edit as JSON** box is ticked. If you clear it, the pane shows only the tex
 
 Text that is not valid JSON turns red. The IDE ignores a group whose text is not valid when it merges the groups.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > A group whose name contains a vertical bar (`|`) can break the list of groups that are on. The IDE saves the list as the names, each between two bars, such as `|Mine||Other|`. A name with a bar inside it can match part of another name. For example, with groups named `A|B` and `B` both on, clicking `B` in the menu leaves it ticked, and clicking it again switches off both groups, and leaves a broken entry in the saved list. Nothing warns you. Do not use `|` in a group name.
 
 ## The text of a group

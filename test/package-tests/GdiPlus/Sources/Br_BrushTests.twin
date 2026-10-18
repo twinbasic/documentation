@@ -1,0 +1,312 @@
+' IBrush, SolidBrush, HatchBrush and TextureBrush: what the brushes share, and their constructors and clones.
+[TestFixture]
+Module Br_BrushTests
+
+    ' A gradient brush that has recorded a failure: WrapModeClamp is refused.
+    Private Function FailedGradient() As LinearGradientBrush
+        Dim brush As LinearGradientBrush = New LinearGradientBrush(GpRectF(0, 0, 10, 4), Color(255, 0, 0, 0), Color(255, 255, 255, 255), LinearGradientModeHorizontal)
+        brush.WrapMode = WrapModeClamp
+        Return brush
+    End Function
+
+    Private Function Tile() As Bitmap
+        Dim t As Bitmap = Bitmap(2!, 2!)
+        t.Pixel(0, 0) = Color(255, 255, 0, 0)
+        t.Pixel(1, 0) = Color(255, 0, 255, 0)
+        t.Pixel(0, 1) = Color(255, 0, 0, 255)
+        t.Pixel(1, 1) = Color(255, 255, 255, 255)
+        Return t
+    End Function
+
+    [TestCase]
+    Public Sub LastResult_StaysUntilClearResult()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = FailedGradient()
+        Expect.AreEqual CLng(InvalidParameter), CLng(brush.LastResult), "LastResult after WrapMode = WrapModeClamp"
+        Dim n As Long = brush.BlendCount
+        Expect.AreEqual CLng(InvalidParameter), CLng(brush.LastResult), "LastResult after a call that worked, following the failure"
+        brush.ClearResult
+        Expect.AreEqual CLng(Ok), CLng(brush.LastResult), "LastResult after ClearResult"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_AfterEarlierFailure_ReturnsTheCopy()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = FailedGradient()
+        Dim copy As LinearGradientBrush = brush.Clone()
+        Expect.IsFalse copy Is Nothing, "Clone of a brush that recorded an earlier failure returns a copy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_AfterClearResult_ReturnsTheCopy()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = FailedGradient()
+        brush.ClearResult
+        Dim copy As LinearGradientBrush = brush.Clone()
+        Expect.IsFalse copy Is Nothing, "Clone after ClearResult returns a copy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextureBrush_Image_AfterEarlierFailure_ReturnsTheImage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim tileImage As Bitmap = Tile()
+        Dim brush As TextureBrush = New TextureBrush(tileImage)
+        Dim m As Matrix = brush.Transform
+        Expect.AreEqual CLng(InvalidParameter), CLng(brush.LastResult), "LastResult after reading Transform"
+        Dim whole As GdiPlus.Image = brush.Image
+        Expect.IsFalse whole Is Nothing, "Image of a brush that recorded an earlier failure returns the image"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Type_PathGradientBrush_ReturnsPathGradient()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim corners() As GpPointF
+        Br_Corners corners, 10
+        Dim brush As PathGradientBrush = New PathGradientBrush(corners)
+        Expect.AreEqual CLng(BrushTypePathGradient), CLng(brush.Type), "Type of a PathGradientBrush"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Type_EachBrushClass_ReturnsItsKind()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim solid As SolidBrush = SolidBrush(Color(255, 0, 128, 0))
+        Dim hatch As HatchBrush = New HatchBrush(HatchStyleCross, Color(255, 255, 0, 0), Color(255, 255, 255, 255))
+        Dim linear As LinearGradientBrush = New LinearGradientBrush(GpPointF(0, 0), GpPointF(10, 0), Color(255, 0, 0, 0), Color(255, 255, 255, 255))
+        Dim tileImage As Bitmap = Tile()
+        Dim texture As TextureBrush = New TextureBrush(tileImage)
+        Expect.AreEqual CLng(BrushTypeSolidColor), CLng(solid.Type), "Type of a SolidBrush"
+        Expect.AreEqual CLng(BrushTypeHatchFill), CLng(hatch.Type), "Type of a HatchBrush"
+        Expect.AreEqual CLng(BrushTypeLinearGradient), CLng(linear.Type), "Type of a LinearGradientBrush"
+        Expect.AreEqual CLng(BrushTypeTextureFill), CLng(texture.Type), "Type of a TextureBrush"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CloneBrush_KeepsTheClassAndTheSettings()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim original As Brush = New HatchBrush(HatchStyleCross, Color(255, 255, 0, 0), Color(255, 0, 0, 255))
+        Dim copy As Brush = original.CloneBrush()
+        Expect.IsFalse copy Is Nothing, "CloneBrush returns a brush"
+        Expect.AreEqual CLng(BrushTypeHatchFill), CLng(copy.Type), "Type of the copy of a HatchBrush"
+        Dim hatch As HatchBrush = copy
+        Expect.AreEqual CLng(HatchStyleCross), CLng(hatch.HatchStyle), "HatchStyle of the copy"
+        Dim fore As Color = hatch.ForegroundColor
+        Expect.AreEqual "FFFF0000", Br_Hex(fore.argb), "ForegroundColor of the copy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SolidBrush_Clone_IsIndependent()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As SolidBrush = SolidBrush(Color(128, 255, 0, 0))
+        Dim copy As SolidBrush = brush.Clone()
+        copy.Color = Color(255, 0, 0, 255)
+        Dim a As Color = brush.Color
+        Dim b As Color = copy.Color
+        Expect.AreEqual "80FF0000", Br_Hex(a.argb), "colour of the original after the copy was changed"
+        Expect.AreEqual "FF0000FF", Br_Hex(b.argb), "colour of the copy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HatchBrush_Function_ColorForm_Returns()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As HatchBrush = HatchBrush(HatchStyleCross, Color(255, 255, 0, 0), Color(255, 0, 0, 255))
+        Expect.IsFalse brush Is Nothing, "HatchBrush(style, Color, Color) returns a brush"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HatchBrush_Function_RGBForm_Returns()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As HatchBrush = HatchBrush(HatchStyleCross, &HFF0000, &HFF)
+        Expect.IsFalse brush Is Nothing, "HatchBrush(style, Long, Long) returns a brush"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HatchBrush_New_PaintsTheTile()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim red As Color = Color(255, 255, 0, 0)
+        Dim blue As Color = Color(255, 0, 0, 255)
+        Dim brush As HatchBrush = New HatchBrush(HatchStyleHorizontal, red, blue)
+        Dim bmp As Bitmap = Bitmap(8!, 8!)
+        Dim g As Graphics = Graphics(bmp)
+        g.FillRectangle brush, 0, 0, 8, 8
+        Dim y As Long, row As String
+        For y = 0 To 3
+            If Br_Px(bmp, 3, y) = red.argb Then row = row & "F" Else row = row & "B"
+        Next
+        Expect.AreEqual "FBBB", row, "foreground (F) and background (B) pixels of the first four rows of a HatchStyleHorizontal fill"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextureBrushI_UsesTheLongRectangle()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim image As Bitmap = Bitmap(4!, 4!)
+        Dim brush As TextureBrush = TextureBrushI(image, WrapModeTile, 0&, 0&, 2&, 2&)
+        Expect.AreEqual CLng(Ok), CLng(brush.LastResult), "LastResult of TextureBrushI"
+        Dim whole As GdiPlus.Image = brush.Image
+        Expect.AreEqual 2, CLng(whole.Width), "width of the tile of TextureBrushI(image, WrapModeTile, 0, 0, 2, 2)"
+        Expect.AreEqual 2, CLng(whole.Height), "height of the tile"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextureBrush_NewWithSixNumbers_IsTheSingleForm()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim image As Bitmap = Bitmap(4!, 4!)
+        Dim brush As TextureBrush = New TextureBrush(image, WrapModeTile, 0, 0, 3, 3)
+        Expect.AreEqual CLng(Ok), CLng(brush.LastResult), "LastResult of New TextureBrush with six numbers"
+        Dim whole As GdiPlus.Image = brush.Image
+        Expect.AreEqual 3, CLng(whole.Width), "width of the tile of New TextureBrush(image, WrapModeTile, 0, 0, 3, 3)"
+        Expect.Done
+    End Sub
+
+    ' The pixels of the first rows of a bitmap as letters: R, G, B and W for the four colours of the tile, . for anything else.
+    Private Function TileRow(ByVal Bmp As Bitmap, ByVal Y As Long, ByVal Width As Long) As String
+        Dim x As Long, a As Long, s As String
+        For x = 0 To Width - 1
+            a = Br_Px(Bmp, x, Y)
+            If a = &HFFFF0000 Then
+                s = s & "R"
+            ElseIf a = &HFF00FF00 Then
+                s = s & "G"
+            ElseIf a = &HFF0000FF Then
+                s = s & "B"
+            ElseIf a = &HFFFFFFFF Then
+                s = s & "W"
+            Else
+                s = s & "."
+            End If
+        Next
+        Return s
+    End Function
+
+    [TestCase]
+    Public Sub TextureBrush_Tile_RepeatsFromTheOrigin()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim tileImage As Bitmap = Tile()
+        Dim brush As TextureBrush = New TextureBrush(tileImage)
+        Dim bmp As Bitmap = Bitmap(6!, 4!)
+        Dim g As Graphics = Graphics(bmp)
+        g.FillRectangle brush, 0, 0, 6, 4
+        Expect.AreEqual "RGRGRG", TileRow(bmp, 0, 6), "row 0 of a bitmap filled with a 2 by 2 tile"
+        Expect.AreEqual "BWBWBW", TileRow(bmp, 1, 6), "row 1"
+        Expect.AreEqual CLng(Ok), CLng(brush.LastResult), "LastResult"
+        Expect.AreEqual CLng(BrushTypeTextureFill), CLng(brush.Type), "Type"
+        Expect.AreEqual CLng(WrapModeTile), CLng(brush.WrapMode), "default WrapMode"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextureBrush_Rectangle_UsesThePartOfTheImage()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim image As Bitmap = Bitmap(4!, 4!)
+        Dim x As Long, y As Long
+        For y = 0 To 3
+            For x = 0 To 3
+                image.Pixel(x, y) = Color(255, x * 60, y * 60, 0)
+            Next
+        Next
+        Dim brush As TextureBrush = New TextureBrush(image, WrapModeTile, GpRectF(2, 2, 2, 2))
+        Dim bmp As Bitmap = Bitmap(4!, 2!)
+        Dim g As Graphics = Graphics(bmp)
+        g.FillRectangle brush, 0, 0, 4, 2
+        Expect.AreEqual "FF787800", Br_Hex(Br_Px(bmp, 0, 0)), "pixel (0, 0) of a fill with the lower right 2 by 2 part of the image"
+        Expect.AreEqual "FFB47800", Br_Hex(Br_Px(bmp, 1, 0)), "pixel (1, 0)"
+        Expect.AreEqual "FF787800", Br_Hex(Br_Px(bmp, 2, 0)), "pixel (2, 0)"
+        Dim whole As GdiPlus.Image = brush.Image
+        Expect.AreEqual 2, CLng(whole.Width), "width of the tile Image returns"
+        Expect.AreEqual 2, CLng(whole.Height), "height of the tile Image returns"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextureBrush_WrapMode_FlipXMirrorsAndClampDrawsOnce()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim tileImage As Bitmap = Tile()
+        Dim bmp As Bitmap = Bitmap(6!, 2!)
+        Dim g As Graphics = Graphics(bmp)
+        Dim flip As TextureBrush = New TextureBrush(tileImage, WrapModeTileFlipX)
+        g.Clear Color(255, 0, 0, 0)
+        g.FillRectangle flip, 0, 0, 6, 2
+        Expect.AreEqual "RGGRRG", TileRow(bmp, 0, 6), "row 0 with WrapModeTileFlipX"
+        Expect.AreEqual "BWWBBW", TileRow(bmp, 1, 6), "row 1 with WrapModeTileFlipX"
+        Dim clamp As TextureBrush = New TextureBrush(tileImage, WrapModeClamp)
+        g.Clear Color(255, 0, 0, 0)
+        g.FillRectangle clamp, 0, 0, 6, 2
+        Expect.AreEqual "RG....", TileRow(bmp, 0, 6), "row 0 with WrapModeClamp"
+        Expect.AreEqual "BW....", TileRow(bmp, 1, 6), "row 1 with WrapModeClamp"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextureBrush_TranslateTransform_MovesTheTiles()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim tileImage As Bitmap = Tile()
+        Dim brush As TextureBrush = New TextureBrush(tileImage)
+        Expect.AreEqual CLng(Ok), CLng(brush.TranslateTransform(1, 0)), "status of TranslateTransform"
+        Dim bmp As Bitmap = Bitmap(6!, 2!)
+        Dim g As Graphics = Graphics(bmp)
+        g.FillRectangle brush, 0, 0, 6, 2
+        Expect.AreEqual "GRGRGR", TileRow(bmp, 0, 6), "row 0 after TranslateTransform 1, 0"
+        Expect.AreEqual "WBWBWB", TileRow(bmp, 1, 6), "row 1 after TranslateTransform 1, 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextureBrush_Transform_Get_ReturnsTheMatrix()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim tileImage As Bitmap = Tile()
+        Dim brush As TextureBrush = New TextureBrush(tileImage)
+        brush.TranslateTransform 1, 2
+        Dim m As Matrix = brush.Transform
+        Expect.IsFalse m Is Nothing, "Transform returns a matrix"
+        If Not m Is Nothing Then
+            Expect.AreEqual 1!, m.OffsetX, "OffsetX of Transform after TranslateTransform 1, 2"
+            Expect.AreEqual 2!, m.OffsetY, "OffsetY of Transform after TranslateTransform 1, 2"
+        End If
+        Expect.AreEqual CLng(Ok), CLng(brush.LastResult), "LastResult after reading Transform"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextureBrush_GetTransform_CopiesTheMatrix()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim tileImage As Bitmap = Tile()
+        Dim brush As TextureBrush = New TextureBrush(tileImage)
+        brush.TranslateTransform 1, 2
+        Dim m As Matrix = New Matrix()
+        Expect.AreEqual CLng(Ok), CLng(brush.GetTransform(m)), "status of GetTransform"
+        Expect.AreEqual 1!, m.OffsetX, "OffsetX from GetTransform after TranslateTransform 1, 2"
+        Expect.AreEqual 2!, m.OffsetY, "OffsetY from GetTransform after TranslateTransform 1, 2"
+        Expect.Done
+    End Sub
+
+End Module

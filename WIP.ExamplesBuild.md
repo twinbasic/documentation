@@ -12,10 +12,11 @@ compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
 ## State
 
-Of 2,465 `tb` fences in 933 pages, **2,297 are marked `check_build`** and compile (BETA 1005,
-a full run with no finding), and 163 are `inert` with a recorded reason (114 of them
-signatures, most OLEGuids' methods). 4 are undecided, in three pages under `IDE/`. No fence is an `excerpt`. The run takes about 220 s on four lanes.
-776 of the marked samples are also `check_run`.
+Of 2,832 `tb` fences in 1,037 pages, **2,660 are marked `check_build`** and compile (BETA 1010,
+a full run with no finding), and 166 are `inert` with a recorded reason (114 of them
+signatures, most OLEGuids' methods). 5 are undecided, in four pages (three under `IDE/`, and
+`ToolWindow.md` of the tbIDE section). 2 fences are an `excerpt`. The run takes about 190 s on four lanes.
+1,076 of the marked samples are also `check_run`.
 
 New marked samples should come from editing pages, not from marking: the unmarked fences
 that are left are not programs (see [What cannot be marked](#what-cannot-be-marked)).
@@ -292,7 +293,9 @@ tracks type names only.
 `Reference/Core/Option.md`'s module-level example shows that `Option Explicit` makes an
 undeclared variable an error, so it carries `expect-error=TB5079`. **Assert the code, not
 only the failure**: a renumbering in a future BETA then fails the gate loudly and somebody
-updates it, which beats a sample that quietly stops demonstrating anything.
+updates it, which beats a sample that quietly stops demonstrating anything. Which code means
+what is in [upstream/twinbasic-diagnostic-ids.h](upstream/twinbasic-diagnostic-ids.h), the
+compiler's own list.
 
 ## Template projects
 
@@ -335,7 +338,7 @@ the repository's to commit: four of the nine ship no licence file, and WinReg em
   and the Scripting Runtime itself. The WinReg landing page tells the reader the same.
 - **An error inside an embedded package is the package's, and fails nothing**
   (`splitPackageFaults`). WinReg 1.0.1.1 and ArrayListLib 1.6.151.1 do not compile on BETA
-  1005: each passes a pointer to a `ByRef` structure parameter without `ByVal` (TB5001). The
+  1010: each passes a pointer to a `ByRef` structure parameter without `ByVal` (TB5001). The
   template-alone build finds those rows; the run prints them as a note naming the package
   rather than as a template FAIL, every other template row still fails, and the samples are
   judged by their own rows as before. Their landing pages say so in a NOTE, and both sections
@@ -379,11 +382,10 @@ templates each have their own `tbxStageBrowser.twin`, routed by path in `default
 `tbxStage.twin`, which is console's less the line `Public Form1 As Form`. A form made with
 `New Form` in code has no designer file and cannot be drawn on (`Load` raises 361, `AutoRedraw`
 raises -2147467259), so the form has to be a file of the project. Four facts, all checked on
-BETA 1005:
+BETA 1010:
 
-- **An empty form has no `_children` key.** `"_children": []` in `Form1.tbform` fails the build with
-  `TB5247 unable to find matching form designer JSON via FormDesignerId`, and `Form1` is then
-  unrecognised everywhere.
+- **An empty form has no `_children` key**, and `"_children": []` in `Form1.tbform` is
+  accepted too: `Form1` loads and draws as without it.
 - **The stand-in makes no difference to `Load Form1`.** With `Public Form1 As Form` in the stage
   beside a real `Form1` class, `Form1` reaches the class's predeclared instance
   (`TypeName(Form1)` is `Form1`, `Load Form1` and `AutoRedraw` work), and the stand-in stays
@@ -480,7 +482,7 @@ All are forced by putting unrelated samples in one compilation unit:
 - **`Sub Main` comes from the template, and a fence may bring its own as well.** Two
   `Public Sub Main`s in different modules compile, so the WinServicesLib `Module Startup`
   samples build as written. (A *build* adds a rule; see [`--build` and `--llvm`](#--build-and---llvm-what-a-compile-does-not-ask).)
-- **A generated module is not named like the project.** On BETA 1005 a module named like its
+- **A generated module is not named like the project.** On BETA 1010 a module named like its
   project, in any letter case, does no harm. The tool names each project `DocSamples<n>` and
   every module it generates `tbx...`, so the two never meet; that is only the naming scheme.
 
@@ -520,7 +522,7 @@ swallow the rest.
 **Each call has an `On Error GoTo` handler of its own, not `On Error Resume Next` and a test
 of `Err.Number` after the call.** A procedure that handles an error with `On Error Resume
 Next` and returns, by `End Sub` or `Exit Sub`, leaves `Err` set for its caller, in VB6 and in
-twinBASIC alike (VB6 against BETA 1005, identical). Only a `Resume`
+twinBASIC alike (VB6 against BETA 1010, identical). Only a `Resume`
 from an `On Error GoTo` handler, or any `On Error` statement, clears it. With a test after
 the call, InStr.md's sample that demonstrates error 5 under its own `On Error Resume Next`
 was reported as raising it. The caller's handler is reached only by an error the callee did
@@ -570,7 +572,7 @@ one that waits on a box. A `projname=` group takes the form when any of its fenc
 sample's forms before the end marker, as the twinBASIC dispatcher does, because a loaded form keeps a
 VB6 exe running after `Main` returns. `Declare PtrSafe` is not VB6: `declaresForVb6` drops `PtrSafe`
 and reads `LongPtr` as `Long` on a Declare statement's lines (and its continuations) and touches
-nothing else, which is what lets the documentation's `GetPixel` module build. Checked on BETA 1005
+nothing else, which is what lets the documentation's `GetPixel` module build. Checked on BETA 1010
 and in VB6: both form samples print what the pages say (`Graphics-Methods.md`'s three lines, and
 the Form page's `True`).
 
@@ -602,7 +604,7 @@ the Form page's `True`).
   before anything else reads them.
 
   **It is a warning, and enforced, because that is robust and leaves a clean batch clean**
-  (BETA 1005, in four projects that held every case below at once). TB0005 appeared beside an unterminated `Sub`, an
+  (BETA 1010, in four projects that held every case below at once). TB0005 appeared beside an unterminated `Sub`, an
   `If` with no `End If`, a stray `End Sub` with garbage after it, a class inheriting itself
   with an unknown type, ten undefined names, under Option Explicit off, and beside a module
   with `[IgnoreWarnings(TB0005)]`. A plain `#Warning` vanished in a project that ignores
@@ -699,6 +701,26 @@ compile has no errors, through `compileProject`'s `build` option, and `--llvm` (
 `compiler.debugOptions`. A plain `--build` run is the control for an `--llvm` one: a sample
 that fails only the second is one LLVM cannot generate code for.
 
+**A run that builds with LLVM holds one lease on the LLVM cache server for its whole length**
+(`holdLlvmCache`, [WIP.Harness.md](WIP.Harness.md#the-llvm-cache-server-and-the-lease-every-llvm-run-holds)):
+under `--llvm`, or when a sample it builds turns LLVM on for a procedure. Taken after the
+install check and before the first lane starts, released once every lane's IDE has ended.
+Without it the first lane's compiler starts the server as its own child, in that lane's IDE's
+job, and when that IDE ends every other lane's compiler loses its cache, restarts and abandons
+its build, which the run reports as a harness failure. The lanes are in the run's own process,
+so the one lease covers them all, and the server does not end between batches.
+
+**`test/harness.json`'s exclusions name the samples a mode does not take to a stage, and
+its timeouts each phase's limit**; [test/harness.md](test/harness.md) is the contract for both
+(the modes, the stages, an LLVM refusal as a `build` failure wherever it is printed, the
+canary and its lines, and each phase's key, option and variable). `lib/harness-settings.mjs`
+reads and checks the file; `check_examples` refuses a fault in it with exit 2. The exclusion
+logic is `applyExclusions`, `failureStage`, `canaryBatchStage` and `canaryVerdict` in
+`lib/example-batches.mjs`. `check_examples` runs no exe, so it accepts `exe-run` entries and
+ignores them, and a `build` canary's run batches are taken through the compiler run's compile,
+where LLVM refuses the code a `[RunAfterBuild]` Sub reaches. Outside the list a batch with an
+LLVM refusal is isolated, and its samples reported as failing the build, as any failed build is.
+
 - **A failed build is a crash, for isolation.** `compileProject` returns code 5 and
   `buildStaged` turns it into `{ crashed: true, buildFailed: true, named: <empty set> }`.
   Nothing in a build log names a sample, so `runBatch` halves the batch, and `together`
@@ -708,7 +730,7 @@ that fails only the second is one LLVM cannot generate code for.
   compiler's fault. The lane's `llvm` field chooses the wording.
 - **The canary does not stop a build.** `[EnforceWarnings(TB0005)]` keeps its `#Warning` a
   warning whatever the project's settings say, and a warning does not stop the IDE building:
-  a probe with the canary module beside it builds and runs (tbrun, exit 0, BETA 1005).
+  a probe with the canary module beside it builds and runs (tbrun, exit 0, BETA 1010).
 - **A project with compile errors is compiled and not built.** `not built: b<n>.twinproj has
   errors, the first ...` prints, and the run ends by counting the samples that only ever sat
   in such a project: "N sample(s) in batches with errors were compiled but not built". A
@@ -726,12 +748,13 @@ that fails only the second is one LLVM cannot generate code for.
   clear after its mark erased in front of the console, so Tools.md's own tbrun sample builds.
 - **A failed build is believed when it repeats.** `buildTwiceOnFailure` builds a failed
   batch again before halving, and every part the halving builds the same way: a build can
-  fail once and pass when repeated, as one that reported nothing for 120 s did in a full
-  `--llvm` run.
-- **Each IDE has a temp folder of its own**, `%TEMP%\tbbuild-tmp-<port>`, set as its `TEMP`
-  and `TMP` by `launchIde`, emptied at each launch on the port and removed when the IDE
-  ends, so that concurrent runs share nothing and a run leaves nothing behind.
-- **A build adds three collision rules a compile does not have**, each checked on BETA 1005 (`--build --only` over the pages that hold such samples builds clean):
+  fail once and pass when repeated, as one that met its `build` limit reporting nothing did
+  in a full `--llvm` run.
+- **Each IDE has a temp folder of its own**, `%TEMP%\tbbuild-tmp-<slot>`, set as its `TEMP`
+  and `TMP` by `launchIde`, emptied at each launch in the slot and removed when the IDE
+  ends, so that concurrent runs share nothing and a run leaves nothing behind. Each lane
+  holds a slot from `tbbroker` for the whole run ([WIP.Broker.md](WIP.Broker.md)).
+- **A build adds three collision rules a compile does not have**, each checked on BETA 1010 (`--build --only` over the pages that hold such samples builds clean):
   - **`expect-error` samples are batched apart.** One such sample (Option.md, TB5079) left
     the 129 samples beside it unbuilt, since a project with an error is not built.
   - **A unit declaring its own `Sub Main` gets a project of its own, without `tbxMain`.**
@@ -748,7 +771,7 @@ that fails only the second is one LLVM cannot generate code for.
   build fails with no startup object, so `select` refuses it before batching. Split it, with
   the startup Main in a fence of its own. The class slot may come from `inherits=` or from
   the inference: a top-level `WithEvents` field is TB5182 in a module, whether `Private`,
-  `Dim` or `Public` (BETA 1005).
+  `Dim` or `Public` (BETA 1010).
 
 ## Traps
 
@@ -775,13 +798,12 @@ that fails only the second is one LLVM cannot generate code for.
   / `InputBox` and refused, not discovered at the timeout.
 - **Two IDEs must not hold one source tree.** `tbbuild` takes the project directory as given
   and does not stage a copy the way `tbrun` does, so two concurrent builds pointed at the
-  same folder --- distinct `--port`s, distinct desktops, everything else correct --- both
-  wedge and neither ever returns. Each lane owns a workspace, not just a port.
-- **A run that dies mid-batch leaves its lanes' IDEs running**, on desktops nobody can see,
-  holding the projects they opened under `tbexamples\<port>`. The next run on that port then
-  fails its first step, clearing that folder, with a bare `EPERM`. The harness says what the
-  `EPERM` means; stop the `twinBASIC.exe` processes whose command line names a project under
-  that folder (by pid, never by image name), or run on another `--port`.
+  same folder --- distinct ports, distinct desktops, everything else correct --- both
+  wedge and neither ever returns. Each lane owns a workspace, not just a slot.
+- **A run's folder is named for its process**, `tbexamples\<pid>`, so runs at once never
+  share one; a later run removes the folders of runs whose process has ended, and leaves one
+  it cannot remove yet. Before each IDE ran in its launcher's job, a run that died left its
+  lanes' IDEs running on desktops nobody could see, holding that folder.
 - **Batches are packed in process by impexp** (`packTree` in `scripts/lib/tb-project.mjs`),
   never by the compiler executable's `import`, which exits 999 with nothing written on a
   tree holding an embedded package and 0 after the failures it reports;
@@ -944,6 +966,6 @@ a reader writes.
   one line each, because its purpose is "the control instances the samples assume". The
   invented *classes* go in `hidden` fences, because a class is not a control instance and a
   page is where it belongs. The line between the two is a judgement, not a rule.
-- Which pages should carry `check_run` (776 samples do)? A sample states its output in its own
+- Which pages should carry `check_run` (1,076 samples do)? A sample states its output in its own
   text, as a trailing comment on a `Debug.Print` line or as the comment lines under
   `' Output:`; its comparison is only as useful as the pages that state a printed value.

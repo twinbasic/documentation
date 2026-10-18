@@ -1,0 +1,167 @@
+' Matrix and the ITransformable interface it shares with Graphics.
+[TestFixture]
+Module Gr_MatrixTests
+
+    ' ---- the rectangle and point constructors
+
+    [TestCase]
+    Public Sub Matrix_RectFAndPoint_MovesTheRectangleToThePoint()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim m As Matrix = Matrix(GpRectF(0, 0, 10, 10), GpPointF(5, 5))
+        Dim pts(0 To 1) As GpPointF
+        pts(0) = GpPointF(0, 0)
+        pts(1) = GpPointF(10, 10)
+        m.TransformPoints pts
+        Dim a As GpPointF = pts(0)
+        Dim b As GpPointF = pts(1)
+        Expect.IsTrue Gr_Near(5, a.X, 0.01) And Gr_Near(5, a.Y, 0.01), "the top-left corner of the rectangle maps to the point (5, 5)"
+        Expect.IsTrue Gr_Near(15, b.X, 0.01) And Gr_Near(15, b.Y, 0.01), "the bottom-right corner of the 10 by 10 rectangle maps to (15, 15)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Matrix_RectAndPoint_MovesTheRectangleToThePoint()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim m As Matrix = Matrix(GpRect(0, 0, 10, 10), GpPoint(5, 5))
+        Dim pts(0 To 1) As GpPointF
+        pts(0) = GpPointF(0, 0)
+        pts(1) = GpPointF(10, 10)
+        m.TransformPoints pts
+        Dim a As GpPointF = pts(0)
+        Dim b As GpPointF = pts(1)
+        Expect.IsTrue Gr_Near(5, a.X, 0.01) And Gr_Near(5, a.Y, 0.01), "the top-left corner of the rectangle maps to the point (5, 5)"
+        Expect.IsTrue Gr_Near(15, b.X, 0.01) And Gr_Near(15, b.Y, 0.01), "the bottom-right corner of the 10 by 10 rectangle maps to (15, 15)"
+        Expect.Done
+    End Sub
+
+    ' ---- the offsets
+
+    [TestCase]
+    Public Sub OffsetX_Assign_ChangesOnlyDx()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim m As Matrix = Matrix(1, 0, 0, 1, 3, 4)
+        m.OffsetX = 7
+        Expect.AreEqual 7, CLng(m.OffsetX), "OffsetX after assigning 7"
+        Expect.AreEqual 4, CLng(m.OffsetY), "OffsetY after assigning 7 to OffsetX"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OffsetY_Assign_ChangesOnlyDy()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim m As Matrix = Matrix(1, 0, 0, 1, 3, 4)
+        m.OffsetY = 9
+        Expect.AreEqual 3, CLng(m.OffsetX), "OffsetX after assigning 9 to OffsetY"
+        Expect.AreEqual 9, CLng(m.OffsetY), "OffsetY after assigning 9"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Offset_Assign_ChangesBoth()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim m As Matrix = Matrix(1, 0, 0, 1, 3, 4)
+        m.Offset = GpPointF(m.OffsetX, 9)
+        Expect.AreEqual 3, CLng(m.OffsetX), "OffsetX after assigning Offset"
+        Expect.AreEqual 9, CLng(m.OffsetY), "OffsetY after assigning Offset"
+        Expect.Done
+    End Sub
+
+    ' ---- Scale
+
+    [TestCase]
+    Public Sub Scale_OtherSpellings_Scale()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim a As Matrix = Matrix()
+        a.Scale 2, 3
+        Dim ea() As Single = a.Elements
+        Expect.IsTrue ea(1) = 2 And ea(4) = 3, "the statement m.Scale 2, 3 scales"
+        Dim b As Matrix = Matrix()
+        Call b.Scale(2, 3)
+        Dim eb() As Single = b.Elements
+        Expect.IsTrue eb(1) = 2 And eb(4) = 3, "the statement Call m.Scale(2, 3) scales"
+        Dim c As Matrix = Matrix()
+        Dim st As Long = c.Scale(2, 3)
+        Dim ec() As Single = c.Elements
+        Expect.IsTrue ec(1) = 2 And ec(4) = 3 And st = 0, "status = m.Scale(2, 3) scales and returns Ok"
+        Expect.Done
+    End Sub
+
+    ' ---- ITransformable
+
+    [TestCase]
+    Public Sub Transform_GetOnMatrix_ReturnsTheMatrix()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim m As Matrix = Matrix(2, 0, 0, 3, 10, 20)
+        Dim t As ITransformable = m
+        m.ClearResult
+        Dim copy As Matrix = t.Transform
+        Expect.IsTrue Not (copy Is Nothing), "Transform read through ITransformable on a Matrix returns a Matrix"
+        If Not (copy Is Nothing) Then
+            Dim e() As Single = copy.Elements
+            Expect.IsTrue e(1) = 2 And e(4) = 3 And e(5) = 10 And e(6) = 20, "the elements of the matrix that Transform returns"
+        End If
+        Expect.AreEqual 0, CLng(m.LastResult), "LastResult of the Matrix after reading Transform"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Transform_GetOnGraphics_ThroughTheInterface_ReturnsTheMatrix()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As Graphics = Graphics(Gr_White(10, 10))
+        g.TranslateTransform 7, 8
+        Dim t As ITransformable = g
+        g.ClearResult
+        Dim copy As Matrix = t.Transform
+        Expect.IsTrue Not (copy Is Nothing), "Transform read through ITransformable on a Graphics returns a Matrix"
+        Expect.AreEqual 0, CLng(g.LastResult), "LastResult of the Graphics after reading Transform"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Transform_GetOnGradientBrush_ThroughTheInterface_ReturnsTheMatrix()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim brush As LinearGradientBrush = LinearGradientBrush(GpRectF(0, 0, 10, 10), Color(255, 0, 0), Color(0, 0, 255))
+        Dim t As ITransformable = brush
+        brush.ClearResult
+        Dim copy As Matrix = t.Transform
+        Expect.IsTrue Not (copy Is Nothing), "Transform read through ITransformable on a LinearGradientBrush returns a Matrix"
+        Expect.AreEqual 0, CLng(brush.LastResult), "LastResult of the brush after reading Transform"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Transform_Let_CopiesTheMatrix()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim m As Matrix = Matrix()
+        Dim t As ITransformable = m
+        t.Transform = Matrix(3, 0, 0, 3, 0, 0)
+        Dim e() As Single = m.Elements
+        Expect.IsTrue e(1) = 3 And e(4) = 3, "the elements of a matrix after assigning Transform"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetTransform_OnGraphics_ThroughTheInterface_CopiesTheTransformation()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim g As Graphics = Graphics(Gr_White(10, 10))
+        Dim t As ITransformable = g
+        t.TranslateTransform 7, 8
+        Dim w As Matrix = Matrix()
+        Expect.AreEqual 0, CLng(t.GetTransform(w)), "status of GetTransform through ITransformable"
+        Expect.AreEqual 7, CLng(w.OffsetX), "OffsetX of the copied transformation"
+        Expect.AreEqual 8, CLng(w.OffsetY), "OffsetY of the copied transformation"
+        Expect.Done
+    End Sub
+
+End Module

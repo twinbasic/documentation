@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects-loss",
+  "tests": [
+    "Cut, then Paste onto Resources, deletes the file and creates it nowhere, and Ctrl+S saves the project without it"
+  ],
+  "steps": "1. In Project Explorer, open Sources/Helpers, click Util.twin and press Ctrl+X.\n2. Click the Resources folder and press Ctrl+V: the notification cannot create files inside the root resources folder.\n3. Util.twin is in no folder of the tree.\n4. Press Ctrl+S: the saved project holds no Util.twin.\nControl: Cut, then Paste onto a folder of Resources, moves the file."
+}

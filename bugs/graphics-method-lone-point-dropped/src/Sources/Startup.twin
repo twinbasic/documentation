@@ -1,0 +1,32 @@
+' The compiler reads a call of a method named Line or Scale as the graphics syntax. The grammar
+' needs two points for Line and for Scale (or, for Scale, no argument at all), but a call with
+' one parenthesised pair, o.Line (2, 3) or o.Scale (2, 3), is accepted and dropped: the method
+' is not called and there is no error. The complete forms, and the ordinary name, work.
+' With a single value, o.Scale (2) or o.Line (2), it is a syntax error (TB5212 "Too many
+' close brackets", then TB5069) that would stop this project from running.
+' VB6 gives "Syntax error" for the lone point (checked with a Public Sub Line in a module and
+' the call Module1.Line (2, 3)); see vb6/.
+Module Startup
+
+    Public Sub Main()
+        Dim p As New Plotter
+
+        Debug.Print "--- complete forms, called"
+        p.Line (1, 2)-(3, 4)
+        p.Scale (1, 2)-(3, 4)
+        p.Scale
+        p.Foo(2, 3)
+
+        Debug.Print "--- one point, dropped"
+        p.Line (2, 3)
+        p.Scale (2, 3)
+        p.Line(2, 3)
+        p.Scale(2, 3)
+
+        Debug.Print "--- plain call forms, called"
+        Call p.Line(7, 1, 2, 3, 4, 5)
+        p.Scale 7, 1, 2, 3, 4
+        Debug.Print "done"
+    End Sub
+
+End Module

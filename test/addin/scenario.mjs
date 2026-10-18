@@ -13,7 +13,8 @@
 //
 // The scenario files under test/ide use it too. Outside addin-test.bat and
 // ide-test.bat there is no lane, so the block is skipped and a bare
-// `node --test` never starts an IDE.
+// `node --test` never starts an IDE. Each IDE the lane opens already has a
+// page of 1600 by 1000 CSS pixels (PAGE and fixPageSize in tb-lane.mjs).
 
 import { after, describe, test } from "node:test";
 import { addinLane } from "../../scripts/lib/tb-lane.mjs";

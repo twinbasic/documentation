@@ -33,6 +33,7 @@ Each form can also be written with **New**: *brush* **= New PathGradientBrush**(
 
 A new brush has the centre point at the centroid of the path and a black centre colour. Set the colours before the brush is used.
 
+<!-- test: Br_GradientBrushTests.Path_New_SinglePoint_ReportsTheFailure, Br_GradientBrushTests.Path_New_SinglePoint_LaterCallsFailWithInvalidParameter -->
 > [!NOTE] 0.9.45.0
 > The form with points does not report a failure. A list that GDI+ cannot use, such as a single point, gives a brush whose **LastResult** is **Ok**; every later call on it fails with **InvalidParameter**.
 
@@ -81,6 +82,7 @@ Syntax: *brush*.**CenterRGB** = *rgb*
 
 Sets the centre colour from a **Long**, as `&H00RRGGBB`. The property cannot be read.
 
+<!-- test: Br_BrushColourTests.PathGradientBrush_CenterRGB_VBColour_UsesThatColour -->
 > [!WARNING] 0.9.45.0
 > **CenterRGB** reads its **Long** as `&H00RRGGBB`, not as a VB colour, and the alpha is always 255: `vbRed` gives blue. [**IBrush**](IBrush#colours) lists what else is not translated. Use [**CenterColor**](#centercolor).
 
@@ -88,10 +90,13 @@ Sets the centre colour from a **Long**, as `&H00RRGGBB`. The property cannot be 
 
 Syntax: *brush*.**SurroundColors** = *colors*
 
+<!-- test: Br_GradientBrushTests.Path_SurroundColors_OneColourPaintsTheWholeBoundary, Br_GradientBrushTests.Path_SurroundColors_TooManyColours_IsRefused -->
 Sets the colours of the boundary. *colors* is an array of **Color**. One colour is used for the whole boundary. A longer array gives each point its own colour, in the order of the points the brush was made from, and the colour between two points changes along the boundary. The array must not have more elements than the path has points.
+<!-- /test -->
 
+<!-- test: Br_GradientBrushTests.Path_SurroundColors_Get_ReturnsWhatWasSet -->
 > [!WARNING] 0.9.45.0
-> Reading **SurroundColors** never returns. Keep the array that was set.
+> Reading **SurroundColors** stops the program with a stack overflow. Keep the array that was set.
 
 ### SurroundColorCount
 
@@ -132,7 +137,9 @@ Debug.Print Hex$(bmp.Pixel(0, 0).argb) & " " & Hex$(bmp.Pixel(5, 5).argb)
 
 Syntax: *count* **=** *brush*.**PointCount**
 
+<!-- test: Br_GradientBrushTests.Path_FromGraphicsPath_CountsAllThePoints -->
 Returns the number of points of the path. For a brush made from a path, these are all the points of the path, the control points of its curves included.
+<!-- /test -->
 
 ### GraphicsPath
 
@@ -140,6 +147,7 @@ Syntax: *brush*.**GraphicsPath** [ **=** *path* ]
 
 Gets or sets the path of the brush as a [**GraphicsPath**](GraphicsPath).
 
+<!-- test: Br_GradientBrushTests.Path_GraphicsPath_Get_IsNotImplemented, Br_GradientBrushTests.Path_GraphicsPath_Let_IsNotImplemented -->
 > [!NOTE] 0.9.45.0
 > Reading and writing fail: GDI+ answers **NotImplemented**. Reading returns **Nothing**.
 
@@ -165,7 +173,9 @@ Syntax: *brush*.**SetFocusScales**( *xScale*, *yScale* )
 
 Syntax: *brush*.**GetFocusScales**( *xScale*, *yScale* )
 
+<!-- test: Br_GradientBrushTests.Path_FocusScales_AndCenterPoint_RoundTrip -->
 Set or read the focus scales, two **Single** values. The centre colour is not at one point only: it fills a copy of the path that is shrunk about the centre point by *xScale* across and *yScale* down, and the colour changes between that copy and the boundary. The default is 0, one point. Both methods return a [**GpStatus**](Enumerations/GpStatus); **GetFocusScales** puts its results in the two variables.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -226,8 +236,9 @@ Syntax: *brush*.**SetBlend**( *blendFactors*, *blendPositions* )
 
 Sets the blend factors, with two **Single** arrays of the same length. This is the form that [**LinearGradientBrush**](LinearGradientBrush#setblend) has with two arrays.
 
+<!-- test: Br_GradientBrushTests.Path_SetBlend_Returns -->
 > [!WARNING] 0.9.45.0
-> **SetBlend** never returns. Use [**SetBlendBellShape**](#setblendbellshape) or [**SetBlendTriangularShape**](#setblendtriangularshape).
+> **SetBlend** stops the program with an access violation. Use [**SetBlendBellShape**](#setblendbellshape) or [**SetBlendTriangularShape**](#setblendtriangularshape).
 
 ### InterpolationColorCount
 
@@ -239,7 +250,9 @@ Returns the number of preset colours. A brush that has none returns 0.
 
 Syntax: *brush*.**GetInterpolationColors**( *presetColors*, *blendPositions* )
 
+<!-- test: Br_GradientBrushTests.Path_GetInterpolationColors_WithoutPresetColours_IsWrongState -->
 Sizes a **Color** array and a **Single** array from 1 to **InterpolationColorCount**, fills them, and returns a [**GpStatus**](Enumerations/GpStatus). It returns **WrongState** when the brush has no preset colours.
+<!-- /test -->
 
 ### SetInterpolationColors
 
@@ -247,14 +260,17 @@ Syntax: *brush*.**SetInterpolationColors**( *presetColors*, *blendPositions* )
 
 Sets preset colours at positions, with a **Color** array and a **Single** array of the same length.
 
+<!-- test: Br_GradientBrushTests.Path_SetInterpolationColors_Returns -->
 > [!WARNING] 0.9.45.0
-> **SetInterpolationColors** never returns.
+> **SetInterpolationColors** stops the program with an access violation.
 
 ### SetBlendBellShape
 
 Syntax: *brush*.**SetBlendBellShape**( *focus* [, *scale*] )
 
+<!-- test: Br_GradientBrushTests.Path_BlendShapes_ReturnOk -->
 Makes the colour reach the centre colour at *focus*, a **Single** from 0 to 1, and fall off with a smooth bell-shaped curve. *scale*, a **Single** from 0 to 1, is how fast the colour falls off from *focus*. The default is 1. Returns a [**GpStatus**](Enumerations/GpStatus).
+<!-- /test -->
 
 ### SetBlendTriangularShape
 
@@ -270,11 +286,13 @@ Syntax: *brush*.**WrapMode** [ **=** *wrapMode* ]
 
 Gets or sets what is drawn outside the bounding rectangle of the path: a [**GpWrapMode**](Enumerations/GpWrapMode) value.
 
+<!-- test: Br_GradientBrushTests.Path_WrapMode_ClampDrawsNothingOutsideAndTileRepeats -->
 | Value | Outside the path |
 |:------|:-----------------|
 | **WrapModeClamp** | Nothing is drawn. This is the default of the form with points. |
 | **WrapModeTile** | The gradient repeats. |
 | **WrapModeTileFlipX**, **WrapModeTileFlipY**, **WrapModeTileFlipXY** | The gradient repeats, mirrored every second time in x, in y, or in both. |
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -317,6 +335,7 @@ Syntax: *brush*.**Transform** [ **=** *matrix* ]
 
 Sets the transformation of the brush to a [**Matrix**](Matrix). Reading it should return a copy of the matrix.
 
+<!-- test: Br_GradientBrushTests.Path_Transform_Get_ReturnsTheMatrix -->
 > [!NOTE] 0.9.45.0
 > Reading **Transform** always fails: it returns **Nothing** and **LastResult** becomes **InvalidParameter**. Use [**GetTransform**](#gettransform).
 
@@ -398,6 +417,7 @@ Syntax: *type* **=** *brush*.**Type**
 
 Returns **BrushTypePathGradient** ([**GpBrushType**](Enumerations/GpBrushType)). The property is read-only.
 
+<!-- test: Br_BrushTests.Type_PathGradientBrush_ReturnsPathGradient -->
 > [!WARNING] 0.9.45.0
 > In a program that runs in the IDE, reading **Type** stops at an assertion that expects a linear gradient. A compiled program returns the right value.
 

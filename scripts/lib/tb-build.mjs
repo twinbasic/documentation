@@ -11,10 +11,11 @@
 //
 //   * It never exits the process, and it throws only for a fault of its own
 //     (an unexpected exception); a build that fails comes back as a result.
-//   * It never tidies the registry. The IDE writes its recent list and project
-//     state as it runs, and `startTidy` / `finishTidy` (lib/tb-registry.mjs)
-//     put them back once EVERY IDE of a run has gone; a call that tidied would
-//     do it in the middle of the other lanes' builds.
+//   * It never tidies the registry. The IDE writes its project state as it
+//     runs (not its settings or recent list: launchIde gives it IDE_FLAGS), and
+//     `startTidy` / `finishTidy` (lib/tb-registry.mjs) put that back once EVERY
+//     IDE of a run has gone; a call that tidied would do it in the middle of
+//     the other lanes' builds.
 //   * It does not check that the project or the IDE exists. The command line
 //     refuses those with a usage error; a caller with a bad path gets code 3
 //     after the timeout, exactly as tbbuild does. Nor does it read the project
@@ -27,15 +28,18 @@
 // IDE's launcher in a job of its own (launchIde), so an IDE also goes when the
 // process does -- a run that is stopped leaves none of its lanes' IDEs behind.
 //
-// Concurrency: calls on different ports are independent and can run at once. It
+// Concurrency: calls are independent and can run at once, each IDE on a slot (a private
+// desktop, from tbbroker) and a DevTools port of its own, in different slots when the
+// callers pass theirs. A caller that passes its slot with `keep` hands it to the kept IDE
+// (`slot.handTo(result.idePid)`), so that the slot is held for as long as the IDE runs. It
 // ends its IDE with shutdownIdeAsync, because shutdownIde's blocking wait
 // (up to five seconds) would freeze every other call's CDP timers; whatever is
 // thrown inside the IDE or CDP code from an event callback is the process's, not
 // one call's, so a tool that runs many calls installs a handler through
 // exitOnCrash's cleanup (see sweep_attributes.mjs's `salvage`).
 
+import path from "node:path";
 import {
-  COMPILE_TIMEOUT,
   TARGETS,
   attachIde,
   buildProject,
@@ -46,15 +50,19 @@ import {
   shutdownIdeAsync,
   waitForCompile,
 } from "./tb-ide.mjs";
-import { captureRun, checkCapture } from "./tb-run.mjs";
+import { buildTimeoutMessage, captureRun, checkCapture } from "./tb-run.mjs";
+import { timing } from "./tb-timings.mjs";
 
 /**
  * @param {object} o
  * @param {string} o.project   the packed .twinproj
  * @param {string} o.ide       twinBASIC.exe
- * @param {number} [o.port]    DevTools port to start the IDE on (default 9333)
+ * @param {object} [o.slot]    the slot (leaseSlot in tb-ide.mjs) the caller holds, whose
+ *   desktop the IDE goes on; by default the IDE gets one of its own (launchIde)
+ * @param {number} [o.port]    DevTools port to start the IDE on; by default one Windows picks
  * @param {string} [o.arch]    win32 or win64 (default win32): the target to compile for
- * @param {number} [o.timeout] ms to wait for the compile (default COMPILE_TIMEOUT)
+ * @param {number} [o.timeout] ms for the compile phase, from the project reported open
+ *   to the compile settled (default waitForCompile's: test/harness.json's `compile`)
  * @param {boolean} [o.show]   on the user's desktop instead of a private one
  * @param {boolean} [o.keep]   leave the IDE running, and report its pid
  * @param {boolean} [o.build]  after a compile with no errors, build the project
@@ -65,8 +73,11 @@ import { captureRun, checkCapture } from "./tb-run.mjs";
  * @param {boolean} [o.llvm]   refuse a licence that does not compile user code
  *   with LLVM. It checks the licence and changes no setting; the project's
  *   own `compiler.buildOptions` is what asks for LLVM
- * @param {number} [o.buildTimeout] ms to wait for the build (default buildProject's)
- * @param {{done?: (lines: string[]) => boolean, quietMs: number, timeoutMs: number} | null} [o.run]
+ * @param {boolean} [o.followRun] whether the project has a [RunAfterBuild] Sub whose compile
+ *   the build follows after the link (buildProject); unknown by default
+ * @param {number} [o.buildTimeout] ms for the build, from the press to its end (default:
+ *   test/harness.json's `build`); with `run`, to [BUILD] Executing
+ * @param {{done?: (lines: string[]) => boolean, runMs?: number, quietMs?: number} | null} [o.run]
  *   after a clean compile, build the project and run its [RunAfterBuild] Sub
  *   and capture what it writes (captureRun in lib/tb-run.mjs), in place of
  *   `build`'s own wait, which ends before the Sub's output has arrived. The
@@ -78,9 +89,11 @@ import { captureRun, checkCapture } from "./tb-run.mjs";
  *   run?: {captured: string[], last: string, erased: string[], timedOut: boolean},
  * }>} `code` is tbbuild's exit code: 0 clean, 1 the project has errors, 2 the IDE
  *   could not be started or attached or the licence refuses LLVM, 3 the compile
- *   never settled, 4 the project crashes the compiler, 5 the build failed after
- *   a clean compile (with `run`, also a Sub that failed code generation, or a
- *   failure a Debug.Cls erased after the run started). `message` is what tbbuild
+ *   never settled (or met the `compile` limit), 4 the project crashes the
+ *   compiler, 5 the build failed after a clean compile: a failure line, an LLVM
+ *   refusal anywhere in the log (an exe linked or not), or the `build` limit
+ *   (with `run`, also a Sub that failed code generation, or a failure a
+ *   Debug.Cls erased after the run started). `message` is what tbbuild
  *   prints on stderr for 2 to 5 and is empty otherwise: for 5 the failing line
  *   of the log. `counts` is errors, warnings, hints, infos. `crashFiles` names,
  *   for 4, the files the compiler died parsing. `built` is the file a
@@ -90,19 +103,26 @@ import { captureRun, checkCapture } from "./tb-run.mjs";
 export async function compileProject({
   project,
   ide,
-  port = 9333,
+  slot = null,
+  port = null,
   arch = TARGETS[0],
-  timeout = COMPILE_TIMEOUT,
+  timeout,
   show = false,
   keep = false,
   build = false,
   llvm = false,
   buildTimeout,
+  followRun,
   run = null,
 }) {
   let handle = null;
   let c = null;
-  const result = (code, fields = {}) => ({
+  const t0 = Date.now();
+  const result = (code, fields = {}) => {
+    timing("project", { project: path.resolve(project), code, arch, llvm, build, run: !!run, ms: Date.now() - t0 });
+    return outcomeOf(code, fields);
+  };
+  const outcomeOf = (code, fields) => ({
     code,
     message: "",
     rows: [],
@@ -119,11 +139,11 @@ export async function compileProject({
   });
   try {
     try {
-      handle = await launchIde({ exe: ide, project, port, show, keep });
+      handle = await launchIde({ exe: ide, project, slot, port, show, keep });
     } catch (e) {
       return result(2, { message: e.message });
     }
-    c = await attachIde(port);
+    c = await attachIde(handle.port);
     if (!c) return result(2, { message: "the IDE never exposed a debug port" });
 
     let outcome = compileOutcome(await waitForCompile(c, { project, timeout }), { name: project });
@@ -164,18 +184,18 @@ export async function compileProject({
     if (run) {
       let capture;
       try {
-        capture = await captureRun(c, run);
+        capture = await captureRun(c, { buildMs: buildTimeout, ...run });
       } catch (e) {
         return result(2, { ...found, message: e.message });
       }
       const { buildFailed, lost } = checkCapture(capture.captured, capture.erased);
-      const failure = buildFailed ?? lost;
+      const failure = buildFailed ?? lost ?? buildTimeoutMessage(capture);
       if (failure !== undefined) {
         return result(5, { ...found, message: failure, buildLog: capture.captured, run: capture });
       }
       return result(0, { ...found, run: capture });
     }
-    const built = await buildProject(c, { timeout: buildTimeout });
+    const built = await buildProject(c, { timeout: buildTimeout, followRun });
     if (!built.ok) return result(5, { ...found, message: built.message, buildLog: built.log });
     return result(0, { ...found, built: built.file, buildLog: built.log });
   } finally {

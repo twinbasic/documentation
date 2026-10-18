@@ -294,7 +294,7 @@ The restriction to modules is not an oversight. Folding a call to a method would
 
 Calls are folded only when **Constant Function Folding** is set to **Yes** in [Project Settings](../IDE/Project-Settings#constant-function-folding). A **Property Get** in a module folds as a function does. On a **Sub** the attribute is accepted and has no effect.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > The compiler also accepts the attribute on a **Declare Function**. With **Constant Function Folding** on, a call to such a function whose arguments are all constants crashes the compiler during the build, though the project compiles without an error.
 
 <!-- BETA 1005 (tbrun --exe, counting calls through a module counter): with
@@ -1055,10 +1055,10 @@ When set, a global instance of the class is created when the application starts.
 
 This attribute is equivalent to the `VB_PredeclaredId` attribute in VBx .cls files.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > In an ActiveX build, the class is marked `appobject` in the type library as well as `predeclid`, which is what [AppObject](#appobject) gives it, so a client that references the library treats the members of the class as global names.
 
-<!-- BETA 1005, ActiveX DLL dumped with TLI: [PredeclaredId] and [AppObject]
+<!-- BETA 1005 and 1010, ActiveX DLL dumped with TLI: [PredeclaredId] and [AppObject]
      on a Class both give coclass TYPEFLAGS 0xB (appobject, cancreate,
      predeclid); found independently by the vb6-import lane's type library
      check. The compiler also accepts the attribute on an Interface (the name
@@ -1112,13 +1112,10 @@ Public Property Let Caption(ByVal Value As String)
 End Property
 ```
 
-A property takes the attribute on its first accessor in the source, normally the **Property Get**; written on a later accessor, it is ignored. The legacy line `Attribute Caption.VB_ProcData.VB_Invoke_Property = "CaptionPage"` inside the **Property Get** means the same. The argument must be a **String**: `[PropertyPage]` with no argument, or with a **Boolean** or a number, is TB5163, *Expected a single String argument*. An empty string ties the property to no page.
+A property takes the page from its first accessor in the source, normally the **Property Get**, whichever kind of accessor that is. Written on a later accessor, the attribute has no effect, though its name is still checked; when two accessors name different pages, the control reports the first one's. On a **Sub**, a **Function** or a **Public** variable of the control, the control reports the page for that member's DISPID in the same way. In a class that is not a **UserControl**, or on an **Interface** member, the compiler accepts the attribute and it has no effect. The legacy line `Attribute Caption.VB_ProcData.VB_Invoke_Property = "CaptionPage"` inside the **Property Get** means the same. The argument must be a **String**: `[PropertyPage]` with no argument, or with a **Boolean** or a number, is TB5163, *Expected a single String argument*. On a procedure, a name that matches no property page in the project is error TB5259, *Failed to find named PropertyPage '...' for procedure '...'*. That includes an empty string and a name that differs only in case. A variable's name is not checked.
 
-> [!NOTE] BETA 1005
-> A name that matches no property page in the project is not reported: the build succeeds, and the property is tied to no page. The same holds for a name that differs only in case.
-
-> [!NOTE] BETA 1005
-> VB6 stores a property's page as `"PageName;Category"` in the legacy attribute, with the category the property sheet groups the property under. twinBASIC reads such a legacy line and drops what follows the semicolon. **[PropertyPage]** takes the whole string as the name, so `[PropertyPage("CaptionPage;Appearance")]` matches no page.
+> [!NOTE] BETA 1010
+> VB6 stores a property's page as `"PageName;Category"` in the legacy attribute, with the category the property sheet groups the property under. twinBASIC reads such a legacy line and drops what follows the semicolon. **[PropertyPage]** takes the whole string as the name, so `[PropertyPage("CaptionPage;Appearance")]` is TB5259.
 
 The pages the control offers as a whole are listed in its [**PropertyPages**](../Packages/VB/UserControl/#propertypages) property.
 
@@ -1127,13 +1124,32 @@ The pages the control offers as a whole are listed in its [**PropertyPages**](..
      for that DISPID returned S_OK and the [ClassId] of the project's PropertyPage
      class; for a member without it, E_NOTIMPL. "mypage", "MYPAGE", "NoSuchPage", a
      plain class's name and "" all give E_NOTIMPL with no diagnostic at build or
-     run. The compiler binary holds "Failed to find named PropertyPage '...' for
-     procedure '...'", never drawn. The VB package's UserControl.twin
+     run. BETA 1010 compile-only probes (a UserControl in an ActiveX Control
+     project, one page "ProbePage"): the name of the page builds; "NoSuchPage",
+     "probepage", "ProbePage;Appearance" and "" on a Property Get, and "NoSuchPage"
+     on a Property Let after an unmarked Property Get, are each TB5259 "Failed to
+     find named PropertyPage '...' for procedure '...'" (BETA 1007: all build); on
+     a Public variable a missing name builds. The legacy line Attribute X.VB_ProcData
+     .VB_Invoke_Property = "ProbePage;Appearance" builds and "NoSuchPage;Appearance"
+     is TB5259 naming 'NoSuchPage'. The VB package's UserControl.twin
      (MapPropertyToPage) names both forms. Accepted by the compiler on every member
      of a Class or an Interface (TB5163 for a non-String argument); refused with
      TB5182 on a Module member, a Type field, a Class, an Enum. Only a member with a
      DISPID can be mapped: an Event, a Const, a Private variable and a Declare
-     accept it to no effect. The type library is the same with or without it. -->
+     accept it to no effect. The type library is the same with or without it.
+     BETA 1010 and 1007 (control), win32 and win64, a built OCX called without
+     registration (a tbrun --exe exe that loads each OCX with LoadLibrary and
+     calls DllGetClassObject, GetIDsOfNames and MapPropertyToPage through
+     DispCallFunc): attribute on the Get, on a Let written before an
+     unmarked Get, on a Set written first, and the legacy line with or without
+     ";Appearance" give S_OK and ProbePage's [ClassId]; on a Let after an unmarked
+     Get, or a Get after an unmarked Let, E_NOTIMPL (0x80004001) and CLSID_NULL;
+     Get "ProbePage" then Let "ProbePage2" gives ProbePage, Let "ProbePage2" then
+     Get "ProbePage" gives ProbePage2, both builds clean; a property without it
+     E_NOTIMPL. A Public variable, a Sub and a Function of the control map to the
+     page; an Interface member ([DispId(5000)], implemented by the control) gives
+     E_NOTIMPL; a plain creatable Class in the OCX has no IPerPropertyBrowsing
+     (E_NOINTERFACE). Every answer the same on both builds and both architectures. -->
 
 ## RedirectToStaticImplementation  (String)
 {: #redirecttostaticimplementation }
@@ -1201,7 +1217,7 @@ The procedure runs whatever the project's modules and procedures are called: a m
 > [!NOTE]
 > VB6 refuses a module that has the project's name, with *Name conflicts with existing module, project, or object library*. It allows a procedure named like its module.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > The compiler also accepts the attribute on a generic **Sub**, such as `Sub Signed(Of T)()`, and counts it as the project's one **[RunAfterBuild]**. The build gives no error or warning, and the DEBUG CONSOLE reports the procedure as executed, but its body does not run.
 
 <!-- BETA 1005 (tbbuild --build): a [RunAfterBuild] Boolean Function and a
@@ -1220,15 +1236,29 @@ Runs the function before the project's startup object. Returning **True** suppre
 
 A **Function** is the usual form, returning a **Boolean**. A **Function** of another type, or a **Property Get**, works the same way: a result of 0 or **Nothing** lets startup proceed, and any other result suppresses the startup object. A **Sub** runs too, and then the startup object never runs.
 
-> [!WARNING] BETA 1005
-> On a generic procedure, such as `Sub Pre(Of T)()`, the project compiles without an error, but building it crashes the compiler.
+> [!NOTE] BETA 1010
+> The attribute is not allowed on a generic procedure, such as `Sub Pre(Of T)()`. The project compiles in the editor without an error, but building it fails with the message *Build FAILED due to invalid RunBeforeStartupObject procedure*, which names neither the procedure nor the reason.
+
+> [!WARNING] BETA 1010
+> The compiler accepts the attribute on more than one procedure, with no error or warning, and the built program runs only the last of them; the others never run. It also accepts the attribute on a procedure with parameters, which then runs with arbitrary values for its parameters, even for an **Optional** parameter that has a default. Give the attribute to one procedure, with no parameters.
+
+<!-- BETA 1010 (bug_repro run --exe, win32 and win64): of three procedures with
+     the attribute in one module, only the last ran; with a ByVal Long
+     parameter it ran with an arbitrary value, and with an Optional one with
+     default 3 likewise. A generic procedure next to another with the attribute
+     builds and is ignored when it is not the last. A second [RunAfterBuild] is
+     TB5114; a second [RunBeforeStartupObject] gets nothing. Bugs in
+     BUGS-TO-REPORT.md: runbeforestartupobject-unchecked (the WARNING) and
+     runbeforestartupobject-generic-message (the NOTE's message). -->
 
 <!-- BETA 1005 (tbrun --exe, TbRun.Out): "pre ran" then "Main ran" when Main
      runs. Boolean False/True: Main runs/does not; Long 0/1: runs/does not;
      stdole.IUnknown Nothing/an object: runs/does not; Property Get As Long 1:
-     does not; a Sub, a Static Sub and a Private Sub run and Main does not. The
-     crash: tbbuild --build exit 5, ACCESS_VIOLATION, for `Public Sub Pre(Of T)()`
-     alone. Bug: runbeforestartupobject-generic-crash in BUGS-TO-REPORT.md. -->
+     does not; a Sub, a Static Sub and a Private Sub run and Main does not.
+     BETA 1010 (tbbuild --build, win32 and win64): the build of `Public Sub
+     Pre(Of T)()` and of a generic Function fails with the message above; the
+     same procedures without the attribute, and `Pre()` with it, build. The
+     compile alone reports 0 diagnostics. -->
 
 The CEF package uses it to intercept the sub-process launches Chromium makes of the host executable, which must not run the application's own `Sub Main`:
 

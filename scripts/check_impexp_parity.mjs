@@ -214,7 +214,7 @@ async function runExe(edition, args, cwd) {
     exe: edition.exe,
     args,
     cwd,
-    desktop: "impexp-parity",
+    tag: "check_impexp_parity",
     env: process.env,
     stdout,
     stderr,

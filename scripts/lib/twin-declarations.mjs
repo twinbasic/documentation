@@ -18,13 +18,13 @@
  * reads an imported `const` only when its initialiser is a literal, and three
  * files build their patterns from this one.
  *
- * `Abstract` and `Virtual` are not on it. BETA 1005 reads `Public Abstract Sub
+ * `Abstract` and `Virtual` are not on it. BETA 1010 reads `Public Abstract Sub
  * Y()` as a Variant variable named Abstract followed by a Sub the parser
  * refuses (TB5182 at `Sub`), whether or not an `End Sub` follows, and refuses
  * `Abstract Class` and `Virtual Class` the same way. A scanner that took them
  * for modifiers would open a body that no source closes.
  *
- * Thirteen more words here are refused the same way (TB5182) in BETA 1005 before
+ * Thirteen more words here are refused the same way (TB5182) in BETA 1010 before
  * a Sub, a Function, a Class and a module-level variable alike: Shared, Partial,
  * Overrides, Overloads, MustOverride, MustInherit, NotInheritable, Iterator,
  * Async, Naked, Unsafe, Extern and Inline. They stay on the list until a
@@ -42,7 +42,7 @@ const BLOCK_COMMENT_RE = /\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\//g;
 export const decomment = (s) => s.replace(BLOCK_COMMENT_RE, " ");
 
 // An identifier holds the ASCII letters, digits and `_` and every character past
-// ASCII (BETA 1005 compiles `Café As Long` and `Sub 日本語()`), so a keyword ends
+// ASCII (BETA 1010 compiles `Café As Long` and `Sub 日本語()`), so a keyword ends
 // where the next character is none of them; `\b` would end `Class` before `é`.
 const KEYWORD_END = "(?![A-Za-z0-9_\\u0080-\\uFFFF])";
 

@@ -15,6 +15,10 @@
 //             once every lane has ended. Two lanes that name the same one
 //             never run at once. An add-in whose settings are not named here
 //             leaves them changed after the run.
+//   page      the size of each IDE's page in CSS pixels, { width, height }, or
+//             null for the window's own; by default 1600 by 1000 (PAGE in
+//             scripts/lib/tb-lane.mjs), whatever size the user's IDE last left
+//             its window at
 
 export default [
   { file: "sample10.test.mjs" },

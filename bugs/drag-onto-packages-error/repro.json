@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["dragging a file onto Packages moves nothing and raises a page RangeError"],
+  "steps": "1. In Project Explorer, drag Sources/Legacy.bas onto Packages. Packages is highlighted as a drop target.\n2. Nothing moves, and the page raises RangeError: Invalid DataView length 8."
+}

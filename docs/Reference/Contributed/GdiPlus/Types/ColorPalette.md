@@ -32,6 +32,7 @@ Syntax: *pal* **= ColorPalette**( *flags*, *entries*( ) )
 
 The function sets **flags** and sets **count** to the smaller of 256 and the length of *entries*.
 
+<!-- test: Im_TypeTests.ColorPalette_FunctionCopiesTheColours, Im_TypeTests.ColorPalette_EntriesSetOneAtATimeAreKept -->
 > [!WARNING] 0.9.45.0
 > The function does not copy the colours: every element of **entries** of the result is 0. Set **entries** one element at a time, as below.
 

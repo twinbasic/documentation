@@ -60,7 +60,7 @@ Unticking a row removes the reference. For a package that is kept under `Package
 
 ### Priority
 
-The list is in order of priority. The two pink arrows of a row move it up, which gives it a higher priority, or down, which gives it a lower one. An arrow that cannot move the row is greyed out. The two compiler packages stay at the top.
+The list is in order of priority. A row shows two arrows while the pointer is over it, grey until the pointer is on one, which turns it pink. They move the row up, which gives it a higher priority, or down, which gives it a lower one. An arrow that cannot move the row is greyed out. The two compiler packages stay at the top.
 
 ### The library symbol
 
@@ -70,7 +70,7 @@ A library's *symbol* is the name its components are qualified with in code. It i
 
 A reference that the compiler cannot load shows **ERROR unable to load this reference** and a **FIX** link. About a second after the project loads, the dialog opens by itself to show it. It opened again after an **Apply Changes** that restarted the compiler. **FIX** does nothing but say that the feature is not implemented yet, and that you should remove the reference and add it again from **Available COM References**. A library listed twice shows **ERROR duplicate reference** on both rows.
 
-<!-- SHOT projects-refs-detail: the Enabled Libraries list with a project that has an overridden symbol (Scripting shown with the original struck through and SR beside it), the pink priority arrows on the movable rows, and one row with "ERROR unable to load this reference" and the FIX link -->
+![The Enabled Libraries tab of Project Settings. The Microsoft Scripting Runtime row, under the pointer, shows its two arrows, and its symbol Scripting is struck through with the override SR under it. The last row, Charts Library, has a yellow band reading ERROR unable to load this reference with a FIX link.](Images/References_Detail.png){:width="1102" height="369"}
 
 ## Available COM References
 
@@ -105,13 +105,13 @@ The **Import from file...** button under the lists opens the Windows **Open** di
 - On **Available COM References**, and on **Enabled Libraries**, it asks for a type library. The IDE copies the file into the project as `ImportedTypeLibraries/<file name>`, and adds it to the references at once, ticked.
 - On **Available Packages**, it asks for a `.twinpack` file. The package is added to the **Available Packages** list. [Importing a Package from a TWINPACK File](../../../Features/Packages/Importing-TWINPACK) gives the steps.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > A package imported with **Import from file...** is listed but not ticked, so the project does not use it. Tick it yourself after the import.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > **Import from file...** puts a copy of the package under the project's `Packages` folder. Closing the dialog with **Cancel** leaves the copy there, and the project is not marked as changed.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > A type library added with **Import from file...** is drawn on the **Enabled Libraries** list as `[LINKED-PACKAGE]`, and on **Available COM References** it is listed twice, once from the project and once from the registered library, both ticked. Clearing the tick of either row removes the reference.
 
 ## Package needed
@@ -120,7 +120,7 @@ Choosing an **Add** item for a Windows form without the **WinNativeForms** packa
 
 The reference is listed under the package's own name, `WinNativeForms` or `CustomControlsPackage`, until the compiler has answered, and then under the name of the library, such as `twinBASIC - VB Compatibility Package (Forms)`.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > In a project that has a file, the button also saves the project, although the box speaks only of restarting the compiler. A project with no file yet is not saved, and restarts from memory.
 
 ## Apply Changes and closing the dialog
@@ -129,9 +129,9 @@ The dialog has a filter box, **Apply Changes** and **Cancel**. **Apply Changes**
 
 **Cancel** closes the dialog at once and drops every change, whichever it is, without asking. <kbd>Esc</kbd> does the same when the focus is in the filter box. The close button in the title bar asks first, in a box, **WARNING: you made changes but haven't saved them. Close without saving?**, with **Yes, close** and **No, keep editing**.
 
-<!-- SHOT projects-settings-close: Project Settings after a change to the description, the title bar's close button pressed, the box "WARNING: you made changes but haven't saved them. Close without saving?" with Yes, close and No, keep editing; Apply Changes is enabled behind it -->
+![Project Settings with a word added to its Project Description, and the box that its title bar's close button opened over it: WARNING: you made changes but haven't saved them. Close without saving?, with Yes, close and No, keep editing. Apply Changes and Cancel are at the foot of the dialog behind it.](Images/Settings_Close.png){:width="1102" height="774"}
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > The close button of the title bar does not ask when the only change is to the references. The dialog closes, the change is dropped, and nothing says so. The code that compares the settings leaves out the compiler warnings as well. Press **Apply Changes** before you close the dialog.
 
 ## The References folder
@@ -140,7 +140,7 @@ The `References` folder of the Project Explorer has one entry for each library t
 
 **Cut**, **Rename** and **Delete Permanently** are greyed out on the right-click menu for these entries.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > The <kbd>Delete</kbd> key removes a `References` entry from the tree, although its menu item is greyed out. The reference itself stays in the project. To remove a reference, untick it in the **Enabled Libraries** list.
 
 ## Where the project keeps them

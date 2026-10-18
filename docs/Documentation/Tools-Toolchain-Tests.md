@@ -280,20 +280,30 @@ The same file runs the probes of [`vb6run.mjs`](Tools-Defects#vb6run), from `scr
 
 Exit codes: **0** every test passed, **1** a test failed.
 
-## ports.test.mjs
-{: #ports-test }
+## ide-folders.test.mjs
+{: #ide-folders-test }
 
-    node --test test/ports.test.mjs
+    node --test test/ide-folders.test.mjs
 
-Unit tests for `scripts/lib/tb-ports.mjs`, which claims the DevTools ports that [`addin_test.mjs`](Tools-IDE#addin-test), [`ide_test.mjs`](Tools-IDE#ide-test) and [`try_help_addin.mjs`](Tools-IDE#try-help-addin) start their IDEs on. A port is claimed with a lock file in `tb-ports` under the system temp directory before it is checked, and runs claim one at a time, so two runs started together never get the same one.
+Unit tests for what an IDE leaves under the system temp directory. `launchIde` gives each IDE a temp folder and a WebView2 profile named for its slot (the private desktop and number each run gets from [`tbbroker`](Tools-Compiler#tbbroker)), and `shutdownIde` and `shutdownIdeAsync` remove both once the IDE's process has gone. The tests give them a handle for a process that cannot exist, and check that its two folders are removed and a third is not, and that a folder already gone, a handle with no folders and no handle are no error.
 
-Four child processes claim three ports each at the same time. The range holds one port in use, one with the lock of a process that has ended and one with the lock of a live process, and each child holds its ports until all have claimed. The test checks that the claims are disjoint, that they are exactly the free ports with the stale lock taken over, and that each lock is gone once its process exits. Two more tests ask for more free ports than the range holds, which is refused with the port found unlocked again, and claim past the unfinished claim of a run that ended.
-
-The same file tests what an IDE leaves under the system temp directory. `launchIde` gives each IDE a temp folder and a WebView2 profile named for its port, and `shutdownIde` and `shutdownIdeAsync` remove both once the IDE's process has gone. The tests give them a handle for a process that cannot exist, and check that its two folders are removed and a third is not, and that a folder already gone, a handle with no folders and no handle are no error.
-
-Starts no IDE. No browser, no built tree, about 2 s.
+Starts no IDE. No browser, no built tree, well under a second.
 
 Exit codes: **0** every test passed, **1** a test failed.
+
+## broker.test.mjs
+{: #broker-test }
+
+    set TBBROKER_EXE=%LOCALAPPDATA%\tbbroker\tbbroker.exe
+    node --test test/broker.test.mjs
+
+Tests [`tbbroker`](Tools-Compiler#tbbroker), which hands out private desktops, slots and ports, and its Node client, `scripts/lib/tb-broker.mjs`. It needs a built broker and Windows, so it reports itself skipped unless `TBBROKER_EXE` names the exe; no gate builds it, and CI never sets the variable. Each run starts brokers on pipes and desktop names of its own, never your broker, and stops them.
+
+It checks that one broker serves a pipe and a second start finds it, the exit codes of `start`, `status` and `stop`, and that the client starts a broker when none answers; that a slot's desktop is made once and handed out again; that a lease ends when its connection closes, or, with a process held for it, when that process ends; that a lease is refused to a connection that did not take it and for a process that is not there; that with every slot taken a lease fails, or waits its turn; that a port skips the leased ones and one something listens on; that a request the broker cannot read is answered; that a desktop left with a window on it (Notepad, on that desktop) is not handed out until the window goes; and that a broker started while a desktop of its pool is still in use waits for it to empty.
+
+Starts no IDE. No browser, no built tree, about 7 s.
+
+Exit codes: **0** every test passed, or the file was skipped, **1** a test failed.
 
 ## addin-project.test.mjs
 {: #addin-project-test }

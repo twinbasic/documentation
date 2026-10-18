@@ -51,8 +51,9 @@ Dim e() As Single = m.Elements
 Debug.Print e(1) & " " & e(4)                        ' 3 3
 ```
 
+<!-- test: Gr_MatrixTests.Transform_GetOnMatrix_ReturnsTheMatrix, Gr_MatrixTests.Transform_GetOnGraphics_ThroughTheInterface_ReturnsTheMatrix, Gr_MatrixTests.Transform_GetOnGradientBrush_ThroughTheInterface_ReturnsTheMatrix, Gr_MatrixTests.Transform_Let_CopiesTheMatrix, Gr_MatrixTests.GetTransform_OnGraphics_ThroughTheInterface_CopiesTheTransformation -->
 > [!NOTE] 0.9.45.0
-> Reading **Transform** does not work on any of the classes that implement the interface. The getter returns **Nothing** and records **InvalidParameter** in **LastResult**. Read the transformation with [**GetTransform**](#gettransform).
+> Reading **Transform** does not work on any of the classes that implement the interface: the getter returns **Nothing**. On a **Graphics** and on the brushes it also records **InvalidParameter** in **LastResult**; on a **Matrix** it leaves **LastResult** as it was. Read the transformation with [**GetTransform**](#gettransform).
 
 ## GetTransform
 {: .no_toc }

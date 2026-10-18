@@ -12,6 +12,7 @@ Specifies the kind of smoothing (antialiasing) that is applied to lines and curv
 
 The setting is the **SmoothingMode** property of [**Graphics**](../Graphics). A box filter that is 8 pixels wide and 4 high gives better results for lines that are nearly vertical than for lines that are nearly horizontal. A filter of 8 by 8 pixels gives equally good results for both and is slower. The first four members have the values of [GpQualityMode](GpQualityMode).
 
+<!-- test: Gr_GraphicsTests.SmoothingMode_HighQuality_ReadsBackAsAntiAlias, Gr_GraphicsTests.SmoothingMode_HighSpeedAndDefault_ReadBackAsNone -->
 > [!NOTE] timeless
 > GDI+ replaces some of the values when they are set. A **Graphics** object that was given **SmoothingModeHighQuality** returns **SmoothingModeAntiAlias** when the property is read again, and one that was given **SmoothingModeHighSpeed** or **SmoothingModeDefault** returns **SmoothingModeNone**.
 

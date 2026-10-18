@@ -1,0 +1,27 @@
+' Me, as a whole value, on the right of an assignment inside a method or property of a UDT
+' (a twinBASIC extension). Copy = Me, Return Me, t = Me, Dim t As R = Me and v = Me (Variant)
+' are each a codegen error once the method is called: the project compiles with no
+' diagnostic, and the build fails with "compilation (codegen) error detected in
+' 'Startup.Copy'". The same in a Property Get, and in a 32-bit and a 64-bit build.
+' Fine: Me.X, passing Me to a ByVal parameter, Me on the left (Me = other), and copying
+' field by field.
+Module Startup
+
+    Public Type R
+        X As Long
+        Y As Long
+
+        Function Copy() As R
+            Copy = Me
+        End Function
+    End Type
+
+    Public Sub Main()
+        Dim a As R, b As R
+        a.X = 7
+        a.Y = 8
+        b = a.Copy()
+        Debug.Print b.X & ", " & b.Y
+    End Sub
+
+End Module

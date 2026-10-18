@@ -34,9 +34,11 @@ Syntax: *cap* **= New CustomLineCap**( *fillPath*, *strokePath* [, *baseCap* [, 
 
 The two forms are one thing. The paths use their own coordinate system, with its origin at the end of the line. The x axis runs across the line. The y axis runs along it: the negative y values are back along the line, towards the other end, and the positive y values lie beyond the end of the line. The cap is scaled by the width of the pen, and a pen narrower than 2 counts as 2.
 
+<!-- test: Br_CapTests.CustomLineCap_New_BaseInset_KeepsTheFraction, Br_CapTests.CustomLineCap_BaseInset_Property_TakesASingle -->
 > [!NOTE] 0.9.45.0
-> *baseInset* is a **Long**, so a fraction is cut off. The [**BaseInset**](#baseinset) property takes a **Single**.
+> *baseInset* is a **Long**, so a fraction is rounded to a whole number. The [**BaseInset**](#baseinset) property takes a **Single**.
 
+<!-- test: Br_CapTests.CustomLineCap_EndCap_IsDrawn -->
 The example draws a line that ends in a small filled rectangle. The path is two units wide and one unit long, behind the end of the line, and the pen is 2 wide: the cap is 4 rows tall and 2 columns long. **#** is a pixel of the pen.
 
 ```tb check_build check_run
@@ -73,6 +75,7 @@ Next
 ' ..............................
 ' ..............................
 ```
+<!-- /test -->
 
 ### Clone
 
@@ -118,8 +121,9 @@ Syntax: *lineCap* **=** *cap*.**StartStrokeCap**
 
 Reads the [**GpLineCap**](Enumerations/GpLineCap) of the start of each line of the stroke path. The default is **LineCapFlat**.
 
+<!-- test: Br_CapTests.CustomLineCap_StartStrokeCap_Let_Returns -->
 > [!WARNING] 0.9.45.0
-> Assigning **StartStrokeCap** never returns. Assign [**StrokeCap**](#strokecap) to set both ends.
+> Assigning **StartStrokeCap** stops the program with a stack overflow. Assign [**StrokeCap**](#strokecap) to set both ends.
 
 ### EndStrokeCap
 
@@ -127,8 +131,9 @@ Syntax: *lineCap* **=** *cap*.**EndStrokeCap**
 
 Reads the [**GpLineCap**](Enumerations/GpLineCap) of the end of each line of the stroke path. The default is **LineCapFlat**.
 
+<!-- test: Br_CapTests.CustomLineCap_EndStrokeCap_Let_Returns -->
 > [!WARNING] 0.9.45.0
-> Assigning **EndStrokeCap** never returns. Assign [**StrokeCap**](#strokecap) to set both ends.
+> Assigning **EndStrokeCap** stops the program with a stack overflow. Assign [**StrokeCap**](#strokecap) to set both ends.
 
 ### SetStrokeCaps
 
@@ -136,8 +141,9 @@ Syntax: *status* **=** *cap*.**SetStrokeCaps**( [ *startCap* [, *endCap*]] )
 
 Sets the start cap and the end cap of the stroke lines separately, and returns a [**GpStatus**](Enumerations/GpStatus). A cap that is left out, or given as -1, is not changed.
 
+<!-- test: Br_CapTests.CustomLineCap_SetStrokeCaps_WithACap_Returns, Br_CapTests.CustomLineCap_SetStrokeCaps_WithNoCaps_ChangesNothing -->
 > [!WARNING] 0.9.45.0
-> **SetStrokeCaps** never returns, unless both caps are left out. Assign [**StrokeCap**](#strokecap) to set both ends.
+> **SetStrokeCaps** stops the program with a stack overflow, unless both caps are left out. Assign [**StrokeCap**](#strokecap) to set both ends.
 
 ### GetStrokeCaps
 
@@ -145,6 +151,7 @@ Syntax: *status* **=** *cap*.**GetStrokeCaps**( [ *startCap* [, *endCap*]] )
 
 Reads the start cap and the end cap into the variables given, and returns a [**GpStatus**](Enumerations/GpStatus). A variable that is left out is not read.
 
+<!-- test: Br_CapTests.CustomLineCap_Properties_RoundTrip, Br_CapTests.CustomLineCap_StrokeCap_SetsBothEnds -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 
@@ -171,9 +178,11 @@ Debug.Print cap.StartStrokeCap & " " & cap.EndStrokeCap
 ' 0 2 2
 ' 2 2
 ```
+<!-- /test -->
 
 ## Example
 
+<!-- test: Br_CapTests.CustomLineCap_BaseInset_EndsTheLineEarly -->
 A line that stops short of its cap: the base inset ends the line 3 pen widths early, and the cap stays where it was.
 
 ```tb check_build check_run
@@ -206,6 +215,7 @@ Debug.Print copy.BaseInset
 ' ..############....##..........
 ' 3
 ```
+<!-- /test -->
 
 ## See Also
 

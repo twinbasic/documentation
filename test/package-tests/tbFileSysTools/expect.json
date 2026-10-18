@@ -62,16 +62,16 @@
       "fails": "2 of 2 checks failed: Folder.Size of a folder with a subfolder whose path has 258 characters raises error: expected 0, got 76; Folder.Size of that folder: expected 5, got 0"
     },
     "PathTests.GetRelativePath_Base259": {
-      "fails": "1 of 1 checks failed: GetRelativePath of a target below a base of 259 characters: expected \"x\\y.txt\", got \"..\\dddddddddddddddddddddddddddddddddddddddddddddddddddddddd\\x\\y.txt\""
+      "fails": "1 of 1 checks failed: GetRelativePath of a target below a base of 259 characters: expected \"x\\y.txt\", got \"..\\<last folder of base>\\x\\y.txt\""
     },
     "PathTests.GetRelativePath_Base260": {
-      "fails": "1 of 1 checks failed: GetRelativePath of a target below a base of 260 characters: expected \"x\\y.txt\", got \"..\\ddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\\x\\y.txt\""
+      "fails": "1 of 1 checks failed: GetRelativePath of a target below a base of 260 characters: expected \"x\\y.txt\", got \"..\\<last folder of base>\\x\\y.txt\""
     },
     "PathTests.GetRelativePath_Base264": {
-      "fails": "1 of 1 checks failed: GetRelativePath of a target below a base of 264 characters: expected \"x\\y.txt\", got \"..\\ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\\x\\y.txt\""
+      "fails": "1 of 1 checks failed: GetRelativePath of a target below a base of 264 characters: expected \"x\\y.txt\", got \"..\\<last folder of base>\\x\\y.txt\""
     },
     "PathTests.GetRelativePath_Base300": {
-      "fails": "1 of 1 checks failed: GetRelativePath of a target below a base of 300 characters: expected \"x\\y.txt\", got \"..\\ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\\x\\y.txt\""
+      "fails": "1 of 1 checks failed: GetRelativePath of a target below a base of 300 characters: expected \"x\\y.txt\", got \"..\\<last folder of base>\\x\\y.txt\""
     }
   }
 }

@@ -5,7 +5,7 @@
 Module RunAll
 
     Public Sub Main()
-        Expect.StartRun "TBMANLIB_Diagnostic 1.0.0.1: 122 test cases"
+        Expect.StartRun "TBMANLIB_Diagnostic 1.0.0.1: 123 test cases"
         On Error Resume Next
         Expect.StartCase
         Err.Clear
@@ -399,6 +399,10 @@ Module RunAll
         Err.Clear
         ListTests.SetItem_AtZeroOnOneItemList_ReplacesTheItem
         Expect.EndCase "ListTests.SetItem_AtZeroOnOneItemList_ReplacesTheItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListTests.SetItem_AtZeroOnOneItemList_ErrorHasTheRuntimeText
+        Expect.EndCase "ListTests.SetItem_AtZeroOnOneItemList_ErrorHasTheRuntimeText", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         ListTests.SetItem_InMiddle_ReplacesItem

@@ -34,7 +34,9 @@ Each form can also be written with **New**: *cap* **= New ArrowCap**( ... ). The
 *isFilled*
 : *optional* A **Boolean**: **True** for a filled arrowhead and **False** for an outline. The default is **True**.
 
+<!-- test: Br_CapTests.ArrowCap_New_HeightComesBeforeWidth -->
 Note that the height comes before the width. Both are multiples of the pen width, and a pen narrower than 2 counts as 2. A new arrow cap has the base cap **LineCapTriangle**.
+<!-- /test -->
 
 ### Clone
 
@@ -42,6 +44,7 @@ Syntax: *copy* **=** *cap*.**Clone**( )
 
 Returns a new **ArrowCap** with the same settings.
 
+<!-- test: Br_CapTests.ArrowCap_Clone_ReturnsAUsableCopy -->
 > [!WARNING] 0.9.45.0
 > The copy is not usable: it does not hold the arrow, so each of its properties reports **InvalidParameter** in **LastResult** and returns 0 or **False**. Make a second cap with the same values instead.
 
@@ -71,6 +74,7 @@ Syntax: *cap*.**MiddleInset** [ **=** *inset* ]
 
 Sets the distance, a **Single**, by which the middle of the base of the arrowhead is moved towards the tip. The default is 0, which leaves a plain triangle. A larger value cuts a notch into the base, like the tail of a dart.
 
+<!-- test: Br_CapTests.ArrowCap_MiddleInset_Get_ReturnsTheSetting -->
 > [!WARNING] 0.9.45.0
 > Reading **MiddleInset** always returns 0, whatever was set. The setting itself works.
 
@@ -80,6 +84,7 @@ Syntax: *cap*.**FillState** [ **=** *isFilled* ]
 
 Gets or sets whether the arrowhead is filled, a **Boolean**. When it is not, only the outline is drawn.
 
+<!-- test: Br_CapTests.ArrowCap_Properties_RoundTrip -->
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
 
@@ -106,16 +111,21 @@ Debug.Print cap.MiddleInset
 ' 9 8
 ' 0
 ```
+<!-- /test -->
 
 ## Inherited from CustomLineCap
 
-[**BaseCap**](CustomLineCap#basecap), [**BaseInset**](CustomLineCap#baseinset), [**WidthScale**](CustomLineCap#widthscale), [**StrokeJoin**](CustomLineCap#strokejoin), [**StrokeCap**](CustomLineCap#strokecap), [**StartStrokeCap**](CustomLineCap#startstrokecap), [**EndStrokeCap**](CustomLineCap#endstrokecap), [**SetStrokeCaps**](CustomLineCap#setstrokecaps) and [**GetStrokeCaps**](CustomLineCap#getstrokecaps) work as on that page, with the same warnings: assigning **StartStrokeCap** or **EndStrokeCap**, and calling **SetStrokeCaps** with a cap, never return.
+<!-- test: Br_CapTests.ArrowCap_StrokeCap_SetsBothEnds, Br_CapTests.ArrowCap_StartStrokeCap_Let_Returns, Br_CapTests.ArrowCap_EndStrokeCap_Let_Returns, Br_CapTests.ArrowCap_SetStrokeCaps_WithACap_Returns -->
+[**BaseCap**](CustomLineCap#basecap), [**BaseInset**](CustomLineCap#baseinset), [**WidthScale**](CustomLineCap#widthscale), [**StrokeJoin**](CustomLineCap#strokejoin), [**StrokeCap**](CustomLineCap#strokecap), [**StartStrokeCap**](CustomLineCap#startstrokecap), [**EndStrokeCap**](CustomLineCap#endstrokecap), [**SetStrokeCaps**](CustomLineCap#setstrokecaps) and [**GetStrokeCaps**](CustomLineCap#getstrokecaps) work as on that page, with the same warnings: assigning **StartStrokeCap** or **EndStrokeCap**, and calling **SetStrokeCaps** with a cap, stop the program with a stack overflow.
+<!-- /test -->
 
+<!-- test: Br_PenTests.CustomStartCap_ArrowCap_ReturnsAUsableCap -->
 > [!WARNING] 0.9.45.0
 > A pen that has an arrow cap returns it from [**CustomStartCap**](Pen#customstartcap) or [**CustomEndCap**](Pen#customendcap) as an **ArrowCap** that is not usable, like a clone: its members report **InvalidParameter** and return 0.
 
 ## Example
 
+<!-- test: Br_CapTests.ArrowCap_EndCap_IsDrawnAsAnArrowhead -->
 A filled arrowhead at the end of a line. The listing shows the columns 20 to 35. **#** is a pixel of the pen.
 
 ```tb check_build check_run
@@ -149,6 +159,7 @@ Next
 ' ................
 ' ................
 ```
+<!-- /test -->
 
 ## See Also
 

@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects-loss",
+  "tests": ["dragging Sources onto Miscellaneous moves it there with no message, and Ctrl+S saves it there"],
+  "steps": "1. In Project Explorer, drag the folder Sources onto Miscellaneous. Miscellaneous is highlighted as a drop target.\n2. Sources moves into Miscellaneous; nothing is said.\n3. Press Ctrl+S: the project file holds Miscellaneous/Sources/Startup.twin and no Sources/Startup.twin.\nControl: renaming Sources is refused: Cannot rename: permission denied."
+}

@@ -1,0 +1,49 @@
+' A For ... Step x loop in a program compiled with LLVM, where x is a ByVal Long parameter and the procedure also
+' has a ByRef Boolean (or Integer) parameter after x. The loop uses a wrong step in place of x, which depends on
+' where the caller's argument for flag is stored: 20 in a 64-bit build and 25 in a 32-bit build for a local, as here. CountSteps(3, flag) should return 3 (i = 1, 4, 7); with LLVM it returns 1.
+' Without LLVM it returns 3. CountStepsLong, the same loop with a ByRef Long second parameter, returns 3 in every
+' build. The exe exits with the value of CountSteps(3, flag): 3 is right, 1 is wrong.
+Module Startup
+
+    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+    Private Function CountSteps(ByVal x As Long, ByRef flag As Boolean) As Long
+        Dim i As Long
+        Dim n As Long
+        For i = 1 To 7 Step x
+            n = n + 1
+            If n > 10 Then Exit For
+        Next i
+        CountSteps = n
+    End Function
+
+    ' control: the second parameter is a Long
+    Private Function CountStepsLong(ByVal x As Long, ByRef flag As Long) As Long
+        Dim i As Long
+        Dim n As Long
+        For i = 1 To 7 Step x
+            n = n + 1
+            If n > 10 Then Exit For
+        Next i
+        CountStepsLong = n
+    End Function
+
+    Public Sub Main()
+        Dim flag As Boolean
+        Dim flagL As Long
+        If App.IsInIDE Then
+            Debug.Print "CountSteps(3, flag) = " & CountSteps(3, flag)
+            Debug.Print "CountSteps(1, flag) = " & CountSteps(1, flag)
+            Debug.Print "CountStepsLong(3, flagL) = " & CountStepsLong(3, flagL)
+        Else
+            ExitProcess CountSteps(3, flag)
+        End If
+    End Sub
+
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Main
+    End Sub
+
+End Module

@@ -52,6 +52,7 @@ Syntax: *v* **=** *item*.**TheLong**
 
 A property returns 0 when the type of the value is not the one it reads.
 
+<!-- test: Im_TypeTests.GpPropertyItem_TheSByteReadsASignedByte, Im_TypeTests.GpPropertyItem_TheSShortReadsASignedShort, Im_TypeTests.GpPropertyItem_TheSLongReadsASignedLong, Im_TypeTests.GpPropertyItem_TheDoubleReadsADouble, Im_TypeTests.GpPropertyItem_AsDoubleCoversTheSignedAndDoubleTypes, Im_TypeTests.GpPropertyItem_TheSRationalReadsASignedRational, Im_TypeTests.GpPropertyItem_UnsignedReadersWork -->
 > [!WARNING] 0.9.45.0
 > Several of the readers test the wrong type and so return 0 for the values they are meant to read: **TheSByte** works only for a byte (not signed), **TheSLong** only for a short, **TheSShort** only for an unsigned short, and **TheDouble** only for a single. **AsDouble** returns 0 for the signed byte, signed short, signed long and double types for the same reason. **TheSRational** and the other readers work.
 
@@ -63,6 +64,7 @@ Syntax: *item*.**GetSRational**( *num*, *denom* )
 
 Read a rational value as its numerator and denominator without dividing: **GetRational** as unsigned numbers (**LongLong**), **GetSRational** as signed ones (**Long**).
 
+<!-- test: Im_TypeTests.GpPropertyItem_GetSRationalReadsASignedRational -->
 > [!WARNING] 0.9.45.0
 > **GetSRational** tests for an unsigned rational, so it reads nothing from a signed one.
 

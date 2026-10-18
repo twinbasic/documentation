@@ -13,6 +13,7 @@ The settings that GDI+ is started with.
 
 Pass a **GdiplusStartupInput** to the [**GdiPlusUser**](../GdiPlusUser) constructor to start GDI+ with other settings than the default ones. It mirrors the `GdiplusStartupInput` structure of GDI+ and has five fields and no methods.
 
+<!-- test: Ty_StartupTests.Declared_VersionZeroIsRefused, Ty_StartupTests.Fields_VersionTwoWithStartupParametersStarts -->
 A variable declared with `Dim` has every field 0, and its version 0 is not valid: a **GdiPlusUser** created from it fails with status 17, *UnsupportedGdiplusVersion*. Set **GdiplusVersion** before use, or take the structure from one of the module functions.
 
 ```tb check_build check_run
@@ -27,6 +28,7 @@ settings.StartupParameters = GdiplusStartupNoSetRound
 Dim custom As GdiPlusUser = GdiPlusUser(settings)
 Debug.Print settings.StartupParameters                           ' 1
 ```
+<!-- /test -->
 
 ## Fields
 
@@ -42,6 +44,7 @@ A [**DebugEventProc**](#debugeventproc) that GDI+ calls with assertion and warni
 
 A flag that takes **True** or **False**. **True** stops GDI+ from creating its own background thread, and the program must then call the two functions of a [**GdiplusStartupOutput**](GdiplusStartupOutput) itself. Leave it **False** unless the program does that.
 
+<!-- test: Ty_StartupTests.SuppressBackgroundThread_InputOnlyConstructorFails, Ty_StartupTests.SuppressBackgroundThread_ConstructorWithOutputStarts -->
 > [!NOTE] 0.9.45.0
 > The constructor that takes only an input, `GdiPlusUser(settings)`, fails with status 2, *InvalidParameter*, when this flag is **True**, because it gives GDI+ nowhere to return the two functions. Use the constructor that also takes a **GdiplusStartupOutput**.
 
@@ -59,10 +62,13 @@ Syntax: **GdiplusStartupInput**( [ *debugEventCallback* [, *suppressBackgroundTh
 Syntax: **GdiplusStartupInput**( *startupParameters* [, *debugEventCallback* [, *suppressBackgroundThread* [, *suppressExternalCodecs* ]]] ) \
 Syntax: **GdiplusStartupInput**( *gdiplusVersion*, *startupParameters* [, *debugEventCallback* [, *suppressBackgroundThread* [, *suppressExternalCodecs* ]]] )
 
+<!-- test: Ty_StartupTests.Function_NoArgumentsGivesVersionOne -->
 The module function **GdiplusStartupInput** returns a structure with the fields set. The first form sets the version to 1, the second to 2, and the third to *gdiplusVersion*.
+<!-- /test -->
 
+<!-- test: Ty_StartupTests.Function_StartupParametersFormGivesVersionTwo, Ty_StartupTests.Function_VersionFormGivesThatVersion -->
 > [!WARNING] 0.9.45.0
-> The forms cannot be told apart by an integer or an enumeration member as the first argument. `GdiplusStartupInput(GdiplusStartupNoSetRound)` returns version 1 with no startup parameters, as if the value were a callback, and `GdiplusStartupInput(3, GdiplusStartupDefault)` returns version 2. Set the fields one by one, as in the sample above.
+> In a 32-bit program the forms cannot be told apart by an integer or an enumeration member as the first argument. `GdiplusStartupInput(GdiplusStartupNoSetRound)` returns version 1 with no startup parameters, as if the value were a callback, and `GdiplusStartupInput(3, GdiplusStartupDefault)` returns version 2 with the startup parameters 3. A 64-bit program gets the forms that the syntax lines show. Set the fields one by one, as in the sample above.
 
 ## DebugEventProc
 

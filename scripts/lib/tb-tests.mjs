@@ -13,7 +13,7 @@
 //     response's `body.error`, with the line in `body.lineNumber`, and the next
 //     case runs; with no `body.error` the case passed. Without the flag a failed
 //     assertion stops the run at an error panel instead, and `On Error` cannot
-//     catch it. In BETA 1005 the IDE itself never sets the flag: it offers no
+//     catch it. In BETA 1010 the IDE itself never sets the flag: it offers no
 //     way to run a test (a [TestCase] Sub gets no CodeLens "run" link, and
 //     main.js's handler for the compiler's custom/provideTests request is
 //     empty). WIP.Harness.md, "Running a project's test cases", has the rest.
@@ -64,7 +64,7 @@ export function findCases(files) {
     let fixture = null;
     let pending = [];
     // A lone CR ends a line as CRLF and LF do: the compiler counts it, so a file
-    // with one numbered its lines past every case below it (BETA 1005).
+    // with one numbered its lines past every case below it (BETA 1010).
     text.split(/\r\n|\r|\n/).forEach((raw, i) => {
       const line = i + 1;
       const marker = CASE_RE.exec(raw);

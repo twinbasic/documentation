@@ -24,7 +24,7 @@ The **Line Input #** statement reads from a file one character at a time until i
 
 Reading past the last line of the file raises run-time error 62 (*Input past end of file*), and leaves *varname* unchanged. Test for the end of the file with [**EOF**](../Modules/FileSystem/EOF) before each read.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > **Line Input #** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
 
 ### Example

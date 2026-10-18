@@ -1,0 +1,136 @@
+' Ty_GpSizeTests: the GpSize type (page Types/GpSize).
+[TestFixture]
+Module Ty_GpSizeTests
+
+    [TestCase]
+    Public Sub GpSize_IsEightBytes()
+        Expect.Begin
+        Dim s As GpSize
+        Expect.AreEqual 8, LenB(s), "LenB of a GpSize"
+        Expect.Done
+    End Sub
+
+    ' ---- Creating
+
+    [TestCase]
+    Public Sub GpSize_FormsGiveTheDocumentedValues()
+        Expect.Begin
+        Dim s As GpSize = GpSize(3, 4)
+        Expect.AreEqual "3,4", s.Width & "," & s.Height, "GpSize(3, 4)"
+        Expect.IsTrue GpSize().Empty, "Empty of GpSize()"
+        Dim declared As GpSize
+        Expect.IsTrue declared.Empty, "Empty of a variable declared with Dim"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpSize_OfGpSizeFRoundsHalvesToEven()
+        Expect.Begin
+        Dim rounded As GpSize = GpSize(GpSizeF(2.5, 3.5))
+        Expect.AreEqual "2,4", rounded.Width & "," & rounded.Height, "GpSize(GpSizeF(2.5, 3.5))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GpSizeFrom_ReadsTheSizeStructure()
+        Expect.Begin
+        Dim winSize As GDIP_SIZE
+        winSize.cx = 9: winSize.cy = 10
+        Dim s As GpSize = GpSizeFrom(winSize)
+        Expect.AreEqual "9,10", s.Width & "," & s.Height, "GpSizeFrom of a GDIP_SIZE of 9 by 10"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Empty_IsTrueOnlyForBothDimensionsZero()
+        Expect.Begin
+        Expect.IsTrue GpSize(0, 0).Empty, "Empty of 0 by 0"
+        Expect.IsFalse GpSize(0, 1).Empty, "Empty of 0 by 1"
+        Expect.IsFalse GpSize(1, 0).Empty, "Empty of 1 by 0"
+        Expect.Done
+    End Sub
+
+    ' ---- Conversion
+
+    [TestCase]
+    Public Sub AsGpSizeF_ReturnsTheSameDimensions()
+        Expect.Begin
+        Dim f As GpSizeF = GpSize(5, 6).AsGpSizeF()
+        Expect.AreEqual "5,6", f.Width & "," & f.Height, "AsGpSizeF of 5 by 6"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetFrom_RoundsAGpSizeF()
+        Expect.Begin
+        Dim s As GpSize
+        s.SetFrom GpSizeF(2.5, 3.6)
+        Expect.AreEqual "2,4", s.Width & "," & s.Height, "SetFrom GpSizeF(2.5, 3.6)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AsSIZE_And_SetFromSIZE_ConvertToAndFromTheSizeStructure()
+        Expect.Begin
+        Dim s As GpSize = GpSize(5, 6)
+        Dim winSize As GDIP_SIZE = s.AsSIZE()
+        Expect.AreEqual "5,6", winSize.cx & "," & winSize.cy, "AsSIZE of 5 by 6"
+        winSize.cx = 9: winSize.cy = 10
+        s.SetFromSIZE winSize
+        Expect.AreEqual "9,10", s.Width & "," & s.Height, "SetFromSIZE of 9 by 10"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AsGpRect_AsGpRectF_AsRECT_ReturnARectangleAtTheOrigin()
+        Expect.Begin
+        Dim s As GpSize = GpSize(5, 6)
+        Dim r As GpRect = s.AsGpRect()
+        Expect.AreEqual "0,0,5,6", r.X & "," & r.Y & "," & r.Width & "," & r.Height, "AsGpRect of 5 by 6"
+        Dim rf As GpRectF = s.AsGpRectF()
+        Expect.AreEqual "0,0,5,6", rf.X & "," & rf.Y & "," & rf.Width & "," & rf.Height, "AsGpRectF of 5 by 6"
+        Dim edges As GDIP_RECT = s.AsRECT()
+        Expect.AreEqual "0,0,5,6", edges.Left & "," & edges.Top & "," & edges.Right & "," & edges.Bottom, "AsRECT of 5 by 6"
+        Expect.Done
+    End Sub
+
+    ' ---- Add and Sub change the size, Sum and Diff do not
+
+    [TestCase]
+    Public Sub Add_ChangesTheSize()
+        Expect.Begin
+        Dim s As GpSize = GpSize(3, 4)
+        s.Add GpSize(1, 1)
+        Expect.AreEqual "4,5", s.Width & "," & s.Height, "the size 3 by 4 after Add GpSize(1, 1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sub_ChangesTheSize()
+        Expect.Begin
+        Dim s As GpSize = GpSize(4, 5)
+        s.Sub GpSize(2, 2)
+        Expect.AreEqual "2,3", s.Width & "," & s.Height, "the size 4 by 5 after Sub GpSize(2, 2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SumAndDiff_ReturnNewSizesAndLeaveTheSize()
+        Expect.Begin
+        Dim s As GpSize = GpSize(2, 3)
+        Expect.AreEqual 12, s.Sum(GpSize(10, 10)).Width, "Width of Sum of 2 by 3 and 10 by 10"
+        Expect.AreEqual 2, s.Diff(GpSize(1, 1)).Height, "Height of Diff of 2 by 3 and 1 by 1"
+        Expect.AreEqual "2,3", s.Width & "," & s.Height, "the size after Sum and Diff"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Equals_ComparesBothDimensions()
+        Expect.Begin
+        Dim s As GpSize = GpSize(2, 3)
+        Expect.IsTrue s.Equals(GpSize(2, 3)), "Equals of 2 by 3 and 2 by 3"
+        Expect.IsFalse s.Equals(GpSize(2, 4)), "Equals of 2 by 3 and 2 by 4"
+        Expect.Done
+    End Sub
+
+End Module

@@ -5,7 +5,7 @@ permalink: /tB/Packages/AppGlobalClassObject/
 has_toc: false
 exclude_from_docs:
   - InternalStuff
-indexed_from: beta-x-1005
+indexed_from: beta-x-1010
 ---
 
 # AppGlobalClassObject Package

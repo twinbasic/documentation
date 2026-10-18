@@ -53,7 +53,7 @@ Properties
 
 The background color of the control. **OLE_COLOR**. Default: **vbButtonFace**.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > A change to **BackColor** does not repaint the control, and neither does invalidating it: the new color shows only when the user drags the thumb, or when the control is hidden and shown again.
 
 ### BorderStyle

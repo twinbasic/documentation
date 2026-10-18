@@ -26,7 +26,7 @@ Each open file has a tab. The tab shows the file's icon, its name and a close bu
 - Drag a tab to move it. A mark on the left or the right half of the tab under the pointer shows where it will land.
 - Click the middle mouse button on a tab to close it.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > A tab is tinted only when the compiler reports its file while the tab is open. A tab opened after that report stays untinted until the compiler checks the file again, for example after the next edit to it. The Project Explorer row is tinted either way.
 
 A tab in italics is a *preview tab*. When **File Explorer: Single-Click Preview** is on, a single click on a file in the Project Explorer opens it in a preview tab, and the next single click replaces it. A double-click, or any edit, makes the tab permanent. The **Find / Replace** panel also opens the files it visits in a preview tab. [IDE Options](../Customising/IDE-Options) describes the option.
@@ -188,7 +188,7 @@ Typing, deleting and most commands act at every cursor. One <kbd>Ctrl</kbd>+<kbd
 
 <kbd>Ctrl</kbd>+<kbd>D</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> match whole words in the current file, including words inside strings and comments. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> and **Select All Matches** (see [Finding](Finding#select-all-matches)) both give a cursor to each match.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > <kbd>Esc</kbd> does not remove the extra cursors. Click in the text, or run any command that places the caret, to go back to one cursor.
 
 ### Change case
@@ -270,7 +270,7 @@ Paste on a blank line, or with the caret at the end of the indent. Pasting at th
 
 The formatter changes only the indent of each line. It trims the line and sets the indent to four spaces for each level, whatever **Tab Size** is. It does not change the words, their case or the spacing inside the line. It adds a level after `Class`, `Module`, `Type`, `Enum`, `For`, `While`, `Do`, `With`, a block `If`, `#If`, `Sub`, `Function` and `Property`, and takes it away at the matching End. `ElseIf` and `Else` lines sit at the level of their `If`. A `Select Case` indents its `Case` lines one level and their bodies two. A continuation line is indented two levels deeper than its statement. The members of an interface get one level and no End.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > **Format Selection** fails when the selection starts on a continuation line, which is a line after one that ends in ` _`. Nothing is formatted, and a box opens with the text *IDE startup failure*, followed by *JS Promise Rejection(1): Assignment to constant variable.* If the IDE was started by opening the project's `.twinproj` file, it then closes. With unsaved changes, it first asks whether to save them: choose **Save**, or **Cancel** to keep the IDE open. Save before you format, start the selection on the first line of the statement, or use **Format Document**.
 
 ## Auto Prettify
@@ -306,7 +306,7 @@ A right-click in the editor moves the caret to the point, unless you click insid
 
 <kbd>Shift</kbd>+<kbd>F10</kbd> opens the same menu from the keyboard.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > <kbd>Shift</kbd>+<kbd>F10</kbd> opens the menu at the top-left corner of the IDE window, not at the caret. Right-click in the editor to open it at the pointer.
 
 ## The command palette

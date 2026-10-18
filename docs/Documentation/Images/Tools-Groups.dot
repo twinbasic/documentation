@@ -109,12 +109,12 @@ digraph tools_groups {
         label="Compiler Harness"
         c1 [label="tbbuild"]            c2 [label="tbrun"]
         c3 [label="impexp"] c4 [label="check_tb_registry"]
-        c6 [label="probe_build_twice"]
-        cp1 [style=invis label=""]  cp2 [style=invis label=""]
-        c1 -> c3 -> cp1 -> cp2
+        c7 [label="tbbroker"]           c6 [label="probe_build_twice"]
+        cp2 [style=invis label=""]
+        c1 -> c3 -> c7 -> cp2
         c2 -> c4 -> c6
         { rank=same; c3 c4 }
-        { rank=same; cp1 c6 }
+        { rank=same; c7 c6 }
     }
 
     // ---- row 3 ----
@@ -127,23 +127,24 @@ digraph tools_groups {
         t7  [label="search.test"]          t8  [label="render.test"]
         t9  [label="strftime.test"]        t10 [label="png.test"]
         t11 [label="compact-image.test"]   t12 [label="svgshot.test"]
-        t13 [label="example-batches.test"] t14 [label="ports.test"]
+        t13 [label="example-batches.test"] t14 [label="ide-folders.test"]
         t15 [label="addin-project.test"]   t16 [label="check_page_baseline"]
         t17 [label="check_book_coverage"]  t18 [label="check_symbol_index"]
         t19 [label="check_twin_parsers"]   t20 [label="check_attribute_sweep"]
         t21 [label="check_cli"]            t22 [label="check_pdf_shims_equiv"]
         t23 [label="check_impexp_parity"]  t24 [label="check_axe_patch_equiv"]
         t25 [label="indexer.test"]          t26 [label="check_package_tests"]
+        t27 [label="broker.test"]
         t1 -> t5 -> t9  -> t13 -> t17 -> t21 -> t25
         t2 -> t6 -> t10 -> t14 -> t18 -> t22 -> t26
-        t3 -> t7 -> t11 -> t15 -> t19 -> t23
+        t3 -> t7 -> t11 -> t15 -> t19 -> t23 -> t27
         t4 -> t8 -> t12 -> t16 -> t20 -> t24
         { rank=same; t5  t6  t7  t8  }
         { rank=same; t9  t10 t11 t12 }
         { rank=same; t13 t14 t15 t16 }
         { rank=same; t17 t18 t19 t20 }
         { rank=same; t21 t22 t23 t24 }
-        { rank=same; t25 t26 }
+        { rank=same; t25 t26 t27 }
     }
 
     // ---- row 4 ----
@@ -162,13 +163,12 @@ digraph tools_groups {
         label="IDE Automation"
         i1 [label="addin_test"]     i2 [label="ide_test"]
         i3 [label="try_help_addin"] i4 [label="shoot_docs"]
-        i5 [label="imagestrip"]     i6 [label="probe_ide_image_labels"]
-        i7 [label="svgshot/replay"] i8 [label="probe_theme_semicolon"]
+        i5 [label="imagestrip"]     i8 [label="probe_theme_semicolon"]
+        i7 [label="svgshot/replay"]
         i1 -> i3 -> i5 -> i7
-        i2 -> i4 -> i6 -> i8
+        i2 -> i4 -> i8
         { rank=same; i3 i4 }
-        { rank=same; i5 i6 }
-        { rank=same; i7 i8 }
+        { rank=same; i5 i8 }
     }
     subgraph cluster_defects {
         margin=12
@@ -292,6 +292,8 @@ digraph tools_groups {
         tooltip="Unpacks a .twinproj or .twinpack into source files and packs them back, with the same commands as the compiler's own command line. A Node edition, a Python edition and a twinBASIC edition behave the same."]
     c4 [URL="Tools-Compiler#check-tb-registry"
         tooltip="Tests the code that restores the registry entries of the IDE after a harness run, on a scratch copy of the keys."]
+    c7 [URL="Tools-Compiler#tbbroker"
+        tooltip="A twinBASIC program that hands out private desktops, slots and ports to the tools that start IDEs and programs, and takes them back when the processes using them end."]
     c6 [URL="Tools-Compiler#probe-build-twice"
         tooltip="Builds one project twice in fresh IDEs and compares the two exes, to show what differs between builds of an unchanged project."]
 
@@ -321,8 +323,8 @@ digraph tools_groups {
          tooltip="Runs unit tests for the converter that draws a screenshot of the IDE as SVG."]
     t13 [URL="Tools-Toolchain-Tests#example-batches-test"
          tooltip="Runs the probes of check_examples.mjs under the test runner of Node, with no IDE. They cover how samples are packed and judged."]
-    t14 [URL="Tools-Toolchain-Tests#ports-test"
-         tooltip="Runs unit tests for the claiming of DevTools ports, so that runs started together never take the same port."]
+    t14 [URL="Tools-Toolchain-Tests#ide-folders-test"
+         tooltip="Runs unit tests for the temp folder and profile an IDE leaves, and that ending the IDE removes them and no other folder."]
     t15 [URL="Tools-Toolchain-Tests#addin-project-test"
          tooltip="Runs unit tests for the packing of the add-in folder of the help add-in into the project file that the build publishes."]
     t16 [URL="Tools-Toolchain-Tests#check-page-baseline"
@@ -347,6 +349,8 @@ digraph tools_groups {
          tooltip="Runs unit tests for the package indexer: VB6 preprocessing, package files, the api.json model and the differ."]
     t26 [URL="Tools-Toolchain-Tests#check-package-tests"
          tooltip="Verifies that every NOTE and WARNING of a contributed package's section names the test cases behind it, and that each package test project is in order."]
+    t27 [URL="Tools-Toolchain-Tests#broker-test"
+         tooltip="Tests tbbroker and its Node client: leases, held processes, waiting, ports, and desktops left with windows on them. Skipped unless a built broker is named."]
 
     e1 [URL="Tools-Samples#check-examples"
         tooltip="Compiles the code samples marked check_build and reports each diagnostic against the page line it came from. Samples marked check_run are also run."]
@@ -369,8 +373,6 @@ digraph tools_groups {
         tooltip="Takes the screenshots of the IDE for the documentation, so that one run regenerates them after a new BETA."]
     i5 [URL="Tools-IDE#imagestrip"
         tooltip="A twinBASIC console program that copies a CSS or SVG file, keeping the pixels and ownership notices of embedded images and dropping editor metadata."]
-    i6 [URL="Tools-IDE#probe-ide-image-labels"
-        tooltip="Lists the images in the style sheets of the IDE that are labelled with a media type their bytes do not have."]
     i7 [URL="Tools-IDE#replay"
         tooltip="Draws the SVG of each picture again from its saved bundle, with the converter as it is now. Starts no IDE and takes no picture."]
     i8 [URL="Tools-IDE#probe-theme-semicolon"

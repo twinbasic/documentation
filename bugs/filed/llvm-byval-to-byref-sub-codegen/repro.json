@@ -1,0 +1,15 @@
+{
+  "mode": "run",
+  "arch": "win64",
+  "llvm": true,
+  "exe": true,
+  "expect": {
+    "exit": 2,
+    "message": "\\[LLVM\\] codegen error occurred when compiling 'Startup\\.Caller': Call parameter type does not match function signature!",
+    "absent": [
+      "^Caller = 7$",
+      "^--- exe: exit 7$"
+    ]
+  },
+  "issue": 2513
+}

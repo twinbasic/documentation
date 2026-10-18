@@ -697,11 +697,9 @@ implementing B2.)
 ### 6.1. Where the `.theme` source files live (resolved)
 
 **Resolution**: vendored in repo under
-[`builder/themes/`](themes/). The three files
-(`Light.theme`, `Dark.theme`, `Classic.theme`) plus the upstream
-`README.txt` were copied verbatim from the twinBASIC IDE BETA's
-themes directory and committed alongside this plan, ahead of B2's
-PR proper. The pre-Phase-11 `scripts/extract_theme_colors.py`
+[`builder/themes/`](themes/). The two files the build reads
+(`Light.theme`, `Dark.theme`) are copied verbatim from the twinBASIC
+IDE BETA's themes directory (today BETA 1007's). The pre-Phase-11 `scripts/extract_theme_colors.py`
 read them from `%USERPROFILE%/Desktop/twinBASIC_IDE_BETA_982/themes/`
 -- a local-only path that couldn't survive the move to CI. The
 vendor-in-repo shape replaces it; B2's `highlight-theme.mjs`
@@ -710,16 +708,16 @@ reads from `builder/themes/` directly.
 This matches the convention `builder/assets/README.md` already
 established for the just-the-docs / Rouge / Lunr assets: the
 canonical source is upstream, the working copy lives in tree
-alongside a documented refresh procedure. For the themes the
-upstream's own `README.txt` (vendored alongside) carries the
-"do not modify" guidance.
+alongside a documented refresh procedure. The upstream's own
+`README.txt` in the install's themes directory says never to modify
+`Light.theme` or `Dark.theme`; the copies here are never edited either.
 
 **Refresh procedure** (when a new twinBASIC IDE BETA changes the
 syntax-highlight palette):
 
 1. Locate the new build's `themes/` directory (today: under the
    IDE installer's footprint).
-2. Diff the new `Light.theme` / `Dark.theme` / `Classic.theme`
+2. Diff the new `Light.theme` / `Dark.theme`
    against `builder/themes/`. If no `Symbol*` properties moved,
    carry the diff over verbatim. If renamed or new `Symbol*`
    entries appear, update `highlight-theme.mjs`'s `ROUGE_TO_SYMBOL`-
@@ -1113,9 +1111,7 @@ end-state.
     pdf.mjs                       (one-line REQUIRED_CSS swap)
     package.json                  (+ acorn, acorn-walk, mermaid-cli)
     themes/                       Vendored per § 6.1 (Light.theme,
-                                   Dark.theme, Classic.theme,
-                                   upstream README.txt). Landed
-                                   alongside PLAN-11; B2's PR
+                                   Dark.theme); highlight-theme.mjs
                                    reads from here.
     one-offs/                     (unchanged)
     assets/

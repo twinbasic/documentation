@@ -1,0 +1,11 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 5,
+    "output": [
+      "^in Take 5$",
+      "^after call$",
+      "NATIVE EXCEPTION: ACCESS_VIOLATION"
+    ]
+  }
+}

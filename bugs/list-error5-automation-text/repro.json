@@ -1,0 +1,12 @@
+{
+  "mode": "run",
+  "arch": "win32",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Dim a As New: 5: Automation error$",
+      "^Set a = New:  5: Invalid procedure call or argument$"
+    ],
+    "absent": ["^Dim a As New: 5: Invalid procedure call or argument$"]
+  }
+}

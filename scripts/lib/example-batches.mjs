@@ -11,6 +11,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
+import { EXCLUSION_MODES, EXCLUSION_STAGES, exclusionProblems } from "./harness-settings.mjs";
+import { LLVM_REFUSAL } from "./tb-ide.mjs";
 import {
   BODY_SLOTS,
   CONCAT_KEY,
@@ -335,6 +337,199 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
   return batches;
 }
 
+// ----------------------------------------------------------------- exclusions
+//
+// The exclusions of test/harness.json (test/harness.md is their contract, and
+// lib/harness-settings.mjs reads and checks them) list, by mode, package and
+// stage, the samples a run of that mode does not take to that stage, because the
+// package fails there by itself: under LLVM, GdiPlus and tbRegExp at `build` (the
+// compile, for the [RunAfterBuild] run, of `Bitmap.New` and of
+// `StaticRegex.AppendStr`, which LLVM refuses after the exe has linked).
+//
+// The stages: `build` first (under `compile`, the compile reporting errors); then
+// `compiler-run`, the compiler's own run of the [RunAfterBuild] Sub, and `exe-run`,
+// the exe's run, each after `build` and independent of the other. check_examples
+// runs no exe, and accepts and ignores `exe-run`. A `build` exclusion skips both
+// runs; a run exclusion still builds, and that build must pass. An LLVM refusal
+// is a `build` failure wherever it is printed; `compiler-run` fails only by a
+// crash, a compiler restart or a run that never returns. Wrong output is a
+// finding, never a failed stage.
+//
+// Each package and stage has a canary, taken to that stage once per run with no
+// halving and no retry, and expected to fail there: for "*", all of the
+// package's samples there, batched as the run batches them; for a list, its
+// first listed id, alone. A `build` canary is taken as far as its code is
+// compiled: through the compiler run's compile, in a batch with a run.
+
+export { EXCLUSION_MODES, EXCLUSION_STAGES, exclusionProblems };
+
+/** The package an exclusion names a sample by: a contributed package's name, else its template's. */
+export const exclusionPackage = (fence) =>
+  fence.project?.startsWith("contributed-") ? fence.project.slice("contributed-".length) : fence.project;
+
+/** A copy of a fence that is built and not run: its `check_run` marker taken off. */
+const unrun = (f) => (isRunFence(f) ? { ...f, flags: new Set([...f.flags].filter((x) => x !== RUN_MARKER)) } : f);
+
+/**
+ * Applies one mode's exclusions to a selection.
+ *
+ * A sample excluded at `build` is left out of the batches; one excluded at
+ * `compiler-run` (a `check_run` sample) is batched as one that is built and not
+ * run. A `projname` group goes whole when any of its samples does, and `build`
+ * wins over `compiler-run`. `exe-run` excludes nothing here.
+ *
+ * Each package and stage gets a canary, whose fences (with their pages' hidden
+ * and resource fences) are batched apart, as the run batches them, and judged at
+ * the stage: for "*" every unit the stage excludes, for a list the unit of its
+ * first listed id that the stage excludes. A `build` canary keeps its samples'
+ * `check_run`, so that it is built as the run builds it.
+ *
+ * @param {object[]} fences  the selection
+ * @param {Record<string, Record<string, "*" | string[]>>} rules  one mode's entries
+ * @returns {{ kept: object[], notBuilt: Set<string>, notRun: Set<string>,
+ *   canaries: { key: string, pkg: string, stage: string, fences: object[], ids: Set<string>, count: number }[],
+ *   unknown: string[] }}  `kept` is what the run batches as usual; `notBuilt` and
+ *   `notRun` the ids each stage excludes, canaries included; `count` the samples
+ *   a canary's line says were not built or run: all of a "*" canary's, and a list
+ *   canary's package's others; `unknown` the listed ids no sample has
+ */
+export function applyExclusions(fences, rules = {}) {
+  const travels = (f) => f.flags.has(HIDDEN_MARKER) || f.isResource;
+  const visible = fences.filter((f) => !travels(f));
+  const unitOf = (f) => `${f.project}\u0000${unitKey(f)}`;
+  const unitFences = new Map();
+  for (const f of visible) {
+    if (!unitFences.has(unitOf(f))) unitFences.set(unitOf(f), []);
+    unitFences.get(unitOf(f)).push(f);
+  }
+  const hits = (f, stage) => {
+    const rule = rules[exclusionPackage(f)]?.[stage];
+    return rule === "*" || (Array.isArray(rule) && rule.includes(f.id));
+  };
+
+  // The units each stage excludes: build first, and compiler-run only for a unit
+  // with something to run that build has not taken already.
+  const buildUnits = new Set(visible.filter((f) => hits(f, "build")).map(unitOf));
+  const runUnits = new Set(
+    visible
+      .filter((f) => hits(f, "compiler-run") && !buildUnits.has(unitOf(f)))
+      .map(unitOf)
+      .filter((u) => unitFences.get(u).some(isRunFence)),
+  );
+  const notBuilt = new Set(visible.filter((f) => buildUnits.has(unitOf(f))).map((f) => f.id));
+  const notRun = new Set(visible.filter((f) => runUnits.has(unitOf(f))).map((f) => f.id));
+
+  const canaries = [];
+  const canaryUnits = new Set();
+  for (const [stage, units] of [
+    ["build", buildUnits],
+    ["compiler-run", runUnits],
+  ]) {
+    const byPackage = new Map();
+    for (const u of units) {
+      const pkg = exclusionPackage(unitFences.get(u)[0]);
+      if (!byPackage.has(pkg)) byPackage.set(pkg, []);
+      byPackage.get(pkg).push(u);
+    }
+    for (const [pkg, list] of byPackage) {
+      const rule = rules[pkg][stage];
+      const counted = (u) => unitFences.get(u).filter((f) => stage === "build" || isRunFence(f)).length;
+      let chosen = list;
+      let count = list.reduce((n, u) => n + counted(u), 0);
+      if (Array.isArray(rule)) {
+        const inUnit = (id) => list.find((u) => unitFences.get(u).some((f) => f.id === id));
+        const first = inUnit(rule.find(inUnit));
+        chosen = [first];
+        count -= counted(first);
+      }
+      const own = chosen.flatMap((u) => unitFences.get(u));
+      const pages = new Set(own.map((f) => `${f.project}\u0000${f.rel}`));
+      const context = fences.filter((f) => travels(f) && pages.has(`${f.project}\u0000${f.rel}`));
+      const all = [...own, ...context];
+      canaries.push({
+        key: `${pkg}\u0000${stage}`,
+        pkg,
+        stage,
+        fences: all,
+        ids: new Set(own.map((f) => f.id)),
+        count,
+      });
+      for (const u of chosen) canaryUnits.add(u);
+    }
+  }
+
+  const kept = fences
+    .filter((f) => travels(f) || (!notBuilt.has(f.id) && !canaryUnits.has(unitOf(f))))
+    .map((f) => (notRun.has(f.id) ? unrun(f) : f));
+  const known = new Set(visible.map((f) => f.id));
+  const unknown = Object.values(rules)
+    .flatMap((stages) => Object.values(stages))
+    .filter(Array.isArray)
+    .flat()
+    .filter((id) => !known.has(id));
+  return { kept, notBuilt, notRun, canaries, unknown };
+}
+
+/**
+ * The stage a failed build's failure line belongs to (test/harness.md). An LLVM
+ * refusal (LLVM_REFUSAL) is `build` wherever it is printed, before `[BUILD]
+ * Executing '...'` or after it, linked exe or not: BETA 1010 writes tbRegExp's
+ * `LLVM compilation error in 'StaticRegex.AppendStr'` and GdiPlus's `[LLVM]
+ * codegen error occurred when compiling 'Bitmap.New'` after Executing, when the
+ * compiler compiles the [RunAfterBuild] Sub's code for its own run. The compiler
+ * restarting is `compiler-run` anywhere. Any other line is `compiler-run` when
+ * the console holds it after Executing, and `build` before.
+ *
+ * @param {string} line  the failure line
+ * @param {string[]} [log]  the console's lines, in order
+ */
+export function failureStage(line, log = []) {
+  if (LLVM_REFUSAL.test(line ?? "")) return "build";
+  if (/Restarting the compiler/.test(line ?? "")) return "compiler-run";
+  const started = log.findIndex((l) => /^\[BUILD\] Executing '/.test(l));
+  return started >= 0 && log.indexOf(line, started) > started ? "compiler-run" : "build";
+}
+
+/**
+ * The stage a canary's batch failed at, from its one build: compile errors and
+ * a crash are `build`, a failed build is where its line is (failureStage, so an
+ * LLVM refusal is `build`), and a run that did not finish (it never began,
+ * stopped, or a sample did not return) is `compiler-run`. Null when it got through.
+ *
+ * @param {{ code: number, message?: string, log?: string[], run?: { done: boolean } | null }} r
+ *   compileProject's code, message and build log, and the parsed run of a run batch
+ * @returns {"build" | "compiler-run" | null}
+ * @throws {Error}  for a code that is the harness's (2, 3)
+ */
+export function canaryBatchStage({ code, message, log = [], run = null }) {
+  if (code === 1 || code === 4) return "build";
+  if (code === 5) return failureStage(message, log);
+  if (code === 0) return run && !run.done ? "compiler-run" : null;
+  throw new Error(message || `the build exited ${code}`);
+}
+
+/**
+ * What a canary's batches say: the summary line of one that failed at its stage
+ * as expected, or the finding of one that got through it or failed at `build`
+ * before its run.
+ *
+ * @param {{ pkg: string, stage: string, count: number }} canary
+ * @param {("build" | "compiler-run" | null)[]} failedAt  each batch's
+ * @returns {{ finding: boolean, text: string }}
+ */
+export function canaryVerdict({ pkg, stage, count }, failedAt) {
+  if (stage !== "build" && failedAt.includes("build")) {
+    return { finding: true, text: `${pkg}: canary failed at build, before ${stage}: re-probe its exclusions` };
+  }
+  if (failedAt.includes(stage)) {
+    return {
+      finding: false,
+      text: `${pkg}: canary failed at ${stage} as expected, ${count} samples not ${stage === "build" ? "built" : "run"}`,
+    };
+  }
+  return { finding: true, text: `${pkg}: canary passed ${stage}: re-probe its exclusions` };
+}
+
 // -------------------------------------------------------------------- canaries
 //
 // waitForCompile reads the IDE's own window: the status bar's counters and the
@@ -352,7 +547,7 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
 // diagnostics at all.
 //
 // The canary is a #Warning directive, TB0005, on a module that enforces it.
-// On BETA 1005 it is reported beside samples with an unterminated
+// On BETA 1010 it is reported beside samples with an unterminated
 // Sub, an If with no End If, a stray End Sub and garbage, a class that inherits
 // itself, and ten undefined names; under Option Explicit off; in a project that
 // ignores TB0005 or makes it an error, where [EnforceWarnings(TB0005)] keeps it
@@ -638,8 +833,8 @@ async function isolateCrash(batch, named, lane, failed = false, detail = "") {
  * Build a batch, and build it once more if the build failed after a clean
  * compile.
  *
- * A build can fail once and pass when repeated: one that reported nothing for
- * 120 s, once in a full --llvm run. A failure is believed only if the same
+ * A build can fail once and pass when repeated: one met its limit (test/harness.json's
+ * `build`) reporting nothing, once in a full --llvm run. A failure is believed only if the same
  * batch fails twice running, and so is each part the halving that follows builds.
  */
 async function buildTwiceOnFailure(batch, lane) {
@@ -1839,11 +2034,10 @@ export async function runProbes(say) {
       /\[PredeclaredId\]/.test(formClass),
     "templates: Form1.twin and Form1.tbform do not name one designer id, or Form1 is not a predeclared class",
   );
-  // An empty `_children` array makes the compiler report TB5247 (no designer found for the form): an
-  // empty form has no `_children` key at all.
+  // The stand-in form is an empty form as the IDE writes one, which has no `_children` key at all.
   expect(
     !("_children" in formDesigner[0]),
-    "templates: Form1.tbform has a `_children` key, and an empty array fails with TB5247",
+    "templates: Form1.tbform has a `_children` key, which an empty form as the IDE writes it has not",
   );
 
   // The markup must be invisible to the site. Verified against the REAL
@@ -1871,6 +2065,176 @@ export async function runProbes(say) {
   if (masked.restore(masked.masked) !== marked) failures.push("markup: the mask does not round-trip");
   if (applyPreRenderRewrites(marked, md) !== marked) failures.push("markup: a pre-render rewrite alters it");
 
+  // The exclusion list: what a mode's entries take out of a selection, by
+  // stage, and each package and stage's canary, and how a canary's batches are
+  // judged. No IDE: the outcomes are compileProject's codes and a parsed run.
+  const xf = (id, project, opts = {}) => {
+    const f = { ...fake(id, opts.group ?? null, [], { rel: opts.rel ?? `${id}.md`, hidden: opts.hidden }), project };
+    if (opts.run) f.flags = new Set([MARKER, RUN_MARKER]);
+    return f;
+  };
+  const xsel = [
+    xf("g1", "contributed-Gdi", { rel: "G.md", run: true }),
+    xf("gh", "contributed-Gdi", { rel: "G.md", hidden: true }),
+    xf("g2", "contributed-Gdi", { rel: "G.md", run: true }),
+    xf("g3", "contributed-Gdi", { rel: "H.md" }),
+    xf("g4", "contributed-Gdi", { rel: "H.md", run: true }),
+    xf("r1", "contributed-Re"),
+    xf("r2", "contributed-Re", { group: "pair", run: true }),
+    xf("r3", "contributed-Re", { group: "pair" }),
+    xf("b1", "contributed-Bx", { run: true }),
+    xf("b2", "contributed-Bx", { run: true }),
+    xf("c1", "console"),
+  ];
+  const xa = applyExclusions(xsel, {
+    Gdi: { "compiler-run": "*", "exe-run": "*" },
+    Re: { build: ["r3", "r1", "nope"] },
+    Bx: { "compiler-run": ["b2", "b1"] },
+  });
+  const xids = (list) => [...list].map((f) => f.id ?? f).join(",");
+  const canaryOf = (pkg) => xa.canaries.find((c) => c.pkg === pkg);
+  // 1: what is batched as usual, and that a sample excluded at compiler-run is built and not run.
+  const keptB1 = xa.kept.find((f) => f.id === "b1");
+  if (xids(xa.kept) !== "gh,g3,b1,c1" || !keptB1 || isRunFence(keptB1)) {
+    failures.push(`exclusions: kept ${xids(xa.kept)}, want gh,g3,b1,c1 with b1 built and not run`);
+  }
+  // 2: which ids each stage excludes; exe-run excludes nothing.
+  if (xids(xa.notBuilt) !== "r1,r2,r3" || xids(xa.notRun) !== "g1,g2,g4,b1,b2") {
+    failures.push(`exclusions: not built ${xids(xa.notBuilt)}, not run ${xids(xa.notRun)}`);
+  }
+  // 3: a "*" canary is every unit the stage excludes, run, with its pages' hidden fences.
+  const gdi = canaryOf("Gdi");
+  if (!gdi || gdi.stage !== "compiler-run" || xids(gdi.ids) !== "g1,g2,g4" || gdi.count !== 3) {
+    failures.push('exclusions: a "*" canary is not all the package\'s samples at that stage');
+  } else if (!gdi.fences.some((f) => f.id === "gh") || !gdi.fences.filter((f) => gdi.ids.has(f.id)).every(isRunFence)) {
+    failures.push("exclusions: a compiler-run canary lost its page's hidden fence or its run");
+  }
+  // 4: a list canary is its first listed id (with its projname group), not the first in run order;
+  //    a build canary keeps its samples' run, which is what makes their code reachable.
+  const re = canaryOf("Re");
+  const bx = canaryOf("Bx");
+  const r2 = re?.fences.find((f) => f.id === "r2");
+  if (!re || re.stage !== "build" || xids(re.ids) !== "r2,r3" || re.count !== 1 || !r2 || !isRunFence(r2)) {
+    failures.push("exclusions: a build canary is not its first listed id's group, with its run");
+  }
+  if (!bx || xids(bx.ids) !== "b2" || bx.count !== 1) {
+    failures.push("exclusions: a list canary is not its first listed id");
+  }
+  // 5: build wins over compiler-run, and a run exclusion takes nothing from the build.
+  const xw = applyExclusions(xsel, { Gdi: { build: ["g1"], "compiler-run": "*" } });
+  if (
+    !xw.notBuilt.has("g1") ||
+    xw.notRun.has("g1") ||
+    xids(xw.canaries.find((c) => c.stage === "compiler-run")?.ids ?? []) !== "g2,g4"
+  ) {
+    failures.push("exclusions: a build exclusion does not take the sample from the compiler run");
+  }
+  // 6: exe-run alone, or no entries, takes nothing; an unknown id is reported.
+  const xe = applyExclusions(xsel, { Gdi: { "exe-run": "*" } });
+  if (xe.kept.length !== xsel.length || xe.canaries.length || applyExclusions(xsel, {}).kept.length !== xsel.length) {
+    failures.push("exclusions: exe-run or no entries took a sample");
+  }
+  if (xa.unknown.join(",") !== "nope") failures.push("exclusions: a listed id no sample has is not reported");
+  // 7: a sample's package.
+  if (exclusionPackage(xsel[0]) !== "Gdi" || exclusionPackage(xsel[10]) !== "console") {
+    failures.push("exclusions: a sample's package is not its contributed package or its template");
+  }
+  // 8: the shape, a stage other than build under compile included.
+  if (
+    exclusionProblems({
+      llvm: { Gdi: { "compiler-run": "*", "exe-run": "*" }, Re: { build: ["a#1"] } },
+      compile: { X: { build: "*" } },
+    }).length ||
+    exclusionProblems({ fast: {} }).length !== 1 ||
+    exclusionProblems({ llvm: { Gdi: "*" } }).length !== 1 ||
+    exclusionProblems({ llvm: { Gdi: { run: "*" } } }).length !== 1 ||
+    exclusionProblems({ compile: { X: { "compiler-run": "*" } } }).length !== 1 ||
+    exclusionProblems({ llvm: { Gdi: { build: "all" } } }).length !== 1 ||
+    exclusionProblems([]).length !== 1
+  ) {
+    failures.push("exclusions: the shape check accepts a bad list or refuses a good one");
+  }
+  // 9: the stage of a failure line: an LLVM refusal is build wherever it is, with or
+  //    without [LLVM]; a restart is compiler-run; any other line by where it is.
+  const codegen = "[LLVM] codegen error occurred when compiling 'Bitmap.New': Call parameter type does not match";
+  const codegenBare = "codegen error occurred when compiling 'Img.New': Call parameter type does not match";
+  const refused = "LLVM compilation error in 'StaticRegex.AppendStr': a feature used in your code is not yet supported";
+  const refusedTagged = `[LLVM] ${refused}`;
+  const linked = ["[BUILD] Starting...", "[LINKER] SUCCESS created output file 'x.exe'"];
+  const executing = "[BUILD] Executing 'P.tbxRun.tbxRunAll'...";
+  const ranLog = [...linked, executing, refused];
+  const ranCodegen = [...linked, executing, codegen];
+  const otherAfter = "[BUILD] failed";
+  if (
+    failureStage(codegen) !== "build" ||
+    failureStage(codegen, ranCodegen) !== "build" ||
+    failureStage(codegenBare, ["[BUILD] Starting...", codegenBare, linked[1]]) !== "build" ||
+    failureStage(refused) !== "build" ||
+    failureStage(refusedTagged, [...linked, executing, refusedTagged]) !== "build" ||
+    failureStage(refused, ["[BUILD] Starting...", refused]) !== "build" ||
+    failureStage(refused, ranLog) !== "build" ||
+    failureStage(otherAfter, [...linked, executing, otherAfter]) !== "compiler-run" ||
+    failureStage(otherAfter, ["[BUILD] Starting...", otherAfter]) !== "build" ||
+    failureStage("[LLVM] The LLVM cache process has terminated abruptly.  Restarting the compiler...") !==
+      "compiler-run"
+  ) {
+    failures.push("exclusions: a failure line is put at the wrong stage");
+  }
+  // 10: the stage a canary's batch failed at, from its one build.
+  let harness = false;
+  try {
+    canaryBatchStage({ code: 3, message: "never settled" });
+  } catch {
+    harness = true;
+  }
+  if (
+    canaryBatchStage({ code: 1 }) !== "build" ||
+    canaryBatchStage({ code: 4 }) !== "build" ||
+    canaryBatchStage({ code: 5, message: codegen }) !== "build" ||
+    canaryBatchStage({ code: 5, message: codegen, log: ranCodegen }) !== "build" ||
+    canaryBatchStage({ code: 5, message: refused }) !== "build" ||
+    canaryBatchStage({ code: 5, message: refused, log: ranLog }) !== "build" ||
+    canaryBatchStage({ code: 0, run: { done: false } }) !== "compiler-run" ||
+    canaryBatchStage({ code: 0, run: { done: true } }) !== null ||
+    canaryBatchStage({ code: 0 }) !== null ||
+    !harness
+  ) {
+    failures.push("exclusions: a canary batch's outcome is read at the wrong stage");
+  }
+  // 11: the canary lines: at the stage, as expected; through it; at build before a run.
+  const verdicts = [
+    [
+      { pkg: "Gdi", stage: "compiler-run", count: 3 },
+      ["compiler-run", null],
+      false,
+      "Gdi: canary failed at compiler-run as expected, 3 samples not run",
+    ],
+    [
+      { pkg: "Gdi", stage: "compiler-run", count: 3 },
+      [null, null],
+      true,
+      "Gdi: canary passed compiler-run: re-probe its exclusions",
+    ],
+    [
+      { pkg: "Gdi", stage: "compiler-run", count: 3 },
+      ["compiler-run", "build"],
+      true,
+      "Gdi: canary failed at build, before compiler-run: re-probe its exclusions",
+    ],
+    [
+      { pkg: "Re", stage: "build", count: 41 },
+      ["build", null],
+      false,
+      "Re: canary failed at build as expected, 41 samples not built",
+    ],
+    [{ pkg: "Re", stage: "build", count: 41 }, [null], true, "Re: canary passed build: re-probe its exclusions"],
+  ];
+  for (const [canary, failedAt, finding, text] of verdicts) {
+    const v = canaryVerdict(canary, failedAt);
+    if (v.finding !== finding || v.text !== text)
+      failures.push(`exclusions: canary verdict "${v.text}", want "${text}"`);
+  }
+
   if (failures.length) {
     for (const f of failures) say(`FAIL  probe: ${f}`);
     return false;
@@ -1881,11 +2245,11 @@ export async function runProbes(say) {
   // 7 of what runBatch does about a batch whose canary did not report, 3 of the
   // template built with no samples) + 7 of a failed build (wording, when to
   // record it, one that passes when built again, a pair that fails only together)
-  // + the check_run probes, which count themselves.
+  // + 17 of the exclusion list + the check_run probes, which count themselves.
   say(
-    `ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 97 + runProbeCount} probes: ` +
+    `ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 114 + runProbeCount} probes: ` +
       "classifier, markup, line mapping, batching, splitting, crash isolation, failed builds, canaries, concat, " +
-      "resources, the report and check_run",
+      "resources, exclusions, the report and check_run",
   );
   return true;
 }

@@ -1,0 +1,14 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS ListItemBackColorTests\\.DefaultIsUseListColour$",
+      "^PASS ListItemBackColorTests\\.ColourIsAccepted$",
+      "^PASS ListItemBackColorTests\\.DefaultAssignedToNewItem$",
+      "^PASS ListItemBackColorTests\\.ColourIsKeptWhenDefaultIsAssigned$",
+      "^FAIL ListItemBackColorTests\\.DefaultAssignedAfterColour: .*Expected: 0 .*Actual: 380"
+    ]
+  },
+  "issue": 2519
+}

@@ -270,9 +270,9 @@ In a built ActiveX DLL, these lines have the same effect as the twinBASIC attrib
 
 `VB_Name` is the name of the module or class. A class with `VB_Exposed = False` is left out of the type library. A class with `VB_Creatable = False` is not marked creatable there, and a class with `VB_GlobalNameSpace = True` is marked as an application object (`appobject`).
 
-<!-- Checked on BETA 1005 by test/ide/vb6-import.test.mjs (ide-test.bat --only vb6-import): it imports test/ide/probes/vb6-import with Import from VBP..., checks the converted files, then builds the project with project.dllRegisterAfterBuild false and reads the DLL's type library. The twinBASIC-attribute column: a class written with those attributes built into the same DLL gave the same help strings, dispatch IDs and flags (scratch probe, 2026-10-14). The WARNING below is the BUGS-TO-REPORT entry "Some VB6 attribute lines have no effect in a built type library". -->
+<!-- Checked on BETA 1010 by test/ide/vb6-import.test.mjs (ide-test.bat --only vb6-import): it imports test/ide/probes/vb6-import with Import from VBP..., checks the converted files, then builds the project with project.dllRegisterAfterBuild false and reads the DLL's type library. The twinBASIC-attribute column: a class written with those attributes built into the same DLL gave the same help strings, dispatch IDs and flags (scratch probe, 2026-10-14). The WARNING below is the BUGS-TO-REPORT entry "Some VB6 attribute lines have no effect in a built type library". -->
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > Some `Attribute` lines have no effect, and nothing says so. `VB_HelpID` and `VB_VarHelpID` give no help context ID. `VB_VarMemberFlags` leaves a public field neither hidden nor nonbrowsable. `VB_MemberFlags = "200"` (the user-interface default) and `"14"` (the data-binding flags `bindable` and `displaybind`) set no flag. A component moved from VB6 loses these when it is built again. In a `.twin` file, `[Hidden]` on a public field does hide it.
 </details>
 

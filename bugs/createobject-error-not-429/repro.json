@@ -1,0 +1,14 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.CreateObject_RegisteredClass_Succeeds$",
+      "^FAIL RegressionTests\\.CreateObject_UnknownProgId_Raises429: .*Actual: -2147221020",
+      "^FAIL RegressionTests\\.CreateObject_UnknownClassOfKnownLibrary_Raises429: .*Actual: -2147221020",
+      "^FAIL RegressionTests\\.CreateObject_UnknownProgId_Description: .*Actual: \"Invalid syntax\"",
+      "^FAIL RegressionTests\\.GetObject_UnknownProgId_Raises429: .*Actual: -2147221005",
+      "^FAIL RegressionTests\\.GetObject_ClassWithNoRunningObject_Raises429: .*Actual: -2147221021"
+    ]
+  }
+}

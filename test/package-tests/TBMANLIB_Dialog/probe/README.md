@@ -18,7 +18,7 @@ store (`node indexer/twin-index.mjs sync`).
 node test/package-tests/TBMANLIB_Dialog/probe/probe.mjs 13,1,2,3 4,5 6 6d,7 8,9,9e 11,12,12b,12c 14,15 16,17 18
 node test/package-tests/TBMANLIB_Dialog/probe/probe.mjs --timeout 35 x0,y1 x1,x2 x3,x4 x5 x6 x7 x8 x9 x10 x11,x12 x13,x14 x15,x16 y2,y3
 node test/package-tests/TBMANLIB_Dialog/probe/probe.mjs --timeout 35 y4
-node test/package-tests/TBMANLIB_Dialog/probe/probe.mjs --arch win64 --port 9722 13,1,2 3 4 5 6,6d 7,8 9 9e 11,12,12b,12c 14 15 16,17 18
+node test/package-tests/TBMANLIB_Dialog/probe/probe.mjs --arch win64 13,1,2 3 4 5 6,6d 7,8 9 9e 11,12,12b,12c 14 15 16,17 18
 node test/package-tests/TBMANLIB_Dialog/probe/probe.mjs c1,c11,c21,c31,c41 c2 c3 c4
 node test/package-tests/TBMANLIB_Dialog/probe/probe.mjs d0,d1 d2 d3,d4 d5 d10 d11 d12 d20 d21 d22,d23 d30 d31 d32 d33 d34 d40
 ```

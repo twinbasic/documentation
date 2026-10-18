@@ -208,7 +208,7 @@ The slots that held nothing stay empty, as they do when the key does not exist a
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Severity: cosmetic, but it shows on a new installation, which is exactly when the list has empty slots.
@@ -221,9 +221,9 @@ What does not reproduce it:
 | 21 distinct entries | 21 distinct entries, the oldest dropped, which is correct; read at the end of 41 successive opens |
 | `C` already at the top | unchanged: the opened project itself is never duplicated |
 
-So it takes at least one existing entry and at least one slot with nothing in it, which looks like each slot being read with the previous slot's value as its default. Once a duplicate is there, the next opened project keeps it: 18 copies of one project became 20 after one more open, with the new project on top. Both variants of step 2 (deleted slots, empty strings) were measured on BETA 995, ending with 21 values and 3 distinct projects.
+So it takes at least one existing entry and at least one slot with nothing in it, which looks like each slot being read with the previous slot's value as its default. Once a duplicate is there, the next opened project keeps it: 18 copies of one project became 20 after one more open, with the new project on top.
 
-<!-- Lane mode in bugs/recent-projects-copies/repro.json: asserted by `ide-test.bat --only recent-projects-copies` (test/ide/recent-projects-copies.test.mjs), which passes on BETA 1005; the test records the user's own list value by value and puts it back afterwards. Stated in WIP.Harness.md (the recent-list tidy, which exists because of it) and scripts/lib/tb-registry.mjs; when fixed, the note there that a short list trips it can go. Measured 2026-09-23 on BETA 983 by reading the registry after tbbuild --keep opened a fixture project on a private desktop and the IDE was ended by its pid, and again on BETA 995 on 2026-10-01 (cli995/rec-995-*.txt). The harness trips it because every IDE a run starts opens a project: a run that began on a list of one entry once ended with seventeen copies of it. -->
+<!-- Lane mode in bugs/recent-projects-copies/repro.json: asserted by `ide-test.bat --only recent-projects-copies` (test/ide/recent-projects-copies.test.mjs), which passes on BETA 1005; the test records the user's own list value by value and puts it back afterwards. Stated in WIP.Harness.md (the note on the IDE's bug with the recent list); when fixed, that note can go. The harness trips it because every IDE a run starts opens a project: a run that began on a list of one entry once ended with seventeen copies of it. -->
 
 ---
 
@@ -253,23 +253,23 @@ Steps to reproduce the behavior:
 3. Close the IDE and run `twinBASIC.exe --buildAndExit32 C:\path\build-and-exit-silent.twinproj`.
 4. See the command exit 0 after a few seconds. `Build\BuildAndExitSilent_win32.exe` has been written, although the project has an error. Nothing about the build was written to stdout or stderr: with both redirected to a file, the only line is `[...:ERROR:ui\gfx\win\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412`, which is Chromium shutting down.
 5. Change `Main` to call `Unused`, so that the build really fails, and run the same command again.
-6. See the command never exit. It writes nothing to stdout or stderr and no `.exe`, and was still running when it was ended after 30 and 40 seconds. On the desktop it sat on a *Please wait...* dialog at 100%, as seen on BETA 983.
+6. See the command never exit. It writes nothing to stdout or stderr and no `.exe`, and was still running when it was ended after 30 and 40 seconds. On the desktop it sat on a *Please wait...* dialog at 100%.
 
 **Expected behavior**
 A build switch for unattended use should report the diagnostics on stdout or stderr, exit with a non-zero code when the project has errors, and exit when the build fails instead of waiting. At the least it should not exit 0 and write an `.exe` for a project the IDE flags with an error.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Severity: it makes the switch unusable for the one job it exists for, because it is silent, falsely green and hangs on the case worth catching.
 
-Which errors hang and which exit 0, on BETA 995. All of these hang, with no `.exe` written: `NoSuchProcedure` in `Main`, `NoSuchProcedure` in a procedure that `Main` calls, a bare `Dim`, `Dim x As NoSuchType`, `y = 1` under `Option Explicit`, and a project with no `Sub Main`. The same `NoSuchProcedure` in a procedure nothing calls exits 0 with the `.exe` written. Assigning `"abc"` to a `Long` and an unused `Dim x As Long` compile without an error and exit 0, as they should. On BETA 983 the unused-procedure case exits 0, and `NoSuchProcedure` in `Main` and the missing `Sub Main` hang.
+Which errors hang and which exit 0. All of these hang, with no `.exe` written: `NoSuchProcedure` in `Main`, `NoSuchProcedure` in a procedure that `Main` calls, a bare `Dim`, `Dim x As NoSuchType`, `y = 1` under `Option Explicit`, and a project with no `Sub Main`. The same `NoSuchProcedure` in a procedure nothing calls exits 0 with the `.exe` written. Assigning `"abc"` to a `Long` and an unused `Dim x As Long` compile without an error and exit 0, as they should.
 
 So exit 0 on a project with errors happens only for an error in code nothing calls; an error in code the build reaches never exits 0.
 
-Silence on stdout and stderr: measured on BETA 983 first, and on BETA 995 by redirecting the standard handles of the process to a file. The same redirection captures the compiler executable's own output (`twinBASIC_win32.exe settings <project>` wrote the whole `Settings` file), so the capture works.
+Silence on stdout and stderr was checked by redirecting the standard handles of the process to a file. The same redirection captures the compiler executable's own output (`twinBASIC_win32.exe settings <project>` wrote the whole `Settings` file), so the capture works.
 
 <!-- Lane mode in bugs/build-and-exit-silent/repro.json: asserted by `ide-test.bat --only build-and-exit-silent` (test/ide/build-and-exit-silent.test.mjs, both cases, the IDE executable on a private desktop through launchOnDesktop), which passes on BETA 1005. First measured with a scratch copy of scripts/lib/tb-launch.ps1 (private desktop, kill-on-close job, TBBUILD_CMD replacing the command line, standard handles redirected to a file), with scripts/lib/tb-registry.mjs startTidy and finishTidy around the run. Stated in scripts/tbbuild.mjs (header comment) and WIP.Harness.md, "Do not reach for --buildAndExit32 instead": when fixed, those two say the switch is unusable. So do docs/Documentation/Tools.md (the tbbuild section) and docs/Features/Packages/Import-export tool.md ("Compiling from the command line"). All four say exit 0 only for an error in code nothing calls, and a hang for an error the build reaches. -->
 
@@ -315,12 +315,12 @@ The implementation is accepted, as it is without the attribute. If `[PreserveSig
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-BETA 983 gives the second message as TB5000 instead of TB65535 (the reproducer, checked there, does not report TB65535). Severity: an interface the language lets you declare cannot be implemented at all, and the diagnostic asks for the signature that is already written.
+Severity: an interface the language lets you declare cannot be implemented at all, and the diagnostic asks for the signature that is already written.
 
-<!-- Reproducer: bugs/preservesig-implements/ (mode compile, expects TB5004 and TB65535); verified on 995, and on 983 it differs only in the second code. Found by scripts/check_examples.mjs over Reference/Core/Interface.md, whose example declared IFoo with a [PreserveSig] member and then showed a class implementing it; the example no longer puts [PreserveSig] on a member it implements, and its description of the attribute says why. Also stated in docs/Reference/COM-Interfaces/IEnumVARIANT.md (the Err.ReturnHResult paragraph) and in a NOTE in docs/Features/Advanced/API-Declarations.md, "ThisCall in interfaces", whose Sub + Err.ReturnHResult workaround goes with it when fixed. -->
+<!-- Reproducer: bugs/preservesig-implements/ (mode compile, expects TB5004 and TB65535). Found by scripts/check_examples.mjs over Reference/Core/Interface.md, whose example declared IFoo with a [PreserveSig] member and then showed a class implementing it; the example no longer puts [PreserveSig] on a member it implements, and its description of the attribute says why. Also stated in docs/Reference/COM-Interfaces/IEnumVARIANT.md (the Err.ReturnHResult paragraph) and in a NOTE in docs/Features/Advanced/API-Declarations.md, "ThisCall in interfaces", whose Sub + Err.ReturnHResult workaround goes with it when fixed. -->
 
 ---
 
@@ -343,7 +343,7 @@ Every file and folder is written, however long its path, as `export` already rea
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Severity: an `export` to a deep folder writes part of the tree and exits 0, and the errors it prints blame permissions and storage space. `LongPathsEnabled` is 1 on the machine this was measured on, so the Windows setting does not rescue it.
@@ -361,7 +361,7 @@ Every one of those runs ends `... FAILED` and exits 0. Exporting `WebView2Packag
 
 What does not reproduce it: a long input path to `export`, and any output folder short enough that no file path reaches 260 characters and no folder path 248.
 
-<!-- Automated: bugs/path-limit-260/repro.json is a cli reproducer, import to a 239-character file name in the temp folder (generated, 230 f characters plus .twinproj; the temp folder's own length adds to it, so it fails whatever TEMP is). It tests the file limit only; the export side needs an existing deep folder, which the cli mode cannot create, so it is in the steps above. Stated in WIP.Harness.md (why the tooling does not run the compiler's verbs); the census unpacks with impexp, in process. Measured on BETA 995, the file and folder rows with the HelloWorld sample and the reproducer's project, and the input path 303 characters long. Found by the attribute census pointed at a cache folder in a deep working directory: WebView2Package and the three cefPackage versions came back ... FAILED while the other twelve packages exported. -->
+<!-- Automated: bugs/path-limit-260/repro.json is a cli reproducer, import to a 239-character file name in the temp folder (generated, 230 f characters plus .twinproj; the temp folder's own length adds to it, so it fails whatever TEMP is). It tests the file limit only; the export side needs an existing deep folder, which the cli mode cannot create, so it is in the steps above. Stated in WIP.Harness.md (why the tooling does not run the compiler's verbs); the census unpacks with impexp, in process. Found by the attribute census pointed at a cache folder in a deep working directory: WebView2Package and the three cefPackage versions came back ... FAILED while the other twelve packages exported. -->
 
 ---
 
@@ -386,16 +386,16 @@ No window opens from a command-line verb. The command prints the problem (`ERROR
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Severity: an unattended `export`, `settings` or `readme` never finishes, and once the box is closed every one of them exits 0 and `export` reports success, so a script that tests the exit code or `... DONE` is fooled as well.
 
-All four kinds of damaged input open the box under all three commands, on BETA 995 and on BETA 983. The undamaged project exports at once, with no box. On BETA 983 `export` of the project cut off halfway wrote `Settings` rather than `Sources\Startup.twin`.
+All four kinds of damaged input open the box under all three commands. The undamaged project exports at once, with no box.
 
 What does not reproduce it: a folder given where the project should be. `settings` then prints `ERROR: failed to parse project file, file may be corrupt or inaccessible` and exits, with no box.
 
-<!-- A cli reproducer in bugs/damaged-project-modal-box/repro.json, run on a private desktop by bug_repro, which reads each box and closes it (the probe that found it opened message boxes on the user's desktop three times on BETA 995 alone, which is why nothing runs these commands on a desktop anyone uses). No test or page states it. The command-line verbs are described on docs/Documentation/Tools.md (impexp) and in scripts/impexp.mjs, which does not open a box for a damaged file; check them when fixed. Found by probing the command line for the rewrite of the Import/Export Tool page; on BETA 983 the boxes appeared on the desktop of the person at the machine (25 second limit). On BETA 995 all fifteen runs (three commands, four damaged inputs and the undamaged control) were made on a private desktop inside a kill-on-close job, the box's title and text read from that desktop, and each run repeated with OK pressed after 3 seconds (kit beta995-probes/s74/damaged/results-995.md and harness.ps1, local scratch). -->
+<!-- A cli reproducer in bugs/damaged-project-modal-box/repro.json, run on a private desktop by bug_repro, which reads each box and closes it (the probe that found it opened message boxes on the user's desktop three times, which is why nothing runs these commands on a desktop anyone uses). No test or page states it. The command-line verbs are described on docs/Documentation/Tools.md (impexp) and in scripts/impexp.mjs, which does not open a box for a damaged file; check them when fixed. Found by probing the command line for the rewrite of the Import/Export Tool page. -->
 
 ---
 
@@ -425,14 +425,14 @@ The files that would be overwritten are found first, as `import` does, and a ref
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Severity: a refused export leaves the folder a mixture of the old tree and the project.
 
-The same behaviour makes the VB package impossible to export without `--overwrite`, even into an empty folder: it holds `Resources\MANIFEST\#1.xml` twice (see the report on names written twice into shipped project files), and `export` writes one copy and then refuses the other because of the file it has just written. Measured again on BETA 995: `export` of `packages\{F50B82D0-DCAB-43FE-9631-11959D4A4728}_VB\package.twinproj` into an empty folder prints one `output file already exists` error for that file and ends `... FAILED`.
+The same behaviour makes the VB package impossible to export without `--overwrite`, even into an empty folder: it holds `Resources\MANIFEST\#1.xml` twice (see the report on names written twice into shipped project files), and `export` writes one copy and then refuses the other because of the file it has just written. `export` of `packages\{F50B82D0-DCAB-43FE-9631-11959D4A4728}_VB\package.twinproj` into an empty folder prints one `output file already exists` error for that file and ends `... FAILED`.
 
-<!-- Automated: bugs/export-refused-partial-write/repro.json is a cli reproducer. A cli reproducer runs one command, so the project holds a root file named after the project file (export-refused-partial-write.twinproj), which already exists in the temp folder the command exports into: that file is refused, and Settings and Sources\Startup.twin are written, with exit 0. The steps above show the same by deleting Settings. Measured on BETA 983 and 995 with the HelloWorld sample (cli995 e6) and by bug_repro verify. Nothing in scripts/ or WIP.md states it; the standalone scripts/impexp.mjs export checks before it writes, so when fixed nothing there changes. The VB-package sentence belongs to the duplicate-names report (slug duplicate-names-shipped). -->
+<!-- Automated: bugs/export-refused-partial-write/repro.json is a cli reproducer. A cli reproducer runs one command, so the project holds a root file named after the project file (export-refused-partial-write.twinproj), which already exists in the temp folder the command exports into: that file is refused, and Settings and Sources\Startup.twin are written, with exit 0. The steps above show the same by deleting Settings. Checked by bug_repro verify. Nothing in scripts/ or WIP.md states it; the standalone scripts/impexp.mjs export checks before it writes, so when fixed nothing there changes. The VB-package sentence belongs to the duplicate-names report (slug duplicate-names-shipped). -->
 
 ---
 
@@ -461,7 +461,7 @@ Relative paths and paths with forward slashes work for `export` and for the outp
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Severity: ordinary relative and forward-slashed paths fail, with messages that say the file or folder does not exist.
@@ -470,7 +470,7 @@ The echo line explains the first two: `exporting from "\\?\export-needs-backslas
 
 What does not reproduce it: `import`'s project path and the printing commands take relative and forward-slashed paths, and with backslashes `export` creates every missing level of its output folder (`C:\p\a\b\c\` was created in one run).
 
-<!-- Automated: bugs/export-needs-backslashes/repro.json is a cli reproducer, export of the packed project to the temp folder written as {tmp}/ (a forward slash after the backslashed path), expecting the could-not-be-created error and exit 0. The other three rows need a relative path, which a cli reproducer cannot give, so they are in the steps. Stated in WIP.md ("Give the executable backslashed paths") and WIP.Harness.md; those two stay true until this is fixed, then they can be relaxed. Measured on BETA 983 and 995 (cli995/log1-*.txt, ENTRY 8) and by bug_repro verify on 995. -->
+<!-- Automated: bugs/export-needs-backslashes/repro.json is a cli reproducer, export of the packed project to the temp folder written as {tmp}/ (a forward slash after the backslashed path), expecting the could-not-be-created error and exit 0. The other three rows need a relative path, which a cli reproducer cannot give, so they are in the steps. Stated in WIP.md ("Give the executable backslashed paths") and WIP.Harness.md; those two stay true until this is fixed, then they can be relaxed. Checked by bug_repro verify. -->
 
 ---
 
@@ -511,14 +511,14 @@ Either the export deletes nothing when it cannot empty the whole folder, or it r
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Severity: a partly emptied folder, with the only record in the Debug Console. On a Git working copy it breaks the repository, because Git makes its object files read-only.
 
 A folder with no read-only file does not reproduce it: it is emptied and exported completely, `.git` included, with no prompt.
 
-<!-- Asserted by `ide-test.bat --only export` (test/ide/export.test.mjs, "a read-only file stops the export part-way, and the IDE reports nothing"), which also checks that no message box is open; passes on BETA 995. The Git working-copy case was measured earlier on a `git init` folder and is not in the lane. Found by the same Export Project probe as the junction entry. When fixed: update that test and docs/IDE/Menu/File.md. -->
+<!-- Asserted by `ide-test.bat --only export` (test/ide/export.test.mjs, "a read-only file stops the export part-way, and the IDE reports nothing"), which also checks that no message box is open. The Git working-copy case was measured earlier on a `git init` folder and is not in the lane. Found by the same Export Project probe as the junction entry. When fixed: update that test and docs/IDE/Menu/File.md. -->
 
 ---
 
@@ -554,14 +554,14 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-Also on BETA 983, identically. Moving past the failing line with **Set Next Statement** (Ctrl+F9) instead, each F5 then advances one line. An earlier run by hand, followed to the end, saw the pending step last until the procedure returned; what differed there is not known, and in the lane the step is used up by the one stop, as above.
+Moving past the failing line with **Set Next Statement** (Ctrl+F9) instead, each F5 then advances one line. An earlier run by hand, followed to the end, saw the pending step last until the procedure returned; what differed there is not known, and in the lane the step is used up by the one stop, as above.
 
 What does not reproduce it: choosing **Ignore** without pressing a step key first, which runs on from the next line, to the next pass's error, as the panel says. Severity: the debugger stops where it was not asked to.
 
-<!-- Asserted by `ide-test.bat --only debugger` (test/ide/debugger.test.mjs: "F8 on the failing line runs it again...", "after F8 there, Ignore stops on the next line instead of running on", "Ignore with no step first runs on..."); passes on BETA 995. The reproducer's Startup.twin is test/ide/probes/debugger/Sources/Startup.twin with a different header comment. Found by the IDE debugging probe for round 8's UC-61. When fixed: update that test, the Traps on docs/IDE/Menu/Debug.md and this entry. -->
+<!-- Asserted by `ide-test.bat --only debugger` (test/ide/debugger.test.mjs: "F8 on the failing line runs it again...", "after F8 there, Ignore stops on the next line instead of running on", "Ignore with no step first runs on..."). The reproducer's Startup.twin is test/ide/probes/debugger/Sources/Startup.twin with a different header comment. Found by the IDE debugging probe for round 8's UC-61. When fixed: update that test, the Traps on docs/IDE/Menu/Debug.md and this entry. -->
 
 ---
 
@@ -583,14 +583,14 @@ The imported package is ticked, as after the online import, so that **Apply** is
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-Also on BETA 983, by hand. Severity: the package is imported but not referenced, and nothing says so.
+Severity: the package is imported but not referenced, and nothing says so.
 
-The cause looks like this. `packageLoadFromFile` in `ide/main.js` reads `packageSymbol` from the response itself (`t.packageSymbol`) rather than from its `body`, so it passes `"/Packages/undefined"` to `getAvailableTypeLibrariesData` and ticks nothing; `importPackage`, the online import beside it, reads `t.body.packageSymbol`. This was read again in BETA 995's `ide/main.js`.
+The cause looks like this. `packageLoadFromFile` in `ide/main.js` reads `packageSymbol` from the response itself (`t.packageSymbol`) rather than from its `body`, so it passes `"/Packages/undefined"` to `getAvailableTypeLibrariesData` and ticks nothing; `importPackage`, the online import beside it, reads `t.body.packageSymbol`.
 
-<!-- Asserted by `ide-test.bat --only packages` (test/ide/packages.test.mjs, "the imported package is listed, but not ticked"), which clicks the real button and answers the native file picker from the page; passes on BETA 995. Its probes are test/ide/probes/packages/host and DocProbePkg, the reproducer's own project and package. Found by the package probe for round 8's UC-60. When fixed: update that test and the two Packages pages under docs/Features/Packages ("Importing a package from a TWINPACK file", "Updating a package"), which say the user must tick it. DocProbePkg.zip is not in git (bugs/**/*.zip is ignored): make it from DocProbePkg.twinpack. -->
+<!-- Asserted by `ide-test.bat --only packages` (test/ide/packages.test.mjs, "the imported package is listed, but not ticked"), which clicks the real button and answers the native file picker from the page. Its probes are test/ide/probes/packages/host and DocProbePkg, the reproducer's own project and package. Found by the package probe for round 8's UC-60. When fixed: update that test and the two Packages pages under docs/Features/Packages ("Importing a package from a TWINPACK file", "Updating a package"), which say the user must tick it. DocProbePkg.zip is not in git (bugs/**/*.zip is ignored): make it from DocProbePkg.twinpack. -->
 
 ---
 
@@ -621,14 +621,14 @@ After the **Apply**, builds and runs use v2, as they do when the same replacemen
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Severity: the project builds and runs the old package after the user has replaced it.
 
-What does not reproduce it: an **Apply** after the untick, followed by another after the import and tick (every run; this is the control in the lane on BETA 995): each of those restarts the compiler and saves, and v2 runs at once. Also the same steps as above with a linked copy of the package present in `%APPDATA%\twinBASIC\packages` (six runs of six, on BETA 983): the same restart and save, and v2 runs.
+What does not reproduce it: an **Apply** after the untick, followed by another after the import and tick (every run; this is the control in the lane): each of those restarts the compiler and saves, and v2 runs at once.
 
-<!-- Asserted by `ide-test.bat --only packages` (test/ide/packages.test.mjs, "one Apply after the untick, the import and the tick: no restart, no save, and v1 still runs", with "an Apply after the untick and another after the tick" as its control); both pass on BETA 995. The lane's v1 and v2 are generated from test/ide/probes/packages/DocProbePkg the way the reproducer's packages are (version 1 and 2, Return 1 and 2). Found by the package probe for round 8's UC-60. When fixed: update that test and docs/Features/Packages/Updating a package.md. The two package zips are not in git; make them from the .twinpack files. -->
+<!-- Asserted by `ide-test.bat --only packages` (test/ide/packages.test.mjs, "one Apply after the untick, the import and the tick: no restart, no save, and v1 still runs", with "an Apply after the untick and another after the tick" as its control). The lane's v1 and v2 are generated from test/ide/probes/packages/DocProbePkg the way the reproducer's packages are (version 1 and 2, Return 1 and 2). Found by the package probe for round 8's UC-60. When fixed: update that test and docs/Features/Packages/Updating a package.md. The two package zips are not in git; make them from the .twinpack files. -->
 
 ---
 
@@ -668,12 +668,12 @@ A diagnostic that names the type argument and the call that supplied it. The `>`
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-Also on BETA 983, with the same TB5092. Severity: a diagnostic that points at correct code. `Max` uses `>` on a type parameter with nothing to say which types it accepts, which is how the problem arises.
+Severity: a diagnostic that points at correct code. `Max` uses `>` on a type parameter with nothing to say which types it accepts, which is how the problem arises.
 
-<!-- Reproducer: bugs/generic-body-error/ (mode compile, expects TB5092); verified on 995 and 983. Found by probing round 9's UC-65 answer (the use-case evaluation corpus), whose Max uses `>` on a type parameter. -->
+<!-- Reproducer: bugs/generic-body-error/ (mode compile, expects TB5092). Found by probing round 9's UC-65 answer (the use-case evaluation corpus), whose Max uses `>` on a type parameter. -->
 
 ---
 
@@ -703,12 +703,12 @@ The run ends, as it does without the attribute, with no restart of the compiler.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-Severity: low; the IDE recovers, but the project is compiled again, and LLVM-compiled code run in the IDE is not recommended anyway. Without the attribute the run ends with no restart. In a built exe, with or without LLVM, `End` ends the program with exit code 0 (this project run with `tbrun --exe` on 995 exits 0). BETA 983 ignored the `End` and went on (fixed in 985 for built programs); this project's LLVM procedure is refused by 983 ("Unable to compile due to use of datatype that is not yet supported for LLVM compilation"), so that was not re-measured with it.
+Severity: low; the IDE recovers, but the project is compiled again, and LLVM-compiled code run in the IDE is not recommended anyway. Without the attribute the run ends with no restart. In a built exe, with or without LLVM, `End` ends the program with exit code 0.
 
-<!-- No docs page states this (docs/LLVM/Getting-Started.md does not mention End); when fixed, nothing to update. Measured with scripts/bug_repro.mjs (run mode: tbrun exit 5, output "before End" then "restarting from MEMORY"; verify) on 995, and the exe with `run --exe` on 995; the 983 behaviour from tbrun and tbrun --exe on 2026-10-01. -->
+<!-- No docs page states this (docs/LLVM/Getting-Started.md does not mention End); when fixed, nothing to update. Checked with scripts/bug_repro.mjs (run mode: tbrun exit 5, output "before End" then "restarting from MEMORY"; verify), and the exe with `run --exe`. -->
 
 ---
 
@@ -748,7 +748,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Severity: medium. It applies to a debug run compiled with LLVM, which Project Settings itself does not recommend, and it ends the run; nothing wrong is computed. Turning LLVM off for the debug run avoids it.
@@ -801,7 +801,7 @@ The compiler refuses the declaration, because an interface cannot have the ident
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Severity: low; it takes a deliberate copy of `IUnknown`'s identifier, but the compiler accepts it silently and the failure is a crash.
@@ -812,7 +812,7 @@ What was tried:
 - An interface with three `[PreserveSig]` members declared in `IUnknown`'s order, `QueryInterface`, `AddRef` and `Release`, behaves the same way: `Set` succeeds, and the calls go to the wrong slots (one `AddRef` returned 0, and the next call crashed).
 - `Interface IUnk Extends stdole.IUnknown` with that identifier compiles, and `u.AddRef` is then reported as `TB5027 Unrecognized member 'AddRef' on type 'IUnk'`, as it is for `stdole.IUnknown` itself, which has no members that twinBASIC code can call.
 
-<!-- Reproducer: bugs/iunknown-iid-interface/ (mode run, expects tbrun exit 5, the output `ok` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IUnknown.md, section "Implementing it" (the WARNING, which names BETA 995, after the paragraph that begins "A project's own Interface that carries the identifier of IUnknown also compiles"): when fixed, remove it and state what the compiler does (a diagnostic, or a working call). -->
+<!-- Reproducer: bugs/iunknown-iid-interface/ (mode run, expects tbrun exit 5, the output `ok` and the native exception). Stated in docs/Reference/COM-Interfaces/IUnknown.md, section "Implementing it" (the WARNING, after the paragraph that begins "A project's own Interface that carries the identifier of IUnknown also compiles"): when fixed, remove it and state what the compiler does (a diagnostic, or a working call). -->
 
 ---
 
@@ -853,23 +853,23 @@ Compile Error in File '...\Module1.bas', Line 16 : Function or interface marked 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Severity: low, since a project can declare its own copy of the interface, but the failure is silent without a handler and the compiler gives no sign that the call is not what it appears to be.
 
-On BETA 995 and 997 the error was `&H80020006` (*Unknown name.*), the number every late-bound call to a member an object does not have raised then (#2490); BETA 1005 raises 438 for those calls, as VB6 does, and so for these.
+BETA 1005 raises 438 for a late-bound call to a member an object does not have, as VB6 does (#2490), and so for these.
 
 What was tried: `GetIDsOfNames` and `Invoke` with zero arguments, and `GetTypeInfo` with a null pointer, each end the run the same way; calls with arguments of the wrong type compile (`d.GetTypeInfoCount "a"`, `d.GetTypeInfo "a", "b", "c"`, `d.Invoke "a", "b", "c", "d", "e", "f", "g", "h"` all compile). An unhandled `Err.Raise 5` in the same harness ends the run the same way, so the silent end is how an unhandled error shows there, not a separate fault. Running the built exe with `--exe` was not possible on this machine (the harness could not start it).
 
-<!-- Reproducer: bugs/stdole-idispatch-late-bound/ (mode run, expects the Hello and GetTypeInfoCount lines above); verified on 995, and on 1005 with the number 438. VB6 side in bugs/stdole-idispatch-late-bound/vb6/ (VB6 6.0): the build is refused, so `vb6` exits 1 with the compile error above; that refusal is the result. The `As Object` variant was run in a scratch copy, not kept. Stated in docs/Reference/COM-Interfaces/IDispatch.md, "The stdole declaration". That paragraph says calling GetTypeInfoCount "ends the run" and that the arguments are not checked because twinBASIC has no type for them; the cause is that the call is late-bound, and the run ends only for lack of an error handler, so reword it now whether or not this is fixed. When fixed, say that stdole.IDispatch can be called, and drop the advice to declare a copy (the Declaration section's "The declaration in stdole is no use" sentence too). -->
+<!-- Reproducer: bugs/stdole-idispatch-late-bound/ (mode run, expects the Hello and GetTypeInfoCount lines above); verified on 1005 with the number 438. VB6 side in bugs/stdole-idispatch-late-bound/vb6/ (VB6 6.0): the build is refused, so `vb6` exits 1 with the compile error above; that refusal is the result. The `As Object` variant was run in a scratch copy, not kept. Stated in docs/Reference/COM-Interfaces/IDispatch.md, "The stdole declaration". That paragraph says calling GetTypeInfoCount "ends the run" and that the arguments are not checked because twinBASIC has no type for them; the cause is that the call is late-bound, and the run ends only for lack of an error handler, so reword it now whether or not this is fixed. When fixed, say that stdole.IDispatch can be called, and drop the advice to declare a copy (the Declaration section's "The declaration in stdole is no use" sentence too). -->
 
 ---
 
 ## A module-level `Single` array `Const` whose element overflows holds infinity, and a later array `Const` that calls `Sqr`, `Timer` or `Rnd` is refused with TB5001
 
 **Describe the bug**
-Follow-up to #2475, which is fixed in BETA 1005 for the element types it reported: an element too large for a `Long`, `Integer`, `Byte` or `LongLong` array `Const` is now TB5001 on its own line, where BETA 997 crashed the compiler. This is the `Single` case, which #2475 gave as a second crash under Additional context: it no longer crashes, but it is still wrong. At module level, an array `Const` of `Single` whose element is too large for a `Single` compiles without a diagnostic, and the element reads as infinity. An array `Const` declared after it, whose element calls `Sqr`, `Timer` or `Rnd`, is then refused with TB5001, *Type mismatch*, although it is correct and compiles on its own. Observed in the IDE's diagnostics and in a run.
+Follow-up to #2475, which is fixed in BETA 1005 for the element types it reported: an element too large for a `Long`, `Integer`, `Byte` or `LongLong` array `Const` is now TB5001 on its own line. This is the `Single` case, which #2475 gave as a second crash under Additional context: it no longer crashes, but it is still wrong. At module level, an array `Const` of `Single` whose element is too large for a `Single` compiles without a diagnostic, and the element reads as infinity. An array `Const` declared after it, whose element calls `Sqr`, `Timer` or `Rnd`, is then refused with TB5001, *Type mismatch*, although it is correct and compiles on its own. Observed in the IDE's diagnostics and in a run.
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -919,7 +919,7 @@ An error on the declaration of `Big`, TB5001 as for every other element type: th
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 VB6 has no array constants, so there is no VB6 project.
@@ -928,7 +928,7 @@ What reproduces it: `Array(3.5E+38)` in place of `Array(1E+39)`; `Timer` or `Rnd
 
 Severity: a silent wrong value, an element that holds infinity where a compile error belongs, and a compile error on a correct constant that names neither the cause nor the line that has it.
 
-<!-- Reproducer: bugs/single-array-const-overflow/ (mode test: `tbrun --tests` judges the compile cases, PASS or FAIL each; expect lists the nine PASS and two FAIL lines); verified on BETA 1005 by `bug_repro.mjs verify`; on BETA 997 the first form of the reproducer crashed the compiler 3x. The Timer-after-Big, scalar-at-its-use and scalar-unused (no diagnostic) variants were checked with tbrun on 1005 in scratch trees that are not kept, and so were 3.5E+38, Rnd, the reverse order, Abs, a literal and the local constant. Follow-up to #2475 ("A module-level array Const with an element that does not fit its type crashes the compiler"), closed as fixed in BETA 1005; its own reproducer no longer crashes, and was deleted. Stated in docs/Reference/Core/Const.md, "Array constants", in a WARNING naming BETA 1005: when fixed, the WARNING goes, and the paragraph above it says that an element too large for a Single is TB5001 as well. -->
+<!-- Reproducer: bugs/single-array-const-overflow/ (mode test: `tbrun --tests` judges the compile cases, PASS or FAIL each; expect lists the nine PASS and two FAIL lines); verified on BETA 1005 by `bug_repro.mjs verify`. The Timer-after-Big, scalar-at-its-use and scalar-unused (no diagnostic) variants were checked with tbrun on 1005 in scratch trees that are not kept, and so were 3.5E+38, Rnd, the reverse order, Abs, a literal and the local constant. Follow-up to #2475 ("A module-level array Const with an element that does not fit its type crashes the compiler"), closed as fixed in BETA 1005; its own reproducer no longer crashes, and was deleted. Stated in docs/Reference/Core/Const.md, "Array constants", in a WARNING naming BETA 1005: when fixed, the WARNING goes, and the paragraph above it says that an element too large for a Single is TB5001 as well. -->
 
 ---
 
@@ -961,16 +961,14 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-Also on BETA 987, identically.
-
 What does not reproduce it: evaluating nothing at the first stop, after which F5 stops again at once, in `Main` on the line after `DoEvents` (`Loop`), where `? 1` prints `1`; and a break that lands in the program's own code rather than in `DoEvents`, where the Debug Console and watches work. A name that the package's procedure cannot see, such as a local of `Main`, ends the program as `? 1` does.
 
 Severity: high. Breaking into a loop that calls `DoEvents` is an everyday way to see what a program is doing, and a watch left over from earlier is enough to end the program at the stop.
 
-<!-- Asserted by `ide-test.bat --only break-into` (test/ide/break-into.test.mjs: the stop in the package and F5's second stop, ? 1 there, and a watch); passes on BETA 995 and 987. The lane clears the Debug Console after each crash it asserts, because tb-lane.mjs fails a lane whose console holds a NATIVE EXCEPTION line. The reproducer's Startup.twin is test/ide/probes/break-into/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
+<!-- Asserted by `ide-test.bat --only break-into` (test/ide/break-into.test.mjs: the stop in the package and F5's second stop, ? 1 there, and a watch). The lane clears the Debug Console after each crash it asserts, because tb-lane.mjs fails a lane whose console holds a NATIVE EXCEPTION line. The reproducer's Startup.twin is test/ide/probes/break-into/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
 
 ---
 
@@ -1004,16 +1002,14 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-Also on BETA 987, identically.
-
 What does not reproduce it: `tot` after leading spaces, which opens the list with `total`; and a dot after `?` and a space, `? items.`, which opens the list with the `Collection`'s members, so only the names are missing there. With Ctrl+Space at the end of the line, `Touch tot`, an argument of a Sub call, opens the list with `total`, and `Call Tou` and `total = to` open none, so names are missing after `Call` and on the right of an assignment as well. Typed key by key, `Call Tou` goes wrong sooner, for a separate reason: the space after `Call` accepts the list's first entry, and the line becomes `CallByDispId()`. With no program running, Ctrl+Space gives the same results: `Mai` offers `Main`, and `? Mai` opens no list.
 
 Severity: low to moderate. Name completion does not work in the form the console is nearly always typed in, and leaving out the space after `?` is the only way round it.
 
-<!-- Asserted by `ide-test.bat --only console-completion` (test/ide/console-completion.test.mjs: ?tot, tot, tot after leading spaces and Touch tot offer total; ? tot, Debug.Print tot, Call Tou and total = to open no list; ? items. offers the Collection's members; with no program running, Mai offers Main and ? Mai opens no list); passes on BETA 995 and 987. The lane puts each line in the console's input and presses Ctrl+Space; typed key by key, ? tot, ?tot, tot, tot after leading spaces, Debug.Print tot and ? items. do the same, which was checked on BETA 995 and is not asserted. The reproducer's Startup.twin is test/ide/probes/console-completion/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
+<!-- Asserted by `ide-test.bat --only console-completion` (test/ide/console-completion.test.mjs: ?tot, tot, tot after leading spaces and Touch tot offer total; ? tot, Debug.Print tot, Call Tou and total = to open no list; ? items. offers the Collection's members; with no program running, Mai offers Main and ? Mai opens no list). The lane puts each line in the console's input and presses Ctrl+Space; typed key by key, ? tot, ?tot, tot, tot after leading spaces, Debug.Print tot and ? items. do the same, which is not asserted. The reproducer's Startup.twin is test/ide/probes/console-completion/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
 
 ---
 
@@ -1049,18 +1045,16 @@ Each line stays as it is typed, as it does in the code editor. The code editor's
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-Also on BETA 987, identically.
-
 What does not reproduce it: a word that is already the list's first entry, and not a procedure, keeps its space, so `total = 6` stays as it is. `? total` and `Debug.Print total` stay as they are. Escape before the space closes the list, and the space is then typed. With the IDE's IntelliSense mode set to LEGACY or MANUAL, the list does not open while the first word of a line is typed, and `Print total` and `Call Touch(total)` stay as they are.
 
 In the default mode, MODERN, the console asks for the list after every key and answers within a few milliseconds, so the list is open at the space whenever a line is typed at an ordinary speed. Every keyword that starts a longer name is replaced in the same way, and the others type as they are: `Do` becomes `DockModeConstants`, `For` becomes `FormArrangeConstants`, `On` becomes `OnErrorCatch`, `Get` becomes `GetAllSettings()` and `RaiseEvent` becomes `RaiseEventByName()`, while `Dim`, `End`, `Exit`, `With`, `Open`, `Close`, `ReDim`, `Stop` and `GoTo` stay. The same happens with no program running: `Print 1 + 1` becomes `Printer1 + 1`.
 
 Severity: moderate. `Print`, `Call` and `Set` begin lines that are often typed in the console, and each becomes a line the console refuses. The only ways round it are Escape before the space and another IntelliSense mode.
 
-<!-- Asserted by `ide-test.bat --only console-space` (test/ide/console-space.test.mjs: with the run stopped at BREAK and each line typed key by key, Print total becomes Printertotal, Call Touch(total) becomes CallByDispId(Touch(total)) and Set obj = items becomes SetAttr(obj = items), and the console refuses each; Print, Escape and then the rest give Print total, which prints 5; total = 6, ? total and Debug.Print total type as they are; with no program running, Print 1 + 1 becomes Printer1 + 1); passes on BETA 995 and 987. The lane waits after each key for the console's answer to it, as a person typing at an ordinary speed sees the list. Checked on BETA 995 and 987 and not asserted: the other keywords named above. Checked on BETA 995 and not asserted: the LEGACY and MANUAL modes, and the code editor. The reproducer's Startup.twin is test/ide/probes/console-space/Sources/Startup.twin with a different header comment. Related: "The Debug Console offers no completion for a name typed after `?` and a space", whose Additional context mentions this one. When fixed: update that test and this entry. -->
+<!-- Asserted by `ide-test.bat --only console-space` (test/ide/console-space.test.mjs: with the run stopped at BREAK and each line typed key by key, Print total becomes Printertotal, Call Touch(total) becomes CallByDispId(Touch(total)) and Set obj = items becomes SetAttr(obj = items), and the console refuses each; Print, Escape and then the rest give Print total, which prints 5; total = 6, ? total and Debug.Print total type as they are; with no program running, Print 1 + 1 becomes Printer1 + 1). The lane waits after each key for the console's answer to it, as a person typing at an ordinary speed sees the list. The reproducer's Startup.twin is test/ide/probes/console-space/Sources/Startup.twin with a different header comment. Related: "The Debug Console offers no completion for a name typed after `?` and a space", whose Additional context mentions this one. When fixed: update that test and this entry. -->
 
 ---
 
@@ -1083,14 +1077,14 @@ Steps to reproduce the behavior:
    ```
 5. Repeat with the build target win64.
 
-The documentation's build harness does steps 1 to 4 and prints each differing value: `node scripts/probe_build_twice.mjs`, with `--arch win64` for the win64 target. On BETA 997 the decompressed blocks differed in every pair: in 7 of 7 win32 pairs, in 6 or 7 bytes in two ranges, and in 2 of 2 win64 pairs, in 10 or 12 bytes in two ranges. Outside the time stamp, the checksum and the block, 5 of the 7 win32 pairs differed in nothing, 1 in a single byte after the block, and 1 in 54 bytes in 46 ranges, where the two streams fell in different steps of the padding.
+The documentation's build harness does steps 1 to 4 and prints each differing value: `node scripts/probe_build_twice.mjs`, with `--arch win64` for the win64 target.
 
 **Expected behavior**
 Nothing from the compiler's own memory ends up in the exe, and the padding after the block is zero, so two builds of this project differ only in the PE time stamp and the checksum that follows from it.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The values are addresses in the compiler process. After a build with the IDE left open, a read-only query of the memory map of the IDE's child processes (`VirtualQueryEx`; nothing was read from their memory) found both values of that build's exe in committed, private, read-write memory of the compiler process: `twinBASIC_win64_noDEP.exe` for a win64 build, and `twinBASIC_win32_noDEP.exe` for a win32 build. In the IDE's other child processes, both values fell in free address space. For win64 this is conclusive: only 3 of 200,000 random values below 2^47 fell in that process's committed memory. For win32 it is weaker, since 20,497 of 200,000 random 32-bit values did too.
@@ -1099,13 +1093,11 @@ A single byte after the block also differs now and then: `1c` against `18` in wi
 
 What VB6 does (the project attached as `build-writes-compiler-addresses-vb6.zip`, a Standard EXE whose `Sub Main` is empty, built twice in one folder): its exes are not identical either. Outside the time stamp and the checksum, they differ in the time stamps of the nine resource directories when the two builds fall in different seconds, in two random 16-byte identifiers, and in one 4-byte value that has the form of a heap address (from 0x00673ed8 to 0x009841a8 over eight builds; not confirmed against VB6's memory). But VB6 compresses nothing, so its one value changes 3 bytes, and in eight builds its exes never changed size or layout.
 
-BETA 995 gives the same kinds of difference, on win32 and on win64.
-
 What did not reproduce it: nothing in the project is needed. The console project with an empty `Sub Main` shows it, so no class, form or setting is involved. The harness stages the project into the same folders, with the same build path, before each build, so no path is what differs.
 
 Severity: low. No difference in a running program was looked for. Builds are not reproducible: two builds of one project cannot be compared, cached or signed by hash, and now and then the code itself differs.
 
-<!-- Reproducer: bugs/build-writes-compiler-addresses/ (mode probe: scripts/probe_build_twice.mjs builds it twice, each build in an IDE of its own, and prints what differs; --arch win64 for the win64 target, and --vb6 builds its vb6/ project twice with VB6). On BETA 997 the decompressed blocks differed in 7 of 7 win32 pairs and 2 of 2 win64 pairs; on BETA 995, in 2 of 2 and 2 of 2. The memory-map query is not scripted: a read-only VirtualQueryEx walk of the IDE's child processes after a tbbuild --keep build, 2026-10-06, with the IDE then ended by its pid. Not part of this entry: the random 16-byte identifiers that a form or a used class adds to the exe, since VB6 writes such identifiers too; and the type library's id, which the build generates anew unless Use Project ID for type library ID is on (docs/IDE/Project Settings.md). No page of the documentation mentions the defect, so when it is fixed there is nothing to update besides this entry and its reproducer. -->
+<!-- Reproducer: bugs/build-writes-compiler-addresses/ (mode probe: scripts/probe_build_twice.mjs builds it twice, each build in an IDE of its own, and prints what differs; --arch win64 for the win64 target, and --vb6 builds its vb6/ project twice with VB6). The memory-map query is not scripted: a read-only VirtualQueryEx walk of the IDE's child processes after a tbbuild --keep build, 2026-10-06, with the IDE then ended by its pid. Not part of this entry: the random 16-byte identifiers that a form or a used class adds to the exe, since VB6 writes such identifiers too; and the type library's id, which the build generates anew unless Use Project ID for type library ID is on (docs/IDE/Project Settings.md). No page of the documentation mentions the defect, so when it is fixed there is nothing to update besides this entry and its reproducer. -->
 
 ---
 
@@ -1133,16 +1125,14 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-Also on BETA 983 and 995, identically.
-
 What did not reproduce it: `Host.CurrentProject.RootFolder.Parent`, the parent of the project's folder, reads fine, and its `Path` is `twinbasic:/`, the file system's root. An add-in that reads neither does not crash.
 
 Severity: crash. The crash is in the read, so no `On Error` handler helps, and an add-in that walks up the tree with `Parent` until `Is Nothing` crashes the compiler on every start, until its DLL is removed. The workaround is to stop at the folder whose `Path` is `twinbasic:/` without reading its `Parent`.
 
-<!-- Reproducer: bugs/rootfolder-parent-crash/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only parent` (test/addin/parent.test.mjs, cases a to e; case f is the control that does not crash; the ParentProbe add-in is test/addin/probes/parent), which passes on BETA 983, 995 and 997 while the bug is there. The reproducer is a cut-down copy of that add-in, compiled clean on 997 by `bug_repro.mjs compile`, and not itself run in a lane. Stated in docs/Reference/Built-In/tbIDE/FileSystemItem.md, the WARNING under "Parent" (names BETA 997), and in WIP.HelpAddin.md (P21): when fixed, the WARNING goes and the page states what Parent of the root is, with no mention of the defect; update the lane's tests (parent.test.mjs, which then assert the fixed behaviour) and P21. -->
+<!-- Reproducer: bugs/rootfolder-parent-crash/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only parent` (test/addin/parent.test.mjs, cases a to e; case f is the control that does not crash; the ParentProbe add-in is test/addin/probes/parent), which passes while the bug is there. The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Stated in docs/Reference/Built-In/tbIDE/FileSystemItem.md, the WARNING under "Parent", and in WIP.HelpAddin.md (P21): when fixed, the WARNING goes and the page states what Parent of the root is, with no mention of the defect; update the lane's tests (parent.test.mjs, which then assert the fixed behaviour) and P21. -->
 
 ---
 
@@ -1193,18 +1183,18 @@ The numbers in the table, with VB6's descriptions, as for the 5 cases that alrea
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-This extends #2345, which reports the first row of the table on BETA 979, and is part of #56. `FileCopy` raised -2147467259 as well up to BETA 995, and raises VB6's numbers from BETA 997, the build that fixed #2451.
+This extends #2345, which reports the first row of the table, and is part of #56. `FileCopy` raises VB6's numbers, since #2451 fixed it.
 
-The same on BETA 997 and 957, apart from `FileCopy`. The same in a built exe as in the IDE, and the same with the project setting *Use Unicode Standard Library* set to No. In code compiled with LLVM the number is the same, and the description is *Application-defined or object-defined error*.
+The same in a built exe as in the IDE, and the same with the project setting *Use Unicode Standard Library* set to No. In code compiled with LLVM the number is the same, and the description is *Application-defined or object-defined error*.
 
 What does not reproduce it: the `DirListBox` and `FileListBox` controls trap the error themselves, and raise 76 for a `Path` that does not exist, as VB6 does.
 
 Severity: moderate. An error is raised wherever VB6 raises one, so no failure goes unreported. But a handler that tests for the number does not recognise the error, a handler that shows `Err.Description` shows *Unspecified error*, and code that decides a file exists from `Err.Number <> 53` decides wrongly.
 
-<!-- Reproducer: bugs/file-errors-unspecified/ (mode run; expect lists the 37 lines that print -2147467259, so a fix of some statements and not others shows as NO LONGER REPRODUCES). verify reproduces on BETA 957, 997 and 1005; VB6 side in vb6/, built and run by bug_repro.mjs vb6; the built-exe and LLVM results and the Use Unicode Standard Library check are from probes in a local scratch folder, not in the repository. Found while testing scripts/imagestrip/, a twinBASIC console program that strips the metadata from the images in the IDE's CSS files. Stated in a NOTE naming BETA 1005 on each of these pages: docs/Reference/Core/Open.md, Name.md, Get.md, Put.md, Print.md (under "Writing to a file") and Line-Input.md; docs/Reference/Default/VBA/FileSystem/Kill.md, GetAttr.md, SetAttr.md (the NOTE, not the WARNING, which belongs to the SetAttr entry), FileLen.md, FileDateTime.md, MkDir.md, RmDir.md, ChDir.md, EOF.md, LOF.md, Loc.md, Seek.md and FileAttr.md. When a statement is fixed, its NOTE goes, and its page states the error number it raises with no mention of the defect. -->
+<!-- Reproducer: bugs/file-errors-unspecified/ (mode run; expect lists the 37 lines that print -2147467259, so a fix of some statements and not others shows as NO LONGER REPRODUCES). verify reproduces on BETA 1005; VB6 side in vb6/, built and run by bug_repro.mjs vb6; the built-exe and LLVM results and the Use Unicode Standard Library check are from probes in a local scratch folder, not in the repository. Found while testing scripts/imagestrip/, a twinBASIC console program that strips the metadata from the images in the IDE's CSS files. Stated in a NOTE naming BETA 1005 on each of these pages: docs/Reference/Core/Open.md, Name.md, Get.md, Put.md, Print.md (under "Writing to a file") and Line-Input.md; docs/Reference/Default/VBA/FileSystem/Kill.md, GetAttr.md, SetAttr.md (the NOTE, not the WARNING, which belongs to the SetAttr entry), FileLen.md, FileDateTime.md, MkDir.md, RmDir.md, ChDir.md, EOF.md, LOF.md, Loc.md, Seek.md and FileAttr.md. When a statement is fixed, its NOTE goes, and its page states the error number it raises with no mention of the defect. -->
 
 ---
 
@@ -1231,14 +1221,12 @@ Error 55 for a file open `For Output`, `Append`, `Binary` or `Random`, with its 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-The same on BETA 997 and 957.
-
 Severity: low, but silent. No error is raised, and the file's attributes change where VB6 leaves them alone: the file stays read-only until its attributes are set back.
 
-<!-- Reproducer: bugs/setattr-open-file-no-error/ (mode run; expect lists the four lines for the write modes). verify reproduces on BETA 957, 997 and 1005; VB6 side in vb6/. Found while checking the error numbers of the file statements (the entry above). Stated in docs/Reference/Default/VBA/FileSystem/SetAttr.md: the sentence that SetAttr sets the attributes of an open file without an error, and the WARNING after it, naming BETA 1005. The VBA-Docs sentence it replaced ("A run-time error occurs when setting the attributes of an open file") was true of neither product as written. When fixed, the WARNING goes and the sentence says that SetAttr raises error 55 for a file open for Output, Append, Binary or Random, and sets the attributes of a file open for Input. -->
+<!-- Reproducer: bugs/setattr-open-file-no-error/ (mode run; expect lists the four lines for the write modes). verify reproduces on BETA 1005; VB6 side in vb6/. Found while checking the error numbers of the file statements (the entry above). Stated in docs/Reference/Default/VBA/FileSystem/SetAttr.md: the sentence that SetAttr sets the attributes of an open file without an error, and the WARNING after it, naming BETA 1005. The VBA-Docs sentence it replaced ("A run-time error occurs when setting the attributes of an open file") was true of neither product as written. When fixed, the WARNING goes and the sentence says that SetAttr raises error 55 for a file open for Output, Append, Binary or Random, and sets the attributes of a file open for Input. -->
 
 ---
 
@@ -1325,7 +1313,7 @@ A compile error on each `As New` of an `Interface`, TB5074 as for `New` on one: 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 VB6 has no comparison: a VB6 project cannot declare an `Interface`, and the interfaces of the type libraries it references are hidden from it, as #2486 said.
@@ -1334,7 +1322,7 @@ The object `As New` builds is the one #2486 described: `TypeName` gives the inte
 
 Severity: low in practice, since few programs write `As New` on an interface, but the compile-time check #2486 added does not cover it, and the result is a silent wrong value or a crash.
 
-<!-- Reproducer: bugs/dim-as-new-interface/ (mode test: `tbrun --tests` judges the compile cases; expect lists the six PASS and five FAIL lines); verified on BETA 1005 by `bug_repro.mjs verify`. Step 3 was run with tbrun on 1005 in a scratch tree that is not kept (local, module-level and class-field As New, and the access violation on the inherited member). Follow-up to #2486 ("New on an Interface compiles, and a call on the object returns a default value, or ends in an access violation for an inherited member"), closed as fixed in BETA 1003. No documentation page states it: docs/Reference/Core/New.md describes As New on classes only. -->
+<!-- Reproducer: bugs/dim-as-new-interface/ (mode test: `tbrun --tests` judges the compile cases; expect lists the six PASS and five FAIL lines); verified on BETA 1005 by `bug_repro.mjs verify`. Step 3 was run with tbrun on 1005 in a scratch tree that is not kept (local, module-level and class-field As New, and the access violation on the inherited member). Follow-up to #2486 ("New on an Interface compiles, and a call on the object returns a default value, or ends in an access violation for an inherited member"), closed as fixed. No documentation page states it: docs/Reference/Core/New.md describes As New on classes only. -->
 
 ---
 
@@ -1484,7 +1472,7 @@ Each call fails with `E_POINTER` (`&H80004003`), which twinBASIC raises as a run
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 VB6 crashes too. The same calls on the connection point of a VB6 class with an event, made through `DispCallFunc` (the VB6 project is attached as `connection-point-null-pointer-crash-vb6.zip`; the environment variable `CASE`, 1 to 8, picks the call, and 2 is `GetConnectionInterface` with a null pointer), each end the exe with an access violation, `0xC0000005` in `MSVBVM60.DLL`. As for #2488, a fix costs no compatibility: no program depends on the crash.
@@ -1760,7 +1748,7 @@ The error number VB6 raises for each code in the table, with VB6's description, 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 twinBASIC already raises VB6's number for `DISP_E_MEMBERNOTFOUND` (438), `DISP_E_TYPEMISMATCH` (13), `E_INVALIDARG` (5), `DISP_E_OVERFLOW` (6), `DISP_E_DIVBYZERO` (11), `DISP_E_BADVARTYPE` (458), `DISP_E_PARAMNOTFOUND` (448) and an `HRESULT` of the form `&H800A....` (its low word, 424 for `&H800A01A8`). `E_POINTER`, `E_FAIL`, `E_UNEXPECTED` and `&H8007000D` are raised as themselves by both, from a statement.
@@ -1771,7 +1759,7 @@ Not part of this report: VB6's `CallByName` raises 440, *Automation error*, for 
 
 Severity: code ported from VB6 that tests `Err.Number` for 450, 449 or 9 after a late-bound call does not recognise the error, and the description is the system's text for a COM code instead of VB's.
 
-<!-- Reproducer: bugs/latebound-hresult-mapping/ (mode test: `tbrun --tests`; expect lists the six PASS and eleven FAIL lines, each with the number BETA 1005 raises); verified on BETA 1005 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0; a lightweight IDispatch object whose Invoke returns the code, and the ordinary objects): `bug_repro.mjs vb6` prints the table's VB6 column. The Dictionary and FileSystemObject cases and VB6's CallByName column were run in scratch projects (twinBASIC with tbrun, VB6 through scripts/lib/vb6.mjs) that are not kept. Follow-up to #2490 ("A late-bound call to a member that does not exist raises &H80020006, and CallByName raises &H80004005, where VB6 raises 438"), closed as fixed in BETA 1003. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the table under "Errors from a late-bound call" (its row "Invoke returns any other failure code: that code as the error number"); when fixed, that row lists VB6's numbers instead. -->
+<!-- Reproducer: bugs/latebound-hresult-mapping/ (mode test: `tbrun --tests`; expect lists the six PASS and eleven FAIL lines, each with the number BETA 1005 raises); verified on BETA 1005 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0; a lightweight IDispatch object whose Invoke returns the code, and the ordinary objects): `bug_repro.mjs vb6` prints the table's VB6 column. The Dictionary and FileSystemObject cases and VB6's CallByName column were run in scratch projects (twinBASIC with tbrun, VB6 through scripts/lib/vb6.mjs) that are not kept. Follow-up to #2490 ("A late-bound call to a member that does not exist raises &H80020006, and CallByName raises &H80004005, where VB6 raises 438"), closed as fixed. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the table under "Errors from a late-bound call" (its row "Invoke returns any other failure code: that code as the error number"); when fixed, that row lists VB6's numbers instead. -->
 
 ---
 
@@ -1932,467 +1920,14 @@ End Module
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-Also on BETA 997.
-
 What does not reproduce it: `Err.Raise Number` with the number in a variable or a parameter, with or without a source and a description; a run-time error the member does not raise itself, such as a division by zero (11) or `Collection.Item` with an index past its end (9), which arrive as themselves; any early-bound call. What does: `Err.Raise` with a constant number, with or without a constant source and description (`Err.Raise 5`, `Err.Raise 1234` as well as 380); the `Error` statement; a `Property Let`; a late-bound statement and `CallByName` alike; the built exe as well as an IDE run. The `&H80020009` is what `IDispatch::Invoke` returns when the member raised an error, with the error in the `EXCEPINFO`; so the constant-number form seems to leave the `EXCEPINFO` without the number the caller reads, which is an inference.
 
 Severity: moderate. Code that uses an `Object` variable or `CallByName`, as code ported from VB6 or written for scripting often does, cannot tell one error from another when the member raises with a constant number, which is the usual way to write `Err.Raise`, and the description it gets is *Exception occurred.*
 
-<!-- Reproducer: bugs/latebound-constant-raise-exception/ (mode test: `tbrun --tests`; expect lists the three PASS and seven FAIL lines with -2147352567); verified on BETA 1005 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 438 for Nope and 380 for each other call. The variable-number, run-time-error, Err.Raise 5 and 1234, built-exe (tbrun --exe) and BETA 997 results come from scratch tbrun trees on 1005 and 997 that are not kept. Found while writing the tests of colour-validation-data-ole-multiframe, whose first draft set the properties with CallByName and got &H80020009 for every control. Follow-up to #2490 ("A late-bound call to a member that does not exist raises &H80020006, and CallByName raises &H80004005, where VB6 raises 438"), closed as fixed in BETA 1003. Stated in a NOTE naming BETA 1005 in docs/Reference/Default/VBA/ErrObject/Raise.md, docs/Reference/Core/Error.md and docs/Reference/Default/VBA/Interaction/CallByName.md; when it is fixed, the three NOTEs go and the pages state nothing about it. -->
-
----
-
-## `Data.ForeColor`, `Data.BackColor`, `OLE.BackColor` and `MultiFrame.BackColor` store a value that is not a colour, where VB6 raises error 380
-
-**Describe the bug**
-Follow-up to #2484, which is fixed in BETA 1005 for every colour property of Form, PictureBox, UserControl, Printer, MDIForm, Label, TextBox, CommandButton and the other controls it named: each now raises error 380, *Invalid property value*, and keeps its colour, as VB6 does. This is the four properties that still store the value: `ForeColor` and `BackColor` of the Data control, `BackColor` of the OLE control and `BackColor` of the MultiFrame. Assigning `-1` to any of them raises no error, and the property then reads `FFFFFFFF`. Observed by running the reproducer's test cases.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `colour-validation-data-ole-multiframe.twinproj` (attached as `colour-validation-data-ole-multiframe.zip`). Its `Form1` holds a PictureBox, a Label, a TextBox, a CommandButton, a user control (`UC1`), a Data control, an OLE control and a MultiFrame; `MyMDIForm` is an MDIForm.
-2. Run, with `On Error Resume Next`:
-   ```
-   Load Form1
-   Form1.Data1.ForeColor = vbGreen
-   Form1.Data1.ForeColor = -1
-   Debug.Print Err.Number, Hex$(Form1.Data1.ForeColor)
-   ```
-3. See `0 FFFFFFFF`. The same with `Form1.Label1.ForeColor` prints `380 FF00`.
-
-The module below is the reproducer's, and is meant to be adapted as a regression test. It loads the forms and never shows them. On BETA 1005 the seventeen cases from #2484 pass, and the four cases for the Data control, the OLE control and the MultiFrame fail with `Expected: 380, Actual: 0`.
-```vb
-' Regression tests for #2484 and its follow-up. Assigning a value that is not a
-' colour to a colour property raises error 380, Invalid property value, and
-' leaves the colour it had: VB6 6.0 does this for each property it has (the VB6
-' project beside this one prints them), and twinBASIC does it for the other
-' controls. Form1 holds one control of each class; it is loaded, never shown.
-' Each case sets the colour to vbGreen, assigns the bad value early-bound under
-' On Error Resume Next, and checks the error and the colour read back.
-[TestFixture]
-Module ColourPropertyTests
-
-    Private Const NotAColour As Long = -1
-    Private Const SystemColourOutOfRange As Long = &H8000001F
-
-    Private Sub Expect380(ByVal Number As Long, ByVal After As Long)
-        Assert.Strict.AreEqual 380, Number, "the error"                   ' VB6: 380, Invalid property value
-        Assert.Strict.AreEqual CLng(vbGreen), After, "the colour it had"  ' VB6: the old colour is kept
-    End Sub
-
-    ' Fixed in #2484 (BETA 1005).
-
-    [TestCase]
-    Public Sub Form_ForeColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.ForeColor = vbGreen
-        On Error Resume Next: Form1.ForeColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.ForeColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub Form_ForeColor_SystemColourOutOfRange()
-        Dim number As Long, after As Long
-        Load Form1: Form1.ForeColor = vbGreen
-        On Error Resume Next: Form1.ForeColor = SystemColourOutOfRange: number = Err.Number: On Error GoTo 0
-        after = Form1.ForeColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub Form_BackColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.BackColor = vbGreen
-        On Error Resume Next: Form1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.BackColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub Form_FillColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.FillColor = vbGreen
-        On Error Resume Next: Form1.FillColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.FillColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub PictureBox_ForeColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.PictureBox1.ForeColor = vbGreen
-        On Error Resume Next: Form1.PictureBox1.ForeColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.PictureBox1.ForeColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub PictureBox_BackColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.PictureBox1.BackColor = vbGreen
-        On Error Resume Next: Form1.PictureBox1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.PictureBox1.BackColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub PictureBox_FillColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.PictureBox1.FillColor = vbGreen
-        On Error Resume Next: Form1.PictureBox1.FillColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.PictureBox1.FillColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub Label_ForeColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.Label1.ForeColor = vbGreen
-        On Error Resume Next: Form1.Label1.ForeColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.Label1.ForeColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub Label_BackColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.Label1.BackColor = vbGreen
-        On Error Resume Next: Form1.Label1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.Label1.BackColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub TextBox_ForeColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.TextBox1.ForeColor = vbGreen
-        On Error Resume Next: Form1.TextBox1.ForeColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.TextBox1.ForeColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub TextBox_BackColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.TextBox1.BackColor = vbGreen
-        On Error Resume Next: Form1.TextBox1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.TextBox1.BackColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub CommandButton_BackColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.CommandButton1.BackColor = vbGreen
-        On Error Resume Next: Form1.CommandButton1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.CommandButton1.BackColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub UserControl_ForeColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.UC1.TrySet "ForeColor", NotAColour, number, after: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub UserControl_BackColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.UC1.TrySet "BackColor", NotAColour, number, after: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub UserControl_FillColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.UC1.TrySet "FillColor", NotAColour, number, after: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub MDIForm_BackColor()
-        Dim number As Long, after As Long
-        Load MyMDIForm: MyMDIForm.BackColor = vbGreen
-        On Error Resume Next: MyMDIForm.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = MyMDIForm.BackColor: Unload MyMDIForm
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub MDIForm_BackColor_SystemColourOutOfRange()
-        Dim number As Long, after As Long
-        Load MyMDIForm: MyMDIForm.BackColor = vbGreen
-        On Error Resume Next: MyMDIForm.BackColor = SystemColourOutOfRange: number = Err.Number: On Error GoTo 0
-        after = MyMDIForm.BackColor: Unload MyMDIForm
-        Expect380 number, after
-    End Sub
-
-    ' Left in BETA 1005: these store the value and raise no error.
-
-    [TestCase]
-    Public Sub Data_ForeColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.Data1.ForeColor = vbGreen
-        On Error Resume Next: Form1.Data1.ForeColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.Data1.ForeColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub Data_BackColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.Data1.BackColor = vbGreen
-        On Error Resume Next: Form1.Data1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.Data1.BackColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub OLE_BackColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.OLE1.BackColor = vbGreen
-        On Error Resume Next: Form1.OLE1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.OLE1.BackColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-    [TestCase]
-    Public Sub MultiFrame_BackColor()
-        Dim number As Long, after As Long
-        Load Form1: Form1.MultiFrame1.BackColor = vbGreen
-        On Error Resume Next: Form1.MultiFrame1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
-        after = Form1.MultiFrame1.BackColor: Unload Form1
-        Expect380 number, after
-    End Sub
-
-End Module
-```
-`UC1`, the user control on `Form1`, sets its own colour properties for the three `UserControl_` cases:
-```vb
-    ' Sets one of the user control's own colour properties to vbGreen, then to
-    ' Value; returns the error the second assignment raised, and the colour after it.
-    Public Sub TrySet(ByVal Prop As String, ByVal Value As Long, ByRef Number As Long, ByRef After As Long)
-        Select Case Prop
-            Case "ForeColor": ForeColor = vbGreen
-            Case "BackColor": BackColor = vbGreen
-            Case "FillColor": FillColor = vbGreen
-        End Select
-        On Error Resume Next
-        Select Case Prop
-            Case "ForeColor": ForeColor = Value
-            Case "BackColor": BackColor = Value
-            Case "FillColor": FillColor = Value
-        End Select
-        Number = Err.Number
-        On Error GoTo 0
-        Select Case Prop
-            Case "ForeColor": After = ForeColor
-            Case "BackColor": After = BackColor
-            Case "FillColor": After = FillColor
-        End Select
-    End Sub
-```
-
-**Expected behavior**
-Error 380 for each assignment, and the old colour kept, as twinBASIC now does for the other controls, and as VB6 does for `OLE.BackColor`. The VB6 project, attached as `colour-validation-data-ole-multiframe-vb6.zip`, prints `OLE.BackColor = -1: Err 380, reads FF00`, and 380 for each of the other properties of the test. It has no Data control (none could be loaded in VB6 on the machine), and VB6 has no MultiFrame.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-`&H8000001F` and `&HFF0000FF`, which are not colours either, are stored by the same four properties with no error. In the BETA 1005 package source, the Data control, the OLE control and the MultiFrame declare these as plain `Public ... As OLE_COLOR` fields, with no `OnPropertyLet` handler that calls `CommonValidateColorOrRevert`, unlike the other controls. `OLE.BackColor` also gets the compile warning TB0009, *[BackColor] has not yet been implemented*, wherever it is used, and stores the value all the same.
-
-Not tested here: `Printer.ForeColor` and `Printer.FillColor`, which #2484 named, need a default printer; on BETA 1005 they raise 380 and keep the colour when there is one (#2484's reproducer prints them).
-
-Severity: low. The stored value is what the control then paints with, and no error tells the program that the colour it was given is not one.
-
-<!-- Reproducer: bugs/colour-validation-data-ole-multiframe/ (mode test: `tbrun --tests`; expect lists the seventeen PASS and four FAIL lines); verified on BETA 1005 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0, the same project as #2484's): `bug_repro.mjs vb6` prints 380 for every property it has, OLE.BackColor included. The tests assign early-bound: set late-bound or through CallByName, every one of these properties raises &H80020009 instead of 380 (the entry "An error raised with a constant number, in a member called late-bound, reaches the caller as &H80020009, *Exception occurred.*"). Follow-up to #2484 ("Setting a colour property to a value that is not a colour stores it, and raises error 5 or nothing, where VB6 raises error 380 and keeps the old value"), closed as fixed in BETA 1004; its reproducer, bugs/filed/forecolor-invalid-value-stored/, still reproduces these four lines and stays until a fix is released. Stated in a WARNING naming BETA 1005 on docs/Reference/Default/VB/Data/index.md (under ForeColor and under BackColor), OLE/index.md (under BackColor) and MultiFrame/index.md (under BackColor): when fixed, each WARNING goes, and the property says that a value that is not a colour raises error 380, as the other controls' pages do. -->
-
----
-
-## After `Reset`, `Clone` of the WebView2 response headers enumerator skips the headers read before the `Reset`
-
-**Describe the bug**
-Follow-up to #2496, which is fixed in BETA 1005 for `Clone` after `Next` and after `Skip`, on the enumerators of the request headers and the response headers alike, and after `Reset` on the request headers'. This is the response headers' enumerator after a `Reset`: after two `Next` calls and a `Reset`, the enumerator's `Next` returns the first header, `Ha`, and its clone's `Next` returns the third, `Hc`. Observed by running the reproducer's test cases.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `webview2-response-headers-reset-clone.twinproj` (attached as `webview2-response-headers-reset-clone.zip`). Its `Form1` holds one WebView2 control, which navigates to `https://example.com/page` and answers that request itself in `WebResourceRequested`, so nothing goes to the network. The handler appends four headers, `Ha` to `Hd`, to the response, and records what three fresh enumerators of `Request.Headers`, then three of `Response.Headers`, return (module `HeaderEnumeration`, below).
-2. Call `HeaderEnumerationTests.Response_CloneAfterReset` from `Sub Main` and press F5. The form shows until its request is answered, and closes.
-3. See the assertion fail with `Expected: "Ha|Ha" Actual: "Ha|Hc"`: the enumerator's `Next`, then the clone's.
-
-The module below is the reproducer's, and is meant to be adapted as a regression test. It shows `Form1` while the control answers its request, and unloads it. On BETA 1005 the five cases from #2496 pass, and `Response_CloneAfterReset` fails.
-```vb
-' Regression tests for #2496 and its follow-up. IEnumVARIANT::Clone returns an
-' enumerator with the same state as the one it is called on (the COM
-' documentation of IEnumVARIANT::Clone), so the clone's Next returns what the
-' enumerator's own Next returns next. Each case compares the two after one Next,
-' after Skip 2, and after two Next and a Reset, for the request headers and for
-' the response headers, which hold Ha, Hb, Hc and Hd.
-
-' IEnumVARIANT, declared here because the package's own declaration is private.
-[InterfaceId("00020404-0000-0000-C000-000000000046")]
-Interface IEnumVARIANTOwn Extends stdole.IUnknown
-    Type CArrayOfVariants
-        Elements(1) As Variant
-    End Type
-
-    Sub Next(ByVal celt As Long, ByRef rgVar As CArrayOfVariants, ByRef pCeltFetched As Long)
-    Sub Skip(ByVal celt As Long)
-    Sub Reset()
-    Function Clone() As stdole.IUnknown
-End Interface
-
-' What the enumerators returned, recorded by Form1 while it answers its request.
-Module HeaderEnumeration
-
-    Public Recorded As Boolean
-    Public Results As New Collection      ' "<side> <case>" -> "<enumerator's Next>|<clone's Next>"
-
-    Private Function NextName(ByVal e As IEnumVARIANTOwn) As String
-        Dim arr As IEnumVARIANTOwn.CArrayOfVariants
-        Dim fetched As Long
-        e.Next 1, arr, fetched
-        If fetched = 0 Then Return "(end)"
-        Dim hd As WebView2Header = arr.Elements(0)
-        Return hd.Name
-    End Function
-
-    ' Three fresh enumerators of one collection.
-    Public Sub Record(ByVal Side As String, ByVal u0 As stdole.IUnknown, ByVal u1 As stdole.IUnknown, ByVal u2 As stdole.IUnknown)
-        Dim e As IEnumVARIANTOwn, c As IEnumVARIANTOwn, first As String
-
-        Set e = u0
-        first = NextName(e)
-        Set c = e.Clone()
-        Results.Add NextName(e) & "|" & NextName(c), Side & " after one Next"
-
-        Set e = u1
-        NextName e
-        NextName e
-        e.Reset
-        Set c = e.Clone()
-        Results.Add NextName(e) & "|" & NextName(c), Side & " after Reset"
-
-        Set e = u2
-        e.Skip 2
-        Set c = e.Clone()
-        Results.Add NextName(e) & "|" & NextName(c), Side & " after Skip 2"
-    End Sub
-
-End Module
-
-[TestFixture]
-Module HeaderEnumerationTests
-
-    Private Declare PtrSafe Function SetEnvironmentVariableW Lib "kernel32" (ByVal lpName As LongPtr, ByVal lpValue As LongPtr) As Long
-
-    ' Shows Form1 until its request has been answered, once.
-    Private Sub Collect()
-        If HeaderEnumeration.Recorded Then Exit Sub
-        ' Only for an IDE that was started with these variables, as this repository's
-        ' test harness starts it: WebView2 would read them, and the control would fail.
-        Dim folder As String = Environ$("WEBVIEW2_USER_DATA_FOLDER")
-        Dim args As String = Environ$("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")
-        SetEnvironmentVariableW StrPtr("WEBVIEW2_USER_DATA_FOLDER"), 0
-        SetEnvironmentVariableW StrPtr("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"), 0
-        Form1.Show
-        Dim started As Double = Timer
-        Do Until HeaderEnumeration.Recorded Or Timer - started > 30
-            DoEvents
-        Loop
-        Unload Form1
-        If Len(folder) Then SetEnvironmentVariableW StrPtr("WEBVIEW2_USER_DATA_FOLDER"), StrPtr(folder)
-        If Len(args) Then SetEnvironmentVariableW StrPtr("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"), StrPtr(args)
-    End Sub
-
-    ' "<enumerator's Next>|<clone's Next>"
-    Private Function Pair(ByVal Key As String) As String
-        Collect
-        Assert.Strict.IsTrue HeaderEnumeration.Recorded, "the request was answered"
-        Return HeaderEnumeration.Results(Key)
-    End Function
-
-    ' Fixed in #2496 (BETA 1005): the clone continues from the enumerator's position.
-
-    [TestCase]
-    Public Sub Request_CloneAfterNext()
-        Assert.Strict.AreEqual "Upgrade-Insecure-Requests|Upgrade-Insecure-Requests", Pair("request after one Next")
-    End Sub
-
-    [TestCase]
-    Public Sub Request_CloneAfterSkip()
-        Assert.Strict.AreEqual "User-Agent|User-Agent", Pair("request after Skip 2")
-    End Sub
-
-    [TestCase]
-    Public Sub Request_CloneAfterReset()
-        Assert.Strict.AreEqual "Accept|Accept", Pair("request after Reset")
-    End Sub
-
-    [TestCase]
-    Public Sub Response_CloneAfterNext()
-        Assert.Strict.AreEqual "Hb|Hb", Pair("response after one Next")
-    End Sub
-
-    [TestCase]
-    Public Sub Response_CloneAfterSkip()
-        Assert.Strict.AreEqual "Hc|Hc", Pair("response after Skip 2")
-    End Sub
-
-    ' Left in BETA 1005: Reset does not rewind the position Clone copies.
-
-    [TestCase]
-    Public Sub Response_CloneAfterReset()
-        Assert.Strict.AreEqual "Ha|Ha", Pair("response after Reset")
-    End Sub
-
-End Module
-```
-`Form1`'s handlers, which call `Record`:
-```vb
-    Private Sub WebView21_Ready() Handles WebView21.Ready
-        WebView21.AddWebResourceRequestedFilter "*", wv2All
-        WebView21.Navigate "https://example.com/page"
-    End Sub
-
-    Private Sub WebView21_WebResourceRequested(ByVal Request As WebView2Request, ByVal Response As WebView2Response) _
-            Handles WebView21.WebResourceRequested
-        Response.Headers.AppendHeader "Ha", "1"
-        Response.Headers.AppendHeader "Hb", "2"
-        Response.Headers.AppendHeader "Hc", "3"
-        Response.Headers.AppendHeader "Hd", "4"
-        If Not HeaderEnumeration.Recorded Then
-            Dim rq As WebView2RequestHeaders = Request.Headers
-            HeaderEnumeration.Record "request", rq._NewEnum(), rq._NewEnum(), rq._NewEnum()
-            Dim rs As WebView2ResponseHeaders = Response.Headers
-            HeaderEnumeration.Record "response", rs._NewEnum(), rs._NewEnum(), rs._NewEnum()
-            HeaderEnumeration.Recorded = True
-        End If
-        Response.StatusCode = 200
-        Response.ReasonPhrase = "OK"
-        Response.ContentUTF8 = "<html><body>probe</body></html>"
-    End Sub
-```
-
-**Expected behavior**
-`Ha|Ha`: `IEnumVARIANT::Clone` creates an enumerator with the same state as the current one, so after a `Reset` the clone starts at the first header, as the request headers' clone does.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-In BETA 1005's package source, `WebView2HeadersCollection.twin`, `Next` and `Skip` advance `IterationIdx`, which `Clone` passes to the new enumerator. The two request headers classes set `IterationIdx = 0` in their `Reset`; the two response headers classes in `WebView2ResponseHeaders.twin`, `WebView2HeadersCollection_ResponseGetHeaders` and `WebView2HeadersCollection_ResponseEnumerator`, do not, so after a `Reset` their clone skips as many headers as were read before it. Setting `IterationIdx = 0` in those two `Reset`s, as the request side does, would fix it. Only `_NewEnum` (the `ResponseEnumerator` class) was run; `GetHeaders` (the other class) has the same `Reset`.
-
-Severity: low. `For Each` does not call `Clone`, so only a COM client that clones the enumerator after resetting it gets the wrong headers.
-
-<!-- Reproducer: bugs/webview2-response-headers-reset-clone/ (mode test: `tbrun --tests`, which runs the cases in the IDE, so the form shows on the harness's private desktop; expect lists the five PASS lines and the FAIL line with "Ha|Hc"); verified on BETA 1005 by `bug_repro.mjs verify`. No VB6 side: VB6 has no WebView2 control. Follow-up to #2496 ("The WebView2 headers enumerator's Clone starts at the first header, not at the enumerator's position"), closed as fixed in BETA 1000; its reproducer, bugs/filed/webview2-headers-clone-restarts/, still reproduces the Reset line and stays until a fix is released. Stated in a `> [!WARNING]` naming BETA 1005 on docs/Reference/Built-In/WebView2/WebView2HeadersCollection.md, after the paragraph on the enumerator operations; remove it once a fixed build is released. -->
+<!-- Reproducer: bugs/latebound-constant-raise-exception/ (mode test: `tbrun --tests`; expect lists the three PASS and seven FAIL lines with -2147352567); verified on BETA 1005 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 438 for Nope and 380 for each other call. The variable-number, run-time-error, Err.Raise 5 and 1234 and built-exe (tbrun --exe) results come from scratch tbrun trees on 1005 that are not kept. Found while writing the tests of colour-validation-data-ole-multiframe, whose first draft set the properties with CallByName and got &H80020009 for every control. Follow-up to #2490 ("A late-bound call to a member that does not exist raises &H80020006, and CallByName raises &H80004005, where VB6 raises 438"), closed as fixed. Stated in a NOTE naming BETA 1005 in docs/Reference/Default/VBA/ErrObject/Raise.md, docs/Reference/Core/Error.md and docs/Reference/Default/VBA/Interaction/CallByName.md; when it is fixed, the three NOTEs go and the pages state nothing about it. -->
 
 ---
 
@@ -2440,14 +1975,14 @@ A code other than 0 from every run that ends `... FAILED`, as the last line of #
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-The same exit code on BETA 995 and 997 for each of these failures (there, the first prints no `ERROR:` line, which is what #2493 reported). A successful `export` and `import` end `... DONE` and exit 0, as they should.
+A successful `export` and `import` end `... DONE` and exit 0, as they should.
 
 Severity: minor in an interactive session, where the `ERROR:` line is read; in a build script that checks the exit code, a project that was never written, or a tree that was never exported, passes for a success.
 
-<!-- Reproducer: bugs/import-export-exit-zero/ (mode cli: the five commands above on copies of the packed project and its src/, expecting exit 0 from each, each ERROR line, ... FAILED, and no ... DONE); verified on BETA 1005 by `bug_repro.mjs verify`. The batch script was not run here, since this repository starts the compiler executable only on a private desktop (launchOnDesktop): the same five commands were, by bug_repro's cli mode on 1005, and by a scratch script over launchOnDesktop on 995 and 997 (exit 0 each). Follow-up to #2493 ("import of a folder with no Settings file fails without saying why"), closed as fixed in BETA 1000. Stated in WIP.md ("Both verbs exit 0 after the failures they report") and WIP.Harness.md: when fixed, those can say since which build the exit code is reliable; scripts/impexp.mjs, which the tooling uses instead, is not affected. -->
+<!-- Reproducer: bugs/import-export-exit-zero/ (mode cli: the five commands above on copies of the packed project and its src/, expecting exit 0 from each, each ERROR line, ... FAILED, and no ... DONE); verified on BETA 1005 by `bug_repro.mjs verify`. The batch script was not run here, since this repository starts the compiler executable only on a private desktop (launchOnDesktop): the same five commands were, by bug_repro's cli mode on 1005. Follow-up to #2493 ("import of a folder with no Settings file fails without saying why"), closed as fixed. Stated in WIP.md ("Both verbs exit 0 after the failures they report") and WIP.Harness.md: when fixed, those can say since which build the exit code is reliable; scripts/impexp.mjs, which the tooling uses instead, is not affected. -->
 
 ---
 
@@ -2487,93 +2022,14 @@ An expression that cannot be shown, such as `? p`, which has no single value to 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-Also on BETA 987, 995 and 997, where the watch on `p` failed in the same way.
-
 What does not reproduce it, on BETA 1005: a watch on `p`, a watch on `p.X`, and **Variables**, which shows `p` and its fields. Seen with a `Private Type` declared in the module; other declarations of the type were not tried.
 
 Severity: low. The console reports a failed build for a line that only asks to print a structure.
 
-<!-- Reproducer: bugs/console-print-udt-linker-error/ (mode lane: `ide-test.bat --only watches`, test/ide/watches.test.mjs, whose first three tests assert the fixed watch and whose last asserts the ? p defect; the lane passes while the bug is there); its Startup.twin is test/ide/probes/watches/Sources/Startup.twin with a different header comment. Verified on BETA 1005 by `bug_repro.mjs verify` through the lane. Follow-up to #2485 ("A watch on a variable of a user-defined type fails with a codegen error, and the Debug Console reports a linker error at every stop"), closed as fixed in BETA 1003; its reproducer, bugs/filed/udt-watch-codegen-error/, names the same lane test and stays until a fix is released. No documentation page states it. When fixed: update the last test of test/ide/watches.test.mjs to assert the new message, and retire both reproducers. -->
-
----
-
-## A `ParamArray` element that is a `Variant` variable holding an array cannot be indexed or assigned to an array: error -2147467259
-
-**Describe the bug**
-When the argument passed to a `ParamArray` is a `Variant` variable that holds an array, the procedure cannot use the element as an array. Assigning it to an array variable of any type, indexing it to read or to write an element, and passing it on to another `ParamArray` that indexes it raise run-time error -2147467259, *Unspecified error*; `Join` raises error 13. VB6 does all of these without an error. `LBound`, `UBound`, `IsArray`, `VarType` and `For Each` work on the same element. Observed in the reproducer project's regression tests and in a run of its `Sub Main`.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `paramarray-variant-array.twinproj` (attached as `paramarray-variant-array.zip`). Its module `Cases` holds 28 cases: each passes a small array to a `ParamArray` function in one way, does one thing with `parts(0)`, and returns what that gives, or `error <number>`. Its module `ParamArrayTests` holds one `[TestCase]` per case, asserting what the case gives in VB6.
-2. Run it (F5). `Sub Main` prints what each case gives; the same program built in VB6 (attached as `paramarray-variant-array-vb6.zip`) prints what VB6 gives:
-
-   | the argument | what the function does with `parts(0)` | twinBASIC | VB6 |
-   |---|---|---|---|
-   | `b`, a `Byte()` variable | `a = parts(0)`, `a() As Byte` | `2 98` | `2 98` |
-   | `v`, a `Variant` variable holding a `Byte()` | `a = parts(0)`, `a() As Byte` | error -2147467259 | `2 98` |
-   | a `Variant` variable holding a `Long()`, `String()`, `Double()` or `Variant()` | `a = parts(0)`, `a()` of that type | error -2147467259 | `2 7`, `2 y`, `2 2.5`, `2 y` |
-   | `v` | `x = parts(0)(1)` | error -2147467259 | `98` |
-   | a `Variant` variable holding a two-dimensional `Long()` | `x = parts(0)(1, 2)` | error -2147467259 | `12` |
-   | a `Variant` variable holding `Array(1, 2, 3)` | `parts(0)(1) = 99` | error -2147467259, and the caller's element 1 stays 2 | no error, and the caller's element 1 is 99 |
-   | a `Variant` variable holding a `String()` | `Join(parts(0), "+")` | error 13 | `x+y+z` |
-   | `v` | passed on to another `ParamArray` function, which indexes its element | error -2147467259 | `98` |
-   | a `Variant` variable holding `Array(1, -2, 300, 20.3)` | the `Max` and `UnpackParamArray` of #1660 | error -2147467259 | `300` |
-   | a module-level `Variant`, an element of a `Variant()` array, a `Variant` field of a UDT, or a `ByVal` or `ByRef` `Variant` parameter passed on | `x = parts(0)(1)` | error -2147467259 | `98` |
-   | `v`, to a class's method that takes the `ParamArray`, called early- or late-bound | `x = parts(0)(1)` | error -2147467259 | `98` |
-   | `v` | `LBound` and `UBound`; `IsArray` and `VarType`; `For Each` | `0 to 2`; `True 8209`; the sum | the same |
-   | `v` | passed on to a `ByVal x As Variant` parameter, which indexes it | `98` | `98` |
-   | `v` | the whole `ParamArray` passed on to another, which reads `q(0)(0)(1)` | `98` | `98` |
-   | `v` | `x = parts(0)`, then `x(1)` | `98` | `98` |
-   | `(v)`, `CVar(b)`, or a function's `Variant` result | `x = parts(0)(1)` | `98` | `98` |
-
-**Expected behavior**
-What VB6 gives, in every case. The element refers to the caller's `Variant`, which holds an array: assigning the element to an array variable copies that array, indexing it reads or writes the array's elements, and `Join` joins them.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-The same on BETA 997 and 957, and in a built exe. In an exe compiled with LLVM every case gives the same, but for the case of #1660, which ends the program with an access violation: its error is raised in `UnpackParamArray`, which has no error handler, and is not passed on to the handler of its caller, a separate defect of LLVM-compiled code.
-
-What does not reproduce it: an argument that is an array variable, or an expression such as `(v)`, `CVar(b)` or a function's result, which passes a copy rather than a reference to a `Variant`; the element read into a local `Variant` first, or passed to a `ByVal Variant` parameter; the whole `ParamArray` passed on to another; and outside a `ParamArray`, a `ByRef Variant` parameter (`a = v` works) or an element of a `Variant()` array assigned in the procedure the array is passed to.
-
-#1660 (open) is this defect reached another way: its unpacking routine is one of the cases, and fails as reported there. This entry narrows it to the element of a `ParamArray` that refers to a `Variant` variable, and shows what else fails with it.
-
-Severity: moderate. An error is always raised, so nothing goes wrong silently, but VB6 code that forwards a `Variant` array through a `ParamArray`, such as a `Max` or `Concat` helper or the unpacking routine of #1660, fails, and *Unspecified error* gives no hint why. Reading the element into a `Variant` first avoids it.
-
-<!-- Reproducer: bugs/paramarray-variant-array/ (mode test: `tbrun --tests` runs the 28 [TestCase]s of ParamArrayTests; expect lists the ten PASS and eighteen FAIL lines, each FAIL with what BETA 1005 gives). verify reproduces on BETA 957, 997 and 1005; VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the table's VB6 column, which the test cases assert. The built-exe and LLVM results are from `tbrun --exe` and `tbrun --exe --llvm` on a scratch copy whose Startup prints with TbRun.Out, not kept. Found while writing scripts/imagestrip/'s twinBASIC tests: TestImages.Cat in scripts/imagestrip/src/Sources/Tests/TestImages.twin copies each ParamArray element through a Variant to work around it, and its comment names this entry. Stated in a NOTE naming BETA 1005 in docs/Reference/Core/ParamArray.md. When fixed, the NOTE goes, ParamArray.md states nothing about it, and Cat's workaround and comment go. Filing it new, or commenting on #1660 with this narrowed form and marking it CAPTURED IN EXISTING #1660, is the owner's call. -->
-
----
-
-## The IDE's `styles.css` labels a GIF and a JPEG `image/png`, and two PNGs `/png`
-
-**Describe the bug**
-Four of the images that the IDE's `ide\styles.css` embeds as base64 `data:` URIs are labelled with a media type their bytes do not have: two PNGs are labelled `/png`, which is not a media type, and a GIF and a JPEG are labelled `image/png`. The other 171 images embedded in the `.css` files under `ide\` are labelled with the type they have.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `ide\styles.css`, in the folder of the twinBASIC installation, in a text editor. There is no project to attach: the defect is in the installation's own file.
-2. Line 2947, in the rule of `.treeExpanded` and `.sectionExpanderIcon`, reads `background-image: url('data:/png;base64,iVBORw0KGgo...')`. Decode the base64: its first eight bytes are `89 50 4E 47 0D 0A 1A 0A`, the signature of a PNG. Line 2952, in the rule of `.treeExpanded1`, is labelled `/png` in the same way, and is also a PNG.
-3. Line 3917, in the rule of `#progressSpinner` and `.progressSpinnerIcon`, reads `url('data:image/png;base64,R0lGODlh...')`. Decode the base64: it starts with `GIF89a`, the signature of a GIF.
-4. Line 7412, in the rule of `.vipGold1_autoWeighingSystemsLogo`, reads `url('data:image/png;base64,/9j/4AAQ...')`. Decode the base64: it starts with `FF D8 FF E0`, the start of a JPEG.
-
-**Expected behavior**
-Each `data:` URI names the type of its bytes, as the other 171 do: `image/png` for the two PNGs, `image/gif` for the GIF and `image/jpeg` for the JPEG. A media type is `type/subtype`, so `/png` is not one.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-BETA 997 and 957 have the same four images, at lines 2947, 2952, 3917 and 7389 in BETA 997, and at lines 2935, 2940, 3905 and 7323 in BETA 957. No other `.css` file under `ide\` has a mislabelled image, the Monaco editor's `editor.main.css` included. Images embedded in the IDE's `.js` and `.htm` files were not checked.
-
-Severity: low. Chromium identifies an image by its bytes, so all four pictures show: in headless Chrome 148, each of the four URIs loads as an `<img>` at its own size, and as a `background-image` draws the same pixels as the URI with the correct label. The IDE's own WebView2 was not tested.
-
-<!-- Reproducer: bugs/ide-stylesheet-image-labels/ (mode probe: scripts/probe_ide_image_labels.mjs reads every .css file under the install's ide folder through stripFile in scripts/lib/compact-image.mjs and prints one line for each image whose label differs from its bytes; exit 1 while the defect is there). No project and no zip, as for the filed "The IDE has written the same name twice into project files it ships". `verify` reproduces on BETA 1005; the probe prints the same four on 997 and 957. The Chrome check is not scripted (headless Chrome from scripts/lib/browser.mjs, 2026-10-10: each URI loaded as an Image, and an element screenshot of a box with it as background compared byte for byte with the same box under the correct label). Found by imagestrip, which relabels each image by its bytes and reports it. Stated in docs/Documentation/Tools.md's imagestrip section ("In BETA 1005, the IDE's `styles.css` has a GIF and a JPEG labelled `image/png`, and two PNGs labelled `/png`...") and in WIP.Build.md's bullet "An image is named by its bytes"; when fixed, update both and the comments in scripts/lib/compact-image.mjs that name the IDE's labels. Tools.md's probe_ide_image_labels.mjs section goes with the reproducer when it is deleted. -->
+<!-- Reproducer: bugs/console-print-udt-linker-error/ (mode lane: `ide-test.bat --only watches`, test/ide/watches.test.mjs, whose first three tests assert the fixed watch and whose last asserts the ? p defect; the lane passes while the bug is there); its Startup.twin is test/ide/probes/watches/Sources/Startup.twin with a different header comment. Verified on BETA 1005 by `bug_repro.mjs verify` through the lane. Follow-up to #2485 ("A watch on a variable of a user-defined type fails with a codegen error, and the Debug Console reports a linker error at every stop"), closed as fixed. No documentation page states it. When fixed: update the last test of test/ide/watches.test.mjs to assert the new message, and retire the reproducer. -->
 
 ---
 
@@ -2620,155 +2076,16 @@ The error is passed to the caller's handler whichever of the two procedures is c
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-On BETA 1005 every case of the table was run on its own, in the IDE and in a 32-bit exe. The run ends at case 4 in the IDE on BETA 997, 995 and 987 as well. A 64-bit exe of cases 4 and 5 on BETA 1005 does what the 32-bit one does, and so does a BETA 997 exe, but for the box of case 5, which is titled `shutdown` there. BETA 957 refuses the project's LLVM procedures ("a feature used in your code is not yet supported with the LLVM compiler").
+On BETA 1005 every case of the table was run on its own, in the IDE and in a 32-bit exe. A 64-bit exe of cases 4 and 5 on BETA 1005 does what the 32-bit one does.
 
 What does not reproduce it: neither procedure compiled with LLVM (cases 1 and 2), and an LLVM-compiled procedure that handles an error its own statement causes (case 3). An error raised by `Err.Raise` and one caused by a division by zero behave the same; so do `On Error GoTo` and `On Error Resume Next`, and a callee reached through an ordinary procedure (case 12). With LLVM turned on for the whole project, every procedure is compiled with LLVM, so cases 1 and 2 end the run as well, in the IDE and in an exe; case 3 still works.
 
 Severity: high for a program compiled with LLVM. An error that the caller handles ends the program, and with a callee compiled with LLVM it ends with an access violation. In the IDE the run ends without a message, so the cause is hard to find. No wrong result is produced. Compiling both procedures without LLVM avoids it.
 
-<!-- Reproducer: bugs/llvm-error-not-passed-to-caller/ (mode run: `Sub Main` runs the 12 cases in order and the run ends silently at case 4; expect is tbrun exit 5, the output of cases 1 to 3 and the name of case 4, and absent the result line of case 4 and `end of Main`; verify reproduces on BETA 1005, 997, 995 and 987). expect judges case 4 only: when verify says NO LONGER REPRODUCES, set FirstCase in Startup.twin to 5 and run again, because a fix of the callee case alone leaves the caller cases. Test mode was tried and is not used: `tbrun --tests` honours the per-procedure attribute, but the first LLVM case waits 120 s (`no answer from the compiler after 120 s`) and every case after it fails with `main thread is busy`, so one run cannot tell the cases apart. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the table's VB6 column. The exe results are from `tbrun --exe` (and `--arch win64`) on scratch copies of src/ whose Startup prints with TbRun.Out, one case per run, not kept; the project-wide LLVM results are from `tbrun --llvm --exe` on the same. Stated in a WARNING naming BETA 1005 in docs/LLVM/Getting-Started.md, "Language support", after the sentence "The main feature not yet supported is passing an error up to the calling procedure. A fix is planned.": when fixed, the WARNING and that sentence go. The entry "A `ParamArray` element that is a `Variant` variable holding an array..." mentions the LLVM-exe case in its Additional context ("a separate defect of LLVM-compiled code"): name this entry's issue there once it is filed, and drop the sentence when this is fixed. Not narrowed, so not in the entry: an LLVM-compiled procedure whose handler re-raises the error with `Err.Raise Err.Number`, called from an ordinary procedure with a handler, left the BETA 1005 exe running until it was ended. -->
-
----
-
-## The shipped `Dark.theme` and `Light.theme` lack a `;` after `DiagnosticsGroupFontSize`, so the IDE loads neither it nor `DiagnosticsGroupFontWeight`
-
-**Describe the bug**
-Line 63 of both `themes\Dark.theme` and `themes\Light.theme`, the two theme files that the IDE ships and that every other theme inherits from, reads `DiagnosticsGroupFontSize: 90%` with no `;` at its end. The IDE's theme loader cuts a theme file into properties at each `;`, so the property runs into the next line, and the piece it cuts is not a property. The loader drops such a piece without a message, so both `DiagnosticsGroupFontSize` and `DiagnosticsGroupFontWeight` are lost. Each of the two files has 495 properties that load, and these 2 are not among them. No other piece of the three shipped theme files (`Classic.theme` is the third) is dropped.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `themes\Dark.theme`, in the folder of the twinBASIC installation, in a text editor. There is no project to attach: the defect is in the installation's own files.
-2. Lines 63 and 64 read:
-   ```
-   DiagnosticsGroupFontSize:               90%
-   DiagnosticsGroupFontWeight:             500;
-   ```
-   Line 63 ends without the `;` that ends line 64 and every other property of the file. (In the file, the spaces after each colon are tabs.) `themes\Light.theme` has the same two lines at the same place.
-3. Open `ide\main.js` and find `applyThemeData`, the function that loads a theme file. It removes the `/* */` comments, cuts the text at each `;` followed by a space, a tab or a line end, removes the line breaks from each piece, cuts each piece at each `: ` and `:` followed by a tab, and keeps a piece only if that gives exactly two parts (the name and the value). Lines 63 and 64 are one piece, `DiagnosticsGroupFontSize:` and its value, then `DiagnosticsGroupFontWeight:` and its value, with nothing between them but the line break the loader removes. It gives three parts, so the piece is dropped. The loader's code has no other branch for a piece, and it writes no message.
-4. Instead of reading the code, run `node scripts/probe_theme_semicolon.mjs` from the repository. It applies the same rule to every `.theme` file in the install's `themes` folder, and prints one line for each piece it drops. It starts no IDE.
-
-**Expected behavior**
-Both properties load, with the values the files give: a font size of `90%` and a font weight of `500` for the Diagnostics group. That needs a `;` at the end of line 63 in both files. Any other property run together with the next one is lost in the same way, so the loader could also say which piece it dropped, in the DEBUG CONSOLE or the IDE's trace output.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-BETA 997 and 957 have the same two lines at the same place. `Classic.theme` has no such piece: it contains `inherits: light;` and its own properties, all of which end with `;`. The loader's rule was checked by applying the code of `applyThemeData` unchanged to each file: `Dark.theme` and `Light.theme` give 495 properties each, without the two, and `Classic.theme` gives 188.
-
-The effect on screen was not observed. In the IDE's `styles.css`, the rule of `.problemNodeGroup` reads `font-weight: var(--themeDiagnosticsGroupFontWeight); font-size: var(--themeDiagnosticsGroupFontSize);`, and the loader sets one CSS variable for each property it loads, so with these two missing, the variables have no value. By the CSS rules, a `var()` of a variable with no value makes the declaration invalid when the style is computed, and `font-size` and `font-weight` then take the value they inherit. So the elements of that class (by its name, the group headings of the Problems panel) would use the size and weight they inherit instead of 90% and 500.
-
-Severity: low. No data is lost, and the look of one kind of heading is the only thing that changes, but the IDE says nothing about it. A theme file that sets the two properties again, with its `;`, avoids it: a custom theme that inherits from Dark or Light, with `DiagnosticsGroupFontSize: 90%;` and `DiagnosticsGroupFontWeight: 500;` among its own lines, loads them.
-
-<!-- Reproducer: bugs/theme-missing-semicolon/ (mode probe: scripts/probe_theme_semicolon.mjs reads every .theme file in the install's themes folder with the rule of applyThemeData in ide/main.js and prints one line for each piece the loader drops; exit 1 while the defect is there). No project and no zip, as for the entry about the IDE's styles.css. `verify` reproduces on BETA 1005; the probe prints the same two lines on 997 and 957. No page carries a callout for it. If a page of the IDE section describes the theme file format, it states the loader's rule (read from main.js) and may name this fault; when it is fixed, the sentence naming it goes. The "custom theme avoids it" sentence in Severity follows from the loader's rule and was not tried in the IDE. The effect on screen (Problems panel group headings) is read from styles.css and the CSS rules, not seen. -->
-
----
-
-## A `Dark.theme` or `Light.theme` in `%APPDATA%\twinBASIC\themes` stops every custom theme from inheriting, and Reload from disk from applying the theme
-
-**Describe the bug**
-When the common themes folder, `%APPDATA%\twinBASIC\themes`, holds a file named `Dark.theme` or `Light.theme`, no custom theme is linked to the theme it inherits from. Window > Theme lists every custom theme, the shipped Classic included, as `<name> (undefined)` instead of `<name> (Light)` or `<name> (Dark)`. Choosing one gives the dark base whatever its `inherits:` line says, with only the theme's own properties changed and every other colour left as the previous theme had it. Window > Theme > Reload from disk then reads the files again but never applies the active theme, so an edit to it does not show until the IDE is restarted. No message is shown. It was observed in an IDE started with an `APPDATA` of its own, by reading the theme list and the CSS variables of the IDE's page.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Close the IDE. There is no project to open: the defect is in how the IDE reads its theme folders. In `%APPDATA%\twinBASIC\themes` (the IDE creates the folder), write `AtStart.theme`:
-   ```
-   inherits: light;
-   MenuBackColor: rgb(255, 0, 0);
-   ```
-   and `Dark.theme`, with any text: its contents are not read.
-2. Start the IDE and cancel the New / Open dialog. Open Window > Theme: it lists `Classic (undefined)` and `AtStart (undefined)`.
-3. Choose `AtStart`: the IDE takes the dark base (dark panels, the dark code editor) with a red menu bar.
-4. Change the colour in `AtStart.theme` to `rgb(0, 128, 0)` and choose Window > Theme > Reload from disk: the menu bar stays red.
-5. Delete `Dark.theme` and restart the IDE: the list shows `Classic (Light)` and `AtStart (Light)`, `AtStart` gives the light base with a red menu bar, and Reload from disk after the same edit turns the menu bar green at once.
-
-**Expected behavior**
-The themes keep their parents whatever else the common folder holds, as in step 5: `Classic (Light)` and `AtStart (Light)` in the list, the light base for `AtStart`, and Reload from disk applying the edit. A `Dark.theme` or `Light.theme` there is either ignored, as the code means it to be, or replaces the shipped theme of that name.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-The cause, read from `ide\main.js`: `reloadThemesFromDisk`, which runs at start-up and for Reload from disk, counts every `.theme` file of both folders into `customThemesCount`, but in the common folder it skips `Dark.theme` and `Light.theme` without calling `addTheme`. `addTheme` links the themes to their parents (`inheritsFromLink` and `group`), and runs `afterRefreshedThemes`, only once `customThemes.length` reaches `customThemesCount`, which then never happens. Reload from disk applies the theme in `afterRefreshedThemes`, so that never runs either. Counting only the files that are added would cure both.
-
-Only `Dark.theme` was tried; `Light.theme` takes the same branch of the code. The file was in place when the IDE started; adding it and choosing Reload from disk goes through the same function, and was not tried.
-
-Severity: moderate. Nothing is lost, but copying the shipped `Dark.theme` into the common folder to change it, the obvious way to adjust a shipped theme, makes every custom theme wrong, and nothing says why.
-
-<!-- Reproducer: bugs/theme-override-breaks-inheritance/ (mode lane: asserted by `ide-test.bat --only customising` (test/ide/customising.test.mjs), the test "a Dark.theme in the APPDATA themes folder unlinks every custom theme, and Reload from disk stops applying", which passes on BETA 1005; the first test of that file is the control without Dark.theme, and passes too). No project and no zip: the steps write the theme files. docs/IDE/Customising/Themes.md carries a WARNING for it, the first of its two; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Customising pages. -->
-
----
-
-## Two themes that inherit from each other freeze the IDE, and choosing one fails with a stack overflow
-
-**Describe the bug**
-When two theme files name each other in their `inherits:` lines, loading the themes stops the IDE's page for several seconds and leaves the themes half linked: one of the two is listed as `<name> (undefined)`. Choosing either of them afterwards changes nothing on screen: the page raises an uncaught `RangeError: Maximum call stack size exceeded` while it applies the theme, and the previous theme's colours stay. Nothing on screen reports the error. It was observed in an IDE started with an `APPDATA` of its own, with a timer in the IDE's page recording the longest time the page did not run, and a listener for the page's `error` event catching the exception.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Start the IDE. There is no project to open. In `%APPDATA%\twinBASIC\themes`, write `LoopA.theme`:
-   ```
-   inherits: LoopB;
-   MenuBackColor: rgb(1, 1, 1);
-   ```
-   and `LoopB.theme`:
-   ```
-   inherits: LoopA;
-   MenuBackColor: rgb(2, 2, 2);
-   ```
-2. Choose Window > Theme > Reload from disk. The IDE does not respond for about seven seconds (7.5 s on the machine it was found on).
-3. Open Window > Theme: it lists `LoopB (undefined)`.
-4. Choose `LoopA`: the menu bar does not take `rgb(1, 1, 1)`, and nothing else changes.
-5. To recover, remove the loop from the files and restart the IDE.
-
-**Expected behavior**
-The IDE stays responsive, and the themes in the loop fall back to the Dark theme, which the code in `addTheme` means them to do: it checks for a theme met twice, and sets the group to Dark when it finds one. Choosing `LoopA` then applies at least its own `MenuBackColor`. A message naming the loop would help the person who wrote it.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-The cause, read from `ide\main.js`: in `addTheme`, the pass that gives each theme its group follows `inheritsFromLink` in a `while` loop and records each theme it passes. When it meets a theme a second time it sets the group to Dark, but does not leave the loop, so it keeps going round the two themes until it stops after several seconds without finishing: `LoopB` is never given a group, and `afterRefreshedThemes` is still pending afterwards. `applyThemeData` then follows the same links recursively when a theme of the loop is applied, and overflows the stack. A `break` after the fall-back, and the same check in `applyThemeData`, would cure both.
-
-Start-up loads the themes through the same `reloadThemesFromDisk`, so an IDE started with the two files in place should freeze the same way; only Reload from disk was tried. A longer chain that returns to its first theme takes the same path in the code, and was not tried.
-
-Severity: moderate. Nothing is lost and the IDE recovers, but the freeze looks like a hang, and nothing says which files cause it.
-
-<!-- Reproducer: bugs/theme-inherit-loop/ (mode lane: asserted by `ide-test.bat --only customising` (test/ide/customising.test.mjs), the test "two themes that inherit each other freeze the page, and choosing one fails with a stack overflow", which passes on BETA 1005 with a pause of 7.5 s; it asserts a pause of at least 2 s, LoopB listed as (undefined), LoopA's colour not applied and the RangeError). No project and no zip. docs/IDE/Customising/Themes.md carries a WARNING for it, the second of its two; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Customising pages; the fact sheet had expected the fall-back to Dark. -->
-
----
-
-## A keyboard-shortcut group whose name contains `|` switches other groups on and off
-
-**Describe the bug**
-The IDE keeps the list of keyboard-shortcut groups that are on as one string, each name between two bars, such as `|Mine||Other|`, and looks a name up in it as text. Manage Keyboard Shortcuts accepts a group name that contains `|`, and that name's entry can then contain another group's: with groups `A|B` and `B`, the text `|A|B|` is the entry of `A|B` and also contains `|B|`. Clicking `B` in Window > Keyboard Shortcuts then removes the wrong text: the first click leaves `B` ticked, and the second switches `A|B` off as well and saves a list that ends in a broken `|A`. Nothing warns about the name. It was observed by operating Manage Keyboard Shortcuts and the commands of the Window > Keyboard Shortcuts items in an IDE whose saves were blocked, and reading the list and the menu's ticks after each step.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. There is no project to open. The steps change the groups saved in `HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE\IDESettings` (`CUSTOM_KEYBOARD_SHORTCUT_GROUPS` and `ACTIVE_KEYBOARD_SHORTCUT_GROUPS`): export that key first if they matter. Choose Window > Keyboard Shortcuts > Manage Keyboard Shortcuts..., Add New..., type `A|B`, press Enter, and Save Changes. The new group is switched on.
-2. Do the same with the name `B`. Window > Keyboard Shortcuts shows `Custom 1. A|B` and `Custom 2. B`, both ticked. The list of groups that are on is `|A|B||B|`.
-3. Click `Custom 2. B`. It stays ticked: the IDE removed the first `|B|` it found, which is the one inside `|A|B|`, and the list is now `|A|B|`.
-4. Click `Custom 2. B` again. `A|B` and `B` are both unticked, though only `B` was clicked, and the list saved is `|A`, which names no group.
-
-**Expected behavior**
-Step 3 switches `B` off and leaves `A|B` on. Either Manage Keyboard Shortcuts refuses a name that contains `|`, as it refuses one that starts with `<`, or the list is kept in a form that a name cannot break, such as a JSON array of names.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-The code, read from `ide\main.js`: `toggleActiveKeyboardShortcutName` tests the list with `indexOf("|" + name + "|")` and removes the entry with `replace`, which replaces the first match; `getCustomKeyboardShortcutMenuOptions` ticks a group by the same `indexOf`. The merge of the groups that are on matches names the same way: with the list `|A|B|`, `A|B` on and `B` defined but never switched on, a shortcut that only `B` defines works, and `B` is ticked in the menu. That was tried with the groups set in the IDE's page as Save Changes sets them, and a real key press.
-
-Severity: low. A name with `|` is unusual, and the groups themselves are kept, but the saved list is corrupted without a message, and the menu shows a group as on after it was switched off.
-
-<!-- Reproducer: bugs/keyboard-group-bar-name/ (mode lane: asserted by `ide-test.bat --only customising` (test/ide/customising.test.mjs), the test "a group named A|B switches B on with it, and toggling B twice switches both off", which passes on BETA 1005; it adds the groups through the Manage Keyboard Shortcuts dialog and runs the menu item's command, tbKeyboardShortcuts_ToggleActiveKeyboardShortcutGroupCustom2, with every save the IDE makes blocked in its page). No project and no zip. docs/IDE/Customising/Keyboard-Shortcuts.md carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Customising pages. -->
+<!-- Reproducer: bugs/llvm-error-not-passed-to-caller/ (mode run: `Sub Main` runs the 12 cases in order and the run ends silently at case 4; expect is tbrun exit 5, the output of cases 1 to 3 and the name of case 4, and absent the result line of case 4 and `end of Main`; verify reproduces on BETA 1005). expect judges case 4 only: when verify says NO LONGER REPRODUCES, set FirstCase in Startup.twin to 5 and run again, because a fix of the callee case alone leaves the caller cases. Test mode was tried and is not used: `tbrun --tests` honours the per-procedure attribute, but the first LLVM case waits 120 s (`no answer from the compiler after 120 s`) and every case after it fails with `main thread is busy`, so one run cannot tell the cases apart. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the table's VB6 column. The exe results are from `tbrun --exe` (and `--arch win64`) on scratch copies of src/ whose Startup prints with TbRun.Out, one case per run, not kept; the project-wide LLVM results are from `tbrun --llvm --exe` on the same. Stated in a WARNING naming BETA 1005 in docs/LLVM/Getting-Started.md, "Language support", after the sentence "The main feature not yet supported is passing an error up to the calling procedure. A fix is planned.": when fixed, the WARNING and that sentence go. The entry "A `ParamArray` element that is a `Variant` variable holding an array..." mentions the LLVM-exe case in its Additional context ("a separate defect of LLVM-compiled code"): name this entry's issue there once it is filed, and drop the sentence when this is fixed. Not narrowed, so not in the entry: an LLVM-compiled procedure whose handler re-raises the error with `Err.Raise Err.Number`, called from an ordinary procedure with a handler, left the BETA 1005 exe running until it was ended. -->
 
 ---
 
@@ -2799,7 +2116,7 @@ The selection is re-indented, as it is when it starts on any other line: the for
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The cause, read from `ide\main.js` and `ide\main2.js`: `provideDocumentRangeFormattingEdits` declares the start line with `const` and then decrements it (`o--`) in the loop that moves the start up over the lines ending in `_`, which throws as soon as the selection starts on a continuation line. The rejection reaches `window.onunhandledrejection` in `main2.js`, which alerts *IDE startup failure* and calls `hostAppObject.CloseWindow` unless `reportIDEerrorsToDebugConsole` is set, and only `startNow`, the start without a project, sets it. So in an IDE opened with its project, any unhandled rejection in the page closes the IDE.
@@ -2836,7 +2153,7 @@ The second press selects the `Module` at line 1, column 1. The start of the file
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The cause, read from `ide\main.js`: `doFindMatch` takes the character before and the character after a match with `charAt`, and treats each as a boundary when its `charCodeAt(0)` is below 128 and it is not a letter or a digit. Before the first character of the text searched, `charAt` returns an empty string, whose `charCodeAt(0)` is `NaN`, so the match is taken to be inside a word and is skipped. The same code skips a match that ends at the last character of the text searched; that, and a match that starts exactly at the caret (the text searched starts there), were not tried.
@@ -2863,7 +2180,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The cause, read from `ide\main.js`: the Find Next code lower-cases the text searched (`toLowerCase`) when Match Case is clear, and `createRegexFromUserString` builds the expression from the pattern as typed, adding only the `m` flag. A class such as `\D` (not a digit) matches lower-case text as before, so `/\Dim/` still finds `Dim`: only a literal capital letter fails.
@@ -2897,7 +2214,7 @@ The match is selected, from the line break to the end of `End Sub`, and the next
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The cause, read from `ide\main.js`: `doFindMatch` turns the start of the match into a line and a column, but puts its end on the same line, at the start column plus the match's length. For a match that holds a line break that column lies past the end of the line, and the editor shortens the selection to the line's end. The next search starts from that place, which is before the match, and finds it again. The match starts at the line break because the IDE adds the `m` flag, so `^` also matches inside the line break. A match within one line, such as `/sub$/i`, is selected properly.
@@ -2923,7 +2240,7 @@ The alert gives the reason, such as `Invalid RegExp: Invalid regular expression:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The cause, read from `ide\main.js`: `createRegexFromUserString` calls `alert("Invalid RegExp:", e.message)`. `alert` shows its first argument only, so the message is dropped; `alert("Invalid RegExp: " + e.message)` would show it.
@@ -2950,7 +2267,7 @@ When Selected Text can no longer be used, the panel ticks Current File, as Ctrl+
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Ticking another scope, such as Current Procedure, recovers. Severity: low. The message suggests that the file holds no further match, while the search did not look.
@@ -2989,7 +2306,7 @@ Plain text, with the code and the message apart: `{WARNING} /<Project>/Sources/H
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The cause, read from `ide\main.js`: the panel adds each diagnostic with the caption `"<span>" + code + "</span>" + message`, the `<span>` styling the code, and `generateCopyPasteTextForProblem` copies the caption as it is, labelling severity 1 `{ERROR}` and every other severity `{WARNING}`. Copy All Errors copies the errors with the same `<span>`.
@@ -3024,7 +2341,7 @@ The module's row expands to its members, `Main` and `Plain`, as the panel's filt
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The symbols reach the panel's `syncSymbols` with `children: []` for every type, so either the compiler sends no members or the IDE drops them before the panel; which of the two was not settled.
@@ -3059,7 +2376,7 @@ The caret on the declaration line, at the name, as Go To Definition does for a l
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Severity: low. The declaration is one line above the caret, and in view.
@@ -3083,7 +2400,7 @@ Escape leaves only the first cursor, as it does in the Monaco editor the code ed
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Escape is not among the keys the IDE stops before they reach Monaco (`monacoApplyKeyDownFilter`), and the IDE does not refer to Monaco's command for it, `removeSecondaryCursors`; where the key goes was not settled.
@@ -3125,7 +2442,7 @@ The box turned red, as it is for an expression the debugger cannot evaluate, sin
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The throw is in the box's `evaluate` callback (`BigInt(a)` in `createHexEditor`, `ide/main.js`).
@@ -3158,7 +2475,7 @@ The Address column showing the whole address, `&H0000004232CFF438` or `&H4232CFF
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The pane is made with `createHexEditor(r, {stream: n, addressBits: 32, columns: 16})` whatever the build target (`_hexEditorPanel`, `ide/main.js`), and the label of each row is masked to `addressBits`. The cell that takes the focus has the whole address in its `data-addr`, and the reads use it.
@@ -3185,7 +2502,7 @@ The cells of unreadable memory drawn as unreadable (blank and grey, the `invalid
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `invalidMem` is set only through the stream's `onInvalidate`, which only a demonstration stream in `ide/main.js` calls.
@@ -3217,7 +2534,7 @@ The box turned red, since a negative number is not an address; or the number rea
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The base address is kept as a signed `BigInt`; only each row's label is masked.
@@ -3243,7 +2560,7 @@ The menu at the caret, as Shift+F10 opens a context menu elsewhere in Windows an
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The command calls `showContextMenuMonaco({clientX: 0, clientY: 0})` (`ide/main.js`).
@@ -3281,7 +2598,7 @@ The tab tinted as soon as it opens, as the Project Explorer row is.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `syncFileDiagnosticsToExplorer` (`ide/main.js`) sets the tab's class only when the file has an open tab at the time; opening a tab does not read the file's cached counts.
@@ -3310,7 +2627,7 @@ The box holding the whole value, `"it's"`, and leaving it with nothing typed cha
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `onVariableDblClick` (`ide/main.js`) builds the box as HTML, `"<input id='renameInput' ... value='" + value + "' ...>"`, so the apostrophe ends the attribute; the box's `onblur` sends `setVariable` with whatever the box holds. A value with double quotes (`"say ""hi"""`) is shown and kept correctly. Escape leaves the variable as it was.
@@ -3347,7 +2664,7 @@ A hover that does not run a Sub: it has no value to show, so no hover, or the co
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The hover sends `evaluate` with `context: "hover"` and the expression `t.Bump`. A hover also runs a Function or a Property Get to show its value (`t.Doubled`, `Level1(n)`), which is how the hover is meant to work; for a Sub nothing is shown that could justify running it. Hovering over a variable, such as `Value` in `t.Value`, shows `t.Value:   6` and changes nothing.
@@ -3387,7 +2704,7 @@ The run aborted, as the message says and as the same edit at a breakpoint does: 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 What runs is what the panel's **Stop** button runs: it ends only the failing procedure, which #2441 reports. Main runs on with code that the edit has since changed in the editor but not in the program.
@@ -3415,7 +2732,7 @@ The row showing the value the variable now holds, as it does for a Long.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The row is redrawn from the answer to the `setVariable` request (`body.value`), so that answer holds `0` and `#12:00:00 AM#`. With `-1.5E+20` the row showed `2.19923962666636E-315`, which suggests the answer is read from the wrong type. Currency, Boolean, Variant and enum rows show the edit at once.
@@ -3460,7 +2777,7 @@ A stop in `Main` on `Debug.Print "m2"`, the line after the call, as Step Out giv
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The same for every caller tried: `Main` and another Sub, with the call made directly, inside `Select Case`, `If` or `For`, and a Function call in an assignment.
@@ -3487,7 +2804,7 @@ A message that the project has compile errors, naming the line with the error, o
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 With the error in `Main` itself there is no panel; the DEBUG CONSOLE prints `[LINKER] compilation (codegen) error detected in '{temp_component}.{temp_procedure}' at line #1` and `(compile error: codegen error; check for compilation errors)`.
@@ -3526,7 +2843,7 @@ F6 running the procedure from any column of any of its lines, its `End` line inc
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The IDE sends `runCodeUnderCursor` with the line and column, and the message is the compiler's answer. The procedure's own `Sub` line works at every column tried, right of that limit included. A trailing comment on the `End Sub` line moves the limit to where the comment starts. The check looks like a range test that compares the column with the end of the range on every line.
@@ -3553,7 +2870,7 @@ The query URL-encoded (`encodeURIComponent`), so that the search is for the whol
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The button's handler (`showErrorWidget`, `ide/main.js`) is `root.Shell('cmd.exe /c start "link" "https://www.google.com/search?q=' + e + '"')`, with `e` the header and description joined by spaces.
@@ -3603,14 +2920,12 @@ A diagnostic, or a compiled project. An array that the compiler cannot use as a 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-The same on BETA 997, 995 and 957 (the compiler is restarted two or three times there before the IDE gives up).
-
 Severity: high for a project that has the declaration. The compiler crashes on every attempt and restarts into the same crash, so the IDE reports nothing else about the project, and the line has to be found and removed by hand. No wrong code is produced.
 
-<!-- Reproducer: bugs/generic-array-type-argument-crash/ (mode compile; expect is tbbuild exit 4, the compiler crashing; verify reproduces on BETA 1005, 997, 995 and 957). The exception text above is from the IDE's DEBUG CONSOLE (tbbuild --keep, then the console read over CDP); the address is build-specific. The variants under "Each of these" were scratch projects of one declaration each, not kept; the Generics case needs the package (embedded under Packages/Generics, 14 MB with its WinDevLib dependency, which is why the reproducer does not use it). Found documenting the contributed package Generics: docs/Reference/Contributed/Generics/index.md, section "Types of the items", carries a WARNING naming BETA 1005 and lists "Arrays, such as Long()" among the types that cannot be used. When fixed: remove the WARNING, and rewrite the bullet to say whether an array item works. -->
+<!-- Reproducer: bugs/generic-array-type-argument-crash/ (mode compile; expect is tbbuild exit 4, the compiler crashing; verify reproduces on BETA 1005). The exception text above is from the IDE's DEBUG CONSOLE (tbbuild --keep, then the console read over CDP); the address is build-specific. The variants under "Each of these" were scratch projects of one declaration each, not kept; the Generics case needs the package (embedded under Packages/Generics, 14 MB with its WinDevLib dependency, which is why the reproducer does not use it). Found documenting the contributed package Generics: docs/Reference/Contributed/Generics/index.md, section "Types of the items", carries a WARNING naming BETA 1005 and lists "Arrays, such as Long()" among the types that cannot be used. When fixed: remove the WARNING, and rewrite the bullet to say whether an array item works. -->
 
 ---
 
@@ -3671,248 +2986,14 @@ With the contributed package Generics 1.0.0.0, `Dim t As Any = New TupleOf2(Of S
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-The same on BETA 997 and 995. On BETA 957 the first line reports TB5074 and then TB5028, *Unable to convert type 'Box' to type 'Any'*, in place of TB5032.
-
 Not tried: a generic class from a compiler package, such as `EventLog(Of T1, T2)` of WinEventLogLib.
 
 Severity: low. A compile error is reported, nothing goes wrong silently, and a declaration that names the instantiation avoids it, such as `Dim t As Box(Of Long) = New Box(Of Long)(1)`. The diagnostic points at a correct line and says nothing about the type arguments.
 
-<!-- Reproducer: bugs/package-generic-new-untyped-target/ (mode compile, expects exit 1 and TB5074, TB5032 and TB5044; the project embeds the small package BoxLib, made from the Generics package's Settings without its WinDevLib dependency; verify reproduces on BETA 1005, 997 and 995, and on 957 but for TB5028 in place of TB5032, which the expectation names, so verify says NO LONGER REPRODUCES there). Found documenting the contributed package Generics: docs/Reference/Contributed/Generics/index.md, section "Creating a tuple", carries a NOTE naming BETA 1005, with the workaround of a typed variable and a sample of it. Related, not the same: the filed bugs/filed/static-ctor-args (#2492), where a `Static` initialised with `New Dog("Rex")` fails with TB5074 when the class is declared later, as if the constructors of a type were not yet known when the line is bound. When fixed: remove the NOTE and its workaround sample, and retire the reproducer. -->
-
----
-
-## `DateAdd` with a month, quarter or year interval runs into the next month instead of stopping at the last day of a shorter month
-
-**Describe the bug**
-`DateAdd` with the interval `"m"`, `"q"` or `"yyyy"` keeps the day of the month and lets it overflow into the next month, where it should stop at the last day of the month it lands in. `DateAdd("m", 1, #1/31/2026#)` returns March 3, 2026, the date `DateSerial(2026, 2, 31)` gives, and not February 28. No error is raised, so nothing shows that the date is wrong. The VBA documentation, and twinBASIC's own page for `DateAdd` after it, say that `DateAdd` does not return an invalid date and that adding a month to January 31 returns February 28; VB6 does that. The other intervals (`"d"`, `"y"`, `"w"`, `"ww"`, `"h"`, `"n"` and `"s"`) give the right dates. Observed in the IDE, with the result of each call written to the DEBUG CONSOLE as `Format(..., "yyyy-mm-dd")`.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `dateadd-month-end-overflow.twinproj` (attached as `dateadd-month-end-overflow.zip`). Its one source file, `Startup.twin`, holds 18 calls, the first four of which are enough:
-   ```
-   Module Startup
-
-       Public Sub Main()
-           Debug.Print Format(DateAdd("m", 1, #1/31/2026#), "yyyy-mm-dd")
-           Debug.Print Format(DateAdd("m", -1, #3/31/2026#), "yyyy-mm-dd")
-           Debug.Print Format(DateAdd("yyyy", 1, #2/29/2024#), "yyyy-mm-dd")
-           Debug.Print Format(DateAdd("q", 1, #11/30/2025#), "yyyy-mm-dd")
-       End Sub
-
-   End Module
-   ```
-2. Run the project in the IDE (F5) and read the DEBUG CONSOLE.
-3. See `2026-03-03`, `2026-03-03`, `2025-03-01` and `2026-03-02`. VB6 (the same calls, attached as `dateadd-month-end-overflow-vb6.zip`, which writes each result to `out.txt`) gives `2026-02-28`, `2026-02-28`, `2025-02-28` and `2026-02-28`. The calls of the project, with the dates each gives:
-
-   | call | twinBASIC | VB6 |
-   |---|---|---|
-   | `DateAdd("m", 1, #1/31/2026#)` | 2026-03-03 | 2026-02-28 |
-   | the same, with the date in a `Date` variable | 2026-03-03 | 2026-02-28 |
-   | `DateAdd("m", 1, "31-Jan-95")` | 1995-03-03 | 1995-02-28 |
-   | `DateAdd("m", 1, #1/30/2026#)` | 2026-03-02 | 2026-02-28 |
-   | `DateAdd("m", 1, #1/29/2026#)` | 2026-03-01 | 2026-02-28 |
-   | `DateAdd("m", 1, #1/31/2024#)` | 2024-03-02 | 2024-02-29 |
-   | `DateAdd("m", 1, #10/31/2026#)` | 2026-12-01 | 2026-11-30 |
-   | `DateAdd("m", -1, #3/31/2026#)` | 2026-03-03 | 2026-02-28 |
-   | `DateAdd("m", -1, #3/30/2026#)` | 2026-03-02 | 2026-02-28 |
-   | `DateAdd("yyyy", 1, #2/29/2024#)` | 2025-03-01 | 2025-02-28 |
-   | `DateAdd("yyyy", -1, #2/29/2024#)` | 2023-03-01 | 2023-02-28 |
-   | `DateAdd("q", 1, #11/30/2025#)` | 2026-03-02 | 2026-02-28 |
-
-What decides it: the result is the date `DateSerial(year, month + number, day)` gives, so a day that exists in the target month is not affected, and one that does not is counted into the month after.
-- A day that exists in the target month is right: `DateAdd("m", 1, #1/28/2026#)` is 2026-02-28, and `DateAdd("yyyy", 4, #2/29/2024#)` is 2028-02-29, in both.
-- The other intervals are right: on January 31, 2026, `"d"` and `"y"` with 1 give 2026-02-01 and `"ww"` with 1 gives 2026-02-07, in both.
-- It makes no difference whether the date is a literal, a `Date` variable, `DateSerial(2026, 1, 31)` or a string; whether the number is positive or negative; or whether the date has a time of day, which is kept (`DateAdd("m", 1, #1/31/2026 13:45:10#)` is 2026-03-03 13:45:10). `DateAdd("m", 13, #1/31/2025#)` is 2026-03-03 as well.
-- `DateSerial(2026, 2, 31)` is 2026-03-03 in VB6 too, by design: it is not the defect.
-
-**Expected behavior**
-`DateAdd` with the interval `"m"`, `"q"` or `"yyyy"` returns the last day of the target month when the day of the date does not exist in it, as VB6 does and as the VBA documentation says: January 31 plus one month is February 28 (29 in a leap year), and February 29 plus one year is February 28.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-The same on BETA 997, 995 and 957. Not tried: an exe built from the project, and a project compiled with LLVM.
-
-Severity: high. The date is wrong and nothing signals it. A program that steps by months or years from a date late in the month (due dates, subscriptions, schedules, a calendar control's next-month button) is up to three days late, and a second step continues from the wrong day: `DateAdd("m", 1, DateAdd("m", 1, #1/31/2026#))` is 2026-04-03, where VB6 gives 2026-03-28. A workaround: `DateSerial(Year(d), Month(d) + n + 1, 0)` is the last day of the month `n` months after `d`, so the result is `DateSerial(Year(d), Month(d) + n, Day(d))` when `Day(d)` is smaller than that day, and that day otherwise.
-
-<!-- Reproducer: bugs/dateadd-month-end-overflow/ (mode run: `Sub Main` prints 18 cases with Debug.Print; expect is exit 0 and the 18 lines, which are the twinBASIC values of the twelve cases that overflow and of the six that do not; verify reproduces on BETA 1005, 997, 995 and 957, the oldest installed). expect names all twelve overflowing lines, so a fix of one interval alone makes verify say NO LONGER REPRODUCES: run `bug_repro.mjs run` and compare with the table for the intervals still wrong. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the table's VB6 column. The 13-month and time-of-day variants, the chained call and the workaround were run once in scratch copies of the project (twinBASIC) and `scripts/vb6run.mjs` (VB6), not kept. Found while documenting the contributed package xCalendar: its NextMonth, PreviousMonth, NextYear and PreviousYear methods call DateAdd. docs/Reference/Default/VBA/DateTime/DateAdd.md carries a WARNING naming BETA 1005, and so do docs/Reference/Default/VBA/DateTime/index.md ("Date arithmetic", after its sample whose comment says 2/28/2026) and docs/Reference/Contributed/xCalendar/index.md (at the start of "Methods", and NextMonth and NextYear mention it): when fixed, the three WARNINGs and those mentions go. -->
-
----
-
-## `ReDim` with an upper bound below the lower bound raises *Unspecified error* (-2147467259), where VB6 raises error 9, *Subscript out of range*
-
-**Describe the bug**
-`ReDim` of a dynamic array with an upper bound below its lower bound, such as `ReDim a(0 To -1)`, `ReDim a(1 To 0)` or `ReDim a(5 To 2)`, raises error -2147467259, *Unspecified error* (E_FAIL). VB6 raises error 9, *Subscript out of range*, for each of them. The error is the same for every element type and for `ReDim Preserve`, and a failed `ReDim Preserve` leaves the array as it was. A program that handles error 9, or tests `Err.Number = 9`, around a `ReDim` does not recognise this one. Observed in the IDE, with the error of each statement written to the DEBUG CONSOLE.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `redim-empty-range-unspecified-error.twinproj` (attached as `redim-empty-range-unspecified-error.zip`). Its one source file, `Startup.twin`, tries 24 `ReDim` statements, each followed by a line that writes the error; the first three are enough:
-   ```
-   Module Startup
-
-       Public Sub Main()
-           Dim a() As Long
-           On Error Resume Next
-           ReDim a(0 To -1)
-           Debug.Print Err.Number & vbTab & Err.Description
-           Err.Clear
-           ReDim a(5 To 2)
-           Debug.Print Err.Number & vbTab & Err.Description
-           Err.Clear
-           ReDim a(0 To 0)
-           Debug.Print Err.Number & vbTab & Err.Description
-       End Sub
-
-   End Module
-   ```
-2. Run the project in the IDE (F5) and read the DEBUG CONSOLE.
-3. See `-2147467259	Unspecified error` twice, then `0`. VB6 (the same statements, attached as `redim-empty-range-unspecified-error-vb6.zip`, which writes each result to `out.txt`) gives `9	Subscript out of range` twice, then `0`.
-
-What decides it, each tried in the project above:
-- Every range whose upper bound is below its lower bound raises the error: `(0 To -1)`, `(1 To 0)`, `(5 To 2)`, `(-3 To -5)`; `(-1)`, which is `0 To -1`, and `(n)` with `n = -1`; two dimensions, `(0, 0 To -1)` and `(1 To 0, 0 To 1)`. VB6 raises error 9 for each.
-- The element type makes no difference: **Long**, **String**, a user-defined type, **Object**, **Variant** (an array of Variant, and a **Variant** variable, empty or holding an array), and `ReDim s(5 To 2) As String`.
-- `ReDim Preserve` raises it too, for `(0 To -1)` of a **Long** array, a **String** array and a **Variant** variable that holds an array, and for `(5 To 2)` of a **Long** array. After the failed `ReDim Preserve a(0 To -1)`, `UBound(a)` is still 2, in both.
-- A range of one element or more is not affected: `(0 To 0)`, `(2 To 2)`, `(1 To 2)` and `(0)` raise nothing, in both.
-- A 64-bit program, and an exe built from the project, give the same errors.
-- With LLVM (the project compiled with `+llvm`) the results differ, and differ from VB6: a range that ends one below its start (`0 To -1`, `1 To 0`, `(-1)`, `(n)`, `(0, 0 To -1)`, `(1 To 0, 0 To 1)`, and the same for **String**, a user-defined type, **Object** and **Variant**) makes an empty array and raises nothing, so `UBound(a)` is `-1`; a range further below (`5 To 2`, `-3 To -5`) raises -2147024882, *Application-defined or object-defined error*; and `ReDim Preserve a(5 To 2)` raises error 9, as VB6 does.
-
-**Expected behavior**
-Error 9, *Subscript out of range*, for each of these statements, as in VB6, whether the code is compiled with LLVM or not.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-The same on BETA 997, 995 and 957 (not tried with LLVM there). Not tried: the run-time error panel for an unhandled error, and the exe built with LLVM.
-
-Severity: low. An error is raised either way, and an unhandled one stops the program either way; only its number and text differ, so code that tests for error 9 around a `ReDim` (a size computed from data that can be zero or negative) does not recognise it. With LLVM the statement can make an empty array where VB6 raises an error, which a program written for VB6 does not expect.
-
-<!-- Reproducer: bugs/redim-empty-range-unspecified-error/ (mode run: `Sub Main` prints 25 lines with Debug.Print; expect is exit 0 and all 25 as the default compiler gives them: the 20 errors of -2147467259, the `UBound` line after the failed Preserve and the four statements that raise nothing; verify reproduces on BETA 1005, 997, 995 and 957; an LLVM run gives other lines, so `verify` does not use it). The LLVM results, the 64-bit run and the built exe were run once with `bug_repro.mjs run --llvm`, `run --arch win64` and a scratch copy that wrote with TbRun.Out under `tbrun --exe`, not kept. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the VB6 column. Found documenting contributed packages on BETA 1005. docs/Reference/Core/ReDim.md carries a NOTE naming BETA 1005 and saying that VB6 raises error 9. When fixed: change that NOTE to state the error a fixed build raises (or remove the BETA sentence if it is 9), and retire the reproducer. -->
-
----
-
-## A project that references the Microsoft Script Control crashes the compiler when it is built for 64-bit programs
-
-**Describe the bug**
-A project with a reference to *Microsoft Script Control 1.0* (`msscript.ocx`) crashes the compiler when its target is win64, although no code uses the reference. The IDE restarts the compiler on the same project (`restarting from MEMORY [...]` in the DEBUG CONSOLE, four times), it crashes again each time, and the IDE ends in Safe Mode, so nothing in the project compiles. With the target win32 the same project compiles with no diagnostic. A reference to the Script Control in an embedded package does the same to every project that embeds the package: the contributed package TBMANLIB 1.0.0.5, which references it, takes down a project of one `Debug.Print`. Observed in the IDE.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `script-control-reference-win64-crash.twinproj` (attached as `script-control-reference-win64-crash.zip`). Its code is one module that prints `hello`; the project's references, in `Settings`, include
-   ```
-   {
-       "id": "{0E59F1D2-1FBE-11D0-8FF2-00A0D10038BC}",
-       "lcid": 0,
-       "name": "Microsoft Script Control 1.0",
-       "path32": "C:\\Windows\\SysWOW64\\msscript.ocx",
-       "path64": "",
-       "symbolId": "MSScriptControl",
-       "versionMajor": 1,
-       "versionMinor": 0
-   }
-   ```
-   (the reference as TBMANLIB 1.0.0.5 holds it).
-2. Choose **win64** in the target list of the toolbar, or let the IDE compile it for win64 in any way (`tbbuild --arch win64`).
-3. See the DEBUG CONSOLE: `restarting from MEMORY [<the project>]` four times, then the IDE in Safe Mode. With **win32** chosen the project compiles, 0 errors and 0 warnings.
-
-Each of these was a project of its own, one `Debug.Print "hello"` and the references of the project above, compiled for win64:
-
-| the project's extra reference | result |
-|---|---|
-| none | compiles, and builds |
-| Script Control, `path64` empty (as above) | the compiler crashes |
-| Script Control, `path64` the 32-bit file `C:\Windows\SysWOW64\msscript.ocx` | the compiler crashes |
-| Script Control, `path64` a file that does not exist | the compiler crashes |
-| Script Control in an embedded package of the project (`Packages/ScLib`, `path64` empty), none in the project | the compiler crashes |
-| Common Dialog Control 6.0 (`comdlg32.ocx`), also 32-bit only, `path64` empty or the 32-bit file | compiles |
-| Winsock Control 6.0 (`mswinsck.ocx`), also 32-bit only, `path64` empty or the 32-bit file | compiles |
-| Microsoft Scripting Runtime, or ADODB 2.8, with `path64` empty | compiles, and builds |
-| Microsoft Scripting Runtime with `path64` empty, in an embedded package | compiles, and builds |
-
-An empty `path64` is not the cause, then: the Script Control crashes the compiler whatever `path64` holds, and two other 32-bit-only controls do not.
-
-**Expected behavior**
-A compiled project, or a diagnostic that names the reference and says that it has no 64-bit component, and a compiler that keeps running.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-The compiler crashes on BETA 1005, 997, 995 and 987, and does not on 983, 975 and 957. Not tried: BETA 964, 973, 974 and 982, the builds between 983 and 987 (not installed), a `path64` that names a 64-bit build of the control (there is none on this machine), the project built with LLVM, and the exception text (the DEBUG CONSOLE of the crashing IDE holds the `restarting from MEMORY` lines only).
-
-Severity: high for a project that has the reference. It cannot be compiled for 64-bit programs at all, the IDE ends in Safe Mode, and nothing says which reference is the cause. No wrong code is produced. In a 32-bit program the reference is harmless. A 64-bit program cannot use the control, which exists only as a 32-bit component, so the workaround is to remove the reference.
-
-<!-- Reproducer: bugs/script-control-reference-win64-crash/ (mode compile, "arch": "win64"; expect is tbbuild exit 4, the compiler crashing; verify reproduces on BETA 1005, 997 and 995; on 957 verify is a harness failure, because that IDE cannot restart its compiler for another target, and 957, 975 and 983 were compiled with `tbbuild` on a scratch copy of the project whose path the IDE already remembered as win64, which gave no crash). The table's variants were scratch projects of one reference each, built by a script from the reproducer's Settings and run with `tbbuild --arch win64` one at a time (a win32 compile crashed once while five IDEs ran at once, and compiled clean alone, so a crash is trusted only from a run alone); not kept. The BETA 987/983 boundary, and 975, came from `tbbuild --ide` on the same project. Found documenting the contributed package TBMANLIB: docs/Reference/Contributed/TBMANLIB/index.md, section "32-bit and 64-bit programs", carries a WARNING naming BETA 1005 for the crash. That section says the package's reference has a path for 32-bit programs and none for 64-bit programs, and puts the crash down to the reference; the crash does not depend on `path64`, so when this entry is edited or fixed read the section again. When fixed: remove the WARNING, and rewrite "cannot be built for 64-bit" in ToolsJScript.md and the section to what the compiler then does. -->
-
----
-
-## A variable declared as the class of an ActiveX control cannot hold the control: `Set` raises *No such interface supported*, and every member of a `Dim ... As New` variable raises error 91
-
-**Describe the bug**
-An object variable whose declared type is the class of an ActiveX control, such as `MSScriptControl.ScriptControl`, never receives the object. `Set sc = New MSScriptControl.ScriptControl` and `Set sc = CreateObject("MSScriptControl.ScriptControl")` raise error -2147467262, *No such interface supported* (E_NOINTERFACE). `Dim sc As New MSScriptControl.ScriptControl` raises nothing at the declaration, `TypeName(sc)` is `ScriptControl` and `sc Is Nothing` is False, and then the first member that is used raises error 91, *Object variable or With block variable not set*. The control itself is created and has its interface: the same `New` and `CreateObject` give a working object when the variable is declared `As Object` or `As MSScriptControl.IScriptControl`, the control's default interface. The same happens with the Winsock and Common Dialog controls. The classes of libraries that are not controls (`Scripting.Dictionary`, `ADODB.Connection`) are not affected. VB6 creates every one of these. Observed in the IDE, with the error of each statement written to the DEBUG CONSOLE.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `activex-control-class-variable.twinproj` (attached as `activex-control-class-variable.zip`). It references Microsoft Script Control 1.0, Microsoft Winsock Control 6.0, Microsoft Common Dialog Control 6.0, Microsoft Scripting Runtime and ADO 2.8 (all 32-bit, so the project's target stays win32), and its module `Startup` runs 21 statements with a line after each that writes the error. Four of them:
-   ```
-   Dim sc As New MSScriptControl.ScriptControl
-   sc.Language = "JScript"                                  ' error 91
-   Dim sc2 As MSScriptControl.ScriptControl
-   Set sc2 = New MSScriptControl.ScriptControl              ' -2147467262, No such interface supported
-   Dim o As Object
-   Set o = New MSScriptControl.ScriptControl                ' no error
-   Dim i As MSScriptControl.IScriptControl
-   Set i = New MSScriptControl.ScriptControl                ' no error, and i.Eval("1 + 2") is 3
-   ```
-2. Run the project in the IDE (F5) and read the DEBUG CONSOLE.
-3. See, for the statements of the project (each is one line in the console, with its error number and text):
-
-   | statement | twinBASIC | VB6 |
-   |---|---|---|
-   | `Dim sc As New ScriptControl`, then `sc.Language = "JScript"` or `sc.Eval("1 + 2")` | 91 | no error, `Eval` is 3 |
-   | `Private ModuleSc As New ScriptControl` at module level, then `ModuleSc.Language = ...` | 91 | no error |
-   | `Public Sc As New ScriptControl` as a class field, then `h.Sc.Language = ...` | 91 | no error |
-   | `Set sc = New ScriptControl`, `sc` declared `As ScriptControl` | -2147467262, No such interface supported | no error |
-   | `Set sc = CreateObject("MSScriptControl.ScriptControl")`, `sc` declared `As ScriptControl` | -2147467262 | no error |
-   | `Set sc = o`, `o` an **Object** holding the control, `sc` declared `As ScriptControl` | -2147467262 | no error |
-   | `Set o = New ScriptControl`, and `Set o = CreateObject(...)`, `o` declared `As Object` | no error, `o.Eval("1 + 2")` is 3 | the same |
-   | `Set i = New ScriptControl`, `i` declared `As IScriptControl` | no error, `i.Eval("1 + 2")` is 3 | the same |
-   | `Set w = New MSWinsockLib.Winsock`, `w` declared `As Winsock`; the same with `MSComDlg.CommonDialog` | -2147467262 | no error |
-   | `Dim wa As New MSWinsockLib.Winsock`, then `wa.LocalPort` | 91 | no error |
-   | the same two classes, the variable declared `As Object` | no error | no error |
-   | `Dim d As New Scripting.Dictionary`, `Dim c As New ADODB.Connection`, then a member | no error | no error |
-
-   VB6 is the same statements (attached as `activex-control-class-variable-vb6.zip`, which writes each result to `out.txt`).
-
-What decides it, each tried in the project above:
-- The variable's declared type decides: a class that is an ActiveX control (the coclass has the `control` flag in its type library), as a variable's type, fails; `Object`, the default interface and a class that is not a control work. `Dim x As MSScriptControl.DScriptControlSource`, the events interface the class lists beside its default one, fails with the same error on `Set x = o`.
-- `New` and `CreateObject` make no difference: `Set o = New ...` and `Set o = CreateObject(...)` both work for an `Object`.
-- `Dim ... As New` hides the failure until a member is used; `Set` reports it at the statement. `TypeName` and `Is Nothing` do not show it.
-- A built exe gives the same results as a run in the IDE (the statements written with `TbRun.Out` in a scratch copy).
-- `Dim j As New MSScriptControl.IScriptControl` is refused with TB5121, *Unable to create instance of type 'IScriptControl'*, so the interface type is usable with `Set` only.
-
-**Expected behavior**
-A variable declared as the class of an ActiveX control holds the control, as in VB6: `Set sc = New MSScriptControl.ScriptControl` and `Dim sc As New MSScriptControl.ScriptControl` give a usable object, and `sc.Eval("1 + 2")` is 3.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-The same on BETA 997, 995 and 957. The type libraries of the failing classes list two implemented interfaces flagged `default`: the dual interface (`IScriptControl`) and, flagged `default` and `source`, the events dispinterface (`DScriptControlSource`). `ADODB.Connection` lists the same pair and works, so the pair alone does not explain it; the three classes that fail are flagged `control` in their type libraries, and the two that work are not.
-
-Not tried: a control that is registered for 64-bit, and a form that hosts the control (a variable of the control's class on a form is the usual use).
-
-Severity: medium. A visible error is raised, never a wrong value, but it is raised at the first use with a message that points at an object that was never set, and a VB6 program that holds an ActiveX control's class in a typed variable, or declares one `As New`, must be changed to `As Object` or to the interface. The contributed package TBMANLIB 1.0.0.5 does this for the Script Control (`Dim MSSC As New MSScriptControl.ScriptControl`), and both functions of its **ToolsJScript** module fail with error 91 for that reason.
-
-<!-- Reproducer: bugs/activex-control-class-variable/ (mode run: `Sub Main` prints 21 lines with Debug.Print; expect is exit 0 and the 17 lines of the failing and working statements; verify reproduces on BETA 1005, 997, 995 and 957). VB6 side in vb6/ (VB6 6.0; a project with a class module, `Holder.cls`, and references to the five libraries): `bug_repro.mjs vb6` prints the VB6 column. The exe run, the `IScriptControl` and `DScriptControlSource` variables and the `Dim ... As New IScriptControl` refusal were run in scratch copies, not kept. Found documenting the contributed package TBMANLIB: docs/Reference/Contributed/TBMANLIB/ToolsJScript.md carries a NOTE naming BETA 1005 for it, and docs/Reference/Contributed/TBMANLIB/ToolsDic.md (ToWwwFormUrlencoded, which uses NewArr) and index.md ("Defects of version 1.0.0.5") state the failures that follow from it, without a callout: when fixed, correct the three, which assume that the control cannot be created (the package's `NewObj` still assigns to the name of the other function, as its page says). -->
+<!-- Reproducer: bugs/package-generic-new-untyped-target/ (mode compile, expects exit 1 and TB5074, TB5032 and TB5044; the project embeds the small package BoxLib, made from the Generics package's Settings without its WinDevLib dependency; verify reproduces on BETA 1005). Found documenting the contributed package Generics: docs/Reference/Contributed/Generics/index.md, section "Creating a tuple", carries a NOTE naming BETA 1005, with the workaround of a typed variable and a sample of it. Related, not the same: the filed bugs/filed/static-ctor-args (#2492), where a `Static` initialised with `New Dog("Rex")` fails with TB5074 when the class is declared later, as if the constructors of a type were not yet known when the line is bound. When fixed: remove the NOTE and its workaround sample, and retire the reproducer. -->
 
 ---
 
@@ -3966,16 +3047,14 @@ A diagnostic for `New ZPriv`, `Dim ... As New ZPriv` and `New Locked` outside th
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-The same on BETA 997, 995 and 957.
-
 Not tried: a `Private Sub New` in a class of a package built from the project's own `Packages` folder compared with one installed from a `.twinpack` file, and `New` through `CreateObject` (the class is `[COMCreatable(False)]` here).
 
 Severity: low. The compiler accepts code that the class's author meant to forbid, and nothing else goes wrong. For a class that relies on it, such as a settings object that is meant to be created only from presets, an object made with `New` is in the state that the constructor leaves, which the class never intended anybody to use.
 
-<!-- Reproducer: bugs/private-constructor-callable/ (mode compile; the bug state is a clean compile, so expect is exit 0 and noDiagnostics, the first reproducer to use that key; verify reproduces on BETA 1005, 997, 995 and 957, and says NO LONGER REPRODUCES once a diagnostic appears). `bug_repro.mjs run` prints the 11 lines of V values. The package half is the small package CtorLib, made from the BoxLib package of package-generic-new-untyped-target. The `Friend` variants and the check that a `Private Sub` is refused (TB5027) in a project and in a package were run once in a scratch copy with `tbrun --tests` compile cases, not kept. No VB6 comparison: VB6 has no `Sub New`. Found documenting the contributed package tsPwGen, whose PwGenOptions is `[PredeclaredId] [COMCreatable(False)]` with `Private Sub New()`: docs/Reference/Contributed/tsPwGen/PwGenOptions.md and docs/Features/Advanced/Classes-and-Modules.md ("Parameterized Class Constructors") carry a NOTE naming BETA 1005: when fixed, remove both NOTEs. -->
+<!-- Reproducer: bugs/private-constructor-callable/ (mode compile; the bug state is a clean compile, so expect is exit 0 and noDiagnostics, the first reproducer to use that key; verify reproduces on BETA 1005, and says NO LONGER REPRODUCES once a diagnostic appears). `bug_repro.mjs run` prints the 11 lines of V values. The package half is the small package CtorLib, made from the BoxLib package of package-generic-new-untyped-target. The `Friend` variants and the check that a `Private Sub` is refused (TB5027) in a project and in a package were run once in a scratch copy with `tbrun --tests` compile cases, not kept. No VB6 comparison: VB6 has no `Sub New`. Found documenting the contributed package tsPwGen, whose PwGenOptions is `[PredeclaredId] [COMCreatable(False)]` with `Private Sub New()`: docs/Reference/Contributed/tsPwGen/PwGenOptions.md and docs/Features/Advanced/Classes-and-Modules.md ("Parameterized Class Constructors") carry a NOTE naming BETA 1005: when fixed, remove both NOTEs. -->
 
 
 ---
@@ -3998,7 +3077,7 @@ Each spacing command an undo step that marks the form changed, as every other Fo
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The designer sends no `onChanged` or `onSignificantChange` for a spacing command. `formDesginer_RemoveSpacingHorizontal`, `formDesginer_RemoveSpacingVertical` and `formDesigner_AdjustSpacingOfSelectedControls_Horizontal` / `_Vertical` (`ide/main.js`) never call `undoPoint`, which `alignControlsLeft` calls at its end. A later change, such as an arrow key on another control, writes the whole surface into the form, the spaced positions included.
@@ -4026,7 +3105,7 @@ The new sizes saved, as an Align command's new positions are.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 After step 2 the designer's form state (`state.item.form`, what Save writes) still holds `Height: 30`. With an arrow key on another control between steps 2 and 3, the form opens again with the 24s. A click on the form's background between them saves them too.
@@ -4053,7 +3132,7 @@ Keys in the zoom box changing only the zoom.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Each press sends `onChanged` and `onSignificantChange`, as an arrow key in the designer does. At 100 % display scaling a press moves a control 1 pixel. With two controls selected, Up twice and Down twice make four undo steps.
@@ -4081,7 +3160,7 @@ The lock marked as a change to the form and saved with it, as the grid options, 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `lockTheControl` (`ide/main.js`) is called by the lock commands with an argument that skips `IDEOptionsChanged`, and they make no undo point; by the code, the form's context menu's Lock all controls and Unlock all controls are the same, which was not tested. Lock Controls, an arrow key on another control and Ctrl+S keep the lock.
@@ -4108,7 +3187,7 @@ The controls centred on the selection's centre: Left 130 (the selection spans 10
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `alignControlsCenterHorizontal` (`ide/main.js`) takes its line from `getTopLeftOfAllControls`, which returns the smallest left and the smallest top, and `alignControlsCenterVertical` from `getTopRightOfAllControls().y`. Align > Left, Right, Top and Bottom are right. The command is an undo step, so Ctrl+Z puts the controls back.
@@ -4136,7 +3215,7 @@ The TextBox at Left 40 and Top 53, centred in the Frame, as the same commands gi
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `tbFormDesigner_CenterSelectedGroupInContainerHorizontal` (`ide/main.js`) reads the container's size with `getBoundingClientRect()`, which is the zoomed size, and compares it with the controls' unzoomed positions. Three controls on the form spanning 10 to 350, centred horizontally at 50 %, moved by -80 instead of +20.
@@ -4163,7 +3242,7 @@ PROPERTIES showing and taking the same unit: pixels on a CustomControls form, wh
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `cacheParentScaleModeInfo` (`ide/main.js`) takes a form with no `ScaleMode`, as a CustomControls form is, to be in `vbTwips` and multiplies by 15 for the display. On a VB form in twips, Command1 at 10 pixels shows Left 150, and typing 450 moves it to 30 pixels.
@@ -4191,7 +3270,7 @@ No change and no undo step until something on the form changes, as a click on on
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 After step 3 the designer sends `onChanged` and `onSignificantChange`. It writes the surface into the form state, so at a display scaling other than 100 % a position the surface rounds to a device pixel changes in what Save writes: at 150 %, Check1's `Top` of 55 became 54.6667. It does not happen every time: in the trials one try in four did not do it, when Escape had first closed an open File menu, and in the reproducer's first four runs two plain tries in seven did not. A click on a control, a Format menu opened and closed, and the grid panel shown and left do not do it.
@@ -4219,7 +3298,7 @@ Ctrl+A selecting the box's text, as it does in every other text box.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 With the designer focused, Ctrl+A selects every control, as it should. In a PROPERTIES box the key is consumed and does neither.
@@ -4245,7 +3324,7 @@ The alignment only. A menu bar opened by Alt alone, when it is released with no 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Alt pressed and held alone opens the menu bar before it is released. With the arrow's key events carrying the Alt flag but no key event for Alt itself, the menu bar opens on the arrow's key-up.
@@ -4273,7 +3352,7 @@ One question; YES makes both controls the array, Check1(0) and Check1(1).
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Answering NO to the first question asks nothing more and keeps the old name. Renaming to the name of an existing array (Command1 to Command2, with Command2(0) and Command2(1) on the form) asks nothing and makes Command2(2).
@@ -4300,7 +3379,7 @@ The name refused with a message, or made into an identifier as `My Form` is.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `a.b` gives `Class [a.b]`, and `My Form` gives `Class [My Form]` and a form whose `Name` is `[My Form]`.
@@ -4326,7 +3405,7 @@ A third Zoom Out going to 25 %, the box's smallest value.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `tbFormDesigner_ZoomDecrease` (`ide/main.js`) steps only `if (zoomSelect.selectedIndex > 1)`, and 25 % is index 0. The same commands scale the zoom by `g_textScaleFactor` the opposite way from the zoom box (`value * (textScale/100)` against `value / (textScale/100)`), which matters only when the Windows text size is above 100 %; that is not reported here, since it could not be tested.
@@ -4352,7 +3431,7 @@ No line in the tooltip of a designer's entry, since a designer has none.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The designer's `onSignificantChange` handler calls `updateHistory(uri, <form name>)` with no line, and the tooltip is built as `<path> [line: <line>]`. An edit inside a procedure of a code file gives an entry whose tooltip reads `[line: 5]`. A double-click on the form's entry opens the designer, as it should.
@@ -4378,7 +3457,7 @@ The designer of frmDeep opened, as Shift+F7 does for a form in `Sources`.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `switchToFormPart` (`ide/main.js`) replaces the first `.twin` in the whole path with `.tbform`, giving `Sources/v1.tbform.forms/frmDeep.twin`, which does not exist. From the designer the first `.tbform` in the path is the file's own, so that direction works.
@@ -4404,7 +3483,7 @@ The same seven tools as the docked Toolbox.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The rule that hides the other tools for a report (`.reportDesignerMode ...`) applies only inside `#bodyInner`, where the docked Toolbox is; a floating panel is outside it.
@@ -4430,7 +3509,7 @@ The notification only, with no tab; or the file shown read-only, as View As JSON
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The IDE never reports the file as opened (the open's completion callback is not called), and the page throws a `TypeError` in a websocket request handler.
@@ -4458,7 +3537,7 @@ The designer not opened, with the notification, or a message in the designer tha
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The page throws `TypeError: Cannot read properties of undefined (reading '0')` in `formDesigner_syncToState` when the designer opens, and `addControl` throws at the double-click. A `.tbform` with no `FormDesignerId` opens normally.
@@ -4466,6 +3545,355 @@ The page throws `TypeError: Cannot read properties of undefined (reading '0')` i
 Severity: low. Nothing is lost; the empty designer is misleading.
 
 <!-- Reproducer: bugs/form-bad-json-empty-designer/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "a form file with bad JSON opens an empty designer that adds no control, and Save leaves the file as it was", which passes on BETA 1005, on the lane's second project, test/ide/probes/forms-badjson, which the lane opens accepting its two errors, TB5246 and TB5247). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md, under the .tbform file; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N9). -->
+
+---
+
+## A UDT of more than 4 bytes passed `ByVal` from an array element corrupts the stack in a 32-bit build, and the calling procedure ends in an access violation
+
+**Describe the bug**
+In a 32-bit build, passing an element of a UDT array `ByVal` (`Take a(1)` for `Sub Take(ByVal p As Pair)`, where `Pair` holds two `Long`s) runs the procedure with the right value, but leaves the stack wrong, and the calling procedure ends in an access violation as it returns. The IDE run stops with `NATIVE EXCEPTION: ACCESS_VIOLATION` at the `Sub` line of the caller, and a built exe exits with code 0xC0000005 and no message box. In the debugger's test mode (the `evaluate` request with `isTest`, which `tbrun --tests` uses) the same code never returns. Only a UDT of 5 bytes or more is affected. Observed with `tbrun` (IDE run, `--exe` and `--tests`). Found while documenting the GdiPlus package, where `g.DrawLine pen, pts(1), pts(2)` with `pts` an array of the 8-byte `GpPointF` never returns.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-array-element-byval-argument-stack.twinproj` (attached as `udt-array-element-byval-argument-stack.zip`). Its module `Startup` is:
+   ```
+   Public Type Pair
+       X As Long
+       Y As Long
+   End Type
+
+   Public Sub Take(ByVal p As Pair)
+       Debug.Print "in Take " & p.X
+   End Sub
+
+   Public Sub Main()
+       Dim a(1 To 3) As Pair
+       a(1).X = 5
+       Take a(1)
+       Debug.Print "after call"
+   End Sub
+   ```
+2. Run the project in the IDE (F5), as a 32-bit project (the default).
+3. The DEBUG CONSOLE prints `in Take 5` and `after call`, then `NATIVE EXCEPTION: ACCESS_VIOLATION /Startup.twin; Startup.Main`, and the run ends. Build an exe and run it from a command prompt: it ends with -1073741819 (0xC0000005).
+
+**Expected behavior**
+`Main` returns normally, as it does when `Take` is given a scalar `Pair` variable, or a copy of the element made first. Passing a UDT `ByVal` is a twinBASIC extension (VB6 refuses the declaration: *User-defined type may not be passed ByVal*), so there is no VB6 behaviour to compare with.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+These fail the same way: a UDT of 5 bytes (a `Long` and a `Byte`), 8 bytes (two `Long`s; a `Double`; a `LongLong`), 12, 16 and 32 bytes; a local fixed-size, a dynamic (`ReDim`) and a module-level array; a two-dimensional array; the argument written `Take (a(1))` or `Call Take(a(1))`; and a `Function` in place of the `Sub`. These are right: a UDT of 4 bytes or less (a `Long`, two `Integer`s, three `Byte`s, a pointer), a scalar UDT variable, an array element copied to a variable first (`e = a(1)`, `Take e`), a `ByRef` parameter, and an element of an array declared inside a UDT (`h.Arr(1)`). A 64-bit build is right, and so is a build with LLVM, 32-bit and 64-bit. In the test mode the code does not return, so `tbrun --tests` reports "no answer" after its time-out and runs none of the cases after it.
+
+Severity: high for a 32-bit program. The call itself works, and the fault comes later, when the procedure returns, so it is hard to trace; with LLVM or a 64-bit build, or by copying the element to a variable first, it does not happen.
+
+Not tried: a `Property Let` or a method of a class with such a parameter, an `Optional` or `ParamArray` parameter, an element of an array that is a member of a class, a UDT with a method declared in it (the case that found it has none), and the generated code.
+
+<!-- Reproducer: bugs/udt-array-element-byval-argument-stack/ (mode run, 32-bit: the console has `in Take 5`, `after call` and NATIVE EXCEPTION: ACCESS_VIOLATION, and tbrun exits 5); verified on BETA 1005 by `bug_repro.mjs verify`. Controls, all returning normally (checked in a scratch project of 11 sizes and shapes, not kept): `run --arch win64`, `run --llvm` and `run --llvm --arch win64`, and the 4-byte and scalar cases listed above; `run --exe` ends 0xC0000005. Page: docs/Reference/Core/Type.md carries a WARNING labelled BETA 1005, under "twinBASIC enhancements" after "Member procedures"; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus (indexer/.packages/contributed/GdiPlus): the DrawLine samples that pass pts(1), pts(2). -->
+
+---
+
+## Calling a method or a property of a UDT on an element of an array of that UDT ends in an access violation
+
+**Describe the bug**
+A method or property declared inside a `Type` (a twinBASIC extension), called on an element of an array of that type (`a(1).Sum`, `a(1).Bump`), ends in an access violation: `NATIVE EXCEPTION: ACCESS_VIOLATION` in the IDE run, error -2147467259 in a `[TestCase]`, and 0xC0000005 in a built exe. It happens for a local, static, module-level, dynamic and parameter array, in 32-bit and 64-bit builds, whatever the UDT's size (one byte included) and even when the method does not touch `Me`. The same call on a scalar variable, on a UDT member of another UDT, or on an element of an array declared inside a UDT works. In a build with LLVM the call does not fail, but gives wrong results. Observed with the reproducer's regression tests (`tbrun --tests`), `tbrun` and `tbrun --exe`. Found while documenting the GdiPlus package, where `types(1).CloseSubpath` on the `PathPointType` array that `GraphicsPath.GetTypes` returns, and `pts(1).Diff(pts(2))` on `GpPointF`, end this way.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-array-element-method-call-crash.twinproj` (attached as `udt-array-element-method-call-crash.zip`). Its module `Startup` declares the UDT `Pair`, with a property `Sum`, a `Sub` `Bump`, a `Function` `Const1` that ignores `Me` and a `Function` `Diff`. Its module `RegressionTests` holds one `[TestCase]` for each way of calling them, asserting the correct result. The central one is:
+   ```
+   Dim a(1 To 3) As Pair
+   a(1).X = 5
+   Debug.Print "a(1).Sum = " & a(1).Sum
+   ```
+2. Run it (F5). `Sub Main` stops with `NATIVE EXCEPTION: ACCESS_VIOLATION` at the line of `a(1).Sum`.
+3. Run its test cases (`node scripts/tbrun.mjs <exported-source-dir> --tests`; BETA 1005 has no way to run them in the IDE): 12 of the 18 fail with `(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)`.
+
+**Expected behavior**
+`a(1).Sum` returns 5, as `p.Sum` does for a scalar `Pair` variable `p`, and `a(1).Bump` increments `a(1).X`. UDT methods are a twinBASIC extension (VB6 has no methods in a `Type`), so there is no VB6 behaviour to compare with.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Each of these fails: a property, a `Sub`, a `Function` that ignores `Me`, and a `Function` that takes a UDT argument (`a(1).Diff(a(2))`); a lower bound of 0 or 1; a variable index; the element as a `With` object; a static array; a dynamic array; a module-level array; and an array parameter (`b(1).Sum` in a procedure that takes `ByRef b() As Pair`); a UDT of one `Byte`. These work: a scalar variable; a UDT member of a UDT (`h.One.Sum`); an element of an array declared inside a UDT (`h.Many(1).Sum`); an element copied to a variable first; and the element's plain fields (`a(1).X`). A UDT passed `ByVal` from an array element is a different defect, with an entry of its own (`udt-array-element-byval-argument-stack`): it needs no method, and the fault comes after the call returns.
+
+With LLVM (`tbrun --llvm`): the property of an element of a 32-bit build returns garbage (`17820977` for a UDT holding 5 and 0), and in a 64-bit build returns the right value; in both builds `a(1).Bump` runs but leaves `a(1).X` unchanged, as if it worked on a copy. A scalar variable is right in both. LLVM also cannot compile a method called on an element of an array inside a UDT (`h.A(1).Bump`: "a feature used in your code is not yet supported").
+
+Severity: high for any program that keeps UDTs with methods in an array, which a loop over points or rectangles does: it ends at the first call, with no hint why. Copying the element to a variable first (`e = a(i)`, `e.Sum`) avoids it, for a method that does not change the element.
+
+Not tried: a generic UDT (member procedures are not supported on generic UDTs), a UDT with `Type_Assignment`, an array of arrays, an array of UDTs held in a `Variant`, the call through `Declare` members, and the generated code.
+
+<!-- Reproducer: bugs/udt-array-element-method-call-crash/ (mode test: `tbrun --tests` runs the 18 [TestCase]s of RegressionTests; expect lists the six PASS controls and the twelve FAIL lines with the access violation, 32-bit); verified on BETA 1005 by `bug_repro.mjs verify`, and the same twelve fail with `run --arch win64`. The LLVM and exe results are from scratch probes (p4/p7: scenarios of a Sub per case with a Select Case on a Const), not kept. Pages: docs/Reference/Core/Type.md (after "Member procedures") and docs/Features/Language/UDTs.md (end of "Procedures, Constructors, Destructors, and Operators") carry a WARNING labelled BETA 1005; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus (GpPointF, GpRect, PathPointType); GdiPlus's own landing page should say the same in its section on those types, and the samples that call members on array elements copy the element first. -->
+
+---
+
+## A call of a method named `Line` or `Scale` with one parenthesised point, `o.Scale (2, 3)`, is accepted and silently dropped
+
+**Describe the bug**
+The compiler reads a call of a method named `Line` or `Scale` as the graphics syntax (documented in the language reference, *Line, Circle, PSet, Scale*), whatever the type of the object: `o.Scale (x1, y1)-(x2, y2)` calls the method with a *Flags* value first. The documentation says `Scale` takes two points or nothing, and a `Line` needs its second point. A call with one point, `o.Scale (2, 3)`, `o.Line (2, 3)`, or the same written without the space (`o.Scale(2, 3)`), is accepted with no diagnostic and compiled to nothing: the method is not called and no error is raised. VB6 gives *Syntax error* for the same call of a procedure named `Line` (`Module1.Line (2, 3)`). With a single value in the parentheses, `o.Scale (2)`, the compiler reports TB5212 *Too many close brackets*. Observed with `tbrun`, in the IDE run, and for a class method and for a method declared inside a `Type`. Found while documenting the GdiPlus package, whose `GpPointF` and `GpSizeF` have members named `Scale`: `p.Scale(2)` is a syntax error there.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `graphics-method-lone-point-dropped.twinproj` (attached as `graphics-method-lone-point-dropped.zip`, with the VB6 project as `graphics-method-lone-point-dropped-vb6.zip`). Its class `Plotter` has `Line` and `Scale` methods with the parameters the compiler passes for the graphics syntax (*Flags* first), and a method `Foo`; each prints its arguments. The calls of its module `Startup`, abridged, are:
+   ```
+   Public Sub Main()
+       Dim p As New Plotter
+       p.Line (1, 2)-(3, 4)
+       p.Scale (1, 2)-(3, 4)
+       p.Foo(2, 3)
+       Debug.Print "--- one point"
+       p.Line (2, 3)
+       p.Scale (2, 3)
+       p.Line(2, 3)
+       p.Scale(2, 3)
+       Debug.Print "done"
+   End Sub
+   ```
+2. Run it (F5).
+3. The DEBUG CONSOLE prints `Line F=4 (1,2)-(3,4) C=0`, `Scale F=4 (1,2)-(3,4)` and `Foo 2,3` for the first three calls, then `--- one point` and `done` with nothing between: the four one-point calls did not call the methods, and raised no error. Add `p.Scale (2)` to see TB5212 and TB5069 at the closing parenthesis.
+
+**Expected behavior**
+A syntax error for the one-point call, as VB6 gives (*Compile Error: Syntax error*; the attached VB6 project holds what VB6 accepts and lists its refusals), or the method called. A call that vanishes silently is the worst of the three: the program runs and the effect is missing. The one-value error would be clearer if it said that a method named `Scale` or `Line` is read as the graphics syntax.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The same in a 64-bit build and with LLVM. A method declared inside a `Type` behaves the same (`Sub Scale(ByVal sx!, ByVal sy!)` called as `s.Scale(2, 3)` leaves the UDT unchanged). A method of any other name (`Foo`, `Move`, `Point`, `PaintPicture`, `Drag`, `ZOrder`, `Show`, `Hide`, `TextWidth`, `Refresh`, `SetFocus`, `Cls`) is called with parentheses or without. `o.Circle(2, 3)` and `o.PSet(2, 3)` are refused (TB5075 and TB5103), as is `o.Print(2, 3)` (TB5182), so those are not silent. What works for `Line` and `Scale`: `Call o.Scale(2, 3)`, and `o.Scale 2, 3` with no parentheses. VB6 does not allow a procedure named `Scale` at all, and allows `Line` only in a module, where it can only be called with the graphics syntax; so twinBASIC code that follows VB6 never meets this, and code in the new style, such as GdiPlus's UDT methods named `Scale`, does.
+
+Severity: medium. An effect that does not happen, with no message, but only for the two names and only for a parenthesised call that is not complete. Writing the call with `Call`, or without parentheses, avoids it.
+
+Not tried: a `Function` with these names used in an expression (`x = o.Scale(2, 3)`), a late-bound call through `Object`, and `Circle`, `PSet` with other argument counts.
+
+<!-- Reproducer: bugs/graphics-method-lone-point-dropped/ (mode run: expect lists the printed lines of the complete forms and the plain forms, and absent `Line F=... (2,3)` and `Scale F=... (2,3)`); verified on BETA 1005 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints what VB6 accepts; its refusals (a lone point, the plain list and Call for a procedure named Line, and Scale as a procedure name) are in the comments of vb6/Module1.bas and were each checked by building them. The other names, the Type method, the 64-bit and LLVM results are from scratch probes, not kept. Page: docs/Reference/Core/Graphics-Methods.md, in "Any object can take the syntax", carries a WARNING labelled BETA 1005 for the dropped call and a NOTE for the one-value syntax error (which is by design: the compiler reads the graphics syntax from the name); remove the WARNING when a fix is released. Found 2026-10-16 while documenting GdiPlus (GpPointF.Scale, GpSizeF.Scale: a one-argument call is TB5212, so those samples write `p.Scale 2`). -->
+
+---
+
+## Assigning to an object-typed member of a UDT without `Set`, including through the object's default member, is a codegen error that fails the build
+
+**Describe the bug**
+A let-assignment (no `Set`) to a UDT member whose type is a class compiles with no diagnostic, and the build then fails: `[LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #17`, `[LINKER] FAILED due to compilation errors`, and no exe is made; the IDE run does not start. This includes `h.o = 5` where the member's class has a default member, which sets the value of `h.o`: valid VB6, and working in twinBASIC for a local variable or a field of a class. Without a default member the same statement (`h.o = p`, or `h.o = New Widget`) is the same codegen error, where a local variable gets error 91 at run time. Observed with `tbbuild`, `tbbuild --build` and `tbrun`. Found while documenting the GdiPlus package, whose `PathIterator.NextSubpathPath` and `NextMarkerPath` contain `NextSubpathPath.path = New GraphicsPath(gpsp.path)`: the build of any project that uses them reports the codegen error for them (there the build still makes the exe).
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-object-member-let-assignment-codegen.twinproj` (attached as `udt-object-member-let-assignment-codegen.zip`, with the VB6 project as `udt-object-member-let-assignment-codegen-vb6.zip`). Its class `Widget` has a field `N` and a default property `Value` that sets and gets `N`. Its module `Startup` is:
+   ```
+   Public Type Holder
+       o As Widget
+   End Type
+
+   Public Sub Main()
+       Dim h As Holder
+       Set h.o = New Widget
+       h.o = 5
+       Debug.Print "N = " & h.o.N
+   End Sub
+   ```
+2. Compile the project: no diagnostic. Run it (F5) or build it.
+3. The DEBUG CONSOLE prints `[LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #17` and `[BUILD] failed`; `Main` does not run.
+
+**Expected behavior**
+`h.o = 5` sets `h.o.N` to 5, as it does for `q = 5` with a local `q As Widget`, and in VB6 (the attached project prints `h.o = 5 (default member): N = 5`). For a class with no default member, VB6 raises error 91 at run time (*Object variable or With block variable not set*), as twinBASIC does for a local variable; the compiler should at least report a diagnostic at the statement, and not a codegen error that names the procedure.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The same codegen error for: a UDT variable, an element of an array of the UDT (`a(1).o = 5`), a member of a nested UDT (`h.in1.o = 5`), and the function-result variable of a function that returns the UDT (`Next1.path = New GP(g.path)`, as in GdiPlus); with a default member (`= 5`) and without one (`= p`, `= Nothing`, `= New Widget`); in 32-bit and 64-bit builds; and with LLVM, where it is "a feature used in your code is not yet supported with the LLVM compiler" for the whole procedure. Right: `Set h.o = p`; a local variable (`q = 5` runs; `q = p` without a default member raises 91); a field of a class (`c.o = 5` runs; `c.o = p` raises 91); a UDT member typed `Object` (`h.ob = p` runs) and one typed `Variant` (raises 438, *Object doesn't support this property or method*). A local `q = New Widget` gets warning TB0022 (*assignment to class that does not seem to offer a default property-put member*) at compile time; the UDT-member case gets no diagnostic of any kind.
+
+Severity: medium. The failure is at build time, so nothing runs wrongly, but the message names only the procedure, and the statement can be a plain default-member assignment that VB6 accepts. Writing `Set h.o = ...` with a new object, or `h.o.Value = 5`, avoids it.
+
+Not tried: a member typed with an interface, a generic class, a `Property Let` of the default member that takes an index, and the generated code.
+
+<!-- Reproducer: bugs/udt-object-member-let-assignment-codegen/ (mode build: tbbuild --build exits 5 and the output names the codegen error in 'Startup.Mainrootmain'); verified on BETA 1005 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints N = 5 for the default member, 6 for the local, and error 91 for a class with no default member. The other variants (nested, array element, function result, win64, LLVM, Object and Variant members) are from scratch probes, not kept. Page: docs/Reference/Core/Type.md carries a NOTE labelled BETA 1005, after "Member procedures": the error cannot be missed and loses nothing; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus: PathIterator.NextSubpathPath and NextMarkerPath (indexer/.packages/contributed/GdiPlus/sources/GdiPlus/PathIterator.twin) assign a GraphicsPath to a member of their result UDT without Set, which is the package's own mistake as well as this report. -->
+
+---
+
+## Assigning `Me` as a whole value inside a method of a UDT is a codegen error that fails the build
+
+**Describe the bug**
+Inside a method or property declared in a `Type` (a twinBASIC extension), an assignment whose right-hand side is `Me` itself (`Copy = Me`, `Return Me`, `t = Me`, `Dim t As R = Me`) compiles with no diagnostic, and the build fails once the method is called: `[LINKER] compilation (codegen) error detected in 'Startup.Copy' at line #15`, `[LINKER] FAILED due to compilation errors`, and the IDE run does not start. Observed with `tbbuild --build` and `tbrun`. Found while documenting the GdiPlus package, where `GpPointF.Normalized` and `OffsetBy`, `OffsetByPt`, `InflatedBy` and `InflatedByPt` of `GpRect` and `GpRectF` (nine members) begin with `<name> = Me` and cannot be built into a program that calls them.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-method-assign-me-codegen.twinproj` (attached as `udt-method-assign-me-codegen.zip`). Its module `Startup` is:
+   ```
+   Public Type R
+       X As Long
+       Y As Long
+
+       Function Copy() As R
+           Copy = Me
+       End Function
+   End Type
+
+   Public Sub Main()
+       Dim a As R, b As R
+       a.X = 7
+       a.Y = 8
+       b = a.Copy()
+       Debug.Print b.X & ", " & b.Y
+   End Sub
+   ```
+2. Compile the project: no diagnostic. Run it (F5) or build it.
+3. The DEBUG CONSOLE prints `[LINKER] compilation (codegen) error detected in 'Startup.Copy' at line #15` and `[BUILD] failed`; `Main` does not run.
+
+**Expected behavior**
+`Copy` returns a copy of the UDT, so `Main` prints `7, 8`. UDT methods are a twinBASIC extension (VB6 has no methods in a `Type`), so there is no VB6 behaviour to compare with.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The same codegen error for `Return Me`, for a local (`Dim t As R: t = Me`), for `Dim t As R = Me`, for `Property Get Copy() As R: Copy = Me`, for a `ByRef` parameter (`o = Me`), and for a `Variant` (`v = Me`), in 32-bit and 64-bit builds. With LLVM the build prints "a feature used in your code is not yet supported with the LLVM compiler" for the method. These are right: a method that is never called (it is not compiled), `Me.X`, passing `Me` to a `ByVal` parameter (`TakeR Me`), `Me` on the left (`Me = other`), copying field by field (`Copy.X = Me.X`), and a module function that copies a parameter (`Cp = v`).
+
+Severity: medium. The failure is at build time, with a message that names the procedure only. Copying the fields one by one avoids it.
+
+Not tried: `Me` passed to a `ByRef` parameter, `Me` in a `Type_Assignment` member, and the generated code.
+
+<!-- Reproducer: bugs/udt-method-assign-me-codegen/ (mode build: tbbuild --build exits 5 and the output names the codegen error in 'Startup.Copy'); verified on BETA 1005 by `bug_repro.mjs verify`. The variants, win64 and LLVM are from a scratch probe (one #If scenario per form), not kept. Pages: docs/Reference/Core/Type.md (after "Member procedures") and docs/Features/Language/UDTs.md (end of "Procedures, Constructors, Destructors, and Operators") carry a NOTE labelled BETA 1005: the error cannot be missed and loses nothing; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus (GpPointF.Normalized; OffsetBy, OffsetByPt, InflatedBy, InflatedByPt on GpRect and GpRectF). -->
+
+---
+
+## 32-bit IDE run: Err.Description is "Automation error" for error 5 raised by Collection.Add, in a method of a generic class called on a `Dim x As New` local
+
+**Describe the bug**
+In the IDE's run (the debug run, and a `[RunAfterBuild]` Sub), in a 32-bit project, error 5 raised by `Collection.Add item, , , 1` on an emptied `Collection` has `Err.Description` = `Automation error` when three things hold: the failing call is inside a method of a generic class, the method has an `On Error Resume Next` block before it (`Set v = <String>`, `Err.Clear`, `v = <String>`, `On Error GoTo 0`), and the method is called on a local declared `Dim a As New Cls(Of String)`. `Err.Number` is 5. With `Dim a As Cls(Of String)` and `Set a = New Cls(Of String)` the text is `Invalid procedure call or argument`, which is the right text. The built exe (32-bit and 64-bit), the 64-bit IDE run and VB6 give `Invalid procedure call or argument` in every variant. Observed with `bug_repro.mjs run` (which uses `tbrun`), on an exe too, and with VB6 through `bug_repro.mjs vb6`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `list-error5-automation-text.twinproj` (attached as `list-error5-automation-text.zip`, architecture 32-bit). Its class `Cls(Of T)` is:
+   ```
+   [COMCreatable(False)]
+   Public Class Cls(Of T)
+       Private m_Items As New Collection
+
+       Public Sub Add(ByVal item As T)
+           m_Items.Add item
+       End Sub
+
+       Public Sub Replace(ByVal item As T)
+           Dim itemVar As Variant
+           On Error Resume Next
+           Set itemVar = item
+           Err.Clear
+           itemVar = item
+           On Error GoTo 0
+           m_Items.Remove 1
+           m_Items.Add itemVar, , , 1
+       End Sub
+   End Class
+   ```
+   and `Startup.Main` runs, in the IDE:
+   ```
+   Dim a As New Cls(Of String)
+   a.Add "a"
+   On Error Resume Next
+   a.Replace "Z"
+   Debug.Print "Dim a As New: " & Err.Number & ": " & Err.Description
+   ```
+   and the same with `Dim b As Cls(Of String)`, `Set b = New Cls(Of String)`.
+2. Run the project in the IDE (F5) in the 32-bit architecture.
+3. The DEBUG CONSOLE shows `Dim a As New: 5: Automation error` and `Set a = New:  5: Invalid procedure call or argument`. Build the exe and run it: the project exits with code 0 when the text is `Invalid procedure call or argument` (1 for `Automation error`), and the exe exits 0. Switch to 64-bit and run in the IDE: both lines give `Invalid procedure call or argument`.
+
+**Expected behavior**
+`5: Invalid procedure call or argument` in every variant, as in the built exe, in the 64-bit IDE run and in VB6 (`vb6/` of the reproducer: `Collection.Add` with Before = 1 on an emptied Collection gives `5: Invalid procedure call or argument`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Found by the documentation's `List.md` sample for TBMANLIB_Diagnostic 1.0.0.1, whose `List(Of T).SetItem` has this shape (the package's own defect is the `Before = 1` that raises the error). The number is right and only the text differs, so a program that tests `Err.Number` is not affected. A plain `Collection` Add and Remove, `Err.Raise 5` and an `Insert 0` on an empty list (the same Add) give the right text in the same run. The trigger was not narrowed further than the three conditions: the `Collection` alone in a module, with six forms of the `On Error Resume Next` block, gives the right text, and so does a copy of the package's `SetItem` with its `If Err.Number <> 0` form. A second `Dim b As New Cls(Of String)` local fails the same way.
+
+Severity: low. A wrong text for the right error number, in the 32-bit IDE run only.
+
+Not tried: LLVM. With LLVM on (`bug_repro.mjs run --llvm`, 32-bit and 64-bit) the IDE run of this reproducer ends before it returns and prints nothing, so the text could not be read; `On Error Resume Next` around a failing call in LLVM-compiled code is a known problem of its own.
+
+<!-- Reproducer: bugs/list-error5-automation-text/ (mode run, arch win32: expect is tbrun exit 0, the line `Dim a As New: 5: Automation error` and the line `Set a = New:  5: Invalid procedure call or argument`, and absent `Dim a As New: 5: Invalid procedure call or argument`); verified on BETA 1005 by `bug_repro.mjs verify`. Controls, all printing the right text: `run --arch win64`, `run --exe` (exit 0) and `run --exe --arch win64` (exit 0), and `bug_repro.mjs vb6` (`Dim a As New: 5: Invalid procedure call or argument`). `run --llvm` ends before it returns, in both architectures. Pages: docs/Reference/Contributed/TBMANLIB_Diagnostic/List.md carries the NOTE labelled BETA 1005 after its SetItem sample, and that sample prints Err.Number only; remove the NOTE when a fix is released, and let the sample print Err.Description again with the output `5: Invalid procedure call or argument`. Its test case is ListTests.SetItem_AtZeroOnOneItemList_ErrorHasTheRuntimeText (expect.json: win32 fails, win64 passes). Found 2026-10-15 by an exe check of the documentation's samples. -->
+
+---
+
+## LLVM: `For ... Step x` runs with a wrong step when the procedure has a `ByRef Boolean` or `ByRef Integer` parameter after `x`
+
+**Describe the bug**
+In a project compiled with LLVM, in a 32-bit and in a 64-bit build, a `For i = 1 To 7 Step x` loop whose step `x` is a `ByVal Long` (or `ByVal Single`) parameter, in a procedure that also has a `ByRef` parameter declared `As Boolean` or `As Integer` after `x`, runs with a wrong step instead of `x`. The wrong value depends on where the caller's argument for the `ByRef` parameter is stored: it is 20 in a 64-bit build and 25 in a 32-bit build when that argument is a local variable of the caller, which is what the reproducer passes. `CountSteps(3, flag)` (the function in the reproducer, which counts the iterations) returns 1 where 3 is right, and `CountSteps(1, flag)` returns 1 where 7 is right. `For i = 100 To 1 Step -x` stops at 80 (64-bit) instead of 97. No error is raised. The same code is right without LLVM, in the exe and in the IDE run. It was found through TBMANLIB 1.0.0.29: its `cToolsStr.InsertSpan` (`Optional HeadFoot As Boolean` after the `ByVal SetpNum As Long` that becomes the step) returns `abcdefg` for `("abcdefg", "-", 3)` in a 64-bit LLVM exe, where `abc-def-g` is right. A procedure that uses the variables more can hide the defect: the same `InsertSpan` is right in a 32-bit LLVM build, while the plain counting loops are wrong in both.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm-for-step-constant.twinproj` (attached as `llvm-for-step-constant.zip`). It needs an LLVM licence (Ultimate). Its module `Startup` is:
+   ```
+   Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+   Private Function CountSteps(ByVal x As Long, ByRef flag As Boolean) As Long
+       Dim i As Long
+       Dim n As Long
+       For i = 1 To 7 Step x
+           n = n + 1
+           If n > 10 Then Exit For
+       Next i
+       CountSteps = n
+   End Function
+
+   Private Function CountStepsLong(ByVal x As Long, ByRef flag As Long) As Long
+       ' the same loop
+   End Function
+
+   Public Sub Main()
+       Dim flag As Boolean
+       Dim flagL As Long
+       If App.IsInIDE Then
+           Debug.Print "CountSteps(3, flag) = " & CountSteps(3, flag)
+           Debug.Print "CountSteps(1, flag) = " & CountSteps(1, flag)
+           Debug.Print "CountStepsLong(3, flagL) = " & CountStepsLong(3, flagL)
+       Else
+           ExitProcess CountSteps(3, flag)
+       End If
+   End Sub
+   ```
+2. In Project Settings, turn **Enable LLVM Compilation** on under **Compiler Options (BUILD)** and under **Compiler Options (DEBUG)**. The architecture can be 32-bit or 64-bit.
+3. Run the project in the IDE (F5), and build the exe and run it from a command prompt, reading its exit code (`echo %errorlevel%`).
+4. The DEBUG CONSOLE shows `CountSteps(3, flag) = 1` and `CountSteps(1, flag) = 1`, and the exe exits with code 1. Turn LLVM off and run again: the lines are `= 3` and `= 7`, and the exe exits with code 3. `CountStepsLong` prints 3 in every build.
+
+**Expected behavior**
+`CountSteps(3, flag)` returns 3 (the loop runs with i = 1, 4, 7) and `CountSteps(1, flag)` returns 7, as without LLVM.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+These are right in the same LLVM builds: the second parameter `ByRef ... As Long`, `Byte`, `Single`, `Currency`, `Date`, `Object`, `Double`, `String`, `Variant` or `LongPtr`; `ByVal ... As Boolean` or `As Integer`; the `ByRef Boolean` placed before `x`; no such parameter; a `Do` loop with `i = i + x`; a `For` without `Step`; and a literal `Step`. These are wrong too: `Step x * 1`, `Step y` for a second `ByVal` parameter, a local copied from `x`, the `ByRef` parameter `Optional` or required, and the argument passed or left out. A `Sub` and a class method are wrong in the same way, and so are a `ByVal Single` step and a `Long` step with an `Integer` loop variable. A `ByVal Integer`, `Double` or `Currency` step is right, and so is a `ByRef` Enum, a `ByRef` UDT holding a Boolean, a `ByRef Variant` or a `ByRef` Boolean array in the position of the 16-bit parameter.
+
+The wrong value does not change with the value of `x` or of the `ByRef` argument, with the loop's bounds or direction, with other literals in the procedure, with what the stack held before the call, or with the number of locals or parameters. It changes only with where the caller's argument for the `ByRef` parameter is stored. In every case tried it is that argument's address shifted right by 16 bits; this is an inference, and the generated code was not read:
+
+| argument passed for the `ByRef Boolean` | address | step |
+|---|---|---|
+| a local of the caller, 64-bit exe | `14F73E` | 20 |
+| a module-level variable, 64-bit exe | `14001D38A` | 81921 |
+| an array element, 64-bit exe | `4DCD70` | 77 |
+| a local of the caller, 32-bit exe | `19F912` | 25 |
+| a module-level variable, 32-bit exe | `41CE9E` | 65 |
+| an array element, 32-bit exe | `5EA7A0` | 94 |
+| a module-level variable, 64-bit IDE run | `18068DCE0` | 98408 |
+
+When the loop's start or end is a parameter as well, that bound is read wrong too. `For i = lo To hi Step x`, called with `(1, 7, 3)`, starts at 20 (64-bit) or 25 (32-bit) and does not run. With `For i = lo To 100000 Step x`, the 64-bit build also uses a step of 0, so the loop does not advance.
+
+A second read of `x` anywhere in a small procedure hides the defect. These are right: `t = x` before or after the loop, `If x <= 0 Then Exit Function` before it, passing `x` to a Sub, and an unused `y = x` beside `Step x`. These are still wrong: `Step (x)`, `Step CLng(x)`, and `y = x` followed by `Step y`. This is likely why `InsertSpan` is right in the 32-bit build. Passing the second parameter `ByVal`, declaring it `ByRef ... As Long`, or placing it before `x` avoids the defect.
+
+A related symptom appears in the 32-bit LLVM exe only. `Function P(ByVal s As String, ByVal x As Long, ByRef flag As Boolean)` with `For i = 1 To 100 Step x` ends the exe with an access violation in `ucrtbase.dll`, in three runs out of three. It does not crash with `ByRef flag As Long`, with `x` before `s`, with no loop, with a loop that does not use `x`, in the 64-bit build (which gives the wrong step) or without LLVM. Its cause was not found.
+
+Severity: high for a program built with LLVM that has such a loop: a wrong result with no error, in either architecture, in the IDE and in the exe.
+
+Not tried: `For Each`, and the generated code. Not understood: a `Double` loop variable with a `Long` step is wrong in the 64-bit build and right in the 32-bit one; a `Single` step is about 0 in the 64-bit build and 0.5000014 in place of 0.5 in the 32-bit one; and the cause of the 32-bit crash.
+
+<!-- Reproducer: bugs/llvm-for-step-constant/ (mode run with arch win64, llvm and exe: the DEBUG CONSOLE of the IDE run with LLVM has `CountSteps(3, flag) = 1` and `CountSteps(1, flag) = 1`, and tbrun --exe --llvm --arch win64 shows the exe exiting 1; expect is tbrun exit 6, those lines, and absent `CountSteps(3, flag) = 3` and `exit 3`); verified on BETA 1005 by `bug_repro.mjs verify`. Controls: `run --exe --arch win64` (no LLVM) prints 3, 7, 3 and the exe exits 3; `run --exe --llvm --arch win32` prints 1, 1, 3 and exits 1; an IDE run with LLVM (the probe without the exe) prints 1, 1, 3 in win64 and in win32. Pages: docs/LLVM/Getting-Started.md, "Language support", and docs/Reference/Core/For-Next.md carry the WARNING labelled BETA 1005; remove both when a fix is released. Found 2026-10-16 through TBMANLIB 1.0.0.29's cToolsStr.InsertSpan in a win64 LLVM exe; the cases in the additional context and the InsertSpan shape were run in the two narrowing sessions of that day (exe builds and, for the address table's last row and the bounds, IDE runs with LLVM) and are not in the reproducer. -->
 
 ---
 
@@ -4523,7 +3951,7 @@ End Module
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Which objects: the pointer is left as it was for an object of a class that twinBASIC compiles: a plain class, a class that implements an interface of the project, a form, the VB package's `CommandButton`, and (in another project, not attached) the `WebView2` control on a form. It is set to 0, correctly, for the objects of the runtime library: `Collection` and `Err` in the attached project, and `App`, `Screen` and a form's `Controls` in the other. A `Scripting.Dictionary` from the Scripting Runtime library sets it to 0 too.
@@ -4533,6 +3961,8 @@ What does not reproduce it: asking for an interface the object has. `IUnknown` a
 Severity: low. The failure is reported, by the HRESULT, so a caller that tests it is not affected. A caller that tests the pointer instead, as a C or C++ client may, sees the value it passed in. When the variable is reused after an earlier successful call, that value is a pointer the caller has released.
 
 <!-- Reproducer: bugs/queryinterface-leaves-out-pointer/ (mode run: expect lists the four lines of classes that twinBASIC compiles with out=12345 and the three runtime lines with out=0); verified on BETA 1005 by `bug_repro.mjs verify`, and run with --arch win64 too (the IDE's own run; not as a built exe, where Debug.Print writes nothing). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6`. The narrowed module above was run on its own in a scratch project (output `80004002       12345`); the interface needs only the interface identifier of IUnknown, Extends Nothing and a [PreserveSig] first method (no [OleAutomation(False)], no AddRef or Release). Pages: docs/Reference/Contributed/OLEGuids/IUnknownUnrestricted.md carries a NOTE for it after its QueryInterface section (its check_run sample uses a Collection, which sets the variable to 0, so it does not show the defect), and docs/Reference/COM-Interfaces/IUnknown.md carries one after the return value of its QueryInterface section; both NOTEs go when a fixed build is released. Found 2026-10-13 documenting the OLEGuids package. -->
+
+---
 
 ## A `For Each` that cannot get an enumerator never ends under `On Error Resume Next`
 
@@ -4581,7 +4011,7 @@ Enumerator raises error 5: header=1 body=1 errors: 5 | after Next: 92
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The same in a 32-bit and a 64-bit run. A package can meet it without the program's knowledge: the contributed package ArrayListLib returns `Nothing` from its enumerator for a list with no items, and its `ToString` method goes through a list with `For Each` under `On Error Resume Next`, so `ToString` of an empty list never returns.
@@ -4591,6 +4021,8 @@ The first error also differs from VB6's, which the handler cases show (VB6 in pa
 Severity: high. The program stops responding with no error, in code written to go on after an error, and a program that loops over what a package returns cannot see it coming.
 
 <!-- Reproducer: bugs/for-each-resume-next-loops/ (mode run: expect lists the control, the four Resume Next loops with body=6 and the first handler line); verified on BETA 1005 by `bug_repro.mjs verify`, and run with --arch win64 too. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6`. The narrowed module above was run on its own in a scratch project with tbrun (output 1000). Pages: docs/Reference/Core/For-Each-Next.md carries a WARNING after the paragraph on [Enumerator]; it goes when a fixed build is released, and with it the two mentions of "a twinBASIC defect" in docs/Reference/Contributed/ArrayListLib/index.md (Known problems: For Each over a list with no items, ToString). Found 2026-10-13 documenting the ArrayListLib package. -->
+
+---
 
 ## An assignment through a default member with an argument, written on a public field of an object, is refused with TB5090
 
@@ -4643,7 +4075,7 @@ The assignment compiles and calls the default member's `Property Let` (or `Prope
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The same in a 32-bit and a 64-bit compile. Met in the contributed package TBMANLIB, whose `cHttpClient` has a public `RequestHeaders` field that holds a dictionary: `Http.RequestHeaders("X-Key") = "1"` is refused and `Http.RequestHeaders.Item("X-Key") = "1"` is accepted.
@@ -4651,6 +4083,8 @@ The same in a 32-bit and a 64-bit compile. Met in the contributed package TBMANL
 Severity: low. The line is refused at compile time and the default member written out is a workaround.
 
 <!-- Reproducer: bugs/field-default-member-named-argument/ (mode compile: expect is TB5090; the project has the Scripting Runtime referenced for the Dictionary case); verified on BETA 1005 by `bug_repro.mjs verify`, and compiled with --arch win64 too. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6`; VB6 refuses the same lines, so that side lists them as comments and builds the rest. Pages: docs/Reference/Contributed/TBMANLIB/cHttpClient.md carries a NOTE (after its table of error codes) that names the TB5090 refusal and the `.Item` workaround; update it when a fixed build is released (if the fix accepts the assignment, the NOTE goes). Found 2026-10-13 documenting the TBMANLIB package. -->
+
+---
 
 ## Empty parentheses after a function result or a variable are accepted on a typed value and fail at run time on a Variant
 
@@ -4682,7 +4116,7 @@ A diagnostic for the value that is not a `Variant`, as VB6 gives: its build stop
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The same in a 32-bit and a 64-bit run. Met in the contributed package TBMANLIB, whose module `ToolsCN` has `Num = Asc(Mid(CnChar, i, 1))()` and `G = Chr(Num)()` in `GetPinYin`: the first line runs and returns the character code, the second raises the error, for every ASCII character.
@@ -4691,249 +4125,16 @@ Severity: low. Code that VB6 refuses is accepted and, for the types that are not
 
 <!-- Reproducer: bugs/empty-parentheses-after-value/ (mode run: expect lists the nine lines); verified on BETA 1005 by `bug_repro.mjs verify`, and run with --arch win64 too. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6`; VB6 refuses the six typed lines at compile time, so that side builds only the three Variant lines (error 9) and lists the others as comments with VB6's messages (each checked in a build of its own). Pages: docs/Reference/Contributed/TBMANLIB/ToolsCN.md's NOTE on GetPinYin names `G = Chr(Num)()` as the line that raises and says the parentheses after `Asc` have no effect, and docs/Reference/Contributed/TBMANLIB/index.md (Known problems) says GetPinYin fails for a text with an English letter, a digit or a space (both corrected 2026-10-13 and checked with check_run: "a" raises -2147467259, ChrW(233) returns "" with no error, ChrW(&H4E2D) raises on a Western code page, `Asc("a")()` is 97). When a fixed build is released, both statements change: if twinBASIC then refuses `()` after a value as VB6 does, TBMANLIB's ToolsCN no longer compiles, and the TBMANLIB section says so. Found 2026-10-13 documenting the TBMANLIB package. -->
 
-## An assignment to an element of a public array field of a class crashes the compiler
-
-**Describe the bug**
-`h.Values(1) = 5`, where `Values` is a public array field of a class (`Public Values(1 To 3) As Long`) and `h` is a variable of that class, crashes the compiler. The IDE prints `NATIVE EXCEPTION: ACCESS_VIOLATION` in the DEBUG CONSOLE, restarts the compiler on the same project, and it crashes again, three times in a run, so nothing in the project compiles while the line is there. The declaration alone does not crash it, and nor does the read of an element, which is refused with a diagnostic (TB5033, *Binding error, no datatype*), so the assignment is the one use that crashes the compiler instead of being compiled or refused.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `class-array-field-element-assignment-crash.twinproj` (attached as `class-array-field-element-assignment-crash.zip`). Its one source file, `Startup.twin`, holds the whole bug:
-   ```
-   Class Holder
-       Public Values(1 To 3) As Long
-   End Class
-
-   Module Startup
-
-       Public Sub Main()
-           Dim h As New Holder
-           h.Values(1) = 5
-       End Sub
-
-   End Module
-   ```
-2. Let the IDE compile it (it does so on opening).
-3. See the DEBUG CONSOLE: `NATIVE EXCEPTION: ACCESS_VIOLATION  {no-basic-code} [$1EAFA348:twinBASIC_win32.dll+000FA348]`, then `restarting from MEMORY [...]`, and the same exception twice more, each with a list of the compiler's threads in which the failing one is `>>> thread 0004: ResolveStageZ_CompilationsUnitStart, /ClassArrayFieldElementAssignmentCrash/Sources/Startup.twin; within unit Main; starting line 12`. Without the line `h.Values(1) = 5` the project compiles without a diagnostic.
-
-What it depends on, each tried in a project of its own:
-- the assignment crashes with the array bounds `(1 To 3)` and `(3)`, with `h` declared `As New Holder` or `As Holder`, and in a `With h` block (`.Values(1) = 5`); the class having other members does not change that (a `Sub`, or a field `Public X As Long`, with which the compiler also reports TB5131 at the declaration, as the next paragraph says);
-- it compiles when `h` is an `Object` variable that holds the `Holder` (late bound), when the assignment is inside the class, for an array of a user-defined type (`u.A(1) = 5`), and for a public array of a module (`Startup.A(1) = 5`);
-- a dynamic array field, `Public Values() As Long`, is refused instead of crashing: `ReDim h.Values(1 To 3)` gives TB5063 and `h.Values(1) = 5` gives TB5001, *cannot coerce type 'Integer' to [ByRef] 'Long()'*; so a public array field of a class cannot be indexed from outside the class at all.
-
-The declaration is also treated unevenly. TB5131, *class modules cannot expose public fixed-arrays*, is reported at `Public Values(1 To 3) As Long` when the class has a field of another type (`Public X As Long` before or after it), and not when the array is the class's only field, nor when the class has only arrays (two of them) or only arrays and methods. The crash is the same with and without TB5131.
-
-**Expected behavior**
-A diagnostic, or a compiled project. The assignment is refused the way the read of an element is, with a message that says what is wrong, and the project keeps compiling. VB6 refuses the declaration itself: its build stops with *Constants, fixed-length strings, arrays, user-defined types and Declare statements not allowed as Public members of object modules* (the attached VB6 project, `class-array-field-element-assignment-crash-vb6.zip`, has the line as a comment, with an indexed property in its place).
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-The same in a 32-bit and a 64-bit compile. Met while documenting the contributed package TBMANLIB: a probe project with a class that had a public fixed array, and a statement that assigned to one of its elements, crashed the compiler.
-
-Severity: high for a project that has the line. The compiler crashes on every attempt and restarts into the same crash, so the IDE reports nothing else about the project, and the line has to be found and removed by hand. No wrong code is produced.
-
-<!-- Reproducer: bugs/class-array-field-element-assignment-crash/ (mode compile; expect is tbbuild exit 4, the compiler crashing); verified on BETA 1005 by `bug_repro.mjs verify`, and compiled with --arch win64 too. The exception text above is from the IDE's DEBUG CONSOLE (tbbuild --keep, then the console read over CDP); the address is build-specific. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6`; the refusal message was got from a build with the line uncommented, since a refused build prints nothing to out.txt. The variants were scratch projects, not kept. Pages: none. Found 2026-10-13 while documenting the TBMANLIB package: the probe project of that session crashed the compiler on `L.A(1) = 5` among nine other, harmless, lines. -->
-
 ---
 
-## Setting a Slider's `BackColor` at run time does not change what the control shows, even after the window is invalidated
+## `[RunBeforeStartupObject]` on a generic procedure fails the build with a message that names neither the procedure nor the reason
 
 **Describe the bug**
-The Slider of the WinNativeCommonCtls package keeps drawing its old background after `BackColor` is set at run time. The new colour appears only after the control is hidden and shown again. Invalidating the window (`InvalidateRect` and `UpdateWindow`) does not make it appear. Observed by reading a pixel of the control's window with `GetPixel`, and by eye.
-The Slider hands out its `BackColor` only in its handler of the `WM_CTLCOLORSTATIC` message (`HandleGetColors`, in `CONTROLS/Slider.twin`), and has no handler for the property being set. The ProgressBar and the ListView of the same package have one (`BackColorChanged`, `Handles BackColor.OnPropertyLet`), which validates the colour and repaints.
+Follow-up to #2517, which is fixed in BETA 1009 for the crash: building a project that has `[RunBeforeStartupObject]` on a generic procedure no longer crashes the compiler. This is what is left: the build fails with the single line *Build FAILED due to invalid RunBeforeStartupObject procedure*, which names neither the procedure nor the reason, that it is generic, and the IDE's compile still reports nothing about it. So the line is found only by building, and then by searching the project for the attribute. Observed in the DEBUG CONSOLE of a build.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `slider-backcolor-no-repaint.twinproj` (attached as `slider-backcolor-no-repaint.zip`). `Form1` holds one Slider, `Slider1`, with a design-time `BackColor` of `&H808080`.
-2. Run the project (F5). `Sub Main` shows `Form1`, lets it paint, and then does:
-   ```
-   Form1.Slider1.BackColor = vbRed
-   Settle                  ' DoEvents and Sleep 25, twenty times
-   Debug.Print "BackColor set to &H" & Hex$(Form1.Slider1.BackColor) & ", pixel = &H" & Hex$(Corner())
-   ```
-   where `Corner` is `GetPixel` on `GetDC(Form1.Slider1.hWnd)` at (2, 2), a point outside the channel and the thumb. It then calls `InvalidateRect` and `UpdateWindow` on the Slider's window and reads the pixel again, and last sets `Visible` to `False` and back to `True` and reads it a third time.
-3. See in the DEBUG CONSOLE:
-   ```
-   painted, BackColor = &H808080, pixel = &H808080
-   BackColor set to &HFF, pixel = &H808080
-   after InvalidateRect and UpdateWindow, pixel = &H808080
-   after Visible = False, True, pixel = &HFF
-   ```
-
-**Expected behavior**
-The Slider shows `BackColor` as soon as it is set: the second line ends `pixel = &HFF`. A control that is invalidated draws its current `BackColor`, so the third line does too. The ProgressBar and ListView of the same package repaint when their `BackColor` is set.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-`GetPixel` reads what is on screen. `PrintWindow` is not used because it makes the window paint itself, which would show the new colour and hide the defect.
-Tried in a scratch variant, not kept: `RedrawWindow` with `RDW_INVALIDATE Or RDW_ERASE Or RDW_UPDATENOW Or RDW_ALLCHILDREN`, and a change of `Slider1.Value`, left the pixel at `&H808080` too. Minimising and restoring the form, and resizing it, were tried only after the hide and show, so they show nothing about this.
-Severity: low. The colour is wrong until the control is hidden and shown, and nothing is lost.
-VB6 was not tried.
-
-<!-- Reproducer: bugs/slider-backcolor-no-repaint/ (mode run; expect is the four DEBUG CONSOLE lines above, verified on BETA 1005 by `bug_repro.mjs verify`; the form is shown on the IDE's private desktop). Page: docs/Reference/Built-In/WinNativeCommonCtls/Slider.md carries the callout, its BackColor NOTE labelled BETA 1005; remove it when a fix is released. Found 2026-10-14 while documenting WinNativeCommonCtls colours; the owner saw it by eye. -->
-
----
-
-## `ListItem.BackColor` raises error 380 when it is assigned its own default, -1, so a row that has a colour cannot return to the list's colour
-
-**Describe the bug**
-The `BackColor` of a ListItem (WinNativeCommonCtls) defaults to `-1`, which means "use the ListView's `BackColor`" (`SUPPORT/ListItem.twin`: `Public BackColor As OLE_COLOR = -1`, with the comment `CLR_NONE`). Assigning `-1` to a row that has been given a colour raises error 380, *Invalid property value*. The row keeps its colour, so once a row has a colour of its own there is no way back to the list's colour.
-The cause is `BackColorChanged`, which calls `VB.CommonValidateColorOrRevert`. In BETA 1005 that function refuses `-1` (the change that made every colour property of the VB controls refuse a value that is not a colour); `-1` is the one value this property uses on purpose. Assigning `-1` to a new item, which already holds `-1`, raises nothing, because nothing changes.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `listitem-backcolor-default-refused.twinproj` (attached as `listitem-backcolor-default-refused.zip`). `Form1` holds one ListView, `ListView1`, and the module `ListItemBackColorTests` holds the test cases.
-2. Run, with `On Error Resume Next`:
-   ```
-   Load Form1
-   Set item = Form1.ListView1.ListItems.Add(, , "row")
-   item.BackColor = vbYellow
-   item.BackColor = -1
-   Debug.Print Err.Number, item.BackColor
-   ```
-3. See `380` and `65535`. Expected `0` and `-1`.
-
-The module below is the reproducer's, and is meant to be adapted as a regression test. On BETA 1005 the first four cases pass and the last fails with `Expected: 0, Actual: 380`.
-```vb
-[TestFixture]
-Module ListItemBackColorTests
-
-    Private Const UseListColour As Long = -1
-
-    [TestCase]
-    Public Sub DefaultIsUseListColour()
-        Dim item As ListItem, value As Long
-        Load Form1
-        Set item = Form1.ListView1.ListItems.Add(, , "row")
-        value = item.BackColor
-        Unload Form1
-        Assert.Strict.AreEqual UseListColour, value, "the default"
-    End Sub
-
-    [TestCase]
-    Public Sub ColourIsAccepted()
-        Dim item As ListItem, number As Long, value As Long
-        Load Form1
-        Set item = Form1.ListView1.ListItems.Add(, , "row")
-        On Error Resume Next: item.BackColor = vbYellow: number = Err.Number: On Error GoTo 0
-        value = item.BackColor
-        Unload Form1
-        Assert.Strict.AreEqual 0, number, "the error"
-        Assert.Strict.AreEqual CLng(vbYellow), value, "the colour"
-    End Sub
-
-    [TestCase]
-    Public Sub DefaultAssignedToNewItem()
-        Dim item As ListItem, number As Long, value As Long
-        Load Form1
-        Set item = Form1.ListView1.ListItems.Add(, , "row")
-        On Error Resume Next: item.BackColor = UseListColour: number = Err.Number: On Error GoTo 0
-        value = item.BackColor
-        Unload Form1
-        Assert.Strict.AreEqual 0, number, "the error"
-        Assert.Strict.AreEqual UseListColour, value, "the colour"
-    End Sub
-
-    [TestCase]
-    Public Sub ColourIsKeptWhenDefaultIsAssigned()
-        Dim item As ListItem, value As Long
-        Load Form1
-        Set item = Form1.ListView1.ListItems.Add(, , "row")
-        item.BackColor = vbYellow
-        On Error Resume Next: item.BackColor = UseListColour: On Error GoTo 0
-        value = item.BackColor
-        Unload Form1
-        Assert.Strict.AreEqual True, (value = CLng(vbYellow) Or value = UseListColour), "yellow or the list's colour"
-    End Sub
-
-    [TestCase]
-    Public Sub DefaultAssignedAfterColour()
-        Dim item As ListItem, number As Long, value As Long
-        Load Form1
-        Set item = Form1.ListView1.ListItems.Add(, , "row")
-        item.BackColor = vbYellow
-        On Error Resume Next: item.BackColor = UseListColour: number = Err.Number: On Error GoTo 0
-        value = item.BackColor
-        Unload Form1
-        Assert.Strict.AreEqual 0, number, "the error"
-        Assert.Strict.AreEqual UseListColour, value, "the colour"
-    End Sub
-
-End Module
-```
-
-**Expected behavior**
-Assigning `-1` to `ListItem.BackColor` is accepted and the row is drawn in the ListView's `BackColor` again, as for a new row. `-1` is the property's default and its documented meaning, so the colour check has to let it through for this property (the controls of the VB package have no such value, and refusing it there is right). MSCOMCTL's ListItem has no `BackColor`, so VB6 has nothing to compare.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-A ListItem's `ForeColor` defaults to a system colour, not to -1, so the same check does no harm there. Severity: low. A program can only give a row a colour that looks like the list's, and the row is not changed by the refused assignment.
-
-<!-- Reproducer: bugs/listitem-backcolor-default-refused/ (mode test; expect is the four PASS lines and the FAIL line of DefaultAssignedAfterColour, verified on BETA 1005 by `bug_repro.mjs verify`). Page: docs/Reference/Built-In/WinNativeCommonCtls/ListView/ListItem.md carries the callout, its BackColor NOTE labelled BETA 1005; remove it when a fix is released. Found 2026-10-14 while documenting WinNativeCommonCtls colours. -->
-
----
-
-## A call to a `Declare Function` marked `[ConstantFoldable]` crashes the build when Constant Function Folding is on
-
-**Describe the bug**
-With **Constant Function Folding** set to **Yes** in Project Settings (`"optimizer.constantFunctionFolding": true`), a `Declare Function` that carries `[ConstantFoldable]` (or `[ConstantFoldableNumericsOnly]`) and is called with constant arguments crashes the compiler during the build. The project compiles clean (0 errors, 0 warnings); Build then prints `NATIVE EXCEPTION: ACCESS_VIOLATION` in the DEBUG CONSOLE, the IDE restarts the compiler on the project, the same exception follows, and no exe is written.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `constantfoldable-declare-crash.twinproj` (attached as `constantfoldable-declare-crash.zip`). Its project has Constant Function Folding set to Yes, and its one source file, `Startup.twin`, holds the whole bug:
-   ```
-   Module Startup
-
-       Public Sub Main()
-           GetCurrentProcessId
-       End Sub
-
-       [ConstantFoldable]
-       Declare Function GetCurrentProcessId Lib "kernel32" () As Long
-
-   End Module
-   ```
-2. Let the IDE compile it: no diagnostic.
-3. Build the project (**Build**, or `node scripts/tbbuild.mjs <project> --build`). See the DEBUG CONSOLE: `NATIVE EXCEPTION: ACCESS_VIOLATION  {unknown} [$00000000]`, then `restarting from MEMORY [...]` and the same exception again. The build produces no exe.
-
-What it depends on, each tried in a project of its own:
-- it needs the setting on, the attribute and a call: with Constant Function Folding off the project builds; without `[ConstantFoldable]` it builds; with the attribute and no call (`Sub Main` empty) it builds;
-- every argument of the call must be a constant, and a call with none counts: `r = DSleepFn(5, 0)` for `Declare Function DSleepFn Lib "kernel32" Alias "SleepEx" (ByVal ms As Long, ByVal a As Long) As Long` crashes, and so does the zero-argument call above. With a variable for either argument (`v = 5: r = DSleepFn(v, 0)`, or `DSleepFn(5, v)`) it builds;
-- `[ConstantFoldableNumericsOnly]` crashes as `[ConstantFoldable]` does; `Declare`, `Declare PtrSafe`, `Private Declare` and `DeclareWide` all crash; the call may be a statement or the right side of an assignment;
-- a `[ConstantFoldable]` ordinary `Function` in a Module, called with a constant, builds (it is folded, which is what the attribute is for), and so does a `Declare Sub`.
-
-**Expected behavior**
-A built exe. A call to a Declare is not a pure function of its arguments (it calls into a DLL), so it is either not folded, or the attribute is refused on a `Declare Function` with a diagnostic, as it is refused on a method of a class. The compiler does not crash. The attribute does not exist in VB6, and neither does Constant Function Folding.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
-
-**Additional context**
-The same in a 32-bit and a 64-bit build. The IDE's compile (what runs when a project is opened or edited) is clean, so the editor shows no sign of the problem; only Build crashes, so a project can hold the line for a long time before it is noticed.
-Severity: medium. The build crashes every time, and the compiler restarts into the same crash, but the project compiles and runs from the IDE, and removing the attribute or the setting fixes it. No wrong code is produced.
-
-<!-- Reproducer: bugs/constantfoldable-declare-crash/ (mode build; expect is tbbuild exit 5 and ACCESS_VIOLATION in the message); verified on BETA 1005 by `bug_repro.mjs verify`, and built with --arch win64 too. Narrowed from the SleepEx form (probe fp1 to fp4 of the attribute sweep): the arguments need not be there, and PtrSafe is not needed. Page: docs/Reference/Attributes.md carries the callout, a `> [!WARNING] BETA 1005`, entry ConstantFoldable (ConstantFoldableNumericsOnly refers to it); remove it when a fix is released. Found 2026-10-15 while probing the attributes at sites the page does not list. -->
-
----
-
-## `[RunBeforeStartupObject]` on a generic procedure crashes the build
-
-**Describe the bug**
-`[RunBeforeStartupObject]` on a generic procedure of a Module, `Public Sub Pre(Of T)()`, compiles without a diagnostic and then crashes the compiler during the build. The DEBUG CONSOLE shows `NATIVE EXCEPTION: ACCESS_VIOLATION`, the IDE restarts the compiler on the project, the same exception follows, and no exe is written.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `runbeforestartupobject-generic-crash.twinproj` (attached as `runbeforestartupobject-generic-crash.zip`). Its one source file, `Startup.twin`, holds the whole bug:
+1. Open `runbeforestartupobject-generic-message.twinproj` (attached as `runbeforestartupobject-generic-message.zip`). Its one source file:
    ```
    Module Startup
 
@@ -4947,242 +4148,1141 @@ Steps to reproduce the behavior:
    End Module
    ```
 2. Let the IDE compile it: no diagnostic.
-3. Build the project. See the DEBUG CONSOLE: `NATIVE EXCEPTION: ACCESS_VIOLATION  {no-basic-code} [$1EA2AFE8:twinBASIC_win32.dll+0002AFE8]`, then `restarting from MEMORY [...]` and the same exception again. No exe is written.
+3. Build it. The DEBUG CONSOLE shows only:
+   ```
+   [BUILD] Starting...
+   Build FAILED due to invalid RunBeforeStartupObject procedure
+   [BUILD] failed
+   ```
 
-What it depends on, each tried in a project of its own:
-- the generic procedure with the attribute alone is the cause: `Pre(Of T)` without the attribute builds, and `Pre()` with it, not generic, builds;
-- a generic `Function` crashes too (`Public Function Pre(Of T)() As Boolean`); the body, an empty Sub or Function, does not matter, and nothing calls `Pre`.
+The same with a generic `Public Function Pre(Of T)() As Boolean`, and in a 64-bit build. With another `[RunBeforeStartupObject]` procedure after the generic one, the build succeeds and the generic one is ignored without a word (the next entry, on more than one such procedure).
+
+No `[TestCase]` reaches a build, so the regression check is a set of one-module projects, each built, with the assertion it makes; it covers #2517 as well. Each module also has an empty `Public Sub Main()`, and the project's startup object is `Sub Main`.
+
+| the module's procedure | assertion | BETA 1010 |
+|---|---|---|
+| `[RunBeforeStartupObject] Public Sub Pre(Of T)()` | the build ends without the compiler crashing or restarting (#2517) | passes |
+| `[RunBeforeStartupObject] Public Sub Pre(Of T)()` | the build, or the compile, reports a diagnostic that names `Pre` and says the attribute is not allowed on a generic procedure | fails |
+| `[RunBeforeStartupObject] Public Function Pre(Of T)() As Boolean` | as the two rows above | passes, fails |
+| `[RunBeforeStartupObject] Public Function Pre() As Boolean`, which writes a line and returns `False`, while `Main` writes another | the build succeeds, and the exe writes Pre's line, then Main's | passes |
+| `Public Sub Pre(Of T)()`, without the attribute | the build succeeds | passes |
 
 **Expected behavior**
-Either a diagnostic that the attribute is not allowed on a generic procedure, or a built exe in which `Pre` runs before `Main` (what it does on a procedure that is not generic). The compiler does not crash. The attribute does not exist in VB6.
+A diagnostic that names the procedure (`Startup.Pre`) and says that the attribute is not allowed on a generic procedure. #2517 asked for "a diagnostic that the attribute is not allowed on a generic procedure", or a built exe in which `Pre` runs; BETA 1010 gives a diagnostic, but one that says only that some `RunBeforeStartupObject` procedure is invalid. The compile is the better place for it, with the line, as TB5114 is reported for a second `[RunAfterBuild]`, so that it shows before the first build; a build message that names the procedure and the reason would also do. The attribute does not exist in VB6.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-The same in a 32-bit and a 64-bit build. Only Build crashes: the IDE's compile and the sweep of the attribute's sites find no problem, so the line stays unnoticed until the first build.
-Severity: medium. The build crashes every time, and the compiler restarts into the same crash; removing the attribute from the generic procedure fixes it.
+Follow-up to #2517, "`[RunBeforeStartupObject]` on a generic procedure crashes the build", closed as fixed in BETA 1009.
 
-<!-- Reproducer: bugs/runbeforestartupobject-generic-crash/ (mode build; expect is tbbuild exit 5 and ACCESS_VIOLATION in the message); verified on BETA 1005 by `bug_repro.mjs verify`, and built with --arch win64 too. Narrowed from probe rs6b of the attribute sweep, which had the same two procedures: the generic Function crashes as well, a generic Sub with no attribute and a plain Sub with it do not. Page: docs/Reference/Attributes.md carries the callout, a `> [!WARNING] BETA 1005`, entry RunBeforeStartupObject; remove it when a fix is released. Found 2026-10-15 while probing the attributes at sites the page does not list. -->
+Severity: low. The build stops, so nothing goes wrong unnoticed, but in a project of many modules the procedure has to be found by hand.
+
+<!-- Reproducer: bugs/runbeforestartupobject-generic-message/ (mode run: tbrun builds it, the build fails with exit 2, and expect.message is the build line anchored at both ends, so a message that names the procedure or the reason no longer matches, and a compile-time diagnostic changes the exit code); verified on BETA 1010 by `bug_repro.mjs verify`. The generic Function, the 64-bit build, and the non-generic and attribute-less controls were built with tbbuild --build on BETA 1010 (scratch projects, not kept). Page: docs/Reference/Attributes.md, RunBeforeStartupObject, the `> [!NOTE] BETA 1010` quoting the message; when a fixed build is released, the NOTE goes and the paragraph states the diagnostic the build then gives. -->
 
 ---
 
-## `[RunAfterBuild]` on a generic Sub is accepted and the Sub never runs
+## Of several `[RunBeforeStartupObject]` procedures only the last one runs, and one with parameters runs with arbitrary values for them
 
 **Describe the bug**
-A Sub marked `[RunAfterBuild]` runs in the IDE once the build has finished. When the Sub is generic (`Public Sub Built(Of T)()`), the attribute is accepted with no diagnostic, the project builds, and the DEBUG CONSOLE says `[BUILD] Executing '...Built'...` as it does for any other such Sub, but the body of the Sub is never run: its `Debug.Print` prints nothing and a file it opens is not written. The compiler does count the Sub as the project's `[RunAfterBuild]`, since a second one is TB5114, *encountered too many [RunAfterBuild] attributes. Only allowed one per-project*.
+The compiler accepts `[RunBeforeStartupObject]` on more than one procedure, with no diagnostic, and the built program runs only the last of them in the source; the others never run. A second `[RunAfterBuild]`, by contrast, is refused with TB5114, *encountered too many [RunAfterBuild] attributes. Only allowed one per-project.* The compiler also accepts the attribute on a procedure with parameters, and the program calls it with whatever values happen to be there: a `ByVal N As Long` was 1976434377 in a 32-bit build and 4481000 in a 64-bit one, and an `Optional ByVal Count As Long = 3` is not given its default either. Observed in built exes, 32-bit and 64-bit.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `runafterbuild-generic-sub-never-runs.twinproj` (attached as `runafterbuild-generic-sub-never-runs.zip`). Its one source file, `Startup.twin`, holds the whole bug:
+1. Open `runbeforestartupobject-unchecked.twinproj` (attached as `runbeforestartupobject-unchecked.zip`). Its one source file:
    ```
    Module Startup
 
-       Public Sub Main()
+       Private Sub Out(ByVal Text As String)
+           Dim file As String = Environ$("TBRUN_OUT")
+           If Len(file) = 0 Then file = App.Path & "\out.txt"
+           Dim f As Integer = FreeFile
+           Open file For Append As #f
+           Print #f, Text
+           Close #f
        End Sub
 
+       [RunBeforeStartupObject]
+       Public Function First() As Boolean
+           Out "First ran"
+       End Function
+
+       [RunBeforeStartupObject]
+       Public Function Second(Optional ByVal Count As Long = 3) As Boolean
+           Out "Second ran, Count = " & Count
+       End Function
+
+       [RunBeforeStartupObject]
+       Public Function Third(ByVal N As Long) As Boolean
+           Out "Third ran, N = " & N
+       End Function
+
+       Public Sub Main()
+           Out "Main ran"
+       End Sub
+
+       ' For tbrun, which also runs the project in the IDE after the build.
        [RunAfterBuild]
-       Public Sub Built(Of T)()
+       Private Sub Built()
            Debug.Cls
            Debug.Print "built"
        End Sub
 
    End Module
    ```
-2. Build the project.
-3. See the DEBUG CONSOLE: the build log, ending `[BUILD] Executing 'RunafterbuildGenericSubNeverRuns.Startup.Built'...`, and no line `built` after it. Remove `(Of T)` and build again: `built` is printed (the console is cleared first, so it is the only line).
+2. Build it: no diagnostic. Run the exe and read `out.txt` beside it:
+   ```
+   Third ran, N = 1976434377
+   Main ran
+   ```
+   `First` and `Second` never run, and `N` is not a value anything passed (it differs between builds).
+3. Remove the attribute from `First` and `Third`, build and run again: `Second ran, Count = 1976434377`, not 3.
 
-Tried in a project of its own: a body that opens a file under `Environ("TEMP")` and writes a line to it, in place of the `Debug.Print`; the file is not created. The same in a 32-bit and a 64-bit build.
+What it depends on, each built and run as an exe:
+- the order in the source decides which one runs: the last;
+- a generic procedure (#2517) before another `[RunBeforeStartupObject]` procedure is ignored and the build succeeds; after it, the build fails (the entry above);
+- two such procedures in different modules also build with no diagnostic.
+
+No `[TestCase]` reaches the startup of an exe, so the regression check is a set of one-module projects, each built and run as an exe whose procedures write a line each, as above:
+
+| the module's `[RunBeforeStartupObject]` procedures, besides `Main` | assertion | BETA 1010 |
+|---|---|---|
+| `Function First() As Boolean`, returning `False` | the exe writes First's line, then Main's | passes |
+| `First` and `Second()`, both without parameters | a diagnostic for the second one, as TB5114 is for `[RunAfterBuild]`; or both run, in order, before Main | fails: only Second runs |
+| `Function Third(ByVal N As Long) As Boolean` | a diagnostic: the program has no argument to pass | fails: runs with an arbitrary N |
+| `Function Second(Optional ByVal Count As Long = 3) As Boolean` | it runs with Count = 3, or a diagnostic | fails: runs with an arbitrary Count |
 
 **Expected behavior**
-The Sub runs after the build, as it does without `(Of T)`, or the attribute is refused on a generic Sub with a diagnostic (as `[RunAfterBuild]` is refused on a second procedure, TB5114). A Sub that the compiler accepts, counts and announces as executing runs. The attribute does not exist in VB6.
+A compile error for a second `[RunBeforeStartupObject]` procedure, as for a second `[RunAfterBuild]`, unless several are meant to run, in which case each runs, in order. A compile error for a procedure with a parameter that has no default, since the program has nothing to pass to it; a procedure whose parameters are all `Optional` is called with their defaults, or refused too. The documentation describes the attribute on one procedure, with no parameters. The attribute does not exist in VB6.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-`[RunAfterBuild]` on a `Function` and on a `Property Get` in a Module runs as it does on a Sub, in the same project layout.
-Severity: low. Nothing crashes and nothing is lost; the code the author expected to run does not, with no message.
+Found while checking the fix of #2517 ("`[RunBeforeStartupObject]` on a generic procedure crashes the build"), whose build-time check catches a generic procedure only when it is the last one.
 
-<!-- Reproducer: bugs/runafterbuild-generic-sub-never-runs/ (mode run with exe, so that tbrun reads the DEBUG CONSOLE; expect is the `Executing` line, no `built` line, and the exe exiting 0); verified on BETA 1005 by `bug_repro.mjs verify`, and run with --arch win64 too. Control: the same project with `Built()` not generic prints `built` (scratch variant, not kept). The first reproducer tried was `run` without `exe`, which fails with TB5114 because the harness adds a [RunAfterBuild] Sub of its own, which is how the counting was seen. Page: docs/Reference/Attributes.md carries the callout, a `> [!WARNING] BETA 1005`, entry RunAfterBuild; remove it when a fix is released. Found 2026-10-15 while probing the attributes at sites the page does not list (probe rb3, control rb4). -->
+Severity: medium. Nothing reports either case: a startup procedure that never runs, or one that runs on values nobody passed, goes unnoticed until its effects are missed.
+
+<!-- Reproducer: bugs/runbeforestartupobject-unchecked/ (mode run with "exe": expect lists Third's line and Main's, and absent First's and Second's and an N of 0); verified on BETA 1010 by `bug_repro.mjs verify`, and run with --arch win64 too. The Optional case, the generic-before-plain order and the two-module case were scratch projects on BETA 1010 (tbrun --exe, tbbuild --build), not kept; which of the two procedures in different modules runs was not checked. scripts/lib/attribute-sweep.mjs says the compiler allows RunBeforeStartupObject once per project, "TB5114 on a second": that is true of RunAfterBuild only, though the sweep is right to hold one per batch. Page: docs/Reference/Attributes.md, RunBeforeStartupObject, the `> [!WARNING] BETA 1010`; when a fixed build is released, the WARNING goes and the paragraph states what the compiler then does with a second procedure and with parameters. -->
 
 ---
 
-## Some VB6 attribute lines have no effect in a built type library
+## An index out of range on a fixed-size array member of a UDT raises -2147467259, *Unspecified error*, where VB6 raises error 9
 
 **Describe the bug**
-twinBASIC reads the `Attribute` lines of a `.cls` file, and the IDE's VB6 import keeps them as VB6 wrote them, but some of them do not reach the type library of the built DLL. `VB_HelpID` and `VB_VarHelpID` leave the class and its members with help context 0. `VB_VarMemberFlags = "40"` and `"400"` leave a public field neither hidden nor nonbrowsable. `VB_MemberFlags = "200"` (user-interface default) and `"14"` (bindable and displaybind) leave the member with no flags. No diagnostic says so. The other attribute lines do take effect in the same build: `VB_Description`, `VB_VarDescription`, `VB_UserMemId`, `VB_VarUserMemId`, `VB_MemberFlags = "40"`, `"400"` and `"440"`, `VB_Creatable`, `VB_GlobalNameSpace`, `VB_PredeclaredId` and `VB_Exposed`. Seen by reading the built DLL's type library with `LoadTypeLibEx`.
+An index outside the bounds of a fixed-size array that is a member of a user-defined type, as in `u.A(4) = 1` where the type declares `A(1 To 3) As Long`, raises error -2147467259 (`&H80004005`), *Unspecified error*, where VB6 raises error 9, *Subscript out of range*. A handler that tests for 9 does not recognise it. Observed in a run in the IDE, in built exes (32-bit and 64-bit) and in the compiler's test mode.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Unzip `vb6-attribute-lines-no-effect.zip` and open `vb6-attribute-lines-no-effect.twinproj`: an ActiveX DLL with **Register DLL after build** off, so building it registers nothing. `Attrs.cls` holds the lines; `TwinAttrs.twin` is the control.
-2. Build it.
-3. Open the DLL's type library in OLE/COM Object Viewer (**File → View TypeLib...**).
-4. See the coclass `Attrs` with no `helpcontext`, and in `_Attrs`: `HiddenField` and `UnbrowsedField` with neither `hidden` nor `nonbrowsable`, `HelpField` and `WithHelp` with no `helpcontext`, `UiDefault` without `uidefault`, and `Bound` without `bindable` or `displaybind`.
-5. See `HiddenMethod`, whose line is `VB_MemberFlags = "40"`, marked `hidden`, and `TwinAttrs.HiddenField`, written with `[Hidden]`, marked `hidden` too.
+1. Open `udt-array-member-subscript-error.twinproj` (attached as `udt-array-member-subscript-error.zip`).
+2. Run its test cases, the module below. On BETA 1010 the four controls pass (an array that is not in a UDT, local or at module level; an index in range; a dynamic array member of a UDT, which raises 9) and the seven cases on a fixed-size array member fail with `Actual: -2147467259`: a write above the upper bound, below the lower bound, a read, a two-dimensional member, a module-level UDT and an element of an array of UDTs; `Err.Description` is *Unspecified error*.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`udt-array-member-subscript-error-vb6.zip`) prints: 9, *Subscript out of range*, in every case.
+```vb
+' Regression tests: an index out of range on an array that is a member of a
+' user-defined type raises error 9, "Subscript out of range", as it does on an
+' array that is not in a UDT. Expected numbers are VB6's (the VB6 project beside
+' this one prints them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Type Holder
+        X As Long
+        A(1 To 3) As Long
+        M(1 To 2, 1 To 2) As Long
+        D() As Long
+    End Type
+
+    Private ModuleLevel As Holder
+    Private ModuleArray(1 To 3) As Long
+
+    ' Controls: an array that is not in a UDT, and an index in range.
+    [TestCase]
+    Public Sub PlainArray_WriteAboveRange_Raises9()
+        Dim a(1 To 3) As Long
+        On Error Resume Next
+        a(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ModuleLevelArray_WriteAboveRange_Raises9()
+        On Error Resume Next
+        ModuleArray(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_WriteInRange_Stores()
+        Dim u As Holder
+        u.A(3) = 7
+        Assert.Strict.AreEqual 7&, u.A(3)
+    End Sub
+
+    ' An index out of range on a member of a UDT.
+    [TestCase]
+    Public Sub UdtMember_WriteAboveRange_Raises9()
+        Dim u As Holder
+        On Error Resume Next
+        u.A(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_WriteBelowRange_Raises9()
+        Dim u As Holder
+        On Error Resume Next
+        u.A(0) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_ReadAboveRange_Raises9()
+        Dim u As Holder
+        Dim r As Long
+        On Error Resume Next
+        r = u.A(4)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_TwoDimensions_Raises9()
+        Dim u As Holder
+        On Error Resume Next
+        u.M(1, 3) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtDynamicMember_WriteAboveRange_Raises9()
+        Dim u As Holder
+        ReDim u.D(1 To 3)
+        On Error Resume Next
+        u.D(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ModuleLevelUdtMember_WriteAboveRange_Raises9()
+        On Error Resume Next
+        ModuleLevel.A(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtArrayElementMember_WriteAboveRange_Raises9()
+        Dim us(1 To 2) As Holder
+        On Error Resume Next
+        us(1).A(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_ErrorDescription()
+        Dim u As Holder
+        On Error Resume Next
+        u.A(4) = 1
+        Assert.Strict.AreEqual "Subscript out of range", Err.Description
+    End Sub
+
+End Module
+```
 
 **Expected behavior**
-Each line gives what it asks for, as its neighbours do: a help context of 2000, 2001 and 2002, a hidden field as `[Hidden]` gives on a field and as `VB_MemberFlags = "40"` gives on a method, a nonbrowsable field, and `FUNCFLAG_FUIDEFAULT`, `FUNCFLAG_FBINDABLE` and `FUNCFLAG_FDISPLAYBIND`. VB6 writes these lines from its Procedure Attributes dialog, so a VB6 component imported into twinBASIC and built again loses its help context IDs, its hidden fields and its data-binding flags without a word. twinBASIC has no attribute of its own for a help context ID, a user-interface default or data binding, so these lines are the only way to ask for them.
+Error 9, *Subscript out of range*, as VB6 raises in every case above, and as twinBASIC raises for a fixed-size array that is not in a UDT and for a dynamic array member of a UDT.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-The import is not the cause: it keeps every `Attribute` line of a `.bas` and a `.cls` byte for byte, and those of a `.frm`, `.ctl` and `.pag` inside the class it writes. The type information a class has at run time in the IDE carries no flags and no descriptions for any member, whichever way they are written, so the built DLL is where to look. `[NonBrowsable]` on a public field leaves it without `nonbrowsable` as well. A VB6 build of the same class was not made: VB6 registers an ActiveX DLL as it builds it. Severity: medium for anyone moving a VB6 component to twinBASIC under binary compatibility; nothing fails, and the loss shows only to the component's users, in their object browsers and data-binding dialogs.
+The same on BETA 1007. Found while checking the fix of #2521 ("An assignment to an element of a public array field of a class crashes the compiler"), whose report said that an assignment to an element of an array member of a UDT, `u.A(1) = 5`, compiles; it does, and an index in range works.
 
-<!-- Lane mode in bugs/vb6-attribute-lines-no-effect/repro.json: asserted by `ide-test.bat --only vb6-import` (test/ide/vb6-import.test.mjs), whose test of the same name passes on BETA 1005; the lane imports test/ide/probes/vb6-import with the IDE's own Import from VBP..., builds it with project.dllRegisterAfterBuild false and reads the type library with LoadTypeLibEx (REGKIND_NONE). Page: docs/Miscellaneous/FAQs.md, #vb6-import, carries the WARNING labelled BETA 1005; remove it when a fix is released, and move the lines it names into the list of lines that take effect. Found 2026-10-14 while testing what the VB6 import makes of Attribute lines. -->
+Severity: low to moderate. An error is raised wherever VB6 raises one, so no failure goes unreported, but a handler that tests for 9 does not recognise it, and *Unspecified error* does not say what is wrong.
+
+<!-- Reproducer: bugs/udt-array-member-subscript-error/ (mode test: `tbrun --tests`; expect lists the four PASS and seven FAIL lines, each FAIL with the number or text BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. The same numbers in an IDE run and in exes (tbrun --exe, win32 and win64) and in an IDE run on BETA 1007, from a scratch probe not kept. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 9 for all nine. No page states the error number: docs/Reference/Core/Type.md describes fixed-size arrays in a UDT without it. -->
 
 ---
 
-## A `GoSub` in an exe built with LLVM ends the program with an access violation
+## `CreateObject` and `GetObject` raise a COM error code where VB6 raises error 429, *ActiveX component can't create object*
 
 **Describe the bug**
-In an exe built with LLVM turned on, a procedure that runs `GoSub <label>` ends the program with an access violation (exit code -1073741819, 0xC0000005, in the exe's own module) at the `GoSub` statement, before the first statement after the label. No message box is shown. The same project built without LLVM runs correctly, and so does its run in the IDE with LLVM turned on for the debug run (Compiler Options (DEBUG)): only the built exe is affected, in a 32-bit and in a 64-bit build. Observed by building the exe and running it with its exit code read, and in the Application log, which records the fault.
+When `CreateObject` or `GetObject` cannot create or find the object, twinBASIC raises the COM error code, where VB6 raises error 429, *ActiveX component can't create object*, so a handler written for VB6 or VBA does not recognise the error:
+
+| call | VB6 | twinBASIC |
+|---|---|---|
+| `CreateObject("No.Such.Class")` | 429 | -2147221020 (`&H800401E4`), *Invalid syntax* |
+| `CreateObject("Scripting.NoSuchClass")` | 429 | -2147221020, *Invalid syntax* |
+| `GetObject(, "No.Such.Class")` | 429 | -2147221005 (`&H800401F3`), *Invalid class string* |
+| `GetObject(, "Scripting.Dictionary")`, with no instance running | 429 | -2147221021 (`&H800401E3`), *Operation unavailable* |
+
+In a 64-bit program, `CreateObject("MSScriptControl.ScriptControl")`, a class registered for 32-bit programs only, raises -2147221164 (`&H80040154`), *Class not registered*. Observed in built exes, 32-bit and 64-bit, and in the compiler's test mode.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `gosub-llvm-exe-crash.twinproj` (attached as `gosub-llvm-exe-crash.zip`). It needs an LLVM licence (Ultimate). Its module `Startup` is:
-   ```
-   Private Declare Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+1. Open `createobject-error-not-429.twinproj` (attached as `createobject-error-not-429.zip`).
+2. Run its test cases, the module below. On BETA 1010 the control, `CreateObject("Scripting.Dictionary")`, passes, and the five cases that expect 429 or its description fail with the numbers in the table and *Invalid syntax*.
 
-   Private Function G() As Long
-       Dim n As Long
-       GoSub L
-       G = n
-       Exit Function
-   L:
-       n = 7
-       Return
-   End Function
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`createobject-error-not-429-vb6.zip`) prints.
+```vb
+' Regression tests: CreateObject and GetObject raise error 429, "ActiveX component
+' can't create object", when they cannot create or find the object, as VB6 does
+' (the VB6 project beside this one prints VB6's numbers). tbrun --tests runs each
+' case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
 
-   Public Sub Main()
-       If App.IsInIDE Then
-           Debug.Print "G = " & G()
-       Else
-           ExitProcess G()
-       End If
-   End Sub
-   ```
-2. In Project Settings, turn **Enable LLVM Compilation** on under **Compiler Options (BUILD)**, and build the exe (32-bit, then 64-bit).
-3. Run the exe from a command prompt and read its exit code (`echo %errorlevel%`).
-4. See -1073741819 (0xC0000005), and the fault recorded in the Application log. Turn LLVM off, build again and run: the exit code is 7.
+    Private Function CreateError(ByVal ProgId As String) As Long
+        On Error Resume Next
+        Dim o As Object = CreateObject(ProgId)
+        Return Err.Number
+    End Function
+
+    Private Function GetObjectError(ByVal ProgId As String) As Long
+        On Error Resume Next
+        Dim o As Object = GetObject(, ProgId)
+        Return Err.Number
+    End Function
+
+    ' Control: a registered class is created.
+    [TestCase]
+    Public Sub CreateObject_RegisteredClass_Succeeds()
+        Assert.Strict.AreEqual 0&, CreateError("Scripting.Dictionary")
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_UnknownProgId_Raises429()
+        Assert.Strict.AreEqual 429&, CreateError("No.Such.Class")
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_UnknownClassOfKnownLibrary_Raises429()
+        Assert.Strict.AreEqual 429&, CreateError("Scripting.NoSuchClass")
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_UnknownProgId_Description()
+        On Error Resume Next
+        Dim o As Object = CreateObject("No.Such.Class")
+        Assert.Strict.AreEqual "ActiveX component can't create object", Err.Description
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_UnknownProgId_Raises429()
+        Assert.Strict.AreEqual 429&, GetObjectError("No.Such.Class")
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_ClassWithNoRunningObject_Raises429()
+        Assert.Strict.AreEqual 429&, GetObjectError("Scripting.Dictionary")
+    End Sub
+
+End Module
+```
 
 **Expected behavior**
-`G` returns 7, so the exe exits with code 7, as it does without LLVM.
+Error 429, *ActiveX component can't create object*, as VB6 raises for each call in the table.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-Every `GoSub` tried faults: in a Sub and in a Function, with a loop and without, with and without an assignment to a local, and with a label whose `Return` is the only statement. The fault is at the `GoSub` itself: nothing after it runs. With LLVM turned on under **Compiler Options (DEBUG)**, a run in the IDE (F5) prints `G = 7`; with the same setting on for the build, the exe faults.
+Found while checking the fix of #2523 ("A project that references the Microsoft Script Control crashes the compiler when it is built for 64-bit programs"): the project now builds for 64-bit programs, and creating the control in one raises *Class not registered* rather than 429. #2490 and its follow-ups cover the numbers raised by a late-bound call that fails; this is the creation of the object.
 
-TBMANLIB 1.0.0.29 has two members that use `GoSub` (`ToolsDic.OverWrite` and `cCsv.NewColumn`), and an exe built with LLVM that calls either ends the same way. In a copy of the package where each `GoSub` is replaced by a call to a Private Sub (or the label's code written inline), the same exe runs and gives what the plain exe gives.
+Severity: low to moderate. An error is raised wherever VB6 raises one, but a handler that tests for 429, the usual test for a component that is not installed, does not recognise it.
 
-Severity: high for a program built with LLVM. The program ends at the first `GoSub` it runs, with no message, and no wrong result is produced. Building without LLVM, or replacing the `GoSub` by a call to a Private Sub, avoids it.
-
-Not tried: `On ... GoSub`, a `GoSub` in a class method, a label inside a nested block, and a `GoSub` reached from an error handler.
-
-<!-- Reproducer: bugs/gosub-llvm-exe-crash/ (mode run with exe and llvm: the IDE run prints `G = 7`, and tbrun --exe --llvm shows the exe exiting 0xC0000005; expect is tbrun exit 6, that line, the exit line, and absent `exit 7`); verified on BETA 1005 by `bug_repro.mjs verify`, and run with --arch win64 too. Control: `run --exe` without --llvm exits 7, win32 and win64. Pages: docs/LLVM/Getting-Started.md, "Language support", and docs/Reference/Core/GoSub-Return.md carry the WARNING labelled BETA 1005; remove both when a fix is released. Found 2026-10-15 when three TBMANLIB samples of the documentation ended an LLVM exe with no box. -->
+<!-- Reproducer: bugs/createobject-error-not-429/ (mode test: `tbrun --tests`; expect lists the one PASS and five FAIL lines, each FAIL with the number or text BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. The same numbers in exes (tbrun --exe, win32 and win64), and the Script Control line from a 64-bit exe, from scratch probes not kept. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 0 for the Dictionary and 429 for the other four. No page states the error number: docs/Reference/Default/VBA/Interaction/CreateObject.md and GetObject.md do not name one. -->
 
 ---
 
-## LLVM, 64-bit: passing `ByVal 0&` for a `ByRef Long` 8th parameter of a `Declare` crashes the call
+## Delete on the project's row deletes every file, and the next save writes an empty project
 
 **Describe the bug**
-In a 64-bit build with LLVM turned on, a call to a `Declare`d API whose 8th parameter is declared `ByRef` with a 32-bit type (`Long`, or an Enum such as `BOOL`), with `ByVal 0&` (or `ByVal CFALSE`, an Enum member of value 0) passed for that parameter to give the API a NULL pointer, ends with an access violation (0xC0000005, no message box) inside the API (`KERNELBASE.dll`: in `WideCharToMultiByte`, and in `CreateNamedPipeW` with its 8th parameter declared the same way). It happens in a built exe and in a run in the IDE with LLVM turned on for the debug run (Compiler Options (DEBUG)). The same code is right in a 32-bit LLVM build and in a 64-bit build without LLVM. In the same 64-bit LLVM build, `ByVal 0&` for a `ByRef Long` parameter in the 1st, 4th, 5th, 6th or 7th position is right, and so is an 8th parameter declared `ByVal ... As LongPtr` or `ByRef ... As LongPtr`. Whether the call crashes depends on what the stack held before it: the argument's slot is evidently not written with a whole pointer, so leftover data on the stack makes it a bad one. A clean stack hides the fault, which is why the same call in a calling procedure with fewer local variables seems to work, and a procedure with two local variables crashes after another call has left data on the stack. Observed with `bug_repro.mjs run` (which uses `tbrun`) on the exe and in the IDE run, and with the exe's exit code read.
+In Project Explorer, the Delete key on the project's own row, the top row of the tree, shows the question shown for a single file, naming the project's path. Delete there removes every file and folder of the project from the tree. The only message is an *IDE internal error* line in the Debug Console. The next Ctrl+S prints the green `[DONE]` line and writes a project file that holds no file over the project. It was observed in an IDE started with an `APPDATA` of its own, reading the tree, the Debug Console and the saved project file.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `llvm64-byval-to-byref-declare-crash.twinproj` (attached as `llvm64-byval-to-byref-declare-crash.zip`). It needs an LLVM licence (Ultimate). Its module `Startup` is:
-   ```
-   Private Declare PtrSafe Function WideCharToMultiByte Lib "kernel32" (ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpDefaultChar As LongPtr, ByRef lpUsedDefaultChar As Long) As Long
-   Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
-
-   Private Function Count() As Long
-       Dim text As String, n As Long, a As String, b As String, c As Long, d As Double
-       text = "hello"
-       a = "x": b = "y": c = 1: d = 2
-       n = WideCharToMultiByte(65001, 0, StrPtr(text), Len(text), 0&, 0&, 0&, ByVal 0&)
-       If Len(a & b) + c + d = 5 Then Count = n
-   End Function
-
-   Public Sub Main()
-       If App.IsInIDE Then
-           Debug.Print "Count = " & Count()
-       Else
-           ExitProcess Count()
-       End If
-   End Sub
-   ```
-2. In Project Settings, set the architecture to 64-bit and turn **Enable LLVM Compilation** on under **Compiler Options (BUILD)** and under **Compiler Options (DEBUG)**.
-3. Run the project in the IDE (F5), and build the exe and run it from a command prompt, reading its exit code (`echo %errorlevel%`).
-4. The IDE run ends without printing `Count = 5`, and the exe exits with -1073741819 (0xC0000005), the fault recorded in the Application log at `KERNELBASE.dll` offset 0x4C3FE. Turn LLVM off, or build 32-bit, and run again: it prints `Count = 5`, and the exe exits with code 5.
+1. Open a saved project; here ProjectsProbe, with five files under `Sources`, a resource and a file under `Miscellaneous`.
+2. In Project Explorer, click the project's row, `ProjectsProbe`, and press Delete. The box reads *Are you sure you want to delete '/ProjectsProbe'? You will not be able to undo this operation.*, with Delete and Cancel.
+3. Choose Delete. The tree is empty. The Debug Console prints `IDE internal error: Uncaught TypeError: Cannot read properties of undefined (reading 'parentNode')`.
+4. Press Ctrl+S. The console prints `[PROJECT] twinBASIC project saving to disk [DONE]`. The project file, 6.7 KB before, is now 40 bytes and holds no file.
 
 **Expected behavior**
-`Count` returns 5, the number of bytes of "hello" in UTF-8, so the exe exits with code 5, as it does without LLVM and in a 32-bit build. `ByVal 0&` for a `ByRef` parameter of a `Declare` passes a NULL pointer, which `WideCharToMultiByte` requires for these two parameters when the code page is 65001.
+The project's row refused, as the special folders are: Delete on `Sources` shows the same box, and its Delete deletes nothing. At the least, a question that says the whole project is about to be emptied.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-The 8th parameter written `Optional lpUsedDefaultChar As BOOL` (an Enum) fails the same way as `ByRef ... As Long`, and the argument can be `ByVal 0&` or `ByVal CFALSE`. Passing a variable for it, or leaving the last two arguments out, returns the right value in the same large procedure. It needs both the 8th position and the `ByVal`-for-`ByRef` override of a 32-bit parameter: the override at the 1st to 7th positions (registers and stack alike), a `ByRef ... As LongPtr` 8th parameter given `ByVal 0&`, and an 8th parameter declared `ByVal ... As LongPtr` given 0 are all right, after the same call that leaves data on the stack. Declaring the parameter `ByVal ... As LongPtr` (as `lpDefaultChar` is) is a way round it. The package tbFileSysTools 1.9.0.0 makes this call in `TextCodec.ConvertFromUTF16` (`WinAPI.twin`, line 52), which every text-writing member goes through (`StringToTextFile`, `WriteStream` and the members that call them), so an exe built with LLVM for 64-bit that writes a text file ends the same way, with no message box.
+The box for the project's row is the one shown for a file, so nothing tells the reader that every file goes. Closing the project with Discard Changes before a save brings it back. Seen in three trial sessions, the third from a newly started IDE, and in the reproducer.
 
-Severity: high for a 64-bit program built with LLVM that makes such a call: it ends at the call, with no message, and no wrong result is produced. It is hard to find, because it depends on what the stack held. Building without LLVM, building 32-bit, or declaring the parameter `ByVal ... As LongPtr` avoids it.
+Severity: high. The whole project is lost at the next save, after a confirmation that reads like a file's, and nothing warns before the save writes it.
 
-Not tried: a 9th or later parameter, other types of 32 bits or fewer (`Integer`, `Byte`, `Single`), a `ByVal` override of a ByRef parameter that is not a number (a string or an UDT), a non-zero value, and the generated code. A `ByVal` argument for a `ByRef` parameter of a twinBASIC `Sub` or `Function` is a different defect, in both architectures, with an entry of its own.
-
-<!-- Reproducer: bugs/llvm64-byval-to-byref-declare-crash/ (mode run with arch win64, llvm and exe: the IDE run prints nothing, and tbrun --exe --llvm --arch win64 shows the exe exiting 0xC0000005 in KERNELBASE.dll; expect is tbrun exit 5, those two lines, and absent `Count = 5` and `exit 5`); verified on BETA 1005 by `bug_repro.mjs verify`. Controls, all printing `Count = 5` and exiting 5: `run --exe --llvm --arch win32`, `run --exe --arch win64`, `run --exe --arch win32`. Pages: docs/LLVM/Getting-Started.md, "Language support", and docs/Reference/Core/Declare.md carry the WARNING labelled BETA 1005; remove both when a fix is released. Found 2026-10-15 when text-writing samples of tbFileSysTools ended a 64-bit LLVM exe with no box. -->
+<!-- Reproducer: bugs/delete-project-row/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Delete on the project's row, after a box that reads like a file's, empties the tree, and Ctrl+S writes a project holding no file", which passes on BETA 1010; the control "control: Delete on Sources shows the box, and Delete deletes nothing" passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Delete (its second WARNING), carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D17). -->
 
 ---
 
-## LLVM: passing `ByVal` for a `ByRef` parameter of a twinBASIC `Sub` is a codegen error, and the calling procedure does not run
+## Dragging a folder onto a row inside it nests it without end, and the next save writes a project the IDE cannot open
 
 **Describe the bug**
-In a project compiled with LLVM, in a 32-bit and in a 64-bit build, a call that passes `ByVal` for a `ByRef` parameter of a twinBASIC `Sub` or `Function` (for example `Take ByVal 0&` for `Sub Take(ByRef h As Long)`) makes the build print `[LLVM] codegen error occurred when compiling 'Startup.Caller': Call parameter type does not match function signature!`, followed by the offending instruction, `call x86_stdcallcc void @"#0"(i32 0)` (an `i32` where the signature has a pointer; `double 0.0` for a `Double`). The build still makes the exe, and the procedure that contains the call does not run: the 64-bit exe ends with an access violation (0xC0000005, no message box, in `ntdll.dll` or `USER32.dll`) when it enters the procedure, and the 32-bit exe skips the procedure and then faults later, in `OLEAUT32.dll`. Without LLVM the call compiles and passes a NULL pointer. VB6 refuses the same call with the error *Type mismatch*, so the call is a twinBASIC extension that the LLVM back end cannot compile. Observed with `bug_repro.mjs run` (which uses `tbrun`) on an exe and in the IDE run, and with the exe's exit code read.
+In Project Explorer, a folder dragged onto one of its own files, or onto one of its own subfolders, is accepted with no message. The tree then holds the folder inside itself, more than fifty levels deep. The next Ctrl+S prints the green `[DONE]` line, then an *IDE internal error* (a stack overflow), and writes a project file many times the size of the old one. The IDE cannot open that file: it stays at *Please wait... 25.0%* with an empty Project Explorer. It was observed in an IDE started with an `APPDATA` of its own, reading the tree, the Debug Console and the saved project file, and opening the saved file in a second IDE.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `llvm-byval-to-byref-sub-codegen.twinproj` (attached as `llvm-byval-to-byref-sub-codegen.zip`). It needs an LLVM licence (Ultimate). Its module `Startup` is:
-   ```
-   Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
-
-   Private Sub Take(ByRef h As Long)
-   End Sub
-
-   Private Function Caller() As Long
-       Take ByVal 0&
-       Caller = 7
-   End Function
-
-   Public Sub Main()
-       If App.IsInIDE Then
-           Debug.Print "Caller = " & Caller()
-       Else
-           ExitProcess Caller()
-       End If
-   End Sub
-   ```
-2. In Project Settings, set the architecture to 64-bit and turn **Enable LLVM Compilation** on under **Compiler Options (BUILD)** and under **Compiler Options (DEBUG)**.
-3. Run the project in the IDE (F5), and build the exe and run it from a command prompt, reading its exit code (`echo %errorlevel%`).
-4. The DEBUG CONSOLE shows the `[LLVM] codegen error` for `Startup.Caller`, the IDE run does not print `Caller = 7`, and the exe exits with -1073741819 (0xC0000005). Turn LLVM off and run again: it prints `Caller = 7`, and the exe exits with code 7.
+1. Open a saved project with a folder `Sources/Helpers` that holds `Thing.twin` and `Util.twin`.
+2. Expand `Sources/Helpers`, and drag the folder `Helpers` onto `Helpers/Thing.twin`. Nothing is said.
+3. Expand `Helpers`: it holds `Helpers`, which holds `Helpers`, and so on, more than fifty levels.
+4. Press Ctrl+S. The console prints `[PROJECT] twinBASIC project saving to disk [DONE]`, then `IDE internal error: Uncaught RangeError: Maximum call stack size exceeded`. The project file grows from 6.7 KB to about 150 KB.
+5. Open the saved file in the IDE. 45 seconds later the IDE still shows *Please wait... 25.0%*, and Project Explorer is empty.
 
 **Expected behavior**
-Either the same as without LLVM, `Caller` returning 7 with a NULL pointer passed to `Take`, so the exe exits with code 7, or a compile error that names the call, as VB6 gives. A codegen error that the build reports and then ignores leaves a program that fails at run time.
+The drop refused, as a file manager refuses to move a folder into itself.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-The same error appears at the first and at the eighth parameter, for a `Long` and for a `Double` parameter, for an `Optional ByRef` parameter that is passed `ByVal 0&`, and with five instead of 0 as the value. These are right: a variable for the `ByRef` parameter, an `Optional ByRef` parameter that is left out, and a `ByVal` parameter. A smaller calling procedure fails the same way. This is not the crash of `llvm64-byval-to-byref-declare-crash`: that one is a call of a `Declare`d API in a 64-bit build only, and the calls in that entry compile.
+Dragging a file onto a folder moves it, as it should. The saved file is a readable project file (a reader of the format outside the IDE opens it without an error) that holds the nested folders, so it is the IDE's loading of it that stops. Closing the project with Discard Changes before a save brings it back. Seen in three trial sessions, the third from a newly started IDE, and in the reproducer.
 
-Severity: medium. A 64-bit program built with LLVM that has such a call ends at the calling procedure, with no message box; a 32-bit one silently skips the procedure, which is worse. The build does report the error, but as a log line, with a successful build after it. Passing a variable for the parameter avoids it.
+Severity: high. The project file is replaced by one the IDE cannot open, after a drag that is easy to make by mistake and shows nothing wrong until the save.
 
-Not tried: `ByVal Nothing` for a `ByRef` object parameter of a twinBASIC procedure (the documentation's Pointers page describes it), a `ByVal` string or UDT argument, a method of a class, and a `Property` with a `ByRef` parameter. The generated code was not read.
+<!-- Reproducer: bugs/drag-folder-into-itself/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "dragging a folder onto a file inside it nests it without end, with no message, and Ctrl+S writes a project file the IDE cannot open", which passes on BETA 1010; it opens the saved file in a new IDE with a 45-second limit, and ends that IDE by its pid; the control "control: dragging a file onto a folder moves it there" passes too). The trial's note that impexp called the saved file damaged did not recur: impexp's readProject reads it. No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Move a file or folder by dragging, carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D19). -->
 
-<!-- Reproducer: bugs/llvm-byval-to-byref-sub-codegen/ (mode run with arch win64, llvm and exe: the DEBUG CONSOLE has the codegen error for Startup.Caller and tbrun --exe --llvm --arch win64 shows the exe exiting 0xC0000005; expect is tbrun exit 5, those two lines, and absent `Caller = 7` and `exit 7`); verified on BETA 1005 by `bug_repro.mjs verify`. Controls: `run --exe --arch win64` (no LLVM) prints `Caller = 7` and exits 7; `run --exe --llvm --arch win32` prints the codegen error and exits 0 (Caller skipped). Pages: docs/LLVM/Getting-Started.md, "Language support", and docs/Reference/Core/Call.md carry the WARNING labelled BETA 1005; remove both when a fix is released. The additional-context cases (first and eighth parameter, Double, Optional, a variable, the argument left out, a ByVal parameter) were run in a session of 2026-10-16 and are not in the reproducer. -->
+---
+
+## Cut, then Paste onto Resources or Packages, deletes the file and creates it nowhere
+
+**Describe the bug**
+A file cut in Project Explorer and pasted onto the `Resources` folder itself, or onto `Packages`, is refused with the notification *cannot create files inside the root resources folder*, but the cut is carried out: the file is removed from its folder and is in no folder of the tree. The next save writes the project without it. Nothing says that the file was removed. It was observed in an IDE started with an `APPDATA` of its own, reading the tree, the notifications and the saved project file.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, expand `Sources/Helpers`, click `Util.twin` and press Ctrl+X.
+2. Click the `Resources` folder (the top folder, not one of its subfolders) and press Ctrl+V. The notification *cannot create files inside the root resources folder* is shown.
+3. `Util.twin` is gone from `Helpers`, and is in no other folder.
+4. Press Ctrl+S. The saved project holds `Sources/Helpers/Thing.twin` and no `Util.twin`.
+
+**Expected behavior**
+A refused paste leaving the cut file where it was, as a file manager does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Cut, then Paste onto a subfolder of `Resources` (`Resources/CUSTOM`) moves the file, as it should. In the trial sessions Paste onto `Packages` did the same as onto `Resources`; the reproducer tests `Resources`. Closing the project with Discard Changes before a save brings the file back. The notification's wording on `Packages` is the entry "Add Other File or Paste on Packages says it cannot create files in the root resources folder".
+
+Severity: medium. A file is deleted with a message that does not say so, and the next save makes the loss permanent.
+
+<!-- Reproducer: bugs/cut-paste-refused-folder/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Cut, then Paste onto Resources, deletes the file and creates it nowhere, and Ctrl+S saves the project without it", which passes on BETA 1010; the control "control: Cut, then Paste onto a folder of Resources, moves the file" passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Cut, copy and paste, carries a WARNING for it, and the NOTE of docs/IDE/Projects/Adding-Files.md under Where the new file goes points to it; when a fixed build is released, that WARNING and the NOTE's last sentence go. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D18). -->
+
+---
+
+## Importing a file over a file of the same name crashes the compiler, and when that file is open, the next save writes the old text back
+
+**Describe the bug**
+Add > Import... of an ordinary file whose name is that of a file already in the target folder replaces that file with no question, and crashes the compiler: the Debug Console prints `NATIVE EXCEPTION: ACCESS_VIOLATION`, and the IDE restarts the compiler. Nothing else shows the crash. When the replaced file is open in a tab, the project file on disk holds the imported text, but the tab and the IDE's copy keep the old text, and the next save from that tab writes the old text, with any edit, over the import. It was observed in an IDE started with an `APPDATA` of its own, reading the Debug Console, the IDE's copy of the file and the saved project file.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `Sources/Helpers/Util.twin` in a tab; do not edit it.
+2. Right-click `Util.twin` in Project Explorer > Add > Import..., and pick a file named `Util.twin` that holds other text.
+3. Nothing is asked. The Debug Console prints `NATIVE EXCEPTION: ACCESS_VIOLATION {no-basic-code} [...twinBASIC_win32.dll+0010B220]` and `restarting from FILE`.
+4. The project file holds the imported `Util.twin`. The tab, and the text the IDE holds for the file, are the old `Util.twin`.
+5. Type a line in the tab and press Ctrl+S. The project file now holds the old `Util.twin` with the new line; the import is gone.
+
+**Expected behavior**
+A question before a file is replaced, no crash, and the tab showing the imported text, or closed.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The same import over a file that is not open in a tab (`Thing.twin`, here) crashes the compiler in the same way; that file is then replaced in the IDE and on disk. The import also saves the project, which is the entry "Import of a file saves the project, with every unsaved editor". Seen three times in the trial sessions, the third from a newly started IDE, and in the reproducer.
+
+Severity: medium. A compiler crash shows only in the Debug Console, and an import the reader believes done is undone at the next save.
+
+<!-- Reproducer: bugs/import-over-open-file/ (mode lane: asserted by `ide-test.bat --only projects-import-crash` (test/ide/projects-import-crash.test.mjs), a lane of its own so that the crash cannot take other tests down; the tests "Add > Import... of a file over one that is not open crashes the compiler too" and "Add > Import... of a file over one open in a tab crashes the compiler, leaves the old text in the tab, and the next save writes it back over the import", which pass on BETA 1010; the control "control: Add > Import... of a file over one that is not open replaces it in the IDE and on disk" passes too). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Import > Ordinary files, carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D32). -->
+
+---
+
+## Importing a project's file over one with unsaved edits replaces it with no question, and the edits are lost
+
+**Describe the bug**
+Add > Import... of a `.twinproj` opens the *Import from twinproj...* box, which lists the other project's files. A file ticked there whose path is already in the project replaces that file with no question. If the file is open in a tab, the tab is closed first and its unsaved edits are dropped. The import then saves the project, so the project's own copy of the file is overwritten on disk too. The only sign is the Debug Console's save and restart lines. It was observed in an IDE started with an `APPDATA` of its own, reading the tabs, the boxes shown, the Debug Console and the saved project file.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `Sources/Startup.twin` and type a line; do not save.
+2. Right-click `Startup.twin` in Project Explorer > Add > Import..., and pick a `.twinproj` that has a `Sources/Startup.twin` of its own.
+3. In *Import from twinproj...*, tick `Startup.twin` and press Import.
+4. Nothing is asked. The tab of `Startup.twin` closes. The Debug Console prints `[PROJECT] twinBASIC project saving to disk [DONE]` and `restarting from FILE`.
+5. The IDE's `Startup.twin` and the one in the project file are the imported one. The typed line is gone, and so is the project's saved `Startup.twin`.
+
+**Expected behavior**
+A question naming the files that would be replaced; and an editor with unsaved edits stopping the import, as it stops a rename: *Rename/Move failed. Please close the following editors that are preventing the operation:*.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Renaming a file with unsaved edits is refused with the message above. Seen in two trial sessions, the second from a newly started IDE, and in the reproducer.
+
+Severity: high. Both the unsaved edits and the saved file are replaced with no question, and the save that follows leaves nothing to go back to.
+
+<!-- Reproducer: bugs/import-project-overwrites/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "importing a project's file over one with unsaved edits replaces it with no question, closes its tab, and the edits are lost", which passes on BETA 1010, importing test/ide/probes/projects-import packed into the lane's work folder; the control "control: renaming a file with unsaved edits is refused, naming the editor to close" passes too). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Import > Projects and packages, carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D12). -->
+
+---
+
+## Delete of a file with unsaved edits does not mention them
+
+**Describe the bug**
+Delete in Project Explorer on a file whose tab has unsaved edits shows the box shown for any file, and on Delete removes the file and closes its tab with the edits. A rename of the same file is refused while its editor has unsaved edits, naming the editor to close; Delete makes no such check. It was observed in an IDE started with an `APPDATA` of its own, reading the tabs and the boxes shown.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `Sources/Helpers/Util.twin` and type a line; do not save. The tab shows the change mark.
+2. Select `Util.twin` in Project Explorer and press Delete. The box reads *Are you sure you want to delete '/ProjectsProbe/Sources/Helpers/Util.twin'? You will not be able to undo this operation.*, with Delete and Cancel, as for any file.
+3. Choose Delete. The file is gone and its tab is closed; nothing else is said.
+
+**Expected behavior**
+The box saying that the file has unsaved changes, or the delete refused as the rename is.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+F2 on the same file, a new name and Enter show *Rename/Move failed. Please close the following editors that are preventing the operation:*. `tbProjectExplorer_SelectedItemsDeletePermanently` (`ide/main.js`) calls no `checkForDirtyEditorsAffected`, which the rename and the move call, so by the code a folder that holds such a file is deleted in the same way; that was not tested. The saved copy stays in the project file until the next save.
+
+Severity: medium. Unsaved work goes with no word about it, although the reader did choose to delete the file.
+
+<!-- Reproducer: bugs/delete-unsaved-no-warning/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Delete of a file with unsaved edits asks as for any file, and its tab closes with the edits", which passes on BETA 1010; the control before it, "control: renaming a file with unsaved edits is refused, naming the editor to close", passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Delete (its first WARNING), carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D8). -->
+
+---
+
+## After a change to the references only, the X of Project Settings closes it without asking, and the change is lost
+
+**Describe the bug**
+Project Settings asks *Close without saving?* when it is closed with the title bar's X after a change. After a change to the references only, such as a library unticked on Enabled Libraries, the X closes it with no question, and the change is dropped. Apply Changes was enabled, so the dialog knew of the change. It was observed in an IDE started with an `APPDATA` of its own, reading the boxes shown and the project's settings.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Click a file in Project Explorer and press Ctrl+T. Project Settings opens at the references.
+2. Clear the tick of Microsoft Scripting Runtime. Apply Changes is enabled.
+3. Click the title bar's X. The dialog closes with no question, no notification and no line in the Debug Console.
+4. The project still references Microsoft Scripting Runtime.
+
+**Expected behavior**
+The question asked, as after any other change: after a change to the description, the X asks *... Close without saving?* (Yes, close / No, keep editing).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+`warnAboutSaving` (`ide/main.js`) compares the settings after `simplifySettingsConfigData`, which sets `project.references` and `project.warnings` to undefined, so by the code a change to the compiler warnings alone is dropped in the same way; that was not tested. Cancel never asks, for any change. Seen in two trial sessions, the second from a newly started IDE, and in the reproducer.
+
+Severity: medium. A change the reader made is dropped with nothing to say so.
+
+<!-- Reproducer: bugs/settings-references-close-no-question/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "after a change to the references only, the title bar's X closes Project Settings without asking, and the change is lost", which passes on BETA 1010; the control "control: after a change to the description, the title bar's X asks to close without saving" passes too). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under Apply Changes and closing the dialog, carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D4). -->
+
+---
+
+## Import of a file saves the project, with every unsaved editor
+
+**Describe the bug**
+Add > Import... of ordinary files adds them and then saves the project, unasked, with the unsaved edits of every open editor. It was observed in an IDE started with an `APPDATA` of its own, reading the Debug Console, the dialogs asked for and the saved project file.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `Sources/Helpers/Thing.twin` and type a line; do not save.
+2. Right-click `Sources/Helpers/Util.twin` > Add > Import..., and pick any file (here `extra.txt`).
+3. The file is added to `Helpers`. The Debug Console prints `[PROJECT] twinBASIC project saving to disk [DONE]`. The file dialog was the only dialog.
+4. The project file holds `Thing.twin` with the typed line.
+
+**Expected behavior**
+The import marking the project changed, as adding a new file does, and the save left to the reader.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+`importFile` (`ide/main.js`) runs `tbProject_SaveAllChanges` when the last file has been read. In a project that has no file yet, the trial saw the Save As dialog open instead. Cancel in the *Import from twinproj...* box, renaming the project and the Package needed box also save unasked; each has an entry.
+
+Severity: low. Nothing is lost, but edits the reader may have meant to discard are written to the project file.
+
+<!-- Reproducer: bugs/import-file-saves/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Add > Import... of a file imports it and saves the project, with another file's unsaved edit", which passes on BETA 1010; the file imported is written into the lane's work folder). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Import > The project is saved, carries a NOTE for it, and so does docs/IDE/Projects/Saving-and-Exporting.md, under Save Project > Other commands that save; when a fixed build is released, those NOTEs change. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D10). -->
+
+---
+
+## Cancel in the Import from twinproj box saves the project and restarts the compiler
+
+**Describe the bug**
+Add > Import... of a `.twinproj` opens the *Import from twinproj...* box. Its Cancel imports nothing, but saves the project, unasked and with the unsaved edits of every open editor, and the IDE then restarts its compiler. It was observed in an IDE started with an `APPDATA` of its own, reading the Debug Console and the saved project file.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `Sources/Helpers/Util.twin` and type a line; do not save.
+2. Right-click `Sources/Startup.twin` > Add > Import..., and pick a `.twinproj`.
+3. In *Import from twinproj...*, press Cancel.
+4. The Debug Console prints `[PROJECT] twinBASIC project saving to disk [DONE]` and `restarting from FILE`. The project file holds `Util.twin` with the typed line. Nothing was imported.
+
+**Expected behavior**
+Cancel leaving the project as it was, unsaved, and the compiler running.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The box is served by a second compiler that reads the chosen project; Cancel ends it, and the IDE restarts its own. Import in the same box saves the project too (see "Importing a project's file over one with unsaved edits replaces it with no question, and the edits are lost").
+
+Severity: low. Nothing is lost, but Cancel writes edits the reader may have meant to discard.
+
+<!-- Reproducer: bugs/import-cancel-saves/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Cancel in the Import from twinproj box saves the project, with another file's unsaved edit, and restarts the compiler", which passes on BETA 1010, importing test/ide/probes/projects-import packed into the lane's work folder). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Import > The project is saved, carries a NOTE for it, and so does docs/IDE/Projects/Saving-and-Exporting.md, under Save Project > Other commands that save; when a fixed build is released, those NOTEs change. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D31, with D13, the compiler restart). -->
+
+---
+
+## Renaming the project saves it, with every unsaved editor
+
+**Describe the bug**
+Renaming the project's row in Project Explorer saves the project at once, unasked and with the unsaved edits of every open editor, and the compiler then restarts. It was observed in an IDE started with an `APPDATA` of its own, reading the Debug Console and the saved project file.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `Sources/Startup.twin` and type a line; do not save.
+2. Click the project's row, press F2, type `ProjRenamed` and press Enter.
+3. Nothing is asked. The Debug Console prints `[COMPILER] Project settings changes require compiler-restart` and `[PROJECT] twinBASIC project saving to disk [DONE]`, and a *Please wait...* box follows while the compiler restarts.
+4. The project file holds `Startup.twin` with the typed line, and `project.name` is `ProjRenamed`.
+
+**Expected behavior**
+The new name kept in memory and saved with the next save, as a renamed file is.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+In the trial, the title bar's change mark went with the save.
+
+Severity: low. Nothing is lost, but a rename writes edits the reader may have meant to discard.
+
+<!-- Reproducer: bugs/rename-project-saves/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "renaming the project's row saves the project, with an unsaved edit in another file", which passes on BETA 1010). The trial's note that the row and the title keep the old names was not confirmed (the tree reloads after the restart), so the entry leaves it out. No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Rename > The project, carries a NOTE for it, and so does docs/IDE/Projects/Saving-and-Exporting.md, under Save Project > Other commands that save; when a fixed build is released, those NOTEs change. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D20). -->
+
+---
+
+## Add WinNativeForms package saves the project unasked
+
+**Describe the bug**
+Add Windows Form in a project that does not reference WinNativeForms shows the box *Package needed: WinNativeForms*, whose text speaks only of a compiler restart. Its button Add WinNativeForms package adds the reference and also saves the project, unasked. It was observed in an IDE started with an `APPDATA` of its own, reading the box, the Debug Console and the saved project file.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved project that does not reference WinNativeForms.
+2. Right-click `Sources` > Add > Add Windows Form. The box *Package needed: WinNativeForms* is shown; its text says nothing of a save.
+3. Press Add WinNativeForms package. The Debug Console prints `[COMPILER] Project settings changes require compiler-restart`, `[PROJECT] twinBASIC project saving to disk [DONE]` and `restarting from FILE`.
+4. The `Settings` in the project file references WinNativeForms.
+
+**Expected behavior**
+The box saying that the project will be saved, or the reference added in memory and saved with the next save.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Whether the unsaved edits of open editors go into this save was not tested. The same unasked save follows Import..., Cancel in the *Import from twinproj...* box and renaming the project; each has an entry.
+
+Severity: low. Nothing is lost; the project file is written when the reader did not ask.
+
+<!-- Reproducer: bugs/package-needed-saves/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Add WinNativeForms package, in the Package needed box, saves the project unasked", which passes on BETA 1010, on a variant of the fixture without the form and the compiler-package references, in the lane's work folder). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under Package needed, carries a NOTE for it, and so does docs/IDE/Projects/Saving-and-Exporting.md, under Save Project > Other commands that save; when a fixed build is released, those NOTEs change. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D35). -->
+
+---
+
+## Nothing stops dragging Sources into another folder
+
+**Describe the bug**
+Rename refuses the special folders of a project with *Cannot rename: permission denied.*, but a drag does not: `Sources` dragged onto `Miscellaneous` moves into it with no message, and the next save keeps it there. It was observed in an IDE started with an `APPDATA` of its own, reading the tree, the notifications and the saved project file.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, drag `Sources` onto `Miscellaneous`. `Miscellaneous` is highlighted as a drop target.
+2. `Sources` moves into `Miscellaneous`; nothing is said.
+3. Press Ctrl+S. The project file holds `Miscellaneous/Sources/Startup.twin`, and no `Sources/Startup.twin`.
+
+**Expected behavior**
+The drop refused, as the rename of `Sources` is.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+F2 on `Sources`, a new name and Enter give *Cannot rename: permission denied.* Delete on a special folder shows the delete box and deletes nothing. In the trial, the project opened again showed a new, empty `Sources` beside `Miscellaneous/Sources`, and the object view still listed every module, class and form, so they were still compiled.
+
+Severity: low. Nothing is lost, but the project's layout changes with no sign that it should not.
+
+<!-- Reproducer: bugs/drag-special-folder/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "dragging Sources onto Miscellaneous moves it there with no message, and Ctrl+S saves it there", which passes on BETA 1010; the control "control: renaming Sources is refused: Cannot rename: permission denied." passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Move a file or folder by dragging (its NOTE), carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D9). -->
+
+---
+
+## Delete on a References entry removes the row but not the reference
+
+**Describe the bug**
+Project Explorer's `References` folder lists the project's references. The context menu of an entry greys out Delete, but the Delete key shows the delete box, and Delete there removes the row. The reference stays in the project, before and after a save. It was observed in an IDE started with an `APPDATA` of its own, reading the tree, the IDE's copy of the project's settings and the saved project file.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, expand `References` and right-click the Microsoft Scripting Runtime entry. The menu's Delete is greyed out.
+2. Click the entry, press Delete, and choose Delete in the box. The row is gone.
+3. The project's `Settings` in the IDE still references Microsoft Scripting Runtime. Press Ctrl+S: the project file still does.
+
+**Expected behavior**
+The Delete key doing nothing on a `References` entry, as the menu says; or removing the reference.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The menu also greys out Cut, Paste and Rename. The row stays gone after the save.
+
+Severity: low. Nothing is lost, but the tree no longer shows a reference the project has.
+
+<!-- Reproducer: bugs/delete-reference-row/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Delete on a References entry removes the row, but the reference stays, before and after Ctrl+S", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under The References folder, carries a NOTE for it, and so does the NOTE of docs/IDE/Projects/Files-and-Folders.md under Delete (its last sentences); when a fixed build is released, those go. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D21). -->
+
+---
+
+## An Export Path without exportPathIsV2 gets the project's name appended with no separator
+
+**Describe the bug**
+Export Project writes into the project's Export Path. When the `Settings` file has a `project.exportPath` but no `project.exportPathIsV2` entry, the project's name is appended to the path with no separator, so the export goes into a folder whose name joins the two, beside the folder intended. It was observed in an IDE started with an `APPDATA` of its own, reading the Debug Console and the folders written.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. A project named ProjectsProbe whose `Settings` holds `project.exportPath` `${SourcePath}\exp2` and no `project.exportPathIsV2`.
+2. Press Ctrl+E. The Debug Console prints `[EXPORT] COMPLETED`; no folder dialog is shown.
+3. The files are in `exp2ProjectsProbe\`, beside the project file. There is no `exp2\`.
+
+**Expected behavior**
+A separator before the project's name, `exp2\ProjectsProbe\`, or the folder as given.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+With `project.exportPathIsV2` `true` and `${SourcePath}\exp3`, the export goes into `exp3\`. The paths in the steps have no trailing backslash.
+
+Severity: low. The files are written, beside the folder intended.
+
+<!-- Reproducer: bugs/export-path-v1-no-separator/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "without exportPathIsV2, Export Project writes into the Export Path with the project's name appended and no separator", which passes on BETA 1010; the control "control: with exportPathIsV2, Export Project writes into the Export Path's folder" passes too; both on variants of the fixture in the lane's work folder, so the exports go there). No project and no zip. docs/IDE/Projects/Saving-and-Exporting.md, under Export Project > Where it writes, carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D28). -->
+
+---
+
+## Project Explorer's object view opens no menu on a right click
+
+**Describe the bug**
+Project Explorer's object view (Ctrl+R) has a context menu with View Object, View Code, Add, Rename and Delete, but a right click on a row opens nothing, whether the row is an object, a form or a group. The menu's commands cannot be reached. It was observed in an IDE started with an `APPDATA` of its own, looking for an open menu after each click.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, press Ctrl+R for the object view.
+2. Right-click `Startup` (a module), `frmMain` (a form) or `Modules` (a group). No menu opens.
+
+**Expected behavior**
+The menu opened, as a right click on a row of the file view opens the file view's menu.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The list item's `onmousedown` (`ide/main.js`) passes on the left button only. With the menu unreachable, a form's code cannot be opened from the object view, since Shift+double-click opens the designer too (see "Shift+double-click on a form in the object view opens the designer, not the code"). The menu's Rename and Delete do nothing yet either (see "The object view's Rename and Delete commands only show an alert naming the command").
+
+Severity: low. The same commands are in the file view's menu.
+
+<!-- Reproducer: bugs/objectview-no-menu/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "in the object view, a right click on an object, a form or a group opens no menu", which passes on BETA 1010; the control "control: a right click on a row of the file view opens its menu" passes too). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects), carries a NOTE for it; when a fixed build is released, that NOTE's item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D29). -->
+
+---
+
+## The object view's Rename and Delete commands only show an alert naming the command
+
+**Describe the bug**
+The commands behind the object view menu's Rename and Delete, `tbProjectExplorer_ObjectList_RenameSelected` and `tbProjectExplorer_ObjectList_DeleteSelected`, show only a browser alert that holds the command's name. Nothing is renamed or deleted. The menu draws the two items disabled, and the menu does not open at all (see "Project Explorer's object view opens no menu on a right click"), so a key bound to the command is the way to run one. It was observed in an IDE started with an `APPDATA` of its own, running the commands and reading the alerts.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, press Ctrl+R for the object view, and select an object.
+2. Run `tbProjectExplorer_ObjectList_RenameSelected`. An alert reads *tbProjectExplorer_ObjectList_RenameSelected*.
+3. Run `tbProjectExplorer_ObjectList_DeleteSelected`. An alert reads *tbProjectExplorer_ObjectList_DeleteSelected*.
+
+**Expected behavior**
+The object's file renamed or deleted, as from the file view; or the commands left out until they work.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The two commands are `alert(...)` calls in `ide/main.js`.
+
+Severity: low. Rename and Delete in the file view work.
+
+<!-- Reproducer: bugs/objectview-rename-delete-alert/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "the object view's Rename and Delete commands only show an alert naming the command", which passes on BETA 1010; it runs the two commands through the IDE's command call). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects, its first item, which names Rename and Delete among the commands that cannot be reached), carries a NOTE for it; when a fixed build is released, that item changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D2). -->
+
+---
+
+## A letter typed in the object view opens its search box with > before the letter
+
+**Describe the bug**
+In Project Explorer's object view, a printable key typed with a row selected opens the search box, with the focus in it, holding `>` and the letter. The `>` does not change what is matched (`>Util` finds what `Util` finds), but it is a character the reader did not type. It was observed in an IDE started with an `APPDATA` of its own, reading the search box.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, press Ctrl+R for the object view.
+2. Click `Startup`, and type `u`.
+3. The search box opens, focused, and holds `>u`.
+
+**Expected behavior**
+The search box holding `u`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+`fs.objectListOuter.onkeydown` (`ide/main.js`) sets the box's value to `">" + e.key`.
+
+Severity: low. Cosmetic.
+
+<!-- Reproducer: bugs/objectview-search-prefix/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "in the object view, a letter typed with a row selected opens the search box holding > and the letter", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects, its last item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D2b). -->
+
+---
+
+## Shift+double-click on a form in the object view opens the designer, not the code
+
+**Describe the bug**
+In Project Explorer's object view, the code that opens a form tells the designer from the code by the Shift key, but the double-click passes no Shift state to it. Shift+double-click on a form opens its designer, as a plain double-click does. With the object view's menu unreachable, a form's code cannot be opened from the object view at all. It was observed in an IDE started with an `APPDATA` of its own, reading the tabs.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, press Ctrl+R for the object view.
+2. Shift+double-click `frmMain`. The designer, `frmMain.tbform`, opens; `frmMain.twin` is not opened.
+
+**Expected behavior**
+The form's code, `frmMain.twin`, opened.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+A double-click on a module (`Legacy`) opens its code, as it should. The list item's `ondblclick` (`ide/main.js`) passes no `shiftKey`. The menu's View Code is out of reach too (see "Project Explorer's object view opens no menu on a right click").
+
+Severity: low. The form's `.twin` file opens from the file view.
+
+<!-- Reproducer: bugs/objectview-shift-double-click/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Shift+double-click on a form in the object view opens its designer, not its code", which passes on BETA 1010; the control "control: in the object view, a double-click on a module opens its code" passes too). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects, its second item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D30). -->
+
+---
+
+## Space does not open or close a folder in Project Explorer
+
+**Describe the bug**
+Project Explorer's tree has code to open and close a folder with Space, but it tests the key as `"Space"`, while a KeyboardEvent's `key` for the space bar is `" "`. Space on a selected folder does nothing. It was observed in an IDE started with an `APPDATA` of its own, reading the tree.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, expand `Sources` and `Sources/Helpers`.
+2. Click `Sources/Helpers/Thing.twin` and press Left Arrow. `Helpers` is selected.
+3. Press Space. `Helpers` stays open, and stays selected.
+
+**Expected behavior**
+Space closing the open folder, and opening it again at the next press.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The test is in `treeView.onKeyDown` (`ide/main.js`).
+
+Severity: low. A key the tree's own code offers does nothing.
+
+<!-- Reproducer: bugs/tree-space-folder/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Space on a selected folder neither closes nor opens it", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, first item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D3). -->
+
+---
+
+## Typing in Project Explorer does not filter the tree
+
+**Describe the bug**
+Project Explorer's tree has code to filter its rows by the letters typed, which listens for `keypress`. The page receives `keydown` and `keyup` for each letter, but no `keypress`, so typing in the file view does nothing. It was observed in an IDE started with an `APPDATA` of its own, recording the key events the page receives and reading the tree.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, click `Sources/Startup.twin` (a file that is not open in a tab; a click on the row of an open file puts the focus in its editor).
+2. Type `ti`.
+3. No filter text appears, and the tree shows the same rows.
+
+**Expected behavior**
+The rows narrowed to those that match the letters typed, as the code intends.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The tree's `filterText` stays empty.
+
+Severity: low. The object view's search finds objects by name.
+
+<!-- Reproducer: bugs/tree-type-to-filter/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "typing letters in the file view does not filter the tree", which passes on BETA 1010; its diagnostic lists the key events the page saw). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, second item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D15). -->
+
+---
+
+## Ctrl+A in Project Explorer raises a page error
+
+**Describe the bug**
+Ctrl+A in Project Explorer's file view selects every row shown, as it should, but the IDE page also raises `Uncaught TypeError: Cannot read properties of undefined (reading 'style')`. It was observed in an IDE started with an `APPDATA` of its own, recording the page's errors and reading the selection.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, click `Sources/Startup.twin` (a file that is not open in a tab).
+2. Press Ctrl+A. Every row shown is selected, and the page raises the error above.
+
+**Expected behavior**
+The rows selected, with no error.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The error is thrown in the tree's key handler.
+
+Severity: low. The selection is right.
+
+<!-- Reproducer: bugs/tree-ctrl-a-error/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Ctrl+A in the file view selects every row shown and raises a page TypeError", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, fourth item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D25). -->
+
+---
+
+## Right Arrow on an open folder selects its first entry in the compiler's order, not the first row shown
+
+**Describe the bug**
+Right Arrow on an open folder in Project Explorer selects the folder's first entry, but in the order the compiler lists the entries, not the order the tree draws them in, which puts folders first. It was observed in an IDE started with an `APPDATA` of its own, reading the rows and the selection.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, expand `Sources`. Its first row is the folder `Helpers`.
+2. Click `Sources/Startup.twin` (a file that is not open in a tab) and press Left Arrow. `Sources` is selected.
+3. Press Right Arrow. `Sources/frmMain.twin` is selected, not `Helpers`.
+
+**Expected behavior**
+The first row shown under the folder selected, `Helpers`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+`Sources` holds the folder `Helpers` and the files `Legacy.bas`, `Startup.twin`, `frmMain.tbform` and `frmMain.twin`; the tree draws `Helpers` first.
+
+Severity: low. The selection jumps to a row the reader did not expect.
+
+<!-- Reproducer: bugs/tree-right-arrow-order/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Right Arrow on an open folder selects its first entry in the compiler's order, not the first row shown", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, third item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D26). -->
+
+---
+
+## Down Arrow past the last row of Project Explorer selects a hidden Settings node, and Enter there raises a page error
+
+**Describe the bug**
+Down Arrow on the last row of Project Explorer's file view moves the selection to the project's `Settings` node, which the tree does not draw, so no row is highlighted. Enter then raises `Uncaught TypeError: Cannot read properties of undefined (reading 'ondblclick')` in the IDE page, and opens nothing. It was observed in an IDE started with an `APPDATA` of its own, recording the page's errors and reading the selection and the tabs.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer's file view, click the last row.
+2. Press Down Arrow. The selection is `/ProjectsProbe/Settings`, which has no row; nothing is highlighted.
+3. Press Enter. The page raises the error above, and no tab opens.
+
+**Expected behavior**
+Down Arrow on the last row doing nothing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Enter on a file opens it in a tab, as it should. The error is thrown in `treeView.onKeyDown` (`ide/main.js`).
+
+Severity: low. The highlight disappears, and Enter does nothing.
+
+<!-- Reproducer: bugs/tree-down-hidden-settings/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Down Arrow on the last row selects the hidden Settings node, and Enter there raises a page TypeError", which passes on BETA 1010; the control "control: Enter on a file in the file view opens it in a tab" passes too). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, last item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D34). -->
+
+---
+
+## Delete with nothing selected asks to delete the selected items
+
+**Describe the bug**
+With nothing selected in Project Explorer's file view, the Delete key shows the box *Are you sure you want to delete the selected items?*, and Delete there deletes nothing. It was observed in an IDE started with an `APPDATA` of its own, reading the selection, the boxes shown and the tree.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, click `Sources/Startup.twin`, then press Esc. Nothing is selected.
+2. Press Delete. The box asks *Are you sure you want to delete the selected items?*
+3. Choose Delete. Nothing is deleted, and nothing else is shown.
+
+**Expected behavior**
+Delete doing nothing when nothing is selected.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+With a row selected, the box names the item, as in *Are you sure you want to delete '/ProjectsProbe/Sources/Helpers/Util.twin'? You will not be able to undo this operation.*
+
+Severity: low. Nothing is deleted.
+
+<!-- Reproducer: bugs/tree-delete-nothing/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "with nothing selected, Delete asks to delete the selected items, and Delete deletes nothing", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Delete (its NOTE, first sentences), carries a NOTE for it; when a fixed build is released, those sentences go. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D16). -->
+
+---
+
+## Renaming a file to its own name, or changing only its case, is refused as an invalid name
+
+**Describe the bug**
+In Project Explorer, F2 and then Enter with the name unchanged is refused with the notification *Cannot rename: the new name entered is invalid.* A rename that changes only the case of the name is refused with the same notification, so the case of a file's name cannot be changed in the tree at all. It was observed in an IDE started with an `APPDATA` of its own, reading the notifications and the file's name.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, select `Sources/Helpers/Thing2.twin` (a file that is not open in a tab) and press F2, then Enter with the name unchanged. The notification above is shown.
+2. Press F2 again, type `thing2.twin` and press Enter. The same notification is shown, and the file is still `Thing2.twin`.
+
+**Expected behavior**
+Enter with the name unchanged closing the box with nothing said, and a change of case renaming the file.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+F2 and a new name (`Thing.twin` to `Thing2.twin`) renames the file. `renameItemValidate` (`ide/main.js`) returns false when the new name in lower case equals the old one, and the caller shows the invalid-name message.
+
+Severity: low. Nothing is lost.
+
+<!-- Reproducer: bugs/rename-same-name-invalid/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "F2 and Enter with the name unchanged, or changed only in case, is refused as an invalid name", which passes on BETA 1010; the control "control: F2 and a new name renames a file" passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Rename, carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D1). -->
+
+---
+
+## Paste of a file with no extension, in a folder whose name holds a dot, creates nothing
+
+**Describe the bug**
+Paste in Project Explorer names a copy `<name> copy<extension>`, but takes the extension from the last `.` of the whole path, not of the file name. For a file with no extension in a folder whose name holds a `.`, such as `Miscellaneous/v1.2/datafile`, the ` copy` goes into the folder part of the path, and the paste creates nothing and says nothing. It was observed in an IDE started with an `APPDATA` of its own, reading the clipboard, the tree, the notifications and the boxes shown.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, expand `Miscellaneous/v1.2` and select `datafile`, which has no extension.
+2. Press Ctrl+C, then Ctrl+V. No file is added, and nothing is said.
+
+**Expected behavior**
+A copy named `datafile copy` beside it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The clipboard holds `text/html` `twinbasic/uris;/ProjectsProbe/Miscellaneous/v1.2/datafile`, as for any file copied. Copy and Paste of `Resources/CUSTOM/notes.txt` makes `notes copy.txt` beside it. `tbProjectExplorer_ClipboardPaste` (`ide/main.js`) takes `"." + r.split(".").pop()` of the full path `r`.
+
+Severity: low. Nothing is lost.
+
+<!-- Reproducer: bugs/paste-dotted-folder/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Copy and Paste of a file with no extension in a folder whose name holds a dot creates nothing and says nothing", which passes on BETA 1010; the control "control: Copy and Paste of a file makes a copy named '<name> copy' beside it" passes too; the clipboard is faked in the page). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Cut, copy and paste (its NOTE), carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D6). -->
+
+---
+
+## Add Other File or Paste on Packages says it cannot create files in the root resources folder
+
+**Describe the bug**
+Add > Add Other File, and Paste, on Project Explorer's `Packages` folder create nothing, but the notification they show says *cannot create files inside the root resources folder*, naming `Resources`, not `Packages`. It was observed in an IDE started with an `APPDATA` of its own, reading the notifications and the tree.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, right-click `Packages` > Add > Add Other File, and press Enter on the name `MyFile`. The notification *cannot create files inside the root resources folder* is shown.
+2. Copy `Resources/CUSTOM/notes.txt`, click `Packages` and press Ctrl+V. The same notification is shown.
+3. Nothing is added to `Packages`.
+
+**Expected behavior**
+A message naming `Packages`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Add > Add Other File on `Resources/CUSTOM` creates the file there. A file cut and then pasted on `Packages` is deleted, which is the entry "Cut, then Paste onto Resources or Packages, deletes the file and creates it nowhere".
+
+Severity: low. Nothing is created, as it should be; the message names the wrong folder.
+
+<!-- Reproducer: bugs/packages-resources-message/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Add Other File on Packages, and Paste on Packages, each say they cannot create files inside the root resources folder", which passes on BETA 1010; the control "control: Add > Add Other File on a folder of Resources creates the file there" passes too). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Name the new file > Where the new file goes, carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D24). -->
+
+---
+
+## Dragging a file onto Packages raises a page error
+
+**Describe the bug**
+A file dragged onto Project Explorer's `Packages` folder: the folder is highlighted as a drop target, nothing moves, and the IDE page raises `Uncaught RangeError: Invalid DataView length 8`. It was observed in an IDE started with an `APPDATA` of its own, recording the page's errors and reading the tree.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, expand `Sources`, and drag `Sources/Legacy.bas` onto `Packages`. `Packages` is highlighted as a drop target.
+2. Nothing moves, and the page raises the error above.
+
+**Expected behavior**
+The drop refused with no highlight and no error, or a message that files cannot go there.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Dragging a file onto an ordinary folder moves it.
+
+Severity: low. Nothing moves, as it should not.
+
+<!-- Reproducer: bugs/drag-onto-packages-error/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "dragging a file onto Packages moves nothing and raises a page RangeError", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Move a file or folder by dragging (its NOTE, last sentence), carries a NOTE for it; when a fixed build is released, that NOTE changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D27). -->
+
+---
+
+## An imported type library is listed in Enabled Libraries as [LINKED-PACKAGE]
+
+**Describe the bug**
+In Project Settings, Available COM References, Import from file... adds a type library from a file: the project gains a reference named `[IMPORTED] <library name>`, to a copy of the file under `/ImportedTypeLibraries/`. The Enabled Libraries list then draws that reference as `[LINKED-PACKAGE] <library name>`, the label of a package. It was observed in an IDE started with an `APPDATA` of its own, reading the dialog's references and its list.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Click a file in Project Explorer and press Ctrl+T, and open Available COM References.
+2. Press Import from file..., and pick `C:\Windows\SysWOW64\msdatsrc.tlb`.
+3. The project gains the reference *[IMPORTED] Microsoft Data Source Interfaces for ActiveX Data Binding Type Library*, path `/ImportedTypeLibraries/msdatsrc.tlb`.
+4. Open Enabled Libraries. The row reads *[LINKED-PACKAGE] Microsoft Data Source Interfaces ...*.
+
+**Expected behavior**
+A label for a type library, such as the reference's own name.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The reference is not one of the compiler's installed packages, and its own name starts `[IMPORTED]`.
+
+Severity: low. A type library is labelled as a package.
+
+<!-- Reproducer: bugs/imported-typelib-linked-package/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "a type library imported on Available COM References is listed in Enabled Libraries as [LINKED-PACKAGE]", which passes on BETA 1010; the file dialog is answered in the page, and the dialog is closed with Cancel). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under Import from file (its third NOTE), carries a NOTE for it; when a fixed build is released, that NOTE changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D33). -->

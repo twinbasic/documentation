@@ -1,0 +1,17 @@
+{
+  "mode": "run",
+  "exe": true,
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^--- exe: exit 0$",
+      "^Third ran, N = ",
+      "^Main ran$"
+    ],
+    "absent": [
+      "^First ran$",
+      "^Second ran",
+      "^Third ran, N = 0$"
+    ]
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "exclusions": {
+    "llvm": {
+      "GdiPlus": {
+        "build": "*"
+      },
+      "tbRegExp": {
+        "build": "*"
+      },
+      "BigNumberLib": {
+        "compiler-run": [
+          "Reference/Contributed/BigNumberLib/BigNumber.md#4",
+          "Reference/Contributed/BigNumberLib/BigNumber.md#7"
+        ]
+      },
+      "console": {
+        "compiler-run": [
+          "Reference/COM-Interfaces/IErrorInfo.md#4"
+        ]
+      },
+      "Fmt": {
+        "compiler-run": [
+          "Reference/Contributed/Fmt/FormerEntryPoint/FormerStringFormat.md#3",
+          "Reference/Contributed/Fmt/IStringFormatIdentifier.md#2",
+          "Reference/Contributed/Fmt/NumericPaddingSFI.md#1",
+          "Reference/Contributed/Fmt/PublicEntryPoints/StringFormat.md#8"
+        ]
+      },
+      "form": {
+        "compiler-run": [
+          "Reference/Core/Graphics-Methods.md#4"
+        ]
+      },
+      "TBMANLIB": {
+        "compiler-run": [
+          "Reference/Contributed/TBMANLIB/ToolsArray.md#11",
+          "Reference/Contributed/TBMANLIB/ToolsDic.md#3",
+          "Reference/Contributed/TBMANLIB/cJson.md#4",
+          "Reference/Contributed/TBMANLIB/cJson.md#5",
+          "Reference/Contributed/TBMANLIB/cJson.md#6",
+          "Reference/Contributed/TBMANLIB/cLogs.md#2",
+          "Reference/Contributed/TBMANLIB/cTimers.md#1",
+          "Reference/Contributed/TBMANLIB/cToolsStr.md#6",
+          "Reference/Contributed/TBMANLIB/cToolsStream.md#2"
+        ]
+      },
+      "TBMANLIB_Aes": {
+        "compiler-run": [
+          "Reference/Contributed/TBMANLIB_Aes/cAes.md#4",
+          "Reference/Contributed/TBMANLIB_Aes/cAes.md#13",
+          "Reference/Contributed/TBMANLIB_Aes/cAes.md#15",
+          "Reference/Contributed/TBMANLIB_Aes/cAes.md#19",
+          "Reference/Contributed/TBMANLIB_Aes/cAesHelper.md#2"
+        ]
+      },
+      "TBMANLIB_Diagnostic": {
+        "compiler-run": [
+          "Reference/Contributed/TBMANLIB_Diagnostic/DiagnosticEngine.md#4",
+          "Reference/Contributed/TBMANLIB_Diagnostic/Dictionary.md#1",
+          "Reference/Contributed/TBMANLIB_Diagnostic/List.md#3",
+          "Reference/Contributed/TBMANLIB_Diagnostic/List.md#5"
+        ]
+      },
+      "TBMANLIB_Dialog": {
+        "compiler-run": [
+          "Reference/Contributed/TBMANLIB_Dialog/cDialogFindReplace.md#7",
+          "Reference/Contributed/TBMANLIB_Dialog/cDialogPrint.md#12"
+        ]
+      },
+      "TBMANLIB_Xml": {
+        "compiler-run": [
+          "Reference/Contributed/TBMANLIB_Xml/cXml.md#19",
+          "Reference/Contributed/TBMANLIB_Xml/cXml.md#41",
+          "Reference/Contributed/TBMANLIB_Xml/cXml.md#46",
+          "Reference/Contributed/TBMANLIB_Xml/mXPath.md#6"
+        ]
+      },
+      "tbFileSysTools": {
+        "compiler-run": [
+          "Reference/Contributed/tbFileSysTools/Drive.md#1",
+          "Reference/Contributed/tbFileSysTools/Drives.md#2",
+          "Reference/Contributed/tbFileSysTools/Drives.md#3",
+          "Reference/Contributed/tbFileSysTools/File.md#1",
+          "Reference/Contributed/tbFileSysTools/FileSystemObject.md#1",
+          "Reference/Contributed/tbFileSysTools/FileSystemTools.md#11",
+          "Reference/Contributed/tbFileSysTools/FileSystemTools.md#12",
+          "Reference/Contributed/tbFileSysTools/FileSystemTools.md#18",
+          "Reference/Contributed/tbFileSysTools/FileSystemTools.md#21",
+          "Reference/Contributed/tbFileSysTools/FileSystemTools.md#22",
+          "Reference/Contributed/tbFileSysTools/FileSystemTools.md#24",
+          "Reference/Contributed/tbFileSysTools/Files.md#2",
+          "Reference/Contributed/tbFileSysTools/Folder.md#2",
+          "Reference/Contributed/tbFileSysTools/Folders.md#2",
+          "Reference/Contributed/tbFileSysTools/TextStream.md#4",
+          "Reference/Contributed/tbFileSysTools/TextStream.md#5",
+          "Reference/Contributed/tbFileSysTools/index.md#3"
+        ]
+      },
+      "tsJson": {
+        "compiler-run": [
+          "Reference/Contributed/tsJson/Json.md#8",
+          "Reference/Contributed/tsJson/Json.md#17",
+          "Reference/Contributed/tsJson/Json.md#19",
+          "Reference/Contributed/tsJson/Json.md#28",
+          "Reference/Contributed/tsJson/JsonArray.md#1",
+          "Reference/Contributed/tsJson/JsonArray.md#5",
+          "Reference/Contributed/tsJson/JsonOptions.md#2",
+          "Reference/Contributed/tsJson/index.md#10",
+          "Reference/Contributed/tsJson/index.md#12"
+        ]
+      },
+      "tsPwGen": {
+        "compiler-run": [
+          "Reference/Contributed/tsPwGen/PwGenOptions.md#2",
+          "Reference/Contributed/tsPwGen/PwGenRandom.md#6"
+        ]
+      }
+    }
+  },
+  "timeouts": {
+    "projectOpen": 15,
+    "handshake": 10,
+    "load": 120,
+    "setup": 30,
+    "compile": 30,
+    "licence": 60,
+    "build": 15,
+    "compilerRun": 60,
+    "compilerRunQuiet": 8,
+    "exeRun": 60
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["in the object view, a letter typed with a row selected opens the search box holding > and the letter"],
+  "steps": "1. Open a project and press Ctrl+R for the object view.\n2. Click Startup and type u.\n3. The search box opens, focused, holding >u."
+}

@@ -1,0 +1,53 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "ProjectsProbe",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard EXE",
+	"project.description": "test/ide/projects.test.mjs and projects-import-crash.test.mjs open it in a lane's copy of the install and work its Project Explorer: delete, cut and paste, drag, rename, import, the object view, Project Settings. Miscellaneous/v1.2 is a folder whose name holds a dot, on purpose.",
+	"project.exportPathIsV2": true,
+	"project.id": "{F0A3B7A1-0000-4000-9000-F0A3B7A100C6}",
+	"project.name": "ProjectsProbe",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"hasBeenSplit": true,
+			"id": "{F50B82D0-DCAB-43FE-9631-11959D4A4728}",
+			"isCompilerPackage": true,
+			"licence": "MIT",
+			"name": "[COMPILER PACKAGE] WinNativeForms Package",
+			"path32": "/Packages/WindowsControlsPackage",
+			"path64": "/Packages/WindowsControlsPackage",
+			"publisher": "TWINBASIC-COMPILER",
+			"symbolId": "WindowsControlsPackage",
+			"versionBuild": 0,
+			"versionMajor": 0,
+			"versionMinor": 0,
+			"versionRevision": 31
+		},
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"versionMajor": 2,
+			"versionMinor": 0
+		},
+		{
+			"id": "{420B2830-E718-11CF-893D-00A0C9054228}",
+			"lcid": 0,
+			"name": "Microsoft Scripting Runtime",
+			"path32": "C:\\Windows\\SysWOW64\\scrrun.dll",
+			"path64": "C:\\Windows\\System32\\scrrun.dll",
+			"versionMajor": 1,
+			"versionMinor": 0
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.startupObject": "Sub Main",
+	"project.warnings": {
+		"errors": [],
+		"ignored": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

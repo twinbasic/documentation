@@ -1,0 +1,96 @@
+' GdiPlus, ImageAttributes: the colour matrix indexes and the colour key. Each case draws a
+' one-pixel picture of the colour 200, 100, 50 through the attributes onto a black pixel.
+[TestFixture]
+Module Im_AttributeTests
+
+    ' The pixel that results from drawing the picture through attrs onto black.
+    Private Function DrawThrough(attrs As ImageAttributes) As Long
+        Dim src As Bitmap = Bitmap(1!, 1!)
+        src.Pixel(0, 0) = Color(255, 200, 100, 50)
+        Dim dst As Bitmap = Bitmap(1!, 1!)
+        Dim g As Graphics = Graphics(dst)
+        g.Clear Color(255, 0, 0, 0)
+        g.DrawImage src, GpRect(0, 0, 1, 1), GpRect(0, 0, 1, 1), UnitPixel, attrs
+        Return dst.Pixel(0, 0).argb
+    End Function
+
+    Private Function Near(ByVal expected As Long, ByVal actual As Long) As Boolean
+        Dim channel As Long
+        For channel = 0 To 24 Step 8
+            If Abs(((expected >> channel) And &HFF) - ((actual >> channel) And &HFF)) > 1 Then Return False
+        Next
+        Return True
+    End Function
+
+    [TestCase]
+    Public Sub ColorMatrix_FirstIndexIsTheOutputComponent()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cm As ColorMatrix
+        Dim i As Long
+        For i = 0 To 4
+            cm.m(i, i) = 1
+        Next
+        cm.m(2, 0) = 1                    ' blue += red
+        Dim attrs As ImageAttributes = ImageAttributes()
+        Expect.AreEqual 0, CLng(attrs.SetColorMatrix(cm)), "SetColorMatrix returns (0 is Ok)"
+        Dim px As Long = DrawThrough(attrs)
+        Expect.IsTrue Near(&HFFC864FA, px), "the pixel after m(2, 0) = 1 adds the red of the input to the blue of the output: expected FFC864FA, got " & Hex$(px)
+
+        cm.m(2, 0) = 0
+        cm.m(0, 2) = 1                    ' red += blue
+        Set attrs = ImageAttributes()
+        attrs.SetColorMatrix cm
+        px = DrawThrough(attrs)
+        Expect.IsTrue Near(&HFFFA6432, px), "the pixel after m(0, 2) = 1 adds the blue of the input to the red of the output: expected FFFA6432, got " & Hex$(px)
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorMatrix_FifthColumnAddsAConstant()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim cm As ColorMatrix
+        Dim i As Long
+        For i = 0 To 4
+            cm.m(i, i) = 1
+        Next
+        cm.m(1, 4) = 0.1!                 ' green += 0.1 of the range
+        Dim attrs As ImageAttributes = ImageAttributes()
+        attrs.SetColorMatrix cm
+        Dim px As Long = DrawThrough(attrs)
+        Expect.IsTrue Near(&HFFC87E32, px), "the pixel after m(1, 4) = 0.1 adds a tenth of the range to the green: expected FFC87E32, got " & Hex$(px)
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorKey_ColorFormKeysOutTheColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim attrs As ImageAttributes = ImageAttributes()
+        attrs.SetColorKey Color(255, 200, 100, 50), Color(255, 200, 100, 50)
+        Expect.AreEqual &HFF000000, DrawThrough(attrs), "the pixel of the colour 200, 100, 50 after SetColorKey with that Color twice (black means keyed out)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorKey_LongFormTakesAVbColour()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim attrs As ImageAttributes = ImageAttributes()
+        attrs.SetColorKey RGB(200, 100, 50), RGB(200, 100, 50)
+        Expect.AreEqual &HFF000000, DrawThrough(attrs), "the pixel of the colour 200, 100, 50 after SetColorKey with RGB(200, 100, 50) twice (black means keyed out; the value is a VB colour)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorKey_LongFormTakesRrggbbAsDocumented()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim attrs As ImageAttributes = ImageAttributes()
+        attrs.SetColorKey &HC86432, &HC86432
+        Expect.AreEqual &HFF000000, DrawThrough(attrs), "the pixel of the colour 200, 100, 50 after SetColorKey with &HC86432 (&HRRGGBB) twice (black means keyed out)"
+        Expect.Done
+    End Sub
+
+End Module

@@ -97,6 +97,7 @@ Syntax: **IsCanonicalPixelFormat**( *format* As **PixelFormat** ) As **Boolean**
 
 **True** when the format is one of the canonical formats of GDI+: 32 or 64 bits with an alpha channel.
 
+<!-- test: Gr_LibraryTests.IsCanonicalPixelFormat_PremultipliedFormats_AreCanonical -->
 > [!WARNING] 0.9.45.0
 > The result is **False** for **PixelFormat32bppPARGB** and **PixelFormat64bppPARGB**, which are canonical in GDI+, because the values of those two members of the enumeration lack the canonical flag. It is **True** for **PixelFormat32bppARGB** and **PixelFormat64bppARGB**.
 
@@ -132,6 +133,10 @@ Debug.Print ObjectTypeIsValid(ObjectTypeInvalid)                 ' False
 Syntax: **InitializePalette**( *palette* As **ColorPalette**, *paletteType*, *optimalColors* As **Long**, *useTransparentColor* As **Boolean** [, *bitmap* As [**Bitmap**](Bitmap) ] ) As **GpStatus**
 
 Fills *palette* with colours of the kind *paletteType* ([**PaletteType**](Enumerations/PaletteType)). *optimalColors* is the number of colours to find. For the optimal types, the colours are chosen by median cut from *bitmap*. The palette must have its **count** set to the number of entries it can hold; if it has too few, the call fails.
+
+<!-- test: Im_BitmapTests.InitializePalette_FixedBW_FillsThePalette, Im_BitmapTests.InitializePalette_OptimalWithABitmap_FillsThePalette -->
+> [!WARNING] 0.9.45.0
+> The call ends the program with an access violation, in a 32-bit and in a 64-bit program, with the bitmap and without it. Set the **count** and the **entries** of the [**ColorPalette**](Types/ColorPalette) in the program instead; [**Bitmap.ConvertFormat**](Bitmap#convertformat) takes a palette filled in that way.
 
 ### EmfToWmfBits
 
@@ -243,6 +248,7 @@ Syntax: **GdipCreateStreamOnFile**( *filename* As **LongPtr**, *access* As **Lon
 
 The function of the GDI+ flat API of that name, declared by the package. It is meant to open the file whose name *filename* points to (the address of a string, as `StrPtr(name)` returns it) as a COM **IStream** and to store it in *stream*, for the stream form of [**GetMetafileHeader**](#getmetafileheader).
 
+<!-- test: Gr_LibraryTests.GdipCreateStreamOnFile_ExistingFile_ReturnsAStream -->
 > [!WARNING] 0.9.45.0
 > The function returns 6 (**NotImplemented**) and stores no stream, whatever the value of *access*. Make the stream with the Windows function `SHCreateStreamOnFileEx` instead, as the sample above does.
 
@@ -405,6 +411,7 @@ Debug.Print GetNative(bmp).Native <> 0                           ' True
 
 An image file can hold properties: the camera model of a photograph, the time it was taken, the delay of a GIF frame. Each has a numeric ID, and the constants below name the common ones. An ID is the *propId* argument of [**Image.PropertyItem**](Image#propertyitem) and the **Id** field of a [**GpPropertyItem**](Types/GpPropertyItem). The tables give each constant by its full name and its value. The names are those of the GDI+ C++ header, spelling included (`PropertyTagTransferFuncition`). The type of a property's value is the one that the TIFF, EXIF or GPS standard gives the tag; the constants do not say what it is. The thumbnail tags (`PropertyTagThumbnail...`) describe the small picture that a file may hold beside the main one.
 
+<!-- test: Gr_LibraryTests.PropertyTag_ConstantsAbove8000_AreNotNegativeInLong, Gr_LibraryTests.RemovePropertyItem_HighPropertyTag_RemovesTheItem, Gr_LibraryTests.RemovePropertyItem_HighPropertyTagConvertedToLong_RemovesTheItem -->
 > [!WARNING] 0.9.45.0
 > Each constant is an **Integer**, so the 61 tags from `&H8000` up, such as `PropertyTagCopyright` (`&H8298`), are negative numbers. Passed where a **Long** is expected, as the *propId* of **PropertyItem** and **RemovePropertyItem** are, a negative **Integer** becomes `&HFFFF8298`, the ID of another property, and the call finds nothing. Convert the tag first with `tag And &HFFFF&`, which gives `&H8298`, as the example below does. The same holds for comparing a tag with the **Id** of a **GpPropertyItem**.
 

@@ -1,0 +1,13 @@
+' GdiPlus, effects and text: what the compiler refuses. Each line ends in a comment ' CASE <Name>: <code>.
+Module Fx_CompileTests
+
+    Public Sub Fx_NewFont_WithoutThePrefix()
+        Dim f As GdiPlus.Font = New Font(GenericSansSerif(), 12!) ' CASE NewFontWithoutPrefix: none
+    End Sub
+
+    Public Sub Fx_LevelsParams_HighlightField()
+        Dim p As LevelsParams
+        p.highlight = 90 ' CASE LevelsParamsHighlightField: none
+    End Sub
+
+End Module

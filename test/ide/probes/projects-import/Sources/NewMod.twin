@@ -1,0 +1,7 @@
+Module NewMod
+
+    Public Function FromImport() As Long
+        Return 42
+    End Function
+
+End Module

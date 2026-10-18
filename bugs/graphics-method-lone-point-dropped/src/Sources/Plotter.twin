@@ -1,0 +1,19 @@
+' A class that is not a drawing surface, with Line and Scale methods that take the arguments
+' the compiler passes for the graphics syntax (docs: Line, Circle, PSet, Scale), and a
+' method with an ordinary name for comparison.
+[COMCreatable(False)]
+Class Plotter
+    Public Sub Line(ByVal Flags As Long, ByVal X1 As Single, ByVal Y1 As Single, _
+                    ByVal X2 As Single, ByVal Y2 As Single, ByVal Color As Long)
+        Debug.Print "Line F=" & Flags & " (" & X1 & "," & Y1 & ")-(" & X2 & "," & Y2 & ") C=" & Color
+    End Sub
+
+    Public Sub Scale(ByVal Flags As Long, ByVal X1 As Single, ByVal Y1 As Single, _
+                     ByVal X2 As Single, ByVal Y2 As Single)
+        Debug.Print "Scale F=" & Flags & " (" & X1 & "," & Y1 & ")-(" & X2 & "," & Y2 & ")"
+    End Sub
+
+    Public Sub Foo(ByVal A As Long, ByVal B As Long)
+        Debug.Print "Foo " & A & "," & B
+    End Sub
+End Class

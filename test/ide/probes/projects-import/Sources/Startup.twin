@@ -1,0 +1,8 @@
+Module Startup
+
+    ' IMPORTED VERSION of Startup.twin
+    Public Sub Main()
+        Debug.Print "imported"
+    End Sub
+
+End Module

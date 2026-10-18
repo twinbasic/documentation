@@ -32,11 +32,13 @@ Each form is also available as **New ColorLUT**( ... ) with the same arguments.
 
 A constructor that fails creates an unusable object whose **LastResult** tells why.
 
+<!-- test: Fx_EffectTests.ColorLUT_NewWithParams_StoresTheParameters -->
 > [!WARNING] 0.9.45.0
 > The form with *params* stops the program with an access violation, in 32-bit and 64-bit programs. Create the effect without arguments and set [**Parameters**](#parameters).
 
+<!-- test: Fx_EffectTests.ColorLUT_NewWithFourArrays_TakesTheAlphaTableFromLutA, Fx_EffectTests.ColorLUT_ApplyEffectWithFourArrays_KeepsAlphaWithTheIdentityTable -->
 > [!WARNING] 0.9.45.0
-> The form with four arrays copies the alpha table from the array *lutB*, not from *lutA*, so the alpha channel is mapped through the blue table. With the blue table of the example below, the result is transparent. Fill the four tables of a [**ColorLUTParams**](Types/ColorLUTParams) yourself and set **Parameters**.
+> The form with four arrays copies the alpha table from the array *lutB*, not from *lutA*, so the alpha channel is mapped through the blue table. With a blue table that inverts, as in the example below, an opaque picture becomes transparent. Fill the four tables of a [**ColorLUTParams**](Types/ColorLUTParams) yourself and set **Parameters**.
 
 ## Parameters
 
@@ -46,6 +48,7 @@ Syntax: *params* **=** *fx*.**Parameters**( *size* )
 
 Gets or sets the [**ColorLUTParams**](Types/ColorLUTParams).
 
+<!-- test: Fx_EffectTests.ColorLUT_ParametersGetWithoutSize_ReturnsTheParameters -->
 > [!WARNING] 0.9.45.0
 > The getter returns zeros and sets **LastResult** to 2 (**InvalidParameter**) unless it is given *size*, the size of the structure: `fx.Parameters(LenB(Of ColorLUTParams))`. See [**Effect**](Effect#parameters).
 

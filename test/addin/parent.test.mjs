@@ -19,7 +19,7 @@
 //   e  Dim f As Folder = RootFolder.Parent, then "read"
 //   f  the control: the project folder's Parent, printed by its Path
 //
-// Each test states what BETA 1005 does: the
+// Each test states what BETA 1010 does: the
 // compiler crashes in cases a to e, at the read of the root's Parent, before
 // anything is done with the value, and not in the control, f, where the
 // parent is the root. So the lane passes while the bug is there. If a test

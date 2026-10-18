@@ -78,7 +78,7 @@ The set of edges of the parent that the **MultiFrame**'s corresponding edges fol
 
 The background colour of the **MultiFrame**'s drawing surface, as an **OLE_COLOR**. Defaults to the system window-background colour. Visible only where the contained frames do not fully cover the extent --- e.g. when their **MultiFrameSize**s sum to less than 100%.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > Assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. Check a colour that comes from user input before assigning it.
 
 ### Container
@@ -99,7 +99,14 @@ The orientation in which contained frames are laid out. A member of **MultiFrame
 ### Dock
 {: .no_toc }
 
-Where the **MultiFrame** is docked within its container. A member of [**DockModeConstants**](../../VBRUN/Constants/DockModeConstants): **vbDockNone** (default), **vbDockLeft**, **vbDockTop**, **vbDockRight**, **vbDockBottom**, or **vbDockFill**. Docked **MultiFrame**s ignore [**Anchors**](#anchors).
+Where the **MultiFrame** is docked within its container. A member of [**DockModeConstants**](../../VBRUN/Constants/DockModeConstants): **vbDockNone** (default), **vbDockLeft**, **vbDockTop**, **vbDockRight**, **vbDockBottom**, or **vbDockFill**. Docked **MultiFrame**s ignore [**Anchors**](#anchors). Several controls docked to the same container are ordered by [**DockOrder**](#dockorder).
+
+### DockOrder
+{: .no_toc }
+
+The order in which the **MultiFrame** is docked among the docked controls of its container. A **Long**, default 0. A control with a lower value is docked first and so lies nearer the container's edge; controls with equal values are docked in the order they were added to the form. A negative value is allowed. Setting the property at run time lays out the container again at once. A **MultiFrame** whose [**Dock**](#dock) is **vbDockNone** ignores it.
+
+A control docked first takes the whole of its edge, and a later control is placed in what remains: of a left-docked and a top-docked control, the one with the lower value spans the full height or width. A control docked with **vbDockFill** takes the space that remains when its turn comes, so give it the largest value of the docked controls to leave the edges to the others.
 
 ### FramesCount
 {: .no_toc }

@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["Copy and Paste of a file with no extension in a folder whose name holds a dot creates nothing and says nothing"],
+  "steps": "1. In Project Explorer, open Miscellaneous/v1.2 and select the file datafile, which has no extension.\n2. Press Ctrl+C, then Ctrl+V: no file is added and nothing is said.\nControl: Copy and Paste of a file makes a copy named '<name> copy' beside it."
+}

@@ -1,0 +1,173 @@
+' Fx_FontCollectionTests: InstalledFontCollection, PrivateFontCollection and the members of
+' FontCollection. The private collection loads arial.ttf from the Windows fonts folder, which it
+' only reads.
+[TestFixture]
+Module Fx_FontCollectionTests
+
+    Private Function Fx_ArialFile() As String
+        Fx_ArialFile = Environ$("SystemRoot") & "\Fonts\arial.ttf"
+    End Function
+
+    ' ---- InstalledFontCollection
+
+    [TestCase]
+    Public Sub InstalledFontCollection_Create_ReturnsACollection()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fonts As InstalledFontCollection
+        On Error Resume Next
+        Set fonts = InstalledFontCollection()
+        Dim n As Long = Err.Number
+        Dim d As String = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 0, n, "Err.Number after InstalledFontCollection() (" & d & ")"
+        Expect.IsFalse fonts Is Nothing, "InstalledFontCollection() returns an object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InstalledFontCollection_New_ReturnsACollection()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fonts As InstalledFontCollection
+        On Error Resume Next
+        Set fonts = New InstalledFontCollection
+        Dim n As Long = Err.Number
+        Dim d As String = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 0, n, "Err.Number after New InstalledFontCollection (" & d & ")"
+        Expect.IsFalse fonts Is Nothing, "New InstalledFontCollection returns an object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InstalledFontCollection_FamilyCount_CountsTheInstalledFamilies()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fonts As InstalledFontCollection
+        On Error Resume Next
+        Set fonts = InstalledFontCollection()
+        On Error GoTo 0
+        If fonts Is Nothing Then
+            Expect.Fail "InstalledFontCollection() returned Nothing"
+        Else
+            Expect.IsTrue fonts.FamilyCount > 0, "FamilyCount of the installed fonts is positive"
+            Expect.AreEqual Ok, fonts.LastResult, "LastResult after FamilyCount"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InstalledFontCollection_Families_IsOneBasedAndHoldsAnArialFamily()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fonts As InstalledFontCollection
+        On Error Resume Next
+        Set fonts = InstalledFontCollection()
+        On Error GoTo 0
+        If fonts Is Nothing Then
+            Expect.Fail "InstalledFontCollection() returned Nothing"
+        Else
+            Dim families() As FontFamily = fonts.Families
+            Expect.AreEqual 1, LBound(families), "lower bound of Families"
+            Expect.AreEqual fonts.FamilyCount, UBound(families), "upper bound of Families"
+            Dim i As Long, found As Boolean
+            For i = LBound(families) To UBound(families)
+                If Replace(families(i).FamilyName, vbNullChar, "") = "Arial" Then found = True
+            Next
+            Expect.IsTrue found, "Families holds the family Arial"
+        End If
+        Expect.Done
+    End Sub
+
+    ' ---- PrivateFontCollection
+
+    [TestCase]
+    Public Sub PrivateFontCollection_Create_ReturnsAnEmptyCollection()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fonts As PrivateFontCollection
+        On Error Resume Next
+        Set fonts = PrivateFontCollection()
+        Dim n As Long = Err.Number
+        Dim d As String = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 0, n, "Err.Number after PrivateFontCollection() (" & d & ")"
+        Expect.IsFalse fonts Is Nothing, "PrivateFontCollection() returns an object"
+        If Not fonts Is Nothing Then Expect.AreEqual 0, fonts.FamilyCount, "FamilyCount of a new private collection"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PrivateFontCollection_New_ReturnsACollection()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fonts As PrivateFontCollection
+        On Error Resume Next
+        Set fonts = New PrivateFontCollection
+        Dim n As Long = Err.Number
+        Dim d As String = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 0, n, "Err.Number after New PrivateFontCollection (" & d & ")"
+        Expect.IsFalse fonts Is Nothing, "New PrivateFontCollection returns an object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PrivateFontCollection_AddFontFile_AddsTheFamilyOfTheFile()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fonts As PrivateFontCollection
+        On Error Resume Next
+        Set fonts = PrivateFontCollection()
+        On Error GoTo 0
+        If fonts Is Nothing Then
+            Expect.Fail "PrivateFontCollection() returned Nothing"
+        Else
+            Expect.AreEqual Ok, fonts.AddFontFile(Fx_ArialFile()), "AddFontFile of arial.ttf"
+            Expect.AreEqual 1, fonts.FamilyCount, "FamilyCount after adding arial.ttf"
+            If fonts.FamilyCount = 1 Then
+                Dim families() As FontFamily = fonts.Families
+                Expect.AreEqual "Arial", Replace(families(1).FamilyName, vbNullChar, ""), "the family added from arial.ttf"
+            End If
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PrivateFontCollection_AddFontFile_MissingFile_ReturnsFileNotFound()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fonts As PrivateFontCollection
+        On Error Resume Next
+        Set fonts = PrivateFontCollection()
+        On Error GoTo 0
+        If fonts Is Nothing Then
+            Expect.Fail "PrivateFontCollection() returned Nothing"
+        Else
+            Expect.AreEqual FileNotFound, fonts.AddFontFile(Fx_Folder() & "\no such font.ttf"), "AddFontFile of a missing file"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PrivateFontCollection_FontFromTheCollection_IsAvailable()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim fonts As PrivateFontCollection
+        On Error Resume Next
+        Set fonts = PrivateFontCollection()
+        On Error GoTo 0
+        If fonts Is Nothing Then
+            Expect.Fail "PrivateFontCollection() returned Nothing"
+        Else
+            fonts.AddFontFile Fx_ArialFile()
+            Dim ff As FontFamily = FontFamily("Arial", fonts)
+            Expect.IsTrue ff.IsAvailable, "FontFamily(""Arial"", collection).IsAvailable"
+            Dim f As GdiPlus.Font = Font("Arial", 14!, FontStyleRegular, UnitPoint, fonts)
+            Expect.IsTrue f.IsAvailable, "Font(""Arial"", 14, Regular, Point, collection).IsAvailable"
+        End If
+        Expect.Done
+    End Sub
+
+End Module

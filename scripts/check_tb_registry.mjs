@@ -15,38 +15,32 @@
 //
 // What it plays out, on a scratch copy of the IDE's keys:
 //
-//   * a user's project the run opened, whose saved state the IDE overwrote and
-//     whose place in the recent list moved: both must come back exactly;
+//   * a user's project the run opened, whose saved state the IDE overwrote:
+//     it must come back exactly, and the recent list, which an IDE started
+//     with the harness's flags does not write, must be left as it is;
 //   * a project the run created, which must disappear;
 //   * entries under a harness temp folder, in both separators, and a folder
 //     whose name merely starts the same way (9346 against 93460), which must
 //     survive;
 //   * a path with a character outside every console code page, which is why
 //     the module goes through .NET rather than reg.exe;
-//   * what the IDE itself does to the recent list while a run is on it: a
-//     short list's empty slots filled with copies of its last entry, a full
-//     list's oldest entries pushed off the end, and, to be kept, a project the
-//     user opened meanwhile and copies that were there before; and another
-//     run's entry that its own tidy removed, which must not come back;
 //   * the association keys: a value changed, one added, one deleted, a subkey
 //     added, and a key that did not exist before created by the run;
 //   * that a second restore writes nothing at all;
-//   * the build targets the IDE remembers: the entries under a harness temp
-//     folder, in both separators, deleted; the user's, the lookalike folder's
-//     and the rest kept, in their order and in the IDE's own JSON; a value
-//     that is not JSON left alone; and a named project's target that the run
-//     switched, saved under another spelling of its path, put back in its
-//     place, with an entry for a project that had none deleted;
-//   * the IDE's theme, colorTheme in its GENERAL options: put back, with
-//     every other option left as it is now; removed when the run set one
-//     where there was none; options that are not JSON left alone;
+//   * the window geometry (the Window key): values changed, added and deleted
+//     put back with one write each, an untouched key not written, a key the
+//     run created deleted, and a key left as it is when a run of the group
+//     passed `window: false` (try_help_addin, whose IDE is the user's to move);
+//   * the build targets the IDE remembers, read and never written: the entries
+//     under a harness temp folder, in both separators, listed; the user's and
+//     the lookalike folder's not; a value that is not JSON, and no value,
+//     listing nothing;
 //   * an association that named the temp folder when the run began, which is
 //     another run's IDE copy's and is pointed at the newest install, or left
 //     alone when there is none, against one that did not, which is put back;
 //   * two runs at once: the one that ends first puts nothing back, the last
-//     one removes both runs' entries, which an IDE wrote back after the first
-//     ended, and gives the user's list back; a run that died is swept by the
-//     next one to start;
+//     one removes both runs' entries, which an IDE wrote after the first
+//     ended; a run that died is swept by the next one to start;
 //   * the guards: a key near the root and a sweep outside the temp folder
 //     refused, and an error raised inside PowerShell arriving as a sentence;
 //   * the ownership rule: a dead owner does not block tidying, a live one makes
@@ -152,7 +146,6 @@ try {
   assert.deepEqual(R.ideLists({ root: ROOT }).recentlyOpened.filter(Boolean), recentBefore);
   const user = snap.entries.find((e) => e.path === USER);
   assert.equal(user.state, "USER-STATE");
-  assert.equal(user.recentIndex, 3);
   assert.equal(snap.entries.find((e) => e.path === NEWPROJ).name, null);
 
   // ------------------------------------------------ what a run does
@@ -163,18 +156,9 @@ try {
     [TEMPDIR.split("\\").join("/") + "/src/x.twinproj"]: "T2", // forward slashes
     [LOOKALIKE]: "NOT-MINE",
   });
-  setValues(
-    ROOT + "\\RecentlyOpened",
-    slots([
-      TEMPDIR + "\\tbrun-probe.twinproj",
-      NEWPROJ,
-      USER,
-      "D:\\a.twinproj",
-      "D:\\b.twinproj",
-      OTHER,
-      "D:\\c.twinproj",
-    ]),
-  );
+  // The user opens another project in his own IDE meanwhile, which is his to keep.
+  const recentMeanwhile = ["D:\\new.twinproj", ...recentBefore];
+  setValues(ROOT + "\\RecentlyOpened", slots(recentMeanwhile));
   setValues(ASSOC + "\\shell\\open\\command", { "": '"C:\\Temp\\copy\\twinBASIC.exe" "%1"' });
   setValues(ASSOC, { Extra: "added by run" });
   deleteValues(ASSOC + "\\DefaultIcon", [""]);
@@ -187,8 +171,8 @@ try {
   const after = R.ideLists({ root: ROOT });
   assert.deepEqual(
     after.recentlyOpened,
-    Object.values(slots(recentBefore)),
-    "the recent list is exactly as it was, padded to 21 slots",
+    Object.values(slots(recentMeanwhile)),
+    "the recent list is not the tidy's to put back: it is left exactly as it is",
   );
   assert.deepEqual(
     after.projectState.slice().sort(),
@@ -204,122 +188,97 @@ try {
   assert.ok(writes >= 5, `association writes counted (${writes})`);
 
   // Idempotent: nothing is left to put back, so nothing may be written.
-  assert.deepEqual(R.restoreProjects(snap, { prefixes: [TEMPDIR] }), { projectState: 0, recentlyOpened: 0 });
+  assert.deepEqual(R.restoreProjects(snap, { prefixes: [TEMPDIR] }), { projectState: 0 });
   assert.equal(R.restoreKeys(keys), 0);
 
-  // ------------------------------------------------ what the IDE does to the recent list
-  // Each case: the list as found, the list after the run, the list put back.
-  const PROBE1 = TEMPDIR + "\\p1.twinproj",
-    PROBE2 = TEMPDIR + "\\p2.twinproj";
-  const OTHERRUN = path.join(tmpdir(), "tbharness-selftest-Łukasz", "tbrun", "9999", "o.twinproj");
-  const full = Array.from({ length: 21 }, (_, i) => `D:\\full\\p${i}.twinproj`);
-  // biome-ignore format: a table, one entry per line
-  const recentCases = [
-    ["a short list's empty slots filled with copies of its last entry",
-      ["D:\\x.twinproj"], [PROBE2, PROBE1, ...Array(19).fill("D:\\x.twinproj")], ["D:\\x.twinproj"]],
-    ["a full list's oldest entries pushed off the end",
-      full, [PROBE2, PROBE1, ...full.slice(0, 19)], full],
-    ["a project the user opened meanwhile kept on top, and moved one kept where it went",
-      ["D:\\a.twinproj", "D:\\b.twinproj", "D:\\c.twinproj"],
-      [PROBE1, "D:\\new.twinproj", "D:\\c.twinproj", "D:\\a.twinproj", "D:\\b.twinproj",
-       ...Array(16).fill("D:\\b.twinproj")],
-      ["D:\\new.twinproj", "D:\\c.twinproj", "D:\\a.twinproj", "D:\\b.twinproj"]],
-    ["copies that were there before kept, as many as there were",
-      ["D:\\a.twinproj", "D:\\b.twinproj", "D:\\b.twinproj"],
-      [PROBE1, "D:\\a.twinproj", ...Array(19).fill("D:\\b.twinproj")],
-      ["D:\\a.twinproj", "D:\\b.twinproj", "D:\\b.twinproj"]],
-    ["another run's entry that its own tidy removed meanwhile not brought back",
-      ["D:\\a.twinproj", OTHERRUN, "D:\\b.twinproj"], [PROBE1, "D:\\a.twinproj", "D:\\b.twinproj"],
-      ["D:\\a.twinproj", "D:\\b.twinproj"]],
-  ];
-  for (const [what, found, afterRun, expected] of recentCases) {
-    setValues(ROOT + "\\RecentlyOpened", slots(found));
-    const s = R.snapshotProjects([], { root: ROOT });
-    setValues(ROOT + "\\RecentlyOpened", slots(afterRun));
-    R.restoreProjects(s, { prefixes: [TEMPDIR] });
-    assert.deepEqual(R.ideLists({ root: ROOT }).recentlyOpened, Object.values(slots(expected)), what);
-    assert.equal(R.restoreProjects(s, { prefixes: [TEMPDIR] }).recentlyOpened, 0, `${what}: idempotent`);
-  }
-  // A sweep with no list in hand, as startTidy makes first, only deletes.
-  setValues(ROOT + "\\RecentlyOpened", slots([PROBE1, "D:\\x.twinproj", "D:\\x.twinproj"]));
+  // A sweep with no snapshot only deletes, and a recent list that names a harness folder is read, not changed.
+  const PROBE1 = TEMPDIR + "\\p1.twinproj";
+  setValues(ROOT + "\\RecentlyOpened", slots([PROBE1, "D:\\x.twinproj"]));
+  setValues(ROOT + "\\ProjectState", { [PROBE1]: "T3" });
   R.restoreProjects({ root: ROOT, entries: [] }, { prefixes: [TEMPDIR] });
   assert.deepEqual(
-    R.ideLists({ root: ROOT }).recentlyOpened,
-    Object.values(slots(["D:\\x.twinproj", "D:\\x.twinproj"])),
-    "a sweep with no snapshot only deletes",
+    R.ideLists({ root: ROOT }).projectState.filter((n) => n === PROBE1),
+    [],
+    "the entry is swept",
   );
+  assert.deepEqual(
+    R.ideLists({ root: ROOT }).recentlyOpened,
+    Object.values(slots([PROBE1, "D:\\x.twinproj"])),
+    "and the recent list, which names it, is the lane runner's to report",
+  );
+  setValues(ROOT + "\\RecentlyOpened", slots(recentBefore));
 
   // ------------------------------------------------ remembered build targets
+  // Read only: an IDE started with the harness's flags does not write them.
   const SETTINGS = ROOT + "\\IDESettings";
   const MEMORY = "targetArchitectureMemory";
   const PROBE = TEMPDIR + "\\tbrun-probe.twinproj";
   const PROBE_FWD = TEMPDIR.split("\\").join("/") + "/src/x.twinproj";
   const memory = { [USER]: "win64", [PROBE]: "win64", [LOOKALIKE]: "win64", [PROBE_FWD]: "win32", [OTHER]: "win32" };
   setValues(SETTINGS, { [MEMORY]: JSON.stringify(memory) });
-  assert.equal(
-    R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }),
-    2,
-    "both of the run's entries are deleted, whichever separator they use",
+  assert.deepEqual(
+    R.rememberedTargets([TEMPDIR], { root: ROOT }).sort(),
+    [PROBE, PROBE_FWD].sort(),
+    "both of the run's entries are listed, whichever separator they use",
   );
-  assert.equal(
-    readValue(SETTINGS, MEMORY),
-    JSON.stringify({ [USER]: "win64", [LOOKALIKE]: "win64", [OTHER]: "win32" }),
-    "every other entry is kept, in its order, written as the IDE writes it",
+  assert.deepEqual(
+    R.rememberedTargets(null, { root: ROOT }).sort(),
+    Object.keys(memory).sort(),
+    "without folders, every entry",
   );
-  assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0, "a second sweep deletes nothing");
+  assert.equal(readValue(SETTINGS, MEMORY), JSON.stringify(memory), "and nothing is written");
   setValues(SETTINGS, { [MEMORY]: "{not json" });
-  assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0);
+  assert.deepEqual(R.rememberedTargets([TEMPDIR], { root: ROOT }), []);
   assert.equal(readValue(SETTINGS, MEMORY), "{not json", "a value that is not JSON is left alone");
   deleteValues(SETTINGS, [MEMORY]);
-  assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0, "no value, nothing to do");
-  assert.throws(() => R.sweepArchitectureMemory(["C:\\"], { root: ROOT }), /outside/);
+  assert.deepEqual(R.rememberedTargets([TEMPDIR], { root: ROOT }), [], "no value, nothing listed");
+  assert.throws(() => R.rememberedTargets(["C:\\"], { root: ROOT }), /outside/);
 
-  // A named project's target, which a run switches: tbbuild --arch on the
-  // user's own project. The IDE saves the switch under the path as it was
-  // given, which need not be spelled as the user's IDE spelled it.
-  const kept = { [OTHER]: "win32", [USER]: "win64", "D:\\z.twinproj": "win64" };
-  setValues(SETTINGS, { [MEMORY]: JSON.stringify(kept) });
-  const targets = R.snapshotArchitectureMemory([USER, NEWPROJ], { root: ROOT });
-  setValues(SETTINGS, {
-    [MEMORY]: JSON.stringify({ ...kept, [USER]: "win32", [NEWPROJ]: "win64", [USER.toLowerCase()]: "win32" }),
-  });
-  assert.equal(
-    R.restoreArchitectureMemory(targets),
-    3,
-    "the user's entry gets its value back; the run's other spelling of it, and its new project's, go",
-  );
-  assert.equal(readValue(SETTINGS, MEMORY), JSON.stringify(kept), "every entry as it was, in its order");
-  assert.equal(R.restoreArchitectureMemory(targets), 0, "a second restore writes nothing");
-  setValues(SETTINGS, { [MEMORY]: JSON.stringify({ [OTHER]: "win32", "D:\\z.twinproj": "win64" }) });
-  assert.equal(R.restoreArchitectureMemory(targets), 1);
-  assert.deepEqual(JSON.parse(readValue(SETTINGS, MEMORY)), kept, "an entry the run deleted comes back");
-  // ...and the same through the whole tidy.
-  setValues(SETTINGS, { [MEMORY]: JSON.stringify(kept) });
-  const named = R.startTidy({ root: ROOT, keys: [ASSOC], paths: [USER] });
-  setValues(SETTINGS, { [MEMORY]: JSON.stringify({ ...kept, [USER]: "win32" }) });
-  assert.equal(R.finishTidy(named).architecture, 1);
-  assert.equal(readValue(SETTINGS, MEMORY), JSON.stringify(kept), "finishTidy puts a named project's target back");
-
-  // ------------------------------------------------ the theme
-  // The IDE's options, written as the IDE writes them; a run switches the
-  // theme, and the user changes another option meanwhile, which is kept.
+  // The whole tidy leaves the options, the build targets and the recent list as they are,
+  // and puts the window geometry back value by value.
   const asIde = (o) => JSON.stringify(o, undefined, "\t");
-  const options = { colorTheme: "Dark", fontSize: 14 };
-  setValues(SETTINGS, { GENERAL: asIde(options) });
-  const themed = R.startTidy({ root: ROOT, keys: [ASSOC] });
-  setValues(SETTINGS, { GENERAL: asIde({ colorTheme: "light", fontSize: 16 }) });
-  assert.equal(R.finishTidy(themed).theme, 1);
-  assert.equal(readValue(SETTINGS, "GENERAL"), asIde({ colorTheme: "Dark", fontSize: 16 }), "the theme comes back");
-  assert.equal(R.restoreTheme(themed.theme), 0, "a second restore writes nothing");
-  setValues(SETTINGS, { GENERAL: asIde({ fontSize: 14 }) });
-  const unset = R.snapshotTheme({ root: ROOT });
-  setValues(SETTINGS, { GENERAL: asIde({ fontSize: 14, colorTheme: "light" }) });
-  assert.equal(R.restoreTheme(unset), 1);
-  assert.equal(readValue(SETTINGS, "GENERAL"), asIde({ fontSize: 14 }), "a theme the run set where none was goes");
-  setValues(SETTINGS, { GENERAL: "{not json" });
-  assert.equal(R.restoreTheme(themed.theme), 0);
-  assert.equal(readValue(SETTINGS, "GENERAL"), "{not json", "options that are not JSON are left alone");
-  deleteValues(SETTINGS, ["GENERAL"]);
+  const WINDOW = R.windowKey(ROOT);
+  assert.equal(WINDOW, ROOT + "\\Window");
+  const geometry = { RealTitlebar: "0", Left: "846", Top: "407", Width: "1200", Height: "900", State: "0" };
+  setValues(WINDOW, geometry);
+  const windowBefore = R.snapshotKeys([WINDOW]);
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify(memory), GENERAL: asIde({ colorTheme: "Dark" }) });
+  const whole = R.startTidy({ root: ROOT, keys: [ASSOC], paths: [USER], prefixes: [TEMPDIR] });
+  setValues(ROOT + "\\ProjectState", { [USER]: "RUN-STATE", [PROBE]: "T4" });
+  setValues(SETTINGS, {
+    [MEMORY]: JSON.stringify({ ...memory, [USER]: "win32" }),
+    GENERAL: asIde({ colorTheme: "light" }),
+  });
+  // A resize writes the four numbers; an options change writes RealTitlebar.
+  setValues(WINDOW, { Left: "100", Top: "100", Width: "1600", Height: "1200", RealTitlebar: "1", Extra: "added" });
+  deleteValues(WINDOW, ["State"]);
+  const done = R.finishTidy(whole);
+  assert.deepEqual(Object.keys(done).sort(), ["association", "projectState", "window"]);
+  assert.equal(R.snapshotProjects([USER], { root: ROOT }).entries[0].state, "USER-STATE", "a named project's state");
+  assert.equal(readValue(SETTINGS, MEMORY), JSON.stringify({ ...memory, [USER]: "win32" }), "targets are not touched");
+  assert.equal(readValue(SETTINGS, "GENERAL"), asIde({ colorTheme: "light" }), "options are not touched");
+  assert.deepEqual(R.snapshotKeys([WINDOW]), windowBefore, "the window geometry is as it was found");
+  assert.equal(done.window, 7, "one write for each value changed, added or deleted, and none for the rest");
+  deleteValues(SETTINGS, [MEMORY, "GENERAL"]);
+
+  // A window key nobody touched is not written; one the run created goes; one a
+  // run whose IDE is the user's to move (window: false) leaves is kept, whichever
+  // run of the group ends last.
+  const untouched = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  assert.equal(R.finishTidy(untouched).window, 0, "an untouched window key is not written");
+  ps("$hk.DeleteSubKeyTree($in.key)", { key: WINDOW });
+  const created = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  setValues(WINDOW, geometry);
+  assert.equal(R.finishTidy(created).window, 1);
+  assert.deepEqual(R.snapshotKeys([WINDOW]), [{ path: WINDOW, snap: null }], "a window key the run created goes");
+  setValues(WINDOW, geometry);
+  const lanes = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  const tryIt = R.startTidy({ root: ROOT, keys: [ASSOC], window: false });
+  setValues(WINDOW, { Width: "1600" });
+  assert.ok(R.finishTidy(tryIt).deferred, "the user's run ends first");
+  assert.equal(R.finishTidy(lanes).window, null, "the last run leaves the geometry the user's IDE left");
+  assert.equal(readValue(WINDOW, "Width"), "1600");
+  setValues(WINDOW, geometry);
 
   // ------------------------------------------------ an association another run's copy held
   // startTidy and finishTidy, the whole tidy, on the scratch keys. TB_IDE stands in for the
@@ -351,36 +310,31 @@ try {
   assert.equal(readValue(COMMAND, ""), REAL, "one that did not is put back");
 
   // ------------------------------------------------ two runs at once
-  // Run A starts on the user's list; run B starts while A runs and ends first,
-  // so it puts nothing back. A's IDE, still open, writes B's entry back after
-  // that -- the IDE writes its whole list from memory. A ends last and puts
-  // back for both.
+  // Run A starts; run B starts while A runs and ends first, so it puts nothing
+  // back. A's IDE, still open, writes B's project state after that. A ends last
+  // and puts back for both.
   const RUNS = path.join(tmpdir(), "tbharness-selftest-Łukasz", "tbide");
   const DIR_A = path.join(RUNS, "9661");
   const DIR_B = path.join(RUNS, "9662");
   const IN_A = path.join(DIR_A, "project.twinproj");
   const IN_B = path.join(DIR_B, "project.twinproj");
   const RECENT = ROOT + "\\RecentlyOpened";
-  const runsLeft = () => {
-    const lists = R.ideLists({ root: ROOT });
-    return [...lists.projectState, ...lists.recentlyOpened].filter((p) => p?.startsWith(RUNS));
-  };
+  const runsLeft = () => R.ideLists({ root: ROOT }).projectState.filter((p) => p?.startsWith(RUNS));
   setValues(RECENT, slots([USER, OTHER]));
   const runA = R.startTidy({ root: ROOT, keys: [ASSOC], prefixes: [DIR_A] });
   const runB = R.startTidy({ root: ROOT, keys: [ASSOC], prefixes: [DIR_B] });
-  setValues(RECENT, slots([IN_B, IN_A, USER, OTHER]));
   setValues(ROOT + "\\ProjectState", { [IN_A]: "{}", [IN_B]: "{}" });
   const deferred = R.finishTidy(runB);
   assert.deepEqual(deferred, { deferred: [process.pid] }, "a run that ends while another runs puts nothing back");
   assert.equal(R.finishTidy(runB), deferred, "a second finishTidy returns what the first did");
-  assert.deepEqual(runsLeft().sort(), [IN_A, IN_A, IN_B, IN_B].sort(), "so both runs' entries are still there");
+  assert.deepEqual(runsLeft().sort(), [IN_A, IN_B].sort(), "so both runs' entries are still there");
   const last = R.finishTidy(runA);
   assert.ok(last && !last.deferred, "the last run to end puts back");
   assert.deepEqual(runsLeft(), [], "for both runs");
   assert.deepEqual(
     R.ideLists({ root: ROOT }).recentlyOpened.filter(Boolean),
     [USER, OTHER],
-    "the user's list as found",
+    "and leaves the recent list as it is",
   );
   assert.deepEqual(readdirSync(runA.dir), [], "and the shared record goes");
   // A run that died: its record is left, and the next run to start alone
@@ -392,7 +346,6 @@ try {
     ["-e", `import(${JSON.stringify(lib)}).then(m => m.startTidy(JSON.parse(process.env.TIDY)))`],
     { env: { ...noOwner, TIDY: JSON.stringify({ root: ROOT, keys: [ASSOC], prefixes: [DIR_B] }) } },
   );
-  setValues(RECENT, slots([IN_B, USER, OTHER]));
   setValues(ROOT + "\\ProjectState", { [IN_B]: "{}" });
   const nextRun = R.startTidy({ root: ROOT, keys: [ASSOC] });
   assert.deepEqual(runsLeft(), [], "a dead run's entries are deleted by the next run");

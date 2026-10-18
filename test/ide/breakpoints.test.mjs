@@ -6,7 +6,7 @@
 // test sets and clears breakpoints as a person does (F9, Ctrl+Shift+F9, Ctrl+S),
 // restarts the compiler with the toolbar's button, reads the margin and runs Main.
 //
-// Each test states what BETA 1005 does. If one fails after an IDE update, the IDE
+// Each test states what BETA 1010 does. If one fails after an IDE update, the IDE
 // has changed.
 //
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.

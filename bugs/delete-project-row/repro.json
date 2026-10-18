@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects-loss",
+  "tests": [
+    "Delete on the project's row, after a box that reads like a file's, empties the tree, and Ctrl+S writes a project holding no file"
+  ],
+  "steps": "1. In Project Explorer, click the project's row, ProjectsProbe, and press Delete.\n2. The box reads Are you sure you want to delete '/ProjectsProbe'? You will not be able to undo this operation. Choose Delete.\n3. The tree is empty; the Debug Console prints IDE internal error: Uncaught TypeError: Cannot read properties of undefined (reading 'parentNode').\n4. Press Ctrl+S: the console prints the [DONE] line, and the project file now holds no file.\nControl: Delete on Sources shows the box, and Delete deletes nothing."
+}

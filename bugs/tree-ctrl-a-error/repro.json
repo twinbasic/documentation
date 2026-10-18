@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["Ctrl+A in the file view selects every row shown and raises a page TypeError"],
+  "steps": "1. In Project Explorer's file view, click a file that is not open in a tab.\n2. Press Ctrl+A: every row shown is selected, and the page raises TypeError: Cannot read properties of undefined (reading 'style')."
+}

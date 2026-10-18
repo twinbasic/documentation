@@ -1,0 +1,53 @@
+' GdiPlus, graphics and the library: what the compiler refuses. Each line ends in a comment ' CASE <Name>: <code>.
+' The project references the VB package and the OLE Automation library, as every default project does,
+' so a bare Font is the type of stdole.
+Module Gr_CompileTests
+
+    Public Sub Gr_BaseAlloc()
+        Dim block As LongPtr = GdiPlusBase.Alloc(64) ' CASE GrBaseAllocIsNotRecognised: error
+    End Sub
+
+    Public Sub Gr_UserAlloc()
+        Dim block As LongPtr = GdiPlusUser.Alloc(64) ' CASE GrUserAllocCompiles: none
+    End Sub
+
+    Public Sub Gr_QualifiedImage()
+        Dim bmp As Bitmap = Bitmap(4!, 4!)
+        Dim img As GdiPlus.Image = bmp ' CASE GrQualifiedImageCompiles: none
+    End Sub
+
+    Public Sub Gr_QualifiedFont()
+        Dim f As GdiPlus.Font = GdiPlus.Font("Arial", 14) ' CASE GrQualifiedFontCompiles: none
+    End Sub
+
+    Public Sub Gr_NewBareFont()
+        Dim f As Font = New Font("Arial", 14) ' CASE GrNewBareFontIsNotThePackagesClass: error
+    End Sub
+
+    Public Sub Gr_DriverStringWithSolidBrushVariable()
+        Dim g As Graphics = Graphics(Bitmap(4!, 4!))
+        Dim f As GdiPlus.Font = GdiPlus.Font("Arial", 14)
+        Dim brush As SolidBrush = SolidBrush(Color(0, 0, 0))
+        Dim options As GpDriverStringOptions
+        Dim noMatrix As Matrix = Nothing
+        g.DrawDriverString("Hi", f, brush, GpPointF(5, 5), options, noMatrix) ' CASE GrDriverStringSolidBrushVariable: TB5073
+    End Sub
+
+    Public Sub Gr_DriverStringWithZeroFlags()
+        Dim g As Graphics = Graphics(Bitmap(4!, 4!))
+        Dim f As GdiPlus.Font = GdiPlus.Font("Arial", 14)
+        Dim brush As Brush = SolidBrush(Color(0, 0, 0))
+        Dim noMatrix As Matrix = Nothing
+        g.DrawDriverString("Hi", f, brush, GpPointF(5, 5), 0, noMatrix) ' CASE GrDriverStringZeroFlags: TB5073
+    End Sub
+
+    Public Sub Gr_DriverStringWithBrushVariableAndOptions()
+        Dim g As Graphics = Graphics(Bitmap(4!, 4!))
+        Dim f As GdiPlus.Font = GdiPlus.Font("Arial", 14)
+        Dim brush As Brush = SolidBrush(Color(0, 0, 0))
+        Dim options As GpDriverStringOptions
+        Dim noMatrix As Matrix = Nothing
+        g.DrawDriverString("Hi", f, brush, GpPointF(5, 5), options, noMatrix) ' CASE GrDriverStringBrushVariableCompiles: none
+    End Sub
+
+End Module

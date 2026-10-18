@@ -57,6 +57,7 @@ Syntax: *matrix* **= Matrix(** *rect*, *point* **)**
 
 In GDI+ this constructor maps a rectangle to a parallelogram, and the parallelogram is given by three points: the images of the top-left, top-right and bottom-left corners of the rectangle. The package takes one point where GDI+ reads three.
 
+<!-- test: Gr_MatrixTests.Matrix_RectFAndPoint_MovesTheRectangleToThePoint, Gr_MatrixTests.Matrix_RectAndPoint_MovesTheRectangleToThePoint -->
 > [!WARNING] 0.9.45.0
 > The constructors that take a rectangle and a point give a matrix whose elements depend on whatever memory follows the point. The call does not report an error. Use the six-number constructor, or build the matrix with [**Translate**](#translate), [**Scale**](#scale) and the other methods.
 
@@ -128,6 +129,7 @@ Syntax: *matrix*.**Offset** [ **=** *point* ]
 
 The translation elements *dx* and *dy*. **OffsetX** and **OffsetY** are **Single** values. **Offset** is a [**GpPointF**](Types/GpPointF) holding both.
 
+<!-- test: Gr_MatrixTests.OffsetX_Assign_ChangesOnlyDx, Gr_MatrixTests.OffsetY_Assign_ChangesOnlyDy, Gr_MatrixTests.Offset_Assign_ChangesBoth -->
 > [!WARNING] 0.9.45.0
 > Assigning **OffsetX** sets *dx* and sets *dy* to 0. Assigning **OffsetY** does not change *dy* to the value: it sets *dx* to the value and *dy* to 0. Reading all three properties is correct, and so is assigning **Offset**. To change one offset, assign **Offset**, or call **SetElements**.
 
@@ -211,9 +213,12 @@ Syntax: *matrix*.**Scale(** *sx*, *sy*, [ *order* ] **)** **As GpStatus**
 *order*
 : *optional* A [**GpMatrixOrder**](Enumerations/GpMatrixOrder), **MatrixOrderPrepend** by default.
 
+<!-- test: Gr_MatrixTests.Scale_OtherSpellings_Scale -->
 Combines a scaling with the matrix.
+<!-- /test -->
 
-> [!WARNING] BETA 1005
+<!-- test: none -- a twinBASIC defect (BETA 1010), not the package's -->
+> [!WARNING] BETA 1010
 > A call of **Scale** written as a statement, with its arguments in parentheses and without **Call**, does nothing and raises no error: `m.Scale(2, 3)` leaves the matrix as it was. The same call written `m.Scale 2, 3`, `Call m.Scale(2, 3)` or `status = m.Scale(2, 3)` works. This is the case for a method of any class that is named **Scale**.
 
 ### Rotate

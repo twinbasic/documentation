@@ -58,8 +58,11 @@ A few intrinsics ask questions about the surrounding type without running anythi
 
 [**GetInheritedOwner**](GetInheritedOwner) returns the inherited owner object of a control. [**GetShortcutTextByEnum**](GetShortcutTextByEnum) returns the localised display text for a built-in keyboard shortcut. [**SetThreadGlobalErrorTrap**](SetThreadGlobalErrorTrap) registers a callback that fires when an unhandled run-time error escapes the active error handler chain on the calling thread.
 
+Five members are declared **Hidden** and **Restricted**, so IntelliSense lists leave them out; twinBASIC's own packages call them. [**AddClassInstanceFlag**](AddClassInstanceFlag) and [**RemoveClassInstanceFlag**](AddClassInstanceFlag#removeclassinstanceflag) set and clear a flag on a class instance, and [**InternalGetReturnAddress**](AddClassInstanceFlag#internalgetreturnaddress) returns the return address of the calling procedure. [**GetNameFromDispID**](GetNameFromDispID) returns the name of the member that has a given dispatch ID, and [**ShowPropertyPageEditor**](GetNameFromDispID#showpropertypageeditor) shows the property page that edits one property of a control.
+
 ## Members
 
+- [AddClassInstanceFlag](AddClassInstanceFlag) -- sets a flag on a class instance
 - [AllocMem](AllocMem) -- allocates a block of native memory and returns its address
 - [ConvertIconToBitmap](ConvertIconToBitmap) -- converts an icon picture to a bitmap picture
 - [CreateGUID](CreateGUID) -- generates a fresh GUID and returns it as a registry-formatted string
@@ -80,6 +83,7 @@ A few intrinsics ask questions about the surrounding type without running anythi
 - [GetMem4](GetMem4) -- reads four bytes from a memory address into a **Long** variable
 - [GetMem8](GetMem8) -- reads eight bytes from a memory address into a **Currency** variable
 - [GetMemPtr](GetMemPtr) -- reads a pointer-sized value from a memory address into a **LongPtr** variable
+- [GetNameFromDispID](GetNameFromDispID) -- returns the name of the member that has a given dispatch ID
 - [GetShortcutTextByEnum](GetShortcutTextByEnum) -- returns the localized text for a built-in keyboard shortcut by its enumeration ID
 - [InterlockedCompareExchange32](InterlockedCompareExchange32) -- atomically compares and exchanges a 32-bit value
 - [InterlockedCompareExchange64](InterlockedCompareExchange64) -- atomically compares and exchanges a 64-bit value
@@ -87,14 +91,17 @@ A few intrinsics ask questions about the surrounding type without running anythi
 - [InterlockedDecrement32](InterlockedDecrement32) -- atomically decrements a 32-bit value and returns the new value
 - [InterlockedExchangePointer](InterlockedExchangePointer) -- atomically exchanges a pointer-sized value and returns the previous value
 - [InterlockedIncrement32](InterlockedIncrement32) -- atomically increments a 32-bit value and returns the new value
+- [InternalGetReturnAddress](AddClassInstanceFlag#internalgetreturnaddress) -- returns the return address of the calling procedure
 - [PictureToByteArray](PictureToByteArray) -- serialises an **IPicture** into a **Byte** array
 - [PutMem1](PutMem1) -- writes one byte to a memory address
 - [PutMem2](PutMem2) -- writes two bytes to a memory address
 - [PutMem4](PutMem4) -- writes four bytes to a memory address
 - [PutMem8](PutMem8) -- writes eight bytes to a memory address
 - [PutMemPtr](PutMemPtr) -- writes a pointer-sized value to a memory address
+- [RemoveClassInstanceFlag](AddClassInstanceFlag#removeclassinstanceflag) -- clears a flag on a class instance
 - [RuntimeCreateGetMessageHook](RuntimeCreateGetMessageHook) -- creates an [**IGetMessageHook**](./#igetmessagehook-interface) for filtering window messages
 - [SetThreadGlobalErrorTrap](SetThreadGlobalErrorTrap) -- registers a global callback invoked when an unhandled error is raised on the calling thread
+- [ShowPropertyPageEditor](GetNameFromDispID#showpropertypageeditor) -- shows the property page that edits one property of a control
 - [StackArgsSize](StackArgsSize) -- returns the total size, in bytes, of the arguments on the current procedure's stack frame
 - [StackOffset](StackOffset) -- returns the stack-frame offset of a variable
 - [UnprotectedAccess](UnprotectedAccess) -- returns an object reference that bypasses access checks on private members

@@ -14,6 +14,10 @@
 //             back as found once every lane has ended. Two lanes that name the
 //             same one never run at once. Settings that are not named here are
 //             left changed after the run.
+//   page      the size of each IDE's page in CSS pixels, { width, height }, or
+//             null for the window's own; by default 1600 by 1000 (PAGE in
+//             scripts/lib/tb-lane.mjs), whatever size the user's IDE last left
+//             its window at
 
 export default [
   { file: "export.test.mjs" },
@@ -36,4 +40,7 @@ export default [
   { file: "debugging.test.mjs" },
   { file: "forms.test.mjs" },
   { file: "vb6-import.test.mjs" },
+  { file: "projects.test.mjs" },
+  { file: "projects-loss.test.mjs" },
+  { file: "projects-import-crash.test.mjs" },
 ];

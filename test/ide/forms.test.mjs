@@ -48,13 +48,15 @@
 // control 0.667 px. The page's currentDPI is set to its devicePixelRatio first, as the trials
 // that found these defects did.
 //
-// THE IDE SAVES ITS OPTIONS AND PANEL LAYOUT IN THE USER'S OWN REGISTRY (HKCU\Software\VB and VBA
-// Program Settings\twinBASIC_IDE\IDESettings). So, as soon as each project is open, the page's
-// hostAppObject is replaced by a proxy whose SaveIDESetting, ChangeWindowSetting and recent-list
+// THE IDE IS STARTED WITH --no-save-ide-settings and --no-update-recent-files (IDE_FLAGS in
+// scripts/lib/tb-ide.mjs), so it writes none of its options or panel layout to the user's own
+// registry (HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE\IDESettings). The flags do not
+// guard the Window key or the removals from the recent list. So, as soon as each project is open,
+// the page's hostAppObject is replaced by a proxy whose ChangeWindowSetting and RemoveRecentsList
 // calls do nothing, as debugging.test.mjs does; the tests float the HISTORY and TOOLBOX panels.
 // Nothing here copies to the clipboard or reaches SaveSetting, so lanes.mjs names no settings.
 //
-// The tests share the lane's IDE in order. Each test states what BETA 1005 does; the tests named
+// The tests share the lane's IDE in order. Each test states what BETA 1010 does; the tests named
 // "control" pass whether or not the defects are fixed. If another fails after an IDE update, the
 // IDE has changed: update the entry in BUGS-TO-REPORT.md, or its report in bugs/filed/, the
 // callout on the page of docs/IDE/Forms/ or docs/IDE/Reports/ that carries it, and then this file.
@@ -87,11 +89,11 @@ const SRC = (file) => `/FormsProbe/Sources/${file}`;
 const G = "getCurrentFormEditorGlobals()";
 const J = JSON.stringify;
 
-// Blocks every call that writes the user's registry, and makes the designer's DPI the page's.
+// Blocks every call the flags do not guard that writes the user's registry, and makes the designer's DPI the page's.
 const GUARD_JS = `(() => {
   if (!window.__guarded) {
     window.__guarded = true;
-    const blocked = new Set(["SaveIDESetting", "ChangeWindowSetting", "AddRecentsList", "RemoveRecentsList"]);
+    const blocked = new Set(["ChangeWindowSetting", "RemoveRecentsList"]);
     hostAppObject = new Proxy(hostAppObject, {
       get(target, key) {
         if (blocked.has(key)) return async () => undefined;
@@ -962,7 +964,7 @@ scenario("designing forms and reports", (lane) => {
     assert.deepEqual(await boxes(), []);
     const { file, code } = await codeOf("1bad.twin");
     assert.match(code, /^Class 1bad$/m);
-    const outcome = compileOutcome(await waitForCompile(c, { project: lane.project, timeout: 60 * 1000 }), {
+    const outcome = compileOutcome(await waitForCompile(c, { project: lane.project }), {
       name: "the forms probe",
     });
     t.diagnostic(J(outcome.rows ?? outcome.message));

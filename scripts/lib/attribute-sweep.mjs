@@ -18,7 +18,7 @@ export const CONTROL_NAME = "ZzNoSuchAttributeProbe";
 
 // What each canary MUST draw, fixed here rather than read from a build (see 3 in
 // sweep_attributes.mjs's header). `unknown` is what an invented name draws;
-// recorded from BETA 1005 (WIP.Harness.md) and re-checked by the canary-only build
+// recorded from BETA 1010 (WIP.Harness.md) and re-checked by the canary-only build
 // before every run.
 export const CANARY_SPECS = [
   ["clean", "MODULE", '[Description("canary")]'],
@@ -69,8 +69,9 @@ const GUESS_FORMS = [
 ];
 export const EXTRA_FORMS = [...BOOL_FORMS, ...GUESS_FORMS].map(([k]) => k);
 
-// The compiler allows these once per project (TB5114 on a second), so a batch
-// holds one probe of each. PopulateFrom fills an enum with the same two members
+// A batch holds one probe of each of these: the compiler allows one
+// [RunAfterBuild] per project (TB5114 on a second), and accepts a second
+// [RunBeforeStartupObject] silently but runs only the last. PopulateFrom fills an enum with the same two members
 // every time, and enum members are project-global, so only its working form
 // is held to one.
 export const SINGLETON_NAMES = new Set(["RunAfterBuild", "RunBeforeStartupObject"]);
@@ -466,7 +467,7 @@ export function judgePreflight(baselines, controls, outcomeOf) {
     controlSig.set(p.site.id, signature(o.codes, o.msgs, CONTROL_NAME));
     // A site whose control compiles cannot tell an attribute from something else:
     // an Enum body takes ANY own-line `[...]`, `[ClassId("guid")]` included, as
-    // on BETA 1005. It is voided rather than read.
+    // on BETA 1010. It is voided rather than read.
     if (!voidSites.has(p.site.id) && (firm(o.state) || inconclusive(o.state))) {
       voidSites.set(
         p.site.id,

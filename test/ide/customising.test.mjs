@@ -12,17 +12,19 @@
 // The custom theme files go only into the lane's own APPDATA (<work>\appdata\twinBASIC\themes), which
 // the IDE reads as its common themes folder.
 //
-// THE IDE SAVES ITS OPTIONS IN THE USER'S OWN REGISTRY, HKCU\Software\VB and VBA Program
+// THE IDE WOULD SAVE ITS OPTIONS IN THE USER'S OWN REGISTRY, HKCU\Software\VB and VBA Program
 // Settings\twinBASIC_IDE\IDESettings, whatever its APPDATA is: choosing a theme writes colorTheme, and
 // the keyboard dialog and menu write CUSTOM_KEYBOARD_SHORTCUT_GROUPS and
-// ACTIVE_KEYBOARD_SHORTCUT_GROUPS. So, as soon as each IDE's page has loaded and before anything is
-// chosen, the page's hostAppObject is replaced by a proxy whose SaveIDESetting, ChangeWindowSetting
-// and recent-list calls do nothing (as shoot_docs.mjs's PAGE_DEFAULTS does). Nothing here reaches
-// SaveSetting, so lanes.mjs names no settings for this lane.
+// ACTIVE_KEYBOARD_SHORTCUT_GROUPS. Every IDE the harness starts has --no-save-ide-settings and
+// --no-update-recent-files (IDE_FLAGS in scripts/lib/tb-ide.mjs), which guard those. They do not guard
+// the Window key or the removals from the recent list, so, as soon as each IDE's page has loaded and
+// before anything is chosen, the page's hostAppObject is replaced by a proxy whose
+// ChangeWindowSetting and RemoveRecentsList calls do nothing (as shoot_docs.mjs's PAGE_DEFAULTS does
+// for the second). Nothing here reaches SaveSetting, so lanes.mjs names no settings for this lane.
 //
 // The tests share the lane's IDE in order: the first two run in an IDE started with one custom theme,
 // AtStart (inherits light); the third starts a new IDE with a Dark.theme beside it; the fourth uses
-// whichever IDE is open. Each test states what BETA 1005 does. If one fails after an IDE update, the
+// whichever IDE is open. Each test states what BETA 1010 does. If one fails after an IDE update, the
 // IDE has changed: update the entry in BUGS-TO-REPORT.md, or its report in bugs/filed/, the WARNING on
 // docs/IDE/Customising/Themes.md or Keyboard-Shortcuts.md, and then this file.
 //
@@ -32,7 +34,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { portTaken, sleep } from "../../scripts/lib/tb-ide.mjs";
+import { sleep } from "../../scripts/lib/tb-ide.mjs";
 import { clickAt, pressKey, typeText, waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "../addin/scenario.mjs";
 
@@ -59,7 +61,7 @@ const THEME_STATE_JS = `(() => {
 const GUARD_JS = `(() => {
   if (window.__guarded) return;
   window.__guarded = true;
-  const blocked = new Set(["SaveIDESetting", "ChangeWindowSetting", "AddRecentsList", "RemoveRecentsList"]);
+  const blocked = new Set(["ChangeWindowSetting", "RemoveRecentsList"]);
   hostAppObject = new Proxy(hostAppObject, {
     get(target, key) {
       if (blocked.has(key)) return async () => undefined;
@@ -88,8 +90,6 @@ scenario("customising the IDE", (lane) => {
   // A new IDE with no project, its New / Open dialog cancelled and its page guarded.
   async function startIde() {
     if (lane.run) await lane.closeProject();
-    // An ended IDE's WebView2 can hold the DevTools port for a while.
-    for (let i = 0; i < 150 && (await portTaken(lane.port)); i++) await sleep(200);
     c = await lane.openNoProject();
     const ready = await waitFor(
       c,

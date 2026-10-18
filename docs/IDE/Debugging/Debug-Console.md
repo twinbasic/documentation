@@ -95,13 +95,13 @@ The input row is one line. There is no way to enter a multi-line construct.
 - The row has the IntelliSense of the editor, in the mode that [IDE Options](../Customising/IDE-Options#intellisense-modes) sets, and <kbd>Ctrl</kbd>+<kbd>Space</kbd> opens the list. It has a line for signature help of its own.
 - A [keyboard shortcut](../Customising/Keyboard-Shortcuts#the-text-of-a-group) can run a line of code in the console: `tbDebugConsole_ExecuteCode('? 6*7')` is the one command that takes an argument.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > The input row offers no completion for a name typed after `?` and a space, and <kbd>Ctrl</kbd>+<kbd>Space</kbd> there opens no list. Type the name without the space, as `?total`, or start the line with the name.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > A space typed while the completion list is open accepts the list's first entry, and the space is lost. Typing `Print total` gives `Printertotal`, because the list offers `Printer` but not the keyword `Print`; `Call Touch(total)` and `Set obj = items` are changed in the same way. The console refuses the changed line. Press <kbd>Escape</kbd> to close the list before you type the space: the text you typed stays.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > `? p`, where `p` is a variable of a user-defined type, fails with `(compile error: codegen error; check for compilation errors)`, and the console prints a `[LINKER] compilation (codegen) error` line. The [Variables](Inspecting#variables) panel and a watch show the same variable, so read it there.
 
 ## Copy the output

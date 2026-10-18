@@ -215,7 +215,7 @@ export function judgeOutput(expected, output) {
  * raised it. The handler is reached only by an error the sample did not handle.
  * Testing `Err.Number` after the call would not do: a procedure that handles an
  * error with `On Error Resume Next` returns with `Err` still set, in VB6 and in
- * twinBASIC alike (BETA 1005), so a sample that demonstrates an error
+ * twinBASIC alike (BETA 1010), so a sample that demonstrates an error
  * would be reported as raising it. The first statement is `Debug.Cls`, which
  * erases the IDE's own build log from the console, so what is left is the
  * dispatcher's.

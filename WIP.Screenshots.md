@@ -78,7 +78,9 @@ Measured:
     page (`HostGetRecentsList`, `HostGetVB6RecentProjects`), nothing read or written;
   - the IDE's settings (View's ticks, IDE Options' values, the debugger options, the language
     tick, user panel layouts) live in `HKCU\...\twinBASIC_IDE\IDESettings`, not in the lane's
-    private APPDATA — see Machine state in the pictures;
+    private APPDATA — see Machine state in the pictures. The IDE is started with
+    `--no-save-ide-settings` and `--no-update-recent-files` (`IDE_FLAGS`), so it writes none
+    of it;
   - the licence line on About (`LICENCE: tB Licence: NOT READY` when the licence check has not
     finished) — the same section;
   - the Windows user name: the visible-text check (text boxes included) covers every picture,
@@ -170,7 +172,7 @@ as the IDE's own pop-up list, beside the select.
 
 ## The tool
 
-`scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--port N] [--ide <path>] [--jobs N] [--diffs <dir>] [--svg]`,
+`scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--ide <path>] [--jobs N] [--diffs <dir>] [--svg]`,
 Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool could not run,
 3 not put back.
 
@@ -184,12 +186,14 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
   alone), `programs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
-  Chrome, not an IDE), `featuremap`, `code-chapter`, `debugging`, `forms-chapter`, `customcontrols`, `code` and `sample9` (all described
+  Chrome, not an IDE), `featuremap`, `code-chapter`, `debugging`, `forms-chapter`, `projects`, `projects-refs`,
+  `projects-start`, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`.
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
-- **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE on its own claimed ports and
-  private desktop, and splits the big setups into parts, longest first; a full run with `--svg` is
+- **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE in a slot of its own from
+  `tbbroker` (a private desktop; the help setup's slot also carries the detached window's port)
+  with a DevTools port Windows picks, and splits the big setups into parts, longest first; a full run with `--svg` is
   about 17 minutes in both themes on BETA 1005: the jobs add up to about 5,900 s, and the longest
   part, `forms-chapter`, takes about 450 s on its own, so six IDEs cannot do much better.
   `--jobs 1` runs one IDE per setup in table order. Per-run
@@ -351,6 +355,53 @@ whose project does not refer to the VB package.
 - PROPERTIES shows no description line: in BETA 1005 its text is set in a footer of the
   designer's own properties box, which is 0 pixels wide, so nothing is drawn.
 
+## The "Projects and files" chapter
+
+Setup `projects`: the fixture `test/shots/projects/`, MyProject (a form, `Legacy.bas`, `Startup`,
+and `Util` and `Thing` in a `Helpers` folder, `Resources/MANIFEST/#1.xml`), with
+`Resources/ICON/AppIcon.ico` staged from the install's template icon, as the sample's is. The
+project file the lane opens is `project.twinproj`, the name the title shows. `projects-refs` is
+the same project with Microsoft Scripting Runtime's symbol overridden as `SR` and a type library
+that is not on the machine (`MISSING_LIBRARY`) put in the staged `Settings`; the IDE opens
+Project Settings by itself a second after loading it, and the setup's prepare closes it.
+`projects-start` is the IDE with no project. Its 15 pictures are under `docs/IDE/Projects/Images/`;
+`Menu_File_Project` is the File menu with the project open (the Menu pages keep `Menu_File`, with
+none, which `New Project.md` also shows).
+
+- **Each picture starts from nothing** (`projectsReset`: no menu or dialog, no tab, the default
+  layout, the file view) and opens the tree's folders it shows itself (`peFolders`).
+- **What a picture changes in the project it undoes**: frmMain.tbform renamed frmA.tbform is
+  renamed back after NO; the folder Tree_Tints adds and the module Title_Changed adds are deleted
+  (`peDelete`: the row clicked first, so that Delete goes to the tree, then the box's Delete); the
+  lines Tree_Tints puts in Util and Startup (an undeclared variable, a `ReDim` that declares one)
+  are undone. The project stays changed from the first of them on, which only Title_Changed and
+  Close_Question show, and each of those makes the change itself when the title has no dot
+  (`projectChanged`).
+- **`headerButton` and `panelSel` name a floating panel only.** The docked Project Explorer's
+  title-bar buttons are found inside `PE_SCOPE` (`peButton`); its Search button is drawn only in
+  the object view, which is how `peObjectView` tells the views apart.
+- **The tree's tints are text colours and dots, not row colours**: an error row has a red dot at
+  its right, and in the dark theme its name and its folders' names are a light red (255, 230, 230
+  against 216, 203, 203); in Light only the dot shows. A warning row has a yellow dot and a yellow
+  name in both.
+- **A rename box selects the base name a moment after it takes the focus**: Rename_Box waits for
+  the selection, not the focus.
+- **A row's priority arrows in Enabled Libraries show only under the pointer** (CSS `:hover`),
+  grey until the pointer is on the arrow: References_Detail rests the pointer on Microsoft
+  Scripting Runtime's name. It has no SVG (`c.shot.svg = null`): the converter does not draw a
+  line-through, and the struck `Scripting` is what the picture shows.
+- **The Recent tab's double-click on a project that is gone closes the New / Open dialog** before
+  the box opens, so Failed_To_Load is the box alone. The entries are `RECENT_GONE`, set with
+  `setRecents` in the page; Keep It closes the box (its Remove It would call `RemoveRecentsList`,
+  which `PAGE_DEFAULTS` blocks anyway).
+- Settings_Close types into the description box with real keys, after `templateBuildPath`, and
+  closes the question with Yes, close, which keeps nothing.
+- **Not taken: the export console** (marker `projects-export-console` left). It was reached (Export
+  Path set in the staged copy to a folder under `PACKAGE_ROOT`, so that the first line holds no
+  user name; the console floated before Clear, which the docked console is too narrow to show; the
+  list scrolled with the wheel to its top and its end, as two parts of a composite), but with
+  Export Verbose every `DONE` line shows `&#92;` for each backslash, a defect not yet decided on.
+
 ## Special IDE states
 
 - **`Services_Unavailable`**: the badge in the `no-project` setup. With no project the badge's
@@ -369,8 +420,8 @@ whose project does not refer to the VB package.
   into the page's `licenceKey` and passes it to each compiler it starts; the compiler answers
   with the edition and hands the key back, and the IDE saves it only when it differs. The tool
   sets `licenceKey = ""` in the page and restarts the compiler with the toolbar's button: the
-  registry value is never read, changed or removed by the tool, and the save call is one
-  `PAGE_DEFAULTS` has made do nothing. `doCommunityNagScreens` runs; its only screen is dated
+  registry value is never read, changed or removed by the tool, and the save is one
+  `--no-save-ide-settings` stops (`LicenceKey`). `doCommunityNagScreens` runs; its only screen is dated
   1-7 January 2026.
 - **`Services_Limited`** (setup `community`): LIMITED is never a lasting state. The page draws it
   for about 0.6 s while a compiler starts (its own connection up, the page then connecting FS,
@@ -563,7 +614,7 @@ Taken on BETA 1005.
   it. The arrow and ring are the overlay's. The GitHub page is the repository's release list,
   whose first release is the newest (`releases/latest` skips pre-releases); Assets is opened
   with a real click. Its numbers (size, "yesterday", the version) are the day's, so the FAQ's alt
-  does not name them; its install-size entry says about 40 MB and 120 MB (the BETA 1005 folder
+  does not name them; its install-size entry says about 40 MB and 120 MB (the BETA 1010 folder, 121.6 MB,
   less the runtime's `.WebView2` data folder).
 - `test/addin/help.test.mjs` fetches `/favicon.png` as its sample PNG, so `favicon.png` must stay
   a PNG.
@@ -572,8 +623,9 @@ Taken on BETA 1005.
 
 - **The IDE's settings** (View's ticks, IDE Options' values, the debugger options, user panel
   layouts and keyboard groups) are set to their defaults **in the page only** — `liveIDEOptions`
-  and the like, in memory, never saved — so no picture shows the user's choices and nothing is
-  written to the registry.
+  and the like, in memory, never saved (`--no-save-ide-settings`, and the page's `PAGE_DEFAULTS`
+  also blocks `RemoveRecentsList`, which the flags do not guard) — so no picture shows the
+  user's choices and nothing is written to the registry.
 - **About's licence line**: the tool waits for `licenceIsSet` before opening About, so it shows
   the edition, never NOT READY.
 - **The language tick** stays on whatever language the IDE runs in.

@@ -20,7 +20,8 @@ Syntax: *collection* **= InstalledFontCollection**( )
 
 Syntax: *collection* **= New InstalledFontCollection**
 
-> [!WARNING] 0.9.45.0, BETA 1005
+<!-- test: Fx_FontCollectionTests.InstalledFontCollection_Create_ReturnsACollection, Fx_FontCollectionTests.InstalledFontCollection_New_ReturnsACollection, Fx_FontCollectionTests.InstalledFontCollection_FamilyCount_CountsTheInstalledFamilies, Fx_FontCollectionTests.InstalledFontCollection_Families_IsOneBasedAndHoldsAnArialFamily -->
+> [!WARNING] 0.9.45.0, BETA 1010
 > Creating an **InstalledFontCollection** raises run-time error 438, *Object doesn't support this property or method*, and the result is **Nothing**. The statement `Debug.Assert TypeOf (Me) Is InstalledFontCollection` in the class raises it. Even with that statement removed, the constructor does not store the native collection it creates, so the object has no handle and every call on it fails with **InvalidParameter**. The class cannot be used until a version of the package corrects both.
 
 ```tb check_build

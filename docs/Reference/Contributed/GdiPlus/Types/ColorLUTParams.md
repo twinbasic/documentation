@@ -30,6 +30,7 @@ Syntax: *params* **= ColorLUTParams**( *lutB*, *lutG*, *lutR*, *lutA* )
 *lutB*, *lutG*, *lutR*, *lutA*
 : *required* Arrays of **Byte** with 256 elements, any lower bound. If one of the arrays has another length, the function returns a structure of zeros.
 
+<!-- test: Fx_EffectTests.ColorLUTParams_FromFourArrays_TakesTheAlphaTableFromLutA -->
 > [!WARNING] 0.9.45.0
 > The function copies the alpha table from the array *lutB*. The structure it returns maps alpha through the blue table. Fill the fields yourself instead, as the example does.
 

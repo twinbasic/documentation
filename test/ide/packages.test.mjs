@@ -12,7 +12,7 @@
 // that nobody sees. OpenPackage puts the real hostAppObject back as it answers,
 // and every other read goes to the real HostReadFileDataBase64.
 //
-// Each test states what BETA 1005 does. If a test fails after an IDE update,
+// Each test states what BETA 1010 does. If a test fails after an IDE update,
 // the IDE has changed: update the matching entry in BUGS-TO-REPORT.md or bugs/filed/ and the
 // two Packages pages under docs/Features/Packages, and then this file.
 //
@@ -320,7 +320,7 @@ scenario("Replacing an embedded package", (lane) => {
   // Wait until the compiler has settled, with no errors unless `errors`: with
   // the package unticked, Main no longer compiles.
   async function settle({ errors = false } = {}) {
-    const waited = await waitForCompile(c, { project: lane.project, timeout: 90 * 1000 });
+    const waited = await waitForCompile(c, { project: lane.project });
     const outcome = compileOutcome(waited, { name: lane.project });
     assert.ok(outcome.ok, `the compiler did not settle: ${outcome.message}`);
     if (!errors) assert.equal(outcome.counts[0], 0, `the compile has errors: ${outcome.rows.join("\n")}`);

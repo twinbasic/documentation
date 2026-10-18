@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects-loss",
+  "tests": [
+    "dragging a folder onto a file inside it nests it without end, with no message, and Ctrl+S writes a project file the IDE cannot open"
+  ],
+  "steps": "1. In Project Explorer, open Sources/Helpers and drag the folder Helpers onto Helpers/Thing.twin.\n2. Nothing is said; the tree holds Helpers/Helpers/... fifty and more levels deep.\n3. Press Ctrl+S: the console prints the [DONE] line, then IDE internal error: Uncaught RangeError: Maximum call stack size exceeded; the project file grows from about 6.7 KB to about 150 KB.\n4. Open that file in a new IDE: 45 seconds later it still shows Please wait... 25.0% and an empty tree.\nControl: dragging a file onto a folder moves it there."
+}

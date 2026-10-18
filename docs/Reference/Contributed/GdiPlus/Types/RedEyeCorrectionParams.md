@@ -63,8 +63,9 @@ Syntax: *params* **= RedEyeCorrectionParams**( *areas*( ) )
 *areas*
 : *required* An array of [**GpRect**](GpRect): the rectangles to copy into newly allocated memory.
 
+<!-- test: Fx_EffectTests.RedEyeCorrectionParams_FromArray_CopiesTheAreas -->
 > [!WARNING] 0.9.45.0
-> The function stops the program with an access violation when the array has elements. Allocate and fill the structure with **Allocate** and **Area**, as the example does. A [**RedEyeCorrection**](../RedEyeCorrection) effect built from the structure does not work either.
+> The function stops the program with an access violation when the array has elements. Allocate and fill the structure with **Allocate** and **Area**, as the example does.
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()

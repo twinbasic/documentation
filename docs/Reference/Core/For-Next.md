@@ -54,6 +54,9 @@ The *step* argument can be either positive or negative. The value of the *step* 
 
 After all statements in the loop have executed, *step* is added to *counter*. At this point, either the statements in the loop execute again (based on the same test that caused the loop to execute initially), or the loop is exited and execution continues with the statement following the **Next** statement.
 
+> [!WARNING] BETA 1010
+> With [LLVM](../../LLVM/Getting-Started), a loop whose *step* is a `ByVal` **Long** or **Single** parameter of the procedure runs with a wrong step, or a wrong *start* or *end* when those are parameters too, when a later parameter of the procedure is declared `ByRef ... As Boolean` or `ByRef ... As Integer`. The wrong value depends on where the caller's argument for that parameter is stored: 20 in a 64-bit build and 25 in a 32-bit build for a local variable. No error is raised. Declare that parameter `ByVal`, or place it before the *step* parameter.
+
 > [!TIP]
 > 
 > Changing the value of *counter* while inside a loop can make code harder to read and debug.

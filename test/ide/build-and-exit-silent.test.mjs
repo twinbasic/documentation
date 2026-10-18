@@ -5,7 +5,7 @@
 // desktop (launchOnDesktop), from the lane's own copy of the install, with the
 // lane's own APPDATA, and the project is packed into the lane's work folder.
 //
-// Each test states what BETA 1005 does. If one fails after an IDE
+// Each test states what BETA 1010 does. If one fails after an IDE
 // update, the switch has changed: update the entry in BUGS-TO-REPORT.md or
 // bugs/filed/, the notes that name it (scripts/tbbuild.mjs, WIP.Harness.md,
 // docs/Documentation/Tools-Compiler.md, docs/Features/Packages/Import-export tool.md),
@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { launchOnDesktop, shutdownIde } from "../../scripts/lib/tb-ide.mjs";
+import { IDE_FLAGS, launchOnDesktop, shutdownIde } from "../../scripts/lib/tb-ide.mjs";
 import { laneProjectId, stageProject } from "../../scripts/lib/tb-project.mjs";
 import { scenario } from "../addin/scenario.mjs";
 
@@ -52,7 +52,7 @@ scenario("--buildAndExit32 without a window to look at", (lane) => {
       src: SOURCE,
       stage: path.join(dir, "src"),
       project,
-      settings: { "project.id": laneProjectId(6, lane.port) },
+      settings: { "project.id": laneProjectId(6, lane.slot) },
       prepare: (tree) => {
         if (!callUnused) return;
         const file = path.join(tree, "Sources", "Startup.twin");
@@ -77,8 +77,8 @@ scenario("--buildAndExit32 without a window to look at", (lane) => {
     const run = await launchOnDesktop({
       exe: lane.copy(),
       arg: "--buildAndExit32",
-      args: [project],
-      desktop: `ide-test-bae-${lane.port}-${name}`,
+      args: [...IDE_FLAGS, project],
+      tag: `ide-test build-and-exit ${name}`,
       env: {
         ...process.env,
         APPDATA: lane.appdataDir(),

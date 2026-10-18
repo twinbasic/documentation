@@ -1,0 +1,107 @@
+' Regression tests: an index out of range on an array that is a member of a
+' user-defined type raises error 9, "Subscript out of range", as it does on an
+' array that is not in a UDT. Expected numbers are VB6's (the VB6 project beside
+' this one prints them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Type Holder
+        X As Long
+        A(1 To 3) As Long
+        M(1 To 2, 1 To 2) As Long
+        D() As Long
+    End Type
+
+    Private ModuleLevel As Holder
+    Private ModuleArray(1 To 3) As Long
+
+    ' Controls: an array that is not in a UDT, and an index in range.
+    [TestCase]
+    Public Sub PlainArray_WriteAboveRange_Raises9()
+        Dim a(1 To 3) As Long
+        On Error Resume Next
+        a(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ModuleLevelArray_WriteAboveRange_Raises9()
+        On Error Resume Next
+        ModuleArray(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_WriteInRange_Stores()
+        Dim u As Holder
+        u.A(3) = 7
+        Assert.Strict.AreEqual 7&, u.A(3)
+    End Sub
+
+    ' An index out of range on a member of a UDT.
+    [TestCase]
+    Public Sub UdtMember_WriteAboveRange_Raises9()
+        Dim u As Holder
+        On Error Resume Next
+        u.A(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_WriteBelowRange_Raises9()
+        Dim u As Holder
+        On Error Resume Next
+        u.A(0) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_ReadAboveRange_Raises9()
+        Dim u As Holder
+        Dim r As Long
+        On Error Resume Next
+        r = u.A(4)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_TwoDimensions_Raises9()
+        Dim u As Holder
+        On Error Resume Next
+        u.M(1, 3) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtDynamicMember_WriteAboveRange_Raises9()
+        Dim u As Holder
+        ReDim u.D(1 To 3)
+        On Error Resume Next
+        u.D(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ModuleLevelUdtMember_WriteAboveRange_Raises9()
+        On Error Resume Next
+        ModuleLevel.A(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtArrayElementMember_WriteAboveRange_Raises9()
+        Dim us(1 To 2) As Holder
+        On Error Resume Next
+        us(1).A(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_ErrorDescription()
+        Dim u As Holder
+        On Error Resume Next
+        u.A(4) = 1
+        Assert.Strict.AreEqual "Subscript out of range", Err.Description
+    End Sub
+
+End Module

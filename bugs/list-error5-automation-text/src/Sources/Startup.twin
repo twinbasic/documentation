@@ -1,0 +1,45 @@
+' Collection.Add with Before = 1 on an emptied Collection raises error 5. Called inside a method of a
+' generic class, on a local declared Dim a As New Cls(Of String), after an On Error Resume Next block
+' in the method, the 32-bit IDE run reports Err.Description "Automation error" for it. The built exe
+' (32-bit and 64-bit), the 64-bit IDE run and VB6 report "Invalid procedure call or argument".
+' Err.Number is 5 in all of them. With Set a = New Cls(Of String) the 32-bit IDE run's text is right.
+' With LLVM on, the IDE run ends before it returns and prints nothing (32-bit and 64-bit).
+Module Startup
+
+    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+    Private Function Describe(ByVal useNew As Boolean) As String
+        Dim a As New Cls(Of String)
+        Dim b As Cls(Of String)
+        If useNew Then
+            Set b = New Cls(Of String)
+            b.Add "a"
+            On Error Resume Next
+            b.Replace "Z"
+        Else
+            a.Add "a"
+            On Error Resume Next
+            a.Replace "Z"
+        End If
+        Describe = Err.Number & ": " & Err.Description
+    End Function
+
+    Public Sub Main()
+        Dim t As String
+        t = Describe(False)
+        If App.IsInIDE Then
+            Debug.Print "Dim a As New: " & t
+            Debug.Print "Set a = New:  " & Describe(True)
+        Else
+            ' the exit code: 0 for the right text, 1 for "Automation error", 2 for another text
+            If t = "5: Invalid procedure call or argument" Then
+                ExitProcess 0
+            ElseIf t = "5: Automation error" Then
+                ExitProcess 1
+            Else
+                ExitProcess 2
+            End If
+        End If
+    End Sub
+
+End Module

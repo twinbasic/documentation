@@ -65,7 +65,7 @@ A report holds windowless controls only. Its Toolbox lists seven tools: **Pointe
 
 A control belongs to the section where you draw it. A double-click on a tool places the control in the current section, and a control that you paste goes into the section that is shown. Drawing or pasting any other control gives the notification *Can't add* the control's type *to a report. Only windowless controls allowed.*, and adds nothing.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > A floating Toolbox lists all 24 controls and **More components** when a report is open. A control that a report does not allow is refused when you use it, so nothing is lost. Dock the Toolbox, or use only the seven tools above.
 
 A report has no **Form Menu** bar and no control arrays, and its controls have no **Index** property. The other designer features work: selection, moving and sizing, the grid, copy and paste, locks, undo, zoom, the right-click menu and the [Format](../Forms/Arranging) commands.

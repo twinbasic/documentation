@@ -119,16 +119,19 @@ Debug.Print Hex$(bmp.Pixel(50, 50).argb)
 ' FFFFFFFF
 ```
 
+<!-- test: Gr_LibraryTests.GdiPlusUser_BitmapOfTwoWholeNumbers_IsCreated, Gr_LibraryTests.GdiPlusUser_BitmapOfSinglesOrWithFormat_IsCreated -->
 > [!WARNING] 0.9.45.0
 > Two whole numbers without a format do not create a bitmap of that size. `Bitmap(64, 64)` binds to the form that takes a GDI bitmap handle and a palette handle, treats 64 and 64 as handles, and returns an unusable object with **LastResult** 7 (**Win32Error**), without any error being raised. Pass **Single** values, as the sample does: `Bitmap(64!, 64!)`, or give a format, as in `Bitmap(64, 64, PixelFormat32bppARGB)`. [**Bitmap**](Bitmap#creating) has the details.
 
+<!-- test: Gr_GraphicsTests.Clear_VBColourRed_FillsRed, Gr_GraphicsTests.Clear_CColorTransparent_KeepsAlpha, Gr_GraphicsTests.DrawImage_DestRectF_ScalesTheImage, Gr_GraphicsTests.DrawImage_DestRect_ScalesTheImage, Gr_GraphicsTests.DrawImage_ThreeFloatPointsAndSourcePart_DrawsTheImage, Gr_GraphicsTests.Transform_Get_ReturnsTheWorldTransformation, Gr_MatrixTests.Transform_GetOnGradientBrush_ThroughTheInterface_ReturnsTheMatrix -->
 > [!WARNING] 0.9.45.0
 > The package compiles, and a program that uses its common calls with **Color** values works. A number of members give wrong results, fail or never return, and in most cases raise no error. The main ones:
 >
 > - A colour passed as a **Long** (the *rgb* forms of [**SolidBrush**](SolidBrush), [**Pen**](Pen), [**Graphics.Clear**](Graphics#clear), [**HatchBrush**](HatchBrush) and the gradient brushes) is read as `&H00RRGGBB`, not as a Visual Basic colour: `SolidBrush(vbRed)` paints blue, and the alpha is dropped. A **CColor** member passed there loses its alpha. Pass a [**Color**](Types/Color). See [Colours](IBrush#colours) and [**Color**](Types/Color#windows-colours).
 > - [**Image.Save**](Image#save) and **Bitmap.Save** cannot pass encoder parameters: the call returns an error, ignores them, or stops the program.
 > - [**InstalledFontCollection**](InstalledFontCollection#creating) and [**PrivateFontCollection**](PrivateFontCollection#creating) cannot be created, so no font collection can be used.
-> - Some calls never return: the function form of [**HatchBrush**](HatchBrush#creating), the array forms of [**SetBlend**](LinearGradientBrush#setblend) and [**SetInterpolationColors**](LinearGradientBrush#setinterpolationcolors) of the gradient brushes, the stroke cap setters of [**CustomLineCap**](CustomLineCap#setstrokecaps) and of [**ArrowCap**](ArrowCap), and three forms of [**Graphics.DrawImage**](Graphics#drawimage).
+> - Some calls never return: the function form of [**HatchBrush**](HatchBrush#creating), the array forms of [**SetBlend**](LinearGradientBrush#setblend) and [**SetInterpolationColors**](LinearGradientBrush#setinterpolationcolors) of the gradient brushes, the stroke cap setters of [**CustomLineCap**](CustomLineCap#setstrokecaps) and of [**ArrowCap**](ArrowCap).
+> - Some calls end the program: [**Graphics.DrawImage**](Graphics#drawimage) with a destination rectangle (in a 32-bit program) and with an array of points and a source part, [**Graphics.IsVisible**](Graphics#isvisible) with a **GpPointF** (in a 32-bit program), the methods **TestControlForceBilinear** and **TestControlNoICM** of [**GdiPlusUser**](GdiPlusUser#methods), drawing an image that was given a [**GdiPlusAbort**](GdiPlusAbort), and [**InitializePalette**](Helpers#initializepalette).
 > - The [**Metafile**](Metafile#creating) constructors that take a file name, and the ones that record, raise error 13.
 > - The [effects](Effect#parameters) return zeros from **Parameters** unless the size of the structure is passed, and the constructors that take a parameters structure fail or stop the program for seven of the eleven effect classes.
 > - Reading **Transform** from a [**Graphics**](Graphics#transform), a [**Pen**](Pen#transform) or a brush returns **Nothing**. A **Graphics** and the brushes have [**GetTransform**](ITransformable#gettransform) to read the transformation, and a **Pen** has no way to.
@@ -143,11 +146,13 @@ A **GdiPlusUser** must exist while any GDI+ object is used. It starts GDI+, and 
 Dim user As GdiPlusUser = GdiPlusUser()
 ```
 
+<!-- test: none -- GDI+ is already started in the process of the test runner, so a GDI+ object made before the first use of a Dim As New GdiPlusUser variable does not fail with status 18 there; it fails only in a program that has not started GDI+ yet -->
 > [!WARNING] 0.9.45.0
 > A **GdiPlusUser** declared `Dim user As New GdiPlusUser` is not created until the variable is first used, so the GDI+ objects made before that fail with status 18. Use `Dim user As GdiPlusUser = GdiPlusUser()`, or `Set` the variable in the load handler. See [**GdiPlusUser**](GdiPlusUser).
 
 Every class is created in two ways that are one thing: `New Pen(...)` and the function `Pen(...)`. This section documents both under *Creating* on the page of the class. The structures of the package, such as [**GpPointF**](Types/GpPointF) and [**GpRect**](Types/GpRect), have such functions too: `GpRect(0, 0, 10, 10)`.
 
+<!-- test: Gr_LibraryTests.Image_AssignedToAVariableOfTheVbType_Fails, Gr_LibraryTests.Image_AssignedToAGdiPlusImageVariable_IsUsable, Gr_GraphicsTests.Font_AssignedToAVariableOfTheStdoleType_Fails, Gr_GraphicsTests.Font_AssignedToAGdiPlusFontVariable_IsUsable, compile GrQualifiedImageCompiles, compile GrQualifiedFontCompiles -->
 > [!NOTE] 0.9.45.0
 > A project that has the VB and OLE Automation packages, which every default project has, has a control class **Image** and an OLE type **Font**. In a declaration, write [`GdiPlus.Image`](Image) and [`GdiPlus.Font`](Font); the constructor functions `Image(...)` and `Font(...)` need no prefix.
 
@@ -275,3 +280,7 @@ The [Enumerations](Enumerations/) page lists the 74 enumerations of the package,
 - [Graphics](Graphics) class -- the drawing surface
 - [Bitmap](Bitmap) class -- a picture to draw on
 - [Experimental Packages](../../Experimental/) -- the packages from TWINSERV that are not yet ready for use in a program
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [GdiPlus-tests.twinproj](GdiPlus-tests.twinproj), a twinBASIC project. It uses GdiPlus as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

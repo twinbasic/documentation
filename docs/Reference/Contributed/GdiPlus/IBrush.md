@@ -30,6 +30,7 @@ Each brush class is created with `New` or with the function of the same name, fo
 
 Each brush class inherits from **GdiPlusBase**, so it has the **LastResult** property: the last status that GDI+ reported as a failure, or **Ok**. Unless the program sets **GdipErrorHandlingStrategy**, a failure raises no error.
 
+<!-- test: Br_BrushTests.LastResult_StaysUntilClearResult, Br_BrushTests.Clone_AfterEarlierFailure_ReturnsTheCopy, Br_BrushTests.Clone_AfterClearResult_ReturnsTheCopy, Br_BrushTests.TextureBrush_Image_AfterEarlierFailure_ReturnsTheImage -->
 > [!NOTE] 0.9.45.0
 > **LastResult** keeps the last failure until **ClearResult** is called. A property that returns an object returns **Nothing** while **LastResult** is not **Ok**, even when the failure was an earlier, unrelated call, and **Clone** does the same.
 
@@ -39,6 +40,7 @@ A brush deletes its GDI+ object when the last reference to the brush is released
 
 Every brush that takes colours has two forms: one with **Color** parameters, and one with **Long** parameters, which are the *rgb* forms. The **Color** forms are the ones to use.
 
+<!-- test: Br_BrushColourTests.SolidBrush_VBColour_PaintsThatColour, Br_BrushColourTests.SolidBrush_SystemColour_IsTranslated, Br_BrushColourTests.SolidBrush_RGBForm_IsOpaque, Br_BrushColourTests.SolidBrush_CColorTransparent_PaintsNothing, Br_BrushColourTests.HatchBrush_RGBForm_VBColour_UsesThatColour, Br_BrushColourTests.LinearGradientBrush_RGBForm_VBColour_UsesThatColour, Br_BrushColourTests.PathGradientBrush_CenterRGB_VBColour_UsesThatColour, Br_BrushColourTests.Pen_RGBForm_VBColour_UsesThatColour -->
 > [!WARNING] 0.9.45.0
 > A **Long** passed to an *rgb* parameter is read as `&H00RRGGBB`: red in the third byte and blue in the first. It is not a VB colour (a `COLORREF`, `&H00BBGGRR`), so `SolidBrush(vbRed)` and `SolidBrush(RGB(255, 0, 0))` paint blue, and the colour constants of VB and the system colours (`vbButtonFace`, `&H8000000F`) are not translated. The alpha byte of the **Long** is dropped, so the result is always opaque. A member of **CColor** passed there binds to the **Long** form and loses its alpha: `SolidBrush(CColor.Transparent)` fills opaque white. Pass `Color(`*alpha*`, `*red*`, `*green*`, `*blue*`)`, or `Color(CColor.Transparent)`, to get the colour that was meant.
 
@@ -48,7 +50,9 @@ Every brush that takes colours has two forms: one with **Color** parameters, and
 
 Syntax: *copy* **=** *brush*.**CloneBrush**( )
 
+<!-- test: Br_BrushTests.CloneBrush_KeepsTheClassAndTheSettings -->
 Returns a new brush of the same class with the same settings, as an **IBrush**. Changing the copy does not change the original. The class of the copy is the class of the original: a **Brush** variable that holds a **HatchBrush** gives a **HatchBrush** back, and can be assigned to a **HatchBrush** variable.
+<!-- /test -->
 
 Each class has a **Clone** method as well, which returns the copy as the class itself.
 
@@ -62,8 +66,11 @@ Returns the GDI+ handle of the brush, wrapped in a structure. It is for a progra
 
 Syntax: *type* **=** *brush*.**Type**
 
+<!-- test: Br_BrushTests.Type_EachBrushClass_ReturnsItsKind -->
 Returns a [**GpBrushType**](Enumerations/GpBrushType) value for the kind of the brush: **BrushTypeSolidColor**, **BrushTypeHatchFill**, **BrushTypeTextureFill**, **BrushTypePathGradient** or **BrushTypeLinearGradient**. The property is read-only.
+<!-- /test -->
 
+<!-- test: Br_BrushTests.Type_PathGradientBrush_ReturnsPathGradient -->
 > [!WARNING] 0.9.45.0
 > Reading **Type** of a [**PathGradientBrush**](PathGradientBrush#type) stops a program that runs in the IDE, at an assertion that expects a linear gradient. A compiled program is not affected, and returns **BrushTypePathGradient**.
 

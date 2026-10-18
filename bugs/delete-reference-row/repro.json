@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects-loss",
+  "tests": ["Delete on a References entry removes the row, but the reference stays, before and after Ctrl+S"],
+  "steps": "1. In Project Explorer, open References and right-click the Microsoft Scripting Runtime entry: the menu's Delete is greyed.\n2. Click the entry, press Delete, and choose Delete in the box: the row is gone.\n3. The project's Settings still references Microsoft Scripting Runtime, in the IDE and, after Ctrl+S, in the project file."
+}

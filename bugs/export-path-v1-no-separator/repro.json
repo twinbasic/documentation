@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects-loss",
+  "tests": [
+    "without exportPathIsV2, Export Project writes into the Export Path with the project's name appended and no separator"
+  ],
+  "steps": "1. A project ProjectsProbe whose Settings has project.exportPath ${SourcePath}\\exp2 and no project.exportPathIsV2.\n2. Press Ctrl+E: the export completes, with no folder dialog, into the folder exp2ProjectsProbe beside the project file; there is no exp2.\nControl: with exportPathIsV2, Export Project writes into the Export Path's folder."
+}

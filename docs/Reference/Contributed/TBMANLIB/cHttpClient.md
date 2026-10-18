@@ -63,7 +63,7 @@ Several error texts of the class are written in Chinese. The ones that are not a
 > The class ignores every certificate error: an expired certificate, one from an unknown authority and one issued for another name are all accepted. An HTTPS request therefore encrypts the traffic, but does not prove who the server is, and a program that sends a password or a key with it can send it to an impostor.
 
 <!-- test: compile RequestHeadersDefaultMemberAssignment, compile RequestHeadersItemAssignment, compile RequestHeadersDefaultMemberRead -->
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > The compiler refuses an assignment written through a public dictionary field of an object, such as `Http.RequestHeaders("X-Key") = "1"`, with TB5090. Write the default member out: `Http.RequestHeaders.Item("X-Key") = "1"`. Reading `Http.RequestHeaders("X-Key")` is accepted.
 
 ## Request settings

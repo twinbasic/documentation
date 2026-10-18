@@ -11,9 +11,14 @@ has_toc: false
 
 A width and a height as **Single** values.
 
+<!-- test: Ty_GpSizeFTests.GpSizeF_IsEightBytes -->
 **GpSizeF** is the size that the **Single** overloads of the drawing and measuring methods take and return. It is 8 bytes: the fields **Width** and **Height**, followed by methods that read and change them. The integer counterpart is [**GpSize**](GpSize); a point is a [**GpPointF**](GpPointF) and a rectangle a [**GpRectF**](GpRectF). It mirrors the `SizeF` class of the GDI+ C++ wrapper.
+<!-- /test -->
 
+
+<!-- test: Ty_GpSizeFTests.GpSizeF_FormsGiveTheDocumentedValues -->
 A variable declared with `Dim` starts at 0 by 0.
+<!-- /test -->
 
 ## Creating
 
@@ -22,6 +27,7 @@ Syntax: **GpSizeF**( *width*, *height* ) \
 Syntax: **GpSizeF**( *size* ) \
 Syntax: **GpSizeFFrom**( *size* )
 
+<!-- test: Ty_GpSizeFTests.GpSizeF_FormsGiveTheDocumentedValues -->
 The module function **GpSizeF** returns a new size.
 
 *width*, *height*
@@ -31,7 +37,9 @@ The module function **GpSizeF** returns a new size.
 : *required* For **GpSizeF**, a [**GpSize**](GpSize) with the same dimensions. For **GpSizeFFrom**, a structure of two **Long** fields `cx` and `cy`, which is the layout of the Windows `SIZE` and is declared as **GDIP_SIZE**.
 
 With no arguments the size is 0 by 0.
+<!-- /test -->
 
+<!-- test: Ty_GpSizeFTests.GpSizeFFrom_ReadsTheSizeStructure -->
 > [!WARNING] 0.9.45.0
 > **GpSizeFFrom** returns a size of 0 by 0 whatever its argument holds. Set the size with [**SetFromSIZE**](#assize-setfromsize) instead.
 
@@ -54,13 +62,17 @@ The dimensions, as **Single** fields. Assign them directly.
 
 Syntax: *size*.**Empty** As **Boolean**
 
+<!-- test: Ty_GpSizeFTests.Empty_IsTrueOnlyForExactlyZero -->
 Read-only. **True** when both dimensions are exactly 0.
+<!-- /test -->
 
 ### Diagonal
 
 Syntax: *size*.**Diagonal** [ = *value* ] As **Single**
 
+<!-- test: Ty_GpSizeFTests.Diagonal_GetAndSetScaleBothDimensions, Ty_GpSizeFTests.Diagonal_SetOfASizeShorterThanTwiceEpsilonChangesNothing -->
 Returns the length of the diagonal of a rectangle of this size. Setting it scales both dimensions so that the diagonal has the given length. Setting the diagonal of a size whose diagonal is shorter than twice [**REAL_EPSILON**](../Helpers#real_epsilon) changes nothing.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -76,20 +88,26 @@ Debug.Print s.Width & "," & s.Height                 ' 6,8
 
 Syntax: *size*.**AsGpSize**( ) As **GpSize**
 
+<!-- test: Ty_GpSizeFTests.AsGpSize_RoundsHalvesToEven -->
 Returns the size with both dimensions rounded to whole numbers, halves to the even number (2.5 becomes 2, 3.5 becomes 4).
+<!-- /test -->
 
 ### SetFrom
 
 Syntax: *size*.**SetFrom**( *source* )
 
+<!-- test: Ty_GpSizeFTests.SetFrom_TakesAGpSize -->
 Sets both dimensions from a [**GpSize**](GpSize).
+<!-- /test -->
 
 ### AsSIZE, SetFromSIZE
 
 Syntax: *size*.**AsSIZE**( ) As **GDIP_SIZE** \
 Syntax: *size*.**SetFromSIZE**( *source* As **GDIP_SIZE** )
 
+<!-- test: Ty_GpSizeFTests.AsSIZE_RoundsAndSetFromSIZEConverts -->
 Convert to and from the `SIZE`-shaped structure described under [Creating](#creating). **AsSIZE** rounds as **AsGpSize** does.
+<!-- /test -->
 
 ### AsGpRectF, AsGpRect, AsRECT
 
@@ -97,7 +115,9 @@ Syntax: *size*.**AsGpRectF**( ) As **GpRectF** \
 Syntax: *size*.**AsGpRect**( ) As **GpRect** \
 Syntax: *size*.**AsRECT**( ) As **GDIP_RECT**
 
+<!-- test: Ty_GpSizeFTests.AsGpRectF_AsGpRect_AsRECT_ReturnARectangleAtTheOrigin -->
 Return a rectangle of this size with its top left corner at (0, 0). **AsRECT** returns the structure of four **Long** fields `Left`, `Top`, `Right` and `Bottom`, which is the layout of the Windows `RECT`; it is declared as **GDIP_RECT**.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -117,11 +137,18 @@ Debug.Print s.AsRECT().Right & "," & s.AsRECT().Bottom   ' 9,10
 
 These change the size they are called on.
 
+<!-- test: Ty_GpSizeFTests.Add_ChangesTheSize, Ty_GpSizeFTests.Sub_ChangesTheSize, Ty_GpSizeFTests.SumDiffProdQuot_ReturnNewSizesAndLeaveTheSize -->
 > [!NOTE] 0.9.45.0
 > **Add** and **Sub** change the size they are called on. Before version 0.9.0.43 they returned the result and left the size alone. Use [**Sum**](#sum-diff) and [**Diff**](#sum-diff) to get a new size.
 
-> [!NOTE] 0.9.45.0, BETA 1005
+<!-- test: none -- a twinBASIC defect (BETA 1005), not the package's -->
+> [!NOTE] 0.9.45.0, BETA 1010
 > The compiler reads `s.Scale(2)` as the start of a `Scale` statement and reports a syntax error. Write `s.Scale 2` or `Call s.Scale(2)`. **Scale2**, **InvScale** and the other methods are not affected.
+>
+> ```tb check_build expect-error=TB5212
+> Dim s As GpSizeF = GpSizeF(3, 4)
+> s.Scale(2)
+> ```
 
 ### Add, Sub
 
@@ -135,14 +162,18 @@ Adds *other* to the size, or subtracts it.
 Syntax: *size*.**Scale** *factor* \
 Syntax: *size*.**Scale2**( *widthFactor*, *heightFactor* )
 
+<!-- test: Ty_GpSizeFTests.Scale_MultipliesBothDimensions, Ty_GpSizeFTests.Scale_CallFormMultipliesBothDimensions, Ty_GpSizeFTests.Scale2_MultipliesEachDimensionByItsOwnFactor -->
 Multiplies both dimensions by *factor*, or **Width** by *widthFactor* and **Height** by *heightFactor*.
+<!-- /test -->
 
 ### InvScale, InvScale2
 
 Syntax: *size*.**InvScale**( *divisor* ) \
 Syntax: *size*.**InvScale2**( *widthDivisor*, *heightDivisor* )
 
+<!-- test: Ty_GpSizeFTests.InvScale_And_InvScale2_Divide -->
 Divides both dimensions by *divisor*, or **Width** by *widthDivisor* and **Height** by *heightDivisor*.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()
@@ -187,7 +218,9 @@ Returns the size with its dimensions divided.
 
 Syntax: *size*.**Equals**( *other* As **GpSizeF** ) As **Boolean**
 
+<!-- test: Ty_GpSizeFTests.Equals_IsExact -->
 **True** when both dimensions are exactly equal to those of *other*.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim user As GdiPlusUser = GdiPlusUser()

@@ -9,14 +9,18 @@
 // twinBASIC project without the IDE in front of you", for the history.
 
 import { execFile, execFileSync, spawn } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { secondsText, timeoutMs } from "./harness-settings.mjs";
+import { connectBroker } from "./tb-broker.mjs";
 import { attach } from "./tb-cdp.mjs";
 import { click, pagePicture } from "./tb-click.mjs";
 import { removeTree, removeTreeAsync } from "./tb-ide-copy.mjs";
 import { consoleMark, keepClears, keptClears, linesSince, readConsole } from "./tb-ide-console.mjs";
+import { unsupportedIde } from "./tb-install.mjs";
+import { timing, timingProject, timingsOn } from "./tb-timings.mjs";
 import { watchCompiles } from "./tb-wire.mjs";
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -38,6 +42,30 @@ export const normPath = (p) => p.split("\\").join("/").toLowerCase();
  * and every add-in that compiler loads, including after the compiler restarts.
  */
 export const ADDIN_TEST_ENV = "TB_ADDIN_TEST";
+
+/**
+ * The two command-line flags every IDE the harness starts is given (BETA 1007
+ * and later; tb-install's MIN_BUILD is the oldest build the tools run).
+ *
+ * `--no-save-ide-settings` keeps the IDE from writing its settings to the
+ * registry: its options (the theme included), panel layouts, keyboard groups,
+ * the build target it remembers for a project, the licence key and agreements.
+ * `--no-update-recent-files` keeps it from adding a project to the recent list.
+ * They leave some writes unguarded. lib/tb-registry.mjs puts back two of them:
+ * ProjectState and the `.twinproj` association the executable registers. The
+ * other two happen only when the page is operated: the Window key, written when
+ * an option that lives there changes, and removals from the recent list, made
+ * from the start page and some error boxes. The page guards in shoot_docs,
+ * svgshot/probe and test/ide block those calls.
+ *
+ * Never add `--reset-ide-settings` here or anywhere: it writes empty options to
+ * the real registry even after `--no-save-ide-settings`.
+ *
+ * A flag may stand anywhere on the command line; the one positional argument is
+ * the project. An unknown `--` flag is ignored, and a second positional gives a
+ * modal "Bad command line syntax" box nobody can answer on a private desktop.
+ */
+export const IDE_FLAGS = ["--no-update-recent-files", "--no-save-ide-settings"];
 
 /**
  * Whether the IDE goes on the user's desktop or on a private one.
@@ -71,6 +99,88 @@ export function killTree(pid) {
   }
 }
 
+// ------------------------------------------------------------ slots and desktops
+
+// Every private desktop, and the number each run names its folders and ids by, come from
+// tbbroker (WIP.Broker.md): one broker for every tool on the machine, which makes each desktop
+// once and hands it from one launch to the next. A desktop made for every launch is never freed
+// by the desktop compositor, and within a day or two of tests every window on the screen lags.
+// The process shares one connection to it, and a lease taken on that connection ends when it is
+// released, or handed to a process and that process ends, or when this process ends.
+//
+// TB_BROKER=off does without it, for the one launch that cannot use it: building the broker
+// (scripts/tbbroker.mjs install). Each launch then makes a desktop of its own, as before.
+const NO_BROKER = process.env.TB_BROKER === "off";
+let brokerConnection = null;
+let noBrokerSerial = 0;
+
+function sharedBroker() {
+  if (!brokerConnection) {
+    brokerConnection = connectBroker({ client: path.basename(process.argv[1] ?? "node") }).then(
+      (b) => {
+        // The broker went away: the next lease reconnects, and starts one if need be.
+        b.onLost = () => {
+          brokerConnection = null;
+        };
+        return b;
+      },
+      (e) => {
+        brokerConnection = null;
+        throw e;
+      },
+    );
+  }
+  return brokerConnection;
+}
+
+/**
+ * A slot from the broker: a private desktop that is this run's alone while it holds it, a
+ * number to name its folders, ids and work by (unique among the slots held on the machine),
+ * and a port when `port` asks for one. It is held until `release()`, or until `handTo(pid)`
+ * has handed it to a process and that process has ended, or until this process ends.
+ *
+ * @param {object} [o]
+ * @param {string} [o.tag]    what it is for, shown by `tbbroker status`
+ * @param {boolean} [o.port]  a port as well, chosen before it is bound (an IDE's DevTools port
+ *                            is not: launchIde lets Windows pick it)
+ * @returns {Promise<{slot: number, desktop: string, port: number, handTo: (pid: number) => Promise<void>, release: () => Promise<void>}>}
+ *   Waits while every slot is taken.
+ */
+export async function leaseSlot({ tag = "", port = false } = {}) {
+  if (NO_BROKER) {
+    if (port) throw new Error("a port needs tbbroker, and TB_BROKER=off");
+    const n = ++noBrokerSerial;
+    // Far above any slot the broker hands out (32 by default), and within laneProjectId's 24 bits.
+    const slot = 0x100000 + ((process.pid * 64 + n) % 0xe00000);
+    const none = async () => {};
+    return { slot, desktop: `tbnobroker-${process.pid}-${n}`, port: 0, handTo: none, release: none };
+  }
+  const b = await sharedBroker();
+  const r = await b.lease({ tag, port, wait: true });
+  let released = false;
+  const release = async () => {
+    if (released) return;
+    released = true;
+    await b.release(r.lease).catch(() => {
+      /* the connection is gone, and the lease with it */
+    });
+  };
+  return {
+    slot: r.slot,
+    desktop: r.desktop,
+    port: r.port,
+    release,
+    async handTo(pid) {
+      try {
+        await b.hold(r.lease, pid);
+      } catch {
+        // the process has ended already, so nothing is left on the desktop to keep it for
+      }
+      await release();
+    },
+  };
+}
+
 /**
  * Start the IDE on one project, with a DevTools port open.
  *
@@ -99,20 +209,30 @@ export function killTree(pid) {
  *                            the IDE starts as from its icon: the splash, then
  *                            the New / Open Project dialog, every menu in its
  *                            no-project state
- * @param {number} o.port     DevTools port; also keys the WebView2 profile
- *                            folder and the private desktop's name
+ * @param {object} [o.slot]   a slot from leaseSlot that the caller holds: the IDE goes on its
+ *                            desktop, and its temp folder and WebView2 profile are named by
+ *                            its number. Without one the IDE gets a slot of its own, held for
+ *                            as long as the IDE runs (with `keep`, past this process's end)
+ * @param {number} [o.port]   a DevTools port to open; by default the IDE's WebView2 binds one
+ *                            Windows picks, and the result's `port` says which
  * @param {boolean} [o.show]  on the user's desktop instead of a private one
  * @param {boolean} [o.keep]  the IDE is to outlive this Node process
- * A port something already listens on is refused. The harness attaches to
- * whatever page answers on its port, so if another IDE already holds it, that
- * IDE is the one the harness would read and operate --- and other sessions on
- * the same machine run this harness too, on ports of their own choosing.
- * An IDE ended a moment ago
- * holds its port a little longer than it lives: 13 and 16 ms after
- * shutdownIde, and once two seconds. So the port gets ten seconds to come
- * free before the launch is refused. The refusal names the process listening
- * on the port, or, when none is, the error the bind got: Windows refuses a
- * port it has reserved with EACCES.
+ *
+ * **The DevTools port is not chosen in advance.** WebView2 is given
+ * `--remote-debugging-port=0` (after the IDE's own argument; the last one wins), binds a
+ * port Windows picks, and writes it to `EBWebView\DevToolsActivePort` in its profile
+ * folder, which is this IDE's alone: so IDEs started together never meet on a port, and
+ * nor does an IDE meet a port some other program was given. A fixed port collided often,
+ * since on the dev box Windows hands out any port above 1024 to whatever asks for one.
+ *
+ * A `port` given by the caller is refused when something already listens on it.
+ * The harness attaches to whatever page answers on its port, so if another IDE
+ * already holds it, that IDE is the one the harness would read and operate. An
+ * IDE ended a moment ago holds its port a little longer than it lives: 13 and
+ * 16 ms after shutdownIde, and once two seconds. So the port gets ten seconds to
+ * come free before the launch is refused. The refusal names the process
+ * listening on the port, or, when none is, the error the bind got: Windows
+ * refuses a port it has reserved with EACCES.
  *
  * @param {object} [o.env]    extra environment for the IDE. ADDIN_TEST_ENV is
  *                            set to "1" unless this names it; a value of
@@ -121,38 +241,61 @@ export function killTree(pid) {
  *                            DevTools ones, e.g. "--force-device-scale-factor=1"
  *                            to lay the page out at 100% whatever the display's
  *                            scaling
- * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null, folders: string[]}>}
+ * @param {string[]} [o.flags]  the IDE's own command-line flags (default IDE_FLAGS).
+ *                            Only a test of the very thing a flag guards leaves
+ *                            one out, and it puts back what it writes: the recent
+ *                            list's test (test/ide/recent-projects-copies.test.mjs)
+ * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null, folders: string[], port: number | null, slot: number, desktop: string | null}>}
  *   `pid` is the IDE's own. `folders` are its temp folder and WebView2 profile,
- *   which shutdownIde removes. Throws when the port is taken, or when the
- *   launch fails.
+ *   which shutdownIde removes. `port` is its DevTools port, for attachIde, or
+ *   null when the IDE never opened one within a minute. `desktop` is the private
+ *   desktop it is on (null with `show`). Throws when a given port is taken, or
+ *   when the launch fails.
  */
-export async function launchIde({ exe, project, port, show = false, keep = false, env = {}, browserArgs = "" }) {
-  const waitFrom = Date.now();
-  for (;;) {
-    const code = await portTaken(port);
-    if (!code) break;
-    if (Date.now() - waitFrom > 10 * 1000) {
-      const holder = portListeners(port);
-      throw new Error(
-        holder
-          ? `DevTools port ${port} is in use: ${holder} listens on it. Another IDE has it, perhaps ` +
-              "one another session started, and this one could be mistaken for it. Pass a different --port."
-          : `DevTools port ${port} cannot be bound (${code}), though nothing listens on it: Windows ` +
-              "may have reserved it (netsh int ipv4 show excludedportrange protocol=tcp). Pass a " +
-              "different --port.",
-      );
-    }
-    await sleep(100);
+export async function launchIde({
+  exe,
+  project,
+  slot = null,
+  port = null,
+  show = false,
+  keep = false,
+  env = {},
+  browserArgs = "",
+  flags = IDE_FLAGS,
+}) {
+  // Before anything starts: an IDE older than the flags would write the user's settings.
+  const tooOld = unsupportedIde(exe);
+  if (tooOld) throw new Error(tooOld);
+  if (port != null) await waitForPort(port);
+  const t0 = Date.now();
+  const own = slot ? null : await leaseSlot({ tag: `IDE ${path.basename(project || exe)}` });
+  const s = slot ?? own;
+  try {
+    const leased = Date.now();
+    const started = await startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags });
+    timing("launch", {
+      project: project ? path.resolve(project) : null,
+      leaseMs: leased - t0,
+      ms: Date.now() - leased,
+    });
+    return started;
+  } catch (e) {
+    await own?.release();
+    throw e;
   }
+}
+
+// launchIde once the slot is settled; `own` is the slot when it is launchIde's own to hand on.
+async function startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags }) {
   const exeWin = exe.split("/").join("\\");
   const target = project ? path.resolve(project).split("/").join("\\") : "";
-  // Each IDE has a temp folder of its own, emptied at each launch on its port
+  // Each IDE has a temp folder of its own, emptied at each launch in its slot
   // and removed when the IDE ends (shutdownIde).
-  const ideTemp = path.join(process.env.TEMP, `tbbuild-tmp-${port}`);
+  const ideTemp = path.join(process.env.TEMP, `tbbuild-tmp-${s.slot}`);
   // The WebView2 profile, 28 MB once the IDE has run. Emptied here as well, for
   // what a run that was killed left behind, and removed when the IDE ends
   // (shutdownIde), so that a run leaves neither folder.
-  const ideProfile = path.join(process.env.TEMP, `tbbuild-wv2-${port}`);
+  const ideProfile = path.join(process.env.TEMP, `tbbuild-wv2-${s.slot}`);
   for (const dir of [ideTemp, ideProfile]) {
     try {
       rmSync(dir, { recursive: true, force: true });
@@ -164,22 +307,32 @@ export async function launchIde({ exe, project, port, show = false, keep = false
   // What shutdownIde removes once the IDE is gone: only these two, which this
   // function has just made or emptied, never a folder a caller names.
   const folders = [ideTemp, ideProfile];
+  const started = Date.now();
   // Node leaves out of a child's environment any variable whose value is
   // undefined, so `env` can remove one as well as set it.
   const fullEnv = {
     ...process.env,
     TEMP: ideTemp,
     TMP: ideTemp,
-    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [`--remote-debugging-port=${port}`, "--remote-allow-origins=*", browserArgs]
+    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [
+      `--remote-debugging-port=${port ?? 0}`,
+      "--remote-allow-origins=*",
+      browserArgs,
+    ]
       .filter(Boolean)
       .join(" "),
     WEBVIEW2_USER_DATA_FOLDER: ideProfile,
     [ADDIN_TEST_ENV]: "1",
     ...env,
   };
+  const found = (pid) => (port != null ? Promise.resolve(port) : devToolsPort(ideProfile, pid, started));
 
   if (show) {
-    const child = spawn(exeWin, target ? [target] : [], { detached: true, stdio: "ignore", env: fullEnv });
+    const child = spawn(exeWin, [...flags, ...(target ? [target] : [])], {
+      detached: true,
+      stdio: "ignore",
+      env: fullEnv,
+    });
     // A spawn that fails is reported by an 'error' event, not a throw, and an
     // 'error' nothing listens for ends this process with exit 1, which tbbuild
     // and tbrun define as compile errors. 'spawn' says the IDE started.
@@ -188,7 +341,9 @@ export async function launchIde({ exe, project, port, show = false, keep = false
       child.once("error", (e) => reject(new Error(`could not start the IDE: ${e.message}`)));
     });
     child.unref();
-    return { pid: child.pid, launcher: null, folders };
+    // The slot names its folders; the IDE outlives nothing here, so it keeps the slot.
+    await own?.handTo(child.pid);
+    return { pid: child.pid, launcher: null, folders, port: await found(child.pid), slot: s.slot, desktop: null };
   }
 
   // lib/tb-launch.ps1 does the Win32 calls Node cannot -- CreateDesktop,
@@ -212,21 +367,75 @@ export async function launchIde({ exe, project, port, show = false, keep = false
   // anything could attach to it, because the launcher died with tbbuild and
   // took the job with it. With the launcher detached from Node instead,
   // PowerShell exited at once, without a pid and without a word on stderr.
+  //
+  // The slot goes with whichever lives as long as the IDE: the launcher, or a
+  // kept IDE itself.
+  let launched;
   try {
-    const { pid, launcher } = await launchOnDesktop({
+    launched = await launchOnDesktop({
       exe: exeWin,
       arg: target,
-      desktop: `tbbuild-${port}`,
+      args: flags,
+      desktop: s.desktop,
       job: !keep,
       env: fullEnv,
     });
-    return { pid, launcher, folders };
   } catch (e) {
     // No IDE started, so nothing holds the folders and nothing else would remove them.
     for (const dir of folders) rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
     throw new Error(
       `could not start the IDE on a private desktop:\n${e.message}\n(--show runs it on your own desktop instead)`,
     );
+  }
+  const { pid, launcher } = launched;
+  await own?.handTo(keep ? pid : launcher.pid);
+  return { pid, launcher, folders, port: await found(pid), slot: s.slot, desktop: s.desktop };
+}
+
+// The DevTools port the IDE's WebView2 opened: the first line of DevToolsActivePort in its
+// profile, written once its browser process has bound the port. Only a file written since the
+// launch counts, in case a folder could not be emptied. Null when the IDE ends, or a minute
+// passes, without one.
+async function devToolsPort(profile, pid, since) {
+  const file = path.join(profile, "EBWebView", "DevToolsActivePort");
+  const until = Date.now() + 60 * 1000;
+  while (Date.now() < until) {
+    try {
+      if (statSync(file).mtimeMs >= since - 2000) {
+        const n = Number(readFileSync(file, "utf8").split(/\r?\n/)[0]);
+        if (Number.isInteger(n) && n > 0) return n;
+      }
+    } catch {
+      // not written yet
+    }
+    try {
+      process.kill(pid, 0);
+    } catch {
+      return null;
+    }
+    await sleep(100);
+  }
+  return null;
+}
+
+// A DevTools port the caller chose: wait up to ten seconds for it to come free (see launchIde).
+async function waitForPort(port) {
+  const waitFrom = Date.now();
+  for (;;) {
+    const code = await portTaken(port);
+    if (!code) break;
+    if (Date.now() - waitFrom > 10 * 1000) {
+      const holder = portListeners(port);
+      throw new Error(
+        holder
+          ? `DevTools port ${port} is in use: ${holder} listens on it. Another IDE has it, perhaps ` +
+              "one another session started, and this one could be mistaken for it. Pass a different --port."
+          : `DevTools port ${port} cannot be bound (${code}), though nothing listens on it: Windows ` +
+              "may have reserved it (netsh int ipv4 show excludedportrange protocol=tcp). Pass a " +
+              "different --port.",
+      );
+    }
+    await sleep(100);
   }
 }
 
@@ -255,7 +464,12 @@ const BOOTSTRAP = "$s = $env:TBBUILD_SCRIPT; Remove-Item Env:TBBUILD_SCRIPT; & (
  * @param {object} o
  * @param {string} o.exe      the program, a Windows path
  * @param {string} [o.arg]    its one argument; none when empty
- * @param {string} o.desktop  the private desktop's name
+ * @param {string} [o.desktop]  the private desktop, from a slot the caller holds (leaseSlot).
+ *                            Without one the program gets a slot of its own, held for as
+ *                            long as the program runs; the result's `desktop` names it, for
+ *                            desktopWindows and captureWindow. Never a name made up here:
+ *                            every desktop comes from the broker
+ * @param {string} [o.tag]    what a slot of its own is for, shown by `tbbroker status`
  * @param {boolean} [o.job]   false for no job, for a program that is to outlive
  *                            this Node process
  * @param {object} o.env      its whole environment
@@ -269,14 +483,29 @@ const BOOTSTRAP = "$s = $env:TBBUILD_SCRIPT; Remove-Item Env:TBBUILD_SCRIPT; & (
  * @param {"close"} [o.dialogs] look for dialog boxes the program (or anything in its
  *                            job) opens on the desktop, record each, and close it
  *                            by pressing OK, so that the program can go on
- * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess, exited: Promise<number | null>, finished: Promise<{code: number | null, dialogs: {title: string, text: string}[]}>}>}
+ * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess, desktop: string, exited: Promise<number | null>, finished: Promise<{code: number | null, dialogs: {title: string, text: string}[]}>}>}
  *   `exited` settles with the program's exit code when it ends, or null when
  *   the launcher ended without one -- killed, or failed. `finished` settles at
  *   the same time with that code and the dialogs recorded, in the order they
  *   opened (empty without `dialogs`). Throws, with the launcher's error, when
  *   the program did not start.
  */
-export async function launchOnDesktop({ exe, arg = "", args, desktop, job = true, env, cwd, stdout, stderr, dialogs }) {
+export async function launchOnDesktop({ exe, desktop, tag, job = true, ...rest }) {
+  const own = desktop ? null : await leaseSlot({ tag: tag ?? path.basename(exe) });
+  let run;
+  try {
+    run = await startOnDesktop({ exe, desktop: desktop ?? own.desktop, job, ...rest });
+  } catch (e) {
+    await own?.release();
+    throw e;
+  }
+  // The slot goes with whichever lives as long as the program: the launcher, which holds
+  // its job, or the program itself when it has none.
+  await own?.handTo(job ? run.launcher.pid : run.pid);
+  return run;
+}
+
+async function startOnDesktop({ exe, arg = "", args, desktop, job, env, cwd, stdout, stderr, dialogs }) {
   const script = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
   // -EncodedCommand is UTF-16 in base64, 2.7 characters to each of the script's,
   // and a command line stops at 32,767: the script outgrew that at about 12,000
@@ -342,7 +571,7 @@ export async function launchOnDesktop({ exe, arg = "", args, desktop, job = true
     return { code: m ? Number(m[1]) : null, dialogs: found };
   });
   const exited = finished.then((f) => f.code);
-  return { pid, launcher: ps, exited, finished };
+  return { pid, launcher: ps, desktop, exited, finished };
 }
 
 // Runs tb-launch.ps1 in its window mode (TBBUILD_WINDOWS) on a private desktop and returns
@@ -383,10 +612,10 @@ function onDesktopWindows(desktop, vars) {
 }
 
 /**
- * The windows on a private desktop that launchOnDesktop (or launchIde, whose desktop is
- * `tbbuild-<port>`) made and still holds open: every top-level window, and with `children`
- * the child windows of each visible one, as tb-launch.ps1 describes them. A desktop is the
- * process's own, so every window on it is the program's or a process it started.
+ * The windows on a private desktop that launchOnDesktop or launchIde started a program on (the
+ * `desktop` each returns) while the program runs: every top-level window, and with `children`
+ * the child windows of each visible one, as tb-launch.ps1 describes them. A desktop is leased
+ * to one run at a time, so every window on it is the program's or a process it started.
  *
  * @param {string} desktop
  * @param {object} [o]
@@ -450,17 +679,17 @@ export function keptIdeLines(pid) {
  * End an IDE started by launchIde, and the launcher holding its desktop, and
  * wait until the IDE's process is gone.
  *
- * The wait is for whatever runs next. The IDE writes its recent list and
- * project state to the registry while it runs, and taskkill only asks for the
+ * The wait is for whatever runs next. The IDE writes its project state to the
+ * registry while it runs, and taskkill only asks for the
  * end of a process: tidying the registry before the process has actually gone
  * could lose to one last write. It is normally over in well under a second,
  * and it gives up after five.
  *
  * Once the process is gone its temp folder and WebView2 profile are removed
  * (`ide.folders`, which launchIde made): without that every run left both under
- * %TEMP%, 28 MB of profile for each port it used. A process still alive keeps
+ * %TEMP%, 28 MB of profile for each IDE. A process still alive keeps
  * its folders, since they are in use. A folder that cannot be removed is
- * reported on stderr and left; launchIde empties it when the port is next used.
+ * reported on stderr and left; launchIde empties it when the slot is next used.
  */
 export function shutdownIde(ide) {
   if (!ide) return;
@@ -548,7 +777,7 @@ export function waitForExit(pid, timeoutMs) {
  *
  * The connection records and dismisses every javascript dialog the page opens,
  * in `c.dialogs` as `{type, message, at}`. The IDE calls `alert()` from 37
- * places in BETA 1005 (main.js and main2.js), and never `confirm()` or `prompt()`. An alert blocks the
+ * places in BETA 1010 (main.js and main2.js), and never `confirm()` or `prompt()`. An alert blocks the
  * page until it is answered, which on a private desktop nobody can do: every
  * later call on the connection would time out. An alert is accepted, since it has only the
  * one button; a confirm or a prompt, which only an add-in could open, is
@@ -571,6 +800,8 @@ export function waitForExit(pid, timeoutMs) {
  * gets none.
  */
 export async function attachIde(port, { tries = 60 } = {}) {
+  // launchIde's port is null when the IDE never opened one.
+  if (!port) return null;
   for (let i = 0; i < tries; i++) {
     await sleep(1000);
     let c;
@@ -810,12 +1041,6 @@ export async function awaitCrashName(c, crash, { timeout = 5000 } = {}) {
   return crash;
 }
 
-/**
- * How long, in milliseconds, the harness gives a compile to settle when its
- * caller names no time of its own. tbbuild's header states it in seconds.
- */
-export const COMPILE_TIMEOUT = 180 * 1000;
-
 // How long a compile that the wire saw end must stay the latest one before
 // waitForCompile believes it. Every keystroke starts a compile a few ms after
 // it, so a wait that begins just after an edit could otherwise take the compile
@@ -846,16 +1071,22 @@ const EARLY_QUIET_MS = 300;
  *   resolved before comparing, because the IDE echoes the resolved path it was
  *   given: compared as typed, a relative path never matched, and the IDE was
  *   never reported open.
- * @param {number} o.timeout          milliseconds
+ * @param {number} [o.timeout]        milliseconds for the compile phase, from the
+ *   project reported open to the compile settled (default: test/harness.json's
+ *   `compile`, or TB_COMPILE_TIMEOUT). The wait for the project to be reported
+ *   open, from the call, is the file's `projectOpen`, which has no override.
  * @returns {Promise<{loaded: boolean, crash: object | null, safe: boolean, drops: number,
- *                    last: string | null, blocked: boolean, early: boolean}>}
+ *                    last: string | null, blocked: boolean, early: boolean,
+ *                    timedOut: "projectOpen" | "compile" | null, limitMs: number}>}
  *   `safe` is true when the IDE had fallen into Safe Mode; `last` is the final sample, as the JSON string readBuildState returned;
  *   `blocked` is attachIde's `pageBlocked`; `early` is true when `c.wire` saw
  *   the compile end and the sample agreed with it, and false when the sample
- *   stood still for five seconds instead
+ *   stood still for five seconds instead; `timedOut` names the phase whose
+ *   limit ended the wait, and `limitMs` is that limit
  */
-export async function waitForCompile(c, { project, timeout }) {
+export async function waitForCompile(c, { project, timeout = timeoutMs("compile") }) {
   const want = normPath(path.resolve(project));
+  const openLimit = timeoutMs("projectOpen");
   const t0 = Date.now();
   const wire = c.wire ?? null;
   const before = wire?.mark();
@@ -868,14 +1099,21 @@ export async function waitForCompile(c, { project, timeout }) {
     safe = false,
     agreed = null,
     early = false;
+  // For tb-timings.mjs only: when the project was reported open, and why the wait ended.
+  let loadedAt = null,
+    ended = "timeout";
+  timingProject(c, path.resolve(project));
   // Samples come once a second, as they always have, and only those count a
   // drop of the status: a sample taken early, because the wire saw a compile
   // end, could otherwise count one flap twice. Standing still is measured in
   // time, not in samples, for the same reason.
   let due = t0 + 1000;
   let next = due;
-  while (Date.now() - t0 < timeout) {
-    const ms = Math.max(0, next - Date.now());
+  // The phase's deadline: projectOpen from the call until the project is
+  // reported open, then compile from that moment.
+  const deadline = () => (loadedAt === null ? t0 + openLimit : loadedAt + timeout);
+  while (Date.now() < deadline()) {
+    const ms = Math.max(0, Math.min(next, deadline()) - Date.now());
     await (wire ? wire.changed(ms) : sleep(ms));
     const now = Date.now();
     const scheduled = now >= due;
@@ -889,23 +1127,30 @@ export async function waitForCompile(c, { project, timeout }) {
     }
     const v = JSON.parse(s);
     if (!loaded) {
-      if (v.p && normPath(v.p) === want) loaded = true;
-      else continue;
+      if (v.p && normPath(v.p) === want) {
+        loaded = true;
+        loadedAt = now;
+      } else continue;
     }
     if (v.crash) {
       // Caught on sight, but reported with the file the compiler died parsing,
       // which only a later crash names -- see awaitCrashName.
       crash = await awaitCrashName(c, v.crash);
+      ended = "crash";
       break;
     }
     if (v.safe) {
       safe = true;
       last = s;
+      ended = "safe";
       break;
     }
     const up = v.st === "tB Services: OPERATIONAL";
     if (up) seenUp = true;
-    else if (seenUp && scheduled && ++drops >= 2) break;
+    else if (seenUp && scheduled && ++drops >= 2) {
+      ended = "drops";
+      break;
+    }
     if (wire) {
       // The wire's compile ends with its last source file, and the sample must
       // show the same counts before it is believed: the page draws a little
@@ -921,6 +1166,7 @@ export async function waitForCompile(c, { project, timeout }) {
         else if (now - agreed.at >= EARLY_QUIET_MS) {
           last = s;
           early = true;
+          ended = "early";
           break;
         }
         next = Math.min(next, agreed.at + EARLY_QUIET_MS);
@@ -930,10 +1176,52 @@ export async function waitForCompile(c, { project, timeout }) {
       }
     }
     if (!up || s !== last) stableSince = now;
-    else if (now - stableSince >= 5000) break;
+    else if (now - stableSince >= 5000) {
+      ended = "still";
+      break;
+    }
     last = s;
   }
-  return { loaded, crash, safe, drops, last, blocked: !!c.pageBlocked, early };
+  const timedOut = ended !== "timeout" ? null : loadedAt === null ? "projectOpen" : "compile";
+  const limitMs = timedOut === "projectOpen" ? openLimit : timeout;
+  if (timingsOn) {
+    // The compile as the wire saw it, and as the samples did: `settledAt` is
+    // when the sample first showed the final state (for a wait that ended by
+    // standing still) or when the wire and the sample first agreed (early).
+    const history = wire?.compiles() ?? [];
+    const w = history.at(-1) ?? null;
+    const doneAt = Date.now();
+    const settledAt = ended === "early" ? agreed?.at : ended === "still" ? stableSince : null;
+    let counts = null;
+    try {
+      const v = JSON.parse(last ?? "null");
+      if (v) counts = [v.e, v.w, v.h, v.i].map(Number);
+    } catch {
+      /* no sample */
+    }
+    timing(
+      "compile",
+      {
+        ended,
+        timedOut,
+        projectOpen: openLimit,
+        timeout,
+        waitMs: doneAt - t0,
+        loadMs: loadedAt === null ? null : loadedAt - t0,
+        settleMs: settledAt == null || loadedAt === null ? null : settledAt - loadedAt,
+        wireSeq: w?.seq ?? null,
+        wireMs: w?.started && w?.ended ? w.ended - w.started : null,
+        wireStartFromWait: w?.started ? w.started - t0 : null,
+        wireFiles: w?.files ?? null,
+        // Every compile the wire saw, as [seq, start from the wait's start, ms, files].
+        wire: history.map((h) => [h.seq, h.started - t0, h.ended === null ? null : h.ended - h.started, h.files]),
+        drops,
+        counts,
+      },
+      c,
+    );
+  }
+  return { loaded, crash, safe, drops, last, blocked: !!c.pageBlocked, early, timedOut, limitMs };
 }
 
 /**
@@ -949,7 +1237,7 @@ export async function waitForCompile(c, { project, timeout }) {
  *   as the array `message` prints on its `last parsing:` line, the files the
  *   compiler died parsing.
  */
-export function compileOutcome({ loaded, crash, safe, drops, last, blocked }, { name }) {
+export function compileOutcome({ loaded, crash, safe, drops, last, blocked, timedOut = null, limitMs }, { name }) {
   // A crash is reported by the file the compiler died parsing, because in a batch
   // of generated probes that name is the whole answer: it says which sample to
   // take out, and a caller bisecting the batch has somewhere to start.
@@ -986,10 +1274,21 @@ export function compileOutcome({ loaded, crash, safe, drops, last, blocked }, { 
       code: 3,
       message:
         `the IDE never reported ${name} as open` +
+        (timedOut === "projectOpen" ? ` within ${secondsText(limitMs)} (test/harness.json's projectOpen)` : "") +
         (blocked
           ? "\nIts page did not answer when the harness attached. A dialog it opened before then " +
             "is the likely cause, and one cannot be answered over CDP; --show puts it on screen."
           : ""),
+    };
+  }
+  // A compile still moving at its limit is a timeout, whatever its last sample said.
+  if (timedOut === "compile") {
+    return {
+      ok: false,
+      code: 3,
+      message:
+        `timeout: the compile of ${name} did not settle within ${secondsText(limitMs)} of the project opening ` +
+        "(test/harness.json's compile; --compile-timeout or TB_COMPILE_TIMEOUT overrides it)",
     };
   }
 
@@ -1046,9 +1345,11 @@ const TARGET_JS = `(() => {
  * compile under it to settle.
  *
  * A project opens in the target the IDE remembers for its path
- * (IDESettings\targetArchitectureMemory, which lib/tb-registry.mjs tidies),
- * and in win32, the box's first option, when it remembers none. So a caller
- * that means a target sets it, even win32: otherwise an entry somebody left
+ * (IDESettings\targetArchitectureMemory), and in win32, the box's first
+ * option, when it remembers none. The harness's IDEs never write that value
+ * (IDE_FLAGS), but they read the one the user's own IDE wrote, and a named
+ * project --- tbbuild on one of the user's own --- may have an entry there. So
+ * a caller that means a target sets it, even win32: otherwise that entry
  * decides the build, and nothing says so.
  *
  * The switch is the IDE's own tbBuild_SwitchToWin64 and tbBuild_SwitchToWin32
@@ -1076,10 +1377,15 @@ export async function setBuildTarget(c, arch, { project, timeout }) {
   if (!before.options.includes(arch)) {
     throw new Error(`the build configuration box offers ${before.options.join(", ")}, not ${arch}`);
   }
-  if (before.value === arch) return { from: before.value, waited: null };
+  if (before.value === arch) {
+    timing("target", { arch, from: before.value, restartMs: null }, c);
+    return { from: before.value, waited: null };
+  }
   if (!before.pid) throw new Error("the IDE has no compiler process to restart for another target");
+  const t0 = Date.now();
   await c.evaluate(`buildConfigSelector.value = ${JSON.stringify(arch)}; buildConfigSelector.onchange()`);
   await awaitNewCompiler(c, before.pid, { why: `switching the build target to ${arch}` });
+  timing("target", { arch, from: before.value, restartMs: Date.now() - t0 }, c);
   const now = await read();
   if (now?.value !== arch) throw new Error(`the build target went back to ${now?.value} after the switch`);
   return { from: before.value, waited: await waitForCompile(c, { project, timeout }) };
@@ -1121,7 +1427,7 @@ export async function awaitNewCompiler(c, before, { why = "restarting it", timeo
   }
 }
 
-// The build log, in the compiler's own words (its strings, BETA 1005). A build
+// The build log, in the compiler's own words (its strings, BETA 1010). A build
 // writes "[BUILD] Starting..." to the DEBUG CONSOLE, and a binary ends with
 // "[LINKER] SUCCESS created output file '<path>'" or with one of some twenty
 // failure lines: "[LINKER] FAILED ...", "[BUILD] FAILED ...", "[BUILD] ERROR
@@ -1132,14 +1438,28 @@ export async function awaitNewCompiler(c, before, { why = "restarting it", timeo
 // The success line is matched whole: "[BUILD] successfully built Fusion server
 // file" is another line.
 const BUILD_START = "[BUILD] Starting...";
+// A [RunAfterBuild] Sub's run starting, after the link.
+const EXECUTING = /^\[BUILD\] Executing '/;
+// How long a build that has linked is given to say "[BUILD] Executing", when the
+// caller does not say whether the project has a [RunAfterBuild] Sub. It follows
+// the link line in the same read on BETA 1010; a poll's worth of the harness's
+// own, not a phase of test/harness.json.
+const RUN_GRACE_MS = 1000;
 const BUILD_OK = /^\[LINKER\] SUCCESS created output file '(.+)'$/;
 const PACKAGE_FILE = /^\[BUILD\] Creating TWINPACK file '(.+)'$/;
 const PACKAGE_OK = "[BUILD] successful.";
-// The last is LLVM's refusal of a procedure, which has no bracketed prefix:
-// "LLVM compilation error in 'Probe.Stopper': Unable to compile due to use of
-// datatype that is not yet supported for LLVM compilation" (BETA 1005).
+// LLVM's refusal of a procedure, with or without an "[LLVM] " prefix: "LLVM
+// compilation error in 'Probe.Stopper': Unable to compile due to use of datatype
+// that is not yet supported for LLVM compilation", and "[LLVM] codegen error
+// occurred when compiling 'Bitmap.New': Call parameter type does not match
+// function signature!" (BETA 1010; the second is written when a [RunAfterBuild]
+// run compiles a procedure it calls, after which the run stops). It fails the build
+// wherever it is printed, before [LINKER] SUCCESS or after [BUILD] Executing,
+// even when an exe was linked (test/harness.md).
+export const LLVM_REFUSAL = /^(?:\[LLVM\] )?(?:LLVM compilation error in |codegen error occurred when compiling )'/;
+// Every line that fails a build, LLVM_REFUSAL's included.
 export const BUILD_FAILED =
-  /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error|^LLVM compilation error in /;
+  /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error|^(?:\[LLVM\] )?(?:LLVM compilation error in |codegen error occurred when compiling )'/;
 // A compiler that crashes while building -- as one did under LLVM --
 // writes "<n> <time> NATIVE EXCEPTION: ..." and then restarts, and the build
 // never reports again. The line carries the console's own prefix, so it is not
@@ -1153,7 +1473,7 @@ const BUILD_CRASHED = /\bNATIVE EXCEPTION:/;
  * only to the built-in packages (docs/LLVM/Getting-Started.md), so on either an
  * LLVM run measures the default compiler and says nothing. The status bar's
  * compilerLicence holds one of four "<NAME> EDITION" strings once the IDE knows
- * (ide/main.js, BETA 1005), and "tB Licence: ..." until then, so it is polled.
+ * (ide/main.js, BETA 1010), and "tB Licence: ..." until then, so it is polled.
  *
  * @param {object} c                  a tb-cdp connection
  * @param {object} [o]
@@ -1196,6 +1516,23 @@ async function buildLines(c, mark, clearsBefore) {
   if (!kept.length) return linesSince(c, mark);
   const split = (text) => text.split("\n").map((l) => l.trim());
   return [...split(kept[0]).slice(mark.n), ...kept.slice(1).flatMap(split), ...split((await readConsole(c)) ?? "")];
+}
+
+/**
+ * What a build log that has linked says so far, or null before the link line:
+ * "refused" for an LLVM refusal anywhere in it (test/harness.md), "ran" when a
+ * line other than a refusal follows "[BUILD] Executing '...'" (the run's
+ * compile is done), "executing" when nothing does yet, and "linked" when no
+ * Executing line has come. buildProject's reading, apart for its probes.
+ * @param {string[]} log  the console from "[BUILD] Starting..." on
+ * @returns {"refused" | "ran" | "executing" | "linked" | null}
+ */
+export function linkedLog(log) {
+  if (!log.some((l) => BUILD_OK.test(l))) return null;
+  if (log.some((l) => LLVM_REFUSAL.test(l))) return "refused";
+  const exec = log.findIndex((l) => EXECUTING.test(l));
+  if (exec < 0) return "linked";
+  return log.slice(exec + 1).some((l) => l.trim()) ? "ran" : "executing";
 }
 
 /**
@@ -1243,17 +1580,44 @@ export async function pressBuild(c, { timeout = 60 * 1000 } = {}) {
  * build log to say how it went.
  *
  * A binary, an EXE or a DLL, has succeeded when its log shows the linker's
- * SUCCESS line, and a package when its log names the TWINPACK file and then
- * says the build was successful.
+ * SUCCESS line and no LLVM refusal, and a package when its log names the
+ * TWINPACK file and then says the build was successful. An LLVM refusal
+ * (LLVM_REFUSAL) anywhere in the log fails the build, linked or not
+ * (test/harness.md): the log is read whole on every pass, so the lines printed
+ * before the link line are in the same read as it.
+ *
+ * A project with a [RunAfterBuild] Sub goes on after the link: "[BUILD]
+ * Executing '...'", and then the compiler compiles the code the Sub reaches for
+ * its own run, which is where LLVM refuses what only that run calls. So once
+ * linked, the wait follows that compile: it ends failed at an LLVM refusal after
+ * Executing, and succeeded at the run's first other output, after the run's
+ * quiet period (`compilerRunQuiet`) or at its limit (`compilerRun`), both
+ * counted from Executing. `followRun` says whether to wait for Executing: true
+ * waits for it within the build's limit, false returns at the link line, and by
+ * default it is waited for RUN_GRACE_MS after the link. captureRun, which runs
+ * the Sub to its end, is unchanged by this: it presses Build itself.
  *
  * @param {object} c                  a tb-cdp connection
  * @param {object} [o]
- * @param {number} [o.timeout]        milliseconds (default 120000)
+ * @param {number} [o.timeout]        milliseconds, from the press to the build's
+ *   end (default: test/harness.json's `build`, or TB_BUILD_TIMEOUT)
+ * @param {boolean} [o.followRun]     whether the project has a [RunAfterBuild] Sub
+ *   whose compile to follow; unknown by default
+ * @param {number} [o.runMs]          the run's limit from Executing (default: compilerRun)
+ * @param {number} [o.quietMs]        the run's quiet period (default: compilerRunQuiet)
  * @returns {Promise<{ok: boolean, file?: string, message?: string, log: string[]}>}
  *   `file` is the path the log says the build created; `log` is the console
  *   from the build's first line on
  */
-export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
+export async function buildProject(
+  c,
+  {
+    timeout = timeoutMs("build"),
+    followRun,
+    runMs = timeoutMs("compilerRun"),
+    quietMs = timeoutMs("compilerRunQuiet"),
+  } = {},
+) {
   const mark = await consoleMark(c);
   if (!mark) {
     return {
@@ -1267,24 +1631,82 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
   // already on record before this build are not this build's.
   const keeping = await keepClears(c).catch(() => false);
   const clearsBefore = keeping ? ((await keptClears(c)) ?? []).length : 0;
+  const tPress = Date.now();
   try {
     await pressBuild(c);
   } catch (e) {
+    timing("build", { ended: "press", pressMs: Date.now() - tPress }, c);
     return { ok: false, log: [], message: e.message };
   }
   const t0 = Date.now();
   let log = [],
-    failedAt = 0;
-  while (Date.now() - t0 < timeout) {
-    await sleep(250);
+    failedAt = 0,
+    startAt = null,
+    linkedAt = null,
+    execAt = null,
+    lastChange = null,
+    lastLength = 0;
+  // For tb-timings.mjs: from the press to the build's first line, and from there to its end.
+  const note = (ended) =>
+    timing(
+      "build",
+      {
+        ended,
+        timeout,
+        pressMs: t0 - tPress,
+        startMs: startAt === null ? null : startAt - t0,
+        buildMs: startAt === null ? null : Date.now() - startAt,
+      },
+      c,
+    );
+  // The limit of what is being waited for: the build until it links; then
+  // Executing, within the build's limit or the grace after the link; then the
+  // run's compile, from Executing.
+  const deadline = () =>
+    execAt !== null
+      ? Math.min(execAt + runMs, Math.max(execAt, lastChange) + quietMs)
+      : linkedAt === null || followRun === true
+        ? t0 + timeout
+        : followRun === false
+          ? linkedAt
+          : Math.min(t0 + timeout, linkedAt + RUN_GRACE_MS);
+  for (;;) {
+    // A poll never sleeps past the limit, so a short one is met as given.
+    await sleep(Math.min(250, Math.max(0, deadline() - Date.now())));
+    if (Date.now() >= deadline() && linkedAt === null) break;
     const lines = await buildLines(c, mark, keeping ? clearsBefore : null);
     const start = lines.indexOf(BUILD_START);
     if (start < 0) continue;
+    startAt ??= Date.now();
     log = lines.slice(start);
+    if (log.length !== lastLength) {
+      lastLength = log.length;
+      lastChange = Date.now();
+    }
     const ok = log.map((l) => BUILD_OK.exec(l)).find(Boolean);
-    if (ok) return { ok: true, file: ok[1], log };
+    const linked = linkedLog(log);
+    if (linked === "refused") {
+      note("refused");
+      return { ok: false, file: ok[1], message: log.find((l) => LLVM_REFUSAL.test(l)), log };
+    }
+    if (linked) {
+      linkedAt ??= Date.now();
+      if (linked !== "linked") execAt ??= Date.now();
+      if (linked === "ran") {
+        note("ran");
+        return { ok: true, file: ok[1], log };
+      }
+      if (Date.now() >= deadline()) {
+        note(execAt === null ? "linked" : "run-quiet");
+        return { ok: true, file: ok[1], log };
+      }
+      continue;
+    }
     const pkg = log.findIndex((l) => PACKAGE_FILE.test(l));
-    if (pkg >= 0 && log.includes(PACKAGE_OK, pkg)) return { ok: true, file: PACKAGE_FILE.exec(log[pkg])[1], log };
+    if (pkg >= 0 && log.includes(PACKAGE_OK, pkg)) {
+      note("package");
+      return { ok: true, file: PACKAGE_FILE.exec(log[pkg])[1], log };
+    }
     // Not every such line need end the build -- the strings include "[BUILD]
     // failed to use project.iconForm setting", and whether a build goes on
     // after that one has not been seen -- so one decides only after two
@@ -1292,15 +1714,20 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
     const failed = (l) => BUILD_FAILED.test(l) || BUILD_CRASHED.test(l);
     if (!failedAt && log.some(failed)) failedAt = Date.now();
     if (failedAt && Date.now() - failedAt > 2000) {
+      note("failed");
       return { ok: false, message: log.find(failed), log };
     }
   }
+  note("timeout");
   return {
     ok: false,
     log,
-    message: log.length
-      ? `the build started and reported nothing for ${timeout / 1000} s`
-      : `the build did not start in ${timeout / 1000} s -- is a dialog open? A template ` +
-        "buildPath opens a Save dialog, which the private desktop hides",
+    timedOut: true,
+    message:
+      (log.length
+        ? `timeout: the build started and did not end within ${secondsText(timeout)}`
+        : `timeout: the build did not start within ${secondsText(timeout)} -- is a dialog open? A template ` +
+          "buildPath opens a Save dialog, which the private desktop hides") +
+      " (test/harness.json's build; --build-timeout or TB_BUILD_TIMEOUT overrides it)",
   };
 }

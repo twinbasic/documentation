@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["a type library imported on Available COM References is listed in Enabled Libraries as [LINKED-PACKAGE]"],
+  "steps": "1. Press Ctrl+T for Project Settings' references, open Available COM References and press Import from file...; pick C:\\Windows\\SysWOW64\\msdatsrc.tlb.\n2. The project gains the reference [IMPORTED] Microsoft Data Source Interfaces for ActiveX Data Binding Type Library.\n3. Open Enabled Libraries: the row reads [LINKED-PACKAGE] Microsoft Data Source Interfaces ..."
+}

@@ -26,7 +26,7 @@ in this repository. They are inside the `.twinproj` files an IDE install ships, 
 node scripts/impexp.mjs export <some>.twinproj <out-dir>
 ```
 
-On BETA 1005 that yields **820 `.twin` files**: 661 from the sixteen
+On BETA 1010 that yields **820 `.twin` files**: 661 from the sixteen
 packages under `packages/`, and 159 from the thirty-two sample and template projects under
 `projects/` (`addins/` holds no `.twinproj`). The compiler accepts all of this code, which
 makes it the strongest available evidence for what is legal syntax.
@@ -107,9 +107,9 @@ node scripts/census_attributes.mjs --attr Hidden          # one attribute
 node scripts/census_attributes.mjs --attr Hidden --dump-sites sites.json
 ```
 
-Against BETA 1005: **661 files, 9,744 attribute sites, 55 distinct attributes**, and every
+Against BETA 1010: **661 files, 9,788 attribute sites, 55 distinct attributes**, and every
 one of the 55 is already in `Attributes.md` --- the "used but undocumented" section comes
-back empty. Sixteen documented attributes are used by no package. That is not a defect, but
+back empty. Seventeen documented attributes are used by no package. That is not a defect, but
 the census offers no evidence for their `Applicable to:` lines, and a probe is the only
 check available.
 
@@ -140,7 +140,7 @@ comment in the file:
   `[_MAX] = 0`. The tail after the `]` is what separates them. An Enum member may *be*
   one --- `Report.twin` declares `[ ]`, `[A4 Portrait]`, `[Letter Landscape]` as member
   names --- and **a bracket group alone on its line in an Enum body is always a member,
-  whatever is inside the brackets** (BETA 1005): `[Hidden]` is the member `Hidden`,
+  whatever is inside the brackets** (BETA 1010): `[Hidden]` is the member `Hidden`,
   `E.[Hidden]` and `E.Hidden` are 0, `[Description("x")]` is a member of that name, and
   `[NoSuchAttribute]` too. Code after the group (`[Hidden] Red = 5`) is refused, TB5182 at
   `Red`. So the census records no attribute for such a group (`scripts/lib/census-scan.mjs`,
@@ -180,7 +180,7 @@ and lays the answers against the page. Its reader-facing description is
 [Tools and Scripts](docs/Documentation/Tools-Samples.md#sweep-attributes); this is why it is built as
 it is.
 
-**Against BETA 1005: 34,648 probes in 126 builds, 221 s on four lanes, with no crash and no
+**Against BETA 1010: 34,648 probes in 126 builds, 189 s on four lanes, with no crash and no
 interference.** That is the whole matrix; nothing in it is slow enough to need sampling. **A run of one name is a
 minute or a few, not always one:** an attribute the compiler allows once per project
 (`[RunAfterBuild]`, `[RunBeforeStartupObject]`) goes in one probe per batch, so it needs
@@ -203,7 +203,7 @@ every site.
 - **A control must be refused for a site to mean anything.** An unknown name is built at every
   site, and a site whose control *compiles* is voided. An Enum body accepts any own-line
   `[...]` --- `[ClassId("guid")]` and `[Hidden(True)]` included --- because the line is a
-  member, not an attribute (BETA 1005: `E.[Description("x")]` compiles and is 0, so such a
+  member, not an attribute (BETA 1010: `E.[Description("x")]` compiles and is 0, so such a
   group is a legal member name), and nothing accepted there is evidence. Inline,
   `[Name] X = 1`, the line is the member `[Name]` followed by text the parser has no
   handler for (TB5182, at `X`), so the compiler refuses every attribute, `[Hidden]` included,
@@ -274,7 +274,7 @@ is not news.** Read a new sweep's list against this one and judge only what is n
   sets no type library flag, though it stays on the page from the packages' use.
 - **On a procedure:** `DLLStackCheck` (the exe is the same size), `ConstantFoldable` on a Sub
   or a generic Function, `RunAfterBuild` on a generic Sub (never runs: the page's WARNING),
-  `RunBeforeStartupObject` on a generic Sub (crashes the build: WARNING), `TypeHint` on a Sub
+  `RunBeforeStartupObject` on a generic Sub (fails the build on BETA 1010: NOTE), `TypeHint` on a Sub
   (its argument is not even checked; on a Function or a Property Get it is, and its effect
   there is IntelliSense, which no tool here reads), `TestCase` anywhere but a Sub of a
   `[TestFixture]` Module (`tbrun --tests` never asks the compiler about it).
@@ -360,13 +360,8 @@ A project whose traffic never shows a compile ending falls back to waiting for t
 read OPERATIONAL and stand still for five seconds, and so does a page that a dialog has
 blocked. The reproducer `interface-extends-itself` is one such project: its compiler never
 reports a result at all. The traffic wait takes about five seconds less per project than the
-fallback: `tbbuild` on a one-file template takes 6 s, and a full `examples.bat` about 220 s
-(2,297 samples on four lanes, BETA 1005).
-
-Known: **`--llvm`, four projects at a time, can leave a build hanging** (4 of 52 builds in
-one run): the build starts and then reports nothing for 120 s. One at a time, the same
-projects build. `examples.bat` builds a failed batch a second time for this reason; `tbbuild`
-does not.
+fallback: `tbbuild` on a one-file template takes 6 s, and a full `examples.bat` about 190 s
+(2,660 samples on four lanes, BETA 1010).
 
 **The mechanics are one library, [scripts/lib/tb-ide.mjs](scripts/lib/tb-ide.mjs)**:
 starting the IDE, attaching, waiting for the compile, reading the diagnostics and the DEBUG
@@ -562,18 +557,18 @@ project size** --- a one-file template and the template that carries the whole o
 land at about six seconds, because what is being paid for is IDE startup and not compilation.
 Time it before quoting it.
 
-**Concurrency works and is the route to a fast probe suite.** Distinct `--port` values give
-distinct DevTools ports, WebView2 user-data folders, temp folders and private desktops, so instances do
-not collide. Three projects: **26 s sequentially, 10 s in parallel**, with each run
+**Concurrency works and is the route to a fast probe suite.** Each run takes a slot from
+`tbbroker` ([WIP.Broker.md](WIP.Broker.md)) --- a private desktop, and the number its WebView2
+user-data folder, temp folder and work folder are named by --- and its IDE's DevTools port is
+one Windows picks, so instances do not collide. Fixed ports collided often: Windows hands out
+ports from 1024 up on the dev box, so a compiler's or a browser's socket could sit on one. Three projects: **26 s sequentially, 10 s in parallel**, with each run
 reporting its own diagnostics and no bleed between them.
 
-**A port another IDE holds is refused.** The harness attaches to whatever page answers on
-its port, so an IDE already there --- another lane's, or another session's, since several
-sessions run this harness on one machine with ports of their own choosing --- would be the
-one read and operated. `launchIde` binds the port for a moment first, and gives up after
-ten seconds with a message saying which port and why. The wait is for the lane's own
-previous IDE: after `shutdownIde` a port comes free in about 15 ms, and once took two
-seconds.
+**A port given with `--port` that another IDE holds is refused.** The harness attaches to
+whatever page answers on its port, so an IDE already there would be the one read and
+operated. `launchIde` binds a given port for a moment first, and gives up after ten seconds
+with a message saying which port and why. A port Windows picks needs none of that: no other
+socket can have it.
 
 ### Capturing what a probe prints, not just whether it compiles
 
@@ -641,9 +636,8 @@ Rules it follows:
   failing shift is in a procedure the probe calls, the codegen line naming that procedure
   comes straight after the `[BUILD] Executing` line, before the probe's first statement runs.
   The probe's `Debug.Cls` erases it, and the probe prints what comes before the call and stops
-  there. (BETA 1005: with `Debug.Cls` the probe prints exactly its lines; without it
-  `tbrun` warns and the build log lines precede them; exit 0 either way, without the guard
-  below.) So `tbrun` wraps the page's global `clearDebugConsole()` before it presses Build,
+  there. (BETA 1010: with `Debug.Cls` the probe prints exactly its lines; without it
+  `tbrun` warns and the build log lines precede them.) So `tbrun` wraps the page's global `clearDebugConsole()` before it presses Build,
   and keeps what each clear erases (`keepClears` in `tb-ide-console.mjs`). A `BUILD_FAILED`
   line in that record after the last `[BUILD] Executing` line exits 2, naming the line and
   printing the partial output. `main.js` calls that function by name from the compiler's
@@ -658,15 +652,15 @@ Rules it follows:
   `tbbuild`'s 4. `tbrun` exits 3 for no output at all, and 2 for a compile that never
   settled, which `tbbuild` reports as 3.
 - **`tbrun` exits 5 when the probe ended before it returned.** The quiet period cannot see
-  it: on BETA 1005, `Err.Raise` with no handler in a `+llvm` procedure ends the run with
+  it: on BETA 1010, `Err.Raise` with no handler in a `+llvm` procedure ends the run with
   nothing in the console. `End` does the same, and so does an unhandled error in plain code,
-  in about the time of a probe that returns (12.8 s against 10.4 s, one run each on BETA
-  1005, other IDEs running). `lib/tb-probe.mjs`'s `wrapProbe` moves the attribute, blanked to spaces so
+  with `tbrun` taking the run as over after the 8 s quiet period (17.0 s against 9.1 s for a
+  probe that returns, one run each on BETA 1010). `lib/tb-probe.mjs`'s `wrapProbe` moves the attribute, blanked to spaces so
   diagnostics keep their positions, to a Sub appended to the same module, so a Private probe
   Sub can still be called; that Sub prints a sentinel after the call. A probe that leaves a
   form loaded returns too: the IDE then prints `[DEBUGGER] Waiting for remaining forms to
   close...` after the sentinel, which `sentinelIndex` allows and `tbrun` prints (BETA
-  1005). `check_twin_parsers` has fixtures for both.
+  1010). `check_twin_parsers` has fixtures for both.
 - **`tbrun --exe` exits 6 when the exe exited with a code other than 0**, when the event
   log records that it faulted, when it opened a box, or when it was still running at
   `--timeout` and was ended. A run that would exit 5 exits 5 first, since the
@@ -690,10 +684,9 @@ new entry. **The IDE escapes that continued text twice**
 console shows.
 
 `tbrun` settles on the wrapper's sentinel, or else on a quiet period, so no probe has to print
-a marker of its own. Distinct `--port` values let probes run concurrently, exactly as
-`tbbuild`'s do.
+a marker of its own. Probes run concurrently, exactly as `tbbuild`'s do.
 
-**Two things make that safe.** The workspace and `project.id` are keyed to `--port`, so a
+**Two things make that safe.** The workspace and `project.id` are keyed to the run's slot, so a
 second run cannot delete the first one's tree; and shutdown is a kill by the pid the launch
 returned --- `tbbuild` reports it as `ide-pid:` in text and `idePid` in `--json` for a caller
 that inherits a kept IDE --- rather than a machine-wide `taskkill /F /T /IM twinBASIC.exe`,
@@ -710,7 +703,7 @@ concurrent runs driving the same server should use it and sweep once at the end.
 ### Running a project's test cases
 
 twinBASIC's own unit-test form is a Module marked `[TestFixture]` whose parameterless Subs
-are marked `[TestCase]` and check with the Assert package. **BETA 1005 has no way for a
+are marked `[TestCase]` and check with the Assert package. **BETA 1010 has no way for a
 person to run one.** A `[TestCase]` Sub gets no CodeLens "run" link (an unmarked Sub in the
 same module gets one), the IDE's handler for the compiler's `custom/provideTests` request is
 an empty function in `main.js`, and the compiler never sent it in the runs here. Called from
@@ -739,7 +732,7 @@ after an access violation. `Debug.Print` in a case writes to the DEBUG CONSOLE. 
 not there is `success: false` with a compile-error message. An unmarked Sub runs the same way,
 so the attributes matter only to the runner that lists the cases: `scripts/lib/tb-tests.mjs`
 finds them in the sources (`[TestFixture]` before `Module`, `[TestCase]` before a
-parameterless `Sub`) and refuses one it cannot call. All measured on BETA 1005 over CDP.
+parameterless `Sub`) and refuses one it cannot call. All measured on BETA 1010 over CDP.
 
 **`Assert.Exact` compares the type too**: `Assert.Exact.AreEqual 5, Err.Number` fails, 5 is
 an `Integer` and `Err.Number` a `Long`. The tests here use `Assert.Strict`.
@@ -752,18 +745,18 @@ cannot predict. A project with compile errors runs none of its `[TestCase]`s.
 ### Measuring LLVM
 
 `tbrun --llvm` sets `compiler.debugOptions` and `compiler.buildOptions` to `+llvm` in the
-staged Settings; `--compiler-options` sets any other string. Measured on BETA 1005 with no
+staged Settings; `--compiler-options` sets any other string. Measured on BETA 1010 with no
 per-procedure attributes, one probe in four variants of Settings: **`debugOptions` is what
 the `[RunAfterBuild]` run is compiled with.** With `+llvm` there, `Debug.Assert`'s condition
 was evaluated 0 times; with it only in `buildOptions`, 1 time, as with neither. A
-200-million-step loop took 465 ms with neither, 387 ms with `buildOptions` only, 430 ms with
-`debugOptions` only and 398 ms with both, so on this build the speed of a plain loop does not
+200-million-step loop took 375 ms with neither, 371 ms with `buildOptions` only, 430 ms with
+`debugOptions` only and 445 ms with both, so on this build the speed of a plain loop does not
 tell the variants apart. (`+llvm` alone is not `+llvm +optimize`, which took the same loop to
-0 ms.)
+20 ms.)
 
 **The licence is in the status bar's `compilerLicence`:** one of `COMMUNITY EDITION`,
 `PERSONAL EDITION`, `PROFESSIONAL EDITION`, `ULTIMATE EDITION`, and `tB Licence: ...`
-until the IDE knows (`ide/main.js`, BETA 1005). The licence key is in HKCU, so a lane IDE
+until the IDE knows (`ide/main.js`, BETA 1010). The licence key is in HKCU, so a lane IDE
 sees the user's. `tbrun` refuses an LLVM run on the first two, which compile no user code
 with LLVM; it cannot be tested with a real Community licence here, only through a fault.
 
@@ -771,14 +764,14 @@ with LLVM; it cannot be tested with a real Community licence here, only through 
 `launchIde` that calls `tb-launch.ps1`, which reports the program's exit code on a
 second line (`exit <n>`) once it ends. Nothing reaches the exe's standard output: the
 launcher creates it with no inherited handles. So `TbRun.Out` writes UTF-8 to the file
-`TBRUN_OUT` names, and to standard output only when there is none. Measured on BETA 1005:
+`TBRUN_OUT` names, and to standard output only when there is none. Measured on BETA 1010:
 the exit code from `ExitProcess 7` comes back as 7, a hung exe is ended at `--timeout`
 with nothing left running, and **the exe never evaluates `Debug.Assert`, with or without
 LLVM**, as VB6 drops `Debug` statements from a compiled program.
 
 **An unhandled error in the exe opens a box and waits for it**, so `--exe` passes
 `dialogs: "close"`: the launcher records each box and presses OK. Without that the exe
-sat until `--timeout`. The box is the only sign of the error. In BETA 1005 a plain exe
+sat until `--timeout`. The box is the only sign of the error. In BETA 1010 a plain exe
 shows a box titled with the project's application title, `Run-time error '11' <description>`,
 and exits with code 0 once the box is closed; an LLVM-compiled one shows *_TB_ERROR_HANDLER*,
 `unhandled error in ProbeMod.Oops` (the module and procedure), with no number or
@@ -790,12 +783,110 @@ because the launcher, not Node, starts the exe.
 `TbRun.tbrun_InIDE` before it calls the probe; the exe runs `Sub Main`, never the wrapper.
 `App.IsInIDE` would say the same, but `App` exists only in a project that references the
 VB package or the AppGlobalClassObject package: in any other, `TbRun` fails to compile
-(TB5079, `Unrecognized symbol 'App'`) and `tbrun` exits 1 on a probe that is fine (BETA 1005;
+(TB5079, `Unrecognized symbol 'App'`) and `tbrun` exits 1 on a probe that is fine (BETA 1010;
 either package alone is enough, and the install's Samples 6 and 8 had neither).
 Adding that reference to the staged copy would change what the probe's own names resolve
 to, and the VB6 idiom, a `Debug.Assert` whose condition sets a variable, fails under
 `--llvm`, because LLVM-compiled code skips `Debug.Assert` in the IDE too. A tree with a
 `TbRun` module of its own keeps it, and its wrapper sets no flag.
+
+### The LLVM cache server, and the lease every LLVM run holds
+
+**An LLVM build uses a cache server, a process of its own:**
+`<install>\bin\twinBASIC_win64.exe --threads=<n> --keepalive=0|1 --cache=1`. Every compiler on
+the machine finds it through one machine-wide pipe,
+`\\.\pipe\twinBASIC.LLVMCache.Registration.v<n>` (`v6` for BETA 1005 to 1010; the name is read
+from the install's compiler DLL), so one server serves every IDE, of any install whose DLL
+names the same pipe. A compiler that needs the server and finds none starts it **as its own
+child**, so it lives in that IDE's job (kill-on-close, no breakaway: [The IDE runs inside a
+job](#the-ide-runs-inside-a-job)). When that IDE ends, the server ends with it, and every other
+IDE's compiler writes `[LLVM] The LLVM cache process has terminated abruptly.  Restarting the
+compiler...`, restarts and abandons its build. Runs at once without a lease therefore stop with
+exit 2 in one of these ways: "the run wrote no [tbx-run] line", "the IDE never reported ... as open",
+"the IDE never showed its licence", "timeout: the build started and did not end within ...".
+
+**So every tool that builds with LLVM holds a lease on the server** before its IDE starts,
+through `holdLlvmCache` in [scripts/lib/tb-llvm-cache.mjs](scripts/lib/tb-llvm-cache.mjs), over
+the library vendored in `scripts/lib/llvm-cache/` (its `README.md` states the contract, and its
+`VENDORED.md` the commit it was copied from). When no server answers, the library starts one
+detached, outside every IDE's job, under a start lock, so that two tools starting at once start
+one server. The server counts the processes registered with it, not their connections; a lease
+is a small holder process of the tool's own, registered with the server, and releasing it ends
+the holder, as does the tool ending however it ends. The server ends about 15 s after the last
+registered process has ended. A server of another install on the same pipe is used: the pipe's
+name is the protocol, and BETA 1007 and 1010 share `v6`.
+
+Where the lease is taken, always after the arguments and the install have been checked, with the
+install the tool found (`findIde`), never a searched one:
+
+- **`tbbuild`**, for a build with LLVM in it: `--llvm`, or `+llvm` in the project's own compiler
+  options, or a procedure's `[CompilerOptions("... +llvm ...")]` (`asksForLlvm`). Released once
+  `compileProject` has ended the IDE; a kept IDE's lease ends with `tbbuild`. A compile without
+  `--build` generates no LLVM code and takes none.
+- **`tbrun`**, for a run with LLVM in it (`--llvm`, a `--compiler-options` string with `+llvm`,
+  or the project's or a procedure's own), released in its `shutdown`, after the IDE has ended.
+- **`check_examples`**, once for its whole run, when it builds with LLVM (`--llvm`, or a sample
+  it builds that turns LLVM on for a procedure): its lanes are in its own process, so one lease
+  covers them all, and the server never ends between batches.
+- **`bug_repro verify`**, once for its run when a reproducer it runs has `llvm: true`; each
+  `tbbuild` and `tbrun` it starts holds its own as well.
+
+A failure to take a lease is a harness failure, exit 2, with the reason. A run without LLVM
+takes none. The `--json` reports of `tbbuild` and `tbrun` give the lease as `llvmCache`
+(`pipe`, `serverPid`, `started`), or null.
+
+The library starts the server from the tool's own Node process. Node puts a child it spawns
+detached in no job, so the server outlives the tool's own job too; a tool started inside a job
+that allows no breakaway would still have the server in that job (the vendored README's open
+item).
+
+### Timeouts: `test/harness.json`
+
+**Every limit a phase has comes from `test/harness.json`'s `timeouts`**, in seconds, and no
+default stays in the code; [test/harness.md](test/harness.md) is the contract (each phase's start
+and end, the values, the precedence). `scripts/lib/harness-settings.mjs` reads the file once per
+process and resolves a limit: the tool's option, then the variable, then the file. A missing or
+malformed file, and a variable that is not a number of seconds greater than 0, is exit 2.
+
+| phase | key | where | option | variable |
+|---|---|---|---|---|
+| project open | `projectOpen` | `waitForCompile`, from the call to the project reported open | none | none |
+| compile | `compile` | `waitForCompile`, from the project reported open to the compile settled | `--compile-timeout` (tbbuild's `--timeout` too) | `TB_COMPILE_TIMEOUT` |
+| build | `build` | `buildProject`, the press to linked or failed; `captureRun`, the press to `[BUILD] Executing` | `--build-timeout` | `TB_BUILD_TIMEOUT` |
+| compiler run | `compilerRun` | `captureRun`, from Executing; `tbrun --tests`, each case | `--compiler-run-timeout` (tbrun's `--timeout` too) | `TB_COMPILER_RUN_TIMEOUT` |
+| quiet period | `compilerRunQuiet` | `captureRun`, from the later of Executing and the last output | `--compiler-run-quiet` | `TB_COMPILER_RUN_QUIET` |
+| exe run | `exeRun` | `tbrun --exe` | `--exe-run-timeout` (tbrun's `--timeout` too) | `TB_EXE_RUN_TIMEOUT` |
+
+`tbbuild` has the compile and build options, `check_examples` those and the two run options,
+`tbrun` all five; the lanes, `shoot_docs` and `try-help-addin` have none, and read the variables.
+A limit that ends a wait is reported as a timeout: `tbbuild` exits 3 for the compile's and 5 for
+the build's, `tbrun` 2 for either, and 6 for the exe's. A compiler run that meets its limit is a
+run that never returned (`tbrun` exit 5, a `check_examples` finding). The waits that are no
+phase keep their numbers in the code: the licence and overlay before a press (`pressBuild`,
+60 s), a compiler restart (`awaitNewCompiler`, 60 s), the licence's name (`llvmLicence`, 15 s),
+a crash's file name (`awaitCrashName`, 5 s), `waitForCompile`'s 5 s stand-still and 300 ms
+early quiet, the two seconds a failure line is given before a build is taken as failed, and the
+operation waits of the lanes and `shoot_docs`.
+
+### Timing each phase: `TB_TIMINGS`
+
+**Set `TB_TIMINGS=<file>` and every tool that goes through `tb-ide.mjs` appends one JSON line per
+phase to that file** (`scripts/lib/tb-timings.mjs`): `launch` (slot lease and IDE start),
+`compile` (`waitForCompile`: load, the compile as the wire saw it, and how the wait ended:
+`early`, `still`, `safe`, `drops`, `crash` or `timeout`), `target`, `build` (`buildProject`),
+`run` (`captureRun`: press, build, link, Executing, last output), `project` (`compileProject`'s
+whole call) and, in `check_examples`, `batch` (what the batch holds). Every line has `at`, `pid`,
+`tool`, `phase` and `project`, and is appended whole, so lanes and processes share one file.
+Unset, nothing is written and nothing else changes.
+
+What it showed on BETA 1010 (350 compiles: `check_examples --build` and `--llvm`, every
+`addin_test` lane, `tbbuild`/`tbrun` probes on both arches), median / p95 / max in seconds: IDE
+start to project open 2.85 / 3.46 / 4.04; the compiler's own compile, `compilationStarted` to the
+last file's diagnostics, 0.03 / 0.08 / 0.30; the whole compile wait, project load included, 3.33 / 5.34 /
+13.8, its tail the 5 s stand-still `waitForCompile` needs when a package's own files have errors
+(WinReg, ArrayListLib), where the early path never agrees; a build, Build pressed to linked, at
+most 1.0 (4.97 with LLVM); a `[RunAfterBuild]` run at most 0.83 (25.3 with LLVM, one of them
+printing for 15 s and finishing). None reached a timeout.
 
 ### Building for win64
 
@@ -851,58 +942,119 @@ into its own `out` folder under the IDE's own name,
 `${SourcePath}\Build\...`, not from the variables. The name is looked for after the build
 rather than assumed, because `${FileExtension}` follows the build type.
 
-**A switch writes the IDE's remembered target for the project's path**, so the registry tidy
-has to put it back. Under a harness folder the entry is swept, as every entry there is. A
-named project --- `tbbuild` on one of the user's own --- has its entry snapshotted and
-restored, as its saved state is ([What a run leaves in the
-registry](#what-a-run-leaves-in-the-registry-and-putting-it-back)). Two limits. Under `--keep`
-nothing is tidied, so a kept IDE's switch stays remembered. And the IDE's own save is an
-unguarded read-modify-write of one JSON value (`setProjectLastUsedTargetArchitecture`), so two
-IDEs switching at the same moment can lose one another's entry --- harmless for a harness
-path, which the next sweep deletes anyway.
+**A switch of target is not saved.** The IDE saves the target it last built a project for
+(`setProjectLastUsedTargetArchitecture`, called from the build box's `onchange`), and
+`--no-save-ide-settings` stops it, so a harness switch leaves `targetArchitectureMemory`
+as it was ([What a run leaves in the registry](#what-a-run-leaves-in-the-registry-and-putting-it-back)).
 
 ## What a run leaves in the registry, and putting it back
 
-**Every IDE the harness starts writes to the user's own settings.** They live under
-`HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE`, and the same key serves every
-installed build. An IDE records each project it opens as a `ProjectState` value (open tabs,
-watch expressions, DEBUG CONSOLE history: up to 34 KB for a real project) and moves it to
-the top of `RecentlyOpened`, a 21-slot list. Nothing removes either, so harness temp projects
-accumulate and push the user's own recent projects out of the IDE entirely. One `examples.bat`
-run adds 41 values and fills the list.
+**Every IDE the harness starts is given two flags, and BETA 1007 is the oldest build any tool
+runs.** An IDE keeps all its settings in the registry, under
+`HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE` (`IDESettings`, `ProjectState`,
+`RecentlyOpened`, `Window`; there is no settings file), and the same key serves every
+installed build. Left to itself, an IDE a harness starts writes the user's options (the theme
+included), panel layouts, keyboard groups, the build target it remembers for each project
+path, its recent list and its licence answers. BETA 1007's IDE has the command-line flags
+that stop it:
 
-[scripts/lib/tb-registry.mjs](scripts/lib/tb-registry.mjs) puts it back. **The rule is to
-leave everything as it was found**, and it takes four forms:
+| flag | stops |
+|---|---|
+| `--no-save-ide-settings` | every `hostAppObject.SaveIDESetting` call in the IDE's page: `GENERAL` (the theme), `GENERAL2`, `LAYOUT`, `LAYOUTv2`, `ACTIVE_PANEL_LAYOUT_NAME`, `CUSTOM_PANEL_LAYOUTS`, the keyboard groups, `WEBPANEL_SETTINGS`, `FORMS_windowsPalette`, `targetArchitectureMemory`, `LicenceKey` and the licence and error-reporting agreements |
+| `--no-update-recent-files` | the three `AddRecentsList` calls (a project loaded, saved as, and the retry of a save that failed) |
 
-- **A folder only the harness writes to is swept by prefix** --- `check_examples`' and
-  `tbrun`'s work folders. The sweep also runs at the start of a run, which catches what an
-  earlier run left when it died. A prefix must lie inside the temp folder, or it is refused:
-  a caller passing the wrong folder cannot sweep away real projects.
+`IDE_FLAGS` in [scripts/lib/tb-ide.mjs](scripts/lib/tb-ide.mjs) holds both. `launchIde` passes
+them on both branches (the argv array of `--show`, and `launchOnDesktop`'s `args` on a private
+desktop), and `test/ide/build-and-exit-silent.test.mjs`, which starts the IDE itself with
+`--buildAndExit32`, passes them too. Nothing else starts a `twinBASIC.exe`. Three facts about
+the command line, read in `ide/main2.js`: a `--` flag may stand anywhere; an unknown one is
+ignored without a word, so a misspelt flag protects nothing; and the parser allows one
+positional argument, the project, so a second gives the modal "Bad command line syntax" box,
+which nobody answers on a private desktop (and a trailing space is read as an empty second
+argument, the trap noted at `launchIde`). **Never pass `--reset-ide-settings`**: it writes
+empty `GENERAL` and `GENERAL2` to the real registry, even after `--no-save-ide-settings`.
+
+**The floor is `MIN_BUILD` (1007) in [scripts/lib/tb-install.mjs](scripts/lib/tb-install.mjs)**
+(owner: "we never run anything before that"), because an older IDE ignores both flags and
+writes the settings. There is no fallback for older builds and no switch to allow one.
+`findIde` passes over an install older than that on the Desktop; `unsupportedIde` says why an
+install given by `--ide` or `TB_IDE` may not run, and every tool that starts an IDE refuses
+it as a harness failure (exit 2) before anything starts; `launchIde` refuses it again, as the
+last resort. The build is read by `buildNumber`, which is the one place: `ide/build.js` beside
+the executable (`var tbVersionInfo = 'twinBASIC IDE BETA 1007';`), else the folder name
+`twinBASIC_IDE_BETA_<n>`. A lane's copy of an install ([next section](#a-private-ide-for-every-lane))
+carries both, so it reads as its source does. A build that neither gives is not refused here;
+it is whatever the path checks say. The control for a probe is therefore BETA 1007 itself,
+never an older build kept on the Desktop.
+
+**What the flags do not guard** is what the tidy ([scripts/lib/tb-registry.mjs](scripts/lib/tb-registry.mjs))
+puts back, or what a test blocks:
+
+- **`ProjectState`**, written by `SaveProjectMetaState`: each project an IDE opens leaves
+  its open tabs, watch expressions and DEBUG CONSOLE history (up to 34 KB for a real
+  project). Nothing removes them, so harness temp projects would accumulate.
+- **The `.twinproj` association** (`Software\Classes\.twinproj` and `twinBASIC.ProjectFile`),
+  which the executable registers, not the page, when it starts from a path other than the
+  registered one: a lane's private copy re-points it at the copy.
+- **The `Window` key** (`Left`, `Top`, `Width`, `Height`, `State`, `RealTitlebar`), the
+  geometry the user's own IDE opens its window at. On BETA 1007 the executable writes the four
+  numbers and `State` the moment its window is resized, maximized or restored, on a private
+  desktop as much as on the user's; a move alone, an idle IDE, a graceful close (the window's
+  close button, or `--buildAndExit32`'s own exit) and `taskkill /F` write nothing (key
+  timestamps, through a probe of each). The page's `ChangeWindowSetting("RealTitlebar", ...)`
+  runs in `changedIdeOptions`, at start-up and on every options change (a theme switch, a font
+  size, any toggle), and writes the value when the page's `showRealTitlebar` differs from it;
+  with the same value it writes nothing. No harness path resizes an IDE's window, and the
+  `test/ide` scenarios that change options block the call in their page (`GUARD_JS`). The tidy
+  puts the key back all the same (below).
+- **`RemoveRecentsList`**, which the start page and the error dialogs call. `shoot_docs.mjs`
+  and the `test/ide` scenarios block it in their pages.
+- **`SaveIDESetting("PUBLISHER", ...)`**, the package publisher's name and password, which
+  has no guard (`savePublisherInfo`). No harness path publishes a package.
+
+**What the tidy does, by the rule to leave everything as it was found:**
+
+- **A folder only the harness writes to is swept by prefix**, from `ProjectState` ---
+  `check_examples`' and `tbrun`'s work folders. The sweep also runs at the start of a run, which
+  catches what an earlier run left when it died. A prefix must lie inside the temp folder, or it
+  is refused: a caller passing the wrong folder cannot sweep away real projects.
 - **A named project is restored, not deleted.** `tbbuild` is pointed at the user's own
   projects too, and deleting one of those entries would throw away somebody's open tabs and
   watches. So it snapshots the project's entry first, and afterwards puts back the old state
-  and the old place in the list if there was one, and deletes the entry only if there was
-  not.
+  if there was one, and deletes the entry only if there was not.
 - **The `.twinproj` association is restored value by value**, writing only what differs,
   so an untouched key is never written. The IDE does not rewrite it on every launch (key
   timestamps show `DefaultIcon` and `shell\open\command` last written at installation,
   through a day of launches of that build). It rewrites them when its own path differs, which
   is why starting a lane's private copy re-points the association at the copy ([A private
   IDE for every lane](#a-private-ide-for-every-lane)).
-- **The build target the IDE remembers for each project is deleted under the same
-  folders**, before the run and after it. The IDE keeps the target it last built a project
-  for as one JSON object in `IDESettings\targetArchitectureMemory`, keyed by the project's
-  path, and a project it opens again starts in that target. A harness path is used run
-  after run, so one run's entry would decide every later run's target without a word.
-  `sweepArchitectureMemory` deletes the entries under the run's folders and leaves every
-  other entry alone, the user's among them. Opening a project only reads its entry; one is
-  written when the target of an open project changes, which `--arch` does ([Building for
-  win64](#building-for-win64)). So a **named** project's entry is snapshotted and put back as
-  its saved state is, by `restoreArchitectureMemory`: its old value in its old place, and any
-  other spelling of its path the IDE saved deleted. The object is edited in JavaScript and
-  written back with `JSON.stringify`, which is how the IDE writes it, so the other entries
-  keep their exact text and order, and the write is refused if the value changed after it
-  was read.
+- **The `Window` key is restored the same way**, value by value and only where it differs,
+  as the first run found it, so a run that leaves it alone writes nothing (`window: 0` in
+  `finishTidy`'s result, and the lane runner's line says how many window writes it made). It
+  is put back although no harness path is known to change it, because the IDE's own code
+  writes it (a resize, an options change) and no flag stops that. `try_help_addin` passes
+  `window: false`: its IDE is on the user's desktop, the user moves and closes it, and the
+  geometry it leaves is the user's. Its record says so (`keepWindow`), and then no run that
+  ends with it puts the key back, whichever is last.
+
+**The recent list and the remembered build targets are checked and never repaired** (the
+theme and the other options are not written, so there is nothing to check).
+`ideLists` and `rememberedTargets` only read. The lane runner calls them after the put-back
+and fails the run (exit 3) when an entry names a lane's folder, because that means the flags
+did not do their work, or an IDE started without them (another session's, an older install's)
+wrote it. A repair would hide exactly that. `test/ide/recent-projects-copies.test.mjs` is the
+one test that must see the recent list change, so its IDE gets `IDE_FLAGS` less
+`--no-update-recent-files` (`flags` in `Lane.open`), and the test records and restores the key
+itself.
+
+**A build target is never saved by a harness IDE, and is still read.** A project opens in the
+target the IDE remembers for its path (`IDESettings\targetArchitectureMemory`, one JSON object
+keyed by project path), and in win32, the box's first option, when it remembers none. The
+harness's IDEs never write the value, so a harness path (`tbrun`'s work folder is keyed to
+its port, and is used run after run) never gains an entry; a named project the user opened in
+win64 in his own IDE does have one. So `setBuildTarget` still sets the target on every run,
+win32 included: otherwise that entry would decide the build, and nothing would say so
+([Building for win64](#building-for-win64)).
 
 **One process owns the registry per run.** `check_examples` and `sweep_attributes` run four
 lanes of builds at once, in one process (`compileProject`, which never tidies); each
@@ -915,20 +1067,18 @@ tidied, because the kept IDE is still writing. `shutdownIde` waits for the IDE's
 be gone before anything is tidied, because `taskkill` only asks.
 
 **The last of several runs puts back for all of them.** Two runs at once --- two `ide_test`,
-a `tbrun` beside a lane run, another session's --- cannot each put back on their own. An IDE
-holds the recent list in memory and writes all of it back when it opens a project, so a run
-whose IDE is still open writes the other run's entries back after that run removed them (two
-`ide_test` runs fail with exit 3 this way, each naming the other's lane folder). So the runs
-share one record in `%TEMP%\tb-registry\<key>`, read and written one run at a time under its
-`busy` folder: the first run to start records the recent list, the association and the theme
-(`base.json`); every run adds its folders and named projects (`<pid>-<n>.json`); a run that
-ends while another is running marks its record finished, puts nothing back and gets `{
-deferred: [pids] }` from `finishTidy`, which the lane runner reports instead of checking the
-lists; and the last run to end puts back for all, a named project from its oldest record. A
-record whose process died unfinished is swept by folder when the next run starts alone, and
-its record of the theme and recent list is dropped, since it may be days old.
-`check_tb_registry.mjs` plays out both. `tbbuild --keep` takes no part, so its IDE can still
-write the lists after the last run has put them back.
+a `tbrun` beside a lane run, another session's --- cannot each put back on their own: the
+association one found may be another run's IDE copy's, and an IDE of the first run that is
+still open writes its project's state after the second run removed it. So the runs share one
+record in `%TEMP%\tb-registry\<key>`, read and written one run at a time under its `busy`
+folder: the first run to start records the association and the `Window` key (`base.json`); every run adds its
+folders and named projects (`<pid>-<n>.json`); a run that ends while another is running marks
+its record finished, puts nothing back and gets `{ deferred: [pids] }` from `finishTidy`,
+which the lane runner reports instead of checking the lists; and the last run to end puts
+back for all, a named project from its oldest record. A record whose process died unfinished
+is swept by folder when the next run starts alone, and its record of the association and the
+`Window` key is dropped, since it may be days old. `check_tb_registry.mjs` plays out both. `tbbuild --keep`
+takes no part, so its IDE can still write its project state after the last run has put it back.
 
 **Why .NET through PowerShell and not `reg.exe`.** Node has no registry API. `reg.exe`
 prints value names in the console code page when its output is piped, so a path containing a
@@ -948,23 +1098,23 @@ inline in the `.mjs` rather than a second `.ps1`, like `tbrun`'s process snapsho
   shallower than three segments is refused, in JavaScript and again inside the script.
 - **Every delete tolerates a missing value.** Concurrent runs deleting one value race: one
   deletes it and the next `DeleteValue` throws "No value exists with that name". That would
-  abort the whole tidy, recent list included.
+  abort the whole tidy.
 
 **The IDE has its own bug with the recent list**, in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md):
 when the list has fewer than 21 entries, the IDE fills every empty slot with a copy of the
-last one. The tidy leaves a short list whenever it removes harness projects, so the next
-project the user opens trips it. A new installation has the same list, and it cannot be fixed
-from outside the IDE.
+last one. A new installation has the same list, and it cannot be fixed from outside the IDE.
+The harness's IDEs do not write the list (`--no-update-recent-files`), so they cannot cause it.
 
 **Two limits remain, both about IDEs the tidy does not own:**
 
 - Two *standalone* `tbbuild`s on the same project at once: the second sees the first's entry
   as the user's, and puts it back. `check_examples` is immune, because its lanes are owned,
   and a check of the tidy runs its fixture cases one at a time for this reason.
-- An IDE the user has open reads the recent list when it starts and writes its whole copy
-  back when it opens a project, so it can bring back harness entries that were tidied after
-  it started. So can an IDE of a run from another session, which is why a check of the
-  registry waits until no other session's run is going.
+- An IDE the user has open, or one of another session's runs started without the flags, is
+  not controlled by any of this, which is why a check of the registry waits until no other
+  session's run is going. A window the user resizes in his own IDE while a run is going is
+  put back to its old geometry when the run ends, since the tidy cannot tell whose IDE wrote
+  the `Window` key.
 
 **An association that names the temp folder is put back pointing at the newest install.** A
 run that starts while another run's IDE copy is open finds the association pointing at that
@@ -976,31 +1126,15 @@ it did, `finishTidy` puts it back with every path to a copy's `twinBASIC.exe` re
 writes when it is next started. With no install outside the temp folder it leaves the
 association as the IDEs set it and says so.
 
-**The recent list is put back as it was found, not only swept.** On a real list the IDE
-changes it by itself while a run's projects are on it, in two ways, both in
-[BUGS-TO-REPORT.md](BUGS-TO-REPORT.md): it fills a short list's empty slots with copies of
-its last entry, and a full list loses its oldest entry for every project the run opens (an
-add-in run that began with one entry ended with seventeen copies of it). So
-`snapshotProjects` records the whole list, and `restoreProjects`, after deleting the run's
-entries and putting a named project back in its place as before, keeps no more copies of any
-path than the list had, and puts the entries that fell off the end back there. A change made
-for any other reason is kept: a project the user opened meanwhile stays on top. **An entry in
-the temp folder is not brought back**, because it belongs to some run, whose own tidy may have
-removed it meanwhile; bringing it back would leave that run's entry in the list for good.
-That is also why a run that starts with another run's leftovers in the list can end without
-them.
-
 **Verified** by [scripts/check_tb_registry.mjs](scripts/check_tb_registry.mjs), which plays
 out a run on a scratch key and checks every rule above, the guards and the ownership rule
-included. For the recent list it has five cases: the copies of a short list's last entry, a
-full list's lost entries, a project opened meanwhile, copies that were there before the run,
-and another run's entry that its tidy removed meanwhile. It is not a gate: it needs Windows
-and a real registry, and the CI runners are Ubuntu. Run it after changing `tb-registry.mjs`.
-
-End to end, the 14 fixture cases, run one at a time, a full `examples.bat` run and an add-in
-run leave `ProjectState`, the recent list, the association keys and `IDESettings` exactly as
-they were, value for value (compared through hashes, so the comparison copies no value out of
-the registry), also with the user's own projects planted in the recent list.
+included: a named project's state, the sweep of a folder in both separators and a lookalike
+folder's survival, the association, the `Window` key (changed, added and deleted values, an
+untouched key not written, a created key deleted, `window: false` honoured by the run that
+ends last), two runs at once, a run that died, and that the tidy leaves the recent list, the
+options and the remembered targets exactly as they are. It writes only its scratch keys. It is not
+a gate: it needs Windows and a real registry, and the CI runners are Ubuntu. Run it after
+changing `tb-registry.mjs`.
 
 ## A private IDE for every lane
 
@@ -1017,14 +1151,14 @@ IDEs keeps the user's out ([The add-in test runner](#the-add-in-test-runner)).
 
 - **An IDE session writes nothing into its install.** A compile, a compiler crash and a
   `tbrun` build-and-run each left every file byte-identical, down to the mtimes; on
-  BETA 1005 the install's 232 files outside the default WebView2 profile folder
+  BETA 1010 the install's 235 files outside the default WebView2 profile folder
   (`bin\twinBASIC_win32_noDEP.exe.WebView2`, which the user's own IDE writes and the harness's
   IDEs, started with their own `WEBVIEW2_USER_DATA_FOLDER`, do not) were byte-identical
   after a `tbbuild` and a `tbrun`. A compile also left the per-user `%APPDATA%\twinBASIC` unchanged; that folder
   holds the user's downloaded packages and empty `addins`, `locale` and `themes` folders, and
   is shared by every install. So a compile's whole footprint outside its temp folders is the
-  registry, which [the tidy](#what-a-run-leaves-in-the-registry-and-putting-it-back)
-  puts back.
+  registry, which the flags and [the tidy](#what-a-run-leaves-in-the-registry-and-putting-it-back)
+  keep as it was.
 - **The copy is isolated.** Asked which add-ins it had loaded (`loadedAddins`, below), the
   real install's compiler answered `GlobalSearchAddIn AddIn` and the copy's answered
   nothing. All 14 fixture cases gave the same output from the copy as from the real install,
@@ -1032,10 +1166,11 @@ IDEs keeps the user's out ([The add-in test runner](#the-add-in-test-runner)).
 - **Starting the copy re-points the `.twinproj` association at it.** The real install's IDE
   leaves the keys alone. The tidy restores them with three writes.
 
-**A copy, not hardlinks.** The install is 232 files and 106 MB (BETA 1005, leaving out the
+**A copy, not hardlinks.** The install is 235 files and 116 MB (BETA 1010, leaving out the
 default WebView2 profile folder); leaving out `projects\` (the
-samples and New Project templates, 30 MB, which a test that opens its project on the command
-line never shows) and `addins\` (recreated), it copies in **348 ms**, that folder included. Hardlinks would save
+samples and New Project templates, 29 MB, which a test that opens its project on the command
+line never shows) and `addins\` (recreated), it copies in about **250 ms** (214 to 313 ms in
+five runs), that folder included. Hardlinks would save
 that at the price of sharing every file with the user's install, so that any write the IDE
 made into its own folder would land in the real one. A copy makes the question irrelevant
 instead of merely answered.
@@ -1143,7 +1278,7 @@ output file '<path>'` or one of about twenty failure lines --- `[LINKER] FAILED 
 error ...`. An output file another process holds open gives `[LINKER] FAILED to create output
 file '...' (error code 32)`, then `LOCKED BY:` and a line naming the process, then `[BUILD]
 failed`. A package writes `[BUILD] Creating TWINPACK file '<path>'` and then `[BUILD]
-successful.` (BETA 1005), and its failures are `[BUILD] FAILED ...` and `[BUILD] failed` lines
+successful.` (BETA 1010), and its failures are `[BUILD] FAILED ...` and `[BUILD] failed` lines
 like a binary's. `buildProject` matches the success line whole, because `[BUILD] successfully
 built Fusion server file` is another line, and only after the TWINPACK line. Two details:
 
@@ -1327,7 +1462,7 @@ of its own, so the IDE inherits the launcher's; the IDE starts the compiler,
 `twinBASIC_win32_noDEP.exe`, as a direct child; and the add-in runs inside the compiler's
 process. The toolbar's restart button ends the compiler and starts a new process, and the
 add-in that process loads reads `1` too. The control, `WEBVIEW2_USER_DATA_FOLDER`, arrives
-with the lane's port in it.
+with the lane's slot in it.
 
 **The console gives back exactly what was printed, a whole line at a time.** `PrintText`
 stores an add-in's text escaped, `<b>` as `&lt;b&gt;` and `&` as `&amp;`, and `readConsole`
@@ -1343,9 +1478,10 @@ start with the word is not taken for one.
 **`addin-test.bat` runs [scripts/addin_test.mjs](scripts/addin_test.mjs) over the lanes in
 [test/addin/lanes.mjs](test/addin/lanes.mjs).** A lane is one scenario file, a `node:test`
 file, and the runner starts each in a process of its own (`node --test`), a few at a time
-(`--jobs`, default 2), handing it its lane in `TB_ADDIN_LANE`: a DevTools port (`--port`,
-default 9560, plus the lane's index), a work folder at `%TEMP%\tbaddin\<port>`, and the
-install to copy. What the scenario does with that is
+(`--jobs`, default 2), handing it its lane in `TB_ADDIN_LANE`: a slot from `tbbroker` (its
+private desktop and number; the runner leases it as the lane starts and hands it to the lane's
+process), a work folder at `%TEMP%\tbaddin\<runner's pid>\<lane>`, and the install to copy.
+Each IDE's DevTools port is one Windows picks; `lane.port` is the open IDE's. What the scenario does with that is
 [scripts/lib/tb-lane.mjs](scripts/lib/tb-lane.mjs): it makes the lane's copy of the install
 on first use, exports an install sample project (`addSample("Sample 15")`, the install only
 read), builds an add-in and puts it in the copy (`addAddin`), and opens a project (`open`),
@@ -1366,12 +1502,32 @@ choose which lanes may run together (below). A lane's output is held until it en
 printed whole, so two lanes' reports never interleave. `--timeout` (default 600 s) ends a
 lane still running; its process's job takes the IDE with it.
 
+**Every IDE a lane opens has a page of 1600 by 1000 CSS pixels**, in `ide-test` and
+`addin-test` alike. `Lane.open` and `Lane.openNoProject` call `fixPageSize`
+(`Emulation.setDeviceMetricsOverride`, `deviceScaleFactor: 0`, so at the display's own
+density) as soon as they attach, before the compile settles and before any tool window
+shows; `PAGE` and `fixPageSize` are in `scripts/lib/tb-lane.mjs`. The reason: the IDE opens
+its window at the geometry in the user's `Window` key, which the harness puts back but never
+sets, and the private desktop has the display's size, so the window opens there unmoved and
+unclamped. At the user's 1200 by 900, 150%, the page is 800 by 606, where a tool window floats
+over the toolbar's buttons and most of the code editor, and a scenario that clicks or hovers
+there passes on one machine and fails on another. A lane in `lanes.mjs` names another size
+with `page` (`null` keeps the window's own), `Lane.open` takes `page` for one IDE (the help
+lane's 800 by 600 case), and `fixPageSize(c, size)` changes it while the IDE is open (the
+help lane's short page for its hover case). Only a runner's lane has the size by default
+(`addinLane`): a `Lane` made elsewhere (`try_help_addin`, whose IDE is on the user's desktop;
+`shoot_docs` and `svgshot/probe`, which set 1280 by 880 at 2x themselves) leaves the page
+alone unless it is given `page`.
+
 **The runner owns the registry, and checks it afterwards.** It calls `startTidy` with every
 lane's folder before the first lane starts, so the lanes inherit `TB_REGISTRY_OWNER` and
-leave the registry alone, and `finishTidy` once the last has ended. Then it checks rather
-than trusts: no project-state or recent-list entry may name a lane's folder, a second sweep
-of the remembered build targets must find none, and the add-ins' settings must be as
-recorded. Any failure is exit code 3, which wins over a lane's failure (1): the registry is what to repair.
+leave the registry alone, and `finishTidy` once the last has ended, which puts back the
+project state, the association and the `Window` key; the summary line counts the writes of
+each. Then it checks rather
+than trusts: no project-state or recent-list entry may name a lane's folder, no build target
+may be remembered for one (both read only: an IDE with `IDE_FLAGS` writes neither, so an
+entry means the flags failed), and the add-ins' settings must be as recorded. Any failure
+is exit code 3, which wins over a lane's failure (1): the registry is what to repair.
 While another harness run is still running, the lists and targets are that run's to put back
 and are not checked; the report line says which pid.
 
@@ -1498,7 +1654,7 @@ probe lanes:
   twice and a different id; the third is the control, `closeProject` and then `Lane.open`
   with `env: { TB_ADDIN_TEST: undefined }`, and asserts an empty `Environ$` and `(unset)`.
   The probe opens nothing, so running an IDE without the variable is safe. Two IDEs in one
-  lane need no change to the runner, and the second takes the same port once the first has
+  lane need no change to the runner, and the second takes the lane's slot once the first has
   been ended.
 
 **Timing:** the thirteen lanes other than widgets (24 s alone) take about two minutes at the default two at a time

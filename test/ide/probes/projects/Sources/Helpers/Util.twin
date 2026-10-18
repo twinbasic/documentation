@@ -1,0 +1,7 @@
+Module Util
+
+    Public Function UtilTwice(ByVal n As Long) As Long
+        Return n * 2
+    End Function
+
+End Module

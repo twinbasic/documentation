@@ -61,7 +61,7 @@
 //
 // `Sub Main` is not one of them, though it was once listed as one. The template
 // brings a Main, and a sample may bring its own beside it: two `Public Sub
-// Main`s in different modules compile (BETA 1005), which is how the
+// Main`s in different modules compile (BETA 1010), which is how the
 // WinServicesLib `Module Startup` samples build as written. That holds for a
 // compile; a build refuses two Mains, and two [DllExport]s of one name, and a
 // project with an error at all, so --build and --llvm batch around those three.
@@ -116,7 +116,10 @@ import {
   CANARY_FILES,
   DEFAULT_BATCH,
   DEFAULT_JOBS,
+  applyExclusions,
+  canaryBatchStage,
   canaryProblem,
+  canaryVerdict,
   crashedIn,
   diagKind,
   embeddedPackages,
@@ -143,12 +146,15 @@ import {
   partitionRun,
   runRefusal,
 } from "./lib/example-run.mjs";
+import { HarnessError, HARNESS_NAME, optionSeconds, readHarness, timeoutMs } from "./lib/harness-settings.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
-import { wantShow } from "./lib/tb-ide.mjs";
-import { buildNumber, findIde } from "./lib/tb-install.mjs";
+import { timing } from "./lib/tb-timings.mjs";
+import { leaseSlot, wantShow } from "./lib/tb-ide.mjs";
+import { asksForLlvm, holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
+import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { packTree, unpackProject } from "./lib/tb-project.mjs";
 import { downloadPackage } from "../indexer/lib/twinserv-client.mjs";
-import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
+import { alive, finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
@@ -162,9 +168,12 @@ const { values } = withUsageError(
         only: { type: "string" },
         report: { type: "string" },
         jobs: { type: "string" },
-        port: { type: "string" },
         batch: { type: "string" },
         ide: { type: "string" },
+        "compile-timeout": { type: "string" },
+        "build-timeout": { type: "string" },
+        "compiler-run-timeout": { type: "string" },
+        "compiler-run-quiet": { type: "string" },
         census: { type: "boolean", default: false },
         propose: { type: "boolean", default: false },
         apply: { type: "boolean", default: false },
@@ -200,7 +209,6 @@ InputBox, or contains End, or is not slot=sub, is refused without being built.
   --report <file>  group the findings of a saved \`--propose --json\` survey by
                    diagnostic, section, undeclared symbol and page; no compiler
   --jobs <n>       concurrent IDE lanes (default 4)
-  --port <n>       base DevTools port (default 9480)
   --batch <n>      samples per generated project (default 120)
   --ide <path>     twinBASIC.exe (default: $TB_IDE, else the newest on the Desktop)
   --build          also build each project that compiles without errors; a project
@@ -209,6 +217,10 @@ InputBox, or contains End, or is not slot=sub, is refused without being built.
                    Ultimate licence, and --build alone is its control
   --keep           leave the generated projects on disk and say where
   --show, --hide   as tbbuild's
+  --compile-timeout <secs>, --build-timeout <secs>, --compiler-run-timeout <secs>,
+  --compiler-run-quiet <secs>
+                   each phase's limit, over test/harness.json's and its
+                   TB_<PHASE> variable (test/harness.md)
   --verbose        also print warnings, not only errors
   --json           one JSON object instead of a report
   -h, --help       print this text and exit
@@ -222,33 +234,31 @@ Exit codes:
      printed something other than the page says; the report names each
   2  the harness could not run: a refused command line, a failed self-test probe, no
      IDE, an unreadable --report file, a work folder it could not clear,
-     an --llvm run on a Community or Personal licence, or a crash`;
+     test/harness.json missing or malformed (its exclusions included), a TB_<PHASE>
+     variable that is not a number of seconds greater than 0, an --llvm run on a
+     Community or Personal licence, or a crash`;
 
 if (values.help) printHelpAndExit(USAGE);
 
 // The values are read before anything runs. --report, --census and --propose
 // are three modes of one run, and --apply is a part of --propose.
-const { only, jobs, basePort, batchSize } = withUsageError(
+const { only, jobs, batchSize, seconds } = withUsageError(
   () => {
     refuseTogether(values, ["report", "census", "propose"]);
     refuseTogether(values, ["show", "hide"]);
     if (values.apply && !values.propose)
       throw new CliError("conflict", "--apply needs --propose", { option: "--apply" });
     const jobs = numberOption(values.jobs ?? String(DEFAULT_JOBS), { option: "--jobs", integer: true, min: 1 });
-    const basePort = numberOption(values.port ?? "9480", { option: "--port", integer: true, min: 1, max: 65535 });
-    // Lane i builds on port basePort + i (runAll).
-    if (basePort + jobs - 1 > 65535) {
-      throw new CliError(
-        "conflict",
-        `--port ${basePort} with --jobs ${jobs} needs ports up to ${basePort + jobs - 1}, past 65535`,
-        { option: "--port" },
-      );
-    }
     return {
       only: values.only ? regexOption(values.only, { option: "--only" }) : null,
       jobs,
-      basePort,
       batchSize: numberOption(values.batch ?? String(DEFAULT_BATCH), { option: "--batch", integer: true, min: 1 }),
+      seconds: {
+        compile: optionSeconds(values, ["compile-timeout"]),
+        build: optionSeconds(values, ["build-timeout"]),
+        compilerRun: optionSeconds(values, ["compiler-run-timeout"]),
+        compilerRunQuiet: optionSeconds(values, ["compiler-run-quiet"]),
+      },
     };
   },
   { format: (err) => `check_examples: ${err.message}` },
@@ -263,6 +273,39 @@ const AS_JSON = values.json;
 const LLVM = values.llvm;
 // --llvm is a build, so the one switch the rest of the file reads is BUILD.
 const BUILD = values.build || LLVM;
+// The key of this run's entries in test/harness.json's exclusions.
+const EXCLUSION_MODE = LLVM ? "llvm" : BUILD ? "build" : "compile";
+
+// test/harness.json (test/harness.md), read and checked before anything runs:
+// the exclusions, and each phase's limit in ms -- the option, else the
+// TB_<PHASE> variable, else the file. A fault in either is exit 2.
+let HARNESS, LIMITS;
+try {
+  HARNESS = readHarness();
+  LIMITS = Object.fromEntries(Object.entries(seconds).map(([key, s]) => [key, timeoutMs(key, s)]));
+} catch (e) {
+  if (!(e instanceof HarnessError)) throw e;
+  console.error(`check_examples: ${e.message}`);
+  process.exit(2);
+}
+
+/** The exclusions, each package checked against the templates; a package with neither ends the run with exit 2. */
+function readExclusions() {
+  const list = HARNESS.exclusions;
+  const problems = [];
+  for (const packages of Object.values(list)) {
+    for (const pkg of Object.keys(packages)) {
+      if (!templateResolves(TEMPLATES, `contributed-${pkg}`) && !templateResolves(TEMPLATES, pkg)) {
+        problems.push(`${pkg}: neither a contributed package with a template nor a template`);
+      }
+    }
+  }
+  if (problems.length) {
+    console.error(`check_examples: ${HARNESS_NAME}, exclusions:\n${problems.map((p) => `  ${p}`).join("\n")}`);
+    process.exit(2);
+  }
+  return list;
+}
 // The procedure a [DllExport] attribute is on, for a run that builds.
 const DLL_EXPORT_NAME = /\[\s*DllExport\b[^\]]*\][\s_]*(?:(?:Public|Private|Friend)\s+)?(?:Function|Sub)\s+(\w+)/gi;
 // A sample's own `Sub Main`, which a class body may not hold and a build has to
@@ -652,9 +695,16 @@ const IDE = findIde(values.ide);
 // between.
 let tidy = null;
 
-// How a run batch's wait ends (see buildStaged), in milliseconds.
-const RUN_QUIET_MS = 8000;
-const RUN_TIMEOUT_MS = 180000;
+// How a run batch's wait ends (see buildStaged): its sentinel, or the run's
+// quiet period or limit from test/harness.json (LIMITS).
+// Whether a batch's own samples bring a [RunAfterBuild] Sub, whose compile a build
+// follows after the link (buildProject); a run batch's dispatcher is captureRun's.
+const runsAfterBuild = (staged) => [...staged.map.values()].some((e) => /\[\s*RunAfterBuild\b/i.test(e.fence.content));
+const runWait = () => ({
+  done: (lines) => lines.some((l) => l.trim() === RUN_DONE),
+  runMs: LIMITS.compilerRun,
+  quietMs: LIMITS.compilerRunQuiet,
+});
 
 // What each run sample did, by fence id, from the last build of a project that
 // held it: its share of the lines the dispatcher wrote, and the sample that
@@ -691,25 +741,71 @@ function recordRun(staged, cap) {
   }
 }
 
+/** What a staged batch holds, for TB_TIMINGS (lib/tb-timings.mjs). */
+const timingBatch = (batch, staged) =>
+  timing("batch", {
+    project: path.resolve(staged.proj),
+    template: batch.project,
+    samples: batch.fences.length,
+    runs: staged.runs.length,
+    canary: !!batch.canary,
+    llvm: LLVM,
+    build: BUILD,
+  });
+
 /** Build one staged batch; returns per-fence errors, or a crash marker. */
-async function buildStaged(staged, port) {
+/**
+ * Take one batch of an exclusion's canary to its stage, once: no second build,
+ * no halving. Returns the stage it failed at, or null (canaryBatchStage).
+ */
+async function buildCanary(batch, slot, work) {
+  const staged = stageBatch(batch, work);
+  timingBatch(batch, staged);
+  const run = staged.runs.length ? runWait() : null;
+  const r = await compileProject({
+    project: staged.proj,
+    ide: IDE,
+    slot,
+    show: wantShow({ show: values.show, hide: values.hide }),
+    build: BUILD || !!run,
+    llvm: LLVM,
+    run,
+    timeout: LIMITS.compile,
+    buildTimeout: LIMITS.build,
+    followRun: runsAfterBuild(staged),
+  });
+  if (!values.keep) rmSync(staged.dir, { recursive: true, force: true });
+  const parsed = run && r.code === 0 ? parseRun(r.run.captured, staged.runs.length) : null;
+  let failedAt;
+  try {
+    // What a clear erased comes first: the run starts by clearing the console.
+    const log = [...(r.run?.erased ?? []), ...(r.buildLog ?? [])];
+    failedAt = canaryBatchStage({ code: r.code, message: r.message, log, run: parsed });
+  } catch (e) {
+    throw new Error(`tbbuild exited ${r.code} on ${staged.proj}\n${e.message}`);
+  }
+  return { canary: batch.canary, failedAt };
+}
+
+async function buildStaged(staged, slot) {
   // A run batch is built and its [RunAfterBuild] Sub is run, in every mode. The
   // run is over when the dispatcher says it is done, or when the console has
-  // been quiet for RUN_QUIET_MS: long enough to outlast a pause in an LLVM
-  // build's log, since a quiet period that ends inside one reads as a run that
-  // never started.
-  const run = staged.runs.length
-    ? { done: (lines) => lines.some((l) => l.trim() === RUN_DONE), quietMs: RUN_QUIET_MS, timeoutMs: RUN_TIMEOUT_MS }
-    : null;
+  // been quiet for the run's quiet period, counted from [BUILD] Executing or the
+  // run's last output, whichever is later, so that a pause in an LLVM build's log
+  // never ends it (captureRun).
+  const run = staged.runs.length ? runWait() : null;
   const compile = () =>
     compileProject({
       project: staged.proj,
       ide: IDE,
-      port,
+      slot,
       show: wantShow({ show: values.show, hide: values.hide }),
       build: BUILD || !!run,
       llvm: LLVM,
       run,
+      timeout: LIMITS.compile,
+      buildTimeout: LIMITS.build,
+      followRun: runsAfterBuild(staged),
     });
   let r = await compile();
   // A run that wrote no marker at all, or stopped without finishing and without
@@ -784,16 +880,18 @@ async function buildStaged(staged, port) {
 /**
  * A lane: where a batch is built, and where what isolating it finds goes.
  *
- * This one stages each batch into the lane's own workspace and builds it on the
- * lane's port. The probes hand `runBatch` a fake, whose builds crash on sets of
- * samples a probe chooses -- which is how isolation is tested without an IDE,
- * and without a crash that needs two real samples to happen.
+ * This one stages each batch into the lane's own workspace and builds it in the
+ * lane's slot (its private desktop, from tbbroker). The probes hand `runBatch` a
+ * fake, whose builds crash on sets of samples a probe chooses -- which is how
+ * isolation is tested without an IDE, and without a crash that needs two real
+ * samples to happen.
  */
-function laneOf(port, work) {
+function laneOf(slot, work) {
   return {
     async build(batch) {
       const staged = stageBatch(batch, work);
-      const result = await buildStaged(staged, port);
+      timingBatch(batch, staged);
+      const result = await buildStaged(staged, slot);
       if (!values.keep) rmSync(staged.dir, { recursive: true, force: true });
       return result;
     },
@@ -803,21 +901,29 @@ function laneOf(port, work) {
   };
 }
 
-/** Run every batch across `jobs` lanes, each with its own port and workspace. */
+/** Run every batch across `jobs` lanes, each with its own slot and workspace. */
 async function runAll(batches, work) {
   const queue = [...batches];
   const results = [];
   const lanes = Array.from({ length: Math.min(jobs, queue.length) }, async (_, i) => {
-    // A lane owns its port AND its workspace. Two IDEs pointed at one source
-    // tree both wedge and neither ever returns -- distinct ports are not
+    // A lane owns its slot AND its workspace. Two IDEs pointed at one source
+    // tree both wedge and neither ever returns -- distinct ports were not
     // enough, which cost two runs to learn.
     const laneWork = path.join(work, `lane${i}`);
     mkdirSync(laneWork, { recursive: true });
-    const lane = laneOf(basePort + i, laneWork);
-    while (queue.length) {
-      const batch = queue.shift();
-      process.stderr.write(`  building ${batch.fences.length} sample(s) [${batch.project}] on lane ${i}\n`);
-      results.push(await runBatch(batch, lane));
+    const slot = await leaseSlot({ tag: `check_examples lane ${i}` });
+    try {
+      const lane = laneOf(slot, laneWork);
+      while (queue.length) {
+        const batch = queue.shift();
+        process.stderr.write(
+          `  building ${batch.fences.length} sample(s) [${batch.project}]${batch.canary ? " (canary)" : ""} on lane ${i}\n`,
+        );
+        // A canary's batch is taken to its stage once and judged as a whole.
+        results.push(batch.canary ? await buildCanary(batch, slot, laneWork) : await runBatch(batch, lane));
+      }
+    } finally {
+      await slot.release();
     }
   });
   await Promise.all(lanes);
@@ -1040,6 +1146,11 @@ async function main() {
     process.exit(findings.some((f) => !f.advisory) ? 1 : 0);
   }
 
+  const tooOld = unsupportedIde(IDE);
+  if (tooOld) {
+    console.error(tooOld);
+    process.exit(2);
+  }
   if (!IDE) {
     console.error(
       "no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
@@ -1067,10 +1178,19 @@ async function main() {
   // sample's own ("'Main' is ambiguous"), which a compile accepts; so a run that
   // builds gives such a unit a project of its own without the template's.
   const alone = BUILD ? (members) => members.some((f) => DECLARES_MAIN.test(f.content)) : null;
+  // The samples this mode does not take to a stage (test/harness.json's exclusions),
+  // and the canary of each package and stage, batched apart so that its failure
+  // breaks no batch (applyExclusions).
+  const exclusions = applyExclusions(selected, readExclusions()[EXCLUSION_MODE] ?? {});
+  if (!only) {
+    for (const id of exclusions.unknown) {
+      say(`  note: ${HARNESS_NAME} lists ${id} under exclusions.${EXCLUSION_MODE}, which is no sample`);
+    }
+  }
   // A `check_run` sample is built apart from everything else, whatever the mode,
   // since only a build runs [RunAfterBuild]: its batches get a dispatcher and
   // are built and run. A `projname` group holding one goes there whole.
-  const { run: runList, rest: restList } = partitionRun(selected);
+  const { run: runList, rest: restList } = partitionRun(exclusions.kept);
   const errorPages = new Set(restList.filter(expectsError).map((f) => f.rel));
   const hiddenOfErrorPage = (f) => f.flags.has(HIDDEN_MARKER) && errorPages.has(f.rel);
   const restBatches = BUILD
@@ -1093,27 +1213,33 @@ async function main() {
     jobs,
     alone: (members) => members.some((f) => DECLARES_MAIN.test(f.content)),
   }).map((b) => ({ ...b, run: true }));
-  const batches = [...restBatches, ...runBatches];
-  const work = path.join(tmpdir(), "tbexamples", String(basePort));
-  try {
-    rmSync(work, { recursive: true, force: true });
-  } catch (e) {
-    // Something still holds a project here: an IDE on a private desktop, where
-    // nothing on screen says so, and the bare EPERM names a folder, not a cause.
-    // A run that dies no longer leaves one -- each IDE runs inside its
-    // launcher's job, which ends when the run does (WIP.Harness.md, "The IDE
-    // runs inside a job") -- so the likely owner is an IDE from a run of the
-    // harness from before that, or a compiler orphaned by one.
-    if (e.code !== "EPERM" && e.code !== "EBUSY") throw e;
-    console.error(
-      `check_examples: cannot clear ${work} (${e.code}).\n` +
-        "  An IDE from an earlier run on this --port still has it open: look for\n" +
-        "  twinBASIC.exe processes whose command line names a project under that folder,\n" +
-        "  and for twinBASIC_win32_noDEP.exe compilers whose parent has gone. Stop them,\n" +
-        "  and run again -- or pass a different --port.",
-    );
-    process.exit(2);
+  const canaryBatches = exclusions.canaries.flatMap((c) => {
+    const { run, rest } = partitionRun(c.fences);
+    return [
+      ...makeBatches(rest, { batchSize, jobs, alone }).map((b) => ({ ...b, canary: c.key })),
+      ...makeBatches(run, { batchSize, jobs, alone: (m) => m.some((f) => DECLARES_MAIN.test(f.content)) }).map((b) => ({
+        ...b,
+        run: true,
+        canary: c.key,
+      })),
+    ];
+  });
+  const batches = [...canaryBatches, ...restBatches, ...runBatches];
+  // The run's folder is named for this process, so that runs at once never share
+  // one. A folder an earlier run left, whose process has ended, goes; one that
+  // cannot be removed yet is still held by something of that run's (an IDE from
+  // before each IDE ran in its launcher's job, WIP.Harness.md, "The IDE runs
+  // inside a job"), and is left for a later run.
+  const runs = path.join(tmpdir(), "tbexamples");
+  for (const name of existsSync(runs) ? readdirSync(runs) : []) {
+    if (!/^\d+$/.test(name) || alive(Number(name))) continue;
+    try {
+      rmSync(path.join(runs, name), { recursive: true, force: true });
+    } catch {
+      // still held
+    }
   }
+  const work = path.join(runs, String(process.pid));
   mkdirSync(work, { recursive: true });
   await fetchEmbedded(new Set(batches.map((b) => b.project)));
 
@@ -1125,18 +1251,34 @@ async function main() {
       (staged ? `, ${staged} staged file(s)` : ""),
   );
 
-  const wantRun = selected.filter(isRunFence).length;
+  const wantRun = exclusions.kept.filter(isRunFence).length;
   if (wantRun) {
     say(`  ${wantRun} sample(s) marked \`${RUN_MARKER}\` are built and run, in ${runBatches.length} project(s)`);
   }
 
-  // Every lane's IDE records its projects in the user's recent list and saved
-  // project state (lib/tb-registry.mjs). This process owns the tidying for all
+  // Every lane's IDE records its projects in the user's saved project state
+  // (lib/tb-registry.mjs). This process owns the tidying for all
   // of them: compileProject never tidies, because each build restoring its own
   // snapshot would put back whatever the registry held when that lane happened
   // to start. Everything is under `work`,
-  // so one sweep by that folder at the end takes the lot -- and the sweep here
-  // at the start takes whatever a run on this --port left when it died.
+  // so one sweep by that folder at the end takes the lot; what a run that died
+  // left, startTidy sweeps by that run's own folders.
+  // A run that builds with LLVM -- under --llvm, or because a sample it builds
+  // turns LLVM on for a procedure -- holds one lease on the LLVM cache server for
+  // the whole run, so the server is never one a lane's compiler starts in its
+  // IDE's job, which would end with that lane's IDE and take the cache from every
+  // other lane, and never ends between batches (lib/tb-llvm-cache.mjs).
+  const toBuild = BUILD ? exclusions.kept : runList;
+  let llvmLease = null;
+  if (LLVM || toBuild.some((f) => asksForLlvm({}, f.content))) {
+    try {
+      llvmLease = await holdLlvmCache(IDE);
+    } catch (e) {
+      console.error(`check_examples: ${e.message}`);
+      process.exit(2);
+    }
+  }
+
   tidy = startTidy({ prefixes: [work] });
 
   const t0 = Date.now();
@@ -1148,6 +1290,7 @@ async function main() {
     finishTidy(tidy);
     process.exit(2);
   }
+  await llvmLease?.release();
   finishTidy(tidy);
   tidy = null;
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
@@ -1166,8 +1309,11 @@ async function main() {
   }
 
   const passed = [];
+  const canaryIds = new Set(exclusions.canaries.flatMap((c) => [...c.ids]));
   for (const fence of selected) {
     if (fence.isResource) continue; // a staged file, not a sample
+    // Not built, or judged as its canary's batches are.
+    if (exclusions.notBuilt.has(fence.id) || canaryIds.has(fence.id)) continue;
     if (crashed.has(fence.id)) continue; // reported already, and never a pass
     const diags = (errorsById.get(fence.id) ?? []).filter((d) => d.severity === "ERROR");
 
@@ -1210,7 +1356,7 @@ async function main() {
     if (!diags.length) {
       if (!blamed.has(fence.id)) {
         passed.push(fence);
-        if (isRunFence(fence)) judgeRun(fence);
+        if (isRunFence(fence) && !exclusions.notRun.has(fence.id)) judgeRun(fence);
       }
       continue;
     }
@@ -1261,6 +1407,24 @@ async function main() {
     }
   }
 
+  // Each package and stage's canary, judged on all its batches (canaryVerdict).
+  // One that fails at its stage is what its exclusion expects: a line, and no
+  // finding. One that gets through it, or fails at build before its run, is a
+  // finding: re-probe the package's exclusions.
+  const canaryLines = [];
+  for (const c of exclusions.canaries) {
+    const failedAt = results.filter((r) => r.canary === c.key).map((r) => r.failedAt);
+    const verdict = canaryVerdict(c, failedAt);
+    if (!verdict.finding) canaryLines.push(verdict.text);
+    else {
+      addFinding(
+        c.fences.find((f) => c.ids.has(f.id)),
+        verdict.text,
+        `${HARNESS_NAME}, exclusions.${EXCLUSION_MODE}.${c.pkg}.${c.stage}`,
+      );
+    }
+  }
+
   // A broken template fails the run. It is not a finding against any one page,
   // so it would otherwise print and be ignored -- which is the worst outcome,
   // because a template that does not compile makes every sample in it fail.
@@ -1276,10 +1440,15 @@ async function main() {
       summarise({ selected: samples.length, passed: passed.length, findings });
     }
     say(
-      `\ncheck_examples: ${samples.length} sample(s), ${passed.length} compile, ` +
+      `\ncheck_examples: ${samples.length} sample(s), ` +
+        (exclusions.notBuilt.size || exclusions.notRun.size
+          ? `${exclusions.notBuilt.size} excluded from the build, ${exclusions.notRun.size} from the run, `
+          : "") +
+        `${passed.length} compile, ` +
         `${real} finding(s), ${secs}s` +
         (real ? "" : " -- clean"),
     );
+    for (const line of canaryLines) say(line);
     if (wantRun) {
       say(
         `${runStats.ran} run sample(s) ran, ${runStats.matched} without a finding` +

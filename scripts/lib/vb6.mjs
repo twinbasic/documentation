@@ -692,10 +692,10 @@ export function runLimited(exe, args, { cwd, timeoutMs }) {
  *
  * @returns {Promise<{status: number|null, timedOut: boolean, dialogs: {title: string, text: string}[], error?: string}>}
  */
-async function runOnDesktop(exe, args, { timeoutMs, desktop = `vb6run-${process.pid}`, env = process.env }) {
+async function runOnDesktop(exe, args, { timeoutMs, tag = "vb6run", env = process.env }) {
   let run;
   try {
-    run = await launchOnDesktop({ exe, args, desktop, env: { ...env }, dialogs: "close" });
+    run = await launchOnDesktop({ exe, args, tag, env: { ...env }, dialogs: "close" });
   } catch (e) {
     return {
       status: null,
@@ -901,7 +901,7 @@ async function runReproExe(work, title, timeoutMs, env = {}) {
   const since = Date.now();
   const r = await runOnDesktop(exe, [], {
     timeoutMs,
-    desktop: `bugrepro-vb6-${process.pid}`,
+    tag: "bug_repro vb6",
     env: { ...process.env, ...env },
   });
   if (r.error) throw new Error(r.error);

@@ -1,0 +1,167 @@
+' GdiPlus, Metafile: the constructors that take a file name or a reference device context, and
+' ConvertToEmfPlus. A GDI call makes the metafiles that are played back.
+[TestFixture]
+Module Im_MetafileTests
+
+    [TestCase]
+    Public Sub New_FromEmfHandlePlaysBack()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim mf As Metafile = Metafile(Im_RedRectangleEmf(40, 30), True)
+        Expect.AreEqual 0, CLng(mf.LastResult), "LastResult of Metafile(hEmf, True) (0 is Ok)"
+        Expect.AreEqual 2, CLng(mf.Type), "Type of Metafile(hEmf, True) (2 is ImageTypeMetafile)"
+        Expect.AreEqual 40, CLng(mf.Width), "Width of Metafile(hEmf, True)"
+        Dim bmp As Bitmap = Bitmap(60!, 50!)
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear Color(255, 255, 255, 255)
+        g.DrawImage mf, 5, 5
+        Expect.AreEqual &HFFFF0000, bmp.Pixel(20, 20).argb, "the pixel inside the rectangle that the metafile draws"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_FromWmfHandleWithAPlaceableHeader()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim h As WmfPlaceableFileHeader
+        h.Key = &H9AC6CDD7
+        h.BoundingBox.Right = 40
+        h.BoundingBox.Bottom = 30
+        h.Inch = 1440
+        Dim cs As Long = &HCDD7& Xor &H9AC6& Xor 40 Xor 30 Xor 1440
+        If cs > 32767 Then cs = cs - 65536
+        h.Checksum = cs
+        Dim mf As Metafile = Metafile(Im_RectangleWmf(40, 30), h, True)
+        Expect.AreEqual 0, CLng(mf.LastResult), "LastResult of Metafile(hWmf, header, True) (0 is Ok)"
+        Expect.AreEqual 2, CLng(mf.Type), "Type of Metafile(hWmf, header, True) (2 is ImageTypeMetafile)"
+        Expect.IsTrue mf.MetafileHeader.IsWmf, "the metafile that Metafile(hWmf, header, True) makes is a WMF"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_FromFileName()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim path As String = Im_Dir() & "\red.emf"
+        Im_DeleteEmf Im_RedRectangleEmf(40, 30, path)
+        Expect.IsTrue Im_Len(path) > 0, "the metafile file that GDI wrote exists"
+        On Error Resume Next
+        Dim mf As Metafile = Metafile(path)
+        Dim errNumber As Long = Err.Number
+        Dim errText As String = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 0, errNumber, "Err.Number of Metafile(filename) (" & errText & ")"
+        If errNumber = 0 Then
+            Expect.AreEqual 0, CLng(mf.LastResult), "LastResult of Metafile(filename) (0 is Ok)"
+            Expect.AreEqual 2, CLng(mf.Type), "Type of Metafile(filename) (2 is ImageTypeMetafile)"
+            Expect.AreEqual 40, CLng(mf.Width), "Width of Metafile(filename)"
+        End If
+        Set mf = Nothing
+        Im_Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_RecordingToFileNameWithReferenceDc()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim path As String = Im_Dir() & "\recorded.emf"
+        Dim dc As LongPtr = Im_MakeDc()
+        On Error Resume Next
+        Dim mf As Metafile = Metafile(path, dc)
+        Dim errNumber As Long = Err.Number
+        Dim errText As String = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 0, errNumber, "Err.Number of Metafile(filename, referenceHdc) (" & errText & ")"
+        If errNumber = 0 Then
+            Expect.AreEqual 0, CLng(mf.LastResult), "LastResult of Metafile(filename, referenceHdc) (0 is Ok)"
+            Expect.AreEqual 2, CLng(mf.Type), "Type of Metafile(filename, referenceHdc) (2 is ImageTypeMetafile)"
+        End If
+        Set mf = Nothing
+        Im_ReleaseDc dc
+        Im_Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_RecordingWithReferenceDcAndType()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim dc As LongPtr = Im_MakeDc()
+        On Error Resume Next
+        Dim mf As Metafile = Metafile(dc, EmfTypeEmfPlusOnly)
+        Dim errNumber As Long = Err.Number
+        Dim errText As String = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 0, errNumber, "Err.Number of Metafile(referenceHdc, EmfTypeEmfPlusOnly) (" & errText & ")"
+        If errNumber = 0 Then
+            Expect.AreEqual 0, CLng(mf.LastResult), "LastResult of Metafile(referenceHdc, EmfTypeEmfPlusOnly) (0 is Ok)"
+            Expect.AreEqual 2, CLng(mf.Type), "Type of Metafile(referenceHdc, EmfTypeEmfPlusOnly) (2 is ImageTypeMetafile)"
+        End If
+        Set mf = Nothing
+        Im_ReleaseDc dc
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_ReferenceDcAloneRecords()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim dc As LongPtr = Im_MakeDc()
+        Dim mf As Metafile = Metafile(dc)
+        Expect.AreEqual 0, CLng(mf.LastResult), "LastResult of Metafile(referenceHdc) (0 is Ok, 1 is GenericError)"
+        Set mf = Nothing
+        Im_ReleaseDc dc
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertToEmfPlus_WithFileName()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim path As String = Im_Dir() & "\converted.emf"
+        Dim mf As Metafile = Metafile(Im_RedRectangleEmf(40, 30), True)
+        Dim bmp As Bitmap = Bitmap(10!, 10!)
+        Dim g As Graphics = Graphics(bmp)
+        Expect.AreEqual 0, CLng(mf.ConvertToEmfPlus(g, path)), "ConvertToEmfPlus with a file name returns (0 is Ok)"
+        Expect.IsTrue mf.MetafileHeader.IsEmfPlus, "the metafile is EMF+ after ConvertToEmfPlus with a file name"
+        Set mf = Nothing
+        Im_Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertToEmfPlus_WithoutFileNameOrStream()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim mf As Metafile = Metafile(Im_RedRectangleEmf(40, 30), True)
+        Dim bmp As Bitmap = Bitmap(10!, 10!)
+        Dim g As Graphics = Graphics(bmp)
+        On Error Resume Next
+        Dim st As GpStatus = mf.ConvertToEmfPlus(g)
+        Dim errNumber As Long = Err.Number
+        Dim errText As String = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 0, errNumber, "Err.Number of ConvertToEmfPlus(g) (" & errText & ")"
+        If errNumber = 0 Then
+            Expect.AreEqual 0, CLng(st), "ConvertToEmfPlus(g) returns (0 is Ok)"
+            Expect.IsTrue mf.MetafileHeader.IsEmfPlus, "the metafile is EMF+ after ConvertToEmfPlus(g)"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Image_LoadsAMetafileFile()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim path As String = Im_Dir() & "\viaimage.emf"
+        Im_DeleteEmf Im_RedRectangleEmf(40, 30, path)
+        Dim img As GdiPlus.Image = GdiPlus.Image(path)
+        Expect.AreEqual 0, CLng(img.LastResult), "LastResult of GdiPlus.Image(filename) of a metafile file (0 is Ok)"
+        Expect.AreEqual 2, CLng(img.Type), "Type of GdiPlus.Image(filename) of a metafile file (2 is ImageTypeMetafile)"
+        Set img = Nothing
+        Im_Clean
+        Expect.Done
+    End Sub
+
+End Module

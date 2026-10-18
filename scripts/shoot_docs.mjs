@@ -18,9 +18,10 @@
 //
 // The tool is a table of shots, and each shot names the setup (one IDE, started
 // one way) it is taken in. A setup is started only when a shot in it is
-// selected. Up to --jobs of them run at once, each IDE on a port, a work folder
-// and a private desktop of its own, and no state is shared between them but the
-// registry, which is put back once for the whole run:
+// selected. Up to --jobs of them run at once, each IDE with a work folder and a
+// slot (a private desktop, from tbbroker) of its own and a DevTools port Windows
+// picks, and no state is shared between them but the registry, which is put back
+// once for the whole run:
 //
 //   help        the help add-in built into the copy, and test/addin/helpdemo
 //               open; the pane's pages come from the built site, docs/_site, served
@@ -118,9 +119,11 @@
 //     page, in the page only (the no-project and project setups): the IDE's
 //     options are set to their defaults, the saved panel layouts and keyboard
 //     groups are dropped and the recent lists are replaced by lists of the
-//     tool's own. Nothing in the page is saved: the calls that write the IDE's
-//     settings and the recent list are replaced by calls that do nothing before
-//     the options are changed. The language is the one the IDE runs in.
+//     tool's own. Nothing in the page is saved: the IDE is started with
+//     IDE_FLAGS (--no-save-ide-settings, --no-update-recent-files), and the one
+//     call on the recent list they do not guard, RemoveRecentsList, is replaced
+//     by a call that does nothing before the options are changed. The language
+//     is the one the IDE runs in.
 //
 // A menu is captured as a cut-out: the bar item and its drop-downs are kept, as
 // the IDE draws them, and the rest of the page, background included, is
@@ -166,12 +169,12 @@ import { removeTree } from "./lib/tb-ide-copy.mjs";
 import {
   awaitNewCompiler,
   buildProject,
-  COMPILE_TIMEOUT,
   captureWindow,
   compilerPid,
   desktopWindows,
   killTree,
   launchOnDesktop,
+  leaseSlot,
   shutdownIde,
   sleep,
   waitForCompile,
@@ -181,7 +184,8 @@ import { svgOfPage } from "./svgshot/capture.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
 import { holdsUserName, judgeSvg, SVG_FAITHFUL, writeSvg } from "./svgshot/keep.mjs";
 import { unpackProject } from "./lib/tb-project.mjs";
-import { findIde } from "./lib/tb-install.mjs";
+import { checkHarness } from "./lib/harness-settings.mjs";
+import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
 import {
   click,
@@ -195,8 +199,15 @@ import {
   waitFor,
   waitForEditAnswer,
 } from "./lib/tb-operate.mjs";
-import { claimPorts } from "./lib/tb-ports.mjs";
-import { deleteSettings, finishTidy, restoreKeys, settingsKey, snapshotKeys, startTidy } from "./lib/tb-registry.mjs";
+import {
+  alive,
+  deleteSettings,
+  finishTidy,
+  restoreKeys,
+  settingsKey,
+  snapshotKeys,
+  startTidy,
+} from "./lib/tb-registry.mjs";
 
 const SETTINGS = "tbDocsHelp";
 const PANE = "tbDocsHelpPane";
@@ -229,7 +240,7 @@ const SCALE = 2;
 const LCD_TEXT = "--disable-lcd-text";
 const BROWSER_ARGS = `--force-device-scale-factor=1 ${LCD_TEXT}`;
 
-const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--port N] [--ide <twinBASIC.exe>] [--svg] [-h, --help]
+const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--ide <twinBASIC.exe>] [--svg] [-h, --help]
 
 Takes the pictures of the IDE that the documentation shows, from IDEs on a
 private desktop, at 2x, each in the IDE's dark theme (X.png) and then in its Light
@@ -294,11 +305,6 @@ name.
                    customcontrols) are split into parts that each get an IDE of their own; every
                    line is prefixed with its setup or part. With --jobs 1 each
                    setup runs in one IDE, one after another, in the table's order
-  --port <n>       the first IDE's DevTools port: the first free ones from n
-                   (default 9700); every IDE takes one, the help setup three, the
-                   detached window's and the building IDE's after its own, and the
-                   global-search and designer setups two, the building IDE's after
-                   its own
   --ide <path>     the twinBASIC.exe to copy (default: $TB_IDE, else the
                    newest twinBASIC_IDE_BETA_* on the Desktop)
   --svg            also write each picture as SVG beside its PNG (X.svg),
@@ -335,7 +341,6 @@ const { values } = withUsageError(() =>
       diffs: { type: "string" },
       bundles: { type: "string" },
       jobs: { type: "string" },
-      port: { type: "string" },
       ide: { type: "string" },
       svg: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
@@ -347,9 +352,6 @@ if (values.help) printHelpAndExit(USAGE);
 const only = values.only === undefined ? null : withUsageError(() => regexOption(values.only, { option: "--only" }));
 const jobCount = withUsageError(() =>
   numberOption(values.jobs ?? "6", { option: "--jobs", integer: true, min: 1, max: 16 }),
-);
-const firstPort = withUsageError(() =>
-  numberOption(values.port ?? "9700", { option: "--port", integer: true, min: 1, max: 65535 }),
 );
 const outRoot = path.resolve(values.out ?? DEFAULT_OUT);
 const diffsRoot = values.diffs === undefined ? null : path.resolve(values.diffs);
@@ -368,7 +370,14 @@ for (const [option, root] of [
 // The fonts' cuts are kept beside the bundles, as replay.mjs keeps them (fonts.mjs).
 if (bundlesRoot) useSubsetCache(path.join(bundlesRoot, "subsets"));
 
+// test/harness.json gives the IDE's waits their limits (test/harness.md).
+try {
+  checkHarness();
+} catch (e) {
+  die(2, e.message);
+}
 const ide = findIde(values.ide || undefined);
+if (unsupportedIde(ide)) die(2, unsupportedIde(ide));
 if (!ide || !existsSync(ide)) {
   die(
     2,
@@ -913,24 +922,22 @@ async function fixPageSize(c) {
   await frames(c);
 }
 
-// Keeps the user's machine out of the pictures, in the IDE's page only. First the
-// calls that write the IDE's settings and the recent list are replaced by calls
-// that do nothing, and the functions that save the options too, so that nothing
-// below is saved, now or when the IDE ends. Then the IDE's options go back to
-// their defaults, the saved panel layouts and keyboard groups go, the panel
-// features are all allowed, and the recent lists are the tool's own. The language
-// is left as the IDE runs it, and so are the options the schema does not list.
-// Returns what differed from the defaults.
+// Keeps the user's machine out of the pictures, in the IDE's page only. The IDE
+// is started with IDE_FLAGS, so it saves no setting and adds nothing to the
+// recent list, now or when it ends; the one call that touches the list and is
+// not guarded, RemoveRecentsList, is replaced by a call that does nothing. Then
+// the IDE's options go back to their defaults, the saved panel layouts and
+// keyboard groups go, the panel features are all allowed, and the recent lists
+// are the tool's own. The language is left as the IDE runs it, and so are the
+// options the schema does not list. Returns what differed from the defaults.
 const PAGE_DEFAULTS = `(() => {
-  const blocked = new Set(["SaveIDESetting", "AddRecentsList", "RemoveRecentsList"]);
+  const blocked = new Set(["RemoveRecentsList"]);
   hostAppObject = new Proxy(hostAppObject, {
     get(target, key) {
       if (blocked.has(key)) return async () => undefined;
       return Reflect.get(target, key);
     },
   });
-  saveIDEOptions = () => {};
-  saveIDEOptions2 = () => {};
   const differed = [];
   for (const o of ideOptionsSchema) {
     const now = JSON.stringify(liveIDEOptions[o.name]);
@@ -967,17 +974,19 @@ const setRecents = (c, entries) =>
 
 // ---------------------------------------------------------------- setups
 
-// A setup is one IDE: `ports` it claims, `start` which opens it and returns the
-// connection, `prepare` which brings it to a state the shots start from and
-// returns their context. `run` holds the lane, the ports, the work folder and
-// what the setup has to put back.
+// A setup is one IDE: `start` which opens it and returns the connection,
+// `prepare` which brings it to a state the shots start from and returns their
+// context, and `port` when it needs a port chosen before it is bound (the help
+// add-in's detached window), which its slot then carries. `run` holds the lane,
+// its slot (tbbroker: the IDE's private desktop), the work folder and what the
+// setup has to put back.
 
 const demoLines = () => readFileSync(DEMO_SOURCE, "utf8").split("\n");
 
 // ---- help
 
 async function startHelp(run) {
-  const { lane, ports, work } = run;
+  const { lane, slot, work } = run;
   const files = createStaticHandler(SITE);
   run.server = await serveLoopback((req, res) => files(req, res));
   run.origin = `http://localhost:${run.server.port}`;
@@ -990,15 +999,13 @@ async function startHelp(run) {
     recursive: true,
     filter: (f) => ![path.join(ADDIN, "Build"), path.join(ADDIN, "Resources", "HELP")].includes(f),
   });
-  // On a port of its own: the building IDE's WebView2 can keep listening on its
-  // port for longer than launchIde waits (ten seconds) after the IDE ends.
-  await lane.addAddin(src, { show: false, port: ports[2] });
+  await lane.addAddin(src, { show: false });
   run.step = "open";
   say(run.name, `opening ${path.relative(REPO_ROOT, DEMO)}`);
   return lane.open(DEMO, {
     env: {
       TB_DOCS_HELP_SITE: run.origin,
-      TB_DOCS_HELP_WINDOW_PORT: String(ports[1]),
+      TB_DOCS_HELP_WINDOW_PORT: String(slot.port),
       TB_DOCS_HELP_REAL_TITLEBAR: "0",
     },
   });
@@ -1020,7 +1027,7 @@ async function prepareHelp(run) {
   const ctx = {
     c,
     origin,
-    windowPort: run.ports[1],
+    windowPort: run.slot.port,
     addinLines,
     results: async () => (await listViewItems(c, { toolWindow: PANE, css: "#helpResults" })).map((i) => i.text),
   };
@@ -1151,15 +1158,15 @@ async function prepareFusion(run) {
 // pictures have always had it. Its options are saved with SaveSetting, under GS_SETTINGS,
 // which the run records first and puts back.
 
-// Builds Sample 15 into the lane's copy of the install, on the setup's second port (the
-// building IDE's, as the help setup builds); returns the sample's exported tree.
+// Builds Sample 15 into the lane's copy of the install, as the help setup builds; returns
+// the sample's exported tree.
 async function buildGlobalSearch(run) {
-  const { lane, ports } = run;
+  const { lane } = run;
   run.step = "build";
   say(run.name, `building Sample 15, the Global Search add-in, into a copy of ${ide}`);
   // the install is only read: the sample is exported into the work folder
   const src = lane.exportSample("Sample 15");
-  await lane.addAddin(src, { show: false, port: ports[1] });
+  await lane.addAddin(src, { show: false });
   return src;
 }
 
@@ -1338,9 +1345,66 @@ async function startFormsChapter(run) {
 // The IDE's desktop, where a previewed form's window shows, and a folder for its captures.
 async function prepareFormsChapter(run) {
   const ctx = await prepareWithDesigners(run);
-  ctx.desktop = `tbbuild-${run.ports[0]}`;
+  ctx.desktop = run.lane.desktop;
   ctx.windows = path.join(run.work, "windows");
   mkdirSync(ctx.windows, { recursive: true });
+  return ctx;
+}
+
+// ---- projects: test/shots/projects, MyProject, for the pictures of the "Projects and files"
+// chapter (projectsShots): a form, a .bas module, a module and a class in a Helpers folder, a
+// manifest, and Resources/ICON/AppIcon.ico, the install's template icon under another name (a
+// binary, so not in the fixture). projects-refs is the same project with two references
+// changed, as the Settings file of a project can hold them: Microsoft Scripting Runtime with its
+// symbol overridden as SR, and a type library that is not on the machine, which makes the IDE
+// open Project Settings by itself once the project is loaded. projects-start is the IDE with no
+// project, for the Recent tab.
+const PROJECTS = path.join(REPO_ROOT, "test", "shots", "projects");
+const MISSING_LIBRARY = {
+  id: "{0BADC0DE-1234-4321-ABCD-0123456789AB}",
+  lcid: 0,
+  name: "Charts Library",
+  path32: "C:\\Libraries\\Charts.tlb",
+  path64: "C:\\Libraries\\Charts.tlb",
+  versionMajor: 1,
+  versionMinor: 0,
+};
+
+function stageProjects(run, { refs = false } = {}) {
+  const src = path.join(run.work, "projects-src");
+  cpSync(PROJECTS, src, { recursive: true });
+  const template = path.join(run.work, "template");
+  unpackProject(path.join(path.dirname(ide), "projects", "_Standard EXE", "projectName.twinproj"), template);
+  mkdirSync(path.join(src, "Resources", "ICON"), { recursive: true });
+  cpSync(path.join(template, "Resources", "ICON", "twinBASIC.ico"), path.join(src, "Resources", "ICON", "AppIcon.ico"));
+  if (refs) {
+    const file = path.join(src, "Settings");
+    const settings = JSON.parse(readFileSync(file, "utf8"));
+    const list = settings["project.references"];
+    const scripting = list.find((r) => r.name === "Microsoft Scripting Runtime");
+    scripting.overrideSymbol = "SR";
+    list.push(MISSING_LIBRARY);
+    writeFileSync(file, `${JSON.stringify(settings, null, "\t")}\n`);
+  }
+  return src;
+}
+
+const startProjects =
+  ({ refs = false } = {}) =>
+  async (run) => {
+    run.step = "open";
+    say(run.name, `opening ${path.relative(REPO_ROOT, PROJECTS)}${refs ? " with two references changed" : ""}`);
+    return run.lane.open(stageProjects(run, { refs }));
+  };
+
+// Project Settings, which the IDE opens by itself a second or so after it loads a project with
+// a reference it cannot load, closed with Cancel, so that the shots start with nothing open.
+async function prepareProjectsRefs(run) {
+  const ctx = await prepareSample(run);
+  if (await waitModal(run.c, "Project Settings", { timeout: 15000 })) {
+    await dialogStill(run.c, { ms: 500 });
+    await closeModal(run.c, "Cancel");
+  }
   return ctx;
 }
 
@@ -1393,43 +1457,45 @@ async function clearUserFromConsole(c) {
 }
 
 const SETUPS = {
-  help: { ports: 3, start: startHelp, prepare: prepareHelp },
-  "global-search": { ports: 2, start: startGlobalSearch, prepare: prepareGlobalSearch },
-  sample6: { ports: 1, start: startSample6, prepare: prepareSample },
-  designer: { ports: 2, start: startDesigner, prepare: prepareDesigner },
-  forms: { ports: 1, start: (run) => startDesigner(run, { addin: false }), prepare: prepareWithDesigners },
-  "forms-chapter": { ports: 1, start: startFormsChapter, prepare: prepareFormsChapter },
-  customcontrols: { ports: 1, start: startCustomControls, prepare: prepareWithDesigners },
-  code: { ports: 1, start: startCode, prepare: prepareSample },
-  sample9: { ports: 1, start: startSample9, prepare: prepareSample },
-  featuremap: { ports: 1, start: startFeatureMap, prepare: prepareSample },
-  "code-chapter": { ports: 1, start: startCodeChapter, prepare: prepareSample },
-  debugging: { ports: 1, start: (run) => startCodeChapter(run, { extra: DEBUGGING }), prepare: prepareSample },
-  project: { ports: 1, start: startProject, prepare: prepareProject },
-  community: { ports: 1, start: startProject, prepare: prepareCommunity },
-  splash: { ports: 1, start: startProject, prepare: prepareProject },
-  sample: { ports: 1, start: startSample, prepare: prepareSample },
-  settings: { ports: 1, start: startSettings("base"), prepare: prepareSample },
-  "settings-symbols": { ports: 1, start: startSettings("symbols"), prepare: prepareSample },
+  help: { port: true, start: startHelp, prepare: prepareHelp },
+  "global-search": { start: startGlobalSearch, prepare: prepareGlobalSearch },
+  sample6: { start: startSample6, prepare: prepareSample },
+  designer: { start: startDesigner, prepare: prepareDesigner },
+  forms: { start: (run) => startDesigner(run, { addin: false }), prepare: prepareWithDesigners },
+  "forms-chapter": { start: startFormsChapter, prepare: prepareFormsChapter },
+  projects: { start: startProjects(), prepare: prepareSample },
+  "projects-refs": { start: startProjects({ refs: true }), prepare: prepareProjectsRefs },
+  "projects-start": { start: startNoProject, prepare: prepareNoProject },
+  customcontrols: { start: startCustomControls, prepare: prepareWithDesigners },
+  code: { start: startCode, prepare: prepareSample },
+  sample9: { start: startSample9, prepare: prepareSample },
+  featuremap: { start: startFeatureMap, prepare: prepareSample },
+  "code-chapter": { start: startCodeChapter, prepare: prepareSample },
+  debugging: { start: (run) => startCodeChapter(run, { extra: DEBUGGING }), prepare: prepareSample },
+  project: { start: startProject, prepare: prepareProject },
+  community: { start: startProject, prepare: prepareCommunity },
+  splash: { start: startProject, prepare: prepareProject },
+  sample: { start: startSample, prepare: prepareSample },
+  settings: { start: startSettings("base"), prepare: prepareSample },
+  "settings-symbols": { start: startSettings("symbols"), prepare: prepareSample },
   "settings-webview2": {
-    ports: 1,
     start: startSettings("webview2", { keepForm: true, stage: DESIGNER_WEBVIEW2 }),
     prepare: prepareWithDesigners,
   },
-  "settings-fusion": { ports: 1, start: startSettings("fusion"), prepare: prepareFusion },
-  glyphs: { ports: 1, start: startSample, prepare: prepareSample },
-  "no-project": { ports: 1, start: startNoProject, prepare: prepareNoProject },
-  programs: { ports: 1, start: startPrograms, prepare: preparePrograms },
-  codelens: { ports: 1, start: startCodeLens, prepare: prepareSample },
-  memory: { ports: 1, start: startMemory, prepare: prepareSample },
-  package: { ports: 1, start: startPackage, prepare: prepareSample },
-  fusion: { ports: 1, start: startFusion, prepare: prepareSample },
-  "package-server": { ports: 1, start: startPackageServer, prepare: preparePackageServer },
-  "settings-linked": { ports: 1, start: startSettings("linked"), prepare: prepareSample },
-  "package-check": { ports: 1, start: startPackageCheck, prepare: prepareSample },
-  import: { ports: 1, start: startImport, prepare: prepareSample },
-  webpage: { ports: 1, start: startProject, prepare: prepareWebpage },
-  web: { ports: 1, start: startWeb, prepare: prepareWeb },
+  "settings-fusion": { start: startSettings("fusion"), prepare: prepareFusion },
+  glyphs: { start: startSample, prepare: prepareSample },
+  "no-project": { start: startNoProject, prepare: prepareNoProject },
+  programs: { start: startPrograms, prepare: preparePrograms },
+  codelens: { start: startCodeLens, prepare: prepareSample },
+  memory: { start: startMemory, prepare: prepareSample },
+  package: { start: startPackage, prepare: prepareSample },
+  fusion: { start: startFusion, prepare: prepareSample },
+  "package-server": { start: startPackageServer, prepare: preparePackageServer },
+  "settings-linked": { start: startSettings("linked"), prepare: prepareSample },
+  "package-check": { start: startPackageCheck, prepare: prepareSample },
+  import: { start: startImport, prepare: prepareSample },
+  webpage: { start: startProject, prepare: prepareWebpage },
+  web: { start: startWeb, prepare: prepareWeb },
 };
 
 // ---------------------------------------------------------------- the shots of the no-project setup
@@ -1440,10 +1506,16 @@ const SETUPS = {
 // corners: the outline's corner is what fills the pixel the border's curve leaves.
 const OUTLINE = 1;
 // `before(c)` brings the IDE to the state the menu is shown in, after every menu is closed,
-// and `after(c)`, when given, takes it out of that state once the menu is closed.
-function menuShot(name, top, item = null, { subOnly = false, setup = "no-project", before = null, after = null } = {}) {
+// and `after(c)`, when given, takes it out of that state once the menu is closed. `out` is
+// the picture's path when it is not the Menu pages' folder.
+function menuShot(
+  name,
+  top,
+  item = null,
+  { subOnly = false, setup = "no-project", before = null, after = null, out = null } = {},
+) {
   return {
-    out: `IDE/Menu/Images/${name}.png`,
+    out: out ?? `IDE/Menu/Images/${name}.png`,
     setup,
     async take({ c }) {
       await resetUi(c);
@@ -5505,6 +5577,723 @@ function formStateShot(name, state, { after = null, out = FORMS_IMAGE(name) } = 
   };
 }
 
+// ---------------------------------------------------------------- the "Projects and files" chapter
+
+// The pictures of docs/IDE/Projects/ (setups projects, projects-refs and projects-start). Each
+// starts from nothing (projectsReset) and sets the tree's folders it shows itself. A change a
+// picture makes to the project is undone after it: a rename is renamed back, a folder or a
+// module added is deleted, an edit is undone; the project stays changed (the title's dot) from
+// the first of them on, which no picture but the title's shows.
+
+const PJ_IMAGE = (name) => `IDE/Projects/Images/${name}.png`;
+const PJ_FILE = (rest) => `/MyProject/${rest}`;
+
+// The box of the button of the Project Explorer's title bar whose title starts with `title`,
+// docked or floating, when it is shown.
+const peButton = (c, title) =>
+  c.evaluate(`(() => {
+  const e = [...${PE_SCOPE}.querySelectorAll(".sectionHeader [title]")].find((x) => x.title.startsWith(${JSON.stringify(title)}) && x.getBoundingClientRect().width);
+  const r = e && e.getBoundingClientRect();
+  return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+
+// The object view is showing when the Project Explorer's Search button is.
+const peObjectView = async (c) => !!(await peButton(c, "Search"));
+
+// A real click on the Project Explorer's file view toggle, and the view switched.
+async function peToggleView(c) {
+  const was = await peObjectView(c);
+  const b = await peButton(c, "Toggle file view");
+  if (!b) throw new Error("the Project Explorer has no file view toggle");
+  await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+  if (!(await waitFor(c, async () => (await peObjectView(c)) !== was, { timeout: 5000, interval: 100 }))) {
+    throw new Error("the file view toggle did not switch the view");
+  }
+  await frames(c);
+}
+
+async function projectsReset(c) {
+  await resetUi(c);
+  await closeTabs(c, [], { discard: true });
+  await defaultLayout(c);
+  if (await peObjectView(c)) await peToggleView(c);
+  await parkMouse(c);
+  await frames(c);
+}
+
+// The tree's folders open or closed as `folders` says ({ name: open }), in that order.
+async function peFolders(c, folders) {
+  for (const [name, open] of Object.entries(folders)) await peOpen(c, name, open);
+}
+
+// The class of a tree row's inner element (`error`, `warning`, `treeItemSelected`), by its path
+// under the project; null when there is no such row.
+const peRowClass = (c, rest) =>
+  c.evaluate(`(() => {
+  const n = fs.tree.resolvePath("twinbasic:" + ${JSON.stringify(PJ_FILE(rest))});
+  return n && n.innerDiv ? n.innerDiv.className : null;
+})()`);
+
+// The docked Project Explorer from its top to `margin` pixels below the row named `last`.
+async function peDownTo(c, last, margin = 6) {
+  const panel = await dockedRect(c, "PROJECT EXPLORER");
+  const row = await peFind(c, last);
+  return { ...panel, height: row.row.y + row.row.height + margin - panel.y };
+}
+
+// The item of the Add submenu of the row `row`'s menu that starts with `item`, chosen with real
+// mouse moves and a click.
+async function peAdd(c, row, item) {
+  await peRightClick(c, row);
+  await hoverItem(c, "Add");
+  const it = (await menuItems(c, true)).find((i) => i.text.startsWith(item));
+  if (!it) throw new Error(`the Add submenu has no ${item}`);
+  await mouseMove(c, it.x + 20, it.y + it.height / 2);
+  await frames(c);
+  await clickAt(c, it.x + 20, it.y + it.height / 2);
+}
+
+// The name box the tree opens (Add, F2): its value once it is focused.
+const nameBox = (c) =>
+  waitFor(
+    c,
+    () =>
+      c.evaluate(`(() => {
+  const i = document.getElementById("renameInput");
+  return i && document.activeElement === i ? { value: i.value, start: i.selectionStart, end: i.selectionEnd, invalid: i.classList.contains("invalidRename") } : null;
+})()`),
+    { timeout: 5000, interval: 50 },
+  );
+
+// A real click on the button of the top dialog whose caption is `caption`, and the dialog gone.
+async function modalButton(c, caption) {
+  const before = (await modals(c)).length;
+  await clickInModal(c, caption, ".msgBoxButton");
+  if (!(await waitFor(c, async () => (await modals(c)).length < before, { timeout: 5000, interval: 100 }))) {
+    throw new Error(`the dialog did not close on "${caption}"`);
+  }
+  await frames(c);
+}
+
+// Deletes the file or folder `rest` with the Delete key and the box's Delete button. The row is
+// clicked first, whether or not it is selected, so that the key goes to the tree.
+async function peDelete(c, rest) {
+  const name = rest.split("/").pop();
+  await peSelect(c, name);
+  const selected = await c.evaluate("fs.tree.selectedItems.map((e) => e.getFullPath())");
+  if (selected.join() !== PJ_FILE(rest)) throw new Error(`the tree did not select ${rest}`);
+  const before = (await modals(c)).length;
+  await pressKey(c, "Delete");
+  if (!(await waitFor(c, async () => (await modals(c)).length > before, { timeout: 5000, interval: 100 }))) {
+    throw new Error(`Delete on ${rest} asked nothing`);
+  }
+  await modalButton(c, "Delete");
+  if (!(await waitFor(c, async () => (await peRowClass(c, rest)) === null, { timeout: 5000, interval: 100 }))) {
+    throw new Error(`${rest} is still in the tree after Delete`);
+  }
+}
+
+// Sources > Add > Add Module, the name the box offers kept (MyModule.twin); returns its path.
+async function addModule(c) {
+  await peOpen(c, "Sources", true);
+  await peAdd(c, "Sources", "Add Module");
+  const box = await nameBox(c);
+  if (!box) throw new Error("Add Module opened no name box");
+  await pressKey(c, "Enter");
+  const rest = `Sources/${box.value}`;
+  if (!(await waitFor(c, async () => (await peRowClass(c, rest)) !== null, { timeout: 5000, interval: 100 }))) {
+    throw new Error(`Add Module did not add ${rest}`);
+  }
+  return rest;
+}
+
+// The IDE's title as the menu bar shows it, centred or at the right: its text and box.
+const ideTitle = (c) =>
+  c.evaluate(`(() => {
+  for (const e of [rootMenuText, rootMenuTitleFull]) {
+    const r = e.getBoundingClientRect();
+    if (r.width && !e.classList.contains("invisible") && !e.classList.contains("hide"))
+      return { text: e.innerText, x: r.x, y: r.y, width: r.width, height: r.height };
+  }
+  return null;
+})()`);
+
+// The project marked changed, as a module added and deleted again marks it, unless it is so.
+async function projectChanged(c) {
+  if ((await ideTitle(c))?.text.startsWith("\u{2022} ")) return;
+  const rest = await addModule(c);
+  await closeTabs(c, [], { discard: true });
+  await peDelete(c, rest);
+  if (!(await waitFor(c, async () => (await ideTitle(c))?.text.startsWith("\u{2022} "), { timeout: 5000 }))) {
+    throw new Error("the title has no dot after a module was added and deleted");
+  }
+}
+
+// A double-click on the name of a tree row, as a mouse makes it.
+async function peDoubleClick(c, text) {
+  const n = await peFind(c, text);
+  const x = n.name.x + n.name.width / 2;
+  const y = n.name.y + n.name.height / 2;
+  await mouseMove(c, x, y);
+  for (const clickCount of [1, 2]) {
+    for (const type of ["mousePressed", "mouseReleased"]) {
+      await c.send("Input.dispatchMouseEvent", {
+        type,
+        x,
+        y,
+        button: "left",
+        buttons: type === "mousePressed" ? 1 : 0,
+        clickCount,
+      });
+    }
+  }
+}
+
+// Renames the row `name` with F2, typing `to` over the selected part, and Enter.
+async function peRename(c, name, to) {
+  await peSelect(c, name);
+  await pressKey(c, "F2");
+  if (!(await nameBox(c))) throw new Error(`F2 on ${name} opened no name box`);
+  await typeText(c, to);
+  await pressKey(c, "Enter");
+}
+
+// A notification showing whose text holds `text`: its box.
+const notification = (c, text) =>
+  c.evaluate(`(() => {
+  const e = [...document.querySelectorAll(".msgBoxElement")].find((b) => b.getBoundingClientRect().width && b.innerText.includes(${JSON.stringify(text)}));
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+
+// A real click on the inline button `caption` of the notification holding `text`.
+async function notificationButton(c, text, caption) {
+  const p = await c.evaluate(`(() => {
+  const e = [...document.querySelectorAll(".msgBoxElement")].find((b) => b.getBoundingClientRect().width && b.innerText.includes(${JSON.stringify(text)}));
+  const b = e && [...e.querySelectorAll(".inlineMsgBoxButtons > div")].find((x) => x.textContent.trim() === ${JSON.stringify(caption)});
+  if (!b) return null;
+  const r = b.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+  if (!p) throw new Error(`no notification holding "${text}" has a ${caption} button`);
+  await clickAt(c, p.x, p.y);
+  await waitFor(c, async () => !(await notification(c, text)), { timeout: 5000, interval: 100 });
+}
+
+// The tree from MyProject's row to Startup.twin's, the folders as most pictures have them.
+const SOURCES_OPEN = { Resources: false, Sources: true, Helpers: false };
+
+// Legacy.bas with F2 pressed: the name box, its base name selected; with `typed`, that typed
+// over it. Escape after: nothing is renamed.
+function renameBoxShot(name, typed = null) {
+  return {
+    out: PJ_IMAGE(name),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      try {
+        await peFolders(c, SOURCES_OPEN);
+        await peSelect(c, "Legacy.bas");
+        await pressKey(c, "F2");
+        // the box selects the base name a moment after it takes the focus
+        const box = await waitFor(
+          c,
+          async () => {
+            const b = await nameBox(c);
+            return b?.value === "Legacy.bas" && b.start === 0 && b.end === 6 && b;
+          },
+          { timeout: 3000, interval: 50 },
+        );
+        if (!box) throw new Error(`F2 on Legacy.bas opened ${JSON.stringify(await nameBox(c))}`);
+        if (typed) {
+          await typeText(c, typed);
+          if (!(await waitFor(c, async () => (await nameBox(c))?.invalid, { timeout: 3000, interval: 50 }))) {
+            throw new Error(`the name box did not turn red for ${typed}`);
+          }
+        }
+        await parkMouse(c);
+        return await capture(c, name, snapOut(await peDownTo(c, "Startup.twin")), {});
+      } finally {
+        await pressKey(c, "Escape");
+        await frames(c);
+        if ((await peRowClass(c, "Sources/Legacy.bas")) === null) complain(c.shot.name, "Escape renamed Legacy.bas");
+      }
+    },
+  };
+}
+
+const projectsShots = [
+  // the File menu with a saved project open
+  menuShot("Menu_File_Project", "File", null, { setup: "projects", out: PJ_IMAGE("Menu_File_Project") }),
+  {
+    // the object view with its search bar open from the Search button, holding Util
+    out: PJ_IMAGE("ObjectView_Search"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      try {
+        await peSelect(c, "Startup.twin");
+        await peToggleView(c);
+        const listed = () =>
+          c.evaluate(
+            `[...document.querySelectorAll(".objListRow")].filter((r) => r.getBoundingClientRect().height).map((r) => r.innerText.replace(/\\s+/g, " ").trim())`,
+          );
+        if (!(await waitFor(c, async () => (await listed()).includes("Util Util.twin"), { timeout: 15000 }))) {
+          throw new Error("the object view never listed Util");
+        }
+        const b = await peButton(c, "Search");
+        if (!b) throw new Error("the object view shows no Search button");
+        await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+        if (!(await waitFor(c, () => c.evaluate(`document.activeElement?.classList.contains("objListSearchEntry")`)))) {
+          throw new Error("the Search button opened no search bar");
+        }
+        await typeText(c, "Util");
+        const filtered = await waitFor(
+          c,
+          async () => {
+            const rows = await listed();
+            return (
+              rows.includes("Util Util.twin") && !rows.includes("Legacy Legacy.bas") && rows.includes("VB") && rows
+            );
+          },
+          { timeout: 15000 },
+        );
+        if (!filtered) throw new Error(`the search for Util listed ${JSON.stringify(await listed())}`);
+        await parkMouse(c);
+        await sleep(500);
+        return await capture(c, "ObjectView_Search", snapOut(await dockedRect(c, "PROJECT EXPLORER")), {});
+      } finally {
+        await pressKey(c, "Escape");
+        await frames(c);
+        if (await peObjectView(c)) await peToggleView(c);
+      }
+    },
+  },
+  {
+    // the right-click menu of Startup.twin in the file view, as a cut-out
+    out: PJ_IMAGE("RightClick-File"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      try {
+        await peFolders(c, SOURCES_OPEN);
+        await peRightClick(c, "Startup.twin");
+        await parkMouse(c);
+        await frames(c);
+        return await capture(c, "RightClick-File", snapOut(grow(await rectOf(c, "#contextMenu"), OUTLINE)), {
+          keep: ["#contextMenu"],
+        });
+      } finally {
+        await closeMenus(c);
+      }
+    },
+  },
+  renameBoxShot("Rename_Box"),
+  renameBoxShot("Rename_Invalid", "bad|name"),
+  {
+    // frmMain.tbform renamed frmA.tbform: the notification that asks about frmMain.twin. NO, and
+    // the form renamed back
+    out: PJ_IMAGE("Rename_Partner"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      const QUESTION = "Rename frmMain.twin to frmA.twin also?";
+      let renamed = false;
+      try {
+        await peFolders(c, SOURCES_OPEN);
+        await peRename(c, "frmMain.tbform", "frmA");
+        renamed = await waitFor(c, async () => (await peRowClass(c, "Sources/frmA.tbform")) !== null, {
+          timeout: 5000,
+        });
+        const box = await waitFor(c, () => notification(c, QUESTION), { timeout: 5000, interval: 100 });
+        if (!box) throw new Error("renaming frmMain.tbform asked nothing about frmMain.twin");
+        await parkMouse(c);
+        await sleep(500);
+        return await capture(c, "Rename_Partner", snapOut(await notification(c, QUESTION)), {});
+      } finally {
+        if (await notification(c, QUESTION)) await notificationButton(c, QUESTION, "NO");
+        if (renamed) {
+          await peRename(c, "frmA.tbform", "frmMain");
+          if (
+            !(await waitFor(c, async () => (await peRowClass(c, "Sources/frmMain.tbform")) !== null, { timeout: 5000 }))
+          ) {
+            complain(c.shot.name, "frmA.tbform was not renamed back to frmMain.tbform");
+          }
+        }
+      }
+    },
+  },
+  {
+    // Delete on frmMain.tbform, which has a partner: the box with its three buttons; Cancel
+    out: PJ_IMAGE("Delete_Pair"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      await peFolders(c, SOURCES_OPEN);
+      await peSelect(c, "frmMain.tbform");
+      await pressKey(c, "Delete");
+      if (!(await waitModal(c, "twinBASIC", { timeout: 5000 })))
+        throw new Error("Delete on frmMain.tbform asked nothing");
+      await dialogStill(c);
+      try {
+        return await dialogShot(c, "Delete_Pair");
+      } finally {
+        await modalButton(c, "Cancel");
+      }
+    },
+  },
+  {
+    // AppIcon.ico double-clicked: its preview tab beside the tree, in a smaller window with the
+    // editor and the Project Explorer alone
+    out: PJ_IMAGE("Resource_Preview"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      try {
+        return await atSize(c, 900, 420, async () => {
+          await useLayout(c, PREVIEW_LAYOUT);
+          await peFolders(c, { Sources: false, Resources: true, ICON: true });
+          await peDoubleClick(c, "AppIcon.ico");
+          const shown = await waitFor(
+            c,
+            () =>
+              c.evaluate(`(() => {
+  const tab = [...document.querySelectorAll(".tabItem")].some((t) => t.innerText.trim() === "AppIcon.ico");
+  const e = [...document.querySelectorAll("embed")].find((x) => x.getBoundingClientRect().width);
+  return tab && !!e;
+})()`),
+            { timeout: 10000, interval: 100 },
+          );
+          if (!shown) throw new Error("the double-click opened no preview of AppIcon.ico");
+          await sleep(1000);
+          await parkMouse(c);
+          const editor = await dockedRect(c, "EDITOR 1");
+          const pe = await dockedRect(c, "PROJECT EXPLORER");
+          return await capture(c, "Resource_Preview", snapOut(union(editor, pe), 900, 420), {});
+        });
+      } finally {
+        await closeTabs(c, [], { discard: true });
+        await defaultLayout(c);
+      }
+    },
+  },
+  {
+    // Add Resource: Visual Styles Manifest with Resources/MANIFEST/#1.xml in the project: the
+    // box that says the file exists; Cancel
+    out: PJ_IMAGE("Resource_Exists"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      try {
+        await peFolders(c, SOURCES_OPEN);
+        await peAdd(c, "Sources", "Add Resource: Visual Styles Manifest");
+        if (!(await waitModal(c, "twinBASIC", { timeout: 5000 }))) throw new Error("the manifest item asked nothing");
+        await dialogStill(c);
+        return await dialogShot(c, "Resource_Exists");
+      } finally {
+        if ((await modals(c)).length) await modalButton(c, "Cancel");
+        await closeTabs(c, [], { discard: true });
+      }
+    },
+  },
+  {
+    // Project Settings with its description changed, the title bar's close button pressed: the
+    // question over the dialog; Yes, close, which keeps nothing
+    out: PJ_IMAGE("Settings_Close"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      try {
+        await command(c, "tbProject_ShowSettings");
+        if (!(await waitModal(c, "Project Settings", { timeout: 10000 })))
+          throw new Error("Project Settings did not open");
+        await dialogStill(c, { ms: 500 });
+        await nameUserAsUser(c);
+        await templateBuildPath(c);
+        await scrollToSetting(c, "project.description");
+        const input = `${settingPart("project.description", "CONTENT")} input`;
+        const i = await shownRect(c, input);
+        if (!i) throw new Error("Project Settings shows no description box");
+        await clickAt(c, i.x + i.width - 6, i.y + i.height / 2);
+        await pressKey(c, "End");
+        await typeText(c, " Updated.");
+        const x = await c.evaluate(`(() => {
+  const b = ${TOP_MODAL}.querySelector(".modalTitleBarCloseBtn");
+  const r = b && b.getBoundingClientRect();
+  return r && r.width ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+})()`);
+        if (!x) throw new Error("Project Settings has no close button");
+        await clickAt(c, x.x, x.y);
+        if (!(await waitFor(c, async () => (await modals(c)).length === 2, { timeout: 5000, interval: 100 }))) {
+          throw new Error("the close button asked nothing");
+        }
+        await dialogStill(c);
+        await c.evaluate("document.activeElement?.blur?.()");
+        await parkMouse(c);
+        await frames(c);
+        const [settings] = await modals(c);
+        return await capture(c, "Settings_Close", snapOut(settings), {});
+      } finally {
+        if ((await modals(c)).length === 2) await modalButton(c, "Yes, close");
+        await resetUi(c);
+      }
+    },
+  },
+  {
+    // a module with an error in Helpers and one with a warning in Sources (each made so by a
+    // line put in, in the page), and a new folder in Helpers, open: the tints and (empty). The
+    // folder is deleted and the lines undone afterwards
+    out: PJ_IMAGE("Tree_Tints"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      const edited = [];
+      let folder = null;
+      try {
+        for (const [file, after, text] of [
+          ["Sources/Helpers/Util.twin", "Public Function UtilTwice", "total = n"],
+          ["Sources/Startup.twin", "Debug.Print LegacyHello()", "ReDim made(3)"],
+        ]) {
+          await openFile(c, PJ_FILE(file));
+          edited.push({ file, version: await c.evaluate("editor.getModel().getAlternativeVersionId()") });
+          await newLineAfter(c, after, text);
+        }
+        await peFolders(c, { Resources: false, Sources: true, Helpers: true });
+        const tinted = await waitFor(
+          c,
+          async () =>
+            /\berror\b/.test(await peRowClass(c, "Sources/Helpers/Util.twin")) &&
+            /\bwarning\b/.test(await peRowClass(c, "Sources/Startup.twin")),
+          { timeout: 30000, interval: 200 },
+        );
+        if (!tinted) throw new Error("the tree never tinted Util.twin and Startup.twin");
+        await peAdd(c, "Helpers", "Add Folder");
+        const box = await nameBox(c);
+        if (!box) throw new Error("Add Folder opened no name box");
+        await pressKey(c, "Enter");
+        folder = `Sources/Helpers/${box.value}`;
+        if (!(await waitFor(c, async () => (await peRowClass(c, folder)) !== null, { timeout: 5000 }))) {
+          throw new Error(`Add Folder did not add ${folder}`);
+        }
+        await peOpen(c, box.value, true);
+        const empty = await waitFor(
+          c,
+          () =>
+            c.evaluate(
+              `[...fs.tree.sectionRoot.querySelectorAll("*")].some((e) => e.children.length === 0 && e.textContent.trim() === "(empty)" && e.getBoundingClientRect().width)`,
+            ),
+          { timeout: 3000 },
+        );
+        if (!empty) throw new Error(`the open ${box.value} shows no (empty)`);
+        await parkMouse(c);
+        await sleep(500);
+        return await capture(c, "Tree_Tints", snapOut(await peDownTo(c, "Startup.twin")), {});
+      } finally {
+        await resetUi(c);
+        if (folder && (await peRowClass(c, folder)) !== null) await peDelete(c, folder);
+        for (const { file, version } of edited) {
+          await openFile(c, PJ_FILE(file));
+          const back = await c.evaluate(`(() => {
+  const m = editor.getModel();
+  for (let i = 0; i < 100 && m.getAlternativeVersionId() !== ${version} && m.canUndo(); i++) editor.trigger("shoot_docs", "undo");
+  return m.getAlternativeVersionId() === ${version};
+})()`);
+          if (!back) complain(c.shot.name, `the line put in ${file} could not be undone`);
+        }
+        await closeTabs(c, [], { discard: true });
+        const clear = await waitFor(
+          c,
+          async () => !/\berror\b|\bwarning\b/.test((await peRowClass(c, "Sources/Helpers/Util.twin")) ?? ""),
+          { timeout: 30000, interval: 200 },
+        );
+        if (!clear) complain(c.shot.name, "the tree still tints Util.twin after the line was undone");
+      }
+    },
+  },
+  {
+    // a module added: the title in the menu bar, with the dot of a changed project. The module
+    // is deleted afterwards
+    out: PJ_IMAGE("Title_Changed"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      let added = null;
+      try {
+        added = await addModule(c);
+        if (!(await waitFor(c, async () => (await ideTitle(c))?.text.startsWith("\u{2022} "), { timeout: 5000 }))) {
+          throw new Error(`the title has no dot after a module was added: ${JSON.stringify(await ideTitle(c))}`);
+        }
+        await parkMouse(c);
+        await frames(c);
+        const t = await ideTitle(c);
+        const bar = await rectOf(c, "#rootMenu1");
+        return await capture(
+          c,
+          "Title_Changed",
+          snapOut({ x: t.x - 16, y: bar.y, width: t.width + 32, height: bar.height }),
+          {},
+        );
+      } finally {
+        await closeTabs(c, [], { discard: true });
+        if (added) await peDelete(c, added);
+      }
+    },
+  },
+  {
+    // File > Close Project with the project changed: the question; Cancel, which keeps it open
+    out: PJ_IMAGE("Close_Question"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      await projectChanged(c);
+      await projectsReset(c);
+      await openMenu(c, "File");
+      const it = (await menuItems(c)).find((i) => i.text.startsWith("Close Project"));
+      if (!it) throw new Error("the File menu has no Close Project");
+      await mouseMove(c, it.x + 20, it.y + it.height / 2);
+      await frames(c);
+      await clickAt(c, it.x + 20, it.y + it.height / 2);
+      if (!(await waitModal(c, "twinBASIC", { timeout: 5000 }))) throw new Error("Close Project asked nothing");
+      await dialogStill(c);
+      try {
+        return await dialogShot(c, "Close_Question");
+      } finally {
+        await modalButton(c, "Cancel");
+        if ((await peRowClass(c, "Sources/Startup.twin")) === null) complain(c.shot.name, "Cancel closed the project");
+      }
+    },
+  },
+  {
+    // Project > References in a project with an overridden symbol and a library that is not on
+    // the machine: the Enabled Libraries list
+    out: PJ_IMAGE("References_Detail"),
+    setup: "projects-refs",
+    take: ({ c }) =>
+      inDialog(c, { command: LIBRARY_REFERENCES, title: "Project Settings", close: "Cancel", still: 500 }, async () => {
+        await nameUserAsUser(c);
+        const ok = await waitFor(
+          c,
+          () =>
+            c.evaluate(`(() => {
+  const t = [...document.querySelectorAll(".referencesListRow")].filter((r) => r.getBoundingClientRect().height).map((r) => r.innerText);
+  return t.some((x) => x.includes("unable to load this reference")) && t.some((x) => /Scripting[\\s\\S]*SR/.test(x));
+})()`),
+          { timeout: 10000 },
+        );
+        if (!ok) throw new Error("the Enabled Libraries list shows no error row or no SR");
+        // a movable row shows its two priority arrows only under the pointer: the pointer rests
+        // on Microsoft Scripting Runtime's name
+        const row = await c.evaluate(`(() => {
+  const r = [...document.querySelectorAll(".referencesListRow")].find((x) => x.getBoundingClientRect().height && x.innerText.includes("Microsoft Scripting Runtime"));
+  const n = r && r.querySelector(".referencesListColName");
+  const b = n && n.getBoundingClientRect();
+  return b ? { x: b.x + 40, y: b.y + b.height / 2 } : null;
+})()`);
+        if (!row) throw new Error("the list has no Microsoft Scripting Runtime row");
+        await c.evaluate("document.activeElement?.blur?.()");
+        await mouseMove(c, row.x, row.y);
+        const arrows = await waitFor(
+          c,
+          () =>
+            c.evaluate(
+              `[...document.querySelectorAll(".referencesListRow:hover .pinkArrowUp")].some((a) => getComputedStyle(a).visibility === "visible")`,
+            ),
+          { timeout: 3000, interval: 50 },
+        );
+        if (!arrows) throw new Error("the row under the pointer shows no priority arrows");
+        await frames(c);
+        const [m] = await modals(c);
+        const area = { ...m, height: (await lastReferenceBottom(c)) + 12 - m.y };
+        const png = await capture(c, "References_Detail", snapOut(area), {});
+        // No SVG: the converter does not draw a line-through (snapshot-svg.mjs), and the struck
+        // Scripting is what the picture is about; the page shows the PNG.
+        c.shot.svg = null;
+        return png;
+      }),
+  },
+  {
+    // the Recent tab with an entry whose file is gone, double-clicked: the box over the dialog;
+    // Keep It
+    out: PJ_IMAGE("Failed_To_Load"),
+    setup: "projects-start",
+    async take({ c }) {
+      await resetUi(c);
+      await setRecents(
+        c,
+        RECENT_GONE.map((p) => ({ name: p, projectPath: p })),
+      );
+      try {
+        await command(c, "tbProject_OpenRecent");
+        if (!(await waitModal(c, "New / Open", { timeout: 10000 }))) throw new Error("Open Recent opened no dialog");
+        await dialogStill(c);
+        const row = await c.evaluate(`(() => {
+  const e = [...document.querySelectorAll(".frontPageListViewItem")].find((x) => x.getBoundingClientRect().width && x.textContent.trim() === ${JSON.stringify(RECENT_GONE[0])});
+  const r = e && e.getBoundingClientRect();
+  return r ? { x: r.x + r.width / 3, y: r.y + r.height / 2 } : null;
+})()`);
+        if (!row) throw new Error("the Recent tab does not list the entry");
+        await mouseMove(c, row.x, row.y);
+        for (const clickCount of [1, 2]) {
+          for (const type of ["mousePressed", "mouseReleased"]) {
+            await c.send("Input.dispatchMouseEvent", {
+              type,
+              x: row.x,
+              y: row.y,
+              button: "left",
+              buttons: type === "mousePressed" ? 1 : 0,
+              clickCount,
+            });
+          }
+        }
+        const box = await waitFor(c, async () => (await modals(c)).find((m) => m.title === "twinBASIC") ?? null, {
+          timeout: 15000,
+          interval: 150,
+        });
+        if (!box) throw new Error("the double-click on a project that is gone asked nothing");
+        await dialogStill(c);
+        await c.evaluate("document.activeElement?.blur?.()");
+        await parkMouse(c);
+        await frames(c);
+        const all = await modals(c);
+        const shown = all.reduce((u, m) => union(u, m));
+        return await capture(c, "Failed_To_Load", snapOut(shown), {});
+      } finally {
+        if ((await modals(c)).some((m) => m.title === "twinBASIC")) await modalButton(c, "Keep It");
+        await resetUi(c);
+        await setRecents(c, []);
+      }
+    },
+  },
+];
+
+// The Recent tab's entries for Failed_To_Load: paths of projects that do not exist (the first
+// is double-clicked), in place of the user's own list, in the page only.
+const RECENT_GONE = [
+  "C:\\Projects\\Inventory\\Inventory.twinproj",
+  "C:\\Projects\\MyProject\\MyProject.twinproj",
+  "C:\\Projects\\Reports\\Reports.twinproj",
+];
+
+// The editor and the Project Explorer alone, side by side, for the preview tab.
+const PREVIEW_LAYOUT = {
+  type: "horizontal",
+  variableSize: true,
+  size: "0%",
+  content: [
+    { id: "TOOLBAR", variableSize: false, size: "fit-content" },
+    {
+      type: "vertical",
+      variableSize: true,
+      size: "0%",
+      content: [
+        { id: "EDITOR", variableSize: true, size: "0%" },
+        { id: "PROJECT EXPLORER", variableSize: false, size: "34%" },
+      ],
+    },
+  ],
+};
+
 // ---- the CustomControls tutorial's property sheet: composites of the fixture's code and the
 // PROPERTIES panel (setup customcontrols)
 
@@ -8839,13 +9628,16 @@ async function preparePrograms(run) {
     throw new Error(`ShotPrograms did not build: ${built.message ?? built.file}`);
   }
   say(run.name, `built ${path.basename(built.file)}`);
+  // The programs' own desktop, a second slot of the job's (endRun gives it back), and the
+  // IDE's, where a program run from the IDE shows.
+  const programs = await leaseSlot({ tag: `shoot_docs ${run.name} programs` });
+  run.more.push(programs);
   return {
     c,
     exe: built.file,
     signals: run.signals,
-    // the programs' own desktop, and the IDE's, where a program run from the IDE shows
-    desktop: `tbshoot-programs-${run.ports[0]}`,
-    ideDesktop: `tbbuild-${run.ports[0]}`,
+    desktop: programs.desktop,
+    ideDesktop: run.lane.desktop,
   };
 }
 
@@ -9517,7 +10309,7 @@ async function applyChanges({ c, lane }) {
   await clickInModal(c, "Apply Changes");
   await awaitNewCompiler(c, before, { why: "Apply Changes" });
   try {
-    lane.checkCompile(await waitForCompile(c, { project: lane.project, timeout: COMPILE_TIMEOUT }), "the sample");
+    lane.checkCompile(await waitForCompile(c, { project: lane.project }), "the sample");
   } catch (e) {
     // the DEBUG CONSOLE's lines about a crash, which the message only counts
     const lines = await c.evaluate(
@@ -10190,7 +10982,7 @@ function paste(whole, part, x, y) {
 }
 
 async function prepareWebpage(run) {
-  return { ...(await prepareProject(run)), port: run.ports[0] };
+  return { ...(await prepareProject(run)), port: run.lane.port };
 }
 
 const webpageShot = {
@@ -10261,15 +11053,19 @@ const webpageShot = {
 
 async function startWeb(run) {
   run.step = "open";
-  const port = run.ports[0];
   const exe = await puppeteer.executablePath();
   if (!existsSync(exe)) throw new Error(`no Chrome at ${exe}: run npm install`);
   say(run.name, "starting Chrome");
+  // Port 0: Chrome binds one Windows picks and writes it to DevToolsActivePort in its
+  // profile, which is this job's alone, as an IDE's WebView2 does (launchIde).
+  const profile = path.join(run.work, "chrome");
+  const portFile = path.join(profile, "DevToolsActivePort");
+  rmSync(portFile, { force: true });
   const browser = await launchOnDesktop({
     exe,
     args: [
-      `--remote-debugging-port=${port}`,
-      `--user-data-dir=${path.join(run.work, "chrome")}`,
+      "--remote-debugging-port=0",
+      `--user-data-dir=${profile}`,
       "--no-first-run",
       "--no-default-browser-check",
       "--force-device-scale-factor=1",
@@ -10282,7 +11078,8 @@ async function startWeb(run) {
       "--disable-renderer-backgrounding",
       "about:blank",
     ],
-    desktop: `tbshoot-web-${port}`,
+    // the job's own desktop: no IDE runs in this setup
+    desktop: run.slot.desktop,
     env: process.env,
   });
   // ended as an IDE is, by the lane: by its process id, with every process it started
@@ -10291,7 +11088,8 @@ async function startWeb(run) {
     null,
     async () => {
       try {
-        return await attach(port, "about:blank");
+        const port = Number(readFileSync(portFile, "utf8").split(/\r?\n/)[0]);
+        return port > 0 ? await attach(port, "about:blank") : null;
       } catch {
         return null;
       }
@@ -10889,6 +11687,7 @@ const SHOTS = [
   ...designerShots,
   ...formShots,
   ...formsChapterShots,
+  ...projectsShots,
   ...customControlsShots,
   ...customControlsCodeShots,
   ...codeShots,
@@ -10957,6 +11756,9 @@ const JOB_SECONDS = {
   designer: 61,
   forms: 40,
   "forms-chapter": 90,
+  projects: 120,
+  "projects-refs": 20,
+  "projects-start": 20,
   customcontrols: 54,
   "customcontrols-2": 53,
   "customcontrols-3": 35,
@@ -11016,7 +11818,6 @@ function planJobs() {
         setup: name,
         shots,
         weight: JOB_SECONDS[name + p.suffix] ?? shots.length * 10,
-        ports: [],
       });
     }
   }
@@ -11026,29 +11827,19 @@ function planJobs() {
 }
 const jobs = planJobs();
 
-let ports;
-try {
-  ports = await claimPorts(
-    jobs.reduce((n, job) => n + SETUPS[job.setup].ports, 0),
-    { from: firstPort },
-  );
-} catch (e) {
-  die(2, e.message);
-}
-{
-  let at = 0;
-  for (const job of jobs) {
-    job.ports = ports.slice(at, at + SETUPS[job.setup].ports);
-    at += job.ports.length;
+// The run's folder is named for this process, so that runs at once never share one; each job
+// takes its slot from tbbroker as it starts (runJob). A folder an earlier run left, whose
+// process has ended, goes.
+const runs = path.join(tmpdir(), "tbshoot-docs");
+for (const name of existsSync(runs) ? readdirSync(runs) : []) {
+  if (!/^\d+$/.test(name) || alive(Number(name))) continue;
+  try {
+    removeTree(path.join(runs, name));
+  } catch {
+    // still in use: a later run tries again
   }
 }
-
-const root = path.join(tmpdir(), "tbshoot-docs", String(ports[0]));
-try {
-  removeTree(root);
-} catch (e) {
-  die(2, `${root} could not be emptied (${e.code}): is an IDE from an earlier run still open?`);
-}
+const root = path.join(runs, String(process.pid));
 mkdirSync(root, { recursive: true });
 const tidy = startTidy({ prefixes: [root] });
 if (!tidy) die(2, "could not record the registry, so it could not be put back afterwards");
@@ -11236,6 +12027,7 @@ async function endRun(run) {
     complain(run.name, e.message);
   }
   run.server?.close();
+  for (const slot of [run.slot, ...run.more]) await slot.release();
 }
 
 // What a setup's page holds once it is prepared and that its shots change: the editor's
@@ -11273,7 +12065,10 @@ async function runJob(job) {
   const run = {
     name: job.name,
     step: "start",
-    ports: job.ports,
+    // the job's slot: the IDE's private desktop, and a port when the setup needs one
+    slot: await leaseSlot({ tag: `shoot_docs ${job.name}`, port: !!setup.port }),
+    // any more slots a setup takes (endRun gives them back)
+    more: [],
     work: path.join(root, job.name),
     lane: null,
     server: null,
@@ -11282,7 +12077,8 @@ async function runJob(job) {
   mkdirSync(run.work, { recursive: true });
   run.lane = new Lane({
     name: `shoot-${job.name}`,
-    port: job.ports[0],
+    slot: run.slot.slot,
+    desktop: run.slot.desktop,
     work: run.work,
     ide,
     show: false,

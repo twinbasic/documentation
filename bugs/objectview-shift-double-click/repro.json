@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["Shift+double-click on a form in the object view opens its designer, not its code"],
+  "steps": "1. Open a project with a form frmMain and press Ctrl+R for the object view.\n2. Shift+double-click frmMain: the designer frmMain.tbform opens; frmMain.twin is not opened.\nControl: in the object view, a double-click on a module opens its code."
+}

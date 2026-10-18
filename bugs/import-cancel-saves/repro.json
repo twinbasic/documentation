@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects-loss",
+  "tests": [
+    "Cancel in the Import from twinproj box saves the project, with another file's unsaved edit, and restarts the compiler"
+  ],
+  "steps": "1. Open Sources/Helpers/Util.twin and type a line; do not save.\n2. Right-click Sources/Startup.twin > Add > Import... and pick a .twinproj.\n3. In Import from twinproj..., press Cancel.\n4. The console prints the [DONE] line of a save and restarting from FILE; the project file holds Util.twin with the typed line; nothing was imported."
+}

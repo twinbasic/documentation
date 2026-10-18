@@ -114,7 +114,7 @@ Declare Sub Second Lib "MyLib" ()
 > - Fixed-length strings cannot appear in the argument list of a **Declare** statement; only variable-length strings can be passed to procedures. Fixed-length strings can appear as procedure arguments, but they are converted to variable-length strings before being passed.
 > - The **vbNullString** constant is used when calling external procedures, where the external procedure requires a string whose value is zero. This is not the same thing as a zero-length string ("").
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > In a 64-bit build with [LLVM](../../LLVM/Getting-Started), a call that passes `ByVal 0&` for the eighth parameter, declared `ByRef` with a 32-bit type such as **Long**, to give the procedure a NULL pointer, can end with an access violation (0xC0000005) and no message box. The eighth parameter of **WideCharToMultiByte** is one such case. Whether the call fails depends on what the stack held before it. The same override for the first to seventh parameters is right. Declare the parameter `ByVal ... As LongPtr` instead. A 32-bit build and a build without LLVM are not affected.
 
 ### Example

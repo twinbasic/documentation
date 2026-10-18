@@ -12,6 +12,7 @@ Indicates the result of a GDI+ call.
 
 Nearly every method of the package that does not return a value returns a **GpStatus**, and every object keeps the last one in its **LastResult** property of [**GdiPlusBase**](../GdiPlusBase). What happens to a status other than **Ok** depends on the error handling strategy, [GpErrorHandlingStrategy](GpErrorHandlingStrategy). **AsText** returns the text of a status.
 
+<!-- test: Gr_LibraryTests.GpStatus_ImageFromMissingFile_IsInvalidParameter -->
 > [!NOTE] timeless
 > Creating an image from a file that does not exist gives **InvalidParameter**, not **FileNotFound**.
 

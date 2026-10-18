@@ -1,0 +1,42 @@
+' GdiPlus, CachedBitmap: a copy is valid for the Graphics it was made for and for a Graphics
+' of the same pixel format.
+[TestFixture]
+Module Im_CachedBitmapTests
+
+    [TestCase]
+    Public Sub Draw_OnGraphicsOfTheSameFormat()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim tile As Bitmap = Bitmap(4!, 4!)
+        Dim tg As Graphics = Graphics(tile)
+        tg.Clear Color(255, 255, 0, 0)
+        Dim first As Bitmap = Bitmap(10!, 10!)
+        Dim second As Bitmap = Bitmap(10!, 10!)
+        Dim g1 As Graphics = Graphics(first)
+        Dim g2 As Graphics = Graphics(second)
+        Dim cached As CachedBitmap = CachedBitmap(tile, g1)
+        Expect.AreEqual 0, CLng(cached.LastResult), "LastResult of CachedBitmap(tile, g) (0 is Ok)"
+        Expect.AreEqual 0, CLng(g1.DrawCachedBitmapI(cached, 2, 2)), "DrawCachedBitmapI on the Graphics it was made for returns (0 is Ok)"
+        Expect.AreEqual &HFFFF0000, first.Pixel(3, 3).argb, "the pixel drawn on the Graphics it was made for"
+        Expect.AreEqual 0, CLng(g2.DrawCachedBitmapI(cached, 2, 2)), "DrawCachedBitmapI on another Graphics of the same pixel format returns (0 is Ok)"
+        Expect.AreEqual &HFFFF0000, second.Pixel(3, 3).argb, "the pixel drawn on another Graphics of the same pixel format"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Draw_OnGraphicsOfAnotherFormatIsWrongState()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim tile As Bitmap = Bitmap(4!, 4!)
+        Dim tg As Graphics = Graphics(tile)
+        tg.Clear Color(255, 255, 0, 0)
+        Dim first As Bitmap = Bitmap(10!, 10!)
+        Dim other As Bitmap = Bitmap(10!, 10!, PixelFormat24bppRGB)
+        Dim g1 As Graphics = Graphics(first)
+        Dim g2 As Graphics = Graphics(other)
+        Dim cached As CachedBitmap = CachedBitmap(tile, g1)
+        Expect.AreEqual 8, CLng(g2.DrawCachedBitmapI(cached, 2, 2)), "DrawCachedBitmapI on a Graphics of a bitmap with another pixel format returns (8 is WrongState)"
+        Expect.Done
+    End Sub
+
+End Module

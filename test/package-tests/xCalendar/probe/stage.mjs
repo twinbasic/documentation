@@ -24,7 +24,7 @@ export const crlf = (text) => text.replace(/\r?\n/g, "\r\n");
  * Write the source tree to %TEMP%\xcal-probe\tree-<key> and return its path.
  *
  * @param {object} o
- * @param {string} o.key       names the folder (the caller's port)
+ * @param {string} o.key       names the folder (the caller's process id)
  * @param {string} [o.form]    a .tbform file to use in place of src/Form1.tbform
  * @param {string[]} [o.set]   "Name=JSON" entries added to the control's entry in Form1.tbform
  * @throws {Error} when the package cannot be fetched or an entry of `set` is not Name=JSON

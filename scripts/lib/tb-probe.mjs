@@ -6,7 +6,7 @@
 //   * A wrapper. The attribute moves from the probe's Sub to a Sub appended to
 //     the same module, which calls the probe's Sub and then prints SENTINEL. A
 //     probe that stops before it returns -- End, or an error that ends the run
-//     without a word, as an unhandled one does on BETA 1005 in LLVM-compiled
+//     without a word, as an unhandled one does on BETA 1010 in LLVM-compiled
 //     and in plain code alike -- leaves no SENTINEL, which is how tbrun tells it from one that
 //     finished. Appended to the same module, so a Private probe Sub can be
 //     called. The attribute is blanked to spaces rather than deleted, so every
@@ -24,7 +24,7 @@ export const TBRUN_FILE = "TbRun.twin";
 export const IDE_FLAG = "tbrun_InIDE";
 
 // Lines the IDE prints after the probe's own run has returned. A probe that
-// leaves a form loaded gets this one after SENTINEL (BETA 1005).
+// leaves a form loaded gets this one after SENTINEL (BETA 1010).
 const AFTER_RETURN_RE = /^\[DEBUGGER\] Waiting for remaining forms to close\.\.\.$/;
 
 /**

@@ -15,7 +15,9 @@
 //     never into the install's addins\ or %APPDATA%\twinBASIC\addins\, and the
 //     IDE gets an APPDATA of its own there, so none of the user's add-ins loads.
 //   * The IDE's registry entries and the add-in's SaveSetting key (tbDocsHelp)
-//     are recorded first and put back once the IDE is closed.
+//     are recorded first and put back once the IDE is closed. The window
+//     geometry is not: the IDE is on the user's desktop, and where the user
+//     leaves it is the user's choice.
 //   * The test switch is on, as in every IDE the harness starts, so Open in
 //     browser prints `open <url>` to the DEBUG CONSOLE and starts nothing. The
 //     pane's pages come from the built site, docs/_site, served on localhost.
@@ -28,14 +30,14 @@ import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createStaticHandler } from "../builder/static-files.mjs";
-import { die, exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { die, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { serveLoopback } from "../test/addin/pages.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
-import { shutdownIde } from "./lib/tb-ide.mjs";
-import { findIde } from "./lib/tb-install.mjs";
+import { leaseSlot, shutdownIde } from "./lib/tb-ide.mjs";
+import { checkHarness } from "./lib/harness-settings.mjs";
+import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
-import { claimPorts } from "./lib/tb-ports.mjs";
 import { alive, finishTidy, restoreKeys, settingsKey, snapshotKeys, startTidy } from "./lib/tb-registry.mjs";
 
 const SETTINGS = "tbDocsHelp";
@@ -43,7 +45,7 @@ const ADDIN = path.join(REPO_ROOT, "add-in");
 const HOST = path.join(REPO_ROOT, "test", "addin", "helphost");
 const SITE = path.join(REPO_ROOT, "docs", "_site");
 
-const USAGE = `usage: node scripts/try_help_addin.mjs [--project <dir>] [--port N] [--ide <twinBASIC.exe>] [-h, --help]
+const USAGE = `usage: node scripts/try_help_addin.mjs [--project <dir>] [--ide <twinBASIC.exe>] [-h, --help]
 
 Opens an IDE on your desktop with the help add-in in add-in/ built and loaded,
 and waits until you close it. The add-in goes into a copy of the install in the
@@ -55,9 +57,6 @@ build.bat first.
   --project <dir>  the exported project to open (default test/addin/helphost,
                    the help lane's host); it is opened as a staged copy, so
                    edits made in the IDE are not kept
-  --port <n>       the IDE's DevTools port: the first free one from n (default
-                   9590), passing over one another run has claimed or
-                   something listens on
   --ide <path>     the twinBASIC.exe to copy (default: $TB_IDE, else the
                    newest twinBASIC_IDE_BETA_* on the Desktop)
   -h, --help       print this text and exit
@@ -73,7 +72,6 @@ const { values } = withUsageError(() =>
   parseCli(process.argv.slice(2), {
     options: {
       project: { type: "string" },
-      port: { type: "string" },
       ide: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -81,12 +79,16 @@ const { values } = withUsageError(() =>
   }),
 );
 if (values.help) printHelpAndExit(USAGE);
-const firstPort = withUsageError(() =>
-  numberOption(values.port ?? "9590", { option: "--port", integer: true, min: 1, max: 65535 }),
-);
 const project = path.resolve(values.project ?? HOST);
 
+// test/harness.json gives the IDE's waits their limits (test/harness.md).
+try {
+  checkHarness();
+} catch (e) {
+  die(2, e.message);
+}
 const ide = findIde(values.ide || undefined);
+if (unsupportedIde(ide)) die(2, unsupportedIde(ide));
 if (!ide || !existsSync(ide)) {
   die(
     2,
@@ -96,25 +98,29 @@ if (!ide || !existsSync(ide)) {
 }
 if (!existsSync(path.join(project, "Settings"))) die(2, `${project} is not an exported project: it has no Settings`);
 if (!existsSync(path.join(SITE, "tB", "symbols.json"))) die(2, `no built site in ${SITE}: run build.bat first`);
-let port;
+// The run's slot (tbbroker): the private desktop the add-in is built on, and the
+// number the work folder and project ids are keyed to; held until the tool ends.
+let slot;
 try {
-  [port] = await claimPorts(1, { from: firstPort });
+  slot = await leaseSlot({ tag: "try_help_addin" });
 } catch (e) {
   die(2, e.message);
 }
 
-const work = path.join(tmpdir(), "tbhelp-try", String(port));
+const work = path.join(tmpdir(), "tbhelp-try", String(slot.slot));
 try {
   removeTree(work);
 } catch (e) {
   die(2, `${work} could not be emptied (${e.code}): is an IDE from an earlier run still open?`);
 }
 mkdirSync(work, { recursive: true });
-const tidy = startTidy({ prefixes: [work] });
+// The IDE is on the user's desktop and the user's to move and resize, so the
+// window geometry it leaves in the registry is kept (`window: false`).
+const tidy = startTidy({ prefixes: [work], window: false });
 if (!tidy) die(2, "could not record the registry, so it could not be put back afterwards");
 const settingsBefore = snapshotKeys([settingsKey(SETTINGS)]);
 
-const lane = new Lane({ name: "try", port, work, ide, show: true });
+const lane = new Lane({ name: "try", slot: slot.slot, desktop: slot.desktop, work, ide, show: true });
 let server = null;
 let stopping = false;
 

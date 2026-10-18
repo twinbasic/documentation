@@ -39,6 +39,9 @@ has_toc: false
 **vbObjectError**{: #vbObjectError }
 : The base value for user-defined error numbers --- **&H80040000** (-2147221504). User-defined error numbers should be greater than this; for example, `Err.Raise vbObjectError + 1000`.
 
+**vbPtrSize**{: #vbPtrSize }
+: The size in bytes of a pointer in the current build, a **Long**: **4** in a 32-bit build and **8** in a 64-bit build. It is a constant, so it can be used in a constant expression and in an array bound; the size of a **LongPtr** in the same build. It is not a [compiler constant](../../../Reference/Compiler-Constants): `#If vbPtrSize = 8 Then` is always false, and conditional compilation tests **Win64** instead.
+
 **vbTab**{: #vbTab }
 : The tab character --- **Chr(9)**.
 

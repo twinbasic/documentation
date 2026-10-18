@@ -14,6 +14,7 @@ A [**Graphics**](Graphics) that also draws with the `Line`, `Circle` and `PSet` 
 
 The colours differ from Visual Basic's. A colour argument is a [**Color**](Types/Color) value in the layout `&HAARRGGBB`, with its alpha channel, and not a `COLORREF`.
 
+<!-- test: Gr_VBGraphicsTests.Line_ARGBColour_Draws, Gr_VBGraphicsTests.Line_VBColourRed_DrawsRed, Gr_VBGraphicsTests.Line_VBColourWithoutTransparentAlpha_DrawsThatColour, Gr_VBGraphicsTests.Line_AlphaZeroColour_IsInvisibleWithTransparentAlpha -->
 > [!WARNING] 0.9.45.0
 > `vbRed` and the result of `RGB` are `COLORREF` values with no alpha: `&H0000FF` has alpha 0, so with the default **UseTransparentAlpha** of **True** a line drawn in it is invisible. Pass `&HFFFF0000` for red, or `Color(255, 0, 0).Value`. With **UseTransparentAlpha** set to **False** a colour with alpha 0 is drawn opaque, but `vbRed` then comes out blue, because the bytes are read as `&HAARRGGBB`.
 
@@ -86,6 +87,7 @@ Syntax: *graphics*.**DrawWidth** [ = *width* ] As **Single**
 
 The width of the pen, in the units of the object. Setting the width of the pen changes how the lines of **Line**, **Circle** and **PSet** are drawn.
 
+<!-- test: Gr_VBGraphicsTests.DrawWidth_BeforeFirstDraw_ReadsOne, Gr_VBGraphicsTests.DrawWidth_AssignedBeforeFirstDraw_IsKept, Gr_VBGraphicsTests.DrawWidth_AfterFirstDraw_CanBeChanged -->
 > [!WARNING] 0.9.45.0
 > The pen is created by the first call to **Line**, **Circle** or **PSet**. Until then **DrawWidth** reads 0 and sets **LastResult** to 2, *InvalidParameter*, and an assignment to it is ignored without an error. Draw once before setting **DrawWidth**.
 
@@ -129,6 +131,7 @@ Draws a line, or with **B** a box with those opposite corners, or with **BF** a 
 
 **B** draws the outline in the colour. When **FillStyle** is solid, the inside is then filled with **FillColor**, over the inner half of the outline.
 
+<!-- test: Gr_VBGraphicsTests.Line_BoxFilled_FillsFromTheFirstCorner, Gr_VBGraphicsTests.Line_BoxOutline_DrawsTheCorners -->
 > [!WARNING] 0.9.45.0
 > **BF** fills the wrong rectangle: it starts at the second corner instead of the first, so the box is filled one box-height too low (its top is at *y2*). The outline is drawn where it should be. To fill a box, set **FillStyle** to solid and use **B**, or call **FillRectangle** of **Graphics**.
 
@@ -161,6 +164,7 @@ Syntax: *graphics*.**Circle** [ **Step** ] **(** *x*, *y* **)**, *radius* [, *co
 
 Draws a circle, or an ellipse, with its centre at the point. The outline is in *color*, or **ForeColor**, and the inside is filled with **FillColor** when **FillStyle** is solid. *aspect* is the ratio of the vertical to the horizontal size: below 1 the radius is the horizontal one and the ellipse is wider than tall, above 1 the radius is the vertical one.
 
+<!-- test: Gr_VBGraphicsTests.Circle_StartAndEnd_DrawAnArc, Gr_VBGraphicsTests.Circle_Full_DrawsTheOutline -->
 > [!WARNING] 0.9.45.0
 > *start* and *end*, which draw an arc or a pie, are not implemented. A call that gives either draws nothing and sets **LastResult** to 6, *NotImplemented*.
 
@@ -189,6 +193,7 @@ Syntax: *graphics*.**PSet** [ **Step** ] **(** *x*, *y* **)** [, *color* ]
 
 Draws a point in *color*, or **ForeColor**, and makes it the current position.
 
+<!-- test: Gr_VBGraphicsTests.PSet_SetsOnlyThePixel -->
 > [!WARNING] 0.9.45.0
 > The point is a line one unit long: **PSet** colours the pixel at (*x*, *y*) and the pixel below it. To set a single pixel, assign to the **Pixel** property of the **Bitmap**.
 

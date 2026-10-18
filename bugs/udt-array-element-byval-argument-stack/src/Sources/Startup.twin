@@ -1,0 +1,25 @@
+' A UDT of more than 4 bytes passed ByVal from an element of an array, in a 32-bit build.
+' The call itself runs (Take is entered with the right value), but the stack is wrong
+' afterwards: Main prints "after call" and then ends in an access violation as it
+' returns (the debugger's test mode never gets an answer from the same code). A UDT of
+' 4 bytes or less, a scalar UDT variable, the array element copied to a variable first,
+' and a ByRef parameter are all right. A 64-bit build and an LLVM build are right too.
+Module Startup
+
+    Public Type Pair
+        X As Long
+        Y As Long
+    End Type
+
+    Public Sub Take(ByVal p As Pair)
+        Debug.Print "in Take " & p.X
+    End Sub
+
+    Public Sub Main()
+        Dim a(1 To 3) As Pair
+        a(1).X = 5
+        Take a(1)
+        Debug.Print "after call"
+    End Sub
+
+End Module

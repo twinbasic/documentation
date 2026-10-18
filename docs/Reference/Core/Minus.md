@@ -39,7 +39,7 @@ The data type of *result* is usually the same as that of the most precise expres
 
 A declared (non-**Variant**) result that overflows raises error 6, *Overflow*. If one or both expressions are **Null** expressions, *result* is **Null**. If an expression is **Empty**, it is treated as 0.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > A subtraction whose result is a declared **Single** raises no error when the result overflows: the **Single** holds infinity (`1.#INF`) instead. VB6 raises error 6, *Overflow*. The compound form **-=** does the same. Declare the variable **Double** where an overflow must be caught.
 
 > [!NOTE]

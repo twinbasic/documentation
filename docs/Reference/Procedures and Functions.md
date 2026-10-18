@@ -19,6 +19,7 @@ permalink: /Reference/Procedures-and-Functions
 ## B
 
 - [Beep](../tB/Modules/Interaction/Beep) -- sounds a tone through the computer’s speaker
+- [Bin$, Bin](../tB/Modules/Conversion/Bin) -- returns a string representing the binary value of a number
 
 ## C
 

@@ -49,7 +49,7 @@ End Sub
 
 [**Changed**](#changed) is a two-way flag the page uses to talk to the host. Setting it to **True** enables the host's *Apply* button; the framework notifies the host immediately through **IPropertyPageSite.OnStatusChange**. Setting it to **False** clears the flag --- the framework does this automatically after raising [**ApplyChanges**](#applychanges).
 
-[**EditProperty**](#editproperty) is declared for VB6 compatibility but is not currently raised by the runtime; pages that want to react to a per-property edit request from the host need to wait until that wiring lands.
+[**EditProperty**](#editproperty) is raised when the host opens the page for one property, as it does for a property tied to the page with the [**PropertyPage**](../../../Core/Attributes#propertypage) attribute. The host passes the property's dispatch ID; the framework looks up the property's name on the first of the [**SelectedControls**](#selectedcontrols) and raises the event with it, after [**SelectionChanged**](#selectionchanged). The event is the page's cue to move the focus to the editor of that property.
 
 [**ValidateControls**](#validatecontrols) explicitly fires the focused child control's **Validate** event from code; it raises run-time error 380 if validation fails. Useful in [**ApplyChanges**](#applychanges) to refuse to apply when an editor's value is malformed.
 
@@ -631,15 +631,18 @@ Syntax: *object*\_**DragOver**( *Source* **As Control**, *X* **As Single**, *Y* 
 ### EditProperty
 {: .no_toc }
 
-> [!NOTE]
-> Declared for VB6 compatibility; not currently raised in twinBASIC. The host's **IPropertyPage2.EditProperty** request is acknowledged but does not propagate to a managed event yet.
-
-When implemented, raised when the host asks the page to give focus to the editor that corresponds to the named property --- typically because the user double-clicked that property in the property browser.
+Raised when the host asks the page, through **IPropertyPage2.EditProperty**, to give focus to the editor that corresponds to one property --- typically because the page was opened for that property from the property browser. The host identifies the property by its dispatch ID; the framework finds the name of that member on the first of the [**SelectedControls**](#selectedcontrols) and raises the event with it. The event is not raised when the name cannot be found, as when the page has no selected controls.
 
 Syntax: *object*\_**EditProperty**( *PropertyName* **As String** )
 
 *PropertyName*
 : The name of the property the host wants edited.
+
+```tb check_build inherits=PropertyPage
+Private Sub PropertyPage_EditProperty(PropertyName As String)
+    If PropertyName = "Caption" Then txtCaption.SetFocus
+End Sub
+```
 
 ### GotFocus
 {: .no_toc }

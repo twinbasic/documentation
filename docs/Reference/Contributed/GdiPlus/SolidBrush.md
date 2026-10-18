@@ -30,6 +30,7 @@ Syntax: *brush* **= New SolidBrush**( *rgb* )
 *rgb*
 : *required* A **Long** for the colour, as `&H00RRGGBB`. The alpha is always 255.
 
+<!-- test: Br_BrushColourTests.SolidBrush_VBColour_PaintsThatColour, Br_BrushColourTests.SolidBrush_SystemColour_IsTranslated, Br_BrushColourTests.SolidBrush_RGBForm_IsOpaque, Br_BrushColourTests.SolidBrush_CColorTransparent_PaintsNothing -->
 > [!WARNING] 0.9.45.0
 > The *rgb* form reads its **Long** as `&H00RRGGBB`, not as a VB colour: `SolidBrush(vbRed)` and `SolidBrush(RGB(255, 0, 0))` paint blue. The *rgb* form drops the alpha value, and a **CColor** member passed to it binds to it, so `SolidBrush(CColor.Transparent)` fills opaque white. [**IBrush**](IBrush#colours) lists what else is not translated. Use the **Color** form.
 
@@ -55,7 +56,9 @@ Debug.Print Hex$(bmp.Pixel(1, 1).argb)
 
 Syntax: *copy* **=** *brush*.**Clone**( )
 
+<!-- test: Br_BrushTests.SolidBrush_Clone_IsIndependent -->
 Returns a new **SolidBrush** with the same colour. Changing the copy does not change the original.
+<!-- /test -->
 
 ## Colour
 
@@ -71,6 +74,7 @@ Syntax: *brush*.**RGB** [ **=** *rgb* ]
 
 Gets or sets the colour as a **Long** in the form `&H00RRGGBB`. Reading it drops the alpha value, and writing it sets an opaque colour.
 
+<!-- test: Br_BrushColourTests.SolidBrush_RGBProperty_Let_TakesAVBColour, Br_BrushColourTests.SolidBrush_RGBProperty_Get_ReturnsAVBColour -->
 > [!WARNING] 0.9.45.0
 > **RGB** reads and writes `&H00RRGGBB` and not a VB colour, so assigning `vbRed` makes the brush blue. Use [**Color**](#color).
 

@@ -42,9 +42,9 @@ Debug.Print Fix(-8.4)            ' -8
 
 ## Numbers, strings, and bases
 
-[**Str**](Str), [**Hex**](Hex), and [**Oct**](Oct) all return a printable string representation of a number --- **Str** in decimal, **Hex** in base 16, and **Oct** in base 8. Going the other way, [**Val**](Val) and [**ValDec**](ValDec) parse leading digits out of a string, returning a **Double** or **Decimal** respectively; both stop at the first unrecognised character and both honour the `&H` and `&O` radix prefixes for hexadecimal and octal literals.
+[**Str**](Str), [**Hex**](Hex), [**Oct**](Oct), and [**Bin**](Bin) all return a printable string representation of a number --- **Str** in decimal, **Hex** in base 16, **Oct** in base 8, and **Bin** in base 2. Going the other way, [**Val**](Val) and [**ValDec**](ValDec) parse leading digits out of a string, returning a **Double** or **Decimal** respectively; both stop at the first unrecognised character and both honour the `&H` and `&O` radix prefixes for hexadecimal and octal literals.
 
-These five functions are *culture-invariant* --- they always use the period (`.`) as the decimal separator and never read or write a thousands separator --- which makes them appropriate for round-tripping through a fixed file format or wire protocol. For locale-aware conversion to and from text, use [**CStr**](CStr) and [**CDbl**](CDbl) (or [**CDec**](CDec)) instead.
+These six functions are *culture-invariant* --- they always use the period (`.`) as the decimal separator and never read or write a thousands separator --- which makes them appropriate for round-tripping through a fixed file format or wire protocol. For locale-aware conversion to and from text, use [**CStr**](CStr) and [**CDbl**](CDbl) (or [**CDec**](CDec)) instead.
 
 ```tb check_build
 Debug.Print Hex(255)             ' "FF"
@@ -64,6 +64,7 @@ Debug.Print Val("&HFF")          ' 255
 
 ## Members
 
+- [Bin](Bin) -- returns the binary representation of a number as a string
 - [CBool](CBool) -- converts an expression to a **Boolean**
 - [CByte](CByte) -- converts an expression to a **Byte**
 - [CCur](CCur) -- converts an expression to a **Currency**

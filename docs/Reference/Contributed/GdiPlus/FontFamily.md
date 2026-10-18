@@ -27,6 +27,7 @@ Syntax: *family* **= New FontFamily**( *name* [, *fontCollection*] )
 *fontCollection*
 : *optional* A [**FontCollection**](FontCollection) in which to look for the family. When it is omitted, the installed fonts are searched.
 
+<!-- test: Fx_FontTests.FontFamily_UnknownName_IsNotAvailable -->
 Creating a family does not fail when the name is unknown. The object is created, [**IsAvailable**](#isavailable) returns **False**, and **LastResult** is **FontFamilyNotFound**. Every other member then fails with **InvalidParameter** and returns an empty value.
 
 ```tb check_build check_run
@@ -38,6 +39,7 @@ Debug.Print missing.LastResult     ' 14
 Debug.Print missing.IsBoldAvailable    ' False
 Debug.Print missing.LastResult         ' 2
 ```
+<!-- /test -->
 
 ### Clone
 
@@ -53,6 +55,7 @@ Syntax: *family* **= GenericSerif**( )
 
 Syntax: *family* **= GenericMonospace**( )
 
+<!-- test: Fx_FontTests.GenericFamilies_AreCreatedOnceAndAreAvailable -->
 Each function returns a family that exists on every system, which makes it the safe choice for a font that must not fail. The families are a sans serif face, a serif face and a fixed-pitch face. Windows decides which installed font stands for each. The object is created on the first call and every later call returns the same object.
 
 ```tb check_build check_run
@@ -64,6 +67,7 @@ Debug.Print a Is GenericSansSerif()                ' True
 Debug.Print GenericSerif() Is GenericSansSerif()   ' False
 Debug.Print GenericMonospace().IsAvailable         ' True
 ```
+<!-- /test -->
 
 ## Name and availability
 
@@ -77,6 +81,7 @@ Syntax: *name* **=** *family*.**FamilyName** [ ( *language* ) ]
 
 Returns a **String** with the name of the family. The result is an empty string when the family is not available.
 
+<!-- test: Fx_FontTests.FamilyName_OfAnInstalledFamily_EqualsTheNameGiven, Fx_FontTests.FamilyName_OfAGenericFamily_HasNoNulCharacter, Fx_FontTests.FamilyName_WithTheNulRemoved_IsFoundByFontFamily, Fx_FontTests.FamilyName_WithTheNul_IsFoundByFontFamilyAndFont -->
 > [!WARNING] 0.9.45.0
 > **FamilyName** returns the name followed by a NUL character (`vbNullChar`). The name read back therefore does not equal the name that was given: `FontFamily("Arial").FamilyName = "Arial"` is **False**. Remove the character before comparing or displaying the name, for example with `Replace(name, vbNullChar, "")`. Passing the name, with its NUL, to **FontFamily**( ) or to **Font**( ) still finds the family.
 >

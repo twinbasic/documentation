@@ -24,15 +24,17 @@
 // started from its icon prints the same failure in the DEBUG CONSOLE instead and stays open, which
 // is not tested here.
 //
-// THE IDE SAVES ITS OPTIONS IN THE USER'S OWN REGISTRY (HKCU\Software\VB and VBA Program
-// Settings\twinBASIC_IDE\IDESettings). So, as soon as the project is open, the page's
-// hostAppObject is replaced by a proxy whose SaveIDESetting, ChangeWindowSetting and recent-list
-// calls do nothing, as customising.test.mjs does. THE USER'S CLIPBOARD IS NEVER TOUCHED: the
+// THE IDE IS STARTED WITH --no-save-ide-settings and --no-update-recent-files (IDE_FLAGS in
+// scripts/lib/tb-ide.mjs), so it writes none of its options to the user's own registry (HKCU\Software\VB
+// and VBA Program Settings\twinBASIC_IDE\IDESettings). The flags do not guard the Window key or the
+// removals from the recent list. So, as soon as the project is open, the page's hostAppObject is
+// replaced by a proxy whose ChangeWindowSetting and RemoveRecentsList calls do nothing, as
+// customising.test.mjs does. THE USER'S CLIPBOARD IS NEVER TOUCHED: the
 // Diagnostics panel copies with navigator.clipboard.writeText, which in the IDE's WebView2 writes
 // the Windows clipboard, so that and the host's copyClipboardIDE request are replaced by recorders
 // first. Nothing here reaches SaveSetting, so lanes.mjs names no settings for this lane.
 //
-// The tests share the lane's IDE in order. Each test states what BETA 1005 does; the tests named
+// The tests share the lane's IDE in order. Each test states what BETA 1010 does; the tests named
 // "control" pass whether or not the defects are fixed. If another fails after an IDE update, the
 // IDE has changed: update the entry in BUGS-TO-REPORT.md, or its report in bugs/filed/, the
 // callout on the page of docs/IDE/Code/ that carries it, and then this file.
@@ -44,7 +46,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { portTaken, sleep } from "../../scripts/lib/tb-ide.mjs";
+import { sleep } from "../../scripts/lib/tb-ide.mjs";
 import {
   answerMessageBox,
   clickAt,
@@ -84,12 +86,12 @@ const TWICE = lineIn(HELPERS_SRC, "Public Function Twice(");
 const BIG_VALUE = lineIn(HELPERS_SRC, "Public Const BigValue");
 const NARROWING = lineIn(HELPERS_SRC, "narrow = Twice(2)");
 
-// Blocks every call that writes the user's registry, and records every copy instead of letting it
+// Blocks every call the flags do not guard that writes the user's registry, and records every copy instead of letting it
 // reach the Windows clipboard (see the top of this file).
 const GUARD_JS = `(() => {
   if (window.__guarded) return;
   window.__guarded = true;
-  const blocked = new Set(["SaveIDESetting", "ChangeWindowSetting", "AddRecentsList", "RemoveRecentsList"]);
+  const blocked = new Set(["ChangeWindowSetting", "RemoveRecentsList"]);
   hostAppObject = new Proxy(hostAppObject, {
     get(target, key) {
       if (blocked.has(key)) return async () => undefined;
@@ -159,8 +161,6 @@ scenario("the code editor and its panels", (lane) => {
 
   // Starts the lane's IDE on the project, with its page guarded, and opens Editing.twin.
   async function start() {
-    // An ended IDE's WebView2 can hold the DevTools port for a while.
-    for (let i = 0; i < 150 && (await portTaken(lane.port)); i++) await sleep(200);
     c = await lane.open(PROJECT);
     await c.evaluate(GUARD_JS);
     await openFile(c, EDITING, { line: MAIN, column: 1 });

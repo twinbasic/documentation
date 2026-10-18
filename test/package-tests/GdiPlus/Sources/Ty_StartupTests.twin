@@ -1,0 +1,160 @@
+' Ty_StartupTests: GdiplusStartupInput and GdiplusStartupOutput (pages Types/GdiplusStartupInput and
+' Types/GdiplusStartupOutput).
+[TestFixture]
+Module Ty_StartupTests
+
+    ' A token of the hook function as the delegate declares it (a Long), with the four bytes after it.
+    Private Type Ty_TokenAndNeighbour
+        token As Long
+        neighbour As Long
+    End Type
+
+    ' ---- GdiplusStartupInput
+
+    [TestCase]
+    Public Sub Declared_VersionZeroIsRefused()
+        Expect.Begin
+        Dim blank As GdiplusStartupInput
+        Expect.AreEqual 0, blank.GdiplusVersion, "GdiplusVersion of a variable declared with Dim"
+        Dim failed As GdiPlusUser = GdiPlusUser(blank)
+        Expect.AreEqual 17, CLng(failed.LastResult), "LastResult of GdiPlusUser(blank) (UnsupportedGdiplusVersion)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Fields_VersionTwoWithStartupParametersStarts()
+        Expect.Begin
+        Dim settings As GdiplusStartupInput
+        settings.GdiplusVersion = 2
+        settings.StartupParameters = GdiplusStartupNoSetRound
+        Dim custom As GdiPlusUser = GdiPlusUser(settings)
+        Expect.AreEqual 0, CLng(custom.LastResult), "LastResult of GdiPlusUser(settings) with GdiplusVersion 2 and GdiplusStartupNoSetRound"
+        Expect.AreEqual 1, CLng(settings.StartupParameters), "StartupParameters after it was set to GdiplusStartupNoSetRound"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SuppressBackgroundThread_InputOnlyConstructorFails()
+        Expect.Begin
+        Dim settings As GdiplusStartupInput
+        settings.GdiplusVersion = 1
+        settings.SuppressBackgroundThread = True
+        Dim failed As GdiPlusUser = GdiPlusUser(settings)
+        Expect.AreEqual 2, CLng(failed.LastResult), "LastResult of GdiPlusUser(settings) with SuppressBackgroundThread = True (InvalidParameter)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SuppressBackgroundThread_ConstructorWithOutputStarts()
+        Expect.Begin
+        Dim settings As GdiplusStartupInput
+        settings.GdiplusVersion = 1
+        settings.SuppressBackgroundThread = True
+        Dim output As GdiplusStartupOutput
+        Dim user As GdiPlusUser = GdiPlusUser(settings, output)
+        Expect.AreEqual 0, CLng(user.LastResult), "LastResult of GdiPlusUser(settings, output) with SuppressBackgroundThread = True"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Function_NoArgumentsGivesVersionOne()
+        Expect.Begin
+        Dim settings As GdiplusStartupInput = GdiplusStartupInput()
+        Expect.AreEqual 1, settings.GdiplusVersion, "GdiplusVersion of GdiplusStartupInput()"
+        Expect.AreEqual 0, CLng(settings.StartupParameters), "StartupParameters of GdiplusStartupInput()"
+        Expect.Done
+    End Sub
+
+    ' The second form: a startup parameter first, version 2.
+    [TestCase]
+    Public Sub Function_StartupParametersFormGivesVersionTwo()
+        Expect.Begin
+        Dim settings As GdiplusStartupInput = GdiplusStartupInput(GdiplusStartupNoSetRound)
+        Expect.AreEqual 2, settings.GdiplusVersion, "GdiplusVersion of GdiplusStartupInput(GdiplusStartupNoSetRound)"
+        Expect.AreEqual 1, CLng(settings.StartupParameters), "StartupParameters of GdiplusStartupInput(GdiplusStartupNoSetRound)"
+        Expect.Done
+    End Sub
+
+    ' The third form: a version first.
+    [TestCase]
+    Public Sub Function_VersionFormGivesThatVersion()
+        Expect.Begin
+        Dim settings As GdiplusStartupInput = GdiplusStartupInput(3, GdiplusStartupDefault)
+        Expect.AreEqual 3, settings.GdiplusVersion, "GdiplusVersion of GdiplusStartupInput(3, GdiplusStartupDefault)"
+        Expect.AreEqual 0, CLng(settings.StartupParameters), "StartupParameters of GdiplusStartupInput(3, GdiplusStartupDefault)"
+        Expect.Done
+    End Sub
+
+    ' ---- GdiplusStartupOutput
+
+    [TestCase]
+    Public Sub Output_HooksAreSetAfterStartingWithTheOutput()
+        Expect.Begin
+        Dim settings As GdiplusStartupInput
+        settings.GdiplusVersion = 1
+        settings.SuppressBackgroundThread = True
+        Dim output As GdiplusStartupOutput
+        Expect.IsTrue output.NotificationHook = 0, "NotificationHook before GDI+ is started with the output"
+        Expect.IsTrue output.NotificationUnhook = 0, "NotificationUnhook before GDI+ is started with the output"
+        Dim user As GdiPlusUser = GdiPlusUser(settings, output)
+        Expect.IsTrue output.NotificationHook <> 0, "NotificationHook after GDI+ is started with the output"
+        Expect.IsTrue output.NotificationUnhook <> 0, "NotificationUnhook after GDI+ is started with the output"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ModuleFunctions_HookAndUnhookWithALongPtrToken()
+        Expect.Begin
+        Dim settings As GdiplusStartupInput
+        settings.GdiplusVersion = 1
+        settings.SuppressBackgroundThread = True
+        Dim output As GdiplusStartupOutput
+        Dim user As GdiPlusUser = GdiPlusUser(settings, output)
+        Dim token As LongPtr
+        Dim status As GpStatus = NotificationHook(token)
+        Expect.AreEqual 0, CLng(status), "the status of the module function NotificationHook(token) after GDI+ was started with the output"
+        Expect.IsTrue token <> 0, "the token that the module function NotificationHook returned"
+        If status = Ok Then NotificationUnhook token
+        Expect.Done
+    End Sub
+
+    ' The function in the output structure works with a Long token on a 32-bit program, and with the first
+    ' element of an array of two Longs on both.
+    [TestCase]
+    Public Sub NotificationHookProc_HooksAndUnhooksWithTheFirstElementOfAnArray()
+        Expect.Begin
+        Dim settings As GdiplusStartupInput
+        settings.GdiplusVersion = 1
+        settings.SuppressBackgroundThread = True
+        Dim output As GdiplusStartupOutput
+        Dim user As GdiPlusUser = GdiPlusUser(settings, output)
+        Dim slot(0 To 1) As Long
+        slot(1) = &H12345678
+        Dim status As GpStatus = output.NotificationHook(slot(0))
+        Expect.AreEqual 0, CLng(status), "the status of NotificationHookProc with the first element of an array of two Longs"
+        Expect.IsTrue slot(0) <> 0, "the token that NotificationHookProc returned"
+        output.NotificationUnhook slot(0)
+        Expect.Done
+    End Sub
+
+    ' The delegate takes the token as a Long. GDI+ writes a pointer-sized value, which in a 64-bit program
+    ' is eight bytes: the neighbour of the variable must stay as it was.
+    [TestCase]
+    Public Sub NotificationHookProc_DoesNotWriteBeyondTheToken()
+        Expect.Begin
+        Dim settings As GdiplusStartupInput
+        settings.GdiplusVersion = 1
+        settings.SuppressBackgroundThread = True
+        Dim output As GdiplusStartupOutput
+        Dim user As GdiPlusUser = GdiPlusUser(settings, output)
+        Dim t As Ty_TokenAndNeighbour
+        t.neighbour = &H12345678
+        Dim status As GpStatus = output.NotificationHook(t.token)
+        Dim neighbour As Long = t.neighbour
+        output.NotificationUnhook t.token
+        Expect.AreEqual 0, CLng(status), "NotificationHookProc called through the output"
+        Expect.AreEqual "12345678", Ty_Hex8(neighbour), "the four bytes after the Long token variable after NotificationHookProc wrote the token"
+        Expect.Done
+    End Sub
+
+End Module

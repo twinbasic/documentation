@@ -20,7 +20,8 @@ Syntax: *collection* **= PrivateFontCollection**( )
 
 Syntax: *collection* **= New PrivateFontCollection**
 
-> [!WARNING] 0.9.45.0, BETA 1005
+<!-- test: Fx_FontCollectionTests.PrivateFontCollection_Create_ReturnsAnEmptyCollection, Fx_FontCollectionTests.PrivateFontCollection_New_ReturnsACollection, Fx_FontCollectionTests.PrivateFontCollection_AddFontFile_AddsTheFamilyOfTheFile, Fx_FontCollectionTests.PrivateFontCollection_AddFontFile_MissingFile_ReturnsFileNotFound, Fx_FontCollectionTests.PrivateFontCollection_FontFromTheCollection_IsAvailable -->
+> [!WARNING] 0.9.45.0, BETA 1010
 > Creating a **PrivateFontCollection** raises run-time error 438, *Object doesn't support this property or method*, and the result is **Nothing**. The statement `Debug.Assert TypeOf (Me) Is PrivateFontCollection` in the class raises it. Even with that statement removed, the constructor does not store the native collection it creates, so the object has no handle and **AddFontFile**, **AddMemoryFont** and the members of **FontCollection** fail with **InvalidParameter**. The class cannot be used until a version of the package corrects both.
 
 ## AddFontFile

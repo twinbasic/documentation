@@ -70,6 +70,11 @@ Whenever the control is about to leave the current record --- through a navigati
 
 ## Properties
 
+### Anchors
+{: .no_toc }
+
+The set of edges of the parent that the Data control's corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+
 ### Appearance
 {: .no_toc }
 
@@ -80,7 +85,7 @@ Determines how the control's border is drawn by the OS. A member of [**Appearanc
 
 The fill colour of the band behind the [**Caption**](#caption), as an **OLE_COLOR**. Defaults to the system window-background colour.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > Assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. Check a colour that comes from user input before assigning it.
 
 ### BOFAction
@@ -130,6 +135,18 @@ The cursor driver to use when [**DefaultType**](#defaulttype) is **vbUseODBC**. 
 
 The database engine to use. A member of [**DatabaseTypeConstants**](../../VBRUN/Constants/DatabaseTypeConstants): **vbUseJet** (2, default), **vbUseODBC** (1), or **vbUseACE** (3 --- new in twinBASIC, uses the Access ACE engine). Read once when the recordset is opened.
 
+### Dock
+{: .no_toc }
+
+Where the Data control is docked within its container. A member of [**DockModeConstants**](../../VBRUN/Constants/DockModeConstants): **vbDockNone** (default), **vbDockLeft**, **vbDockTop**, **vbDockRight**, **vbDockBottom**, or **vbDockFill**. Docked Data controls ignore [**Anchors**](#anchors). Several controls docked to the same container are ordered by [**DockOrder**](#dockorder).
+
+### DockOrder
+{: .no_toc }
+
+The order in which the Data control is docked among the docked controls of its container. A **Long**, default 0. A control with a lower value is docked first and so lies nearer the container's edge; controls with equal values are docked in the order they were added to the form. A negative value is allowed. Setting the property at run time lays out the container again at once. A Data control whose [**Dock**](#dock) is **vbDockNone** ignores it.
+
+A control docked first takes the whole of its edge, and a later control is placed in what remains: of a left-docked and a top-docked control, the one with the lower value spans the full height or width. A control docked with **vbDockFill** takes the space that remains when its turn comes, so give it the largest value of the docked controls to leave the edges to the others.
+
 ### DragIcon
 {: .no_toc }
 
@@ -165,7 +182,7 @@ The **StdFont** used to render [**Caption**](#caption). The convenience properti
 
 The text colour for the caption, as an **OLE_COLOR**. Defaults to the system window-text colour. A disabled control draws the caption in the system grey-text colour instead.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > Assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. Check a colour that comes from user input before assigning it.
 
 ### Height

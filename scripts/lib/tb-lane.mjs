@@ -2,8 +2,12 @@
 // it. WIP.HelpAddin.md, Stage 1 item 7.
 //
 // scripts/addin_test.mjs runs every scenario file in a node:test process of
-// its own, and hands it its lane in TB_ADDIN_LANE: a DevTools port, a work
-// folder inside the temp folder, and the install to copy. The lane makes its
+// its own, and hands it its lane in TB_ADDIN_LANE: a slot from tbbroker (a
+// private desktop, and the number its project ids are keyed to; the runner holds
+// it for as long as the process runs), a work folder inside the temp folder, and
+// the install to copy. Each IDE's DevTools port is one Windows picks (launchIde),
+// so `lane.port` is the open IDE's. A lane made outside the runner leases a slot
+// of its own the first time it needs one, and gives it back on close(). The lane makes its
 // own copy of that install (tb-ide-copy.mjs), builds the add-ins its scenarios
 // test into the copy's addins\win32, and opens projects in the copy, one IDE at
 // a time. The runner owns the registry for the whole run and puts it back once
@@ -19,6 +23,19 @@
 // A scenario file gets its lane through scenario() in test/addin/scenario.mjs,
 // which shows the outline of one. Outside the runner addinLane() returns null
 // and the scenario is skipped, so a bare `node --test` never starts an IDE.
+//
+// Every IDE a runner's lane opens has a page of PAGE, 1600 by 1000 CSS pixels,
+// from the moment the lane attaches to it, whatever the window's size. The IDE
+// opens its window at the geometry the user's own IDE last left in the registry
+// (the Window key, which the harness puts back but never sets), so without it
+// the page is whatever the user's window makes it: 800 by 600 for a 1200 by
+// 900 window at 150%, where a tool window floats over the toolbar's buttons and
+// most of the code editor, which the scenarios click and hover, and a scenario
+// passes on one machine and fails on another. A lane in lanes.mjs can name
+// another size with `page` (null for the window's own), and Lane.open takes one
+// for a single IDE; fixPageSize changes it while the IDE is open. A Lane made
+// outside the runner (try_help_addin, shoot_docs) leaves the page alone unless
+// it is given a `page`.
 
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
@@ -27,10 +44,10 @@ import { addAddin, makeIdeCopy, removeIdeCopy } from "./tb-ide-copy.mjs";
 import {
   attachIde,
   awaitCrashName,
-  COMPILE_TIMEOUT,
   compileOutcome,
   compilerPid,
   launchIde,
+  leaseSlot,
   readCrash,
   setBuildTarget,
   shutdownIdeAsync,
@@ -44,25 +61,46 @@ import { laneProjectId, stageProject, unpackProject } from "./tb-project.mjs";
 /** The environment variable the runner hands a lane to its scenario file in. */
 export const LANE_ENV = "TB_ADDIN_LANE";
 
-/** The lane this process runs in, or null outside the runner. */
+/** The size a runner's lane gives each IDE's page, in CSS pixels (see the top of this file). */
+export const PAGE = Object.freeze({ width: 1600, height: 1000 });
+
+/**
+ * Give the IDE's page `size`, whatever the window's size, at the display's own
+ * density (Emulation.setDeviceMetricsOverride with deviceScaleFactor 0). A tool
+ * window first shown after this is centred in it. The size holds until it is
+ * changed again or the connection closes.
+ *
+ * @param {object} c  the connection, Lane.open's
+ * @param {{ width: number, height: number }} [size]  PAGE by default
+ */
+export const fixPageSize = (c, size = PAGE) =>
+  c.send("Emulation.setDeviceMetricsOverride", { ...size, deviceScaleFactor: 0, mobile: false });
+
+/** The lane this process runs in, or null outside the runner. Its page is PAGE unless the runner names another. */
 export function addinLane() {
   const raw = process.env[LANE_ENV];
-  return raw ? new Lane(JSON.parse(raw)) : null;
+  return raw ? new Lane({ page: PAGE, ...JSON.parse(raw) }) : null;
 }
 
 export class Lane {
   /**
    * @param {object} o
    * @param {string} o.name     the lane's name, for messages
-   * @param {number} o.port     its DevTools port
+   * @param {number} [o.slot]   its slot's number, when the runner holds the slot for it
+   * @param {string} [o.desktop]  that slot's desktop
    * @param {string} o.work     its work folder, inside the temp folder
    * @param {string} o.ide      the install's twinBASIC.exe, which the lane copies
    * @param {boolean} [o.show]  IDEs on the user's desktop instead of a private one
    * @param {string} [o.browserArgs]  more WebView2 browser arguments for every IDE
    *   the lane opens, as launchIde takes them
+   * @param {{ width: number, height: number } | null} [o.page]  the size each IDE's
+   *   page is given as the lane attaches to it (fixPageSize); null, the default,
+   *   leaves the window's own. addinLane gives a runner's lane PAGE
    */
-  constructor({ name, port, work, ide, show = false, browserArgs = "" }) {
-    Object.assign(this, { name, port, work, ide, show, browserArgs });
+  constructor({ name, slot = null, desktop = null, work, ide, show = false, browserArgs = "", page = null }) {
+    Object.assign(this, { name, slot, desktop, work, ide, show, browserArgs, page });
+    this.port = null; // the open IDE's DevTools port
+    this.lease = null; // the slot, as launchIde takes it (leased())
     this.exe = null; // the lane's copy of the install, made on first use
     this.run = null; // the open IDE, from launchIde
     this.c = null; // the connection to it
@@ -72,6 +110,20 @@ export class Lane {
     // The APPDATA every IDE of the lane is started with; the IDE makes
     // twinBASIC\{addins\win32,addins\win64,packages,themes,locale} in it.
     this.appdata = path.join(work, "appdata");
+  }
+
+  // The lane's slot: the runner's, or one leased the first time an IDE needs it,
+  // held until close().
+  async leased() {
+    if (!this.lease) {
+      const none = async () => {};
+      this.lease = this.slot
+        ? { slot: this.slot, desktop: this.desktop, port: 0, handTo: none, release: none }
+        : await leaseSlot({ tag: `lane ${this.name}` });
+      this.slot = this.lease.slot;
+      this.desktop = this.lease.desktop;
+    }
+    return this.lease;
   }
 
   // The lane's copy of the install, made the first time anything needs it. A
@@ -135,20 +187,16 @@ export class Lane {
    * @param {string} [o.arch]  the build target, "win32" (the default) or "win64"
    * @param {boolean} [o.show]  build on the user's desktop; by default where the
    *   lane opens its IDEs
-   * @param {number} [o.port]  the building IDE's DevTools port, by default the
-   *   lane's. An IDE's WebView2 can keep listening on its port for a while after
-   *   the IDE ends, so a caller that opens the lane's IDE straight after the build
-   *   can build on a port of its own instead.
    * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
    *   buildAddin's result; it throws, with an exitCode, when the add-in does not build
    */
-  async buildAddin(src, { arch = "win32", show = this.show, port = this.port } = {}) {
+  async buildAddin(src, { arch = "win32", show = this.show } = {}) {
     if (this.run) throw new Error(`lane ${this.name}: close the open project before building an add-in`);
     return buildAddin({
       ide: this.copy(),
       src,
       work: path.join(this.work, `addin${++this.builds}`),
-      port,
+      slot: await this.leased(),
       arch,
       show,
       appdata: this.appdataDir(),
@@ -164,12 +212,11 @@ export class Lane {
    * @param {object} [o]
    * @param {string} [o.arch]  as for buildAddin
    * @param {boolean} [o.show]  as for buildAddin
-   * @param {number} [o.port]  as for buildAddin
    * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
    *   as buildAddin
    */
-  async addAddin(src, { arch = "win32", show = this.show, port = this.port } = {}) {
-    const built = await this.buildAddin(src, { arch, show, port });
+  async addAddin(src, { arch = "win32", show = this.show } = {}) {
+    const built = await this.buildAddin(src, { arch, show });
     this.placeAddin(built.dll, { arch });
     return built;
   }
@@ -198,7 +245,7 @@ export class Lane {
    * Open a project in the lane's copy and wait for its compile to settle: the
    * tree is staged and packed as tbrun stages a probe (tb-project.mjs), with
    * its build path pinned inside the work folder, and started on the lane's
-   * port. Refuses a project that does not compile, since a scenario on it
+   * desktop. Refuses a project that does not compile, since a scenario on it
    * would be testing something else.
    *
    * The IDE is started with the lane's own APPDATA (see the top of this file),
@@ -206,7 +253,7 @@ export class Lane {
    *
    * @param {string} src        an exported tree: the folder holding Settings and Sources
    * @param {object} [o]
-   * @param {number} [o.timeout]  milliseconds for the compile to settle (default COMPILE_TIMEOUT)
+   * @param {number} [o.timeout]  milliseconds for the compile phase (default waitForCompile's: test/harness.json's compile)
    * @param {object} [o.env]      extra environment for the IDE, as launchIde takes it.
    *                              An add-in reads it with Environ$, since it runs in the
    *                              compiler's process, which the IDE starts (P10)
@@ -215,11 +262,16 @@ export class Lane {
    *                              writes into the project's folder
    * @param {string} [o.buildPath]  the project's build path (default <work>\out\<name>.exe),
    *                              for a build whose output path is shown
+   * @param {string[]} [o.flags]  the IDE's command-line flags, as launchIde takes them
+   *                              (default IDE_FLAGS)
+   * @param {{ width: number, height: number } | null} [o.page]  the page's size for this
+   *                              IDE (default the lane's `page`); null leaves the window's own
    * @returns {Promise<object>} the connection (attachIde's), which the tb-operate.mjs calls take
    */
-  async open(src, { timeout = COMPILE_TIMEOUT, env = {}, folder = this.work, buildPath = null } = {}) {
+  async open(src, { timeout, env = {}, folder = this.work, buildPath = null, flags, page = this.page } = {}) {
     if (this.run) throw new Error(`lane ${this.name} has a project open already: one IDE at a time`);
     const exe = this.copy();
+    const slot = await this.leased();
     mkdirSync(folder, { recursive: true });
     const project = path.join(folder, "project.twinproj");
     stageProject({
@@ -228,21 +280,23 @@ export class Lane {
       project,
       settings: (original) => ({
         "project.buildPath": buildPath ?? path.join(this.work, "out", `${original["project.name"]}.exe`),
-        "project.id": laneProjectId(2, this.port),
+        "project.id": laneProjectId(2, slot.slot),
       }),
     });
     const appdata = this.appdataDir();
     this.run = await launchIde({
       exe,
       project,
-      port: this.port,
+      slot,
       show: this.show,
       env: { APPDATA: appdata, ...env },
       browserArgs: this.browserArgs,
+      flags,
     });
-    Object.assign(this, { src, project });
+    Object.assign(this, { src, project, port: this.run.port });
     this.c = await attachIde(this.port);
     if (!this.c) throw new Error(`lane ${this.name}: the IDE never exposed a debug port`);
+    if (page) await fixPageSize(this.c, page);
     this.checkCompile(await waitForCompile(this.c, { project, timeout }), src);
     // Checked against whatever APPDATA the IDE was given: `env` can name another.
     const given = "APPDATA" in env ? env.APPDATA : appdata;
@@ -261,21 +315,23 @@ export class Lane {
    *
    * @param {object} [o]
    * @param {object} [o.env]  extra environment for the IDE, as for open
+   * @param {{ width: number, height: number } | null} [o.page]  as for open
    * @returns {Promise<object>} the connection (attachIde's)
    */
-  async openNoProject({ env = {} } = {}) {
+  async openNoProject({ env = {}, page = this.page } = {}) {
     if (this.run) throw new Error(`lane ${this.name} has an IDE open already: one IDE at a time`);
     const exe = this.copy();
     this.run = await launchIde({
       exe,
-      port: this.port,
+      slot: await this.leased(),
       show: this.show,
       env: { APPDATA: this.appdataDir(), ...env },
       browserArgs: this.browserArgs,
     });
-    Object.assign(this, { src: null, project: null });
+    Object.assign(this, { src: null, project: null, port: this.run.port });
     this.c = await attachIde(this.port);
     if (!this.c) throw new Error(`lane ${this.name}: the IDE never exposed a debug port`);
+    if (page) await fixPageSize(this.c, page);
     return this.c;
   }
 
@@ -299,7 +355,7 @@ export class Lane {
    *
    * @returns {Promise<number>} the new compiler's process id
    */
-  async restartCompiler({ timeout = COMPILE_TIMEOUT } = {}) {
+  async restartCompiler({ timeout } = {}) {
     if (!this.c) throw new Error(`lane ${this.name} has no project open`);
     const { pid, waited } = await restartCompiler(this.c, { project: this.project, timeout });
     this.checkCompile(waited, `${this.src}, after the restart,`);
@@ -311,11 +367,12 @@ export class Lane {
    * and Ctrl+F1 do (setBuildTarget in tb-ide.mjs), and wait for the compile
    * under it. A switch restarts the compiler in the target's bitness, and the
    * new one loads the add-ins in addins\<arch> (P7). The IDE remembers the
-   * target for the project's path, which the runner's registry tidy deletes.
+   * target for the project's path, which an IDE started with IDE_FLAGS does not
+   * save.
    *
    * @returns {Promise<number>} the process id of the compiler now running
    */
-  async setBuildTarget(arch, { timeout = COMPILE_TIMEOUT } = {}) {
+  async setBuildTarget(arch, { timeout } = {}) {
     if (!this.c) throw new Error(`lane ${this.name} has no project open`);
     const { waited } = await setBuildTarget(this.c, arch, { project: this.project, timeout });
     if (waited) this.checkCompile(waited, `${this.src}, built for ${arch},`);
@@ -362,13 +419,15 @@ export class Lane {
     if (problems.length) throw new Error(`lane ${this.name}: ${problems.join("; ")}`);
   }
 
-  /** closeProject, then delete the lane's copy of the install. For scenario(). */
+  /** closeProject, then delete the lane's copy of the install and give back a slot of its own. For scenario(). */
   async close() {
     try {
       await this.closeProject();
     } finally {
       if (this.exe && existsSync(this.exe)) removeIdeCopy(this.exe);
       this.exe = null;
+      await this.lease?.release();
+      this.lease = null;
     }
   }
 }

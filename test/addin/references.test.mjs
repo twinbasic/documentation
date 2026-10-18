@@ -11,7 +11,7 @@
 // add-in is loaded and removes it again, on the References page, as a person
 // does.
 //
-// Each test states what BETA 1005 does. If one fails after an IDE update, the
+// Each test states what BETA 1010 does. If one fails after an IDE update, the
 // IDE has changed: update P20 in WIP.HelpAddin.md, and the Folder page
 // (docs/Reference/Built-In/tbIDE/Folder.md), and then this file.
 //
@@ -389,7 +389,7 @@ scenario("P20: the packages a project references, in the virtual file system", (
     );
     assert.ok(closed, "the Settings editor stayed open");
     await sleep(2000);
-    const waited = await waitForCompile(c, { project: lane.project, timeout: 90 * 1000 });
+    const waited = await waitForCompile(c, { project: lane.project });
     const outcome = compileOutcome(waited, { name: lane.project });
     assert.ok(outcome.ok, `the compiler did not settle: ${outcome.message}`);
     assert.equal(outcome.counts[0], 0, `the compile has errors: ${outcome.rows.join("\n")}`);

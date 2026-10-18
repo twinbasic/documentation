@@ -17,6 +17,7 @@ A program that leaves the background thread on never needs this type.
 
 ## Fields
 
+<!-- test: Ty_StartupTests.Output_HooksAreSetAfterStartingWithTheOutput -->
 ### NotificationHook
 
 A [**NotificationHookProc**](#notificationhookproc). **0** until GDI+ has been started with the output.
@@ -24,6 +25,7 @@ A [**NotificationHookProc**](#notificationhookproc). **0** until GDI+ has been s
 ### NotificationUnhook
 
 A [**NotificationUnhookProc**](#notificationunhookproc). **0** until GDI+ has been started with the output.
+<!-- /test -->
 
 ## Delegates
 
@@ -35,15 +37,18 @@ A [**NotificationUnhookProc**](#notificationunhookproc). **0** until GDI+ has be
 
 **Sub**( *token* As **ULONG** ). Stops it. Pass the token that the hook returned.
 
+<!-- test: Ty_StartupTests.NotificationHookProc_DoesNotWriteBeyondTheToken, Ty_StartupTests.NotificationHookProc_HooksAndUnhooksWithTheFirstElementOfAnArray -->
 > [!WARNING] 0.9.45.0
-> The token is declared as a 32-bit **Long**, and in a 64-bit program GDI+ writes a 64-bit value into it. **NotificationHookProc** overwrites the four bytes after the variable. Use the module functions **NotificationHook** and **NotificationUnhook** below, whose token is a **LongPtr**.
+> The token is declared as a 32-bit **Long**, and in a 64-bit program GDI+ writes a 64-bit value into it. **NotificationHookProc** overwrites the four bytes after the variable. Pass the first element of an array of two **Long** values, as in the sample below, so that the four bytes it overwrites belong to nothing else.
 
 ## Module functions
 
 Syntax: **NotificationHook**( *token* As **LongPtr** ) As **GpStatus** \
 Syntax: **NotificationUnhook**( *token* As **LongPtr** )
 
-Call the two functions of GDI+ directly. They work only after GDI+ has been started with a [**GdiplusStartupInput**](GdiplusStartupInput) whose **SuppressBackgroundThread** is **True**, through the constructor that takes an output.
+<!-- test: Ty_StartupTests.ModuleFunctions_HookAndUnhookWithALongPtrToken -->
+> [!WARNING] 0.9.45.0
+> **NotificationHook** returns status 1, *GenericError*, and leaves the token 0, also after GDI+ was started with a [**GdiplusStartupInput**](GdiplusStartupInput) whose **SuppressBackgroundThread** is **True** through the constructor that takes an output. The function it declares is not the one in the output. Call the **NotificationHook** and **NotificationUnhook** fields of the output, as in the sample below.
 
 ```tb check_build check_run
 Dim settings As GdiplusStartupInput
@@ -54,10 +59,11 @@ Dim user As GdiPlusUser = GdiPlusUser(settings, output)
 Debug.Print user.LastResult                                      ' 0
 Debug.Print output.NotificationHook <> 0                         ' True
 Debug.Print output.NotificationUnhook <> 0                       ' True
-Dim token As LongPtr
-Dim status As GpStatus = NotificationHook(token)
+Dim slot(0 To 1) As Long
+Dim status As GpStatus = output.NotificationHook(slot(0))
+Debug.Print status                                               ' 0
 ' ... the program's message loop runs here ...
-NotificationUnhook token
+output.NotificationUnhook slot(0)
 ```
 
 ## See Also

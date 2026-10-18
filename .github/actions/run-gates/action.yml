@@ -133,14 +133,18 @@ runs:
     - name: Unit-test check_examples' batches (test/example-batches.test.mjs)
       shell: bash
       run: node --test test/example-batches.test.mjs
-    # Unit tests for scripts/lib/tb-ports.mjs, which claims the DevTools ports
-    # the harness's IDEs use: two claims at once are disjoint, a port in use
-    # and a live lock are passed over, a stale lock is taken over; and for what
-    # ending an IDE removes of its temp folder and profile. Starts no IDE. No
-    # browser, no built tree, about 2 s.
-    - name: Unit-test the harness's port claims (test/ports.test.mjs)
+    # Unit tests for what ending an IDE removes of its temp folder and profile
+    # (shutdownIde in scripts/lib/tb-ide.mjs), and no other folder. Starts no
+    # IDE. No browser, no built tree, well under a second.
+    - name: Unit-test the folders an IDE leaves (test/ide-folders.test.mjs)
       shell: bash
-      run: node --test test/ports.test.mjs
+      run: node --test test/ide-folders.test.mjs
+    # tbbroker (scripts/broker/, WIP.Broker.md) and its client,
+    # scripts/lib/tb-broker.mjs. It needs a built broker and Windows, so here
+    # it reports itself skipped; it runs where TBBROKER_EXE names the exe.
+    - name: Test the broker (test/broker.test.mjs)
+      shell: bash
+      run: node --test test/broker.test.mjs
     # Unit tests for builder/addin-project.mjs, which packs add-in/ into the
     # help add-in's project file the build publishes: the project holds exactly
     # the files git tracks there, never Resources/HELP/, and the same bytes from

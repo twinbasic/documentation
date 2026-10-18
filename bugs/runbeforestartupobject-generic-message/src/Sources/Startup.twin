@@ -1,0 +1,13 @@
+' The project compiles with no diagnostic. Its build fails with "Build FAILED due to
+' invalid RunBeforeStartupObject procedure", which names neither Pre nor the reason,
+' that Pre is generic. (BETA 1005 crashed the compiler here: #2517.)
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+    [RunBeforeStartupObject]
+    Public Sub Pre(Of T)()
+    End Sub
+
+End Module

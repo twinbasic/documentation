@@ -1,9 +1,10 @@
 // Runs a built xCalendar probe exe on a private desktop.
 //
-//   node test/package-tests/xCalendar/probe/run-exe.mjs <exe> <probe-ids> [--timeout S] [--desktop NAME] [--shots DIR]
+//   node test/package-tests/xCalendar/probe/run-exe.mjs <exe> <probe-ids> [--timeout S] [--shots DIR]
 //
-// The exe is started as tbrun --exe starts it (launchOnDesktop: a private desktop, in a
-// kill-on-close job, so nothing appears on the user's desktop), and what it wrote with TbRun.Out
+// The exe is started as tbrun --exe starts it (launchOnDesktop: a private desktop from tbbroker,
+// held while the exe runs, in a kill-on-close job, so nothing appears on the user's desktop), and
+// what it wrote with TbRun.Out
 // is read from the file TBRUN_OUT names. Unlike the Dialog probe's runner this one lets
 // launchOnDesktop close the boxes the exe opens (an unhandled error in the control opens one) and
 // lists them, since the probe's own automation operates no dialog.
@@ -24,13 +25,12 @@ import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError }
 import { captureWindow, desktopWindows, killTree, launchOnDesktop } from "../../../../scripts/lib/tb-ide.mjs";
 import { faultText, recordedFault } from "../../../../scripts/lib/win-fault.mjs";
 
-const USAGE = `usage: node test/package-tests/xCalendar/probe/run-exe.mjs <exe> <probe-ids> [--timeout S] [--desktop NAME] [--shots DIR] [-h, --help]
+const USAGE = `usage: node test/package-tests/xCalendar/probe/run-exe.mjs <exe> <probe-ids> [--timeout S] [--shots DIR] [-h, --help]
 
 Runs the xCalendar probe exe on a private desktop, with the scenarios <probe-ids> names
 (comma-separated, as listed at the top of src/Probe.twin), and prints what they report.
 
   --timeout S      end the exe after S seconds (default 33)
-  --desktop NAME   the private desktop's name (default xcalprobe-<pid>)
   --shots DIR      photograph the form window when the exe asks (scenario 15) into DIR
   -h, --help       print this text and exit
 
@@ -46,7 +46,6 @@ const { values, positionals } = withUsageError(
     parseCli(process.argv.slice(2), {
       options: {
         timeout: { type: "string", default: "33" },
-        desktop: { type: "string" },
         shots: { type: "string" },
         help: { type: "boolean", short: "h" },
       },
@@ -60,7 +59,6 @@ const timeoutS = withUsageError(() => numberOption(values.timeout, { option: "--
 
 const [exe, probe] = positionals;
 const timeoutMs = timeoutS * 1000;
-const desktop = values.desktop || `xcalprobe-${process.pid}`;
 const outFile = path.join(tmpdir(), `xcalprobe-out-${process.pid}.txt`);
 const ackBase = path.join(tmpdir(), `xcalprobe-ack-${process.pid}-`);
 rmSync(outFile, { force: true });
@@ -69,10 +67,12 @@ if (values.shots) mkdirSync(values.shots, { recursive: true });
 
 const run = await launchOnDesktop({
   exe: path.resolve(exe),
-  desktop,
+  tag: `xCalendar probe ${probe}`,
   env: { ...process.env, TBRUN_OUT: outFile, PROBE: probe, PROBE_ACK: ackBase },
   dialogs: "close",
 });
+// The exe's desktop, held for as long as it runs.
+const { desktop } = run;
 
 // Pictures: watch the output for SHOT lines.
 let watching = true;

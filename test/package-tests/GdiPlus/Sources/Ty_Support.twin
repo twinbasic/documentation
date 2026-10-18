@@ -1,0 +1,49 @@
+' Ty_Support: what the test cases of the value types (the Ty_ modules) share. Nothing here is a test case.
+Module Ty_Support
+
+    ' A colour as eight hexadecimal digits, so that a report reads FF223344 and not -14400700.
+    Public Function Ty_Hex8(ByVal Value As Long) As String
+        Ty_Hex8 = Right$("00000000" & Hex$(Value), 8)
+    End Function
+
+    ' Checks that two Single values are the same within Tolerance; a failure reads as AreEqual's does.
+    Public Sub Ty_Near(ByVal Expected As Double, ByVal Actual As Double, ByVal Tolerance As Double, ByVal What As String)
+        If Abs(Expected - Actual) > Tolerance Then Expect.Fail What & ": expected " & Expected & ", got " & Actual
+    End Sub
+
+    ' The pixel at (1, 1) of a 4 x 4 bitmap that was cleared to Background and then filled with Brush.
+    Public Function Ty_FillOver(ByVal Background As Color, ByRef Brush As SolidBrush) As Color
+        Dim bmp As Bitmap = Bitmap(4!, 4!)
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear Background
+        g.FillRectangle Brush, 0, 0, 4, 4
+        Return bmp.Pixel(1, 1)
+    End Function
+
+    ' The pixel at (4, 4) of an 8 x 8 bitmap that was cleared to Background and crossed by a line of Stroke
+    ' along y = 4.5, which fills exactly row 4.
+    Public Function Ty_LineOver(ByVal Background As Color, ByRef Stroke As Pen) As Color
+        Dim bmp As Bitmap = Bitmap(8!, 8!)
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear Background
+        g.DrawLine Stroke, 0!, 4.5!, 8!, 4.5!
+        Return bmp.Pixel(4, 4)
+    End Function
+
+    ' The pixel at (1, 1) of a 4 x 4 bitmap that was cleared with the Long overload of Graphics.Clear.
+    Public Function Ty_ClearedWithLong(ByVal Colour As Long) As Color
+        Dim bmp As Bitmap = Bitmap(4!, 4!)
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear Colour
+        Return bmp.Pixel(1, 1)
+    End Function
+
+    ' The pixel at (1, 1) of a 4 x 4 bitmap that was cleared with the Color overload of Graphics.Clear.
+    Public Function Ty_ClearedWith(ByVal Colour As Color) As Color
+        Dim bmp As Bitmap = Bitmap(4!, 4!)
+        Dim g As Graphics = Graphics(bmp)
+        g.Clear Colour
+        Return bmp.Pixel(1, 1)
+    End Function
+
+End Module

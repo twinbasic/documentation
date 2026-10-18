@@ -11,7 +11,7 @@
 // The last test is what ToolWindows.Add does with windows given no id, which
 // P9 turned up.
 //
-// Each test states what BETA 1005 does. If one fails after an IDE update, the
+// Each test states what BETA 1010 does. If one fails after an IDE update, the
 // IDE has changed: update P3, P4 and P12 in WIP.HelpAddin.md and the tbIDE
 // pages that rest on them (HtmlElement, HtmlElementProperties, HtmlElements,
 // ToolWindow, ToolWindows), and then this file.
@@ -113,6 +113,8 @@ scenario("P3, P4 and P12: HTML and a web page in a tool window", (lane) => {
     pages = await servePages();
     origin = `http://localhost:${pages.port}/`;
     await lane.addAddin(PROBE);
+    // The lane gives the page 1600 by 1000: in a page as small as the user's IDE
+    // window can make it, the tool window floats over the probe's toolbar buttons.
     c = await lane.open(HOST, { env: { TB_PANES_URL: `${origin}a.html` } });
     await c.send("Runtime.enable");
     c.on((m) => {

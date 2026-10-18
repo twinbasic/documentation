@@ -1,0 +1,15 @@
+{
+  "mode": "run",
+  "exe": true,
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^\\[BUILD\\] Executing 'RunafterbuildGenericSubNeverRuns\\.Startup\\.Built'\\.\\.\\.$",
+      "^--- exe: exit 0$"
+    ],
+    "absent": [
+      "^built$"
+    ]
+  },
+  "issue": 2516
+}

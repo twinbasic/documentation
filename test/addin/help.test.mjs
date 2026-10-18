@@ -34,9 +34,10 @@ import { helpArchiveSkips } from "../../builder/help-archive-step.mjs";
 import { createStaticHandler } from "../../builder/static-files.mjs";
 import { writeHelpArchive } from "../../lib/help-archive.mjs";
 import { attach } from "../../scripts/lib/tb-cdp.mjs";
-import { sleep } from "../../scripts/lib/tb-ide.mjs";
+import { leaseSlot, sleep } from "../../scripts/lib/tb-ide.mjs";
 import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
+import { fixPageSize, PAGE } from "../../scripts/lib/tb-lane.mjs";
 import {
   click,
   clickAt,
@@ -52,7 +53,6 @@ import {
   typeText,
   waitFor,
 } from "../../scripts/lib/tb-operate.mjs";
-import { claimPorts } from "../../scripts/lib/tb-ports.mjs";
 import { hoverLink, hoverText, mouseAway, restMouse } from "./hover.mjs";
 import { frameEval, frameOf, serveLoopback } from "./pages.mjs";
 import { scenario } from "./scenario.mjs";
@@ -72,6 +72,8 @@ const FILE = "/HelpHost/Sources/Cases.twin";
 const PANE = "tbDocsHelpPane";
 // The page height the hover test emulates, so that a hover reaches past the editor.
 const SHORT_PAGE = 480;
+// A page as small as a user's IDE window makes it: 1200 by 900 at 150%.
+const SMALL_PAGE = { width: 800, height: 600 };
 
 const addinLines = async (c, mark) => linesSince(c, mark, { prefix: "[tbDocsHelp] " });
 
@@ -217,6 +219,22 @@ function docsThemeFault(state, group, where) {
   const want = { theme: group, background: group, pane: true };
   return JSON.stringify(got) === JSON.stringify(want) ? "" : `${where}: ${JSON.stringify(state)}`;
 }
+
+// The floating panel that holds the pane, as a box in the page, with the page's
+// size; null while the pane is docked or has no panel.
+const floatingBox = (c) =>
+  c.evaluate(`(() => {
+  const w = toolWindowsById[${JSON.stringify(PANE)}];
+  const p = w?.shadowDom.host.closest(".floatingPanel");
+  if (!p) return null;
+  const r = p.getBoundingClientRect();
+  return { left: r.left, top: r.top, width: r.width, height: r.height, page: [innerWidth, innerHeight] };
+})()`);
+// Whether a floatingBox is wholly inside its page: "" when it is.
+const boxFault = (b) =>
+  b.left >= 0 && b.top >= 0 && b.left + b.width <= b.page[0] && b.top + b.height <= b.page[1]
+    ? ""
+    : "the pane's floating panel is not inside the page";
 
 async function at(c, line, column) {
   await setCursor(c, line, column);
@@ -384,7 +402,12 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       }
     }
     await lane.addAddin(src);
-    [windowPort] = await claimPorts(1, { from: 9760 });
+    // A port the add-in is told before it binds it, so one the broker hands out
+    // (WIP.Broker.md); held, with its slot, until this process ends.
+    ({ port: windowPort } = await leaseSlot({ tag: "help.test detached window", port: true }));
+    // The lane gives the page 1600 by 1000 (PAGE): in a page as small as the
+    // user's IDE window can make it, the pane, which first floats at 480 by 640,
+    // covers the toolbar's buttons and the editor.
     c = await lane.open(HOST, { env: ideEnv(0) });
     pages = await pagesOrigin(null);
     await openFile(c, FILE, { line: 5, column: 9 });
@@ -496,6 +519,13 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       await f1Shows(url);
     });
   }
+
+  test("in a page of 1600 by 1000 the pane first floats at 480 by 640, inside the page", async () => {
+    const box = await floatingBox(c);
+    assert.ok(box, "the pane is not floating");
+    assert.deepEqual([box.width, box.height], [480, 640], JSON.stringify(box));
+    assert.equal(boxFault(box), "", JSON.stringify(box));
+  });
 
   test("a selection is looked up as selected", async () => {
     // "Print" alone is the bare name, where the cursor would give Debug.Print.
@@ -709,9 +739,11 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   });
 
   // Through the IDE's own commands for its theme menu, which tell the compiler,
-  // and so the add-in, of the change (OnChangedTheme). The IDE saves the theme
-  // where the user's own IDE reads it; the run's registry tidy puts it back
-  // (restoreTheme in scripts/lib/tb-registry.mjs).
+  // and so the add-in, of the change (OnChangedTheme). The IDE's save of the
+  // theme, where the user's own IDE reads it, is guarded by the
+  // --no-save-ide-settings every harness IDE has (IDE_FLAGS in
+  // scripts/lib/tb-ide.mjs), so the registry keeps the user's theme. The test
+  // switches it back at the end for the tests after it.
   test("a theme change loads the page again in the new theme", async () => {
     const page = "/tB/Modules/Interaction/MsgBox";
     const was = await themeGroup(c);
@@ -989,6 +1021,10 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   async function clickOutsidePane(css) {
     await click(c, { toolWindow: PANE, css: "#helpSettings" });
     await settingsBecome(paneSettings, SETTINGS_OPEN, "the gear did not open the panel");
+    // The shade shows in the page's style before the compositor has drawn it,
+    // and a press over a cross-site frame is routed by what was drawn: once in
+    // four runs it reached the frame, and the panel stayed open.
+    await c.evaluate(`new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
     const mark = await consoleMark(c);
     const r = await elementRect(c, { toolWindow: PANE, css });
     await clickAt(c, r.x + r.width / 2, r.y + r.height / 2);
@@ -1008,6 +1044,16 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     const other = `http://127.0.0.1:${server.port}/index.html`;
     await inPane(c, `root.querySelector("#helpPage").src = ${JSON.stringify(other)}; return null;`);
     assert.ok(await waitFor(c, async (c) => !(await frameOf(c, pages))), "the frame is still in the page's tree");
+    // The new page has a DevTools target of its own (P3); the click waits for it to load.
+    const loaded = await waitFor(c, async () => {
+      const t = await attach(lane.port, other, { type: "iframe", timeout: 5 * 1000 }).catch(() => null);
+      try {
+        return t && (await t.evaluate(`document.readyState`)) === "complete";
+      } finally {
+        t?.close();
+      }
+    });
+    assert.ok(loaded, `the frame did not load ${other}`);
     try {
       await clickOutsidePane("#helpPage");
     } finally {
@@ -1041,19 +1087,13 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   // drop targets, lay over a hover that reached past it and took the mouse, and
   // Monaco then hid the hover (twinbasic/twinbasic#2506). The IDE draws the
   // hover above them since BETA 1005; the add-in does nothing for it, with
-  // hover help on or off. This tests the IDE. The lane's window is large, so
-  // the page is emulated short enough that the hover reaches past the editor's
+  // hover help on or off. This tests the IDE. The lane's page is large, so
+  // it is emulated short enough that the hover reaches past the editor's
   // bottom, and put back after.
   test("with the box unticked, the hover stays while the mouse slides down it past the editor's bottom", async () => {
     // The hover over Collection, without the link while the box is unticked.
     const COLLECTION_HOVER = "in package VBA";
-    const page = await c.evaluate(`({ width: innerWidth, height: innerHeight })`);
-    await c.send("Emulation.setDeviceMetricsOverride", {
-      width: page.width,
-      height: Math.min(page.height, SHORT_PAGE),
-      deviceScaleFactor: 0,
-      mobile: false,
-    });
+    await fixPageSize(c, { width: PAGE.width, height: SHORT_PAGE });
     try {
       await mouseHover(3, 22, COLLECTION_HOVER);
       const box = await c.evaluate(`(() => {
@@ -1074,7 +1114,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       }
       await mouseAway(c);
     } finally {
-      await c.send("Emulation.clearDeviceMetricsOverride");
+      await fixPageSize(c);
     }
   });
 
@@ -1898,20 +1938,30 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     win?.close();
     win = null;
     await lane.closeProject();
-    c = await lane.open(HOST, { env: ideEnv(1) });
+    // This IDE first shows the pane in a page of 800 by 600, the IDE window of
+    // 1200 by 900 at 150%, where 480 by 640 would be taller than the page: the
+    // pane is capped at 85% of it, and centred inside it.
+    c = await lane.open(HOST, { env: ideEnv(1), page: SMALL_PAGE });
     pages = await pagesOrigin(null);
     await click(c, "addinButton-tbDocsHelp");
     assert.ok(await waitFor(c, async (c) => (await toolWindow(c, PANE))?.visible), "the pane is not showing");
+    const small = await floatingBox(c);
+    assert.ok(small, "the pane is not floating");
+    assert.deepEqual([small.width, small.height], [480, 510], JSON.stringify(small));
+    assert.equal(boxFault(small), "", JSON.stringify(small));
+    await fixPageSize(c, PAGE);
     const mark = await detach();
     const frame = await windowFrame(mark);
     assert.equal(frame?.chrome, "native");
     assert.equal(frame.style & WS_CAPTION, WS_CAPTION, `the window's style ${frame.style.toString(16)}`);
     assert.ok(frame.style & WS_THICKFRAME, "the window cannot be resized");
     await connectWindow();
-    // The add-in tells the page which frame it has once the page is ready.
+    // The add-in tells the page which frame it has once the page is ready. The
+    // window's target can be there while NavigateToString has yet to give it
+    // a document.
     await waitFor(
       c,
-      async () => (await win.evaluate(`document.documentElement.getAttribute("data-chrome")`)) === "native",
+      async () => (await win.evaluate(`document.documentElement?.getAttribute("data-chrome")`)) === "native",
     );
     const page = await win.evaluate(`(() => {
       const el = (id) => document.getElementById(id);

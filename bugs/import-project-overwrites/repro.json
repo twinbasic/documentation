@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects-loss",
+  "tests": [
+    "importing a project's file over one with unsaved edits replaces it with no question, closes its tab, and the edits are lost"
+  ],
+  "steps": "1. Open Sources/Startup.twin and type a line; do not save.\n2. Right-click it > Add > Import... and pick a .twinproj that has Sources/Startup.twin.\n3. In Import from twinproj..., tick Startup.twin and press Import.\n4. Nothing is asked; the tab closes; the IDE and the project file hold the imported Startup.twin, without the typed line.\nControl: renaming a file with unsaved edits is refused, naming the editor to close."
+}

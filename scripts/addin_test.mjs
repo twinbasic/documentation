@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Run the IDE add-in scenarios: every lane listed in test/addin/lanes.mjs, each
-// a node:test file run in a process of its own, with its own DevTools port,
-// work folder and copy of the twinBASIC install.
+// a node:test file run in a process of its own, with its own private desktop
+// (from tbbroker), work folder and copy of the twinBASIC install.
 //
 //     node scripts/addin_test.mjs [options]
 //
@@ -29,15 +29,12 @@ import path from "node:path";
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/addin_test.mjs [--only REGEX] [--port N] [--jobs N] [--timeout S] [--ide <twinBASIC.exe>] [--show|--hide] [-h, --help]
+const USAGE = `usage: node scripts/addin_test.mjs [--only REGEX] [--jobs N] [--timeout S] [--ide <twinBASIC.exe>] [--show|--hide] [-h, --help]
 
 Runs the IDE add-in scenarios: every lane in test/addin/lanes.mjs, each in a
-process of its own with its own IDE copy, DevTools port and work folder.
+process of its own with its own IDE copy, private desktop and work folder.
 
   --only <regex>    only the lanes whose name matches
-  --port <n>        base DevTools port (default 9560); the lanes get the
-                    first free ports from n, passing over one another run
-                    has claimed or something listens on
   --jobs <n>        lanes at once (default 2)
   --timeout <secs>  a lane still running after this long is ended (default 600)
   --ide <path>      the twinBASIC.exe to copy (default: $TB_IDE, else the
@@ -51,13 +48,13 @@ Exit codes:
   2  the harness could not run: a refused command line, no IDE, no matching lane, a
      registry it could not record, or a crash after which the registry was put back
   3  the registry or a work folder was not put back, at the end of a run or after a
-     crash; see the lines above`;
+     crash, or the IDE's recent list or remembered build targets name a lane's
+     folder; see the lines above`;
 
 await runLanes({
   tool: "addin-test",
   suite: path.join(REPO_ROOT, "test", "addin"),
   workDir: "tbaddin",
-  defaultPort: 9560,
   usage: USAGE,
   subject: "add-in",
 });

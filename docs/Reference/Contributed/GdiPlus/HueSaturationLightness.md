@@ -38,6 +38,7 @@ Each form is also available as **New HueSaturationLightness**( ... ) with the sa
 
 A constructor that fails creates an unusable object whose **LastResult** tells why.
 
+<!-- test: Fx_EffectTests.HueSaturationLightness_NewWithParams_StoresTheParameters, Fx_EffectTests.HueSaturationLightness_NewWithValues_StoresTheParameters -->
 > [!WARNING] 0.9.45.0
 > The form with *params* stops the program with an access violation, in 32-bit and 64-bit programs. The forms without arguments and with the three values work. To use a structure, create the effect without arguments and set [**Parameters**](#parameters).
 
@@ -49,6 +50,7 @@ Syntax: *params* **=** *fx*.**Parameters**( *size* )
 
 Gets or sets the [**HueSaturationLightnessParams**](Types/HueSaturationLightnessParams).
 
+<!-- test: Fx_EffectTests.HueSaturationLightness_ParametersGetWithoutSize_ReturnsTheParameters -->
 > [!WARNING] 0.9.45.0
 > The getter returns zeros and sets **LastResult** to 2 (**InvalidParameter**) unless it is given *size*, the size of the structure: `fx.Parameters(LenB(Of HueSaturationLightnessParams))`. See [**Effect**](Effect#parameters).
 

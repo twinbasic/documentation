@@ -98,7 +98,7 @@ for contributors.
   repeats the picture. A reference entry says what the item does. An item with nothing to say
   beyond its label is left to the picture.
 - **Headings** in sentence case, with no icon and no shortcut inside them.
-- **The section names no build**, except in a defect callout's label, `> [!NOTE] BETA 1005`
+- **The section names no build**, except in a defect callout's label, `> [!NOTE] BETA 1010`
   (owner's standing rule; WIP.md rule 6). Lines such
   as "Components list coming soon" go, unless the IDE itself shows that text and the page says
   so.

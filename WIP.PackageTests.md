@@ -29,7 +29,7 @@ stripped, so a defect that changes shape (a different wrong value) is *changed*,
 ## Expect, not Assert (owner)
 
 twinBASIC's own form is a `[TestFixture]` module of `[TestCase]` Subs checked with the Assert
-package, and `tbrun --tests` runs those in the compiler's test mode. But in BETA 1005 the IDE has
+package, and `tbrun --tests` runs those in the compiler's test mode. But in BETA 1010 the IDE has
 no way for a person to run a test case, and outside test mode a failed `Assert` stops the run at
 the error panel, uncatchable by `On Error` (WIP.Harness.md, *Running a project's test cases*). An
 author who opens the project would see the first failure only. So the cases check through
@@ -41,7 +41,7 @@ author who opens the project would see the first failure only. So the cases chec
 - **Under `tbrun --tests`**, `Expect.Done` ends a failed case with `Assert.Strict.Fail` and the
   whole report as its message. An `Assert` failure is the one thing a case's own
   `On Error Resume Next` cannot hide; an `Err.Raise` from `Done` would be swallowed by it and
-  the case would pass. Checked on BETA 1005: the message comes back whole in the response's
+  the case would pass. Checked on BETA 1010: the message comes back whole in the response's
   `body.error`.
 - Every check of a case runs, and `Done` reports all failed ones, so one run of a case shows
   every defect it covers.
@@ -67,7 +67,7 @@ Embedding the package in the published file would mean either the build fetching
 on). The owner chose neither.
 
 The published project keeps the template's reference to the package and has no `Packages/`
-folder, which makes it a **linked** reference. Checked on BETA 1005 (private APPDATA, private
+folder, which makes it a **linked** reference. Checked on BETA 1010 (private APPDATA, private
 desktop):
 
 - With the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, the project compiles. The IDE

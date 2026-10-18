@@ -93,7 +93,7 @@ if (
 // The contributed sections that have no test project yet. Each package's project removes it
 // from here; the gate fails on a name here with a project, and on a section neither here nor
 // with one.
-const PENDING = new Set(["ArrayListLib", "GdiPlus", "WinReg"]);
+const PENDING = new Set(["ArrayListLib", "WinReg"]);
 
 const DOCS = path.join(REPO_ROOT, "docs");
 const SECTIONS = path.join(DOCS, "Reference", "Contributed");
@@ -105,7 +105,7 @@ const { check, report } = createProbes("check_package_tests", "see test/package-
 // ---------------------------------------------------------------- probes
 
 {
-  // The compiler counts a lone CR as a line end (BETA 1005), so a compile case
+  // The compiler counts a lone CR as a line end (BETA 1010), so a compile case
   // is numbered the same whichever of the three ends the lines above it.
   const body = ["Module M", "    Sub S()", "        x = 1 ' CASE C1: TB5079", "    End Sub", "End Module"];
   const lines = (eol) => findCases([{ name: "M.twin", text: body.join(eol) }]).compiles.map((c) => c.line);

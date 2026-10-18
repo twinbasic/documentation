@@ -678,7 +678,7 @@ const show = (x) => JSON.stringify(x);
 }
 
 {
-  // The compiler (BETA 1005) reads a line that is only `[Name]` in an
+  // The compiler (BETA 1010) reads a line that is only `[Name]` in an
   // Enum body as a value of that name, with the next number, whatever is in the
   // brackets; the scanner used to take it for the attributes of the next line, and
   // an Enum made of such lines came out with no values at all.
@@ -793,10 +793,10 @@ const show = (x) => JSON.stringify(x);
 //
 // An audit of parseTwin over seventy declaration forms found eight that it lost without a word, and
 // four questions that only the compiler could answer. Each probe below is a form, or an answer, from
-// that audit; the compiler's answers are from BETA 1005 (tbrun --tests, compile cases).
+// that audit; the compiler's answers are from BETA 1010 (tbrun --tests, compile cases).
 
 {
-  // BETA 1005 compiles `Inherits A, B` and `Implements A, B` with no diagnostic; it refuses `Interface
+  // BETA 1010 compiles `Inherits A, B` and `Implements A, B` with no diagnostic; it refuses `Interface
   // I Extends A, B` (TB5182 at the comma), so Extends takes one name.
   const { types, problems } = parseTwin(
     [
@@ -820,7 +820,7 @@ const show = (x) => JSON.stringify(x);
 }
 
 {
-  // `Overrides Base.F` and `Implements IFoo.F` compile after a result type (BETA 1005); a leading
+  // `Overrides Base.F` and `Implements IFoo.F` compile after a result type (BETA 1010); a leading
   // `Overrides` does not (TB5182 at `Function`).
   const { types, problems } = parseTwin(
     [
@@ -936,7 +936,7 @@ const show = (x) => JSON.stringify(x);
 }
 
 {
-  // A field in a Type is bare, so a modifier's name is a field's (BETA 1005: all compile, and
+  // A field in a Type is bare, so a modifier's name is a field's (BETA 1010: all compile, and
   // `t.Default` and the rest are there). `Public a As Long` in a Type is TB5182, so the word is
   // never a modifier in front of a field; before a Sub, a Declare or a Function it still is.
   const { types, problems } = parseTwin(
@@ -989,7 +989,7 @@ const show = (x) => JSON.stringify(x);
 }
 
 {
-  // BETA 1005 compiles `Dim d = 5`, `Public p = 5` and `Public n& = 0` at module and class level (a
+  // BETA 1010 compiles `Dim d = 5`, `Public p = 5` and `Public n& = 0` at module and class level (a
   // Variant, TB0003, unless a suffix gives the type); a Type takes no initialiser (TB5182) but a bare
   // name (TB0003). GdiPlus's GdipImplementation has `Public gdiPlusRefCount& = 0`.
   const { types, problems } = parseTwin(
@@ -1020,11 +1020,12 @@ const show = (x) => JSON.stringify(x);
 }
 
 {
-  // A line that starts with `[` in a Type is an attribute list (BETA 1005): `[Class] As Long` is the
+  // A line that starts with `[` in a Type is an attribute list (BETA 1010): `[Class] As Long` is the
   // attribute Class (TB5182) and a Variant field named `As`, `[Plain](3) As Long` the same, `[Hidden]`
   // alone is refused for the next field (TB5182) and `t.Hidden` is not there (TB5027), and
-  // `[Description("x")]` alone is accepted for it, also at the end of the Type. So none of them is a field
-  // named for what is in the brackets; the two that begin one are reported, not dropped.
+  // `[Description("x")]` alone is accepted for it; with no field after it, before `End Type`, it is TB5155
+  // in a Type that has no other error. So none of them is a field named for what is in the brackets; the
+  // two that begin one are reported, not dropped.
   const { types, problems } = parseTwin(
     [
       "Module M",
@@ -1070,7 +1071,7 @@ const show = (x) => JSON.stringify(x);
 }
 
 {
-  // BETA 1005 gives a Declare with no modifier the visibility Public in a Module and in a Type: another
+  // BETA 1010 gives a Declare with no modifier the visibility Public in a Module and in a Type: another
   // module calls it, unqualified or not. A Class takes only a Private Declare (TB5227), so a Declare
   // there with no modifier, or Public, is an error rather than a Private member.
   const { types, problems } = parseTwin(
@@ -1099,7 +1100,7 @@ const show = (x) => JSON.stringify(x);
 }
 
 {
-  // BETA 1005 reads `Public Abstract Sub Y()` as a Variant variable named Abstract (TB0003) and a Sub the
+  // BETA 1010 reads `Public Abstract Sub Y()` as a Variant variable named Abstract (TB0003) and a Sub the
   // parser refuses (TB5182), with or without an `End Sub` after it; `Abstract Class` and `Virtual
   // Class` are TB5182 at the word. Neither is a modifier, so neither opens a body that swallows the
   // rest of the class.
@@ -1128,7 +1129,7 @@ const show = (x) => JSON.stringify(x);
 }
 
 {
-  // BETA 1005 refuses a generic constraint of any form -- `(Of T As IShape)`, `As Class`, `As New`,
+  // BETA 1010 refuses a generic constraint of any form -- `(Of T As IShape)`, `As Class`, `As New`,
   // `Implements`, `Extends` -- with TB5069 at the word after T, on a Class and a procedure alike.
   // The scanner reads past one all the same: the name is before the parenthesis, and the result type
   // is not the constraint's.
@@ -1492,7 +1493,7 @@ const show = (x) => JSON.stringify(x);
 
 // ------------------------------------------------------------ colons, identifiers, type characters
 //
-// The second hardening step. Each form below was put to BETA 1005 first (tbrun, compile cases and a
+// The second hardening step. Each form below was put to BETA 1010 first (tbrun, compile cases and a
 // run that prints), and the answers are in the comments.
 
 {
@@ -1633,7 +1634,7 @@ const show = (x) => JSON.stringify(x);
 }
 
 {
-  // BETA 1005 takes every character past ASCII as part of an identifier, including a no-break space,
+  // BETA 1010 takes every character past ASCII as part of an identifier, including a no-break space,
   // an emoji and a minus sign: `Public x<NBSP>y As Long` declares one variable, and `Public<NBSP>x As
   // Long` is a syntax error. The word boundary of a keyword is the end of the identifier, so
   // `Publicé` is a name and `Public Asé As Long` declares one called Asé.
@@ -1708,7 +1709,7 @@ const show = (x) => JSON.stringify(x);
 }
 
 {
-  // BETA 1005: a type-declaration character after a name gives its type, on a Function, a Property
+  // BETA 1010: a type-declaration character after a name gives its type, on a Function, a Property
   // Get, a Delegate, a Declare, a variable, a field and a constant (`Function F%()` returns an Integer;
   // `^` is LongLong); it is refused with an `As` clause (TB5171) and on a Sub, a Property Let or Set and
   // an Event (TB5204). It is not part of the name, unless the name is in brackets.

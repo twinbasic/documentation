@@ -1,0 +1,34 @@
+' GdiPlus, images: what the compiler refuses. Each line ends in a comment ' CASE <Name>: <code>.
+' The project references the VB package, as every default project does, so a bare Image is its control class.
+Module Im_CompileTests
+
+    Public Sub Im_BareNewImage()
+        Dim img As Image = New Image("picture.png") ' CASE ImBareNewImageTakesNoArguments: TB5030
+    End Sub
+
+    Public Sub Im_BareImageVariable()
+        Dim v As Image
+        Dim s As Boolean = v.Stretch ' CASE ImBareImageHasTheVbMembers: none
+    End Sub
+
+    Public Sub Im_QualifiedImageVariable()
+        Dim v As GdiPlus.Image
+        Dim s As Boolean = v.Stretch ' CASE ImQualifiedImageHasNoVbMembers: error
+    End Sub
+
+    Public Sub Im_QualifiedImageCompiles()
+        Dim img As GdiPlus.Image = New GdiPlus.Image("picture.png") ' CASE ImQualifiedNewCompiles: none
+        Dim same As GdiPlus.Image = GdiPlus.Image("picture.png") ' CASE ImQualifiedFunctionCompiles: none
+    End Sub
+
+    Public Sub Im_BitmapCloneWithoutArguments()
+        Dim bmp As Bitmap = Bitmap(4!, 4!)
+        Dim copy As Bitmap = bmp.Clone() ' CASE ImBitmapCloneWithoutArguments: error
+    End Sub
+
+    Public Sub Im_ImageCloneWithoutArguments()
+        Dim img As GdiPlus.Image = GdiPlus.Image("picture.png")
+        Dim copy As GdiPlus.Image = img.Clone() ' CASE ImImageCloneWithoutArguments: none
+    End Sub
+
+End Module

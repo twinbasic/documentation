@@ -51,7 +51,7 @@
 //      value has no `= n`: the `[_]` of the LongPtr shim the VB6-derived
 //      community packages carry (92 enums), xCalendar's `[Flat]`, VB's `[A4
 //      Portrait]`.
-//      BETA 1005 reads it so, whatever the brackets hold:
+//      BETA 1010 reads it so, whatever the brackets hold:
 //      `[Hidden]`, `[Hidden, Restricted]` and `[Description("x")]` on a line of
 //      their own each declare a value of that name and take the next number, and
 //      an attribute in front of a value on the same line (`[Hidden] Red = 5`)
@@ -67,7 +67,7 @@
 //  13. A Type's fields are bare, so a modifier's name is a field's: `Default As
 //      Long`, `Static As Long`. A line that starts with `[` in a Type is an
 //      attribute list, whatever follows it; `[Class] As Long` is not a field.
-//      BETA 1005 also compiles a variable with an initialiser and no `As`
+//      BETA 1010 also compiles a variable with an initialiser and no `As`
 //      (`Public n& = 0`, `Dim p = 5`) in a Module and a Class.
 //  14. `Inherits A, B` and `Implements A, B` list several types, `Implements`
 //      may name `WithEvents T`, a CoClass's `Interface` line may be qualified
@@ -77,7 +77,7 @@
 //  16. A colon joins statements, and every one is a declaration of its own:
 //      `Private x As Long: Private y As Long`, `Sub P(): End Sub: Sub Q(): End
 //      Sub`, `Class C: End Class`, `Enum E: A: B: End Enum`, `G = 1: H = 2`. The
-//      scanner reads each as a line (`statements`). BETA 1005 compiles them all.
+//      scanner reads each as a line (`statements`). BETA 1010 compiles them all.
 //  17. An identifier holds every character past ASCII, a no-break space and an
 //      emoji included: `Größe`, `Café`, `日本語`. `\b` is no boundary for it, so
 //      `Publicé` is a name and not the modifier `Public`; WORD_END is.
@@ -119,50 +119,10 @@ export function logicalLinesRaw(src) {
   let buf = "";
   let rbuf = "";
   let start = 0;
-  let inBlock = false; // inside /* ... */, which may span lines
+  const state = { inBlock: false, cont: false }; // inBlock: inside /* ... */, which may span lines
   for (let i = 0; i < physical.length; i++) {
     const s = physical[i];
-    let t = "";
-    let r = "";
-    let inStr = false;
-    for (let k = 0; k < s.length; k++) {
-      const c = s[k];
-      if (inBlock) {
-        if (c === "*" && s[k + 1] === "/") {
-          inBlock = false;
-          k++;
-          t += " ";
-          r += " ";
-        }
-        continue;
-      }
-      if (inStr) {
-        if (c === '"' && s[k + 1] === '"') {
-          t += "  ";
-          r += '""';
-          k++;
-          continue;
-        }
-        if (c === '"') inStr = false;
-        t += c === '"' ? c : " ";
-        r += c;
-        continue;
-      }
-      if (c === '"') {
-        inStr = true;
-        t += c;
-        r += c;
-        continue;
-      }
-      if (c === "/" && s[k + 1] === "*") {
-        inBlock = true;
-        k++;
-        continue;
-      }
-      if (c === "'") break;
-      t += c;
-      r += c;
-    }
+    let { t, r } = lexLine(s, state, NO_OPTIONS);
     if (/^\s*Rem(\s|$)/i.test(t)) {
       t = "";
       r = "";
@@ -181,6 +141,254 @@ export function logicalLinesRaw(src) {
   }
   if (buf) out.push({ text: buf, raw: rbuf, line: start });
   return out;
+}
+
+const NO_OPTIONS = { spans: false, rem: false, continued: false };
+const STRIP_OPTIONS = { spans: true, rem: true, continued: true };
+
+// A comment continues on the next line when it ends in white space (or starts the
+// line), an underscore and optional white space: BETA 1007 reads `x = 1 ' c _` and
+// `Rem c _` with the next line as part of the comment, and `' c_` and `'_` not at
+// all (probed with a compile of a line that is an error if it is code).
+const COMMENT_CONTINUES = /(^|\s)_\s*$/;
+
+// Where a `Rem` that follows the text `t` of lexLine is a comment: "" at the start of a
+// statement (nothing but white space before it, or a `:` separator; `:=` ends in `=`),
+// "then" or "else" after that keyword and white space (BETA 1007 reads `If x Then Rem c`
+// as a single-line If with an empty statement, and `Else Rem c` likewise), else null.
+const THEN_ELSE = /(?:^|[^A-Za-z0-9_\u0080-￿.])(then|else)$/i;
+const remContext = (t) => {
+  const p = t.trimEnd();
+  if (p === "" || p.endsWith(":")) return "";
+  const m = THEN_ELSE.exec(p);
+  return m && p !== t ? m[1].toLowerCase() : null;
+};
+
+/**
+ * The character-level scan of one physical line, which logicalLinesRaw and
+ * stripComments share: strings, `'` comments and `/* ... *\/` comments that may span
+ * lines. `state` is carried from line to line (`inBlock`, `cont`).
+ *
+ * `t` is the line with its comments removed and the contents of string literals
+ * blanked, `r` the same with the literals as written. With `o.spans`, `spans`
+ * lists each comment on the line as `{from, to, kind}`: kind `line` (a `'`
+ * comment, to the end of the line), `rem` (the `Rem` statement), `block`
+ * (`begin` when the comment starts on this line, `open` when it goes on past
+ * it) or `continued` (the whole line, being the continuation of a comment above).
+ * `o.rem` reads `Rem` as a comment at the start of a statement, after a `:`
+ * included; without it only the caller's own check for a line that starts with
+ * `Rem` sees one. `o.continued` reads a comment ending in ` _` as going on to
+ * the next line. logicalLinesRaw uses neither.
+ */
+function lexLine(s, st, o) {
+  let t = "";
+  let r = "";
+  let inStr = false;
+  const spans = o.spans ? [] : null;
+  if (st.cont) {
+    st.cont = o.continued && COMMENT_CONTINUES.test(s);
+    spans?.push({ from: 0, to: s.length, kind: "continued" });
+    return { t, r, spans };
+  }
+  let blockFrom = st.inBlock ? 0 : -1;
+  let began = false;
+  for (let k = 0; k < s.length; k++) {
+    const c = s[k];
+    if (st.inBlock) {
+      if (c === "*" && s[k + 1] === "/") {
+        st.inBlock = false;
+        k++;
+        t += " ";
+        r += " ";
+        spans?.push({ from: blockFrom, to: k + 1, kind: "block", begin: began });
+      }
+      continue;
+    }
+    if (inStr) {
+      if (c === '"' && s[k + 1] === '"') {
+        t += "  ";
+        r += '""';
+        k++;
+        continue;
+      }
+      if (c === '"') inStr = false;
+      t += c === '"' ? c : " ";
+      r += c;
+      continue;
+    }
+    if (c === '"') {
+      inStr = true;
+      t += c;
+      r += c;
+      continue;
+    }
+    if (c === "/" && s[k + 1] === "*") {
+      st.inBlock = true;
+      blockFrom = k;
+      began = true;
+      k++;
+      continue;
+    }
+    if (c === "'") {
+      spans?.push({ from: k, to: s.length, kind: "line" });
+      st.cont = o.continued && COMMENT_CONTINUES.test(s.slice(k));
+      break;
+    }
+    const where = o.rem && (c === "R" || c === "r") && /^rem(?!\S)/i.test(s.slice(k, k + 4)) ? remContext(t) : null;
+    if (where !== null) {
+      // After Then the comment is a statement: without one the line is a block If, so stripComments keeps a `:`.
+      spans?.push({ from: k, to: s.length, kind: "rem", ...(where === "then" ? { repl: ":" } : {}) });
+      st.cont = o.continued && COMMENT_CONTINUES.test(s.slice(k));
+      break;
+    }
+    t += c;
+    r += c;
+  }
+  if (st.inBlock) spans?.push({ from: blockFrom, to: s.length, kind: "block", begin: began, open: true });
+  return { t, r, spans };
+}
+
+const isBlank = (x) => x.trim() === "";
+
+/**
+ * The source with every comment removed and every other character as written:
+ * the BOM, each line's own ending (CRLF or LF), indentation, the contents of
+ * strings and the spacing inside code. A comment is a `'` comment, `Rem` as a
+ * statement (at the start of a line or after a `:`), or `/* ... *\/`, inline or
+ * across lines; a `'` or `Rem` comment that ends in ` _` goes on to the next
+ * line, as the compiler reads it (see COMMENT_CONTINUES). Trailing white space
+ * where a comment was cut off goes. An inline block comment between two pieces of
+ * code becomes one space; at either end of the code it is removed with the white
+ * space beside it. A line that held only comment is removed, or with `keepLines`
+ * left empty so that every line number stays; a blank line that a removal would
+ * leave next to another blank one is removed too (not with `keepLines`).
+ *
+ * The compiler reads the line break inside a block comment as white space, so a
+ * block that opens after code and closes before more code makes one statement of the
+ * two (`z = Foo(1) /* a`, then `b *\/ + 3`, is `z = Foo(1) + 3`): the code of both
+ * lines is written as one line in the place of the first, and the lines that held the
+ * rest of the comment are removed or, with `keepLines`, left empty (the code from the
+ * last line is then on an earlier line than it was). Code after a block that opened at
+ * the start of a line keeps the indentation of its own line. `Rem` after `Then` is
+ * a statement to the compiler, and `If x Then` alone is a block If, so the comment
+ * is replaced by a `:` (`If x Then Rem c` is `If x Then :`); after `Else` it is
+ * removed like any other.
+ *
+ * The scan is the one logicalLinesRaw makes, so it knows what that does not:
+ * logicalLinesRaw sees `Rem` only at the start of a line, takes no comment
+ * as continued and ends a logical line at a line break inside a block comment. It reads physical lines and nothing about the file: a VB6 form's
+ * designer block is the caller's to keep out of `text`.
+ *
+ * @param {string} text
+ * @param {{keepLines?: boolean}} [options]
+ * @returns {{text: string, comments: {line: number, kind: string, text: string}[], linesRemoved: number}}
+ *   `comments` has one entry per comment, a block that spans lines once, and one
+ *   of kind `continued` per line a comment went on to; `line` is 1-based. A block
+ *   that spans lines has `endLine`, and `joined` when it joined two lines of code
+ */
+export function stripComments(text, { keepLines = false } = {}) {
+  const bom = text.startsWith("\u{FEFF}") ? "\u{FEFF}" : "";
+  const parts = text.slice(bom.length).split(/(\r?\n)/); // line, ending, line, ending, ..., last line
+  if (parts[parts.length - 1] === "") parts.pop(); // the text ended with a line ending: no line after it
+  const state = { inBlock: false, cont: false };
+  const comments = [];
+  const out = [];
+  let linesRemoved = 0;
+  let lastBlank = true; // the start of the file counts as a blank line
+  let dropped = false; // a line was removed since the last one written
+  let openEntry = null; // the block comment that is open at the end of the last line
+  let pend = null; // the code before it, written at out[idx], when there was any
+  for (let i = 0; i < parts.length; i += 2) {
+    const s = parts[i];
+    const eol = parts[i + 1] ?? "";
+    const { spans } = lexLine(s, state, STRIP_OPTIONS);
+    if (!spans.length) {
+      const blank = isBlank(s);
+      if (blank && dropped && lastBlank && !keepLines) {
+        linesRemoved++;
+        continue;
+      }
+      out.push(s + eol);
+      lastBlank = blank;
+      dropped = false;
+      continue;
+    }
+    const lineNo = i / 2 + 1;
+    const segs = [];
+    let pos = 0;
+    let closed = null; // the multi-line block comment that ends on this line
+    for (const sp of spans) {
+      segs.push(s.slice(pos, sp.from));
+      pos = sp.to;
+      if (sp.kind !== "block") {
+        comments.push({ line: lineNo, kind: sp.kind, text: s.slice(sp.from, sp.to) });
+      } else if (sp.begin) {
+        const entry = { line: lineNo, kind: "block", text: s.slice(sp.from, sp.to) };
+        comments.push(entry);
+        if (sp.open) openEntry = entry;
+      } else if (!sp.open && openEntry) {
+        closed = openEntry;
+        closed.endLine = lineNo;
+        openEntry = null;
+      }
+    }
+    segs.push(s.slice(pos));
+    let res = segs[0];
+    for (let j = 0; j < spans.length; j++) {
+      if (spans[j].repl) {
+        res += spans[j].repl;
+        continue;
+      }
+      const before = segs.slice(0, j + 1).some((x) => !isBlank(x));
+      const after = segs.slice(j + 1).some((x) => !isBlank(x));
+      let next = segs[j + 1];
+      if (before && after) {
+        res = `${res.replace(/[ \t]+$/, "")} `;
+        next = next.replace(/^[ \t]+/, "");
+      } else if (before) {
+        res = res.replace(/[ \t]+$/, "");
+        next = "";
+      } else {
+        next = next.replace(/^[ \t]+/, "");
+      }
+      res += next;
+    }
+    const startsInBlock = spans[0].kind === "block" && !spans[0].begin;
+    const lastSpan = spans[spans.length - 1];
+    const endsOpen = lastSpan.kind === "block" && lastSpan.open === true;
+    if (pend && startsInBlock) {
+      // A comment that began after code and goes on past this line break: the break is white space
+      // (BETA 1007 reads `z = Foo(1) /* a` and `b */ + 3` as one statement), so the code on either
+      // side is one line, written in the place of the first.
+      if (!isBlank(res)) {
+        pend.res = `${pend.res} ${res}`;
+        out[pend.idx] = pend.res + pend.eol;
+        if (closed) closed.joined = true;
+      }
+      if (!endsOpen) pend = null;
+      linesRemoved++;
+      if (keepLines) out.push(eol);
+      else dropped = true;
+      continue;
+    }
+    if (startsInBlock && !isBlank(res)) res = /^[ \t]*/.exec(s)[0] + res;
+    if (isBlank(res)) {
+      linesRemoved++;
+      if (keepLines) {
+        out.push(eol);
+        lastBlank = true;
+        dropped = false;
+      } else {
+        dropped = true;
+      }
+    } else {
+      if (endsOpen) pend = { idx: out.length, res: res.trimEnd(), eol };
+      out.push(res + eol);
+      lastBlank = false;
+      dropped = false;
+    }
+  }
+  return { text: bom + out.join(""), comments, linesRemoved };
 }
 
 // `text` with each run of white space outside a string literal made one space
@@ -209,7 +417,7 @@ function collapse(text, raw) {
 // compiler reads `Private x As Long: Private y As Long`, `Const A = 1: Const B = 2`,
 // `Sub P(): End Sub: Sub Q(): End Sub`, `Class A: Inherits B`, `Class C: End Class`,
 // `G = 1: H = 2` and `Enum E: A: B: End Enum` as the lines they stand for (BETA
-// 1005), and `Done: End Sub` closes the procedure: a label is a statement of its
+// 1010), and `Done: End Sub` closes the procedure: a label is a statement of its
 // own. The contents of strings are blanked in `text`, so a colon inside one is
 // never seen.
 function statements(text, raw) {
@@ -257,7 +465,7 @@ function statementEnd(text) {
 // declaration after it is an attribute list as anywhere else.
 //
 // In a Type or Union body (`inType`) a group is always an attribute list: BETA
-// 1005 reads `[Class] As Long` as the attribute `Class` and a field called `As`,
+// 1010 reads `[Class] As Long` as the attribute `Class` and a field called `As`,
 // `[Plain](3) As Long` the same, and a group on a line of its own as the
 // attributes of the next field (or of nothing, when `End Type` follows). It is
 // never a field's name: a field named for a keyword is written bare, as
@@ -379,7 +587,7 @@ function descriptionOf(attrs) {
 // ------------------------------------------------------------------ parsing
 
 // An identifier is made of the ASCII letters, digits and `_`, and of every
-// character past ASCII: BETA 1005 compiles `Größe`, `Café`, `日本語`, `x²`, `a−1`,
+// character past ASCII: BETA 1010 compiles `Größe`, `Café`, `日本語`, `x²`, `a−1`,
 // an emoji, and a no-break space inside a name, all as part of it. Only the first
 // character is more restricted, and only for a digit. So the classes below end at
 // U+FFFF, which takes a character outside the BMP as its two surrogates; and a
@@ -444,7 +652,7 @@ const WITH_BODIES = new Set(["module", "class", "type", "union"]);
 const unbracket = (name) => name.replace(/^\[(.*)\]$/, "$1");
 
 // The type a name's closing character gives: `Function Size%()` returns an Integer.
-// BETA 1005 accepts these seven on a function, a Property Get, a delegate, a Declare,
+// BETA 1010 accepts these seven on a function, a Property Get, a delegate, a Declare,
 // a variable, a field and a constant; on a Sub, a Property Let or Set and an Event it
 // refuses one (TB5204), and with an `As` clause as well (TB5171). A name in brackets
 // takes the character as part of itself, as VBA's `Function [Chr$]` does.
