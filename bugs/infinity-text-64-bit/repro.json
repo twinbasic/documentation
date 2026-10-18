@@ -1,0 +1,18 @@
+{
+  "mode": "test",
+  "arch": "win64",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^FAIL InfinityTextTests.CStrOfInfinity_Is1HashINF: ",
+      "^FAIL InfinityTextTests.CStrOfNegativeInfinity_IsMinus1HashINF: ",
+      "^FAIL InfinityTextTests.CStrOfNaN_Is1HashQNAN: ",
+      "^FAIL InfinityTextTests.CStrOfIndeterminate_IsMinus1HashIND: ",
+      "^FAIL InfinityTextTests.ConcatenatedInfinity_Is1HashINF: ",
+      "^FAIL InfinityTextTests.FormatOfInfinity_Is1HashINF: ",
+      "^FAIL InfinityTextTests.FormatOfNaNWithPicture_Is1HashR: ",
+      "^FAIL InfinityTextTests.CStrOfSingleInfinity_Is1HashINF: ",
+      "^PASS InfinityTextTests.CStrOfOrdinaryDouble_IsUnchanged$"
+    ]
+  }
+}

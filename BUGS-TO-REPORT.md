@@ -5676,3 +5676,443 @@ VB6 does not accept `As Any` outside a `Declare` parameter. Its command-line bui
 Severity: low. Few programs write it, and a variable that cannot be used is found at the first use, but a declaration that compiles tells the author the type exists, and the failure comes late: a codegen error at build time, or error 458 in a run.
 
 <!-- Reproducer: bugs/dim-as-any/ (mode test: `tbrun --tests` judges the compile cases; expect lists the eight PASS and four FAIL lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (its Module1.bas lists VB6's error text for each declaration). The run-time results of step 3 come from a scratch tree that is not kept (BETA 1010, tbrun with and without --exe). docs/Reference/Data-Types.md carries the callout for it (the paragraph that says Any is not a data type, and where As Any is allowed); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types page; owner-approved. -->
+
+---
+
+## A `Date` outside January 1, 100 to December 31, 9999 is accepted with no error
+
+**Describe the bug**
+A `Date` holds a count of days from -657434 (January 1, 100) to 2958465 (December 31, 9999), plus the time of day. VB6 raises error 6, *Overflow*, for every way of making one outside that range. twinBASIC raises nothing: the `Date` holds the out-of-range number, and `CStr`, `Format` and `Year` of it then raise error 5, *Invalid procedure call or argument*. It happens with an assignment from a `Long` or a `Double`, with `CDate`, and with arithmetic on the two ends of the range. It was observed in IDE runs and in built exes, in a 32-bit and a 64-bit build.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `date-out-of-range-no-error.twinproj` (attached as `date-out-of-range-no-error.zip`). Its module `DateRangeTests`, below, has one `[TestCase]` for each way of making a `Date` out of range, asserting the error 6; the last three are controls.
+2. Run the test cases. The first six fail, with `Err.Number` 0; the three controls pass.
+3. To see what the `Date` is, run `Dim d As Date: d = 2958466: Debug.Print CDbl(d)` in a project of its own. It prints 2958466, and `Debug.Print CStr(d)` raises error 5.
+```vb
+[TestFixture]
+Module DateRangeTests
+
+    [TestCase]
+    Public Sub AssignLongPastLargest_Raises6()
+        Dim d As Date
+        Dim n As Long = 2958466
+        On Error Resume Next
+        d = n
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub CDatePastLargest_Raises6()
+        Dim d As Date
+        Dim n As Long = 2958466
+        On Error Resume Next
+        d = CDate(n)
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub CDateBeforeSmallest_Raises6()
+        Dim d As Date
+        Dim n As Long = -657435
+        On Error Resume Next
+        d = CDate(n)
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub AddOneDayToLargest_Raises6()
+        Dim d As Date
+        Dim last As Date = #12/31/9999#
+        On Error Resume Next
+        d = last + 1
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub SubtractOneDayFromSmallest_Raises6()
+        Dim d As Date
+        Dim first As Date = #1/1/100#
+        On Error Resume Next
+        d = first - 1
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub AssignHugeDouble_Raises6()
+        Dim d As Date
+        Dim x As Double = 1E+300
+        On Error Resume Next
+        d = x
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub AssignLargest_Accepted()
+        Dim d As Date
+        Dim n As Long = 2958465
+        On Error Resume Next
+        d = n
+        Assert.Strict.AreEqual 0, Err.Number
+        Assert.Strict.AreEqual 2958465#, CDbl(d)
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSmallest_Accepted()
+        Dim d As Date
+        Dim n As Long = -657434
+        On Error Resume Next
+        d = n
+        Assert.Strict.AreEqual 0, Err.Number
+        Assert.Strict.AreEqual -657434#, CDbl(d)
+    End Sub
+
+    [TestCase]
+    Public Sub OutOfRangeInteger_Raises6()
+        Dim i As Integer
+        Dim n As Long = 40000
+        On Error Resume Next
+        i = n
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 6, *Overflow*, at each of the six, as in VB6, and the `Date` keeps its old value. The two ends of the range stay accepted. A `Date` then always holds a value that `CStr`, `Format` and `Year` can read.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. `DateAdd("d", 1, #12/31/9999#)` and `DateSerial(10000, 1, 1)` raise error 5, and `CDate("12/31/10000")` raises error 13, so those do not accept the value. VB6 6.0 raises error 6 for each of the six cases, and builds the controls (the reproducer's `vb6/` project prints them, attached as `date-out-of-range-no-error-vb6.zip`).
+
+Severity: medium. An out-of-range date is stored silently, and the failure comes later, where the value is formatted or split into parts, or never, where the number is only compared or saved.
+
+<!-- Reproducer: bugs/date-out-of-range-no-error/ (mode test: `tbrun --tests` runs the nine cases; expect lists the six FAIL and three PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, error 6 for the six). docs/Reference/Data-Types/Date.md carries the callout for it (the WARNING in Arithmetic, after the range paragraph); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+
+---
+
+## `CLngLng(2^63)` returns the smallest LongLong, with no error
+
+**Describe the bug**
+2^63 (9223372036854775808) is one past the largest `LongLong`, and converting it must raise error 6, *Overflow*, as `CLngLng(1E+19)` does and as a `Double` variable holding 2^63 does. When the `Double` is a constant expression, twinBASIC converts it to -9223372036854775808, the smallest `LongLong`, and raises nothing: `CLngLng(2 ^ 63)`, `CLngLng(9223372036854775808#)` and `CLngLng(CSng(2 ^ 63))`. An unsuffixed whole-number literal beyond the `Long` range is a `Double`, so `q = 9223372036854775807` (the largest `LongLong`, written without the `^` suffix) is the same constant and gives the same wrong result. It was observed in IDE runs and in built exes, in a 32-bit and a 64-bit build.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `clnglng-2-to-63-no-overflow.twinproj` (attached as `clnglng-2-to-63-no-overflow.zip`). Its module `LongLongOverflowTests`, below, has one `[TestCase]` for each constant that gives the wrong result, asserting the error 6, and four controls.
+2. Run the test cases. The first four fail, with `Err.Number` 0; the four controls pass: a `Double` variable holding 2^63, the constant `1E+19`, the constant `2 ^ 63 - 1024` (the largest `Double` below 2^63, which fits) and `-(2 ^ 63)` (the smallest `LongLong`, which fits).
+```vb
+[TestFixture]
+Module LongLongOverflowTests
+
+    [TestCase]
+    Public Sub CLngLng_ConstantTwoToThe63_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(2 ^ 63)
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_DoubleLiteral2To63_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(9223372036854775808#)
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Assign_UnsuffixedLargestLongLongLiteral_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = 9223372036854775807
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_ConstantSingleTwoToThe63_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(CSng(2 ^ 63))
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_VariableTwoToThe63_Raises6()
+        Dim q As LongLong
+        Dim x As Double = 2 ^ 63
+        On Error Resume Next
+        q = CLngLng(x)
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_ConstantOneE19_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(1E+19)
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_ConstantBelowTwoToThe63_Accepted()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(2 ^ 63 - 1024)
+        Assert.Strict.AreEqual 0, Err.Number
+        Assert.Strict.AreEqual 9223372036854774784^, q
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_ConstantMinus2To63_Accepted()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(-(2 ^ 63))
+        Assert.Strict.AreEqual 0, Err.Number
+        Assert.Strict.AreEqual -9223372036854775807^ - 1, q
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 6, *Overflow*, at each of the four, as for `CLngLng(1E+19)` and for the same value in a variable. VB6 has no `LongLong`; the nearest case, the first `Double` beyond the `Long` range, `CLng(2 ^ 31)`, `CLng(2147483648#)` and `n = 2147483648#`, raises error 6 there as a constant and as a variable (the reproducer's `vb6/` project prints them, attached as `clnglng-2-to-63-no-overflow-vb6.zip`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. The narrower conversions of constants are right: `CLng(2 ^ 31)`, `CLng(CSng(2 ^ 31))`, `CInt(32768#)`, `CByte(256#)` and `CLngPtr(2 ^ 63)` in a 32-bit build raise error 6. Seen on the way and not covered by the cases: in a 32-bit build `q = 2 ^ 63 - 1024` (assigned without `CLngLng`) raises error 6 although the value fits, where a 64-bit build stores 9223372036854774784; `CLngLng(2 ^ 63 - 1024)` is right in both.
+
+Severity: medium. A silently wrong value, but only for one constant, and constants this size are rare. The unsuffixed `9223372036854775807` is the one a program is likely to write.
+
+<!-- Reproducer: bugs/clnglng-2-to-63-no-overflow/ (mode test: `tbrun --tests` runs the eight cases; expect lists the four FAIL and four PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, the CLng of 2^31). docs/Reference/Data-Types/LongLong.md carries the callout for it (the WARNING under Conversions); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+
+---
+
+## `Set` to a class or interface the object does not support raises -2147467262, where VB6 raises 13
+
+**Describe the bug**
+Assigning an object with `Set` to a variable of a class or interface that the object does not support fails at run time. VB6 raises error 13, *Type mismatch*. twinBASIC raises -2147467262, the `HRESULT` `E_NOINTERFACE` (*No such interface supported*), so a handler that tests for 13 does not recognise it. It happens for a twinBASIC class, an interface, a COM object (`Scripting.Dictionary` to `Collection`) and a `Variant` that holds the object. It was observed in IDE runs and in built exes, in a 32-bit and a 64-bit build.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `set-unsupported-class-error-number.twinproj` (attached as `set-unsupported-class-error-number.zip`). Its module `SetToUnsupportedTypeTests`, below, has one `[TestCase]` for each kind of source, asserting the error 13, and a control.
+2. Run the test cases. The first four fail, with `Err.Number` -2147467262; the control, a `Set` to the object's own class, passes.
+```vb
+Class ClsA
+    Public X As Long
+End Class
+
+Class ClsB
+    Public Y As Long
+End Class
+
+Interface IFoo
+    Sub Hello()
+End Interface
+
+[TestFixture]
+Module SetToUnsupportedTypeTests
+
+    [TestCase]
+    Public Sub SetToOtherClass_Raises13()
+        Dim o As Object = New ClsA
+        Dim b As ClsB
+        On Error Resume Next
+        Set b = o
+        Assert.Strict.AreEqual 13, Err.Number              ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub SetToInterfaceTheClassLacks_Raises13()
+        Dim o As Object = New ClsA
+        Dim f As IFoo
+        On Error Resume Next
+        Set f = o
+        Assert.Strict.AreEqual 13, Err.Number              ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub SetDictionaryToCollection_Raises13()
+        Dim o As Object = CreateObject("Scripting.Dictionary")
+        Dim c As Collection
+        On Error Resume Next
+        Set c = o
+        Assert.Strict.AreEqual 13, Err.Number              ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub SetFromVariantHoldingOtherClass_Raises13()
+        Dim v As Variant
+        Dim b As ClsB
+        Set v = New ClsA
+        On Error Resume Next
+        Set b = v
+        Assert.Strict.AreEqual 13, Err.Number              ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub SetToOwnClass_RaisesNothing()
+        Dim o As Object = New ClsB
+        Dim b As ClsB
+        On Error Resume Next
+        Set b = o
+        Assert.Strict.AreEqual 0, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 13, *Type mismatch*, as in VB6, so that code ported from VB6 which handles 13 keeps working. The reproducer's `vb6/` project builds the same four assignments and prints error 13 for each (attached as `set-unsupported-class-error-number-vb6.zip`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. `TypeOf o Is ClsB` is False for these objects and can be tested first. Severity: low. An error is raised, and only the number differs.
+
+<!-- Reproducer: bugs/set-unsupported-class-error-number/ (mode test: `tbrun --tests` runs the five cases; expect lists the four FAIL and one PASS line); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, ClsA, ClsB and IFoo). docs/Reference/Data-Types/Object.md carries the callout for it (the NOTE under Assigning); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+
+---
+
+## `Len` and `LenB` accept an array and return the size of its descriptor
+
+**Describe the bug**
+`Len` and `LenB` take a string or a variable of a simple or user-defined type. VB6 refuses an array as the argument, when the program is compiled (*Variable required - can't assign to this expression*). twinBASIC accepts it, and returns a number that is not the size of the array: in a 32-bit build 40 for a fixed-size one-dimensional array of any element type and length (`Dim a(9) As Byte`, `Dim a(3) As Long` and `Dim a(0) As Byte` all give 40), 48 for two dimensions, and 4 for a dynamic array (the size of the reference); in a 64-bit build 48, 56 and 8. A program that writes `LenB(Buffer)` for a `Byte` buffer, expecting its length in bytes, gets a number that never changes with the array. It was observed in IDE runs and in built exes.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `lenb-of-array-accepted.twinproj` (attached as `lenb-of-array-accepted.zip`). Its module `LenArrayTests`, below, has one declaration with an array argument on each line that ends in a `' CASE <Name>: <expected>` comment: the diagnostic code the line must get, `error` for any error, or `none`.
+2. Run the cases, with `tbrun --tests` or by compiling the project. The five lines with an array argument get no diagnostic, and are the defect; the two controls, an element and a `Long` variable, get none, as they should.
+3. To see the numbers, run `Dim a(9) As Byte: Debug.Print LenB(a)` in a project of its own. It prints 40.
+```vb
+' CASE <Name>: <expected> comments, as above.
+Module LenArrayTests
+
+    Private Sub Cases()
+        Dim fixedBytes(9) As Byte
+        Dim fixedLongs(3) As Long
+        Dim dynamicBytes() As Byte
+        Dim n As Long
+        ReDim dynamicBytes(4)
+
+        n = LenB(fixedBytes)  ' CASE LenB_FixedByteArray: error
+        n = LenB(fixedLongs)  ' CASE LenB_FixedLongArray: error
+        n = LenB(dynamicBytes)  ' CASE LenB_DynamicByteArray: error
+        n = Len(fixedBytes)  ' CASE Len_FixedByteArray: error
+        n = Len(dynamicBytes)  ' CASE Len_DynamicByteArray: error
+
+        n = LenB(fixedBytes(0))  ' CASE LenB_ByteElement: none
+        n = LenB(n)  ' CASE LenB_LongVariable: none
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+A compile error on each of the five, as in VB6: the array is not a valid argument. The two controls keep compiling. VB6 gives the compile error *Variable required - can't assign to this expression* for `LenB` of a fixed `Byte` array, a fixed `Long` array and a dynamic `Byte` array, and for `Len` of a fixed and of a dynamic `Byte` array (each was tried in the reproducer's `vb6/` project alone, attached as `lenb-of-array-accepted-vb6.zip`; the control, `LenB(a(0))`, builds and gives 1).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+BETA 1007 gives the same results. Severity: low. Few programs write it, but the number looks plausible for a small array, and the author finds out only when the buffer is larger.
+
+<!-- Reproducer: bugs/lenb-of-array-accepted/ (mode test: compile cases; expect lists the five FAIL and two PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas lists VB6's error for each line). The numbers 40, 48, 4 (32-bit) and 48, 56, 8 (64-bit) come from a scratch run that is not kept. docs/Reference/Default/VBA/Strings/Len.md carries the callout for it; when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+
+---
+
+## A 64-bit build prints infinity and NaN as `inf` and `nan`, and `Format` adds the picture's decimals
+
+**Describe the bug**
+A `Double` or `Single` that holds infinity or NaN prints in VB6 as `1.#INF`, `-1.#INF`, `1.#QNAN` and `-1.#IND`, and `Format(x, "0.00")` gives `1.#INF` or `1.#R`. A 32-bit twinBASIC build prints exactly those. A 64-bit build prints the C runtime's text: `inf`, `-inf`, `nan` and `-nan(ind)`, and `Format(x, "0.00")` gives `inf.00` and `nan.00`. `CStr`, `Str`, concatenation and `Debug.Print` all give the same text. Arithmetic raises an error rather than make these values, so they come from memory, a COM component or a file; the reproducer copies their bytes into a variable. It was observed in IDE runs and in built exes.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `infinity-text-64-bit.twinproj` (attached as `infinity-text-64-bit.zip`). Its module `InfinityTextTests`, below, has one `[TestCase]` for each text, asserting what VB6 gives, and a control.
+2. Run the test cases as a 64-bit build (`tbrun --tests --arch win64`). The first eight fail, with the 64-bit text as `Actual`; the control passes. As a 32-bit build all nine pass.
+```vb
+[TestFixture]
+Module InfinityTextTests
+
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, ByRef Source As Any, ByVal Length As LongPtr)
+
+    Private Function DoubleFromBits(ByVal Bits As LongLong) As Double
+        Dim result As Double
+        CopyMemory result, Bits, 8
+        Return result
+    End Function
+
+    Private Function SingleFromBits(ByVal Bits As Long) As Single
+        Dim result As Single
+        CopyMemory result, Bits, 4
+        Return result
+    End Function
+
+    [TestCase]
+    Public Sub CStrOfInfinity_Is1HashINF()
+        Assert.Strict.AreEqual "1.#INF", CStr(DoubleFromBits(&H7FF0000000000000^))
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfNegativeInfinity_IsMinus1HashINF()
+        Assert.Strict.AreEqual "-1.#INF", CStr(DoubleFromBits(&HFFF0000000000000^))
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfNaN_Is1HashQNAN()
+        Assert.Strict.AreEqual "1.#QNAN", CStr(DoubleFromBits(&H7FF8000000000000^))
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfIndeterminate_IsMinus1HashIND()
+        Assert.Strict.AreEqual "-1.#IND", CStr(DoubleFromBits(&HFFF8000000000000^))
+    End Sub
+
+    [TestCase]
+    Public Sub ConcatenatedInfinity_Is1HashINF()
+        Assert.Strict.AreEqual "x=1.#INF", "x=" & DoubleFromBits(&H7FF0000000000000^)
+    End Sub
+
+    [TestCase]
+    Public Sub FormatOfInfinity_Is1HashINF()
+        Assert.Strict.AreEqual "1.#INF", Format(DoubleFromBits(&H7FF0000000000000^), "0.00")
+    End Sub
+
+    [TestCase]
+    Public Sub FormatOfNaNWithPicture_Is1HashR()
+        Assert.Strict.AreEqual "1.#R", Format(DoubleFromBits(&H7FF8000000000000^), "0.00")
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfSingleInfinity_Is1HashINF()
+        Assert.Strict.AreEqual "1.#INF", CStr(SingleFromBits(&H7F800000))
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfOrdinaryDouble_IsUnchanged()
+        Assert.Strict.AreEqual "1.5", CStr(1.5)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The same text in a 64-bit build as in a 32-bit one and in VB6: `1.#INF`, `-1.#INF`, `1.#QNAN`, `-1.#IND`, and `1.#INF` or `1.#R` from `Format` with a picture. The reproducer's `vb6/` project prints them (attached as `infinity-text-64-bit-vb6.zip`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+BETA 1007 gives the same results. The reproducer's `repro.json` names the 64-bit build (`"arch": "win64"`). Severity: low. A program meets these values rarely, but one that tests or parses the text, or shows `Format(x, "0.00")` of one, behaves differently in the two builds.
+
+<!-- Reproducer: bugs/infinity-text-64-bit/ (mode test, arch win64: `tbrun --tests --arch win64` runs the nine cases; expect lists the eight FAIL and one PASS line); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas). docs/Reference/Data-Types/Double.md carries the callout for it (the NOTE after the paragraph on infinity and NaN); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->

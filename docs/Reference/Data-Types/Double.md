@@ -75,7 +75,10 @@ An operation on two **Double** values gives a **Double**. A **Double** combined 
 
 A result too large for the type raises error 6, *Overflow*: `1E+308 * 10` does, and so does `1E+308 + 1E+308`. Dividing by zero raises error 11, *Division by zero*; `0 / 0` raises error 6, and `Sqr(-1)` raises error 5, *Invalid procedure call or argument*. A result too small for the type is 0, with no error. A **Variant** holding a **Double** raises error 6 on overflow too, where a **Variant** holding a smaller type widens.
 
-A **Double** can hold the IEEE values infinity and NaN, which can arrive from memory or from a COM component, but arithmetic never produces one: it raises an error instead.
+A **Double** can hold the IEEE values infinity and NaN, which can arrive from memory or from a COM component, but arithmetic never produces one: it raises an error instead. As in VB6, they print as `1.#INF`, `-1.#INF`, `1.#QNAN` and, for the indeterminate value, `-1.#IND`. A comparison with NaN does not follow the IEEE rules: `NaN = NaN` is True, as in VB6, and so is `NaN = 0`, so a comparison cannot tell a NaN from a number.
+
+> [!NOTE] BETA 1010
+> A 64-bit build prints infinity and NaN as `inf`, `-inf`, `nan` and `-nan(ind)`, and **Format** with a number picture such as `"0.00"` gives `inf.00` and `nan.00`. A 32-bit build and VB6 print `1.#INF` and `1.#QNAN`, and **Format** gives `1.#INF` and `1.#R`. Do not test or parse the text of these values.
 
 ```tb check_run
 Dim Value As Double = 1E+308

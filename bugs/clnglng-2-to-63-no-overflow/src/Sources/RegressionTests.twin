@@ -1,0 +1,81 @@
+' Regression tests: 2^63 (9223372036854775808) is one past the largest LongLong, and
+' converting it must raise error 6, Overflow, as every other out-of-range value does
+' (CLngLng(1E+19), a Double variable holding 2^63). When the Double is a constant
+' expression, BETA 1010 and BETA 1007 convert it to -9223372036854775808, the smallest
+' LongLong, with no error. An unsuffixed whole-number literal beyond Long is a Double, so
+' 9223372036854775807 (the largest LongLong, written without ^) is the same constant 2^63
+' and gives the same wrong result. VB6 has no LongLong; CLng(2147483648#) raises 6 there.
+[TestFixture]
+Module LongLongOverflowTests
+
+    [TestCase]
+    Public Sub CLngLng_ConstantTwoToThe63_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(2 ^ 63)
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_DoubleLiteral2To63_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(9223372036854775808#)
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Assign_UnsuffixedLargestLongLongLiteral_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = 9223372036854775807
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_ConstantSingleTwoToThe63_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(CSng(2 ^ 63))
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    ' Controls: the same values reach the same conversion without being constants, or
+    ' are not 2^63, and the conversion is right.
+
+    [TestCase]
+    Public Sub CLngLng_VariableTwoToThe63_Raises6()
+        Dim q As LongLong
+        Dim x As Double = 2 ^ 63
+        On Error Resume Next
+        q = CLngLng(x)
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_ConstantOneE19_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(1E+19)
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_ConstantBelowTwoToThe63_Accepted()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(2 ^ 63 - 1024)
+        Assert.Strict.AreEqual 0, Err.Number
+        Assert.Strict.AreEqual 9223372036854774784^, q
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_ConstantMinus2To63_Accepted()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(-(2 ^ 63))
+        Assert.Strict.AreEqual 0, Err.Number
+        Assert.Strict.AreEqual -9223372036854775807^ - 1, q
+    End Sub
+
+End Module

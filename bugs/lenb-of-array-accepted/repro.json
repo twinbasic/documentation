@@ -1,0 +1,15 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS LenB_ByteElement$",
+      "^PASS LenB_LongVariable$",
+      "^FAIL LenB_FixedByteArray: ",
+      "^FAIL LenB_FixedLongArray: ",
+      "^FAIL LenB_DynamicByteArray: ",
+      "^FAIL Len_FixedByteArray: ",
+      "^FAIL Len_DynamicByteArray: "
+    ]
+  }
+}

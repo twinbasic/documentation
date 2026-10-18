@@ -51,7 +51,7 @@ An object reference is assigned with [**Set**](Set): `Set Item = New Collection`
 A reference can be assigned to a variable of a more specific type, `Set Items = Item`, which checks that the object supports that type.
 
 > [!NOTE] BETA 1010
-> Assigning an object to a variable of a class or interface it does not support raises the error -2147467262 in twinBASIC, the **HRESULT** `E_NOINTERFACE`. VB6 raises error 13, *Type mismatch*.
+> Assigning an object to a variable of a class or interface it does not support raises the error -2147467262, the **HRESULT** `E_NOINTERFACE`, *No such interface supported*. VB6 raises error 13, *Type mismatch*. Test the object first with `If TypeOf Item Is Collection Then`, or have the handler accept both numbers.
 
 ## Late binding
 {: index_also="late binding" }

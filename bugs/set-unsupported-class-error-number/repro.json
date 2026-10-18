@@ -1,0 +1,13 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^FAIL SetToUnsupportedTypeTests.SetToOtherClass_Raises13: ",
+      "^FAIL SetToUnsupportedTypeTests.SetToInterfaceTheClassLacks_Raises13: ",
+      "^FAIL SetToUnsupportedTypeTests.SetDictionaryToCollection_Raises13: ",
+      "^FAIL SetToUnsupportedTypeTests.SetFromVariantHoldingOtherClass_Raises13: ",
+      "^PASS SetToUnsupportedTypeTests.SetToOwnClass_RaisesNothing$"
+    ]
+  }
+}

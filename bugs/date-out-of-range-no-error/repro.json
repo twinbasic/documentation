@@ -1,0 +1,17 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^FAIL DateRangeTests.AssignLongPastLargest_Raises6: ",
+      "^FAIL DateRangeTests.CDatePastLargest_Raises6: ",
+      "^FAIL DateRangeTests.CDateBeforeSmallest_Raises6: ",
+      "^FAIL DateRangeTests.AddOneDayToLargest_Raises6: ",
+      "^FAIL DateRangeTests.SubtractOneDayFromSmallest_Raises6: ",
+      "^FAIL DateRangeTests.AssignHugeDouble_Raises6: ",
+      "^PASS DateRangeTests.AssignLargest_Accepted$",
+      "^PASS DateRangeTests.AssignSmallest_Accepted$",
+      "^PASS DateRangeTests.OutOfRangeInteger_Raises6$"
+    ]
+  }
+}

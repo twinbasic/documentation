@@ -25,6 +25,11 @@ The [**Date**](../Modules/DateTime/Date) and [**Time**](../Modules/DateTime/Time
 
 A **Date** is stored in 8 bytes as a **Double**. The integer part counts days from December 30, 1899, which is day 0: day 1 is December 31, 1899, and the days before it are negative. The fraction is the time of day, 0.5 being noon. January 1, 100 is day -657,434, and December 31, 9999 is day 2,958,465 plus the time of day. A **Date** has the same size in a 32-bit and a 64-bit build.
 
+A number or a date outside that range cannot be a **Date**, and an assignment, a conversion or an addition that would make one raises error 6, *Overflow*.
+
+> [!WARNING] BETA 1010
+> A **Date** outside the range is accepted with no error: `d = 2958466`, `CDate(-657435)`, `#12/31/9999# + 1` and an assignment of `1E+300` each store the number, and **CStr**, **Format** and **Year** of the value then raise error 5, *Invalid procedure call or argument*. VB6 raises error 6, *Overflow*, at the assignment. Compare a day number with -657,434 and 2,958,465 before assigning it to a **Date**.
+
 A **Date** prints, and is converted to a string, in the short date and time formats of the regional settings of the computer that runs the program. To get the same text on every computer, give [**Format**](../Modules/Strings/Format) a format string such as `"yyyy-mm-dd hh:nn:ss"`.
 
 ```tb check_run

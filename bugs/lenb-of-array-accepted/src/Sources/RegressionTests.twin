@@ -1,0 +1,33 @@
+' Regression tests as compile cases: each line that ends in a comment
+'   ' CASE <Name>: <expected>
+' must give that diagnostic on that line (a code, "error" for any error, or "none").
+' tbrun --tests checks them.
+'
+' Len and LenB take a string or a variable of a simple or user-defined type. VB6 refuses an
+' array as the argument of either, when the program is compiled ("Variable required - can't
+' assign to this expression"; the VB6 project beside this one lists what each line gave).
+' BETA 1010 and BETA 1007 accept it and return a number that is not the array's size in
+' bytes: for a fixed-size array of any element type and length 40 in a 32-bit build (48
+' in a 64-bit one) with one dimension and 48 (56) with two, for a dynamic array 4 (8).
+' The lines whose argument is an element or a simple variable are the controls.
+
+Module LenArrayTests
+
+    Private Sub Cases()
+        Dim fixedBytes(9) As Byte
+        Dim fixedLongs(3) As Long
+        Dim dynamicBytes() As Byte
+        Dim n As Long
+        ReDim dynamicBytes(4)
+
+        n = LenB(fixedBytes)  ' CASE LenB_FixedByteArray: error
+        n = LenB(fixedLongs)  ' CASE LenB_FixedLongArray: error
+        n = LenB(dynamicBytes)  ' CASE LenB_DynamicByteArray: error
+        n = Len(fixedBytes)  ' CASE Len_FixedByteArray: error
+        n = Len(dynamicBytes)  ' CASE Len_DynamicByteArray: error
+
+        n = LenB(fixedBytes(0))  ' CASE LenB_ByteElement: none
+        n = LenB(n)  ' CASE LenB_LongVariable: none
+    End Sub
+
+End Module

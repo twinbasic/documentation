@@ -1,0 +1,68 @@
+' Regression tests: Set to a variable of a class or interface that the object on the right
+' does not support. VB6 raises error 13, Type mismatch (the VB6 project beside this one
+' prints it). BETA 1010 and BETA 1007 raise -2147467262, the HRESULT E_NOINTERFACE ("No such
+' interface supported"), so a handler that tests for 13 does not recognise it. The control
+' is a Set to the object's own class, which raises nothing.
+
+Class ClsA
+    Public X As Long
+End Class
+
+Class ClsB
+    Public Y As Long
+End Class
+
+Interface IFoo
+    Sub Hello()
+End Interface
+
+[TestFixture]
+Module SetToUnsupportedTypeTests
+
+    [TestCase]
+    Public Sub SetToOtherClass_Raises13()
+        Dim o As Object = New ClsA
+        Dim b As ClsB
+        On Error Resume Next
+        Set b = o
+        Assert.Strict.AreEqual 13, Err.Number              ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub SetToInterfaceTheClassLacks_Raises13()
+        Dim o As Object = New ClsA
+        Dim f As IFoo
+        On Error Resume Next
+        Set f = o
+        Assert.Strict.AreEqual 13, Err.Number              ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub SetDictionaryToCollection_Raises13()
+        Dim o As Object = CreateObject("Scripting.Dictionary")
+        Dim c As Collection
+        On Error Resume Next
+        Set c = o
+        Assert.Strict.AreEqual 13, Err.Number              ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub SetFromVariantHoldingOtherClass_Raises13()
+        Dim v As Variant
+        Dim b As ClsB
+        Set v = New ClsA
+        On Error Resume Next
+        Set b = v
+        Assert.Strict.AreEqual 13, Err.Number              ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub SetToOwnClass_RaisesNothing()
+        Dim o As Object = New ClsB
+        Dim b As ClsB
+        On Error Resume Next
+        Set b = o
+        Assert.Strict.AreEqual 0, Err.Number
+    End Sub
+
+End Module

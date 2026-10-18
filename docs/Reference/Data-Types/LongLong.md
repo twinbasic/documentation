@@ -77,6 +77,9 @@ Big = CLngLng(1E+19)
 Debug.Print Err.Number              ' 6
 ```
 
+> [!WARNING] BETA 1010
+> The constant 2^63, one past the largest **LongLong**, converts to -9223372036854775808 with no error: `CLngLng(2 ^ 63)`, `CLngLng(9223372036854775808#)` and `CLngLng(CSng(2 ^ 63))` all do, and so does `Big = 9223372036854775807`, because a whole-number literal without the `^` suffix is a **Double** that rounds to 2^63. A **Double** variable holding 2^63 raises error 6, and so does `1E+19`. VB6 has no **LongLong**; it raises error 6 for the first **Double** beyond the **Long** range. Write the largest value as `9223372036854775807^`.
+
 ## Arithmetic and overflow
 
 An operation on two **LongLong** values gives a **LongLong**, and so does a **LongLong** combined with a **Byte**, **Integer**, **Long** or **Boolean**. Combined with a **Single** or **Double** it gives a **Double**; with a **Currency**, a **Currency**; with a **Decimal**, a **Decimal**. `^` always gives a **Double**, and so does `/` unless the other operand is a **Decimal**. `\` and `Mod` on two **LongLong** values give a **LongLong**. [Result types and promotion](../../Reference/Operators#result-types-and-promotion) has the full rules.
