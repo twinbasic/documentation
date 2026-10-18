@@ -5886,7 +5886,7 @@ Error 6, *Overflow*, at each of the four, as for `CLngLng(1E+19)` and for the sa
  - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. The narrower conversions of constants are right: `CLng(2 ^ 31)`, `CLng(CSng(2 ^ 31))`, `CInt(32768#)`, `CByte(256#)` and `CLngPtr(2 ^ 63)` in a 32-bit build raise error 6. Seen on the way and not covered by the cases: in a 32-bit build `q = 2 ^ 63 - 1024` (assigned without `CLngLng`) raises error 6 although the value fits, where a 64-bit build stores 9223372036854774784; `CLngLng(2 ^ 63 - 1024)` is right in both.
+BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. The narrower conversions of constants are right: `CLng(2 ^ 31)`, `CLng(CSng(2 ^ 31))`, `CInt(32768#)`, `CByte(256#)` and `CLngPtr(2 ^ 63)` in a 32-bit build raise error 6. A related defect seen on the way has its own entry: *In a 32-bit build, a constant `Double` expression raises error 6 after a constant that overflows a `Long` or `LongLong`*.
 
 Severity: medium. A silently wrong value, but only for one constant, and constants this size are rare. The unsuffixed `9223372036854775807` is the one a program is likely to write.
 
@@ -6116,3 +6116,168 @@ The same text in a 64-bit build as in a 32-bit one and in VB6: `1.#INF`, `-1.#IN
 BETA 1007 gives the same results. The reproducer's `repro.json` names the 64-bit build (`"arch": "win64"`). Severity: low. A program meets these values rarely, but one that tests or parses the text, or shows `Format(x, "0.00")` of one, behaves differently in the two builds.
 
 <!-- Reproducer: bugs/infinity-text-64-bit/ (mode test, arch win64: `tbrun --tests --arch win64` runs the nine cases; expect lists the eight FAIL and one PASS line); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas). docs/Reference/Data-Types/Double.md carries the callout for it (the NOTE after the paragraph on infinity and NaN); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+
+---
+
+## In a 32-bit build, a constant `Double` expression raises error 6 after a constant that overflows a `Long` or `LongLong`
+
+**Describe the bug**
+In a 32-bit build, a procedure that converts a constant `Double` that does not fit a `Long` or a `LongLong` (`l = 2 ^ 31`, `l = 3000000000#`, `CLng(2 ^ 31)`, `CLngLng(1E+19)`) then raises error 6, *Overflow*, at the next constant `Double` expression that has an operator after the `^`, although that expression is in range: `2 ^ 10 * 2`, `1.5 * 2`, `1E+10 + 1`, `2 ^ 63 - 1024`. The statement completes and stores the right value (2048 for `d = 2 ^ 10 * 2`); the error is reported late, as if a floating-point exception left pending by the first conversion were taken by the next one. It was found as `q = 2 ^ 63 - 1024` with `q As LongLong`, the largest `Double` below 2^63, which raises error 6. It was observed in IDE runs and in built exes, in a 32-bit build only.
+
+The error depends on the statement it follows, not on the size or the type:
+- The expression needs an operator after the `^`. `2 ^ 11`, `2048#`, `9E+18`, `1500 * 2` (Integer arithmetic) and `x * 2` with a `Double` variable do not raise it.
+- The destination does not matter: `Long`, `Integer`, `Byte`, `Currency`, `Single`, `Double`, `Variant`, `LongLong`.
+- The first statement must convert a constant that does not fit a `Long` or a `LongLong`. A `Byte` or `Integer` constant that does not fit (`b = 256`, `i = 40000`), the same overflow through a `Double` variable (`l = x`) and `Err.Raise 6` do not trigger it. `CLngLng(2 ^ 63)`, which raises no error of its own (see the `CLngLng(2^63)` entry), triggers it.
+- `Err.Clear` between the two statements changes nothing. A second constant expression after the one that raised is accepted.
+- A function whose body is `F = 2 ^ 63 - 1024` raises the error when it is called from a procedure that has such a conversion, before or after the call. The function then raises it for its other callers too, those with no conversion among them.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `const-double-expression-after-overflow-32bit.twinproj` (attached as `const-double-expression-after-overflow-32bit.zip`). Its module `RegressionTests`, below, has one `[TestCase]` for each of five statements that raise the error, asserting that none is raised, and six controls.
+2. Run the test cases in a 32-bit build. The first five fail with `Err.Number` 6; the six controls pass: the same expressions with no overflow before them, a single power, a variable product, a `Byte` overflow and an overflow through a variable. In a 64-bit build all eleven pass.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Called by two cases: the first has the Long overflow, the second has none.
+    Private Function TwoToThe63MinusK() As LongLong
+        TwoToThe63MinusK = 2 ^ 63 - 1024
+    End Function
+
+    [TestCase]
+    Public Sub Double_ConstantProductAfterLongOverflow_Accepted()
+        Dim d As Double, l As Long, n As Long
+        On Error Resume Next
+        l = 2 ^ 31
+        Err.Clear
+        d = 2 ^ 10 * 2
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+        Assert.Strict.AreEqual 2048#, d
+    End Sub
+
+    [TestCase]
+    Public Sub LongLong_TwoToThe63MinusKAfterLongOverflow_Accepted()
+        Dim q As LongLong, l As Long, n As Long
+        On Error Resume Next
+        l = 2 ^ 31
+        Err.Clear
+        q = 2 ^ 63 - 1024
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+        Assert.Strict.AreEqual 9223372036854774784^, q
+    End Sub
+
+    [TestCase]
+    Public Sub LongLong_TwoToThe63MinusKAfterCLngLng1E19_Accepted()
+        Dim q As LongLong, n As Long
+        On Error Resume Next
+        q = CLngLng(1E+19)
+        Err.Clear
+        q = 2 ^ 63 - 1024
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+        Assert.Strict.AreEqual 9223372036854774784^, q
+    End Sub
+
+    [TestCase]
+    Public Sub Function_ReturnsTwoToThe63MinusK_CallerHasLongOverflow_Accepted()
+        Dim q As LongLong, l As Long, n As Long
+        On Error Resume Next
+        q = TwoToThe63MinusK()
+        n = Err.Number
+        l = 2 ^ 31
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub Function_ReturnsTwoToThe63MinusK_CallerHasNoOverflow_Accepted()
+        Dim q As LongLong, n As Long
+        On Error Resume Next
+        q = TwoToThe63MinusK()
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub Double_ConstantProduct_Alone_Accepted()
+        Dim d As Double, n As Long
+        On Error Resume Next
+        d = 2 ^ 10 * 2
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+        Assert.Strict.AreEqual 2048#, d
+    End Sub
+
+    [TestCase]
+    Public Sub LongLong_TwoToThe63MinusK_Alone_Accepted()
+        Dim q As LongLong, n As Long
+        On Error Resume Next
+        q = 2 ^ 63 - 1024
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+        Assert.Strict.AreEqual 9223372036854774784^, q
+    End Sub
+
+    [TestCase]
+    Public Sub Double_SinglePowerAfterLongOverflow_Accepted()
+        Dim d As Double, l As Long, n As Long
+        On Error Resume Next
+        l = 2 ^ 31
+        Err.Clear
+        d = 2 ^ 11
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub Double_VariableProductAfterLongOverflow_Accepted()
+        Dim d As Double, x As Double, l As Long, n As Long
+        x = 1024
+        On Error Resume Next
+        l = 2 ^ 31
+        Err.Clear
+        d = x * 2
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub Double_ConstantProductAfterByteOverflow_Accepted()
+        Dim d As Double, b As Byte, n As Long
+        On Error Resume Next
+        b = 256
+        Err.Clear
+        d = 2 ^ 10 * 2
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub Double_ConstantProductAfterRuntimeLongOverflow_Accepted()
+        Dim d As Double, x As Double, l As Long, n As Long
+        x = 2 ^ 31
+        On Error Resume Next
+        l = x
+        Err.Clear
+        d = 2 ^ 10 * 2
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+No error at any of the five: an expression whose value fits is accepted whatever statement came before it, as in a 64-bit build. VB6 accepts `d = 2 ^ 10 * 2` and `n = 2 ^ 30 + 2 ^ 29` directly after `l = 2 ^ 31` and `l = 2147483648#`, which raise error 6 themselves (the reproducer's `vb6/` project prints them, attached as `const-double-expression-after-overflow-32bit-vb6.zip`; VB6 has no `LongLong`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The reproducer's `repro.json` names the 32-bit build (`"arch": "win32"`). A 64-bit build, IDE run or exe, gives no error for any case.
+
+Severity: low. The error is raised and is easy to see; the statement that raises it holds a correct value. A program meets it only when a constant that overflows is followed in the same procedure by a constant `Double` expression, which is mostly code that tests overflow handling.
+
+<!-- Reproducer: bugs/const-double-expression-after-overflow-32bit/ (mode test, arch win32: `tbrun --tests` runs the eleven cases; expect lists the five FAIL and six PASS lines); verify reproduces on BETA 1010; VB6 side in vb6/ (Module1.bas, the same two statements for a Double and a Long). docs/Reference/Data-Types/LongLong.md carries the callout for it (the NOTE under Conversions); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
