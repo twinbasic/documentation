@@ -1112,7 +1112,7 @@ Public Property Let Caption(ByVal Value As String)
 End Property
 ```
 
-A property takes the attribute on its first accessor in the source, normally the **Property Get**; written on a later accessor, it is ignored. The legacy line `Attribute Caption.VB_ProcData.VB_Invoke_Property = "CaptionPage"` inside the **Property Get** means the same. The argument must be a **String**: `[PropertyPage]` with no argument, or with a **Boolean** or a number, is TB5163, *Expected a single String argument*. On a procedure, a name that matches no property page in the project is error TB5259, *Failed to find named PropertyPage '...' for procedure '...'*. That includes an empty string and a name that differs only in case. A variable's name is not checked.
+A property takes the page from its first accessor in the source, normally the **Property Get**, whichever kind of accessor that is. Written on a later accessor, the attribute has no effect, though its name is still checked; when two accessors name different pages, the control reports the first one's. On a **Sub**, a **Function** or a **Public** variable of the control, the control reports the page for that member's DISPID in the same way. In a class that is not a **UserControl**, or on an **Interface** member, the compiler accepts the attribute and it has no effect. The legacy line `Attribute Caption.VB_ProcData.VB_Invoke_Property = "CaptionPage"` inside the **Property Get** means the same. The argument must be a **String**: `[PropertyPage]` with no argument, or with a **Boolean** or a number, is TB5163, *Expected a single String argument*. On a procedure, a name that matches no property page in the project is error TB5259, *Failed to find named PropertyPage '...' for procedure '...'*. That includes an empty string and a name that differs only in case. A variable's name is not checked.
 
 > [!NOTE] BETA 1010
 > VB6 stores a property's page as `"PageName;Category"` in the legacy attribute, with the category the property sheet groups the property under. twinBASIC reads such a legacy line and drops what follows the semicolon. **[PropertyPage]** takes the whole string as the name, so `[PropertyPage("CaptionPage;Appearance")]` is TB5259.
@@ -1136,7 +1136,20 @@ The pages the control offers as a whole are listed in its [**PropertyPages**](..
      of a Class or an Interface (TB5163 for a non-String argument); refused with
      TB5182 on a Module member, a Type field, a Class, an Enum. Only a member with a
      DISPID can be mapped: an Event, a Const, a Private variable and a Declare
-     accept it to no effect. The type library is the same with or without it. -->
+     accept it to no effect. The type library is the same with or without it.
+     BETA 1010 and 1007 (control), win32 and win64, a built OCX called without
+     registration (a tbrun --exe exe that loads each OCX with LoadLibrary and
+     calls DllGetClassObject, GetIDsOfNames and MapPropertyToPage through
+     DispCallFunc): attribute on the Get, on a Let written before an
+     unmarked Get, on a Set written first, and the legacy line with or without
+     ";Appearance" give S_OK and ProbePage's [ClassId]; on a Let after an unmarked
+     Get, or a Get after an unmarked Let, E_NOTIMPL (0x80004001) and CLSID_NULL;
+     Get "ProbePage" then Let "ProbePage2" gives ProbePage, Let "ProbePage2" then
+     Get "ProbePage" gives ProbePage2, both builds clean; a property without it
+     E_NOTIMPL. A Public variable, a Sub and a Function of the control map to the
+     page; an Interface member ([DispId(5000)], implemented by the control) gives
+     E_NOTIMPL; a plain creatable Class in the OCX has no IPerPropertyBrowsing
+     (E_NOINTERFACE). Every answer the same on both builds and both architectures. -->
 
 ## RedirectToStaticImplementation  (String)
 {: #redirecttostaticimplementation }
