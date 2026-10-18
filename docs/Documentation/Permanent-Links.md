@@ -78,9 +78,11 @@ A name can have several entries: `Add` is a method of a dozen classes, and `Prin
 
 ## /tB/Core/\<Type\>
 
-Each intrinsic data type has a page of its own beside the statements:
+Each intrinsic data type has a page of its own beside the statements. The page of **Date** is `/tB/Core/Date-Type`, because `/tB/Core/Date` is a redirect to the **Date** property of the DateTime module:
 
-- [Long](../../tB/Core/Long)
+- [Boolean](../../tB/Core/Boolean), [Byte](../../tB/Core/Byte), [Integer](../../tB/Core/Integer), [Long](../../tB/Core/Long), [LongLong](../../tB/Core/LongLong), [LongPtr](../../tB/Core/LongPtr)
+- [Single](../../tB/Core/Single), [Double](../../tB/Core/Double), [Currency](../../tB/Core/Currency), [Decimal](../../tB/Core/Decimal)
+- [Date](../../tB/Core/Date-Type), [String](../../tB/Core/String), [Variant](../../tB/Core/Variant), [Object](../../tB/Core/Object)
 
 ## /tB/Modules/\<ModuleName\>/\<Symbol\>
 

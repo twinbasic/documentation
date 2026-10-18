@@ -215,7 +215,7 @@ Dates are stored as part of a real number. Values to the left of the decimal rep
 
 ## date literal
 
-Any sequence of characters with a valid format that is surrounded by number signs (`#`): a date, a time of day, or both, such as `#2026-03-17#`, `#1:45 PM#` or `#3/17/2026 13:45:30#`. The compiler converts a date literal to its **Date** value when it builds the project. See [Date literals](../Reference/Data-Types#date-literals) for the forms it accepts and how it reads their parts.
+Any sequence of characters with a valid format that is surrounded by number signs (`#`): a date, a time of day, or both, such as `#2026-03-17#`, `#1:45 PM#` or `#3/17/2026 13:45:30#`. The compiler converts a date literal to its **Date** value when it builds the project. See [Date literals](../tB/Core/Date-Type#date-literals) for the forms it accepts and how it reads their parts.
 
 ## date separators
 

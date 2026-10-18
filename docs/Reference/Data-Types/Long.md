@@ -24,7 +24,7 @@ A **Long** variable is declared **As Long**, or by the type-declaration characte
 
 ## Storage and range
 
-A **Long** is stored in 4 bytes as a two's-complement number. It holds the whole numbers from -2,147,483,648 to 2,147,483,647. It has the same size in a 32-bit and a 64-bit build; [**LongPtr**](../../Reference/Data-Types#longptr) is the type that changes size with the build.
+A **Long** is stored in 4 bytes as a two's-complement number. It holds the whole numbers from -2,147,483,648 to 2,147,483,647. It has the same size in a 32-bit and a 64-bit build; [**LongPtr**](LongPtr) is the type that changes size with the build.
 
 ```tb check_run
 Dim Count As Long
@@ -39,7 +39,7 @@ Debug.Print VarType(Count) = vbLong ' True
 
 A whole-number literal with no type-declaration character is an **Integer** from -32,768 to 32,767, a **Long** beyond that up to 2,147,483,647, and a **Double** beyond that. The minus sign is not part of the literal, so `-32768` is a **Long**: the literal 32768 is a **Long**, then negated. The suffix `&` makes any whole-number literal in the range a **Long**: `5&`.
 
-A hexadecimal (`&H`), octal (`&O`) or binary (`&B`) literal is an **Integer** when its value fits in 16 bits and a **Long** when it fits in 32: `&HFFFF` is the **Integer** -1, and `&H80000000` is the **Long** -2,147,483,648. The suffix `&` makes a 16-bit pattern a positive **Long**: `&HFFFF&` is 65,535. A pattern wider than 32 bits is a [**LongLong**](../../Reference/Data-Types#longlong). The digits of a `&H`, `&O` or `&B` literal can be grouped with underscores, as in `&HFFFF_0000`; a decimal literal cannot.
+A hexadecimal (`&H`), octal (`&O`) or binary (`&B`) literal is an **Integer** when its value fits in 16 bits and a **Long** when it fits in 32: `&HFFFF` is the **Integer** -1, and `&H80000000` is the **Long** -2,147,483,648. The suffix `&` makes a 16-bit pattern a positive **Long**: `&HFFFF&` is 65,535. A pattern wider than 32 bits is a [**LongLong**](LongLong). The digits of a `&H`, `&O` or `&B` literal can be grouped with underscores, as in `&HFFFF_0000`; a decimal literal cannot.
 
 ```tb check_run
 Debug.Print TypeName(32767)         ' Integer
@@ -74,7 +74,7 @@ Debug.Print CLng(True)              ' -1
 
 ## Arithmetic and overflow
 
-An operation on two **Long** values gives a **Long**, and so does a **Long** combined with a **Byte**, **Integer** or **Boolean**. Combined with a **LongLong** it gives a **LongLong**; with a **Single** or **Double**, a **Double**; with a **Currency**, a **Currency**; with a **Decimal**, a **Decimal**. Division with `/` and `^` always give a **Double**, and `\` and `Mod` on two **Long** values give a **Long**. [Result types and promotion](../../Reference/Operators#result-types-and-promotion) has the full rules.
+An operation on two **Long** values gives a **Long**, and so does a **Long** combined with a **Byte**, **Integer** or **Boolean**. Combined with a **LongLong** it gives a **LongLong**; with a **Single** or **Double**, a **Double**; with a **Currency**, a **Currency**; with a **Decimal**, a **Decimal**. `^` always gives a **Double**, and so does `/` unless the other operand is a **Decimal**. `\` and `Mod` on two **Long** values give a **Long**. [Result types and promotion](../../Reference/Operators#result-types-and-promotion) has the full rules.
 
 A result outside the range raises error 6, *Overflow*: adding 1 to 2,147,483,647 does, and so does negating -2,147,483,648. The type of the result is set by the operands, not by the variable that receives it, so `n = i * 200` overflows when `i` is an **Integer** holding 300, even with `n` a **Long**: the product of two **Integer** values is an **Integer**. Writing `200&` makes it a **Long** product.
 
@@ -105,7 +105,7 @@ A **Variant** holding a **Long** does not overflow: a result that does not fit b
 
 ## Long and 64-bit code
 
-A **Long** is 4 bytes in a 64-bit build too, so it cannot hold an address or a handle there. Declare a pointer or a handle --- in a [**Declare**](Declare) statement, a **Type** or a variable --- as [**LongPtr**](../../Reference/Data-Types#longptr), which is a **Long** in a 32-bit build and a **LongLong** in a 64-bit one. Keep **Long** for values that are 32 bits wide in both, such as a Win32 `DWORD`, `INT` or `BOOL`.
+A **Long** is 4 bytes in a 64-bit build too, so it cannot hold an address or a handle there. Declare a pointer or a handle --- in a [**Declare**](Declare) statement, a **Type** or a variable --- as [**LongPtr**](LongPtr), which is a **Long** in a 32-bit build and a **LongLong** in a 64-bit one. Keep **Long** for values that are 32 bits wide in both, such as a Win32 `DWORD`, `INT` or `BOOL`.
 
 ## Example
 
@@ -132,7 +132,7 @@ Debug.Print "Error " & Err.Number & " at " & i  ' Error 6 at 65536
 ## See Also
 
 - [Data Types](../../Reference/Data-Types#long) -- the summary of all fourteen intrinsic types
-- [Integer](../../Reference/Data-Types#integer), [LongLong](../../Reference/Data-Types#longlong), [LongPtr](../../Reference/Data-Types#longptr) -- the other integer types
+- [Integer](Integer), [LongLong](LongLong), [LongPtr](LongPtr) -- the other integer types
 - [CLng](../Modules/Conversion/CLng) function
 - [Deftype](Deftype) statement
 - [Result types and promotion](../../Reference/Operators#result-types-and-promotion) -- the type of an arithmetic result

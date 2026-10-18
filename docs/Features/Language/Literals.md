@@ -19,7 +19,7 @@ The `&H`, `&O`, and `&B` literals can all be grouped using an underscore, for ex
 
 ## Date Literals
 
-Dates and times are written between number signs: `#2026-03-17#`, `#1:45 PM#`, `#3/17/2026 13:45:30#`. The forms the compiler accepts, and how it reads the month, day and year, are described under [Data Types → Date literals](../../Reference/Data-Types#date-literals).
+Dates and times are written between number signs: `#2026-03-17#`, `#1:45 PM#`, `#3/17/2026 13:45:30#`. The forms the compiler accepts, and how it reads the month, day and year, are described under [Date → Date literals](../../tB/Core/Date-Type#date-literals).
 
 ## Example
 
