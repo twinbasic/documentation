@@ -4,11 +4,12 @@ parent: Reference Section
 nav_order: 10
 has_toc: false
 permalink: /Reference/Data-Types
+symbols: [Boolean, Byte, Integer, Long, LongLong, LongPtr, Single, Double, Currency, Decimal, Date, String, Variant, Object]
 ---
 
 # Data Types
 
-twinBASIC supports fourteen intrinsic data types. They fall into four broad categories: numeric (integer and floating-point), text, date/time, and reference/generic. This page is the canonical lookup for storage size, value range, and the type-declaration suffix where one exists.
+twinBASIC supports fourteen intrinsic data types. They fall into four broad categories: numeric (integer and floating-point), text, date/time, and reference/generic. This page is the canonical lookup for storage size, value range, and the type-declaration suffix where one exists, with a short section for each type.
 
 For the twinBASIC-specific additions to this set --- **LongLong**, **LongPtr**, and **Decimal** as a standalone type --- see [Features → New Data Types](../Features/Language/Data-Types).
 
@@ -19,55 +20,90 @@ For the twinBASIC-specific additions to this set --- **LongLong**, **LongPtr**, 
 
 | Type | Suffix | Storage | Range |
 |------|--------|---------|-------|
-| **Boolean** | (none) | 2 bytes | `True` or `False` |
-| **Byte** | (none) | 1 byte | 0 to 255 |
-| **Integer** | `%` | 2 bytes | -32,768 to 32,767 |
-| **Long** | `&` | 4 bytes | -2,147,483,648 to 2,147,483,647 |
-| **LongLong** | `^` | 8 bytes | -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807 |
-| **LongPtr** | (none) | 4 bytes (32-bit) / 8 bytes (64-bit) | Same as **Long** or **LongLong** depending on target |
-| **Single** | `!` | 4 bytes | ±1.401298E-45 to ±3.402823E38 |
-| **Double** | `#` | 8 bytes | ±4.94065645841246E-324 to ±1.79769313486232E308 |
-| **Currency** | `@` | 8 bytes | -922,337,203,685,477.5808 to 922,337,203,685,477.5807 |
-| **Decimal** | (none) | 16 bytes | ±79,228,162,514,264,337,593,543,950,335 (up to 28 decimal places) |
-| **Date** | (none) | 8 bytes | January 1, 100 to December 31, 9999 |
-| **String** | `$` | variable | Up to ~2 billion characters |
-| **Variant** | (none) | 16 bytes (+ heap data) | Any of the above |
-| **Object** | (none) | 4 bytes (32-bit) / 8 bytes (64-bit) | A COM interface reference |
+| [**Boolean**](#boolean) | (none) | 2 bytes | `True` or `False` |
+| [**Byte**](#byte) | (none) | 1 byte | 0 to 255 |
+| [**Integer**](#integer) | `%` | 2 bytes | -32,768 to 32,767 |
+| [**Long**](#long) | `&` | 4 bytes | -2,147,483,648 to 2,147,483,647 |
+| [**LongLong**](#longlong) | `^` | 8 bytes | -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807 |
+| [**LongPtr**](#longptr) | (none) | 4 bytes (32-bit) / 8 bytes (64-bit) | Same as **Long** or **LongLong** depending on target |
+| [**Single**](#single) | `!` | 4 bytes | ±1.401298E-45 to ±3.402823E38 |
+| [**Double**](#double) | `#` | 8 bytes | ±4.94065645841246E-324 to ±1.79769313486232E308 |
+| [**Currency**](#currency) | `@` | 8 bytes | -922,337,203,685,477.5808 to 922,337,203,685,477.5807 |
+| [**Decimal**](#decimal) | (none) | 16 bytes | ±79,228,162,514,264,337,593,543,950,335 (up to 28 decimal places) |
+| [**Date**](#date) | (none) | 8 bytes | January 1, 100 to December 31, 9999 |
+| [**String**](#string) | `$` | variable | Up to ~2 billion characters |
+| [**Variant**](#variant) | (none) | 16 bytes (+ heap data) | Any of the above |
+| [**Object**](#object) | (none) | 4 bytes (32-bit) / 8 bytes (64-bit) | A COM interface reference |
 
 The suffix column lists the character that can optionally follow a literal or identifier to force its type in source code --- for example, `42&` is a **Long** literal, `3.14#` is a **Double**, and `Total!` declares a **Single** variable in a type-implicit context.
 
+Integer overflow raises a run-time error (error 6) by default. Overflow does not wrap silently, with one exception: integer division of the most negative value by -1, described under [the **\\** operator](../tB/Core/IntegerDivide). Which type an arithmetic result has, and so where it overflows, is set out in [Result types and promotion](Operators#result-types-and-promotion).
+
+**Any** is not a data type. A parameter of a [**Declare**](../tB/Core/Declare) statement declared **As Any** takes an argument of any type, which the compiler does not check:
+
+```tb check_build slot=module
+Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" _
+    (ByRef Destination As Any, ByRef Source As Any, ByVal Length As LongPtr)
+```
+
 ---
 
-## Integer types
+## Boolean
 
 **Boolean** stores `True` (-1) or `False` (0). The runtime treats any non-zero value as `True` when a **Boolean** is expected; only -1 is the canonical `True`. Assigning any non-zero integer to a **Boolean** normalises it to -1.
 
+---
+
+## Byte
+
 **Byte** is the only unsigned integer type. It holds values 0--255, which makes it the natural element type for byte arrays used in binary I/O and buffer operations.
-
-**Integer** holds small signed integers. In most code, **Long** is a better choice: it is no slower on 32-bit hardware and never overflows on values above 32,767. **Integer** is useful when interfacing with structures or APIs that declare 16-bit fields.
-
-**Long** is the most common integer type. It covers the full range of Win32 `DWORD` and `int` values and is the default type for index variables and counters.
-
-**LongLong** is an 8-byte signed integer available in both 32-bit and 64-bit builds. In VBA it is restricted to 64-bit targets; twinBASIC lifts that restriction and allows **LongLong** in 32-bit projects. Use it when a value can exceed 2,147,483,647 --- file sizes, tick counts, GUIDs, and 64-bit Win32 handles. The suffix `^` marks a **LongLong** literal: `9_000_000_000^`.
-
-**LongPtr** changes width with the compilation target: 4 bytes in a 32-bit build, 8 bytes in a 64-bit build. It is the correct type for Win32 handles, window handles (**HWND**), and pointers in `Declare` statements that must work in both modes. It has no literal suffix --- declare the variable with `Dim x As LongPtr` and assign it a numeric expression.
-
-Integer overflow raises a run-time error (error 6) by default. Overflow does not wrap silently, with one exception: integer division of the most negative value by -1, described under [the **\\** operator](../tB/Core/IntegerDivide). Which type an arithmetic result has, and so where it overflows, is set out in [Result types and promotion](Operators#result-types-and-promotion).
 
 ---
 
-## Floating-point types
+## Integer
 
-**Single** and **Double** follow the IEEE 754 standard for single-precision and double-precision floating-point respectively. Both can represent `NaN` and `Infinity` as bit patterns, though the VBA runtime raises an error on most operations that would produce them.
+**Integer** holds small signed integers. In most code, **Long** is a better choice: it is no slower on 32-bit hardware and never overflows on values above 32,767. **Integer** is useful when interfacing with structures or APIs that declare 16-bit fields.
 
-**Double** is the default type of untyped numeric literals that contain a decimal point (`3.14` is a **Double**). It is accurate to approximately 15--16 significant decimal digits. Choose it for general-purpose floating-point arithmetic.
+---
 
-**Single** is accurate to approximately 6--7 significant decimal digits. It is smaller and may be faster in tight loops, but the reduced precision makes it unsuitable for financial or scientific calculations where rounding error matters.
+## Long
+
+**Long** is a signed 32-bit integer: 4 bytes, from -2,147,483,648 to 2,147,483,647, in 32-bit and 64-bit builds alike. Its type-declaration character is `&`. It is the most common integer type, the usual choice for counters, indexes and 32-bit Win32 values. [**Long**](../tB/Core/Long) describes its literals, conversions and overflow.
+
+---
+
+## LongLong
+
+**LongLong** is an 8-byte signed integer available in both 32-bit and 64-bit builds. In VBA it is restricted to 64-bit targets; twinBASIC lifts that restriction and allows **LongLong** in 32-bit projects. Use it when a value can exceed 2,147,483,647 --- file sizes, tick counts, GUIDs, and 64-bit Win32 handles. The suffix `^` marks a **LongLong** literal: `9000000000^`.
+
+---
+
+## LongPtr
+
+**LongPtr** changes width with the compilation target: 4 bytes in a 32-bit build, 8 bytes in a 64-bit build. It is the correct type for Win32 handles, window handles (**HWND**), and pointers in `Declare` statements that must work in both modes. It has no literal suffix --- declare the variable with `Dim x As LongPtr` and assign it a numeric expression.
+
+---
+
+## Single
+
+**Single** follows the IEEE 754 standard for single-precision floating-point. It is accurate to approximately 6--7 significant decimal digits. It is smaller than a **Double** and may be faster in tight loops, but the reduced precision makes it unsuitable for financial or scientific calculations where rounding error matters.
 
 Assigning a value too large for a **Single** to a **Single** variable raises error 6, *Overflow*: `s = 1E+300` does, and so does `s = x ^ 2` when the **Double** result is too large.
 
 > [!NOTE]
 > VB6 raises no error for these assignments: the **Single** holds infinity (`1.#INF`).
+
+---
+
+## Double
+
+**Double** follows the IEEE 754 standard for double-precision floating-point. Both **Single** and **Double** can represent `NaN` and `Infinity` as bit patterns, though the VBA runtime raises an error on most operations that would produce them.
+
+**Double** is the default type of untyped numeric literals that contain a decimal point (`3.14` is a **Double**). It is accurate to approximately 15--16 significant decimal digits. Choose it for general-purpose floating-point arithmetic.
+
+---
+
+## Currency
 
 **Currency** is a fixed-point type, stored internally as a 64-bit signed integer scaled by 10,000. It avoids the binary rounding errors of IEEE 754 types and has exactly four decimal places; a value with more places is rounded to four, and a value exactly halfway is rounded to the even digit, so `CCur("0.12345")` is 0.1234. It suits monetary values whose amounts and intermediate results never need more than four decimal places --- [Decimal or Currency for money](#decimal-or-currency-for-money) compares the two types.
 
@@ -163,7 +199,7 @@ An **Object** variable can hold any COM-compatible object; the runtime resolves 
 
 ---
 
-### See Also
+## See Also
 
 - [New Data Types](../Features/Language/Data-Types) -- **LongLong**, **LongPtr**, and **Decimal** in depth
 - [Enumerations](Enumerations) -- index of all enumeration types across all packages

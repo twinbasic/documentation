@@ -1838,6 +1838,10 @@ const pages = [
   page("Reference/Attributes.md", "/tB/Core/Attributes", "Attributes", "Reference Section",
     [h(1, "Attributes", "attributes"), h(2, "AppObject (optional Bool)", "appobject")]),
   page("Reference/Default/VBA/Guide.md", "/Reference/Guide", "Guide", "VBA Package", [h(1, "Guide")]),
+  page("Reference/Data-Types.md", "/Reference/Data-Types", "Data Types", "Reference Section",
+    [h(1, "Data Types", "data-types"), h(2, "Quick reference", "quick-reference"), h(2, "Long", "long"),
+      h(2, "Overflow", "overflow"), h(2, "String", "string"), h(3, "Fixed-length strings", "fixed-length-strings")],
+    { symbols: ["Long", "String"] }),
 ];
 
 const r = deriveSymbolIndex({ pages, api });
@@ -1935,7 +1939,37 @@ check(
   r.interfaces["tbIDE.ICodeEditorV1"] === "tbIDE.CodeEditor" && r.interfaces["VBA._Collection"] === "VBA.Collection",
   show(r.interfaces),
 );
-check("only /tB/ pages are read", !r.symbols.some((s) => !s.url.startsWith("/tB/")) && !find("Guide").length);
+check(
+  "only /tB/ pages and the data types page are read",
+  !r.symbols.some((s) => !s.url.startsWith("/tB/") && !s.url.startsWith("/Reference/Data-Types#")) &&
+    !find("Guide").length,
+);
+check(
+  "a data type is the language's, at the ## heading its symbols: entry names",
+  show(find("Long")) ===
+    show([{ name: "Long", package: null, container: null, kind: "type", url: "/Reference/Data-Types#long" }]) &&
+    urlOf("String").join() === "/Reference/Data-Types#string",
+  show(r.symbols.filter((s) => s.kind === "type")),
+);
+check(
+  "a ## heading the data types page's symbols: does not name is not a type",
+  !find("Overflow").length && !find("Quick").length,
+  show(r.symbols.filter((s) => s.kind === "type")),
+);
+{
+  const broken = pages.map((p) => (p.src === "Reference/Data-Types.md" ? { ...p, symbols: ["Long", "Currency"] } : p));
+  let error = null;
+  try {
+    deriveSymbolIndex({ pages: broken, api });
+  } catch (e) {
+    error = e;
+  }
+  check(
+    "a type the data types page names without its ## heading fails",
+    /Currency/.test(String(error?.message)),
+    String(error?.message),
+  );
+}
 check(
   "a declared member no page documents is a gap, not an entry",
   r.gaps.some((g) => g.container === "Collection" && g.name === "Count") && !find("Count").length,

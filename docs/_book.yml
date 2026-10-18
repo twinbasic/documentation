@@ -348,7 +348,7 @@ parts:
         nav_page: Reference Section/Operators
         outline_closed: true
       - title: Data Types
-        page: /Reference/Data-Types
+        nav_page: Reference Section/Data Types
         no_outline_entry: true
         no_heading_shift: true
         outline_closed: true

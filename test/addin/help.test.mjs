@@ -512,6 +512,16 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     // ErrObject.Number from every other Number.
     [14, 36, "/tB/Packages/VB/App/#path", "App.Path"],
     [14, 64, "/tB/Modules/ErrObject/Number", "Err.Number"],
+    // A data type is the language's, at its section of the Data Types page;
+    // the function or property of the same name is picked by the hover's
+    // package, which names VBA for String( and Date, and nothing for a type.
+    // No two of the page's cases are next to each other: a change of
+    // fragment alone does not load the page again.
+    [8, 29, "/Reference/Data-Types#long", "a data type: Long"],
+    [42, 27, "/tB/Modules/Strings/String", 'String(5, "x"): the function, not the type'],
+    [42, 18, "/Reference/Data-Types#string", "As String: the type, not the function"],
+    [43, 25, "/tB/Modules/DateTime/Date", "= Date: the property, not the type"],
+    [43, 18, "/Reference/Data-Types#date", "As Date: the type, not the property"],
   ];
   for (const [line, column, url, what] of CASES) {
     test(`F1 on ${what} (${line}:${column})`, async () => {
