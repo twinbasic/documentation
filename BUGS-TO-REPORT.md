@@ -5286,3 +5286,33 @@ The reference is not one of the compiler's installed packages, and its own name 
 Severity: low. A type library is labelled as a package.
 
 <!-- Reproducer: bugs/imported-typelib-linked-package/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "a type library imported on Available COM References is listed in Enabled Libraries as [LINKED-PACKAGE]", which passes on BETA 1010; the file dialog is answered in the page, and the dialog is closed with Cancel). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under Import from file (its third NOTE), carries a NOTE for it; when a fixed build is released, that NOTE changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D33). -->
+
+---
+
+## With Export Verbose, each DONE line of Export Project shows &#92; for every backslash
+
+**Describe the bug**
+With *Export Verbose* on (Project Settings, Export), Export Project prints a `DONE:` line in the DEBUG CONSOLE for each file it writes. Every backslash in those paths shows as the text `&#92;`. The files are written correctly. It was observed in an IDE started with an `APPDATA` of its own, reading the console's lines and the rows it draws, and the folder written.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project, and set *Export Verbose* to YES in Project Settings, Export.
+2. Export Project into an empty folder.
+3. The DEBUG CONSOLE shows `[EXPORT]  DONE: &#92;Settings`, `[EXPORT]  DONE: &#92;Sources&#92;Startup.twin`, and so on for each file.
+
+**Expected behavior**
+`[EXPORT]  DONE: \Settings`, `[EXPORT]  DONE: \Sources\Startup.twin`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007, with the same lines. The other `[EXPORT]` lines are right: the first line, `exporting current project to "\\?\C:\...\"...`, the `COMPLETED (... folders, ... files)` line, and, when the export folder already holds files, each `DELETED: \\?\C:\...` line. The files written and their contents are right.
+
+The cause looks to be the one in #2444. The compiler sends each `DONE` line in three parts: `[EXPORT]  DONE: `, then the path, then the line break. `debugOutputPartial` in `ide/main.js` adds the path to a line that is still open, and passes it through `TEXTtoHTML` twice, so `\` is stored as `&amp;#92;` and drawn as `&#92;`. A `DELETED` line comes in one part and is escaped once.
+
+Severity: cosmetic. The paths are hard to read, and a path copied from the console is wrong.
+
+<!-- Reproducer: bugs/export-verbose-done-escaped/ (mode lane: asserted by `ide-test.bat --only "^export$"` (test/ide/export.test.mjs), the test "with Export Verbose, every DONE line shows &#92; for each backslash of the path, and the files are right", which passes on BETA 1010 and on BETA 1007; the controls "control: with Export Verbose, a second export's DELETED lines show the paths' backslashes" and "control: without Export Verbose, the first line and the COMPLETED line show the path's backslashes" pass too; the exports go into the lane's work folder through the IDE's own exportProjectTo(), which the menu command calls). No project and no zip. Its cause is twinbasic/twinbasic#2444's (bugs/filed/debug-print-escaped-twice/), so the owner may mark it *CAPTURED IN EXISTING #2444* instead of filing it. docs/IDE/Projects/Saving-and-Exporting.md, under Export Project (the paragraph on Export Verbose), carries a NOTE for it; when a fixed build is released, that NOTE goes. First seen on BETA 1005 while taking the documentation's screenshots (WIP.Screenshots.md, "Not taken: the export console"). -->
+

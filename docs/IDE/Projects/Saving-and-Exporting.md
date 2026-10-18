@@ -157,6 +157,9 @@ The tB executable's `import` cannot pack a folder while any folder remains under
 
 Each export writes a first line, `[EXPORT] exporting current project to "…"`, and a last line: `[EXPORT] COMPLETED (72 folders, 478 files)`, or the failure lines above. With [*Export Verbose*](../Project-Settings#export-verbose) set, it also writes a line for each file and folder it deletes, `[EXPORT]  DELETED: …`, and for each file it writes, `[EXPORT]  DONE: …`. If the compiler answers the IDE's request with an error code, a box reads **ERROR: exportProject failed.** and the code.
 
+> [!NOTE] BETA 1010
+> Each `DONE` line shows `&#92;` for every backslash of its path: `[EXPORT]  DONE: &#92;Sources&#92;Startup.twin` for the file `Sources\Startup.twin` of the export folder. The files are written correctly, and the other `[EXPORT]` lines show their backslashes.
+
 <!-- SHOT projects-export-console: the DEBUG CONSOLE after Export Project with Export Verbose on, showing the first [EXPORT] line, several DONE lines and the COMPLETED line -->
 
 The `export` command of the tB executable and of the import/export script deletes nothing. See [What both programs do](../../../Features/Packages/Import-Export-Tool#what-both-programs-do).

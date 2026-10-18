@@ -11,7 +11,7 @@
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.
 
 import assert from "node:assert/strict";
-import { chmodSync, existsSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -38,10 +38,12 @@ scenario("Export Project", (lane) => {
   const readOnly = [];
 
   // Export into a folder and wait for the compiler's last [EXPORT] line; the
-  // [EXPORT] lines, without the prefix and trimmed.
-  async function exportTo(folder) {
+  // [EXPORT] lines, without the prefix and trimmed. The second argument of
+  // exportProjectTo() is the project's Export Verbose setting, which the menu
+  // command passes; every test but the control below exports with it on.
+  async function exportTo(folder, verbose = true) {
     const mark = await consoleMark(c);
-    await c.evaluate(`exportProjectTo(${JSON.stringify(folder)}, true), null`);
+    await c.evaluate(`exportProjectTo(${JSON.stringify(folder)}, ${verbose}), null`);
     const lines = await waitFor(
       c,
       async () => {
@@ -71,6 +73,67 @@ scenario("Export Project", (lane) => {
     const packages = [...new Set(files.filter((f) => f.startsWith("Packages\\")).map((f) => f.split("\\")[1]))];
     assert.match(lines.at(-1), /^COMPLETED \(\d+ folders, \d+ files\)$/);
     assert.ok(packages.includes("VBA"), `no Packages\\VBA among ${packages.join(", ")}`);
+  });
+
+  // bugs/export-verbose-done-escaped: the compiler sends each DONE line in
+  // three parts, "[EXPORT]  DONE: ", the path and the line break, and the
+  // console's debugOutputPartial() passes the text that continues an open line
+  // through TEXTtoHTML() twice (twinbasic/twinbasic#2444's cause), so each
+  // backslash is stored as &amp;#92; and drawn as &#92;. The DELETED lines,
+  // sent whole, are right; so are the files.
+  test("with Export Verbose, every DONE line shows &#92; for each backslash of the path, and the files are right", async () => {
+    const out = path.join(root, "verbose");
+    mkdirSync(out);
+    const lines = await exportTo(out);
+    const done = lines.filter((l) => l.startsWith("DONE: "));
+    assert.equal(lines[0], `exporting current project to "\\\\?\\${out}\\"...`);
+    assert.match(lines.at(-1), /^COMPLETED \(\d+ folders, \d+ files\)$/);
+    assert.ok(done.includes("DONE: &#92;Settings"), `no DONE: &#92;Settings among ${JSON.stringify(done.slice(0, 3))}`);
+    assert.ok(done.includes("DONE: &#92;Sources&#92;Startup.twin"));
+    assert.deepEqual(
+      done.filter((l) => l.includes("\\") || !l.includes("&#92;")),
+      [],
+      "a DONE line shows a backslash",
+    );
+    // As the pane draws them: the rows it has drawn, which are the last ones.
+    const drawn = await c.evaluate(
+      `[...debugConsoleOutput.querySelectorAll("span.debugConsoleOutputText")].map((e) => e.textContent).filter((t) => t.includes("DONE: "))`,
+    );
+    assert.ok(drawn.length > 0, "the pane draws no DONE row");
+    assert.deepEqual(
+      drawn.filter((t) => t.includes("\\") || !t.includes("&#92;")),
+      [],
+      "a drawn DONE row shows a backslash",
+    );
+    // Each path, with its backslashes put back, is a file the export wrote.
+    const missing = done.map((l) => l.slice(6).replaceAll("&#92;", "\\")).filter((r) => !existsSync(path.join(out, r)));
+    assert.deepEqual(missing, []);
+    const startup = path.join("Sources", "Startup.twin");
+    assert.equal(readFileSync(path.join(out, startup), "utf8"), readFileSync(path.join(PROJECT, startup), "utf8"));
+  });
+
+  test("control: with Export Verbose, a second export's DELETED lines show the paths' backslashes", async () => {
+    const out = path.join(root, "verbose");
+    const lines = await exportTo(out);
+    const deleted = lines.filter((l) => l.startsWith("DELETED: "));
+    assert.ok(
+      deleted.includes(`DELETED: \\\\?\\${path.join(out, "Sources", "Startup.twin")}`),
+      `no DELETED line for Sources\\Startup.twin among ${JSON.stringify(deleted.slice(0, 3))}`,
+    );
+    assert.deepEqual(
+      deleted.filter((l) => l.includes("&#92;")),
+      [],
+    );
+  });
+
+  test("control: without Export Verbose, the first line and the COMPLETED line show the path's backslashes", async () => {
+    const out = path.join(root, "quiet");
+    mkdirSync(out);
+    const lines = await exportTo(out, false);
+    assert.equal(lines.length, 2, JSON.stringify(lines));
+    assert.equal(lines[0], `exporting current project to "\\\\?\\${out}\\"...`);
+    assert.match(lines[1], /^COMPLETED \(\d+ folders, \d+ files\)$/);
+    assert.ok(existsSync(path.join(out, "Sources", "Startup.twin")));
   });
 
   test("a junction in the export folder is not followed, and its target is kept", async () => {

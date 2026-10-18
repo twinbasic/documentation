@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:export",
+  "tests": [
+    "with Export Verbose, every DONE line shows &#92; for each backslash of the path, and the files are right"
+  ],
+  "steps": "1. A project with Export Verbose on (Project Settings, Export).\n2. Export Project into an empty folder: the DEBUG CONSOLE shows each DONE line as [EXPORT]  DONE: &#92;Sources&#92;Startup.twin, &#92; for each backslash; the files are written right.\nControl: the DELETED lines of a second verbose export, and the first and COMPLETED lines of an export without Export Verbose, show the backslashes."
+}
