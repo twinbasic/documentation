@@ -340,8 +340,13 @@ whose project does not refer to the VB package.
 - **The zoom box is set by a `change` event on `#zoomSelect`**, never by the arrow keys, which
   also move the selected controls. Designer_Zoom shows the box and its list only, four rows of
   it: the Light theme's list has a smaller font, and the whole list makes the light picture 100
-  pixels shorter than the dark one. The form at 50 % is not in it: its scaled dots differ in
-  every capture, even with the ground left out.
+  pixels shorter than the dark one. The form at 50 % is a picture of its own, Designer_Zoom50,
+  taken `once` (dark only, owner): the grid is turned off for it first with the command
+  `tbFormDesigner_TurnGridIndicatorsOff` (what the toolbar's grid button toggles; settled by the
+  form's style changing), because the scaled dots differ in every capture even with the ground
+  left out. The change is the form's (its tab shows it changed, so the clip is formStateShot's,
+  without the tab row), and `formsReset` discards it: the shots after it keep their dots. Its
+  SVG is 4 % off the PNG (the scaled text), so the page shows the PNG.
 - **The Toolbox is scrolled with the mouse wheel**: a capture never holds more than the real
   window's height, so a taller page does not show more of it. Show Control Names is set from the
   panel's `...` menu and put back afterwards (saved nowhere). The search of Toolbox_Search is
@@ -350,8 +355,14 @@ whose project does not refer to the VB package.
 - **A report's PAGE WIDTH, LEFT MARGIN and RIGHT MARGIN bars show only under the pointer**
   (opacity 0, 1 on hover): Report_Controls rests the pointer on PAGE WIDTH.
 - **Preview_Window** is a running program's window, taken once with `captureWindow` from the
-  IDE's desktop. The File menu is not open in it: a native menu is a window
-  of its own (`#32768`), which the tool cannot yet capture and lay over the form's window.
+  IDE's desktop, with its File menu open. A key pressed on a private desktop reaches no window,
+  so the menu is opened as Alt+F opens it: `postWindowMessage` (`tb-ide.mjs`, the `post` mode
+  of `tb-launch.ps1`) posts `WM_SYSCOMMAND` `SC_KEYMENU` `'f'` to the form's window. The menu is
+  then a top-level window of class `#32768` of the same process (`openMenuWindow`); both windows
+  are captured (`windowPicture`, whose user-name check covers the menu's window texts too) and
+  `withMenu` lays the menu's picture over the form's where it is on the desktop, the ground
+  beyond the form transparent. The menu is drawn with its mnemonics underlined, as the keyboard
+  opens it. `WM_CANCELMODE` posted to the form closes it before the run is stopped.
 - PROPERTIES shows no description line: in BETA 1005 its text is set in a footer of the
   designer's own properties box, which is 0 pixels wide, so nothing is drawn.
 
@@ -364,7 +375,7 @@ project file the lane opens is `project.twinproj`, the name the title shows. `pr
 the same project with Microsoft Scripting Runtime's symbol overridden as `SR` and a type library
 that is not on the machine (`MISSING_LIBRARY`) put in the staged `Settings`; the IDE opens
 Project Settings by itself a second after loading it, and the setup's prepare closes it.
-`projects-start` is the IDE with no project. Its 15 pictures are under `docs/IDE/Projects/Images/`;
+`projects-start` is the IDE with no project. Its 16 pictures are under `docs/IDE/Projects/Images/`;
 `Menu_File_Project` is the File menu with the project open (the Menu pages keep `Menu_File`, with
 none, which `New Project.md` also shows).
 
@@ -396,11 +407,13 @@ none, which `New Project.md` also shows).
   which `PAGE_DEFAULTS` blocks anyway).
 - Settings_Close types into the description box with real keys, after `templateBuildPath`, and
   closes the question with Yes, close, which keeps nothing.
-- **Not taken: the export console** (marker `projects-export-console` left). It was reached (Export
-  Path set in the staged copy to a folder under `PACKAGE_ROOT`, so that the first line holds no
-  user name; the console floated before Clear, which the docked console is too narrow to show; the
-  list scrolled with the wheel to its top and its end, as two parts of a composite), but with
-  Export Verbose every `DONE` line shows `&#92;` for each backslash, a defect not yet decided on.
+- **Export_Console** is File > Export Project with Export Verbose off (owner: the verbose `DONE`
+  lines show `&#92;` for each backslash). `stageProjects` sets `project.exportPath` in the
+  staged `Settings` of both projects setups to `PACKAGE_ROOT\Export` (`PJ_EXPORT`), so that the
+  first line names no user; the shot removes that folder before the export and after it. The
+  console is floated (docked, it is too narrow for the first line) and emptied with its Clear
+  button before the export, and emptied again afterwards; the shot is the setup's last. The
+  times are set in the page (`fixConsoleTimes`). Both lines fit with no scrolling.
 
 ## Special IDE states
 

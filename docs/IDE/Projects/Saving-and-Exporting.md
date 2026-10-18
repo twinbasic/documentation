@@ -160,7 +160,7 @@ Each export writes a first line, `[EXPORT] exporting current project to "…"`, 
 > [!NOTE] BETA 1010
 > Each `DONE` line shows `&#92;` for every backslash of its path: `[EXPORT]  DONE: &#92;Sources&#92;Startup.twin` for the file `Sources\Startup.twin` of the export folder. The files are written correctly, and the other `[EXPORT]` lines show their backslashes.
 
-<!-- SHOT projects-export-console: the DEBUG CONSOLE after Export Project with Export Verbose on, showing the first [EXPORT] line, several DONE lines and the COMPLETED line -->
+![The DEBUG CONSOLE, floating, after Export Project with Export Verbose off: the line that starts the export and names the export folder, and the COMPLETED line with the numbers of folders and files.](Images/Export_Console.png){:width="600" height="132"}
 
 The `export` command of the tB executable and of the import/export script deletes nothing. See [What both programs do](../../../Features/Packages/Import-Export-Tool#what-both-programs-do).
 

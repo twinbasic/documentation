@@ -174,7 +174,7 @@ With a designer focused, the **View** menu shows **Zoom In** and **Zoom Out** in
 
 ![The zoom box of the toolbar showing 50 %, with its list open below it and 50 % highlighted between 25 % and 75 %; the list scrolls on to further values.](Images/Designer_Zoom.png){:width="240" height="119"}
 
-<!-- SHOT forms-zoom: a second picture, the same form at 50 % so the half-size surface shows -->
+![frmMain in the designer at 50 %, drawn at half size with its grid hidden; the readout under it still gives 380 x 270.](Images/Designer_Zoom50.png){:width="196" height="172"}
 
 
 > [!NOTE] BETA 1010
