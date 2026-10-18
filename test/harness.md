@@ -273,11 +273,17 @@ All in seconds, decimals allowed. Each runs from a start event to an end event:
 Small fixed waits are internal and outside the file (tblaunch's 2 s crash grace and 5 s for the
 compiler's exit, the documentation harness's polls).
 
-The values rest on BETA 1010: the compiler's own compile takes at most 0.30 s under the IDE and
-1.27 s under tblaunch, cold start included; the documentation harness's whole compile wait,
-project load included, at most 13.8 s; IDE start to project open at most 4.04 s; a build at most
-1.0 s, 4.97 s with LLVM; a compiler run at most 0.83 s, 25.3 s with LLVM (one LLVM run printed for
-15 s and finished).
+Every limit but `compilerRunQuiet` is 10 s (owner): a compiler that is not done in seconds is
+wedged and does not recover, and a sample's run takes seconds too. The values rest on BETA 1010:
+a clean batch's whole trip through tblaunch (start, compile, build, the IDE run and the exe run;
+plain, exe and LLVM exe, win32 and win64, four lanes at once) takes at most 6.4 s, about 2.5 s at
+the median; the compiler's own compile at most 0.30 s under the IDE and 1.27 s under tblaunch,
+cold start included; IDE start to project open at most 4.04 s; a build at most 1.0 s, 4.97 s with
+LLVM; a compiler run at most 0.83 s without LLVM. What 10 s cuts off is known and accepted: the
+documentation harness's compile wait for the WinReg batches (12.5--13.8 s, project load
+included) and one TBMANLIB_Aes LLVM run that printed for 15 s, both Experimental packages.
+`package_tests.mjs` passes its own limit for a test case's run (`--timeout`, 60 s by default),
+because a case's run time is the package's own: tbRegExp's step-limit cases take about 16 s.
 
 **Overrides**, in seconds: **an option beats a variable, which beats the file**, which beats a
 built-in default (tblaunch only). A tool has the options of the phases it runs.
@@ -314,3 +320,9 @@ an LLVM refusal is always a `build` failure (owner); the build's lines end at `[
 tbRegExp at `build`; the timeouts and their overrides as above (owner's approval of the values;
 `handshake` added at tblaunch's request), and 60 samples at `compiler-run` that end silently,
 fault or hang under LLVM (owner).
+
+On 2026-10-18 the limits' values changed within version 1, the keys unchanged: `projectOpen`
+15 → 10, `load` 120 → 10, `setup` 30 → 10, `compile` 30 → 10, `licence` 60 → 10, `build` 15 → 10,
+`compilerRun` 60 → 10, `exeRun` 60 → 10 (owner, at tblaunch's request with its timings; tblaunch's
+built-in defaults move to the same values in its contract version 5). A reader of version 1 takes
+whatever values the file holds, so no version was raised.

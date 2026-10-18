@@ -119,15 +119,15 @@
     }
   },
   "timeouts": {
-    "projectOpen": 15,
+    "projectOpen": 10,
     "handshake": 10,
-    "load": 120,
-    "setup": 30,
-    "compile": 30,
-    "licence": 60,
-    "build": 15,
-    "compilerRun": 60,
+    "load": 10,
+    "setup": 10,
+    "compile": 10,
+    "licence": 10,
+    "build": 10,
+    "compilerRun": 10,
     "compilerRunQuiet": 8,
-    "exeRun": 60
+    "exeRun": 10
   }
 }

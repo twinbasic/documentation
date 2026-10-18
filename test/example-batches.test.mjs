@@ -147,6 +147,7 @@ test("test/harness.json is read as its contract says", () => {
   // The overrides: option, then variable, then file; seconds in, ms out.
   const harness = copy();
   harness.timeouts.compile = 30;
+  harness.timeouts.projectOpen = 15;
   assert.equal(timeoutMs("compile", undefined, { env: {}, harness }), 30000);
   assert.equal(timeoutMs("compile", undefined, { env: { TB_COMPILE_TIMEOUT: "2.5" }, harness }), 2500);
   assert.equal(timeoutMs("compile", 0.25, { env: { TB_COMPILE_TIMEOUT: "2.5" }, harness }), 250);
