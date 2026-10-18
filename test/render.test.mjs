@@ -25,7 +25,7 @@ import { stripXmlPrologue } from "../builder/dot.mjs";
 import { inlineDiagram } from "../builder/inline-diagram.mjs";
 import { isWebsiteOnlyLink, rewriteHtml, websiteOf } from "../builder/offline-rewrite.mjs";
 import { assignPackageVersions, calloutLabelsOf, parseCalloutLabel } from "../lib/callout-labels.mjs";
-import { applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
+import { applyPreRenderRewrites, createMarkdownIt, initHighlighter } from "../builder/render.mjs";
 import {
   lightOnly,
   pairSizes,
@@ -85,6 +85,62 @@ describe("kramdownEllipsisPlugin", () => {
 // The offline tree's URL rewrite (builder/offline-rewrite.mjs): a link to a
 // file the offline tree holds becomes page-relative; one to a file only the
 // website holds becomes the website's absolute URL; one to neither is a miss.
+describe("stripHtmlCommentsPlugin", async () => {
+  const withFences = createMarkdownIt({
+    highlighter: await initHighlighter(),
+    linkTables: { byPath: new Map() },
+    baseurl: "",
+    staticFiles: new Set(),
+  });
+  // The page as the build renders it: the pre-render rewrites first, which join a
+  // comment line to the paragraph above it.
+  const render = (src) => withFences.render(applyPreRenderRewrites(src, withFences), { page: { srcRel: "A.md" } });
+
+  const cases = [
+    ["a comment block between paragraphs", "before\n\n<!-- SHOT: x -->\n\nafter\n", "<p>before</p>\n<p>after</p>\n"],
+    ["a multi-line comment block", "before\n\n<!--\nnote\nmore\n-->\n\nafter\n", "<p>before</p>\n<p>after</p>\n"],
+    ["a comment line under a paragraph", "text\n<!-- note -->\n\nnext\n", "<p>text</p>\n<p>next</p>\n"],
+    ["a comment inside a paragraph", "a <!-- c --> b\n", "<p>a b</p>\n"],
+    ["a comment at the end of a paragraph", "a <!-- c -->\n", "<p>a</p>\n"],
+    ["a comment in a heading", "## Head <!-- c -->\n", '<h2 id="head-">Head</h2>\n'],
+    [
+      "a comment inside a raw HTML block",
+      "<div>\n<!-- c -->\n<p>x</p> <!-- d -->\n</div>\n",
+      "<div>\n<p>x</p>\n</div>\n",
+    ],
+    ["a comment in a list item", "- one\n  <!-- c -->\n- two\n", "<ul>\n<li>one</li>\n<li>two</li>\n</ul>\n"],
+    [
+      "a comment before a callout",
+      "<!-- test: A.B -->\n> [!NOTE] BETA 1010\n> body\n",
+      (html) => !html.includes("<!--") && html.includes("<p>body</p>"),
+    ],
+    [
+      "a comment inside a callout",
+      "> [!NOTE] BETA 1010\n> <!-- c -->\n> body\n",
+      (html) => !html.includes("<!--") && html.includes("<p>body</p>"),
+    ],
+    [
+      "a raw script element keeps its text",
+      "<script>\n<!-- x\n// -->\n</script>\n",
+      "<script>\n<!-- x\n// -->\n</script>\n",
+    ],
+    ["an unterminated comment is not one", "<!-- open\n\nafter\n", "<!-- open\n\nafter\n"],
+  ];
+  for (const [name, src, want] of cases) {
+    test(name, () => {
+      const html = render(src);
+      if (typeof want === "function") assert.ok(want(html), html);
+      else assert.equal(html, want);
+    });
+  }
+
+  test("a fence and a code span show a comment as text", () => {
+    const html = render("```html\n<!-- keep -->\n```\n\n`<!-- keep -->` and <!-- go -->done\n");
+    assert.equal(html.match(/&lt;!-- keep --&gt;/g).length, 2);
+    assert.ok(!html.includes("go"), html);
+  });
+});
+
 describe("rewriteHtml with a website behind the offline tree", () => {
   const offline = new Set(["/a/Page.html", "/a/b/Other.html", "/a/b/inner.txt"]);
   const online = new Set([...offline, "/a/downloads/File.zip", "/a/Space Name.zip"]);
