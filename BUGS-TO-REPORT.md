@@ -6278,6 +6278,8 @@ No error at any of the five: an expression whose value fits is accepted whatever
 **Additional context**
 The reproducer's `repro.json` names the 32-bit build (`"arch": "win32"`). A 64-bit build, IDE run or exe, gives no error for any case.
 
+This looks like the same cause as #2497 (fixed in BETA 1004), where a constant out of the `Long` range made the first conversion of a `Single` or `Double` variable to an integer raise error 6 in an IDE run. That case is fixed; this one remains in 32-bit builds, in IDE runs and built exes alike.
+
 Severity: low. The error is raised and is easy to see; the statement that raises it holds a correct value. A program meets it only when a constant that overflows is followed in the same procedure by a constant `Double` expression, which is mostly code that tests overflow handling.
 
 <!-- Reproducer: bugs/const-double-expression-after-overflow-32bit/ (mode test, arch win32: `tbrun --tests` runs the eleven cases; expect lists the five FAIL and six PASS lines); verify reproduces on BETA 1010; VB6 side in vb6/ (Module1.bas, the same two statements for a Double and a Long). docs/Reference/Data-Types/LongLong.md carries the callout for it (the NOTE under Conversions); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
