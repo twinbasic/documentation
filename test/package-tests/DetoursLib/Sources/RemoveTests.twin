@@ -1,0 +1,85 @@
+' DetoursLib: RemoveDetour, which takes a detour away and puts the function back.
+[TestFixture]
+Module RemoveTests
+
+    [TestCase]
+    Public Sub RemoveDetour_RestoresTheFunction()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtDLLEntry("kernel32", "MulDiv", AddressOf Hooks.DetourA)
+        Expect.AreEqual 0, Err.Number, "error from CreateDetourAtDLLEntry"
+        Err.Clear
+        DetoursLib.RemoveDetour Hooks.RealMulDiv, AddressOf Hooks.DetourA
+        Expect.AreEqual 0, Err.Number, "error from RemoveDetour(<address returned>, AddressOf DetourA)"
+        If Err.Number = 0 Then Hooks.RealMulDiv = 0
+        Err.Clear
+        Expect.AreEqual Hooks.Marked, Hooks.MulDiv(Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1) after RemoveDetour"
+        Expect.AreEqual 0, Hooks.CallsA, "calls DetourA received"
+        Hooks.Unhook AddressOf Hooks.DetourA
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveDetour_ThenCreateAgain_DetoursAgain()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtDLLEntry("kernel32", "MulDiv", AddressOf Hooks.DetourA)
+        DetoursLib.RemoveDetour Hooks.RealMulDiv, AddressOf Hooks.DetourA
+        Hooks.RealMulDiv = 0
+        Expect.AreEqual 0, Err.Number, "error from the first CreateDetourAtDLLEntry and RemoveDetour"
+        Err.Clear
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtDLLEntry("kernel32", "MulDiv", AddressOf Hooks.DetourB)
+        Expect.AreEqual 0, Err.Number, "error from CreateDetourAtDLLEntry with DetourB after DetourA was removed"
+        Err.Clear
+        Expect.AreEqual -2, Hooks.MulDiv(Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1), detoured to DetourB"
+        Hooks.Unhook AddressOf Hooks.DetourB
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveDetour_ZeroPatchedAddress_RaisesError5()
+        Expect.Begin
+        On Error Resume Next
+        DetoursLib.RemoveDetour 0, AddressOf Hooks.DetourA
+        Expect.AreEqual 5, Err.Number, "error from RemoveDetour with patchedAddress 0"
+        Expect.AreEqual "RemoveDetour patchedAddress: bad pointer", Err.Description, "its description"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveDetour_ZeroNewAddress_RaisesError5()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtDLLEntry("kernel32", "MulDiv", AddressOf Hooks.DetourA)
+        Err.Clear
+        DetoursLib.RemoveDetour Hooks.RealMulDiv, 0
+        Expect.AreEqual 5, Err.Number, "error from RemoveDetour with newAddress 0"
+        Expect.AreEqual "RemoveDetour newAddress: bad pointer", Err.Description, "its description"
+        Err.Clear
+        Expect.AreEqual -1, Hooks.MulDiv(Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1) after the refused RemoveDetour: still detoured"
+        Hooks.Unhook AddressOf Hooks.DetourA
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveDetour_AnotherDetour_RaisesAndLeavesTheDetourInPlace()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtDLLEntry("kernel32", "MulDiv", AddressOf Hooks.DetourA)
+        Err.Clear
+        DetoursLib.RemoveDetour Hooks.RealMulDiv, AddressOf Hooks.DetourB
+        Expect.IsTrue Err.Number <> 0, "RemoveDetour naming DetourB, while DetourA is the detour in place, raises an error"
+        Expect.AreEqual "RemoveDetour SlimDetoursInlineHook failed: D0000173", Err.Description, "its description"
+        Expect.AreEqual CLng(&HD0000173), Err.Number, "its number"
+        Err.Clear
+        Expect.AreEqual -1, Hooks.MulDiv(Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1) after the failed RemoveDetour: still detoured to DetourA"
+        Hooks.Unhook AddressOf Hooks.DetourA
+        Expect.AreEqual Hooks.Marked, Hooks.MulDiv(Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1) after RemoveDetour naming DetourA"
+        Expect.Done
+    End Sub
+
+End Module

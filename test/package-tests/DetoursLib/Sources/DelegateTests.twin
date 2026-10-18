@@ -1,0 +1,18 @@
+' DetoursLib: how a delegate passes a String, which decides how a detour of an ANSI function calls the original.
+[TestFixture]
+Module DelegateTests
+
+    Private Delegate Function StrLenFn (ByVal s As String) As Long
+
+    [TestCase]
+    Public Sub Delegate_StringArgument_IsPassedAsUtf16()
+        Expect.Begin
+        Dim k As LongPtr = Hooks.GetModuleHandle("kernel32")
+        Dim lenW As StrLenFn = CType(Of StrLenFn)(Hooks.GetProcAddress(k, "lstrlenW"))
+        Dim lenA As StrLenFn = CType(Of StrLenFn)(Hooks.GetProcAddress(k, "lstrlenA"))
+        Expect.AreEqual 4, lenW("abcd"), "lstrlenW(""abcd"") called through a delegate with a ByVal String parameter"
+        Expect.AreEqual 1, lenA("abcd"), "lstrlenA(""abcd"") called through such a delegate: it reads UTF-16 text, so it stops after ""a"""
+        Expect.Done
+    End Sub
+
+End Module

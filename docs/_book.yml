@@ -509,6 +509,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: DetoursLib Package
+        subtitle: Detours of functions in the program's own process
+        landing_page: /tB/Packages/Contributed/DetoursLib/
+        page: /tB/Packages/Contributed/DetoursLib/
+        landing_is_target: true
+        outline_closed: true
+
       - title: FileProps Package
         subtitle: The Windows shell properties of a file
         landing_page: /tB/Packages/Contributed/FileProps/

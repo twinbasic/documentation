@@ -1,0 +1,61 @@
+{
+  "format": 3,
+  "package": "DetoursLib",
+  "project": "DetoursLib",
+  "version": "1.0.0.0",
+  "types": [
+    {
+      "name": "Detours",
+      "kind": "module",
+      "vis": "public",
+      "file": "Detours.twin",
+      "signature": "Module Detours",
+      "members": [
+        {"name":"CFALSE","kind":"const","vis":"private","signature":"Private Const CFALSE As Long = 0"},
+        {"name":"CTRUE","kind":"const","vis":"private","signature":"Private Const CTRUE As Long = 1"},
+        {"name":"CreateDetourAtDLLEntry","kind":"function","vis":"public","signature":"Public Function CreateDetourAtDLLEntry(ByVal libName As String, ByVal funcName As String, ByVal newAddress As LongPtr) As LongPtr","returnType":"LongPtr"},
+        {"name":"CreateDetourAtFuncAddress","kind":"function","vis":"public","signature":"Public Function CreateDetourAtFuncAddress(ByVal procAddress As LongPtr, ByVal newAddress As LongPtr) As LongPtr","returnType":"LongPtr"},
+        {"name":"GetModuleHandle","kind":"function","vis":"private","declare":true,"signature":"Private DeclareWide PtrSafe Function GetModuleHandle Lib \"kernel32\" Alias \"GetModuleHandleW\" (Optional ByVal lpModuleName As String) As LongPtr","returnType":"LongPtr"},
+        {"name":"GetProcAddress","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function GetProcAddress Lib \"kernel32\" (ByVal hModule As LongPtr, ByVal lpProcName As String) As LongPtr","returnType":"LongPtr"},
+        {"name":"RemoveDetour","kind":"sub","vis":"public","signature":"Public Sub RemoveDetour(ByVal patchedAddress As LongPtr, ByVal newAddress As LongPtr)"}
+      ]
+    },
+    {
+      "name": "DetoursMod",
+      "kind": "module",
+      "vis": "public",
+      "file": "Detours.twin",
+      "signature": "Module DetoursMod",
+      "members": [
+        {"name":"SlimDetoursInlineHook","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function SlimDetoursInlineHook Lib DETOURS Alias \"SlimDetoursInlineHook\" (ByVal bEnable As Long, ByRef ppPointer As LongPtr, ByVal pDetour As LongPtr) As Long","returnType":"Long"}
+      ]
+    },
+    {
+      "name": "DetoursMod",
+      "kind": "module",
+      "vis": "public",
+      "file": "Detours.twin",
+      "signature": "Module DetoursMod",
+      "members": [
+        {"name":"SlimDetoursInlineHook","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function SlimDetoursInlineHook Lib DETOURS Alias \"SlimDetoursInlineHook@12\" (ByVal bEnable As Long, ByRef ppPointer As LongPtr, ByVal pDetour As LongPtr) As Long","returnType":"Long"}
+      ]
+    },
+    {
+      "name": "DetoursTest",
+      "kind": "module",
+      "vis": "public",
+      "file": "DetoursTest.twin",
+      "signature": "Module DetoursTest",
+      "members": [
+        {"name":"PatchedSetFocus","kind":"function","vis":"private","signature":"Private Function PatchedSetFocus(ByVal hwnd As LongPtr) As LongPtr","returnType":"LongPtr"},
+        {"name":"SetFocus","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function SetFocus Lib \"user32\" (ByVal hwnd As LongPtr) As LongPtr","returnType":"LongPtr"},
+        {"name":"TestDetours","kind":"sub","vis":"public","signature":"Public Sub TestDetours()"},
+        {"name":"TogglePatchesOnOff","kind":"sub","vis":"private","signature":"Private Sub TogglePatchesOnOff()"},
+        {"name":"_SetFocus","kind":"delegate","vis":"private","signature":"Private Delegate Function _SetFocus (ByVal hwnd As LongPtr) As LongPtr","returnType":"LongPtr"},
+        {"name":"g_Real_SetFocus","kind":"field","vis":"private","signature":"Private g_Real_SetFocus As _SetFocus"}
+      ]
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}

@@ -1,0 +1,101 @@
+' DetoursLib: CreateDetourAtDLLEntry, which finds a function of a loaded DLL by name and detours it.
+[TestFixture]
+Module DllEntryTests
+
+    [TestCase]
+    Public Sub CreateDetourAtDLLEntry_CallsGoToTheDetour()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtDLLEntry("kernel32", "MulDiv", AddressOf Hooks.DetourA)
+        Expect.AreEqual 0, Err.Number, "error from CreateDetourAtDLLEntry(""kernel32"", ""MulDiv"", AddressOf DetourA)"
+        Err.Clear
+        Expect.AreEqual -1, Hooks.MulDiv(Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1) through its Declare, detoured to DetourA"
+        Expect.AreEqual 1, Hooks.CallsA, "calls DetourA received"
+        Hooks.Unhook AddressOf Hooks.DetourA
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateDetourAtDLLEntry_ReturnsAnAddressThatCallsTheOriginal()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtDLLEntry("kernel32", "MulDiv", AddressOf Hooks.DetourA)
+        Expect.AreEqual 0, Err.Number, "error from CreateDetourAtDLLEntry"
+        Err.Clear
+        Expect.IsTrue Hooks.RealMulDiv <> 0, "the address CreateDetourAtDLLEntry returns is not 0"
+        Expect.IsTrue Hooks.RealMulDiv <> Hooks.MulDivAddress(), "the address returned is not the address of MulDiv's code"
+        Expect.AreEqual Hooks.Marked, Hooks.CallAt(Hooks.RealMulDiv, Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1) called through the address returned"
+        Expect.AreEqual 0, Hooks.CallsA, "calls DetourA received from the call through the address returned"
+        Hooks.Unhook AddressOf Hooks.DetourA
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateDetourAtDLLEntry_DetourCanPassCallsToTheOriginal()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtDLLEntry("kernel32", "MulDiv", AddressOf Hooks.DetourA)
+        Expect.AreEqual 0, Err.Number, "error from CreateDetourAtDLLEntry"
+        Err.Clear
+        Expect.AreEqual 8, Hooks.MulDiv(6, 4, 3), "MulDiv(6, 4, 3), which DetourA passes to the original"
+        Hooks.Unhook AddressOf Hooks.DetourA
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateDetourAtDLLEntry_NameWithExtension_IsAccepted()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtDLLEntry("kernel32.dll", "MulDiv", AddressOf Hooks.DetourA)
+        Expect.AreEqual 0, Err.Number, "error from CreateDetourAtDLLEntry(""kernel32.dll"", ""MulDiv"", ...)"
+        Err.Clear
+        Expect.AreEqual -1, Hooks.MulDiv(Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1), detoured to DetourA"
+        Hooks.Unhook AddressOf Hooks.DetourA
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateDetourAtDLLEntry_DllNotLoaded_RaisesError5()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtDLLEntry("tbdocs-no-such-library", "MulDiv", AddressOf Hooks.DetourA)
+        Expect.AreEqual 5, Err.Number, "error from CreateDetourAtDLLEntry for a DLL the process has not loaded"
+        Expect.AreEqual "CreateDetourAtDLLEntry libName: DLL library not found", Err.Description, "its description"
+        Err.Clear
+        Expect.AreEqual 0, Hooks.RealMulDiv, "the value returned"
+        Hooks.Unhook AddressOf Hooks.DetourA
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateDetourAtDLLEntry_NoSuchFunction_RaisesError5()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtDLLEntry("kernel32", "TbDocsNoSuchFunction", AddressOf Hooks.DetourA)
+        Expect.AreEqual 5, Err.Number, "error from CreateDetourAtDLLEntry for a name kernel32 does not export"
+        Expect.AreEqual "CreateDetourAtDLLEntry funcName: function name not found in DLL library", Err.Description, "its description"
+        Err.Clear
+        Hooks.Unhook AddressOf Hooks.DetourA
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateDetourAtDLLEntry_NoDetour_RaisesError5()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtDLLEntry("kernel32", "MulDiv", 0)
+        Expect.AreEqual 5, Err.Number, "error from CreateDetourAtDLLEntry with newAddress 0"
+        Expect.AreEqual "CreateDetourAtDLLEntry newAddress: bad function address", Err.Description, "its description"
+        Err.Clear
+        Expect.AreEqual 8, Hooks.MulDiv(6, 4, 3), "MulDiv(6, 4, 3) afterwards"
+        Expect.Done
+    End Sub
+
+End Module

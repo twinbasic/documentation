@@ -13,6 +13,7 @@ Community-authored packages published through TWINSERV, the twinBASIC package re
 Each package is versioned apart from twinBASIC, and its section says which version it documents. Packages that are not yet ready for use in a program are listed under [Experimental Packages](../Experimental/).
 
 - [**AutoCompleteLib**](AutoCompleteLib/) -- Windows shell auto-complete for text-input controls
+- [**DetoursLib**](DetoursLib/) -- detours of functions in the program's own process, made with SlimDetours
 - [**FileProps**](FileProps/) -- the Windows shell properties of a file, read and written
 - [**Fmt**](Fmt/) -- **StringFormat**, a string built from a format string and values, in the style of C#'s **String.Format**
 - [**Generics**](Generics/) -- tuples, read-only objects that hold one to seven values of declared types
