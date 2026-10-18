@@ -4515,14 +4515,14 @@ The project's row refused, as the special folders are: Delete on `Sources` shows
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The box for the project's row is the one shown for a file, so nothing tells the reader that every file goes. Closing the project with Discard Changes before a save brings it back. Seen in three trial sessions, the third from a newly started IDE, and in the reproducer.
 
 Severity: high. The whole project is lost at the next save, after a confirmation that reads like a file's, and nothing warns before the save writes it.
 
-<!-- Reproducer: bugs/delete-project-row/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Delete on the project's row, after a box that reads like a file's, empties the tree, and Ctrl+S writes a project holding no file", which passes on BETA 1005; the control "control: Delete on Sources shows the box, and Delete deletes nothing" passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Delete (its second WARNING), carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D17). -->
+<!-- Reproducer: bugs/delete-project-row/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Delete on the project's row, after a box that reads like a file's, empties the tree, and Ctrl+S writes a project holding no file", which passes on BETA 1010; the control "control: Delete on Sources shows the box, and Delete deletes nothing" passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Delete (its second WARNING), carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D17). -->
 
 ---
 
@@ -4544,14 +4544,14 @@ The drop refused, as a file manager refuses to move a folder into itself.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Dragging a file onto a folder moves it, as it should. The saved file is a readable project file (a reader of the format outside the IDE opens it without an error) that holds the nested folders, so it is the IDE's loading of it that stops. Closing the project with Discard Changes before a save brings it back. Seen in three trial sessions, the third from a newly started IDE, and in the reproducer.
 
 Severity: high. The project file is replaced by one the IDE cannot open, after a drag that is easy to make by mistake and shows nothing wrong until the save.
 
-<!-- Reproducer: bugs/drag-folder-into-itself/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "dragging a folder onto a file inside it nests it without end, with no message, and Ctrl+S writes a project file the IDE cannot open", which passes on BETA 1005; it opens the saved file in a new IDE with a 45-second limit, and ends that IDE by its pid; the control "control: dragging a file onto a folder moves it there" passes too). The trial's note that impexp called the saved file damaged did not recur: impexp's readProject reads it. No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Move a file or folder by dragging, carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D19). -->
+<!-- Reproducer: bugs/drag-folder-into-itself/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "dragging a folder onto a file inside it nests it without end, with no message, and Ctrl+S writes a project file the IDE cannot open", which passes on BETA 1010; it opens the saved file in a new IDE with a 45-second limit, and ends that IDE by its pid; the control "control: dragging a file onto a folder moves it there" passes too). The trial's note that impexp called the saved file damaged did not recur: impexp's readProject reads it. No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Move a file or folder by dragging, carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D19). -->
 
 ---
 
@@ -4572,14 +4572,14 @@ A refused paste leaving the cut file where it was, as a file manager does.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Cut, then Paste onto a subfolder of `Resources` (`Resources/CUSTOM`) moves the file, as it should. In the trial sessions Paste onto `Packages` did the same as onto `Resources`; the reproducer tests `Resources`. Closing the project with Discard Changes before a save brings the file back. The notification's wording on `Packages` is the entry "Add Other File or Paste on Packages says it cannot create files in the root resources folder".
 
 Severity: medium. A file is deleted with a message that does not say so, and the next save makes the loss permanent.
 
-<!-- Reproducer: bugs/cut-paste-refused-folder/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Cut, then Paste onto Resources, deletes the file and creates it nowhere, and Ctrl+S saves the project without it", which passes on BETA 1005; the control "control: Cut, then Paste onto a folder of Resources, moves the file" passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Cut, copy and paste, carries a WARNING for it, and the NOTE of docs/IDE/Projects/Adding-Files.md under Where the new file goes points to it; when a fixed build is released, that WARNING and the NOTE's last sentence go. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D18). -->
+<!-- Reproducer: bugs/cut-paste-refused-folder/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Cut, then Paste onto Resources, deletes the file and creates it nowhere, and Ctrl+S saves the project without it", which passes on BETA 1010; the control "control: Cut, then Paste onto a folder of Resources, moves the file" passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Cut, copy and paste, carries a WARNING for it, and the NOTE of docs/IDE/Projects/Adding-Files.md under Where the new file goes points to it; when a fixed build is released, that WARNING and the NOTE's last sentence go. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D18). -->
 
 ---
 
@@ -4601,14 +4601,14 @@ A question before a file is replaced, no crash, and the tab showing the imported
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The same import over a file that is not open in a tab (`Thing.twin`, here) crashes the compiler in the same way; that file is then replaced in the IDE and on disk. The import also saves the project, which is the entry "Import of a file saves the project, with every unsaved editor". Seen three times in the trial sessions, the third from a newly started IDE, and in the reproducer.
 
 Severity: medium. A compiler crash shows only in the Debug Console, and an import the reader believes done is undone at the next save.
 
-<!-- Reproducer: bugs/import-over-open-file/ (mode lane: asserted by `ide-test.bat --only projects-import-crash` (test/ide/projects-import-crash.test.mjs), a lane of its own so that the crash cannot take other tests down; the tests "Add > Import... of a file over one that is not open crashes the compiler too" and "Add > Import... of a file over one open in a tab crashes the compiler, leaves the old text in the tab, and the next save writes it back over the import", which pass on BETA 1005; the control "control: Add > Import... of a file over one that is not open replaces it in the IDE and on disk" passes too). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Import > Ordinary files, carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D32). -->
+<!-- Reproducer: bugs/import-over-open-file/ (mode lane: asserted by `ide-test.bat --only projects-import-crash` (test/ide/projects-import-crash.test.mjs), a lane of its own so that the crash cannot take other tests down; the tests "Add > Import... of a file over one that is not open crashes the compiler too" and "Add > Import... of a file over one open in a tab crashes the compiler, leaves the old text in the tab, and the next save writes it back over the import", which pass on BETA 1010; the control "control: Add > Import... of a file over one that is not open replaces it in the IDE and on disk" passes too). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Import > Ordinary files, carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D32). -->
 
 ---
 
@@ -4630,14 +4630,14 @@ A question naming the files that would be replaced; and an editor with unsaved e
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Renaming a file with unsaved edits is refused with the message above. Seen in two trial sessions, the second from a newly started IDE, and in the reproducer.
 
 Severity: high. Both the unsaved edits and the saved file are replaced with no question, and the save that follows leaves nothing to go back to.
 
-<!-- Reproducer: bugs/import-project-overwrites/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "importing a project's file over one with unsaved edits replaces it with no question, closes its tab, and the edits are lost", which passes on BETA 1005, importing test/ide/probes/projects-import packed into the lane's work folder; the control "control: renaming a file with unsaved edits is refused, naming the editor to close" passes too). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Import > Projects and packages, carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D12). -->
+<!-- Reproducer: bugs/import-project-overwrites/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "importing a project's file over one with unsaved edits replaces it with no question, closes its tab, and the edits are lost", which passes on BETA 1010, importing test/ide/probes/projects-import packed into the lane's work folder; the control "control: renaming a file with unsaved edits is refused, naming the editor to close" passes too). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Import > Projects and packages, carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D12). -->
 
 ---
 
@@ -4657,14 +4657,14 @@ The box saying that the file has unsaved changes, or the delete refused as the r
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 F2 on the same file, a new name and Enter show *Rename/Move failed. Please close the following editors that are preventing the operation:*. `tbProjectExplorer_SelectedItemsDeletePermanently` (`ide/main.js`) calls no `checkForDirtyEditorsAffected`, which the rename and the move call, so by the code a folder that holds such a file is deleted in the same way; that was not tested. The saved copy stays in the project file until the next save.
 
 Severity: medium. Unsaved work goes with no word about it, although the reader did choose to delete the file.
 
-<!-- Reproducer: bugs/delete-unsaved-no-warning/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Delete of a file with unsaved edits asks as for any file, and its tab closes with the edits", which passes on BETA 1005; the control before it, "control: renaming a file with unsaved edits is refused, naming the editor to close", passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Delete (its first WARNING), carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D8). -->
+<!-- Reproducer: bugs/delete-unsaved-no-warning/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Delete of a file with unsaved edits asks as for any file, and its tab closes with the edits", which passes on BETA 1010; the control before it, "control: renaming a file with unsaved edits is refused, naming the editor to close", passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Delete (its first WARNING), carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D8). -->
 
 ---
 
@@ -4685,14 +4685,14 @@ The question asked, as after any other change: after a change to the description
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `warnAboutSaving` (`ide/main.js`) compares the settings after `simplifySettingsConfigData`, which sets `project.references` and `project.warnings` to undefined, so by the code a change to the compiler warnings alone is dropped in the same way; that was not tested. Cancel never asks, for any change. Seen in two trial sessions, the second from a newly started IDE, and in the reproducer.
 
 Severity: medium. A change the reader made is dropped with nothing to say so.
 
-<!-- Reproducer: bugs/settings-references-close-no-question/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "after a change to the references only, the title bar's X closes Project Settings without asking, and the change is lost", which passes on BETA 1005; the control "control: after a change to the description, the title bar's X asks to close without saving" passes too). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under Apply Changes and closing the dialog, carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D4). -->
+<!-- Reproducer: bugs/settings-references-close-no-question/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "after a change to the references only, the title bar's X closes Project Settings without asking, and the change is lost", which passes on BETA 1010; the control "control: after a change to the description, the title bar's X asks to close without saving" passes too). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under Apply Changes and closing the dialog, carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D4). -->
 
 ---
 
@@ -4713,14 +4713,14 @@ The import marking the project changed, as adding a new file does, and the save 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `importFile` (`ide/main.js`) runs `tbProject_SaveAllChanges` when the last file has been read. In a project that has no file yet, the trial saw the Save As dialog open instead. Cancel in the *Import from twinproj...* box, renaming the project and the Package needed box also save unasked; each has an entry.
 
 Severity: low. Nothing is lost, but edits the reader may have meant to discard are written to the project file.
 
-<!-- Reproducer: bugs/import-file-saves/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Add > Import... of a file imports it and saves the project, with another file's unsaved edit", which passes on BETA 1005; the file imported is written into the lane's work folder). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Import > The project is saved, carries a NOTE for it, and so does docs/IDE/Projects/Saving-and-Exporting.md, under Save Project > Other commands that save; when a fixed build is released, those NOTEs change. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D10). -->
+<!-- Reproducer: bugs/import-file-saves/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Add > Import... of a file imports it and saves the project, with another file's unsaved edit", which passes on BETA 1010; the file imported is written into the lane's work folder). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Import > The project is saved, carries a NOTE for it, and so does docs/IDE/Projects/Saving-and-Exporting.md, under Save Project > Other commands that save; when a fixed build is released, those NOTEs change. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D10). -->
 
 ---
 
@@ -4741,14 +4741,14 @@ Cancel leaving the project as it was, unsaved, and the compiler running.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The box is served by a second compiler that reads the chosen project; Cancel ends it, and the IDE restarts its own. Import in the same box saves the project too (see "Importing a project's file over one with unsaved edits replaces it with no question, and the edits are lost").
 
 Severity: low. Nothing is lost, but Cancel writes edits the reader may have meant to discard.
 
-<!-- Reproducer: bugs/import-cancel-saves/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Cancel in the Import from twinproj box saves the project, with another file's unsaved edit, and restarts the compiler", which passes on BETA 1005, importing test/ide/probes/projects-import packed into the lane's work folder). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Import > The project is saved, carries a NOTE for it, and so does docs/IDE/Projects/Saving-and-Exporting.md, under Save Project > Other commands that save; when a fixed build is released, those NOTEs change. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D31, with D13, the compiler restart). -->
+<!-- Reproducer: bugs/import-cancel-saves/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Cancel in the Import from twinproj box saves the project, with another file's unsaved edit, and restarts the compiler", which passes on BETA 1010, importing test/ide/probes/projects-import packed into the lane's work folder). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Import > The project is saved, carries a NOTE for it, and so does docs/IDE/Projects/Saving-and-Exporting.md, under Save Project > Other commands that save; when a fixed build is released, those NOTEs change. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D31, with D13, the compiler restart). -->
 
 ---
 
@@ -4769,14 +4769,14 @@ The new name kept in memory and saved with the next save, as a renamed file is.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 In the trial, the title bar's change mark went with the save.
 
 Severity: low. Nothing is lost, but a rename writes edits the reader may have meant to discard.
 
-<!-- Reproducer: bugs/rename-project-saves/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "renaming the project's row saves the project, with an unsaved edit in another file", which passes on BETA 1005). The trial's note that the row and the title keep the old names was not confirmed (the tree reloads after the restart), so the entry leaves it out. No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Rename > The project, carries a NOTE for it, and so does docs/IDE/Projects/Saving-and-Exporting.md, under Save Project > Other commands that save; when a fixed build is released, those NOTEs change. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D20). -->
+<!-- Reproducer: bugs/rename-project-saves/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "renaming the project's row saves the project, with an unsaved edit in another file", which passes on BETA 1010). The trial's note that the row and the title keep the old names was not confirmed (the tree reloads after the restart), so the entry leaves it out. No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Rename > The project, carries a NOTE for it, and so does docs/IDE/Projects/Saving-and-Exporting.md, under Save Project > Other commands that save; when a fixed build is released, those NOTEs change. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D20). -->
 
 ---
 
@@ -4797,14 +4797,14 @@ The box saying that the project will be saved, or the reference added in memory 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Whether the unsaved edits of open editors go into this save was not tested. The same unasked save follows Import..., Cancel in the *Import from twinproj...* box and renaming the project; each has an entry.
 
 Severity: low. Nothing is lost; the project file is written when the reader did not ask.
 
-<!-- Reproducer: bugs/package-needed-saves/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Add WinNativeForms package, in the Package needed box, saves the project unasked", which passes on BETA 1005, on a variant of the fixture without the form and the compiler-package references, in the lane's work folder). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under Package needed, carries a NOTE for it, and so does docs/IDE/Projects/Saving-and-Exporting.md, under Save Project > Other commands that save; when a fixed build is released, those NOTEs change. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D35). -->
+<!-- Reproducer: bugs/package-needed-saves/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Add WinNativeForms package, in the Package needed box, saves the project unasked", which passes on BETA 1010, on a variant of the fixture without the form and the compiler-package references, in the lane's work folder). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under Package needed, carries a NOTE for it, and so does docs/IDE/Projects/Saving-and-Exporting.md, under Save Project > Other commands that save; when a fixed build is released, those NOTEs change. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D35). -->
 
 ---
 
@@ -4824,14 +4824,14 @@ The drop refused, as the rename of `Sources` is.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 F2 on `Sources`, a new name and Enter give *Cannot rename: permission denied.* Delete on a special folder shows the delete box and deletes nothing. In the trial, the project opened again showed a new, empty `Sources` beside `Miscellaneous/Sources`, and the object view still listed every module, class and form, so they were still compiled.
 
 Severity: low. Nothing is lost, but the project's layout changes with no sign that it should not.
 
-<!-- Reproducer: bugs/drag-special-folder/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "dragging Sources onto Miscellaneous moves it there with no message, and Ctrl+S saves it there", which passes on BETA 1005; the control "control: renaming Sources is refused: Cannot rename: permission denied." passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Move a file or folder by dragging (its NOTE), carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D9). -->
+<!-- Reproducer: bugs/drag-special-folder/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "dragging Sources onto Miscellaneous moves it there with no message, and Ctrl+S saves it there", which passes on BETA 1010; the control "control: renaming Sources is refused: Cannot rename: permission denied." passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Move a file or folder by dragging (its NOTE), carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D9). -->
 
 ---
 
@@ -4851,14 +4851,14 @@ The Delete key doing nothing on a `References` entry, as the menu says; or remov
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The menu also greys out Cut, Paste and Rename. The row stays gone after the save.
 
 Severity: low. Nothing is lost, but the tree no longer shows a reference the project has.
 
-<!-- Reproducer: bugs/delete-reference-row/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Delete on a References entry removes the row, but the reference stays, before and after Ctrl+S", which passes on BETA 1005). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under The References folder, carries a NOTE for it, and so does the NOTE of docs/IDE/Projects/Files-and-Folders.md under Delete (its last sentences); when a fixed build is released, those go. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D21). -->
+<!-- Reproducer: bugs/delete-reference-row/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "Delete on a References entry removes the row, but the reference stays, before and after Ctrl+S", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under The References folder, carries a NOTE for it, and so does the NOTE of docs/IDE/Projects/Files-and-Folders.md under Delete (its last sentences); when a fixed build is released, those go. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D21). -->
 
 ---
 
@@ -4878,14 +4878,14 @@ A separator before the project's name, `exp2\ProjectsProbe\`, or the folder as g
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 With `project.exportPathIsV2` `true` and `${SourcePath}\exp3`, the export goes into `exp3\`. The paths in the steps have no trailing backslash.
 
 Severity: low. The files are written, beside the folder intended.
 
-<!-- Reproducer: bugs/export-path-v1-no-separator/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "without exportPathIsV2, Export Project writes into the Export Path with the project's name appended and no separator", which passes on BETA 1005; the control "control: with exportPathIsV2, Export Project writes into the Export Path's folder" passes too; both on variants of the fixture in the lane's work folder, so the exports go there). No project and no zip. docs/IDE/Projects/Saving-and-Exporting.md, under Export Project > Where it writes, carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D28). -->
+<!-- Reproducer: bugs/export-path-v1-no-separator/ (mode lane: asserted by `ide-test.bat --only projects-loss` (test/ide/projects-loss.test.mjs), the test "without exportPathIsV2, Export Project writes into the Export Path with the project's name appended and no separator", which passes on BETA 1010; the control "control: with exportPathIsV2, Export Project writes into the Export Path's folder" passes too; both on variants of the fixture in the lane's work folder, so the exports go there). No project and no zip. docs/IDE/Projects/Saving-and-Exporting.md, under Export Project > Where it writes, carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D28). -->
 
 ---
 
@@ -4904,14 +4904,14 @@ The menu opened, as a right click on a row of the file view opens the file view'
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The list item's `onmousedown` (`ide/main.js`) passes on the left button only. With the menu unreachable, a form's code cannot be opened from the object view, since Shift+double-click opens the designer too (see "Shift+double-click on a form in the object view opens the designer, not the code"). The menu's Rename and Delete do nothing yet either (see "The object view's Rename and Delete commands only show an alert naming the command").
 
 Severity: low. The same commands are in the file view's menu.
 
-<!-- Reproducer: bugs/objectview-no-menu/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "in the object view, a right click on an object, a form or a group opens no menu", which passes on BETA 1005; the control "control: a right click on a row of the file view opens its menu" passes too). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects), carries a NOTE for it; when a fixed build is released, that NOTE's item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D29). -->
+<!-- Reproducer: bugs/objectview-no-menu/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "in the object view, a right click on an object, a form or a group opens no menu", which passes on BETA 1010; the control "control: a right click on a row of the file view opens its menu" passes too). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects), carries a NOTE for it; when a fixed build is released, that NOTE's item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D29). -->
 
 ---
 
@@ -4931,14 +4931,14 @@ The object's file renamed or deleted, as from the file view; or the commands lef
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The two commands are `alert(...)` calls in `ide/main.js`.
 
 Severity: low. Rename and Delete in the file view work.
 
-<!-- Reproducer: bugs/objectview-rename-delete-alert/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "the object view's Rename and Delete commands only show an alert naming the command", which passes on BETA 1005; it runs the two commands through the IDE's command call). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects, its first item, which names Rename and Delete among the commands that cannot be reached), carries a NOTE for it; when a fixed build is released, that item changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D2). -->
+<!-- Reproducer: bugs/objectview-rename-delete-alert/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "the object view's Rename and Delete commands only show an alert naming the command", which passes on BETA 1010; it runs the two commands through the IDE's command call). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects, its first item, which names Rename and Delete among the commands that cannot be reached), carries a NOTE for it; when a fixed build is released, that item changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D2). -->
 
 ---
 
@@ -4958,14 +4958,14 @@ The search box holding `u`.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `fs.objectListOuter.onkeydown` (`ide/main.js`) sets the box's value to `">" + e.key`.
 
 Severity: low. Cosmetic.
 
-<!-- Reproducer: bugs/objectview-search-prefix/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "in the object view, a letter typed with a row selected opens the search box holding > and the letter", which passes on BETA 1005). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects, its last item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D2b). -->
+<!-- Reproducer: bugs/objectview-search-prefix/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "in the object view, a letter typed with a row selected opens the search box holding > and the letter", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects, its last item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D2b). -->
 
 ---
 
@@ -4984,14 +4984,14 @@ The form's code, `frmMain.twin`, opened.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 A double-click on a module (`Legacy`) opens its code, as it should. The list item's `ondblclick` (`ide/main.js`) passes no `shiftKey`. The menu's View Code is out of reach too (see "Project Explorer's object view opens no menu on a right click").
 
 Severity: low. The form's `.twin` file opens from the file view.
 
-<!-- Reproducer: bugs/objectview-shift-double-click/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Shift+double-click on a form in the object view opens its designer, not its code", which passes on BETA 1005; the control "control: in the object view, a double-click on a module opens its code" passes too). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects, its second item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D30). -->
+<!-- Reproducer: bugs/objectview-shift-double-click/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Shift+double-click on a form in the object view opens its designer, not its code", which passes on BETA 1010; the control "control: in the object view, a double-click on a module opens its code" passes too). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects, its second item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D30). -->
 
 ---
 
@@ -5011,14 +5011,14 @@ Space closing the open folder, and opening it again at the next press.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The test is in `treeView.onKeyDown` (`ide/main.js`).
 
 Severity: low. A key the tree's own code offers does nothing.
 
-<!-- Reproducer: bugs/tree-space-folder/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Space on a selected folder neither closes nor opens it", which passes on BETA 1005). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, first item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D3). -->
+<!-- Reproducer: bugs/tree-space-folder/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Space on a selected folder neither closes nor opens it", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, first item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D3). -->
 
 ---
 
@@ -5038,14 +5038,14 @@ The rows narrowed to those that match the letters typed, as the code intends.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The tree's `filterText` stays empty.
 
 Severity: low. The object view's search finds objects by name.
 
-<!-- Reproducer: bugs/tree-type-to-filter/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "typing letters in the file view does not filter the tree", which passes on BETA 1005; its diagnostic lists the key events the page saw). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, second item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D15). -->
+<!-- Reproducer: bugs/tree-type-to-filter/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "typing letters in the file view does not filter the tree", which passes on BETA 1010; its diagnostic lists the key events the page saw). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, second item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D15). -->
 
 ---
 
@@ -5064,14 +5064,14 @@ The rows selected, with no error.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The error is thrown in the tree's key handler.
 
 Severity: low. The selection is right.
 
-<!-- Reproducer: bugs/tree-ctrl-a-error/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Ctrl+A in the file view selects every row shown and raises a page TypeError", which passes on BETA 1005). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, fourth item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D25). -->
+<!-- Reproducer: bugs/tree-ctrl-a-error/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Ctrl+A in the file view selects every row shown and raises a page TypeError", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, fourth item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D25). -->
 
 ---
 
@@ -5091,14 +5091,14 @@ The first row shown under the folder selected, `Helpers`.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 `Sources` holds the folder `Helpers` and the files `Legacy.bas`, `Startup.twin`, `frmMain.tbform` and `frmMain.twin`; the tree draws `Helpers` first.
 
 Severity: low. The selection jumps to a row the reader did not expect.
 
-<!-- Reproducer: bugs/tree-right-arrow-order/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Right Arrow on an open folder selects its first entry in the compiler's order, not the first row shown", which passes on BETA 1005). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, third item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D26). -->
+<!-- Reproducer: bugs/tree-right-arrow-order/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Right Arrow on an open folder selects its first entry in the compiler's order, not the first row shown", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, third item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D26). -->
 
 ---
 
@@ -5118,14 +5118,14 @@ Down Arrow on the last row doing nothing.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Enter on a file opens it in a tab, as it should. The error is thrown in `treeView.onKeyDown` (`ide/main.js`).
 
 Severity: low. The highlight disappears, and Enter does nothing.
 
-<!-- Reproducer: bugs/tree-down-hidden-settings/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Down Arrow on the last row selects the hidden Settings node, and Enter there raises a page TypeError", which passes on BETA 1005; the control "control: Enter on a file in the file view opens it in a tab" passes too). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, last item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D34). -->
+<!-- Reproducer: bugs/tree-down-hidden-settings/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Down Arrow on the last row selects the hidden Settings node, and Enter there raises a page TypeError", which passes on BETA 1010; the control "control: Enter on a file in the file view opens it in a tab" passes too). No project and no zip. docs/IDE/Projects/Project-Explorer.md, under The file view > Keys in the tree (its NOTE, last item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D34). -->
 
 ---
 
@@ -5145,14 +5145,14 @@ Delete doing nothing when nothing is selected.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 With a row selected, the box names the item, as in *Are you sure you want to delete '/ProjectsProbe/Sources/Helpers/Util.twin'? You will not be able to undo this operation.*
 
 Severity: low. Nothing is deleted.
 
-<!-- Reproducer: bugs/tree-delete-nothing/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "with nothing selected, Delete asks to delete the selected items, and Delete deletes nothing", which passes on BETA 1005). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Delete (its NOTE, first sentences), carries a NOTE for it; when a fixed build is released, those sentences go. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D16). -->
+<!-- Reproducer: bugs/tree-delete-nothing/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "with nothing selected, Delete asks to delete the selected items, and Delete deletes nothing", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Delete (its NOTE, first sentences), carries a NOTE for it; when a fixed build is released, those sentences go. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D16). -->
 
 ---
 
@@ -5171,14 +5171,14 @@ Enter with the name unchanged closing the box with nothing said, and a change of
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 F2 and a new name (`Thing.twin` to `Thing2.twin`) renames the file. `renameItemValidate` (`ide/main.js`) returns false when the new name in lower case equals the old one, and the caller shows the invalid-name message.
 
 Severity: low. Nothing is lost.
 
-<!-- Reproducer: bugs/rename-same-name-invalid/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "F2 and Enter with the name unchanged, or changed only in case, is refused as an invalid name", which passes on BETA 1005; the control "control: F2 and a new name renames a file" passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Rename, carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D1). -->
+<!-- Reproducer: bugs/rename-same-name-invalid/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "F2 and Enter with the name unchanged, or changed only in case, is refused as an invalid name", which passes on BETA 1010; the control "control: F2 and a new name renames a file" passes too). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Rename, carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D1). -->
 
 ---
 
@@ -5197,14 +5197,14 @@ A copy named `datafile copy` beside it.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The clipboard holds `text/html` `twinbasic/uris;/ProjectsProbe/Miscellaneous/v1.2/datafile`, as for any file copied. Copy and Paste of `Resources/CUSTOM/notes.txt` makes `notes copy.txt` beside it. `tbProjectExplorer_ClipboardPaste` (`ide/main.js`) takes `"." + r.split(".").pop()` of the full path `r`.
 
 Severity: low. Nothing is lost.
 
-<!-- Reproducer: bugs/paste-dotted-folder/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Copy and Paste of a file with no extension in a folder whose name holds a dot creates nothing and says nothing", which passes on BETA 1005; the control "control: Copy and Paste of a file makes a copy named '<name> copy' beside it" passes too; the clipboard is faked in the page). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Cut, copy and paste (its NOTE), carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D6). -->
+<!-- Reproducer: bugs/paste-dotted-folder/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Copy and Paste of a file with no extension in a folder whose name holds a dot creates nothing and says nothing", which passes on BETA 1010; the control "control: Copy and Paste of a file makes a copy named '<name> copy' beside it" passes too; the clipboard is faked in the page). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Cut, copy and paste (its NOTE), carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D6). -->
 
 ---
 
@@ -5224,14 +5224,14 @@ A message naming `Packages`.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Add > Add Other File on `Resources/CUSTOM` creates the file there. A file cut and then pasted on `Packages` is deleted, which is the entry "Cut, then Paste onto Resources or Packages, deletes the file and creates it nowhere".
 
 Severity: low. Nothing is created, as it should be; the message names the wrong folder.
 
-<!-- Reproducer: bugs/packages-resources-message/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Add Other File on Packages, and Paste on Packages, each say they cannot create files inside the root resources folder", which passes on BETA 1005; the control "control: Add > Add Other File on a folder of Resources creates the file there" passes too). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Name the new file > Where the new file goes, carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D24). -->
+<!-- Reproducer: bugs/packages-resources-message/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Add Other File on Packages, and Paste on Packages, each say they cannot create files inside the root resources folder", which passes on BETA 1010; the control "control: Add > Add Other File on a folder of Resources creates the file there" passes too). No project and no zip. docs/IDE/Projects/Adding-Files.md, under Name the new file > Where the new file goes, carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D24). -->
 
 ---
 
@@ -5250,14 +5250,14 @@ The drop refused with no highlight and no error, or a message that files cannot 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 Dragging a file onto an ordinary folder moves it.
 
 Severity: low. Nothing moves, as it should not.
 
-<!-- Reproducer: bugs/drag-onto-packages-error/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "dragging a file onto Packages moves nothing and raises a page RangeError", which passes on BETA 1005). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Move a file or folder by dragging (its NOTE, last sentence), carries a NOTE for it; when a fixed build is released, that NOTE changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D27). -->
+<!-- Reproducer: bugs/drag-onto-packages-error/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "dragging a file onto Packages moves nothing and raises a page RangeError", which passes on BETA 1010). No project and no zip. docs/IDE/Projects/Files-and-Folders.md, under Move a file or folder by dragging (its NOTE, last sentence), carries a NOTE for it; when a fixed build is released, that NOTE changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D27). -->
 
 ---
 
@@ -5278,11 +5278,11 @@ A label for a type library, such as the reference's own name.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1005
+ - twinBASIC compiler version: BETA 1010
 
 **Additional context**
 The reference is not one of the compiler's installed packages, and its own name starts `[IMPORTED]`.
 
 Severity: low. A type library is labelled as a package.
 
-<!-- Reproducer: bugs/imported-typelib-linked-package/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "a type library imported on Available COM References is listed in Enabled Libraries as [LINKED-PACKAGE]", which passes on BETA 1005; the file dialog is answered in the page, and the dialog is closed with Cancel). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under Import from file (its third NOTE), carries a NOTE for it; when a fixed build is released, that NOTE changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D33). -->
+<!-- Reproducer: bugs/imported-typelib-linked-package/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "a type library imported on Available COM References is listed in Enabled Libraries as [LINKED-PACKAGE]", which passes on BETA 1010; the file dialog is answered in the page, and the dialog is closed with Cancel). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under Import from file (its third NOTE), carries a NOTE for it; when a fixed build is released, that NOTE changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D33). -->

@@ -66,7 +66,7 @@ A name is refused, with a notification in the corner of the window, when it:
 
 The notification reads **Cannot rename: the new name entered is invalid.** The seven special folders, `Settings`, `Sources`, `Resources`, `References`, `Packages`, `Miscellaneous` and `ImportedTypeLibraries`, cannot be renamed at all: the notification is **Cannot rename: permission denied.**
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > A rename that changes only the case of a name, or nothing, is refused with the same message as an invalid name, so `legacy.bas` cannot be changed to `Legacy.bas` in the tree.
 
 If the file is open in a tab with changes you have not saved, the IDE refuses the rename and shows a box, **Rename/Move failed. Please close the following editors that are preventing the operation:**, with the paths of the files. The same box appears for a folder that holds such a file. Save the file, or close its tab, and rename again. A tab on a file with no unsaved changes does not stop the rename. The tab closes, and the IDE does not open it again under the new name. Bookmarks move with the file.
@@ -81,7 +81,7 @@ A form's designer file and its `.twin` file belong together. After you rename on
 
 The top row of the tree is the project. Renaming it changes the **Project Name** setting in the `Settings` file. The row, the title bar and the `.twinproj` file keep their names. A name that is not a valid project name gives **Cannot rename the project: the new name entered is invalid.**
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > Renaming the project also saves it, with the unsaved edits of the open editors, and the title bar's changed mark goes.
 
 ## Move a file or folder by dragging
@@ -93,10 +93,10 @@ Drag a row, or the selected rows, onto a folder. The folder under the pointer is
 - The `Resources` folder accepts a dropped file, although **Paste** refuses to put one there.
 - A file dragged in from Windows is not accepted.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > Dragging a folder onto one of its own files, or onto one of its own subfolders, is accepted with no message. The tree then nests the folder inside itself, about fifty levels deep. The next <kbd>Ctrl</kbd>+<kbd>S</kbd> prints the green `[DONE]` line in the Debug Console, and then an error, and it writes a project file that the IDE cannot open: opening it stops at *Please wait... 25.0%*. Never drop a folder onto anything inside it. If you did, do not save. Close the project with **Discard Changes** in the question that follows, and open it again.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > Nothing stops a drag of a special folder. Dragging `Sources` onto `Miscellaneous` moves it there with no message, and the next save keeps it there. Do not drag the special folders. A drop of a file on `Packages` does nothing.
 
 ## Cut, copy and paste
@@ -109,10 +109,10 @@ Drag a row, or the selected rows, onto a folder. The folder under the pointer is
 - The menu greys out **Cut** for a read-only row, such as a file of a package. <kbd>Ctrl</kbd>+<kbd>X</kbd> on a `References` entry still puts a cut on the clipboard.
 - The menu greys out **Cut** and **Copy** for a folder. <kbd>Ctrl</kbd>+<kbd>C</kbd> on a folder still puts its path on the clipboard.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > A file that you cut and paste onto the `Resources` folder itself, or onto `Packages`, is deleted. The IDE shows the notification *cannot create files inside the root resources folder*, which does not say so. The file is gone from the whole tree, and the next save writes the project without it. Do not cut a file into either folder. If a file went, close the project with **Discard Changes** before you save, and the saved project still has it.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > Pasting a file with no extension into a folder whose own name contains a period, such as `v1.2`, creates nothing and gives no message, when a file of that name is in the folder already. The IDE takes the file's extension from the last period of the whole path.
 
 ## Export a file
@@ -155,13 +155,13 @@ With the option off, the rows are deleted at once.
 
 Some folders cannot be deleted. For `Sources`, `References`, `Miscellaneous`, `ImportedTypeLibraries` and the compiler packages under `Packages`, the box is shown, but nothing is deleted and no message follows.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > A file with unsaved changes in an open tab is deleted without a word about the changes. The box is the plain one, the tab closes, and the changes go with the file. A folder that holds such a file is the same. Look for the dot on a tab before you delete its file. The saved copy stays in the `.twinproj` file until the next save, so closing the project with **Discard Changes** brings the file back.
 
-> [!WARNING] BETA 1005
+> [!WARNING] BETA 1010
 > Deleting the project's own row, the top row of the tree, deletes every file in the project. The box reads like a file's: *Are you sure you want to delete* the project's path. After you confirm, the tree is empty, and the only message is an *IDE internal error* line in the Debug Console. The next <kbd>Ctrl</kbd>+<kbd>S</kbd> prints the green `[DONE]` line and writes a project with no files over the project file. Never delete the top row. If you did, do not save: close the project with **Discard Changes** and open it again.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > <kbd>Delete</kbd> with nothing selected shows the box **Are you sure you want to delete the selected items?**, and deletes nothing. Choose **Cancel**. Deleting an entry under `References` removes its row from the tree, but not the reference: it stays in the project's settings. Remove a reference in [Project Settings](References-and-Packages#the-enabled-libraries-list).
 
 ## See Also

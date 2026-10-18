@@ -100,7 +100,7 @@ These keys work while the tree has the focus.
 
 The tree scrolls to keep the selected row in view. <kbd>Page Up</kbd>, <kbd>Page Down</kbd>, <kbd>Home</kbd> and <kbd>End</kbd> do not move the selection.
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > Several keys of the tree do not work as they should.
 >
 > - <kbd>Space</kbd> does not open or close a folder. Click the folder's plus or minus box.
@@ -147,7 +147,7 @@ The **Search** button, or the first letter you type with a row selected, opens a
 
 ![The Project Explorer in its object view, with the search bar open at the top right of the list and Util typed in it. Under MyProject the Modules group lists only Util, beside its file Util.twin, and the Classes and Forms groups list nothing. The VBA, VBRUN and VB packages below are drawn open, and every group shows its full count.](Images/ObjectView_Search.png){:width="267" height="478"}
 
-> [!NOTE] BETA 1005
+> [!NOTE] BETA 1010
 > The object view has some defects.
 >
 > - A right click on a row opens no menu, so the menu's **View Object**, **View Code**, **Add**, **Rename** and **Delete** cannot be reached. To rename or delete an object's file, press <kbd>Ctrl</kbd>+<kbd>R</kbd> to return to the file view.
