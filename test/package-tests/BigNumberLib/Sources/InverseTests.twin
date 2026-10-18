@@ -123,7 +123,12 @@ Module InverseTests
         Expect.Done
     End Sub
 
-    ' The two cases below do not return on 1.0.2.0: the call stays in a loop.
+    [TestCase]
+    Public Sub Inverse_ZeroModulusRaisesError5()
+        Expect.Begin
+        Expect.AreEqual "5 invalid operation", InverseError("3", "0"), "error for the inverse of 3 modulo 0"
+        Expect.Done
+    End Sub
 
     [TestCase]
     Public Sub Inverse_ZeroValueOddModulus_RaisesError5()

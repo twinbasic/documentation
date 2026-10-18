@@ -2,7 +2,7 @@
   "format": 3,
   "package": "BigNumberLib",
   "project": "BigNumberLib",
-  "version": "1.0.2.0",
+  "version": "1.0.4.0",
   "types": [
     {
       "name": "Absolute",
@@ -54,7 +54,7 @@
         {"name":"AssignMultiplication","kind":"sub","vis":"public","signature":"Public Sub AssignMultiplication(ByRef a As BigNumber, ByRef b As BigNumber)","description":"{this} = a * b"},
         {"name":"AssignMultiplicationModulus","kind":"sub","vis":"public","signature":"Public Sub AssignMultiplicationModulus(ByRef a As BigNumber, ByRef b As BigNumber, ByRef mod_c As BigNumber)","description":"{this} = a * b (mod c)"},
         {"name":"AssignNegation","kind":"function","vis":"public","signature":"Public Function AssignNegation(ByRef a As BigNumber) As Boolean","returnType":"Boolean","description":"{this} = -a"},
-        {"name":"AssignShiftLeft","kind":"sub","vis":"public","signature":"Public Sub AssignShiftLeft(ByRef a As BigNumber, ByVal shiftAmount_b As Long)","description":"{this} = a << b"},
+        {"name":"AssignShiftLeft","kind":"sub","vis":"public","signature":"Public Sub AssignShiftLeft(ByVal a As BigNumber, ByVal shiftAmount_b As Long)","description":"{this} = a << b"},
         {"name":"AssignShiftRight","kind":"sub","vis":"public","signature":"Public Sub AssignShiftRight(ByRef a As BigNumber, ByVal shiftAmount_b As Long)","description":"{this} = a >> b"},
         {"name":"AssignSquared","kind":"sub","vis":"public","signature":"Public Sub AssignSquared(ByRef a As BigNumber)","description":"{this} = a * a"},
         {"name":"AssignSquaredModulus","kind":"sub","vis":"public","signature":"Public Sub AssignSquaredModulus(ByRef a As BigNumber, ByRef mod_b As BigNumber)","description":"{this} = a * a (mod b)"},
@@ -77,6 +77,7 @@
         {"name":"IsLessThanOrEqualTo","kind":"function","vis":"public","signature":"Public Function IsLessThanOrEqualTo(ByRef b As BigNumber) As Boolean","returnType":"Boolean","description":"a <= b"},
         {"name":"IsNegative","kind":"property","vis":"public","signature":"Public Property Get IsNegative() As Boolean","returnType":"Boolean","accessor":"Get"},
         {"name":"IsNegative","kind":"property","vis":"public","signature":"Public Property Let IsNegative(Value As Boolean)","accessor":"Let"},
+        {"name":"MAX_BITS","kind":"const","vis":"private","signatures":[{"cond":"Win64","signature":"Const MAX_BITS As Long = 4608"},{"cond":"Not (Win64)","signature":"Const MAX_BITS As Long = 4352"}]},
         {"name":"OctalRadix","kind":"const","vis":"private","signature":"Const OctalRadix As Long = 8"},
         {"name":"ValueBinary","kind":"property","vis":"public","signature":"Property Get ValueBinary() As String","returnType":"String","accessor":"Get","description":"returns/sets the value as a binary-string respresentation"},
         {"name":"ValueBinary","kind":"property","vis":"public","signature":"Property Let ValueBinary(ByVal Value As String)","accessor":"Let","description":"returns/sets the value as a binary-string respresentation"},
@@ -90,6 +91,7 @@
         {"name":"fp_addmod","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_addmod CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int, ByRef mod As fp_int, ByRef out As fp_int) As Long","returnType":"Long"},
         {"name":"fp_cmp","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_cmp CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int) As Long","returnType":"Long"},
         {"name":"fp_cmp_mag","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_cmp_mag CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int) As Long","returnType":"Long"},
+        {"name":"fp_count_bits","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_count_bits CDecl Lib libtfm (ByRef a As fp_int) As Long","returnType":"Long"},
         {"name":"fp_div","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_div CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int, ByRef out As fp_int, ByRef remainder As fp_int) As Long","returnType":"Long"},
         {"name":"fp_div_2","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_div_2 CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int)"},
         {"name":"fp_div_2d","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_div_2d CDecl Lib libtfm (ByRef a As fp_int, ByVal b As Long, ByRef out As fp_int, ByRef remainder As fp_int)"},
