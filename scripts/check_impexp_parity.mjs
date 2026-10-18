@@ -117,6 +117,25 @@ const COMMANDS = [
   { args: ["import", "console.twinproj", "console"], exit: 3, why: "refused: the project exists" },
   { args: ["import", "console.twinproj", "console", "--overwrite"], exit: 0 },
   { args: ["export", "console.twinproj", "console-out"], exit: 0 },
+  {
+    args: ["import", "names.twinproj", "names"],
+    exit: 0,
+    why: "names that sort apart by code point and by code unit, and a Kelvin sign in Packages",
+    setup: (dir) => {
+      cpSync(path.join(dir, "console"), path.join(dir, "names"), { recursive: true });
+      for (const name of ["\u{1F600}.twin", "\u{FF21}.twin"])
+        writeFileSync(path.join(dir, "names", "Sources", name), "Module M\nEnd Module\n");
+      const kelvin = path.join(dir, "names", "Pac\u{212A}ages", "Pkg");
+      mkdirSync(kelvin, { recursive: true });
+      writeFileSync(path.join(kelvin, "Settings"), "{}\r\n");
+    },
+  },
+  {
+    args: ["export", "names.twinproj", "names", "--overwrite"],
+    exit: 6,
+    why: "warns, in UTF-8: a file the project lacks, with a name outside the ANSI code page",
+    setup: (dir) => writeFileSync(path.join(dir, "names", "Sources", "\u{3A9}\u{1F600}.txt"), "\r\n"),
+  },
   { args: ["settings", "sample.twinpack"], exit: 0 },
   { args: ["licence", "sample.twinpack"], exit: 0 },
   { args: ["changelog", "sample.twinpack"], exit: 0 },

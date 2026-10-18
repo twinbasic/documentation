@@ -294,7 +294,8 @@ function exitCodeFor(outcome) {
   return outcome.stale?.length || outcome.repeated?.length ? EXIT.warned : EXIT.done;
 }
 
-const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+// By UTF-16 code unit, as < compares strings: impexp.py and the twinBASIC edition sort the same way.
+const byCodeUnit = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const count = (n, noun) => `${n} ${noun}${n === 1 ? "" : "s"}`;
 
 // Paths compare without regard to case on Windows, as the file system does.
@@ -440,7 +441,7 @@ export function exportProject(projectPath, folder, { overwrite = false } = {}) {
   const source = pathKey(projectPath);
   const stale = [];
   (function scan(dir, rel) {
-    for (const name of fs.readdirSync(dir).sort(byCodePoint)) {
+    for (const name of fs.readdirSync(dir).sort(byCodeUnit)) {
       if (name.toLowerCase() === GIT_NAME) continue;
       const full = path.join(dir, name);
       const entryRel = rel ? `${rel}/${name}` : name;
@@ -532,7 +533,7 @@ function buildTree(src, name, rel, skipped, added) {
     const have = new Set(names.map((n) => n.toLowerCase()));
     for (const folder of STANDARD_FOLDERS) if (!have.has(folder.toLowerCase())) missing.add(folder);
   }
-  for (const entry of [...names, ...missing].sort(byCodePoint)) {
+  for (const entry of [...names, ...missing].sort(byCodeUnit)) {
     const entryRel = rel ? `${rel}/${entry}` : entry;
     if (missing.has(entry)) {
       subdirs.push(entry);
@@ -746,11 +747,11 @@ function selfTest() {
     })(tree, "");
     return out;
   }
-  const listing = (tree) => JSON.stringify([...contents(tree)].sort(([a], [b]) => byCodePoint(a, b)));
+  const listing = (tree) => JSON.stringify([...contents(tree)].sort(([a], [b]) => byCodeUnit(a, b)));
   function diskListing(d) {
     const out = [];
     (function walk(p, rel) {
-      for (const name of fs.readdirSync(p).sort(byCodePoint)) {
+      for (const name of fs.readdirSync(p).sort(byCodeUnit)) {
         const full = path.join(p, name),
           r = rel ? `${rel}/${name}` : name;
         if (fs.statSync(full).isDirectory()) {
@@ -850,7 +851,7 @@ function selfTest() {
         "contents",
       );
       eq(back.children.find((c) => c.name === "Miscellaneous").category, CATEGORY.Miscellaneous, "category");
-      eq(fs.readdirSync(src).sort(byCodePoint).join(), "Packages,Settings,resources", "the tree on disk changed");
+      eq(fs.readdirSync(src).sort(byCodeUnit).join(), "Packages,Settings,resources", "the tree on disk changed");
     });
 
     test("Export without --overwrite refuses, and writes nothing", () => {
