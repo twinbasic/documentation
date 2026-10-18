@@ -43,6 +43,8 @@ Module FileSys
     Public Const KIND_NONE As Long = 0
     Public Const KIND_FILE As Long = 1
     Public Const KIND_FOLDER As Long = 2
+    ' A file that is the project file being written, which import leaves out (ImpexpSource.KindOf only).
+    Public Const KIND_SELF As Long = 3
 
     Private Const GENERIC_READ As Long = &H80000000
     Private Const GENERIC_WRITE As Long = &H40000000
