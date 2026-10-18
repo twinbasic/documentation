@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:building",
+  "tests": ["a saved publisher name containing ' is cut at the apostrophe in the sign-in box"],
+  "steps": "1. Open a package project, and View > PACKAGE PUBLISHING.\n2. Have the IDE hold the publisher name O'Brien (the test sets it in the page, as a saved name is loaded).\n3. SIGN IN: the LOGIN user name box holds O, and the box's input element has a stray attribute brien'.\nControl: a name with no apostrophe is shown whole."
+}

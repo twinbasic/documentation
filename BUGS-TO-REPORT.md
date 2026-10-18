@@ -5316,3 +5316,250 @@ Severity: cosmetic. The paths are hard to read, and a path copied from the conso
 
 <!-- Reproducer: bugs/export-verbose-done-escaped/ (mode lane: asserted by `ide-test.bat --only "^export$"` (test/ide/export.test.mjs), the test "with Export Verbose, every DONE line shows &#92; for each backslash of the path, and the files are right", which passes on BETA 1010 and on BETA 1007; the controls "control: with Export Verbose, a second export's DELETED lines show the paths' backslashes" and "control: without Export Verbose, the first line and the COMPLETED line show the path's backslashes" pass too; the exports go into the lane's work folder through the IDE's own exportProjectTo(), which the menu command calls). No project and no zip. Its cause is twinbasic/twinbasic#2444's (bugs/filed/debug-print-escaped-twice/), so the owner may mark it *CAPTURED IN EXISTING #2444* instead of filing it. docs/IDE/Projects/Saving-and-Exporting.md, under Export Project (the paragraph on Export Verbose), carries a NOTE for it; when a fixed build is released, that NOTE goes. First seen on BETA 1005 while taking the documentation's screenshots (WIP.Screenshots.md, "Not taken: the export console"). -->
 
+---
+
+## Auto-Increment raises the version in memory only, and the increments are lost
+
+**Describe the bug**
+With *(VERSION) Auto-Increment* set in Project Settings, each successful build prints `[BUILD] Auto-incremented next build number to: ...` and raises the version in the Settings the IDE holds. The project is not marked changed and its file is not written, so Close Project asks nothing, and the increments are lost: the next session builds, and publishes, version numbers already used. It was observed in an IDE started with an `APPDATA` of its own, reading the console, the Settings the IDE holds, its changed state, and the project file.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved Standard EXE project at version 1.0.7.3, with *(VERSION) Auto-Increment* set to `Revision`.
+2. Press Build. The console prints `[BUILD] Auto-incremented next build number to: 1.0.7.4`.
+3. Press Build again: `... to: 1.0.7.5`. The Settings the IDE holds say 1.0.7.5, and the project is not marked changed.
+4. File > Close Project. Nothing is asked. The project file still says 1.0.7.3.
+
+**Expected behavior**
+The project marked changed after an increment, so that Close Project asks to save it, or the new number written to the project file.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. The same for a package, and for the `Build` part. The version the Package Publishing pane shows stays at the old number too, and no `[COMPILER] Project settings updated` line is printed.
+
+Severity: high. The increments are lost without a word, and two builds, or two published packages, can carry the same version.
+
+<!-- Reproducer: bugs/build-autoincrement-not-saved/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "Auto-Increment raises the version in the IDE only: the project is not marked changed, its file keeps the old number, and Close Project asks nothing", which passes on BETA 1010 and on BETA 1007; the fixture is test/ide/probes/building-exe, and every build writes into the lane's work folder). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Build-Output.md, where it describes the version a build carries; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B15). -->
+
+---
+
+## ${ProjectID} in the build path becomes an empty string
+
+**Describe the bug**
+In Project Settings, *Build Output Path* accepts `${ProjectID}`, but a build replaces it with an empty string, with no message. Two projects whose paths differ only by it write the same file. It was observed in an IDE started with an `APPDATA` of its own, reading the console and the folder written.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved Standard EXE project named `BuildProbeExe`, which has a Project ID.
+2. Set *Build Output Path* to `${SourcePath}\Build\${ProjectID}_${ProjectName}.${FileExtension}`.
+3. Press Build. The console prints `[LINKER] SUCCESS created output file '<folder>\Build\_BuildProbeExe.exe'`.
+
+**Expected behavior**
+The project's ID in the file name, or the build path refused as for an unknown variable (`[COMPILER] build path contains unrecognized variable.`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. In the same path `${SourcePath}`, `${ProjectName}` and `${FileExtension}` are expanded, and so are `${VersionMajor}` to `${VersionRevision}` and `${Bitness}`.
+
+Severity: medium. The file name is wrong without a word, and projects sharing the pattern overwrite each other's output.
+
+<!-- Reproducer: bugs/build-path-projectid-empty/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "${ProjectID} in Build Output Path becomes an empty string", which passes on BETA 1010 and on BETA 1007; the control "control: ${SourcePath}, ${ProjectName} and ${FileExtension} in the same Build Output Path are expanded" passes too; the build writes into the lane's work folder). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Build-Output.md, under the build path's variables; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B14). -->
+
+---
+
+## Save in the build's "You must first save the project" box writes no project file
+
+**Describe the bug**
+Build, or Clean, on a project that was never saved shows *You must first save the project. Save now?*. **Save** shows the Save As dialog and takes the path chosen, but writes no `.twinproj`, and builds nothing. Nothing says so. The project stays marked changed. It was observed in an IDE started with an `APPDATA` of its own, answering the Save As dialog in the page and reading the folder chosen, the console and the IDE's state.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE with no project, choose *Standard EXE*, **Open**, then **Continue**.
+2. Press Build. The box reads *You must first save the project. Save now?* (**Save** / **Cancel**). Choose **Save**, and pick `MyNewProject.twinproj` in an empty folder.
+3. No file is written, and the console prints nothing.
+4. File > Close Project asks *You've made changes to this project. Save now?*
+
+**Expected behavior**
+The project saved to the file chosen.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. Ctrl+S then writes the file, to the path chosen in step 2 (`[PROJECT] twinBASIC project saving to disk [DONE]`). A second Build, without Ctrl+S, builds into a `Build` folder beside the path chosen, and still writes no project file. That **Save** does not go on to build is a separate matter.
+
+Severity: low. Nothing is lost while the IDE runs, but the box reads as if it saved.
+
+<!-- Reproducer: bugs/build-save-box-writes-nothing/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "Save in the build's 'You must first save the project' box takes the path but writes no project file and builds nothing, and Close Project then asks to save", which passes on BETA 1010 and on BETA 1007; the control "control: Ctrl+S then writes the project file" passes too; the Save As dialog is answered in the page with a file in the lane's work folder). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Build-and-Clean.md, where it describes a project that was never saved; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B11). -->
+
+---
+
+## Delete It And Continue in Clean's box builds a new DLL instead of deleting the old one
+
+**Describe the bug**
+When the previous DLL of an ActiveX project cannot be deregistered, Clean shows the box Build shows, *Build failed: unable to unregister the previous DLL. Continue anyway?*, and its **Delete It And Continue** builds a new DLL rather than deleting the old one. It was observed with *Register DLLs to HKLM*, in an IDE started with an `APPDATA` of its own and not elevated, reading the console and the build folder.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In an IDE that is not elevated, open an ActiveX DLL project with *Register DLLs to HKLM* set to YES (answer **Continue Anyway** to the warning).
+2. Press Build. The DLL is written, and `[REGISTER] type-library registration FAILED.   DllRegisterServer() returned -2147220992` is printed.
+3. Press Clean. The console prints `[UNREGISTER] type-library deregistration FAILED.   DllUnregisterServer() returned -2147220991` and `[BUILD] failed`, and the box above shows. Choose **Delete It And Continue**.
+4. The console prints `[BUILD] Starting...` and `[LINKER] SUCCESS created output file '...\BuildProbeAx_win32.dll'`. The DLL is written again, and no `[BUILD-CLEAN]` line is printed.
+
+**Expected behavior**
+At Clean, the DLL deleted, as the button says.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. At Build, the same box's **Delete It And Continue** builds the DLL again, which is what it is there for. Clean of an ActiveX DLL registered in HKCU deregisters and deletes it.
+
+Severity: low. The DLL is replaced, not removed; nothing is lost.
+
+<!-- Reproducer: bugs/clean-hklm-delete-builds/ (mode lane: asserted by `ide-test.bat --only "^building-hklm$"` (test/ide/building-hklm.test.mjs), the test "Clean shows the same box, and its Delete It And Continue builds a new DLL instead of deleting the old one", which passes on BETA 1010 and on BETA 1007; the controls "control: at Build, Delete It And Continue in the box of a failed deregistration builds the DLL again" and "control: an ActiveX DLL registered in HKCU opens with no box, and Clean after its build deletes it and its registration" pass too; the IDE is not elevated, so nothing is written to HKLM, and the lane checks that no key of the fixture's is left in HKCU or HKLM). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (ActiveX-Registration.md, under Register DLLs to HKLM; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B12). -->
+
+---
+
+## The HKLM warning shows twice as a project opens, and for a Standard EXE too
+
+**Describe the bug**
+In an IDE that is not elevated, a project with *Register DLLs to HKLM* set to YES shows the warning *This project registers itself to the HKEY_LOCAL_MACHINE registry hive which requires ADMIN permissions ...* twice as it opens, and its load waits for each **Continue Anyway**. A Standard EXE with the setting shows it too, though it registers nothing. It was observed in an IDE started with an `APPDATA` of its own, counting the boxes as they showed.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In an IDE that is not elevated, open an ActiveX DLL project with *Register DLLs to HKLM* set to YES.
+2. The warning shows; choose **Continue Anyway**. The same warning shows again; choose **Continue Anyway** again.
+3. Open a Standard EXE project with the same setting set to YES. The warning shows, twice.
+
+**Expected behavior**
+The warning once per open, and only for an ActiveX DLL or ActiveX Control.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007, twice. An ActiveX DLL registered in HKCU opens with no box.
+
+Severity: cosmetic. An extra box, and a warning that does not apply.
+
+<!-- Reproducer: bugs/hklm-warning-twice/ (mode lane: asserted by `ide-test.bat --only "^building-hklm$"` (test/ide/building-hklm.test.mjs), the tests "an ActiveX DLL with Register DLLs to HKLM shows the HKLM warning twice as it opens" and "a Standard EXE with Register DLLs to HKLM shows the HKLM warning too, twice as it opens", which pass on BETA 1010 and on BETA 1007; the control "control: an ActiveX DLL registered in HKCU opens with no box, and Clean after its build deletes it and its registration" passes too). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (ActiveX-Registration.md, under Register DLLs to HKLM; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B13). -->
+
+---
+
+## A box opened during an LLVM build is closed in place of the Compiling... box, which stays and blocks the IDE
+
+**Describe the bug**
+An LLVM build shows a modal *Compiling...* box. At the build's end the IDE closes the box on top, whichever it is. When another box has opened over *Compiling...*, that box is closed instead, and a *Compiling...* box stays at 0.0% with no button: the IDE takes no input until its page is reloaded. It was observed in an IDE started with an `APPDATA` of its own, with the other box opened from the page at the build's first progress event, since a person cannot open one while *Compiling...* covers the IDE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a Standard EXE project with `+llvm` in Compiler Options (BUILD), with a licence that allows LLVM.
+2. Press Build. The *Compiling...* box shows.
+3. While it shows, open another box (in the IDE page: `showModalNotification("A second box")`).
+4. The build ends (`[LINKER] SUCCESS created output file ...`). The other box is gone, and *Compiling... 0.0%* stays, with no button.
+
+**Expected behavior**
+The *Compiling...* box closed at the build's end, and the other box left open.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. `event_setBuildProgress` in `ide/main.js` calls `hideModalDialog()` for the end of the build (-1), which closes the top-most modal box, not the progress box; a second progress event of 0 while the other box is on top also stacks a second *Compiling...* box. It is not known whether the compiler itself opens a box during an LLVM build (as the box of a failed deregistration). An LLVM build with no other box closes its *Compiling...* box.
+
+Severity: low. Only a box opened during the build reaches it, and the IDE must be reloaded.
+
+<!-- Reproducer: bugs/llvm-build-box-closes-other/ (mode lane: asserted by `ide-test.bat --only "^building-llvm-box$"` (test/ide/building-llvm-box.test.mjs), the test "a box opened during an LLVM build is closed at its end in place of the Compiling... box, which stays with no button and blocks the IDE", which passes on BETA 1010 and on BETA 1007; the control "control: an LLVM build shows the Compiling... box and closes it at its end" passes too; the lane holds a lease on the LLVM cache server, and needs a licence that allows LLVM). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (LLVM-in-the-IDE.md, where it describes the Compiling... box; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B7). -->
+
+---
+
+## A remembered Package Publisher password containing ~ is read back wrong
+
+**Describe the bug**
+In the Package Publishing sign-in box, *Remember password on this device* stores the password in the IDE's settings with `ObfuscateString`, and the IDE reads it back at its next start with `UnobfuscateString`. Each `~` in the password comes back as a NUL character, so the pre-filled password is wrong and the sign-in fails. It was observed in an IDE started with an `APPDATA` of its own, with the IDE's own two functions saving into the page rather than the registry, and nothing sent to the server.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In the sign-in box (Package Publishing, SIGN IN), log in with a password containing `~`, such as `pa~ss~word`, with *Remember password on this device* ticked.
+2. Restart the IDE, and open SIGN IN again.
+3. The password box holds `pa?ss?word`, each `?` a replacement character (U+FFFD), not `pa~ss~word`.
+
+**Expected behavior**
+The password read back as it was typed.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. `ObfuscateString(e, t, o = 126)` in `ide/main.js` shifts each character code up to and including 126 by `t` (111) modulo 126, and `UnobfuscateString` shifts back by `126 - 111`. For `~` (126) the stored code is 111 and the result is 0. A password without `~` comes back as it was typed.
+
+Severity: low. Signing in fails until the password is typed again; nothing is lost.
+
+<!-- Reproducer: bugs/publisher-password-tilde/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "a remembered publisher password containing ~ is read back with NUL in place of each ~", which passes on BETA 1010 and on BETA 1007; the control "control: a remembered publisher password without ~ is read back as it was" passes too; the test saves with the IDE's own savePublisherInfo into a record in the page and reads back with its own loadPublisherInfo, with test values only, puts the IDE's own publisher settings back in the page, and fails on any request to the package server). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Package-Publishing.md, under the sign-in box; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B1). -->
+
+---
+
+## A saved publisher name containing ' is cut short in the sign-in box
+
+**Describe the bug**
+The Package Publishing sign-in box fills its LOGIN user name from the saved publisher name by writing it into the box's HTML as `value='<name>'`, with no escaping. A name containing `'` ends the attribute early: the box shows the name up to the apostrophe, and the rest becomes a stray attribute of the input element. The saved password is written the same way. It was observed in an IDE started with an `APPDATA` of its own, with the name set in the page, and nothing sent to the server.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Have the IDE save the publisher name `O'Brien` (log in or register with it).
+2. Open Package Publishing, SIGN IN.
+3. The LOGIN user name box holds `O`, and its input element has an attribute named `brien'`.
+
+**Expected behavior**
+The box holding `O'Brien`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. `showSignInForm` in `ide/main.js` builds the form from a template string with `value='${packagePublisherName}'`, which becomes `innerHTML`. A name with no apostrophe is shown whole.
+
+Severity: low. The name has to be typed again.
+
+<!-- Reproducer: bugs/publisher-name-apostrophe/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "a saved publisher name containing ' is cut at the apostrophe in the sign-in box", which passes on BETA 1010 and on BETA 1007; the control "control: a saved publisher name with no apostrophe is shown whole in the sign-in box" passes too; test values only, set in the page; the box is closed with Cancel, and the test fails on any request to the package server). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Package-Publishing.md, under the sign-in box; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B4). -->
+
+---
+
+## OK in the box of a failed publish raises a page TypeError
+
+**Describe the bug**
+When the package server answers a publish with an HTTPS status it has no message for, the IDE shows *[PUBLISH] FAILED. Server returned HTTPS code <n>*. Its **OK** closes the box, and the page then raises `Uncaught TypeError: t is not a function`. It was observed in an IDE started with an `APPDATA` of its own, with the server call replaced in the page by one that fails with 500, so that nothing reached the server.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a package project, sign in, and PUBLISH THIS PACKAGE, at a time when the server answers with an error status (500, say).
+2. The box reads *[PUBLISH] FAILED. Server returned HTTPS code 500*. Choose **OK**.
+3. The box closes, and the page raises the error above.
+
+**Expected behavior**
+The box closed with no error.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. `packagePublisherPublishNow` in `ide/main.js` calls `showModalNotification("[PUBLISH] FAILED.  Server returned HTTPS code " + e, true)`, passing `true` where `showModalNotification` takes a function to call after OK. The other `[PUBLISH] FAILED` boxes pass none, and their OK raises no error (checked with 551, *Package already uploaded with this exact version number.*).
+
+Severity: cosmetic. An error in the page after the box has closed.
+
+<!-- Reproducer: bugs/publish-failure-ok-typeerror/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "OK in the box of a publish that fails with an HTTPS code raises a page TypeError", which passes on BETA 1010 and on BETA 1007; the control "control: OK in the box of a publish refused as a version already uploaded raises no error" passes too; the test calls the IDE's own packagePublisherPublishNow with serverHttpsGetUtf8 replaced in the page, never presses Continue, and fails on any request to the package server). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Package-Publishing.md, under PUBLISH THIS PACKAGE; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B2). -->
+

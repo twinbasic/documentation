@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:building",
+  "tests": ["a remembered publisher password containing ~ is read back with NUL in place of each ~"],
+  "steps": "1. Open a package project, and View > PACKAGE PUBLISHING.\n2. Have the IDE remember the publisher password pa~ss~word (the test sets it in the page and calls the IDE's own savePublisherInfo, and its record stands in for the registry).\n3. The IDE reads it back as at its next start (its own loadPublisherInfo): each ~ is now a NUL character.\n4. SIGN IN: the LOGIN password box holds pa?ss?word, each ? a replacement character (U+FFFD).\nControl: a remembered password with no ~ is read back as it was."
+}

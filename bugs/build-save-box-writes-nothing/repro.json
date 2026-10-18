@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:building",
+  "tests": [
+    "Save in the build's 'You must first save the project' box takes the path but writes no project file and builds nothing, and Close Project then asks to save"
+  ],
+  "steps": "1. Start the IDE with no project, choose Standard EXE, Open, then Continue.\n2. Press Build. The box reads You must first save the project. Save now? Choose Save, and pick a file name in the Save As dialog.\n3. No .twinproj is written, nothing is built, and the console prints nothing. The project stays marked changed.\n4. File > Close Project asks You've made changes to this project. Save now?\nControl: Ctrl+S then writes the project file."
+}

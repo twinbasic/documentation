@@ -1,0 +1,7 @@
+Module MainMod
+    Public Const MARKER As String = "V1"
+
+    Public Sub Main()
+        Debug.Print MARKER
+    End Sub
+End Module

@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:building",
+  "tests": ["${ProjectID} in Build Output Path becomes an empty string"],
+  "steps": "1. Open a saved Standard EXE project named BuildProbeExe, which has a Project ID.\n2. In Project Settings, set Build Output Path to ${SourcePath}\\Build\\${ProjectID}_${ProjectName}.${FileExtension}.\n3. Press Build. The exe is written as Build\\_BuildProbeExe.exe: ${ProjectID} became an empty string.\nControl: ${SourcePath}, ${ProjectName} and ${FileExtension} in the same path are expanded."
+}

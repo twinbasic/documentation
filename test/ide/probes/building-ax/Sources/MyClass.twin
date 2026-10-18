@@ -1,0 +1,8 @@
+[ClassId("B01D0000-0000-4000-8000-00000000A001")]
+[InterfaceId("B01D0000-0000-4000-8000-00000000A002")]
+[EventInterfaceId("B01D0000-0000-4000-8000-00000000A003")]
+Class MyClass
+    Public Function Hello() As String
+        Return "hello"
+    End Function
+End Class
