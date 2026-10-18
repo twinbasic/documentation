@@ -138,12 +138,12 @@ Generates twinBASIC probe projects from the `Applicable to:` lines in `Reference
 
 A misplaced attribute comes back as `This attribute is not supported in this context` (TB5155) or `Syntax error.  No handler for this symbol` (TB5182). Which of the two arrives says nothing about whether the attribute exists, only that it is not accepted there.
 
-Up to three trees come out, on two contracts that must not be mixed:
+The trees that come out are on two contracts that must not be mixed:
 
 | Tree | Contract |
 |---|---|
 | `<out_dir>` | `AttributeProbes` --- every probe is expected to compile, so a diagnostic naming a probe module is a documentation defect. |
-| `<out_dir>-2` | `AttributeProbes2` --- the same contract, for targets that cannot share a project (one `[RunAfterBuild]` per project). |
+| `<out_dir>-2`, `<out_dir>-3`, ... | `AttributeProbes2`, `AttributeProbes3`, ... --- the same contract, one for each further target of an attribute a project may hold only once (one `[RunAfterBuild]` per project). |
 | `<out_dir>-explore` | `AttributeExplore` --- **a diagnostic is the answer.** Questions the page cannot settle; each source file carries its own header saying how to read its result. |
 
 Red in `AttributeProbes` is a defect; red in `AttributeExplore` is a result.

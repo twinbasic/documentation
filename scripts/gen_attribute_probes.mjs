@@ -15,12 +15,15 @@
 // (TB5182); which of the two comes back does not say whether the attribute
 // exists, only that it is not accepted there.
 //
-// Up to three trees are written, on two different contracts:
+// Several trees are written, on two different contracts:
 //
 //   <out_dir>           AttributeProbes   -- every probe expected to compile
-//   <out_dir>-2         AttributeProbes2  -- the same, for targets that
-//                                            cannot share a project (one
-//                                            [RunAfterBuild] per project)
+//   <out_dir>-2, -3...  AttributeProbes2, 3... -- the same, for targets that
+//                                            cannot share a project: the nth
+//                                            target of an attribute the compiler
+//                                            allows once per project
+//                                            ([RunAfterBuild]) is in project n,
+//                                            so each holds at most one
 //   <out_dir>-explore   AttributeExplore  -- **a diagnostic is the answer**:
 //                                            questions the page cannot settle
 //
@@ -82,8 +85,8 @@ Exit codes:
 // where sweep_attributes.mjs reads them too.
 
 // Attributes the compiler allows only once per project, so their second and
-// later targets cannot share a project with the first. TB5114 for
-// [RunAfterBuild].
+// later targets cannot share a project with the first, or with each other: the
+// nth target is written to project n. TB5114 for [RunAfterBuild].
 const SINGLETON = {
   RunAfterBuild: "the compiler allows only one [RunAfterBuild] per project",
 };
@@ -949,19 +952,21 @@ async function main(argv) {
   // .twinproj and shows up as a stray file in the project.
   const keyPath = positionals[1] ?? path.join(path.dirname(path.resolve(out)), "probe-key.md");
   const srcDir = path.join(out, "Sources");
-  const overflowSrc = path.join(out + "-2", "Sources");
+  // Project n (n >= 2) is `<out>-n`, named AttributeProbes<n>.
+  const overflowSrc = (n) => path.join(`${out}-${n}`, "Sources");
   await fs.mkdir(srcDir, { recursive: true });
 
   const entries = parseAttributes(await fs.readFile(ATTR_DOC, "utf8"));
   const byName = new Map(entries.map((e) => [e.name, e]));
   const probes = [];
   const overflow = [];
+  const overflowProjects = new Set();
   const skipped = [];
   const noApp = [];
   let idx = 0;
 
   // Write one probe. Returns the tag, or null if it could not be built.
-  async function emit(e, target, note, seenSingleton) {
+  async function emit(e, target, note, project) {
     idx += 1;
     const tag = `P${pad(idx, 3)}_${e.name}_${target}`;
     const body = render(target, tag, attrText(e.name, idx), e.name === "TypeHint", idx);
@@ -977,13 +982,19 @@ async function main(argv) {
       (e.app ? `"Applicable to: ${e.app}"` : "no `Applicable to:` line") +
       `\n${why}` +
       "' Expected: compiles clean.\n\n";
-    const targetDir = seenSingleton ? overflowSrc : srcDir;
+    const targetDir = project > 1 ? overflowSrc(project) : srcDir;
+    if (project > 1) {
+      await fs.mkdir(targetDir, { recursive: true });
+      overflowProjects.add(project);
+      overflow.push([tag, e, target, project]);
+    } else {
+      probes.push([tag, e, target]);
+    }
     await writeCrlf(path.join(targetDir, tag + ".twin"), header + body);
-    (seenSingleton ? overflow : probes).push([tag, e, target]);
     return tag;
   }
 
-  const singletonUsed = new Set();
+  const singletonUses = new Map();
   for (const e of entries) {
     if (!e.app) {
       noApp.push(e);
@@ -1014,21 +1025,18 @@ async function main(argv) {
         ]);
         continue;
       }
-      let second = false;
+      let project = 1;
       if (Object.hasOwn(SINGLETON, e.name)) {
-        if (singletonUsed.has(e.name)) {
-          second = true;
-          await fs.mkdir(overflowSrc, { recursive: true });
-        }
-        singletonUsed.add(e.name);
+        project = (singletonUses.get(e.name) ?? 0) + 1;
+        singletonUses.set(e.name, project);
       }
-      await emit(e, target, second ? SINGLETON[e.name] : null, second);
+      await emit(e, target, project > 1 ? SINGLETON[e.name] : null, project);
     }
   }
 
   for (const [name, target, note] of EXTRA_PROBES) {
     const e = byName.get(name);
-    if (e) await emit(e, target, note, false);
+    if (e) await emit(e, target, note, 1);
   }
 
   await writeCrlf(path.join(srcDir, "_ProbeMain.twin"), MAIN_TWIN);
@@ -1036,11 +1044,13 @@ async function main(argv) {
   await writeRaw(path.join(out, "Settings"), SETTINGS);
 
   await writeProbeResources(out);
-  if (overflow.length) {
-    await writeCrlf(path.join(overflowSrc, "_ProbeMain.twin"), MAIN_TWIN);
+  // Each overflow project has its own startup module, name and project id (the
+  // ids 000000000001 and 000000000003 are the main and exploratory projects').
+  for (const n of [...overflowProjects].sort((a, b) => a - b)) {
+    await writeCrlf(path.join(overflowSrc(n), "_ProbeMain.twin"), MAIN_TWIN);
     await writeRaw(
-      path.join(out + "-2", "Settings"),
-      SETTINGS.replaceAll("AttributeProbes", "AttributeProbes2").replaceAll("000000000001", "000000000002"),
+      path.join(`${out}-${n}`, "Settings"),
+      SETTINGS.replaceAll("AttributeProbes", `AttributeProbes${n}`).replaceAll("000000000001", pad(100 + n, 12)),
     );
   }
 
@@ -1092,17 +1102,18 @@ async function main(argv) {
       "both rather than risk testing two attributes at once.\n",
   );
   if (overflow.length) {
-    k.push("\n## Second project\n\n");
+    k.push("\n## Further projects\n\n");
     k.push(
-      "These targets cannot share a project with the ones above, so they " +
-        "are packed separately as `AttributeProbes2`. Build it the same way.\n\n",
+      "These targets cannot share a project with the ones above or with each " +
+        "other, so each project holds at most one of them: project n is packed as " +
+        "`AttributeProbes<n>`. Build each the same way.\n\n",
     );
-    k.push("| Probe | Attribute | Applies to | Why separate |\n|---|---|---|---|\n");
-    for (const [tag, e, target] of overflow) {
-      k.push(`| \`${tag}\` | \`[${e.name}]\` | ${HUMAN[target]} | ${SINGLETON[e.name]} |\n`);
+    k.push("| Probe | Attribute | Applies to | Project | Why separate |\n|---|---|---|---|---|\n");
+    for (const [tag, e, target, n] of overflow) {
+      k.push(`| \`${tag}\` | \`[${e.name}]\` | ${HUMAN[target]} | \`AttributeProbes${n}\` | ${SINGLETON[e.name]} |\n`);
     }
   }
-  k.push("\n## Third project -- `AttributeExplore`\n\n");
+  k.push("\n## Exploratory project -- `AttributeExplore`\n\n");
   k.push(
     "**The opposite contract: a diagnostic here is the answer, not a defect.** " +
       "These ask questions `Attributes.md` cannot answer and no shipped package " +

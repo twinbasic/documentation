@@ -73,6 +73,12 @@ export const FIXED_ARGS = {
   // `_Forms`, `VBGlobal`. A census answers the question it was asked, and
   // "which keyword" is not "where it is applicable".
   RedirectToStaticImplementation: '("ProbeFactoryModule.ProbeRedirect")',
+  // `Attributes.md` (PropertyPage) documents a single String, the class name of
+  // one of the project's property pages; without it the compiler reports TB5163
+  // (a single String argument expected) before it looks at the target. On a
+  // procedure a name that matches no page is TB5259, so the project holds one
+  // (writeProbeResources: ProbePage.twin and ProbePage.tbppage).
+  PropertyPage: '("ProbePage")',
 };
 
 /** The attribute as written in a probe; `idx` keeps GUID and hint-enum ids unique. */
@@ -114,6 +120,80 @@ export const PROBE_FACTORY_TWIN =
   "    Public Sub ProbeRedirect()\n" +
   "    End Sub\n" +
   "End Module\n";
+
+// The property page [PropertyPage("ProbePage")] names: the class the IDE's Add
+// Windows PropertyPage writes, and its designer file, an empty page. The
+// designer file is the VB package's StandardDataFormat page without its controls
+// (the FormDesignerId in each ties the two files together). The page's own
+// FormDesignerId and ClassId are probe values, like the GUID attributes' above.
+export const PROBE_PAGE_TWIN =
+  '[Description("")]\n' +
+  '[FormDesignerId("1C6A1F58-0000-4000-8000-00000000A001")]\n' +
+  '[ClassId("1C6A1F58-0000-4000-8000-00000000A002")]\n' +
+  '[InterfaceId("1C6A1F58-0000-4000-8000-00000000A003")]\n' +
+  '[EventInterfaceId("1C6A1F58-0000-4000-8000-00000000A004")]\n' +
+  "Class ProbePage\n\nEnd Class\n";
+const PROBE_PAGE_OBJ = {
+  Appearance: "vbAppear3d",
+  AutoRedraw: false,
+  BackColor: -2147483633,
+  Caption: "Probe",
+  Changed: false,
+  ClipControls: true,
+  DrawMode: "vbCopyPen",
+  DrawStyle: "vbSolid",
+  DrawWidth: 1,
+  FillColor: 0,
+  FillStyle: "vbFSTransparent",
+  FontBold: false,
+  FontItalic: false,
+  FontName: "Segoe UI",
+  FontSize: 8,
+  FontStrikethru: false,
+  FontTransparent: true,
+  FontUnderline: false,
+  ForeColor: 0,
+  FormDesignerId: "{1C6A1F58-0000-4000-8000-00000000A001}",
+  HasDC: true,
+  Height: 319,
+  HelpContextID: 0,
+  InternalScaleHeightFull: 4780,
+  InternalScaleWidthFull: 6810,
+  KeyPreview: false,
+  Left: 0,
+  MouseIcon: "",
+  MousePointer: "vbDefault",
+  Name: "ProbePage",
+  OLEDropMode: "vbOLEDropNone",
+  Palette: "",
+  PaletteMode: "vbPaletteModeHalftone",
+  Picture: "",
+  PictureDpiScaling: false,
+  RightToLeft: false,
+  ScaleHeight: 4780,
+  ScaleLeft: 0,
+  ScaleMode: "vbTwips",
+  ScaleTop: 0,
+  ScaleWidth: 6810,
+  StandardSize: "StandardSizeCustom",
+  Tag: null,
+  Top: 0,
+  Width: 454,
+  __IDEOptions: {
+    alignToGrid: false,
+    gridHeight: 10,
+    gridWidth: 10,
+    lockedControls: [],
+    multiColoredGrabbers: true,
+    showGrid: true,
+    showOutlines: false,
+  },
+  __lastUpdateMarker: 2573254863,
+  _children: [],
+  _className: "PropertyPage",
+  _clsid: "{33AD5018-6699-11CF-B70C-00AA0060D393}",
+};
+export const PROBE_PAGE_JSON = JSON.stringify([PROBE_PAGE_OBJ], null, "\t").replace(/\n/g, "\r\n");
 
 // Built as an object and serialised, rather than held as a literal blob, so the
 // backslashes in the paths are escaped by JSON.stringify rather than by hand.
@@ -192,6 +272,9 @@ export async function writeProbeResources(out) {
   await fs.writeFile(path.join(out, "Miscellaneous", "probe.png"), PROBE_PNG);
   await fs.mkdir(path.join(out, "Resources", "PROBE"), { recursive: true });
   await writeRaw(path.join(out, "Resources", "PROBE", "Strings.json"), PROBE_STRINGS_JSON);
+  await fs.mkdir(path.join(out, "Sources"), { recursive: true });
+  await writeCrlf(path.join(out, "Sources", "ProbePage.twin"), PROBE_PAGE_TWIN);
+  await writeRaw(path.join(out, "Sources", "ProbePage.tbppage"), PROBE_PAGE_JSON);
 }
 
 /** writeProbeResources for a caller that stages a project synchronously. */
@@ -200,6 +283,9 @@ export function writeProbeResourcesSync(out) {
   writeFileSync(path.join(out, "Miscellaneous", "probe.png"), PROBE_PNG);
   mkdirSync(path.join(out, "Resources", "PROBE"), { recursive: true });
   writeFileSync(path.join(out, "Resources", "PROBE", "Strings.json"), PROBE_STRINGS_JSON, "utf8");
+  mkdirSync(path.join(out, "Sources"), { recursive: true });
+  writeFileSync(path.join(out, "Sources", "ProbePage.twin"), PROBE_PAGE_TWIN.replace(/\n/g, "\r\n"), "utf8");
+  writeFileSync(path.join(out, "Sources", "ProbePage.tbppage"), PROBE_PAGE_JSON, "utf8");
 }
 
 // Targets the packages evidence but a generic skeleton cannot probe
