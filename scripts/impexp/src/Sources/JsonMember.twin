@@ -1,6 +1,7 @@
 ' Reads one string member of a JSON object's top level, as JSON.parse(text)[key] would find it:
-' the text must be JSON as a whole, and the last of two members with one name wins.
-Module Json
+' the text must be JSON as a whole, and the last of two members with one name wins. Not named Json,
+' because tblaunch, which compiles these modules too, has a Json module of its own.
+Module JsonMember
     Private mText As String
     Private mPos As Long
     Private mBad As Boolean

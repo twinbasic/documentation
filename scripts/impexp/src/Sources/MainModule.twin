@@ -1,30 +1,15 @@
 ' impexp -- the twinBASIC edition of scripts/impexp.mjs and scripts/impexp.py: the same commands,
-' the same output and the same exit codes, and byte-identical project files.
+' the same output and the same exit codes, and byte-identical project files. Run takes the command
+' line and returns the exit code; Program.Main is the program's own entry point, kept apart so that
+' tblaunch can compile every module but Program and call Run under its own Sub Main.
 Module MainModule
     Private Declare PtrSafe Function GetStdHandle Lib "kernel32" (ByVal nStdHandle As Long) As LongPtr
     Private Declare PtrSafe Function GetConsoleMode Lib "kernel32" (ByVal hConsoleHandle As LongPtr, ByRef lpMode As Long) As Long
     Private Declare PtrSafe Function WriteConsoleW Lib "kernel32" (ByVal hConsoleOutput As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfCharsToWrite As Long, ByRef lpNumberOfCharsWritten As Long, ByVal lpReserved As LongPtr) As Long
     Private Declare PtrSafe Function WriteFile Lib "kernel32" (ByVal hFile As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfBytesToWrite As Long, ByRef lpNumberOfBytesWritten As Long, ByVal lpOverlapped As LongPtr) As Long
-    Private Declare PtrSafe Function GetCommandLineW Lib "kernel32" () As LongPtr
-    Private Declare PtrSafe Function CommandLineToArgvW Lib "shell32" (ByVal lpCmdLine As LongPtr, ByRef pNumArgs As Long) As LongPtr
-    Private Declare PtrSafe Function LocalFree Lib "kernel32" (ByVal hMem As LongPtr) As LongPtr
-    Private Declare PtrSafe Function lstrlenW Lib "kernel32" (ByVal lpString As LongPtr) As Long
-    Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
-    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
 
     Private Const STD_OUTPUT_HANDLE As Long = -11
     Private Const STD_ERROR_HANDLE As Long = -12
-
-    Public Sub Main()
-        Dim code As Long
-        On Error GoTo Crashed
-        code = Run(Arguments())
-        ExitProcess code
-        Exit Sub
-    Crashed:
-        WriteErr "  ERROR: " & Err.Description
-        ExitProcess Impexp.EXIT_FAILED
-    End Sub
 
     Public Function Usage() As String
         Usage = Join(Array( _
@@ -52,21 +37,6 @@ Module MainModule
             "  5  the project file is damaged or is not one, or the folder has no Settings", _
             "  6  done, with a warning: the folder holds files the project does not,", _
             "     or the project holds one name twice"), vbLf)
-    End Function
-
-    ' The arguments after the program's name, as the C runtime splits them.
-    Private Function Arguments() As Collection
-        Dim r As New Collection, argv As LongPtr, argc As Long, i As Long, p As LongPtr, n As Long, s As String
-        argv = CommandLineToArgvW(GetCommandLineW(), argc)
-        For i = 1 To argc - 1
-            RtlMoveMemory VarPtr(p), argv + i * LenB(p), LenB(p)
-            n = lstrlenW(p)
-            s = String$(n, vbNullChar)
-            If n > 0 Then RtlMoveMemory StrPtr(s), p, 2 * n
-            r.Add s
-        Next
-        LocalFree argv
-        Set Arguments = r
     End Function
 
     Private Function IsProjectFile(ByVal name As String) As Boolean

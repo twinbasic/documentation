@@ -306,7 +306,7 @@ Module Impexp
         If Len(settingsText) > 0 Then
             If (AscW(settingsText) And &HFFFF&) = &HFEFF& Then settingsText = Mid$(settingsText, 2)
         End If
-        ProjectNameIn = Json.TopLevelString(settingsText, "project.name")
+        ProjectNameIn = JsonMember.TopLevelString(settingsText, "project.name")
     Unreadable:
     End Function
 

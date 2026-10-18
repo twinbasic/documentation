@@ -435,6 +435,11 @@ and run `node scripts/check_impexp_parity.mjs` with `IMPEXP_EXE` set to its exe,
 `--self-test` and command sequence are its tests: no gate can build it, so nothing else will.
 **A change to what impexp does, or to its self-test, is made in all three editions** in one
 commit; CI compares only the Node and Python ones.
+**tblaunch (the launcher repository) compiles every file of `scripts/impexp/src/Sources/` but
+`Program.twin`, by name, from this checkout**, under a `Sub Main` of its own: renaming or adding a
+module there, or giving one a public name tblaunch also has (`Json`, `Launcher`, `Container`,
+`Pack`, `Session`, `Install`, `Fmt`, `StdIo` and others), breaks its build, so tell the tblaunch
+session first.
 `scripts/broker/` is a twinBASIC program too, `tbbroker`, which hands out private desktops,
 slots and ports to every tool on the machine, launcher-re's `tblaunch` among them, and needs
 desktops, process handles and overlapped pipes, which Node cannot make without a native addon
