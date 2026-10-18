@@ -23,7 +23,7 @@ import {
   readHarness,
   timeoutMs,
 } from "../scripts/lib/harness-settings.mjs";
-import { BUILD_FAILED, LLVM_REFUSAL } from "../scripts/lib/tb-ide.mjs";
+import { BUILD_FAILED, LLVM_REFUSAL, linkedLog } from "../scripts/lib/tb-ide.mjs";
 import { buildTimeoutMessage, checkCapture } from "../scripts/lib/tb-run.mjs";
 import { vb6Probes } from "../scripts/lib/vb6.mjs";
 
@@ -93,6 +93,24 @@ test("an LLVM refusal is a failed build wherever it is", () => {
   // A build-timeout capture says so as a timeout; any other ending says nothing.
   assert.match(buildTimeoutMessage({ ended: "build-timeout", limitMs: 1500 }), /^timeout: .* within 1\.5 s /);
   assert.equal(buildTimeoutMessage({ ended: "run-timeout", limitMs: 60000 }), undefined);
+});
+
+// buildProject follows a [RunAfterBuild] run's compile after the link (linkedLog): the
+// BETA 1010 tbRegExp log, where LLVM refuses only after Executing, fails the build.
+test("a build that links reads on through the run's compile", () => {
+  const start = "[BUILD] Starting...";
+  const linked = "[LINKER] SUCCESS created output file 'C:\\x.exe'";
+  const executing = "[BUILD] Executing 'DocSamples0.tbxRun.tbxRunAll'...";
+  const refused =
+    "LLVM compilation error in 'StaticRegex.AppendStr': a feature used in your code is not yet supported with the LLVM compiler.";
+  assert.equal(linkedLog([start]), null);
+  assert.equal(linkedLog([start, refused]), null, "not linked yet: the build's own wait decides");
+  assert.equal(linkedLog([start, linked, "[LINKER]    Launch EXE  Open Folder"]), "linked");
+  assert.equal(linkedLog([start, linked, executing]), "executing");
+  assert.equal(linkedLog([start, linked, executing, ""]), "executing", "a blank line is no output");
+  assert.equal(linkedLog([start, linked, executing, refused, ""]), "refused");
+  assert.equal(linkedLog([start, refused, linked]), "refused", "a refusal before the link");
+  assert.equal(linkedLog([start, linked, executing, "probe ran"]), "ran");
 });
 
 // lib/harness-settings.mjs, the reader of test/harness.json (test/harness.md).

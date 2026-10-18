@@ -73,6 +73,8 @@ import { timing } from "./tb-timings.mjs";
  * @param {boolean} [o.llvm]   refuse a licence that does not compile user code
  *   with LLVM. It checks the licence and changes no setting; the project's
  *   own `compiler.buildOptions` is what asks for LLVM
+ * @param {boolean} [o.followRun] whether the project has a [RunAfterBuild] Sub whose compile
+ *   the build follows after the link (buildProject); unknown by default
  * @param {number} [o.buildTimeout] ms for the build, from the press to its end (default:
  *   test/harness.json's `build`); with `run`, to [BUILD] Executing
  * @param {{done?: (lines: string[]) => boolean, runMs?: number, quietMs?: number} | null} [o.run]
@@ -110,6 +112,7 @@ export async function compileProject({
   build = false,
   llvm = false,
   buildTimeout,
+  followRun,
   run = null,
 }) {
   let handle = null;
@@ -192,7 +195,7 @@ export async function compileProject({
       }
       return result(0, { ...found, run: capture });
     }
-    const built = await buildProject(c, { timeout: buildTimeout });
+    const built = await buildProject(c, { timeout: buildTimeout, followRun });
     if (!built.ok) return result(5, { ...found, message: built.message, buildLog: built.log });
     return result(0, { ...found, built: built.file, buildLog: built.log });
   } finally {

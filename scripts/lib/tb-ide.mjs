@@ -1438,6 +1438,13 @@ export async function awaitNewCompiler(c, before, { why = "restarting it", timeo
 // The success line is matched whole: "[BUILD] successfully built Fusion server
 // file" is another line.
 const BUILD_START = "[BUILD] Starting...";
+// A [RunAfterBuild] Sub's run starting, after the link.
+const EXECUTING = /^\[BUILD\] Executing '/;
+// How long a build that has linked is given to say "[BUILD] Executing", when the
+// caller does not say whether the project has a [RunAfterBuild] Sub. It follows
+// the link line in the same read on BETA 1010; a poll's worth of the harness's
+// own, not a phase of test/harness.json.
+const RUN_GRACE_MS = 1000;
 const BUILD_OK = /^\[LINKER\] SUCCESS created output file '(.+)'$/;
 const PACKAGE_FILE = /^\[BUILD\] Creating TWINPACK file '(.+)'$/;
 const PACKAGE_OK = "[BUILD] successful.";
@@ -1512,6 +1519,23 @@ async function buildLines(c, mark, clearsBefore) {
 }
 
 /**
+ * What a build log that has linked says so far, or null before the link line:
+ * "refused" for an LLVM refusal anywhere in it (test/harness.md), "ran" when a
+ * line other than a refusal follows "[BUILD] Executing '...'" (the run's
+ * compile is done), "executing" when nothing does yet, and "linked" when no
+ * Executing line has come. buildProject's reading, apart for its probes.
+ * @param {string[]} log  the console from "[BUILD] Starting..." on
+ * @returns {"refused" | "ran" | "executing" | "linked" | null}
+ */
+export function linkedLog(log) {
+  if (!log.some((l) => BUILD_OK.test(l))) return null;
+  if (log.some((l) => LLVM_REFUSAL.test(l))) return "refused";
+  const exec = log.findIndex((l) => EXECUTING.test(l));
+  if (exec < 0) return "linked";
+  return log.slice(exec + 1).some((l) => l.trim()) ? "ran" : "executing";
+}
+
+/**
  * Press the toolbar's Build button once the IDE will take the press.
  *
  * Two things in the IDE's page (ide/main.js) make an early press fail. The
@@ -1558,21 +1582,42 @@ export async function pressBuild(c, { timeout = 60 * 1000 } = {}) {
  * A binary, an EXE or a DLL, has succeeded when its log shows the linker's
  * SUCCESS line and no LLVM refusal, and a package when its log names the
  * TWINPACK file and then says the build was successful. An LLVM refusal
- * (LLVM_REFUSAL) anywhere in the log read fails the build, linked or not: the
- * log is read whole on every pass, so the lines printed before the link line
- * are in the same read as it. The wait ends at the link line, so a refusal that
- * a [RunAfterBuild] run prints after it is seen only if it is already there;
- * captureRun is what waits for that run.
+ * (LLVM_REFUSAL) anywhere in the log fails the build, linked or not
+ * (test/harness.md): the log is read whole on every pass, so the lines printed
+ * before the link line are in the same read as it.
+ *
+ * A project with a [RunAfterBuild] Sub goes on after the link: "[BUILD]
+ * Executing '...'", and then the compiler compiles the code the Sub reaches for
+ * its own run, which is where LLVM refuses what only that run calls. So once
+ * linked, the wait follows that compile: it ends failed at an LLVM refusal after
+ * Executing, and succeeded at the run's first other output, after the run's
+ * quiet period (`compilerRunQuiet`) or at its limit (`compilerRun`), both
+ * counted from Executing. `followRun` says whether to wait for Executing: true
+ * waits for it within the build's limit, false returns at the link line, and by
+ * default it is waited for RUN_GRACE_MS after the link. captureRun, which runs
+ * the Sub to its end, is unchanged by this: it presses Build itself.
  *
  * @param {object} c                  a tb-cdp connection
  * @param {object} [o]
  * @param {number} [o.timeout]        milliseconds, from the press to the build's
  *   end (default: test/harness.json's `build`, or TB_BUILD_TIMEOUT)
+ * @param {boolean} [o.followRun]     whether the project has a [RunAfterBuild] Sub
+ *   whose compile to follow; unknown by default
+ * @param {number} [o.runMs]          the run's limit from Executing (default: compilerRun)
+ * @param {number} [o.quietMs]        the run's quiet period (default: compilerRunQuiet)
  * @returns {Promise<{ok: boolean, file?: string, message?: string, log: string[]}>}
  *   `file` is the path the log says the build created; `log` is the console
  *   from the build's first line on
  */
-export async function buildProject(c, { timeout = timeoutMs("build") } = {}) {
+export async function buildProject(
+  c,
+  {
+    timeout = timeoutMs("build"),
+    followRun,
+    runMs = timeoutMs("compilerRun"),
+    quietMs = timeoutMs("compilerRunQuiet"),
+  } = {},
+) {
   const mark = await consoleMark(c);
   if (!mark) {
     return {
@@ -1596,7 +1641,11 @@ export async function buildProject(c, { timeout = timeoutMs("build") } = {}) {
   const t0 = Date.now();
   let log = [],
     failedAt = 0,
-    startAt = null;
+    startAt = null,
+    linkedAt = null,
+    execAt = null,
+    lastChange = null,
+    lastLength = 0;
   // For tb-timings.mjs: from the press to the build's first line, and from there to its end.
   const note = (ended) =>
     timing(
@@ -1610,24 +1659,48 @@ export async function buildProject(c, { timeout = timeoutMs("build") } = {}) {
       },
       c,
     );
-  while (Date.now() - t0 < timeout) {
+  // The limit of what is being waited for: the build until it links; then
+  // Executing, within the build's limit or the grace after the link; then the
+  // run's compile, from Executing.
+  const deadline = () =>
+    execAt !== null
+      ? Math.min(execAt + runMs, Math.max(execAt, lastChange) + quietMs)
+      : linkedAt === null || followRun === true
+        ? t0 + timeout
+        : followRun === false
+          ? linkedAt
+          : Math.min(t0 + timeout, linkedAt + RUN_GRACE_MS);
+  for (;;) {
     // A poll never sleeps past the limit, so a short one is met as given.
-    await sleep(Math.min(250, Math.max(0, t0 + timeout - Date.now())));
-    if (Date.now() - t0 >= timeout) break;
+    await sleep(Math.min(250, Math.max(0, deadline() - Date.now())));
+    if (Date.now() >= deadline() && linkedAt === null) break;
     const lines = await buildLines(c, mark, keeping ? clearsBefore : null);
     const start = lines.indexOf(BUILD_START);
     if (start < 0) continue;
     startAt ??= Date.now();
     log = lines.slice(start);
-    const ok = log.map((l) => BUILD_OK.exec(l)).find(Boolean);
-    const refusal = log.find((l) => LLVM_REFUSAL.test(l));
-    if (ok && refusal) {
-      note("refused");
-      return { ok: false, file: ok[1], message: refusal, log };
+    if (log.length !== lastLength) {
+      lastLength = log.length;
+      lastChange = Date.now();
     }
-    if (ok) {
-      note("linked");
-      return { ok: true, file: ok[1], log };
+    const ok = log.map((l) => BUILD_OK.exec(l)).find(Boolean);
+    const linked = linkedLog(log);
+    if (linked === "refused") {
+      note("refused");
+      return { ok: false, file: ok[1], message: log.find((l) => LLVM_REFUSAL.test(l)), log };
+    }
+    if (linked) {
+      linkedAt ??= Date.now();
+      if (linked !== "linked") execAt ??= Date.now();
+      if (linked === "ran") {
+        note("ran");
+        return { ok: true, file: ok[1], log };
+      }
+      if (Date.now() >= deadline()) {
+        note(execAt === null ? "linked" : "run-quiet");
+        return { ok: true, file: ok[1], log };
+      }
+      continue;
     }
     const pkg = log.findIndex((l) => PACKAGE_FILE.test(l));
     if (pkg >= 0 && log.includes(PACKAGE_OK, pkg)) {

@@ -281,6 +281,9 @@ let tidy = null;
 let target = path.resolve(proj);
 let work = null;
 let usesLlvm = false;
+// Whether the staged project has a [RunAfterBuild] Sub, whose compile the build follows
+// after the link (buildProject); unknown for a run that does not build.
+let followRun;
 // The text of every .twin file under dir, in its subfolders too.
 function twinText(dir) {
   if (!existsSync(dir)) return "";
@@ -332,7 +335,9 @@ if (build) {
     });
     // A build is what generates LLVM code, so only a build asks for LLVM: under
     // --llvm, or because the project's own options or a procedure's do.
-    usesLlvm = llvm || asksForLlvm(staged.settings, twinText(path.join(src, "Sources")));
+    const sources = twinText(path.join(src, "Sources"));
+    usesLlvm = llvm || asksForLlvm(staged.settings, sources);
+    followRun = /\[\s*RunAfterBuild\b/i.test(sources);
   } catch (e) {
     removeWork(work, null);
     die(2, e.message);
@@ -387,6 +392,7 @@ try {
     arch,
     timeout,
     buildTimeout,
+    followRun,
     show,
     keep,
     build,

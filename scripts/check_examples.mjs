@@ -697,6 +697,9 @@ let tidy = null;
 
 // How a run batch's wait ends (see buildStaged): its sentinel, or the run's
 // quiet period or limit from test/harness.json (LIMITS).
+// Whether a batch's own samples bring a [RunAfterBuild] Sub, whose compile a build
+// follows after the link (buildProject); a run batch's dispatcher is captureRun's.
+const runsAfterBuild = (staged) => [...staged.map.values()].some((e) => /\[\s*RunAfterBuild\b/i.test(e.fence.content));
 const runWait = () => ({
   done: (lines) => lines.some((l) => l.trim() === RUN_DONE),
   runMs: LIMITS.compilerRun,
@@ -769,6 +772,7 @@ async function buildCanary(batch, slot, work) {
     run,
     timeout: LIMITS.compile,
     buildTimeout: LIMITS.build,
+    followRun: runsAfterBuild(staged),
   });
   if (!values.keep) rmSync(staged.dir, { recursive: true, force: true });
   const parsed = run && r.code === 0 ? parseRun(r.run.captured, staged.runs.length) : null;
@@ -801,6 +805,7 @@ async function buildStaged(staged, slot) {
       run,
       timeout: LIMITS.compile,
       buildTimeout: LIMITS.build,
+      followRun: runsAfterBuild(staged),
     });
   let r = await compile();
   // A run that wrote no marker at all, or stopped without finishing and without
