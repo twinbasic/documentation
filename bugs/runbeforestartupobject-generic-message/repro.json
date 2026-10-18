@@ -1,0 +1,7 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 2,
+    "message": "^\\s*Build FAILED due to invalid RunBeforeStartupObject procedure\\r?$"
+  }
+}

@@ -274,7 +274,7 @@ is not news.** Read a new sweep's list against this one and judge only what is n
   sets no type library flag, though it stays on the page from the packages' use.
 - **On a procedure:** `DLLStackCheck` (the exe is the same size), `ConstantFoldable` on a Sub
   or a generic Function, `RunAfterBuild` on a generic Sub (never runs: the page's WARNING),
-  `RunBeforeStartupObject` on a generic Sub (crashes the build: WARNING), `TypeHint` on a Sub
+  `RunBeforeStartupObject` on a generic Sub (fails the build on BETA 1010: NOTE), `TypeHint` on a Sub
   (its argument is not even checked; on a Function or a Property Get it is, and its effect
   there is IntelliSense, which no tool here reads), `TestCase` anywhere but a Sub of a
   `[TestFixture]` Module (`tbrun --tests` never asks the compiler about it).

@@ -4124,3 +4124,374 @@ The same in a 32-bit and a 64-bit run. Met in the contributed package TBMANLIB, 
 Severity: low. Code that VB6 refuses is accepted and, for the types that are not `Variant`, works; for a `Variant` it raises an error that does not say what is wrong.
 
 <!-- Reproducer: bugs/empty-parentheses-after-value/ (mode run: expect lists the nine lines); verified on BETA 1005 by `bug_repro.mjs verify`, and run with --arch win64 too. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6`; VB6 refuses the six typed lines at compile time, so that side builds only the three Variant lines (error 9) and lists the others as comments with VB6's messages (each checked in a build of its own). Pages: docs/Reference/Contributed/TBMANLIB/ToolsCN.md's NOTE on GetPinYin names `G = Chr(Num)()` as the line that raises and says the parentheses after `Asc` have no effect, and docs/Reference/Contributed/TBMANLIB/index.md (Known problems) says GetPinYin fails for a text with an English letter, a digit or a space (both corrected 2026-10-13 and checked with check_run: "a" raises -2147467259, ChrW(233) returns "" with no error, ChrW(&H4E2D) raises on a Western code page, `Asc("a")()` is 97). When a fixed build is released, both statements change: if twinBASIC then refuses `()` after a value as VB6 does, TBMANLIB's ToolsCN no longer compiles, and the TBMANLIB section says so. Found 2026-10-13 documenting the TBMANLIB package. -->
+
+---
+
+## `[RunBeforeStartupObject]` on a generic procedure fails the build with a message that names neither the procedure nor the reason
+
+**Describe the bug**
+Follow-up to #2517, which is fixed in BETA 1009 for the crash: building a project that has `[RunBeforeStartupObject]` on a generic procedure no longer crashes the compiler. This is what is left: the build fails with the single line *Build FAILED due to invalid RunBeforeStartupObject procedure*, which names neither the procedure nor the reason, that it is generic, and the IDE's compile still reports nothing about it. So the line is found only by building, and then by searching the project for the attribute. Observed in the DEBUG CONSOLE of a build.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `runbeforestartupobject-generic-message.twinproj` (attached as `runbeforestartupobject-generic-message.zip`). Its one source file:
+   ```
+   Module Startup
+
+       Public Sub Main()
+       End Sub
+
+       [RunBeforeStartupObject]
+       Public Sub Pre(Of T)()
+       End Sub
+
+   End Module
+   ```
+2. Let the IDE compile it: no diagnostic.
+3. Build it. The DEBUG CONSOLE shows only:
+   ```
+   [BUILD] Starting...
+   Build FAILED due to invalid RunBeforeStartupObject procedure
+   [BUILD] failed
+   ```
+
+The same with a generic `Public Function Pre(Of T)() As Boolean`, and in a 64-bit build. With another `[RunBeforeStartupObject]` procedure after the generic one, the build succeeds and the generic one is ignored without a word (the next entry, on more than one such procedure).
+
+No `[TestCase]` reaches a build, so the regression check is a set of one-module projects, each built, with the assertion it makes; it covers #2517 as well. Each module also has an empty `Public Sub Main()`, and the project's startup object is `Sub Main`.
+
+| the module's procedure | assertion | BETA 1010 |
+|---|---|---|
+| `[RunBeforeStartupObject] Public Sub Pre(Of T)()` | the build ends without the compiler crashing or restarting (#2517) | passes |
+| `[RunBeforeStartupObject] Public Sub Pre(Of T)()` | the build, or the compile, reports a diagnostic that names `Pre` and says the attribute is not allowed on a generic procedure | fails |
+| `[RunBeforeStartupObject] Public Function Pre(Of T)() As Boolean` | as the two rows above | passes, fails |
+| `[RunBeforeStartupObject] Public Function Pre() As Boolean`, which writes a line and returns `False`, while `Main` writes another | the build succeeds, and the exe writes Pre's line, then Main's | passes |
+| `Public Sub Pre(Of T)()`, without the attribute | the build succeeds | passes |
+
+**Expected behavior**
+A diagnostic that names the procedure (`Startup.Pre`) and says that the attribute is not allowed on a generic procedure. #2517 asked for "a diagnostic that the attribute is not allowed on a generic procedure", or a built exe in which `Pre` runs; BETA 1010 gives a diagnostic, but one that says only that some `RunBeforeStartupObject` procedure is invalid. The compile is the better place for it, with the line, as TB5114 is reported for a second `[RunAfterBuild]`, so that it shows before the first build; a build message that names the procedure and the reason would also do. The attribute does not exist in VB6.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Follow-up to #2517, "`[RunBeforeStartupObject]` on a generic procedure crashes the build", closed as fixed in BETA 1009.
+
+Severity: low. The build stops, so nothing goes wrong unnoticed, but in a project of many modules the procedure has to be found by hand.
+
+<!-- Reproducer: bugs/runbeforestartupobject-generic-message/ (mode run: tbrun builds it, the build fails with exit 2, and expect.message is the build line anchored at both ends, so a message that names the procedure or the reason no longer matches, and a compile-time diagnostic changes the exit code); verified on BETA 1010 by `bug_repro.mjs verify`. The generic Function, the 64-bit build, and the non-generic and attribute-less controls were built with tbbuild --build on BETA 1010 (scratch projects, not kept). Page: docs/Reference/Attributes.md, RunBeforeStartupObject, the `> [!NOTE] BETA 1010` quoting the message; when a fixed build is released, the NOTE goes and the paragraph states the diagnostic the build then gives. -->
+
+---
+
+## Of several `[RunBeforeStartupObject]` procedures only the last one runs, and one with parameters runs with arbitrary values for them
+
+**Describe the bug**
+The compiler accepts `[RunBeforeStartupObject]` on more than one procedure, with no diagnostic, and the built program runs only the last of them in the source; the others never run. A second `[RunAfterBuild]`, by contrast, is refused with TB5114, *encountered too many [RunAfterBuild] attributes. Only allowed one per-project.* The compiler also accepts the attribute on a procedure with parameters, and the program calls it with whatever values happen to be there: a `ByVal N As Long` was 1976434377 in a 32-bit build and 4481000 in a 64-bit one, and an `Optional ByVal Count As Long = 3` is not given its default either. Observed in built exes, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `runbeforestartupobject-unchecked.twinproj` (attached as `runbeforestartupobject-unchecked.zip`). Its one source file:
+   ```
+   Module Startup
+
+       Private Sub Out(ByVal Text As String)
+           Dim file As String = Environ$("TBRUN_OUT")
+           If Len(file) = 0 Then file = App.Path & "\out.txt"
+           Dim f As Integer = FreeFile
+           Open file For Append As #f
+           Print #f, Text
+           Close #f
+       End Sub
+
+       [RunBeforeStartupObject]
+       Public Function First() As Boolean
+           Out "First ran"
+       End Function
+
+       [RunBeforeStartupObject]
+       Public Function Second(Optional ByVal Count As Long = 3) As Boolean
+           Out "Second ran, Count = " & Count
+       End Function
+
+       [RunBeforeStartupObject]
+       Public Function Third(ByVal N As Long) As Boolean
+           Out "Third ran, N = " & N
+       End Function
+
+       Public Sub Main()
+           Out "Main ran"
+       End Sub
+
+       ' For tbrun, which also runs the project in the IDE after the build.
+       [RunAfterBuild]
+       Private Sub Built()
+           Debug.Cls
+           Debug.Print "built"
+       End Sub
+
+   End Module
+   ```
+2. Build it: no diagnostic. Run the exe and read `out.txt` beside it:
+   ```
+   Third ran, N = 1976434377
+   Main ran
+   ```
+   `First` and `Second` never run, and `N` is not a value anything passed (it differs between builds).
+3. Remove the attribute from `First` and `Third`, build and run again: `Second ran, Count = 1976434377`, not 3.
+
+What it depends on, each built and run as an exe:
+- the order in the source decides which one runs: the last;
+- a generic procedure (#2517) before another `[RunBeforeStartupObject]` procedure is ignored and the build succeeds; after it, the build fails (the entry above);
+- two such procedures in different modules also build with no diagnostic.
+
+No `[TestCase]` reaches the startup of an exe, so the regression check is a set of one-module projects, each built and run as an exe whose procedures write a line each, as above:
+
+| the module's `[RunBeforeStartupObject]` procedures, besides `Main` | assertion | BETA 1010 |
+|---|---|---|
+| `Function First() As Boolean`, returning `False` | the exe writes First's line, then Main's | passes |
+| `First` and `Second()`, both without parameters | a diagnostic for the second one, as TB5114 is for `[RunAfterBuild]`; or both run, in order, before Main | fails: only Second runs |
+| `Function Third(ByVal N As Long) As Boolean` | a diagnostic: the program has no argument to pass | fails: runs with an arbitrary N |
+| `Function Second(Optional ByVal Count As Long = 3) As Boolean` | it runs with Count = 3, or a diagnostic | fails: runs with an arbitrary Count |
+
+**Expected behavior**
+A compile error for a second `[RunBeforeStartupObject]` procedure, as for a second `[RunAfterBuild]`, unless several are meant to run, in which case each runs, in order. A compile error for a procedure with a parameter that has no default, since the program has nothing to pass to it; a procedure whose parameters are all `Optional` is called with their defaults, or refused too. The documentation describes the attribute on one procedure, with no parameters. The attribute does not exist in VB6.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Found while checking the fix of #2517 ("`[RunBeforeStartupObject]` on a generic procedure crashes the build"), whose build-time check catches a generic procedure only when it is the last one.
+
+Severity: medium. Nothing reports either case: a startup procedure that never runs, or one that runs on values nobody passed, goes unnoticed until its effects are missed.
+
+<!-- Reproducer: bugs/runbeforestartupobject-unchecked/ (mode run with "exe": expect lists Third's line and Main's, and absent First's and Second's and an N of 0); verified on BETA 1010 by `bug_repro.mjs verify`, and run with --arch win64 too. The Optional case, the generic-before-plain order and the two-module case were scratch projects on BETA 1010 (tbrun --exe, tbbuild --build), not kept; which of the two procedures in different modules runs was not checked. scripts/lib/attribute-sweep.mjs says the compiler allows RunBeforeStartupObject once per project, "TB5114 on a second": that is true of RunAfterBuild only, though the sweep is right to hold one per batch. Page: docs/Reference/Attributes.md, RunBeforeStartupObject, the `> [!WARNING] BETA 1010`; when a fixed build is released, the WARNING goes and the paragraph states what the compiler then does with a second procedure and with parameters. -->
+
+---
+
+## An index out of range on a fixed-size array member of a UDT raises -2147467259, *Unspecified error*, where VB6 raises error 9
+
+**Describe the bug**
+An index outside the bounds of a fixed-size array that is a member of a user-defined type, as in `u.A(4) = 1` where the type declares `A(1 To 3) As Long`, raises error -2147467259 (`&H80004005`), *Unspecified error*, where VB6 raises error 9, *Subscript out of range*. A handler that tests for 9 does not recognise it. Observed in a run in the IDE, in built exes (32-bit and 64-bit) and in the compiler's test mode.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-array-member-subscript-error.twinproj` (attached as `udt-array-member-subscript-error.zip`).
+2. Run its test cases, the module below. On BETA 1010 the four controls pass (an array that is not in a UDT, local or at module level; an index in range; a dynamic array member of a UDT, which raises 9) and the seven cases on a fixed-size array member fail with `Actual: -2147467259`: a write above the upper bound, below the lower bound, a read, a two-dimensional member, a module-level UDT and an element of an array of UDTs; `Err.Description` is *Unspecified error*.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`udt-array-member-subscript-error-vb6.zip`) prints: 9, *Subscript out of range*, in every case.
+```vb
+' Regression tests: an index out of range on an array that is a member of a
+' user-defined type raises error 9, "Subscript out of range", as it does on an
+' array that is not in a UDT. Expected numbers are VB6's (the VB6 project beside
+' this one prints them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Type Holder
+        X As Long
+        A(1 To 3) As Long
+        M(1 To 2, 1 To 2) As Long
+        D() As Long
+    End Type
+
+    Private ModuleLevel As Holder
+    Private ModuleArray(1 To 3) As Long
+
+    ' Controls: an array that is not in a UDT, and an index in range.
+    [TestCase]
+    Public Sub PlainArray_WriteAboveRange_Raises9()
+        Dim a(1 To 3) As Long
+        On Error Resume Next
+        a(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ModuleLevelArray_WriteAboveRange_Raises9()
+        On Error Resume Next
+        ModuleArray(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_WriteInRange_Stores()
+        Dim u As Holder
+        u.A(3) = 7
+        Assert.Strict.AreEqual 7&, u.A(3)
+    End Sub
+
+    ' An index out of range on a member of a UDT.
+    [TestCase]
+    Public Sub UdtMember_WriteAboveRange_Raises9()
+        Dim u As Holder
+        On Error Resume Next
+        u.A(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_WriteBelowRange_Raises9()
+        Dim u As Holder
+        On Error Resume Next
+        u.A(0) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_ReadAboveRange_Raises9()
+        Dim u As Holder
+        Dim r As Long
+        On Error Resume Next
+        r = u.A(4)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_TwoDimensions_Raises9()
+        Dim u As Holder
+        On Error Resume Next
+        u.M(1, 3) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtDynamicMember_WriteAboveRange_Raises9()
+        Dim u As Holder
+        ReDim u.D(1 To 3)
+        On Error Resume Next
+        u.D(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ModuleLevelUdtMember_WriteAboveRange_Raises9()
+        On Error Resume Next
+        ModuleLevel.A(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtArrayElementMember_WriteAboveRange_Raises9()
+        Dim us(1 To 2) As Holder
+        On Error Resume Next
+        us(1).A(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_ErrorDescription()
+        Dim u As Holder
+        On Error Resume Next
+        u.A(4) = 1
+        Assert.Strict.AreEqual "Subscript out of range", Err.Description
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 9, *Subscript out of range*, as VB6 raises in every case above, and as twinBASIC raises for a fixed-size array that is not in a UDT and for a dynamic array member of a UDT.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The same on BETA 1007. Found while checking the fix of #2521 ("An assignment to an element of a public array field of a class crashes the compiler"), whose report said that an assignment to an element of an array member of a UDT, `u.A(1) = 5`, compiles; it does, and an index in range works.
+
+Severity: low to moderate. An error is raised wherever VB6 raises one, so no failure goes unreported, but a handler that tests for 9 does not recognise it, and *Unspecified error* does not say what is wrong.
+
+<!-- Reproducer: bugs/udt-array-member-subscript-error/ (mode test: `tbrun --tests`; expect lists the four PASS and seven FAIL lines, each FAIL with the number or text BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. The same numbers in an IDE run and in exes (tbrun --exe, win32 and win64) and in an IDE run on BETA 1007, from a scratch probe not kept. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 9 for all nine. No page states the error number: docs/Reference/Core/Type.md describes fixed-size arrays in a UDT without it. -->
+
+---
+
+## `CreateObject` and `GetObject` raise a COM error code where VB6 raises error 429, *ActiveX component can't create object*
+
+**Describe the bug**
+When `CreateObject` or `GetObject` cannot create or find the object, twinBASIC raises the COM error code, where VB6 raises error 429, *ActiveX component can't create object*, so a handler written for VB6 or VBA does not recognise the error:
+
+| call | VB6 | twinBASIC |
+|---|---|---|
+| `CreateObject("No.Such.Class")` | 429 | -2147221020 (`&H800401E4`), *Invalid syntax* |
+| `CreateObject("Scripting.NoSuchClass")` | 429 | -2147221020, *Invalid syntax* |
+| `GetObject(, "No.Such.Class")` | 429 | -2147221005 (`&H800401F3`), *Invalid class string* |
+| `GetObject(, "Scripting.Dictionary")`, with no instance running | 429 | -2147221021 (`&H800401E3`), *Operation unavailable* |
+
+In a 64-bit program, `CreateObject("MSScriptControl.ScriptControl")`, a class registered for 32-bit programs only, raises -2147221164 (`&H80040154`), *Class not registered*. Observed in built exes, 32-bit and 64-bit, and in the compiler's test mode.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `createobject-error-not-429.twinproj` (attached as `createobject-error-not-429.zip`).
+2. Run its test cases, the module below. On BETA 1010 the control, `CreateObject("Scripting.Dictionary")`, passes, and the five cases that expect 429 or its description fail with the numbers in the table and *Invalid syntax*.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`createobject-error-not-429-vb6.zip`) prints.
+```vb
+' Regression tests: CreateObject and GetObject raise error 429, "ActiveX component
+' can't create object", when they cannot create or find the object, as VB6 does
+' (the VB6 project beside this one prints VB6's numbers). tbrun --tests runs each
+' case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function CreateError(ByVal ProgId As String) As Long
+        On Error Resume Next
+        Dim o As Object = CreateObject(ProgId)
+        Return Err.Number
+    End Function
+
+    Private Function GetObjectError(ByVal ProgId As String) As Long
+        On Error Resume Next
+        Dim o As Object = GetObject(, ProgId)
+        Return Err.Number
+    End Function
+
+    ' Control: a registered class is created.
+    [TestCase]
+    Public Sub CreateObject_RegisteredClass_Succeeds()
+        Assert.Strict.AreEqual 0&, CreateError("Scripting.Dictionary")
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_UnknownProgId_Raises429()
+        Assert.Strict.AreEqual 429&, CreateError("No.Such.Class")
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_UnknownClassOfKnownLibrary_Raises429()
+        Assert.Strict.AreEqual 429&, CreateError("Scripting.NoSuchClass")
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_UnknownProgId_Description()
+        On Error Resume Next
+        Dim o As Object = CreateObject("No.Such.Class")
+        Assert.Strict.AreEqual "ActiveX component can't create object", Err.Description
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_UnknownProgId_Raises429()
+        Assert.Strict.AreEqual 429&, GetObjectError("No.Such.Class")
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_ClassWithNoRunningObject_Raises429()
+        Assert.Strict.AreEqual 429&, GetObjectError("Scripting.Dictionary")
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 429, *ActiveX component can't create object*, as VB6 raises for each call in the table.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Found while checking the fix of #2523 ("A project that references the Microsoft Script Control crashes the compiler when it is built for 64-bit programs"): the project now builds for 64-bit programs, and creating the control in one raises *Class not registered* rather than 429. #2490 and its follow-ups cover the numbers raised by a late-bound call that fails; this is the creation of the object.
+
+Severity: low to moderate. An error is raised wherever VB6 raises one, but a handler that tests for 429, the usual test for a component that is not installed, does not recognise it.
+
+<!-- Reproducer: bugs/createobject-error-not-429/ (mode test: `tbrun --tests`; expect lists the one PASS and five FAIL lines, each FAIL with the number or text BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. The same numbers in exes (tbrun --exe, win32 and win64), and the Script Control line from a 64-bit exe, from scratch probes not kept. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 0 for the Dictionary and 429 for the other four. No page states the error number: docs/Reference/Default/VBA/Interaction/CreateObject.md and GetObject.md do not name one. -->

@@ -1,0 +1,53 @@
+' Regression tests: CreateObject and GetObject raise error 429, "ActiveX component
+' can't create object", when they cannot create or find the object, as VB6 does
+' (the VB6 project beside this one prints VB6's numbers). tbrun --tests runs each
+' case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function CreateError(ByVal ProgId As String) As Long
+        On Error Resume Next
+        Dim o As Object = CreateObject(ProgId)
+        Return Err.Number
+    End Function
+
+    Private Function GetObjectError(ByVal ProgId As String) As Long
+        On Error Resume Next
+        Dim o As Object = GetObject(, ProgId)
+        Return Err.Number
+    End Function
+
+    ' Control: a registered class is created.
+    [TestCase]
+    Public Sub CreateObject_RegisteredClass_Succeeds()
+        Assert.Strict.AreEqual 0&, CreateError("Scripting.Dictionary")
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_UnknownProgId_Raises429()
+        Assert.Strict.AreEqual 429&, CreateError("No.Such.Class")
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_UnknownClassOfKnownLibrary_Raises429()
+        Assert.Strict.AreEqual 429&, CreateError("Scripting.NoSuchClass")
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_UnknownProgId_Description()
+        On Error Resume Next
+        Dim o As Object = CreateObject("No.Such.Class")
+        Assert.Strict.AreEqual "ActiveX component can't create object", Err.Description
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_UnknownProgId_Raises429()
+        Assert.Strict.AreEqual 429&, GetObjectError("No.Such.Class")
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_ClassWithNoRunningObject_Raises429()
+        Assert.Strict.AreEqual 429&, GetObjectError("Scripting.Dictionary")
+    End Sub
+
+End Module

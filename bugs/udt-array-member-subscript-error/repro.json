@@ -1,0 +1,19 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.PlainArray_WriteAboveRange_Raises9$",
+      "^PASS RegressionTests\\.ModuleLevelArray_WriteAboveRange_Raises9$",
+      "^PASS RegressionTests\\.UdtMember_WriteInRange_Stores$",
+      "^PASS RegressionTests\\.UdtDynamicMember_WriteAboveRange_Raises9$",
+      "^FAIL RegressionTests\\.UdtMember_WriteAboveRange_Raises9: .*Actual: -2147467259",
+      "^FAIL RegressionTests\\.UdtMember_WriteBelowRange_Raises9: .*Actual: -2147467259",
+      "^FAIL RegressionTests\\.UdtMember_ReadAboveRange_Raises9: .*Actual: -2147467259",
+      "^FAIL RegressionTests\\.UdtMember_TwoDimensions_Raises9: .*Actual: -2147467259",
+      "^FAIL RegressionTests\\.ModuleLevelUdtMember_WriteAboveRange_Raises9: .*Actual: -2147467259",
+      "^FAIL RegressionTests\\.UdtArrayElementMember_WriteAboveRange_Raises9: .*Actual: -2147467259",
+      "^FAIL RegressionTests\\.UdtMember_ErrorDescription: .*Actual: \"Unspecified error\""
+    ]
+  }
+}

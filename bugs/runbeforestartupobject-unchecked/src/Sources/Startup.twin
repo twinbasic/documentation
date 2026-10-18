@@ -1,0 +1,43 @@
+' Three [RunBeforeStartupObject] procedures, then Sub Main. The project compiles and
+' builds with no diagnostic. The built exe writes one line for each procedure that runs
+' to out.txt beside it (or to the file TBRUN_OUT names). It runs Third only, the last,
+' with an arbitrary value for N; First and Second never run. With the attribute on Second
+' alone, Second runs with an arbitrary value for Count, not its default of 3.
+Module Startup
+
+    Private Sub Out(ByVal Text As String)
+        Dim file As String = Environ$("TBRUN_OUT")
+        If Len(file) = 0 Then file = App.Path & "\out.txt"
+        Dim f As Integer = FreeFile
+        Open file For Append As #f
+        Print #f, Text
+        Close #f
+    End Sub
+
+    [RunBeforeStartupObject]
+    Public Function First() As Boolean
+        Out "First ran"
+    End Function
+
+    [RunBeforeStartupObject]
+    Public Function Second(Optional ByVal Count As Long = 3) As Boolean
+        Out "Second ran, Count = " & Count
+    End Function
+
+    [RunBeforeStartupObject]
+    Public Function Third(ByVal N As Long) As Boolean
+        Out "Third ran, N = " & N
+    End Function
+
+    Public Sub Main()
+        Out "Main ran"
+    End Sub
+
+    ' For tbrun, which also runs the project in the IDE after the build.
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Debug.Print "built"
+    End Sub
+
+End Module

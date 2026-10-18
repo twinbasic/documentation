@@ -1224,7 +1224,19 @@ Runs the function before the project's startup object. Returning **True** suppre
 A **Function** is the usual form, returning a **Boolean**. A **Function** of another type, or a **Property Get**, works the same way: a result of 0 or **Nothing** lets startup proceed, and any other result suppresses the startup object. A **Sub** runs too, and then the startup object never runs.
 
 > [!NOTE] BETA 1010
-> The attribute is not allowed on a generic procedure, such as `Sub Pre(Of T)()`. The project compiles in the editor without an error, but building it fails with the message *Build FAILED due to invalid RunBeforeStartupObject procedure*.
+> The attribute is not allowed on a generic procedure, such as `Sub Pre(Of T)()`. The project compiles in the editor without an error, but building it fails with the message *Build FAILED due to invalid RunBeforeStartupObject procedure*, which names neither the procedure nor the reason.
+
+> [!WARNING] BETA 1010
+> The compiler accepts the attribute on more than one procedure, with no error or warning, and the built program runs only the last of them; the others never run. It also accepts the attribute on a procedure with parameters, which then runs with arbitrary values for its parameters, even for an **Optional** parameter that has a default. Give the attribute to one procedure, with no parameters.
+
+<!-- BETA 1010 (bug_repro run --exe, win32 and win64): of three procedures with
+     the attribute in one module, only the last ran; with a ByVal Long
+     parameter it ran with an arbitrary value, and with an Optional one with
+     default 3 likewise. A generic procedure next to another with the attribute
+     builds and is ignored when it is not the last. A second [RunAfterBuild] is
+     TB5114; a second [RunBeforeStartupObject] gets nothing. Bugs in
+     BUGS-TO-REPORT.md: runbeforestartupobject-unchecked (the WARNING) and
+     runbeforestartupobject-generic-message (the NOTE's message). -->
 
 <!-- BETA 1005 (tbrun --exe, TbRun.Out): "pre ran" then "Main ran" when Main
      runs. Boolean False/True: Main runs/does not; Long 0/1: runs/does not;

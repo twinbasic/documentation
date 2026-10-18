@@ -69,8 +69,9 @@ const GUESS_FORMS = [
 ];
 export const EXTRA_FORMS = [...BOOL_FORMS, ...GUESS_FORMS].map(([k]) => k);
 
-// The compiler allows these once per project (TB5114 on a second), so a batch
-// holds one probe of each. PopulateFrom fills an enum with the same two members
+// A batch holds one probe of each of these: the compiler allows one
+// [RunAfterBuild] per project (TB5114 on a second), and accepts a second
+// [RunBeforeStartupObject] silently but runs only the last. PopulateFrom fills an enum with the same two members
 // every time, and enum members are project-global, so only its working form
 // is held to one.
 export const SINGLETON_NAMES = new Set(["RunAfterBuild", "RunBeforeStartupObject"]);
