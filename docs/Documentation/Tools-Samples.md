@@ -165,7 +165,7 @@ Exit codes: **0** the probe project and the key were written, **2** a refused co
 
 Reports, for every attribute the twinBASIC packages use, **which enclosing construct and which kind of declaration it decorates**. It unpacks each package of an IDE install with [`impexp.mjs`](Tools-Compiler#impexp), scans the `.twin` sources, and writes a Markdown or JSON report. No arguments are needed: it finds the newest `twinBASIC_IDE_BETA_*` as [`tbbuild.mjs`](Tools-Compiler#tbbuild) does and caches the export under the build number. It is not part of the site build.
 
-Against BETA 1005 that is 661 files, 9,744 attribute sites and 55 distinct attributes.
+Against BETA 1010 that is 661 files, 9,788 attribute sites and 55 distinct attributes.
 
 **A census is evidence, not applicability.** It says where an attribute *is* used, never where it *may* be used, and the two differ in both directions. The packages contain no use of `[Hidden]` on a whole **Class**, yet the compiler accepts one. They contain many on **Class** and **Interface** members, yet the compiler refuses the same attribute on the **Interface** lines inside a **CoClass**. To find out what the compiler accepts, use [`gen_attribute_probes.mjs`](#gen-attribute-probes) and [`tbbuild.mjs`](Tools-Compiler#tbbuild), which ask it directly.
 

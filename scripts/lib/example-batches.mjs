@@ -2034,11 +2034,10 @@ export async function runProbes(say) {
       /\[PredeclaredId\]/.test(formClass),
     "templates: Form1.twin and Form1.tbform do not name one designer id, or Form1 is not a predeclared class",
   );
-  // An empty `_children` array makes the compiler report TB5247 (no designer found for the form): an
-  // empty form has no `_children` key at all.
+  // The stand-in form is an empty form as the IDE writes one, which has no `_children` key at all.
   expect(
     !("_children" in formDesigner[0]),
-    "templates: Form1.tbform has a `_children` key, and an empty array fails with TB5247",
+    "templates: Form1.tbform has a `_children` key, which an empty form as the IDE writes it has not",
   );
 
   // The markup must be invisible to the site. Verified against the REAL

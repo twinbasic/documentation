@@ -73,7 +73,7 @@ one package, and each fix would be made twice. The scanner is pinned by
 `scripts/check_symbol_index.mjs`, `scripts/check_twin_parsers.mjs` and
 `test/indexer.test.mjs`; its header comment lists the ways to misread this corpus.
 
-What the compiler answered, each asked of BETA 1005 and settled; the scanner follows it, and
+What the compiler answered, each asked of BETA 1010 and settled; the scanner follows it, and
 the probes in `check_symbol_index.mjs` and the comments in `twin-api.mjs` hold the cases:
 
 - **An unmodified `Declare` is Public in a Module** (another module calls it) **and must be
@@ -137,8 +137,8 @@ which would write the snapshots of another build.
   package with none the store's `api.json` when that is of its `indexed_from` version
   (`adoptSnapshots`): a package is usually synced before its section exists, and a later
   sync finds its store current and indexes nothing.
-- **They are taken from the build the reference was last indexed against, BETA 1005**
-  (`beta-x-1005`), not from a newer one, so that the pages and the baseline agree and
+- **They are taken from the build the reference was last indexed against, BETA 1010**
+  (`beta-x-1010`), not from a newer one, so that the pages and the baseline agree and
   `analyze` of a newer build shows the real distance.
 - **The twinBASIC "install" is the release zip unzipped.** Its `packages/<folder>/package.twinproj`
   files are the zip's, so either gives the same sources and the same `api.json`, byte for byte.
@@ -155,7 +155,7 @@ which would write the snapshots of another build.
   decides the store folder, the snapshot folder and the folder of the reference.
 - **CEF is one snapshot, `cefPackage145`.** `cefPackage49`, `cefPackage109` and `cefPackage145`
   are one source tree compiled against three CEF runtimes, and their `api.json` files differ
-  only in the `package` key (checked on BETA 1005). `analyze` compares a package with
+  only in the `package` key (checked on BETA 1010). `analyze` compares a package with
   its own snapshot, so naming all three would triple every CEF task and keep two copies of
   460 KB. If a build ever declares an API of its own, it needs its name in `package_name:` and
   a snapshot.
@@ -190,7 +190,7 @@ cache.
   packages to derive it from. `derive --check` is outside every gate for the same reason.
 - **A scanner change can change it**, as it can the snapshots. The `[ ]` Enum member (a
   bracket group alone on a line is a member) gives VB's `ReportBaseCtl.ReportSizeConstants`
-  its 17 values at BETA 1005, the first named `" "`.
+  its 17 values at BETA 1010, the first named `" "`.
 
 ## `draft` and the doc-draft workflow
 
@@ -225,7 +225,7 @@ cache.
   section that has one, of the same shape: a folder's `index.md` for a class that gets a
   folder, never a one-page class.
 - **A permalink is computed only where the rule holds for every existing page** of the
-  section (`followsFolders`). At BETA 1005 that is every section but VBA's, whose
+  section (`followsFolders`). At BETA 1010 that is every section but VBA's, whose
   pages live under `/tB/Modules/`. A section that breaks the rule once gets no computed
   permalinks at all, rather than a guess that a sibling page would contradict.
 - **The prep is Node and the workflow is thin**, as Wisdom's extract is
@@ -283,5 +283,5 @@ cache.
   lines of it into this note would bury both. Its one reader is `lib/twinserv-client.mjs`, which
   calls only `query` and `download`; the rest (login, publish, version check, the IDE-to-compiler
   commands) is there for whoever writes a publisher tool. It is reverse-engineered from
-  the IDE's own files, of which it keeps no copy, and describes BETA 1005. Check it against
+  the IDE's own files, of which it keeps no copy, and describes BETA 1010. Check it against
   the current IDE before relying on anything but those two endpoints.

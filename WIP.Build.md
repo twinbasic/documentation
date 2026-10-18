@@ -754,7 +754,7 @@ without a word (lists after `Inherits` and `Implements`, a qualified CoClass
 interface, `[Hidden(False)]`, modifier-named and initialised fields, brackets in a Type, a
 result type before `Overrides`, an unmodified `Declare`, and the `#If` branches as
 alternatives), each with the compiler's answer in its comment, checked with `tbrun --tests`
-on BETA 1005. A second block holds the second step's: declarations joined by colons,
+on BETA 1010. A second block holds the second step's: declarations joined by colons,
 identifiers with characters past ASCII (the compiler takes every one as part of a name, a
 no-break space included, so `\b` is no word boundary for them), a type-declaration
 character on a name, and the condition each `#If` branch gives its members. The derivation's are each a rule the real

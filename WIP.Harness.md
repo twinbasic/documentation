@@ -26,7 +26,7 @@ in this repository. They are inside the `.twinproj` files an IDE install ships, 
 node scripts/impexp.mjs export <some>.twinproj <out-dir>
 ```
 
-On BETA 1005 that yields **820 `.twin` files**: 661 from the sixteen
+On BETA 1010 that yields **820 `.twin` files**: 661 from the sixteen
 packages under `packages/`, and 159 from the thirty-two sample and template projects under
 `projects/` (`addins/` holds no `.twinproj`). The compiler accepts all of this code, which
 makes it the strongest available evidence for what is legal syntax.
@@ -107,9 +107,9 @@ node scripts/census_attributes.mjs --attr Hidden          # one attribute
 node scripts/census_attributes.mjs --attr Hidden --dump-sites sites.json
 ```
 
-Against BETA 1005: **661 files, 9,744 attribute sites, 55 distinct attributes**, and every
+Against BETA 1010: **661 files, 9,788 attribute sites, 55 distinct attributes**, and every
 one of the 55 is already in `Attributes.md` --- the "used but undocumented" section comes
-back empty. Sixteen documented attributes are used by no package. That is not a defect, but
+back empty. Seventeen documented attributes are used by no package. That is not a defect, but
 the census offers no evidence for their `Applicable to:` lines, and a probe is the only
 check available.
 
@@ -140,7 +140,7 @@ comment in the file:
   `[_MAX] = 0`. The tail after the `]` is what separates them. An Enum member may *be*
   one --- `Report.twin` declares `[ ]`, `[A4 Portrait]`, `[Letter Landscape]` as member
   names --- and **a bracket group alone on its line in an Enum body is always a member,
-  whatever is inside the brackets** (BETA 1005): `[Hidden]` is the member `Hidden`,
+  whatever is inside the brackets** (BETA 1010): `[Hidden]` is the member `Hidden`,
   `E.[Hidden]` and `E.Hidden` are 0, `[Description("x")]` is a member of that name, and
   `[NoSuchAttribute]` too. Code after the group (`[Hidden] Red = 5`) is refused, TB5182 at
   `Red`. So the census records no attribute for such a group (`scripts/lib/census-scan.mjs`,
@@ -180,7 +180,7 @@ and lays the answers against the page. Its reader-facing description is
 [Tools and Scripts](docs/Documentation/Tools-Samples.md#sweep-attributes); this is why it is built as
 it is.
 
-**Against BETA 1005: 34,648 probes in 126 builds, 221 s on four lanes, with no crash and no
+**Against BETA 1010: 34,648 probes in 126 builds, 189 s on four lanes, with no crash and no
 interference.** That is the whole matrix; nothing in it is slow enough to need sampling. **A run of one name is a
 minute or a few, not always one:** an attribute the compiler allows once per project
 (`[RunAfterBuild]`, `[RunBeforeStartupObject]`) goes in one probe per batch, so it needs
@@ -203,7 +203,7 @@ every site.
 - **A control must be refused for a site to mean anything.** An unknown name is built at every
   site, and a site whose control *compiles* is voided. An Enum body accepts any own-line
   `[...]` --- `[ClassId("guid")]` and `[Hidden(True)]` included --- because the line is a
-  member, not an attribute (BETA 1005: `E.[Description("x")]` compiles and is 0, so such a
+  member, not an attribute (BETA 1010: `E.[Description("x")]` compiles and is 0, so such a
   group is a legal member name), and nothing accepted there is evidence. Inline,
   `[Name] X = 1`, the line is the member `[Name]` followed by text the parser has no
   handler for (TB5182, at `X`), so the compiler refuses every attribute, `[Hidden]` included,
@@ -360,8 +360,8 @@ A project whose traffic never shows a compile ending falls back to waiting for t
 read OPERATIONAL and stand still for five seconds, and so does a page that a dialog has
 blocked. The reproducer `interface-extends-itself` is one such project: its compiler never
 reports a result at all. The traffic wait takes about five seconds less per project than the
-fallback: `tbbuild` on a one-file template takes 6 s, and a full `examples.bat` about 220 s
-(2,297 samples on four lanes, BETA 1005).
+fallback: `tbbuild` on a one-file template takes 6 s, and a full `examples.bat` about 190 s
+(2,660 samples on four lanes, BETA 1010).
 
 **The mechanics are one library, [scripts/lib/tb-ide.mjs](scripts/lib/tb-ide.mjs)**:
 starting the IDE, attaching, waiting for the compile, reading the diagnostics and the DEBUG
@@ -636,9 +636,8 @@ Rules it follows:
   failing shift is in a procedure the probe calls, the codegen line naming that procedure
   comes straight after the `[BUILD] Executing` line, before the probe's first statement runs.
   The probe's `Debug.Cls` erases it, and the probe prints what comes before the call and stops
-  there. (BETA 1005: with `Debug.Cls` the probe prints exactly its lines; without it
-  `tbrun` warns and the build log lines precede them; exit 0 either way, without the guard
-  below.) So `tbrun` wraps the page's global `clearDebugConsole()` before it presses Build,
+  there. (BETA 1010: with `Debug.Cls` the probe prints exactly its lines; without it
+  `tbrun` warns and the build log lines precede them.) So `tbrun` wraps the page's global `clearDebugConsole()` before it presses Build,
   and keeps what each clear erases (`keepClears` in `tb-ide-console.mjs`). A `BUILD_FAILED`
   line in that record after the last `[BUILD] Executing` line exits 2, naming the line and
   printing the partial output. `main.js` calls that function by name from the compiler's
@@ -653,15 +652,15 @@ Rules it follows:
   `tbbuild`'s 4. `tbrun` exits 3 for no output at all, and 2 for a compile that never
   settled, which `tbbuild` reports as 3.
 - **`tbrun` exits 5 when the probe ended before it returned.** The quiet period cannot see
-  it: on BETA 1005, `Err.Raise` with no handler in a `+llvm` procedure ends the run with
+  it: on BETA 1010, `Err.Raise` with no handler in a `+llvm` procedure ends the run with
   nothing in the console. `End` does the same, and so does an unhandled error in plain code,
-  in about the time of a probe that returns (12.8 s against 10.4 s, one run each on BETA
-  1005, other IDEs running). `lib/tb-probe.mjs`'s `wrapProbe` moves the attribute, blanked to spaces so
+  with `tbrun` taking the run as over after the 8 s quiet period (17.0 s against 9.1 s for a
+  probe that returns, one run each on BETA 1010). `lib/tb-probe.mjs`'s `wrapProbe` moves the attribute, blanked to spaces so
   diagnostics keep their positions, to a Sub appended to the same module, so a Private probe
   Sub can still be called; that Sub prints a sentinel after the call. A probe that leaves a
   form loaded returns too: the IDE then prints `[DEBUGGER] Waiting for remaining forms to
   close...` after the sentinel, which `sentinelIndex` allows and `tbrun` prints (BETA
-  1005). `check_twin_parsers` has fixtures for both.
+  1010). `check_twin_parsers` has fixtures for both.
 - **`tbrun --exe` exits 6 when the exe exited with a code other than 0**, when the event
   log records that it faulted, when it opened a box, or when it was still running at
   `--timeout` and was ended. A run that would exit 5 exits 5 first, since the
@@ -704,7 +703,7 @@ concurrent runs driving the same server should use it and sweep once at the end.
 ### Running a project's test cases
 
 twinBASIC's own unit-test form is a Module marked `[TestFixture]` whose parameterless Subs
-are marked `[TestCase]` and check with the Assert package. **BETA 1005 has no way for a
+are marked `[TestCase]` and check with the Assert package. **BETA 1010 has no way for a
 person to run one.** A `[TestCase]` Sub gets no CodeLens "run" link (an unmarked Sub in the
 same module gets one), the IDE's handler for the compiler's `custom/provideTests` request is
 an empty function in `main.js`, and the compiler never sent it in the runs here. Called from
@@ -733,7 +732,7 @@ after an access violation. `Debug.Print` in a case writes to the DEBUG CONSOLE. 
 not there is `success: false` with a compile-error message. An unmarked Sub runs the same way,
 so the attributes matter only to the runner that lists the cases: `scripts/lib/tb-tests.mjs`
 finds them in the sources (`[TestFixture]` before `Module`, `[TestCase]` before a
-parameterless `Sub`) and refuses one it cannot call. All measured on BETA 1005 over CDP.
+parameterless `Sub`) and refuses one it cannot call. All measured on BETA 1010 over CDP.
 
 **`Assert.Exact` compares the type too**: `Assert.Exact.AreEqual 5, Err.Number` fails, 5 is
 an `Integer` and `Err.Number` a `Long`. The tests here use `Assert.Strict`.
@@ -746,18 +745,18 @@ cannot predict. A project with compile errors runs none of its `[TestCase]`s.
 ### Measuring LLVM
 
 `tbrun --llvm` sets `compiler.debugOptions` and `compiler.buildOptions` to `+llvm` in the
-staged Settings; `--compiler-options` sets any other string. Measured on BETA 1005 with no
+staged Settings; `--compiler-options` sets any other string. Measured on BETA 1010 with no
 per-procedure attributes, one probe in four variants of Settings: **`debugOptions` is what
 the `[RunAfterBuild]` run is compiled with.** With `+llvm` there, `Debug.Assert`'s condition
 was evaluated 0 times; with it only in `buildOptions`, 1 time, as with neither. A
-200-million-step loop took 465 ms with neither, 387 ms with `buildOptions` only, 430 ms with
-`debugOptions` only and 398 ms with both, so on this build the speed of a plain loop does not
+200-million-step loop took 375 ms with neither, 371 ms with `buildOptions` only, 430 ms with
+`debugOptions` only and 445 ms with both, so on this build the speed of a plain loop does not
 tell the variants apart. (`+llvm` alone is not `+llvm +optimize`, which took the same loop to
-0 ms.)
+20 ms.)
 
 **The licence is in the status bar's `compilerLicence`:** one of `COMMUNITY EDITION`,
 `PERSONAL EDITION`, `PROFESSIONAL EDITION`, `ULTIMATE EDITION`, and `tB Licence: ...`
-until the IDE knows (`ide/main.js`, BETA 1005). The licence key is in HKCU, so a lane IDE
+until the IDE knows (`ide/main.js`, BETA 1010). The licence key is in HKCU, so a lane IDE
 sees the user's. `tbrun` refuses an LLVM run on the first two, which compile no user code
 with LLVM; it cannot be tested with a real Community licence here, only through a fault.
 
@@ -765,14 +764,14 @@ with LLVM; it cannot be tested with a real Community licence here, only through 
 `launchIde` that calls `tb-launch.ps1`, which reports the program's exit code on a
 second line (`exit <n>`) once it ends. Nothing reaches the exe's standard output: the
 launcher creates it with no inherited handles. So `TbRun.Out` writes UTF-8 to the file
-`TBRUN_OUT` names, and to standard output only when there is none. Measured on BETA 1005:
+`TBRUN_OUT` names, and to standard output only when there is none. Measured on BETA 1010:
 the exit code from `ExitProcess 7` comes back as 7, a hung exe is ended at `--timeout`
 with nothing left running, and **the exe never evaluates `Debug.Assert`, with or without
 LLVM**, as VB6 drops `Debug` statements from a compiled program.
 
 **An unhandled error in the exe opens a box and waits for it**, so `--exe` passes
 `dialogs: "close"`: the launcher records each box and presses OK. Without that the exe
-sat until `--timeout`. The box is the only sign of the error. In BETA 1005 a plain exe
+sat until `--timeout`. The box is the only sign of the error. In BETA 1010 a plain exe
 shows a box titled with the project's application title, `Run-time error '11' <description>`,
 and exits with code 0 once the box is closed; an LLVM-compiled one shows *_TB_ERROR_HANDLER*,
 `unhandled error in ProbeMod.Oops` (the module and procedure), with no number or
@@ -784,7 +783,7 @@ because the launcher, not Node, starts the exe.
 `TbRun.tbrun_InIDE` before it calls the probe; the exe runs `Sub Main`, never the wrapper.
 `App.IsInIDE` would say the same, but `App` exists only in a project that references the
 VB package or the AppGlobalClassObject package: in any other, `TbRun` fails to compile
-(TB5079, `Unrecognized symbol 'App'`) and `tbrun` exits 1 on a probe that is fine (BETA 1005;
+(TB5079, `Unrecognized symbol 'App'`) and `tbrun` exits 1 on a probe that is fine (BETA 1010;
 either package alone is enough, and the install's Samples 6 and 8 had neither).
 Adding that reference to the staged copy would change what the probe's own names resolve
 to, and the VB6 idiom, a `Debug.Assert` whose condition sets a variable, fails under
@@ -1152,7 +1151,7 @@ IDEs keeps the user's out ([The add-in test runner](#the-add-in-test-runner)).
 
 - **An IDE session writes nothing into its install.** A compile, a compiler crash and a
   `tbrun` build-and-run each left every file byte-identical, down to the mtimes; on
-  BETA 1005 the install's 232 files outside the default WebView2 profile folder
+  BETA 1010 the install's 235 files outside the default WebView2 profile folder
   (`bin\twinBASIC_win32_noDEP.exe.WebView2`, which the user's own IDE writes and the harness's
   IDEs, started with their own `WEBVIEW2_USER_DATA_FOLDER`, do not) were byte-identical
   after a `tbbuild` and a `tbrun`. A compile also left the per-user `%APPDATA%\twinBASIC` unchanged; that folder
@@ -1167,10 +1166,11 @@ IDEs keeps the user's out ([The add-in test runner](#the-add-in-test-runner)).
 - **Starting the copy re-points the `.twinproj` association at it.** The real install's IDE
   leaves the keys alone. The tidy restores them with three writes.
 
-**A copy, not hardlinks.** The install is 232 files and 106 MB (BETA 1005, leaving out the
+**A copy, not hardlinks.** The install is 235 files and 116 MB (BETA 1010, leaving out the
 default WebView2 profile folder); leaving out `projects\` (the
-samples and New Project templates, 30 MB, which a test that opens its project on the command
-line never shows) and `addins\` (recreated), it copies in **348 ms**, that folder included. Hardlinks would save
+samples and New Project templates, 29 MB, which a test that opens its project on the command
+line never shows) and `addins\` (recreated), it copies in about **250 ms** (214 to 313 ms in
+five runs), that folder included. Hardlinks would save
 that at the price of sharing every file with the user's install, so that any write the IDE
 made into its own folder would land in the real one. A copy makes the question irrelevant
 instead of merely answered.
@@ -1278,7 +1278,7 @@ output file '<path>'` or one of about twenty failure lines --- `[LINKER] FAILED 
 error ...`. An output file another process holds open gives `[LINKER] FAILED to create output
 file '...' (error code 32)`, then `LOCKED BY:` and a line naming the process, then `[BUILD]
 failed`. A package writes `[BUILD] Creating TWINPACK file '<path>'` and then `[BUILD]
-successful.` (BETA 1005), and its failures are `[BUILD] FAILED ...` and `[BUILD] failed` lines
+successful.` (BETA 1010), and its failures are `[BUILD] FAILED ...` and `[BUILD] failed` lines
 like a binary's. `buildProject` matches the success line whole, because `[BUILD] successfully
 built Fusion server file` is another line, and only after the TWINPACK line. Two details:
 

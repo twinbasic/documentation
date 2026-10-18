@@ -566,7 +566,7 @@ Taken on BETA 1005.
   it. The arrow and ring are the overlay's. The GitHub page is the repository's release list,
   whose first release is the newest (`releases/latest` skips pre-releases); Assets is opened
   with a real click. Its numbers (size, "yesterday", the version) are the day's, so the FAQ's alt
-  does not name them; its install-size entry says about 40 MB and 120 MB (the BETA 1005 folder
+  does not name them; its install-size entry says about 40 MB and 120 MB (the BETA 1010 folder, 121.6 MB,
   less the runtime's `.WebView2` data folder).
 - `test/addin/help.test.mjs` fetches `/favicon.png` as its sample PNG, so `favicon.png` must stay
   a PNG.
