@@ -1,5 +1,5 @@
 ' One instance of the pipe: listening for a client, then connected to one.
-Class Conn
+Class BrokerConn
     Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
 
     Public Id As Long
@@ -55,7 +55,7 @@ Class Conn
                 If n > 0 Then
                     If mIn(n - 1) = 13 Then n = n - 1
                 End If
-                line = Text.FromUtf8(mIn, 0, n)
+                line = BrokerText.FromUtf8(mIn, 0, n)
                 If i + 1 < mInLen Then RtlMoveMemory VarPtr(mIn(0)), VarPtr(mIn(i + 1)), mInLen - i - 1
                 mInLen = mInLen - i - 1
                 TakeLine = True

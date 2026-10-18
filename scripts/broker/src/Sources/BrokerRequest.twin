@@ -2,7 +2,7 @@
 ' strings, numbers, true, false or null; a member that is an object or an array is skipped over
 ' and reads as absent. The id member is kept as the JSON text it was, so that the reply can give
 ' it back exactly.
-Class Request
+Class BrokerRequest
     Public Valid As Boolean
     Public Problem As String
     Public IdText As String

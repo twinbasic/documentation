@@ -2,7 +2,7 @@
 ' loop waits on for a quarter of a second at a time, and between packets the pool looks at the
 ' processes it holds for. No thread of the runtime's is involved, and there is no limit of 64
 ' handles to wait on.
-Module Server
+Module BrokerServer
     Private Declare PtrSafe Function CreateNamedPipeW Lib "kernel32" (ByVal lpName As LongPtr, ByVal dwOpenMode As Long, ByVal dwPipeMode As Long, ByVal nMaxInstances As Long, ByVal nOutBufferSize As Long, ByVal nInBufferSize As Long, ByVal nDefaultTimeOut As Long, ByVal lpSecurityAttributes As LongPtr) As LongPtr
     Private Declare PtrSafe Function ConnectNamedPipe Lib "kernel32" (ByVal hNamedPipe As LongPtr, ByVal lpOverlapped As LongPtr) As Long
     Private Declare PtrSafe Function GetNamedPipeClientProcessId Lib "kernel32" (ByVal Pipe As LongPtr, ByRef ClientProcessId As Long) As Long
@@ -45,7 +45,8 @@ Module Server
     Private Const TICK_MS As Long = 250
 
     Public Const PROTOCOL As Long = 1
-    Public Const VERSION As String = "1.0"
+    ' "1.0", and after it what the program serving says of itself (" tblaunch" in tblaunch).
+    Public Const VERSION As String = "1.0" & BrokerHost.VERSION_SUFFIX
 
     ' Exit codes of Serve.
     Public Const SERVE_STOPPED As Long = 0
@@ -71,7 +72,7 @@ Module Server
         mStarted = Now
         mPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
         If mPort = 0 Then
-            Text.Log "CreateIoCompletionPort failed with error " & Err.LastDllError
+            BrokerText.Log "CreateIoCompletionPort failed with error " & Err.LastDllError
             Serve = SERVE_FAILED
             Exit Function
         End If
@@ -84,8 +85,8 @@ Module Server
                 Serve = SERVE_FAILED
                 Exit Function
         End Select
-        Text.Log "serving " & mPipeName & ": slots " & Pool.Prefix & "1-" & Pool.MaxSlots & _
-            IIf(Len(Pool.PortRange()) > 0, ", ports " & Pool.PortRange(), ", no ports")
+        BrokerText.Log "serving " & mPipeName & ": slots " & BrokerPool.Prefix & "1-" & BrokerPool.MaxSlots & _
+            IIf(Len(BrokerPool.PortRange()) > 0, ", ports " & BrokerPool.PortRange(), ", no ports")
         lastTick = GetTickCount64()
         Do
             ov = 0
@@ -98,29 +99,29 @@ Module Server
             If now64 - lastTick >= TICK_MS Then
                 lastTick = now64
                 If mNeedListener Then Listen False
-                Pool.Tick
+                BrokerPool.Tick
             End If
         Loop Until mStopping
-        Text.Log "stopped"
+        BrokerText.Log "stopped"
         Serve = SERVE_STOPPED
     End Function
 
     ' A new pipe instance, waiting for a client. 0, or the error that stopped it.
     Private Function Listen(ByVal first As Boolean) As Long
-        Dim c As Conn, h As LongPtr, mode As Long, e As Long
+        Dim c As BrokerConn, h As LongPtr, mode As Long, e As Long
         mode = PIPE_ACCESS_DUPLEX Or FILE_FLAG_OVERLAPPED
         If first Then mode = mode Or FILE_FLAG_FIRST_PIPE_INSTANCE
         h = CreateNamedPipeW(StrPtr(mPipeName), mode, PIPE_REJECT_REMOTE_CLIENTS, PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER, PIPE_BUFFER, 0, 0)
         If h = INVALID_HANDLE_VALUE Then
             e = Err.LastDllError
-            If Not first Or e <> ERROR_ACCESS_DENIED Then Text.Log "CreateNamedPipe failed with error " & e
+            If Not first Or e <> ERROR_ACCESS_DENIED Then BrokerText.Log "CreateNamedPipe failed with error " & e
             mNeedListener = True
             Listen = e
             Exit Function
         End If
         mNeedListener = False
         mNextConn = mNextConn + 1
-        Set c = New Conn
+        Set c = New BrokerConn
         c.Id = mNextConn
         c.Handle = h
         c.Listening = True
@@ -138,7 +139,7 @@ Module Server
                 ' A client came between the two calls; no packet will say so.
                 Connected c
             Else
-                Text.Log "ConnectNamedPipe failed with error " & e
+                BrokerText.Log "ConnectNamedPipe failed with error " & e
                 Drop c
                 mNeedListener = True
             End If
@@ -147,13 +148,13 @@ Module Server
         End If
     End Function
 
-    Private Function Find(ByVal id As Long) As Conn
+    Private Function Find(ByVal id As Long) As BrokerConn
         On Error Resume Next
         Set Find = mConns(CStr(id))
     End Function
 
     Private Sub Completed(ByVal ok As Boolean, ByVal bytes As Long, ByVal id As Long)
-        Dim c As Conn
+        Dim c As BrokerConn
         Set c = Find(id)
         If c Is Nothing Then Exit Sub
         c.Pending = False
@@ -190,18 +191,18 @@ Module Server
         Read c
     End Sub
 
-    Private Sub Connected(ByVal c As Conn)
+    Private Sub Connected(ByVal c As BrokerConn)
         Dim pid As Long
         c.Listening = False
         GetNamedPipeClientProcessId c.Handle, pid
         c.ClientPid = pid
-        Text.Log "connection " & c.Id & " from pid " & pid
+        BrokerText.Log "connection " & c.Id & " from pid " & pid
         ' The next client needs an instance of its own to connect to.
         Listen False
         Read c
     End Sub
 
-    Private Sub Read(ByVal c As Conn)
+    Private Sub Read(ByVal c As BrokerConn)
         Dim e As Long
         RtlZeroMemory c.Block, OVERLAPPED_SPACE
         If ReadFile(c.Handle, c.Block + OVERLAPPED_SPACE, READ_SIZE, 0, c.Block) = 0 Then
@@ -216,12 +217,12 @@ Module Server
     End Sub
 
     ' Closes the connection, and gives back what it kept.
-    Private Sub Drop(ByVal c As Conn)
+    Private Sub Drop(ByVal c As BrokerConn)
         If Not c.Open Then Exit Sub
         c.Open = False
         If Not c.Listening Then
-            Text.Log "connection " & c.Id & " closed"
-            Pool.ConnClosed c.Id
+            BrokerText.Log "connection " & c.Id & " closed"
+            BrokerPool.ConnClosed c.Id
         End If
         If c.Pending Then
             ' The cancelled request still owes a packet, and its memory is not ours until then.
@@ -234,7 +235,7 @@ Module Server
         End If
     End Sub
 
-    Private Sub Free(ByVal c As Conn)
+    Private Sub Free(ByVal c As BrokerConn)
         If c.Open Then CloseHandle c.Handle
         c.Open = False
         HeapFree GetProcessHeap(), 0, c.Block
@@ -246,10 +247,10 @@ Module Server
 
     ' Writes a line to the connection and waits for it to be taken. A client that does not read
     ' its replies is cut off rather than allowed to stop the broker.
-    Private Sub Send(ByVal c As Conn, ByVal json As String)
+    Private Sub Send(ByVal c As BrokerConn, ByVal json As String)
         Dim b() As Byte, n As Long, e As Long, done As Long, ev As LongPtr, pEvent As LongPtr
         If Not c.Open Or c.Listening Then Exit Sub
-        n = Text.ToUtf8(json & vbLf, b)
+        n = BrokerText.ToUtf8(json & vbLf, b)
         RtlZeroMemory c.WriteBlock, OVERLAPPED_SPACE
         ' The event's handle with its lowest bit set: the write's completion then goes to the
         ' event and not to the completion port, which has nothing to do with it.
@@ -265,7 +266,7 @@ Module Server
             If WaitForSingleObject(c.WriteEvent, WRITE_TIMEOUT_MS) = WAIT_TIMEOUT Then
                 CancelIoEx c.Handle, c.WriteBlock
                 GetOverlappedResult c.Handle, c.WriteBlock, done, 1
-                Text.Log "connection " & c.Id & " took no reply for " & WRITE_TIMEOUT_MS & " ms"
+                BrokerText.Log "connection " & c.Id & " took no reply for " & WRITE_TIMEOUT_MS & " ms"
                 Drop c
                 Exit Sub
             End If
@@ -276,26 +277,26 @@ Module Server
     Private Function Reply(ByVal idText As String, ByVal ok As Boolean, ByVal members As String) As String
         Dim s As String
         s = "{"
-        If Len(idText) > 0 Then s = s & Text.Member("id", idText) & ","
-        s = s & Text.Member("ok", Text.Bool(ok))
+        If Len(idText) > 0 Then s = s & BrokerText.Member("id", idText) & ","
+        s = s & BrokerText.Member("ok", BrokerText.Bool(ok))
         If Len(members) > 0 Then s = s & "," & members
         Reply = s & "}"
     End Function
 
     Public Sub SendOk(ByVal connId As Long, ByVal idText As String, ByVal members As String)
-        Dim c As Conn
+        Dim c As BrokerConn
         Set c = Find(connId)
         If Not c Is Nothing Then Send c, Reply(idText, True, members)
     End Sub
 
     Public Sub SendError(ByVal connId As Long, ByVal idText As String, ByVal code As String, ByVal message As String)
-        Dim c As Conn
+        Dim c As BrokerConn
         Set c = Find(connId)
-        If Not c Is Nothing Then Send c, Reply(idText, False, Text.Member("error", Text.Quote(code)) & "," & Text.Member("message", Text.Quote(message)))
+        If Not c Is Nothing Then Send c, Reply(idText, False, BrokerText.Member("error", BrokerText.Quote(code)) & "," & BrokerText.Member("message", BrokerText.Quote(message)))
     End Sub
 
-    Private Sub Answer(ByVal c As Conn, ByVal line As String)
-        Dim r As New Request, op As String, result As String, code As String, message As String
+    Private Sub Answer(ByVal c As BrokerConn, ByVal line As String)
+        Dim r As New BrokerRequest, op As String, result As String, code As String, message As String
         If Len(Trim$(line)) = 0 Then Exit Sub
         r.Parse line
         If Not r.Valid Then
@@ -306,10 +307,10 @@ Module Server
         Select Case op
             Case "hello"
                 If r.Has("client") Then c.ClientName = r.StringOf("client")
-                SendOk c.Id, r.IdText, Text.Member("protocol", CStr(PROTOCOL)) & "," & Text.Member("version", Text.Quote(VERSION)) & "," & _
-                    Text.Member("pid", CStr(GetCurrentProcessId())) & "," & Text.Member("client", CStr(c.ClientPid))
+                SendOk c.Id, r.IdText, BrokerText.Member("protocol", CStr(PROTOCOL)) & "," & BrokerText.Member("version", BrokerText.Quote(VERSION)) & "," & _
+                    BrokerText.Member("pid", CStr(GetCurrentProcessId())) & "," & BrokerText.Member("client", CStr(c.ClientPid))
             Case "lease"
-                result = Pool.Take(c.Id, c.ClientPid, r.IdText, r.Flag("port"), r.StringOf("tag"), r.Flag("wait"), code, message)
+                result = BrokerPool.Take(c.Id, c.ClientPid, r.IdText, r.Flag("port"), r.StringOf("tag"), r.Flag("wait"), code, message)
                 If Len(result) > 0 Then
                     SendOk c.Id, r.IdText, result
                 ElseIf Len(code) > 0 Then
@@ -320,19 +321,19 @@ Module Server
                     SendError c.Id, r.IdText, "bad-request", "hold takes a lease and a pid"
                     Exit Sub
                 End If
-                code = Pool.Hold(c.Id, CLng(r.Number("lease")), CLng(r.Number("pid")), message)
+                code = BrokerPool.Hold(c.Id, CLng(r.Number("lease")), CLng(r.Number("pid")), message)
                 If Len(code) = 0 Then SendOk c.Id, r.IdText, "" Else SendError c.Id, r.IdText, code, message
             Case "release"
                 If Not r.IsNumber("lease") Then
                     SendError c.Id, r.IdText, "bad-request", "release takes a lease"
                     Exit Sub
                 End If
-                code = Pool.Release(c.Id, CLng(r.Number("lease")), message)
+                code = BrokerPool.Release(c.Id, CLng(r.Number("lease")), message)
                 If Len(code) = 0 Then SendOk c.Id, r.IdText, "" Else SendError c.Id, r.IdText, code, message
             Case "status"
                 SendOk c.Id, r.IdText, StatusMembers()
             Case "stop"
-                Text.Log "stop requested by pid " & c.ClientPid
+                BrokerText.Log "stop requested by pid " & c.ClientPid
                 SendOk c.Id, r.IdText, ""
                 mStopping = True
             Case ""
@@ -343,20 +344,20 @@ Module Server
     End Sub
 
     Private Function StatusMembers() As String
-        Dim s As String, c As Conn, items As String
-        s = Text.Member("broker", "{" & Text.Member("pid", CStr(GetCurrentProcessId())) & "," & _
-            Text.Member("protocol", CStr(PROTOCOL)) & "," & Text.Member("version", Text.Quote(VERSION)) & "," & _
-            Text.Member("pipe", Text.Quote(mPipeName)) & "," & Text.Member("prefix", Text.Quote(Pool.Prefix)) & "," & _
-            Text.Member("max", CStr(Pool.MaxSlots)) & "," & Text.Member("ports", Text.Quote(Pool.PortRange())) & "," & _
-            Text.Member("started", Text.Quote(Format$(mStarted, "yyyy-mm-dd hh:nn:ss"))) & "," & _
-            Text.Member("log", Text.Quote(Text.LogPath)) & "}")
+        Dim s As String, c As BrokerConn, items As String
+        s = BrokerText.Member("broker", "{" & BrokerText.Member("pid", CStr(GetCurrentProcessId())) & "," & _
+            BrokerText.Member("protocol", CStr(PROTOCOL)) & "," & BrokerText.Member("version", BrokerText.Quote(VERSION)) & "," & _
+            BrokerText.Member("pipe", BrokerText.Quote(mPipeName)) & "," & BrokerText.Member("prefix", BrokerText.Quote(BrokerPool.Prefix)) & "," & _
+            BrokerText.Member("max", CStr(BrokerPool.MaxSlots)) & "," & BrokerText.Member("ports", BrokerText.Quote(BrokerPool.PortRange())) & "," & _
+            BrokerText.Member("started", BrokerText.Quote(Format$(mStarted, "yyyy-mm-dd hh:nn:ss"))) & "," & _
+            BrokerText.Member("log", BrokerText.Quote(BrokerText.LogPath)) & "}")
         For Each c In mConns
             If c.Open And Not c.Listening Then
                 If Len(items) > 0 Then items = items & ","
-                items = items & "{" & Text.Member("connection", CStr(c.Id)) & "," & Text.Member("pid", CStr(c.ClientPid)) & "," & _
-                    Text.Member("client", Text.Quote(c.ClientName)) & "}"
+                items = items & "{" & BrokerText.Member("connection", CStr(c.Id)) & "," & BrokerText.Member("pid", CStr(c.ClientPid)) & "," & _
+                    BrokerText.Member("client", BrokerText.Quote(c.ClientName)) & "}"
             End If
         Next
-        StatusMembers = s & "," & Text.Member("connections", "[" & items & "]") & "," & Pool.StatusMembers()
+        StatusMembers = s & "," & BrokerText.Member("connections", "[" & items & "]") & "," & BrokerPool.StatusMembers()
     End Function
 End Module

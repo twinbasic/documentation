@@ -1,5 +1,5 @@
 ' A lease request that asked to wait for a free slot, answered when one comes free.
-Class Waiter
+Class BrokerWaiter
     Public ConnId As Long
     Public ClientPid As Long
     Public IdText As String

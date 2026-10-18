@@ -1,5 +1,5 @@
 ' Bytes gathered from reads, for a reply that may arrive in pieces.
-Class ByteList
+Class BrokerByteList
     Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
 
     Private mData() As Byte
@@ -28,6 +28,6 @@ Class ByteList
             If mData(n - 1) <> 10 And mData(n - 1) <> 13 Then Exit Do
             n = n - 1
         Loop
-        AsText = Text.FromUtf8(mData, 0, n)
+        AsText = BrokerText.FromUtf8(mData, 0, n)
     End Function
 End Class

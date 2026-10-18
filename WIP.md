@@ -447,6 +447,11 @@ desktops, process handles and overlapped pipes, which Node cannot make without a
 (`node scripts/impexp.mjs import scripts/broker/tbbroker.twinproj scripts/broker/src --overwrite`),
 install it with `node scripts/tbbroker.mjs install`, and run `test/broker.test.mjs` with
 `TBBROKER_EXE` set to `%LOCALAPPDATA%\tbbroker\tbbroker.exe`: no gate can build it.
+**tblaunch compiles every file of `scripts/broker/src/Sources/` but `Program.twin` and
+`BrokerHost.twin`, by name, from this checkout**, as it does impexp's, and has a `BrokerHost` of
+its own: what differs between the two programs (the name in messages, the output, the version's
+suffix, the server's command line) is in `BrokerHost` and nowhere else, so a change to its members,
+a renamed or added module, or a public name tblaunch also has, is made with the tblaunch session.
 **No tool makes a desktop of its own**: each leases one
 ([WIP.Broker.md](WIP.Broker.md)).
 `scripts/lib/llvm-cache/`, the lease on twinBASIC's LLVM cache server with its probes (one of them

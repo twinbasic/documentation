@@ -1,0 +1,65 @@
+' What tbbroker says of itself, for the modules it shares with tblaunch (BrokerMain.twin says
+' which). tblaunch has a BrokerHost of its own with these members, and compiles neither this
+' file nor Program.twin: change a member's name or signature in both programs at once.
+Module BrokerHost
+    Private Declare PtrSafe Function GetModuleFileNameW Lib "kernel32" (ByVal hModule As LongPtr, ByVal lpFilename As LongPtr, ByVal nSize As Long) As Long
+    Private Declare PtrSafe Function GetStdHandle Lib "kernel32" (ByVal nStdHandle As Long) As LongPtr
+    Private Declare PtrSafe Function AttachConsole Lib "kernel32" (ByVal dwProcessId As Long) As Long
+    Private Declare PtrSafe Function CreateFileW Lib "kernel32" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, ByVal lpSecurityAttributes As LongPtr, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr
+    Private Declare PtrSafe Function WriteFile Lib "kernel32" (ByVal hFile As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfBytesToWrite As Long, ByRef lpNumberOfBytesWritten As Long, ByVal lpOverlapped As LongPtr) As Long
+
+    Private Const STD_OUTPUT_HANDLE As Long = -11
+    Private Const STD_ERROR_HANDLE As Long = -12
+    Private Const ATTACH_PARENT_PROCESS As Long = -1
+    Private Const GENERIC_WRITE As Long = &H40000000
+    Private Const FILE_SHARE_WRITE As Long = 2
+    Private Const OPEN_EXISTING As Long = 3
+    Private Const INVALID_HANDLE_VALUE As LongPtr = -1
+
+    ' The program's name in messages and in the usage text.
+    Public Const PROGRAM_NAME As String = "tbbroker"
+    ' What follows "1.0" in the version the broker reports.
+    Public Const VERSION_SUFFIX As String = ""
+    ' What follows the server's exe on the command line `start` runs.
+    Public Const SERVE_ARGS As String = "--serve"
+
+    Private mOut As LongPtr
+    Private mErr As LongPtr
+
+    ' The exe `start` runs as the server: this one. "" when there is none, the reason written.
+    Public Function ServerExe() As String
+        Dim exe As String, n As Long
+        exe = String$(32768, vbNullChar)
+        n = GetModuleFileNameW(0, StrPtr(exe), 32768)
+        ServerExe = Left$(exe, n)
+    End Function
+
+    ' Standard output, or the console of the process that started this one: the broker is a
+    ' windows program, so it has a console only when it borrows one.
+    Private Function OutHandle(ByVal which As Long) As LongPtr
+        Dim h As LongPtr
+        h = GetStdHandle(which)
+        If h = 0 Or h = INVALID_HANDLE_VALUE Then
+            AttachConsole ATTACH_PARENT_PROCESS
+            h = CreateFileW(StrPtr("CONOUT$"), GENERIC_WRITE, FILE_SHARE_WRITE, 0, OPEN_EXISTING, 0, 0)
+        End If
+        OutHandle = h
+    End Function
+
+    Private Sub WriteTo(ByVal h As LongPtr, ByVal s As String)
+        Dim b() As Byte, n As Long, done As Long
+        If h = 0 Or h = INVALID_HANDLE_VALUE Then Exit Sub
+        n = BrokerText.ToUtf8(s & vbCrLf, b)
+        If n > 0 Then WriteFile h, VarPtr(b(0)), n, done, 0
+    End Sub
+
+    Public Sub WriteOut(ByVal s As String)
+        If mOut = 0 Then mOut = OutHandle(STD_OUTPUT_HANDLE)
+        WriteTo mOut, s
+    End Sub
+
+    Public Sub WriteErr(ByVal s As String)
+        If mErr = 0 Then mErr = OutHandle(STD_ERROR_HANDLE)
+        WriteTo mErr, s
+    End Sub
+End Module
