@@ -1112,13 +1112,10 @@ Public Property Let Caption(ByVal Value As String)
 End Property
 ```
 
-A property takes the attribute on its first accessor in the source, normally the **Property Get**; written on a later accessor, it is ignored. The legacy line `Attribute Caption.VB_ProcData.VB_Invoke_Property = "CaptionPage"` inside the **Property Get** means the same. The argument must be a **String**: `[PropertyPage]` with no argument, or with a **Boolean** or a number, is TB5163, *Expected a single String argument*. An empty string ties the property to no page.
+A property takes the attribute on its first accessor in the source, normally the **Property Get**; written on a later accessor, it is ignored. The legacy line `Attribute Caption.VB_ProcData.VB_Invoke_Property = "CaptionPage"` inside the **Property Get** means the same. The argument must be a **String**: `[PropertyPage]` with no argument, or with a **Boolean** or a number, is TB5163, *Expected a single String argument*. On a procedure, a name that matches no property page in the project is error TB5259, *Failed to find named PropertyPage '...' for procedure '...'*. That includes an empty string and a name that differs only in case. A variable's name is not checked.
 
-> [!NOTE] BETA 1005
-> A name that matches no property page in the project is not reported: the build succeeds, and the property is tied to no page. The same holds for a name that differs only in case.
-
-> [!NOTE] BETA 1005
-> VB6 stores a property's page as `"PageName;Category"` in the legacy attribute, with the category the property sheet groups the property under. twinBASIC reads such a legacy line and drops what follows the semicolon. **[PropertyPage]** takes the whole string as the name, so `[PropertyPage("CaptionPage;Appearance")]` matches no page.
+> [!NOTE] BETA 1010
+> VB6 stores a property's page as `"PageName;Category"` in the legacy attribute, with the category the property sheet groups the property under. twinBASIC reads such a legacy line and drops what follows the semicolon. **[PropertyPage]** takes the whole string as the name, so `[PropertyPage("CaptionPage;Appearance")]` is TB5259.
 
 The pages the control offers as a whole are listed in its [**PropertyPages**](../Packages/VB/UserControl/#propertypages) property.
 
@@ -1127,8 +1124,14 @@ The pages the control offers as a whole are listed in its [**PropertyPages**](..
      for that DISPID returned S_OK and the [ClassId] of the project's PropertyPage
      class; for a member without it, E_NOTIMPL. "mypage", "MYPAGE", "NoSuchPage", a
      plain class's name and "" all give E_NOTIMPL with no diagnostic at build or
-     run. The compiler binary holds "Failed to find named PropertyPage '...' for
-     procedure '...'", never drawn. The VB package's UserControl.twin
+     run. BETA 1010 compile-only probes (a UserControl in an ActiveX Control
+     project, one page "ProbePage"): the name of the page builds; "NoSuchPage",
+     "probepage", "ProbePage;Appearance" and "" on a Property Get, and "NoSuchPage"
+     on a Property Let after an unmarked Property Get, are each TB5259 "Failed to
+     find named PropertyPage '...' for procedure '...'" (BETA 1007: all build); on
+     a Public variable a missing name builds. The legacy line Attribute X.VB_ProcData
+     .VB_Invoke_Property = "ProbePage;Appearance" builds and "NoSuchPage;Appearance"
+     is TB5259 naming 'NoSuchPage'. The VB package's UserControl.twin
      (MapPropertyToPage) names both forms. Accepted by the compiler on every member
      of a Class or an Interface (TB5163 for a non-String argument); refused with
      TB5182 on a Module member, a Type field, a Class, an Enum. Only a member with a
