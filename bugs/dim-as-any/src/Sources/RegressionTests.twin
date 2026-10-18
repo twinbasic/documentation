@@ -1,0 +1,40 @@
+' Regression tests for the report, as compile cases: each line that ends in a
+' comment  ' CASE <Name>: <expected>  must give that diagnostic on that line (a
+' code, "error" for any error, or "none"). tbrun --tests checks them.
+' As Any is meant only for the parameter of a Declare statement, where it lets
+' the caller pass an argument of any type. Anywhere else it names no type, so
+' every line below that is not a Declare parameter or the Long control is a
+' compile error.
+
+Class HoldsAny
+    Public Item As Any  ' CASE ClassField_AsAny: error
+End Class
+
+Module AsAnyTests
+
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, ByRef Source As Any, ByVal Length As LongPtr)  ' CASE Declare_ParameterAsAny: none
+
+    Private Type HasAny
+        Value As Any  ' CASE UdtField_AsAny: error
+    End Type
+
+    Private ModuleLevel As Any  ' CASE ModuleVariable_AsAny: error
+
+    Private Function ReturnsAny() As Any  ' CASE FunctionReturn_AsAny: error
+    End Function
+
+    Private Sub TakesAny(ByRef p As Any)  ' CASE SubParameter_AsAny: error
+    End Sub
+
+    Private Sub TakesAnyByVal(ByVal p As Any)  ' CASE SubParameterByVal_AsAny: error
+    End Sub
+
+    Private Sub Declarations()
+        Dim x As Any  ' CASE LocalDim_AsAny: error
+        Static s As Any  ' CASE LocalStatic_AsAny: error
+        Dim a(1) As Any  ' CASE LocalArrayDim_AsAny: error
+        ReDim b(1) As Any  ' CASE ReDim_AsAny: error
+        Dim c As Long  ' CASE Control_DimAsLong: none
+    End Sub
+
+End Module

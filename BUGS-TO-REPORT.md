@@ -5599,3 +5599,80 @@ Severity: cosmetic. An error in the page after the box has closed.
 
 <!-- Reproducer: bugs/publish-failure-ok-typeerror/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "OK in the box of a publish that fails with an HTTPS code raises a page TypeError", which passes on BETA 1010 and on BETA 1007; the control "control: OK in the box of a publish refused as a version already uploaded raises no error" passes too; the test calls the IDE's own packagePublisherPublishNow with serverHttpsGetUtf8 replaced in the page, never presses Continue, and fails on any request to the package server). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Package-Publishing.md, under PUBLISH THIS PACKAGE; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B2). -->
 
+
+---
+
+## `Dim x As Any` compiles, though `As Any` is only for the parameter of a `Declare`
+
+**Describe the bug**
+`As Any` stands for "an argument of any type" and means something only as a parameter of a `Declare` statement. twinBASIC refuses it in most other places with TB5079, *Unrecognized datatype symbol 'Any'*: as a Sub's or Function's parameter, as a Function's return type, as a field of a `Type`, in `Dim a(1) As Any` and in `ReDim b(1) As Any`. It accepts it, with no diagnostic, on a single variable: `Dim x As Any` and `Static s As Any` in a procedure, `Private m As Any` at module level and `Public Item As Any` as a field of a class. The variable cannot be used: `x = 5` is TB5028, and reading it fails when the program runs or is built. It was observed in the IDE's diagnostics and in runs.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `dim-as-any.twinproj` (attached as `dim-as-any.zip`). Its module `AsAnyTests`, below, has one declaration with `As Any` on each line that ends in a `' CASE <Name>: <expected>` comment: the diagnostic code the line must get, `error` for any error, or `none`.
+2. Compile it. These get TB5079: a `Type` field, a Function's return type, a Sub's `ByRef` and `ByVal` parameters, `Dim a(1) As Any` and `ReDim b(1) As Any`. The `Declare` with `ByRef Destination As Any` and the control `Dim c As Long` get none, as they should. These four also get none, and are the defect:
+   ```
+   Public Item As Any            ' a field of a class
+   Private ModuleLevel As Any    ' at module level
+   Dim x As Any                  ' in a procedure
+   Static s As Any               ' in a procedure
+   ```
+3. To see what such a variable is, run `Dim x As Any: Debug.Print TypeName(x)` in a project of its own. In a built exe it raises error 458, *Variable uses an Automation type not supported in Visual Basic*, and an IDE run of it ends with no output. `x = 5` (or `x = "text"`) is TB5028, *Unable to convert type 'Integer' to type 'Any'*. `Dim v As Variant: v = x` compiles clean and the build then fails with `compilation (codegen) error detected in 'Startup.Mainrootmain'`. A bare `Dim x As Any` with no other use compiles, builds and runs, and `VarPtr(x)` is not 0.
+```vb
+' Regression tests for the report, as compile cases: each line that ends in a
+' comment  ' CASE <Name>: <expected>  must give that diagnostic on that line (a
+' code, "error" for any error, or "none"). tbrun --tests checks them.
+' As Any is meant only for the parameter of a Declare statement, where it lets
+' the caller pass an argument of any type. Anywhere else it names no type, so
+' every line below that is not a Declare parameter or the Long control is a
+' compile error.
+
+Class HoldsAny
+    Public Item As Any  ' CASE ClassField_AsAny: error
+End Class
+
+Module AsAnyTests
+
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, ByRef Source As Any, ByVal Length As LongPtr)  ' CASE Declare_ParameterAsAny: none
+
+    Private Type HasAny
+        Value As Any  ' CASE UdtField_AsAny: error
+    End Type
+
+    Private ModuleLevel As Any  ' CASE ModuleVariable_AsAny: error
+
+    Private Function ReturnsAny() As Any  ' CASE FunctionReturn_AsAny: error
+    End Function
+
+    Private Sub TakesAny(ByRef p As Any)  ' CASE SubParameter_AsAny: error
+    End Sub
+
+    Private Sub TakesAnyByVal(ByVal p As Any)  ' CASE SubParameterByVal_AsAny: error
+    End Sub
+
+    Private Sub Declarations()
+        Dim x As Any  ' CASE LocalDim_AsAny: error
+        Static s As Any  ' CASE LocalStatic_AsAny: error
+        Dim a(1) As Any  ' CASE LocalArrayDim_AsAny: error
+        ReDim b(1) As Any  ' CASE ReDim_AsAny: error
+        Dim c As Long  ' CASE Control_DimAsLong: none
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+A compile error on each of the four, TB5079 as on the neighbouring declarations: `As Any` names no type, and a variable of it can be neither assigned nor read. The `Declare` parameter keeps compiling. VB6 refuses all of them.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+BETA 1007 gives the same results: the four fail, the eight others pass. The run-time results in step 3 were checked on BETA 1010 only.
+
+VB6 does not accept `As Any` outside a `Declare` parameter. Its command-line build stops at the declaration with a compile error: `Private ModuleLevel As Any` and a `Type` field give *Expected: New or type name*, a Function's return type and a Sub's parameter give *Expected: type name*, and `Dim x As Any`, `Static s As Any` and `Dim a(1) As Any` in a procedure give *Syntax error*. The `Declare` with `ByRef ... As Any` builds. The reproducer's `vb6/` project is that control; the other declarations were each tried in it alone.
+
+Severity: low. Few programs write it, and a variable that cannot be used is found at the first use, but a declaration that compiles tells the author the type exists, and the failure comes late: a codegen error at build time, or error 458 in a run.
+
+<!-- Reproducer: bugs/dim-as-any/ (mode test: `tbrun --tests` judges the compile cases; expect lists the eight PASS and four FAIL lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (its Module1.bas lists VB6's error text for each declaration). The run-time results of step 3 come from a scratch tree that is not kept (BETA 1010, tbrun with and without --exe). docs/Reference/Data-Types.md carries the callout for it (the paragraph that says Any is not a data type, and where As Any is allowed); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types page; owner-approved. -->
