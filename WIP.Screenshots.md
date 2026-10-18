@@ -410,7 +410,9 @@ none, which `New Project.md` also shows).
 - **Export_Console** is File > Export Project with Export Verbose off (owner: the verbose `DONE`
   lines show `&#92;` for each backslash). `stageProjects` sets `project.exportPath` in the
   staged `Settings` of both projects setups to `PACKAGE_ROOT\Export` (`PJ_EXPORT`), so that the
-  first line names no user; the shot removes that folder before the export and after it. The
+  first line names no user; the shot removes that folder before the export and after it, because
+  a second export without Export Verbose into the folder the first one filled wrote no `COMPLETED`
+  line within 60 s (BETA 1010; not narrowed, not queued: owner, record only). The
   console is floated (docked, it is too narrow for the first line) and emptied with its Clear
   button before the export, and emptied again afterwards; the shot is the setup's last. The
   times are set in the page (`fixConsoleTimes`). Both lines fit with no scrolling.
