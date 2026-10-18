@@ -63,7 +63,7 @@ Some commands save the project besides **Save Project**: **Save Project As** sav
 
 A project made from a template or a sample, from **Import from folder...**, or from a VB6 project has no file until it is saved. The title bar says `Unsaved.twinproj`. **Save Project** asks for a file name first, with the **Save As** dialog, and then saves. An import that saves the project asks for a file name in the same way.
 
-**Open Project Folder...** and **Open Build Output Folder...** of the **Project** menu show the notification **Project is not yet saved.  Please save the project first.** for such a project.
+**Open Project Folder...** and **Open Build Output Folder...** of the **Project** menu show the notification **Project is not yet saved.  Please save the project first.** for such a project. **Build** and **Clean** ask you to save first; see [A project with no file](../Building/Build-and-Clean#a-project-with-no-file).
 
 ## What the IDE remembers about a project
 
@@ -100,7 +100,7 @@ A project whose file is gone shows the box **Failed to load the project (error c
 
 ## Open a folder
 
-**Project → Open Project Folder...** opens the folder of the `.twinproj` file in Windows Explorer. **Project → Open Build Output Folder...** opens the folder of the file that the [Build Output Path](../Project-Settings#build-output-path) names. The command does not create the folder. With no build output path set, it gives the same notification as for a project with no file.
+**Project → Open Project Folder...** opens the folder of the `.twinproj` file in Windows Explorer. **Project → Open Build Output Folder...** opens the folder of the file that the [Build Output Path](../Project-Settings#build-output-path) names. The command does not create the folder. With no build output path set, it gives the same notification as for a project with no file. [Open Build Output Folder](../Building/Build-Output#open-build-output-folder) says when it still gives it after the project is saved.
 
 ## Export Project
 

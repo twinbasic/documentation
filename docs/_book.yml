@@ -297,6 +297,11 @@ parts:
         page: /tB/IDE/Debugging/
         landing_is_target: true
         outline_closed: true
+      - title: Building
+        landing_page: /tB/IDE/Building/
+        page: /tB/IDE/Building/
+        landing_is_target: true
+        outline_closed: true
       - title: Customising the IDE
         landing_page: /tB/IDE/Customising/
         page: /tB/IDE/Customising/
@@ -676,7 +681,6 @@ left_out:
       - /tB/IDE/Reference
       - /tB/IDE/Project/Webpage
       - /tB/IDE/Project/Splash
-      - /tB/IDE/Project/PackagePublishing
       - /tB/IDE/AddIns/GlobalSearch
       - /tB/IDE/Reference/Menu/File
       - /tB/IDE/Reference/Menu/Edit

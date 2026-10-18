@@ -87,7 +87,7 @@ These are warnings: the exit code does not change. A build with nothing to repor
 A link from inside the book to a left-out page opens that page on the website, since a site path goes nowhere in a PDF. The link check's pass over `book.html` lists each such link as `OUT OF BOOK`:
 
     _site-pdf/book.html:
-      OUT OF BOOK  https://docs.twinbasic.com/tB/IDE/Project/PackagePublishing -- not in the book; opens the website
+      OUT OF BOOK  https://docs.twinbasic.com/tB/IDE/Project/Splash -- not in the book; opens the website
 
 Look there first for a left-out page that belongs in the book after all.
 

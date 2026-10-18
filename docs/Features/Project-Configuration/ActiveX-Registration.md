@@ -18,4 +18,6 @@ Register ActiveX builds to `HKEY_LOCAL_MACHINE` or `HKEY_CURRENT_USER` option. W
 
 ## Build-Time Registration
 
-Registration at build time is optional. tB provides the Project: Register DLL after build option so you can disable automatic registration, if for example you wanted to move the file first.
+Registration at build time is optional. The *Register DLL after build* setting in [Project Settings](../../tB/IDE/Project-Settings#register-dll-after-build) lets you disable automatic registration, if for example you wanted to move the file first.
+
+[ActiveX registration](../../tB/IDE/Building/ActiveX-Registration) describes what the IDE shows when a build registers a DLL, the warning for a project that registers to `HKEY_LOCAL_MACHINE`, and what **Clean** removes.

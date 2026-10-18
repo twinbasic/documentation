@@ -39,7 +39,7 @@ The remaining options, from **LLVM: Target CPUs with AES** to **LLVM: Target CPU
 > [!IMPORTANT]
 > If you tick a CPU feature that the CPU running your program does not have, the program crashes or does not run at all.
 
-When LLVM is on, a progress dialog appears when you build or run your program showing the completion percentage of the build process. For large applications, and for applications with very large individual procedures, compiling with LLVM can take much longer than the standard compiler. A very large application can take several minutes or more to compile, depending on your hardware.
+When LLVM is on and the compiler reports its progress, the IDE shows a **Compiling...** box with the completion percentage; see [LLVM in the IDE](../tB/IDE/Building/LLVM-in-the-IDE#the-progress-box). For large applications, and for applications with very large individual procedures, compiling with LLVM can take much longer than the standard compiler. A very large application can take several minutes or more to compile, depending on your hardware.
 
 twinBASIC keeps a cache of compiled code, so later builds are usually much faster: code that has not changed is not compiled again. To clear the cache and compile everything on the next build, choose **Flush the LLVM compiler cache** on the [**Tools** menu](../tB/IDE/Reference/Menu/Tools).
 
