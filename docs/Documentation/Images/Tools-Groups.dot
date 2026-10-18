@@ -12,7 +12,7 @@
 // The clusters side by side in one row must have the same number of node rows.
 // dot spaces its ranks for the whole graph, so where a shorter cluster ends,
 // the gap its border needs opens inside its taller neighbour too. The
-// invisible nodes (cp1, cp2, dp) pad the shorter ones.
+// invisible node cp2 pads the shorter one.
 //
 // Every node and cluster label is a link, set in the block at the end so the
 // layout above stays readable: a node to its tool's entry, by the id its
@@ -134,17 +134,17 @@ digraph tools_groups {
         t21 [label="check_cli"]            t22 [label="check_pdf_shims_equiv"]
         t23 [label="check_impexp_parity"]  t24 [label="check_axe_patch_equiv"]
         t25 [label="indexer.test"]          t26 [label="check_package_tests"]
-        t27 [label="broker.test"]
+        t27 [label="broker.test"]           t28 [label="ide-js.test"]
         t1 -> t5 -> t9  -> t13 -> t17 -> t21 -> t25
         t2 -> t6 -> t10 -> t14 -> t18 -> t22 -> t26
         t3 -> t7 -> t11 -> t15 -> t19 -> t23 -> t27
-        t4 -> t8 -> t12 -> t16 -> t20 -> t24
+        t4 -> t8 -> t12 -> t16 -> t20 -> t24 -> t28
         { rank=same; t5  t6  t7  t8  }
         { rank=same; t9  t10 t11 t12 }
         { rank=same; t13 t14 t15 t16 }
         { rank=same; t17 t18 t19 t20 }
         { rank=same; t21 t22 t23 t24 }
-        { rank=same; t25 t26 t27 }
+        { rank=same; t25 t26 t27 t28 }
     }
 
     // ---- row 4 ----
@@ -175,8 +175,8 @@ digraph tools_groups {
         label="Defect Reproducers"
         d1 [label="bug_repro"]
         d2 [label="vb6run"]
-        dp [style=invis label=""]
-        d1 -> d2 -> dp
+        d3 [label="ide_js"]
+        d1 -> d2 -> d3
     }
 
     // ---- rows ----
@@ -187,7 +187,7 @@ digraph tools_groups {
     edge [weight=1]
     w10 -> s1    b7 -> c1
     s9 -> t1    s10 -> t2   cp2 -> t3   c6 -> t4
-    t25 -> e1   t22 -> i1   t24 -> d1
+    t25 -> e1   t22 -> i1   t28 -> d1
 
     // ---- links ----
     // Each link has a tooltip describing the tool or group, which a pointer shows on hover.
@@ -222,7 +222,7 @@ digraph tools_groups {
     }
     subgraph cluster_defects {
         URL="Tools-Defects"
-        tooltip="Covers the tools that build and verify reproducer projects for twinBASIC defects and that run VB6 code to compare it with twinBASIC."
+        tooltip="Covers the tools that build and verify reproducer projects for twinBASIC defects, that run VB6 code to compare it with twinBASIC, and that patch the JavaScript of the IDE to test a fix."
     }
 
     w1 [URL="#buildbat"
@@ -351,6 +351,8 @@ digraph tools_groups {
          tooltip="Verifies that every NOTE and WARNING of a contributed package's section names the test cases behind it, and that each package test project is in order."]
     t27 [URL="Tools-Toolchain-Tests#broker-test"
          tooltip="Tests tbbroker and its Node client: leases, held processes, waiting, ports, and desktops left with windows on them. Skipped unless a built broker is named."]
+    t28 [URL="Tools-Toolchain-Tests#ide-js-test"
+         tooltip="Runs unit tests for ide_js.mjs: the byte-exact round trip of a minified file, how a local's name carries to another build, and a fix patched in as the smallest edit."]
 
     e1 [URL="Tools-Samples#check-examples"
         tooltip="Compiles the code samples marked check_build and reports each diagnostic against the page line it came from. Samples marked check_run are also run."]
@@ -382,4 +384,6 @@ digraph tools_groups {
         tooltip="Builds, runs and verifies the reproducer projects for the entries of BUGS-TO-REPORT.md, one folder for each entry."]
     d2 [URL="Tools-Defects#vb6run"
         tooltip="Builds and runs VB6 code, to compare what a documented sample prints in twinBASIC with what it prints in VB6."]
+    d3 [URL="Tools-Defects#ide-js"
+        tooltip="Reads, names and patches the minified JavaScript of the twinBASIC IDE, to test a fix for an IDE defect on a patched copy of the install and write its fix shape."]
 }

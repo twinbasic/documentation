@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Tools-Defects
 # Defect Reproducers
 {: .no_toc }
 
-Builds and verifies the reproducer projects for twinBASIC defects, and runs VB6 code to compare what twinBASIC does with what VB6 does. The command-line conventions every tool shares are under [Command-line conventions](Tools#command-line-conventions).
+Builds and verifies the reproducer projects for twinBASIC defects, runs VB6 code to compare what twinBASIC does with what VB6 does, and reads and patches the IDE's own JavaScript to test a fix for an IDE defect. The command-line conventions every tool shares are under [Command-line conventions](Tools#command-line-conventions).
 
 * TOC goes here
 {:toc}
@@ -148,3 +148,50 @@ Every process the tool starts has a time limit and is ended by its pid when it r
 Other options: `--timeout S` is the time limit, in seconds, for each run of the built exe (default 30), and `--json` prints one JSON object in place of the text.
 
 Exit codes: **0** the sample ran, or, with `--docs`, no fence differs and none raised an error; **1** a VB6 compile error, a run-time error, a sample during which the exe ended (a VB6 exe that dies of an access violation can exit with code 0, so the exe ending before the time limit in the middle of a sample is what shows it; the fault the Application event log records is named when there is one, and so are a box the exe opened and what the VB runtime logged) or a sample that did not return, or, with `--docs`, at least one fence that differs or raised an error; **2** the harness could not run --- a refused command line, a file that is missing, a sample that is refused, no VB6, VB6 failing to build, or a crash.
+
+## ide_js.mjs
+{: #ide-js }
+
+    node scripts/ide_js.mjs survey [--ide <install>] [--json]
+    node scripts/ide_js.mjs units <other install> [--ide <install>] [--json]
+    node scripts/ide_js.mjs list <unit> [--ide <install>]
+    node scripts/ide_js.mjs name <unit> <key>=<name>... [--ide <install>] [--map <file>]
+    node scripts/ide_js.mjs seal | check [--ide <install>] [--map <file>] [--json]
+    node scripts/ide_js.mjs view <unit>... | --all --out <file> [--ide <install>] [--map <file>]
+    node scripts/ide_js.mjs patch <fix.js> --out <file> | --copy-to <dir> [--ide <install>] [--map <file>]
+    node scripts/ide_js.mjs shape <fix.js> [--ide <install>] [--map <file>]
+
+Reads, names and patches the twinBASIC IDE's own JavaScript, `ide/main.js` in the install, so that an IDE defect in `BUGS-TO-REPORT.md` can carry a *fix shape*: the function that is wrong, in a readable form, changed so that the defect goes, and tested on a patched copy of the install. The library is `scripts/ide-js/lib.mjs`.
+
+`main.js` is one line of about 1.3 MB. Its minifier removed the whitespace and renamed the local variables and parameters, mostly to one letter; it left every top-level function and class, every property and every global with its own name. So a top-level function (`debugOutputPartial`) or a method of a top-level class (`Class.method`, `Class.get name`, `Class.static name`) is a *unit* whose name is the same in every build, and the tool works unit by unit. The file is parsed with acorn, keeping its tokens and their places, and nothing is ever printed from the syntax tree back into `main.js`: an edit replaces a range of the original text, so every byte outside the edits is the install's byte. `survey` shows that the tokens, the comments and the whitespace between them make up every byte of the file.
+
+**The name map**, `scripts/ide-js/names.json`, gives names to the locals and parameters of units. The names are the documentation's own, given from what the code does, and never twinBASIC's: the tool works only from what an install ships. A local is keyed by its unit and by where it is declared --- the path of its scope inside the unit and its place in that scope's declarations (`0#1` is the unit's second parameter or variable, `0/2#0` the first binding of its third nested scope) --- never by its minified name, which changes from build to build. `name` adds names and records, beside each, what the local is in the build it was named on: its minified name, its kind and how often it is used, with the unit's *shape*, a hash of its syntax tree with every local replaced by its key. `check` says how each name applies to another build:
+
+| Verdict | Meaning |
+|---|---|
+| `exact` | The unit's shape is unchanged: the code is the same, and the name is certainly this local's. |
+| `carried` | The unit changed, but the key still finds a local of the same kind, used as often. The name is applied. |
+| `review` | The key finds a local of the same kind that is used more or less often: probably the same variable. The name is not applied until `seal` records it again. |
+| `lost` | The unit is gone, or the key finds no local, or one of another kind. The name is not applied; `list` shows what is there now. |
+
+`name` refuses a name that is not an identifier, one given to two locals of a unit, and one that would hide another name the unit uses: a global it refers to, or a local that keeps its minified name. After a new BETA, `check` it, look at each `review` and `lost` name with `list` and `view`, name again what needs it, and `seal` the map against the new build.
+
+| Command | Effect |
+|---|---|
+| `survey` | What the minifier left: the size, what is at the top level, the number of units, globals and locals, the lengths of the local names, whether there is a source map, and whether the token list rebuilds the file byte for byte. |
+| `units <other install>` | The units that are the same, changed, added and removed between `--ide`'s build and another, by shape. |
+| `list <unit>` | The unit's locals, each with its key, minified name, kind, the number of times it is used and a few characters around a use, to name. |
+| `name <unit> <key>=<name>...` | Gives names to locals of the unit, keeping its other names, and seals the unit against `--ide`'s build. |
+| `seal` | Seals every unit of the map against `--ide`'s build again, after its names have been checked there. |
+| `check` | Each name of the map with its verdict for `--ide`'s build, and a count of each. |
+| `view <unit>...` | The readable view: each unit with the map's names put in (only the `exact` and `carried` ones), pretty-printed by prettier, under a comment that names the build, where the unit is in `main.js`, its shape, the names applied and any not applied. `--all --out <file>` writes the whole file so, about 50,000 lines. |
+| `patch <fix.js>` | Splices a fix into `main.js`. `<fix.js>` holds whole units in the map's names, as the view prints them: top-level functions, and a class holding each method that is fixed. For each unit, the map's names are turned back into the build's minified names, the unit's tokens are compared with the fix's (a string by its value, so the view's quotes are no difference), and each run of tokens that differs becomes one edit of the minified text. The patched file is parsed again, and each patched unit must have the fix's shape, so the patched `main.js` runs the code the fix shows. Each edit is printed before and after, in the minified text. Every difference becomes an edit, so a fix patched into a later build whose unit changed takes that change back out: run `shape` on that build first. |
+| `shape <fix.js>` | The fix shape, as markdown for the defect's entry: for each unit of the fix, which names are the map's and what the build calls them, and a diff of the unit as the build has it against the fix, both in the map's names and printed alike. |
+
+**Only a copy of an install is ever patched.** `patch --copy-to <dir>` copies the install into a folder of its own under `<dir>`, which must be under the system temp folder, without its `projects\` and `addins\` folders, writes the patched `main.js` into the copy and prints the copy's `twinBASIC.exe`. Give that to the IDE tests, `ide-test.bat --ide <copy>\twinBASIC.exe --only <lane>`, to see the defect's test report that it no longer reproduces while the controls pass; delete the folder afterwards. `patch --out <file>` writes the patched `main.js` alone, and refuses a file inside the repository or inside an install that is not under the temp folder. `view --out` refuses the repository too: no copy of `main.js`, whole or viewed, belongs in it. A fix is kept as `bugs/<slug>/fix.js` beside the defect's reproducer.
+
+Options: `--ide <install>` is the install, as its `twinBASIC.exe`, its folder or a `main.js` (default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop); `--map <file>` the name map (default `scripts/ide-js/names.json`); `--json` prints one JSON object for `survey`, `units` and `check`. A command refuses an option that does not apply to it.
+
+It reads files and starts nothing, so it needs no IDE running and no private desktop. It is outside every gate and outside CI, since it needs an install; its tests are [`ide-js.test.mjs`](Tools-Toolchain-Tests#ide-js-test).
+
+Exit codes: **0** done, and for `check`, no name is lost; for `survey`, the token list rebuilds the file; **1** a finding: `check` found a lost name, `survey` a byte the token list does not account for, or, for `patch` and `shape`, the fix does not apply to the build (a unit it names is missing, a name in it is one of the build's minified names, or the patched unit is not the fix); **2** a refused command line, an install or a file that cannot be read, a `main.js` or a fix that does not parse, a name the map may not take, a refused `--out` or `--copy-to`, or a crash.

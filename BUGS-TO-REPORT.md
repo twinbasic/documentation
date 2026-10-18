@@ -79,6 +79,17 @@ asserts the correct result, covering what the old issue described (these pass) a
 left (these fail), or compile cases for a diagnostic, or a scripted check where no unit test
 reaches. Its reproducer is a `test` reproducer that holds that module (see below).
 
+**An IDE defect whose cause is in the IDE's own JavaScript carries a Fix shape** (owner,
+2026-10-18): a **Fix shape** section after **Additional context**, inside the issue body. It
+opens with the line `ide_js.mjs shape` prints, which names the function, the file and the
+build and says which local names are ours and what the build calls them; then the diff;
+then one paragraph on why the change fixes the defect; then one line on what the entry's test
+showed on a patched copy of the install. The diff is generated, never written by hand:
+`node scripts/ide_js.mjs shape bugs/<slug>/fix.js`, where `fix.js` is the fix, whole
+functions in our names, beside the reproducer ([WIP.md](WIP.md#driving-the-twinbasic-compiler),
+*Fixing the IDE itself*). The minified edits and their offsets stay out of the entry. The
+entry's HTML comment names the fix file.
+
 **An entry's paragraphs and list items are not wrapped**, one line each, unlike the rest of
 this file. A GitHub issue renders a single newline as a line break, so a wrapped paragraph
 pastes with a break in mid-sentence. Entries are separated by a `---` line.
@@ -5314,7 +5325,32 @@ The cause looks to be the one in #2444. The compiler sends each `DONE` line in t
 
 Severity: cosmetic. The paths are hard to read, and a path copied from the console is wrong.
 
-<!-- Reproducer: bugs/export-verbose-done-escaped/ (mode lane: asserted by `ide-test.bat --only "^export$"` (test/ide/export.test.mjs), the test "with Export Verbose, every DONE line shows &#92; for each backslash of the path, and the files are right", which passes on BETA 1010 and on BETA 1007; the controls "control: with Export Verbose, a second export's DELETED lines show the paths' backslashes" and "control: without Export Verbose, the first line and the COMPLETED line show the path's backslashes" pass too; the exports go into the lane's work folder through the IDE's own exportProjectTo(), which the menu command calls). No project and no zip. Its cause is twinbasic/twinbasic#2444's (bugs/filed/debug-print-escaped-twice/), so the owner may mark it *CAPTURED IN EXISTING #2444* instead of filing it. docs/IDE/Projects/Saving-and-Exporting.md, under Export Project (the paragraph on Export Verbose), carries a NOTE for it; when a fixed build is released, that NOTE goes. First seen on BETA 1005 while taking the documentation's screenshots (WIP.Screenshots.md, "Not taken: the export console"). -->
+**Fix shape**
+
+`debugOutputPartial` in `ide/main.js`, BETA 1010, in a readable form. The local names are ours, not twinBASIC's (`text`, `colorClass`, `isHTML`, `timeStamp`, `endsLine`, `addedHTML`, `lineHTML`, `stampHTML`); the build calls them `e`, `t`, `o`, `n`, `r`, `i`, `n`, `i`.
+
+```diff
+@@ -6,11 +6,11 @@
+   if (debugConsolePartialLineItem) {
+     let lineHTML = debugConsoleContent.onAsyncGetItemHTML(debugConsolePartialLineItem);
+     if (debugConsolePartialLineItem_LastColorClass === colorClass) {
+-      text = TEXTtoHTML(text);
++      text = isHTML ? text : TEXTtoHTML(text);
+     } else {
+       text = "</span><span class='" + colorClass + "'>" + (isHTML ? text : TEXTtoHTML(text));
+     }
+-    var addedHTML = isHTML ? text : TEXTtoHTML(text);
++    var addedHTML = text;
+     debugConsoleContent.updateItem(
+       debugConsolePartialLineItem,
+       lineHTML + addedHTML + (endsLine ? "</span>" : ""),
+```
+
+Both branches of the `if` already escape `text`, so the second `TEXTtoHTML` escapes it again (this bug and #2444); after a colour change it also escapes the `</span><span>` markup that the `else` branch added. The first changed line is a related case: HTML text that continues a line in the same colour is escaped, though it is HTML. Drop that line if `isHTML` never continues a line.
+
+Tested on a copy of BETA 1010 with this change (two edits in `main.js`, every other byte the same): the DONE lines read `DONE: \Settings` and `DONE: \Sources\Startup.twin`, the other `[EXPORT]` lines are unchanged, and #2444's reproducer no longer reproduces.
+
+<!-- Reproducer: bugs/export-verbose-done-escaped/ (mode lane: asserted by `ide-test.bat --only "^export$"` (test/ide/export.test.mjs), the test "with Export Verbose, every DONE line shows &#92; for each backslash of the path, and the files are right", which passes on BETA 1010 and on BETA 1007; the controls "control: with Export Verbose, a second export's DELETED lines show the paths' backslashes" and "control: without Export Verbose, the first line and the COMPLETED line show the path's backslashes" pass too; the exports go into the lane's work folder through the IDE's own exportProjectTo(), which the menu command calls). No project and no zip. Its cause is twinbasic/twinbasic#2444's (bugs/filed/debug-print-escaped-twice/), so the owner may mark it *CAPTURED IN EXISTING #2444* instead of filing it. docs/IDE/Projects/Saving-and-Exporting.md, under Export Project (the paragraph on Export Verbose), carries a NOTE for it; when a fixed build is released, that NOTE goes. First seen on BETA 1005 while taking the documentation's screenshots (WIP.Screenshots.md, "Not taken: the export console"). Fix: bugs/export-verbose-done-escaped/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/export-verbose-done-escaped/fix.js` on BETA 1010, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only "^export$"` tests it (the entry's test then reports that it no longer reproduces). -->
 
 ---
 
