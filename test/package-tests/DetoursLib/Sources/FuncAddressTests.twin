@@ -1,0 +1,46 @@
+' DetoursLib: CreateDetourAtFuncAddress, which detours the function at an address.
+[TestFixture]
+Module FuncAddressTests
+
+    [TestCase]
+    Public Sub CreateDetourAtFuncAddress_CallsGoToTheDetour()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtFuncAddress(Hooks.MulDivAddress(), AddressOf Hooks.DetourA)
+        Expect.AreEqual 0, Err.Number, "error from CreateDetourAtFuncAddress(<address of MulDiv>, AddressOf DetourA)"
+        Err.Clear
+        Expect.AreEqual -1, Hooks.MulDiv(Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1), detoured to DetourA"
+        Expect.AreEqual 8, Hooks.MulDiv(6, 4, 3), "MulDiv(6, 4, 3), which DetourA passes to the original"
+        Hooks.Unhook AddressOf Hooks.DetourA
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateDetourAtFuncAddress_ReturnsAnAddressThatCallsTheOriginal()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtFuncAddress(Hooks.MulDivAddress(), AddressOf Hooks.DetourA)
+        Expect.AreEqual 0, Err.Number, "error from CreateDetourAtFuncAddress"
+        Err.Clear
+        Expect.IsTrue Hooks.RealMulDiv <> Hooks.MulDivAddress(), "the address returned is not the address passed"
+        Expect.AreEqual Hooks.Marked, Hooks.CallAt(Hooks.RealMulDiv, Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1) called through the address returned"
+        Hooks.Unhook AddressOf Hooks.DetourA
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateDetourAtFuncAddress_ZeroAddress_RaisesError5()
+        Expect.Begin
+        Hooks.Reset
+        On Error Resume Next
+        Hooks.RealMulDiv = DetoursLib.CreateDetourAtFuncAddress(0, AddressOf Hooks.DetourA)
+        Expect.AreEqual 5, Err.Number, "error from CreateDetourAtFuncAddress with procAddress 0"
+        Expect.AreEqual "CreateDetourAtFuncAddress origAddress: bad function address", Err.Description, "its description"
+        Err.Clear
+        Hooks.Unhook AddressOf Hooks.DetourA
+        Expect.Done
+    End Sub
+
+End Module

@@ -64,7 +64,7 @@ The last seventeen items show a panel. A panel that is in no layout in use comes
 : The search panel. See [Finding](../../Code/Finding).
 
 **PACKAGE PUBLISHING**
-: The details of a project built as a package. See [Package Publishing](../../Project/PackagePublishing).
+: The details of a project built as a package, and the button that publishes it. See [Package Publishing](../../Building/Package-Publishing).
 
 **TOOLBAR**
 : The row of buttons under the menu. See [Toolbar](../Toolbar).

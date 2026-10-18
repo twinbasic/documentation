@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:building",
+  "tests": ["OK in the box of a publish that fails with an HTTPS code raises a page TypeError"],
+  "steps": "1. Open a package project.\n2. Publish it, with the server answering an HTTPS status other than 200, 551, 552 and 553 (the test calls the IDE's own packagePublisherPublishNow with its server call replaced in the page by one that fails with 500; nothing reaches the server).\n3. The box reads [PUBLISH] FAILED. Server returned HTTPS code 500. Choose OK.\n4. The box closes, and the page raises Uncaught TypeError: t is not a function.\nControl: OK in the box of a publish refused with 551 (version already uploaded) raises no error."
+}

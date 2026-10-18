@@ -23,9 +23,7 @@ Click **PREVIEW** in the toolbar, titled *Launch the form in isolation to test i
 - Preview works for a form and for a report. For a user control or a property page, the button is greyed out and <kbd>F6</kbd> does nothing.
 - <kbd>F6</kbd> in the form's code also previews the form.
 
-![The previewed form as a window of its own, titled frmMain, with its File menu in the menu bar and the controls laid out as in the designer.](Images/Preview_Window.png){:width="381" height="320"}
-
-<!-- SHOT forms-preview-window: the same window with the File menu made in the menu editor open -->
+![The previewed form as a window of its own, titled frmMain, with its File menu open over the top left corner and the other controls laid out as in the designer.](Images/Preview_Window.png){:width="381" height="320"}
 
 
 A preview is a debug session. `Form_Load` runs, a breakpoint in it stops the run, a click on a button runs its `Click` handler, and closing the window runs `Form_Unload` and `Form_Terminate` and writes `[DEBUGGER] done.` to the **DEBUG CONSOLE**. [Run Or Preview](../Debugging/Running#run-or-preview) describes what <kbd>F6</kbd> does in each place, and [Breakpoints and stepping](../Debugging/Breakpoints-and-Stepping) what you can do while it is stopped.

@@ -505,17 +505,26 @@ export async function launchOnDesktop({ exe, desktop, tag, job = true, ...rest }
   return run;
 }
 
-async function startOnDesktop({ exe, arg = "", args, desktop, job, env, cwd, stdout, stderr, dialogs }) {
-  const script = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
-  // -EncodedCommand is UTF-16 in base64, 2.7 characters to each of the script's,
-  // and a command line stops at 32,767: the script outgrew that at about 12,000
-  // characters (ENAMETOOLONG). So the script travels in an environment variable,
-  // which stops at 32,767 characters of its own, and the command is a bootstrap
-  // that takes it out of the environment, so that the program it launches does
-  // not inherit it, and runs it.
+// tb-launch.ps1 as PowerShell is given it. -EncodedCommand is UTF-16 in base64, 2.7 characters
+// to each of the script's, and a command line stops at 32,767: the script outgrew that at about
+// 12,000 characters (ENAMETOOLONG). So the script travels in an environment variable, which
+// stops at 32,767 characters of its own, and the command is a bootstrap that takes it out of
+// the environment, so that the program it launches does not inherit it, and runs it. Each line
+// that is only a comment is emptied, which keeps an error's line number: the comments are a
+// quarter of the file, and no line of its C# starts with `#`.
+function launchScript() {
+  const script = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8").replace(
+    /^[ \t]*#.*$/gm,
+    "",
+  );
   if (script.length > 30000) {
     throw new Error(`tb-launch.ps1 is ${script.length} characters, and an environment variable stops at 32,767`);
   }
+  return script;
+}
+
+async function startOnDesktop({ exe, arg = "", args, desktop, job, env, cwd, stdout, stderr, dialogs }) {
+  const script = launchScript();
   const ps = spawn(
     "powershell",
     ["-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(BOOTSTRAP, "utf16le").toString("base64")],
@@ -577,7 +586,7 @@ async function startOnDesktop({ exe, arg = "", args, desktop, job, env, cwd, std
 // Runs tb-launch.ps1 in its window mode (TBBUILD_WINDOWS) on a private desktop and returns
 // the one line of JSON it prints; throws with its error.
 function onDesktopWindows(desktop, vars) {
-  const script = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
+  const script = launchScript();
   return new Promise((resolve, reject) => {
     const ps = spawn(
       "powershell",
@@ -658,6 +667,29 @@ export function captureWindow(desktop, hwnd, file, { flags = 2 } = {}) {
     TBBUILD_HWND: String(hwnd),
     TBBUILD_FLAGS: String(flags),
     TBBUILD_FILE: path.resolve(file),
+  });
+}
+
+/**
+ * Posts a message to a window on a private desktop (PostMessage). A key pressed on a desktop
+ * that is not on screen reaches no window, so this is how a window's own menu is opened there:
+ * WM_SYSCOMMAND (0x112) with SC_KEYMENU (0xF100) and a letter as lParam, as Alt and the letter
+ * do. The menu is then a top-level window of class #32768 on the desktop.
+ *
+ * @param {string} desktop
+ * @param {number} hwnd   from desktopWindows
+ * @param {number} msg
+ * @param {number} [wParam]
+ * @param {number} [lParam]
+ * @returns {Promise<{posted: true}>}
+ */
+export function postWindowMessage(desktop, hwnd, msg, wParam = 0, lParam = 0) {
+  return onDesktopWindows(desktop, {
+    TBBUILD_WINDOWS: "post",
+    TBBUILD_HWND: String(hwnd),
+    TBBUILD_MSG: String(msg),
+    TBBUILD_WPARAM: String(wParam),
+    TBBUILD_LPARAM: String(lParam),
   });
 }
 

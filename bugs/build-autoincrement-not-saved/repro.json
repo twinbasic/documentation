@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:building",
+  "tests": [
+    "Auto-Increment raises the version in the IDE only: the project is not marked changed, its file keeps the old number, and Close Project asks nothing"
+  ],
+  "steps": "1. Open a saved Standard EXE project whose Project Settings has (VERSION) Auto-Increment set to Revision, at version 1.0.7.3.\n2. Press Build. The console prints [BUILD] Auto-incremented next build number to: 1.0.7.4.\n3. Press Build again: ... to: 1.0.7.5. The Settings the IDE holds say 1.0.7.5; the project is not marked changed.\n4. File > Close Project: nothing is asked. The project file still says 1.0.7.3, and the next session builds 1.0.7.3 again."
+}

@@ -1,0 +1,20 @@
+{
+  "mode": "test",
+  "arch": "win32",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^FAIL RegressionTests.Double_ConstantProductAfterLongOverflow_Accepted: ",
+      "^FAIL RegressionTests.LongLong_TwoToThe63MinusKAfterLongOverflow_Accepted: ",
+      "^FAIL RegressionTests.LongLong_TwoToThe63MinusKAfterCLngLng1E19_Accepted: ",
+      "^FAIL RegressionTests.Function_ReturnsTwoToThe63MinusK_CallerHasLongOverflow_Accepted: ",
+      "^FAIL RegressionTests.Function_ReturnsTwoToThe63MinusK_CallerHasNoOverflow_Accepted: ",
+      "^PASS RegressionTests.Double_ConstantProduct_Alone_Accepted$",
+      "^PASS RegressionTests.LongLong_TwoToThe63MinusK_Alone_Accepted$",
+      "^PASS RegressionTests.Double_SinglePowerAfterLongOverflow_Accepted$",
+      "^PASS RegressionTests.Double_VariableProductAfterLongOverflow_Accepted$",
+      "^PASS RegressionTests.Double_ConstantProductAfterByteOverflow_Accepted$",
+      "^PASS RegressionTests.Double_ConstantProductAfterRuntimeLongOverflow_Accepted$"
+    ]
+  }
+}

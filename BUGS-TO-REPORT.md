@@ -79,6 +79,17 @@ asserts the correct result, covering what the old issue described (these pass) a
 left (these fail), or compile cases for a diagnostic, or a scripted check where no unit test
 reaches. Its reproducer is a `test` reproducer that holds that module (see below).
 
+**An IDE defect whose cause is in the IDE's own JavaScript carries a Fix shape** (owner,
+2026-10-18): a **Fix shape** section after **Additional context**, inside the issue body. It
+opens with the line `ide_js.mjs shape` prints, which names the function, the file and the
+build and says which local names are ours and what the build calls them; then the diff;
+then one paragraph on why the change fixes the defect; then one line on what the entry's test
+showed on a patched copy of the install. The diff is generated, never written by hand:
+`node scripts/ide_js.mjs shape bugs/<slug>/fix.js`, where `fix.js` is the fix, whole
+functions in our names, beside the reproducer ([WIP.md](WIP.md#driving-the-twinbasic-compiler),
+*Fixing the IDE itself*). The minified edits and their offsets stay out of the entry. The
+entry's HTML comment names the fix file.
+
 **An entry's paragraphs and list items are not wrapped**, one line each, unlike the rest of
 this file. A GitHub issue renders a single newline as a line break, so a wrapped paragraph
 pastes with a break in mid-sentence. Entries are separated by a `---` line.
@@ -5286,3 +5297,989 @@ The reference is not one of the compiler's installed packages, and its own name 
 Severity: low. A type library is labelled as a package.
 
 <!-- Reproducer: bugs/imported-typelib-linked-package/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "a type library imported on Available COM References is listed in Enabled Libraries as [LINKED-PACKAGE]", which passes on BETA 1010; the file dialog is answered in the page, and the dialog is closed with Cancel). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under Import from file (its third NOTE), carries a NOTE for it; when a fixed build is released, that NOTE changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D33). -->
+
+---
+
+## With Export Verbose, each DONE line of Export Project shows &#92; for every backslash
+
+**Describe the bug**
+With *Export Verbose* on (Project Settings, Export), Export Project prints a `DONE:` line in the DEBUG CONSOLE for each file it writes. Every backslash in those paths shows as the text `&#92;`. The files are written correctly. It was observed in an IDE started with an `APPDATA` of its own, reading the console's lines and the rows it draws, and the folder written.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project, and set *Export Verbose* to YES in Project Settings, Export.
+2. Export Project into an empty folder.
+3. The DEBUG CONSOLE shows `[EXPORT]  DONE: &#92;Settings`, `[EXPORT]  DONE: &#92;Sources&#92;Startup.twin`, and so on for each file.
+
+**Expected behavior**
+`[EXPORT]  DONE: \Settings`, `[EXPORT]  DONE: \Sources\Startup.twin`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007, with the same lines. The other `[EXPORT]` lines are right: the first line, `exporting current project to "\\?\C:\...\"...`, the `COMPLETED (... folders, ... files)` line, and, when the export folder already holds files, each `DELETED: \\?\C:\...` line. The files written and their contents are right.
+
+The cause looks to be the one in #2444. The compiler sends each `DONE` line in three parts: `[EXPORT]  DONE: `, then the path, then the line break. `debugOutputPartial` in `ide/main.js` adds the path to a line that is still open, and passes it through `TEXTtoHTML` twice, so `\` is stored as `&amp;#92;` and drawn as `&#92;`. A `DELETED` line comes in one part and is escaped once.
+
+Severity: cosmetic. The paths are hard to read, and a path copied from the console is wrong.
+
+**Fix shape**
+
+`debugOutputPartial` in `ide/main.js`, BETA 1010, in a readable form. The local names are ours, not twinBASIC's (`text`, `colorClass`, `isHTML`, `timeStamp`, `endsLine`, `addedHTML`, `lineHTML`, `stampHTML`); the build calls them `e`, `t`, `o`, `n`, `r`, `i`, `n`, `i`.
+
+```diff
+@@ -6,11 +6,11 @@
+   if (debugConsolePartialLineItem) {
+     let lineHTML = debugConsoleContent.onAsyncGetItemHTML(debugConsolePartialLineItem);
+     if (debugConsolePartialLineItem_LastColorClass === colorClass) {
+-      text = TEXTtoHTML(text);
++      text = isHTML ? text : TEXTtoHTML(text);
+     } else {
+       text = "</span><span class='" + colorClass + "'>" + (isHTML ? text : TEXTtoHTML(text));
+     }
+-    var addedHTML = isHTML ? text : TEXTtoHTML(text);
++    var addedHTML = text;
+     debugConsoleContent.updateItem(
+       debugConsolePartialLineItem,
+       lineHTML + addedHTML + (endsLine ? "</span>" : ""),
+```
+
+Both branches of the `if` already escape `text`, so the second `TEXTtoHTML` escapes it again (this bug and #2444); after a colour change it also escapes the `</span><span>` markup that the `else` branch added. The first changed line is a related case: HTML text that continues a line in the same colour is escaped, though it is HTML. Drop that line if `isHTML` never continues a line.
+
+Tested on a copy of BETA 1010 with this change (two edits in `main.js`, every other byte the same): the DONE lines read `DONE: \Settings` and `DONE: \Sources\Startup.twin`, the other `[EXPORT]` lines are unchanged, and #2444's reproducer no longer reproduces.
+
+<!-- Reproducer: bugs/export-verbose-done-escaped/ (mode lane: asserted by `ide-test.bat --only "^export$"` (test/ide/export.test.mjs), the test "with Export Verbose, every DONE line shows &#92; for each backslash of the path, and the files are right", which passes on BETA 1010 and on BETA 1007; the controls "control: with Export Verbose, a second export's DELETED lines show the paths' backslashes" and "control: without Export Verbose, the first line and the COMPLETED line show the path's backslashes" pass too; the exports go into the lane's work folder through the IDE's own exportProjectTo(), which the menu command calls). No project and no zip. Its cause is twinbasic/twinbasic#2444's (bugs/filed/debug-print-escaped-twice/), so the owner may mark it *CAPTURED IN EXISTING #2444* instead of filing it. docs/IDE/Projects/Saving-and-Exporting.md, under Export Project (the paragraph on Export Verbose), carries a NOTE for it; when a fixed build is released, that NOTE goes. First seen on BETA 1005 while taking the documentation's screenshots (WIP.Screenshots.md, "Not taken: the export console"). Fix: bugs/export-verbose-done-escaped/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/export-verbose-done-escaped/fix.js` on BETA 1010, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only "^export$"` tests it (the entry's test then reports that it no longer reproduces). -->
+
+---
+
+## Auto-Increment raises the version in memory only, and the increments are lost
+
+**Describe the bug**
+With *(VERSION) Auto-Increment* set in Project Settings, each successful build prints `[BUILD] Auto-incremented next build number to: ...` and raises the version in the Settings the IDE holds. The project is not marked changed and its file is not written, so Close Project asks nothing, and the increments are lost: the next session builds, and publishes, version numbers already used. It was observed in an IDE started with an `APPDATA` of its own, reading the console, the Settings the IDE holds, its changed state, and the project file.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved Standard EXE project at version 1.0.7.3, with *(VERSION) Auto-Increment* set to `Revision`.
+2. Press Build. The console prints `[BUILD] Auto-incremented next build number to: 1.0.7.4`.
+3. Press Build again: `... to: 1.0.7.5`. The Settings the IDE holds say 1.0.7.5, and the project is not marked changed.
+4. File > Close Project. Nothing is asked. The project file still says 1.0.7.3.
+
+**Expected behavior**
+The project marked changed after an increment, so that Close Project asks to save it, or the new number written to the project file.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. The same for a package, and for the `Build` part. The version the Package Publishing pane shows stays at the old number too, and no `[COMPILER] Project settings updated` line is printed.
+
+Severity: high. The increments are lost without a word, and two builds, or two published packages, can carry the same version.
+
+<!-- Reproducer: bugs/build-autoincrement-not-saved/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "Auto-Increment raises the version in the IDE only: the project is not marked changed, its file keeps the old number, and Close Project asks nothing", which passes on BETA 1010 and on BETA 1007; the fixture is test/ide/probes/building-exe, and every build writes into the lane's work folder). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Build-Output.md, where it describes the version a build carries; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B15). -->
+
+---
+
+## ${ProjectID} in the build path becomes an empty string
+
+**Describe the bug**
+In Project Settings, *Build Output Path* accepts `${ProjectID}`, but a build replaces it with an empty string, with no message. Two projects whose paths differ only by it write the same file. It was observed in an IDE started with an `APPDATA` of its own, reading the console and the folder written.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved Standard EXE project named `BuildProbeExe`, which has a Project ID.
+2. Set *Build Output Path* to `${SourcePath}\Build\${ProjectID}_${ProjectName}.${FileExtension}`.
+3. Press Build. The console prints `[LINKER] SUCCESS created output file '<folder>\Build\_BuildProbeExe.exe'`.
+
+**Expected behavior**
+The project's ID in the file name, or the build path refused as for an unknown variable (`[COMPILER] build path contains unrecognized variable.`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. In the same path `${SourcePath}`, `${ProjectName}` and `${FileExtension}` are expanded, and so are `${VersionMajor}` to `${VersionRevision}` and `${Bitness}`.
+
+Severity: medium. The file name is wrong without a word, and projects sharing the pattern overwrite each other's output.
+
+<!-- Reproducer: bugs/build-path-projectid-empty/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "${ProjectID} in Build Output Path becomes an empty string", which passes on BETA 1010 and on BETA 1007; the control "control: ${SourcePath}, ${ProjectName} and ${FileExtension} in the same Build Output Path are expanded" passes too; the build writes into the lane's work folder). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Build-Output.md, under the build path's variables; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B14). -->
+
+---
+
+## Save in the build's "You must first save the project" box writes no project file
+
+**Describe the bug**
+Build, or Clean, on a project that was never saved shows *You must first save the project. Save now?*. **Save** shows the Save As dialog and takes the path chosen, but writes no `.twinproj`, and builds nothing. Nothing says so. The project stays marked changed. It was observed in an IDE started with an `APPDATA` of its own, answering the Save As dialog in the page and reading the folder chosen, the console and the IDE's state.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE with no project, choose *Standard EXE*, **Open**, then **Continue**.
+2. Press Build. The box reads *You must first save the project. Save now?* (**Save** / **Cancel**). Choose **Save**, and pick `MyNewProject.twinproj` in an empty folder.
+3. No file is written, and the console prints nothing.
+4. File > Close Project asks *You've made changes to this project. Save now?*
+
+**Expected behavior**
+The project saved to the file chosen.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. Ctrl+S then writes the file, to the path chosen in step 2 (`[PROJECT] twinBASIC project saving to disk [DONE]`). A second Build, without Ctrl+S, builds into a `Build` folder beside the path chosen, and still writes no project file. That **Save** does not go on to build is a separate matter.
+
+Severity: low. Nothing is lost while the IDE runs, but the box reads as if it saved.
+
+<!-- Reproducer: bugs/build-save-box-writes-nothing/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "Save in the build's 'You must first save the project' box takes the path but writes no project file and builds nothing, and Close Project then asks to save", which passes on BETA 1010 and on BETA 1007; the control "control: Ctrl+S then writes the project file" passes too; the Save As dialog is answered in the page with a file in the lane's work folder). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Build-and-Clean.md, where it describes a project that was never saved; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B11). -->
+
+---
+
+## Delete It And Continue in Clean's box builds a new DLL instead of deleting the old one
+
+**Describe the bug**
+When the previous DLL of an ActiveX project cannot be deregistered, Clean shows the box Build shows, *Build failed: unable to unregister the previous DLL. Continue anyway?*, and its **Delete It And Continue** builds a new DLL rather than deleting the old one. It was observed with *Register DLLs to HKLM*, in an IDE started with an `APPDATA` of its own and not elevated, reading the console and the build folder.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In an IDE that is not elevated, open an ActiveX DLL project with *Register DLLs to HKLM* set to YES (answer **Continue Anyway** to the warning).
+2. Press Build. The DLL is written, and `[REGISTER] type-library registration FAILED.   DllRegisterServer() returned -2147220992` is printed.
+3. Press Clean. The console prints `[UNREGISTER] type-library deregistration FAILED.   DllUnregisterServer() returned -2147220991` and `[BUILD] failed`, and the box above shows. Choose **Delete It And Continue**.
+4. The console prints `[BUILD] Starting...` and `[LINKER] SUCCESS created output file '...\BuildProbeAx_win32.dll'`. The DLL is written again, and no `[BUILD-CLEAN]` line is printed.
+
+**Expected behavior**
+At Clean, the DLL deleted, as the button says.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. At Build, the same box's **Delete It And Continue** builds the DLL again, which is what it is there for. Clean of an ActiveX DLL registered in HKCU deregisters and deletes it.
+
+Severity: low. The DLL is replaced, not removed; nothing is lost.
+
+<!-- Reproducer: bugs/clean-hklm-delete-builds/ (mode lane: asserted by `ide-test.bat --only "^building-hklm$"` (test/ide/building-hklm.test.mjs), the test "Clean shows the same box, and its Delete It And Continue builds a new DLL instead of deleting the old one", which passes on BETA 1010 and on BETA 1007; the controls "control: at Build, Delete It And Continue in the box of a failed deregistration builds the DLL again" and "control: an ActiveX DLL registered in HKCU opens with no box, and Clean after its build deletes it and its registration" pass too; the IDE is not elevated, so nothing is written to HKLM, and the lane checks that no key of the fixture's is left in HKCU or HKLM). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (ActiveX-Registration.md, under Register DLLs to HKLM; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B12). -->
+
+---
+
+## The HKLM warning shows twice as a project opens, and for a Standard EXE too
+
+**Describe the bug**
+In an IDE that is not elevated, a project with *Register DLLs to HKLM* set to YES shows the warning *This project registers itself to the HKEY_LOCAL_MACHINE registry hive which requires ADMIN permissions ...* twice as it opens, and its load waits for each **Continue Anyway**. A Standard EXE with the setting shows it too, though it registers nothing. It was observed in an IDE started with an `APPDATA` of its own, counting the boxes as they showed.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In an IDE that is not elevated, open an ActiveX DLL project with *Register DLLs to HKLM* set to YES.
+2. The warning shows; choose **Continue Anyway**. The same warning shows again; choose **Continue Anyway** again.
+3. Open a Standard EXE project with the same setting set to YES. The warning shows, twice.
+
+**Expected behavior**
+The warning once per open, and only for an ActiveX DLL or ActiveX Control.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007, twice. An ActiveX DLL registered in HKCU opens with no box.
+
+Severity: cosmetic. An extra box, and a warning that does not apply.
+
+<!-- Reproducer: bugs/hklm-warning-twice/ (mode lane: asserted by `ide-test.bat --only "^building-hklm$"` (test/ide/building-hklm.test.mjs), the tests "an ActiveX DLL with Register DLLs to HKLM shows the HKLM warning twice as it opens" and "a Standard EXE with Register DLLs to HKLM shows the HKLM warning too, twice as it opens", which pass on BETA 1010 and on BETA 1007; the control "control: an ActiveX DLL registered in HKCU opens with no box, and Clean after its build deletes it and its registration" passes too). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (ActiveX-Registration.md, under Register DLLs to HKLM; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B13). -->
+
+---
+
+## A box opened during an LLVM build is closed in place of the Compiling... box, which stays and blocks the IDE
+
+**Describe the bug**
+An LLVM build shows a modal *Compiling...* box. At the build's end the IDE closes the box on top, whichever it is. When another box has opened over *Compiling...*, that box is closed instead, and a *Compiling...* box stays at 0.0% with no button: the IDE takes no input until its page is reloaded. It was observed in an IDE started with an `APPDATA` of its own, with the other box opened from the page at the build's first progress event, since a person cannot open one while *Compiling...* covers the IDE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a Standard EXE project with `+llvm` in Compiler Options (BUILD), with a licence that allows LLVM.
+2. Press Build. The *Compiling...* box shows.
+3. While it shows, open another box (in the IDE page: `showModalNotification("A second box")`).
+4. The build ends (`[LINKER] SUCCESS created output file ...`). The other box is gone, and *Compiling... 0.0%* stays, with no button.
+
+**Expected behavior**
+The *Compiling...* box closed at the build's end, and the other box left open.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. `event_setBuildProgress` in `ide/main.js` calls `hideModalDialog()` for the end of the build (-1), which closes the top-most modal box, not the progress box; a second progress event of 0 while the other box is on top also stacks a second *Compiling...* box. It is not known whether the compiler itself opens a box during an LLVM build (as the box of a failed deregistration). An LLVM build with no other box closes its *Compiling...* box.
+
+Severity: low. Only a box opened during the build reaches it, and the IDE must be reloaded.
+
+<!-- Reproducer: bugs/llvm-build-box-closes-other/ (mode lane: asserted by `ide-test.bat --only "^building-llvm-box$"` (test/ide/building-llvm-box.test.mjs), the test "a box opened during an LLVM build is closed at its end in place of the Compiling... box, which stays with no button and blocks the IDE", which passes on BETA 1010 and on BETA 1007; the control "control: an LLVM build shows the Compiling... box and closes it at its end" passes too; the lane holds a lease on the LLVM cache server, and needs a licence that allows LLVM). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (LLVM-in-the-IDE.md, where it describes the Compiling... box; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B7). -->
+
+---
+
+## A remembered Package Publisher password containing ~ is read back wrong
+
+**Describe the bug**
+In the Package Publishing sign-in box, *Remember password on this device* stores the password in the IDE's settings with `ObfuscateString`, and the IDE reads it back at its next start with `UnobfuscateString`. Each `~` in the password comes back as a NUL character, so the pre-filled password is wrong and the sign-in fails. It was observed in an IDE started with an `APPDATA` of its own, with the IDE's own two functions saving into the page rather than the registry, and nothing sent to the server.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In the sign-in box (Package Publishing, SIGN IN), log in with a password containing `~`, such as `pa~ss~word`, with *Remember password on this device* ticked.
+2. Restart the IDE, and open SIGN IN again.
+3. The password box holds `pa?ss?word`, each `?` a replacement character (U+FFFD), not `pa~ss~word`.
+
+**Expected behavior**
+The password read back as it was typed.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. `ObfuscateString(e, t, o = 126)` in `ide/main.js` shifts each character code up to and including 126 by `t` (111) modulo 126, and `UnobfuscateString` shifts back by `126 - 111`. For `~` (126) the stored code is 111 and the result is 0. A password without `~` comes back as it was typed.
+
+Severity: low. Signing in fails until the password is typed again; nothing is lost.
+
+<!-- Reproducer: bugs/publisher-password-tilde/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "a remembered publisher password containing ~ is read back with NUL in place of each ~", which passes on BETA 1010 and on BETA 1007; the control "control: a remembered publisher password without ~ is read back as it was" passes too; the test saves with the IDE's own savePublisherInfo into a record in the page and reads back with its own loadPublisherInfo, with test values only, puts the IDE's own publisher settings back in the page, and fails on any request to the package server). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Package-Publishing.md, under the sign-in box; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B1). -->
+
+---
+
+## A saved publisher name containing ' is cut short in the sign-in box
+
+**Describe the bug**
+The Package Publishing sign-in box fills its LOGIN user name from the saved publisher name by writing it into the box's HTML as `value='<name>'`, with no escaping. A name containing `'` ends the attribute early: the box shows the name up to the apostrophe, and the rest becomes a stray attribute of the input element. The saved password is written the same way. It was observed in an IDE started with an `APPDATA` of its own, with the name set in the page, and nothing sent to the server.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Have the IDE save the publisher name `O'Brien` (log in or register with it).
+2. Open Package Publishing, SIGN IN.
+3. The LOGIN user name box holds `O`, and its input element has an attribute named `brien'`.
+
+**Expected behavior**
+The box holding `O'Brien`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. `showSignInForm` in `ide/main.js` builds the form from a template string with `value='${packagePublisherName}'`, which becomes `innerHTML`. A name with no apostrophe is shown whole.
+
+Severity: low. The name has to be typed again.
+
+<!-- Reproducer: bugs/publisher-name-apostrophe/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "a saved publisher name containing ' is cut at the apostrophe in the sign-in box", which passes on BETA 1010 and on BETA 1007; the control "control: a saved publisher name with no apostrophe is shown whole in the sign-in box" passes too; test values only, set in the page; the box is closed with Cancel, and the test fails on any request to the package server). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Package-Publishing.md, under the sign-in box; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B4). -->
+
+---
+
+## OK in the box of a failed publish raises a page TypeError
+
+**Describe the bug**
+When the package server answers a publish with an HTTPS status it has no message for, the IDE shows *[PUBLISH] FAILED. Server returned HTTPS code <n>*. Its **OK** closes the box, and the page then raises `Uncaught TypeError: t is not a function`. It was observed in an IDE started with an `APPDATA` of its own, with the server call replaced in the page by one that fails with 500, so that nothing reached the server.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a package project, sign in, and PUBLISH THIS PACKAGE, at a time when the server answers with an error status (500, say).
+2. The box reads *[PUBLISH] FAILED. Server returned HTTPS code 500*. Choose **OK**.
+3. The box closes, and the page raises the error above.
+
+**Expected behavior**
+The box closed with no error.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Also on BETA 1007. `packagePublisherPublishNow` in `ide/main.js` calls `showModalNotification("[PUBLISH] FAILED.  Server returned HTTPS code " + e, true)`, passing `true` where `showModalNotification` takes a function to call after OK. The other `[PUBLISH] FAILED` boxes pass none, and their OK raises no error (checked with 551, *Package already uploaded with this exact version number.*).
+
+Severity: cosmetic. An error in the page after the box has closed.
+
+<!-- Reproducer: bugs/publish-failure-ok-typeerror/ (mode lane: asserted by `ide-test.bat --only "^building$"` (test/ide/building.test.mjs), the test "OK in the box of a publish that fails with an HTTPS code raises a page TypeError", which passes on BETA 1010 and on BETA 1007; the control "control: OK in the box of a publish refused as a version already uploaded raises no error" passes too; the test calls the IDE's own packagePublisherPublishNow with serverHttpsGetUtf8 replaced in the page, never presses Continue, and fails on any request to the package server). No project and no zip. A page of the Building chapter, docs/IDE/Building/ (Package-Publishing.md, under PUBLISH THIS PACKAGE; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-18 in the trials for the Building pages (their fact sheet's B2). -->
+
+
+---
+
+## `Dim x As Any` compiles, though `As Any` is only for the parameter of a `Declare`
+
+**Describe the bug**
+`As Any` stands for "an argument of any type" and means something only as a parameter of a `Declare` statement. twinBASIC refuses it in most other places with TB5079, *Unrecognized datatype symbol 'Any'*: as a Sub's or Function's parameter, as a Function's return type, as a field of a `Type`, in `Dim a(1) As Any` and in `ReDim b(1) As Any`. It accepts it, with no diagnostic, on a single variable: `Dim x As Any` and `Static s As Any` in a procedure, `Private m As Any` at module level and `Public Item As Any` as a field of a class. The variable cannot be used: `x = 5` is TB5028, and reading it fails when the program runs or is built. It was observed in the IDE's diagnostics and in runs.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `dim-as-any.twinproj` (attached as `dim-as-any.zip`). Its module `AsAnyTests`, below, has one declaration with `As Any` on each line that ends in a `' CASE <Name>: <expected>` comment: the diagnostic code the line must get, `error` for any error, or `none`.
+2. Compile it. These get TB5079: a `Type` field, a Function's return type, a Sub's `ByRef` and `ByVal` parameters, `Dim a(1) As Any` and `ReDim b(1) As Any`. The `Declare` with `ByRef Destination As Any` and the control `Dim c As Long` get none, as they should. These four also get none, and are the defect:
+   ```
+   Public Item As Any            ' a field of a class
+   Private ModuleLevel As Any    ' at module level
+   Dim x As Any                  ' in a procedure
+   Static s As Any               ' in a procedure
+   ```
+3. To see what such a variable is, run `Dim x As Any: Debug.Print TypeName(x)` in a project of its own. In a built exe it raises error 458, *Variable uses an Automation type not supported in Visual Basic*, and an IDE run of it ends with no output. `x = 5` (or `x = "text"`) is TB5028, *Unable to convert type 'Integer' to type 'Any'*. `Dim v As Variant: v = x` compiles clean and the build then fails with `compilation (codegen) error detected in 'Startup.Mainrootmain'`. A bare `Dim x As Any` with no other use compiles, builds and runs, and `VarPtr(x)` is not 0.
+```vb
+' Regression tests for the report, as compile cases: each line that ends in a
+' comment  ' CASE <Name>: <expected>  must give that diagnostic on that line (a
+' code, "error" for any error, or "none"). tbrun --tests checks them.
+' As Any is meant only for the parameter of a Declare statement, where it lets
+' the caller pass an argument of any type. Anywhere else it names no type, so
+' every line below that is not a Declare parameter or the Long control is a
+' compile error.
+
+Class HoldsAny
+    Public Item As Any  ' CASE ClassField_AsAny: error
+End Class
+
+Module AsAnyTests
+
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, ByRef Source As Any, ByVal Length As LongPtr)  ' CASE Declare_ParameterAsAny: none
+
+    Private Type HasAny
+        Value As Any  ' CASE UdtField_AsAny: error
+    End Type
+
+    Private ModuleLevel As Any  ' CASE ModuleVariable_AsAny: error
+
+    Private Function ReturnsAny() As Any  ' CASE FunctionReturn_AsAny: error
+    End Function
+
+    Private Sub TakesAny(ByRef p As Any)  ' CASE SubParameter_AsAny: error
+    End Sub
+
+    Private Sub TakesAnyByVal(ByVal p As Any)  ' CASE SubParameterByVal_AsAny: error
+    End Sub
+
+    Private Sub Declarations()
+        Dim x As Any  ' CASE LocalDim_AsAny: error
+        Static s As Any  ' CASE LocalStatic_AsAny: error
+        Dim a(1) As Any  ' CASE LocalArrayDim_AsAny: error
+        ReDim b(1) As Any  ' CASE ReDim_AsAny: error
+        Dim c As Long  ' CASE Control_DimAsLong: none
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+A compile error on each of the four, TB5079 as on the neighbouring declarations: `As Any` names no type, and a variable of it can be neither assigned nor read. The `Declare` parameter keeps compiling. VB6 refuses all of them.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+BETA 1007 gives the same results: the four fail, the eight others pass. The run-time results in step 3 were checked on BETA 1010 only.
+
+VB6 does not accept `As Any` outside a `Declare` parameter. Its command-line build stops at the declaration with a compile error: `Private ModuleLevel As Any` and a `Type` field give *Expected: New or type name*, a Function's return type and a Sub's parameter give *Expected: type name*, and `Dim x As Any`, `Static s As Any` and `Dim a(1) As Any` in a procedure give *Syntax error*. The `Declare` with `ByRef ... As Any` builds. The reproducer's `vb6/` project is that control; the other declarations were each tried in it alone.
+
+Severity: low. Few programs write it, and a variable that cannot be used is found at the first use, but a declaration that compiles tells the author the type exists, and the failure comes late: a codegen error at build time, or error 458 in a run.
+
+<!-- Reproducer: bugs/dim-as-any/ (mode test: `tbrun --tests` judges the compile cases; expect lists the eight PASS and four FAIL lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (its Module1.bas lists VB6's error text for each declaration). The run-time results of step 3 come from a scratch tree that is not kept (BETA 1010, tbrun with and without --exe). docs/Reference/Data-Types.md carries the callout for it (the paragraph that says Any is not a data type, and where As Any is allowed); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types page; owner-approved. -->
+
+---
+
+## A `Date` outside January 1, 100 to December 31, 9999 is accepted with no error
+
+**Describe the bug**
+A `Date` holds a count of days from -657434 (January 1, 100) to 2958465 (December 31, 9999), plus the time of day. VB6 raises error 6, *Overflow*, for every way of making one outside that range. twinBASIC raises nothing: the `Date` holds the out-of-range number, and `CStr`, `Format` and `Year` of it then raise error 5, *Invalid procedure call or argument*. It happens with an assignment from a `Long` or a `Double`, with `CDate`, and with arithmetic on the two ends of the range. It was observed in IDE runs and in built exes, in a 32-bit and a 64-bit build.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `date-out-of-range-no-error.twinproj` (attached as `date-out-of-range-no-error.zip`). Its module `DateRangeTests`, below, has one `[TestCase]` for each way of making a `Date` out of range, asserting the error 6; the last three are controls.
+2. Run the test cases. The first six fail, with `Err.Number` 0; the three controls pass.
+3. To see what the `Date` is, run `Dim d As Date: d = 2958466: Debug.Print CDbl(d)` in a project of its own. It prints 2958466, and `Debug.Print CStr(d)` raises error 5.
+```vb
+[TestFixture]
+Module DateRangeTests
+
+    [TestCase]
+    Public Sub AssignLongPastLargest_Raises6()
+        Dim d As Date
+        Dim n As Long = 2958466
+        On Error Resume Next
+        d = n
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub CDatePastLargest_Raises6()
+        Dim d As Date
+        Dim n As Long = 2958466
+        On Error Resume Next
+        d = CDate(n)
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub CDateBeforeSmallest_Raises6()
+        Dim d As Date
+        Dim n As Long = -657435
+        On Error Resume Next
+        d = CDate(n)
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub AddOneDayToLargest_Raises6()
+        Dim d As Date
+        Dim last As Date = #12/31/9999#
+        On Error Resume Next
+        d = last + 1
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub SubtractOneDayFromSmallest_Raises6()
+        Dim d As Date
+        Dim first As Date = #1/1/100#
+        On Error Resume Next
+        d = first - 1
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub AssignHugeDouble_Raises6()
+        Dim d As Date
+        Dim x As Double = 1E+300
+        On Error Resume Next
+        d = x
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub AssignLargest_Accepted()
+        Dim d As Date
+        Dim n As Long = 2958465
+        On Error Resume Next
+        d = n
+        Assert.Strict.AreEqual 0, Err.Number
+        Assert.Strict.AreEqual 2958465#, CDbl(d)
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSmallest_Accepted()
+        Dim d As Date
+        Dim n As Long = -657434
+        On Error Resume Next
+        d = n
+        Assert.Strict.AreEqual 0, Err.Number
+        Assert.Strict.AreEqual -657434#, CDbl(d)
+    End Sub
+
+    [TestCase]
+    Public Sub OutOfRangeInteger_Raises6()
+        Dim i As Integer
+        Dim n As Long = 40000
+        On Error Resume Next
+        i = n
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 6, *Overflow*, at each of the six, as in VB6, and the `Date` keeps its old value. The two ends of the range stay accepted. A `Date` then always holds a value that `CStr`, `Format` and `Year` can read.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. `DateAdd("d", 1, #12/31/9999#)` and `DateSerial(10000, 1, 1)` raise error 5, and `CDate("12/31/10000")` raises error 13, so those do not accept the value. VB6 6.0 raises error 6 for each of the six cases, and builds the controls (the reproducer's `vb6/` project prints them, attached as `date-out-of-range-no-error-vb6.zip`).
+
+Severity: medium. An out-of-range date is stored silently, and the failure comes later, where the value is formatted or split into parts, or never, where the number is only compared or saved.
+
+<!-- Reproducer: bugs/date-out-of-range-no-error/ (mode test: `tbrun --tests` runs the nine cases; expect lists the six FAIL and three PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, error 6 for the six). docs/Reference/Data-Types/Date.md carries the callout for it (the WARNING in Arithmetic, after the range paragraph); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+
+---
+
+## `CLngLng(2^63)` returns the smallest LongLong, with no error
+
+**Describe the bug**
+2^63 (9223372036854775808) is one past the largest `LongLong`, and converting it must raise error 6, *Overflow*, as `CLngLng(1E+19)` does and as a `Double` variable holding 2^63 does. When the `Double` is a constant expression, twinBASIC converts it to -9223372036854775808, the smallest `LongLong`, and raises nothing: `CLngLng(2 ^ 63)`, `CLngLng(9223372036854775808#)` and `CLngLng(CSng(2 ^ 63))`. An unsuffixed whole-number literal beyond the `Long` range is a `Double`, so `q = 9223372036854775807` (the largest `LongLong`, written without the `^` suffix) is the same constant and gives the same wrong result. It was observed in IDE runs and in built exes, in a 32-bit and a 64-bit build.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `clnglng-2-to-63-no-overflow.twinproj` (attached as `clnglng-2-to-63-no-overflow.zip`). Its module `LongLongOverflowTests`, below, has one `[TestCase]` for each constant that gives the wrong result, asserting the error 6, and four controls.
+2. Run the test cases. The first four fail, with `Err.Number` 0; the four controls pass: a `Double` variable holding 2^63, the constant `1E+19`, the constant `2 ^ 63 - 1024` (the largest `Double` below 2^63, which fits) and `-(2 ^ 63)` (the smallest `LongLong`, which fits).
+```vb
+[TestFixture]
+Module LongLongOverflowTests
+
+    [TestCase]
+    Public Sub CLngLng_ConstantTwoToThe63_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(2 ^ 63)
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_DoubleLiteral2To63_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(9223372036854775808#)
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Assign_UnsuffixedLargestLongLongLiteral_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = 9223372036854775807
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_ConstantSingleTwoToThe63_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(CSng(2 ^ 63))
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_VariableTwoToThe63_Raises6()
+        Dim q As LongLong
+        Dim x As Double = 2 ^ 63
+        On Error Resume Next
+        q = CLngLng(x)
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_ConstantOneE19_Raises6()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(1E+19)
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_ConstantBelowTwoToThe63_Accepted()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(2 ^ 63 - 1024)
+        Assert.Strict.AreEqual 0, Err.Number
+        Assert.Strict.AreEqual 9223372036854774784^, q
+    End Sub
+
+    [TestCase]
+    Public Sub CLngLng_ConstantMinus2To63_Accepted()
+        Dim q As LongLong
+        On Error Resume Next
+        q = CLngLng(-(2 ^ 63))
+        Assert.Strict.AreEqual 0, Err.Number
+        Assert.Strict.AreEqual -9223372036854775807^ - 1, q
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 6, *Overflow*, at each of the four, as for `CLngLng(1E+19)` and for the same value in a variable. VB6 has no `LongLong`; the nearest case, the first `Double` beyond the `Long` range, `CLng(2 ^ 31)`, `CLng(2147483648#)` and `n = 2147483648#`, raises error 6 there as a constant and as a variable (the reproducer's `vb6/` project prints them, attached as `clnglng-2-to-63-no-overflow-vb6.zip`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. The narrower conversions of constants are right: `CLng(2 ^ 31)`, `CLng(CSng(2 ^ 31))`, `CInt(32768#)`, `CByte(256#)` and `CLngPtr(2 ^ 63)` in a 32-bit build raise error 6. A related defect seen on the way has its own entry: *In a 32-bit build, a constant `Double` expression raises error 6 after a constant that overflows a `Long` or `LongLong`*.
+
+Severity: medium. A silently wrong value, but only for one constant, and constants this size are rare. The unsuffixed `9223372036854775807` is the one a program is likely to write.
+
+<!-- Reproducer: bugs/clnglng-2-to-63-no-overflow/ (mode test: `tbrun --tests` runs the eight cases; expect lists the four FAIL and four PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, the CLng of 2^31). docs/Reference/Data-Types/LongLong.md carries the callout for it (the WARNING under Conversions); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+
+---
+
+## `Set` to a class or interface the object does not support raises -2147467262, where VB6 raises 13
+
+**Describe the bug**
+Assigning an object with `Set` to a variable of a class or interface that the object does not support fails at run time. VB6 raises error 13, *Type mismatch*. twinBASIC raises -2147467262, the `HRESULT` `E_NOINTERFACE` (*No such interface supported*), so a handler that tests for 13 does not recognise it. It happens for a twinBASIC class, an interface, a COM object (`Scripting.Dictionary` to `Collection`) and a `Variant` that holds the object. It was observed in IDE runs and in built exes, in a 32-bit and a 64-bit build.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `set-unsupported-class-error-number.twinproj` (attached as `set-unsupported-class-error-number.zip`). Its module `SetToUnsupportedTypeTests`, below, has one `[TestCase]` for each kind of source, asserting the error 13, and a control.
+2. Run the test cases. The first four fail, with `Err.Number` -2147467262; the control, a `Set` to the object's own class, passes.
+```vb
+Class ClsA
+    Public X As Long
+End Class
+
+Class ClsB
+    Public Y As Long
+End Class
+
+Interface IFoo
+    Sub Hello()
+End Interface
+
+[TestFixture]
+Module SetToUnsupportedTypeTests
+
+    [TestCase]
+    Public Sub SetToOtherClass_Raises13()
+        Dim o As Object = New ClsA
+        Dim b As ClsB
+        On Error Resume Next
+        Set b = o
+        Assert.Strict.AreEqual 13, Err.Number              ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub SetToInterfaceTheClassLacks_Raises13()
+        Dim o As Object = New ClsA
+        Dim f As IFoo
+        On Error Resume Next
+        Set f = o
+        Assert.Strict.AreEqual 13, Err.Number              ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub SetDictionaryToCollection_Raises13()
+        Dim o As Object = CreateObject("Scripting.Dictionary")
+        Dim c As Collection
+        On Error Resume Next
+        Set c = o
+        Assert.Strict.AreEqual 13, Err.Number              ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub SetFromVariantHoldingOtherClass_Raises13()
+        Dim v As Variant
+        Dim b As ClsB
+        Set v = New ClsA
+        On Error Resume Next
+        Set b = v
+        Assert.Strict.AreEqual 13, Err.Number              ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub SetToOwnClass_RaisesNothing()
+        Dim o As Object = New ClsB
+        Dim b As ClsB
+        On Error Resume Next
+        Set b = o
+        Assert.Strict.AreEqual 0, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 13, *Type mismatch*, as in VB6, so that code ported from VB6 which handles 13 keeps working. The reproducer's `vb6/` project builds the same four assignments and prints error 13 for each (attached as `set-unsupported-class-error-number-vb6.zip`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. `TypeOf o Is ClsB` is False for these objects and can be tested first. Severity: low. An error is raised, and only the number differs.
+
+<!-- Reproducer: bugs/set-unsupported-class-error-number/ (mode test: `tbrun --tests` runs the five cases; expect lists the four FAIL and one PASS line); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, ClsA, ClsB and IFoo). docs/Reference/Data-Types/Object.md carries the callout for it (the NOTE under Assigning); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+
+---
+
+## `Len` and `LenB` accept an array and return the size of its descriptor
+
+**Describe the bug**
+`Len` and `LenB` take a string or a variable of a simple or user-defined type. VB6 refuses an array as the argument, when the program is compiled (*Variable required - can't assign to this expression*). twinBASIC accepts it, and returns a number that is not the size of the array: in a 32-bit build 40 for a fixed-size one-dimensional array of any element type and length (`Dim a(9) As Byte`, `Dim a(3) As Long` and `Dim a(0) As Byte` all give 40), 48 for two dimensions, and 4 for a dynamic array (the size of the reference); in a 64-bit build 48, 56 and 8. A program that writes `LenB(Buffer)` for a `Byte` buffer, expecting its length in bytes, gets a number that never changes with the array. It was observed in IDE runs and in built exes.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `lenb-of-array-accepted.twinproj` (attached as `lenb-of-array-accepted.zip`). Its module `LenArrayTests`, below, has one declaration with an array argument on each line that ends in a `' CASE <Name>: <expected>` comment: the diagnostic code the line must get, `error` for any error, or `none`.
+2. Run the cases, with `tbrun --tests` or by compiling the project. The five lines with an array argument get no diagnostic, and are the defect; the two controls, an element and a `Long` variable, get none, as they should.
+3. To see the numbers, run `Dim a(9) As Byte: Debug.Print LenB(a)` in a project of its own. It prints 40.
+```vb
+' CASE <Name>: <expected> comments, as above.
+Module LenArrayTests
+
+    Private Sub Cases()
+        Dim fixedBytes(9) As Byte
+        Dim fixedLongs(3) As Long
+        Dim dynamicBytes() As Byte
+        Dim n As Long
+        ReDim dynamicBytes(4)
+
+        n = LenB(fixedBytes)  ' CASE LenB_FixedByteArray: error
+        n = LenB(fixedLongs)  ' CASE LenB_FixedLongArray: error
+        n = LenB(dynamicBytes)  ' CASE LenB_DynamicByteArray: error
+        n = Len(fixedBytes)  ' CASE Len_FixedByteArray: error
+        n = Len(dynamicBytes)  ' CASE Len_DynamicByteArray: error
+
+        n = LenB(fixedBytes(0))  ' CASE LenB_ByteElement: none
+        n = LenB(n)  ' CASE LenB_LongVariable: none
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+A compile error on each of the five, as in VB6: the array is not a valid argument. The two controls keep compiling. VB6 gives the compile error *Variable required - can't assign to this expression* for `LenB` of a fixed `Byte` array, a fixed `Long` array and a dynamic `Byte` array, and for `Len` of a fixed and of a dynamic `Byte` array (each was tried in the reproducer's `vb6/` project alone, attached as `lenb-of-array-accepted-vb6.zip`; the control, `LenB(a(0))`, builds and gives 1).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+BETA 1007 gives the same results. Severity: low. Few programs write it, but the number looks plausible for a small array, and the author finds out only when the buffer is larger.
+
+<!-- Reproducer: bugs/lenb-of-array-accepted/ (mode test: compile cases; expect lists the five FAIL and two PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas lists VB6's error for each line). The numbers 40, 48, 4 (32-bit) and 48, 56, 8 (64-bit) come from a scratch run that is not kept. docs/Reference/Default/VBA/Strings/Len.md carries the callout for it; when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+
+---
+
+## A 64-bit build prints infinity and NaN as `inf` and `nan`, and `Format` adds the picture's decimals
+
+**Describe the bug**
+A `Double` or `Single` that holds infinity or NaN prints in VB6 as `1.#INF`, `-1.#INF`, `1.#QNAN` and `-1.#IND`, and `Format(x, "0.00")` gives `1.#INF` or `1.#R`. A 32-bit twinBASIC build prints exactly those. A 64-bit build prints the C runtime's text: `inf`, `-inf`, `nan` and `-nan(ind)`, and `Format(x, "0.00")` gives `inf.00` and `nan.00`. `CStr`, `Str`, concatenation and `Debug.Print` all give the same text. Arithmetic raises an error rather than make these values, so they come from memory, a COM component or a file; the reproducer copies their bytes into a variable. It was observed in IDE runs and in built exes.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `infinity-text-64-bit.twinproj` (attached as `infinity-text-64-bit.zip`). Its module `InfinityTextTests`, below, has one `[TestCase]` for each text, asserting what VB6 gives, and a control.
+2. Run the test cases as a 64-bit build (`tbrun --tests --arch win64`). The first eight fail, with the 64-bit text as `Actual`; the control passes. As a 32-bit build all nine pass.
+```vb
+[TestFixture]
+Module InfinityTextTests
+
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, ByRef Source As Any, ByVal Length As LongPtr)
+
+    Private Function DoubleFromBits(ByVal Bits As LongLong) As Double
+        Dim result As Double
+        CopyMemory result, Bits, 8
+        Return result
+    End Function
+
+    Private Function SingleFromBits(ByVal Bits As Long) As Single
+        Dim result As Single
+        CopyMemory result, Bits, 4
+        Return result
+    End Function
+
+    [TestCase]
+    Public Sub CStrOfInfinity_Is1HashINF()
+        Assert.Strict.AreEqual "1.#INF", CStr(DoubleFromBits(&H7FF0000000000000^))
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfNegativeInfinity_IsMinus1HashINF()
+        Assert.Strict.AreEqual "-1.#INF", CStr(DoubleFromBits(&HFFF0000000000000^))
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfNaN_Is1HashQNAN()
+        Assert.Strict.AreEqual "1.#QNAN", CStr(DoubleFromBits(&H7FF8000000000000^))
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfIndeterminate_IsMinus1HashIND()
+        Assert.Strict.AreEqual "-1.#IND", CStr(DoubleFromBits(&HFFF8000000000000^))
+    End Sub
+
+    [TestCase]
+    Public Sub ConcatenatedInfinity_Is1HashINF()
+        Assert.Strict.AreEqual "x=1.#INF", "x=" & DoubleFromBits(&H7FF0000000000000^)
+    End Sub
+
+    [TestCase]
+    Public Sub FormatOfInfinity_Is1HashINF()
+        Assert.Strict.AreEqual "1.#INF", Format(DoubleFromBits(&H7FF0000000000000^), "0.00")
+    End Sub
+
+    [TestCase]
+    Public Sub FormatOfNaNWithPicture_Is1HashR()
+        Assert.Strict.AreEqual "1.#R", Format(DoubleFromBits(&H7FF8000000000000^), "0.00")
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfSingleInfinity_Is1HashINF()
+        Assert.Strict.AreEqual "1.#INF", CStr(SingleFromBits(&H7F800000))
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfOrdinaryDouble_IsUnchanged()
+        Assert.Strict.AreEqual "1.5", CStr(1.5)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The same text in a 64-bit build as in a 32-bit one and in VB6: `1.#INF`, `-1.#INF`, `1.#QNAN`, `-1.#IND`, and `1.#INF` or `1.#R` from `Format` with a picture. The reproducer's `vb6/` project prints them (attached as `infinity-text-64-bit-vb6.zip`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+BETA 1007 gives the same results. The reproducer's `repro.json` names the 64-bit build (`"arch": "win64"`). Severity: low. A program meets these values rarely, but one that tests or parses the text, or shows `Format(x, "0.00")` of one, behaves differently in the two builds.
+
+<!-- Reproducer: bugs/infinity-text-64-bit/ (mode test, arch win64: `tbrun --tests --arch win64` runs the nine cases; expect lists the eight FAIL and one PASS line); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas). docs/Reference/Data-Types/Double.md carries the callout for it (the NOTE after the paragraph on infinity and NaN); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+
+---
+
+## In a 32-bit build, a constant `Double` expression raises error 6 after a constant that overflows a `Long` or `LongLong`
+
+**Describe the bug**
+In a 32-bit build, a procedure that converts a constant `Double` that does not fit a `Long` or a `LongLong` (`l = 2 ^ 31`, `l = 3000000000#`, `CLng(2 ^ 31)`, `CLngLng(1E+19)`) then raises error 6, *Overflow*, at the next constant `Double` expression that has an operator after the `^`, although that expression is in range: `2 ^ 10 * 2`, `1.5 * 2`, `1E+10 + 1`, `2 ^ 63 - 1024`. The statement completes and stores the right value (2048 for `d = 2 ^ 10 * 2`); the error is reported late, as if a floating-point exception left pending by the first conversion were taken by the next one. It was found as `q = 2 ^ 63 - 1024` with `q As LongLong`, the largest `Double` below 2^63, which raises error 6. It was observed in IDE runs and in built exes, in a 32-bit build only.
+
+The error depends on the statement it follows, not on the size or the type:
+- The expression needs an operator after the `^`. `2 ^ 11`, `2048#`, `9E+18`, `1500 * 2` (Integer arithmetic) and `x * 2` with a `Double` variable do not raise it.
+- The destination does not matter: `Long`, `Integer`, `Byte`, `Currency`, `Single`, `Double`, `Variant`, `LongLong`.
+- The first statement must convert a constant that does not fit a `Long` or a `LongLong`. A `Byte` or `Integer` constant that does not fit (`b = 256`, `i = 40000`), the same overflow through a `Double` variable (`l = x`) and `Err.Raise 6` do not trigger it. `CLngLng(2 ^ 63)`, which raises no error of its own (see the `CLngLng(2^63)` entry), triggers it.
+- `Err.Clear` between the two statements changes nothing. A second constant expression after the one that raised is accepted.
+- A function whose body is `F = 2 ^ 63 - 1024` raises the error when it is called from a procedure that has such a conversion, before or after the call. The function then raises it for its other callers too, those with no conversion among them.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `const-double-expression-after-overflow-32bit.twinproj` (attached as `const-double-expression-after-overflow-32bit.zip`). Its module `RegressionTests`, below, has one `[TestCase]` for each of five statements that raise the error, asserting that none is raised, and six controls.
+2. Run the test cases in a 32-bit build. The first five fail with `Err.Number` 6; the six controls pass: the same expressions with no overflow before them, a single power, a variable product, a `Byte` overflow and an overflow through a variable. In a 64-bit build all eleven pass.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Called by two cases: the first has the Long overflow, the second has none.
+    Private Function TwoToThe63MinusK() As LongLong
+        TwoToThe63MinusK = 2 ^ 63 - 1024
+    End Function
+
+    [TestCase]
+    Public Sub Double_ConstantProductAfterLongOverflow_Accepted()
+        Dim d As Double, l As Long, n As Long
+        On Error Resume Next
+        l = 2 ^ 31
+        Err.Clear
+        d = 2 ^ 10 * 2
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+        Assert.Strict.AreEqual 2048#, d
+    End Sub
+
+    [TestCase]
+    Public Sub LongLong_TwoToThe63MinusKAfterLongOverflow_Accepted()
+        Dim q As LongLong, l As Long, n As Long
+        On Error Resume Next
+        l = 2 ^ 31
+        Err.Clear
+        q = 2 ^ 63 - 1024
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+        Assert.Strict.AreEqual 9223372036854774784^, q
+    End Sub
+
+    [TestCase]
+    Public Sub LongLong_TwoToThe63MinusKAfterCLngLng1E19_Accepted()
+        Dim q As LongLong, n As Long
+        On Error Resume Next
+        q = CLngLng(1E+19)
+        Err.Clear
+        q = 2 ^ 63 - 1024
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+        Assert.Strict.AreEqual 9223372036854774784^, q
+    End Sub
+
+    [TestCase]
+    Public Sub Function_ReturnsTwoToThe63MinusK_CallerHasLongOverflow_Accepted()
+        Dim q As LongLong, l As Long, n As Long
+        On Error Resume Next
+        q = TwoToThe63MinusK()
+        n = Err.Number
+        l = 2 ^ 31
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub Function_ReturnsTwoToThe63MinusK_CallerHasNoOverflow_Accepted()
+        Dim q As LongLong, n As Long
+        On Error Resume Next
+        q = TwoToThe63MinusK()
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub Double_ConstantProduct_Alone_Accepted()
+        Dim d As Double, n As Long
+        On Error Resume Next
+        d = 2 ^ 10 * 2
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+        Assert.Strict.AreEqual 2048#, d
+    End Sub
+
+    [TestCase]
+    Public Sub LongLong_TwoToThe63MinusK_Alone_Accepted()
+        Dim q As LongLong, n As Long
+        On Error Resume Next
+        q = 2 ^ 63 - 1024
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+        Assert.Strict.AreEqual 9223372036854774784^, q
+    End Sub
+
+    [TestCase]
+    Public Sub Double_SinglePowerAfterLongOverflow_Accepted()
+        Dim d As Double, l As Long, n As Long
+        On Error Resume Next
+        l = 2 ^ 31
+        Err.Clear
+        d = 2 ^ 11
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub Double_VariableProductAfterLongOverflow_Accepted()
+        Dim d As Double, x As Double, l As Long, n As Long
+        x = 1024
+        On Error Resume Next
+        l = 2 ^ 31
+        Err.Clear
+        d = x * 2
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub Double_ConstantProductAfterByteOverflow_Accepted()
+        Dim d As Double, b As Byte, n As Long
+        On Error Resume Next
+        b = 256
+        Err.Clear
+        d = 2 ^ 10 * 2
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub Double_ConstantProductAfterRuntimeLongOverflow_Accepted()
+        Dim d As Double, x As Double, l As Long, n As Long
+        x = 2 ^ 31
+        On Error Resume Next
+        l = x
+        Err.Clear
+        d = 2 ^ 10 * 2
+        n = Err.Number
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+No error at any of the five: an expression whose value fits is accepted whatever statement came before it, as in a 64-bit build. VB6 accepts `d = 2 ^ 10 * 2` and `n = 2 ^ 30 + 2 ^ 29` directly after `l = 2 ^ 31` and `l = 2147483648#`, which raise error 6 themselves (the reproducer's `vb6/` project prints them, attached as `const-double-expression-after-overflow-32bit-vb6.zip`; VB6 has no `LongLong`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The reproducer's `repro.json` names the 32-bit build (`"arch": "win32"`). A 64-bit build, IDE run or exe, gives no error for any case.
+
+This looks like the same cause as #2497 (fixed in BETA 1004), where a constant out of the `Long` range made the first conversion of a `Single` or `Double` variable to an integer raise error 6 in an IDE run. That case is fixed; this one remains in 32-bit builds, in IDE runs and built exes alike.
+
+Severity: low. The error is raised and is easy to see; the statement that raises it holds a correct value. A program meets it only when a constant that overflows is followed in the same procedure by a constant `Double` expression, which is mostly code that tests overflow handling.
+
+<!-- Reproducer: bugs/const-double-expression-after-overflow-32bit/ (mode test, arch win32: `tbrun --tests` runs the eleven cases; expect lists the five FAIL and six PASS lines); verify reproduces on BETA 1010; VB6 side in vb6/ (Module1.bas, the same two statements for a Double and a Long). docs/Reference/Data-Types/LongLong.md carries the callout for it (the NOTE under Conversions); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->

@@ -70,6 +70,8 @@ When this occurs, you will see a note in the DEBUG CONSOLE:
 
 This additional EXE acts as the out-of-process container for those controls and is managed automatically by the twinBASIC IDE
 
+<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> in the IDE builds the host EXE on request, without building the project. The DEBUG CONSOLE then shows that the Fusion server file was built, or that building it failed. See [The Fusion host](../tB/IDE/Building/Build-Output#the-fusion-host).
+
 ## ActiveX Hosting EXE Output Path
 
 A project-level setting allows you to control where the Fusion host EXE is generated:

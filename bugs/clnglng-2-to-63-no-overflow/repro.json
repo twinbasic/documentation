@@ -1,0 +1,16 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^FAIL LongLongOverflowTests.CLngLng_ConstantTwoToThe63_Raises6: ",
+      "^FAIL LongLongOverflowTests.CLngLng_DoubleLiteral2To63_Raises6: ",
+      "^FAIL LongLongOverflowTests.Assign_UnsuffixedLargestLongLongLiteral_Raises6: ",
+      "^FAIL LongLongOverflowTests.CLngLng_ConstantSingleTwoToThe63_Raises6: ",
+      "^PASS LongLongOverflowTests.CLngLng_VariableTwoToThe63_Raises6$",
+      "^PASS LongLongOverflowTests.CLngLng_ConstantOneE19_Raises6$",
+      "^PASS LongLongOverflowTests.CLngLng_ConstantBelowTwoToThe63_Accepted$",
+      "^PASS LongLongOverflowTests.CLngLng_ConstantMinus2To63_Accepted$"
+    ]
+  }
+}

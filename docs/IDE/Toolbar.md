@@ -29,10 +29,10 @@ redirect_from:
 - Step Over (<kbd>Shift</kbd>+<kbd>F8</kbd> / <kbd>F10</kbd>) -- [Step commands](../Debugging/Breakpoints-and-Stepping#step-commands)
 - Step Into (<kbd>F8</kbd> / <kbd>F11</kbd>) -- [Step commands](../Debugging/Breakpoints-and-Stepping#step-commands)
 - Step Out (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F8</kbd> / <kbd>Shift</kbd>+<kbd>F11</kbd>) -- [Step commands](../Debugging/Breakpoints-and-Stepping#step-commands)
-- [Choose a build configuration](#build-configuration)
-- Restart the compiler
-- Clean (Deregister & delete build)
-- Build
+- [Choose a build configuration](#build-configuration) -- [Build configuration](../Building/Build-Configuration)
+- Restart the compiler -- [Restart the compiler](../Building/Build-Configuration#restart-the-compiler)
+- Clean (deregister & delete build) -- [Clean](../Building/Build-and-Clean#clean)
+- Build -- [Build](../Building/Build-and-Clean#build)
 - Comment Selection (<kbd>Ctrl</kbd>+<kbd>K</kbd>)
 - Uncomment Selection (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd>)
 - Indent Block (<kbd>Ctrl</kbd>+<kbd>]</kbd>)
@@ -64,8 +64,8 @@ The build configuration box chooses whether the project is compiled as 32-bit or
 
 The IDE remembers the choice for each project, and sets the box back to it when the project is opened again. It keeps the choice in its own settings, under the path of the `.twinproj` file, not in the project. A project with no remembered choice uses whatever the box shows, and a newly started IDE shows **win32**.
 
-The box also sets the `Win64` compiler constant --- 1 in **win64**, 0 in **win32** --- and so decides which branch of an `#If Win64` block the editor treats as active and which it greys out. [Compiler Constants](../../../Reference/Compiler-Constants#appearance) shows the same code in both modes.
+Every change restarts the compiler as a program of the chosen architecture, with no question, and a program that is running or paused is ended. The box also sets the `Win64` compiler constant --- 1 in **win64**, 0 in **win32** --- and so decides which branch of an `#If Win64` block the editor treats as active and which it greys out. [Compiler Constants](../../../Reference/Compiler-Constants#appearance) shows the same code in both modes.
 
 The default [Build Output Path](../Project-Settings#build-output-path) puts `win32` or `win64` in the file name, so the two builds do not overwrite each other.
 
-The box has a third entry, **safeMode**. It opens the project's files without starting the compiler services, and the IDE describes it as a way to investigate, fix or recover code before saving it and restarting in normal mode. The IDE also switches to **safeMode** by itself when the compiler keeps crashing, and says *Compiler crash loop detected. Restarting in SAFE mode.*
+The box has a third entry, **safeMode**. It opens the project's files without starting the compiler services, and the IDE switches to it by itself when the compiler keeps crashing. [Build configuration](../Building/Build-Configuration) describes the three entries, what a change does and what safe mode does.

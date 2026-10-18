@@ -1,0 +1,96 @@
+' Regression tests: a Date holds days from -657434 (January 1, 100) to 2958465 (December 31,
+' 9999), plus the time of day. A value outside that range cannot be a Date, and VB6 raises
+' error 6, Overflow, for every way of making one (the VB6 project beside this one prints
+' them). In BETA 1010 and BETA 1007 none of them raises an error: the Date holds the
+' out-of-range number, and what it then prints or formats is meaningless. Each [TestCase]
+' asserts the error; the two controls, the largest and the smallest Date, must stay accepted.
+[TestFixture]
+Module DateRangeTests
+
+    [TestCase]
+    Public Sub AssignLongPastLargest_Raises6()
+        Dim d As Date
+        Dim n As Long = 2958466
+        On Error Resume Next
+        d = n
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub CDatePastLargest_Raises6()
+        Dim d As Date
+        Dim n As Long = 2958466
+        On Error Resume Next
+        d = CDate(n)
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub CDateBeforeSmallest_Raises6()
+        Dim d As Date
+        Dim n As Long = -657435
+        On Error Resume Next
+        d = CDate(n)
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub AddOneDayToLargest_Raises6()
+        Dim d As Date
+        Dim last As Date = #12/31/9999#
+        On Error Resume Next
+        d = last + 1
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub SubtractOneDayFromSmallest_Raises6()
+        Dim d As Date
+        Dim first As Date = #1/1/100#
+        On Error Resume Next
+        d = first - 1
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    [TestCase]
+    Public Sub AssignHugeDouble_Raises6()
+        Dim d As Date
+        Dim x As Double = 1E+300
+        On Error Resume Next
+        d = x
+        Assert.Strict.AreEqual 6, Err.Number               ' VB6: 6
+    End Sub
+
+    ' Controls: the ends of the range are accepted, and error 6 is what an out-of-range
+    ' value raises in an Integer, so the cases above are not testing the harness.
+
+    [TestCase]
+    Public Sub AssignLargest_Accepted()
+        Dim d As Date
+        Dim n As Long = 2958465
+        On Error Resume Next
+        d = n
+        Assert.Strict.AreEqual 0, Err.Number
+        Assert.Strict.AreEqual 2958465#, CDbl(d)
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSmallest_Accepted()
+        Dim d As Date
+        Dim n As Long = -657434
+        On Error Resume Next
+        d = n
+        Assert.Strict.AreEqual 0, Err.Number
+        Assert.Strict.AreEqual -657434#, CDbl(d)
+    End Sub
+
+    [TestCase]
+    Public Sub OutOfRangeInteger_Raises6()
+        Dim i As Integer
+        Dim n As Long = 40000
+        On Error Resume Next
+        i = n
+        Assert.Strict.AreEqual 6, Err.Number
+    End Sub
+
+End Module

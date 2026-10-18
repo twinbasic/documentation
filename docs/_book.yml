@@ -297,6 +297,11 @@ parts:
         page: /tB/IDE/Debugging/
         landing_is_target: true
         outline_closed: true
+      - title: Building
+        landing_page: /tB/IDE/Building/
+        page: /tB/IDE/Building/
+        landing_is_target: true
+        outline_closed: true
       - title: Customising the IDE
         landing_page: /tB/IDE/Customising/
         page: /tB/IDE/Customising/
@@ -343,7 +348,7 @@ parts:
         nav_page: Reference Section/Operators
         outline_closed: true
       - title: Data Types
-        page: /Reference/Data-Types
+        nav_page: Reference Section/Data Types
         no_outline_entry: true
         no_heading_shift: true
         outline_closed: true
@@ -509,6 +514,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: DetoursLib Package
+        subtitle: Detours of functions in the program's own process
+        landing_page: /tB/Packages/Contributed/DetoursLib/
+        page: /tB/Packages/Contributed/DetoursLib/
+        landing_is_target: true
+        outline_closed: true
+
       - title: FileProps Package
         subtitle: The Windows shell properties of a file
         landing_page: /tB/Packages/Contributed/FileProps/
@@ -669,7 +681,6 @@ left_out:
       - /tB/IDE/Reference
       - /tB/IDE/Project/Webpage
       - /tB/IDE/Project/Splash
-      - /tB/IDE/Project/PackagePublishing
       - /tB/IDE/AddIns/GlobalSearch
       - /tB/IDE/Reference/Menu/File
       - /tB/IDE/Reference/Menu/Edit

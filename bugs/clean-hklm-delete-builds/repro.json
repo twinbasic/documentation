@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:building-hklm",
+  "tests": ["Clean shows the same box, and its Delete It And Continue builds a new DLL instead of deleting the old one"],
+  "steps": "1. In an IDE that is not elevated, open an ActiveX DLL project with Register DLLs to HKLM set to YES (answer Continue Anyway to the HKLM warning).\n2. Press Build: the DLL is written, and its registration fails.\n3. Press Clean. The box reads Build failed: unable to unregister the previous DLL. Continue anyway? Choose Delete It And Continue.\n4. The console prints [BUILD] Starting... and [LINKER] SUCCESS created output file ...: a new DLL is built, and the old one is not deleted.\nControl: at Build, Delete It And Continue in the same box builds the DLL again; Clean of an ActiveX DLL registered in HKCU deletes it and its registration."
+}

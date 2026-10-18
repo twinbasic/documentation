@@ -799,10 +799,12 @@ has the complete list):
   `ByVal`, `ByRef`, `Optional`, `As` --- are in the index only where a page's title gives
   them. Adding one is a `symbols:` line on the page that explains it, which is a content
   decision per keyword. Deferred.
-- **Data types** --- `Long`, `String`, `LongPtr` --- have their page at
-  `/Reference/Data-Types`, outside `/tB/`, so the index cannot carry them without breaking
-  its own rule. Giving that page a `/tB/` permalink, with the old one in `redirect_from:`,
-  would. Deferred.
+- **Data types are done** (owner, 2026-10-18), as the one exception to the `/tB/` rule:
+  each type the summary page's `symbols:` names is a language entry of kind `type` at its
+  `##` section of `/Reference/Data-Types` (`#long`), which links to the type's own page,
+  `/tB/Core/Long`. With `package` null, `Find` gives a bare `String` the type before the
+  VBA function, and a hover that names `VBA.Strings` (F1 on `String(5, "x")`) still picks
+  the function; the help lane has a case for each.
 - **The offline tree has no copy of the index.** The add-in embeds its own, and the help
   archive (increment 5) is the offline tree as built, less `HELP_ARCHIVE_SKIP` in
   `builder/help-archive-step.mjs` (the Documentation Development section, Videos,

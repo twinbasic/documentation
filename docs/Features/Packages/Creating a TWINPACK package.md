@@ -19,7 +19,7 @@ Once you've created the project, you should find the extra 'PACKAGE PUBLISHING' 
 
 ![The PACKAGE PUBLISHING panel, floating over the editor, with EDIT links for Namespace, Description, Licence, Visibility and Version and a SIGN IN link for Publisher, above the PUBLISH THIS PACKAGE button](Images/9eeffbcf-d73e-4a92-bce5-811ed60aba98.png){:width="348" height="378"}
 
-You should now edit the Namespace, Description, Licence, Visibility and Version properties appropriately by using the package manager 'EDIT' links, which will take you to the individual settings in the `Settings` file.   Once you've edited them, remember to close (and save) the `Settings` file in order for your changes to be reflected in the package manager panel.
+You should now edit the Namespace, Description, Licence, Visibility and Version properties appropriately by using the package manager 'EDIT' links, which open Project Settings at the individual setting.   Once you've edited a value, press **Apply Changes** in order for your change to be reflected in the package manager panel. [Package Publishing](../../tB/IDE/Building/Package-Publishing) describes the panel.
 
 - **Namespace:** this is the symbol that will be used to group your components in projects that reference your package.  For example, a package that provides a series of different dialog classes might use the namespace `Dialogs`.
 - **Description:** this is the descriptive text that will appear in the `Settings`->`References` list.  If you plan to share this package, think carefully about the description so that others can discover your package through TWINSERV.
@@ -51,15 +51,9 @@ If you're publishing your package onto TWINSERV, you don't need to create the TW
 
 ***Publishing packages onto TWINSERV requires you to first create a publisher account.  If you haven't done so, you'll be prompted to do so at this stage.***
 
-You will then be prompted to confirm the package details:
+You will then be prompted to confirm the package details, in a box that lists the publisher, package namespace, description, version and licence, and asks whether to proceed. After pressing **Continue**, the package will be uploaded to TWINSERV.   The `DEBUG CONSOLE` shows that the upload has started, and a box with **OK** shows the result. [Package Publishing](../../tB/IDE/Building/Package-Publishing#publishing) shows the box and lists the results.
 
-![A confirmation dialog listing the publisher, package namespace, description, version and licence, asking whether to proceed](Images/packPublishPackage1.png){:width="478" height="257"}
-
-After pressing `YES`, the package will be uploaded to TWINSERV.   Check the `DEBUG CONSOLE` for completion notices:
-
-![The DEBUG CONSOLE showing the publish attempt followed by a successful result](Images/packPublishComplete1.png){:width="626" height="64"}
-
- If the package got uploaded successfully, it should be available via TWINSERV within a few moments.   If you've created a `PUBLIC` package, others will be able to see and download it at this point.
+If the package got uploaded successfully, it should be available via TWINSERV within a few moments.   If you've created a `PUBLIC` package, others will be able to see and download it at this point.
 
 See [Importing a package from TWINSERV](Importing-TWINSERV) for referencing and using the uploaded packages.
 

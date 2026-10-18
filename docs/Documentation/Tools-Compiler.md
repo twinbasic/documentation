@@ -45,7 +45,7 @@ twinBASIC has no command-line build. None of the compiler executable's verbs ---
 
 **A build with LLVM in it holds a lease on twinBASIC's LLVM cache server** (`scripts/lib/tb-llvm-cache.mjs`), from before the IDE starts until it has ended. The server is one process that every compiler on the machine shares; without a lease the first compiler to need it starts it inside its own IDE's job, and it ends with that IDE, under every other run that is using it. With a lease it is started outside every IDE and ends about 15 seconds after the last lease is released. `--json` gives the lease as `llvmCache`.
 
-A packed project's default build path opens a *Save* dialog that the private desktop hides. So either flag first exports the project into `%TEMP%\tbbuild\<slot>\src`, packs a copy with an explicit build path under `%TEMP%\tbbuild\<slot>\out` and a project id of its own, and opens that copy. Once the run is over the copy and its sources are removed, and so is the whole folder when nothing was built. After a build that succeeded, `%TEMP%\tbbuild\<slot>\out` stays, because it holds the file `built:` names; the next run in that slot replaces it.
+So that the built file lands in a folder the run owns and the given project is left untouched, either flag first exports the project into `%TEMP%\tbbuild\<slot>\src`, packs a copy with an explicit build path under `%TEMP%\tbbuild\<slot>\out` and a project id of its own, and opens that copy. Once the run is over the copy and its sources are removed, and so is the whole folder when nothing was built. After a build that succeeded, `%TEMP%\tbbuild\<slot>\out` stays, because it holds the file `built:` names; the next run in that slot replaces it.
 
 **Each run has a slot of its own** from [`tbbroker`](#tbbroker): a private desktop, and the number its folders and project id are named by, which no other run on the machine holds at the same time. The IDE's temp folder (`%TEMP%\tbbuild-tmp-<slot>`, its `TEMP` and `TMP`) and WebView2 user-data folder (`%TEMP%\tbbuild-wv2-<slot>`, about 28 MB) are emptied when the IDE starts and removed once it has ended. The first run after you log on starts the broker.
 
@@ -212,12 +212,9 @@ one whose image is on the reap list and that has no window open. A new one with 
 reported and left alone, since it may be a copy the user opened. Two concurrent runs driving Excel cannot tell their servers apart, so the first to
 finish harvests both: pass `--no-reap` there and sweep once at the end.
 
-> [!IMPORTANT]
-> A project whose `project.buildPath` is still the default `${SourcePath}\Build\...` template
-> opens a native *Save* dialog on build. On a private desktop that dialog is invisible, so the
-> build never happens, while every health check says the IDE is fine. `tbrun` sets the path to
-> a folder of its own in its staged copy. The file keeps the IDE's own name,
-> *project name*`_`*target*`.`*extension* --- for example `ArchProbe_win64.exe`.
+`tbrun` sets `project.buildPath` to a folder of its own in its staged copy, so that it knows
+where the built file is. The file keeps the IDE's own name,
+*project name*`_`*target*`.`*extension* --- for example `ArchProbe_win64.exe`.
 
 Like `tbbuild`, it leaves the IDE's registry entries as it found them: it deletes every entry
 under its own temp folder once the IDE has exited, and again at the start of a run, which

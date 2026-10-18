@@ -12,7 +12,7 @@ Read it before changing `scripts/tbbuild.mjs`, `scripts/tbrun.mjs`,
 `scripts/lib/tb-launch.ps1`, `scripts/lib/tb-registry.mjs`,
 `scripts/lib/tb-ide-copy.mjs`, `scripts/lib/tb-project.mjs`,
 `scripts/lib/tb-addin.mjs`, `scripts/lib/tb-click.mjs`, `scripts/lib/tb-operate.mjs`,
-`scripts/lib/tb-lane.mjs`,
+`scripts/lib/tb-lane.mjs`, `scripts/ide_js.mjs`, `scripts/ide-js/lib.mjs`,
 anything under `test/addin/`, or `scripts/census_attributes.mjs`, and before
 concluding anything about twinBASIC syntax from a sweep of exported sources.
 
@@ -586,13 +586,11 @@ The probe is a module with a `[RunAfterBuild]` Sub, which the IDE runs once the 
 linked. Reader-facing documentation is the [`tbrun.mjs` entry in
 Tools-Compiler.md](docs/Documentation/Tools-Compiler.md#tbrun).
 
-**The script owns the tree because of a silent trap.** A project whose `project.buildPath`
-is still the default `${SourcePath}\Build\...` template opens a native *Save* dialog when
-you build it. On the private desktop that dialog is invisible and unreachable, so the build
-simply never happens --- and **the WebView2 renderer stays responsive throughout**, so
-`Runtime.evaluate` answers normally and every health check says the IDE is fine. `tbrun`
-pins the path in its staged copy, which is why it insists on a source tree it can edit
-rather than a packed project it cannot.
+**The script owns the tree** so that it can pin `project.buildPath` in its staged copy and
+know where the built file is, which is why it insists on a source tree it can edit rather than
+a packed project it cannot. The default `${SourcePath}\Build\...` path opens no dialog: a
+project opened from a `.twinproj` with it builds, and the compiler makes `Build\` itself
+(BETA 1010 and 1007, packed by `impexp` or from the template, in a new folder, built twice).
 
 Rules it follows:
 
@@ -935,11 +933,10 @@ built it, not in the binary:
 The first three are decided when compiling; the last three can only come from the running
 process, and they agree.
 
-**The build path's folder has to be explicit; its file name need not be.** `tbrun` builds
+**The build path's file name need not be explicit.** `tbrun` builds
 into its own `out` folder under the IDE's own name,
 `${ProjectName}_${Architecture}.${FileExtension}`, giving `ArchProbe_win32.exe` and
-`ArchProbe_win64.exe` with no Save dialog --- so the trap above comes from the default
-`${SourcePath}\Build\...`, not from the variables. The name is looked for after the build
+`ArchProbe_win64.exe`. The name is looked for after the build
 rather than assumed, because `${FileExtension}` follows the build type.
 
 **A switch of target is not saved.** The IDE saves the target it last built a project for
@@ -1673,3 +1670,68 @@ target) and reload (47 s: two builds and two restarts).
 - An `--only` that matches nothing is refused with exit code 2. `--timeout 8` ends lanes
   mid-build and leaves the registry as found and nothing running.
 - Exporting the samples leaves the install's `projects` folder as it was, mtimes included.
+
+## Reading and patching the IDE's main.js
+
+`scripts/ide_js.mjs` and its library `scripts/ide-js/lib.mjs` (the rules are in
+[WIP.md](WIP.md#driving-the-twinbasic-compiler), *Fixing the IDE itself*; the usage is on
+[Tools-Defects](docs/Documentation/Tools-Defects.md#ide_jsmjs)). It came out of a study on
+2026-10-18, whose prototype it replaces.
+
+**What the file is.** BETA 1010's `ide/main.js` is one line of 1,263,324 bytes: 314,309
+tokens, no comment, no source map. Its top level is 979 function declarations, 46 classes
+and 793 `var`/`const` declarations, so 1,295 units (functions and class methods). It has
+9,346 locals, 9,245 of them one letter long. The minifier removed whitespace and renamed
+locals and parameters, and nothing else: every top-level name, property and global
+survives, which is why a unit's name is the anchor of the map.
+
+**Why edits are splices, never a print.** Any printer (prettier, recast, astring) rewrites
+the whole file --- quotes, parentheses, spacing --- so a patched copy would differ from the
+install in every byte, and a lane result could not be put down to the fix. acorn's tokens with
+their ranges, the comments and the whitespace between them make up every byte of the file
+(`survey`'s `coverage`, exact on 1007 and 1010), and an edit replaces a range of the original
+text, so a patched `main.js` differs from the install only inside its edits. The view is
+prettier's, for reading and for writing a fix, and nothing goes back from it character by
+character: a fix comes back as the token diff of the unit.
+
+**Why a local is keyed by where it is declared.** The minifier gives the same local another
+letter in another build, so a minified name keys nothing. A scope path and a place in the
+scope's declarations do not change while the code does not, and a unit's shape (its syntax
+tree with every local replaced by its key, hashed) says whether it did. From 1007 to 1010,
+1,294 of the 1,295 units have the same shape; the one that changed is `designer_PropertyPage`.
+The committed map's 13 names, named on 1007, check on 1010 as 9 exact, 1 carried and 3 for
+review, all three in `designer_PropertyPage`.
+
+**Why a `review` name is not applied.** A local used more or less often in a changed unit is
+probably the same variable, but may not be, and a wrong name in a view misleads more than a
+minified one does. `seal` after a look applies it again.
+
+**Why the patch checks shapes twice.** First, the fix in our names and the fix turned back into
+the build's names must have the same shape: a new variable the fix names like one of the
+build's minified names would otherwise take over that name's references. Second, each patched
+unit must have the shape of the fix, so the patched file runs what the fix shows, whatever the
+token diff and the spaces it glues in did.
+
+**Why tokens compare strings by value.** prettier writes `"x"` for `'x'` and `0.5` for `.5`, so
+a fix copied from the view would otherwise rewrite every literal it touches. Parentheses are
+not normalised: prettier adds them around mixed `&&` and `||`, and such a fix comes back with
+edits that add them. They change no shape, so the patch is right, just not the smallest.
+
+**A fix is a diff against one build.** `patch` turns every difference between a fix's unit
+and the build's into an edit, so a fix written on one BETA and patched into a later one whose
+unit changed takes the later build's change back out. Before patching a build other than the
+one a fix was written on, run `shape` on it: its diff is exactly what the patch changes.
+
+**The IDE does not check `main.js`.** A copy of BETA 1010 with the two edits of
+`export-verbose-done-escaped`'s fix ran the export lane: the defect's test reported that it
+no longer reproduced, its two controls and the lane's six other tests passed, and
+`bug_repro.mjs verify debug-print-escaped-twice` said NO LONGER REPRODUCES (it reproduces on an
+unpatched, byte-identical copy). That was the study's prototype; the tool's patch of the
+same fix is byte for byte the same.
+
+**The packages.** eslint-scope does the scope analysis, which decides which identifiers are
+one variable: hoisting, block and class scopes and `catch` all have to be right for a rename
+to be, and it is ESLint's own. prettier prints the view and the fix shape only, and is loaded
+on first use. Both are in `package.json` (owner, 2026-10-18), prettier at an exact version:
+another version may print a unit otherwise, and a fix shape's diff and line numbers are what
+it prints.

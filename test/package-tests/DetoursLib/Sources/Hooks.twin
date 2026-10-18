@@ -1,0 +1,71 @@
+' DetoursLib: what the cases share. The function they detour is MulDiv of kernel32, which the
+' process can call from any thread, so each detour gives its own answer only for one marked
+' argument, 4242, and passes every other call to the original through the trampoline.
+Module Hooks
+
+    Public Const Marked As Long = 4242
+
+    Public Declare PtrSafe Function MulDiv Lib "kernel32" (ByVal nNumber As Long, ByVal nNumerator As Long, ByVal nDenominator As Long) As Long
+    Public DeclareWide PtrSafe Function GetModuleHandle Lib "kernel32" Alias "GetModuleHandleW" (ByVal lpModuleName As String) As LongPtr
+    Public Declare PtrSafe Function GetProcAddress Lib "kernel32" (ByVal hModule As LongPtr, ByVal lpProcName As String) As LongPtr
+    Public Declare PtrSafe Function GetLastError Lib "kernel32" () As Long
+    Public Declare PtrSafe Sub SetLastError Lib "kernel32" (ByVal dwErrCode As Long)
+
+    Public Delegate Function MulDivFn (ByVal nNumber As Long, ByVal nNumerator As Long, ByVal nDenominator As Long) As Long
+
+    ' The trampoline of the detour in place, or 0.
+    Public RealMulDiv As LongPtr
+    ' How many times each detour ran.
+    Public CallsA As Long
+    Public CallsB As Long
+
+    ' The address of MulDiv's code, as GetProcAddress gives it.
+    Public Function MulDivAddress() As LongPtr
+        Return GetProcAddress(GetModuleHandle("kernel32"), "MulDiv")
+    End Function
+
+    ' Calls the function at a trampoline or a code address as MulDiv. With no address (a call
+    ' from another thread before the case has stored the trampoline) it computes the answer.
+    Public Function CallAt(ByVal address As LongPtr, ByVal a As Long, ByVal b As Long, ByVal c As Long) As Long
+        If address = 0 Then
+            If c = 0 Then Return -1
+            Return CLng(CDbl(a) * b / c)
+        End If
+        Dim fn As MulDivFn = CType(Of MulDivFn)(address)
+        Return fn(a, b, c)
+    End Function
+
+    ' Detour A: gives -1 for the marked argument, else calls the original.
+    Public Function DetourA(ByVal nNumber As Long, ByVal nNumerator As Long, ByVal nDenominator As Long) As Long
+        If nNumber = Marked Then
+            CallsA = CallsA + 1
+            Return -1
+        End If
+        Return CallAt(RealMulDiv, nNumber, nNumerator, nDenominator)
+    End Function
+
+    ' Detour B: gives -2 for the marked argument, else calls the original.
+    Public Function DetourB(ByVal nNumber As Long, ByVal nNumerator As Long, ByVal nDenominator As Long) As Long
+        If nNumber = Marked Then
+            CallsB = CallsB + 1
+            Return -2
+        End If
+        Return CallAt(RealMulDiv, nNumber, nNumerator, nDenominator)
+    End Function
+
+    ' Removes the detour a case left in place after a failed check, so the next case starts clean.
+    Public Sub Unhook(ByVal detour As LongPtr)
+        If RealMulDiv <> 0 Then
+            On Error Resume Next
+            DetoursLib.RemoveDetour RealMulDiv, detour
+            RealMulDiv = 0
+        End If
+    End Sub
+
+    Public Sub Reset()
+        RealMulDiv = 0
+        CallsA = 0
+        CallsB = 0
+    End Sub
+
+End Module

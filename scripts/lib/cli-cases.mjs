@@ -413,6 +413,7 @@ const HELP_TOOLS = {
   "scripts/convert_em_dash_separators.mjs": null,
   "scripts/crawl_check.mjs": null,
   "scripts/gen_attribute_probes.mjs": "Generate a twinBASIC probe project for Reference/Attributes.md applicability.\n",
+  "scripts/ide_js.mjs": null,
   "scripts/impexp.mjs": "Usage:\n",
   "scripts/package_tests.mjs": null,
   "scripts/pick_a11y_sample.mjs": null,
@@ -495,6 +496,7 @@ const REFUSALS = {
   "scripts/convert_em_dash_separators.mjs": [null, { args: ["--check", "--bogus"] }],
   "scripts/crawl_check.mjs": ["timeout"],
   "scripts/gen_attribute_probes.mjs": [null],
+  "scripts/ide_js.mjs": ["ide"],
   "scripts/impexp.mjs": [null, { prefix: "ERROR: " }],
   "scripts/package_tests.mjs": ["ide"],
   "scripts/pick_a11y_sample.mjs": ["sweep"],
@@ -753,6 +755,43 @@ bad(
   bad(tool, ["compile", "no-such-bug", "--marked"], thenUsage("--marked does not apply to compile", tool));
   bad(tool, ["verify", "--existing"], thenUsage("--existing does not apply to verify", tool));
   bad(tool, ["file", "no-such-bug", "12"], "no such reproducer: bugs/no-such-bug\n");
+}
+
+// ide_js follows the message with its usage. It checks its command line, and where
+// --out and --copy-to point, before it reads an install, so none of these reads one;
+// the last is the install TB_IDE names, which does not exist.
+{
+  const tool = "scripts/ide_js.mjs";
+  bad(tool, [], new RegExp(`^usage: node ${literal(tool)} `));
+  bad(tool, ["frobnicate"], thenUsage("unknown command: frobnicate", tool));
+  bad(tool, ["list"], thenUsage("list needs a unit", tool));
+  bad(tool, ["units"], thenUsage("units needs another install", tool));
+  bad(tool, ["name", "show"], thenUsage("name needs a unit and at least one <key>=<name>", tool));
+  bad(tool, ["name", "show", "0#0"], thenUsage("expected <key>=<name>, got: 0#0", tool));
+  bad(tool, ["view"], thenUsage("view needs a unit, or --all", tool));
+  bad(tool, ["view", "--all"], thenUsage("view --all needs --out <file>", tool));
+  bad(tool, ["view", "show", "--all", "--out", "x.js"], thenUsage("unexpected argument: show", tool));
+  bad(tool, ["survey", "extra"], thenUsage("unexpected argument: extra", tool));
+  bad(tool, ["survey", "--map", "x.json"], thenUsage("--map does not apply to survey", tool));
+  bad(tool, ["check", "--out", "x.js"], thenUsage("--out does not apply to check", tool));
+  bad(tool, ["shape", "fix.js", "--copy-to", "x"], thenUsage("--copy-to does not apply to shape", tool));
+  bad(tool, ["patch", "fix.js"], thenUsage("patch needs one of --out <file> and --copy-to <dir>", tool));
+  bad(
+    tool,
+    ["patch", "fix.js", "--out", "a.js", "--copy-to", "b"],
+    thenUsage("patch needs one of --out <file> and --copy-to <dir>", tool),
+  );
+  bad(
+    tool,
+    ["patch", "fix.js", "--out", path.join(REPO_ROOT, "main.js")],
+    new RegExp(`^refusing --out .+: it is inside the repository\\nusage: node ${literal(tool)} `),
+  );
+  bad(
+    tool,
+    ["patch", "fix.js", "--copy-to", path.join(REPO_ROOT, "copy")],
+    new RegExp(`^refusing --copy-to .+: it is not under .+\\nusage: node ${literal(tool)} `),
+  );
+  bad(tool, ["survey"], /^no main\.js at .+main\.js\n$/);
 }
 
 // vb6run reads its command line before it reads its file or looks for VB6, and

@@ -86,7 +86,7 @@ The four components of the project's current version (`Major.Minor.Build.Revisio
 ### Build
 {: .no_toc }
 
-Builds the project. Equivalent to the IDE's File → Make/Build… command. Writes the output to [**BuildOutputPath**](#buildoutputpath); errors raised during compilation appear in the DEBUG CONSOLE the same way they would for a user-initiated build.
+Builds the project. Equivalent to the IDE's **File → Build** command; see [Build and Clean](../../../tB/IDE/Building/Build-and-Clean). Writes the output to [**BuildOutputPath**](#buildoutputpath); compile errors are listed in the DIAGNOSTICS panel, and the DEBUG CONSOLE gets the log lines of the build, the same as for a user-initiated build.
 
 Syntax: *project*.**Build**
 

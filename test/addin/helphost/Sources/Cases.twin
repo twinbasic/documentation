@@ -37,4 +37,9 @@ Module Cases
     End Sub
 
     ' CefBrowser is in a package this project does not reference.
+
+    Public Sub Types()
+        Dim s As String = String(5, "x")
+        Dim d As Date = Date
+    End Sub
 End Module

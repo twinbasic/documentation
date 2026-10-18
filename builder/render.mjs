@@ -480,6 +480,7 @@ export function createMarkdownIt(ctx) {
   md.use(figurePlugin, ctx);
   md.use(videoLinkPlugin, ctx);
   md.use(remoteImagePlugin, ctx);
+  md.use(stripHtmlCommentsPlugin);
   // Substitutes {{tbdocs:<name>}} in prose. Registered last so it runs after
   // `replacements` has done the dash and quote transforms -- see counts.mjs
   // for why the layer matters and what it deliberately cannot reach.
@@ -489,6 +490,96 @@ export function createMarkdownIt(ctx) {
   md.downloads = ctx.downloads ?? null;
 
   return md;
+}
+
+// Author comments (`<!-- ... -->`: SHOT markers, test-region markers, notes)
+// are not for the reader, so no page carries one. Only the parser's html_block
+// and html_inline tokens are touched: a comment shown in a fence or in a code
+// span is text there, escaped by its own renderer, and never reaches this rule.
+// It runs after tightLooseListPlugin, which reads a comment block as a block
+// of its own, so a list's looseness is decided with the comment still there.
+//
+// A raw HTML block holding a script, style or textarea element is left alone,
+// since a `<!--` inside one is not a comment to the browser.
+const RAW_TEXT_ELEMENT_RE = /<(?:script|style|textarea)[\s>]/i;
+
+// `html` without its comments. A comment alone on its line takes the whole
+// line with it; one at the end of a line takes the blanks before it. An
+// unterminated `<!--` is not a comment and stays.
+function withoutHtmlComments(html) {
+  let out = "";
+  let pos = 0;
+  for (;;) {
+    const start = html.indexOf("<!--", pos);
+    if (start < 0) break;
+    const close = html.indexOf("-->", start + 4);
+    if (close < 0) break;
+    out += html.slice(pos, start);
+    let end = close + 3;
+    const lineStart = out.lastIndexOf("\n") + 1;
+    const newline = html.indexOf("\n", end);
+    const restOfLine = html.slice(end, newline < 0 ? html.length : newline);
+    const atLineStart = out.slice(lineStart).trim() === "";
+    if (restOfLine.trim() === "") {
+      if (atLineStart) {
+        out = out.slice(0, lineStart);
+        end = newline < 0 ? html.length : newline + 1;
+      } else {
+        out = out.replace(/[ \t]+$/, "");
+        end = newline < 0 ? html.length : newline;
+      }
+    } else if (atLineStart) {
+      end += restOfLine.length - restOfLine.trimStart().length;
+    }
+    pos = end;
+  }
+  return out + html.slice(pos);
+}
+
+const isComment = (c) => c.type === "html_inline" && c.content.startsWith("<!--");
+
+// An inline token's children without its comments. Of the blanks around a removed
+// comment one is kept between two texts, none at either end of the paragraph.
+function withoutCommentChildren(children) {
+  const out = [];
+  for (let i = 0; i < children.length; i++) {
+    const c = children[i];
+    if (!isComment(c)) {
+      out.push(c);
+      continue;
+    }
+    const prev = out[out.length - 1];
+    const next = children[i + 1];
+    const prevText = prev?.type === "text";
+    const nextText = next?.type === "text" && !isComment(next);
+    if (prevText && (!next || (nextText && /^[ \t]/.test(next.content))))
+      prev.content = prev.content.replace(/[ \t]+$/, "");
+    else if (!prev && nextText) next.content = next.content.replace(/^[ \t]+/, "");
+  }
+  return out.filter((c) => c.type !== "text" || c.content !== "");
+}
+
+function stripHtmlCommentsPlugin(md) {
+  md.core.ruler.push("strip-html-comments", (state) => {
+    const kept = [];
+    for (const t of state.tokens) {
+      if (t.type === "html_block") {
+        if (!t.content.includes("<!--") || RAW_TEXT_ELEMENT_RE.test(t.content)) {
+          kept.push(t);
+          continue;
+        }
+        t.content = withoutHtmlComments(t.content);
+        if (t.content.trim() === "") continue;
+      } else if (
+        t.type === "inline" &&
+        t.children?.some((c) => c.type === "html_inline" && c.content.startsWith("<!--"))
+      ) {
+        t.children = withoutCommentChildren(t.children);
+      }
+      kept.push(t);
+    }
+    state.tokens = kept;
+  });
 }
 
 // kramdown pairs adjacent `**` markers left-to-right (1st with 2nd,

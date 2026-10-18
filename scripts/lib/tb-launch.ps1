@@ -57,6 +57,14 @@
 #                            window's colour key and alpha, and the texts of the
 #                            window and its child windows, for the caller to
 #                            search for the user name
+#   TBBUILD_WINDOWS=post     PostMessage of TBBUILD_MSG, with TBBUILD_WPARAM and
+#                            TBBUILD_LPARAM, to the window TBBUILD_HWND: a key
+#                            pressed on a desktop that is not on screen reaches
+#                            no window, so WM_SYSCOMMAND SC_KEYMENU with a letter
+#                            opens a window's menu, as Alt and the letter do
+#
+# tb-ide.mjs passes the script with each line that is only a comment emptied, so
+# no line of the C# below may start with `#`.
 #
 # The calls are made on a thread of their own that has been put on the desktop,
 # since a thread sees and draws only the windows of its own desktop, and that is
@@ -129,6 +137,7 @@ public static class TbWindows {
   [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr h);
   [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr ctx);
   [DllImport("user32.dll", SetLastError = true)] static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
+  [DllImport("user32.dll", SetLastError = true)] static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
   [DllImport("user32.dll")] static extern bool GetLayeredWindowAttributes(IntPtr h, out uint key, out byte alpha, out uint flags);
   [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int a, out RECT r, int n);
   [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr h, out RECT r);
@@ -246,6 +255,15 @@ public static class TbWindows {
     });
     return result;
   }
+
+  public static string Post(string desktop, long hwnd, uint msg, long w, long l) {
+    OnDesktop(desktop, (desk) => {
+      IntPtr h = new IntPtr(hwnd);
+      if (!IsWindow(h)) throw new Exception("there is no window " + hwnd);
+      if (!PostMessage(h, msg, new IntPtr(w), new IntPtr(l))) throw Failed("PostMessage");
+    });
+    return "{\"posted\":true}";
+  }
 }
 '@
   $desktop = $env:TBBUILD_DESKTOP
@@ -254,8 +272,10 @@ public static class TbWindows {
   } elseif ($env:TBBUILD_WINDOWS -eq "capture") {
     $flags = if ($env:TBBUILD_FLAGS) { [uint32]$env:TBBUILD_FLAGS } else { [uint32]2 }
     Write-Output ([TbWindows]::Capture($desktop, [long]$env:TBBUILD_HWND, $flags, $env:TBBUILD_FILE))
+  } elseif ($env:TBBUILD_WINDOWS -eq "post") {
+    Write-Output ([TbWindows]::Post($desktop, [long]$env:TBBUILD_HWND, [uint32]$env:TBBUILD_MSG, [long]$env:TBBUILD_WPARAM, [long]$env:TBBUILD_LPARAM))
   } else {
-    throw "TBBUILD_WINDOWS is neither list nor capture: $($env:TBBUILD_WINDOWS)"
+    throw "TBBUILD_WINDOWS is not list, capture or post: $($env:TBBUILD_WINDOWS)"
   }
   exit 0
 }

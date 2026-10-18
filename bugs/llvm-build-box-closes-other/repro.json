@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:building-llvm-box",
+  "tests": [
+    "a box opened during an LLVM build is closed at its end in place of the Compiling... box, which stays with no button and blocks the IDE"
+  ],
+  "steps": "1. Open a Standard EXE project with +llvm in Compiler Options (BUILD), with a licence that allows LLVM.\n2. Press Build. The Compiling... box shows.\n3. While it shows, another box opens (the test opens one with the IDE's own showModalNotification, at the build's first progress event).\n4. At the build's end the other box is closed, and a Compiling... box stays at 0.0% with no button: the IDE takes no input until the page is reloaded.\nControl: an LLVM build with no other box closes its Compiling... box at its end."
+}

@@ -1,0 +1,20 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS Declare_ParameterAsAny$",
+      "^PASS UdtField_AsAny$",
+      "^PASS FunctionReturn_AsAny$",
+      "^PASS SubParameter_AsAny$",
+      "^PASS SubParameterByVal_AsAny$",
+      "^PASS LocalArrayDim_AsAny$",
+      "^PASS ReDim_AsAny$",
+      "^PASS Control_DimAsLong$",
+      "^FAIL ClassField_AsAny: ",
+      "^FAIL ModuleVariable_AsAny: ",
+      "^FAIL LocalDim_AsAny: ",
+      "^FAIL LocalStatic_AsAny: "
+    ]
+  }
+}

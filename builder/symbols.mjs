@@ -24,6 +24,10 @@
 //     operators". The first word of each form is the statement or operator,
 //     the rest keywords of it: Loop, Next, Wend, Then. Attributes.md, which is
 //     /tB/Core/Attributes, has one attribute to each `##`.
+//   - Reference/Data-Types.md, the one page outside /tB/ that is read: each
+//     intrinsic type its `symbols:` names is a `type`, at the `##` heading of
+//     that name, a short section that links to the type's own page (owner,
+//     2026-10-18). A name with no such heading fails the build.
 //   - A package folder: a page is a type's when its title or first heading
 //     names a type the package declares ("Strings Module" is Strings, "Len,
 //     LenB" is Len and LenB). A page under a type's page in the nav, named
@@ -67,6 +71,7 @@ export const PACKAGE_FOLDERS = [
 
 const CORE_FOLDER = "Reference/Core/";
 const ATTRIBUTES_PAGE = "Reference/Attributes.md";
+export const DATA_TYPES_PAGE = "Reference/Data-Types.md";
 
 // Section headings under which every heading names a member, and the kind
 // each gives one the packages do not declare.
@@ -242,6 +247,12 @@ export function deriveSymbolIndex({ pages, api }) {
   const tbPages = pages.filter((p) => String(p.url).startsWith("/tB/"));
 
   // ---- the language
+  const dataTypes = pages.find((p) => p.src === DATA_TYPES_PAGE);
+  for (const name of dataTypes?.symbols ?? []) {
+    const h = dataTypes.headings.find((x) => x.level === 2 && x.id && x.text.toLowerCase() === name.toLowerCase());
+    if (!h) throw new Error(`${DATA_TYPES_PAGE} names ${name} in symbols: and has no ## ${name} heading`);
+    add(entry(name, null, null, "type", `${dataTypes.url}#${h.id}`));
+  }
   for (const page of tbPages) {
     if (page.src === ATTRIBUTES_PAGE) {
       for (const h of page.headings) {
@@ -593,12 +604,16 @@ export const SYMBOL_INDEX_FORMAT = 1;
 export const SYMBOL_INDEX_REL = "tB/symbols.json";
 
 /**
- * The build's pages as deriveSymbolIndex reads them: those under /tB/, with the
- * headings of their rendered HTML.
+ * The build's pages as deriveSymbolIndex reads them: those under /tB/, and the
+ * data types page, with the headings of their rendered HTML.
  */
 export function symbolPages(pages) {
   return pages
-    .filter((p) => String(p.permalink ?? "").startsWith("/tB/") && typeof p.renderedContent === "string")
+    .filter(
+      (p) =>
+        (String(p.permalink ?? "").startsWith("/tB/") || p.srcRel === DATA_TYPES_PAGE) &&
+        typeof p.renderedContent === "string",
+    )
     .map((p) => {
       const fm = p.frontmatter ?? {};
       return {

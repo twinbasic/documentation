@@ -337,6 +337,15 @@ Unit tests for the [package indexer](Tools-Build#twin-index) in `indexer/lib/`, 
 
 Exit codes: **0** every test passed, **1** a test failed.
 
+## ide-js.test.mjs
+{: #ide-js-test }
+
+    node --test test/ide-js.test.mjs
+
+Unit tests for [`ide_js.mjs`](Tools-Defects#ide-js) and its library, `scripts/ide-js/lib.mjs`, which read, name and patch the twinBASIC IDE's minified `ide/main.js`. The "builds" are a few lines of minified JavaScript written in the test: one program under two sets of local names, and three changes a later build can make to one of its functions. No copy of an IDE's `main.js` is in the repository. The round trip is tested on a text with comments, a template literal and a regular expression: the tokens, the comments and the whitespace between them are every byte of it. The keys are tested for what they promise: a local's key says where it is declared, so it is the same under other names, and the same code under other names has the same shape. The name map is tested on each verdict: a name is *exact* in an unchanged function, *carried* when the function changed but the variable is used as often, *review* when it is used more or less often, and *lost* when its key finds a binding of another kind, none, or no function at all. The names the map refuses are tested too: one that is not an identifier, a reserved word, one given to two variables, and one that would hide another name the function uses. A fix is tested as it is written from the view, in our names and with the printer's quotes and semicolons: it becomes the smallest token edit of the minified text, every other byte kept, and a function the fix leaves as it was gives no edit. A fix of a function the build does not have, and a new variable named like one of the build's minified names, are refused. The line diff of a fix shape is tested for its context and its hunk headers. The command line is tested by running the tool on a small install in the temp folder: `check`'s exit codes, `patch` writing a `main.js` under the temp folder and a copy of the install there, and refusing the repository and a folder outside the temp folder. No twinBASIC install, no built tree, about 1 s.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
 ## check_page_baseline.mjs
 {: #check-page-baseline }
 

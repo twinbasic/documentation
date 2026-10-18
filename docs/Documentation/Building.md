@@ -83,6 +83,7 @@ Do not drop `--check-audit-index` when typing the underlying build command: with
       && node --test test/broker.test.mjs \
       && node --test test/addin-project.test.mjs \
       && node --test test/indexer.test.mjs \
+      && node --test test/ide-js.test.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \

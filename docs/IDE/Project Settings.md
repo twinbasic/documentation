@@ -72,7 +72,7 @@ When set to **Yes**, the type library that the build produces takes the [Project
 
 ## Build Output Path
 
-The full path of the file the compiler creates. Its description in the dialog lists these variables: `${SourcePath}`, the folder that holds the `.twinproj` file, and `${ProjectName}`, `${ProjectID}`, `${FileExtension}`, `${Bitness}`, `${Architecture}`, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}` and `${VersionRevision}`. `${Architecture}` is `win32` or `win64`, whichever the toolbar's [build configuration](Reference/Toolbar#build-configuration) box is set to, and `${Bitness}` is the matching `32` or `64`, so `${ProjectName}_${Bitness}.${FileExtension}` names `MathGreetLib_32.dll` or `MathGreetLib_64.dll`. The IDE add-in samples use one more that the description leaves out, `${IdePath}`, the folder the IDE is installed in: their `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}` builds straight into the IDE's own `addins` folder, which works until the IDE has loaded the add-in --- see [Rebuilding an addin the IDE has loaded](../Packages/tbIDE/#rebuilding-an-addin-the-ide-has-loaded).
+The full path of the file the compiler creates. Its description in the dialog lists these variables: `${SourcePath}`, the folder that holds the `.twinproj` file, and `${ProjectName}`, `${ProjectID}` (see the [warning about it](Building/Build-Output#the-build-output-path)), `${FileExtension}`, `${Bitness}`, `${Architecture}`, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}` and `${VersionRevision}`. `${Architecture}` is `win32` or `win64`, whichever the toolbar's [build configuration](Reference/Toolbar#build-configuration) box is set to, and `${Bitness}` is the matching `32` or `64`, so `${ProjectName}_${Bitness}.${FileExtension}` names `MathGreetLib_32.dll` or `MathGreetLib_64.dll`. The IDE add-in samples use one more that the description leaves out, `${IdePath}`, the folder the IDE is installed in: their `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}` builds straight into the IDE's own `addins` folder, which works until the IDE has loaded the add-in --- see [Rebuilding an addin the IDE has loaded](../Packages/tbIDE/#rebuilding-an-addin-the-ide-has-loaded).
 
 Every project template sets it to `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`: a `Build` folder beside the `.twinproj` file, and a different file name for each architecture. A Standard DLL project named `MathGreetLib` builds `Build\MathGreetLib_win32.dll` or `Build\MathGreetLib_win64.dll`, and a `Declare` that calls it has to name that file --- see [Calling a Standard DLL from VBA or Excel](../../Features/Project-Configuration/Project-Types#calling-a-standard-dll-from-vba-or-excel). In the `Settings` file it is `project.buildPath`.
 
@@ -148,11 +148,11 @@ The part of the type library's version that goes up by 1 after each successful b
 For an **ActiveX DLL** or **ActiveX Control** build. When set to **Yes**, the DLL's `DllRegisterServer` and `DllUnregisterServer` register it under `HKEY_LOCAL_MACHINE` instead of `HKEY_CURRENT_USER`, as VB6 DLLs do. It is **No** by default. In the `Settings` file it is `project.dllRegisterLocalMachine`.
 
 > [!IMPORTANT]
-> Registering under `HKEY_LOCAL_MACHINE` needs administrator rights, so with this setting at **Yes**, the IDE usually has to be started with **Run as administrator**.
+> Registering under `HKEY_LOCAL_MACHINE` needs administrator rights, so with this setting at **Yes**, the IDE usually has to be started with **Run as administrator**. An IDE that is not elevated shows a [warning box](Building/ActiveX-Registration#the-warning-at-the-machine-wide-registry) when it opens such a project.
 
 ## Register DLL after build
 
-For an **ActiveX DLL** or **ActiveX Control** build. When set to **Yes**, the IDE registers the DLL as soon as the build finishes. It is **Yes** by default. **No** leaves the registration to the developer. In the `Settings` file it is `project.dllRegisterAfterBuild`.
+For an **ActiveX DLL** or **ActiveX Control** build. When set to **Yes**, the compiler registers the DLL as soon as the build finishes. It is **Yes** by default. **No** leaves the registration to the developer. In the `Settings` file it is `project.dllRegisterAfterBuild`.
 
 ## COM Initialization
 

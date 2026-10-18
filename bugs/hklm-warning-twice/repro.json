@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:building-hklm",
+  "tests": [
+    "an ActiveX DLL with Register DLLs to HKLM shows the HKLM warning twice as it opens",
+    "a Standard EXE with Register DLLs to HKLM shows the HKLM warning too, twice as it opens"
+  ],
+  "steps": "1. In an IDE that is not elevated, open an ActiveX DLL project with Register DLLs to HKLM set to YES.\n2. The box WARNING: This project registers itself to the HKEY_LOCAL_MACHINE registry hive ... shows; choose Continue Anyway. The same box shows again; choose Continue Anyway again.\n3. Open a Standard EXE project with the same setting set to YES: the same box shows, twice, though a Standard EXE registers nothing.\nControl: an ActiveX DLL registered in HKCU opens with no box."
+}

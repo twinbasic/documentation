@@ -36,6 +36,6 @@ Every command needs an open project, and is greyed out until one is.
 : Opens the folder of the project's `.twinproj` file in Windows Explorer. For a project that has no file yet, it shows the notification **Project is not yet saved.  Please save the project first.** It has no key.
 
 **Open Build Output Folder...**
-: Opens the folder of the file that the [Build Output Path](../../Project-Settings#build-output-path) names. It does not create the folder, and it gives the same notification when the project has no file or no build output path. It has no key.
+: Opens the folder of the file that the [Build Output Path](../../Project-Settings#build-output-path) names. It does not create the folder. It gives the same notification when the project has no file, and goes on giving it after the first save, and opens the old folder after a change of the path, until the project is opened again or the compiler restarts. It has no key. See [Open Build Output Folder](../../Building/Build-Output#open-build-output-folder).
 
 See [Open a folder](../../Projects/Saving-and-Exporting#open-a-folder).

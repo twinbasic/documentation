@@ -1,0 +1,115 @@
+{
+  "format": 1,
+  "about": "Our names for minified locals of the IDE's main.js, keyed by unit and scope path (scripts/ide_js.mjs). These are our names, not the twinBASIC source's.",
+  "units": {
+    "debugOutputPartial": {
+      "namedOn": "BETA 1007",
+      "shape": "ea9f1277c4c9df1b",
+      "names": {
+        "0#0": {
+          "name": "text",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 13
+        },
+        "0#1": {
+          "name": "colorClass",
+          "was": "t",
+          "def": "Parameter",
+          "kind": "param1",
+          "refs": 4
+        },
+        "0#2": {
+          "name": "isHTML",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param2",
+          "refs": 3
+        },
+        "0#3": {
+          "name": "timeStamp",
+          "was": "n",
+          "def": "Parameter",
+          "kind": "param3",
+          "refs": 2
+        },
+        "0#4": {
+          "name": "endsLine",
+          "was": "r",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 5
+        },
+        "0#5": {
+          "name": "addedHTML",
+          "was": "i",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0/1#0": {
+          "name": "lineHTML",
+          "was": "n",
+          "def": "Variable",
+          "kind": "let",
+          "refs": 2
+        },
+        "0/2#0": {
+          "name": "stampHTML",
+          "was": "i",
+          "def": "Variable",
+          "kind": "let",
+          "refs": 4
+        }
+      }
+    },
+    "TEXTtoHTML": {
+      "namedOn": "BETA 1007",
+      "shape": "ec9b42ee6730cbed",
+      "names": {
+        "0#0": {
+          "name": "text",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 9
+        }
+      }
+    },
+    "designer_PropertyPage": {
+      "namedOn": "BETA 1007",
+      "shape": "8adba2241a344d25",
+      "names": {
+        "0/0#0": {
+          "name": "container",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 1
+        },
+        "0/0#4": {
+          "name": "placeholder",
+          "was": "r",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 4
+        },
+        "0/1#0": {
+          "name": "element",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 1
+        },
+        "0/2#1": {
+          "name": "propertyText",
+          "was": "t",
+          "def": "Parameter",
+          "kind": "param1",
+          "refs": 4
+        }
+      }
+    }
+  }
+}

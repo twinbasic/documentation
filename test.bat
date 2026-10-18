@@ -122,6 +122,14 @@ node --test test/addin-project.test.mjs
 @rem install. No tree, no browser, well under a second.
 node --test test/indexer.test.mjs
 @if errorlevel 1 goto :fail
+@rem Unit tests for scripts/ide_js.mjs, which reads, names and patches the
+@rem twinBASIC IDE's minified main.js: the byte-exact round trip, the keys
+@rem a local is named by and how a name carries to another build, and a fix
+@rem patched in as the smallest token edit. The "builds" are a few lines
+@rem written in the test; no copy of an IDE's main.js is in the repository.
+@rem No tree, no install, about 1 s.
+node --test test/ide-js.test.mjs
+@if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus
 @rem passes until some page happens to contain the trigger, and then the

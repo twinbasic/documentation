@@ -476,6 +476,20 @@ an inline `<code>`, welds the code to the word next to it --- `a <code>x</code> 
 would come out as `ax b`. Trimming is conditional on which element bounds the
 segment, so `<pre>` boundaries trim as they always did.
 
+### HTML comments never reach the output
+
+`stripHtmlCommentsPlugin` (a core rule in `builder/render.mjs`, owner's request) drops every
+`<!-- ... -->` the markdown holds from all three trees: the SHOT markers, the `<!-- test: ... -->`
+region markers and notes. It edits `html_block` and `html_inline` tokens only, which is why a
+comment shown in a fence or a code span is untouched: those are `fence` and `code_inline` tokens,
+escaped by their own renderers. It is registered after `tightLooseListPlugin` and must stay
+there, because that rule sees a comment block as a block of its own when it decides a list item's
+tightness. **Nothing downstream reads a comment from rendered HTML**: `check_package_tests.mjs` and
+`package-test-cases.mjs` read the markdown source, and what the build needs from a comment is
+written by the templates, not by markdown, so it stays: the `Begin/End Jekyll SEO tag` pair
+(`offline-rewrite.mjs` finds the block by it) and the two icon licences in `template.mjs`. A rule
+that needs a marker in a page's output uses an element or an attribute, never a comment.
+
 ### The book refuses a stale source tree
 
 Testing only that `docs\_site-pdf\book.html` **exists** is not enough: edit a

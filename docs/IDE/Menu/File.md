@@ -50,7 +50,9 @@ The commands from **Close Project** to **Clean** work on the open project, and a
 {: #build }
 
 **Build**
-: Compiles the project into the file that the [*Build Output Path*](../../Project-Settings#build-output-path) setting names. The project templates set it to `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`, a file in a `Build` folder beside the `.twinproj`. `${Architecture}` is `win32` or `win64`, as chosen in the [build configuration](../Toolbar#build-configuration) box on the toolbar. It has no key.
+: Compiles the project into the file that the [*Build Output Path*](../../Project-Settings#build-output-path) setting names, for the architecture that the [build configuration](../Toolbar#build-configuration) box on the toolbar shows. It saves nothing, and runs nothing. For a project with no file, it first asks for one. It has no key. See [Build and Clean](../../Building/Build-and-Clean) and [What a build writes](../../Building/Build-Output).
 
 **Clean**
-: Deregisters the previously built DLL, if there is one, and deletes the previous build file. It has no key.
+: Deregisters the previously built DLL, if there is one, and deletes the previous build file. It has no key. See [Clean](../../Building/Build-and-Clean#clean) and [ActiveX registration](../../Building/ActiveX-Registration).
+
+The [Building](../../Building/) chapter describes both, with the log that the **DEBUG CONSOLE** shows.

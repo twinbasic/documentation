@@ -43,4 +43,7 @@ export default [
   { file: "projects.test.mjs" },
   { file: "projects-loss.test.mjs" },
   { file: "projects-import-crash.test.mjs" },
+  { file: "building.test.mjs" },
+  { file: "building-hklm.test.mjs" },
+  { file: "building-llvm-box.test.mjs" },
 ];

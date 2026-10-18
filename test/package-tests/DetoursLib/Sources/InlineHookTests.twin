@@ -1,0 +1,66 @@
+' DetoursLib: SlimDetoursInlineHook of the module DetoursMod, the SlimDetours function the others call.
+[TestFixture]
+Module InlineHookTests
+
+    [TestCase]
+    Public Sub SlimDetoursInlineHook_Enable_SucceedsAndStoresTheTrampoline()
+        Expect.Begin
+        Hooks.Reset
+        Dim p As LongPtr = Hooks.MulDivAddress()
+        Dim hr As Long = DetoursMod.SlimDetoursInlineHook(1, p, AddressOf Hooks.DetourA)
+        Expect.AreEqual &H10000000, hr, "SlimDetoursInlineHook(1, p, AddressOf DetourA) with p the address of MulDiv"
+        If hr >= 0 Then
+            Hooks.RealMulDiv = p
+            Expect.IsTrue p <> Hooks.MulDivAddress(), "p afterwards is not the address of MulDiv"
+            Expect.AreEqual -1, Hooks.MulDiv(Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1), detoured to DetourA"
+            Expect.AreEqual Hooks.Marked, Hooks.CallAt(p, Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1) called through p"
+            hr = DetoursMod.SlimDetoursInlineHook(0, p, AddressOf Hooks.DetourA)
+            If hr >= 0 Then Hooks.RealMulDiv = 0
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SlimDetoursInlineHook_Disable_StoresTheFunctionAgain()
+        Expect.Begin
+        Hooks.Reset
+        Dim p As LongPtr = Hooks.MulDivAddress()
+        Dim hr As Long = DetoursMod.SlimDetoursInlineHook(1, p, AddressOf Hooks.DetourA)
+        If hr < 0 Then
+            Expect.Fail "SlimDetoursInlineHook(1, p, AddressOf DetourA) failed: " & Hex(hr)
+        Else
+            Hooks.RealMulDiv = p
+            Dim trampoline As LongPtr = p
+            hr = DetoursMod.SlimDetoursInlineHook(0, p, AddressOf Hooks.DetourA)
+            Expect.AreEqual &H10000000, hr, "SlimDetoursInlineHook(0, p, AddressOf DetourA)"
+            If hr >= 0 Then
+                Hooks.RealMulDiv = 0
+                Expect.IsTrue p <> trampoline, "p after the call is no longer the trampoline"
+                Expect.AreEqual 8, Hooks.CallAt(p, 6, 4, 3), "MulDiv(6, 4, 3) called through p"
+                Expect.AreEqual Hooks.Marked, Hooks.MulDiv(Hooks.Marked, 1, 1), "MulDiv(4242, 1, 1) after the detour is removed"
+            End If
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SlimDetoursInlineHook_FailureIsANegativeHResult()
+        Expect.Begin
+        Hooks.Reset
+        Dim p As LongPtr = Hooks.MulDivAddress()
+        Dim hr As Long = DetoursMod.SlimDetoursInlineHook(1, p, AddressOf Hooks.DetourA)
+        If hr < 0 Then
+            Expect.Fail "SlimDetoursInlineHook(1, p, AddressOf DetourA) failed: " & Hex(hr)
+        Else
+            Hooks.RealMulDiv = p
+            Dim q As LongPtr = p
+            Dim hr2 As Long = DetoursMod.SlimDetoursInlineHook(0, q, AddressOf Hooks.DetourB)
+            Expect.AreEqual CLng(&HD0000173), hr2, "SlimDetoursInlineHook(0, ...) naming DetourB while DetourA is in place"
+            Expect.AreEqual p, q, "the variable after the failed call"
+            hr = DetoursMod.SlimDetoursInlineHook(0, p, AddressOf Hooks.DetourA)
+            If hr >= 0 Then Hooks.RealMulDiv = 0
+        End If
+        Expect.Done
+    End Sub
+
+End Module

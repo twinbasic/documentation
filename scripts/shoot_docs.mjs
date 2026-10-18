@@ -175,6 +175,7 @@ import {
   killTree,
   launchOnDesktop,
   leaseSlot,
+  postWindowMessage,
   shutdownIde,
   sleep,
   waitForCompile,
@@ -1377,15 +1378,17 @@ function stageProjects(run, { refs = false } = {}) {
   unpackProject(path.join(path.dirname(ide), "projects", "_Standard EXE", "projectName.twinproj"), template);
   mkdirSync(path.join(src, "Resources", "ICON"), { recursive: true });
   cpSync(path.join(template, "Resources", "ICON", "twinBASIC.ico"), path.join(src, "Resources", "ICON", "AppIcon.ico"));
+  const file = path.join(src, "Settings");
+  const settings = JSON.parse(readFileSync(file, "utf8"));
+  // Export Project's folder, a folder of the tool's own (PACKAGE_ROOT), which the export makes
+  settings["project.exportPath"] = PJ_EXPORT();
   if (refs) {
-    const file = path.join(src, "Settings");
-    const settings = JSON.parse(readFileSync(file, "utf8"));
     const list = settings["project.references"];
     const scripting = list.find((r) => r.name === "Microsoft Scripting Runtime");
     scripting.overrideSymbol = "SR";
     list.push(MISSING_LIBRARY);
-    writeFileSync(file, `${JSON.stringify(settings, null, "\t")}\n`);
   }
+  writeFileSync(file, `${JSON.stringify(settings, null, "\t")}\n`);
   return src;
 }
 
@@ -4953,6 +4956,55 @@ const formsChapterShots = [
     },
   },
   {
+    // frmMain at 50 %, picked in the zoom box as Designer_Zoom picks it: the half-size form, its
+    // readouts still in form pixels. The form's grid is turned off first (its command, as the toolbar's grid
+    // button runs it; a change of the form that formsReset discards): its dots, scaled, come out
+    // differently in every capture. Taken once, in the dark theme only, as the owner decided.
+    out: FORMS_IMAGE("Designer_Zoom50"),
+    setup: "forms-chapter",
+    once: true,
+    async take({ c }) {
+      await formsDesigner(c);
+      try {
+        const look = () =>
+          c.evaluate(
+            `(() => { const d = ${DESIGNER_GLOBALS}.designer; return d.style.cssText + "|" + getComputedStyle(d).backgroundImage; })()`,
+          );
+        const before = await look();
+        await command(c, "tbFormDesigner_TurnGridIndicatorsOff");
+        if (!(await waitFor(c, async () => (await look()) !== before, { timeout: 5000, interval: 50 }))) {
+          throw new Error("turning the grid off changed nothing on the form");
+        }
+        const full = (await formArea(c)).width;
+        await c.evaluate(`(() => {
+  zoomSelect.selectedIndex = [...zoomSelect.options].findIndex((o) => o.text === "50%");
+  zoomSelect.dispatchEvent(new Event("change", { bubbles: true }));
+})()`);
+        const half = await waitFor(
+          c,
+          async () => {
+            const w = (await formArea(c)).width;
+            return w < full * 0.6 ? w : null;
+          },
+          { timeout: 5000, interval: 50 },
+        );
+        if (!half) throw new Error("50 % in the zoom box did not shrink the form");
+        await designerShown(c);
+        await parkMouse(c);
+        // the form, its menu bar and its readouts, clipped as formStateShot clips them: the box
+        // is at the toolbar's far end, and the tab above shows the form changed
+        const area = await formArea(c);
+        const clip = snapOut({ x: area.x, y: area.y, width: area.width + 6, height: area.height + 8 });
+        return await capture(c, "Designer_Zoom50", clip, {
+          away: () => parkMouse(c),
+          unsteady: await groundUnsteady(c, clip),
+        });
+      } finally {
+        await formsReset(c);
+      }
+    },
+  },
+  {
     // a right click on Command1, with Command2(0) selected too, and the Align submenu open
     out: FORMS_IMAGE("Controls_ContextMenu"),
     setup: "forms-chapter",
@@ -5379,24 +5431,38 @@ const formsChapterShots = [
   },
   {
     // frmMain previewed with the toolbar's PREVIEW: its window on the IDE's desktop, as it draws
-    // itself, with the File menu of the menu editor in its menu bar; taken once, as a running
-    // program's window is
+    // itself, with the File menu of the menu editor open, as Alt+F opens it (WM_SYSCOMMAND
+    // SC_KEYMENU 'f' posted to the window), the menu's own window laid over the form's; taken
+    // once, as a running program's window is
     out: FORMS_IMAGE("Preview_Window"),
     setup: "forms-chapter",
     once: true,
     async take(ctx) {
       const { c } = ctx;
       await formsDesigner(c);
+      let w = null;
       try {
         const preview = await rectOf(c, "#menuBarPreview");
         if (!preview) throw new Error("the toolbar has no PREVIEW button");
         await pressAt(c, preview.x + preview.width / 2, preview.y + preview.height / 2);
         await parkMouse(c);
-        const w = await formWindow(ctx.desktop, { title: "frmMain", timeout: 60000 });
-        return besideEachOther([
-          await windowPicture(ctx.desktop, w.hwnd, "preview", path.join(ctx.windows, "preview.png")),
-        ]);
+        w = await formWindow(ctx.desktop, { title: "frmMain", timeout: 60000 });
+        await postWindowMessage(ctx.desktop, w.hwnd, WM_SYSCOMMAND, SC_KEYMENU, "f".charCodeAt(0));
+        const menu = await waitFor(null, () => openMenuWindow(ctx.desktop, w.pid), { timeout: 5000, interval: 100 });
+        if (!menu) throw new Error("the File menu of the previewed form did not open");
+        const form = await windowPicture(ctx.desktop, w.hwnd, "preview", path.join(ctx.windows, "preview.png"));
+        const drop = await windowPicture(ctx.desktop, menu.hwnd, "its File menu", path.join(ctx.windows, "menu.png"));
+        // the form's rectangle again, in case it moved since it was listed
+        const now = (await desktopWindows(ctx.desktop)).find((x) => x.hwnd === w.hwnd) ?? w;
+        return besideEachOther([withMenu(now, form, menu, drop)]);
       } finally {
+        if (w && (await openMenuWindow(ctx.desktop, w.pid))) {
+          await postWindowMessage(ctx.desktop, w.hwnd, WM_CANCELMODE);
+          await waitFor(null, async () => !(await openMenuWindow(ctx.desktop, w.pid)), {
+            timeout: 5000,
+            interval: 100,
+          });
+        }
         await stopRun(c);
         await clearConsole(c);
         await formsReset(c);
@@ -6265,7 +6331,56 @@ const projectsShots = [
       }
     },
   },
+  {
+    // File > Export Project into the Export Path the staged Settings give (PJ_EXPORT, a folder of
+    // the tool's own, so that the first line names no user), Export Verbose off: the DEBUG
+    // CONSOLE floated (docked, it is too narrow for the first line) and emptied with its Clear
+    // button first, then the two lines the export writes. The console is emptied again
+    // afterwards, as the load left it for no other picture.
+    out: PJ_IMAGE("Export_Console"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      // each export into an empty folder, as the first one is
+      rmSync(PJ_EXPORT(), { recursive: true, force: true });
+      try {
+        const box = await floatPanel(c, "DEBUG CONSOLE", { width: 600, height: 132 });
+        await clearConsole(c);
+        await openMenu(c, "File");
+        const it = (await menuItems(c)).find((i) => i.text.startsWith("Export Project"));
+        if (!it) throw new Error("the File menu has no Export Project");
+        await mouseMove(c, it.x + 20, it.y + it.height / 2);
+        await clickAt(c, it.x + 20, it.y + it.height / 2);
+        const text = await waitFor(
+          c,
+          async () => {
+            const t = await consoleText(c);
+            return /\[EXPORT\] (COMPLETED|export failed)/.test(t) && t;
+          },
+          { timeout: 60000, interval: 200 },
+        );
+        if (!text?.includes("COMPLETED")) {
+          const open = (await modals(c)).map((m) => m.title);
+          throw new Error(
+            `Export Project did not complete: ${JSON.stringify(text || (await consoleText(c)))}, dialogs ${JSON.stringify(open)}`,
+          );
+        }
+        await parkMouse(c);
+        await fixConsoleTimes(c);
+        await frames(c);
+        return await capture(c, "Export_Console", snapOut(box), { away: () => parkMouse(c) });
+      } finally {
+        await clearConsole(c);
+        await unfloatPanel(c, "DEBUG CONSOLE");
+        await projectsReset(c);
+        rmSync(PJ_EXPORT(), { recursive: true, force: true });
+      }
+    },
+  },
 ];
+
+// The Export Path the projects setups' staged Settings give, for Export_Console.
+const PJ_EXPORT = () => path.join(PACKAGE_ROOT, "Export");
 
 // The Recent tab's entries for Failed_To_Load: paths of projects that do not exist (the first
 // is double-clicked), in place of the user's own list, in the page only.
@@ -9718,8 +9833,40 @@ async function windowPicture(desktop, hwnd, name, file) {
       }
     }
   }
-  return { picture: crop(picture, info.frame), dpi: info.dpi };
+  return { picture: crop(picture, info.frame), dpi: info.dpi, frame: info.frame };
 }
+
+// A window with the menu its menu bar opens: the window's picture, and the menu's window (a
+// top-level window of class #32768, as the system draws a menu) laid over it where it is on the
+// desktop, `win` and `menu` each as desktopWindows lists it. The ground beyond the window, where
+// the menu reaches past it, is transparent.
+function withMenu(win, winPicture, menu, menuPicture) {
+  const at = (w, p) => [w.rect[0] + p.frame[0], w.rect[1] + p.frame[1]];
+  const [wx, wy] = at(win, winPicture);
+  const [mx, my] = at(menu, menuPicture);
+  const x0 = Math.min(wx, mx);
+  const y0 = Math.min(wy, my);
+  const width = Math.max(wx + winPicture.picture.width, mx + menuPicture.picture.width) - x0;
+  const height = Math.max(wy + winPicture.picture.height, my + menuPicture.picture.height) - y0;
+  const rgba = Buffer.alloc(width * height * 4);
+  for (const [p, x, y] of [
+    [winPicture.picture, wx - x0, wy - y0],
+    [menuPicture.picture, mx - x0, my - y0],
+  ]) {
+    for (let r = 0; r < p.height; r++)
+      rgba.set(p.rgba.subarray(r * p.width * 4, (r + 1) * p.width * 4), ((y + r) * width + x) * 4);
+  }
+  return { picture: { width, height, rgba }, dpi: winPicture.dpi };
+}
+
+// The open menu of the program `pid` on `desktop` (class #32768), or null.
+const openMenuWindow = async (desktop, pid) =>
+  (await desktopWindows(desktop)).find((w) => w.depth === 0 && w.visible && w.class === "#32768" && w.pid === pid) ??
+  null;
+
+const WM_SYSCOMMAND = 0x112;
+const SC_KEYMENU = 0xf100;
+const WM_CANCELMODE = 0x1f;
 
 // The pictures of windows side by side, their tops level, WINDOW_GAP apart on a transparent
 // ground, as a PNG to be shown at its size at 96 DPI.
