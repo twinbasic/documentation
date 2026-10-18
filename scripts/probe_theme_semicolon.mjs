@@ -4,7 +4,7 @@
 //     node scripts/probe_theme_semicolon.mjs [options]
 //
 // The defect is the entry of BUGS-TO-REPORT.md whose reproducer is
-// bugs/theme-missing-semicolon/: in BETA 1005, line 63 of Dark.theme and of
+// bugs/filed/theme-missing-semicolon/: in BETA 1010, line 63 of Dark.theme and of
 // Light.theme reads `DiagnosticsGroupFontSize: 90%` with no `;`, and the
 // IDE's theme loader loses that property and the next one.
 //

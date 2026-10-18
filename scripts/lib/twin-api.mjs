@@ -51,7 +51,7 @@
 //      value has no `= n`: the `[_]` of the LongPtr shim the VB6-derived
 //      community packages carry (92 enums), xCalendar's `[Flat]`, VB's `[A4
 //      Portrait]`.
-//      BETA 1005 reads it so, whatever the brackets hold:
+//      BETA 1010 reads it so, whatever the brackets hold:
 //      `[Hidden]`, `[Hidden, Restricted]` and `[Description("x")]` on a line of
 //      their own each declare a value of that name and take the next number, and
 //      an attribute in front of a value on the same line (`[Hidden] Red = 5`)
@@ -67,7 +67,7 @@
 //  13. A Type's fields are bare, so a modifier's name is a field's: `Default As
 //      Long`, `Static As Long`. A line that starts with `[` in a Type is an
 //      attribute list, whatever follows it; `[Class] As Long` is not a field.
-//      BETA 1005 also compiles a variable with an initialiser and no `As`
+//      BETA 1010 also compiles a variable with an initialiser and no `As`
 //      (`Public n& = 0`, `Dim p = 5`) in a Module and a Class.
 //  14. `Inherits A, B` and `Implements A, B` list several types, `Implements`
 //      may name `WithEvents T`, a CoClass's `Interface` line may be qualified
@@ -77,7 +77,7 @@
 //  16. A colon joins statements, and every one is a declaration of its own:
 //      `Private x As Long: Private y As Long`, `Sub P(): End Sub: Sub Q(): End
 //      Sub`, `Class C: End Class`, `Enum E: A: B: End Enum`, `G = 1: H = 2`. The
-//      scanner reads each as a line (`statements`). BETA 1005 compiles them all.
+//      scanner reads each as a line (`statements`). BETA 1010 compiles them all.
 //  17. An identifier holds every character past ASCII, a no-break space and an
 //      emoji included: `Größe`, `Café`, `日本語`. `\b` is no boundary for it, so
 //      `Publicé` is a name and not the modifier `Public`; WORD_END is.
@@ -417,7 +417,7 @@ function collapse(text, raw) {
 // compiler reads `Private x As Long: Private y As Long`, `Const A = 1: Const B = 2`,
 // `Sub P(): End Sub: Sub Q(): End Sub`, `Class A: Inherits B`, `Class C: End Class`,
 // `G = 1: H = 2` and `Enum E: A: B: End Enum` as the lines they stand for (BETA
-// 1005), and `Done: End Sub` closes the procedure: a label is a statement of its
+// 1010), and `Done: End Sub` closes the procedure: a label is a statement of its
 // own. The contents of strings are blanked in `text`, so a colon inside one is
 // never seen.
 function statements(text, raw) {
@@ -465,7 +465,7 @@ function statementEnd(text) {
 // declaration after it is an attribute list as anywhere else.
 //
 // In a Type or Union body (`inType`) a group is always an attribute list: BETA
-// 1005 reads `[Class] As Long` as the attribute `Class` and a field called `As`,
+// 1010 reads `[Class] As Long` as the attribute `Class` and a field called `As`,
 // `[Plain](3) As Long` the same, and a group on a line of its own as the
 // attributes of the next field (or of nothing, when `End Type` follows). It is
 // never a field's name: a field named for a keyword is written bare, as
@@ -587,7 +587,7 @@ function descriptionOf(attrs) {
 // ------------------------------------------------------------------ parsing
 
 // An identifier is made of the ASCII letters, digits and `_`, and of every
-// character past ASCII: BETA 1005 compiles `Größe`, `Café`, `日本語`, `x²`, `a−1`,
+// character past ASCII: BETA 1010 compiles `Größe`, `Café`, `日本語`, `x²`, `a−1`,
 // an emoji, and a no-break space inside a name, all as part of it. Only the first
 // character is more restricted, and only for a digit. So the classes below end at
 // U+FFFF, which takes a character outside the BMP as its two surrogates; and a
@@ -652,7 +652,7 @@ const WITH_BODIES = new Set(["module", "class", "type", "union"]);
 const unbracket = (name) => name.replace(/^\[(.*)\]$/, "$1");
 
 // The type a name's closing character gives: `Function Size%()` returns an Integer.
-// BETA 1005 accepts these seven on a function, a Property Get, a delegate, a Declare,
+// BETA 1010 accepts these seven on a function, a Property Get, a delegate, a Declare,
 // a variable, a field and a constant; on a Sub, a Property Let or Set and an Event it
 // refuses one (TB5204), and with an `As` clause as well (TB5171). A name in brackets
 // takes the character as part of itself, as VBA's `Function [Chr$]` does.

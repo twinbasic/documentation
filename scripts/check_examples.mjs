@@ -61,7 +61,7 @@
 //
 // `Sub Main` is not one of them, though it was once listed as one. The template
 // brings a Main, and a sample may bring its own beside it: two `Public Sub
-// Main`s in different modules compile (BETA 1005), which is how the
+// Main`s in different modules compile (BETA 1010), which is how the
 // WinServicesLib `Module Startup` samples build as written. That holds for a
 // compile; a build refuses two Mains, and two [DllExport]s of one name, and a
 // project with an error at all, so --build and --llvm batch around those three.

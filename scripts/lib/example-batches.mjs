@@ -547,7 +547,7 @@ export function canaryVerdict({ pkg, stage, count }, failedAt) {
 // diagnostics at all.
 //
 // The canary is a #Warning directive, TB0005, on a module that enforces it.
-// On BETA 1005 it is reported beside samples with an unterminated
+// On BETA 1010 it is reported beside samples with an unterminated
 // Sub, an If with no End If, a stray End Sub and garbage, a class that inherits
 // itself, and ten undefined names; under Option Explicit off; in a project that
 // ignores TB0005 or makes it an error, where [EnforceWarnings(TB0005)] keeps it

@@ -18,7 +18,7 @@ export const CONTROL_NAME = "ZzNoSuchAttributeProbe";
 
 // What each canary MUST draw, fixed here rather than read from a build (see 3 in
 // sweep_attributes.mjs's header). `unknown` is what an invented name draws;
-// recorded from BETA 1005 (WIP.Harness.md) and re-checked by the canary-only build
+// recorded from BETA 1010 (WIP.Harness.md) and re-checked by the canary-only build
 // before every run.
 export const CANARY_SPECS = [
   ["clean", "MODULE", '[Description("canary")]'],
@@ -466,7 +466,7 @@ export function judgePreflight(baselines, controls, outcomeOf) {
     controlSig.set(p.site.id, signature(o.codes, o.msgs, CONTROL_NAME));
     // A site whose control compiles cannot tell an attribute from something else:
     // an Enum body takes ANY own-line `[...]`, `[ClassId("guid")]` included, as
-    // on BETA 1005. It is voided rather than read.
+    // on BETA 1010. It is voided rather than read.
     if (!voidSites.has(p.site.id) && (firm(o.state) || inconclusive(o.state))) {
       voidSites.set(
         p.site.id,

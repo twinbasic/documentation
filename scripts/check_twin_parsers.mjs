@@ -119,7 +119,7 @@ for (const [decl, container, want] of [
   ["Dim Count As Long", "Module", "Variable"],
   ["Private WithEvents Source As Foo", "Class", "Variable"],
   ["End Sub", "Class", null],
-  // Every character past ASCII is part of an identifier (BETA 1005): a name that
+  // Every character past ASCII is part of an identifier (BETA 1010): a name that
   // starts with a keyword and goes on past ASCII is not the keyword.
   ["Public Caf\u{E9} As Long", "Class", "Variable"],
   ["Public Class\u{E9} As Long", "Module", "Variable"],
@@ -134,7 +134,7 @@ for (const [decl, container, want] of [
 
 // ----------------------------------------------------------------- scanText
 
-// A bracket group alone on its line in an Enum body is a member (BETA 1005:
+// A bracket group alone on its line in an Enum body is a member (BETA 1010:
 // `[Hidden]` is the member Hidden, value 0, and E.[Hidden] and E.Hidden resolve;
 // `[Description("x")]` and `[NoSuchAttribute]` are members of those names, and
 // `[Hidden] Red = 5` is refused, TB5182, at Red). So the census records no

@@ -777,7 +777,7 @@ export function waitForExit(pid, timeoutMs) {
  *
  * The connection records and dismisses every javascript dialog the page opens,
  * in `c.dialogs` as `{type, message, at}`. The IDE calls `alert()` from 37
- * places in BETA 1005 (main.js and main2.js), and never `confirm()` or `prompt()`. An alert blocks the
+ * places in BETA 1010 (main.js and main2.js), and never `confirm()` or `prompt()`. An alert blocks the
  * page until it is answered, which on a private desktop nobody can do: every
  * later call on the connection would time out. An alert is accepted, since it has only the
  * one button; a confirm or a prompt, which only an add-in could open, is
@@ -1427,7 +1427,7 @@ export async function awaitNewCompiler(c, before, { why = "restarting it", timeo
   }
 }
 
-// The build log, in the compiler's own words (its strings, BETA 1005). A build
+// The build log, in the compiler's own words (its strings, BETA 1010). A build
 // writes "[BUILD] Starting..." to the DEBUG CONSOLE, and a binary ends with
 // "[LINKER] SUCCESS created output file '<path>'" or with one of some twenty
 // failure lines: "[LINKER] FAILED ...", "[BUILD] FAILED ...", "[BUILD] ERROR
@@ -1450,10 +1450,10 @@ const PACKAGE_FILE = /^\[BUILD\] Creating TWINPACK file '(.+)'$/;
 const PACKAGE_OK = "[BUILD] successful.";
 // LLVM's refusal of a procedure, with or without an "[LLVM] " prefix: "LLVM
 // compilation error in 'Probe.Stopper': Unable to compile due to use of datatype
-// that is not yet supported for LLVM compilation" (BETA 1005), and "[LLVM]
-// codegen error occurred when compiling 'Bitmap.New': Call parameter type does
-// not match function signature!" (BETA 1010, written when a [RunAfterBuild] run
-// compiles a procedure it calls, after which the run stops). It fails the build
+// that is not yet supported for LLVM compilation", and "[LLVM] codegen error
+// occurred when compiling 'Bitmap.New': Call parameter type does not match
+// function signature!" (BETA 1010; the second is written when a [RunAfterBuild]
+// run compiles a procedure it calls, after which the run stops). It fails the build
 // wherever it is printed, before [LINKER] SUCCESS or after [BUILD] Executing,
 // even when an exe was linked (test/harness.md).
 export const LLVM_REFUSAL = /^(?:\[LLVM\] )?(?:LLVM compilation error in |codegen error occurred when compiling )'/;
@@ -1473,7 +1473,7 @@ const BUILD_CRASHED = /\bNATIVE EXCEPTION:/;
  * only to the built-in packages (docs/LLVM/Getting-Started.md), so on either an
  * LLVM run measures the default compiler and says nothing. The status bar's
  * compilerLicence holds one of four "<NAME> EDITION" strings once the IDE knows
- * (ide/main.js, BETA 1005), and "tB Licence: ..." until then, so it is polled.
+ * (ide/main.js, BETA 1010), and "tB Licence: ..." until then, so it is polled.
  *
  * @param {object} c                  a tb-cdp connection
  * @param {object} [o]

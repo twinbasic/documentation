@@ -91,7 +91,7 @@
 //     its own out folder before importing, which makes the trap unreachable
 //     (lib/tb-project.mjs, shared with the add-in harness). The file name is
 //     the IDE's own `${ProjectName}_${Architecture}.${FileExtension}`, so it
-//     says what was built: on BETA 1005 those variables in an explicit
+//     says what was built: on BETA 1010 those variables in an explicit
 //     folder open no dialog, and a win32 build of the staged project gives
 //     DocSamples_win32.exe.
 //  2. A JAVASCRIPT .click() ON THE BUILD BUTTON DOES NOTHING. `#buildIcon` is
@@ -116,7 +116,7 @@
 //     the console stops changing, which works for any probe. But a probe that
 //     stops early also stops changing the console: End does, and so does an
 //     error raised in LLVM-compiled code with no handler, which ends the run
-//     without a word (BETA 1005, plain code too). So the staged copy calls the
+//     without a word (BETA 1010, plain code too). So the staged copy calls the
 //     probe's Sub from a wrapper that prints a sentinel once it returns
 //     (lib/tb-probe.mjs). Its absence is exit 5; its arrival ends the wait
 //     without the quiet period. Only the IDE's line about forms still loaded
@@ -458,7 +458,7 @@ if (values.tests) {
 // A packing failure is the harness's, exit 2.
 // The project's compiler options: compiler.debugOptions are what the
 // [RunAfterBuild] run is compiled with, and compiler.buildOptions what the exe
-// is -- on BETA 1005, +llvm in the build options alone leaves the run's
+// is -- on BETA 1010, +llvm in the build options alone leaves the run's
 // Debug.Assert evaluated.
 const compilerOptions = values.llvm ? "+llvm" : values.compilerOptions;
 let wasTemplate = false,
@@ -576,7 +576,7 @@ if (!outcome.ok) failBuild(outcome.code === 4 ? 4 : 2, outcome.message);
 // The target, set on every run, win32 included (setBuildTarget says why). The
 // probe runs in the compiler that builds it, so under win64 it runs in the
 // IDE's 64-bit compiler, twinBASIC_win64_noDEP.exe, as a 64-bit process:
-// on BETA 1005 LenB of a LongPtr is 8 and PROCESSOR_ARCHITECTURE reads AMD64.
+// on BETA 1010 LenB of a LongPtr is 8 and PROCESSOR_ARCHITECTURE reads AMD64.
 try {
   const target = await setBuildTarget(cdp, arch, { project: projPath, timeout: limits.compile });
   // Only a target the IDE remembered is worth a word: a new path opens in win32.
@@ -833,7 +833,7 @@ async function runCases() {
 //
 // An unhandled error opens a box and waits for it, so the launcher closes every
 // box the exe opens and records it; without that the exe sat until its limit.
-// The box is the only sign of the error: in BETA 1005 a plain exe exits with
+// The box is the only sign of the error: in BETA 1010 a plain exe exits with
 // code 0 once it is closed ("Run-time error '11' Division by zero"), and an
 // LLVM-compiled one ("_TB_ERROR_HANDLER", "unhandled error in ProbeMod.Oops")
 // then dies of an access violation. The event log's record of a fault is read

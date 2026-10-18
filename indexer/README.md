@@ -128,7 +128,7 @@ those files, makes the next `sync` index every package again; the store also
 keeps each package's `Settings` file for this, beside its `sources/`. `analyze`
 warns when the fingerprint of a package is not the checkout's. The version in
 `api.json` is the release tag in both cases:
-BETA 1005 is `beta-x-1005`, as `indexed_from` in the package pages has it. The
+BETA 1010 is `beta-x-1010`, as `indexed_from` in the package pages has it. The
 BETA number is read from the install's `ide/build.js`, else from the name of
 its folder.
 
@@ -304,7 +304,7 @@ package again when the store holds another number.
   "format": 3,
   "package": "VBA",
   "project": "VBA",
-  "version": "beta-x-1005",
+  "version": "beta-x-1010",
   "types": [ ... ],
   "aliases": [ ... ],
   "problems": [ ... ]
@@ -349,7 +349,7 @@ character gives (`Function Size%()` returns `Integer`); `accessor` is `Get`, `Le
 modifier is Public if it is a procedure, event, delegate or Declare in a Module
 or Class, Private if it is a variable or constant, and everything in an
 Interface, CoClass, Enum, Type or Union is Public (a Declare with no modifier is
-Public in BETA 1005: another module calls it; a Class accepts only a Private
+Public in BETA 1010: another module calls it; a Class accepts only a Private
 Declare, TB5227). `hidden` is false for `[Hidden(False)]`, which hides nothing.
 A name declared in brackets
 keeps every character, as VBA's `Function [Chr$]` does; a type-declaration
@@ -409,7 +409,7 @@ as is everything outside `Sources/`. Text inside a `/* ... */` comment is not
 read.
 
 *Statements and identifiers.* A colon joins statements, and each is a declaration
-of its own, as BETA 1005 reads them: `Private x As Long: Private y As Long`,
+of its own, as BETA 1010 reads them: `Private x As Long: Private y As Long`,
 `Sub P(): End Sub: Sub Q(): End Sub`, `Class C: End Class`, `Enum E: A: B: End
 Enum`, `G = 1: H = 2`. A colon inside a string, brackets, parentheses or `:=` joins
 nothing, and a `[Attribute]` list belongs to the first statement after it. An
@@ -439,7 +439,7 @@ alternatives of one name are written as one member with a `cond` for each
 
 *Type bodies.* A field in a Type is a bare name, so `Default As Long` and
 `Static As Long` are fields, and a line that starts with `[` is an attribute list
-(BETA 1005 reads `[Class] As Long` as an attribute and a field called `As`, and
+(BETA 1010 reads `[Class] As Long` as an attribute and a field called `As`, and
 refuses it): it is listed in `problems` as a line with no field.
 
 ## Documented packages
@@ -463,18 +463,18 @@ reads it; the site's builder ignores these keys):
 | Key | Means |
 |-----|-------|
 | `package_name:` | The packages the section documents, by the names the store has, comma-separated: `CustomControls, CustomControlsPackage`. Without it the section documents the package named like its folder. It replaces that name, so the folder's own is listed too when it is a package. |
-| `indexed_from:` | The release tag the section was brought up to date with, `beta-x-1005`: the `version` of the committed snapshots. Bump it in the commit that updates the pages, and write the new snapshots in it. |
+| `indexed_from:` | The release tag the section was brought up to date with, `beta-x-1010`: the `version` of the committed snapshots. Bump it in the commit that updates the pages, and write the new snapshots in it. |
 | `exclude_from_docs:`, `exclude_kinds:` | Types, and kinds of symbol, that are deliberately not documented, so `analyze` does not list them. |
 
 The group is the folder's: a package in `Built-In/` is a built-in one.
 
-The 13 sections and the 14 snapshots they have, all of BETA 1005 (`beta-x-1005`),
+The 13 sections and the 14 snapshots they have, all of BETA 1010 (`beta-x-1010`),
 the build the reference was last indexed against:
 
 | Section | Packages (`package_name:`) | Snapshots | Size |
 |---------|----------------------------|-----------|------|
-| `Default/VB` | `VB` (no key) | `default/VB` | 1,427 KB |
-| `Default/VBA` | `VBA` (no key) | `default/VBA` | 407 KB |
+| `Default/VB` | `VB` (no key) | `default/VB` | 1,429 KB |
+| `Default/VBA` | `VBA` (no key) | `default/VBA` | 412 KB |
 | `Default/VBRUN` | `VBRUN` (no key) | `default/VBRUN` | 106 KB |
 | `Built-In/AppGlobalClassObject` | `AppGlobalClassObject` (no key) | `built-in/AppGlobalClassObject` | 22 KB |
 | `Built-In/CEF` | `cefPackage145` | `built-in/cefPackage145` | 468 KB |
@@ -497,7 +497,7 @@ project name.
 **One API, several builds.** The three CEF packages in an install,
 `cefPackage49`, `cefPackage109` and `cefPackage145`, are one source tree
 compiled against three CEF runtimes. Their `api.json` files differ only in
-the `package` key (checked on BETA 1005), and the reference has one
+the `package` key (checked on BETA 1010), and the reference has one
 section for them, so the section names one and the repository keeps one
 snapshot, of the newest, `cefPackage145`. `analyze` compares each package with
 its own snapshot, so naming all three would triple every CEF task and keep two
@@ -601,7 +601,7 @@ so it won't interfere with your global git config.
 
 | File | Description |
 |------|-------------|
-| `TWINSERV-protocol.md` | TWINSERV HTTP API specification, reverse-engineered from the IDE and describing BETA 1005. The indexer calls only `query` and `download`. |
+| `TWINSERV-protocol.md` | TWINSERV HTTP API specification, reverse-engineered from the IDE and describing BETA 1010. The indexer calls only `query` and `download`. |
 | `sample.twinpack` | Sample `.twinpack` binary (CustomControlsPackage v0.0.3.0). |
 | [`WIP.Indexer.md`](../WIP.Indexer.md) | Why the indexer is built as it is: decisions and open items. |
 

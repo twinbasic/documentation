@@ -1,6 +1,6 @@
 # TWINSERV Protocol Specification
 
-Describes twinBASIC IDE BETA 1005 (October 2026): the endpoints, their parameters and
+Describes twinBASIC IDE BETA 1010 (October 2026): the endpoints, their parameters and
 headers, the error codes, the credential rotation and the compiler commands below are the
 ones its `ide/main.js` uses.
 
