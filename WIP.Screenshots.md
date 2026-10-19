@@ -110,17 +110,20 @@ Measured:
   scaled Ko-fi bitmap, panel dividers, rounded corners. `captureBeyondViewport` and
   `fromSurface: false` are stable but drop the scrollbars and the cut-outs' alpha, so neither is
   usable. Measured on BETA 1010 (launcher-re, `plan/PLAN-webview-ide.md` section 24: 194 shots,
-  about 35,000 captures, alone and with six IDEs at once), every picture is final at its first
-  capture once the page is quiet and two frames are drawn, and nothing in the page changes while
-  it is taken; the one exception is a pixel by one level in the shadow corner of the Window >
-  Panel Layouts and Keyboard Shortcuts submenus, which turns over with no change in the page. So
-  `capture` has no rest: it captures back to back until one equals the file on disk or two in a
-  row agree. An agreed picture that is not the file is kept at once, unless it is within the
-  *wobble* of the file (`wobbly`: one size, at most 4 pixels apart, by at most 2 levels): then it
-  captures on at `CAPTURE_GAPS` (150 ms rising to 1.5 s; the pixel turns over in the idle time
-  between captures, not under captures back to back) until one equals the file or 5.5 s have
-  gone, and keeps the last agreed. With no two agreeing in 5.5 s it fails. So a picture is
-  rewritten when the IDE draws something different, not when the noise flips.
+  about 35,000 captures, alone and with six IDEs at once), a picture of a still state is final at
+  its first capture once the page is quiet and two frames are drawn. So `capture` has no rest: it
+  captures back to back until one equals the file on disk or two in a row agree, and a picture
+  that has not changed costs one capture. **A picture two captures agree on that is not the file
+  is not kept at once** (owner): `capture` captures on at `CAPTURE_GAPS` (150 ms rising to 1.5 s)
+  until one equals the file or 5.5 s have gone, and keeps the last two that agreed. Keeping it at
+  once failed a second run on BETA 1010, in two ways: a raster drawn in several versions that
+  turn over in the idle time between captures, not under captures back to back (the striped
+  ground round a designer, 47,000 pixels apart; About's gradient boxes, dithered 10,000 pixels
+  apart; a submenu's shadow corner; the splash's rounded corner, 4 pixels by many levels); and
+  a state still on its way when the shot's own condition is met (Rename_Box's box red for a
+  moment, a designer readout fading in), which the old 1 s rest had hidden. With no two
+  agreeing in 5.5 s it fails. So a picture is rewritten when the IDE draws something different,
+  not when the noise flips, and a changed picture costs about 5.5 s.
   Under the full parallel load a run now and then settles on the other version of one or two
   pictures (1-3 grey levels, a few pixels to a few hundred along an edge) and keeps it through
   every capture, so longer captures in `capture` do not help; each is unchanged when its setup
@@ -204,8 +207,8 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
 - **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE in a slot of its own from
   `tbbroker` (a private desktop; the help setup's slot also carries the detached window's port)
   with a DevTools port Windows picks, and splits the big setups into parts, longest first; a full run with `--svg` is
-  about 17 minutes in both themes on BETA 1005: the jobs add up to about 5,900 s, and the longest
-  part, `forms-chapter`, takes about 450 s on its own, so six IDEs cannot do much better.
+  about 12 minutes in both themes on BETA 1010: the jobs add up to about 4,100 s, and the longest
+  part, `forms-chapter`, takes about 270 s on its own, so six IDEs cannot do much better.
   `--jobs 1` runs one IDE per setup in table order. Per-run
   state lives on the connection (`c.shot`), never in module variables.
 - **Diffs**: `--diffs <dir>` (never under `docs/`) writes, for each picture that differs from the
@@ -613,7 +616,7 @@ are under `docs/IDE/Building/Images/`.
 
 ## Package server
 
-Taken on BETA 1005, in both themes where the theme shows.
+Taken on BETA 1010, in both themes where the theme shows.
 
 - **Setup `package-server`**: the sample with `test/shots/packages` (Greeting, a class to type
   `fmt.` into), signed out, TWINSERV's live list. Its APPDATA is `PACKAGE_ROOT\AppData\Roaming`,
@@ -663,7 +666,7 @@ Taken on BETA 1005, in both themes where the theme shows.
 
 ## Not of the IDE
 
-Taken on BETA 1005.
+Taken on BETA 1010.
 
 - **`16833fae`** (setup `import`): the sample open, and `test/shots/vbp` (ImportDemo: a form,
   a module, `..\Shared\modShared.bas` for `{PARENT-FOLDER}`) staged with CRLF on

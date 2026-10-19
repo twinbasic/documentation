@@ -160,7 +160,7 @@ import { frameEval, frameOf, serveLoopback } from "../test/addin/pages.mjs";
 import { launchBrowser } from "./lib/browser.mjs";
 import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "./lib/shot-annotate.mjs";
 import { composite, uncomposite } from "./lib/shot-composite.mjs";
-import { comparePngs, decodePng, encodePng } from "./lib/png.mjs";
+import { decodePng, encodePng } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
@@ -621,35 +621,12 @@ async function unsteadyRects(conn, clip, unsteady) {
   });
 }
 
-// Whether two captures differ by no more than the compositor's wobble: one size, at most
-// WOBBLE_PIXELS pixels apart, none by more than WOBBLE_LEVELS in any channel, the pixels
-// inside `rects` left out. The wobble seen: one pixel by one level, the shadow of the
-// Window > Panel Layouts and Keyboard Shortcuts submenus' bottom-right corner, which turns
-// over with no change in the page.
-const WOBBLE_PIXELS = 4;
-const WOBBLE_LEVELS = 2;
-function wobbly(a, b, rects) {
-  const { sameSize, differing } = comparePngs(a, b);
-  if (!sameSize) return false;
-  if (!rects.length && differing > WOBBLE_PIXELS) return false;
-  const A = decodePng(a);
-  const B = decodePng(b);
-  let apart = 0;
-  for (let i = 0; i < A.rgba.length; i += 4) {
-    let d = 0;
-    for (let k = 0; k < 4; k++) d = Math.max(d, Math.abs(A.rgba[i + k] - B.rgba[i + k]));
-    if (!d || inRects(rects, (i / 4) % A.width, Math.floor(i / 4 / A.width))) continue;
-    if (d > WOBBLE_LEVELS || ++apart > WOBBLE_PIXELS) return false;
-  }
-  return true;
-}
-
-// The pauses between captures, in milliseconds, once two agree on a picture within the
-// wobble of the one wanted: the wobble's pixel turns over in the idle time between
-// captures, not under captures back to back.
+// The pauses between captures, in milliseconds, once two agree on a picture that is not the
+// one wanted: a raster's other version turns over in the idle time between captures, not
+// under captures back to back, and a state still on its way settles.
 const CAPTURE_GAPS = [150, 150, 300, 600, 1500, 1500];
-// How long `capture` goes on for a picture that has not settled, or that has settled within
-// the wobble of the one wanted.
+// How long `capture` goes on for a picture that has not settled, or that has settled on
+// another picture than the one wanted.
 const CAPTURE_BUDGET_MS = 5500;
 
 // Fails the picture `name` when `text` holds the Windows user name, quoting where.
@@ -679,17 +656,19 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     else await frames(conn);
     const params = { format: "png" };
     if (clip) params.clip = { ...clip, scale: 1 };
-    // A picture is final at its first capture once the page is quiet and two frames are
-    // drawn, alone and with six IDEs at once, and nothing in the page changes while it is
-    // taken; but a capture is not byte-stable: the compositor draws a pixel or so a level
-    // differently from one capture to the next now and then (a submenu's shadow corner), and
-    // no way of taking it removes that (captureBeyondViewport and fromSurface:false do, but
-    // they also drop the scrollbars and the alpha channel). So the page is captured back to
-    // back until two captures agree or one equals the file already there. A picture that
-    // agrees but is not the file is kept at once, unless it is within the wobble of the file
-    // (`wobbly`): then the captures go on, CAPTURE_GAPS apart, until one equals the file or
-    // CAPTURE_BUDGET_MS have gone. A picture is rewritten only when the IDE draws something
-    // else.
+    // A picture that has not changed is final at its first capture once the page is quiet
+    // and two frames are drawn, so the page is captured back to back, with no rest, until
+    // one capture equals the file already there or two in a row agree. But a capture is not
+    // byte-stable: the compositor draws some pictures in two or more versions, a few pixels
+    // to tens of thousands apart, from one capture to the next (a submenu's shadow corner, a
+    // gradient's dither, the striped ground round a designer), and no way of taking it
+    // removes that (captureBeyondViewport and fromSurface:false do, but they also drop the
+    // scrollbars and the alpha channel); and some states are still on their way when the
+    // shot's own condition is met (a rename box's colour, a designer's readout fading in). So
+    // a picture two captures agree on that is not the file is not kept at once: the captures
+    // go on, CAPTURE_GAPS apart, until one equals the file or CAPTURE_BUDGET_MS have gone,
+    // and the last two that agreed are kept. A picture is rewritten only when the IDE draws
+    // something else.
     // A new light picture has no file to equal, and prefers the dark picture (`prefer`) as
     // long as its first capture is within the noise of it: then one the theme does not change
     // comes out with the dark one's pixels. Else it is taken as a new picture.
@@ -716,8 +695,6 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     const t0 = Date.now();
     let last = null;
     let agreed = null;
-    // whether the first picture two captures agree on is within the wobble of the one wanted
-    let near = null;
     let gap = 0;
     for (let i = 0; ; i++) {
       const { data } = await conn.send("Page.captureScreenshot", params);
@@ -733,10 +710,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
       }
       if (last && same(last, png, masks)) {
         agreed = png;
-        const wanted = want ?? prefer;
-        if (!wanted) return await picked(agreed);
-        near ??= wobbly(agreed, wanted, masks);
-        if (!near) return await picked(agreed);
+        if (!want && !prefer) return await picked(agreed);
       }
       if (Date.now() - t0 >= CAPTURE_BUDGET_MS) break;
       if (agreed) await sleep(CAPTURE_GAPS[Math.min(gap++, CAPTURE_GAPS.length - 1)]);
@@ -10462,6 +10436,9 @@ const communityShot = {
     await resetUi(c);
     const text = await c.evaluate("compilerLicence.innerText");
     if (text !== "COMMUNITY EDITION") throw new Error(`the licence badge says ${JSON.stringify(text)}`);
+    // the restart Services_Limited makes can write its line, which names the user's folder,
+    // after that shot has cleared the console
+    await clearUserFromConsole(c);
     return capture(c, "Licence_CommunityEdition", snapOut(await rectOf(c, "#compilerLicenceOuter")), {
       away: () => parkMouse(c),
     });
