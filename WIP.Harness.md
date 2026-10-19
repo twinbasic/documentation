@@ -556,8 +556,10 @@ first gets the page's own HTML modal (*Save now?*: Save / Discard Changes / Canc
 and the pictures after one and two switches were byte-identical to a fresh IDE's. File > Close
 Project (`tbProject_Close`) sends the compiler nothing and ends it with `taskkill`.
 
-**`root.loadProject` called over CDP hangs the IDE**: it skips `closeProjectSafely`, and
-`Runtime.evaluate` stops returning while browser-level CDP still answers. A switch from the
+**`root.loadProject` called over CDP is not a switch** (BETA 1010, the shipped IDE and tblaunch
+alike): it skips `closeProjectSafely`, so it sends a second LoadProject on the compiler
+connection that still holds the old project. The page loads the new project's saved state, but
+the tree keeps the old project; the page stays responsive and shows no dialog. A switch from the
 harness has to go through `openProject()` with the host's dialog avoided (the front page's
 recents, or `hostAppObject.OpenProject` wrapped in the page to return a path). The page also
 holds about 90 `debugger;` statements, `openProject`'s callback among them: a CDP client with
