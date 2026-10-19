@@ -23,7 +23,19 @@ export function watchCompiles(c) {
   const take = (o, id) => {
     if (o.event === "compilationStarted") {
       socks.add(id);
-      cur = { seq: ++seq, gen, done: new Map(), started: Date.now() };
+      // A compiler's first two compiles, ids 0 and 1, come within a few ms of
+      // each other as it starts, and only one set of diagnostics follows the
+      // pair. They come on the debugger socket and the diagnostics on the
+      // language socket, so the set can arrive before id 1 does; taken as a
+      // compile of its own, id 1 then never completes, and the wait stands
+      // still for five seconds. So id 1 after id 0 of the same compiler is the
+      // same compile.
+      const cid = Number.parseInt(o.body?.compileId, 16);
+      if (cid === 1 && cur?.cid === 0 && cur.gen === gen) {
+        cur.cid = 1;
+        return;
+      }
+      cur = { seq: ++seq, gen, cid, done: new Map(), started: Date.now() };
       history.push(cur);
       if (history.length > 10) history.shift();
     } else if (o.method === "textDocument/publishDiagnostics" && cur && o.params?.uri) {
