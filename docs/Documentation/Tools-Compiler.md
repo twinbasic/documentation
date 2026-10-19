@@ -55,7 +55,7 @@ So that the built file lands in a folder the run owns and the given project is l
 
 **It runs the IDE on a private Windows desktop**, because the IDE calls `HostForceFocus()` when it loads and takes the keyboard whatever window style it starts with. The cost: a wedged IDE there is invisible until you run again visible. Export `TBBUILD_SHOW=1` while you work interactively, and leave it unset for unattended runs.
 
-**One IDE handles one project.** Loading a second project into a running IDE wedges it, so each project gets a fresh IDE, at roughly 6 to 8 seconds whatever its size. To make a batch of probes fast, run them at once: each run has a slot and a DevTools port of its own. Keep a question that might crash the compiler in a project of its own, so one bad probe cannot cost the others their answer.
+**One IDE handles one project.** Each project gets a fresh IDE and compiler, at roughly 6 to 8 seconds whatever its size, so nothing one project leaves in the IDE can change the next one's result. To make a batch of probes fast, run them at once: each run has a slot and a DevTools port of its own. Keep a question that might crash the compiler in a project of its own, so one bad probe cannot cost the others their answer.
 
 **The IDE it starts ends with it.** The IDE runs inside a Windows job object, so when `tbbuild` ends --- finished, failed, or stopped with Ctrl+C --- every process the IDE started ends too, a restarting compiler included. The exceptions are `--keep`, where the IDE lives until you close it, and `--show`, where it starts on your desktop without the job.
 

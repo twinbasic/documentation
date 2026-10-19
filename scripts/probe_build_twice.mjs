@@ -15,8 +15,8 @@
 // lengths sometimes fall in different 4-byte steps, which moves everything after
 // the block by 4 and changes about 44 bytes of .text.
 //
-// Each build is made in an IDE of its own (an IDE reused for a second project
-// wedges), in one slot (tbbroker), from a project staged again before each build into the
+// Each build is made in an IDE of its own, so that nothing an IDE kept from the first
+// build can be what differs, in one slot (tbbroker), from a project staged again before each build into the
 // same folders with the same build path, so that no path can be what differs. The
 // exe is copied out as soon as the build is done. --vb6 does the same with VB6,
 // for the reproducer's vb6/ project, whose exe has no such block, and prints every

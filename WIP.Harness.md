@@ -543,14 +543,25 @@ diagnostics still come from the IDE's own report walk.
 
 ### One project per IDE, and that is the scaling unit
 
-**Reusing a live IDE for a second project does not work.** `root.loadProject` against a
-running IDE wedges it: `Runtime.evaluate` stops returning while browser-level CDP still
-answers, and no javascript dialog is pending --- so the renderer is blocked inside a
-synchronous host call, not on something dismissable. The IDE holds one project at a time and
-closing the previous one is part of that path.
+**An IDE can open project after project; the harness does not.** `tbbuild` starts a fresh
+IDE per project, so nothing one project leaves in the IDE or its compiler changes the next
+one's result, and a probe that crashes the compiler costs no other probe its answer.
 
-So the cold start is not overhead to be optimised away; it is the unit of work. `tbbuild`
-starting a fresh IDE per project is the design, not a convenience.
+The page's own switch works and is fast (BETA 1010, measured by the webview-ide session in
+launcher-re, `plan/PLAN-webview-ide.md` section 23): File > Open Project runs `openProject()`,
+which calls `hostAppObject.OpenProject` (a native file dialog, which nobody can answer on a
+private desktop) and then `closeProjectSafely(() => root.loadProject(path))`. A changed project
+first gets the page's own HTML modal (*Save now?*: Save / Discard Changes / Cancel), which
+`closeModal` answers. A switch takes about 2 s from the click to the next compile settling,
+and the pictures after one and two switches were byte-identical to a fresh IDE's. File > Close
+Project (`tbProject_Close`) sends the compiler nothing and ends it with `taskkill`.
+
+**`root.loadProject` called over CDP hangs the IDE**: it skips `closeProjectSafely`, and
+`Runtime.evaluate` stops returning while browser-level CDP still answers. A switch from the
+harness has to go through `openProject()` with the host's dialog avoided (the front page's
+recents, or `hostAppObject.OpenProject` wrapped in the page to return a path). The page also
+holds about 90 `debugger;` statements, `openProject`'s callback among them: a CDP client with
+the Debugger domain enabled stops at them, which looks like a hang.
 
 **It costs less than it sounds like.** Measured: **6 to 8 seconds per project, and flat in
 project size** --- a one-file template and the template that carries the whole of VBCCR both
