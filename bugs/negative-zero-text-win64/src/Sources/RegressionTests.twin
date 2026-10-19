@@ -1,0 +1,99 @@
+' Regression tests: the text of a Single or Double that holds a negative zero (sign bit set,
+' every other bit clear). VB6, and a 32-bit twinBASIC build, give "0" from CStr, Format and
+' concatenation and " 0" from Str. A 64-bit build gives "-0" ("-0" from Str too, with no
+' leading space). The value is made by copying its bytes into a variable, so that no
+' arithmetic or constant folding can decide the sign, and the first two cases check that
+' the variable holds it. The cases assert VB6's text, so they fail in a 64-bit build
+' (repro.json names it) and pass in a 32-bit one (the VB6 project beside this one prints it).
+
+[TestFixture]
+Module NegativeZeroTextTests
+
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, ByRef Source As Any, ByVal Length As LongPtr)
+
+    Private Function NegativeZeroDouble() As Double
+        Dim bits As LongLong
+        Dim result As Double
+        bits = &H8000000000000000^
+        CopyMemory result, bits, 8
+        Return result
+    End Function
+
+    Private Function NegativeZeroSingle() As Single
+        Dim bits As Long
+        Dim result As Single
+        bits = &H80000000
+        CopyMemory result, bits, 4
+        Return result
+    End Function
+
+    ' Controls: the variable holds a negative zero, and compares equal to zero.
+
+    [TestCase]
+    Public Sub NegativeZeroDouble_HoldsTheSignBit()
+        Dim x As Double
+        Dim bits As LongLong
+        x = NegativeZeroDouble()
+        CopyMemory bits, x, 8
+        Assert.Strict.AreEqual True, (bits = &H8000000000000000^)
+        Assert.Strict.AreEqual True, (x = 0)
+    End Sub
+
+    [TestCase]
+    Public Sub NegativeZeroSingle_HoldsTheSignBit()
+        Dim x As Single
+        Dim bits As Long
+        x = NegativeZeroSingle()
+        CopyMemory bits, x, 4
+        Assert.Strict.AreEqual True, (bits = &H80000000)
+        Assert.Strict.AreEqual True, (x = 0)
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfNegativeZeroDouble_Is0()
+        Assert.Strict.AreEqual "0", CStr(NegativeZeroDouble())
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfNegativeZeroSingle_Is0()
+        Assert.Strict.AreEqual "0", CStr(NegativeZeroSingle())
+    End Sub
+
+    [TestCase]
+    Public Sub StrOfNegativeZeroDouble_IsSpace0()
+        Assert.Strict.AreEqual " 0", Str$(NegativeZeroDouble())
+    End Sub
+
+    [TestCase]
+    Public Sub StrOfNegativeZeroSingle_IsSpace0()
+        Assert.Strict.AreEqual " 0", Str$(NegativeZeroSingle())
+    End Sub
+
+    [TestCase]
+    Public Sub FormatOfNegativeZeroDouble_Is0()
+        Assert.Strict.AreEqual "0", Format$(NegativeZeroDouble())
+    End Sub
+
+    [TestCase]
+    Public Sub ConcatenatedNegativeZeroDouble_Is0()
+        Assert.Strict.AreEqual "x=0", "x=" & NegativeZeroDouble()
+    End Sub
+
+    [TestCase]
+    Public Sub ConcatenatedNegativeZeroSingle_Is0()
+        Assert.Strict.AreEqual "x=0", "x=" & NegativeZeroSingle()
+    End Sub
+
+    ' Controls: a positive zero and an ordinary negative number print the same in both builds.
+
+    [TestCase]
+    Public Sub CStrOfPositiveZero_Is0()
+        Assert.Strict.AreEqual "0", CStr(0#)
+    End Sub
+
+    [TestCase]
+    Public Sub CStrOfNegativeNumber_IsUnchanged()
+        Assert.Strict.AreEqual "-1.5", CStr(-1.5)
+    End Sub
+
+End Module

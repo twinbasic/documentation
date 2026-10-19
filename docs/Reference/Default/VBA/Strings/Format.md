@@ -58,6 +58,9 @@ The *firstWeekOfYear* argument has these settings.
 
 When formatting a number without specifying *format*, **Format** provides functionality similar to the **Str** function, although it is internationally aware. However, positive numbers formatted as strings using **Format** don't include a leading space reserved for the sign of the value; those converted using **Str** retain the leading space.
 
+> [!WARNING] BETA 1010
+> A 64-bit build formats a negative zero of type **Single** or **Double** (a value that equals 0 and has its sign bit set) as `"-0"` when *format* is omitted. A 32-bit build and VB6 give `"0"`.
+
 When formatting a non-localized numeric string, use a user-defined numeric format to ensure the desired appearance.
 
 > [!NOTE]
