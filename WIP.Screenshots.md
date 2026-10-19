@@ -713,6 +713,11 @@ Taken on BETA 1010.
   user's choices and nothing is written to the registry.
 - **About's licence line**: the tool waits for `licenceIsSet` before opening About, so it shows
   the edition, never NOT READY.
+- **The window is shown maximized** (owner): the title bar's Restore button, not Maximize,
+  whatever the user's own IDE window was. `PAGE_DEFAULTS` calls the page's
+  `cefWindowChangeNotification("WINDOW-MAXIMIZED")`, what the host calls when it maximizes the
+  window; the window itself is left alone, since the IDE saves its place in the registry
+  (the `Window` key) whenever it is maximized or restored.
 - **The language tick** stays on whatever language the IDE runs in.
 - **`llvmdoc2`** shows the default thread count, 1.
 

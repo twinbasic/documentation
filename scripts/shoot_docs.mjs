@@ -932,8 +932,10 @@ async function fixPageSize(c) {
 // not guarded, RemoveRecentsList, is replaced by a call that does nothing. Then
 // the IDE's options go back to their defaults, the saved panel layouts and
 // keyboard groups go, the panel features are all allowed, and the recent lists
-// are the tool's own. The language is left as the IDE runs it, and so are the
-// options the schema does not list. Returns what differed from the defaults.
+// are the tool's own. The title bar shows the window maximized, as the host tells the page
+// when it maximizes the window (the window itself is left alone: maximizing it would have the
+// IDE save its place in the registry). The language is left as the IDE runs it, and so are
+// the options the schema does not list. Returns what differed from the defaults.
 const PAGE_DEFAULTS = `(() => {
   const blocked = new Set(["RemoveRecentsList"]);
   hostAppObject = new Proxy(hostAppObject, {
@@ -965,6 +967,8 @@ const PAGE_DEFAULTS = `(() => {
     e.classList.add("frontPageListViewLIST");
     listviewFromArray(e, [], () => {});
   };
+  if (!rootMenuMaximize?.classList.contains("isMaximized")) differed.push("the window was not maximized");
+  cefWindowChangeNotification("WINDOW-MAXIMIZED");
   changedIdeOptions();
   return JSON.stringify(differed);
 })()`;
@@ -4822,7 +4826,18 @@ const formsChapterShots = [
       throw new Error("holding Ctrl showed no TabIndex circles");
     }
   }),
-  formStateShot("Controls_MultiSelect", (c) => selectNamed(c, ["Command1", "Text1", "Check1"])),
+  formStateShot("Controls_MultiSelect", async (c) => {
+    await selectNamed(c, ["Command1", "Text1", "Check1"]);
+    // the pointer rests on Check1, where it clicked last: its readout shows a moment later
+    const readout = () =>
+      c.evaluate(`(() => {
+  const e = ${DESIGNER_GLOBALS}.designerDragInfoLeft;
+  return !!e && e.getBoundingClientRect().width > 0 && /x:\\d+ y:\\d+/.test(e.innerText);
+})()`);
+    if (!(await waitFor(c, readout, { timeout: 3000, interval: 50 }))) {
+      throw new Error("the pointer readout does not show where the pointer rests");
+    }
+  }),
   formStateShot(
     "Controls_RubberBand",
     async (c) => {
@@ -5888,7 +5903,13 @@ function renameBoxShot(name, typed = null) {
       try {
         await peFolders(c, SOURCES_OPEN);
         await peSelect(c, "Legacy.bas");
-        await pressKey(c, "F2");
+        // Rename from the row's menu, not F2: the box checks its name on every key's release,
+        // finds Legacy.bas taken (by itself) and turns red, and F2's release lands in the box
+        // or not by how soon the box takes the focus
+        await peRightClick(c, "Legacy.bas");
+        const rename = (await menuItems(c)).find((i) => i.text.startsWith("Rename"));
+        if (!rename) throw new Error("the menu of Legacy.bas has no Rename");
+        await clickAt(c, rename.x + rename.width / 2, rename.y + rename.height / 2);
         // the box selects the base name a moment after it takes the focus
         const box = await waitFor(
           c,
@@ -11615,14 +11636,15 @@ const packageServerShots = [
         was = { text: await editorText(c), counts: await diagCounts(c) };
         await setCursor(c, 4, 1);
         await typeText(c, "        fmt");
-        // The list shows each member's type as "..." until the compiler has given it, which it
-        // now and then never does for a list: the dot is typed again then.
+        // The list shows each member's type as "...", or a variable's or a function's kind with
+        // no type after it, until the compiler has given it, which it now and then never does
+        // for a list: the dot is typed again then.
         const listed = (resolved) =>
           c.evaluate(`(() => {
   const b = [...document.querySelectorAll(${JSON.stringify(COMPLETIONS)})].find((b) => b.getBoundingClientRect().width);
   const rows = b ? [...b.querySelectorAll(".listitem")] : [];
   if (!rows.some((r) => r.innerText.includes("AsciiEscapeBase"))) return false;
-  return !${resolved} || rows.every((r) => [...(r.querySelector(".isenseType")?.childNodes ?? [])].every((n) => n.nodeType !== 3 || n.nodeValue !== "..."));
+  return !${resolved} || rows.every((r) => [...(r.querySelector(".isenseType")?.childNodes ?? [])].every((n) => n.nodeType !== 3 || n.nodeValue !== "...") && !/(variable|returns)\\s*$/.test(r.innerText));
 })()`);
         // A list opened by the name typed before the dot is placed where that name starts, and
         // the dot's list then opens where that one was: closed first, the dot's list opens at
