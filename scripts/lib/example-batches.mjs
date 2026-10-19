@@ -702,6 +702,20 @@ const sameRow = (row) => row.replace(/[/\\]DocSamples\d+[/\\]/, "/");
  * sample -- hundreds of IDE starts -- and then blame an arbitrary one.
  */
 const templateOwnRows = new Map();
+
+/**
+ * The template built with no samples met its limit twice, so what it draws on
+ * its own is not known. runBatch reports the batch that asked as not judged.
+ */
+class TemplateTimeout extends Error {
+  constructor(project, detail) {
+    super(
+      `the \`${project}\` template, built with no samples to tell its own rows from a batch's, met its limit twice`,
+    );
+    this.detail = `${this.message}: ${detail}`;
+  }
+}
+
 function ownRowsOf(project, lane) {
   if (!templateOwnRows.has(project)) {
     templateOwnRows.set(
@@ -710,10 +724,16 @@ function ownRowsOf(project, lane) {
         // A read with no rows and no canary is read once more, and never believed:
         // it would leave every row of the template counted as a sample's, for the
         // rest of the run. A read with rows of its own was not silent, and needs
-        // no canary, as in runBatch.
+        // no canary, as in runBatch. A build that met its limit read nothing at
+        // all, and is built once more too; met twice, it is forgotten, so that
+        // a later batch asks again, and never taken for a clean template.
         const silent = (r) => !r.crashed && r.canaryProblem && !(r.unattributed ?? []).length;
         let result = await lane.build({ project, fences: [] });
-        if (silent(result)) result = await lane.build({ project, fences: [] });
+        if (result.timedOut || silent(result)) result = await lane.build({ project, fences: [] });
+        if (result.timedOut) {
+          templateOwnRows.delete(project);
+          throw new TemplateTimeout(project, result.detail);
+        }
         if (silent(result)) {
           throw new Error(
             `the canary did not report in the \`${project}\` template built with no samples, ` +
@@ -947,6 +967,15 @@ function notJudged(batch, lane, detail) {
  * compiling while the run fails with a row naming no page.
  */
 export async function runBatch(batch, lane) {
+  try {
+    return await judgeBatch(batch, lane);
+  } catch (e) {
+    if (e instanceof TemplateTimeout) return notJudged(batch, lane, e.detail);
+    throw e;
+  }
+}
+
+async function judgeBatch(batch, lane) {
   let result = await buildTwiceOnFailure(batch, lane);
   if (result.timedOut) return notJudged(batch, lane, result.detail);
   if (result.crashed) return isolateCrash(batch, result.named, lane, !!result.buildFailed, result.detail);
@@ -1704,6 +1733,56 @@ export async function runProbes(say) {
   const ownSet = await ownRowsOf("console", cl).catch(() => null);
   if (!ownSet?.has(sameRow(ownRow)) || cl.builds !== 1) {
     failures.push(`canaries: an empty template with rows of its own was not believed (${cl.builds} builds)`);
+  }
+  // A template built with no samples that meets its limit is built once more.
+  // Met twice, its rows are not known: the batch that asked is not judged, and
+  // the template is forgotten for the next batch to ask again, never taken as
+  // one that draws nothing (which would blame the samples for its rows).
+  const pkgRow = "{ERROR} /Packages/P/Sources/P.twin [1,1]: TB5001 p";
+  const slowTemplate = (times) => {
+    const lane = canaryLane(
+      () => null,
+      () => [],
+      () => [pkgRow],
+    );
+    const build = lane.build;
+    lane.slow = 0;
+    lane.found = [];
+    lane.finding = (_rep, ...lines) => lane.found.push(lines.join(" | "));
+    lane.build = async (b) => {
+      if (b.fences.length || lane.slow >= times) return build(b);
+      lane.slow++;
+      lane.builds++;
+      return { timedOut: true, detail: "timeout: the compile did not settle within 10 s" };
+    };
+    return lane;
+  };
+  templateOwnRows.clear();
+  cl = slowTemplate(1);
+  let templateResult = await runBatch(five, cl);
+  if (
+    cl.builds !== 3 ||
+    templateResult.crashed.length ||
+    templateResult.blamed.length ||
+    !templateResult.templateFaults.length
+  ) {
+    failures.push(
+      `canaries: a template that met its limit once was not built again and believed ` +
+        `(${cl.builds} builds, crashed ${templateResult.crashed}, blamed ${templateResult.blamed})`,
+    );
+  }
+  templateOwnRows.clear();
+  cl = slowTemplate(2);
+  templateResult = await runBatch(five, cl);
+  if (
+    `${[...templateResult.crashed].sort()} / ${templateResult.blamed.length} / ${cl.builds}` !== "a,b,c,d,e / 0 / 3" ||
+    !cl.found[0]?.includes("met its limit twice") ||
+    templateOwnRows.has("console")
+  ) {
+    failures.push(
+      `canaries: a template that met its limit twice was taken as clean or remembered ` +
+        `(${templateResult.crashed} / ${templateResult.blamed} / ${cl.builds} builds / ${JSON.stringify(cl.found)})`,
+    );
   }
   templateOwnRows.clear();
   cl = canaryLane((ids) => (ids.has("a") && ids.has("e") ? "masked" : null));

@@ -445,6 +445,11 @@ how many projects were opened in one already running.
 judged, and it is not split: WinReg's batches meet the `compile` limit with no samples in them,
 because the time is the template's load. The run goes on, so one slow template cannot cost the
 other batches their result.
+The template built with no samples (`ownRowsOf`, which tells the template's own rows from
+a batch's) is built once more when it meets the limit; met twice, the batch that asked is not
+judged and the template is forgotten, so the next batch asks again. Taking that empty read as
+a clean template blamed every sample of a package that does not compile on its own: a shared
+`--fresh` run reported 17 ArrayListLib samples for the package's own TB5001 rows.
 
 **Fill the lanes, not the batches.** Filling each batch to `--batch` before opening another
 would put 120, 55, 4 and 3 samples on four lanes, and a run takes as long as its biggest
