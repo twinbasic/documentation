@@ -155,7 +155,7 @@ import { asksForLlvm, holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { packTree, unpackProject } from "./lib/tb-project.mjs";
 import { downloadPackage } from "../indexer/lib/twinserv-client.mjs";
-import { alive, finishTidy, startTidy } from "./lib/tb-registry.mjs";
+import { finishTidy, keepRunFolder, startTidy, sweepRunFolders } from "./lib/tb-registry.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
@@ -217,7 +217,8 @@ InputBox, or contains End, or is not slot=sub, is refused without being built.
                    whose build fails is cut down to the samples that fail it
   --llvm           build with LLVM (implies --build); needs a Professional or
                    Ultimate licence, and --build alone is its control
-  --keep           leave the generated projects on disk and say where
+  --keep           leave the generated projects on disk and say where; they
+                   stay until deleted by hand
   --fresh          start a new IDE for every project; by default each lane opens
                    project after project in one IDE
   --show, --hide   as tbbuild's
@@ -1250,21 +1251,16 @@ async function main() {
   });
   const batches = [...canaryBatches, ...restBatches, ...runBatches];
   // The run's folder is named for this process, so that runs at once never share
-  // one. A folder an earlier run left, whose process has ended, goes; one that
-  // cannot be removed yet is still held by something of that run's (an IDE from
-  // before each IDE ran in its launcher's job, WIP.Harness.md, "The IDE runs
-  // inside a job"), and is left for a later run.
+  // one. A folder an earlier run left, whose process has ended, goes, unless
+  // that run was given --keep; one that cannot be removed yet is still held by
+  // something of that run's (an IDE from before each IDE ran in its launcher's
+  // job, WIP.Harness.md, "The IDE runs inside a job"), and is left for a later run.
   const runs = path.join(tmpdir(), "tbexamples");
-  for (const name of existsSync(runs) ? readdirSync(runs) : []) {
-    if (!/^\d+$/.test(name) || alive(Number(name))) continue;
-    try {
-      rmSync(path.join(runs, name), { recursive: true, force: true });
-    } catch {
-      // still held
-    }
-  }
+  sweepRunFolders(runs);
   const work = path.join(runs, String(process.pid));
   mkdirSync(work, { recursive: true });
+  // Marked from the start, so that a kept run that dies keeps its folder too.
+  if (values.keep) keepRunFolder(work);
   await fetchEmbedded(new Set(batches.map((b) => b.project)));
 
   const staged = selected.length - samples.length;

@@ -46,7 +46,7 @@ Each marked sample is generated into its own `Module tbx_<hash>`, packed with a 
 | `--ide <path>` | `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop. |
 | `--build` | Also build each project that compiles without errors. A project whose build fails is cut down, as for a crash, to the samples that fail it. A project whose compile has errors is not built: the run names its first error and counts its samples as "compiled but not built". |
 | `--llvm` | Build with LLVM (implies `--build`) by setting each project's compiler options to `+llvm`. It needs a Professional or Ultimate licence and exits 2 without one. A sample that fails under `--llvm` but not under a plain `--build` is one LLVM cannot generate code for. The run holds one lease on the LLVM cache server, which every lane's compiler shares, for its whole length, so that the server never ends with one lane's IDE. |
-| `--keep` | Leave the generated projects on disk and print where. |
+| `--keep` | Leave the generated projects on disk and print where. The folder stays until it is deleted by hand: a later run removes the folder of an earlier run that has ended, but not one that run was told to keep. |
 | `--fresh` | Start a new IDE for every project, as `tbbuild` does, instead of opening each lane's projects one after another in one IDE. It reports the same findings, more slowly. It cannot be given with `--census` or `--report`, which start no IDE. |
 | `--verbose` | Report warnings as well as errors. Only errors ever fail the run. |
 | `--json` | One object on stdout; every report line moves to stderr. |
@@ -226,7 +226,7 @@ The names come from every entry in `Attributes.md`, every name in the compiler's
 | `--verify N` | Rebuild N random probes and compare. |
 | `--out <file>` | Write the Markdown report there. Without it the report goes to standard output. |
 | `--dump-results <file>` | Also write every result, raw, as JSON: each name at each site with the answer for each argument shape. |
-| `--work`, `--keep` | Where projects are staged, which must be under the system temp folder, and whether to keep them. |
+| `--work`, `--keep` | Where projects are staged, which must be under the system temp folder, and whether to keep them. Kept projects stay until they are deleted by hand: a later run clears the default folders of runs that have ended, but not a kept one. |
 | `--preflight` | Build only the canaries, baselines and controls, and stop. About 20 seconds, and the way to check a change to a site. |
 | `--dry-run` | Count the probes and build nothing. |
 | `--timeout <secs>` | The compile's limit for one build. Default: `compile` in `test/harness.json`. |

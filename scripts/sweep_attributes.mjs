@@ -64,7 +64,7 @@
 //
 // Needs a twinBASIC install and Windows with a private desktop, like
 // examples.bat, so it is outside every gate and outside CI.
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseAttributes } from "./lib/attributes-doc.mjs";
@@ -104,7 +104,7 @@ import { leaseSlot, sleep, wantShow } from "./lib/tb-ide.mjs";
 import { checkHarness } from "./lib/harness-settings.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { packTree } from "./lib/tb-project.mjs";
-import { alive, finishTidy, startTidy } from "./lib/tb-registry.mjs";
+import { finishTidy, keepRunFolder, startTidy, sweepRunFolders } from "./lib/tb-registry.mjs";
 import {
   CliError,
   choiceOption,
@@ -156,7 +156,7 @@ accepts, laid against Reference/Attributes.md.
                       also write every result, raw, as JSON
   --work <dir>        where projects are staged; must be under the system temp
                       folder (default %TEMP%/tbsweep/<process id>)
-  --keep              keep the staged projects
+  --keep              keep the staged projects, until deleted by hand
   --preflight         build only the canaries, baselines and controls, and stop
   --dry-run           count the probes and build nothing
   --list-sites        print the site ids and exit
@@ -896,19 +896,11 @@ async function main() {
   }
   const started = Date.now();
   // The default folder is named for this process, so that runs at once never
-  // share one. A folder an earlier run left there, whose process has ended, goes.
-  if (!values.work) {
-    const runs = path.dirname(workRoot);
-    for (const name of existsSync(runs) ? readdirSync(runs) : []) {
-      if (!/^\d+$/.test(name) || alive(Number(name))) continue;
-      try {
-        rmSync(path.join(runs, name), { recursive: true, force: true });
-      } catch {
-        // still in use: a later run tries again
-      }
-    }
-  }
+  // share one. A folder an earlier run left there, whose process has ended,
+  // goes, unless that run was given --keep.
+  if (!values.work) sweepRunFolders(path.dirname(workRoot));
   mkdirSync(workRoot, { recursive: true });
+  if (values.keep) keepRunFolder(workRoot);
   tidy = startTidy({ prefixes: [workRoot] });
   let verify = null;
   try {

@@ -820,7 +820,10 @@ LLVM refusal is isolated, and its samples reported as failing the build, as any 
   wedge and neither ever returns. Each lane owns a workspace, not just a slot.
 - **A run's folder is named for its process**, `tbexamples\<pid>`, so runs at once never
   share one; a later run removes the folders of runs whose process has ended, and leaves one
-  it cannot remove yet. Before each IDE ran in its launcher's job, a run that died left its
+  it cannot remove yet. A `--keep` run marks its folder with a `.keep` file from the start
+  (`keepRunFolder` in `scripts/lib/tb-registry.mjs`), and the sweep leaves a marked folder
+  for good; before that, a kept folder went within seconds of the next run starting.
+  `sweep_attributes.mjs` sweeps `tbsweep\<pid>` the same way. Before each IDE ran in its launcher's job, a run that died left its
   lanes' IDEs running on desktops nobody could see, holding that folder.
 - **Batches are packed in process by impexp** (`packTree` in `scripts/lib/tb-project.mjs`),
   never by the compiler executable's `import`, which exits 999 with nothing written on a

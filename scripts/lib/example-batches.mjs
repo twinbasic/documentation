@@ -8,11 +8,13 @@
 // run. The lane that stages and builds for real stays in check_examples.mjs,
 // with everything else that reads the command line.
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { EXCLUSION_MODES, EXCLUSION_STAGES, exclusionProblems } from "./harness-settings.mjs";
 import { LLVM_REFUSAL } from "./tb-ide.mjs";
+import { keepRunFolder, sweepRunFolders } from "./tb-registry.mjs";
 import { IdeSession } from "./tb-session.mjs";
 import {
   BODY_SLOTS,
@@ -1151,6 +1153,29 @@ const INFO_PROBES = [
 ];
 
 /**
+ * The sweep at the start of a run (tb-registry.mjs, sweepRunFolders), on a
+ * folder of its own: an ended run's folder goes, a kept one, a live run's and
+ * one not named for a process stay. Returns the failures.
+ */
+function sweepProbes() {
+  const root = mkdtempSync(path.join(tmpdir(), "tbx-sweep-probe-"));
+  try {
+    for (const name of ["11", "12", "13", "notes"]) {
+      mkdirSync(path.join(root, name));
+      writeFileSync(path.join(root, name, "x.twin"), "");
+    }
+    keepRunFolder(path.join(root, "12"));
+    const removed = sweepRunFolders(root, { isAlive: (pid) => pid === 13 });
+    const left = readdirSync(root).sort();
+    return `${removed} / ${left}` === "11 / 12,13,notes"
+      ? []
+      : [`sweep: removed ${removed}, left ${left} (wanted 11 removed; 12 kept, 13 alive, notes not a run)`];
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+/**
  * A lane's IDE session (tb-session.mjs) through a page that is a plain object:
  * the switch, each way the IDE is given up for a new one, and what is reset in
  * the page before a switch. Each case is a list of what the driver was asked
@@ -1562,6 +1587,7 @@ export async function runProbes(say) {
     failures.push(`limit: a batch that met its limit -> ${slowResult.crashed} / ${JSON.stringify(slow.said)}`);
   }
   failures.push(...(await sessionProbes()));
+  failures.push(...sweepProbes());
   // The canaries: what a batch's rows say about them, and what runBatch does when
   // they are not there. A batch with no rows at all is the one that matters, since
   // it is what an IDE that read its diagnostics early returns.
