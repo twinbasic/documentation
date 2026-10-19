@@ -7,12 +7,16 @@ export function watchCompiles(c) {
   let seq = 0;
   let expected = [];
   let waiters = [];
+  // A wake that came while nobody was waiting -- waitForCompile reading a
+  // sample -- is kept for the next changed(), which then returns at once.
+  let pending = false;
   // The last few compiles, for tb-timings.mjs (`compiles`).
   const history = [];
   const socks = new Set();
   const wake = () => {
     const w = waiters;
     waiters = [];
+    if (!w.length) pending = true;
     for (const f of w) f();
   };
   const complete = (uris) => cur && cur.gen === gen && uris.length > 0 && uris.every((u) => cur.done.has(u));
@@ -27,7 +31,11 @@ export function watchCompiles(c) {
       const p = o.params;
       const was = complete(expected);
       cur.done.set(p.uri, { n: [p.errorCount, p.warningCount, p.hintCount, p.infoCount].map(Number), at: Date.now() });
-      if (!was && complete(expected)) wake();
+      // Wake for the compile completing, and for a file the waiter does not
+      // know of. Before the page's tree has its files, `expected` is empty and
+      // nothing could complete it: a compile that ended then woke no one, and
+      // the wait took it only on the next 1 Hz sample, 0.94 s later (median).
+      if (!was && (complete(expected) || !expected.includes(p.uri))) wake();
     }
   };
   c.on((m) => {
@@ -67,7 +75,16 @@ export function watchCompiles(c) {
         return { seq: h.seq, started: h.started, ended: ats.length ? Math.max(...ats) : null, files: ats.length };
       });
     },
+    // When the current compile's latest diagnostics arrived, or null.
+    lastAt() {
+      if (!cur || cur.gen !== gen || !cur.done.size) return null;
+      return Math.max(...[...cur.done.values()].map((d) => d.at));
+    },
     changed(ms) {
+      if (pending) {
+        pending = false;
+        return Promise.resolve();
+      }
       return new Promise((resolve) => {
         const done = () => {
           clearTimeout(t);

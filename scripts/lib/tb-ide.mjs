@@ -1189,11 +1189,11 @@ export async function waitForCompile(c, { project, timeout = timeoutMs("compile"
       // behind its traffic. Then the compile must still be the latest after
       // EARLY_QUIET_MS, since each keystroke starts a compile of its own.
       wire.expect(v.src);
-      let w = up ? wire.check(v.src) : null;
+      let w = wire.check(v.src);
       if (w && before.done && w.seq <= before.seq) w = null;
       const counts = [v.e, v.w, v.h, v.i].map(Number);
       const total = w ? w.counts.reduce((a, b) => a + b, 0) : -1;
-      if (w && w.counts.every((n, k) => n === counts[k]) && v.rows.length === total) {
+      if (up && w && w.counts.every((n, k) => n === counts[k]) && v.rows.length === total) {
         if (agreed?.seq !== w.seq) agreed = { seq: w.seq, at: now };
         else if (now - agreed.at >= EARLY_QUIET_MS) {
           last = s;
@@ -1204,7 +1204,10 @@ export async function waitForCompile(c, { project, timeout = timeoutMs("compile"
         next = Math.min(next, agreed.at + EARLY_QUIET_MS);
       } else {
         agreed = null;
-        if (w && now - w.at < 2000) next = Math.min(next, now + 50);
+        // The wire has the compile and the page has yet to show it (the status,
+        // the counts, the rows), or has yet to list its files: look again soon.
+        const at = w ? w.at : v.src ? null : wire.lastAt();
+        if (at && now - at < 2000) next = Math.min(next, now + 50);
       }
     }
     if (!up || s !== last) stableSince = now;
