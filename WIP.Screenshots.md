@@ -87,7 +87,9 @@ Measured:
     run before the first capture and again when a capture is chosen, with the SVG under
     `--svg`: the page can draw again in between, as Project Settings does, putting the real
     build path back over the template a shot had set in the page only (a shot that sets a
-    value types it, `input` and `change`, so the page keeps it).
+    value types it, `input` and `change`, so the page keeps it). The `settings` setups open
+    their project with the templates' own build path (`startSettings`), so that a row drawn
+    again holds no user name either: `llvmdoc1` failed the check now and then without it.
 
 ## Capture
 
@@ -107,13 +109,21 @@ Measured:
   between versions a few pixels apart by 1-14 grey levels: dialog shadow edges, the status bar's
   scaled Ko-fi bitmap, panel dividers, rounded corners. `captureBeyondViewport` and
   `fromSurface: false` are stable but drop the scrollbars and the cut-outs' alpha, so neither is
-  usable. `capture` waits 1 s before the first capture (without it rounded-corner pixels come out a
-  grey level off and stay so), then takes up to 8, 150 ms apart: it keeps one equal to the file on
-  disk, else the first two in a row that agree, and fails if none agree. So a picture is rewritten
-  when the IDE draws something different, not when the noise flips.
+  usable. Measured on BETA 1010 (launcher-re, `plan/PLAN-webview-ide.md` section 24: 194 shots,
+  about 35,000 captures, alone and with six IDEs at once), every picture is final at its first
+  capture once the page is quiet and two frames are drawn, and nothing in the page changes while
+  it is taken; the one exception is a pixel by one level in the shadow corner of the Window >
+  Panel Layouts and Keyboard Shortcuts submenus, which turns over with no change in the page. So
+  `capture` has no rest: it captures back to back until one equals the file on disk or two in a
+  row agree. An agreed picture that is not the file is kept at once, unless it is within the
+  *wobble* of the file (`wobbly`: one size, at most 4 pixels apart, by at most 2 levels): then it
+  captures on at `CAPTURE_GAPS` (150 ms rising to 1.5 s; the pixel turns over in the idle time
+  between captures, not under captures back to back) until one equals the file or 5.5 s have
+  gone, and keeps the last agreed. With no two agreeing in 5.5 s it fails. So a picture is
+  rewritten when the IDE draws something different, not when the noise flips.
   Under the full parallel load a run now and then settles on the other version of one or two
   pictures (1-3 grey levels, a few pixels to a few hundred along an edge) and keeps it through
-  every capture, so a longer wait in `capture` does not help; each is unchanged when its setup
+  every capture, so longer captures in `capture` do not help; each is unchanged when its setup
   runs alone, and which one varies from run to run. So **a picture within a capture's noise of
   its file is left as it is** (`nearly`: one size, no channel more than 16 levels apart, at most
   0.5% of the pixels apart), reported `unchanged but for a capture's noise`, with a `.noise`

@@ -160,7 +160,7 @@ import { frameEval, frameOf, serveLoopback } from "../test/addin/pages.mjs";
 import { launchBrowser } from "./lib/browser.mjs";
 import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "./lib/shot-annotate.mjs";
 import { composite, uncomposite } from "./lib/shot-composite.mjs";
-import { decodePng, encodePng } from "./lib/png.mjs";
+import { comparePngs, decodePng, encodePng } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
@@ -621,11 +621,36 @@ async function unsteadyRects(conn, clip, unsteady) {
   });
 }
 
-// The pauses between the captures `capture` takes of one state, in milliseconds: the
-// last two let the page rest long enough to settle.
+// Whether two captures differ by no more than the compositor's wobble: one size, at most
+// WOBBLE_PIXELS pixels apart, none by more than WOBBLE_LEVELS in any channel, the pixels
+// inside `rects` left out. The wobble seen: one pixel by one level, the shadow of the
+// Window > Panel Layouts and Keyboard Shortcuts submenus' bottom-right corner, which turns
+// over with no change in the page.
+const WOBBLE_PIXELS = 4;
+const WOBBLE_LEVELS = 2;
+function wobbly(a, b, rects) {
+  const { sameSize, differing } = comparePngs(a, b);
+  if (!sameSize) return false;
+  if (!rects.length && differing > WOBBLE_PIXELS) return false;
+  const A = decodePng(a);
+  const B = decodePng(b);
+  let apart = 0;
+  for (let i = 0; i < A.rgba.length; i += 4) {
+    let d = 0;
+    for (let k = 0; k < 4; k++) d = Math.max(d, Math.abs(A.rgba[i + k] - B.rgba[i + k]));
+    if (!d || inRects(rects, (i / 4) % A.width, Math.floor(i / 4 / A.width))) continue;
+    if (d > WOBBLE_LEVELS || ++apart > WOBBLE_PIXELS) return false;
+  }
+  return true;
+}
+
+// The pauses between captures, in milliseconds, once two agree on a picture within the
+// wobble of the one wanted: the wobble's pixel turns over in the idle time between
+// captures, not under captures back to back.
 const CAPTURE_GAPS = [150, 150, 300, 600, 1500, 1500];
-// How long the page is left alone before the first capture.
-const REST_MS = 1000;
+// How long `capture` goes on for a picture that has not settled, or that has settled within
+// the wobble of the one wanted.
+const CAPTURE_BUDGET_MS = 5500;
 
 // Fails the picture `name` when `text` holds the Windows user name, quoting where.
 function refuseUserName(text, name, what) {
@@ -652,26 +677,18 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
   try {
     if (keep) await cutoutOn(conn, keep, solid);
     else await frames(conn);
-    // The corner pixels of a rounded box that has just appeared (a menu, a submenu, a
-    // dialog) are drawn a grey level differently when the page is captured within about a
-    // second of it, and stay so whatever follows. The page changes nothing in that second
-    // (no element, class or style changes), so there is no condition to wait for.
-    await sleep(REST_MS);
     const params = { format: "png" };
     if (clip) params.clip = { ...clip, scale: 1 };
-    // Captures of one unchanged state come out as two or more versions that differ in a
-    // few pixels by a few grey levels (the edge of a shadow's blur, of the status bar's
-    // scaled Ko-fi icon): the compositor draws them a little differently from frame to
-    // frame, which pixels and how often varies from run to run, and no way of taking the
-    // capture removes it (captureBeyondViewport and fromSurface:false do, but they also
-    // drop the scrollbars and the alpha channel). Some of it also settles only once the
-    // page has been left alone for a second or so after the last change, and captures in
-    // quick succession do not leave it alone: a submenu's corner pixel, the shadows of a
-    // dialog's buttons just after another dialog with large pictures has closed. Nothing in
-    // the page says when. So the captures are taken further and further apart
-    // (CAPTURE_GAPS), and the picture is the one that equals the file already there when a
-    // capture does, else the last capture that equals the one before it; with no file
-    // there, the first that does. A picture is rewritten only when the IDE draws something
+    // A picture is final at its first capture once the page is quiet and two frames are
+    // drawn, alone and with six IDEs at once, and nothing in the page changes while it is
+    // taken; but a capture is not byte-stable: the compositor draws a pixel or so a level
+    // differently from one capture to the next now and then (a submenu's shadow corner), and
+    // no way of taking it removes that (captureBeyondViewport and fromSurface:false do, but
+    // they also drop the scrollbars and the alpha channel). So the page is captured back to
+    // back until two captures agree or one equals the file already there. A picture that
+    // agrees but is not the file is kept at once, unless it is within the wobble of the file
+    // (`wobbly`): then the captures go on, CAPTURE_GAPS apart, until one equals the file or
+    // CAPTURE_BUDGET_MS have gone. A picture is rewritten only when the IDE draws something
     // else.
     // A new light picture has no file to equal, and prefers the dark picture (`prefer`) as
     // long as its first capture is within the noise of it: then one the theme does not change
@@ -696,8 +713,12 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     // one that matches the file or the dark picture there keeps that picture's bytes, so a
     // pixel that flickers does not rewrite the file on every run.
     const masks = await unsteadyRects(conn, clip, unsteady);
+    const t0 = Date.now();
     let last = null;
     let agreed = null;
+    // whether the first picture two captures agree on is within the wobble of the one wanted
+    let near = null;
+    let gap = 0;
     for (let i = 0; ; i++) {
       const { data } = await conn.send("Page.captureScreenshot", params);
       const png = Buffer.from(data, "base64");
@@ -710,11 +731,16 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
           labels: { before: `CAPTURE ${i - 1}`, after: `CAPTURE ${i}` },
         });
       }
-      if (last && same(last, png, masks)) agreed = png;
-      if (agreed && !want && !prefer) return await picked(agreed);
-      if (i === CAPTURE_GAPS.length) break;
+      if (last && same(last, png, masks)) {
+        agreed = png;
+        const wanted = want ?? prefer;
+        if (!wanted) return await picked(agreed);
+        near ??= wobbly(agreed, wanted, masks);
+        if (!near) return await picked(agreed);
+      }
+      if (Date.now() - t0 >= CAPTURE_BUDGET_MS) break;
+      if (agreed) await sleep(CAPTURE_GAPS[Math.min(gap++, CAPTURE_GAPS.length - 1)]);
       last = png;
-      await sleep(CAPTURE_GAPS[i]);
     }
     if (agreed) return await picked(agreed);
     throw new Error(`the page for ${name} kept changing: no two captures in a row were equal`);
@@ -1116,7 +1142,9 @@ async function startSample(run) {
 // references, the warnings and the aliases a Project Settings picture shows. Without the
 // VB package the form cannot compile, so the form and the line that shows it go
 // (`keepForm` leaves them, for a variant that has the package). `stage`, a folder, is copied
-// onto the project as well.
+// onto the project as well. The build path is the templates' own: the dialog draws a row
+// again now and then with the project's real value, over the one a shot sets in the page
+// (templateBuildPath), and the lane's default is in its temporary folder, under the user's.
 const startSettings =
   (variant, { keepForm = false, stage = null } = {}) =>
   async (run) => {
@@ -1131,7 +1159,7 @@ const startSettings =
       const main = path.join(src, "Sources", "MainModule.twin");
       writeFileSync(main, readFileSync(main, "utf8").replace("frmMain.Show", 'Debug.Print "Hello"'));
     }
-    return run.lane.open(src);
+    return run.lane.open(src, { buildPath: BD_BUILD_PATH });
   };
 
 async function prepareSample(run) {
