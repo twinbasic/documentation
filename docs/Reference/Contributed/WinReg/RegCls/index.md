@@ -12,7 +12,7 @@ A Windows Registry helper class that reads, writes, deletes, and enumerates regi
 
 **RegCls** wraps the most common registry operations---reading and writing string and DWORD values, creating and deleting keys, checking whether a key or value exists, and enumerating all values under a key---into a single class. It declares the [**RegKeyspace**](../RegKeyspace) and [**enumRegSzType**](../enumRegSzType) enumerations and its own copies of the `advapi32` declarations it uses, and takes `RegOpenKeyEx`, `RegSetValueEx` and the types **BOOL** and **REGTYPES** from the **WinDevLib** package. A comment in the source recommends the declarations of **WinDevLib** over the class's own.
 
-```tb check_build
+```tb
 Dim reg As New RegCls
 
 ' Write a value
@@ -313,7 +313,7 @@ Registry handles are closed with `RegCloseKey` in every code path where `RegOpen
 
 This example stores and retrieves application settings.
 
-```tb check_build
+```tb
 Dim reg As New RegCls
 Const AppKey As String = "Software\MyApp"
 

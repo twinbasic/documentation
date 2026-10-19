@@ -39,7 +39,7 @@ Each value's data is converted to a **String** as follows:
 
 This example enumerates all values under a registry key and prints each name and its data to the debug console.
 
-```tb check_build
+```tb
 Dim reg As New RegCls
 Dim dict As Dictionary
 Dim key As Variant

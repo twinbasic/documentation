@@ -31,7 +31,7 @@ The enumeration is declared inside the **RegCls** class, and its members are wri
 
 [**EnumValues**](RegCls/EnumValues) converts the data of **REG_SZ**, **REG_EXPAND_SZ**, **REG_DWORD**, **REG_DWORD_LITTLE_ENDIAN**, **REG_DWORD_BIG_ENDIAN** and **REG_BINARY** values to text, and gives `"Unsupported type: "` and the code for every other type.
 
-```tb check_build
+```tb
 Debug.Print enumRegSzType.REG_SZ         ' 1
 Debug.Print enumRegSzType.REG_DWORD      ' 4
 Debug.Print enumRegSzType.REG_MULTI_SZ   ' 7

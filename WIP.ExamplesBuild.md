@@ -442,8 +442,9 @@ without must report the same findings. The run's summary line says how many IDEs
 how many projects were opened in one already running.
 
 **A batch that meets its limit is a finding, not the end of the run.** Its samples are not
-judged, and it is not split: WinReg's batches meet the `compile` limit with no samples in them,
-because the time is the template's load. The run goes on, so one slow template cannot cost the
+judged, and it is not split: a slow template's batches meet the `compile` limit with no samples
+in them, because the time is the template's load (WinReg's did, which is why its samples are not
+marked). The run goes on, so one slow template cannot cost the
 other batches their result.
 The template built with no samples (`ownRowsOf`, which tells the template's own rows from
 a batch's) is built once more when it meets the limit; met twice, the batch that asked is not

@@ -35,7 +35,7 @@ Deleting a value entry is permanent. The value cannot be recovered through this 
 
 This example removes the `"RunCount"` value from `HKEY_CURRENT_USER\Software\MyApp`. If the value does not exist or the key cannot be opened, the call returns **False** and no error is raised.
 
-```tb check_build
+```tb
 Dim reg As New RegCls
 Dim bDeleted As BOOL
 

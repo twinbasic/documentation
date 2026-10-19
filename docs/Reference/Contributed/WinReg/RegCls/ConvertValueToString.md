@@ -58,7 +58,7 @@ Overload 1 neither closes nor otherwise modifies *hKey*. When using Overload 1, 
 
 This example opens a registry key, calls Overload 1 on a value, then closes the key. The key handle is a **LongPtr**, which the method takes as a **Long**.
 
-```tb check_build
+```tb
 Dim reg As New RegCls
 Dim hKey As LongPtr
 Dim ret As Long
@@ -74,7 +74,7 @@ End If
 
 This example uses Overload 2 inside a value-enumeration loop.
 
-```tb check_build
+```tb
 Dim reg As New RegCls
 Dim dict As Dictionary
 Set dict = reg.EnumValues(HKEY_CURRENT_USER, "Software\MyApp")

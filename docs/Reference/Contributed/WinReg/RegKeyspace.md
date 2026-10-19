@@ -29,7 +29,7 @@ The enumeration is declared inside the [**RegCls**](RegCls/) class, and its memb
 
 The high bit of every value is set, so each value is a negative **Long**: `CLng(RegKeyspace.HKEY_CURRENT_USER)` is -2147483647.
 
-```tb check_build
+```tb
 Debug.Print Hex$(RegKeyspace.HKEY_CLASSES_ROOT)   ' 80000000
 Debug.Print Hex$(RegKeyspace.HKEY_CURRENT_USER)   ' 80000001
 Debug.Print CLng(RegKeyspace.HKEY_CURRENT_USER)   ' -2147483647
@@ -37,7 +37,7 @@ Debug.Print CLng(RegKeyspace.HKEY_CURRENT_USER)   ' -2147483647
 
 The **WinDevLib** package declares an enumeration of the same name with the same members and values. A project that references both **WinReg** and **WinDevLib** has two enumerations named **RegKeyspace**, and `WinReg.RegKeyspace` names this one. A member of either is accepted as an argument of a **RegCls** method.
 
-```tb check_build
+```tb
 Dim reg As New RegCls
 Dim root As WinReg.RegKeyspace
 

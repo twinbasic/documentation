@@ -28,7 +28,7 @@ Returns **True** if the key was created or already existed, **False** if the ope
 
 This example creates a multi-level registry key under **HKEY_CURRENT_USER** and checks whether the operation succeeded.
 
-```tb check_build
+```tb
 Dim Reg As New RegCls
 Dim Success As Boolean
 
