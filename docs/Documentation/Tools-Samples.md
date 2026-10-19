@@ -19,8 +19,8 @@ Compiles the documentation's own code samples, and surveys and probes where the 
 
     node scripts/check_examples.mjs [--only <regex>] [--census] [--propose [--apply]]
                                     [--report <file>] [--jobs N] [--batch N]
-                                    [--ide <path>] [--build | --llvm] [--keep] [--verbose]
-                                    [--json]
+                                    [--ide <path>] [--build | --llvm] [--keep] [--fresh]
+                                    [--verbose] [--json]
 
 Compiles the documentation's own code samples. No other gate evaluates a ` ```tb ` fence ([`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions) only protects its contents), so a sample that does not compile can ship with every gate green. This tool asks the compiler. [`examples.bat`](Tools#examplesbat) is how it is usually run, and [Authoring Pages](Authoring#checking-that-a-sample-compiles) is where a sample opts in.
 
@@ -41,12 +41,13 @@ Each marked sample is generated into its own `Module tbx_<hash>`, packed with a 
 | `--propose` | Compile the unmarked samples too, and list the ones that would pass. An unmarked sample that fails does not fail the run; a marked one does. It ends with the grouping `--report` prints. |
 | `--apply` | With `--propose`, add the bare marker to the fences that passed in that run. It never touches a fence that already carries markup, so a re-run is a no-op. Read the diff. |
 | `--report <file>` | Group the findings of a survey saved with `--propose --json`: by diagnostic, section, unresolved name, wrapper and page. It needs no compiler, so the slow run happens once and the grouping can be iterated on. |
-| `--jobs <n>` | Concurrent IDE lanes. Default 4. Each lane has its own workspace and slot from [`tbbroker`](Tools-Compiler#tbbroker) (a private desktop), and each IDE a DevTools port Windows picks. |
+| `--jobs <n>` | Concurrent IDE lanes. Default 4. Each lane has its own workspace and slot from [`tbbroker`](Tools-Compiler#tbbroker) (a private desktop), and each IDE a DevTools port Windows picks. A lane opens its projects one after another in one IDE. |
 | `--batch <n>` | Upper bound on samples per generated project. Default 120. The batcher packs fewer when there are lanes to fill. |
 | `--ide <path>` | `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop. |
 | `--build` | Also build each project that compiles without errors. A project whose build fails is cut down, as for a crash, to the samples that fail it. A project whose compile has errors is not built: the run names its first error and counts its samples as "compiled but not built". |
 | `--llvm` | Build with LLVM (implies `--build`) by setting each project's compiler options to `+llvm`. It needs a Professional or Ultimate licence and exits 2 without one. A sample that fails under `--llvm` but not under a plain `--build` is one LLVM cannot generate code for. The run holds one lease on the LLVM cache server, which every lane's compiler shares, for its whole length, so that the server never ends with one lane's IDE. |
 | `--keep` | Leave the generated projects on disk and print where. |
+| `--fresh` | Start a new IDE for every project, as `tbbuild` does, instead of opening each lane's projects one after another in one IDE. It reports the same findings, more slowly. It cannot be given with `--census` or `--report`, which start no IDE. |
 | `--verbose` | Report warnings as well as errors. Only errors ever fail the run. |
 | `--json` | One object on stdout; every report line moves to stderr. |
 
@@ -95,6 +96,10 @@ path>` --- in any language, typically ` ```json ` --- is written into the genera
 
 **A diagnostic can also land outside every sample**, inside a referenced package's own source. For example, a generic instantiated with a type the project does not have is reported against the generic's own type parameter, in the package's file, and the sample that provoked it has no diagnostic of its own. The run fails with a row naming no page, and the same splitting isolates the sample, after one build of the empty template decides whether the row is the template's own. A split never cuts a `projname` group in half, and never separates a page's `hidden` context from the samples that need it.
 
+**A lane opens project after project in one IDE.** Starting an IDE costs more than compiling a batch, so each lane starts one and opens every later project through the IDE's own **File > Open Project**, which closes the previous project and its compiler first. Before each switch the lane undoes what a project can leave in the IDE: the Safe Mode a compiler crash loop sets, and the trace mode a native exception turns on. A project that crashed the compiler is closed at once and never opened again in that IDE; the halves of its batch are other projects, and are. A lane gives its IDE up and starts a new one when a switch fails, after a harness fault, and after a compile that never settled, and a project that a reused IDE never reported open, or met a harness fault in, is built again in a new IDE before its result counts. The run's summary says how many IDEs were started and how many projects were opened in one already running. `--fresh` starts a new IDE for every project instead; the session that does this is `scripts/lib/tb-session.mjs`.
+
+**A batch can meet its time limit.** A batch whose compile does not settle within `test/harness.json`'s `compile` limit, or that the IDE never reports open, is not judged. It is one finding, against its first sample, and the run goes on. Splitting it would not help: WinReg's batches meet the limit with no samples in them, because what is slow is loading the template.
+
 Four files under `scripts/lib/` belong to the tool:
 
 - `tb-fences.mjs` needs no compiler --- fence extraction, the markup and the classifier --- and is where a new key or slot goes.
@@ -102,7 +107,7 @@ Four files under `scripts/lib/` belong to the tool:
 - `example-run.mjs` is what `check_run` needs without an IDE: which samples may be run, what a sample says it prints, the generated dispatcher, and the reading of the run's markers.
 - `tb-install.mjs` finds the IDE and the compiler beside it, and is shared with the two other IDE-driving tools.
 
-Exit codes: **0** every marked sample compiles, or none is marked (`--report` always, and `--propose` when it found only unmarked samples that fail, which is advisory); **1** a marked sample does not compile, a marker is misused, a template does not compile, the compiler crashed on a project, `--build` or `--llvm` found a sample that fails the build, or a `check_run` sample raised an error, did not return or printed something other than the page says (the report names each); **2** the harness could not run: a refused command line, a failed self-test probe, no IDE, an unreadable `--report` file, a work folder it could not clear, an `--llvm` run on a Community or Personal licence, or a crash.
+Exit codes: **0** every marked sample compiles, or none is marked (`--report` always, and `--propose` when it found only unmarked samples that fail, which is advisory); **1** a marked sample does not compile, a marker is misused, a template does not compile, the compiler crashed on a project, `--build` or `--llvm` found a sample that fails the build, a batch met its time limit, or a `check_run` sample raised an error, did not return or printed something other than the page says (the report names each); **2** the harness could not run: a refused command line, a failed self-test probe, no IDE, an unreadable `--report` file, a work folder it could not clear, an `--llvm` run on a Community or Personal licence, or a crash.
 
 ## package_tests.mjs
 {: #package-tests }

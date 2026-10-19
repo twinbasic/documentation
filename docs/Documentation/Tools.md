@@ -246,7 +246,7 @@ Compiles the documentation's own twinBASIC code samples --- every ` ```tb ` fenc
 
 **It is not one of the gates, and must not become one.** It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows, because it needs a twinBASIC install (`npm install` alone must suffice to build the docs) and Windows with a private desktop and a CDP-reachable WebView2 (the CI box has neither). An IDE cold start also takes 6 to 8 seconds, against four for a whole site build. A person runs it, as with [`sweep_a11y.mjs`](Tools-Site-Checks#sweep-a11y).
 
-Exit codes, those of [`check_examples.mjs`](Tools-Samples#check-examples): **0** clean, **1** a sample does not compile, or does not run as its page says, **2** the harness failed.
+Exit codes, those of [`check_examples.mjs`](Tools-Samples#check-examples): **0** clean, **1** a sample does not compile, does not run as its page says, or is in a batch that met its time limit, **2** the harness failed.
 
 ### package-tests.bat
 {: #package-testsbat }

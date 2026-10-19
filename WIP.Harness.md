@@ -541,34 +541,69 @@ Watching the page's traffic is another matter: CDP shows it to the harness with 
 the wait for a compile ends on it (*How the wait for the compile ends*, above). The
 diagnostics still come from the IDE's own report walk.
 
-### One project per IDE, and that is the scaling unit
+### One IDE per project, or one per lane
 
-**An IDE can open project after project; the harness does not.** `tbbuild` starts a fresh
-IDE per project, so nothing one project leaves in the IDE or its compiler changes the next
-one's result, and a probe that crashes the compiler costs no other probe its answer.
+**`tbbuild` and `tbrun` start a fresh IDE per project; `check_examples` opens project after
+project in one IDE per lane.** A tool that builds one project gains nothing from keeping its IDE.
+For one that builds a hundred, the IDE's start is most of what it pays: **6 to 8 seconds per
+project, and flat in project size** --- a one-file template and the template that carries the
+whole of VBCCR both land at about six seconds. In a full `examples.bat` run on four lanes
+(BETA 1010), each project's start and teardown took 1.94 s beside its compile wait. Time it
+before quoting it.
 
-The page's own switch works and is fast (BETA 1010, measured by the webview-ide session in
-launcher-re, `plan/PLAN-webview-ide.md` section 23): File > Open Project runs `openProject()`,
-which calls `hostAppObject.OpenProject` (a native file dialog, which nobody can answer on a
-private desktop) and then `closeProjectSafely(() => root.loadProject(path))`. A changed project
-first gets the page's own HTML modal (*Save now?*: Save / Discard Changes / Cancel), which
-`closeModal` answers. A switch takes about 2 s from the click to the next compile settling,
-and the pictures after one and two switches were byte-identical to a fresh IDE's. File > Close
+**The switch is the page's own File > Open Project** (`IdeSession`,
+[scripts/lib/tb-session.mjs](scripts/lib/tb-session.mjs)). `openProject()` calls
+`hostAppObject.OpenProject` (a native file dialog, which nobody can answer on a private
+desktop) and then `closeProjectSafely(() => root.loadProject(path))`. The session replaces
+`hostAppObject`, for that one synchronous call, with an object whose `OpenProject` returns the
+path, and puts the real one back in the same evaluate. `closeProjectNow` ends the old compiler
+(`root.forceTerminate`), and the restart's `isClosingProject` branch clears the console, unsets
+`projectFilePath` and runs the callback, which loads the new project in a new compiler. A changed
+project first gets the page's own HTML modal (*Save now?*), which the session answers Discard
+Changes; no switch in the measurements below found a project changed (0 of 158). File > Close
 Project (`tbProject_Close`) sends the compiler nothing and ends it with `taskkill`.
 
 **`root.loadProject` called over CDP is not a switch** (BETA 1010, the shipped IDE and tblaunch
 alike): it skips `closeProjectSafely`, so it sends a second LoadProject on the compiler
 connection that still holds the old project. The page loads the new project's saved state, but
-the tree keeps the old project; the page stays responsive and shows no dialog. A switch from the
-harness has to go through `openProject()` with the host's dialog avoided (the front page's
-recents, or `hostAppObject.OpenProject` wrapped in the page to return a path). The page also
+the tree keeps the old project; the page stays responsive and shows no dialog. The page also
 holds about 90 `debugger;` statements, `openProject`'s callback among them: a CDP client with
 the Debugger domain enabled stops at them, which looks like a hang.
 
-**It costs less than it sounds like.** Measured: **6 to 8 seconds per project, and flat in
-project size** --- a one-file template and the template that carries the whole of VBCCR both
-land at about six seconds, because what is being paid for is IDE startup and not compilation.
-Time it before quoting it.
+**Measured** (BETA 1010, the 74 batch projects of a full `examples.bat` run, and a set of
+probe projects: errors, an embedded package, a compiler crash, `[RunAfterBuild]` runs that
+print, raise an access violation, run `End` and raise an unhandled error). Every project gave
+the same diagnostics and run output after a switch as in a fresh IDE, once the resets below
+were in place. One after another, the 74 took 351 s in fresh IDEs and 213 s in one IDE; on four
+lanes at once, 134 s (the `examples.bat` run itself, 71 of them) against 72.6 s. In a switch the
+new compile starts about 1.4 s after `openProject()`. Over 74 switches the IDE's processes stayed
+at 13, its working set between 0.99 and 1.25 GB with no trend, its temp folder at 2 or 3 files; a
+`Static` in a `[RunAfterBuild]` Sub read 1 on every visit, since each project has a new
+compiler process; the registry's association, `IDESettings` and recent list were unchanged.
+
+**What a project leaves in the IDE, and the session undoes before each switch:**
+
+- **Safe Mode.** After a compiler crash loop the build box reads `nocompile`, and the page's
+  `loadProject` keeps the target when it does: every project opened after it read as a crash. The
+  remedy (owner): close the project, set the box to win32 with no project open, then open the
+  next (0.22 s). The compiler's pid does not change when the box is set with no project open, so
+  nothing waits for one. A project that put the IDE into Safe Mode crashes back into it when it
+  is opened again, so it never is; a bisect half is another project and goes to the same IDE.
+- **TRACE-MODE.** Any native exception, at compile or in a run, sets the page's `g_TraceMode` for
+  the rest of the session, and each new compiler starts with it (`RequestPreInitialize`). A later
+  crash then prints a thread dump where a fresh IDE prints two `[IDE] auto-activated TRACE-MODE`
+  lines. The session sets it back to false: the Help menu's toggle without its restart.
+- **The harness's own page state.** `keepClears` starts a new record on each call
+  (`tb-ide-console.mjs`), because the close clears the console and that clear is the last
+  project's. `compileProject` reports the page's dialogs from a mark it takes after the switch.
+
+**When the session gives its IDE up.** A switch that fails (the page does not answer, the IDE
+has ended, `openProject()` did not ask for a path), a harness fault (2) and a compile that never
+settled (3) end the IDE by its pid, and the next project starts cold. A project opened by a
+switch that ended in a harness fault, or that the IDE never reported open, is built again in a
+new IDE before its result counts. A compile that met its limit after the project opened is not:
+WinReg's batches meet it in a fresh IDE as well. A compiler crash (4) is recovered in place: the
+project is closed at once, so that its compiler stops restarting.
 
 **Concurrency works and is the route to a fast probe suite.** Each run takes a slot from
 `tbbroker` ([WIP.Broker.md](WIP.Broker.md)) --- a private desktop, and the number its WebView2

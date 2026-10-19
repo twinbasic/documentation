@@ -137,24 +137,27 @@ export async function linesSince(c, mark = null, { prefix } = {}) {
 // event_clearDebugConsole, which a program's Debug.Cls raises, from the pane's
 // Clear command, and on closing the project. So a wrapper assigned to that
 // global sees each of those clears, and reads the console as readConsole does,
-// without timestamps, before letting it go. A page is wrapped once: a second
-// call finds the record already there and leaves it alone.
+// without timestamps, before letting it go. A page is wrapped once, and each
+// call starts the record afresh: an IDE that opens project after project
+// (tb-session.mjs) clears the console as it closes each one, and those clears
+// are the last project's, not the next one's.
 const KEEP_CLEARS_JS = `(() => {
   if (typeof clearDebugConsole !== "function") return false;
   if (!Array.isArray(window.__tbKeptClears)) {
     const clear = clearDebugConsole;
-    window.__tbKeptClears = [];
     clearDebugConsole = function () {
       window.__tbKeptClears.push(${consoleJs(false, 0, null)} ?? "");
       return clear.apply(this, arguments);
     };
   }
+  window.__tbKeptClears = [];
   return true;
 })()`;
 
 /**
- * Keep what each later clear of the DEBUG CONSOLE erases, for keptClears.
- * False when this IDE has no global `clearDebugConsole()` to wrap.
+ * Keep what each later clear of the DEBUG CONSOLE erases, for keptClears,
+ * forgetting what earlier clears erased. False when this IDE has no global
+ * `clearDebugConsole()` to wrap.
  */
 export const keepClears = (c) => c.evaluate(KEEP_CLEARS_JS);
 
