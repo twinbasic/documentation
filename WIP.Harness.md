@@ -894,8 +894,9 @@ What it showed on BETA 1010 (350 compiles: `check_examples --build` and `--llvm`
 `addin_test` lane, `tbbuild`/`tbrun` probes on both arches), median / p95 / max in seconds: IDE
 start to project open 2.85 / 3.46 / 4.04; the compiler's own compile, `compilationStarted` to the
 last file's diagnostics, 0.03 / 0.08 / 0.30; the whole compile wait, project load included, 3.33 / 5.34 /
-13.8, its tail the 5 s stand-still `waitForCompile` needs when a package's own files have errors
-(WinReg, ArrayListLib), where the early path never agrees; a build, Build pressed to linked, at
+13.8, its tail the compiler's start-up for a project that embeds a large package (WinReg,
+ArrayListLib; the early path now agrees for a package whose own files have errors, by adding the
+panel's rows of files the wire does not report on, `unlistedRows`); a build, Build pressed to linked, at
 most 1.0 (4.97 with LLVM); a `[RunAfterBuild]` run at most 0.83 (25.3 with LLVM, one of them
 printing for 15 s and finishing). None reached a timeout.
 
