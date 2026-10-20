@@ -18,6 +18,15 @@ The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Vari
 
 Only uppercase letters are converted to lowercase; all lowercase letters and nonletter characters remain unchanged.
 
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | **LCase$** is given a *string* that is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **LCase** function to return a lowercase version of a string.

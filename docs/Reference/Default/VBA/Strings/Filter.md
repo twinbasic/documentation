@@ -27,11 +27,31 @@ The *compare* argument can have the following values:
 
 | Constant               | Value | Description                                                                              |
 |------------------------|-------|------------------------------------------------------------------------------------------|
-| **vbUseCompareOption** | -1    | Performs a comparison by using the setting of the [**Option Compare**](../../Core/Option) statement. |
 | **vbBinaryCompare**    | 0     | Performs a binary comparison.                                                            |
 | **vbTextCompare**      | 1     | Performs a textual comparison.                                                           |
 
+<!-- VBA: VBA-Docs lists this setting too; twinBASIC and VB6 raise error 5 for it.
+| **vbUseCompareOption** | -1    | Performs a comparison by using the setting of the [**Option Compare**](../../Core/Option) statement. |
+-->
+
 The array returned by the **Filter** function contains only enough elements to contain the number of matched items.
+
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *compare* is less than 0, or greater than 1 and not a valid locale identifier |
+| [13 (`&HD`)](../../../Reference/Run-time-Errors#error-13), *Type mismatch* | *sourcearray* is **Null**, or has more than one dimension |
+| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *match*, *include* or *compare* is **Null**, or an element of *sourcearray* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *compare* is 2 (**vbDatabaseCompare**), VB6 raises error [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument*; twinBASIC raises none.
+
+> [!NOTE] BETA 1010
+> When *sourcearray* is a **Long** array, VB6 raises error [13 (`&HD`)](../../../Reference/Run-time-Errors#error-13), *Type mismatch*; twinBASIC raises none.
+
+<!-- /errors -->
 
 ### See Also
 

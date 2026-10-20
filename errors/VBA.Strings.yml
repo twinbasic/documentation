@@ -229,3 +229,418 @@ pages:
       - Right("abc", 0)
       - Right("abc", 1073741823)
       - RightB("abc", 2147483647)
+  Reference/Default/VBA/Strings/Filter.md:
+    rows:
+      - error: 5
+        when: "*compare* is less than 0, or greater than 1 and not a valid locale identifier"
+        cases:
+          - Filter(Array("ab", "c"), "a", True, -1)
+          - Filter(Array("ab", "c"), "a", True, -2)
+          - Filter(Array("ab", "c"), "a", True, 99999)
+      - error: 0
+        when: "*compare* is 2 (**vbDatabaseCompare**)"
+        vb6: 5
+        bug: database-compare-no-error
+        cases:
+          - Filter(Array("ab", "c"), "a", True, 2)
+      - error: 0
+        when: "*sourcearray* is a **Long** array"
+        vb6: 13
+        bug: pending
+        cases:
+          - decl: Dim A(1) As Long
+            expr: Filter(A, "a")
+      - error: 13
+        when: "*sourcearray* is **Null**, or has more than one dimension"
+        cases:
+          - Filter(Null, "a")
+          - decl: Dim A(1, 1) As String
+            expr: Filter(A, "a")
+      - error: 94
+        when: "*match*, *include* or *compare* is **Null**, or an element of *sourcearray* is **Null**"
+        cases:
+          - Filter(Array("ab", "c"), Null)
+          - Filter(Array("ab", "c"), "a", Null)
+          - Filter(Array("ab", "c"), "a", True, Null)
+          - Filter(Array("ab", Null), "a")
+    quiet:
+      - Filter(Array("ab", 1), "a")
+      - Filter(Array(), "a")
+      - Filter(Array("ab"), "a", 2)
+      - Filter(Array("ab", "c"), "a", True, 1033)
+      - decl: Dim A() As String
+        expr: Filter(A, "a")
+  Reference/Default/VBA/Strings/Format.md:
+    rows:
+      - error: 5
+        when: "*firstDayOfWeek* is less than 0 or greater than 7, or *firstWeekOfYear* is less than 0 or greater than 3"
+        cases:
+          - Format(Now, "ww", -1)
+          - Format(Now, "ww", 8)
+          - Format(Now, "ww", 1, -1)
+          - Format(Now, "ww", 1, 4)
+          - Format$(1, "0", 8)
+      - error: 94
+        when: "*format*, *firstDayOfWeek* or *firstWeekOfYear* is **Null**"
+        cases:
+          - Format(1, Null)
+          - Format(Now, "ww", Null)
+          - Format(Now, "ww", 1, Null)
+    quiet:
+      - Format(Null)
+      - Format$(Null)
+      - Format("abc", "0.00")
+      - Format(1, "")
+      - Format(Now, "ww", 7, 3)
+      - Format(Now, "ww", 0, 0)
+  Reference/Default/VBA/Strings/FormatCurrency.md:
+    rows:
+      - error: 5
+        when: "*numDigitsAfterDecimal* is less than -1 or greater than 255"
+        cases:
+          - FormatCurrency(1, -2)
+          - FormatCurrency(1, 256)
+          - FormatCurrency(0, 1000)
+      - error: 5
+        when: "*includeLeadingDigit*, *useParensForNegativeNumbers* or *groupDigits* is not -2, -1 or 0"
+        cases:
+          - FormatCurrency(1, 2, -3)
+          - FormatCurrency(1, 2, 1)
+          - FormatCurrency(1, 2, -1, 5)
+          - FormatCurrency(1, 2, -1, -1, 5)
+      - error: 94
+        when: "an argument other than *expression* is **Null**"
+        cases:
+          - FormatCurrency(1, Null)
+          - FormatCurrency(1, 2, Null)
+          - FormatCurrency(1, 2, -1, Null)
+          - FormatCurrency(1, 2, -1, -1, Null)
+    quiet:
+      - FormatCurrency(Null)
+      - FormatCurrency(1, 255)
+      - FormatCurrency(1, 2, -2, -2, -2)
+      - FormatCurrency(1, 2, 0, 0, 0)
+  Reference/Default/VBA/Strings/FormatDateTime.md:
+    rows:
+      - error: 5
+        when: "*namedFormat* is less than 0 or greater than 4"
+        cases:
+          - FormatDateTime(Now, -1)
+          - FormatDateTime(Now, 5)
+      - error: 94
+        when: "*namedFormat* is **Null**"
+        cases:
+          - FormatDateTime(Now, Null)
+    quiet:
+      - FormatDateTime(Null)
+      - FormatDateTime(Now, 0)
+      - FormatDateTime(Now, 4)
+  Reference/Default/VBA/Strings/FormatNumber.md:
+    rows:
+      - error: 5
+        when: "*numDigitsAfterDecimal* is less than -1"
+        cases:
+          - FormatNumber(1, -2)
+      - error: 5
+        when: "*includeLeadingDigit*, *useParensForNegativeNumbers* or *groupDigits* is not -2, -1 or 0"
+        cases:
+          - FormatNumber(1, 2, -3)
+          - FormatNumber(1, 2, 1)
+          - FormatNumber(1, 2, -1, 5)
+          - FormatNumber(1, 2, -1, -1, 5)
+      - error: 94
+        when: "an argument other than *expression* is **Null**"
+        cases:
+          - FormatNumber(1, Null)
+          - FormatNumber(1, 2, Null)
+          - FormatNumber(1, 2, -1, Null)
+          - FormatNumber(1, 2, -1, -1, Null)
+    quiet:
+      - FormatNumber(Null)
+      - FormatNumber(1, 1000)
+      - FormatNumber(1, 2, -2, -2, -2)
+      - FormatNumber(1, 2, 0, 0, 0)
+  Reference/Default/VBA/Strings/FormatPercent.md:
+    rows:
+      - error: 5
+        when: "*numDigitsAfterDecimal* is less than -1"
+        cases:
+          - FormatPercent(1, -2)
+      - error: 5
+        when: "*includeLeadingDigit*, *useParensForNegativeNumbers* or *groupDigits* is not -2, -1 or 0"
+        cases:
+          - FormatPercent(1, 2, -3)
+          - FormatPercent(1, 2, 1)
+          - FormatPercent(1, 2, -1, 5)
+          - FormatPercent(1, 2, -1, -1, 5)
+      - error: 94
+        when: "an argument other than *expression* is **Null**"
+        cases:
+          - FormatPercent(1, Null)
+          - FormatPercent(1, 2, Null)
+          - FormatPercent(1, 2, -1, Null)
+          - FormatPercent(1, 2, -1, -1, Null)
+    quiet:
+      - FormatPercent(Null)
+      - FormatPercent(1, 100)
+      - FormatPercent(1, 2, -2, -2, -2)
+  Reference/Default/VBA/Strings/Join.md:
+    rows:
+      - error: 0
+        when: "*sourcearray* is a **Long** array"
+        vb6: 5
+        bug: pending
+        cases:
+          - decl: Dim A(1) As Long
+            expr: Join(A)
+      - error: 5
+        when: "*sourcearray* has more than one dimension"
+        cases:
+          - decl: Dim A(1, 1) As String
+            expr: Join(A)
+      - error: 13
+        when: "*sourcearray* is **Null**, or an element of it is an array"
+        cases:
+          - Join(Null)
+          - Join(Array(Array(1)))
+      - error: 94
+        when: "*delimiter* is **Null**, or an element of *sourcearray* is **Null**"
+        cases:
+          - Join(Array("a", "b"), Null)
+          - Join(Array("a", Null))
+    quiet:
+      - Join(Array(1, 2))
+      - Join(Array())
+      - decl: Dim A() As String
+        expr: Join(A)
+  Reference/Default/VBA/Strings/LCase.md:
+    rows:
+      - error: 94
+        when: "**LCase$** is given a *string* that is **Null**"
+        cases: [LCase$(Null)]
+    quiet: [LCase(Null), LCase(1)]
+  Reference/Default/VBA/Strings/LTrim.md:
+    rows:
+      - error: 94
+        when: "**LTrim$** is given a *string* that is **Null**"
+        cases: [LTrim$(Null)]
+    quiet: [LTrim(Null)]
+  Reference/Default/VBA/Strings/MonthName.md:
+    rows:
+      - error: 5
+        when: "*month* is less than 1 or greater than 12"
+        cases: [MonthName(0), MonthName(13), MonthName(-1)]
+      - error: 94
+        when: "*month* or *abbreviate* is **Null**"
+        cases:
+          - MonthName(Null)
+          - MonthName(1, Null)
+    quiet:
+      - MonthName(12, True)
+      - MonthName(1, 2)
+  Reference/Default/VBA/Strings/Replace.md:
+    rows:
+      - error: 5
+        when: "*start* is less than 1, or *count* is less than -1"
+        cases:
+          - Replace("abc", "a", "b", 0)
+          - Replace("abc", "a", "b", -1)
+          - Replace("abc", "a", "b", 1, -2)
+      - error: 5
+        when: "*compare* is less than 0, or greater than 1 and not a valid locale identifier"
+        cases:
+          - Replace("abc", "a", "b", 1, -1, -1)
+          - Replace("abc", "a", "b", 1, -1, -2)
+          - Replace("abc", "a", "b", 1, -1, 99999)
+          - Replace("", "a", "b", 1, -1, 99999)
+      - error: 94
+        when: "any argument is **Null**"
+        cases:
+          - Replace(Null, "a", "b")
+          - Replace("abc", Null, "b")
+          - Replace("abc", "a", Null)
+          - Replace("abc", "a", "b", Null)
+          - Replace("abc", "a", "b", 1, Null)
+          - Replace("abc", "a", "b", 1, -1, Null)
+    quiet:
+      - Replace("abc", "a", "b", 5)
+      - Replace("abc", "a", "b", 1073741825)
+      - Replace("abc", "a", "b", 1, 0)
+      - Replace("abc", "a", "b", 1, -1, 2)
+      - Replace("abc", "a", "b", 1, -1, 1033)
+  Reference/Default/VBA/Strings/RTrim.md:
+    rows:
+      - error: 94
+        when: "**RTrim$** is given a *string* that is **Null**"
+        cases: [RTrim$(Null)]
+    quiet: [RTrim(Null)]
+  Reference/Default/VBA/Strings/Space.md:
+    rows:
+      - error: 5
+        when: "*number* is negative, or greater than 1,073,741,823"
+        cases: [Space(-1), Space$(-1), Space(1073741824), Space(2147483647)]
+      - error: 94
+        when: "*number* is **Null**"
+        cases: [Space(Null), Space$(Null)]
+    quiet: [Space(0)]
+  Reference/Default/VBA/Strings/Split.md:
+    rows:
+      - error: 5
+        when: "*limit* is less than -1"
+        cases:
+          - Split("a b", " ", -2)
+      - error: 5
+        when: "*compare* is less than 0, or greater than 1 and not a valid locale identifier"
+        cases:
+          - Split("a b", " ", -1, -1)
+          - Split("a b", " ", -1, -2)
+          - Split("a b", " ", -1, 99999)
+          - Split("", " ", -1, 99999)
+      - error: 94
+        when: "any argument is **Null**"
+        cases:
+          - Split(Null)
+          - Split("a b", Null)
+          - Split("a b", " ", Null)
+          - Split("a b", " ", -1, Null)
+    quiet:
+      - Split("a b", " ", 0)
+      - Split("a b", " ", -1, 2)
+      - Split("a b", " ", -1, 1033)
+  Reference/Default/VBA/Strings/StrComp.md:
+    rows:
+      - error: 5
+        when: "*compare* is less than 0, or greater than 1 and not a valid locale identifier"
+        cases:
+          - StrComp("a", "b", -1)
+          - StrComp("a", "b", -2)
+          - StrComp("a", "b", 99999)
+      - error: 0
+        when: "*compare* is 2 (**vbDatabaseCompare**)"
+        vb6: 5
+        bug: database-compare-no-error
+        cases:
+          - StrComp("a", "b", 2)
+      - error: 94
+        when: "*compare* is **Null**"
+        cases:
+          - StrComp("a", "b", Null)
+    quiet:
+      - StrComp(Null, "b")
+      - StrComp(Null, "b", 99999)
+      - StrComp("", "", 99999)
+      - StrComp("a", "", 99999)
+      - StrComp("a", "b", 1033)
+  Reference/Default/VBA/Strings/StrConv.md:
+    rows:
+      - error: 5
+        when: "*conversion* is a value the table does not list, or combines **vbUnicode**, **vbFromUnicode**, **vbUTF8** or **vbFromUTF8** with another value"
+        cases:
+          - StrConv("a", 64 + 128)
+          - StrConv("a", 1 + 64)
+          - StrConv("a", 128 + 2)
+          - StrConv("a", 1024)
+          - StrConv("a", -1)
+          - { expr: 'StrConv("a", 256 + 512)', only: tb }
+          - { expr: 'StrConv("a", 64 + 256)', only: tb }
+      - error: 5
+        when: "*conversion* includes **vbWide**, **vbNarrow**, **vbKatakana** or **vbHiragana** on a system whose locale is not East Asian"
+        cases:
+          - StrConv("a", 4)
+          - StrConv("a", 8)
+          - StrConv("a", 16)
+          - StrConv("a", 32)
+      - error: 5
+        when: "*conversion* includes **vbWide**, **vbNarrow**, **vbKatakana** or **vbHiragana** and *LCID* names an East Asian locale, on a system whose locale is not East Asian"
+        vb6: 0
+        bug: pending
+        cases:
+          - StrConv("a", 4, 1041)
+          - StrConv("a", 16, 1041)
+      - error: 5
+        when: "*LCID* is not a valid locale identifier"
+        cases:
+          - StrConv("a", 1, 99999)
+          - StrConv("a", 1, -1)
+      - error: 94
+        when: "*conversion* or *LCID* is **Null**"
+        cases:
+          - StrConv("a", Null)
+          - StrConv("a", 1, Null)
+    quiet:
+      - StrConv(Null, 1)
+      - StrConv("a", 0)
+      - StrConv("a", 1 + 2)
+      - StrConv("a", 3)
+      - StrConv("a", 64)
+      - StrConv("a", 128)
+      - StrConv("a", 1, 1033)
+      - { expr: 'StrConv("a", 256)', only: tb }
+      - { expr: 'StrConv("a", 512)', only: tb }
+  Reference/Default/VBA/Strings/StrReverse.md:
+    rows:
+      - error: 94
+        when: "*expression* is **Null**"
+        cases: [StrReverse(Null)]
+    quiet: [StrReverse(""), StrReverse(1)]
+  Reference/Default/VBA/Strings/String.md:
+    rows:
+      - error: 5
+        when: "*number* is negative, or greater than 1,073,741,823"
+        cases:
+          - String(-1, "a")
+          - String$(-1, "a")
+          - String(1073741824, "a")
+          - String(2147483647, "a")
+      - error: 5
+        when: "*character* is a zero-length string"
+        cases:
+          - String(3, "")
+      - error: 94
+        when: "*number* is **Null**, or **String$** is given a *character* that is **Null**"
+        cases:
+          - String(Null, "a")
+          - String$(Null, "a")
+          - String$(3, Null)
+      - error: 94
+        when: "**String** is given a *character* that is **Null**"
+        vb6: 0
+        bug: pending
+        cases:
+          - String(3, Null)
+    quiet:
+      - String(0, "a")
+      - String(3, "abc")
+      - String(3, 65)
+      - String(3, 256)
+      - String(3, -1)
+  Reference/Default/VBA/Strings/Trim.md:
+    rows:
+      - error: 94
+        when: "**Trim$** is given a *string* that is **Null**"
+        cases: [Trim$(Null)]
+    quiet: [Trim(Null)]
+  Reference/Default/VBA/Strings/UCase.md:
+    rows:
+      - error: 94
+        when: "**UCase$** is given a *string* that is **Null**"
+        cases: [UCase$(Null)]
+    quiet: [UCase(Null)]
+  Reference/Default/VBA/Strings/WeekdayName.md:
+    rows:
+      - error: 5
+        when: "*weekday* is less than 1 or greater than 7, or *firstdayofweek* is less than 0 or greater than 7"
+        cases:
+          - WeekdayName(0)
+          - WeekdayName(8)
+          - WeekdayName(1, False, -1)
+          - WeekdayName(1, False, 8)
+      - error: 94
+        when: "any argument is **Null**"
+        cases:
+          - WeekdayName(Null)
+          - WeekdayName(1, Null)
+          - WeekdayName(1, False, Null)
+    quiet:
+      - WeekdayName(7, False, 0)
+      - WeekdayName(1, 2)

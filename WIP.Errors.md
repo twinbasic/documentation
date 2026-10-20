@@ -256,11 +256,11 @@ What the probes must respect (BETA 1010; `errors.mjs` already does all of it):
 
 ## Where things stand (2026-10-21)
 
-Batches 0 and 1 are done, reviewed and on staging. **Batch 2 is under way, on staging**: Asc,
-Chr, InStr, InStrRev, Left and Right have their data and sections (with Mid and Len, eight of
-the module's pages), all 136 cases agreeing in twinBASIC 32-bit and VB6. The owner reviewed
-the first six on 2026-10-21 and settled the style (*Batch 2: what the first six pages found*);
-the rest of the module follows it.
+Batches 0 and 1 are done, reviewed and on staging. **Batch 2 is done, on staging**: every page
+of the Strings module has its data (339 cases, all agreeing in twinBASIC 32-bit and VB6), and
+every one but Len and the index has a section. The owner reviewed the first six on 2026-10-21
+and settled the style (*Batch 2: what the first six pages found*). Left open: four rows still
+`bug: pending` and error 5's *Listed by* cell (*Batch 2: the rest of the module*).
 
 **Batch 2, the VBA `Strings` pilot.** List the module's pages
 (`docs/Reference/Default/VBA/Strings/`), keep those that can raise, and for each: read the page
@@ -300,6 +300,34 @@ The owner's answers (2026-10-21):
 3. Content both runtimes contradict is the page's fault: commented out, not deleted, so the
    VBA text is kept for docs that will switch between VB6, VBA and twinBASIC.
 
+## Batch 2: the rest of the module
+
+Found on BETA 1010, both runtimes agreeing unless said:
+
+- **`vbUseCompareOption` (-1) raises 5 in Filter, Replace, Split and StrComp too**; their rows
+  are `<!-- VBA: -->` comments, and the module's index no longer offers it.
+- **`vbDatabaseCompare` (2)**: Filter and StrComp accept it as InStr does, where VB6 raises 5
+  (`database-compare-no-error`, with InStr's); Replace and Split accept it in both.
+- **`StrComp` checks no LCID when a string is Null or zero-length** (`StrComp("a", "", 99999)`
+  returns), in both runtimes; Replace and Split check it on a zero-length string, in both.
+- `FormatCurrency` raises 5 for *numDigitsAfterDecimal* above 255; FormatNumber and
+  FormatPercent take 2147483647. `String` and `Space` raise 5 above 1,073,741,823 and 14
+  (*Out of string space*, not listed) at it.
+- `Filter(Null, "a")` and `Join(Null)` raise 13, listed under the Null rule.
+- The String page's two "**Null** is returned" sentences are `<!-- VBA: -->` comments:
+  `String(Null, "a")` raises 94 in both, and `String(3, Null)` in twinBASIC only.
+
+**Four rows are `bug: pending`, not yet queued in BUGS-TO-REPORT.md**:
+
+- `String(3, Null)`: twinBASIC raises 94, VB6 returns **Null** (`String$` raises 94 in both).
+- `StrConv("a", 4, 1041)` (vbWide, vbKatakana... with an East Asian *LCID* on a system whose
+  locale is not East Asian): twinBASIC raises 5, VB6 converts. The page said so already.
+- `Join` and `Filter` of a `Long` array: twinBASIC accepts it, VB6 raises 5 (Join) and 13
+  (Filter). **Ask the owner whether this is a defect or a twinBASIC extension** before queuing.
+
+**Error 5's *Listed by* cell** on the central page has 22 links after this batch. Decide with
+the owner, as the note below says, whether the list moves to a section per number.
+
 ## What batch 2 needs to know (from batch 1)
 
 - A row whose number is not in `messages.yml` fails the gate. VB's 88 numbers are all there;
@@ -322,7 +350,7 @@ each can be run when there is budget. Status is kept here.
 |---|---|---|---|
 | 0 | Tooling: data format, probe generator (twinBASIC and VB6), checker, section writer, the gate | --- | done; the owner reviewed the trial sections (Mid, ReDim; Len raises nothing) on 2026-10-20 |
 | 1 | The central Run-time errors page | 1 | done; the owner reviewed the page and settled on `Err.Description` (2026-10-20) |
-| 2 | **Pilot: VBA `Strings`** --- settles the section's style with the owner before anything scales | 30 | under way: 8 pages; style settled by the owner (2026-10-21) |
+| 2 | **Pilot: VBA `Strings`** --- settles the section's style with the owner before anything scales | 30 | done: 28 sections; four rows `bug: pending` (see *Batch 2: the rest of the module*) |
 | 3 | VBA `Conversion` | 28 | not started |
 | 4 | VBA `Math` (also win64) | 17 | not started |
 | 5 | VBA `DateTime` | 20 | not started |

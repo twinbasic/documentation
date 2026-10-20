@@ -21,7 +21,7 @@ Debug.Print Chr(65)                 ' "A"
 
 ## Searching and comparing
 
-[**StrComp**](StrComp) compares two strings and returns -1, 0, or 1 to report which is greater (or equal). [**InStr**](InStr) and [**InStrRev**](InStrRev) return the position of one string inside another, scanning forward from a chosen start position or backward from one. All three accept an optional *compare* argument controlling whether the comparison is case-sensitive (**vbBinaryCompare**), case-insensitive (**vbTextCompare**), or governed by the surrounding [**Option Compare**](../../Core/Option) setting (**vbUseCompareOption**). Note that **InStrRev** swaps the order of the haystack and needle arguments relative to **InStr**.
+[**StrComp**](StrComp) compares two strings and returns -1, 0, or 1 to report which is greater (or equal). [**InStr**](InStr) and [**InStrRev**](InStrRev) return the position of one string inside another, scanning forward from a chosen start position or backward from one. All three accept an optional *compare* argument controlling whether the comparison is case-sensitive (**vbBinaryCompare**), or case-insensitive (**vbTextCompare**); when it is omitted, **StrComp** and **InStr** follow the surrounding [**Option Compare**](../../Core/Option) setting. Note that **InStrRev** swaps the order of the haystack and needle arguments relative to **InStr**.
 
 ```tb check_build
 Debug.Print InStr("Hello, world", "o")           ' 5  (first match, forward)

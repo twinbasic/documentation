@@ -17,6 +17,16 @@ Syntax: **MonthName(** *month* [ **,** *abbreviate* ] **)**
 *abbreviate*
 : *optional* **Boolean** value that indicates if the month name is to be abbreviated. If omitted, the default is **False**, which means that the month name is not abbreviated.
 
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *month* is less than 1 or greater than 12 |
+| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *month* or *abbreviate* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses **MonthName** to return the full and abbreviated name of a month.

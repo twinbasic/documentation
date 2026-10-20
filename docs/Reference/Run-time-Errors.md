@@ -43,13 +43,13 @@ The messages are those of twinBASIC 32-bit and VB6, which agree for every number
 | Error | Message | Listed by |
 |---|---|---|
 | **3**{: #error-3 } (`&H3`) | *Return without GoSub* | --- |
-| **5**{: #error-5 } (`&H5`) | *Invalid procedure call or argument* | [Asc](../tB/Modules/Strings/Asc), [Chr](../tB/Modules/Strings/Chr), [InStr](../tB/Modules/Strings/InStr), [InStrRev](../tB/Modules/Strings/InStrRev), [Left](../tB/Modules/Strings/Left), [Mid](../tB/Modules/Strings/Mid), [Right](../tB/Modules/Strings/Right) |
+| **5**{: #error-5 } (`&H5`) | *Invalid procedure call or argument* | [Asc](../tB/Modules/Strings/Asc), [Chr](../tB/Modules/Strings/Chr), [Filter](../tB/Modules/Strings/Filter), [Format](../tB/Modules/Strings/Format), [FormatCurrency](../tB/Modules/Strings/FormatCurrency), [FormatDateTime](../tB/Modules/Strings/FormatDateTime), [FormatNumber](../tB/Modules/Strings/FormatNumber), [FormatPercent](../tB/Modules/Strings/FormatPercent), [InStr](../tB/Modules/Strings/InStr), [InStrRev](../tB/Modules/Strings/InStrRev), [Join](../tB/Modules/Strings/Join), [Left](../tB/Modules/Strings/Left), [Mid](../tB/Modules/Strings/Mid), [MonthName](../tB/Modules/Strings/MonthName), [Replace](../tB/Modules/Strings/Replace), [Right](../tB/Modules/Strings/Right), [Space](../tB/Modules/Strings/Space), [Split](../tB/Modules/Strings/Split), [StrComp](../tB/Modules/Strings/StrComp), [StrConv](../tB/Modules/Strings/StrConv), [String](../tB/Modules/Strings/String), [WeekdayName](../tB/Modules/Strings/WeekdayName) |
 | **6**{: #error-6 } (`&H6`) | *Overflow* | [Chr](../tB/Modules/Strings/Chr) |
 | **7**{: #error-7 } (`&H7`) | *Out of memory* | --- |
 | **9**{: #error-9 } (`&H9`) | *Subscript out of range* | [ReDim](../tB/Core/ReDim) |
 | **10**{: #error-10 } (`&HA`) | *This array is fixed or temporarily locked* | --- |
 | **11**{: #error-11 } (`&HB`) | *Division by zero* | --- |
-| **13**{: #error-13 } (`&HD`) | *Type mismatch* | [ReDim](../tB/Core/ReDim) |
+| **13**{: #error-13 } (`&HD`) | *Type mismatch* | [Filter](../tB/Modules/Strings/Filter), [Join](../tB/Modules/Strings/Join), [ReDim](../tB/Core/ReDim) |
 | **14**{: #error-14 } (`&HE`) | *Out of string space* | --- |
 | **16**{: #error-16 } (`&H10`) | *Expression too complex* | --- |
 | **17**{: #error-17 } (`&H11`) | *Can't perform requested operation* | --- |
@@ -81,7 +81,7 @@ The messages are those of twinBASIC 32-bit and VB6, which agree for every number
 | **91**{: #error-91 } (`&H5B`) | *Object variable or With block variable not set* | --- |
 | **92**{: #error-92 } (`&H5C`) | *For loop not initialized* | --- |
 | **93**{: #error-93 } (`&H5D`) | *Invalid pattern string* | --- |
-| **94**{: #error-94 } (`&H5E`) | *Invalid use of Null* | [Asc](../tB/Modules/Strings/Asc), [Chr](../tB/Modules/Strings/Chr), [InStr](../tB/Modules/Strings/InStr), [InStrRev](../tB/Modules/Strings/InStrRev), [Left](../tB/Modules/Strings/Left), [Mid](../tB/Modules/Strings/Mid), [Right](../tB/Modules/Strings/Right) |
+| **94**{: #error-94 } (`&H5E`) | *Invalid use of Null* | [Asc](../tB/Modules/Strings/Asc), [Chr](../tB/Modules/Strings/Chr), [Filter](../tB/Modules/Strings/Filter), [Format](../tB/Modules/Strings/Format), [FormatCurrency](../tB/Modules/Strings/FormatCurrency), [FormatDateTime](../tB/Modules/Strings/FormatDateTime), [FormatNumber](../tB/Modules/Strings/FormatNumber), [FormatPercent](../tB/Modules/Strings/FormatPercent), [InStr](../tB/Modules/Strings/InStr), [InStrRev](../tB/Modules/Strings/InStrRev), [Join](../tB/Modules/Strings/Join), [LCase](../tB/Modules/Strings/LCase), [Left](../tB/Modules/Strings/Left), [LTrim](../tB/Modules/Strings/LTrim), [Mid](../tB/Modules/Strings/Mid), [MonthName](../tB/Modules/Strings/MonthName), [Replace](../tB/Modules/Strings/Replace), [Right](../tB/Modules/Strings/Right), [RTrim](../tB/Modules/Strings/RTrim), [Space](../tB/Modules/Strings/Space), [Split](../tB/Modules/Strings/Split), [StrComp](../tB/Modules/Strings/StrComp), [StrConv](../tB/Modules/Strings/StrConv), [String](../tB/Modules/Strings/String), [StrReverse](../tB/Modules/Strings/StrReverse), [Trim](../tB/Modules/Strings/Trim), [UCase](../tB/Modules/Strings/UCase), [WeekdayName](../tB/Modules/Strings/WeekdayName) |
 | **96**{: #error-96 } (`&H60`) | *Unable to sink events of object because the object is already firing events to the maximum number of event receivers that it supports* | --- |
 | **97**{: #error-97 } (`&H61`) | *Can not call friend function on object which is not an instance of defining class* | --- |
 | **98**{: #error-98 } (`&H62`) | *A property or method call cannot include a reference to a private object, either as an argument or as a return value* | --- |

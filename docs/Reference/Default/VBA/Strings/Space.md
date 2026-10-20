@@ -18,6 +18,16 @@ The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Vari
 
 The **Space** function is useful for formatting output and clearing data in fixed-length strings.
 
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *number* is negative, or greater than 1,073,741,823 |
+| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *number* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Space** function to return a string consisting of a specified number of spaces.

@@ -27,9 +27,22 @@ The *compare* argument can have the following values:
 
 | Constant               | Value | Description                                                                              |
 |------------------------|-------|------------------------------------------------------------------------------------------|
-| **vbUseCompareOption** | -1    | Performs a comparison by using the setting of the [**Option Compare**](../../Core/Option) statement. |
 | **vbBinaryCompare**    | 0     | Performs a binary comparison.                                                            |
 | **vbTextCompare**      | 1     | Performs a textual comparison.                                                           |
+
+<!-- VBA: VBA-Docs lists this setting too; twinBASIC and VB6 raise error 5 for it.
+| **vbUseCompareOption** | -1    | Performs a comparison by using the setting of the [**Option Compare**](../../Core/Option) statement. |
+-->
+
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *limit* is less than -1<br>*compare* is less than 0, or greater than 1 and not a valid locale identifier |
+| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | any argument is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

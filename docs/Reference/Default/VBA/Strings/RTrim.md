@@ -16,6 +16,15 @@ Syntax: **RTrim$(** *string* **)**, **RTrim(** *string* **)**
 
 The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Variant** (**String**).
 
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | **RTrim$** is given a *string* that is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **RTrim** function to strip trailing spaces from a string variable.

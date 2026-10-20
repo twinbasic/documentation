@@ -36,6 +36,16 @@ The *includeLeadingDigit*, *useParensForNegativeNumbers*, and *groupDigits* argu
 
 When one or more optional arguments are omitted, the values for omitted arguments are provided by the computer's regional settings. The position of the currency symbol relative to the currency value is determined by the system's regional settings.
 
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *numDigitsAfterDecimal* is less than -1 or greater than 255<br>*includeLeadingDigit*, *useParensForNegativeNumbers* or *groupDigits* is not -2, -1 or 0 |
+| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | an argument other than *expression* is **Null** |
+
+<!-- /errors -->
+
 ### See Also
 
 - [Format](Format), [FormatNumber](FormatNumber), [FormatPercent](FormatPercent) functions
