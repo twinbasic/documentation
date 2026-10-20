@@ -177,6 +177,22 @@ check(
   merged.join("\n"),
 );
 check("a page with only quiet cases gets no section", renderSection({ rows: [], quiet: [1] }, { messages }) === null);
+const vb6Only = renderSection(
+  { rows: [{ error: 0, when: "*x* is 2", vb6: 5, bug: "pending", cases: [] }], quiet: [] },
+  { name: "probe.yml", beta: 1010, messages, level: "##", permalink: "/A" },
+).join("\n");
+check(
+  "a row of error 0 has its VB6 note and no table",
+  !vb6Only.includes("| Error |") &&
+    vb6Only.includes(
+      "## Common Errors\n\n> [!NOTE] BETA 1010\n> When *x* is 2, VB6 raises error [5 (`&H5`)](Reference/Run-time-Errors#error-5), *Invalid procedure call or argument*; twinBASIC raises none.\n\n<!-- /errors -->",
+    ),
+  vb6Only,
+);
+check(
+  "error 0 is refused without a vb6: number",
+  data("beta: 1\npages:\n  A.md:\n    rows:\n      - { error: 0, when: x, cases: [x] }\n").problems.length === 1,
+);
 
 const doc = "# T\n\ntext\n\n```tb\n### Example\n<!-- errors: x -->\n```\n\n### Example\n\ncode\n\n### See Also\n";
 const added = spliceSection(doc, section);

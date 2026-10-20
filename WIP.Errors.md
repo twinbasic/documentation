@@ -164,7 +164,10 @@ pages:
 
 A case is an expression, or a mapping with `expr` or `run` (statements; a multi-line string
 for several) and optionally `decl` (`Dim` lines), `setup` (statements before it) and
-`only: tb`. A row's `win64:` is the number win64 raises where it differs. A page with no
+`only: tb`. A row's `win64:` is the number win64 raises where it differs. A row of `error: 0`
+with a `vb6:` other than 0 is a condition where twinBASIC raises nothing and VB6 does (batch 2,
+`InStr` with `vbDatabaseCompare`): it gets its NOTE (*...; twinBASIC raises none.*) and no table
+row, and a page whose rows are all such has a section of NOTEs alone. A page with no
 rows gets no section; one with `none: "<sentence>"` and no rows gets a section holding that
 sentence, for an absence of errors worth stating. Quote a case that holds `: `, starts with
 a quote, or sits in a `{ }` mapping and holds a comma. `messages.yml` maps each number to its
@@ -249,17 +252,13 @@ What the probes must respect (BETA 1010; `errors.mjs` already does all of it):
 
 ## Where things stand (2026-10-21)
 
-Batches 0 and 1 are done and reviewed. Everything is on branch **`errors-batch0`** (worktree
-`.claude/worktrees/infallible-wilson-117b19`), **not pushed and with no PR**: the tooling,
-the trial sections (Mid, ReDim; Len raises nothing), the central page
-`docs/Reference/Run-time-Errors.md` (merged from `errors-batch1`), the ReDim bug
-`redim-inverted-bounds-error` in BUGS-TO-REPORT.md with its reproducer (merged from
-`claude/cool-moser-5bdc31`), and the section's rename to *Common Errors*. Batch 2 starts
-from that branch, or from staging once it is merged there. `test.bat` last passed in full on
-batch 1's branch; after the merges and the rename, `check_errors`, `check_gate_lists`,
-`check_cli` and `check_ci_workflows` pass.
+Batches 0 and 1 are done, reviewed and on staging. **Batch 2 is started, on staging**: Asc,
+Chr, InStr, InStrRev, Left and Right have their data and sections (with Mid and Len, eight of
+the module's pages), all 121 cases agreeing in twinBASIC 32-bit and VB6; `build`, `check` and
+`test` pass. **Waiting for the owner's review of those six** before the rest; the questions
+for it are under *Batch 2: open questions*.
 
-**Next: batch 2, the VBA `Strings` pilot.** List the module's pages
+**Batch 2, the VBA `Strings` pilot.** List the module's pages
 (`docs/Reference/Default/VBA/Strings/`), keep those that can raise, and for each: read the page
 for error prose and for cases to try, write its entry in `errors/VBA.Strings.yml` (Mid and Len
 are there already), `node scripts/errors.mjs run VBA.Strings.yml --only <page>` until twinBASIC
@@ -267,6 +266,37 @@ and VB6 agree with the data, `node scripts/errors.mjs write`, then remove the pa
 sentences that the table now carries. A VB6 difference is a row with `vb6:` and a reproducer
 (`node scripts/bug_repro.mjs new <slug>`; `bug: pending` until it exists). Show the owner the
 first few pages before doing the rest: batch 2 settles the style.
+
+## Batch 2: what the first six pages found, and open questions
+
+Measured on BETA 1010, twinBASIC 32-bit and VB6 agreeing unless said:
+
+- **`InStr` and `InStrRev` refuse `vbUseCompareOption` (-1)** with error 5; their pages listed
+  it as a setting, and the row is gone from both tables. A *compare* above 1 is read as an
+  LCID (3, 4, 1024, 1033 pass; 255, 65536, 99999 raise 5). `InStrB` ignores *compare*.
+- **Two `InStr` differences from VB6, `bug: pending`:** VB6 raises 5 for *compare* 2
+  (`vbDatabaseCompare`) where twinBASIC takes it as an LCID; and VB6 does not check the LCID
+  when *string1* or *string2* is zero-length, where twinBASIC raises 5. `InStrRev` checks it in
+  both. Not yet queued in BUGS-TO-REPORT.md.
+- `Left`, `Right` (not the B forms) raise 5 above 1,073,741,823, as `Mid` does; `InStr` raises
+  5 for a *start* above 1,073,741,824, `InStrRev` and `InStrB` do not.
+- `Chr` raises 5 outside 0--255 on this machine (not a DBCS code page); `ChrW` outside
+  -32,768--65,535; **`ChrB` raises 6, *Overflow*, outside 0--255**.
+
+Open for the owner:
+
+1. **94 (and 6) from converting an argument.** The rule leaves them out, but which parameters
+   convert is invisible to the reader: `InStr`'s *start* is a **Variant** (its 94 is listed),
+   `InStrRev`'s is a **Long** (its 94 is not), and `Asc(Null)`, `Chr(Null)`, `InStrRev(Null, "a")`
+   and `InStr(1, "abc", "a", Null)` raise 94 by conversion and are not listed. The pages' own
+   sentences on those ("If *start* contains **Null**, an error occurs", InStrRev's 94
+   paragraph) are kept for now. `ChrB`'s 6 is listed although it looks like a conversion to
+   **Byte**: the page says *charcode* is a **Long**. List conversion errors after all, or keep
+   them out and keep such sentences?
+2. Whether the two `InStr` rows of error 5 on *compare* read well together, and the NOTE's
+   wording for a row of error 0.
+3. Whether a behaviour that both runtimes share and that contradicts the page (the -1 setting)
+   is fixed silently, as here, or called out.
 
 ## What batch 2 needs to know (from batch 1)
 
@@ -290,7 +320,7 @@ each can be run when there is budget. Status is kept here.
 |---|---|---|---|
 | 0 | Tooling: data format, probe generator (twinBASIC and VB6), checker, section writer, the gate | --- | done; the owner reviewed the trial sections (Mid, ReDim; Len raises nothing) on 2026-10-20 |
 | 1 | The central Run-time errors page | 1 | done; the owner reviewed the page and settled on `Err.Description` (2026-10-20) |
-| 2 | **Pilot: VBA `Strings`** --- settles the section's style with the owner before anything scales | 30 | not started |
+| 2 | **Pilot: VBA `Strings`** --- settles the section's style with the owner before anything scales | 30 | started: 8 pages, waiting for the owner's review |
 | 3 | VBA `Conversion` | 28 | not started |
 | 4 | VBA `Math` (also win64) | 17 | not started |
 | 5 | VBA `DateTime` | 20 | not started |

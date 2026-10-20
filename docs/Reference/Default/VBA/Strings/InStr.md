@@ -15,7 +15,7 @@ Syntax:
 - **InStrB(** [ *start* **,** ] *string1*, *string2* [ **,** *compare* ] **)**
 
 *start*
-: *optional* Numeric expression that sets the starting position for each search. If omitted, search begins at the first character position. *start* must be 1 or greater: 0 or a negative value raises error 5 (Invalid procedure call or argument), and **Null** raises error 94 (Invalid use of Null). The *start* argument is required if *compare* is specified.
+: *optional* Numeric expression that sets the starting position for each search. If omitted, search begins at the first character position. *start* must be 1 or greater. The *start* argument is required if *compare* is specified.
 
 *string1*
 : *required* String expression being searched.
@@ -30,7 +30,6 @@ The *compare* argument settings are:
 
 | Constant               | Value | Description                                                                              |
 |------------------------|-------|------------------------------------------------------------------------------------------|
-| **vbUseCompareOption** | -1    | Performs a comparison by using the setting of the **Option Compare** statement.          |
 | **vbBinaryCompare**    | 0     | Performs a binary comparison.                                                            |
 | **vbTextCompare**      | 1     | Performs a textual comparison.                                                           |
 
@@ -47,6 +46,22 @@ The *compare* argument settings are:
 | *string2* is found within *string1*             | Position at which match is found |
 
 The **InStrB** function is used with byte data contained in a string. Instead of returning the character position of the first occurrence of one string within another, **InStrB** returns the byte position.
+
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *start* is less than 1<br>**InStr** is given a *start* greater than 1,073,741,824<br>**InStr** is given a *compare* that is less than 0, or greater than 1 and not a valid locale identifier<br>**InStr** is given a *compare* that is not a valid locale identifier, and *string1* or *string2* is zero-length |
+| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *start* is **Null** |
+
+> [!NOTE] BETA 1010
+> When **InStr** is given a *compare* that is not a valid locale identifier, and *string1* or *string2* is zero-length, VB6 raises no error.
+
+> [!NOTE] BETA 1010
+> When **InStr** is given a *compare* of 2 (**vbDatabaseCompare**), VB6 raises error [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument*; twinBASIC raises none.
+
+<!-- /errors -->
 
 ### Example
 

@@ -1,6 +1,156 @@
 # The VBA Strings module. Format: WIP.Errors.md.
 beta: 1010
 pages:
+  Reference/Default/VBA/Strings/Asc.md:
+    rows:
+      - error: 5
+        when: "*string* is zero-length"
+        cases:
+          - Asc("")
+          - AscB("")
+          - AscW("")
+          - { decl: Dim S As String, expr: Asc(S) }
+    quiet:
+      - Asc("A")
+      - Asc(ChrW(&H20AC))
+      - AscW(ChrW(&H20AC))
+      - AscB("A")
+  Reference/Default/VBA/Strings/Chr.md:
+    rows:
+      - error: 5
+        when: "**Chr** or **Chr$** is given a *charcode* less than 0 or greater than 255"
+        cases:
+          - Chr(-1)
+          - Chr(256)
+          - Chr$(256)
+          - Chr(-32768)
+          - Chr(65535)
+      - error: 5
+        when: "**ChrW** or **ChrW$** is given a *charcode* less than -32,768 or greater than 65,535"
+        cases:
+          - ChrW(-32769)
+          - ChrW(65536)
+          - ChrW$(65536)
+      - error: 6
+        when: "**ChrB** or **ChrB$** is given a *charcode* less than 0 or greater than 255"
+        cases:
+          - ChrB(-1)
+          - ChrB(256)
+          - ChrB$(256)
+    quiet:
+      - Chr(0)
+      - Chr(255)
+      - ChrB(255)
+      - ChrW(-32768)
+      - ChrW(-1)
+      - ChrW(65535)
+  Reference/Default/VBA/Strings/InStr.md:
+    rows:
+      - error: 5
+        when: "*start* is less than 1"
+        cases:
+          - InStr(0, "abc", "a")
+          - InStr(-1, "abc", "a")
+          - InStrB(0, "abc", "a")
+      - error: 5
+        when: "**InStr** is given a *start* greater than 1,073,741,824"
+        cases:
+          - InStr(1073741825, "abc", "a")
+          - InStr(2147483647, "abc", "a")
+      - error: 5
+        when: "**InStr** is given a *compare* that is less than 0, or greater than 1 and not a valid locale identifier"
+        cases:
+          - InStr(1, "abc", "a", -1)
+          - InStr(1, "abc", "a", -2)
+          - InStr(1, "abc", "a", 255)
+          - InStr(1, "abc", "a", 65536)
+          - InStr(1, "abc", "a", 99999)
+      - error: 5
+        when: "**InStr** is given a *compare* that is not a valid locale identifier, and *string1* or *string2* is zero-length"
+        vb6: 0
+        bug: pending
+        cases:
+          - InStr(1, "", "a", 99999)
+          - InStr(1, "abc", "", 99999)
+      - error: 0
+        when: "**InStr** is given a *compare* of 2 (**vbDatabaseCompare**)"
+        vb6: 5
+        bug: pending
+        cases:
+          - InStr(1, "abc", "a", 2)
+      - error: 94
+        when: "*start* is **Null**"
+        cases:
+          - InStr(Null, "abc", "a")
+          - InStrB(Null, "abc", "a")
+    quiet:
+      - InStr(1073741824, "abc", "a")
+      - InStrB(2147483647, "abc", "a")
+      - InStr(5, "abc", "")
+      - InStr(Null, "abc")
+      - InStr("abc", Null)
+      - InStr(1, Null, "a")
+      - InStr(1, "abc", "a", 0)
+      - InStr(1, "abc", "a", 1)
+      - InStr(1, "abc", "a", 1033)
+      - InStr(1, "abc", "a", 1041)
+      - InStrB(1, "abc", "a", 2)
+      - InStrB(1, "abc", "a", 99999)
+  Reference/Default/VBA/Strings/InStrRev.md:
+    rows:
+      - error: 5
+        when: "*start* is 0, or less than -1"
+        cases:
+          - InStrRev("abc", "a", 0)
+          - InStrRev("abc", "a", -2)
+      - error: 5
+        when: "*compare* is less than 0, or greater than 1 and not a valid locale identifier"
+        cases:
+          - InStrRev("abc", "a", -1, -1)
+          - InStrRev("abc", "a", -1, -2)
+          - InStrRev("abc", "a", -1, 65536)
+          - InStrRev("abc", "a", -1, 99999)
+          - InStrRev("abc", "a", -1, 2147483647)
+          - InStrRev("", "a", -1, 99999)
+    quiet:
+      - InStrRev("abc", "a", 2147483647)
+      - InStrRev("abc", "", 5)
+      - InStrRev("abc", "a", -1, 2)
+      - InStrRev("abc", "a", -1, 1033)
+  Reference/Default/VBA/Strings/Left.md:
+    rows:
+      - error: 5
+        when: "*length* is negative"
+        cases:
+          - Left("abc", -1)
+          - Left$("abc", -1)
+          - LeftB("abc", -1)
+          - LeftB$("abc", -2)
+      - error: 5
+        when: "**Left** or **Left$** is given a *length* greater than 1,073,741,823"
+        cases:
+          - Left("abc", 1073741824)
+          - Left$("abc", 2147483647)
+      - error: 94
+        when: "**Left$** or **LeftB$** is given a *string* that is **Null**, or any form is given a *length* that is **Null**"
+        cases:
+          - Left$(Null, 1)
+          - LeftB$(Null, 1)
+          - Left("abc", Null)
+          - LeftB("abc", Null)
+    quiet:
+      - Left(Null, 1)
+      - LeftB(Null, 1)
+      - Left("abc", 0)
+      - Left("abc", 1073741823)
+      - LeftB("abc", 2147483647)
+  Reference/Default/VBA/Strings/Len.md:
+    quiet:
+      - Len("")
+      - Len(Null)
+      - LenB(Null)
+      - Len(Empty)
+      - { decl: Dim S As String * 4, expr: Len(S) }
   Reference/Default/VBA/Strings/Mid.md:
     rows:
       - error: 5
@@ -35,10 +185,30 @@ pages:
       - MidB("abc", 2147483647)
       - MidB("abc", 1, 2147483647)
       - Mid("", 1, 0)
-  Reference/Default/VBA/Strings/Len.md:
+  Reference/Default/VBA/Strings/Right.md:
+    rows:
+      - error: 5
+        when: "*length* is negative"
+        cases:
+          - Right("abc", -1)
+          - Right$("abc", -1)
+          - RightB("abc", -1)
+          - RightB$("abc", -2)
+      - error: 5
+        when: "**Right** or **Right$** is given a *length* greater than 1,073,741,823"
+        cases:
+          - Right("abc", 1073741824)
+          - Right$("abc", 2147483647)
+      - error: 94
+        when: "**Right$** or **RightB$** is given a *string* that is **Null**, or any form is given a *length* that is **Null**"
+        cases:
+          - Right$(Null, 1)
+          - RightB$(Null, 1)
+          - Right("abc", Null)
+          - RightB("abc", Null)
     quiet:
-      - Len("")
-      - Len(Null)
-      - LenB(Null)
-      - Len(Empty)
-      - { decl: Dim S As String * 4, expr: Len(S) }
+      - Right(Null, 1)
+      - RightB(Null, 1)
+      - Right("abc", 0)
+      - Right("abc", 1073741823)
+      - RightB("abc", 2147483647)

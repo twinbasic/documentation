@@ -18,7 +18,7 @@ Syntax: **InStrRev(** *stringcheck*, *stringmatch* [ **,** *start* [ **,** *comp
 : *required* String expression being searched for.
 
 *start*
-: *optional* Numeric expression that sets the starting position for each search. If omitted, -1 is used, which means that the search begins at the last character position. *start* must be -1, or 1 or greater: 0 or any other negative value raises error 5 (Invalid procedure call or argument). If *start* contains **Null**, an error occurs.
+: *optional* Numeric expression that sets the starting position for each search. If omitted, -1 is used, which means that the search begins at the last character position. *start* must be -1, or 1 or greater. If *start* contains **Null**, an error occurs.
 
 *compare*
 : *optional* Numeric value indicating the kind of comparison to use when evaluating substrings. If omitted, a binary comparison is performed. See settings below.
@@ -27,7 +27,6 @@ The *compare* argument can have the following values:
 
 | Constant               | Value | Description                                                                              |
 |------------------------|-------|------------------------------------------------------------------------------------------|
-| **vbUseCompareOption** | -1    | Performs a comparison by using the setting of the [**Option Compare**](../../Core/Option) statement. |
 | **vbBinaryCompare**    | 0     | Performs a binary comparison.                                                            |
 | **vbTextCompare**      | 1     | Performs a textual comparison.                                                           |
 
@@ -47,6 +46,15 @@ If *stringcheck* or *stringmatch* is **Null**, error 94 (Invalid use of Null) oc
 > The syntax for the **InStrRev** function is not the same as the syntax for the [**InStr**](InStr) function --- note the swapped order of the search arguments.
 
 **InStrRev** will not find an instance of *stringmatch* unless the position of the end character of *stringmatch* is less than or equal to *start*.
+
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *start* is 0, or less than -1<br>*compare* is less than 0, or greater than 1 and not a valid locale identifier |
+
+<!-- /errors -->
 
 ### Example
 

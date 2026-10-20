@@ -124,7 +124,10 @@ export function readData(raw, name, problems) {
         return;
       }
       for (const k of Object.keys(r)) if (!ROW_KEYS.has(k)) problems.push(`${w}: unknown key ${k}`);
-      if (!isInt(r.error) || r.error === 0) problems.push(`${w}: error: a number other than 0`);
+      // error: 0 is a condition where twinBASIC raises nothing and VB6 does: a NOTE, no table row.
+      if (!isInt(r.error) || (r.error === 0 && !r.vb6)) {
+        problems.push(`${w}: error: a number other than 0, or 0 with a vb6: other than 0`);
+      }
       if (typeof r.when !== "string" || !r.when.trim())
         problems.push(`${w}: when: the condition, in the reader's terms`);
       else if (/\||\n/.test(r.when.trim())) problems.push(`${w}: when: one line, without |`);
@@ -448,14 +451,22 @@ export function renderSection(p, { name, beta, messages, level, permalink }) {
   ];
   if (p.none !== undefined) out.push(p.none.trim());
   else {
-    out.push("| Error | When |", "|---|---|");
     // Rows that raise the same number share one row, their conditions a line each.
+    // A row of error 0 raises nothing in twinBASIC: it has its NOTE and no table row.
     const byError = new Map();
-    for (const r of p.rows) byError.set(r.error, [...(byError.get(r.error) ?? []), escapeCell(r.when)]);
+    for (const r of p.rows.filter((x) => x.error !== 0))
+      byError.set(r.error, [...(byError.get(r.error) ?? []), escapeCell(r.when)]);
+    if (byError.size) out.push("| Error | When |", "|---|---|");
     for (const [n, whens] of byError) out.push(`| ${num(n)}, *${msg(n)}* | ${whens.join("<br>")} |`);
     for (const r of p.rows.filter((x) => x.vb6 !== undefined)) {
-      const what = r.vb6 === 0 ? "raises no error" : `raises error ${num(r.vb6)}, *${msg(r.vb6)}*, instead`;
-      out.push("", `> [!NOTE] BETA ${beta}`, `> When ${r.when}, VB6 ${what}.`);
+      const what =
+        r.vb6 === 0
+          ? "raises no error"
+          : r.error === 0
+            ? `raises error ${num(r.vb6)}, *${msg(r.vb6)}*; twinBASIC raises none`
+            : `raises error ${num(r.vb6)}, *${msg(r.vb6)}*, instead`;
+      if (out.at(-1) !== "") out.push("");
+      out.push(`> [!NOTE] BETA ${beta}`, `> When ${r.when}, VB6 ${what}.`);
     }
   }
   out.push("", "<!-- /errors -->");

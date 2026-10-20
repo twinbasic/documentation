@@ -43,8 +43,8 @@ The messages are those of twinBASIC 32-bit and VB6, which agree for every number
 | Error | Message | Listed by |
 |---|---|---|
 | **3**{: #error-3 } (`&H3`) | *Return without GoSub* | --- |
-| **5**{: #error-5 } (`&H5`) | *Invalid procedure call or argument* | [Mid](../tB/Modules/Strings/Mid) |
-| **6**{: #error-6 } (`&H6`) | *Overflow* | --- |
+| **5**{: #error-5 } (`&H5`) | *Invalid procedure call or argument* | [Asc](../tB/Modules/Strings/Asc), [Chr](../tB/Modules/Strings/Chr), [InStr](../tB/Modules/Strings/InStr), [InStrRev](../tB/Modules/Strings/InStrRev), [Left](../tB/Modules/Strings/Left), [Mid](../tB/Modules/Strings/Mid), [Right](../tB/Modules/Strings/Right) |
+| **6**{: #error-6 } (`&H6`) | *Overflow* | [Chr](../tB/Modules/Strings/Chr) |
 | **7**{: #error-7 } (`&H7`) | *Out of memory* | --- |
 | **9**{: #error-9 } (`&H9`) | *Subscript out of range* | [ReDim](../tB/Core/ReDim) |
 | **10**{: #error-10 } (`&HA`) | *This array is fixed or temporarily locked* | --- |
@@ -81,7 +81,7 @@ The messages are those of twinBASIC 32-bit and VB6, which agree for every number
 | **91**{: #error-91 } (`&H5B`) | *Object variable or With block variable not set* | --- |
 | **92**{: #error-92 } (`&H5C`) | *For loop not initialized* | --- |
 | **93**{: #error-93 } (`&H5D`) | *Invalid pattern string* | --- |
-| **94**{: #error-94 } (`&H5E`) | *Invalid use of Null* | [Mid](../tB/Modules/Strings/Mid) |
+| **94**{: #error-94 } (`&H5E`) | *Invalid use of Null* | [InStr](../tB/Modules/Strings/InStr), [Left](../tB/Modules/Strings/Left), [Mid](../tB/Modules/Strings/Mid), [Right](../tB/Modules/Strings/Right) |
 | **96**{: #error-96 } (`&H60`) | *Unable to sink events of object because the object is already firing events to the maximum number of event receivers that it supports* | --- |
 | **97**{: #error-97 } (`&H61`) | *Can not call friend function on object which is not an instance of defining class* | --- |
 | **98**{: #error-98 } (`&H62`) | *A property or method call cannot include a reference to a private object, either as an argument or as a return value* | --- |
