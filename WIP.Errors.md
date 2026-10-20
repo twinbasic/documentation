@@ -37,7 +37,7 @@ An `## Errors` section after the page's main text and before `## Example`:
 | 94, *Invalid use of Null* | `Mid$` is given a *string* that is **Null** |
 
 - The number links to its row on the central page (below); the message is the runtime's own,
-  as `Error$(n)` returns it, in italics as the rest of the site writes messages.
+  as `Err.Description` gives it when the error is raised (owner, 2026-10-20), in italics as the rest of the site writes messages.
 - *When* is a condition on the arguments or the state, in the reader's terms --- not the
   probe's expression.
 - **What is listed**: what the procedure raises from its own arguments and state.
@@ -82,7 +82,7 @@ What was measured (BETA 1010, `errors.mjs messages`):
   `Error$` of a few HRESULTs is VB's message (`Error$(&H80070057)` is *Invalid procedure call
   or argument*), VB6's is generic.
 
-### The message: Err.Description, with Error$ beside it (recommended; owner to confirm)
+### The message: Err.Description, with Error$ beside it (owner: settled, 2026-10-20)
 
 The sections show `Err.Description`, what a handler sees. For VB's numbers it is `Error$(n)`
 too; the central page shows `Error$(n)` beside it where they differ, which so far is only the
@@ -195,7 +195,7 @@ The section `write` makes, before the page's first Example heading:
 - **Every number is given in decimal and in VB hexadecimal** (owner), as a 32-bit **Long**:
   -2147467259 (`&H80004005`), 5 (`&H5`), in the table and in the VB6 NOTE alike.
   `errorNumber` in `scripts/lib/errors-data.mjs` writes it.
-- **The message is `Err.Description`, not `Error$(n)`** (owner: undecided). For VB's own
+- **The message is `Err.Description`, not `Error$(n)`** (owner: settled, "good enough"). For VB's own
   numbers the two agree; for an HRESULT they do not: `Error$(-2147467259)` is
   *Application-defined or object-defined error*, while the error raised describes itself as
   *Unspecified error*, which is what a handler sees. Batch 1 kept `Err.Description` and put
@@ -278,7 +278,7 @@ each can be run when there is budget. Status is kept here.
 | # | Batch | Pages (about) | Status |
 |---|---|---|---|
 | 0 | Tooling: data format, probe generator (twinBASIC and VB6), checker, section writer, the gate | --- | done; the owner reviewed the trial sections (Mid, ReDim; Len raises nothing) on 2026-10-20 |
-| 1 | The central Run-time errors page | 1 | done (branch `errors-batch1`, on top of `errors-batch0`); the page awaits the owner, and so does the `Err.Description`/`Error$` choice |
+| 1 | The central Run-time errors page | 1 | done; the owner reviewed the page and settled on `Err.Description` (2026-10-20) |
 | 2 | **Pilot: VBA `Strings`** --- settles the section's style with the owner before anything scales | 30 | not started |
 | 3 | VBA `Conversion` | 28 | not started |
 | 4 | VBA `Math` (also win64) | 17 | not started |
