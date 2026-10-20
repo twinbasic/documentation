@@ -551,7 +551,7 @@ pages:
       - error: 5
         when: "*conversion* includes **vbWide**, **vbNarrow**, **vbKatakana** or **vbHiragana** and *LCID* names an East Asian locale, on a system whose locale is not East Asian"
         vb6: 0
-        bug: pending
+        bug: strconv-east-asian-lcid
         cases:
           - StrConv("a", 4, 1041)
           - StrConv("a", 16, 1041)
@@ -603,7 +603,7 @@ pages:
       - error: 94
         when: "**String** is given a *character* that is **Null**"
         vb6: 0
-        bug: pending
+        bug: string-null-character
         cases:
           - String(3, Null)
     quiet:

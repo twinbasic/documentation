@@ -1,0 +1,17 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.UpperCase_Japanese_Converts$",
+      "^PASS RegressionTests.Wide_NoLcid_Raises5$",
+      "^PASS RegressionTests.Wide_English_Raises5$",
+      "^FAIL RegressionTests.Wide_Japanese_Converts: [(]runtime error 5: ",
+      "^FAIL RegressionTests.Narrow_Japanese_Converts: [(]runtime error 5: ",
+      "^FAIL RegressionTests.Katakana_Japanese_Converts: [(]runtime error 5: ",
+      "^FAIL RegressionTests.Hiragana_Japanese_Converts: [(]runtime error 5: ",
+      "^FAIL RegressionTests.Wide_Chinese_Converts: [(]runtime error 5: ",
+      "^FAIL RegressionTests.Wide_Korean_Converts: [(]runtime error 5: "
+    ]
+  }
+}

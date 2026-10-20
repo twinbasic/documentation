@@ -1,0 +1,60 @@
+' Regression tests: the Variant form String, given a character of Null, returns Null
+' with no error; String$ raises error 94. Expected results are VB6's (the VB6 project
+' beside this one prints them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: a letter, a Null number in either form, and String$ with a Null character.
+    [TestCase]
+    Public Sub String_Letter_Repeats()
+        Assert.Strict.AreEqual CVar("aaa"), String(3, "a")
+    End Sub
+
+    [TestCase]
+    Public Sub String_NullNumber_Raises94()
+        On Error Resume Next
+        Dim R As Variant
+        R = String(Null, "a")
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub StringDollar_NullNumber_Raises94()
+        On Error Resume Next
+        Dim R As Variant
+        R = String$(Null, "a")
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub StringDollar_NullCharacter_Raises94()
+        On Error Resume Next
+        Dim R As Variant
+        R = String$(3, Null)
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    ' The defect: String with a Null character returns Null.
+    [TestCase]
+    Public Sub String_NullCharacter_NoError()
+        On Error Resume Next
+        Dim R As Variant
+        R = String(3, Null)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub String_NullCharacter_ReturnsNull()
+        Dim R As Variant
+        R = String(3, Null)
+        Assert.Strict.AreEqual vbNull, VarType(R)
+    End Sub
+
+    [TestCase]
+    Public Sub String_ZeroNullCharacter_ReturnsNull()
+        Dim R As Variant
+        R = String(0, Null)
+        Assert.Strict.AreEqual vbNull, VarType(R)
+    End Sub
+
+End Module

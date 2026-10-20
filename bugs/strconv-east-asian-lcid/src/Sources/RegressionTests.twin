@@ -1,0 +1,63 @@
+' Regression tests: StrConv's vbWide, vbNarrow, vbKatakana and vbHiragana convert when
+' the LCID argument names an East Asian locale, whatever the system's locale. Expected
+' results are VB6's on a system whose locale is 1033, English (United States) (the VB6
+' project beside this one prints them). tbrun --tests runs each case and prints PASS
+' or FAIL. The controls assume such a system.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: another conversion with an East Asian LCID, and vbWide with no East
+    ' Asian locale at all, which VB6 refuses too.
+    [TestCase]
+    Public Sub UpperCase_Japanese_Converts()
+        Assert.Strict.AreEqual CVar("A"), StrConv("a", vbUpperCase, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Wide_NoLcid_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = StrConv("a", vbWide)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Wide_English_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = StrConv("a", vbWide, 1033)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' The defect.
+    [TestCase]
+    Public Sub Wide_Japanese_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&HFF41&)), StrConv("a", vbWide, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Narrow_Japanese_Converts()
+        Assert.Strict.AreEqual CVar("a"), StrConv(ChrW(&HFF41&), vbNarrow, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Katakana_Japanese_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&H30A2)), StrConv(ChrW(&H3042), vbKatakana, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Hiragana_Japanese_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&H3042)), StrConv(ChrW(&H30A2), vbHiragana, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Wide_Chinese_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&HFF41&)), StrConv("a", vbWide, 2052)
+    End Sub
+
+    [TestCase]
+    Public Sub Wide_Korean_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&HFF41&)), StrConv("a", vbWide, 1042)
+    End Sub
+
+End Module

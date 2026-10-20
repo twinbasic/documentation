@@ -6753,3 +6753,186 @@ Severity: low. Only a *compare* that VB6 would refuse for any other strings is a
 What does not reproduce it: an invalid *compare* with neither string zero-length, or with *start* past the end of *string1*, which VB6 refuses too; `InStrRev` and `Replace`, which check *compare* first in VB6 as well; and `InStrB` and `StrComp`, which already behave as VB6 does.
 
 <!-- Reproducer: bugs/instr-invalid-lcid-empty-string/ (mode test: `tbrun --tests`; expect lists the seven PASS and five FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`, and the same five failures with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints no error for InStr with a zero-length string and a compare of 99999 or -2, and 5 for InStrRev, Replace and Split. Stated in a NOTE on docs/Reference/Default/VBA/Strings/InStr.md (its Common Errors section), generated from errors/VBA.Strings.yml (row `bug: instr-invalid-lcid-empty-string`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->
+
+---
+
+## `String` with a *character* of `Null` raises error 94, where VB6 returns `Null`
+
+**Describe the bug**
+`String(3, Null)`, the **Variant** form of `String`, raises error 94, *Invalid use of Null*. VB6 raises no error and returns **Null** (`VarType` 1), as it does for `String(0, Null)`. `String$(3, Null)` raises 94 in both, and so does a *number* of **Null** in either form, so only the **Variant** form with a **Null** *character* differs. Observed in the compiler's test mode, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `string-null-character.twinproj` (attached as `string-null-character.zip`).
+2. Run its test cases, the module below. On BETA 1010 the four controls pass (`String(3, "a")`, a **Null** *number* in `String` and `String$`, and `String$(3, Null)`, which raise 94 in VB6 too) and the three cases on `String` with a **Null** *character* fail: `Actual: 94`, or `runtime error 94: Invalid use of Null`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`string-null-character-vb6.zip`) prints: no error and `VarType` 1 (**Null**) for `String(3, Null)` and `String(0, Null)`, and 94 for the controls.
+```vb
+' Regression tests: the Variant form String, given a character of Null, returns Null
+' with no error; String$ raises error 94. Expected results are VB6's (the VB6 project
+' beside this one prints them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: a letter, a Null number in either form, and String$ with a Null character.
+    [TestCase]
+    Public Sub String_Letter_Repeats()
+        Assert.Strict.AreEqual CVar("aaa"), String(3, "a")
+    End Sub
+
+    [TestCase]
+    Public Sub String_NullNumber_Raises94()
+        On Error Resume Next
+        Dim R As Variant
+        R = String(Null, "a")
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub StringDollar_NullNumber_Raises94()
+        On Error Resume Next
+        Dim R As Variant
+        R = String$(Null, "a")
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub StringDollar_NullCharacter_Raises94()
+        On Error Resume Next
+        Dim R As Variant
+        R = String$(3, Null)
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    ' The defect: String with a Null character returns Null.
+    [TestCase]
+    Public Sub String_NullCharacter_NoError()
+        On Error Resume Next
+        Dim R As Variant
+        R = String(3, Null)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub String_NullCharacter_ReturnsNull()
+        Dim R As Variant
+        R = String(3, Null)
+        Assert.Strict.AreEqual vbNull, VarType(R)
+    End Sub
+
+    [TestCase]
+    Public Sub String_ZeroNullCharacter_ReturnsNull()
+        Dim R As Variant
+        R = String(0, Null)
+        Assert.Strict.AreEqual vbNull, VarType(R)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+`String(number, Null)` returns **Null** with no error, as VB6 does, and as the **Variant** forms of other string functions propagate **Null**; `String$` keeps raising 94.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. Code that relies on **Null** propagating through `String`, as VB6 code reading database fields can, stops with error 94.
+
+What does not reproduce it: `String$` with a **Null** *character*, and a **Null** *number* in either form, all of which raise 94 in VB6 as well.
+
+<!-- Reproducer: bugs/string-null-character/ (mode test: `tbrun --tests`; expect lists the four PASS and three FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`, and the same three failures with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints no error and VarType 1 for String(3, Null) and String(0, Null), and 94 for the controls. Stated in a NOTE on docs/Reference/Default/VBA/Strings/String.md (its Common Errors section), generated from errors/VBA.Strings.yml (row `bug: string-null-character`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->
+
+---
+
+## `StrConv` raises error 5 for `vbWide`, `vbNarrow`, `vbKatakana` and `vbHiragana` with an East Asian *LCID* on a system whose locale is not East Asian, where VB6 converts
+
+**Describe the bug**
+On a system whose locale is 1033 (English, United States), `StrConv("a", vbWide, 1041)`, `StrConv(ChrW(&HFF41&), vbNarrow, 1041)`, `StrConv(ChrW(&H3042), vbKatakana, 1041)` and `StrConv(ChrW(&H30A2), vbHiragana, 1041)` raise error 5, *Invalid procedure call or argument*, although the *LCID* argument, 1041, names Japanese. VB6 converts with the rules of the locale *LCID* names, and returns U+FF41, `a`, U+30A2 and U+3042. The same holds for 2052 (Chinese, PRC) and 1042 (Korean). twinBASIC seems to check the system's locale rather than *LCID*'s. Observed in the compiler's test mode, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. On a system whose locale is not East Asian, open `strconv-east-asian-lcid.twinproj` (attached as `strconv-east-asian-lcid.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass (`vbUpperCase` with 1041, and `vbWide` with no *LCID* and with 1033, which VB6 refuses too) and the six cases on an East Asian *LCID* fail with `runtime error 5: Invalid procedure call or argument`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`strconv-east-asian-lcid-vb6.zip`) prints, with the system's locale: no error and the converted characters for 1041, 2052 and 1042, and 5 for no *LCID* and for 1033.
+```vb
+' Regression tests: StrConv's vbWide, vbNarrow, vbKatakana and vbHiragana convert when
+' the LCID argument names an East Asian locale, whatever the system's locale. Expected
+' results are VB6's on a system whose locale is 1033, English (United States) (the VB6
+' project beside this one prints them). tbrun --tests runs each case and prints PASS
+' or FAIL. The controls assume such a system.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: another conversion with an East Asian LCID, and vbWide with no East
+    ' Asian locale at all, which VB6 refuses too.
+    [TestCase]
+    Public Sub UpperCase_Japanese_Converts()
+        Assert.Strict.AreEqual CVar("A"), StrConv("a", vbUpperCase, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Wide_NoLcid_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = StrConv("a", vbWide)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Wide_English_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = StrConv("a", vbWide, 1033)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' The defect.
+    [TestCase]
+    Public Sub Wide_Japanese_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&HFF41&)), StrConv("a", vbWide, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Narrow_Japanese_Converts()
+        Assert.Strict.AreEqual CVar("a"), StrConv(ChrW(&HFF41&), vbNarrow, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Katakana_Japanese_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&H30A2)), StrConv(ChrW(&H3042), vbKatakana, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Hiragana_Japanese_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&H3042)), StrConv(ChrW(&H30A2), vbHiragana, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Wide_Chinese_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&HFF41&)), StrConv("a", vbWide, 2052)
+    End Sub
+
+    [TestCase]
+    Public Sub Wide_Korean_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&HFF41&)), StrConv("a", vbWide, 1042)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The conversion, made with the rules of the locale *LCID* names, as VB6 makes it. Error 5 only when neither *LCID* nor, without one, the system's locale is East Asian.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A program that converts Japanese, Chinese or Korean text with an explicit *LCID*, so that it runs on any system, stops with error 5 on a Western one.
+
+What does not reproduce it: another conversion (`vbUpperCase`) with an East Asian *LCID*; and `vbWide` with no *LCID* or with 1033, which VB6 refuses as well. Not checked on a system whose locale is East Asian.
+
+<!-- Reproducer: bugs/strconv-east-asian-lcid/ (mode test: `tbrun --tests`; expect lists the three PASS and six FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify` on a system whose locale is 1033, and the same six failures with `run --arch win64`; the controls assume such a system. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the system locale, then the converted characters for 1041, 2052 and 1042 and 5 for no LCID and 1033. Stated in a NOTE on docs/Reference/Default/VBA/Strings/StrConv.md (its Common Errors section), generated from errors/VBA.Strings.yml (row `bug: strconv-east-asian-lcid`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->
