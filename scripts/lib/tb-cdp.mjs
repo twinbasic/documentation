@@ -32,10 +32,23 @@ export async function attach(port, match = "main.htm", { timeout = 30 * 1000, ty
   ).json();
   const t = list.find((x) => x.type === type && x.url.includes(match));
   if (!t) throw new Error(`no ${type} target matching ${JSON.stringify(match)} on port ${port}`);
+  return { url: t.url, ...(await connect(t.webSocketDebuggerUrl, { timeout, what: `port ${port}` })) };
+}
 
-  const ws = new WebSocket(t.webSocketDebuggerUrl);
+/**
+ * Connect to a DevTools websocket: a page's, or the browser's own (the path on the
+ * second line of `DevToolsActivePort`), where `send` takes a `sessionId` to talk to a
+ * target the connection attached to. The time limits are those of `attach`.
+ *
+ * @param {string} wsUrl  the `ws://` address
+ * @param {object} [o]
+ * @param {number} [o.timeout]  milliseconds a call may take (default 30000)
+ * @param {string} [o.what]     what the socket is for, in the message when it does not open
+ */
+export async function connect(wsUrl, { timeout = 30 * 1000, what = wsUrl } = {}) {
+  const ws = new WebSocket(wsUrl);
   await new Promise((res, rej) => {
-    const timer = setTimeout(() => rej(new Error(`the DevTools socket on port ${port} did not open`)), 10 * 1000);
+    const timer = setTimeout(() => rej(new Error(`the DevTools socket on ${what} did not open`)), 10 * 1000);
     ws.onopen = () => {
       clearTimeout(timer);
       res();
@@ -73,7 +86,7 @@ export async function attach(port, match = "main.htm", { timeout = 30 * 1000, ty
     pending.clear();
   };
 
-  const send = (method, params = {}, { timeout: ms = timeout } = {}) =>
+  const send = (method, params = {}, { timeout: ms = timeout, sessionId } = {}) =>
     new Promise((res, rej) => {
       // A WebSocket that is closing or closed discards what it is sent and does
       // not throw, so the call would wait out its whole timeout.
@@ -103,7 +116,7 @@ export async function attach(port, match = "main.htm", { timeout = 30 * 1000, ty
         },
       });
       try {
-        ws.send(JSON.stringify({ id: i, method, params }));
+        ws.send(JSON.stringify({ id: i, method, params, ...(sessionId ? { sessionId } : {}) }));
       } catch {
         pending.delete(i);
         clearTimeout(timer);
@@ -120,7 +133,6 @@ export async function attach(port, match = "main.htm", { timeout = 30 * 1000, ty
   };
 
   return {
-    url: t.url,
     send,
     evaluate,
     on: (fn) => listeners.push(fn),

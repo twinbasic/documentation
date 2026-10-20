@@ -1182,6 +1182,34 @@ options and the remembered targets exactly as they are. It writes only its scrat
 a gate: it needs Windows and a real registry, and the CI runners are Ubuntu. Run it after
 changing `tb-registry.mjs`.
 
+## Default settings, whatever the user saved
+
+`IDE_FLAGS` stop an IDE writing its settings, and nothing stops it reading them: the IDE reads its
+options, panel layouts, keyboard groups and a few more keys through `hostAppObject.GetIDESetting(key)`
+from the user's registry key, so a font size the owner set in their own IDE showed in every IDE the
+tools started (a help-lane check failed on 14 px against 13 px). `scripts/lib/tb-defaults.mjs` makes
+every IDE `launchIde` starts run with the defaults, in the page only and with no write to the
+registry; `try-help-addin` passes `userSettings: true` and keeps the user's.
+
+The script has to run before `main.js` reads the keys, and `main.htm` commits 0.2 to 0.8 s after the
+IDE's browser process writes `DevToolsActivePort`. So `installDefaultsHook` starts before the IDE does,
+polls that file every 5 ms (`launchIde`'s own poll is at 100 ms and answers too late), connects to the
+browser target, auto-attaches to every target with `waitForDebuggerOnStart`, adds the script to each page
+with `Page.addScriptToEvaluateOnNewDocument` and resumes it. The page is `about:blank` when attached, and
+never navigates twice. The script puts a setter on `window.hostAppObject`, which `main2.js` assigns, and
+wraps the host object: `GetIDESetting` answers `""` for the blanked keys and `"{}"` for `GENERAL` and
+`GENERAL2`, every other call goes through with `this` bound to the real object. The keys it left
+unanswered are the licence's, `LICENCEAGREEMENTV3`, `ALLOWERRORREPORTINGV3`, `PUBLISHER` and `NEWYEAR_*`.
+The recent lists are left alone: `test/ide/recent-projects-copies.test.mjs` needs the IDE's own, and
+`shoot_docs.mjs`'s `PAGE_DEFAULTS` empties them where a picture shows them.
+
+A probe of 50 launches hooked 49. The one miss was a page whose document began before the script was
+added. `attachIde` therefore checks `window.__tbDefaults`, the marker the script sets (it lists the keys
+answered, never their values), and reloads the page once when it is missing: the hook's session still holds
+the script, the reload takes about 40 ms, and the UI and the command-line project come back. A marker still
+missing after that is a harness error, exit 2, since the run would have the user's settings. The hook's
+connection lives as long as the process, so a `tbbuild --keep` IDE is hooked until `tbbuild` ends.
+
 ## A private IDE for every lane
 
 **The compiler loads every DLL in `<install>\addins\win32` or `\win64` as it starts.** A

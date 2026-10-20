@@ -93,12 +93,24 @@ export class Lane {
    * @param {boolean} [o.show]  IDEs on the user's desktop instead of a private one
    * @param {string} [o.browserArgs]  more WebView2 browser arguments for every IDE
    *   the lane opens, as launchIde takes them
+   * @param {boolean} [o.userSettings]  every IDE keeps the user's own settings instead of the
+   *   defaults, as launchIde takes it (try-help-addin only)
    * @param {{ width: number, height: number } | null} [o.page]  the size each IDE's
    *   page is given as the lane attaches to it (fixPageSize); null, the default,
    *   leaves the window's own. addinLane gives a runner's lane PAGE
    */
-  constructor({ name, slot = null, desktop = null, work, ide, show = false, browserArgs = "", page = null }) {
-    Object.assign(this, { name, slot, desktop, work, ide, show, browserArgs, page });
+  constructor({
+    name,
+    slot = null,
+    desktop = null,
+    work,
+    ide,
+    show = false,
+    browserArgs = "",
+    page = null,
+    userSettings = false,
+  }) {
+    Object.assign(this, { name, slot, desktop, work, ide, show, browserArgs, page, userSettings });
     this.port = null; // the open IDE's DevTools port
     this.lease = null; // the slot, as launchIde takes it (leased())
     this.exe = null; // the lane's copy of the install, made on first use
@@ -292,6 +304,7 @@ export class Lane {
       env: { APPDATA: appdata, ...env },
       browserArgs: this.browserArgs,
       flags,
+      userSettings: this.userSettings,
     });
     Object.assign(this, { src, project, port: this.run.port });
     this.c = await attachIde(this.port);
@@ -327,6 +340,7 @@ export class Lane {
       show: this.show,
       env: { APPDATA: this.appdataDir(), ...env },
       browserArgs: this.browserArgs,
+      userSettings: this.userSettings,
     });
     Object.assign(this, { src: null, project: null, port: this.run.port });
     this.c = await attachIde(this.port);
