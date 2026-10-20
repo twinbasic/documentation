@@ -1372,6 +1372,14 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     );
   });
 
+  test("the window is set in the IDE's font size", async () => {
+    const ide = await c.evaluate(
+      `getComputedStyle(document.documentElement).getPropertyValue("--ide-fontsize").trim()`,
+    );
+    assert.ok(ide, "the IDE has no --ide-fontsize");
+    assert.equal(await win.evaluate(`getComputedStyle(document.body).fontSize`), ide);
+  });
+
   test("the window's title bar is one row, with the title and five buttons, and Windows draws no caption", async () => {
     const bar = await win.evaluate(`(() => {
       const el = (id) => document.getElementById(id);

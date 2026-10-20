@@ -1198,6 +1198,12 @@ not: a restart saves a harness about a second against opening a new IDE.
      caption (no read-back of the DWM attribute), Alt+F4, the registry read, maximizing on
      a monitor other than the primary one (the lab machine has one), and the move
      itself, whose loop needs the real mouse, which the harness's desktop has none of.
+     **The window's text is in the IDE's font size** (owner, 2026-10-20): `fontsize.js`,
+     put into the page by `BuildPane`, sends `--ide-fontsize` to the hidden `helpFont`
+     element now and whenever a `MutationObserver` sees the root's style change, and the
+     add-in puts `:root{--ideFontSize:...}` before the theme's rule in the `theme:` message,
+     which `shell.css` sets the body in. The help lane checks the window's size against the
+     IDE page's.
 8. **Settings**, tested by the `help` and `help-offline` lanes on BETA 1007 (owner's
    choice): a gear at the right end of the pane's bar, and on the detached
    window's title bar (in its bar under the Windows caption), opens a drop-down panel of
@@ -1347,3 +1353,9 @@ The rules for testing add-ins bind every session and are in
 add-in in the real install's `addins\` or in `%APPDATA%\twinBASIC\addins\`, no real browser
 from a test, every `SaveSetting` application named in `lanes.mjs`, IDEs ended by pid, and
 one project per IDE.
+
+**A change a user of the add-in would notice gets an entry in `add-in/CHANGELOG.md` and a
+new version** (owner, 2026-10-20), in the same commit: `project.versionMajor`, `Minor`,
+`Build` and `Revision` in `add-in/Settings`, with `versionAutoIncrement` left `None`, so
+that a lane's or a reader's build changes nothing. The changelog lists the add-in's own
+behaviour, not the documentation or the symbol index it carries.

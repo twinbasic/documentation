@@ -123,6 +123,8 @@ The add-in is a twinBASIC project, which the IDE builds into two DLLs, one for e
 
 An add-in built this way serves the pages itself, from the copy of the documentation in its DLL, so the pane needs no internet connection. **Open in browser** still opens the page on the website, [docs.twinbasic.com](https://docs.twinbasic.com).
 
+The add-in's version is in the DLL's file properties. `CHANGELOG.md`, in the project and in the source folder, lists what changed in each version.
+
 ### From the source code
 
 The add-in's source code is in the `add-in` folder of the [documentation's repository](https://github.com/twinbasic/documentation). Build from it to change the add-in. The folder holds the project's files, not a project file, so pack it into one first with the [Import/Export Tool](../../../Features/Packages/Import-Export-Tool), from the repository's root folder:

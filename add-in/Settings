@@ -65,6 +65,11 @@
 		}
 	],
 	"project.settingsVersion": 1,
+	"project.versionAutoIncrement": "None",
+	"project.versionBuild": 0,
+	"project.versionMajor": 1,
+	"project.versionMinor": 0,
+	"project.versionRevision": 0,
 	"project.warnings": {
 		"errors": [],
 		"ignored": []

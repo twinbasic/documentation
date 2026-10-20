@@ -37,7 +37,7 @@ body {
 
 body {
   overflow: hidden;
-  font: 13px "Segoe UI", system-ui, sans-serif;
+  font: var(--ideFontSize, 13px) "Segoe UI", system-ui, sans-serif;
 }
 
 #helpResults {
@@ -142,7 +142,7 @@ html[data-chrome="native"] #helpTitleBar {
 
 #helpTitleBar #helpSettingsPanel {
   color: var(--themeToolWindowBodyForeColor);
-  font: 13px "Segoe UI", system-ui, sans-serif;
+  font: var(--ideFontSize, 13px) "Segoe UI", system-ui, sans-serif;
 }
 
 /* The Maximize button shows Restore while the window is maximized. */

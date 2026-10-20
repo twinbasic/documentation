@@ -42,6 +42,7 @@ Private Class HelpAddIn
     Private LastSearch As String
     Private PageUrl As String               ' the site path the frame was given
     Private HoverSink As HtmlElement        ' where the compiler's answers come
+    Private IdeFontSize As String           ' the IDE's font size, "" until fontsize.js tells it
     Private AskSeq As Long                  ' the number of the last question
     Private Asked As String                 ' its word, "" once answered
     Private Server As HelpServer            ' Nothing unless the add-in has the archive
@@ -266,7 +267,9 @@ Private Class HelpAddIn
     ' What the window is told of the theme: the group, for the plain palette it
     ' falls back on, a line break, and the rule with the theme's properties.
     Private Function ThemeMessage() As String
-        Return Host.Themes.ActiveThemeNameGroup & vbLf & ThemeRule(Host.Themes.ActiveThemeName)
+        Dim rule As String = ThemeRule(Host.Themes.ActiveThemeName)
+        If Len(IdeFontSize) > 0 Then rule = ":root{--ideFontSize:" & IdeFontSize & "}" & rule
+        Return Host.Themes.ActiveThemeNameGroup & vbLf & rule
     End Function
 
     ' The pane's elements. Showing a tool window sets its root's display to
@@ -350,6 +353,12 @@ Private Class HelpAddIn
                     Hovering.Attach mouseSink
                     Hovering.Enabled = HoverOn
                 End If
+                ' The IDE's font size, for the window (fontsize.js).
+                With .ChildDomElements.Add("helpFont", "div")
+                    .Properties.style.display = "none"
+                    .AddEventListener("tbDocsFontSize", AddressOf FontSizeChanged)
+                    .Properties.innerHTML = PageScript(StrConv(LoadResDataInternal("fontsize.js", "SCRIPTS"), VbStrConv.vbFromUTF8))
+                End With
                 ' Makes every add-in's {ctrl} and {alt} shortcuts fire, which
                 ' the IDE's own key handling does not (addinkeys.js).
                 With .ChildDomElements.Add("helpKeys", "div")
@@ -517,6 +526,19 @@ Private Class HelpAddIn
             Asked = word
             HoverSink.Properties.innerHTML = HoverQuestion(AskSeq, line, character)
         End If
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' The window is set in the IDE's font size, as it is when it opens and when
+    ' the size is changed while the window is open.
+    Private Sub FontSizeChanged(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        Dim size As String = eventInfo.value
+        If size = IdeFontSize Then Exit Sub
+        IdeFontSize = size
+        If Detached Then PostToWindow "theme:" & ThemeMessage()
         Exit Sub
     Failed:
         Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
