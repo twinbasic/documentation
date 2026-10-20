@@ -112,7 +112,7 @@ A private module or class won't have its members entered into the type library i
 
 ## ReadOnly Variables
 
-In a class, module-level variables can be declared as `ReadOnly`, e.g. `Private ReadOnly mStartDate As Date`. This allows more complex constant assignments: you can use a function return to set it inline, `Private ReadOnly mStartDate As Date = Now()`, or `ReadOnly` constants can be set in `Class_Initialize` or `Sub New(...)` (see parameterized class constructors above), but everywhere else, they can only be read, not changed.
+In a class, module-level variables can be declared as `ReadOnly`, e.g. `Private ReadOnly mStartDate As Date`. This allows more complex constant assignments: a built-in function's result can set it inline, `Private ReadOnly mStartDate As Date = Now()` --- a procedure of the project cannot, see [What an Initializer Can Use](../Language/Inline-Initialization#what-an-initializer-can-use) --- or `ReadOnly` constants can be set in `Class_Initialize` or `Sub New(...)` (see parameterized class constructors above), but everywhere else, they can only be read, not changed.
 
 ## Get/Let/Set Notification for Class Public Variables
 

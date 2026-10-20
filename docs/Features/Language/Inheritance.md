@@ -208,7 +208,7 @@ The classes come from Sample 23, which also has an `AnimalWatcher` class that ha
 
 A class has two kinds of constructor: `Class_Initialize`, which takes no arguments, and `Sub New`, which can take arguments. [`Class_Initialize` or `Sub New`?](../Advanced/Classes-and-Modules#class_initialize-or-sub-new) compares them. When a derived class is created, the base class's constructor runs as well as the derived class's own, and it runs first. Which of the base's constructors runs depends on whether the derived class's constructor calls one:
 
-- **No call:** the base's constructor without arguments --- its `Class_Initialize`, or its `Sub New` with no parameters --- runs automatically, before the derived class's constructor. This holds whichever kind of constructor the derived class has, and when it has none.
+- **No call:** the base's constructor without arguments --- its `Class_Initialize`, or its `Sub New` with no parameters --- runs automatically, before the derived class's constructor. This holds whichever kind of constructor the derived class has, and when it has none. It holds at every level, too: when `C` inherits `B`, which inherits `A`, creating a `C` runs `A`'s constructor, then `B`'s, then `C`'s.
 - **A call, `Base.New(...)`:** that constructor runs, where the call is written, and the automatic call is skipped. A derived `Class_Initialize` can make the call too.
 
 What the derived class's author does depends on the base class:
@@ -223,7 +223,11 @@ Where a derived constructor calls `Base.New`, make the call its first statement,
 - Statements before the call run while the base is not yet set up.
 - A call inside an `If` turns off the automatic call even when the `If` does not run it. On that path, *no* constructor of the base runs --- not even its `Class_Initialize`. The compiler decides by whether the call is in the code, not by whether it runs.
 
-Constructors are not inherited. A derived class whose only constructor is a `Sub New` with arguments cannot be created with a plain `New`, even when the base has a `Class_Initialize`: the call fails with TB5103, *Too few arguments*. To keep a plain `New`, and [`As New`](../../tB/Core/New), give the derived class a constructor without arguments as well. A derived class with no constructor at all can be created with a plain `New`, which runs the base's constructor without arguments.
+Constructors are not inherited. A derived class whose only constructor is a `Sub New` with arguments cannot be created with a plain `New`, even when the base has a `Class_Initialize`: the call fails with TB5103, *Too few arguments*. To keep a plain `New`, and [`As New`](../../tB/Core/New), give the derived class a constructor without arguments as well. A derived class with no constructor at all can be created with a plain `New`, or declared `As New`, and either runs the base's constructor without arguments. As in any class, a derived class cannot have both a `Class_Initialize` and a `Sub New` without parameters: a plain `New` matches both, and fails with TB5073.
+
+The field initializers of every class in the chain --- `Private _name As String = "nobody"` --- run before any of the constructors, the base's included. So a base constructor that calls an `Overridable` method sees the derived class's fields at their initial values when the derived class overrides that method.
+
+A COM client that creates a public derived class, with `CreateObject` for example, gets the same constructors as a plain `New` in twinBASIC: the derived class's constructor without arguments, and before it the base's, unless the derived constructor calls `Base.New(...)` itself.
 
 When the object is destroyed, the `Class_Terminate` of each class runs, the base class's first. That is the opposite of the order the constructors run in, so a derived class's `Class_Terminate` must not use anything the base's `Class_Terminate` releases.
 
