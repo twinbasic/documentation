@@ -350,6 +350,12 @@ Private Class HelpAddIn
                     Hovering.Attach mouseSink
                     Hovering.Enabled = HoverOn
                 End If
+                ' Makes every add-in's {ctrl} and {alt} shortcuts fire, which
+                ' the IDE's own key handling does not (addinkeys.js).
+                With .ChildDomElements.Add("helpKeys", "div")
+                    .Properties.style.display = "none"
+                    .Properties.innerHTML = PageScript(StrConv(LoadResDataInternal("addinkeys.js", "SCRIPTS"), VbStrConv.vbFromUTF8))
+                End With
             End With
         End With
         Set ResultIds = New Collection

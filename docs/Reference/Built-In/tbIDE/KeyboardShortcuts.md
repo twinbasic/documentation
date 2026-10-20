@@ -30,7 +30,7 @@ End Sub
 The shortcut fires when the key is released, wherever the focus is in the IDE's window --- in the code editor, in the DEBUG CONSOLE, or on nothing at all --- except while a dialog or the rename box is open. If the IDE has a command of its own on the same key, that command runs as well: F1, for one, also expands or collapses the signature help while it is showing. Shift+F12 has no command in the IDE's default keymap.
 
 > [!NOTE] BETA 1010
-> A shortcut that includes `{CTRL}` or `{ALT}` does not fire when the user presses it. The IDE matches an add-in's shortcut when the key is released, against a press of the same key less than half a second earlier, and it does not record a key pressed while Ctrl or Alt is held down. Such a shortcut fires only if the same key was also pressed on its own within that half second. Use a function key, alone or with `{SHIFT}`.
+> A shortcut that includes `{CTRL}` or `{ALT}` does not fire when the user presses it. The IDE matches an add-in's shortcut when the key is released, against a press of the same key less than half a second earlier, and it does not record a key pressed while Ctrl or Alt is held down. Such a shortcut fires only if the same key was also pressed on its own within that half second. Use a function key, alone or with `{SHIFT}`. While the [Help Add-In](../../IDE/AddIns/Help) is loaded, shortcuts with `{CTRL}` and `{ALT}` fire as the others do, for every add-in.
 
 ## Methods
 

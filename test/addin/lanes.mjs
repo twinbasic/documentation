@@ -31,6 +31,8 @@ export default [
   // references (the hosts it opens are in probes/references-*); neither saves
   // anything.
   { file: "keys.test.mjs" },
+  // The same file with the help add-in loaded, which makes {ctrl} and {alt} shortcuts fire.
+  { file: "keys.test.mjs", name: "keys-help", settings: ["tbDocsHelp"] },
   { file: "panes.test.mjs" },
   { file: "symbols.test.mjs" },
   { file: "ideserver.test.mjs" },

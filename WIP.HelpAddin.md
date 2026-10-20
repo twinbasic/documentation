@@ -1233,6 +1233,28 @@ not: a restart saves a harness about a second against opening a new IDE.
     IDE. **Not done:** the DLLs themselves, built in CI --- the owner's plan is
     to build them there with everything else, once the compiler runs on Linux there.
     Why the pack is made the way it is: [WIP.Build.md](WIP.Build.md#the-help-add-ins-project-file).
+11. **Every add-in's `{ctrl}` and `{alt}` shortcuts fire** (owner, 2026-10-20), tested by the
+    lane `keys-help` on BETA 1010: [keys.test.mjs](test/addin/keys.test.mjs) with the help
+    add-in loaded beside the keys probe. `BuildPane` puts `Resources/SCRIPTS/addinkeys.js`
+    into the page through a hidden element, as hover help does. It puts in capture-phase
+    `keydown` and `keyup` listeners on `window`, which run before the IDE's own: they record a
+    press made with Ctrl or Alt (not AltGr), and on its key-up, within 500 ms, run
+    `addinKeys` for it with the modifiers held at the key-down. They also delete the IDE's
+    `realKeyPresses` record of the key, which is from an earlier plain press, so the key-up
+    does not also run as the plain key (the bug's second half, and the IDE's own key-up
+    bindings, which it never runs for a modified key). The script goes in only while
+    `globalKeyDown`'s text still has the guard (see [Keyboard shortcuts](#keyboard-shortcuts)),
+    so a build that fixes the bug is left alone; a second run replaces the first one's
+    listeners. The IDE's key-down bindings still run beside an add-in's shortcut: Ctrl+-
+    is `tbEditor_DecreaseFontSize` as well.
+
+    **Zoom, not done** (owner, 2026-10-20: the IDE's own Ctrl+/Ctrl- and Ctrl+Alt+/Ctrl+Alt-
+    font commands are enough for now). WebView2's own zoom is off in the IDE and no host call
+    reaches the main WebView2's zoom; CSS `zoom` on the page leaves Monaco at its old width
+    and puts context menus and hovers at the pointer's position times the zoom; the font
+    options scale text but not icons or controls. Emulated device scaling (what a WebView2
+    `ZoomFactor` does) was right throughout, so whole-IDE zoom needs that host call
+    upstream. The probe and pictures are in `.claude/tooling-review-scratch/zoom/`.
 
 **Lookup:**
 

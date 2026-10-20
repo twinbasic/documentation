@@ -8,9 +8,15 @@
 // docs/Reference/Built-In/tbIDE/KeyboardShortcuts.md and the filed report in
 // bugs/filed/ (twinbasic/twinbasic#2445), and then this file.
 //
+// The lane named keys-help loads the help add-in beside the probe, and asserts
+// that its addinkeys.js makes every add-in's {ctrl} and {alt} shortcuts fire
+// once, on key-up, as the IDE runs the others. The cases that state the bug
+// are the lane keys' alone.
+//
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -23,6 +29,7 @@ import { scenario } from "./scenario.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "keys");
+const ADDIN = path.join(HERE, "..", "..", "add-in");
 
 // The key strings the probe says fired since a mark, in order.
 const firedSince = async (c, mark) =>
@@ -75,9 +82,21 @@ const paletteOpen = (c) =>
 
 scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
   let c;
+  const withHelp = lane.name === "keys-help";
+  // The tests that state the bug do not hold with the help add-in loaded.
+  const bug = { skip: withHelp && "the IDE's bug, which the help add-in repairs" };
   before(async () => {
     await lane.addAddin(PROBE);
-    c = await lane.open(HOST);
+    if (withHelp) {
+      // The add-in as committed, without a help archive. F1 makes its pane,
+      // which is told a site nothing answers at, so no page comes from the network.
+      const src = path.join(lane.work, "help-src");
+      fs.rmSync(src, { recursive: true, force: true });
+      const skip = [path.join(ADDIN, "Build"), path.join(ADDIN, "Resources", "HELP")];
+      fs.cpSync(ADDIN, src, { recursive: true, filter: (f) => !skip.includes(f) });
+      await lane.addAddin(src);
+    }
+    c = await lane.open(HOST, withHelp ? { env: { TB_DOCS_HELP_SITE: "http://localhost:1" } } : undefined);
   });
 
   test("the add-in loads and registers its shortcuts, lowercased", async () => {
@@ -97,6 +116,12 @@ scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
       "{shift}d",
       "{shift}f1",
     ]);
+    if (withHelp) {
+      assert.ok(
+        await waitFor(c, async (c) => ((await readConsole(c)) ?? "").includes("[tbDocsHelp] loaded")),
+        "the help add-in never printed that it had loaded",
+      );
+    }
     assert.ok(await blurAll(c), "the focus stayed on an element");
   });
 
@@ -107,14 +132,14 @@ scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
     assert.deepEqual(await pressAlone(c, "F1", { shift: true }), ["{shift}f1"]);
   });
 
-  test("P1: Ctrl and Alt keys do not fire", async () => {
+  test("P1: Ctrl and Alt keys do not fire", bug, async () => {
     assert.deepEqual(await pressAlone(c, "d", { ctrl: true, shift: true }), []);
     assert.deepEqual(await pressAlone(c, "d", { ctrl: true }), []);
     assert.deepEqual(await pressAlone(c, "f", { alt: true }), []);
     assert.equal(await menuOpen(c), false, "Alt+F opened a menu");
   });
 
-  test("P1: a Ctrl or Alt key fires when the same key was pressed alone just before", async () => {
+  test("P1: a Ctrl or Alt key fires when the same key was pressed alone just before", bug, async () => {
     assert.deepEqual(
       await pressThenQ(c, [
         ["d"],
@@ -124,6 +149,53 @@ scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
         ["f", { alt: true }],
       ]),
       ["d", "{ctrl}d", "{ctrl}{shift}d", "{alt}f"],
+    );
+  });
+
+  test("help add-in: its script is in, and Ctrl and Alt shortcuts fire once each", {
+    skip: !withHelp && "keys-help only",
+  }, async () => {
+    assert.equal(await c.evaluate("!!window.tbDocsAddinKeys"), true, "window.tbDocsAddinKeys is not set");
+    assert.deepEqual(await pressAlone(c, "d", { ctrl: true, shift: true }), ["{ctrl}{shift}d"]);
+    assert.deepEqual(await pressAlone(c, "d", { ctrl: true }), ["{ctrl}d"]);
+    assert.deepEqual(await pressAlone(c, "f", { alt: true }), ["{alt}f"]);
+    assert.equal(await menuOpen(c), false, "Alt+F opened a menu");
+  });
+
+  test("help add-in: the plain, Shift and function keys fire once each, as before", {
+    skip: !withHelp && "keys-help only",
+  }, async () => {
+    assert.deepEqual(await pressAlone(c, "d"), ["d"]);
+    assert.deepEqual(await pressAlone(c, "D"), ["{shift}d"]);
+    assert.deepEqual(await pressAlone(c, "F1"), ["f1"]);
+    assert.deepEqual(await pressAlone(c, "F1", { shift: true }), ["{shift}f1"]);
+  });
+
+  test("help add-in: d then Ctrl+D within 500 ms fires d once, then Ctrl+D once", {
+    skip: !withHelp && "keys-help only",
+  }, async () => {
+    assert.deepEqual(await pressThenQ(c, [["d"], ["d", { ctrl: true }]]), ["d", "{ctrl}d"]);
+    assert.deepEqual(await pressThenQ(c, [["f"], ["f", { alt: true }]]), ["{alt}f"]);
+  });
+
+  test("help add-in: a Ctrl+D held longer than 500 ms fires nothing", {
+    skip: !withHelp && "keys-help only",
+  }, async () => {
+    await sleep(600);
+    const mark = await consoleMark(c);
+    await c.evaluate(
+      `window.dispatchEvent(new KeyboardEvent("keydown", { key: "d", code: "KeyD", ctrlKey: true, bubbles: true }))`,
+    );
+    await sleep(700);
+    await c.evaluate(
+      `window.dispatchEvent(new KeyboardEvent("keyup", { key: "d", code: "KeyD", ctrlKey: true, bubbles: true }))`,
+    );
+    await pressKey(c, "q");
+    assert.ok(await waitFired(c, mark, "q"));
+    await sleep(300);
+    assert.deepEqual(
+      (await firedSince(c, mark)).filter((k) => k !== "q"),
+      [],
     );
   });
 

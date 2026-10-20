@@ -109,6 +109,10 @@ The gear
 
 The window is open again the next time the IDE starts, if it was open when the IDE closed. With **Show real OS titlebar** turned on in the IDE's options, the window has an ordinary Windows title bar instead, in the IDE's dark or light colours, and **Attach** and the gear move next to the search box.
 
+## Other add-ins' shortcuts
+
+While this add-in is loaded, the keyboard shortcuts that other add-ins register with Ctrl or Alt work. Without it, the IDE does not run an add-in's shortcut that includes Ctrl or Alt: see [KeyboardShortcuts](../../Packages/tbIDE/KeyboardShortcuts). The IDE's own command on the same keys still runs as well.
+
 ## Getting the add-in
 
 The add-in is a twinBASIC project, which the IDE builds into two DLLs, one for each bitness.
