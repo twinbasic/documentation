@@ -240,9 +240,18 @@ check(
 
 const index = renderIndex([sample], messages, new Map([["A/B.md", { title: "B", permalink: "/tB/B" }]]));
 check(
-  "the index has a row per number, in order, with its anchor and the pages that name it",
+  "the index has a row per number, in order, with its anchor and a link to its pages",
   index.slice(4, 7).join("\n") ===
-    "| **5**{: #error-5 } (`&H5`) | *Invalid procedure call or argument* | [B](../tB/B) |\n| **9**{: #error-9 } (`&H9`) | *Subscript out of range* | [B](../tB/B) |\n| **-2147467259**{: #error--2147467259 } (`&H80004005`) | *Unspecified error*; **Error** gives *Application-defined or object-defined error* | --- |",
+    "| **5**{: #error-5 } (`&H5`) | *Invalid procedure call or argument* | [1 page](#listed-5) |\n| **9**{: #error-9 } (`&H9`) | *Subscript out of range* | [1 page](#listed-9) |\n| **-2147467259**{: #error--2147467259 } (`&H80004005`) | *Unspecified error*; **Error** gives *Application-defined or object-defined error* | --- |",
+  index.join("\n"),
+);
+check(
+  "the section after the table lists each named number's pages, only those numbers",
+  index
+    .join("\n")
+    .endsWith(
+      "## Pages that list each error\n\n**5**{: #listed-5 } (`&H5`): [B](../tB/B)\n\n**9**{: #listed-9 } (`&H9`): [B](../tB/B)\n\n<!-- /errors-index -->",
+    ),
   index.join("\n"),
 );
 const central = "# T\n\n<!-- errors-index: x -->\nold\n<!-- /errors-index -->\n\n## See Also\n";

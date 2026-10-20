@@ -417,6 +417,9 @@ export const CENTRAL_PERMALINK = "/Reference/Run-time-Errors";
 /** The anchor of number `n` on the central page: error-5, error--2147467259. */
 export const errorAnchor = (n) => `error-${n}`;
 
+/** The anchor of number `n`'s list of pages on the central page: listed-5, listed--2147467259. */
+export const listedAnchor = (n) => `listed-${n}`;
+
 /** The link from the page at permalink `from` to the page at permalink `to`, as the site writes it: relative. */
 export function relativeLink(from, to) {
   const base = from.endsWith("/") ? from : path.posix.dirname(from);
@@ -528,11 +531,13 @@ export function renderIndex(files, messages, pages) {
     }
   }
   const out = [
-    "<!-- errors-index: generated from errors/*.yml by scripts/errors.mjs write; edit the data, not this table -->",
+    "<!-- errors-index: generated from errors/*.yml by scripts/errors.mjs write; edit the data, not this index -->",
     "",
     "| Error | Message | Listed by |",
     "|---|---|---|",
   ];
+  // The table links each number to its line in the section after it, which names the pages.
+  const listed = [];
   for (const n of [...messages.keys()].sort(byNumber)) {
     const m = messages.get(n);
     const hex = errorNumber(n).slice(String(n).length + 1);
@@ -541,7 +546,16 @@ export function renderIndex(files, messages, pages) {
       .map((page) => pages.get(page) ?? { title: page, permalink: null })
       .sort((a, b) => a.title.localeCompare(b.title, "en"))
       .map((p) => (p.permalink ? `[${p.title}](${relativeLink(CENTRAL_PERMALINK, p.permalink)})` : p.title));
-    out.push(`| **${n}**{: #${errorAnchor(n)} } ${hex} | ${escapeCell(message)} | ${links.join(", ") || "---"} |`);
+    const count = links.length
+      ? `[${links.length} ${links.length === 1 ? "page" : "pages"}](#${listedAnchor(n)})`
+      : "---";
+    out.push(`| **${n}**{: #${errorAnchor(n)} } ${hex} | ${escapeCell(message)} | ${count} |`);
+    if (links.length) listed.push(`**${n}**{: #${listedAnchor(n)} } ${hex}: ${links.join(", ")}`);
+  }
+  if (listed.length) {
+    out.push("", "## Pages that list each error", "");
+    for (const line of listed) out.push(line, "");
+    out.pop();
   }
   out.push("", "<!-- /errors-index -->");
   return out;

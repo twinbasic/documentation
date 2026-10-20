@@ -243,13 +243,6 @@ pages:
         bug: database-compare-no-error
         cases:
           - Filter(Array("ab", "c"), "a", True, 2)
-      - error: 0
-        when: "*sourcearray* is a **Long** array"
-        vb6: 13
-        bug: pending
-        cases:
-          - decl: Dim A(1) As Long
-            expr: Filter(A, "a")
       - error: 13
         when: "*sourcearray* is **Null**, or has more than one dimension"
         cases:
@@ -266,6 +259,12 @@ pages:
     quiet:
       - Filter(Array("ab", 1), "a")
       - Filter(Array(), "a")
+      - decl: Dim A(1) As Long
+        expr: Filter(A, "a")
+        only: tb
+      - decl: Dim A(1) As Double
+        expr: Filter(A, "a")
+        only: tb
       - Filter(Array("ab"), "a", 2)
       - Filter(Array("ab", "c"), "a", True, 1033)
       - decl: Dim A() As String
@@ -386,13 +385,6 @@ pages:
       - FormatPercent(1, 2, -2, -2, -2)
   Reference/Default/VBA/Strings/Join.md:
     rows:
-      - error: 0
-        when: "*sourcearray* is a **Long** array"
-        vb6: 5
-        bug: pending
-        cases:
-          - decl: Dim A(1) As Long
-            expr: Join(A)
       - error: 5
         when: "*sourcearray* has more than one dimension"
         cases:
@@ -411,6 +403,12 @@ pages:
     quiet:
       - Join(Array(1, 2))
       - Join(Array())
+      - decl: Dim A(1) As Long
+        expr: Join(A)
+        only: tb
+      - decl: Dim A(1) As Double
+        expr: Join(A)
+        only: tb
       - decl: Dim A() As String
         expr: Join(A)
   Reference/Default/VBA/Strings/LCase.md:

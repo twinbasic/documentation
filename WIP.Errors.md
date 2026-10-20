@@ -260,7 +260,7 @@ Batches 0 and 1 are done, reviewed and on staging. **Batch 2 is done, on staging
 of the Strings module has its data (339 cases, all agreeing in twinBASIC 32-bit and VB6), and
 every one but Len and the index has a section. The owner reviewed the first six on 2026-10-21
 and settled the style (*Batch 2: what the first six pages found*). Left open: four rows still
-`bug: pending` and error 5's *Listed by* cell (*Batch 2: the rest of the module*).
+`bug: pending` until the two last bugs are queued (*Batch 2: the rest of the module*).
 
 **Batch 2, the VBA `Strings` pilot.** List the module's pages
 (`docs/Reference/Default/VBA/Strings/`), keep those that can raise, and for each: read the page
@@ -317,16 +317,18 @@ Found on BETA 1010, both runtimes agreeing unless said:
 - The String page's two "**Null** is returned" sentences are `<!-- VBA: -->` comments:
   `String(Null, "a")` raises 94 in both, and `String(3, Null)` in twinBASIC only.
 
-**Four rows are `bug: pending`, not yet queued in BUGS-TO-REPORT.md**:
+The owner's answers (2026-10-21):
 
-- `String(3, Null)`: twinBASIC raises 94, VB6 returns **Null** (`String$` raises 94 in both).
-- `StrConv("a", 4, 1041)` (vbWide, vbKatakana... with an East Asian *LCID* on a system whose
-  locale is not East Asian): twinBASIC raises 5, VB6 converts. The page said so already.
-- `Join` and `Filter` of a `Long` array: twinBASIC accepts it, VB6 raises 5 (Join) and 13
-  (Filter). **Ask the owner whether this is a defect or a twinBASIC extension** before queuing.
-
-**Error 5's *Listed by* cell** on the central page has 22 links after this batch. Decide with
-the owner, as the note below says, whether the list moves to a section per number.
+- `String(3, Null)` (twinBASIC raises 94, VB6 returns **Null**) and `StrConv("a", 4, 1041)`
+  (vbWide, vbKatakana... with an East Asian *LCID* on a system whose locale is not East
+  Asian: twinBASIC raises 5, VB6 converts) **are bugs**, queued by a separate session.
+- `Join` and `Filter` taking a `Long` or `Double` array (VB6 raises 5 and 13 for a `Long` one)
+  **is a twinBASIC extension**, not a bug: a NOTE in each page's prose, twinBASIC-only quiet
+  cases in the data, no `vb6:` row.
+- **The pages that list a number moved out of the table** into a section after it, *Pages that
+  list each error*: a line per number that some page lists, its pages comma-separated in
+  alphabetical order, anchored `#listed-<n>`. The table's *Listed by* cell is a link to that
+  line (*22 pages*), or `---`.
 
 ## What batch 2 needs to know (from batch 1)
 
@@ -350,7 +352,7 @@ each can be run when there is budget. Status is kept here.
 |---|---|---|---|
 | 0 | Tooling: data format, probe generator (twinBASIC and VB6), checker, section writer, the gate | --- | done; the owner reviewed the trial sections (Mid, ReDim; Len raises nothing) on 2026-10-20 |
 | 1 | The central Run-time errors page | 1 | done; the owner reviewed the page and settled on `Err.Description` (2026-10-20) |
-| 2 | **Pilot: VBA `Strings`** --- settles the section's style with the owner before anything scales | 30 | done: 28 sections; four rows `bug: pending` (see *Batch 2: the rest of the module*) |
+| 2 | **Pilot: VBA `Strings`** --- settles the section's style with the owner before anything scales | 30 | done: 28 sections, reviewed by the owner (2026-10-21) |
 | 3 | VBA `Conversion` | 28 | not started |
 | 4 | VBA `Math` (also win64) | 17 | not started |
 | 5 | VBA `DateTime` | 20 | not started |

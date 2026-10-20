@@ -14,6 +14,9 @@ Syntax: **Filter(** *sourcearray*, *match* [ **,** *include* [ **,** *compare* ]
 *sourcearray*
 : *required* One-dimensional array of strings to be searched.
 
+> [!NOTE]
+> twinBASIC also takes a *sourcearray* whose elements are of a type other than **String** or **Variant**, such as **Long** or **Double**. For a **Long** array VB6 raises error 13, *Type mismatch*.
+
 *match*
 : *required* String to search for.
 
@@ -47,9 +50,6 @@ The array returned by the **Filter** function contains only enough elements to c
 
 > [!NOTE] BETA 1010
 > When *compare* is 2 (**vbDatabaseCompare**), VB6 raises error [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument*; twinBASIC raises none.
-
-> [!NOTE] BETA 1010
-> When *sourcearray* is a **Long** array, VB6 raises error [13 (`&HD`)](../../../Reference/Run-time-Errors#error-13), *Type mismatch*; twinBASIC raises none.
 
 <!-- /errors -->
 
