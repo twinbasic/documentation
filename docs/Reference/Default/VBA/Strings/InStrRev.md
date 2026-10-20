@@ -18,7 +18,7 @@ Syntax: **InStrRev(** *stringcheck*, *stringmatch* [ **,** *start* [ **,** *comp
 : *required* String expression being searched for.
 
 *start*
-: *optional* Numeric expression that sets the starting position for each search. If omitted, -1 is used, which means that the search begins at the last character position. *start* must be -1, or 1 or greater. If *start* contains **Null**, an error occurs.
+: *optional* Numeric expression that sets the starting position for each search. If omitted, -1 is used, which means that the search begins at the last character position. *start* must be -1, or 1 or greater.
 
 *compare*
 : *optional* Numeric value indicating the kind of comparison to use when evaluating substrings. If omitted, a binary comparison is performed. See settings below.
@@ -30,6 +30,10 @@ The *compare* argument can have the following values:
 | **vbBinaryCompare**    | 0     | Performs a binary comparison.                                                            |
 | **vbTextCompare**      | 1     | Performs a textual comparison.                                                           |
 
+<!-- VBA: VBA-Docs lists this setting too; twinBASIC and VB6 raise error 5 for it.
+| **vbUseCompareOption** | -1    | Performs a comparison by using the setting of the [**Option Compare**](../../Core/Option) statement. |
+-->
+
 **Return values:** the first row that applies gives the result.
 
 | If                                                  | **InStrRev** returns             |
@@ -40,7 +44,7 @@ The *compare* argument can have the following values:
 | *stringmatch* is not found                          | 0                                |
 | *stringmatch* is found within *stringcheck*         | Position at which match is found |
 
-If *stringcheck* or *stringmatch* is **Null**, error 94 (Invalid use of Null) occurs. Unlike **InStr**, **InStrRev** does not return **Null**.
+Unlike **InStr**, **InStrRev** does not return **Null**: a **Null** argument is an error.
 
 > [!NOTE]
 > The syntax for the **InStrRev** function is not the same as the syntax for the [**InStr**](InStr) function --- note the swapped order of the search arguments.
@@ -53,6 +57,7 @@ If *stringcheck* or *stringmatch* is **Null**, error 94 (Invalid use of Null) oc
 | Error | When |
 |---|---|
 | [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *start* is 0, or less than -1<br>*compare* is less than 0, or greater than 1 and not a valid locale identifier |
+| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | any argument is **Null** |
 
 <!-- /errors -->
 

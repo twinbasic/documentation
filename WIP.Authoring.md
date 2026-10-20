@@ -353,6 +353,13 @@ Add a `> [!NOTE]` callout or rewrite the affected section when source diverges. 
 
 When in doubt about a tB-specific behavior, check `docs/Features/` and `docs/Reference/index.md` before assuming VBA semantics carry over.
 
+**VBA-Docs content that twinBASIC and VB6 both contradict is commented out, not deleted**
+(owner, 2026-10-21): the documentation is meant to become switchable between VB6, VBA and
+twinBASIC, and the VBA text should not be lost. Put it in an HTML comment that starts
+`<!-- VBA:` and says why it is out, outside any table (a comment line inside a markdown
+table ends the table), and keep `--` out of it. The first are the **vbUseCompareOption** rows
+of InStr and InStrRev, which raise error 5 in both runtimes.
+
 ## Document the product as it is, not as it was
 
 **twinBASIC is in a long beta, so a superseded name is not history --- it is noise.**

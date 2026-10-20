@@ -24,7 +24,7 @@ Syntax:
 : *required* String expression sought.
 
 *compare*
-: *optional* Specifies the type of string comparison. If *compare* is **Null**, an error occurs. If *compare* is omitted, the [**Option Compare**](../../Core/Option) setting determines the type of comparison. Specify a valid LCID (LocaleID) to use locale-specific rules in the comparison.
+: *optional* Specifies the type of string comparison. If *compare* is omitted, the [**Option Compare**](../../Core/Option) setting determines the type of comparison. Specify a valid LCID (LocaleID) to use locale-specific rules in the comparison.
 
 The *compare* argument settings are:
 
@@ -32,6 +32,10 @@ The *compare* argument settings are:
 |------------------------|-------|------------------------------------------------------------------------------------------|
 | **vbBinaryCompare**    | 0     | Performs a binary comparison.                                                            |
 | **vbTextCompare**      | 1     | Performs a textual comparison.                                                           |
+
+<!-- VBA: VBA-Docs lists this setting too; twinBASIC and VB6 raise error 5 for it.
+| **vbUseCompareOption** | -1    | Performs a comparison by using the setting of the **Option Compare** statement.          |
+-->
 
 **Return values:** the first row that applies gives the result.
 
@@ -53,7 +57,7 @@ The **InStrB** function is used with byte data contained in a string. Instead of
 | Error | When |
 |---|---|
 | [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *start* is less than 1<br>**InStr** is given a *start* greater than 1,073,741,824<br>**InStr** is given a *compare* that is less than 0, or greater than 1 and not a valid locale identifier<br>**InStr** is given a *compare* that is not a valid locale identifier, and *string1* or *string2* is zero-length |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *start* is **Null** |
+| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *start* or *compare* is **Null** |
 
 > [!NOTE] BETA 1010
 > When **InStr** is given a *compare* that is not a valid locale identifier, and *string1* or *string2* is zero-length, VB6 raises no error.

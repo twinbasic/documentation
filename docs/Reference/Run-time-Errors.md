@@ -11,7 +11,7 @@ index_also: trappable errors, error numbers, error messages
 
 Every run-time error number that has a message of its own, with that message, and the reference pages that list each number among the errors their procedure raises.
 
-A run-time error can be trapped: [**On Error**](../tB/Core/On-Error) sends it to a handler, which reads its number from [**Err.Number**](../tB/Modules/ErrObject/Number) and its message from [**Err.Description**](../tB/Modules/ErrObject/Description). A reference page that documents a procedure, a statement or an operator has an **Errors** section when it raises errors of its own: a table of each number it raises, and when. Each number there links to its row below.
+A run-time error can be trapped: [**On Error**](../tB/Core/On-Error) sends it to a handler, which reads its number from [**Err.Number**](../tB/Modules/ErrObject/Number) and its message from [**Err.Description**](../tB/Modules/ErrObject/Description). A reference page that documents a procedure, a statement or an operator has a **Common Errors** section when it raises errors of its own: a table of each number it raises, and when. Each number there links to its row below.
 
 ## What the Common Errors sections list
 
@@ -20,7 +20,7 @@ A section lists the errors that a procedure raises from its own arguments and it
 A section does not list:
 
 - errors that any code can raise: 7, *Out of memory*, and 28, *Out of stack space*;
-- an error in converting an argument to the type of its parameter before the call is made: 13, *Type mismatch*, for `Mid("abc", "x")`, and 94, *Invalid use of Null*, for `Mid("abc", Null)`, raised because the *start* parameter of **Mid** is a **Long**. A **Variant** parameter takes any value, so an error for a value of a **Variant** parameter is the procedure's own, and is listed;
+- errors in converting an argument to the type its page gives for the parameter: 13, *Type mismatch*, for an argument of the wrong kind, such as `Mid("abc", "x")`, and 6, *Overflow*, for a number outside the range of that type, such as a *start* of 2147483648 for **Mid**, whose *start* is a **Long**. A **Null** argument is listed, whether the procedure raises the error itself or in converting the argument: `Mid("abc", Null)` raises 94, *Invalid use of Null*;
 - compile-time errors: the twinBASIC compiler reports these with diagnostic codes such as `TB5001`, before the program runs, and **On Error** cannot trap them.
 
 A procedure that raises no error of its own has no Common Errors section.
@@ -81,7 +81,7 @@ The messages are those of twinBASIC 32-bit and VB6, which agree for every number
 | **91**{: #error-91 } (`&H5B`) | *Object variable or With block variable not set* | --- |
 | **92**{: #error-92 } (`&H5C`) | *For loop not initialized* | --- |
 | **93**{: #error-93 } (`&H5D`) | *Invalid pattern string* | --- |
-| **94**{: #error-94 } (`&H5E`) | *Invalid use of Null* | [InStr](../tB/Modules/Strings/InStr), [Left](../tB/Modules/Strings/Left), [Mid](../tB/Modules/Strings/Mid), [Right](../tB/Modules/Strings/Right) |
+| **94**{: #error-94 } (`&H5E`) | *Invalid use of Null* | [Asc](../tB/Modules/Strings/Asc), [Chr](../tB/Modules/Strings/Chr), [InStr](../tB/Modules/Strings/InStr), [InStrRev](../tB/Modules/Strings/InStrRev), [Left](../tB/Modules/Strings/Left), [Mid](../tB/Modules/Strings/Mid), [Right](../tB/Modules/Strings/Right) |
 | **96**{: #error-96 } (`&H60`) | *Unable to sink events of object because the object is already firing events to the maximum number of event receivers that it supports* | --- |
 | **97**{: #error-97 } (`&H61`) | *Can not call friend function on object which is not an instance of defining class* | --- |
 | **98**{: #error-98 } (`&H62`) | *A property or method call cannot include a reference to a private object, either as an argument or as a return value* | --- |

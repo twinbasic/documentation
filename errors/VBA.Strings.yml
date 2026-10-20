@@ -10,6 +10,9 @@ pages:
           - AscB("")
           - AscW("")
           - { decl: Dim S As String, expr: Asc(S) }
+      - error: 94
+        when: "*string* is **Null**"
+        cases: [Asc(Null), AscB(Null), AscW(Null)]
     quiet:
       - Asc("A")
       - Asc(ChrW(&H20AC))
@@ -37,6 +40,9 @@ pages:
           - ChrB(-1)
           - ChrB(256)
           - ChrB$(256)
+      - error: 94
+        when: "*charcode* is **Null**"
+        cases: [Chr(Null), Chr$(Null), ChrB(Null), ChrW(Null)]
     quiet:
       - Chr(0)
       - Chr(255)
@@ -79,10 +85,12 @@ pages:
         cases:
           - InStr(1, "abc", "a", 2)
       - error: 94
-        when: "*start* is **Null**"
+        when: "*start* or *compare* is **Null**"
         cases:
           - InStr(Null, "abc", "a")
           - InStrB(Null, "abc", "a")
+          - InStr(1, "abc", "a", Null)
+          - InStrB(1, "abc", "a", Null)
     quiet:
       - InStr(1073741824, "abc", "a")
       - InStrB(2147483647, "abc", "a")
@@ -112,6 +120,13 @@ pages:
           - InStrRev("abc", "a", -1, 99999)
           - InStrRev("abc", "a", -1, 2147483647)
           - InStrRev("", "a", -1, 99999)
+      - error: 94
+        when: "any argument is **Null**"
+        cases:
+          - InStrRev(Null, "a")
+          - InStrRev("abc", Null)
+          - InStrRev("abc", "a", Null)
+          - InStrRev("abc", "a", -1, Null)
     quiet:
       - InStrRev("abc", "a", 2147483647)
       - InStrRev("abc", "", 5)
@@ -170,10 +185,12 @@ pages:
           - Mid("abc", 1, 1073741824)
           - Mid$("", 1, 2147483647)
       - error: 94
-        when: "**Mid$** or **MidB$** is given a *string* that is **Null**, or any form is given a *length* that is **Null**"
+        when: "**Mid$** or **MidB$** is given a *string* that is **Null**, or any form is given a *start* or *length* that is **Null**"
         cases:
           - Mid$(Null, 1)
           - MidB$(Null, 1)
+          - Mid("abc", Null)
+          - MidB$("abc", Null)
           - Mid("abc", 1, Null)
           - MidB$("abc", 1, Null)
     quiet:
