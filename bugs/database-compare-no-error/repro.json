@@ -1,0 +1,17 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.InStr_BinaryCompare_Finds$",
+      "^PASS RegressionTests.InStr_TextCompare_Finds$",
+      "^PASS RegressionTests.InStr_CompareThree_NoError$",
+      "^PASS RegressionTests.InStrB_DatabaseCompare_NoError$",
+      "^PASS RegressionTests.InStrRev_DatabaseCompare_NoError$",
+      "^FAIL RegressionTests.StrComp_DatabaseCompare_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.Filter_DatabaseCompare_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.InStr_DatabaseCompare_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.InStr_DatabaseCompare_ErrorDescription: .*Actual: vbNullString"
+    ]
+  }
+}

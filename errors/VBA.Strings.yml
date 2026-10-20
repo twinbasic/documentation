@@ -74,14 +74,14 @@ pages:
       - error: 5
         when: "**InStr** is given a *compare* that is not a valid locale identifier, and *string1* or *string2* is zero-length"
         vb6: 0
-        bug: pending
+        bug: instr-invalid-lcid-empty-string
         cases:
           - InStr(1, "", "a", 99999)
           - InStr(1, "abc", "", 99999)
       - error: 0
         when: "**InStr** is given a *compare* of 2 (**vbDatabaseCompare**)"
         vb6: 5
-        bug: pending
+        bug: database-compare-no-error
         cases:
           - InStr(1, "abc", "a", 2)
       - error: 94

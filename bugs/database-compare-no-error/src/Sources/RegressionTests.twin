@@ -1,0 +1,79 @@
+' Regression tests: InStr, StrComp and Filter with a compare of 2 (vbDatabaseCompare) raise error 5,
+' "Invalid procedure call or argument", outside Microsoft Access. Expected results are
+' VB6's (the VB6 project beside this one prints them). tbrun --tests runs each case and
+' prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the two compare settings InStr accepts, and the neighbours VB6 lets
+    ' through with a compare of 2 or 3.
+    [TestCase]
+    Public Sub InStr_BinaryCompare_Finds()
+        Assert.Strict.AreEqual CVar(1&), InStr(1, "abc", "a", vbBinaryCompare)
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_TextCompare_Finds()
+        Assert.Strict.AreEqual CVar(1&), InStr(1, "abc", "A", vbTextCompare)
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_CompareThree_NoError()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "abc", "a", 3)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InStrB_DatabaseCompare_NoError()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStrB(1, "abc", "a", vbDatabaseCompare)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InStrRev_DatabaseCompare_NoError()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStrRev("abc", "a", -1, vbDatabaseCompare)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect, in InStr, StrComp and Filter.
+    [TestCase]
+    Public Sub StrComp_DatabaseCompare_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = StrComp("a", "A", vbDatabaseCompare)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Filter_DatabaseCompare_Raises5()
+        Dim F(0 To 1) As String
+        F(0) = "abc": F(1) = "x"
+        On Error Resume Next
+        Dim R As Variant
+        R = Filter(F, "a", True, vbDatabaseCompare)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_DatabaseCompare_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "abc", "a", vbDatabaseCompare)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_DatabaseCompare_ErrorDescription()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "abc", "a", vbDatabaseCompare)
+        Assert.Strict.AreEqual "Invalid procedure call or argument", Err.Description
+    End Sub
+
+End Module
