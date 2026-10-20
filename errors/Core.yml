@@ -6,7 +6,7 @@ pages:
       - error: -2147467259
         when: an upper bound is less than its lower bound
         vb6: 9
-        bug: pending
+        bug: redim-inverted-bounds-error
         cases:
           - { decl: Dim X() As Long, run: ReDim X(0 To -1) }
           - { decl: Dim X() As Long, run: ReDim X(-1) }
