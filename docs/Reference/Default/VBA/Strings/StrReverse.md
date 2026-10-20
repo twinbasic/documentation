@@ -13,12 +13,13 @@ Syntax: **StrReverse(** *expression* **)**
 
 *expression*
 : *required* The string whose characters are to be reversed. If *expression* is a zero-length string (`""`), a zero-length string is returned.
+
 <!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
 ### Common Errors
 
 | Error | When |
 |---|---|
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *expression* is **Null** |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *expression* is **Null** |
 
 <!-- /errors -->
 

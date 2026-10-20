@@ -60,12 +60,12 @@ The **ReDim** statement acts as a declarative statement if the variable it decla
 
 | Error | When |
 |---|---|
-| [-2147467259 (`&H80004005`)](../../Reference/Run-time-Errors#error--2147467259), *Unspecified error* | an upper bound is less than its lower bound |
-| [9 (`&H9`)](../../Reference/Run-time-Errors#error-9), *Subscript out of range* | **Preserve** changes a lower bound, or the bounds of any dimension but the last |
-| [13 (`&HD`)](../../Reference/Run-time-Errors#error-13), *Type mismatch* | **Preserve** is used on a **Variant** that does not hold an array |
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | an upper bound is less than its lower bound |
+| [9 (`&H9`)](tb:Errors#9), *Subscript out of range* | **Preserve** changes a lower bound, or the bounds of any dimension but the last |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | **Preserve** is used on a **Variant** that does not hold an array |
 
 > [!NOTE] BETA 1010
-> When an upper bound is less than its lower bound, VB6 raises error [9 (`&H9`)](../../Reference/Run-time-Errors#error-9), *Subscript out of range*, instead.
+> When an upper bound is less than its lower bound, VB6 raises error [9 (`&H9`)](tb:Errors#9), *Subscript out of range*, instead.
 
 <!-- /errors -->
 

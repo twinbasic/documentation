@@ -21,7 +21,7 @@ The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Vari
 
 | Error | When |
 |---|---|
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | **LTrim$** is given a *string* that is **Null** |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **LTrim$** is given a *string* that is **Null** |
 
 <!-- /errors -->
 

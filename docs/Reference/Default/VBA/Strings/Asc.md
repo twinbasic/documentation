@@ -30,8 +30,8 @@ The functions [**Chr**, **ChrB**, and **ChrW**](Chr) are the opposite of **Asc**
 
 | Error | When |
 |---|---|
-| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *string* is zero-length |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *string* is **Null** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *string* is zero-length |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *string* is **Null** |
 
 <!-- /errors -->
 

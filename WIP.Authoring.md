@@ -138,6 +138,16 @@ and a keyword such as `ElseIf` belongs on a page only when the page explains it.
 
 Relative links resolve against the **rendered URL** (the page's `permalink:`), not the file path. Pages that share a URL folder can use bare names (`[Y](Y)`); crossing folders needs `../` to climb out.
 
+**A page many pages link to can have a shortcut** (owner, 2026-10-21): `shortcut: <Name>` in
+its front matter, and every page links to it as `[x](tb:<Name>)` or `[x](tb:<Name>#anchor)`,
+from any folder, with no `../`. The build (`relativeLinksPlugin` in `builder/render.mjs`)
+writes the page's permalink; the fragment is kept as written, and the link check checks it. A
+name is a word (letters, digits, `_`, `-`, starting with a letter); an unknown name, a name two
+pages claim, and `tb:` as an image's source fail the build. Inside code a `tb:` link is left as
+written. The first is `shortcut: Errors` on `Reference/Run-time-Errors.md`, whose anchors are the
+error numbers themselves: `[5](tb:Errors#5)`. Any page that wants one may have one; a plain
+markdown preview (GitHub, an editor) shows such a link as dead.
+
 The URL prefixes are *not* uniform across packages — VBA pages live one segment shallower than VBRUN pages, so cross-package links are asymmetric:
 
 - Core statement → `/tB/Core/<Symbol>`

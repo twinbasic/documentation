@@ -38,8 +38,8 @@ The *firstdayofweek* argument can have the following values:
 
 | Error | When |
 |---|---|
-| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *weekday* is less than 1 or greater than 7, or *firstdayofweek* is less than 0 or greater than 7 |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | any argument is **Null** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *weekday* is less than 1 or greater than 7, or *firstdayofweek* is less than 0 or greater than 7 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | any argument is **Null** |
 
 <!-- /errors -->
 

@@ -56,14 +56,14 @@ The **InStrB** function is used with byte data contained in a string. Instead of
 
 | Error | When |
 |---|---|
-| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *start* is less than 1<br>**InStr** is given a *start* greater than 1,073,741,824<br>**InStr** is given a *compare* that is less than 0, or greater than 1 and not a valid locale identifier<br>**InStr** is given a *compare* that is not a valid locale identifier, and *string1* or *string2* is zero-length |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *start* or *compare* is **Null** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *start* is less than 1<br>**InStr** is given a *start* greater than 1,073,741,824<br>**InStr** is given a *compare* that is less than 0, or greater than 1 and not a valid locale identifier<br>**InStr** is given a *compare* that is not a valid locale identifier, and *string1* or *string2* is zero-length |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *start* or *compare* is **Null** |
 
 > [!NOTE] BETA 1010
 > When **InStr** is given a *compare* that is not a valid locale identifier, and *string1* or *string2* is zero-length, VB6 raises no error.
 
 > [!NOTE] BETA 1010
-> When **InStr** is given a *compare* of 2 (**vbDatabaseCompare**), VB6 raises error [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument*; twinBASIC raises none.
+> When **InStr** is given a *compare* of 2 (**vbDatabaseCompare**), VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 <!-- /errors -->
 

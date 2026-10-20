@@ -45,11 +45,11 @@ The *compare* argument settings are:
 
 | Error | When |
 |---|---|
-| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *compare* is less than 0, or greater than 1 and not a valid locale identifier |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *compare* is **Null** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *compare* is less than 0, or greater than 1 and not a valid locale identifier |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *compare* is **Null** |
 
 > [!NOTE] BETA 1010
-> When *compare* is 2 (**vbDatabaseCompare**), VB6 raises error [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument*; twinBASIC raises none.
+> When *compare* is 2 (**vbDatabaseCompare**), VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 <!-- /errors -->
 

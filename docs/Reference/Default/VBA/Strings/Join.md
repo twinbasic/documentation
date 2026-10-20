@@ -25,9 +25,9 @@ Syntax: **Join(** *sourcearray* [ **,** *delimiter* ] **)**
 
 | Error | When |
 |---|---|
-| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *sourcearray* has more than one dimension |
-| [13 (`&HD`)](../../../Reference/Run-time-Errors#error-13), *Type mismatch* | *sourcearray* is **Null**, or an element of it is an array |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *delimiter* is **Null**, or an element of *sourcearray* is **Null** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *sourcearray* has more than one dimension |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *sourcearray* is **Null**, or an element of it is an array |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *delimiter* is **Null**, or an element of *sourcearray* is **Null** |
 
 <!-- /errors -->
 

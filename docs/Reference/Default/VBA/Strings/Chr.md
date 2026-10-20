@@ -34,9 +34,9 @@ The functions [**Asc**, **AscB**, and **AscW**](Asc) are the opposite of **Chr**
 
 | Error | When |
 |---|---|
-| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | **Chr** or **Chr$** is given a *charcode* less than 0 or greater than 255<br>**ChrW** or **ChrW$** is given a *charcode* less than -32,768 or greater than 65,535 |
-| [6 (`&H6`)](../../../Reference/Run-time-Errors#error-6), *Overflow* | **ChrB** or **ChrB$** is given a *charcode* less than 0 or greater than 255 |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *charcode* is **Null** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | **Chr** or **Chr$** is given a *charcode* less than 0 or greater than 255<br>**ChrW** or **ChrW$** is given a *charcode* less than -32,768 or greater than 65,535 |
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | **ChrB** or **ChrB$** is given a *charcode* less than 0 or greater than 255 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *charcode* is **Null** |
 
 <!-- /errors -->
 

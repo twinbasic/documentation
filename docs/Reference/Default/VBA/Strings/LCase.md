@@ -23,7 +23,7 @@ Only uppercase letters are converted to lowercase; all lowercase letters and non
 
 | Error | When |
 |---|---|
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | **LCase$** is given a *string* that is **Null** |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **LCase$** is given a *string* that is **Null** |
 
 <!-- /errors -->
 

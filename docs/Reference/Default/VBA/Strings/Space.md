@@ -23,8 +23,8 @@ The **Space** function is useful for formatting output and clearing data in fixe
 
 | Error | When |
 |---|---|
-| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *number* is negative, or greater than 1,073,741,823 |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *number* is **Null** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *number* is negative, or greater than 1,073,741,823 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *number* is **Null** |
 
 <!-- /errors -->
 

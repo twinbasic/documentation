@@ -1590,13 +1590,28 @@ function renderTocItems(items, indent, out) {
 
 // ---------- §5.3 relative-links plugin --------------------------------------
 
+// A page's `shortcut:` front-matter key names it for `tb:<Name>` links, which
+// resolve to its permalink wherever it moves. A name is a word, and is unique.
+export const SHORTCUT_NAME = /^[A-Za-z][A-Za-z0-9_-]*$/;
+
 export function buildLinkTables(pages) {
   const byPath = new Map();
   const byUrl = new Map();
   const byRedirect = new Map();
+  const byShortcut = new Map();
 
   for (const p of pages) {
     putOnce(byPath, p.srcRel, p);
+
+    const shortcut = p.frontmatter.shortcut;
+    if (shortcut !== undefined) {
+      if (typeof shortcut !== "string" || !SHORTCUT_NAME.test(shortcut)) {
+        throw new Error(`${p.srcRel}: shortcut: must be a name of letters, digits, _ and -, starting with a letter`);
+      }
+      const other = byShortcut.get(shortcut);
+      if (other) throw new Error(`${p.srcRel}: shortcut ${shortcut} is already ${other.srcRel}'s`);
+      byShortcut.set(shortcut, p);
+    }
 
     const url = p.permalink.replace(/^\//, "");
     if (url !== "") {
@@ -1611,15 +1626,20 @@ export function buildLinkTables(pages) {
     }
   }
 
-  return { byPath, byUrl, byRedirect };
+  return { byPath, byUrl, byRedirect, byShortcut };
 }
 
 // Serialize linkTables for cross-thread transfer. resolveLink() only reads
 // .permalink from each page, so shipping [key, permalink] pairs is sufficient.
 // Workers reconstruct minimal { permalink } stubs via reconstructLinkTables.
 export function serializeLinkTables(lt) {
-  const pairs = (m) => [...m.entries()].map(([k, p]) => [k, p.permalink]);
-  return { byPath: pairs(lt.byPath), byUrl: pairs(lt.byUrl), byRedirect: pairs(lt.byRedirect) };
+  const pairs = (m) => [...(m ?? new Map()).entries()].map(([k, p]) => [k, p.permalink]);
+  return {
+    byPath: pairs(lt.byPath),
+    byUrl: pairs(lt.byUrl),
+    byRedirect: pairs(lt.byRedirect),
+    byShortcut: pairs(lt.byShortcut),
+  };
 }
 
 function putOnce(map, key, value) {
@@ -1651,6 +1671,23 @@ function relativeLinksPlugin(md, ctx) {
       const idx = token.attrIndex(attrName);
       if (idx < 0) return;
       const value = token.attrs[idx][1];
+      // `tb:<Name>[#fragment]`: the page whose front matter says `shortcut: <Name>`.
+      // Before the scheme test, which would pass it through as a URL.
+      if (/^tb:/i.test(value)) {
+        if (!ctx.linkTables) return; // a tool rendering without the site's pages
+        const [name, frag] = splitFragment(value.slice(3));
+        const target = ctx.linkTables.byShortcut?.get(name);
+        if (attrName !== "href") throw new Error(`${fromPage.srcRel}: ${value} is a page shortcut, not an image`);
+        if (!target) {
+          throw new Error(
+            `${fromPage.srcRel}: no page has the shortcut in ${value}; ` +
+              "a page names its shortcut with `shortcut: <Name>` in its front matter",
+          );
+        }
+        const url = `${ctx.baseurl}${target.permalink}`;
+        token.attrs[idx][1] = frag ? `${url}#${frag}` : url;
+        return;
+      }
       if (/^([a-z][a-z0-9+.\-]*:|#|\/\/)/i.test(value)) return;
 
       const [pathPart, fragPart] = splitFragment(value);

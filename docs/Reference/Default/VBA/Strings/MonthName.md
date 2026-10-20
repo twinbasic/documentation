@@ -22,8 +22,8 @@ Syntax: **MonthName(** *month* [ **,** *abbreviate* ] **)**
 
 | Error | When |
 |---|---|
-| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *month* is less than 1 or greater than 12 |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *month* or *abbreviate* is **Null** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *month* is less than 1 or greater than 12 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *month* or *abbreviate* is **Null** |
 
 <!-- /errors -->
 

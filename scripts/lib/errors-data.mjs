@@ -413,9 +413,11 @@ const escapeCell = (s) => s.replace(/\|/g, "\\|");
 /** The central page of the run-time errors, as a path under docs/, and its permalink. */
 export const CENTRAL_PAGE = "Reference/Run-time-Errors.md";
 export const CENTRAL_PERMALINK = "/Reference/Run-time-Errors";
+/** The central page's shortcut (`shortcut:` in its front matter): sections link to it as tb:Errors#5. */
+export const CENTRAL_SHORTCUT = "Errors";
 
-/** The anchor of number `n` on the central page: error-5, error--2147467259. */
-export const errorAnchor = (n) => `error-${n}`;
+/** The anchor of number `n` on the central page, the number itself: 5, -2147467259 (tb:Errors#5). */
+export const errorAnchor = (n) => `${n}`;
 
 /** The anchor of number `n`'s list of pages on the central page: listed-5, listed--2147467259. */
 export const listedAnchor = (n) => `listed-${n}`;
@@ -434,19 +436,18 @@ export function pageMeta(text) {
     data = parseFrontmatter(text)?.data ?? {};
   } catch {}
   const s = (v) => (typeof v === "string" && v ? v : null);
-  return { title: s(data.title), permalink: s(data.permalink) };
+  return { title: s(data.title), permalink: s(data.permalink), shortcut: s(data.shortcut) };
 }
 
 /**
  * The section's lines for page entry `p` of data file `name`, or null when the page
- * gets none. `level` is the heading's "##"/"###", `permalink` the page's own: each
- * number links to its row on the central page.
+ * gets none. `level` is the heading's "##"/"###". Each number links to its row on
+ * the central page through the page's shortcut, tb:Errors#5.
  */
-export function renderSection(p, { name, beta, messages, level, permalink }) {
+export function renderSection(p, { name, beta, messages, level }) {
   if (!p.rows.length && p.none === undefined) return null;
   const msg = (n) => messages.get(n)?.raised ?? "?";
-  const central = relativeLink(permalink ?? "/", CENTRAL_PERMALINK);
-  const num = (n) => `[${errorNumber(n)}](${central}#${errorAnchor(n)})`;
+  const num = (n) => `[${errorNumber(n)}](tb:${CENTRAL_SHORTCUT}#${errorAnchor(n)})`;
   const out = [
     `<!-- errors: generated from errors/${name} by scripts/errors.mjs write; edit the data, not this section -->`,
     `${level} Common Errors`,

@@ -102,8 +102,8 @@ If the calendar is Gregorian, the meaning of *format* expression symbols is unch
 
 | Error | When |
 |---|---|
-| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *firstDayOfWeek* is less than 0 or greater than 7, or *firstWeekOfYear* is less than 0 or greater than 3 |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *format*, *firstDayOfWeek* or *firstWeekOfYear* is **Null** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *firstDayOfWeek* is less than 0 or greater than 7, or *firstWeekOfYear* is less than 0 or greater than 3 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *format*, *firstDayOfWeek* or *firstWeekOfYear* is **Null** |
 
 <!-- /errors -->
 

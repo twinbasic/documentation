@@ -32,6 +32,7 @@ import { markdownFiles } from "../lib/markdown-files.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
   CENTRAL_PAGE,
+  CENTRAL_SHORTCUT,
   caseAtLine,
   compareMessages,
   dataFiles,
@@ -153,11 +154,11 @@ const section = renderSection(page, {
   permalink: "/tB/Modules/Strings/Mid",
 });
 check(
-  "the section has the table, its numbers linked to the central page, and the VB6 note",
+  "the section has the table, its numbers linked to the central page by its shortcut, and the VB6 note",
   section
     .join("\n")
     .includes(
-      "| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *x* is negative |\n| [9 (`&H9`)](../../../Reference/Run-time-Errors#error-9), *Subscript out of range* | the index is out |\n\n> [!NOTE] BETA 1010\n> When the index is out, VB6 raises error [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument*, instead.",
+      "| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *x* is negative |\n| [9 (`&H9`)](tb:Errors#9), *Subscript out of range* | the index is out |\n\n> [!NOTE] BETA 1010\n> When the index is out, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.",
     ),
 );
 const merged = renderSection(
@@ -185,7 +186,7 @@ check(
   "a row of error 0 has its VB6 note and no table",
   !vb6Only.includes("| Error |") &&
     vb6Only.includes(
-      "## Common Errors\n\n> [!NOTE] BETA 1010\n> When *x* is 2, VB6 raises error [5 (`&H5`)](Reference/Run-time-Errors#error-5), *Invalid procedure call or argument*; twinBASIC raises none.\n\n<!-- /errors -->",
+      "## Common Errors\n\n> [!NOTE] BETA 1010\n> When *x* is 2, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.\n\n<!-- /errors -->",
     ),
   vb6Only,
 );
@@ -242,7 +243,7 @@ const index = renderIndex([sample], messages, new Map([["A/B.md", { title: "B", 
 check(
   "the index has a row per number, in order, with its anchor and a link to its pages",
   index.slice(4, 7).join("\n") ===
-    "| **5**{: #error-5 } (`&H5`) | *Invalid procedure call or argument* | [1 page](#listed-5) |\n| **9**{: #error-9 } (`&H9`) | *Subscript out of range* | [1 page](#listed-9) |\n| **-2147467259**{: #error--2147467259 } (`&H80004005`) | *Unspecified error*; **Error** gives *Application-defined or object-defined error* | --- |",
+    "| **5**{: #5 } (`&H5`) | *Invalid procedure call or argument* | [1 page](#listed-5) |\n| **9**{: #9 } (`&H9`) | *Subscript out of range* | [1 page](#listed-9) |\n| **-2147467259**{: #-2147467259 } (`&H80004005`) | *Unspecified error*; **Error** gives *Application-defined or object-defined error* | --- |",
   index.join("\n"),
 );
 check(
@@ -355,7 +356,6 @@ for (const f of files) {
       beta: f.beta,
       messages: known,
       level: pageLevel(text),
-      permalink: pageMeta(text).permalink,
     });
     if (spliceSection(text, want) !== text) stale.push(`docs/${p.page}: the section is not what ${f.name} writes`);
   }
@@ -381,6 +381,11 @@ check(
   `the index on docs/${CENTRAL_PAGE} is what the data writes`,
   !indexed.problem && indexed.text === centralText,
   `docs/${CENTRAL_PAGE}: ${indexed.problem ?? "the index is stale"}`,
+);
+check(
+  `docs/${CENTRAL_PAGE} has the shortcut the sections link to it by`,
+  centralText !== null && pageMeta(centralText).shortcut === CENTRAL_SHORTCUT,
+  `its front matter needs shortcut: ${CENTRAL_SHORTCUT}`,
 );
 
 process.exit(report());

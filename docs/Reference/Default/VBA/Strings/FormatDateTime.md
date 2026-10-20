@@ -32,8 +32,8 @@ The *namedFormat* argument has the following settings:
 
 | Error | When |
 |---|---|
-| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *namedFormat* is less than 0 or greater than 4 |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *namedFormat* is **Null** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *namedFormat* is less than 0 or greater than 4 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *namedFormat* is **Null** |
 
 <!-- /errors -->
 

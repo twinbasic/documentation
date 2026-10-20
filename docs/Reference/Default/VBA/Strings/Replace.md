@@ -57,8 +57,8 @@ The return value of the **Replace** function is a string, with substitutions mad
 
 | Error | When |
 |---|---|
-| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *start* is less than 1, or *count* is less than -1<br>*compare* is less than 0, or greater than 1 and not a valid locale identifier |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | any argument is **Null** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *start* is less than 1, or *count* is less than -1<br>*compare* is less than 0, or greater than 1 and not a valid locale identifier |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | any argument is **Null** |
 
 <!-- /errors -->
 

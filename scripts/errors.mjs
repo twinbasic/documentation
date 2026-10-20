@@ -171,7 +171,6 @@ if (command === "write") {
         beta: f.beta,
         messages,
         level: pageLevel(text),
-        permalink: meta.permalink,
       });
       const next = spliceSection(text, section);
       if (next !== text) {

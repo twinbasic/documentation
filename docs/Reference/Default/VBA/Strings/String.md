@@ -26,8 +26,8 @@ When *character* is a number greater than 255, **String** converts the number to
 
 | Error | When |
 |---|---|
-| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *number* is negative, or greater than 1,073,741,823<br>*character* is a zero-length string |
-| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | *number* is **Null**, or **String$** is given a *character* that is **Null**<br>**String** is given a *character* that is **Null** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *number* is negative, or greater than 1,073,741,823<br>*character* is a zero-length string |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *number* is **Null**, or **String$** is given a *character* that is **Null**<br>**String** is given a *character* that is **Null** |
 
 > [!NOTE] BETA 1010
 > When **String** is given a *character* that is **Null**, VB6 raises no error.
