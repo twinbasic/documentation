@@ -7,6 +7,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
+import { parseFrontmatter } from "../../lib/frontmatter.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../../lib/repo-paths.mjs";
 
 export const ERRORS_DIR = path.join(REPO_ROOT, "errors");
@@ -27,19 +28,35 @@ export function dataFiles(dir = ERRORS_DIR) {
     .sort();
 }
 
-/** errors/messages.yml: { number: message }, or a problem. */
+/** What Error$(n) gives for a number with no message of its own, in both runtimes. */
+export const GENERIC_MESSAGE = "Application-defined or object-defined error";
+
+/**
+ * errors/messages.yml read: Map number -> { raised, error }, where `raised` is the
+ * Err.Description of the error once raised and `error` what Error$(number) gives.
+ * The file gives a number's one message, or `{ raised, error }` where they differ.
+ */
+export function readMessages(raw, name = MESSAGES_FILE) {
+  const messages = new Map();
+  const problems = [];
+  const text = (v) => typeof v === "string" && v.length > 0;
+  for (const [k, v] of Object.entries(raw ?? {})) {
+    const pair = v && typeof v === "object" && !Array.isArray(v);
+    if (!/^-?\d+$/.test(k) || !(text(v) || (pair && text(v.raised) && text(v.error))))
+      problems.push(`${name}: ${k}: not a number and its message, or its raised: and error: messages`);
+    else if (pair && Object.keys(v).some((x) => x !== "raised" && x !== "error"))
+      problems.push(`${name}: ${k}: only raised: and error:`);
+    else if (pair && v.raised === v.error) problems.push(`${name}: ${k}: raised: and error: agree; give one message`);
+    else messages.set(Number(k), pair ? { raised: v.raised, error: v.error } : { raised: v, error: v });
+  }
+  return { messages, problems };
+}
+
+/** errors/messages.yml, read by readMessages, or a problem. */
 export function loadMessages(dir = ERRORS_DIR) {
   const file = path.join(dir, MESSAGES_FILE);
   if (!existsSync(file)) return { messages: new Map(), problems: [`${MESSAGES_FILE}: missing`] };
-  const raw = yaml.load(readFileSync(file, "utf8")) ?? {};
-  const messages = new Map();
-  const problems = [];
-  for (const [k, v] of Object.entries(raw)) {
-    if (!/^-?\d+$/.test(k) || typeof v !== "string" || !v)
-      problems.push(`${MESSAGES_FILE}: ${k}: not a number and its message`);
-    else messages.set(Number(k), v);
-  }
-  return { messages, problems };
+  return readMessages(yaml.load(readFileSync(file, "utf8")));
 }
 
 const isInt = (v) => Number.isInteger(v);
@@ -224,6 +241,92 @@ export function probeModule(cases, dialect) {
   return { text: `${lines.join("\r\n")}\r\n`, spans };
 }
 
+// ------------------------------------------------------------------ the messages
+
+/** The numbers whose message is VB's own: Error$ is defined for these. */
+export const VB_NUMBERS = { from: 1, to: 65535 };
+
+/**
+ * The probe of the messages, in `dialect` as probeModule's: for every number from 1
+ * to 65535 whose Error$ is not GENERIC_MESSAGE, and for each of `others`, a line
+ * `msg <n> <Error$(n)> <Err.Number> <Err.Description>`, tab-separated, after
+ * `Err.Raise n`. An Error$ that raises is written `!<number>`, and a line break in a
+ * description `\n`.
+ */
+export function messageProbeModule(others, dialect) {
+  const one = [
+    "Private Sub One(ByVal N As Long, ByVal All As Boolean)",
+    "    Dim E As String, D As String",
+    "    On Error Resume Next",
+    "    E = Error$(N)",
+    '    If Err.Number <> 0 Then E = "!" & Err.Number',
+    `    If Not All And E = "${GENERIC_MESSAGE}" Then Exit Sub`,
+    "    Err.Clear",
+    "    Err.Raise N",
+    '    D = Replace(Replace(Err.Description, vbCr, ""), vbLf, "\\n")',
+    '    Report "msg" & vbTab & N & vbTab & E & vbTab & Err.Number & vbTab & D',
+    "    Err.Clear",
+    "End Sub",
+  ];
+  const main = [
+    "Public Sub Main()",
+    "    Dim N As Long",
+    `    For N = ${VB_NUMBERS.from} To ${VB_NUMBERS.to}`,
+    "        One N, False",
+    "    Next",
+    ...others.map((n) => `    One ${n}, True`),
+    '    Report "done"',
+    "End Sub",
+  ];
+  const { text } = probeModule([], dialect);
+  const lines = text.replace(/\r\n$/, "").split("\r\n");
+  const at = lines.indexOf("Public Sub Main()");
+  const end = lines.indexOf("End Sub", at);
+  lines.splice(at, end - at + 1, ...one, ...main);
+  return `${lines.join("\r\n")}\r\n`;
+}
+
+/** A message probe's output: Map n -> { error, number, description }, and whether it ended. */
+export function readMessageOutput(lines) {
+  const seen = new Map();
+  for (const l of lines) {
+    const p = l.split("\t");
+    if (p[0] === "msg" && p.length === 5)
+      seen.set(Number(p[1]), { error: p[2], number: Number(p[3]), description: p[4] });
+  }
+  return { seen, done: lines.includes("done") };
+}
+
+/**
+ * What is wrong with `messages` (readMessages's) against what the probes saw, one
+ * line each. Every number from 1 to 65535 with a message of its own in either
+ * runtime must be listed; each listed number's Error$ must be its `error` in both
+ * runtimes, and the description of the error raised its `raised`: in both runtimes
+ * for a number from 1 to 65535, in twinBASIC only for another (VB6's Err.Raise turns
+ * many HRESULTs into its own numbers). `seen` maps a runtime to readMessageOutput's map.
+ */
+export function compareMessages(messages, seen) {
+  const out = [];
+  const vbs = (n) => n >= VB_NUMBERS.from && n <= VB_NUMBERS.to;
+  for (const [rt, got] of Object.entries(seen)) {
+    for (const [n, g] of got) if (vbs(n) && !messages.has(n)) out.push(`${n}: ${rt} has "${g.error}", not listed`);
+    for (const [n, m] of messages) {
+      const g = got.get(n);
+      if (!g) {
+        if (vbs(n)) out.push(`${n}: ${rt}'s Error$ is "${GENERIC_MESSAGE}", the list has "${m.error}"`);
+        continue;
+      }
+      if (g.error !== m.error) out.push(`${n}: ${rt}'s Error$ is "${g.error}", the list has "${m.error}"`);
+      if (rt !== "vb6" || vbs(n)) {
+        if (g.number !== n) out.push(`${n}: ${rt}'s Err.Raise ${n} raised ${g.number}`);
+        else if (g.description !== m.raised)
+          out.push(`${n}: ${rt}'s description is "${g.description}", the list has "${m.raised}"`);
+      }
+    }
+  }
+  return out;
+}
+
 /** The id of the case whose procedure holds 1-based `line`, or null. */
 export const caseAtLine = (spans, line) => spans.find((s) => line >= s.from && line <= s.to)?.id ?? null;
 
@@ -304,13 +407,40 @@ export const errorNumber = (n) => `${n} (\`&H${(n >>> 0).toString(16).toUpperCas
 
 const escapeCell = (s) => s.replace(/\|/g, "\\|");
 
+/** The central page of the run-time errors, as a path under docs/, and its permalink. */
+export const CENTRAL_PAGE = "Reference/Run-time-Errors.md";
+export const CENTRAL_PERMALINK = "/Reference/Run-time-Errors";
+
+/** The anchor of number `n` on the central page: error-5, error--2147467259. */
+export const errorAnchor = (n) => `error-${n}`;
+
+/** The link from the page at permalink `from` to the page at permalink `to`, as the site writes it: relative. */
+export function relativeLink(from, to) {
+  const base = from.endsWith("/") ? from : path.posix.dirname(from);
+  const rel = path.posix.relative(base, to.endsWith("/") ? to.slice(0, -1) : to) || ".";
+  return to.endsWith("/") && rel !== "." ? `${rel}/` : rel;
+}
+
+/** A page's title and permalink, from its front matter; null for either it lacks. */
+export function pageMeta(text) {
+  let data = {};
+  try {
+    data = parseFrontmatter(text)?.data ?? {};
+  } catch {}
+  const s = (v) => (typeof v === "string" && v ? v : null);
+  return { title: s(data.title), permalink: s(data.permalink) };
+}
+
 /**
  * The section's lines for page entry `p` of data file `name`, or null when the page
- * gets none. `level` is the heading's "##"/"###".
+ * gets none. `level` is the heading's "##"/"###", `permalink` the page's own: each
+ * number links to its row on the central page.
  */
-export function renderSection(p, { name, beta, messages, level }) {
+export function renderSection(p, { name, beta, messages, level, permalink }) {
   if (!p.rows.length && p.none === undefined) return null;
-  const msg = (n) => messages.get(n) ?? "?";
+  const msg = (n) => messages.get(n)?.raised ?? "?";
+  const central = relativeLink(permalink ?? "/", CENTRAL_PERMALINK);
+  const num = (n) => `[${errorNumber(n)}](${central}#${errorAnchor(n)})`;
   const out = [
     `<!-- errors: generated from errors/${name} by scripts/errors.mjs write; edit the data, not this section -->`,
     `${level} Errors`,
@@ -319,9 +449,12 @@ export function renderSection(p, { name, beta, messages, level }) {
   if (p.none !== undefined) out.push(p.none.trim());
   else {
     out.push("| Error | When |", "|---|---|");
-    for (const r of p.rows) out.push(`| ${errorNumber(r.error)}, *${msg(r.error)}* | ${escapeCell(r.when)} |`);
+    // Rows that raise the same number share one row, their conditions a line each.
+    const byError = new Map();
+    for (const r of p.rows) byError.set(r.error, [...(byError.get(r.error) ?? []), escapeCell(r.when)]);
+    for (const [n, whens] of byError) out.push(`| ${num(n)}, *${msg(n)}* | ${whens.join("<br>")} |`);
     for (const r of p.rows.filter((x) => x.vb6 !== undefined)) {
-      const what = r.vb6 === 0 ? "raises no error" : `raises error ${errorNumber(r.vb6)}, *${msg(r.vb6)}*, instead`;
+      const what = r.vb6 === 0 ? "raises no error" : `raises error ${num(r.vb6)}, *${msg(r.vb6)}*, instead`;
       out.push("", `> [!NOTE] BETA ${beta}`, `> When ${r.when}, VB6 ${what}.`);
     }
   }
@@ -358,3 +491,71 @@ export function spliceSection(text, section) {
 
 /** The page's path on disk, for `page` relative to docs/. */
 export const pagePath = (page, docs = DOCS_DIR) => path.join(docs, ...page.split("/"));
+
+// ------------------------------------------------------------------ the central page
+
+export const INDEX_OPEN = /^<!--[ \t]*errors-index:[ \t]*(.*?)[ \t]*-->[ \t]*$/;
+export const INDEX_CLOSE = /^<!--[ \t]*\/errors-index[ \t]*-->[ \t]*$/;
+
+/** VB's own numbers in order, then the others in the order of their hexadecimal. */
+const byNumber = (a, b) => ((a > 0) - (b > 0) === 0 ? (a >>> 0) - (b >>> 0) : b - a);
+
+/**
+ * The central page's index of the numbers, as lines: one row for each number of
+ * `messages`, with its anchor, its message (and Error$'s where it differs) and links
+ * to the pages whose tables name it. `pages` maps a page under docs/ to its
+ * { title, permalink }.
+ */
+export function renderIndex(files, messages, pages) {
+  const naming = new Map();
+  for (const f of files) {
+    for (const p of f.pages) {
+      for (const r of p.rows) {
+        if (!naming.has(r.error)) naming.set(r.error, new Set());
+        naming.get(r.error).add(p.page);
+      }
+    }
+  }
+  const out = [
+    "<!-- errors-index: generated from errors/*.yml by scripts/errors.mjs write; edit the data, not this table -->",
+    "",
+    "| Error | Message | Listed by |",
+    "|---|---|---|",
+  ];
+  for (const n of [...messages.keys()].sort(byNumber)) {
+    const m = messages.get(n);
+    const hex = errorNumber(n).slice(String(n).length + 1);
+    const message = m.raised === m.error ? `*${m.raised}*` : `*${m.raised}*; **Error** gives *${m.error}*`;
+    const links = [...(naming.get(n) ?? [])]
+      .map((page) => pages.get(page) ?? { title: page, permalink: null })
+      .sort((a, b) => a.title.localeCompare(b.title, "en"))
+      .map((p) => (p.permalink ? `[${p.title}](${relativeLink(CENTRAL_PERMALINK, p.permalink)})` : p.title));
+    out.push(`| **${n}**{: #${errorAnchor(n)} } ${hex} | ${escapeCell(message)} | ${links.join(", ") || "---"} |`);
+  }
+  out.push("", "<!-- /errors-index -->");
+  return out;
+}
+
+/**
+ * The central page's text with its index set to `index` (lines), or a problem: the
+ * page must hold the two markers, once each and in order, outside a fence.
+ * @returns {{text: string|null, problem: string|null}}
+ */
+export function spliceIndex(text, index) {
+  const crlf = text.includes("\r\n");
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const at = (re) =>
+    scan(lines)
+      .map(({ text: t, fenced }, i) => (!fenced && re.test(t) ? i : -1))
+      .filter((i) => i >= 0);
+  const open = at(INDEX_OPEN);
+  const close = at(INDEX_CLOSE);
+  if (open.length !== 1 || close.length !== 1 || close[0] < open[0])
+    return {
+      text: null,
+      problem: "the page needs one <!-- errors-index: --> and one <!-- /errors-index -->, in order",
+    };
+  lines.splice(open[0], close[0] - open[0] + 1, ...index);
+  const out = lines.join("\n");
+  return { text: crlf ? out.replace(/\n/g, "\r\n") : out, problem: null };
+}

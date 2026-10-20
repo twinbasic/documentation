@@ -38,9 +38,8 @@ To determine the number of characters in *string*, use the [**Len**](Len) functi
 
 | Error | When |
 |---|---|
-| 5 (`&H5`), *Invalid procedure call or argument* | *start* is less than 1, or *length* is negative |
-| 5 (`&H5`), *Invalid procedure call or argument* | **Mid** or **Mid$** is given a *start* greater than 1,073,741,824 or a *length* greater than 1,073,741,823 |
-| 94 (`&H5E`), *Invalid use of Null* | **Mid$** or **MidB$** is given a *string* that is **Null**, or any form is given a *length* that is **Null** |
+| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *start* is less than 1, or *length* is negative<br>**Mid** or **Mid$** is given a *start* greater than 1,073,741,824 or a *length* greater than 1,073,741,823 |
+| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | **Mid$** or **MidB$** is given a *string* that is **Null**, or any form is given a *length* that is **Null** |
 
 <!-- /errors -->
 

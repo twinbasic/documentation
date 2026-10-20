@@ -357,6 +357,11 @@ parts:
         no_outline_entry: true
         no_heading_shift: true
         outline_closed: true
+      - title: Run-time Errors
+        page: /Reference/Run-time-Errors
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
       - title: Attributes
         page: /tB/Core/Attributes
         no_outline_entry: true
