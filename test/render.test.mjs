@@ -6,7 +6,8 @@
 // builder/theme-pictures.mjs); and for a diagram's SVG as it is inlined, its
 // boxes linking or not (builder/inline-diagram.mjs), on what Graphviz itself
 // writes; and for a callout's label, `> [!WARNING] BETA 1005`
-// (lib/callout-labels.mjs).
+// (lib/callout-labels.mjs); and for a page shortcut, `tb:Errors#error-5`
+// (relativeLinksPlugin, buildLinkTables).
 //
 // The build compares whole pages, so a plugin that goes wrong only on input
 // the corpus does not hold passes it: kramdownEllipsisPlugin shortened every
@@ -25,7 +26,13 @@ import { stripXmlPrologue } from "../builder/dot.mjs";
 import { inlineDiagram } from "../builder/inline-diagram.mjs";
 import { isWebsiteOnlyLink, rewriteHtml, websiteOf } from "../builder/offline-rewrite.mjs";
 import { assignPackageVersions, calloutLabelsOf, parseCalloutLabel } from "../lib/callout-labels.mjs";
-import { applyPreRenderRewrites, createMarkdownIt, initHighlighter } from "../builder/render.mjs";
+import {
+  applyPreRenderRewrites,
+  buildLinkTables,
+  createMarkdownIt,
+  initHighlighter,
+  serializeLinkTables,
+} from "../builder/render.mjs";
 import {
   lightOnly,
   pairSizes,
@@ -206,6 +213,46 @@ describe("rewriteHtml with a website behind the offline tree", () => {
     assert.equal(isWebsiteOnlyLink("https://site.example/a/Page", state), false, "the offline tree holds the page");
     assert.equal(isWebsiteOnlyLink("https://site.example/a/none/File.zip", state), false, "neither tree holds it");
     assert.equal(isWebsiteOnlyLink("https://other.example/a/downloads/File.zip", state), false);
+  });
+});
+
+// A page shortcut: `tb:Errors#error-5` links to the page whose front matter says
+// `shortcut: Errors`, its fragment kept; an unknown or doubled name fails the build.
+describe("page shortcuts (tb:<Name>)", () => {
+  const page = (srcRel, permalink, frontmatter = {}) => ({ srcRel, permalink, frontmatter });
+  const tables = buildLinkTables([
+    page("Reference/Run-time-Errors.md", "/Reference/Run-time-Errors", { shortcut: "Errors" }),
+    page("Reference/Other.md", "/Reference/Other"),
+  ]);
+  const site = createMarkdownIt({ highlighter: null, linkTables: tables, baseurl: "/b", staticFiles: new Set() });
+  const render = (src) => site.render(src, { page: { srcRel: "Reference/Default/VBA/Strings/Mid.md" } }).trim();
+
+  test("a shortcut resolves to the page's permalink, with or without a fragment", () => {
+    assert.equal(
+      render("[5](tb:Errors#error-5) and [all](tb:Errors)"),
+      '<p><a href="/b/Reference/Run-time-Errors#error-5">5</a> and <a href="/b/Reference/Run-time-Errors">all</a></p>',
+    );
+  });
+
+  test("a shortcut in a code span is left as written, unknown or not", () => {
+    assert.match(render("`[5](tb:Nobody)`"), /<code[^>]*>\[5\]\(tb:Nobody\)<\/code>/);
+  });
+
+  test("an unknown shortcut, and a shortcut as an image, fail the render, naming the page", () => {
+    assert.throws(() => render("[x](tb:Nobody#a)"), /Mid\.md: no page has the shortcut in tb:Nobody#a/);
+    assert.throws(() => render("![x](tb:Errors)"), /Mid\.md: tb:Errors is a page shortcut, not an image/);
+  });
+
+  test("a shortcut that two pages claim, or that is not a name, fails the link tables", () => {
+    assert.throws(
+      () => buildLinkTables([page("A.md", "/A", { shortcut: "X" }), page("B.md", "/B", { shortcut: "X" })]),
+      /B\.md: shortcut X is already A\.md's/,
+    );
+    assert.throws(() => buildLinkTables([page("A.md", "/A", { shortcut: "a b" })]), /A\.md: shortcut: must be a name/);
+  });
+
+  test("the shortcuts cross to the workers with the other tables", () => {
+    assert.deepEqual(serializeLinkTables(tables).byShortcut, [["Errors", "/Reference/Run-time-Errors"]]);
   });
 });
 

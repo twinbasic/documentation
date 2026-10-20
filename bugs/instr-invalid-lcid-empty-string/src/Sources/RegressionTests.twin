@@ -1,0 +1,115 @@
+' Regression tests: InStr given a compare that is not a valid locale ID raises no error
+' when string1 or string2 is zero-length, and returns its usual result. Expected results
+' are VB6's (the VB6 project beside this one prints them). tbrun --tests runs each case and
+' prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: VB6 raises 5 for the invalid locale ID whenever neither string is empty.
+    [TestCase]
+    Public Sub InStr_BadLcid_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "abc", "a", 99999)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_BadLcid_StartPastEnd_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(5, "abc", "a", 99999)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InStrRev_BadLcid_EmptyString1_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStrRev("", "a", -1, 99999)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Replace_BadLcid_EmptyExpression_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = Replace("", "a", "x", 1, -1, 99999)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' Controls: InStrB and StrComp return before the check, as VB6's InStr does.
+    [TestCase]
+    Public Sub InStrB_BadLcid_EmptyString1_ReturnsZero()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStrB(1, "", "a", 99999)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(0&), R
+    End Sub
+
+    [TestCase]
+    Public Sub InStrB_BadLcid_EmptyString2_ReturnsStart()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStrB(1, "abc", "", 99999)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(1&), R
+    End Sub
+
+    [TestCase]
+    Public Sub StrComp_BadLcid_EmptyString1_ReturnsMinusOne()
+        On Error Resume Next
+        Dim R As Variant
+        R = StrComp("", "a", 99999)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(-1), R
+    End Sub
+
+    ' The defect: a zero-length string1 or string2 returns before the compare is checked.
+    [TestCase]
+    Public Sub InStr_BadLcid_EmptyString1_ReturnsZero()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "", "a", 99999)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(0&), R
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_BadLcid_EmptyString2_ReturnsStart()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "abc", "", 99999)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(1&), R
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_BadLcid_BothEmpty_ReturnsZero()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "", "", 99999)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(0&), R
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_MinusTwo_EmptyString1_ReturnsZero()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "", "a", -2)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(0&), R
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_MinusTwo_EmptyString2_ReturnsStart()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "abc", "", -2)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(1&), R
+    End Sub
+
+End Module

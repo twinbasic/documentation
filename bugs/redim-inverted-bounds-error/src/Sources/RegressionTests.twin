@@ -1,0 +1,62 @@
+' Regression tests: ReDim with an upper bound less than its lower bound raises error 9,
+' "Subscript out of range". Expected numbers are VB6's (the VB6 project beside this one
+' prints them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: bounds in order, an empty-looking but valid range, and a subscript out of range.
+    [TestCase]
+    Public Sub ReDim_OneElement_Succeeds()
+        Dim X() As Long
+        ReDim X(0 To 0)
+        Assert.Strict.AreEqual 0&, UBound(X)
+    End Sub
+
+    [TestCase]
+    Public Sub ReDim_NegativeBoundsInOrder_Succeeds()
+        Dim X() As Long
+        ReDim X(-3 To -1)
+        Assert.Strict.AreEqual -3&, LBound(X)
+    End Sub
+
+    [TestCase]
+    Public Sub FixedArray_SubscriptAboveRange_Raises9()
+        Dim A(1 To 3) As Long
+        On Error Resume Next
+        A(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ReDim_ZeroToMinusOne_Raises9()
+        Dim X() As Long
+        On Error Resume Next
+        ReDim X(0 To -1)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ReDim_MinusOne_Raises9()
+        Dim X() As Long
+        On Error Resume Next
+        ReDim X(-1)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ReDim_FiveToFour_SecondDimension_Raises9()
+        Dim X() As Long
+        On Error Resume Next
+        ReDim X(5 To 4, 1)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ReDim_ErrorDescription()
+        Dim X() As Long
+        On Error Resume Next
+        ReDim X(0 To -1)
+        Assert.Strict.AreEqual "Subscript out of range", Err.Description
+    End Sub
+
+End Module

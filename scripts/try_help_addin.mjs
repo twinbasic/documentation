@@ -120,7 +120,15 @@ const tidy = startTidy({ prefixes: [work], window: false });
 if (!tidy) die(2, "could not record the registry, so it could not be put back afterwards");
 const settingsBefore = snapshotKeys([settingsKey(SETTINGS)]);
 
-const lane = new Lane({ name: "try", slot: slot.slot, desktop: slot.desktop, work, ide, show: true });
+const lane = new Lane({
+  name: "try",
+  slot: slot.slot,
+  desktop: slot.desktop,
+  work,
+  ide,
+  show: true,
+  userSettings: true,
+});
 let server = null;
 let stopping = false;
 

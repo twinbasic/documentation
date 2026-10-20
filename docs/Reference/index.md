@@ -17,6 +17,7 @@ The reference is organized into three layers: the language constructs the compil
 - [**Enumerations**](Reference/Enumerations) -- index of all {{tbdocs:enumerations}} enumeration types across all {{tbdocs:packages}} packages, grouped by package and A--Z
 - [**Data Types**](Reference/Data-Types) -- storage size, range, and suffix for every intrinsic type (**Boolean** through **Variant**)
 - [**Compiler Constants**](Reference/Compiler-Constants) -- the `#If` symbols the compiler recognises
+- [**Run-time Errors**](Reference/Run-time-Errors) -- every trappable error number with its message, and the pages that list it
 - [**Attributes**](../tB/Core/Attributes) -- `[Description(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax
 - [**COM Interfaces**](Reference/COM-Interfaces/) -- the standard COM interfaces twinBASIC code implements or calls, such as **IEnumVARIANT**
 - [**twinBASIC Additions**](Reference/twinBASIC-Additions) -- curated list of language and runtime additions beyond standard VBA

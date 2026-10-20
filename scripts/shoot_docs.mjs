@@ -12712,7 +12712,8 @@ function helpTakes(ctx) {
     await showPage(AT.msgBox, HELP_PAGE);
     await click(c, { toolWindow: PANE, css: "#helpSettings" });
     if (!(await waitFor(c, settingsOpen))) throw new Error("the gear did not open the settings panel");
-    // the picture shows the defaults, both unticked: the Hover picture ticks Hover help
+    // the picture shows the defaults: Hover help and All packages unticked, the two
+    // fixes ticked; the Hover picture ticks Hover help
     if (await inPane(`return root.querySelector("#helpHover").checked;`)) {
       await click(c, { toolWindow: PANE, css: "#helpHover" });
       await sleep(300);
@@ -12720,8 +12721,8 @@ function helpTakes(ctx) {
     await sleep(500);
     await paneAside();
     const pane = await paneRect();
-    // 150 CSS pixels ends between the page's heading and its first paragraph.
-    const png = await snap(c, "Settings", inside({ ...pane, height: 150 }), { frame: origin });
+    // 200 CSS pixels holds the four rows and ends between the page's heading and its first paragraph.
+    const png = await snap(c, "Settings", inside({ ...pane, height: 200 }), { frame: origin });
     await closeSettings();
     return png;
   });

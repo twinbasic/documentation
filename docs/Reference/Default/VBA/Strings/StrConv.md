@@ -18,7 +18,7 @@ Syntax: **StrConv(** *string*, *conversion* [ **,** *LCID* ] **)**
 : *required* **Integer**. The sum of values specifying the type of conversion to perform.
 
 *LCID*
-: *optional* The LocaleID, if different than the system LocaleID. (The system LocaleID is the default.) An *LCID* that is not a valid locale identifier raises error 5.
+: *optional* The LocaleID, if different than the system LocaleID. (The system LocaleID is the default.)
 
 The *conversion* argument settings are:
 
@@ -37,7 +37,7 @@ The *conversion* argument settings are:
 | **vbFromUTF8**    | 512   | Converts UTF-8 text held in a **Byte** array to a string. An invalid byte sequence becomes the replacement character U+FFFD. |
 
 > [!NOTE]
-> These constants are specified by twinBASIC. As a result, they may be used anywhere in code in place of the actual values. Most can be combined, for example, **vbUpperCase + vbWide**, except when they are mutually exclusive, for example, **vbUnicode + vbFromUnicode**. The constants **vbWide**, **vbNarrow**, **vbKatakana**, and **vbHiragana** cause run-time errors when used in locales where they don't apply.
+> These constants are specified by twinBASIC. As a result, they may be used anywhere in code in place of the actual values. Most can be combined, for example, **vbUpperCase + vbWide**, except when they are mutually exclusive, for example, **vbUnicode + vbFromUnicode**.
 
 The following are valid word separators for proper casing: **Null** (`Chr$(0)`), horizontal tab (`Chr$(9)`), linefeed (`Chr$(10)`), vertical tab (`Chr$(11)`), form feed (`Chr$(12)`), carriage return (`Chr$(13)`), space (SBCS) (`Chr$(32)`). The actual value for a space varies by country/region for DBCS. No other character, such as a hyphen or an apostrophe, starts a word: `"mc-donald"` becomes `"Mc-donald"`. Every word is capitalised, whatever the number of separators before it: `"a  b"` (two spaces) becomes `"A  B"`, and `"a" & vbCrLf & "b"` becomes `"A" & vbCrLf & "B"`.
 
@@ -45,9 +45,22 @@ If *string* is **Null**, **StrConv** returns **Null**.
 
 The case conversions map each character by the Windows rules for the character itself, and do not apply the language-specific rules of *LCID*. With an *LCID* of 1055 (Turkish), `"i"` becomes `"I"`, not the dotted capital I. The case conversions also work on characters outside the system code page, such as Greek and Cyrillic letters on a system with a Western European code page.
 
-**vbUnicode** and **vbFromUnicode** use the default code page of the system, whatever *LCID* is given. **vbWide**, **vbNarrow**, **vbKatakana** and **vbHiragana** depend on the system locale as well: on a system whose locale is not East Asian they raise error 5 even when *LCID* names a Japanese locale. Visual Basic 6 applies the code page and locale of *LCID* to all six.
+**vbUnicode** and **vbFromUnicode** use the default code page of the system, whatever *LCID* is given. **vbWide**, **vbNarrow**, **vbKatakana** and **vbHiragana** depend on the system locale in the same way. Visual Basic 6 applies the code page and locale of *LCID* to all six.
 
 When converting from a **Byte** array in ANSI format to a string, use the **StrConv** function. When converting from such an array in Unicode format, use an assignment statement.
+
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *conversion* is a value the table does not list, or combines **vbUnicode**, **vbFromUnicode**, **vbUTF8** or **vbFromUTF8** with another value<br>*conversion* includes **vbWide**, **vbNarrow**, **vbKatakana** or **vbHiragana** on a system whose locale is not East Asian<br>*conversion* includes **vbWide**, **vbNarrow**, **vbKatakana** or **vbHiragana** and *LCID* names an East Asian locale, on a system whose locale is not East Asian<br>*LCID* is not a valid locale identifier |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *conversion* or *LCID* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *conversion* includes **vbWide**, **vbNarrow**, **vbKatakana** or **vbHiragana** and *LCID* names an East Asian locale, on a system whose locale is not East Asian, VB6 raises no error.
+
+<!-- /errors -->
 
 ### Example
 

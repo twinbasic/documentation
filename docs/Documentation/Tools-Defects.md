@@ -149,6 +149,27 @@ Other options: `--timeout S` is the time limit, in seconds, for each run of the 
 
 Exit codes: **0** the sample ran, or, with `--docs`, no fence differs and none raised an error; **1** a VB6 compile error, a run-time error, a sample during which the exe ended (a VB6 exe that dies of an access violation can exit with code 0, so the exe ending before the time limit in the middle of a sample is what shows it; the fault the Application event log records is named when there is one, and so are a box the exe opened and what the VB runtime logged) or a sample that did not return, or, with `--docs`, at least one fence that differs or raised an error; **2** the harness could not run --- a refused command line, a file that is missing, a sample that is refused, no VB6, VB6 failing to build, or a crash.
 
+## errors.mjs
+{: #errors }
+
+    node scripts/errors.mjs run [<file.yml>...] [--only <regex>] [--runtime tb|vb6|win64]... [--ide <path>] [--vb6 <path>] [--keep]
+    node scripts/errors.mjs generate <dir> [<file.yml>...] [--only <regex>]
+    node scripts/errors.mjs write [<file.yml>...]
+    node scripts/errors.mjs messages [--runtime tb|vb6]... [--ide <path>] [--vb6 <path>] [--keep]
+
+Measures the run-time errors each documented procedure raises, and writes each reference page's Common Errors section from them. The errors are data, not prose: a YAML file per area under `errors/` lists, for each page, the cases that raise each error and the cases that must raise nothing, and `errors/messages.yml` gives each number's message: the one `Err.Description` gives once the error is raised, and the one `Error$(number)` gives, where the two differ. The format is in `WIP.Errors.md`. A file is named as it is in `errors/`; with none named, every file there is used. `--only <regex>` keeps the pages whose path under `docs/` matches.
+
+| Command | Effect |
+|---|---|
+| `run` | Builds one probe of the cases for each runtime and runs it: 32-bit twinBASIC (`tb`) and VB6 by default, and 64-bit twinBASIC (`win64`) as well for a data file that says `win64: true`; `--runtime` names them instead, and may be repeated. Each case is a procedure of its own that runs under `On Error Resume Next` and reports `Err.Number` and `Err.Description`. The twinBASIC probe is a tree run by [`tbrun --exe`](Tools-Compiler#tbrun), so the cases run in the built exe and not in the IDE, and the VB6 probe is a `Probe.vbp` built and run by the code [`bug_repro.mjs vb6`](#bug-repro) uses, on a private desktop. A case a compiler refuses is reported with the compiler's message and left out, and the probe is built again without it, so one bad case costs a rebuild and not the run. Each case is printed with what each runtime raised, and a case is `FAIL` when a runtime raised another number than the data says, refused it, never reported, or raised a number whose message is not the one in `messages.yml`. `--keep` keeps the generated probes and prints where they are. |
+| `generate` | Writes the probes to `<dir>/tb`, a tree for `tbrun --exe`, and `<dir>/vb6`, a `Probe.vbp` project, without running them. |
+| `write` | Writes each page's section from the data, between `<!-- errors: ... -->` and `<!-- /errors -->`: before the page's first Example heading, else before See Also, else at the end, at the level the page gives those headings. Rows of the data that raise the same number make one row of the table, their conditions one line each, in the order of the data. A page whose data lists only cases that raise nothing gets no section, and loses one it had. Each number in a section links to its row on the central page, [Run-time Errors](../../Reference/Run-time-Errors), and `write` also writes that page's index between `<!-- errors-index: ... -->` and `<!-- /errors-index -->`: a row for every number in `messages.yml`, with its anchor, its message and links to the pages whose sections list it. Writing again changes nothing. [`check_errors.mjs`](Tools-Toolchain-Tests#check-errors) is its gate. |
+| `messages` | Builds one probe of the messages for each runtime, 32-bit twinBASIC and VB6 unless `--runtime` names one, runs it as `run` runs its probe, and compares it with `messages.yml`. The probe gives `Error$(n)` and, after `Err.Raise n`, `Err.Number` and `Err.Description`, for every number from 1 to 65535 whose `Error$` is not *Application-defined or object-defined error*, and for every other number the file lists. Every such number from 1 to 65535 must be in the file, and every number in it must give its messages: both in both runtimes for a number from 1 to 65535; for another number, both in twinBASIC and `Error$` in VB6, since VB6's `Err.Raise` turns many HRESULTs into its own numbers (`Err.Raise &H80070057` raises 5). Each disagreement is printed. |
+
+`run` and `messages` need twinBASIC and VB6, found as `tbrun` and [`vb6run.mjs`](#vb6run) find them, so they are outside every gate and outside CI, and are run by a person when a new BETA is installed. `generate` and `write` need neither.
+
+Exit codes: **0** `run`, `messages`: every runtime agrees with the data; `generate`, `write`: done; **1** `run`, `messages`: a runtime disagrees with the data; **2** a refused command line, data with a problem, a runtime that could not be run or a probe that ended early, or a crash.
+
 ## ide_js.mjs
 {: #ide-js }
 

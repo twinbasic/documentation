@@ -944,6 +944,14 @@ Relative links resolve against a page's **rendered URL** (its `permalink`), not 
 
 When the right number of `../` steps is not obvious, copy a working link from a neighbouring page that points where you want to go and change the final segment. [`build.bat`](Building#checking-link-integrity) catches any link that resolves to nothing.
 
+### Page shortcuts
+
+A page that many pages link to can be given a short name, its **shortcut**, with `shortcut: <Name>` in its frontmatter. Any page then links to it as `[text](tb:<Name>)`, or to an anchor in it as `[text](tb:<Name>#anchor)`, from any folder and with no `../`. The build writes the page's real URL in its place, so the link keeps working when the page's file moves.
+
+The [Run-time Errors](../../Reference/Run-time-Errors) page has the shortcut `Errors`, and each error number is an anchor of its own, so `[5](tb:Errors#5)` links to error 5.
+
+A shortcut is a single word of letters, digits, `_` and `-`, starting with a letter, and no two pages may share one. The build fails on a `tb:` link whose name no page has, and the link check reports an anchor the page does not have. A `tb:` link inside code is left as written. A plain markdown preview, such as GitHub's, shows a `tb:` link as broken; the built site does not.
+
 ## Crossing between VBA and a package: the depth asymmetry
 
 **VBA pages sit one URL segment shallower than every package page.** The VBA

@@ -1198,6 +1198,12 @@ not: a restart saves a harness about a second against opening a new IDE.
      caption (no read-back of the DWM attribute), Alt+F4, the registry read, maximizing on
      a monitor other than the primary one (the lab machine has one), and the move
      itself, whose loop needs the real mouse, which the harness's desktop has none of.
+     **The window's text is in the IDE's font size** (owner, 2026-10-20): `fontsize.js`,
+     put into the page by `BuildPane`, sends `--ide-fontsize` to the hidden `helpFont`
+     element now and whenever a `MutationObserver` sees the root's style change, and the
+     add-in puts `:root{--ideFontSize:...}` before the theme's rule in the `theme:` message,
+     which `shell.css` sets the body in. The help lane checks the window's size against the
+     IDE page's.
 8. **Settings**, tested by the `help` and `help-offline` lanes on BETA 1007 (owner's
    choice): a gear at the right end of the pane's bar, and on the detached
    window's title bar (in its bar under the Windows caption), opens a drop-down panel of
@@ -1233,6 +1239,49 @@ not: a restart saves a harness about a second against opening a new IDE.
     IDE. **Not done:** the DLLs themselves, built in CI --- the owner's plan is
     to build them there with everything else, once the compiler runs on Linux there.
     Why the pack is made the way it is: [WIP.Build.md](WIP.Build.md#the-help-add-ins-project-file).
+11. **Every add-in's `{ctrl}` and `{alt}` shortcuts fire** (owner, 2026-10-20), tested by the
+    lane `keys-help` on BETA 1010: [keys.test.mjs](test/addin/keys.test.mjs) with the help
+    add-in loaded beside the keys probe. `BuildPane` puts `Resources/SCRIPTS/addinkeys.js`
+    into the page through a hidden element, as hover help does. It puts in capture-phase
+    `keydown` and `keyup` listeners on `window`, which run before the IDE's own: they record a
+    press made with Ctrl or Alt (not AltGr), and on its key-up, within 500 ms, run
+    `addinKeys` for it with the modifiers held at the key-down. They also delete the IDE's
+    `realKeyPresses` record of the key, which is from an earlier plain press, so the key-up
+    does not also run as the plain key (the bug's second half, and the IDE's own key-up
+    bindings, which it never runs for a modified key). The script goes in only while
+    `globalKeyDown`'s text still has the guard (see [Keyboard shortcuts](#keyboard-shortcuts)),
+    so a build that fixes the bug is left alone; a second run replaces the first one's
+    listeners. The IDE's key-down bindings still run beside an add-in's shortcut: Ctrl+-
+    is `tbEditor_DecreaseFontSize` as well. A settings-panel row, on by default and kept with
+    `SaveSetting` (`Fixes`, `AddinKeys`), turns it off: the script has a `$ON$` switch as
+    `hoverhelp.js` has and runs again at each change, taking the listeners out when off. The
+    window's panel has its own box, in step through `addinkeys:<1|0>` both ways.
+12. **Ctrl+F in the configuration editors** (owner, 2026-10-21). Manage Keyboard Shortcuts
+    and Manage Panel Layouts (`showConfigEditor`) edit each entry in a plain
+    `textarea.genericMonospaceTextArea`, made again whenever another entry is picked, not
+    in Monaco, so there is no find widget to switch on; and `globalKeyDown` returns before
+    the keymap while a modal dialog is open. `Resources/SCRIPTS/textfind.js`, put in by
+    `BuildPane`, adds a capture-phase `keydown` listener on `window`: Ctrl+F in such a text
+    area puts a find box over it (positioned in the text area's parent), Enter and F3 select
+    the next match, Shift with either the one before, round past the end and in any case,
+    and Esc closes the box (the Visual Studio keys: F3 and Shift+F3 work with the box closed,
+    on the last query, and open the box when there is none; Ctrl+F3 and Ctrl+Shift+F3 take
+    the one-line selection, else the word at the caret (letters, digits, `_`), as the query
+    and search without the box). A match is scrolled to by measuring it in an off-screen
+    mirror of the text area (`matchRect`), a third down and clear of the box;
+    `window.tbDocsTextFind.visible(area)` tells the test whether the selection shows. Each handled key is stopped at `window`, so the dialog's own
+    Escape handler (which would close it unless the focus is in a text field) never sees it.
+    Focusing the text area does not reliably scroll it to the caret. A second
+    settings-panel row (`Fixes`, `TextFind`, on by default) turns it off, by the same
+    `$ON$` switch, and the window's box follows through `textfind:<1|0>`.
+
+    **Zoom, not done** (owner, 2026-10-20: the IDE's own Ctrl+/Ctrl- and Ctrl+Alt+/Ctrl+Alt-
+    font commands are enough for now). WebView2's own zoom is off in the IDE and no host call
+    reaches the main WebView2's zoom; CSS `zoom` on the page leaves Monaco at its old width
+    and puts context menus and hovers at the pointer's position times the zoom; the font
+    options scale text but not icons or controls. Emulated device scaling (what a WebView2
+    `ZoomFactor` does) was right throughout, so whole-IDE zoom needs that host call
+    upstream. The probe and pictures are in `.claude/tooling-review-scratch/zoom/`.
 
 **Lookup:**
 
@@ -1325,3 +1374,9 @@ The rules for testing add-ins bind every session and are in
 add-in in the real install's `addins\` or in `%APPDATA%\twinBASIC\addins\`, no real browser
 from a test, every `SaveSetting` application named in `lanes.mjs`, IDEs ended by pid, and
 one project per IDE.
+
+**A change a user of the add-in would notice gets an entry in `add-in/CHANGELOG.md` and a
+new version** (owner, 2026-10-20), in the same commit: `project.versionMajor`, `Minor`,
+`Build` and `Revision` in `add-in/Settings`, with `versionAutoIncrement` left `None`, so
+that a lane's or a reader's build changes nothing. The changelog lists the add-in's own
+behaviour, not the documentation or the symbol index it carries.

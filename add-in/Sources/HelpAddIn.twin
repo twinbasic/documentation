@@ -42,12 +42,17 @@ Private Class HelpAddIn
     Private LastSearch As String
     Private PageUrl As String               ' the site path the frame was given
     Private HoverSink As HtmlElement        ' where the compiler's answers come
+    Private IdeFontSize As String           ' the IDE's font size, "" until fontsize.js tells it
     Private AskSeq As Long                  ' the number of the last question
     Private Asked As String                 ' its word, "" once answered
     Private Server As HelpServer            ' Nothing unless the add-in has the archive
     Private WithEvents Hovering As HoverHelp ' Nothing without an index
     Private HoverBox As HtmlElement         ' the pane's Hover help checkbox
     Private AllBox As HtmlElement           ' the pane's All packages checkbox
+    Private KeysBox As HtmlElement          ' the pane's Ctrl or Alt shortcuts checkbox
+    Private FindBox As HtmlElement          ' the pane's Find in the shortcut editors checkbox
+    Private KeysHost As HtmlElement         ' where addinkeys.js is put in
+    Private FindHost As HtmlElement         ' where textfind.js is put in
     Private Referenced As Collection        ' the project's packages, keyed by name; Nothing if unknown
     Private DetachButton As HtmlElement
     Private SettingsButton As HtmlElement   ' the gear at the bar's right end
@@ -63,6 +68,8 @@ Private Class HelpAddIn
     Private SearchText As String            ' what the search box holds, in either view
     Private HoverOn As Boolean              ' what the Hover help box holds, in either view
     Private AllPackages As Boolean          ' what the All packages box holds, in either view
+    Private KeysOn As Boolean               ' what the Ctrl or Alt shortcuts box holds, in either view
+    Private FindOn As Boolean               ' what the Find in the shortcut editors box holds, in either view
     Private SummaryHtml As String           ' what ShowSummary shows
     Private ShowingSummary As Boolean       ' the summary shows in place of the page
 
@@ -82,6 +89,8 @@ Private Class HelpAddIn
     ' The window's settings: whether it is detached, whether it is shown, and
     ' where it is, in pixels.
     Private Const WINDOW_SECTION As String = "Window"
+    ' The settings of the two page-side fixes: addinkeys.js and textfind.js.
+    Private Const FIXES_SECTION As String = "Fixes"
 
     Public Sub New(ByVal Host As Host)
         Set Me.Host = Host
@@ -266,7 +275,9 @@ Private Class HelpAddIn
     ' What the window is told of the theme: the group, for the plain palette it
     ' falls back on, a line break, and the rule with the theme's properties.
     Private Function ThemeMessage() As String
-        Return Host.Themes.ActiveThemeNameGroup & vbLf & ThemeRule(Host.Themes.ActiveThemeName)
+        Dim rule As String = ThemeRule(Host.Themes.ActiveThemeName)
+        If Len(IdeFontSize) > 0 Then rule = ":root{--ideFontSize:" & IdeFontSize & "}" & rule
+        Return Host.Themes.ActiveThemeNameGroup & vbLf & rule
     End Function
 
     ' The pane's elements. Showing a tool window sets its root's display to
@@ -275,6 +286,8 @@ Private Class HelpAddIn
         ' Kept apart from the box: a property read straight after it is set
         ' can still give the old value.
         HoverOn = GetSetting(SETTINGS_APP, "Hover", "On", "0") = "1"
+        KeysOn = GetSetting(SETTINGS_APP, FIXES_SECTION, "AddinKeys", "1") = "1"
+        FindOn = GetSetting(SETTINGS_APP, FIXES_SECTION, "TextFind", "1") = "1"
         Set Pane = Host.ToolWindows.Add("tbDocsHelp", PANE_ID)
         Pane.Title = "TWINBASIC HELP"
         Pane.ApplyCss StrConv(LoadResDataInternal("pane.css", "STYLESHEETS"), VbStrConv.vbFromUTF8)
@@ -327,6 +340,20 @@ Private Class HelpAddIn
                             AllBox.AddEventListener("change", AddressOf AllPackagesToggled)
                             .ChildDomElements.Add("helpAllPackagesText", "span").Properties.innerText = "All packages"
                         End With
+                        With SettingsPanel.ChildDomElements.Add("helpKeysLabel", "label")
+                            Set KeysBox = .ChildDomElements.Add("helpKeysOn", "input")
+                            KeysBox.Properties.type = "checkbox"
+                            KeysBox.Properties.checked = KeysOn
+                            KeysBox.AddEventListener("change", AddressOf KeysToggled)
+                            .ChildDomElements.Add("helpKeysText", "span").Properties.innerText = "Ctrl and Alt shortcuts of add-ins"
+                        End With
+                        With SettingsPanel.ChildDomElements.Add("helpFindLabel", "label")
+                            Set FindBox = .ChildDomElements.Add("helpFindOn", "input")
+                            FindBox.Properties.type = "checkbox"
+                            FindBox.Properties.checked = FindOn
+                            FindBox.AddEventListener("change", AddressOf FindToggled)
+                            .ChildDomElements.Add("helpFindText", "span").Properties.innerText = "Find in the shortcut editors"
+                        End With
                     End With
                 End With
                 Set SettingsShade = .ChildDomElements.Add("helpSettingsShade", "div")
@@ -350,6 +377,22 @@ Private Class HelpAddIn
                     Hovering.Attach mouseSink
                     Hovering.Enabled = HoverOn
                 End If
+                ' The IDE's font size, for the window (fontsize.js).
+                With .ChildDomElements.Add("helpFont", "div")
+                    .Properties.style.display = "none"
+                    .AddEventListener("tbDocsFontSize", AddressOf FontSizeChanged)
+                    .Properties.innerHTML = PageScript(StrConv(LoadResDataInternal("fontsize.js", "SCRIPTS"), VbStrConv.vbFromUTF8))
+                End With
+                ' Makes every add-in's {ctrl} and {alt} shortcuts fire, which
+                ' the IDE's own key handling does not (addinkeys.js).
+                Set KeysHost = .ChildDomElements.Add("helpKeys", "div")
+                KeysHost.Properties.style.display = "none"
+                ApplyFix KeysHost, "addinkeys.js", KeysOn
+                ' Ctrl+F in the text of the Manage Keyboard Shortcuts and
+                ' Manage Panel Layouts dialogs (textfind.js).
+                Set FindHost = .ChildDomElements.Add("helpTextFind", "div")
+                FindHost.Properties.style.display = "none"
+                ApplyFix FindHost, "textfind.js", FindOn
             End With
         End With
         Set ResultIds = New Collection
@@ -381,6 +424,49 @@ Private Class HelpAddIn
         Hovering.Enabled = isOn
         HoverBox.Properties.checked = isOn
         If Detached Then PostToWindow "hover:" & IIf(isOn, "1", "0")
+    End Sub
+
+    ' Runs a page-side fix's script in the page: it puts the fix in when isOn,
+    ' and takes out what an earlier run or instance put in.
+    Private Sub ApplyFix(ByVal Target As HtmlElement, ByVal script As String, ByVal isOn As Boolean)
+        Dim js As String = StrConv(LoadResDataInternal(script, "SCRIPTS"), VbStrConv.vbFromUTF8)
+        Target.Properties.innerHTML = PageScript(Replace(js, "$ON$", IIf(isOn, "true", "false")))
+    End Sub
+
+    Private Sub KeysToggled(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        SetKeys KeysBox.Properties.checked
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Turns the Ctrl and Alt shortcuts of add-ins on or off, from the pane's box
+    ' or the window's, and shows it in both.
+    Private Sub SetKeys(ByVal isOn As Boolean)
+        KeysOn = isOn
+        SaveSetting SETTINGS_APP, FIXES_SECTION, "AddinKeys", IIf(isOn, "1", "0")
+        ApplyFix KeysHost, "addinkeys.js", isOn
+        KeysBox.Properties.checked = isOn
+        If Detached Then PostToWindow "addinkeys:" & IIf(isOn, "1", "0")
+    End Sub
+
+    Private Sub FindToggled(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        SetFind FindBox.Properties.checked
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Turns Ctrl+F in the shortcut editors on or off, from the pane's box or
+    ' the window's, and shows it in both.
+    Private Sub SetFind(ByVal isOn As Boolean)
+        FindOn = isOn
+        SaveSetting SETTINGS_APP, FIXES_SECTION, "TextFind", IIf(isOn, "1", "0")
+        ApplyFix FindHost, "textfind.js", isOn
+        FindBox.Properties.checked = isOn
+        If Detached Then PostToWindow "textfind:" & IIf(isOn, "1", "0")
     End Sub
 
     ' Only the packages the project references are offered until the box is
@@ -511,6 +597,19 @@ Private Class HelpAddIn
             Asked = word
             HoverSink.Properties.innerHTML = HoverQuestion(AskSeq, line, character)
         End If
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' The window is set in the IDE's font size, as it is when it opens and when
+    ' the size is changed while the window is open.
+    Private Sub FontSizeChanged(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        Dim size As String = eventInfo.value
+        If size = IdeFontSize Then Exit Sub
+        IdeFontSize = size
+        If Detached Then PostToWindow "theme:" & ThemeMessage()
         Exit Sub
     Failed:
         Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
@@ -882,6 +981,10 @@ Private Class HelpAddIn
                 SetHover payload = "1"
             Case "allpackages"
                 SetAllPackages payload = "1"
+            Case "addinkeys"
+                SetKeys payload = "1"
+            Case "textfind"
+                SetFind payload = "1"
             Case "attach"
                 Attach
             Case "close"
@@ -917,6 +1020,8 @@ Private Class HelpAddIn
         HelpWin.Post "hoverdisabled:" & IIf(Hovering Is Nothing, "1", "0")
         HelpWin.Post "hover:" & IIf(HoverOn, "1", "0")
         HelpWin.Post "allpackages:" & IIf(AllPackages, "1", "0")
+        HelpWin.Post "addinkeys:" & IIf(KeysOn, "1", "0")
+        HelpWin.Post "textfind:" & IIf(FindOn, "1", "0")
         HelpWin.Post "search:" & SearchText
         PostResults
         If ShowingSummary Then

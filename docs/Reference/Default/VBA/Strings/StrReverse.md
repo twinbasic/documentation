@@ -12,7 +12,16 @@ Returns a string in which the character order of a specified string is reversed.
 Syntax: **StrReverse(** *expression* **)**
 
 *expression*
-: *required* The string whose characters are to be reversed. If *expression* is a zero-length string (`""`), a zero-length string is returned. If *expression* is **Null**, an error occurs.
+: *required* The string whose characters are to be reversed. If *expression* is a zero-length string (`""`), a zero-length string is returned.
+
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *expression* is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

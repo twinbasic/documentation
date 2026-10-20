@@ -1,0 +1,20 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.InStr_BadLcid_Raises5$",
+      "^PASS RegressionTests.InStr_BadLcid_StartPastEnd_Raises5$",
+      "^PASS RegressionTests.InStrRev_BadLcid_EmptyString1_Raises5$",
+      "^PASS RegressionTests.Replace_BadLcid_EmptyExpression_Raises5$",
+      "^PASS RegressionTests.InStrB_BadLcid_EmptyString1_ReturnsZero$",
+      "^PASS RegressionTests.InStrB_BadLcid_EmptyString2_ReturnsStart$",
+      "^PASS RegressionTests.StrComp_BadLcid_EmptyString1_ReturnsMinusOne$",
+      "^FAIL RegressionTests.InStr_BadLcid_EmptyString1_ReturnsZero: .*Actual: 5 ",
+      "^FAIL RegressionTests.InStr_BadLcid_EmptyString2_ReturnsStart: .*Actual: 5 ",
+      "^FAIL RegressionTests.InStr_BadLcid_BothEmpty_ReturnsZero: .*Actual: 5 ",
+      "^FAIL RegressionTests.InStr_MinusTwo_EmptyString1_ReturnsZero: .*Actual: 5 ",
+      "^FAIL RegressionTests.InStr_MinusTwo_EmptyString2_ReturnsStart: .*Actual: 5 "
+    ]
+  }
+}

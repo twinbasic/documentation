@@ -89,6 +89,7 @@ Do not drop `--check-audit-index` when typing the underlying build command: with
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_book_coverage.mjs \
       && node scripts/check_package_tests.mjs \
+      && node scripts/check_errors.mjs \
       && node scripts/check_symbol_index.mjs \
       && node scripts/check_twin_parsers.mjs \
       && node scripts/check_attribute_sweep.mjs \

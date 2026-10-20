@@ -97,6 +97,16 @@ If the calendar is Gregorian, the meaning of *format* expression symbols is unch
 | *s*    | 0-59 (Second of minute, with no leading zero)                                                                |
 | *ss*   | 00-59 (Second of minute, with a leading zero)                                                                |
 
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *firstDayOfWeek* is less than 0 or greater than 7, or *firstWeekOfYear* is less than 0 or greater than 3 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *format*, *firstDayOfWeek* or *firstWeekOfYear* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example shows various uses of the **Format** function to format values using both named formats and user-defined formats. For the date separator (`/`), time separator (`:`), and AM/PM literal, the actual formatted output displayed by the system depends on the locale settings on which the code is running. When times and dates are displayed in the development environment, the short time format and short date format of the code locale are used. When displayed by running code, the short time format and short date format of the system locale are used, which may differ from the code locale. For this example, English/U.S. is assumed. `MyTime` and `MyDate` are displayed in the development environment using the current system short time setting and short date setting.

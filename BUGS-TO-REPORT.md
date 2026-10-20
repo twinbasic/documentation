@@ -6407,3 +6407,532 @@ Severity: medium. A `[RunAfterBuild]` procedure that signs or post-processes the
 Not tried: a run with F5 (only `[RunAfterBuild]` was observed), a variable of the module's own read with a qualified name (`Other.Limit2`), 64-bit, LLVM.
 
 <!-- Reproducer: bugs/module-init-reads-other-module-ide/ (mode run: bug_repro run prints the zeros; expect matches "Limit=0 Doubled=0 FromConfig=0 Box.Size=3"); verified on BETA 1010 by `bug_repro.mjs verify`. The exe side and the variants are from scratch probes (tbrun --exe with TbRun.Out; one tbrun per variant), not kept. It also means a check_run sample that relies on a module-level initializer reading another module would print 0 under check_examples. Page: docs/Features/Language/Inline-Initialization.md, "What an Initializer Can Use", last bullet, advises against reading another module's variable; when a fix is released, nothing there needs to change. Found 2026-10-20 while documenting field initializers. -->
+
+---
+
+## `ReDim` with an upper bound less than its lower bound raises -2147467259, *Unspecified error*, where VB6 raises error 9
+
+**Describe the bug**
+`ReDim X(0 To -1)`, `ReDim X(-1)` and `ReDim X(5 To 4, 1)` on a dynamic array (`Dim X() As Long`), all of which give a dimension an upper bound below its lower bound, raise error -2147467259 (`&H80004005`), *Unspecified error*, where VB6 raises error 9, *Subscript out of range*. A handler that tests for 9 does not recognise it. Observed in the compiler's test mode, 32-bit and 64-bit, and in a probe run after a build.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `redim-inverted-bounds-error.twinproj` (attached as `redim-inverted-bounds-error.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass (`ReDim X(0 To 0)`, `ReDim X(-3 To -1)`, and a subscript above a fixed-size array's range, which raises 9) and the four cases on an inverted bound fail with `Actual: -2147467259`; `Err.Description` is *Unspecified error*.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`redim-inverted-bounds-error-vb6.zip`) prints: 9, *Subscript out of range*, for each of the three statements.
+```vb
+' Regression tests: ReDim with an upper bound less than its lower bound raises error 9,
+' "Subscript out of range". Expected numbers are VB6's (the VB6 project beside this one
+' prints them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: bounds in order, an empty-looking but valid range, and a subscript out of range.
+    [TestCase]
+    Public Sub ReDim_OneElement_Succeeds()
+        Dim X() As Long
+        ReDim X(0 To 0)
+        Assert.Strict.AreEqual 0&, UBound(X)
+    End Sub
+
+    [TestCase]
+    Public Sub ReDim_NegativeBoundsInOrder_Succeeds()
+        Dim X() As Long
+        ReDim X(-3 To -1)
+        Assert.Strict.AreEqual -3&, LBound(X)
+    End Sub
+
+    [TestCase]
+    Public Sub FixedArray_SubscriptAboveRange_Raises9()
+        Dim A(1 To 3) As Long
+        On Error Resume Next
+        A(4) = 1
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ReDim_ZeroToMinusOne_Raises9()
+        Dim X() As Long
+        On Error Resume Next
+        ReDim X(0 To -1)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ReDim_MinusOne_Raises9()
+        Dim X() As Long
+        On Error Resume Next
+        ReDim X(-1)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ReDim_FiveToFour_SecondDimension_Raises9()
+        Dim X() As Long
+        On Error Resume Next
+        ReDim X(5 To 4, 1)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub ReDim_ErrorDescription()
+        Dim X() As Long
+        On Error Resume Next
+        ReDim X(0 To -1)
+        Assert.Strict.AreEqual "Subscript out of range", Err.Description
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 9, *Subscript out of range*, as VB6 raises, and as twinBASIC itself raises for a subscript outside a fixed-size array.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. An error is raised wherever VB6 raises one, so no failure goes unreported, but a handler that tests for 9 does not recognise it, and *Unspecified error* does not say what is wrong. It is the same symptom as "An index out of range on a fixed-size array member of a UDT raises -2147467259, *Unspecified error*, where VB6 raises error 9": a bounds failure that reaches the program as *Unspecified error*, here from the allocation rather than from a subscript.
+
+What does not reproduce it: bounds in order (`0 To 0`, `-3 To -1`), and a subscript outside a fixed-size array that is not in a UDT.
+
+<!-- Reproducer: bugs/redim-inverted-bounds-error/ (mode test: `tbrun --tests`; expect lists the three PASS and four FAIL lines, each FAIL with the number or text BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. The same in `--arch win64`, and in a probe run after a build (win32 and win64) from a scratch folder not kept. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 9 for the three inverted ReDim statements. Stated in a NOTE on docs/Reference/Core/ReDim.md, generated from errors/Core.yml (row `bug: redim-inverted-bounds-error`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->
+
+---
+
+## A *compare* of 2 (`vbDatabaseCompare`) raises no error in `InStr`, `StrComp` and `Filter`, where VB6 raises error 5
+
+**Describe the bug**
+`InStr(1, "abc", "a", vbDatabaseCompare)`, `StrComp("a", "A", vbDatabaseCompare)` and `Filter(F, "a", True, vbDatabaseCompare)` raise no error, where VB6 raises error 5, *Invalid procedure call or argument*. `vbDatabaseCompare` (2) is a setting for Microsoft Access only. twinBASIC runs a textual comparison for it: `InStr(1, "abc", "A", vbDatabaseCompare)` returns 1, as `InStr(1, "abc", "A", 1033)` does, so it seems to take 2 as a locale identifier, as it takes any other value above 1. Observed in the compiler's test mode, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `database-compare-no-error.twinproj` (attached as `database-compare-no-error.zip`).
+2. Run its test cases, the module below. On BETA 1010 the five controls pass (`InStr` with 0 and with 1, `InStr` with 3, and `InStrB` and `InStrRev` with 2, none of which VB6 refuses) and the four cases on a compare of 2 in `InStr`, `StrComp` and `Filter` fail with `Actual: 0`; `Err.Description` is empty.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`database-compare-no-error-vb6.zip`) prints: 5, *Invalid procedure call or argument*, for `InStr`, `StrComp` and `Filter` with a compare of 2, and no error for the controls, nor for `Replace` and `Split` with 2.
+```vb
+' Regression tests: InStr, StrComp and Filter with a compare of 2 (vbDatabaseCompare) raise error 5,
+' "Invalid procedure call or argument", outside Microsoft Access. Expected results are
+' VB6's (the VB6 project beside this one prints them). tbrun --tests runs each case and
+' prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the two compare settings InStr accepts, and the neighbours VB6 lets
+    ' through with a compare of 2 or 3.
+    [TestCase]
+    Public Sub InStr_BinaryCompare_Finds()
+        Assert.Strict.AreEqual CVar(1&), InStr(1, "abc", "a", vbBinaryCompare)
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_TextCompare_Finds()
+        Assert.Strict.AreEqual CVar(1&), InStr(1, "abc", "A", vbTextCompare)
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_CompareThree_NoError()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "abc", "a", 3)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InStrB_DatabaseCompare_NoError()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStrB(1, "abc", "a", vbDatabaseCompare)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InStrRev_DatabaseCompare_NoError()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStrRev("abc", "a", -1, vbDatabaseCompare)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect, in InStr, StrComp and Filter.
+    [TestCase]
+    Public Sub StrComp_DatabaseCompare_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = StrComp("a", "A", vbDatabaseCompare)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Filter_DatabaseCompare_Raises5()
+        Dim F(0 To 1) As String
+        F(0) = "abc": F(1) = "x"
+        On Error Resume Next
+        Dim R As Variant
+        R = Filter(F, "a", True, vbDatabaseCompare)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_DatabaseCompare_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "abc", "a", vbDatabaseCompare)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_DatabaseCompare_ErrorDescription()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "abc", "a", vbDatabaseCompare)
+        Assert.Strict.AreEqual "Invalid procedure call or argument", Err.Description
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 5, *Invalid procedure call or argument*, from `InStr`, `StrComp` and `Filter` given a compare of 2, as VB6 raises.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. Code brought over from Access VBA that passes `vbDatabaseCompare` gets a textual comparison with no error, where VB6 stops it with error 5.
+
+What does not reproduce it: a compare of 0 or 1; a compare of 3, which VB6 also accepts; and `InStrB`, `InStrRev`, `Replace` and `Split` with a compare of 2, which VB6 accepts too and twinBASIC accepts likewise.
+
+<!-- Reproducer: bugs/database-compare-no-error/ (mode test: `tbrun --tests`; expect lists the five PASS and four FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`, and the same four failures with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 5 for InStr, StrComp and Filter with 2, and no error for InStrB, InStrRev, Replace, Split and InStr with 3. Stated in a NOTE on docs/Reference/Default/VBA/Strings/InStr.md (its Common Errors section), generated from errors/VBA.Strings.yml (row `bug: database-compare-no-error`); the StrComp and Filter rows for a compare of 2, when written, belong to this entry too. When fixed, each row's bug and vb6 fields go and the NOTEs with them. -->
+
+---
+
+## `InStr` raises error 5 for an invalid locale ID when *string1* or *string2* is zero-length, where VB6 raises nothing
+
+**Describe the bug**
+`InStr(1, "", "a", 99999)`, `InStr(1, "abc", "", 99999)` and `InStr(1, "", "", 99999)` raise error 5, *Invalid procedure call or argument*, because 99999 is not a valid locale identifier. VB6 raises no error and returns 0, 1 and 0: its `InStr` returns before it checks *compare* when either string is zero-length. The same holds for a *compare* of -2. twinBASIC's own `InStrB` and `StrComp` already return before the check, as VB6 does. Observed in the compiler's test mode, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `instr-invalid-lcid-empty-string.twinproj` (attached as `instr-invalid-lcid-empty-string.zip`).
+2. Run its test cases, the module below. On BETA 1010 the seven controls pass (`InStr` with no zero-length string and with *start* past the end, `InStrRev` and `Replace`, all of which raise 5 in VB6 too, and `InStrB` and `StrComp`, which return as VB6 does) and the five `InStr` cases on a zero-length string fail with `Actual: 5`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`instr-invalid-lcid-empty-string-vb6.zip`) prints: no error from `InStr` with a zero-length *string1* or *string2*, whatever the *compare*, and the results 0, 1 and 0.
+```vb
+' Regression tests: InStr given a compare that is not a valid locale ID raises no error
+' when string1 or string2 is zero-length, and returns its usual result. Expected results
+' are VB6's (the VB6 project beside this one prints them). tbrun --tests runs each case and
+' prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: VB6 raises 5 for the invalid locale ID whenever neither string is empty.
+    [TestCase]
+    Public Sub InStr_BadLcid_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "abc", "a", 99999)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_BadLcid_StartPastEnd_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(5, "abc", "a", 99999)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InStrRev_BadLcid_EmptyString1_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStrRev("", "a", -1, 99999)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Replace_BadLcid_EmptyExpression_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = Replace("", "a", "x", 1, -1, 99999)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' Controls: InStrB and StrComp return before the check, as VB6's InStr does.
+    [TestCase]
+    Public Sub InStrB_BadLcid_EmptyString1_ReturnsZero()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStrB(1, "", "a", 99999)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(0&), R
+    End Sub
+
+    [TestCase]
+    Public Sub InStrB_BadLcid_EmptyString2_ReturnsStart()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStrB(1, "abc", "", 99999)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(1&), R
+    End Sub
+
+    [TestCase]
+    Public Sub StrComp_BadLcid_EmptyString1_ReturnsMinusOne()
+        On Error Resume Next
+        Dim R As Variant
+        R = StrComp("", "a", 99999)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(-1), R
+    End Sub
+
+    ' The defect: a zero-length string1 or string2 returns before the compare is checked.
+    [TestCase]
+    Public Sub InStr_BadLcid_EmptyString1_ReturnsZero()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "", "a", 99999)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(0&), R
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_BadLcid_EmptyString2_ReturnsStart()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "abc", "", 99999)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(1&), R
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_BadLcid_BothEmpty_ReturnsZero()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "", "", 99999)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(0&), R
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_MinusTwo_EmptyString1_ReturnsZero()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "", "a", -2)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(0&), R
+    End Sub
+
+    [TestCase]
+    Public Sub InStr_MinusTwo_EmptyString2_ReturnsStart()
+        On Error Resume Next
+        Dim R As Variant
+        R = InStr(1, "abc", "", -2)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual CVar(1&), R
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+No error, and the result `InStr` gives for a zero-length string with a valid *compare* (0 for a zero-length *string1*, *start* for a zero-length *string2*), as VB6 returns, and as twinBASIC's `InStrB` and `StrComp` return.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. Only a *compare* that VB6 would refuse for any other strings is affected, but a program that ran under VB6 stops with error 5 where a string is empty.
+
+What does not reproduce it: an invalid *compare* with neither string zero-length, or with *start* past the end of *string1*, which VB6 refuses too; `InStrRev` and `Replace`, which check *compare* first in VB6 as well; and `InStrB` and `StrComp`, which already behave as VB6 does.
+
+<!-- Reproducer: bugs/instr-invalid-lcid-empty-string/ (mode test: `tbrun --tests`; expect lists the seven PASS and five FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`, and the same five failures with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints no error for InStr with a zero-length string and a compare of 99999 or -2, and 5 for InStrRev, Replace and Split. Stated in a NOTE on docs/Reference/Default/VBA/Strings/InStr.md (its Common Errors section), generated from errors/VBA.Strings.yml (row `bug: instr-invalid-lcid-empty-string`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->
+
+---
+
+## `String` with a *character* of `Null` raises error 94, where VB6 returns `Null`
+
+**Describe the bug**
+`String(3, Null)`, the **Variant** form of `String`, raises error 94, *Invalid use of Null*. VB6 raises no error and returns **Null** (`VarType` 1), as it does for `String(0, Null)`. `String$(3, Null)` raises 94 in both, and so does a *number* of **Null** in either form, so only the **Variant** form with a **Null** *character* differs. Observed in the compiler's test mode, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `string-null-character.twinproj` (attached as `string-null-character.zip`).
+2. Run its test cases, the module below. On BETA 1010 the four controls pass (`String(3, "a")`, a **Null** *number* in `String` and `String$`, and `String$(3, Null)`, which raise 94 in VB6 too) and the three cases on `String` with a **Null** *character* fail: `Actual: 94`, or `runtime error 94: Invalid use of Null`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`string-null-character-vb6.zip`) prints: no error and `VarType` 1 (**Null**) for `String(3, Null)` and `String(0, Null)`, and 94 for the controls.
+```vb
+' Regression tests: the Variant form String, given a character of Null, returns Null
+' with no error; String$ raises error 94. Expected results are VB6's (the VB6 project
+' beside this one prints them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: a letter, a Null number in either form, and String$ with a Null character.
+    [TestCase]
+    Public Sub String_Letter_Repeats()
+        Assert.Strict.AreEqual CVar("aaa"), String(3, "a")
+    End Sub
+
+    [TestCase]
+    Public Sub String_NullNumber_Raises94()
+        On Error Resume Next
+        Dim R As Variant
+        R = String(Null, "a")
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub StringDollar_NullNumber_Raises94()
+        On Error Resume Next
+        Dim R As Variant
+        R = String$(Null, "a")
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub StringDollar_NullCharacter_Raises94()
+        On Error Resume Next
+        Dim R As Variant
+        R = String$(3, Null)
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    ' The defect: String with a Null character returns Null.
+    [TestCase]
+    Public Sub String_NullCharacter_NoError()
+        On Error Resume Next
+        Dim R As Variant
+        R = String(3, Null)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub String_NullCharacter_ReturnsNull()
+        Dim R As Variant
+        R = String(3, Null)
+        Assert.Strict.AreEqual vbNull, VarType(R)
+    End Sub
+
+    [TestCase]
+    Public Sub String_ZeroNullCharacter_ReturnsNull()
+        Dim R As Variant
+        R = String(0, Null)
+        Assert.Strict.AreEqual vbNull, VarType(R)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+`String(number, Null)` returns **Null** with no error, as VB6 does, and as the **Variant** forms of other string functions propagate **Null**; `String$` keeps raising 94.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. Code that relies on **Null** propagating through `String`, as VB6 code reading database fields can, stops with error 94.
+
+What does not reproduce it: `String$` with a **Null** *character*, and a **Null** *number* in either form, all of which raise 94 in VB6 as well.
+
+<!-- Reproducer: bugs/string-null-character/ (mode test: `tbrun --tests`; expect lists the four PASS and three FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`, and the same three failures with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints no error and VarType 1 for String(3, Null) and String(0, Null), and 94 for the controls. Stated in a NOTE on docs/Reference/Default/VBA/Strings/String.md (its Common Errors section), generated from errors/VBA.Strings.yml (row `bug: string-null-character`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->
+
+---
+
+## `StrConv` raises error 5 for `vbWide`, `vbNarrow`, `vbKatakana` and `vbHiragana` with an East Asian *LCID* on a system whose locale is not East Asian, where VB6 converts
+
+**Describe the bug**
+On a system whose locale is 1033 (English, United States), `StrConv("a", vbWide, 1041)`, `StrConv(ChrW(&HFF41&), vbNarrow, 1041)`, `StrConv(ChrW(&H3042), vbKatakana, 1041)` and `StrConv(ChrW(&H30A2), vbHiragana, 1041)` raise error 5, *Invalid procedure call or argument*, although the *LCID* argument, 1041, names Japanese. VB6 converts with the rules of the locale *LCID* names, and returns U+FF41, `a`, U+30A2 and U+3042. The same holds for 2052 (Chinese, PRC) and 1042 (Korean). twinBASIC seems to check the system's locale rather than *LCID*'s. Observed in the compiler's test mode, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. On a system whose locale is not East Asian, open `strconv-east-asian-lcid.twinproj` (attached as `strconv-east-asian-lcid.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass (`vbUpperCase` with 1041, and `vbWide` with no *LCID* and with 1033, which VB6 refuses too) and the six cases on an East Asian *LCID* fail with `runtime error 5: Invalid procedure call or argument`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`strconv-east-asian-lcid-vb6.zip`) prints, with the system's locale: no error and the converted characters for 1041, 2052 and 1042, and 5 for no *LCID* and for 1033.
+```vb
+' Regression tests: StrConv's vbWide, vbNarrow, vbKatakana and vbHiragana convert when
+' the LCID argument names an East Asian locale, whatever the system's locale. Expected
+' results are VB6's on a system whose locale is 1033, English (United States) (the VB6
+' project beside this one prints them). tbrun --tests runs each case and prints PASS
+' or FAIL. The controls assume such a system.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: another conversion with an East Asian LCID, and vbWide with no East
+    ' Asian locale at all, which VB6 refuses too.
+    [TestCase]
+    Public Sub UpperCase_Japanese_Converts()
+        Assert.Strict.AreEqual CVar("A"), StrConv("a", vbUpperCase, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Wide_NoLcid_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = StrConv("a", vbWide)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Wide_English_Raises5()
+        On Error Resume Next
+        Dim R As Variant
+        R = StrConv("a", vbWide, 1033)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' The defect.
+    [TestCase]
+    Public Sub Wide_Japanese_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&HFF41&)), StrConv("a", vbWide, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Narrow_Japanese_Converts()
+        Assert.Strict.AreEqual CVar("a"), StrConv(ChrW(&HFF41&), vbNarrow, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Katakana_Japanese_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&H30A2)), StrConv(ChrW(&H3042), vbKatakana, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Hiragana_Japanese_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&H3042)), StrConv(ChrW(&H30A2), vbHiragana, 1041)
+    End Sub
+
+    [TestCase]
+    Public Sub Wide_Chinese_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&HFF41&)), StrConv("a", vbWide, 2052)
+    End Sub
+
+    [TestCase]
+    Public Sub Wide_Korean_Converts()
+        Assert.Strict.AreEqual CVar(ChrW(&HFF41&)), StrConv("a", vbWide, 1042)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The conversion, made with the rules of the locale *LCID* names, as VB6 makes it. Error 5 only when neither *LCID* nor, without one, the system's locale is East Asian.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A program that converts Japanese, Chinese or Korean text with an explicit *LCID*, so that it runs on any system, stops with error 5 on a Western one.
+
+What does not reproduce it: another conversion (`vbUpperCase`) with an East Asian *LCID*; and `vbWide` with no *LCID* or with 1033, which VB6 refuses as well. Not checked on a system whose locale is East Asian.
+
+<!-- Reproducer: bugs/strconv-east-asian-lcid/ (mode test: `tbrun --tests`; expect lists the three PASS and six FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify` on a system whose locale is 1033, and the same six failures with `run --arch win64`; the controls assume such a system. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the system locale, then the converted characters for 1041, 2052 and 1042 and 5 for no LCID and 1033. Stated in a NOTE on docs/Reference/Default/VBA/Strings/StrConv.md (its Common Errors section), generated from errors/VBA.Strings.yml (row `bug: strconv-east-asian-lcid`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->

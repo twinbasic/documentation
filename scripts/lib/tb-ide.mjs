@@ -17,6 +17,7 @@ import { secondsText, timeoutMs } from "./harness-settings.mjs";
 import { connectBroker } from "./tb-broker.mjs";
 import { attach } from "./tb-cdp.mjs";
 import { click, pagePicture } from "./tb-click.mjs";
+import { checkDefaults, installDefaultsHook } from "./tb-defaults.mjs";
 import { removeTree, removeTreeAsync } from "./tb-ide-copy.mjs";
 import { consoleMark, keepClears, keptClears, linesSince, readConsole } from "./tb-ide-console.mjs";
 import { unsupportedIde } from "./tb-install.mjs";
@@ -245,7 +246,12 @@ export async function leaseSlot({ tag = "", port = false } = {}) {
  *                            Only a test of the very thing a flag guards leaves
  *                            one out, and it puts back what it writes: the recent
  *                            list's test (test/ide/recent-projects-copies.test.mjs)
- * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null, folders: string[], port: number | null, slot: number, desktop: string | null}>}
+ * @param {boolean} [o.userSettings]  the IDE keeps the user's own settings (default false:
+ *                            the IDE is answered "no saved value" for its options, panel
+ *                            layouts and keyboard groups, in the page only, so it runs with
+ *                            the defaults; tb-defaults.mjs). Only a tool that is the user's own
+ *                            IDE in all but its project passes true: try-help-addin
+ * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null, folders: string[], port: number | null, slot: number, desktop: string | null, hook: object | null}>}
  *   `pid` is the IDE's own. `folders` are its temp folder and WebView2 profile,
  *   which shutdownIde removes. `port` is its DevTools port, for attachIde, or
  *   null when the IDE never opened one within a minute. `desktop` is the private
@@ -262,6 +268,7 @@ export async function launchIde({
   env = {},
   browserArgs = "",
   flags = IDE_FLAGS,
+  userSettings = false,
 }) {
   // Before anything starts: an IDE older than the flags would write the user's settings.
   const tooOld = unsupportedIde(exe);
@@ -272,7 +279,7 @@ export async function launchIde({
   const s = slot ?? own;
   try {
     const leased = Date.now();
-    const started = await startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags });
+    const started = await startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags, userSettings });
     timing("launch", {
       project: project ? path.resolve(project) : null,
       leaseMs: leased - t0,
@@ -286,7 +293,7 @@ export async function launchIde({
 }
 
 // launchIde once the slot is settled; `own` is the slot when it is launchIde's own to hand on.
-async function startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags }) {
+async function startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags, userSettings }) {
   const exeWin = exe.split("/").join("\\");
   const target = project ? path.resolve(project).split("/").join("\\") : "";
   // Each IDE has a temp folder of its own, emptied at each launch in its slot
@@ -326,6 +333,15 @@ async function startIde({ exe, project, s, own, port, show, keep, env, browserAr
     ...env,
   };
   const found = (pid) => (port != null ? Promise.resolve(port) : devToolsPort(ideProfile, pid, started));
+  // Started before the IDE is, since main.htm commits a fraction of a second after its port file
+  // is written; attachIde checks the hook ran, by the port. The hook's connection lives as long
+  // as this process, so a kept IDE (`keep`) is hooked only until this process ends.
+  const hook = userSettings ? null : installDefaultsHook({ profile: ideProfile, since: started });
+  const hooked = async (pid, launcher) => {
+    const p = await found(pid);
+    if (hook && p) defaultsHooks.set(p, hook);
+    return { pid, launcher, folders, port: p, slot: s.slot, desktop: show ? null : s.desktop, hook };
+  };
 
   if (show) {
     const child = spawn(exeWin, [...flags, ...(target ? [target] : [])], {
@@ -343,7 +359,7 @@ async function startIde({ exe, project, s, own, port, show, keep, env, browserAr
     child.unref();
     // The slot names its folders; the IDE outlives nothing here, so it keeps the slot.
     await own?.handTo(child.pid);
-    return { pid: child.pid, launcher: null, folders, port: await found(child.pid), slot: s.slot, desktop: null };
+    return hooked(child.pid, null);
   }
 
   // lib/tb-launch.ps1 does the Win32 calls Node cannot -- CreateDesktop,
@@ -381,6 +397,7 @@ async function startIde({ exe, project, s, own, port, show, keep, env, browserAr
       env: fullEnv,
     });
   } catch (e) {
+    hook?.stop();
     // No IDE started, so nothing holds the folders and nothing else would remove them.
     for (const dir of folders) rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
     throw new Error(
@@ -389,8 +406,12 @@ async function startIde({ exe, project, s, own, port, show, keep, env, browserAr
   }
   const { pid, launcher } = launched;
   await own?.handTo(keep ? pid : launcher.pid);
-  return { pid, launcher, folders, port: await found(pid), slot: s.slot, desktop: s.desktop };
+  return hooked(pid, launcher);
 }
+
+// The hook of each IDE launchIde started with the defaults, by its DevTools port: attachIde checks
+// the IDEs it is told the port of, so no caller says whether to.
+const defaultsHooks = new Map();
 
 // The DevTools port the IDE's WebView2 opened: the first line of DevToolsActivePort in its
 // profile, written once its browser process has bound the port. Only a file written since the
@@ -741,6 +762,7 @@ export function keptIdeLines(pid) {
 export function shutdownIde(ide) {
   if (!ide) return;
   killTree(ide.pid);
+  ide.hook?.stop();
   // The launcher holds the private desktop open and the only handle to the
   // IDE's job. It exits once the IDE does, but do not wait on that: killing it
   // closes the job, which ends anything the tree kill missed.
@@ -772,6 +794,7 @@ export async function shutdownIdeAsync(ide) {
   await new Promise((resolve) => {
     execFile("taskkill", ["/PID", String(ide.pid), "/T", "/F"], { windowsHide: true }, () => resolve());
   });
+  ide.hook?.stop();
   try {
     ide.launcher?.kill();
   } catch {
@@ -859,6 +882,7 @@ export async function attachIde(port, { tries = 60 } = {}) {
     } // still starting
     c.dialogs = [];
     c.pageBlocked = false;
+    const hook = defaultsHooks.get(port);
     c.on((m) => {
       if (m.method !== "Page.javascriptDialogOpening") return;
       const { type, message } = m.params;
@@ -872,6 +896,8 @@ export async function attachIde(port, { tries = 60 } = {}) {
     } catch {
       c.pageBlocked = true;
     }
+    // A blocked page answers nothing, the hook's marker included.
+    if (hook && !c.pageBlocked) await checkDefaults(c, hook);
     c.wire = null;
     if (!c.pageBlocked) {
       const wire = watchCompiles(c);

@@ -16,6 +16,15 @@ Syntax: **Trim$(** *string* **)**, **Trim(** *string* **)**
 
 The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Variant** (**String**).
 
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **Trim$** is given a *string* that is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Trim** function to strip both leading and trailing spaces from a string variable.

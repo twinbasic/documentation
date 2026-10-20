@@ -27,6 +27,16 @@ The *namedFormat* argument has the following settings:
 | **vbLongTime**     | 3     | Display a time by using the time format specified in the system regional settings.                                                                                         |
 | **vbShortTime**    | 4     | Display a time by using the 24-hour format (`hh:mm`).                                                                                                                      |
 
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *namedFormat* is less than 0 or greater than 4 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *namedFormat* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses **FormatDateTime** to display a date value in several formats.

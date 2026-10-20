@@ -631,7 +631,7 @@ async function pullLoop() {
   }
 }
 
-function reconstructLinkTables({ byPath, byUrl, byRedirect }) {
+function reconstructLinkTables({ byPath, byUrl, byRedirect, byShortcut }) {
   const make = (pairs) => new Map(pairs.map(([k, pl]) => [k, { permalink: pl }]));
-  return { byPath: make(byPath), byUrl: make(byUrl), byRedirect: make(byRedirect) };
+  return { byPath: make(byPath), byUrl: make(byUrl), byRedirect: make(byRedirect), byShortcut: make(byShortcut) };
 }

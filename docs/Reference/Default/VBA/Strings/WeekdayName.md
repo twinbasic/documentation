@@ -33,6 +33,16 @@ The *firstdayofweek* argument can have the following values:
 | **vbFriday**     | 6     | Friday                                                     |
 | **vbSaturday**   | 7     | Saturday                                                   |
 
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *weekday* is less than 1 or greater than 7, or *firstdayofweek* is less than 0 or greater than 7 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | any argument is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses **WeekdayName** to return the full and abbreviated name of a weekday.

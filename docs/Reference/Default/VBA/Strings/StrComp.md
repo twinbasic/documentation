@@ -18,15 +18,18 @@ Syntax: **StrComp(** *string1*, *string2* [ **,** *compare* ] **)**
 : *required* Any valid string expression.
 
 *compare*
-: *optional* Specifies the type of string comparison. If the *compare* argument is **Null**, an error occurs. If *compare* is omitted, the [**Option Compare**](../../Core/Option) setting determines the type of comparison.
+: *optional* Specifies the type of string comparison. If *compare* is omitted, the [**Option Compare**](../../Core/Option) setting determines the type of comparison.
 
 The *compare* argument settings are:
 
 | Constant               | Value | Description                                                                              |
 |------------------------|-------|------------------------------------------------------------------------------------------|
-| **vbUseCompareOption** | -1    | Performs a comparison by using the setting of the **Option Compare** statement.          |
 | **vbBinaryCompare**    | 0     | Performs a binary comparison.                                                            |
 | **vbTextCompare**      | 1     | Performs a textual comparison.                                                           |
+
+<!-- VBA: VBA-Docs lists this setting too; twinBASIC and VB6 raise error 5 for it.
+| **vbUseCompareOption** | -1    | Performs a comparison by using the setting of the **Option Compare** statement.          |
+-->
 
 **Return values:**
 
@@ -36,6 +39,19 @@ The *compare* argument settings are:
 | *string1* is equal to *string2*     | 0                   |
 | *string1* is greater than *string2* | 1                   |
 | *string1* or *string2* is **Null**  | **Null**            |
+
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *compare* is less than 0, or greater than 1 and not a valid locale identifier |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *compare* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *compare* is 2 (**vbDatabaseCompare**), VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+
+<!-- /errors -->
 
 ### Example
 

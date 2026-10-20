@@ -395,6 +395,17 @@ Thirteen probes run first, on pages, sources and an `expect.json` built in memor
 
 Exit codes: **0** every probe passed and every test project is in order, **1** a probe failed, or a section or test project is not in order, **2** the gate could not run: a refused command line, or a crash.
 
+## check_errors.mjs
+{: #check-errors }
+
+    node scripts/check_errors.mjs
+
+Verifies that every reference page's Common Errors section is what [`errors.mjs write`](Tools-Defects#errors) makes of the run-time error data under `errors/`, and that the data is in order: every file reads, with no key it does not know; every error number it names has its message in `errors/messages.yml`; a row that differs from VB6 names its reproducer under `bugs/`, or says `pending`; every page it names exists, has a title and a permalink, and is named by one file only; no page under `docs/` has a section that no data file names; and the index of the numbers on the central page, [Run-time Errors](../../Reference/Run-time-Errors), is what `write` makes of the data and `errors/messages.yml`. It reads only the sources, so it needs no twinBASIC, no VB6 and no built tree. Measuring the data is `errors.mjs run`, and measuring the messages `errors.mjs messages`; neither is a gate.
+
+Twenty-eight probes run first, on data and pages built in memory: how the data and the messages are read and refused, the section with its numbers linked to the central page, its rows for one number merged into one, and its VB6 note, where a new section goes and that a marker inside a fence is not one, that writing twice changes nothing and removing a section gives the page back, the links between permalinks, the central page's index and its markers, how the probe modules and their output are read, and how the measured messages are compared with the list.
+
+Exit codes: **0** every probe passed and every section matches its data, **1** a probe failed, or the data or a section is not in order, **2** the gate could not run: a refused command line, or a crash.
+
 ## check_symbol_index.mjs
 {: #check-symbol-index }
 

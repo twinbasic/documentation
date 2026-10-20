@@ -29,6 +29,17 @@ Numbers from 0--31 are the same as standard, nonprintable ASCII codes. For examp
 
 The functions [**Asc**, **AscB**, and **AscW**](Asc) are the opposite of **Chr**, **ChrB**, and **ChrW**. The **Asc** functions convert a string to an integer.
 
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | **Chr** or **Chr$** is given a *charcode* less than 0 or greater than 255<br>**ChrW** or **ChrW$** is given a *charcode* less than -32,768 or greater than 65,535 |
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | **ChrB** or **ChrB$** is given a *charcode* less than 0 or greater than 255 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *charcode* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Chr** function to return the character associated with the specified character code.
