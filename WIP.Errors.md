@@ -277,7 +277,7 @@ each can be run when there is budget. Status is kept here.
 
 | # | Batch | Pages (about) | Status |
 |---|---|---|---|
-| 0 | Tooling: data format, probe generator (twinBASIC and VB6), checker, section writer, the gate | --- | built; trial sections (Mid, ReDim; Len raises nothing) await the owner |
+| 0 | Tooling: data format, probe generator (twinBASIC and VB6), checker, section writer, the gate | --- | done; the owner reviewed the trial sections (Mid, ReDim; Len raises nothing) on 2026-10-20 |
 | 1 | The central Run-time errors page | 1 | done (branch `errors-batch1`, on top of `errors-batch0`); the page awaits the owner, and so does the `Err.Description`/`Error$` choice |
 | 2 | **Pilot: VBA `Strings`** --- settles the section's style with the owner before anything scales | 30 | not started |
 | 3 | VBA `Conversion` | 28 | not started |
