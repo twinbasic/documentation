@@ -108,7 +108,7 @@ End Class
 
 Others can inherit. Constructors are not inherited, so each derived class declares its own `Sub New`. Without one, a `Cat` cannot be created with arguments: `New Cat("Misty", #20-Nov-2022#)` fails with TB5030, *Unexpected call arguments*.
 
-When the base class's `Sub New` takes arguments, the derived class's `Sub New` must call it --- `Dog` calls `Animal.New` below, and `GuardDog` calls `Dog.New`. Nothing else calls it. If the call is left out --- or the derived class has no `Sub New` and is created without arguments --- the code still compiles and runs. The base constructor never runs, and the fields it sets keep their default values. No error or warning reports it. A base `Sub New` that takes no arguments is different: it runs automatically, before the derived class's `Sub New`.
+When the base class's `Sub New` takes arguments, the derived class's `Sub New` must call it --- `Dog` calls `Animal.New` below, and `GuardDog` calls `Dog.New`. Nothing else calls it. If the call is left out --- or the derived class has no `Sub New` and is created without arguments --- the code still compiles and runs. The base constructor never runs, and the fields it sets keep their default values. No error or warning reports it. A base `Sub New` that takes no arguments is different: it runs automatically, before the derived class's `Sub New`. [Constructors in Derived Classes](#constructors-in-derived-classes) covers every combination of base and derived constructors.
 
 ```tb check_build projname=inheritance-animals
 ' ===== Derived: Dog =====
@@ -203,3 +203,77 @@ Misty says: meow
 ```
 
 The classes come from Sample 23, which also has an `AnimalWatcher` class that handles the `Spoke` event, and a longer demonstration routine. To open it, choose **File → New Project**, then the **Samples** tab, and pick **Sample 23. OOP Inheritance Example (Animals)**. The [New Project](../../tB/IDE/Project/New#samples) page lists every sample.
+
+## Constructors in Derived Classes
+
+A class has two kinds of constructor: `Class_Initialize`, which takes no arguments, and `Sub New`, which can take arguments. [`Class_Initialize` or `Sub New`?](../Advanced/Classes-and-Modules#class_initialize-or-sub-new) compares them. When a derived class is created, the base class's constructor runs as well as the derived class's own, and it runs first. Which of the base's constructors runs depends on whether the derived class's constructor calls one:
+
+- **No call:** the base's constructor without arguments --- its `Class_Initialize`, or its `Sub New` with no parameters --- runs automatically, before the derived class's constructor. This holds whichever kind of constructor the derived class has, and when it has none.
+- **A call, `Base.New(...)`:** that constructor runs, where the call is written, and the automatic call is skipped. A derived `Class_Initialize` can make the call too.
+
+What the derived class's author does depends on the base class:
+
+1. **The base has only a `Class_Initialize`** --- typical of code that comes from VB6. Nothing: it runs on its own.
+2. **The base has a `Sub New` with no parameters.** Nothing, as for `Class_Initialize`. Calling it, `Base.New()`, is allowed, and it still runs once.
+3. **The base has only a `Sub New` with arguments.** Every constructor of the derived class must call it, its `Class_Initialize` included. If one does not, the base's constructor never runs, its fields keep their default values, and no error or warning reports it.
+4. **The base has a constructor without arguments and a `Sub New` with arguments.** Each derived constructor chooses: leave out the call to have the one without arguments run, or call `Base.New(...)` to have that one run instead.
+
+Where a derived constructor calls `Base.New`, make the call its first statement, and make it on every path through the constructor:
+
+- Statements before the call run while the base is not yet set up.
+- A call inside an `If` turns off the automatic call even when the `If` does not run it. On that path, *no* constructor of the base runs --- not even its `Class_Initialize`. The compiler decides by whether the call is in the code, not by whether it runs.
+
+Constructors are not inherited. A derived class whose only constructor is a `Sub New` with arguments cannot be created with a plain `New`, even when the base has a `Class_Initialize`: the call fails with TB5103, *Too few arguments*. To keep a plain `New`, and [`As New`](../../tB/Core/New), give the derived class a constructor without arguments as well. A derived class with no constructor at all can be created with a plain `New`, which runs the base's constructor without arguments.
+
+When the object is destroyed, the `Class_Terminate` of each class runs, the base class's first. That is the opposite of the order the constructors run in, so a derived class's `Class_Terminate` must not use anything the base's `Class_Terminate` releases.
+
+### Example: Base Constructors
+
+`Shape` has both kinds of constructor. `Circle` does not call either, so `Shape`'s `Class_Initialize` runs. `Square` calls `Shape.New`, so `Shape`'s `Class_Initialize` does not run:
+
+```tb check_build projname=inheritance-ctors slot=file
+Private Class Shape
+    Private Sub Class_Initialize()
+        Debug.Print "Shape.Class_Initialize"
+    End Sub
+    Public Sub New(ByVal Kind As String)
+        Debug.Print "Shape.New(" & Kind & ")"
+    End Sub
+    Private Sub Class_Terminate()
+        Debug.Print "Shape.Class_Terminate"
+    End Sub
+End Class
+
+Private Class Circle
+    Inherits Shape
+    Public Sub New(ByVal Radius As Double)
+        Debug.Print "Circle.New(" & Radius & ")"
+    End Sub
+    Private Sub Class_Terminate()
+        Debug.Print "Circle.Class_Terminate"
+    End Sub
+End Class
+
+Private Class Square
+    Inherits Shape
+    Public Sub New(ByVal Side As Double)
+        Shape.New("square")
+        Debug.Print "Square.New(" & Side & ")"
+    End Sub
+End Class
+```
+
+```tb check_run projname=inheritance-ctors
+Dim c As Circle = New Circle(2)
+Set c = Nothing
+Dim s As Square = New Square(3)
+Set s = Nothing
+' Output:
+' Shape.Class_Initialize
+' Circle.New(2)
+' Shape.Class_Terminate
+' Circle.Class_Terminate
+' Shape.New(square)
+' Square.New(3)
+' Shape.Class_Terminate
+```
