@@ -1,0 +1,19 @@
+' A field initializer in a class that reads another field of the same class. The
+' project compiles with no diagnostic; the build fails with "compilation (codegen)
+' error detected in 'Counter.{fields_init}'". The same for X = A, Me.A + 1, String
+' fields, a ReadOnly field, a field declared later, and a field with no initializer,
+' in 32-bit and 64-bit builds. Fine: a field that reads a module-level variable or a
+' constant, and a module-level variable that reads another of its module.
+Module Startup
+
+    Public Sub Main()
+        Dim c As New Counter
+        Debug.Print c.First & ", " & c.Second
+    End Sub
+
+End Module
+
+Class Counter
+    Public First As Long = 1
+    Public Second As Long = First + 1
+End Class

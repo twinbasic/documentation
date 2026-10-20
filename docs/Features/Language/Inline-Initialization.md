@@ -57,6 +57,8 @@ An initializer at module or class level can also read a variable, but not every 
 - **A module-level variable can read a variable declared above it in the same module.**
 - **A module-level variable should not read another module's variable.** Modules are set up one at a time, so the other module's variable may still be 0 or empty. The order is neither the order of the files nor the alphabetical order of the modules' names.
 
+<!-- BETA 1010, probed with tbbuild --build, tbrun and tbrun --exe. The class-field bullet is the bug class-field-init-reads-field in BUGS-TO-REPORT.md: when a fix is released, it says a field can read another. In the IDE, one module-level initializer that reads another module's variable leaves every module-level variable at 0 (bug module-init-reads-other-module-ide); the last bullet's advice covers it. -->
+
 ## Inline Variable Declaration for For
 
 A counter variable needs no separate `Dim` statement:

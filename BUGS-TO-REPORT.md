@@ -6314,3 +6314,96 @@ The same text in a 64-bit build as in a 32-bit one and in VB6: `0` from `CStr`, 
 The reproducer's `repro.json` names the 64-bit build (`"arch": "win64"`). A positive zero and an ordinary negative number (`-1.5`) print the same in both builds. Severity: low. A negative zero is the result of `-x` for a zero `x`, and a COM or API result can hold one, so a program meets it, and one that shows or compares the text behaves differently in the two builds.
 
 <!-- Reproducer: bugs/negative-zero-text-win64/ (mode test, arch win64: `tbrun --tests --arch win64` runs the eleven cases; expect lists the seven FAIL and four PASS lines); verify reproduces on BETA 1010; VB6 side in vb6/ (Module1.bas). docs/Reference/Default/VBA/Conversion/CStr.md, docs/Reference/Default/VBA/Conversion/Str.md and docs/Reference/Default/VBA/Strings/Format.md carry the callout for it (a WARNING each); docs/Reference/Contributed/GdiPlus/LinearGradientBrush.md has a check_run sample whose output "0 5 0" differs on win64 (not yet changed); when a fixed build is released, the callouts go. Found 2026-10-19 on the GdiPlus page. -->
+
+---
+
+## A class field whose initializer reads another field of the class fails the build with a codegen error
+
+**Describe the bug**
+A field initializer in a class that reads another field of the same class (`Public Second As Long = First + 1`) compiles with no diagnostic, and the build fails once the class is used: `[LINKER] compilation (codegen) error detected in 'Counter.{fields_init}' at line #1`, then `[LINKER] FAILED due to compilation errors`. A run in the IDE goes ahead instead, and the field holds an arbitrary number: with `A` = 1, `X = A + 1` read `1073741889`. Observed with `tbbuild --build` and with `tbrun` (a `[RunAfterBuild]` procedure in the IDE).
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `class-field-init-reads-field.twinproj` (attached as `class-field-init-reads-field.zip`). Its file `Startup.twin` is:
+   ```
+   Module Startup
+       Public Sub Main()
+           Dim c As New Counter
+           Debug.Print c.First & ", " & c.Second
+       End Sub
+   End Module
+
+   Class Counter
+       Public First As Long = 1
+       Public Second As Long = First + 1
+   End Class
+   ```
+2. Compile the project: no diagnostic.
+3. Build it. The DEBUG CONSOLE prints `[LINKER] compilation (codegen) error detected in 'Counter.{fields_init}' at line #1` and `[BUILD] failed`.
+
+**Expected behavior**
+The build succeeds and `Main` prints `1, 2`: `Second`'s initializer reads `First`, whose initializer comes before it. If reading another field is not meant to be allowed, the compiler should say so at the declaration, as it does for a call to a procedure of the project (TB5079). Field initializers are a twinBASIC extension, so there is no VB6 behaviour to compare with.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+The same codegen error, one line per class, for `X = A` with no arithmetic, `X = Me.A + 1`, `String` fields (`X = S & "b"`), a `ReadOnly` field read, a field declared below the one that reads it, and a field with no initializer of its own, in 32-bit and 64-bit builds. These are right: a field that reads a module-level variable (`X = Mods.MV + 1`) or a constant, a module-level variable that reads a variable of its own module (`MW = MV + 1`), and a class that is never created (it is not compiled, so the build does not fail).
+
+Severity: medium. The build fails with a message that names the class but not the field or the reason, and the IDE run gives a wrong value with no message at all. Setting the field in `Class_Initialize` or `Sub New` avoids it.
+
+Not tried: an `Object` or `Variant` field, LLVM.
+
+<!-- Reproducer: bugs/class-field-init-reads-field/ (mode build: tbbuild --build exits 5 and the output names the codegen error in 'Counter.{fields_init}'); verified on BETA 1010 by `bug_repro.mjs verify`. The variants and win64 are from a scratch probe (one class per variant), not kept. Page: docs/Features/Language/Inline-Initialization.md, "What an Initializer Can Use", states it as the behaviour ("A class field cannot read another field of the same class"); when a fix is released, that bullet changes to say it can. Found 2026-10-20 while documenting field initializers. -->
+
+---
+
+## In the IDE, a module-level initializer that reads another module's variable leaves every module-level variable at 0
+
+**Describe the bug**
+When one module-level variable's initializer reads a variable of another module (`Public FromConfig As Long = Config.Limit + 100`), code run in the IDE reads every module-level variable of the project as 0, including ones whose initializers are constants (`Public Limit As Long = 5`). The built exe gets them all right. Observed with a `[RunAfterBuild]` procedure, through `tbrun` and `bug_repro.mjs run`; the exe was run with `tbrun --exe`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `module-init-reads-other-module-ide.twinproj` (attached as `module-init-reads-other-module-ide.zip`). Its file `Startup.twin` is:
+   ```
+   Module Config
+       Public Const Base As Long = 7
+       Public Limit As Long = 5
+       Public Doubled As Long = Base * 2
+   End Module
+
+   Module Other
+       Public FromConfig As Long = Config.Limit + 100
+   End Module
+
+   Class Box
+       Public Size As Long = 3
+   End Class
+
+   Module Startup
+       Public Sub Main()
+           Dim b As New Box
+           Debug.Print "Limit=" & Config.Limit & " Doubled=" & Config.Doubled & " FromConfig=" & Other.FromConfig & " Box.Size=" & b.Size
+       End Sub
+   End Module
+   ```
+2. Add a module with a `[RunAfterBuild]` procedure that calls `Startup.Main`, and build the project.
+3. The DEBUG CONSOLE prints `Limit=0 Doubled=0 FromConfig=0 Box.Size=3`.
+
+**Expected behavior**
+`Limit=5 Doubled=14 FromConfig=105 Box.Size=3`, which is what the built exe prints. Module-level initializers are a twinBASIC extension, so there is no VB6 behaviour to compare with.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Every module-level variable reads 0 as long as one initializer reads another module's variable. Each of these makes the IDE print `Limit=5 Doubled=14`: the same project without `Other`, `FromConfig = 100`, `FromConfig = Config.Base + 100` (another module's constant), and `FromConfig = Limit2 + 100`, where `Limit2` is a variable of `Other` itself. A class field initializer runs either way (`Box.Size=3`). In the exe, a module whose initializer reads a module that is set up after it reads 0 there; that is a matter of order, and the IDE gives 0 for every module, whatever the order.
+
+Severity: medium. A `[RunAfterBuild]` procedure that signs or post-processes the build sees wrong settings with no message, and code that runs correctly as an exe behaves differently in the IDE.
+
+Not tried: a run with F5 (only `[RunAfterBuild]` was observed), a variable of the module's own read with a qualified name (`Other.Limit2`), 64-bit, LLVM.
+
+<!-- Reproducer: bugs/module-init-reads-other-module-ide/ (mode run: bug_repro run prints the zeros; expect matches "Limit=0 Doubled=0 FromConfig=0 Box.Size=3"); verified on BETA 1010 by `bug_repro.mjs verify`. The exe side and the variants are from scratch probes (tbrun --exe with TbRun.Out; one tbrun per variant), not kept. It also means a check_run sample that relies on a module-level initializer reading another module would print 0 under check_examples. Page: docs/Features/Language/Inline-Initialization.md, "What an Initializer Can Use", last bullet, advises against reading another module's variable; when a fix is released, nothing there needs to change. Found 2026-10-20 while documenting field initializers. -->
