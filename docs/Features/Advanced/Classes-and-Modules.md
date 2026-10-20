@@ -42,7 +42,7 @@ then created by `Dim mc As MyClass = New MyClass(123)`, which sets `MyClassVar` 
 
 ### `Class_Initialize` or `Sub New`?
 
-Both are constructors: code that runs once, as the object is created, before anything else can use it. Only one of them runs for any one object. They differ in what they can take and who can use them:
+Both are constructors: code that runs once, as the object is created, before anything else can use it. Only one of them runs for any one object. `Class_Initialize` is inherited from VB6 and VBA, and follows COM's rule that an object is created without arguments; `Sub New` is twinBASIC's addition. They differ in what they can take and who can use them:
 
 | | `Class_Initialize` | `Sub New` |
 |---|---|---|
