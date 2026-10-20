@@ -16,7 +16,7 @@ Syntax: **TranslateColor(** *ColorValue* [ **,** *hPalettePtr* ] **)**
 *hPalettePtr*
 : *optional* A **LongPtr** handle to a palette to use for translation. Defaults to **0**, which selects the default system palette.
 
-The OLE colour format encodes either a literal RGB value or an index into the Windows system palette (such as `&H80000012`, the colour of a button face). **TranslateColor** returns the corresponding plain RGB **Long**, suitable for passing to APIs and properties that expect a true colour value rather than a system-palette reference.
+The OLE colour format encodes either a literal RGB value or an index into the Windows system palette (such as `&H80000012`, the colour of button text). **TranslateColor** returns the corresponding plain RGB **Long**, suitable for passing to APIs and properties that expect a true colour value rather than a system-palette reference.
 
 ### Example
 
@@ -25,7 +25,7 @@ This example translates an OLE system colour to its current RGB value.
 ```tb check_build
 Dim OleColor As Long
 Dim RgbColor As Long
-OleColor = &H80000012                 ' COLOR_BTNFACE — the button face colour.
+OleColor = &H80000012                 ' COLOR_BTNTEXT — the button text colour.
 RgbColor = TranslateColor(OleColor)
 ```
 
