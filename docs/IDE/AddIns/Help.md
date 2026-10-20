@@ -80,13 +80,19 @@ Without a **Description** attribute, the summary says *No description*. **Open i
 
 The gear opens the settings. A click anywhere else, or Esc, closes them.
 
-![The top of the help pane with the settings open under the gear: the Hover help and All packages boxes, both unticked.](Images/Help_Settings.png){:width="480" height="150"}
+![The top of the help pane with the settings open under the gear: four boxes. Hover help and All packages are unticked; Ctrl and Alt shortcuts of add-ins and Find in the shortcut editors are ticked.](Images/Help_Settings.png){:width="480" height="200"}
 
 **Hover help**
 : Adds the links described under [Hover help](#hover-help). Off by default.
 
 **All packages**
 : Offers the pages of every package this documentation covers. Off by default: F1, the hover links and the search then offer only the language itself and the packages the project references, so that a name from a package the project does not use never hides the one it does. With this off, F1 on a name that only an unreferenced package documents says *No help for 'Name' in the packages this project references*.
+
+**Ctrl and Alt shortcuts of add-ins**
+: Runs the keyboard shortcuts that other add-ins define with Ctrl or Alt, which the IDE on its own does not run: see [Other add-ins' shortcuts](#other-add-ins-shortcuts). On by default.
+
+**Find in the shortcut editors**
+: Ctrl+F and F3 in the text of **Manage Keyboard Shortcuts** and **Manage Panel Layouts**: see [Finding text in the shortcut editors](#finding-text-in-the-shortcut-editors). On by default.
 
 The settings, the last page shown and the help window's place are kept in the registry, under `HKEY_CURRENT_USER\Software\VB and VBA Program Settings\tbDocsHelp`. After the IDE restarts, the pane shows the page it showed last.
 
@@ -111,7 +117,25 @@ The window is open again the next time the IDE starts, if it was open when the I
 
 ## Other add-ins' shortcuts
 
-While this add-in is loaded, the keyboard shortcuts that other add-ins register with Ctrl or Alt work. Without it, the IDE does not run an add-in's shortcut that includes Ctrl or Alt: see [KeyboardShortcuts](../../Packages/tbIDE/KeyboardShortcuts). The IDE's own command on the same keys still runs as well.
+While this add-in is loaded, the keyboard shortcuts that other add-ins register with Ctrl or Alt work. Without it, the IDE does not run an add-in's shortcut that includes Ctrl or Alt: see [KeyboardShortcuts](../../Packages/tbIDE/KeyboardShortcuts). The IDE's own command on the same keys still runs as well. The setting **Ctrl and Alt shortcuts of add-ins** turns this off.
+
+## Finding text in the shortcut editors
+
+The text of **Window > Keyboard Shortcuts > Manage Keyboard Shortcuts**, and of **Manage Panel Layouts**, has no find of its own. While this add-in is loaded, these keys work there, as in Visual Studio:
+
+Ctrl+F
+: Opens a find box over the text, holding the selected text if it is on one line.
+
+Enter, F3
+: Selects the next match. **Shift+Enter** and **Shift+F3** select the one before. F3 and Shift+F3 also work after the find box is closed, with the last text searched for.
+
+Ctrl+F3
+: Searches for the selected text, or for the word at the caret, without opening the find box. **Ctrl+Shift+F3** searches backwards.
+
+Esc
+: Closes the find box. The dialog stays open.
+
+The search goes round past the end, and ignores case. The text scrolls to show each match. The setting **Find in the shortcut editors** turns this off.
 
 ## Getting the add-in
 

@@ -939,6 +939,15 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   // The All packages box in the pane, and in the window's page.
   const allBox = () => inPane(c, `return root.querySelector("#helpAllPackages")?.checked ?? null;`);
   const windowAllBox = () => win.evaluate(`document.getElementById("helpAllPackages").checked`);
+  // The two page-side fixes: a box each in the settings panel, and what the
+  // fix's script leaves on the IDE's page while it is on.
+  const FIXES = [
+    { box: "helpKeysOn", global: "tbDocsAddinKeys", label: "Ctrl and Alt shortcuts of add-ins" },
+    { box: "helpFindOn", global: "tbDocsTextFind", label: "Find in the shortcut editors" },
+  ];
+  const paneFixBox = (id) => inPane(c, `return root.querySelector("#helpSettingsPanel #${id}")?.checked ?? null;`);
+  const windowFixBox = (id) => win.evaluate(`document.getElementById(${JSON.stringify(id)}).checked`);
+  const fixInstalled = (name) => c.evaluate(`!!window.${name}`);
   // Waits for the results to be `want`, a function of the rows, and fails with the rows.
   async function resultsBecome(want, what) {
     const rows = await waitFor(c, async (c) => {
@@ -1083,6 +1092,158 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       await waitFor(c, async (c) => (await focusedId(c)) === "helpSettings"),
       `the focus: ${await focusedId(c)}`,
     );
+  });
+
+  test("the settings panel has a box for each page-side fix, ticked, and the fixes are in the page", async () => {
+    for (const { box, global, label } of FIXES) {
+      assert.equal(await paneFixBox(box), true, `${label}: the pane's box is missing or unticked`);
+      assert.equal(await fixInstalled(global), true, `${label}: window.${global} is not set`);
+      const text = await inPane(c, `return root.querySelector("#${box}")?.parentNode.textContent.trim() ?? null;`);
+      assert.equal(text, label);
+    }
+  });
+
+  // Unticking a box takes the fix out of the page at once, ticking it puts it back.
+  test("unticking a fix's box removes it from the page, and ticking it puts it back", async () => {
+    for (const { box, global, label } of FIXES) {
+      await clickSettingBox(`#${box}`);
+      assert.ok(await waitFor(c, async () => (await fixInstalled(global)) === false), `${label}: still in the page`);
+      assert.equal(await paneFixBox(box), false);
+      await clickSettingBox(`#${box}`);
+      assert.ok(await waitFor(c, () => fixInstalled(global)), `${label}: not back in the page`);
+      assert.equal(await paneFixBox(box), true);
+    }
+  });
+
+  // The IDE's own command opens Manage Keyboard Shortcuts, whose first entry,
+  // the built-in <DEFAULT> group, is a read-only text area of JSON.
+  test("Ctrl+F in Manage Keyboard Shortcuts finds text, scrolls to it, and Esc leaves the dialog open", async () => {
+    const WORD = "ctrl";
+    const AREA = ".modalDialogContainer textarea.genericMonospaceTextArea";
+    const onArea = (expr) =>
+      c.evaluate(`(() => { const a = document.querySelector(${JSON.stringify(AREA)}); return a ? ${expr} : null; })()`);
+    const modals = () => c.evaluate(`modalDialogs.length`);
+    const selection = () =>
+      onArea(
+        `({ start: a.selectionStart, end: a.selectionEnd, text: a.value.substring(a.selectionStart, a.selectionEnd), focused: document.activeElement === a, top: a.scrollTop })`,
+      );
+    const findBox = () =>
+      c.evaluate(`(() => {
+        const i = document.querySelector(".tbDocsFindBar input");
+        return i ? { focused: document.activeElement === i, missing: i.classList.contains("tbDocsFindMissing") } : null;
+      })()`);
+    // What the script measures for the selection: in view, and not under the find box.
+    const visibility = () => onArea(`window.tbDocsTextFind.visible(a)`);
+    // The selection is the match at `start` for `word`, has the focus, and shows.
+    const selectionIs = async (start, what, word = WORD) => {
+      const ok = await waitFor(c, async () => (await selection())?.start === start);
+      const s = await selection();
+      assert.ok(ok, `${what}: the selection is ${JSON.stringify(s)}, expected a match at ${start}`);
+      assert.equal(s.text.toLowerCase(), word, what);
+      assert.equal(s.focused, true, `${what}: the text area has not got the focus`);
+      const v = await visibility();
+      assert.ok(v.visible, `${what}: the match is not in view: ${JSON.stringify({ ...v, scrollTop: s.top })}`);
+    };
+    const keyDown = (key, mods) => pressKey(c, key, mods);
+    assert.equal(await modals(), 0, "a dialog is open already");
+    await c.evaluate(`executeIdeCommand("tbKeyboardShortcuts_ShowManageKeyboardShortcuts")`);
+    try {
+      assert.ok(await waitFor(c, async () => (await onArea("true")) === true), "the dialog has no text area");
+      const { at, length, room } = await onArea(`(() => {
+        const t = a.value.toLowerCase(), at = [];
+        for (let i = t.indexOf(${JSON.stringify(WORD)}); i >= 0; i = t.indexOf(${JSON.stringify(WORD)}, i + 1)) at.push(i);
+        return { at, length: t.length, room: a.scrollHeight - a.clientHeight };
+      })()`);
+      assert.ok(at.length >= 3, `"${WORD}" is in the text ${at.length} times`);
+      assert.ok(room > 0, "the text does not need scrolling");
+      await onArea(`(a.focus(), a.setSelectionRange(0, 0), true)`);
+
+      await pressKey(c, "f", { ctrl: true });
+      assert.ok(
+        await waitFor(c, async () => (await findBox())?.focused === true),
+        `Ctrl+F opened no find box: ${JSON.stringify(await findBox())}`,
+      );
+      assert.equal(await modals(), 1, "Ctrl+F closed the dialog");
+      await typeText(c, WORD);
+      await pressKey(c, "Enter");
+      await selectionIs(at[0], "Enter: the first match");
+      await pressKey(c, "F3");
+      await selectionIs(at[1], "F3: the next match");
+      await pressKey(c, "F3", { shift: true });
+      await selectionIs(at[0], "Shift+F3: the match before");
+      // Round past the start to the last match, which is far down the text.
+      await pressKey(c, "F3", { shift: true });
+      const last = at[at.length - 1];
+      await selectionIs(last, "Shift+F3 from the first: the last match");
+      const scrolledDown = (await selection()).top;
+      assert.ok(scrolledDown > 0, `the text area did not scroll to a match at ${last} of ${length}`);
+      // Backwards from the last match to the first scrolls up, a match at a time.
+      for (let n = at.length - 2; n >= 0; n--) {
+        await keyDown("F3", { shift: true });
+        await selectionIs(at[n], `Shift+F3 to match ${n}`);
+      }
+      assert.ok((await selection()).top < scrolledDown, "going back to the first match did not scroll up");
+      // Round past the start to the last, and past the end to the first.
+      await keyDown("F3", { shift: true });
+      await selectionIs(last, "Shift+F3 round past the start");
+      await keyDown("F3");
+      await selectionIs(at[0], "F3 round past the end");
+
+      // A word that is not there marks the box, and leaves the selection.
+      const was = await selection();
+      await pressKey(c, "f", { ctrl: true });
+      assert.ok(await waitFor(c, async () => (await findBox())?.focused === true), "Ctrl+F did not return to the box");
+      await typeText(c, "zzqq");
+      await pressKey(c, "Enter");
+      assert.ok(
+        await waitFor(c, async () => (await findBox())?.missing === true),
+        `no match was not shown: ${JSON.stringify(await findBox())}`,
+      );
+      assert.equal((await selection()).start, was.start, "a search with no match moved the selection");
+
+      // The box searches for what it holds; Esc then closes it and only it.
+      await pressKey(c, "f", { ctrl: true });
+      await typeText(c, WORD);
+      await pressKey(c, "Enter");
+      await selectionIs(at[1], "Enter in the box after a search with no match");
+      await pressKey(c, "Escape");
+      assert.ok(await waitFor(c, async () => (await findBox()) === null), "Esc did not close the find box");
+      assert.equal(await modals(), 1, "Esc closed the dialog");
+      assert.equal((await selection()).focused, true, "the text area has not got the focus after Esc");
+
+      // With the box closed, F3 and Shift+F3 go on with the last query.
+      await keyDown("F3");
+      await selectionIs(at[2], "F3 with the box closed");
+      assert.equal(await findBox(), null, "F3 opened the box");
+      await keyDown("F3", { shift: true });
+      await selectionIs(at[1], "Shift+F3 with the box closed");
+
+      // Ctrl+F3 takes the word at the caret: its next occurrence, then, from there, the one before.
+      const { word, first, next, before } = await onArea(`(() => {
+        const t = a.value, counts = {};
+        for (const m of t.matchAll(/[A-Za-z0-9_]+/g)) if (m[0].length >= 8) (counts[m[0]] ??= []).push(m.index);
+        const word = Object.keys(counts).find((w) => counts[w].length >= 3);
+        const lower = t.toLowerCase(), w = word.toLowerCase();
+        const first = counts[word][0];
+        const next = lower.indexOf(w, first + w.length);
+        return { word: w, first, next, before: lower.lastIndexOf(w, next - 1) };
+      })()`);
+      await onArea(`(a.focus(), a.setSelectionRange(${first + 3}, ${first + 3}), true)`);
+      await keyDown("F3", { ctrl: true });
+      await selectionIs(next, `Ctrl+F3 on ${word}`, word);
+      assert.equal(await findBox(), null, "Ctrl+F3 opened the box");
+      await onArea(`(a.setSelectionRange(${next + 3}, ${next + 3}), true)`);
+      await keyDown("F3", { ctrl: true, shift: true });
+      await selectionIs(before, `Ctrl+Shift+F3 on ${word}`, word);
+    } finally {
+      // Cancel, the dialog's own button; leaves the IDE as it was found.
+      await c.evaluate(`(() => {
+        const m = [...document.querySelectorAll(".modalDialogContainer")].pop();
+        const b = m && [...m.querySelectorAll("button, .dialogButton, [class*=Button]")].find((e) => e.textContent.trim() === "Cancel");
+        if (b) b.click(); else if (typeof hideModalDialog === "function" && modalDialogs.length) hideModalDialog();
+      })()`);
+      assert.ok(await waitFor(c, async () => (await modals()) === 0), "the dialog did not close");
+    }
   });
 
   test("hover help is off until its box is ticked", async () => {
@@ -1670,6 +1831,36 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     await inPane(c, `root.querySelector("#helpAllPackages").click(); return null;`);
     assert.ok(await waitFor(c, async () => (await windowAllBox()) === false), "the window's box is still ticked");
     assert.equal(await allBox(), false);
+  });
+
+  // Both ways, as for All packages: the window's box reaches the pane's and the
+  // page, and the pane's box, clicked though the pane is hidden, the window's.
+  test("the page-side fixes can be unticked in the window or the pane, and the other follows", async () => {
+    for (const { box, global, label } of FIXES) {
+      assert.equal(await windowFixBox(box), true, `${label}: the window's box is not ticked`);
+      await clickInWindow("#helpSettings");
+      await settingsBecome(windowSettings, SETTINGS_OPEN, "the gear did not open the panel");
+      await clickInWindow(`#${box}`);
+      assert.ok(await waitFor(c, async () => (await paneFixBox(box)) === false), `${label}: the pane's box is ticked`);
+      assert.ok(await waitFor(c, async () => (await fixInstalled(global)) === false), `${label}: still in the page`);
+      assert.equal(await windowFixBox(box), false);
+      assert.deepEqual(await windowSettings(), SETTINGS_OPEN, "unticking the box closed the panel");
+      await clickInWindow(`#${box}`);
+      assert.ok(await waitFor(c, async () => (await paneFixBox(box)) === true), `${label}: the pane's box is unticked`);
+      assert.ok(await waitFor(c, () => fixInstalled(global)), `${label}: not back in the page`);
+      await clickInWindow("#helpSettings");
+      await settingsBecome(windowSettings, SETTINGS_CLOSED, "the gear did not close the panel");
+
+      await inPane(c, `root.querySelector("#${box}").click(); return null;`);
+      assert.ok(
+        await waitFor(c, async () => (await windowFixBox(box)) === false),
+        `${label}: the window's box is ticked`,
+      );
+      assert.equal(await fixInstalled(global), false);
+      await inPane(c, `root.querySelector("#${box}").click(); return null;`);
+      assert.ok(await waitFor(c, () => windowFixBox(box)), `${label}: the window's box is unticked`);
+      assert.ok(await waitFor(c, () => fixInstalled(global)), `${label}: not back in the page`);
+    }
   });
 
   test("the window's results follow the All packages box", async () => {

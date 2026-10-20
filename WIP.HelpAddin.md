@@ -1252,7 +1252,28 @@ not: a restart saves a harness about a second against opening a new IDE.
     `globalKeyDown`'s text still has the guard (see [Keyboard shortcuts](#keyboard-shortcuts)),
     so a build that fixes the bug is left alone; a second run replaces the first one's
     listeners. The IDE's key-down bindings still run beside an add-in's shortcut: Ctrl+-
-    is `tbEditor_DecreaseFontSize` as well.
+    is `tbEditor_DecreaseFontSize` as well. A settings-panel row, on by default and kept with
+    `SaveSetting` (`Fixes`, `AddinKeys`), turns it off: the script has a `$ON$` switch as
+    `hoverhelp.js` has and runs again at each change, taking the listeners out when off. The
+    window's panel has its own box, in step through `addinkeys:<1|0>` both ways.
+12. **Ctrl+F in the configuration editors** (owner, 2026-10-21). Manage Keyboard Shortcuts
+    and Manage Panel Layouts (`showConfigEditor`) edit each entry in a plain
+    `textarea.genericMonospaceTextArea`, made again whenever another entry is picked, not
+    in Monaco, so there is no find widget to switch on; and `globalKeyDown` returns before
+    the keymap while a modal dialog is open. `Resources/SCRIPTS/textfind.js`, put in by
+    `BuildPane`, adds a capture-phase `keydown` listener on `window`: Ctrl+F in such a text
+    area puts a find box over it (positioned in the text area's parent), Enter and F3 select
+    the next match, Shift with either the one before, round past the end and in any case,
+    and Esc closes the box (the Visual Studio keys: F3 and Shift+F3 work with the box closed,
+    on the last query, and open the box when there is none; Ctrl+F3 and Ctrl+Shift+F3 take
+    the one-line selection, else the word at the caret (letters, digits, `_`), as the query
+    and search without the box). A match is scrolled to by measuring it in an off-screen
+    mirror of the text area (`matchRect`), a third down and clear of the box;
+    `window.tbDocsTextFind.visible(area)` tells the test whether the selection shows. Each handled key is stopped at `window`, so the dialog's own
+    Escape handler (which would close it unless the focus is in a text field) never sees it.
+    Focusing the text area does not reliably scroll it to the caret. A second
+    settings-panel row (`Fixes`, `TextFind`, on by default) turns it off, by the same
+    `$ON$` switch, and the window's box follows through `textfind:<1|0>`.
 
     **Zoom, not done** (owner, 2026-10-20: the IDE's own Ctrl+/Ctrl- and Ctrl+Alt+/Ctrl+Alt-
     font commands are enough for now). WebView2's own zoom is off in the IDE and no host call

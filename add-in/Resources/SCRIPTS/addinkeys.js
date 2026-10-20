@@ -5,7 +5,8 @@
 // before. This records those presses itself and runs their shortcuts on
 // key-up as the IDE runs the others. It is put in only while the IDE has that
 // guard, so a build that fixes it is left alone. Running it again replaces
-// what an earlier run put in.
+// what an earlier run put in, and puts in nothing when it is turned off.
+var on = $ON$;
 var old = window.tbDocsAddinKeys;
 if (old) {
   window.removeEventListener("keydown", old.down, true);
@@ -13,6 +14,7 @@ if (old) {
   window.tbDocsAddinKeys = null;
 }
 var faulty =
+  on &&
   typeof globalKeyDown === "function" &&
   typeof addinKeys === "object" &&
   typeof realKeyPresses === "object" &&

@@ -4,6 +4,17 @@ What changed in the twinBASIC Documentation Help add-in, newest first. The versi
 DLL's (its file properties show it). The documentation the add-in shows and its index of
 symbols change with every build of the documentation and are not listed here.
 
+## 1.1.0 (2026-10-21)
+
+- Ctrl+F finds text in the editors of **Window > Keyboard Shortcuts > Manage Keyboard
+  Shortcuts** and of **Manage Panel Layouts**. Enter or F3 goes to the next match,
+  Shift+Enter or Shift+F3 to the one before (F3 also with the find box closed), Ctrl+F3 and
+  Ctrl+Shift+F3 search for the selection or the word at the caret without opening the box,
+  and Esc closes the find box and leaves the dialog open. The text scrolls to each match.
+- The settings panel has two new boxes, both ticked by default: **Ctrl and Alt shortcuts of
+  add-ins** (the 1.0.0 fix) and **Find in the shortcut editors** (the Ctrl+F above). Unticking
+  one turns that feature off at once.
+
 ## 1.0.0 (2026-10-20)
 
 - Other add-ins' keyboard shortcuts that include Ctrl or Alt now work while this add-in is
