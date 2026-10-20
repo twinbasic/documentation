@@ -123,7 +123,7 @@ check(
   section
     .join("\n")
     .includes(
-      "| 5, *Invalid procedure call or argument* | *x* is negative |\n| 9, *Subscript out of range* | the index is out |\n\n> [!NOTE] BETA 1010\n> When the index is out, VB6 raises error 5, *Invalid procedure call or argument*, instead.",
+      "| 5 (`&H5`), *Invalid procedure call or argument* | *x* is negative |\n| 9 (`&H9`), *Subscript out of range* | the index is out |\n\n> [!NOTE] BETA 1010\n> When the index is out, VB6 raises error 5 (`&H5`), *Invalid procedure call or argument*, instead.",
     ),
 );
 check("a page with only quiet cases gets no section", renderSection({ rows: [], quiet: [1] }, { messages }) === null);

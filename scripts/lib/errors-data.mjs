@@ -299,6 +299,9 @@ export function pageLevel(text) {
   return "##";
 }
 
+/** An error number in decimal and in VB hexadecimal, as a 32-bit Long: -2147467259 (`&H80004005`). */
+export const errorNumber = (n) => `${n} (\`&H${(n >>> 0).toString(16).toUpperCase()}\`)`;
+
 const escapeCell = (s) => s.replace(/\|/g, "\\|");
 
 /**
@@ -316,9 +319,9 @@ export function renderSection(p, { name, beta, messages, level }) {
   if (p.none !== undefined) out.push(p.none.trim());
   else {
     out.push("| Error | When |", "|---|---|");
-    for (const r of p.rows) out.push(`| ${r.error}, *${msg(r.error)}* | ${escapeCell(r.when)} |`);
+    for (const r of p.rows) out.push(`| ${errorNumber(r.error)}, *${msg(r.error)}* | ${escapeCell(r.when)} |`);
     for (const r of p.rows.filter((x) => x.vb6 !== undefined)) {
-      const what = r.vb6 === 0 ? "raises no error" : `raises error ${r.vb6}, *${msg(r.vb6)}*, instead`;
+      const what = r.vb6 === 0 ? "raises no error" : `raises error ${errorNumber(r.vb6)}, *${msg(r.vb6)}*, instead`;
       out.push("", `> [!NOTE] BETA ${beta}`, `> When ${r.when}, VB6 ${what}.`);
     }
   }

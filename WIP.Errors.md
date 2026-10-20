@@ -134,26 +134,32 @@ The section `write` makes, before the page's first Example heading:
 
 | Error | When |
 |---|---|
-| -2147467259, *Unspecified error* | an upper bound is less than its lower bound |
+| -2147467259 (`&H80004005`), *Unspecified error* | an upper bound is less than its lower bound |
 
 > [!NOTE] BETA 1010
-> When an upper bound is less than its lower bound, VB6 raises error 9, *Subscript out of range*, instead.
+> When an upper bound is less than its lower bound, VB6 raises error 9 (`&H9`), *Subscript out of range*, instead.
 
 <!-- /errors -->
 ```
 
-### Decided while building, for the owner to confirm
+### Decided while building (owner's answers, 2026-10-20)
 
-- **The heading takes the page's level for Example and See Also**: `###` on the VBA and Core
-  pages, which still use the old h1→h3 style; `##` on a page without those headings.
-- **The message is `Err.Description`, not `Error$(n)`.** For VB's own numbers the two agree;
-  for an HRESULT they do not: `Error$(-2147467259)` is *Application-defined or
-  object-defined error*, while the error raised describes itself as *Unspecified error*,
-  which is what a handler sees. Batch 1 settles which the central page lists.
-- **The number is not linked yet**: the central page does not exist. Batch 1 adds the link
-  in `renderSection` (`scripts/lib/errors-data.mjs`) and rewrites every section with `write`.
-- **A row that differs from VB6 must name its reproducer**, or say `bug: pending`; the gate
-  refuses a `vb6:` row without it.
+- **The heading takes the page's level for Example** (owner: confirmed): `###` on the VBA and
+  Core pages, which the build promotes to `##` on a page with `#` and `###` but no `##`;
+  `##` on a page without an Example or See Also heading.
+- **Every number is given in decimal and in VB hexadecimal** (owner), as a 32-bit **Long**:
+  -2147467259 (`&H80004005`), 5 (`&H5`), in the table and in the VB6 NOTE alike.
+  `errorNumber` in `scripts/lib/errors-data.mjs` writes it.
+- **The message is `Err.Description`, not `Error$(n)`** (owner: undecided). For VB's own
+  numbers the two agree; for an HRESULT they do not: `Error$(-2147467259)` is
+  *Application-defined or object-defined error*, while the error raised describes itself as
+  *Unspecified error*, which is what a handler sees. Batch 1 settles which the central page
+  lists, and so what the sections show.
+- **The number is not linked yet** (owner: agreed): the central page does not exist. Batch 1
+  adds the link in `renderSection` (`scripts/lib/errors-data.mjs`) and rewrites every section
+  with `write`.
+- **A row that differs from VB6 must name its reproducer**, or say `bug: pending` (owner:
+  agreed); the gate refuses a `vb6:` row without it.
 - **Errors from converting an argument are left out**, as the plan says: `Mid("abc", "x")`
   raises 13 and `Mid("abc", Null)` 94 in both runtimes, in the conversion of *start* to
   **Long**. `Mid("abc", 1, Null)` is in the table: *length* is a **Variant**, and the 94 is
