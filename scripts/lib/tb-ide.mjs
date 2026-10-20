@@ -656,10 +656,11 @@ export function desktopWindows(desktop, { children = false } = {}) {
  * [left, top, right, bottom] in the picture's pixels. With PW_CLIENTONLY (1) the client area
  * is drawn at the picture's top left. `layered` is a layered window's [colour key as a
  * COLORREF, alpha, LWA_ flags], else null: PW_RENDERFULLCONTENT draws the key colour's pixels
- * black and every pixel opaque, and flags 1 draws them in the key colour.
+ * black and every pixel opaque, and flags 1 draws them in the key colour. `active` says whether
+ * its caption is drawn as the active window's (WS_ACTIVECAPTION).
  *
  * @param {number} [o.flags]  PrintWindow's flags (default 2)
- * @returns {Promise<{width: number, height: number, dpi: number, frame: number[], client: number[], layered: number[] | null, texts: string[]}>}
+ * @returns {Promise<{width: number, height: number, dpi: number, frame: number[], client: number[], layered: number[] | null, active: boolean, texts: string[]}>}
  */
 export function captureWindow(desktop, hwnd, file, { flags = 2 } = {}) {
   return onDesktopWindows(desktop, {
@@ -691,6 +692,20 @@ export function postWindowMessage(desktop, hwnd, msg, wParam = 0, lParam = 0) {
     TBBUILD_WPARAM: String(wParam),
     TBBUILD_LPARAM: String(lParam),
   });
+}
+
+/**
+ * Makes a window on a private desktop the active window there, as a click on it does: a
+ * program started on a desktop that is not on screen can be left with its caption drawn
+ * inactive. Its thread's input is attached to the caller's for SetForegroundWindow,
+ * SetActiveWindow and SetFocus.
+ *
+ * @param {string} desktop
+ * @param {number} hwnd   from desktopWindows
+ * @returns {Promise<{active: boolean}>}  whether its caption is then drawn active
+ */
+export function activateWindow(desktop, hwnd) {
+  return onDesktopWindows(desktop, { TBBUILD_WINDOWS: "activate", TBBUILD_HWND: String(hwnd) });
 }
 
 /**

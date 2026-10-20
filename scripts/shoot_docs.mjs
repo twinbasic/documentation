@@ -167,6 +167,7 @@ import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import {
+  activateWindow,
   awaitNewCompiler,
   buildProject,
   captureWindow,
@@ -1642,7 +1643,7 @@ async function dialogStill(c, { ms = 250, timeout = 5000, root = TOP_MODAL, what
 // `annotate`, a shot's list of primitives (lib/shot-annotate.mjs), is drawn over
 // the page for the capture and taken off again however that goes; the clip grows to
 // hold what it drew.
-async function dialogShot(c, name, clipOf = (m) => m, annotate = null) {
+async function dialogShot(c, name, clipOf = (m) => m, annotate = null, { unsteady = null } = {}) {
   await c.evaluate("document.activeElement?.blur?.()");
   await frames(c);
   const box = (await modals(c)).pop();
@@ -1653,11 +1654,16 @@ async function dialogShot(c, name, clipOf = (m) => m, annotate = null) {
       const { box: drawn } = await annotateOver(c, annotate);
       if (drawn) area = union(area, drawn);
     }
-    return await capture(c, name, snapOut(area), { away: () => parkMouse(c) });
+    return await capture(c, name, snapOut(area), { away: () => parkMouse(c), unsteady });
   } finally {
     if (annotate) await unannotate(c);
   }
 }
+
+// The two "See your logo here!" boxes of the VIP Gold supporters on About and the splash, the
+// last two of the logos: their gradient is dithered differently from capture to capture, by a
+// level or two over thousands of pixels, beyond a capture's noise (owner: unsteady).
+const VIP_GOLD_SPARES = [{ on: { css: ".vipGoldX:nth-last-child(2)" } }, { on: { css: ".vipGoldX:last-child" } }];
 
 // Opens a dialog by its command and returns once its title is in and it has stopped
 // changing for `still` milliseconds; `run` takes the picture and the dialog is closed
@@ -3699,6 +3705,33 @@ async function gsSearch(c, query, { packages = false } = {}) {
   );
   if (!settled) throw new Error(`the search for "${query}" never settled`);
   await c.evaluate(`${GS_BODY}.getRootNode().activeElement?.blur()`);
+  // The list keeps each row's height from when it first measured it and sets its scroll range
+  // from those: a row measured while the panel or its fonts were settling keeps a height a
+  // little too tall, and a thumb showed over two results that fit (owner: measure them again).
+  // The list's own notifyChangedItem, which the IDE calls when a row changes, drops a row's
+  // height; the list measures it again when it repaints.
+  const LIST = `${GS_BODY}.querySelector("#resultsList")?.listview`;
+  const before = await c.evaluate(`(() => {
+  const l = ${LIST};
+  if (!l || typeof l.notifyChangedItem !== "function" || l.useCachedItemHeights) return null;
+  const at = { paint: l.lastRepaintTime ?? 0, range: l.lastScrollRangeUpdateTime ?? 0 };
+  for (let i = 0; i < l.itemCount; i++) l.notifyChangedItem(i);
+  return at;
+})()`);
+  if (!before) throw new Error("the results list cannot be told to measure its rows again");
+  if (last) {
+    const measured = await waitFor(
+      c,
+      () =>
+        c.evaluate(`(() => {
+  const l = ${LIST};
+  return !l.repaintTimer && !l.scrollrangeTimer &&
+    ((l.lastRepaintTime ?? 0) > ${before.paint} || (l.lastScrollRangeUpdateTime ?? 0) > ${before.range});
+})()`),
+      { timeout: 3000, interval: 50 },
+    );
+    if (!measured) throw new Error("the results list did not repaint after its rows were measured again");
+  }
   await frames(c);
   return last;
 }
@@ -4799,36 +4832,46 @@ const formsChapterShots = [
       }
     },
   },
-  formStateShot("Designer_TabIndex", async (c) => {
-    // the designer focused with a click on an empty part of the form, the pointer left there
-    // (moved away, the pointer readout shows or not by the moment it left), then Ctrl held
-    const at = await formPoint(c, 300, 245);
-    await pressAt(c, at.x, at.y);
-    await mouseMove(c, at.x, at.y);
-    const readout = () =>
-      c.evaluate(`(() => {
+  formStateShot(
+    "Designer_TabIndex",
+    async (c) => {
+      // the designer focused with a click on an empty part of the form, the pointer left there
+      // (moved away, the pointer readout shows or not by the moment it left), then Ctrl held
+      const at = await formPoint(c, 300, 245);
+      await pressAt(c, at.x, at.y);
+      await mouseMove(c, at.x, at.y);
+      const readout = () =>
+        c.evaluate(`(() => {
   const e = ${DESIGNER_GLOBALS}.designerDragInfoLeft;
   return !!e && e.getBoundingClientRect().width > 0 && e.innerText.includes("x:300 y:245");
 })()`);
-    if (!(await waitFor(c, readout, { timeout: 3000, interval: 50 }))) {
-      throw new Error("the pointer readout does not show x:300 y:245");
-    }
-    await c.send("Input.dispatchKeyEvent", {
-      type: "rawKeyDown",
-      key: "Control",
-      code: "ControlLeft",
-      windowsVirtualKeyCode: 17,
-      nativeVirtualKeyCode: 17,
-      modifiers: 2,
-    });
-    const shown = () => c.evaluate(`${DESIGNER_GLOBALS}.designer.classList.contains("designerShowTabIndex")`);
-    if (!(await waitFor(c, shown, { timeout: 3000, interval: 50 }))) {
-      throw new Error("holding Ctrl showed no TabIndex circles");
-    }
-  }),
+      if (!(await waitFor(c, readout, { timeout: 3000, interval: 50 }))) {
+        throw new Error("the pointer readout does not show x:300 y:245");
+      }
+      await c.send("Input.dispatchKeyEvent", {
+        type: "rawKeyDown",
+        key: "Control",
+        code: "ControlLeft",
+        windowsVirtualKeyCode: 17,
+        nativeVirtualKeyCode: 17,
+        modifiers: 2,
+      });
+      const shown = () => c.evaluate(`${DESIGNER_GLOBALS}.designer.classList.contains("designerShowTabIndex")`);
+      if (!(await waitFor(c, shown, { timeout: 3000, interval: 50 }))) {
+        throw new Error("holding Ctrl showed no TabIndex circles");
+      }
+    },
+    { unsteady: tabIndexRings },
+  ),
   formStateShot("Controls_MultiSelect", async (c) => {
     await selectNamed(c, ["Command1", "Text1", "Check1"]);
-    // the pointer rests on Check1, where it clicked last: its readout shows a moment later
+    // the pointer rests on Check1, where it clicked last; the readout shows where it is once
+    // the pointer moves there after the click, as Designer_TabIndex's does
+    const at = await c.evaluate(`(() => {
+  const r = ${DESIGNER_GLOBALS}.allControls.find((x) => x.properties.Name === "Check1").getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+    await mouseMove(c, at.x, at.y);
     const readout = () =>
       c.evaluate(`(() => {
   const e = ${DESIGNER_GLOBALS}.designerDragInfoLeft;
@@ -5656,9 +5699,39 @@ async function gridOptions(c) {
   await frames(c);
 }
 
+// The soft shadow round each TabIndex circle (a control's ::after, box-shadow 1px 1px 4px) is
+// dithered in one of two versions from capture to capture, some 600 pixels apart, over the dots
+// of the grid (owner: unsteady). These are capture's `unsteady` regions for a ring round each
+// circle, from 2 pixels inside its edge to 6 beyond it, so that its number is still compared.
+async function tabIndexRings(c) {
+  const circles = await c.evaluate(`[...document.querySelectorAll(".designerShowTabIndex .baseControl")]
+  .map((e) => {
+    const r = e.getBoundingClientRect();
+    const a = getComputedStyle(e, "::after");
+    if (a.content === "none" || !r.width) return null;
+    const px = (v) => parseFloat(v) || 0;
+    const width = px(a.width) + px(a.paddingLeft) + px(a.paddingRight);
+    const height = px(a.height) + px(a.paddingTop) + px(a.paddingBottom);
+    return { x: r.right - px(a.right) - width, y: r.top + px(a.top), width, height };
+  })
+  .filter(Boolean)`);
+  if (!circles.length) throw new Error("no TabIndex circle to leave its shadow out");
+  return circles.flatMap((b) => {
+    const o = grow(b, 6);
+    const i = grow(b, -2);
+    return [
+      { x: o.x, y: o.y, width: o.width, height: i.y - o.y },
+      { x: o.x, y: i.y + i.height, width: o.width, height: o.y + o.height - i.y - i.height },
+      { x: o.x, y: i.y, width: i.x - o.x, height: i.height },
+      { x: i.x + i.width, y: i.y, width: o.x + o.width - i.x - i.width, height: i.height },
+    ].map((rect) => ({ on: { rect }, pad: 0 }));
+  });
+}
+
 // frmMain's form, its menu bar and readouts, in the state `state(c)` brings it to; `after(c)`
-// runs once the picture is taken, before the tab is closed.
-function formStateShot(name, state, { after = null, out = FORMS_IMAGE(name) } = {}) {
+// runs once the picture is taken, before the tab is closed. `unsteady(c)` gives more of
+// capture's `unsteady` regions than the ground's.
+function formStateShot(name, state, { after = null, out = FORMS_IMAGE(name), unsteady = null } = {}) {
   return {
     out,
     setup: "forms-chapter",
@@ -5668,7 +5741,9 @@ function formStateShot(name, state, { after = null, out = FORMS_IMAGE(name) } = 
         await state(c);
         const area = await formArea(c);
         const clip = snapOut({ x: area.x, y: area.y, width: area.width + 6, height: area.height + 8 });
-        return await capture(c, name, clip, { unsteady: await groundUnsteady(c, clip) });
+        return await capture(c, name, clip, {
+          unsteady: [...(await groundUnsteady(c, clip)), ...(unsteady ? await unsteady(c) : [])],
+        });
       } finally {
         if (after) await after(c);
         await c.evaluate(`document.getElementById("tbShotBlink")?.remove()`);
@@ -5861,7 +5936,18 @@ async function peDoubleClick(c, text) {
 async function peRename(c, name, to) {
   await peSelect(c, name);
   await pressKey(c, "F2");
-  if (!(await nameBox(c))) throw new Error(`F2 on ${name} opened no name box`);
+  // the box selects the base name a moment after it takes the focus; typed before that, the
+  // keys land round the name (frmA.tbform once came back naifrmA.tbform)
+  const base = name.lastIndexOf(".") < 0 ? name.length : name.lastIndexOf(".");
+  const box = await waitFor(
+    c,
+    async () => {
+      const b = await nameBox(c);
+      return b?.value === name && b.start === 0 && b.end === base && b;
+    },
+    { timeout: 3000, interval: 50 },
+  );
+  if (!box) throw new Error(`F2 on ${name} opened ${JSON.stringify(await nameBox(c))}`);
   await typeText(c, to);
   await pressKey(c, "Enter");
 }
@@ -5903,9 +5989,9 @@ function renameBoxShot(name, typed = null) {
       try {
         await peFolders(c, SOURCES_OPEN);
         await peSelect(c, "Legacy.bas");
-        // Rename from the row's menu, not F2: the box checks its name on every key's release,
-        // finds Legacy.bas taken (by itself) and turns red, and F2's release lands in the box
-        // or not by how soon the box takes the focus
+        // Rename from the row's menu, not F2: the box checks its name on each key's release
+        // (invalidRename), and with F2, whose release lands in the box or not by how soon the
+        // box takes the focus, it came out red now and then
         await peRightClick(c, "Legacy.bas");
         const rename = (await menuItems(c)).find((i) => i.text.startsWith("Rename"));
         if (!rename) throw new Error("the menu of Legacy.bas has no Rename");
@@ -5919,7 +6005,7 @@ function renameBoxShot(name, typed = null) {
           },
           { timeout: 3000, interval: 50 },
         );
-        if (!box) throw new Error(`F2 on Legacy.bas opened ${JSON.stringify(await nameBox(c))}`);
+        if (!box) throw new Error(`Rename on Legacy.bas opened ${JSON.stringify(await nameBox(c))}`);
         if (typed) {
           await typeText(c, typed);
           if (!(await waitFor(c, async () => (await nameBox(c))?.invalid, { timeout: 3000, interval: 50 }))) {
@@ -10315,7 +10401,7 @@ const aboutShot = {
     );
     if (!ready) throw new Error("the compiler never answered the licence check, so About would say NOT READY");
     return inDialog(c, { command: "tbHelp_ShowAboutWindow", title: "About", close: "Close" }, () =>
-      dialogShot(c, "Menu_Help_About"),
+      dialogShot(c, "Menu_Help_About", undefined, null, { unsteady: VIP_GOLD_SPARES }),
     );
   },
 };
@@ -10590,7 +10676,17 @@ const splashShot = {
       if (!(await waitModal(c, "Loading"))) throw new Error("the splash did not open");
       await dialogStill(c);
       await dialogBackgrounds(c);
-      return await dialogShot(c, "Splash_Screen");
+      // its rounded corners come out a few pixels apart from capture to capture in the dark
+      // theme (owner: unsteady)
+      const box = (await modals(c)).pop();
+      const corner = (i, j) => ({
+        x: box.x + i * (box.width - 4),
+        y: box.y + j * (box.height - 4),
+        width: 4,
+        height: 4,
+      });
+      const corners = [0, 1].flatMap((i) => [0, 1].map((j) => ({ on: { rect: corner(i, j) } })));
+      return await dialogShot(c, "Splash_Screen", undefined, null, { unsteady: [...VIP_GOLD_SPARES, ...corners] });
     } finally {
       await c.evaluate(`(() => { const close = window.tbSplashClose; delete window.tbSplashClose; close?.(); })()`);
       if (await waitModal(c, "New / Open", { timeout: 10000 })) await closeModal(c, "Cancel");
@@ -10694,16 +10790,29 @@ function crop({ width, rgba }, [left, top, right, bottom]) {
   return { width: w, height: h, rgba: out };
 }
 
+// Makes a program's window the active one of its desktop (activateWindow): a program started on
+// a desktop not on screen now and then draws its caption inactive (owner: made active).
+async function activated(desktop, hwnd, name) {
+  if (!(await activateWindow(desktop, hwnd)).active) throw new Error(`the window of ${name} would not become active`);
+}
+
 // One capture of a window, as `captureWindow` writes it to `file`, once two in a row are equal
 // (a window being drawn can differ from one to the next); refused when a text of the window
-// holds the user name.
-async function stableWindow(desktop, hwnd, name, file, flags = 2) {
+// holds the user name. With `active`, the window is made active first, and again whenever a
+// capture finds its caption drawn inactive.
+async function stableWindow(desktop, hwnd, name, file, flags = 2, { active = false } = {}) {
   let last = null;
+  if (active) await activated(desktop, hwnd, name);
   for (let i = 0; i < 8; i++) {
     const info = await captureWindow(desktop, hwnd, file, { flags });
     const named = info.texts.find((t) => t.toLowerCase().includes(USER.toLowerCase()));
     if (named !== undefined)
       throw new Error(`the window of ${name} shows the Windows user name in ${JSON.stringify(named)}`);
+    if (active && !info.active) {
+      await activated(desktop, hwnd, name);
+      last = null;
+      continue;
+    }
     const png = readFileSync(file);
     if (last?.equals(png)) return { info, picture: decodePng(png) };
     last = png;
@@ -10716,12 +10825,15 @@ async function stableWindow(desktop, hwnd, name, file, flags = 2) {
 // TransparencyKey) is given the alpha the system blends it with what is under it: its alpha
 // everywhere, and none where its client area has the key colour. PW_RENDERFULLCONTENT draws
 // those pixels black, so they are read from a capture of the client area alone (flags 1),
-// which draws them in the key colour. The page is then what is under the window.
-async function windowPicture(desktop, hwnd, name, file) {
-  const { info, picture } = await stableWindow(desktop, hwnd, name, file);
+// which draws them in the key colour. The page is then what is under the window. `active`:
+// as stableWindow's.
+async function windowPicture(desktop, hwnd, name, file, { active = false } = {}) {
+  const { info, picture } = await stableWindow(desktop, hwnd, name, file, 2, { active });
   if (info.layered) {
     const [key, alpha, lwa] = info.layered;
-    const { picture: client } = await stableWindow(desktop, hwnd, name, file.replace(/\.png$/, "-client.png"), 1);
+    const { picture: client } = await stableWindow(desktop, hwnd, name, file.replace(/\.png$/, "-client.png"), 1, {
+      active,
+    });
     const [cl, ct, cr, cb] = info.client;
     const k = [key & 255, (key >> 8) & 255, (key >> 16) & 255];
     for (let y = 0; y < picture.height; y++) {
@@ -10821,18 +10933,18 @@ async function withProgram(ctx, scene, fn) {
 }
 
 // A form of the program, `scene` its command line; with `grow`, the form and then the form
-// made larger, side by side.
+// made larger, side by side. The form is the active window, its caption drawn so.
 const programShot = (out, scene, { grow = false } = {}) => ({
   out,
   setup: "programs",
   once: true,
   take: (ctx) =>
     withProgram(ctx, scene, async (dir, w) => {
-      const shown = [await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "before.png"))];
+      const shown = [await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "before.png"), { active: true })];
       if (grow) {
         writeFileSync(path.join(dir, "grow"), "");
         await signalled(dir, "grown");
-        shown.push(await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "after.png")));
+        shown.push(await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "after.png"), { active: true }));
       }
       return besideEachOther(shown);
     }),
@@ -11675,6 +11787,18 @@ const packageServerShots = [
         }
         if (!shown) throw new Error("the completion list never showed its members' types");
         await sleep(500);
+        // The IDE places the list at its text cursor's box as drawn when the list is asked for,
+        // and that is at the dot or, now and then, already after it, 7 pixels to the right
+        // (triggerIntellisense): the list is put where the cursor stood at the dot (owner).
+        await c.evaluate(`(() => {
+  const b = [...document.querySelectorAll(${JSON.stringify(COMPLETIONS)})].find((b) => b.getBoundingClientRect().width);
+  const cursor = document.body.getElementsByClassName("cursor monaco-mouse-cursor-text")[0].getBoundingClientRect();
+  const left = (column) => editor.getScrolledVisiblePosition({ lineNumber: 4, column }).left;
+  const p = editor.getPosition();
+  const x = cursor.left - (left(p.column) - left(editor.getModel().getLineContent(4).indexOf(".") + 1));
+  b.style.left = x + "px";
+})()`);
+        await frames(c);
         const area = await c.evaluate(`(() => {
   const ed = editor.getDomNode().getBoundingClientRect();
   const left = ed.x + editor.getLayoutInfo().contentLeft;
@@ -12256,6 +12380,8 @@ const webView2Shot = {
 // wide enough for the start of the file's SHA-256. The list, without the release's box around it.
 const ASSETS = `[...document.querySelectorAll("summary")].find((s) => /^Assets/.test(s.textContent.trim()))`;
 const RELEASE_WIDTH = 1280;
+// the widest the zip's time is drawn ("23 minutes ago"), in CSS pixels
+const RELEASE_TIME_WIDTH = 104;
 const releaseShot = {
   out: "Miscellaneous/Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png",
   setup: "web",
@@ -12272,7 +12398,20 @@ const releaseShot = {
     const list = await c.evaluate(
       `(() => { const r = ${ASSETS}.parentElement.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
     );
-    return capture(c, "release", await pageClip(c, grow(list, 12), RELEASE_WIDTH), { away: () => parkMouse(c) });
+    // The zip's time ("8 hours ago", "yesterday") moves on by itself (owner: unsteady). It is
+    // right-aligned and its width goes with its words, so the region reaches RELEASE_TIME_WIDTH
+    // left of its right edge, short of the size before it.
+    const time = await c.evaluate(`(() => {
+  const t = ${ASSETS}.parentElement.querySelector("relative-time");
+  if (!t) return null;
+  const r = t.getBoundingClientRect();
+  return { x: r.right - ${RELEASE_TIME_WIDTH}, y: r.y, width: ${RELEASE_TIME_WIDTH}, height: r.height };
+})()`);
+    if (!time) throw new Error("the Assets list shows no time");
+    return capture(c, "release", await pageClip(c, grow(list, 12), RELEASE_WIDTH), {
+      away: () => parkMouse(c),
+      unsteady: [{ on: { rect: time } }],
+    });
   },
 };
 
@@ -12952,7 +13091,8 @@ const SIZE_SLACK = 32;
 // file's): one with the same pixels, but for a capture's noise (`nearly`), is not kept, and a
 // light file there already is removed, since the page shows X.png in both themes then; one
 // more than SIZE_SLACK off its size fails. A picture within a capture's noise of its file is
-// not written either.
+// not written either. Returns whether the picture was written, or null for a light picture
+// that is the dark one.
 function keep(name, out, png, theme, dark, scale = SCALE) {
   const file = path.join(outRoot, themedOut(out, theme));
   const { w, h } = pngSize(png);
@@ -12980,7 +13120,7 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
         name,
         `${themedOut(out, theme)}: the dark picture's pixels, but for a capture's noise: ${had ? "removed" : "not written"}`,
       );
-      return false;
+      return null;
     }
   }
   mkdirSync(path.dirname(file), { recursive: true });
@@ -13008,6 +13148,7 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
     name,
     `${themedOut(out, theme)}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${Math.round(w / scale)}" height="${Math.round(h / scale)}"}${other})`,
   );
+  return write;
 }
 
 // A `once` picture has no light file: one left from before is removed, and its SVG.
@@ -13032,9 +13173,18 @@ const svgResults = [];
 // written before is removed. Says how much of it differs from the PNG. The
 // picture's bundle goes to the bundle cache whether or not its SVG is written,
 // so that replay.mjs can draw it again once the converter draws it better.
-async function keepSvg(name, out, png, picture) {
+async function keepSvg(name, out, png, picture, written) {
   const svgOut = out.replace(/\.png$/i, ".svg");
   const file = path.join(outRoot, svgOut);
+  // An SVG is drawn from the whole page, layers the picture does not show included, and those
+  // can differ from run to run (a designer still drawing under a floating panel); and one that
+  // sits on SVG_FAITHFUL's bar is written in one run and removed in the next. So the SVG of a
+  // picture whose PNG was not written stays as it is, with its bundle (owner): it changes
+  // with its PNG, or when replay.mjs draws it again after a change to the converter.
+  if (!written && existsSync(file)) {
+    say(name, `${svgOut}: unchanged, as its PNG is`);
+    return;
+  }
   const drop = (why) => {
     const had = existsSync(file);
     if (had) rmSync(file);
@@ -13189,7 +13339,7 @@ async function runJob(job) {
           if (shot.once) dropLight(job.name, shot.out);
           // A light picture that is the dark one is not kept, and neither is its SVG or bundle.
           const svgFile = path.join(outRoot, out.replace(/\.png$/i, ".svg"));
-          if (values.svg && kept !== false) await keepSvg(job.name, out, png, state.svg);
+          if (values.svg && kept !== null) await keepSvg(job.name, out, png, state.svg, kept);
           else if (values.svg) {
             if (existsSync(svgFile)) rmSync(svgFile);
             dropBundle(bundlesRoot, out);

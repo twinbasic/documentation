@@ -139,7 +139,18 @@ Measured:
   so the flicker never rewrites the file. Use it for a pixel no condition settles, as small as
   the element allows: the WebView2 download page's Version arrow (`#version
   .px-dropdown__icon`, 8 by 9) changes a pixel by more than the noise between any two
-  captures, animations and transitions off. A shot without it compares byte for byte.
+  captures, animations and transitions off. So do the two "See your logo here!" boxes of About
+  and the splash (owner; `VIP_GOLD_SPARES`, the last two `.vipGoldX`): their gradient is
+  dithered differently from capture to capture, a level or two over thousands of pixels,
+  beyond a capture's noise. So does the time of the GitHub release's zip ("8 hours ago",
+  "yesterday"; owner), which moves on by itself: an `{rect}` from the Assets list's
+  `relative-time`, widened leftward to the widest it is drawn, since it is right-aligned. So
+  do the splash's four rounded corners in the dark theme (owner; 4 by 4 CSS px each: 4 pixels
+  flipped), and the shadow round each TabIndex circle of Designer_TabIndex (owner;
+  `tabIndexRings`, a ring from 2 px inside the circle to 6 px beyond it, so the number is still
+  compared): the shadow over the grid's dots is dithered in one of two versions, about 600
+  pixels apart, the same two bytes for bytes in every run. A shot without it compares byte for
+  byte.
 - **Settle by condition, not by sleep.** Fixed sleeps would be most of a run (a closed menu leaves a
   2x8 px empty `#contextMenu`, so a wait for it to vanish always runs out its 2 s).
   A menu is closed when it holds no items; a dialog is still when a MutationObserver has seen no
@@ -192,7 +203,10 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
 - **Setups**: one IDE each --- `no-project` (menus, dialogs, panels), `help` (the add-in's eight,
   `test/addin/helpdemo`), `project`, `sample`, the `settings` setups, `glyphs`, `global-search`
   (Sample 15 exported from the install, built into the lane's copy as an add-in, its own project
-  opened), `sample6` (Sample 6 exported and opened) and `designer` (the sample fixture with
+  opened; once a search settles, its results list is told through its own `notifyChangedItem`
+  that every row changed, so that it measures them again (owner): it keeps a row's height from
+  its first measure and sets its scroll range from those, and under load a thumb showed over
+  two results that fit), `sample6` (Sample 6 exported and opened) and `designer` (the sample fixture with
   `test/shots/designer/` staged onto it, plus the Global Search add-in for Toolbar_3; it sets the
   page's `currentDPI` to the 2x ratio, or the IDE's 5 s DPI check covers every designer with
   RESYNC), and `forms` (the same without the add-in), `community` (the demo, its compiler
@@ -555,8 +569,11 @@ are under `docs/IDE/Building/Images/`.
   About 0.5 s a call (a PowerShell start). The IDE's window class is `ThunderForm`; the Webpage
   pane's second WebView2 is a `Chrome_WidgetWin_1` child (title `Google`) of zero size until the
   pane shows. The capture also returns the visible frame (`DWMWA_EXTENDED_FRAME_BOUNDS`), the
-  client area and a layered window's key and alpha. `tb-launch.ps1` is 28,576 characters of the
-  30,000 its environment variable allows.
+  client area, a layered window's key and alpha, and whether the caption is drawn active
+  (`WS_ACTIVECAPTION`). `activateWindow(desktop, hwnd)` makes a window the active one of its
+  desktop (its thread's input attached for `BringWindowToTop`, `SetForegroundWindow`,
+  `SetActiveWindow` and `SetFocus`) and says whether its caption then is. `tb-launch.ps1` is
+  24,771 characters, its comment lines emptied, of the 30,000 its environment variable allows.
 
 ## Pictures of a running program
 
@@ -577,7 +594,9 @@ are under `docs/IDE/Building/Images/`.
   it and loses it again now and then, and one run from the IDE never gets it, so the form draws
   its frame as active (`WM_NCACTIVATE`) whenever it is not the foreground window; and no control
   takes the focus (`TabStop` off), since a focused one drew a caret or, now and then, a focus
-  rectangle. With both, repeated runs are unchanged.
+  rectangle. Even so a form drew its caption inactive now and then (4829696d and 599a66ad, one
+  run each), so `programShot` makes the form the active window (`activateWindow`) before its
+  captures and again whenever a capture finds the caption inactive (owner).
 - **85f25aa2** (Opacity 75, TransparencyKey red): `PW_RENDERFULLCONTENT` draws the key colour
   black and every pixel opaque, so the tool reads the key's pixels from a client-only capture
   (flags 1) and gives the picture the window's own alpha (191) and alpha 0 there: the page is
@@ -656,7 +675,10 @@ Taken on BETA 1010, in both themes where the theme shows.
   spinner no two captures hold alike. **`e2a65dfe`**: the completion list is the IDE's own
   (`.debugConsoleEntryIntellisenseBox`), shows types as `...` until the compiler gives them
   (now and then never: the dot is retyped), and is placed by the list the name before the dot
-  opened unless that is closed first.
+  opened unless that is closed first. It is 500 px wide (its CSS); `triggerIntellisense`
+  places it at the text cursor's box as drawn at the time, which is at the dot or, now and then,
+  already after it (the picture 1198 px wide against 1184): the shot moves it to where the
+  cursor's box stood at the dot (owner).
 - **Compiler crash, not narrowed**: about 3 runs in 10 of the setup, an Apply that embeds or
   removes CSharpishStringFormater meets `NATIVE EXCEPTION: ACCESS_VIOLATION {no-basic-code}
   [twinBASIC_win32.dll+0010BD3F]`; ten probe cycles of the same steps did not reproduce it. Not
@@ -892,6 +914,13 @@ the PNG was just captured from, and the build shows it in place of the PNG
 - **The bar** (`SVG_FAITHFUL` in `shoot_docs.mjs`): an SVG with more than 0.25% of its pixels 96
   grey levels or more off is not written, and an older one is removed. Anything not drawn falls
   to it.
+- **An SVG changes with its PNG** (owner). The SVG of a picture whose PNG is not rewritten
+  (unchanged, or within a capture's noise) stays as it is, with its bundle, when there is one:
+  it is drawn from the whole page, layers the picture does not show included, and those
+  differ from run to run (PackagePublishing_1, a floating panel over a form designer still
+  drawing; CallStack_Frames.light), and one sitting on the bar (Properties_SystemColours.light
+  at 0.251%, 94490c87) was written in one run and removed in the next. `replay.mjs` draws it
+  again after a change to the converter.
 - **One line** (`oneLine`). Git checks a picture's SVG out with CRLF where `core.autocrlf` says
   so, since no `.gitattributes` rule can tell it from a diagram's SVG. An SVG icon embedded as
   text and the annotation layer's XML hold line breaks; so each is written as the space an XML
