@@ -54,30 +54,110 @@ An `## Errors` section after the page's main text and before `## Example`:
 its message, measured with `Error$(n)` in both runtimes, the general exclusions above, and,
 for each number, a generated list of the procedures whose tables name it.
 
-## Tooling (batch 0)
+## Tooling (batch 0, built)
 
-To design and build first; the points below are what it must settle, not decisions yet.
+Three files and a folder. Their reference is on the Tools pages:
+[`errors.mjs`](docs/Documentation/Tools-Defects.md#errorsmjs) and
+[`check_errors.mjs`](docs/Documentation/Tools-Toolchain-Tests.md#check_errorsmjs).
 
-- **The data.** One file per area (per VBA module, per Core group), YAML like `_book.yml`,
-  which `builder/data.mjs` already reads with `js-yaml`. An entry names the page (by path or
-  by `symbols:`), and lists cases: the expression or statements that raise, the error number,
-  the *When* text, and optional per-runtime expectations (`vb6:`, `win64:`) where they differ.
-  Cases that need set-up (an open file, a form, an array) carry it.
-- **The probe generator.** From a data file, one twinBASIC project and one VB6 project, each
-  case wrapped in `On Error Resume Next` / `Err.Clear` / print `Err.Number`, run with
-  `tbrun --exe` (and `--arch win64` where the decisions above say) and with
-  `scripts/vb6run.mjs`. The exe, not a `[RunAfterBuild]` run: the IDE context has its own
-  defects (see `module-init-reads-other-module-ide` in BUGS-TO-REPORT.md).
-- **The checker.** Runs the probes and fails when a runtime disagrees with the data, or a
-  page's section disagrees with what the data generates. Run by a person when a new BETA is
-  installed, like `bug_repro.mjs verify` --- never by CI, which has no twinBASIC or VB6.
-- **The section writer.** Writes each page's `## Errors` from the data, between markers, and
-  the central page's index. A gate in `test.bat` (no runtime needed) checks that every
-  section matches its data.
-- **Operators.** A generator of its own: each operator over every pair of operand types
-  (Byte, Integer, Long, LongLong, Single, Double, Currency, Decimal, Date, String, Boolean,
-  Variant holding Empty or Null) at boundary values, giving a matrix of error numbers per
-  runtime. Each operator page gets a summary of it; the full matrix is a page of its own.
+- `errors/` --- the data: one YAML file per area (`VBA.Strings.yml`, `Core.yml`, ...) and
+  `messages.yml`, each error number's message.
+- `scripts/errors.mjs run` --- builds one probe from the data per runtime, runs it, compares
+  each case with the data. twinBASIC 32-bit and VB6 by default, win64 for a file that says
+  `win64: true` or with `--runtime win64`. By hand only: it needs twinBASIC and VB6. A
+  case a compiler refuses is reported and dropped, and the probe rebuilt (VB6 stops at its
+  first error, so one rebuild per refused case there). `generate <dir>` writes the probes
+  without running them; `--keep` keeps the ones `run` built.
+- `scripts/errors.mjs write` --- writes each page's section from the data.
+- `scripts/check_errors.mjs` --- the gate in `test.bat` and CI: data in order, every section
+  what `write` makes of it, no section without data. No runtime needed.
+- `scripts/lib/errors-data.mjs` --- what the two share.
+
+How a probe runs a case: a `Private Sub C<n>()` of its own, `Dim Result As Variant`, the
+case's `decl` lines, `On Error Resume Next`, its `setup` lines (an error there is reported as
+a setup failure, not as the case's result), then `Result = <expr>` or its `run` lines, then
+`case <n> <Err.Number> <Err.Description>`. twinBASIC: a tree for `tbrun --exe`, module
+`Probe` with `Sub Main` and a `[RunAfterBuild]` that only prints, so the IDE run passes and
+the exe runs the cases. VB6: `Probe.vbp` and `Module1.bas` through `runRepro`, appending to
+`out.txt` line by line, so a case that kills the exe still leaves the ones before it.
+
+### The data format
+
+```yaml
+# errors/VBA.Strings.yml
+beta: 1010                 # the BETA the data was last measured on; titles the VB6 NOTE
+win64: false               # optional: run measures win64 too (operators, Math)
+pages:
+  Reference/Default/VBA/Strings/Mid.md:     # the page, as a path under docs/
+    rows:                  # one table row each, in this order
+      - error: 5           # the number twinBASIC raises
+        when: "*start* is less than 1, or *length* is negative"   # the When cell
+        cases:             # every case must raise `error` in twinBASIC
+          - Mid("abc", 0)  # a string is an expression: Result = Mid("abc", 0)
+          - Mid("abc", 1, -1)
+      - error: 94
+        when: "**Mid$** or **MidB$** is given a *string* that is **Null**"
+        cases: [Mid$(Null, 1), MidB$(Null, 1)]
+    quiet:                 # cases that must raise nothing; never shown on the page
+      - Mid(Null, 1)
+      - Mid("abc", 4)
+  Reference/Core/ReDim.md:
+    rows:
+      - error: -2147467259
+        when: an upper bound is less than its lower bound
+        vb6: 9             # VB6 raises this instead (0: nothing); writes the NOTE
+        bug: pending       # a bugs/<slug> reproducer, or pending until one is queued
+        cases:
+          - { decl: Dim X() As Long, run: ReDim X(0 To -1) }
+          - { decl: Dim X() As Long, run: "ReDim X(5 To 4, 1)" }
+    quiet:
+      - { decl: Dim X() As Long, setup: ReDim X(3), run: ReDim Preserve X(5) }
+  Reference/Default/VBA/Strings/Len.md:
+    quiet:                 # raises nothing: no section
+      - Len(Null)
+      - { expr: LenB(CLngLng(1)), only: tb }   # twinBASIC syntax: not run in VB6
+```
+
+A case is an expression, or a mapping with `expr` or `run` (statements; a multi-line string
+for several) and optionally `decl` (`Dim` lines), `setup` (statements before it) and
+`only: tb`. A row's `win64:` is the number win64 raises where it differs. A page with no
+rows gets no section; one with `none: "<sentence>"` and no rows gets a section holding that
+sentence, for an absence of errors worth stating. Quote a case that holds `: `, starts with
+a quote, or sits in a `{ }` mapping and holds a comma. `messages.yml` maps each number to its
+message; `run` fails a case whose `Err.Description` is not that text.
+
+The section `write` makes, before the page's first Example heading:
+
+```
+<!-- errors: generated from errors/Core.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Errors
+
+| Error | When |
+|---|---|
+| -2147467259, *Unspecified error* | an upper bound is less than its lower bound |
+
+> [!NOTE] BETA 1010
+> When an upper bound is less than its lower bound, VB6 raises error 9, *Subscript out of range*, instead.
+
+<!-- /errors -->
+```
+
+### Decided while building, for the owner to confirm
+
+- **The heading takes the page's level for Example and See Also**: `###` on the VBA and Core
+  pages, which still use the old h1→h3 style; `##` on a page without those headings.
+- **The message is `Err.Description`, not `Error$(n)`.** For VB's own numbers the two agree;
+  for an HRESULT they do not: `Error$(-2147467259)` is *Application-defined or
+  object-defined error*, while the error raised describes itself as *Unspecified error*,
+  which is what a handler sees. Batch 1 settles which the central page lists.
+- **The number is not linked yet**: the central page does not exist. Batch 1 adds the link
+  in `renderSection` (`scripts/lib/errors-data.mjs`) and rewrites every section with `write`.
+- **A row that differs from VB6 must name its reproducer**, or say `bug: pending`; the gate
+  refuses a `vb6:` row without it.
+- **Errors from converting an argument are left out**, as the plan says: `Mid("abc", "x")`
+  raises 13 and `Mid("abc", Null)` 94 in both runtimes, in the conversion of *start* to
+  **Long**. `Mid("abc", 1, Null)` is in the table: *length* is a **Variant**, and the 94 is
+  Mid's own.
 
 ## Starting batch 0
 
@@ -131,7 +211,7 @@ each can be run when there is budget. Status is kept here.
 
 | # | Batch | Pages (about) | Status |
 |---|---|---|---|
-| 0 | Tooling: data format, probe generator (twinBASIC and VB6), checker, section writer, the gate | --- | not started |
+| 0 | Tooling: data format, probe generator (twinBASIC and VB6), checker, section writer, the gate | --- | built; trial sections (Mid, ReDim; Len raises nothing) await the owner |
 | 1 | The central Run-time errors page | 1 | not started |
 | 2 | **Pilot: VBA `Strings`** --- settles the section's style with the owner before anything scales | 30 | not started |
 | 3 | VBA `Conversion` | 28 | not started |

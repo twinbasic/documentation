@@ -1,0 +1,44 @@
+# The VBA Strings module. Format: WIP.Errors.md.
+beta: 1010
+pages:
+  Reference/Default/VBA/Strings/Mid.md:
+    rows:
+      - error: 5
+        when: "*start* is less than 1, or *length* is negative"
+        cases:
+          - Mid("abc", 0)
+          - Mid("abc", -1, 1)
+          - Mid("abc", 1, -1)
+          - Mid$("abc", 0)
+          - MidB("abc", 0)
+          - MidB$("abc", 1, -1)
+      - error: 5
+        when: "**Mid** or **Mid$** is given a *start* greater than 1,073,741,824 or a *length* greater than 1,073,741,823"
+        cases:
+          - Mid("abc", 1073741825)
+          - Mid$("abc", 2147483647)
+          - Mid("abc", 1, 1073741824)
+          - Mid$("", 1, 2147483647)
+      - error: 94
+        when: "**Mid$** or **MidB$** is given a *string* that is **Null**, or any form is given a *length* that is **Null**"
+        cases:
+          - Mid$(Null, 1)
+          - MidB$(Null, 1)
+          - Mid("abc", 1, Null)
+          - MidB$("abc", 1, Null)
+    quiet:
+      - Mid(Null, 1)
+      - Mid("abc", 4)
+      - Mid("abc", 1073741824)
+      - Mid("abc", 1, 1073741823)
+      - MidB(Null, 1)
+      - MidB("abc", 2147483647)
+      - MidB("abc", 1, 2147483647)
+      - Mid("", 1, 0)
+  Reference/Default/VBA/Strings/Len.md:
+    quiet:
+      - Len("")
+      - Len(Null)
+      - LenB(Null)
+      - Len(Empty)
+      - { decl: Dim S As String * 4, expr: Len(S) }

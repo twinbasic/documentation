@@ -395,6 +395,17 @@ Thirteen probes run first, on pages, sources and an `expect.json` built in memor
 
 Exit codes: **0** every probe passed and every test project is in order, **1** a probe failed, or a section or test project is not in order, **2** the gate could not run: a refused command line, or a crash.
 
+## check_errors.mjs
+{: #check-errors }
+
+    node scripts/check_errors.mjs
+
+Verifies that every reference page's Errors section is what [`errors.mjs write`](Tools-Defects#errors) makes of the run-time error data under `errors/`, and that the data is in order: every file reads, with no key it does not know; every error number it names has its message in `errors/messages.yml`; a row that differs from VB6 names its reproducer under `bugs/`, or says `pending`; every page it names exists and is named by one file only; and no page under `docs/` has a section that no data file names. It reads only the sources, so it needs no twinBASIC, no VB6 and no built tree. Measuring the data is `errors.mjs run`, which is not a gate.
+
+Sixteen probes run first, on data and pages built in memory: how the data is read and refused, the section and its VB6 note, where a new section goes and that a marker inside a fence is not one, that writing twice changes nothing and removing a section gives the page back, and how the probe modules and their output are read.
+
+Exit codes: **0** every probe passed and every section matches its data, **1** a probe failed, or the data or a section is not in order, **2** the gate could not run: a refused command line, or a crash.
+
 ## check_symbol_index.mjs
 {: #check-symbol-index }
 

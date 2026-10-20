@@ -177,6 +177,11 @@ node scripts/check_book_coverage.mjs
 @rem no tree, no install, well under a second.
 node scripts/check_package_tests.mjs
 @if errorlevel 1 goto :fail
+@rem Every page's Errors section is what scripts\errors.mjs write makes of the
+@rem run-time error data under errors\, and the data is in order. Its probes
+@rem run on inputs built in memory first. Sources only: no twinBASIC, no VB6.
+node scripts/check_errors.mjs
+@if errorlevel 1 goto :fail
 @rem The symbol index (tB/symbols.json) is read by the IDE help add-in,
 @rem and a build that indexes the reference cleanly says nothing about the
 @rem rules that did not fire on it. These probes assert each one against

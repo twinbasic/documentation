@@ -1,0 +1,7 @@
+# The message of each run-time error number, as the runtime's Err.Description gives it
+# when the error is raised. scripts/errors.mjs run checks every case against it.
+5: Invalid procedure call or argument
+9: Subscript out of range
+13: Type mismatch
+94: Invalid use of Null
+-2147467259: Unspecified error

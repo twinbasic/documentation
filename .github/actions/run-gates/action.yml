@@ -236,6 +236,12 @@ runs:
     - name: Verify the package test markers and projects (check_package_tests.mjs)
       shell: bash
       run: node scripts/check_package_tests.mjs
+    # Every page's Errors section is what scripts/errors.mjs write makes of the
+    # run-time error data under errors/, and the data is in order. Sources
+    # only: no twinBASIC, no VB6.
+    - name: Verify the Errors sections against their data (check_errors.mjs)
+      shell: bash
+      run: node scripts/check_errors.mjs
     # The symbol index (tB/symbols.json) is read by the IDE help add-in. A
     # build that indexes the reference cleanly says nothing about the rules
     # that did not fire on it, so these probes assert each against the case

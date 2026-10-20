@@ -33,6 +33,17 @@ To determine the number of characters in *string*, use the [**Len**](Len) functi
 > [!TIP]
 > Use the [**Mid =**](../../Core/Mid-equals) statement to replace characters within a string.
 
+<!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Errors
+
+| Error | When |
+|---|---|
+| 5, *Invalid procedure call or argument* | *start* is less than 1, or *length* is negative |
+| 5, *Invalid procedure call or argument* | **Mid** or **Mid$** is given a *start* greater than 1,073,741,824 or a *length* greater than 1,073,741,823 |
+| 94, *Invalid use of Null* | **Mid$** or **MidB$** is given a *string* that is **Null**, or any form is given a *length* that is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Mid** function to return a specified number of characters from a string.

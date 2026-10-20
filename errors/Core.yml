@@ -1,0 +1,27 @@
+# Statements and operators of docs/Reference/Core/. Format: WIP.Errors.md.
+beta: 1010
+pages:
+  Reference/Core/ReDim.md:
+    rows:
+      - error: -2147467259
+        when: an upper bound is less than its lower bound
+        vb6: 9
+        bug: pending
+        cases:
+          - { decl: Dim X() As Long, run: ReDim X(0 To -1) }
+          - { decl: Dim X() As Long, run: ReDim X(-1) }
+          - { decl: Dim X() As Long, run: "ReDim X(5 To 4, 1)" }
+      - error: 9
+        when: "**Preserve** changes a lower bound, or the bounds of any dimension but the last"
+        cases:
+          - { decl: Dim X() As Long, setup: ReDim X(1 To 3), run: ReDim Preserve X(0 To 3) }
+          - { decl: Dim X() As Long, setup: "ReDim X(3, 3)", run: "ReDim Preserve X(4, 3)" }
+      - error: 13
+        when: "**Preserve** is used on a **Variant** that does not hold an array"
+        cases:
+          - { decl: Dim V As Variant, setup: V = 1, run: ReDim Preserve V(3) }
+    quiet:
+      - { decl: Dim X() As Long, run: ReDim X(0 To 0) }
+      - { decl: Dim X() As Long, setup: ReDim X(3), run: ReDim Preserve X(5) }
+      - { decl: Dim V As Variant, setup: V = 1, run: ReDim V(3) }
+      - { decl: Dim X() As Long, setup: "ReDim X(3, 3)", run: "ReDim Preserve X(3, 5)" }

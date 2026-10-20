@@ -29,7 +29,7 @@ The **ReDim** statement is used to size or resize a dynamic array that has alrea
 
 Use the **ReDim** statement repeatedly to change the number of elements and dimensions in an array. However, an array declared with one data type cannot later be changed to another data type by **ReDim**, unless the array is contained in a **Variant**. If the array is contained in a **Variant**, the type of the elements can be changed by using an **As** *type* clause, unless the **Preserve** keyword is used, in which case no changes of data type are permitted.
 
-**ReDim** also works on a **Variant** that holds a value other than an array, or nothing at all: the value is discarded and the **Variant** then holds the new array. **ReDim Preserve** on a **Variant** that holds a value other than an array raises error 13 (*Type mismatch*).
+**ReDim** also works on a **Variant** that holds a value other than an array, or nothing at all: the value is discarded and the **Variant** then holds the new array.
 
 With the **Preserve** keyword, only the last array dimension can be resized, and the number of dimensions cannot change. For example, when the array has only one dimension, that dimension can be resized because it is the last and only dimension. However, when the array has two or more dimensions, only the size of the last dimension can change while still preserving the contents of the array.
 
@@ -42,12 +42,9 @@ ReDim X(10, 10, 10)
 ReDim Preserve X(10, 10, 15)
 ```
 
-Similarly, with **Preserve**, the size of the array can only change by changing the upper bound; changing the lower bound causes an error.
+Similarly, with **Preserve**, the size of the array can only change by changing the upper bound.
 
 When an array becomes smaller than it was, data in the eliminated elements will be lost.
-
-> [!NOTE] BETA 1010
-> An upper bound below the lower bound, as in `ReDim X(0 To -1)`, raises error -2147467259, *Unspecified error*. VB6 raises error 9, *Subscript out of range*.
 
 When variables are initialized, a numeric variable is initialized to 0, a variable-length string is initialized to a zero-length string (""), and a fixed-length string is filled with zeros. **Variant** variables are initialized to **Empty**. Each element of a user-defined type variable is initialized as if it were a separate variable.
 
@@ -57,6 +54,20 @@ The **ReDim** statement acts as a declarative statement if the variable it decla
 
 > [!NOTE]
 > To resize an array contained in a **Variant**, the **Variant** variable must be explicitly declared before attempting to resize its array.
+
+<!-- errors: generated from errors/Core.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Errors
+
+| Error | When |
+|---|---|
+| -2147467259, *Unspecified error* | an upper bound is less than its lower bound |
+| 9, *Subscript out of range* | **Preserve** changes a lower bound, or the bounds of any dimension but the last |
+| 13, *Type mismatch* | **Preserve** is used on a **Variant** that does not hold an array |
+
+> [!NOTE] BETA 1010
+> When an upper bound is less than its lower bound, VB6 raises error 9, *Subscript out of range*, instead.
+
+<!-- /errors -->
 
 ### Example
 
