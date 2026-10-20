@@ -33,9 +33,12 @@ A `## Common Errors` section (owner, 2026-10-21, on a reader's request) after th
 
 | Error | When |
 |---|---|
-| 5, *Invalid procedure call or argument* | *start* is less than 1, or *length* is negative |
-| 94, *Invalid use of Null* | `Mid$` is given a *string* that is **Null** |
+| [5 (`&H5`)](../../../Reference/Run-time-Errors#error-5), *Invalid procedure call or argument* | *start* is less than 1, or *length* is negative |
+| [94 (`&H5E`)](../../../Reference/Run-time-Errors#error-94), *Invalid use of Null* | **Mid$** is given a *string* that is **Null** |
 
+- The number is given in decimal and in VB hexadecimal, as a 32-bit **Long** (owner,
+  2026-10-20). The heading takes the level of the page's Example heading: `###` on the
+  VBA and Core pages, which the build promotes to `##`.
 - The number links to its row on the central page (below); the message is the runtime's own,
   as `Err.Description` gives it when the error is raised (owner, 2026-10-20), in italics as the rest of the site writes messages.
 - *When* is a condition on the arguments or the state, in the reader's terms --- not the
@@ -212,7 +215,7 @@ The section `write` makes, before the page's first Example heading:
   **Long**. `Mid("abc", 1, Null)` is in the table: *length* is a **Variant**, and the 94 is
   Mid's own.
 
-## Starting batch 0
+## Before any batch
 
 Read first: [WIP.Harness.md](WIP.Harness.md) (`tbbuild`, `tbrun`), [WIP.Build.md](WIP.Build.md)
 (gates), [WIP.Authoring.md](WIP.Authoring.md) (page template), and `scripts/lib/vb6.mjs`'s
@@ -220,7 +223,7 @@ opening comment (driving VB6). Models to copy from: `scripts/check_package_tests
 `scripts/check_code_regions.mjs` tie page text to tests with markers, and `scripts/bug_repro.mjs`
 runs projects in both runtimes and compares the result with an expectation.
 
-What this repository has already learned that the probes must respect (BETA 1010):
+What the probes must respect (BETA 1010; `errors.mjs` already does all of it):
 
 - **Run cases in the built exe** (`tbrun --exe`), and print with `TbRun.Out`, which `tbrun`
   adds to the project: `Debug.Print` writes nothing in an exe. A `[RunAfterBuild]` run in the
@@ -238,24 +241,32 @@ What this repository has already learned that the probes must respect (BETA 1010
 - **VB6 cannot compile twinBASIC syntax** (`LongLong`, `Return` in a function, inline `Dim x =`,
   generics). Cases for VB6 are written in the common subset; a twinBASIC-only case says so in
   the data and is not run in VB6.
-- **One case can stop a whole project**: a compile error anywhere fails all of it. The
-  generator should build a failing project again without the case named in the error, so one
-  bad case costs a rerun, not the batch.
+- **One case can stop a whole project**: a compile error anywhere fails all of it. `run`
+  builds a failing project again without the case named in the error.
 - A new gate in `test.bat` must also be added to the gate list in
   `docs/Documentation/Tools.md` (`check_gate_lists.mjs` fails otherwise), and a new tool gets
   its section on the Tools pages under `docs/Documentation/`.
 
-Batch 0 is done when:
+## Where things stand (2026-10-21)
 
-1. The data format is written down in this file, with one complete example.
-2. The generator, the runner (twinBASIC 32-bit, 64-bit on request, VB6) and the section
-   writer exist, with `--help`, and the gate is in `test.bat`.
-3. A trial on three pages of different shapes --- a function with several errors
-   (`Mid` or `InStr`), a statement (`ReDim`), a procedure that raises nothing --- runs through
-   every step, and its sections are written.
-4. **The owner has seen the trial's sections** before batch 2 starts: the format is settled
-   then, not before. The trial's pages may be committed or reverted, as the owner says.
-5. This file's batch table says batch 0 is done, and what batch 1 needs to know.
+Batches 0 and 1 are done and reviewed. Everything is on branch **`errors-batch0`** (worktree
+`.claude/worktrees/infallible-wilson-117b19`), **not pushed and with no PR**: the tooling,
+the trial sections (Mid, ReDim; Len raises nothing), the central page
+`docs/Reference/Run-time-Errors.md` (merged from `errors-batch1`), the ReDim bug
+`redim-inverted-bounds-error` in BUGS-TO-REPORT.md with its reproducer (merged from
+`claude/cool-moser-5bdc31`), and the section's rename to *Common Errors*. Batch 2 starts
+from that branch, or from staging once it is merged there. `test.bat` last passed in full on
+batch 1's branch; after the merges and the rename, `check_errors`, `check_gate_lists`,
+`check_cli` and `check_ci_workflows` pass.
+
+**Next: batch 2, the VBA `Strings` pilot.** List the module's pages
+(`docs/Reference/Default/VBA/Strings/`), keep those that can raise, and for each: read the page
+for error prose and for cases to try, write its entry in `errors/VBA.Strings.yml` (Mid and Len
+are there already), `node scripts/errors.mjs run VBA.Strings.yml --only <page>` until twinBASIC
+and VB6 agree with the data, `node scripts/errors.mjs write`, then remove the page's error
+sentences that the table now carries. A VB6 difference is a row with `vb6:` and a reproducer
+(`node scripts/bug_repro.mjs new <slug>`; `bug: pending` until it exists). Show the owner the
+first few pages before doing the rest: batch 2 settles the style.
 
 ## What batch 2 needs to know (from batch 1)
 
