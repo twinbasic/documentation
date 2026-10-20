@@ -1,8 +1,0 @@
-' A lease request that asked to wait for a free slot, answered when one comes free.
-Class Waiter
-    Public ConnId As Long
-    Public ClientPid As Long
-    Public IdText As String
-    Public WantPort As Boolean
-    Public Tag As String
-End Class

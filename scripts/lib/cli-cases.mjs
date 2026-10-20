@@ -880,6 +880,9 @@ bad("scripts/shoot_docs.mjs", ["--jobs=17"], "--jobs expects a whole number from
     say("--report, --census and --propose cannot be given together"),
   );
   bad(tool, ["--show", "--hide"], say("--show and --hide cannot be given together"));
+  // --fresh changes how the lanes start their IDEs, and neither of these starts one.
+  bad(tool, ["--fresh", "--census"], say("--fresh and --census cannot be given together"));
+  bad(tool, ["--report", "survey.json", "--fresh"], say("--fresh and --report cannot be given together"));
 }
 
 bad(

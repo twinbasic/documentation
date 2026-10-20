@@ -40,13 +40,79 @@ then created by `Dim mc As MyClass = New MyClass(123)`, which sets `MyClassVar` 
 > [!IMPORTANT]
 > A class that is not `Private` is exposed to COM, and COM creates objects without arguments. So a class whose `Sub New` takes arguments must be `Private`, have the `[COMCreatable(False)]` attribute, or also have a constructor that takes no arguments --- a `Class_Initialize()`, or a second `Sub New` with no parameters. Otherwise it fails to compile with TB5135. `Class_Initialize()` replaces `New` in callers of a compiled OCX.
 
+### `Class_Initialize` or `Sub New`?
+
+Both are constructors: code that runs once, as the object is created, before anything else can use it. Only one of them runs for any one object. `Class_Initialize` is inherited from VB6 and VBA, and follows COM's rule that an object is created without arguments; `Sub New` is twinBASIC's addition. They differ in what they can take and who can use them:
+
+| | `Class_Initialize` | `Sub New` |
+|---|---|---|
+| Arguments | None. | Any. A class can have several `Sub New`s with different parameters, and `New` picks the one its arguments match. |
+| VB6 and VBA | The same as in VB6 and VBA. | twinBASIC only. |
+| COM clients | Can create the object. | Can create the object only through a `Sub New` that can be called without arguments: one with no parameters, or one whose parameters are all `Optional`, which then get their default values. |
+| [`As New`](../../tB/Core/New) | Yes. | Only a `Sub New` that can be called without arguments. |
+| Called from code | Possible, but it is an event handler, and the compiler warns: [TB0008](../Compiler-IDE/Compiler-Warnings#tb0008-suspicious-call). | Not possible: TB5053, *Cannot call New() constructor directly*. A derived class calls its base class's, as `Base.New(...)`. |
+
+Which to use:
+
+- **`Class_Initialize`** when setting up the object needs no information from the caller --- creating a `Collection`, reading a default --- and for code that must also compile in VB6 or VBA.
+- **`Sub New(...)`** when the object is not usable until it is given something: a name, a file path, a connection. Requiring it as an argument means no caller can forget it, and no code has to check for an object that was created but not yet set up. It also sets [`ReadOnly`](#readonly-variables) fields, which nothing outside a constructor can change.
+- **Both** when the class should be creatable with arguments, and also without them --- by `As New`, or by a COM client. The two never run one after the other, so code both of them need goes in a `Private` procedure that each calls.
+
+Field initializers --- `Private _name As String = "nobody"` --- run before either constructor, whichever one `New` picks.
+
+A class cannot have both a `Class_Initialize` and a `Sub New` without parameters: a plain `New` would match both, and fails with TB5073. Choose one of the two.
+
+### Example: both constructors
+
+`Greeter` can be created with a name or without one. The common part of the setup is in `Setup`, which both constructors call:
+
+```tb check_build projname=ctor-both slot=file
+Class Greeter
+    Private _name As String = "nobody"
+
+    Private Sub Class_Initialize()
+        Debug.Print "Class_Initialize, _name = " & _name
+        Setup "world"
+    End Sub
+
+    Public Sub New(ByVal Name As String)
+        Debug.Print "Sub New, _name = " & _name
+        Setup Name
+    End Sub
+
+    Private Sub Setup(ByVal Name As String)
+        _name = Name
+    End Sub
+
+    Public Function Greet() As String
+        Return "Hello, " & _name & "!"
+    End Function
+End Class
+```
+
+```tb check_run projname=ctor-both
+Dim a As Greeter = New Greeter
+Debug.Print a.Greet()
+Dim b As Greeter = New Greeter("Ada")
+Debug.Print b.Greet()
+' Output:
+' Class_Initialize, _name = nobody
+' Hello, world!
+' Sub New, _name = nobody
+' Hello, Ada!
+```
+
+`New Greeter("Ada")` runs `Sub New` only: `Class_Initialize` does not run first. Both constructors see the field's initial value, `nobody`.
+
+A class that [inherits](../Language/Inheritance#inherits-for-complete-oop) another runs the base class's constructor as well as its own. [Constructors in Derived Classes](../Language/Inheritance#constructors-in-derived-classes) says which of the base's constructors runs, and what the derived class must do so that the base is set up.
+
 ## Private/Public Modifiers for Modules and Classes
 
 A private module or class won't have its members entered into the type library in an ActiveX project.
 
 ## ReadOnly Variables
 
-In a class, module-level variables can be declared as `ReadOnly`, e.g. `Private ReadOnly mStartDate As Date`. This allows more complex constant assignments: you can use a function return to set it inline, `Private ReadOnly mStartDate As Date = Now()`, or `ReadOnly` constants can be set in `Class_Initialize` or `Sub New(...)` (see parameterized class constructors above), but everywhere else, they can only be read, not changed.
+In a class, module-level variables can be declared as `ReadOnly`, e.g. `Private ReadOnly mStartDate As Date`. This allows more complex constant assignments: a built-in function's result can set it inline, `Private ReadOnly mStartDate As Date = Now()` --- a procedure of the project cannot, see [What an Initializer Can Use](../Language/Inline-Initialization#what-an-initializer-can-use) --- or `ReadOnly` constants can be set in `Class_Initialize` or `Sub New(...)` (see parameterized class constructors above), but everywhere else, they can only be read, not changed.
 
 ## Get/Let/Set Notification for Class Public Variables
 

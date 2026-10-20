@@ -25,6 +25,9 @@ When numbers are converted to strings, a leading space is always reserved for th
 
 Use the [**Format**](../Strings/Format) function to convert numeric values to be formatted as dates, times, or currency, or in other user-defined formats. Unlike **Str**, the **Format** function doesn't include a leading space for the sign of *number*.
 
+> [!WARNING] BETA 1010
+> A 64-bit build converts a negative zero of type **Single** or **Double** (a value that equals 0 and has its sign bit set) to `"-0"`, with no leading space. A 32-bit build and VB6 give `" 0"`.
+
 > [!NOTE]
 > The **Str** function recognizes only the period (`.`) as a valid decimal separator. When different decimal separators may be used (for example, in international applications), use [**CStr**](CStr) to convert a number to a string.
 

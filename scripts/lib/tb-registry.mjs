@@ -495,6 +495,36 @@ export function alive(pid) {
   }
 }
 
+/** The file a run's folder holds when it was asked to keep it (--keep). */
+export const KEEP_MARK = ".keep";
+
+/** Mark a run's folder as one to keep: sweepRunFolders leaves it alone. */
+export function keepRunFolder(dir) {
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, KEEP_MARK), "kept with --keep: delete this folder by hand\n");
+}
+
+/**
+ * Remove the folders earlier runs left under `runs`, each named for its run's
+ * process id, whose process has ended. A folder marked by keepRunFolder stays,
+ * and so does one that cannot be removed yet (still held by something of that
+ * run's), for a later run to try again. Returns the names removed.
+ */
+export function sweepRunFolders(runs, { isAlive = alive } = {}) {
+  const removed = [];
+  for (const name of existsSync(runs) ? readdirSync(runs) : []) {
+    if (!/^\d+$/.test(name) || isAlive(Number(name))) continue;
+    if (existsSync(path.join(runs, name, KEEP_MARK))) continue;
+    try {
+      rmSync(path.join(runs, name), { recursive: true, force: true });
+      removed.push(name);
+    } catch {
+      // still held
+    }
+  }
+  return removed;
+}
+
 /**
  * Take charge of the registry for this run: record what is there, and clear
  * out what an earlier run on the same folders left behind.

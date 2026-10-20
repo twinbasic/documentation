@@ -148,13 +148,14 @@ import {
 } from "./lib/example-run.mjs";
 import { HarnessError, HARNESS_NAME, optionSeconds, readHarness, timeoutMs } from "./lib/harness-settings.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
+import { IdeSession } from "./lib/tb-session.mjs";
 import { timing } from "./lib/tb-timings.mjs";
 import { leaseSlot, wantShow } from "./lib/tb-ide.mjs";
 import { asksForLlvm, holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { packTree, unpackProject } from "./lib/tb-project.mjs";
 import { downloadPackage } from "../indexer/lib/twinserv-client.mjs";
-import { alive, finishTidy, startTidy } from "./lib/tb-registry.mjs";
+import { finishTidy, keepRunFolder, startTidy, sweepRunFolders } from "./lib/tb-registry.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
@@ -180,6 +181,7 @@ const { values } = withUsageError(
         verbose: { type: "boolean", default: false },
         json: { type: "boolean", default: false },
         keep: { type: "boolean", default: false },
+        fresh: { type: "boolean", default: false },
         build: { type: "boolean", default: false },
         llvm: { type: "boolean", default: false },
         show: { type: "boolean", default: false },
@@ -215,7 +217,10 @@ InputBox, or contains End, or is not slot=sub, is refused without being built.
                    whose build fails is cut down to the samples that fail it
   --llvm           build with LLVM (implies --build); needs a Professional or
                    Ultimate licence, and --build alone is its control
-  --keep           leave the generated projects on disk and say where
+  --keep           leave the generated projects on disk and say where; they
+                   stay until deleted by hand
+  --fresh          start a new IDE for every project; by default each lane opens
+                   project after project in one IDE
   --show, --hide   as tbbuild's
   --compile-timeout <secs>, --build-timeout <secs>, --compiler-run-timeout <secs>,
   --compiler-run-quiet <secs>
@@ -230,8 +235,9 @@ Exit codes:
      when it found only unmarked samples that fail (advisory)
   1  a marked sample does not compile, a marker is misused, a template does not
      compile, the compiler crashed on a project, --build or --llvm found a sample
-     that fails the build, or a \`${RUN_MARKER}\` sample raised an error, did not return or
-     printed something other than the page says; the report names each
+     that fails the build, a batch met its time limit, or a \`${RUN_MARKER}\` sample raised
+     an error, did not return or printed something other than the page says; the report
+     names each
   2  the harness could not run: a refused command line, a failed self-test probe, no
      IDE, an unreadable --report file, a work folder it could not clear,
      test/harness.json missing or malformed (its exclusions included), a TB_<PHASE>
@@ -246,6 +252,9 @@ const { only, jobs, batchSize, seconds } = withUsageError(
   () => {
     refuseTogether(values, ["report", "census", "propose"]);
     refuseTogether(values, ["show", "hide"]);
+    // Neither starts an IDE, so there is nothing for --fresh to change.
+    refuseTogether(values, ["fresh", "census"]);
+    refuseTogether(values, ["fresh", "report"]);
     if (values.apply && !values.propose)
       throw new CliError("conflict", "--apply needs --propose", { option: "--apply" });
     const jobs = numberOption(values.jobs ?? String(DEFAULT_JOBS), { option: "--jobs", integer: true, min: 1 });
@@ -758,15 +767,14 @@ const timingBatch = (batch, staged) =>
  * Take one batch of an exclusion's canary to its stage, once: no second build,
  * no halving. Returns the stage it failed at, or null (canaryBatchStage).
  */
-async function buildCanary(batch, slot, work) {
+async function buildCanary(batch, session, work) {
   const staged = stageBatch(batch, work);
   timingBatch(batch, staged);
   const run = staged.runs.length ? runWait() : null;
   const r = await compileProject({
     project: staged.proj,
     ide: IDE,
-    slot,
-    show: wantShow({ show: values.show, hide: values.hide }),
+    session,
     build: BUILD || !!run,
     llvm: LLVM,
     run,
@@ -787,7 +795,7 @@ async function buildCanary(batch, slot, work) {
   return { canary: batch.canary, failedAt };
 }
 
-async function buildStaged(staged, slot) {
+async function buildStaged(staged, session) {
   // A run batch is built and its [RunAfterBuild] Sub is run, in every mode. The
   // run is over when the dispatcher says it is done, or when the console has
   // been quiet for the run's quiet period, counted from [BUILD] Executing or the
@@ -798,8 +806,7 @@ async function buildStaged(staged, slot) {
     compileProject({
       project: staged.proj,
       ide: IDE,
-      slot,
-      show: wantShow({ show: values.show, hide: values.hide }),
+      session,
       build: BUILD || !!run,
       llvm: LLVM,
       run,
@@ -819,6 +826,10 @@ async function buildStaged(staged, slot) {
   // A build that failed after a clean compile is isolated as a crash is: nothing
   // names a sample, so it is cut down by halving. `named` is empty for that.
   if (r.code === 5) return { crashed: true, buildFailed: true, named: new Set(), detail: r.message };
+  // A compile that met its limit, or never reported the project open: the
+  // batch is not judged, and that is a finding, not the end of the run
+  // (test/harness.md, the limits).
+  if (r.code === 3) return { timedOut: true, detail: r.message };
   if (r.code !== 0 && r.code !== 1) {
     throw new Error(`tbbuild exited ${r.code} on ${staged.proj}\n${r.message}`);
   }
@@ -886,12 +897,12 @@ async function buildStaged(staged, slot) {
  * isolation is tested without an IDE, and without a crash that needs two real
  * samples to happen.
  */
-function laneOf(slot, work) {
+function laneOf(session, work) {
   return {
     async build(batch) {
       const staged = stageBatch(batch, work);
       timingBatch(batch, staged);
-      const result = await buildStaged(staged, slot);
+      const result = await buildStaged(staged, session);
       if (!values.keep) rmSync(staged.dir, { recursive: true, force: true });
       return result;
     },
@@ -901,8 +912,12 @@ function laneOf(slot, work) {
   };
 }
 
-/** Run every batch across `jobs` lanes, each with its own slot and workspace. */
-async function runAll(batches, work) {
+/**
+ * Run every batch across `jobs` lanes, each with its own slot, workspace and
+ * IDE session: a lane opens project after project in one IDE (lib/tb-session.mjs),
+ * or, with --fresh, starts a new IDE for each. `ides` counts what the lanes did.
+ */
+async function runAll(batches, work, ides = { starts: 0, switches: 0 }) {
   const queue = [...batches];
   const results = [];
   const lanes = Array.from({ length: Math.min(jobs, queue.length) }, async (_, i) => {
@@ -912,17 +927,27 @@ async function runAll(batches, work) {
     const laneWork = path.join(work, `lane${i}`);
     mkdirSync(laneWork, { recursive: true });
     const slot = await leaseSlot({ tag: `check_examples lane ${i}` });
+    const session = new IdeSession({
+      ide: IDE,
+      slot,
+      show: wantShow({ show: values.show, hide: values.hide }),
+      fresh: values.fresh,
+      note: (line) => process.stderr.write(`${line} (lane ${i})\n`),
+    });
     try {
-      const lane = laneOf(slot, laneWork);
+      const lane = laneOf(session, laneWork);
       while (queue.length) {
         const batch = queue.shift();
         process.stderr.write(
           `  building ${batch.fences.length} sample(s) [${batch.project}]${batch.canary ? " (canary)" : ""} on lane ${i}\n`,
         );
         // A canary's batch is taken to its stage once and judged as a whole.
-        results.push(batch.canary ? await buildCanary(batch, slot, laneWork) : await runBatch(batch, lane));
+        results.push(batch.canary ? await buildCanary(batch, session, laneWork) : await runBatch(batch, lane));
       }
     } finally {
+      await session.end();
+      ides.starts += session.starts;
+      ides.switches += session.switches;
       await slot.release();
     }
   });
@@ -1226,21 +1251,16 @@ async function main() {
   });
   const batches = [...canaryBatches, ...restBatches, ...runBatches];
   // The run's folder is named for this process, so that runs at once never share
-  // one. A folder an earlier run left, whose process has ended, goes; one that
-  // cannot be removed yet is still held by something of that run's (an IDE from
-  // before each IDE ran in its launcher's job, WIP.Harness.md, "The IDE runs
-  // inside a job"), and is left for a later run.
+  // one. A folder an earlier run left, whose process has ended, goes, unless
+  // that run was given --keep; one that cannot be removed yet is still held by
+  // something of that run's (an IDE from before each IDE ran in its launcher's
+  // job, WIP.Harness.md, "The IDE runs inside a job"), and is left for a later run.
   const runs = path.join(tmpdir(), "tbexamples");
-  for (const name of existsSync(runs) ? readdirSync(runs) : []) {
-    if (!/^\d+$/.test(name) || alive(Number(name))) continue;
-    try {
-      rmSync(path.join(runs, name), { recursive: true, force: true });
-    } catch {
-      // still held
-    }
-  }
+  sweepRunFolders(runs);
   const work = path.join(runs, String(process.pid));
   mkdirSync(work, { recursive: true });
+  // Marked from the start, so that a kept run that dies keeps its folder too.
+  if (values.keep) keepRunFolder(work);
   await fetchEmbedded(new Set(batches.map((b) => b.project)));
 
   const staged = selected.length - samples.length;
@@ -1282,9 +1302,10 @@ async function main() {
   tidy = startTidy({ prefixes: [work] });
 
   const t0 = Date.now();
+  const ides = { starts: 0, switches: 0 };
   let results;
   try {
-    results = await runAll(batches, work);
+    results = await runAll(batches, work, ides);
   } catch (e) {
     console.error(`check_examples: ${e.message}`);
     finishTidy(tidy);
@@ -1448,6 +1469,7 @@ async function main() {
         `${real} finding(s), ${secs}s` +
         (real ? "" : " -- clean"),
     );
+    say(`${ides.starts} IDE start(s), ${ides.switches} project(s) opened in an IDE already running`);
     for (const line of canaryLines) say(line);
     if (wantRun) {
       say(

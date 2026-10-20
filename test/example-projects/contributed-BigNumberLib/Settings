@@ -51,14 +51,14 @@
 			"autoCtlExt": true,
 			"id": "{C8320E09-7273-4873-9646-DD1155EC9500}",
 			"licence": "LibTom (Pubic Domain)",
-			"name": "[IMPORTED] BigNumberLib (Experimental) TomsFastMath Static Library",
+			"name": "[IMPORTED] BigNumberLib - TomsFastMath Static Library",
 			"path32": "/Packages/BigNumberLib",
 			"path64": "/Packages/BigNumberLib",
 			"symbolId": "BigNumberLib",
 			"versionBuild": "0",
 			"versionMajor": "1",
 			"versionMinor": "0",
-			"versionRevision": "2"
+			"versionRevision": "4"
 		}
 	],
 	"project.settingsVersion": 1,

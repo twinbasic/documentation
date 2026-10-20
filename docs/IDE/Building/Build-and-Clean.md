@@ -43,7 +43,7 @@ A build does not save the project and does not ask you to. The compiler builds t
 
 A project made from a template, a sample or a folder, or imported from a VB6 project, has no `.twinproj` file until it is saved. **Build** and **Clean** both open a box titled **twinBASIC** for such a project, with the question **You must first save the project.  Save now?** and the buttons **Save** and **Cancel**.
 
-<!-- SHOT building-save-first: New Project, tile Standard EXE, Open and Continue, then the Build button pressed: the modal box titled twinBASIC with Save and Cancel. Why: the question is the first thing a new project's build meets and the page describes it only in words. -->
+![The question a build of a project with no file asks, in a box titled twinBASIC.](Images/Save_First.png){:width="362" height="144"}
 
 **Cancel** closes the box. Nothing is written, and the console prints nothing. **Save** opens the Windows **Save As** dialog, with the name of the project's folder proposed, such as `NewProject`.
 
@@ -69,7 +69,7 @@ A build that succeeds writes these lines:
 | Standard DLL | As an ActiveX DLL, with no `[REGISTER]` line. |
 | Package TWINPACK | `[BUILD] Creating TWINPACK file '<path>'`, then `[BUILD] successful.` There are no links. |
 
-<!-- SHOT building-console-exe: a saved Standard EXE project, Build pressed, the console after the closing links line, with its timestamps. Why: the table above names the three lines and the two links, and the picture shows what a link looks like. -->
+![The DEBUG CONSOLE, floating, after a build of a Standard EXE: the start line, the line naming the file written, and the line with the two links drawn as green buttons.](Images/Console_Exe.png){:width="900" height="115"}
 
 The log has no summary line. A clean build ends with the line for the file, or with the links beneath it. A build with errors ends differently, as [When a build fails](#when-a-build-fails) shows.
 
@@ -110,7 +110,7 @@ An error in a procedure that nothing calls does not stop the build, although the
 [BUILD] failed
 ```
 
-<!-- SHOT building-console-failed: a saved Standard EXE whose Sub Main calls an undefined procedure, the DIAGNOSTICS row showing, Build pressed: the console with the failure lines. Why: the lines are the only mark of a failed build, and the page quotes them as text. -->
+![The DEBUG CONSOLE, floating, after a build stopped by an error in the code: the start line, the two linker lines and the failure line in red.](Images/Console_Failed.png){:width="900" height="134"}
 
 No box opens. The [DIAGNOSTICS](../Code/Diagnostics) panel is unchanged: it already listed the error. The failed build deletes the file the previous build made.
 
@@ -130,7 +130,7 @@ LOCKED BY:
 
 The old file is kept. The red link **Terminate** ends the program, with no question, and the next **Build** succeeds. The same program stops **Clean** from deleting the file. The line is `[BUILD-CLEAN] failed to delete the previous build file.  Check the file is not in use or currently executing.`
 
-<!-- SHOT building-console-locked: a saved Standard EXE built, its exe started with Launch EXE and left waiting, Build pressed again: the console with LOCKED BY and the red Terminate link. Why: the link is the way out and has to be seen. -->
+![The DEBUG CONSOLE, floating, after a build that could not replace a running program: the failure lines in red, the program's name and process id, and the Terminate link drawn as a red button.](Images/Console_Locked.png){:width="900" height="153"}
 
 When the file is a DLL that is registered, a failed deregistration can open another question. See [ActiveX registration](ActiveX-Registration#delete-it-and-continue).
 
@@ -148,7 +148,7 @@ Its log is short:
 
 The `[UNREGISTER]` line comes only for an ActiveX build. **Clean** on a project that was never built prints the first and last lines, and so does a second **Clean**. After you change the *Build Type* setting, **Clean** removes the file of the current path only: the file of the old type stays.
 
-<!-- SHOT building-console-clean: a saved ActiveX DLL built, then Clean pressed: the console with the UNREGISTER and BUILD-CLEAN lines. Why: Clean has no other visible result. -->
+![The DEBUG CONSOLE, floating, after Clean of an ActiveX DLL that was built: the start line, the deregistration line and the cleanup line.](Images/Console_Clean.png){:width="900" height="115"}
 
 **Clean** also asks the **twinBASIC** question for a project with no file. See [A project with no file](#a-project-with-no-file).
 

@@ -40,8 +40,8 @@
 #
 # With TBBUILD_WINDOWS set, nothing is launched: the script works on the windows
 # of the private desktop TBBUILD_DESKTOP, which a launch made and still holds
-# open, prints one line of JSON and ends (tb-ide.mjs's desktopWindows and
-# captureWindow):
+# open, prints one line of JSON and ends (tb-ide.mjs's desktopWindows,
+# captureWindow, postWindowMessage and activateWindow):
 #
 #   TBBUILD_WINDOWS=list     every top-level window on the desktop, with
 #                            TBBUILD_CHILDREN=1 the children of each visible one
@@ -62,6 +62,10 @@
 #                            pressed on a desktop that is not on screen reaches
 #                            no window, so WM_SYSCOMMAND SC_KEYMENU with a letter
 #                            opens a window's menu, as Alt and the letter do
+#   TBBUILD_WINDOWS=activate makes the window TBBUILD_HWND the active window of
+#                            its desktop, as a click on it does, its thread's
+#                            input attached to this one's for the calls; the line
+#                            says whether its caption is then drawn active
 #
 # tb-ide.mjs passes the script with each line that is only a comment emptied, so
 # no line of the C# below may start with `#`.
@@ -120,6 +124,10 @@ using System.Threading;
 public static class TbWindows {
   public delegate bool EnumProc(IntPtr hwnd, IntPtr lParam);
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+  [StructLayout(LayoutKind.Sequential)] public struct WINDOWINFO {
+    public uint cbSize; public RECT rcWindow, rcClient; public uint dwStyle, dwExStyle, dwWindowStatus;
+    public uint cxWindowBorders, cyWindowBorders; public ushort atomWindowType, wCreatorVersion;
+  }
 
   [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
   static extern IntPtr OpenDesktop(string name, int flags, bool inherit, uint access);
@@ -138,6 +146,13 @@ public static class TbWindows {
   [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr ctx);
   [DllImport("user32.dll", SetLastError = true)] static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
   [DllImport("user32.dll", SetLastError = true)] static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+  [DllImport("user32.dll")] static extern bool GetWindowInfo(IntPtr h, ref WINDOWINFO i);
+  [DllImport("user32.dll")] static extern bool AttachThreadInput(uint from, uint to, bool attach);
+  [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);
+  [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern IntPtr SetActiveWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern IntPtr SetFocus(IntPtr h);
+  [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
   [DllImport("user32.dll")] static extern bool GetLayeredWindowAttributes(IntPtr h, out uint key, out byte alpha, out uint flags);
   [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int a, out RECT r, int n);
   [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr h, out RECT r);
@@ -160,6 +175,12 @@ public static class TbWindows {
     string r = QueryFullProcessImageName(p, 0, sb, ref n) ? sb.ToString() : "";
     CloseHandle(p);
     return System.IO.Path.GetFileName(r);
+  }
+  // whether the window's caption is drawn active (WS_ACTIVECAPTION)
+  static bool Active(IntPtr h) {
+    WINDOWINFO i = new WINDOWINFO();
+    i.cbSize = (uint)Marshal.SizeOf(typeof(WINDOWINFO));
+    return GetWindowInfo(h, ref i) && (i.dwWindowStatus & 1) != 0;
   }
   static string Str(string s) {
     StringBuilder b = new StringBuilder("\"");
@@ -251,7 +272,7 @@ public static class TbWindows {
       string layered = GetLayeredWindowAttributes(h, out key, out alpha, out lf) ? "[" + key + "," + alpha + "," + lf + "]" : "null";
       result = "{\"width\":" + w + ",\"height\":" + ht + ",\"dpi\":" + GetDpiForWindow(h) +
         ",\"frame\":" + Box(f, r) + ",\"client\":" + Box(cr, r) +
-        ",\"layered\":" + layered + ",\"texts\":[" + string.Join(",", texts.ToArray()) + "]}";
+        ",\"layered\":" + layered + ",\"active\":" + (Active(h) ? "true" : "false") + ",\"texts\":[" + string.Join(",", texts.ToArray()) + "]}";
     });
     return result;
   }
@@ -264,6 +285,28 @@ public static class TbWindows {
     });
     return "{\"posted\":true}";
   }
+
+  public static string Activate(string desktop, long hwnd) {
+    bool active = false;
+    OnDesktop(desktop, (desk) => {
+      IntPtr h = new IntPtr(hwnd);
+      if (!IsWindow(h)) throw new Exception("there is no window " + hwnd);
+      uint pid;
+      uint them = GetWindowThreadProcessId(h, out pid);
+      uint me = GetCurrentThreadId();
+      bool attached = AttachThreadInput(me, them, true);
+      try {
+        BringWindowToTop(h);
+        SetForegroundWindow(h);
+        SetActiveWindow(h);
+        SetFocus(h);
+      } finally {
+        if (attached) AttachThreadInput(me, them, false);
+      }
+      for (int i = 0; i < 20 && !(active = Active(h)); i++) Thread.Sleep(50);
+    });
+    return "{\"active\":" + (active ? "true" : "false") + "}";
+  }
 }
 '@
   $desktop = $env:TBBUILD_DESKTOP
@@ -274,8 +317,10 @@ public static class TbWindows {
     Write-Output ([TbWindows]::Capture($desktop, [long]$env:TBBUILD_HWND, $flags, $env:TBBUILD_FILE))
   } elseif ($env:TBBUILD_WINDOWS -eq "post") {
     Write-Output ([TbWindows]::Post($desktop, [long]$env:TBBUILD_HWND, [uint32]$env:TBBUILD_MSG, [long]$env:TBBUILD_WPARAM, [long]$env:TBBUILD_LPARAM))
+  } elseif ($env:TBBUILD_WINDOWS -eq "activate") {
+    Write-Output ([TbWindows]::Activate($desktop, [long]$env:TBBUILD_HWND))
   } else {
-    throw "TBBUILD_WINDOWS is not list, capture or post: $($env:TBBUILD_WINDOWS)"
+    throw "TBBUILD_WINDOWS is not list, capture, post or activate: $($env:TBBUILD_WINDOWS)"
   }
   exit 0
 }

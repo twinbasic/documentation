@@ -656,10 +656,11 @@ export function desktopWindows(desktop, { children = false } = {}) {
  * [left, top, right, bottom] in the picture's pixels. With PW_CLIENTONLY (1) the client area
  * is drawn at the picture's top left. `layered` is a layered window's [colour key as a
  * COLORREF, alpha, LWA_ flags], else null: PW_RENDERFULLCONTENT draws the key colour's pixels
- * black and every pixel opaque, and flags 1 draws them in the key colour.
+ * black and every pixel opaque, and flags 1 draws them in the key colour. `active` says whether
+ * its caption is drawn as the active window's (WS_ACTIVECAPTION).
  *
  * @param {number} [o.flags]  PrintWindow's flags (default 2)
- * @returns {Promise<{width: number, height: number, dpi: number, frame: number[], client: number[], layered: number[] | null, texts: string[]}>}
+ * @returns {Promise<{width: number, height: number, dpi: number, frame: number[], client: number[], layered: number[] | null, active: boolean, texts: string[]}>}
  */
 export function captureWindow(desktop, hwnd, file, { flags = 2 } = {}) {
   return onDesktopWindows(desktop, {
@@ -691,6 +692,20 @@ export function postWindowMessage(desktop, hwnd, msg, wParam = 0, lParam = 0) {
     TBBUILD_WPARAM: String(wParam),
     TBBUILD_LPARAM: String(lParam),
   });
+}
+
+/**
+ * Makes a window on a private desktop the active window there, as a click on it does: a
+ * program started on a desktop that is not on screen can be left with its caption drawn
+ * inactive. Its thread's input is attached to the caller's for SetForegroundWindow,
+ * SetActiveWindow and SetFocus.
+ *
+ * @param {string} desktop
+ * @param {number} hwnd   from desktopWindows
+ * @returns {Promise<{active: boolean}>}  whether its caption is then drawn active
+ */
+export function activateWindow(desktop, hwnd) {
+  return onDesktopWindows(desktop, { TBBUILD_WINDOWS: "activate", TBBUILD_HWND: String(hwnd) });
 }
 
 /**
@@ -1079,6 +1094,39 @@ export async function awaitCrashName(c, crash, { timeout = 5000 } = {}) {
 // before the edit's for the answer.
 const EARLY_QUIET_MS = 300;
 
+// The status bar's column of each problems-panel label, in the order of the
+// counts the wire keeps (errors, warnings, hints, infos).
+const ROW_LABEL_COLUMN = { "{ERROR}": 0, "{WARNING}": 1, "{HINT}": 2, "{INFO}": 3 };
+
+/**
+ * The panel rows that are not in a file the wire reports on. The compiler
+ * reports no diagnostics for References or Packages (`src` in BUILD_STATE_JS
+ * leaves both out), yet the panel and the status bar count what an embedded
+ * package has wrong with itself, so for such a project the wire's counts can
+ * never equal the page's. Those rows are the difference.
+ *
+ * A row that does not read as `{LABEL} <path> [line,col]: text`, or whose label
+ * is unknown, is not counted here: the sample then has a row more than the
+ * wire's total explains, and does not agree. So does a row of a listed file
+ * whose path was read differently.
+ *
+ * @param {string[]} rows  the sample's rows (readBuildState)
+ * @param {string[]} src   the files the wire reports on, as `twinbasic:<path>`
+ * @returns {{n: number, counts: number[]}}
+ */
+export function unlistedRows(rows, src) {
+  const listed = new Set(src.map((u) => u.replace(/^twinbasic:/, "").toLowerCase()));
+  const counts = [0, 0, 0, 0];
+  let n = 0;
+  for (const r of rows) {
+    const m = /^(\{[A-Z]+\}) (.*?) \[\d+,\d+\]: /.exec(r);
+    if (!m || !(m[1] in ROW_LABEL_COLUMN) || listed.has(m[2].toLowerCase())) continue;
+    counts[ROW_LABEL_COLUMN[m[1]]]++;
+    n++;
+  }
+  return { n, counts };
+}
+
 /**
  * Wait for the project to open and its compile to settle.
  *
@@ -1091,8 +1139,11 @@ const EARLY_QUIET_MS = 300;
  *
  * The wait ends when the sample has stood still for five seconds, or sooner
  * when `c.wire` has seen the compile end and the sample agrees with it: the
- * same counts, and a row for each. A compile the wire had already seen end
- * when the wait began does not count. A wait that follows an action --- an
+ * same counts, and a row for each. The rows of files the wire does not report
+ * on, an embedded package's own errors, are added to the wire's counts
+ * (unlistedRows), and the sample must then stand unchanged for the quiet
+ * period as well, since nothing else vouches that they have all arrived. A
+ * compile the wire had already seen end when the wait began does not count. A wait that follows an action --- an
  * Apply, an edit --- could otherwise begin before the action's compile and
  * take the one before it, so it waits for a newer compile, or for the sample
  * to stand still.
@@ -1189,12 +1240,15 @@ export async function waitForCompile(c, { project, timeout = timeoutMs("compile"
       // behind its traffic. Then the compile must still be the latest after
       // EARLY_QUIET_MS, since each keystroke starts a compile of its own.
       wire.expect(v.src);
-      let w = up ? wire.check(v.src) : null;
+      let w = wire.check(v.src);
       if (w && before.done && w.seq <= before.seq) w = null;
       const counts = [v.e, v.w, v.h, v.i].map(Number);
-      const total = w ? w.counts.reduce((a, b) => a + b, 0) : -1;
-      if (w && w.counts.every((n, k) => n === counts[k]) && v.rows.length === total) {
-        if (agreed?.seq !== w.seq) agreed = { seq: w.seq, at: now };
+      // What the wire cannot see, the rows of an embedded package's own files.
+      const extra = w ? unlistedRows(v.rows, v.src) : null;
+      const total = w ? w.counts.reduce((a, b) => a + b, 0) + extra.n : -1;
+      if (up && w && w.counts.every((n, k) => n + extra.counts[k] === counts[k]) && v.rows.length === total) {
+        // With rows of the wire's blind spot, the quiet is the sample's too.
+        if (agreed?.seq !== w.seq || (extra.n > 0 && agreed.s !== s)) agreed = { seq: w.seq, at: now, s };
         else if (now - agreed.at >= EARLY_QUIET_MS) {
           last = s;
           early = true;
@@ -1204,7 +1258,10 @@ export async function waitForCompile(c, { project, timeout = timeoutMs("compile"
         next = Math.min(next, agreed.at + EARLY_QUIET_MS);
       } else {
         agreed = null;
-        if (w && now - w.at < 2000) next = Math.min(next, now + 50);
+        // The wire has the compile and the page has yet to show it (the status,
+        // the counts, the rows), or has yet to list its files: look again soon.
+        const at = w ? w.at : v.src ? null : wire.lastAt();
+        if (at && now - at < 2000) next = Math.min(next, now + 50);
       }
     }
     if (!up || s !== last) stableSince = now;

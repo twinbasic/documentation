@@ -95,7 +95,8 @@ GIT_NAME = '.git'
 STANDARD_FOLDERS = ('ImportedTypeLibraries', 'Miscellaneous', 'Packages',
                     'Resources', 'Sources')
 
-PROJECT_FILE = re.compile(r'\.(twinproj|twinpack)$', re.IGNORECASE)
+# re.ASCII, as in a JavaScript /i regex: without it the Kelvin sign matches k.
+PROJECT_FILE = re.compile(r'\.(twinproj|twinpack)$', re.IGNORECASE | re.ASCII)
 
 # -------------------------- Parser (binary -> tree) --------------------------
 
@@ -266,6 +267,12 @@ def exit_code_for(outcome):
     return EXIT['done']
 
 
+def _by_code_unit(s):
+    # The order of JavaScript's < on strings, by UTF-16 code unit: a character above
+    # U+FFFF sorts before one from U+E000 to U+FFFF, where code point order has it after.
+    return s.encode('utf-16-be', 'surrogatepass')
+
+
 def _count(n, noun):
     return f'{n} {noun}{"" if n == 1 else "s"}'
 
@@ -426,7 +433,7 @@ def export_project(project_path, folder, overwrite=False):
     stale = []
 
     def scan(d, rel):
-        for name in sorted(os.listdir(d)):
+        for name in sorted(os.listdir(d), key=_by_code_unit):
             if name.lower() == GIT_NAME:
                 continue
             full = os.path.join(d, name)
@@ -473,11 +480,11 @@ def _build_tree(dir_path, rel, self_key, skipped, added):
     # The standard folders this tree lacks, if it is the project or a package
     # embedded in it.
     missing = set()
-    if rel == '' or (re.fullmatch(r'packages/[^/]+', rel, re.IGNORECASE)
+    if rel == '' or (re.fullmatch(r'packages/[^/]+', rel, re.IGNORECASE | re.ASCII)
                      and 'Settings' in names):
         have = {n.lower() for n in names}
         missing = {f for f in STANDARD_FOLDERS if f.lower() not in have}
-    for name in sorted(names + list(missing)):
+    for name in sorted(names + list(missing), key=_by_code_unit):
         full = os.path.join(dir_path, name)
         entry_rel = f'{rel}/{name}' if rel else name
         if name in missing:
@@ -675,13 +682,13 @@ def _self_test():
         return out
 
     def listing(tree):
-        return json.dumps(sorted(contents(tree).items()))
+        return json.dumps(sorted(contents(tree).items(), key=lambda kv: _by_code_unit(kv[0])))
 
     def disk_listing(d):
         out = []
 
         def walk(p, rel):
-            for name in sorted(os.listdir(p)):
+            for name in sorted(os.listdir(p), key=_by_code_unit):
                 full = os.path.join(p, name)
                 r = f'{rel}/{name}' if rel else name
                 if os.path.isdir(full):
@@ -788,7 +795,7 @@ def _self_test():
                'Sources/,resources/,Settings', 'contents')
             misc = [c for c in back['children'] if c['name'] == 'Miscellaneous'][0]
             eq(misc['category'], CATEGORY_MISCELLANEOUS, 'category')
-            eq(','.join(sorted(os.listdir(src))), 'Packages,Settings,resources',
+            eq(','.join(sorted(os.listdir(src), key=_by_code_unit)), 'Packages,Settings,resources',
                'the tree on disk changed')
         test('Import adds the empty folders the IDE expects, to the project and '
              'each package in it', t_standard_folders)
@@ -1164,4 +1171,8 @@ def main(argv):
 
 
 if __name__ == '__main__':
+    # UTF-8 to a file or a pipe, as the other two editions write, not the ANSI code page,
+    # which cannot hold every name a project can have.
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
     sys.exit(main(sys.argv[1:]))

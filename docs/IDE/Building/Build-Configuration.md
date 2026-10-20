@@ -30,7 +30,7 @@ The box is a drop-down list with three entries, and its tooltip is **Choose a bu
 **safeMode**
 : Opens the project without the compiler. See [Safe mode](#safe-mode).
 
-<!-- SHOT building-config-box: a saved project open, the build configuration box with its list open over the toolbar, win32 selected and win64 and safeMode below it. Why: the list is the whole of the chapter's "configuration", and the page describes three entries a reader can count in a glance. -->
+![The build configuration box on the toolbar with its list open below it and win32 chosen.](Images/Configuration_List.png){:width="181" height="102"}
 
 There are no **Debug** and **Release** entries, and none for AnyCPU or ARM. The split between the program that runs in the IDE and the program that a build writes is made in [Project Settings](../Project-Settings), by two sets of options: [*Compiler Options (BUILD)*](../Project-Settings#compiler-options-build) for **Build** and [*Compiler Options (DEBUG)*](../Project-Settings#compiler-options-debug) for **Start**.
 
@@ -64,7 +64,7 @@ When you open a project from its file, from **Open Recent** or from the command 
 
 **safeMode** opens the project's files without starting the compiler's services. It gives access to the project's files when the compiler's services get in the way, for example when the compiler keeps crashing. After a project loads in safe mode, a box explains it, in these words: **SafeMode is designed to give you access to the file system of your project, without starting all of the associated compiler services. Use this mode to investigate / fix / recover your code before saving and restarting in normal mode.** Choose **OK**.
 
-<!-- SHOT building-safe-mode-box: a saved project, the box set to safeMode with the keyboard (Down twice from win32), the modal box with its text and OK. Why: the box is the only sign that the IDE is in safe mode. -->
+![The box the IDE shows once a project is open in safe mode, with an OK button.](Images/Safe_Mode.png){:width="547" height="188"}
 
 In safe mode:
 

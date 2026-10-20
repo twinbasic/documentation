@@ -50,9 +50,14 @@ Class ByteBuilder
         ToArray = mLen
     End Function
 
+    ' Room for extra more bytes: twice what is needed, up to the largest array a Long can index.
     Private Sub Reserve(ByVal extra As Long)
-        If mLen + extra <= mCap Then Exit Sub
-        mCap = 2 * (mLen + extra) + 64
+        Dim want As Double
+        If CDbl(mLen) + extra <= mCap Then Exit Sub
+        want = 2# * (CDbl(mLen) + extra) + 64
+        If want > &H7FFFFFFF Then want = CDbl(mLen) + extra
+        If want > &H7FFFFFFF Then Err.Raise 6
+        mCap = CLng(want)
         ReDim Preserve mData(0 To mCap - 1)
     End Sub
 End Class

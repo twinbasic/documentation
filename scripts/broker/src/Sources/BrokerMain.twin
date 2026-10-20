@@ -1,0 +1,333 @@
+' tbbroker -- hands out private desktops, slots and ports to the tools that start twinBASIC IDEs
+' and programs, and takes them back when the processes using them end. See WIP.Broker.md.
+'
+' The broker's command line. tbbroker's Sub Main (Program.twin) and tblaunch's `broker` command
+' both call RunArgs. Every module whose name starts with Broker but BrokerHost is compiled into
+' tblaunch as it is, so what differs between the two programs is in BrokerHost, which each of
+' them has its own of: the name in messages, the output, the version's suffix and the server's
+' command line.
+Module BrokerMain
+    Private Type STARTUPINFOW
+        cb As Long
+        lpReserved As LongPtr
+        lpDesktop As LongPtr
+        lpTitle As LongPtr
+        dwX As Long
+        dwY As Long
+        dwXSize As Long
+        dwYSize As Long
+        dwXCountChars As Long
+        dwYCountChars As Long
+        dwFillAttribute As Long
+        dwFlags As Long
+        wShowWindow As Integer
+        cbReserved2 As Integer
+        lpReserved2 As LongPtr
+        hStdInput As LongPtr
+        hStdOutput As LongPtr
+        hStdError As LongPtr
+    End Type
+
+    Private Type PROCESS_INFORMATION
+        hProcess As LongPtr
+        hThread As LongPtr
+        dwProcessId As Long
+        dwThreadId As Long
+    End Type
+
+    Private Declare PtrSafe Function CreateFileW Lib "kernel32" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, ByVal lpSecurityAttributes As LongPtr, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReadFile Lib "kernel32" (ByVal hFile As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfBytesToRead As Long, ByRef lpNumberOfBytesRead As Long, ByVal lpOverlapped As LongPtr) As Long
+    Private Declare PtrSafe Function WriteFile Lib "kernel32" (ByVal hFile As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfBytesToWrite As Long, ByRef lpNumberOfBytesWritten As Long, ByVal lpOverlapped As LongPtr) As Long
+    Private Declare PtrSafe Function CloseHandle Lib "kernel32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function WaitNamedPipeW Lib "kernel32" (ByVal lpNamedPipeName As LongPtr, ByVal nTimeOut As Long) As Long
+    Private Declare PtrSafe Function CreateProcessW Lib "kernel32" (ByVal lpApplicationName As LongPtr, ByVal lpCommandLine As LongPtr, ByVal lpProcessAttributes As LongPtr, ByVal lpThreadAttributes As LongPtr, ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, ByVal lpEnvironment As LongPtr, ByVal lpCurrentDirectory As LongPtr, ByRef lpStartupInfo As STARTUPINFOW, ByRef lpProcessInformation As PROCESS_INFORMATION) As Long
+    Private Declare PtrSafe Function WaitForSingleObject Lib "kernel32" (ByVal hHandle As LongPtr, ByVal dwMilliseconds As Long) As Long
+    Private Declare PtrSafe Function GetExitCodeProcess Lib "kernel32" (ByVal hProcess As LongPtr, ByRef lpExitCode As Long) As Long
+    Private Declare PtrSafe Function GetTickCount64 Lib "kernel32" () As LongLong
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+
+    Private Const GENERIC_READ As Long = &H80000000
+    Private Const GENERIC_WRITE As Long = &H40000000
+    Private Const OPEN_EXISTING As Long = 3
+    Private Const INVALID_HANDLE_VALUE As LongPtr = -1
+    Private Const ERROR_ACCESS_DENIED As Long = 5
+    Private Const ERROR_PIPE_BUSY As Long = 231
+    Private Const DETACHED_PROCESS As Long = &H8
+    Private Const CREATE_NEW_PROCESS_GROUP As Long = &H200
+    Private Const CREATE_BREAKAWAY_FROM_JOB As Long = &H1000000
+    Private Const WAIT_OBJECT_0 As Long = 0
+    ' How long `start` waits for the broker it started to open its pipe.
+    Private Const START_WAIT_MS As Long = 10000
+
+    ' Exit codes.
+    Private Const EXIT_OK As Long = 0
+    Private Const EXIT_FAILED As Long = 1
+    Private Const EXIT_USAGE As Long = 2
+    Private Const EXIT_NOT_RUNNING As Long = 4
+
+    ' Runs the broker's command line, argv being the arguments after the program's name (after
+    ' tblaunch's `broker`), and returns the exit code.
+    Public Function RunArgs(ByVal argv As Collection) As Long
+        On Error GoTo Crashed
+        RunArgs = Run(argv)
+        Exit Function
+    Crashed:
+        BrokerText.Log "crashed: " & Err.Description
+        BrokerHost.WriteErr BrokerHost.PROGRAM_NAME & ": " & Err.Description
+        RunArgs = EXIT_FAILED
+    End Function
+
+    Private Function Usage() As String
+        Usage = Join(Array( _
+            "Usage:", _
+            "  " & BrokerHost.PROGRAM_NAME & " [start] [options]   start the broker unless it runs already, and wait until it", _
+            "                               answers; the broker itself runs detached until logoff", _
+            "  " & BrokerHost.PROGRAM_NAME & " status [--pipe N]   print the broker's state as one line of JSON", _
+            "  " & BrokerHost.PROGRAM_NAME & " stop [--pipe N]     end the broker; its desktops go with it", _
+            "  " & BrokerHost.PROGRAM_NAME & " --serve [options]   be the broker (what start runs)", _
+            "", _
+            "Options (start and --serve):", _
+            "  --pipe <name>     the pipe (default \\.\pipe\tbbroker-<user name>)", _
+            "  --prefix <text>   the desktops' names, <text>1 to <text><max> (default tbpool-)", _
+            "  --max <n>         the most slots, and so desktops (default 32)", _
+            "  --ports <a-b>     the ports a lease may ask for, or none (default 48000-48199)", _
+            "  --log <file>      the log, or none (default %LOCALAPPDATA%\tbbroker\tbbroker.log)", _
+            "", _
+            "Exit codes:", _
+            "  0  done: the broker runs (start), answered (status) or has stopped (stop)", _
+            "  1  failed: the broker could not be started, or did not answer", _
+            "  2  a mistake in the command line", _
+            "  3  --serve only: another broker already serves the pipe", _
+            "  4  status and stop: no broker runs"), vbCrLf)
+    End Function
+
+    Public Function DefaultPipe() As String
+        DefaultPipe = "\\.\pipe\tbbroker-" & BrokerText.Env("USERNAME")
+    End Function
+
+    Private Function Run(ByVal argv As Collection) As Long
+        Dim verb As String, i As Long, a As String, v As String
+        Dim pipeName As String, prefix As String, max As Long, portFirst As Long, portLast As Long, logPath As String
+        Dim passOn As String
+        pipeName = DefaultPipe()
+        prefix = "tbpool-"
+        max = 32
+        portFirst = 48000
+        portLast = 48199
+        logPath = BrokerText.HomeFolder() & "\tbbroker.log"
+        i = 1
+        Do While i <= argv.Count
+            a = argv(i)
+            Select Case a
+                Case "start", "status", "stop", "--serve"
+                    If Len(verb) > 0 Then
+                        Run = UsageError("one command at a time: " & verb & " and " & a)
+                        Exit Function
+                    End If
+                    verb = a
+                Case "--help", "-h"
+                    BrokerHost.WriteOut Usage()
+                    Exit Function
+                Case "--pipe", "--prefix", "--max", "--ports", "--log"
+                    If i = argv.Count Then
+                        Run = UsageError(a & " takes a value")
+                        Exit Function
+                    End If
+                    i = i + 1
+                    v = argv(i)
+                    passOn = passOn & " " & a & " " & QuoteArg(v)
+                    Select Case a
+                        Case "--pipe"
+                            pipeName = v
+                            If Left$(pipeName, 9) <> "\\.\pipe\" Then pipeName = "\\.\pipe\" & pipeName
+                        Case "--prefix"
+                            prefix = v
+                            If Len(prefix) = 0 Or InStr(prefix, "\") > 0 Then
+                                Run = UsageError("--prefix must be a name without a backslash")
+                                Exit Function
+                            End If
+                        Case "--max"
+                            If Not IsWhole(v) Then
+                                Run = UsageError("--max takes a whole number from 1 to 256")
+                                Exit Function
+                            End If
+                            max = CLng(v)
+                            If max < 1 Or max > 256 Then
+                                Run = UsageError("--max takes a whole number from 1 to 256")
+                                Exit Function
+                            End If
+                        Case "--ports"
+                            If v = "none" Then
+                                portFirst = 0
+                                portLast = 0
+                            Else
+                                Dim dash As Long
+                                dash = InStr(v, "-")
+                                If dash = 0 Then
+                                    Run = UsageError("--ports takes a range, such as 48000-48199, or none")
+                                    Exit Function
+                                End If
+                                If Not IsWhole(Left$(v, dash - 1)) Or Not IsWhole(Mid$(v, dash + 1)) Then
+                                    Run = UsageError("--ports takes a range, such as 48000-48199, or none")
+                                    Exit Function
+                                End If
+                                portFirst = CLng(Left$(v, dash - 1))
+                                portLast = CLng(Mid$(v, dash + 1))
+                                If portFirst < 1024 Or portLast > 65535 Or portLast < portFirst Then
+                                    Run = UsageError("--ports takes a range from 1024 to 65535, the first port first")
+                                    Exit Function
+                                End If
+                            End If
+                        Case "--log"
+                            If v = "none" Then logPath = "" Else logPath = v
+                    End Select
+                Case Else
+                    Run = UsageError("unknown argument: " & a)
+                    Exit Function
+            End Select
+            i = i + 1
+        Loop
+        If Len(verb) = 0 Then verb = "start"
+        Select Case verb
+            Case "--serve"
+                BrokerText.LogPath = logPath
+                BrokerPool.Init prefix, max, portFirst, portLast
+                Run = BrokerServer.Serve(pipeName)
+            Case "start"
+                Run = Start(pipeName, passOn)
+            Case "status"
+                Run = Ask(pipeName, "{""op"":""status""}")
+            Case "stop"
+                Run = Ask(pipeName, "{""op"":""stop""}")
+        End Select
+    End Function
+
+    Private Function IsWhole(ByVal s As String) As Boolean
+        Dim i As Long
+        If Len(s) = 0 Or Len(s) > 6 Then Exit Function
+        For i = 1 To Len(s)
+            If InStr(1, "0123456789", Mid$(s, i, 1)) = 0 Then Exit Function
+        Next
+        IsWhole = True
+    End Function
+
+    Private Function QuoteArg(ByVal a As String) As String
+        If Len(a) > 0 And InStr(a, " ") = 0 And InStr(a, vbTab) = 0 And InStr(a, """") = 0 Then
+            QuoteArg = a
+        Else
+            QuoteArg = """" & Replace(a, """", "\""") & """"
+        End If
+    End Function
+
+    Private Function UsageError(ByVal message As String) As Long
+        BrokerHost.WriteErr BrokerHost.PROGRAM_NAME & ": " & message & vbCrLf & vbCrLf & Usage()
+        UsageError = EXIT_USAGE
+    End Function
+
+    ' Whether a broker answers on the pipe: a client can open it.
+    Private Function Answers(ByVal pipeName As String) As Boolean
+        Dim h As LongPtr
+        h = CreateFileW(StrPtr(pipeName), GENERIC_READ Or GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0)
+        If h <> INVALID_HANDLE_VALUE Then
+            CloseHandle h
+            Answers = True
+        ElseIf Err.LastDllError = ERROR_PIPE_BUSY Then
+            Answers = True
+        End If
+    End Function
+
+    ' Starts the server (BrokerHost.ServerExe with BrokerHost.SERVE_ARGS: `tbbroker --serve`) as a
+    ' process of its own, out of the caller's job when the job lets it go and out of the caller's
+    ' process tree, since this process ends at once; then waits until it answers.
+    Private Function Start(ByVal pipeName As String, ByVal passOn As String) As Long
+        Dim exe As String, folder As String, cmd As String, si As STARTUPINFOW, pi As PROCESS_INFORMATION
+        Dim flags As Long, ok As Long, until As LongLong, code As Long
+        If Answers(pipeName) Then
+            BrokerHost.WriteOut BrokerHost.PROGRAM_NAME & ": running at " & pipeName
+            Exit Function
+        End If
+        exe = BrokerHost.ServerExe()
+        If Len(exe) = 0 Then
+            Start = EXIT_FAILED
+            Exit Function
+        End If
+        folder = Left$(exe, InStrRev(exe, "\") - 1)
+        cmd = """" & exe & """ " & BrokerHost.SERVE_ARGS & passOn
+        si.cb = LenB(si)
+        flags = DETACHED_PROCESS Or CREATE_NEW_PROCESS_GROUP Or CREATE_BREAKAWAY_FROM_JOB
+        ok = CreateProcessW(StrPtr(exe), StrPtr(cmd), 0, 0, 0, flags, 0, StrPtr(folder), si, pi)
+        If ok = 0 And Err.LastDllError = ERROR_ACCESS_DENIED Then
+            ' A job that does not let its processes go: the broker then lives as long as the job.
+            flags = DETACHED_PROCESS Or CREATE_NEW_PROCESS_GROUP
+            ok = CreateProcessW(StrPtr(exe), StrPtr(cmd), 0, 0, 0, flags, 0, StrPtr(folder), si, pi)
+        End If
+        If ok = 0 Then
+            BrokerHost.WriteErr BrokerHost.PROGRAM_NAME & ": could not start the broker: error " & Err.LastDllError
+            Start = EXIT_FAILED
+            Exit Function
+        End If
+        CloseHandle pi.hThread
+        until = GetTickCount64() + START_WAIT_MS
+        Do
+            If Answers(pipeName) Then
+                CloseHandle pi.hProcess
+                BrokerHost.WriteOut BrokerHost.PROGRAM_NAME & ": running at " & pipeName & ", pid " & pi.dwProcessId
+                Exit Function
+            End If
+            If WaitForSingleObject(pi.hProcess, 0) = WAIT_OBJECT_0 Then
+                GetExitCodeProcess pi.hProcess, code
+                CloseHandle pi.hProcess
+                ' Another broker won the pipe a moment earlier: that one serves.
+                If code = BrokerServer.SERVE_ALREADY_RUNNING And Answers(pipeName) Then
+                    BrokerHost.WriteOut BrokerHost.PROGRAM_NAME & ": running at " & pipeName
+                    Exit Function
+                End If
+                BrokerHost.WriteErr BrokerHost.PROGRAM_NAME & ": the broker ended at once, with exit code " & code & "; see its log"
+                Start = EXIT_FAILED
+                Exit Function
+            End If
+            If GetTickCount64() > until Then
+                CloseHandle pi.hProcess
+                BrokerHost.WriteErr BrokerHost.PROGRAM_NAME & ": the broker did not open " & pipeName & " within " & (START_WAIT_MS \ 1000) & " s"
+                Start = EXIT_FAILED
+                Exit Function
+            End If
+            Sleep 20
+        Loop
+    End Function
+
+    ' Sends one request and prints the reply line.
+    Private Function Ask(ByVal pipeName As String, ByVal request As String) As Long
+        Dim h As LongPtr, b() As Byte, n As Long, done As Long, buf(0 To 4095) As Byte, got As Long, reply As New BrokerByteList
+        Dim tries As Long
+        Do
+            h = CreateFileW(StrPtr(pipeName), GENERIC_READ Or GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0)
+            If h <> INVALID_HANDLE_VALUE Then Exit Do
+            If Err.LastDllError <> ERROR_PIPE_BUSY Or tries > 10 Then
+                BrokerHost.WriteErr BrokerHost.PROGRAM_NAME & ": no broker answers at " & pipeName
+                Ask = EXIT_NOT_RUNNING
+                Exit Function
+            End If
+            tries = tries + 1
+            WaitNamedPipeW StrPtr(pipeName), 1000
+        Loop
+        n = BrokerText.ToUtf8(request & vbLf, b)
+        If WriteFile(h, VarPtr(b(0)), n, done, 0) = 0 Then
+            CloseHandle h
+            BrokerHost.WriteErr BrokerHost.PROGRAM_NAME & ": could not write to " & pipeName
+            Ask = EXIT_FAILED
+            Exit Function
+        End If
+        Do
+            If ReadFile(h, VarPtr(buf(0)), 4096, got, 0) = 0 Or got = 0 Then Exit Do
+            reply.Append VarPtr(buf(0)), got
+        Loop Until reply.EndsWithLineFeed
+        CloseHandle h
+        If reply.Count = 0 Then
+            BrokerHost.WriteErr BrokerHost.PROGRAM_NAME & ": no reply from " & pipeName
+            Ask = EXIT_FAILED
+            Exit Function
+        End If
+        BrokerHost.WriteOut reply.AsText()
+    End Function
+End Module

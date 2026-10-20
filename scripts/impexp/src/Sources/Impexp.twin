@@ -3,6 +3,7 @@
 ' LastReason, LastMessage and LastDetails, and has written nothing.
 Module Impexp
     Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+    Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
 
     Public Const REFUSED As Long = vbObjectError + &H1100
 
@@ -275,51 +276,70 @@ Module Impexp
     End Sub
 
     ' LF made CRLF in a code file; any other file as it is.
+    ' The LFs are counted first, and the runs between them copied whole.
     Private Function ToCrlf(ByVal name As String, b() As Byte, ByVal length As Long, out() As Byte) As Long
-        Dim w As ByteBuilder, i As Long
-        If InStr(CRLF_EXTENSIONS, "|" & LCase$(FileSys.ExtName(name)) & "|") = 0 Or Len(FileSys.ExtName(name)) = 0 Then
-            Erase out
+        Dim i As Long, adds As Long, start As Long, w As Long
+        Erase out
+        If InStr(CRLF_EXTENSIONS, "|" & TextKit.LowerAscii(FileSys.ExtName(name), True) & "|") = 0 Or Len(FileSys.ExtName(name)) = 0 Then
             If length > 0 Then out = b
             ToCrlf = length
             Exit Function
         End If
-        Set w = New ByteBuilder
         For i = 0 To length - 1
             If b(i) = 10 Then
                 If i = 0 Then
-                    w.AddU8 13
+                    adds = adds + 1
                 ElseIf b(i - 1) <> 13 Then
-                    w.AddU8 13
+                    adds = adds + 1
                 End If
             End If
-            w.AddU8 b(i)
         Next
-        ToCrlf = w.ToArray(out)
+        ToCrlf = length + adds
+        If length = 0 Then Exit Function
+        ReDim out(0 To length + adds - 1)
+        If adds > 0 Then
+            For i = 0 To length - 1
+                If b(i) = 10 Then
+                    If i = 0 Then
+                        out(w) = 13
+                        w = w + 1
+                    ElseIf b(i - 1) <> 13 Then
+                        RtlMoveMemory VarPtr(out(w)), VarPtr(b(start)), i - start
+                        w = w + i - start
+                        out(w) = 13
+                        w = w + 1
+                        start = i
+                    End If
+                End If
+            Next
+        End If
+        RtlMoveMemory VarPtr(out(w)), VarPtr(b(start)), length - start
     End Function
 
-    ' The project's name in its Settings, or "" when it names none.
-    Private Function ProjectNameIn(ByVal settingsPath As String) As String
+    ' The project's name in the Settings src gives, or "" when it names none or cannot be read.
+    Private Function ProjectNameIn(ByVal src As ImpexpSource) As String
         Dim b() As Byte, n As Long, settingsText As String
         On Error GoTo Unreadable
-        n = FileSys.ReadAllBytes(settingsPath, b)
+        n = src.ReadAll("Settings", b)
         settingsText = TextKit.Utf8Decode(b, 0, n)
         If Len(settingsText) > 0 Then
             If (AscW(settingsText) And &HFFFF&) = &HFEFF& Then settingsText = Mid$(settingsText, 2)
         End If
-        ProjectNameIn = Json.TopLevelString(settingsText, "project.name")
+        ProjectNameIn = JsonMember.TopLevelString(settingsText, "project.name")
     Unreadable:
     End Function
 
-    Private Function BuildTree(ByVal dirPath As String, ByVal rel As String, ByVal self As String, ByVal r As Outcome) As Entry
+    ' The folder at rel ("" for the top one) of the tree src gives, as an entry named folderName.
+    Private Function BuildTree(ByVal src As ImpexpSource, ByVal rel As String, ByVal folderName As String, ByVal r As Outcome) As Entry
         Dim names() As String, n As Long, i As Long, total As Long
         Dim missing As String, have As String, standard As Variant, name As String, entryRel As String
-        Dim all() As String, subdirs As New Collection, files As New Collection, full As String, kind As Long
-        n = FileSys.ListNames(dirPath, names)
+        Dim all() As String, subdirs As New Collection, files As New Collection, kind As Long
+        n = src.ListNames(rel, names)
 
         ' The standard folders this tree lacks, if it is the project or a package in it.
         Dim isPackage As Boolean
         If rel <> "" Then
-            If LCase$(Left$(rel, 9)) = "packages/" And InStr(10, rel, "/") = 0 And Len(rel) > 9 Then
+            If TextKit.LowerAscii(Left$(rel, 9), False) = "packages/" And InStr(10, rel, "/") = 0 And Len(rel) > 9 Then
                 For i = 0 To n - 1
                     If names(i) = "Settings" Then isPackage = True
                 Next
@@ -329,10 +349,10 @@ Module Impexp
         If rel = "" Or isPackage Then
             have = "|"
             For i = 0 To n - 1
-                have = have & LCase$(names(i)) & "|"
+                have = have & TextKit.LowerAscii(names(i), True) & "|"
             Next
             For Each standard In Split(STANDARD_FOLDERS, "|")
-                If InStr(have, "|" & LCase$(standard) & "|") = 0 Then missing = missing & standard & "|"
+                If InStr(have, "|" & TextKit.LowerAscii(standard, True) & "|") = 0 Then missing = missing & standard & "|"
             Next
         End If
 
@@ -351,47 +371,64 @@ Module Impexp
 
         For i = 0 To total - 1
             name = all(i)
-            full = FileSys.JoinPath(dirPath, name)
             If Len(rel) > 0 Then entryRel = rel & "/" & name Else entryRel = name
             If InStr(missing, "|" & name & "|") > 0 Then
                 subdirs.Add name
                 r.Added.Add entryRel
-            ElseIf LCase$(name) = GIT_NAME Then
+            ElseIf TextKit.LowerAscii(name, True) = GIT_NAME Then
                 r.Skipped.Add Array(entryRel, "Git's own folder")
             Else
-                kind = FileSys.KindOf(full)
+                kind = src.KindOf(entryRel)
                 If kind = FileSys.KIND_FOLDER Then
                     subdirs.Add name
+                ElseIf kind = FileSys.KIND_SELF Then
+                    r.Skipped.Add Array(entryRel, "the project file itself")
                 ElseIf kind = FileSys.KIND_FILE Then
-                    If FileSys.PathKey(full) = self Then
-                        r.Skipped.Add Array(entryRel, "the project file itself")
-                    Else
-                        files.Add name
-                    End If
+                    files.Add name
                 End If
             End If
         Next
 
         Dim e As Entry, d As Variant, f As Variant, b() As Byte, crlf() As Byte, length As Long
-        Set e = ProjectFormat.NewFolder(FileSys.BaseName(dirPath))
+        Set e = ProjectFormat.NewFolder(folderName)
         For Each d In subdirs
             If InStr(missing, "|" & d & "|") > 0 Then
                 e.Children.Add ProjectFormat.NewFolder(d)
             Else
                 If Len(rel) > 0 Then entryRel = rel & "/" & d Else entryRel = d
-                e.Children.Add BuildTree(FileSys.JoinPath(dirPath, d), entryRel, self, r)
+                e.Children.Add BuildTree(src, entryRel, d, r)
             End If
         Next
         For Each f In files
-            length = FileSys.ReadAllBytes(FileSys.JoinPath(dirPath, f), b)
+            If Len(rel) > 0 Then entryRel = rel & "/" & f Else entryRel = f
+            length = src.ReadAll(entryRel, b)
             length = ToCrlf(f, b, length, crlf)
             e.Children.Add ProjectFormat.NewFile(f, crlf, length)
         Next
         Set BuildTree = e
     End Function
 
+    ' The tree src gives, named after its Settings' project, or folderName when they name none.
+    Private Function RootTree(ByVal src As ImpexpSource, ByVal folderName As String, ByVal r As Outcome) As Entry
+        Dim root As Entry, name As String
+        Set root = BuildTree(src, "", folderName, r)
+        ' The IDE names the root after the project; the folder's name is the fallback.
+        name = ProjectNameIn(src)
+        If Len(name) > 0 Then root.Name = name
+        root.Category = ProjectFormat.CATEGORY_DEFAULT
+        Set RootTree = root
+    End Function
+
+    ' The project file import writes for the tree src gives, into out, and its length: what Node's packFiles
+    ' gives for those files. folderName names the project when its Settings do not. Nothing is checked first
+    ' (the top folder's Settings, the file written) and nothing is written; what src raises is raised as it is.
+    Public Function PackTree(ByVal src As ImpexpSource, ByVal folderName As String, out() As Byte) As Long
+        Dim r As New Outcome
+        PackTree = ProjectFormat.Serialize(RootTree(src, folderName, r), out)
+    End Function
+
     Public Function ImportProject(ByVal projectPath As String, ByVal folder As String, ByVal overwrite As Boolean) As Outcome
-        Dim settings As String, existing As Long, r As New Outcome, root As Entry, name As String
+        Dim settings As String, existing As Long, r As New Outcome, root As Entry, src As New ImpexpSource
         Dim b() As Byte, n As Long
         ' Everything is checked before the tree is read, so a refusal leaves the project file as it was.
         If FileSys.KindOf(folder) <> FileSys.KIND_FOLDER Then Refuse "missing", "input folder does not exist: " & folder, HintImport()
@@ -405,11 +442,8 @@ Module Impexp
             Refuse "exists", projectPath & " already exists, and --overwrite is not set", HintImport()
         End If
 
-        Set root = BuildTree(FileSys.FullPath(folder), "", FileSys.PathKey(projectPath), r)
-        ' The IDE names the root after the project; the folder's name is the fallback.
-        name = ProjectNameIn(settings)
-        If Len(name) > 0 Then root.Name = name
-        root.Category = ProjectFormat.CATEGORY_DEFAULT
+        src.Init FileSys.FullPath(folder), FileSys.PathKey(projectPath)
+        Set root = RootTree(src, FileSys.BaseName(FileSys.FullPath(folder)), r)
         n = ProjectFormat.Serialize(root, b)
         WriteReplacing projectPath, b, n
 

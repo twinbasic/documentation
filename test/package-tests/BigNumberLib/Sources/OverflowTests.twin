@@ -127,4 +127,351 @@ Module OverflowTests
         Expect.Done
     End Sub
 
+    ' ---- helpers ----
+
+    ' A new BigNumber holding 2 to the power Exponent.
+    Private Function PowerOfTwo(ByVal Exponent As Long) As BigNumber
+        Dim one As New BigNumber
+        one.ValueString = "1"
+        Set PowerOfTwo = New BigNumber
+        PowerOfTwo.AssignShiftLeft one, Exponent
+    End Function
+
+    ' The binary text of (2^K - 1) * (2^M - 1), for K and M of at least 1.
+    Private Function ExpectedProduct(ByVal K As Long, ByVal M As Long) As String
+        Dim t As Long
+        If K > M Then
+            t = K
+            K = M
+            M = t
+        End If
+        If K = 1 Then
+            ExpectedProduct = Rep("1", M)
+        Else
+            ExpectedProduct = Rep("1", K - 1) & "0" & Rep("1", M - K) & Rep("0", K - 1) & "1"
+        End If
+    End Function
+
+    ' How (2^K - 1) * (2^M - 1) comes out: "ok", "error <n>" or "wrong".
+    Private Function ProductOutcome(ByVal K As Long, ByVal M As Long) As String
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        a.ValueBinary = Rep("1", K)
+        b.ValueBinary = Rep("1", M)
+        On Error Resume Next
+        r.AssignMultiplication a, b
+        If Err.Number <> 0 Then
+            ProductOutcome = "error " & Err.Number
+            Err.Clear
+            Exit Function
+        End If
+        On Error GoTo 0
+        If r.ValueBinary = ExpectedProduct(K, M) Then ProductOutcome = "ok" Else ProductOutcome = "wrong"
+    End Function
+
+    ' The value of the binary text Bits modulo Modulus (Modulus below 1,000,000,000).
+    Private Function ModOfBinary(ByVal Bits As String, ByVal Modulus As Long) As Long
+        Dim i As Long
+        Dim r As Long
+        For i = 1 To Len(Bits)
+            r = (r * 2 + (Asc(Mid$(Bits, i, 1)) - 48)) Mod Modulus
+        Next i
+        ModOfBinary = r
+    End Function
+
+    ' ---- subtraction, squaring, octal and binary text ----
+
+    [TestCase]
+    Public Sub Overflow_SubtractionBeyondTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        Dim e As Long
+        Set a = PowerOfTwo(LibraryBits() - 1)
+        b.ValueBinary = a.ValueBinary
+        b.IsNegative = True
+        On Error Resume Next
+        r.AssignSubtraction a, b
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual "1" & Rep("0", LibraryBits()), r.ValueBinary, "2^" & (LibraryBits() - 1) & " - (-2^" & (LibraryBits() - 1) & ") raised no error; ValueBinary"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_SquareBeyondTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As BigNumber
+        Dim r As New BigNumber
+        Dim e As Long
+        Set a = PowerOfTwo(3000)
+        On Error Resume Next
+        r.AssignSquared a
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual "1" & Rep("0", 6000), r.ValueBinary, "(2^3000)^2 raised no error; ValueBinary"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_SquareOneBitOverTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As BigNumber
+        Dim r As New BigNumber
+        Dim e As Long
+        Dim bits As Long
+        bits = (LibraryBits() + 2) \ 2
+        Set a = PowerOfTwo(bits - 1)
+        On Error Resume Next
+        r.AssignSquared a
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual "1" & Rep("0", 2 * bits - 2), r.ValueBinary, "(2^" & (bits - 1) & ")^2, a power of two of " & (2 * bits - 1) & " bits, raised no error; ValueBinary"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_ValueOctalWithTooManyDigits_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim n As New BigNumber
+        Dim e As Long
+        On Error Resume Next
+        n.ValueOctal = Rep("7", 2000)
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual Rep("7", 2000), n.ValueOctal, "ValueOctal of 2,000 sevens (6,000 bits) raised no error; read back"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_ValueBinaryWithTooManyDigits_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim n As New BigNumber
+        Dim e As Long
+        On Error Resume Next
+        n.ValueBinary = Rep("1", 6000)
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual Rep("1", 6000), n.ValueBinary, "ValueBinary of 6,000 one digits raised no error; read back"
+        End If
+        Expect.Done
+    End Sub
+
+    ' ---- multiplication near the limit ----
+
+    [TestCase]
+    Public Sub Overflow_MultiplicationOneBitOverTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim k As Long
+        Dim m As Long
+        Dim o As String
+        k = LibraryBits() \ 2
+        m = LibraryBits() + 1 - k
+        o = ProductOutcome(k, m)
+        If o = "wrong" Then
+            Expect.Fail "(2^" & k & " - 1) * (2^" & m & " - 1), a product of " & (k + m) & " bits, raised no error and gave a wrong value"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_MultiplicationOfUnequalSizesOneBitOverTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim o As String
+        o = ProductOutcome(100, LibraryBits() + 1 - 100)
+        If o = "wrong" Then
+            Expect.Fail "(2^100 - 1) * (2^" & (LibraryBits() + 1 - 100) & " - 1), a product of " & (LibraryBits() + 1) & " bits, raised no error and gave a wrong value"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_ProductOfExactlyTheLibraryBits_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim k As Long
+        Dim m As Long
+        k = LibraryBits() \ 2
+        m = LibraryBits() - k
+        If ProductOutcome(k, m) = "wrong" Then
+            Expect.Fail "(2^" & k & " - 1) * (2^" & m & " - 1), a product of " & LibraryBits() & " bits, raised no error and gave a wrong value"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Capacity_ProductOfTheLargestWholeNumberOfDigitsIsRight()
+        Expect.Begin
+        Dim t As Long
+        #If Win64 Then
+            t = LibraryBits() - 64
+        #Else
+            t = LibraryBits() - 32
+        #End If
+        Expect.AreEqual "ok", ProductOutcome(t \ 2, t - t \ 2), "(2^" & (t \ 2) & " - 1) * (2^" & (t - t \ 2) & " - 1), a product of " & t & " bits"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_NegationOfA4200BitNumber_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        Dim e As Long
+        a.ValueBinary = "1" & Rep("0", 4199)
+        On Error Resume Next
+        r.AssignNegation a
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual "-1" & Rep("0", 4199), r.ValueBinary, "AssignNegation of 2^4199, as binary"
+        End If
+        Expect.Done
+    End Sub
+
+    ' ---- modular operations whose intermediate value does not fit ----
+
+    [TestCase]
+    Public Sub Overflow_MultiplicationModulusIntermediateBeyondTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim sa As String
+        Dim sb As String
+        Dim e As Long
+        sa = Rep("1", 3000)
+        sb = Rep("1", 2900)
+        a.ValueBinary = sa
+        b.ValueBinary = sb
+        c.ValueString = "1000003"
+        On Error Resume Next
+        r.AssignMultiplicationModulus a, b, c
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual RefMath.DecMod(RefMath.DecMul(CStr(ModOfBinary(sa, 1000003)), CStr(ModOfBinary(sb, 1000003))), "1000003"), r.ValueString, "(a * b) mod 1000003 for a of 3,000 one bits and b of 2,900 one bits, whose product has 5,900 bits, raised no error; ValueString"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_SquaredModulusIntermediateBeyondTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim sa As String
+        Dim e As Long
+        sa = Rep("1", 3000)
+        a.ValueBinary = sa
+        c.ValueString = "1000003"
+        On Error Resume Next
+        r.AssignSquaredModulus a, c
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual RefMath.DecMod(RefMath.DecMul(CStr(ModOfBinary(sa, 1000003)), CStr(ModOfBinary(sa, 1000003))), "1000003"), r.ValueString, "(a * a) mod 1000003 for a of 3,000 one bits, whose square has 6,000 bits, raised no error; ValueString"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_AdditionModulusIntermediateBeyondTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim sa As String
+        Dim e As Long
+        sa = Rep("1", LibraryBits())
+        a.ValueBinary = sa
+        c.ValueString = "1000003"
+        On Error Resume Next
+        r.AssignAdditionModulus a, a, c
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual CStr((2 * ModOfBinary(sa, 1000003)) Mod 1000003), r.ValueString, "(a + a) mod 1000003 for a of " & LibraryBits() & " one bits, whose sum has one bit more, raised no error; ValueString"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_ModulusOfANumberThatFillsTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim sa As String
+        Dim e As Long
+        sa = "1" & Rep("0", LibraryBits() - 1)
+        a.ValueBinary = sa
+        c.ValueString = "1000003"
+        On Error Resume Next
+        r.AssignModulus a, c
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual CStr(ModOfBinary(sa, 1000003)), r.ValueString, "2^" & (LibraryBits() - 1) & " mod 1000003, a number of " & LibraryBits() & " bits, raised no error; ValueString"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_AdditionModulusWhoseSumFillsTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim sa As String
+        Dim e As Long
+        sa = "1" & Rep("0", LibraryBits() - 2)
+        a.ValueBinary = sa
+        c.ValueString = "1000003"
+        On Error Resume Next
+        r.AssignAdditionModulus a, a, c
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual CStr((2 * ModOfBinary(sa, 1000003)) Mod 1000003), r.ValueString, "(2^" & (LibraryBits() - 2) & " + 2^" & (LibraryBits() - 2) & ") mod 1000003, a sum of " & LibraryBits() & " bits, raised no error; ValueString"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_SubtractionModulusIntermediateBeyondTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim sa As String
+        Dim e As Long
+        sa = Rep("1", LibraryBits())
+        a.ValueBinary = sa
+        b.ValueBinary = sa
+        b.IsNegative = True
+        c.ValueString = "1000003"
+        On Error Resume Next
+        r.AssignSubtractionModulus a, b, c
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual CStr((2 * ModOfBinary(sa, 1000003)) Mod 1000003), r.ValueString, "(a - (-a)) mod 1000003 for a of " & LibraryBits() & " one bits, whose difference has one bit more, raised no error; ValueString"
+        End If
+        Expect.Done
+    End Sub
+
 End Module

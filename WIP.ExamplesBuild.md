@@ -428,6 +428,30 @@ sample that names it.
 One project per fence is unaffordable. What makes it tractable is that **IDE cost is flat in
 project size**: what is paid for is startup, not compilation.
 
+**So a lane starts its IDE once.** Each lane holds an `IdeSession`
+([scripts/lib/tb-session.mjs](scripts/lib/tb-session.mjs)) beside its slot, and every project
+after the first opens in that IDE through the page's own File > Open Project. Before each switch
+the session undoes the Safe Mode a crash loop leaves and the TRACE-MODE a native exception turns
+on; a project that crashed the compiler is closed at once and never reopened in that IDE, and
+its bisect halves, which are other projects, go to the same IDE. A failed switch, exit 2 and
+exit 3 give the IDE up for a new one, and a project a reused IDE never reported open, or met a
+harness fault in, is built again in a new IDE before its result counts. Why each of those, and
+the measurements: [WIP.Harness.md](WIP.Harness.md#one-ide-per-project-or-one-per-lane).
+`--fresh` starts a new IDE for every project, and is the control: a full run with it and one
+without must report the same findings. The run's summary line says how many IDEs started and
+how many projects were opened in one already running.
+
+**A batch that meets its limit is a finding, not the end of the run.** Its samples are not
+judged, and it is not split: a slow template's batches meet the `compile` limit with no samples
+in them, because the time is the template's load (WinReg's did, which is why its samples are not
+marked). The run goes on, so one slow template cannot cost the
+other batches their result.
+The template built with no samples (`ownRowsOf`, which tells the template's own rows from
+a batch's) is built once more when it meets the limit; met twice, the batch that asked is not
+judged and the template is forgotten, so the next batch asks again. Taking that empty read as
+a clean template blamed every sample of a package that does not compile on its own: a shared
+`--fresh` run reported 17 ArrayListLib samples for the package's own TB5001 rows.
+
 **Fill the lanes, not the batches.** Filling each batch to `--batch` before opening another
 would put 120, 55, 4 and 3 samples on four lanes, and a run takes as long as its biggest
 batch. The batcher sizes to `ceil(total / jobs)` instead.
@@ -802,7 +826,10 @@ LLVM refusal is isolated, and its samples reported as failing the build, as any 
   wedge and neither ever returns. Each lane owns a workspace, not just a slot.
 - **A run's folder is named for its process**, `tbexamples\<pid>`, so runs at once never
   share one; a later run removes the folders of runs whose process has ended, and leaves one
-  it cannot remove yet. Before each IDE ran in its launcher's job, a run that died left its
+  it cannot remove yet. A `--keep` run marks its folder with a `.keep` file from the start
+  (`keepRunFolder` in `scripts/lib/tb-registry.mjs`), and the sweep leaves a marked folder
+  for good; before that, a kept folder went within seconds of the next run starting.
+  `sweep_attributes.mjs` sweeps `tbsweep\<pid>` the same way. Before each IDE ran in its launcher's job, a run that died left its
   lanes' IDEs running on desktops nobody could see, holding that folder.
 - **Batches are packed in process by impexp** (`packTree` in `scripts/lib/tb-project.mjs`),
   never by the compiler executable's `import`, which exits 999 with nothing written on a

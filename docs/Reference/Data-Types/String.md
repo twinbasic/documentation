@@ -48,11 +48,11 @@ Debug.Print Len(Pair)               ' 2
 
 ## Fixed-length strings
 
-A fixed-length **String** always has the length it is declared with. A value shorter than that is padded on the right with spaces when it is assigned, and a longer one is cut off. `LenB` is twice the length, and a fixed-length member of a **Type** takes that many bytes. Join a fixed-length string to another with `&`, and the result is a variable-length **String**.
+A fixed-length **String** always has the length it is declared with. Until a value is assigned, each of its characters is `Chr(0)`. A value shorter than that is padded on the right with spaces when it is assigned, and a longer one is cut off. `LenB` is twice the length, and a fixed-length member of a **Type** takes that many bytes. Join a fixed-length string to another with `&`, and the result is a variable-length **String**.
 
 ```tb check_run
 Dim Code As String * 3
-Debug.Print "[" & Code & "]"        ' [   ]
+Debug.Print AscW(Code)              ' 0
 Code = "a"
 Debug.Print "[" & Code & "]"        ' [a  ]
 Code = "abcdef"

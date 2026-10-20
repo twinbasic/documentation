@@ -52,8 +52,7 @@ hand-kept list of calls drifts from the cases; the gate refuses a stale one.
 
 ## A case that never returns
 
-Some defects are a loop that never ends (BigNumberLib's modular inverse of zero, TBMANLIB_Xml on
-some malformed text). In test mode such a case holds the compiler: `tbrun` gives up on it after
+Some defects are a loop that never ends (TBMANLIB_Xml on some malformed text). In test mode such a case holds the compiler: `tbrun` gives up on it after
 its timeout, and every case after it would time out too. So the runner, on a case that does not
 return, records it and runs the cases after it again in a new IDE; once `expect.json` says
 `hangs`, the case is run alone with a short timeout, and `RunAll` skips it, because an author's

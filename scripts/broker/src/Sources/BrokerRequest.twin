@@ -1,0 +1,268 @@
+' One request: a JSON object on one line, read as far as the broker needs it. Its members may be
+' strings, numbers, true, false or null; a member that is an object or an array is skipped over
+' and reads as absent. The id member is kept as the JSON text it was, so that the reply can give
+' it back exactly.
+Class BrokerRequest
+    Public Valid As Boolean
+    Public Problem As String
+    Public IdText As String
+
+    Private mNames As New Collection
+    Private mValues As New Collection
+    Private mText As String
+    Private mPos As Long
+
+    Public Sub Parse(ByVal text As String)
+        Dim name As String, v As Variant, start As Long
+        mText = text
+        mPos = 1
+        Valid = False
+        SkipSpace
+        If Peek() <> "{" Then
+            Problem = "not a JSON object"
+            Exit Sub
+        End If
+        mPos = mPos + 1
+        SkipSpace
+        If Peek() = "}" Then
+            mPos = mPos + 1
+        Else
+            Do
+                SkipSpace
+                If Peek() <> """" Then
+                    Problem = "a member name was expected at character " & mPos
+                    Exit Sub
+                End If
+                If Not ReadString(name) Then Exit Sub
+                SkipSpace
+                If Peek() <> ":" Then
+                    Problem = "':' was expected at character " & mPos
+                    Exit Sub
+                End If
+                mPos = mPos + 1
+                SkipSpace
+                start = mPos
+                If Not ReadValue(v) Then Exit Sub
+                If name = "id" Then IdText = Mid$(mText, start, mPos - start)
+                Store name, v
+                SkipSpace
+                If Peek() = "," Then
+                    mPos = mPos + 1
+                ElseIf Peek() = "}" Then
+                    mPos = mPos + 1
+                    Exit Do
+                Else
+                    Problem = "',' or '}' was expected at character " & mPos
+                    Exit Sub
+                End If
+            Loop
+        End If
+        SkipSpace
+        If mPos <= Len(mText) Then
+            Problem = "text after the object at character " & mPos
+            Exit Sub
+        End If
+        Valid = True
+    End Sub
+
+    ' Whether the member is there with a value other than null, an object or an array.
+    Public Function Has(ByVal name As String) As Boolean
+        Dim v As Variant
+        Has = Lookup(name, v)
+        If Has Then Has = Not IsNull(v)
+    End Function
+
+    Public Function StringOf(ByVal name As String) As String
+        Dim v As Variant
+        If Lookup(name, v) Then
+            If VarType(v) = vbString Then StringOf = v
+        End If
+    End Function
+
+    ' The member as a whole number; dflt when it is absent or is not a number.
+    Public Function Number(ByVal name As String, Optional ByVal dflt As Double = 0) As Double
+        Dim v As Variant
+        Number = dflt
+        If Lookup(name, v) Then
+            If VarType(v) = vbDouble Then Number = v
+        End If
+    End Function
+
+    Public Function IsNumber(ByVal name As String) As Boolean
+        Dim v As Variant
+        If Lookup(name, v) Then IsNumber = VarType(v) = vbDouble
+    End Function
+
+    Public Function Flag(ByVal name As String) As Boolean
+        Dim v As Variant
+        If Lookup(name, v) Then
+            If VarType(v) = vbBoolean Then Flag = v
+        End If
+    End Function
+
+    ' The last of two members with one name wins, as in JSON.parse.
+    Private Sub Store(ByVal name As String, ByVal v As Variant)
+        Dim i As Long
+        For i = 1 To mNames.Count
+            If mNames(i) = name Then
+                mNames.Remove i
+                mValues.Remove i
+                Exit For
+            End If
+        Next
+        mNames.Add name
+        mValues.Add v
+    End Sub
+
+    Private Function Lookup(ByVal name As String, ByRef v As Variant) As Boolean
+        Dim i As Long
+        For i = 1 To mNames.Count
+            If mNames(i) = name Then
+                v = mValues(i)
+                Lookup = True
+                Exit Function
+            End If
+        Next
+    End Function
+
+    Private Function Peek() As String
+        If mPos <= Len(mText) Then Peek = Mid$(mText, mPos, 1)
+    End Function
+
+    Private Sub SkipSpace()
+        Dim c As String
+        Do While mPos <= Len(mText)
+            c = Mid$(mText, mPos, 1)
+            If c <> " " And c <> vbTab And c <> vbCr And c <> vbLf Then Exit Do
+            mPos = mPos + 1
+        Loop
+    End Sub
+
+    Private Function ReadValue(ByRef v As Variant) As Boolean
+        Dim c As String, s As String
+        c = Peek()
+        Select Case c
+            Case """"
+                If Not ReadString(s) Then Exit Function
+                v = s
+                ReadValue = True
+            Case "{", "["
+                If Not SkipNested() Then Exit Function
+                v = Null
+                ReadValue = True
+            Case "t"
+                ReadValue = Word("true")
+                v = True
+            Case "f"
+                ReadValue = Word("false")
+                v = False
+            Case "n"
+                ReadValue = Word("null")
+                v = Null
+            Case Else
+                ReadValue = ReadNumber(v)
+        End Select
+    End Function
+
+    Private Function Word(ByVal w As String) As Boolean
+        If Mid$(mText, mPos, Len(w)) = w Then
+            mPos = mPos + Len(w)
+            Word = True
+        Else
+            Problem = "an unknown value at character " & mPos
+        End If
+    End Function
+
+    Private Function ReadNumber(ByRef v As Variant) As Boolean
+        Dim start As Long, c As String
+        start = mPos
+        Do While mPos <= Len(mText)
+            c = Mid$(mText, mPos, 1)
+            If InStr(1, "0123456789+-.eE", c) = 0 Then Exit Do
+            mPos = mPos + 1
+        Loop
+        If mPos = start Then
+            Problem = "a value was expected at character " & mPos
+            Exit Function
+        End If
+        On Error GoTo Bad
+        ' Val reads the invariant culture's decimal point, as JSON writes it.
+        v = CDbl(Val(Mid$(mText, start, mPos - start)))
+        ReadNumber = True
+        Exit Function
+    Bad:
+        Problem = "a number that cannot be read at character " & start
+    End Function
+
+    ' A JSON string; mPos is on its opening quote and ends after its closing one.
+    Private Function ReadString(ByRef s As String) As Boolean
+        Dim c As String, code As Long
+        s = ""
+        mPos = mPos + 1
+        Do
+            If mPos > Len(mText) Then
+                Problem = "a string is not closed"
+                Exit Function
+            End If
+            c = Mid$(mText, mPos, 1)
+            mPos = mPos + 1
+            If c = """" Then Exit Do
+            If c = "\" Then
+                c = Mid$(mText, mPos, 1)
+                mPos = mPos + 1
+                Select Case c
+                    Case """", "\", "/"
+                        s = s & c
+                    Case "b"
+                        s = s & ChrW$(8)
+                    Case "f"
+                        s = s & ChrW$(12)
+                    Case "n"
+                        s = s & vbLf
+                    Case "r"
+                        s = s & vbCr
+                    Case "t"
+                        s = s & vbTab
+                    Case "u"
+                        On Error GoTo BadEscape
+                        code = CLng("&H" & Mid$(mText, mPos, 4))
+                        On Error GoTo 0
+                        s = s & ChrW$(code)
+                        mPos = mPos + 4
+                    Case Else
+                        Problem = "an unknown escape at character " & (mPos - 2)
+                        Exit Function
+                End Select
+            Else
+                s = s & c
+            End If
+        Loop
+        ReadString = True
+        Exit Function
+    BadEscape:
+        Problem = "a \u escape that is not four hex digits at character " & (mPos - 2)
+    End Function
+
+    ' Skips an object or an array, strings inside it included.
+    Private Function SkipNested() As Boolean
+        Dim depth As Long, c As String, s As String
+        Do While mPos <= Len(mText)
+            c = Mid$(mText, mPos, 1)
+            If c = """" Then
+                If Not ReadString(s) Then Exit Function
+            Else
+                mPos = mPos + 1
+                If c = "{" Or c = "[" Then
+                    depth = depth + 1
+                ElseIf c = "}" Or c = "]" Then
+                    depth = depth - 1
+                    If depth = 0 Then
+                        SkipNested = True
+                        Exit Function
+                    End If
+                End If
+            End If
+        Loop
+        Problem = "an object or an array is not closed"
+    End Function
+End Class

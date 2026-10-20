@@ -1,0 +1,133 @@
+' UTF-8 to and from strings, JSON text for the replies, and the log.
+Module BrokerText
+    Private Declare PtrSafe Function MultiByteToWideChar Lib "kernel32" (ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long) As Long
+    Private Declare PtrSafe Function WideCharToMultiByte Lib "kernel32" (ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpDefaultChar As LongPtr, ByVal lpUsedDefaultChar As LongPtr) As Long
+    Private Declare PtrSafe Function CreateFileW Lib "kernel32" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, ByVal lpSecurityAttributes As LongPtr, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr
+    Private Declare PtrSafe Function WriteFile Lib "kernel32" (ByVal hFile As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfBytesToWrite As Long, ByRef lpNumberOfBytesWritten As Long, ByVal lpOverlapped As LongPtr) As Long
+    Private Declare PtrSafe Function GetFileSizeEx Lib "kernel32" (ByVal hFile As LongPtr, ByRef lpFileSize As LongLong) As Long
+    Private Declare PtrSafe Function CloseHandle Lib "kernel32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function MoveFileExW Lib "kernel32" (ByVal lpExistingFileName As LongPtr, ByVal lpNewFileName As LongPtr, ByVal dwFlags As Long) As Long
+    Private Declare PtrSafe Function CreateDirectoryW Lib "kernel32" (ByVal lpPathName As LongPtr, ByVal lpSecurityAttributes As LongPtr) As Long
+    Private Declare PtrSafe Function GetEnvironmentVariableW Lib "kernel32" (ByVal lpName As LongPtr, ByVal lpBuffer As LongPtr, ByVal nSize As Long) As Long
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+
+    Private Const CP_UTF8 As Long = 65001
+    Private Const FILE_APPEND_DATA As Long = 4
+    Private Const FILE_SHARE_READ_WRITE_DELETE As Long = 7
+    Private Const OPEN_ALWAYS As Long = 4
+    Private Const MOVEFILE_REPLACE_EXISTING As Long = 1
+    ' The log is cut over to tbbroker.log.1 once it passes this many bytes.
+    Private Const LOG_LIMIT As Long = 1048576
+
+    Private mLogPath As String
+
+    ' The string that the UTF-8 bytes data(first) to data(first + count - 1) hold.
+    Public Function FromUtf8(data() As Byte, ByVal first As Long, ByVal count As Long) As String
+        Dim n As Long, s As String
+        If count <= 0 Then Exit Function
+        n = MultiByteToWideChar(CP_UTF8, 0, VarPtr(data(first)), count, 0, 0)
+        If n <= 0 Then Exit Function
+        s = String$(n, vbNullChar)
+        MultiByteToWideChar CP_UTF8, 0, VarPtr(data(first)), count, StrPtr(s), n
+        FromUtf8 = s
+    End Function
+
+    ' The UTF-8 bytes of s into data, and their count.
+    Public Function ToUtf8(ByVal s As String, data() As Byte) As Long
+        Dim n As Long
+        If Len(s) = 0 Then
+            ToUtf8 = 0
+            Exit Function
+        End If
+        n = WideCharToMultiByte(CP_UTF8, 0, StrPtr(s), Len(s), 0, 0, 0, 0)
+        ReDim data(0 To n - 1)
+        WideCharToMultiByte CP_UTF8, 0, StrPtr(s), Len(s), VarPtr(data(0)), n, 0, 0
+        ToUtf8 = n
+    End Function
+
+    ' s as a JSON string, quotes included.
+    Public Function Quote(ByVal s As String) As String
+        Dim i As Long, c As Long, out As String
+        out = """"
+        For i = 1 To Len(s)
+            c = AscW(Mid$(s, i, 1)) And &HFFFF&
+            Select Case c
+                Case 34
+                    out = out & "\"""
+                Case 92
+                    out = out & "\\"
+                Case 10
+                    out = out & "\n"
+                Case 13
+                    out = out & "\r"
+                Case 9
+                    out = out & "\t"
+                Case Is < 32
+                    out = out & "\u" & Right$("000" & LCase$(Hex$(c)), 4)
+                Case Else
+                    out = out & ChrW$(c)
+            End Select
+        Next
+        Quote = out & """"
+    End Function
+
+    ' A JSON member, "name":value, with value already JSON text.
+    Public Function Member(ByVal name As String, ByVal value As String) As String
+        Member = Quote(name) & ":" & value
+    End Function
+
+    Public Function Bool(ByVal b As Boolean) As String
+        If b Then Bool = "true" Else Bool = "false"
+    End Function
+
+    Public Function Num(ByVal n As Double) As String
+        Num = Trim$(Str$(n))
+    End Function
+
+    ' The value of an environment variable, or "".
+    Public Function Env(ByVal name As String) As String
+        Dim buf As String, n As Long
+        n = GetEnvironmentVariableW(StrPtr(name), 0, 0)
+        If n <= 0 Then Exit Function
+        buf = String$(n, vbNullChar)
+        n = GetEnvironmentVariableW(StrPtr(name), StrPtr(buf), n)
+        Env = Left$(buf, n)
+    End Function
+
+    ' %LOCALAPPDATA%\tbbroker, made if it is not there.
+    Public Function HomeFolder() As String
+        Dim base As String
+        base = Env("LOCALAPPDATA")
+        If Len(base) = 0 Then base = Env("TEMP")
+        HomeFolder = base & "\tbbroker"
+        CreateDirectoryW StrPtr(HomeFolder), 0
+    End Function
+
+    ' Where Log writes; "" writes nowhere.
+    Public Property Let LogPath(ByVal path As String)
+        mLogPath = path
+    End Property
+
+    Public Property Get LogPath() As String
+        LogPath = mLogPath
+    End Property
+
+    ' One line of the log: the local time, the broker's pid and the message.
+    Public Sub Log(ByVal message As String)
+        Dim h As LongPtr, b() As Byte, n As Long, written As Long, size As LongLong
+        If Len(mLogPath) = 0 Then Exit Sub
+        h = CreateFileW(StrPtr(mLogPath), FILE_APPEND_DATA, FILE_SHARE_READ_WRITE_DELETE, 0, OPEN_ALWAYS, 0, 0)
+        If h = -1 Then Exit Sub
+        If GetFileSizeEx(h, size) <> 0 Then
+            If size > LOG_LIMIT Then
+                CloseHandle h
+                MoveFileExW StrPtr(mLogPath), StrPtr(mLogPath & ".1"), MOVEFILE_REPLACE_EXISTING
+                h = CreateFileW(StrPtr(mLogPath), FILE_APPEND_DATA, FILE_SHARE_READ_WRITE_DELETE, 0, OPEN_ALWAYS, 0, 0)
+                If h = -1 Then Exit Sub
+            End If
+        End If
+        n = ToUtf8(Format$(Now, "yyyy-mm-dd hh:nn:ss") & " [" & GetCurrentProcessId() & "] " & message & vbCrLf, b)
+        If n > 0 Then WriteFile h, VarPtr(b(0)), n, written, 0
+        CloseHandle h
+    End Sub
+End Module

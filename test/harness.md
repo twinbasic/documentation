@@ -281,7 +281,10 @@ the median; the compiler's own compile at most 0.30 s under the IDE and 1.27 s u
 cold start included; IDE start to project open at most 4.04 s; a build at most 1.0 s, 4.97 s with
 LLVM; a compiler run at most 0.83 s without LLVM. What 10 s cuts off is known and accepted: the
 documentation harness's compile wait for the WinReg batches (12.5--13.8 s, project load
-included) and one TBMANLIB_Aes LLVM run that printed for 15 s, both Experimental packages.
+included; WinReg's samples are no longer marked `check_build`, so none is compiled) and one TBMANLIB_Aes LLVM run that printed for 15 s, both Experimental packages.
+`check_examples` reports a batch whose compile meets its limit, or that the IDE never reports
+open, as one finding ("was not judged"), against its first sample, and goes on with the other
+batches; a canary batch that meets it is a finding of its canary.
 `package_tests.mjs` passes its own limit for a test case's run (`--timeout`, 60 s by default),
 because a case's run time is the package's own: tbRegExp's step-limit cases take about 16 s.
 

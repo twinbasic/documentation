@@ -36,7 +36,7 @@ The return value is a **BOOL**: **True** if the value was written successfully, 
 
 This example writes a user name string under `HKEY_CURRENT_USER`.
 
-```tb check_build
+```tb
 Dim reg As New RegCls
 
 If reg.WriteString(HKEY_CURRENT_USER, "Software\MyApp", "UserName", "Alice") Then

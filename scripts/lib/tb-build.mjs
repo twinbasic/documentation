@@ -24,9 +24,11 @@
 //     which can be a clean compile with no rows. Every caller here packs its own
 //     projects, which are always readable.
 //
-// It always ends its IDE before it returns, unless `keep` is set. Node holds the
-// IDE's launcher in a job of its own (launchIde), so an IDE also goes when the
-// process does -- a run that is stopped leaves none of its lanes' IDEs behind.
+// It always ends its IDE before it returns, unless `keep` is set, or unless the
+// IDE is a session's (tb-session.mjs), which opens project after project in one
+// IDE and ends it itself. Node holds the IDE's launcher in a job of its own
+// (launchIde), so an IDE also goes when the process does -- a run that is
+// stopped leaves none of its lanes' IDEs behind.
 //
 // Concurrency: calls are independent and can run at once, each IDE on a slot (a private
 // desktop, from tbbroker) and a DevTools port of its own, in different slots when the
@@ -75,6 +77,15 @@ import { timing } from "./tb-timings.mjs";
  *   own `compiler.buildOptions` is what asks for LLVM
  * @param {boolean} [o.followRun] whether the project has a [RunAfterBuild] Sub whose compile
  *   the build follows after the link (buildProject); unknown by default
+ * @param {import("./tb-session.mjs").IdeSession} [o.session]  the IDE to open the project
+ *   in, by a switch when it holds one already (tb-session.mjs), in place of a new IDE
+ *   for this call; the session owns the IDE, so it is left running, and `slot`,
+ *   `port`, `show` and `keep` are the session's business. A project opened by a
+ *   switch that ends in a harness fault (2), or that the IDE never reported open (3),
+ *   is built once more in a new IDE, and that result is the one returned: a reused
+ *   IDE's fault is never reported as the project's. A compile that met its limit
+ *   after the project opened is the project's (WinReg's batches meet it in a new IDE
+ *   too), and is not built again
  * @param {number} [o.buildTimeout] ms for the build, from the press to its end (default:
  *   test/harness.json's `build`); with `run`, to [BUILD] Executing
  * @param {{done?: (lines: string[]) => boolean, runMs?: number, quietMs?: number} | null} [o.run]
@@ -98,9 +109,19 @@ import { timing } from "./tb-timings.mjs";
  *   of the log. `counts` is errors, warnings, hints, infos. `crashFiles` names,
  *   for 4, the files the compiler died parsing. `built` is the file a
  *   successful build wrote, and `buildLog` the console from the build's first
- *   line on.
+ *   line on. `how` is "cold" or, with a session, "switch"; `opened` is false when
+ *   the IDE never reported the project open; `retried` is the message of a reused
+ *   IDE's result that sent the project to a new IDE.
  */
-export async function compileProject({
+export async function compileProject(o) {
+  const r = await compileOnce(o);
+  const reusedFault = r.code === 2 || (r.code === 3 && r.opened === false);
+  if (!o.session || r.how !== "switch" || !reusedFault) return r;
+  // session.after has ended that IDE, so this opens a new one.
+  return { ...(await compileOnce(o)), retried: r.message };
+}
+
+async function compileOnce({
   project,
   ide,
   slot = null,
@@ -114,12 +135,27 @@ export async function compileProject({
   buildTimeout,
   followRun,
   run = null,
+  session = null,
 }) {
   let handle = null;
   let c = null;
+  // With a session: how the project was opened, and where this project's dialogs begin.
+  let how = "cold";
+  let dialogsFrom = 0;
+  let ended = 2;
   const t0 = Date.now();
   const result = (code, fields = {}) => {
-    timing("project", { project: path.resolve(project), code, arch, llvm, build, run: !!run, ms: Date.now() - t0 });
+    ended = code;
+    timing("project", {
+      project: path.resolve(project),
+      code,
+      arch,
+      llvm,
+      build,
+      run: !!run,
+      how,
+      ms: Date.now() - t0,
+    });
     return outcomeOf(code, fields);
   };
   const outcomeOf = (code, fields) => ({
@@ -127,7 +163,7 @@ export async function compileProject({
     message: "",
     rows: [],
     counts: [0, 0, 0, 0],
-    dialogs: c ? c.dialogs.map((d) => d.message) : [],
+    dialogs: c ? c.dialogs.slice(dialogsFrom).map((d) => d.message) : [],
     openedIn: null,
     arch,
     idePid: handle?.pid ?? null,
@@ -135,19 +171,36 @@ export async function compileProject({
     crashFiles: [],
     built: null,
     buildLog: [],
+    how,
     ...fields,
   });
   try {
-    try {
-      handle = await launchIde({ exe: ide, project, slot, port, show, keep });
-    } catch (e) {
-      return result(2, { message: e.message });
+    if (session) {
+      try {
+        ({ c, handle, how } = await session.open(project));
+      } catch (e) {
+        return result(2, { message: e.message });
+      }
+      dialogsFrom = c.dialogs.length;
+    } else {
+      try {
+        handle = await launchIde({ exe: ide, project, slot, port, show, keep });
+      } catch (e) {
+        return result(2, { message: e.message });
+      }
+      c = await attachIde(handle.port);
+      if (!c) return result(2, { message: "the IDE never exposed a debug port" });
     }
-    c = await attachIde(handle.port);
-    if (!c) return result(2, { message: "the IDE never exposed a debug port" });
 
-    let outcome = compileOutcome(await waitForCompile(c, { project, timeout }), { name: project });
-    if (!outcome.ok) return result(outcome.code, { message: outcome.message, crashFiles: outcome.crashFiles ?? [] });
+    const waited = await waitForCompile(c, { project, timeout });
+    let outcome = compileOutcome(waited, { name: project });
+    if (!outcome.ok) {
+      return result(outcome.code, {
+        message: outcome.message,
+        crashFiles: outcome.crashFiles ?? [],
+        opened: waited.loaded,
+      });
+    }
 
     // Set on every run, win32 included, and what is reported is the compile under
     // it: see setBuildTarget. Switching restarts the compiler, which compiles the
@@ -199,12 +252,17 @@ export async function compileProject({
     if (!built.ok) return result(5, { ...found, message: built.message, buildLog: built.log });
     return result(0, { ...found, built: built.file, buildLog: built.log });
   } finally {
-    // A close that threw must not skip ending the IDE, or mask what was thrown.
-    try {
-      c?.close();
-    } catch {
-      /* the IDE is about to be ended */
+    if (session) {
+      // The session's IDE: kept for the next project, recovered, or ended (IdeSession.after).
+      await session.after(ended);
+    } else {
+      // A close that threw must not skip ending the IDE, or mask what was thrown.
+      try {
+        c?.close();
+      } catch {
+        /* the IDE is about to be ended */
+      }
+      if (!keep) await shutdownIdeAsync(handle);
     }
-    if (!keep) await shutdownIdeAsync(handle);
   }
 }

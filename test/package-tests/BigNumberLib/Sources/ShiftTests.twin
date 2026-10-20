@@ -46,13 +46,25 @@ Module ShiftTests
     End Sub
 
     [TestCase]
-    Public Sub ShiftLeft_NegativeAmountDoesNotShiftRight()
+    Public Sub ShiftLeft_NegativeAmountRaisesError5OrShiftsRight()
+        ' Either convention is correct: an error, as Python's int, or a shift to the right, as
+        ' Java's and .NET's BigInteger.
         Expect.Begin
         Dim a As New BigNumber
         Dim r As New BigNumber
+        Dim e As Long
         a.ValueString = "1000"
+        r.ValueString = "7"
+        On Error Resume Next
         r.AssignShiftLeft a, -1
-        Expect.IsTrue r.ValueString <> "500", "1000 << -1 is not 1000 >> 1, but it gave " & r.ValueString
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual "500", r.ValueString, "1000 << -1 raised no error; ValueString"
+        Else
+            Expect.AreEqual 5, e, "the error 1000 << -1 raised"
+            Expect.AreEqual "7", r.ValueString, "a number that held 7, after 1000 << -1 raised an error"
+        End If
         Expect.Done
     End Sub
 

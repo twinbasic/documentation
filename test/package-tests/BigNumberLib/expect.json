@@ -1,98 +1,108 @@
 {
-  "version": "1.0.2.0",
+  "version": "1.0.4.0",
   "cases": {
-    "GcdLcmTests.Gcd_NegativeFirstOperandKeepsItsValue": {
-      "fails": "1 of 2 checks failed: ValueString of the first operand after gcd(-12, 18): expected \"-12\", got \"12\""
-    },
-    "GcdLcmTests.Gcd_NegativeSecondOperandKeepsItsValue": {
-      "fails": "1 of 2 checks failed: ValueString of the second operand after gcd(12, -18): expected \"-18\", got \"18\""
-    },
-    "GcdLcmTests.Gcd_NegativeOperandStillAddsCorrectly": {
-      "fails": "2 of 2 checks failed: the first operand of gcd(-12, 18) plus 1: expected \"-11\", got \"11\"; the first operand of gcd(-12, 18) is less than 1: expected True, got False"
-    },
     "GcdLcmTests.Lcm_OfTwoZeros_64Bit": {
       "win32": "pass",
       "win64": {
         "fails": "1 of 1 checks failed: lcm(0, 0) of a number that held 99: expected \"0\", got \"99\""
       }
     },
-    "GcdLcmTests.Lcm_NegativeFirstOperandKeepsItsValue": {
-      "fails": "1 of 2 checks failed: ValueString of the first operand after lcm(-4, 6): expected \"-4\", got \"4\""
+    "OverflowTests.Overflow_SubtractionBeyondTheLibrary_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: 2^4351 - (-2^4351) raised no error; ValueBinary: expected \"1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\"... (4353 characters), got \"0\""
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: 2^4607 - (-2^4607) raised no error; ValueBinary: expected \"1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\"... (4609 characters), got \"0\""
+      }
     },
-    "GcdLcmTests.Lcm_NegativeSecondOperandKeepsItsValue": {
-      "fails": "1 of 2 checks failed: ValueString of the second operand after lcm(4, -6): expected \"-6\", got \"6\""
+    "OverflowTests.Overflow_SquareBeyondTheLibrary_RaisesErrorOrIsRight": {
+      "fails": "1 of 1 checks failed: (2^3000)^2 raised no error; ValueBinary: expected \"1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\"... (6001 characters), got \"0\""
     },
-    "GcdLcmTests.Lcm_NegativeOperandStillAddsCorrectly": {
-      "fails": "1 of 1 checks failed: the first operand of lcm(-4, 6) plus 1: expected \"-3\", got \"3\""
+    "OverflowTests.Overflow_SquareOneBitOverTheLibrary_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: (2^2176)^2, a power of two of 4353 bits, raised no error; ValueBinary: expected \"1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\"... (4353 characters), got \"0\""
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: (2^2304)^2, a power of two of 4609 bits, raised no error; ValueBinary: expected \"1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\"... (4609 characters), got \"0\""
+      }
     },
-    "InverseTests.Inverse_ZeroValueOddModulus_RaisesError5": {
+    "OverflowTests.Overflow_ValueOctalWithTooManyDigits_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: ValueOctal of 2,000 sevens (6,000 bits) raised no error; read back: expected \"7777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777\"... (2000 characters), got \"3777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777\"... (1451 characters)"
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: ValueOctal of 2,000 sevens (6,000 bits) raised no error; read back: expected \"7777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777\"... (2000 characters), got \"7777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777\"... (1536 characters)"
+      }
+    },
+    "OverflowTests.Overflow_ValueBinaryWithTooManyDigits_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: ValueBinary of 6,000 one digits raised no error; read back: expected \"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\"... (6000 characters), got \"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\"... (4352 characters)"
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: ValueBinary of 6,000 one digits raised no error; read back: expected \"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\"... (6000 characters), got \"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\"... (4608 characters)"
+      }
+    },
+    "OverflowTests.Overflow_MultiplicationOneBitOverTheLibrary_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: (2^2176 - 1) * (2^2177 - 1), a product of 4353 bits, raised no error and gave a wrong value"
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: (2^2304 - 1) * (2^2305 - 1), a product of 4609 bits, raised no error and gave a wrong value"
+      }
+    },
+    "OverflowTests.Overflow_MultiplicationOfUnequalSizesOneBitOverTheLibrary_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: (2^100 - 1) * (2^4253 - 1), a product of 4353 bits, raised no error and gave a wrong value"
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: (2^100 - 1) * (2^4509 - 1), a product of 4609 bits, raised no error and gave a wrong value"
+      }
+    },
+    "OverflowTests.Overflow_ProductOfExactlyTheLibraryBits_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: (2^2176 - 1) * (2^2176 - 1), a product of 4352 bits, raised no error and gave a wrong value"
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: (2^2304 - 1) * (2^2304 - 1), a product of 4608 bits, raised no error and gave a wrong value"
+      }
+    },
+    "OverflowTests.Overflow_MultiplicationModulusIntermediateBeyondTheLibrary_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: (a * b) mod 1000003 for a of 3,000 one bits and b of 2,900 one bits, whose product has 5,900 bits, raised no error; ValueString: expected \"102459\", got \"280374\""
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: (a * b) mod 1000003 for a of 3,000 one bits and b of 2,900 one bits, whose product has 5,900 bits, raised no error; ValueString: expected \"102459\", got \"836210\""
+      }
+    },
+    "OverflowTests.Overflow_SquaredModulusIntermediateBeyondTheLibrary_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: (a * a) mod 1000003 for a of 3,000 one bits, whose square has 6,000 bits, raised no error; ValueString: expected \"352069\", got \"97107\""
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: (a * a) mod 1000003 for a of 3,000 one bits, whose square has 6,000 bits, raised no error; ValueString: expected \"352069\", got \"652943\""
+      }
+    },
+    "OverflowTests.Overflow_AdditionModulusIntermediateBeyondTheLibrary_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: (a + a) mod 1000003 for a of 4352 one bits, whose sum has one bit more, raised no error; ValueString: expected \"218265\", got \"325980\""
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: (a + a) mod 1000003 for a of 4608 one bits, whose sum has one bit more, raised no error; ValueString: expected \"204708\", got \"408045\""
+      }
+    },
+    "OverflowTests.Overflow_ModulusOfANumberThatFillsTheLibrary_RaisesErrorOrIsRight": {
       "hangs": true
     },
-    "InverseTests.Inverse_NegativeOddModulus_RaisesError5": {
+    "OverflowTests.Overflow_AdditionModulusWhoseSumFillsTheLibrary_RaisesErrorOrIsRight": {
       "hangs": true
     },
-    "ModulusTests.AssignModulus_NegativeDivisor_ZeroResultIsNotNegative": {
-      "fails": "1 of 2 checks failed: IsNegative of 6 Mod -3: expected False, got True"
-    },
-    "ModulusTests.AssignModulus_NegativeDivisor_ZeroResultEqualsZero": {
-      "fails": "2 of 2 checks failed: 6 Mod -3 IsEqualTo a zero read from \"0\": expected True, got False; 6 Mod -3 IsLessThan a zero read from \"0\": expected False, got True"
-    },
-    "OverflowTests.Overflow_ShiftLeftBeyondTheLibrary_RaisesErrorOrIsRight": {
-      "fails": "1 of 1 checks failed: 1 << 6000 raised no error; ValueBinary: expected \"1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\"... (6001 characters), got \"0\""
-    },
-    "OverflowTests.Overflow_MultiplicationBeyondTheLibrary_RaisesErrorOrIsRight": {
-      "fails": "1 of 1 checks failed: 2^3000 * 2^3000 raised no error; ValueBinary: expected \"1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\"... (6001 characters), got \"0\""
-    },
-    "OverflowTests.Overflow_AdditionBeyondTheLibrary_RaisesErrorOrIsRight": {
+    "OverflowTests.Overflow_SubtractionModulusIntermediateBeyondTheLibrary_RaisesErrorOrIsRight": {
       "win32": {
-        "fails": "1 of 1 checks failed: (2^4352 - 1) * 2 raised no error; ValueBinary: expected \"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\"... (4353 characters), got \"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\"... (4352 characters)"
+        "fails": "1 of 1 checks failed: (a - (-a)) mod 1000003 for a of 4352 one bits, whose difference has one bit more, raised no error; ValueString: expected \"218265\", got \"325980\""
       },
       "win64": {
-        "fails": "1 of 1 checks failed: (2^4608 - 1) * 2 raised no error; ValueBinary: expected \"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\"... (4609 characters), got \"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\"... (4608 characters)"
+        "fails": "1 of 1 checks failed: (a - (-a)) mod 1000003 for a of 4608 one bits, whose difference has one bit more, raised no error; ValueString: expected \"204708\", got \"408045\""
       }
-    },
-    "OverflowTests.Overflow_ValueStringWithTooManyDigits_RaisesErrorOrIsRight": {
-      "win32": {
-        "fails": "1 of 1 checks failed: ValueString of 1,600 nines raised no error; read back: expected \"9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999\"... (1600 characters), got \"4286452832310585597233729070503425569902306886885523889489200741297515745171908463685529577272257134\"... (1310 characters)"
-      },
-      "win64": {
-        "fails": "1 of 1 checks failed: ValueString of 1,600 nines raised no error; read back: expected \"9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999\"... (1600 characters), got \"9008938760588959665641366052989158261445202088243123331546110814618818177382341717365057548908500041\"... (1387 characters)"
-      }
-    },
-    "OverflowTests.Overflow_ValueHexWithTooManyDigits_RaisesErrorOrIsRight": {
-      "win32": {
-        "fails": "1 of 1 checks failed: ValueHex of 1,300 F digits raised no error; read back: expected \"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\"... (1300 characters), got \"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\"... (1088 characters)"
-      },
-      "win64": {
-        "fails": "1 of 1 checks failed: ValueHex of 1,300 F digits raised no error; read back: expected \"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\"... (1300 characters), got \"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\"... (1152 characters)"
-      }
-    },
-    "SignTests.IsNegative_SetTrueShowsMinusSign": {
-      "fails": "1 of 2 checks failed: ValueString of 5 after IsNegative = True: expected \"-5\", got \"5\""
-    },
-    "SignTests.IsNegative_SetTrueShowsMinusSignInEveryBase": {
-      "fails": "3 of 3 checks failed: ValueHex of 255 after IsNegative = True: expected \"-FF\", got \"FF\"; ValueOctal of 255 after IsNegative = True: expected \"-377\", got \"377\"; ValueBinary of 255 after IsNegative = True: expected \"-11111111\", got \"11111111\""
-    },
-    "SignTests.IsNegative_SetTrueMakesArithmeticRight": {
-      "fails": "2 of 2 checks failed: 5 with IsNegative = True, plus 3: expected \"-2\", got \"2\"; 5 with IsNegative = True, times 3: expected \"-15\", got \"15\""
-    },
-    "SignTests.IsNegative_SetTrueMakesNumberLessThanZero": {
-      "fails": "1 of 1 checks failed: 5 with IsNegative = True IsLessThan 0: expected True, got False"
-    },
-    "SignTests.AssignFromLong_Zero_IsNotNegative": {
-      "fails": "1 of 1 checks failed: IsNegative after AssignFromLong 0: expected False, got True"
-    },
-    "SignTests.AssignFromLong_Zero_EqualsZeroFromString": {
-      "fails": "2 of 2 checks failed: AssignFromLong 0 IsEqualTo a zero read from \"0\": expected True, got False; a zero read from \"0\" IsEqualTo AssignFromLong 0: expected True, got False"
-    },
-    "SignTests.AssignFromLong_Zero_IsNotLessThanZeroFromString": {
-      "fails": "2 of 3 checks failed: AssignFromLong 0 IsLessThan a zero read from \"0\": expected False, got True; AssignFromLong 0 IsGreaterThanOrEqualTo a zero read from \"0\": expected True, got False"
-    },
-    "SignTests.AssignSquared_Zero_IsNotNegative": {
-      "fails": "1 of 2 checks failed: IsNegative of 0 squared: expected False, got True"
-    },
-    "SignTests.AssignSquared_Zero_EqualsZeroFromString": {
-      "fails": "2 of 2 checks failed: 0 squared IsEqualTo a zero read from \"0\": expected True, got False; 0 squared IsLessThan a zero read from \"0\": expected False, got True"
     }
   }
 }

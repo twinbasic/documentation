@@ -1,0 +1,28 @@
+' Module-level variables with initializers, read in the IDE (bug_repro run calls Main
+' from a [RunAfterBuild] procedure). Because Other.FromConfig's initializer reads
+' Config.Limit, a variable of another module, every module-level variable reads 0,
+' Config's own included. Without that initializer, or with FromConfig reading
+' Config.Base (a constant) or a variable of its own module, they read 5, 14 and 105.
+' A class field initializer runs either way, and the built exe prints the right values.
+Module Config
+    Public Const Base As Long = 7
+    Public Limit As Long = 5
+    Public Doubled As Long = Base * 2
+End Module
+
+Module Other
+    Public FromConfig As Long = Config.Limit + 100
+End Module
+
+Class Box
+    Public Size As Long = 3
+End Class
+
+Module Startup
+
+    Public Sub Main()
+        Dim b As New Box
+        Debug.Print "Limit=" & Config.Limit & " Doubled=" & Config.Doubled & " FromConfig=" & Other.FromConfig & " Box.Size=" & b.Size
+    End Sub
+
+End Module

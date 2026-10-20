@@ -49,6 +49,22 @@ Module TextKit
         Latin1Encode = Len(s)
     End Function
 
+    ' The ASCII capitals made small, and with kelvin the Kelvin sign (U+212A) made k; every other character
+    ' kept. Compared with an ASCII name, that is JavaScript's toLowerCase (kelvin True), or a /i regex
+    ' (kelvin False): no other character becomes ASCII in either. LCase$ differs (it keeps U+212A).
+    Public Function LowerAscii(ByVal s As String, ByVal kelvin As Boolean) As String
+        Dim i As Long, c As Long
+        LowerAscii = s
+        For i = 1 To Len(s)
+            c = AscW(Mid$(s, i, 1)) And &HFFFF&
+            If c >= 65 And c <= 90 Then
+                Mid$(LowerAscii, i, 1) = ChrW$(c + 32)
+            ElseIf c = &H212A& And kelvin Then
+                Mid$(LowerAscii, i, 1) = "k"
+            End If
+        Next
+    End Function
+
     ' -1, 0 or 1 by UTF-16 code unit, as JavaScript's < compares two strings.
     Public Function CompareOrdinal(ByVal a As String, ByVal b As String) As Long
         Dim i As Long, n As Long, ca As Long, cb As Long
@@ -69,18 +85,41 @@ Module TextKit
         End If
     End Function
 
-    ' Sorts items(0 To count - 1) by CompareOrdinal; equal items keep their order.
+    ' Sorts items(0 To count - 1) by CompareOrdinal; equal items keep their order (a merge sort).
     Public Sub SortOrdinal(items() As String, ByVal count As Long)
-        Dim i As Long, j As Long, v As String
-        For i = 1 To count - 1
-            v = items(i)
-            j = i - 1
-            Do While j >= 0
-                If CompareOrdinal(items(j), v) <= 0 Then Exit Do
-                items(j + 1) = items(j)
-                j = j - 1
-            Loop
-            items(j + 1) = v
+        Dim tmp() As String
+        If count < 2 Then Exit Sub
+        ReDim tmp(0 To count - 1)
+        MergeSort items, tmp, 0, count
+    End Sub
+
+    ' items(lo To hi - 1) sorted, through tmp.
+    Private Sub MergeSort(items() As String, tmp() As String, ByVal lo As Long, ByVal hi As Long)
+        Dim half As Long, i As Long, j As Long, k As Long
+        If hi - lo < 2 Then Exit Sub
+        half = lo + (hi - lo) \ 2
+        MergeSort items, tmp, lo, half
+        MergeSort items, tmp, half, hi
+        If CompareOrdinal(items(half - 1), items(half)) <= 0 Then Exit Sub
+        i = lo
+        j = half
+        For k = lo To hi - 1
+            If j >= hi Then
+                tmp(k) = items(i)
+                i = i + 1
+            ElseIf i >= half Then
+                tmp(k) = items(j)
+                j = j + 1
+            ElseIf CompareOrdinal(items(j), items(i)) < 0 Then
+                tmp(k) = items(j)
+                j = j + 1
+            Else
+                tmp(k) = items(i)
+                i = i + 1
+            End If
+        Next
+        For k = lo To hi - 1
+            items(k) = tmp(k)
         Next
     End Sub
 

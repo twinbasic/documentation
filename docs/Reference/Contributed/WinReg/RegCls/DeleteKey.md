@@ -26,7 +26,7 @@ Returns **True** if the key was deleted successfully, or **False** if the call f
 
 This example removes the `Settings` key under `HKEY_CURRENT_USER\Software\MyApp` and reports whether the deletion succeeded. The call fails if the key has subkeys.
 
-```tb check_build
+```tb
 Dim reg As New RegCls
 
 If reg.DeleteKey(HKEY_CURRENT_USER, "Software\MyApp\Settings") Then

@@ -38,9 +38,9 @@ The banner follows the licence badge at the moment the dialog opens. [Getting St
 ## The progress box
 {: #the-progress-box }
 
-When the compiler reports progress, the IDE opens a box titled **Compiling...** with a bar,, and the compiler can also fill an item of the status bar with the percentage, such as **LLVM: n%**. The box is modal: the IDE cannot be used until it closes, and it closes by itself when the build ends. Which builds report progress is the compiler's choice. A small project compiled with LLVM takes a fraction of a second, so the box is gone almost at once.
+When the compiler reports progress, the IDE opens a box titled **Compiling...** with a progress bar, and the compiler can also fill an item of the status bar with the percentage, such as **LLVM: n%**. The box is modal: the IDE cannot be used until it closes, and it closes by itself when the build ends. Which builds report progress is the compiler's choice. A small project compiled with LLVM takes a fraction of a second, so the box is gone almost at once.
 
-<!-- SHOT building-compiling-box: an LLVM build of a saved project with the progress event held part-way (wrap event_setBuildProgress in the page), the modal Compiling... box with its bar. Why: the box locks the IDE, and the page says so; a reader should know what it looks like. -->
+![The Compiling... box of an LLVM build, its progress bar at the start.](Images/Compiling.png){:width="302" height="71"}
 
 > [!NOTE] BETA 1010
 > If another box opens while **Compiling...** is on screen, the end of the build closes that box instead of the progress box, so the other box is lost. The **Compiling...** box stays, with no button, and the IDE cannot be used. Restart the IDE.

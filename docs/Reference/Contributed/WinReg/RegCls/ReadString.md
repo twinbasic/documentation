@@ -40,7 +40,7 @@ The function uses `On Error Resume Next` internally. Errors from the Win32 regis
 
 This example reads an application setting stored under `HKEY_CURRENT_USER`, falling back to a hard-coded default when the value is absent.
 
-```tb check_build
+```tb
 Dim Reg As New RegCls
 Dim UserName As String
 
@@ -50,7 +50,7 @@ Debug.Print "User: " & UserName
 
 This example cuts the result at the first NUL character, which leaves the stored text, or the default:
 
-```tb check_build
+```tb
 Dim Reg As New RegCls
 Dim UserName As String
 
@@ -61,7 +61,7 @@ Debug.Print "User: " & UserName
 
 This example checks whether a value was present by comparing the result against the default:
 
-```tb check_build
+```tb
 Dim Reg As New RegCls
 Const NotFound As String = "<not found>"
 

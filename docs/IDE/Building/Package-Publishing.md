@@ -58,9 +58,9 @@ TWINSERV accepts a package only from a publisher that has an account. The accoun
 
 **SIGN IN** opens a box titled **twinBASIC Publisher Login / Signup**. The terms and conditions are beside two forms, which two tabs choose, **LOGIN** and **REGISTER**. The box has one button, **Cancel**. It opens on **LOGIN**, with the password box focused, when the IDE knows a publisher name, and on **REGISTER** when it does not.
 
-<!-- SHOT building-signin-login: the sign-in box on its LOGIN tab with a made-up name typed in USERNAME and an empty PASSWORD (the registry's saved name must not show), Remember password on this device ticked. Why: it is the box the pane's link opens, and the page describes its fields in words. -->
+![The publisher sign-in box on its LOGIN tab, a name typed and the password empty, Remember password on this device ticked; the terms and conditions fill its right side.](Images/SignIn_Login.png){:width="826" height="603"}
 
-<!-- SHOT building-signin-register: the same box on its REGISTER tab after SIGN UP is pressed with a 3-letter username: the line ERROR: Username must be at least 4 characters long under the form. Why: the checks are the part a reader meets first. -->
+![The publisher sign-in box on its REGISTER tab after SIGN UP with a three-letter username: the error line in red under the form.](Images/SignIn_Register.png){:width="826" height="603"}
 
 **To register**, fill in **USERNAME** (at least 4 characters, visible to everyone), **EMAIL** (used for account recovery only), **PASSWORD** (at least 8 characters), tick **I agree to the terms & conditions**, and press **SIGN UP**. The IDE checks these on your machine first, in this order, and shows the first fault as **ERROR:** under the form, with the field focused: **Username must be at least 4 characters long**, **invalid email address**, **Password must be at least 8 characters long**, **You must agree to the terms and conditions**. The server can still refuse the name (**Username already taken.**). When the account is made, a box says **Publisher account created successfully.  You will now be logged in.**
 
@@ -91,11 +91,11 @@ The password is stored in the IDE's settings in the registry with a simple obfus
 
 The confirmation reads **IMPORTANT: Please check the following information before publishing to the online database:** and then lists **PUBLISHER**, **PACKAGE NAMESPACE**, **PACKAGE DESCRIPTION**, **PACKAGE VERSION** and **PACKAGE LICENCE**. For a package with the visibility **PUBLIC**, the box starts with **WARNING: publishing a PUBLIC package will allow everyone to download the package and see the sourcecode within it.** Its buttons are **Continue**, which is the default, and **Cancel**.
 
-<!-- SHOT building-publish-confirm: a package project with the visibility PRIVATE, a dummy login set in the page, PUBLISH THIS PACKAGE pressed: the confirmation box with Continue and Cancel (Cancel pressed after the shot, nothing sent). Why: the box is the last stop before an upload, and the page quotes its text. -->
+![The confirmation PUBLISH THIS PACKAGE shows for a private package, listing the publisher and the package's details, with Continue as the default button.](Images/Publish_Confirm.png){:width="704" height="302"}
 
 **Continue** prints `[PUBLISH] attempting to publish project '<name>' to the online database...` in the console. The result is not in the console: a box with **OK** shows it.
 
-<!-- SHOT building-publish-result: the result box with OK, made by showing the success text in the page with showModalNotification (no upload is made). Why: the old picture in the tutorial is of the previous IDE, and this box is where the result is. -->
+![The box that shows the result of a publish, here a success, with an OK button.](Images/Publish_Result.png){:width="691" height="158"}
 
 | Result | The box says |
 |---|---|

@@ -87,7 +87,9 @@ Measured:
     run before the first capture and again when a capture is chosen, with the SVG under
     `--svg`: the page can draw again in between, as Project Settings does, putting the real
     build path back over the template a shot had set in the page only (a shot that sets a
-    value types it, `input` and `change`, so the page keeps it).
+    value types it, `input` and `change`, so the page keeps it). The `settings` setups open
+    their project with the templates' own build path (`startSettings`), so that a row drawn
+    again holds no user name either: `llvmdoc1` failed the check now and then without it.
 
 ## Capture
 
@@ -107,13 +109,24 @@ Measured:
   between versions a few pixels apart by 1-14 grey levels: dialog shadow edges, the status bar's
   scaled Ko-fi bitmap, panel dividers, rounded corners. `captureBeyondViewport` and
   `fromSurface: false` are stable but drop the scrollbars and the cut-outs' alpha, so neither is
-  usable. `capture` waits 1 s before the first capture (without it rounded-corner pixels come out a
-  grey level off and stay so), then takes up to 8, 150 ms apart: it keeps one equal to the file on
-  disk, else the first two in a row that agree, and fails if none agree. So a picture is rewritten
-  when the IDE draws something different, not when the noise flips.
+  usable. Measured on BETA 1010 (launcher-re, `plan/PLAN-webview-ide.md` section 24: 194 shots,
+  about 35,000 captures, alone and with six IDEs at once), a picture of a still state is final at
+  its first capture once the page is quiet and two frames are drawn. So `capture` has no rest: it
+  captures back to back until one equals the file on disk or two in a row agree, and a picture
+  that has not changed costs one capture. **A picture two captures agree on that is not the file
+  is not kept at once** (owner): `capture` captures on at `CAPTURE_GAPS` (150 ms rising to 1.5 s)
+  until one equals the file or 5.5 s have gone, and keeps the last two that agreed. Keeping it at
+  once failed a second run on BETA 1010, in two ways: a raster drawn in several versions that
+  turn over in the idle time between captures, not under captures back to back (the striped
+  ground round a designer, 47,000 pixels apart; About's gradient boxes, dithered 10,000 pixels
+  apart; a submenu's shadow corner; the splash's rounded corner, 4 pixels by many levels); and
+  a state still on its way when the shot's own condition is met (Rename_Box's box red for a
+  moment, a designer readout fading in), which the old 1 s rest had hidden. With no two
+  agreeing in 5.5 s it fails. So a picture is rewritten when the IDE draws something different,
+  not when the noise flips, and a changed picture costs about 5.5 s.
   Under the full parallel load a run now and then settles on the other version of one or two
   pictures (1-3 grey levels, a few pixels to a few hundred along an edge) and keeps it through
-  every capture, so a longer wait in `capture` does not help; each is unchanged when its setup
+  every capture, so longer captures in `capture` do not help; each is unchanged when its setup
   runs alone, and which one varies from run to run. So **a picture within a capture's noise of
   its file is left as it is** (`nearly`: one size, no channel more than 16 levels apart, at most
   0.5% of the pixels apart), reported `unchanged but for a capture's noise`, with a `.noise`
@@ -126,7 +139,18 @@ Measured:
   so the flicker never rewrites the file. Use it for a pixel no condition settles, as small as
   the element allows: the WebView2 download page's Version arrow (`#version
   .px-dropdown__icon`, 8 by 9) changes a pixel by more than the noise between any two
-  captures, animations and transitions off. A shot without it compares byte for byte.
+  captures, animations and transitions off. So do the two "See your logo here!" boxes of About
+  and the splash (owner; `VIP_GOLD_SPARES`, the last two `.vipGoldX`): their gradient is
+  dithered differently from capture to capture, a level or two over thousands of pixels,
+  beyond a capture's noise. So does the time of the GitHub release's zip ("8 hours ago",
+  "yesterday"; owner), which moves on by itself: an `{rect}` from the Assets list's
+  `relative-time`, widened leftward to the widest it is drawn, since it is right-aligned. So
+  do the splash's four rounded corners in the dark theme (owner; 4 by 4 CSS px each: 4 pixels
+  flipped), and the shadow round each TabIndex circle of Designer_TabIndex (owner;
+  `tabIndexRings`, a ring from 2 px inside the circle to 6 px beyond it, so the number is still
+  compared): the shadow over the grid's dots is dithered in one of two versions, about 600
+  pixels apart, the same two bytes for bytes in every run. A shot without it compares byte for
+  byte.
 - **Settle by condition, not by sleep.** Fixed sleeps would be most of a run (a closed menu leaves a
   2x8 px empty `#contextMenu`, so a wait for it to vanish always runs out its 2 s).
   A menu is closed when it holds no items; a dialog is still when a MutationObserver has seen no
@@ -179,7 +203,10 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
 - **Setups**: one IDE each --- `no-project` (menus, dialogs, panels), `help` (the add-in's eight,
   `test/addin/helpdemo`), `project`, `sample`, the `settings` setups, `glyphs`, `global-search`
   (Sample 15 exported from the install, built into the lane's copy as an add-in, its own project
-  opened), `sample6` (Sample 6 exported and opened) and `designer` (the sample fixture with
+  opened; once a search settles, its results list is told through its own `notifyChangedItem`
+  that every row changed, so that it measures them again (owner): it keeps a row's height from
+  its first measure and sets its scroll range from those, and under load a thumb showed over
+  two results that fit), `sample6` (Sample 6 exported and opened) and `designer` (the sample fixture with
   `test/shots/designer/` staged onto it, plus the Global Search add-in for Toolbar_3; it sets the
   page's `currentDPI` to the 2x ratio, or the IDE's 5 s DPI check covers every designer with
   RESYNC), and `forms` (the same without the add-in), `community` (the demo, its compiler
@@ -194,8 +221,8 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
 - **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE in a slot of its own from
   `tbbroker` (a private desktop; the help setup's slot also carries the detached window's port)
   with a DevTools port Windows picks, and splits the big setups into parts, longest first; a full run with `--svg` is
-  about 17 minutes in both themes on BETA 1005: the jobs add up to about 5,900 s, and the longest
-  part, `forms-chapter`, takes about 450 s on its own, so six IDEs cannot do much better.
+  about 12 minutes in both themes on BETA 1010: the jobs add up to about 4,100 s, and the longest
+  part, `forms-chapter`, takes about 270 s on its own, so six IDEs cannot do much better.
   `--jobs 1` runs one IDE per setup in table order. Per-run
   state lives on the connection (`c.shot`), never in module variables.
 - **Diffs**: `--diffs <dir>` (never under `docs/`) writes, for each picture that differs from the
@@ -417,6 +444,63 @@ none, which `New Project.md` also shows).
   button before the export, and emptied again afterwards; the shot is the setup's last. The
   times are set in the page (`fixConsoleTimes`). Both lines fit with no scrolling.
 
+## The "Building" chapter
+
+Six setups, their fixtures under `test/shots/building/`, copied from the Building lanes'
+`test/ide/probes/building-{exe,ax,pkg}`: `exe` is Program, a Standard EXE whose Sub Main waits a
+minute (so that a second build finds its file in use), `ax` is ShotActiveX, an ActiveX DLL whose
+class has GUIDs of its own (`B01D...B001` to `B003`, not the lanes', so that a lane and a shot run
+at once never share a registration), and `pkg` is MyPackage, a PRIVATE package. Each project is
+staged in a folder of the tool's own on `PACKAGE_ROOT` named for its setup (`C:\tbshots\Building`
+and so on), with the templates' build path, so that a console line names no user; the setup's
+`end` removes the folder once its IDE has ended. Its 14 pictures
+are under `docs/IDE/Building/Images/`.
+
+- **`building`** (exe): the console after a build, a failed build and a build refused by the
+  running exe, the configuration box's list, and the safe-mode box. **`building-new`**: an IDE with
+  no project, then New Project's Standard EXE tile, Open and Continue, for the box Build opens on a
+  project with no file. **`building-ax`**: Clean after a build of `ax`. **`building-hklm`**: `ax`
+  with Register DLLs to HKLM, packed before an IDE with no project starts and opened from the
+  Recent list by the warning's picture (the IDE is not elevated, so nothing registers).
+  **`building-llvm`**: `exe` with `+llvm`. **`building-pkg`**: `pkg`.
+- **The console is floated 900 wide and grown a row at a time until the picture's lines show
+  whole** (`fitConsole`): its rows are in a `.listItems` box that clips them, and its list keeps
+  copies of rows that are not shown, so a row or a link is judged by where it is drawn
+  (`elementFromPoint` for a link). Then it settles, and only then are its times set in the page,
+  and the LOCKED BY pid set to 4120 (the page's own example): a resize draws the rows again.
+- **The console's scroll bar thumb is put at the top of its track in the page**
+  (`fixConsoleThumb`). Its lines fit, so the thumb is the track's whole height, but the console
+  leaves it a few pixels up or down where an earlier length of the list put it, differently from
+  run to run; the shot fails if the thumb is not the whole track.
+- **The IDE behind the console is hidden for the capture**, its ancestors' other children marked
+  and set `visibility: hidden`, on a ground of the panel's colour, with no shadow. The SVG
+  otherwise draws the IDE under the panel, and the editor there is laid out a pixel taller or
+  shorter from run to run. It is not a cut-out (`keep`): that sets everything inside the panel
+  visible, and the console's hidden copies of its rows would show over the real ones.
+- **The locked exe is started with Launch EXE** (a real click; the compiler runs it on the IDE's
+  desktop) and ended with Terminate after the capture; the shot waits for the exe's end by its pid
+  and the console's `exited` line, and ends it by its pid if it still runs.
+- **Safe_Mode** opens the box with a click and chooses with Down and Enter, twice (win64, then
+  safeMode, each a compiler restart), and goes back with Ctrl+F2. **Configuration_List** is the
+  toolbar's group between its splitters, the list a replica (`listClip`); the Light theme's list
+  is shorter.
+- **Every ActiveX build is followed by Clean**, in a `finally`. The HKLM project's Clean shows the
+  Delete It And Continue box, whose Cancel stops it, and the DLL (registered nowhere) is deleted from
+  the setup's folder. A setup's `end`, run once its IDE has ended, checks that none of the
+  fixture's keys (`axShotKeys`: class, interface, type library and ProgID, both views, HKCU and
+  HKLM) exists, and reports one that does; nothing removes a key.
+- **Compiling** holds the build's last progress event (-1) in the page until the capture, so the
+  box stays at the 0.0% the compiler sends before it (LLVM sends no other value). The setup leases
+  the LLVM cache before its IDE starts (`holdLlvmCache`) and its `end` releases it; a Community or
+  Personal licence fails the setup.
+- **Nothing reaches the package server**: `building-pkg` installs the Building lanes' `guard`
+  (CDP blocks `*everythingaccess*`, the page's XMLHttpRequest and fetch send nowhere and record), and
+  each picture fails on a recorded request or a `[PUBLISH] attempting` line. The saved publisher
+  name and password are emptied in the page; Publish_Confirm sets a made-up publisher
+  (`ExamplePublisher`) and a session id in the page and cancels the box; Publish_Result is the
+  IDE's own `showModalNotification` with the success text. The pane floats at the bottom left, out
+  from behind the boxes.
+
 ## Special IDE states
 
 - **`Services_Unavailable`**: the badge in the `no-project` setup. With no project the badge's
@@ -485,8 +569,11 @@ none, which `New Project.md` also shows).
   About 0.5 s a call (a PowerShell start). The IDE's window class is `ThunderForm`; the Webpage
   pane's second WebView2 is a `Chrome_WidgetWin_1` child (title `Google`) of zero size until the
   pane shows. The capture also returns the visible frame (`DWMWA_EXTENDED_FRAME_BOUNDS`), the
-  client area and a layered window's key and alpha. `tb-launch.ps1` is 28,576 characters of the
-  30,000 its environment variable allows.
+  client area, a layered window's key and alpha, and whether the caption is drawn active
+  (`WS_ACTIVECAPTION`). `activateWindow(desktop, hwnd)` makes a window the active one of its
+  desktop (its thread's input attached for `BringWindowToTop`, `SetForegroundWindow`,
+  `SetActiveWindow` and `SetFocus`) and says whether its caption then is. `tb-launch.ps1` is
+  24,771 characters, its comment lines emptied, of the 30,000 its environment variable allows.
 
 ## Pictures of a running program
 
@@ -507,7 +594,9 @@ none, which `New Project.md` also shows).
   it and loses it again now and then, and one run from the IDE never gets it, so the form draws
   its frame as active (`WM_NCACTIVATE`) whenever it is not the foreground window; and no control
   takes the focus (`TabStop` off), since a focused one drew a caret or, now and then, a focus
-  rectangle. With both, repeated runs are unchanged.
+  rectangle. Even so a form drew its caption inactive now and then (4829696d and 599a66ad, one
+  run each), so `programShot` makes the form the active window (`activateWindow`) before its
+  captures and again whenever a capture finds the caption inactive (owner).
 - **85f25aa2** (Opacity 75, TransparencyKey red): `PW_RENDERFULLCONTENT` draws the key colour
   black and every pixel opaque, so the tool reads the key's pixels from a client-only capture
   (flags 1) and gives the picture the window's own alpha (191) and alpha 0 there: the page is
@@ -546,7 +635,7 @@ none, which `New Project.md` also shows).
 
 ## Package server
 
-Taken on BETA 1005, in both themes where the theme shows.
+Taken on BETA 1010, in both themes where the theme shows.
 
 - **Setup `package-server`**: the sample with `test/shots/packages` (Greeting, a class to type
   `fmt.` into), signed out, TWINSERV's live list. Its APPDATA is `PACKAGE_ROOT\AppData\Roaming`,
@@ -586,7 +675,10 @@ Taken on BETA 1005, in both themes where the theme shows.
   spinner no two captures hold alike. **`e2a65dfe`**: the completion list is the IDE's own
   (`.debugConsoleEntryIntellisenseBox`), shows types as `...` until the compiler gives them
   (now and then never: the dot is retyped), and is placed by the list the name before the dot
-  opened unless that is closed first.
+  opened unless that is closed first. It is 500 px wide (its CSS); `triggerIntellisense`
+  places it at the text cursor's box as drawn at the time, which is at the dot or, now and then,
+  already after it (the picture 1198 px wide against 1184): the shot moves it to where the
+  cursor's box stood at the dot (owner).
 - **Compiler crash, not narrowed**: about 3 runs in 10 of the setup, an Apply that embeds or
   removes CSharpishStringFormater meets `NATIVE EXCEPTION: ACCESS_VIOLATION {no-basic-code}
   [twinBASIC_win32.dll+0010BD3F]`; ten probe cycles of the same steps did not reproduce it. Not
@@ -596,7 +688,7 @@ Taken on BETA 1005, in both themes where the theme shows.
 
 ## Not of the IDE
 
-Taken on BETA 1005.
+Taken on BETA 1010.
 
 - **`16833fae`** (setup `import`): the sample open, and `test/shots/vbp` (ImportDemo: a form,
   a module, `..\Shared\modShared.bas` for `{PARENT-FOLDER}`) staged with CRLF on
@@ -643,6 +735,11 @@ Taken on BETA 1005.
   user's choices and nothing is written to the registry.
 - **About's licence line**: the tool waits for `licenceIsSet` before opening About, so it shows
   the edition, never NOT READY.
+- **The window is shown maximized** (owner): the title bar's Restore button, not Maximize,
+  whatever the user's own IDE window was. `PAGE_DEFAULTS` calls the page's
+  `cefWindowChangeNotification("WINDOW-MAXIMIZED")`, what the host calls when it maximizes the
+  window; the window itself is left alone, since the IDE saves its place in the registry
+  (the `Window` key) whenever it is maximized or restored.
 - **The language tick** stays on whatever language the IDE runs in.
 - **`llvmdoc2`** shows the default thread count, 1.
 
@@ -817,6 +914,13 @@ the PNG was just captured from, and the build shows it in place of the PNG
 - **The bar** (`SVG_FAITHFUL` in `shoot_docs.mjs`): an SVG with more than 0.25% of its pixels 96
   grey levels or more off is not written, and an older one is removed. Anything not drawn falls
   to it.
+- **An SVG changes with its PNG** (owner). The SVG of a picture whose PNG is not rewritten
+  (unchanged, or within a capture's noise) stays as it is, with its bundle, when there is one:
+  it is drawn from the whole page, layers the picture does not show included, and those
+  differ from run to run (PackagePublishing_1, a floating panel over a form designer still
+  drawing; CallStack_Frames.light), and one sitting on the bar (Properties_SystemColours.light
+  at 0.251%, 94490c87) was written in one run and removed in the next. `replay.mjs` draws it
+  again after a change to the converter.
 - **One line** (`oneLine`). Git checks a picture's SVG out with CRLF where `core.autocrlf` says
   so, since no `.gitattributes` rule can tell it from a diagram's SVG. An SVG icon embedded as
   text and the annotation layer's XML hold line breaks; so each is written as the space an XML

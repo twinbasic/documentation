@@ -1,0 +1,28 @@
+' tbbroker's Sub Main. tblaunch has a Sub Main of its own and does not compile this file.
+Module Program
+    Private Declare PtrSafe Function GetCommandLineW Lib "kernel32" () As LongPtr
+    Private Declare PtrSafe Function CommandLineToArgvW Lib "shell32" (ByVal lpCmdLine As LongPtr, ByRef pNumArgs As Long) As LongPtr
+    Private Declare PtrSafe Function LocalFree Lib "kernel32" (ByVal hMem As LongPtr) As LongPtr
+    Private Declare PtrSafe Function lstrlenW Lib "kernel32" (ByVal lpString As LongPtr) As Long
+    Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+    Public Sub Main()
+        ExitProcess BrokerMain.RunArgs(Arguments())
+    End Sub
+
+    ' The arguments after the program's name, as the C runtime splits them.
+    Private Function Arguments() As Collection
+        Dim r As New Collection, argv As LongPtr, argc As Long, i As Long, p As LongPtr, n As Long, s As String
+        argv = CommandLineToArgvW(GetCommandLineW(), argc)
+        For i = 1 To argc - 1
+            RtlMoveMemory VarPtr(p), argv + i * LenB(p), LenB(p)
+            n = lstrlenW(p)
+            s = String$(n, vbNullChar)
+            If n > 0 Then RtlMoveMemory StrPtr(s), p, 2 * n
+            r.Add s
+        Next
+        LocalFree argv
+        Set Arguments = r
+    End Function
+End Module

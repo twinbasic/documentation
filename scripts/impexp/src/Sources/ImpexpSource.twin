@@ -1,0 +1,38 @@
+' Where import reads the folder it packs: the disk below the folder Init names, as this class does.
+' Every path is relative to that folder, with forward slashes: "" for the folder itself, "Sources/A.twin"
+' below it. Another program gives Impexp.PackTree files of its own with a class that Implements
+' ImpexpSource (tblaunch's PackSource), and raises its own errors from it; its Init is never called.
+Class ImpexpSource
+    Private mRoot As String
+    Private mSelf As String
+
+    ' The folder read, and the PathKey of the project file being written, which KindOf calls KIND_SELF.
+    Public Sub Init(ByVal root As String, ByVal selfKey As String)
+        mRoot = root
+        mSelf = selfKey
+    End Sub
+
+    ' The names in the folder at rel, "." and ".." left out, in any order, and their count.
+    Public Function ListNames(ByVal rel As String, names() As String) As Long
+        ListNames = FileSys.ListNames(PathOf(rel), names)
+    End Function
+
+    ' FileSys.KIND_FILE, KIND_FOLDER or KIND_NONE for what is at rel; KIND_SELF for the project file.
+    Public Function KindOf(ByVal rel As String) As Long
+        Dim full As String
+        full = PathOf(rel)
+        KindOf = FileSys.KindOf(full)
+        If KindOf = FileSys.KIND_FILE Then
+            If FileSys.PathKey(full) = mSelf Then KindOf = FileSys.KIND_SELF
+        End If
+    End Function
+
+    ' The bytes of the file at rel into data, and their count.
+    Public Function ReadAll(ByVal rel As String, data() As Byte) As Long
+        ReadAll = FileSys.ReadAllBytes(PathOf(rel), data)
+    End Function
+
+    Private Function PathOf(ByVal rel As String) As String
+        If Len(rel) = 0 Then PathOf = mRoot Else PathOf = FileSys.JoinPath(mRoot, rel)
+    End Function
+End Class

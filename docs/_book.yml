@@ -612,6 +612,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: BigNumberLib Package
+        subtitle: Arbitrary-precision signed integer arithmetic, up to 4096 bits
+        landing_page: /tB/Packages/Contributed/BigNumberLib/
+        page: /tB/Packages/Contributed/BigNumberLib/
+        landing_is_target: true
+        outline_closed: true
+
   - title: Appendices
     outline_closed: false
     
@@ -653,7 +660,6 @@ left_out:
   - reason: Experimental packages, which do not yet work well enough to use in a program; the book is for packages ready for use
     pages:
       - /tB/Packages/Contributed/ArrayListLib/
-      - /tB/Packages/Contributed/BigNumberLib/
       - /tB/Packages/Contributed/GdiPlus/
       - /tB/Packages/Contributed/TBMANLIB/
       - /tB/Packages/Contributed/TBMANLIB_Aes/

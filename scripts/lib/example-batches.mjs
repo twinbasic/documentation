@@ -8,11 +8,14 @@
 // run. The lane that stages and builds for real stays in check_examples.mjs,
 // with everything else that reads the command line.
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { EXCLUSION_MODES, EXCLUSION_STAGES, exclusionProblems } from "./harness-settings.mjs";
 import { LLVM_REFUSAL } from "./tb-ide.mjs";
+import { keepRunFolder, sweepRunFolders } from "./tb-registry.mjs";
+import { IdeSession } from "./tb-session.mjs";
 import {
   BODY_SLOTS,
   CONCAT_KEY,
@@ -494,16 +497,18 @@ export function failureStage(line, log = []) {
  * The stage a canary's batch failed at, from its one build: compile errors and
  * a crash are `build`, a failed build is where its line is (failureStage, so an
  * LLVM refusal is `build`), and a run that did not finish (it never began,
- * stopped, or a sample did not return) is `compiler-run`. Null when it got through.
+ * stopped, or a sample did not return) is `compiler-run`. A compile that met its
+ * limit (3) is `limit`: the batch was not judged. Null when it got through.
  *
  * @param {{ code: number, message?: string, log?: string[], run?: { done: boolean } | null }} r
  *   compileProject's code, message and build log, and the parsed run of a run batch
- * @returns {"build" | "compiler-run" | null}
- * @throws {Error}  for a code that is the harness's (2, 3)
+ * @returns {"build" | "compiler-run" | "limit" | null}
+ * @throws {Error}  for a code that is the harness's (2)
  */
 export function canaryBatchStage({ code, message, log = [], run = null }) {
   if (code === 1 || code === 4) return "build";
   if (code === 5) return failureStage(message, log);
+  if (code === 3) return "limit";
   if (code === 0) return run && !run.done ? "compiler-run" : null;
   throw new Error(message || `the build exited ${code}`);
 }
@@ -518,6 +523,9 @@ export function canaryBatchStage({ code, message, log = [], run = null }) {
  * @returns {{ finding: boolean, text: string }}
  */
 export function canaryVerdict({ pkg, stage, count }, failedAt) {
+  if (failedAt.includes("limit")) {
+    return { finding: true, text: `${pkg}: a canary batch met its limit (test/harness.json), so it was not judged` };
+  }
   if (stage !== "build" && failedAt.includes("build")) {
     return { finding: true, text: `${pkg}: canary failed at build, before ${stage}: re-probe its exclusions` };
   }
@@ -694,6 +702,20 @@ const sameRow = (row) => row.replace(/[/\\]DocSamples\d+[/\\]/, "/");
  * sample -- hundreds of IDE starts -- and then blame an arbitrary one.
  */
 const templateOwnRows = new Map();
+
+/**
+ * The template built with no samples met its limit twice, so what it draws on
+ * its own is not known. runBatch reports the batch that asked as not judged.
+ */
+class TemplateTimeout extends Error {
+  constructor(project, detail) {
+    super(
+      `the \`${project}\` template, built with no samples to tell its own rows from a batch's, met its limit twice`,
+    );
+    this.detail = `${this.message}: ${detail}`;
+  }
+}
+
 function ownRowsOf(project, lane) {
   if (!templateOwnRows.has(project)) {
     templateOwnRows.set(
@@ -702,10 +724,16 @@ function ownRowsOf(project, lane) {
         // A read with no rows and no canary is read once more, and never believed:
         // it would leave every row of the template counted as a sample's, for the
         // rest of the run. A read with rows of its own was not silent, and needs
-        // no canary, as in runBatch.
+        // no canary, as in runBatch. A build that met its limit read nothing at
+        // all, and is built once more too; met twice, it is forgotten, so that
+        // a later batch asks again, and never taken for a clean template.
         const silent = (r) => !r.crashed && r.canaryProblem && !(r.unattributed ?? []).length;
         let result = await lane.build({ project, fences: [] });
-        if (silent(result)) result = await lane.build({ project, fences: [] });
+        if (result.timedOut || silent(result)) result = await lane.build({ project, fences: [] });
+        if (result.timedOut) {
+          templateOwnRows.delete(project);
+          throw new TemplateTimeout(project, result.detail);
+        }
         if (silent(result)) {
           throw new Error(
             `the canary did not report in the \`${project}\` template built with no samples, ` +
@@ -909,6 +937,24 @@ async function together(batch, a, b, lane, failed = false) {
 }
 
 /**
+ * A batch whose compile met its limit, or that the IDE never reported open: the
+ * IDE said nothing about any sample in it, and splitting would not help, since
+ * what is slow is the template's load (WinReg's batches take as long with no
+ * samples in them). One finding, against its first sample, says so, and the
+ * samples come back as crashed ones do, so that none is counted as compiling.
+ * The run goes on (test/harness.md, the limits).
+ */
+function notJudged(batch, lane, detail) {
+  const { rep, ids } = leafOf(batch);
+  lane.finding(
+    rep,
+    `was not judged: its batch of ${ids.length} sample(s) [${batch.project}] did not finish compiling within its limit`,
+    detail,
+  );
+  return { ...blank(), crashed: ids };
+}
+
+/**
  * Build a batch, isolating a crash or an unattributable diagnostic.
  *
  * A crash goes to `isolateCrash`; an unattributable diagnostic is attributed by
@@ -921,7 +967,17 @@ async function together(batch, a, b, lane, failed = false) {
  * compiling while the run fails with a row naming no page.
  */
 export async function runBatch(batch, lane) {
+  try {
+    return await judgeBatch(batch, lane);
+  } catch (e) {
+    if (e instanceof TemplateTimeout) return notJudged(batch, lane, e.detail);
+    throw e;
+  }
+}
+
+async function judgeBatch(batch, lane) {
   let result = await buildTwiceOnFailure(batch, lane);
+  if (result.timedOut) return notJudged(batch, lane, result.detail);
   if (result.crashed) return isolateCrash(batch, result.named, lane, !!result.buildFailed, result.detail);
 
   // The canary is needed only by a read that holds no error: that is the read
@@ -937,6 +993,7 @@ export async function runBatch(batch, lane) {
         `(${result.canaryProblem}), and nothing else did: building it again`,
     );
     result = await buildTwiceOnFailure(batch, lane);
+    if (result.timedOut) return notJudged(batch, lane, result.detail);
     if (result.crashed) return isolateCrash(batch, result.named, lane, !!result.buildFailed, result.detail);
     if (result.canaryProblem && !(await heard(result, batch.project, lane))) {
       // Twice silent: either the IDE keeps reading early under this load, or a
@@ -1123,6 +1180,146 @@ const INFO_PROBES = [
   ],
   ["another language is untouched", "js", (p) => p.lang === "js"],
 ];
+
+/**
+ * The sweep at the start of a run (tb-registry.mjs, sweepRunFolders), on a
+ * folder of its own: an ended run's folder goes, a kept one, a live run's and
+ * one not named for a process stay. Returns the failures.
+ */
+function sweepProbes() {
+  const root = mkdtempSync(path.join(tmpdir(), "tbx-sweep-probe-"));
+  try {
+    for (const name of ["11", "12", "13", "notes"]) {
+      mkdirSync(path.join(root, name));
+      writeFileSync(path.join(root, name, "x.twin"), "");
+    }
+    keepRunFolder(path.join(root, "12"));
+    const removed = sweepRunFolders(root, { isAlive: (pid) => pid === 13 });
+    const left = readdirSync(root).sort();
+    return `${removed} / ${left}` === "11 / 12,13,notes"
+      ? []
+      : [`sweep: removed ${removed}, left ${left} (wanted 11 removed; 12 kept, 13 alive, notes not a run)`];
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+/**
+ * A lane's IDE session (tb-session.mjs) through a page that is a plain object:
+ * the switch, each way the IDE is given up for a new one, and what is reset in
+ * the page before a switch. Each case is a list of what the driver was asked
+ * to do; returns the failures.
+ */
+async function sessionProbes() {
+  const failures = [];
+  const run = async (name, steps, want, setup = {}) => {
+    const log = [];
+    const page = { p: null, target: "win32", trace: false, dirty: false, alive: true, dead: false, asks: 1, ...setup };
+    let pid = 100;
+    const driver = {
+      launch: async ({ project }) => {
+        log.push(`launch ${project}`);
+        Object.assign(page, { p: project, alive: true, dead: false });
+        return { pid: ++pid, port: 1 };
+      },
+      attach: async () => (page.noPort ? null : { dialogs: [], close: () => {} }),
+      shutdown: async (h) => log.push(`end ${h.pid}`),
+      alive: () => page.alive,
+      state: async () => {
+        if (page.dead) throw new Error("the page did not answer");
+        return { p: page.p, closing: false, dirty: page.dirty, target: page.target, trace: page.trace };
+      },
+      switchTo: async (_c, project) => {
+        if (page.dead) throw new Error("the page did not answer");
+        const dirty = page.dirty;
+        if (page.asks) {
+          page.p = project;
+          log.push(`switch ${project}`);
+        }
+        return { asked: page.asks, dirty };
+      },
+      closeProject: async () => {
+        log.push("close");
+        page.p = null;
+      },
+      resetTarget: async () => {
+        log.push("win32");
+        page.target = "win32";
+      },
+      traceOff: async () => {
+        log.push("trace off");
+        page.trace = false;
+      },
+      discard: async () => {
+        log.push("discard");
+        page.dirty = false;
+      },
+      sleep: async () => {},
+    };
+    const s = new IdeSession({ ide: "tb.exe", fresh: !!setup.fresh, driver });
+    try {
+      for (const step of steps) await step(s, page);
+    } catch (e) {
+      log.push(`threw ${e.message}`);
+    }
+    if (log.join(" | ") !== want.join(" | ")) failures.push(`session: ${name} -> ${log.join(" | ")}`);
+  };
+  const open = (p) => (s) => s.open(p);
+  const after = (code) => (s) => s.after(code);
+  const set = (fields) => (_s, page) => Object.assign(page, fields);
+  // A switch: the second project opens in the first one's IDE.
+  await run("a switch", [open("A"), after(0), open("B"), after(1), open("C")], ["launch A", "switch B", "switch C"]);
+  // --fresh: a new IDE for every project.
+  await run("--fresh", [open("A"), after(0), open("B")], ["launch A", "end 101", "launch B"], { fresh: true });
+  // A harness fault or a compile that never settled gives the IDE up.
+  for (const code of [2, 3]) {
+    await run(`exit ${code}`, [open("A"), after(code), open("B")], ["launch A", "end 101", "launch B"]);
+  }
+  // A page that does not answer, an IDE that has ended, a page with no openProject().
+  await run("a dead page", [open("A"), after(0), set({ dead: true }), open("B")], ["launch A", "end 101", "launch B"]);
+  await run(
+    "an ended IDE",
+    [open("A"), after(0), set({ alive: false }), open("B")],
+    ["launch A", "end 101", "launch B"],
+  );
+  await run(
+    "no openProject()",
+    [open("A"), after(0), set({ asks: 0 }), open("B")],
+    ["launch A", "end 101", "launch B"],
+  );
+  // A new IDE that opens no debug port is the caller's exit 2.
+  await run(
+    "no debug port",
+    [set({ noPort: true }), open("A")],
+    ["launch A", "end 101", "threw the IDE never exposed a debug port"],
+  );
+  // A crash: the project is closed at once, Safe Mode and TRACE-MODE are undone,
+  // and the next project opens by a switch in the same IDE.
+  await run(
+    "a crash into Safe Mode",
+    [open("A"), set({ target: "nocompile", trace: true }), after(4), open("B")],
+    ["launch A", "close", "win32", "trace off", "switch B"],
+  );
+  // Safe Mode or TRACE-MODE found at a switch, whatever the last project's exit.
+  await run(
+    "Safe Mode at a switch",
+    [open("A"), after(0), set({ target: "nocompile" }), open("B")],
+    ["launch A", "close", "win32", "switch B"],
+  );
+  await run(
+    "TRACE-MODE at a switch",
+    [open("A"), after(0), set({ trace: true }), open("B")],
+    ["launch A", "trace off", "switch B"],
+  );
+  // A changed project's "Save now?" is answered Discard Changes.
+  await run(
+    "a changed project",
+    [open("A"), after(0), set({ dirty: true }), open("B")],
+    ["launch A", "switch B", "discard"],
+  );
+  return failures;
+}
+const SESSION_PROBES = 13;
 
 export async function runProbes(say) {
   const failures = [];
@@ -1403,6 +1600,23 @@ export async function runProbes(say) {
   ) {
     failures.push(`failed build: two samples that fail only together -> ${JSON.stringify(pair.said[0])}`);
   }
+  // A batch that met its limit is one finding and is not split: every sample in it
+  // comes back unjudged, none as compiling, and the run goes on.
+  const slow = fakeLane(() => false);
+  slow.build = async () => {
+    slow.builds++;
+    return { timedOut: true, detail: "timeout: the compile did not settle within 10 s" };
+  };
+  const slowResult = await runBatch(five, slow);
+  if (
+    `${[...slowResult.crashed].sort()} / ${slow.found} / ${slow.builds}` !== "a,b,c,d,e / a / 1" ||
+    !slow.said[0]?.[0].startsWith("was not judged: its batch of 5 sample(s) [console]") ||
+    !slow.said[0]?.[1].includes("did not settle")
+  ) {
+    failures.push(`limit: a batch that met its limit -> ${slowResult.crashed} / ${JSON.stringify(slow.said)}`);
+  }
+  failures.push(...(await sessionProbes()));
+  failures.push(...sweepProbes());
   // The canaries: what a batch's rows say about them, and what runBatch does when
   // they are not there. A batch with no rows at all is the one that matters, since
   // it is what an IDE that read its diagnostics early returns.
@@ -1519,6 +1733,56 @@ export async function runProbes(say) {
   const ownSet = await ownRowsOf("console", cl).catch(() => null);
   if (!ownSet?.has(sameRow(ownRow)) || cl.builds !== 1) {
     failures.push(`canaries: an empty template with rows of its own was not believed (${cl.builds} builds)`);
+  }
+  // A template built with no samples that meets its limit is built once more.
+  // Met twice, its rows are not known: the batch that asked is not judged, and
+  // the template is forgotten for the next batch to ask again, never taken as
+  // one that draws nothing (which would blame the samples for its rows).
+  const pkgRow = "{ERROR} /Packages/P/Sources/P.twin [1,1]: TB5001 p";
+  const slowTemplate = (times) => {
+    const lane = canaryLane(
+      () => null,
+      () => [],
+      () => [pkgRow],
+    );
+    const build = lane.build;
+    lane.slow = 0;
+    lane.found = [];
+    lane.finding = (_rep, ...lines) => lane.found.push(lines.join(" | "));
+    lane.build = async (b) => {
+      if (b.fences.length || lane.slow >= times) return build(b);
+      lane.slow++;
+      lane.builds++;
+      return { timedOut: true, detail: "timeout: the compile did not settle within 10 s" };
+    };
+    return lane;
+  };
+  templateOwnRows.clear();
+  cl = slowTemplate(1);
+  let templateResult = await runBatch(five, cl);
+  if (
+    cl.builds !== 3 ||
+    templateResult.crashed.length ||
+    templateResult.blamed.length ||
+    !templateResult.templateFaults.length
+  ) {
+    failures.push(
+      `canaries: a template that met its limit once was not built again and believed ` +
+        `(${cl.builds} builds, crashed ${templateResult.crashed}, blamed ${templateResult.blamed})`,
+    );
+  }
+  templateOwnRows.clear();
+  cl = slowTemplate(2);
+  templateResult = await runBatch(five, cl);
+  if (
+    `${[...templateResult.crashed].sort()} / ${templateResult.blamed.length} / ${cl.builds}` !== "a,b,c,d,e / 0 / 3" ||
+    !cl.found[0]?.includes("met its limit twice") ||
+    templateOwnRows.has("console")
+  ) {
+    failures.push(
+      `canaries: a template that met its limit twice was taken as clean or remembered ` +
+        `(${templateResult.crashed} / ${templateResult.blamed} / ${cl.builds} builds / ${JSON.stringify(cl.found)})`,
+    );
   }
   templateOwnRows.clear();
   cl = canaryLane((ids) => (ids.has("a") && ids.has("e") ? "masked" : null));
@@ -2183,11 +2447,12 @@ export async function runProbes(say) {
   // 10: the stage a canary's batch failed at, from its one build.
   let harness = false;
   try {
-    canaryBatchStage({ code: 3, message: "never settled" });
+    canaryBatchStage({ code: 2, message: "the IDE never exposed a debug port" });
   } catch {
     harness = true;
   }
   if (
+    canaryBatchStage({ code: 3, message: "never settled" }) !== "limit" ||
     canaryBatchStage({ code: 1 }) !== "build" ||
     canaryBatchStage({ code: 4 }) !== "build" ||
     canaryBatchStage({ code: 5, message: codegen }) !== "build" ||
@@ -2228,6 +2493,12 @@ export async function runProbes(say) {
       "Re: canary failed at build as expected, 41 samples not built",
     ],
     [{ pkg: "Re", stage: "build", count: 41 }, [null], true, "Re: canary passed build: re-probe its exclusions"],
+    [
+      { pkg: "Re", stage: "build", count: 41 },
+      ["build", "limit"],
+      true,
+      "Re: a canary batch met its limit (test/harness.json), so it was not judged",
+    ],
   ];
   for (const [canary, failedAt, finding, text] of verdicts) {
     const v = canaryVerdict(canary, failedAt);
@@ -2245,10 +2516,11 @@ export async function runProbes(say) {
   // 7 of what runBatch does about a batch whose canary did not report, 3 of the
   // template built with no samples) + 7 of a failed build (wording, when to
   // record it, one that passes when built again, a pair that fails only together)
-  // + 17 of the exclusion list + the check_run probes, which count themselves.
+  // + 1 of a batch that met its limit + 18 of the exclusion list + the IDE
+  // session's (SESSION_PROBES) + the check_run probes, which count themselves.
   say(
-    `ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 114 + runProbeCount} probes: ` +
-      "classifier, markup, line mapping, batching, splitting, crash isolation, failed builds, canaries, concat, " +
+    `ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 116 + SESSION_PROBES + runProbeCount} probes: ` +
+      "classifier, markup, line mapping, batching, splitting, crash isolation, failed builds, limits, the IDE session, canaries, concat, " +
       "resources, exclusions, the report and check_run",
   );
   return true;
