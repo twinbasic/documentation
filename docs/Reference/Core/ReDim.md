@@ -56,7 +56,7 @@ The **ReDim** statement acts as a declarative statement if the variable it decla
 > To resize an array contained in a **Variant**, the **Variant** variable must be explicitly declared before attempting to resize its array.
 
 <!-- errors: generated from errors/Core.yml by scripts/errors.mjs write; edit the data, not this section -->
-### Errors
+### Common Errors
 
 | Error | When |
 |---|---|

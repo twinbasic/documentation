@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The run-time errors each documented procedure raises: measuring them, and
-// writing each page's Errors section from the data under errors/.
+// writing each page's Common Errors section from the data under errors/.
 //
 //     node scripts/errors.mjs run [<file.yml>...] [--only <regex>] [--runtime tb|vb6|win64]...
 //     node scripts/errors.mjs generate <dir> [<file.yml>...] [--only <regex>]
@@ -73,7 +73,7 @@ named, every file there is used.
             reported and left out, and the probe built again without it.
   generate  writes the probes to <dir>/tb (a tree for scripts/tbrun.mjs --exe)
             and <dir>/vb6 (Probe.vbp), without running them
-  write     writes each page's Errors section from the data, and the index of
+  write     writes each page's Common Errors section from the data, and the index of
             the numbers on the central page, docs/Reference/Run-time-Errors.md
   messages  builds a probe of the messages for each runtime, runs it, and
             compares what Error$(n) and Err.Raise n give with errors/messages.yml:

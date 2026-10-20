@@ -13,7 +13,7 @@ Every run-time error number that has a message of its own, with that message, an
 
 A run-time error can be trapped: [**On Error**](../tB/Core/On-Error) sends it to a handler, which reads its number from [**Err.Number**](../tB/Modules/ErrObject/Number) and its message from [**Err.Description**](../tB/Modules/ErrObject/Description). A reference page that documents a procedure, a statement or an operator has an **Errors** section when it raises errors of its own: a table of each number it raises, and when. Each number there links to its row below.
 
-## What the Errors sections list
+## What the Common Errors sections list
 
 A section lists the errors that a procedure raises from its own arguments and its own state, as twinBASIC raises them. Where VB6 raises another error, or none, a note under the table says so. Every row is measured in twinBASIC and in VB6, and not copied from another reference.
 
@@ -23,7 +23,7 @@ A section does not list:
 - an error in converting an argument to the type of its parameter before the call is made: 13, *Type mismatch*, for `Mid("abc", "x")`, and 94, *Invalid use of Null*, for `Mid("abc", Null)`, raised because the *start* parameter of **Mid** is a **Long**. A **Variant** parameter takes any value, so an error for a value of a **Variant** parameter is the procedure's own, and is listed;
 - compile-time errors: the twinBASIC compiler reports these with diagnostic codes such as `TB5001`, before the program runs, and **On Error** cannot trap them.
 
-A procedure that raises no error of its own has no Errors section.
+A procedure that raises no error of its own has no Common Errors section.
 
 ## How a number is written
 
@@ -36,7 +36,7 @@ The message is the one that **Err.Description** gives for the error once it is r
 
 ## Error numbers
 
-The messages are those of twinBASIC 32-bit and VB6, which agree for every number from 1 to 65535. *Listed by* names the pages whose Errors section lists the number.
+The messages are those of twinBASIC 32-bit and VB6, which agree for every number from 1 to 65535. *Listed by* names the pages whose Common Errors section lists the number.
 
 <!-- errors-index: generated from errors/*.yml by scripts/errors.mjs write; edit the data, not this table -->
 

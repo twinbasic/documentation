@@ -34,7 +34,7 @@ To determine the number of characters in *string*, use the [**Len**](Len) functi
 > Use the [**Mid =**](../../Core/Mid-equals) statement to replace characters within a string.
 
 <!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
-### Errors
+### Common Errors
 
 | Error | When |
 |---|---|

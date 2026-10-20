@@ -1,5 +1,5 @@
 // What scripts/errors.mjs and scripts/check_errors.mjs share: reading the run-time
-// error data under errors/, the probe projects generated from it, and the `Errors`
+// error data under errors/, the probe projects generated from it, and the `Common Errors`
 // section each page gets from it. The format is written down in WIP.Errors.md.
 //
 // Every export here does its work when called, never on import.
@@ -443,7 +443,7 @@ export function renderSection(p, { name, beta, messages, level, permalink }) {
   const num = (n) => `[${errorNumber(n)}](${central}#${errorAnchor(n)})`;
   const out = [
     `<!-- errors: generated from errors/${name} by scripts/errors.mjs write; edit the data, not this section -->`,
-    `${level} Errors`,
+    `${level} Common Errors`,
     "",
   ];
   if (p.none !== undefined) out.push(p.none.trim());

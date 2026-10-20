@@ -157,7 +157,7 @@ Exit codes: **0** the sample ran, or, with `--docs`, no fence differs and none r
     node scripts/errors.mjs write [<file.yml>...]
     node scripts/errors.mjs messages [--runtime tb|vb6]... [--ide <path>] [--vb6 <path>] [--keep]
 
-Measures the run-time errors each documented procedure raises, and writes each reference page's Errors section from them. The errors are data, not prose: a YAML file per area under `errors/` lists, for each page, the cases that raise each error and the cases that must raise nothing, and `errors/messages.yml` gives each number's message: the one `Err.Description` gives once the error is raised, and the one `Error$(number)` gives, where the two differ. The format is in `WIP.Errors.md`. A file is named as it is in `errors/`; with none named, every file there is used. `--only <regex>` keeps the pages whose path under `docs/` matches.
+Measures the run-time errors each documented procedure raises, and writes each reference page's Common Errors section from them. The errors are data, not prose: a YAML file per area under `errors/` lists, for each page, the cases that raise each error and the cases that must raise nothing, and `errors/messages.yml` gives each number's message: the one `Err.Description` gives once the error is raised, and the one `Error$(number)` gives, where the two differ. The format is in `WIP.Errors.md`. A file is named as it is in `errors/`; with none named, every file there is used. `--only <regex>` keeps the pages whose path under `docs/` matches.
 
 | Command | Effect |
 |---|---|

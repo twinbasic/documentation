@@ -29,7 +29,7 @@ Like WIP.md, this file is not rendered through tbdocs.
 
 ## What a page gets
 
-An `## Errors` section after the page's main text and before `## Example`:
+A `## Common Errors` section (owner, 2026-10-21, on a reader's request) after the page's main text and before `## Example`:
 
 | Error | When |
 |---|---|
@@ -175,7 +175,7 @@ The section `write` makes, before the page's first Example heading:
 
 ```
 <!-- errors: generated from errors/Core.yml by scripts/errors.mjs write; edit the data, not this section -->
-### Errors
+### Common Errors
 
 | Error | When |
 |---|---|

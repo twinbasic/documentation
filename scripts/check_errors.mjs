@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Gate: every page's Errors section is what the run-time error data under errors/
+// Gate: every page's Common Errors section is what the run-time error data under errors/
 // writes, and the data is in order.
 //
 //     node scripts/check_errors.mjs
@@ -60,7 +60,7 @@ exitOnCrash();
 
 const USAGE = `usage: node scripts/check_errors.mjs [-h, --help]
 
-Checks that every page's Errors section is what scripts/errors.mjs write makes
+Checks that every page's Common Errors section is what scripts/errors.mjs write makes
 of the data under errors/, and that the data is in order. Needs no twinBASIC or
 VB6; measuring the data is scripts/errors.mjs run.
 
@@ -182,14 +182,14 @@ const doc = "# T\n\ntext\n\n```tb\n### Example\n<!-- errors: x -->\n```\n\n### E
 const added = spliceSection(doc, section);
 check(
   "a new section goes before the Example heading, not one in a fence",
-  added.indexOf("### Errors") < added.lastIndexOf("### Example") &&
-    added.indexOf("### Errors") > added.indexOf("```\n\n"),
+  added.indexOf("### Common Errors") < added.lastIndexOf("### Example") &&
+    added.indexOf("### Common Errors") > added.indexOf("```\n\n"),
 );
 check("writing it again changes nothing", spliceSection(added, section) === added);
 check("removing it gives the page back", spliceSection(added, null) === doc);
 check("a marker in a fence is not one", findSection(doc).section === null);
 check("CRLF stays CRLF", spliceSection(doc.replace(/\n/g, "\r\n"), section) === added.replace(/\n/g, "\r\n"));
-check("an unclosed section is reported", findSection("<!-- errors: x -->\n### Errors\n").problems.length === 1);
+check("an unclosed section is reported", findSection("<!-- errors: x -->\n### Common Errors\n").problems.length === 1);
 check(
   "the level follows the page's Example heading",
   pageLevel(doc) === "###" && pageLevel("# T\n## See Also\n") === "##",
