@@ -16,8 +16,9 @@ in `errors/VBA.Strings.yml`, and a Common Errors section on 28 of the module's 3
 **Batch 3, VBA `Conversion`, is done and committed on `staging`** (not pushed; 2026-10-21):
 299 cases in `errors/VBA.Conversion.yml`, all agreeing with the data in twinBASIC 32-bit and
 VB6 on BETA 1010, and a section on 23 of the module's 28 pages (CVar, Fix, Int and Nz raise
-nothing of their own; the index documents nothing). No row is `bug: pending`. It awaits the
-owner's answer to one question (*Batch 3 findings*, last item).
+nothing of their own; the index documents nothing). No row is `bug: pending`, and no question
+is open: the owner settled the last one (the width of a negative **Double**'s `Hex`, an
+extension) on 2026-10-21.
 
 Every difference from VB6 found so far is queued in BUGS-TO-REPORT.md with a reproducer under
 `bugs/`, for the owner to file: `redim-inverted-bounds-error`, `database-compare-no-error`,
@@ -27,7 +28,10 @@ batch 3 `val-suffix-overflow-no-error`, `error-function-above-65535`,
 Batch 3 also cites two entries queued before it, `date-out-of-range-no-error` and
 `clnglng-2-to-63-no-overflow`, whose HTML comments now name the Conversion pages too.
 
-**Next: any batch from 4 on** (they are independent). Follow *How a batch runs* below.
+**Next: batch 4, VBA `Math`** (or any batch from 4 on: they are independent). Follow *How a
+batch runs* below, and read *Batch 2 findings* and *Batch 3 findings* for what to probe. Math
+is the first batch measured in win64 too: its file says `win64: true`. Batch 3 is commit
+`4195b56e`, with this file's update after it.
 
 ## Owner's decisions
 
@@ -50,8 +54,10 @@ Batch 3 also cites two entries queued before it, `date-out-of-range-no-error` an
   [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md). Where VB6 has no counterpart (LongLong, twinBASIC
   additions), there is nothing to compare and nothing to file on that ground. **Ask the owner
   when twinBASIC accepts what VB6 refuses**: it may be an extension (2026-10-21: `Join` and
-  `Filter` of a `Long` or `Double` array are; a NOTE in the page's prose, twinBASIC-only quiet
-  cases, no `vb6:` row).
+  `Filter` of a `Long` or `Double` array are, and so are `Hex` and `Oct` of any number in the
+  `LongLong` range, with a negative non-integer type in the `LongLong` form; a NOTE in the
+  page's prose, twinBASIC-only quiet cases, no `vb6:` row). The owner also ruled, for batch 3,
+  that `Val` ignoring a suffix's range, `Error$` above 65535 and `CDate` out of range are bugs.
 - **Content that twinBASIC and VB6 both contradict is the page's fault** (2026-10-21): it is
   commented out, not deleted, as `<!-- VBA: <why it is out> ... -->`, outside any table, so
   the VBA text is kept for docs that will one day switch between VB6, VBA and twinBASIC
@@ -357,11 +363,11 @@ Both runtimes agree unless said.
   raises 6 outside a `Long`. A `Single` or `Double` of 2^62 or more in magnitude raises 6 in
   `Hex`, `Oct` and `Bin` (`hex-double-above-2-to-62`; -2^62 itself passes); a `LongLong`,
   `Decimal` or string does not.
-- **Question for the owner**: a negative `Single`, `Double`, `Currency`, `Decimal` or numeric
-  string in the `Long` range gives `Hex` 16 characters (`Oct` 22, `Bin` 64) in twinBASIC, the
-  `LongLong` form; VB6 gives 8 (11), the `Long` form: `Hex(-1#)` is `"FFFFFFFF"` in VB6. A
-  negative `Integer` or `Long` agrees. The Hex and Oct pages state this in their extension NOTE;
-  is it part of the extension, or a bug to queue? Not an error, so not in the data.
+- **Extension** (owner, 2026-10-21): a negative `Single`, `Double`, `Currency`, `Decimal` or
+  numeric string gives `Hex` 16 characters (`Oct` 22, `Bin` 64) in twinBASIC, the `LongLong`
+  form; VB6 gives 8 (11), the `Long` form: `Hex(-1#)` is `"FFFFFFFF"` in VB6. A negative
+  `Integer` or `Long` agrees. The Hex and Oct pages state it in their extension NOTE, and the
+  tables give each type's width. Nothing to queue; not an error, so not in the data.
 
 ## Batches
 
@@ -373,7 +379,7 @@ each can be run when there is budget. Status is kept here.
 | 0 | Tooling: data format, probe generator (twinBASIC and VB6), checker, section writer, the gate | --- | done; reviewed 2026-10-20 |
 | 1 | The central Run-time errors page | 1 | done; reviewed 2026-10-20; list of pages per number and `tb:Errors` shortcut 2026-10-21 |
 | 2 | **Pilot: VBA `Strings`** --- settled the section's style with the owner | 30 | done: 28 sections, 339 cases; reviewed 2026-10-21 |
-| 3 | VBA `Conversion` | 28 | done: 23 sections, 299 cases; one question open |
+| 3 | VBA `Conversion` | 28 | done: 23 sections, 299 cases; owner's questions answered 2026-10-21 |
 | 4 | VBA `Math` (also win64) | 17 | not started |
 | 5 | VBA `DateTime` | 20 | not started |
 | 6 | VBA `Information` and `Interaction` | 54 | not started |
