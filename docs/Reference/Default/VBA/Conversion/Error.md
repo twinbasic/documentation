@@ -15,7 +15,7 @@ Syntax:
 - **Error** [ **(** *errornumber* **)** ]
 
 *errornumber*
-: *optional* Any valid error number. If *errornumber* is a valid error number but is not defined, **Error** returns the string `"Application-defined or object-defined error"`. If *errornumber* is not valid, an error occurs. If *errornumber* is omitted, the message corresponding to the most recent run-time error is returned. If no run-time error has occurred, or *errornumber* is `0`, **Error** returns a zero-length string (`""`).
+: *optional* Any valid error number. If *errornumber* is a valid error number but is not defined, **Error** returns the string `"Application-defined or object-defined error"`. If *errornumber* is omitted, the message corresponding to the most recent run-time error is returned. If no run-time error has occurred, or *errornumber* is `0`, **Error** returns a zero-length string (`""`).
 
 The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Variant** (**String**).
 
@@ -23,6 +23,18 @@ The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Vari
 > The **Error** *function* (described here) and the [**Error**](../../Core/Error) *statement* share a name but are different language elements. The function returns the message text for an error number; the statement raises a run-time error.
 
 Examine the property settings of the **Err** object to identify the most recent run-time error. The return value of the **Error** function corresponds to the **Description** property of the **Err** object.
+
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *errornumber* is **Null** |
+
+> [!NOTE] BETA 1010
+> When **Error** or **Error$** is given an *errornumber* that rounds to a number greater than 65,535, VB6 raises error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
+
+<!-- /errors -->
 
 ### Example
 

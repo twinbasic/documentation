@@ -26,6 +26,16 @@ The **ValDec** function follows the same parsing rules as [**Val**](Val): it sto
 > [!NOTE]
 > **ValDec** recognizes only the period (`.`) as a valid decimal separator. When different decimal separators are used, as in international applications, use [**CDec**](CDec) instead.
 
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *string* holds a number outside the range of a **Decimal** |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *string* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **ValDec** function to parse a string into a **Decimal**.

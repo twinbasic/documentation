@@ -28,3 +28,12 @@ Dir("SomePath", MacID("TEXT"))
 
 > [!NOTE]
 > twinBASIC currently targets Windows. **MacID** is provided for source compatibility with VBA code originally written for the Macintosh; on Windows, the value it returns has no special meaning to the file-system or shell functions.
+
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+## Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *constant* is **Null** |
+
+<!-- /errors -->

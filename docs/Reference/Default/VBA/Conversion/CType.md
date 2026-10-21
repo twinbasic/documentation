@@ -36,6 +36,17 @@ The return type matches *type*.
 
 In both roles **CType** is an operator-like form recognized by the compiler; it isn't called like a regular function and the unparameterized name `CType` cannot be assigned to a function reference.
 
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *value* is a number outside the range of *type* |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *value* cannot be converted to *type*, such as a string that does not hold a number converted to a numeric type |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *value* is **Null** and *type* is not **Variant** |
+
+<!-- /errors -->
+
 ### See Also
 
 - [Enhanced Pointer Functionality](../../../Features/Language/Pointers#ctypeof-type)

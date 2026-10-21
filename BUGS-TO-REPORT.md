@@ -5791,7 +5791,7 @@ BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 
 
 Severity: medium. An out-of-range date is stored silently, and the failure comes later, where the value is formatted or split into parts, or never, where the number is only compared or saved.
 
-<!-- Reproducer: bugs/date-out-of-range-no-error/ (mode test: `tbrun --tests` runs the nine cases; expect lists the six FAIL and three PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, error 6 for the six). docs/Reference/Data-Types/Date.md carries the callout for it (the WARNING in Arithmetic, after the range paragraph); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+<!-- Reproducer: bugs/date-out-of-range-no-error/ (mode test: `tbrun --tests` runs the nine cases; expect lists the six FAIL and three PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, error 6 for the six). docs/Reference/Data-Types/Date.md carries the callout for it (the WARNING in Arithmetic, after the range paragraph), and so does docs/Reference/Default/VBA/Conversion/CDate.md (the WARNING above Common Errors, and a NOTE in that section generated from errors/VBA.Conversion.yml, row `bug: date-out-of-range-no-error`); when a fixed build is released, the callouts go. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
 
 ---
 
@@ -5890,7 +5890,7 @@ BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 
 
 Severity: medium. A silently wrong value, but only for one constant, and constants this size are rare. The unsuffixed `9223372036854775807` is the one a program is likely to write.
 
-<!-- Reproducer: bugs/clnglng-2-to-63-no-overflow/ (mode test: `tbrun --tests` runs the eight cases; expect lists the four FAIL and four PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, the CLng of 2^31). docs/Reference/Data-Types/LongLong.md carries the callout for it (the WARNING under Conversions); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+<!-- Reproducer: bugs/clnglng-2-to-63-no-overflow/ (mode test: `tbrun --tests` runs the eight cases; expect lists the four FAIL and four PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, the CLng of 2^31). docs/Reference/Data-Types/LongLong.md carries the callout for it (the WARNING under Conversions), and so does docs/Reference/Default/VBA/Conversion/CLngLng.md (the WARNING above Common Errors); when a fixed build is released, the callouts go. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
 
 ---
 
@@ -6936,3 +6936,403 @@ Severity: low. A program that converts Japanese, Chinese or Korean text with an 
 What does not reproduce it: another conversion (`vbUpperCase`) with an East Asian *LCID*; and `vbWide` with no *LCID* or with 1033, which VB6 refuses as well. Not checked on a system whose locale is East Asian.
 
 <!-- Reproducer: bugs/strconv-east-asian-lcid/ (mode test: `tbrun --tests`; expect lists the three PASS and six FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify` on a system whose locale is 1033, and the same six failures with `run --arch win64`; the controls assume such a system. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the system locale, then the converted characters for 1041, 2052 and 1042 and 5 for no LCID and 1033. Stated in a NOTE on docs/Reference/Default/VBA/Strings/StrConv.md (its Common Errors section), generated from errors/VBA.Strings.yml (row `bug: strconv-east-asian-lcid`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->
+
+---
+
+## `Val` raises no error for a number followed by `%`, `&` or `@` that does not fit that type, where VB6 raises error 6
+
+**Describe the bug**
+`Val` reads a type-declaration character after a number: `Val("50%")` is 50, and `Val("50.5%")` raises error 13, *Type mismatch*, in both twinBASIC and VB6, because a fraction is not an **Integer**. When the number is whole but outside the range of the type the character names, VB6 raises error 6, *Overflow*: `Val("32768%")`, `Val("-32769%")`, `Val("2147483648&")`, `Val("1e15@")`. twinBASIC raises nothing and returns the number as a **Double** (`Val("70000%")` is 70000). Observed in the compiler's test mode, 32-bit and 64-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `val-suffix-overflow-no-error.twinproj` (attached as `val-suffix-overflow-no-error.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass (the largest **Integer** and **Long** with their characters, and `"50.5%"`, which raises 13) and the four cases past a type's range fail with `Actual: 0`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`val-suffix-overflow-no-error-vb6.zip`) prints: error 6 for the four, and 32767, 2147483647 and error 13 for the controls.
+```vb
+' Regression tests: Val of a number followed by a type-declaration character raises
+' error 6 when the number does not fit that type. Expected results are VB6's (the VB6
+' project beside this one prints them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: numbers that fit their type, and a fraction with % (error 13 in both).
+    [TestCase]
+    Public Sub Val_LargestInteger_Accepted()
+        Assert.Strict.AreEqual 32767#, Val("32767%")
+    End Sub
+
+    [TestCase]
+    Public Sub Val_LargestLong_Accepted()
+        Assert.Strict.AreEqual 2147483647#, Val("2147483647&")
+    End Sub
+
+    [TestCase]
+    Public Sub Val_FractionInteger_Raises13()
+        Dim R As Double
+        On Error Resume Next
+        R = Val("50.5%")
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    ' The defect: each number is outside the range of its type, and twinBASIC returns it.
+    [TestCase]
+    Public Sub Val_IntegerPastLargest_Raises6()
+        Dim R As Double
+        On Error Resume Next
+        R = Val("32768%")
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Val_IntegerPastSmallest_Raises6()
+        Dim R As Double
+        On Error Resume Next
+        R = Val("-32769%")
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Val_LongPastLargest_Raises6()
+        Dim R As Double
+        On Error Resume Next
+        R = Val("2147483648&")
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Val_CurrencyPastLargest_Raises6()
+        Dim R As Double
+        On Error Resume Next
+        R = Val("1e15@")
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 6, *Overflow*, for a number outside the range of the type its character names, as VB6 does, and as `Val` already raises error 13 for a fraction with `%` or `&`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A program that counts on the error to reject text such as `"70000%"` accepts it.
+
+What does not reproduce it: a number that fits its type; `!` and `#` (`Val("1e39!")` raises nothing in VB6 either, and `Val("1e400#")` raises 6 in both); a number past the **Double** range with no character, which raises 6 in both.
+
+<!-- Reproducer: bugs/val-suffix-overflow-no-error/ (mode test: `tbrun --tests`; expect lists the three PASS and four FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`, and the same four failures with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints error 6 for the four and the values and 13 for the controls. Stated in a NOTE on docs/Reference/Default/VBA/Conversion/Val.md (its Common Errors section), generated from errors/VBA.Conversion.yml (row `bug: val-suffix-overflow-no-error`); when fixed, the row's bug and vb6 fields go and the NOTE with them. Found 2026-10-21 in batch 3 of WIP.Errors.md; owner: a bug, not an extension. -->
+
+---
+
+## `Error` and `Error$` of a number above 65535 return a message, where VB6 raises error 6
+
+**Describe the bug**
+`Error$(n)` returns the message of error number *n*. VB6 raises error 6, *Overflow*, when *n* is greater than 65535 (after rounding: `Error(65535.5)` raises it): `Error$(65536)`, `Error(100000)`, `Error(2147483647)`. twinBASIC raises nothing and returns a message. A negative number, an HRESULT such as -2147467259 included, gives a message in both. Observed in the compiler's test mode, 32-bit and 64-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `error-function-above-65535.twinproj` (attached as `error-function-above-65535.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass (65535, -1 and -2147467259) and the four cases above 65535 fail with `Actual: 0`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`error-function-above-65535-vb6.zip`) prints: error 6 for the four, and a message for the controls.
+```vb
+' Regression tests: Error and Error$ of a number above 65535 raise error 6. Expected
+' results are VB6's (the VB6 project beside this one prints them). tbrun --tests runs
+' each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the largest number, a negative one and an HRESULT give a message.
+    [TestCase]
+    Public Sub Error_Largest_Accepted()
+        Dim N As Long = 65535
+        Dim S As String
+        On Error Resume Next
+        S = Error$(N)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Error_Negative_Accepted()
+        Dim N As Long = -1
+        Dim S As String
+        On Error Resume Next
+        S = Error$(N)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Error_HResult_Accepted()
+        Dim N As Long = -2147467259
+        Dim S As String
+        On Error Resume Next
+        S = Error$(N)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: a number above 65535 returns a message.
+    [TestCase]
+    Public Sub ErrorDollar_65536_Raises6()
+        Dim N As Long = 65536
+        Dim S As String
+        On Error Resume Next
+        S = Error$(N)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Error_65536_Raises6()
+        Dim N As Long = 65536
+        Dim V As Variant
+        On Error Resume Next
+        V = Error(N)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Error_LargestLong_Raises6()
+        Dim N As Long = 2147483647
+        Dim V As Variant
+        On Error Resume Next
+        V = Error(N)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Error_RoundsTo65536_Raises6()
+        Dim X As Double = 65535.5
+        Dim V As Variant
+        On Error Resume Next
+        V = Error(X)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 6, *Overflow*, for a number above 65535, as VB6 does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A program that passes an arbitrary number gets a message where VB6 code expected an error.
+
+Related, and not part of this report: `Err.Raise 65536` raises 5 in VB6, and twinBASIC raises 65536 as *Automation error*.
+
+<!-- Reproducer: bugs/error-function-above-65535/ (mode test: `tbrun --tests`; expect lists the three PASS and four FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`, and the same four failures with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints error 6 for the four and a message for the controls. Stated in a NOTE on docs/Reference/Default/VBA/Conversion/Error.md (its Common Errors section), generated from errors/VBA.Conversion.yml (row `bug: error-function-above-65535`); when fixed, the row's bug and vb6 fields go and the NOTE with them. Found 2026-10-21 in batch 3 of WIP.Errors.md; owner: a bug. -->
+
+---
+
+## `CDate` of a string holding a number outside the `Date` range raises no error, and of such a `Decimal` raises error 6, where VB6 raises error 13
+
+**Describe the bug**
+A `Date` holds a day number from -657434 (January 1, 100) to 2958465 (December 31, 9999). VB6's `CDate` raises error 13, *Type mismatch*, for a string that holds a number outside that range (`CDate("2958466")`, `CDate("-657435")`) and for a `Decimal` outside it (`CDate(CDec(2958466))`). twinBASIC raises nothing for the string, and the `Date` holds the number, as in the entry *A `Date` outside January 1, 100 to December 31, 9999 is accepted with no error*; for the `Decimal` it raises error 6, *Overflow*, so a handler that tests for 13 does not recognise it. Observed in the compiler's test mode, 32-bit and 64-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `cdate-string-decimal-out-of-range.twinproj` (attached as `cdate-string-decimal-out-of-range.zip`).
+2. Run its test cases, the module below. On BETA 1010 the four controls pass (the two ends of the range as strings, a `Decimal` in range, and `CDate("abc")`, which raises 13) and the four cases fail: `Actual: 0` for the strings, `Actual: 6` for the `Decimal`s.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`cdate-string-decimal-out-of-range-vb6.zip`) prints: error 13 for the four, and the day numbers and 13 for the controls.
+```vb
+' Regression tests: CDate of a string that holds a number outside the Date range, and of
+' a Decimal outside it, raise error 13. Expected results are VB6's (the VB6 project beside
+' this one prints them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the ends of the range as strings and as Decimals, and a string that is
+    ' not a date (error 13 in both).
+    [TestCase]
+    Public Sub CDate_StringLargest_Accepted()
+        Assert.Strict.AreEqual 2958465#, CDbl(CDate("2958465"))
+    End Sub
+
+    [TestCase]
+    Public Sub CDate_StringSmallest_Accepted()
+        Assert.Strict.AreEqual -657434#, CDbl(CDate("-657434"))
+    End Sub
+
+    [TestCase]
+    Public Sub CDate_DecimalInRange_Accepted()
+        Assert.Strict.AreEqual 5#, CDbl(CDate(CDec(5)))
+    End Sub
+
+    [TestCase]
+    Public Sub CDate_NotADate_Raises13()
+        Dim D As Date
+        On Error Resume Next
+        D = CDate("abc")
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    ' The defect: a string holding a number past either end raises nothing.
+    [TestCase]
+    Public Sub CDate_StringPastLargest_Raises13()
+        Dim D As Date
+        On Error Resume Next
+        D = CDate("2958466")
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CDate_StringBeforeSmallest_Raises13()
+        Dim D As Date
+        On Error Resume Next
+        D = CDate("-657435")
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    ' The defect: a Decimal past either end raises 6.
+    [TestCase]
+    Public Sub CDate_DecimalPastLargest_Raises13()
+        Dim D As Date
+        On Error Resume Next
+        D = CDate(CDec(2958466))
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CDate_DecimalBeforeSmallest_Raises13()
+        Dim D As Date
+        On Error Resume Next
+        D = CDate(CDec(-657435))
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 13, *Type mismatch*, for both, as VB6 does. `CVDate` already raises 13 for both in twinBASIC.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium for the string, which stores an out-of-range `Date` silently (`CStr`, `Format` and `Year` of it then raise error 5); low for the `Decimal`, which raises an error, only another one.
+
+What does not reproduce it: `CVDate` of the same values (13 in both); a string that is not a number (`"1/1/10000"` raises 13 in both). A `Double`, `Long`, `Single` or `Currency` outside the range is the other entry: VB6 raises 6 for it, twinBASIC nothing.
+
+<!-- Reproducer: bugs/cdate-string-decimal-out-of-range/ (mode test: `tbrun --tests`; expect lists the four PASS and four FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`, and the same four failures with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints error 13 for the four. Stated in NOTEs on docs/Reference/Default/VBA/Conversion/CDate.md (its Common Errors section), generated from errors/VBA.Conversion.yml (the two rows `bug: cdate-string-decimal-out-of-range`), and in the WARNING above that section; when fixed, the rows' bug and vb6 fields go (the Decimal row becomes error 13) and the NOTEs with them. Found 2026-10-21 in batch 3 of WIP.Errors.md; owner: a bug. -->
+
+---
+
+## `Hex`, `Oct` and `Bin` raise error 6 for a `Double` or `Single` from 2^62 up, though the value fits a `LongLong`
+
+**Describe the bug**
+twinBASIC's `Hex`, `Oct` and `Bin` take any number in the range of a `LongLong`: a `LongLong`, a `Decimal` or a string holding 4611686018427387904 (2^62) gives `"4000000000000000"`. A `Double` or a `Single` of the same value raises error 6, *Overflow*, and so does every `Double` from 2^62 up to the largest below 2^63, and below -2^62 (-2^62 itself converts). Observed in the compiler's test mode, 32-bit and 64-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `hex-double-above-2-to-62.twinproj` (attached as `hex-double-above-2-to-62.zip`).
+2. Run its test cases, the module below. On BETA 1010 the six controls pass (2^62 as a `LongLong`, a `Decimal` and a string, the `Double`s 2^62 - 1024 and -2^62, and `1E+20`, which raises 6 as it should) and the six cases fail with `runtime error 6: Overflow`.
+```vb
+' Regression tests: Hex, Oct and Bin take any Double or Single whose value fits a
+' LongLong, as they take a LongLong, a Decimal or a string of the same value.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the same values as a LongLong, a Decimal and a string, a Double just
+    ' below 2^62, -2^62, and a Double past the LongLong range (error 6).
+    [TestCase]
+    Public Sub Hex_LongLong2To62_Converts()
+        Dim L As LongLong = 4611686018427387904^
+        Assert.Strict.AreEqual "4000000000000000", Hex$(L)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_Decimal2To62_Converts()
+        Dim D As Variant = CDec("4611686018427387904")
+        Assert.Strict.AreEqual "4000000000000000", Hex$(D)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_String2To62_Converts()
+        Assert.Strict.AreEqual "4000000000000000", Hex$("4611686018427387904")
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_DoubleBelow2To62_Converts()
+        Dim X As Double = 2 ^ 62 - 1024
+        Assert.Strict.AreEqual "3FFFFFFFFFFFFC00", Hex$(X)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_DoubleMinus2To62_Converts()
+        Dim X As Double = -(2 ^ 62)
+        Assert.Strict.AreEqual "C000000000000000", Hex$(X)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_DoublePastLongLong_Raises6()
+        Dim X As Double = 1E+20
+        Dim S As String
+        On Error Resume Next
+        S = Hex$(X)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    ' The defect: a Double or Single from 2^62 up, in magnitude, raises error 6.
+    [TestCase]
+    Public Sub Hex_Double2To62_Converts()
+        Dim X As Double = 2 ^ 62
+        Assert.Strict.AreEqual "4000000000000000", Hex$(X)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_DoubleLargestBelow2To63_Converts()
+        Dim X As Double = 2 ^ 63 - 1024
+        Assert.Strict.AreEqual "7FFFFFFFFFFFFC00", Hex$(X)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_DoubleBelowMinus2To62_Converts()
+        Dim X As Double = -(2 ^ 62) - 1024
+        Assert.Strict.AreEqual "BFFFFFFFFFFFFC00", Hex$(X)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_Single2To62_Converts()
+        Dim S As Single = 2 ^ 62
+        Assert.Strict.AreEqual "4000000000000000", Hex$(S)
+    End Sub
+
+    [TestCase]
+    Public Sub Oct_Double2To62_Converts()
+        Dim X As Double = 2 ^ 62
+        Assert.Strict.AreEqual "400000000000000000000", Oct$(X)
+    End Sub
+
+    [TestCase]
+    Public Sub Bin_Double2To62_Converts()
+        Dim X As Double = 2 ^ 62
+        Assert.Strict.AreEqual "1" & String$(62, "0"), Bin$(X)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The digits of the value, as for the same value in a `LongLong`; error 6 only past the `LongLong` range, as for `1E+20`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. The error is raised, not hidden, and `CLngLng` around the argument avoids it (`Hex(CLngLng(2 ^ 62))`). VB6 has no `LongLong` and raises 6 for any number outside the `Long` range, so there is no VB6 behaviour to compare.
+
+What does not reproduce it: a `LongLong`, `Decimal`, `Currency` or string of the same value; a `Double` between -2^62 and 2^62 - 1024.
+
+<!-- Reproducer: bugs/hex-double-above-2-to-62/ (mode test: `tbrun --tests`; expect lists the six PASS and six FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`, and the same six failures with `run --arch win64`. No VB6 side: VB6 has no LongLong. Stated in a NOTE on docs/Reference/Default/VBA/Conversion/Hex.md, Oct.md and Bin.md; the limit is in the 6 row of each page's data in errors/VBA.Conversion.yml. When fixed, the NOTEs go, and the rows' When and their Double cases change to the LongLong range. Found 2026-10-21 in batch 3 of WIP.Errors.md. -->
+

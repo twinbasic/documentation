@@ -16,11 +16,22 @@ Syntax: **CCur(** *expression* **)**
 *expression*
 : *required* Any valid string or numeric expression in the range `-922,337,203,685,477.5808` to `922,337,203,685,477.5807`.
 
-The return type is **Currency**. If *expression* is outside that range, a run-time error occurs.
+The return type is **Currency**.
 
 **CCur** forces currency arithmetic in cases where single-precision, double-precision, or integer arithmetic would normally occur.
 
 **CCur** is the internationally aware alternative to **Val** for converting between data types. **CCur** recognizes different decimal separators, different thousand separators, and various currency options properly, depending on the system's locale setting.
+
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *expression* is less than -922,337,203,685,477.5808 or greater than 922,337,203,685,477.5807 |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *expression* is a string that does not hold a number (a zero-length string included) |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *expression* is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

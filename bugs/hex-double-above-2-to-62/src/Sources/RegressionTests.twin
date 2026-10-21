@@ -1,0 +1,84 @@
+' Regression tests: Hex, Oct and Bin take any Double or Single whose value fits a
+' LongLong, as they take a LongLong, a Decimal or a string of the same value.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the same values as a LongLong, a Decimal and a string, a Double just
+    ' below 2^62, -2^62, and a Double past the LongLong range (error 6).
+    [TestCase]
+    Public Sub Hex_LongLong2To62_Converts()
+        Dim L As LongLong = 4611686018427387904^
+        Assert.Strict.AreEqual "4000000000000000", Hex$(L)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_Decimal2To62_Converts()
+        Dim D As Variant = CDec("4611686018427387904")
+        Assert.Strict.AreEqual "4000000000000000", Hex$(D)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_String2To62_Converts()
+        Assert.Strict.AreEqual "4000000000000000", Hex$("4611686018427387904")
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_DoubleBelow2To62_Converts()
+        Dim X As Double = 2 ^ 62 - 1024
+        Assert.Strict.AreEqual "3FFFFFFFFFFFFC00", Hex$(X)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_DoubleMinus2To62_Converts()
+        Dim X As Double = -(2 ^ 62)
+        Assert.Strict.AreEqual "C000000000000000", Hex$(X)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_DoublePastLongLong_Raises6()
+        Dim X As Double = 1E+20
+        Dim S As String
+        On Error Resume Next
+        S = Hex$(X)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    ' The defect: a Double or Single from 2^62 up, in magnitude, raises error 6.
+    [TestCase]
+    Public Sub Hex_Double2To62_Converts()
+        Dim X As Double = 2 ^ 62
+        Assert.Strict.AreEqual "4000000000000000", Hex$(X)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_DoubleLargestBelow2To63_Converts()
+        Dim X As Double = 2 ^ 63 - 1024
+        Assert.Strict.AreEqual "7FFFFFFFFFFFFC00", Hex$(X)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_DoubleBelowMinus2To62_Converts()
+        Dim X As Double = -(2 ^ 62) - 1024
+        Assert.Strict.AreEqual "BFFFFFFFFFFFFC00", Hex$(X)
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_Single2To62_Converts()
+        Dim S As Single = 2 ^ 62
+        Assert.Strict.AreEqual "4000000000000000", Hex$(S)
+    End Sub
+
+    [TestCase]
+    Public Sub Oct_Double2To62_Converts()
+        Dim X As Double = 2 ^ 62
+        Assert.Strict.AreEqual "400000000000000000000", Oct$(X)
+    End Sub
+
+    [TestCase]
+    Public Sub Bin_Double2To62_Converts()
+        Dim X As Double = 2 ^ 62
+        Assert.Strict.AreEqual "1" & String$(62, "0"), Bin$(X)
+    End Sub
+
+End Module

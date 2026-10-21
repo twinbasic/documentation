@@ -1,0 +1,16 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.CDate_StringLargest_Accepted$",
+      "^PASS RegressionTests.CDate_StringSmallest_Accepted$",
+      "^PASS RegressionTests.CDate_DecimalInRange_Accepted$",
+      "^PASS RegressionTests.CDate_NotADate_Raises13$",
+      "^FAIL RegressionTests.CDate_StringPastLargest_Raises13: .*Actual: 0 ",
+      "^FAIL RegressionTests.CDate_StringBeforeSmallest_Raises13: .*Actual: 0 ",
+      "^FAIL RegressionTests.CDate_DecimalPastLargest_Raises13: .*Actual: 6 ",
+      "^FAIL RegressionTests.CDate_DecimalBeforeSmallest_Raises13: .*Actual: 6 "
+    ]
+  }
+}

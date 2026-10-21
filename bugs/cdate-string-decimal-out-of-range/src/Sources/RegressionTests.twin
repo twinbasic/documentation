@@ -1,0 +1,66 @@
+' Regression tests: CDate of a string that holds a number outside the Date range, and of
+' a Decimal outside it, raise error 13. Expected results are VB6's (the VB6 project beside
+' this one prints them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the ends of the range as strings and as Decimals, and a string that is
+    ' not a date (error 13 in both).
+    [TestCase]
+    Public Sub CDate_StringLargest_Accepted()
+        Assert.Strict.AreEqual 2958465#, CDbl(CDate("2958465"))
+    End Sub
+
+    [TestCase]
+    Public Sub CDate_StringSmallest_Accepted()
+        Assert.Strict.AreEqual -657434#, CDbl(CDate("-657434"))
+    End Sub
+
+    [TestCase]
+    Public Sub CDate_DecimalInRange_Accepted()
+        Assert.Strict.AreEqual 5#, CDbl(CDate(CDec(5)))
+    End Sub
+
+    [TestCase]
+    Public Sub CDate_NotADate_Raises13()
+        Dim D As Date
+        On Error Resume Next
+        D = CDate("abc")
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    ' The defect: a string holding a number past either end raises nothing.
+    [TestCase]
+    Public Sub CDate_StringPastLargest_Raises13()
+        Dim D As Date
+        On Error Resume Next
+        D = CDate("2958466")
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CDate_StringBeforeSmallest_Raises13()
+        Dim D As Date
+        On Error Resume Next
+        D = CDate("-657435")
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    ' The defect: a Decimal past either end raises 6.
+    [TestCase]
+    Public Sub CDate_DecimalPastLargest_Raises13()
+        Dim D As Date
+        On Error Resume Next
+        D = CDate(CDec(2958466))
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CDate_DecimalBeforeSmallest_Raises13()
+        Dim D As Date
+        On Error Resume Next
+        D = CDate(CDec(-657435))
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+End Module

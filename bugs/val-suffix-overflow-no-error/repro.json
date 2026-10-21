@@ -1,0 +1,15 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Val_LargestInteger_Accepted$",
+      "^PASS RegressionTests.Val_LargestLong_Accepted$",
+      "^PASS RegressionTests.Val_FractionInteger_Raises13$",
+      "^FAIL RegressionTests.Val_IntegerPastLargest_Raises6: .*Actual: 0 ",
+      "^FAIL RegressionTests.Val_IntegerPastSmallest_Raises6: .*Actual: 0 ",
+      "^FAIL RegressionTests.Val_LongPastLargest_Raises6: .*Actual: 0 ",
+      "^FAIL RegressionTests.Val_CurrencyPastLargest_Raises6: .*Actual: 0 "
+    ]
+  }
+}

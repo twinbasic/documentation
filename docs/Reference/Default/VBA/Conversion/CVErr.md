@@ -20,6 +20,16 @@ Use the **CVErr** function to create user-defined errors in user-created procedu
 
 Note that implicit conversion of an **Error** is not allowed. For example, the return value of **CVErr** cannot be directly assigned to a variable that is not a **Variant**. An explicit conversion (using [**CInt**](CInt), [**CDbl**](CDbl), and so on) of the value returned by **CVErr** can be assigned to a variable of the appropriate data type.
 
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *errornumber* rounds to a number less than 0 or greater than 65,535 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *errornumber* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **CVErr** function to return a **Variant** whose **VarType** is **vbError** (10). The user-defined function `CalculateDouble` returns an error if the argument passed to it isn't a number. Use **CVErr** to return user-defined errors from user-defined procedures or to defer handling of a run-time error. Use the **IsError** function to test whether the value represents an error.

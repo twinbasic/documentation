@@ -1,0 +1,15 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Error_Largest_Accepted$",
+      "^PASS RegressionTests.Error_Negative_Accepted$",
+      "^PASS RegressionTests.Error_HResult_Accepted$",
+      "^FAIL RegressionTests.ErrorDollar_65536_Raises6: .*Actual: 0 ",
+      "^FAIL RegressionTests.Error_65536_Raises6: .*Actual: 0 ",
+      "^FAIL RegressionTests.Error_LargestLong_Raises6: .*Actual: 0 ",
+      "^FAIL RegressionTests.Error_RoundsTo65536_Raises6: .*Actual: 0 "
+    ]
+  }
+}

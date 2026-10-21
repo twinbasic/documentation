@@ -28,13 +28,27 @@ The result holds only the digits `0` and `1`, with no leading zeros and no prefi
 | Zero or a positive number                       | The digits of its value                       |
 | A negative **Integer**                          | 16 characters                                 |
 | A negative **Long**                             | 32 characters                                 |
-| A negative **LongLong** or **Double**           | 64 characters                                 |
+| A negative **LongLong**, **Single**, **Double**, **Currency** or **Decimal**, or a string holding a negative number | 64 characters |
 | **Null**                                        | **Null** (unsuffixed form only)               |
 | **Empty**                                       | `"0"`                                         |
 
-**Bin** accepts the same arguments as [**Hex**](Hex) and [**Oct**](Oct) and returns the same value in a different base. A string that holds a number, including one written with the `&H` or `&O` prefix, is converted as the number. A string that does not hold a number (an empty string, or one with the `&B` prefix, included) raises error 13, *Type mismatch*. A **Double** too large for a **LongLong** raises error 6, *Overflow*. `Bin$(Null)` raises error 94, *Invalid use of Null*.
+**Bin** accepts the same arguments as [**Hex**](Hex) and [**Oct**](Oct) and returns the same value in a different base. A string that holds a number, including one written with the `&H` or `&O` prefix, is converted as the number.
+
+> [!NOTE] BETA 1010
+> A **Single** or **Double** of 2^62 (4,611,686,018,427,387,904) or more, or less than -2^62, raises error 6, *Overflow*, though its value fits a **LongLong**. A **LongLong**, **Decimal** or string of the same value is converted; so is `Bin(CLngLng(x))`.
 
 For the opposite of **Bin**, precede a binary value with **&B**: `&B101` is the number 5 (see [Literals](../../../Features/Language/Literals)).
+
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *number* is outside the range of a **LongLong**, or is a **Single** or **Double** less than -4,611,686,018,427,387,904 or greater than 4,611,686,018,427,387,903 |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *number* is a string that does not hold a number (a zero-length string, and one with the `&B` prefix, included) |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **Bin$** is given a *number* that is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

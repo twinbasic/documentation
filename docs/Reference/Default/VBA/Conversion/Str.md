@@ -31,6 +31,15 @@ Use the [**Format**](../Strings/Format) function to convert numeric values to be
 > [!NOTE]
 > The **Str** function recognizes only the period (`.`) as a valid decimal separator. When different decimal separators may be used (for example, in international applications), use [**CStr**](CStr) to convert a number to a string.
 
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **Str$** is given a *number* that is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Str** function to return a string representation of a number. When a number is converted to a string, a leading space is always reserved for its sign.

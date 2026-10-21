@@ -18,9 +18,18 @@ Syntax: **CBool(** *expression* **)**
 
 The return type is **Boolean**. If *expression* evaluates to a nonzero value, **CBool** returns **True**; otherwise, it returns **False**.
 
-If *expression* cannot be interpreted as a numeric value, a run-time error occurs.
-
 The data-type conversion functions document code by showing that the result of some operation should be expressed as a particular data type rather than the default data type.
+
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *expression* is a string that holds a number outside the range of a **Double** |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *expression* is a string that is not a number, **True** or **False** (a zero-length string included) |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *expression* is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

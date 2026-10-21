@@ -1,0 +1,550 @@
+# The VBA Conversion module. Format: WIP.Errors.md.
+beta: 1010
+pages:
+  Reference/Default/VBA/Conversion/Bin.md:
+    rows:
+      - error: 6
+        when: "*number* is outside the range of a **LongLong**, or is a **Single** or **Double** less than -4,611,686,018,427,387,904 or greater than 4,611,686,018,427,387,903"
+        cases:
+          - { expr: Bin(1E+20), only: tb }
+          - { expr: 'Bin("9223372036854775808")', only: tb }
+          - { decl: Dim D As Variant, setup: 'D = CDec("9223372036854775808")', expr: Bin(D), only: tb }
+          - { decl: Dim X As Double, setup: X = 2 ^ 62, expr: Bin(X), only: tb }
+          - { decl: Dim X As Double, setup: X = -(2 ^ 62) - 1024, expr: Bin(X), only: tb }
+          - { decl: Dim S As Single, setup: S = 4.7E+18, expr: Bin(S), only: tb }
+      - error: 13
+        when: "*number* is a string that does not hold a number (a zero-length string, and one with the `&B` prefix, included)"
+        cases:
+          - { expr: 'Bin("abc")', only: tb }
+          - { expr: 'Bin("")', only: tb }
+          - { expr: 'Bin("&B101")', only: tb }
+      - error: 94
+        when: "**Bin$** is given a *number* that is **Null**"
+        cases:
+          - { expr: Bin$(Null), only: tb }
+    quiet:
+      - { expr: Bin(Null), only: tb }
+      - { expr: Bin(Empty), only: tb }
+      - { expr: 'Bin("&HFF")', only: tb }
+      - { expr: 'Bin("9223372036854775807")', only: tb }
+      - { decl: Dim D As Variant, setup: 'D = CDec("9223372036854775807")', expr: Bin(D), only: tb }
+      - { decl: Dim L As LongLong, setup: L = 9223372036854775807^, expr: Bin(L), only: tb }
+      - { decl: Dim X As Double, setup: X = 2 ^ 62 - 1024, expr: Bin(X), only: tb }
+      - { decl: Dim X As Double, setup: X = -(2 ^ 62), expr: Bin(X), only: tb }
+  Reference/Default/VBA/Conversion/CBool.md:
+    rows:
+      - error: 6
+        when: "*expression* is a string that holds a number outside the range of a **Double**"
+        cases:
+          - CBool("1e400")
+      - error: 13
+        when: "*expression* is a string that is not a number, **True** or **False** (a zero-length string included)"
+        cases:
+          - CBool("abc")
+          - CBool("yes")
+          - CBool("")
+      - error: 94
+        when: "*expression* is **Null**"
+        cases: [CBool(Null)]
+    quiet:
+      - CBool("True")
+      - CBool("False")
+      - CBool("1")
+      - CBool(Empty)
+      - CBool(1E+300)
+      - CBool(CVErr(5))
+  Reference/Default/VBA/Conversion/CByte.md:
+    rows:
+      - error: 6
+        when: "*expression* rounds to a number less than 0 or greater than 255"
+        cases:
+          - CByte(256)
+          - CByte(-1)
+          - CByte(255.5)
+          - CByte(-0.6)
+          - CByte("256")
+      - error: 13
+        when: "*expression* is a string that does not hold a number (a zero-length string included)"
+        cases:
+          - CByte("abc")
+          - CByte("")
+      - error: 94
+        when: "*expression* is **Null**"
+        cases: [CByte(Null)]
+    quiet:
+      - CByte(255.4)
+      - CByte(-0.5)
+      - CByte(True)
+      - CByte(CVErr(5))
+  Reference/Default/VBA/Conversion/CCur.md:
+    rows:
+      - error: 6
+        when: "*expression* is less than -922,337,203,685,477.5808 or greater than 922,337,203,685,477.5807"
+        cases:
+          - CCur(1E+15)
+          - CCur(-1E+15)
+          - CCur("922337203685477.5808")
+          - CCur("-922337203685477.5809")
+      - error: 13
+        when: "*expression* is a string that does not hold a number (a zero-length string included)"
+        cases:
+          - CCur("abc")
+          - CCur("")
+      - error: 94
+        when: "*expression* is **Null**"
+        cases: [CCur(Null)]
+    quiet:
+      - CCur(922337203685477#)
+      - CCur("922337203685477.5807")
+      - CCur("-922337203685477.5808")
+  Reference/Default/VBA/Conversion/CDate.md:
+    rows:
+      - error: 6
+        when: "*expression* is a **Decimal** less than -657,434 or 2,958,466 or more"
+        vb6: 13
+        bug: cdate-string-decimal-out-of-range
+        cases:
+          - CDate(CDec(2958466))
+          - CDate(CDec(-657435))
+      - error: 13
+        when: "*expression* is a string that is not a date, a time or a number (a zero-length string included), or a date after December 31, 9999"
+        cases:
+          - CDate("abc")
+          - CDate("")
+          - CDate("13/13/2020")
+          - CDate("1/1/10000")
+      - error: 94
+        when: "*expression* is **Null**"
+        cases: [CDate(Null)]
+      - error: 0
+        when: "**CDate** is given a number of another type than **Decimal** that is less than -657,434 or 2,958,466 or more"
+        vb6: 6
+        bug: date-out-of-range-no-error
+        cases:
+          - CDate(2958466)
+          - CDate(2958466.5)
+          - CDate(-657435)
+          - CDate(1E+300)
+          - CDate(-1E+300)
+          - CDate(CLng(3000000))
+          - CDate(CSng(3000000))
+          - CDate(CCur(2958466))
+      - error: 0
+        when: "**CDate** is given a string that holds a number less than -657,434 or 2,958,466 or more"
+        vb6: 13
+        bug: cdate-string-decimal-out-of-range
+        cases:
+          - CDate("2958466")
+          - CDate("-657435")
+          - CDate("3000000")
+          - CDate("1e10")
+    quiet:
+      - CDate(2958465)
+      - CDate(2958465.9999)
+      - CDate(-657434)
+      - CDate(-657434.5)
+      - CDate(True)
+      - CDate(CDec(5))
+      - CDate(CCur(5))
+      - CDate("5")
+      - CDate("2958465")
+      - CDate("-657434")
+      - CDate("12/31/9999")
+      - CDate("100-01-01")
+  Reference/Default/VBA/Conversion/CDbl.md:
+    rows:
+      - error: 6
+        when: "*expression* is a string that holds a number outside the range of a **Double**"
+        cases:
+          - CDbl("1e309")
+          - CDbl("-1e309")
+      - error: 13
+        when: "*expression* is a string that does not hold a number (a zero-length string included)"
+        cases:
+          - CDbl("abc")
+          - CDbl("")
+      - error: 94
+        when: "*expression* is **Null**"
+        cases: [CDbl(Null)]
+    quiet:
+      - CDbl("1.7e308")
+      - CDbl("1e-400")
+      - CDbl(CDec("79228162514264337593543950335"))
+      - CDbl(CVErr(5))
+  Reference/Default/VBA/Conversion/CDec.md:
+    rows:
+      - error: 6
+        when: "*expression* is less than -79,228,162,514,264,337,593,543,950,335 or greater than 79,228,162,514,264,337,593,543,950,335"
+        cases:
+          - CDec(1E+29)
+          - CDec(-1E+29)
+          - CDec("79228162514264337593543950336")
+      - error: 13
+        when: "*expression* is a string that does not hold a number (a zero-length string included)"
+        cases:
+          - CDec("abc")
+          - CDec("")
+      - error: 94
+        when: "*expression* is **Null**"
+        cases: [CDec(Null)]
+    quiet:
+      - CDec(7.9E+28)
+      - CDec("79228162514264337593543950335")
+      - CDec(1E-30)
+  Reference/Default/VBA/Conversion/CInt.md:
+    rows:
+      - error: 6
+        when: "*expression* rounds to a number less than -32,768 or greater than 32,767"
+        cases:
+          - CInt(32768)
+          - CInt(32767.5)
+          - CInt(-32769)
+          - CInt(-32768.6)
+          - CInt(2147483648#)
+          - CInt("1e5")
+          - CInt("&H10000")
+      - error: 13
+        when: "*expression* is a string that does not hold a number (a zero-length string included)"
+        cases:
+          - CInt("abc")
+          - CInt("")
+      - error: 94
+        when: "*expression* is **Null**"
+        cases: [CInt(Null)]
+    quiet:
+      - CInt(32767.4)
+      - CInt(-32768.5)
+      - CInt("&H8000")
+      - CInt("&HFFFF")
+      - CInt(CVErr(5))
+  Reference/Default/VBA/Conversion/CLng.md:
+    rows:
+      - error: 6
+        when: "*expression* rounds to a number less than -2,147,483,648 or greater than 2,147,483,647"
+        cases:
+          - CLng(2147483648#)
+          - CLng(2147483647.5)
+          - CLng(-2147483649#)
+          - CLng(-2147483648.6)
+          - CLng("2147483648")
+          - CLng("&H100000000")
+      - error: 13
+        when: "*expression* is a string that does not hold a number (a zero-length string included)"
+        cases:
+          - CLng("abc")
+          - CLng("")
+      - error: 94
+        when: "*expression* is **Null**"
+        cases: [CLng(Null)]
+    quiet:
+      - CLng(2147483647.4)
+      - CLng(-2147483648.5)
+      - CLng("&HFFFFFFFF")
+      - CLng(CVErr(5))
+  Reference/Default/VBA/Conversion/CLngLng.md:
+    rows:
+      - error: 6
+        when: "*expression* rounds to a number less than -9,223,372,036,854,775,808 or greater than 9,223,372,036,854,775,807"
+        cases:
+          - { decl: Dim X As Double, setup: X = 2 ^ 63, expr: CLngLng(X), only: tb }
+          - { expr: CLngLng(1E+19), only: tb }
+          - { expr: CLngLng(-1E+19), only: tb }
+          - { expr: 'CLngLng("9223372036854775808")', only: tb }
+          - { expr: 'CLngLng("9223372036854775807.5")', only: tb }
+          - { decl: Dim D As Variant, setup: 'D = CDec("9223372036854775808")', expr: CLngLng(D), only: tb }
+      - error: 13
+        when: "*expression* is a string that does not hold a number (a zero-length string included)"
+        cases:
+          - { expr: 'CLngLng("abc")', only: tb }
+          - { expr: 'CLngLng("")', only: tb }
+      - error: 94
+        when: "*expression* is **Null**"
+        cases:
+          - { expr: CLngLng(Null), only: tb }
+    quiet:
+      - { expr: 'CLngLng("9223372036854775807")', only: tb }
+      - { expr: 'CLngLng("-9223372036854775808.5")', only: tb }
+      - { expr: CLngLng(9.2233720368547748E+18), only: tb }
+      - { decl: Dim C As Currency, setup: C = 922337203685477@, expr: CLngLng(C), only: tb }
+  Reference/Default/VBA/Conversion/CLngPtr.md:
+    rows:
+      - error: 6
+        when: "in a 32-bit build, *expression* rounds to a number less than -2,147,483,648 or greater than 2,147,483,647"
+        win64: 0
+        cases:
+          - { expr: CLngPtr(2147483648#), only: tb }
+          - { expr: CLngPtr(2147483647.5), only: tb }
+          - { expr: CLngPtr(-2147483649#), only: tb }
+      - error: 6
+        when: "*expression* rounds to a number less than -9,223,372,036,854,775,808 or greater than 9,223,372,036,854,775,807"
+        cases:
+          - { expr: CLngPtr(1E+19), only: tb }
+          - { expr: CLngPtr(-1E+19), only: tb }
+      - error: 13
+        when: "*expression* is a string that does not hold a number (a zero-length string included)"
+        cases:
+          - { expr: 'CLngPtr("abc")', only: tb }
+          - { expr: 'CLngPtr("")', only: tb }
+      - error: 94
+        when: "*expression* is **Null**"
+        cases:
+          - { expr: CLngPtr(Null), only: tb }
+    quiet:
+      - { expr: CLngPtr(2147483647.4), only: tb }
+      - { expr: CLngPtr(-2147483648.5), only: tb }
+  Reference/Default/VBA/Conversion/CSng.md:
+    rows:
+      - error: 6
+        when: "*expression* is less than -3.402823E38 or greater than 3.402823E38"
+        cases:
+          - CSng(3.5E+38)
+          - CSng(-3.5E+38)
+          - CSng("1e39")
+      - error: 13
+        when: "*expression* is a string that does not hold a number (a zero-length string included)"
+        cases:
+          - CSng("abc")
+          - CSng("")
+      - error: 94
+        when: "*expression* is **Null**"
+        cases: [CSng(Null)]
+    quiet:
+      - CSng(3.4E+38)
+      - CSng(1E-50)
+  Reference/Default/VBA/Conversion/CStr.md:
+    rows:
+      - error: 94
+        when: "*expression* is **Null**"
+        cases: [CStr(Null)]
+    quiet:
+      - CStr(Empty)
+      - CStr(CVErr(5))
+      - CStr(1E+300)
+  Reference/Default/VBA/Conversion/CType.md:
+    rows:
+      - error: 6
+        when: "*value* is a number outside the range of *type*"
+        cases:
+          - { expr: CType(Of Integer)(40000), only: tb }
+          - { expr: CType(Of Byte)(-1), only: tb }
+      - error: 13
+        when: "*value* cannot be converted to *type*, such as a string that does not hold a number converted to a numeric type"
+        cases:
+          - { expr: 'CType(Of Long)("abc")', only: tb }
+          - { expr: 'CType(Of Date)("abc")', only: tb }
+      - error: 94
+        when: "*value* is **Null** and *type* is not **Variant**"
+        cases:
+          - { expr: CType(Of Long)(Null), only: tb }
+          - { expr: CType(Of String)(Null), only: tb }
+    quiet:
+      - { expr: CType(Of Variant)(Null), only: tb }
+      - { expr: 'CType(Of Long)("5")', only: tb }
+  Reference/Default/VBA/Conversion/CVDate.md:
+    rows:
+      - error: 13
+        when: "*expression* is a string that is not a date, a time or a number (a zero-length string included), or a number outside the range of a **Date**: less than -657,434 (January 1, 100) or 2,958,466 (January 1, 10000) or more"
+        cases:
+          - CVDate("abc")
+          - CVDate("")
+          - CVDate("1/1/10000")
+          - CVDate(2958466)
+          - CVDate(-657436)
+          - CVDate(1E+300)
+          - CVDate(CDec(3000000))
+          - CVDate(CCur(2958466))
+    quiet:
+      - CVDate(Null)
+      - CVDate(2958465)
+      - CVDate(2958465.9999)
+      - CVDate(-657434)
+      - CVDate(CDec(5))
+  Reference/Default/VBA/Conversion/CVErr.md:
+    rows:
+      - error: 5
+        when: "*errornumber* rounds to a number less than 0 or greater than 65,535"
+        cases:
+          - CVErr(-1)
+          - CVErr(-0.6)
+          - CVErr(65536)
+          - CVErr(65535.5)
+          - CVErr(-2147467259)
+          - CVErr(-2147483648#)
+      - error: 94
+        when: "*errornumber* is **Null**"
+        cases: [CVErr(Null)]
+    quiet:
+      - CVErr(0)
+      - CVErr(-0.5)
+      - CVErr(65535)
+      - CVErr("5")
+  Reference/Default/VBA/Conversion/Error.md:
+    rows:
+      - error: 94
+        when: "*errornumber* is **Null**"
+        cases: [Error(Null), Error$(Null)]
+      - error: 0
+        when: "**Error** or **Error$** is given an *errornumber* that rounds to a number greater than 65,535"
+        vb6: 6
+        bug: error-function-above-65535
+        cases:
+          - Error(65536)
+          - Error(65535.5)
+          - Error(100000)
+          - Error(2147483647)
+          - Error$(65536)
+          - Error$(100000)
+    quiet:
+      - Error(0)
+      - Error(5)
+      - Error(65535)
+      - Error(65535.4)
+      - Error(-1)
+      - Error$(-1)
+      - Error(-65536)
+      - Error(-2147467259)
+      - Error(-2147483648#)
+  Reference/Default/VBA/Conversion/Hex.md:
+    rows:
+      - error: 6
+        when: "*number* is outside the range of a **LongLong**, or is a **Single** or **Double** less than -4,611,686,018,427,387,904 or greater than 4,611,686,018,427,387,903"
+        cases:
+          - Hex(1E+20)
+          - Hex("9223372036854775808")
+          - { decl: Dim D As Variant, setup: 'D = CDec("1E+20")', expr: Hex(D) }
+          - { decl: Dim X As Double, setup: X = 2 ^ 62, expr: Hex(X) }
+          - { decl: Dim X As Double, setup: X = -(2 ^ 62) - 1024, expr: Hex(X) }
+          - { decl: Dim S As Single, setup: S = 4.7E+18, expr: Hex(S) }
+      - error: 13
+        when: "*number* is a string that does not hold a number (a zero-length string included)"
+        cases:
+          - Hex("abc")
+          - Hex("")
+      - error: 94
+        when: "**Hex$** is given a *number* that is **Null**"
+        cases: [Hex$(Null)]
+    quiet:
+      - Hex(Null)
+      - Hex(Empty)
+      - Hex(2147483647)
+      - Hex(-2147483648#)
+      - Hex("&HFF")
+      - { expr: Hex(2147483648#), only: tb }
+      - { expr: Hex(-2147483649#), only: tb }
+      - { expr: Hex(2147483647.5), only: tb }
+      - { expr: 'Hex("9223372036854775807")', only: tb }
+      - { decl: Dim L As LongLong, setup: L = 9223372036854775807^, expr: Hex(L), only: tb }
+      - { decl: Dim D As Variant, setup: 'D = CDec("9223372036854775807")', expr: Hex(D), only: tb }
+      - { decl: Dim C As Currency, setup: C = 922337203685477@, expr: Hex(C), only: tb }
+      - { decl: Dim X As Double, setup: X = 2 ^ 62 - 1024, expr: Hex(X), only: tb }
+      - { decl: Dim X As Double, setup: X = -(2 ^ 62), expr: Hex(X), only: tb }
+  Reference/Default/VBA/Conversion/MacID.md:
+    rows:
+      - error: 94
+        when: "*constant* is **Null**"
+        cases: [MacID(Null)]
+    quiet:
+      - MacID("TEXT")
+      - MacID("ABC")
+      - MacID("")
+  Reference/Default/VBA/Conversion/Oct.md:
+    rows:
+      - error: 6
+        when: "*number* is outside the range of a **LongLong**, or is a **Single** or **Double** less than -4,611,686,018,427,387,904 or greater than 4,611,686,018,427,387,903"
+        cases:
+          - Oct(1E+20)
+          - Oct("9223372036854775808")
+          - { decl: Dim X As Double, setup: X = 2 ^ 62, expr: Oct(X) }
+          - { decl: Dim X As Double, setup: X = -(2 ^ 62) - 1024, expr: Oct(X) }
+      - error: 13
+        when: "*number* is a string that does not hold a number (a zero-length string included)"
+        cases:
+          - Oct("abc")
+          - Oct("")
+      - error: 94
+        when: "**Oct$** is given a *number* that is **Null**"
+        cases: [Oct$(Null)]
+    quiet:
+      - Oct(Null)
+      - Oct(Empty)
+      - Oct(2147483647)
+      - { expr: Oct(2147483648#), only: tb }
+      - { expr: Oct(-2147483649#), only: tb }
+      - { expr: Oct(2147483647.5), only: tb }
+      - { decl: Dim L As LongLong, setup: L = 9223372036854775807^, expr: Oct(L), only: tb }
+      - { decl: Dim D As Variant, setup: 'D = CDec("9223372036854775807")', expr: Oct(D), only: tb }
+      - { decl: Dim X As Double, setup: X = 2 ^ 62 - 1024, expr: Oct(X), only: tb }
+  Reference/Default/VBA/Conversion/Str.md:
+    rows:
+      - error: 94
+        when: "**Str$** is given a *number* that is **Null**"
+        cases: [Str$(Null)]
+    quiet:
+      - Str(Null)
+      - Str(Empty)
+      - Str("1")
+      - Str(1E+300)
+  Reference/Default/VBA/Conversion/Val.md:
+    rows:
+      - error: 6
+        when: "*string* holds a number outside the range of a **Double**"
+        cases:
+          - Val("1e400")
+          - Val("-1e400")
+          - Val("1d400")
+          - Val("1e400#")
+          - Val("&HFFFFFFFFFFFFFFFFFFFF")
+      - error: 13
+        when: "*string* holds a number with a fractional part followed by the **Integer** (`%`) or **Long** (`&`) type-declaration character, such as `\"50.5%\"`"
+        cases:
+          - Val("50.5%")
+          - Val("50.5&")
+      - error: 94
+        when: "*string* is **Null**"
+        cases: [Val(Null)]
+      - error: 0
+        when: "**Val** is given a *string* that holds a number followed by the **Integer** (`%`), **Long** (`&`) or **Currency** (`@`) type-declaration character, and the number is outside the range of that type"
+        vb6: 6
+        bug: val-suffix-overflow-no-error
+        cases:
+          - Val("32768%")
+          - Val("-32769%")
+          - Val("70000%")
+          - Val("2147483648&")
+          - Val("1e15@")
+    quiet:
+      - Val("")
+      - Val("abc")
+      - Val("50%")
+      - Val("32767%")
+      - Val("-32768%")
+      - Val("2147483647&")
+      - Val("50.5!")
+      - Val("50.5#")
+      - Val("50.5@")
+      - Val("1e39!")
+      - Val("1e308")
+      - Val("&H")
+      - Val("&HFFFFFFFFF")
+      - Val("&O777777777777")
+      - Val(5)
+  Reference/Default/VBA/Conversion/ValDec.md:
+    rows:
+      - error: 6
+        when: "*string* holds a number outside the range of a **Decimal**"
+        cases:
+          - { expr: 'ValDec("1e29")', only: tb }
+          - { expr: 'ValDec("1e400")', only: tb }
+          - { expr: 'ValDec("79228162514264337593543950336")', only: tb }
+          - { expr: 'ValDec("-79228162514264337593543950336")', only: tb }
+      - error: 94
+        when: "*string* is **Null**"
+        cases:
+          - { expr: ValDec(Null), only: tb }
+    quiet:
+      - { expr: 'ValDec("")', only: tb }
+      - { expr: 'ValDec("abc")', only: tb }
+      - { expr: 'ValDec("1e28")', only: tb }
+      - { expr: 'ValDec("79228162514264337593543950335")', only: tb }
+      - { expr: 'ValDec("50.5%")', only: tb }
+      - { expr: 'ValDec("70000%")', only: tb }

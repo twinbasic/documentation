@@ -9,18 +9,25 @@ Like WIP.md, this file is not rendered through tbdocs.
 
 ## Where things stand (2026-10-21)
 
-**Batches 0, 1 and 2 are done, reviewed by the owner, and committed on `staging`** (not
-pushed; last commit `d3f3e514`). The tooling, the central page and every page of the VBA
-`Strings` module are in place: 339 cases in `errors/VBA.Strings.yml`, all agreeing in
-twinBASIC 32-bit and VB6 on BETA 1010, and a Common Errors section on 28 of the module's 30
-pages (Len raises nothing; the index documents nothing). No row is `bug: pending`. Every
-difference from VB6 found so far is queued in BUGS-TO-REPORT.md with a reproducer under
-`bugs/`, for the owner to file: `redim-inverted-bounds-error`, `database-compare-no-error`,
-`instr-invalid-lcid-empty-string`, `string-null-character`, `strconv-east-asian-lcid`.
+**Batches 0, 1 and 2 are done, reviewed by the owner, and committed on `staging`.** The
+tooling, the central page and every page of the VBA `Strings` module are in place: 339 cases
+in `errors/VBA.Strings.yml`, and a Common Errors section on 28 of the module's 30 pages.
 
-**Next: batch 3, VBA `Conversion`** (or any other batch: they are independent). Follow *How a
-batch runs* below; the style is settled, so a batch no longer needs the owner's review of its
-first pages, only of the questions it raises.
+**Batch 3, VBA `Conversion`, is done and committed on `staging`** (not pushed; 2026-10-21):
+299 cases in `errors/VBA.Conversion.yml`, all agreeing with the data in twinBASIC 32-bit and
+VB6 on BETA 1010, and a section on 23 of the module's 28 pages (CVar, Fix, Int and Nz raise
+nothing of their own; the index documents nothing). No row is `bug: pending`. It awaits the
+owner's answer to one question (*Batch 3 findings*, last item).
+
+Every difference from VB6 found so far is queued in BUGS-TO-REPORT.md with a reproducer under
+`bugs/`, for the owner to file: `redim-inverted-bounds-error`, `database-compare-no-error`,
+`instr-invalid-lcid-empty-string`, `string-null-character`, `strconv-east-asian-lcid`, and from
+batch 3 `val-suffix-overflow-no-error`, `error-function-above-65535`,
+`cdate-string-decimal-out-of-range` and `hex-double-above-2-to-62` (a twinBASIC-only defect).
+Batch 3 also cites two entries queued before it, `date-out-of-range-no-error` and
+`clnglng-2-to-63-no-overflow`, whose HTML comments now name the Conversion pages too.
+
+**Next: any batch from 4 on** (they are independent). Follow *How a batch runs* below.
 
 ## Owner's decisions
 
@@ -118,7 +125,8 @@ What `errors.mjs messages` found (BETA 1010):
   these the two messages differ, and the file says `{ raised, error }`. The sections show
   `Err.Description` (owner: settled); showing `Error$(n)` instead would be a one-line change in
   `renderSection` (`.raised` to `.error`).
-- **Differences from VB6 that batch 8 (`ErrObject`) should take up**, none queued yet:
+- **Differences from VB6 that batch 8 (`ErrObject`) should take up**, none queued yet (batch 3
+  queued `Error$` above 65535, `error-function-above-65535`):
   `Err.Raise n` of a number from 1 to 65535 without a message of its own leaves
   `Err.Description` empty in twinBASIC below 747, and from 747 up gives the Windows system
   message of that number (*Page fault was a transition fault.* for 747); VB6 gives
@@ -320,6 +328,41 @@ later batch knows what to look for.
 - **Extensions** (owner): `Join` and `Filter` take a `Long` or `Double` array; VB6 raises 5 and
   13 for a `Long` one.
 
+## Batch 3 findings (VBA `Conversion`, BETA 1010)
+
+Both runtimes agree unless said.
+
+- **What a C function lists**: 6 for a value outside its type (after rounding: `CByte(255.5)`,
+  `CInt(32767.5)`; -0.5 rounds to 0 and passes), 13 for a string that is not a number, 94 for
+  **Null**. Their parameter is any expression, so the conversion is their own work, and listed;
+  13 for an argument of the wrong kind on a page that names a numeric parameter (`Fix("abc")`,
+  `Str("abc")`, `CVErr("abc")`) is not. An **Error** value converts quietly in `CBool`, `CByte`,
+  `CInt`, `CLng`, `CDbl` and `CStr`, and raises 13 in `Fix`, `Int`, `Hex`, `Str`, `Val` and
+  `CDate`. An object argument (91 for **Nothing**) was left out: it is the default member's error.
+- **Constants**: a probe of a `Double` boundary near 2^62 or 2^63 uses a variable (`X = 2 ^ 63`),
+  never a literal: the constant 2^63 converts wrongly (`clnglng-2-to-63-no-overflow`), and a
+  32-bit build can raise a late 6 after a constant overflow (`const-double-expression-after-overflow-32bit`).
+- **`CLngPtr`**: its 32-bit row has `win64: 0` (`run --runtime win64 --only CLngPtr` checks it).
+- **`CDate`** takes any number other than a **Decimal** with no error (`date-out-of-range-no-error`,
+  VB6 6), a string holding such a number with none (VB6 13), and raises 6 for a **Decimal** (VB6
+  13; both `cdate-string-decimal-out-of-range`). The page has a WARNING. `CVDate` raises 13 for
+  all of these in both, and returns **Null** for **Null**.
+- **`Val`**: 13 for a fraction with `%` or `&`; VB6 raises 6 for a whole number outside the
+  suffix's type (`%`, `&`, `@`), twinBASIC returns it (`val-suffix-overflow-no-error`, owner: a
+  bug). `ValDec` ignores the suffixes.
+- **`Error`/`Error$`**: VB6 raises 6 above 65,535 (after rounding), twinBASIC returns a message
+  (`error-function-above-65535`, owner: a bug; taken from batch 8's list). Negative numbers pass.
+- **`CVErr`** raises 5 outside 0--65,535 (after rounding).
+- **Extension** (owner): `Hex` and `Oct` take any number in the `LongLong` range, where VB6
+  raises 6 outside a `Long`. A `Single` or `Double` of 2^62 or more in magnitude raises 6 in
+  `Hex`, `Oct` and `Bin` (`hex-double-above-2-to-62`; -2^62 itself passes); a `LongLong`,
+  `Decimal` or string does not.
+- **Question for the owner**: a negative `Single`, `Double`, `Currency`, `Decimal` or numeric
+  string in the `Long` range gives `Hex` 16 characters (`Oct` 22, `Bin` 64) in twinBASIC, the
+  `LongLong` form; VB6 gives 8 (11), the `Long` form: `Hex(-1#)` is `"FFFFFFFF"` in VB6. A
+  negative `Integer` or `Long` agrees. The Hex and Oct pages state this in their extension NOTE;
+  is it part of the extension, or a bug to queue? Not an error, so not in the data.
+
 ## Batches
 
 Each batch is one session. They are independent after batch 0, so any order works, and
@@ -330,7 +373,7 @@ each can be run when there is budget. Status is kept here.
 | 0 | Tooling: data format, probe generator (twinBASIC and VB6), checker, section writer, the gate | --- | done; reviewed 2026-10-20 |
 | 1 | The central Run-time errors page | 1 | done; reviewed 2026-10-20; list of pages per number and `tb:Errors` shortcut 2026-10-21 |
 | 2 | **Pilot: VBA `Strings`** --- settled the section's style with the owner | 30 | done: 28 sections, 339 cases; reviewed 2026-10-21 |
-| 3 | VBA `Conversion` | 28 | not started |
+| 3 | VBA `Conversion` | 28 | done: 23 sections, 299 cases; one question open |
 | 4 | VBA `Math` (also win64) | 17 | not started |
 | 5 | VBA `DateTime` | 20 | not started |
 | 6 | VBA `Information` and `Interaction` | 54 | not started |
