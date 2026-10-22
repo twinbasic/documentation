@@ -1,0 +1,176 @@
+' Regression tests: a procedure that refuses an argument raises the number VB6 and 64-bit VBA
+' raise (the VB6 project beside this one prints them), not -2147467259, Unspecified error.
+' No case writes to the registry: GetSetting and DeleteSetting are given names that do not
+' exist. tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: errors twinBASIC already raises with VB's numbers.
+    [TestCase]
+    Public Sub LBound_UnsizedArray_Raises9()
+        Dim A() As Long
+        Dim N As Long
+        On Error Resume Next
+        N = LBound(A)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub QBColor_Sixteen_Raises5()
+        Dim N As Long
+        On Error Resume Next
+        N = QBColor(16)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_Null_Raises94()
+        Dim S As String
+        On Error Resume Next
+        S = Environ(Null)
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    ' The defect: each of these raises -2147467259.
+    [TestCase]
+    Public Sub LBound_DimensionZero_Raises9()
+        Dim A(1 To 3) As Long
+        Dim N As Long
+        On Error Resume Next
+        N = LBound(A, 0)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UBound_DimensionPastRank_Raises9()
+        Dim A(1 To 3) As Long
+        Dim N As Long
+        On Error Resume Next
+        N = UBound(A, 2)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub LBound_Dimension32768_Raises6()
+        Dim A(1 To 3) As Long
+        Dim N As Long
+        On Error Resume Next
+        N = LBound(A, 32768)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Switch_OddArguments_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Switch(True, 1, False)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Partition_NegativeStart_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Partition(5, -1, 10, 1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Partition_IntervalZero_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Partition(5, 0, 10, 0)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Partition_StringNumber_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = Partition("abc", 0, 10, 1)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Partition_BeyondLongLong_Raises6()
+        Dim V As Variant
+        On Error Resume Next
+        V = Partition(1E+20, 0, 10, 1)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_Zero_Raises5()
+        Dim S As String
+        On Error Resume Next
+        S = Environ(0)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_PositionWithNoEntry_Raises5()
+        Dim S As String
+        On Error Resume Next
+        S = Environ(32767)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_EmptyName_Raises5()
+        Dim S As String
+        On Error Resume Next
+        S = Environ("")
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_Above32767_Raises6()
+        Dim S As String
+        On Error Resume Next
+        S = Environ(32768)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_NoArguments_Raises13()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject()
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_CallTypeZero_Raises438()
+        Dim D As Object
+        Dim V As Variant
+        Set D = CreateObject("Scripting.Dictionary")
+        On Error Resume Next
+        V = CallByName(D, "Count", 0)
+        Assert.Strict.AreEqual 438&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_Nothing_Raises5()
+        Dim D As Object
+        Dim V As Variant
+        On Error Resume Next
+        V = CallByName(D, "Count", VbGet)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetSetting_EmptyAppName_Raises5()
+        Dim S As String
+        On Error Resume Next
+        S = GetSetting("", "Section", "Key")
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DeleteSetting_MissingApplication_Raises5()
+        On Error Resume Next
+        DeleteSetting "NoSuchApplication-argument-errors-unspecified-error"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module

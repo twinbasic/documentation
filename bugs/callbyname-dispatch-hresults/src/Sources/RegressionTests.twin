@@ -1,0 +1,95 @@
+' Regression tests: an error a COM object raises reaches CallByName, and a late-bound property
+' assignment, as the object's own number, as it reaches a late-bound method call, and as VB6
+' and 64-bit VBA give it (the VB6 project beside this one prints them); CallByName with an empty
+' name raises 450. The object is a Scripting.Dictionary. tbrun --tests runs each case and prints
+' PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function NewDictionary() As Object
+        Set NewDictionary = CreateObject("Scripting.Dictionary")
+    End Function
+
+    ' Controls: a late-bound method call gets the object's own number, and CallByName of a
+    ' name the object does not have raises 438.
+    [TestCase]
+    Public Sub LateBound_AddExistingKey_Raises457()
+        Dim D As Object
+        Set D = NewDictionary()
+        D.Add "x", 1
+        On Error Resume Next
+        D.Add "x", 2
+        Assert.Strict.AreEqual 457&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_RemoveMissingKey_Raises32811()
+        Dim D As Object
+        Set D = NewDictionary()
+        On Error Resume Next
+        D.Remove "nope"
+        Assert.Strict.AreEqual 32811&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_UnknownName_Raises438()
+        Dim D As Object
+        Dim V As Variant
+        Set D = NewDictionary()
+        On Error Resume Next
+        V = CallByName(D, "Nope", VbGet)
+        Assert.Strict.AreEqual 438&, Err.Number
+    End Sub
+
+    ' The defect: the object's own error arrives as -2147352567, Exception occurred.
+    [TestCase]
+    Public Sub CallByName_AddExistingKey_Raises457()
+        Dim D As Object
+        Set D = NewDictionary()
+        D.Add "x", 1
+        On Error Resume Next
+        CallByName D, "Add", VbMethod, "x", 2
+        Assert.Strict.AreEqual 457&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_RemoveMissingKey_Raises32811()
+        Dim D As Object
+        Set D = NewDictionary()
+        On Error Resume Next
+        CallByName D, "Remove", VbMethod, "nope"
+        Assert.Strict.AreEqual 32811&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_CompareModeAfterAdd_Raises5()
+        Dim D As Object
+        Set D = NewDictionary()
+        D.Add "x", 1
+        On Error Resume Next
+        D.CompareMode = 1
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_CompareModeAfterAdd_Raises5()
+        Dim D As Object
+        Set D = NewDictionary()
+        D.Add "x", 1
+        On Error Resume Next
+        CallByName D, "CompareMode", VbLet, 1
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' The defect: an empty name raises 438, where VB6 raises 450.
+    [TestCase]
+    Public Sub CallByName_EmptyName_Raises450()
+        Dim D As Object
+        Dim V As Variant
+        Set D = NewDictionary()
+        On Error Resume Next
+        V = CallByName(D, "", VbGet)
+        Assert.Strict.AreEqual 450&, Err.Number
+    End Sub
+
+End Module

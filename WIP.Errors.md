@@ -636,7 +636,21 @@ one key (a VB6 case failed when another runtime's cleanup removed its section).
   and each page has a NOTE in its prose saying what VB6 does.
 - **Owner, 2026-10-22: the bugs are grouped as proposed**: one entry for the -2147467259 family,
   one for CreateObject's and GetObject's raw HRESULTs, one for CallByName's `DISP_E_` HRESULTs,
-  and one for the RaiseEventByName crash.
+  and one for the RaiseEventByName crash. Progress (reproducers under `bugs/`, each a `tests`
+  reproducer with a `vb6/` side, run and `repro.json` written; entries in BUGS-TO-REPORT.md
+  not written yet unless ticked):
+  - [x] reproducer `argument-errors-unspecified-error` (3 PASS controls, 17 FAIL), [ ] entry
+  - [x] reproducer `createobject-getobject-raw-hresults` (3 PASS, 8 FAIL), [ ] entry
+  - [x] reproducer `callbyname-dispatch-hresults` (3 PASS, 5 FAIL), [ ] entry. Narrowed:
+    `latebound-hresult-mapping` (queued) already has `DISP_E_BADPARAMCOUNT` (450), so the
+    wrong-count rows cite it; this entry is what is left: a COM object's own error reaches
+    `CallByName` (any call type) and a late-bound property `Let` statement as -2147352567,
+    though a late-bound method statement gets it right (`D.Add "x", 2` raises 457 in all four);
+    and `""` as *procname* raises 438, VB 450.
+  - [ ] `&H80020011` (`DISP_E_NOTACOLLECTION`, VB 451, for a statement too: `D.Count(1)`) goes
+    into `latebound-hresult-mapping`'s table, with a test case in its reproducer
+  - [ ] reproducer and entry `raiseeventbyname-no-events-crash`
+  - [ ] the data's `bug: pending` replaced by the slugs; the WARNINGs' HTML comments
 - **Agree in all four**: LBound/UBound of an unsized or erased array 9, of a **Variant** holding
   no array 13, *dimension* **Null** 94; QBColor outside 0 to 15 after rounding 5; RGB's negative
   component (after rounding) 5, above 255 taken as 255; Null 94 in QBColor, RGB, Choose's
