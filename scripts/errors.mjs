@@ -60,6 +60,7 @@ import {
   VB_NUMBERS,
 } from "./lib/errors-data.mjs";
 import { encodeAnsi, findVb6, NO_VB6, parseMakeLog, runRepro } from "./lib/vb6.mjs";
+import { faultText } from "./lib/win-fault.mjs";
 import { findAccess64, NO_VBA64, VBA_MODULE, VbaSession } from "./lib/vba.mjs";
 
 exitOnCrash();
@@ -299,7 +300,7 @@ async function runTb(dir, cases, arch, text) {
   if (!json?.exeRun)
     return { harness: `tbrun exit ${r.code}: ${(r.stderr || r.stdout).trim().split("\n").slice(-3).join(" / ")}` };
   const e = json.exeRun;
-  const note = [e.fault, e.timedOut && "timed out", ...e.dialogs.map((d) => `a box: ${d.text}`)]
+  const note = [e.fault && faultText(e.fault), e.timedOut && "timed out", ...e.dialogs.map((d) => `a box: ${d.text}`)]
     .filter(Boolean)
     .join("; ");
   return { lines: e.lines, note };
@@ -321,7 +322,7 @@ async function runVb6(dir, cases, vb6, text) {
     if (id === null) return { harness: `VB6 did not build the probe: ${message}` };
     return { refused: new Map([[id, message]]) };
   }
-  const note = [r.fault, r.timedOut && "timed out", ...r.dialogs.map((d) => `a box: ${d.text}`)]
+  const note = [r.fault && faultText(r.fault), r.timedOut && "timed out", ...r.dialogs.map((d) => `a box: ${d.text}`)]
     .filter(Boolean)
     .join("; ");
   return { lines: r.lines, note };

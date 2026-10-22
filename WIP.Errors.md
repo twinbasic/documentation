@@ -58,9 +58,10 @@ by default, for every file. Batches 2 to 5 and `Core.yml` were re-checked on BET
 The 64-bit VBA results are in the queued entries of BUGS-TO-REPORT.md (2026-10-22): nothing
 of the re-check is left.
 
-**Next: batch 6, VBA `Information` and `Interaction`** (or any batch from 6 on: they
-are independent). Follow *How a batch runs* below, and read the findings of batches 2 to 5 and
-of the re-check for what to probe.
+**In progress: batch 6a**, VBA `Information` and the non-interactive procedures of
+`Interaction` (the owner split batch 6, 2026-10-22; 6b, the interactive ones, comes after).
+Follow *How a batch runs* below, and read the findings of batches 2 to 5 and of the re-check
+for what to probe. Its findings go under *Batch 6a findings* as they come.
 
 ## Owner's decisions
 
@@ -332,6 +333,12 @@ Windows refuses). `check_errors.mjs` reports a harness the data names and has no
   raises 1001 when the date part or the time part set is not the one given (`Null` skips
   it); it does nothing when the case has already raised. 32-bit and 64-bit; in 64-bit VBA it
   patches Access's own process for the case, and works (every Date and Time case agrees).
+- **`registry`** (batch 6a) --- `SaveSetting`, `GetSetting`, `GetAllSettings`,
+  `DeleteSetting`. A case names the application `registry_App` (`tbdocsErrorsProbe`), and
+  `registry_Begin` and `registry_End` delete that application's whole key under
+  `HKCU\Software\VB and VBA Program Settings`, keeping the case's error (raised again with its
+  description once the key is gone), so nothing a case writes stays in the user's registry. A
+  case's `setup` may save what it reads. Check after a run that the key is absent.
 
 **YAML pitfalls**, each met in batch 2:
 
@@ -563,6 +570,66 @@ Owner's answers (2026-10-22): 1, `Date =` and `Time =` of a number are an extens
 the week arguments may be extensions where they make sense and have no bugs; 3, Calendar is
 not reported; 4, no 70 rows. Then: a *firstweekofyear* outside 0 to 3 is a bug.
 
+## Batch 6a findings (VBA `Information` and non-interactive `Interaction`, BETA 1010)
+
+Status (2026-10-22): two exploration rounds done (`errors/Explore.yml`, deleted before the
+commit); next, write `errors/VBA.Information.yml` and `errors/VBA.Interaction.yml` from them,
+then the pages, then the questions and bugs below. twinBASIC 64-bit agrees with 32-bit on every
+case so far.
+
+- **twinBASIC raises -2147467259 (`&H80004005`, *Unspecified error*) where VB6 and 64-bit VBA
+  raise 5, 9 or 13 for an argument the procedure refuses**: LBound/UBound's *dimension* out of
+  range (VB 9), Switch with an odd number of arguments (5), Partition's *start* below 0,
+  *stop* not above *start*, *interval* below 1 (after rounding) (5) and a string *number* (13),
+  Environ's *number* of 0 or less (after rounding), `""`, **Empty**, **True**, and a position
+  with no entry (5: the page's "zero-length string is returned" is wrong for both VB runtimes),
+  GetObject() with no arguments (13), CallByName's *calltype* not 1 to 4 (VB 438) and an
+  object of **Nothing** (5), and the four registry procedures' `""` *appname*, *section* or
+  *key*, and DeleteSetting of a missing application, section or key (5). The same family as
+  `date-time-set-errors` and `redim-inverted-bounds-error`. **Proposal for the owner**: one bug
+  entry for the family. Above the VB `Integer` range VB raises 6 where twinBASIC raises
+  -2147467259 (Environ's *number* from 32,768, LBound's *dimension* 32,768).
+- **COM creation raises the raw HRESULT where VB maps it**: CreateObject of an unknown ProgID,
+  a CLSID without `new:`, a number: -2147221020 (`MK_E_SYNTAX`); `new:` with an unregistered
+  CLSID: -2147221164 (`REGDB_E_CLASSNOTREG`); `new:` with a malformed one: -2147221005
+  (`CO_E_CLASSSTRING`); `""`: 5. VB6 and 64-bit VBA raise 429 for each. GetObject: a missing file
+  -2147221014 (`MK_E_CANTOPENFILE`), with a class -2147467262 (`E_NOINTERFACE`) where VB raises
+  432; an unknown class -2147221005 and no running instance -2147221021 (`MK_E_UNAVAILABLE`)
+  where VB raises 429. A remote server that does not resolve: -2147023174 in all four; a
+  `"notaprogid:xyz"` moniker: -2147221020 in all four. **Proposal**: a second bug entry.
+- **CallByName raises DISP_E_ HRESULTs where VB maps them**: a wrong argument count
+  -2147352562 (`DISP_E_BADPARAMCOUNT`; VB 450), a property given arguments it does not take
+  -2147352559 (VB 451), and an error the COM member raises -2147352567 (`DISP_E_EXCEPTION`;
+  VB raises the member's own number: Dictionary.Add of a key that exists 457, Remove of a
+  missing key 32811, CompareMode set after an Add 5). `""` as *procname*: 438, VB 450. The
+  page already has a NOTE for a twinBASIC member's constant Err.Raise; this widens it.
+  **Proposal**: a third entry, or fold into the page's existing NOTE's bug.
+- **A VBA Collection is not reachable through CallByName in VB6 or 64-bit VBA**: even
+  `CallByName(C, "Count", vbGet)` raises 438 there (twinBASIC: 0). The data uses
+  `Scripting.Dictionary`. Not queued: the VB runtimes' own limitation.
+- **`RaiseEventByName` and `RaiseEventByName2` crash** (access violation, 32-bit and 64-bit)
+  given an object that is not an event source (`Collection`, `Dictionary`); **Nothing** raises
+  91. A crash cannot be a case: a WARNING by hand on both pages, and a bug to queue.
+- **32-bit twinBASIC follows 64-bit VBA, not VB6, for large numbers**: Partition of a *number*
+  or *stop* beyond a **Long** (VB6 6, twinBASIC and 64-bit VBA none); Choose of an *index* beyond
+  the **Single** range (VB6 none, twinBASIC and 64-bit VBA 6). **Question for the owner**: as
+  with Hex, is matching 64-bit VBA here fine in a 32-bit build, or a bug against VB6?
+- **Agree in all four**: LBound/UBound of an unsized or erased array 9, of a **Variant** holding
+  no array 13, *dimension* **Null** 94; QBColor outside 0 to 15 after rounding 5; RGB's negative
+  component (after rounding) 5, above 255 taken as 255; Null 94 in QBColor, RGB, Choose's
+  *index*, Environ, CreateObject, GetObject, CallByName, and every registry argument; Switch,
+  IIf and If of a string that is not a Boolean 13; the Is* functions, TypeName, VarType,
+  ObjPtr, StrPtr, IMEStatus, Erl and Command raise nothing.
+- **twinBASIC-only**: RGBA's negative component 5; RGB_R/G/B and RGBA_A raise only 94 for
+  **Null**; TranslateColor raises 5 for a high byte other than 0, 1, 2 or &H80, and for a
+  system colour index above 30 (&H8000001E passes, &H8000001F raises); Array's destructuring
+  form raises 5 for a right side that is not an array (**Null** too) and 9 for one with fewer
+  elements or unsized; CallByDispId: an unknown DISPID 438, *calltype* outside 1 to 4 and
+  **Nothing** -2147467259, a wrong argument count -2147352562.
+- **Type of a parameter the page leaves out**: QBColor's and RGB's parameters are **Integer**
+  in VB (32,768 raises 6 in all four): state the type on the page, and the 6 is then the
+  conversion, not listed.
+
 ## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
 
 Batches 2 to 5 and `Core.yml` in all four runtimes. Every runtime agreed with the data as it
@@ -642,7 +709,8 @@ each can be run when there is budget. Status is kept here.
 | 4 | VBA `Math` | 17 | done: 15 sections, 132 cases; 2026-10-22 |
 | 2--5 | Re-check of batches 2 to 5 and Core in four runtimes (64-bit VBA added) | --- | done: all agree; committed 2026-10-22, see *The 64-bit VBA re-check* |
 | 5 | VBA `DateTime` | 20 | done: 17 sections, 328 cases; owner's questions answered 2026-10-22 |
-| 6 | VBA `Information` and `Interaction` | 54 | not started |
+| 6a | VBA `Information`, and `Interaction`'s non-interactive procedures: `CallByName`, `CallByDispId`, `Choose`, `Command`, `CreateObject`, `GetObject`, `Environ`, `IIf`, `If`, `Partition`, `Switch`, `RaiseEventByName`, `RaiseEventByName2`, `SaveSetting`, `GetSetting`, `GetAllSettings`, `DeleteSetting` (owner split batch 6, 2026-10-22) | 45 | in progress |
+| 6b | `Interaction`'s interactive procedures: `AppActivate`, `Beep`, `DoEvents`, `InputBox`, `MsgBox`, `SendKeys`, `Shell` (a probe never calls `MsgBox` or `InputBox`; `SendKeys` only with strings refused before a key is sent; `Shell` only with a missing program or `cmd.exe /c exit`) | 7 | not started |
 | 7 | VBA `FileSystem` | 23 | not started |
 | 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | not started |
 | 9 | VBA `Financial` | 14 | not started |
