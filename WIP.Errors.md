@@ -53,8 +53,11 @@ pointed it out). `errors.mjs run` and `messages` now measure twinBASIC 32-bit (`
 64-bit (`win64`), VB6 (`vb6`) and 64-bit VBA (`vba64`, run in 64-bit Access: `scripts/lib/vba.mjs`)
 by default, for every file. Batches 2 to 5 and `Core.yml` were re-checked on BETA 1010: **all
 1,109 cases agree with the data in all four runtimes** (1,005 of them run in 64-bit VBA), and
-`messages` agrees in all four. See *The 64-bit VBA re-check* below, and its *State of the
-work* for what is left (the BUGS-TO-REPORT.md text).
+`messages` agrees in all four. See *The 64-bit VBA re-check* below.
+
+**In progress (2026-10-22): the 64-bit VBA results go into the queued entries of
+BUGS-TO-REPORT.md.** The plan, the entries and how far it has got are under *The 64-bit VBA
+re-check*, *State of the work*: pick it up there.
 
 **Next, after it: batch 6, VBA `Information` and `Interaction`** (or any batch from 6 on: they
 are independent). Follow *How a batch runs* below, and read the findings of batches 2 to 5 and
@@ -611,11 +614,27 @@ Done:
 - `errors.mjs write` run: 17 pages' NOTEs regenerated. Hand NOTEs edited: Hex, Oct, Join,
   Filter, Date, Time, CLngLng.
 
-Left to do:
+In progress: **the 64-bit VBA results in the queued entries of BUGS-TO-REPORT.md.** Each
+queued entry the data cites (or that the re-check touched) gets what 64-bit VBA does, from
+the four-runtime run of 2026-10-22 (or a VbaSession probe where the data has no case), in the
+entry's text where it says what VB6 does: one sentence, *64-bit VBA (VBA 7.1, in Access)
+raises ... , as VB6 does*, and that twinBASIC 64-bit does as 32-bit. Filed entries
+(`bugs/filed/`) are not touched: their issues are the owner's to edit. Commit when done, by
+path. The entries, ticked as each is done:
 
-1. Add the 64-bit VBA results to BUGS-TO-REPORT.md entries' text where they strengthen them
-   (`clnglng-2-to-63-no-overflow`, and each queued `vb6:` entry: "64-bit VBA agrees with VB6");
-   not to filed ones, whose issues only the owner edits.
+- [ ] `clnglng-2-to-63-no-overflow` --- 64-bit VBA raises 6 for `CLngLng(2 ^ 63)`,
+  `CLngLng(9223372036854775808#)`, `CLngLng(9223372036854775807)` and a variable of 2^63
+- [ ] `date-out-of-range-no-error`
+- [ ] `date-time-set-errors`
+- [ ] `dateadd-date-out-of-range-overflow`
+- [ ] `dateadd-year-below-100`
+- [ ] `datepart-firstdayofweek-out-of-range`
+- [ ] `datepart-firstweekofyear-out-of-range`
+- [ ] `datepart-null-checks-interval`
+- [ ] `datepart-week-year-100` --- a hang, not in the data: needs a VbaSession probe
+- [ ] `instr-invalid-lcid-empty-string`
+- [ ] `strconv-east-asian-lcid`
+- `database-compare-no-error` is left alone: Access's VBA takes 2 by design (above).
 
 ## Batches
 
