@@ -34,8 +34,8 @@ The result holds only the digits `0` and `1`, with no leading zeros and no prefi
 
 **Bin** accepts the same arguments as [**Hex**](Hex) and [**Oct**](Oct) and returns the same value in a different base. A string that holds a number, including one written with the `&H` or `&O` prefix, is converted as the number.
 
-> [!NOTE] BETA 1010
-> A **Single** or **Double** of 2^62 (4,611,686,018,427,387,904) or more, or less than -2^62, raises error 6, *Overflow*, though its value fits a **LongLong**. A **LongLong**, **Decimal** or string of the same value is converted; so is `Bin(CLngLng(x))`.
+> [!NOTE]
+> A **Single** or **Double** of 2^62 (4,611,686,018,427,387,904) or more, or less than -2^62, raises error 6, *Overflow*, though its value fits a **LongLong**, as it does in **Hex** and **Oct**. A **LongLong**, **Decimal** or string of the same value is converted; so is `Bin(CLngLng(x))`.
 
 For the opposite of **Bin**, precede a binary value with **&B**: `&B101` is the number 5 (see [Literals](../../../Features/Language/Literals)).
 

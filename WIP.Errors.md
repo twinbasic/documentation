@@ -23,7 +23,8 @@ extension) on 2026-10-21.
 Every difference from VB6 found so far has a reproducer. Filed upstream, under `bugs/filed/`
 (2026-10-22): `redim-inverted-bounds-error`, `string-null-character`, and from batch 3
 `val-suffix-overflow-no-error`, `error-function-above-65535`,
-`cdate-string-decimal-out-of-range` and `hex-double-above-2-to-62` (a twinBASIC-only defect).
+and `cdate-string-decimal-out-of-range`. (`hex-double-above-2-to-62` was withdrawn on
+2026-10-22, owner: 64-bit VBA does the same; its reproducer is deleted.)
 Still queued in BUGS-TO-REPORT.md, under `bugs/`: `database-compare-no-error`,
 `instr-invalid-lcid-empty-string` and `strconv-east-asian-lcid`. Batch 3 also cites two
 entries queued before it, `date-out-of-range-no-error` and `clnglng-2-to-63-no-overflow`,
@@ -53,7 +54,7 @@ pointed it out). `errors.mjs run` and `messages` now measure twinBASIC 32-bit (`
 by default, for every file. Batches 2 to 5 and `Core.yml` were re-checked on BETA 1010: **all
 1,109 cases agree with the data in all four runtimes** (1,005 of them run in 64-bit VBA), and
 `messages` agrees in all four. See *The 64-bit VBA re-check* below, and its *State of the
-work* for what is left (BUGS-TO-REPORT.md text, two questions with the owner).
+work* for what is left (BUGS-TO-REPORT.md text, one question with the owner).
 
 **Next, after it: batch 6, VBA `Information` and `Interaction`** (or any batch from 6 on: they
 are independent). Follow *How a batch runs* below, and read the findings of batches 2 to 5 and
@@ -458,8 +459,8 @@ Both runtimes agree unless said.
 - **`CVErr`** raises 5 outside 0--65,535 (after rounding).
 - **Extension** (owner): `Hex` and `Oct` take any number in the `LongLong` range, where VB6
   raises 6 outside a `Long`. A `Single` or `Double` of 2^62 or more in magnitude raises 6 in
-  `Hex`, `Oct` and `Bin` (`hex-double-above-2-to-62`; -2^62 itself passes); a `LongLong`,
-  `Decimal` or string does not.
+  `Hex`, `Oct` and `Bin` (-2^62 itself passes); a `LongLong`, `Decimal` or string does not.
+  64-bit VBA does both (the re-check, below), so neither is an extension nor a bug against it.
 - **Extension** (owner, 2026-10-21): a negative `Single`, `Double`, `Currency`, `Decimal` or
   numeric string gives `Hex` 16 characters (`Oct` 22, `Bin` 64) in twinBASIC, the `LongLong`
   form; VB6 gives 8 (11), the `Long` form: `Hex(-1#)` is `"FFFFFFFF"` in VB6. A negative
@@ -581,10 +582,10 @@ stood, apart from the cases that follow, and twinBASIC 64-bit agreed with 32-bit
   a negative non-integer gives 16 (22) characters: `Hex(-1#)` is `FFFFFFFFFFFFFFFF`, `Hex(-1&)`
   `FFFFFFFF`. So the batch-3 "extensions" are 64-bit VBA's own behaviour; the Hex and Oct pages'
   NOTEs now say so. **And a `Double` or `Single` of 2^62 or more raises 6 in 64-bit VBA too**
-  (`Hex(2^62)`, `Oct(2^62)`, `-2^62` passes), which is what the filed twinBASIC bug
-  `hex-double-above-2-to-62` (bugs/filed/) reports as a defect. **Open, for the owner**: whether
-  that bug should be withdrawn or reworded now that twinBASIC matches 64-bit VBA (the pages'
-  NOTEs keep their BETA 1010 label and add "64-bit VBA raises the same error").
+  (`Hex(2^62)`, `Oct(2^62)`, `-2^62` passes). The filed bug `hex-double-above-2-to-62` said
+  otherwise: **the owner withdrew it** (2026-10-22, closed upstream), its reproducer is deleted,
+  and the Hex, Oct and Bin NOTEs are now unlabelled statements of the limit (*as in 64-bit
+  VBA*; Bin, which VBA lacks, *as it does in Hex and Oct*).
 - **`CLngLng(2 ^ 63)`, `CLngLng(9223372036854775808#)` and `CLngLng(9223372036854775807)` raise
   6 in 64-bit VBA**; twinBASIC returns the smallest `LongLong` (`clnglng-2-to-63-no-overflow`,
   queued): the bug is confirmed against 64-bit VBA, and the CLngLng WARNING now says so. Add
@@ -614,7 +615,7 @@ Left to do:
 1. Add the 64-bit VBA results to BUGS-TO-REPORT.md entries' text where they strengthen them
    (`clnglng-2-to-63-no-overflow`, and each queued `vb6:` entry: "64-bit VBA agrees with VB6");
    not to filed ones, whose issues only the owner edits.
-2. The two open questions above are with the owner.
+2. The vbDatabaseCompare question above (VBA outside Access) is with the owner.
 
 ## Batches
 

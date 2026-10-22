@@ -35,8 +35,8 @@ The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Vari
 > [!NOTE]
 > VB6's **Oct** takes only a number in the range of a **Long**, and raises error 6, *Overflow*, for any other. It gives a negative **Single**, **Double**, **Currency** or **Decimal**, or a string holding a negative number, the 11 characters of a **Long**: `Oct(-1#)` is `"37777777777"` in VB6 and `"1777777777777777777777"` in twinBASIC. 64-bit VBA takes the range of a **LongLong** and gives the 22 characters, as twinBASIC does.
 
-> [!NOTE] BETA 1010
-> A **Single** or **Double** of 2^62 (4,611,686,018,427,387,904) or more, or less than -2^62, raises error 6, *Overflow*, though its value fits a **LongLong**. A **LongLong**, **Decimal** or string of the same value is converted; so is `Oct(CLngLng(x))`. 64-bit VBA raises the same error.
+> [!NOTE]
+> A **Single** or **Double** of 2^62 (4,611,686,018,427,387,904) or more, or less than -2^62, raises error 6, *Overflow*, though its value fits a **LongLong**, as in 64-bit VBA. A **LongLong**, **Decimal** or string of the same value is converted; so is `Oct(CLngLng(x))`.
 
 Octal numbers can be represented directly by preceding numbers in the proper range with `&O`. For example, `&O10` is the octal notation for decimal 8.
 

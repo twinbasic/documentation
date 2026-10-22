@@ -35,8 +35,8 @@ The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Vari
 > [!NOTE]
 > VB6's **Hex** takes only a number in the range of a **Long**, and raises error 6, *Overflow*, for any other. It gives a negative **Single**, **Double**, **Currency** or **Decimal**, or a string holding a negative number, the eight characters of a **Long**: `Hex(-1#)` is `"FFFFFFFF"` in VB6 and `"FFFFFFFFFFFFFFFF"` in twinBASIC. 64-bit VBA takes the range of a **LongLong** and gives the 16 characters, as twinBASIC does.
 
-> [!NOTE] BETA 1010
-> A **Single** or **Double** of 2^62 (4,611,686,018,427,387,904) or more, or less than -2^62, raises error 6, *Overflow*, though its value fits a **LongLong**. A **LongLong**, **Decimal** or string of the same value is converted; so is `Hex(CLngLng(x))`. 64-bit VBA raises the same error.
+> [!NOTE]
+> A **Single** or **Double** of 2^62 (4,611,686,018,427,387,904) or more, or less than -2^62, raises error 6, *Overflow*, though its value fits a **LongLong**, as in 64-bit VBA. A **LongLong**, **Decimal** or string of the same value is converted; so is `Hex(CLngLng(x))`.
 
 For the opposite of **Hex**, precede a hexadecimal value with **&H**. For example, `Hex(255)` returns the string `"FF"` and `&HFF` returns the number 255.
 
