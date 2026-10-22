@@ -55,11 +55,10 @@ by default, for every file. Batches 2 to 5 and `Core.yml` were re-checked on BET
 1,109 cases agree with the data in all four runtimes** (1,005 of them run in 64-bit VBA), and
 `messages` agrees in all four. See *The 64-bit VBA re-check* below.
 
-**In progress (2026-10-22): the 64-bit VBA results go into the queued entries of
-BUGS-TO-REPORT.md.** The plan, the entries and how far it has got are under *The 64-bit VBA
-re-check*, *State of the work*: pick it up there.
+The 64-bit VBA results are in the queued entries of BUGS-TO-REPORT.md (2026-10-22): nothing
+of the re-check is left.
 
-**Next, after it: batch 6, VBA `Information` and `Interaction`** (or any batch from 6 on: they
+**Next: batch 6, VBA `Information` and `Interaction`** (or any batch from 6 on: they
 are independent). Follow *How a batch runs* below, and read the findings of batches 2 to 5 and
 of the re-check for what to probe.
 
@@ -614,27 +613,20 @@ Done:
 - `errors.mjs write` run: 17 pages' NOTEs regenerated. Hand NOTEs edited: Hex, Oct, Join,
   Filter, Date, Time, CLngLng.
 
-In progress: **the 64-bit VBA results in the queued entries of BUGS-TO-REPORT.md.** Each
-queued entry the data cites (or that the re-check touched) gets what 64-bit VBA does, from
-the four-runtime run of 2026-10-22 (or a VbaSession probe where the data has no case), in the
-entry's text where it says what VB6 does: one sentence, *64-bit VBA (VBA 7.1, in Access)
-raises ... , as VB6 does*, and that twinBASIC 64-bit does as 32-bit. Filed entries
-(`bugs/filed/`) are not touched: their issues are the owner's to edit. Commit when done, by
-path. The entries, ticked as each is done:
-
-- [ ] `clnglng-2-to-63-no-overflow` --- 64-bit VBA raises 6 for `CLngLng(2 ^ 63)`,
-  `CLngLng(9223372036854775808#)`, `CLngLng(9223372036854775807)` and a variable of 2^63
-- [ ] `date-out-of-range-no-error`
-- [ ] `date-time-set-errors`
-- [ ] `dateadd-date-out-of-range-overflow`
-- [ ] `dateadd-year-below-100`
-- [ ] `datepart-firstdayofweek-out-of-range`
-- [ ] `datepart-firstweekofyear-out-of-range`
-- [ ] `datepart-null-checks-interval`
-- [ ] `datepart-week-year-100` --- a hang, not in the data: needs a VbaSession probe
-- [ ] `instr-invalid-lcid-empty-string`
-- [ ] `strconv-east-asian-lcid`
-- `database-compare-no-error` is left alone: Access's VBA takes 2 by design (above).
+Then (2026-10-22, done): **the 64-bit VBA results in the queued entries of
+BUGS-TO-REPORT.md.** In every one 64-bit VBA does what VB6 does, and twinBASIC 64-bit what
+32-bit does. Each entry's **Expected behavior** now says *as VB6 and 64-bit VBA ...*, and its
+**Additional context** that a 64-bit build gives the same results and which VBA was used
+(*VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access*), the way a later entry should
+say it too. The entries: `clnglng-2-to-63-no-overflow` (the four constants and four controls,
+checked by a VbaSession probe), `date-out-of-range-no-error` (its six cases and three controls,
+by a probe), `date-time-set-errors`, `dateadd-date-out-of-range-overflow`,
+`dateadd-year-below-100`, `datepart-firstdayofweek-out-of-range`,
+`datepart-firstweekofyear-out-of-range`, `datepart-null-checks-interval`,
+`instr-invalid-lcid-empty-string`, `strconv-east-asian-lcid` (all from the data's run), and
+`datepart-week-year-100` (a probe: 52, 1, 52, 52; `bug_repro.mjs run --arch win64` hangs as
+32-bit does). Filed entries were not touched: their issues are the owner's to edit.
+`database-compare-no-error` was left alone: Access's VBA takes 2 by design (above).
 
 ## Batches
 

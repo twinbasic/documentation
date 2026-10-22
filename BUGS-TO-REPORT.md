@@ -5780,14 +5780,14 @@ End Module
 ```
 
 **Expected behavior**
-Error 6, *Overflow*, at each of the six, as in VB6, and the `Date` keeps its old value. The two ends of the range stay accepted. A `Date` then always holds a value that `CStr`, `Format` and `Year` can read.
+Error 6, *Overflow*, at each of the six, as in VB6 and in 64-bit VBA, and the `Date` keeps its old value. The two ends of the range stay accepted. A `Date` then always holds a value that `CStr`, `Format` and `Year` can read.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. `DateAdd("d", 1, #12/31/9999#)` and `DateSerial(10000, 1, 1)` raise error 5, and `CDate("12/31/10000")` raises error 13, so those do not accept the value. VB6 6.0 raises error 6 for each of the six cases, and builds the controls (the reproducer's `vb6/` project prints them, attached as `date-out-of-range-no-error-vb6.zip`).
+BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. `DateAdd("d", 1, #12/31/9999#)` and `DateSerial(10000, 1, 1)` raise error 5, and `CDate("12/31/10000")` raises error 13, so those do not accept the value. VB6 6.0 raises error 6 for each of the six cases, and builds the controls (the reproducer's `vb6/` project prints them, attached as `date-out-of-range-no-error-vb6.zip`). So does 64-bit VBA, VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 Severity: medium. An out-of-range date is stored silently, and the failure comes later, where the value is formatted or split into parts, or never, where the number is only compared or saved.
 
@@ -5879,14 +5879,14 @@ End Module
 ```
 
 **Expected behavior**
-Error 6, *Overflow*, at each of the four, as for `CLngLng(1E+19)` and for the same value in a variable. VB6 has no `LongLong`; the nearest case, the first `Double` beyond the `Long` range, `CLng(2 ^ 31)`, `CLng(2147483648#)` and `n = 2147483648#`, raises error 6 there as a constant and as a variable (the reproducer's `vb6/` project prints them, attached as `clnglng-2-to-63-no-overflow-vb6.zip`).
+Error 6, *Overflow*, at each of the four, as for `CLngLng(1E+19)` and for the same value in a variable. VB6 has no `LongLong`; the nearest case, the first `Double` beyond the `Long` range, `CLng(2 ^ 31)`, `CLng(2147483648#)` and `n = 2147483648#`, raises error 6 there as a constant and as a variable (the reproducer's `vb6/` project prints them, attached as `clnglng-2-to-63-no-overflow-vb6.zip`). 64-bit VBA, which has `LongLong`, raises error 6 at each of the four and passes the four controls.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. The narrower conversions of constants are right: `CLng(2 ^ 31)`, `CLng(CSng(2 ^ 31))`, `CInt(32768#)`, `CByte(256#)` and `CLngPtr(2 ^ 63)` in a 32-bit build raise error 6. A related defect seen on the way has its own entry: *In a 32-bit build, a constant `Double` expression raises error 6 after a constant that overflows a `Long` or `LongLong`*.
+BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. The narrower conversions of constants are right: `CLng(2 ^ 31)`, `CLng(CSng(2 ^ 31))`, `CInt(32768#)`, `CByte(256#)` and `CLngPtr(2 ^ 63)` in a 32-bit build raise error 6. A related defect seen on the way has its own entry: *In a 32-bit build, a constant `Double` expression raises error 6 after a constant that overflows a `Long` or `LongLong`*. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 Severity: medium. A silently wrong value, but only for one constant, and constants this size are rare. The unsuffixed `9223372036854775807` is the one a program is likely to write.
 
@@ -6525,7 +6525,7 @@ End Module
 ```
 
 **Expected behavior**
-No error, and the result `InStr` gives for a zero-length string with a valid *compare* (0 for a zero-length *string1*, *start* for a zero-length *string2*), as VB6 returns, and as twinBASIC's `InStrB` and `StrComp` return.
+No error, and the result `InStr` gives for a zero-length string with a valid *compare* (0 for a zero-length *string1*, *start* for a zero-length *string2*), as VB6 and 64-bit VBA return, and as twinBASIC's `InStrB` and `StrComp` return.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
@@ -6533,6 +6533,8 @@ No error, and the result `InStr` gives for a zero-length string with a valid *co
 
 **Additional context**
 Severity: low. Only a *compare* that VB6 would refuse for any other strings is affected, but a program that ran under VB6 stops with error 5 where a string is empty.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 What does not reproduce it: an invalid *compare* with neither string zero-length, or with *start* past the end of *string1*, which VB6 refuses too; `InStrRev` and `Replace`, which check *compare* first in VB6 as well; and `InStrB` and `StrComp`, which already behave as VB6 does.
 
@@ -6618,7 +6620,7 @@ End Module
 ```
 
 **Expected behavior**
-The conversion, made with the rules of the locale *LCID* names, as VB6 makes it. Error 5 only when neither *LCID* nor, without one, the system's locale is East Asian.
+The conversion, made with the rules of the locale *LCID* names, as VB6 and 64-bit VBA make it. Error 5 only when neither *LCID* nor, without one, the system's locale is East Asian.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
@@ -6626,6 +6628,8 @@ The conversion, made with the rules of the locale *LCID* names, as VB6 makes it.
 
 **Additional context**
 Severity: low. A program that converts Japanese, Chinese or Korean text with an explicit *LCID*, so that it runs on any system, stops with error 5 on a Western one.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 What does not reproduce it: another conversion (`vbUpperCase`) with an East Asian *LCID*; and `vbWide` with no *LCID* or with 1033, which VB6 refuses as well. Not checked on a system whose locale is East Asian.
 
@@ -6747,7 +6751,7 @@ End Module
 ```
 
 **Expected behavior**
-Error 13 for `Null` assigned to `Date` or `Time`, error 5 for a string `Date$` or `Time$` cannot read, and the forms VB6 reads accepted, as VB6 does.
+Error 13 for `Null` assigned to `Date` or `Time`, error 5 for a string `Date$` or `Time$` cannot read, and the forms VB6 reads accepted, as VB6 and 64-bit VBA do.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
@@ -6755,6 +6759,8 @@ Error 13 for `Null` assigned to `Date` or `Time`, error 5 for a string `Date$` o
 
 **Additional context**
 Severity: low. A handler that tests for VB6's numbers misses these, and a program that sets the clock from a string such as `"10:30"` fails.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 What does not reproduce it: `Date$ = Null` and `Time$ = Null`, which raise 94 in both; `Date` and `Time` given a string that is not a date or time, which raise 13 in both.
 
@@ -6823,7 +6829,7 @@ End Module
 ```
 
 **Expected behavior**
-Error 5 whenever the result would be before January 1, 100, whatever the interval, as VB6 does.
+Error 5 whenever the result would be before January 1, 100, whatever the interval, as VB6 and 64-bit VBA do.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
@@ -6831,6 +6837,8 @@ Error 5 whenever the result would be before January 1, 100, whatever the interva
 
 **Additional context**
 Severity: medium. The result is a valid date about 1,900 years away from the right one, returned without an error: `DateAdd("yyyy", -1901, #1/1/2000#)` gives January 1, 1999, and `DateAdd("yyyy", -2000, #1/1/2000#)` January 1, 2000.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 What does not reproduce it: a result far enough below year 100 that it is not a year from 0 to 99 (`DateAdd("yyyy", -10000, #1/1/2000#)` raises 5); the intervals "d", "y", "w", "ww", "h", "n" and "s"; and the upper end, where a result after December 31, 9999 raises 5 for every interval.
 
@@ -6899,7 +6907,7 @@ End Module
 ```
 
 **Expected behavior**
-Error 13, as VB6 raises, and as `DatePart` and `Day` raise.
+Error 13, as VB6 and 64-bit VBA raise, and as `DatePart` and `Day` raise.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
@@ -6907,6 +6915,8 @@ Error 13, as VB6 raises, and as `DatePart` and `Day` raise.
 
 **Additional context**
 Severity: low. A handler that tests for 13 misses it.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 What does not reproduce it: the last and first days of the range (2958465 and -657434), which both accept; a string that is not a date, which raises 13 in both.
 
@@ -6964,7 +6974,7 @@ End Module
 ```
 
 **Expected behavior**
-`Null`, with no error, as VB6 returns.
+`Null`, with no error, as VB6 and 64-bit VBA return.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
@@ -6972,6 +6982,8 @@ End Module
 
 **Additional context**
 Severity: low. Only an invalid interval with a `Null` date is affected; twinBASIC's behaviour is arguably stricter, but it differs from VB6 and from twinBASIC's own `DateAdd` and `DateDiff`.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 What does not reproduce it: a `Null` interval, which raises 94 in both.
 
@@ -7017,7 +7029,7 @@ End Module
 The attached VB6 project (`datepart-week-year-100-vb6.zip`) prints 52, 1, 52 and 52.
 
 **Expected behavior**
-52 for both, the week of year 99 that the date belongs to, as VB6 returns. The first line's value is wrong too.
+52 for both, the week of year 99 that the date belongs to, as VB6 and 64-bit VBA return. The first line's value is wrong too.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
@@ -7025,6 +7037,8 @@ The attached VB6 project (`datepart-week-year-100-vb6.zip`) prints 52, 1, 52 and
 
 **Additional context**
 Severity: medium. A hang loses unsaved data, and only dates in the first days of year 100 reach it.
+
+A 64-bit build gives the same results: -98980, then the hang. 64-bit VBA, VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access, prints 52, 1, 52 and 52, as VB6 does.
 
 What does not reproduce it: January 1, 2000, whose week also belongs to the year before (52); January 3, 100, the first day of the first full week (1); `Format(#1/1/100#, "ww", vbSunday, vbFirstFullWeek)`, and `DateDiff("ww", ...)` with `vbFirstFullWeek` from January 1, 100, which return; and `DatePart("yyyy", #1/1/100#, vbSunday, vbFirstFullWeek)`. The hang also happens with `vbMonday` and `vbUseSystem` as the first day, and for January 2, 100.
 
@@ -7120,7 +7134,7 @@ End Module
 ```
 
 **Expected behavior**
-Error 5, as VB6 raises. Taking the value modulo 7 throughout would be a reasonable extension too, but not the mix above.
+Error 5, as VB6 and 64-bit VBA raise. Taking the value modulo 7 throughout would be a reasonable extension too, but not the mix above.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
@@ -7128,6 +7142,8 @@ Error 5, as VB6 raises. Taking the value modulo 7 throughout would be a reasonab
 
 **Additional context**
 Severity: medium. A wrong *firstdayofweek*, such as one read from a setting, goes unreported and gives weekdays outside 1 to 7 and week counts that are off.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 What does not reproduce it: an interval that does not use *firstdayofweek* (`DatePart("d", d, 8)`, `DateDiff("w", d1, d2, 8)`), which VB6 accepts as well; a `Null` *firstdayofweek*, which raises 94 in both. A *firstweekofyear* outside 0 to 3 is reported separately.
 
@@ -7191,7 +7207,7 @@ End Module
 ```
 
 **Expected behavior**
-Error 5, as VB6 raises.
+Error 5, as VB6 and 64-bit VBA raise.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
@@ -7199,6 +7215,8 @@ Error 5, as VB6 raises.
 
 **Additional context**
 Severity: low. A wrong *firstweekofyear*, such as one read from a setting, goes unreported, and the week numbers are those of another setting.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 What does not reproduce it: an interval that does not use *firstweekofyear* (`DatePart("d", d, vbSunday, 4)`), which VB6 accepts as well; `DateDiff`, which ignores *firstweekofyear* in both; a `Null` *firstweekofyear*, which raises 94 in both. Not checked on a system whose own first week of the year is not the week of January 1, where 0 and 1 differ.
 
