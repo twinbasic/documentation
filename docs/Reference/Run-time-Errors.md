@@ -44,13 +44,13 @@ The messages are those of twinBASIC 32-bit and VB6, which agree for every number
 | Error | Message | Listed by |
 |---|---|---|
 | **3**{: #3 } (`&H3`) | *Return without GoSub* | --- |
-| **5**{: #5 } (`&H5`) | *Invalid procedure call or argument* | [22 pages](#listed-5) |
-| **6**{: #6 } (`&H6`) | *Overflow* | [1 page](#listed-6) |
+| **5**{: #5 } (`&H5`) | *Invalid procedure call or argument* | [38 pages](#listed-5) |
+| **6**{: #6 } (`&H6`) | *Overflow* | [23 pages](#listed-6) |
 | **7**{: #7 } (`&H7`) | *Out of memory* | --- |
-| **9**{: #9 } (`&H9`) | *Subscript out of range* | [1 page](#listed-9) |
+| **9**{: #9 } (`&H9`) | *Subscript out of range* | [4 pages](#listed-9) |
 | **10**{: #10 } (`&HA`) | *This array is fixed or temporarily locked* | --- |
 | **11**{: #11 } (`&HB`) | *Division by zero* | --- |
-| **13**{: #13 } (`&HD`) | *Type mismatch* | [3 pages](#listed-13) |
+| **13**{: #13 } (`&HD`) | *Type mismatch* | [39 pages](#listed-13) |
 | **14**{: #14 } (`&HE`) | *Out of string space* | --- |
 | **16**{: #16 } (`&H10`) | *Expression too complex* | --- |
 | **17**{: #17 } (`&H11`) | *Can't perform requested operation* | --- |
@@ -79,10 +79,10 @@ The messages are those of twinBASIC 32-bit and VB6, which agree for every number
 | **74**{: #74 } (`&H4A`) | *Can't rename with different drive* | --- |
 | **75**{: #75 } (`&H4B`) | *Path/File access error* | --- |
 | **76**{: #76 } (`&H4C`) | *Path not found* | --- |
-| **91**{: #91 } (`&H5B`) | *Object variable or With block variable not set* | --- |
+| **91**{: #91 } (`&H5B`) | *Object variable or With block variable not set* | [2 pages](#listed-91) |
 | **92**{: #92 } (`&H5C`) | *For loop not initialized* | --- |
 | **93**{: #93 } (`&H5D`) | *Invalid pattern string* | --- |
-| **94**{: #94 } (`&H5E`) | *Invalid use of Null* | [28 pages](#listed-94) |
+| **94**{: #94 } (`&H5E`) | *Invalid use of Null* | [95 pages](#listed-94) |
 | **96**{: #96 } (`&H60`) | *Unable to sink events of object because the object is already firing events to the maximum number of event receivers that it supports* | --- |
 | **97**{: #97 } (`&H61`) | *Can not call friend function on object which is not an instance of defining class* | --- |
 | **98**{: #98 } (`&H62`) | *A property or method call cannot include a reference to a private object, either as an argument or as a return value* | --- |
@@ -103,7 +103,7 @@ The messages are those of twinBASIC 32-bit and VB6, which agree for every number
 | **429**{: #429 } (`&H1AD`) | *ActiveX component can't create object* | --- |
 | **430**{: #430 } (`&H1AE`) | *Class does not support Automation or does not support expected interface* | --- |
 | **432**{: #432 } (`&H1B0`) | *File name or class name not found during Automation operation* | --- |
-| **438**{: #438 } (`&H1B6`) | *Object doesn't support this property or method* | --- |
+| **438**{: #438 } (`&H1B6`) | *Object doesn't support this property or method* | [2 pages](#listed-438) |
 | **440**{: #440 } (`&H1B8`) | *Automation error* | --- |
 | **442**{: #442 } (`&H1BA`) | *Connection to type library or object library for remote process has been lost. Press OK for dialog to remove reference.* | --- |
 | **443**{: #443 } (`&H1BB`) | *Automation object does not have a default value* | --- |
@@ -130,21 +130,58 @@ The messages are those of twinBASIC 32-bit and VB6, which agree for every number
 | **735**{: #735 } (`&H2DF`) | *Can't save file to TEMP* | --- |
 | **744**{: #744 } (`&H2E8`) | *Search text not found* | --- |
 | **746**{: #746 } (`&H2EA`) | *Replacements too long* | --- |
-| **-2147467259**{: #-2147467259 } (`&H80004005`) | *Unspecified error*; **Error** gives *Application-defined or object-defined error* | [1 page](#listed--2147467259) |
+| **-2147467262**{: #-2147467262 } (`&H80004002`) | *No such interface supported*; **Error** gives *Application-defined or object-defined error* | [1 page](#listed--2147467262) |
+| **-2147467259**{: #-2147467259 } (`&H80004005`) | *Unspecified error*; **Error** gives *Application-defined or object-defined error* | [16 pages](#listed--2147467259) |
+| **-2147352567**{: #-2147352567 } (`&H80020009`) | *Exception occurred.*; **Error** gives *Application-defined or object-defined error* | [1 page](#listed--2147352567) |
+| **-2147352562**{: #-2147352562 } (`&H8002000E`) | *Invalid number of parameters.*; **Error** gives *Application-defined or object-defined error* | [2 pages](#listed--2147352562) |
+| **-2147352559**{: #-2147352559 } (`&H80020011`) | *Does not support a collection.*; **Error** gives *Application-defined or object-defined error* | [1 page](#listed--2147352559) |
+| **-2147348207**{: #-2147348207 } (`&H80021111`) | *Automation error*; **Error** gives *Application-defined or object-defined error* | [1 page](#listed--2147348207) |
+| **-2147221164**{: #-2147221164 } (`&H80040154`) | *Class not registered*; **Error** gives *Application-defined or object-defined error* | [1 page](#listed--2147221164) |
+| **-2147221021**{: #-2147221021 } (`&H800401E3`) | *Operation unavailable*; **Error** gives *Application-defined or object-defined error* | [1 page](#listed--2147221021) |
+| **-2147221020**{: #-2147221020 } (`&H800401E4`) | *Invalid syntax*; **Error** gives *Application-defined or object-defined error* | [2 pages](#listed--2147221020) |
+| **-2147221014**{: #-2147221014 } (`&H800401EA`) | *Moniker cannot open file*; **Error** gives *Application-defined or object-defined error* | [1 page](#listed--2147221014) |
+| **-2147221005**{: #-2147221005 } (`&H800401F3`) | *Invalid class string*; **Error** gives *Application-defined or object-defined error* | [2 pages](#listed--2147221005) |
+| **-2147023174**{: #-2147023174 } (`&H800706BA`) | *The RPC server is unavailable.*; **Error** gives *Application-defined or object-defined error* | [1 page](#listed--2147023174) |
 
 ## Pages that list each error
 
-**5**{: #listed-5 } (`&H5`): [Asc](../tB/Modules/Strings/Asc), [Chr](../tB/Modules/Strings/Chr), [Filter](../tB/Modules/Strings/Filter), [Format](../tB/Modules/Strings/Format), [FormatCurrency](../tB/Modules/Strings/FormatCurrency), [FormatDateTime](../tB/Modules/Strings/FormatDateTime), [FormatNumber](../tB/Modules/Strings/FormatNumber), [FormatPercent](../tB/Modules/Strings/FormatPercent), [InStr](../tB/Modules/Strings/InStr), [InStrRev](../tB/Modules/Strings/InStrRev), [Join](../tB/Modules/Strings/Join), [Left](../tB/Modules/Strings/Left), [Mid](../tB/Modules/Strings/Mid), [MonthName](../tB/Modules/Strings/MonthName), [Replace](../tB/Modules/Strings/Replace), [Right](../tB/Modules/Strings/Right), [Space](../tB/Modules/Strings/Space), [Split](../tB/Modules/Strings/Split), [StrComp](../tB/Modules/Strings/StrComp), [StrConv](../tB/Modules/Strings/StrConv), [String](../tB/Modules/Strings/String), [WeekdayName](../tB/Modules/Strings/WeekdayName)
+**5**{: #listed-5 } (`&H5`): [Array](../tB/Modules/Information/Array), [Asc](../tB/Modules/Strings/Asc), [Chr](../tB/Modules/Strings/Chr), [CreateObject](../tB/Modules/Interaction/CreateObject), [CVErr](../tB/Modules/Conversion/CVErr), [DateAdd](../tB/Modules/DateTime/DateAdd), [DateDiff](../tB/Modules/DateTime/DateDiff), [DatePart](../tB/Modules/DateTime/DatePart), [DateSerial](../tB/Modules/DateTime/DateSerial), [Filter](../tB/Modules/Strings/Filter), [Format](../tB/Modules/Strings/Format), [FormatCurrency](../tB/Modules/Strings/FormatCurrency), [FormatDateTime](../tB/Modules/Strings/FormatDateTime), [FormatNumber](../tB/Modules/Strings/FormatNumber), [FormatPercent](../tB/Modules/Strings/FormatPercent), [GetObject](../tB/Modules/Interaction/GetObject), [InStr](../tB/Modules/Strings/InStr), [InStrRev](../tB/Modules/Strings/InStrRev), [Join](../tB/Modules/Strings/Join), [Left](../tB/Modules/Strings/Left), [Log](../tB/Modules/Math/Log), [Mid](../tB/Modules/Strings/Mid), [MonthName](../tB/Modules/Strings/MonthName), [QBColor](../tB/Modules/Information/QBColor), [Replace](../tB/Modules/Strings/Replace), [RGB](../tB/Modules/Information/RGB), [RGBA](../tB/Modules/Information/RGBA), [Right](../tB/Modules/Strings/Right), [Round](../tB/Modules/Math/Round), [Space](../tB/Modules/Strings/Space), [Split](../tB/Modules/Strings/Split), [Sqr](../tB/Modules/Math/Sqr), [StrComp](../tB/Modules/Strings/StrComp), [StrConv](../tB/Modules/Strings/StrConv), [String](../tB/Modules/Strings/String), [TranslateColor](../tB/Modules/Information/TranslateColor), [Weekday](../tB/Modules/DateTime/Weekday), [WeekdayName](../tB/Modules/Strings/WeekdayName)
 
-**6**{: #listed-6 } (`&H6`): [Chr](../tB/Modules/Strings/Chr)
+**6**{: #listed-6 } (`&H6`): [Abs](../tB/Modules/Math/Abs), [Bin](../tB/Modules/Conversion/Bin), [CBool](../tB/Modules/Conversion/CBool), [CByte](../tB/Modules/Conversion/CByte), [CCur](../tB/Modules/Conversion/CCur), [CDate](../tB/Modules/Conversion/CDate), [CDbl](../tB/Modules/Conversion/CDbl), [CDec](../tB/Modules/Conversion/CDec), [Choose](../tB/Modules/Interaction/Choose), [Chr](../tB/Modules/Strings/Chr), [CInt](../tB/Modules/Conversion/CInt), [CLng](../tB/Modules/Conversion/CLng), [CLngLng](../tB/Modules/Conversion/CLngLng), [CLngPtr](../tB/Modules/Conversion/CLngPtr), [CSng](../tB/Modules/Conversion/CSng), [CType](../tB/Modules/Conversion/CType), [DateAdd](../tB/Modules/DateTime/DateAdd), [DateDiff](../tB/Modules/DateTime/DateDiff), [Exp](../tB/Modules/Math/Exp), [Hex](../tB/Modules/Conversion/Hex), [Oct](../tB/Modules/Conversion/Oct), [Val](../tB/Modules/Conversion/Val), [ValDec](../tB/Modules/Conversion/ValDec)
 
-**9**{: #listed-9 } (`&H9`): [ReDim](../tB/Core/ReDim)
+**9**{: #listed-9 } (`&H9`): [Array](../tB/Modules/Information/Array), [LBound](../tB/Modules/Information/LBound), [ReDim](../tB/Core/ReDim), [UBound](../tB/Modules/Information/UBound)
 
-**13**{: #listed-13 } (`&HD`): [Filter](../tB/Modules/Strings/Filter), [Join](../tB/Modules/Strings/Join), [ReDim](../tB/Core/ReDim)
+**13**{: #listed-13 } (`&HD`): [Bin](../tB/Modules/Conversion/Bin), [CBool](../tB/Modules/Conversion/CBool), [CByte](../tB/Modules/Conversion/CByte), [CCur](../tB/Modules/Conversion/CCur), [CDate](../tB/Modules/Conversion/CDate), [CDbl](../tB/Modules/Conversion/CDbl), [CDec](../tB/Modules/Conversion/CDec), [CInt](../tB/Modules/Conversion/CInt), [CLng](../tB/Modules/Conversion/CLng), [CLngLng](../tB/Modules/Conversion/CLngLng), [CLngPtr](../tB/Modules/Conversion/CLngPtr), [CSng](../tB/Modules/Conversion/CSng), [CType](../tB/Modules/Conversion/CType), [CVDate](../tB/Modules/Conversion/CVDate), [Date](../tB/Modules/DateTime/Date), [DateAdd](../tB/Modules/DateTime/DateAdd), [DateDiff](../tB/Modules/DateTime/DateDiff), [DatePart](../tB/Modules/DateTime/DatePart), [DateValue](../tB/Modules/DateTime/DateValue), [Day](../tB/Modules/DateTime/Day), [Filter](../tB/Modules/Strings/Filter), [Hex](../tB/Modules/Conversion/Hex), [Hour](../tB/Modules/DateTime/Hour), [If](../tB/Modules/Interaction/If), [IIf](../tB/Modules/Interaction/IIf), [Join](../tB/Modules/Strings/Join), [LBound](../tB/Modules/Information/LBound), [Minute](../tB/Modules/DateTime/Minute), [Month](../tB/Modules/DateTime/Month), [Oct](../tB/Modules/Conversion/Oct), [ReDim](../tB/Core/ReDim), [Second](../tB/Modules/DateTime/Second), [Switch](../tB/Modules/Interaction/Switch), [Time](../tB/Modules/DateTime/Time), [TimeValue](../tB/Modules/DateTime/TimeValue), [UBound](../tB/Modules/Information/UBound), [Val](../tB/Modules/Conversion/Val), [Weekday](../tB/Modules/DateTime/Weekday), [Year](../tB/Modules/DateTime/Year)
 
-**94**{: #listed-94 } (`&H5E`): [Asc](../tB/Modules/Strings/Asc), [Chr](../tB/Modules/Strings/Chr), [Filter](../tB/Modules/Strings/Filter), [Format](../tB/Modules/Strings/Format), [FormatCurrency](../tB/Modules/Strings/FormatCurrency), [FormatDateTime](../tB/Modules/Strings/FormatDateTime), [FormatNumber](../tB/Modules/Strings/FormatNumber), [FormatPercent](../tB/Modules/Strings/FormatPercent), [InStr](../tB/Modules/Strings/InStr), [InStrRev](../tB/Modules/Strings/InStrRev), [Join](../tB/Modules/Strings/Join), [LCase](../tB/Modules/Strings/LCase), [Left](../tB/Modules/Strings/Left), [LTrim](../tB/Modules/Strings/LTrim), [Mid](../tB/Modules/Strings/Mid), [MonthName](../tB/Modules/Strings/MonthName), [Replace](../tB/Modules/Strings/Replace), [Right](../tB/Modules/Strings/Right), [RTrim](../tB/Modules/Strings/RTrim), [Space](../tB/Modules/Strings/Space), [Split](../tB/Modules/Strings/Split), [StrComp](../tB/Modules/Strings/StrComp), [StrConv](../tB/Modules/Strings/StrConv), [String](../tB/Modules/Strings/String), [StrReverse](../tB/Modules/Strings/StrReverse), [Trim](../tB/Modules/Strings/Trim), [UCase](../tB/Modules/Strings/UCase), [WeekdayName](../tB/Modules/Strings/WeekdayName)
+**91**{: #listed-91 } (`&H5B`): [RaiseEventByName](../tB/Modules/Interaction/RaiseEventByName), [RaiseEventByName2](../tB/Modules/Interaction/RaiseEventByName2)
 
-**-2147467259**{: #listed--2147467259 } (`&H80004005`): [ReDim](../tB/Core/ReDim)
+**94**{: #listed-94 } (`&H5E`): [Asc](../tB/Modules/Strings/Asc), [Atn](../tB/Modules/Math/Atn), [Bin](../tB/Modules/Conversion/Bin), [Calendar](../tB/Modules/DateTime/Calendar), [CallByDispId](../tB/Modules/Interaction/CallByDispId), [CallByName](../tB/Modules/Interaction/CallByName), [CBool](../tB/Modules/Conversion/CBool), [CByte](../tB/Modules/Conversion/CByte), [CCur](../tB/Modules/Conversion/CCur), [CDate](../tB/Modules/Conversion/CDate), [CDbl](../tB/Modules/Conversion/CDbl), [CDec](../tB/Modules/Conversion/CDec), [Choose](../tB/Modules/Interaction/Choose), [Chr](../tB/Modules/Strings/Chr), [CInt](../tB/Modules/Conversion/CInt), [CLng](../tB/Modules/Conversion/CLng), [CLngLng](../tB/Modules/Conversion/CLngLng), [CLngPtr](../tB/Modules/Conversion/CLngPtr), [Cos](../tB/Modules/Math/Cos), [CreateObject](../tB/Modules/Interaction/CreateObject), [CSng](../tB/Modules/Conversion/CSng), [CStr](../tB/Modules/Conversion/CStr), [CType](../tB/Modules/Conversion/CType), [CVErr](../tB/Modules/Conversion/CVErr), [Date](../tB/Modules/DateTime/Date), [DateAdd](../tB/Modules/DateTime/DateAdd), [DateDiff](../tB/Modules/DateTime/DateDiff), [DatePart](../tB/Modules/DateTime/DatePart), [DateSerial](../tB/Modules/DateTime/DateSerial), [DateValue](../tB/Modules/DateTime/DateValue), [DeleteSetting](../tB/Modules/Interaction/DeleteSetting), [Environ](../tB/Modules/Interaction/Environ), [Error function](../tB/Modules/Conversion/Error), [Exp](../tB/Modules/Math/Exp), [Filter](../tB/Modules/Strings/Filter), [Format](../tB/Modules/Strings/Format), [FormatCurrency](../tB/Modules/Strings/FormatCurrency), [FormatDateTime](../tB/Modules/Strings/FormatDateTime), [FormatNumber](../tB/Modules/Strings/FormatNumber), [FormatPercent](../tB/Modules/Strings/FormatPercent), [GetAllSettings](../tB/Modules/Interaction/GetAllSettings), [GetObject](../tB/Modules/Interaction/GetObject), [GetSetting](../tB/Modules/Interaction/GetSetting), [Hex](../tB/Modules/Conversion/Hex), [InStr](../tB/Modules/Strings/InStr), [InStrRev](../tB/Modules/Strings/InStrRev), [Join](../tB/Modules/Strings/Join), [LBound](../tB/Modules/Information/LBound), [LCase](../tB/Modules/Strings/LCase), [Left](../tB/Modules/Strings/Left), [Log](../tB/Modules/Math/Log), [LTrim](../tB/Modules/Strings/LTrim), [MacID](../tB/Modules/Conversion/MacID), [Mid](../tB/Modules/Strings/Mid), [MonthName](../tB/Modules/Strings/MonthName), [Oct](../tB/Modules/Conversion/Oct), [QBColor](../tB/Modules/Information/QBColor), [Randomize](../tB/Modules/Math/Randomize), [Replace](../tB/Modules/Strings/Replace), [RGB](../tB/Modules/Information/RGB), [RGB_B](../tB/Modules/Information/RGB_B), [RGB_G](../tB/Modules/Information/RGB_G), [RGB_R](../tB/Modules/Information/RGB_R), [RGBA](../tB/Modules/Information/RGBA), [RGBA_A](../tB/Modules/Information/RGBA_A), [Right](../tB/Modules/Strings/Right), [Rnd](../tB/Modules/Math/Rnd), [Round](../tB/Modules/Math/Round), [RTrim](../tB/Modules/Strings/RTrim), [SaveSetting](../tB/Modules/Interaction/SaveSetting), [Sgn](../tB/Modules/Math/Sgn), [ShiftRotateLeft](../tB/Modules/Math/ShiftRotateLeft), [ShiftRotateRight](../tB/Modules/Math/ShiftRotateRight), [ShiftUnsignedRight](../tB/Modules/Math/ShiftUnsignedRight), [Sin](../tB/Modules/Math/Sin), [Space](../tB/Modules/Strings/Space), [Split](../tB/Modules/Strings/Split), [Sqr](../tB/Modules/Math/Sqr), [Str](../tB/Modules/Conversion/Str), [StrComp](../tB/Modules/Strings/StrComp), [StrConv](../tB/Modules/Strings/StrConv), [String](../tB/Modules/Strings/String), [StrReverse](../tB/Modules/Strings/StrReverse), [Tan](../tB/Modules/Math/Tan), [Time](../tB/Modules/DateTime/Time), [TimeSerial](../tB/Modules/DateTime/TimeSerial), [TimeValue](../tB/Modules/DateTime/TimeValue), [TranslateColor](../tB/Modules/Information/TranslateColor), [Trim](../tB/Modules/Strings/Trim), [UBound](../tB/Modules/Information/UBound), [UCase](../tB/Modules/Strings/UCase), [Val](../tB/Modules/Conversion/Val), [ValDec](../tB/Modules/Conversion/ValDec), [Weekday](../tB/Modules/DateTime/Weekday), [WeekdayName](../tB/Modules/Strings/WeekdayName)
+
+**438**{: #listed-438 } (`&H1B6`): [CallByDispId](../tB/Modules/Interaction/CallByDispId), [CallByName](../tB/Modules/Interaction/CallByName)
+
+**-2147467262**{: #listed--2147467262 } (`&H80004002`): [GetObject](../tB/Modules/Interaction/GetObject)
+
+**-2147467259**{: #listed--2147467259 } (`&H80004005`): [Calendar](../tB/Modules/DateTime/Calendar), [CallByDispId](../tB/Modules/Interaction/CallByDispId), [CallByName](../tB/Modules/Interaction/CallByName), [Date](../tB/Modules/DateTime/Date), [DeleteSetting](../tB/Modules/Interaction/DeleteSetting), [Environ](../tB/Modules/Interaction/Environ), [GetAllSettings](../tB/Modules/Interaction/GetAllSettings), [GetObject](../tB/Modules/Interaction/GetObject), [GetSetting](../tB/Modules/Interaction/GetSetting), [LBound](../tB/Modules/Information/LBound), [Partition](../tB/Modules/Interaction/Partition), [ReDim](../tB/Core/ReDim), [SaveSetting](../tB/Modules/Interaction/SaveSetting), [Switch](../tB/Modules/Interaction/Switch), [Time](../tB/Modules/DateTime/Time), [UBound](../tB/Modules/Information/UBound)
+
+**-2147352567**{: #listed--2147352567 } (`&H80020009`): [CallByName](../tB/Modules/Interaction/CallByName)
+
+**-2147352562**{: #listed--2147352562 } (`&H8002000E`): [CallByDispId](../tB/Modules/Interaction/CallByDispId), [CallByName](../tB/Modules/Interaction/CallByName)
+
+**-2147352559**{: #listed--2147352559 } (`&H80020011`): [CallByName](../tB/Modules/Interaction/CallByName)
+
+**-2147348207**{: #listed--2147348207 } (`&H80021111`): [Tan](../tB/Modules/Math/Tan)
+
+**-2147221164**{: #listed--2147221164 } (`&H80040154`): [CreateObject](../tB/Modules/Interaction/CreateObject)
+
+**-2147221021**{: #listed--2147221021 } (`&H800401E3`): [GetObject](../tB/Modules/Interaction/GetObject)
+
+**-2147221020**{: #listed--2147221020 } (`&H800401E4`): [CreateObject](../tB/Modules/Interaction/CreateObject), [GetObject](../tB/Modules/Interaction/GetObject)
+
+**-2147221014**{: #listed--2147221014 } (`&H800401EA`): [GetObject](../tB/Modules/Interaction/GetObject)
+
+**-2147221005**{: #listed--2147221005 } (`&H800401F3`): [CreateObject](../tB/Modules/Interaction/CreateObject), [GetObject](../tB/Modules/Interaction/GetObject)
+
+**-2147023174**{: #listed--2147023174 } (`&H800706BA`): [CreateObject](../tB/Modules/Interaction/CreateObject)
 
 <!-- /errors-index -->
 

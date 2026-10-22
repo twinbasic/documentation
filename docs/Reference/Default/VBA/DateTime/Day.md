@@ -19,6 +19,15 @@ Syntax: **Day** ( *date* )
 > [!NOTE]
 > If the [**Calendar**](Calendar) property setting is Gregorian, the returned integer represents the Gregorian day of the month. If the calendar is Hijri, the returned integer represents the Hijri day of the month.
 
+<!-- errors: generated from errors/VBA.DateTime.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *date* is a string that is not a date, a number outside the range of dates, or an **Error** value |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Day** function to obtain the day of the month from a specified date.

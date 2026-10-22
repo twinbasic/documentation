@@ -65,6 +65,9 @@ Debug.Print DateDiff("d", #1/1/2026#, #5/9/2026#) ' 128
 
 The [**Calendar**](Calendar) property selects the calendar --- **vbCalGreg** (Gregorian, the default) or **vbCalHijri** (Hijri) --- used by the rest of the module. The setting controls how **Date$** formats the system date, how arguments to **DateSerial**, **DateValue**, **DateAdd**, and **DateDiff** are interpreted, and how the parts returned by **DatePart**, **Year**, **Month**, **Day**, and **Weekday** are reported.
 
+> [!NOTE] BETA 1010
+> twinBASIC has not implemented **Calendar** yet: it always reads as **vbCalGreg**, and setting it raises an error.
+
 ## Members
 
 - [Calendar](Calendar) -- returns or sets the calendar type (Gregorian or Hijri)

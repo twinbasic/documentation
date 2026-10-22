@@ -16,9 +16,20 @@ Syntax: **CDbl(** *expression* **)**
 *expression*
 : *required* Any valid string or numeric expression in the **Double** range --- `-1.79769313486231E308` to `-4.94065645841247E-324` for negative values, and `4.94065645841247E-324` to `1.79769313486232E308` for positive values.
 
-The return type is **Double**. If *expression* is outside the range of a **Double**, a run-time error occurs.
+The return type is **Double**.
 
 **CDbl** is the internationally aware alternative to [**Val**](Val) for converting a string to a numeric type. **CDbl** recognizes different decimal separators and different thousand separators properly, depending on the system's locale setting.
+
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *expression* is a string that holds a number outside the range of a **Double** |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *expression* is a string that does not hold a number (a zero-length string included) |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *expression* is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

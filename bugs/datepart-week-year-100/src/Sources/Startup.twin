@@ -1,0 +1,17 @@
+' DatePart("ww", ...) with vbFirstFullWeek never returns for a date of year 100 before
+' its first full week. VB6 returns (the VB6 project beside this one prints it). The
+' controls print; the last call never prints "returned".
+Module Startup
+
+    Public Sub Main()
+        ' Controls: the same date with vbFirstFourDays, and the first date of the first
+        ' full week with vbFirstFullWeek, return.
+        Debug.Print "ww of 1/1/100, vbFirstFourDays: " & DatePart("ww", #1/1/100#, vbSunday, vbFirstFourDays)
+        Debug.Print "ww of 1/3/100, vbFirstFullWeek: " & DatePart("ww", #1/3/100#, vbSunday, vbFirstFullWeek)
+        Debug.Print "ww of 1/1/2000, vbFirstFullWeek: " & DatePart("ww", #1/1/2000#, vbSunday, vbFirstFullWeek)
+        ' The defect: January 1, 100 is a Friday, so its week belongs to year 99.
+        Debug.Print "calling DatePart(""ww"", #1/1/100#, vbSunday, vbFirstFullWeek)"
+        Debug.Print "returned " & DatePart("ww", #1/1/100#, vbSunday, vbFirstFullWeek)
+    End Sub
+
+End Module

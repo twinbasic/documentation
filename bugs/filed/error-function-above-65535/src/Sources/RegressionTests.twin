@@ -1,0 +1,72 @@
+' Regression tests: Error and Error$ of a number above 65535 raise error 6. Expected
+' results are VB6's (the VB6 project beside this one prints them). tbrun --tests runs
+' each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the largest number, a negative one and an HRESULT give a message.
+    [TestCase]
+    Public Sub Error_Largest_Accepted()
+        Dim N As Long = 65535
+        Dim S As String
+        On Error Resume Next
+        S = Error$(N)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Error_Negative_Accepted()
+        Dim N As Long = -1
+        Dim S As String
+        On Error Resume Next
+        S = Error$(N)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Error_HResult_Accepted()
+        Dim N As Long = -2147467259
+        Dim S As String
+        On Error Resume Next
+        S = Error$(N)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: a number above 65535 returns a message.
+    [TestCase]
+    Public Sub ErrorDollar_65536_Raises6()
+        Dim N As Long = 65536
+        Dim S As String
+        On Error Resume Next
+        S = Error$(N)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Error_65536_Raises6()
+        Dim N As Long = 65536
+        Dim V As Variant
+        On Error Resume Next
+        V = Error(N)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Error_LargestLong_Raises6()
+        Dim N As Long = 2147483647
+        Dim V As Variant
+        On Error Resume Next
+        V = Error(N)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Error_RoundsTo65536_Raises6()
+        Dim X As Double = 65535.5
+        Dim V As Variant
+        On Error Resume Next
+        V = Error(X)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+End Module

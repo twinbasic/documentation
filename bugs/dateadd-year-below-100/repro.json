@@ -1,0 +1,13 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.DateAdd_DayBefore100_Raises5$",
+      "^PASS RegressionTests.DateAdd_YearsToYear100_GivesYear100$",
+      "^FAIL RegressionTests.DateAdd_YearBefore100_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.DateAdd_QuarterBefore100_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.DateAdd_MonthBefore100_Raises5: .*Actual: 0 "
+    ]
+  }
+}

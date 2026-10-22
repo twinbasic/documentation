@@ -32,6 +32,15 @@ The three-argument form is the inline conditional: it returns *truepart* when *e
 > [!NOTE]
 > **If** uses special internal bindings in the compiler and may not behave exactly like a regular function --- in particular, `Application.Run "If", ...` and other reflective callers will not invoke it.
 
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *expression* is a string that is not a **Boolean** or a number |
+
+<!-- /errors -->
+
 ### Example
 
 ```tb check_build

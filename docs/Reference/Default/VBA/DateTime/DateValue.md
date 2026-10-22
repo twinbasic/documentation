@@ -20,9 +20,19 @@ If *date* is a string that includes only numbers separated by valid date separat
 
 If the year part of *date* is omitted, **DateValue** uses the current year from the system date.
 
-If the *date* argument includes time information, **DateValue** doesn't return it. However, if *date* includes invalid time information (such as "89:98"), an error occurs.
+If the *date* argument includes time information, **DateValue** doesn't return it.
 
 If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date must be Gregorian. If the calendar is Hijri, the supplied date must be Hijri.
+
+<!-- errors: generated from errors/VBA.DateTime.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *date* is not a date: a string that is not one or holds an invalid time, a date after December 31, 9999, a number with a whole part, **Empty**, **True**, **False** or an **Error** value |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *date* is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

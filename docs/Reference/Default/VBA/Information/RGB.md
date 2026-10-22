@@ -14,13 +14,13 @@ Returns a **Long** representing an RGB colour value.
 Syntax: **RGB(** *red* **,** *green* **,** *blue* **)**
 
 *red*
-: *required* A number in the range 0--255 representing the red component of the colour.
+: *required* An **Integer** in the range 0--255 representing the red component of the colour.
 
 *green*
-: *required* A number in the range 0--255 representing the green component of the colour.
+: *required* An **Integer** in the range 0--255 representing the green component of the colour.
 
 *blue*
-: *required* A number in the range 0--255 representing the blue component of the colour.
+: *required* An **Integer** in the range 0--255 representing the blue component of the colour.
 
 Application methods and properties that accept a colour specification expect a number representing an RGB colour value: the relative intensity of red, green, and blue that produces a particular shade. The value of any argument that exceeds 255 is treated as 255.
 
@@ -36,6 +36,16 @@ The following table lists some standard colours and the red, green, and blue val
 | Magenta | 255 | 0 | 255 |
 | Yellow | 255 | 255 | 0 |
 | White | 255 | 255 | 255 |
+
+<!-- errors: generated from errors/VBA.Information.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *red*, *green* or *blue* is negative, after rounding |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *red*, *green* or *blue* is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

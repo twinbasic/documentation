@@ -1,0 +1,13 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.DatePart_NumberOutOfRange_Raises13$",
+      "^PASS RegressionTests.Day_NumberOutOfRange_Raises13$",
+      "^FAIL RegressionTests.DateAdd_NumberAboveRange_Raises13: .*Actual: 6 ",
+      "^FAIL RegressionTests.DateAdd_NumberBelowRange_Raises13: .*Actual: 6 ",
+      "^FAIL RegressionTests.DateDiff_NumberOutOfRange_Raises13: .*Actual: 6 "
+    ]
+  }
+}

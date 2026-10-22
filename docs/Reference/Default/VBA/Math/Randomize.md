@@ -21,6 +21,15 @@ If **Randomize** is not used, the **Rnd** function (with no arguments) uses the 
 > [!NOTE]
 > To repeat sequences of random numbers, call **Rnd** with a negative argument immediately before using **Randomize** with a numeric argument. Using **Randomize** with the same value for *number* does not repeat the previous sequence.
 
+<!-- errors: generated from errors/VBA.Math.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *number* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Randomize** statement to initialize the random-number generator. Because the *number* argument has been omitted, **Randomize** uses the return value from the [**Timer**](../DateTime/Timer) function as the new seed value.

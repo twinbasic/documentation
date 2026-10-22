@@ -1,0 +1,12 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.DatePart_BadIntervalWithDate_Raises5$",
+      "^PASS RegressionTests.DateAdd_BadIntervalWithNull_ReturnsNull$",
+      "^PASS RegressionTests.DateDiff_BadIntervalWithNull_ReturnsNull$",
+      "^FAIL RegressionTests.DatePart_BadIntervalWithNull_NoError: .*Actual: 5 "
+    ]
+  }
+}

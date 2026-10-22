@@ -83,7 +83,7 @@ pages:
         vb6: 5
         bug: database-compare-no-error
         cases:
-          - InStr(1, "abc", "a", 2)
+          - { expr: 'InStr(1, "abc", "a", 2)', only: [tb, vb6] }   # Access gives 2 a meaning of its own
       - error: 94
         when: "*start* or *compare* is **Null**"
         cases:
@@ -242,7 +242,7 @@ pages:
         vb6: 5
         bug: database-compare-no-error
         cases:
-          - Filter(Array("ab", "c"), "a", True, 2)
+          - { expr: 'Filter(Array("ab", "c"), "a", True, 2)', only: [tb, vb6] }   # Access gives 2 a meaning of its own
       - error: 13
         when: "*sourcearray* is **Null**, or has more than one dimension"
         cases:
@@ -518,7 +518,7 @@ pages:
         vb6: 5
         bug: database-compare-no-error
         cases:
-          - StrComp("a", "b", 2)
+          - { expr: 'StrComp("a", "b", 2)', only: [tb, vb6] }   # Access gives 2 a meaning of its own
       - error: 94
         when: "*compare* is **Null**"
         cases:

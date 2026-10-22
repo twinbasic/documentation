@@ -1,0 +1,16 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.ReDim_OneElement_Succeeds$",
+      "^PASS RegressionTests.ReDim_NegativeBoundsInOrder_Succeeds$",
+      "^PASS RegressionTests.FixedArray_SubscriptAboveRange_Raises9$",
+      "^FAIL RegressionTests.ReDim_ZeroToMinusOne_Raises9: .*Actual: -2147467259",
+      "^FAIL RegressionTests.ReDim_MinusOne_Raises9: .*Actual: -2147467259",
+      "^FAIL RegressionTests.ReDim_FiveToFour_SecondDimension_Raises9: .*Actual: -2147467259",
+      "^FAIL RegressionTests.ReDim_ErrorDescription: .*Actual: \"Unspecified error\""
+    ]
+  },
+  "issue": 2544
+}

@@ -60,7 +60,7 @@ The **InStrB** function is used with byte data contained in a string. Instead of
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *start* or *compare* is **Null** |
 
 > [!NOTE] BETA 1010
-> When **InStr** is given a *compare* that is not a valid locale identifier, and *string1* or *string2* is zero-length, VB6 raises no error.
+> When **InStr** is given a *compare* that is not a valid locale identifier, and *string1* or *string2* is zero-length, VB6 and 64-bit VBA raise no error.
 
 > [!NOTE] BETA 1010
 > When **InStr** is given a *compare* of 2 (**vbDatabaseCompare**), VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.

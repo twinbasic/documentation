@@ -1,0 +1,16 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.LateBound_AddExistingKey_Raises457$",
+      "^PASS RegressionTests.LateBound_RemoveMissingKey_Raises32811$",
+      "^PASS RegressionTests.CallByName_UnknownName_Raises438$",
+      "^FAIL RegressionTests.CallByName_AddExistingKey_Raises457: .*Actual: -2147352567 ",
+      "^FAIL RegressionTests.CallByName_RemoveMissingKey_Raises32811: .*Actual: -2147352567 ",
+      "^FAIL RegressionTests.LateBound_CompareModeAfterAdd_Raises5: .*Actual: -2147352567 ",
+      "^FAIL RegressionTests.CallByName_CompareModeAfterAdd_Raises5: .*Actual: -2147352567 ",
+      "^FAIL RegressionTests.CallByName_EmptyName_Raises450: .*Actual: 438 "
+    ]
+  }
+}

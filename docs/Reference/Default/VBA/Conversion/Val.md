@@ -38,7 +38,21 @@ Val("&HFFFF")
 > The **Val** function recognizes only the period (`.`) as a valid decimal separator. When different decimal separators are used, as in international applications, use [**CDbl**](CDbl) instead to convert a string to a number.
 
 > [!NOTE]
-> The **Val** function recognizes deprecated data type suffixes prior to conversion and may result in a type-mismatch error. For example, fifty percent represented as the string `"50%"` will convert as expected to `50`, but `Val("50.5%")` will raise an error because the percent symbol is interpreted as a suffix declaring the data type as **Integer**, which it is not in this case. The full list of data type suffixes is **Single** (`!`), **Currency** (`@`), **Double** (`#`), **String** (`$`), **Integer** (`%`), **Long** (`&`), and **LongLong** (`^`) for 64-bit hosts.
+> The **Val** function reads a data type suffix after a number as the number's type. Fifty percent written as `"50%"` converts to `50`, but the `%` of `"50.5%"` declares an **Integer**, which `50.5` is not (see Common Errors below). The full list of data type suffixes is **Single** (`!`), **Currency** (`@`), **Double** (`#`), **String** (`$`), **Integer** (`%`), **Long** (`&`), and **LongLong** (`^`) for 64-bit hosts.
+
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *string* holds a number outside the range of a **Double** |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *string* holds a number with a fractional part followed by the **Integer** (`%`) or **Long** (`&`) type-declaration character, such as `"50.5%"` |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *string* is **Null** |
+
+> [!NOTE] BETA 1010
+> When **Val** is given a *string* that holds a number followed by the **Integer** (`%`), **Long** (`&`) or **Currency** (`@`) type-declaration character, and the number is outside the range of that type, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
+
+<!-- /errors -->
 
 ### Example
 

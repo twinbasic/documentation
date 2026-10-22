@@ -1,0 +1,447 @@
+# The VBA Interaction module, its non-interactive procedures (batch 6a). Format: WIP.Errors.md.
+beta: 1010
+pages:
+  Reference/Default/VBA/Interaction/Choose.md:
+    rows:
+      - error: 94
+        when: "*index* is **Null**"
+        cases:
+          - Choose(Null, "a", "b")
+      # An extension (owner, 2026-10-22): VB6 returns Null; 64-bit VBA raises 6 too.
+      - error: 6
+        when: "*index* is outside the range of a **Single**"
+        cases:
+          - { expr: 'Choose(3.5E+38, "a")', only: [tb, vba64] }
+          - { expr: 'Choose(1E+300, "a")', only: [tb, vba64] }
+          - { expr: 'Choose(-1E+300, "a")', only: [tb, vba64] }
+    quiet:
+      - Choose(1, "a", "b")
+      - Choose(0, "a", "b")
+      - Choose(3, "a", "b")
+      - Choose(-1, "a")
+      - Choose(1.5, "a", "b")
+      - Choose(0.5, "a", "b")
+      - Choose("1", "a", "b")
+      - Choose(Empty, "a")
+      - Choose(32768, "a")
+      - Choose(2147483648#, "a")
+      - Choose(1E+20, "a")
+      - Choose(3.4E+38, "a")
+      - Choose(CDec("1E+20"), "a")
+  Reference/Default/VBA/Interaction/Switch.md:
+    rows:
+      - error: -2147467259
+        when: "the arguments are not in pairs: their number is odd"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - Switch(True)
+          - Switch(True, 1, False)
+          - Switch(Null, 1, False)
+      - error: 13
+        when: "an *expr* is a string that is not a **Boolean** or a number"
+        cases:
+          - Switch("abc", 1)
+    quiet:
+      - Switch()
+      - Switch(Null, 1)
+      - Switch(Null, 1, True, 2)
+      - Switch("True", 1)
+      - Switch(5, 1)
+      - Switch(False, 1)
+      - Switch(True, Null)
+      - Switch(Empty, 1)
+  Reference/Default/VBA/Interaction/IIf.md:
+    rows:
+      - error: 13
+        when: "*expr* is a string that is not a **Boolean** or a number"
+        cases:
+          - IIf("abc", 1, 2)
+    quiet:
+      - IIf(Null, 1, 2)
+      - IIf("True", 1, 2)
+      - IIf(Empty, 1, 2)
+      - IIf(5, 1, 2)
+  Reference/Default/VBA/Interaction/If.md:
+    rows:
+      - error: 13
+        when: "*expression* is a string that is not a **Boolean** or a number"
+        cases:
+          - { expr: 'If("abc", 1, 2)', only: tb }
+    quiet:
+      - { expr: 'If(Null, 1, 2)', only: tb }
+      - { expr: 'If(Null, 2)', only: tb }
+      - { expr: 'If(Empty, 2)', only: tb }
+      - { expr: 'If(True, 1, 1 / 0)', only: tb }
+  Reference/Default/VBA/Interaction/Partition.md:
+    rows:
+      - error: -2147467259
+        when: "*start* is less than 0, *stop* is not greater than *start*, or *interval* is less than 1, after rounding"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - Partition(5, -1, 10, 1)
+          - Partition(5, -0.6, 10, 1)
+          - Partition(5, 0, 0, 1)
+          - Partition(5, 10, 5, 1)
+          - Partition(5, 0, 10, 0)
+          - Partition(5, 0, 10, -1)
+          - Partition(5, 0, 10, 0.5)
+      - error: -2147467259
+        when: "an argument is a string that is not a number"
+        vb6: 13
+        bug: argument-errors-unspecified-error
+        cases:
+          - Partition("abc", 0, 10, 1)
+          - Partition(5, 0, 10, "abc")
+      - error: -2147467259
+        when: "an argument is outside the range of a **LongLong**"
+        vb6: 6
+        bug: argument-errors-unspecified-error
+        cases:
+          - Partition(1E+20, 0, 10, 1)
+          - Partition(5, 0, 1E+20, 1)
+          - Partition(5, 0, 10, 1E+20)
+    quiet:
+      # An extension (owner, 2026-10-22): the LongLong range, as in 64-bit VBA; VB6 raises 6.
+      - { expr: 'Partition(2147483648#, 0, 10, 1)', only: [tb, vba64] }
+      - { expr: 'Partition(-2147483649#, 0, 10, 1)', only: [tb, vba64] }
+      - { expr: 'Partition(5, 0, 2147483648#, 1)', only: [tb, vba64] }
+      - Partition(5, 0, 10, 1)
+      - Partition(-5, 0, 10, 1)
+      - Partition(50, 0, 10, 1)
+      - Partition(5, 0, 1, 1)
+      - Partition(5, -0.4, 10, 1)
+      - Partition(5, 0, 10, 0.6)
+      - Partition(5, 0, 10, 20)
+      - Partition(5, 0, 2147483647, 1)
+      - Partition(5, 0, 10, 2147483647)
+      - Partition(5, 0, 2147483647, 2147483647)
+      - Partition(Null, 0, 10, 1)
+      - Partition(5, Null, 10, 1)
+      - Partition(5, 0, Null, 1)
+      - Partition(5, 0, 10, Null)
+      - Partition(Empty, 0, 10, 1)
+  Reference/Default/VBA/Interaction/Environ.md:
+    rows:
+      - error: -2147467259
+        when: "*number* is less than 1 after rounding (**Empty** and **True** included), no entry has that position, or *envstring* is a zero-length string"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - Environ(0)
+          - Environ(-1)
+          - Environ(0.4)
+          - Environ(0.5)
+          - Environ(Empty)
+          - Environ(True)
+          - Environ$(0)
+          - Environ(1000)
+          - Environ(32767)
+          - Environ("")
+      - error: -2147467259
+        when: "*number* is greater than 32,767"
+        vb6: 6
+        bug: argument-errors-unspecified-error
+        cases:
+          - Environ(32768)
+          - Environ(100000)
+          - Environ(2147483647)
+      - error: 94
+        when: "*envstring* or *number* is **Null**"
+        cases:
+          - Environ(Null)
+          - Environ$(Null)
+    quiet:
+      - Environ(1)
+      - Environ(0.6)
+      - Environ(1.5)
+      - Environ("1")
+      - Environ("PATH")
+      - Environ("NO_SUCH_VARIABLE_TBDOCS")
+      - Environ("A=B")
+  Reference/Default/VBA/Interaction/Command.md:
+    quiet:
+      - Command()
+      - Command$()
+  Reference/Default/VBA/Interaction/CreateObject.md:
+    rows:
+      - error: -2147221020
+        when: "*class* is not a registered class name, such as a number, or a CLSID in braces without `new:`"
+        vb6: 429
+        bug: createobject-getobject-raw-hresults
+        cases:
+          - { decl: Dim O As Object, run: 'Set O = CreateObject("No.Such.Class")' }
+          - { decl: Dim O As Object, run: 'Set O = CreateObject("Scripting")' }
+          - { decl: Dim O As Object, run: 'Set O = CreateObject("{EE09B103-97E0-11CF-978F-00A02463E06F}")' }
+          - { decl: Dim O As Object, run: 'Set O = CreateObject(5)' }
+      - error: -2147221164
+        when: "*class* is `new:` with a CLSID that is not registered"
+        vb6: 429
+        bug: createobject-getobject-raw-hresults
+        cases:
+          - { decl: Dim O As Object, run: 'Set O = CreateObject("new:{00000000-0000-0000-0000-000000000000}")' }
+      - error: -2147221005
+        when: "*class* is `new:` followed by text that is not a CLSID"
+        vb6: 429
+        bug: createobject-getobject-raw-hresults
+        cases:
+          - { decl: Dim O As Object, run: 'Set O = CreateObject("new:not-a-guid")' }
+      - error: 5
+        when: "*class* is a zero-length string"
+        vb6: 429
+        bug: createobject-getobject-raw-hresults
+        cases:
+          - { decl: Dim O As Object, run: 'Set O = CreateObject("")' }
+      - error: -2147023174
+        when: "*servername* names a computer that cannot be reached"
+        cases:
+          - { decl: Dim O As Object, run: 'Set O = CreateObject("Scripting.Dictionary", "no-such-server.invalid")' }
+      - error: 94
+        when: "*class* or *servername* is **Null**"
+        cases:
+          - { decl: Dim O As Object, run: 'Set O = CreateObject(Null)' }
+          - { decl: Dim O As Object, run: 'Set O = CreateObject("Scripting.Dictionary", Null)' }
+    quiet:
+      - { decl: Dim O As Object, run: 'Set O = CreateObject("Scripting.Dictionary")' }
+      - { decl: Dim O As Object, run: 'Set O = CreateObject("Scripting.Dictionary", "")' }
+      - { decl: Dim O As Object, run: 'Set O = CreateObject("new:{EE09B103-97E0-11CF-978F-00A02463E06F}")' }
+  Reference/Default/VBA/Interaction/GetObject.md:
+    rows:
+      - error: -2147221014
+        when: "*pathname* names a file that does not exist, and *class* is omitted"
+        vb6: 432
+        bug: createobject-getobject-raw-hresults
+        cases:
+          - { decl: Dim O As Object, run: 'Set O = GetObject("C:\no\such\file.xyz")' }
+      - error: -2147467262
+        when: "*pathname* names a file that does not exist, and *class* is given"
+        vb6: 432
+        bug: createobject-getobject-raw-hresults
+        cases:
+          - { decl: Dim O As Object, run: 'Set O = GetObject("C:\no\such\file.xyz", "Scripting.Dictionary")' }
+      - error: -2147221005
+        when: "*class* is not a registered class name"
+        vb6: 429
+        bug: createobject-getobject-raw-hresults
+        cases:
+          - { decl: Dim O As Object, run: 'Set O = GetObject(, "No.Such.Class")' }
+          - { decl: Dim O As Object, run: 'Set O = GetObject("", "No.Such.Class")' }
+      - error: -2147221021
+        when: "*pathname* is omitted and no instance of *class* is running"
+        vb6: 429
+        bug: createobject-getobject-raw-hresults
+        cases:
+          - { decl: Dim O As Object, run: 'Set O = GetObject(, "Scripting.Dictionary")' }
+      - error: -2147467259
+        when: "both arguments are omitted"
+        vb6: 13
+        bug: argument-errors-unspecified-error
+        cases:
+          - { decl: Dim O As Object, run: Set O = GetObject() }
+      - error: 5
+        when: "*pathname* is a zero-length string and *class* is omitted"
+        cases:
+          - { decl: Dim O As Object, run: 'Set O = GetObject("")' }
+      - error: -2147221020
+        when: "*pathname* is neither a file name nor a name Windows can bind to an object"
+        cases:
+          - { decl: Dim O As Object, run: 'Set O = GetObject("notaprogid:xyz")' }
+      - error: 94
+        when: "*pathname* or *class* is **Null**"
+        cases:
+          - { decl: Dim O As Object, run: Set O = GetObject(Null) }
+          - { decl: Dim O As Object, run: 'Set O = GetObject(, Null)' }
+    quiet:
+      - { decl: Dim O As Object, run: 'Set O = GetObject("", "Scripting.Dictionary")' }
+  Reference/Default/VBA/Interaction/CallByName.md:
+    rows:
+      - error: 438
+        when: "*object* has no member named *procname*, or none of the kind *calltype* names"
+        cases:
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Nope", vbGet)' }
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Count", vbMethod)' }
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Exists", vbGet, "x")' }
+      - error: 438
+        when: "*procname* is a zero-length string"
+        vb6: 450
+        bug: callbyname-dispatch-hresults
+        cases:
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "", vbGet)' }
+      - error: -2147467259
+        when: "*calltype* is not one of the **VbCallType** values (3, **vbMethod** + **vbGet**, is accepted)"
+        vb6: 438
+        bug: argument-errors-unspecified-error
+        cases:
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Count", 0)' }
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Count", 5)' }
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Count", 16)' }
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Count", 99)' }
+      - error: -2147467259
+        when: "*object* is **Nothing**"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - { decl: Dim D As Object, expr: 'CallByName(D, "Count", vbGet)' }
+      - error: -2147352562
+        when: "the number of *args* is not the number the member takes, or a read-only property is assigned"
+        vb6: 450
+        bug: latebound-hresult-mapping
+        cases:
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', run: 'CallByName D, "Add", vbMethod' }
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', run: 'CallByName D, "Add", vbMethod, "x"' }
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', run: 'CallByName D, "Add", vbMethod, "x", 1, 2' }
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', run: 'CallByName D, "Count", vbLet, 5' }
+      - error: -2147352559
+        when: "*args* are given to a property that takes none"
+        vb6: 451
+        bug: latebound-hresult-mapping
+        cases:
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Count", vbGet, 1)' }
+      - error: -2147352567
+        when: "the member raises an error of its own, such as **Add** of a **Dictionary** given a key it holds"
+        vb6: 457
+        bug: callbyname-dispatch-hresults
+        cases:
+          - { decl: Dim D As Object, setup: "Set D = CreateObject(\"Scripting.Dictionary\")\nD.Add \"x\", 1", run: 'CallByName D, "Add", vbMethod, "x", 2' }
+      - error: -2147352567
+        when: "the member raises an error of its own, such as a **Dictionary**'s **CompareMode** set when it has items"
+        vb6: 5
+        bug: callbyname-dispatch-hresults
+        cases:
+          - { decl: Dim D As Object, setup: "Set D = CreateObject(\"Scripting.Dictionary\")\nD.Add \"x\", 1", run: 'CallByName D, "CompareMode", vbLet, 1' }
+      - error: 94
+        when: "*procname* or *calltype* is **Null**"
+        cases:
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, Null, vbGet)' }
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Count", Null)' }
+    quiet:
+      - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Count", vbGet)' }
+      - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Count", 3)' }
+      - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', run: 'CallByName D, "Add", vbMethod, "x", 1' }
+      - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', run: 'CallByName D, "CompareMode", vbLet, 99' }
+      - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Keys", vbMethod)' }
+      - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Item", vbGet, "x")' }
+      - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', run: 'CallByName D, "Item", vbSet, "x", Nothing' }
+  Reference/Default/VBA/Interaction/CallByDispId.md:
+    rows:
+      - error: 438
+        when: "*object* has no member with the dispatch ID *dispid*"
+        cases:
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByDispId(D, 12345, vbGet)', only: tb }
+      - error: -2147467259
+        when: "*calltype* is not one of the **VbCallType** values, or *object* is **Nothing**"
+        cases:
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByDispId(D, 2, 99)', only: tb }
+          - { decl: Dim D As Object, expr: 'CallByDispId(D, 2, vbGet)', only: tb }
+      - error: -2147352562
+        when: "the number of *args* is not the number the member takes"
+        cases:
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', run: 'CallByDispId D, 1, vbMethod', only: tb }
+      - error: 94
+        when: "*calltype* is **Null**"
+        cases:
+          - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByDispId(D, 2, Null)', only: tb }
+    quiet:
+      - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByDispId(D, 2, vbGet)', only: tb }
+      - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByDispId(D, 0, vbGet, "x")', only: tb }
+  Reference/Default/VBA/Interaction/RaiseEventByName.md:
+    rows:
+      - error: 91
+        when: "*object* is **Nothing**"
+        cases:
+          - { decl: Dim C As Object, expr: 'RaiseEventByName(C, "Foo")', only: tb }
+  Reference/Default/VBA/Interaction/RaiseEventByName2.md:
+    rows:
+      - error: 91
+        when: "*object* is **Nothing**"
+        cases:
+          - { decl: Dim C As Object, expr: 'RaiseEventByName2(C, "Foo", 1)', only: tb }
+  Reference/Default/VBA/Interaction/SaveSetting.md:
+    harness: registry
+    rows:
+      - error: -2147467259
+        when: "*appname*, *section* or *key* is a zero-length string"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - { run: 'SaveSetting "", "S", "K", "V"' }
+          - { run: 'SaveSetting registry_App, "", "K", "V"' }
+          - { run: 'SaveSetting registry_App, "S", "", "V"' }
+      - error: 94
+        when: "an argument is **Null**"
+        cases:
+          - { run: 'SaveSetting Null, "S", "K", "V"' }
+          - { run: 'SaveSetting registry_App, Null, "K", "V"' }
+          - { run: 'SaveSetting registry_App, "S", Null, "V"' }
+          - { run: 'SaveSetting registry_App, "S", "K", Null' }
+    quiet:
+      - { run: 'SaveSetting registry_App, "S", "K", "V"' }
+      - { run: 'SaveSetting registry_App, "S", "K", ""' }
+      - { run: 'SaveSetting registry_App, "S", "K", 5' }
+      - { run: 'SaveSetting registry_App, "S\T", "K", "V"' }
+      - { run: 'SaveSetting registry_App, "S", "K\L", "V"' }
+  Reference/Default/VBA/Interaction/GetSetting.md:
+    harness: registry
+    rows:
+      - error: -2147467259
+        when: "*appname*, *section* or *key* is a zero-length string"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - 'GetSetting("", "S", "K")'
+          - 'GetSetting(registry_App, "", "K")'
+          - 'GetSetting(registry_App, "S", "")'
+      - error: 94
+        when: "an argument is **Null**"
+        cases:
+          - 'GetSetting(Null, "S", "K")'
+          - 'GetSetting(registry_App, Null, "K")'
+          - 'GetSetting(registry_App, "S", Null)'
+          - 'GetSetting(registry_App, "S", "K", Null)'
+    quiet:
+      - 'GetSetting(registry_App, "S", "K")'
+      - { setup: 'SaveSetting registry_App, "S", "K", "V"', expr: 'GetSetting(registry_App, "S", "K")' }
+  Reference/Default/VBA/Interaction/GetAllSettings.md:
+    harness: registry
+    rows:
+      - error: -2147467259
+        when: "*appname* or *section* is a zero-length string"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - 'GetAllSettings("", "S")'
+          - 'GetAllSettings(registry_App, "")'
+      - error: 94
+        when: "*appname* or *section* is **Null**"
+        cases:
+          - 'GetAllSettings(Null, "S")'
+          - 'GetAllSettings(registry_App, Null)'
+    quiet:
+      - 'GetAllSettings(registry_App, "S")'
+      - { setup: 'SaveSetting registry_App, "S", "K", "V"', expr: 'GetAllSettings(registry_App, "S")' }
+  Reference/Default/VBA/Interaction/DeleteSetting.md:
+    harness: registry
+    rows:
+      - error: -2147467259
+        when: "the application, section or key named does not exist, or *appname* or *section* is a zero-length string"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - { run: DeleteSetting registry_App }
+          - { run: 'DeleteSetting registry_App, "S"' }
+          - { run: 'DeleteSetting registry_App, "S", "K"' }
+          - { setup: 'SaveSetting registry_App, "S", "K", "V"', run: 'DeleteSetting registry_App, "S", "Other"' }
+          - { setup: 'SaveSetting registry_App, "S", "K", "V"', run: 'DeleteSetting registry_App, "T"' }
+          - { run: 'DeleteSetting ""' }
+          - { setup: 'SaveSetting registry_App, "S", "K", "V"', run: 'DeleteSetting registry_App, ""' }
+      - error: 94
+        when: "an argument is **Null**"
+        cases:
+          - { run: DeleteSetting Null }
+          - { setup: 'SaveSetting registry_App, "S", "K", "V"', run: 'DeleteSetting registry_App, Null' }
+          - { setup: 'SaveSetting registry_App, "S", "K", "V"', run: 'DeleteSetting registry_App, "S", Null' }
+    quiet:
+      - { setup: 'SaveSetting registry_App, "S", "K", "V"', run: 'DeleteSetting registry_App, "S", "K"' }
+      - { setup: 'SaveSetting registry_App, "S", "K", "V"', run: 'DeleteSetting registry_App, "S"' }
+      - { setup: 'SaveSetting registry_App, "S", "K", "V"', run: DeleteSetting registry_App }

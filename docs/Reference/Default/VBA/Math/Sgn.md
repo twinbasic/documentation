@@ -22,6 +22,15 @@ The sign of the *number* argument determines the return value of the **Sgn** fun
 | Equal to zero     | 0               |
 | Less than zero    | -1              |
 
+<!-- errors: generated from errors/VBA.Math.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *number* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Sgn** function to determine the sign of a number.

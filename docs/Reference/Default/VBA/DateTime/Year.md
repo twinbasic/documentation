@@ -19,6 +19,15 @@ Syntax: **Year** ( *date* )
 > [!NOTE]
 > If the [**Calendar**](Calendar) property setting is Gregorian, the returned integer represents the Gregorian year for the date argument. If the calendar is Hijri, the returned integer represents the Hijri year for the date argument.
 
+<!-- errors: generated from errors/VBA.DateTime.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *date* is a string that is not a date, a number outside the range of dates, or an **Error** value |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Year** function to obtain the year from a specified date.

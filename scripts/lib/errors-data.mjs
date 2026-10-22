@@ -12,11 +12,14 @@ import { DOCS_DIR, REPO_ROOT } from "../../lib/repo-paths.mjs";
 
 export const ERRORS_DIR = path.join(REPO_ROOT, "errors");
 export const MESSAGES_FILE = "messages.yml";
+/** The harnesses, errors/harnesses/<name>.bas: module-level code a case can run under (WIP.Errors.md). */
+export const HARNESS_DIR = "harnesses";
+const HARNESS_NAME = /^[a-z][a-z0-9]*$/;
 
-const ROW_KEYS = new Set(["error", "when", "cases", "vb6", "win64", "bug"]);
-const CASE_KEYS = new Set(["expr", "run", "decl", "setup", "only"]);
-const PAGE_KEYS = new Set(["rows", "quiet", "none"]);
-const FILE_KEYS = new Set(["beta", "win64", "pages"]);
+const ROW_KEYS = new Set(["error", "when", "cases", "vb6", "win64", "vba64", "bug", "message", "harness"]);
+const CASE_KEYS = new Set(["expr", "run", "decl", "setup", "only", "harness"]);
+const PAGE_KEYS = new Set(["rows", "quiet", "none", "harness"]);
+const FILE_KEYS = new Set(["beta", "pages"]);
 
 // ------------------------------------------------------------------ the data
 
@@ -61,31 +64,63 @@ export function loadMessages(dir = ERRORS_DIR) {
 
 const isInt = (v) => Number.isInteger(v);
 
+// What `only:` may name: twinBASIC (both builds), VB6 and 64-bit VBA. `tb` alone is written
+// as a word, any other choice as a list, and every list names tb.
+const ONLY = ["tb", "vb6", "vba64"];
+function readOnly(v, where, problems) {
+  if (v === undefined) return undefined;
+  const list = v === "tb" ? ["tb"] : Array.isArray(v) ? v : null;
+  if (
+    !list ||
+    !list.includes("tb") ||
+    list.some((x) => !ONLY.includes(x)) ||
+    new Set(list).size !== list.length ||
+    list.length === ONLY.length
+  ) {
+    problems.push(`${where}: only: tb, or a list of tb and vb6 or vba64`);
+    return undefined;
+  }
+  return list;
+}
+
+/** Whether case `c` runs in `runtime` (one of RUNTIMES), as its only: says. */
+export const runsIn = (c, runtime) => !c.only || c.only.includes(runtime === "win64" ? "tb" : runtime);
+
 // A case as the data writes it, a string (an expression) or a mapping, made one shape:
-// { expr?, run?, decl: [], setup: [], only? }
-function normaliseCase(c, where, problems) {
-  if (typeof c === "string") return { expr: c, decl: [], setup: [] };
+// { expr?, run?, decl: [], setup: [], only?, harness? }, `only` a list as readOnly makes it; a
+// case without a harness of its own takes its row's, else its page's (`inherited`).
+function normaliseCase(c, where, problems, inherited) {
+  if (typeof c === "string") return { expr: c, decl: [], setup: [], harness: inherited };
   if (!c || typeof c !== "object" || Array.isArray(c)) {
     problems.push(`${where}: a case is an expression or a mapping`);
     return null;
   }
   for (const k of Object.keys(c)) if (!CASE_KEYS.has(k)) problems.push(`${where}: unknown key ${k}`);
   if ((c.expr === undefined) === (c.run === undefined)) problems.push(`${where}: give one of expr and run`);
-  if (c.only !== undefined && c.only !== "tb") problems.push(`${where}: only: can only be tb`);
+  const only = readOnly(c.only, where, problems);
+  checkHarness(c.harness, where, problems);
   const lines = (v) => (v === undefined ? [] : String(v).replace(/\r/g, "").replace(/\n$/, "").split("\n"));
   return {
     expr: c.expr === undefined ? undefined : String(c.expr),
     run: c.run === undefined ? undefined : lines(c.run),
     decl: lines(c.decl),
     setup: lines(c.setup),
-    only: c.only,
+    only,
+    harness: c.harness ?? inherited,
   };
+}
+
+function checkHarness(name, where, problems) {
+  if (name !== undefined && (typeof name !== "string" || !HARNESS_NAME.test(name)))
+    problems.push(
+      `${where}: harness: a name of lowercase letters and digits, the file errors/${HARNESS_DIR}/<name>.bas`,
+    );
 }
 
 /**
  * One data file, read and checked. `name` is relative to `dir`.
- * @returns {{name, beta, win64, pages: Array<{page, rows, quiet, none}>, problems: string[]}}
- *   a row is { error, when, vb6?, win64?, bug?, cases }; `page` is relative to docs/
+ * @returns {{name, beta, pages: Array<{page, rows, quiet, none}>, problems: string[]}}
+ *   a row is { error, when, vb6?, win64?, vba64?, bug?, message?, cases }; `page` is relative to docs/
  */
 export function loadDataFile(name, dir = ERRORS_DIR) {
   const problems = [];
@@ -95,14 +130,22 @@ export function loadDataFile(name, dir = ERRORS_DIR) {
   } catch (e) {
     return { name, pages: [], problems: [`${name}: ${e.message.split("\n")[0]}`] };
   }
-  return { name, ...readData(raw, name, problems), problems };
+  const data = readData(raw, name, problems);
+  const names = new Set(
+    data.pages.flatMap((p) => [...p.rows.flatMap((r) => r.cases), ...p.quiet].map((c) => c.harness)),
+  );
+  for (const h of names) {
+    if (h !== undefined && HARNESS_NAME.test(h) && !existsSync(path.join(dir, HARNESS_DIR, `${h}.bas`)))
+      problems.push(`${name}: harness ${h}: no file errors/${HARNESS_DIR}/${h}.bas`);
+  }
+  return { name, ...data, problems };
 }
 
 /** The checking half of loadDataFile, over an already parsed document. */
 export function readData(raw, name, problems) {
   if (!raw || typeof raw !== "object") {
     problems.push(`${name}: not a mapping`);
-    return { beta: null, win64: false, pages: [] };
+    return { beta: null, pages: [] };
   }
   for (const k of Object.keys(raw)) if (!FILE_KEYS.has(k)) problems.push(`${name}: unknown key ${k}`);
   if (!isInt(raw.beta)) problems.push(`${name}: beta: the BETA the data was measured on, a number`);
@@ -116,6 +159,7 @@ export function readData(raw, name, problems) {
       continue;
     }
     for (const k of Object.keys(entry)) if (!PAGE_KEYS.has(k)) problems.push(`${at}: unknown key ${k}`);
+    checkHarness(entry.harness, at, problems);
     const rows = [];
     (entry.rows ?? []).forEach((r, i) => {
       const w = `${at}: row ${i + 1}`;
@@ -124,28 +168,52 @@ export function readData(raw, name, problems) {
         return;
       }
       for (const k of Object.keys(r)) if (!ROW_KEYS.has(k)) problems.push(`${w}: unknown key ${k}`);
-      // error: 0 is a condition where twinBASIC raises nothing and VB6 does: a NOTE, no table row.
-      if (!isInt(r.error) || (r.error === 0 && !r.vb6)) {
-        problems.push(`${w}: error: a number other than 0, or 0 with a vb6: other than 0`);
+      // error: 0 is a condition where twinBASIC raises nothing and VB6 or 64-bit VBA does: a
+      // NOTE, no table row.
+      if (!isInt(r.error) || (r.error === 0 && !r.vb6 && !r.vba64)) {
+        problems.push(`${w}: error: a number other than 0, or 0 with a vb6: or vba64: other than 0`);
       }
       if (typeof r.when !== "string" || !r.when.trim())
         problems.push(`${w}: when: the condition, in the reader's terms`);
       else if (/\||\n/.test(r.when.trim())) problems.push(`${w}: when: one line, without |`);
       if (r.vb6 !== undefined && !isInt(r.vb6)) problems.push(`${w}: vb6: a number`);
       if (r.vb6 !== undefined && r.vb6 === r.error) problems.push(`${w}: vb6: the same as error; leave it out`);
-      if (r.vb6 !== undefined && typeof r.bug !== "string") {
-        problems.push(`${w}: bug: a row that differs from VB6 names its bugs/ slug, or pending`);
-      }
-      if (r.bug !== undefined && r.vb6 === undefined) problems.push(`${w}: bug: only on a row with vb6:`);
       if (r.win64 !== undefined && !isInt(r.win64)) problems.push(`${w}: win64: a number`);
+      if (r.win64 !== undefined && r.win64 === r.error) problems.push(`${w}: win64: the same as error; leave it out`);
+      if (r.vba64 !== undefined && !isInt(r.vba64)) problems.push(`${w}: vba64: a number`);
+      if (r.vba64 !== undefined && r.vba64 === vba64Default(r)) {
+        problems.push(`${w}: vba64: what it would be without it (vb6:, else win64:, else error:); leave it out`);
+      }
+      const differs = r.vb6 !== undefined || vba64Differs(r);
+      if (differs && typeof r.bug !== "string") {
+        problems.push(`${w}: bug: a row that differs from VB6 or 64-bit VBA names its bugs/ slug, or pending`);
+      }
+      if (r.bug !== undefined && !differs) {
+        problems.push(`${w}: bug: only on a row with vb6:, or with a vba64: that differs from twinBASIC 64-bit`);
+      }
+      // message: twinBASIC's own Err.Description for the row's number, where it is not the
+      // number's message in messages.yml.
+      if (r.message !== undefined && (typeof r.message !== "string" || !r.message.trim() || /\n/.test(r.message)))
+        problems.push(`${w}: message: twinBASIC's Err.Description, one line`);
+      if (r.message !== undefined && r.error === 0) problems.push(`${w}: message: only on a row that raises`);
+      checkHarness(r.harness, w, problems);
       if (!Array.isArray(r.cases) || !r.cases.length) problems.push(`${w}: cases: at least one`);
       const cases = (Array.isArray(r.cases) ? r.cases : [])
-        .map((c, j) => normaliseCase(c, `${w} case ${j + 1}`, problems))
+        .map((c, j) => normaliseCase(c, `${w} case ${j + 1}`, problems, r.harness ?? entry.harness))
         .filter(Boolean);
-      rows.push({ error: r.error, when: String(r.when ?? "").trim(), vb6: r.vb6, win64: r.win64, bug: r.bug, cases });
+      rows.push({
+        error: r.error,
+        when: String(r.when ?? "").trim(),
+        vb6: r.vb6,
+        win64: r.win64,
+        vba64: r.vba64,
+        bug: r.bug,
+        message: r.message,
+        cases,
+      });
     });
     const quiet = (entry.quiet ?? [])
-      .map((c, j) => normaliseCase(c, `${at}: quiet ${j + 1}`, problems))
+      .map((c, j) => normaliseCase(c, `${at}: quiet ${j + 1}`, problems, entry.harness))
       .filter(Boolean);
     if (entry.none !== undefined && (typeof entry.none !== "string" || rows.length)) {
       problems.push(`${at}: none: a sentence, on a page without rows`);
@@ -153,13 +221,45 @@ export function readData(raw, name, problems) {
     if (!rows.length && !quiet.length) problems.push(`${at}: neither rows nor quiet cases`);
     pages.push({ page, rows, quiet, none: entry.none });
   }
-  return { beta: raw.beta ?? null, win64: raw.win64 === true, pages };
+  return { beta: raw.beta ?? null, pages };
 }
 
 // ------------------------------------------------------------------ the probes
 
+// What each runtime is expected to raise for a row. twinBASIC 64-bit raises what 32-bit does
+// unless the row says win64:. 64-bit VBA raises what VB6 does where the row says vb6: (a
+// difference of twinBASIC's from the VB family), else what twinBASIC 64-bit does, unless the
+// row says vba64:.
+const vba64Default = (r) => r.vb6 ?? r.win64 ?? r.error;
+/** What `runtime` ("tb", "win64", "vb6" or "vba64") is expected to raise for `row`. */
+export function expected(row, runtime) {
+  if (runtime === "win64") return row.win64 ?? row.error;
+  if (runtime === "vb6") return row.vb6 ?? row.error;
+  if (runtime === "vba64") return row.vba64 ?? vba64Default(row);
+  return row.error;
+}
+/** Whether 64-bit VBA raises something other than twinBASIC 64-bit for `row`. */
+export const vba64Differs = (row) => expected(row, "vba64") !== expected(row, "win64");
+
+/** The runtimes `run` measures: twinBASIC 32-bit and 64-bit, VB6 and 64-bit VBA. */
+export const RUNTIMES = ["tb", "win64", "vb6", "vba64"];
+/** The runtimes of the VB family, whose Err.Raise turns HRESULTs into VB numbers. */
+const VB_FAMILY = new Set(["vb6", "vba64"]);
+
 /**
- * The cases of `files` to run in `runtime` ("tb", "vb6" or "win64"), each with
+ * The Err.Description `runtime` must give when a case of `row` (null for a quiet case) raises
+ * `number`, or null when it is not checked: VB6 and VBA describe an HRESULT as "Automation
+ * error" with Windows' text on a line of its own, which the probe's one line cannot hold. A row's
+ * `message:` is twinBASIC's own text for its number, where twinBASIC gives one.
+ */
+export function expectedDescription(row, runtime, number, messages) {
+  if (VB_FAMILY.has(runtime) && (number < VB_NUMBERS.from || number > VB_NUMBERS.to)) return null;
+  if (row?.message !== undefined && !VB_FAMILY.has(runtime) && number === expected(row, runtime)) return row.message;
+  return messages.get(number)?.raised ?? "nothing";
+}
+
+/**
+ * The cases of `files` to run in `runtime` (one of RUNTIMES), each with
  * what it expects. Ids are 1-based and stable for one list of files.
  */
 export function probeCases(files, runtime, { only } = {}) {
@@ -170,10 +270,8 @@ export function probeCases(files, runtime, { only } = {}) {
       const take = !only || only.test(p.page);
       const push = (c, row, label) => {
         id++;
-        if (!take || (runtime === "vb6" && c.only === "tb")) return;
-        let expect = row ? row.error : 0;
-        if (row && runtime === "vb6" && row.vb6 !== undefined) expect = row.vb6;
-        if (row && runtime === "win64" && row.win64 !== undefined) expect = row.win64;
+        if (!take || !runsIn(c, runtime)) return;
+        const expect = row ? expected(row, runtime) : 0;
         out.push({ id, file: f.name, page: p.page, label, row, expect, ...c });
       };
       for (const row of p.rows) for (const c of row.cases) push(c, row, c.expr ?? c.run.join(" : "));
@@ -191,9 +289,13 @@ function caseLines(c, report) {
     ind("Dim Result As Variant"),
     ...c.decl.map(ind),
     ind("On Error Resume Next"),
+    ...(c.harness ? [ind(`${c.harness}_Begin`)] : []),
     ...c.setup.map(ind),
-    ind(`If Err.Number <> 0 Then ${report} "setup ${c.id} " & Err.Number & " " & Err.Description: Exit Sub`),
+    ind(
+      `If Err.Number <> 0 Then ${report} "setup ${c.id} " & Err.Number & " " & Err.Description: ${c.harness ? `${c.harness}_End: ` : ""}Exit Sub`,
+    ),
     ...(c.expr !== undefined ? [ind(`Result = ${c.expr}`)] : c.run.map(ind)),
+    ...(c.harness ? [ind(`${c.harness}_End`)] : []),
     ind(`${report} "case ${c.id} " & Err.Number & " " & Err.Description`),
     "End Sub",
   ];
@@ -201,17 +303,27 @@ function caseLines(c, report) {
 
 /**
  * The probe module for `cases`: the twinBASIC module (dialect "tb", a .twin file run as
- * an exe by tbrun) or the VB6 one (dialect "vb6", Module1.bas of Probe.vbp). Each case
- * is a Sub of its own, run under On Error Resume Next, that reports
+ * an exe by tbrun), the VB6 one (dialect "vb6", Module1.bas of Probe.vbp) or the VBA one
+ * (dialect "vba", Module1.bas run in Access by lib/vba.mjs, which reports `start` first).
+ * Each case is a Sub of its own, run under On Error Resume Next, that reports
  * `case <id> <Err.Number> <Err.Description>`; Main reports `done` last.
+ * The code of each harness the cases use comes first, from `harnesses` (name -> text, as
+ * harnessCode reads it): one file serves every dialect.
  * @returns {{text: string, spans: Array<{id, from, to}>}} spans are 1-based file lines
  */
-export function probeModule(cases, dialect) {
+export function probeModule(cases, dialect, harnesses = new Map()) {
+  const used = [...new Set(cases.map((c) => c.harness).filter(Boolean))].sort();
+  const harnessLines = used.flatMap((h) => {
+    if (!harnesses.has(h)) throw new Error(`no code for harness ${h}`);
+    const text = harnesses.get(h).replace(/\r/g, "").replace(/\n+$/, "");
+    return [`' ---- harness ${h}: errors/${HARNESS_DIR}/${h}.bas`, ...text.split("\n")];
+  });
   const head =
     dialect === "tb"
       ? [
           "' Generated by scripts/errors.mjs from errors/*.yml; do not edit.",
           "Module Probe",
+          ...harnessLines,
           "Private Sub Report(ByVal S As String)",
           "    TbRun.Out S",
           "End Sub",
@@ -225,15 +337,26 @@ export function probeModule(cases, dialect) {
           'Attribute VB_Name = "Module1"',
           "' Generated by scripts/errors.mjs from errors/*.yml; do not edit.",
           "Option Explicit",
+          ...harnessLines,
           "Private Sub Report(ByVal S As String)",
           "    Dim F As Integer",
           "    F = FreeFile",
-          '    Open App.Path & "\\out.txt" For Append As #F',
+          // VBA has no App object: the module runs in Access (lib/vba.mjs), beside its database.
+          `    Open ${dialect === "vba" ? "CurrentProject.Path" : "App.Path"} & "\\out.txt" For Append As #F`,
           "    Print #F, S",
           "    Close #F",
           "End Sub",
         ];
-  const lines = [...head, "Public Sub Main()", ...cases.map((c) => `    C${c.id}`), '    Report "done"', "End Sub"];
+  // VBA compiles a procedure when it is first called; `start` tells an error in the module's
+  // declarations, which stops it before Main runs, from one in a case (lib/vba.mjs).
+  const lines = [
+    ...head,
+    "Public Sub Main()",
+    ...(dialect === "vba" ? ['    Report "start"'] : []),
+    ...cases.map((c) => `    C${c.id}`),
+    '    Report "done"',
+    "End Sub",
+  ];
   const spans = [];
   for (const c of cases) {
     const from = lines.length + 1;
@@ -242,6 +365,14 @@ export function probeModule(cases, dialect) {
   }
   if (dialect === "tb") lines.push("End Module");
   return { text: `${lines.join("\r\n")}\r\n`, spans };
+}
+
+/** The code of each harness `cases` use, read from `dir`: Map name -> text. */
+export function harnessCode(cases, dir = ERRORS_DIR) {
+  const out = new Map();
+  for (const h of new Set(cases.map((c) => c.harness).filter(Boolean)))
+    out.set(h, readFileSync(path.join(dir, HARNESS_DIR, `${h}.bas`), "utf8"));
+  return out;
 }
 
 // ------------------------------------------------------------------ the messages
@@ -306,7 +437,8 @@ export function readMessageOutput(lines) {
  * runtime must be listed; each listed number's Error$ must be its `error` in both
  * runtimes, and the description of the error raised its `raised`: in both runtimes
  * for a number from 1 to 65535, in twinBASIC only for another (VB6's Err.Raise turns
- * many HRESULTs into its own numbers). `seen` maps a runtime to readMessageOutput's map.
+ * many HRESULTs into its own numbers, and so may VBA's). `seen` maps a runtime to
+ * readMessageOutput's map.
  */
 export function compareMessages(messages, seen) {
   const out = [];
@@ -320,7 +452,7 @@ export function compareMessages(messages, seen) {
         continue;
       }
       if (g.error !== m.error) out.push(`${n}: ${rt}'s Error$ is "${g.error}", the list has "${m.error}"`);
-      if (rt !== "vb6" || vbs(n)) {
+      if (!VB_FAMILY.has(rt) || vbs(n)) {
         if (g.number !== n) out.push(`${n}: ${rt}'s Err.Raise ${n} raised ${g.number}`);
         else if (g.description !== m.raised)
           out.push(`${n}: ${rt}'s description is "${g.description}", the list has "${m.raised}"`);
@@ -396,13 +528,18 @@ export function findSection(text) {
   return { section: found, problems };
 }
 
-/** The heading level the page uses for Example and See Also: "##" or "###"; "##" when it has neither. */
+/**
+ * The heading level the page uses for Example and See Also: "##" or "###"; "##" when it
+ * has neither. The last such heading decides, so a page whose properties each have an
+ * Example a level down (Date, Time) takes its See Also's level.
+ */
 export function pageLevel(text) {
+  let level = "##";
   for (const { text: t, fenced } of scan(text.split("\n"))) {
     const m = !fenced && ANCHOR.exec(t.replace(/\r$/, ""));
-    if (m) return m[1];
+    if (m) level = m[1];
   }
-  return "##";
+  return level;
 }
 
 /** An error number in decimal and in VB hexadecimal, as a 32-bit Long: -2147467259 (`&H80004005`). */
@@ -455,22 +592,40 @@ export function renderSection(p, { name, beta, messages, level }) {
   ];
   if (p.none !== undefined) out.push(p.none.trim());
   else {
-    // Rows that raise the same number share one row, their conditions a line each.
-    // A row of error 0 raises nothing in twinBASIC: it has its NOTE and no table row.
+    // Rows that raise the same number with the same message share one row, their conditions a
+    // line each. A row of error 0 raises nothing in twinBASIC: it has its NOTE and no table row.
     const byError = new Map();
-    for (const r of p.rows.filter((x) => x.error !== 0))
-      byError.set(r.error, [...(byError.get(r.error) ?? []), escapeCell(r.when)]);
+    for (const r of p.rows.filter((x) => x.error !== 0)) {
+      const text = r.message ?? msg(r.error);
+      const key = `${r.error}\n${text}`;
+      const entry = byError.get(key) ?? { n: r.error, text, whens: [] };
+      entry.whens.push(escapeCell(r.when));
+      byError.set(key, entry);
+    }
     if (byError.size) out.push("| Error | When |", "|---|---|");
-    for (const [n, whens] of byError) out.push(`| ${num(n)}, *${msg(n)}* | ${whens.join("<br>")} |`);
-    for (const r of p.rows.filter((x) => x.vb6 !== undefined)) {
-      const what =
-        r.vb6 === 0
-          ? "raises no error"
-          : r.error === 0
-            ? `raises error ${num(r.vb6)}, *${msg(r.vb6)}*; twinBASIC raises none`
-            : `raises error ${num(r.vb6)}, *${msg(r.vb6)}*, instead`;
+    for (const { n, text, whens } of byError.values())
+      out.push(`| ${num(n)}, *${escapeCell(text)}* | ${whens.join("<br>")} |`);
+    // A row where VB6 or 64-bit VBA raises something else gets a NOTE: one sentence when the
+    // two agree, one each when they do not. `mine` is what twinBASIC raises where they differ.
+    const what = (n, mine, plural) =>
+      n === 0
+        ? `raise${plural ? "" : "s"} no error`
+        : `raise${plural ? "" : "s"} error ${num(n)}, *${msg(n)}*${mine === 0 ? "; twinBASIC raises none" : ", instead"}`;
+    for (const r of p.rows) {
+      // A row none of whose cases runs in 64-bit VBA says nothing of it.
+      const vb6 = r.vb6 !== undefined;
+      const vba = vba64Differs(r) && r.cases.some((c) => runsIn(c, "vba64"));
+      if (!vb6 && !vba) continue;
+      const vbaN = expected(r, "vba64");
+      const sentences =
+        vb6 && vba && vbaN === r.vb6
+          ? [`VB6 and 64-bit VBA ${what(r.vb6, r.error, true)}`]
+          : [
+              ...(vb6 ? [`VB6 ${what(r.vb6, r.error, false)}`] : []),
+              ...(vba ? [`64-bit VBA ${what(vbaN, expected(r, "win64"), false)}`] : []),
+            ];
       if (out.at(-1) !== "") out.push("");
-      out.push(`> [!NOTE] BETA ${beta}`, `> When ${r.when}, VB6 ${what}.`);
+      out.push(`> [!NOTE] BETA ${beta}`, `> When ${r.when}, ${sentences.join("; ")}.`);
     }
   }
   out.push("", "<!-- /errors -->");

@@ -18,7 +18,7 @@ Syntax: **ShiftRotateLeft(** *number*, *shiftamount* **)**
 
 The result has the type of *number*. The rotation works on all the bits of that type: 8 for a **Byte**, 16 for an **Integer** or a **Boolean**, 32 for a **Long**, 64 for a **LongLong** or a **Currency**, and 32 or 64 for a **LongPtr**, as the build is 32-bit or 64-bit. A **Currency** is rotated as the 64-bit integer that stores it, which is its value multiplied by 10,000.
 
-The rotation count is taken modulo the number of bits, so rotating a **Long** by 32 gives the value unchanged, and by 33 the same as by 1. A negative *shiftamount* rotates right: rotating a **Long** left by -1 is the same as rotating it left by 31. No value of *shiftamount* raises an error.
+The rotation count is taken modulo the number of bits, so rotating a **Long** by 32 gives the value unchanged, and by 33 the same as by 1. A negative *shiftamount* rotates right: rotating a **Long** left by -1 is the same as rotating it left by 31. No **Long** value of *shiftamount* raises an error.
 
 Unlike the [**\<<**](../../Core/LeftShift) operator, which discards the bits shifted out and fills with zeros, **ShiftRotateLeft** loses no bits: `&H12345678 << 4` is `&H23456780`, and `ShiftRotateLeft(&H12345678, 4)` is `&H23456781`.
 
@@ -29,6 +29,15 @@ With constant arguments, the call is evaluated when the code is compiled, so it 
 
 > [!NOTE]
 > **ShiftRotateLeft** is a twinBASIC extension. VBA and VB6 have no function of this name: a call to it is the compile error *Sub or Function not defined*.
+
+<!-- errors: generated from errors/VBA.Math.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *shiftamount* is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

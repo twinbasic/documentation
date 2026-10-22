@@ -1,0 +1,13 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Round_NumberNegativeDigits_Raises5$",
+      "^PASS RegressionTests.Round_EmptyNegativeDigits_Raises5$",
+      "^PASS RegressionTests.Round_NullValidDigits_ReturnsNull$",
+      "^FAIL RegressionTests.Round_NullNegativeDigits_Raises5: .*Actual: 0 "
+    ]
+  },
+  "issue": 2540
+}

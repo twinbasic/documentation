@@ -41,7 +41,7 @@ Debug.Print Log(100) / Log(10)   ' 2 -- base-10 log of 100
 
 ## Square root
 
-[**Sqr**](Sqr) returns the square root of a non-negative number as a **Double**. Passing a negative value raises a run-time error rather than returning a complex or **NaN** result; if a calculation may legitimately produce a negative input, guard the call with [**Sgn**](Sgn) or a comparison to zero.
+[**Sqr**](Sqr) returns the square root of a non-negative number as a **Double**. Passing a negative value raises error 5, *Invalid procedure call or argument*, rather than returning a complex or **NaN** result; if a calculation may legitimately produce a negative input, guard the call with [**Sgn**](Sgn) or a comparison to zero.
 
 ## Rounding
 

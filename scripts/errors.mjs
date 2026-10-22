@@ -2,10 +2,10 @@
 // The run-time errors each documented procedure raises: measuring them, and
 // writing each page's Common Errors section from the data under errors/.
 //
-//     node scripts/errors.mjs run [<file.yml>...] [--only <regex>] [--runtime tb|vb6|win64]...
+//     node scripts/errors.mjs run [<file.yml>...] [--only <regex>] [--runtime tb|win64|vb6|vba64]...
 //     node scripts/errors.mjs generate <dir> [<file.yml>...] [--only <regex>]
 //     node scripts/errors.mjs write [<file.yml>...]
-//     node scripts/errors.mjs messages [--runtime tb|vb6]...
+//     node scripts/errors.mjs messages [--runtime tb|win64|vb6|vba64]...
 //
 // Exit codes:
 //   0  run, messages: every runtime agrees with the data; generate, write: done
@@ -20,10 +20,12 @@
 // raise them, errors/*.yml, whose format WIP.Errors.md describes -- and the
 // section, the probe and the check are generated from it. `run` builds one
 // probe from the data for each runtime (a twinBASIC exe through scripts/tbrun.mjs,
-// a VB6 exe through lib/vb6.mjs) and compares what each case raised with what
-// the data says; `messages` does the same for errors/messages.yml, the message
-// of every number. They need twinBASIC and VB6, so they are run by a person when
-// a BETA is installed, never by CI. `write` -- each page's section, and the
+// 32-bit and 64-bit, a VB6 exe through lib/vb6.mjs, and a module run in 64-bit
+// Access through lib/vba.mjs: twinBASIC 32-bit answers to VB6, 64-bit to 64-bit VBA)
+// and compares what each case raised with what the data says; `messages` does the
+// same for errors/messages.yml, the message of every number. They need twinBASIC,
+// VB6 and 64-bit Office, so they are run by a person when a BETA is installed,
+// never by CI. `write` -- each page's section, and the
 // index of the numbers on the central page -- needs neither; check_errors.mjs is
 // its gate.
 
@@ -37,6 +39,7 @@ import {
   CENTRAL_PAGE,
   caseAtLine,
   compareMessages,
+  expectedDescription,
   dataFiles,
   findSection,
   loadDataFile,
@@ -47,7 +50,9 @@ import {
   pagePath,
   probeCases,
   probeModule,
+  harnessCode,
   readMessageOutput,
+  RUNTIMES,
   readProbeOutput,
   renderIndex,
   renderSection,
@@ -56,6 +61,8 @@ import {
   VB_NUMBERS,
 } from "./lib/errors-data.mjs";
 import { encodeAnsi, findVb6, NO_VB6, parseMakeLog, runRepro } from "./lib/vb6.mjs";
+import { faultText } from "./lib/win-fault.mjs";
+import { findAccess64, NO_VBA64, VBA_MODULE, VbaSession } from "./lib/vba.mjs";
 
 exitOnCrash();
 
@@ -71,8 +78,8 @@ named, every file there is used.
   run       builds a probe of the cases for each runtime, runs it, and compares
             what each case raised with the data. A case the compiler refuses is
             reported and left out, and the probe built again without it.
-  generate  writes the probes to <dir>/tb (a tree for scripts/tbrun.mjs --exe)
-            and <dir>/vb6 (Probe.vbp), without running them
+  generate  writes the probes to <dir>/tb (a tree for scripts/tbrun.mjs --exe),
+            <dir>/vb6 (Probe.vbp) and <dir>/vba (Module1.bas), without running them
   write     writes each page's Common Errors section from the data, and the index of
             the numbers on the central page, docs/Reference/Run-time-Errors.md
   messages  builds a probe of the messages for each runtime, runs it, and
@@ -81,9 +88,8 @@ named, every file there is used.
             other number the file lists
 
   --only <regex>   only the pages whose path under docs/ matches
-  --runtime R      tb (32-bit twinBASIC), vb6 or win64 (64-bit twinBASIC); may be
-                   repeated. By default tb and vb6, and win64 for a file that says
-                   win64: true; messages measures tb and vb6 only
+  --runtime R      tb (32-bit twinBASIC), win64 (64-bit twinBASIC), vb6, or vba64
+                   (64-bit VBA, in Access); may be repeated. By default all four
   --ide P          the twinBASIC IDE, as for tbrun (default $TB_IDE, or the newest
                    on the Desktop)
   --vb6 P          VB6.EXE (default $VB6_EXE, or VB6's own install folder)
@@ -95,7 +101,6 @@ Exit codes:
   1  run, messages: a runtime disagrees with the data
   2  a refused command line, bad data, or a runtime that could not be run`;
 
-const RUNTIMES = ["tb", "vb6", "win64"];
 const COMMANDS = ["run", "generate", "write", "messages"];
 const TBRUN = path.join(REPO_ROOT, "scripts", "tbrun.mjs");
 const TB_TEMPLATE = path.join(REPO_ROOT, "test", "example-projects", "console", "Settings");
@@ -137,7 +142,6 @@ if (command !== "run" && command !== "messages") {
 if ((command === "write" || command === "messages") && only) usage("--only is for run and generate");
 if (command === "messages") {
   if (rest.length) usage("messages takes no data file: it measures errors/messages.yml");
-  if (values.runtime.includes("win64")) usage("--runtime: messages measures tb and vb6");
 }
 
 // ------------------------------------------------------------------ the data
@@ -203,7 +207,7 @@ if (command === "write") {
 function writeTbTree(dir, cases, text) {
   mkdirSync(path.join(dir, "Sources"), { recursive: true });
   cpSync(TB_TEMPLATE, path.join(dir, "Settings"));
-  const mod = text === undefined ? probeModule(cases, "tb") : { text, spans: [] };
+  const mod = text === undefined ? probeModule(cases, "tb", harnessCode(cases)) : { text, spans: [] };
   writeFileSync(path.join(dir, "Sources", "Probe.twin"), mod.text);
   return mod;
 }
@@ -211,17 +215,24 @@ function writeTbTree(dir, cases, text) {
 function writeVb6Project(dir, cases, text) {
   mkdirSync(dir, { recursive: true });
   cpSync(VB6_PROJECT, path.join(dir, "Probe.vbp"));
-  const mod = text === undefined ? probeModule(cases, "vb6") : { text, spans: [] };
+  const mod = text === undefined ? probeModule(cases, "vb6", harnessCode(cases)) : { text, spans: [] };
   writeFileSync(path.join(dir, "Module1.bas"), encodeAnsi(mod.text));
   return mod;
 }
 
+const vbaModule = (cases) => probeModule(cases, "vba", harnessCode(cases));
+
 if (command === "generate") {
   const tb = probeCases(files, "tb", { only });
   const vb6 = probeCases(files, "vb6", { only });
+  const vba = probeCases(files, "vba64", { only });
   writeTbTree(path.join(outDir, "tb"), tb);
   writeVb6Project(path.join(outDir, "vb6"), vb6);
-  console.log(`errors: ${tb.length} cases in ${path.join(outDir, "tb")}, ${vb6.length} in ${path.join(outDir, "vb6")}`);
+  mkdirSync(path.join(outDir, "vba"), { recursive: true });
+  writeFileSync(path.join(outDir, "vba", VBA_MODULE), encodeAnsi(vbaModule(vba).text));
+  console.log(
+    `errors: ${tb.length} cases in ${path.join(outDir, "tb")}, ${vb6.length} in ${path.join(outDir, "vb6")}, ${vba.length} in ${path.join(outDir, "vba")}`,
+  );
   process.exit(0);
 }
 
@@ -290,7 +301,7 @@ async function runTb(dir, cases, arch, text) {
   if (!json?.exeRun)
     return { harness: `tbrun exit ${r.code}: ${(r.stderr || r.stdout).trim().split("\n").slice(-3).join(" / ")}` };
   const e = json.exeRun;
-  const note = [e.fault, e.timedOut && "timed out", ...e.dialogs.map((d) => `a box: ${d.text}`)]
+  const note = [e.fault && faultText(e.fault), e.timedOut && "timed out", ...e.dialogs.map((d) => `a box: ${d.text}`)]
     .filter(Boolean)
     .join("; ");
   return { lines: e.lines, note };
@@ -312,21 +323,72 @@ async function runVb6(dir, cases, vb6, text) {
     if (id === null) return { harness: `VB6 did not build the probe: ${message}` };
     return { refused: new Map([[id, message]]) };
   }
-  const note = [r.fault, r.timedOut && "timed out", ...r.dialogs.map((d) => `a box: ${d.text}`)]
+  const note = [r.fault && faultText(r.fault), r.timedOut && "timed out", ...r.dialogs.map((d) => `a box: ${d.text}`)]
     .filter(Boolean)
     .join("; ");
   return { lines: r.lines, note };
 }
 
+// One Access for the whole run (lib/vba.mjs, 4), started by the first probe that needs it.
+let vbaSession = null;
+
+async function runVba64(dir, cases, text) {
+  vbaSession ??= new VbaSession();
+  const mod = text === undefined ? vbaModule(cases) : { text, spans: [] };
+  let r;
+  try {
+    r = await vbaSession.runModule(dir, mod.text, { timeoutMs: text === undefined ? 120000 : 600000 });
+  } catch (e) {
+    return { harness: e.message.split("\n")[0] };
+  }
+  const compile = r.boxes.find((b) => /^Compile error/i.test(b.text));
+  if (compile) {
+    // VBA compiles a case's Sub as Main first calls it, and Main calls them in order: the
+    // refused one is the first that did not report.
+    if (!r.lines.includes("start")) return { harness: `an error in the module's declarations: ${compile.text}` };
+    const { seen } = readProbeOutput(r.lines);
+    const id = cases.find((c) => !seen.has(c.id))?.id;
+    if (id === undefined) return { harness: `a compile error after every case: ${compile.text}` };
+    return { refused: new Map([[id, compile.text.replace(/^Compile error:\s*/i, "")]]) };
+  }
+  const note = [
+    r.timedOut && "timed out",
+    ...r.boxes.map((b) => `a box: ${b.text}`),
+    r.result && r.result !== "ran" && r.result,
+    !r.result && !r.timedOut && "Access ended",
+  ]
+    .filter(Boolean)
+    .join("; ");
+  return { lines: r.lines, note };
+}
+
+// The runtimes a command measures, and what each needs found first.
+function runtimesWanted() {
+  const runtimes = values.runtime.length ? RUNTIMES.filter((r) => values.runtime.includes(r)) : RUNTIMES;
+  let vb6 = null;
+  if (runtimes.includes("vb6")) {
+    vb6 = findVb6(values.vb6);
+    if (!vb6) die(2, values.vb6 ? `no such file: ${values.vb6}\n${NO_VB6}` : NO_VB6);
+  }
+  if (runtimes.includes("vba64") && !findAccess64()) die(2, NO_VBA64);
+  return { runtimes, vb6 };
+}
+
+async function finish() {
+  await vbaSession?.close();
+  if (values.keep) console.log(`errors: the probes are in ${work}`);
+  else rmSync(work, { recursive: true, force: true });
+}
+
 if (command === "messages") {
   // The numbers past VB's own that the list gives are measured as well.
   const others = [...messages.keys()].filter((n) => n < VB_NUMBERS.from || n > VB_NUMBERS.to).sort((a, b) => a - b);
-  const runtimes = values.runtime.length ? [...new Set(values.runtime)] : ["tb", "vb6"];
-  const vb6 = runtimes.includes("vb6") ? findVb6(values.vb6) : null;
-  if (runtimes.includes("vb6") && !vb6) die(2, values.vb6 ? `no such file: ${values.vb6}\n${NO_VB6}` : NO_VB6);
+  const { runtimes, vb6 } = runtimesWanted();
   const run = {
     tb: (d) => runTb(d, [], "win32", messageProbeModule(others, "tb")),
+    win64: (d) => runTb(d, [], "win64", messageProbeModule(others, "tb")),
     vb6: (d) => runVb6(d, [], vb6, messageProbeModule(others, "vb6")),
+    vba64: (d) => runVba64(d, [], messageProbeModule(others, "vba")),
   };
   const seen = {};
   const broken = [];
@@ -340,8 +402,7 @@ if (command === "messages") {
       else broken.push(`${rt}: the probe stopped before it ended${got.note ? `: ${got.note}` : ""}`);
     }),
   );
-  if (values.keep) console.log(`errors: the probes are in ${work}`);
-  else rmSync(work, { recursive: true, force: true });
+  await finish();
   if (broken.length) die(2, broken.join("\n"));
   const wrong = compareMessages(messages, seen);
   for (const w of wrong) console.log(`  ${w}`);
@@ -352,31 +413,20 @@ if (command === "messages") {
   process.exit(wrong.length ? 1 : 0);
 }
 
-const wanted = values.runtime.length ? values.runtime : null;
-const plan = [];
-const want = (rt) => (wanted ? wanted.includes(rt) : rt !== "win64");
-if (want("tb")) plan.push(["tb", (d, c) => runTb(d, c, "win32")]);
-if (wanted ? wanted.includes("win64") : files.some((f) => f.win64)) {
-  plan.push(["win64", (d, c) => runTb(d, c, "win64")]);
-}
-if (want("vb6")) {
-  const vb6 = findVb6(values.vb6);
-  if (!vb6) die(2, values.vb6 ? `no such file: ${values.vb6}\n${NO_VB6}` : NO_VB6);
-  plan.push(["vb6", (d, c) => runVb6(d, c, vb6)]);
-}
+const { runtimes, vb6 } = runtimesWanted();
+const runners = {
+  tb: (d, c) => runTb(d, c, "win32"),
+  win64: (d, c) => runTb(d, c, "win64"),
+  vb6: (d, c) => runVb6(d, c, vb6),
+  vba64: (d, c) => runVba64(d, c),
+};
+const plan = runtimes.map((rt) => [rt, runners[rt]]);
 
-const caseLists = Object.fromEntries(
-  plan.map(([rt]) => {
-    // win64 is measured for the files that ask for it, or for all when --runtime names it.
-    const from = rt === "win64" && !wanted?.includes("win64") ? files.filter((f) => f.win64) : files;
-    return [rt, probeCases(from, rt, { only })];
-  }),
-);
+const caseLists = Object.fromEntries(plan.map(([rt]) => [rt, probeCases(files, rt, { only })]));
 const measured = Object.fromEntries(
   await Promise.all(plan.map(async ([rt, run]) => [rt, await measure(rt, caseLists[rt], run)])),
 );
-if (values.keep) console.log(`errors: the probes are in ${work}`);
-else rmSync(work, { recursive: true, force: true });
+await finish();
 
 // ------------------------------------------------------------------ the report
 
@@ -410,10 +460,11 @@ for (const c of [...all.values()].sort((a, b) => a.id - b.id)) {
     else if (r.missing) wrong.push(`${rt} reported nothing`);
     else if (r.setup) wrong.push(`${rt}: its setup raised ${r.number}, ${r.description}`);
     else if (r.number !== mine.expect) wrong.push(`${rt} raised ${r.number}, the data says ${mine.expect}`);
-    else if (r.number !== 0 && r.description !== messages.get(r.number)?.raised) {
-      wrong.push(
-        `${rt}'s message is "${r.description}", errors/messages.yml has "${messages.get(r.number)?.raised ?? "nothing"}"`,
-      );
+    else if (r.number !== 0) {
+      const want = expectedDescription(mine.row, rt, r.number, messages);
+      if (want !== null && r.description !== want) {
+        wrong.push(`${rt}'s message is "${r.description}", the data and errors/messages.yml say "${want}"`);
+      }
     }
   }
   console.log(

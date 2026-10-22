@@ -28,6 +28,16 @@ Static Function Log10(X)
 End Function
 ```
 
+<!-- errors: generated from errors/VBA.Math.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *number* is zero or negative (**Empty** included) |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *number* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Log** function to return the natural logarithm of a number.

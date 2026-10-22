@@ -12,7 +12,7 @@ Private Declare Sub CopyMemory Lib "kernel32.dll" Alias "RtlMoveMemory" (Destina
 Private Declare Function lstrlenW Lib "kernel32.dll" (ByVal lpString As Long) As Long
 Private Declare Function SysAllocString Lib "oleaut32.dll" (ByVal psz As Long) As Long
 
-Private Const NCODES As Long = 24
+Private Const NCODES As Long = 25
 Private gVtbl(0 To 6) As Long
 Private gObj(0 To 1) As Long
 Private gCodes(1 To NCODES) As Long
@@ -65,6 +65,7 @@ Private Sub InitCodes()
     SetCode 22, &H8007000D, "HRESULT_FROM_WIN32(ERROR_INVALID_DATA) 8007000D"
     SetCode 23, &H80020009, "DISP_E_EXCEPTION (excepinfo scode 80041234, wCode 0, description given)"
     SetCode 24, &H80020009, "DISP_E_EXCEPTION (excepinfo scode 0, wCode 1234, description given)"
+    SetCode 25, &H80020011, "DISP_E_NOTACOLLECTION"
 End Sub
 
 Private Function Fn(ByVal p As Long) As Long
@@ -223,6 +224,7 @@ Sub Cases()
             Case 22: o.C22
             Case 23: o.C23
             Case 24: o.C24
+            Case 25: o.C25
         End Select
         Rec n, "statement", before
         On Error GoTo 0
@@ -243,5 +245,8 @@ Sub Cases()
     Show "CallByName Widget, Nope"
     x = c.Item(1, 2)
     Show "x = Collection.Item(1, 2)"
+    Set c = CreateObject("Scripting.Dictionary")
+    x = c.Count(1)
+    Show "x = Dictionary.Count(1)"
     On Error GoTo 0
 End Sub

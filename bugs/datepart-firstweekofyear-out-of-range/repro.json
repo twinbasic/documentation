@@ -1,0 +1,13 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.DatePart_WW_FirstJan1_Is1$",
+      "^PASS RegressionTests.DatePart_WW_FirstFullWeek_Is52$",
+      "^PASS RegressionTests.DatePart_D_Four_NoError$",
+      "^FAIL RegressionTests.DatePart_WW_Four_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.DatePart_WW_MinusOne_Raises5: .*Actual: 0 "
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.CreateObject_RegisteredClass_Creates$",
+      "^PASS RegressionTests.CreateObject_Null_Raises94$",
+      "^PASS RegressionTests.GetObject_EmptyPathWithClass_Creates$",
+      "^FAIL RegressionTests.CreateObject_UnknownClass_Raises429: .*Actual: -2147221020 ",
+      "^FAIL RegressionTests.CreateObject_UnregisteredClsid_Raises429: .*Actual: -2147221164 ",
+      "^FAIL RegressionTests.CreateObject_MalformedClsid_Raises429: .*Actual: -2147221005 ",
+      "^FAIL RegressionTests.CreateObject_EmptyClass_Raises429: .*Actual: 5 ",
+      "^FAIL RegressionTests.GetObject_MissingFile_Raises432: .*Actual: -2147221014 ",
+      "^FAIL RegressionTests.GetObject_MissingFileWithClass_Raises432: .*Actual: -2147467262 ",
+      "^FAIL RegressionTests.GetObject_UnknownClass_Raises429: .*Actual: -2147221005 ",
+      "^FAIL RegressionTests.GetObject_NoRunningInstance_Raises429: .*Actual: -2147221021 "
+    ]
+  }
+}

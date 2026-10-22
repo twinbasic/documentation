@@ -40,6 +40,15 @@ Here, *upperbound* is the highest number in the range, and *lowerbound* is the l
 > [!NOTE]
 > To repeat sequences of random numbers, call **Rnd** with a negative argument immediately before using **Randomize** with a numeric argument. Using **Randomize** with the same value for *number* does not repeat the previous sequence.
 
+<!-- errors: generated from errors/VBA.Math.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *number* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Rnd** function to generate a random integer value from 1 to 6.

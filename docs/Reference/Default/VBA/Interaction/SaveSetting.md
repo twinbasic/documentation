@@ -30,9 +30,21 @@ Syntax: **SaveSetting** *appname*, *section*, *key*, *setting*
 
 : String expression containing the value that key is being set to.
 
-An error occurs if the key setting can't be saved for any reason.
 
 The root of these registry settings is: `Computer\HKEY_CURRENT_USER\Software\VB and VBA Program Settings`.
+
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *appname*, *section* or *key* is a zero-length string |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | an argument is **Null** |
+
+> [!NOTE] BETA 1010
+> When *appname*, *section* or *key* is a zero-length string, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+<!-- /errors -->
 
 ### Example
 

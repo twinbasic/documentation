@@ -1,0 +1,261 @@
+# The VBA Math module. Format: WIP.Errors.md.
+beta: 1010
+pages:
+  Reference/Default/VBA/Math/Abs.md:
+    rows:
+      - error: 6
+        when: "*number* is a **Currency** of -922,337,203,685,477.5808"
+        cases:
+          - { decl: Dim C As Currency, setup: C = -922337203685477.5807@ - 0.0001@, expr: Abs(C) }
+          - { decl: Dim V As Variant, setup: V = -922337203685477.5807@ - 0.0001@, expr: Abs(V) }
+      - error: 0
+        when: "*number* is an **Integer** of -32,768 or a **Long** of -2,147,483,648 (twinBASIC returns a **Long** or a **Double**)"
+        vb6: 6
+        bug: abs-minimum-widens-type
+        cases:
+          - { decl: Dim I As Integer, setup: I = -32768, expr: Abs(I) }
+          - { decl: Dim L As Long, setup: L = -2147483647 - 1, expr: Abs(L) }
+    quiet:
+      - Abs(Null)
+      - Abs(Empty)
+      - Abs(True)
+      - Abs(-1.7976931348623157E+308)
+      - { decl: Dim I As Integer, setup: I = -32767, expr: Abs(I) }
+      - { decl: Dim L As Long, setup: L = -2147483647, expr: Abs(L) }
+      - { decl: Dim V As Variant, setup: V = CInt(-32768), expr: Abs(V) }
+      - { decl: Dim V As Variant, setup: V = CLng(-2147483648#), expr: Abs(V) }
+      - { decl: Dim C As Currency, setup: C = -922337203685477.5807@, expr: Abs(C) }
+      - { decl: Dim D As Variant, setup: 'D = CDec("-79228162514264337593543950335")', expr: Abs(D) }
+  Reference/Default/VBA/Math/Atn.md:
+    rows:
+      - error: 94
+        when: "*number* is **Null**"
+        cases: [Atn(Null)]
+    quiet:
+      - Atn(Empty)
+      - Atn(1E+308)
+      - Atn(-1E+308)
+  Reference/Default/VBA/Math/Cos.md:
+    rows:
+      - error: 94
+        when: "*number* is **Null**"
+        cases: [Cos(Null)]
+      - error: 0
+        when: "the magnitude of *number* is 9,223,372,000,000,000,000 or more"
+        vb6: 5
+        bug: trig-above-2-to-63
+        cases:
+          - Cos(9.223372E+18)
+          - { decl: Dim X As Double, setup: X = 2 ^ 63, expr: Cos(X) }
+          - { decl: Dim X As Double, setup: X = -(2 ^ 63), expr: Cos(X) }
+          - Cos(1E+300)
+    quiet:
+      - Cos(Empty)
+      - Cos(1E+18)
+      - Cos(-1E+18)
+  Reference/Default/VBA/Math/Sin.md:
+    rows:
+      - error: 94
+        when: "*number* is **Null**"
+        cases: [Sin(Null)]
+      - error: 0
+        when: "the magnitude of *number* is 9,223,372,000,000,000,000 or more"
+        vb6: 5
+        bug: trig-above-2-to-63
+        cases:
+          - Sin(9.223372E+18)
+          - { decl: Dim X As Double, setup: X = 2 ^ 63, expr: Sin(X) }
+          - { decl: Dim X As Double, setup: X = -(2 ^ 63), expr: Sin(X) }
+          - Sin(1E+300)
+    quiet:
+      - Sin(Empty)
+      - Sin(1E+18)
+      - Sin(-1E+18)
+  Reference/Default/VBA/Math/Tan.md:
+    rows:
+      - error: 94
+        when: "*number* is **Null**"
+        cases: [Tan(Null)]
+      - error: -2147348207
+        when: "the magnitude of *number* is 9,223,372,036,854,775,808 (2^63) or more"
+        vb6: 5
+        bug: trig-above-2-to-63
+        cases:
+          - { decl: Dim X As Double, setup: X = 2 ^ 63, expr: Tan(X) }
+          - { decl: Dim X As Double, setup: X = -(2 ^ 63), expr: Tan(X) }
+          - Tan(1E+20)
+          - Tan(1E+300)
+      - error: 0
+        when: "the magnitude of *number* is 9,223,372,000,000,000,000 or more but less than 2^63"
+        vb6: 5
+        bug: trig-above-2-to-63
+        cases:
+          - Tan(9.223372E+18)
+          - { decl: Dim X As Double, setup: X = 2 ^ 63 - 1024, expr: Tan(X) }
+          - { decl: Dim X As Double, setup: X = -(2 ^ 63) + 1024, expr: Tan(X) }
+    quiet:
+      - Tan(Empty)
+      - Tan(1E+18)
+      - Tan(-1E+18)
+      - Tan(1.5707963267949)
+  Reference/Default/VBA/Math/Exp.md:
+    rows:
+      - error: 6
+        when: "*number* is greater than 709.782712893384"
+        cases:
+          - Exp(709.782712894)
+          - Exp(710)
+          - Exp(1E+300)
+      - error: 94
+        when: "*number* is **Null**"
+        cases: [Exp(Null)]
+    quiet:
+      - Exp(Empty)
+      - Exp(709.782712893)
+      - Exp(-1000)
+      - Exp(-1E+300)
+  Reference/Default/VBA/Math/Log.md:
+    rows:
+      - error: 5
+        when: "*number* is zero or negative (**Empty** included)"
+        cases:
+          - Log(0)
+          - Log(-1)
+          - Log(-1E-300)
+          - Log(Empty)
+          - { decl: Dim X As Double, setup: X = -0#, expr: Log(X) }
+      - error: 94
+        when: "*number* is **Null**"
+        cases: [Log(Null)]
+    quiet:
+      - Log(4.94065645841247E-324)
+      - Log(1E+308)
+  Reference/Default/VBA/Math/Sqr.md:
+    rows:
+      - error: 5
+        when: "*number* is negative"
+        cases:
+          - Sqr(-1)
+          - Sqr(-1E-300)
+      - error: 94
+        when: "*number* is **Null**"
+        cases: [Sqr(Null)]
+    quiet:
+      - Sqr(Empty)
+      - Sqr(0)
+      - Sqr(1E+308)
+      - { decl: Dim X As Double, setup: X = -0#, expr: Sqr(X) }
+  Reference/Default/VBA/Math/Randomize.md:
+    rows:
+      - error: 94
+        when: "*number* is **Null**"
+        cases:
+          - { run: Randomize Null }
+    quiet:
+      - { run: Randomize }
+      - { run: Randomize Empty }
+      - { run: Randomize 1E+300 }
+      - { run: Randomize -1E+300 }
+      - { run: 'Randomize CDec("79228162514264337593543950335")' }
+  Reference/Default/VBA/Math/Rnd.md:
+    rows:
+      - error: 94
+        when: "*number* is **Null**"
+        cases: [Rnd(Null)]
+    quiet:
+      - Rnd
+      - Rnd(Empty)
+      - Rnd(0)
+      - Rnd(-1)
+      - Rnd(3.4E+38)
+  Reference/Default/VBA/Math/Round.md:
+    rows:
+      - error: 5
+        when: "*numdecimalplaces* rounds to a negative number"
+        cases:
+          - Round(1.5, -1)
+          - Round(1.5, -0.6)
+          - Round(Empty, -1)
+          - { decl: Dim C As Currency, setup: C = 1.5, expr: 'Round(C, -1)' }
+          - { decl: Dim D As Variant, setup: 'D = CDec("1.5")', expr: 'Round(D, -1)' }
+      - error: 5
+        when: "*numdecimalplaces* is greater than 22 and *expression* is a **Single**, **Double** or **Date**, or a string"
+        cases:
+          - Round(1.5, 23)
+          - Round(1.5, 2147483647)
+          - Round(1.7976931348623157E+308, 300)
+          - { decl: Dim S As Single, setup: S = 1.5, expr: 'Round(S, 23)' }
+          - { decl: Dim T As Date, setup: 'T = #1/1/2000#', expr: 'Round(T, 23)' }
+          - Round("1.5", 23)
+      - error: 94
+        when: "*numdecimalplaces* is **Null**"
+        cases:
+          - Round(1.5, Null)
+          - Round(Null, Null)
+      - error: 0
+        when: "*expression* is **Null** and *numdecimalplaces* is negative"
+        vb6: 5
+        bug: round-null-negative-digits
+        cases:
+          - Round(Null, -1)
+    quiet:
+      - Round(Null)
+      - Round(Null, 23)
+      - Round(Empty)
+      - Round("2.5")
+      - Round(1.5, 0)
+      - Round(1.5, 22)
+      - Round(1.5, -0.4)
+      - Round(1.5, Empty)
+      - Round(1.7976931348623157E+308, 1)
+      - { decl: Dim S As Single, setup: S = 1.5, expr: 'Round(S, 22)' }
+      - { decl: Dim C As Currency, setup: C = 1.5, expr: 'Round(C, 2147483647)' }
+      - { decl: Dim I As Integer, setup: I = 1, expr: 'Round(I, 2147483647)' }
+      - { decl: Dim L As Long, setup: L = 1, expr: 'Round(L, 2147483647)' }
+      - { decl: Dim D As Variant, setup: 'D = CDec("1.5")', expr: 'Round(D, 2147483647)' }
+      - Round(True, 2147483647)
+      - Round(Empty, 2147483647)
+      - { decl: Dim L As LongLong, setup: L = 9223372036854775807^, expr: 'Round(L, 2147483647)', only: [tb, vba64] }
+  Reference/Default/VBA/Math/Sgn.md:
+    rows:
+      - error: 94
+        when: "*number* is **Null**"
+        cases: [Sgn(Null)]
+    quiet:
+      - Sgn(Empty)
+      - Sgn("-3")
+      - Sgn(-1E+308)
+  Reference/Default/VBA/Math/ShiftRotateLeft.md:
+    rows:
+      - error: 94
+        when: "*shiftamount* is **Null**"
+        cases:
+          - { decl: "Dim L As Long\nDim V As Variant", setup: "L = 1\nV = Null", expr: 'ShiftRotateLeft(L, V)', only: tb }
+    quiet:
+      - { decl: Dim L As Long, setup: L = 1, expr: 'ShiftRotateLeft(L, -1)', only: tb }
+      - { decl: Dim L As Long, setup: L = 1, expr: 'ShiftRotateLeft(L, 2147483647)', only: tb }
+      - { decl: Dim L As Long, setup: L = 1, expr: 'ShiftRotateLeft(L, -2147483647 - 1)', only: tb }
+      - { decl: "Dim L As Long\nDim V As Variant", setup: "L = 1\nV = Empty", expr: 'ShiftRotateLeft(L, V)', only: tb }
+      - { decl: Dim B As Byte, setup: B = 1, expr: 'ShiftRotateLeft(B, 9)', only: tb }
+      - { decl: Dim C As Currency, setup: C = 1, expr: 'ShiftRotateLeft(C, 63)', only: tb }
+  Reference/Default/VBA/Math/ShiftRotateRight.md:
+    rows:
+      - error: 94
+        when: "*shiftamount* is **Null**"
+        cases:
+          - { decl: "Dim L As Long\nDim V As Variant", setup: "L = 1\nV = Null", expr: 'ShiftRotateRight(L, V)', only: tb }
+    quiet:
+      - { decl: Dim L As Long, setup: L = 1, expr: 'ShiftRotateRight(L, -1)', only: tb }
+      - { decl: Dim L As Long, setup: L = 1, expr: 'ShiftRotateRight(L, 2147483647)', only: tb }
+      - { decl: "Dim L As Long\nDim V As Variant", setup: "L = 1\nV = Empty", expr: 'ShiftRotateRight(L, V)', only: tb }
+  Reference/Default/VBA/Math/ShiftUnsignedRight.md:
+    rows:
+      - error: 94
+        when: "*shiftamount* is **Null**"
+        cases:
+          - { decl: "Dim L As Long\nDim V As Variant", setup: "L = 1\nV = Null", expr: 'ShiftUnsignedRight(L, V)', only: tb }
+    quiet:
+      - { decl: Dim L As Long, setup: L = -1, expr: 'ShiftUnsignedRight(L, -1)', only: tb }
+      - { decl: Dim L As Long, setup: L = -1, expr: 'ShiftUnsignedRight(L, 32)', only: tb }
+      - { decl: Dim L As Long, setup: L = -1, expr: 'ShiftUnsignedRight(L, 2147483647)', only: tb }
+      - { decl: "Dim L As Long\nDim V As Variant", setup: "L = 1\nV = Empty", expr: 'ShiftUnsignedRight(L, V)', only: tb }

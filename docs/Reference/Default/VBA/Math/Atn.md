@@ -21,6 +21,15 @@ The range of the result is -pi/2 to pi/2 radians. To convert degrees to radians,
 > [!NOTE]
 > **Atn** is the inverse trigonometric function of [**Tan**](Tan), which takes an angle as its argument and returns the ratio of two sides of a right triangle. Do not confuse **Atn** with the cotangent, which is the simple inverse of a tangent (1/tangent).
 
+<!-- errors: generated from errors/VBA.Math.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *number* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses **Atn** to derive an approximation of pi.

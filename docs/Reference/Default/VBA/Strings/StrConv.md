@@ -58,7 +58,7 @@ When converting from a **Byte** array in ANSI format to a string, use the **StrC
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *conversion* or *LCID* is **Null** |
 
 > [!NOTE] BETA 1010
-> When *conversion* includes **vbWide**, **vbNarrow**, **vbKatakana** or **vbHiragana** and *LCID* names an East Asian locale, on a system whose locale is not East Asian, VB6 raises no error.
+> When *conversion* includes **vbWide**, **vbNarrow**, **vbKatakana** or **vbHiragana** and *LCID* names an East Asian locale, on a system whose locale is not East Asian, VB6 and 64-bit VBA raise no error.
 
 <!-- /errors -->
 

@@ -1,0 +1,10 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Limit=0 Doubled=0 FromConfig=0 Box\\.Size=3$"
+    ]
+  },
+  "issue": 2545
+}

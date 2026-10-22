@@ -227,4 +227,21 @@ Module LateBoundErrorTests
         Assert.Strict.AreEqual 287, Err.Number        ' VB6: 287, Application-defined or object-defined error
     End Sub
 
+    [TestCase]
+    Public Sub NotACollection_Raises451()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr80020011                                    ' DISP_E_NOTACOLLECTION
+        Assert.Strict.AreEqual 451, Err.Number        ' VB6: 451, Property let procedure not defined and property get procedure did not return an object
+    End Sub
+
+    [TestCase]
+    Public Sub NotACollection_Dictionary_Raises451()
+        Dim d As Object = CreateObject("Scripting.Dictionary")
+        Dim x As Variant
+        On Error Resume Next
+        x = d.Count(1)                                  ' Count takes no index
+        Assert.Strict.AreEqual 451, Err.Number        ' VB6: 451
+    End Sub
+
 End Module

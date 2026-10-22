@@ -65,7 +65,7 @@ The **ReDim** statement acts as a declarative statement if the variable it decla
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | **Preserve** is used on a **Variant** that does not hold an array |
 
 > [!NOTE] BETA 1010
-> When an upper bound is less than its lower bound, VB6 raises error [9 (`&H9`)](tb:Errors#9), *Subscript out of range*, instead.
+> When an upper bound is less than its lower bound, VB6 and 64-bit VBA raise error [9 (`&H9`)](tb:Errors#9), *Subscript out of range*, instead.
 
 <!-- /errors -->
 

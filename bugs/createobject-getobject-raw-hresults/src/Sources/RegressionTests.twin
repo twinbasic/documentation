@@ -1,0 +1,98 @@
+' Regression tests: CreateObject and GetObject raise 429, ActiveX component can't create
+' object, or 432, File name or class name not found during Automation operation, as VB6 and
+' 64-bit VBA do (the VB6 project beside this one prints them), not the HRESULT COM returned.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: a class that exists is created, and Null raises 94.
+    [TestCase]
+    Public Sub CreateObject_RegisteredClass_Creates()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("Scripting.Dictionary")
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_Null_Raises94()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject(Null)
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_EmptyPathWithClass_Creates()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject("", "Scripting.Dictionary")
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: each of these raises the HRESULT, or 5.
+    [TestCase]
+    Public Sub CreateObject_UnknownClass_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("No.Such.Class")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_UnregisteredClsid_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("new:{00000000-0000-0000-0000-000000000000}")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_MalformedClsid_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("new:not-a-guid")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_EmptyClass_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_MissingFile_Raises432()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject("C:\no\such\file.xyz")
+        Assert.Strict.AreEqual 432&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_MissingFileWithClass_Raises432()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject("C:\no\such\file.xyz", "Scripting.Dictionary")
+        Assert.Strict.AreEqual 432&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_UnknownClass_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject(, "No.Such.Class")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_NoRunningInstance_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject(, "Scripting.Dictionary")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+End Module

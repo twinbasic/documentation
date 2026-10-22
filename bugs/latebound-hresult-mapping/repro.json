@@ -19,7 +19,9 @@
       "^FAIL LateBoundErrorTests\\.ArrayIsLocked_Raises10: .*Actual: -2147352563 ",
       "^FAIL LateBoundErrorTests\\.NoInterface_Raises430: .*Actual: -2147467262 ",
       "^FAIL LateBoundErrorTests\\.AccessDenied_Raises70: .*Actual: -2147024891 ",
-      "^FAIL LateBoundErrorTests\\.Abort_Raises287: .*Actual: -2147467260 "
+      "^FAIL LateBoundErrorTests\\.Abort_Raises287: .*Actual: -2147467260 ",
+      "^FAIL LateBoundErrorTests\\.NotACollection_Raises451: .*Actual: -2147352559 ",
+      "^FAIL LateBoundErrorTests\\.NotACollection_Dictionary_Raises451: .*Actual: -2147352559 "
     ]
   }
 }

@@ -1,0 +1,18 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.RaiseEventByName_Nothing_Raises91$",
+      "^PASS RegressionTests.RaiseEventByName_DeclaredEventWithHandler_CallsIt$",
+      "^PASS RegressionTests.RaiseEventByName2_DeclaredEventWithHandler_CallsIt$",
+      "^PASS RegressionTests.RaiseEvent_NoHandler_DoesNothing$",
+      "^PASS RegressionTests.RaiseEventByName_UndeclaredEventName_RaisesAnError$",
+      "^FAIL RegressionTests.RaiseEventByName_DeclaredEventNoHandler_Succeeds: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.RaiseEventByName2_DeclaredEventNoHandler_Succeeds: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.RaiseEventByName_Collection_RaisesAnError: .*ACCESS_VIOLATION",
+      "^FAIL RegressionTests.RaiseEventByName_Dictionary_RaisesAnError: .*ACCESS_VIOLATION",
+      "^FAIL RegressionTests.RaiseEventByName2_Collection_RaisesAnError: .*ACCESS_VIOLATION"
+    ]
+  }
+}

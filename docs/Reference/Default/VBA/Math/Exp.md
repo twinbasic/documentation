@@ -14,10 +14,20 @@ Syntax: **Exp(** *number* **)**
 *number*
 : *required* A **Double** or any valid numeric expression.
 
-If the value of *number* exceeds 709.782712893, an error occurs. The constant *e* is approximately 2.718282.
+The constant *e* is approximately 2.718282.
 
 > [!NOTE]
 > The **Exp** function complements the action of the [**Log**](Log) function and is sometimes referred to as the antilogarithm.
+
+<!-- errors: generated from errors/VBA.Math.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *number* is greater than 709.782712893384 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *number* is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

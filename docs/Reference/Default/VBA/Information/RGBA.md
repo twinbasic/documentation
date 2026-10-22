@@ -24,6 +24,16 @@ Syntax: **RGBA(** *red* **,** *green* **,** *blue* **,** *alpha* **)**
 
 **RGBA** extends [**RGB**](RGB) with an alpha channel for use with APIs that accept transparency. The component values can be read back with [**RGB_R**](RGB_R), [**RGB_G**](RGB_G), [**RGB_B**](RGB_B), and [**RGBA_A**](RGBA_A).
 
+<!-- errors: generated from errors/VBA.Information.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *red*, *green*, *blue* or *alpha* is negative |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *red*, *green*, *blue* or *alpha* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses **RGBA** to build a semi-transparent red.

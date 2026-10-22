@@ -1,0 +1,15 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Abs_IntegerAboveSmallest_KeepsInteger$",
+      "^PASS RegressionTests.Abs_SmallestCurrency_Raises6$",
+      "^PASS RegressionTests.Abs_VariantSmallestInteger_GivesLong$",
+      "^FAIL RegressionTests.Abs_SmallestInteger_Raises6: .*Actual: 0 ",
+      "^FAIL RegressionTests.Abs_SmallestLong_Raises6: .*Actual: 0 ",
+      "^FAIL RegressionTests.Abs_SmallestLongLong_Raises6: .*Actual: 0 "
+    ]
+  },
+  "issue": 2541
+}

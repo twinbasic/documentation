@@ -22,7 +22,20 @@ Syntax: **Choose(** *index* **,** *choice-1* [ **,** *choice-2* **, ...** [ **,*
 If *index* is 1, **Choose** returns *choice-1*; if *index* is 2, it returns *choice-2*; and so on. If *index* is less than 1 or greater than the number of choices listed, **Choose** returns **Null**. Non-integer values of *index* are rounded to the nearest whole number before being evaluated.
 
 > [!NOTE]
+> An *index* outside the range of a **Single** raises error 6, *Overflow*, in twinBASIC, as in 64-bit VBA. VB6 returns **Null** for it.
+
+> [!NOTE]
 > **Choose** evaluates *every* choice in the list, not only the one it returns. Watch for side effects: a [**MsgBox**](MsgBox) call inside any of the choices is invoked once per choice, not just for the selected one. To avoid this --- for example, when one of the branches would error out --- use the short-circuiting [**If**](If) function instead.
+
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *index* is **Null** |
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *index* is outside the range of a **Single** |
+
+<!-- /errors -->
 
 ### Example
 

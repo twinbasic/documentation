@@ -15,6 +15,15 @@ Syntax: **RGB_R(** *RGBA* **)**
 
 The return value is the red component in the range 0--255.
 
+<!-- errors: generated from errors/VBA.Information.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *RGBA* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example extracts the red component from a colour built with **RGB**.

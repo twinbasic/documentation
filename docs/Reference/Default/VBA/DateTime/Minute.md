@@ -16,6 +16,15 @@ Syntax: **Minute** ( *time* )
 *time*
 : *required* Any **Variant**, numeric expression, string expression, or any combination that can represent a time. If *time* contains **Null**, **Null** is returned.
 
+<!-- errors: generated from errors/VBA.DateTime.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *time* is a string that is not a time, a number outside the range of dates, or an **Error** value |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Minute** function to obtain the minute of the hour from a specified time.

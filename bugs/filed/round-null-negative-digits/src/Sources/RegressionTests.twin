@@ -1,0 +1,40 @@
+' Regression tests: Round raises error 5 for a negative numdecimalplaces when the
+' expression is Null, as it does for any other expression, and as VB6 does (the VB6
+' project beside this one prints it). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: a negative numdecimalplaces raises 5 for a number and for Empty, and
+    ' Round of Null with a valid numdecimalplaces returns Null.
+    [TestCase]
+    Public Sub Round_NumberNegativeDigits_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Round(1.5, -1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Round_EmptyNegativeDigits_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Round(Empty, -1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Round_NullValidDigits_ReturnsNull()
+        Dim V As Variant = Round(Null, 2)
+        Assert.Strict.IsTrue IsNull(V)
+    End Sub
+
+    ' The defect: Null with a negative numdecimalplaces returns Null.
+    [TestCase]
+    Public Sub Round_NullNegativeDigits_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Round(Null, -1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module

@@ -25,9 +25,21 @@ Syntax: **DeleteSetting** *appname*, *section*, [ *key* ]
 
 : *optional* The name of the key to delete within the specified *section*. If omitted, the entire **section** and all keys within are deleted.
 
-A run-time error occurs when **DeleteSetting** is called for a non-existent *appname*, *section*, or *key*.
 
 The root of these registry settings is: `Computer\HKEY_CURRENT_USER\Software\VB and VBA Program Settings`.
+
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+## Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | the application, section or key named does not exist, or *appname* or *section* is a zero-length string |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | an argument is **Null** |
+
+> [!NOTE] BETA 1010
+> When the application, section or key named does not exist, or *appname* or *section* is a zero-length string, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+<!-- /errors -->
 
 ## Example
 

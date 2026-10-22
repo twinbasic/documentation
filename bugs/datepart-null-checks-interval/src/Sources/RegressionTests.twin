@@ -1,0 +1,38 @@
+' Regression tests: DatePart returns Null for a Null date without checking its interval,
+' as DateAdd and DateDiff do, and as VB6 does (the VB6 project beside this one prints it).
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: DatePart raises 5 for the interval with a date, and DateAdd and DateDiff
+    ' return Null for a Null date with the same interval.
+    [TestCase]
+    Public Sub DatePart_BadIntervalWithDate_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("x", #1/1/2000#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_BadIntervalWithNull_ReturnsNull()
+        Dim V As Variant = DateAdd("x", 1, Null)
+        Assert.Strict.IsTrue IsNull(V)
+    End Sub
+
+    [TestCase]
+    Public Sub DateDiff_BadIntervalWithNull_ReturnsNull()
+        Dim V As Variant = DateDiff("x", Null, #1/1/2001#)
+        Assert.Strict.IsTrue IsNull(V)
+    End Sub
+
+    ' The defect: DatePart raises 5.
+    [TestCase]
+    Public Sub DatePart_BadIntervalWithNull_NoError()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("x", Null)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+End Module

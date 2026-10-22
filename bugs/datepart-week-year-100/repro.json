@@ -1,0 +1,12 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 5,
+    "output": [
+      "^ww of 1/1/100, vbFirstFourDays: -98980$",
+      "^ww of 1/3/100, vbFirstFullWeek: 1$",
+      "^ww of 1/1/2000, vbFirstFullWeek: 52$",
+      "^calling DatePart"
+    ]
+  }
+}

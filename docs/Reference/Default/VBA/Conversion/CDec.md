@@ -23,6 +23,17 @@ The return type is **Decimal**.
 
 **CDec** is the internationally aware alternative to [**Val**](Val) for converting a string to a numeric type.
 
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *expression* is less than -79,228,162,514,264,337,593,543,950,335 or greater than 79,228,162,514,264,337,593,543,950,335 |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *expression* is a string that does not hold a number (a zero-length string included) |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *expression* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **CDec** function to convert a numeric value to a **Decimal**.

@@ -1,0 +1,16 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.DatePart_W_Sunday_Is7$",
+      "^PASS RegressionTests.DatePart_W_Saturday_Is1$",
+      "^PASS RegressionTests.DatePart_D_Eight_NoError$",
+      "^FAIL RegressionTests.DatePart_W_Eight_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.DatePart_W_255_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.DatePart_W_MinusOne_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.DatePart_WW_Eight_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.DateDiff_WW_Eight_Raises5: .*Actual: 0 "
+    ]
+  }
+}

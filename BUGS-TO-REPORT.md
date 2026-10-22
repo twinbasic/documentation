@@ -1499,7 +1499,7 @@ Severity: low in practice, since a program rarely passes a null pointer, but a C
 ## A failure code from a late-bound call is raised as the HRESULT, where VB6 raises its own error number, such as 450 for DISP_E_BADPARAMCOUNT
 
 **Describe the bug**
-Follow-up to #2490, which is fixed in BETA 1005 for a name the object does not have: a late-bound statement and `CallByName` now raise error 438, as VB6 does. This is the rest of the conversion VB6 makes when `IDispatch::Invoke` fails. For ten failure codes VB6 raises one of its own error numbers, and twinBASIC raises the `HRESULT` itself, so a handler written for VB6 or VBA does not recognise the error. The common one is a call with the wrong number of arguments to an object such as a `Collection`, a `Scripting.Dictionary` or a `Scripting.FileSystemObject`: VB6 raises 450, *Wrong number of arguments or invalid property assignment*, and twinBASIC raises `&H8002000E` (`DISP_E_BADPARAMCOUNT`), *Invalid number of parameters.* Observed by running the reproducer's test cases.
+Follow-up to #2490, which is fixed in BETA 1005 for a name the object does not have: a late-bound statement and `CallByName` now raise error 438, as VB6 does. This is the rest of the conversion VB6 makes when `IDispatch::Invoke` fails. For eleven failure codes VB6 raises one of its own error numbers, and twinBASIC raises the `HRESULT` itself, so a handler written for VB6 or VBA does not recognise the error. The common one is a call with the wrong number of arguments to an object such as a `Collection`, a `Scripting.Dictionary` or a `Scripting.FileSystemObject`: VB6 raises 450, *Wrong number of arguments or invalid property assignment*, and twinBASIC raises `&H8002000E` (`DISP_E_BADPARAMCOUNT`), *Invalid number of parameters.* Observed by running the reproducer's test cases.
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -1519,8 +1519,11 @@ Steps to reproduce the behavior:
    | `E_NOINTERFACE` `&H80004002` | 430 | -2147467262 |
    | `E_ACCESSDENIED` `&H80070005` | 70 | -2147024891 |
    | `E_ABORT` `&H80004004` | 287 | -2147467260 |
+   | `DISP_E_NOTACOLLECTION` `&H80020011` | 451 | -2147352559 |
 
-The module below is the reproducer's, and is meant to be adapted as a regression test. Each expected number is VB6's, from the VB6 project. On BETA 1005 the three cases from #2490 and the three codes twinBASIC already converts pass, and the ten codes of the table and the `Collection` call of step 2 fail.
+   An ordinary object gives the last code as well: `x = d.Count(1)`, where `d` is an `Object` holding a `Scripting.Dictionary`, raises -2147352559 in twinBASIC and 451, *Property let procedure not defined and property get procedure did not return an object*, in VB6 and 64-bit VBA.
+
+The module below is the reproducer's, and is meant to be adapted as a regression test. Each expected number is VB6's, from the VB6 project. On BETA 1005 the three cases from #2490 and the three codes twinBASIC already converts pass, and the codes of the table and the `Collection` and `Dictionary` calls fail.
 ```vb
 ' Regression tests for #2490 and its follow-up: the error number a late-bound
 ' call raises when the object fails it. The expected numbers are what VB6 6.0
@@ -1751,6 +1754,23 @@ Module LateBoundErrorTests
         Assert.Strict.AreEqual 287, Err.Number        ' VB6: 287, Application-defined or object-defined error
     End Sub
 
+    [TestCase]
+    Public Sub NotACollection_Raises451()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr80020011                                    ' DISP_E_NOTACOLLECTION
+        Assert.Strict.AreEqual 451, Err.Number        ' VB6: 451, Property let procedure not defined and property get procedure did not return an object
+    End Sub
+
+    [TestCase]
+    Public Sub NotACollection_Dictionary_Raises451()
+        Dim d As Object = CreateObject("Scripting.Dictionary")
+        Dim x As Variant
+        On Error Resume Next
+        x = d.Count(1)                                  ' Count takes no index
+        Assert.Strict.AreEqual 451, Err.Number        ' VB6: 451
+    End Sub
+
 End Module
 ```
 
@@ -1770,7 +1790,7 @@ Not part of this report: VB6's `CallByName` raises 440, *Automation error*, for 
 
 Severity: code ported from VB6 that tests `Err.Number` for 450, 449 or 9 after a late-bound call does not recognise the error, and the description is the system's text for a COM code instead of VB's.
 
-<!-- Reproducer: bugs/latebound-hresult-mapping/ (mode test: `tbrun --tests`; expect lists the six PASS and eleven FAIL lines, each with the number BETA 1005 raises); verified on BETA 1005 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0; a lightweight IDispatch object whose Invoke returns the code, and the ordinary objects): `bug_repro.mjs vb6` prints the table's VB6 column. The Dictionary and FileSystemObject cases and VB6's CallByName column were run in scratch projects (twinBASIC with tbrun, VB6 through scripts/lib/vb6.mjs) that are not kept. Follow-up to #2490 ("A late-bound call to a member that does not exist raises &H80020006, and CallByName raises &H80004005, where VB6 raises 438"), closed as fixed. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the table under "Errors from a late-bound call" (its row "Invoke returns any other failure code: that code as the error number"); when fixed, that row lists VB6's numbers instead. -->
+<!-- Reproducer: bugs/latebound-hresult-mapping/ (mode test: `tbrun --tests`; expect lists the six PASS and thirteen FAIL lines, each with the number BETA 1005 raises); verified on BETA 1005 by `bug_repro.mjs verify`; `DISP_E_NOTACOLLECTION` and its two cases added on BETA 1010 by the run-time errors work (batch 6a: errors/VBA.Interaction.yml), with SetCode 25 and the Dictionary line on the VB6 side. VB6 side in vb6/ (VB6 6.0; a lightweight IDispatch object whose Invoke returns the code, and the ordinary objects): `bug_repro.mjs vb6` prints the table's VB6 column. The Dictionary and FileSystemObject cases and VB6's CallByName column were run in scratch projects (twinBASIC with tbrun, VB6 through scripts/lib/vb6.mjs) that are not kept. Follow-up to #2490 ("A late-bound call to a member that does not exist raises &H80020006, and CallByName raises &H80004005, where VB6 raises 438"), closed as fixed. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the table under "Errors from a late-bound call" (its row "Invoke returns any other failure code: that code as the error number"); when fixed, that row lists VB6's numbers instead. -->
 
 ---
 
@@ -5780,18 +5800,18 @@ End Module
 ```
 
 **Expected behavior**
-Error 6, *Overflow*, at each of the six, as in VB6, and the `Date` keeps its old value. The two ends of the range stay accepted. A `Date` then always holds a value that `CStr`, `Format` and `Year` can read.
+Error 6, *Overflow*, at each of the six, as in VB6 and in 64-bit VBA, and the `Date` keeps its old value. The two ends of the range stay accepted. A `Date` then always holds a value that `CStr`, `Format` and `Year` can read.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. `DateAdd("d", 1, #12/31/9999#)` and `DateSerial(10000, 1, 1)` raise error 5, and `CDate("12/31/10000")` raises error 13, so those do not accept the value. VB6 6.0 raises error 6 for each of the six cases, and builds the controls (the reproducer's `vb6/` project prints them, attached as `date-out-of-range-no-error-vb6.zip`).
+BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. `DateAdd("d", 1, #12/31/9999#)` and `DateSerial(10000, 1, 1)` raise error 5, and `CDate("12/31/10000")` raises error 13, so those do not accept the value. VB6 6.0 raises error 6 for each of the six cases, and builds the controls (the reproducer's `vb6/` project prints them, attached as `date-out-of-range-no-error-vb6.zip`). So does 64-bit VBA, VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 Severity: medium. An out-of-range date is stored silently, and the failure comes later, where the value is formatted or split into parts, or never, where the number is only compared or saved.
 
-<!-- Reproducer: bugs/date-out-of-range-no-error/ (mode test: `tbrun --tests` runs the nine cases; expect lists the six FAIL and three PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, error 6 for the six). docs/Reference/Data-Types/Date.md carries the callout for it (the WARNING in Arithmetic, after the range paragraph); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+<!-- Reproducer: bugs/date-out-of-range-no-error/ (mode test: `tbrun --tests` runs the nine cases; expect lists the six FAIL and three PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, error 6 for the six). docs/Reference/Data-Types/Date.md carries the callout for it (the WARNING in Arithmetic, after the range paragraph), and so does docs/Reference/Default/VBA/Conversion/CDate.md (the WARNING above Common Errors, and a NOTE in that section generated from errors/VBA.Conversion.yml, row `bug: date-out-of-range-no-error`); when a fixed build is released, the callouts go. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
 
 ---
 
@@ -5879,18 +5899,18 @@ End Module
 ```
 
 **Expected behavior**
-Error 6, *Overflow*, at each of the four, as for `CLngLng(1E+19)` and for the same value in a variable. VB6 has no `LongLong`; the nearest case, the first `Double` beyond the `Long` range, `CLng(2 ^ 31)`, `CLng(2147483648#)` and `n = 2147483648#`, raises error 6 there as a constant and as a variable (the reproducer's `vb6/` project prints them, attached as `clnglng-2-to-63-no-overflow-vb6.zip`).
+Error 6, *Overflow*, at each of the four, as for `CLngLng(1E+19)` and for the same value in a variable. VB6 has no `LongLong`; the nearest case, the first `Double` beyond the `Long` range, `CLng(2 ^ 31)`, `CLng(2147483648#)` and `n = 2147483648#`, raises error 6 there as a constant and as a variable (the reproducer's `vb6/` project prints them, attached as `clnglng-2-to-63-no-overflow-vb6.zip`). 64-bit VBA, which has `LongLong`, raises error 6 at each of the four and passes the four controls.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. The narrower conversions of constants are right: `CLng(2 ^ 31)`, `CLng(CSng(2 ^ 31))`, `CInt(32768#)`, `CByte(256#)` and `CLngPtr(2 ^ 63)` in a 32-bit build raise error 6. A related defect seen on the way has its own entry: *In a 32-bit build, a constant `Double` expression raises error 6 after a constant that overflows a `Long` or `LongLong`*.
+BETA 1007 gives the same results, and so do IDE runs and built exes, 32-bit and 64-bit. The narrower conversions of constants are right: `CLng(2 ^ 31)`, `CLng(CSng(2 ^ 31))`, `CInt(32768#)`, `CByte(256#)` and `CLngPtr(2 ^ 63)` in a 32-bit build raise error 6. A related defect seen on the way has its own entry: *In a 32-bit build, a constant `Double` expression raises error 6 after a constant that overflows a `Long` or `LongLong`*. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 Severity: medium. A silently wrong value, but only for one constant, and constants this size are rare. The unsuffixed `9223372036854775807` is the one a program is likely to write.
 
-<!-- Reproducer: bugs/clnglng-2-to-63-no-overflow/ (mode test: `tbrun --tests` runs the eight cases; expect lists the four FAIL and four PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, the CLng of 2^31). docs/Reference/Data-Types/LongLong.md carries the callout for it (the WARNING under Conversions); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
+<!-- Reproducer: bugs/clnglng-2-to-63-no-overflow/ (mode test: `tbrun --tests` runs the eight cases; expect lists the four FAIL and four PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas, the CLng of 2^31). docs/Reference/Data-Types/LongLong.md carries the callout for it (the WARNING under Conversions), and so does docs/Reference/Default/VBA/Conversion/CLngLng.md (the WARNING above Common Errors); when a fixed build is released, the callouts go. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
 
 ---
 
@@ -6286,222 +6306,6 @@ Severity: low. The error is raised and is easy to see; the statement that raises
 
 ---
 
-## A 64-bit build prints a negative zero as `-0`
-
-**Describe the bug**
-A `Single` or `Double` that holds a negative zero (the sign bit set, every other bit clear) converts to the text `-0` in a 64-bit build: `CStr`, `Str$` (with no leading space), `Format$`, concatenation with `&` and `Debug.Print` all give it. A 32-bit twinBASIC build gives `0` (`Str$` gives ` 0`), and so does VB6. Both builds hold the negative zero: the sign bit (`&H80000000` in a `Single`, `&H8000000000000000` in a `Double`) is read back through `RtlMoveMemory`, and the value compares equal to 0. It was found on a page of the documentation whose sample prints a GDI+ matrix offset that is a negative zero, `0 5 -0` in a 64-bit build where the page says `0 5 0`. It was observed in IDE runs.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `negative-zero-text-win64.twinproj` (attached as `negative-zero-text-win64.zip`). Its module `NegativeZeroTextTests` has one `[TestCase]` for each conversion, asserting what VB6 gives, two cases that check the sign bit, and two controls.
-2. Run the test cases as a 64-bit build (`tbrun --tests --arch win64`). The seven conversion cases fail, with `-0` as `Actual`; the sign-bit cases and the controls pass. As a 32-bit build all eleven pass.
-3. The shortest form of it, in a 64-bit build:
-```vb
-Dim s As Single
-s = 0!
-s = -s
-Debug.Print CStr(s), Str$(s), Format$(s), "x=" & s   ' VB6 and 32-bit: 0  " 0"  0  x=0 ; 64-bit: -0  -0  -0  x=-0
-```
-
-**Expected behavior**
-The same text in a 64-bit build as in a 32-bit one and in VB6: `0` from `CStr`, `Format$` and `&`, and ` 0` from `Str$`. The reproducer's `vb6/` project prints them (attached as `negative-zero-text-win64-vb6.zip`).
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
-
-**Additional context**
-The reproducer's `repro.json` names the 64-bit build (`"arch": "win64"`). A positive zero and an ordinary negative number (`-1.5`) print the same in both builds. Severity: low. A negative zero is the result of `-x` for a zero `x`, and a COM or API result can hold one, so a program meets it, and one that shows or compares the text behaves differently in the two builds.
-
-<!-- Reproducer: bugs/negative-zero-text-win64/ (mode test, arch win64: `tbrun --tests --arch win64` runs the eleven cases; expect lists the seven FAIL and four PASS lines); verify reproduces on BETA 1010; VB6 side in vb6/ (Module1.bas). docs/Reference/Default/VBA/Conversion/CStr.md, docs/Reference/Default/VBA/Conversion/Str.md and docs/Reference/Default/VBA/Strings/Format.md carry the callout for it (a WARNING each); docs/Reference/Contributed/GdiPlus/LinearGradientBrush.md has a check_run sample whose output "0 5 0" differs on win64 (not yet changed); when a fixed build is released, the callouts go. Found 2026-10-19 on the GdiPlus page. -->
-
----
-
-## A class field whose initializer reads another field of the class fails the build with a codegen error
-
-**Describe the bug**
-A field initializer in a class that reads another field of the same class (`Public Second As Long = First + 1`) compiles with no diagnostic, and the build fails once the class is used: `[LINKER] compilation (codegen) error detected in 'Counter.{fields_init}' at line #1`, then `[LINKER] FAILED due to compilation errors`. A run in the IDE goes ahead instead, and the field holds an arbitrary number: with `A` = 1, `X = A + 1` read `1073741889`. Observed with `tbbuild --build` and with `tbrun` (a `[RunAfterBuild]` procedure in the IDE).
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `class-field-init-reads-field.twinproj` (attached as `class-field-init-reads-field.zip`). Its file `Startup.twin` is:
-   ```
-   Module Startup
-       Public Sub Main()
-           Dim c As New Counter
-           Debug.Print c.First & ", " & c.Second
-       End Sub
-   End Module
-
-   Class Counter
-       Public First As Long = 1
-       Public Second As Long = First + 1
-   End Class
-   ```
-2. Compile the project: no diagnostic.
-3. Build it. The DEBUG CONSOLE prints `[LINKER] compilation (codegen) error detected in 'Counter.{fields_init}' at line #1` and `[BUILD] failed`.
-
-**Expected behavior**
-The build succeeds and `Main` prints `1, 2`: `Second`'s initializer reads `First`, whose initializer comes before it. If reading another field is not meant to be allowed, the compiler should say so at the declaration, as it does for a call to a procedure of the project (TB5079). Field initializers are a twinBASIC extension, so there is no VB6 behaviour to compare with.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
-
-**Additional context**
-The same codegen error, one line per class, for `X = A` with no arithmetic, `X = Me.A + 1`, `String` fields (`X = S & "b"`), a `ReadOnly` field read, a field declared below the one that reads it, and a field with no initializer of its own, in 32-bit and 64-bit builds. These are right: a field that reads a module-level variable (`X = Mods.MV + 1`) or a constant, a module-level variable that reads a variable of its own module (`MW = MV + 1`), and a class that is never created (it is not compiled, so the build does not fail).
-
-Severity: medium. The build fails with a message that names the class but not the field or the reason, and the IDE run gives a wrong value with no message at all. Setting the field in `Class_Initialize` or `Sub New` avoids it.
-
-Not tried: an `Object` or `Variant` field, LLVM.
-
-<!-- Reproducer: bugs/class-field-init-reads-field/ (mode build: tbbuild --build exits 5 and the output names the codegen error in 'Counter.{fields_init}'); verified on BETA 1010 by `bug_repro.mjs verify`. The variants and win64 are from a scratch probe (one class per variant), not kept. Page: docs/Features/Language/Inline-Initialization.md, "What an Initializer Can Use", states it as the behaviour ("A class field cannot read another field of the same class"); when a fix is released, that bullet changes to say it can. Found 2026-10-20 while documenting field initializers. -->
-
----
-
-## In the IDE, a module-level initializer that reads another module's variable leaves every module-level variable at 0
-
-**Describe the bug**
-When one module-level variable's initializer reads a variable of another module (`Public FromConfig As Long = Config.Limit + 100`), code run in the IDE reads every module-level variable of the project as 0, including ones whose initializers are constants (`Public Limit As Long = 5`). The built exe gets them all right. Observed with a `[RunAfterBuild]` procedure, through `tbrun` and `bug_repro.mjs run`; the exe was run with `tbrun --exe`.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `module-init-reads-other-module-ide.twinproj` (attached as `module-init-reads-other-module-ide.zip`). Its file `Startup.twin` is:
-   ```
-   Module Config
-       Public Const Base As Long = 7
-       Public Limit As Long = 5
-       Public Doubled As Long = Base * 2
-   End Module
-
-   Module Other
-       Public FromConfig As Long = Config.Limit + 100
-   End Module
-
-   Class Box
-       Public Size As Long = 3
-   End Class
-
-   Module Startup
-       Public Sub Main()
-           Dim b As New Box
-           Debug.Print "Limit=" & Config.Limit & " Doubled=" & Config.Doubled & " FromConfig=" & Other.FromConfig & " Box.Size=" & b.Size
-       End Sub
-   End Module
-   ```
-2. Add a module with a `[RunAfterBuild]` procedure that calls `Startup.Main`, and build the project.
-3. The DEBUG CONSOLE prints `Limit=0 Doubled=0 FromConfig=0 Box.Size=3`.
-
-**Expected behavior**
-`Limit=5 Doubled=14 FromConfig=105 Box.Size=3`, which is what the built exe prints. Module-level initializers are a twinBASIC extension, so there is no VB6 behaviour to compare with.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
-
-**Additional context**
-Every module-level variable reads 0 as long as one initializer reads another module's variable. Each of these makes the IDE print `Limit=5 Doubled=14`: the same project without `Other`, `FromConfig = 100`, `FromConfig = Config.Base + 100` (another module's constant), and `FromConfig = Limit2 + 100`, where `Limit2` is a variable of `Other` itself. A class field initializer runs either way (`Box.Size=3`). In the exe, a module whose initializer reads a module that is set up after it reads 0 there; that is a matter of order, and the IDE gives 0 for every module, whatever the order.
-
-Severity: medium. A `[RunAfterBuild]` procedure that signs or post-processes the build sees wrong settings with no message, and code that runs correctly as an exe behaves differently in the IDE.
-
-Not tried: a run with F5 (only `[RunAfterBuild]` was observed), a variable of the module's own read with a qualified name (`Other.Limit2`), 64-bit, LLVM.
-
-<!-- Reproducer: bugs/module-init-reads-other-module-ide/ (mode run: bug_repro run prints the zeros; expect matches "Limit=0 Doubled=0 FromConfig=0 Box.Size=3"); verified on BETA 1010 by `bug_repro.mjs verify`. The exe side and the variants are from scratch probes (tbrun --exe with TbRun.Out; one tbrun per variant), not kept. It also means a check_run sample that relies on a module-level initializer reading another module would print 0 under check_examples. Page: docs/Features/Language/Inline-Initialization.md, "What an Initializer Can Use", last bullet, advises against reading another module's variable; when a fix is released, nothing there needs to change. Found 2026-10-20 while documenting field initializers. -->
-
----
-
-## `ReDim` with an upper bound less than its lower bound raises -2147467259, *Unspecified error*, where VB6 raises error 9
-
-**Describe the bug**
-`ReDim X(0 To -1)`, `ReDim X(-1)` and `ReDim X(5 To 4, 1)` on a dynamic array (`Dim X() As Long`), all of which give a dimension an upper bound below its lower bound, raise error -2147467259 (`&H80004005`), *Unspecified error*, where VB6 raises error 9, *Subscript out of range*. A handler that tests for 9 does not recognise it. Observed in the compiler's test mode, 32-bit and 64-bit, and in a probe run after a build.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `redim-inverted-bounds-error.twinproj` (attached as `redim-inverted-bounds-error.zip`).
-2. Run its test cases, the module below. On BETA 1010 the three controls pass (`ReDim X(0 To 0)`, `ReDim X(-3 To -1)`, and a subscript above a fixed-size array's range, which raises 9) and the four cases on an inverted bound fail with `Actual: -2147467259`; `Err.Description` is *Unspecified error*.
-
-The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`redim-inverted-bounds-error-vb6.zip`) prints: 9, *Subscript out of range*, for each of the three statements.
-```vb
-' Regression tests: ReDim with an upper bound less than its lower bound raises error 9,
-' "Subscript out of range". Expected numbers are VB6's (the VB6 project beside this one
-' prints them). tbrun --tests runs each case and prints PASS or FAIL.
-[TestFixture]
-Module RegressionTests
-
-    ' Controls: bounds in order, an empty-looking but valid range, and a subscript out of range.
-    [TestCase]
-    Public Sub ReDim_OneElement_Succeeds()
-        Dim X() As Long
-        ReDim X(0 To 0)
-        Assert.Strict.AreEqual 0&, UBound(X)
-    End Sub
-
-    [TestCase]
-    Public Sub ReDim_NegativeBoundsInOrder_Succeeds()
-        Dim X() As Long
-        ReDim X(-3 To -1)
-        Assert.Strict.AreEqual -3&, LBound(X)
-    End Sub
-
-    [TestCase]
-    Public Sub FixedArray_SubscriptAboveRange_Raises9()
-        Dim A(1 To 3) As Long
-        On Error Resume Next
-        A(4) = 1
-        Assert.Strict.AreEqual 9&, Err.Number
-    End Sub
-
-    [TestCase]
-    Public Sub ReDim_ZeroToMinusOne_Raises9()
-        Dim X() As Long
-        On Error Resume Next
-        ReDim X(0 To -1)
-        Assert.Strict.AreEqual 9&, Err.Number
-    End Sub
-
-    [TestCase]
-    Public Sub ReDim_MinusOne_Raises9()
-        Dim X() As Long
-        On Error Resume Next
-        ReDim X(-1)
-        Assert.Strict.AreEqual 9&, Err.Number
-    End Sub
-
-    [TestCase]
-    Public Sub ReDim_FiveToFour_SecondDimension_Raises9()
-        Dim X() As Long
-        On Error Resume Next
-        ReDim X(5 To 4, 1)
-        Assert.Strict.AreEqual 9&, Err.Number
-    End Sub
-
-    [TestCase]
-    Public Sub ReDim_ErrorDescription()
-        Dim X() As Long
-        On Error Resume Next
-        ReDim X(0 To -1)
-        Assert.Strict.AreEqual "Subscript out of range", Err.Description
-    End Sub
-
-End Module
-```
-
-**Expected behavior**
-Error 9, *Subscript out of range*, as VB6 raises, and as twinBASIC itself raises for a subscript outside a fixed-size array.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
-
-**Additional context**
-Severity: low. An error is raised wherever VB6 raises one, so no failure goes unreported, but a handler that tests for 9 does not recognise it, and *Unspecified error* does not say what is wrong. It is the same symptom as "An index out of range on a fixed-size array member of a UDT raises -2147467259, *Unspecified error*, where VB6 raises error 9": a bounds failure that reaches the program as *Unspecified error*, here from the allocation rather than from a subscript.
-
-What does not reproduce it: bounds in order (`0 To 0`, `-3 To -1`), and a subscript outside a fixed-size array that is not in a UDT.
-
-<!-- Reproducer: bugs/redim-inverted-bounds-error/ (mode test: `tbrun --tests`; expect lists the three PASS and four FAIL lines, each FAIL with the number or text BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. The same in `--arch win64`, and in a probe run after a build (win32 and win64) from a scratch folder not kept. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 9 for the three inverted ReDim statements. Stated in a NOTE on docs/Reference/Core/ReDim.md, generated from errors/Core.yml (row `bug: redim-inverted-bounds-error`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->
-
----
-
 ## A *compare* of 2 (`vbDatabaseCompare`) raises no error in `InStr`, `StrComp` and `Filter`, where VB6 raises error 5
 
 **Describe the bug**
@@ -6741,7 +6545,7 @@ End Module
 ```
 
 **Expected behavior**
-No error, and the result `InStr` gives for a zero-length string with a valid *compare* (0 for a zero-length *string1*, *start* for a zero-length *string2*), as VB6 returns, and as twinBASIC's `InStrB` and `StrComp` return.
+No error, and the result `InStr` gives for a zero-length string with a valid *compare* (0 for a zero-length *string1*, *start* for a zero-length *string2*), as VB6 and 64-bit VBA return, and as twinBASIC's `InStrB` and `StrComp` return.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
@@ -6750,99 +6554,11 @@ No error, and the result `InStr` gives for a zero-length string with a valid *co
 **Additional context**
 Severity: low. Only a *compare* that VB6 would refuse for any other strings is affected, but a program that ran under VB6 stops with error 5 where a string is empty.
 
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
 What does not reproduce it: an invalid *compare* with neither string zero-length, or with *start* past the end of *string1*, which VB6 refuses too; `InStrRev` and `Replace`, which check *compare* first in VB6 as well; and `InStrB` and `StrComp`, which already behave as VB6 does.
 
 <!-- Reproducer: bugs/instr-invalid-lcid-empty-string/ (mode test: `tbrun --tests`; expect lists the seven PASS and five FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`, and the same five failures with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints no error for InStr with a zero-length string and a compare of 99999 or -2, and 5 for InStrRev, Replace and Split. Stated in a NOTE on docs/Reference/Default/VBA/Strings/InStr.md (its Common Errors section), generated from errors/VBA.Strings.yml (row `bug: instr-invalid-lcid-empty-string`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->
-
----
-
-## `String` with a *character* of `Null` raises error 94, where VB6 returns `Null`
-
-**Describe the bug**
-`String(3, Null)`, the **Variant** form of `String`, raises error 94, *Invalid use of Null*. VB6 raises no error and returns **Null** (`VarType` 1), as it does for `String(0, Null)`. `String$(3, Null)` raises 94 in both, and so does a *number* of **Null** in either form, so only the **Variant** form with a **Null** *character* differs. Observed in the compiler's test mode, 32-bit and 64-bit.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `string-null-character.twinproj` (attached as `string-null-character.zip`).
-2. Run its test cases, the module below. On BETA 1010 the four controls pass (`String(3, "a")`, a **Null** *number* in `String` and `String$`, and `String$(3, Null)`, which raise 94 in VB6 too) and the three cases on `String` with a **Null** *character* fail: `Actual: 94`, or `runtime error 94: Invalid use of Null`.
-
-The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`string-null-character-vb6.zip`) prints: no error and `VarType` 1 (**Null**) for `String(3, Null)` and `String(0, Null)`, and 94 for the controls.
-```vb
-' Regression tests: the Variant form String, given a character of Null, returns Null
-' with no error; String$ raises error 94. Expected results are VB6's (the VB6 project
-' beside this one prints them). tbrun --tests runs each case and prints PASS or FAIL.
-[TestFixture]
-Module RegressionTests
-
-    ' Controls: a letter, a Null number in either form, and String$ with a Null character.
-    [TestCase]
-    Public Sub String_Letter_Repeats()
-        Assert.Strict.AreEqual CVar("aaa"), String(3, "a")
-    End Sub
-
-    [TestCase]
-    Public Sub String_NullNumber_Raises94()
-        On Error Resume Next
-        Dim R As Variant
-        R = String(Null, "a")
-        Assert.Strict.AreEqual 94&, Err.Number
-    End Sub
-
-    [TestCase]
-    Public Sub StringDollar_NullNumber_Raises94()
-        On Error Resume Next
-        Dim R As Variant
-        R = String$(Null, "a")
-        Assert.Strict.AreEqual 94&, Err.Number
-    End Sub
-
-    [TestCase]
-    Public Sub StringDollar_NullCharacter_Raises94()
-        On Error Resume Next
-        Dim R As Variant
-        R = String$(3, Null)
-        Assert.Strict.AreEqual 94&, Err.Number
-    End Sub
-
-    ' The defect: String with a Null character returns Null.
-    [TestCase]
-    Public Sub String_NullCharacter_NoError()
-        On Error Resume Next
-        Dim R As Variant
-        R = String(3, Null)
-        Assert.Strict.AreEqual 0&, Err.Number
-    End Sub
-
-    [TestCase]
-    Public Sub String_NullCharacter_ReturnsNull()
-        Dim R As Variant
-        R = String(3, Null)
-        Assert.Strict.AreEqual vbNull, VarType(R)
-    End Sub
-
-    [TestCase]
-    Public Sub String_ZeroNullCharacter_ReturnsNull()
-        Dim R As Variant
-        R = String(0, Null)
-        Assert.Strict.AreEqual vbNull, VarType(R)
-    End Sub
-
-End Module
-```
-
-**Expected behavior**
-`String(number, Null)` returns **Null** with no error, as VB6 does, and as the **Variant** forms of other string functions propagate **Null**; `String$` keeps raising 94.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
-
-**Additional context**
-Severity: low. Code that relies on **Null** propagating through `String`, as VB6 code reading database fields can, stops with error 94.
-
-What does not reproduce it: `String$` with a **Null** *character*, and a **Null** *number* in either form, all of which raise 94 in VB6 as well.
-
-<!-- Reproducer: bugs/string-null-character/ (mode test: `tbrun --tests`; expect lists the four PASS and three FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`, and the same three failures with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints no error and VarType 1 for String(3, Null) and String(0, Null), and 94 for the controls. Stated in a NOTE on docs/Reference/Default/VBA/Strings/String.md (its Common Errors section), generated from errors/VBA.Strings.yml (row `bug: string-null-character`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->
 
 ---
 
@@ -6924,7 +6640,7 @@ End Module
 ```
 
 **Expected behavior**
-The conversion, made with the rules of the locale *LCID* names, as VB6 makes it. Error 5 only when neither *LCID* nor, without one, the system's locale is East Asian.
+The conversion, made with the rules of the locale *LCID* names, as VB6 and 64-bit VBA make it. Error 5 only when neither *LCID* nor, without one, the system's locale is East Asian.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
@@ -6933,6 +6649,1265 @@ The conversion, made with the rules of the locale *LCID* names, as VB6 makes it.
 **Additional context**
 Severity: low. A program that converts Japanese, Chinese or Korean text with an explicit *LCID*, so that it runs on any system, stops with error 5 on a Western one.
 
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
 What does not reproduce it: another conversion (`vbUpperCase`) with an East Asian *LCID*; and `vbWide` with no *LCID* or with 1033, which VB6 refuses as well. Not checked on a system whose locale is East Asian.
 
 <!-- Reproducer: bugs/strconv-east-asian-lcid/ (mode test: `tbrun --tests`; expect lists the three PASS and six FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify` on a system whose locale is 1033, and the same six failures with `run --arch win64`; the controls assume such a system. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the system locale, then the converted characters for 1041, 2052 and 1042 and 5 for no LCID and 1033. Stated in a NOTE on docs/Reference/Default/VBA/Strings/StrConv.md (its Common Errors section), generated from errors/VBA.Strings.yml (row `bug: strconv-east-asian-lcid`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->
+
+---
+
+## Assigning to `Date`, `Date$`, `Time` and `Time$` raises other errors than VB6, and `Date$` and `Time$` refuse forms VB6 accepts
+
+**Describe the bug**
+Four differences from VB6 when the system date or time is set:
+
+- `Date = Null` and `Time = Null` raise 94, *Invalid use of Null*; VB6 raises 13, *Type mismatch*.
+- `Date$` and `Time$` given a string they cannot read raise -2147467259 (`&H80004005`), *Unspecified error*; VB6 raises 5, *Invalid procedure call or argument*.
+- `Date$` accepts only *mm-dd-yyyy* and `Time$` only *hh:mm:ss*. VB6 also accepts *m/d/yyyy*, a two-digit year and *hh:mm*, which twinBASIC refuses with -2147467259.
+- When Windows refuses the date or time, such as a date before January 1, 1601 (`Date = #12/31/1600#`) or February 30 (`Date$ = "02-30-2000"`), twinBASIC raises -2147467259 and VB6 raises 5. Neither runtime checks these itself. This needs the privilege to set the clock to see, so the module below does not test it; the documentation's own probe saw it with the clock setters replaced in its process by ones that refuse what Windows refuses.
+
+Observed in the compiler's test mode, 32-bit, and in a built exe. The test cases set the clock to what it already holds, so a value that is accepted raises 70, *Permission denied*, in a process without the privilege to set the clock, and changes nothing in one with it.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `date-time-set-errors.twinproj` (attached as `date-time-set-errors.zip`).
+2. Run its test cases, the module below. On BETA 1010 the four controls pass and the other seven fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`date-time-set-errors-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' 0 or 70: the value was accepted, and only setting the clock could fail.
+    Private Function Accepted(ByVal N As Long) As Boolean
+        Return N = 0 Or N = 70
+    End Function
+
+    ' Controls: a string that is not a date raises 13, Date$ = Null raises 94, and a
+    ' value of the documented form is accepted.
+    [TestCase]
+    Public Sub Date_SetNotADate_Raises13()
+        On Error Resume Next
+        Date = "abc"
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateString_SetNull_Raises94()
+        On Error Resume Next
+        Date$ = Null
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateString_SetMmDdYyyy_Accepted()
+        On Error Resume Next
+        Date$ = Format$(Date, "mm-dd-yyyy")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+    [TestCase]
+    Public Sub TimeString_SetHhMmSs_Accepted()
+        On Error Resume Next
+        Time$ = Format$(Time, "hh:mm:ss")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+    ' The defect: Null raises 94 where VB6 raises 13.
+    [TestCase]
+    Public Sub Date_SetNull_Raises13()
+        On Error Resume Next
+        Date = Null
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Time_SetNull_Raises13()
+        On Error Resume Next
+        Time = Null
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    ' The defect: a string Date$ or Time$ cannot read raises -2147467259, Unspecified
+    ' error, where VB6 raises 5.
+    [TestCase]
+    Public Sub DateString_SetNotADate_Raises5()
+        On Error Resume Next
+        Date$ = "abc"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub TimeString_SetNotATime_Raises5()
+        On Error Resume Next
+        Time$ = "abc"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' The defect: forms VB6 accepts raise -2147467259.
+    [TestCase]
+    Public Sub DateString_SetSlashes_Accepted()
+        On Error Resume Next
+        Date$ = Format$(Date, "m/d/yyyy")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+    [TestCase]
+    Public Sub DateString_SetTwoDigitYear_Accepted()
+        On Error Resume Next
+        Date$ = Format$(Date, "mm-dd-yy")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+    [TestCase]
+    Public Sub TimeString_SetHhMm_Accepted()
+        On Error Resume Next
+        Time$ = Format$(Time, "hh:mm")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 13 for `Null` assigned to `Date` or `Time`, error 5 for a string `Date$` or `Time$` cannot read, and the forms VB6 reads accepted, as VB6 and 64-bit VBA do.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A handler that tests for VB6's numbers misses these, and a program that sets the clock from a string such as `"10:30"` fails.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: `Date$ = Null` and `Time$ = Null`, which raise 94 in both; `Date` and `Time` given a string that is not a date or time, which raise 13 in both.
+
+<!-- Reproducer: bugs/date-time-set-errors/ (mode test: `tbrun --tests`; expect lists the four PASS and seven FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`, in a process without the privilege to set the clock. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 13 for Null, 5 for "abc", and 70 for every form it accepts. Stated in NOTEs on docs/Reference/Default/VBA/DateTime/Date.md and Time.md (their Common Errors sections, generated from errors/VBA.DateTime.yml, rows `bug: date-time-set-errors`, and a NOTE by hand under each Let of Date$ and Time$ on the forms); when fixed, the rows become 13 and 5 without vb6 and bug, and the NOTEs go. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->
+
+---
+
+## `DateAdd` with the "yyyy", "q" or "m" interval returns a date in the 1900s or 2000s when the result would be before year 100, where VB6 raises error 5
+
+**Describe the bug**
+`DateAdd("yyyy", -1, #1/1/100#)` returns January 1, 1999, with no error: a result before January 1, 100 seems to be taken as a two-digit year. The same happens for the "q" and "m" intervals: `DateAdd("m", -1, #1/1/100#)` returns December 1, 1999. The other intervals raise 5, *Invalid procedure call or argument*, as VB6 does for all of them. Observed in the compiler's test mode, 32-bit and 64-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `dateadd-year-below-100.twinproj` (attached as `dateadd-year-below-100.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the other three fail with `Actual: 0`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`dateadd-year-below-100-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: a day before January 1, 100 raises 5, and a year that reaches year 100
+    ' exactly gives that date.
+    [TestCase]
+    Public Sub DateAdd_DayBefore100_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("d", -1, #1/1/100#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_YearsToYear100_GivesYear100()
+        Dim V As Variant = DateAdd("yyyy", -1900, #1/1/2000#)
+        Assert.Strict.AreEqual #1/1/100#, CDate(V)
+    End Sub
+
+    ' The defect: no error, and a date in the 1900s or 2000s: DateAdd("yyyy", -1, #1/1/100#)
+    ' returns January 1, 1999.
+    [TestCase]
+    Public Sub DateAdd_YearBefore100_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("yyyy", -1, #1/1/100#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_QuarterBefore100_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("q", -1, #1/1/100#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_MonthBefore100_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("m", -1, #1/1/100#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 5 whenever the result would be before January 1, 100, whatever the interval, as VB6 and 64-bit VBA do.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium. The result is a valid date about 1,900 years away from the right one, returned without an error: `DateAdd("yyyy", -1901, #1/1/2000#)` gives January 1, 1999, and `DateAdd("yyyy", -2000, #1/1/2000#)` January 1, 2000.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a result far enough below year 100 that it is not a year from 0 to 99 (`DateAdd("yyyy", -10000, #1/1/2000#)` raises 5); the intervals "d", "y", "w", "ww", "h", "n" and "s"; and the upper end, where a result after December 31, 9999 raises 5 for every interval.
+
+<!-- Reproducer: bugs/dateadd-year-below-100/ (mode test: `tbrun --tests`; expect lists the two PASS and three FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`, and the same three failures with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 5 for each interval, and 1/1/100 for the control. Stated in a NOTE on docs/Reference/Default/VBA/DateTime/DateAdd.md (its Common Errors section, generated from errors/VBA.DateTime.yml, row `bug: dateadd-year-below-100`) and in a WARNING by hand above it; when fixed, the row's cases move to the 5 row, whose When loses its exception, and the NOTE and WARNING go. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->
+
+---
+
+## `DateAdd` and `DateDiff` raise error 6 for a date that is a number outside the range of dates, where VB6 raises error 13
+
+**Describe the bug**
+`DateAdd("d", 0, 2958466)` and `DateDiff("d", #1/1/2000#, 3000000)` raise 6, *Overflow*. VB6 raises 13, *Type mismatch*, and so do `DatePart`, `Day` and the other functions that take a date, in twinBASIC and VB6 alike. Observed in the compiler's test mode, 32-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `dateadd-date-out-of-range-overflow.twinproj` (attached as `dateadd-date-out-of-range-overflow.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the other three fail with `Actual: 6`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`dateadd-date-out-of-range-overflow-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: DatePart and Day raise 13 for the same number.
+    [TestCase]
+    Public Sub DatePart_NumberOutOfRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("d", 3000000)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Day_NumberOutOfRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = Day(3000000)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    ' The defect: DateAdd and DateDiff raise 6, Overflow.
+    [TestCase]
+    Public Sub DateAdd_NumberAboveRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("d", 0, 2958466)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_NumberBelowRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("d", 0, -657435)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateDiff_NumberOutOfRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateDiff("d", #1/1/2000#, 3000000)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 13, as VB6 and 64-bit VBA raise, and as `DatePart` and `Day` raise.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A handler that tests for 13 misses it.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: the last and first days of the range (2958465 and -657434), which both accept; a string that is not a date, which raises 13 in both.
+
+<!-- Reproducer: bugs/dateadd-date-out-of-range-overflow/ (mode test: `tbrun --tests`; expect lists the two PASS and three FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 13 for all five. Stated in NOTEs on docs/Reference/Default/VBA/DateTime/DateAdd.md and DateDiff.md (their Common Errors sections, generated from errors/VBA.DateTime.yml, rows `bug: dateadd-date-out-of-range-overflow`); when fixed, each row's cases move to the 13 row and the NOTEs go. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->
+
+---
+
+## `DatePart` raises error 5 for an invalid interval when the date is `Null`, where VB6 returns `Null`
+
+**Describe the bug**
+`DatePart("x", Null)` raises 5, *Invalid procedure call or argument*. VB6 returns `Null` without checking the interval, and twinBASIC's own `DateAdd("x", 1, Null)` and `DateDiff("x", Null, #1/1/2001#)` return `Null` as VB6's do. Observed in the compiler's test mode, 32-bit and 64-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `datepart-null-checks-interval.twinproj` (attached as `datepart-null-checks-interval.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and `DatePart_BadIntervalWithNull_NoError` fails with `Actual: 5`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`datepart-null-checks-interval-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: DatePart raises 5 for the interval with a date, and DateAdd and DateDiff
+    ' return Null for a Null date with the same interval.
+    [TestCase]
+    Public Sub DatePart_BadIntervalWithDate_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("x", #1/1/2000#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_BadIntervalWithNull_ReturnsNull()
+        Dim V As Variant = DateAdd("x", 1, Null)
+        Assert.Strict.IsTrue IsNull(V)
+    End Sub
+
+    [TestCase]
+    Public Sub DateDiff_BadIntervalWithNull_ReturnsNull()
+        Dim V As Variant = DateDiff("x", Null, #1/1/2001#)
+        Assert.Strict.IsTrue IsNull(V)
+    End Sub
+
+    ' The defect: DatePart raises 5.
+    [TestCase]
+    Public Sub DatePart_BadIntervalWithNull_NoError()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("x", Null)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+`Null`, with no error, as VB6 and 64-bit VBA return.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. Only an invalid interval with a `Null` date is affected; twinBASIC's behaviour is arguably stricter, but it differs from VB6 and from twinBASIC's own `DateAdd` and `DateDiff`.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a `Null` interval, which raises 94 in both.
+
+<!-- Reproducer: bugs/datepart-null-checks-interval/ (mode test: `tbrun --tests`; expect lists the three PASS and one FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`, and the same failure with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints Null with no error for DatePart, DateAdd and DateDiff, and 5 for the control. Stated in a NOTE on docs/Reference/Default/VBA/DateTime/DatePart.md (its Common Errors section, generated from errors/VBA.DateTime.yml, row `bug: datepart-null-checks-interval`); when fixed, the row goes, its case becomes quiet, and the NOTE goes. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->
+
+---
+
+## `DatePart("ww", ...)` of a date in year 100 before its first full week never returns with `vbFirstFullWeek`, and returns -98980 with `vbFirstFourDays`
+
+**Describe the bug**
+January 1, 100 is a Friday, so with Sunday as the first day of the week its week belongs to year 99. `DatePart("ww", #1/1/100#, vbSunday, vbFirstFullWeek)` never returns: the program stops responding. `DatePart("ww", #1/1/100#, vbSunday, vbFirstFourDays)` returns -98980. VB6 returns 52 for both. Observed in an IDE run and in a built exe, 32-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `datepart-week-year-100.twinproj` (attached as `datepart-week-year-100.zip`).
+2. Run it. On BETA 1010 it prints the four lines below and stops responding at the last call.
+
+```
+ww of 1/1/100, vbFirstFourDays: -98980
+ww of 1/3/100, vbFirstFullWeek: 1
+ww of 1/1/2000, vbFirstFullWeek: 52
+calling DatePart("ww", #1/1/100#, vbSunday, vbFirstFullWeek)
+```
+
+The module:
+```vb
+Module Startup
+
+    Public Sub Main()
+        ' Controls: the same date with vbFirstFourDays, and the first date of the first
+        ' full week with vbFirstFullWeek, return.
+        Debug.Print "ww of 1/1/100, vbFirstFourDays: " & DatePart("ww", #1/1/100#, vbSunday, vbFirstFourDays)
+        Debug.Print "ww of 1/3/100, vbFirstFullWeek: " & DatePart("ww", #1/3/100#, vbSunday, vbFirstFullWeek)
+        Debug.Print "ww of 1/1/2000, vbFirstFullWeek: " & DatePart("ww", #1/1/2000#, vbSunday, vbFirstFullWeek)
+        ' The defect: January 1, 100 is a Friday, so its week belongs to year 99.
+        Debug.Print "calling DatePart(""ww"", #1/1/100#, vbSunday, vbFirstFullWeek)"
+        Debug.Print "returned " & DatePart("ww", #1/1/100#, vbSunday, vbFirstFullWeek)
+    End Sub
+
+End Module
+```
+
+The attached VB6 project (`datepart-week-year-100-vb6.zip`) prints 52, 1, 52 and 52.
+
+**Expected behavior**
+52 for both, the week of year 99 that the date belongs to, as VB6 and 64-bit VBA return. The first line's value is wrong too.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium. A hang loses unsaved data, and only dates in the first days of year 100 reach it.
+
+A 64-bit build gives the same results: -98980, then the hang. 64-bit VBA, VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access, prints 52, 1, 52 and 52, as VB6 does.
+
+What does not reproduce it: January 1, 2000, whose week also belongs to the year before (52); January 3, 100, the first day of the first full week (1); `Format(#1/1/100#, "ww", vbSunday, vbFirstFullWeek)`, and `DateDiff("ww", ...)` with `vbFirstFullWeek` from January 1, 100, which return; and `DatePart("yyyy", #1/1/100#, vbSunday, vbFirstFullWeek)`. The hang also happens with `vbMonday` and `vbUseSystem` as the first day, and for January 2, 100.
+
+<!-- Reproducer: bugs/datepart-week-year-100/ (mode run, expect exit 5: tbrun reports that the probe never returned, after the three control lines and the "calling" line); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 52, 1, 52 and 52 with no error. Stated in a WARNING by hand on docs/Reference/Default/VBA/DateTime/DatePart.md; it is not in errors/VBA.DateTime.yml, because a case that never returns stops the probe. When fixed, the WARNING goes. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->
+
+---
+
+## `DatePart` and `DateDiff` take a *firstdayofweek* outside 0 to 7 without an error and return values that follow no rule, such as a weekday of -2
+
+**Describe the bug**
+Where the interval uses *firstdayofweek* ("w" and "ww" in `DatePart`, "ww" in `DateDiff`), VB6 raises 5, *Invalid procedure call or argument*, for a value outside 0 to 7. twinBASIC raises nothing, and what it returns follows no rule. For January 1, 2000, a Saturday, `DatePart("w", d, 8)` returns 7, as with `vbSunday`, `DatePart("w", d, 15)` returns 0 and `DatePart("w", d, 255)` returns -2, which are not weekdays. Over every date of 1999 to 2001:
+
+- a negative value gives the same results as one value from 0 to 7, as if taken modulo 7 (-1 as 6, -7 as 7);
+- for `DatePart("w")`, 8 gives the same results as 1, and 9 to 32767 match no value from 0 to 7;
+- for `DatePart("ww")`, 8 and 9 match 1, and 10 up match nothing;
+- for `DateDiff("ww")`, 8 to 13 match 1, and 14 up match nothing.
+
+Observed in the compiler's test mode, 32-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `datepart-firstdayofweek-out-of-range.twinproj` (attached as `datepart-firstdayofweek-out-of-range.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other five fail with `Actual: 0`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`datepart-firstdayofweek-out-of-range-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the weekday with Sunday and with Saturday as the first day, and a
+    ' firstdayofweek of 8 with an interval that does not use it.
+    [TestCase]
+    Public Sub DatePart_W_Sunday_Is7()
+        Assert.Strict.AreEqual CVar(7), DatePart("w", #1/1/2000#, vbSunday)
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_W_Saturday_Is1()
+        Assert.Strict.AreEqual CVar(1), DatePart("w", #1/1/2000#, vbSaturday)
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_D_Eight_NoError()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("d", #1/1/2000#, 8)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: no error, and a value that follows no rule: 8 acts as 1, 9 to 13 match
+    ' no setting, and 255 gives a weekday of -2.
+    [TestCase]
+    Public Sub DatePart_W_Eight_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("w", #1/1/2000#, 8)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_W_255_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("w", #1/1/2000#, 255)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_W_MinusOne_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("w", #1/1/2000#, -1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_WW_Eight_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("ww", #1/1/2000#, 8)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateDiff_WW_Eight_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateDiff("ww", #1/1/2000#, #1/1/2001#, 8)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 5, as VB6 and 64-bit VBA raise. Taking the value modulo 7 throughout would be a reasonable extension too, but not the mix above.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium. A wrong *firstdayofweek*, such as one read from a setting, goes unreported and gives weekdays outside 1 to 7 and week counts that are off.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: an interval that does not use *firstdayofweek* (`DatePart("d", d, 8)`, `DateDiff("w", d1, d2, 8)`), which VB6 accepts as well; a `Null` *firstdayofweek*, which raises 94 in both. A *firstweekofyear* outside 0 to 3 is reported separately.
+
+<!-- Reproducer: bugs/datepart-firstdayofweek-out-of-range/ (mode test: `tbrun --tests`; expect lists the three PASS and five FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 5 for the five, 7 and 1 for the weekday controls and 1 for "d". The mapping above comes from a probe over 1999 to 2001, not kept. Stated in NOTEs on docs/Reference/Default/VBA/DateTime/DatePart.md and DateDiff.md (their Common Errors sections, generated from errors/VBA.DateTime.yml, rows `bug: datepart-firstdayofweek-out-of-range`) and in a WARNING by hand on DatePart.md; when fixed, the rows' cases move to a 5 row, and the NOTEs and the WARNING go. Found 2026-10-22 in batch 5 of WIP.Errors.md; owner: an extension only if it makes sense and has no bugs, which this does not. -->
+
+---
+
+## `DatePart` takes a *firstweekofyear* outside 0 to 3 without an error, where VB6 raises error 5
+
+**Describe the bug**
+With the "ww" interval, VB6 raises 5, *Invalid procedure call or argument*, for a *firstweekofyear* outside 0 to 3. twinBASIC raises nothing and counts the weeks as with `vbUseSystem` or `vbFirstJan1`: over every date of 1999 to 2001, each value tried from -15 to 2147483647 gives the same results as 0 and 1, which agree on the system tested (its own setting is the week of January 1). Observed in the compiler's test mode, 32-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `datepart-firstweekofyear-out-of-range.twinproj` (attached as `datepart-firstweekofyear-out-of-range.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other two fail with `Actual: 0`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`datepart-firstweekofyear-out-of-range-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the week with vbFirstJan1 and vbFirstFullWeek, and a firstweekofyear of 4
+    ' with an interval that does not use it.
+    [TestCase]
+    Public Sub DatePart_WW_FirstJan1_Is1()
+        Assert.Strict.AreEqual CVar(1), DatePart("ww", #1/1/2000#, vbSunday, vbFirstJan1)
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_WW_FirstFullWeek_Is52()
+        Assert.Strict.AreEqual CVar(52), DatePart("ww", #1/1/2000#, vbSunday, vbFirstFullWeek)
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_D_Four_NoError()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("d", #1/1/2000#, vbSunday, 4)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: no error; the weeks are counted as with 0 or 1.
+    [TestCase]
+    Public Sub DatePart_WW_Four_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("ww", #1/1/2000#, vbSunday, 4)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_WW_MinusOne_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("ww", #1/1/2000#, vbSunday, -1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 5, as VB6 and 64-bit VBA raise.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A wrong *firstweekofyear*, such as one read from a setting, goes unreported, and the week numbers are those of another setting.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: an interval that does not use *firstweekofyear* (`DatePart("d", d, vbSunday, 4)`), which VB6 accepts as well; `DateDiff`, which ignores *firstweekofyear* in both; a `Null` *firstweekofyear*, which raises 94 in both. Not checked on a system whose own first week of the year is not the week of January 1, where 0 and 1 differ.
+
+<!-- Reproducer: bugs/datepart-firstweekofyear-out-of-range/ (mode test: `tbrun --tests`; expect lists the three PASS and two FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 5 for 4 and -1, 1 and 52 for the week controls and 1 for "d". Stated in a NOTE on docs/Reference/Default/VBA/DateTime/DatePart.md (its Common Errors section, generated from errors/VBA.DateTime.yml, row `bug: datepart-firstweekofyear-out-of-range`); when fixed, the row's case moves to a 5 row and the NOTE goes. Found 2026-10-22 in batch 5 of WIP.Errors.md; owner: a bug. -->
+
+---
+
+## Refused arguments raise -2147467259, *Unspecified error*, where VB6 and VBA raise 5, 6, 9, 13 or 438
+
+**Describe the bug**
+Given an argument they refuse, several runtime procedures raise -2147467259 (`&H80004005`), *Unspecified error*, where VB6 and 64-bit VBA raise one of VB's own numbers:
+- `LBound` and `UBound` with a *dimension* less than 1 or greater than the number of dimensions: VB raises 9, *Subscript out of range*; with a *dimension* greater than 32,767: 6, *Overflow*.
+- `Switch` with an odd number of arguments: 5, *Invalid procedure call or argument*.
+- `Partition` with *start* less than 0, *stop* not greater than *start*, or *interval* less than 1: 5; with a string that is not a number: 13, *Type mismatch*; with a value outside the `LongLong` range: 6.
+- `Environ` with a *number* less than 1, a position no entry has, or a zero-length name: 5; with a *number* greater than 32,767: 6.
+- `GetObject()` with no arguments: 13.
+- `CallByName` with a *calltype* that is not a `VbCallType` value: 438, *Object doesn't support this property or method*; with an object of `Nothing`: 5.
+- `SaveSetting`, `GetSetting`, `GetAllSettings` and `DeleteSetting` with a zero-length application, section or key name, and `DeleteSetting` of an application, section or key that does not exist: 5.
+
+It is the pattern of #2544 (`ReDim` with inverted bounds raises -2147467259 where VB6 raises 9). Observed in the compiler's test mode and in built exes, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `argument-errors-unspecified-error.twinproj` (attached as `argument-errors-unspecified-error.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other seventeen fail, each with `Err.Number` -2147467259.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`argument-errors-unspecified-error-vb6.zip`) prints; 64-bit VBA raises the same numbers. No case writes to the registry: the registry procedures are given names that do not exist.
+```vb
+' Regression tests: a procedure that refuses an argument raises the number VB6 and 64-bit VBA
+' raise (the VB6 project beside this one prints them), not -2147467259, Unspecified error.
+' No case writes to the registry: GetSetting and DeleteSetting are given names that do not
+' exist. tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: errors twinBASIC already raises with VB's numbers.
+    [TestCase]
+    Public Sub LBound_UnsizedArray_Raises9()
+        Dim A() As Long
+        Dim N As Long
+        On Error Resume Next
+        N = LBound(A)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub QBColor_Sixteen_Raises5()
+        Dim N As Long
+        On Error Resume Next
+        N = QBColor(16)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_Null_Raises94()
+        Dim S As String
+        On Error Resume Next
+        S = Environ(Null)
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    ' The defect: each of these raises -2147467259.
+    [TestCase]
+    Public Sub LBound_DimensionZero_Raises9()
+        Dim A(1 To 3) As Long
+        Dim N As Long
+        On Error Resume Next
+        N = LBound(A, 0)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UBound_DimensionPastRank_Raises9()
+        Dim A(1 To 3) As Long
+        Dim N As Long
+        On Error Resume Next
+        N = UBound(A, 2)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub LBound_Dimension32768_Raises6()
+        Dim A(1 To 3) As Long
+        Dim N As Long
+        On Error Resume Next
+        N = LBound(A, 32768)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Switch_OddArguments_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Switch(True, 1, False)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Partition_NegativeStart_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Partition(5, -1, 10, 1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Partition_IntervalZero_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Partition(5, 0, 10, 0)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Partition_StringNumber_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = Partition("abc", 0, 10, 1)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Partition_BeyondLongLong_Raises6()
+        Dim V As Variant
+        On Error Resume Next
+        V = Partition(1E+20, 0, 10, 1)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_Zero_Raises5()
+        Dim S As String
+        On Error Resume Next
+        S = Environ(0)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_PositionWithNoEntry_Raises5()
+        Dim S As String
+        On Error Resume Next
+        S = Environ(32767)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_EmptyName_Raises5()
+        Dim S As String
+        On Error Resume Next
+        S = Environ("")
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_Above32767_Raises6()
+        Dim S As String
+        On Error Resume Next
+        S = Environ(32768)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_NoArguments_Raises13()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject()
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_CallTypeZero_Raises438()
+        Dim D As Object
+        Dim V As Variant
+        Set D = CreateObject("Scripting.Dictionary")
+        On Error Resume Next
+        V = CallByName(D, "Count", 0)
+        Assert.Strict.AreEqual 438&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_Nothing_Raises5()
+        Dim D As Object
+        Dim V As Variant
+        On Error Resume Next
+        V = CallByName(D, "Count", VbGet)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetSetting_EmptyAppName_Raises5()
+        Dim S As String
+        On Error Resume Next
+        S = GetSetting("", "Section", "Key")
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DeleteSetting_MissingApplication_Raises5()
+        On Error Resume Next
+        DeleteSetting "NoSuchApplication-argument-errors-unspecified-error"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+VB's own number in each case, with its description, as VB6 and 64-bit VBA raise.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A handler that tests `Err.Number` for the number VB6 raises misses these, and *Unspecified error* tells a user nothing about what was wrong.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: the errors these procedures already raise with VB's numbers, such as `LBound` of an array not yet sized (9), `QBColor` outside 0 to 15 (5), `RGB` with a negative component (5), and `Null` for any of the arguments above (94).
+
+<!-- Reproducer: bugs/argument-errors-unspecified-error/ (mode test: `tbrun --tests`; expect lists the three PASS and seventeen FAIL lines); run on BETA 1010 with `bug_repro.mjs run`; 64-bit from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: argument-errors-unspecified-error`) of LBound, UBound, Switch, Partition, Environ, GetObject, CallByName, SaveSetting, GetSetting, GetAllSettings and DeleteSetting, from errors/VBA.Information.yml and errors/VBA.Interaction.yml; when fixed, each row's `error` becomes VB's number and its `vb6` and `bug` go, and the NOTEs with them. Found 2026-10-22 by batch 6a of WIP.Errors.md; grouped as one entry by the owner. -->
+
+---
+
+## `CreateObject` and `GetObject` raise the COM `HRESULT` where VB6 and VBA raise 429 or 432
+
+**Describe the bug**
+When `CreateObject` or `GetObject` cannot create or find the object, twinBASIC raises the `HRESULT` COM returned, where VB6 and 64-bit VBA raise 429, *ActiveX component can't create object*, or 432, *File name or class name not found during Automation operation*:
+
+| Call | VB6 and 64-bit VBA | twinBASIC |
+|---|---|---|
+| `CreateObject("No.Such.Class")`, a CLSID in braces without `new:`, a number | 429 | -2147221020 (`MK_E_SYNTAX`, *Invalid syntax*) |
+| `CreateObject("new:{00000000-0000-0000-0000-000000000000}")` | 429 | -2147221164 (`REGDB_E_CLASSNOTREG`, *Class not registered*) |
+| `CreateObject("new:not-a-guid")` | 429 | -2147221005 (`CO_E_CLASSSTRING`, *Invalid class string*) |
+| `CreateObject("")` | 429 | 5 |
+| `GetObject("C:\no\such\file.xyz")` | 432 | -2147221014 (`MK_E_CANTOPENFILE`, *Moniker cannot open file*) |
+| `GetObject("C:\no\such\file.xyz", "Scripting.Dictionary")` | 432 | -2147467262 (`E_NOINTERFACE`, *No such interface supported*) |
+| `GetObject(, "No.Such.Class")`, `GetObject("", "No.Such.Class")` | 429 | -2147221005 |
+| `GetObject(, "Scripting.Dictionary")`, no instance running | 429 | -2147221021 (`MK_E_UNAVAILABLE`, *Operation unavailable*) |
+
+Observed in the compiler's test mode and in built exes, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `createobject-getobject-raw-hresults.twinproj` (attached as `createobject-getobject-raw-hresults.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other eight fail, each with the number in the table.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`createobject-getobject-raw-hresults-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: CreateObject and GetObject raise 429, ActiveX component can't create
+' object, or 432, File name or class name not found during Automation operation, as VB6 and
+' 64-bit VBA do (the VB6 project beside this one prints them), not the HRESULT COM returned.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: a class that exists is created, and Null raises 94.
+    [TestCase]
+    Public Sub CreateObject_RegisteredClass_Creates()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("Scripting.Dictionary")
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_Null_Raises94()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject(Null)
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_EmptyPathWithClass_Creates()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject("", "Scripting.Dictionary")
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: each of these raises the HRESULT, or 5.
+    [TestCase]
+    Public Sub CreateObject_UnknownClass_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("No.Such.Class")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_UnregisteredClsid_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("new:{00000000-0000-0000-0000-000000000000}")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_MalformedClsid_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("new:not-a-guid")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_EmptyClass_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_MissingFile_Raises432()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject("C:\no\such\file.xyz")
+        Assert.Strict.AreEqual 432&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_MissingFileWithClass_Raises432()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject("C:\no\such\file.xyz", "Scripting.Dictionary")
+        Assert.Strict.AreEqual 432&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_UnknownClass_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject(, "No.Such.Class")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_NoRunningInstance_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject(, "Scripting.Dictionary")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+429 or 432, as in the table's VB6 column, as VB6 and 64-bit VBA raise.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A handler written for VB6 or VBA that tests for 429, the usual check that a component is installed, misses every one of these.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a `servername` that cannot be reached (-2147023174, *The RPC server is unavailable.*, in all four), and a `pathname` that is not a moniker Windows can read (`GetObject("notaprogid:xyz")`, -2147221020 in all four). VB6 gives the `GetObject` of a missing file with a class 432 with the description *Class not registered*.
+
+<!-- Reproducer: bugs/createobject-getobject-raw-hresults/ (mode test: `tbrun --tests`; expect lists the three PASS and eight FAIL lines, each with the number BETA 1010 raises); run on BETA 1010 with `bug_repro.mjs run`; 64-bit from the run-time errors data (`errors.mjs run`). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 429 and 432. Stated in the Common Errors sections of CreateObject and GetObject (rows `bug: createobject-getobject-raw-hresults`), from errors/VBA.Interaction.yml; when fixed, each row's `error` becomes 429 or 432 and its `vb6` and `bug` go. Found 2026-10-22 by batch 6a of WIP.Errors.md. -->
+
+---
+
+## A COM object's own error reaches `CallByName` and a late-bound property assignment as &H80020009, *Exception occurred.*
+
+**Describe the bug**
+When a COM object such as a `Scripting.Dictionary` raises an error of its own, a late-bound method call gets the object's number, as in VB6: `d.Add "x", 2` on a dictionary that holds `"x"` raises 457, *This key is already associated with an element of this collection*. The same call through `CallByName`, with any call type, and a late-bound property assignment, raise -2147352567 (`&H80020009`, `DISP_E_EXCEPTION`), *Exception occurred.*, instead:
+- `CallByName d, "Add", VbMethod, "x", 2`: VB6 and 64-bit VBA raise 457.
+- `CallByName d, "Remove", VbMethod, "nope"`: VB6 and 64-bit VBA raise 32811, which the late-bound statement `d.Remove "nope"` raises in twinBASIC too.
+- `d.CompareMode = 1` on a dictionary that has items, and `CallByName d, "CompareMode", VbLet, 1`: VB6 and 64-bit VBA raise 5.
+
+Also, `CallByName(d, "", VbGet)`, with a zero-length name, raises 438, *Object doesn't support this property or method*, where VB6 and 64-bit VBA raise 450, *Wrong number of arguments or invalid property assignment*.
+
+Related: the queued entry *An error raised with a constant number, in a member called late-bound, reaches the caller as &H80020009, Exception occurred.* is the same number for a twinBASIC member's `Err.Raise`; this one is a COM object's error, which a late-bound method statement already gets right. The queued entry *A failure code from a late-bound call is raised as the HRESULT* covers `CallByName` with the wrong number of arguments (450) and arguments given to a property that takes none (451). Observed in the compiler's test mode and in built exes, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `callbyname-dispatch-hresults.twinproj` (attached as `callbyname-dispatch-hresults.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other five fail: four with -2147352567 and the empty name with 438.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`callbyname-dispatch-hresults-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: an error a COM object raises reaches CallByName, and a late-bound property
+' assignment, as the object's own number, as it reaches a late-bound method call, and as VB6
+' and 64-bit VBA give it (the VB6 project beside this one prints them); CallByName with an empty
+' name raises 450. The object is a Scripting.Dictionary. tbrun --tests runs each case and prints
+' PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function NewDictionary() As Object
+        Set NewDictionary = CreateObject("Scripting.Dictionary")
+    End Function
+
+    ' Controls: a late-bound method call gets the object's own number, and CallByName of a
+    ' name the object does not have raises 438.
+    [TestCase]
+    Public Sub LateBound_AddExistingKey_Raises457()
+        Dim D As Object
+        Set D = NewDictionary()
+        D.Add "x", 1
+        On Error Resume Next
+        D.Add "x", 2
+        Assert.Strict.AreEqual 457&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_RemoveMissingKey_Raises32811()
+        Dim D As Object
+        Set D = NewDictionary()
+        On Error Resume Next
+        D.Remove "nope"
+        Assert.Strict.AreEqual 32811&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_UnknownName_Raises438()
+        Dim D As Object
+        Dim V As Variant
+        Set D = NewDictionary()
+        On Error Resume Next
+        V = CallByName(D, "Nope", VbGet)
+        Assert.Strict.AreEqual 438&, Err.Number
+    End Sub
+
+    ' The defect: the object's own error arrives as -2147352567, Exception occurred.
+    [TestCase]
+    Public Sub CallByName_AddExistingKey_Raises457()
+        Dim D As Object
+        Set D = NewDictionary()
+        D.Add "x", 1
+        On Error Resume Next
+        CallByName D, "Add", VbMethod, "x", 2
+        Assert.Strict.AreEqual 457&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_RemoveMissingKey_Raises32811()
+        Dim D As Object
+        Set D = NewDictionary()
+        On Error Resume Next
+        CallByName D, "Remove", VbMethod, "nope"
+        Assert.Strict.AreEqual 32811&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_CompareModeAfterAdd_Raises5()
+        Dim D As Object
+        Set D = NewDictionary()
+        D.Add "x", 1
+        On Error Resume Next
+        D.CompareMode = 1
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_CompareModeAfterAdd_Raises5()
+        Dim D As Object
+        Set D = NewDictionary()
+        D.Add "x", 1
+        On Error Resume Next
+        CallByName D, "CompareMode", VbLet, 1
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' The defect: an empty name raises 438, where VB6 raises 450.
+    [TestCase]
+    Public Sub CallByName_EmptyName_Raises450()
+        Dim D As Object
+        Dim V As Variant
+        Set D = NewDictionary()
+        On Error Resume Next
+        V = CallByName(D, "", VbGet)
+        Assert.Strict.AreEqual 450&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The object's own error number, as a late-bound method statement already gives it, and as VB6 and 64-bit VBA give it through `CallByName` and a late-bound property assignment; 450 for an empty name.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. Code that calls an object by name, or sets its properties late-bound, cannot tell its errors apart: every one is *Exception occurred.*
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a late-bound method statement (`d.Add "x", 2` raises 457, `d.Remove "nope"` 32811); `CallByName` of a name the object does not have, which raises 438 in all four.
+
+<!-- Reproducer: bugs/callbyname-dispatch-hresults/ (mode test: `tbrun --tests`; expect lists the three PASS and five FAIL lines); run on BETA 1010 with `bug_repro.mjs run`; 64-bit from the run-time errors data (`errors.mjs run`). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 457, 32811, 438, 457, 32811, 5, 5 and 450. Stated in the Common Errors section of CallByName (rows `bug: callbyname-dispatch-hresults`), from errors/VBA.Interaction.yml; when fixed, each row's `error` becomes VB's number and its `vb6` and `bug` go. Found 2026-10-22 by batch 6a of WIP.Errors.md. -->
+
+---
+
+## `RaiseEventByName` and `RaiseEventByName2` end the program for an object that declares no events, and raise an error for an event no handler is attached to
+
+**Describe the bug**
+Two defects of the same two functions:
+- Given an object that declares no events, such as a `Collection` or a `Scripting.Dictionary`, `RaiseEventByName` and `RaiseEventByName2` end the program with an access violation (`&HC0000005`), with no error a handler can catch. `Nothing` raises 91, as it should.
+- Given an object that declares the event, with no handler attached to it, both raise -2147467259 (`&H80004005`), *Unspecified error*. The `RaiseEvent` statement inside the class raises nothing for an event no handler is attached to. With a handler attached, both functions call it.
+
+The crash was observed in the compiler's test mode, where the access violation ends the case and not the run, and in a built exe, where it ends the program; the error without a handler in the test mode; each 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `raiseeventbyname-no-events-crash.twinproj` (attached as `raiseeventbyname-no-events-crash.zip`). It holds the class `EventSource`, which declares one event, the class `Listener`, which handles it, and the test module.
+2. Run its test cases. On BETA 1010 the five controls pass, the two cases without a handler fail with -2147467259, and the three cases with a `Collection` or a `Dictionary` fail with `NATIVE EXCEPTION: ACCESS_VIOLATION`.
+
+The modules are meant to be adapted as regression tests. VB6 has no `RaiseEventByName`, so the crash cases assert only that some error is raised.
+```vb
+' A class that declares one event, for the controls and the no-handler cases. Raise is what
+' the RaiseEvent statement does with the same event: with no handler attached, nothing.
+Class EventSource
+
+    Public Event Changed(ByVal Value As Long)
+
+    Public Sub Raise(ByVal Value As Long)
+        RaiseEvent Changed(Value)
+    End Sub
+
+End Class
+```
+```vb
+' Handles EventSource's event and counts the calls, for the control that raises it with a
+' handler attached.
+Class Listener
+
+    Private WithEvents Source As EventSource
+    Public Calls As Long
+    Public LastValue As Long
+
+    Public Sub Attach(ByVal S As EventSource)
+        Set Source = S
+    End Sub
+
+    Private Sub Source_Changed(ByVal Value As Long)
+        Calls = Calls + 1
+        LastValue = Value
+    End Sub
+
+End Class
+```
+```vb
+' Regression tests: RaiseEventByName and RaiseEventByName2 raise an error, and do not end the
+' program, for an object that declares no events; and an event with no handler attached is
+' raised with no error, as the RaiseEvent statement raises it. tbrun --tests runs each case in
+' the compiler's test mode, where an access violation ends the case and not the run, and prints
+' PASS or FAIL. The crash cases assert only that some error is raised: VB6 has no
+' RaiseEventByName to say which.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: Nothing raises 91, a declared event with a handler attached calls it, and a name
+    ' the object does not declare raises an error.
+    [TestCase]
+    Public Sub RaiseEventByName_Nothing_Raises91()
+        Dim O As Object
+        On Error Resume Next
+        RaiseEventByName O, "Changed", Array(1)
+        Assert.Strict.AreEqual 91&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName_DeclaredEventWithHandler_CallsIt()
+        Dim S As New EventSource
+        Dim L As New Listener
+        L.Attach S
+        On Error Resume Next
+        RaiseEventByName S, "Changed", Array(7)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual 1&, L.Calls
+        Assert.Strict.AreEqual 7&, L.LastValue
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName2_DeclaredEventWithHandler_CallsIt()
+        Dim S As New EventSource
+        Dim L As New Listener
+        L.Attach S
+        On Error Resume Next
+        RaiseEventByName2 S, "Changed", 7
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual 1&, L.Calls
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEvent_NoHandler_DoesNothing()
+        Dim S As New EventSource
+        On Error Resume Next
+        S.Raise 1
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName_UndeclaredEventName_RaisesAnError()
+        Dim S As New EventSource
+        Dim L As New Listener
+        L.Attach S
+        On Error Resume Next
+        RaiseEventByName S, "Nope", Array(1)
+        Assert.Strict.AreNotEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: a declared event with no handler attached raises -2147467259, where
+    ' RaiseEvent Changed(1) inside the class does nothing.
+    [TestCase]
+    Public Sub RaiseEventByName_DeclaredEventNoHandler_Succeeds()
+        Dim O As Object
+        Set O = New EventSource
+        On Error Resume Next
+        RaiseEventByName O, "Changed", Array(1)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName2_DeclaredEventNoHandler_Succeeds()
+        Dim O As Object
+        Set O = New EventSource
+        On Error Resume Next
+        RaiseEventByName2 O, "Changed", 1
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: an object that declares no events ends the program.
+    [TestCase]
+    Public Sub RaiseEventByName_Collection_RaisesAnError()
+        Dim O As Object
+        Set O = New Collection
+        On Error Resume Next
+        RaiseEventByName O, "Changed", Array(1)
+        Assert.Strict.AreNotEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName_Dictionary_RaisesAnError()
+        Dim O As Object
+        Set O = CreateObject("Scripting.Dictionary")
+        On Error Resume Next
+        RaiseEventByName O, "Changed", Array(1)
+        Assert.Strict.AreNotEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName2_Collection_RaisesAnError()
+        Dim O As Object
+        Set O = New Collection
+        On Error Resume Next
+        RaiseEventByName2 O, "Changed", 1
+        Assert.Strict.AreNotEqual 0&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+An error for an object that declares no events, as for a name the object does not declare (which raises an error today), and no error for an event no handler is attached to, as `RaiseEvent` does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: high for the crash: a program loses its unsaved data, and an error handler cannot prevent it. Low for the error without a handler, though it makes the function unusable for an event a caller may or may not have handled.
+
+A 64-bit build gives the same results.
+
+<!-- Reproducer: bugs/raiseeventbyname-no-events-crash/ (mode test: `tbrun --tests`; expect lists the five PASS and five FAIL lines); run on BETA 1010 with `bug_repro.mjs run` and `--arch win64`. In a built exe the crash ends the program: the run-time errors probe (`errors.mjs run`) stopped there with exception 0xc0000005, 32-bit and 64-bit, which is why the data has no case for it. Stated in a WARNING by hand (the crash) and a NOTE (no handler) on docs/Reference/Default/VBA/Interaction/RaiseEventByName.md and RaiseEventByName2.md, each beside an HTML comment naming this slug; when fixed, both go. Found 2026-10-22 by batch 6a of WIP.Errors.md. -->

@@ -1,0 +1,59 @@
+' Regression tests: Val of a number followed by a type-declaration character raises
+' error 6 when the number does not fit that type. Expected results are VB6's (the VB6
+' project beside this one prints them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: numbers that fit their type, and a fraction with % (error 13 in both).
+    [TestCase]
+    Public Sub Val_LargestInteger_Accepted()
+        Assert.Strict.AreEqual 32767#, Val("32767%")
+    End Sub
+
+    [TestCase]
+    Public Sub Val_LargestLong_Accepted()
+        Assert.Strict.AreEqual 2147483647#, Val("2147483647&")
+    End Sub
+
+    [TestCase]
+    Public Sub Val_FractionInteger_Raises13()
+        Dim R As Double
+        On Error Resume Next
+        R = Val("50.5%")
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    ' The defect: each number is outside the range of its type, and twinBASIC returns it.
+    [TestCase]
+    Public Sub Val_IntegerPastLargest_Raises6()
+        Dim R As Double
+        On Error Resume Next
+        R = Val("32768%")
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Val_IntegerPastSmallest_Raises6()
+        Dim R As Double
+        On Error Resume Next
+        R = Val("-32769%")
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Val_LongPastLargest_Raises6()
+        Dim R As Double
+        On Error Resume Next
+        R = Val("2147483648&")
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Val_CurrencyPastLargest_Raises6()
+        Dim R As Double
+        On Error Resume Next
+        R = Val("1e15@")
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+End Module

@@ -16,9 +16,18 @@ Syntax: **CVDate(** *expression* **)**
 *expression*
 : *required* Any expression that can be converted to a date --- a date literal, a date/time string, or a number that falls within the range of acceptable dates.
 
-The return type is **Variant** (**Date**). An error occurs if *expression* cannot be converted to a date.
+The return type is **Variant** (**Date**). If *expression* is **Null**, **CVDate** returns **Null**.
 
 **CVDate** is provided for compatibility with previous versions of Visual Basic. The syntax of **CVDate** is identical to [**CDate**](CDate); however, **CVDate** returns a **Variant** whose subtype is **Date** instead of an actual **Date** type. Since **Date** is now an intrinsic type, there is no further need for **CVDate** in new code. The same effect can be achieved by converting an expression to a **Date** with [**CDate**](CDate) and then assigning it to a **Variant**.
+
+<!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *expression* is a string that is not a date, a time or a number (a zero-length string included), or a number outside the range of a **Date**: less than -657,434 (January 1, 100) or 2,958,466 (January 1, 10000) or more |
+
+<!-- /errors -->
 
 ### Example
 

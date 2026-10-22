@@ -23,6 +23,19 @@ Returns a **Variant** whose contents are a two-dimensional array of strings: eac
 
 The root of these registry settings is: `Computer\HKEY_CURRENT_USER\Software\VB and VBA Program Settings`.
 
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *appname* or *section* is a zero-length string |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *appname* or *section* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *appname* or *section* is a zero-length string, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+<!-- /errors -->
+
 ### Example
 
 This example first uses [**SaveSetting**](SaveSetting) to make entries in the Windows registry for the application, then uses **GetAllSettings** to display every key/value in a section, and finally uses [**DeleteSetting**](DeleteSetting) to remove the application's entries. Note that the *appname* and *section* names themselves are not retrieved.

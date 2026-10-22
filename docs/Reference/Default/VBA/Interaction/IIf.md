@@ -25,6 +25,15 @@ Syntax: **IIf(** *expr* **,** *truepart* **,** *falsepart* **)**
 > [!IMPORTANT]
 > **IIf** always evaluates both *truepart* and *falsepart*, even though it returns only one of them. Watch for side effects: if the unused branch would raise an error (for example, division by zero), the error still occurs. Use the short-circuiting [**If**](If) function --- a twinBASIC addition --- to guard against errors in the unused branch.
 
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *expr* is a string that is not a **Boolean** or a number |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses **IIf** to return the word "Large" if the amount is greater than 1000, and "Small" otherwise.
