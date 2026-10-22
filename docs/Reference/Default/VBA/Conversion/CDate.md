@@ -39,13 +39,13 @@ A **Date** holds a day number from -657,434 (January 1, 100) to 2,958,465 (Decem
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *expression* is **Null** |
 
 > [!NOTE] BETA 1010
-> When *expression* is a **Decimal** less than -657,434 or 2,958,466 or more, VB6 raises error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
+> When *expression* is a **Decimal** less than -657,434 or 2,958,466 or more, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
 > [!NOTE] BETA 1010
-> When **CDate** is given a number of another type than **Decimal** that is less than -657,434 or 2,958,466 or more, VB6 raises error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
+> When **CDate** is given a number of another type than **Decimal** that is less than -657,434 or 2,958,466 or more, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
 
 > [!NOTE] BETA 1010
-> When **CDate** is given a string that holds a number less than -657,434 or 2,958,466 or more, VB6 raises error [13 (`&HD`)](tb:Errors#13), *Type mismatch*; twinBASIC raises none.
+> When **CDate** is given a string that holds a number less than -657,434 or 2,958,466 or more, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*; twinBASIC raises none.
 
 <!-- /errors -->
 

@@ -18,7 +18,7 @@ Syntax: **Join(** *sourcearray* [ **,** *delimiter* ] **)**
 : *optional* String character used to separate the substrings in the returned string. If omitted, the space character (`" "`) is used. If *delimiter* is a zero-length string (`""`), all items in the list are concatenated with no delimiters.
 
 > [!NOTE]
-> twinBASIC also takes a *sourcearray* whose elements are of a type other than **String** or **Variant**, such as **Long** or **Double**. For a **Long** array VB6 raises error 5, *Invalid procedure call or argument*.
+> twinBASIC also takes a *sourcearray* whose elements are of a type other than **String** or **Variant**, such as **Long** or **Double**. For a **Long** array VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
 
 <!-- errors: generated from errors/VBA.Strings.yml by scripts/errors.mjs write; edit the data, not this section -->
 ### Common Errors

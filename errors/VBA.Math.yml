@@ -1,6 +1,5 @@
 # The VBA Math module. Format: WIP.Errors.md.
 beta: 1010
-win64: true
 pages:
   Reference/Default/VBA/Math/Abs.md:
     rows:
@@ -216,7 +215,7 @@ pages:
       - { decl: Dim D As Variant, setup: 'D = CDec("1.5")', expr: 'Round(D, 2147483647)' }
       - Round(True, 2147483647)
       - Round(Empty, 2147483647)
-      - { decl: Dim L As LongLong, setup: L = 9223372036854775807^, expr: 'Round(L, 2147483647)', only: tb }
+      - { decl: Dim L As LongLong, setup: L = 9223372036854775807^, expr: 'Round(L, 2147483647)', only: [tb, vba64] }
   Reference/Default/VBA/Math/Sgn.md:
     rows:
       - error: 94

@@ -29,7 +29,7 @@ Syntax: **Round(** *expression* [ **,** *numdecimalplaces* ] **)**
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *numdecimalplaces* is **Null** |
 
 > [!NOTE] BETA 1010
-> When *expression* is **Null** and *numdecimalplaces* is negative, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+> When *expression* is **Null** and *numdecimalplaces* is negative, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 <!-- /errors -->
 

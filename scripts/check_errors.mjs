@@ -155,11 +155,11 @@ const section = renderSection(page, {
   permalink: "/tB/Modules/Strings/Mid",
 });
 check(
-  "the section has the table, its numbers linked to the central page by its shortcut, and the VB6 note",
+  "the section has the table, its numbers linked to the central page by its shortcut, and the note for VB6 and 64-bit VBA",
   section
     .join("\n")
     .includes(
-      "| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *x* is negative |\n| [9 (`&H9`)](tb:Errors#9), *Subscript out of range* | the index is out |\n\n> [!NOTE] BETA 1010\n> When the index is out, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.",
+      "| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *x* is negative |\n| [9 (`&H9`)](tb:Errors#9), *Subscript out of range* | the index is out |\n\n> [!NOTE] BETA 1010\n> When the index is out, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.",
     ),
 );
 const merged = renderSection(
@@ -180,16 +180,73 @@ check(
 );
 check("a page with only quiet cases gets no section", renderSection({ rows: [], quiet: [1] }, { messages }) === null);
 const vb6Only = renderSection(
-  { rows: [{ error: 0, when: "*x* is 2", vb6: 5, bug: "pending", cases: [] }], quiet: [] },
+  { rows: [{ error: 0, when: "*x* is 2", vb6: 5, bug: "pending", cases: [{}] }], quiet: [] },
   { name: "probe.yml", beta: 1010, messages, level: "##", permalink: "/A" },
 ).join("\n");
 check(
-  "a row of error 0 has its VB6 note and no table",
+  "a row of error 0 has its note and no table",
   !vb6Only.includes("| Error |") &&
     vb6Only.includes(
-      "## Common Errors\n\n> [!NOTE] BETA 1010\n> When *x* is 2, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.\n\n<!-- /errors -->",
+      "## Common Errors\n\n> [!NOTE] BETA 1010\n> When *x* is 2, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.\n\n<!-- /errors -->",
     ),
   vb6Only,
+);
+const noteOf = (row) =>
+  renderSection(
+    { rows: [{ when: "*x* is 2", cases: [{}], ...row }], quiet: [] },
+    { name: "probe.yml", beta: 1010, messages, level: "##", permalink: "/A" },
+  ).find((l) => l.startsWith("> When"));
+check(
+  "64-bit VBA's own difference has a sentence of its own, compared with twinBASIC 64-bit",
+  noteOf({ error: 5, vba64: 9, bug: "pending" }) ===
+    "> When *x* is 2, 64-bit VBA raises error [9 (`&H9`)](tb:Errors#9), *Subscript out of range*, instead." &&
+    noteOf({ error: 5, vb6: 9, vba64: 0, bug: "pending" }) ===
+      "> When *x* is 2, VB6 raises error [9 (`&H9`)](tb:Errors#9), *Subscript out of range*, instead; 64-bit VBA raises no error." &&
+    noteOf({ error: 5, win64: 0, vba64: 9, bug: "pending" }) ===
+      "> When *x* is 2, 64-bit VBA raises error [9 (`&H9`)](tb:Errors#9), *Subscript out of range*; twinBASIC raises none." &&
+    noteOf({ error: 6, win64: 0 }) === undefined,
+);
+check(
+  "a row none of whose cases runs in 64-bit VBA says nothing of it",
+  noteOf({ error: 0, vb6: 5, bug: "x", cases: [{ only: ["tb", "vb6"] }] }) ===
+    "> When *x* is 2, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.",
+);
+const onlies = data(`
+beta: 1
+pages:
+  A.md:
+    quiet:
+      - { expr: a, only: tb }
+      - { expr: b, only: [tb, vba64] }
+      - { expr: c, only: [tb, vb6] }
+      - d
+`);
+check(
+  "only: says which runtimes run a case, tb meaning both twinBASIC builds",
+  onlies.problems.length === 0 &&
+    ["tb", "win64", "vb6", "vba64"]
+      .map((rt) =>
+        probeCases([onlies], rt)
+          .map((c) => c.label)
+          .join(""),
+      )
+      .join() === "abcd,abcd,cd,bd",
+  onlies.problems.join("; "),
+);
+check(
+  "only: refuses a list without tb, an unknown runtime and all three",
+  ["[vb6]", "[tb, win64]", "[tb, vb6, vba64]", "vba64"].every(
+    (v) => data(`beta: 1\npages:\n  A.md:\n    quiet:\n      - { expr: a, only: ${v} }\n`).problems.length === 1,
+  ),
+);
+check(
+  "a vba64: that is its default is refused, and one that differs from twinBASIC 64-bit needs a bug:",
+  data("beta: 1\npages:\n  A.md:\n    rows:\n      - { error: 5, vb6: 9, vba64: 9, bug: x, when: x, cases: [x] }\n")
+    .problems.length === 1 &&
+    data("beta: 1\npages:\n  A.md:\n    rows:\n      - { error: 5, vba64: 9, when: x, cases: [x] }\n").problems
+      .length === 1 &&
+    data("beta: 1\npages:\n  A.md:\n    rows:\n      - { error: 0, vba64: 9, bug: x, when: x, cases: [x] }\n").problems
+      .length === 0,
 );
 check(
   "error 0 is refused without a vb6: number",
@@ -221,9 +278,12 @@ const cases = probeCases([sample], "tb");
 const vb6Cases = probeCases([sample], "vb6");
 check(
   "cases carry what each runtime expects",
-  cases.map((c) => c.expect).join() === "5,5,9,0" && vb6Cases[2].expect === 5,
+  cases.map((c) => c.expect).join() === "5,5,9,0" &&
+    vb6Cases[2].expect === 5 &&
+    probeCases([sample], "vba64")[2].expect === 5 &&
+    probeCases([sample], "win64")[2].expect === 9,
 );
-for (const dialect of ["tb", "vb6"]) {
+for (const dialect of ["tb", "vb6", "vba"]) {
   const mod = probeModule(cases, dialect);
   const lines = mod.text.split("\r\n");
   check(
@@ -256,7 +316,7 @@ check(
   "a harness is a lowercase name",
   data("beta: 1\npages:\n  A.md:\n    harness: Clock\n    quiet: [x]\n").problems.length === 1,
 );
-for (const dialect of ["tb", "vb6"]) {
+for (const dialect of ["tb", "vb6", "vba"]) {
   const hc = probeCases([harnessed], dialect);
   const code = new Map([
     ["one", "' one's code"],
@@ -368,14 +428,14 @@ check(
     }).length === 1,
 );
 
-for (const dialect of ["tb", "vb6"]) {
+for (const dialect of ["tb", "vb6", "vba"]) {
   const lines = messageProbeModule([-2147467259], dialect).split("\r\n");
   check(
     `${dialect}: the messages' probe runs every VB number, then the others, then ends`,
     lines.includes("    For N = 1 To 65535") &&
       lines.includes("    One -2147467259, True") &&
       lines.filter((l) => l === "Public Sub Main()").length === 1 &&
-      (dialect === "vb6" || lines.includes("End Module")),
+      (dialect !== "tb" || lines.includes("End Module")),
   );
 }
 

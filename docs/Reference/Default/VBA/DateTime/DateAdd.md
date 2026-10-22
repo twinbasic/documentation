@@ -73,10 +73,10 @@ If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *interval* or *number* is **Null** |
 
 > [!NOTE] BETA 1010
-> When the result with an *interval* of "yyyy", "q" or "m" would be before January 1, 100, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+> When the result with an *interval* of "yyyy", "q" or "m" would be before January 1, 100, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 > [!NOTE] BETA 1010
-> When *date* is a number outside the range of dates, VB6 raises error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
+> When *date* is a number outside the range of dates, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
 <!-- /errors -->
 

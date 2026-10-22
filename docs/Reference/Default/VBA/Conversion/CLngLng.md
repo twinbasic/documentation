@@ -27,7 +27,7 @@ When the fractional part is exactly `0.5`, **CLngLng** always rounds it to the n
 > In VBA, **LongLong** (and therefore **CLngLng**) is restricted to 64-bit hosts. twinBASIC supports **LongLong** in both 32-bit and 64-bit modes --- see [Data Types](../../../Features/Language/Data-Types).
 
 > [!WARNING] BETA 1010
-> The constant 2^63, one past the largest **LongLong**, converts to -9223372036854775808 with no error: `CLngLng(2 ^ 63)` and `CLngLng(9223372036854775808#)` do, and so does `CLngLng(9223372036854775807)`, because a whole-number literal without the `^` suffix is a **Double** that rounds to 2^63. A **Double** variable holding 2^63 raises error 6, as the table below says. Write the largest value as `9223372036854775807^`.
+> The constant 2^63, one past the largest **LongLong**, converts to -9223372036854775808 with no error: `CLngLng(2 ^ 63)` and `CLngLng(9223372036854775808#)` do, and so does `CLngLng(9223372036854775807)`, because a whole-number literal without the `^` suffix is a **Double** that rounds to 2^63. A **Double** variable holding 2^63 raises error 6, as the table below says. Write the largest value as `9223372036854775807^`. 64-bit VBA raises error 6 for each of these constants.
 
 <!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
 ### Common Errors

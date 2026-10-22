@@ -30,7 +30,7 @@ When *character* is a number greater than 255, **String** converts the number to
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *number* is **Null**, or **String$** is given a *character* that is **Null**<br>**String** is given a *character* that is **Null** |
 
 > [!NOTE] BETA 1010
-> When **String** is given a *character* that is **Null**, VB6 raises no error.
+> When **String** is given a *character* that is **Null**, VB6 and 64-bit VBA raise no error.
 
 <!-- /errors -->
 

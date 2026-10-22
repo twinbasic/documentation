@@ -24,7 +24,7 @@ The absolute value of a number is its unsigned magnitude. For example, `Abs(-1)`
 | [6 (`&H6`)](tb:Errors#6), *Overflow* | *number* is a **Currency** of -922,337,203,685,477.5808 |
 
 > [!NOTE] BETA 1010
-> When *number* is an **Integer** of -32,768 or a **Long** of -2,147,483,648 (twinBASIC returns a **Long** or a **Double**), VB6 raises error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
+> When *number* is an **Integer** of -32,768 or a **Long** of -2,147,483,648 (twinBASIC returns a **Long** or a **Double**), VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
 
 <!-- /errors -->
 

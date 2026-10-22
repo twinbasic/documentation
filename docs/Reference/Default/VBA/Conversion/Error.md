@@ -32,7 +32,7 @@ Examine the property settings of the **Err** object to identify the most recent 
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *errornumber* is **Null** |
 
 > [!NOTE] BETA 1010
-> When **Error** or **Error$** is given an *errornumber* that rounds to a number greater than 65,535, VB6 raises error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
+> When **Error** or **Error$** is given an *errornumber* that rounds to a number greater than 65,535, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
 
 <!-- /errors -->
 

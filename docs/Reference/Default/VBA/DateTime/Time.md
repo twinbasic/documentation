@@ -52,7 +52,7 @@ If *time* is a string, **Time** attempts to convert it to a time by using the ti
 > In some versions of Microsoft Windows, including Windows 10 and 11, setting the system time is a privileged operation that requires the process to have relevant permissions.
 
 > [!NOTE]
-> twinBASIC takes a number as [**CDate**](../Conversion/CDate) converts it, and sets the time part of the result: `Time = 0.25` sets 6:00:00 AM, and so does `Time = 1.25`. VB6 raises error 13, *Type mismatch*, for a number, though it takes the same value as a **Date**, such as `CDate(0.25)`.
+> twinBASIC takes a number as [**CDate**](../Conversion/CDate) converts it, and sets the time part of the result: `Time = 0.25` sets 6:00:00 AM, and so does `Time = 1.25`. VB6 and 64-bit VBA raise error 13, *Type mismatch*, for a number, though they take the same value as a **Date**, such as `CDate(0.25)`.
 
 #### Example
 
@@ -118,13 +118,13 @@ Time$ = MyTime           ' Set system time.
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **Time$** is given **Null**<br>**Time** is given **Null** |
 
 > [!NOTE] BETA 1010
-> When **Time$** is given a value that is not a string of the form *hh:mm:ss*, or one outside 00:00:00 to 23:59:59, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+> When **Time$** is given a value that is not a string of the form *hh:mm:ss*, or one outside 00:00:00 to 23:59:59, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
 > [!NOTE] BETA 1010
-> When **Time$** is given a time in another form VB6 reads, such as *hh:mm* or *hh*, VB6 raises no error.
+> When **Time$** is given a time in another form VB6 reads, such as *hh:mm* or *hh*, VB6 and 64-bit VBA raise no error.
 
 > [!NOTE] BETA 1010
-> When **Time** is given **Null**, VB6 raises error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
+> When **Time** is given **Null**, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
 <!-- /errors -->
 

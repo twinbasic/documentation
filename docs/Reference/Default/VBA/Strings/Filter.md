@@ -15,7 +15,7 @@ Syntax: **Filter(** *sourcearray*, *match* [ **,** *include* [ **,** *compare* ]
 : *required* One-dimensional array of strings to be searched.
 
 > [!NOTE]
-> twinBASIC also takes a *sourcearray* whose elements are of a type other than **String** or **Variant**, such as **Long** or **Double**. For a **Long** array VB6 raises error 13, *Type mismatch*.
+> twinBASIC also takes a *sourcearray* whose elements are of a type other than **String** or **Variant**, such as **Long** or **Double**. For a **Long** array VB6 and 64-bit VBA raise error 13, *Type mismatch*.
 
 *match*
 : *required* String to search for.

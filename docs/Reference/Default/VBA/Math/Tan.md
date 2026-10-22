@@ -27,10 +27,10 @@ To convert degrees to radians, multiply degrees by pi/180. To convert radians to
 | [-2147348207 (`&H80021111`)](tb:Errors#-2147348207), *Automation error* | the magnitude of *number* is 9,223,372,036,854,775,808 (2^63) or more |
 
 > [!NOTE] BETA 1010
-> When the magnitude of *number* is 9,223,372,036,854,775,808 (2^63) or more, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+> When the magnitude of *number* is 9,223,372,036,854,775,808 (2^63) or more, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
 > [!NOTE] BETA 1010
-> When the magnitude of *number* is 9,223,372,000,000,000,000 or more but less than 2^63, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+> When the magnitude of *number* is 9,223,372,000,000,000,000 or more but less than 2^63, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 <!-- /errors -->
 

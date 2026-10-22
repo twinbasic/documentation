@@ -246,52 +246,52 @@ pages:
       - error: 6
         when: "*expression* rounds to a number less than -9,223,372,036,854,775,808 or greater than 9,223,372,036,854,775,807"
         cases:
-          - { decl: Dim X As Double, setup: X = 2 ^ 63, expr: CLngLng(X), only: tb }
-          - { expr: CLngLng(1E+19), only: tb }
-          - { expr: CLngLng(-1E+19), only: tb }
-          - { expr: 'CLngLng("9223372036854775808")', only: tb }
-          - { expr: 'CLngLng("9223372036854775807.5")', only: tb }
-          - { decl: Dim D As Variant, setup: 'D = CDec("9223372036854775808")', expr: CLngLng(D), only: tb }
+          - { decl: Dim X As Double, setup: X = 2 ^ 63, expr: CLngLng(X), only: [tb, vba64] }
+          - { expr: CLngLng(1E+19), only: [tb, vba64] }
+          - { expr: CLngLng(-1E+19), only: [tb, vba64] }
+          - { expr: 'CLngLng("9223372036854775808")', only: [tb, vba64] }
+          - { expr: 'CLngLng("9223372036854775807.5")', only: [tb, vba64] }
+          - { decl: Dim D As Variant, setup: 'D = CDec("9223372036854775808")', expr: CLngLng(D), only: [tb, vba64] }
       - error: 13
         when: "*expression* is a string that does not hold a number (a zero-length string included)"
         cases:
-          - { expr: 'CLngLng("abc")', only: tb }
-          - { expr: 'CLngLng("")', only: tb }
+          - { expr: 'CLngLng("abc")', only: [tb, vba64] }
+          - { expr: 'CLngLng("")', only: [tb, vba64] }
       - error: 94
         when: "*expression* is **Null**"
         cases:
-          - { expr: CLngLng(Null), only: tb }
+          - { expr: CLngLng(Null), only: [tb, vba64] }
     quiet:
-      - { expr: 'CLngLng("9223372036854775807")', only: tb }
-      - { expr: 'CLngLng("-9223372036854775808.5")', only: tb }
-      - { expr: CLngLng(9.2233720368547748E+18), only: tb }
-      - { decl: Dim C As Currency, setup: C = 922337203685477@, expr: CLngLng(C), only: tb }
+      - { expr: 'CLngLng("9223372036854775807")', only: [tb, vba64] }
+      - { expr: 'CLngLng("-9223372036854775808.5")', only: [tb, vba64] }
+      - { expr: CLngLng(9.2233720368547748E+18), only: [tb, vba64] }
+      - { decl: Dim C As Currency, setup: C = 922337203685477@, expr: CLngLng(C), only: [tb, vba64] }
   Reference/Default/VBA/Conversion/CLngPtr.md:
     rows:
       - error: 6
         when: "in a 32-bit build, *expression* rounds to a number less than -2,147,483,648 or greater than 2,147,483,647"
         win64: 0
         cases:
-          - { expr: CLngPtr(2147483648#), only: tb }
-          - { expr: CLngPtr(2147483647.5), only: tb }
-          - { expr: CLngPtr(-2147483649#), only: tb }
+          - { expr: CLngPtr(2147483648#), only: [tb, vba64] }
+          - { expr: CLngPtr(2147483647.5), only: [tb, vba64] }
+          - { expr: CLngPtr(-2147483649#), only: [tb, vba64] }
       - error: 6
         when: "*expression* rounds to a number less than -9,223,372,036,854,775,808 or greater than 9,223,372,036,854,775,807"
         cases:
-          - { expr: CLngPtr(1E+19), only: tb }
-          - { expr: CLngPtr(-1E+19), only: tb }
+          - { expr: CLngPtr(1E+19), only: [tb, vba64] }
+          - { expr: CLngPtr(-1E+19), only: [tb, vba64] }
       - error: 13
         when: "*expression* is a string that does not hold a number (a zero-length string included)"
         cases:
-          - { expr: 'CLngPtr("abc")', only: tb }
-          - { expr: 'CLngPtr("")', only: tb }
+          - { expr: 'CLngPtr("abc")', only: [tb, vba64] }
+          - { expr: 'CLngPtr("")', only: [tb, vba64] }
       - error: 94
         when: "*expression* is **Null**"
         cases:
-          - { expr: CLngPtr(Null), only: tb }
+          - { expr: CLngPtr(Null), only: [tb, vba64] }
     quiet:
-      - { expr: CLngPtr(2147483647.4), only: tb }
-      - { expr: CLngPtr(-2147483648.5), only: tb }
+      - { expr: CLngPtr(2147483647.4), only: [tb, vba64] }
+      - { expr: CLngPtr(-2147483648.5), only: [tb, vba64] }
   Reference/Default/VBA/Conversion/CSng.md:
     rows:
       - error: 6
@@ -429,15 +429,15 @@ pages:
       - Hex(2147483647)
       - Hex(-2147483648#)
       - Hex("&HFF")
-      - { expr: Hex(2147483648#), only: tb }
-      - { expr: Hex(-2147483649#), only: tb }
-      - { expr: Hex(2147483647.5), only: tb }
-      - { expr: 'Hex("9223372036854775807")', only: tb }
-      - { decl: Dim L As LongLong, setup: L = 9223372036854775807^, expr: Hex(L), only: tb }
-      - { decl: Dim D As Variant, setup: 'D = CDec("9223372036854775807")', expr: Hex(D), only: tb }
-      - { decl: Dim C As Currency, setup: C = 922337203685477@, expr: Hex(C), only: tb }
-      - { decl: Dim X As Double, setup: X = 2 ^ 62 - 1024, expr: Hex(X), only: tb }
-      - { decl: Dim X As Double, setup: X = -(2 ^ 62), expr: Hex(X), only: tb }
+      - { expr: Hex(2147483648#), only: [tb, vba64] }
+      - { expr: Hex(-2147483649#), only: [tb, vba64] }
+      - { expr: Hex(2147483647.5), only: [tb, vba64] }
+      - { expr: 'Hex("9223372036854775807")', only: [tb, vba64] }
+      - { decl: Dim L As LongLong, setup: L = 9223372036854775807^, expr: Hex(L), only: [tb, vba64] }
+      - { decl: Dim D As Variant, setup: 'D = CDec("9223372036854775807")', expr: Hex(D), only: [tb, vba64] }
+      - { decl: Dim C As Currency, setup: C = 922337203685477@, expr: Hex(C), only: [tb, vba64] }
+      - { decl: Dim X As Double, setup: X = 2 ^ 62 - 1024, expr: Hex(X), only: [tb, vba64] }
+      - { decl: Dim X As Double, setup: X = -(2 ^ 62), expr: Hex(X), only: [tb, vba64] }
   Reference/Default/VBA/Conversion/MacID.md:
     rows:
       - error: 94
@@ -468,12 +468,12 @@ pages:
       - Oct(Null)
       - Oct(Empty)
       - Oct(2147483647)
-      - { expr: Oct(2147483648#), only: tb }
-      - { expr: Oct(-2147483649#), only: tb }
-      - { expr: Oct(2147483647.5), only: tb }
-      - { decl: Dim L As LongLong, setup: L = 9223372036854775807^, expr: Oct(L), only: tb }
-      - { decl: Dim D As Variant, setup: 'D = CDec("9223372036854775807")', expr: Oct(D), only: tb }
-      - { decl: Dim X As Double, setup: X = 2 ^ 62 - 1024, expr: Oct(X), only: tb }
+      - { expr: Oct(2147483648#), only: [tb, vba64] }
+      - { expr: Oct(-2147483649#), only: [tb, vba64] }
+      - { expr: Oct(2147483647.5), only: [tb, vba64] }
+      - { decl: Dim L As LongLong, setup: L = 9223372036854775807^, expr: Oct(L), only: [tb, vba64] }
+      - { decl: Dim D As Variant, setup: 'D = CDec("9223372036854775807")', expr: Oct(D), only: [tb, vba64] }
+      - { decl: Dim X As Double, setup: X = 2 ^ 62 - 1024, expr: Oct(X), only: [tb, vba64] }
   Reference/Default/VBA/Conversion/Str.md:
     rows:
       - error: 94

@@ -50,7 +50,7 @@ Val("&HFFFF")
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *string* is **Null** |
 
 > [!NOTE] BETA 1010
-> When **Val** is given a *string* that holds a number followed by the **Integer** (`%`), **Long** (`&`) or **Currency** (`@`) type-declaration character, and the number is outside the range of that type, VB6 raises error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
+> When **Val** is given a *string* that holds a number followed by the **Integer** (`%`), **Long** (`&`) or **Currency** (`@`) type-declaration character, and the number is outside the range of that type, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
 
 <!-- /errors -->
 

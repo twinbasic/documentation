@@ -47,9 +47,17 @@ the index documents nothing). Seven differences are queued in BUGS-TO-REPORT.md,
 answered batch 5's questions on 2026-10-22 (*Batch 5 findings*). No row is `bug: pending`
 and no question is open.
 
-**Next: batch 6, VBA `Information` and `Interaction`** (or any batch from 6 on: they are
-independent). Follow *How a batch runs*
-below, and read the findings of batches 2 to 5 for what to probe.
+**Four runtimes: 64-bit twinBASIC answers to 64-bit VBA** (owner, 2026-10-22, after fafalone
+pointed it out). `errors.mjs run` and `messages` now measure twinBASIC 32-bit (`tb`), twinBASIC
+64-bit (`win64`), VB6 (`vb6`) and 64-bit VBA (`vba64`, run in 64-bit Access: `scripts/lib/vba.mjs`)
+by default, for every file. Batches 2 to 5 and `Core.yml` were re-checked on BETA 1010: **all
+1,109 cases agree with the data in all four runtimes** (1,005 of them run in 64-bit VBA), and
+`messages` agrees in all four. See *The 64-bit VBA re-check* below, and its *State of the
+work* for what is left (BUGS-TO-REPORT.md text, two questions with the owner).
+
+**Next, after it: batch 6, VBA `Information` and `Interaction`** (or any batch from 6 on: they
+are independent). Follow *How a batch runs* below, and read the findings of batches 2 to 5 and
+of the re-check for what to probe.
 
 ## Owner's decisions
 
@@ -59,8 +67,11 @@ below, and read the findings of batches 2 to 5 for what to probe.
 - **Measured, not copied.** Every row is observed in twinBASIC and in VB6. Microsoft's pages
   are a source of cases to try, never of answers. A statement about VB6 names only what was
   run in VB6 (a `Long` array, not "any typed array").
-- **Runtimes.** twinBASIC 32-bit and VB6 for everything; twinBASIC 64-bit as well for the
-  operators and the `Math` module only.
+- **Runtimes** (replaced 2026-10-22). Four, for everything: twinBASIC 32-bit, compared with
+  VB6, and twinBASIC 64-bit, compared with **64-bit VBA, whose behaviour must be respected**
+  (owner): a difference between twinBASIC 64-bit and 64-bit VBA is a bug, exactly as one from
+  VB6 is, with a NOTE and a queued reproducer. (Before: twinBASIC 64-bit for operators and
+  `Math` only, and no VBA.)
 - **Scope.** `docs/Reference/Default/` (VBA, VB, VBRUN), `docs/Reference/Core/` (statements and
   operators) and `docs/Reference/Built-In/`. Not `Contributed/`.
 - **Existing error prose moves into the tables.** A page that states an error in a sentence
@@ -177,9 +188,10 @@ Their reference is on the Tools pages:
   `messages.yml`, each error number's message.
 - `errors/harnesses/<name>.bas` --- the harnesses (*Harnesses*, below).
 - `node scripts/errors.mjs run [<file.yml>] [--only <regex>]` --- builds one probe from the data
-  per runtime, runs it, and compares each case with the data. twinBASIC 32-bit and VB6 by
-  default, win64 for a file that says `win64: true` or with `--runtime win64`. By hand only:
-  it needs twinBASIC and VB6. A run of the whole Strings file takes a few minutes. A case a
+  per runtime, runs it, and compares each case with the data. All four runtimes by default
+  (`--runtime tb|win64|vb6|vba64`, repeatable, picks some). By hand only: it needs twinBASIC,
+  VB6 and 64-bit Office. A run of every file in all four takes a few minutes; one page about 15 s.
+  `--only` is a plain regex (a leading `/` is read as a delimiter: write `Mid\.md$`, not `/Mid\.md`). A case a
   compiler refuses is reported and dropped, and the probe rebuilt. `generate <dir>` writes the
   probes without running them; `--keep` keeps the ones `run` built.
 - `node scripts/errors.mjs write` --- writes each page's section and the central page's index.
@@ -189,7 +201,20 @@ Their reference is on the Tools pages:
   shortcut. No runtime needed. A data problem makes `run` exit 2 with only "the data has
   problems"; `check_errors.mjs` names it.
 - `scripts/lib/errors-data.mjs` --- what the two share (`renderSection`, `renderIndex`,
-  `errorAnchor`, `CENTRAL_SHORTCUT`, ...).
+  `errorAnchor`, `CENTRAL_SHORTCUT`, `RUNTIMES`, `expected`, `runsIn`, ...).
+- `scripts/lib/vba.mjs` --- `VbaSession`, 64-bit VBA. Its opening comment says why each part
+  is as it is; in short: VBA has no host but Office (VBE7.DLL cannot be hosted without the
+  vendor-only SDK); Access, not Excel, because Excel needs "Trust access to the VBA project
+  object model", a security setting that is the user's; a PowerShell driver (as
+  `-EncodedCommand`) started by `launchOnDesktop`, so Access's windows are on a private desktop;
+  **one Access for the whole run** (owner: the overhead), taking jobs from `job.txt`, each a new
+  database in its own folder, the module imported through the VBE, `Application.Run "Main"`, the
+  module removed again (else closing the database asks to save it) and the database closed.
+  A compile error is a VBE box that Run waits on; answering it does not free Run (the VBE stays in
+  break mode), so any box ends that Access by its pid and the next job starts another (about 2 s).
+  VBA compiles a Sub when it is first called, so the refused case is the first that did not
+  report; the vba dialect's Main reports `start` first, so an error in the declarations is told
+  apart. `findAccess64` reads Access.Application's LocalServer32 and checks the exe is x64.
 
 How a probe runs a case: a `Private Sub C<n>()` of its own, `Dim Result As Variant`, the
 case's `decl` lines, `On Error Resume Next`, its `setup` lines (an error there is reported as
@@ -207,7 +232,6 @@ module once, before `Report`.
 ```yaml
 # errors/VBA.Strings.yml
 beta: 1010                 # the BETA the data was last measured on; titles the VB6 NOTE
-win64: false               # optional: run measures win64 too (operators, Math)
 pages:
   Reference/Default/VBA/Strings/Mid.md:     # the page, as a path under docs/
     rows:                  # one table row each, in this order
@@ -257,11 +281,24 @@ pages:
 ```
 
 A case is an expression, or a mapping with `expr` or `run` (statements; a multi-line string
-for several) and optionally `decl` (`Dim` lines), `setup` (statements before it) and
-`only: tb`, and `harness: <name>` (also on a row or a page; a case takes its own, else its
-row's, else its page's). A row's `win64:` is the number win64 raises where it differs. A row of `error: 0`
-needs a `vb6:` other than 0 and a `bug:`; its NOTE reads *When ..., VB6 raises error N, ...;
-twinBASIC raises none.* A page with no rows gets no section; one with `none: "<sentence>"` and
+for several) and optionally `decl` (`Dim` lines), `setup` (statements before it),
+`only:` and `harness: <name>` (also on a row or a page; a case takes its own, else its
+row's, else its page's). **`only:`** names the runtimes a case runs in: `tb` (both twinBASIC
+builds only: twinBASIC syntax, an extension, a twinBASIC addition), or a list holding `tb` and
+one of `vb6`, `vba64`: `[tb, vba64]` for `LongLong` code (64-bit VBA has it, VB6 not),
+`[tb, vb6]` for a case Access cannot answer for (vbDatabaseCompare, below).
+
+What each runtime is expected to raise for a row (`expected` in errors-data.mjs): `tb` its
+`error:`; `win64` its `win64:` if given, else `error:`; `vb6` its `vb6:` if given, else
+`error:`; `vba64` its `vba64:` if given, else `vb6:`, else `win64:`, else `error:`. So a row
+that differs from VB6 expects 64-bit VBA to agree with VB6, and every other row expects it to
+agree with twinBASIC 64-bit; `vba64:` is written only where that is not so (refused when it
+equals the default). A row where 64-bit VBA's number differs from twinBASIC 64-bit's needs a
+`bug:`, as a `vb6:` row does. A row of `error: 0` needs a `vb6:` or `vba64:` other than 0 and
+a `bug:`. **The NOTE** names both runtimes when they agree (*When ..., VB6 and 64-bit VBA
+raise error N, ...; twinBASIC raises none.* / *..., instead.*), else one sentence each, the
+VBA one compared with twinBASIC 64-bit; a row none of whose cases runs in 64-bit VBA says
+nothing of it. A page with no rows gets no section; one with `none: "<sentence>"` and
 no rows gets a section holding that sentence. `messages.yml` maps each number to its message,
 or to `{ raised: <Err.Description>, error: <Error$(n)> }` where they differ; `run` fails a
 case whose `Err.Description` is not the `raised` text. A number a row names must be in the
@@ -272,11 +309,12 @@ must have `title:` and `permalink:` in its front matter.
 
 A harness is code a case runs under, for a procedure whose effect must not happen in a probe
 (setting the system clock) or must be observed (the value it would set). It is one file,
-`errors/harnesses/<name>.bas` (a lowercase name), **the same source for twinBASIC and VB6**
-(owner, 2026-10-22): module-level code that defines `Private Sub <name>_Begin()` and
+`errors/harnesses/<name>.bas` (a lowercase name), **the same source for twinBASIC, VB6 and
+VBA** (owner, 2026-10-22): module-level code that defines `Private Sub <name>_Begin()` and
 `<name>_End()`, and whatever helpers its cases call (`<name>_...`). VB6 compiles only the
-branch of an `#If` that is true, so `#If TWINBASIC` holds what VB6 cannot parse (`PtrSafe`,
-`LongPtr`), and `#If Win64` what differs in a 64-bit build; a pointer is kept in a
+branch of an `#If` that is true, so `#If VBA7` holds what VB6 cannot parse (`PtrSafe`,
+`LongPtr`; `VBA7` is true in twinBASIC and in VBA 7, and 64-bit VBA refuses a `Declare`
+without `PtrSafe`, so never `#If TWINBASIC` for this), and `#If Win64` what differs in a 64-bit build; a pointer is kept in a
 `Variant` between calls, and in a typed local for an `As Any` parameter (a `Variant` passed
 `ByVal` to one passes the Variant). **A harness must refuse what the real thing refuses**: one
 that accepts more hides errors (the clock harness first passed `Time$ = "24:00:00"`, which
@@ -289,7 +327,8 @@ Windows refuses). `check_errors.mjs` reports a harness the data names and has no
   does, with one that succeeds; `clock_End` puts the bytes back. The patch is of the probe's
   own exe, for one case at a time, and the real clock is never set. `clock_Expect Day, Clock`
   raises 1001 when the date part or the time part set is not the one given (`Null` skips
-  it); it does nothing when the case has already raised. 32-bit and 64-bit.
+  it); it does nothing when the case has already raised. 32-bit and 64-bit; in 64-bit VBA it
+  patches Access's own process for the case, and works (every Date and Time case agrees).
 
 **YAML pitfalls**, each met in batch 2:
 
@@ -309,7 +348,10 @@ Read first: [WIP.Harness.md](WIP.Harness.md) (`tbbuild`, `tbrun`), [WIP.Build.md
    every sentence that mentions an error, **Null** or a limit.
 2. **Explore first.** Write a temporary `errors/Explore.yml` that names the real pages and puts
    every candidate case under `quiet:`, then `node scripts/errors.mjs run Explore.yml`: each
-   case's line shows what both runtimes raised, `[tb 5, vb6 5]`. Try, for every parameter:
+   case's line shows what every runtime raised, `[tb 5, win64 5, vb6 5, vba64 5]`. Mark
+   `LongLong` cases `only: [tb, vba64]`, not `only: tb`. A case VBA refuses costs an Access
+   restart and a rebuild, and `run` gives up after 25 rebuilds: keep twinBASIC-only cases
+   (`Bin`, `CType(Of ...)`, `ValDec`, `Shift*`) marked `only: tb` while exploring. Try, for every parameter:
    **Null**; 0, -1, -2; the upper limit and one past it (strings stop at 1,073,741,823;
    2147483647); a value just past a **Long** (2147483648#, which raises 6 and is not listed);
    an empty string; a 2-D array, an unallocated one and a typed one for an array parameter;
@@ -518,6 +560,62 @@ Owner's answers (2026-10-22): 1, `Date =` and `Time =` of a number are an extens
 the week arguments may be extensions where they make sense and have no bugs; 3, Calendar is
 not reported; 4, no 70 rows. Then: a *firstweekofyear* outside 0 to 3 is a bug.
 
+## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
+
+Batches 2 to 5 and `Core.yml` in all four runtimes. Every runtime agreed with the data as it
+stood, apart from the cases that follow, and twinBASIC 64-bit agreed with 32-bit everywhere.
+
+- **Every `vb6:` row: 64-bit VBA agrees with VB6.** So each existing bug holds against 64-bit
+  VBA as well, and `write` now words those NOTEs *VB6 and 64-bit VBA raise ...* (17 pages).
+  `Abs` of the smallest `Integer`/`Long` raises 6 in 64-bit VBA too (`abs-minimum-widens-type`).
+- **`vbDatabaseCompare` (2)**: in Access, 64-bit VBA takes it (the database's sort order) and
+  raises nothing for `InStr`, `Filter`, `StrComp`, as twinBASIC does; VB6 raises 5
+  (`database-compare-no-error`). That is Access's own meaning, which VBA documents as
+  Access-only, so Access cannot answer for VBA in Excel or Word: the three cases are
+  `only: [tb, vb6]`, and the NOTEs stay VB6-only. **Open, for the owner**: whether VBA outside
+  Access raises 5 is unchecked (Excel would need the VBA object-model trust setting, the user's).
+- **`only: tb` cases 64-bit VBA can run**: `CLngLng` (13 cases), `CLngPtr` (10), `Hex` and `Oct`
+  beyond a `Long` (15), `Round` of a `LongLong` (1) are now `only: [tb, vba64]`, and all agree:
+  `CLngPtr` of 2^31 raises nothing in 64-bit VBA, as the rows' `win64: 0` say.
+- **`Hex`/`Oct` in 64-bit VBA behave exactly as in twinBASIC**: the whole `LongLong` range, and
+  a negative non-integer gives 16 (22) characters: `Hex(-1#)` is `FFFFFFFFFFFFFFFF`, `Hex(-1&)`
+  `FFFFFFFF`. So the batch-3 "extensions" are 64-bit VBA's own behaviour; the Hex and Oct pages'
+  NOTEs now say so. **And a `Double` or `Single` of 2^62 or more raises 6 in 64-bit VBA too**
+  (`Hex(2^62)`, `Oct(2^62)`, `-2^62` passes), which is what the filed twinBASIC bug
+  `hex-double-above-2-to-62` (bugs/filed/) reports as a defect. **Open, for the owner**: whether
+  that bug should be withdrawn or reworded now that twinBASIC matches 64-bit VBA (the pages'
+  NOTEs keep their BETA 1010 label and add "64-bit VBA raises the same error").
+- **`CLngLng(2 ^ 63)`, `CLngLng(9223372036854775808#)` and `CLngLng(9223372036854775807)` raise
+  6 in 64-bit VBA**; twinBASIC returns the smallest `LongLong` (`clnglng-2-to-63-no-overflow`,
+  queued): the bug is confirmed against 64-bit VBA, and the CLngLng WARNING now says so. Add
+  this to the entry's text in BUGS-TO-REPORT.md (not done yet).
+- **Extensions stay extensions, and 64-bit VBA sides with VB6**: `Date =`/`Time =` a number
+  (13), `Join` of a `Long` array (5), `Filter` of one (13), `StrConv` 256/512 (5). Their hand
+  NOTEs now say *VB6 and 64-bit VBA raise ...*. `Date = -657434` stays `only: tb` (it is a
+  number). `Bin`, `CType(Of ...)`, `ValDec`, `Shift*` and `Calendar` do not exist in VBA.
+- **`messages`**: all 89 numbers agree in all four runtimes.
+
+### State of the work (committed on `staging`, 2026-10-22; `build.bat`, `check.bat`, `test.bat` pass)
+
+Done:
+
+- `scripts/lib/vba.mjs` (new), `scripts/errors.mjs` (four runtimes, `generate` writes
+  `<dir>/vba`, the VBA refusal reading), `scripts/lib/errors-data.mjs` (`vba64:`, `only:` lists,
+  `expected`, `runsIn`, `RUNTIMES`, the vba dialect, the NOTE wording; the file key `win64:` is
+  gone), `scripts/check_errors.mjs` (probes for all of it), `errors/harnesses/clock.bas`
+  (`#If VBA7`), `errors/VBA.Math.yml` (no `win64: true`), `errors/VBA.Conversion.yml` and
+  `VBA.Math.yml` (`only: [tb, vba64]`), `errors/VBA.Strings.yml` (the three `[tb, vb6]` cases),
+  `docs/Documentation/Tools-Defects.md` (the errors.mjs entry).
+- `errors.mjs write` run: 17 pages' NOTEs regenerated. Hand NOTEs edited: Hex, Oct, Join,
+  Filter, Date, Time, CLngLng.
+
+Left to do:
+
+1. Add the 64-bit VBA results to BUGS-TO-REPORT.md entries' text where they strengthen them
+   (`clnglng-2-to-63-no-overflow`, and each queued `vb6:` entry: "64-bit VBA agrees with VB6");
+   not to filed ones, whose issues only the owner edits.
+2. The two open questions above are with the owner.
+
 ## Batches
 
 Each batch is one session. They are independent after batch 0, so any order works, and
@@ -529,7 +627,8 @@ each can be run when there is budget. Status is kept here.
 | 1 | The central Run-time errors page | 1 | done; reviewed 2026-10-20; list of pages per number and `tb:Errors` shortcut 2026-10-21 |
 | 2 | **Pilot: VBA `Strings`** --- settled the section's style with the owner | 30 | done: 28 sections, 339 cases; reviewed 2026-10-21 |
 | 3 | VBA `Conversion` | 28 | done: 23 sections, 299 cases; owner's questions answered 2026-10-21 |
-| 4 | VBA `Math` (also win64) | 17 | done: 15 sections, 132 cases; 2026-10-22 |
+| 4 | VBA `Math` | 17 | done: 15 sections, 132 cases; 2026-10-22 |
+| 2--5 | Re-check of batches 2 to 5 and Core in four runtimes (64-bit VBA added) | --- | done: all agree; committed 2026-10-22, see *The 64-bit VBA re-check* |
 | 5 | VBA `DateTime` | 20 | done: 17 sections, 328 cases; owner's questions answered 2026-10-22 |
 | 6 | VBA `Information` and `Interaction` | 54 | not started |
 | 7 | VBA `FileSystem` | 23 | not started |
@@ -538,7 +637,7 @@ each can be run when there is budget. Status is kept here.
 | 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | not started |
 | 11 | Core file I/O statements (`Open`, `Get`, `Put`, `Input`, ...: errors 52--75) | 15 | not started |
 | 12 | Core arrays and control flow (`ReDim`, `Erase`, `Resume`, `Return`, ...); ReDim has data already, in `errors/Core.yml` | 15 | not started |
-| 13 | Operators: the matrix generator and its pages (also win64) | 25 | not started |
+| 13 | Operators: the matrix generator and its pages | 25 | not started |
 | 14 | VB package (37 pages) and the VBRUN pages that document members rather than constants: properties and methods that raise 380, 383, 387 and the like; needs forms | 37 + part of 134 | not started |
 | 15 | Built-In packages | 195 | not started |
 

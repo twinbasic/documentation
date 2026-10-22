@@ -1,12 +1,13 @@
-' The clock harness, for twinBASIC and VB6 alike: a case that sets Date, Date$, Time or
+' The clock harness, for twinBASIC, VB6 and VBA alike: a case that sets Date, Date$, Time or
 ' Time$ runs with the system's clock setters replaced, so that what the runtime would set is
 ' recorded and the real clock is never changed. clock_Begin patches SetLocalTime and
 ' SetSystemTime (kernelbase and kernel32) with a jump to clock_FakeSet, which records the
 ' SYSTEMTIME and succeeds where the real setter would, and AdjustTokenPrivileges (kernelbase and advapi32), which
 ' VB6 calls first and twinBASIC does not, with one to clock_FakeAdjust, which succeeds.
-' clock_End puts the original bytes back. The patch is of the probe's own process, and only
-' its exe runs the cases. clock_Expect raises 1001 when the clock was not set to what the
-' case expects. VB6 compiles only the #Else branches, so they hold what it cannot parse.
+' clock_End puts the original bytes back. The patch is of the probe's own process (the exe,
+' or Access for VBA), and only while a case runs. clock_Expect raises 1001 when the clock was
+' not set to what the case expects. VBA7 is true in twinBASIC and in VBA 7; VB6 compiles only
+' the #Else branches, so they hold what it cannot parse.
 
 Private Type clock_SYSTEMTIME
     wYear As Integer
@@ -19,7 +20,7 @@ Private Type clock_SYSTEMTIME
     wMilliseconds As Integer
 End Type
 
-#If TWINBASIC Then
+#If VBA7 Then
 Private Declare PtrSafe Function clock_GetModuleHandleA Lib "kernel32" Alias "GetModuleHandleA" (ByVal Name As String) As LongPtr
 Private Declare PtrSafe Function clock_LoadLibraryA Lib "kernel32" Alias "LoadLibraryA" (ByVal Name As String) As LongPtr
 Private Declare PtrSafe Function clock_GetProcAddress Lib "kernel32" Alias "GetProcAddress" (ByVal H As LongPtr, ByVal Name As String) As LongPtr
@@ -37,7 +38,7 @@ Private Declare Sub clock_SetLastError Lib "kernel32" Alias "SetLastError" (ByVa
 Private Declare Function clock_SystemTimeToFileTime Lib "kernel32" Alias "SystemTimeToFileTime" (ByRef St As clock_SYSTEMTIME, ByRef Ft As Currency) As Long
 #End If
 
-' Each address is kept in a Variant: a LongPtr in twinBASIC, a Long in VB6.
+' Each address is kept in a Variant: a LongPtr in twinBASIC and VBA 7, a Long in VB6.
 Private clock_Targets(5) As Variant
 Private clock_Saved(71) As Byte
 Private clock_Count As Long
@@ -57,13 +58,13 @@ Private Function clock_FakeSet(ByRef St As clock_SYSTEMTIME) As Long
     clock_FakeSet = 1
 End Function
 
-' AdjustTokenPrivileges' six parameters. Only VB6, a 32-bit runtime, calls it, so Long fits.
+' AdjustTokenPrivileges' six parameters, read as Long: in 64-bit code each still has a slot of its own.
 Private Function clock_FakeAdjust(ByVal Token As Long, ByVal DisableAll As Long, ByVal NewState As Long, ByVal BufferLength As Long, ByVal PreviousState As Long, ByVal ReturnLength As Long) As Long
     clock_SetLastError 0
     clock_FakeAdjust = 1
 End Function
 
-#If TWINBASIC Then
+#If VBA7 Then
 Private Function clock_Address(ByVal A As LongPtr) As Variant
     clock_Address = A
 End Function

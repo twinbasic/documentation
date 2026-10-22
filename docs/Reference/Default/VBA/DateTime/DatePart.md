@@ -84,13 +84,13 @@ If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *interval*, *firstdayofweek* or *firstweekofyear* is **Null** |
 
 > [!NOTE] BETA 1010
-> When *interval* is not one of the settings listed and *date* is **Null**, VB6 raises no error.
+> When *interval* is not one of the settings listed and *date* is **Null**, VB6 and 64-bit VBA raise no error.
 
 > [!NOTE] BETA 1010
-> When *interval* is "w" or "ww" and *firstdayofweek* is outside 0 to 7, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+> When *interval* is "w" or "ww" and *firstdayofweek* is outside 0 to 7, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 > [!NOTE] BETA 1010
-> When *interval* is "ww" and *firstweekofyear* is outside 0 to 3, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+> When *interval* is "ww" and *firstweekofyear* is outside 0 to 3, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 <!-- /errors -->
 
