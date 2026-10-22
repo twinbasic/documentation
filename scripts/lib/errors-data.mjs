@@ -12,10 +12,13 @@ import { DOCS_DIR, REPO_ROOT } from "../../lib/repo-paths.mjs";
 
 export const ERRORS_DIR = path.join(REPO_ROOT, "errors");
 export const MESSAGES_FILE = "messages.yml";
+/** The harnesses, errors/harnesses/<name>.bas: module-level code a case can run under (WIP.Errors.md). */
+export const HARNESS_DIR = "harnesses";
+const HARNESS_NAME = /^[a-z][a-z0-9]*$/;
 
-const ROW_KEYS = new Set(["error", "when", "cases", "vb6", "win64", "bug"]);
-const CASE_KEYS = new Set(["expr", "run", "decl", "setup", "only"]);
-const PAGE_KEYS = new Set(["rows", "quiet", "none"]);
+const ROW_KEYS = new Set(["error", "when", "cases", "vb6", "win64", "bug", "harness"]);
+const CASE_KEYS = new Set(["expr", "run", "decl", "setup", "only", "harness"]);
+const PAGE_KEYS = new Set(["rows", "quiet", "none", "harness"]);
 const FILE_KEYS = new Set(["beta", "win64", "pages"]);
 
 // ------------------------------------------------------------------ the data
@@ -62,9 +65,10 @@ export function loadMessages(dir = ERRORS_DIR) {
 const isInt = (v) => Number.isInteger(v);
 
 // A case as the data writes it, a string (an expression) or a mapping, made one shape:
-// { expr?, run?, decl: [], setup: [], only? }
-function normaliseCase(c, where, problems) {
-  if (typeof c === "string") return { expr: c, decl: [], setup: [] };
+// { expr?, run?, decl: [], setup: [], only?, harness? }; a case without a harness of its own
+// takes its row's, else its page's (`inherited`).
+function normaliseCase(c, where, problems, inherited) {
+  if (typeof c === "string") return { expr: c, decl: [], setup: [], harness: inherited };
   if (!c || typeof c !== "object" || Array.isArray(c)) {
     problems.push(`${where}: a case is an expression or a mapping`);
     return null;
@@ -72,6 +76,7 @@ function normaliseCase(c, where, problems) {
   for (const k of Object.keys(c)) if (!CASE_KEYS.has(k)) problems.push(`${where}: unknown key ${k}`);
   if ((c.expr === undefined) === (c.run === undefined)) problems.push(`${where}: give one of expr and run`);
   if (c.only !== undefined && c.only !== "tb") problems.push(`${where}: only: can only be tb`);
+  checkHarness(c.harness, where, problems);
   const lines = (v) => (v === undefined ? [] : String(v).replace(/\r/g, "").replace(/\n$/, "").split("\n"));
   return {
     expr: c.expr === undefined ? undefined : String(c.expr),
@@ -79,7 +84,15 @@ function normaliseCase(c, where, problems) {
     decl: lines(c.decl),
     setup: lines(c.setup),
     only: c.only,
+    harness: c.harness ?? inherited,
   };
+}
+
+function checkHarness(name, where, problems) {
+  if (name !== undefined && (typeof name !== "string" || !HARNESS_NAME.test(name)))
+    problems.push(
+      `${where}: harness: a name of lowercase letters and digits, the file errors/${HARNESS_DIR}/<name>.bas`,
+    );
 }
 
 /**
@@ -95,7 +108,15 @@ export function loadDataFile(name, dir = ERRORS_DIR) {
   } catch (e) {
     return { name, pages: [], problems: [`${name}: ${e.message.split("\n")[0]}`] };
   }
-  return { name, ...readData(raw, name, problems), problems };
+  const data = readData(raw, name, problems);
+  const names = new Set(
+    data.pages.flatMap((p) => [...p.rows.flatMap((r) => r.cases), ...p.quiet].map((c) => c.harness)),
+  );
+  for (const h of names) {
+    if (h !== undefined && HARNESS_NAME.test(h) && !existsSync(path.join(dir, HARNESS_DIR, `${h}.bas`)))
+      problems.push(`${name}: harness ${h}: no file errors/${HARNESS_DIR}/${h}.bas`);
+  }
+  return { name, ...data, problems };
 }
 
 /** The checking half of loadDataFile, over an already parsed document. */
@@ -116,6 +137,7 @@ export function readData(raw, name, problems) {
       continue;
     }
     for (const k of Object.keys(entry)) if (!PAGE_KEYS.has(k)) problems.push(`${at}: unknown key ${k}`);
+    checkHarness(entry.harness, at, problems);
     const rows = [];
     (entry.rows ?? []).forEach((r, i) => {
       const w = `${at}: row ${i + 1}`;
@@ -138,14 +160,15 @@ export function readData(raw, name, problems) {
       }
       if (r.bug !== undefined && r.vb6 === undefined) problems.push(`${w}: bug: only on a row with vb6:`);
       if (r.win64 !== undefined && !isInt(r.win64)) problems.push(`${w}: win64: a number`);
+      checkHarness(r.harness, w, problems);
       if (!Array.isArray(r.cases) || !r.cases.length) problems.push(`${w}: cases: at least one`);
       const cases = (Array.isArray(r.cases) ? r.cases : [])
-        .map((c, j) => normaliseCase(c, `${w} case ${j + 1}`, problems))
+        .map((c, j) => normaliseCase(c, `${w} case ${j + 1}`, problems, r.harness ?? entry.harness))
         .filter(Boolean);
       rows.push({ error: r.error, when: String(r.when ?? "").trim(), vb6: r.vb6, win64: r.win64, bug: r.bug, cases });
     });
     const quiet = (entry.quiet ?? [])
-      .map((c, j) => normaliseCase(c, `${at}: quiet ${j + 1}`, problems))
+      .map((c, j) => normaliseCase(c, `${at}: quiet ${j + 1}`, problems, entry.harness))
       .filter(Boolean);
     if (entry.none !== undefined && (typeof entry.none !== "string" || rows.length)) {
       problems.push(`${at}: none: a sentence, on a page without rows`);
@@ -191,9 +214,13 @@ function caseLines(c, report) {
     ind("Dim Result As Variant"),
     ...c.decl.map(ind),
     ind("On Error Resume Next"),
+    ...(c.harness ? [ind(`${c.harness}_Begin`)] : []),
     ...c.setup.map(ind),
-    ind(`If Err.Number <> 0 Then ${report} "setup ${c.id} " & Err.Number & " " & Err.Description: Exit Sub`),
+    ind(
+      `If Err.Number <> 0 Then ${report} "setup ${c.id} " & Err.Number & " " & Err.Description: ${c.harness ? `${c.harness}_End: ` : ""}Exit Sub`,
+    ),
     ...(c.expr !== undefined ? [ind(`Result = ${c.expr}`)] : c.run.map(ind)),
+    ...(c.harness ? [ind(`${c.harness}_End`)] : []),
     ind(`${report} "case ${c.id} " & Err.Number & " " & Err.Description`),
     "End Sub",
   ];
@@ -204,14 +231,23 @@ function caseLines(c, report) {
  * an exe by tbrun) or the VB6 one (dialect "vb6", Module1.bas of Probe.vbp). Each case
  * is a Sub of its own, run under On Error Resume Next, that reports
  * `case <id> <Err.Number> <Err.Description>`; Main reports `done` last.
+ * The code of each harness the cases use comes first, from `harnesses` (name -> text, as
+ * harnessCode reads it): one file serves both dialects.
  * @returns {{text: string, spans: Array<{id, from, to}>}} spans are 1-based file lines
  */
-export function probeModule(cases, dialect) {
+export function probeModule(cases, dialect, harnesses = new Map()) {
+  const used = [...new Set(cases.map((c) => c.harness).filter(Boolean))].sort();
+  const harnessLines = used.flatMap((h) => {
+    if (!harnesses.has(h)) throw new Error(`no code for harness ${h}`);
+    const text = harnesses.get(h).replace(/\r/g, "").replace(/\n+$/, "");
+    return [`' ---- harness ${h}: errors/${HARNESS_DIR}/${h}.bas`, ...text.split("\n")];
+  });
   const head =
     dialect === "tb"
       ? [
           "' Generated by scripts/errors.mjs from errors/*.yml; do not edit.",
           "Module Probe",
+          ...harnessLines,
           "Private Sub Report(ByVal S As String)",
           "    TbRun.Out S",
           "End Sub",
@@ -225,6 +261,7 @@ export function probeModule(cases, dialect) {
           'Attribute VB_Name = "Module1"',
           "' Generated by scripts/errors.mjs from errors/*.yml; do not edit.",
           "Option Explicit",
+          ...harnessLines,
           "Private Sub Report(ByVal S As String)",
           "    Dim F As Integer",
           "    F = FreeFile",
@@ -242,6 +279,14 @@ export function probeModule(cases, dialect) {
   }
   if (dialect === "tb") lines.push("End Module");
   return { text: `${lines.join("\r\n")}\r\n`, spans };
+}
+
+/** The code of each harness `cases` use, read from `dir`: Map name -> text. */
+export function harnessCode(cases, dir = ERRORS_DIR) {
+  const out = new Map();
+  for (const h of new Set(cases.map((c) => c.harness).filter(Boolean)))
+    out.set(h, readFileSync(path.join(dir, HARNESS_DIR, `${h}.bas`), "utf8"));
+  return out;
 }
 
 // ------------------------------------------------------------------ the messages

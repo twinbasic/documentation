@@ -6636,11 +6636,12 @@ What does not reproduce it: another conversion (`vbUpperCase`) with an East Asia
 ## Assigning to `Date`, `Date$`, `Time` and `Time$` raises other errors than VB6, and `Date$` and `Time$` refuse forms VB6 accepts
 
 **Describe the bug**
-Three differences from VB6 when the system date or time is set:
+Four differences from VB6 when the system date or time is set:
 
 - `Date = Null` and `Time = Null` raise 94, *Invalid use of Null*; VB6 raises 13, *Type mismatch*.
 - `Date$` and `Time$` given a string they cannot read raise -2147467259 (`&H80004005`), *Unspecified error*; VB6 raises 5, *Invalid procedure call or argument*.
 - `Date$` accepts only *mm-dd-yyyy* and `Time$` only *hh:mm:ss*. VB6 also accepts *m/d/yyyy*, a two-digit year and *hh:mm*, which twinBASIC refuses with -2147467259.
+- When Windows refuses the date or time, such as a date before January 1, 1601 (`Date = #12/31/1600#`) or February 30 (`Date$ = "02-30-2000"`), twinBASIC raises -2147467259 and VB6 raises 5. Neither runtime checks these itself. This needs the privilege to set the clock to see, so the module below does not test it; the documentation's own probe saw it with the clock setters replaced in its process by ones that refuse what Windows refuses.
 
 Observed in the compiler's test mode, 32-bit, and in a built exe. The test cases set the clock to what it already holds, so a value that is accepted raises 70, *Permission denied*, in a process without the privilege to set the clock, and changes nothing in one with it.
 

@@ -24,7 +24,8 @@
 //   1  a probe or the corpus failed
 //   2  the gate could not run: a refused command line, or a crash
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
@@ -231,6 +232,80 @@ for (const dialect of ["tb", "vb6"]) {
       caseAtLine(mod.spans, mod.spans[1].from + 3) === 2,
   );
 }
+const harnessed = data(`
+beta: 1010
+pages:
+  A.md:
+    harness: one
+    rows:
+      - { error: 5, when: x, cases: [F(1), { expr: F(2), harness: two }] }
+      - { error: 6, when: y, harness: two, cases: [F(3)] }
+    quiet: [F(4)]
+  B.md:
+    quiet: [F(5)]
+`);
+check(
+  "a case takes its own harness, else its row's, else its page's",
+  harnessed.problems.length === 0 &&
+    probeCases([harnessed], "tb")
+      .map((c) => c.harness ?? "-")
+      .join() === "one,two,two,one,-",
+  harnessed.problems.join("; "),
+);
+check(
+  "a harness is a lowercase name",
+  data("beta: 1\npages:\n  A.md:\n    harness: Clock\n    quiet: [x]\n").problems.length === 1,
+);
+for (const dialect of ["tb", "vb6"]) {
+  const hc = probeCases([harnessed], dialect);
+  const code = new Map([
+    ["one", "' one's code"],
+    ["two", "' two's code\r\n"],
+  ]);
+  const mod = probeModule(hc, dialect, code);
+  const lines = mod.text.split("\r\n");
+  const c1 = lines.slice(mod.spans[0].from - 1, mod.spans[0].to);
+  const c5 = lines.slice(mod.spans[4].from - 1, mod.spans[4].to);
+  check(
+    `${dialect}: each harness's code comes once, before Report, and its case runs between _Begin and _End`,
+    lines.filter((l) => l === "' one's code").length === 1 &&
+      lines.indexOf("' two's code") < lines.indexOf("Private Sub Report(ByVal S As String)") &&
+      c1.indexOf("    one_Begin") > c1.indexOf("    On Error Resume Next") &&
+      c1.indexOf("    one_End") === c1.indexOf("    Result = F(1)") + 1 &&
+      c1.some((l) => l.startsWith("    If Err.Number <> 0 Then") && l.endsWith(": one_End: Exit Sub")) &&
+      !c5.some((l) => l.includes("_Begin")),
+  );
+}
+check(
+  "a harness without its file under errors/harnesses/ is reported",
+  (() => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), "check-errors-"));
+    try {
+      writeFileSync(
+        path.join(dir, "x.yml"),
+        "beta: 1\npages:\n  A.md:\n    harness: one\n    quiet: [F(1), { expr: F(2), harness: two }]\n",
+      );
+      mkdirSync(path.join(dir, "harnesses"));
+      writeFileSync(path.join(dir, "harnesses", "one.bas"), "' one\n");
+      const { problems } = loadDataFile("x.yml", dir);
+      return problems.length === 1 && problems[0].includes("harness two");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  })(),
+);
+check(
+  "a module whose cases name a harness it has no code for is refused",
+  (() => {
+    try {
+      probeModule(probeCases([harnessed], "tb"), "tb", new Map());
+      return false;
+    } catch {
+      return true;
+    }
+  })(),
+);
+
 check(
   "links are relative to the permalinks",
   relativeLink("/Reference/Run-time-Errors", "/tB/Core/ReDim") === "../tB/Core/ReDim" &&

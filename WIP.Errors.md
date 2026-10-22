@@ -37,7 +37,7 @@ are filed: `abs-minimum-widens-type` (twinbasic#2541), `trig-above-2-to-63` (Cos
 in one report, #2539) and `round-null-negative-digits` (#2540). No row is `bug: pending` and no question is open.
 
 **Batch 5, VBA `DateTime`, is done and committed on `staging`** (not pushed; 2026-10-22):
-253 cases in `errors/VBA.DateTime.yml`, all agreeing with the data in twinBASIC 32-bit and
+328 cases in `errors/VBA.DateTime.yml`, all agreeing with the data in twinBASIC 32-bit and
 VB6 on BETA 1010, and a section on 17 of the module's 20 pages (Now and Timer raise nothing;
 the index documents nothing). Seven differences are queued in BUGS-TO-REPORT.md, under `bugs/`:
 `date-time-set-errors`, `dateadd-year-below-100`, `dateadd-date-out-of-range-overflow`,
@@ -175,6 +175,7 @@ Their reference is on the Tools pages:
 
 - `errors/` --- the data: one YAML file per area (`VBA.Strings.yml`, `Core.yml`, ...) and
   `messages.yml`, each error number's message.
+- `errors/harnesses/<name>.bas` --- the harnesses (*Harnesses*, below).
 - `node scripts/errors.mjs run [<file.yml>] [--only <regex>]` --- builds one probe from the data
   per runtime, runs it, and compares each case with the data. twinBASIC 32-bit and VB6 by
   default, win64 for a file that says `win64: true` or with `--runtime win64`. By hand only:
@@ -196,7 +197,10 @@ a setup failure, not as the case's result), then `Result = <expr>` or its `run` 
 `case <n> <Err.Number> <Err.Description>`. twinBASIC: a tree for `tbrun --exe`, module
 `Probe` with `Sub Main` and a `[RunAfterBuild]` that only prints, so the IDE run passes and
 the exe runs the cases. VB6: `Probe.vbp` and `Module1.bas` through `runRepro`, appending to
-`out.txt` line by line, so a case that kills the exe still leaves the ones before it.
+`out.txt` line by line, so a case that kills the exe still leaves the ones before it. A case
+that runs under a harness calls `<name>_Begin` before its `setup` lines and `<name>_End`
+after its `run` lines (and before a setup failure is reported); the harness's code is in the
+module once, before `Report`.
 
 ### The data format
 
@@ -239,6 +243,11 @@ pages:
           - { decl: Dim X() As Long, run: "ReDim X(5 To 4, 1)" }
     quiet:
       - { decl: Dim X() As Long, setup: ReDim X(3), run: ReDim Preserve X(5) }
+  Reference/Default/VBA/DateTime/Date.md:
+    harness: clock         # every case of the page runs under errors/harnesses/clock.bas
+    quiet:
+      - { run: "Date = #1/1/1601#\nclock_Expect #1/1/1601#, Null" }   # and checks the value
+      - { run: "Date = 36526\nclock_Expect #1/1/2000#, Null", only: tb }
   Reference/Default/VBA/Strings/Join.md:
     quiet:
       - decl: Dim A(1) As Long          # block form for a case whose text holds commas
@@ -249,7 +258,8 @@ pages:
 
 A case is an expression, or a mapping with `expr` or `run` (statements; a multi-line string
 for several) and optionally `decl` (`Dim` lines), `setup` (statements before it) and
-`only: tb`. A row's `win64:` is the number win64 raises where it differs. A row of `error: 0`
+`only: tb`, and `harness: <name>` (also on a row or a page; a case takes its own, else its
+row's, else its page's). A row's `win64:` is the number win64 raises where it differs. A row of `error: 0`
 needs a `vb6:` other than 0 and a `bug:`; its NOTE reads *When ..., VB6 raises error N, ...;
 twinBASIC raises none.* A page with no rows gets no section; one with `none: "<sentence>"` and
 no rows gets a section holding that sentence. `messages.yml` maps each number to its message,
@@ -257,6 +267,29 @@ or to `{ raised: <Err.Description>, error: <Error$(n)> }` where they differ; `ru
 case whose `Err.Description` is not the `raised` text. A number a row names must be in the
 file; a new HRESULT is added by hand and then measured with `errors.mjs messages`. A data page
 must have `title:` and `permalink:` in its front matter.
+
+### Harnesses
+
+A harness is code a case runs under, for a procedure whose effect must not happen in a probe
+(setting the system clock) or must be observed (the value it would set). It is one file,
+`errors/harnesses/<name>.bas` (a lowercase name), **the same source for twinBASIC and VB6**
+(owner, 2026-10-22): module-level code that defines `Private Sub <name>_Begin()` and
+`<name>_End()`, and whatever helpers its cases call (`<name>_...`). VB6 compiles only the
+branch of an `#If` that is true, so `#If TWINBASIC` holds what VB6 cannot parse (`PtrSafe`,
+`LongPtr`), and `#If Win64` what differs in a 64-bit build; a pointer is kept in a
+`Variant` between calls, and in a typed local for an `As Any` parameter (a `Variant` passed
+`ByVal` to one passes the Variant). **A harness must refuse what the real thing refuses**: one
+that accepts more hides errors (the clock harness first passed `Time$ = "24:00:00"`, which
+Windows refuses). `check_errors.mjs` reports a harness the data names and has no file for.
+
+- **`clock`** --- `Date`, `Date$`, `Time`, `Time$`. `clock_Begin` patches `SetLocalTime` and
+  `SetSystemTime` (kernelbase and kernel32) with a jump to a function that records the
+  SYSTEMTIME and succeeds where Windows would (it asks `SystemTimeToFileTime`, and fails with
+  error 87 otherwise), and `AdjustTokenPrivileges`, which VB6 calls first and twinBASIC never
+  does, with one that succeeds; `clock_End` puts the bytes back. The patch is of the probe's
+  own exe, for one case at a time, and the real clock is never set. `clock_Expect Day, Clock`
+  raises 1001 when the date part or the time part set is not the one given (`Null` skips
+  it); it does nothing when the case has already raised. 32-bit and 64-bit.
 
 **YAML pitfalls**, each met in batch 2:
 
@@ -426,27 +459,24 @@ Both runtimes agree unless said.
   raises -2147467259 and the compiler warns TB0009, *[Calendar] has not yet been implemented*.
   The owner chose not to report it (2026-10-22): its cases are `only: tb`, with no VB6 NOTE,
   and a NOTE by hand on Calendar and on the module's index says it is not implemented.
-- **Setting the clock**: no case may set the clock to a value it accepts, since the probe runs
-  without the privilege (70) and an elevated run would change the clock. **A 70 is never a
-  row** (owner, 2026-10-22: it documents the test setup, not twinBASIC). A case raises its
-  error before the clock is touched. `Date = Null` and `Time = Null` raise 94 (VB6 13);
-  `Date$` takes only *mm-dd-yyyy* and `Time$` only *hh:mm:ss*, and raise -2147467259 for
-  anything else (VB6 5, and VB6 also takes *m/d/yyyy*, *mm-dd-yy*, *hh:mm*); all in
-  `date-time-set-errors`.
-- **What a clock setter would set**: a probe can patch `SetLocalTime` and `SetSystemTime` (in
-  kernelbase and kernel32) in its own process with a jump to a function that records the
-  SYSTEMTIME and returns 1, in the exe only, never in the IDE run. VB6 enables the privilege
-  with `AdjustTokenPrivileges` first and raises 70 when that fails, so its probe fakes that
-  call too (returning 1 after `SetLastError 0`). twinBASIC calls `SetLocalTime` without it.
-  The probes are not kept; their findings follow.
+- **Setting the clock**: Date and Time run under the `clock` harness (*Harnesses*), so an
+  accepted value raises nothing and `clock_Expect` checks what would be set; without it a
+  probe has no privilege and every accepted value raises 70. **A 70 is never a row** (owner,
+  2026-10-22: it documents the test setup, not twinBASIC). Neither runtime checks a date or a
+  time it parses: both pass month 13 or February 30 to Windows, and Windows refuses them, and
+  any date before January 1, 1601. Where Windows refuses, twinBASIC raises -2147467259 and VB6
+  5. `Date = Null` and `Time = Null` raise 94 (VB6 13); `Date$` takes only *mm-dd-yyyy* and
+  `Time$` only *hh:mm:ss* (VB6 also takes *m-d-yyyy*, *m/d/yyyy*, *mm-dd-yy*, *hh:mm*, *hh*);
+  all in `date-time-set-errors`. Both read the string "0.25" given to `Time` as 0:25.
 - **`Date =` and `Time =` of a number are an extension** (owner, 2026-10-22). twinBASIC reads
   the number, or a string holding one, as `CDate` does: whole days from December 30, 1899
-  (`Empty` and `False` are that day, `True` the day before, being -1), `Currency`, `Decimal`,
-  `Single` and `Byte` alike, and 13 outside the range of dates. `Date` sets the date part
-  and keeps the time of day; `Time` sets the time part of the `CDate` value (0.25 and 1.25
-  are 6:00, -0.25 and -1.25 too; 0.999999 rounds to 0:00 of the same day). VB6 sets exactly
-  the same for a **Date** value (`Time = CDate(1.25)` is 6:00), and raises 13 for a number.
-  A NOTE on Date and on Time; no quiet case, since every accepted value raises 70 here.
+  (`Empty` and `False` are that day, `True` the day before, being -1), `Byte`, `Long`,
+  `Single`, `Currency` and `Decimal` alike, and 13 outside the range of dates. `Date` sets
+  the date part and keeps the time of day; `Time` sets the time part of the `CDate` value
+  (0.25 and 1.25 are 6:00, -0.25 and -1.25 too; 0.999999 rounds to 0:00 of the same day). VB6
+  sets exactly the same for a **Date** value (`Time = CDate(1.25)` is 6:00), and raises 13 for
+  a number. Each is a twinBASIC-only quiet case that checks the value, and a NOTE on Date and
+  on Time says it. Checked in 32-bit and 64-bit.
 - **The 13 rule**: a function whose parameter is "any expression that can represent a date"
   (Day, Month, Year, Weekday, Hour, Minute, Second, DatePart, DateValue, TimeValue) raises 13
   for a string that is not a date, a number outside -657434 to 2958465, and an **Error**
@@ -500,7 +530,7 @@ each can be run when there is budget. Status is kept here.
 | 2 | **Pilot: VBA `Strings`** --- settled the section's style with the owner | 30 | done: 28 sections, 339 cases; reviewed 2026-10-21 |
 | 3 | VBA `Conversion` | 28 | done: 23 sections, 299 cases; owner's questions answered 2026-10-21 |
 | 4 | VBA `Math` (also win64) | 17 | done: 15 sections, 132 cases; 2026-10-22 |
-| 5 | VBA `DateTime` | 20 | done: 17 sections, 253 cases; owner's questions answered 2026-10-22 |
+| 5 | VBA `DateTime` | 20 | done: 17 sections, 328 cases; owner's questions answered 2026-10-22 |
 | 6 | VBA `Information` and `Interaction` | 54 | not started |
 | 7 | VBA `FileSystem` | 23 | not started |
 | 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | not started |

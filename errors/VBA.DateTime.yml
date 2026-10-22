@@ -1,9 +1,11 @@
 # The VBA DateTime module. Format: WIP.Errors.md.
 #
-# Setting Date, Date$, Time or Time$ to a value they accept changes the system clock, so
-# no case here does: an accepted value raises 70 in a process without the privilege to
-# set the clock, and changes the clock in one with it. A case raises its error before
-# the clock is touched.
+# Date and Time run under the clock harness (errors/harnesses/clock.bas): the clock
+# setters are replaced for the length of each case, so a value that is accepted raises
+# nothing, the real clock is never set, and clock_Expect checks what would have been set
+# (the date part for Date and Date$, the time part for Time and Time$). A number is an
+# extension of twinBASIC's (owner, 2026-10-22): VB6 raises 13 for one, so those cases are
+# only: tb.
 #
 # Calendar is not implemented in twinBASIC (TB0009), and the owner chose not to report
 # it, so its cases are twinBASIC-only and have no VB6 NOTE. In VB6 vbCalHijri succeeds
@@ -27,16 +29,21 @@ pages:
     quiet:
       - Calendar
   Reference/Default/VBA/DateTime/Date.md:
+    harness: clock
     rows:
       - error: 13
         when: "**Date** is given a string that is not a date, or a number outside the range of dates"
         cases:
           - { run: 'Date = "abc"' }
           - { run: 'Date = "February 30, 2020"' }
+          - { run: 'Date = "1/1/10000"' }
+          - { run: Date = 2958466 }
+          - { run: Date = -657435 }
           - { run: Date = 3000000 }
-          - { run: Date = -700000 }
+          - { run: Date = 1E+300 }
+          - { run: Date = CVErr(5) }
       - error: -2147467259
-        when: "**Date$** is given a value that is not a string of the form *mm-dd-yyyy*"
+        when: "**Date$** is given a value that is not a date of the form *mm-dd-yyyy*"
         vb6: 5
         bug: date-time-set-errors
         cases:
@@ -46,6 +53,26 @@ pages:
           - { run: 'Date$ = "January 1, 2000"' }
           - { run: Date$ = 36526 }
           - { run: Date$ = Empty }
+          - { run: 'Date$ = "02-30-2000"' }
+          - { run: 'Date$ = "13-01-2000"' }
+      - error: -2147467259
+        when: "**Date** or **Date$** is given a date before January 1, 1601, which Windows cannot set"
+        vb6: 5
+        bug: date-time-set-errors
+        cases:
+          - { run: 'Date = #12/31/1600#' }
+          - { run: 'Date = #1/1/100#' }
+          - { run: 'Date = "1/1/1000"' }
+          - { run: 'Date$ = "12-31-1600"' }
+          - { run: Date = -657434, only: tb }
+      - error: -2147467259
+        when: "**Date$** is given a date in another form VB6 reads, such as *m-d-yyyy*, *m/d/yyyy* or *mm-dd-yy*"
+        vb6: 0
+        bug: date-time-set-errors
+        cases:
+          - { run: "Date$ = \"1-2-2000\"\nclock_Expect #1/2/2000#, Null" }
+          - { run: "Date$ = \"1/2/2000\"\nclock_Expect #1/2/2000#, Null" }
+          - { run: "Date$ = \"01-02-00\"\nclock_Expect #1/2/2000#, Null" }
       - error: 94
         when: "**Date$** is given **Null**"
         cases:
@@ -59,14 +86,47 @@ pages:
     quiet:
       - Date
       - Date$
+      - { run: "Date = Date\nclock_Expect Date, Null" }
+      - { run: "Date = #1/1/2000#\nclock_Expect #1/1/2000#, Null" }
+      - { run: "Date = #1/1/2000 6:00:00 PM#\nclock_Expect #1/1/2000#, Null" }
+      - { run: "Date = #12/31/9999#\nclock_Expect #12/31/9999#, Null" }
+      - { run: "Date = #1/1/1601#\nclock_Expect #1/1/1601#, Null" }
+      - { run: "Date$ = \"01-01-1601\"\nclock_Expect #1/1/1601#, Null" }
+      - { run: "Date = \"1/1/2000\"\nclock_Expect #1/1/2000#, Null" }
+      - { run: "Date = \"January 1, 2000\"\nclock_Expect #1/1/2000#, Null" }
+      - { run: "Date = CDate(36526.75)\nclock_Expect #1/1/2000#, Null" }
+      - { run: "Date$ = \"01-02-2000\"\nclock_Expect #1/2/2000#, Null" }
+      - { run: "Date$ = Format$(Date, \"mm-dd-yyyy\")\nclock_Expect Date, Null" }
+      - { run: "Date = 36526\nclock_Expect #1/1/2000#, Null", only: tb }
+      - { run: "Date = 36526.75\nclock_Expect #1/1/2000#, Null", only: tb }
+      - { run: "Date = 0\nclock_Expect #12/30/1899#, Null", only: tb }
+      - { run: "Date = 0.5\nclock_Expect #12/30/1899#, Null", only: tb }
+      - { run: "Date = -1\nclock_Expect #12/29/1899#, Null", only: tb }
+      - { run: "Date = -0.5\nclock_Expect #12/30/1899#, Null", only: tb }
+      - { run: "Date = -1.5\nclock_Expect #12/29/1899#, Null", only: tb }
+      - { run: "Date = 2958465\nclock_Expect #12/31/9999#, Null", only: tb }
+      - { run: "Date = 2958465.99999\nclock_Expect #12/31/9999#, Null", only: tb }
+      - { run: "Date = Empty\nclock_Expect #12/30/1899#, Null", only: tb }
+      - { run: "Date = False\nclock_Expect #12/30/1899#, Null", only: tb }
+      - { run: "Date = True\nclock_Expect #12/29/1899#, Null", only: tb }
+      - { run: "Date = CByte(5)\nclock_Expect #1/4/1900#, Null", only: tb }
+      - { run: "Date = CLng(36526)\nclock_Expect #1/1/2000#, Null", only: tb }
+      - { run: "Date = CSng(36526.5)\nclock_Expect #1/1/2000#, Null", only: tb }
+      - { run: "Date = CCur(36526.5)\nclock_Expect #1/1/2000#, Null", only: tb }
+      - { run: "Date = CDec(36526.25)\nclock_Expect #1/1/2000#, Null", only: tb }
+      - { run: "Date = \"36526\"\nclock_Expect #1/1/2000#, Null", only: tb }
   Reference/Default/VBA/DateTime/Time.md:
+    harness: clock
     rows:
       - error: 13
         when: "**Time** is given a string that is not a time, or a number outside the range of dates"
         cases:
           - { run: 'Time = "abc"' }
           - { run: 'Time = "25:00"' }
+          - { run: Time = 2958466 }
+          - { run: Time = -657435 }
           - { run: Time = 3000000 }
+          - { run: Time = CVErr(5) }
       - error: -2147467259
         when: "**Time$** is given a value that is not a string of the form *hh:mm:ss*, or one outside 00:00:00 to 23:59:59"
         vb6: 5
@@ -80,6 +140,13 @@ pages:
           - { run: 'Time$ = "10:00 PM"' }
           - { run: Time$ = 0.5 }
           - { run: Time$ = Empty }
+      - error: -2147467259
+        when: "**Time$** is given a time in another form VB6 reads, such as *hh:mm* or *hh*"
+        vb6: 0
+        bug: date-time-set-errors
+        cases:
+          - { run: "Time$ = \"10:20\"\nclock_Expect Null, #10:20:00 AM#" }
+          - { run: "Time$ = \"10\"\nclock_Expect Null, #10:00:00 AM#" }
       - error: 94
         when: "**Time$** is given **Null**"
         cases:
@@ -93,6 +160,33 @@ pages:
     quiet:
       - Time
       - Time$
+      - { run: "Time = Time\nclock_Expect Null, TimeSerial(Hour(Time), Minute(Time), Second(Time))" }
+      - { run: "Time = #6:00:00 PM#\nclock_Expect Null, #6:00:00 PM#" }
+      - { run: "Time = #1/1/2000 6:00:00 PM#\nclock_Expect Null, #6:00:00 PM#" }
+      - { run: "Time = \"10:00\"\nclock_Expect Null, #10:00:00 AM#" }
+      - { run: "Time = \"0.25\"\nclock_Expect Null, #12:25:00 AM#" }
+      - { run: "Time = \"1.5\"\nclock_Expect Null, #1:05:00 AM#" }
+      - { run: "Time = CDate(0.25)\nclock_Expect Null, #6:00:00 AM#" }
+      - { run: "Time = CDate(1.25)\nclock_Expect Null, #6:00:00 AM#" }
+      - { run: "Time = CDate(-1.25)\nclock_Expect Null, #6:00:00 AM#" }
+      - { run: "Time = CDate(0.999999)\nclock_Expect Null, #12:00:00 AM#" }
+      - { run: "Time$ = \"10:20:30\"\nclock_Expect Null, #10:20:30 AM#" }
+      - { run: "Time = 0\nclock_Expect Null, #12:00:00 AM#", only: tb }
+      - { run: "Time = 0.25\nclock_Expect Null, #6:00:00 AM#", only: tb }
+      - { run: "Time = 0.5\nclock_Expect Null, #12:00:00 PM#", only: tb }
+      - { run: "Time = 1 / 86400\nclock_Expect Null, #12:00:01 AM#", only: tb }
+      - { run: "Time = 0.999999\nclock_Expect Null, #12:00:00 AM#", only: tb }
+      - { run: "Time = 1.25\nclock_Expect Null, #6:00:00 AM#", only: tb }
+      - { run: "Time = 36526.75\nclock_Expect Null, #6:00:00 PM#", only: tb }
+      - { run: "Time = -0.25\nclock_Expect Null, #6:00:00 AM#", only: tb }
+      - { run: "Time = -1.25\nclock_Expect Null, #6:00:00 AM#", only: tb }
+      - { run: "Time = 2958465.5\nclock_Expect Null, #12:00:00 PM#", only: tb }
+      - { run: "Time = Empty\nclock_Expect Null, #12:00:00 AM#", only: tb }
+      - { run: "Time = False\nclock_Expect Null, #12:00:00 AM#", only: tb }
+      - { run: "Time = True\nclock_Expect Null, #12:00:00 AM#", only: tb }
+      - { run: "Time = CCur(0.5)\nclock_Expect Null, #12:00:00 PM#", only: tb }
+      - { run: "Time = CDec(0.75)\nclock_Expect Null, #6:00:00 PM#", only: tb }
+      - { run: "Time = CSng(0.25)\nclock_Expect Null, #6:00:00 AM#", only: tb }
   Reference/Default/VBA/DateTime/DateAdd.md:
     rows:
       - error: 5

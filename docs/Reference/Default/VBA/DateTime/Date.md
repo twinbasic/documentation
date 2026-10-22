@@ -98,9 +98,6 @@ Syntax: **Date$** **=** *date*
 >
 > In some versions of Microsoft Windows, including Windows 10 and 11, setting the system date is a privileged operation that requires the process to have relevant permissions.
 
-> [!NOTE] BETA 1010
-> **Date$** accepts only a string of the form *mm-dd-yyyy*. VB6 also accepts other forms, such as *m/d/yyyy* and *mm-dd-yy*, which twinBASIC refuses with error -2147467259 (`&H80004005`).
-
 #### Example
 
 This example uses the **Date$** property to set the computer system date. In the development environment, the date literal is displayed in short date format by using the locale settings of the code.
@@ -117,11 +114,17 @@ Date$ = MyDate               ' Change the system date.
 | Error | When |
 |---|---|
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | **Date** is given a string that is not a date, or a number outside the range of dates |
-| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | **Date$** is given a value that is not a string of the form *mm-dd-yyyy* |
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | **Date$** is given a value that is not a date of the form *mm-dd-yyyy*<br>**Date** or **Date$** is given a date before January 1, 1601, which Windows cannot set<br>**Date$** is given a date in another form VB6 reads, such as *m-d-yyyy*, *m/d/yyyy* or *mm-dd-yy* |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **Date$** is given **Null**<br>**Date** is given **Null** |
 
 > [!NOTE] BETA 1010
-> When **Date$** is given a value that is not a string of the form *mm-dd-yyyy*, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+> When **Date$** is given a value that is not a date of the form *mm-dd-yyyy*, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When **Date** or **Date$** is given a date before January 1, 1601, which Windows cannot set, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When **Date$** is given a date in another form VB6 reads, such as *m-d-yyyy*, *m/d/yyyy* or *mm-dd-yy*, VB6 raises no error.
 
 > [!NOTE] BETA 1010
 > When **Date** is given **Null**, VB6 raises error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.

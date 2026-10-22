@@ -47,6 +47,7 @@ import {
   pagePath,
   probeCases,
   probeModule,
+  harnessCode,
   readMessageOutput,
   readProbeOutput,
   renderIndex,
@@ -203,7 +204,7 @@ if (command === "write") {
 function writeTbTree(dir, cases, text) {
   mkdirSync(path.join(dir, "Sources"), { recursive: true });
   cpSync(TB_TEMPLATE, path.join(dir, "Settings"));
-  const mod = text === undefined ? probeModule(cases, "tb") : { text, spans: [] };
+  const mod = text === undefined ? probeModule(cases, "tb", harnessCode(cases)) : { text, spans: [] };
   writeFileSync(path.join(dir, "Sources", "Probe.twin"), mod.text);
   return mod;
 }
@@ -211,7 +212,7 @@ function writeTbTree(dir, cases, text) {
 function writeVb6Project(dir, cases, text) {
   mkdirSync(dir, { recursive: true });
   cpSync(VB6_PROJECT, path.join(dir, "Probe.vbp"));
-  const mod = text === undefined ? probeModule(cases, "vb6") : { text, spans: [] };
+  const mod = text === undefined ? probeModule(cases, "vb6", harnessCode(cases)) : { text, spans: [] };
   writeFileSync(path.join(dir, "Module1.bas"), encodeAnsi(mod.text));
   return mod;
 }
