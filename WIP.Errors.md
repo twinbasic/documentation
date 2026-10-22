@@ -39,12 +39,13 @@ in one report, #2539) and `round-null-negative-digits` (#2540). No row is `bug: 
 **Batch 5, VBA `DateTime`, is done and committed on `staging`** (not pushed; 2026-10-22):
 253 cases in `errors/VBA.DateTime.yml`, all agreeing with the data in twinBASIC 32-bit and
 VB6 on BETA 1010, and a section on 17 of the module's 20 pages (Now and Timer raise nothing;
-the index documents nothing). Six differences are queued in BUGS-TO-REPORT.md, under `bugs/`:
+the index documents nothing). Seven differences are queued in BUGS-TO-REPORT.md, under `bugs/`:
 `date-time-set-errors`, `dateadd-year-below-100`, `dateadd-date-out-of-range-overflow`,
-`datepart-null-checks-interval`, `datepart-firstdayofweek-out-of-range` and
+`datepart-null-checks-interval`, `datepart-firstdayofweek-out-of-range`,
+`datepart-firstweekofyear-out-of-range` and
 `datepart-week-year-100` (a hang, so a WARNING by hand and not in the data). The owner
-answered batch 5's four questions on 2026-10-22 (*Batch 5 findings*); one row is still
-`bug: pending`, on a question that follows from the answers.
+answered batch 5's questions on 2026-10-22 (*Batch 5 findings*). No row is `bug: pending`
+and no question is open.
 
 **Next: batch 6, VBA `Information` and `Interaction`** (or any batch from 6 on: they are
 independent). Follow *How a batch runs*
@@ -467,8 +468,8 @@ Both runtimes agree unless said.
   only where the interval uses it.
 - **_firstweekofyear_ outside 0 to 3** gives, for every value tried (-15 to 2147483647), the
   same results as 0 and 1, which agree on this system (its own setting is January 1). That
-  makes sense as an extension, but whether twinBASIC takes it as 0 (the system's setting)
-  or 1 cannot be told apart here. Its row is `bug: pending` (question below).
+  could be an extension, but whether twinBASIC takes it as 0 (the system's setting) or 1
+  cannot be told apart here; the owner ruled it a bug (`datepart-firstweekofyear-out-of-range`).
 - **DatePart**: `DatePart("x", Null)` raises 5, VB6 returns **Null**
   (`datepart-null-checks-interval`). `DatePart("ww", ...)` of January 1 or 2, 100 never
   returns with `vbFirstFullWeek` and returns -98980 with `vbFirstFourDays`
@@ -485,11 +486,7 @@ Both runtimes agree unless said.
 
 Owner's answers (2026-10-22): 1, `Date =` and `Time =` of a number are an extension; 2,
 the week arguments may be extensions where they make sense and have no bugs; 3, Calendar is
-not reported; 4, no 70 rows. Open question:
-
-1. A *firstweekofyear* outside 0 to 3 acts as 0 or 1 (they agree on this system). Document it
-   as an extension ("any other value counts as **vbFirstJan1**" needs a system whose own
-   setting differs, to tell 0 from 1), or leave the VB6 NOTE as it is?
+not reported; 4, no 70 rows. Then: a *firstweekofyear* outside 0 to 3 is a bug.
 
 ## Batches
 
@@ -503,7 +500,7 @@ each can be run when there is budget. Status is kept here.
 | 2 | **Pilot: VBA `Strings`** --- settled the section's style with the owner | 30 | done: 28 sections, 339 cases; reviewed 2026-10-21 |
 | 3 | VBA `Conversion` | 28 | done: 23 sections, 299 cases; owner's questions answered 2026-10-21 |
 | 4 | VBA `Math` (also win64) | 17 | done: 15 sections, 132 cases; 2026-10-22 |
-| 5 | VBA `DateTime` | 20 | done: 17 sections, 253 cases; 2026-10-22; one question open |
+| 5 | VBA `DateTime` | 20 | done: 17 sections, 253 cases; owner's questions answered 2026-10-22 |
 | 6 | VBA `Information` and `Interaction` | 54 | not started |
 | 7 | VBA `FileSystem` | 23 | not started |
 | 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | not started |

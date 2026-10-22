@@ -7128,6 +7128,77 @@ Error 5, as VB6 raises. Taking the value modulo 7 throughout would be a reasonab
 **Additional context**
 Severity: medium. A wrong *firstdayofweek*, such as one read from a setting, goes unreported and gives weekdays outside 1 to 7 and week counts that are off.
 
-What does not reproduce it: an interval that does not use *firstdayofweek* (`DatePart("d", d, 8)`, `DateDiff("w", d1, d2, 8)`), which VB6 accepts as well; a `Null` *firstdayofweek*, which raises 94 in both. A *firstweekofyear* outside 0 to 3, which VB6 also refuses with 5, gives the same results as 0 and 1 for every value tried, which agree on the system tested.
+What does not reproduce it: an interval that does not use *firstdayofweek* (`DatePart("d", d, 8)`, `DateDiff("w", d1, d2, 8)`), which VB6 accepts as well; a `Null` *firstdayofweek*, which raises 94 in both. A *firstweekofyear* outside 0 to 3 is reported separately.
 
 <!-- Reproducer: bugs/datepart-firstdayofweek-out-of-range/ (mode test: `tbrun --tests`; expect lists the three PASS and five FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 5 for the five, 7 and 1 for the weekday controls and 1 for "d". The mapping above comes from a probe over 1999 to 2001, not kept. Stated in NOTEs on docs/Reference/Default/VBA/DateTime/DatePart.md and DateDiff.md (their Common Errors sections, generated from errors/VBA.DateTime.yml, rows `bug: datepart-firstdayofweek-out-of-range`) and in a WARNING by hand on DatePart.md; when fixed, the rows' cases move to a 5 row, and the NOTEs and the WARNING go. Found 2026-10-22 in batch 5 of WIP.Errors.md; owner: an extension only if it makes sense and has no bugs, which this does not. -->
+
+---
+
+## `DatePart` takes a *firstweekofyear* outside 0 to 3 without an error, where VB6 raises error 5
+
+**Describe the bug**
+With the "ww" interval, VB6 raises 5, *Invalid procedure call or argument*, for a *firstweekofyear* outside 0 to 3. twinBASIC raises nothing and counts the weeks as with `vbUseSystem` or `vbFirstJan1`: over every date of 1999 to 2001, each value tried from -15 to 2147483647 gives the same results as 0 and 1, which agree on the system tested (its own setting is the week of January 1). Observed in the compiler's test mode, 32-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `datepart-firstweekofyear-out-of-range.twinproj` (attached as `datepart-firstweekofyear-out-of-range.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other two fail with `Actual: 0`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`datepart-firstweekofyear-out-of-range-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the week with vbFirstJan1 and vbFirstFullWeek, and a firstweekofyear of 4
+    ' with an interval that does not use it.
+    [TestCase]
+    Public Sub DatePart_WW_FirstJan1_Is1()
+        Assert.Strict.AreEqual CVar(1), DatePart("ww", #1/1/2000#, vbSunday, vbFirstJan1)
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_WW_FirstFullWeek_Is52()
+        Assert.Strict.AreEqual CVar(52), DatePart("ww", #1/1/2000#, vbSunday, vbFirstFullWeek)
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_D_Four_NoError()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("d", #1/1/2000#, vbSunday, 4)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: no error; the weeks are counted as with 0 or 1.
+    [TestCase]
+    Public Sub DatePart_WW_Four_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("ww", #1/1/2000#, vbSunday, 4)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_WW_MinusOne_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("ww", #1/1/2000#, vbSunday, -1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 5, as VB6 raises.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A wrong *firstweekofyear*, such as one read from a setting, goes unreported, and the week numbers are those of another setting.
+
+What does not reproduce it: an interval that does not use *firstweekofyear* (`DatePart("d", d, vbSunday, 4)`), which VB6 accepts as well; `DateDiff`, which ignores *firstweekofyear* in both; a `Null` *firstweekofyear*, which raises 94 in both. Not checked on a system whose own first week of the year is not the week of January 1, where 0 and 1 differ.
+
+<!-- Reproducer: bugs/datepart-firstweekofyear-out-of-range/ (mode test: `tbrun --tests`; expect lists the three PASS and two FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 5 for 4 and -1, 1 and 52 for the week controls and 1 for "d". Stated in a NOTE on docs/Reference/Default/VBA/DateTime/DatePart.md (its Common Errors section, generated from errors/VBA.DateTime.yml, row `bug: datepart-firstweekofyear-out-of-range`); when fixed, the row's case moves to a 5 row and the NOTE goes. Found 2026-10-22 in batch 5 of WIP.Errors.md; owner: a bug. -->

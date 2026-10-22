@@ -231,7 +231,7 @@ pages:
       - error: 0
         when: '*interval* is "ww" and *firstweekofyear* is outside 0 to 3'
         vb6: 5
-        bug: pending
+        bug: datepart-firstweekofyear-out-of-range
         cases:
           - 'DatePart("ww", #1/1/2000#, 1, 4)'
           - 'DatePart("ww", #1/1/2000#, 1, -1)'

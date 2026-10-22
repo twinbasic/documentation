@@ -1,0 +1,44 @@
+' Regression tests: DatePart raises error 5 for a firstweekofyear outside 0 to 3 with the
+' "ww" interval, as VB6 does (the VB6 project beside this one prints it). January 1, 2000
+' is a Saturday. tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the week with vbFirstJan1 and vbFirstFullWeek, and a firstweekofyear of 4
+    ' with an interval that does not use it.
+    [TestCase]
+    Public Sub DatePart_WW_FirstJan1_Is1()
+        Assert.Strict.AreEqual CVar(1), DatePart("ww", #1/1/2000#, vbSunday, vbFirstJan1)
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_WW_FirstFullWeek_Is52()
+        Assert.Strict.AreEqual CVar(52), DatePart("ww", #1/1/2000#, vbSunday, vbFirstFullWeek)
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_D_Four_NoError()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("d", #1/1/2000#, vbSunday, 4)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: no error; the weeks are counted as with 0 or 1.
+    [TestCase]
+    Public Sub DatePart_WW_Four_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("ww", #1/1/2000#, vbSunday, 4)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_WW_MinusOne_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("ww", #1/1/2000#, vbSunday, -1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module
