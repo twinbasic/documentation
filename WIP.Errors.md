@@ -61,10 +61,11 @@ of the re-check is left.
 **In progress: batch 6a**, VBA `Information` and the non-interactive procedures of
 `Interaction` (the owner split batch 6, 2026-10-22; 6b, the interactive ones, comes after).
 Data, sections and page edits are committed (`71c9f42d`; `test.bat` passes, the build's link
-check is clean): 302 cases, all agreeing in all four runtimes. **Waiting on the owner** for the
-two questions under *Batch 6a findings* (how to group the bugs; Partition's and Choose's large
-numbers). After the answers: each `bug: pending` row's reproducer and BUGS-TO-REPORT.md entry,
-the `RaiseEventByName` crash's entry, then 6b.
+check is clean): 302 cases, all agreeing in all four runtimes. The owner answered both
+questions (2026-10-22, *Batch 6a findings*); the large numbers are an extension, done. **Now**:
+the four bug entries the owner agreed (reproducers under `bugs/`, entries in BUGS-TO-REPORT.md,
+the slugs in the data's `bug:` fields and in an HTML comment beside the RaiseEventByName
+WARNINGs), then 6b.
 
 ## Owner's decisions
 
@@ -630,8 +631,12 @@ one key (a VB6 case failed when another runtime's cleanup removed its section).
   91. A crash cannot be a case: a WARNING by hand on both pages, and a bug to queue.
 - **32-bit twinBASIC follows 64-bit VBA, not VB6, for large numbers**: Partition of a *number*
   or *stop* beyond a **Long** (VB6 6, twinBASIC and 64-bit VBA none); Choose of an *index* beyond
-  the **Single** range (VB6 none, twinBASIC and 64-bit VBA 6). **Question for the owner**: as
-  with Hex, is matching 64-bit VBA here fine in a 32-bit build, or a bug against VB6?
+  the **Single** range (VB6 none, twinBASIC and 64-bit VBA 6). **Owner, 2026-10-22: a documented
+  extension** ("tB can extend VB6"): the cases are `only: [tb, vba64]`, no `vb6:` and no bug,
+  and each page has a NOTE in its prose saying what VB6 does.
+- **Owner, 2026-10-22: the bugs are grouped as proposed**: one entry for the -2147467259 family,
+  one for CreateObject's and GetObject's raw HRESULTs, one for CallByName's `DISP_E_` HRESULTs,
+  and one for the RaiseEventByName crash.
 - **Agree in all four**: LBound/UBound of an unsized or erased array 9, of a **Variant** holding
   no array 13, *dimension* **Null** 94; QBColor outside 0 to 15 after rounding 5; RGB's negative
   component (after rounding) 5, above 255 taken as 255; Null 94 in QBColor, RGB, Choose's

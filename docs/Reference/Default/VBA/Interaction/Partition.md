@@ -43,6 +43,9 @@ If *interval* is 1, the range collapses to *number:number*, regardless of *start
 
 Any argument may be a decimal value, but is rounded to the nearest even integer before processing. If any argument is **Null**, **Partition** returns **Null**.
 
+> [!NOTE]
+> twinBASIC takes any argument in the range of a **LongLong**, as 64-bit VBA does. VB6 raises error 6, *Overflow*, for an argument outside the range of a **Long**.
+
 <!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
 ### Common Errors
 
@@ -58,9 +61,6 @@ Any argument may be a decimal value, but is rounded to the nearest even integer 
 
 > [!NOTE] BETA 1010
 > When an argument is outside the range of a **LongLong**, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*, instead.
-
-> [!NOTE] BETA 1010
-> When an argument is outside the range of a **Long** but inside that of a **LongLong**, VB6 raises error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
 
 <!-- /errors -->
 

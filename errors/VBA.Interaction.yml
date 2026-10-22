@@ -7,15 +7,13 @@ pages:
         when: "*index* is **Null**"
         cases:
           - Choose(Null, "a", "b")
+      # An extension (owner, 2026-10-22): VB6 returns Null; 64-bit VBA raises 6 too.
       - error: 6
         when: "*index* is outside the range of a **Single**"
-        vb6: 0
-        vba64: 6
-        bug: pending
         cases:
-          - Choose(3.5E+38, "a")
-          - Choose(1E+300, "a")
-          - Choose(-1E+300, "a")
+          - { expr: 'Choose(3.5E+38, "a")', only: [tb, vba64] }
+          - { expr: 'Choose(1E+300, "a")', only: [tb, vba64] }
+          - { expr: 'Choose(-1E+300, "a")', only: [tb, vba64] }
     quiet:
       - Choose(1, "a", "b")
       - Choose(0, "a", "b")
@@ -104,16 +102,11 @@ pages:
           - Partition(1E+20, 0, 10, 1)
           - Partition(5, 0, 1E+20, 1)
           - Partition(5, 0, 10, 1E+20)
-      - error: 0
-        when: "an argument is outside the range of a **Long** but inside that of a **LongLong**"
-        vb6: 6
-        vba64: 0
-        bug: pending
-        cases:
-          - Partition(2147483648#, 0, 10, 1)
-          - Partition(-2147483649#, 0, 10, 1)
-          - Partition(5, 0, 2147483648#, 1)
     quiet:
+      # An extension (owner, 2026-10-22): the LongLong range, as in 64-bit VBA; VB6 raises 6.
+      - { expr: 'Partition(2147483648#, 0, 10, 1)', only: [tb, vba64] }
+      - { expr: 'Partition(-2147483649#, 0, 10, 1)', only: [tb, vba64] }
+      - { expr: 'Partition(5, 0, 2147483648#, 1)', only: [tb, vba64] }
       - Partition(5, 0, 10, 1)
       - Partition(-5, 0, 10, 1)
       - Partition(50, 0, 10, 1)
