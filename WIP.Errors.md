@@ -54,7 +54,7 @@ pointed it out). `errors.mjs run` and `messages` now measure twinBASIC 32-bit (`
 by default, for every file. Batches 2 to 5 and `Core.yml` were re-checked on BETA 1010: **all
 1,109 cases agree with the data in all four runtimes** (1,005 of them run in 64-bit VBA), and
 `messages` agrees in all four. See *The 64-bit VBA re-check* below, and its *State of the
-work* for what is left (BUGS-TO-REPORT.md text, one question with the owner).
+work* for what is left (the BUGS-TO-REPORT.md text).
 
 **Next, after it: batch 6, VBA `Information` and `Interaction`** (or any batch from 6 on: they
 are independent). Follow *How a batch runs* below, and read the findings of batches 2 to 5 and
@@ -573,8 +573,9 @@ stood, apart from the cases that follow, and twinBASIC 64-bit agreed with 32-bit
   raises nothing for `InStr`, `Filter`, `StrComp`, as twinBASIC does; VB6 raises 5
   (`database-compare-no-error`). That is Access's own meaning, which VBA documents as
   Access-only, so Access cannot answer for VBA in Excel or Word: the three cases are
-  `only: [tb, vb6]`, and the NOTEs stay VB6-only. **Open, for the owner**: whether VBA outside
-  Access raises 5 is unchecked (Excel would need the VBA object-model trust setting, the user's).
+  `only: [tb, vb6]`, and the NOTEs stay VB6-only. Whether VBA outside Access raises 5 is left
+  unchecked (owner, 2026-10-22: not worth it; Excel would need the VBA object-model trust
+  setting, the user's).
 - **`only: tb` cases 64-bit VBA can run**: `CLngLng` (13 cases), `CLngPtr` (10), `Hex` and `Oct`
   beyond a `Long` (15), `Round` of a `LongLong` (1) are now `only: [tb, vba64]`, and all agree:
   `CLngPtr` of 2^31 raises nothing in 64-bit VBA, as the rows' `win64: 0` say.
@@ -615,7 +616,6 @@ Left to do:
 1. Add the 64-bit VBA results to BUGS-TO-REPORT.md entries' text where they strengthen them
    (`clnglng-2-to-63-no-overflow`, and each queued `vb6:` entry: "64-bit VBA agrees with VB6");
    not to filed ones, whose issues only the owner edits.
-2. The vbDatabaseCompare question above (VBA outside Access) is with the owner.
 
 ## Batches
 
