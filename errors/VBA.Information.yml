@@ -11,7 +11,7 @@ pages:
       - error: -2147467259
         when: "*dimension* is less than 1 or greater than the number of dimensions of *arrayname*, after rounding"
         vb6: 9
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, 0)' }
           - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, -1)' }
@@ -24,7 +24,7 @@ pages:
       - error: -2147467259
         when: "*dimension* is greater than 32,767"
         vb6: 6
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, 32768)' }
       - error: 13
@@ -56,7 +56,7 @@ pages:
       - error: -2147467259
         when: "*dimension* is less than 1 or greater than the number of dimensions of *arrayname*, after rounding"
         vb6: 9
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - { decl: Dim A(1 To 3) As Long, expr: 'UBound(A, 0)' }
           - { decl: Dim A(1 To 3) As Long, expr: 'UBound(A, 2)' }
@@ -64,7 +64,7 @@ pages:
       - error: -2147467259
         when: "*dimension* is greater than 32,767"
         vb6: 6
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - { decl: Dim A(1 To 3) As Long, expr: 'UBound(A, 32768)' }
       - error: 13

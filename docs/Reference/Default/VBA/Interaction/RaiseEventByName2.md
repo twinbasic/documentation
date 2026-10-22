@@ -29,6 +29,10 @@ If *procname* doesn't match any event declared on *object*, or the supplied arit
 > [!WARNING] BETA 1010
 > An *object* that declares no events, such as a **Collection**, ends the program with an access violation, with no error to handle. Unsaved data is lost.
 
+<!-- bug: raiseeventbyname-no-events-crash -->
+> [!NOTE] BETA 1010
+> An event that no handler is attached to raises error -2147467259 (`&H80004005`), *Unspecified error*. The **RaiseEvent** statement raises nothing for it.
+
 <!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
 ### Common Errors
 

@@ -1,0 +1,11 @@
+' A class that declares one event, for the controls and the no-handler cases. Raise is what
+' the RaiseEvent statement does with the same event: with no handler attached, nothing.
+Class EventSource
+
+    Public Event Changed(ByVal Value As Long)
+
+    Public Sub Raise(ByVal Value As Long)
+        RaiseEvent Changed(Value)
+    End Sub
+
+End Class

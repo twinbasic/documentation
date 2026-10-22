@@ -1,0 +1,109 @@
+' Regression tests: RaiseEventByName and RaiseEventByName2 raise an error, and do not end the
+' program, for an object that declares no events; and an event with no handler attached is
+' raised with no error, as the RaiseEvent statement raises it. tbrun --tests runs each case in
+' the compiler's test mode, where an access violation ends the case and not the run, and prints
+' PASS or FAIL. The crash cases assert only that some error is raised: VB6 has no
+' RaiseEventByName to say which.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: Nothing raises 91, a declared event with a handler attached calls it, and a name
+    ' the object does not declare raises an error.
+    [TestCase]
+    Public Sub RaiseEventByName_Nothing_Raises91()
+        Dim O As Object
+        On Error Resume Next
+        RaiseEventByName O, "Changed", Array(1)
+        Assert.Strict.AreEqual 91&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName_DeclaredEventWithHandler_CallsIt()
+        Dim S As New EventSource
+        Dim L As New Listener
+        L.Attach S
+        On Error Resume Next
+        RaiseEventByName S, "Changed", Array(7)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual 1&, L.Calls
+        Assert.Strict.AreEqual 7&, L.LastValue
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName2_DeclaredEventWithHandler_CallsIt()
+        Dim S As New EventSource
+        Dim L As New Listener
+        L.Attach S
+        On Error Resume Next
+        RaiseEventByName2 S, "Changed", 7
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual 1&, L.Calls
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEvent_NoHandler_DoesNothing()
+        Dim S As New EventSource
+        On Error Resume Next
+        S.Raise 1
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName_UndeclaredEventName_RaisesAnError()
+        Dim S As New EventSource
+        Dim L As New Listener
+        L.Attach S
+        On Error Resume Next
+        RaiseEventByName S, "Nope", Array(1)
+        Assert.Strict.AreNotEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: a declared event with no handler attached raises -2147467259, where
+    ' RaiseEvent Changed(1) inside the class does nothing.
+    [TestCase]
+    Public Sub RaiseEventByName_DeclaredEventNoHandler_Succeeds()
+        Dim O As Object
+        Set O = New EventSource
+        On Error Resume Next
+        RaiseEventByName O, "Changed", Array(1)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName2_DeclaredEventNoHandler_Succeeds()
+        Dim O As Object
+        Set O = New EventSource
+        On Error Resume Next
+        RaiseEventByName2 O, "Changed", 1
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: an object that declares no events ends the program.
+    [TestCase]
+    Public Sub RaiseEventByName_Collection_RaisesAnError()
+        Dim O As Object
+        Set O = New Collection
+        On Error Resume Next
+        RaiseEventByName O, "Changed", Array(1)
+        Assert.Strict.AreNotEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName_Dictionary_RaisesAnError()
+        Dim O As Object
+        Set O = CreateObject("Scripting.Dictionary")
+        On Error Resume Next
+        RaiseEventByName O, "Changed", Array(1)
+        Assert.Strict.AreNotEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName2_Collection_RaisesAnError()
+        Dim O As Object
+        Set O = New Collection
+        On Error Resume Next
+        RaiseEventByName2 O, "Changed", 1
+        Assert.Strict.AreNotEqual 0&, Err.Number
+    End Sub
+
+End Module

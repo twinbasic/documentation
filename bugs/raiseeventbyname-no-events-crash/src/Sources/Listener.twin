@@ -1,0 +1,18 @@
+' Handles EventSource's event and counts the calls, for the control that raises it with a
+' handler attached.
+Class Listener
+
+    Private WithEvents Source As EventSource
+    Public Calls As Long
+    Public LastValue As Long
+
+    Public Sub Attach(ByVal S As EventSource)
+        Set Source = S
+    End Sub
+
+    Private Sub Source_Changed(ByVal Value As Long)
+        Calls = Calls + 1
+        LastValue = Value
+    End Sub
+
+End Class

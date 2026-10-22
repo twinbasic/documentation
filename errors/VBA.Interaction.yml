@@ -33,7 +33,7 @@ pages:
       - error: -2147467259
         when: "the arguments are not in pairs: their number is odd"
         vb6: 5
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - Switch(True)
           - Switch(True, 1, False)
@@ -78,7 +78,7 @@ pages:
       - error: -2147467259
         when: "*start* is less than 0, *stop* is not greater than *start*, or *interval* is less than 1, after rounding"
         vb6: 5
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - Partition(5, -1, 10, 1)
           - Partition(5, -0.6, 10, 1)
@@ -90,14 +90,14 @@ pages:
       - error: -2147467259
         when: "an argument is a string that is not a number"
         vb6: 13
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - Partition("abc", 0, 10, 1)
           - Partition(5, 0, 10, "abc")
       - error: -2147467259
         when: "an argument is outside the range of a **LongLong**"
         vb6: 6
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - Partition(1E+20, 0, 10, 1)
           - Partition(5, 0, 1E+20, 1)
@@ -127,7 +127,7 @@ pages:
       - error: -2147467259
         when: "*number* is less than 1 after rounding (**Empty** and **True** included), no entry has that position, or *envstring* is a zero-length string"
         vb6: 5
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - Environ(0)
           - Environ(-1)
@@ -142,7 +142,7 @@ pages:
       - error: -2147467259
         when: "*number* is greater than 32,767"
         vb6: 6
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - Environ(32768)
           - Environ(100000)
@@ -169,7 +169,7 @@ pages:
       - error: -2147221020
         when: "*class* is not a registered class name, such as a number, or a CLSID in braces without `new:`"
         vb6: 429
-        bug: pending
+        bug: createobject-getobject-raw-hresults
         cases:
           - { decl: Dim O As Object, run: 'Set O = CreateObject("No.Such.Class")' }
           - { decl: Dim O As Object, run: 'Set O = CreateObject("Scripting")' }
@@ -178,19 +178,19 @@ pages:
       - error: -2147221164
         when: "*class* is `new:` with a CLSID that is not registered"
         vb6: 429
-        bug: pending
+        bug: createobject-getobject-raw-hresults
         cases:
           - { decl: Dim O As Object, run: 'Set O = CreateObject("new:{00000000-0000-0000-0000-000000000000}")' }
       - error: -2147221005
         when: "*class* is `new:` followed by text that is not a CLSID"
         vb6: 429
-        bug: pending
+        bug: createobject-getobject-raw-hresults
         cases:
           - { decl: Dim O As Object, run: 'Set O = CreateObject("new:not-a-guid")' }
       - error: 5
         when: "*class* is a zero-length string"
         vb6: 429
-        bug: pending
+        bug: createobject-getobject-raw-hresults
         cases:
           - { decl: Dim O As Object, run: 'Set O = CreateObject("")' }
       - error: -2147023174
@@ -211,32 +211,32 @@ pages:
       - error: -2147221014
         when: "*pathname* names a file that does not exist, and *class* is omitted"
         vb6: 432
-        bug: pending
+        bug: createobject-getobject-raw-hresults
         cases:
           - { decl: Dim O As Object, run: 'Set O = GetObject("C:\no\such\file.xyz")' }
       - error: -2147467262
         when: "*pathname* names a file that does not exist, and *class* is given"
         vb6: 432
-        bug: pending
+        bug: createobject-getobject-raw-hresults
         cases:
           - { decl: Dim O As Object, run: 'Set O = GetObject("C:\no\such\file.xyz", "Scripting.Dictionary")' }
       - error: -2147221005
         when: "*class* is not a registered class name"
         vb6: 429
-        bug: pending
+        bug: createobject-getobject-raw-hresults
         cases:
           - { decl: Dim O As Object, run: 'Set O = GetObject(, "No.Such.Class")' }
           - { decl: Dim O As Object, run: 'Set O = GetObject("", "No.Such.Class")' }
       - error: -2147221021
         when: "*pathname* is omitted and no instance of *class* is running"
         vb6: 429
-        bug: pending
+        bug: createobject-getobject-raw-hresults
         cases:
           - { decl: Dim O As Object, run: 'Set O = GetObject(, "Scripting.Dictionary")' }
       - error: -2147467259
         when: "both arguments are omitted"
         vb6: 13
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - { decl: Dim O As Object, run: Set O = GetObject() }
       - error: 5
@@ -265,13 +265,13 @@ pages:
       - error: 438
         when: "*procname* is a zero-length string"
         vb6: 450
-        bug: pending
+        bug: callbyname-dispatch-hresults
         cases:
           - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "", vbGet)' }
       - error: -2147467259
         when: "*calltype* is not one of the **VbCallType** values (3, **vbMethod** + **vbGet**, is accepted)"
         vb6: 438
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Count", 0)' }
           - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Count", 5)' }
@@ -280,13 +280,13 @@ pages:
       - error: -2147467259
         when: "*object* is **Nothing**"
         vb6: 5
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - { decl: Dim D As Object, expr: 'CallByName(D, "Count", vbGet)' }
       - error: -2147352562
         when: "the number of *args* is not the number the member takes, or a read-only property is assigned"
         vb6: 450
-        bug: pending
+        bug: latebound-hresult-mapping
         cases:
           - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', run: 'CallByName D, "Add", vbMethod' }
           - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', run: 'CallByName D, "Add", vbMethod, "x"' }
@@ -295,19 +295,19 @@ pages:
       - error: -2147352559
         when: "*args* are given to a property that takes none"
         vb6: 451
-        bug: pending
+        bug: latebound-hresult-mapping
         cases:
           - { decl: Dim D As Object, setup: 'Set D = CreateObject("Scripting.Dictionary")', expr: 'CallByName(D, "Count", vbGet, 1)' }
       - error: -2147352567
         when: "the member raises an error of its own, such as **Add** of a **Dictionary** given a key it holds"
         vb6: 457
-        bug: pending
+        bug: callbyname-dispatch-hresults
         cases:
           - { decl: Dim D As Object, setup: "Set D = CreateObject(\"Scripting.Dictionary\")\nD.Add \"x\", 1", run: 'CallByName D, "Add", vbMethod, "x", 2' }
       - error: -2147352567
         when: "the member raises an error of its own, such as a **Dictionary**'s **CompareMode** set when it has items"
         vb6: 5
-        bug: pending
+        bug: callbyname-dispatch-hresults
         cases:
           - { decl: Dim D As Object, setup: "Set D = CreateObject(\"Scripting.Dictionary\")\nD.Add \"x\", 1", run: 'CallByName D, "CompareMode", vbLet, 1' }
       - error: 94
@@ -363,7 +363,7 @@ pages:
       - error: -2147467259
         when: "*appname*, *section* or *key* is a zero-length string"
         vb6: 5
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - { run: 'SaveSetting "", "S", "K", "V"' }
           - { run: 'SaveSetting registry_App, "", "K", "V"' }
@@ -387,7 +387,7 @@ pages:
       - error: -2147467259
         when: "*appname*, *section* or *key* is a zero-length string"
         vb6: 5
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - 'GetSetting("", "S", "K")'
           - 'GetSetting(registry_App, "", "K")'
@@ -408,7 +408,7 @@ pages:
       - error: -2147467259
         when: "*appname* or *section* is a zero-length string"
         vb6: 5
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - 'GetAllSettings("", "S")'
           - 'GetAllSettings(registry_App, "")'
@@ -426,7 +426,7 @@ pages:
       - error: -2147467259
         when: "the application, section or key named does not exist, or *appname* or *section* is a zero-length string"
         vb6: 5
-        bug: pending
+        bug: argument-errors-unspecified-error
         cases:
           - { run: DeleteSetting registry_App }
           - { run: 'DeleteSetting registry_App, "S"' }

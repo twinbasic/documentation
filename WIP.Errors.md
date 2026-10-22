@@ -647,10 +647,17 @@ one key (a VB6 case failed when another runtime's cleanup removed its section).
     `CallByName` (any call type) and a late-bound property `Let` statement as -2147352567,
     though a late-bound method statement gets it right (`D.Add "x", 2` raises 457 in all four);
     and `""` as *procname* raises 438, VB 450.
-  - [ ] `&H80020011` (`DISP_E_NOTACOLLECTION`, VB 451, for a statement too: `D.Count(1)`) goes
-    into `latebound-hresult-mapping`'s table, with a test case in its reproducer
-  - [ ] reproducer and entry `raiseeventbyname-no-events-crash`
-  - [ ] the data's `bug: pending` replaced by the slugs; the WARNINGs' HTML comments
+  - [x] `&H80020011` (`DISP_E_NOTACOLLECTION`, VB 451, for a statement too: `D.Count(1)`) is in
+    `latebound-hresult-mapping`'s table and its reproducer (two cases, VB6 side `SetCode 25`);
+    the CallByName rows for argument counts (450) and arguments to a property (451) cite it
+  - [x] reproducer `raiseeventbyname-no-events-crash` (5 PASS, 5 FAIL, 32-bit and 64-bit;
+    classes `EventSource` and `Listener`), [ ] entry. Found with it: an event that **no handler**
+    is attached to raises -2147467259, where `RaiseEvent` raises nothing; with a handler both
+    functions work. A NOTE on both pages, and the entry's second point
+  - [x] the data's `bug: pending` replaced by the slugs; the WARNINGs' HTML comments
+  - [ ] the four entries' text in BUGS-TO-REPORT.md (`argument-errors-unspecified-error`,
+    `createobject-getobject-raw-hresults`, `callbyname-dispatch-hresults`,
+    `raiseeventbyname-no-events-crash`), then `pack` each
 - **Agree in all four**: LBound/UBound of an unsized or erased array 9, of a **Variant** holding
   no array 13, *dimension* **Null** 94; QBColor outside 0 to 15 after rounding 5; RGB's negative
   component (after rounding) 5, above 255 taken as 255; Null 94 in QBColor, RGB, Choose's

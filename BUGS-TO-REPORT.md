@@ -1499,7 +1499,7 @@ Severity: low in practice, since a program rarely passes a null pointer, but a C
 ## A failure code from a late-bound call is raised as the HRESULT, where VB6 raises its own error number, such as 450 for DISP_E_BADPARAMCOUNT
 
 **Describe the bug**
-Follow-up to #2490, which is fixed in BETA 1005 for a name the object does not have: a late-bound statement and `CallByName` now raise error 438, as VB6 does. This is the rest of the conversion VB6 makes when `IDispatch::Invoke` fails. For ten failure codes VB6 raises one of its own error numbers, and twinBASIC raises the `HRESULT` itself, so a handler written for VB6 or VBA does not recognise the error. The common one is a call with the wrong number of arguments to an object such as a `Collection`, a `Scripting.Dictionary` or a `Scripting.FileSystemObject`: VB6 raises 450, *Wrong number of arguments or invalid property assignment*, and twinBASIC raises `&H8002000E` (`DISP_E_BADPARAMCOUNT`), *Invalid number of parameters.* Observed by running the reproducer's test cases.
+Follow-up to #2490, which is fixed in BETA 1005 for a name the object does not have: a late-bound statement and `CallByName` now raise error 438, as VB6 does. This is the rest of the conversion VB6 makes when `IDispatch::Invoke` fails. For eleven failure codes VB6 raises one of its own error numbers, and twinBASIC raises the `HRESULT` itself, so a handler written for VB6 or VBA does not recognise the error. The common one is a call with the wrong number of arguments to an object such as a `Collection`, a `Scripting.Dictionary` or a `Scripting.FileSystemObject`: VB6 raises 450, *Wrong number of arguments or invalid property assignment*, and twinBASIC raises `&H8002000E` (`DISP_E_BADPARAMCOUNT`), *Invalid number of parameters.* Observed by running the reproducer's test cases.
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -1519,8 +1519,11 @@ Steps to reproduce the behavior:
    | `E_NOINTERFACE` `&H80004002` | 430 | -2147467262 |
    | `E_ACCESSDENIED` `&H80070005` | 70 | -2147024891 |
    | `E_ABORT` `&H80004004` | 287 | -2147467260 |
+   | `DISP_E_NOTACOLLECTION` `&H80020011` | 451 | -2147352559 |
 
-The module below is the reproducer's, and is meant to be adapted as a regression test. Each expected number is VB6's, from the VB6 project. On BETA 1005 the three cases from #2490 and the three codes twinBASIC already converts pass, and the ten codes of the table and the `Collection` call of step 2 fail.
+   An ordinary object gives the last code as well: `x = d.Count(1)`, where `d` is an `Object` holding a `Scripting.Dictionary`, raises -2147352559 in twinBASIC and 451, *Property let procedure not defined and property get procedure did not return an object*, in VB6 and 64-bit VBA.
+
+The module below is the reproducer's, and is meant to be adapted as a regression test. Each expected number is VB6's, from the VB6 project. On BETA 1005 the three cases from #2490 and the three codes twinBASIC already converts pass, and the codes of the table and the `Collection` and `Dictionary` calls fail.
 ```vb
 ' Regression tests for #2490 and its follow-up: the error number a late-bound
 ' call raises when the object fails it. The expected numbers are what VB6 6.0
@@ -1751,6 +1754,23 @@ Module LateBoundErrorTests
         Assert.Strict.AreEqual 287, Err.Number        ' VB6: 287, Application-defined or object-defined error
     End Sub
 
+    [TestCase]
+    Public Sub NotACollection_Raises451()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr80020011                                    ' DISP_E_NOTACOLLECTION
+        Assert.Strict.AreEqual 451, Err.Number        ' VB6: 451, Property let procedure not defined and property get procedure did not return an object
+    End Sub
+
+    [TestCase]
+    Public Sub NotACollection_Dictionary_Raises451()
+        Dim d As Object = CreateObject("Scripting.Dictionary")
+        Dim x As Variant
+        On Error Resume Next
+        x = d.Count(1)                                  ' Count takes no index
+        Assert.Strict.AreEqual 451, Err.Number        ' VB6: 451
+    End Sub
+
 End Module
 ```
 
@@ -1770,7 +1790,7 @@ Not part of this report: VB6's `CallByName` raises 440, *Automation error*, for 
 
 Severity: code ported from VB6 that tests `Err.Number` for 450, 449 or 9 after a late-bound call does not recognise the error, and the description is the system's text for a COM code instead of VB's.
 
-<!-- Reproducer: bugs/latebound-hresult-mapping/ (mode test: `tbrun --tests`; expect lists the six PASS and eleven FAIL lines, each with the number BETA 1005 raises); verified on BETA 1005 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0; a lightweight IDispatch object whose Invoke returns the code, and the ordinary objects): `bug_repro.mjs vb6` prints the table's VB6 column. The Dictionary and FileSystemObject cases and VB6's CallByName column were run in scratch projects (twinBASIC with tbrun, VB6 through scripts/lib/vb6.mjs) that are not kept. Follow-up to #2490 ("A late-bound call to a member that does not exist raises &H80020006, and CallByName raises &H80004005, where VB6 raises 438"), closed as fixed. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the table under "Errors from a late-bound call" (its row "Invoke returns any other failure code: that code as the error number"); when fixed, that row lists VB6's numbers instead. -->
+<!-- Reproducer: bugs/latebound-hresult-mapping/ (mode test: `tbrun --tests`; expect lists the six PASS and thirteen FAIL lines, each with the number BETA 1005 raises); verified on BETA 1005 by `bug_repro.mjs verify`; `DISP_E_NOTACOLLECTION` and its two cases added on BETA 1010 by the run-time errors work (batch 6a: errors/VBA.Interaction.yml), with SetCode 25 and the Dictionary line on the VB6 side. VB6 side in vb6/ (VB6 6.0; a lightweight IDispatch object whose Invoke returns the code, and the ordinary objects): `bug_repro.mjs vb6` prints the table's VB6 column. The Dictionary and FileSystemObject cases and VB6's CallByName column were run in scratch projects (twinBASIC with tbrun, VB6 through scripts/lib/vb6.mjs) that are not kept. Follow-up to #2490 ("A late-bound call to a member that does not exist raises &H80020006, and CallByName raises &H80004005, where VB6 raises 438"), closed as fixed. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the table under "Errors from a late-bound call" (its row "Invoke returns any other failure code: that code as the error number"); when fixed, that row lists VB6's numbers instead. -->
 
 ---
 
