@@ -1,29 +1,25 @@
 # The VBA DateTime module. Format: WIP.Errors.md.
 #
-# Setting Date, Date$, Time or Time$ to a value they accept changes the system clock.
-# The probe runs without the privilege to do that, so such a case raises 70; the cases
-# set the clock to what it already holds (Date = Date), so a run with the privilege
-# changes nothing.
+# Setting Date, Date$, Time or Time$ to a value they accept changes the system clock, so
+# no case here does: an accepted value raises 70 in a process without the privilege to
+# set the clock, and changes the clock in one with it. A case raises its error before
+# the clock is touched.
+#
+# Calendar is not implemented in twinBASIC (TB0009), and the owner chose not to report
+# it, so its cases are twinBASIC-only and have no VB6 NOTE. In VB6 vbCalHijri succeeds
+# and stays: a VB6 case that sets it must set vbCalGreg again.
 beta: 1010
 pages:
   Reference/Default/VBA/DateTime/Calendar.md:
     rows:
       - error: -2147467259
-        when: "*calendartype* is **vbCalGreg** or **vbCalHijri**"
-        vb6: 0
-        bug: calendar-set-unspecified-error
+        when: "**Calendar** is set to any value other than **Null**, **vbCalGreg** included"
         cases:
-          - { run: Calendar = vbCalGreg }
-          - { run: "Calendar = vbCalHijri\nCalendar = vbCalGreg" }
-          - { run: "Calendar = \"1\"\nCalendar = vbCalGreg" }
-      - error: -2147467259
-        when: "*calendartype* is any other value"
-        vb6: 5
-        bug: calendar-set-unspecified-error
-        cases:
-          - { run: Calendar = 2 }
-          - { run: Calendar = -1 }
-          - { run: Calendar = 255 }
+          - { run: Calendar = vbCalGreg, only: tb }
+          - { run: Calendar = vbCalHijri, only: tb }
+          - { run: 'Calendar = "1"', only: tb }
+          - { run: Calendar = 2, only: tb }
+          - { run: Calendar = -1, only: tb }
       - error: 94
         when: "*calendartype* is **Null**"
         cases:
@@ -50,11 +46,6 @@ pages:
           - { run: 'Date$ = "January 1, 2000"' }
           - { run: Date$ = 36526 }
           - { run: Date$ = Empty }
-      - error: 70
-        when: "the process does not have the privilege to change the system date"
-        cases:
-          - { run: Date = Date }
-          - { run: Date$ = Date$ }
       - error: 94
         when: "**Date$** is given **Null**"
         cases:
@@ -89,11 +80,6 @@ pages:
           - { run: 'Time$ = "10:00 PM"' }
           - { run: Time$ = 0.5 }
           - { run: Time$ = Empty }
-      - error: 70
-        when: "the process does not have the privilege to change the system time"
-        cases:
-          - { run: Time = Time }
-          - { run: Time$ = Time$ }
       - error: 94
         when: "**Time$** is given **Null**"
         cases:
@@ -183,7 +169,7 @@ pages:
       - error: 0
         when: '*interval* is "ww" and *firstdayofweek* is outside 0 to 7'
         vb6: 5
-        bug: pending
+        bug: datepart-firstdayofweek-out-of-range
         cases:
           - 'DateDiff("ww", #1/1/2000#, #1/1/2001#, 8)'
           - 'DateDiff("ww", #1/1/2000#, #1/1/2001#, -1)'
@@ -233,14 +219,20 @@ pages:
         cases:
           - 'DatePart("x", Null)'
       - error: 0
-        when: '*interval* is "w" or "ww" and *firstdayofweek* is outside 0 to 7, or *interval* is "ww" and *firstweekofyear* is outside 0 to 3'
+        when: '*interval* is "w" or "ww" and *firstdayofweek* is outside 0 to 7'
         vb6: 5
-        bug: pending
+        bug: datepart-firstdayofweek-out-of-range
         cases:
           - 'DatePart("w", #1/1/2000#, 8)'
           - 'DatePart("w", #1/1/2000#, -1)'
+          - 'DatePart("w", #1/1/2000#, 255)'
           - 'DatePart("ww", #1/1/2000#, 8)'
           - 'DatePart("ww", #1/1/2000#, -1)'
+      - error: 0
+        when: '*interval* is "ww" and *firstweekofyear* is outside 0 to 3'
+        vb6: 5
+        bug: pending
+        cases:
           - 'DatePart("ww", #1/1/2000#, 1, 4)'
           - 'DatePart("ww", #1/1/2000#, 1, -1)'
       - error: 13

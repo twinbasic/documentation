@@ -37,16 +37,17 @@ are filed: `abs-minimum-widens-type` (twinbasic#2541), `trig-above-2-to-63` (Cos
 in one report, #2539) and `round-null-negative-digits` (#2540). No row is `bug: pending` and no question is open.
 
 **Batch 5, VBA `DateTime`, is done and committed on `staging`** (not pushed; 2026-10-22):
-257 cases in `errors/VBA.DateTime.yml`, all agreeing with the data in twinBASIC 32-bit and
+253 cases in `errors/VBA.DateTime.yml`, all agreeing with the data in twinBASIC 32-bit and
 VB6 on BETA 1010, and a section on 17 of the module's 20 pages (Now and Timer raise nothing;
 the index documents nothing). Six differences are queued in BUGS-TO-REPORT.md, under `bugs/`:
-`calendar-set-unspecified-error`, `date-time-set-errors`, `dateadd-year-below-100`,
-`dateadd-date-out-of-range-overflow`, `datepart-null-checks-interval` and
-`datepart-week-year-100` (a hang, so a WARNING by hand and not in the data). Two rows are
-`bug: pending`, and four questions are open for the owner (*Batch 5 findings*, last list).
+`date-time-set-errors`, `dateadd-year-below-100`, `dateadd-date-out-of-range-overflow`,
+`datepart-null-checks-interval`, `datepart-firstdayofweek-out-of-range` and
+`datepart-week-year-100` (a hang, so a WARNING by hand and not in the data). The owner
+answered batch 5's four questions on 2026-10-22 (*Batch 5 findings*); one row is still
+`bug: pending`, on a question that follows from the answers.
 
 **Next: batch 6, VBA `Information` and `Interaction`** (or any batch from 6 on: they are
-independent), once the owner has answered batch 5's questions. Follow *How a batch runs*
+independent). Follow *How a batch runs*
 below, and read the findings of batches 2 to 5 for what to probe.
 
 ## Owner's decisions
@@ -74,6 +75,10 @@ below, and read the findings of batches 2 to 5 for what to probe.
   `LongLong` range, with a negative non-integer type in the `LongLong` form; a NOTE in the
   page's prose, twinBASIC-only quiet cases, no `vb6:` row). The owner also ruled, for batch 3,
   that `Val` ignoring a suffix's range, `Error$` above 65535 and `CDate` out of range are bugs.
+- **An error that only the test setup raises is not listed** (2026-10-22): 70 when the probe
+  lacks the privilege to set the clock documents the setup, not twinBASIC. Nor is a NOTE
+  written for it. An extension is decided the same way for every argument (2026-10-22):
+  it may be one where its behaviour makes sense and has no bugs; otherwise it is a bug.
 - **Content that twinBASIC and VB6 both contradict is the page's fault** (2026-10-21): it is
   commented out, not deleted, as `<!-- VBA: <why it is out> ... -->`, outside any table, so
   the VBA text is kept for docs that will one day switch between VB6, VBA and twinBASIC
@@ -417,14 +422,30 @@ Both runtimes agree unless said.
 - **A Calendar case must set `vbCalGreg` again.** In VB6 `Calendar = vbCalHijri` succeeds and
   stays, so every later case of the probe runs under the Hijri calendar and the VB6 column
   drifts. The data's cases end with `Calendar = vbCalGreg`. In twinBASIC every assignment
-  raises -2147467259 and the compiler warns TB0009, *[Calendar] has not yet been implemented*
-  (`calendar-set-unspecified-error`; a NOTE on Calendar and on the module's index).
-- **Setting the clock**: the probe has no privilege to set it, so an accepted value raises 70
-  in both; the cases set the clock to itself (`Date = Date`), so an elevated run changes
-  nothing. Never write a case that sets the clock to another value. `Date = Null` and
-  `Time = Null` raise 94 (VB6 13); `Date$` takes only *mm-dd-yyyy* and `Time$` only
-  *hh:mm:ss*, and raise -2147467259 for anything else (VB6 5, and VB6 also takes *m/d/yyyy*,
-  *mm-dd-yy*, *hh:mm*); all in `date-time-set-errors`.
+  raises -2147467259 and the compiler warns TB0009, *[Calendar] has not yet been implemented*.
+  The owner chose not to report it (2026-10-22): its cases are `only: tb`, with no VB6 NOTE,
+  and a NOTE by hand on Calendar and on the module's index says it is not implemented.
+- **Setting the clock**: no case may set the clock to a value it accepts, since the probe runs
+  without the privilege (70) and an elevated run would change the clock. **A 70 is never a
+  row** (owner, 2026-10-22: it documents the test setup, not twinBASIC). A case raises its
+  error before the clock is touched. `Date = Null` and `Time = Null` raise 94 (VB6 13);
+  `Date$` takes only *mm-dd-yyyy* and `Time$` only *hh:mm:ss*, and raise -2147467259 for
+  anything else (VB6 5, and VB6 also takes *m/d/yyyy*, *mm-dd-yy*, *hh:mm*); all in
+  `date-time-set-errors`.
+- **What a clock setter would set**: a probe can patch `SetLocalTime` and `SetSystemTime` (in
+  kernelbase and kernel32) in its own process with a jump to a function that records the
+  SYSTEMTIME and returns 1, in the exe only, never in the IDE run. VB6 enables the privilege
+  with `AdjustTokenPrivileges` first and raises 70 when that fails, so its probe fakes that
+  call too (returning 1 after `SetLastError 0`). twinBASIC calls `SetLocalTime` without it.
+  The probes are not kept; their findings follow.
+- **`Date =` and `Time =` of a number are an extension** (owner, 2026-10-22). twinBASIC reads
+  the number, or a string holding one, as `CDate` does: whole days from December 30, 1899
+  (`Empty` and `False` are that day, `True` the day before, being -1), `Currency`, `Decimal`,
+  `Single` and `Byte` alike, and 13 outside the range of dates. `Date` sets the date part
+  and keeps the time of day; `Time` sets the time part of the `CDate` value (0.25 and 1.25
+  are 6:00, -0.25 and -1.25 too; 0.999999 rounds to 0:00 of the same day). VB6 sets exactly
+  the same for a **Date** value (`Time = CDate(1.25)` is 6:00), and raises 13 for a number.
+  A NOTE on Date and on Time; no quiet case, since every accepted value raises 70 here.
 - **The 13 rule**: a function whose parameter is "any expression that can represent a date"
   (Day, Month, Year, Weekday, Hour, Minute, Second, DatePart, DateValue, TimeValue) raises 13
   for a string that is not a date, a number outside -657434 to 2958465, and an **Error**
@@ -438,13 +459,21 @@ Both runtimes agree unless said.
 - **DateAdd**: 5 for an interval that is not a setting (case-insensitive, no spaces) and for a
   result after 9999 or before year 100; with "yyyy", "q" or "m" a result in years 0 to 99
   becomes 1930--2029 silently (`dateadd-year-below-100`, VB6 5; a WARNING).
-- **DatePart and DateDiff** check *firstdayofweek* and *firstweekofyear* only where VB6 uses
-  them, and twinBASIC not at all (rows `bug: pending`, question 2). `DatePart("x", Null)`
-  raises 5, VB6 returns **Null** (`datepart-null-checks-interval`). `DatePart("ww", ...)` of
-  January 1 or 2, 100 never returns with `vbFirstFullWeek` and returns -98980 with
-  `vbFirstFourDays` (`datepart-week-year-100`; a WARNING). **A case that hangs stops the
-  probe, and every later case reports `none`**: run a suspect alone before reading the
-  cases after it.
+- **_firstdayofweek_ outside 0 to 7 is a bug** (owner: an extension only if it makes sense
+  and has no bugs). Over every date of 1999 to 2001: a negative value acts modulo 7, but
+  `DatePart("w")` takes 8 as 1 and 9 up as nothing at all (255 gives a weekday of -2),
+  `DatePart("ww")` takes 8 and 9 as 1, `DateDiff("ww")` 8 to 13 as 1
+  (`datepart-firstdayofweek-out-of-range`; WARNINGs on DatePart and DateDiff). VB6 checks it
+  only where the interval uses it.
+- **_firstweekofyear_ outside 0 to 3** gives, for every value tried (-15 to 2147483647), the
+  same results as 0 and 1, which agree on this system (its own setting is January 1). That
+  makes sense as an extension, but whether twinBASIC takes it as 0 (the system's setting)
+  or 1 cannot be told apart here. Its row is `bug: pending` (question below).
+- **DatePart**: `DatePart("x", Null)` raises 5, VB6 returns **Null**
+  (`datepart-null-checks-interval`). `DatePart("ww", ...)` of January 1 or 2, 100 never
+  returns with `vbFirstFullWeek` and returns -98980 with `vbFirstFourDays`
+  (`datepart-week-year-100`; a WARNING). **A case that hangs stops the probe, and every
+  later case reports `none`**: run a suspect alone before reading the cases after it.
 - **DateSerial**: 5 when the date is outside January 1, 100 to December 31, 9999, after its
   two-digit-year reading (`DateSerial(-1900, 1, 1)` passes, -1901 raises); 6 above an
   **Integer** is the conversion, not listed. **TimeSerial** cannot reach a date outside the
@@ -454,18 +483,13 @@ Both runtimes agree unless said.
   and Time (an Example a level down under each property) get `###` like their See Also. Their
   sections were placed before See Also by hand, as markers; `write` fills them.
 
-Questions for the owner:
+Owner's answers (2026-10-22): 1, `Date =` and `Time =` of a number are an extension; 2,
+the week arguments may be extensions where they make sense and have no bugs; 3, Calendar is
+not reported; 4, no 70 rows. Open question:
 
-1. `Date = <number>` and `Time = <number>` (0, 0.5, 36526, **Empty**, **True**) are accepted by
-   twinBASIC (70 without the privilege) and raise 13 in VB6, though the Time page says it takes
-   "any numeric expression". An extension, or a bug? Not in the data yet.
-2. DatePart and DateDiff accept a *firstdayofweek* outside 0 to 7 and a *firstweekofyear*
-   outside 0 to 3 where VB6 raises 5 (`DatePart("w", d, 8)` returns as if 1). The two rows are
-   `bug: pending`. An extension, or a bug to queue?
-3. `calendar-set-unspecified-error` is queued, though TB0009 says Calendar is not implemented.
-   File it, or keep only the pages' NOTEs?
-4. The 70 rows on Date and Time depend on the process lacking the privilege to set the clock,
-   as every run here does. Keep them?
+1. A *firstweekofyear* outside 0 to 3 acts as 0 or 1 (they agree on this system). Document it
+   as an extension ("any other value counts as **vbFirstJan1**" needs a system whose own
+   setting differs, to tell 0 from 1), or leave the VB6 NOTE as it is?
 
 ## Batches
 
@@ -479,7 +503,7 @@ each can be run when there is budget. Status is kept here.
 | 2 | **Pilot: VBA `Strings`** --- settled the section's style with the owner | 30 | done: 28 sections, 339 cases; reviewed 2026-10-21 |
 | 3 | VBA `Conversion` | 28 | done: 23 sections, 299 cases; owner's questions answered 2026-10-21 |
 | 4 | VBA `Math` (also win64) | 17 | done: 15 sections, 132 cases; 2026-10-22 |
-| 5 | VBA `DateTime` | 20 | done: 17 sections, 257 cases; 2026-10-22; owner's questions open |
+| 5 | VBA `DateTime` | 20 | done: 17 sections, 253 cases; 2026-10-22; one question open |
 | 6 | VBA `Information` and `Interaction` | 54 | not started |
 | 7 | VBA `FileSystem` | 23 | not started |
 | 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | not started |

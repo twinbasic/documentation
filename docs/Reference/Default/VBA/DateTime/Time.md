@@ -51,6 +51,9 @@ If *time* is a string, **Time** attempts to convert it to a time by using the ti
 >
 > In some versions of Microsoft Windows, including Windows 10 and 11, setting the system time is a privileged operation that requires the process to have relevant permissions.
 
+> [!NOTE]
+> twinBASIC takes a number as [**CDate**](../Conversion/CDate) converts it, and sets the time part of the result: `Time = 0.25` sets 6:00:00 AM, and so does `Time = 1.25`. VB6 raises error 13, *Type mismatch*, for a number, though it takes the same value as a **Date**, such as `CDate(0.25)`.
+
 #### Example
 
 This example uses the **Time** property to set the computer system time.
@@ -115,7 +118,6 @@ Time$ = MyTime           ' Set system time.
 |---|---|
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | **Time** is given a string that is not a time, or a number outside the range of dates |
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | **Time$** is given a value that is not a string of the form *hh:mm:ss*, or one outside 00:00:00 to 23:59:59 |
-| [70 (`&H46`)](tb:Errors#70), *Permission denied* | the process does not have the privilege to change the system time |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **Time$** is given **Null**<br>**Time** is given **Null** |
 
 > [!NOTE] BETA 1010

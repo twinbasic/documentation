@@ -65,6 +65,9 @@ Syntax: **DatePart** ( *interval*, *date* [, *firstdayofweek* [, *firstweekofyea
 The *firstdayofweek* argument affects calculations that use the "w" and "ww" interval symbols.
 
 > [!WARNING] BETA 1010
+> With the "w" or "ww" interval, **DatePart** raises no error for a *firstdayofweek* outside 0 to 7, and what it returns follows no rule: a negative value acts as if taken modulo 7, 8 acts as **vbSunday**, and a larger value matches no setting. `DatePart("w", #1/1/2000#, 255)` returns -2. VB6 raises error 5.
+
+> [!WARNING] BETA 1010
 > With the "ww" interval, **DatePart** goes wrong for a date in the first days of year 100 whose week belongs to year 99. With **vbFirstFullWeek** it never returns, and the program stops responding: `DatePart("ww", #1/1/100#, vbSunday, vbFirstFullWeek)` is one such call. With **vbFirstFourDays** it returns a wrong number: -98980 for January 1, 100. VB6 returns 52 for both.
 
 If *date* is a date literal, the specified year becomes a permanent part of that date. If *date* is enclosed in double quotation marks and the year is omitted, the current year is inserted each time the expression is evaluated.
@@ -84,7 +87,10 @@ If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date
 > When *interval* is not one of the settings listed and *date* is **Null**, VB6 raises no error.
 
 > [!NOTE] BETA 1010
-> When *interval* is "w" or "ww" and *firstdayofweek* is outside 0 to 7, or *interval* is "ww" and *firstweekofyear* is outside 0 to 3, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+> When *interval* is "w" or "ww" and *firstdayofweek* is outside 0 to 7, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+
+> [!NOTE] BETA 1010
+> When *interval* is "ww" and *firstweekofyear* is outside 0 to 3, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 <!-- /errors -->
 

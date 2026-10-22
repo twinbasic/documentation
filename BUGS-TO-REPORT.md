@@ -6633,86 +6633,6 @@ What does not reproduce it: another conversion (`vbUpperCase`) with an East Asia
 
 ---
 
-## Setting `Calendar` raises *Unspecified error* (-2147467259) for every value, where VB6 accepts `vbCalGreg` and `vbCalHijri` and raises error 5 for any other
-
-**Describe the bug**
-`Calendar = vbCalGreg` and `Calendar = vbCalHijri` raise -2147467259 (`&H80004005`), *Unspecified error*, and `Calendar` always reads as `vbCalGreg`; any other value raises the same error. The compiler warns TB0009, *[Calendar] has not yet been implemented*, at every use. VB6 accepts both constants, reads back the one set, and raises 5, *Invalid procedure call or argument*, for any other value. Observed in the compiler's test mode, 32-bit, and in a built exe.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `calendar-set-unspecified-error.twinproj` (attached as `calendar-set-unspecified-error.zip`).
-2. Run its test cases, the module below. On BETA 1010 the two controls pass and the other four fail.
-
-The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`calendar-set-unspecified-error-vb6.zip`) prints.
-```vb
-[TestFixture]
-Module RegressionTests
-
-    ' Controls: Calendar reads as Gregorian, and Null raises 94.
-    [TestCase]
-    Public Sub Calendar_Read_IsGregorian()
-        Assert.Strict.AreEqual CLng(vbCalGreg), CLng(Calendar)
-    End Sub
-
-    [TestCase]
-    Public Sub Calendar_SetNull_Raises94()
-        On Error Resume Next
-        Calendar = Null
-        Assert.Strict.AreEqual 94&, Err.Number
-    End Sub
-
-    ' The defect: every assignment raises -2147467259, Unspecified error.
-    [TestCase]
-    Public Sub Calendar_SetGregorian_NoError()
-        On Error Resume Next
-        Calendar = vbCalGreg
-        Assert.Strict.AreEqual 0&, Err.Number
-    End Sub
-
-    [TestCase]
-    Public Sub Calendar_SetHijri_NoError()
-        Dim N As Long
-        On Error Resume Next
-        Calendar = vbCalHijri
-        N = Err.Number
-        Calendar = vbCalGreg
-        Assert.Strict.AreEqual 0&, N
-    End Sub
-
-    [TestCase]
-    Public Sub Calendar_SetHijri_ReadsBackHijri()
-        Dim C As Long
-        On Error Resume Next
-        Calendar = vbCalHijri
-        C = Calendar
-        Calendar = vbCalGreg
-        Assert.Strict.AreEqual CLng(vbCalHijri), C
-    End Sub
-
-    [TestCase]
-    Public Sub Calendar_SetTwo_Raises5()
-        On Error Resume Next
-        Calendar = 2
-        Assert.Strict.AreEqual 5&, Err.Number
-    End Sub
-
-End Module
-```
-
-**Expected behavior**
-`vbCalGreg` and `vbCalHijri` accepted, and the Hijri calendar used by `Date$`, `DateSerial`, `DateValue`, `DateAdd`, `DateDiff`, `DatePart`, `Year`, `Month`, `Day` and `Weekday` while it is set, as in VB6. Error 5 for any other value.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
-
-**Additional context**
-Severity: low. TB0009 says the property is not implemented yet; this entry records what a program meets at run time, and that even `Calendar = vbCalGreg`, which changes nothing, stops a program that has no handler. A program written for VB6 that sets the Gregorian calendar to be sure of it fails at that line.
-
-<!-- Reproducer: bugs/calendar-set-unspecified-error/ (mode test: `tbrun --tests`; expect lists the two PASS and four FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints no error for vbCalGreg and vbCalHijri, 1 read back after vbCalHijri, 5 for 2 and 94 for Null. Stated in NOTEs on docs/Reference/Default/VBA/DateTime/Calendar.md (its Common Errors section, generated from errors/VBA.DateTime.yml, rows `bug: calendar-set-unspecified-error`, and a NOTE by hand above it on TB0009), and in a NOTE on the module's index.md; when fixed, the first row goes, the second becomes error 5 without vb6 and bug, and the NOTEs go. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->
-
----
-
 ## Assigning to `Date`, `Date$`, `Time` and `Time$` raises other errors than VB6, and `Date$` and `Time$` refuse forms VB6 accepts
 
 **Describe the bug**
@@ -7108,3 +7028,106 @@ Severity: medium. A hang loses unsaved data, and only dates in the first days of
 What does not reproduce it: January 1, 2000, whose week also belongs to the year before (52); January 3, 100, the first day of the first full week (1); `Format(#1/1/100#, "ww", vbSunday, vbFirstFullWeek)`, and `DateDiff("ww", ...)` with `vbFirstFullWeek` from January 1, 100, which return; and `DatePart("yyyy", #1/1/100#, vbSunday, vbFirstFullWeek)`. The hang also happens with `vbMonday` and `vbUseSystem` as the first day, and for January 2, 100.
 
 <!-- Reproducer: bugs/datepart-week-year-100/ (mode run, expect exit 5: tbrun reports that the probe never returned, after the three control lines and the "calling" line); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 52, 1, 52 and 52 with no error. Stated in a WARNING by hand on docs/Reference/Default/VBA/DateTime/DatePart.md; it is not in errors/VBA.DateTime.yml, because a case that never returns stops the probe. When fixed, the WARNING goes. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->
+
+---
+
+## `DatePart` and `DateDiff` take a *firstdayofweek* outside 0 to 7 without an error and return values that follow no rule, such as a weekday of -2
+
+**Describe the bug**
+Where the interval uses *firstdayofweek* ("w" and "ww" in `DatePart`, "ww" in `DateDiff`), VB6 raises 5, *Invalid procedure call or argument*, for a value outside 0 to 7. twinBASIC raises nothing, and what it returns follows no rule. For January 1, 2000, a Saturday, `DatePart("w", d, 8)` returns 7, as with `vbSunday`, `DatePart("w", d, 15)` returns 0 and `DatePart("w", d, 255)` returns -2, which are not weekdays. Over every date of 1999 to 2001:
+
+- a negative value gives the same results as one value from 0 to 7, as if taken modulo 7 (-1 as 6, -7 as 7);
+- for `DatePart("w")`, 8 gives the same results as 1, and 9 to 32767 match no value from 0 to 7;
+- for `DatePart("ww")`, 8 and 9 match 1, and 10 up match nothing;
+- for `DateDiff("ww")`, 8 to 13 match 1, and 14 up match nothing.
+
+Observed in the compiler's test mode, 32-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `datepart-firstdayofweek-out-of-range.twinproj` (attached as `datepart-firstdayofweek-out-of-range.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other five fail with `Actual: 0`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`datepart-firstdayofweek-out-of-range-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: the weekday with Sunday and with Saturday as the first day, and a
+    ' firstdayofweek of 8 with an interval that does not use it.
+    [TestCase]
+    Public Sub DatePart_W_Sunday_Is7()
+        Assert.Strict.AreEqual CVar(7), DatePart("w", #1/1/2000#, vbSunday)
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_W_Saturday_Is1()
+        Assert.Strict.AreEqual CVar(1), DatePart("w", #1/1/2000#, vbSaturday)
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_D_Eight_NoError()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("d", #1/1/2000#, 8)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: no error, and a value that follows no rule: 8 acts as 1, 9 to 13 match
+    ' no setting, and 255 gives a weekday of -2.
+    [TestCase]
+    Public Sub DatePart_W_Eight_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("w", #1/1/2000#, 8)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_W_255_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("w", #1/1/2000#, 255)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_W_MinusOne_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("w", #1/1/2000#, -1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DatePart_WW_Eight_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("ww", #1/1/2000#, 8)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateDiff_WW_Eight_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateDiff("ww", #1/1/2000#, #1/1/2001#, 8)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 5, as VB6 raises. Taking the value modulo 7 throughout would be a reasonable extension too, but not the mix above.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium. A wrong *firstdayofweek*, such as one read from a setting, goes unreported and gives weekdays outside 1 to 7 and week counts that are off.
+
+What does not reproduce it: an interval that does not use *firstdayofweek* (`DatePart("d", d, 8)`, `DateDiff("w", d1, d2, 8)`), which VB6 accepts as well; a `Null` *firstdayofweek*, which raises 94 in both. A *firstweekofyear* outside 0 to 3, which VB6 also refuses with 5, gives the same results as 0 and 1 for every value tried, which agree on the system tested.
+
+<!-- Reproducer: bugs/datepart-firstdayofweek-out-of-range/ (mode test: `tbrun --tests`; expect lists the three PASS and five FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 5 for the five, 7 and 1 for the weekday controls and 1 for "d". The mapping above comes from a probe over 1999 to 2001, not kept. Stated in NOTEs on docs/Reference/Default/VBA/DateTime/DatePart.md and DateDiff.md (their Common Errors sections, generated from errors/VBA.DateTime.yml, rows `bug: datepart-firstdayofweek-out-of-range`) and in a WARNING by hand on DatePart.md; when fixed, the rows' cases move to a 5 row, and the NOTEs and the WARNING go. Found 2026-10-22 in batch 5 of WIP.Errors.md; owner: an extension only if it makes sense and has no bugs, which this does not. -->

@@ -31,14 +31,8 @@ The **Calendar** property can only be set programmatically. The setting of **Cal
 
 | Error | When |
 |---|---|
-| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *calendartype* is **vbCalGreg** or **vbCalHijri**<br>*calendartype* is any other value |
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | **Calendar** is set to any value other than **Null**, **vbCalGreg** included |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *calendartype* is **Null** |
-
-> [!NOTE] BETA 1010
-> When *calendartype* is **vbCalGreg** or **vbCalHijri**, VB6 raises no error.
-
-> [!NOTE] BETA 1010
-> When *calendartype* is any other value, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
 <!-- /errors -->
 

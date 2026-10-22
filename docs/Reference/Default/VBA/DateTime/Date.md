@@ -50,6 +50,9 @@ Syntax: **Date** **=** *date*
 >
 > In some versions of Microsoft Windows, including Windows 10 and 11, setting the system date is a privileged operation that requires the process to have relevant permissions.
 
+> [!NOTE]
+> twinBASIC also takes a number, or a string that holds one, and reads it as [**CDate**](../Conversion/CDate) does: `Date = 36526` sets January 1, 2000, and **Empty** sets December 30, 1899. As for a **Date** value, only the date part is set, and the time of day is kept. VB6 raises error 13, *Type mismatch*, for a number.
+
 #### Example
 
 This example uses the **Date** property to set the computer system date. In the development environment, the date literal is displayed in short date format by using the locale settings of the code.
@@ -115,7 +118,6 @@ Date$ = MyDate               ' Change the system date.
 |---|---|
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | **Date** is given a string that is not a date, or a number outside the range of dates |
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | **Date$** is given a value that is not a string of the form *mm-dd-yyyy* |
-| [70 (`&H46`)](tb:Errors#70), *Permission denied* | the process does not have the privilege to change the system date |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **Date$** is given **Null**<br>**Date** is given **Null** |
 
 > [!NOTE] BETA 1010

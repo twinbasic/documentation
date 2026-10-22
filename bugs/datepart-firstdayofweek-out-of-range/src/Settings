@@ -1,12 +1,12 @@
 {
 	"configuration.inherits": "Defaults",
-	"project.appTitle": "CalendarSetUnspecifiedError",
+	"project.appTitle": "DatepartFirstdayofweekOutOfRange",
 	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
 	"project.buildType": "Standard EXE",
 	"project.description": "Reproduces: x",
 	"project.exportPathIsV2": true,
-	"project.id": "{0F94FB27-75C2-4A88-A628-21175799F84D}",
-	"project.name": "CalendarSetUnspecifiedError",
+	"project.id": "{4DF640BD-6F03-49BC-9C55-8C9901FE1BC7}",
+	"project.name": "DatepartFirstdayofweekOutOfRange",
 	"project.optionExplicit": true,
 	"project.references": [
 		{
