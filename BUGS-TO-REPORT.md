@@ -7241,3 +7241,673 @@ A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01
 What does not reproduce it: an interval that does not use *firstweekofyear* (`DatePart("d", d, vbSunday, 4)`), which VB6 accepts as well; `DateDiff`, which ignores *firstweekofyear* in both; a `Null` *firstweekofyear*, which raises 94 in both. Not checked on a system whose own first week of the year is not the week of January 1, where 0 and 1 differ.
 
 <!-- Reproducer: bugs/datepart-firstweekofyear-out-of-range/ (mode test: `tbrun --tests`; expect lists the three PASS and two FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 5 for 4 and -1, 1 and 52 for the week controls and 1 for "d". Stated in a NOTE on docs/Reference/Default/VBA/DateTime/DatePart.md (its Common Errors section, generated from errors/VBA.DateTime.yml, row `bug: datepart-firstweekofyear-out-of-range`); when fixed, the row's case moves to a 5 row and the NOTE goes. Found 2026-10-22 in batch 5 of WIP.Errors.md; owner: a bug. -->
+
+---
+
+## Refused arguments raise -2147467259, *Unspecified error*, where VB6 and VBA raise 5, 6, 9, 13 or 438
+
+**Describe the bug**
+Given an argument they refuse, several runtime procedures raise -2147467259 (`&H80004005`), *Unspecified error*, where VB6 and 64-bit VBA raise one of VB's own numbers:
+- `LBound` and `UBound` with a *dimension* less than 1 or greater than the number of dimensions: VB raises 9, *Subscript out of range*; with a *dimension* greater than 32,767: 6, *Overflow*.
+- `Switch` with an odd number of arguments: 5, *Invalid procedure call or argument*.
+- `Partition` with *start* less than 0, *stop* not greater than *start*, or *interval* less than 1: 5; with a string that is not a number: 13, *Type mismatch*; with a value outside the `LongLong` range: 6.
+- `Environ` with a *number* less than 1, a position no entry has, or a zero-length name: 5; with a *number* greater than 32,767: 6.
+- `GetObject()` with no arguments: 13.
+- `CallByName` with a *calltype* that is not a `VbCallType` value: 438, *Object doesn't support this property or method*; with an object of `Nothing`: 5.
+- `SaveSetting`, `GetSetting`, `GetAllSettings` and `DeleteSetting` with a zero-length application, section or key name, and `DeleteSetting` of an application, section or key that does not exist: 5.
+
+It is the pattern of #2544 (`ReDim` with inverted bounds raises -2147467259 where VB6 raises 9). Observed in the compiler's test mode and in built exes, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `argument-errors-unspecified-error.twinproj` (attached as `argument-errors-unspecified-error.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other seventeen fail, each with `Err.Number` -2147467259.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`argument-errors-unspecified-error-vb6.zip`) prints; 64-bit VBA raises the same numbers. No case writes to the registry: the registry procedures are given names that do not exist.
+```vb
+' Regression tests: a procedure that refuses an argument raises the number VB6 and 64-bit VBA
+' raise (the VB6 project beside this one prints them), not -2147467259, Unspecified error.
+' No case writes to the registry: GetSetting and DeleteSetting are given names that do not
+' exist. tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: errors twinBASIC already raises with VB's numbers.
+    [TestCase]
+    Public Sub LBound_UnsizedArray_Raises9()
+        Dim A() As Long
+        Dim N As Long
+        On Error Resume Next
+        N = LBound(A)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub QBColor_Sixteen_Raises5()
+        Dim N As Long
+        On Error Resume Next
+        N = QBColor(16)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_Null_Raises94()
+        Dim S As String
+        On Error Resume Next
+        S = Environ(Null)
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    ' The defect: each of these raises -2147467259.
+    [TestCase]
+    Public Sub LBound_DimensionZero_Raises9()
+        Dim A(1 To 3) As Long
+        Dim N As Long
+        On Error Resume Next
+        N = LBound(A, 0)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub UBound_DimensionPastRank_Raises9()
+        Dim A(1 To 3) As Long
+        Dim N As Long
+        On Error Resume Next
+        N = UBound(A, 2)
+        Assert.Strict.AreEqual 9&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub LBound_Dimension32768_Raises6()
+        Dim A(1 To 3) As Long
+        Dim N As Long
+        On Error Resume Next
+        N = LBound(A, 32768)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Switch_OddArguments_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Switch(True, 1, False)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Partition_NegativeStart_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Partition(5, -1, 10, 1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Partition_IntervalZero_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Partition(5, 0, 10, 0)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Partition_StringNumber_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = Partition("abc", 0, 10, 1)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Partition_BeyondLongLong_Raises6()
+        Dim V As Variant
+        On Error Resume Next
+        V = Partition(1E+20, 0, 10, 1)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_Zero_Raises5()
+        Dim S As String
+        On Error Resume Next
+        S = Environ(0)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_PositionWithNoEntry_Raises5()
+        Dim S As String
+        On Error Resume Next
+        S = Environ(32767)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_EmptyName_Raises5()
+        Dim S As String
+        On Error Resume Next
+        S = Environ("")
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Environ_Above32767_Raises6()
+        Dim S As String
+        On Error Resume Next
+        S = Environ(32768)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_NoArguments_Raises13()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject()
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_CallTypeZero_Raises438()
+        Dim D As Object
+        Dim V As Variant
+        Set D = CreateObject("Scripting.Dictionary")
+        On Error Resume Next
+        V = CallByName(D, "Count", 0)
+        Assert.Strict.AreEqual 438&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_Nothing_Raises5()
+        Dim D As Object
+        Dim V As Variant
+        On Error Resume Next
+        V = CallByName(D, "Count", VbGet)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetSetting_EmptyAppName_Raises5()
+        Dim S As String
+        On Error Resume Next
+        S = GetSetting("", "Section", "Key")
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DeleteSetting_MissingApplication_Raises5()
+        On Error Resume Next
+        DeleteSetting "NoSuchApplication-argument-errors-unspecified-error"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+VB's own number in each case, with its description, as VB6 and 64-bit VBA raise.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A handler that tests `Err.Number` for the number VB6 raises misses these, and *Unspecified error* tells a user nothing about what was wrong.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: the errors these procedures already raise with VB's numbers, such as `LBound` of an array not yet sized (9), `QBColor` outside 0 to 15 (5), `RGB` with a negative component (5), and `Null` for any of the arguments above (94).
+
+<!-- Reproducer: bugs/argument-errors-unspecified-error/ (mode test: `tbrun --tests`; expect lists the three PASS and seventeen FAIL lines); run on BETA 1010 with `bug_repro.mjs run`; 64-bit from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: argument-errors-unspecified-error`) of LBound, UBound, Switch, Partition, Environ, GetObject, CallByName, SaveSetting, GetSetting, GetAllSettings and DeleteSetting, from errors/VBA.Information.yml and errors/VBA.Interaction.yml; when fixed, each row's `error` becomes VB's number and its `vb6` and `bug` go, and the NOTEs with them. Found 2026-10-22 by batch 6a of WIP.Errors.md; grouped as one entry by the owner. -->
+
+---
+
+## `CreateObject` and `GetObject` raise the COM `HRESULT` where VB6 and VBA raise 429 or 432
+
+**Describe the bug**
+When `CreateObject` or `GetObject` cannot create or find the object, twinBASIC raises the `HRESULT` COM returned, where VB6 and 64-bit VBA raise 429, *ActiveX component can't create object*, or 432, *File name or class name not found during Automation operation*:
+
+| Call | VB6 and 64-bit VBA | twinBASIC |
+|---|---|---|
+| `CreateObject("No.Such.Class")`, a CLSID in braces without `new:`, a number | 429 | -2147221020 (`MK_E_SYNTAX`, *Invalid syntax*) |
+| `CreateObject("new:{00000000-0000-0000-0000-000000000000}")` | 429 | -2147221164 (`REGDB_E_CLASSNOTREG`, *Class not registered*) |
+| `CreateObject("new:not-a-guid")` | 429 | -2147221005 (`CO_E_CLASSSTRING`, *Invalid class string*) |
+| `CreateObject("")` | 429 | 5 |
+| `GetObject("C:\no\such\file.xyz")` | 432 | -2147221014 (`MK_E_CANTOPENFILE`, *Moniker cannot open file*) |
+| `GetObject("C:\no\such\file.xyz", "Scripting.Dictionary")` | 432 | -2147467262 (`E_NOINTERFACE`, *No such interface supported*) |
+| `GetObject(, "No.Such.Class")`, `GetObject("", "No.Such.Class")` | 429 | -2147221005 |
+| `GetObject(, "Scripting.Dictionary")`, no instance running | 429 | -2147221021 (`MK_E_UNAVAILABLE`, *Operation unavailable*) |
+
+Observed in the compiler's test mode and in built exes, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `createobject-getobject-raw-hresults.twinproj` (attached as `createobject-getobject-raw-hresults.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other eight fail, each with the number in the table.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`createobject-getobject-raw-hresults-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: CreateObject and GetObject raise 429, ActiveX component can't create
+' object, or 432, File name or class name not found during Automation operation, as VB6 and
+' 64-bit VBA do (the VB6 project beside this one prints them), not the HRESULT COM returned.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: a class that exists is created, and Null raises 94.
+    [TestCase]
+    Public Sub CreateObject_RegisteredClass_Creates()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("Scripting.Dictionary")
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_Null_Raises94()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject(Null)
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_EmptyPathWithClass_Creates()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject("", "Scripting.Dictionary")
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: each of these raises the HRESULT, or 5.
+    [TestCase]
+    Public Sub CreateObject_UnknownClass_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("No.Such.Class")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_UnregisteredClsid_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("new:{00000000-0000-0000-0000-000000000000}")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_MalformedClsid_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("new:not-a-guid")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CreateObject_EmptyClass_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = CreateObject("")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_MissingFile_Raises432()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject("C:\no\such\file.xyz")
+        Assert.Strict.AreEqual 432&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_MissingFileWithClass_Raises432()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject("C:\no\such\file.xyz", "Scripting.Dictionary")
+        Assert.Strict.AreEqual 432&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_UnknownClass_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject(, "No.Such.Class")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetObject_NoRunningInstance_Raises429()
+        Dim O As Object
+        On Error Resume Next
+        Set O = GetObject(, "Scripting.Dictionary")
+        Assert.Strict.AreEqual 429&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+429 or 432, as in the table's VB6 column, as VB6 and 64-bit VBA raise.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A handler written for VB6 or VBA that tests for 429, the usual check that a component is installed, misses every one of these.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a `servername` that cannot be reached (-2147023174, *The RPC server is unavailable.*, in all four), and a `pathname` that is not a moniker Windows can read (`GetObject("notaprogid:xyz")`, -2147221020 in all four). VB6 gives the `GetObject` of a missing file with a class 432 with the description *Class not registered*.
+
+<!-- Reproducer: bugs/createobject-getobject-raw-hresults/ (mode test: `tbrun --tests`; expect lists the three PASS and eight FAIL lines, each with the number BETA 1010 raises); run on BETA 1010 with `bug_repro.mjs run`; 64-bit from the run-time errors data (`errors.mjs run`). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 429 and 432. Stated in the Common Errors sections of CreateObject and GetObject (rows `bug: createobject-getobject-raw-hresults`), from errors/VBA.Interaction.yml; when fixed, each row's `error` becomes 429 or 432 and its `vb6` and `bug` go. Found 2026-10-22 by batch 6a of WIP.Errors.md. -->
+
+---
+
+## A COM object's own error reaches `CallByName` and a late-bound property assignment as &H80020009, *Exception occurred.*
+
+**Describe the bug**
+When a COM object such as a `Scripting.Dictionary` raises an error of its own, a late-bound method call gets the object's number, as in VB6: `d.Add "x", 2` on a dictionary that holds `"x"` raises 457, *This key is already associated with an element of this collection*. The same call through `CallByName`, with any call type, and a late-bound property assignment, raise -2147352567 (`&H80020009`, `DISP_E_EXCEPTION`), *Exception occurred.*, instead:
+- `CallByName d, "Add", VbMethod, "x", 2`: VB6 and 64-bit VBA raise 457.
+- `CallByName d, "Remove", VbMethod, "nope"`: VB6 and 64-bit VBA raise 32811, which the late-bound statement `d.Remove "nope"` raises in twinBASIC too.
+- `d.CompareMode = 1` on a dictionary that has items, and `CallByName d, "CompareMode", VbLet, 1`: VB6 and 64-bit VBA raise 5.
+
+Also, `CallByName(d, "", VbGet)`, with a zero-length name, raises 438, *Object doesn't support this property or method*, where VB6 and 64-bit VBA raise 450, *Wrong number of arguments or invalid property assignment*.
+
+Related: the queued entry *An error raised with a constant number, in a member called late-bound, reaches the caller as &H80020009, Exception occurred.* is the same number for a twinBASIC member's `Err.Raise`; this one is a COM object's error, which a late-bound method statement already gets right. The queued entry *A failure code from a late-bound call is raised as the HRESULT* covers `CallByName` with the wrong number of arguments (450) and arguments given to a property that takes none (451). Observed in the compiler's test mode and in built exes, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `callbyname-dispatch-hresults.twinproj` (attached as `callbyname-dispatch-hresults.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other five fail: four with -2147352567 and the empty name with 438.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`callbyname-dispatch-hresults-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: an error a COM object raises reaches CallByName, and a late-bound property
+' assignment, as the object's own number, as it reaches a late-bound method call, and as VB6
+' and 64-bit VBA give it (the VB6 project beside this one prints them); CallByName with an empty
+' name raises 450. The object is a Scripting.Dictionary. tbrun --tests runs each case and prints
+' PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function NewDictionary() As Object
+        Set NewDictionary = CreateObject("Scripting.Dictionary")
+    End Function
+
+    ' Controls: a late-bound method call gets the object's own number, and CallByName of a
+    ' name the object does not have raises 438.
+    [TestCase]
+    Public Sub LateBound_AddExistingKey_Raises457()
+        Dim D As Object
+        Set D = NewDictionary()
+        D.Add "x", 1
+        On Error Resume Next
+        D.Add "x", 2
+        Assert.Strict.AreEqual 457&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_RemoveMissingKey_Raises32811()
+        Dim D As Object
+        Set D = NewDictionary()
+        On Error Resume Next
+        D.Remove "nope"
+        Assert.Strict.AreEqual 32811&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_UnknownName_Raises438()
+        Dim D As Object
+        Dim V As Variant
+        Set D = NewDictionary()
+        On Error Resume Next
+        V = CallByName(D, "Nope", VbGet)
+        Assert.Strict.AreEqual 438&, Err.Number
+    End Sub
+
+    ' The defect: the object's own error arrives as -2147352567, Exception occurred.
+    [TestCase]
+    Public Sub CallByName_AddExistingKey_Raises457()
+        Dim D As Object
+        Set D = NewDictionary()
+        D.Add "x", 1
+        On Error Resume Next
+        CallByName D, "Add", VbMethod, "x", 2
+        Assert.Strict.AreEqual 457&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_RemoveMissingKey_Raises32811()
+        Dim D As Object
+        Set D = NewDictionary()
+        On Error Resume Next
+        CallByName D, "Remove", VbMethod, "nope"
+        Assert.Strict.AreEqual 32811&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_CompareModeAfterAdd_Raises5()
+        Dim D As Object
+        Set D = NewDictionary()
+        D.Add "x", 1
+        On Error Resume Next
+        D.CompareMode = 1
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_CompareModeAfterAdd_Raises5()
+        Dim D As Object
+        Set D = NewDictionary()
+        D.Add "x", 1
+        On Error Resume Next
+        CallByName D, "CompareMode", VbLet, 1
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' The defect: an empty name raises 438, where VB6 raises 450.
+    [TestCase]
+    Public Sub CallByName_EmptyName_Raises450()
+        Dim D As Object
+        Dim V As Variant
+        Set D = NewDictionary()
+        On Error Resume Next
+        V = CallByName(D, "", VbGet)
+        Assert.Strict.AreEqual 450&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The object's own error number, as a late-bound method statement already gives it, and as VB6 and 64-bit VBA give it through `CallByName` and a late-bound property assignment; 450 for an empty name.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. Code that calls an object by name, or sets its properties late-bound, cannot tell its errors apart: every one is *Exception occurred.*
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a late-bound method statement (`d.Add "x", 2` raises 457, `d.Remove "nope"` 32811); `CallByName` of a name the object does not have, which raises 438 in all four.
+
+<!-- Reproducer: bugs/callbyname-dispatch-hresults/ (mode test: `tbrun --tests`; expect lists the three PASS and five FAIL lines); run on BETA 1010 with `bug_repro.mjs run`; 64-bit from the run-time errors data (`errors.mjs run`). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 457, 32811, 438, 457, 32811, 5, 5 and 450. Stated in the Common Errors section of CallByName (rows `bug: callbyname-dispatch-hresults`), from errors/VBA.Interaction.yml; when fixed, each row's `error` becomes VB's number and its `vb6` and `bug` go. Found 2026-10-22 by batch 6a of WIP.Errors.md. -->
+
+---
+
+## `RaiseEventByName` and `RaiseEventByName2` end the program for an object that declares no events, and raise an error for an event no handler is attached to
+
+**Describe the bug**
+Two defects of the same two functions:
+- Given an object that declares no events, such as a `Collection` or a `Scripting.Dictionary`, `RaiseEventByName` and `RaiseEventByName2` end the program with an access violation (`&HC0000005`), with no error a handler can catch. `Nothing` raises 91, as it should.
+- Given an object that declares the event, with no handler attached to it, both raise -2147467259 (`&H80004005`), *Unspecified error*. The `RaiseEvent` statement inside the class raises nothing for an event no handler is attached to. With a handler attached, both functions call it.
+
+The crash was observed in the compiler's test mode, where the access violation ends the case and not the run, and in a built exe, where it ends the program; the error without a handler in the test mode; each 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `raiseeventbyname-no-events-crash.twinproj` (attached as `raiseeventbyname-no-events-crash.zip`). It holds the class `EventSource`, which declares one event, the class `Listener`, which handles it, and the test module.
+2. Run its test cases. On BETA 1010 the five controls pass, the two cases without a handler fail with -2147467259, and the three cases with a `Collection` or a `Dictionary` fail with `NATIVE EXCEPTION: ACCESS_VIOLATION`.
+
+The modules are meant to be adapted as regression tests. VB6 has no `RaiseEventByName`, so the crash cases assert only that some error is raised.
+```vb
+' A class that declares one event, for the controls and the no-handler cases. Raise is what
+' the RaiseEvent statement does with the same event: with no handler attached, nothing.
+Class EventSource
+
+    Public Event Changed(ByVal Value As Long)
+
+    Public Sub Raise(ByVal Value As Long)
+        RaiseEvent Changed(Value)
+    End Sub
+
+End Class
+```
+```vb
+' Handles EventSource's event and counts the calls, for the control that raises it with a
+' handler attached.
+Class Listener
+
+    Private WithEvents Source As EventSource
+    Public Calls As Long
+    Public LastValue As Long
+
+    Public Sub Attach(ByVal S As EventSource)
+        Set Source = S
+    End Sub
+
+    Private Sub Source_Changed(ByVal Value As Long)
+        Calls = Calls + 1
+        LastValue = Value
+    End Sub
+
+End Class
+```
+```vb
+' Regression tests: RaiseEventByName and RaiseEventByName2 raise an error, and do not end the
+' program, for an object that declares no events; and an event with no handler attached is
+' raised with no error, as the RaiseEvent statement raises it. tbrun --tests runs each case in
+' the compiler's test mode, where an access violation ends the case and not the run, and prints
+' PASS or FAIL. The crash cases assert only that some error is raised: VB6 has no
+' RaiseEventByName to say which.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: Nothing raises 91, a declared event with a handler attached calls it, and a name
+    ' the object does not declare raises an error.
+    [TestCase]
+    Public Sub RaiseEventByName_Nothing_Raises91()
+        Dim O As Object
+        On Error Resume Next
+        RaiseEventByName O, "Changed", Array(1)
+        Assert.Strict.AreEqual 91&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName_DeclaredEventWithHandler_CallsIt()
+        Dim S As New EventSource
+        Dim L As New Listener
+        L.Attach S
+        On Error Resume Next
+        RaiseEventByName S, "Changed", Array(7)
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual 1&, L.Calls
+        Assert.Strict.AreEqual 7&, L.LastValue
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName2_DeclaredEventWithHandler_CallsIt()
+        Dim S As New EventSource
+        Dim L As New Listener
+        L.Attach S
+        On Error Resume Next
+        RaiseEventByName2 S, "Changed", 7
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.AreEqual 1&, L.Calls
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEvent_NoHandler_DoesNothing()
+        Dim S As New EventSource
+        On Error Resume Next
+        S.Raise 1
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName_UndeclaredEventName_RaisesAnError()
+        Dim S As New EventSource
+        Dim L As New Listener
+        L.Attach S
+        On Error Resume Next
+        RaiseEventByName S, "Nope", Array(1)
+        Assert.Strict.AreNotEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: a declared event with no handler attached raises -2147467259, where
+    ' RaiseEvent Changed(1) inside the class does nothing.
+    [TestCase]
+    Public Sub RaiseEventByName_DeclaredEventNoHandler_Succeeds()
+        Dim O As Object
+        Set O = New EventSource
+        On Error Resume Next
+        RaiseEventByName O, "Changed", Array(1)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName2_DeclaredEventNoHandler_Succeeds()
+        Dim O As Object
+        Set O = New EventSource
+        On Error Resume Next
+        RaiseEventByName2 O, "Changed", 1
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: an object that declares no events ends the program.
+    [TestCase]
+    Public Sub RaiseEventByName_Collection_RaisesAnError()
+        Dim O As Object
+        Set O = New Collection
+        On Error Resume Next
+        RaiseEventByName O, "Changed", Array(1)
+        Assert.Strict.AreNotEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName_Dictionary_RaisesAnError()
+        Dim O As Object
+        Set O = CreateObject("Scripting.Dictionary")
+        On Error Resume Next
+        RaiseEventByName O, "Changed", Array(1)
+        Assert.Strict.AreNotEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub RaiseEventByName2_Collection_RaisesAnError()
+        Dim O As Object
+        Set O = New Collection
+        On Error Resume Next
+        RaiseEventByName2 O, "Changed", 1
+        Assert.Strict.AreNotEqual 0&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+An error for an object that declares no events, as for a name the object does not declare (which raises an error today), and no error for an event no handler is attached to, as `RaiseEvent` does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: high for the crash: a program loses its unsaved data, and an error handler cannot prevent it. Low for the error without a handler, though it makes the function unusable for an event a caller may or may not have handled.
+
+A 64-bit build gives the same results.
+
+<!-- Reproducer: bugs/raiseeventbyname-no-events-crash/ (mode test: `tbrun --tests`; expect lists the five PASS and five FAIL lines); run on BETA 1010 with `bug_repro.mjs run` and `--arch win64`. In a built exe the crash ends the program: the run-time errors probe (`errors.mjs run`) stopped there with exception 0xc0000005, 32-bit and 64-bit, which is why the data has no case for it. Stated in a WARNING by hand (the crash) and a NOTE (no handler) on docs/Reference/Default/VBA/Interaction/RaiseEventByName.md and RaiseEventByName2.md, each beside an HTML comment naming this slug; when fixed, both go. Found 2026-10-22 by batch 6a of WIP.Errors.md. -->

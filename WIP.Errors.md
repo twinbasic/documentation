@@ -58,14 +58,14 @@ by default, for every file. Batches 2 to 5 and `Core.yml` were re-checked on BET
 The 64-bit VBA results are in the queued entries of BUGS-TO-REPORT.md (2026-10-22): nothing
 of the re-check is left.
 
-**In progress: batch 6a**, VBA `Information` and the non-interactive procedures of
+**Batch 6a is done** (2026-10-22), VBA `Information` and the non-interactive procedures of
 `Interaction` (the owner split batch 6, 2026-10-22; 6b, the interactive ones, comes after).
-Data, sections and page edits are committed (`71c9f42d`; `test.bat` passes, the build's link
-check is clean): 302 cases, all agreeing in all four runtimes. The owner answered both
-questions (2026-10-22, *Batch 6a findings*); the large numbers are an extension, done. **Now**:
-the four bug entries the owner agreed (reproducers under `bugs/`, entries in BUGS-TO-REPORT.md,
-the slugs in the data's `bug:` fields and in an HTML comment beside the RaiseEventByName
-WARNINGs), then 6b.
+302 cases, all agreeing in all four runtimes; sections on 27 pages; the owner's two answers
+applied; four new entries queued in BUGS-TO-REPORT.md, and `DISP_E_NOTACOLLECTION` added to
+`latebound-hresult-mapping` (*Batch 6a findings*). No row is `bug: pending`.
+
+**Next: batch 6b**, `Interaction`'s interactive procedures (the batch table's row says what a
+probe may and may not call).
 
 ## Owner's decisions
 
@@ -655,9 +655,10 @@ one key (a VB6 case failed when another runtime's cleanup removed its section).
     is attached to raises -2147467259, where `RaiseEvent` raises nothing; with a handler both
     functions work. A NOTE on both pages, and the entry's second point
   - [x] the data's `bug: pending` replaced by the slugs; the WARNINGs' HTML comments
-  - [ ] the four entries' text in BUGS-TO-REPORT.md (`argument-errors-unspecified-error`,
+  - [x] the four entries' text in BUGS-TO-REPORT.md (`argument-errors-unspecified-error`,
     `createobject-getobject-raw-hresults`, `callbyname-dispatch-hresults`,
-    `raiseeventbyname-no-events-crash`), then `pack` each
+    `raiseeventbyname-no-events-crash`), each with its module(s) verbatim; all five
+    reproducers packed (`latebound-hresult-mapping` again). **Batch 6a is done**; next, 6b.
 - **Agree in all four**: LBound/UBound of an unsized or erased array 9, of a **Variant** holding
   no array 13, *dimension* **Null** 94; QBColor outside 0 to 15 after rounding 5; RGB's negative
   component (after rounding) 5, above 255 taken as 255; Null 94 in QBColor, RGB, Choose's
