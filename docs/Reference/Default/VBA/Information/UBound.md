@@ -23,8 +23,8 @@ Syntax: **UBound(** *arrayname* [ **,** *dimension* ] **)**
 
 > [!IMPORTANT]
 > On a dynamic array that has never been sized --- one declared `Dim a() As Long` and
-> not yet **ReDim**'d, or one **Erase** has released --- this raises run-time error 9,
-> *Subscript out of range*, rather than returning anything. Test with
+> not yet **ReDim**'d, or one **Erase** has released --- this raises an error (see
+> Common Errors) rather than returning anything. Test with
 > [**IsArrayInitialized**](IsArrayInitialized) first. A **ParamArray** is always
 > initialized, so it needs no guard: with no arguments passed it reports bounds of 0
 > and -1.
@@ -36,6 +36,24 @@ For an array `Dim A(1 To 100, 0 To 3, -3 To 4)`, **UBound** returns:
 | `UBound(A, 1)` | 100 |
 | `UBound(A, 2)` | 3 |
 | `UBound(A, 3)` | 4 |
+
+<!-- errors: generated from errors/VBA.Information.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [9 (`&H9`)](tb:Errors#9), *Subscript out of range* | *arrayname* is a dynamic array that has not been sized with **ReDim**, or that **Erase** has released |
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *dimension* is less than 1 or greater than the number of dimensions of *arrayname*, after rounding<br>*dimension* is greater than 32,767 |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *arrayname* is a **Variant** that holds no array, **Empty** and **Null** included |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *dimension* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *dimension* is less than 1 or greater than the number of dimensions of *arrayname*, after rounding, VB6 and 64-bit VBA raise error [9 (`&H9`)](tb:Errors#9), *Subscript out of range*, instead.
+
+> [!NOTE] BETA 1010
+> When *dimension* is greater than 32,767, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*, instead.
+
+<!-- /errors -->
 
 ### Example
 

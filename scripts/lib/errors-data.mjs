@@ -16,7 +16,7 @@ export const MESSAGES_FILE = "messages.yml";
 export const HARNESS_DIR = "harnesses";
 const HARNESS_NAME = /^[a-z][a-z0-9]*$/;
 
-const ROW_KEYS = new Set(["error", "when", "cases", "vb6", "win64", "vba64", "bug", "harness"]);
+const ROW_KEYS = new Set(["error", "when", "cases", "vb6", "win64", "vba64", "bug", "message", "harness"]);
 const CASE_KEYS = new Set(["expr", "run", "decl", "setup", "only", "harness"]);
 const PAGE_KEYS = new Set(["rows", "quiet", "none", "harness"]);
 const FILE_KEYS = new Set(["beta", "pages"]);
@@ -120,7 +120,7 @@ function checkHarness(name, where, problems) {
 /**
  * One data file, read and checked. `name` is relative to `dir`.
  * @returns {{name, beta, pages: Array<{page, rows, quiet, none}>, problems: string[]}}
- *   a row is { error, when, vb6?, win64?, vba64?, bug?, cases }; `page` is relative to docs/
+ *   a row is { error, when, vb6?, win64?, vba64?, bug?, message?, cases }; `page` is relative to docs/
  */
 export function loadDataFile(name, dir = ERRORS_DIR) {
   const problems = [];
@@ -191,6 +191,11 @@ export function readData(raw, name, problems) {
       if (r.bug !== undefined && !differs) {
         problems.push(`${w}: bug: only on a row with vb6:, or with a vba64: that differs from twinBASIC 64-bit`);
       }
+      // message: twinBASIC's own Err.Description for the row's number, where it is not the
+      // number's message in messages.yml.
+      if (r.message !== undefined && (typeof r.message !== "string" || !r.message.trim() || /\n/.test(r.message)))
+        problems.push(`${w}: message: twinBASIC's Err.Description, one line`);
+      if (r.message !== undefined && r.error === 0) problems.push(`${w}: message: only on a row that raises`);
       checkHarness(r.harness, w, problems);
       if (!Array.isArray(r.cases) || !r.cases.length) problems.push(`${w}: cases: at least one`);
       const cases = (Array.isArray(r.cases) ? r.cases : [])
@@ -203,6 +208,7 @@ export function readData(raw, name, problems) {
         win64: r.win64,
         vba64: r.vba64,
         bug: r.bug,
+        message: r.message,
         cases,
       });
     });
@@ -239,6 +245,18 @@ export const vba64Differs = (row) => expected(row, "vba64") !== expected(row, "w
 export const RUNTIMES = ["tb", "win64", "vb6", "vba64"];
 /** The runtimes of the VB family, whose Err.Raise turns HRESULTs into VB numbers. */
 const VB_FAMILY = new Set(["vb6", "vba64"]);
+
+/**
+ * The Err.Description `runtime` must give when a case of `row` (null for a quiet case) raises
+ * `number`, or null when it is not checked: VB6 and VBA describe an HRESULT as "Automation
+ * error" with Windows' text on a line of its own, which the probe's one line cannot hold. A row's
+ * `message:` is twinBASIC's own text for its number, where twinBASIC gives one.
+ */
+export function expectedDescription(row, runtime, number, messages) {
+  if (VB_FAMILY.has(runtime) && (number < VB_NUMBERS.from || number > VB_NUMBERS.to)) return null;
+  if (row?.message !== undefined && !VB_FAMILY.has(runtime) && number === expected(row, runtime)) return row.message;
+  return messages.get(number)?.raised ?? "nothing";
+}
 
 /**
  * The cases of `files` to run in `runtime` (one of RUNTIMES), each with
@@ -574,13 +592,19 @@ export function renderSection(p, { name, beta, messages, level }) {
   ];
   if (p.none !== undefined) out.push(p.none.trim());
   else {
-    // Rows that raise the same number share one row, their conditions a line each.
-    // A row of error 0 raises nothing in twinBASIC: it has its NOTE and no table row.
+    // Rows that raise the same number with the same message share one row, their conditions a
+    // line each. A row of error 0 raises nothing in twinBASIC: it has its NOTE and no table row.
     const byError = new Map();
-    for (const r of p.rows.filter((x) => x.error !== 0))
-      byError.set(r.error, [...(byError.get(r.error) ?? []), escapeCell(r.when)]);
+    for (const r of p.rows.filter((x) => x.error !== 0)) {
+      const text = r.message ?? msg(r.error);
+      const key = `${r.error}\n${text}`;
+      const entry = byError.get(key) ?? { n: r.error, text, whens: [] };
+      entry.whens.push(escapeCell(r.when));
+      byError.set(key, entry);
+    }
     if (byError.size) out.push("| Error | When |", "|---|---|");
-    for (const [n, whens] of byError) out.push(`| ${num(n)}, *${msg(n)}* | ${whens.join("<br>")} |`);
+    for (const { n, text, whens } of byError.values())
+      out.push(`| ${num(n)}, *${escapeCell(text)}* | ${whens.join("<br>")} |`);
     // A row where VB6 or 64-bit VBA raises something else gets a NOTE: one sentence when the
     // two agree, one each when they do not. `mine` is what twinBASIC raises where they differ.
     const what = (n, mine, plural) =>

@@ -302,7 +302,11 @@ equals the default). A row where 64-bit VBA's number differs from twinBASIC 64-b
 a `bug:`. **The NOTE** names both runtimes when they agree (*When ..., VB6 and 64-bit VBA
 raise error N, ...; twinBASIC raises none.* / *..., instead.*), else one sentence each, the
 VBA one compared with twinBASIC 64-bit; a row none of whose cases runs in 64-bit VBA says
-nothing of it. A page with no rows gets no section; one with `none: "<sentence>"` and
+nothing of it. **A row's `message:`** is twinBASIC's own `Err.Description` for its number,
+where it is not the number's message in `messages.yml` (Array's destructuring form raises 5
+as *expected an array*): the table shows it, and `run` checks it in twinBASIC. `run` does
+not check an HRESULT's description in VB6 or VBA, which describe every HRESULT as *Automation
+error* with Windows' text on a second line (`expectedDescription`). A page with no rows gets no section; one with `none: "<sentence>"` and
 no rows gets a section holding that sentence. `messages.yml` maps each number to its message,
 or to `{ raised: <Err.Description>, error: <Error$(n)> }` where they differ; `run` fails a
 case whose `Err.Description` is not the `raised` text. A number a row names must be in the
@@ -334,11 +338,13 @@ Windows refuses). `check_errors.mjs` reports a harness the data names and has no
   it); it does nothing when the case has already raised. 32-bit and 64-bit; in 64-bit VBA it
   patches Access's own process for the case, and works (every Date and Time case agrees).
 - **`registry`** (batch 6a) --- `SaveSetting`, `GetSetting`, `GetAllSettings`,
-  `DeleteSetting`. A case names the application `registry_App` (`tbdocsErrorsProbe`), and
-  `registry_Begin` and `registry_End` delete that application's whole key under
-  `HKCU\Software\VB and VBA Program Settings`, keeping the case's error (raised again with its
-  description once the key is gone), so nothing a case writes stays in the user's registry. A
-  case's `setup` may save what it reads. Check after a run that the key is absent.
+  `DeleteSetting`. A case names the application `registry_App`, `tbdocsErrorsProbe` and the
+  process id (the four runtimes run at once), and `registry_Begin` and `registry_End` delete
+  that application's whole key under `HKCU\Software\VB and VBA Program Settings` with
+  `SHDeleteKeyW` (`DeleteSetting` raises 5 in VB6 and VBA for a key that has a subkey), keeping
+  the case's error (raised again with its description once the key is gone), so nothing a case
+  writes stays in the user's registry. A case's `setup` may save what it reads. Check after a run
+  that no `tbdocsErrorsProbe*` key is left.
 
 **YAML pitfalls**, each met in batch 2:
 
@@ -572,10 +578,19 @@ not reported; 4, no 70 rows. Then: a *firstweekofyear* outside 0 to 3 is a bug.
 
 ## Batch 6a findings (VBA `Information` and non-interactive `Interaction`, BETA 1010)
 
-Status (2026-10-22): two exploration rounds done (`errors/Explore.yml`, deleted before the
-commit); next, write `errors/VBA.Information.yml` and `errors/VBA.Interaction.yml` from them,
-then the pages, then the questions and bugs below. twinBASIC 64-bit agrees with 32-bit on every
-case so far.
+Status (2026-10-22): **data, sections and page edits done and committed**:
+`errors/VBA.Information.yml` and `errors/VBA.Interaction.yml`, 302 cases, all agreeing with the
+data in all four runtimes; sections on 27 pages. **Left**: the owner's answers to the questions
+below (bug grouping; large numbers in Partition and Choose), then each `bug: pending` row's
+reproducer and entry in BUGS-TO-REPORT.md, and the `RaiseEventByName` crash's entry (the
+WARNINGs on both pages are written; put the slug in an HTML comment beside each). Page edits
+made: LBound/UBound's IMPORTANT no longer names error 9; the error sentences of DeleteSetting,
+SaveSetting, CreateObject, GetObject and Switch went into the tables; Environ's "a zero-length
+string is returned" for a missing position is a `<!-- VBA: -->` comment (both VB runtimes raise
+5); Array's *RhsArray* no longer says it raises; QBColor's and RGB's parameters are stated as
+**Integer**. twinBASIC 64-bit agrees with 32-bit on every case. The registry harness names the
+application with the process id, since `run` probes the four runtimes at once and they shared
+one key (a VB6 case failed when another runtime's cleanup removed its section).
 
 - **twinBASIC raises -2147467259 (`&H80004005`, *Unspecified error*) where VB6 and 64-bit VBA
   raise 5, 9 or 13 for an argument the procedure refuses**: LBound/UBound's *dimension* out of

@@ -39,6 +39,7 @@ import {
   CENTRAL_PAGE,
   caseAtLine,
   compareMessages,
+  expectedDescription,
   dataFiles,
   findSection,
   loadDataFile,
@@ -459,10 +460,11 @@ for (const c of [...all.values()].sort((a, b) => a.id - b.id)) {
     else if (r.missing) wrong.push(`${rt} reported nothing`);
     else if (r.setup) wrong.push(`${rt}: its setup raised ${r.number}, ${r.description}`);
     else if (r.number !== mine.expect) wrong.push(`${rt} raised ${r.number}, the data says ${mine.expect}`);
-    else if (r.number !== 0 && r.description !== messages.get(r.number)?.raised) {
-      wrong.push(
-        `${rt}'s message is "${r.description}", errors/messages.yml has "${messages.get(r.number)?.raised ?? "nothing"}"`,
-      );
+    else if (r.number !== 0) {
+      const want = expectedDescription(mine.row, rt, r.number, messages);
+      if (want !== null && r.description !== want) {
+        wrong.push(`${rt}'s message is "${r.description}", the data and errors/messages.yml say "${want}"`);
+      }
     }
   }
   console.log(

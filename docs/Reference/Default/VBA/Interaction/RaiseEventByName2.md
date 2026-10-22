@@ -26,6 +26,18 @@ Returns a **Variant**. The returned value is the value left in the last `ByRef` 
 
 If *procname* doesn't match any event declared on *object*, or the supplied arity doesn't match the event declaration, a run-time error occurs.
 
+> [!WARNING] BETA 1010
+> An *object* that declares no events, such as a **Collection**, ends the program with an access violation, with no error to handle. Unsaved data is lost.
+
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [91 (`&H5B`)](tb:Errors#91), *Object variable or With block variable not set* | *object* is **Nothing** |
+
+<!-- /errors -->
+
 ### Example
 
 ```tb check_build

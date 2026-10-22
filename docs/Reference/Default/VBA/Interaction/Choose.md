@@ -24,6 +24,19 @@ If *index* is 1, **Choose** returns *choice-1*; if *index* is 2, it returns *cho
 > [!NOTE]
 > **Choose** evaluates *every* choice in the list, not only the one it returns. Watch for side effects: a [**MsgBox**](MsgBox) call inside any of the choices is invoked once per choice, not just for the selected one. To avoid this --- for example, when one of the branches would error out --- use the short-circuiting [**If**](If) function instead.
 
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *index* is **Null** |
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *index* is outside the range of a **Single** |
+
+> [!NOTE] BETA 1010
+> When *index* is outside the range of a **Single**, VB6 raises no error.
+
+<!-- /errors -->
+
 ### Example
 
 This example uses **Choose** to map a 1-based option index to a name.

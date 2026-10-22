@@ -1,0 +1,218 @@
+# The VBA Information module. Format: WIP.Errors.md.
+beta: 1010
+pages:
+  Reference/Default/VBA/Information/LBound.md:
+    rows:
+      - error: 9
+        when: "*arrayname* is a dynamic array that has not been sized with **ReDim**, or that **Erase** has released"
+        cases:
+          - { decl: Dim A() As Long, expr: LBound(A) }
+          - { decl: Dim A() As Long, setup: "ReDim A(1)\nErase A", expr: LBound(A) }
+      - error: -2147467259
+        when: "*dimension* is less than 1 or greater than the number of dimensions of *arrayname*, after rounding"
+        vb6: 9
+        bug: pending
+        cases:
+          - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, 0)' }
+          - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, -1)' }
+          - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, 2)' }
+          - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, 1.5)' }
+          - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, 0.5)' }
+          - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, Empty)' }
+          - { decl: "Dim A(1 To 2, 3 To 4) As Long", expr: 'LBound(A, 3)' }
+          - { decl: Dim V As Variant, setup: 'V = Array(1, 2)', expr: 'LBound(V, 2)' }
+      - error: -2147467259
+        when: "*dimension* is greater than 32,767"
+        vb6: 6
+        bug: pending
+        cases:
+          - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, 32768)' }
+      - error: 13
+        when: "*arrayname* is a **Variant** that holds no array, **Empty** and **Null** included"
+        cases:
+          - { decl: Dim V As Variant, setup: V = 5, expr: LBound(V) }
+          - { decl: Dim V As Variant, expr: LBound(V) }
+          - { decl: Dim V As Variant, setup: V = Null, expr: LBound(V) }
+          - { decl: Dim V As Variant, setup: V = "abc", expr: LBound(V) }
+          - { decl: Dim V As Variant, setup: Set V = Nothing, expr: LBound(V) }
+      - error: 94
+        when: "*dimension* is **Null**"
+        cases:
+          - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, Null)' }
+    quiet:
+      - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, 1)' }
+      - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, 1.4)' }
+      - { decl: Dim A(1 To 3) As Long, expr: 'LBound(A, "1")' }
+      - { decl: "Dim A(1 To 2, 3 To 4) As Long", expr: 'LBound(A, 2)' }
+      - { decl: Dim V As Variant, setup: V = Array(), expr: LBound(V) }
+  Reference/Default/VBA/Information/UBound.md:
+    rows:
+      - error: 9
+        when: "*arrayname* is a dynamic array that has not been sized with **ReDim**, or that **Erase** has released"
+        cases:
+          - { decl: Dim A() As Long, expr: UBound(A) }
+          - { decl: Dim A() As Long, setup: "ReDim A(1)\nErase A", expr: UBound(A) }
+          - { decl: Dim S() As String, expr: UBound(S) }
+      - error: -2147467259
+        when: "*dimension* is less than 1 or greater than the number of dimensions of *arrayname*, after rounding"
+        vb6: 9
+        bug: pending
+        cases:
+          - { decl: Dim A(1 To 3) As Long, expr: 'UBound(A, 0)' }
+          - { decl: Dim A(1 To 3) As Long, expr: 'UBound(A, 2)' }
+          - { decl: Dim A(1 To 3) As Long, expr: 'UBound(A, 1.5)' }
+      - error: -2147467259
+        when: "*dimension* is greater than 32,767"
+        vb6: 6
+        bug: pending
+        cases:
+          - { decl: Dim A(1 To 3) As Long, expr: 'UBound(A, 32768)' }
+      - error: 13
+        when: "*arrayname* is a **Variant** that holds no array, **Empty** and **Null** included"
+        cases:
+          - { decl: Dim V As Variant, setup: V = 5, expr: UBound(V) }
+          - { decl: Dim V As Variant, expr: UBound(V) }
+          - { decl: Dim V As Variant, setup: V = Null, expr: UBound(V) }
+      - error: 94
+        when: "*dimension* is **Null**"
+        cases:
+          - { decl: Dim A(1 To 3) As Long, expr: 'UBound(A, Null)' }
+    quiet:
+      - { decl: Dim A(1 To 3) As Long, expr: 'UBound(A, 1)' }
+      - { decl: Dim V As Variant, setup: V = Array(), expr: UBound(V) }
+  Reference/Default/VBA/Information/QBColor.md:
+    rows:
+      - error: 5
+        when: "*color* is outside 0 to 15, after rounding"
+        cases: [QBColor(-1), QBColor(16), QBColor(15.5), QBColor(-0.6)]
+      - error: 94
+        when: "*color* is **Null**"
+        cases: [QBColor(Null)]
+    quiet: [QBColor(0), QBColor(15), QBColor(15.4), QBColor(-0.5), QBColor("7"), QBColor(Empty)]
+  Reference/Default/VBA/Information/RGB.md:
+    rows:
+      - error: 5
+        when: "*red*, *green* or *blue* is negative, after rounding"
+        cases:
+          - RGB(-1, 0, 0)
+          - RGB(0, -1, 0)
+          - RGB(0, 0, -1)
+          - RGB(-0.6, 0, 0)
+      - error: 94
+        when: "*red*, *green* or *blue* is **Null**"
+        cases:
+          - RGB(Null, 0, 0)
+          - RGB(0, Null, 0)
+          - RGB(0, 0, Null)
+    quiet:
+      - RGB(255, 255, 255)
+      - RGB(256, 0, 0)
+      - RGB(0, 0, 256)
+      - RGB(32767, 0, 0)
+      - RGB(255.5, 0, 0)
+      - RGB(-0.4, 0, 0)
+      - RGB("1", 0, 0)
+      - RGB(Empty, 0, 0)
+  Reference/Default/VBA/Information/RGBA.md:
+    rows:
+      - error: 5
+        when: "*red*, *green*, *blue* or *alpha* is negative"
+        cases:
+          - { expr: 'RGBA(-1, 0, 0, 0)', only: tb }
+          - { expr: 'RGBA(0, 0, 0, -1)', only: tb }
+      - error: 94
+        when: "*red*, *green*, *blue* or *alpha* is **Null**"
+        cases:
+          - { expr: 'RGBA(Null, 0, 0, 0)', only: tb }
+          - { expr: 'RGBA(0, 0, 0, Null)', only: tb }
+    quiet:
+      - { expr: 'RGBA(255, 255, 255, 255)', only: tb }
+      - { expr: 'RGBA(256, 0, 0, 0)', only: tb }
+      - { expr: 'RGBA(0, 0, 0, 256)', only: tb }
+  Reference/Default/VBA/Information/RGB_R.md:
+    rows:
+      - error: 94
+        when: "*RGBA* is **Null**"
+        cases: [{ expr: RGB_R(Null), only: tb }]
+    quiet:
+      - { expr: RGB_R(-1), only: tb }
+      - { expr: RGB_R(&HFFFFFF), only: tb }
+  Reference/Default/VBA/Information/RGB_G.md:
+    rows:
+      - error: 94
+        when: "*RGBA* is **Null**"
+        cases: [{ expr: RGB_G(Null), only: tb }]
+    quiet: [{ expr: RGB_G(-1), only: tb }]
+  Reference/Default/VBA/Information/RGB_B.md:
+    rows:
+      - error: 94
+        when: "*RGBA* is **Null**"
+        cases: [{ expr: RGB_B(Null), only: tb }]
+    quiet: [{ expr: RGB_B(-1), only: tb }]
+  Reference/Default/VBA/Information/RGBA_A.md:
+    rows:
+      - error: 94
+        when: "*RGBA* is **Null**"
+        cases: [{ expr: RGBA_A(Null), only: tb }]
+    quiet: [{ expr: RGBA_A(-1), only: tb }]
+  Reference/Default/VBA/Information/TranslateColor.md:
+    rows:
+      - error: 5
+        when: "the high byte of *ColorValue* is not &H00, &H01, &H02 or &H80"
+        cases:
+          - { expr: TranslateColor(&H3000000), only: tb }
+          - { expr: TranslateColor(&H7F000000), only: tb }
+          - { expr: TranslateColor(&H81000000), only: tb }
+          - { expr: TranslateColor(-1), only: tb }
+      - error: 5
+        when: "*ColorValue* is a system colour (&H80000000 and up) with an index above 30 (&H1E)"
+        cases:
+          - { expr: TranslateColor(&H8000001F), only: tb }
+          - { expr: TranslateColor(&H80000020), only: tb }
+          - { expr: TranslateColor(&H80000099), only: tb }
+          - { expr: TranslateColor(&H800000FF), only: tb }
+      - error: 94
+        when: "*ColorValue* is **Null**"
+        cases: [{ expr: TranslateColor(Null), only: tb }]
+    quiet:
+      - { expr: TranslateColor(&HFFFFFF), only: tb }
+      - { expr: TranslateColor(&H80000000), only: tb }
+      - { expr: TranslateColor(&H80000012), only: tb }
+      - { expr: TranslateColor(&H8000001E), only: tb }
+      - { expr: TranslateColor(&H1000000), only: tb }
+      - { expr: TranslateColor(&H10000FF), only: tb }
+      - { expr: TranslateColor(&H1FFFFFF), only: tb }
+      - { expr: TranslateColor(&H2000000), only: tb }
+      - { expr: 'TranslateColor(&H80000012, -1)', only: tb }
+  Reference/Default/VBA/Information/Array.md:
+    rows:
+      - error: 5
+        when: "the destructuring form is given a right side that is not an array, **Null** included"
+        message: expected an array
+        cases:
+          - { decl: "Dim X As Variant, Y As Variant", run: 'Array(X, Y) = 5', only: tb }
+          - { decl: "Dim X As Variant, Y As Variant", run: 'Array(X, Y) = Null', only: tb }
+      - error: 9
+        when: "the destructuring form is given an array with fewer elements than variables, or one not yet sized"
+        cases:
+          - { decl: "Dim X As Variant, Y As Variant", run: 'Array(X, Y) = Array(1)', only: tb }
+          - { decl: "Dim X As Variant, Y As Variant, A() As Long", run: 'Array(X, Y) = A', only: tb }
+    quiet:
+      - Array()
+      - { decl: "Dim X As Variant, Y As Variant", run: 'Array(X, Y) = Array(1, 2, 3)', only: tb }
+  Reference/Default/VBA/Information/IsArrayInitialized.md:
+    quiet:
+      - { expr: IsArrayInitialized(Null), only: tb }
+      - { decl: Dim A() As Long, expr: IsArrayInitialized(A), only: tb }
+  Reference/Default/VBA/Information/IsDate.md:
+    quiet: [IsDate(Null), IsDate(Empty)]
+  Reference/Default/VBA/Information/IsNumeric.md:
+    quiet: [IsNumeric(Null), IsNumeric(Empty)]
+  Reference/Default/VBA/Information/TypeName.md:
+    quiet:
+      - TypeName(Null)
+      - { decl: Dim O As Object, expr: TypeName(O) }
+  Reference/Default/VBA/Information/VarType.md:
+    quiet:
+      - VarType(Null)
+      - { decl: Dim O As Object, expr: VarType(O) }

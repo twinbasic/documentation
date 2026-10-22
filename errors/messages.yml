@@ -98,3 +98,33 @@
 -2147348207:
   raised: Automation error
   error: Application-defined or object-defined error
+-2147467262:
+  raised: No such interface supported
+  error: Application-defined or object-defined error
+-2147352567:
+  raised: Exception occurred.
+  error: Application-defined or object-defined error
+-2147352562:
+  raised: Invalid number of parameters.
+  error: Application-defined or object-defined error
+-2147352559:
+  raised: Does not support a collection.
+  error: Application-defined or object-defined error
+-2147221021:
+  raised: Operation unavailable
+  error: Application-defined or object-defined error
+-2147221020:
+  raised: Invalid syntax
+  error: Application-defined or object-defined error
+-2147221014:
+  raised: Moniker cannot open file
+  error: Application-defined or object-defined error
+-2147221005:
+  raised: Invalid class string
+  error: Application-defined or object-defined error
+-2147221164:
+  raised: Class not registered
+  error: Application-defined or object-defined error
+-2147023174:
+  raised: The RPC server is unavailable.
+  error: Application-defined or object-defined error

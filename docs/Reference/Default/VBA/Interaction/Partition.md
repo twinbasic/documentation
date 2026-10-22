@@ -43,6 +43,27 @@ If *interval* is 1, the range collapses to *number:number*, regardless of *start
 
 Any argument may be a decimal value, but is rounded to the nearest even integer before processing. If any argument is **Null**, **Partition** returns **Null**.
 
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *start* is less than 0, *stop* is not greater than *start*, or *interval* is less than 1, after rounding<br>an argument is a string that is not a number<br>an argument is outside the range of a **LongLong** |
+
+> [!NOTE] BETA 1010
+> When *start* is less than 0, *stop* is not greater than *start*, or *interval* is less than 1, after rounding, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When an argument is a string that is not a number, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
+
+> [!NOTE] BETA 1010
+> When an argument is outside the range of a **LongLong**, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*, instead.
+
+> [!NOTE] BETA 1010
+> When an argument is outside the range of a **Long** but inside that of a **LongLong**, VB6 raises error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
+
+<!-- /errors -->
+
 ### Example
 
 This example passes a series of freight costs to **Partition** with *start* = 0, *stop* = 500, and *interval* = 50, and prints the range each one falls into. The first range is `"  0: 49"`, and so on up to 500. Note that 12.5 is rounded before the range is chosen, and that a value below *start* or above *stop* gets one of the open-ended forms.

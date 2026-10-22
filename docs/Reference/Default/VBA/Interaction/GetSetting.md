@@ -34,6 +34,19 @@ If any of the items named in the **GetSetting** arguments don't exist, **GetSett
 
 The root of these registry settings is: `Computer\HKEY_CURRENT_USER\Software\VB and VBA Program Settings`.
 
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *appname*, *section* or *key* is a zero-length string |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | an argument is **Null** |
+
+> [!NOTE] BETA 1010
+> When *appname*, *section* or *key* is a zero-length string, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+<!-- /errors -->
+
 ### Example
 
 This example first uses the [**SaveSetting**](SaveSetting) statement to make entries in the Windows registry for the application specified as *appname*, and then uses the **GetSetting** function to display one of the settings. Because the *default* argument is specified, some value is guaranteed to be returned. Note that *section* names can't be retrieved with **GetSetting**. Finally, the [**DeleteSetting**](DeleteSetting) statement removes all the application's entries.

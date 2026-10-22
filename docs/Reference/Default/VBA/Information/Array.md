@@ -23,7 +23,7 @@ Syntax:
 : *required* (destructuring form) The variables to receive successive elements of *RhsArray*. Pass `_` to skip an element.
 
 *RhsArray*
-: *required* (destructuring form) An array; non-array values raise an error.
+: *required* (destructuring form) An array.
 
 The lower bound of an array created with **Array** is determined by the **Option Base** statement at the component scope, defaulting to `0`.
 
@@ -51,6 +51,16 @@ Array(a, , b) = Array(1, 2, 3)
 
 > [!NOTE]
 > A **Variant** that is not declared as an array can still contain an array, and a **Variant** array can hold values of any type except fixed-length strings and user-defined types. Although a **Variant** containing an array is conceptually different from an array of **Variant** elements, indexing works the same way for both.
+
+<!-- errors: generated from errors/VBA.Information.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *expected an array* | the destructuring form is given a right side that is not an array, **Null** included |
+| [9 (`&H9`)](tb:Errors#9), *Subscript out of range* | the destructuring form is given an array with fewer elements than variables, or one not yet sized |
+
+<!-- /errors -->
 
 ### Example
 

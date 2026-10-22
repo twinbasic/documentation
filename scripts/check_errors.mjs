@@ -36,6 +36,7 @@ import {
   CENTRAL_SHORTCUT,
   caseAtLine,
   compareMessages,
+  expectedDescription,
   dataFiles,
   findSection,
   loadDataFile,
@@ -196,6 +197,29 @@ const noteOf = (row) =>
     { rows: [{ when: "*x* is 2", cases: [{}], ...row }], quiet: [] },
     { name: "probe.yml", beta: 1010, messages, level: "##", permalink: "/A" },
   ).find((l) => l.startsWith("> When"));
+const messageRows = renderSection(
+  {
+    rows: [
+      { error: 5, when: "*x* is 2", cases: [{}] },
+      { error: 5, when: "*y* is 3", message: "expected an array", cases: [{}] },
+    ],
+    quiet: [],
+  },
+  { name: "probe.yml", beta: 1010, messages, level: "##", permalink: "/A" },
+).filter((l) => l.startsWith("| ["));
+check(
+  "a row's message: is its text in the table, and rows of one number with two texts stay apart",
+  messageRows.length === 2 && messageRows[1].includes("*expected an array* | *y* is 3 |"),
+  messageRows.join("\n"),
+);
+check(
+  "the description run checks: a row's message: in twinBASIC, none for an HRESULT in VB6 or VBA",
+  expectedDescription({ error: 5, message: "expected an array" }, "win64", 5, messages) === "expected an array" &&
+    expectedDescription({ error: 5, message: "expected an array" }, "vb6", 5, messages) ===
+      "Invalid procedure call or argument" &&
+    expectedDescription(null, "vba64", -2147467259, messages) === null &&
+    expectedDescription(null, "tb", -2147467259, messages) === "Unspecified error",
+);
 check(
   "64-bit VBA's own difference has a sentence of its own, compared with twinBASIC 64-bit",
   noteOf({ error: 5, vba64: 9, bug: "pending" }) ===

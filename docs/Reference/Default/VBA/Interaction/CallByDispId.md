@@ -26,6 +26,18 @@ The return value is a **Variant** containing whatever the call returned. For met
 
 **CallByDispId** skips the name lookup that [**CallByName**](CallByName) performs, which is useful in two situations: when the dispatch ID is already known and the cost of a `GetIDsOfNames` round trip should be avoided, and when the target member is not exposed by name (e.g. a default member with `DISPID_VALUE = 0`, an explicit-DISPID extension, or a hidden/restricted member).
 
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [438 (`&H1B6`)](tb:Errors#438), *Object doesn't support this property or method* | *object* has no member with the dispatch ID *dispid* |
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *calltype* is not one of the **VbCallType** values, or *object* is **Nothing** |
+| [-2147352562 (`&H8002000E`)](tb:Errors#-2147352562), *Invalid number of parameters.* | the number of *args* is not the number the member takes |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *calltype* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example invokes the default member of an object --- `DISPID_VALUE`, defined as 0 --- by dispatch ID.
