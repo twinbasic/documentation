@@ -26,11 +26,21 @@ To specify a date, such as December 31, 1991, the range of numbers for each **Da
 
 The following example uses numeric expressions instead of absolute date numbers. The **DateSerial** function returns a date that is the day before the first day (`1 - 1`), two months before August (`8 - 2`), 10 years before 1990 (`1990 - 10`) --- in other words, May 31, 1980.
 
-When any argument exceeds the accepted range, it increments to the next larger unit as appropriate. For example, 35 days is evaluated as one month and some number of days, depending on where in the year it is applied. If any single argument is outside the range -32,768 to 32,767, an error occurs. If the date specified by the three arguments falls outside the acceptable range of dates, an error occurs.
+When any argument exceeds the accepted range, it increments to the next larger unit as appropriate. For example, 35 days is evaluated as one month and some number of days, depending on where in the year it is applied. If any single argument is outside the range -32,768 to 32,767, an error occurs.
 
 Two-digit years for the *year* argument are interpreted based on user-defined machine settings. The default settings are that values between 0 and 29 are interpreted as the years 2000--2029, and values between 30 and 99 are interpreted as the years 1930--1999. For all other *year* arguments, use a four-digit year.
 
 If the [**Calendar**](Calendar) property setting is Gregorian, the supplied value is assumed to be Gregorian. If the setting is Hijri, the supplied value is assumed to be Hijri, and two-digit *year* values between 0 and 99 are interpreted as the years 1400--1499.
+
+<!-- errors: generated from errors/VBA.DateTime.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | the date is before January 1, 100 or after December 31, 9999 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *year*, *month* or *day* is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

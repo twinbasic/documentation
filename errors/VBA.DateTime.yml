@@ -1,0 +1,475 @@
+# The VBA DateTime module. Format: WIP.Errors.md.
+#
+# Setting Date, Date$, Time or Time$ to a value they accept changes the system clock.
+# The probe runs without the privilege to do that, so such a case raises 70; the cases
+# set the clock to what it already holds (Date = Date), so a run with the privilege
+# changes nothing.
+beta: 1010
+pages:
+  Reference/Default/VBA/DateTime/Calendar.md:
+    rows:
+      - error: -2147467259
+        when: "*calendartype* is **vbCalGreg** or **vbCalHijri**"
+        vb6: 0
+        bug: calendar-set-unspecified-error
+        cases:
+          - { run: Calendar = vbCalGreg }
+          - { run: "Calendar = vbCalHijri\nCalendar = vbCalGreg" }
+          - { run: "Calendar = \"1\"\nCalendar = vbCalGreg" }
+      - error: -2147467259
+        when: "*calendartype* is any other value"
+        vb6: 5
+        bug: calendar-set-unspecified-error
+        cases:
+          - { run: Calendar = 2 }
+          - { run: Calendar = -1 }
+          - { run: Calendar = 255 }
+      - error: 94
+        when: "*calendartype* is **Null**"
+        cases:
+          - { run: Calendar = Null }
+    quiet:
+      - Calendar
+  Reference/Default/VBA/DateTime/Date.md:
+    rows:
+      - error: 13
+        when: "**Date** is given a string that is not a date, or a number outside the range of dates"
+        cases:
+          - { run: 'Date = "abc"' }
+          - { run: 'Date = "February 30, 2020"' }
+          - { run: Date = 3000000 }
+          - { run: Date = -700000 }
+      - error: -2147467259
+        when: "**Date$** is given a value that is not a string of the form *mm-dd-yyyy*"
+        vb6: 5
+        bug: date-time-set-errors
+        cases:
+          - { run: 'Date$ = "abc"' }
+          - { run: 'Date$ = ""' }
+          - { run: 'Date$ = "2000-01-01"' }
+          - { run: 'Date$ = "January 1, 2000"' }
+          - { run: Date$ = 36526 }
+          - { run: Date$ = Empty }
+      - error: 70
+        when: "the process does not have the privilege to change the system date"
+        cases:
+          - { run: Date = Date }
+          - { run: Date$ = Date$ }
+      - error: 94
+        when: "**Date$** is given **Null**"
+        cases:
+          - { run: Date$ = Null }
+      - error: 94
+        when: "**Date** is given **Null**"
+        vb6: 13
+        bug: date-time-set-errors
+        cases:
+          - { run: Date = Null }
+    quiet:
+      - Date
+      - Date$
+  Reference/Default/VBA/DateTime/Time.md:
+    rows:
+      - error: 13
+        when: "**Time** is given a string that is not a time, or a number outside the range of dates"
+        cases:
+          - { run: 'Time = "abc"' }
+          - { run: 'Time = "25:00"' }
+          - { run: Time = 3000000 }
+      - error: -2147467259
+        when: "**Time$** is given a value that is not a string of the form *hh:mm:ss*, or one outside 00:00:00 to 23:59:59"
+        vb6: 5
+        bug: date-time-set-errors
+        cases:
+          - { run: 'Time$ = "abc"' }
+          - { run: 'Time$ = ""' }
+          - { run: 'Time$ = "25:00"' }
+          - { run: 'Time$ = "24:00:00"' }
+          - { run: 'Time$ = "10:60"' }
+          - { run: 'Time$ = "10:00 PM"' }
+          - { run: Time$ = 0.5 }
+          - { run: Time$ = Empty }
+      - error: 70
+        when: "the process does not have the privilege to change the system time"
+        cases:
+          - { run: Time = Time }
+          - { run: Time$ = Time$ }
+      - error: 94
+        when: "**Time$** is given **Null**"
+        cases:
+          - { run: Time$ = Null }
+      - error: 94
+        when: "**Time** is given **Null**"
+        vb6: 13
+        bug: date-time-set-errors
+        cases:
+          - { run: Time = Null }
+    quiet:
+      - Time
+      - Time$
+  Reference/Default/VBA/DateTime/DateAdd.md:
+    rows:
+      - error: 5
+        when: "*interval* is not one of the settings listed"
+        cases:
+          - 'DateAdd("x", 1, #1/1/2000#)'
+          - 'DateAdd("", 1, #1/1/2000#)'
+          - 'DateAdd("dd", 1, #1/1/2000#)'
+          - 'DateAdd(" d", 1, #1/1/2000#)'
+          - 'DateAdd(1, 1, #1/1/2000#)'
+      - error: 5
+        when: 'the result would be after December 31, 9999, or before January 1, 100 for an *interval* other than "yyyy", "q" or "m"'
+        cases:
+          - 'DateAdd("d", 1, #12/31/9999#)'
+          - 'DateAdd("s", 1, #12/31/9999 11:59:59 PM#)'
+          - 'DateAdd("n", 1, #12/31/9999 11:59:00 PM#)'
+          - 'DateAdd("h", 1, #12/31/9999 11:00:00 PM#)'
+          - 'DateAdd("y", 1, #12/31/9999#)'
+          - 'DateAdd("w", 1, #12/31/9999#)'
+          - 'DateAdd("ww", 1, #12/30/9999#)'
+          - 'DateAdd("m", 1, #12/1/9999#)'
+          - 'DateAdd("q", 1, #11/1/9999#)'
+          - 'DateAdd("yyyy", 1, #1/1/9999#)'
+          - 'DateAdd("d", 2147483647, #1/1/2000#)'
+          - 'DateAdd("d", -1, #1/1/100#)'
+          - 'DateAdd("h", -1, #1/1/100#)'
+          - 'DateAdd("ww", -1, #1/5/100#)'
+          - 'DateAdd("yyyy", -10000, #1/1/2000#)'
+      - error: 0
+        when: 'the result with an *interval* of "yyyy", "q" or "m" would be before January 1, 100'
+        vb6: 5
+        bug: dateadd-year-below-100
+        cases:
+          - 'DateAdd("yyyy", -1, #1/1/100#)'
+          - 'DateAdd("yyyy", -1901, #1/1/2000#)'
+          - 'DateAdd("q", -1, #1/1/100#)'
+          - 'DateAdd("m", -1, #1/1/100#)'
+      - error: 6
+        when: "*date* is a number outside the range of dates"
+        vb6: 13
+        bug: dateadd-date-out-of-range-overflow
+        cases:
+          - 'DateAdd("d", 1, 3000000)'
+          - 'DateAdd("d", 0, 2958466)'
+          - 'DateAdd("d", 0, -657435)'
+      - error: 13
+        when: "*date* is a string that is not a date"
+        cases:
+          - 'DateAdd("d", 1, "abc")'
+      - error: 94
+        when: "*interval* or *number* is **Null**"
+        cases:
+          - 'DateAdd(Null, 1, #1/1/2000#)'
+          - 'DateAdd("d", Null, #1/1/2000#)'
+          - 'DateAdd("d", Null, Null)'
+    quiet:
+      - 'DateAdd("D", 1, #1/1/2000#)'
+      - 'DateAdd("d", 1, Null)'
+      - 'DateAdd("x", 1, Null)'
+      - 'DateAdd("d", 1, Empty)'
+      - 'DateAdd("d", 1, "1/1/2000")'
+      - 'DateAdd("d", 1.5, #1/1/2000#)'
+      - 'DateAdd("s", 2147483647, #1/1/2000#)'
+      - 'DateAdd("yyyy", -1900, #1/1/2000#)'
+      - 'DateAdd("d", 0, -657434)'
+      - 'DateAdd("d", 1, 2958464)'
+  Reference/Default/VBA/DateTime/DateDiff.md:
+    rows:
+      - error: 5
+        when: "*interval* is not one of the settings listed"
+        cases:
+          - 'DateDiff("x", #1/1/2000#, #1/1/2001#)'
+          - 'DateDiff("", #1/1/2000#, #1/1/2001#)'
+      - error: 0
+        when: '*interval* is "ww" and *firstdayofweek* is outside 0 to 7'
+        vb6: 5
+        bug: pending
+        cases:
+          - 'DateDiff("ww", #1/1/2000#, #1/1/2001#, 8)'
+          - 'DateDiff("ww", #1/1/2000#, #1/1/2001#, -1)'
+          - 'DateDiff("ww", #1/1/2000#, #1/1/2001#, 255)'
+      - error: 6
+        when: "*date1* or *date2* is a number outside the range of dates"
+        vb6: 13
+        bug: dateadd-date-out-of-range-overflow
+        cases:
+          - 'DateDiff("d", #1/1/2000#, 3000000)'
+          - 'DateDiff("d", -700000, #1/1/2001#)'
+          - 'DateDiff("d", 2958466, #1/1/2001#)'
+      - error: 13
+        when: "*date1* or *date2* is a string that is not a date"
+        cases:
+          - 'DateDiff("d", "abc", #1/1/2001#)'
+      - error: 94
+        when: "*interval*, *firstdayofweek* or *firstweekofyear* is **Null**"
+        cases:
+          - 'DateDiff(Null, #1/1/2000#, #1/1/2001#)'
+          - 'DateDiff("d", #1/1/2000#, #1/1/2001#, Null)'
+          - 'DateDiff("d", #1/1/2000#, #1/1/2001#, 1, Null)'
+    quiet:
+      - 'DateDiff("d", Null, #1/1/2001#)'
+      - 'DateDiff("d", #1/1/2000#, Null)'
+      - 'DateDiff("x", Null, #1/1/2001#)'
+      - 'DateDiff("ww", Null, #1/1/2001#, 8)'
+      - 'DateDiff("d", #1/1/2000#, #1/1/2001#, 8)'
+      - 'DateDiff("w", #1/1/2000#, #1/1/2001#, 8)'
+      - 'DateDiff("ww", #1/1/2000#, #1/1/2001#, 0)'
+      - 'DateDiff("ww", #1/1/2000#, #1/1/2001#, 7)'
+      - 'DateDiff("ww", #1/1/2000#, #1/1/2001#, 1, 4)'
+      - 'DateDiff("ww", #1/1/2000#, #1/1/2001#, 1, -1)'
+      - 'DateDiff("s", #1/1/100#, #12/31/9999#)'
+      - 'DateDiff("s", #12/31/9999#, #1/1/100#)'
+  Reference/Default/VBA/DateTime/DatePart.md:
+    rows:
+      - error: 5
+        when: "*interval* is not one of the settings listed and *date* is not **Null**"
+        cases:
+          - 'DatePart("x", #1/1/2000#)'
+          - 'DatePart("", #1/1/2000#)'
+      - error: 5
+        when: "*interval* is not one of the settings listed and *date* is **Null**"
+        vb6: 0
+        bug: datepart-null-checks-interval
+        cases:
+          - 'DatePart("x", Null)'
+      - error: 0
+        when: '*interval* is "w" or "ww" and *firstdayofweek* is outside 0 to 7, or *interval* is "ww" and *firstweekofyear* is outside 0 to 3'
+        vb6: 5
+        bug: pending
+        cases:
+          - 'DatePart("w", #1/1/2000#, 8)'
+          - 'DatePart("w", #1/1/2000#, -1)'
+          - 'DatePart("ww", #1/1/2000#, 8)'
+          - 'DatePart("ww", #1/1/2000#, -1)'
+          - 'DatePart("ww", #1/1/2000#, 1, 4)'
+          - 'DatePart("ww", #1/1/2000#, 1, -1)'
+      - error: 13
+        when: "*date* is a string that is not a date, or a number outside the range of dates"
+        cases:
+          - 'DatePart("d", "abc")'
+          - 'DatePart("d", 3000000)'
+          - 'DatePart("d", -700000)'
+      - error: 94
+        when: "*interval*, *firstdayofweek* or *firstweekofyear* is **Null**"
+        cases:
+          - 'DatePart(Null, #1/1/2000#)'
+          - 'DatePart("d", #1/1/2000#, Null)'
+          - 'DatePart("d", #1/1/2000#, 1, Null)'
+    quiet:
+      - 'DatePart("d", Null)'
+      - 'DatePart("ww", Null, 8)'
+      - 'DatePart("d", #1/1/2000#, 8)'
+      - 'DatePart("yyyy", #1/1/2000#, 8)'
+      - 'DatePart("ww", #1/1/2000#, 0)'
+      - 'DatePart("w", #1/1/2000#, 7)'
+      - 'DatePart("d", #1/1/2000#, 1, 4)'
+      - 'DatePart("w", #1/1/2000#, 1, 4)'
+      - 'DatePart("ww", #1/1/2000#, 1, 0)'
+      - 'DatePart("ww", #1/1/2000#, 1, 3)'
+      - 'DatePart("ww", #12/31/9999#, 1, 2)'
+      - 'DatePart("ww", #12/31/9999#, 1, 3)'
+      - 'DatePart("ww", #1/1/100#, 1, 2)'
+      - 'DatePart("ww", #1/8/100#, 1, 3)'
+  Reference/Default/VBA/DateTime/DateSerial.md:
+    rows:
+      - error: 5
+        when: "the date is before January 1, 100 or after December 31, 9999"
+        cases:
+          - DateSerial(10000, 1, 1)
+          - DateSerial(9999, 12, 32)
+          - DateSerial(9999, 13, 1)
+          - DateSerial(9999, 1, 366)
+          - DateSerial(32767, 1, 1)
+          - DateSerial(100, 1, 0)
+          - DateSerial(-1901, 1, 1)
+          - DateSerial(-32768, 1, 1)
+      - error: 94
+        when: "*year*, *month* or *day* is **Null**"
+        cases:
+          - DateSerial(Null, 1, 1)
+          - DateSerial(2000, Null, 1)
+          - DateSerial(2000, 1, Null)
+    quiet:
+      - DateSerial(9999, 12, 31)
+      - DateSerial(9999, 1, 365)
+      - DateSerial(100, 1, 1)
+      - DateSerial(100, 0, 1)
+      - DateSerial(0, 1, 1)
+      - DateSerial(99, 1, 1)
+      - DateSerial(-1900, 1, 1)
+      - DateSerial(2000, 32767, 32767)
+      - DateSerial(2000, -32768, -32768)
+      - DateSerial(101, -13, 1)
+      - DateSerial(2000.5, 1, 1)
+  Reference/Default/VBA/DateTime/DateValue.md:
+    rows:
+      - error: 13
+        when: "*date* is not a date: a string that is not one or holds an invalid time, a date after December 31, 9999, a number with a whole part, **Empty**, **True**, **False** or an **Error** value"
+        cases:
+          - DateValue("abc")
+          - DateValue("")
+          - DateValue("2/30/2000")
+          - 'DateValue("1/1/2000 89:98")'
+          - DateValue("1/1/10000")
+          - DateValue("36526")
+          - DateValue(36526)
+          - DateValue(0)
+          - DateValue(36526.5)
+          - DateValue(3000000)
+          - DateValue(Empty)
+          - DateValue(True)
+          - DateValue(False)
+          - DateValue(CVErr(5))
+      - error: 94
+        when: "*date* is **Null**"
+        cases:
+          - DateValue(Null)
+    quiet:
+      - DateValue("12/31/9999")
+      - DateValue("1/1/100")
+      - DateValue("1/1/99")
+      - 'DateValue("1/1/2000 10:00")'
+      - DateValue("10:00")
+      - 'DateValue(#1/1/2000#)'
+      - DateValue(CDate(36526.5))
+      - DateValue(0.5)
+  Reference/Default/VBA/DateTime/TimeSerial.md:
+    rows:
+      - error: 94
+        when: "*hour*, *minute* or *second* is **Null**"
+        cases:
+          - TimeSerial(Null, 0, 0)
+          - TimeSerial(0, Null, 0)
+          - TimeSerial(0, 0, Null)
+    quiet:
+      - TimeSerial(32767, 32767, 32767)
+      - TimeSerial(-32768, -32768, -32768)
+      - TimeSerial(24, 0, 0)
+      - TimeSerial(-1, 0, 0)
+  Reference/Default/VBA/DateTime/TimeValue.md:
+    rows:
+      - error: 13
+        when: "*time* is not a time: a string that is not one, a time outside 0:00:00 to 23:59:59, a string with an invalid date, a number outside the range of dates, **Empty**, **True** or an **Error** value"
+        cases:
+          - TimeValue("abc")
+          - TimeValue("")
+          - TimeValue("25:00")
+          - TimeValue("24:00")
+          - TimeValue("10:60")
+          - 'TimeValue("13/45/2000 10:00")'
+          - TimeValue(3000000)
+          - TimeValue(-700000)
+          - TimeValue(Empty)
+          - TimeValue(True)
+          - TimeValue(CVErr(5))
+      - error: 94
+        when: "*time* is **Null**"
+        cases:
+          - TimeValue(Null)
+    quiet:
+      - TimeValue("23:59:59")
+      - TimeValue("2:24PM")
+      - 'TimeValue("1/1/2000 10:00")'
+      - TimeValue(0.5)
+      - TimeValue(1.5)
+  Reference/Default/VBA/DateTime/Day.md:
+    rows:
+      - error: 13
+        when: "*date* is a string that is not a date, a number outside the range of dates, or an **Error** value"
+        cases:
+          - Day("abc")
+          - Day("")
+          - Day("1/1/10000")
+          - Day(2958466)
+          - Day(-657435)
+          - Day(1E+300)
+          - Day(CVErr(5))
+    quiet:
+      - Day(Null)
+      - Day(Empty)
+      - Day(True)
+      - Day("10:00")
+      - Day(2958465)
+      - Day(-657434)
+  Reference/Default/VBA/DateTime/Month.md:
+    rows:
+      - error: 13
+        when: "*date* is a string that is not a date, a number outside the range of dates, or an **Error** value"
+        cases:
+          - Month("abc")
+          - Month(3000000)
+          - Month(-700000)
+          - Month(CVErr(5))
+    quiet:
+      - Month(Null)
+  Reference/Default/VBA/DateTime/Year.md:
+    rows:
+      - error: 13
+        when: "*date* is a string that is not a date, a number outside the range of dates, or an **Error** value"
+        cases:
+          - Year("abc")
+          - Year(3000000)
+          - Year(-700000)
+          - Year(CVErr(5))
+    quiet:
+      - Year(Null)
+  Reference/Default/VBA/DateTime/Weekday.md:
+    rows:
+      - error: 5
+        when: "*firstdayofweek* is outside 0 to 7"
+        cases:
+          - 'Weekday(#1/1/2000#, 8)'
+          - 'Weekday(#1/1/2000#, -1)'
+          - Weekday(Empty, 8)
+      - error: 13
+        when: "*date* is a string that is not a date, a number outside the range of dates, or an **Error** value"
+        cases:
+          - Weekday("abc")
+          - Weekday(3000000)
+          - Weekday(-700000)
+          - Weekday(CVErr(5))
+      - error: 94
+        when: "*firstdayofweek* is **Null**"
+        cases:
+          - 'Weekday(#1/1/2000#, Null)'
+          - Weekday(Null, Null)
+    quiet:
+      - Weekday(Null)
+      - Weekday(Null, 8)
+      - 'Weekday(#1/1/2000#, 0)'
+      - 'Weekday(#1/1/2000#, 7)'
+  Reference/Default/VBA/DateTime/Hour.md:
+    rows:
+      - error: 13
+        when: "*time* is a string that is not a time, a number outside the range of dates, or an **Error** value"
+        cases:
+          - Hour("abc")
+          - Hour("25:00")
+          - Hour(3000000)
+          - Hour(-700000)
+          - Hour(1E+300)
+          - Hour(CVErr(5))
+    quiet:
+      - Hour(Null)
+  Reference/Default/VBA/DateTime/Minute.md:
+    rows:
+      - error: 13
+        when: "*time* is a string that is not a time, a number outside the range of dates, or an **Error** value"
+        cases:
+          - Minute("abc")
+          - Minute(3000000)
+          - Minute(-700000)
+          - Minute(CVErr(5))
+    quiet:
+      - Minute(Null)
+  Reference/Default/VBA/DateTime/Second.md:
+    rows:
+      - error: 13
+        when: "*time* is a string that is not a time, a number outside the range of dates, or an **Error** value"
+        cases:
+          - Second("abc")
+          - Second(3000000)
+          - Second(-700000)
+          - Second(CVErr(5))
+    quiet:
+      - Second(Null)

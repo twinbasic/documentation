@@ -30,7 +30,20 @@ The following example uses expressions instead of absolute time numbers. The **T
 TimeSerial(12 - 6, -15, 0)
 ```
 
-When any argument exceeds the normal range for that argument, it increments to the next larger unit as appropriate. For example, 75 minutes is evaluated as one hour and 15 minutes. If any single argument is outside the range -32,768 to 32,767, an error occurs. If the time specified by the three arguments causes the date to fall outside the acceptable range of dates, an error occurs.
+When any argument exceeds the normal range for that argument, it increments to the next larger unit as appropriate. For example, 75 minutes is evaluated as one hour and 15 minutes. If any single argument is outside the range -32,768 to 32,767, an error occurs.
+
+<!-- VBA: VBA-Docs says this; no three Integer arguments reach a date outside the range, in twinBASIC or VB6.
+If the time specified by the three arguments causes the date to fall outside the acceptable range of dates, an error occurs.
+-->
+
+<!-- errors: generated from errors/VBA.DateTime.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *hour*, *minute* or *second* is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

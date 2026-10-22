@@ -74,6 +74,24 @@ When comparing December 31 to January 1 of the immediately succeeding year, **Da
 
 If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date must be Gregorian. If the calendar is Hijri, the supplied date must be Hijri.
 
+<!-- errors: generated from errors/VBA.DateTime.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *interval* is not one of the settings listed |
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *date1* or *date2* is a number outside the range of dates |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *date1* or *date2* is a string that is not a date |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *interval*, *firstdayofweek* or *firstweekofyear* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *interval* is "ww" and *firstdayofweek* is outside 0 to 7, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+
+> [!NOTE] BETA 1010
+> When *date1* or *date2* is a number outside the range of dates, VB6 raises error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **DateDiff** function to display the number of days between a given date and today.

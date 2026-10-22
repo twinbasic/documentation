@@ -211,6 +211,10 @@ check(
   "the level follows the page's Example heading",
   pageLevel(doc) === "###" && pageLevel("# T\n## See Also\n") === "##",
 );
+check(
+  "a page with an Example under each property takes its See Also's level",
+  pageLevel("# T\n## P\n#### Example\n## Q\n#### Example\n### See Also\n") === "###",
+);
 
 const cases = probeCases([sample], "tb");
 const vb6Cases = probeCases([sample], "vb6");

@@ -46,6 +46,17 @@ The **Weekday** function can return any of these values:
 
 If the [**Calendar**](Calendar) property setting is Gregorian, the returned integer represents the Gregorian day of the week for the date argument. If the calendar is Hijri, the returned integer represents the Hijri day of the week for the date argument.
 
+<!-- errors: generated from errors/VBA.DateTime.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *firstdayofweek* is outside 0 to 7 |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *date* is a string that is not a date, a number outside the range of dates, or an **Error** value |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *firstdayofweek* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Weekday** function to obtain the day of the week from a specified date.

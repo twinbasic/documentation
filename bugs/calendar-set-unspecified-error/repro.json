@@ -1,0 +1,14 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Calendar_Read_IsGregorian$",
+      "^PASS RegressionTests.Calendar_SetNull_Raises94$",
+      "^FAIL RegressionTests.Calendar_SetGregorian_NoError: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Calendar_SetHijri_NoError: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Calendar_SetHijri_ReadsBackHijri: .*Actual: 0 ",
+      "^FAIL RegressionTests.Calendar_SetTwo_Raises5: .*Actual: -2147467259 "
+    ]
+  }
+}

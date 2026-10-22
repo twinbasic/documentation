@@ -19,6 +19,15 @@ Syntax: **Month** ( *date* )
 > [!NOTE]
 > If the [**Calendar**](Calendar) property setting is Gregorian, the returned integer represents the Gregorian month. If the calendar is Hijri, the returned integer represents the Hijri month. For Hijri dates, the argument can be any numeric expression that represents a date and/or time from 1/1/100 (Gregorian Aug 2, 718) through 4/3/9666 (Gregorian Dec 31, 9999).
 
+<!-- errors: generated from errors/VBA.DateTime.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *date* is a string that is not a date, a number outside the range of dates, or an **Error** value |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Month** function to obtain the month from a specified date.

@@ -1,0 +1,49 @@
+' Regression tests: DateAdd and DateDiff raise error 13 for a date that is a number
+' outside the range of dates, as DatePart and Day do, and as VB6 does (the VB6 project
+' beside this one prints it). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: DatePart and Day raise 13 for the same number.
+    [TestCase]
+    Public Sub DatePart_NumberOutOfRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("d", 3000000)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Day_NumberOutOfRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = Day(3000000)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    ' The defect: DateAdd and DateDiff raise 6, Overflow.
+    [TestCase]
+    Public Sub DateAdd_NumberAboveRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("d", 0, 2958466)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_NumberBelowRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("d", 0, -657435)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateDiff_NumberOutOfRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateDiff("d", #1/1/2000#, 3000000)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+End Module

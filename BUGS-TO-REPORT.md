@@ -6630,3 +6630,481 @@ Severity: low. A program that converts Japanese, Chinese or Korean text with an 
 What does not reproduce it: another conversion (`vbUpperCase`) with an East Asian *LCID*; and `vbWide` with no *LCID* or with 1033, which VB6 refuses as well. Not checked on a system whose locale is East Asian.
 
 <!-- Reproducer: bugs/strconv-east-asian-lcid/ (mode test: `tbrun --tests`; expect lists the three PASS and six FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify` on a system whose locale is 1033, and the same six failures with `run --arch win64`; the controls assume such a system. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the system locale, then the converted characters for 1041, 2052 and 1042 and 5 for no LCID and 1033. Stated in a NOTE on docs/Reference/Default/VBA/Strings/StrConv.md (its Common Errors section), generated from errors/VBA.Strings.yml (row `bug: strconv-east-asian-lcid`); when fixed, the row's bug and vb6 fields go and the NOTE with them. -->
+
+---
+
+## Setting `Calendar` raises *Unspecified error* (-2147467259) for every value, where VB6 accepts `vbCalGreg` and `vbCalHijri` and raises error 5 for any other
+
+**Describe the bug**
+`Calendar = vbCalGreg` and `Calendar = vbCalHijri` raise -2147467259 (`&H80004005`), *Unspecified error*, and `Calendar` always reads as `vbCalGreg`; any other value raises the same error. The compiler warns TB0009, *[Calendar] has not yet been implemented*, at every use. VB6 accepts both constants, reads back the one set, and raises 5, *Invalid procedure call or argument*, for any other value. Observed in the compiler's test mode, 32-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `calendar-set-unspecified-error.twinproj` (attached as `calendar-set-unspecified-error.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the other four fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`calendar-set-unspecified-error-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: Calendar reads as Gregorian, and Null raises 94.
+    [TestCase]
+    Public Sub Calendar_Read_IsGregorian()
+        Assert.Strict.AreEqual CLng(vbCalGreg), CLng(Calendar)
+    End Sub
+
+    [TestCase]
+    Public Sub Calendar_SetNull_Raises94()
+        On Error Resume Next
+        Calendar = Null
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    ' The defect: every assignment raises -2147467259, Unspecified error.
+    [TestCase]
+    Public Sub Calendar_SetGregorian_NoError()
+        On Error Resume Next
+        Calendar = vbCalGreg
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Calendar_SetHijri_NoError()
+        Dim N As Long
+        On Error Resume Next
+        Calendar = vbCalHijri
+        N = Err.Number
+        Calendar = vbCalGreg
+        Assert.Strict.AreEqual 0&, N
+    End Sub
+
+    [TestCase]
+    Public Sub Calendar_SetHijri_ReadsBackHijri()
+        Dim C As Long
+        On Error Resume Next
+        Calendar = vbCalHijri
+        C = Calendar
+        Calendar = vbCalGreg
+        Assert.Strict.AreEqual CLng(vbCalHijri), C
+    End Sub
+
+    [TestCase]
+    Public Sub Calendar_SetTwo_Raises5()
+        On Error Resume Next
+        Calendar = 2
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+`vbCalGreg` and `vbCalHijri` accepted, and the Hijri calendar used by `Date$`, `DateSerial`, `DateValue`, `DateAdd`, `DateDiff`, `DatePart`, `Year`, `Month`, `Day` and `Weekday` while it is set, as in VB6. Error 5 for any other value.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. TB0009 says the property is not implemented yet; this entry records what a program meets at run time, and that even `Calendar = vbCalGreg`, which changes nothing, stops a program that has no handler. A program written for VB6 that sets the Gregorian calendar to be sure of it fails at that line.
+
+<!-- Reproducer: bugs/calendar-set-unspecified-error/ (mode test: `tbrun --tests`; expect lists the two PASS and four FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints no error for vbCalGreg and vbCalHijri, 1 read back after vbCalHijri, 5 for 2 and 94 for Null. Stated in NOTEs on docs/Reference/Default/VBA/DateTime/Calendar.md (its Common Errors section, generated from errors/VBA.DateTime.yml, rows `bug: calendar-set-unspecified-error`, and a NOTE by hand above it on TB0009), and in a NOTE on the module's index.md; when fixed, the first row goes, the second becomes error 5 without vb6 and bug, and the NOTEs go. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->
+
+---
+
+## Assigning to `Date`, `Date$`, `Time` and `Time$` raises other errors than VB6, and `Date$` and `Time$` refuse forms VB6 accepts
+
+**Describe the bug**
+Three differences from VB6 when the system date or time is set:
+
+- `Date = Null` and `Time = Null` raise 94, *Invalid use of Null*; VB6 raises 13, *Type mismatch*.
+- `Date$` and `Time$` given a string they cannot read raise -2147467259 (`&H80004005`), *Unspecified error*; VB6 raises 5, *Invalid procedure call or argument*.
+- `Date$` accepts only *mm-dd-yyyy* and `Time$` only *hh:mm:ss*. VB6 also accepts *m/d/yyyy*, a two-digit year and *hh:mm*, which twinBASIC refuses with -2147467259.
+
+Observed in the compiler's test mode, 32-bit, and in a built exe. The test cases set the clock to what it already holds, so a value that is accepted raises 70, *Permission denied*, in a process without the privilege to set the clock, and changes nothing in one with it.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `date-time-set-errors.twinproj` (attached as `date-time-set-errors.zip`).
+2. Run its test cases, the module below. On BETA 1010 the four controls pass and the other seven fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`date-time-set-errors-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' 0 or 70: the value was accepted, and only setting the clock could fail.
+    Private Function Accepted(ByVal N As Long) As Boolean
+        Return N = 0 Or N = 70
+    End Function
+
+    ' Controls: a string that is not a date raises 13, Date$ = Null raises 94, and a
+    ' value of the documented form is accepted.
+    [TestCase]
+    Public Sub Date_SetNotADate_Raises13()
+        On Error Resume Next
+        Date = "abc"
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateString_SetNull_Raises94()
+        On Error Resume Next
+        Date$ = Null
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateString_SetMmDdYyyy_Accepted()
+        On Error Resume Next
+        Date$ = Format$(Date, "mm-dd-yyyy")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+    [TestCase]
+    Public Sub TimeString_SetHhMmSs_Accepted()
+        On Error Resume Next
+        Time$ = Format$(Time, "hh:mm:ss")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+    ' The defect: Null raises 94 where VB6 raises 13.
+    [TestCase]
+    Public Sub Date_SetNull_Raises13()
+        On Error Resume Next
+        Date = Null
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Time_SetNull_Raises13()
+        On Error Resume Next
+        Time = Null
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    ' The defect: a string Date$ or Time$ cannot read raises -2147467259, Unspecified
+    ' error, where VB6 raises 5.
+    [TestCase]
+    Public Sub DateString_SetNotADate_Raises5()
+        On Error Resume Next
+        Date$ = "abc"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub TimeString_SetNotATime_Raises5()
+        On Error Resume Next
+        Time$ = "abc"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' The defect: forms VB6 accepts raise -2147467259.
+    [TestCase]
+    Public Sub DateString_SetSlashes_Accepted()
+        On Error Resume Next
+        Date$ = Format$(Date, "m/d/yyyy")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+    [TestCase]
+    Public Sub DateString_SetTwoDigitYear_Accepted()
+        On Error Resume Next
+        Date$ = Format$(Date, "mm-dd-yy")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+    [TestCase]
+    Public Sub TimeString_SetHhMm_Accepted()
+        On Error Resume Next
+        Time$ = Format$(Time, "hh:mm")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 13 for `Null` assigned to `Date` or `Time`, error 5 for a string `Date$` or `Time$` cannot read, and the forms VB6 reads accepted, as VB6 does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A handler that tests for VB6's numbers misses these, and a program that sets the clock from a string such as `"10:30"` fails.
+
+What does not reproduce it: `Date$ = Null` and `Time$ = Null`, which raise 94 in both; `Date` and `Time` given a string that is not a date or time, which raise 13 in both.
+
+<!-- Reproducer: bugs/date-time-set-errors/ (mode test: `tbrun --tests`; expect lists the four PASS and seven FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`, in a process without the privilege to set the clock. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 13 for Null, 5 for "abc", and 70 for every form it accepts. Stated in NOTEs on docs/Reference/Default/VBA/DateTime/Date.md and Time.md (their Common Errors sections, generated from errors/VBA.DateTime.yml, rows `bug: date-time-set-errors`, and a NOTE by hand under each Let of Date$ and Time$ on the forms); when fixed, the rows become 13 and 5 without vb6 and bug, and the NOTEs go. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->
+
+---
+
+## `DateAdd` with the "yyyy", "q" or "m" interval returns a date in the 1900s or 2000s when the result would be before year 100, where VB6 raises error 5
+
+**Describe the bug**
+`DateAdd("yyyy", -1, #1/1/100#)` returns January 1, 1999, with no error: a result before January 1, 100 seems to be taken as a two-digit year. The same happens for the "q" and "m" intervals: `DateAdd("m", -1, #1/1/100#)` returns December 1, 1999. The other intervals raise 5, *Invalid procedure call or argument*, as VB6 does for all of them. Observed in the compiler's test mode, 32-bit and 64-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `dateadd-year-below-100.twinproj` (attached as `dateadd-year-below-100.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the other three fail with `Actual: 0`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`dateadd-year-below-100-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: a day before January 1, 100 raises 5, and a year that reaches year 100
+    ' exactly gives that date.
+    [TestCase]
+    Public Sub DateAdd_DayBefore100_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("d", -1, #1/1/100#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_YearsToYear100_GivesYear100()
+        Dim V As Variant = DateAdd("yyyy", -1900, #1/1/2000#)
+        Assert.Strict.AreEqual #1/1/100#, CDate(V)
+    End Sub
+
+    ' The defect: no error, and a date in the 1900s or 2000s: DateAdd("yyyy", -1, #1/1/100#)
+    ' returns January 1, 1999.
+    [TestCase]
+    Public Sub DateAdd_YearBefore100_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("yyyy", -1, #1/1/100#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_QuarterBefore100_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("q", -1, #1/1/100#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_MonthBefore100_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("m", -1, #1/1/100#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 5 whenever the result would be before January 1, 100, whatever the interval, as VB6 does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium. The result is a valid date about 1,900 years away from the right one, returned without an error: `DateAdd("yyyy", -1901, #1/1/2000#)` gives January 1, 1999, and `DateAdd("yyyy", -2000, #1/1/2000#)` January 1, 2000.
+
+What does not reproduce it: a result far enough below year 100 that it is not a year from 0 to 99 (`DateAdd("yyyy", -10000, #1/1/2000#)` raises 5); the intervals "d", "y", "w", "ww", "h", "n" and "s"; and the upper end, where a result after December 31, 9999 raises 5 for every interval.
+
+<!-- Reproducer: bugs/dateadd-year-below-100/ (mode test: `tbrun --tests`; expect lists the two PASS and three FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`, and the same three failures with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 5 for each interval, and 1/1/100 for the control. Stated in a NOTE on docs/Reference/Default/VBA/DateTime/DateAdd.md (its Common Errors section, generated from errors/VBA.DateTime.yml, row `bug: dateadd-year-below-100`) and in a WARNING by hand above it; when fixed, the row's cases move to the 5 row, whose When loses its exception, and the NOTE and WARNING go. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->
+
+---
+
+## `DateAdd` and `DateDiff` raise error 6 for a date that is a number outside the range of dates, where VB6 raises error 13
+
+**Describe the bug**
+`DateAdd("d", 0, 2958466)` and `DateDiff("d", #1/1/2000#, 3000000)` raise 6, *Overflow*. VB6 raises 13, *Type mismatch*, and so do `DatePart`, `Day` and the other functions that take a date, in twinBASIC and VB6 alike. Observed in the compiler's test mode, 32-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `dateadd-date-out-of-range-overflow.twinproj` (attached as `dateadd-date-out-of-range-overflow.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the other three fail with `Actual: 6`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`dateadd-date-out-of-range-overflow-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: DatePart and Day raise 13 for the same number.
+    [TestCase]
+    Public Sub DatePart_NumberOutOfRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("d", 3000000)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Day_NumberOutOfRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = Day(3000000)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    ' The defect: DateAdd and DateDiff raise 6, Overflow.
+    [TestCase]
+    Public Sub DateAdd_NumberAboveRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("d", 0, 2958466)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_NumberBelowRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("d", 0, -657435)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateDiff_NumberOutOfRange_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateDiff("d", #1/1/2000#, 3000000)
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 13, as VB6 raises, and as `DatePart` and `Day` raise.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. A handler that tests for 13 misses it.
+
+What does not reproduce it: the last and first days of the range (2958465 and -657434), which both accept; a string that is not a date, which raises 13 in both.
+
+<!-- Reproducer: bugs/dateadd-date-out-of-range-overflow/ (mode test: `tbrun --tests`; expect lists the two PASS and three FAIL lines, each FAIL with what BETA 1010 gives); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 13 for all five. Stated in NOTEs on docs/Reference/Default/VBA/DateTime/DateAdd.md and DateDiff.md (their Common Errors sections, generated from errors/VBA.DateTime.yml, rows `bug: dateadd-date-out-of-range-overflow`); when fixed, each row's cases move to the 13 row and the NOTEs go. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->
+
+---
+
+## `DatePart` raises error 5 for an invalid interval when the date is `Null`, where VB6 returns `Null`
+
+**Describe the bug**
+`DatePart("x", Null)` raises 5, *Invalid procedure call or argument*. VB6 returns `Null` without checking the interval, and twinBASIC's own `DateAdd("x", 1, Null)` and `DateDiff("x", Null, #1/1/2001#)` return `Null` as VB6's do. Observed in the compiler's test mode, 32-bit and 64-bit, and in a built exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `datepart-null-checks-interval.twinproj` (attached as `datepart-null-checks-interval.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and `DatePart_BadIntervalWithNull_NoError` fails with `Actual: 5`.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's result, which the attached VB6 project (`datepart-null-checks-interval-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: DatePart raises 5 for the interval with a date, and DateAdd and DateDiff
+    ' return Null for a Null date with the same interval.
+    [TestCase]
+    Public Sub DatePart_BadIntervalWithDate_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("x", #1/1/2000#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_BadIntervalWithNull_ReturnsNull()
+        Dim V As Variant = DateAdd("x", 1, Null)
+        Assert.Strict.IsTrue IsNull(V)
+    End Sub
+
+    [TestCase]
+    Public Sub DateDiff_BadIntervalWithNull_ReturnsNull()
+        Dim V As Variant = DateDiff("x", Null, #1/1/2001#)
+        Assert.Strict.IsTrue IsNull(V)
+    End Sub
+
+    ' The defect: DatePart raises 5.
+    [TestCase]
+    Public Sub DatePart_BadIntervalWithNull_NoError()
+        Dim V As Variant
+        On Error Resume Next
+        V = DatePart("x", Null)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+`Null`, with no error, as VB6 returns.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. Only an invalid interval with a `Null` date is affected; twinBASIC's behaviour is arguably stricter, but it differs from VB6 and from twinBASIC's own `DateAdd` and `DateDiff`.
+
+What does not reproduce it: a `Null` interval, which raises 94 in both.
+
+<!-- Reproducer: bugs/datepart-null-checks-interval/ (mode test: `tbrun --tests`; expect lists the three PASS and one FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`, and the same failure with `run --arch win64`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints Null with no error for DatePart, DateAdd and DateDiff, and 5 for the control. Stated in a NOTE on docs/Reference/Default/VBA/DateTime/DatePart.md (its Common Errors section, generated from errors/VBA.DateTime.yml, row `bug: datepart-null-checks-interval`); when fixed, the row goes, its case becomes quiet, and the NOTE goes. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->
+
+---
+
+## `DatePart("ww", ...)` of a date in year 100 before its first full week never returns with `vbFirstFullWeek`, and returns -98980 with `vbFirstFourDays`
+
+**Describe the bug**
+January 1, 100 is a Friday, so with Sunday as the first day of the week its week belongs to year 99. `DatePart("ww", #1/1/100#, vbSunday, vbFirstFullWeek)` never returns: the program stops responding. `DatePart("ww", #1/1/100#, vbSunday, vbFirstFourDays)` returns -98980. VB6 returns 52 for both. Observed in an IDE run and in a built exe, 32-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `datepart-week-year-100.twinproj` (attached as `datepart-week-year-100.zip`).
+2. Run it. On BETA 1010 it prints the four lines below and stops responding at the last call.
+
+```
+ww of 1/1/100, vbFirstFourDays: -98980
+ww of 1/3/100, vbFirstFullWeek: 1
+ww of 1/1/2000, vbFirstFullWeek: 52
+calling DatePart("ww", #1/1/100#, vbSunday, vbFirstFullWeek)
+```
+
+The module:
+```vb
+Module Startup
+
+    Public Sub Main()
+        ' Controls: the same date with vbFirstFourDays, and the first date of the first
+        ' full week with vbFirstFullWeek, return.
+        Debug.Print "ww of 1/1/100, vbFirstFourDays: " & DatePart("ww", #1/1/100#, vbSunday, vbFirstFourDays)
+        Debug.Print "ww of 1/3/100, vbFirstFullWeek: " & DatePart("ww", #1/3/100#, vbSunday, vbFirstFullWeek)
+        Debug.Print "ww of 1/1/2000, vbFirstFullWeek: " & DatePart("ww", #1/1/2000#, vbSunday, vbFirstFullWeek)
+        ' The defect: January 1, 100 is a Friday, so its week belongs to year 99.
+        Debug.Print "calling DatePart(""ww"", #1/1/100#, vbSunday, vbFirstFullWeek)"
+        Debug.Print "returned " & DatePart("ww", #1/1/100#, vbSunday, vbFirstFullWeek)
+    End Sub
+
+End Module
+```
+
+The attached VB6 project (`datepart-week-year-100-vb6.zip`) prints 52, 1, 52 and 52.
+
+**Expected behavior**
+52 for both, the week of year 99 that the date belongs to, as VB6 returns. The first line's value is wrong too.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium. A hang loses unsaved data, and only dates in the first days of year 100 reach it.
+
+What does not reproduce it: January 1, 2000, whose week also belongs to the year before (52); January 3, 100, the first day of the first full week (1); `Format(#1/1/100#, "ww", vbSunday, vbFirstFullWeek)`, and `DateDiff("ww", ...)` with `vbFirstFullWeek` from January 1, 100, which return; and `DatePart("yyyy", #1/1/100#, vbSunday, vbFirstFullWeek)`. The hang also happens with `vbMonday` and `vbUseSystem` as the first day, and for January 2, 100.
+
+<!-- Reproducer: bugs/datepart-week-year-100/ (mode run, expect exit 5: tbrun reports that the probe never returned, after the three control lines and the "calling" line); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 52, 1, 52 and 52 with no error. Stated in a WARNING by hand on docs/Reference/Default/VBA/DateTime/DatePart.md; it is not in errors/VBA.DateTime.yml, because a case that never returns stops the probe. When fixed, the WARNING goes. Found 2026-10-22 in batch 5 of WIP.Errors.md. -->

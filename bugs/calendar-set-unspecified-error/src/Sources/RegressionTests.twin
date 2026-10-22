@@ -1,0 +1,56 @@
+' Regression tests: Calendar can be set to vbCalGreg or vbCalHijri, and raises error 5
+' for any other value, as VB6 does (the VB6 project beside this one prints it).
+' Each case that sets the Hijri calendar sets the Gregorian one again before it asserts.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: Calendar reads as Gregorian, and Null raises 94.
+    [TestCase]
+    Public Sub Calendar_Read_IsGregorian()
+        Assert.Strict.AreEqual CLng(vbCalGreg), CLng(Calendar)
+    End Sub
+
+    [TestCase]
+    Public Sub Calendar_SetNull_Raises94()
+        On Error Resume Next
+        Calendar = Null
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    ' The defect: every assignment raises -2147467259, Unspecified error.
+    [TestCase]
+    Public Sub Calendar_SetGregorian_NoError()
+        On Error Resume Next
+        Calendar = vbCalGreg
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Calendar_SetHijri_NoError()
+        Dim N As Long
+        On Error Resume Next
+        Calendar = vbCalHijri
+        N = Err.Number
+        Calendar = vbCalGreg
+        Assert.Strict.AreEqual 0&, N
+    End Sub
+
+    [TestCase]
+    Public Sub Calendar_SetHijri_ReadsBackHijri()
+        Dim C As Long
+        On Error Resume Next
+        Calendar = vbCalHijri
+        C = Calendar
+        Calendar = vbCalGreg
+        Assert.Strict.AreEqual CLng(vbCalHijri), C
+    End Sub
+
+    [TestCase]
+    Public Sub Calendar_SetTwo_Raises5()
+        On Error Resume Next
+        Calendar = 2
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module

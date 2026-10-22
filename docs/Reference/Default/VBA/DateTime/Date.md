@@ -48,7 +48,7 @@ Syntax: **Date** **=** *date*
 
 > [!IMPORTANT]
 >
-> In some versions of Microsoft Windows, including Windows 10 and 11, setting the system date is a privileged operation that requires the process to have relevant permissions. Without those permissions, assignment to **Date** results in a Permission Denied runtime error.
+> In some versions of Microsoft Windows, including Windows 10 and 11, setting the system date is a privileged operation that requires the process to have relevant permissions.
 
 #### Example
 
@@ -93,7 +93,10 @@ Syntax: **Date$** **=** *date*
 
 > [!IMPORTANT]
 >
-> In some versions of Microsoft Windows, including Windows 10 and 11, setting the system date is a privileged operation that requires the process to have relevant permissions. Without those permissions, assignment to **Date**$ results in a Permission Denied runtime error.
+> In some versions of Microsoft Windows, including Windows 10 and 11, setting the system date is a privileged operation that requires the process to have relevant permissions.
+
+> [!NOTE] BETA 1010
+> **Date$** accepts only a string of the form *mm-dd-yyyy*. VB6 also accepts other forms, such as *m/d/yyyy* and *mm-dd-yy*, which twinBASIC refuses with error -2147467259 (`&H80004005`).
 
 #### Example
 
@@ -104,6 +107,24 @@ Dim MyDate$
 MyDate = "02-12-1985"        ' Assign a date to a variable.
 Date$ = MyDate               ' Change the system date. 
 ```
+
+<!-- errors: generated from errors/VBA.DateTime.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | **Date** is given a string that is not a date, or a number outside the range of dates |
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | **Date$** is given a value that is not a string of the form *mm-dd-yyyy* |
+| [70 (`&H46`)](tb:Errors#70), *Permission denied* | the process does not have the privilege to change the system date |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **Date$** is given **Null**<br>**Date** is given **Null** |
+
+> [!NOTE] BETA 1010
+> When **Date$** is given a value that is not a string of the form *mm-dd-yyyy*, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When **Date** is given **Null**, VB6 raises error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
+
+<!-- /errors -->
 
 ### See Also
 

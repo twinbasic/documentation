@@ -1,0 +1,19 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Date_SetNotADate_Raises13$",
+      "^PASS RegressionTests.DateString_SetNull_Raises94$",
+      "^PASS RegressionTests.DateString_SetMmDdYyyy_Accepted$",
+      "^PASS RegressionTests.TimeString_SetHhMmSs_Accepted$",
+      "^FAIL RegressionTests.Date_SetNull_Raises13: .*Actual: 94 ",
+      "^FAIL RegressionTests.Time_SetNull_Raises13: .*Actual: 94 ",
+      "^FAIL RegressionTests.DateString_SetNotADate_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.TimeString_SetNotATime_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.DateString_SetSlashes_Accepted: .*Actual: False[.]",
+      "^FAIL RegressionTests.DateString_SetTwoDigitYear_Accepted: .*Actual: False[.]",
+      "^FAIL RegressionTests.TimeString_SetHhMm_Accepted: .*Actual: False[.]"
+    ]
+  }
+}

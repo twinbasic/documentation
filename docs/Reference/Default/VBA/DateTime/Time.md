@@ -45,11 +45,11 @@ Syntax: **Time** **=** *time*
 
 : *required* Any numeric expression, string expression, or any combination that can represent a time.
 
-If *time* is a string, **Time** attempts to convert it to a time by using the time separators specified by the system. If it cannot be converted to a valid time, an error occurs.
+If *time* is a string, **Time** attempts to convert it to a time by using the time separators specified by the system.
 
 > [!NOTE]
 >
-> In some versions of Microsoft Windows, including Windows 10 and 11, setting the system time is a privileged operation that requires the process to have relevant permissions. Without those permissions, assignment to **Time** results in a Permission Denied runtime error.
+> In some versions of Microsoft Windows, including Windows 10 and 11, setting the system time is a privileged operation that requires the process to have relevant permissions.
 
 #### Example
 
@@ -93,7 +93,10 @@ Syntax: **Time$** **=** *time*
 
 > [!NOTE]
 >
-> In some versions of Microsoft Windows, including Windows 10 and 11, setting the system time is a privileged operation that requires the process to have relevant permissions. Without those permissions, assignment to **Time$** results in a Permission Denied runtime error.
+> In some versions of Microsoft Windows, including Windows 10 and 11, setting the system time is a privileged operation that requires the process to have relevant permissions.
+
+> [!NOTE] BETA 1010
+> **Time$** accepts only a string of the form *hh:mm:ss*. VB6 also accepts other forms, such as *hh:mm*, which twinBASIC refuses with error -2147467259 (`&H80004005`).
 
 #### Example
 
@@ -104,6 +107,24 @@ Dim MyTime$
 MyTime = "4:35:17 PM"    ' Assign a time.
 Time$ = MyTime           ' Set system time.
 ```
+
+<!-- errors: generated from errors/VBA.DateTime.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | **Time** is given a string that is not a time, or a number outside the range of dates |
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | **Time$** is given a value that is not a string of the form *hh:mm:ss*, or one outside 00:00:00 to 23:59:59 |
+| [70 (`&H46`)](tb:Errors#70), *Permission denied* | the process does not have the privilege to change the system time |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **Time$** is given **Null**<br>**Time** is given **Null** |
+
+> [!NOTE] BETA 1010
+> When **Time$** is given a value that is not a string of the form *hh:mm:ss*, or one outside 00:00:00 to 23:59:59, VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When **Time** is given **Null**, VB6 raises error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
+
+<!-- /errors -->
 
 ### See Also
 

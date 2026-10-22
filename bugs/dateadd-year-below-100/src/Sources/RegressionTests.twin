@@ -1,0 +1,49 @@
+' Regression tests: DateAdd raises error 5 when the result would be before January 1, 100,
+' for the "yyyy", "q" and "m" intervals as for the others, as VB6 does (the VB6 project
+' beside this one prints it). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: a day before January 1, 100 raises 5, and a year that reaches year 100
+    ' exactly gives that date.
+    [TestCase]
+    Public Sub DateAdd_DayBefore100_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("d", -1, #1/1/100#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_YearsToYear100_GivesYear100()
+        Dim V As Variant = DateAdd("yyyy", -1900, #1/1/2000#)
+        Assert.Strict.AreEqual #1/1/100#, CDate(V)
+    End Sub
+
+    ' The defect: no error, and a date in the 1900s or 2000s: DateAdd("yyyy", -1, #1/1/100#)
+    ' returns January 1, 1999.
+    [TestCase]
+    Public Sub DateAdd_YearBefore100_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("yyyy", -1, #1/1/100#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_QuarterBefore100_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("q", -1, #1/1/100#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateAdd_MonthBefore100_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = DateAdd("m", -1, #1/1/100#)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module

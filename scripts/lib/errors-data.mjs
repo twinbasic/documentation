@@ -396,13 +396,18 @@ export function findSection(text) {
   return { section: found, problems };
 }
 
-/** The heading level the page uses for Example and See Also: "##" or "###"; "##" when it has neither. */
+/**
+ * The heading level the page uses for Example and See Also: "##" or "###"; "##" when it
+ * has neither. The last such heading decides, so a page whose properties each have an
+ * Example a level down (Date, Time) takes its See Also's level.
+ */
 export function pageLevel(text) {
+  let level = "##";
   for (const { text: t, fenced } of scan(text.split("\n"))) {
     const m = !fenced && ANCHOR.exec(t.replace(/\r$/, ""));
-    if (m) return m[1];
+    if (m) level = m[1];
   }
-  return "##";
+  return level;
 }
 
 /** An error number in decimal and in VB hexadecimal, as a 32-bit Long: -2147467259 (`&H80004005`). */

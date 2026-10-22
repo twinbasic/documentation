@@ -1,0 +1,97 @@
+' Regression tests: assigning to Date, Date$, Time and Time$ raises the errors VB6 raises
+' (the VB6 project beside this one prints them). Every case sets the clock to what it
+' already holds, or to a value that cannot be read, so a run with the privilege to set
+' the clock changes nothing. Without the privilege, a value that is accepted raises 70,
+' Permission denied; with it, none. tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' 0 or 70: the value was accepted, and only setting the clock could fail.
+    Private Function Accepted(ByVal N As Long) As Boolean
+        Return N = 0 Or N = 70
+    End Function
+
+    ' Controls: a string that is not a date raises 13, Date$ = Null raises 94, and a
+    ' value of the documented form is accepted.
+    [TestCase]
+    Public Sub Date_SetNotADate_Raises13()
+        On Error Resume Next
+        Date = "abc"
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateString_SetNull_Raises94()
+        On Error Resume Next
+        Date$ = Null
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub DateString_SetMmDdYyyy_Accepted()
+        On Error Resume Next
+        Date$ = Format$(Date, "mm-dd-yyyy")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+    [TestCase]
+    Public Sub TimeString_SetHhMmSs_Accepted()
+        On Error Resume Next
+        Time$ = Format$(Time, "hh:mm:ss")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+    ' The defect: Null raises 94 where VB6 raises 13.
+    [TestCase]
+    Public Sub Date_SetNull_Raises13()
+        On Error Resume Next
+        Date = Null
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Time_SetNull_Raises13()
+        On Error Resume Next
+        Time = Null
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    ' The defect: a string Date$ or Time$ cannot read raises -2147467259, Unspecified
+    ' error, where VB6 raises 5.
+    [TestCase]
+    Public Sub DateString_SetNotADate_Raises5()
+        On Error Resume Next
+        Date$ = "abc"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub TimeString_SetNotATime_Raises5()
+        On Error Resume Next
+        Time$ = "abc"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' The defect: forms VB6 accepts raise -2147467259.
+    [TestCase]
+    Public Sub DateString_SetSlashes_Accepted()
+        On Error Resume Next
+        Date$ = Format$(Date, "m/d/yyyy")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+    [TestCase]
+    Public Sub DateString_SetTwoDigitYear_Accepted()
+        On Error Resume Next
+        Date$ = Format$(Date, "mm-dd-yy")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+    [TestCase]
+    Public Sub TimeString_SetHhMm_Accepted()
+        On Error Resume Next
+        Time$ = Format$(Time, "hh:mm")
+        Assert.Strict.IsTrue Accepted(Err.Number)
+    End Sub
+
+End Module
