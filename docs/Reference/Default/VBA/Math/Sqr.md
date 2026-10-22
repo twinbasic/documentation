@@ -14,6 +14,16 @@ Syntax: **Sqr(** *number* **)**
 *number*
 : *required* A **Double** or any valid numeric expression greater than or equal to zero.
 
+<!-- errors: generated from errors/VBA.Math.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *number* is negative |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *number* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **Sqr** function to calculate the square root of a number.

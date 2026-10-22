@@ -30,6 +30,15 @@ With constant arguments, the call is evaluated when the code is compiled, so it 
 > [!NOTE]
 > **ShiftUnsignedRight** is a twinBASIC extension. VBA and VB6 have no function of this name: a call to it is the compile error *Sub or Function not defined*.
 
+<!-- errors: generated from errors/VBA.Math.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *shiftamount* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 ```tb check_run

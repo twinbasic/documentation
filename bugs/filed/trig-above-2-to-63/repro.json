@@ -1,0 +1,16 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Cos_2To62_InRange$",
+      "^PASS RegressionTests.Sin_2To62_InRange$",
+      "^PASS RegressionTests.Tan_2To62_NoError$",
+      "^FAIL RegressionTests.Cos_2To63_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.Cos_1E300_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.Sin_Minus2To63_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.Tan_2To63_Raises5: .*Actual: -2147348207 "
+    ]
+  },
+  "issue": 2539
+}

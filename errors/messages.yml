@@ -95,3 +95,6 @@
 -2147467259:
   raised: Unspecified error
   error: Application-defined or object-defined error
+-2147348207:
+  raised: Automation error
+  error: Application-defined or object-defined error

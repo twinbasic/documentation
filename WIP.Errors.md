@@ -7,7 +7,7 @@ exactly that.
 
 Like WIP.md, this file is not rendered through tbdocs.
 
-## Where things stand (2026-10-21)
+## Where things stand (2026-10-22)
 
 **Batches 0, 1 and 2 are done, reviewed by the owner, and committed on `staging`.** The
 tooling, the central page and every page of the VBA `Strings` module are in place: 339 cases
@@ -20,18 +20,24 @@ nothing of their own; the index documents nothing). No row is `bug: pending`, an
 is open: the owner settled the last one (the width of a negative **Double**'s `Hex`, an
 extension) on 2026-10-21.
 
-Every difference from VB6 found so far is queued in BUGS-TO-REPORT.md with a reproducer under
-`bugs/`, for the owner to file: `redim-inverted-bounds-error`, `database-compare-no-error`,
-`instr-invalid-lcid-empty-string`, `string-null-character`, `strconv-east-asian-lcid`, and from
-batch 3 `val-suffix-overflow-no-error`, `error-function-above-65535`,
+Every difference from VB6 found so far has a reproducer. Filed upstream, under `bugs/filed/`
+(2026-10-22): `redim-inverted-bounds-error`, `string-null-character`, and from batch 3
+`val-suffix-overflow-no-error`, `error-function-above-65535`,
 `cdate-string-decimal-out-of-range` and `hex-double-above-2-to-62` (a twinBASIC-only defect).
-Batch 3 also cites two entries queued before it, `date-out-of-range-no-error` and
-`clnglng-2-to-63-no-overflow`, whose HTML comments now name the Conversion pages too.
+Still queued in BUGS-TO-REPORT.md, under `bugs/`: `database-compare-no-error`,
+`instr-invalid-lcid-empty-string` and `strconv-east-asian-lcid`. Batch 3 also cites two
+entries queued before it, `date-out-of-range-no-error` and `clnglng-2-to-63-no-overflow`,
+whose HTML comments now name the Conversion pages too.
 
-**Next: batch 4, VBA `Math`** (or any batch from 4 on: they are independent). Follow *How a
-batch runs* below, and read *Batch 2 findings* and *Batch 3 findings* for what to probe. Math
-is the first batch measured in win64 too: its file says `win64: true`. Batch 3 is commit
-`4195b56e`, with this file's update after it.
+**Batch 4, VBA `Math`, is done and committed on `staging`** (not pushed; 2026-10-22): 132
+cases in `errors/VBA.Math.yml`, all agreeing with the data in twinBASIC 32-bit, twinBASIC
+64-bit and VB6 on BETA 1010, and a section on 15 of the module's 17 pages (ByteSwap raises
+nothing; the index documents nothing). The owner ruled each difference a bug, and the three
+are filed: `abs-minimum-widens-type` (twinbasic#2541), `trig-above-2-to-63` (Cos, Sin and Tan
+in one report, #2539) and `round-null-negative-digits` (#2540). No row is `bug: pending` and no question is open.
+
+**Next: batch 5, VBA `DateTime`** (or any batch from 5 on: they are independent). Follow
+*How a batch runs* below, and read the findings of batches 2 to 4 for what to probe.
 
 ## Owner's decisions
 
@@ -369,6 +375,31 @@ Both runtimes agree unless said.
   `Integer` or `Long` agrees. The Hex and Oct pages state it in their extension NOTE, and the
   tables give each type's width. Nothing to queue; not an error, so not in the data.
 
+## Batch 4 findings (VBA `Math`, BETA 1010)
+
+Both runtimes agree unless said; win64 agrees with win32 on every case.
+
+- **Null raises 94** in Atn, Cos, Sin, Tan, Exp, Log, Sqr, Sgn, Rnd and Randomize, and as
+  Round's *numdecimalplaces* or the Shift functions' *shiftamount*. Abs and Round return
+  **Null** for a **Null** first argument.
+- **Abs** keeps its argument's type, so the smallest `Currency` raises 6 in both. For the
+  smallest typed `Integer` or `Long` VB6 raises 6 and twinBASIC returns a `Long` or a
+  `Double` (`abs-minimum-widens-type`; the smallest `LongLong` gives a `Double` too). A
+  `Variant` holding either widens in both.
+- **Trigonometry past 2^63**: VB6 raises 5 for Cos, Sin and Tan from 9.223372E+18 in magnitude
+  (found by bisection). twinBASIC returns a value up to 2^63; from 2^63 Cos and Sin return
+  the argument itself, and Tan raises -2147348207 (`&H80021111`), *Automation error*, whose
+  `Error$` is generic (`trig-above-2-to-63`; WARNINGs on Cos and Sin). The number is in
+  `messages.yml`.
+- **Limits**: Exp raises 6 above 709.782712893384; Log raises 5 for 0 or less (**Empty** and
+  -0 included); Sqr 5 for a negative number (-0 passes). Rnd's 6 above the `Single` range is
+  the conversion of its parameter, not listed.
+- **Round**: 5 when *numdecimalplaces* rounds below 0 (-0.4 passes), and above 22 only for a
+  `Single`, `Double`, `Date` or string *expression*; `Integer`, `Long`, `Currency`,
+  `Decimal`, `Boolean` and **Empty** take any `Long`. VB6 raises 5 for `Round(Null, -1)`,
+  twinBASIC returns **Null** (`round-null-negative-digits`); `Round(Null, 23)` is **Null** in
+  both.
+
 ## Batches
 
 Each batch is one session. They are independent after batch 0, so any order works, and
@@ -380,7 +411,7 @@ each can be run when there is budget. Status is kept here.
 | 1 | The central Run-time errors page | 1 | done; reviewed 2026-10-20; list of pages per number and `tb:Errors` shortcut 2026-10-21 |
 | 2 | **Pilot: VBA `Strings`** --- settled the section's style with the owner | 30 | done: 28 sections, 339 cases; reviewed 2026-10-21 |
 | 3 | VBA `Conversion` | 28 | done: 23 sections, 299 cases; owner's questions answered 2026-10-21 |
-| 4 | VBA `Math` (also win64) | 17 | not started |
+| 4 | VBA `Math` (also win64) | 17 | done: 15 sections, 132 cases; 2026-10-22 |
 | 5 | VBA `DateTime` | 20 | not started |
 | 6 | VBA `Information` and `Interaction` | 54 | not started |
 | 7 | VBA `FileSystem` | 23 | not started |

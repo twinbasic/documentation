@@ -1,0 +1,68 @@
+' Regression tests: Cos, Sin and Tan of a number of 2^63 or more in magnitude raise
+' error 5, as VB6 does (the VB6 project beside this one prints it), rather than
+' returning the argument (Cos, Sin) or raising an automation error (Tan).
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: below 2^62 each returns a value in its range.
+    [TestCase]
+    Public Sub Cos_2To62_InRange()
+        Dim X As Double = 2 ^ 62
+        Assert.Strict.IsTrue Abs(Cos(X)) <= 1
+    End Sub
+
+    [TestCase]
+    Public Sub Sin_2To62_InRange()
+        Dim X As Double = 2 ^ 62
+        Assert.Strict.IsTrue Abs(Sin(X)) <= 1
+    End Sub
+
+    [TestCase]
+    Public Sub Tan_2To62_NoError()
+        Dim X As Double = 2 ^ 62
+        Dim R As Double
+        On Error Resume Next
+        R = Tan(X)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' The defect: Cos and Sin return the argument itself, with no error.
+    [TestCase]
+    Public Sub Cos_2To63_Raises5()
+        Dim X As Double = 2 ^ 63
+        Dim R As Double
+        On Error Resume Next
+        R = Cos(X)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Cos_1E300_Raises5()
+        Dim X As Double = 1E+300
+        Dim R As Double
+        On Error Resume Next
+        R = Cos(X)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Sin_Minus2To63_Raises5()
+        Dim X As Double = -(2 ^ 63)
+        Dim R As Double
+        On Error Resume Next
+        R = Sin(X)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' The defect: Tan raises -2147348207 (&H80021111), "Automation error".
+    [TestCase]
+    Public Sub Tan_2To63_Raises5()
+        Dim X As Double = 2 ^ 63
+        Dim R As Double
+        On Error Resume Next
+        R = Tan(X)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module

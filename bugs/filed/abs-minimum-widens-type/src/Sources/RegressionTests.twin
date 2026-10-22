@@ -1,0 +1,61 @@
+' Regression tests: Abs of the smallest Integer or Long raises error 6, as Abs of the
+' smallest Currency does, because the result keeps the argument's type and the type
+' cannot hold it. Expected results are VB6's (the VB6 project beside this one prints
+' them). tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: a value one above the smallest keeps its type; the smallest Currency
+    ' raises 6; a Variant holding the smallest Integer gives a Long (in VB6 too).
+    [TestCase]
+    Public Sub Abs_IntegerAboveSmallest_KeepsInteger()
+        Dim I As Integer = -32767
+        Dim V As Variant = Abs(I)
+        Assert.Strict.AreEqual "Integer", TypeName(V)
+    End Sub
+
+    [TestCase]
+    Public Sub Abs_SmallestCurrency_Raises6()
+        Dim C As Currency = -922337203685477.5807@ - 0.0001@
+        Dim V As Variant
+        On Error Resume Next
+        V = Abs(C)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Abs_VariantSmallestInteger_GivesLong()
+        Dim V As Variant = CInt(-32768)
+        V = Abs(V)
+        Assert.Strict.AreEqual "Long", TypeName(V)
+    End Sub
+
+    ' The defect: the result is widened to a Long or a Double, and no error is raised.
+    [TestCase]
+    Public Sub Abs_SmallestInteger_Raises6()
+        Dim I As Integer = -32768
+        Dim V As Variant
+        On Error Resume Next
+        V = Abs(I)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Abs_SmallestLong_Raises6()
+        Dim L As Long = -2147483647 - 1
+        Dim V As Variant
+        On Error Resume Next
+        V = Abs(L)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Abs_SmallestLongLong_Raises6()
+        Dim L As LongLong = -9223372036854775807^ - 1
+        Dim V As Variant
+        On Error Resume Next
+        V = Abs(L)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+End Module
