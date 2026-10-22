@@ -60,8 +60,11 @@ of the re-check is left.
 
 **In progress: batch 6a**, VBA `Information` and the non-interactive procedures of
 `Interaction` (the owner split batch 6, 2026-10-22; 6b, the interactive ones, comes after).
-Follow *How a batch runs* below, and read the findings of batches 2 to 5 and of the re-check
-for what to probe. Its findings go under *Batch 6a findings* as they come.
+Data, sections and page edits are committed (`71c9f42d`; `test.bat` passes, the build's link
+check is clean): 302 cases, all agreeing in all four runtimes. **Waiting on the owner** for the
+two questions under *Batch 6a findings* (how to group the bugs; Partition's and Choose's large
+numbers). After the answers: each `bug: pending` row's reproducer and BUGS-TO-REPORT.md entry,
+the `RaiseEventByName` crash's entry, then 6b.
 
 ## Owner's decisions
 
