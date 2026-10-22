@@ -11,5 +11,6 @@
       "^FAIL RegressionTests.String_NullCharacter_ReturnsNull: [(]runtime error 94: ",
       "^FAIL RegressionTests.String_ZeroNullCharacter_ReturnsNull: [(]runtime error 94: "
     ]
-  }
+  },
+  "issue": 2543
 }

@@ -16,5 +16,6 @@
       "^PASS NegativeZeroTextTests.CStrOfPositiveZero_Is0$",
       "^PASS NegativeZeroTextTests.CStrOfNegativeNumber_IsUnchanged$"
     ]
-  }
+  },
+  "issue": 2547
 }

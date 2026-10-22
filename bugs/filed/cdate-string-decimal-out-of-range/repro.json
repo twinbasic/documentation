@@ -12,5 +12,6 @@
       "^FAIL RegressionTests.CDate_DecimalPastLargest_Raises13: .*Actual: 6 ",
       "^FAIL RegressionTests.CDate_DecimalBeforeSmallest_Raises13: .*Actual: 6 "
     ]
-  }
+  },
+  "issue": 2537
 }

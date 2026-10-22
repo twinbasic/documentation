@@ -11,5 +11,6 @@
       "^FAIL RegressionTests.Val_LongPastLargest_Raises6: .*Actual: 0 ",
       "^FAIL RegressionTests.Val_CurrencyPastLargest_Raises6: .*Actual: 0 "
     ]
-  }
+  },
+  "issue": 2542
 }

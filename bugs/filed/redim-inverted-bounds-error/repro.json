@@ -11,5 +11,6 @@
       "^FAIL RegressionTests.ReDim_FiveToFour_SecondDimension_Raises9: .*Actual: -2147467259",
       "^FAIL RegressionTests.ReDim_ErrorDescription: .*Actual: \"Unspecified error\""
     ]
-  }
+  },
+  "issue": 2544
 }

@@ -11,5 +11,6 @@
       "^FAIL RegressionTests.Error_LargestLong_Raises6: .*Actual: 0 ",
       "^FAIL RegressionTests.Error_RoundsTo65536_Raises6: .*Actual: 0 "
     ]
-  }
+  },
+  "issue": 2538
 }

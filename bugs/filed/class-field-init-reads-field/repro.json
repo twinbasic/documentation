@@ -3,5 +3,6 @@
   "expect": {
     "exit": 5,
     "message": "compilation \\(codegen\\) error detected in 'Counter\\.\\{fields_init\\}'"
-  }
+  },
+  "issue": 2546
 }

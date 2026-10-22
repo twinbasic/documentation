@@ -16,5 +16,6 @@
       "^FAIL RegressionTests.Oct_Double2To62_Converts: [(]runtime error 6: ",
       "^FAIL RegressionTests.Bin_Double2To62_Converts: [(]runtime error 6: "
     ]
-  }
+  },
+  "issue": 2536
 }
