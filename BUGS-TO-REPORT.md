@@ -1150,17 +1150,17 @@ Severity: crash. The crash is in the read, so no `On Error` handler helps, and a
 ## File statements and functions raise *Unspecified error* (-2147467259) in place of VB6's error numbers
 
 **Describe the bug**
-When a file statement or function fails, twinBASIC raises run-time error -2147467259 (`&H80004005`, *Unspecified error*) where VB6 raises a numbered error: 52 *Bad file name or number*, 53 *File not found*, 55 *File already open*, 58 *File already exists*, 59 *Bad record length*, 63 *Bad record number*, 75 *Path/File access error* or 76 *Path not found*. Of 42 failing file operations, 37 raise -2147467259, and the other 5 match VB6. An `On Error` handler written for VB6, which tests `Err.Number` for one of those numbers, does not recognise the error. Observed in a run of the reproducer project, in the IDE and in a built exe alike.
+When a file statement or function fails, twinBASIC raises run-time error -2147467259 (`&H80004005`, *Unspecified error*) where VB6 and 64-bit VBA raise a numbered error: 5 *Invalid procedure call or argument*, 52 *Bad file name or number*, 53 *File not found*, 54 *Bad file mode*, 55 *File already open*, 58 *File already exists*, 59 *Bad record length*, 62 *Input past end of file*, 63 *Bad record number*, 67 *Too many files*, 68 *Device unavailable*, 75 *Path/File access error* or 76 *Path not found*. Of 72 failing file operations, 67 raise -2147467259, and the other 5 match VB6. An `On Error` handler written for VB6, which tests `Err.Number` for one of those numbers, does not recognise the error. Observed in a run of the reproducer project, in the IDE and in a built exe alike.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `file-errors-unspecified.twinproj` (attached as `file-errors-unspecified.zip`) and run it (F5). Its `Sub Main` makes a folder in `%TEMP%`, makes 42 file operations fail one at a time under `On Error Resume Next`, and prints `<case>: <Err.Number> <Err.Description>` after each. The smallest of them:
+1. Open `file-errors-unspecified.twinproj` (attached as `file-errors-unspecified.zip`) and run it (F5). Its `Sub Main` makes a folder in `%TEMP%`, makes 72 file operations fail one at a time under `On Error Resume Next`, and prints `<case>: <Err.Number> <Err.Description>` after each. The smallest of them:
    ```
    On Error Resume Next
    Kill Environ$("TEMP") & "\no-such-file.txt"
    Debug.Print Err.Number, Err.Description
    ```
-2. See `-2147467259 Unspecified error` in each of these 37 cases, where the same program built in VB6 (attached as `file-errors-unspecified-vb6.zip`) prints the number shown:
+2. See `-2147467259 Unspecified error` in each of these 67 cases, where the same program built in VB6 (attached as `file-errors-unspecified-vb6.zip`) prints the number shown:
 
    | operation that fails | VB6 |
    |---|---|
@@ -1186,26 +1186,51 @@ Steps to reproduce the behavior:
    | `EOF`, `LOF`, `Loc`, `Seek`, `FileAttr`, `Get #`, `Put #`, `Print #` and `Line Input #` with file number 99, which is not open (9 cases) | 52 |
    | `Seek #f, 0` | 63 |
    | `Put` of a 22-character string to a `Random` file opened with `Len = 4` | 59 |
+   | `ChDir` to a file, to `""` and to a wildcard (3 cases) | 76 |
+   | `ChDrive` and `CurDir` of a drive letter no drive has (2 cases) | 68 |
+   | `ChDrive` and `CurDir` of `"1"`, which is not a letter (2 cases) | 5 |
+   | `Dir()` after `Dir` has returned `""` | 5 |
+   | `Dir` of a file name with a backslash at its end | 52 |
+   | `Dir` of a name of 256 characters | 53 |
+   | `FileAttr` with a *returntype* of 2 | 5 |
+   | `FileCopy` from `""` | 75 |
+   | `FileCopy` from a wildcard | 52 |
+   | `FileLen` of a file in a folder that does not exist | 76 |
+   | `FileLen` of a wildcard that matches nothing | 52 |
+   | `FreeFile` with every file number from 1 to 255 in use | 67 |
+   | `GetAttr` of a wildcard | 52 |
+   | `GetAttr` of a name with `<` in it | 5 |
+   | `Input` and `InputB` of more characters than are left in a file open `For Input` (2 cases) | 62 |
+   | `Input` from a file open `For Output` | 54 |
+   | `Input` of -1 characters | 5 |
+   | `Input` from file number 99, which is not open | 52 |
+   | `Kill` of a folder | 53 |
+   | `Kill` of a wildcard that matches a read-only file | 75 |
+   | `MkDir ""` | 76 |
+   | `RmDir` of a file | 76 |
+   | `RmDir` of the current directory | 75 |
+   | `SetAttr` of a wildcard | 52 |
+   | `Width #99`, which is not open | 52 |
 
 3. See the 5 cases that match VB6: `FileCopy` of a file that does not exist (53) and into a folder that does not exist (76), `Line Input #` past the end of the file (62), and `Close` of a file number that is not open and `SetAttr` of a file open `For Input`, which raise no error in either.
 
 **Expected behavior**
-The numbers in the table, with VB6's descriptions, as for the 5 cases that already match. A VB6 program that handles a missing file by testing `Err.Number = 53` takes its other branch in twinBASIC.
+The numbers in the table, with VB6's descriptions, as for the 5 cases that already match; 64-bit VBA raises the same numbers. A VB6 program that handles a missing file by testing `Err.Number = 53` takes its other branch in twinBASIC.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-This extends #2345, which reports the first row of the table, and is part of #56. `FileCopy` raises VB6's numbers, since #2451 fixed it.
+This extends #2345, which reports the first row of the table, and is part of #56. `FileCopy` raises VB6's numbers for a source or a folder that does not exist, since #2451 fixed it; the numbers it raises for the other failures are a separate report.
 
-The same in a built exe as in the IDE, and the same with the project setting *Use Unicode Standard Library* set to No. In code compiled with LLVM the number is the same, and the description is *Application-defined or object-defined error*.
+The same in a built exe as in the IDE, and the same with the project setting *Use Unicode Standard Library* set to No. In code compiled with LLVM the number is the same, and the description is *Application-defined or object-defined error*. A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 What does not reproduce it: the `DirListBox` and `FileListBox` controls trap the error themselves, and raise 76 for a `Path` that does not exist, as VB6 does.
 
 Severity: moderate. An error is raised wherever VB6 raises one, so no failure goes unreported. But a handler that tests for the number does not recognise the error, a handler that shows `Err.Description` shows *Unspecified error*, and code that decides a file exists from `Err.Number <> 53` decides wrongly.
 
-<!-- Reproducer: bugs/file-errors-unspecified/ (mode run; expect lists the 37 lines that print -2147467259, so a fix of some statements and not others shows as NO LONGER REPRODUCES). verify reproduces on BETA 1005; VB6 side in vb6/, built and run by bug_repro.mjs vb6; the built-exe and LLVM results and the Use Unicode Standard Library check are from probes in a local scratch folder, not in the repository. Found while testing scripts/imagestrip/, a twinBASIC console program that strips the metadata from the images in the IDE's CSS files. Stated in a NOTE naming BETA 1005 on each of these pages: docs/Reference/Core/Open.md, Name.md, Get.md, Put.md, Print.md (under "Writing to a file") and Line-Input.md; docs/Reference/Default/VBA/FileSystem/Kill.md, GetAttr.md, SetAttr.md (the NOTE, not the WARNING, which belongs to the SetAttr entry), FileLen.md, FileDateTime.md, MkDir.md, RmDir.md, ChDir.md, EOF.md, LOF.md, Loc.md, Seek.md and FileAttr.md. When a statement is fixed, its NOTE goes, and its page states the error number it raises with no mention of the defect. -->
+<!-- Reproducer: bugs/file-errors-unspecified/ (mode run; expect lists the 67 lines that print -2147467259, so a fix of some statements and not others shows as NO LONGER REPRODUCES). verify reproduces on BETA 1010; VB6 side in vb6/, built and run by bug_repro.mjs vb6; the built-exe and LLVM results and the Use Unicode Standard Library check are from probes in a local scratch folder, not in the repository; 64-bit and 64-bit VBA from the run-time errors data (errors/VBA.FileSystem.yml, `errors.mjs run`, all four runtimes). Found while testing scripts/imagestrip/, a twinBASIC console program that strips the metadata from the images in the IDE's CSS files; the 30 cases from ChDir to a file on were added 2026-10-27 by batch 7 of WIP.Errors.md. Stated in a NOTE on each of these pages: docs/Reference/Core/Open.md, Name.md, Get.md, Put.md, Print.md (under "Writing to a file") and Line-Input.md (hand NOTEs, until batch 11); and in the Common Errors sections (rows `bug: file-errors-unspecified`) of docs/Reference/Default/VBA/FileSystem/ChDir, ChDrive, CurDir, Dir, EOF, FileAttr, FileCopy, FileDateTime, FileLen, FreeFile, GetAttr, Input, InputB, Kill, LOF, Loc, MkDir, RmDir, Seek, SetAttr and Width, from errors/VBA.FileSystem.yml. When a statement is fixed, its row's cases move to a row of VB's number and the NOTE goes (a hand NOTE goes, and its page states the error number it raises with no mention of the defect). -->
 
 ---
 
@@ -1237,7 +1262,7 @@ Error 55 for a file open `For Output`, `Append`, `Binary` or `Random`, with its 
 **Additional context**
 Severity: low, but silent. No error is raised, and the file's attributes change where VB6 leaves them alone: the file stays read-only until its attributes are set back.
 
-<!-- Reproducer: bugs/setattr-open-file-no-error/ (mode run; expect lists the four lines for the write modes). verify reproduces on BETA 1005; VB6 side in vb6/. Found while checking the error numbers of the file statements (the entry above). Stated in docs/Reference/Default/VBA/FileSystem/SetAttr.md: the sentence that SetAttr sets the attributes of an open file without an error, and the WARNING after it, naming BETA 1005. The VBA-Docs sentence it replaced ("A run-time error occurs when setting the attributes of an open file") was true of neither product as written. When fixed, the WARNING goes and the sentence says that SetAttr raises error 55 for a file open for Output, Append, Binary or Random, and sets the attributes of a file open for Input. -->
+<!-- Reproducer: bugs/setattr-open-file-no-error/ (mode run; expect lists the four lines for the write modes). verify reproduces on BETA 1005; VB6 side in vb6/. Found while checking the error numbers of the file statements (the entry above). Stated in docs/Reference/Default/VBA/FileSystem/SetAttr.md: the sentence that SetAttr sets the attributes of an open file without an error, the WARNING after it, and the Common Errors section's NOTE (the row `bug: setattr-open-file-no-error` in errors/VBA.FileSystem.yml, whose cases 64-bit twinBASIC and 64-bit VBA agree with, batch 7 of WIP.Errors.md, 2026-10-27). VB6 and 64-bit VBA also raise 55 for a file open For Binary Access Read, which the row leaves out. The VBA-Docs sentence it replaced ("A run-time error occurs when setting the attributes of an open file") was true of neither product as written. When fixed, the WARNING goes and the sentence says that SetAttr raises error 55 for a file open for Output, Append, Binary or Random, and sets the attributes of a file open for Input. -->
 
 ---
 
@@ -8493,3 +8518,428 @@ Severity: low. Programs on the user's own desktop are not affected.
 When the window is created hidden and shown with `SW_SHOWNA`, the 2 s moves from `CreateWindowEx` into `AppActivate`; so the wait belongs to the activation of a new window, whichever call makes it. The program never calls `GetForegroundWindow` during it. On a private desktop no window becomes the foreground window; something in the twinBASIC runtime apparently waits for that, with a 2 s limit.
 
 <!-- Reproducer: bugs/private-desktop-window-activation-delay/ (mode run with exe: `tbrun --exe`, which starts the exe on a private desktop; expect lists windows 2 to 4 at 2 s); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 0.00 for every step on a private desktop. On the user's desktop (owner, 2026-10-27, a run of the same program from the session's scratchpad) twinBASIC took 0.02 s a window. Not stated on any page: the documentation does not run on a private desktop; scripts/errors.mjs gives a twinBASIC probe 120 s because of it (WIP.Errors.md, the window harness). Found 2026-10-22 by batch 6b of WIP.Errors.md; owner: a bug, surprising for anyone who tests on a private desktop. -->
+
+---
+
+## `Kill` deletes hidden and system files, where VB6 and VBA raise error 53 and leave them
+
+**Describe the bug**
+`Kill` deletes a file that has the hidden or the system attribute, and raises no error. VB6 and 64-bit VBA never delete such a file: `Kill` of a hidden or system file raises 53, *File not found*, and leaves it, and a wildcard skips such files, deleting the others it matches (and raising 53 when it matches nothing else). So `Kill "*.*"` in twinBASIC also deletes the hidden and system files of the folder, which a VB6 program relies on it to keep. Observed by running the reproducer's test cases.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `kill-hidden-system-files.twinproj` (attached as `kill-hidden-system-files.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the other five fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`kill-hidden-system-files-vb6.zip`) prints; 64-bit VBA raises the same numbers. Every case runs under a copy of a files harness, which makes a folder of the case's own under `%TEMP%` the current directory, fills it with the files the case names, and deletes it after the case, so no case touches any other file. The harness is in the attached project, left out below.
+```vb
+' Regression tests: Kill refuses a hidden or a system file with error 53, as VB6 and 64-bit VBA
+' do, and a wildcard skips such files, where twinBASIC deletes them.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+    ' ... the copy of the files harness: in the attached project. files_Begin makes a folder of
+    ' the case's own the current directory, with a.txt (10 bytes), empty.txt, ro.txt (read-only),
+    ' hid.txt (hidden), the empty folder sub and the folder full holding f.txt; files_End closes
+    ' every file, deletes the folder and keeps the case's error; files_Attr is GetFileAttributesW ...
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub Kill_NormalFile_Deletes()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Kill "a.txt"
+        Holds = files_Attr("a.txt") = -1
+        files_End
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub Kill_ReadOnlyFile_RaisesAndKeepsIt()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Kill "ro.txt"
+        Holds = files_Attr("ro.txt") <> -1
+        files_End
+        Assert.Strict.AreNotEqual 0&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    [TestCase]
+    Public Sub Kill_HiddenFile_Raises53()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Kill "hid.txt"
+        Holds = files_Attr("hid.txt") <> -1
+        files_End
+        Assert.Strict.AreEqual 53&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    [TestCase]
+    Public Sub Kill_SystemFile_Raises53()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        SetAttr "a.txt", vbSystem
+        Kill "a.txt"
+        Holds = files_Attr("a.txt") <> -1
+        files_End
+        Assert.Strict.AreEqual 53&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    [TestCase]
+    Public Sub Kill_HiddenSystemFile_Raises53()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        SetAttr "a.txt", vbHidden + vbSystem
+        Kill "a.txt"
+        Holds = files_Attr("a.txt") <> -1
+        files_End
+        Assert.Strict.AreEqual 53&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    [TestCase]
+    Public Sub Kill_WildcardMatchingOnlyAHiddenFile_Raises53()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Kill "h*"
+        Holds = files_Attr("hid.txt") <> -1
+        files_End
+        Assert.Strict.AreEqual 53&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    [TestCase]
+    Public Sub Kill_Wildcard_LeavesHiddenFile()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        SetAttr "ro.txt", vbNormal
+        Kill "*.txt"
+        Holds = files_Attr("hid.txt") <> -1
+        files_End
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 53 for `Kill` of a hidden or a system file, the file left in place, and a wildcard that skips hidden and system files, as VB6 and 64-bit VBA do.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: high. Files are deleted that a VB6 or VBA program would keep, with no error: `desktop.ini`, `Thumbs.db` and other hidden or system files in a folder a program empties with `Kill "*.*"`.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a file with the read-only attribute (75 in VB, -2147467259 in twinBASIC, the entry on *Unspecified error*, and the file kept in all three); a file with only the archive attribute, which all of them delete.
+
+<!-- Reproducer: bugs/kill-hidden-system-files/ (mode test: `tbrun --tests`; expect lists the two PASS and five FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`, and in a 64-bit run (`run --arch win64`); 64-bit VBA from the run-time errors data (`errors.mjs run`, all four runtimes). Both sides carry a copy of errors/harnesses/files.bas. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case and whether the file is as the case expects. Stated in the WARNING on docs/Reference/Default/VBA/FileSystem/Kill.md and in its Common Errors section (row `bug: kill-hidden-system-files` in errors/VBA.FileSystem.yml); when fixed, the row's cases move to a row of 53, and the NOTE and the WARNING go. Found 2026-10-27 by batch 7 of WIP.Errors.md. -->
+
+---
+
+## `FileCopy` raises 70 where VB6 and VBA raise 75, and 55 where they raise 70
+
+**Describe the bug**
+When `FileCopy` fails for one of these reasons, it raises another number than VB6 and 64-bit VBA:
+- *source* is a folder, or *destination* is a folder, a read-only file or a hidden file: twinBASIC raises 70, *Permission denied*; VB raises 75, *Path/File access error*.
+- *destination* is *source* itself, by any spelling (`"a.txt"`, `"A.TXT"`, `".\a.txt"`), or *source* is open `For Input Lock Read`: twinBASIC raises 55, *File already open*; VB raises 70.
+
+An error is raised in each case, and nothing is copied, but a handler written for VB6 or VBA does not recognise it.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `filecopy-error-numbers.twinproj` (attached as `filecopy-error-numbers.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the other seven fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`filecopy-error-numbers-vb6.zip`) prints; 64-bit VBA raises the same numbers. Every case runs under a copy of a files harness, which makes a folder of the case's own under `%TEMP%` the current directory, fills it with the files the case names, and deletes it after the case, so no case touches any other file. The harness is in the attached project, left out below.
+```vb
+' Regression tests: FileCopy raises VB6's numbers, 70 for a copy onto its own source or of a
+' source locked against reading, and 75 for a folder or a read-only or hidden destination.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+    ' ... the copy of the files harness: in the attached project. files_Begin makes a folder of
+    ' the case's own the current directory, with a.txt (10 bytes), empty.txt, ro.txt (read-only),
+    ' hid.txt (hidden), the empty folder sub and the folder full holding f.txt; files_End closes
+    ' every file, deletes the folder and keeps the case's error; files_Attr is GetFileAttributesW ...
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub FileCopy_MissingSource_Raises53()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "nosuch.txt", "b.txt"
+        files_End
+        Assert.Strict.AreEqual 53&, Err.Number
+    End Sub
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub FileCopy_SourceOpenForAppend_Raises55()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Open "a.txt" For Append As #1
+        FileCopy "a.txt", "b.txt"
+        files_End
+        Assert.Strict.AreEqual 55&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_OntoItself_Raises70()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "a.txt", "a.txt"
+        files_End
+        Assert.Strict.AreEqual 70&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_OntoItselfOtherCase_Raises70()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "a.txt", "A.TXT"
+        files_End
+        Assert.Strict.AreEqual 70&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_SourceOpenLockRead_Raises70()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Open "a.txt" For Input Lock Read As #1
+        FileCopy "a.txt", "b.txt"
+        files_End
+        Assert.Strict.AreEqual 70&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_SourceFolder_Raises75()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "sub", "b.txt"
+        files_End
+        Assert.Strict.AreEqual 75&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_DestinationFolder_Raises75()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "a.txt", "sub"
+        files_End
+        Assert.Strict.AreEqual 75&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_DestinationReadOnly_Raises75()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "a.txt", "ro.txt"
+        Holds = FileLen("ro.txt") = 1
+        files_End
+        Assert.Strict.AreEqual 75&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_DestinationHidden_Raises75()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "a.txt", "hid.txt"
+        Holds = FileLen("hid.txt") = 1
+        files_End
+        Assert.Strict.AreEqual 75&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+75 for a folder or a read-only or hidden destination, and 70 for a copy onto the source or of a source locked against reading, as VB6 and 64-bit VBA raise.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. Each failure raises an error, but not the number a VB6 or VBA handler tests for.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a source that does not exist (53) or a folder that does not exist (76), which #2451 fixed; a source open with write access (55 in all). The other failures of `FileCopy` that raise -2147467259 (a zero-length name, a wildcard) are in the entry on *Unspecified error*. twinBASIC also copies a source open with `Access Read` in any mode, where VB raises 55; the owner takes that as an extension.
+
+<!-- Reproducer: bugs/filecopy-error-numbers/ (mode test: `tbrun --tests`; expect lists the two PASS and seven FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`, and in a 64-bit run (`run --arch win64`); 64-bit VBA from the run-time errors data (`errors.mjs run`, all four runtimes). Both sides carry a copy of errors/harnesses/files.bas. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors section of docs/Reference/Default/VBA/FileSystem/FileCopy.md (rows `bug: filecopy-error-numbers` in errors/VBA.FileSystem.yml); when fixed, each row's cases move to a row of VB's number and the NOTEs go. Found 2026-10-27 by batch 7 of WIP.Errors.md. -->
+
+---
+
+## `CurDir`, `Dir`, `FileDateTime`, `FileLen`, `Input` and `Width` check their arguments differently from VB6 and VBA
+
+**Describe the bug**
+Given these arguments, the procedures do something other than VB6 and 64-bit VBA:
+- `CurDir(Null)` and `Dir(Null)` raise 94, *Invalid use of Null*; VB raises 13, *Type mismatch*.
+- `FileLen` and `FileDateTime` of a name with a wildcard that matches something (`"*.txt"`, `"e*"`, `"a.tx?"`) return the length or the date of the first match, which may be a hidden file or a folder, and raise nothing; VB raises 52, *Bad file name or number*. (A wildcard that matches nothing raises -2147467259, the entry on *Unspecified error*; so does `"a?txt"`.)
+- `Width #f, n` with a negative *n* raises nothing, and `Print #f` then starts a new line before each item after the first; VB raises 5, *Invalid procedure call or argument*.
+- `Input(0, #f)` raises -2147467259, *Unspecified error*; VB returns a zero-length string. (`InputB(0, #f)` returns one in both.)
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `filesystem-argument-checks.twinproj` (attached as `filesystem-argument-checks.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other six fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`filesystem-argument-checks-vb6.zip`) prints; 64-bit VBA raises the same numbers. Every case runs under a copy of a files harness, which makes a folder of the case's own under `%TEMP%` the current directory, fills it with the files the case names, and deletes it after the case, so no case touches any other file. The harness is in the attached project, left out below.
+```vb
+' Regression tests: CurDir, Dir, FileDateTime, FileLen, Input and Width check their arguments
+' as VB6 and 64-bit VBA do: 13 for a Null drive or path, 52 for a wildcard where a file name is
+' expected, 5 for a negative width, and no error for Input of 0 characters.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+    ' ... the copy of the files harness: in the attached project. files_Begin makes a folder of
+    ' the case's own the current directory, with a.txt (10 bytes), empty.txt, ro.txt (read-only),
+    ' hid.txt (hidden), the empty folder sub and the folder full holding f.txt; files_End closes
+    ' every file, deletes the folder and keeps the case's error; files_Attr is GetFileAttributesW ...
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub CurDir_ZeroLength_ReturnsCurrent()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        V = CurDir("")
+        files_End
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub FileLen_File_Returns10()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        V = FileLen("a.txt")
+        Holds = V = 10
+        files_End
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub Width_255_Accepted()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Open "b.txt" For Output As #1
+        Width #1, 255
+        files_End
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CurDir_Null_Raises13()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        V = CurDir(Null)
+        files_End
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Dir_Null_Raises13()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        V = Dir(Null)
+        files_End
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileLen_Wildcard_Raises52()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        V = FileLen("*.txt")
+        files_End
+        Assert.Strict.AreEqual 52&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileDateTime_Wildcard_Raises52()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        V = FileDateTime("e*")
+        files_End
+        Assert.Strict.AreEqual 52&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Width_Negative_Raises5()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Open "b.txt" For Output As #1
+        Width #1, -1
+        files_End
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Input_ZeroCharacters_ReturnsEmpty()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Open "a.txt" For Input As #1
+        V = Input(0, #1)
+        Holds = V = ""
+        files_End
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+13 for a `Null` drive or path, 52 for a wildcard in `FileLen` and `FileDateTime`, 5 for a negative width, and a zero-length string from `Input(0, #f)`, as VB6 and 64-bit VBA give.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium for `FileLen` and `FileDateTime`, which return a value for a file the program did not name, silently, and for a negative `Width`, which changes what `Print #` writes, silently. Low for the rest.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a *Width* from 0 to 255, or from 256 to 32,767, which twinBASIC takes as a line width where VB raises 5 (the owner takes that as an extension); `FileLen` and `FileDateTime` of a file or a folder named without a wildcard; `Input` of 1 or more characters.
+
+<!-- Reproducer: bugs/filesystem-argument-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and six FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`, and in a 64-bit run (`run --arch win64`); 64-bit VBA from the run-time errors data (`errors.mjs run`, all four runtimes). Both sides carry a copy of errors/harnesses/files.bas. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: filesystem-argument-checks` in errors/VBA.FileSystem.yml) of CurDir, Dir, FileDateTime, FileLen, Input and Width under docs/Reference/Default/VBA/FileSystem/, and in the WARNINGs on FileDateTime.md, FileLen.md and Width.md; when fixed, each row's cases move to a row of VB's number (Input's to its quiet cases), and the NOTEs and the WARNINGs go. Found 2026-10-27 by batch 7 of WIP.Errors.md; owner: bugs, while Dir's attributes, non-String arguments of Dir and CurDir, FileCopy of a source open for reading, SetAttr's attributes and a Width above 255 are extensions. -->
