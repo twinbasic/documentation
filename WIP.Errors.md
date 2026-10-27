@@ -64,9 +64,13 @@ of the re-check is left.
 applied; four new entries queued in BUGS-TO-REPORT.md, and `DISP_E_NOTACOLLECTION` added to
 `latebound-hresult-mapping` (*Batch 6a findings*). No row is `bug: pending`.
 
-**Next: batch 6b**, `Interaction`'s interactive procedures. Its design is *Batch 6b design*
-below, and its steps are in [ERRORS-6B-PLAN.md](ERRORS-6B-PLAN.md). The owner answered D1
-to D4 on 2026-10-22.
+**Batch 6b is done** (2026-10-27), `Interaction`'s interactive procedures, under three new
+harnesses (`dialog`, `keys`, `window`): 164 cases, all agreeing in all four runtimes (the whole
+`VBA.Interaction.yml`, 355 cases, too); sections on AppActivate, InputBox, MsgBox, SendKeys and
+Shell; DoEvents quiet; Beep nothing (D3). `argument-errors-unspecified-error` extended, three
+entries queued (*Batch 6b findings*). No row is `bug: pending`, and no question is open.
+
+**Next: batch 7**, VBA `FileSystem`.
 
 ## Owner's decisions
 
@@ -815,6 +819,51 @@ document VB6, and such an error is a VB6 bug for practical purposes; it is not c
 the user's desktop either. **D3 left for now**: Beep takes no arguments and either works or
 does not, so it gets no case, no harness and no section.
 
+## Batch 6b findings (VBA `Interaction`, interactive procedures, BETA 1010, 2026-10-27)
+
+**What each runtime calls** (a temporary trace harness that patched each candidate export with a
+refusing fake): MsgBox `MessageBoxIndirectW` (twinBASIC) and `MessageBoxIndirectA` (VB6, VBA);
+InputBox `DialogBoxIndirectParamW` (twinBASIC), `DialogBoxParamA` template &HFBF (VB6, VBA);
+SendKeys `keybd_event` (twinBASIC), and in VB6 and VBA a journal-playback hook, refused on
+Windows 10, then `SendInput` one event at a time; AppActivate `SetForegroundWindow` and `SetFocus`
+in all; Shell `CreateProcessW` with `STARTF_USESHOWWINDOW` and *windowstyle* as `wShowWindow` in
+all. The harnesses (*Harnesses*) cover exactly these.
+
+**Owner's decisions (2026-10-27)**:
+- **Bugs**, queued: SendKeys' -2147352567 and AppActivate's, Shell's, MsgBox's and InputBox's
+  -2147467259 join `argument-errors-unspecified-error`. `interaction-missing-argument-checks`:
+  Shell *windowstyle* 10 (`SW_SHOWDEFAULT`, the one value `STARTUPINFO` may not hold; VB takes
+  0 to 9 after rounding and nothing done first changes it), InputBox *xpos*/*ypos* outside the
+  `Integer` range (VB 6), *context* without *helpfile* (VB 5), *helpfile* **Null** raising 94
+  (VB 5), AppActivate of a hidden window (twinBASIC leaves it hidden; VB 5) and an unchecked
+  *wait*, and MsgBox styles Windows refuses (button group 7 to 15: no box, 0 returned; should
+  raise 5; VB shows an OK box). `sendkeys-non-ascii`: a character the layout has no key for is
+  converted to ANSI and sent as a key (é as virtual key &HE9, ☺ as `?`, Ā as Shift+A); VB sends
+  the character (KEYEVENTF_UNICODE). `private-desktop-window-activation-delay`: in an exe on a
+  private desktop, activating a new window takes 2 s from the third (none on the user's desktop,
+  run there once with the owner's agreement, none in VB6).
+- **Extensions**: AppActivate `""` (64-bit VBA agrees; VB6 5); SendKeys *wait* `"True"` (VB 13);
+  MsgBox passing every style Windows accepts (VB shows an OK box for a style it does not know:
+  6, two icons, &H400, -1). NOTEs on the pages.
+- **Nothing documented**: VB's `"((a))"` (Shift left down), its doubled Shift for `"+"`, and its
+  keeping the keys of a refused string for the next SendKeys (arguably a VB bug; twinBASIC drops
+  the string, which is right). D4: no error Windows makes VB raise on the user's desktop.
+- **Unguarded MsgBox -1 and &H7FFFFFFF** (owner's agreement): Windows refuses them for their
+  button group before any box, so the service-notification bit never shows a box.
+
+**Pages**: MsgBox and InputBox lose "If *helpfile* is supplied, *context* must also be supplied"
+(the tables carry it); Shell's "or zero if the program could not be started" is a `<!-- VBA: -->`
+comment (all four raise); SendKeys' `{INS}` is a `<!-- VBA: -->` comment (all four refuse it), its
+PRINT SCREEN NOTE says why (`{PRTSC}` sends `VK_PRINT`, &H2A), and a count in braces is at most
+8,175 in all four; AppActivate matches a title's end as well as its beginning.
+
+**Tooling** found on the way: VB6 and VBA refuse a declaration after a procedure, so a probe
+with two harnesses puts all their declarations first (`splitHarness`); Access never delivers a
+posted WM_COMMAND to a box, so the dialog harness sends it; `EndDialog` from outside makes
+twinBASIC's InputBox fault (a string it never set); a reproducer's VB6 project may call MsgBox and
+InputBox when it carries the dialog harness (`reproAnswersBoxes`). The broker's startup race
+(four clients, all ENOENT) is fixed on both sides (WIP.Broker.md).
+
 ## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
 
 Batches 2 to 5 and `Core.yml` in all four runtimes. Every runtime agreed with the data as it
@@ -895,7 +944,7 @@ each can be run when there is budget. Status is kept here.
 | 2--5 | Re-check of batches 2 to 5 and Core in four runtimes (64-bit VBA added) | --- | done: all agree; committed 2026-10-22, see *The 64-bit VBA re-check* |
 | 5 | VBA `DateTime` | 20 | done: 17 sections, 328 cases; owner's questions answered 2026-10-22 |
 | 6a | VBA `Information`, and `Interaction`'s non-interactive procedures: `CallByName`, `CallByDispId`, `Choose`, `Command`, `CreateObject`, `GetObject`, `Environ`, `IIf`, `If`, `Partition`, `Switch`, `RaiseEventByName`, `RaiseEventByName2`, `SaveSetting`, `GetSetting`, `GetAllSettings`, `DeleteSetting` (owner split batch 6, 2026-10-22) | 45 | done: 27 sections, 302 cases; four entries queued 2026-10-22 |
-| 6b | `Interaction`'s interactive procedures: `AppActivate`, `Beep`, `DoEvents`, `InputBox`, `MsgBox`, `SendKeys`, `Shell` (a probe never calls `MsgBox` or `InputBox`; `SendKeys` only with strings refused before a key is sent; `Shell` only with a missing program or `cmd.exe /c exit`; *Batch 6b design* proposes the `dialog`, `keys` and `window` harnesses to replace the first two limits) | 7 | design 2026-10-22, plan in ERRORS-6B-PLAN.md; D1--D4 answered; not started |
+| 6b | `Interaction`'s interactive procedures: `AppActivate`, `Beep`, `DoEvents`, `InputBox`, `MsgBox`, `SendKeys`, `Shell`, under the `dialog`, `keys` and `window` harnesses (`Shell` only with programs that do not exist or `cmd.exe /c exit`) | 7 | done: 5 sections, 164 cases; three entries queued 2026-10-27 |
 | 7 | VBA `FileSystem` | 23 | not started |
 | 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | not started |
 | 9 | VBA `Financial` | 14 | not started |
