@@ -59,6 +59,7 @@ import {
   spliceIndex,
   spliceSection,
   VB_NUMBERS,
+  vb6Unattended,
 } from "./lib/errors-data.mjs";
 import { encodeAnsi, findVb6, NO_VB6, parseMakeLog, runRepro } from "./lib/vb6.mjs";
 import { faultText } from "./lib/win-fault.mjs";
@@ -282,7 +283,9 @@ async function measure(runtime, cases, run) {
 async function runTb(dir, cases, arch, text) {
   const mod = writeTbTree(dir, cases, text);
   const args = [dir, "--exe", "--json", "--arch", arch];
-  if (text !== undefined) args.push("--exe-run-timeout", "600");
+  // A probe of many cases can outlast tbrun's limit for an exe: each AppActivate case takes
+  // about 1.5 s in twinBASIC (BETA 1010). VB6 and VBA have 120 s too.
+  args.push("--exe-run-timeout", text !== undefined ? "600" : "120");
   if (values.ide) args.push("--ide", values.ide);
   const r = await runNode(args);
   if (r.code === 1) {
@@ -311,7 +314,10 @@ async function runVb6(dir, cases, vb6, text) {
   const mod = writeVb6Project(dir, cases, text);
   let r;
   try {
-    r = await runRepro(vb6, dir, { timeoutMs: text === undefined ? 120000 : 600000 });
+    r = await runRepro(vb6, dir, {
+      timeoutMs: text === undefined ? 120000 : 600000,
+      unattended: vb6Unattended(cases),
+    });
   } catch (e) {
     return { harness: e.message.split("\n")[0] };
   }
@@ -459,7 +465,8 @@ for (const c of [...all.values()].sort((a, b) => a.id - b.id)) {
     if (r.refused) wrong.push(`${rt} refused it: ${r.refused}`);
     else if (r.missing) wrong.push(`${rt} reported nothing`);
     else if (r.setup) wrong.push(`${rt}: its setup raised ${r.number}, ${r.description}`);
-    else if (r.number !== mine.expect) wrong.push(`${rt} raised ${r.number}, the data says ${mine.expect}`);
+    else if (r.number !== mine.expect)
+      wrong.push(`${rt} raised ${r.number}${r.description ? ` (${r.description})` : ""}, the data says ${mine.expect}`);
     else if (r.number !== 0) {
       const want = expectedDescription(mine.row, rt, r.number, messages);
       if (want !== null && r.description !== want) {

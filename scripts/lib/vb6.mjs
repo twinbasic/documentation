@@ -59,7 +59,10 @@
 //     reproducer's or a batch of samples, starts as tbrun starts an exe, on a private
 //     desktop inside a kill-on-close job: a box there is on no desktop anyone uses, the
 //     launcher records it and closes it with OK, and the time limit ends an exe that
-//     still waits.
+//     still waits. runRepro's `unattended: false` builds a project without it too:
+//     scripts/errors.mjs passes it for a probe whose cases call MsgBox or InputBox under
+//     the dialog harness, because under Unattended Execution MsgBox writes to the event
+//     log and shows nothing, so the probe would measure the log, not the box.
 //
 // 10. A `project=form` FENCE GETS A BLANK Form1.frm, WITHOUT UNATTENDED EXECUTION (9).
 //     A form a sample leaves loaded keeps the exe
@@ -920,13 +923,17 @@ async function runReproExe(work, title, timeoutMs, env = {}) {
  *   boxes it opened and `logged` what the VB runtime logged for it (see 11 and 12 at the
  *   top); a VB6 that did not finish building throws
  */
-export async function runRepro(vb6, dir, { timeoutMs = 30000, keep = false, env = {} } = {}) {
+export async function runRepro(
+  vb6,
+  dir,
+  { timeoutMs = 30000, keep = false, env = {}, unattended: attended = true } = {},
+) {
   const work = mkdtempSync(path.join(tmpdir(), "bugrepro-vb6-"));
   try {
     for (const name of reproFiles(dir).sources) copyFileSync(path.join(dir, name), path.join(work, name));
     const vbp = path.join(work, `${REPRO_PROJECT}.vbp`);
     const text = decodeAnsi(readFileSync(vbp));
-    writeFileSync(vbp, encodeAnsi(unattended(text, !hasVisibleComponent(text))));
+    writeFileSync(vbp, encodeAnsi(unattended(text, attended && !hasVisibleComponent(text))));
     const made = await make(vb6, work, { project: REPRO_PROJECT });
     if (made.timedOut || made.error) {
       throw new Error(`VB6 did not finish building${made.error ? `: ${made.error}` : " in time"}\n${made.log}`);

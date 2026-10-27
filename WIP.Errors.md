@@ -350,6 +350,28 @@ Windows refuses). `check_errors.mjs` reports a harness the data names and has no
   the case's error (raised again with its description once the key is gone), so nothing a case
   writes stays in the user's registry. A case's `setup` may save what it reads. Check after a run
   that no `tbdocsErrorsProbe*` key is left.
+- **`dialog`** (batch 6b) --- `MsgBox`, `InputBox`. A `WH_CBT` hook on the probe's thread notes
+  each top-level `#32770` it creates and, as it is activated, hides it and **sends**
+  `WM_COMMAND` from Cancel, else the first push button that is not Help (a posted one never
+  reaches the box in Access; `EndDialog` skips the dialog procedure, and twinBASIC's InputBox
+  then faults in OLEAUT32). A guard patches `MessageBoxIndirectA/W` (twinBASIC calls the W form,
+  VB6 and VBA the A form) and refuses a style with any of &H260000 (another desktop: service
+  notification, its NT 3.x form, default desktop only), which `dialog_End` reports as 1002; the
+  six other MessageBox entry points are refused outright. `dialog_Expect Count` raises 1001;
+  `dialog_Count`, `dialog_Style`, `dialog_Button` record the last box. VB6 builds a probe with
+  `dialog` cases without Unattended Execution (`ATTENDED_HARNESSES`), and `VbaSession` ends
+  Access only at a box seen at two polls.
+- **`keys`** (batch 6b) --- `SendKeys`. Patches `keybd_event` (twinBASIC's way) and `SendInput`
+  (VB6's and VBA's) with fakes that record each event and succeed, and `SetWindowsHookExA/W`
+  with one that refuses a journal-playback hook as Windows does without UIAccess (VB6 and VBA
+  then use `SendInput`). `keys_Expect "10d 41d 41u 10u"` raises 1001 for other events
+  (`<vk hex><d|u>`, or `U<char hex><d|u>` for a Unicode one).
+- **`window`** (batch 6b) --- `AppActivate`. A `STATIC` top-level window titled `window_Title`
+  (with the process id), shown without activation; `window_Pid`, `window_Hide`,
+  `window_Minimize`, `window_Visible`, `window_Minimized`. On the private desktop no window
+  becomes the foreground one, and AppActivate raises nothing for that; in twinBASIC, activating a
+  new window there takes 2 s from the third on (not on the user's desktop), so `errors.mjs`
+  gives a twinBASIC probe 120 s.
 
 **YAML pitfalls**, each met in batch 2:
 
@@ -404,8 +426,9 @@ What the probes must respect (BETA 1010; `errors.mjs` already does all of it):
   variable (bug `module-init-reads-other-module-ide`), and may differ in other ways.
 - **A `tbrun --exe` probe brings its own `Sub Main`**, without the console template's
   `tbxMain.twin`; two `Main`s make the build fail with *'Main' is ambiguous*.
-- **Never `MsgBox`, `InputBox` or an unhandled error** in a probe: each opens a modal box on a
-  private desktop. Every case runs under `On Error Resume Next`.
+- **Never an unhandled error** in a probe, and **`MsgBox` and `InputBox` only under the `dialog`
+  harness**, `SendKeys` only under `keys`: otherwise each opens a modal box on a private desktop,
+  or sends keys. Every case runs under `On Error Resume Next`.
 - **Keep the generated code plain.** A module-level or class-field initializer cannot call a
   procedure of the project, and a class field that reads another field fails the build (bug
   `class-field-init-reads-field`).
