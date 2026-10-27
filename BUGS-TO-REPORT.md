@@ -8404,3 +8404,92 @@ A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01
 What does not reproduce it: a character the layout has a key for, with or without Shift; the codes in braces, such as `{ENTER}` and `{F1}`, and the modifiers, which send the same events as VB6. On a layout with a key for `é` (French, for instance), both send that key.
 
 <!-- Reproducer: bugs/sendkeys-non-ascii/ (mode test: `tbrun --tests`; expect lists the two PASS and three FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`; 64-bit and 64-bit VBA from the exploration of batch 6b (`errors.mjs run` with the keys harness). Both sides carry a copy of errors/harnesses/keys.bas, written by a generator from it. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the events VB6 sends. Stated in the WARNING on docs/Reference/Default/VBA/Interaction/SendKeys.md; when fixed, the WARNING goes. Found 2026-10-22 by batch 6b of WIP.Errors.md; owner: a bug. -->
+
+---
+
+## In an exe on a desktop that is not the input desktop, showing or activating a new top-level window takes 2 s from the third on
+
+**Describe the bug**
+A twinBASIC exe that runs on a desktop other than the input desktop (one made with `CreateDesktop` and named in `STARTUPINFO.lpDesktop`, as test harnesses do to keep windows off the user's screen) waits 2 s each time a new top-level window of its own is activated, from the third window it shows on: in `CreateWindowEx` for a window created `WS_VISIBLE`, or in `AppActivate` for one shown without activation. The same program built in VB6 takes no time there, and the same twinBASIC program takes none in the IDE's run after the build, or as an exe on the input desktop (0.02 s a window). `DoEvents` before or after the call changes nothing.
+
+It costs a program that opens windows in a loop 2 s a window, which makes automated tests of twinBASIC programs on a private desktop slow and timing-dependent.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `private-desktop-window-activation-delay.twinproj` (attached as `private-desktop-window-activation-delay.zip`).
+2. Build the exe and start it on a desktop that is not the input desktop (`CreateDesktopW`, then `CreateProcessW` with `lpDesktop` naming it). It writes to `out.txt` beside itself; on BETA 1010 windows 2 to 4 each take 2 s to make.
+
+```vb
+' Makes four top-level windows one after another, each shown at creation (WS_VISIBLE, which
+' activates it) and destroyed after AppActivate, and writes how long each step took to out.txt
+' beside the exe (or to the file TBRUN_OUT names). A throwaway window comes first, since the
+' first window a program shows takes the show command it was started with (hidden, for a
+' program started hidden). Run as an exe on a desktop that is not the input desktop, as
+' bug_repro.mjs run --exe and tbrun --exe do, it takes 2 s to create each window from the third
+' it shows (window 2 below) on. In the IDE's run after the build there is no delay; on the
+' input desktop each takes 0.02 s; and the VB6 project beside this one takes none on either.
+Module Startup
+    Private Declare PtrSafe Function CreateWindowExA Lib "user32" (ByVal Ex As Long, ByVal Cls As String, ByVal Title As String, ByVal Style As Long, ByVal X As Long, ByVal Y As Long, ByVal W As Long, ByVal H As Long, ByVal Parent As LongPtr, ByVal Menu As LongPtr, ByVal Inst As LongPtr, ByVal P As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DestroyWindow Lib "user32" (ByVal H As LongPtr) As Long
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+
+    Private Sub Out(ByVal Text As String)
+        If App.IsInIDE Then
+            Debug.Print Text
+            Exit Sub
+        End If
+        Dim file As String = Environ$("TBRUN_OUT")
+        If Len(file) = 0 Then file = App.Path & "\out.txt"
+        Dim f As Integer = FreeFile
+        Open file For Append As #f
+        Print #f, Text
+        Close #f
+    End Sub
+
+    Public Sub Main()
+        Dim I As Long, H As LongPtr, T0 As Double, T1 As Double, T2 As Double, Title As String
+        Title = "WindowActivationDelay" & GetCurrentProcessId()
+        DestroyWindow CreateWindowExA(0, "STATIC", "first", &H10CF0000, 0, 0, 100, 50, 0, 0, 0, 0)
+        On Error Resume Next
+        For I = 1 To 4
+            T0 = Timer
+            H = CreateWindowExA(0, "STATIC", Title, &H10CF0000, 100 + I * 30, 100 + I * 30, 300, 100, 0, 0, 0, 0)
+            T1 = Timer
+            AppActivate Title
+            T2 = Timer
+            Out I & " made " & Format$(T1 - T0, "0.00") & " activated " & Format$(T2 - T1, "0.00") & " error " & Err.Number
+            Err.Clear
+            DestroyWindow H
+        Next
+    End Sub
+
+    ' The IDE's run after the build: the same windows, in the IDE, where there is no delay.
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Main
+    End Sub
+End Module
+```
+
+Output of the exe on a private desktop:
+```
+1 made 0.00 activated 0.00 error 0
+2 made 2.01 activated 0.00 error 0
+3 made 2.02 activated 0.00 error 0
+4 made 2.02 activated 0.00 error 0
+```
+
+**Expected behavior**
+No wait, as in VB6 (the attached `private-desktop-window-activation-delay-vb6.zip` prints 0.00 for every step on the same desktop) and as in twinBASIC itself on the input desktop.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. Programs on the user's own desktop are not affected.
+
+When the window is created hidden and shown with `SW_SHOWNA`, the 2 s moves from `CreateWindowEx` into `AppActivate`; so the wait belongs to the activation of a new window, whichever call makes it. The program never calls `GetForegroundWindow` during it. On a private desktop no window becomes the foreground window; something in the twinBASIC runtime apparently waits for that, with a 2 s limit.
+
+<!-- Reproducer: bugs/private-desktop-window-activation-delay/ (mode run with exe: `tbrun --exe`, which starts the exe on a private desktop; expect lists windows 2 to 4 at 2 s); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 0.00 for every step on a private desktop. On the user's desktop (owner, 2026-10-27, a run of the same program from the session's scratchpad) twinBASIC took 0.02 s a window. Not stated on any page: the documentation does not run on a private desktop; scripts/errors.mjs gives a twinBASIC probe 120 s because of it (WIP.Errors.md, the window harness). Found 2026-10-22 by batch 6b of WIP.Errors.md; owner: a bug, surprising for anyone who tests on a private desktop. -->
