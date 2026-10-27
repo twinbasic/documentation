@@ -9,7 +9,8 @@
 //
 // A client that cannot open the pipe starts the broker: it runs `tbbroker start`, which starts
 // the broker detached, out of this process's job and tree, waits until the pipe answers and
-// exits; then the client connects again.
+// exits; then the client connects again, for up to 5 s while the pipe has no instance free
+// (openPipeRetrying).
 
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -50,6 +51,21 @@ function openPipe(pipe) {
   });
 }
 
+// After `tbbroker start`, the pipe can be briefly without an instance waiting for a client
+// (ENOENT), or have none free (EBUSY), when several clients start the broker at once: one
+// that found no broker connects again, at a random short interval, for up to `ms`.
+async function openPipeRetrying(pipe, ms = 5000) {
+  const until = Date.now() + ms;
+  for (;;) {
+    try {
+      return await openPipe(pipe);
+    } catch (e) {
+      if ((e.code !== "ENOENT" && e.code !== "EBUSY") || Date.now() > until) throw e;
+      await new Promise((r) => setTimeout(r, 50 + Math.floor(Math.random() * 100)));
+    }
+  }
+}
+
 /**
  * Start the broker unless it runs, with `tbbroker start`; resolves once the pipe answers.
  * `args` are the broker's options (--pipe, --prefix, --max, --ports, --log).
@@ -87,7 +103,7 @@ export async function connectBroker({ pipe = DEFAULT_PIPE, client, start = true,
   } catch (e) {
     if (!start || (e.code !== "ENOENT" && e.code !== "EBUSY")) throw e;
     await startBroker({ exe, args: ["--pipe", full, ...args] });
-    socket = await openPipe(full);
+    socket = await openPipeRetrying(full);
   }
   const b = new Broker(socket, full);
   const hello = await b.request({ op: "hello", client: client ?? path.basename(process.argv[1] ?? "node") });

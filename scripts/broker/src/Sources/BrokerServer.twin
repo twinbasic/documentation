@@ -167,7 +167,7 @@ Module BrokerServer
                 Connected c
             Else
                 Drop c
-                mNeedListener = True
+                ListenNow
             End If
             Exit Sub
         End If
@@ -198,8 +198,19 @@ Module BrokerServer
         c.ClientPid = pid
         BrokerText.Log "connection " & c.Id & " from pid " & pid
         ' The next client needs an instance of its own to connect to.
-        Listen False
+        ListenNow
         Read c
+    End Sub
+
+    ' A new instance now, tried three times: an instance that fails (a client that connected
+    ' and left before ConnectNamedPipe, error 232) would otherwise leave the pipe with none
+    ' until the next tick, and a client that opens it then gets ERROR_FILE_NOT_FOUND.
+    Private Sub ListenNow()
+        Dim i As Long
+        For i = 1 To 3
+            Listen False
+            If Not mNeedListener Then Exit Sub
+        Next
     End Sub
 
     Private Sub Read(ByVal c As BrokerConn)
