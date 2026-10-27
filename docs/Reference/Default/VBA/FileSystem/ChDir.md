@@ -24,9 +24,6 @@ ChDir "D:\TMP" ' Make "D:\TMP" the current folder.
 ChDrive "D"    ' Make "D" the current drive. 
 ```
 
-> [!NOTE] BETA 1010
-> **ChDir** raises run-time error -2147467259 (`&H80004005`) for a *path* that does not exist, where VB6 raises 76 (*Path not found*).
-
 <!--
 On Linux MacOS, the default drive always changes to the drive specified in *path*. Full path specifications begin with the volume name, and relative paths begin with a colon (**:**). **ChDir** resolves any aliases specified in the path: 
 
@@ -41,6 +38,19 @@ ChDir "::" ' Moves up one directory on the MacOS.
 On MacOS, the default drive name is "HD" and portions of the pathname are separated by colons instead of backslashes. Similarly, you would specify MacOS folders instead of Windows. Finally, wildcard characters have no special meaning on the MacOS and are treated simply as characters.
 
 -->
+
+<!-- errors: generated from errors/VBA.FileSystem.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *path* names no folder that exists, which includes a file, a drive that does not exist, a zero-length string, and a name with a wildcard or a character a name cannot hold |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *path* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *path* names no folder that exists, which includes a file, a drive that does not exist, a zero-length string, and a name with a wildcard or a character a name cannot hold, VB6 and 64-bit VBA raise error [76 (`&H4C`)](tb:Errors#76), *Path not found*, instead.
+
+<!-- /errors -->
 
 ### Example
 

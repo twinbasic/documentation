@@ -16,9 +16,6 @@ Syntax: **GetAttr(** *pathname* **)**
 *pathname*
 : *required* String expression that specifies a file name. The *pathname* may include the directory or folder, and the drive.
 
-> [!NOTE] BETA 1010
-> **GetAttr** raises run-time error -2147467259 (`&H80004005`) for a *pathname* that does not exist. VB6 raises 53 (*File not found*), or 76 (*Path not found*) when the folder does not exist.
-
 ### Return Values
 
 The value returned by **GetAttr** is the sum of the following attribute values:
@@ -40,6 +37,28 @@ Result = GetAttr(FName) And vbArchive
 ```
 
 A nonzero value is returned if the Archive attribute is set.
+
+<!-- errors: generated from errors/VBA.FileSystem.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | no file or folder has the name *pathname*, or it is a zero-length string<br>the folder or drive named in *pathname* does not exist<br>*pathname* holds a wildcard<br>*pathname* holds a character a name cannot hold, or names a file with a backslash at its end |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *pathname* is **Null** |
+
+> [!NOTE] BETA 1010
+> When no file or folder has the name *pathname*, or it is a zero-length string, VB6 and 64-bit VBA raise error [53 (`&H35`)](tb:Errors#53), *File not found*, instead.
+
+> [!NOTE] BETA 1010
+> When the folder or drive named in *pathname* does not exist, VB6 and 64-bit VBA raise error [76 (`&H4C`)](tb:Errors#76), *Path not found*, instead.
+
+> [!NOTE] BETA 1010
+> When *pathname* holds a wildcard, VB6 and 64-bit VBA raise error [52 (`&H34`)](tb:Errors#52), *Bad file name or number*, instead.
+
+> [!NOTE] BETA 1010
+> When *pathname* holds a character a name cannot hold, or names a file with a backslash at its end, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+<!-- /errors -->
 
 ### Example
 

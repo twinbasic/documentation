@@ -18,6 +18,19 @@ Syntax: **FreeFile** [ **(** *rangenumber* **)** ]
 
 Use **FreeFile** to supply a file number that is not already in use.
 
+<!-- errors: generated from errors/VBA.FileSystem.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | every file number from 1 to 255 is in use |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *rangenumber* is **Null** |
+
+> [!NOTE] BETA 1010
+> When every file number from 1 to 255 is in use, VB6 and 64-bit VBA raise error [67 (`&H43`)](tb:Errors#67), *Too many files*, instead.
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **FreeFile** function to return the next available file number. Five files are opened for output within the loop, and some sample data is written to each.

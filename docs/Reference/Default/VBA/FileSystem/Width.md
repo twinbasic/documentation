@@ -18,7 +18,30 @@ Syntax: **Width #** *FileNumber* **,** *Width*
 : *required* The file number used to open the file.
 
 *Width*
-: *required* A numeric expression in the range 0--255, inclusive, indicating how many characters appear on a line before a new line is started. If *Width* equals `0`, there is no limit to the length of a line. The default is `0`.
+: *required* An **Integer** in the range 0--32,767, inclusive, indicating how many characters appear on a line before a new line is started. If *Width* equals `0`, there is no limit to the length of a line. The default is `0`.
+
+> [!NOTE]
+> VB6 and 64-bit VBA take a *Width* from 0 to 255 only, and raise error 5, *Invalid procedure call or argument*, for one above 255.
+
+<!-- bug: filesystem-argument-checks -->
+> [!WARNING] BETA 1010
+> A negative *Width* raises no error, and **Print #** then starts a new line before each item after the first. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
+
+<!-- errors: generated from errors/VBA.FileSystem.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *FileNumber* is not the number of an open file |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *Width* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *FileNumber* is not the number of an open file, VB6 and 64-bit VBA raise error [52 (`&H34`)](tb:Errors#52), *Bad file name or number*, instead.
+
+> [!NOTE] BETA 1010
+> When *Width* is negative, after rounding, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+
+<!-- /errors -->
 
 ### Example
 
