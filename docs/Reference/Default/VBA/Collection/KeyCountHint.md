@@ -27,6 +27,15 @@ Setting **KeyCountHint** is optional. It is most effective when set before any i
 
 The hint affects only keyed items (those added with a **Key** argument); items added without a key are unaffected.
 
+<!-- errors: generated from errors/VBA.Collection.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *hint* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 ```tb check_build

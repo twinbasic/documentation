@@ -27,6 +27,15 @@ When an error occurs that twinBASIC raises itself, such as a division by zero, *
 > [!WARNING] BETA 1010
 > It does not fill in **Source**, and raises no error. VBA and VB6 fill it in automatically with the name of the project, for an error that the runtime raises and for **Raise** without a source argument. A program that reads **Err.Source** to find where an error came from gets an empty string.
 
+<!-- errors: generated from errors/VBA.ErrObject.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *errorSource* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example assigns the programmatic ID of an Automation object to the variable `myObjectID`, and then assigns that to the **Source** property of the **Err** object when it generates an error with the [**Raise**](Raise) method.

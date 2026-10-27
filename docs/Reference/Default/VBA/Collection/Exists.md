@@ -23,6 +23,15 @@ Syntax: *object*.**Exists(** *key* **)**
 
 Key comparison is governed by the [**KeyCompareMode**](KeyCompareMode) property.
 
+<!-- errors: generated from errors/VBA.Collection.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *key* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 ```tb check_build

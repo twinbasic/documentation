@@ -47,7 +47,47 @@ When the error is raised in a method of a class and the caller handles it, an em
 > [!NOTE] BETA 1010
 > An error that a class member raises with a constant *number*, such as `Err.Raise 380`, reaches a caller that called the member late-bound --- through an **Object** variable or [**CallByName**](../Interaction/CallByName) --- as error -2147352567 (`&H80020009`), *Exception occurred.*, not as 380. VB6 raises 380. The number arrives unchanged when the member passes it in a variable, as in `Err.Raise Number`, and in every early-bound call.
 
+<!-- bug: err-raise-hresult-mapping -->
+> [!NOTE] BETA 1010
+> **Raise** raises an **HRESULT** *number* as it is. VB6 and 64-bit VBA raise many **HRESULT**s as the VB error of the same meaning instead, including these:
+>
+> | *number* | VB6 and 64-bit VBA raise |
+> |---|---|
+> | `&H80070057` (`E_INVALIDARG`) | 5 |
+> | `&H8007000E` (`E_OUTOFMEMORY`) | 7 |
+> | `&H80070005` (`E_ACCESSDENIED`), `&H80030005` (`STG_E_ACCESSDENIED`) | 70 |
+> | `&H80004001` (`E_NOTIMPL`) | 445 |
+> | `&H80004002` (`E_NOINTERFACE`) | 430 |
+> | `&H80004004` (`E_ABORT`) | 287 |
+> | `&H80020003` (`DISP_E_MEMBERNOTFOUND`), `&H80020006` (`DISP_E_UNKNOWNNAME`) | 438 |
+> | `&H80020005` (`DISP_E_TYPEMISMATCH`) | 13 |
+> | `&H80020008` (`DISP_E_BADVARTYPE`) | 458 |
+> | `&H8002000A` (`DISP_E_OVERFLOW`) | 6 |
+> | `&H8002000B` (`DISP_E_BADINDEX`) | 9 |
+> | `&H8002000E` (`DISP_E_BADPARAMCOUNT`) | 450 |
+> | `&H80020011` (`DISP_E_NOTACOLLECTION`) | 451 |
+> | `&H80030002` (`STG_E_FILENOTFOUND`) | 432 |
+> | `&H80030003` (`STG_E_PATHNOTFOUND`) | 76 |
+> | `&H80030070` (`STG_E_MEDIUMFULL`) | 61 |
+> | `&H80040154` (`REGDB_E_CLASSNOTREG`), `&H80040112` (`CLASS_E_NOTLICENSED`), `&H800401E3` (`MK_E_UNAVAILABLE`), `&H800401F3` (`CO_E_CLASSSTRING`) | 429 |
+> | `&H800A0001` to `&H800AFFFF`, a VB error as an **HRESULT** | its low 16 bits: 5 for `&H800A0005`, 53 for `&H800A0035` |
+>
+> They keep others as they are, such as `&H80004005` (`E_FAIL`), `&H80020009` (`DISP_E_EXCEPTION`) and `&H80070002`. A handler that tests for a VB number, such as 5, does not recognise the **HRESULT** that twinBASIC raises.
+
 **Raise** is preferred over the [**Error**](../../Core/Error) statement when generating run-time errors, particularly inside class modules: the **Err** object holds richer information than the **Error** statement can supply. With **Raise** the source that generated the error can be specified in the [**Source**](Source) property, online Help for the error can be referenced through [**HelpFile**](HelpFile) and [**HelpContext**](HelpContext), and so on.
+
+<!-- errors: generated from errors/VBA.ErrObject.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *number* is 0 after rounding, or **Empty** |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | an argument is **Null** |
+
+> [!NOTE] BETA 1010
+> When *number* is greater than 65535, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+
+<!-- /errors -->
 
 ### Example
 
