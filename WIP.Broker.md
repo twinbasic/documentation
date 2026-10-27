@@ -171,7 +171,10 @@ dropped. A lease with `port` that finds no port fails `no-port` at once rather t
    the socket while no request is in flight, so it never keeps Node alive by itself.)
 2. **If the pipe cannot be opened** (it does not exist, or is busy), run `tbbroker.exe start`
    --- `TBBROKER_EXE`, else `%LOCALAPPDATA%\tbbroker\tbbroker.exe` --- wait for it to exit (0 means
-   the broker answers), and connect again. Send `hello` and check `protocol` is 1.
+   the broker answers), and connect again: on ENOENT or EBUSY, again at a random 50 to 150 ms
+   for up to 5 s, since clients that start the broker at once can find the pipe with no
+   instance waiting for a moment (seen on 2026-10-22: four clients, all ENOENT). Send `hello`
+   and check `protocol` is 1.
 3. **Before starting a program**: `lease` with a `tag` that says what it is (`"tbbuild 9333"`,
    `"lane help-2"`). Start the program on `desktop`, and name its folders and ids by `slot`.
 4. **Hand the lease to the process that lives as long as the program**: `hold` the launcher's pid

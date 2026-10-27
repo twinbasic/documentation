@@ -47,6 +47,8 @@ import {
   pagePath,
   probeCases,
   probeModule,
+  splitHarness,
+  vb6Unattended,
   readData,
   readMessageOutput,
   readMessages,
@@ -358,6 +360,43 @@ for (const dialect of ["tb", "vb6", "vba"]) {
       c1.indexOf("    one_End") === c1.indexOf("    Result = F(1)") + 1 &&
       c1.some((l) => l.startsWith("    If Err.Number <> 0 Then") && l.endsWith(": one_End: Exit Sub")) &&
       !c5.some((l) => l.includes("_Begin")),
+  );
+}
+{
+  const split = splitHarness([
+    "' head",
+    "#If VBA7 Then",
+    'Private Declare PtrSafe Sub A Lib "k" ()',
+    "#End If",
+    "Private X As Long",
+    "' the first procedure",
+    "#If VBA7 Then",
+    "Private Function F(ByVal P As LongPtr) As Long",
+    "End Function",
+    "#End If",
+    "Private Sub G()",
+    "End Sub",
+  ]);
+  check(
+    "a harness splits before its first procedure, its comments and the #If it is in",
+    split.declarations.length === 5 && split.procedures[0] === "' the first procedure",
+    JSON.stringify(split),
+  );
+  const two = probeModule(
+    probeCases([harnessed], "vb6"),
+    "vb6",
+    new Map([
+      ["one", "Private A1 As Long\nPrivate Sub one_Begin()\nEnd Sub"],
+      ["two", "Private A2 As Long\nPrivate Sub two_Begin()\nEnd Sub"],
+    ]),
+  ).text.split("\r\n");
+  check(
+    "every harness's declarations come before every harness's procedures",
+    two.indexOf("Private A2 As Long") < two.indexOf("Private Sub one_Begin()"),
+  );
+  check(
+    "VB6 builds a probe without Unattended Execution only when a case is under the dialog harness",
+    vb6Unattended([{ harness: "clock" }, {}]) && !vb6Unattended([{}, { harness: "dialog" }]),
   );
 }
 check(

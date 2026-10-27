@@ -64,8 +64,13 @@ of the re-check is left.
 applied; four new entries queued in BUGS-TO-REPORT.md, and `DISP_E_NOTACOLLECTION` added to
 `latebound-hresult-mapping` (*Batch 6a findings*). No row is `bug: pending`.
 
-**Next: batch 6b**, `Interaction`'s interactive procedures (the batch table's row says what a
-probe may and may not call).
+**Batch 6b is done** (2026-10-27), `Interaction`'s interactive procedures, under three new
+harnesses (`dialog`, `keys`, `window`): 164 cases, all agreeing in all four runtimes (the whole
+`VBA.Interaction.yml`, 355 cases, too); sections on AppActivate, InputBox, MsgBox, SendKeys and
+Shell; DoEvents quiet; Beep nothing (D3). `argument-errors-unspecified-error` extended, three
+entries queued (*Batch 6b findings*). No row is `bug: pending`, and no question is open.
+
+**Next: batch 7**, VBA `FileSystem`.
 
 ## Owner's decisions
 
@@ -349,6 +354,28 @@ Windows refuses). `check_errors.mjs` reports a harness the data names and has no
   the case's error (raised again with its description once the key is gone), so nothing a case
   writes stays in the user's registry. A case's `setup` may save what it reads. Check after a run
   that no `tbdocsErrorsProbe*` key is left.
+- **`dialog`** (batch 6b) --- `MsgBox`, `InputBox`. A `WH_CBT` hook on the probe's thread notes
+  each top-level `#32770` it creates and, as it is activated, hides it and **sends**
+  `WM_COMMAND` from Cancel, else the first push button that is not Help (a posted one never
+  reaches the box in Access; `EndDialog` skips the dialog procedure, and twinBASIC's InputBox
+  then faults in OLEAUT32). A guard patches `MessageBoxIndirectA/W` (twinBASIC calls the W form,
+  VB6 and VBA the A form) and refuses a style with any of &H260000 (another desktop: service
+  notification, its NT 3.x form, default desktop only), which `dialog_End` reports as 1002; the
+  six other MessageBox entry points are refused outright. `dialog_Expect Count` raises 1001;
+  `dialog_Count`, `dialog_Style`, `dialog_Button` record the last box. VB6 builds a probe with
+  `dialog` cases without Unattended Execution (`ATTENDED_HARNESSES`), and `VbaSession` ends
+  Access only at a box seen at two polls.
+- **`keys`** (batch 6b) --- `SendKeys`. Patches `keybd_event` (twinBASIC's way) and `SendInput`
+  (VB6's and VBA's) with fakes that record each event and succeed, and `SetWindowsHookExA/W`
+  with one that refuses a journal-playback hook as Windows does without UIAccess (VB6 and VBA
+  then use `SendInput`). `keys_Expect "10d 41d 41u 10u"` raises 1001 for other events
+  (`<vk hex><d|u>`, or `U<char hex><d|u>` for a Unicode one).
+- **`window`** (batch 6b) --- `AppActivate`. A `STATIC` top-level window titled `window_Title`
+  (with the process id), shown without activation; `window_Pid`, `window_Hide`,
+  `window_Minimize`, `window_Visible`, `window_Minimized`. On the private desktop no window
+  becomes the foreground one, and AppActivate raises nothing for that; in twinBASIC, activating a
+  new window there takes 2 s from the third on (not on the user's desktop), so `errors.mjs`
+  gives a twinBASIC probe 120 s.
 
 **YAML pitfalls**, each met in batch 2:
 
@@ -403,8 +430,9 @@ What the probes must respect (BETA 1010; `errors.mjs` already does all of it):
   variable (bug `module-init-reads-other-module-ide`), and may differ in other ways.
 - **A `tbrun --exe` probe brings its own `Sub Main`**, without the console template's
   `tbxMain.twin`; two `Main`s make the build fail with *'Main' is ambiguous*.
-- **Never `MsgBox`, `InputBox` or an unhandled error** in a probe: each opens a modal box on a
-  private desktop. Every case runs under `On Error Resume Next`.
+- **Never an unhandled error** in a probe, and **`MsgBox` and `InputBox` only under the `dialog`
+  harness**, `SendKeys` only under `keys`: otherwise each opens a modal box on a private desktop,
+  or sends keys. Every case runs under `On Error Resume Next`.
 - **Keep the generated code plain.** A module-level or class-field initializer cannot call a
   procedure of the project, and a class field that reads another field fails the build (bug
   `class-field-init-reads-field`).
@@ -675,6 +703,167 @@ one key (a VB6 case failed when another runtime's cleanup removed its section).
   in VB (32,768 raises 6 in all four): state the type on the page, and the 6 is then the
   conversion, not listed.
 
+## Batch 6b design (2026-10-22; D1 to D4 answered by the owner)
+
+The pages: AppActivate, Beep, DoEvents, InputBox, MsgBox, SendKeys and Shell. Each of them
+acts outside the probe --- a box, a key, a window's focus, a process, a sound --- so the
+question for each is what the probe may let happen, and what it must intercept.
+
+**The problem with the rule as it stands.** The batch row allows MsgBox and InputBox never,
+and SendKeys only with strings refused before a key is sent. That leaves MsgBox and InputBox
+with no quiet cases at all, so no row could be written either: a case such as
+`MsgBox("x", 7)` cannot be tried without the risk that it succeeds and opens a box. And which
+SendKeys strings are refused before a key is sent is just what the probe has to find out. The
+design therefore makes each effect safe *in the probe's own process*, as the clock harness
+does for the system clock, so that every case can be tried.
+
+### Three harnesses
+
+Each is one `errors/harnesses/<name>.bas` for all four runtimes, `#If VBA7` for the
+declarations and the callback's signature, a pointer kept in a `Variant` (*Harnesses*).
+
+- **`dialog`** (MsgBox, InputBox) --- two parts.
+  - *The answer.* `dialog_Begin` installs a `WH_CBT` hook on the probe's own thread
+    (`SetWindowsHookEx(5, AddressOf dialog_Hook, 0, GetCurrentThreadId())`), and `dialog_End`
+    removes it. The hook notes each window of class `#32770` it sees created
+    (`HCBT_CREATEWND`), and when one of those is activated (`HCBT_ACTIVATE`) it hides it and
+    posts `WM_COMMAND` for one of its buttons: Cancel (2) when the box has one, else its first
+    button that is not Help (9). It records each box it answered: its title, its text (the
+    static control 65535 in a message box) and the button pressed, so that
+    `dialog_Expect Count` can raise 1001 when a quiet case did not show the box it should (a
+    call that silently does nothing is told apart from one that showed and returned). Windows
+    the hook did not see created --- Access's own --- are left alone. The real MessageBox and
+    the real dialog run: what they refuse is what the probe measures.
+  - *The guard.* A box can be shown on a desktop other than the probe's:
+    `MB_SERVICE_NOTIFICATION` (&H200000), its NT 3.x form (&H40000) and
+    `MB_DEFAULT_DESKTOP_ONLY` (&H20000) put it on the **input desktop**, the user's, where no
+    thread hook sees it, and a *buttons* of -1 or 2147483647 has those bits. So `dialog_Begin`
+    also patches every MessageBox entry point of user32 (`MessageBoxA/W`, `MessageBoxExA/W`,
+    `MessageBoxIndirectA/W`, `MessageBoxTimeoutA/W`) with a jump to a guard, as `clock_Patch`
+    does: a style with any of the bits &H260000 is refused (the guard returns 0, sets
+    `ERROR_INVALID_PARAMETER` and counts a *guarded* call, which `dialog_End` reports as
+    error 1002 so that the case can never pass silently); any other style is passed to the
+    real function (bytes put back, the call made, the patch put again; the probe has one
+    thread). VB6's MSVBVM60 imports `MessageBoxIndirectA` and `MessageBoxA`; what twinBASIC
+    and VBE7 call is the first thing step 1 of the plan finds out, and **no case with those
+    bits runs in a runtime until a guard is shown to catch that runtime's calls**.
+- **`keys`** (SendKeys) --- a jump patch, as the clock's, of the calls that inject input:
+  `SendInput` and `keybd_event` in user32, and `SetWindowsHookExA/W` for a journal-playback
+  hook (`idHook` 1), which MSVBVM60 imports and may be how VB6 sends keys. The fakes record
+  each key event (virtual key, up or down) and report success; nothing is injected. A
+  journal-playback hook is recorded and its callback driven by the harness until it reports
+  the end (`HC_GETNEXT`, `HC_SKIP`), as Windows would; whether this part is needed at all is
+  step 1's answer for VB6. `keys_Expect "<keys>"` raises 1001 when the recorded events are
+  not the ones given (`"a{ENTER}"` written as the harness's own short form, the plan's step
+  4). So a quiet case checks what a string *sends*, and a row can say whether keys before a
+  bad token are sent first (`"a{BAD}"`). The private desktop is not the input desktop, so a
+  key that slipped past the patch could not reach the user's desktop either; the patch is
+  what makes the result independent of that.
+- **`window`** (AppActivate) --- `window_Begin` creates a visible top-level window of the
+  probe's own thread titled `window_Title` (`tbdocsErrorsProbe` and the process id, as
+  `registry_App`), and `window_End` destroys it, so that a case has something to activate
+  by title, by a prefix of it, and by task id (`window_Pid`, the probe's own process id). A
+  private desktop is never the input desktop, so Windows may refuse to bring a window to the
+  foreground there; if step 1 shows that it does, the harness also patches the activation
+  call each runtime makes (`SetForegroundWindow`, MSVBVM60 imports it) with a fake that
+  refuses what the real one refuses (`IsWindow` false) and records the window, so that no
+  error of the private desktop reaches the data (the owner's rule: an error only the test
+  setup raises is not listed).
+
+**Shell** needs no harness: the batch row's limit stays (a program that does not exist,
+`cmd.exe /c exit`, and files that are not programs, such as `win.ini` of the Windows folder).
+A process it starts inherits the probe's private desktop and its kill-on-close job. No case
+names a `.bat`, `.cmd` or anything else CreateProcess would run.
+
+**DoEvents** gets quiet cases and no section. **Beep** has no arguments and nothing to raise:
+no case (it would sound in the owner's room four times a run) and no section.
+
+### What changes in the tooling
+
+- **VB6 is built without Unattended Execution for a page under the `dialog` harness.** With
+  `Unattended=-1`, VB6's MsgBox writes to the event log and shows nothing, so the probe would
+  measure the log. `runRepro` takes an option for it, and `errors.mjs` passes it when a case
+  of the probe uses `dialog`. A box the exe opens is still closed by the launcher; under the
+  hook there should be none.
+- **`VbaSession` ends Access at a box only when it has stayed for two polls.** Today any
+  visible `#32770` of Access ends it (*Tooling*), and the hook's box exists for an instant
+  before it hides it. A compile error's box stays until answered, so nothing it catches is
+  lost.
+- **`tbrun`** needs nothing: a box the launcher sees and closes is reported in `dialogs`,
+  which `errors.mjs` reads only when the probe stopped.
+- `check_errors.mjs` needs nothing new: the three harnesses are files it already checks for.
+- **WIP.Errors.md**: *What the probes must respect* says MsgBox and InputBox only under the
+  `dialog` harness, and the batch row is rewritten.
+
+### The owner's decisions
+
+- **D1.** May a probe call MsgBox and InputBox under the `dialog` harness (hook and guard)?
+  Without it the two pages get at most their Null rows, and only where a Null is refused
+  before a box opens, which cannot be known without trying.
+- **D2.** May SendKeys be given strings that send keys, under the `keys` harness, once step 1
+  shows the patch catches every runtime's calls (the first such run with the owner's OK,
+  since it is the one that would send a key if the patch missed)?
+- **D3.** Beep: no case and no section, as above, or a guard (`MessageBeep` and `Beep`
+  patched) and quiet cases?
+- **D4.** If VB6 (or 64-bit VBA) raises an error for SendKeys or AppActivate on the user's
+  own desktop because of Windows itself (VB6's SendKeys is known to raise 70 *Permission
+  denied* on Windows Vista and later when its journal hook is refused), is that a row, a
+  NOTE, or nothing? It is the runtime's behaviour on a current Windows, not the test setup's,
+  so the 2026-10-22 rule does not settle it. The harness hides it, so step 1 checks it once
+  on the user's desktop only with the owner's OK, or the owner answers from what is known.
+
+Owner's answers (2026-10-22): **D1 yes** (MsgBox and InputBox under `dialog`). **D2 yes**
+(SendKeys strings that send keys, under `keys`, once step 1 shows the patch catches every
+runtime's calls). **D4 nothing**: no row and no NOTE, since the documentation does not
+document VB6, and such an error is a VB6 bug for practical purposes; it is not checked on
+the user's desktop either. **D3 left for now**: Beep takes no arguments and either works or
+does not, so it gets no case, no harness and no section.
+
+## Batch 6b findings (VBA `Interaction`, interactive procedures, BETA 1010, 2026-10-27)
+
+**What each runtime calls** (a temporary trace harness that patched each candidate export with a
+refusing fake): MsgBox `MessageBoxIndirectW` (twinBASIC) and `MessageBoxIndirectA` (VB6, VBA);
+InputBox `DialogBoxIndirectParamW` (twinBASIC), `DialogBoxParamA` template &HFBF (VB6, VBA);
+SendKeys `keybd_event` (twinBASIC), and in VB6 and VBA a journal-playback hook, refused on
+Windows 10, then `SendInput` one event at a time; AppActivate `SetForegroundWindow` and `SetFocus`
+in all; Shell `CreateProcessW` with `STARTF_USESHOWWINDOW` and *windowstyle* as `wShowWindow` in
+all. The harnesses (*Harnesses*) cover exactly these.
+
+**Owner's decisions (2026-10-27)**:
+- **Bugs**, queued: SendKeys' -2147352567 and AppActivate's, Shell's, MsgBox's and InputBox's
+  -2147467259 join `argument-errors-unspecified-error`. `interaction-missing-argument-checks`:
+  Shell *windowstyle* 10 (`SW_SHOWDEFAULT`, the one value `STARTUPINFO` may not hold; VB takes
+  0 to 9 after rounding and nothing done first changes it), InputBox *xpos*/*ypos* outside the
+  `Integer` range (VB 6), *context* without *helpfile* (VB 5), *helpfile* **Null** raising 94
+  (VB 5), AppActivate of a hidden window (twinBASIC leaves it hidden; VB 5) and an unchecked
+  *wait*, and MsgBox styles Windows refuses (button group 7 to 15: no box, 0 returned; should
+  raise 5; VB shows an OK box). `sendkeys-non-ascii`: a character the layout has no key for is
+  converted to ANSI and sent as a key (é as virtual key &HE9, ☺ as `?`, Ā as Shift+A); VB sends
+  the character (KEYEVENTF_UNICODE). `private-desktop-window-activation-delay`: in an exe on a
+  private desktop, activating a new window takes 2 s from the third (none on the user's desktop,
+  run there once with the owner's agreement, none in VB6).
+- **Extensions**: AppActivate `""` (64-bit VBA agrees; VB6 5); SendKeys *wait* `"True"` (VB 13);
+  MsgBox passing every style Windows accepts (VB shows an OK box for a style it does not know:
+  6, two icons, &H400, -1). NOTEs on the pages.
+- **Nothing documented**: VB's `"((a))"` (Shift left down), its doubled Shift for `"+"`, and its
+  keeping the keys of a refused string for the next SendKeys (arguably a VB bug; twinBASIC drops
+  the string, which is right). D4: no error Windows makes VB raise on the user's desktop.
+- **Unguarded MsgBox -1 and &H7FFFFFFF** (owner's agreement): Windows refuses them for their
+  button group before any box, so the service-notification bit never shows a box.
+
+**Pages**: MsgBox and InputBox lose "If *helpfile* is supplied, *context* must also be supplied"
+(the tables carry it); Shell's "or zero if the program could not be started" is a `<!-- VBA: -->`
+comment (all four raise); SendKeys' `{INS}` is a `<!-- VBA: -->` comment (all four refuse it), its
+PRINT SCREEN NOTE says why (`{PRTSC}` sends `VK_PRINT`, &H2A), and a count in braces is at most
+8,175 in all four; AppActivate matches a title's end as well as its beginning.
+
+**Tooling** found on the way: VB6 and VBA refuse a declaration after a procedure, so a probe
+with two harnesses puts all their declarations first (`splitHarness`); Access never delivers a
+posted WM_COMMAND to a box, so the dialog harness sends it; `EndDialog` from outside makes
+twinBASIC's InputBox fault (a string it never set); a reproducer's VB6 project may call MsgBox and
+InputBox when it carries the dialog harness (`reproAnswersBoxes`). The broker's startup race
+(four clients, all ENOENT) is fixed on both sides (WIP.Broker.md).
+
 ## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
 
 Batches 2 to 5 and `Core.yml` in all four runtimes. Every runtime agreed with the data as it
@@ -754,8 +943,8 @@ each can be run when there is budget. Status is kept here.
 | 4 | VBA `Math` | 17 | done: 15 sections, 132 cases; 2026-10-22 |
 | 2--5 | Re-check of batches 2 to 5 and Core in four runtimes (64-bit VBA added) | --- | done: all agree; committed 2026-10-22, see *The 64-bit VBA re-check* |
 | 5 | VBA `DateTime` | 20 | done: 17 sections, 328 cases; owner's questions answered 2026-10-22 |
-| 6a | VBA `Information`, and `Interaction`'s non-interactive procedures: `CallByName`, `CallByDispId`, `Choose`, `Command`, `CreateObject`, `GetObject`, `Environ`, `IIf`, `If`, `Partition`, `Switch`, `RaiseEventByName`, `RaiseEventByName2`, `SaveSetting`, `GetSetting`, `GetAllSettings`, `DeleteSetting` (owner split batch 6, 2026-10-22) | 45 | in progress |
-| 6b | `Interaction`'s interactive procedures: `AppActivate`, `Beep`, `DoEvents`, `InputBox`, `MsgBox`, `SendKeys`, `Shell` (a probe never calls `MsgBox` or `InputBox`; `SendKeys` only with strings refused before a key is sent; `Shell` only with a missing program or `cmd.exe /c exit`) | 7 | not started |
+| 6a | VBA `Information`, and `Interaction`'s non-interactive procedures: `CallByName`, `CallByDispId`, `Choose`, `Command`, `CreateObject`, `GetObject`, `Environ`, `IIf`, `If`, `Partition`, `Switch`, `RaiseEventByName`, `RaiseEventByName2`, `SaveSetting`, `GetSetting`, `GetAllSettings`, `DeleteSetting` (owner split batch 6, 2026-10-22) | 45 | done: 27 sections, 302 cases; four entries queued 2026-10-22 |
+| 6b | `Interaction`'s interactive procedures: `AppActivate`, `Beep`, `DoEvents`, `InputBox`, `MsgBox`, `SendKeys`, `Shell`, under the `dialog`, `keys` and `window` harnesses (`Shell` only with programs that do not exist or `cmd.exe /c exit`) | 7 | done: 5 sections, 164 cases; three entries queued 2026-10-27 |
 | 7 | VBA `FileSystem` | 23 | not started |
 | 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | not started |
 | 9 | VBA `Financial` | 14 | not started |

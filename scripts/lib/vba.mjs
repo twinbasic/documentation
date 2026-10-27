@@ -32,6 +32,9 @@
 //     Run does not return once the box is answered, since the VBE stays in break mode waiting
 //     for a person, so that Access is ended and the next job starts another. An error in the module's declarations stops it before
 //     Main's first line, which the probe reports as `start`, so the two cannot be confused.
+//     A box ends Access only when it is seen at two polls in a row: the dialog harness
+//     (errors/harnesses/dialog.bas) answers the box MsgBox or InputBox shows as soon as it
+//     is activated, and a poll may catch it in that instant. A compile error's box stays.
 //  6. THE MODULE IS READ IN THE ANSI CODE PAGE, as VB6 reads its own, and out.txt is
 //     written in it.
 
@@ -268,6 +271,7 @@ export class VbaSession {
     const start = Date.now();
     let timedOut = false;
     let lost = false;
+    let boxSeen = false;
     while (!existsSync(resultFile)) {
       await Promise.race([this.run.exited, sleep(this.pollMs)]);
       if (existsSync(resultFile)) break;
@@ -288,8 +292,11 @@ export class VbaSession {
         // the desktop is listed again at the next poll
       }
       // Run does not return after a compile error's box is answered: the VBE stays in break
-      // mode, waiting for a person. So any box ends this Access, and the next job starts one.
-      if (seen.length) {
+      // mode, waiting for a person. So a box ends this Access, and the next job starts one,
+      // once it is seen at two polls in a row (5): a box a harness answers is gone by then.
+      const shown = seen.length > 0 && boxSeen;
+      boxSeen = seen.length > 0;
+      if (shown) {
         boxes.push(...seen.map((b) => ({ title: b.title, text: b.text })));
         lost = true;
         break;

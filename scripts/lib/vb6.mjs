@@ -59,7 +59,10 @@
 //     reproducer's or a batch of samples, starts as tbrun starts an exe, on a private
 //     desktop inside a kill-on-close job: a box there is on no desktop anyone uses, the
 //     launcher records it and closes it with OK, and the time limit ends an exe that
-//     still waits.
+//     still waits. runRepro's `unattended: false` builds a project without it too:
+//     scripts/errors.mjs passes it for a probe whose cases call MsgBox or InputBox under
+//     the dialog harness, because under Unattended Execution MsgBox writes to the event
+//     log and shows nothing, so the probe would measure the log, not the box.
 //
 // 10. A `project=form` FENCE GETS A BLANK Form1.frm, WITHOUT UNATTENDED EXECUTION (9).
 //     A form a sample leaves loaded keeps the exe
@@ -799,14 +802,31 @@ export function reproFiles(dir) {
 }
 
 /**
+ * Whether a reproducer's VB6 project carries the dialog harness, a copy of
+ * errors/harnesses/dialog.bas (WIP.Errors.md), which answers every box its own thread opens
+ * and refuses one for another desktop: a source that defines `dialog_Begin`. Such a project
+ * may call `MsgBox` and `InputBox`, between `dialog_Begin` and `dialog_End`, and is built
+ * without Unattended Execution, under which a box would go to the event log instead.
+ */
+export function reproAnswersBoxes(dir) {
+  return reproFiles(dir).sources.some(
+    (name) =>
+      /\.(?:bas|cls|frm|ctl)$/i.test(name) &&
+      /^\s*Private\s+Sub\s+dialog_Begin\s*\(/im.test(decodeAnsi(readFileSync(path.join(dir, name)))),
+  );
+}
+
+/**
  * What stops a reproducer's VB6 project from being built and run, or null: no
  * `Probe.vbp`, or a source that calls `MsgBox` or `InputBox`, which would open a
  * modal box on the desktop of whoever runs it (the check vb6run makes on a
- * sample). Comments and string contents are not read.
+ * sample), unless the project carries the dialog harness (reproAnswersBoxes).
+ * Comments and string contents are not read.
  */
 export function reproProblem(dir) {
   const { sources } = reproFiles(dir);
   if (!sources.includes(`${REPRO_PROJECT}.vbp`)) return `has no ${REPRO_PROJECT}.vbp`;
+  if (reproAnswersBoxes(dir)) return null;
   for (const name of sources) {
     if (/\.(?:vbp|frx|ctx)$/i.test(name)) continue;
     for (const { text, line } of logicalLines(decodeAnsi(readFileSync(path.join(dir, name))))) {
@@ -920,13 +940,17 @@ async function runReproExe(work, title, timeoutMs, env = {}) {
  *   boxes it opened and `logged` what the VB runtime logged for it (see 11 and 12 at the
  *   top); a VB6 that did not finish building throws
  */
-export async function runRepro(vb6, dir, { timeoutMs = 30000, keep = false, env = {} } = {}) {
+export async function runRepro(
+  vb6,
+  dir,
+  { timeoutMs = 30000, keep = false, env = {}, unattended: attended = true } = {},
+) {
   const work = mkdtempSync(path.join(tmpdir(), "bugrepro-vb6-"));
   try {
     for (const name of reproFiles(dir).sources) copyFileSync(path.join(dir, name), path.join(work, name));
     const vbp = path.join(work, `${REPRO_PROJECT}.vbp`);
     const text = decodeAnsi(readFileSync(vbp));
-    writeFileSync(vbp, encodeAnsi(unattended(text, !hasVisibleComponent(text))));
+    writeFileSync(vbp, encodeAnsi(unattended(text, attended && !hasVisibleComponent(text) && !reproAnswersBoxes(dir))));
     const made = await make(vb6, work, { project: REPRO_PROJECT });
     if (made.timedOut || made.error) {
       throw new Error(`VB6 did not finish building${made.error ? `: ${made.error}` : " in time"}\n${made.log}`);

@@ -14,6 +14,15 @@ export const ERRORS_DIR = path.join(REPO_ROOT, "errors");
 export const MESSAGES_FILE = "messages.yml";
 /** The harnesses, errors/harnesses/<name>.bas: module-level code a case can run under (WIP.Errors.md). */
 export const HARNESS_DIR = "harnesses";
+
+/**
+ * The harnesses whose cases show a box: VB6 builds their probe without Unattended Execution,
+ * under which MsgBox writes to the event log and shows nothing (lib/vb6.mjs, 9).
+ */
+export const ATTENDED_HARNESSES = new Set(["dialog"]);
+
+/** Whether VB6 builds the probe of `cases` with Unattended Execution: when no case shows a box. */
+export const vb6Unattended = (cases) => !cases.some((c) => ATTENDED_HARNESSES.has(c.harness));
 const HARNESS_NAME = /^[a-z][a-z0-9]*$/;
 
 const ROW_KEYS = new Set(["error", "when", "cases", "vb6", "win64", "vba64", "bug", "message", "harness"]);
@@ -313,11 +322,16 @@ function caseLines(c, report) {
  */
 export function probeModule(cases, dialect, harnesses = new Map()) {
   const used = [...new Set(cases.map((c) => c.harness).filter(Boolean))].sort();
-  const harnessLines = used.flatMap((h) => {
+  // VB6 and VBA refuse a declaration after a procedure: every harness's declarations come
+  // first, then every harness's procedures.
+  const parts = used.map((h) => {
     if (!harnesses.has(h)) throw new Error(`no code for harness ${h}`);
-    const text = harnesses.get(h).replace(/\r/g, "").replace(/\n+$/, "");
-    return [`' ---- harness ${h}: errors/${HARNESS_DIR}/${h}.bas`, ...text.split("\n")];
+    return [h, splitHarness(harnesses.get(h).replace(/\r/g, "").replace(/\n+$/, "").split("\n"))];
   });
+  const harnessLines = [
+    ...parts.flatMap(([h, p]) => [`' ---- harness ${h}: errors/${HARNESS_DIR}/${h}.bas`, ...p.declarations]),
+    ...parts.flatMap(([h, p]) => (p.procedures.length ? [`' ---- harness ${h}, its procedures`, ...p.procedures] : [])),
+  ];
   const head =
     dialect === "tb"
       ? [
@@ -365,6 +379,26 @@ export function probeModule(cases, dialect, harnesses = new Map()) {
   }
   if (dialect === "tb") lines.push("End Module");
   return { text: `${lines.join("\r\n")}\r\n`, spans };
+}
+
+const PROCEDURE_START = /^\s*(?:(?:Public|Private|Friend)\s+)?(?:Static\s+)?(?:Sub|Function|Property)\s/i;
+
+/**
+ * A harness's lines, split before its first procedure: `declarations` and `procedures`. The
+ * split goes back over the comments just before that procedure, and to the `#If` it is inside
+ * when it is in one, so that no conditional block is cut in two.
+ */
+export function splitHarness(lines) {
+  let at = lines.findIndex((l) => PROCEDURE_START.test(l));
+  if (at < 0) return { declarations: lines, procedures: [] };
+  const open = [];
+  for (let i = 0; i < at; i++) {
+    if (/^\s*#If\b/i.test(lines[i])) open.push(i);
+    else if (/^\s*#End\s+If\b/i.test(lines[i])) open.pop();
+  }
+  if (open.length) at = open[0];
+  while (at > 0 && /^\s*'/.test(lines[at - 1])) at--;
+  return { declarations: lines.slice(0, at), procedures: lines.slice(at) };
 }
 
 /** The code of each harness `cases` use, read from `dir`: Map name -> text. */
