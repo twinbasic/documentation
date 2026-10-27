@@ -70,7 +70,13 @@ harnesses (`dialog`, `keys`, `window`): 164 cases, all agreeing in all four runt
 Shell; DoEvents quiet; Beep nothing (D3). `argument-errors-unspecified-error` extended, three
 entries queued (*Batch 6b findings*). No row is `bug: pending`, and no question is open.
 
-**Next: batch 7**, VBA `FileSystem`.
+**Batch 7 is done** (2026-10-27), VBA `FileSystem`, under a new harness (`files`): 448 cases in
+`errors/VBA.FileSystem.yml`, all agreeing in all four runtimes; sections on 21 of the module's 22
+pages (Reset raises nothing; the index documents nothing). The owner's rulings applied (six
+extensions, three bugs); `file-errors-unspecified` extended by 30 cases, three entries queued
+(*Batch 7 findings*). No row is `bug: pending`, and no question is open.
+
+**Next: batch 8**, VBA `Collection` and `ErrObject`.
 
 ## Owner's decisions
 
@@ -376,6 +382,19 @@ Windows refuses). `check_errors.mjs` reports a harness the data names and has no
   becomes the foreground one, and AppActivate raises nothing for that; in twinBASIC, activating a
   new window there takes 2 s from the third on (not on the user's desktop), so `errors.mjs`
   gives a twinBASIC probe 120 s.
+- **`files`** (batch 7) --- every procedure that names or opens a file. `files_Begin` makes
+  `files_Dir`, `tbdocsErrorsProbe` and the process id under the temporary folder, makes it the
+  current directory (Windows' own calls, so no statement under test sets it up) and fills it:
+  `a.txt` (`abc`, CR LF, `def`, CR LF: 10 bytes), `empty.txt`, `ro.txt` (read-only), `hid.txt`
+  (hidden), the empty folder `sub` and `full`, which holds `f.txt`. A case names its files
+  relatively. `files_End` closes every file, puts the current directory back and deletes the
+  folder whatever its files' attributes, keeping the case's error; it deletes nothing whose path
+  does not end in the folder's own name. `files_Begin` raises 1003 when it cannot make or enter
+  the folder, so a case never runs in another folder. `files_Attr(name)` is
+  `GetFileAttributesW` (-1: no such file), `files_Expect Cond` raises 1001, `files_NoDrive` is a
+  letter no drive has. **A probe line that starts `Reset:` is a label**, not the statement: put
+  `Reset` on a line of its own (`run: "Reset\n..."`). Check after a run that no
+  `tbdocsErrorsProbe*` folder is left in `%TEMP%`.
 
 **YAML pitfalls**, each met in batch 2:
 
@@ -864,6 +883,48 @@ twinBASIC's InputBox fault (a string it never set); a reproducer's VB6 project m
 InputBox when it carries the dialog harness (`reproAnswersBoxes`). The broker's startup race
 (four clients, all ENOENT) is fixed on both sides (WIP.Broker.md).
 
+## Batch 7 findings (VBA `FileSystem`, BETA 1010, 2026-10-27)
+
+twinBASIC 64-bit agrees with 32-bit on every case, and 64-bit VBA with VB6, so every difference
+is twinBASIC against both.
+
+- **-2147467259 where VB raises a number, almost everywhere** (`file-errors-unspecified`, queued
+  since BETA 1005 and extended by 30 cases): 5, 52, 53, 54, 62, 63, 67, 68, 75, 76. The page's old
+  hand NOTEs went; the rows' generated NOTEs replace them. The Core pages (Open, Name, Get, Put,
+  Print, Line Input) keep their hand NOTEs until batch 11. What VB raises for a bad name differs
+  by procedure: GetAttr 5 for `<` or a file name ending in a backslash, FileLen and FileDateTime
+  53 for those, Dir 52 for the backslash; a wildcard is 52 everywhere but ChDir, MkDir and RmDir
+  (76) and Kill (53 when nothing matches).
+- **Null raises 94 everywhere**, but `CurDir(Null)` and `Dir(Null)` raise 13 in VB
+  (`filesystem-argument-checks`).
+- **Owner's rulings (2026-10-27)**. Extensions, with a NOTE saying what VB does and
+  twinBASIC-only quiet cases: Dir's *attributes* outside 0 to 63 (unknown bits ignored; VB 5);
+  a non-String argument to Dir and CurDir, converted as ChDir and ChDrive convert theirs in VB
+  (`Dir(5)`; VB 13); FileCopy of a source open for reading only, not locked against reading
+  (VB 55 for any mode but Input); SetAttr's *attributes* wherever Windows accepts them ("tB
+  extension where the attributes are valid for the underlying WINAPI; where the WINAPI fails,
+  SetAttr must correctly raise an error"; VB 5 for anything but sums of 1, 2, 4, 32, and 16 on a
+  folder); Width from 256 to 32,767 (VB 5). Bugs (`filesystem-argument-checks`): a negative Width
+  (no error, a new line before each item), FileLen and FileDateTime of a wildcard that matches (the
+  first match's value; VB 52), and with them `Input(0)` (-2147467259; VB returns `""`) and the
+  Null 13.
+- **Kill deletes hidden and system files** (`kill-hidden-system-files`, a WARNING): VB raises 53
+  for one named alone and skips it in a wildcard.
+- **FileCopy's numbers** (`filecopy-error-numbers`): 70 for a folder or a read-only or hidden
+  destination (VB 75), 55 for a copy onto itself or of a source open `Lock Read` (VB 70).
+- **SetAttr of a file open for writing**: no error (VB 55), `setattr-open-file-no-error`, queued
+  since BETA 1005; its WARNING stays beside the generated NOTE.
+- **Agree in all four**: FileCopy's 53, 55 and 76; Binary-mode `Input` past the end returns
+  what is left, with no error; `InputB(0)` returns `""`; `FreeFile` takes any *rangenumber*
+  (nonzero after rounding is 256 to 511), and with 256 to 511 all in use `FreeFile(1)` returns
+  512, which `Open` accepts; Reset closes files 256 to 511 too; Width does not wrap inside one
+  item; Kill stops at an open file a wildcard matches, after the files before it.
+- **Page edits**: the error sentences of Dir, FileCopy, Kill, RmDir and Seek went into the
+  tables; Width's parameter is an **Integer** from 0 to 32,767 (32,768 is the conversion's 6);
+  CurDir's section moved below both functions, and ChDrive's, Dir's, MkDir's and RmDir's above
+  their See Also, which those pages put before the Example (`spliceSection` places a new
+  section before the first Example, so a page with See Also first needs moving by hand once).
+
 ## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
 
 Batches 2 to 5 and `Core.yml` in all four runtimes. Every runtime agreed with the data as it
@@ -945,7 +1006,7 @@ each can be run when there is budget. Status is kept here.
 | 5 | VBA `DateTime` | 20 | done: 17 sections, 328 cases; owner's questions answered 2026-10-22 |
 | 6a | VBA `Information`, and `Interaction`'s non-interactive procedures: `CallByName`, `CallByDispId`, `Choose`, `Command`, `CreateObject`, `GetObject`, `Environ`, `IIf`, `If`, `Partition`, `Switch`, `RaiseEventByName`, `RaiseEventByName2`, `SaveSetting`, `GetSetting`, `GetAllSettings`, `DeleteSetting` (owner split batch 6, 2026-10-22) | 45 | done: 27 sections, 302 cases; four entries queued 2026-10-22 |
 | 6b | `Interaction`'s interactive procedures: `AppActivate`, `Beep`, `DoEvents`, `InputBox`, `MsgBox`, `SendKeys`, `Shell`, under the `dialog`, `keys` and `window` harnesses (`Shell` only with programs that do not exist or `cmd.exe /c exit`) | 7 | done: 5 sections, 164 cases; three entries queued 2026-10-27 |
-| 7 | VBA `FileSystem` | 23 | not started |
+| 7 | VBA `FileSystem`, under the `files` harness | 23 | done: 21 sections, 448 cases; three entries queued, one extended, 2026-10-27 |
 | 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | not started |
 | 9 | VBA `Financial` | 14 | not started |
 | 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | not started |
