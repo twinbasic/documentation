@@ -23,12 +23,19 @@ Syntax: **MsgBox(** *prompt* [ **,** *buttons* ] [ **,** *title* ] [ **,** *help
 : *optional* String expression displayed in the title bar of the dialog box. If omitted, the application name is used.
 
 *helpfile*
-: *optional* String expression that identifies the Help file to use to provide context-sensitive Help for the dialog box. If *helpfile* is supplied, *context* must also be supplied.
+: *optional* String expression that identifies the Help file to use to provide context-sensitive Help for the dialog box.
 
 *context*
-: *optional* Numeric expression giving the Help context number assigned to the relevant Help topic. If *context* is supplied, *helpfile* must also be supplied.
+: *optional* Numeric expression giving the Help context number assigned to the relevant Help topic.
 
 The *buttons* argument is a combination of values from the [**VbMsgBoxStyle**](../Constants/VbMsgBoxStyle) enumeration: one *button group* value (`vbOKOnly`, `vbOKCancel`, `vbAbortRetryIgnore`, `vbYesNoCancel`, `vbYesNo`, `vbRetryCancel`, `vbCancelTryAgainContinue`), optionally combined with one *icon* value (`vbCritical`, `vbQuestion`, `vbExclamation`, `vbInformation`), one *default-button* value (`vbDefaultButton1` through `vbDefaultButton4`), one *modality* value (`vbApplicationModal`, `vbSystemModal`), and any of the option flags (`vbMsgBoxHelpButton`, `vbMsgBoxSetForeground`, `vbMsgBoxRight`, `vbMsgBoxRtlReading`). Combine values with **Or** or addition.
+
+> [!NOTE]
+> **MsgBox** passes *buttons* to Windows as it is, so any style Windows accepts can be used. VB6 and 64-bit VBA show a plain **OK** box for a value they do not know --- `vbCancelTryAgainContinue`, two icons combined, a default-button value of &H400 --- and raise no error.
+
+<!-- bug: interaction-missing-argument-checks -->
+> [!WARNING] BETA 1010
+> A *buttons* value whose button group Windows does not have (7 to 15, -1 included) shows no box: **MsgBox** returns 0 and raises no error. VB6 and 64-bit VBA show an **OK** box and return **vbOK**.
 
 The return value is one of the constants from the [**VbMsgBoxResult**](../Constants/VbMsgBoxResult) enumeration, identifying which button the user clicked.
 
@@ -36,6 +43,25 @@ If the dialog box displays a **Cancel** button, pressing the ESC key has the sam
 
 > [!NOTE]
 > To pass any argument by name (other than the first), use **MsgBox** in an expression context --- for example, assign its result to a variable. To skip a positional argument, include the corresponding comma delimiter.
+
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *prompt*, *buttons*, *title* or *context* is **Null**<br>*helpfile* is **Null** |
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *helpfile* is given without *context* |
+
+> [!NOTE] BETA 1010
+> When *helpfile* is **Null**, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When *helpfile* is given without *context*, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When *context* is given without *helpfile*, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+
+<!-- /errors -->
 
 ### Example
 

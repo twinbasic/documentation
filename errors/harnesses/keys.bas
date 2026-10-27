@@ -194,6 +194,13 @@ Private Sub keys_End()
     Next
 End Sub
 
+' Forgets the events recorded so far. VB6 and VBA keep the keys of a string they refuse and send
+' them with the next SendKeys: a case after a refused one sends those first (SendKeys "") and
+' clears them, in its setup.
+Private Sub keys_Clear()
+    keys_Sent = ""
+End Sub
+
 ' Raises 1001 when the events recorded are not Keys. Does nothing when the case has already raised.
 Private Sub keys_Expect(ByVal Keys As String)
     If Err.Number <> 0 Then Exit Sub

@@ -1,4 +1,4 @@
-# The VBA Interaction module, its non-interactive procedures (batch 6a). Format: WIP.Errors.md.
+# The VBA Interaction module: its non-interactive procedures (batch 6a) and its interactive ones (batch 6b). Format: WIP.Errors.md.
 beta: 1010
 pages:
   Reference/Default/VBA/Interaction/Choose.md:
@@ -445,3 +445,302 @@ pages:
       - { setup: 'SaveSetting registry_App, "S", "K", "V"', run: 'DeleteSetting registry_App, "S", "K"' }
       - { setup: 'SaveSetting registry_App, "S", "K", "V"', run: 'DeleteSetting registry_App, "S"' }
       - { setup: 'SaveSetting registry_App, "S", "K", "V"', run: DeleteSetting registry_App }
+  # Batch 6b: the interactive procedures, each under a harness that keeps its effect in the
+  # probe (WIP.Errors.md, Harnesses). Beep takes no argument: no case (owner, D3).
+  Reference/Default/VBA/Interaction/MsgBox.md:
+    harness: dialog
+    rows:
+      - error: 94
+        when: "*prompt*, *buttons*, *title* or *context* is **Null**"
+        cases:
+          - MsgBox(Null)
+          - MsgBox("x", Null)
+          - MsgBox("x", 0, Null)
+          - MsgBox("x", 0, "t", "h.hlp", Null)
+      - error: 94
+        when: "*helpfile* is **Null**"
+        vb6: 5
+        bug: pending
+        cases:
+          - MsgBox("x", 0, "t", Null)
+      - error: -2147467259
+        when: "*helpfile* is given without *context*"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - MsgBox("x", , , "h.hlp")
+      - error: 0
+        when: "*context* is given without *helpfile*"
+        vb6: 5
+        bug: pending
+        cases:
+          - MsgBox("x", , , , 5)
+    quiet:
+      - { run: "MsgBox \"x\"\ndialog_Expect 1" }
+      - { run: "Result = MsgBox(\"x\", vbYesNo)\ndialog_Expect 1\nIf Result <> vbYes Then Err.Raise 1001, , \"returned \" & Result" }
+      - { run: "Result = MsgBox(\"x\", vbOKCancel)\ndialog_Expect 1\nIf Result <> vbCancel Then Err.Raise 1001, , \"returned \" & Result" }
+      - MsgBox("x", 0)
+      - MsgBox("x", 5)
+      - MsgBox("x", 16)
+      - MsgBox("x", 64)
+      - MsgBox("x", 768)
+      - MsgBox("x", 12288)
+      - MsgBox("x", 16384)
+      - MsgBox("x", 65536)
+      - MsgBox("x", 524288)
+      - MsgBox("x", 1048576)
+      - MsgBox("x", &H1000000)
+      - MsgBox("x", vbYesNo + vbDefaultButton3)
+      # A style Windows refuses: no box, and 0 returned (VB shows an OK box); a bug, not an error.
+      - MsgBox("x", 7)
+      - MsgBox("x", 15)
+      - MsgBox("x", , , "h.hlp", 5)
+      - MsgBox("x", 0, "t", "", 5)
+      - MsgBox(String(100000, "a"))
+      - MsgBox("a" & Chr(0) & "b")
+      - MsgBox("x", 0, "")
+      - MsgBox("")
+      - MsgBox(Empty)
+      - MsgBox(123)
+  Reference/Default/VBA/Interaction/InputBox.md:
+    harness: dialog
+    rows:
+      - error: 94
+        when: "*prompt*, *title*, *default*, *xpos*, *ypos* or *context* is **Null**"
+        cases:
+          - InputBox(Null)
+          - InputBox("x", Null)
+          - InputBox("x", , Null)
+          - InputBox("x", , , Null)
+          - InputBox("x", , , 0, Null)
+          - InputBox("x", , , , , "h.hlp", Null)
+      - error: 94
+        when: "*helpfile* is **Null**"
+        vb6: 5
+        bug: pending
+        cases:
+          - InputBox("x", , , , , Null)
+      - error: 6
+        when: "*xpos* or *ypos* is outside the range of a **Long**"
+        cases:
+          - InputBox("x", , , 2147483648#, 0)
+          - InputBox("x", , , 1E+10, 0)
+          - InputBox("x", , , -1E+30, 0)
+          - InputBox("x", , , 0, 1E+30)
+      - error: 0
+        when: "*xpos* or *ypos* is outside -32,768 to 32,767 after rounding, and inside the range of a **Long**"
+        vb6: 6
+        bug: pending
+        cases:
+          - InputBox("x", , , 32768, 0)
+          - InputBox("x", , , 32767.6, 0)
+          - InputBox("x", , , -32769, 0)
+          - InputBox("x", , , 0, 32768)
+          - InputBox("x", , , 2147483647, 0)
+          - InputBox("x", , , -2147483648#, 0)
+      - error: -2147467259
+        when: "*helpfile* is given without *context*"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - InputBox("x", , , , , "h.hlp")
+      - error: 0
+        when: "*context* is given without *helpfile*"
+        vb6: 5
+        bug: pending
+        cases:
+          - InputBox("x", , , , , , 5)
+    quiet:
+      - { run: "Result = InputBox(\"x\", , \"d\")\ndialog_Expect 1\nIf Result <> \"\" Then Err.Raise 1001, , \"returned \" & Result" }
+      - InputBox("x", , , 100)
+      - InputBox("x", , , , 100)
+      - InputBox("x", , , -1, -1)
+      - InputBox("x", , , 32767, -32768)
+      - InputBox("x", , , 32767.4, 0)
+      - InputBox("x", , , , , "h.hlp", 5)
+      - InputBox("x", , String(300, "d"))
+      - InputBox(String(100000, "a"))
+      - InputBox("")
+      - InputBox("x", "")
+      - InputBox(123)
+  Reference/Default/VBA/Interaction/SendKeys.md:
+    harness: keys
+    rows:
+      - error: 94
+        when: "*string* is **Null**"
+        cases:
+          - { run: SendKeys Null }
+      - error: -2147352567
+        when: "*string* has a brace that is not closed or not opened, an unknown key code (`{INS}` and `{F17}` included), a count in braces that is not a whole number from 0 to 8,175, unbalanced parentheses, or a modifier with nothing after it (`++`)"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - { run: 'SendKeys "{"' }
+          - { run: 'SendKeys "}"' }
+          - { run: 'SendKeys "{}"' }
+          - { run: 'SendKeys "{BAD}"' }
+          - { run: 'SendKeys "a{BAD}"' }
+          - { run: 'SendKeys "{INS}"' }
+          - { run: 'SendKeys "{F17}"' }
+          - { run: 'SendKeys "{LEFT x}"' }
+          - { run: 'SendKeys "{LEFT -1}"' }
+          - { run: 'SendKeys "{LEFT 32767}"' }
+          - { run: 'SendKeys "{a 8176}"' }
+          - { run: 'SendKeys "{a 1.5}"' }
+          - { run: 'SendKeys "{LEFT2}"' }
+          - { run: 'SendKeys "("' }
+          - { run: 'SendKeys ")"' }
+          - { run: 'SendKeys "+(a"' }
+          - { run: 'SendKeys "a)"' }
+          - { run: 'SendKeys "++"' }
+      - error: -2147352567
+        when: "*wait* is **Null**"
+        vb6: 94
+        bug: argument-errors-unspecified-error
+        cases:
+          - { run: 'SendKeys "a", Null' }
+      - error: -2147352567
+        when: "*wait* is a string that is not a **Boolean**"
+        vb6: 13
+        bug: argument-errors-unspecified-error
+        cases:
+          - { run: 'SendKeys "a", "x"' }
+    quiet:
+      # The first case after the refused ones sends the keys VB6 and VBA kept from them.
+      - { setup: "SendKeys \"\"\nkeys_Clear", run: "SendKeys \"\"\nkeys_Expect \"\"" }
+      - { run: "SendKeys \"a\"\nkeys_Expect \"41d 41u\"" }
+      - { run: "SendKeys \"A\"\nkeys_Expect \"10d 41d 41u 10u\"" }
+      - { run: "SendKeys 123\nkeys_Expect \"31d 31u 32d 32u 33d 33u\"" }
+      - { run: "SendKeys \"+(EC)\"\nkeys_Expect \"10d 45d 45u 43d 43u 10u\"" }
+      - { run: "SendKeys \"^%a\"\nkeys_Expect \"11d 12d 41d 41u 11u 12u\"" }
+      - { run: "SendKeys \"{+}{^}{%}{~}{(}{)}\"\nkeys_Expect \"10d BBd BBu 10u 10d 36d 36u 10u 10d 35d 35u 10u 10d C0d C0u 10u 10d 39d 39u 10u 10d 30d 30u 10u\"" }
+      - { run: "SendKeys \"{{}{}}\"\nkeys_Expect \"10d DBd DBu 10u 10d DDd DDu 10u\"" }
+      - { run: "SendKeys \"~\"\nkeys_Expect \"Dd Du\"" }
+      - { run: "SendKeys \"{LEFT 2}{h 3}\"\nkeys_Expect \"25d 25u 25d 25u 48d 48u 48d 48u 48d 48u\"" }
+      - { run: "SendKeys \"{LEFT 0}{a 0}\"\nkeys_Expect \"\"" }
+      - { run: "SendKeys \"{BS}{BKSP}{BACKSPACE}{BREAK}{CAPSLOCK}{DEL}{DELETE}{DOWN}{END}{ENTER}{ESC}{HELP}\"\nkeys_Expect \"8d 8u 8d 8u 8d 8u 3d 3u 14d 14u 2Ed 2Eu 2Ed 2Eu 28d 28u 23d 23u Dd Du 1Bd 1Bu 2Fd 2Fu\"" }
+      - { run: "SendKeys \"{HOME}{INSERT}{left}{NUMLOCK}{PGDN}{PGUP}{RIGHT}{SCROLLLOCK}{TAB}{UP}\"\nkeys_Expect \"24d 24u 2Dd 2Du 25d 25u 90d 90u 22d 22u 21d 21u 27d 27u 91d 91u 9d 9u 26d 26u\"" }
+      - { run: "SendKeys \"{F1}{F12}{F16}{PRTSC}\"\nkeys_Expect \"70d 70u 7Bd 7Bu 7Fd 7Fu 2Ad 2Au\"" }
+      - { run: "SendKeys \"{ENTER 2}\"\nkeys_Expect \"Dd Du Dd Du\"" }
+      - { run: 'SendKeys "{a 8175}"' }
+      - { run: 'SendKeys "{a 5000}{a 5000}"' }
+      - { run: "SendKeys \"{a 02}\"\nkeys_Expect \"41d 41u 41d 41u\"" }
+      - { run: "SendKeys \"a\", True\nkeys_Expect \"41d 41u\"" }
+      - { run: "SendKeys \"a\", False\nkeys_Expect \"41d 41u\"" }
+      - { run: "SendKeys \"a\", 2\nkeys_Expect \"41d 41u\"" }
+      # An extension (owner, 2026-10-27): VB6 and 64-bit VBA raise 13.
+      - { run: "SendKeys \"a\", \"True\"\nkeys_Expect \"41d 41u\"", only: tb }
+  Reference/Default/VBA/Interaction/AppActivate.md:
+    harness: window
+    rows:
+      - error: 94
+        when: "*title* is **Null**"
+        cases:
+          - { run: AppActivate Null }
+      - error: -2147467259
+        when: "no window has *title* as its title, or its beginning or end, and no process with *title* as its task ID has a window (0, a negative number, **True** and **Empty** included)"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - { run: AppActivate "xqzzy no such window" }
+          - { run: AppActivate 0 }
+          - { run: AppActivate -1 }
+          - { run: AppActivate 4 }
+          - { run: AppActivate 2147483647 }
+          - { run: AppActivate True }
+          - { run: AppActivate Empty }
+      - error: 0
+        when: "the window *title* names is hidden"
+        vb6: 5
+        bug: pending
+        cases:
+          - { setup: window_Hide, run: AppActivate window_Title() }
+      - error: 0
+        when: "*wait* is **Null**"
+        vb6: 94
+        bug: pending
+        cases:
+          - { run: "AppActivate window_Title(), Null" }
+      - error: 0
+        when: "*wait* is a string that is not a **Boolean**"
+        vb6: 13
+        bug: pending
+        cases:
+          - { run: "AppActivate window_Title(), \"x\"" }
+    quiet:
+      - { run: "AppActivate window_Title()\nIf Not window_Visible() Then Err.Raise 1001, , \"hidden\"" }
+      - { run: AppActivate LCase$(window_Title()) }
+      - { run: "AppActivate Left$(window_Title(), 12)" }
+      - { run: "AppActivate Mid$(window_Title(), 7)" }
+      - { run: AppActivate window_Pid() }
+      - { run: AppActivate CStr(window_Pid()) }
+      - { run: AppActivate CDbl(window_Pid()) }
+      - { setup: window_Minimize, run: "AppActivate window_Title()\nIf Not window_Minimized() Then Err.Raise 1001, , \"restored\"" }
+      - { run: "AppActivate window_Title(), False" }
+      # An extension (owner, 2026-10-27): VB6 raises 5; 64-bit VBA raises nothing, as twinBASIC.
+      - { run: AppActivate "", only: [tb, vba64] }
+  Reference/Default/VBA/Interaction/Shell.md:
+    rows:
+      - error: 94
+        when: "*pathname* or *windowstyle* is **Null**"
+        cases:
+          - Shell(Null)
+          - Shell("cmd.exe /c exit", Null)
+      - error: -2147467259
+        when: "*pathname* is a zero-length string or spaces, names a folder or a file that is not a program, or is longer than 32,767 characters"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - Shell("")
+          - Shell(" ")
+          - Shell(Environ$("windir"))
+          - Shell(Environ$("windir") & "\win.ini")
+          - Shell(String(33000, "a"))
+      - error: -2147467259
+        when: "the program, or a folder in its path, does not exist, or *pathname* opens a quotation mark it does not close"
+        vb6: 53
+        bug: argument-errors-unspecified-error
+        cases:
+          - Shell("nonexistent_tbdocs.exe")
+          - Shell("C:\nonexistent_tbdocs_dir\x.exe")
+          - Shell(String(300, "a"))
+          - Shell("""cmd.exe /c exit")
+      - error: -2147467259
+        when: "*windowstyle* is less than 0 or greater than 10 after rounding"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - Shell("cmd.exe /c exit", 11)
+          - Shell("cmd.exe /c exit", -1)
+          - Shell("cmd.exe /c exit", 32767)
+          - Shell("cmd.exe /c exit", 32768)
+          - Shell("cmd.exe /c exit", 2147483647)
+      - error: 0
+        when: "*windowstyle* is 10 after rounding (`SW_SHOWDEFAULT`, which a new program's start-up information may not hold)"
+        vb6: 5
+        bug: pending
+        cases:
+          - Shell("cmd.exe /c exit", 10)
+          - Shell("cmd.exe /c exit", 9.6)
+          - Shell("cmd.exe /c exit", CInt(10))
+    quiet:
+      - Shell("cmd.exe /c exit")
+      - Shell("cmd.exe /c exit", vbHide)
+      - Shell("cmd.exe /c exit", 1)
+      - Shell("cmd.exe /c exit", 2)
+      - Shell("cmd.exe /c exit", 3)
+      - Shell("cmd.exe /c exit", 4)
+      - Shell("cmd.exe /c exit", 5)
+      - Shell("cmd.exe /c exit", 6)
+      - Shell("cmd.exe /c exit", 7)
+      - Shell("cmd.exe /c exit", 8)
+      - Shell("cmd.exe /c exit", 9)
+      - Shell("cmd.exe /c exit", 9.4)
+      - Shell("cmd.exe /c exit", -0.4)
+      - Shell("cmd /c exit", vbHide)
+      - Shell("""cmd.exe"" /c exit", vbHide)
+      - Shell(Environ$("windir") & "\System32\cmd.exe /c exit", vbHide)
+  Reference/Default/VBA/Interaction/DoEvents.md:
+    quiet:
+      - DoEvents()
+      - { run: DoEvents }

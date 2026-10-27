@@ -27,7 +27,32 @@ Syntax:
 
 The **AppActivate** statement changes the focus to the named application or window but does not affect whether it is maximized or minimized. Focus moves from the activated application window when the user takes some action to change the focus or close the window. Use the [**Shell**](Shell) function to start an application and set the window style.
 
-In determining which application to activate, *title* is compared to the title string of each running application. If there is no exact match, any application whose title string begins with *title* is activated. If there is more than one instance of the application named by *title*, one instance is arbitrarily activated.
+In determining which application to activate, *title* is compared to the title string of each running application. If there is no exact match, any application whose title string begins or ends with *title* is activated. If there is more than one instance of the application named by *title*, one instance is arbitrarily activated.
+
+> [!NOTE]
+> A *title* that is a zero-length string activates a window, as its title begins with it; 64-bit VBA does the same. VB6 raises error 5, *Invalid procedure call or argument*.
+
+<!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *title* is **Null** |
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | no window has *title* as its title, or its beginning or end, and no process with *title* as its task ID has a window (0, a negative number, **True** and **Empty** included) |
+
+> [!NOTE] BETA 1010
+> When no window has *title* as its title, or its beginning or end, and no process with *title* as its task ID has a window (0, a negative number, **True** and **Empty** included), VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When the window *title* names is hidden, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+
+> [!NOTE] BETA 1010
+> When *wait* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*; twinBASIC raises none.
+
+> [!NOTE] BETA 1010
+> When *wait* is a string that is not a **Boolean**, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*; twinBASIC raises none.
+
+<!-- /errors -->
 
 ### Example
 

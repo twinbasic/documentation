@@ -225,6 +225,15 @@ a bug. SendKeys of non-ASCII text: a bug. The broker race: both fixes made (clie
 tblaunch session told). Still open: SendKeys *wait* `"True"`; the minor SendKeys differences;
 whether to test -1/&H7FFFFFFF unguarded; the desktop test's go.
 
+**Third round (2026-10-27):** SendKeys *wait* `"True"`: an extension. `"((a))"`, the doubled
+Shift and VB's keeping keys after a refused token: VB's, nothing documented (VB's keeping is
+arguably a VB bug; twinBASIC's dropping the string is right). Unguarded MsgBox -1 and
+&H7FFFFFFF: Windows refuses them before any box (returns 0, nothing shown anywhere), so they are
+the 7/8/15 bug; twinBASIC should raise 5 for every style Windows refuses. The private-desktop 2 s
+is a twinBASIC bug to queue (owner); on the user's desktop there is none. AppActivate on the
+user's desktop: VB6 made windows 2 to 8 the foreground one, twinBASIC none (the first run started
+the programs hidden; a rerun with a throwaway first window waits for the owner's go).
+
 ## 5. The data
 
 - [ ] The rows and quiet cases in `errors/VBA.Interaction.yml`, after 6a's pages, each page's
