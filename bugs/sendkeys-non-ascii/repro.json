@@ -1,0 +1,13 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.SendKeys_LowerA_SendsA$",
+      "^PASS RegressionTests.SendKeys_UpperA_SendsShiftA$",
+      "^FAIL RegressionTests.SendKeys_EAcute_SendsTheCharacter: .*Actual: \"E9d E9u\"",
+      "^FAIL RegressionTests.SendKeys_WhiteSmilingFace_SendsTheCharacter: .*Actual: \"10d BFd BFu 10u\"",
+      "^FAIL RegressionTests.SendKeys_AMacron_SendsTheCharacter: .*Actual: \"10d 41d 41u 10u\""
+    ]
+  }
+}

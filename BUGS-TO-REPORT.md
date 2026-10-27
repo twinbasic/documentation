@@ -8312,3 +8312,95 @@ A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01
 What does not reproduce it: a *windowstyle* of 0 to 9; *xpos* and *ypos* inside the `Integer` range; a *helpfile* with a *context*; a visible or a minimized window (which none of the runtimes restores); a `Boolean` *wait*; a style Windows accepts.
 
 <!-- Reproducer: bugs/interaction-missing-argument-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and twelve FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`; 64-bit from the run-time errors data (`errors.mjs run`, all four runtimes). Both sides carry copies of errors/harnesses/dialog.bas and window.bas, written by a generator from them. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case and the boxes it showed. Stated in the Common Errors sections (rows `bug: interaction-missing-argument-checks`) of AppActivate, InputBox, MsgBox and Shell, from errors/VBA.Interaction.yml, and in the WARNING on docs/Reference/Default/VBA/Interaction/MsgBox.md (MsgBox styles Windows refuses); when fixed, each row's case moves to a row of VB's number and the NOTEs and the WARNING go. Found 2026-10-22 to 2026-10-27 by batch 6b of WIP.Errors.md; owner: bugs, one entry. -->
+
+---
+
+## `SendKeys` sends the wrong key for a character the keyboard layout has no key for
+
+**Describe the bug**
+`SendKeys` converts its string to the ANSI code page first, and then sends each character by its key. A character the keyboard layout has no key for therefore goes wrong, silently:
+- a character outside the ANSI code page becomes its nearest ANSI character: `Ā` (U+0100) is sent as Shift+A, `☺` (U+263A) as `?` (Shift and `&HBF`);
+- a character in the ANSI code page that the layout has no key for is sent as a virtual key whose number is its ANSI code: `é` on a US layout is sent as virtual key `&HE9`, an OEM key, which types nothing or another character.
+
+VB6 and 64-bit VBA send each such character as the character itself (`SendInput` with `KEYEVENTF_UNICODE`), so it is typed correctly in any window. Text in any language other than English is mistyped.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `sendkeys-non-ascii.twinproj` (attached as `sendkeys-non-ascii.zip`).
+2. Run its test cases, the module below. On BETA 1010, with a US keyboard layout, the two controls pass and the three other cases fail.
+
+The module is meant to be adapted as a regression test. Each case asserts the events VB6 sends, which the attached VB6 project (`sendkeys-non-ascii-vb6.zip`) prints. Every case runs under a copy of a keys harness that patches `keybd_event` (what twinBASIC calls) and `SendInput` (what VB6 calls) with fakes that record each event and send nothing, so no key reaches any window; it is in the attached project, left out below.
+```vb
+' Regression tests: SendKeys sends a character the keyboard layout has no key for as the
+' character itself (a KEYEVENTF_UNICODE event), as VB6 and 64-bit VBA do, not as the virtual key
+' of its ANSI code or as its nearest ANSI character. A copy of a keys harness records the events
+' and sends none: `<virtual key>d` and `u` for a key down and up, `U<code>d` and `u` for a
+' character. The expected events are for a US keyboard layout, which has no key for é.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+    ' ... the copy of the keys harness: in the attached project ...
+
+    ' A control: a character the layout has a key for.
+    [TestCase]
+    Public Sub SendKeys_LowerA_SendsA()
+        keys_Begin
+        SendKeys "a"
+        keys_End
+        Assert.Strict.AreEqual "41d 41u", keys_Sent
+    End Sub
+
+    ' A control: with Shift.
+    [TestCase]
+    Public Sub SendKeys_UpperA_SendsShiftA()
+        keys_Begin
+        SendKeys "A"
+        keys_End
+        Assert.Strict.AreEqual "10d 41d 41u 10u", keys_Sent
+    End Sub
+
+    ' é: in the ANSI code page, with no key on a US layout.
+    [TestCase]
+    Public Sub SendKeys_EAcute_SendsTheCharacter()
+        keys_Begin
+        SendKeys ChrW(&HE9)
+        keys_End
+        Assert.Strict.AreEqual "UE9d UE9u", keys_Sent
+    End Sub
+
+    ' ☺ (U+263A): outside the ANSI code page.
+    [TestCase]
+    Public Sub SendKeys_WhiteSmilingFace_SendsTheCharacter()
+        keys_Begin
+        SendKeys ChrW(&H263A)
+        keys_End
+        Assert.Strict.AreEqual "U263Ad U263Au", keys_Sent
+    End Sub
+
+    ' Ā (U+0100): outside the ANSI code page, whose nearest character is A.
+    [TestCase]
+    Public Sub SendKeys_AMacron_SendsTheCharacter()
+        keys_Begin
+        SendKeys ChrW(&H100)
+        keys_End
+        Assert.Strict.AreEqual "U100d U100u", keys_Sent
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Each character sent as the character itself, a `KEYEVENTF_UNICODE` key down and up, as VB6 and 64-bit VBA send it, when the keyboard layout has no key for it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033, US keyboard layout
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium. The wrong characters are typed into another program, and nothing reports it.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access, and sends what VB6 sends.
+
+What does not reproduce it: a character the layout has a key for, with or without Shift; the codes in braces, such as `{ENTER}` and `{F1}`, and the modifiers, which send the same events as VB6. On a layout with a key for `é` (French, for instance), both send that key.
+
+<!-- Reproducer: bugs/sendkeys-non-ascii/ (mode test: `tbrun --tests`; expect lists the two PASS and three FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`; 64-bit and 64-bit VBA from the exploration of batch 6b (`errors.mjs run` with the keys harness). Both sides carry a copy of errors/harnesses/keys.bas, written by a generator from it. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the events VB6 sends. Stated in the WARNING on docs/Reference/Default/VBA/Interaction/SendKeys.md; when fixed, the WARNING goes. Found 2026-10-22 by batch 6b of WIP.Errors.md; owner: a bug. -->
