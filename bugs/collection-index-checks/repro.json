@@ -1,0 +1,24 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.Control_ItemOfLongDoubleByte$",
+      "^PASS RegressionTests\\.Control_ItemOutOfRange_Raises9$",
+      "^PASS RegressionTests\\.Control_ItemOfMissingKey_Raises5$",
+      "^FAIL RegressionTests\\.Item_Currency_ReturnsItem: .*Actual: 9 ",
+      "^FAIL RegressionTests\\.Item_Decimal_ReturnsItem: .*Actual: 9 ",
+      "^FAIL RegressionTests\\.Item_Date_ReturnsItem: .*Actual: 9 ",
+      "^FAIL RegressionTests\\.Remove_Currency_Removes: .*Actual: 9 ",
+      "^FAIL RegressionTests\\.AddBefore_Currency_Adds: .*Actual: 13 ",
+      "^FAIL RegressionTests\\.Item_EmptyCollection_Raises5: .*Actual: 9 ",
+      "^FAIL RegressionTests\\.Item_Null_Raises13: .*Actual: 9 ",
+      "^FAIL RegressionTests\\.Item_Object_Raises13: .*Actual: 9 ",
+      "^FAIL RegressionTests\\.Item_BeyondLong_Raises13: .*Actual: 9 ",
+      "^FAIL RegressionTests\\.Remove_Null_Raises13: .*Actual: 9 ",
+      "^FAIL RegressionTests\\.AddBefore_MinusOne_Raises9: .*Actual: 13 ",
+      "^FAIL RegressionTests\\.AddBefore_Empty_Raises9: .*Actual: 13 ",
+      "^FAIL RegressionTests\\.AddBefore_BeyondLong_Raises13: .*Actual: 9 "
+    ]
+  }
+}

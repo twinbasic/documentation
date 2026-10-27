@@ -8943,3 +8943,427 @@ A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01
 What does not reproduce it: a *Width* from 0 to 255, or from 256 to 32,767, which twinBASIC takes as a line width where VB raises 5 (the owner takes that as an extension); `FileLen` and `FileDateTime` of a file or a folder named without a wildcard; `Input` of 1 or more characters.
 
 <!-- Reproducer: bugs/filesystem-argument-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and six FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`, and in a 64-bit run (`run --arch win64`); 64-bit VBA from the run-time errors data (`errors.mjs run`, all four runtimes). Both sides carry a copy of errors/harnesses/files.bas. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: filesystem-argument-checks` in errors/VBA.FileSystem.yml) of CurDir, Dir, FileDateTime, FileLen, Input and Width under docs/Reference/Default/VBA/FileSystem/, and in the WARNINGs on FileDateTime.md, FileLen.md and Width.md; when fixed, each row's cases move to a row of VB's number (Input's to its quiet cases), and the NOTEs and the WARNINGs go. Found 2026-10-27 by batch 7 of WIP.Errors.md; owner: bugs, while Dir's attributes, non-String arguments of Dir and CurDir, FileCopy of a source open for reading, SetAttr's attributes and a Width above 255 are extensions. -->
+
+---
+
+## Assigning `Err.HelpFile` or `Err.HelpContext`, or `Err.ReturnHResult` in a module, compiles but fails the build with a codegen error
+
+**Describe the bug**
+A statement that assigns `Err.HelpFile` or `Err.HelpContext` compiles with no diagnostic, but the build fails with a code-generation error in the procedure that holds it:
+```
+[LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #3
+[LINKER] FAILED due to compilation errors '...\ErrHelpfileHelpcontextCodegen_win32.exe'
+[BUILD] failed
+```
+The same happens through `With Err`, `VBA.Err` and a variable declared `As ErrObject`, for a constant or a variable value, and for `Err.ReturnHResult` assigned in a procedure of a module. In the compiler's test mode, which builds nothing, each such procedure ends at once as *aborted*.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Create a project whose only module is:
+   ```vb
+   Module Startup
+       Public Sub Main()
+           Err.HelpFile = "x"
+           Debug.Print Err.HelpFile
+       End Sub
+   End Module
+   ```
+2. Compile it: no diagnostic. Build it: the build fails with the error above, naming the line of the assignment.
+3. Or open `err-helpfile-helpcontext-codegen.twinproj` (attached as `err-helpfile-helpcontext-codegen.zip`) and run its test cases, the module below, with the class `Thing` it calls. On BETA 1010 the five controls pass and the other four end as *aborted*.
+
+The module is meant to be adapted as a regression test. Each case assigns a property of `Err` and reads it back; the attached VB6 project (`err-helpfile-helpcontext-codegen-vb6.zip`) makes the same assignments and prints `HelpFile: [x]`, `HelpContext: 5` and `HelpFile through ErrObject: [y]`.
+```vb
+' The issue's regression tests. Each assigns one property of Err and reads it back.
+' The controls (Description, Source, Number, HelpFile and HelpContext through an
+' Object variable, and ReturnHResult in a class method) pass; HelpFile and
+' HelpContext assigned through Err itself, or through a variable declared As
+' ErrObject, and ReturnHResult in a module procedure, do not build.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_SetDescription()
+        Err.Description = "x"
+        Assert.Strict.AreEqual "x", Err.Description
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SetSource()
+        Err.Source = "x"
+        Assert.Strict.AreEqual "x", Err.Source
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SetNumber()
+        Err.Number = 5
+        Assert.Strict.AreEqual 5&, Err.Number
+        Err.Clear
+    End Sub
+
+    [TestCase]
+    Public Sub Control_LateBoundHelpFileAndContext()
+        Dim o As Object
+        Set o = Err
+        o.HelpFile = "x"
+        o.HelpContext = 5
+        Assert.Strict.AreEqual "x", Err.HelpFile
+        Assert.Strict.AreEqual 5&, Err.HelpContext
+    End Sub
+
+    [TestCase]
+    Public Sub SetHelpFile()
+        Err.HelpFile = "x"
+        Assert.Strict.AreEqual "x", Err.HelpFile
+    End Sub
+
+    [TestCase]
+    Public Sub SetHelpContext()
+        Err.HelpContext = 5
+        Assert.Strict.AreEqual 5&, Err.HelpContext
+    End Sub
+
+    [TestCase]
+    Public Sub SetHelpFileThroughErrObjectVariable()
+        Dim e As ErrObject
+        Set e = Err
+        e.HelpFile = "x"
+        Assert.Strict.AreEqual "x", Err.HelpFile
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SetReturnHResultInClassMethod()
+        Dim t As New Thing
+        t.Status
+        Assert.Strict.AreEqual 1&, Err.LastHresult
+    End Sub
+
+    [TestCase]
+    Public Sub SetReturnHResultInModule()
+        Err.ReturnHResult = 1
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+End Module
+```
+```vb
+' A class whose method sets the HRESULT it returns, as the ReturnHResult page shows.
+Class Thing
+
+    Public Function Status() As Long
+        Err.ReturnHResult = 1
+    End Function
+
+End Class
+```
+
+**Expected behavior**
+The assignments build and set the property, as in VB6 and 64-bit VBA, which assign `HelpFile` and `HelpContext` like any other property of `Err`. If assigning `ReturnHResult` outside a method of a class is meant to be refused, a diagnostic that says so at compile time, rather than a failed build.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. The build fails, so nothing is lost, and there are ways round it: `Err.Raise` sets both properties through its *helpfile* and *helpcontext* arguments, and an assignment through a variable declared `As Object` that holds `Err` works.
+
+A 64-bit build fails the same way.
+
+What does not reproduce it: assigning `Err.Description`, `Err.Source` or `Err.Number`; reading `Err.HelpFile` or `Err.HelpContext`; assigning them late-bound, through an `Object` variable; assigning `Err.ReturnHResult` in a method of a class, which builds and gives the caller its value in `Err.LastHresult`.
+
+<!-- Reproducer: bugs/err-helpfile-helpcontext-codegen/ (mode test: `tbrun --tests`; expect lists the five PASS and four FAIL lines, each FAIL "aborted"); verified on BETA 1010, and in a 64-bit run (`run --arch win64`). The build failure of step 2 was checked with `tbbuild --build` on a one-line project. VB6 side in vb6/ (VB6 6.0). Stated in NOTEs on docs/Reference/Default/VBA/ErrObject/HelpFile.md, HelpContext.md and ReturnHResult.md; when fixed, the NOTEs go and errors/VBA.ErrObject.yml gets the HelpFile and HelpContext pages' cases (`Err.HelpFile = Null` and `Err.HelpContext = Null`, which raise 94 in VB6 and 64-bit VBA). Found 2026-10-27 by batch 8 of WIP.Errors.md, where the probe's build failed. -->
+
+---
+
+## `Err.Raise` and `Err.Number` keep an `HRESULT` that VB6 and VBA turn into the VB error of the same meaning
+
+**Describe the bug**
+`Err.Raise` of an `HRESULT` raises that `HRESULT`, and assigning one to `Err.Number` stores it. VB6 and 64-bit VBA raise, and store, the VB error of the same meaning for many of them: `Err.Raise &H80070057` (`E_INVALIDARG`) raises 5, *Invalid procedure call or argument*, there, and twinBASIC raises -2147024809. A handler that tests `Err.Number` for the VB number does not recognise the error.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `err-raise-hresult-mapping.twinproj` (attached as `err-raise-hresult-mapping.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other nine fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`err-raise-hresult-mapping-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: Err.Raise of an HRESULT that has a VB error of the same meaning raises
+' that VB error, as VB6 and 64-bit VBA do, and assigning one to Err.Number stores the VB
+' error. The controls raise a VB number and an HRESULT that VB keeps as it is.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function Raised(ByVal Number As Long) As Long
+        On Error Resume Next
+        Err.Raise Number
+        Raised = Err.Number
+    End Function
+
+    [TestCase]
+    Public Sub Control_Raise5_Raises5()
+        Assert.Strict.AreEqual 5&, Raised(5)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_RaiseEFail_RaisesEFail()
+        Assert.Strict.AreEqual &H80004005, Raised(&H80004005)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_RaiseDispException_RaisesDispException()
+        Assert.Strict.AreEqual &H80020009, Raised(&H80020009)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_EInvalidArg_Raises5()
+        Assert.Strict.AreEqual 5&, Raised(&H80070057)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_EOutOfMemory_Raises7()
+        Assert.Strict.AreEqual 7&, Raised(&H8007000E)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_ENotImpl_Raises445()
+        Assert.Strict.AreEqual 445&, Raised(&H80004001)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_ENoInterface_Raises430()
+        Assert.Strict.AreEqual 430&, Raised(&H80004002)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_DispUnknownName_Raises438()
+        Assert.Strict.AreEqual 438&, Raised(&H80020006)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_DispTypeMismatch_Raises13()
+        Assert.Strict.AreEqual 13&, Raised(&H80020005)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_ClassNotRegistered_Raises429()
+        Assert.Strict.AreEqual 429&, Raised(&H80040154)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_VbErrorAsHResult_Raises53()
+        Assert.Strict.AreEqual 53&, Raised(&H800A0035)
+    End Sub
+
+    [TestCase]
+    Public Sub Number_EInvalidArg_Is5()
+        Err.Number = &H80070057
+        Dim N As Long = Err.Number
+        Err.Clear
+        Assert.Strict.AreEqual 5&, N
+    End Sub
+
+End Module
+```
+
+Every `HRESULT` tried, with what `Err.Raise` gives (twinBASIC raises each one as it is):
+
+| `HRESULT` | VB6 and 64-bit VBA |
+|---|---|
+| `&H80070057` `E_INVALIDARG` | 5 |
+| `&H8007000E` `E_OUTOFMEMORY` | 7 |
+| `&H80070005` `E_ACCESSDENIED` | 70 |
+| `&H80004001` `E_NOTIMPL` | 445 |
+| `&H80004002` `E_NOINTERFACE` | 430 |
+| `&H80004004` `E_ABORT` | 287 |
+| `&H80020003` `DISP_E_MEMBERNOTFOUND` | 438 |
+| `&H80020005` `DISP_E_TYPEMISMATCH` | 13 |
+| `&H80020006` `DISP_E_UNKNOWNNAME` | 438 |
+| `&H80020008` `DISP_E_BADVARTYPE` | 458 |
+| `&H8002000A` `DISP_E_OVERFLOW` | 6 |
+| `&H8002000B` `DISP_E_BADINDEX` | 9 |
+| `&H8002000E` `DISP_E_BADPARAMCOUNT` | 450 |
+| `&H80020011` `DISP_E_NOTACOLLECTION` | 451 |
+| `&H80030002` `STG_E_FILENOTFOUND` | 432 |
+| `&H80030003` `STG_E_PATHNOTFOUND` | 76 |
+| `&H80030005` `STG_E_ACCESSDENIED` | 70 |
+| `&H80030070` `STG_E_MEDIUMFULL` | 61 |
+| `&H80040112` `CLASS_E_NOTLICENSED` | 429 |
+| `&H80040154` `REGDB_E_CLASSNOTREG` | 429 |
+| `&H800401E3` `MK_E_UNAVAILABLE` | 429 |
+| `&H800401F3` `CO_E_CLASSSTRING` | 429 |
+| `&H800A0005`, `&H800A0035`, `&H800A01A8`, `&H800AFFFF` (a VB error as an `HRESULT`) | 5, 53, 424, 65535 (the low 16 bits) |
+| `&H80004005` `E_FAIL`, `&H80020009` `DISP_E_EXCEPTION`, `&H80070002`, `&H80070006`, `&H8007000B`, `&H80070020`, `&H80070070`, `&H8007007E`, `&H8000FFFF` `E_UNEXPECTED`, `&H80004003` `E_POINTER`, `&H80040000` (`vbObjectError`) | the same `HRESULT` |
+
+`Err.Number = &H80070057`, `&H80004001` and `&H800A0035` leave `Err.Number` 5, 445 and 53 in VB6 and 64-bit VBA, without raising an error.
+
+**Expected behavior**
+The VB number, as VB6 and 64-bit VBA give, for `Err.Raise` and for an assignment to `Err.Number`, so that a handler written for VB sees the number it tests for.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low to medium. An error is raised in every case, but code that raises an `HRESULT` it got from an API, or a class that reports `E_INVALIDARG` the way COM code does, reaches a handler that tests for 5 with a number it does not recognise.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+Related: the queued entry on late-bound calls (`latebound-hresult-mapping`) is about the `HRESULT` a late-bound call returns, which VB maps the same way; this one is about `Err.Raise` and `Err.Number` themselves.
+
+<!-- Reproducer: bugs/err-raise-hresult-mapping/ (mode test: `tbrun --tests`; expect lists the three PASS and nine FAIL lines); verified on BETA 1010. The table comes from the run-time errors data's exploration in all four runtimes (`errors.mjs run`: twinBASIC 32-bit and 64-bit, VB6 and 64-bit VBA); errors/VBA.ErrObject.yml keeps twinBASIC's side as `only: tb` quiet cases of Raise.md and Number.md. VB6 side in vb6/ (VB6 6.0). Stated in the hand NOTEs (BETA 1010) on docs/Reference/Default/VBA/ErrObject/Raise.md, which has the table, and Number.md; when fixed, the NOTEs go, the `only: tb` quiet cases become rows of their VB numbers, and the central page's note on Err.Raise of an HRESULT (docs/Reference/Run-time-Errors.md) is checked. Found 2026-10-27 by batch 8 of WIP.Errors.md. -->
+
+---
+
+## `Collection`'s `Item`, `Remove` and `Add` check an index or a position differently from VB6 and VBA
+
+**Describe the bug**
+Given these indexes and positions, a `Collection` does something other than VB6 and 64-bit VBA:
+- A `Currency`, `Decimal` or `Date` number is refused: `Item` and `Remove` raise 9, *Subscript out of range*, and `Add`'s *before* and *after* raise 13, *Type mismatch*, where VB takes the number as it takes a `Long` or a `Double` (`C.Item(CCur(2))` is the second item).
+- `Item` of a number on an empty collection raises 9; VB raises 5, *Invalid procedure call or argument*, as twinBASIC's own `Remove` does.
+- `Item` and `Remove` of `Null`, an object, `Nothing`, an array, an error value or a number outside the `Long` range raise 9; VB raises 13. So does `Add`'s *before* of a number outside the `Long` range.
+- `Add`'s *before* or *after* of -1, `True` or `Empty` raises 13; VB raises 9, as for any other position that is not an item's.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `collection-index-checks.twinproj` (attached as `collection-index-checks.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other thirteen fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`collection-index-checks-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: Collection's Item, Remove and Add take an index or a position as VB6 and
+' 64-bit VBA do: a Currency, Decimal or Date number like any other number; 5 for a number on
+' an empty collection (Item); 13 for Null, an object or a number outside the Long range
+' (Item, Remove); 9 for a position of -1, True or Empty (Add). The controls use a Long, a
+' Double and a Byte, and a string key. tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' A collection holding "a" and "b", without keys.
+    Private Function Two() As Collection
+        Set Two = New Collection
+        Two.Add "a"
+        Two.Add "b"
+    End Function
+
+    ' The error Item(Index) raises on C, or 0 and the item in Got.
+    Private Function ItemError(ByVal C As Collection, ByVal Index As Variant, Optional ByRef Got As Variant) As Long
+        On Error Resume Next
+        Got = C.Item(Index)
+        ItemError = Err.Number
+    End Function
+
+    Private Function RemoveError(ByVal C As Collection, ByVal Index As Variant) As Long
+        On Error Resume Next
+        C.Remove Index
+        RemoveError = Err.Number
+    End Function
+
+    Private Function AddBeforeError(ByVal C As Collection, ByVal Before As Variant) As Long
+        On Error Resume Next
+        C.Add "x", , Before
+        AddBeforeError = Err.Number
+    End Function
+
+    [TestCase]
+    Public Sub Control_ItemOfLongDoubleByte()
+        Dim Got As Variant
+        Assert.Strict.AreEqual 0&, ItemError(Two(), 2&, Got)
+        Assert.Strict.AreEqual "b", Got
+        Assert.Strict.AreEqual 0&, ItemError(Two(), 2#, Got)
+        Assert.Strict.AreEqual 0&, ItemError(Two(), CByte(2), Got)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_ItemOutOfRange_Raises9()
+        Assert.Strict.AreEqual 9&, ItemError(Two(), 3)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_ItemOfMissingKey_Raises5()
+        Assert.Strict.AreEqual 5&, ItemError(Two(), "z")
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Currency_ReturnsItem()
+        Dim Got As Variant
+        Assert.Strict.AreEqual 0&, ItemError(Two(), CCur(2), Got)
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Decimal_ReturnsItem()
+        Assert.Strict.AreEqual 0&, ItemError(Two(), CDec(2))
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Date_ReturnsItem()
+        Assert.Strict.AreEqual 0&, ItemError(Two(), CDate(2))
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_Currency_Removes()
+        Assert.Strict.AreEqual 0&, RemoveError(Two(), CCur(2))
+    End Sub
+
+    [TestCase]
+    Public Sub AddBefore_Currency_Adds()
+        Assert.Strict.AreEqual 0&, AddBeforeError(Two(), CCur(2))
+    End Sub
+
+    [TestCase]
+    Public Sub Item_EmptyCollection_Raises5()
+        Assert.Strict.AreEqual 5&, ItemError(New Collection, 1)
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Null_Raises13()
+        Assert.Strict.AreEqual 13&, ItemError(Two(), Null)
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Object_Raises13()
+        Assert.Strict.AreEqual 13&, ItemError(Two(), New Collection)
+    End Sub
+
+    [TestCase]
+    Public Sub Item_BeyondLong_Raises13()
+        Assert.Strict.AreEqual 13&, ItemError(Two(), 2147483648#)
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_Null_Raises13()
+        Assert.Strict.AreEqual 13&, RemoveError(Two(), Null)
+    End Sub
+
+    [TestCase]
+    Public Sub AddBefore_MinusOne_Raises9()
+        Assert.Strict.AreEqual 9&, AddBeforeError(Two(), -1)
+    End Sub
+
+    [TestCase]
+    Public Sub AddBefore_Empty_Raises9()
+        Assert.Strict.AreEqual 9&, AddBeforeError(Two(), Empty)
+    End Sub
+
+    [TestCase]
+    Public Sub AddBefore_BeyondLong_Raises13()
+        Assert.Strict.AreEqual 13&, AddBeforeError(Two(), 2147483648#)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The numbers VB6 and 64-bit VBA give: a `Currency`, `Decimal` or `Date` index or position taken as a number; 5 for `Item` of a number on an empty collection; 13 for `Null`, an object, an array or a number outside the `Long` range; 9 for a position of -1, `True` or `Empty`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium for the `Currency`, `Decimal` and `Date` indexes, which VB code passes without thinking (a `Currency` loop counter, a value read from a database field), and which twinBASIC refuses. Low for the rest: an error is raised where VB raises one, with another number.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: an index or a position of `Byte`, `Integer`, `Long`, `LongLong`, `Single` or `Double`, rounded as VB rounds it; a string key; a number out of range on a collection that has items (9 in all); `Remove` on an empty collection (5 in all); `Add`'s *before* or *after* given on an empty collection (5 in all).
+
+<!-- Reproducer: bugs/collection-index-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and thirteen FAIL lines); verified on BETA 1010; 64-bit and 64-bit VBA from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: collection-index-checks` in errors/VBA.Collection.yml) of Add, Item and Remove under docs/Reference/Default/VBA/Collection/; when fixed, each row's cases move to a row of VB's number (the Currency, Decimal and Date ones to the quiet cases), and the NOTEs go. Found 2026-10-27 by batch 8 of WIP.Errors.md. -->

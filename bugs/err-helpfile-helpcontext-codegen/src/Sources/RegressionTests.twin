@@ -1,0 +1,71 @@
+' The issue's regression tests. Each assigns one property of Err and reads it back.
+' The controls (Description, Source, Number, HelpFile and HelpContext through an
+' Object variable, and ReturnHResult in a class method) pass; HelpFile and
+' HelpContext assigned through Err itself, or through a variable declared As
+' ErrObject, and ReturnHResult in a module procedure, do not build.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_SetDescription()
+        Err.Description = "x"
+        Assert.Strict.AreEqual "x", Err.Description
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SetSource()
+        Err.Source = "x"
+        Assert.Strict.AreEqual "x", Err.Source
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SetNumber()
+        Err.Number = 5
+        Assert.Strict.AreEqual 5&, Err.Number
+        Err.Clear
+    End Sub
+
+    [TestCase]
+    Public Sub Control_LateBoundHelpFileAndContext()
+        Dim o As Object
+        Set o = Err
+        o.HelpFile = "x"
+        o.HelpContext = 5
+        Assert.Strict.AreEqual "x", Err.HelpFile
+        Assert.Strict.AreEqual 5&, Err.HelpContext
+    End Sub
+
+    [TestCase]
+    Public Sub SetHelpFile()
+        Err.HelpFile = "x"
+        Assert.Strict.AreEqual "x", Err.HelpFile
+    End Sub
+
+    [TestCase]
+    Public Sub SetHelpContext()
+        Err.HelpContext = 5
+        Assert.Strict.AreEqual 5&, Err.HelpContext
+    End Sub
+
+    [TestCase]
+    Public Sub SetHelpFileThroughErrObjectVariable()
+        Dim e As ErrObject
+        Set e = Err
+        e.HelpFile = "x"
+        Assert.Strict.AreEqual "x", Err.HelpFile
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SetReturnHResultInClassMethod()
+        Dim t As New Thing
+        t.Status
+        Assert.Strict.AreEqual 1&, Err.LastHresult
+    End Sub
+
+    [TestCase]
+    Public Sub SetReturnHResultInModule()
+        Err.ReturnHResult = 1
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+End Module

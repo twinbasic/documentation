@@ -1,0 +1,17 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Control_SetDescription$",
+      "^PASS RegressionTests.Control_SetSource$",
+      "^PASS RegressionTests.Control_SetNumber$",
+      "^PASS RegressionTests.Control_LateBoundHelpFileAndContext$",
+      "^PASS RegressionTests.Control_SetReturnHResultInClassMethod$",
+      "^FAIL RegressionTests.SetHelpFile: aborted",
+      "^FAIL RegressionTests.SetHelpContext: aborted",
+      "^FAIL RegressionTests.SetHelpFileThroughErrObjectVariable: aborted",
+      "^FAIL RegressionTests.SetReturnHResultInModule: aborted"
+    ]
+  }
+}
