@@ -76,7 +76,15 @@ pages (Reset raises nothing; the index documents nothing). The owner's rulings a
 extensions, three bugs); `file-errors-unspecified` extended by 30 cases, three entries queued
 (*Batch 7 findings*). No row is `bug: pending`, and no question is open.
 
-**Next: batch 8**, VBA `Collection` and `ErrObject`.
+**Batch 8 is done but for three questions** (2026-10-27), VBA `Collection` and `ErrObject`: 260
+cases in `errors/VBA.Collection.yml` and `errors/VBA.ErrObject.yml`, all agreeing in all four
+runtimes; sections on 10 of the 20 member pages (Count, both Clears, Items, Keys, LastDllError
+and LastHresult raise nothing; HelpFile, HelpContext and ReturnHResult cannot be probed, their
+assignment failing twinBASIC's build; the indexes document nothing). Three entries queued.
+**Five rows are `bug: pending`**, waiting on the owner's extension-or-bug answers (*Batch 8
+findings*).
+
+**Next: batch 9**, VBA `Financial`, once batch 8's questions are answered.
 
 ## Owner's decisions
 
@@ -183,19 +191,14 @@ What `errors.mjs messages` found (BETA 1010):
   these the two messages differ, and the file says `{ raised, error }`. The sections show
   `Err.Description` (owner: settled); showing `Error$(n)` instead would be a one-line change in
   `renderSection` (`.raised` to `.error`).
-- **Differences from VB6 that batch 8 (`ErrObject`) should take up**, none queued yet (batch 3
-  queued `Error$` above 65535, `error-function-above-65535`):
-  `Err.Raise n` of a number from 1 to 65535 without a message of its own leaves
-  `Err.Description` empty in twinBASIC below 747, and from 747 up gives the Windows system
-  message of that number (*Page fault was a transition fault.* for 747); VB6 gives
-  *Application-defined or object-defined error* (the central page says so in a NOTE).
-  VB6's `Err.Raise` of a common HRESULT raises its own number instead (`&H80070057` raises 5,
-  `&H80004001` 445, `&H80004002` 430, `&H80020003` 438, `&H80040154` 429, ...) and describes
-  the rest as *Automation error* with the HRESULT's text on a second line; twinBASIC keeps the
-  HRESULT and its text. `Err.Raise 65536` raises 5 in VB6, and `Error$(65536)` raises 6;
-  twinBASIC raises 65536 as *Automation error*, and `Error$(65536)` is generic. twinBASIC's
-  `Error$` of a few HRESULTs is VB's message (`Error$(&H80070057)` is *Invalid procedure call
-  or argument*), VB6's is generic.
+- **Differences from VB6 found here, and where each went** (batch 8 took them up):
+  `Err.Raise n` without a description, *Application-defined or object-defined error* in VB6 and
+  empty or a system message in twinBASIC, is filed (`err-raise-defaults`, #2504; the central
+  page's NOTE). VB's `Err.Raise` of a common HRESULT as its own number is queued
+  (`err-raise-hresult-mapping`). `Err.Raise 65536`, 5 in VB6, is a question for the owner (*Batch
+  8 findings*). `Error$` above 65535 is filed (`error-function-above-65535`). Left alone:
+  twinBASIC's `Error$` of a few HRESULTs is VB's message (`Error$(&H80070057)` is *Invalid
+  procedure call or argument*), VB6's is generic.
 
 ## Tooling
 
@@ -925,6 +928,48 @@ is twinBASIC against both.
   their See Also, which those pages put before the Example (`spliceSection` places a new
   section before the first Example, so a page with See Also first needs moving by hand once).
 
+## Batch 8 findings (VBA `Collection` and `ErrObject`, BETA 1010, 2026-10-27)
+
+twinBASIC 64-bit agrees with 32-bit on every case, and 64-bit VBA with VB6.
+
+- **Assigning `Err.HelpFile`, `Err.HelpContext`, or `Err.ReturnHResult` in a module procedure,
+  compiles and fails the build** with a codegen error (`err-helpfile-helpcontext-codegen`); in
+  test mode the procedure aborts. So the data has no case for those three pages (a case would
+  fail the whole probe): each page has a hand NOTE, and Raise's *helpfile* and *helpcontext*
+  are covered on the Raise page. When it is fixed, add `Err.HelpFile = Null` and
+  `Err.HelpContext = Null` (94 in VB6 and VBA) as rows. ReturnHResult's example now sits in a
+  class (its build failed as a module function; `examples.bat --build` is clean).
+- **VB turns HRESULTs into VB numbers; twinBASIC does not** (`err-raise-hresult-mapping`):
+  `Err.Raise` of 22 HRESULTs tried raises a VB number in VB6 and 64-bit VBA (`E_INVALIDARG`
+  5, `E_NOTIMPL` 445, the `DISP_E_` ones, `&H800A0000 + n` as *n*, ...), and `Err.Number =` of
+  one stores the VB number without raising. Data rows cannot hold one `vb6:` per HRESULT, so
+  the Raise page has a hand NOTE with the table, and twinBASIC's side is `only: tb` quiet cases
+  (wrapped, below). `Err.Raise &H800A0000` raises nothing at all in VB6 and VBA; not written.
+- **How a case says "raised what it was asked"**: `Err.Raise n` (and `Err.Number = n`) then
+  `If Err.Number = n Then Err.Clear`, so the case reports 0, and a runtime that raises or keeps
+  another number reports that. `Err.Number = 65536` raises 5 in VB (an `On Error GoTo` handler
+  is entered); `Err.Number = &H80070057` only stores 5.
+- **Collection** (`collection-index-checks`): a `Currency`, `Decimal` or `Date` index is
+  refused (Item and Remove 9, Add's position 13; VB takes it as a number); Item of a number on
+  an empty collection 9 (VB 5; Remove is 5 in both); Item and Remove of `Null`, an object, an
+  array, an error value or a number beyond `Long` 9 (VB 13); Add's position of -1, `True` or
+  `Empty` 13 (VB 9). Agree in all four: duplicate key 457 (`""` is a key); a non-String key 13
+  (a number too: VB does not convert it); both positions 5; a position on an empty collection
+  5, `Null` there too; a string position or index that is no key 5.
+- **Page edits**: the error sentences of Add, Item, Remove and KeyCompareMode went into the
+  tables; Add states where twinBASIC puts an item for the positions it accepts and what an
+  `Empty` key does; the central page has a NOTE on `Err.Raise` of an HRESULT.
+- **Questions for the owner** (each row is `bug: pending`, its NOTE generated; twinBASIC
+  accepts what VB6 and 64-bit VBA refuse, so extension or bug?):
+  1. `Err.Raise` and `Err.Number =` of a number above 65535 (up to 2147483647): twinBASIC
+     raises or sets it, VB raises 5. The Raise page already says such a number is accepted, and
+     `Err.Description` is then *Automation error* or a system message.
+  2. `Collection.Add` with *before* one more than **Count** adds the item at the end, and with
+     *after* 0 adds it at the start; VB raises 9.
+  3. `Collection.Add` with a *key* of **Empty** adds the item without a key; VB raises 13.
+  An extension gets a NOTE in the page's prose and `only: tb` quiet cases; a bug joins
+  `err-raise-hresult-mapping` (1) or `collection-index-checks` (2, 3).
+
 ## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
 
 Batches 2 to 5 and `Core.yml` in all four runtimes. Every runtime agreed with the data as it
@@ -1007,7 +1052,7 @@ each can be run when there is budget. Status is kept here.
 | 6a | VBA `Information`, and `Interaction`'s non-interactive procedures: `CallByName`, `CallByDispId`, `Choose`, `Command`, `CreateObject`, `GetObject`, `Environ`, `IIf`, `If`, `Partition`, `Switch`, `RaiseEventByName`, `RaiseEventByName2`, `SaveSetting`, `GetSetting`, `GetAllSettings`, `DeleteSetting` (owner split batch 6, 2026-10-22) | 45 | done: 27 sections, 302 cases; four entries queued 2026-10-22 |
 | 6b | `Interaction`'s interactive procedures: `AppActivate`, `Beep`, `DoEvents`, `InputBox`, `MsgBox`, `SendKeys`, `Shell`, under the `dialog`, `keys` and `window` harnesses (`Shell` only with programs that do not exist or `cmd.exe /c exit`) | 7 | done: 5 sections, 164 cases; three entries queued 2026-10-27 |
 | 7 | VBA `FileSystem`, under the `files` harness | 23 | done: 21 sections, 448 cases; three entries queued, one extended, 2026-10-27 |
-| 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | not started |
+| 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | done: 10 sections, 260 cases; three entries queued 2026-10-27; three questions for the owner |
 | 9 | VBA `Financial` | 14 | not started |
 | 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | not started |
 | 11 | Core file I/O statements (`Open`, `Get`, `Put`, `Input`, ...: errors 52--75) | 15 | not started |
