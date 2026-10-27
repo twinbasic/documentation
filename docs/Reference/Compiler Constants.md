@@ -15,7 +15,7 @@ The list includes the constants that VBA documents, even those twinBASIC does no
 
 ## Predefined constants
 
-Each value below is the one a module sees unless it redefines the constant. `#Const` can redefine any of them, and the new value applies only in the module that declares it: after `#Const Win32 = 0`, `#If Win32` is false in that module and still true everywhere else. See [Predefined compiler constants](../tB/Core/Topic-Preprocessor#predefined-compiler-constants).
+Each value below is the one code sees unless a `#Const` redefines the constant. `#Const` can redefine any of them. Like C's `#define`, the new value applies from the `#Const` line to the end of the `.twin` file that holds it, including any modules after it in that file. After `#Const Win32 = 0`, `#If Win32` is false below that line, and still true above it and in every other file. See [Predefined compiler constants](../tB/Core/Topic-Preprocessor#predefined-compiler-constants).
 
 ### `Win16`
 
@@ -107,7 +107,11 @@ Or more simply, to decide whether to use `PtrSafe`, and then `DeclareWide` or ot
 ```
 
 > [!IMPORTANT]
-> Compiler constants are not `Boolean` values, so a test such as `#If Not Win64 Then` does not do what it appears to. It is `True` in both 32-bit and 64-bit mode, where the intent is usually `False` under 64-bit, to select 32-bit-only code. To treat a constant as a `Boolean`, convert it with `CBool()`, as in `#If Not CBool(Win64) Then`.
+> Compiler constants are numbers, not `Boolean` values. `Win64` is 1 in a 64-bit build, and `Not 1` is -2, which counts as true, so `#If Not Win64 Then` is true in both 32-bit and 64-bit builds. To select 32-bit-only code, compare the constant with 0, as in `#If Win64 = 0 Then`, or put the code in the `#Else` branch of `#If Win64 Then`.
+
+<!-- bug: ifdef-function-call-is-zero -->
+> [!WARNING] BETA 1010
+> A function call in an `#If`, `#ElseIf` or `#Const` expression is always 0, with no error or warning. `#If CBool(1) Then` and `#If Len("abc") = 3 Then` are both false, and `#If Not CBool(Win64) Then` is true in a 64-bit build. VB6 evaluates `CBool`, `CLng`, `Abs` and `Len` there.
 
 > [!NOTE]
 > **`vbPtrSize` is not a compiler constant.** [**vbPtrSize**](../tB/Modules/Constants/#vbPtrSize) is a constant of the VBA package, **4** or **8** in code, but `#If` does not see it: like any name that is not a compiler constant it is 0 there, so `#If vbPtrSize = 8 Then` is false in a 64-bit build too. To choose code by pointer size, test [`Win64`](#win64).

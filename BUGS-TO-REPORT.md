@@ -7911,3 +7911,137 @@ Severity: high for the crash: a program loses its unsaved data, and an error han
 A 64-bit build gives the same results.
 
 <!-- Reproducer: bugs/raiseeventbyname-no-events-crash/ (mode test: `tbrun --tests`; expect lists the five PASS and five FAIL lines); run on BETA 1010 with `bug_repro.mjs run` and `--arch win64`. In a built exe the crash ends the program: the run-time errors probe (`errors.mjs run`) stopped there with exception 0xc0000005, 32-bit and 64-bit, which is why the data has no case for it. Stated in a WARNING by hand (the crash) and a NOTE (no handler) on docs/Reference/Default/VBA/Interaction/RaiseEventByName.md and RaiseEventByName2.md, each beside an HTML comment naming this slug; when fixed, both go. Found 2026-10-22 by batch 6a of WIP.Errors.md. -->
+
+---
+
+## A function call in an `#If`, `#ElseIf` or `#Const` expression is always 0, so `#If CBool(1)` is false
+
+**Describe the bug**
+Every function call in a conditional compilation expression evaluates as 0, and the IDE reports nothing. `#If CBool(1) Then`, `#If CLng(1) = 1 Then`, `#If Abs(-1) = 1 Then`, `#If Len("abc") = 3 Then` and `#If Len(TWINBASIC_BUILD_TYPE) = 12 Then` (in a Standard EXE) all take the `#Else` branch, and `#Const X = CBool(1)` makes `X` 0. As a result `#If Not CBool(Win64) Then`, the usual way to select 32-bit-only code from a constant that is 1 rather than `True`, is true in a 64-bit build too. Observed in the compiler's test mode, in a `[RunAfterBuild]` run and in the DIAGNOSTICS list (a branch that declares a variable of a type that does not exist reports an error only when it is active), 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `ifdef-function-call-is-zero.twinproj` (attached as `ifdef-function-call-is-zero.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the seven cases with a function call fail with `Actual: False`; in a 64-bit build `If_NotCBoolOfWin64_AgreesWithWin64EqualsZero` fails too.
+
+The module is meant to be adapted as a regression test. Each case records which branch an `#If` takes and asserts the branch VB6 takes, which the attached VB6 project (`ifdef-function-call-is-zero-vb6.zip`) prints.
+```vb
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: literals, constants and operators alone are evaluated.
+    [TestCase]
+    Public Sub If_LiteralComparison_IsTrue()
+        Dim taken As Boolean
+#If 1 = 1 Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    [TestCase]
+    Public Sub If_Win32EqualsOne_IsTrue()
+        Dim taken As Boolean
+#If Win32 = 1 Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    ' The defect: each call is 0.
+    [TestCase]
+    Public Sub If_CBoolOfOne_IsTrue()
+        Dim taken As Boolean
+#If CBool(1) Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    [TestCase]
+    Public Sub If_CBoolOfWin32_IsTrue()
+        Dim taken As Boolean
+#If CBool(Win32) Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    [TestCase]
+    Public Sub If_NotCBoolOfWin64_AgreesWithWin64EqualsZero()
+        Dim notCBool As Boolean, equalsZero As Boolean
+#If Not CBool(Win64) Then
+        notCBool = True
+#End If
+#If Win64 = 0 Then
+        equalsZero = True
+#End If
+        Assert.Strict.AreEqual equalsZero, notCBool
+    End Sub
+
+    [TestCase]
+    Public Sub If_CLngOfOneEqualsOne_IsTrue()
+        Dim taken As Boolean
+#If CLng(1) = 1 Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    [TestCase]
+    Public Sub If_AbsOfMinusOneEqualsOne_IsTrue()
+        Dim taken As Boolean
+#If Abs(-1) = 1 Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    [TestCase]
+    Public Sub If_LenOfLiteralEqualsThree_IsTrue()
+        Dim taken As Boolean
+#If Len("abc") = 3 Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    [TestCase]
+    Public Sub If_LenOfBuildTypeEqualsTwelve_IsTrue()
+        ' The project is a Standard EXE: "Standard EXE" has 12 characters.
+        Dim taken As Boolean
+#If Len(TWINBASIC_BUILD_TYPE) = 12 Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+#Const FROM_CALL = CBool(1)
+
+    [TestCase]
+    Public Sub Const_FromCBoolOfOne_IsTrue()
+        Dim taken As Boolean
+#If FROM_CALL Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Each call is evaluated, as VB6 evaluates it: `CBool(1)`, `CBool(Win32)`, `CLng(1) = 1`, `Abs(-1) = 1`, `Len("abc") = 3` and `#Const FROM_CALL = CBool(1)` are all true there. If twinBASIC is not meant to support them, the call should be a compile error rather than a silent 0.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium. The wrong branch is compiled with no error or warning, so a program can call a 32-bit declaration in a 64-bit build, or leave out code it meant to keep. `#If Not CBool(Win64)` was the documentation's own advice until now.
+
+A 64-bit build gives the same results. Reported independently on BETA 1024 (docs issue twinbasic/documentation#250), with `VarType(...)` as well.
+
+What does not reproduce it: an expression of constants, literals and operators alone, such as `#If Win64 = 0`, `#If Win64 <> 1` or `#If Not (Win64 = 1)`, each true in a 32-bit build only, as it should be.
+
+<!-- Reproducer: bugs/ifdef-function-call-is-zero/ (mode test: `tbrun --tests`; expect lists the two PASS and seven FAIL lines of a 32-bit run); run on BETA 1010 with `bug_repro.mjs run`, and with `--arch win64`, where the Not CBool(Win64) case fails as well. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints True for every line. Stated in a WARNING labelled BETA 1010 on docs/Reference/Compiler Constants.md (after the IMPORTANT note) and docs/Reference/Core/Topic-Preprocessor.md (under the #If directive), each beside an HTML comment naming this slug; when fixed, both go. Found 2026-10-27 from docs issue #250; that issue's second point, a #Const reaching later modules of the same file, is intended (owner: it works like C's #define), and the pages now say so. -->

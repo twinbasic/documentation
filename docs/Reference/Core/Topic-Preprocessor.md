@@ -37,6 +37,10 @@ The directive's behaviour mirrors the runtime [**If...Then...Else**](If-Then-Els
 > [!NOTE]
 > The [**Option Compare**](Option) statement does not affect expressions in `#If`/`#ElseIf`. They are always evaluated as if **Option Compare Text** were in effect.
 
+<!-- bug: ifdef-function-call-is-zero -->
+> [!WARNING] BETA 1010
+> A function call in an `#If`, `#ElseIf` or `#Const` expression is always 0, with no error or warning. `#If CBool(1) Then` and `#If Len("abc") = 3 Then` are both false, and `#If Not CBool(Win64) Then` is true in a 64-bit build. VB6 evaluates `CBool`, `CLng`, `Abs` and `Len` there. To test whether a constant is 0, compare it with 0, as in `#If Win64 = 0 Then`.
+
 ## #Const directive
 
 Syntax:
@@ -49,7 +53,7 @@ Syntax:
 *expression*
 : A literal, another conditional compiler constant, or any combination using arithmetic or logical operators (except [**Is**](Is)). Standard runtime constants (declared with [**Const**](Const)) are *not* allowed here.
 
-Conditional compiler constants declared with `#Const` are private to the module in which they appear. Project-wide conditional constants must be defined in the project's compilation settings --- `#Const` cannot create them.
+A conditional compiler constant declared with `#Const` works like C's `#define`: it applies from the `#Const` line to the end of the `.twin` file that holds it, including any modules after it in that file. Lines above it, and other files, do not see it. In VB6 and VBA, where each file holds one module, that is the rest of the module. Project-wide conditional constants must be defined in the project's compilation settings --- `#Const` cannot create them.
 
 Conditional compiler constants are always evaluated at the module level regardless of where they appear in code; they can only be used in `#If`/`#ElseIf` expressions.
 
@@ -57,7 +61,7 @@ Conditional compiler constants are always evaluated at the module level regardle
 
 twinBASIC provides a set of built-in compiler constants --- `Win64`, `Win32`, `TWINBASIC`, `TWINBASIC_BUILD`, `VBA7`, etc. See the dedicated [Compiler Constants](../../Reference/Compiler-Constants) page for the full list and what each one means.
 
-`#Const` can redefine a built-in compiler constant. As with any `#Const`, the new value applies only in the module that declares it: after `#Const Win32 = 0`, `#If Win32` is false in that module and still true everywhere else.
+`#Const` can redefine a built-in compiler constant. As with any `#Const`, the new value applies from the `#Const` line to the end of its file: after `#Const Win32 = 0`, `#If Win32` is false below that line, in that module and any after it in the same file, and still true above it and in every other file.
 
 ### Example
 
