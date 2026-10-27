@@ -1,0 +1,23 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Shell_WindowStyle9_Runs$",
+      "^PASS RegressionTests.MsgBox_HelpFileAndContext_ShowsBox$",
+      "^PASS RegressionTests.AppActivate_VisibleWindow_Activates$",
+      "^FAIL RegressionTests.Shell_WindowStyle10_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.InputBox_XPos32768_Raises6: .*Actual: 0 ",
+      "^FAIL RegressionTests.InputBox_YPosMinus32769_Raises6: .*Actual: 0 ",
+      "^FAIL RegressionTests.MsgBox_ContextWithoutHelpFile_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.InputBox_ContextWithoutHelpFile_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.MsgBox_HelpFileNull_Raises5: .*Actual: 94 ",
+      "^FAIL RegressionTests.InputBox_HelpFileNull_Raises5: .*Actual: 94 ",
+      "^FAIL RegressionTests.AppActivate_HiddenWindow_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.AppActivate_WaitNull_Raises94: .*Actual: 0 ",
+      "^FAIL RegressionTests.AppActivate_WaitString_Raises13: .*Actual: 0 ",
+      "^FAIL RegressionTests.MsgBox_ButtonGroup7_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests.MsgBox_StyleMinus1_Raises5: .*Actual: 1002 "
+    ]
+  }
+}

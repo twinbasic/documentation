@@ -7244,7 +7244,7 @@ What does not reproduce it: an interval that does not use *firstweekofyear* (`Da
 
 ---
 
-## Refused arguments raise -2147467259, *Unspecified error*, where VB6 and VBA raise 5, 6, 9, 13 or 438
+## Refused arguments raise -2147467259, *Unspecified error*, or -2147352567, *Exception occurred.*, where VB6 and VBA raise 5, 6, 9, 13, 53, 94 or 438
 
 **Describe the bug**
 Given an argument they refuse, several runtime procedures raise -2147467259 (`&H80004005`), *Unspecified error*, where VB6 and 64-bit VBA raise one of VB's own numbers:
@@ -7255,13 +7255,17 @@ Given an argument they refuse, several runtime procedures raise -2147467259 (`&H
 - `GetObject()` with no arguments: 13.
 - `CallByName` with a *calltype* that is not a `VbCallType` value: 438, *Object doesn't support this property or method*; with an object of `Nothing`: 5.
 - `SaveSetting`, `GetSetting`, `GetAllSettings` and `DeleteSetting` with a zero-length application, section or key name, and `DeleteSetting` of an application, section or key that does not exist: 5.
+- `AppActivate` with a title or task ID that no window has: 5.
+- `Shell` with a zero-length path, spaces, a folder, a file that is not a program, or a path longer than 32,767 characters: 5; with a program or folder that does not exist, or an unclosed quotation mark: 53, *File not found*; with a *windowstyle* less than 0 or greater than 10: 5.
+- `MsgBox` and `InputBox` with a *helpfile* and no *context*: 5.
+- `SendKeys` raises -2147352567 (`&H80020009`), *Exception occurred.*, instead: for an unknown key code (`{INS}` and `{F17}` included), an unclosed brace, a count in braces that is not a whole number from 0 to 8,175, unbalanced parentheses or `++`, VB raises 5; for a *wait* of `Null`, 94; for a *wait* string that is not a `Boolean`, 13.
 
 It is the pattern of #2544 (`ReDim` with inverted bounds raises -2147467259 where VB6 raises 9). Observed in the compiler's test mode and in built exes, 32-bit and 64-bit.
 
 **To Reproduce**
 Steps to reproduce the behavior:
 1. Open `argument-errors-unspecified-error.twinproj` (attached as `argument-errors-unspecified-error.zip`).
-2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other seventeen fail, each with `Err.Number` -2147467259.
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other twenty-five fail, each with `Err.Number` -2147467259, or -2147352567 for the two `SendKeys` cases.
 
 The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`argument-errors-unspecified-error-vb6.zip`) prints; 64-bit VBA raises the same numbers. No case writes to the registry: the registry procedures are given names that do not exist.
 ```vb
@@ -7440,6 +7444,69 @@ Module RegressionTests
         Assert.Strict.AreEqual 5&, Err.Number
     End Sub
 
+    ' Batch 6b: the interactive procedures. Each raises before a box, a key or a program.
+    [TestCase]
+    Public Sub AppActivate_NoSuchWindow_Raises5()
+        On Error Resume Next
+        AppActivate "No such window: argument-errors-unspecified-error"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Shell_EmptyPath_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Shell("")
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Shell_MissingProgram_Raises53()
+        Dim V As Variant
+        On Error Resume Next
+        V = Shell("no-such-program-argument-errors-unspecified-error.exe")
+        Assert.Strict.AreEqual 53&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Shell_WindowStyle11_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Shell("cmd.exe /c exit", 11)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub MsgBox_HelpFileWithoutContext_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = MsgBox("x", , , "help.hlp")
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InputBox_HelpFileWithoutContext_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = InputBox("x", , , , , "help.hlp")
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' SendKeys raises -2147352567, Exception occurred, where the others raise -2147467259.
+    [TestCase]
+    Public Sub SendKeys_UnknownKeyCode_Raises5()
+        On Error Resume Next
+        SendKeys "{BAD}"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub SendKeys_WaitNull_Raises94()
+        On Error Resume Next
+        SendKeys "", Null
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
 End Module
 ```
 
@@ -7457,7 +7524,7 @@ A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01
 
 What does not reproduce it: the errors these procedures already raise with VB's numbers, such as `LBound` of an array not yet sized (9), `QBColor` outside 0 to 15 (5), `RGB` with a negative component (5), and `Null` for any of the arguments above (94).
 
-<!-- Reproducer: bugs/argument-errors-unspecified-error/ (mode test: `tbrun --tests`; expect lists the three PASS and seventeen FAIL lines); run on BETA 1010 with `bug_repro.mjs run`; 64-bit from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: argument-errors-unspecified-error`) of LBound, UBound, Switch, Partition, Environ, GetObject, CallByName, SaveSetting, GetSetting, GetAllSettings and DeleteSetting, from errors/VBA.Information.yml and errors/VBA.Interaction.yml; when fixed, each row's `error` becomes VB's number and its `vb6` and `bug` go, and the NOTEs with them. Found 2026-10-22 by batch 6a of WIP.Errors.md; grouped as one entry by the owner. -->
+<!-- Reproducer: bugs/argument-errors-unspecified-error/ (mode test: `tbrun --tests`; expect lists the three PASS and twenty-five FAIL lines); run on BETA 1010 with `bug_repro.mjs run`; 64-bit from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: argument-errors-unspecified-error`) of LBound, UBound, Switch, Partition, Environ, GetObject, CallByName, SaveSetting, GetSetting, GetAllSettings, DeleteSetting, AppActivate, Shell, MsgBox, InputBox and SendKeys, from errors/VBA.Information.yml and errors/VBA.Interaction.yml; when fixed, each row's `error` becomes VB's number and its `vb6` and `bug` go, and the NOTEs with them. Found 2026-10-22 by batch 6a of WIP.Errors.md; grouped as one entry by the owner. The interactive procedures added 2026-10-27 by batch 6b (owner: SendKeys' -2147352567 joins it); the VB6 side carries a copy of errors/harnesses/dialog.bas for its MsgBox and InputBox cases. -->
 
 ---
 
@@ -8045,3 +8112,203 @@ A 64-bit build gives the same results. Reported independently on BETA 1024 (docs
 What does not reproduce it: an expression of constants, literals and operators alone, such as `#If Win64 = 0`, `#If Win64 <> 1` or `#If Not (Win64 = 1)`, each true in a 32-bit build only, as it should be.
 
 <!-- Reproducer: bugs/ifdef-function-call-is-zero/ (mode test: `tbrun --tests`; expect lists the two PASS and seven FAIL lines of a 32-bit run); run on BETA 1010 with `bug_repro.mjs run`, and with `--arch win64`, where the Not CBool(Win64) case fails as well. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints True for every line. Stated in a WARNING labelled BETA 1010 on docs/Reference/Compiler Constants.md (after the IMPORTANT note) and docs/Reference/Core/Topic-Preprocessor.md (under the #If directive), each beside an HTML comment naming this slug; when fixed, both go. Found 2026-10-27 from docs issue #250; that issue's second point, a #Const reaching later modules of the same file, is intended (owner: it works like C's #define), and the pages now say so. -->
+
+---
+
+## `AppActivate`, `InputBox`, `MsgBox` and `Shell` accept arguments VB6 and VBA refuse, and `MsgBox` shows no box for a style Windows refuses
+
+**Describe the bug**
+Given an argument VB6 and 64-bit VBA refuse, these procedures go on as if it were valid:
+- `Shell` with a *windowstyle* of 10 (`SW_SHOWDEFAULT`) starts the program; VB raises 5, *Invalid procedure call or argument*. `STARTUPINFO.wShowWindow` may hold any `ShowWindow` value but `SW_SHOWDEFAULT`, and `CreateProcessW` does not check it. VB6 and VBA take 0 to 9 after rounding; twinBASIC takes 0 to 10, and raises -2147467259 above (the entry on refused arguments).
+- `InputBox` with an *xpos* or *ypos* outside -32,768 to 32,767 after rounding shows the box; VB raises 6, *Overflow*. twinBASIC raises 6 only outside the `Long` range.
+- `MsgBox` and `InputBox` with a *context* and no *helpfile* show the box; VB raises 5.
+- `MsgBox` and `InputBox` with a *helpfile* of `Null` raise 94, *Invalid use of Null*; VB raises 5.
+- `AppActivate` of a hidden window raises nothing and leaves it hidden; VB raises 5. With a *wait* of `Null` or a string that is not a `Boolean` it raises nothing; VB raises 94 and 13.
+- `MsgBox` passes *buttons* to Windows as it is, and when Windows refuses the style (a button group of 7 to 15, such as 7, 15 or -1) it shows no box, returns 0 and raises nothing. It should raise 5. (VB6 and VBA show an OK box for any style they do not know and return 1; passing every style Windows accepts to it is a welcome extension, `vbCancelTryAgainContinue` among them, but a style Windows refuses should not pass silently.) A style of -1 also carries `MB_SERVICE_NOTIFICATION`, which twinBASIC hands to Windows as well; Windows refuses it for its button group before it would show anything.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `interaction-missing-argument-checks.twinproj` (attached as `interaction-missing-argument-checks.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other twelve fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`interaction-missing-argument-checks-vb6.zip`) prints, with how many boxes it showed; 64-bit VBA raises the same numbers. Every case runs under a copy of a dialog harness that answers each box `MsgBox` or `InputBox` shows at once (a `WH_CBT` hook that sends the box `WM_COMMAND` from Cancel, else its first button), and refuses a box for another desktop (it patches `MessageBoxIndirectA/W`), so no case waits for a person. That is also why `MsgBox_StyleMinus1_Raises5` reports 1002 today: the harness refuses the service-notification style twinBASIC passes on. The harness and a window helper are in the attached project, left out below.
+```vb
+' Regression tests: AppActivate, InputBox, MsgBox and Shell refuse the arguments VB6 and 64-bit
+' VBA refuse, with the numbers they raise (the VB6 project beside this one prints them), and
+' MsgBox raises 5 for a style Windows refuses, where it now shows no box and returns 0.
+' The dialog harness answers every box a case shows, so no case waits for a person, and no
+' box can open on another desktop. tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+    ' ... the copies of the dialog and window harnesses: in the attached project ...
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub Shell_WindowStyle9_Runs()
+        Dim V As Variant
+        On Error Resume Next
+        V = Shell("cmd.exe /c exit", 9)
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub MsgBox_HelpFileAndContext_ShowsBox()
+        Dim V As Variant
+        On Error Resume Next
+        dialog_Begin
+        V = MsgBox("x", , , "help.hlp", 5)
+        dialog_End
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub AppActivate_VisibleWindow_Activates()
+        Dim V As Variant
+        On Error Resume Next
+        window_Begin
+        AppActivate window_Title()
+        window_End
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Shell_WindowStyle10_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Shell("cmd.exe /c exit", 10)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InputBox_XPos32768_Raises6()
+        Dim V As Variant
+        On Error Resume Next
+        dialog_Begin
+        V = InputBox("x", , , 32768, 0)
+        dialog_End
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InputBox_YPosMinus32769_Raises6()
+        Dim V As Variant
+        On Error Resume Next
+        dialog_Begin
+        V = InputBox("x", , , 0, -32769)
+        dialog_End
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub MsgBox_ContextWithoutHelpFile_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        dialog_Begin
+        V = MsgBox("x", , , , 5)
+        dialog_End
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InputBox_ContextWithoutHelpFile_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        dialog_Begin
+        V = InputBox("x", , , , , , 5)
+        dialog_End
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub MsgBox_HelpFileNull_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        dialog_Begin
+        V = MsgBox("x", 0, "t", Null)
+        dialog_End
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InputBox_HelpFileNull_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        dialog_Begin
+        V = InputBox("x", , , , , Null)
+        dialog_End
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub AppActivate_HiddenWindow_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        window_Begin
+        window_Hide
+        AppActivate window_Title()
+        window_End
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub AppActivate_WaitNull_Raises94()
+        Dim V As Variant
+        On Error Resume Next
+        window_Begin
+        AppActivate window_Title(), Null
+        window_End
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub AppActivate_WaitString_Raises13()
+        Dim V As Variant
+        On Error Resume Next
+        window_Begin
+        AppActivate window_Title(), "x"
+        window_End
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub MsgBox_ButtonGroup7_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        dialog_Begin
+        V = MsgBox("x", 7)
+        dialog_End
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' -1 has MB_SERVICE_NOTIFICATION too, which twinBASIC passes to Windows: the dialog
+    ' harness refuses that call, so the case reports 1002 until twinBASIC raises 5 first.
+    [TestCase]
+    Public Sub MsgBox_StyleMinus1_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        dialog_Begin
+        V = MsgBox("x", -1)
+        dialog_End
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The numbers VB6 and 64-bit VBA raise: 5 for `Shell`'s *windowstyle* 10, for *context* without *helpfile*, for a *helpfile* of `Null` and for a hidden window; 6 for *xpos* and *ypos* outside the `Integer` range; 94 and 13 for `AppActivate`'s *wait*. And 5 from `MsgBox` for a style Windows refuses.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium for `MsgBox`, whose answer to a style Windows refuses is 0, which no `VbMsgBoxResult` is: a program that tests the answer takes a wrong branch, silently. Low for the rest, each of which lets a mistake in an argument go unreported.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a *windowstyle* of 0 to 9; *xpos* and *ypos* inside the `Integer` range; a *helpfile* with a *context*; a visible or a minimized window (which none of the runtimes restores); a `Boolean` *wait*; a style Windows accepts.
+
+<!-- Reproducer: bugs/interaction-missing-argument-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and twelve FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`; 64-bit from the run-time errors data (`errors.mjs run`, all four runtimes). Both sides carry copies of errors/harnesses/dialog.bas and window.bas, written by a generator from them. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case and the boxes it showed. Stated in the Common Errors sections (rows `bug: interaction-missing-argument-checks`) of AppActivate, InputBox, MsgBox and Shell, from errors/VBA.Interaction.yml, and in the WARNING on docs/Reference/Default/VBA/Interaction/MsgBox.md (MsgBox styles Windows refuses); when fixed, each row's case moves to a row of VB's number and the NOTEs and the WARNING go. Found 2026-10-22 to 2026-10-27 by batch 6b of WIP.Errors.md; owner: bugs, one entry. -->

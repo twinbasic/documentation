@@ -13,6 +13,9 @@
 // Runs with a bare `node --test test/example-batches.test.mjs`: no tree, no build.
 
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "node:test";
 import { runProbes } from "../scripts/lib/example-batches.mjs";
 import {
@@ -25,7 +28,7 @@ import {
 } from "../scripts/lib/harness-settings.mjs";
 import { BUILD_FAILED, LLVM_REFUSAL, linkedLog } from "../scripts/lib/tb-ide.mjs";
 import { buildTimeoutMessage, checkCapture } from "../scripts/lib/tb-run.mjs";
-import { vb6Probes } from "../scripts/lib/vb6.mjs";
+import { reproAnswersBoxes, reproProblem, vb6Probes } from "../scripts/lib/vb6.mjs";
 
 test("check_examples' probes pass", async () => {
   const said = [];
@@ -179,6 +182,25 @@ test("test/harness.json is read as its contract says", () => {
     () => optionSeconds({ buildTimeout: "0" }, ["build-timeout"]),
     /--build-timeout expects a number greater than 0/,
   );
+});
+
+test("a reproducer's VB6 project may call MsgBox only with the dialog harness", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "repro-boxes-"));
+  try {
+    writeFileSync(path.join(dir, "Probe.vbp"), "Type=Exe\r\nModule=Module1; Module1.bas\r\n");
+    const main = 'Sub Main()\r\n    MsgBox "x"\r\nEnd Sub\r\n';
+    writeFileSync(path.join(dir, "Module1.bas"), `Attribute VB_Name = "Module1"\r\n${main}`);
+    assert.equal(reproAnswersBoxes(dir), false);
+    assert.match(reproProblem(dir) ?? "", /calls MsgBox/);
+    writeFileSync(
+      path.join(dir, "Module1.bas"),
+      `Attribute VB_Name = "Module1"\r\nPrivate Sub dialog_Begin()\r\nEnd Sub\r\n${main}`,
+    );
+    assert.equal(reproAnswersBoxes(dir), true);
+    assert.equal(reproProblem(dir), null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("vb6run's probes pass", () => {

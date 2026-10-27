@@ -22,7 +22,15 @@
       "^FAIL RegressionTests.CallByName_CallTypeZero_Raises438: .*Actual: -2147467259 ",
       "^FAIL RegressionTests.CallByName_Nothing_Raises5: .*Actual: -2147467259 ",
       "^FAIL RegressionTests.GetSetting_EmptyAppName_Raises5: .*Actual: -2147467259 ",
-      "^FAIL RegressionTests.DeleteSetting_MissingApplication_Raises5: .*Actual: -2147467259 "
+      "^FAIL RegressionTests.DeleteSetting_MissingApplication_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.AppActivate_NoSuchWindow_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Shell_EmptyPath_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Shell_MissingProgram_Raises53: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Shell_WindowStyle11_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.MsgBox_HelpFileWithoutContext_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.InputBox_HelpFileWithoutContext_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.SendKeys_UnknownKeyCode_Raises5: .*Actual: -2147352567 ",
+      "^FAIL RegressionTests.SendKeys_WaitNull_Raises94: .*Actual: -2147352567 "
     ]
   }
 }

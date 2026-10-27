@@ -173,4 +173,67 @@ Module RegressionTests
         Assert.Strict.AreEqual 5&, Err.Number
     End Sub
 
+    ' Batch 6b: the interactive procedures. Each raises before a box, a key or a program.
+    [TestCase]
+    Public Sub AppActivate_NoSuchWindow_Raises5()
+        On Error Resume Next
+        AppActivate "No such window: argument-errors-unspecified-error"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Shell_EmptyPath_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Shell("")
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Shell_MissingProgram_Raises53()
+        Dim V As Variant
+        On Error Resume Next
+        V = Shell("no-such-program-argument-errors-unspecified-error.exe")
+        Assert.Strict.AreEqual 53&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Shell_WindowStyle11_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = Shell("cmd.exe /c exit", 11)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub MsgBox_HelpFileWithoutContext_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = MsgBox("x", , , "help.hlp")
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub InputBox_HelpFileWithoutContext_Raises5()
+        Dim V As Variant
+        On Error Resume Next
+        V = InputBox("x", , , , , "help.hlp")
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    ' SendKeys raises -2147352567, Exception occurred, where the others raise -2147467259.
+    [TestCase]
+    Public Sub SendKeys_UnknownKeyCode_Raises5()
+        On Error Resume Next
+        SendKeys "{BAD}"
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub SendKeys_WaitNull_Raises94()
+        On Error Resume Next
+        SendKeys "", Null
+        Assert.Strict.AreEqual 94&, Err.Number
+    End Sub
+
 End Module

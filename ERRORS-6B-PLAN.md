@@ -234,6 +234,19 @@ is a twinBASIC bug to queue (owner); on the user's desktop there is none. AppAct
 user's desktop: VB6 made windows 2 to 8 the foreground one, twinBASIC none (the first run started
 the programs hidden; a rerun with a throwaway first window waits for the owner's go).
 
+**Paused 2026-10-27 (owner rearranging commits).** Done since: steps 5 and 6 (data, all 355
+cases of `VBA.Interaction.yml` agree in all four runtimes; sections and page edits, committed).
+`argument-errors-unspecified-error` extended (8 cases, entry text, packed, verifies).
+`scripts/lib/vb6.mjs`: `reproAnswersBoxes` lets a reproducer's VB6 project that carries the
+dialog harness call MsgBox and InputBox, built without Unattended Execution (needs a probe in
+`test/example-batches.test.mjs` and a line in Tools-Defects' bug_repro entry). In progress:
+`bugs/interaction-missing-argument-checks/` (written by a scratch generator; tB side 3 PASS and
+12 FAIL, VB6 side right): set `repro.json`'s expected lines, write its entry in BUGS-TO-REPORT.md,
+pack, replace `bug: pending` in the data with its slug. Left: `sendkeys-non-ascii` (reproducer
+with a copy of keys.bas, entry; the WARNING on SendKeys names it), the private-desktop 2 s entry
+(reproducer from the scratchpad's desktest programs), step 8 (gates, findings into
+WIP.Errors.md, this file deleted). `errors/harnesses/trace.bas` is scratch, uncommitted.
+
 ## 5. The data
 
 - [ ] The rows and quiet cases in `errors/VBA.Interaction.yml`, after 6a's pages, each page's

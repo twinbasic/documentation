@@ -460,7 +460,7 @@ pages:
       - error: 94
         when: "*helpfile* is **Null**"
         vb6: 5
-        bug: pending
+        bug: interaction-missing-argument-checks
         cases:
           - MsgBox("x", 0, "t", Null)
       - error: -2147467259
@@ -472,7 +472,7 @@ pages:
       - error: 0
         when: "*context* is given without *helpfile*"
         vb6: 5
-        bug: pending
+        bug: interaction-missing-argument-checks
         cases:
           - MsgBox("x", , , , 5)
     quiet:
@@ -517,7 +517,7 @@ pages:
       - error: 94
         when: "*helpfile* is **Null**"
         vb6: 5
-        bug: pending
+        bug: interaction-missing-argument-checks
         cases:
           - InputBox("x", , , , , Null)
       - error: 6
@@ -530,7 +530,7 @@ pages:
       - error: 0
         when: "*xpos* or *ypos* is outside -32,768 to 32,767 after rounding, and inside the range of a **Long**"
         vb6: 6
-        bug: pending
+        bug: interaction-missing-argument-checks
         cases:
           - InputBox("x", , , 32768, 0)
           - InputBox("x", , , 32767.6, 0)
@@ -547,7 +547,7 @@ pages:
       - error: 0
         when: "*context* is given without *helpfile*"
         vb6: 5
-        bug: pending
+        bug: interaction-missing-argument-checks
         cases:
           - InputBox("x", , , , , , 5)
     quiet:
@@ -652,19 +652,19 @@ pages:
       - error: 0
         when: "the window *title* names is hidden"
         vb6: 5
-        bug: pending
+        bug: interaction-missing-argument-checks
         cases:
           - { setup: window_Hide, run: AppActivate window_Title() }
       - error: 0
         when: "*wait* is **Null**"
         vb6: 94
-        bug: pending
+        bug: interaction-missing-argument-checks
         cases:
           - { run: "AppActivate window_Title(), Null" }
       - error: 0
         when: "*wait* is a string that is not a **Boolean**"
         vb6: 13
-        bug: pending
+        bug: interaction-missing-argument-checks
         cases:
           - { run: "AppActivate window_Title(), \"x\"" }
     quiet:
@@ -718,7 +718,7 @@ pages:
       - error: 0
         when: "*windowstyle* is 10 after rounding (`SW_SHOWDEFAULT`, which a new program's start-up information may not hold)"
         vb6: 5
-        bug: pending
+        bug: interaction-missing-argument-checks
         cases:
           - Shell("cmd.exe /c exit", 10)
           - Shell("cmd.exe /c exit", 9.6)
