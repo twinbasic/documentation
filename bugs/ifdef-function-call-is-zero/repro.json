@@ -1,0 +1,17 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.If_LiteralComparison_IsTrue$",
+      "^PASS RegressionTests.If_Win32EqualsOne_IsTrue$",
+      "^FAIL RegressionTests.If_CBoolOfOne_IsTrue: ",
+      "^FAIL RegressionTests.If_CBoolOfWin32_IsTrue: ",
+      "^FAIL RegressionTests.If_CLngOfOneEqualsOne_IsTrue: ",
+      "^FAIL RegressionTests.If_AbsOfMinusOneEqualsOne_IsTrue: ",
+      "^FAIL RegressionTests.If_LenOfLiteralEqualsThree_IsTrue: ",
+      "^FAIL RegressionTests.If_LenOfBuildTypeEqualsTwelve_IsTrue: ",
+      "^FAIL RegressionTests.Const_FromCBoolOfOne_IsTrue: "
+    ]
+  }
+}

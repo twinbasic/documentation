@@ -1,0 +1,106 @@
+' Regression tests: a function call in an #If expression must be evaluated, as VB6 and
+' VBA evaluate it. On BETA 1010 every call is 0, with no diagnostic, so each #If below
+' that calls a function takes its #Else branch. Each case records the branch taken and
+' asserts the branch VB6 takes.
+[TestFixture]
+Module RegressionTests
+
+    ' Controls: literals, constants and operators alone are evaluated.
+    [TestCase]
+    Public Sub If_LiteralComparison_IsTrue()
+        Dim taken As Boolean
+#If 1 = 1 Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    [TestCase]
+    Public Sub If_Win32EqualsOne_IsTrue()
+        Dim taken As Boolean
+#If Win32 = 1 Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    ' The defect: each call is 0.
+    [TestCase]
+    Public Sub If_CBoolOfOne_IsTrue()
+        Dim taken As Boolean
+#If CBool(1) Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    [TestCase]
+    Public Sub If_CBoolOfWin32_IsTrue()
+        Dim taken As Boolean
+#If CBool(Win32) Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    [TestCase]
+    Public Sub If_NotCBoolOfWin64_AgreesWithWin64EqualsZero()
+        Dim notCBool As Boolean, equalsZero As Boolean
+#If Not CBool(Win64) Then
+        notCBool = True
+#End If
+#If Win64 = 0 Then
+        equalsZero = True
+#End If
+        Assert.Strict.AreEqual equalsZero, notCBool
+    End Sub
+
+    [TestCase]
+    Public Sub If_CLngOfOneEqualsOne_IsTrue()
+        Dim taken As Boolean
+#If CLng(1) = 1 Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    [TestCase]
+    Public Sub If_AbsOfMinusOneEqualsOne_IsTrue()
+        Dim taken As Boolean
+#If Abs(-1) = 1 Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    [TestCase]
+    Public Sub If_LenOfLiteralEqualsThree_IsTrue()
+        Dim taken As Boolean
+#If Len("abc") = 3 Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+    [TestCase]
+    Public Sub If_LenOfBuildTypeEqualsTwelve_IsTrue()
+        ' The project is a Standard EXE: "Standard EXE" has 12 characters.
+        Dim taken As Boolean
+#If Len(TWINBASIC_BUILD_TYPE) = 12 Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+#Const FROM_CALL = CBool(1)
+
+    [TestCase]
+    Public Sub Const_FromCBoolOfOne_IsTrue()
+        Dim taken As Boolean
+#If FROM_CALL Then
+        taken = True
+#End If
+        Assert.Strict.AreEqual True, taken
+    End Sub
+
+End Module
