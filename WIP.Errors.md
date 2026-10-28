@@ -91,15 +91,15 @@ rulings applied: five entries queued, `argument-errors-unspecified-error` extend
 for an infinite result an extension (*Batch 9 findings*). No row is `bug: pending`, and no
 question is open.
 
-**Batch 10 is done but for the owner's rulings** (2026-10-28), VBA `HiddenModule`,
+**Batch 10 is done** (2026-10-28), VBA `HiddenModule`,
 `Compilation` and `TbExpressionService`: 280 cases in `errors/VBA.HiddenModule.yml`,
 `VBA.Compilation.yml` and `VBA.TbExpressionService.yml`, every one `only: tb` (VB6 and VBA have
 none of these procedures), all agreeing in both twinBASIC builds; sections on 35 pages; two new
 harnesses, `native` and `expression`; four HRESULTs added to `messages.yml` and measured. The
-owner's rulings 1 to 3 applied: three entries queued (`nothing-argument-crashes`,
-`expression-service-dangling-tokens`, `expression-service-error-numbers`). Questions 4 to 6
-(`vbaCastObj`, `CreateGUID`, `AllocMem`) wait on the owner, with what VB does, under *Batch 10
-findings*.
+owner's rulings applied: four entries queued (`nothing-argument-crashes`,
+`expression-service-dangling-tokens`, `expression-service-error-numbers`,
+`vbacastobj-no-type-mismatch`), and `CreateGUID`'s braceless form and `AllocMem(0)`'s error are
+the spec (*Batch 10 findings*). No question is open.
 
 **Next: batch 11**, Core file I/O statements.
 
@@ -1142,17 +1142,20 @@ intrinsics), `CreateGUID`, the `GetDeclared...` six, `StackArgsSize`, `StackOffs
    `Declare`) returns the interface for a GUID's address, 0 for **Nothing**, and raises **13,
    Type mismatch** for an interface the object lacks, a String's text read as an IID included;
    twinBASIC returns **Nothing** for both. VBE7.DLL exports no `__vba` procedure, so 64-bit VBA
-   cannot be asked. Awaiting the owner: a bug (raise 13, as VB6), or twinBASIC's own (a
-   "try cast")?
+   cannot be asked. **Owner: a bug.** Queued as `vbacastobj-no-type-mismatch` (3 PASS, 2 FAIL;
+   VB6 side calling `__vbaCastObj`); the data's row is `error: 0`, `vb6: 13` (its cases `only:
+   tb`, so the NOTE names VB6 alone); the page states the 13 and has a WARNING.
 5. **"What does VBx do?" for `CreateGUID`**: nothing to compare. VB6 and VBA have no CreateGUID,
    nor does Access (`Application.CreateGUID` 438, `Eval("CreateGUID()")` 2425), and no runtime
    exports one. VB code makes one with `CreateObject("Scriptlet.TypeLib").Guid`, which is braced
    (`{...}`, and two trailing NULs: 40 characters), or `StringFromGUID2`, braced. twinBASIC's
    `GetDeclaredTypeIid` and its kin return the braced form; `CreateGUID` the 36-character form the
-   `ClassId` and `InterfaceId` attributes take. Awaiting the owner.
+   `ClassId` and `InterfaceId` attributes take. **Owner: the existing behaviour is the spec**,
+   as the page now states it.
 6. **"What does VBx do?" for `AllocMem(0)`**: nothing to compare: no AllocMem in VB6, VBA, msvbvm60
    or VBE7 (their GetMem/PutMem family has no allocator). Windows' allocators (`HeapAlloc`,
-   `CoTaskMemAlloc`, `GlobalAlloc`) return a block for 0 bytes. Awaiting the owner.
+   `CoTaskMemAlloc`, `GlobalAlloc`) return a block for 0 bytes. **Owner: the existing behaviour
+   is the spec**: the page's row of -2147024882 for 0 or less stands.
 
 ## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
 
@@ -1238,7 +1241,7 @@ each can be run when there is budget. Status is kept here.
 | 7 | VBA `FileSystem`, under the `files` harness | 23 | done: 21 sections, 448 cases; three entries queued, one extended, 2026-10-27 |
 | 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | done: 10 sections, 259 cases; three entries queued 2026-10-27; owner's rulings 2026-10-28 |
 | 9 | VBA `Financial` | 14 | done: 13 sections, 349 cases; five entries queued, one extended; owner's rulings 2026-10-28 |
-| 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | 35 sections, 280 cases, harnesses `native` and `expression`; three entries queued; questions 4 to 6 open; 2026-10-28 |
+| 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | 35 sections, 280 cases, harnesses `native` and `expression`; four entries queued; owner's rulings 2026-10-28 |
 | 11 | Core file I/O statements (`Open`, `Get`, `Put`, `Input`, ...: errors 52--75) | 15 | not started |
 | 12 | Core arrays and control flow (`ReDim`, `Erase`, `Resume`, `Return`, ...); ReDim has data already, in `errors/Core.yml` | 15 | not started |
 | 13 | Operators: the matrix generator and its pages | 25 | not started |

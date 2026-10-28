@@ -10932,3 +10932,108 @@ What does not reproduce it: an expression that raises nothing; `Eval("Mid(Null, 
 Related: the queued entry `expression-service-dangling-tokens`, on malformed expressions that are accepted.
 
 <!-- Reproducer: bugs/expression-service-error-numbers/ (mode test: `tbrun --tests`; expect lists the four PASS and ten FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; the descriptions in exes with `tbrun --exe` and `errors.mjs run`; VBScript's numbers from VB6 with MSScriptControl, Access's from VbaSession (scripts/lib/vba.mjs). No VB6 side: VB6 has no Eval. Stated in NOTEs (BETA 1010) on docs/Reference/Default/VBA/HiddenModule/Eval.md and docs/Reference/Default/VBA/TbExpressionService/Evaluate.md and Compile.md, and in their Common Errors sections (rows of -2147467259 in errors/VBA.HiddenModule.yml and VBA.TbExpressionService.yml, and the `expression` harness, which spends the first error); when fixed, the rows become the errors' own numbers, the harness goes, and the NOTEs go. Found 2026-10-28 by batch 10 of WIP.Errors.md; owner, 2026-10-28: to be investigated and settled from the reader's side; VBScript and Access both keep the number, so a bug. -->
+
+---
+
+## `vbaCastObj` returns `Nothing` for an interface the object does not have, where VB6's `__vbaCastObj` raises 13
+
+**Describe the bug**
+`vbaCastObj(Obj, IID)` asks *Obj* for the interface whose ID is at the address *IID*. When *Obj* does not have it, `vbaCastObj` returns `Nothing` and raises no error. VB6's own `__vbaCastObj`, which msvbvm60 exports and which `vbaCastObj` mirrors, raises 13, *Type mismatch*, there: it is the function VB6's compiled code calls for a `Set` to a variable of an interface type, and the 13 is the error that `Set` raises. A `String` given as *IID* is the same case: its text is read as the interface ID, which no object has, so VB6 raises 13 and twinBASIC returns `Nothing`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `vbacastobj-no-type-mismatch.twinproj` (attached as `vbacastobj-no-type-mismatch.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the two other cases fail: `Err.Number` is 0.
+3. Build and run the VB6 project (attached as `vbacastobj-no-type-mismatch-vb6.zip`), which calls `__vbaCastObj` through a `Declare` with the same arguments. It prints:
+   ```
+   Control_IUnknown_ReturnsTheInterface: 0 an interface
+   Control_IDispatch_ReturnsTheInterface: 0 an interface
+   Control_Nothing_ReturnsNothing: 0 Nothing
+   InterfaceItLacks_Raises13: 13 Nothing
+   StringGivenAsTheInterfaceId_Raises13: 13 Nothing
+   ```
+
+The module is meant to be adapted as a regression test. Each case asserts what VB6's `__vbaCastObj` does.
+```vb
+' Regression tests: vbaCastObj raises 13, Type mismatch, when the object does not have the
+' interface asked for, as VB6's own __vbaCastObj (msvbvm60) does, and still returns the
+' interface when it does, and Nothing for Nothing. On BETA 1010 it returns Nothing with no
+' error, for an interface the object lacks and for a String given as the interface ID (whose
+' text is not an interface ID). The VB6 project beside this one calls __vbaCastObj with the
+' same arguments.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Type InterfaceGuid
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Private Iid As InterfaceGuid
+
+    ' The address of the interface ID {Data1-0000-0000-C000-000000000046}: 0 is IUnknown,
+    ' &H20400 IDispatch, &H12345 an interface nothing has.
+    Private Function StdIid(ByVal Data1 As Long) As LongPtr
+        Iid.Data1 = Data1
+        Iid.Data4(0) = &HC0
+        Iid.Data4(7) = &H46
+        StdIid = VarPtr(Iid)
+    End Function
+
+    [TestCase]
+    Public Sub Control_IUnknown_ReturnsTheInterface()
+        Assert.Strict.IsNotNothing vbaCastObj(New Collection, StdIid(0))
+    End Sub
+
+    [TestCase]
+    Public Sub Control_IDispatch_ReturnsTheInterface()
+        Assert.Strict.IsNotNothing vbaCastObj(New Collection, StdIid(&H20400))
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Nothing_ReturnsNothing()
+        Assert.Strict.IsNothing vbaCastObj(Nothing, StdIid(0))
+    End Sub
+
+    [TestCase]
+    Public Sub InterfaceItLacks_Raises13()
+        Dim E As Long, U As IUnknown
+        On Error Resume Next
+        Set U = vbaCastObj(New Collection, StdIid(&H12345))
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 13&, E
+    End Sub
+
+    [TestCase]
+    Public Sub StringGivenAsTheInterfaceId_Raises13()
+        Dim E As Long, U As IUnknown
+        On Error Resume Next
+        Set U = vbaCastObj(New Collection, "{00000000-0000-0000-C000-000000000046}")
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 13&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+13, *Type mismatch*, as VB6's `__vbaCastObj` raises, when the object does not have the interface; the interface when it does; `Nothing` for an object of `Nothing`, as now.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low to medium: code ported from VB6 that relies on the 13 from `__vbaCastObj` goes on with `Nothing`, and code that passes the IID as text, as the function's documentation once said it could, always gets `Nothing` and never learns why.
+
+A 64-bit build gives the same results. 64-bit VBA cannot be compared: VBE7.DLL exports no `__vba` function.
+
+What does not reproduce it: an interface the object has (`IUnknown`, `IDispatch` of a `Collection`), and an object of `Nothing`, for which both return `Nothing` with no error.
+
+<!-- Reproducer: bugs/vbacastobj-no-type-mismatch/ (mode test: `tbrun --tests`; expect lists the three PASS and two FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`. VB6 side in vb6/ (VB6 6.0), calling msvbvm60's __vbaCastObj. Stated in a WARNING (BETA 1010) on docs/Reference/Default/VBA/HiddenModule/vbaCastObj.md, and in its Common Errors section (row `bug: vbacastobj-no-type-mismatch`, error 0, vb6 13, in errors/VBA.HiddenModule.yml); when fixed, the row becomes a row of 13 with no vb6:, and the WARNING and the NOTE go. Found 2026-10-28 by batch 10 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
+

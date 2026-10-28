@@ -483,14 +483,19 @@ pages:
         when: "*Obj* is **Null**"
         cases:
           - { expr: "vbaCastObj(Null, native_StdIid(0))", only: tb }
+      # VB6's own __vbaCastObj (msvbvm60) raises 13 for both; twinBASIC returns Nothing
+      - error: 0
+        when: "*Obj* does not have the interface *IID* names, or *IID* is a **String**, whose text is not read as an interface ID"
+        vb6: 13
+        bug: vbacastobj-no-type-mismatch
+        cases:
+          - { run: "If Not vbaCastObj(New Collection, native_StdIid(&H12345)) Is Nothing Then Err.Raise 1001", only: tb }
+          - { run: 'If Not vbaCastObj(New Collection, "{00000000-0000-0000-C000-000000000046}") Is Nothing Then Err.Raise 1001', only: tb }
+          - { run: 'If Not vbaCastObj(New Collection, "abc") Is Nothing Then Err.Raise 1001', only: tb }
     quiet:
       - { run: "If vbaCastObj(New Collection, native_StdIid(0)) Is Nothing Then Err.Raise 1001", only: tb }
       - { run: "If vbaCastObj(New Collection, native_StdIid(&H20400)) Is Nothing Then Err.Raise 1001", only: tb }
-      - { run: "If Not vbaCastObj(New Collection, native_StdIid(&H12345)) Is Nothing Then Err.Raise 1001", only: tb }
       - { run: "If Not vbaCastObj(Nothing, native_StdIid(0)) Is Nothing Then Err.Raise 1001", only: tb }
-      # a String is not read as an interface ID: the result is Nothing (the page says so)
-      - { run: 'If Not vbaCastObj(New Collection, "{00000000-0000-0000-C000-000000000046}") Is Nothing Then Err.Raise 1001', only: tb }
-      - { run: 'If Not vbaCastObj(New Collection, "abc") Is Nothing Then Err.Raise 1001', only: tb }
   Reference/Default/VBA/HiddenModule/vbaCopyBytes.md:
     rows:
       - error: 94
