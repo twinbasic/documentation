@@ -23,15 +23,11 @@ pages:
           - { run: "Err.Raise 5, , Null" }
           - { run: "Err.Raise 5, , , Null" }
           - { run: "Err.Raise 5, , , , Null" }
-      - error: 0
-        when: "*number* is greater than 65535"
-        vb6: 5
-        bug: pending
-        cases:
-          - { run: "Err.Raise 65536\nIf Err.Number = 65536 Then Err.Clear" }
-          - { run: "Err.Raise 100000\nIf Err.Number = 100000 Then Err.Clear" }
-          - { run: "Err.Raise 2147483647\nIf Err.Number = 2147483647 Then Err.Clear" }
     quiet:
+      # an extension (owner, 2026-10-28): VB6 and 64-bit VBA raise 5 (the page's NOTE)
+      - { run: "Err.Raise 65536\nIf Err.Number = 65536 Then Err.Clear", only: tb }
+      - { run: "Err.Raise 100000\nIf Err.Number = 100000 Then Err.Clear", only: tb }
+      - { run: "Err.Raise 2147483647\nIf Err.Number = 2147483647 Then Err.Clear", only: tb }
       - { run: "Err.Raise 1\nIf Err.Number = 1 Then Err.Clear" }
       - { run: "Err.Raise 65535\nIf Err.Number = 65535 Then Err.Clear" }
       - { run: "Err.Raise -1\nIf Err.Number = -1 Then Err.Clear" }
@@ -82,14 +78,10 @@ pages:
         when: "*errorNumber* is **Null**"
         cases:
           - { run: Err.Number = Null }
-      - error: 0
-        when: "*errorNumber* is greater than 65535"
-        vb6: 5
-        bug: pending
-        cases:
-          - { run: "Err.Number = 65536\nIf Err.Number = 65536 Then Err.Clear" }
-          - { run: "Err.Number = 2147483647\nIf Err.Number = 2147483647 Then Err.Clear" }
     quiet:
+      # an extension (owner, 2026-10-28): VB6 and 64-bit VBA raise 5 (the page's NOTE)
+      - { run: "Err.Number = 65536\nIf Err.Number = 65536 Then Err.Clear", only: tb }
+      - { run: "Err.Number = 2147483647\nIf Err.Number = 2147483647 Then Err.Clear", only: tb }
       - { run: Err.Number = 0 }
       - { run: Err.Number = 0.4 }
       - { run: "Err.Number = 5\nIf Err.Number = 5 Then Err.Clear" }

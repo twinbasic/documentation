@@ -18,7 +18,8 @@
       "^FAIL RegressionTests\\.Remove_Null_Raises13: .*Actual: 9 ",
       "^FAIL RegressionTests\\.AddBefore_MinusOne_Raises9: .*Actual: 13 ",
       "^FAIL RegressionTests\\.AddBefore_Empty_Raises9: .*Actual: 13 ",
-      "^FAIL RegressionTests\\.AddBefore_BeyondLong_Raises13: .*Actual: 9 "
+      "^FAIL RegressionTests\\.AddBefore_BeyondLong_Raises13: .*Actual: 9 ",
+      "^FAIL RegressionTests\\.Add_EmptyKey_Raises13: .*Actual: 0 "
     ]
   }
 }

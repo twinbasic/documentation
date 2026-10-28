@@ -22,6 +22,9 @@ When returning a user-defined error from an object, set **Err.Number** by adding
 Err.Raise Number:=vbObjectError + 1051, Source:="SomeClass"
 ```
 
+> [!NOTE]
+> **Number** accepts a number above 65535. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*, for one.
+
 <!-- bug: err-raise-hresult-mapping -->
 > [!NOTE] BETA 1010
 > **Number** keeps an **HRESULT** assigned to it as it is. VB6 and 64-bit VBA store the VB error of the same meaning for the ones that [**Raise**](Raise) turns into VB errors: after `Err.Number = &H80070057`, **Number** is 5 there, and in twinBASIC it is -2147024809.
@@ -32,9 +35,6 @@ Err.Raise Number:=vbObjectError + 1051, Source:="SomeClass"
 | Error | When |
 |---|---|
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *errorNumber* is **Null** |
-
-> [!NOTE] BETA 1010
-> When *errorNumber* is greater than 65535, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 <!-- /errors -->
 

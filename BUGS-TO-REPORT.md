@@ -9210,6 +9210,8 @@ A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01
 
 Related: the queued entry on late-bound calls (`latebound-hresult-mapping`) is about the `HRESULT` a late-bound call returns, which VB maps the same way; this one is about `Err.Raise` and `Err.Number` themselves.
 
+What does not reproduce it: an `HRESULT` that VB keeps as it is (the last row of the table); a VB number from 1 to 65535. twinBASIC also raises a positive number above 65535, where VB raises 5; the owner takes that as an extension.
+
 <!-- Reproducer: bugs/err-raise-hresult-mapping/ (mode test: `tbrun --tests`; expect lists the three PASS and nine FAIL lines); verified on BETA 1010. The table comes from the run-time errors data's exploration in all four runtimes (`errors.mjs run`: twinBASIC 32-bit and 64-bit, VB6 and 64-bit VBA); errors/VBA.ErrObject.yml keeps twinBASIC's side as `only: tb` quiet cases of Raise.md and Number.md. VB6 side in vb6/ (VB6 6.0). Stated in the hand NOTEs (BETA 1010) on docs/Reference/Default/VBA/ErrObject/Raise.md, which has the table, and Number.md; when fixed, the NOTEs go, the `only: tb` quiet cases become rows of their VB numbers, and the central page's note on Err.Raise of an HRESULT (docs/Reference/Run-time-Errors.md) is checked. Found 2026-10-27 by batch 8 of WIP.Errors.md. -->
 
 ---
@@ -9222,18 +9224,19 @@ Given these indexes and positions, a `Collection` does something other than VB6 
 - `Item` of a number on an empty collection raises 9; VB raises 5, *Invalid procedure call or argument*, as twinBASIC's own `Remove` does.
 - `Item` and `Remove` of `Null`, an object, `Nothing`, an array, an error value or a number outside the `Long` range raise 9; VB raises 13. So does `Add`'s *before* of a number outside the `Long` range.
 - `Add`'s *before* or *after* of -1, `True` or `Empty` raises 13; VB raises 9, as for any other position that is not an item's.
+- `Add` with a *key* of `Empty` adds the item without a key and raises nothing; VB raises 13, as for any other key that is not a `String`.
 
 **To Reproduce**
 Steps to reproduce the behavior:
 1. Open `collection-index-checks.twinproj` (attached as `collection-index-checks.zip`).
-2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other thirteen fail.
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other fourteen fail.
 
 The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`collection-index-checks-vb6.zip`) prints; 64-bit VBA raises the same numbers.
 ```vb
 ' Regression tests: Collection's Item, Remove and Add take an index or a position as VB6 and
 ' 64-bit VBA do: a Currency, Decimal or Date number like any other number; 5 for a number on
 ' an empty collection (Item); 13 for Null, an object or a number outside the Long range
-' (Item, Remove); 9 for a position of -1, True or Empty (Add). The controls use a Long, a
+' (Item, Remove); 9 for a position of -1, True or Empty, and 13 for a key of Empty (Add). The controls use a Long, a
 ' Double and a Byte, and a string key. tbrun --tests runs each case and prints PASS or FAIL.
 [TestFixture]
 Module RegressionTests
@@ -9349,21 +9352,29 @@ Module RegressionTests
         Assert.Strict.AreEqual 13&, AddBeforeError(Two(), 2147483648#)
     End Sub
 
+    [TestCase]
+    Public Sub Add_EmptyKey_Raises13()
+        Dim C As New Collection
+        On Error Resume Next
+        C.Add "x", Empty
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
 End Module
 ```
 
 **Expected behavior**
-The numbers VB6 and 64-bit VBA give: a `Currency`, `Decimal` or `Date` index or position taken as a number; 5 for `Item` of a number on an empty collection; 13 for `Null`, an object, an array or a number outside the `Long` range; 9 for a position of -1, `True` or `Empty`.
+The numbers VB6 and 64-bit VBA give: a `Currency`, `Decimal` or `Date` index or position taken as a number; 5 for `Item` of a number on an empty collection; 13 for `Null`, an object, an array or a number outside the `Long` range; 9 for a position of -1, `True` or `Empty`; 13 for a key of `Empty`.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-Severity: medium for the `Currency`, `Decimal` and `Date` indexes, which VB code passes without thinking (a `Currency` loop counter, a value read from a database field), and which twinBASIC refuses. Low for the rest: an error is raised where VB raises one, with another number.
+Severity: medium for the `Currency`, `Decimal` and `Date` indexes, which VB code passes without thinking (a `Currency` loop counter, a value read from a database field), and which twinBASIC refuses. Low for the key of `Empty`, whose item can then be reached only by its position. Low for the rest: an error is raised where VB raises one, with another number.
 
 A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
-What does not reproduce it: an index or a position of `Byte`, `Integer`, `Long`, `LongLong`, `Single` or `Double`, rounded as VB rounds it; a string key; a number out of range on a collection that has items (9 in all); `Remove` on an empty collection (5 in all); `Add`'s *before* or *after* given on an empty collection (5 in all).
+What does not reproduce it: an index or a position of `Byte`, `Integer`, `Long`, `LongLong`, `Single` or `Double`, rounded as VB rounds it; a string key; a number out of range on a collection that has items (9 in all); `Remove` on an empty collection (5 in all); `Add`'s *before* or *after* given on an empty collection (5 in all). twinBASIC also takes a *before* of one more than `Count` as the end and an *after* of 0 as the start, where VB raises 9; the owner takes those as extensions.
 
-<!-- Reproducer: bugs/collection-index-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and thirteen FAIL lines); verified on BETA 1010; 64-bit and 64-bit VBA from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: collection-index-checks` in errors/VBA.Collection.yml) of Add, Item and Remove under docs/Reference/Default/VBA/Collection/; when fixed, each row's cases move to a row of VB's number (the Currency, Decimal and Date ones to the quiet cases), and the NOTEs go. Found 2026-10-27 by batch 8 of WIP.Errors.md. -->
+<!-- Reproducer: bugs/collection-index-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and fourteen FAIL lines); verified on BETA 1010; 64-bit and 64-bit VBA from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: collection-index-checks` in errors/VBA.Collection.yml) of Add, Item and Remove under docs/Reference/Default/VBA/Collection/; when fixed, each row's cases move to a row of VB's number (the Currency, Decimal and Date ones to the quiet cases), and the NOTEs go. Found 2026-10-27 by batch 8 of WIP.Errors.md; owner, 2026-10-28: the `Empty` key is a bug, while a *before* of Count + 1 and an *after* of 0 are extensions (a NOTE on Add.md). -->

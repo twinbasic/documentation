@@ -1,7 +1,7 @@
 ' Regression tests: Collection's Item, Remove and Add take an index or a position as VB6 and
 ' 64-bit VBA do: a Currency, Decimal or Date number like any other number; 5 for a number on
 ' an empty collection (Item); 13 for Null, an object or a number outside the Long range
-' (Item, Remove); 9 for a position of -1, True or Empty (Add). The controls use a Long, a
+' (Item, Remove); 9 for a position of -1, True or Empty, and 13 for a key of Empty (Add). The controls use a Long, a
 ' Double and a Byte, and a string key. tbrun --tests runs each case and prints PASS or FAIL.
 [TestFixture]
 Module RegressionTests
@@ -115,6 +115,14 @@ Module RegressionTests
     [TestCase]
     Public Sub AddBefore_BeyondLong_Raises13()
         Assert.Strict.AreEqual 13&, AddBeforeError(Two(), 2147483648#)
+    End Sub
+
+    [TestCase]
+    Public Sub Add_EmptyKey_Raises13()
+        Dim C As New Collection
+        On Error Resume Next
+        C.Add "x", Empty
+        Assert.Strict.AreEqual 13&, Err.Number
     End Sub
 
 End Module

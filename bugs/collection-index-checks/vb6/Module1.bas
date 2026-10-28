@@ -53,6 +53,11 @@ Sub Main()
     Report "AddBefore_MinusOne_Raises9", AddBeforeError(Two(), -1)
     Report "AddBefore_Empty_Raises9", AddBeforeError(Two(), Empty)
     Report "AddBefore_BeyondLong_Raises13", AddBeforeError(Two(), 2147483648#)
+    Dim C As New Collection
+    On Error Resume Next
+    C.Add "x", Empty
+    Report "Add_EmptyKey_Raises13", Err.Number
+    On Error GoTo Fail
     Close #9
     Exit Sub
 Fail:

@@ -37,7 +37,10 @@ When *description* is omitted, **Description** depends on *number*:
 | 747 or more | the Windows system message for that number when there is one, as for 1001 (`Recursion too deep; the stack overflowed.`), and otherwise `Automation error` |
 | negative | the Windows system message for that value as an **HRESULT** when there is one, and otherwise `Automation error` |
 
-A *description* of an empty string gives an empty **Description** for every number. The system messages are in the language of the system and differ between Windows versions; `Automation error` is the only text of the table that does not come from the system. A number above 65535 is accepted.
+A *description* of an empty string gives an empty **Description** for every number. The system messages are in the language of the system and differ between Windows versions; `Automation error` is the only text of the table that does not come from the system.
+
+> [!NOTE]
+> **Raise** accepts a *number* above 65535 and raises that number. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*, for one.
 
 When the error is raised in a method of a class and the caller handles it, an empty **Description** reaches the caller as `Application-defined or object-defined error`. The other texts arrive unchanged.
 
@@ -83,9 +86,6 @@ When the error is raised in a method of a class and the caller handles it, an em
 |---|---|
 | [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *number* is 0 after rounding, or **Empty** |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | an argument is **Null** |
-
-> [!NOTE] BETA 1010
-> When *number* is greater than 65535, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 <!-- /errors -->
 

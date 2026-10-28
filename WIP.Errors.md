@@ -76,15 +76,15 @@ pages (Reset raises nothing; the index documents nothing). The owner's rulings a
 extensions, three bugs); `file-errors-unspecified` extended by 30 cases, three entries queued
 (*Batch 7 findings*). No row is `bug: pending`, and no question is open.
 
-**Batch 8 is done but for three questions** (2026-10-27), VBA `Collection` and `ErrObject`: 260
-cases in `errors/VBA.Collection.yml` and `errors/VBA.ErrObject.yml`, all agreeing in all four
-runtimes; sections on 10 of the 20 member pages (Count, both Clears, Items, Keys, LastDllError
-and LastHresult raise nothing; HelpFile, HelpContext and ReturnHResult cannot be probed, their
-assignment failing twinBASIC's build; the indexes document nothing). Three entries queued.
-**Five rows are `bug: pending`**, waiting on the owner's extension-or-bug answers (*Batch 8
-findings*).
+**Batch 8 is done** (2026-10-28), VBA `Collection` and `ErrObject`: 259 cases in
+`errors/VBA.Collection.yml` and `errors/VBA.ErrObject.yml`, all agreeing in all four runtimes;
+sections on 10 of the 20 member pages (Count, both Clears, Items, Keys, LastDllError and
+LastHresult raise nothing; HelpFile, HelpContext and ReturnHResult cannot be probed, their
+assignment failing twinBASIC's build; the indexes document nothing). The owner's rulings
+applied (two extensions, one bug); three entries queued (*Batch 8 findings*). No row is `bug:
+pending`, and no question is open.
 
-**Next: batch 9**, VBA `Financial`, once batch 8's questions are answered.
+**Next: batch 9**, VBA `Financial`.
 
 ## Owner's decisions
 
@@ -195,8 +195,8 @@ What `errors.mjs messages` found (BETA 1010):
   `Err.Raise n` without a description, *Application-defined or object-defined error* in VB6 and
   empty or a system message in twinBASIC, is filed (`err-raise-defaults`, #2504; the central
   page's NOTE). VB's `Err.Raise` of a common HRESULT as its own number is queued
-  (`err-raise-hresult-mapping`). `Err.Raise 65536`, 5 in VB6, is a question for the owner (*Batch
-  8 findings*). `Error$` above 65535 is filed (`error-function-above-65535`). Left alone:
+  (`err-raise-hresult-mapping`). `Err.Raise 65536`, 5 in VB6, is an extension (owner,
+  2026-10-28; the Raise page's NOTE). `Error$` above 65535 is filed (`error-function-above-65535`). Left alone:
   twinBASIC's `Error$` of a few HRESULTs is VB's message (`Error$(&H80070057)` is *Invalid
   procedure call or argument*), VB6's is generic.
 
@@ -956,19 +956,14 @@ twinBASIC 64-bit agrees with 32-bit on every case, and 64-bit VBA with VB6.
   `Empty` 13 (VB 9). Agree in all four: duplicate key 457 (`""` is a key); a non-String key 13
   (a number too: VB does not convert it); both positions 5; a position on an empty collection
   5, `Null` there too; a string position or index that is no key 5.
+- **Owner's rulings (2026-10-28)**. Extensions, each with a NOTE in the page's prose and
+  `only: tb` quiet cases: `Err.Raise` and `Err.Number =` of a number above 65535 (twinBASIC
+  raises or sets it; VB raises 5), and `Collection.Add` with *before* one more than **Count**
+  (adds at the end) or *after* 0 (adds at the start; VB raises 9 for both). A bug, in
+  `collection-index-checks`: `Collection.Add` with a *key* of **Empty** adds the item without a
+  key (VB 13).
 - **Page edits**: the error sentences of Add, Item, Remove and KeyCompareMode went into the
-  tables; Add states where twinBASIC puts an item for the positions it accepts and what an
-  `Empty` key does; the central page has a NOTE on `Err.Raise` of an HRESULT.
-- **Questions for the owner** (each row is `bug: pending`, its NOTE generated; twinBASIC
-  accepts what VB6 and 64-bit VBA refuse, so extension or bug?):
-  1. `Err.Raise` and `Err.Number =` of a number above 65535 (up to 2147483647): twinBASIC
-     raises or sets it, VB raises 5. The Raise page already says such a number is accepted, and
-     `Err.Description` is then *Automation error* or a system message.
-  2. `Collection.Add` with *before* one more than **Count** adds the item at the end, and with
-     *after* 0 adds it at the start; VB raises 9.
-  3. `Collection.Add` with a *key* of **Empty** adds the item without a key; VB raises 13.
-  An extension gets a NOTE in the page's prose and `only: tb` quiet cases; a bug joins
-  `err-raise-hresult-mapping` (1) or `collection-index-checks` (2, 3).
+  tables; the central page has a NOTE on `Err.Raise` of an HRESULT.
 
 ## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
 
@@ -1052,7 +1047,7 @@ each can be run when there is budget. Status is kept here.
 | 6a | VBA `Information`, and `Interaction`'s non-interactive procedures: `CallByName`, `CallByDispId`, `Choose`, `Command`, `CreateObject`, `GetObject`, `Environ`, `IIf`, `If`, `Partition`, `Switch`, `RaiseEventByName`, `RaiseEventByName2`, `SaveSetting`, `GetSetting`, `GetAllSettings`, `DeleteSetting` (owner split batch 6, 2026-10-22) | 45 | done: 27 sections, 302 cases; four entries queued 2026-10-22 |
 | 6b | `Interaction`'s interactive procedures: `AppActivate`, `Beep`, `DoEvents`, `InputBox`, `MsgBox`, `SendKeys`, `Shell`, under the `dialog`, `keys` and `window` harnesses (`Shell` only with programs that do not exist or `cmd.exe /c exit`) | 7 | done: 5 sections, 164 cases; three entries queued 2026-10-27 |
 | 7 | VBA `FileSystem`, under the `files` harness | 23 | done: 21 sections, 448 cases; three entries queued, one extended, 2026-10-27 |
-| 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | done: 10 sections, 260 cases; three entries queued 2026-10-27; three questions for the owner |
+| 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | done: 10 sections, 259 cases; three entries queued 2026-10-27; owner's rulings 2026-10-28 |
 | 9 | VBA `Financial` | 14 | not started |
 | 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | not started |
 | 11 | Core file I/O statements (`Open`, `Get`, `Put`, `Input`, ...: errors 52--75) | 15 | not started |
