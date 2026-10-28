@@ -84,13 +84,14 @@ assignment failing twinBASIC's build; the indexes document nothing). The owner's
 applied (two extensions, one bug); three entries queued (*Batch 8 findings*). No row is `bug:
 pending`, and no question is open.
 
-**Batch 9 is done but for the owner's rulings** (2026-10-28), VBA `Financial`: 349 cases in
-`errors/VBA.Financial.yml`, all agreeing in all four runtimes; sections on all 13 member pages
-(the index documents nothing); `-2147418113` (`E_UNEXPECTED`) added to `messages.yml` and
-measured. Every new difference is `bug: pending`, and the questions are under *Batch 9
-findings*.
+**Batch 9 is done** (2026-10-28), VBA `Financial`: 349 cases in `errors/VBA.Financial.yml`,
+all agreeing in all four runtimes; sections on all 13 member pages (the index documents
+nothing); `-2147418113` (`E_UNEXPECTED`) added to `messages.yml` and measured. The owner's
+rulings applied: five entries queued, `argument-errors-unspecified-error` extended, and PV's 11
+for an infinite result an extension (*Batch 9 findings*). No row is `bug: pending`, and no
+question is open.
 
-**Next**: the owner's rulings on batch 9, then batch 10.
+**Next: batch 10**, VBA `HiddenModule`, then `Compilation` and `TbExpressionService`.
 
 ## Owner's decisions
 
@@ -104,7 +105,10 @@ findings*.
   VB6, and twinBASIC 64-bit, compared with **64-bit VBA, whose behaviour must be respected**
   (owner): a difference between twinBASIC 64-bit and 64-bit VBA is a bug, exactly as one from
   VB6 is, with a NOTE and a queued reproducer. (Before: twinBASIC 64-bit for operators and
-  `Math` only, and no VBA.)
+  `Math` only, and no VBA.) **Where VB6 and 64-bit VBA differ, twinBASIC does as 64-bit VBA
+  does**, in both builds (owner, 2026-10-28): matching 64-bit VBA is an extension against VB6
+  (`only: [tb, vba64]` cases, a NOTE in the prose), and matching neither is a bug whose
+  reproducer asserts 64-bit VBA's number.
 - **Scope.** `docs/Reference/Default/` (VBA, VB, VBRUN), `docs/Reference/Core/` (statements and
   operators) and `docs/Reference/Built-In/`. Not `Contributed/`.
 - **Existing error prose moves into the tables.** A page that states an error in a sentence
@@ -1013,20 +1017,28 @@ probe (twinBASIC through `tbrun`, VB6 through `vb6run`), not only the error numb
   result after 20 tries, it fails" is reworded, the table carrying the error; the module index no
   longer says MIRR takes a *guess* or that every array needs both signs.
 
-**Questions for the owner** (the slugs in the pages' `<!-- bug: pending (...) -->` comments are
-the proposal):
+- **Rate's wrong root** (found writing its reproducer): for a lump sum (*pmt* 0) over an even
+  number of periods it returns -2.1 where VB6 returns 0.1 (`Rate(2, 0, 100, -121)`,
+  `Rate(4, 0, 100, -146.41)`; one and three periods are right). Silent, so a WARNING by hand on
+  Rate, in `rate-fails`. Not in the data: a value, not an error.
 
-1. **Grouping.** Five entries: `rate-fails` (Rate's failures, its *nper* below 1, its unread
-   *guess*), `nper-opposite-signs-overflow` (NPer's 6 and 11), `financial-null-optional-argument`
-   (13 for 94, seven functions), `financial-array-arguments` (the crash and the 2-D
-   `E_UNEXPECTED`), `financial-argument-checks` (the rest: IPmt/PPmt *per*, MIRR, NPV, DDB's
-   *life*, Pmt/PPmt's 11, FV's 5, PV's -2147467259). The family cases cite the existing entry.
-2. **Infinite results, where VB6 and 64-bit VBA disagree.** By the four-runtime rule, SLN's
-   infinity is a bug against 64-bit VBA (6) and PV's 11 a bug against VB6 (infinity); the rows say
-   `bug: pending`. Bugs both ways, or should twinBASIC raise in both (64-bit VBA's behaviour, an
-   extension against VB6), so that only SLN is a bug?
-3. **FV's 5 and PV's -2147467259 for a *rate* of -1**, where VB6 and 64-bit VBA give different
-   numbers (or none): one bug in `financial-argument-checks`, asking for 64-bit VBA's numbers?
+**Owner's rulings (2026-10-28)**:
+
+1. **The five entries accepted**, as proposed, and queued with `tests` reproducers and VB6
+   sides: `rate-fails` (3 PASS, 12 FAIL), `nper-opposite-signs-overflow` (3, 9),
+   `financial-null-optional-argument` (3, 9), `financial-array-arguments` (3 PASS, 4
+   ACCESS_VIOLATION, 3 FAIL), `financial-argument-checks` (3, 16). `argument-errors-unspecified-error`
+   extended by one case per function (DDB, SLN, SYD, IPmt, PPmt, Pmt, NPer, Rate twice, IRR: 3
+   PASS, 35 FAIL now).
+2. **Where VB6 and 64-bit VBA differ, twinBASIC does as 64-bit VBA does.** So PV's 11 for an
+   infinite result is an extension against VB6 (cases `only: [tb, vba64]`, a NOTE in PV's
+   prose), and SLN's infinity is a bug (`financial-argument-checks`, asserting 6).
+3. **A *rate* of -1 in FV and PV, by the same rule**: FV is to raise 6, and PV 0, 11 or 6 by
+   the sign of *nper*, as 64-bit VBA; in `financial-argument-checks`, whose cases assert 64-bit
+   VBA's numbers (its VB6 side prints VB6's, which differ in those four cases).
+
+A reproducer's case asserts 64-bit VBA's number where the two VB runtimes differ; say so in the
+entry, since the VB6 project then disagrees with the module.
 
 ## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
 
@@ -1111,7 +1123,7 @@ each can be run when there is budget. Status is kept here.
 | 6b | `Interaction`'s interactive procedures: `AppActivate`, `Beep`, `DoEvents`, `InputBox`, `MsgBox`, `SendKeys`, `Shell`, under the `dialog`, `keys` and `window` harnesses (`Shell` only with programs that do not exist or `cmd.exe /c exit`) | 7 | done: 5 sections, 164 cases; three entries queued 2026-10-27 |
 | 7 | VBA `FileSystem`, under the `files` harness | 23 | done: 21 sections, 448 cases; three entries queued, one extended, 2026-10-27 |
 | 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | done: 10 sections, 259 cases; three entries queued 2026-10-27; owner's rulings 2026-10-28 |
-| 9 | VBA `Financial` | 14 | done but for the owner's rulings: 13 sections, 349 cases; 2026-10-28 |
+| 9 | VBA `Financial` | 14 | done: 13 sections, 349 cases; five entries queued, one extended; owner's rulings 2026-10-28 |
 | 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | not started |
 | 11 | Core file I/O statements (`Open`, `Get`, `Put`, `Input`, ...: errors 52--75) | 15 | not started |
 | 12 | Core arrays and control flow (`ReDim`, `Erase`, `Resume`, `Return`, ...); ReDim has data already, in `errors/Core.yml` | 15 | not started |

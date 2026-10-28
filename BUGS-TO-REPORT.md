@@ -7284,13 +7284,14 @@ Given an argument they refuse, several runtime procedures raise -2147467259 (`&H
 - `Shell` with a zero-length path, spaces, a folder, a file that is not a program, or a path longer than 32,767 characters: 5; with a program or folder that does not exist, or an unclosed quotation mark: 53, *File not found*; with a *windowstyle* less than 0 or greater than 10: 5.
 - `MsgBox` and `InputBox` with a *helpfile* and no *context*: 5.
 - `SendKeys` raises -2147352567 (`&H80020009`), *Exception occurred.*, instead: for an unknown key code (`{INS}` and `{F17}` included), an unclosed brace, a count in braces that is not a whole number from 0 to 8,175, unbalanced parentheses or `++`, VB raises 5; for a *wait* of `Null`, 94; for a *wait* string that is not a `Boolean`, 13.
+- The Financial functions, where VB raises 5: `DDB`, `SLN` and `SYD` with a *life* of 0 or less (`SLN`: of 0), `DDB` and `SYD` with a *period* of 0 or less or greater than *life*, or a *salvage* less than 0, and `DDB` with a *factor* of 0 or less; `IPmt` with an *nper* of 0 or less and `PPmt` with an *nper* less than 0; `Pmt` with a *rate* and an *nper* of 0, and `NPer` with a *rate* and a *pmt* of 0; `Rate` with an *nper* of 0 or less, or no result in 20 tries from *guess*; `IRR` with no payment or no receipt in *values*, or no result in 20 tries. `Rate` with an *nper* below 1 whose result is beyond the range of a `Double`: VB raises 6.
 
 It is the pattern of #2544 (`ReDim` with inverted bounds raises -2147467259 where VB6 raises 9). Observed in the compiler's test mode and in built exes, 32-bit and 64-bit.
 
 **To Reproduce**
 Steps to reproduce the behavior:
 1. Open `argument-errors-unspecified-error.twinproj` (attached as `argument-errors-unspecified-error.zip`).
-2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other twenty-five fail, each with `Err.Number` -2147467259, or -2147352567 for the two `SendKeys` cases.
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other thirty-five fail, each with `Err.Number` -2147467259, or -2147352567 for the two `SendKeys` cases.
 
 The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`argument-errors-unspecified-error-vb6.zip`) prints; 64-bit VBA raises the same numbers. No case writes to the registry: the registry procedures are given names that do not exist.
 ```vb
@@ -7532,6 +7533,88 @@ Module RegressionTests
         Assert.Strict.AreEqual 94&, Err.Number
     End Sub
 
+    ' The Financial functions (batch 9).
+    [TestCase]
+    Public Sub DDB_LifeZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = DDB(1000, 100, 0, 1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub SLN_LifeZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = SLN(1000, 100, 0)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub SYD_PeriodAboveLife_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = SYD(1000, 100, 5, 6)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub IPmt_NperZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = IPmt(0.01, 1, 0, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_NperNegative_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = PPmt(0.01, 1, -10, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Pmt_RateAndNperZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = Pmt(0, 0, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub NPer_RateAndPmtZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = NPer(0, 0, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Rate_NperZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = Rate(0, -100, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Rate_NperBelowOneOverflow_Raises6()
+        Dim R As Double
+        On Error Resume Next
+        R = Rate(0.5, -100, 1000)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub IRR_NoReceipt_Raises5()
+        Dim R As Double, F(1) As Double
+        F(0) = -100: F(1) = -110
+        On Error Resume Next
+        R = IRR(F)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
 End Module
 ```
 
@@ -7549,7 +7632,7 @@ A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01
 
 What does not reproduce it: the errors these procedures already raise with VB's numbers, such as `LBound` of an array not yet sized (9), `QBColor` outside 0 to 15 (5), `RGB` with a negative component (5), and `Null` for any of the arguments above (94).
 
-<!-- Reproducer: bugs/argument-errors-unspecified-error/ (mode test: `tbrun --tests`; expect lists the three PASS and twenty-five FAIL lines); run on BETA 1010 with `bug_repro.mjs run`; 64-bit from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: argument-errors-unspecified-error`) of LBound, UBound, Switch, Partition, Environ, GetObject, CallByName, SaveSetting, GetSetting, GetAllSettings, DeleteSetting, AppActivate, Shell, MsgBox, InputBox and SendKeys, from errors/VBA.Information.yml and errors/VBA.Interaction.yml; when fixed, each row's `error` becomes VB's number and its `vb6` and `bug` go, and the NOTEs with them. Found 2026-10-22 by batch 6a of WIP.Errors.md; grouped as one entry by the owner. The interactive procedures added 2026-10-27 by batch 6b (owner: SendKeys' -2147352567 joins it); the VB6 side carries a copy of errors/harnesses/dialog.bas for its MsgBox and InputBox cases. -->
+<!-- Reproducer: bugs/argument-errors-unspecified-error/ (mode test: `tbrun --tests`; expect lists the three PASS and thirty-five FAIL lines); run on BETA 1010 with `bug_repro.mjs run`; 64-bit from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: argument-errors-unspecified-error`) of LBound, UBound, Switch, Partition, Environ, GetObject, CallByName, SaveSetting, GetSetting, GetAllSettings, DeleteSetting, AppActivate, Shell, MsgBox, InputBox and SendKeys, from errors/VBA.Information.yml and errors/VBA.Interaction.yml, and of DDB, SLN, SYD, IPmt, PPmt, Pmt, NPer, Rate and IRR, from errors/VBA.Financial.yml (the Financial functions added 2026-10-28 by batch 9); when fixed, each row's `error` becomes VB's number and its `vb6` and `bug` go, and the NOTEs with them. Found 2026-10-22 by batch 6a of WIP.Errors.md; grouped as one entry by the owner. The interactive procedures added 2026-10-27 by batch 6b (owner: SendKeys' -2147352567 joins it); the VB6 side carries a copy of errors/harnesses/dialog.bas for its MsgBox and InputBox cases. -->
 
 ---
 
@@ -9378,3 +9461,1044 @@ A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01
 What does not reproduce it: an index or a position of `Byte`, `Integer`, `Long`, `LongLong`, `Single` or `Double`, rounded as VB rounds it; a string key; a number out of range on a collection that has items (9 in all); `Remove` on an empty collection (5 in all); `Add`'s *before* or *after* given on an empty collection (5 in all). twinBASIC also takes a *before* of one more than `Count` as the end and an *after* of 0 as the start, where VB raises 9; the owner takes those as extensions.
 
 <!-- Reproducer: bugs/collection-index-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and fourteen FAIL lines); verified on BETA 1010; 64-bit and 64-bit VBA from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: collection-index-checks` in errors/VBA.Collection.yml) of Add, Item and Remove under docs/Reference/Default/VBA/Collection/; when fixed, each row's cases move to a row of VB's number (the Currency, Decimal and Date ones to the quiet cases), and the NOTEs go. Found 2026-10-27 by batch 8 of WIP.Errors.md; owner, 2026-10-28: the `Empty` key is a bug, while a *before* of Count + 1 and an *after* of 0 are extensions (a NOTE on Add.md). -->
+
+---
+
+## `Rate` raises -2147467259 for almost every annuity, and returns -2.1 for a lump sum where VB6 returns 0.1
+
+**Describe the bug**
+`Rate` raises -2147467259 (`&H80004005`), *Unspecified error*, for almost every annuity that VB6 and 64-bit VBA solve: a loan (`Rate(10, -100, 800)` is 0.0427749780351145 in VB6), a mortgage (`Rate(360, -600, 100000)`), a savings plan (`Rate(10, -100, 0, 1200)`), payments due at the start of the period, the signs reversed, a *guess* given, and a lump sum over ten periods (`Rate(10, 0, 1000, -2000)`). Of the annuities tried, it answers only some lump sums (a *pmt* of 0), such as those over one to four periods, and for an even number of periods it returns the wrong root: `Rate(2, 0, 100, -121)` and `Rate(4, 0, 100, -146.41)` are -2.1, where VB6 returns 0.1. (-2.1 also solves the equation, but no annuity has a rate below -1.)
+
+Also:
+- With an *nper* below 1 and a *pmt* of 0 it raises 5, *Invalid procedure call or argument*; VB6 returns the rate (`Rate(0.5, 0, 100, -110)` is 0.21).
+- It does not check *guess*: a *guess* of `Null`, a string that is not a number, or an error value raises nothing, where VB raises 94, *Invalid use of Null*, and 13, *Type mismatch*.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `rate-fails.twinproj` (attached as `rate-fails.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other twelve fail.
+
+The module is meant to be adapted as a regression test. Each case asserts what VB6 returns or raises, which the attached VB6 project (`rate-fails-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: Rate returns the rate of an annuity, as VB6 and 64-bit VBA do, for a loan,
+' a mortgage, a savings plan, payments due at the start, a guess and an nper below 1, and
+' the positive rate (0.1, not -2.1) of a lump sum over an even number of periods; and it raises
+' 94 for a guess of Null and 13 for a guess that is not a number. The controls are two
+' lump sums Rate answers rightly (one and three periods) and a Null nper.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_PmtZeroOnePeriod()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(1, 0, 100, -110)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_PmtZeroThreePeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(3, 0, 100, -133.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_NperNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(Null, -100, 800)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PmtZeroTwoPeriods_ReturnsPositiveRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(2, 0, 100, -121)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub PmtZeroFourPeriods_ReturnsPositiveRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(4, 0, 100, -146.41)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Loan_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, -100, 800)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0427749780351) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Mortgage_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(360, -600, 100000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0050058250068) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub DueAtStart_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, -100, 800, 0, 1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.053446167382) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub SavingsPlan_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, -100, 0, 1200)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0398902762) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub SignsReversed_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, 100, -800)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0427749780351) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub PmtZeroTenPeriods_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, 0, 1000, -2000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0717734625363) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub WithGuess_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, -100, 800, 0, 0, 0.04)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0427749780351) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub NperBelowOne_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(0.5, 0, 100, -110)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.21) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub GuessNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(1, 0, 100, -110, 0, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub GuessString_Raises13()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(1, 0, 100, -110, 0, "abc")
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 13&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The rate VB6 and 64-bit VBA return, found from the default *guess* of 0.1 or from the one given: 0.0427749780351145 for `Rate(10, -100, 800)`, 0.1 for `Rate(2, 0, 100, -121)`, 0.21 for `Rate(0.5, 0, 100, -110)`; and 94 or 13 for a *guess* of `Null` or one that is not a number.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: high. `Rate` cannot be used for a loan or a savings plan, its main use, and where it does answer it can return a rate below -1 with no error.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+Related: the queued entry on refused arguments (`argument-errors-unspecified-error`) covers `Rate`'s -2147467259 where VB raises 5 or 6 (no result in 20 tries, an *nper* of 0 or less); this one is about the annuities that have a rate.
+
+What does not reproduce it: a lump sum over one or three periods (`Rate(1, 0, 100, -110)` and `Rate(3, 0, 100, -133.1)` are 0.1); `Null` in *nper*, *pmt* or *pv* (94 in all).
+
+<!-- Reproducer: bugs/rate-fails/ (mode test: `tbrun --tests`; expect lists the three PASS and twelve FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; 64-bit VBA's numbers from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB6's number and value for each case. Stated in the Common Errors section (rows `bug: rate-fails` in errors/VBA.Financial.yml) and a WARNING (BETA 1010, the wrong root) of docs/Reference/Default/VBA/Financial/Rate.md; when fixed, the rows' cases move to the quiet cases (the *guess* ones to rows of 94 and 13), and the NOTEs and the WARNING go. Found 2026-10-28 by batch 9 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
+
+---
+
+## `NPer` raises error 6 for a loan or a savings plan, where VB6 returns the number of periods
+
+**Describe the bug**
+Given a *rate* and a *pmt* of opposite signs, as in every loan or savings plan at a positive rate, `NPer` raises 6, *Overflow*, where VB6 and 64-bit VBA return the number of periods. `NPer(0.01, -100, 1000)`, a loan of 1000 repaid at 100 a period at 1% a period, is 10.5886444594232 in VB6; so are a car loan (`NPer(0.1 / 12, -500, 20000)`, 48.86), a loan with a balance left (*fv*), one with payments due at the start, a savings plan (`NPer(0.01, -100, 0, 1000)`, 9.58) and a negative rate with a positive payment (`NPer(-0.5, 100, -1000)`, 2.58).
+
+Where no number of periods exists, it raises 6 (a payment that does not cover the interest, `NPer(0.01, -1, 1000)`) or 11, *Division by zero* (a *pmt* of 0, a *rate* of -1), where VB raises 5, *Invalid procedure call or argument*.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `nper-opposite-signs-overflow.twinproj` (attached as `nper-opposite-signs-overflow.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other nine fail.
+
+The module is meant to be adapted as a regression test. Each case asserts what VB6 returns or raises, which the attached VB6 project (`nper-opposite-signs-overflow-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: NPer returns the number of periods of a loan or a savings plan, as VB6 and
+' 64-bit VBA do, whatever the signs of rate and pmt, and raises 5 where no number of periods
+' exists. The controls have rate and pmt of the same sign, or a rate of 0.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_PositivePmt()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, 100, -1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 10.5886444594232) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_RateZero()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0, -100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 10) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SameSigns()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, 100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - -9.57859403981317) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Loan_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 10.5886444594232) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub CarLoan_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.1 / 12, -500, 20000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 48.8582651211073) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub LoanWithBalance_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -100, 1000, 100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 11.5886444594232) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub LoanDueAtStart_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -100, 1000, 0, 1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 10.4781450851168) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub SavingsPlan_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -100, 0, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 9.57859403981317) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub NegativeRate_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(-0.5, 100, -1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 2.58496250072116) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub PmtBelowInterest_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -1, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PmtZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, 0, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub RateMinusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(-1, -100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The number of periods VB6 and 64-bit VBA return, whatever the signs of *rate* and *pmt*, and 5 where no number of periods exists.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: high. `NPer` fails for a loan, its main use. An error is raised, so no wrong value reaches the program.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+Related: the queued entry on refused arguments (`argument-errors-unspecified-error`) covers `NPer` with a *rate* and a *pmt* of 0 (-2147467259; VB 5).
+
+What does not reproduce it: a *rate* and a *pmt* of the same sign (`NPer(0.01, 100, -1000)` is 10.5886444594232, and `NPer(0.01, 100, 1000)` is -9.57859403981317, as in VB6); a *rate* of 0 (`NPer(0, -100, 1000)` is 10).
+
+<!-- Reproducer: bugs/nper-opposite-signs-overflow/ (mode test: `tbrun --tests`; expect lists the three PASS and nine FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; 64-bit VBA's numbers from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0). Stated in the Common Errors section (rows `bug: nper-opposite-signs-overflow` in errors/VBA.Financial.yml) of docs/Reference/Default/VBA/Financial/NPer.md; when fixed, the first row's cases move to the quiet cases, the others become a row of 5, and the NOTEs go. Found 2026-10-28 by batch 9 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
+
+---
+
+## `Null` in an optional argument of a Financial function raises 13, where VB6 raises 94
+
+**Describe the bug**
+Given `Null` as an optional argument --- *pv*, *fv* or *type* of `FV`, `PV`, `Pmt`, `NPer`, `IPmt`, `PPmt` and `Rate`, or *factor* of `DDB` --- these functions raise 13, *Type mismatch*. VB6 and 64-bit VBA raise 94, *Invalid use of Null*, as twinBASIC itself does for `Null` in a required argument.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `financial-null-optional-argument.twinproj` (attached as `financial-null-optional-argument.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other nine fail, each with `Err.Number` 13.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`financial-null-optional-argument-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: a Null optional argument of a Financial function (pv, fv, type, factor)
+' raises 94, Invalid use of Null, as VB6 and 64-bit VBA do. The controls are a Null required
+' argument (94), a string that is not a number (13) and a number in the optional argument.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_RequiredNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(Null, 10, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_OptionalString_Raises13()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(0.01, 10, -100, "abc")
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 13&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_OptionalNumber()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(0.01, 10, -100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub FV_PvNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(0.01, 10, -100, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub FV_TypeNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(0.01, 10, -100, 0, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PV_FvNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PV(0.01, 10, -100, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Pmt_FvNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Pmt(0.01, 10, 1000, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub NPer_TypeNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, 100, -1000, 0, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub IPmt_FvNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IPmt(0.01, 1, 10, 1000, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_TypeNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PPmt(0.01, 1, 10, 1000, 0, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Rate_TypeNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(1, 0, 100, -110, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub DDB_FactorNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = DDB(1000, 100, 5, 1, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+94, *Invalid use of Null*, as VB6 and 64-bit VBA raise.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. An error is raised where VB raises one, with another number.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: `Null` in a required argument (94 in all); a string that is not a number in an optional argument (13 in all).
+
+<!-- Reproducer: bugs/financial-null-optional-argument/ (mode test: `tbrun --tests`; expect lists the three PASS and nine FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; 64-bit VBA's numbers from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0). Stated in the Common Errors sections (rows `bug: financial-null-optional-argument` in errors/VBA.Financial.yml) of DDB, FV, IPmt, NPer, PPmt, PV, Pmt and Rate under docs/Reference/Default/VBA/Financial/; when fixed, each row becomes a row of 94 and its NOTE goes. Found 2026-10-28 by batch 9 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
+
+---
+
+## `IRR`, `MIRR` and `NPV` end the program for an array that has never been sized, and raise &H8000FFFF for one of two dimensions
+
+**Describe the bug**
+Given a `Double` array that has never been sized (`Dim A() As Double` with no `ReDim`), or one emptied by `Erase`, `IRR`, `MIRR` and `NPV` end the program with an access violation, in a built exe and in the IDE, 32-bit and 64-bit. In the compiler's test mode the case reports `NATIVE EXCEPTION: ACCESS_VIOLATION`. VB6 and 64-bit VBA raise 5, *Invalid procedure call or argument*.
+
+Given an array of two dimensions, they raise -2147418113 (`&H8000FFFF`), *Catastrophic failure*, where VB raises 5.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `financial-array-arguments.twinproj` (attached as `financial-array-arguments.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass, the four unsized cases end with an access violation, and the three two-dimensional ones fail with `Err.Number` -2147418113.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`financial-array-arguments-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: IRR, MIRR and NPV raise 5, Invalid procedure call or argument, for an
+' array that has never been sized or has been erased, and for one of two dimensions, as VB6
+' and 64-bit VBA do. On BETA 1010 the unsized cases end with an access violation. The
+' controls are each function of a sized one-dimensional array.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_IRR()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(1)
+        A(0) = -100
+        A(1) = 110
+        R = IRR(A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_MIRR()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(2)
+        A(0) = -100
+        A(1) = 50
+        A(2) = 60
+        R = MIRR(A, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0723805294763609) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_NPV()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(2)
+        A(0) = -100
+        A(1) = 50
+        A(2) = 60
+        R = NPV(0.1, A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - -4.50788880540947) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub IRR_Unsized_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IRR(A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub IRR_Erased_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(1)
+        A(0) = -100
+        A(1) = 110
+        Erase A
+        R = IRR(A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_Unsized_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = MIRR(A, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub NPV_Unsized_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPV(0.1, A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub IRR_TwoDimensions_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        B(0, 0) = -100
+        B(1, 0) = 110
+        B(0, 1) = -100
+        B(1, 1) = 110
+        R = IRR(B)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_TwoDimensions_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        B(0, 0) = -100
+        B(1, 0) = 110
+        B(0, 1) = -100
+        B(1, 1) = 110
+        R = MIRR(B, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub NPV_TwoDimensions_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        B(0, 0) = -100
+        B(1, 0) = 110
+        B(0, 1) = -100
+        B(1, 1) = 110
+        R = NPV(0.1, B)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+5, *Invalid procedure call or argument*, as VB6 and 64-bit VBA raise, for an array that has never been sized, has been erased, or has more than one dimension.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: high for the access violation: the program ends without a chance to save its data, and an array that is filled later, or emptied by `Erase`, is an ordinary state for one passed to these functions. Low for the two dimensions.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a sized one-dimensional array, whatever its lower bound (`Dim A(1 To 3) As Double` works).
+
+<!-- Reproducer: bugs/financial-array-arguments/ (mode test: `tbrun --tests`; expect lists the three PASS lines, four FAIL lines with ACCESS_VIOLATION and three with -2147418113); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; the crash also in built exes (`errors.mjs run`), and 64-bit VBA's numbers from the run-time errors data. VB6 side in vb6/ (VB6 6.0). Stated in a WARNING (BETA 1010) each on docs/Reference/Default/VBA/Financial/IRR.md, MIRR.md and NPV.md, for the crash, and in their Common Errors sections (rows `bug: financial-array-arguments` in errors/VBA.Financial.yml), for two dimensions; when fixed, the WARNINGs go, the unsized cases join a row of 5 with the two-dimensional ones, and the NOTEs go. Found 2026-10-28 by batch 9 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
+
+---
+
+## `IPmt`, `PPmt`, `MIRR`, `NPV`, `DDB`, `Pmt`, `FV`, `PV` and `SLN` check their arguments differently from 64-bit VBA
+
+**Describe the bug**
+Given these arguments, the Financial functions do something other than 64-bit VBA:
+- `IPmt` and `PPmt` take any *per*. For a *per* of 0 or less, or of *nper* + 1 or more, they return a value computed for a period outside the annuity (`IPmt(0.01, 0, 10, 1000)` is -10.946357193576) and raise nothing; VB raises 5, *Invalid procedure call or argument*.
+- `MIRR` returns -1 for *values* of one element and a rate for a *finance_rate* or *reinvest_rate* of -1, where VB raises 5; and infinity or NaN for *values* with no element less than 0, where VB raises 11, *Division by zero*.
+- `NPV` returns NaN for a *rate* of -1; VB raises 5.
+- `DDB` raises -2147467259 (`&H80004005`), *Unspecified error*, for a *life* greater than 0 and less than 1; VB returns the depreciation (`DDB(1000, 100, 0.5, 0.5)` is 900).
+- `Pmt` and `PPmt` raise 11 for an *nper* of 0; VB raises 5.
+- With a *rate* of -1, `FV` raises 5 for a negative *nper*, where 64-bit VBA raises 6, *Overflow* (VB6 11), and `PV` raises -2147467259, where 64-bit VBA returns 0 for an *nper* of 0 and raises 11 for a positive *nper* and 6 for a negative one (VB6 raises nothing, and returns 0, infinity or NaN).
+- `SLN` returns infinity for a result beyond the range of a `Double` (`SLN(1000, 100, 1E-308)`), where 64-bit VBA raises 6 (VB6 returns infinity).
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `financial-argument-checks.twinproj` (attached as `financial-argument-checks.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other sixteen fail.
+
+The module is meant to be adapted as a regression test. Each case asserts 64-bit VBA's number. The attached VB6 project (`financial-argument-checks-vb6.zip`) prints VB6's, which are the same but for the four cases of `FV`, `PV` and `SLN` that the list above gives.
+```vb
+' Regression tests: the Financial functions check their arguments as 64-bit VBA does: 5 for a
+' period outside 1 to nper (IPmt, PPmt), for an nper of 0 (Pmt, PPmt), for MIRR of one element
+' or a rate of -1, and for NPV at a rate of -1; 11 for MIRR with no payment; a DDB of a life
+' below 1; and with a rate of -1, FV's 6 and PV's 0, 11 and 6; SLN's 6 for an infinite result.
+' VB6 agrees but for FV (11), PV and SLN (no error, infinity). The controls pass in all.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_IPmtLastPeriod()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IPmt(0.01, 10.9999999, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_PmtRateMinusTwo_Raises11()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Pmt(-2, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 11&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_DDBLifeOne()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = DDB(1000, 100, 1, 0.5)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 900) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub IPmt_PerZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IPmt(0.01, 0, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub IPmt_PerNperPlusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IPmt(0.01, 11, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_PerZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PPmt(0.01, 0, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_PerNperPlusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PPmt(0.01, 11, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Pmt_NperZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Pmt(0.01, 0, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_NperZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PPmt(0.01, 1, 0, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_OneElement_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(0)
+        A(0) = -100
+        R = MIRR(A, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_ReinvestRateMinusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(2)
+        A(0) = -100
+        A(1) = 50
+        A(2) = 60
+        R = MIRR(A, 0.1, -1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_NoPayment_Raises11()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(1)
+        A(0) = 100
+        A(1) = 110
+        R = MIRR(A, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 11&, E
+    End Sub
+
+    [TestCase]
+    Public Sub NPV_RateMinusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(2)
+        A(0) = -100
+        A(1) = 50
+        A(2) = 60
+        R = NPV(-1, A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub DDB_LifeBelowOne_Returns900()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = DDB(1000, 100, 0.5, 0.5)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 900) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub FV_RateMinusOneNegativeNper_Raises6()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(-1, -1, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 6&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PV_RateMinusOneNperZero_Returns0()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PV(-1, 0, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub PV_RateMinusOne_Raises11()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PV(-1, 10, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 11&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PV_RateMinusOneNegativeNper_Raises6()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PV(-1, -1, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 6&, E
+    End Sub
+
+    [TestCase]
+    Public Sub SLN_InfiniteResult_Raises6()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = SLN(1000, 100, 1E-308)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 6&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The numbers 64-bit VBA gives, as listed above. Where VB6 and 64-bit VBA differ (`FV`, `PV`, `SLN`), twinBASIC is to do as 64-bit VBA does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium for `IPmt`, `PPmt`, `MIRR` and `NPV`, which return a value with no error for arguments VB refuses, so a mistake in a program goes unnoticed. Low for the rest: an error is raised where VB raises one, with another number, or (`DDB`) a value VB computes is refused.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+Related: the queued entry on refused arguments (`argument-errors-unspecified-error`) covers these functions' -2147467259 where VB raises 5.
+
+What does not reproduce it: a *per* just below *nper* + 1 (`IPmt(0.01, 10.9999999, 10, 1000)`); `Pmt` with a *rate* of -2 and an even *nper* (11 in all); `DDB` with a *life* of 1. `PV` already raises 11 for a result beyond the range of a `Double`, as 64-bit VBA does (VB6 returns infinity).
+
+<!-- Reproducer: bugs/financial-argument-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and sixteen FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; 64-bit VBA's numbers from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0). Stated in the Common Errors sections (rows `bug: financial-argument-checks` in errors/VBA.Financial.yml) of DDB, FV, IPmt, MIRR, NPV, PPmt, PV, Pmt and SLN under docs/Reference/Default/VBA/Financial/, and in WARNINGs (BETA 1010) on IPmt, PPmt, MIRR and NPV for the values returned with no error; when fixed, each row becomes a row of 64-bit VBA's number (DDB's to the quiet cases), and the NOTEs and WARNINGs go. Found 2026-10-28 by batch 9 of WIP.Errors.md; owner, 2026-10-28: a bug, twinBASIC to do as 64-bit VBA where VB6 and 64-bit VBA differ; PV's 11 for a result beyond the range of a Double is that, not a bug. -->

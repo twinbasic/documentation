@@ -1,0 +1,20 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.Control_PositivePmt$",
+      "^PASS RegressionTests\\.Control_RateZero$",
+      "^PASS RegressionTests\\.Control_SameSigns$",
+      "^FAIL RegressionTests\\.Loan_ReturnsPeriods: .*Actual: 6 ",
+      "^FAIL RegressionTests\\.CarLoan_ReturnsPeriods: .*Actual: 6 ",
+      "^FAIL RegressionTests\\.LoanWithBalance_ReturnsPeriods: .*Actual: 6 ",
+      "^FAIL RegressionTests\\.LoanDueAtStart_ReturnsPeriods: .*Actual: 6 ",
+      "^FAIL RegressionTests\\.SavingsPlan_ReturnsPeriods: .*Actual: 6 ",
+      "^FAIL RegressionTests\\.NegativeRate_ReturnsPeriods: .*Actual: 6 ",
+      "^FAIL RegressionTests\\.PmtBelowInterest_Raises5: .*Actual: 6 ",
+      "^FAIL RegressionTests\\.PmtZero_Raises5: .*Actual: 11 ",
+      "^FAIL RegressionTests\\.RateMinusOne_Raises5: .*Actual: 11 "
+    ]
+  }
+}

@@ -379,5 +379,17 @@ Sub Main()
     dialog_End
     SendKeys "{BAD}": Report "SendKeys_UnknownKeyCode"
     SendKeys "", Null: Report "SendKeys_WaitNull"
+    Dim R As Double, F(1) As Double
+    R = DDB(1000, 100, 0, 1): Report "DDB_LifeZero"
+    R = SLN(1000, 100, 0): Report "SLN_LifeZero"
+    R = SYD(1000, 100, 5, 6): Report "SYD_PeriodAboveLife"
+    R = IPmt(0.01, 1, 0, 1000): Report "IPmt_NperZero"
+    R = PPmt(0.01, 1, -10, 1000): Report "PPmt_NperNegative"
+    R = Pmt(0, 0, 1000): Report "Pmt_RateAndNperZero"
+    R = NPer(0, 0, 1000): Report "NPer_RateAndPmtZero"
+    R = Rate(0, -100, 1000): Report "Rate_NperZero"
+    R = Rate(0.5, -100, 1000): Report "Rate_NperBelowOneOverflow"
+    F(0) = -100: F(1) = -110
+    R = IRR(F): Report "IRR_NoReceipt"
     Close #9
 End Sub

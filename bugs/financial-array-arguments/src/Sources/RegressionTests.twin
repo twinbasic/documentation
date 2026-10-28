@@ -1,0 +1,149 @@
+' Regression tests: IRR, MIRR and NPV raise 5, Invalid procedure call or argument, for an
+' array that has never been sized or has been erased, and for one of two dimensions, as VB6
+' and 64-bit VBA do. On BETA 1010 the unsized cases end with an access violation. The
+' controls are each function of a sized one-dimensional array.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_IRR()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(1)
+        A(0) = -100
+        A(1) = 110
+        R = IRR(A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_MIRR()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(2)
+        A(0) = -100
+        A(1) = 50
+        A(2) = 60
+        R = MIRR(A, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0723805294763609) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_NPV()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(2)
+        A(0) = -100
+        A(1) = 50
+        A(2) = 60
+        R = NPV(0.1, A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - -4.50788880540947) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub IRR_Unsized_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IRR(A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub IRR_Erased_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(1)
+        A(0) = -100
+        A(1) = 110
+        Erase A
+        R = IRR(A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_Unsized_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = MIRR(A, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub NPV_Unsized_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPV(0.1, A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub IRR_TwoDimensions_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        B(0, 0) = -100
+        B(1, 0) = 110
+        B(0, 1) = -100
+        B(1, 1) = 110
+        R = IRR(B)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_TwoDimensions_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        B(0, 0) = -100
+        B(1, 0) = 110
+        B(0, 1) = -100
+        B(1, 1) = 110
+        R = MIRR(B, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub NPV_TwoDimensions_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        B(0, 0) = -100
+        B(1, 0) = 110
+        B(0, 1) = -100
+        B(1, 1) = 110
+        R = NPV(0.1, B)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+End Module

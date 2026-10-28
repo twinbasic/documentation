@@ -22,7 +22,7 @@ pages:
       - error: -2147467259
         when: "*life* is greater than 0 and less than 1"
         vb6: 0
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - DDB(1000, 100, 0.5, 0.5)
           - DDB(1000, 100, 0.9, 0.9)
@@ -36,7 +36,7 @@ pages:
       - error: 13
         when: "*factor* is **Null**"
         vb6: 94
-        bug: pending
+        bug: financial-null-optional-argument
         cases:
           - DDB(1000, 100, 5, 1, Null)
       - error: 94
@@ -67,7 +67,7 @@ pages:
         when: "*rate* is -1 and *nper* is less than 0"
         vb6: 11
         vba64: 6
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - FV(-1, -1, -100)
           - FV(-1, -1, 0)
@@ -90,7 +90,7 @@ pages:
       - error: 13
         when: "*pv* or *type* is **Null**"
         vb6: 94
-        bug: pending
+        bug: financial-null-optional-argument
         cases:
           - FV(0.01, 10, -100, Null)
           - FV(0.01, 10, -100, 0, Null)
@@ -124,7 +124,7 @@ pages:
       - error: 0
         when: "*per* is 0 or less, or *nper* + 1 or more"
         vb6: 5
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - IPmt(0.01, 0, 10, 1000)
           - IPmt(0.01, -1, 10, 1000)
@@ -146,7 +146,7 @@ pages:
       - error: 13
         when: "*fv* or *type* is **Null**"
         vb6: 94
-        bug: pending
+        bug: financial-null-optional-argument
         cases:
           - IPmt(0.01, 1, 10, 1000, Null)
           - IPmt(0.01, 1, 10, 1000, 0, Null)
@@ -217,7 +217,7 @@ pages:
       - error: -2147418113
         when: "*values* has more than one dimension"
         vb6: 5
-        bug: pending
+        bug: financial-array-arguments
         cases:
           - decl: Dim A(1, 1) As Double
             setup: "A(0, 0) = -100\nA(1, 0) = 110\nA(0, 1) = -100\nA(1, 1) = 110"
@@ -261,7 +261,7 @@ pages:
       - error: 0
         when: "*values* has one element, or *finance_rate* or *reinvest_rate* is -1"
         vb6: 5
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - decl: Dim A(0) As Double
             setup: A(0) = -100
@@ -275,7 +275,7 @@ pages:
       - error: 0
         when: "*values* has no element less than 0"
         vb6: 11
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - decl: Dim A(1) As Double
             setup: "A(0) = 100\nA(1) = 110"
@@ -288,7 +288,7 @@ pages:
       - error: -2147418113
         when: "*values* has more than one dimension"
         vb6: 5
-        bug: pending
+        bug: financial-array-arguments
         cases:
           - decl: Dim A(1, 1) As Double
             setup: "A(0, 0) = -100\nA(1, 0) = 110\nA(0, 1) = -100\nA(1, 1) = 110"
@@ -332,7 +332,7 @@ pages:
       - error: 0
         when: "*rate* is -1"
         vb6: 5
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - decl: Dim A(2) As Double
             setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
@@ -340,7 +340,7 @@ pages:
       - error: -2147418113
         when: "*values* has more than one dimension"
         vb6: 5
-        bug: pending
+        bug: financial-array-arguments
         cases:
           - decl: Dim A(1, 1) As Double
             setup: "A(0, 0) = -100\nA(1, 0) = 110\nA(0, 1) = -100\nA(1, 1) = 110"
@@ -383,7 +383,7 @@ pages:
       - error: 6
         when: "*rate* and *pmt* are of opposite signs, as in a loan or a savings plan, and a number of periods exists"
         vb6: 0
-        bug: pending
+        bug: nper-opposite-signs-overflow
         cases:
           - NPer(0.01, -100, 1000)
           - NPer(0.05, -100, 1000)
@@ -398,7 +398,7 @@ pages:
       - error: 6
         when: "no number of periods exists, as when *pmt* does not cover the interest, or *rate* is -1 and *pmt* is greater than 0"
         vb6: 5
-        bug: pending
+        bug: nper-opposite-signs-overflow
         cases:
           - NPer(0.01, -1, 1000)
           - NPer(-2, -100, 1000)
@@ -406,7 +406,7 @@ pages:
       - error: 11
         when: "*pmt* is 0 and *rate* is not 0, or *rate* is -1 and *pmt* is less than 0"
         vb6: 5
-        bug: pending
+        bug: nper-opposite-signs-overflow
         cases:
           - NPer(0.01, 0, 1000)
           - NPer(0.01, 0, 0)
@@ -427,7 +427,7 @@ pages:
       - error: 13
         when: "*fv* or *type* is **Null**"
         vb6: 94
-        bug: pending
+        bug: financial-null-optional-argument
         cases:
           - NPer(0.01, -100, 1000, Null)
           - NPer(0.01, -100, 1000, 0, Null)
@@ -453,7 +453,7 @@ pages:
       - error: 0
         when: "*per* is 0 or less, or *nper* + 1 or more"
         vb6: 5
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - PPmt(0.01, 0, 10, 1000)
           - PPmt(0.01, -1, 10, 1000)
@@ -461,7 +461,7 @@ pages:
       - error: 11
         when: "*nper* is 0"
         vb6: 5
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - PPmt(0.01, 1, 0, 1000)
       - error: -2147467259
@@ -478,7 +478,7 @@ pages:
       - error: 13
         when: "*fv* or *type* is **Null**"
         vb6: 94
-        bug: pending
+        bug: financial-null-optional-argument
         cases:
           - PPmt(0.01, 1, 10, 1000, Null)
           - PPmt(0.01, 1, 10, 1000, 0, Null)
@@ -507,14 +507,14 @@ pages:
       - error: -2147467259
         when: "*rate* is -1 and *nper* is 0"
         vb6: 0
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - PV(-1, 0, -100)
       - error: -2147467259
         when: "*rate* is -1 and *nper* is greater than 0"
         vb6: 0
         vba64: 11
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - PV(-1, 10, -100)
           - PV(-1, 1, -100)
@@ -523,17 +523,15 @@ pages:
         when: "*rate* is -1 and *nper* is less than 0"
         vb6: 0
         vba64: 6
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - PV(-1, -1, -100)
       - error: 11
         when: "the result is beyond the range of a **Double**"
-        vb6: 0
-        vba64: 11
-        bug: pending
+        # An extension (owner, 2026-10-28): as 64-bit VBA; VB6 returns infinity (a NOTE in the prose).
         cases:
-          - PV(-0.99999999, 1000, -100)
-          - PV(-0.5, 2000, -100)
+          - { expr: 'PV(-0.99999999, 1000, -100)', only: [tb, vba64] }
+          - { expr: 'PV(-0.5, 2000, -100)', only: [tb, vba64] }
       - error: 13
         when: "*fv* or *type* is a string that is not a number"
         cases:
@@ -542,7 +540,7 @@ pages:
       - error: 13
         when: "*fv* or *type* is **Null**"
         vb6: 94
-        bug: pending
+        bug: financial-null-optional-argument
         cases:
           - PV(0.01, 10, -100, Null)
           - PV(0.01, 10, -100, 0, Null)
@@ -578,7 +576,7 @@ pages:
       - error: 11
         when: "*nper* is 0 and *rate* is not 0"
         vb6: 5
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - Pmt(0.01, 0, 1000)
           - Pmt(-1, 0, 1000)
@@ -596,7 +594,7 @@ pages:
       - error: 13
         when: "*fv* or *type* is **Null**"
         vb6: 94
-        bug: pending
+        bug: financial-null-optional-argument
         cases:
           - Pmt(0.01, 10, 1000, Null)
           - Pmt(0.01, 10, 1000, 0, Null)
@@ -626,7 +624,7 @@ pages:
       - error: -2147467259
         when: "a rate exists (twinBASIC finds one only for a few annuities, none of them with a *pmt* other than 0)"
         vb6: 0
-        bug: pending
+        bug: rate-fails
         cases:
           - Rate(10, -100, 800)
           - Rate(10, -100, 1100)
@@ -670,20 +668,20 @@ pages:
       - error: 5
         when: "*nper* is less than 1 and *pmt* is 0"
         vb6: 0
-        bug: pending
+        bug: rate-fails
         cases:
           - Rate(0.5, 0, 100, -110)
           - Rate(0.9, 0, 100, -110)
       - error: 0
         when: "*guess* is **Null**"
         vb6: 94
-        bug: pending
+        bug: rate-fails
         cases:
           - Rate(1, 0, 100, -110, 0, Null)
       - error: 0
         when: "*guess* is a string that is not a number, or an error value"
         vb6: 13
-        bug: pending
+        bug: rate-fails
         cases:
           - Rate(1, 0, 100, -110, 0, "abc")
           - Rate(1, 0, 100, -110, 0, CVErr(5))
@@ -695,7 +693,7 @@ pages:
       - error: 13
         when: "*fv* or *type* is **Null**"
         vb6: 94
-        bug: pending
+        bug: financial-null-optional-argument
         cases:
           - Rate(1, 0, 100, -110, Null)
           - Rate(10, -100, 800, 0, Null)
@@ -724,7 +722,7 @@ pages:
       - error: 0
         when: "the result is beyond the range of a **Double** (twinBASIC returns infinity)"
         vba64: 6
-        bug: pending
+        bug: financial-argument-checks
         cases:
           - SLN(1000, 100, 1E-308)
           - SLN(1E+308, -1E+308, 1)

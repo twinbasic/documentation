@@ -1,0 +1,18 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.Control_IRR$",
+      "^PASS RegressionTests\\.Control_MIRR$",
+      "^PASS RegressionTests\\.Control_NPV$",
+      "^FAIL RegressionTests\\.IRR_Unsized_Raises5: .*ACCESS_VIOLATION",
+      "^FAIL RegressionTests\\.IRR_Erased_Raises5: .*ACCESS_VIOLATION",
+      "^FAIL RegressionTests\\.MIRR_Unsized_Raises5: .*ACCESS_VIOLATION",
+      "^FAIL RegressionTests\\.NPV_Unsized_Raises5: .*ACCESS_VIOLATION",
+      "^FAIL RegressionTests\\.IRR_TwoDimensions_Raises5: .*Actual: -2147418113 ",
+      "^FAIL RegressionTests\\.MIRR_TwoDimensions_Raises5: .*Actual: -2147418113 ",
+      "^FAIL RegressionTests\\.NPV_TwoDimensions_Raises5: .*Actual: -2147418113 "
+    ]
+  }
+}

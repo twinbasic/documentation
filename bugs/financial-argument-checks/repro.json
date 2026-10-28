@@ -1,0 +1,27 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.Control_IPmtLastPeriod$",
+      "^PASS RegressionTests\\.Control_PmtRateMinusTwo_Raises11$",
+      "^PASS RegressionTests\\.Control_DDBLifeOne$",
+      "^FAIL RegressionTests\\.IPmt_PerZero_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.IPmt_PerNperPlusOne_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.PPmt_PerZero_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.PPmt_PerNperPlusOne_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.Pmt_NperZero_Raises5: .*Actual: 11 ",
+      "^FAIL RegressionTests\\.PPmt_NperZero_Raises5: .*Actual: 11 ",
+      "^FAIL RegressionTests\\.MIRR_OneElement_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.MIRR_ReinvestRateMinusOne_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.MIRR_NoPayment_Raises11: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.NPV_RateMinusOne_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.DDB_LifeBelowOne_Returns900: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests\\.FV_RateMinusOneNegativeNper_Raises6: .*Actual: 5 ",
+      "^FAIL RegressionTests\\.PV_RateMinusOneNperZero_Returns0: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests\\.PV_RateMinusOne_Raises11: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests\\.PV_RateMinusOneNegativeNper_Raises6: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests\\.SLN_InfiniteResult_Raises6: .*Actual: 0 "
+    ]
+  }
+}

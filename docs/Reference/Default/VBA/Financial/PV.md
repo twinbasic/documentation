@@ -32,6 +32,9 @@ The *rate* and *nper* arguments must be calculated using payment periods express
 
 For all arguments, cash paid out (such as deposits to savings) is represented by negative numbers; cash received (such as dividend checks) is represented by positive numbers.
 
+> [!NOTE]
+> **PV** raises error 11, *Division by zero*, for a result beyond the range of a **Double**, as 64-bit VBA does. VB6 returns infinity.
+
 <!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
 ### Common Errors
 
@@ -50,9 +53,6 @@ For all arguments, cash paid out (such as deposits to savings) is represented by
 
 > [!NOTE] BETA 1010
 > When *rate* is -1 and *nper* is less than 0, VB6 raises no error; 64-bit VBA raises error [6 (`&H6`)](tb:Errors#6), *Overflow*, instead.
-
-> [!NOTE] BETA 1010
-> When the result is beyond the range of a **Double**, VB6 raises no error.
 
 > [!NOTE] BETA 1010
 > When *fv* or *type* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*, instead.

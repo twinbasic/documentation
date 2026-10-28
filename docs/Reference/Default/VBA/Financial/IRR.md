@@ -23,7 +23,7 @@ The **IRR** function uses the order of values within the array to interpret the 
 
 **IRR** is calculated by iteration. Starting with the value of *guess*, **IRR** cycles through the calculation until the result is accurate to within 0.00001 percent, and fails if it finds none in 20 tries.
 
-<!-- bug: pending (financial-array-arguments) -->
+<!-- bug: financial-array-arguments -->
 > [!WARNING] BETA 1010
 > Given an array that has never been sized (`Dim A() As Double` with no **ReDim**, or one emptied by **Erase**), **IRR** ends the program with an access violation, in a 32-bit and a 64-bit build. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
 
