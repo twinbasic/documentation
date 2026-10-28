@@ -15,10 +15,10 @@ Syntax: **PPmt(** *rate*, *per*, *nper*, *pv* [ **,** *fv* [ **,** *type* ] ] **
 : *required* **Double** specifying interest rate per period. For example, for a car loan at an annual percentage rate (APR) of 10 percent with monthly payments, the rate per period is 0.1/12, or 0.0083.
 
 *per*
-: *required* **Integer** specifying payment period in the range 1 through *nper*.
+: *required* **Double** specifying payment period in the range 1 through *nper*.
 
 *nper*
-: *required* **Integer** specifying total number of payment periods in the annuity. For example, monthly payments on a four-year car loan total 4 * 12 (or 48) payment periods.
+: *required* **Double** specifying total number of payment periods in the annuity. For example, monthly payments on a four-year car loan total 4 * 12 (or 48) payment periods.
 
 *pv*
 : *required* **Double** specifying present value, or value today, of a series of future payments or receipts. For example, when borrowing money to buy a car, the loan amount is the present value to the lender of the monthly car payments to be made.
@@ -34,6 +34,34 @@ An annuity is a series of fixed cash payments made over a period of time. An ann
 The *rate* and *nper* arguments must be calculated using payment periods expressed in the same units. For example, if *rate* is calculated using months, *nper* must also be calculated using months.
 
 For all arguments, cash paid out (such as deposits to savings) is represented by negative numbers; cash received (such as dividend checks) is represented by positive numbers.
+
+<!-- bug: pending (financial-argument-checks) -->
+> [!WARNING] BETA 1010
+> Given a *per* of 0 or less, or of *nper* + 1 or more, **PPmt** returns a value computed for that period, outside the annuity, and raises no error. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
+
+<!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [11 (`&HB`)](tb:Errors#11), *Division by zero* | *nper* is 0 |
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *nper* is less than 0 |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *fv* or *type* is a string that is not a number<br>*fv* or *type* is **Null** |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *rate*, *per*, *nper* or *pv* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *per* is 0 or less, or *nper* + 1 or more, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+
+> [!NOTE] BETA 1010
+> When *nper* is 0, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When *nper* is less than 0, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When *fv* or *type* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*, instead.
+
+<!-- /errors -->
 
 ### Example
 

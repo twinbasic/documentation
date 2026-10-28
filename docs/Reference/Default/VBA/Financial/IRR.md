@@ -21,7 +21,29 @@ The internal rate of return is the interest rate received for an investment cons
 
 The **IRR** function uses the order of values within the array to interpret the order of payments and receipts. The payment and receipt values must be in the correct sequence. The cash flow for each period doesn't have to be fixed, as it is for an annuity.
 
-**IRR** is calculated by iteration. Starting with the value of *guess*, **IRR** cycles through the calculation until the result is accurate to within 0.00001 percent. If **IRR** can't find a result after 20 tries, it fails.
+**IRR** is calculated by iteration. Starting with the value of *guess*, **IRR** cycles through the calculation until the result is accurate to within 0.00001 percent, and fails if it finds none in 20 tries.
+
+<!-- bug: pending (financial-array-arguments) -->
+> [!WARNING] BETA 1010
+> Given an array that has never been sized (`Dim A() As Double` with no **ReDim**, or one emptied by **Erase**), **IRR** ends the program with an access violation, in a 32-bit and a 64-bit build. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
+
+<!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *values* has no element less than 0 or none greater than 0, or **IRR** finds no result in 20 tries from *guess* (a *guess* of -1 or less, or far from the result, included) |
+| [-2147418113 (`&H8000FFFF`)](tb:Errors#-2147418113), *Catastrophic failure* | *values* has more than one dimension |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *guess* is a string that is not a number |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *guess* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *values* has no element less than 0 or none greater than 0, or **IRR** finds no result in 20 tries from *guess* (a *guess* of -1 or less, or far from the result, included), VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When *values* has more than one dimension, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+<!-- /errors -->
 
 ### Example
 

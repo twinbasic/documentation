@@ -1,0 +1,777 @@
+# The VBA Financial module. Format: WIP.Errors.md.
+beta: 1010
+pages:
+  Reference/Default/VBA/Financial/DDB.md:
+    rows:
+      - error: -2147467259
+        when: "*life* is 0 or less, *period* is 0 or less or greater than *life*, *salvage* is less than 0, or *factor* is 0 or less (**Empty** and **True** included)"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - DDB(1000, 100, 0, 1)
+          - DDB(1000, 100, -5, 1)
+          - DDB(1000, 100, 5, 0)
+          - DDB(1000, 100, 5, -1)
+          - DDB(1000, 100, 5, 5.0000001)
+          - DDB(1000, 100, 5, 6)
+          - DDB(1000, -100, 5, 1)
+          - DDB(1000, 100, 5, 1, 0)
+          - DDB(1000, 100, 5, 1, -1)
+          - DDB(1000, 100, 5, 1, Empty)
+          - DDB(1000, 100, 5, 1, True)
+      - error: -2147467259
+        when: "*life* is greater than 0 and less than 1"
+        vb6: 0
+        bug: pending
+        cases:
+          - DDB(1000, 100, 0.5, 0.5)
+          - DDB(1000, 100, 0.9, 0.9)
+          - DDB(1000, 100, 0.999999, 0.1)
+      - error: 13
+        when: "*factor* is not a number or a string that holds one"
+        cases:
+          - DDB(1000, 100, 5, 1, "abc")
+          - DDB(1000, 100, 5, 1, CVErr(5))
+          - DDB(1000, 100, 5, 1, Array(1))
+      - error: 13
+        when: "*factor* is **Null**"
+        vb6: 94
+        bug: pending
+        cases:
+          - DDB(1000, 100, 5, 1, Null)
+      - error: 94
+        when: "*cost*, *salvage*, *life* or *period* is **Null**"
+        cases:
+          - DDB(Null, 100, 5, 1)
+          - DDB(1000, Null, 5, 1)
+          - DDB(1000, 100, Null, 1)
+          - DDB(1000, 100, 5, Null)
+    quiet:
+      - DDB(1000, 100, 5, 1)
+      - DDB(1000, 100, 5, 5)
+      - DDB(1000, 100, 5, 0.5)
+      - DDB(1000, 100, 1, 1)
+      - DDB(1000, 100, 1, 0.5)
+      - DDB(1000, 100, 1.5, 1)
+      - DDB(-1000, 100, 5, 1)
+      - DDB(100, 1000, 5, 1)
+      - DDB(0, 0, 5, 1)
+      - DDB(1000, 100, 5, 1, 1)
+      - DDB(1000, 100, 5, 1, 0.5)
+      - DDB(1000, 100, 5, 1, 10)
+      - DDB(1000, 100, 5, 1, 1E+300)
+      - DDB(1000, 100, 5, 1, "3")
+  Reference/Default/VBA/Financial/FV.md:
+    rows:
+      - error: 5
+        when: "*rate* is -1 and *nper* is less than 0"
+        vb6: 11
+        vba64: 6
+        bug: pending
+        cases:
+          - FV(-1, -1, -100)
+          - FV(-1, -1, 0)
+          - FV(-1, -2, -100)
+          - FV(-1, -0.5, -100)
+          - FV(-1, -1, -100, 0, 1)
+      - error: 6
+        when: the result is beyond the range of a **Double**
+        cases:
+          - FV(10, 1000, -100)
+          - FV(1, 2000, -100)
+          - FV(-0.5, -2000, -100)
+          - FV(1E+300, 2, -100)
+      - error: 13
+        when: "*pv* or *type* is a string that is not a number, or an error value"
+        cases:
+          - FV(0.01, 10, -100, "abc")
+          - FV(0.01, 10, -100, 0, "abc")
+          - FV(0.01, 10, -100, CVErr(5))
+      - error: 13
+        when: "*pv* or *type* is **Null**"
+        vb6: 94
+        bug: pending
+        cases:
+          - FV(0.01, 10, -100, Null)
+          - FV(0.01, 10, -100, 0, Null)
+      - error: 94
+        when: "*rate*, *nper* or *pmt* is **Null**"
+        cases:
+          - FV(Null, 10, -100)
+          - FV(0.01, Null, -100)
+          - FV(0.01, 10, Null)
+    quiet:
+      - FV(0.01, 10, -100)
+      - FV(0, 10, -100)
+      - FV(-1, 10, -100)
+      - FV(-2, 10, -100)
+      - FV(-1, 0, -100)
+      - FV(0.01, 0, -100)
+      - FV(0.01, -10, -100)
+      - FV(0.01, 10.5, -100)
+      - FV(0.01, 10, -100, 1000)
+      - FV(0.01, 10, -100, Empty)
+      - FV(0.01, 10, -100, "5")
+      - FV(0.01, 10, -100, 0, 1)
+      - FV(0.01, 10, -100, 0, 2)
+      - FV(0.01, 10, -100, 0, -1)
+      - FV(0.01, 10, -100, 0, 0.5)
+      - FV(0.01, 10, -100, 0, True)
+      - FV(0.01, 10, -100, 0, Empty)
+      - FV(0.01, 10, -100, 0, "1")
+  Reference/Default/VBA/Financial/IPmt.md:
+    rows:
+      - error: 0
+        when: "*per* is 0 or less, or *nper* + 1 or more"
+        vb6: 5
+        bug: pending
+        cases:
+          - IPmt(0.01, 0, 10, 1000)
+          - IPmt(0.01, -1, 10, 1000)
+          - IPmt(0.01, 11, 10, 1000)
+          - IPmt(0.01, 11.5, 10.5, 1000)
+          - IPmt(0.01, 1.5, 0.5, 1000)
+      - error: -2147467259
+        when: "*nper* is 0 or less"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - IPmt(0.01, 1, 0, 1000)
+          - IPmt(0.01, 1, -10, 1000)
+      - error: 13
+        when: "*fv* or *type* is a string that is not a number"
+        cases:
+          - IPmt(0.01, 1, 10, 1000, "abc")
+          - IPmt(0.01, 1, 10, 1000, 0, "abc")
+      - error: 13
+        when: "*fv* or *type* is **Null**"
+        vb6: 94
+        bug: pending
+        cases:
+          - IPmt(0.01, 1, 10, 1000, Null)
+          - IPmt(0.01, 1, 10, 1000, 0, Null)
+      - error: 94
+        when: "*rate*, *per*, *nper* or *pv* is **Null**"
+        cases:
+          - IPmt(Null, 1, 10, 1000)
+          - IPmt(0.01, Null, 10, 1000)
+          - IPmt(0.01, 1, Null, 1000)
+          - IPmt(0.01, 1, 10, Null)
+    quiet:
+      - IPmt(0.01, 1, 10, 1000)
+      - IPmt(0.01, 10, 10, 1000)
+      - IPmt(0.01, 1E-10, 10, 1000)
+      - IPmt(0.01, 0.5, 10, 1000)
+      - IPmt(0.01, 10.5, 10, 1000)
+      - IPmt(0.01, 10.9999999, 10, 1000)
+      - IPmt(0.01, 1, 10.5, 1000)
+      - IPmt(0.01, 11.4, 10.5, 1000)
+      - IPmt(0.01, 1.4, 0.5, 1000)
+      - IPmt(0, 1, 10, 1000)
+      - IPmt(-1, 1, 10, 1000)
+      - IPmt(-1, 2, 10, 1000)
+      - IPmt(0.01, 1, 10, 1000, 100)
+      - IPmt(0.01, 1, 10, 1000, 0, 1)
+      - IPmt(0.01, 1, 10, 1000, 0, 2)
+      - IPmt(0.01, 1, 10, 1000, 0, -1)
+      - IPmt(0.01, 1, 10, 1000, 0, 0.5)
+  Reference/Default/VBA/Financial/IRR.md:
+    rows:
+      - error: -2147467259
+        when: "*values* has no element less than 0 or none greater than 0, or **IRR** finds no result in 20 tries from *guess* (a *guess* of -1 or less, or far from the result, included)"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - decl: Dim A(1) As Double
+            setup: "A(0) = 100\nA(1) = 110"
+            expr: IRR(A)
+          - decl: Dim A(1) As Double
+            setup: "A(0) = -100\nA(1) = -110"
+            expr: IRR(A)
+          - decl: Dim A(1) As Double
+            expr: IRR(A)
+          - decl: Dim A(0) As Double
+            setup: A(0) = -100
+            expr: IRR(A)
+          - decl: Dim A(1) As Double
+            setup: "A(0) = -100\nA(1) = 0"
+            expr: IRR(A)
+          - decl: Dim A(1) As Double
+            setup: "A(0) = 0\nA(1) = 110"
+            expr: IRR(A)
+          - decl: Dim A(1) As Double
+            setup: "A(0) = -100\nA(1) = 1E+300"
+            expr: IRR(A)
+          - decl: Dim A(1) As Double
+            setup: "A(0) = -100\nA(1) = 0.0000001"
+            expr: IRR(A)
+          - decl: Dim A(1) As Double
+            setup: "A(0) = -100\nA(1) = 110"
+            expr: IRR(A, -1)
+          - decl: Dim A(1) As Double
+            setup: "A(0) = -100\nA(1) = 110"
+            expr: IRR(A, -2)
+          - decl: Dim A(1) As Double
+            setup: "A(0) = -100\nA(1) = 110"
+            expr: IRR(A, 100)
+      - error: -2147418113
+        when: "*values* has more than one dimension"
+        vb6: 5
+        bug: pending
+        cases:
+          - decl: Dim A(1, 1) As Double
+            setup: "A(0, 0) = -100\nA(1, 0) = 110\nA(0, 1) = -100\nA(1, 1) = 110"
+            expr: IRR(A)
+      - error: 13
+        when: "*guess* is a string that is not a number"
+        cases:
+          - decl: Dim A(1) As Double
+            setup: "A(0) = -100\nA(1) = 110"
+            expr: IRR(A, "abc")
+      - error: 94
+        when: "*guess* is **Null**"
+        cases:
+          - decl: Dim A(1) As Double
+            setup: "A(0) = -100\nA(1) = 110"
+            expr: IRR(A, Null)
+    quiet:
+      - decl: Dim A(1) As Double
+        setup: "A(0) = -100\nA(1) = 110"
+        expr: IRR(A)
+      - decl: Dim A(2) As Double
+        setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+        expr: IRR(A)
+      - decl: Dim A(1) As Double
+        setup: "A(0) = 110\nA(1) = -100"
+        expr: IRR(A)
+      - decl: Dim A(1 To 2) As Double
+        setup: "A(1) = -100\nA(2) = 110"
+        expr: IRR(A)
+      - decl: Dim A(1) As Double
+        setup: "A(0) = -100\nA(1) = 110"
+        expr: IRR(A, 0)
+      - decl: Dim A(1) As Double
+        setup: "A(0) = -100\nA(1) = 110"
+        expr: IRR(A, -0.99)
+      - decl: Dim A(1) As Double
+        setup: "A(0) = -100\nA(1) = 110"
+        expr: IRR(A, Empty)
+  Reference/Default/VBA/Financial/MIRR.md:
+    rows:
+      - error: 0
+        when: "*values* has one element, or *finance_rate* or *reinvest_rate* is -1"
+        vb6: 5
+        bug: pending
+        cases:
+          - decl: Dim A(0) As Double
+            setup: A(0) = -100
+            expr: MIRR(A, 0.1, 0.1)
+          - decl: Dim A(2) As Double
+            setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+            expr: MIRR(A, -1, 0.1)
+          - decl: Dim A(2) As Double
+            setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+            expr: MIRR(A, 0.1, -1)
+      - error: 0
+        when: "*values* has no element less than 0"
+        vb6: 11
+        bug: pending
+        cases:
+          - decl: Dim A(1) As Double
+            setup: "A(0) = 100\nA(1) = 110"
+            expr: MIRR(A, 0.1, 0.1)
+          - decl: Dim A(1) As Double
+            expr: MIRR(A, 0.1, 0.1)
+          - decl: Dim A(1) As Double
+            setup: "A(0) = 0\nA(1) = 110"
+            expr: MIRR(A, 0.1, 0.1)
+      - error: -2147418113
+        when: "*values* has more than one dimension"
+        vb6: 5
+        bug: pending
+        cases:
+          - decl: Dim A(1, 1) As Double
+            setup: "A(0, 0) = -100\nA(1, 0) = 110\nA(0, 1) = -100\nA(1, 1) = 110"
+            expr: MIRR(A, 0.1, 0.1)
+      - error: 94
+        when: "*finance_rate* or *reinvest_rate* is **Null**"
+        cases:
+          - decl: Dim A(2) As Double
+            setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+            expr: MIRR(A, Null, 0.1)
+          - decl: Dim A(2) As Double
+            setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+            expr: MIRR(A, 0.1, Null)
+    quiet:
+      - decl: Dim A(2) As Double
+        setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+        expr: MIRR(A, 0.1, 0.1)
+      - decl: Dim A(1) As Double
+        setup: "A(0) = -100\nA(1) = -110"
+        expr: MIRR(A, 0.1, 0.1)
+      - decl: Dim A(1) As Double
+        setup: "A(0) = -100\nA(1) = 0"
+        expr: MIRR(A, 0.1, 0.1)
+      - decl: Dim A(1) As Double
+        setup: "A(0) = 110\nA(1) = -100"
+        expr: MIRR(A, 0.1, 0.1)
+      - decl: Dim A(1 To 3) As Double
+        setup: "A(1) = -100\nA(2) = 50\nA(3) = 60"
+        expr: MIRR(A, 0.1, 0.1)
+      - decl: Dim A(2) As Double
+        setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+        expr: MIRR(A, -2, -2)
+      - decl: Dim A(2) As Double
+        setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+        expr: MIRR(A, -0.9999, 0.1)
+      - decl: Dim A(2) As Double
+        setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+        expr: MIRR(A, 0, 0)
+  Reference/Default/VBA/Financial/NPV.md:
+    rows:
+      - error: 0
+        when: "*rate* is -1"
+        vb6: 5
+        bug: pending
+        cases:
+          - decl: Dim A(2) As Double
+            setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+            expr: NPV(-1, A)
+      - error: -2147418113
+        when: "*values* has more than one dimension"
+        vb6: 5
+        bug: pending
+        cases:
+          - decl: Dim A(1, 1) As Double
+            setup: "A(0, 0) = -100\nA(1, 0) = 110\nA(0, 1) = -100\nA(1, 1) = 110"
+            expr: NPV(0.1, A)
+      - error: 94
+        when: "*rate* is **Null**"
+        cases:
+          - decl: Dim A(2) As Double
+            setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+            expr: NPV(Null, A)
+    quiet:
+      - decl: Dim A(2) As Double
+        setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+        expr: NPV(0.1, A)
+      - decl: Dim A(1) As Double
+        setup: "A(0) = 100\nA(1) = 110"
+        expr: NPV(0.1, A)
+      - decl: Dim A(1) As Double
+        setup: "A(0) = -100\nA(1) = -110"
+        expr: NPV(0.1, A)
+      - decl: Dim A(1) As Double
+        expr: NPV(0.1, A)
+      - decl: Dim A(0) As Double
+        setup: A(0) = -100
+        expr: NPV(0.1, A)
+      - decl: Dim A(1 To 3) As Double
+        setup: "A(1) = -100\nA(2) = 50\nA(3) = 60"
+        expr: NPV(0.1, A)
+      - decl: Dim A(2) As Double
+        setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+        expr: NPV(0, A)
+      - decl: Dim A(2) As Double
+        setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+        expr: NPV(-2, A)
+      - decl: Dim A(2) As Double
+        setup: "A(0) = -100\nA(1) = 50\nA(2) = 60"
+        expr: NPV(-0.9999999, A)
+  Reference/Default/VBA/Financial/NPer.md:
+    rows:
+      - error: 6
+        when: "*rate* and *pmt* are of opposite signs, as in a loan or a savings plan, and a number of periods exists"
+        vb6: 0
+        bug: pending
+        cases:
+          - NPer(0.01, -100, 1000)
+          - NPer(0.05, -100, 1000)
+          - NPer(0.01, -200, 1000)
+          - NPer(0.1 / 12, -500, 20000)
+          - NPer(0.01, -100, 1000, 100)
+          - NPer(0.01, -100, 1000, 0, 1)
+          - NPer(0.01, -100, 1000, 0, 2)
+          - NPer(0.01, -100, 0, 1000)
+          - NPer(0.01, -100, -1000)
+          - NPer(-0.5, 100, -1000)
+      - error: 6
+        when: "no number of periods exists, as when *pmt* does not cover the interest, or *rate* is -1 and *pmt* is greater than 0"
+        vb6: 5
+        bug: pending
+        cases:
+          - NPer(0.01, -1, 1000)
+          - NPer(-2, -100, 1000)
+          - NPer(-1, 100, -1000)
+      - error: 11
+        when: "*pmt* is 0 and *rate* is not 0, or *rate* is -1 and *pmt* is less than 0"
+        vb6: 5
+        bug: pending
+        cases:
+          - NPer(0.01, 0, 1000)
+          - NPer(0.01, 0, 0)
+          - NPer(-1, -100, 1000)
+          - NPer(-1, -100, 1000, 0, 1)
+      - error: -2147467259
+        when: "*rate* and *pmt* are both 0"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - NPer(0, 0, 1000)
+          - NPer(0, 0, 0)
+      - error: 13
+        when: "*fv* or *type* is a string that is not a number"
+        cases:
+          - NPer(0.01, -100, 1000, "abc")
+          - NPer(0.01, -100, 1000, 0, "abc")
+      - error: 13
+        when: "*fv* or *type* is **Null**"
+        vb6: 94
+        bug: pending
+        cases:
+          - NPer(0.01, -100, 1000, Null)
+          - NPer(0.01, -100, 1000, 0, Null)
+      - error: 94
+        when: "*rate*, *pmt* or *pv* is **Null**"
+        cases:
+          - NPer(Null, -100, 1000)
+          - NPer(0.01, Null, 1000)
+          - NPer(0.01, -100, Null)
+    quiet:
+      - NPer(0.01, 100, 1000)
+      - NPer(0.01, 100, -1000)
+      - NPer(0.05, 100, -1000)
+      - NPer(0.01, 100, -1000, 100)
+      - NPer(0.01, 100, -1000, -100)
+      - NPer(0.01, 100, -1000, 0, 1)
+      - NPer(0.01, 100, -1000, 0, 2)
+      - NPer(0.01, 100, 0, -1000)
+      - NPer(0, -100, 1000)
+      - NPer(-0.5, -100, 1000)
+  Reference/Default/VBA/Financial/PPmt.md:
+    rows:
+      - error: 0
+        when: "*per* is 0 or less, or *nper* + 1 or more"
+        vb6: 5
+        bug: pending
+        cases:
+          - PPmt(0.01, 0, 10, 1000)
+          - PPmt(0.01, -1, 10, 1000)
+          - PPmt(0.01, 11, 10, 1000)
+      - error: 11
+        when: "*nper* is 0"
+        vb6: 5
+        bug: pending
+        cases:
+          - PPmt(0.01, 1, 0, 1000)
+      - error: -2147467259
+        when: "*nper* is less than 0"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - PPmt(0.01, 1, -10, 1000)
+      - error: 13
+        when: "*fv* or *type* is a string that is not a number"
+        cases:
+          - PPmt(0.01, 1, 10, 1000, "abc")
+          - PPmt(0.01, 1, 10, 1000, 0, "abc")
+      - error: 13
+        when: "*fv* or *type* is **Null**"
+        vb6: 94
+        bug: pending
+        cases:
+          - PPmt(0.01, 1, 10, 1000, Null)
+          - PPmt(0.01, 1, 10, 1000, 0, Null)
+      - error: 94
+        when: "*rate*, *per*, *nper* or *pv* is **Null**"
+        cases:
+          - PPmt(Null, 1, 10, 1000)
+          - PPmt(0.01, Null, 10, 1000)
+          - PPmt(0.01, 1, Null, 1000)
+          - PPmt(0.01, 1, 10, Null)
+    quiet:
+      - PPmt(0.01, 1, 10, 1000)
+      - PPmt(0.01, 10, 10, 1000)
+      - PPmt(0.01, 0.5, 10, 1000)
+      - PPmt(0.01, 10.5, 10, 1000)
+      - PPmt(0.01, 1, 10.5, 1000)
+      - PPmt(0.01, 1, 0.5, 1000)
+      - PPmt(0, 1, 10, 1000)
+      - PPmt(-1, 1, 10, 1000)
+      - PPmt(0.01, 1, 10, 1000, 100)
+      - PPmt(0.01, 1, 10, 1000, 0, 2)
+      - PPmt(0.01, 1, 10, 1000, 0, -1)
+      - PPmt(0.01, 1, 10, 1000, 0, 0.5)
+  Reference/Default/VBA/Financial/PV.md:
+    rows:
+      - error: -2147467259
+        when: "*rate* is -1 and *nper* is 0"
+        vb6: 0
+        bug: pending
+        cases:
+          - PV(-1, 0, -100)
+      - error: -2147467259
+        when: "*rate* is -1 and *nper* is greater than 0"
+        vb6: 0
+        vba64: 11
+        bug: pending
+        cases:
+          - PV(-1, 10, -100)
+          - PV(-1, 1, -100)
+          - PV(-1, 10, 0, 100)
+      - error: -2147467259
+        when: "*rate* is -1 and *nper* is less than 0"
+        vb6: 0
+        vba64: 6
+        bug: pending
+        cases:
+          - PV(-1, -1, -100)
+      - error: 11
+        when: "the result is beyond the range of a **Double**"
+        vb6: 0
+        vba64: 11
+        bug: pending
+        cases:
+          - PV(-0.99999999, 1000, -100)
+          - PV(-0.5, 2000, -100)
+      - error: 13
+        when: "*fv* or *type* is a string that is not a number"
+        cases:
+          - PV(0.01, 10, -100, "abc")
+          - PV(0.01, 10, -100, 0, "abc")
+      - error: 13
+        when: "*fv* or *type* is **Null**"
+        vb6: 94
+        bug: pending
+        cases:
+          - PV(0.01, 10, -100, Null)
+          - PV(0.01, 10, -100, 0, Null)
+      - error: 94
+        when: "*rate*, *nper* or *pmt* is **Null**"
+        cases:
+          - PV(Null, 10, -100)
+          - PV(0.01, Null, -100)
+          - PV(0.01, 10, Null)
+    quiet:
+      - PV(0.01, 10, -100)
+      - PV(0, 10, -100)
+      - PV(-2, 10, -100)
+      - PV(0.01, 0, -100)
+      - PV(0, 0, -100)
+      - PV(0.01, -10, -100)
+      - PV(0.01, 10.5, -100)
+      - PV(0.01, 10, -100, 1000)
+      - PV(0.01, 10, -100, 0, 2)
+      - PV(0.01, 10, -100, 0, -1)
+      - PV(0.01, 10, -100, 0, 0.5)
+  Reference/Default/VBA/Financial/Pmt.md:
+    rows:
+      - error: 6
+        when: "*rate* is -1 and *type* is 1 or more"
+        cases:
+          - Pmt(-1, 10, 1000, 0, 1)
+          - Pmt(-1, 10, 1000, 0, 2)
+      - error: 11
+        when: "*rate* is -2 and *nper* is an even number"
+        cases:
+          - Pmt(-2, 10, 1000)
+      - error: 11
+        when: "*nper* is 0 and *rate* is not 0"
+        vb6: 5
+        bug: pending
+        cases:
+          - Pmt(0.01, 0, 1000)
+          - Pmt(-1, 0, 1000)
+      - error: -2147467259
+        when: "*nper* and *rate* are both 0"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - Pmt(0, 0, 1000)
+      - error: 13
+        when: "*fv* or *type* is a string that is not a number"
+        cases:
+          - Pmt(0.01, 10, 1000, "abc")
+          - Pmt(0.01, 10, 1000, 0, "abc")
+      - error: 13
+        when: "*fv* or *type* is **Null**"
+        vb6: 94
+        bug: pending
+        cases:
+          - Pmt(0.01, 10, 1000, Null)
+          - Pmt(0.01, 10, 1000, 0, Null)
+      - error: 94
+        when: "*rate*, *nper* or *pv* is **Null**"
+        cases:
+          - Pmt(Null, 10, 1000)
+          - Pmt(0.01, Null, 1000)
+          - Pmt(0.01, 10, Null)
+    quiet:
+      - Pmt(0.01, 10, 1000)
+      - Pmt(0, 10, 1000)
+      - Pmt(0.01, -10, 1000)
+      - Pmt(0.01, 10.5, 1000)
+      - Pmt(0.01, 0.5, 1000)
+      - Pmt(-1, 10, 1000)
+      - Pmt(-2, 3, 1000)
+      - Pmt(-1, 10, 1000, 0, 0.5)
+      - Pmt(-0.5, 10, 1000, 0, 2)
+      - Pmt(0.01, 10, 0)
+      - Pmt(0.01, 10, 1000, 100)
+      - Pmt(0.01, 10, 1000, 0, 2)
+      - Pmt(0.01, 10, 1000, 0, -1)
+      - Pmt(0.01, 10, 1000, 0, 0.5)
+  Reference/Default/VBA/Financial/Rate.md:
+    rows:
+      - error: -2147467259
+        when: "a rate exists (twinBASIC finds one only for a few annuities, none of them with a *pmt* other than 0)"
+        vb6: 0
+        bug: pending
+        cases:
+          - Rate(10, -100, 800)
+          - Rate(10, -100, 1100)
+          - Rate(48, -500, 20000)
+          - Rate(360, -600, 100000)
+          - Rate(1, -110, 100)
+          - Rate(2, -60, 100)
+          - Rate(1, -100, 1000)
+          - Rate(10, 100, -800)
+          - Rate(10, -100, 0, 1200)
+          - Rate(10, 0, 1000, -2000)
+          - Rate(10, 0, -1000, 2000)
+          - Rate(0.5, -100, 10)
+          - Rate(10, -100, 800, 0, 1)
+          - Rate(10, -100, 800, 0, 2)
+          - Rate(10, -100, 800, 0, 0.5)
+          - Rate(10, -100, 800, 0, 0, 0.04)
+          - Rate(10, -100, 800, 0, 0, 0)
+          - Rate(10, -100, 800, 0, 0, Empty)
+      - error: -2147467259
+        when: "**Rate** finds no result in 20 tries from *guess* (a *guess* of -1 or less, or far from the result, included), or *nper* is 0 or less"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - Rate(10, -100, 1000)
+          - Rate(10, 100, 1000)
+          - Rate(10, -100, -1000)
+          - Rate(10, 0, 0)
+          - Rate(0, -100, 1000)
+          - Rate(-10, -100, 1000)
+          - Rate(10, -100, 800, 0, 0, -1)
+          - Rate(10, -100, 800, 0, 0, -2)
+          - Rate(10, -100, 800, 0, 0, 100)
+      - error: -2147467259
+        when: "*nper* is less than 1 and the result is beyond the range of a **Double**"
+        vb6: 6
+        bug: argument-errors-unspecified-error
+        cases:
+          - Rate(0.5, -100, 1000)
+          - Rate(0.9, -100, 1000)
+      - error: 5
+        when: "*nper* is less than 1 and *pmt* is 0"
+        vb6: 0
+        bug: pending
+        cases:
+          - Rate(0.5, 0, 100, -110)
+          - Rate(0.9, 0, 100, -110)
+      - error: 0
+        when: "*guess* is **Null**"
+        vb6: 94
+        bug: pending
+        cases:
+          - Rate(1, 0, 100, -110, 0, Null)
+      - error: 0
+        when: "*guess* is a string that is not a number, or an error value"
+        vb6: 13
+        bug: pending
+        cases:
+          - Rate(1, 0, 100, -110, 0, "abc")
+          - Rate(1, 0, 100, -110, 0, CVErr(5))
+      - error: 13
+        when: "*fv* or *type* is a string that is not a number"
+        cases:
+          - Rate(10, -100, 800, "abc")
+          - Rate(10, -100, 800, 0, "abc")
+      - error: 13
+        when: "*fv* or *type* is **Null**"
+        vb6: 94
+        bug: pending
+        cases:
+          - Rate(1, 0, 100, -110, Null)
+          - Rate(10, -100, 800, 0, Null)
+      - error: 94
+        when: "*nper*, *pmt* or *pv* is **Null**"
+        cases:
+          - Rate(Null, -100, 800)
+          - Rate(10, Null, 800)
+          - Rate(10, -100, Null)
+    quiet:
+      - Rate(1, 0, 100, -110)
+      - Rate(2, 0, 100, -121)
+      - Rate(1, 0, 100, -110, 1)
+      - Rate(1, 0, 100, -110, 0, Empty)
+      - Rate(1, 0, 100, -110, 0, -1)
+      - Rate(1, 0, 100, -110, 0, 100)
+  Reference/Default/VBA/Financial/SLN.md:
+    rows:
+      - error: -2147467259
+        when: "*life* is 0"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - SLN(1000, 100, 0)
+          - SLN(0, 0, 0)
+      - error: 0
+        when: "the result is beyond the range of a **Double** (twinBASIC returns infinity)"
+        vba64: 6
+        bug: pending
+        cases:
+          - SLN(1000, 100, 1E-308)
+          - SLN(1E+308, -1E+308, 1)
+          - SLN(1E+308, -1E+308, 1E-308)
+      - error: 94
+        when: "*cost*, *salvage* or *life* is **Null**"
+        cases:
+          - SLN(Null, 100, 5)
+          - SLN(1000, Null, 5)
+          - SLN(1000, 100, Null)
+    quiet:
+      - SLN(1000, 100, 5)
+      - SLN(1000, 100, -5)
+      - SLN(1000, 100, 0.5)
+      - SLN(-1000, 100, 5)
+      - SLN(1000, -100, 5)
+      - SLN(100, 1000, 5)
+      - SLN(0, 0, 5)
+      - SLN(Empty, Empty, 5)
+  Reference/Default/VBA/Financial/SYD.md:
+    rows:
+      - error: -2147467259
+        when: "*life* is 0 or less, *period* is 0 or less or greater than *life*, or *salvage* is less than 0"
+        vb6: 5
+        bug: argument-errors-unspecified-error
+        cases:
+          - SYD(1000, 100, 0, 1)
+          - SYD(1000, 100, -5, 1)
+          - SYD(1000, 100, 5, 0)
+          - SYD(1000, 100, 5, -1)
+          - SYD(1000, 100, 5, 5.0000001)
+          - SYD(1000, 100, 5, 5.5)
+          - SYD(1000, 100, 5, 6)
+          - SYD(1000, -100, 5, 1)
+      - error: 94
+        when: "*cost*, *salvage*, *life* or *period* is **Null**"
+        cases:
+          - SYD(Null, 100, 5, 1)
+          - SYD(1000, Null, 5, 1)
+          - SYD(1000, 100, Null, 1)
+          - SYD(1000, 100, 5, Null)
+    quiet:
+      - SYD(1000, 100, 5, 1)
+      - SYD(1000, 100, 5, 5)
+      - SYD(1000, 100, 5, 0.5)
+      - SYD(1000, 100, 0.5, 0.5)
+      - SYD(1000, 100, 2.5, 1)
+      - SYD(-1000, 100, 5, 1)
+      - SYD(100, 1000, 5, 1)
+      - SYD(0, 0, 5, 1)

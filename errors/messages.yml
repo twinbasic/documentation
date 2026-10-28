@@ -101,6 +101,9 @@
 -2147467262:
   raised: No such interface supported
   error: Application-defined or object-defined error
+-2147418113:
+  raised: Catastrophic failure
+  error: Application-defined or object-defined error
 -2147352567:
   raised: Exception occurred.
   error: Application-defined or object-defined error

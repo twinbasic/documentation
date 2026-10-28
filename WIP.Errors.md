@@ -84,7 +84,13 @@ assignment failing twinBASIC's build; the indexes document nothing). The owner's
 applied (two extensions, one bug); three entries queued (*Batch 8 findings*). No row is `bug:
 pending`, and no question is open.
 
-**Next: batch 9**, VBA `Financial`.
+**Batch 9 is done but for the owner's rulings** (2026-10-28), VBA `Financial`: 349 cases in
+`errors/VBA.Financial.yml`, all agreeing in all four runtimes; sections on all 13 member pages
+(the index documents nothing); `-2147418113` (`E_UNEXPECTED`) added to `messages.yml` and
+measured. Every new difference is `bug: pending`, and the questions are under *Batch 9
+findings*.
+
+**Next**: the owner's rulings on batch 9, then batch 10.
 
 ## Owner's decisions
 
@@ -965,6 +971,63 @@ twinBASIC 64-bit agrees with 32-bit on every case, and 64-bit VBA with VB6.
 - **Page edits**: the error sentences of Add, Item, Remove and KeyCompareMode went into the
   tables; the central page has a NOTE on `Err.Raise` of an HRESULT.
 
+## Batch 9 findings (VBA `Financial`, BETA 1010, 2026-10-28)
+
+twinBASIC 64-bit agrees with 32-bit on every case. Unlike the earlier batches, **VB6 and 64-bit
+VBA differ** where a result is infinite: VB6 returns infinity from SLN and PV, 64-bit VBA raises
+6 or 11 (the rows carry `vba64:`). The values behind the defects below were read with a value
+probe (twinBASIC through `tbrun`, VB6 through `vb6run`), not only the error numbers.
+
+- **Every parameter is a Double** in twinBASIC's declarations and in VBA's; FV, PV, Pmt and
+  PPmt said **Integer** for *nper* (and PPmt for *per*), from VBA-Docs. Fixed on the pages.
+- **The -2147467259 family** (`argument-errors-unspecified-error`): every argument check where
+  VB raises 5 (and Rate's 6), in DDB, SLN, SYD, IPmt, PPmt, Pmt, NPer, Rate and IRR.
+- **Rate fails for almost every annuity**: -2147467259 for every case tried with *pmt* other
+  than 0, and for `Rate(10, 0, 1000, -2000)`; it answers `Rate(1, 0, 100, -110)` and
+  `Rate(2, 0, 100, -121)`. It also raises 5 for an *nper* below 1 with *pmt* 0 (VB answers), and
+  never checks *guess*: **Null**, `"abc"` and an error value pass (VB 94, 13, 13).
+- **NPer raises 6 when *rate* and *pmt* have opposite signs**, which is every loan and savings
+  plan at a positive rate (`NPer(0.01, -100, 1000)` is 10.59 in VB6); where it answers, the value
+  is right. Where no number of periods exists it raises 6 or 11, VB 5.
+- **Null in an optional Variant argument raises 13**, VB 94: *pv*/*fv* and *type* of FV, PV, Pmt,
+  NPer, IPmt, PPmt and Rate, and DDB's *factor*.
+- **Arrays**: IRR, MIRR and NPV of an array never sized **crash** (access violation, 32-bit and
+  64-bit, IDE and exe; VB 5), a hand WARNING on each page and no case; a 2-D array raises
+  -2147418113, *Catastrophic failure* (VB 5).
+- **Missing checks that return a value** (hand WARNINGs beside the generated NOTEs): IPmt and
+  PPmt take any *per* (VB 5 when *per* is 0 or less, or *nper* + 1 or more); MIRR returns -1 for
+  one element, a rate for a *finance_rate* or *reinvest_rate* of -1 (VB 5), and infinity or NaN
+  for *values* with no negative element (VB 11); NPV returns NaN for a *rate* of -1 (VB 5).
+- **Other differences**: DDB refuses a *life* between 0 and 1 (VB answers); Pmt and PPmt raise 11
+  for an *nper* of 0 (VB 5); FV raises 5 for *rate* -1 and a negative *nper* (VB6 11, 64-bit VBA
+  6); PV raises -2147467259 for a *rate* of -1 (VB6 returns infinity or 0; 64-bit VBA 11, 6, or 0
+  for *nper* 0).
+- **Infinite results**: PV raises 11 (as 64-bit VBA does; VB6 returns infinity), SLN returns
+  infinity (as VB6 does; 64-bit VBA raises 6). FV raises 6 in all four.
+- **Agree in all four**: **Null** in a required argument 94; a string that is not a number in an
+  optional argument 13; Pmt's 6 and 11 for a *rate* of -1 or -2; IRR's guess 94 and 13; FV's 6;
+  any *type* is taken (only 0 means the end of the period).
+- **Page edits**: SLN's, SYD's and DDB's "All arguments must be positive numbers" and NPV's (and
+  MIRR's half of) "must contain at least one negative value and one positive value" are
+  `<!-- VBA: -->` comments (all four take what they forbid); IRR's and Rate's "If ... can't find a
+  result after 20 tries, it fails" is reworded, the table carrying the error; the module index no
+  longer says MIRR takes a *guess* or that every array needs both signs.
+
+**Questions for the owner** (the slugs in the pages' `<!-- bug: pending (...) -->` comments are
+the proposal):
+
+1. **Grouping.** Five entries: `rate-fails` (Rate's failures, its *nper* below 1, its unread
+   *guess*), `nper-opposite-signs-overflow` (NPer's 6 and 11), `financial-null-optional-argument`
+   (13 for 94, seven functions), `financial-array-arguments` (the crash and the 2-D
+   `E_UNEXPECTED`), `financial-argument-checks` (the rest: IPmt/PPmt *per*, MIRR, NPV, DDB's
+   *life*, Pmt/PPmt's 11, FV's 5, PV's -2147467259). The family cases cite the existing entry.
+2. **Infinite results, where VB6 and 64-bit VBA disagree.** By the four-runtime rule, SLN's
+   infinity is a bug against 64-bit VBA (6) and PV's 11 a bug against VB6 (infinity); the rows say
+   `bug: pending`. Bugs both ways, or should twinBASIC raise in both (64-bit VBA's behaviour, an
+   extension against VB6), so that only SLN is a bug?
+3. **FV's 5 and PV's -2147467259 for a *rate* of -1**, where VB6 and 64-bit VBA give different
+   numbers (or none): one bug in `financial-argument-checks`, asking for 64-bit VBA's numbers?
+
 ## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
 
 Batches 2 to 5 and `Core.yml` in all four runtimes. Every runtime agreed with the data as it
@@ -1048,7 +1111,7 @@ each can be run when there is budget. Status is kept here.
 | 6b | `Interaction`'s interactive procedures: `AppActivate`, `Beep`, `DoEvents`, `InputBox`, `MsgBox`, `SendKeys`, `Shell`, under the `dialog`, `keys` and `window` harnesses (`Shell` only with programs that do not exist or `cmd.exe /c exit`) | 7 | done: 5 sections, 164 cases; three entries queued 2026-10-27 |
 | 7 | VBA `FileSystem`, under the `files` harness | 23 | done: 21 sections, 448 cases; three entries queued, one extended, 2026-10-27 |
 | 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | done: 10 sections, 259 cases; three entries queued 2026-10-27; owner's rulings 2026-10-28 |
-| 9 | VBA `Financial` | 14 | not started |
+| 9 | VBA `Financial` | 14 | done but for the owner's rulings: 13 sections, 349 cases; 2026-10-28 |
 | 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | not started |
 | 11 | Core file I/O statements (`Open`, `Get`, `Put`, `Input`, ...: errors 52--75) | 15 | not started |
 | 12 | Core arrays and control flow (`ReDim`, `Erase`, `Resume`, `Return`, ...); ReDim has data already, in `errors/Core.yml` | 15 | not started |

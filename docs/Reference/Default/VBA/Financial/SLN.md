@@ -20,7 +20,25 @@ Syntax: **SLN(** *cost*, *salvage*, *life* **)**
 *life*
 : *required* **Double** specifying length of the useful life of the asset.
 
-The depreciation period must be expressed in the same unit as the *life* argument. All arguments must be positive numbers.
+The depreciation period must be expressed in the same unit as the *life* argument.
+
+<!-- VBA: twinBASIC, VB6 and 64-bit VBA take a negative or zero cost or salvage, and a negative life (Common Errors lists what they refuse). All arguments must be positive numbers. -->
+
+<!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *life* is 0 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *cost*, *salvage* or *life* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *life* is 0, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When the result is beyond the range of a **Double** (twinBASIC returns infinity), 64-bit VBA raises error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
+
+<!-- /errors -->
 
 ### Example
 

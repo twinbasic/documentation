@@ -15,7 +15,7 @@ Syntax: **PV(** *rate*, *nper*, *pmt* [ **,** *fv* [ **,** *type* ] ] **)**
 : *required* **Double** specifying interest rate per period. For example, for a car loan at an annual percentage rate (APR) of 10 percent with monthly payments, the rate per period is 0.1/12, or 0.0083.
 
 *nper*
-: *required* **Integer** specifying total number of payment periods in the annuity. For example, monthly payments on a four-year car loan total 4 * 12 (or 48) payment periods.
+: *required* **Double** specifying total number of payment periods in the annuity. For example, monthly payments on a four-year car loan total 4 * 12 (or 48) payment periods.
 
 *pmt*
 : *required* **Double** specifying payment to be made each period. Payments usually contain principal and interest that doesn't change over the life of the annuity.
@@ -31,6 +31,33 @@ An annuity is a series of fixed cash payments made over a period of time. An ann
 The *rate* and *nper* arguments must be calculated using payment periods expressed in the same units. For example, if *rate* is calculated using months, *nper* must also be calculated using months.
 
 For all arguments, cash paid out (such as deposits to savings) is represented by negative numbers; cash received (such as dividend checks) is represented by positive numbers.
+
+<!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *rate* is -1 and *nper* is 0<br>*rate* is -1 and *nper* is greater than 0<br>*rate* is -1 and *nper* is less than 0 |
+| [11 (`&HB`)](tb:Errors#11), *Division by zero* | the result is beyond the range of a **Double** |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *fv* or *type* is a string that is not a number<br>*fv* or *type* is **Null** |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *rate*, *nper* or *pmt* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *rate* is -1 and *nper* is 0, VB6 and 64-bit VBA raise no error.
+
+> [!NOTE] BETA 1010
+> When *rate* is -1 and *nper* is greater than 0, VB6 raises no error; 64-bit VBA raises error [11 (`&HB`)](tb:Errors#11), *Division by zero*, instead.
+
+> [!NOTE] BETA 1010
+> When *rate* is -1 and *nper* is less than 0, VB6 raises no error; 64-bit VBA raises error [6 (`&H6`)](tb:Errors#6), *Overflow*, instead.
+
+> [!NOTE] BETA 1010
+> When the result is beyond the range of a **Double**, VB6 raises no error.
+
+> [!NOTE] BETA 1010
+> When *fv* or *type* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*, instead.
+
+<!-- /errors -->
 
 ### Example
 

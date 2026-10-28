@@ -35,6 +35,30 @@ The *rate* and *nper* arguments must be calculated by using payment periods expr
 
 For all arguments, cash paid out (such as deposits to savings) is represented by negative numbers; cash received (such as dividend checks) is represented by positive numbers.
 
+<!-- bug: pending (financial-argument-checks) -->
+> [!WARNING] BETA 1010
+> Given a *per* of 0 or less, or of *nper* + 1 or more, **IPmt** returns a value computed for that period, outside the annuity, and raises no error. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
+
+<!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *nper* is 0 or less |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *fv* or *type* is a string that is not a number<br>*fv* or *type* is **Null** |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *rate*, *per*, *nper* or *pv* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *per* is 0 or less, or *nper* + 1 or more, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+
+> [!NOTE] BETA 1010
+> When *nper* is 0 or less, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When *fv* or *type* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*, instead.
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **IPmt** function to calculate how much of a payment is interest when all the payments are of equal value. Given are the interest percentage rate per period (`APR / 12`), the payment period for which the interest portion is desired (`Period`), the total number of payments (`TotPmts`), the present value or principal of the loan (`PVal`), the future value of the loan (`FVal`), and a number that indicates whether the payment is due at the beginning or end of the payment period (`PayType`).

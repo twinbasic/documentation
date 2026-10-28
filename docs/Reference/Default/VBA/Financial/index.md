@@ -23,7 +23,7 @@ Monthly = -Pmt(APR / 12, 30 * 12, 200000)   ' fixed monthly payment on a 30-year
 
 ## Variable cash flows
 
-For investments whose cash flows vary period to period, three functions take an array of values rather than a single payment amount. [**NPV**](NPV) returns the net present value of the cash flows discounted at a chosen rate; [**IRR**](IRR) returns the internal rate of return --- the discount rate that would make **NPV** zero; and [**MIRR**](MIRR) returns the modified internal rate of return, where outflows and reinvested inflows are discounted at separate rates. The order of values within the array is significant --- element *i* is the cash flow for period *i* --- and the array must contain at least one negative entry (a payment) and one positive entry (a receipt). Like **Rate**, both **IRR** and **MIRR** are computed iteratively and accept an optional *guess*.
+For investments whose cash flows vary period to period, three functions take an array of values rather than a single payment amount. [**NPV**](NPV) returns the net present value of the cash flows discounted at a chosen rate; [**IRR**](IRR) returns the internal rate of return --- the discount rate that would make **NPV** zero; and [**MIRR**](MIRR) returns the modified internal rate of return, where outflows and reinvested inflows are discounted at separate rates. The order of values within the array is significant --- element *i* is the cash flow for period *i* --- and for **IRR** the array must contain at least one negative entry (a payment) and one positive entry (a receipt). Like **Rate**, **IRR** is computed iteratively and accepts an optional *guess*.
 
 ```tb check_build
 Dim CashFlows(0 To 4) As Double

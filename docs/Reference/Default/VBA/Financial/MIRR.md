@@ -12,7 +12,10 @@ Returns a **Double** specifying the modified internal rate of return for a serie
 Syntax: **MIRR(** *values()*, *finance_rate*, *reinvest_rate* **)**
 
 *values()*
-: *required* Array of **Double** specifying cash flow values. The array must contain at least one negative value (a payment) and one positive value (a receipt).
+: *required* Array of **Double** specifying cash flow values, at least one of them negative (a payment).
+<!-- VBA: twinBASIC, VB6 and 64-bit VBA take values with no positive element (Common Errors lists what they refuse).
+The array must contain at least one negative value (a payment) and one positive value (a receipt).
+-->
 
 *finance_rate*
 : *required* **Double** specifying interest rate paid as the cost of financing.
@@ -25,6 +28,33 @@ The modified internal rate of return is the internal rate of return when payment
 The *finance_rate* and *reinvest_rate* arguments are percentages expressed as decimal values. For example, 12 percent is expressed as 0.12.
 
 The **MIRR** function uses the order of values within the array to interpret the order of payments and receipts. The payment and receipt values must be in the correct sequence.
+
+<!-- bug: pending (financial-array-arguments) -->
+> [!WARNING] BETA 1010
+> Given an array that has never been sized (`Dim A() As Double` with no **ReDim**, or one emptied by **Erase**), **MIRR** ends the program with an access violation, in a 32-bit and a 64-bit build. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
+
+<!-- bug: pending (financial-argument-checks) -->
+> [!WARNING] BETA 1010
+> **MIRR** returns a value and raises no error for arguments VB6 and 64-bit VBA refuse. Given *values* with one element it returns -1, and given a *finance_rate* or *reinvest_rate* of -1 it returns a rate; VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*. Given *values* with no element less than 0 it returns infinity or NaN (not a number); VB6 and 64-bit VBA raise error 11, *Division by zero*.
+
+<!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147418113 (`&H8000FFFF`)](tb:Errors#-2147418113), *Catastrophic failure* | *values* has more than one dimension |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *finance_rate* or *reinvest_rate* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *values* has one element, or *finance_rate* or *reinvest_rate* is -1, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
+
+> [!NOTE] BETA 1010
+> When *values* has no element less than 0, VB6 and 64-bit VBA raise error [11 (`&HB`)](tb:Errors#11), *Division by zero*; twinBASIC raises none.
+
+> [!NOTE] BETA 1010
+> When *values* has more than one dimension, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+<!-- /errors -->
 
 ### Example
 

@@ -23,7 +23,22 @@ Syntax: **SYD(** *cost*, *salvage*, *life*, *period* **)**
 *period*
 : *required* **Double** specifying period for which asset depreciation is calculated.
 
-The *life* and *period* arguments must be expressed in the same units. For example, if *life* is given in months, *period* must also be given in months. All arguments must be positive numbers.
+The *life* and *period* arguments must be expressed in the same units. For example, if *life* is given in months, *period* must also be given in months.
+
+<!-- VBA: twinBASIC, VB6 and 64-bit VBA take a negative or zero cost and a zero salvage (Common Errors lists what they refuse). All arguments must be positive numbers. -->
+
+<!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *life* is 0 or less, *period* is 0 or less or greater than *life*, or *salvage* is less than 0 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *cost*, *salvage*, *life* or *period* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *life* is 0 or less, *period* is 0 or less or greater than *life*, or *salvage* is less than 0, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+<!-- /errors -->
 
 ### Example
 
