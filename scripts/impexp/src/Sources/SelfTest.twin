@@ -57,15 +57,16 @@ Module SelfTest
         RunOne "Import converts LF to CRLF in code files only", 15
         RunOne "The printing commands read the documents at the root", 16
         RunOne "A command line in the wrong shape is refused before anything is read", 17
-        RunOne "The exit code says why a command failed, and that it warned", 18
+        RunOne "A double quote in an argument is answered with the command it meant", 18
+        RunOne "The exit code says why a command failed, and that it warned", 19
 
         ' The documentation repository's own sample, when run from a checkout.
         mSample = FindSample()
         If Len(mSample) = 0 Then
             MainModule.WriteOut "  [SKIP] sample.twinpack -- only in a checkout of the documentation repository"
         Else
-            RunOne "Parse sample.twinpack", 19
-            RunOne "sample.twinpack survives export, import and export again", 20
+            RunOne "Parse sample.twinpack", 20
+            RunOne "sample.twinpack survives export, import and export again", 21
         End If
     End Sub
 
@@ -90,9 +91,10 @@ Module SelfTest
             Case 15: ImportConvertsLineEndings
             Case 16: PrintingCommandsReadDocuments
             Case 17: CommandLineWrongShape
-            Case 18: ExitCodes
-            Case 19: ParseSample
-            Case 20: SampleSurvivesRoundTrip
+            Case 18: QuoteMistakeAnswers
+            Case 19: ExitCodes
+            Case 20: ParseSample
+            Case 21: SampleSurvivesRoundTrip
         End Select
         MainModule.WriteOut "  [PASS] " & name
         mPassed = mPassed + 1
@@ -405,6 +407,31 @@ Module SelfTest
         EqS MainModule.CommandLineError(WordsOf(Array("export", "P.TWINPACK", "tree/"))), "", "export P.TWINPACK tree/"
         EqS MainModule.CommandLineError(WordsOf(Array("readme", "P.twinproj"))), "", "readme P.twinproj"
     End Sub
+
+    Private Sub QuoteMistakeAnswers()
+        Dim why As String, meant As String
+        why = Join(Array( _
+            "ERROR: an argument holds a double quote, which no Windows file name can hold:", _
+            "         C:\my out"" --overwrite", _
+            "       A backslash just before a closing quote, as in ""C:\out\"", makes Windows keep", _
+            "       the quote in the argument, and the rest of the command line runs into it."), vbLf)
+        meant = "       Leave the backslash off the end of a name in quotes. The command meant is:"
+        EqS MainModule.QuoteMistake(WordsOf(Array("export", "P.twinproj", "tree", "--overwrite")), "impexp"), "", "no quote"
+        EqS MainModule.QuoteMistake(WordsOf(Array("export", "P.twinproj", "C:\my out"" --overwrite")), "impexp"), _
+            why & vbLf & meant & vbLf & "         impexp export P.twinproj ""C:\my out"" --overwrite", "a folder in quotes"
+        EqS LastLine(Array("export", "P.twinproj", "out\"" --overwrite")), "         impexp export P.twinproj out --overwrite", "two backslashes"
+        EqS LastLine(Array("export", "P.twinproj", "C:"" --overwrite")), "         impexp export P.twinproj C:\ --overwrite", "a drive"
+        EqS LastLine(Array("import", "C:\a b\P.twinproj"" tree")), "         impexp import ""C:\a b\P.twinproj"" tree", "the project"
+        EqS LastLine(Array("export""")), "       Leave the backslash off the end of a name in quotes.", "nothing to suggest"
+        EqN UBound(Split(MainModule.QuoteMistake(WordsOf(Array("export""")), "impexp"), vbLf)) + 1, 5, "no command when it would be refused"
+    End Sub
+
+    ' The last line of what QuoteMistake says about a command line.
+    Private Function LastLine(ByVal line As Variant) As String
+        Dim lines() As String
+        lines = Split(MainModule.QuoteMistake(WordsOf(line), "impexp"), vbLf)
+        LastLine = lines(UBound(lines))
+    End Function
 
     Private Sub ExitCodes()
         Dim number As Long, description As String, r As Outcome

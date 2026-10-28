@@ -980,6 +980,40 @@ function selfTest() {
       eq(commandLineError("readme", ["P.twinproj"]), null, "readme P.twinproj");
     });
 
+    test("A double quote in an argument is answered with the command it meant", () => {
+      const why = [
+        "ERROR: an argument holds a double quote, which no Windows file name can hold:",
+        '         C:\\my out" --overwrite',
+        '       A backslash just before a closing quote, as in "C:\\out\\", makes Windows keep',
+        "       the quote in the argument, and the rest of the command line runs into it.",
+      ];
+      const meant = "       Leave the backslash off the end of a name in quotes. The command meant is:";
+      eq(quoteMistake(["export", "P.twinproj", "tree", "--overwrite"], "impexp"), null, "no quote");
+      eq(
+        quoteMistake(["export", "P.twinproj", 'C:\\my out" --overwrite'], "impexp"),
+        [...why, meant, '         impexp export P.twinproj "C:\\my out" --overwrite'].join("\n"),
+        "a folder in quotes",
+      );
+      const last = (argv) => quoteMistake(argv, "impexp").split("\n").at(-1);
+      eq(
+        last(["export", "P.twinproj", 'out\\" --overwrite']),
+        "         impexp export P.twinproj out --overwrite",
+        "two backslashes",
+      );
+      eq(
+        last(["export", "P.twinproj", 'C:" --overwrite']),
+        "         impexp export P.twinproj C:\\ --overwrite",
+        "a drive",
+      );
+      eq(
+        last(["import", 'C:\\a b\\P.twinproj" tree']),
+        '         impexp import "C:\\a b\\P.twinproj" tree',
+        "the project",
+      );
+      eq(last(['export"']), "       Leave the backslash off the end of a name in quotes.", "nothing to suggest");
+      eq(quoteMistake(['export"'], "impexp").split("\n").length, 5, "no command when it would be refused");
+    });
+
     test("The exit code says why a command failed, and that it warned", () => {
       eq(Object.values(EXIT).join(), "0,1,2,3,4,5,6", "the documented codes");
       refused(() => readProject(at("nowhere.twinproj")), /does not exist/, "missing");
@@ -1097,27 +1131,99 @@ function usageError(message) {
   return EXIT.usage;
 }
 
-function main(argv) {
-  const opts = { overwrite: false };
-  const words = [];
-  let help = false,
-    runSelfTest = false;
+// The options and the words of a command line, and what is wrong with it, or
+// null. An unknown option is wrong even after --help.
+function parseCommandLine(argv) {
+  const c = { overwrite: false, help: false, selfTest: false, words: [], problem: null };
   for (const a of argv) {
-    if (a === "--overwrite") opts.overwrite = true;
-    else if (a === "--self-test") runSelfTest = true;
-    else if (a === "--help" || a === "-h") help = true;
-    else if (/^-./.test(a)) return usageError(`unknown option: ${a}`);
-    else words.push(a);
+    if (a === "--overwrite") c.overwrite = true;
+    else if (a === "--self-test") c.selfTest = true;
+    else if (a === "--help" || a === "-h") c.help = true;
+    else if (/^-./.test(a)) return { ...c, problem: `unknown option: ${a}` };
+    else c.words.push(a);
   }
-  if (help) {
+  if (c.help) return c;
+  if (c.selfTest) return c.words.length ? { ...c, problem: "--self-test takes no other arguments" } : c;
+  const [verb, ...args] = c.words;
+  c.problem = commandLineError(verb, args);
+  return c;
+}
+
+// An argument as it is typed at a command prompt: in quotes when it holds a
+// space or a character cmd.exe reads.
+function shellWord(a) {
+  return a === "" || /[ \t&|<>^()%!,;=]/.test(a) ? `"${a}"` : a;
+}
+
+// The error for a command line that holds a double quote, or null. Windows
+// splits a command line so that a backslash just before a quote keeps the quote
+// in the argument: `"C:\out\" --overwrite` arrives as one argument,
+// `C:\out" --overwrite`. No Windows file name holds a double quote, so an
+// argument that does is this mistake. The command it meant is each such
+// argument's text before the quote, less the backslashes at its end, followed by
+// the words the quote swallowed; it is shown, after `program`, only when it
+// passes the checks a command line must pass. The arguments are not repaired
+// here: the tB executable reads `"C:\out\"` as the folder, and a reader who
+// learnt that the script repairs it would expect the same of every program.
+function quoteMistake(argv, program) {
+  const bad = argv.find((a) => a.includes('"'));
+  if (bad === undefined) return null;
+  const meant = [];
+  for (const a of argv) {
+    const q = a.indexOf('"');
+    if (q < 0) {
+      meant.push(a);
+      continue;
+    }
+    let head = a.slice(0, q).replace(/\\+$/, "");
+    if (/^[A-Za-z]:$/.test(head)) head += "\\";
+    if (head !== "") meant.push(head);
+    for (const w of a
+      .slice(q + 1)
+      .replaceAll('"', " ")
+      .split(/[ \t]+/))
+      if (w !== "") meant.push(w);
+  }
+  const lines = [
+    "ERROR: an argument holds a double quote, which no Windows file name can hold:",
+    `         ${bad}`,
+    '       A backslash just before a closing quote, as in "C:\\out\\", makes Windows keep',
+    "       the quote in the argument, and the rest of the command line runs into it.",
+  ];
+  if (parseCommandLine(meant).problem === null) {
+    lines.push("       Leave the backslash off the end of a name in quotes. The command meant is:");
+    lines.push(`         ${program} ${meant.map(shellWord).join(" ")}`);
+  } else {
+    lines.push("       Leave the backslash off the end of a name in quotes.");
+  }
+  return lines.join("\n");
+}
+
+// How this script was run, for a command to copy: node and the script, by its
+// path from the current folder when it is under it.
+function programText() {
+  const script = process.argv[1];
+  const rel = path.relative(process.cwd(), script);
+  const shown = rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel) ? rel : script;
+  return `${path.parse(process.execPath).name} ${shellWord(shown)}`;
+}
+
+function main(argv) {
+  const mistake = quoteMistake(argv, programText());
+  if (mistake !== null) {
+    console.error(mistake);
+    return EXIT.usage;
+  }
+  const c = parseCommandLine(argv);
+  if (c.problem) return usageError(c.problem);
+  if (c.help) {
     console.log(USAGE);
     return 0;
   }
-  if (runSelfTest) return words.length ? usageError("--self-test takes no other arguments") : selfTest();
+  if (c.selfTest) return selfTest();
+  const opts = { overwrite: c.overwrite };
 
-  const [verb, ...args] = words;
-  const problem = commandLineError(verb, args);
-  if (problem) return usageError(problem);
+  const [verb, ...args] = c.words;
   const [project, folder] = args;
 
   if (verb === "export" || verb === "import") {

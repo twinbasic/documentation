@@ -157,7 +157,23 @@ const COMMANDS = [
   { args: ["export", "sample", "sample.twinpack"], exit: 2, why: "the arguments in the wrong order" },
   { args: ["bogus", "sample.twinpack"], exit: 2, why: "an unknown command" },
   { args: ["export", "sample.twinpack", "sample", "--bogus"], exit: 2, why: "an unknown option" },
+  {
+    args: ["export", "sample.twinpack", 'out x" --overwrite'],
+    exit: 2,
+    program: true,
+    why: 'what Windows makes of "out x\\" --overwrite',
+  },
+  { args: ['export"'], exit: 2, why: "a double quote, and no command to suggest" },
 ];
+
+// The line after "The command meant is:" starts with the program, which each
+// edition names as it was run; `program` compares the rest of the line.
+function withoutProgram(stderr) {
+  return stderr.replace(
+    /(The command meant is:\n {9}).*? (export|import|settings|licence|changelog|readme)(?= |$)/m,
+    "$1<program> $2",
+  );
+}
 
 // The first Python 3.6+ on PATH, as [command, ...args, version], or null.
 function findPython() {
@@ -349,6 +365,13 @@ try {
     const label = `impexp ${c.args.join(" ")}${c.why ? ` (${c.why})` : ""}`;
     for (const dir of dirs) c.setup?.(dir);
     const results = await Promise.all(editions.map((e, i) => run(e, c.args, dirs[i])));
+    if (c.program) {
+      for (const r of results) {
+        const normal = withoutProgram(r.stderr);
+        if (normal === r.stderr) problems.push(`${label}: no command to copy in ${JSON.stringify(r.stderr)}`);
+        r.stderr = normal;
+      }
+    }
     if (results.some((r) => r.status !== c.exit)) {
       const codes = editions.map((e, i) => `${results[i].status} from ${e.name}`);
       problems.push(`${label}: exit ${codes.join(", ")}, not ${c.exit}`);

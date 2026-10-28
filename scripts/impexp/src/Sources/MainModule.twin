@@ -7,6 +7,11 @@ Module MainModule
     Private Declare PtrSafe Function GetConsoleMode Lib "kernel32" (ByVal hConsoleHandle As LongPtr, ByRef lpMode As Long) As Long
     Private Declare PtrSafe Function WriteConsoleW Lib "kernel32" (ByVal hConsoleOutput As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfCharsToWrite As Long, ByRef lpNumberOfCharsWritten As Long, ByVal lpReserved As LongPtr) As Long
     Private Declare PtrSafe Function WriteFile Lib "kernel32" (ByVal hFile As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfBytesToWrite As Long, ByRef lpNumberOfBytesWritten As Long, ByVal lpOverlapped As LongPtr) As Long
+    Private Declare PtrSafe Function GetCommandLineW Lib "kernel32" () As LongPtr
+    Private Declare PtrSafe Function CommandLineToArgvW Lib "shell32" (ByVal lpCmdLine As LongPtr, ByRef pNumArgs As Long) As LongPtr
+    Private Declare PtrSafe Function LocalFree Lib "kernel32" (ByVal hMem As LongPtr) As LongPtr
+    Private Declare PtrSafe Function lstrlenW Lib "kernel32" (ByVal lpString As LongPtr) As Long
+    Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
 
     Private Const STD_OUTPUT_HANDLE As Long = -11
     Private Const STD_ERROR_HANDLE As Long = -12
@@ -103,8 +108,11 @@ Module MainModule
         End If
     End Sub
 
-    Public Function Run(ByVal argv As Collection) As Long
-        Dim overwrite As Boolean, help As Boolean, selfTesting As Boolean, words As New Collection, a As Variant
+    ' Reads the options of a command line into the flags and its other words into words, and
+    ' returns what is wrong with it, or "". An unknown option is wrong even after --help.
+    Private Function ParseCommandLine(ByVal argv As Collection, ByRef overwrite As Boolean, ByRef help As Boolean, _
+            ByRef selfTesting As Boolean, ByVal words As Collection) As String
+        Dim a As Variant
         For Each a In argv
             If a = "--overwrite" Then
                 overwrite = True
@@ -113,31 +121,128 @@ Module MainModule
             ElseIf a = "--help" Or a = "-h" Then
                 help = True
             ElseIf Len(a) > 1 And Left$(a, 1) = "-" Then
-                Run = UsageError("unknown option: " & a)
+                ParseCommandLine = "unknown option: " & a
                 Exit Function
             Else
                 words.Add a
             End If
         Next
+        If help Then Exit Function
+        If selfTesting Then
+            If words.Count > 0 Then ParseCommandLine = "--self-test takes no other arguments"
+            Exit Function
+        End If
+        ParseCommandLine = CommandLineError(words)
+    End Function
+
+    ' An argument as it is typed at a command prompt: in quotes when it holds a space or a
+    ' character cmd.exe reads.
+    Private Function ShellWord(ByVal a As String) As String
+        Dim i As Long
+        ShellWord = a
+        If Len(a) = 0 Then
+            ShellWord = """"""
+            Exit Function
+        End If
+        For i = 1 To Len(a)
+            If InStr(" " & vbTab & "&|<>^()%!,;=", Mid$(a, i, 1)) > 0 Then
+                ShellWord = """" & a & """"
+                Exit Function
+            End If
+        Next
+    End Function
+
+    ' The error for a command line that holds a double quote, or "". Windows splits a command
+    ' line so that a backslash just before a quote keeps the quote in the argument:
+    ' "C:\out\" --overwrite arrives as one argument, C:\out" --overwrite. No Windows file name
+    ' holds a double quote, so an argument that does is this mistake. The command it meant is each
+    ' such argument's text before the quote, less the backslashes at its end, followed by the
+    ' words the quote swallowed; it is shown, after program, only when it passes the checks a
+    ' command line must pass. The arguments are not repaired here: the tB executable reads
+    ' "C:\out\" as the folder, and a reader who learnt that the script repairs it would expect
+    ' the same of every program.
+    Public Function QuoteMistake(ByVal argv As Collection, ByVal program As String) As String
+        Dim a As Variant, bad As String, found As Boolean, meant As New Collection, q As Long, head As String
+        Dim w As Variant, text As String
+        For Each a In argv
+            q = InStr(a, """")
+            If q = 0 Then
+                meant.Add a
+            Else
+                If Not found Then
+                    bad = a
+                    found = True
+                End If
+                head = Left$(a, q - 1)
+                Do While Right$(head, 1) = "\"
+                    head = Left$(head, Len(head) - 1)
+                Loop
+                If head Like "[A-Za-z]:" Then head = head & "\"
+                If Len(head) > 0 Then meant.Add head
+                For Each w In Split(Replace(Replace(Mid$(a, q + 1), """", " "), vbTab, " "), " ")
+                    If Len(w) > 0 Then meant.Add w
+                Next
+            End If
+        Next
+        If Not found Then Exit Function
+
+        text = Join(Array( _
+            "ERROR: an argument holds a double quote, which no Windows file name can hold:", _
+            "         " & bad, _
+            "       A backslash just before a closing quote, as in ""C:\out\"", makes Windows keep", _
+            "       the quote in the argument, and the rest of the command line runs into it."), vbLf)
+        Dim overwrite As Boolean, help As Boolean, selfTesting As Boolean, words As New Collection, line As String
+        If Len(ParseCommandLine(meant, overwrite, help, selfTesting, words)) = 0 Then
+            line = "         " & program
+            For Each w In meant
+                line = line & " " & ShellWord(w)
+            Next
+            text = text & vbLf & "       Leave the backslash off the end of a name in quotes. The command meant is:" & vbLf & line
+        Else
+            text = text & vbLf & "       Leave the backslash off the end of a name in quotes."
+        End If
+        QuoteMistake = text
+    End Function
+
+    ' How this program was run, for a command to copy: its name as the command line gives it.
+    Private Function ProgramText() As String
+        Dim argv As LongPtr, argc As Long, p As LongPtr, n As Long, s As String
+        argv = CommandLineToArgvW(GetCommandLineW(), argc)
+        If argv = 0 Then
+            ProgramText = "impexp"
+            Exit Function
+        End If
+        RtlMoveMemory VarPtr(p), argv, LenB(p)
+        n = lstrlenW(p)
+        s = String$(n, vbNullChar)
+        If n > 0 Then RtlMoveMemory StrPtr(s), p, 2 * n
+        LocalFree argv
+        ProgramText = ShellWord(s)
+    End Function
+
+    Public Function Run(ByVal argv As Collection) As Long
+        Dim overwrite As Boolean, help As Boolean, selfTesting As Boolean, words As New Collection
+        Dim problem As String
+        problem = QuoteMistake(argv, ProgramText())
+        If Len(problem) > 0 Then
+            WriteErr problem
+            Run = Impexp.EXIT_USAGE
+            Exit Function
+        End If
+        problem = ParseCommandLine(argv, overwrite, help, selfTesting, words)
+        If Len(problem) > 0 Then
+            Run = UsageError(problem)
+            Exit Function
+        End If
         If help Then
             WriteOut Usage()
             Exit Function
         End If
         If selfTesting Then
-            If words.Count > 0 Then
-                Run = UsageError("--self-test takes no other arguments")
-            Else
-                Run = SelfTest.RunAll()
-            End If
+            Run = SelfTest.RunAll()
             Exit Function
         End If
 
-        Dim problem As String
-        problem = CommandLineError(words)
-        If Len(problem) > 0 Then
-            Run = UsageError(problem)
-            Exit Function
-        End If
         Dim verb As String, project As String, folder As String
         verb = words(1)
         project = words(2)
