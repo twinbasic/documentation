@@ -21,6 +21,15 @@ Syntax: **vbaCopyBytes(** *Length* **,** *Dest* **,** *Src* **)** **As LongPtr**
 
 The behaviour for overlapping ranges is unspecified --- use a temporary buffer if the ranges may overlap. The return value is *Dest* (the same address that was passed in), provided as a convenience for chaining.
 
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | an argument is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 ```tb check_build

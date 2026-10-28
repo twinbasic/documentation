@@ -20,6 +20,15 @@ Syntax: **PutMem8** *Address* **,** *Value*
 
 The address is written directly with no bounds or alignment check.
 
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *Address* or *Value* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example writes an 8-byte value to a buffer and reads it back.

@@ -17,6 +17,15 @@ The trap supplements ordinary `On Error` handling: it sees errors that escape th
 
 Only one trap is active per thread; setting a new one replaces the previous.
 
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *CallbackAddress* is **Null** |
+
+<!-- /errors -->
+
 ### See Also
 
 - [On Error](../../Core/On-Error) statement

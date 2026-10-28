@@ -17,6 +17,15 @@ The reference count of the object is incremented by one. The runtime does not va
 
 This is a low-level primitive. Ordinary code does not need it --- assigning to an **Object** variable already addrefs.
 
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *Address* is **Null** |
+
+<!-- /errors -->
+
 ### See Also
 
 - [vbaObjSet](vbaObjSet) function

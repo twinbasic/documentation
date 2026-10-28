@@ -18,6 +18,15 @@ Syntax: **GetMem1** *Address* **,** *retVal*
 
 The address is read directly with no bounds or alignment check. Reading from an address that does not belong to the process, or from one that has been freed, will crash the host.
 
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *Address* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 ```tb check_build check_run

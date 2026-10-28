@@ -13,7 +13,7 @@ Syntax: **InterlockedDecrement32(** *Target* **)** **As Long**
 *Target*
 : *required* **Long**. The 32-bit variable to decrement, passed by reference.
 
-The read, subtract, and write happen as one atomic operation. The return value is the post-decrement value of *Target* --- testing against zero is the canonical way to spot the last release of a refcounted resource. Wraps the Win32 `InterlockedDecrement` intrinsic.
+The read, subtract, and write happen as one atomic operation. The return value is the post-decrement value of *Target* --- testing against zero is the canonical way to spot the last release of a refcounted resource. Wraps the Win32 `InterlockedDecrement` intrinsic. No overflow error is raised: decrementing -2,147,483,648 gives 2,147,483,647.
 
 ### See Also
 

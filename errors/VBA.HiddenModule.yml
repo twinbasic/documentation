@@ -1,0 +1,544 @@
+# The VBA (Default) module, _HiddenModule. Format: WIP.Errors.md.
+# Every case is `only: tb`: VB6 and VBA have none of these procedures.
+# No case for what crashes (an access violation, 32-bit and 64-bit; the pages' WARNINGs):
+# ConvertIconToBitmap of Nothing, GetInheritedOwner of Nothing or of an object that is not a
+# control, a Let of RuntimeCreateGetMessageHook's result into a Variant, an address of 0 to the
+# GetMem, PutMem and vbaCopyBytes procedures, AddClassInstanceFlag of -1.
+# No case for GetNameFromDispID on an object of a twinBASIC class (5), which the probe module
+# cannot declare: the page states it in its prose. InternalGetReturnAddress fails a 64-bit
+# build, Emit and EmitAny write machine code, ShowPropertyPageEditor given a control shows a
+# box: none has a case.
+beta: 1010
+pages:
+  Reference/Default/VBA/HiddenModule/AddClassInstanceFlag.md:
+    rows:
+      - error: 94
+        when: "*Flag* is **Null**"
+        cases:
+          - { decl: Dim C As New Collection, run: "AddClassInstanceFlag C, Null", only: tb }
+          - { decl: Dim C As New Collection, run: "RemoveClassInstanceFlag C, Null", only: tb }
+      - error: 424
+        when: "*ClassInstance* is **Null**"
+        cases:
+          - { run: "AddClassInstanceFlag Null, 2048", only: tb }
+          - { run: "RemoveClassInstanceFlag Null, 2048", only: tb }
+    quiet:
+      - { run: "AddClassInstanceFlag Nothing, 2048", only: tb }
+      - { run: "RemoveClassInstanceFlag Nothing, 2048", only: tb }
+  Reference/Default/VBA/HiddenModule/AllocMem.md:
+    rows:
+      - error: -2147024882
+        when: "*BytesToAlloc* is 0 or less"
+        cases:
+          - { decl: Dim P As LongPtr, run: "P = AllocMem(0)\nIf P <> 0 Then FreeMem P", only: tb }
+          - { decl: Dim P As LongPtr, run: "P = AllocMem(-1)\nIf P <> 0 Then FreeMem P", only: tb }
+          - { decl: Dim P As LongPtr, run: "P = AllocMem(-2147483648#)\nIf P <> 0 Then FreeMem P", only: tb }
+      - error: -2147024882
+        when: "in a 32-bit build, there is not enough memory for the block (2,000,000,000 bytes, for one)"
+        win64: 0
+        cases:
+          - { decl: Dim P As LongPtr, run: "P = AllocMem(2000000000)\nIf P <> 0 Then FreeMem P", only: tb }
+      - error: 94
+        when: "*BytesToAlloc* is **Null**"
+        cases:
+          - { decl: Dim P As LongPtr, run: "P = AllocMem(Null)\nIf P <> 0 Then FreeMem P", only: tb }
+    quiet:
+      - { decl: Dim P As LongPtr, run: "P = AllocMem(1)\nIf P = 0 Then Err.Raise 1001\nFreeMem P", only: tb }
+      - { decl: Dim P As LongPtr, run: "P = AllocMem(16)\nIf P = 0 Then Err.Raise 1001\nFreeMem P", only: tb }
+  Reference/Default/VBA/HiddenModule/FreeMem.md:
+    rows:
+      - error: 94
+        when: "*MemPointer* is **Null**"
+        cases:
+          - { run: FreeMem Null, only: tb }
+    quiet:
+      - { run: FreeMem 0, only: tb }
+      - { decl: Dim P As LongPtr, setup: P = AllocMem(16), run: FreeMem P, only: tb }
+  Reference/Default/VBA/HiddenModule/ConvertIconToBitmap.md:
+    harness: native
+    rows:
+      - error: -2147467259
+        when: "*IconPicture* is not an icon: a bitmap, a picture with no image, or an object that is not a picture"
+        cases:
+          - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Bitmap(), vbPicTypeBitmap, False))", only: tb }
+          - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(0, vbPicTypeNone, False))", only: tb }
+          - { expr: ConvertIconToBitmap(LoadPicture()), only: tb }
+          - { expr: ConvertIconToBitmap(New Collection), only: tb }
+      - error: 5
+        when: "*BackColor*'s high byte is other than 0, 1, 2 or &H80 (-1, for one), or it is a system colour above &H8000001E"
+        cases:
+          - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), -1)", only: tb }
+          - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), &H3000000)", only: tb }
+          - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), &H8000001F)", only: tb }
+          - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), &H800000FF)", only: tb }
+      - error: 13
+        when: "*BackColor* is a string that does not hold a number"
+        cases:
+          - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), \"abc\")", only: tb }
+      - error: 94
+        when: "*BackColor* is **Null**"
+        cases:
+          - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), Null)", only: tb }
+      - error: 424
+        when: "*IconPicture* is **Null**"
+        cases:
+          - { expr: ConvertIconToBitmap(Null), only: tb }
+    quiet:
+      - { run: "If ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False)).Type <> vbPicTypeBitmap Then Err.Raise 1001", only: tb }
+      - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), &HFFFFFF)", only: tb }
+      - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), &H80000005)", only: tb }
+      - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), &H8000001E)", only: tb }
+      - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), &H1000000)", only: tb }
+      - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), &H2000000)", only: tb }
+      - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), \"255\")", only: tb }
+      - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), Empty)", only: tb }
+      - { expr: "ConvertIconToBitmap(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False), 1.5)", only: tb }
+  Reference/Default/VBA/HiddenModule/CreateStdPictureFromHandle.md:
+    harness: native
+    rows:
+      - error: -2147467259
+        when: "*Handle* is not of the kind *Type* names: 0 for an icon, or a bitmap for an icon, a metafile or an enhanced metafile"
+        cases:
+          - { expr: "CreateStdPictureFromHandle(0, vbPicTypeIcon, False)", only: tb }
+          - { expr: "CreateStdPictureFromHandle(native_Bitmap(), vbPicTypeIcon, False)", only: tb }
+          - { expr: "CreateStdPictureFromHandle(native_Bitmap(), vbPicTypeMetafile, False)", only: tb }
+          - { expr: "CreateStdPictureFromHandle(native_Bitmap(), vbPicTypeEMetafile, False)", only: tb }
+      - error: -2147418113
+        when: "*Type* is less than 0 or greater than 4"
+        cases:
+          - { expr: "CreateStdPictureFromHandle(native_Bitmap(), -1, False)", only: tb }
+          - { expr: "CreateStdPictureFromHandle(native_Bitmap(), 5, False)", only: tb }
+          - { expr: "CreateStdPictureFromHandle(native_Bitmap(), 99, False)", only: tb }
+      - error: 94
+        when: "an argument is **Null**"
+        cases:
+          - { expr: "CreateStdPictureFromHandle(Null, vbPicTypeBitmap, False)", only: tb }
+          - { expr: "CreateStdPictureFromHandle(native_Bitmap(), Null, False)", only: tb }
+          - { expr: "CreateStdPictureFromHandle(native_Bitmap(), vbPicTypeBitmap, Null)", only: tb }
+    quiet:
+      - { expr: "CreateStdPictureFromHandle(native_Bitmap(), vbPicTypeBitmap, False)", only: tb }
+      - { expr: "CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False)", only: tb }
+      - { run: "If CreateStdPictureFromHandle(native_Bitmap(), vbPicTypeBitmap, True).Type <> vbPicTypeBitmap Then Err.Raise 1001\nnative_Keep", only: tb }
+      - { expr: "CreateStdPictureFromHandle(native_Bitmap(), vbPicTypeNone, False)", only: tb }
+      - { expr: "CreateStdPictureFromHandle(0, vbPicTypeNone, False)", only: tb }
+      # a bitmap handle is not checked
+      - { run: "If CreateStdPictureFromHandle(0, vbPicTypeBitmap, False).Handle <> 0 Then Err.Raise 1001", only: tb }
+      - { expr: "CreateStdPictureFromHandle(12345, vbPicTypeBitmap, False)", only: tb }
+      - { expr: "CreateStdPictureFromHandle(native_Icon(), vbPicTypeBitmap, False)", only: tb }
+  Reference/Default/VBA/HiddenModule/PictureToByteArray.md:
+    harness: native
+    rows:
+      - error: -2147467262
+        when: "*Picture* is an object that is not a picture"
+        cases:
+          - { expr: PictureToByteArray(New Collection), only: tb }
+      - error: 424
+        when: "*Picture* is **Null**"
+        cases:
+          - { expr: PictureToByteArray(Null), only: tb }
+    quiet:
+      # Nothing gives a Byte array with no bounds: UBound raises 9 (the page says so)
+      - { run: "Result = PictureToByteArray(Nothing)\nIf VarType(Result) <> vbArray + vbByte Then Err.Raise 1001", only: tb }
+      - { run: "Result = PictureToByteArray(Nothing)\nResult = UBound(Result)\nIf Err.Number = 9 Then Err.Clear", only: tb }
+      - { expr: PictureToByteArray(LoadPicture()), only: tb }
+      - { run: "Result = PictureToByteArray(CreateStdPictureFromHandle(native_Bitmap(), vbPicTypeBitmap, False))\nIf UBound(Result) < 0 Then Err.Raise 1001", only: tb }
+      - { expr: "PictureToByteArray(CreateStdPictureFromHandle(native_Icon(), vbPicTypeIcon, False))", only: tb }
+  Reference/Default/VBA/HiddenModule/CreateGUID.md:
+    quiet:
+      - { run: "Result = CreateGUID()\nIf Len(Result) <> 36 Or Mid$(Result, 9, 1) <> \"-\" Then Err.Raise 1001", only: tb }
+      - { run: "If CreateGUID() = CreateGUID() Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/Eval.md:
+    harness: expression
+    rows:
+      - error: -2147467259
+        when: "*Expression* is a zero-length string or is not an expression, or it names something the standard library does not have"
+        cases:
+          - { expr: 'Eval("")', only: tb }
+          - { expr: 'Eval(" ")', only: tb }
+          - { expr: Eval(Empty), only: tb }
+          - { expr: 'Eval("1 2")', only: tb }
+          - { expr: 'Eval("""abc")', only: tb }
+          - { expr: 'Eval("Dim x")', only: tb }
+          - { expr: 'Eval("Err.Raise 5")', only: tb }
+          - { expr: 'Eval("New Collection")', only: tb }
+          - { expr: 'Eval("Foo")', only: tb }
+          - { expr: 'Eval("Foo(1)")', only: tb }
+          - { expr: 'Eval("x = 1")', only: tb }
+          - { expr: 'Eval("Sqr()")', only: tb }
+          - { expr: 'Eval("Sqr(1, 2)")', only: tb }
+      - error: -2147467259
+        when: "evaluating *Expression* raises an error, whatever its number: division by zero, an overflow, a type mismatch, an argument a function refuses"
+        cases:
+          - { expr: 'Eval("1 / 0")', only: tb }
+          - { expr: 'Eval("1 \ 0")', only: tb }
+          - { expr: 'Eval("1 Mod 0")', only: tb }
+          - { expr: 'Eval("2 ^ 2000")', only: tb }
+          - { expr: 'Eval("CInt(40000)")', only: tb }
+          - { expr: 'Eval("CInt(""abc"")")', only: tb }
+          - { expr: 'Eval("Sqr(-1)")', only: tb }
+          - { expr: 'Eval("Mid(""abc"", 0)")', only: tb }
+          - { expr: 'Eval("Array(1, 2)(5)")', only: tb }
+      - error: -2147467259
+        when: "the value of *Expression* is an **Error** value, or *Expression* calls **Len** with **Null**"
+        cases:
+          - { expr: 'Eval("CVErr(5)")', only: tb }
+          - { expr: 'Eval("Len(Null)")', only: tb }
+      - error: 94
+        when: "*Expression* is **Null**"
+        cases:
+          - { expr: Eval(Null), only: tb }
+    quiet:
+      - { run: "If Eval(\"2 * (Sqr(4) + 1)\") <> 6 Then Err.Raise 1001", only: tb }
+      - { run: "If Eval(\"UCase(\"\"hello\"\")\") <> \"HELLO\" Then Err.Raise 1001", only: tb }
+      - { run: "If Not IsNull(Eval(\"Null + 1\")) Then Err.Raise 1001", only: tb }
+      - { run: "If Not IsNull(Eval(\"Mid(Null, 1)\")) Then Err.Raise 1001", only: tb }
+      - { run: "If Eval(\"IsError(CVErr(5))\") <> True Then Err.Raise 1001", only: tb }
+      - { expr: 'Eval("Nothing")', only: tb }
+      - { run: "If Eval(12) <> 12 Then Err.Raise 1001", only: tb }
+      # a bug: a dangling operator or parenthesis is ignored (bugs/pending; the page's WARNING)
+      - { run: "If Eval(\"2 +\") <> 2 Then Err.Raise 1001", only: tb }
+      - { run: "If Eval(\"2 Mod\") <> 2 Then Err.Raise 1001", only: tb }
+      - { run: "If Eval(\"(2\") <> 2 Then Err.Raise 1001", only: tb }
+      - { run: "If Eval(\"2)\") <> 2 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/GetDeclaredMinEnumValue.md:
+    harness: native
+    quiet:
+      - { run: "If GetDeclaredMinEnumValue(Of native_Kind)() <> -3 Then Err.Raise 1001", only: tb }
+      - { expr: GetDeclaredMinEnumValue(Of VbMsgBoxResult)(), only: tb }
+  Reference/Default/VBA/HiddenModule/GetDeclaredMaxEnumValue.md:
+    harness: native
+    quiet:
+      - { run: "If GetDeclaredMaxEnumValue(Of native_Kind)() <> 7 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/GetDeclaredTypeClsid.md:
+    quiet:
+      - { expr: GetDeclaredTypeClsid(Of stdole.StdPicture)(), only: tb }
+      - { expr: GetDeclaredTypeClsid(Of Collection)(), only: tb }
+  Reference/Default/VBA/HiddenModule/GetDeclaredTypeEventIid.md:
+    quiet:
+      - { expr: GetDeclaredTypeEventIid(Of stdole.StdPicture)(), only: tb }
+      - { expr: GetDeclaredTypeEventIid(Of Collection)(), only: tb }
+  Reference/Default/VBA/HiddenModule/GetDeclaredTypeIid.md:
+    quiet:
+      - { expr: GetDeclaredTypeIid(Of stdole.IPicture)(), only: tb }
+  Reference/Default/VBA/HiddenModule/GetDeclaredTypeProgId.md:
+    quiet:
+      - { expr: GetDeclaredTypeProgId(Of stdole.StdPicture)(), only: tb }
+      - { expr: GetDeclaredTypeProgId(Of Collection)(), only: tb }
+  Reference/Default/VBA/HiddenModule/GetInheritedOwner.md:
+    rows:
+      - error: 424
+        when: "*Value* is **Null**"
+        cases:
+          - { expr: GetInheritedOwner(Null), only: tb }
+  Reference/Default/VBA/HiddenModule/GetMem1.md:
+    rows:
+      - error: 94
+        when: "*Address* is **Null**"
+        cases:
+          - { decl: Dim B As Byte, run: "GetMem1 Null, B", only: tb }
+    quiet:
+      - { decl: "Dim S As String\nDim B As Byte", setup: S = "A", run: "GetMem1 StrPtr(S), B\nIf B <> 65 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/GetMem2.md:
+    rows:
+      - error: 94
+        when: "*Address* is **Null**"
+        cases:
+          - { decl: Dim I As Integer, run: "GetMem2 Null, I", only: tb }
+    quiet:
+      - { decl: "Dim S As String\nDim I As Integer", setup: S = "A", run: "GetMem2 StrPtr(S), I\nIf I <> 65 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/GetMem4.md:
+    rows:
+      - error: 94
+        when: "*Address* is **Null**"
+        cases:
+          - { decl: Dim L As Long, run: "GetMem4 Null, L", only: tb }
+    quiet:
+      - { decl: "Dim S As String\nDim L As Long", setup: S = "AB", run: "GetMem4 StrPtr(S), L\nIf L <> &H420041 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/GetMem8.md:
+    rows:
+      - error: 94
+        when: "*Address* is **Null**"
+        cases:
+          - { decl: Dim C As Currency, run: "GetMem8 Null, C", only: tb }
+    quiet:
+      - { decl: "Dim A As Currency\nDim C As Currency", setup: A = 1000000@, run: "GetMem8 VarPtr(A), C\nIf C <> A Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/GetMemPtr.md:
+    rows:
+      - error: 94
+        when: "*Address* is **Null**"
+        cases:
+          - { decl: Dim P As LongPtr, run: "GetMemPtr Null, P", only: tb }
+    quiet:
+      - { decl: "Dim A As LongPtr\nDim P As LongPtr", setup: A = 12345, run: "GetMemPtr VarPtr(A), P\nIf P <> 12345 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/PutMem1.md:
+    rows:
+      - error: 94
+        when: "*Address* or *Value* is **Null**"
+        cases:
+          - { run: "PutMem1 Null, 1", only: tb }
+          - { decl: Dim P As LongPtr, setup: P = AllocMem(8), run: "PutMem1 P, Null\nFreeMem P", only: tb }
+    quiet:
+      - { decl: "Dim P As LongPtr\nDim B As Byte", setup: P = AllocMem(8), run: "PutMem1 P, 255\nGetMem1 P, B\nFreeMem P\nIf B <> 255 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/PutMem2.md:
+    rows:
+      - error: 94
+        when: "*Address* or *Value* is **Null**"
+        cases:
+          - { run: "PutMem2 Null, 1", only: tb }
+          - { decl: Dim P As LongPtr, setup: P = AllocMem(8), run: "PutMem2 P, Null\nFreeMem P", only: tb }
+    quiet:
+      - { decl: "Dim P As LongPtr\nDim I As Integer", setup: P = AllocMem(8), run: "PutMem2 P, -2\nGetMem2 P, I\nFreeMem P\nIf I <> -2 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/PutMem4.md:
+    rows:
+      - error: 94
+        when: "*Address* or *Value* is **Null**"
+        cases:
+          - { run: "PutMem4 Null, 1", only: tb }
+          - { decl: Dim P As LongPtr, setup: P = AllocMem(8), run: "PutMem4 P, Null\nFreeMem P", only: tb }
+    quiet:
+      - { decl: "Dim P As LongPtr\nDim L As Long", setup: P = AllocMem(8), run: "PutMem4 P, &HDEADBEEF\nGetMem4 P, L\nFreeMem P\nIf L <> &HDEADBEEF Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/PutMem8.md:
+    rows:
+      - error: 94
+        when: "*Address* or *Value* is **Null**"
+        cases:
+          - { run: "PutMem8 Null, 1", only: tb }
+          - { decl: Dim P As LongPtr, setup: P = AllocMem(8), run: "PutMem8 P, Null\nFreeMem P", only: tb }
+    quiet:
+      - { decl: "Dim P As LongPtr\nDim C As Currency", setup: P = AllocMem(8), run: "PutMem8 P, 1000000@\nGetMem8 P, C\nFreeMem P\nIf C <> 1000000@ Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/PutMemPtr.md:
+    rows:
+      - error: 94
+        when: "*Address* or *Value* is **Null**"
+        cases:
+          - { run: "PutMemPtr Null, 1", only: tb }
+          - { decl: Dim P As LongPtr, setup: P = AllocMem(8), run: "PutMemPtr P, Null\nFreeMem P", only: tb }
+    quiet:
+      - { decl: "Dim P As LongPtr\nDim Q As LongPtr", setup: P = AllocMem(8), run: "PutMemPtr P, 12345\nGetMemPtr P, Q\nFreeMem P\nIf Q <> 12345 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/GetNameFromDispID.md:
+    rows:
+      - error: -2147467261
+        when: "*Object* is **Nothing**"
+        cases:
+          - { expr: "GetNameFromDispID(Nothing, 0)", only: tb }
+          - { run: "ShowPropertyPageEditor \"x\", Nothing, 0", harness: dialog, only: tb }
+      - error: -2147467263
+        when: "**GetNameFromDispID** is given an object that has no type information, such as a **Collection**"
+        cases:
+          - { expr: "GetNameFromDispID(New Collection, 0)", only: tb }
+          - { expr: "GetNameFromDispID(Err, 0)", only: tb }
+          - { expr: "GetNameFromDispID(New PropertyBag, 0)", only: tb }
+      - error: -2147467262
+        when: "**GetNameFromDispID** is given an object that does not support **IDispatch**, such as a **TbExpressionService**"
+        cases:
+          - { expr: "GetNameFromDispID(New TbExpressionService, 0)", only: tb }
+          - { expr: "GetNameFromDispID(App, 0)", only: tb }
+          - { expr: "GetNameFromDispID(Screen, 0)", only: tb }
+      - error: -2147467262
+        when: "**ShowPropertyPageEditor** is given an object that has no property pages"
+        cases:
+          - { run: "ShowPropertyPageEditor \"x\", New Collection, 0", harness: dialog, only: tb }
+          - { run: "ShowPropertyPageEditor \"x\", CreateObject(\"Scripting.Dictionary\"), 0", harness: dialog, only: tb }
+      - error: -2147319765
+        when: "**GetNameFromDispID** is given an object described by a type library, such as a **Scripting.Dictionary**, and a *DispID* that is no member's"
+        cases:
+          - { expr: "GetNameFromDispID(CreateObject(\"Scripting.Dictionary\"), 999)", only: tb }
+          - { expr: "GetNameFromDispID(New StdFont, 99999)", only: tb }
+      - error: 94
+        when: "*Caption* or *DispID* is **Null**"
+        cases:
+          - { expr: "GetNameFromDispID(CreateObject(\"Scripting.Dictionary\"), Null)", only: tb }
+          - { run: "ShowPropertyPageEditor Null, CreateObject(\"Scripting.Dictionary\"), 0", harness: dialog, only: tb }
+          - { run: "ShowPropertyPageEditor \"x\", CreateObject(\"Scripting.Dictionary\"), Null", harness: dialog, only: tb }
+      - error: 424
+        when: "*Object* is **Null**"
+        cases:
+          - { expr: "GetNameFromDispID(Null, 0)", only: tb }
+          - { run: "ShowPropertyPageEditor \"x\", Null, 0", harness: dialog, only: tb }
+    quiet:
+      - { run: "If GetNameFromDispID(CreateObject(\"Scripting.Dictionary\"), 0) <> \"Item\" Then Err.Raise 1001", only: tb }
+      - { run: "If GetNameFromDispID(CreateObject(\"Scripting.Dictionary\"), 2) <> \"Count\" Then Err.Raise 1001", only: tb }
+      - { run: "If GetNameFromDispID(CreateObject(\"Scripting.Dictionary\"), -4) <> \"_NewEnum\" Then Err.Raise 1001", only: tb }
+      - { expr: "GetNameFromDispID(New StdFont, 0)", only: tb }
+  Reference/Default/VBA/HiddenModule/GetShortcutTextByEnum.md:
+    rows:
+      - error: 94
+        when: "*ShortcutEnumId* is **Null**"
+        cases:
+          - { expr: GetShortcutTextByEnum(Null), only: tb }
+    quiet:
+      - { run: "If GetShortcutTextByEnum(-1) <> \"\" Then Err.Raise 1001", only: tb }
+      - { expr: GetShortcutTextByEnum(0), only: tb }
+      - { expr: GetShortcutTextByEnum(2147483647), only: tb }
+  Reference/Default/VBA/HiddenModule/InterlockedCompareExchange32.md:
+    rows:
+      - error: 94
+        when: "*NewValue* or *OldValueCompare* is **Null**"
+        cases:
+          - { decl: Dim T As Long, expr: "InterlockedCompareExchange32(T, Null, 0)", only: tb }
+          - { decl: Dim T As Long, expr: "InterlockedCompareExchange32(T, 5, Null)", only: tb }
+    quiet:
+      - { decl: Dim T As Long, run: "Result = InterlockedCompareExchange32(T, 5, 0)\nIf T <> 5 Or Result <> 0 Then Err.Raise 1001", only: tb }
+      - { decl: Dim T As Long, setup: T = 1, run: "Result = InterlockedCompareExchange32(T, 5, 0)\nIf T <> 1 Or Result <> 1 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/InterlockedCompareExchange64.md:
+    rows:
+      - error: 94
+        when: "*NewValue* or *OldValueCompare* is **Null**"
+        cases:
+          - { decl: Dim T As LongLong, expr: "InterlockedCompareExchange64(T, Null, 0)", only: tb }
+          - { decl: Dim T As LongLong, expr: "InterlockedCompareExchange64(T, 5, Null)", only: tb }
+    quiet:
+      - { decl: Dim T As LongLong, run: "Result = InterlockedCompareExchange64(T, 5, 0)\nIf T <> 5 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/InterlockedCompareExchangePointer.md:
+    rows:
+      - error: 94
+        when: "*NewValue* or *OldValueCompare* is **Null**"
+        cases:
+          - { decl: Dim T As LongPtr, expr: "InterlockedCompareExchangePointer(T, Null, 0)", only: tb }
+          - { decl: Dim T As LongPtr, expr: "InterlockedCompareExchangePointer(T, 5, Null)", only: tb }
+    quiet:
+      - { decl: Dim T As LongPtr, run: "Result = InterlockedCompareExchangePointer(T, 5, 0)\nIf T <> 5 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/InterlockedExchangePointer.md:
+    rows:
+      - error: 94
+        when: "*NewValue* is **Null**"
+        cases:
+          - { decl: Dim T As LongPtr, expr: "InterlockedExchangePointer(T, Null)", only: tb }
+    quiet:
+      - { decl: Dim T As LongPtr, run: "Result = InterlockedExchangePointer(T, 7)\nIf T <> 7 Or Result <> 0 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/InterlockedIncrement32.md:
+    quiet:
+      - { decl: Dim T As Long, run: "Result = InterlockedIncrement32(T)\nIf T <> 1 Or Result <> 1 Then Err.Raise 1001", only: tb }
+      # no overflow: the largest Long wraps to the smallest
+      - { decl: Dim T As Long, setup: T = 2147483647, run: "Result = InterlockedIncrement32(T)\nIf T <> -2147483648# Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/InterlockedDecrement32.md:
+    quiet:
+      - { decl: Dim T As Long, run: "Result = InterlockedDecrement32(T)\nIf T <> -1 Or Result <> -1 Then Err.Raise 1001", only: tb }
+      # no overflow: the smallest Long wraps to the largest
+      - { decl: Dim T As Long, setup: T = -2147483648#, run: "Result = InterlockedDecrement32(T)\nIf T <> 2147483647 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/RegisterMessage.md:
+    harness: native
+    rows:
+      - error: 94
+        when: "*ParentHWND*, *Mode* or *MessageType* is **Null**"
+        cases:
+          - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.RegisterMessage Null, AllDescendants, &H100, AddressOf native_Handler", only: tb }
+          - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.RegisterMessage native_Window(), Null, &H100, AddressOf native_Handler", only: tb }
+          - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.RegisterMessage native_Window(), AllDescendants, Null, AddressOf native_Handler", only: tb }
+    quiet:
+      - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.RegisterMessage native_Window(), AllDescendants, &H100, AddressOf native_Handler\nH.Start\nH.Stop", only: tb }
+      - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.RegisterMessage native_Window(), ExactWindow, &H100, AddressOf native_Handler\nH.RegisterMessage native_Window(), ExactWindow, &H100, AddressOf native_Handler\nH.Start\nH.Stop", only: tb }
+      - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.Start\nH.RegisterMessage native_Window(), DirectChildren, &H100, AddressOf native_Handler\nH.Stop", only: tb }
+      # nothing is checked when a subscription is registered
+      - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.RegisterMessage 0, AllDescendants, &H100, AddressOf native_Handler", only: tb }
+      - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.RegisterMessage 12345, AllDescendants, &H100, AddressOf native_Handler", only: tb }
+      - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.RegisterMessage native_Window(), 0, &H100, AddressOf native_Handler", only: tb }
+      - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.RegisterMessage native_Window(), 8, &H100, AddressOf native_Handler", only: tb }
+      - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.RegisterMessage native_Window(), -1, &H100, AddressOf native_Handler", only: tb }
+      - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.RegisterMessage native_Window(), AllDescendants, -1, AddressOf native_Handler", only: tb }
+  Reference/Default/VBA/HiddenModule/Start.md:
+    harness: native
+    quiet:
+      - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: "H.Start\nH.Stop", only: tb }
+      - { decl: Dim H As IGetMessageHook, setup: "Set H = RuntimeCreateGetMessageHook()\nH.RegisterMessage native_Window(), AllDescendants, &H100, AddressOf native_Handler", run: "H.Start\nH.Start\nH.Stop", only: tb }
+      - { decl: Dim H As IGetMessageHook, setup: "Set H = RuntimeCreateGetMessageHook()\nH.RegisterMessage native_Window(), ExactWindow, &H100, AddressOf native_Handler", run: "H.Start\nnative_End\nH.Stop", only: tb }
+  Reference/Default/VBA/HiddenModule/Stop.md:
+    harness: native
+    quiet:
+      - { decl: Dim H As IGetMessageHook, setup: Set H = RuntimeCreateGetMessageHook(), run: H.Stop, only: tb }
+      - { decl: Dim H As IGetMessageHook, setup: "Set H = RuntimeCreateGetMessageHook()\nH.RegisterMessage native_Window(), AllDescendants, &H100, AddressOf native_Handler", run: "H.Stop\nH.Start\nH.Stop\nH.Stop\nH.Start\nH.Stop", only: tb }
+  Reference/Default/VBA/HiddenModule/RuntimeCreateGetMessageHook.md:
+    quiet:
+      - { decl: Dim H As IGetMessageHook, run: "Set H = RuntimeCreateGetMessageHook()\nIf H Is Nothing Then Err.Raise 1001", only: tb }
+      - { decl: Dim V As Variant, run: "Set V = RuntimeCreateGetMessageHook()", only: tb }
+      - { run: RuntimeCreateGetMessageHook, only: tb }
+  Reference/Default/VBA/HiddenModule/SetThreadGlobalErrorTrap.md:
+    rows:
+      - error: 94
+        when: "*CallbackAddress* is **Null**"
+        cases:
+          - { run: SetThreadGlobalErrorTrap Null, only: tb }
+    quiet:
+      - { run: SetThreadGlobalErrorTrap 0, only: tb }
+  Reference/Default/VBA/HiddenModule/StackArgsSize.md:
+    quiet:
+      - { expr: StackArgsSize(), only: tb }
+  Reference/Default/VBA/HiddenModule/StackOffset.md:
+    quiet:
+      - { expr: StackOffset(Result), only: tb }
+  Reference/Default/VBA/HiddenModule/UnprotectedAccess.md:
+    quiet:
+      - { decl: "Dim C As New Collection\nDim O As Object", run: "Set O = UnprotectedAccess(C)\nIf O.Count <> 0 Then Err.Raise 1001", only: tb }
+      - { decl: "Dim C As Collection\nDim O As Object", run: "Set O = UnprotectedAccess(C)", only: tb }
+  Reference/Default/VBA/HiddenModule/vbaAryMove.md:
+    quiet:
+      - { decl: "Dim A() As Long\nDim B() As Long", setup: ReDim B(3), run: "vbaAryMove A, B\nIf UBound(A) <> 3 Then Err.Raise 1001\nResult = UBound(B)\nIf Err.Number = 9 Then Err.Clear Else Err.Raise 1001", only: tb }
+      - { decl: "Dim A() As Long\nDim B() As Long", setup: ReDim A(3), run: "vbaAryMove A, B\nResult = UBound(A)\nIf Err.Number = 9 Then Err.Clear Else Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/vbaCastObj.md:
+    harness: native
+    rows:
+      - error: 424
+        when: "*Obj* is **Null**"
+        cases:
+          - { expr: "vbaCastObj(Null, native_StdIid(0))", only: tb }
+    quiet:
+      - { run: "If vbaCastObj(New Collection, native_StdIid(0)) Is Nothing Then Err.Raise 1001", only: tb }
+      - { run: "If vbaCastObj(New Collection, native_StdIid(&H20400)) Is Nothing Then Err.Raise 1001", only: tb }
+      - { run: "If Not vbaCastObj(New Collection, native_StdIid(&H12345)) Is Nothing Then Err.Raise 1001", only: tb }
+      - { run: "If Not vbaCastObj(Nothing, native_StdIid(0)) Is Nothing Then Err.Raise 1001", only: tb }
+      # a String is not read as an interface ID: the result is Nothing (the page says so)
+      - { run: 'If Not vbaCastObj(New Collection, "{00000000-0000-0000-C000-000000000046}") Is Nothing Then Err.Raise 1001', only: tb }
+      - { run: 'If Not vbaCastObj(New Collection, "abc") Is Nothing Then Err.Raise 1001', only: tb }
+  Reference/Default/VBA/HiddenModule/vbaCopyBytes.md:
+    rows:
+      - error: 94
+        when: "an argument is **Null**"
+        cases:
+          - { expr: "vbaCopyBytes(Null, 0, 0)", only: tb }
+          - { expr: "vbaCopyBytes(0, Null, 0)", only: tb }
+          - { expr: "vbaCopyBytes(0, 0, Null)", only: tb }
+    quiet:
+      - { expr: "vbaCopyBytes(0, 0, 0)", only: tb }
+      - { decl: "Dim P As LongPtr\nDim L As Long", setup: "P = AllocMem(8)\nPutMem4 P + 4, 77", run: "Result = vbaCopyBytes(4, P, P + 4)\nGetMem4 P, L\nFreeMem P\nIf L <> 77 Or Result <> P Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/vbaCopyBytesZero.md:
+    rows:
+      - error: 94
+        when: "an argument is **Null**"
+        cases:
+          - { expr: "vbaCopyBytesZero(Null, 0, 0)", only: tb }
+          - { expr: "vbaCopyBytesZero(0, Null, 0)", only: tb }
+          - { expr: "vbaCopyBytesZero(0, 0, Null)", only: tb }
+    quiet:
+      - { expr: "vbaCopyBytesZero(0, 0, 0)", only: tb }
+  Reference/Default/VBA/HiddenModule/vbaObjAddref.md:
+    rows:
+      - error: 94
+        when: "*Address* is **Null**"
+        cases:
+          - { run: vbaObjAddref Null, only: tb }
+    quiet:
+      - { run: vbaObjAddref 0, only: tb }
+  Reference/Default/VBA/HiddenModule/vbaObjSet.md:
+    rows:
+      - error: 94
+        when: "*SrcObjPtr* is **Null**"
+        cases:
+          - { decl: Dim O As IUnknown, expr: "vbaObjSet(O, Null)", only: tb }
+    quiet:
+      - { decl: Dim O As IUnknown, run: "Result = vbaObjSet(O, 0)\nIf Not O Is Nothing Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/vbaObjSetAddref.md:
+    rows:
+      - error: 94
+        when: "*SrcObjPtr* is **Null**"
+        cases:
+          - { decl: Dim O As IUnknown, expr: "vbaObjSetAddref(O, Null)", only: tb }
+    quiet:
+      - { decl: Dim O As IUnknown, run: "Result = vbaObjSetAddref(O, 0)\nIf Not O Is Nothing Then Err.Raise 1001", only: tb }
+      - { decl: "Dim O As IUnknown\nDim C As New Collection", run: "Result = vbaObjSetAddref(O, ObjPtr(C))\nIf Not O Is C Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/HiddenModule/vbaRefVarAry.md:
+    quiet:
+      - { decl: "Dim V As Variant\nDim P As LongPtr", setup: "V = Array(1, 2)", run: "GetMemPtr vbaRefVarAry(V), P\nIf P = 0 Then Err.Raise 1001", only: tb }
+      # a Variant that holds no array raises nothing
+      - { decl: Dim V As Variant, setup: V = 5, expr: vbaRefVarAry(V), only: tb }
+      - { decl: Dim V As Variant, expr: vbaRefVarAry(V), only: tb }
+      - { decl: Dim V As Variant, setup: V = Null, expr: vbaRefVarAry(V), only: tb }

@@ -15,7 +15,7 @@ Syntax: **vbaRefVarAry(** *Variant* **)** **As LongPtr**
 
 The returned address is the location of the **SAFEARRAY*** field inside the **Variant** --- that is, the dereference yields the **SAFEARRAY** pointer that the **Variant** wraps. Useful when calling Win32 APIs that expect to receive or fill a **SAFEARRAY** through a `VARIANT*` argument.
 
-If *Variant* does not contain an array, the result is undefined.
+If *Variant* does not contain an array, the result is undefined, and no error is raised.
 
 ### Example
 

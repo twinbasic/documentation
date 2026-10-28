@@ -56,6 +56,16 @@ The function is provided for code generated in debug mode. It uses special inter
 > [!NOTE] BETA 1010
 > A procedure that calls **InternalGetReturnAddress** fails code generation in a 64-bit build, with or without LLVM, and the project does not build.
 
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *Flag* is **Null** |
+| [424 (`&H1A8`)](tb:Errors#424), *Object required* | *ClassInstance* is **Null** |
+
+<!-- /errors -->
+
 ### See Also
 
 - [StackOffset](StackOffset), [StackArgsSize](StackArgsSize) functions

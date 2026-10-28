@@ -15,14 +15,12 @@ Syntax: **GetDeclaredTypeIid(Of** *T* **)()** **As String**
 
 The IID is returned in registry format (`{xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}`). The lookup happens at compile time and the result is stored in the generated code as a string literal --- there is no run-time call.
 
-Useful when calling [**vbaCastObj**](vbaCastObj) or any API that takes an interface IID as a string.
+Useful with any API that takes an interface ID as a string. [**vbaCastObj**](vbaCastObj) does not: it takes the address of a **GUID** structure.
 
 ### Example
 
 ```tb check_build
-Dim SomeObj As Object
-Dim Iid As String = GetDeclaredTypeIid(Of stdole.IPicture)()
-Dim AsPic As IUnknown = vbaCastObj(SomeObj, Iid)
+Debug.Print GetDeclaredTypeIid(Of stdole.IPicture)()    ' {7BF80980-BF32-101A-8BBB-00AA00300CAB}
 ```
 
 ### See Also

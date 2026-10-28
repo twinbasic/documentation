@@ -15,7 +15,17 @@ Syntax: **PictureToByteArray(** *Picture* **)** **As Variant**
 
 The result is a **Variant** wrapping a `Byte()` array containing the bytes the picture would write to a stream via **IPersistStream**. The companion deserialiser is the global **LoadPicture**, which accepts a byte array as input and returns a fresh picture.
 
-Returns an empty array if *Picture* is **Nothing**.
+If *Picture* is **Nothing**, the result is a **Byte** array with no elements and no bounds: [**UBound**](../Information/UBound) of it raises error 9, *Subscript out of range*.
+
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467262 (`&H80004002`)](tb:Errors#-2147467262), *No such interface supported* | *Picture* is an object that is not a picture |
+| [424 (`&H1A8`)](tb:Errors#424), *Object required* | *Picture* is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

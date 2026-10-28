@@ -21,6 +21,15 @@ Syntax: **vbaCopyBytesZero(** *Length* **,** *Dest* **,** *Src* **)** **As LongP
 
 Equivalent to a [**vbaCopyBytes**](vbaCopyBytes) followed by a memory clear of the source. Useful when moving an owning resource (a BSTR, an interface pointer) without leaving a duplicate behind. The return value is *Dest*.
 
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | an argument is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example copies four bytes from one buffer to another, then confirms the source is zeroed.

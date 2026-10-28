@@ -200,7 +200,7 @@ Procedures:
 * [GetObject](../tB/Modules/Interaction/GetObject) - obtain a reference to an Automation object loaded from a file or already running
 * [CallByName](../tB/Modules/Interaction/CallByName) - invoke a method or property on an object dynamically by name
 * [CallByDispId](../tB/Modules/Interaction/CallByDispId) - invoke a method or property on an object dynamically by IDispatch dispatch ID (twinBASIC addition)
-* [CreateGUID](../tB/Modules/HiddenModule/CreateGUID) - generate a fresh GUID and return it as a registry-formatted string
+* [CreateGUID](../tB/Modules/HiddenModule/CreateGUID) - generate a fresh GUID and return it as a string
 * [vbaCastObj](../tB/Modules/HiddenModule/vbaCastObj) - reinterpret an object as another COM interface (a typed `QueryInterface`)
 * [vbaObjSet](../tB/Modules/HiddenModule/vbaObjSet), [vbaObjSetAddref](../tB/Modules/HiddenModule/vbaObjSetAddref) - assign a raw object pointer to an **Object** variable, with or without addref
 * [vbaObjAddref](../tB/Modules/HiddenModule/vbaObjAddref) - increment the COM reference count of the object at a given address

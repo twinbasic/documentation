@@ -1,0 +1,31 @@
+# The VBA Compilation module. Format: WIP.Errors.md.
+# Every case is `only: tb`: VB6 and VBA have none of these procedures. Each member is a
+# compile-time intrinsic or a hint to the compiler, and raises nothing at run time.
+beta: 1010
+pages:
+  Reference/Default/VBA/Compilation/CompilerVersion.md:
+    quiet:
+      - { run: "If CompilerVersion() < 1010 Then Err.Raise 1001", only: tb }
+      - { expr: CompilerVersion, only: tb }
+  Reference/Default/VBA/Compilation/CurrentComponentCLSID.md:
+    quiet:
+      - { expr: CurrentComponentCLSID(), only: tb }
+  Reference/Default/VBA/Compilation/CurrentComponentName.md:
+    quiet:
+      - { run: "If CurrentComponentName() <> \"Probe\" Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/Compilation/CurrentProcedureName.md:
+    quiet:
+      - { expr: CurrentProcedureName(), only: tb }
+  Reference/Default/VBA/Compilation/CurrentProjectName.md:
+    quiet:
+      - { expr: CurrentProjectName(), only: tb }
+  Reference/Default/VBA/Compilation/CurrentSourceFile.md:
+    quiet:
+      - { expr: CurrentSourceFile(), only: tb }
+  Reference/Default/VBA/Compilation/ProcessorArchitecture.md:
+    quiet:
+      - { run: "If ProcessorArchitecture() <> vbArchWin32 And ProcessorArchitecture() <> vbArchWin64 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/Compilation/UnrollLoop.md:
+    quiet:
+      - { decl: "Dim I As Long\nDim N As Long", run: "For I = 1 To 3\nUnrollLoop 4\nN = N + 1\nNext\nIf N <> 3 Then Err.Raise 1001", only: tb }
+      - { decl: "Dim I As Long\nDim N As Long", run: "Do While I < 3\nUnrollLoop\nI = I + 1\nLoop\nIf I <> 3 Then Err.Raise 1001", only: tb }

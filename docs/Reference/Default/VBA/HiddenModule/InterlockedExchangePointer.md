@@ -18,6 +18,15 @@ Syntax: **InterlockedExchangePointer(** *Target* **,** *NewValue* **)** **As Lon
 
 The store and the read of the prior value happen as a single atomic operation, observable by other threads as either fully-before or fully-after the call. Wraps the Win32 `InterlockedExchangePointer` intrinsic.
 
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *NewValue* is **Null** |
+
+<!-- /errors -->
+
 ### See Also
 
 - [InterlockedCompareExchangePointer](InterlockedCompareExchangePointer) function

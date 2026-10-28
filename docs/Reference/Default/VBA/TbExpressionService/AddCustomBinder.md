@@ -22,6 +22,9 @@ Use **AddCustomBinder** when [**AddCustomBinderObject**](AddCustomBinderObject) 
 
 The engine calls [**Bind**](Bind) on each registered custom binder during compilation, once per unresolved symbol. The first binder that returns a non-**Nothing** result wins. Multiple custom binders can be registered with one service, and they are consulted in registration order.
 
+> [!WARNING] BETA 1010
+> A *customBinder* of **Nothing** ends the program with an access violation, in a 32-bit and a 64-bit build alike.
+
 ### Example
 
 This example registers a class instance as both a property source (via [**AddCustomBinderObject**](AddCustomBinderObject) with [**IsAppObject**](./#IsAppObject)) and a custom binder. Bare symbols in the expression are first looked up as members of `Me` via the property source; whatever isn't matched there falls through to `Me.Bind`, which can resolve it dynamically --- for example, against a live recordset.

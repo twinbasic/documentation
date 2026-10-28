@@ -91,7 +91,14 @@ rulings applied: five entries queued, `argument-errors-unspecified-error` extend
 for an infinite result an extension (*Batch 9 findings*). No row is `bug: pending`, and no
 question is open.
 
-**Next: batch 10**, VBA `HiddenModule`, then `Compilation` and `TbExpressionService`.
+**Batch 10 is done but for the owner's rulings** (2026-10-28), VBA `HiddenModule`,
+`Compilation` and `TbExpressionService`: 280 cases in `errors/VBA.HiddenModule.yml`,
+`VBA.Compilation.yml` and `VBA.TbExpressionService.yml`, every one `only: tb` (VB6 and VBA have
+none of these procedures), all agreeing in both twinBASIC builds; sections on 35 pages; two new
+harnesses, `native` and `expression`; four HRESULTs added to `messages.yml` and measured. No row
+is `bug: pending`; the questions are under *Batch 10 findings*.
+
+**Next: batch 11**, Core file I/O statements.
 
 ## Owner's decisions
 
@@ -408,6 +415,18 @@ Windows refuses). `check_errors.mjs` reports a harness the data names and has no
   letter no drive has. **A probe line that starts `Reset:` is a label**, not the statement: put
   `Reset` on a line of its own (`run: "Reset\n..."`). Check after a run that no
   `tbdocsErrorsProbe*` folder is left in `%TEMP%`.
+- **`native`** (batch 10) --- **twinBASIC only**: every case that uses it is `only: tb`, so it uses
+  twinBASIC syntax. What the (Default) module's procedures take: `native_Icon` (the shared
+  `IDI_APPLICATION` icon), `native_Bitmap` (a 2 x 2 bitmap that `native_End` deletes unless
+  `native_Keep` says a picture owns it), `native_Window` (a hidden `STATIC` window, made by
+  `native_Begin`), `native_Handler` (a `GetMessageHookHelper.GetMessageHandler` that does
+  nothing), `native_StdIid(Data1)` (the address of the interface ID
+  `{Data1-0000-0000-C000-000000000046}`, for `vbaCastObj`) and the enumeration `native_Kind`
+  (-3 to 7).
+- **`expression`** (batch 10) --- twinBASIC only. In a built exe the first error the expression
+  service (`Eval`, `TbExpressionService`) raises in a process has the description *Automation
+  error*, every later one *Unspecified error*; `expression_Begin` raises the first once and
+  clears it, so a case's description does not depend on which case runs first (`--only`).
 
 **YAML pitfalls**, each met in batch 2:
 
@@ -475,6 +494,14 @@ What the probes must respect (BETA 1010; `errors.mjs` already does all of it):
   builds a failing project again without the case named in the error.
 - **A case that allocates near the string limit raises 14** (`String(1073741823, "a")` in
   32-bit): use it to show that the 5 above the limit is a check of its own, never as a row.
+- **A case that crashes stops the probe, and every later case reports `none`** (`the probe
+  stopped before it ended: exception 0xc0000005`), as a hang does. Explore one page per probe
+  (a data file holding only that page), then one case per probe for a page that stops; a case
+  that crashes is a WARNING by hand, never a case.
+- **The probe is one module**: a case cannot declare a class, an interface or a `Type`. A
+  harness can hold a `Type`, an `Enum`, a `Declare` and procedures; a fact that needs a class
+  (`GetNameFromDispID` on a twinBASIC class) is checked with `tbrun` on a tree of its own and
+  stated in the page's prose.
 
 ## Batch 2 findings (VBA `Strings`, BETA 1010)
 
@@ -1040,6 +1067,72 @@ probe (twinBASIC through `tbrun`, VB6 through `vb6run`), not only the error numb
 A reproducer's case asserts 64-bit VBA's number where the two VB runtimes differ; say so in the
 entry, since the VB6 project then disagrees with the module.
 
+## Batch 10 findings (VBA `HiddenModule`, `Compilation`, `TbExpressionService`, BETA 1010, 2026-10-28)
+
+Every procedure is twinBASIC's own, so every case is `only: tb` and no row has a `vb6:`: a
+defect here is one against the page or against what the procedure is for, not against VB.
+twinBASIC 64-bit agrees with 32-bit on every case but `AllocMem(2000000000)` (a `win64: 0`
+row). The pages with no section raise nothing of their own: `Compilation`'s eight (compile-time
+intrinsics), `CreateGUID`, the `GetDeclared...` six, `StackArgsSize`, `StackOffset`,
+`InterlockedIncrement32`/`Decrement32`, `Start`, `Stop`, `RuntimeCreateGetMessageHook`,
+`UnprotectedAccess`, `vbaAryMove`, `vbaRefVarAry`, `AddStdLibraryBinder`; and `Emit`, `EmitAny`,
+`InternalGetReturnAddress` (fails a 64-bit build), `AddCustomBinder` and `Bind` have no case.
+
+- **Null raises 94** for every numeric or string argument, **424** for an object one
+  (`AddClassInstanceFlag`, `ConvertIconToBitmap`, `GetInheritedOwner`, `GetNameFromDispID`,
+  `PictureToByteArray`, `vbaCastObj`).
+- **Raw HRESULTs** where the procedure fails: `AllocMem` of 0 or less -2147024882
+  (`E_OUTOFMEMORY`, as for a block too big); `CreateStdPictureFromHandle` -2147467259 for a
+  handle of the wrong kind and -2147418113 for a *Type* outside 0 to 4 (a bitmap handle is never
+  checked); `ConvertIconToBitmap` -2147467259 for anything but an icon, 5 and 13 for its
+  *BackColor* as `TranslateColor`; `PictureToByteArray` -2147467262 for a non-picture;
+  `GetNameFromDispID`'s four (the page's hand table, now data), and `ShowPropertyPageEditor`'s
+  -2147467261 and -2147467262. On an object of a twinBASIC class `GetNameFromDispID` raises 5
+  (-4: -2147319765), checked with `tbrun` on a tree with a class: a sentence on the page.
+- **The expression service** (`Eval`, `Compile`, `Evaluate`): every failure is -2147467259, a
+  name it cannot resolve and a syntax error alike, and so is **any error inside the expression**
+  (11, 13, 5, a bound object's 457): its number is lost (NOTEs on Eval and Evaluate).
+  `Eval("CVErr(5)")` and `Eval("Len(Null)")` raise it too, though `Len(Null)` is **Null**
+  outside an expression. **Some malformed expressions are accepted silently**: `"2 +"`,
+  `"2 Mod"`, `"(2"`, `"2)"` give 2 (WARNINGs on Eval and Compile; quiet cases). The first error of
+  a process says *Automation error*, later ones *Unspecified error*; in the IDE, always
+  *Automation error* (NOTEs; the `expression` harness).
+- **Crashes** (access violation, 32-bit and 64-bit; a WARNING by hand on each page, no case):
+  `ConvertIconToBitmap(Nothing)`; `GetInheritedOwner` of **Nothing** or of an object that is not
+  a control (a `Collection` in both builds, a `Scripting.Dictionary` in 64-bit);
+  `AddCustomBinder Nothing`; `AddCustomBinderObject name, Nothing`; and `V =
+  RuntimeCreateGetMessageHook()` into a Variant without `Set` (`Set V =` is fine, and a Let of
+  another non-dispatch object, a twinBASIC class behind an `IUnknown` interface, stores it with
+  no error, so the fault is the hook object's). Also, with no WARNING (misuse of an internal or
+  of a raw address): `AddClassInstanceFlag` of -1, an address of 0 to `GetMem*`, `PutMem*` and
+  `vbaCopyBytes` (`FreeMem 0` and `vbaObjAddref 0` are quiet), and `vbaCastObj` given a number or
+  (32-bit) **Null** as *IID*.
+- **Pages corrected from what twinBASIC does**: `CreateGUID` returns 36 characters without
+  braces (the page said `{...}`; the index pages too); `vbaCastObj` reads *IID* as the address of a
+  GUID, so a String gives **Nothing** silently (the page said it took a String; its example and
+  `GetDeclaredTypeIid`'s now use `VarPtr` of a GUID and print the IID); `PictureToByteArray(Nothing)`
+  is a `Byte` array with no bounds; `FreeMem 0` does nothing; `Compile` without a binder takes
+  `"1 + 1"`; `AllocMem`'s and `Compile`'s error sentences went into the tables. Added:
+  `RegisterMessage` checks no argument, `InterlockedIncrement32`/`Decrement32` wrap with no error.
+- **Out of this batch**: `Set X = obj` where *X* is declared as an interface *obj* does not
+  have raises -2147467262 (`E_NOINTERFACE`); VB6 raises 13. Not checked in VB6 here, not queued:
+  for a Core batch.
+
+**Questions for the owner**:
+
+1. **The crashes**: one entry, `nothing-argument-crashes` (ConvertIconToBitmap, GetInheritedOwner,
+   AddCustomBinder, AddCustomBinderObject, the hook object's Let)? GetInheritedOwner of a
+   non-control is arguably misuse; in or out?
+2. **Malformed expressions accepted**: an entry, `expression-service-dangling-tokens`?
+3. **The expression service losing the error's number** (and the CVErr and `Len(Null)` cases, and
+   the first error's description): a bug, as the Evaluate page's own design text ("propagates
+   like any other run-time error") implies, or the service's design? If a bug: one entry,
+   `expression-service-error-numbers`; if design, the two NOTEs become prose.
+4. **`vbaCastObj` and a String IID**: the page now says a String is not converted. Or is it a bug
+   that it is not (the page claimed it was), with a WARNING?
+5. **`CreateGUID` without braces**: page corrected; or should it return the braced form?
+6. **`AllocMem(0)`** raises `E_OUTOFMEMORY` (`HeapAlloc` of 0 bytes succeeds): as designed?
+
 ## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
 
 Batches 2 to 5 and `Core.yml` in all four runtimes. Every runtime agreed with the data as it
@@ -1124,7 +1217,7 @@ each can be run when there is budget. Status is kept here.
 | 7 | VBA `FileSystem`, under the `files` harness | 23 | done: 21 sections, 448 cases; three entries queued, one extended, 2026-10-27 |
 | 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | done: 10 sections, 259 cases; three entries queued 2026-10-27; owner's rulings 2026-10-28 |
 | 9 | VBA `Financial` | 14 | done: 13 sections, 349 cases; five entries queued, one extended; owner's rulings 2026-10-28 |
-| 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | not started |
+| 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | done but for the owner's rulings: 35 sections, 280 cases, harnesses `native` and `expression`; 2026-10-28 |
 | 11 | Core file I/O statements (`Open`, `Get`, `Put`, `Input`, ...: errors 52--75) | 15 | not started |
 | 12 | Core arrays and control flow (`ReDim`, `Erase`, `Resume`, `Return`, ...); ReDim has data already, in `errors/Core.yml` | 15 | not started |
 | 13 | Operators: the matrix generator and its pages | 25 | not started |

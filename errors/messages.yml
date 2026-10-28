@@ -131,3 +131,15 @@
 -2147023174:
   raised: The RPC server is unavailable.
   error: Application-defined or object-defined error
+-2147024882:
+  raised: Not enough memory resources are available to complete this operation.
+  error: Application-defined or object-defined error
+-2147467263:
+  raised: Not implemented
+  error: Application-defined or object-defined error
+-2147467261:
+  raised: Invalid pointer
+  error: Application-defined or object-defined error
+-2147319765:
+  raised: Element not found.
+  error: Application-defined or object-defined error
