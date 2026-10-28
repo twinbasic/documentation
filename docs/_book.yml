@@ -352,6 +352,11 @@ parts:
         no_outline_entry: true
         no_heading_shift: true
         outline_closed: true
+      - title: Literal Keywords
+        page: /Reference/Literal-Keywords
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
       - title: Compiler Constants
         page: /Reference/Compiler-Constants
         no_outline_entry: true

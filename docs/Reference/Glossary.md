@@ -282,7 +282,7 @@ A library of routines loaded and linked into applications at run time. DLLs are 
 
 ## Empty
 
-Indicates that no beginning value has been assigned to a [**Variant**](#variant-data-type) variable. An **Empty** variable is represented as 0 in a numeric context or a zero-length string (`""`) in a string context.
+Indicates that no beginning value has been assigned to a [**Variant**](#variant-data-type) variable. An **Empty** variable is represented as 0 in a numeric context or a zero-length string (`""`) in a string context. See [**Empty**](../Reference/Literal-Keywords#empty).
 
 ## enumerated constant
 
@@ -469,7 +469,7 @@ Note that the named arguments don't have to appear in the normal positional orde
 
 ## Null
 
-A value indicating that a variable contains no valid data. **Null** is the result of an explicit assignment of **Null** to a variable or any operation between expressions that contain **Null**.
+A value indicating that a variable contains no valid data. **Null** is the result of an explicit assignment of **Null** to a variable or any operation between expressions that contain **Null**. See [**Null**](../Reference/Literal-Keywords#null).
 
 ## numeric data type
 

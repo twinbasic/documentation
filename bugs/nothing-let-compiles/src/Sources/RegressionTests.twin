@@ -1,0 +1,23 @@
+' Regression tests for the report, as compile cases: each line that ends in a comment
+'  ' CASE <Name>: <expected>  must give that diagnostic on that line (a code, "error" for any
+' error, or "none"). tbrun --tests checks them.
+' Nothing is an object reference, assigned with Set and compared with Is. VB6 refuses, when it
+' compiles, a Let of Nothing to a variable that is not an object or a Variant, and Nothing as an
+' operand of =, with "Invalid use of object". On BETA 1010 each compiles, and raises 91 when it
+' runs. The controls are the forms VB6 compiles too.
+
+Module NothingLetTests
+
+    Private Sub Uses()
+        Dim Count As Long, Text As String, Flag As Boolean, Items As Collection, Value As Variant, Obj As Object
+        Count = Nothing  ' CASE LetLong_Nothing: error
+        Text = Nothing  ' CASE LetString_Nothing: error
+        Flag = Nothing  ' CASE LetBoolean_Nothing: error
+        If Obj = Nothing Then Count = 1  ' CASE EqualsComparison_Nothing: error
+        Flag = (Count <> Nothing)  ' CASE NotEqualsComparison_Nothing: error
+        Set Items = Nothing  ' CASE Control_SetObject: none
+        If Items Is Nothing Then Count = 1  ' CASE Control_IsNothing: none
+        Set Value = Nothing  ' CASE Control_SetVariant: none
+    End Sub
+
+End Module

@@ -10999,3 +10999,136 @@ What does not reproduce it: an interface the object has (`IUnknown`, `IDispatch`
 
 <!-- Reproducer: bugs/vbacastobj-no-type-mismatch/ (mode test: `tbrun --tests`; expect lists the three PASS and two FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`. VB6 side in vb6/ (VB6 6.0), calling msvbvm60's __vbaCastObj. Stated in a WARNING (BETA 1010) on docs/Reference/Default/VBA/HiddenModule/vbaCastObj.md, and in its Common Errors section (row `bug: vbacastobj-no-type-mismatch`, error 0, vb6 13, in errors/VBA.HiddenModule.yml); when fixed, the row becomes a row of 13 with no vb6:, and the WARNING and the NOTE go. Found 2026-10-28 by batch 10 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
 
+---
+
+## Assigning `Nothing` without `Set` to a variable that is not an object, or comparing with `Nothing` by `=`, compiles, where VB6 and VBA refuse it
+
+**Describe the bug**
+`Nothing` is an object reference: it is assigned with `Set` and compared with `Is`. VB6 and 64-bit VBA refuse, when they compile, a Let of `Nothing` to a variable that is neither an object nor a `Variant` (`Count = Nothing` for a `Long`, a `String` or a `Boolean`), and `Nothing` as an operand of `=` or `<>` (`If Obj = Nothing`, `Count <> Nothing`), each with *Invalid use of object*. twinBASIC compiles every one of them with no diagnostic, and each raises 91, *Object variable or With block variable not set*, when it runs. An error the compiler could report is put off until the line runs, so a mistake on a path that rarely runs is found late or not at all.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `nothing-let-compiles.twinproj` (attached as `nothing-let-compiles.zip`).
+2. Compile it. On BETA 1010 it compiles with no error. The module's five lines marked `error` are each one of the forms above; the three marked `none` are the forms VB6 and VBA compile too (`Set Items = Nothing`, `Items Is Nothing`, `Set Value = Nothing`).
+3. The same lines in VB6 6.0 and in 64-bit VBA each stop the compile with *Compile error: Invalid use of object*.
+
+The module is meant to be adapted as a regression test, as compile cases.
+```vb
+Module NothingLetTests
+
+    Private Sub Uses()
+        Dim Count As Long, Text As String, Flag As Boolean, Items As Collection, Value As Variant, Obj As Object
+        Count = Nothing  ' CASE LetLong_Nothing: error
+        Text = Nothing  ' CASE LetString_Nothing: error
+        Flag = Nothing  ' CASE LetBoolean_Nothing: error
+        If Obj = Nothing Then Count = 1  ' CASE EqualsComparison_Nothing: error
+        Flag = (Count <> Nothing)  ' CASE NotEqualsComparison_Nothing: error
+        Set Items = Nothing  ' CASE Control_SetObject: none
+        If Items Is Nothing Then Count = 1  ' CASE Control_IsNothing: none
+        Set Value = Nothing  ' CASE Control_SetVariant: none
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+A compile error on each of the five lines, as VB6 and 64-bit VBA give (*Invalid use of object*); no change to the three controls.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low: the code is wrong in every runtime, and twinBASIC does report it, but only when the line runs, as error 91.
+
+A 64-bit build gives the same results. VBA was 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a Let of `Nothing` to a variable declared `As Object` (`Obj = Nothing`), which VB6 and VBA compile too and which raises 91 in all three, and to a `Variant`, which VB6 and VBA also compile (the queued entry `nothing-let-variant-no-error` is about what twinBASIC does with it). `Items = Nothing` for a `Collection` is refused by twinBASIC as well, with TB5092, *Missing argument 'Index'*, from the collection's default member.
+
+<!-- Reproducer: bugs/nothing-let-compiles/ (mode test: `tbrun --tests`, compile cases; expect lists the three PASS and five FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`. No VB6 side: VB6 refuses the project at compile, checked with scripts/vb6run.mjs on each line; 64-bit VBA checked with VbaSession, one module per line. Stated in a NOTE (BETA 1010) under Nothing on docs/Reference/Literal-Keywords.md; when fixed, the NOTE goes. Found 2026-10-29 writing that page; owner, 2026-10-29: a bug. -->
+
+---
+
+## A `Variant` assigned `Nothing` without `Set` holds `Nothing`, where VB6 and VBA raise 91 and leave it `Empty`
+
+**Describe the bug**
+`Value = Nothing`, with `Value` a `Variant` and no `Set`, makes `Value` hold `Nothing`, as `Set Value = Nothing` does, and raises no error. VB6 and 64-bit VBA read it as a Let of the default value of an object that is not there: they raise 91, *Object variable or With block variable not set*, and leave the `Variant` `Empty`. Code that leaves out `Set` by mistake therefore runs on in twinBASIC, where in VB6 and VBA it stops.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `nothing-let-variant-no-error.twinproj` (attached as `nothing-let-variant-no-error.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the two other cases fail: `Err.Number` is 0, and the `Variant` holds `Nothing`.
+3. Build and run the VB6 project (attached as `nothing-let-variant-no-error-vb6.zip`), which runs the same statements. It prints:
+   ```
+   LetVariant: error 91, Value Empty
+   Control_SetVariant: Value Is Nothing True
+   Control_LetObject: error 91
+   ```
+
+The module is meant to be adapted as a regression test. Each case asserts what VB6 and 64-bit VBA do.
+```vb
+' Regression tests: assigning Nothing to a Variant without Set raises 91, Object variable or With
+' block variable not set, and leaves the Variant Empty, as VB6 does: it reads the assignment as
+' a Let of the default value of an object that is not there. On BETA 1010 the Variant holds
+' Nothing and no error is raised. The controls: Set stores Nothing, and a Let of Nothing to an
+' Object variable raises 91 in both.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub LetVariant_Raises91()
+        Dim Value As Variant
+        Value = 3
+        On Error Resume Next
+        Value = Nothing
+        Assert.Strict.AreEqual 91, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub LetVariant_LeavesItEmpty()
+        Dim Value As Variant
+        Value = 3
+        On Error Resume Next
+        Value = Nothing
+        On Error GoTo 0
+        Assert.Strict.IsTrue IsEmpty(Value)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SetVariant_HoldsNothing()
+        Dim Value As Variant
+        Value = 3
+        Set Value = Nothing
+        Assert.Strict.IsTrue Value Is Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub Control_LetObject_Raises91()
+        Dim Obj As Object
+        On Error Resume Next
+        Obj = Nothing
+        Assert.Strict.AreEqual 91, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 91, with the `Variant` left `Empty`, as VB6 and 64-bit VBA do.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low: the missing `Set` goes unreported, and the `Variant` holds what `Set` would have stored.
+
+A 64-bit build gives the same results. 64-bit VBA, 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access, gives what VB6 gives.
+
+What does not reproduce it: `Set Value = Nothing`, which holds `Nothing` in all three, and a Let of `Nothing` to an `Object` variable, which raises 91 in all three.
+
+Related: the queued entry `nothing-let-compiles`, on the forms VB6 and VBA refuse when they compile.
+
+<!-- Reproducer: bugs/nothing-let-variant-no-error/ (mode test: `tbrun --tests`; expect lists the two PASS and two FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`. VB6 side in vb6/ (VB6 6.0); 64-bit VBA checked with VbaSession. Stated in a WARNING (BETA 1010) under Nothing on docs/Reference/Literal-Keywords.md; when fixed, the WARNING goes. Found 2026-10-29 writing that page; owner, 2026-10-29: a bug. -->
+
