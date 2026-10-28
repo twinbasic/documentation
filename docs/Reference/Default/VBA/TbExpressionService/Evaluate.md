@@ -25,7 +25,6 @@ A run-time error raised inside the expression --- division by zero, type mismatc
 > [!NOTE] BETA 1010
 > **Evaluate** raises -2147467259 for any error inside the expression: the error's own number and description are lost. `"1 / 0"` raises -2147467259, not 11, and a **Scripting.Dictionary**'s **Add** of a key it holds raises -2147467259, not 457.
 
-<!-- bug: expression-service-error-numbers -->
 > [!NOTE] BETA 1010
 > In a built program, the first error the expression service raises has the description *Automation error*, and every later one *Unspecified error*. In a run from the IDE, every one has the description *Automation error*. An error of a bound object's member has the description *Automation error* in both.
 

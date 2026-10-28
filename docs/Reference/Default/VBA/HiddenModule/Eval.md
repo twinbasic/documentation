@@ -23,9 +23,11 @@ For repeated evaluation of the same source, or for expressions that need to see 
 
 <!-- bug: expression-service-error-numbers -->
 > [!NOTE] BETA 1010
-> **Eval** raises -2147467259 for any error inside the expression: the error's own number and description are lost. `Eval("1 / 0")` raises -2147467259, not 11. It raises the same for an expression whose value is an **Error** value, such as `Eval("CVErr(5)")`, and for **Len** of **Null**, which outside an expression returns **Null**.
+> **Eval** raises -2147467259 for any error inside the expression: the error's own number and description are lost. `Eval("1 / 0")` raises -2147467259, not 11.
 
-<!-- bug: expression-service-error-numbers -->
+> [!NOTE] BETA 1010
+> **Eval** also raises -2147467259 for an expression whose value is an **Error** value, such as `Eval("CVErr(5)")`, and for **Len** of **Null**, which outside an expression returns **Null**.
+
 > [!NOTE] BETA 1010
 > In a built program, the first error the expression service raises has the description *Automation error*, and every later one *Unspecified error*. In a run from the IDE, every one has the description *Automation error*.
 

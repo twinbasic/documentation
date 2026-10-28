@@ -1,9 +1,9 @@
-' Regression tests: an error raised while Eval or ITbExpression.Evaluate evaluates an
-' expression reaches the caller with its own number, as it does from the same code written
-' in a procedure, and as VBScript's Eval and Access's Eval raise it; Len(Null) inside an
-' expression is Null, and an expression whose value is an Error value returns it. On BETA
-' 1010 each of these raises -2147467259, whose description is "Automation error" in the IDE
-' and in an exe's first such error, and "Unspecified error" after it.
+' Regression tests: an error raised by a function, an operator or a bound object's member
+' while Eval or ITbExpression.Evaluate evaluates an expression reaches the caller unchanged,
+' with the number and description the same code raises written in a procedure, as VBScript's
+' Eval and Access's Eval pass it on. On BETA 1010 each of these raises -2147467259, whose
+' description is "Automation error" in the IDE and in an exe's first such error, and
+' "Unspecified error" after it.
 ' tbrun --tests runs each case and prints PASS or FAIL.
 [TestFixture]
 Module RegressionTests
@@ -15,21 +15,11 @@ Module RegressionTests
         EvalError = Err.Number
     End Function
 
-    ' The controls: what works, and the same errors raised outside an expression.
+    ' The controls: an expression that raises nothing, and a bound object's error raised by
+    ' the same call written in a procedure.
     [TestCase]
     Public Sub Control_Eval_Sum()
         Assert.Strict.AreEqual 4, CInt(Eval("2 + 2"))
-    End Sub
-
-    [TestCase]
-    Public Sub Control_Eval_MidOfNull_IsNull()
-        Assert.Strict.IsNull Eval("Mid(Null, 1)")
-    End Sub
-
-    [TestCase]
-    Public Sub Control_LenOfNull_OutsideAnExpression_IsNull()
-        Dim V As Variant = Null
-        Assert.Strict.IsNull Len(V)
     End Sub
 
     [TestCase]
@@ -72,33 +62,6 @@ Module RegressionTests
     [TestCase]
     Public Sub Eval_SqrOfNegative_Raises5()
         Assert.Strict.AreEqual 5&, EvalError("Sqr(-1)")
-    End Sub
-
-    [TestCase]
-    Public Sub Eval_WrongNumberOfArguments_Raises450()
-        Assert.Strict.AreEqual 450&, EvalError("Sqr(1, 2)")
-    End Sub
-
-    [TestCase]
-    Public Sub Eval_LenOfNull_IsNull()
-        Dim V As Variant, E As Long
-        On Error Resume Next
-        V = Eval("Len(Null)")
-        E = Err.Number
-        On Error GoTo 0
-        Assert.Strict.AreEqual 0&, E
-        Assert.Strict.IsNull V
-    End Sub
-
-    [TestCase]
-    Public Sub Eval_CVErr_ReturnsTheErrorValue()
-        Dim V As Variant, E As Long
-        On Error Resume Next
-        V = Eval("CVErr(5)")
-        E = Err.Number
-        On Error GoTo 0
-        Assert.Strict.AreEqual 0&, E
-        Assert.Strict.IsTrue IsError(V)
     End Sub
 
     [TestCase]

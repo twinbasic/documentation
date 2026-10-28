@@ -10766,27 +10766,26 @@ Related: the queued entry `expression-service-error-numbers`, on the number thes
 
 ---
 
-## `Eval` and `ITbExpression.Evaluate` raise -2147467259 for every error inside the expression, so its own number and description are lost
+## `Eval` and `ITbExpression.Evaluate` raise -2147467259 for every error inside the expression, instead of passing it on unchanged
 
 **Describe the bug**
-An error raised while `Eval` or `ITbExpression.Evaluate` evaluates an expression reaches the caller as -2147467259 (`&H80004005`), whatever it was: `Eval("1 / 0")` raises -2147467259, not 11, *Division by zero*; `CInt("abc")` in an expression not 13, `CInt(40000)` not 6, `Sqr(-1)` not 5, `Sqr(1, 2)` not 450, and a bound object's error, a `Scripting.Dictionary`'s `Add` of a key it holds, not 457. Two expressions that are not errors raise it too: `Eval("Len(Null)")`, though `Len` of **Null** written in a procedure is **Null**, and `Eval("CVErr(5)")`, whose value is an **Error** value.
+An error that a function, an operator or a bound object's member raises while `Eval` or `ITbExpression.Evaluate` evaluates an expression does not reach the caller as it was raised. Whatever it was, the caller gets -2147467259 (`&H80004005`): `Eval("1 / 0")` raises -2147467259, not 11, *Division by zero*; `CInt("abc")` in an expression not 13, `CInt(40000)` not 6, `Sqr(-1)` not 5; and a bound object's error, a `Scripting.Dictionary`'s `Add` of a key it holds, not 457. Each of these raises its own number when the same code is written in a procedure.
 
-The description is not stable either. In a built exe the first such error of the process has the description *Automation error* and every later one *Unspecified error*; in the IDE every one has *Automation error*. An error of a bound object's member has *Automation error* in both.
+The description is lost with the number: in a built exe the first such error of the process has the description *Automation error* and every later one *Unspecified error*; in the IDE every one has *Automation error*.
 
 **To Reproduce**
 Steps to reproduce the behavior:
 1. Open `expression-service-error-numbers.twinproj` (attached as `expression-service-error-numbers.zip`).
-2. Run its test cases, the module below. On BETA 1010 the four controls pass and the ten other cases fail, each with -2147467259 (and the description case with *Automation error*).
-3. For the description in an exe, build a project whose `Sub Main` compiles `"1 2"` three times with `TbExpressionService.Compile` and prints `Err.Description` each time: *Automation error*, then *Unspecified error* twice.
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the seven other cases fail, each with -2147467259 (and the description case with *Automation error*).
 
-The module is meant to be adapted as a regression test. Each number asserted is the one the same code raises written in a procedure, which VBScript's `Eval` and Access's `Eval` raise too.
+The module is meant to be adapted as a regression test. Each case asserts the number, or the description, that the same code raises written in a procedure.
 ```vb
-' Regression tests: an error raised while Eval or ITbExpression.Evaluate evaluates an
-' expression reaches the caller with its own number, as it does from the same code written
-' in a procedure, and as VBScript's Eval and Access's Eval raise it; Len(Null) inside an
-' expression is Null, and an expression whose value is an Error value returns it. On BETA
-' 1010 each of these raises -2147467259, whose description is "Automation error" in the IDE
-' and in an exe's first such error, and "Unspecified error" after it.
+' Regression tests: an error raised by a function, an operator or a bound object's member
+' while Eval or ITbExpression.Evaluate evaluates an expression reaches the caller unchanged,
+' with the number and description the same code raises written in a procedure, as VBScript's
+' Eval and Access's Eval pass it on. On BETA 1010 each of these raises -2147467259, whose
+' description is "Automation error" in the IDE and in an exe's first such error, and
+' "Unspecified error" after it.
 ' tbrun --tests runs each case and prints PASS or FAIL.
 [TestFixture]
 Module RegressionTests
@@ -10798,21 +10797,11 @@ Module RegressionTests
         EvalError = Err.Number
     End Function
 
-    ' The controls: what works, and the same errors raised outside an expression.
+    ' The controls: an expression that raises nothing, and a bound object's error raised by
+    ' the same call written in a procedure.
     [TestCase]
     Public Sub Control_Eval_Sum()
         Assert.Strict.AreEqual 4, CInt(Eval("2 + 2"))
-    End Sub
-
-    [TestCase]
-    Public Sub Control_Eval_MidOfNull_IsNull()
-        Assert.Strict.IsNull Eval("Mid(Null, 1)")
-    End Sub
-
-    [TestCase]
-    Public Sub Control_LenOfNull_OutsideAnExpression_IsNull()
-        Dim V As Variant = Null
-        Assert.Strict.IsNull Len(V)
     End Sub
 
     [TestCase]
@@ -10858,33 +10847,6 @@ Module RegressionTests
     End Sub
 
     [TestCase]
-    Public Sub Eval_WrongNumberOfArguments_Raises450()
-        Assert.Strict.AreEqual 450&, EvalError("Sqr(1, 2)")
-    End Sub
-
-    [TestCase]
-    Public Sub Eval_LenOfNull_IsNull()
-        Dim V As Variant, E As Long
-        On Error Resume Next
-        V = Eval("Len(Null)")
-        E = Err.Number
-        On Error GoTo 0
-        Assert.Strict.AreEqual 0&, E
-        Assert.Strict.IsNull V
-    End Sub
-
-    [TestCase]
-    Public Sub Eval_CVErr_ReturnsTheErrorValue()
-        Dim V As Variant, E As Long
-        On Error Resume Next
-        V = Eval("CVErr(5)")
-        E = Err.Number
-        On Error GoTo 0
-        Assert.Strict.AreEqual 0&, E
-        Assert.Strict.IsTrue IsError(V)
-    End Sub
-
-    [TestCase]
     Public Sub Evaluate_DivisionByZero_Raises11()
         Dim S As New TbExpressionService
         Dim X As ITbExpression, V As Variant, E As Long
@@ -10916,7 +10878,7 @@ End Module
 ```
 
 **Expected behavior**
-The error keeps its own number and description, as it does when the same code is written in a procedure, and as the VB family's expression evaluators raise it: VBScript's `Eval` (through `MSScriptControl.ScriptControl` in VB6) raises 11, 13, 6, 5 and 450 for the cases above, and Access's `Eval` in 64-bit VBA 11, 13, 6 and 5, and returns **Null** for `Len(Null)`. `Eval("CVErr(5)")` returns the **Error** value. An expression that cannot be compiled (a syntax error, a name nothing resolves) raises an error whose description says so, the same each time, as VBScript's 1002, *Syntax error*, and Access's 2431, *The expression you entered contains invalid syntax.*, do.
+The error reaches the caller unchanged, with the number and description it has when the same code is written in a procedure: `Eval` and `Evaluate` add nothing of their own. That is what the VB family's expression evaluators do: Access's `Eval` in 64-bit VBA raises 11, 13, 6 and 5 for the four `Eval` cases, with the same descriptions as direct code, and VBScript's `Eval` (through `MSScriptControl.ScriptControl` in VB6) the same numbers.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
@@ -10927,11 +10889,11 @@ Severity: medium: an error handler cannot tell a division by zero from a type mi
 
 A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
-What does not reproduce it: an expression that raises nothing; `Eval("Mid(Null, 1)")` and `Eval("Null + 1")` return **Null**.
+What does not reproduce it: an expression that raises nothing.
 
 Related: the queued entry `expression-service-dangling-tokens`, on malformed expressions that are accepted.
 
-<!-- Reproducer: bugs/expression-service-error-numbers/ (mode test: `tbrun --tests`; expect lists the four PASS and ten FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; the descriptions in exes with `tbrun --exe` and `errors.mjs run`; VBScript's numbers from VB6 with MSScriptControl, Access's from VbaSession (scripts/lib/vba.mjs). No VB6 side: VB6 has no Eval. Stated in NOTEs (BETA 1010) on docs/Reference/Default/VBA/HiddenModule/Eval.md and docs/Reference/Default/VBA/TbExpressionService/Evaluate.md and Compile.md, and in their Common Errors sections (rows of -2147467259 in errors/VBA.HiddenModule.yml and VBA.TbExpressionService.yml, and the `expression` harness, which spends the first error); when fixed, the rows become the errors' own numbers, the harness goes, and the NOTEs go. Found 2026-10-28 by batch 10 of WIP.Errors.md; owner, 2026-10-28: to be investigated and settled from the reader's side; VBScript and Access both keep the number, so a bug. -->
+<!-- Reproducer: bugs/expression-service-error-numbers/ (mode test: `tbrun --tests`; expect lists the two PASS and seven FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; the descriptions in exes with `tbrun --exe` and `errors.mjs run`; VBScript's numbers from VB6 with MSScriptControl, Access's from VbaSession (scripts/lib/vba.mjs). No VB6 side: VB6 has no Eval. Stated in the first NOTE (BETA 1010) on docs/Reference/Default/VBA/HiddenModule/Eval.md and on docs/Reference/Default/VBA/TbExpressionService/Evaluate.md, and in their Common Errors sections (the rows of errors raised while evaluating, -2147467259, in errors/VBA.HiddenModule.yml and VBA.TbExpressionService.yml); when fixed, those rows become the errors' own numbers and the NOTEs go. Not in this entry (owner, 2026-10-28: it asks only that errors pass through unchanged): a compile failure's number and description, `Eval("Len(Null)")` and `Eval("CVErr(5)")`, and the description NOTEs with the `expression` harness. Found 2026-10-28 by batch 10 of WIP.Errors.md; owner, 2026-10-28: Eval is not to special-case errors, unless VB does, which it does not. -->
 
 ---
 

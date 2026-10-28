@@ -30,7 +30,6 @@ An expression that compiles can still fail when it is evaluated: `"1 / 0"` compi
 > [!WARNING] BETA 1010
 > Some malformed expressions are not refused: the part that cannot be read is left out, and no error is raised. `"2 +"`, `"2 Mod"`, `"(2"` and `"2)"` each compile to an expression whose value is 2.
 
-<!-- bug: expression-service-error-numbers -->
 > [!NOTE] BETA 1010
 > In a built program, the first error the expression service raises has the description *Automation error*, and every later one *Unspecified error*. In a run from the IDE, every one has the description *Automation error*.
 

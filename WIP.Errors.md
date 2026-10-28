@@ -1134,10 +1134,15 @@ intrinsics), `CreateGUID`, the `GetDeclared...` six, `StackArgsSize`, `StackOffs
    450 for `1 / 0`, `CInt("abc")`, `CInt(40000)`, `Sqr(-1)`, `Sqr(1, 2)`, and 1002 *Syntax error*
    or 1006 *Expected ')'* for every malformed expression; Access's `Eval` (64-bit VBA, VbaSession)
    raises 11, 13, 6, 5, returns **Null** for `Len(Null)`, and raises 2431, 2434, 2435, 2436, 2439
-   for syntax errors and argument counts. So a bug: queued as `expression-service-error-numbers`
-   (4 PASS, 10 FAIL: each error's own number, `Len(Null)` **Null**, `CVErr(5)` returned, and a
-   compile failure's description saying what is wrong, the same each time). The Evaluate page's
-   prose states the propagation again, the NOTEs (tagged) say what BETA 1010 does.
+   for syntax errors and argument counts. So a bug: queued as `expression-service-error-numbers`.
+   **Owner, then: "Eval should not be special casing errors"** unless VB does, which it does
+   not, and **the entry asks only for errors to be passed through unchanged** (2 PASS, 7 FAIL:
+   11, 13, 6, 5 and a bound object's 457, and the description *Division by zero*). Left out of it,
+   and in no entry: a compile failure's number and description (no direct code to compare:
+   `Sqr(1, 2)` does not compile), `Eval("Len(Null)")` and `Eval("CVErr(5)")` (Eval fails where
+   direct code returns a value), and the unstable description (the description NOTEs, untagged,
+   and the `expression` harness). The Evaluate page's prose states the propagation, the tagged
+   NOTEs say what BETA 1010 does.
 4. **"What does VBx do?" for `vbaCastObj`**: VB6's own `__vbaCastObj` (msvbvm60, called through a
    `Declare`) returns the interface for a GUID's address, 0 for **Nothing**, and raises **13,
    Type mismatch** for an interface the object lacks, a String's text read as an IID included;
