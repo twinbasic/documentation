@@ -8,6 +8,8 @@
 # cannot declare: the page states it in its prose. InternalGetReturnAddress fails a 64-bit
 # build, Emit and EmitAny write machine code, ShowPropertyPageEditor given a control shows a
 # box: none has a case.
+# Eval's -2147467259 rows are bugs/expression-service-error-numbers, and the crashes
+# bugs/nothing-argument-crashes.
 beta: 1010
 pages:
   Reference/Default/VBA/HiddenModule/AddClassInstanceFlag.md:
@@ -195,7 +197,7 @@ pages:
       - { run: "If Eval(\"IsError(CVErr(5))\") <> True Then Err.Raise 1001", only: tb }
       - { expr: 'Eval("Nothing")', only: tb }
       - { run: "If Eval(12) <> 12 Then Err.Raise 1001", only: tb }
-      # a bug: a dangling operator or parenthesis is ignored (bugs/pending; the page's WARNING)
+      # a bug: a dangling operator or parenthesis is ignored (bugs/expression-service-dangling-tokens; the page's WARNING)
       - { run: "If Eval(\"2 +\") <> 2 Then Err.Raise 1001", only: tb }
       - { run: "If Eval(\"2 Mod\") <> 2 Then Err.Raise 1001", only: tb }
       - { run: "If Eval(\"(2\") <> 2 Then Err.Raise 1001", only: tb }

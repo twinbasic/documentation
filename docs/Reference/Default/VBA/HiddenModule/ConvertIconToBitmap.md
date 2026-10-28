@@ -18,6 +18,7 @@ Syntax: **ConvertIconToBitmap(** *IconPicture* [ **,** *BackColor* ] **)** **As 
 
 The returned picture is a fresh bitmap-typed **stdole.StdPicture** with the icon rasterised on top of the chosen background. The original icon picture is unchanged.
 
+<!-- bug: nothing-argument-crashes -->
 > [!WARNING] BETA 1010
 > An *IconPicture* of **Nothing** ends the program with an access violation, in a 32-bit and a 64-bit build alike.
 

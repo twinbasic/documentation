@@ -1,0 +1,22 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Control_Eval_Sum$",
+      "^PASS RegressionTests.Control_Eval_MidOfNull_IsNull$",
+      "^PASS RegressionTests.Control_LenOfNull_OutsideAnExpression_IsNull$",
+      "^PASS RegressionTests.Control_DictionaryAddOfAKeyItHolds_Raises457$",
+      "^FAIL RegressionTests.Eval_DivisionByZero_Raises11: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Eval_DivisionByZero_DescriptionIsDivisionByZero: .*Actual: \"Automation error\"",
+      "^FAIL RegressionTests.Eval_CIntOfText_Raises13: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Eval_CIntOverflow_Raises6: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Eval_SqrOfNegative_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Eval_WrongNumberOfArguments_Raises450: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Eval_LenOfNull_IsNull: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Eval_CVErr_ReturnsTheErrorValue: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Evaluate_DivisionByZero_Raises11: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Evaluate_BoundObjectsError_Raises457: .*Actual: -2147467259 "
+    ]
+  }
+}

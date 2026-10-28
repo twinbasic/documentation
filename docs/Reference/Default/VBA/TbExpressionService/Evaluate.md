@@ -19,11 +19,13 @@ The return value is a **Variant** holding the result of the expression. Its subt
 
 Each call re-runs the expression against the current state of its bindings. If the bound objects expose properties whose values can change between calls --- host application state, the current row of a recordset, configurable parameters --- evaluating the same compiled expression twice may legitimately return different values.
 
-A run-time error raised inside the expression --- division by zero, type mismatch, an invalid call into a bound object --- stops **Evaluate**, which raises an error of its own.
+A run-time error raised inside the expression --- division by zero, type mismatch, an invalid call into a bound object --- propagates out of **Evaluate** like any other run-time error.
 
+<!-- bug: expression-service-error-numbers -->
 > [!NOTE] BETA 1010
 > **Evaluate** raises -2147467259 for any error inside the expression: the error's own number and description are lost. `"1 / 0"` raises -2147467259, not 11, and a **Scripting.Dictionary**'s **Add** of a key it holds raises -2147467259, not 457.
 
+<!-- bug: expression-service-error-numbers -->
 > [!NOTE] BETA 1010
 > In a built program, the first error the expression service raises has the description *Automation error*, and every later one *Unspecified error*. In a run from the IDE, every one has the description *Automation error*. An error of a bound object's member has the description *Automation error* in both.
 

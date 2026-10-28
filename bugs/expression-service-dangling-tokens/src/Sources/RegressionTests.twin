@@ -1,0 +1,83 @@
+' Regression tests: Eval and TbExpressionService.Compile refuse a malformed expression with a
+' run-time error, as they refuse "1 2", instead of leaving out the part they cannot read. On
+' BETA 1010 an expression that ends in an operator, or has a parenthesis with no partner at
+' either end, is accepted, and its value is that of what comes before the fault: each case
+' below gives 2. VBScript's Eval refuses each with 1002, Syntax error, or 1006, Expected ')';
+' Access's Eval with 2431, 2435 or 2436.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function EvalError(ByVal Source As String) As Long
+        Dim V As Variant
+        On Error Resume Next
+        V = Eval(Source)
+        EvalError = Err.Number
+    End Function
+
+    Private Function CompileError(ByVal Source As String) As Long
+        Dim S As New TbExpressionService
+        Dim E As ITbExpression
+        S.AddStdLibraryBinder
+        On Error Resume Next
+        Set E = S.Compile(Source)
+        CompileError = Err.Number
+    End Function
+
+    ' The controls: a well-formed expression, and malformed ones that are refused.
+    [TestCase]
+    Public Sub Control_Eval_WellFormed()
+        Assert.Strict.AreEqual 2, CInt(Eval("(2)"))
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Eval_TwoNumbers_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("1 2")
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Compile_UnclosedAfterOperator_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("2 * (3 + 4")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_TrailingPlus_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("2 +")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_TrailingMod_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("2 Mod")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_UnclosedParenthesis_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("(2")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_UnopenedParenthesis_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("2)")
+    End Sub
+
+    [TestCase]
+    Public Sub Compile_TrailingPlus_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("2 +")
+    End Sub
+
+    [TestCase]
+    Public Sub Compile_TrailingMod_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("2 Mod")
+    End Sub
+
+    [TestCase]
+    Public Sub Compile_UnclosedParenthesis_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("(2")
+    End Sub
+
+    [TestCase]
+    Public Sub Compile_UnopenedParenthesis_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("2)")
+    End Sub
+
+End Module

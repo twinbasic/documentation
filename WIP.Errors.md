@@ -95,8 +95,11 @@ question is open.
 `Compilation` and `TbExpressionService`: 280 cases in `errors/VBA.HiddenModule.yml`,
 `VBA.Compilation.yml` and `VBA.TbExpressionService.yml`, every one `only: tb` (VB6 and VBA have
 none of these procedures), all agreeing in both twinBASIC builds; sections on 35 pages; two new
-harnesses, `native` and `expression`; four HRESULTs added to `messages.yml` and measured. No row
-is `bug: pending`; the questions are under *Batch 10 findings*.
+harnesses, `native` and `expression`; four HRESULTs added to `messages.yml` and measured. The
+owner's rulings 1 to 3 applied: three entries queued (`nothing-argument-crashes`,
+`expression-service-dangling-tokens`, `expression-service-error-numbers`). Questions 4 to 6
+(`vbaCastObj`, `CreateGUID`, `AllocMem`) wait on the owner, with what VB does, under *Batch 10
+findings*.
 
 **Next: batch 11**, Core file I/O statements.
 
@@ -1118,20 +1121,38 @@ intrinsics), `CreateGUID`, the `GetDeclared...` six, `StackArgsSize`, `StackOffs
   have raises -2147467262 (`E_NOINTERFACE`); VB6 raises 13. Not checked in VB6 here, not queued:
   for a Core batch.
 
-**Questions for the owner**:
+**Owner's rulings (2026-10-28)**, and what was done:
 
-1. **The crashes**: one entry, `nothing-argument-crashes` (ConvertIconToBitmap, GetInheritedOwner,
-   AddCustomBinder, AddCustomBinderObject, the hook object's Let)? GetInheritedOwner of a
-   non-control is arguably misuse; in or out?
-2. **Malformed expressions accepted**: an entry, `expression-service-dangling-tokens`?
-3. **The expression service losing the error's number** (and the CVErr and `Len(Null)` cases, and
-   the first error's description): a bug, as the Evaluate page's own design text ("propagates
-   like any other run-time error") implies, or the service's design? If a bug: one entry,
-   `expression-service-error-numbers`; if design, the two NOTEs become prose.
-4. **`vbaCastObj` and a String IID**: the page now says a String is not converted. Or is it a bug
-   that it is not (the page claimed it was), with a WARNING?
-5. **`CreateGUID` without braces**: page corrected; or should it return the braced form?
-6. **`AllocMem(0)`** raises `E_OUTOFMEMORY` (`HeapAlloc` of 0 bytes succeeds): as designed?
+1. **The crashes: one entry**, GetInheritedOwner of a non-control in it: queued as
+   `nothing-argument-crashes` (3 PASS, 7 FAIL with ACCESS_VIOLATION; the `Scripting.Dictionary`
+   case passes in 32-bit), the five WARNINGs tagged.
+2. **Malformed expressions: an entry**, `expression-service-dangling-tokens` (3 PASS, 8 FAIL), the
+   two WARNINGs and the quiet cases' comments tagged.
+3. **The lost error number: "investigate what is most appropriate from a tB user's perspective,
+   and proceed accordingly"**. Both VB-family evaluators keep the error: VBScript's `Eval`
+   (`MSScriptControl.ScriptControl` from VB6) raises 11, 13 (*Type mismatch: 'CInt'*), 6, 5 and
+   450 for `1 / 0`, `CInt("abc")`, `CInt(40000)`, `Sqr(-1)`, `Sqr(1, 2)`, and 1002 *Syntax error*
+   or 1006 *Expected ')'* for every malformed expression; Access's `Eval` (64-bit VBA, VbaSession)
+   raises 11, 13, 6, 5, returns **Null** for `Len(Null)`, and raises 2431, 2434, 2435, 2436, 2439
+   for syntax errors and argument counts. So a bug: queued as `expression-service-error-numbers`
+   (4 PASS, 10 FAIL: each error's own number, `Len(Null)` **Null**, `CVErr(5)` returned, and a
+   compile failure's description saying what is wrong, the same each time). The Evaluate page's
+   prose states the propagation again, the NOTEs (tagged) say what BETA 1010 does.
+4. **"What does VBx do?" for `vbaCastObj`**: VB6's own `__vbaCastObj` (msvbvm60, called through a
+   `Declare`) returns the interface for a GUID's address, 0 for **Nothing**, and raises **13,
+   Type mismatch** for an interface the object lacks, a String's text read as an IID included;
+   twinBASIC returns **Nothing** for both. VBE7.DLL exports no `__vba` procedure, so 64-bit VBA
+   cannot be asked. Awaiting the owner: a bug (raise 13, as VB6), or twinBASIC's own (a
+   "try cast")?
+5. **"What does VBx do?" for `CreateGUID`**: nothing to compare. VB6 and VBA have no CreateGUID,
+   nor does Access (`Application.CreateGUID` 438, `Eval("CreateGUID()")` 2425), and no runtime
+   exports one. VB code makes one with `CreateObject("Scriptlet.TypeLib").Guid`, which is braced
+   (`{...}`, and two trailing NULs: 40 characters), or `StringFromGUID2`, braced. twinBASIC's
+   `GetDeclaredTypeIid` and its kin return the braced form; `CreateGUID` the 36-character form the
+   `ClassId` and `InterfaceId` attributes take. Awaiting the owner.
+6. **"What does VBx do?" for `AllocMem(0)`**: nothing to compare: no AllocMem in VB6, VBA, msvbvm60
+   or VBE7 (their GetMem/PutMem family has no allocator). Windows' allocators (`HeapAlloc`,
+   `CoTaskMemAlloc`, `GlobalAlloc`) return a block for 0 bytes. Awaiting the owner.
 
 ## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
 
@@ -1217,7 +1238,7 @@ each can be run when there is budget. Status is kept here.
 | 7 | VBA `FileSystem`, under the `files` harness | 23 | done: 21 sections, 448 cases; three entries queued, one extended, 2026-10-27 |
 | 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | done: 10 sections, 259 cases; three entries queued 2026-10-27; owner's rulings 2026-10-28 |
 | 9 | VBA `Financial` | 14 | done: 13 sections, 349 cases; five entries queued, one extended; owner's rulings 2026-10-28 |
-| 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | done but for the owner's rulings: 35 sections, 280 cases, harnesses `native` and `expression`; 2026-10-28 |
+| 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | 35 sections, 280 cases, harnesses `native` and `expression`; three entries queued; questions 4 to 6 open; 2026-10-28 |
 | 11 | Core file I/O statements (`Open`, `Get`, `Put`, `Input`, ...: errors 52--75) | 15 | not started |
 | 12 | Core arrays and control flow (`ReDim`, `Erase`, `Resume`, `Return`, ...); ReDim has data already, in `errors/Core.yml` | 15 | not started |
 | 13 | Operators: the matrix generator and its pages | 25 | not started |

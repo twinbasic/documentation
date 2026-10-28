@@ -28,6 +28,7 @@ Member resolution is performed by name through the standard COM/IDispatch protoc
 
 Multiple objects can be bound to the same service, each under its own *name*. They are consulted in the order they were added.
 
+<!-- bug: nothing-argument-crashes -->
 > [!WARNING] BETA 1010
 > An *object* of **Nothing** ends the program with an access violation, in a 32-bit and a 64-bit build alike.
 

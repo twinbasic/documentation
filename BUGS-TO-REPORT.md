@@ -10502,3 +10502,433 @@ Related: the queued entry on refused arguments (`argument-errors-unspecified-err
 What does not reproduce it: a *per* just below *nper* + 1 (`IPmt(0.01, 10.9999999, 10, 1000)`); `Pmt` with a *rate* of -2 and an even *nper* (11 in all); `DDB` with a *life* of 1. `PV` already raises 11 for a result beyond the range of a `Double`, as 64-bit VBA does (VB6 returns infinity).
 
 <!-- Reproducer: bugs/financial-argument-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and sixteen FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; 64-bit VBA's numbers from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0). Stated in the Common Errors sections (rows `bug: financial-argument-checks` in errors/VBA.Financial.yml) of DDB, FV, IPmt, MIRR, NPV, PPmt, PV, Pmt and SLN under docs/Reference/Default/VBA/Financial/, and in WARNINGs (BETA 1010) on IPmt, PPmt, MIRR and NPV for the values returned with no error; when fixed, each row becomes a row of 64-bit VBA's number (DDB's to the quiet cases), and the NOTEs and WARNINGs go. Found 2026-10-28 by batch 9 of WIP.Errors.md; owner, 2026-10-28: a bug, twinBASIC to do as 64-bit VBA where VB6 and 64-bit VBA differ; PV's 11 for a result beyond the range of a Double is that, not a bug. -->
+
+---
+
+## `ConvertIconToBitmap`, `GetInheritedOwner`, `AddCustomBinder` and `AddCustomBinderObject` end the program when given `Nothing`
+
+**Describe the bug**
+Five calls end the program with an access violation, in a built exe and in the IDE, 32-bit and 64-bit; in the compiler's test mode the case reports `NATIVE EXCEPTION: ACCESS_VIOLATION`:
+
+- `ConvertIconToBitmap(Nothing)`. Given any other object that is not an icon (a `Collection`, a bitmap picture) it raises -2147467259, as it should.
+- `GetInheritedOwner(Nothing)`, and `GetInheritedOwner` of an object that is not a control: a `Collection` in both builds, a `Scripting.Dictionary` in a 64-bit build (in a 32-bit one it returns).
+- `TbExpressionService.AddCustomBinder Nothing`.
+- `TbExpressionService.AddCustomBinderObject "D", Nothing`.
+- `V = RuntimeCreateGetMessageHook()`, a `Let` of the hook object into a `Variant`. `Set V = RuntimeCreateGetMessageHook()` works, and so does a `Let` of the same object held in a variable declared `As IGetMessageHook`; a `Let` of an object of a twinBASIC class behind an interface without `IDispatch` stores it with no error, so the fault is in the hook object.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `nothing-argument-crashes.twinproj` (attached as `nothing-argument-crashes.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other seven end with an access violation; the `Scripting.Dictionary` case passes in a 32-bit build.
+
+The module is meant to be adapted as a regression test. A case asserts only that an error is raised (or, for `GetInheritedOwner`, that it returns `Nothing`), not which: VB6 and VBA have none of these procedures.
+```vb
+' Regression tests: given Nothing, or an object they cannot use, ConvertIconToBitmap,
+' GetInheritedOwner, TbExpressionService.AddCustomBinder and AddCustomBinderObject raise a
+' run-time error (or, for GetInheritedOwner, return Nothing) instead of ending the program
+' with an access violation; and the object RuntimeCreateGetMessageHook returns can be
+' assigned to a Variant without Set, as any other object without IDispatch can. On BETA 1010
+' each case but the controls ends with an access violation, 32-bit and 64-bit.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Declare PtrSafe Function LoadIconW Lib "user32" (ByVal Inst As LongPtr, ByVal Name As LongPtr) As LongPtr
+
+    ' The controls: each procedure working, or refusing an argument with an error.
+    [TestCase]
+    Public Sub Control_ConvertIconToBitmap_Icon()
+        Dim Icon As StdPicture = CreateStdPictureFromHandle(LoadIconW(0, 32512), vbPicTypeIcon, False)
+        Assert.Strict.AreEqual CLng(vbPicTypeBitmap), CLng(ConvertIconToBitmap(Icon).Type)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_ConvertIconToBitmap_NotAPicture_Raises()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = ConvertIconToBitmap(New Collection)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual -2147467259, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_AddCustomBinderObject_Object()
+        Dim S As New TbExpressionService
+        S.AddCustomBinderObject "D", CreateObject("Scripting.Dictionary")
+        Assert.Strict.AreEqual 0, CInt(S.Compile("D.Count").Evaluate())
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertIconToBitmap_Nothing_RaisesAnError()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = ConvertIconToBitmap(Nothing)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreNotEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub GetInheritedOwner_Nothing_DoesNotCrash()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = GetInheritedOwner(Nothing)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.IsTrue E <> 0 Or R Is Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub GetInheritedOwner_Collection_DoesNotCrash()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = GetInheritedOwner(New Collection)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.IsTrue E <> 0 Or R Is Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub GetInheritedOwner_Dictionary_DoesNotCrash()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = GetInheritedOwner(CreateObject("Scripting.Dictionary"))
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.IsTrue E <> 0 Or R Is Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub AddCustomBinder_Nothing_RaisesAnError()
+        Dim S As New TbExpressionService
+        Dim E As Long
+        On Error Resume Next
+        S.AddCustomBinder Nothing
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreNotEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub AddCustomBinderObject_Nothing_RaisesAnError()
+        Dim S As New TbExpressionService
+        Dim E As Long
+        On Error Resume Next
+        S.AddCustomBinderObject "D", Nothing
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreNotEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub RuntimeCreateGetMessageHook_LetIntoVariant_StoresTheObject()
+        Dim V As Variant
+        V = RuntimeCreateGetMessageHook()
+        Assert.Strict.AreEqual CInt(vbDataObject), VarType(V)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+A run-time error for **Nothing**, as `GetNameFromDispID(Nothing, 0)` raises -2147467261, *Invalid pointer*, and as VB's `CallByName` raises 5 for an object of **Nothing**; for `GetInheritedOwner`, an error or **Nothing**. A `Let` of the hook object into a `Variant` stores it, as a `Let` of any other object without `IDispatch` does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: high: the program ends without a chance to save its data, and an object variable that is still **Nothing** is an ordinary mistake that an error handler should be able to catch.
+
+A 64-bit build gives the same results, but for `GetInheritedOwner` of a `Scripting.Dictionary` (above).
+
+What does not reproduce it: any of these procedures given the object it is meant for (the controls), or an object of the wrong kind other than those named (`ConvertIconToBitmap` of a bitmap or a `Collection` raises -2147467259).
+
+<!-- Reproducer: bugs/nothing-argument-crashes/ (mode test: `tbrun --tests`; expect lists the three PASS lines, six FAIL lines with ACCESS_VIOLATION and the Dictionary case as either); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; the crashes also in built exes (`errors.mjs run` while exploring). No VB6 side: VB6 and VBA have none of these procedures. Stated in a WARNING (BETA 1010) each on docs/Reference/Default/VBA/HiddenModule/ConvertIconToBitmap.md, GetInheritedOwner.md and RuntimeCreateGetMessageHook.md, and docs/Reference/Default/VBA/TbExpressionService/AddCustomBinder.md and AddCustomBinderObject.md; when fixed, the WARNINGs go, and the error each raises becomes a row in errors/VBA.HiddenModule.yml or VBA.TbExpressionService.yml. Found 2026-10-28 by batch 10 of WIP.Errors.md; owner, 2026-10-28: a bug, one entry, GetInheritedOwner of a non-control included. -->
+
+---
+
+## `Eval` and `TbExpressionService.Compile` accept an expression that ends in an operator or has an unmatched parenthesis
+
+**Describe the bug**
+`Eval` and `TbExpressionService.Compile` accept some malformed expressions without an error: the part they cannot read is left out, and the value is that of what comes before it. `Eval("2 +")`, `Eval("2 Mod")`, `Eval("(2")` and `Eval("2)")` each return 2, and `Compile` of each gives an expression whose value is 2. Other malformed expressions are refused with -2147467259: `"1 2"`, `"2 * (3 + 4"`, `"Sqr(4"`, `")"`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `expression-service-dangling-tokens.twinproj` (attached as `expression-service-dangling-tokens.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the eight other cases fail: no error is raised.
+
+The module is meant to be adapted as a regression test. A case asserts only that an error is raised, not which.
+```vb
+' Regression tests: Eval and TbExpressionService.Compile refuse a malformed expression with a
+' run-time error, as they refuse "1 2", instead of leaving out the part they cannot read. On
+' BETA 1010 an expression that ends in an operator, or has a parenthesis with no partner at
+' either end, is accepted, and its value is that of what comes before the fault: each case
+' below gives 2. VBScript's Eval refuses each with 1002, Syntax error, or 1006, Expected ')';
+' Access's Eval with 2431, 2435 or 2436.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function EvalError(ByVal Source As String) As Long
+        Dim V As Variant
+        On Error Resume Next
+        V = Eval(Source)
+        EvalError = Err.Number
+    End Function
+
+    Private Function CompileError(ByVal Source As String) As Long
+        Dim S As New TbExpressionService
+        Dim E As ITbExpression
+        S.AddStdLibraryBinder
+        On Error Resume Next
+        Set E = S.Compile(Source)
+        CompileError = Err.Number
+    End Function
+
+    ' The controls: a well-formed expression, and malformed ones that are refused.
+    [TestCase]
+    Public Sub Control_Eval_WellFormed()
+        Assert.Strict.AreEqual 2, CInt(Eval("(2)"))
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Eval_TwoNumbers_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("1 2")
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Compile_UnclosedAfterOperator_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("2 * (3 + 4")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_TrailingPlus_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("2 +")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_TrailingMod_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("2 Mod")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_UnclosedParenthesis_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("(2")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_UnopenedParenthesis_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("2)")
+    End Sub
+
+    [TestCase]
+    Public Sub Compile_TrailingPlus_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("2 +")
+    End Sub
+
+    [TestCase]
+    Public Sub Compile_TrailingMod_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("2 Mod")
+    End Sub
+
+    [TestCase]
+    Public Sub Compile_UnclosedParenthesis_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("(2")
+    End Sub
+
+    [TestCase]
+    Public Sub Compile_UnopenedParenthesis_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("2)")
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+A run-time error for each, as for `"1 2"`. VBScript's `Eval` (through `MSScriptControl.ScriptControl` in VB6) raises 1002, *Syntax error*, for `"2 +"`, `"2 Mod"` and `"2)"`, and 1006, *Expected ')'*, for `"(2"`; Access's `Eval` in 64-bit VBA raises 2431, *The expression you entered contains invalid syntax.*, 2436 (a missing closing parenthesis) and 2435 (too many closing parentheses).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium: a wrong value with no error, for text a user typed, the very input an expression service is given.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: two operands with no operator (`"1 2"`), an unclosed parenthesis after an operator (`"2 * (3 + 4"`, `"2 + (3"`), an unclosed argument list (`"Sqr(4"`), a lone `")"`, `"+"` or `"-"`. `"2 *"` is accepted, `"2 * "` with a trailing space is refused.
+
+Related: the queued entry `expression-service-error-numbers`, on the number these functions raise.
+
+<!-- Reproducer: bugs/expression-service-dangling-tokens/ (mode test: `tbrun --tests`; expect lists the three PASS and eight FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; VBScript's numbers from VB6 with MSScriptControl, Access's from VbaSession (scripts/lib/vba.mjs). No VB6 side: VB6 has no Eval. Stated in a WARNING (BETA 1010) each on docs/Reference/Default/VBA/HiddenModule/Eval.md and docs/Reference/Default/VBA/TbExpressionService/Compile.md, and as quiet cases (comment `bugs/expression-service-dangling-tokens`) in errors/VBA.HiddenModule.yml and VBA.TbExpressionService.yml; when fixed, the WARNINGs go and the quiet cases join Eval's and Compile's rows of the error raised. Found 2026-10-28 by batch 10 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
+
+---
+
+## `Eval` and `ITbExpression.Evaluate` raise -2147467259 for every error inside the expression, so its own number and description are lost
+
+**Describe the bug**
+An error raised while `Eval` or `ITbExpression.Evaluate` evaluates an expression reaches the caller as -2147467259 (`&H80004005`), whatever it was: `Eval("1 / 0")` raises -2147467259, not 11, *Division by zero*; `CInt("abc")` in an expression not 13, `CInt(40000)` not 6, `Sqr(-1)` not 5, `Sqr(1, 2)` not 450, and a bound object's error, a `Scripting.Dictionary`'s `Add` of a key it holds, not 457. Two expressions that are not errors raise it too: `Eval("Len(Null)")`, though `Len` of **Null** written in a procedure is **Null**, and `Eval("CVErr(5)")`, whose value is an **Error** value.
+
+The description is not stable either. In a built exe the first such error of the process has the description *Automation error* and every later one *Unspecified error*; in the IDE every one has *Automation error*. An error of a bound object's member has *Automation error* in both.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `expression-service-error-numbers.twinproj` (attached as `expression-service-error-numbers.zip`).
+2. Run its test cases, the module below. On BETA 1010 the four controls pass and the ten other cases fail, each with -2147467259 (and the description case with *Automation error*).
+3. For the description in an exe, build a project whose `Sub Main` compiles `"1 2"` three times with `TbExpressionService.Compile` and prints `Err.Description` each time: *Automation error*, then *Unspecified error* twice.
+
+The module is meant to be adapted as a regression test. Each number asserted is the one the same code raises written in a procedure, which VBScript's `Eval` and Access's `Eval` raise too.
+```vb
+' Regression tests: an error raised while Eval or ITbExpression.Evaluate evaluates an
+' expression reaches the caller with its own number, as it does from the same code written
+' in a procedure, and as VBScript's Eval and Access's Eval raise it; Len(Null) inside an
+' expression is Null, and an expression whose value is an Error value returns it. On BETA
+' 1010 each of these raises -2147467259, whose description is "Automation error" in the IDE
+' and in an exe's first such error, and "Unspecified error" after it.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function EvalError(ByVal Source As String) As Long
+        Dim V As Variant
+        On Error Resume Next
+        V = Eval(Source)
+        EvalError = Err.Number
+    End Function
+
+    ' The controls: what works, and the same errors raised outside an expression.
+    [TestCase]
+    Public Sub Control_Eval_Sum()
+        Assert.Strict.AreEqual 4, CInt(Eval("2 + 2"))
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Eval_MidOfNull_IsNull()
+        Assert.Strict.IsNull Eval("Mid(Null, 1)")
+    End Sub
+
+    [TestCase]
+    Public Sub Control_LenOfNull_OutsideAnExpression_IsNull()
+        Dim V As Variant = Null
+        Assert.Strict.IsNull Len(V)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_DictionaryAddOfAKeyItHolds_Raises457()
+        Dim D As Object = CreateObject("Scripting.Dictionary")
+        Dim E As Long
+        D.Add 1, 1
+        On Error Resume Next
+        D.Add 1, 2
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 457&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_DivisionByZero_Raises11()
+        Assert.Strict.AreEqual 11&, EvalError("1 / 0")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_DivisionByZero_DescriptionIsDivisionByZero()
+        Dim V As Variant, D As String
+        On Error Resume Next
+        V = Eval("1 / 0")
+        D = Err.Description
+        On Error GoTo 0
+        Assert.Strict.AreEqual "Division by zero", D
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_CIntOfText_Raises13()
+        Assert.Strict.AreEqual 13&, EvalError("CInt(""abc"")")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_CIntOverflow_Raises6()
+        Assert.Strict.AreEqual 6&, EvalError("CInt(40000)")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_SqrOfNegative_Raises5()
+        Assert.Strict.AreEqual 5&, EvalError("Sqr(-1)")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_WrongNumberOfArguments_Raises450()
+        Assert.Strict.AreEqual 450&, EvalError("Sqr(1, 2)")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_LenOfNull_IsNull()
+        Dim V As Variant, E As Long
+        On Error Resume Next
+        V = Eval("Len(Null)")
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsNull V
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_CVErr_ReturnsTheErrorValue()
+        Dim V As Variant, E As Long
+        On Error Resume Next
+        V = Eval("CVErr(5)")
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue IsError(V)
+    End Sub
+
+    [TestCase]
+    Public Sub Evaluate_DivisionByZero_Raises11()
+        Dim S As New TbExpressionService
+        Dim X As ITbExpression, V As Variant, E As Long
+        S.AddStdLibraryBinder
+        Set X = S.Compile("1 / 0")
+        On Error Resume Next
+        V = X.Evaluate()
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 11&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Evaluate_BoundObjectsError_Raises457()
+        Dim S As New TbExpressionService
+        Dim D As Object = CreateObject("Scripting.Dictionary")
+        Dim X As ITbExpression, V As Variant, E As Long
+        D.Add 1, 1
+        S.AddCustomBinderObject "D", D
+        Set X = S.Compile("D.Add(1, 2)")
+        On Error Resume Next
+        V = X.Evaluate()
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 457&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The error keeps its own number and description, as it does when the same code is written in a procedure, and as the VB family's expression evaluators raise it: VBScript's `Eval` (through `MSScriptControl.ScriptControl` in VB6) raises 11, 13, 6, 5 and 450 for the cases above, and Access's `Eval` in 64-bit VBA 11, 13, 6 and 5, and returns **Null** for `Len(Null)`. `Eval("CVErr(5)")` returns the **Error** value. An expression that cannot be compiled (a syntax error, a name nothing resolves) raises an error whose description says so, the same each time, as VBScript's 1002, *Syntax error*, and Access's 2431, *The expression you entered contains invalid syntax.*, do.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium: an error handler cannot tell a division by zero from a type mismatch or a bound object's own error, and a handler written for one number never runs. The class's own documentation says an error inside the expression propagates out of `Evaluate` like any other run-time error.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: an expression that raises nothing; `Eval("Mid(Null, 1)")` and `Eval("Null + 1")` return **Null**.
+
+Related: the queued entry `expression-service-dangling-tokens`, on malformed expressions that are accepted.
+
+<!-- Reproducer: bugs/expression-service-error-numbers/ (mode test: `tbrun --tests`; expect lists the four PASS and ten FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; the descriptions in exes with `tbrun --exe` and `errors.mjs run`; VBScript's numbers from VB6 with MSScriptControl, Access's from VbaSession (scripts/lib/vba.mjs). No VB6 side: VB6 has no Eval. Stated in NOTEs (BETA 1010) on docs/Reference/Default/VBA/HiddenModule/Eval.md and docs/Reference/Default/VBA/TbExpressionService/Evaluate.md and Compile.md, and in their Common Errors sections (rows of -2147467259 in errors/VBA.HiddenModule.yml and VBA.TbExpressionService.yml, and the `expression` harness, which spends the first error); when fixed, the rows become the errors' own numbers, the harness goes, and the NOTEs go. Found 2026-10-28 by batch 10 of WIP.Errors.md; owner, 2026-10-28: to be investigated and settled from the reader's side; VBScript and Access both keep the number, so a bug. -->

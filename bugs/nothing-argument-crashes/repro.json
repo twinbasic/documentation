@@ -1,0 +1,18 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Control_ConvertIconToBitmap_Icon$",
+      "^PASS RegressionTests.Control_ConvertIconToBitmap_NotAPicture_Raises$",
+      "^PASS RegressionTests.Control_AddCustomBinderObject_Object$",
+      "^FAIL RegressionTests.ConvertIconToBitmap_Nothing_RaisesAnError: .*ACCESS_VIOLATION",
+      "^FAIL RegressionTests.GetInheritedOwner_Nothing_DoesNotCrash: .*ACCESS_VIOLATION",
+      "^FAIL RegressionTests.GetInheritedOwner_Collection_DoesNotCrash: .*ACCESS_VIOLATION",
+      "^(PASS RegressionTests.GetInheritedOwner_Dictionary_DoesNotCrash$|FAIL RegressionTests.GetInheritedOwner_Dictionary_DoesNotCrash: .*ACCESS_VIOLATION)",
+      "^FAIL RegressionTests.AddCustomBinder_Nothing_RaisesAnError: .*ACCESS_VIOLATION",
+      "^FAIL RegressionTests.AddCustomBinderObject_Nothing_RaisesAnError: .*ACCESS_VIOLATION",
+      "^FAIL RegressionTests.RuntimeCreateGetMessageHook_LetIntoVariant_StoresTheObject: .*ACCESS_VIOLATION"
+    ]
+  }
+}

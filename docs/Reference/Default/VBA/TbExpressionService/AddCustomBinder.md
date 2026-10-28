@@ -22,6 +22,7 @@ Use **AddCustomBinder** when [**AddCustomBinderObject**](AddCustomBinderObject) 
 
 The engine calls [**Bind**](Bind) on each registered custom binder during compilation, once per unresolved symbol. The first binder that returns a non-**Nothing** result wins. Multiple custom binders can be registered with one service, and they are consulted in registration order.
 
+<!-- bug: nothing-argument-crashes -->
 > [!WARNING] BETA 1010
 > A *customBinder* of **Nothing** ends the program with an access violation, in a 32-bit and a 64-bit build alike.
 
