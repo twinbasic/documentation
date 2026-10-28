@@ -1141,8 +1141,9 @@ intrinsics), `CreateGUID`, the `GetDeclared...` six, `StackArgsSize`, `StackOffs
    and in no entry: a compile failure's number and description (no direct code to compare:
    `Sqr(1, 2)` does not compile), `Eval("Len(Null)")` and `Eval("CVErr(5)")` (Eval fails where
    direct code returns a value), and the unstable description (the description NOTEs, untagged,
-   and the `expression` harness). The Evaluate page's prose states the propagation, the tagged
-   NOTEs say what BETA 1010 does.
+   and the `expression` harness). **Owner: they stay NOTEs, with no entry** (untagged, so no
+   retired entry removes them: check them against each new BETA, as every labelled callout is).
+   The Evaluate page's prose states the propagation, the tagged NOTEs say what BETA 1010 does.
 4. **"What does VBx do?" for `vbaCastObj`**: VB6's own `__vbaCastObj` (msvbvm60, called through a
    `Declare`) returns the interface for a GUID's address, 0 for **Nothing**, and raises **13,
    Type mismatch** for an interface the object lacks, a String's text read as an IID included;
