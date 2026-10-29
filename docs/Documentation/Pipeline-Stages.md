@@ -431,7 +431,7 @@ searchIndex.expected = ["searchData"]
 searchIndex.handler  = "searchIndex"
 ```
 
-Calls `writeSearchIndex(destRoot, { offline })` from `search-index.mjs`, which reads the `search-data.json` that `searchData` wrote and writes `assets/js/search-index.json` beside it: the lunr index of the search entries, as lunr's own JSON, which the site's search box loads with `lunr.Index.load` instead of building the index in the browser. Unless the build writes no offline tree, it also writes the offline tree's `assets/js/search-index.js`, the same index as a script that sets `window.SEARCH_INDEX`, since a page under `file://` can load a script but not fetch a file. Returns `{ entries, workers, bytes }`.
+Calls `writeSearchIndex(destRoot, { offline })` from `search-index.mjs`, which reads the `search-data.json` that `searchData` wrote and writes `assets/js/search-index.json` beside it: `{"docs": ..., "index": ...}`, the search entries and their lunr index, as lunr's own JSON, in one file, which the site's search box loads (`lunr.Index.load`) instead of building the index in the browser. One file, so that the page can never hold the entries of one deploy beside the index of another; `search-data.json` stays for the link check and the eval tools. Unless the build writes no offline tree, the task also writes the offline tree's `assets/js/search-index.js`, the same file as a script that sets `window.SEARCH_INDEX`, since a page under `file://` can load a script but not fetch a file. Returns `{ entries, workers, bytes }`.
 
 The index is built on threads of the task's own (`search-index-worker.mjs`), up to eight, one for every 500 entries, so a small tree starts none. Each thread adds a run of the entries to a `lunr.Builder` of its own; the task merges the postings, numbering each term as one build would, works out the totals the field vectors need, and has each thread make its entries' vectors. The result is byte for byte what `lunr()` makes on one thread, which [`test/search-index.test.mjs`](Tools-Toolchain-Tests#search-index-test) checks. The task runs on a worker rather than on the main thread because the main thread runs one task at a time, and as one of them it held back `bookPayload`, `writeAux` and `writeOffline` for the second or two the index takes. `helpArchive` and `checkReport` wait for it.
 
@@ -481,7 +481,7 @@ Returns `{ redirectStats, sitemapStats, searchStats }` (the search stats come fr
 writeOffline.expected = ["writeAux", "writeAssets"]
 ```
 
-Calls `writeOffline(state.staticFiles, state.site, destRoot, { auxStats, sitePaths, profileOffline })` from `offline.mjs`. `render:i` / `flush:i` have already rewritten and written the per-page HTML. This task does the rest: CSS `url()` rewriting, the `just-the-docs.js` AST patch (`deriveOfflineJtdJs`), the `search-data.js` wrapper (`deriveOfflineSearchDataJs`), the offline `nav.js` (the whole nav tree with its links relative to the site's root), theme assets and redirect stubs. `sitePaths` comes from `state.sitePaths`.
+Calls `writeOffline(state.staticFiles, state.site, destRoot, { auxStats, sitePaths, profileOffline })` from `offline.mjs`. `render:i` / `flush:i` have already rewritten and written the per-page HTML. This task does the rest: CSS `url()` rewriting, the `just-the-docs.js` AST patch (`deriveOfflineJtdJs`), the offline `nav.js` (the whole nav tree with its links relative to the site's root), theme assets and redirect stubs. `sitePaths` comes from `state.sitePaths`.
 
 ### `helpArchive` (worker)
 
@@ -920,7 +920,7 @@ The one definition of the site search's lunr index: its fields and boosts (`FIEL
 | `buildIndexJson` | `(docs, { workers, lunrPath }) → Promise<string>` | The index of the parsed search data as lunr's JSON, built on `workers` threads (`search-index-worker.mjs`); one builds it on the calling thread with `lunr()` itself. Every worker count gives the same bytes. |
 | `buildIndex` | `(lunr, docs) → lunr.Index` | The index built by `lunr()` on the calling thread: what the split build must equal. `eval/site_search.mjs` uses it for a site with no `search-index.json`. |
 | `loadSearchLunr` | `(lunrPath?) → lunr` | The vendored lunr with the site's patches installed, once per copy. |
-| `searchIndexFile` | `(indexJson, docs) → string` | `search-index.json`'s text: lunr's JSON with a `tbdocs` key holding the number of entries and `docsDigest(docs)`, by which the page refuses an index of another build. |
+| `searchIndexFile` | `(indexJson, docs) → string` | `search-index.json`'s text: `{"docs": ..., "index": ...}`, the entries minified and the index as given. |
 | `offlineSearchIndexJs` | `(fileText) → string` | Wraps `search-index.json` as `window.SEARCH_INDEX = JSON.parse('…')` for the offline tree. |
 | `defaultIndexWorkers` | `(entries) → number` | The threads the build gives an index: half the machine, at most eight, one per 500 entries. |
 
@@ -982,7 +982,6 @@ The one definition of the site search's lunr index: its fields and boosts (`FIEL
 | `writeOffline` | `(staticFiles, site, destRoot, { auxStats?, profileOffline?, sitePaths }) → Promise<stats>` | Offline tree writer. Render workers have already written the per-page HTML from `page.offlineHtml`; `sitePaths` is the set `dispatch` built with `buildSitePathsSync`. |
 | `enumerateVendoredThemeAssets` | `() → string[]` | Lists the relative paths under `builder/vendor/just-the-docs/assets/`. `dispatch` uses it to build the site-paths set without reading `_site/`. |
 | `deriveOfflineJtdJs` | `(src) → string` | AST-based patcher: uses `acorn` to replace `navLink` and `initSearch` in `just-the-docs.js` with offline-compatible implementations. A parse failure means the re-extracted file is something acorn cannot read. |
-| `deriveOfflineSearchDataJs` | `(jsonBytes) → string` | Wraps `search-data.json` as `window.SEARCH_DATA = …` and minifies. `<script src=>` cannot fetch JSON under `file://`. |
 | `deriveOfflinePage`, `deriveOfflineRedirect`, `deriveOfflineCss` | (re-exported from `offline-rewrite.mjs`) | Pure-compute helpers used by both the offline writer and the worker render handler. |
 
 ### `offline-rewrite.mjs`

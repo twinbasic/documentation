@@ -522,7 +522,7 @@ loadIndexNow(); return; }`. `searchLoaded()` takes `loadIndex`, not
 `(index, docs)`.
 
 `builder/offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` works the same way,
-adding the offline tree's two scripts to the page on the first keystroke.
+adding the offline tree's script to the page on the first keystroke.
 
 ## The pre-built index
 
@@ -544,19 +544,33 @@ navigations.
   touches navigation, scroll, focus and accessibility. Not chosen.
 - **Shipping the built index** (this section): chosen.
 
-**What the page does.** The build writes `assets/js/search-index.json`, the
-index of `search-data.json` as lunr's own JSON (`Index#toJSON`), plus a
-`tbdocs` key with the number of entries and `docsDigest()` of them. On the
-first keystroke the page fetches both files, parses each and calls
-`lunr.Index.load`, a step per task, through `indexFromData()`, which first
+**What the page does.** The build writes `assets/js/search-index.json`:
+`{"docs": ..., "index": ...}`, the search entries (`search-data.json`,
+minified) and their index as lunr's own JSON (`Index#toJSON`). On the first
+keystroke the page fetches that one file, parses it in one task and calls
+`lunr.Index.load` in the next, through `indexFromData()`, which first
 installs the query patches (`installSearchPatches()`; the token set
-`Index.load` makes needs the separated keys). An index whose check does not
-match the data is fetched once more past the cache (`?v=`), then refused:
-its entries are numbers into the data, and a browser can hold one of the two
-from before a deploy. The offline tree gets the index as `search-index.js`
-(`window.SEARCH_INDEX = JSON.parse('...')`, JSON text being faster for a
-browser to parse than the same data as script), and no offline page loads
-`search-data.js` until the first keystroke either.
+`Index.load` makes needs the separated keys). The offline tree gets the file
+as `search-index.js` (`window.SEARCH_INDEX = JSON.parse('...')`, JSON text
+being faster for a browser to parse than the same data as script), added to
+the page on the first keystroke; it has no `search-data.js` at all.
+
+**One file, not two (owner, 2026-10-29).** An index's entries are numbers
+into the search entries, so the page must never hold the entries of one
+build beside the index of another. As two files, fetched together, they
+could still come from two deploys: a deploy between the two requests, a CDN
+edge serving the two URLs from different deploys for a few seconds after its
+purge, or a browser evicting the 38 MB index from its cache and not the
+entries, then fetching a new index beside the old entries within their ten
+minutes. The first version detected that, with a count and a digest of the
+entries in the index file and a second fetch past the cache; the owner
+asked whether the live page should be checking the build, and one file makes
+the mismatch impossible instead. `search-data.json` stays in the online tree
+for its other readers: the build's link check (every page in the search
+index), `eval/site_search.mjs` for a snapshot without `search-index.json`,
+and the evaluation rounds' snapshots. So the online tree holds the entries
+twice (9.8 MB more, 2 MB gzipped), which no reader downloads twice; the
+offline tree and the help archive hold them once.
 
 **Measured** in headless Chrome against the built site, median of 5, from
 the first keystroke to an index that answers:
@@ -569,10 +583,14 @@ the first keystroke to an index that answers:
 | pre-built, no positions | 0.54 s | +94 MB | 2.2 + 4.9 MB |
 
 Of the 0.75 s, about 0.2 s is the download (on localhost), 0.3 s
-`JSON.parse` and 0.2 s `Index.load`. Positions are kept: they place each
-result's preview and its highlighting, and only content's are many. The
-serialised index is 38 MB raw. The 1.3 s this file once gave for the page's
-build was out of date: the corpus had grown to 12,100 entries.
+`JSON.parse` and 0.2 s `Index.load`. Positions are kept (owner): they place
+each result's preview and its highlighting, and only content's are many. The
+serialised index is 38 MB raw, and the file with the entries 47 MB (10.4 MB
+gzipped). With the one file, the page shows results 0.86 to 0.99 s after
+the keystroke, the typing and the drawing included, as with two; offline,
+2.1 to 2.2 s (1.6 s with the two scripts, the entries then an object
+literal). The 1.3 s this file once gave for the page's build was out of
+date: the corpus had grown to 12,100 entries.
 
 **The build makes it on threads** (`builder/search-index.mjs`,
 `search-index-worker.mjs`). On one thread lunr took 3.6 to 4.8 s: `add()`
@@ -601,9 +619,9 @@ entries.
 at a time), which cost 1.9 s. On a lane it takes about 2.3 s after
 `searchData`, and it is now the last task of a build without the help
 archive (`compare_trees`: 6.2 s before, 7.9 s after); with the archive,
-`helpArchive` waits for it. The help archive gains `search-index.js`
-deflated, 8.4 MB (54.7 to 63.1 MB), and the add-in's project download 64.1
-MB (was 55.7).
+`helpArchive` waits for it. The help archive gains the index: 54.7 to 63.1
+MB, and the add-in's project download 55.7 to 64.1 MB (owner: fine, for
+now). The build time is the price of the index (owner).
 
 ## Step numbers in code comments
 

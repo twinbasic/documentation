@@ -272,16 +272,17 @@ export function pick(name, value, allowed) {
 // not alter the DOM axe walks.
 // Aborting both cut the scan to ~9.1 s (-66 %) with byte-identical results;
 // every rule id and node count, violations and incomplete alike, matched the
-// unblocked scan on every combination.  A page now loads the search data and
-// the pre-built index (search-index.js) only on the first keystroke in the
-// search box, which no scan makes; both stay blocked in case one does.
+// unblocked scan on every combination.  A page now loads the search entries
+// and their pre-built index (search-index.js, which holds both) only on the
+// first keystroke in the search box, which no scan makes; it stays blocked in
+// case one does.
 //
 // just-the-docs.js is deliberately NOT blocked.  It installs the search
 // combobox ARIA (role=listbox, aria-activedescendant) added by Phase 2.1 of
 // builder/PLAN-a11y.md, and blocking it makes axe see *less* -- the
 // colour-contrast node count on Select-Case drops 54 -> 2 -- which would
 // silently mask coverage for ~130 ms.
-export const BLOCKED_REQUESTS = [/search-data\.js/, /search-index\.js/, /lunr\.min\.js/];
+export const BLOCKED_REQUESTS = [/search-index\.js/, /lunr\.min\.js/];
 
 // The production axe.run options.
 //

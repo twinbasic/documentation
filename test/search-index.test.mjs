@@ -123,16 +123,16 @@ describe("the files the build writes", () => {
   const lunr = loadSearchLunr();
   const docs = fixture(20);
 
-  test("search-index.json is lunr's JSON with the check added", () => {
+  test("search-index.json holds the entries and lunr's JSON of their index, and nothing else", () => {
     const json = JSON.stringify(buildIndex(lunr, docs));
-    const file = JSON.parse(searchIndexFile(json, docs));
-    const { tbdocs, ...lunrsOwn } = file;
-    assert.deepEqual(lunrsOwn, JSON.parse(json));
-    assert.equal(tbdocs.entries, 20);
-    assert.match(tbdocs.digest, /^[0-9a-f]{8}$/);
+    const text = searchIndexFile(json, docs);
+    assert.deepEqual(JSON.parse(text), { docs, index: JSON.parse(json) });
+    // The index exactly as lunr wrote it, and the entries in their order.
+    assert.equal(text, `{"docs":${JSON.stringify(docs)},"index":${json}}\n`);
+    assert.deepEqual(Object.keys(JSON.parse(text).docs), Object.keys(docs));
   });
 
-  test("search-index.js sets window.SEARCH_INDEX to the same index", () => {
+  test("search-index.js sets window.SEARCH_INDEX to the same entries and index", () => {
     const text = searchIndexFile(JSON.stringify(buildIndex(lunr, docs)), docs);
     const window = {};
     vm.runInNewContext(offlineSearchIndexJs(text), { window, JSON });

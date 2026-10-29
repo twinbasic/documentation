@@ -1,8 +1,8 @@
 // The site search's lunr index, built once by the build rather than in every
 // reader's browser on every page. The build writes it as lunr's own JSON
-// (lunr.Index#toJSON), to assets/js/search-index.json beside search-data.json;
-// the page loads it with lunr.Index.load on the first keystroke. See
-// WIP.Search.md, "The pre-built index".
+// (lunr.Index#toJSON), with the search entries it indexes, to
+// assets/js/search-index.json; the page loads it with lunr.Index.load on the
+// first keystroke. See WIP.Search.md, "The pre-built index".
 //
 // This file is the one definition of the index: its fields and boosts, what
 // each field holds (exactName, qualifiedField, indexField, ...), and the
@@ -441,41 +441,23 @@ class IndexWorker {
 
 // ── The file the page loads ────────────────────────────────────────────────
 
-// A check that search-index.json and search-data.json are of the same build:
-// a reader's browser may hold one of them in its cache from before a deploy
-// and fetch the other after it, and an index's entries are numbers into the
-// data. The digest is FNV-1a over each entry's number, title, URL and the
-// length of its content; the page computes it the same way (docsDigest() in
-// just-the-docs.js), which test/search.test.mjs checks.
-export function docsDigest(docs) {
-  let h = 0x811c9dc5;
-  const mix = (s) => {
-    for (let i = 0; i < s.length; i++) {
-      h ^= s.charCodeAt(i);
-      h = Math.imul(h, 0x01000193);
-    }
-  };
-  for (const id in docs) {
-    const doc = docs[id];
-    mix(`${id}\n${doc.title}\n${doc.relUrl}\n${String(doc.content).length}\n`);
-  }
-  return (h >>> 0).toString(16).padStart(8, "0");
-}
-
-// search-index.json: lunr's JSON with the check above as one more key, which
-// lunr.Index.load ignores.
+// search-index.json, the one file the page loads: the search entries
+// (search-data.json, minified) and their index, `{"docs": ..., "index": ...}`.
+// One file, so that the page can never hold entries of one build beside an
+// index of another, whatever a browser or a CDN keeps from before a deploy:
+// an index's entries are numbers into the entries. search-data.json stays
+// beside it for the build's own checks and the eval tools, which read it.
 export function searchIndexFile(indexJson, docs) {
-  const tbdocs = { entries: Object.keys(docs).length, digest: docsDigest(docs) };
-  return `${indexJson.slice(0, -1)},"tbdocs":${JSON.stringify(tbdocs)}}\n`;
+  return `{"docs":${JSON.stringify(docs)},"index":${indexJson}}\n`;
 }
 
 // search-index.json as a script that sets window.SEARCH_INDEX, for the
 // offline tree: a page under file:// can load a script but not fetch a file.
 // Written as JSON.parse of a string rather than as an object literal: a
 // browser parses JSON text faster than the same data as script, and the
-// index is 38 MB. lunr's JSON is minified, so it goes into the string as it
-// is, with `\` and `'` escaped; it holds no line break (JSON.stringify
-// escapes one inside a string).
+// file is 48 MB. Its JSON is minified, so it goes into the string as it is,
+// with `\` and `'` escaped; it holds no line break (JSON.stringify escapes
+// one inside a string).
 export function offlineSearchIndexJs(fileText) {
   const literal = fileText.trimEnd().replace(/[\\']/g, "\\$&");
   return `window.SEARCH_INDEX = JSON.parse('${literal}');\n`;

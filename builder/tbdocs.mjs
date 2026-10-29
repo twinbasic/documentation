@@ -996,10 +996,11 @@ const TASKS = {
     submit() {},
   },
 
-  // Write search-index.json, the lunr index of the search-data.json
-  // searchData wrote, which the page loads instead of building it -- see
-  // builder/search-index.mjs and WIP.Search.md, "The pre-built index" --
-  // and the offline tree's search-index.js, which wraps it as a script. It
+  // Write search-index.json, the search entries searchData wrote to
+  // search-data.json and their lunr index in one file, which the page loads
+  // instead of building the index -- see builder/search-index.mjs and
+  // WIP.Search.md, "The pre-built index" -- and the offline tree's
+  // search-index.js, which wraps it as a script. It
   // runs on a lane (cpu-worker.mjs), reading search-data.json from disk: the
   // main thread runs one task at a time, and as one of them the index held
   // back the book and the offline tree. The index is built on threads of
@@ -1061,7 +1062,7 @@ const TASKS = {
   // waits for every task that writes into it: flushJoin (the pages, written by
   // the render lanes' flushes), scss (the offline stylesheet), searchIndex
   // (search-index.js) and writeOffline (the rest: statics, theme assets,
-  // redirect stubs, nav.js, search-data.js).
+  // redirect stubs, nav.js).
   // Nothing else writes there before the Gantt injection, which runBuild does
   // after the graph; recheckHelpArchive checks that at the end. The Gantt chart
   // is injected after this task; the archive leaves out both files it writes
@@ -1183,7 +1184,7 @@ const TASKS = {
 
   // Write redirect stubs + sitemap/robots. Waits for writeAssets (theme on
   // disk), searchData, deriveRedirects, and deriveSitemap.
-  // Passes searchStats through to writeOffline (for search-data.js).
+  // Passes searchStats through, for the summary line and the link check.
   writeAux: {
     expected: ["writeAssets", "searchData", "flushJoin", "deriveRedirects", "deriveSitemap"],
     runOnMain: true,
@@ -1205,10 +1206,10 @@ const TASKS = {
   writeOffline: {
     expected: ["writeAux", "writeAssets"],
     runOnMain: true,
-    async execute({ writeAux: { redirectStats, sitemapStats, searchStats } }, ctx, state) {
+    async execute({ writeAux: { redirectStats, sitemapStats } }, ctx, state) {
       const skipOffline = skipsOffline(ctx, state);
       if (ctx.opts.dryRun || skipOffline) return null;
-      const auxStats = { redirects: redirectStats, sitemap: sitemapStats, search: searchStats };
+      const auxStats = { redirects: redirectStats, sitemap: sitemapStats };
       return writeOffline(state.staticFiles, state.site, ctx.destRoot, {
         auxStats,
         sitePaths: state.sitePaths,

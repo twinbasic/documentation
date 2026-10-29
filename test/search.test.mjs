@@ -22,7 +22,6 @@ import { checkIndexTerms, deriveSearchEntries, joinSymbolsToEntries, renderEntry
 import { createMarkdownIt } from "../builder/render.mjs";
 import {
   decodeTokenEntities,
-  docsDigest,
   entryFor,
   FIELDS,
   exactName as buildExactName,
@@ -56,8 +55,6 @@ const PAGE_FNS = [
   "separateTokenSetKeys",
   "accumulateSetUnions",
   "installSearchPatches",
-  "sameBuild",
-  "docsDigest",
   "indexFromData",
   "exactName",
   "phraseKey",
@@ -620,7 +617,7 @@ describe("tokenizer guard: the build and the page", () => {
     assert.equal(page.lunr.tokenizer, tokenizer, "a second call wrapped the tokenizer again");
     assert.match(
       clientFn("indexFromData"),
-      /installSearchPatches\(\);\s*return lunr\.Index\.load\(serialized\);/,
+      /installSearchPatches\(\);\s*return lunr\.Index\.load\(data\.index\);/,
       "indexFromData() doesn't install the patches before lunr.Index.load",
     );
   });
@@ -1574,11 +1571,11 @@ describe("kind-word guard: online client, eval replica", () => {
 });
 
 // Loading the pre-built index (WIP.Search.md, "The pre-built index"): the
-// page loads search-index.json with lunr.Index.load once it has checked
-// that the file is of the same build as search-data.json, by the digest
-// the build added to it. The page's digest must be the build's, and an
-// index loaded by the page must answer as the build's own does. That the
-// build's index is lunr()'s, on any number of threads, is
+// page loads search-index.json, the search entries and their index in one
+// file, and the index with lunr.Index.load. An index the page loads must
+// answer as the build's own does, and the page must take its entries from
+// the same file, so that the two are always of one build. That the build's
+// index is lunr()'s, on any number of threads, is
 // test/search-index.test.mjs's.
 describe("loading guard: the page loads what the build wrote", () => {
   // biome-ignore format: a table, one entry per line
@@ -1592,28 +1589,16 @@ describe("loading guard: the page loads what the build wrote", () => {
   const lunr = builderLunr();
   const fileText = () => searchIndexFile(JSON.stringify(buildIndex(lunr, docs)), docs);
 
-  test("the page's digest of the search data is the build's", () => {
-    const page = pageWith(freshLunr());
-    assert.equal(page.docsDigest(docs), docsDigest(docs));
-    assert.equal(page.docsDigest({}), docsDigest({}));
-    assert.match(docsDigest(docs), /^[0-9a-f]{8}$/);
-    // The digest changes with a title, a URL, an entry or a content's length.
-    for (const change of [
-      (d) => (d[1].title = "Hide"),
-      (d) => (d[1].relUrl = "/Form#hide"),
-      (d) => (d[5] = { title: "New", content: "", relUrl: "/New" }),
-      (d) => (d[0].content += "!"),
-    ]) {
-      const other = structuredClone(docs);
-      change(other);
-      assert.notEqual(docsDigest(other), docsDigest(docs));
-      assert.equal(page.docsDigest(other), docsDigest(other));
-    }
+  test("the file holds the entries as search-data.json has them, and their index", () => {
+    const data = JSON.parse(fileText());
+    assert.deepEqual(Object.keys(data), ["docs", "index"]);
+    assert.deepEqual(data.docs, docs);
+    assert.deepEqual(data.index, JSON.parse(JSON.stringify(buildIndex(lunr, docs))));
   });
 
   test("an index the page loads answers as the build's does", () => {
     const page = pageWith(freshLunr());
-    const loaded = page.indexFromData(docs, JSON.parse(fileText()));
+    const loaded = page.indexFromData(JSON.parse(fileText()));
     const built = buildIndex(lunr, docs);
     for (const q of ["form", "f*", "window print", "debug", "h80004005", "loop", "do", "strasse", "straße"]) {
       assert.deepEqual(
@@ -1625,28 +1610,21 @@ describe("loading guard: the page loads what the build wrote", () => {
     assert.ok(page.lunr.tokenizer.dotRunSplit, "indexFromData() did not install the page's patches");
   });
 
-  test("an index of another build is refused", () => {
-    const page = pageWith(freshLunr());
-    const serialized = JSON.parse(fileText());
-    const other = structuredClone(docs);
-    other[1].title = "Hide";
-    assert.equal(page.sameBuild(docs, serialized), true);
-    assert.equal(page.sameBuild(other, serialized), false);
-    assert.throws(() => page.indexFromData(other, serialized), /not of the same build/);
-    const { tbdocs, ...lunrsOwn } = serialized;
-    assert.ok(tbdocs);
-    assert.equal(page.sameBuild(docs, lunrsOwn), false, "an index without the check was taken");
-  });
-
-  test("the online copy fetches both files, and the offline copy loads both scripts, when the reader types", () => {
+  test("the online copy fetches one file, and the offline copy loads one script, both taking the entries from it", () => {
     const online = clientFn("initSearch");
-    assert.match(online, /get\('search-data\.json', 'docs'\);\s*get\('search-index\.json', 'index'\);/);
-    assert.match(online, /fetchBoth\('\?v=' \+ Date\.now\(\), false\)/, "a pair of two builds is not fetched again");
-    assert.match(online, /indexFromData\(docs, serialized\)/);
-    const offline = read("builder/offline.mjs");
-    assert.match(offline, /loadScript\('search-data\.js', 'SEARCH_DATA'/);
-    assert.match(offline, /loadScript\('search-index\.js', 'SEARCH_INDEX'/);
-    assert.match(offline, /indexFromData\(docs, window\.SEARCH_INDEX\)/);
+    assert.match(online, /'\/assets\/js\/search-index\.json'/);
+    assert.doesNotMatch(online, /search-data/, "the page fetches the entries from a second file");
+    assert.match(online, /onSuccess\(indexFromData\(data\), data\.docs\)/);
+    const offline = read("builder/offline.mjs").match(/const JTD_INITSEARCH_FN_REPLACEMENT = `[\s\S]*?\n\}`;/)?.[0];
+    assert.ok(offline, "offline.mjs has no JTD_INITSEARCH_FN_REPLACEMENT");
+    assert.match(offline, /'assets\/js\/search-index\.js'/);
+    assert.doesNotMatch(
+      offline,
+      /search-data\.js|SEARCH_DATA/,
+      "the offline page loads the entries from a second file",
+    );
+    assert.match(offline, /var docs = data && data\.docs;/);
+    assert.match(offline, /onSuccess\(indexFromData\(data\), docs\)/);
     assert.doesNotMatch(read("builder/offline-rewrite.mjs"), /search-data\.js/, "an offline page loads its data again");
   });
 });

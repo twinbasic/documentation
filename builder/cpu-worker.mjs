@@ -230,8 +230,8 @@ const handlers = {
     });
   },
 
-  // search-index.json, the lunr index of the search-data.json searchData
-  // wrote, and the offline tree's search-index.js beside it. On a lane
+  // search-index.json, the entries of the search-data.json searchData wrote
+  // with their lunr index, and the offline tree's search-index.js. On a lane
   // because the main thread runs one task at a time, and the index takes a
   // second or two: as a main-thread task it held back the book and the
   // offline tree. It builds on threads of its own (search-index.mjs).

@@ -174,7 +174,7 @@ The rest guard that the search page agrees with the build. The build writes the 
 
 - the page splits text into words as the build does, and writes a name or an index term as the build does;
 - the page's query code and the replica in `eval/site_search.mjs` still agree;
-- an index the page loads answers as the build's does, and the page refuses an index of another build.
+- the page and its offline copy take the entries and the index from the one file the build writes, and an index the page loads answers as the build's does.
 
 No browser, no built tree, about a second.
 
@@ -185,7 +185,7 @@ Exit codes: **0** every test passed, **1** a test failed.
 
     node --test test/search-index.test.mjs
 
-Verifies the search index the build writes. The build makes the index on several threads, merges what they make and writes it as lunr's own JSON (`builder/search-index.mjs`). lunr has no way to merge two indexes, so this test builds a fixture on one thread with lunr itself and on two, three, seven and more threads than entries, and requires the same bytes each time. The fixture holds what the merge has to get right: words that look like numbers, words only a later thread meets, empty fields, HTML entities and hand-marked index terms. It also checks that an index loaded from the file answers as lunr's does, that a thread that fails fails the build, and that the offline tree's `search-index.js` holds the same index.
+Verifies the search index the build writes. The build makes the index on several threads, merges what they make and writes it as lunr's own JSON (`builder/search-index.mjs`). lunr has no way to merge two indexes, so this test builds a fixture on one thread with lunr itself and on two, three, seven and more threads than entries, and requires the same bytes each time. The fixture holds what the merge has to get right: words that look like numbers, words only a later thread meets, empty fields, HTML entities and hand-marked index terms. It also checks that an index loaded from the file answers as lunr's does, that a thread that fails fails the build, that `search-index.json` holds the search entries and their index and nothing else, and that the offline tree's `search-index.js` holds the same.
 
 No browser, no built tree, about a second.
 

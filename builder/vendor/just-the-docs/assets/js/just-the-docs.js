@@ -92,89 +92,50 @@ function disableHeadStyleSheets() {
 
 function initSearch() {
   // Patched: a pre-built index, loaded lazily (WIP.Search.md, "The pre-built
-  // index"). The build writes the lunr index of search-data.json as
-  // search-index.json (builder/search-index.mjs), so the page loads it with
-  // lunr.Index.load rather than building it: about 0.75 s on a desktop
-  // against 3 s, and half the heap. initSearch() only defines how to load
-  // it -- loadIndex() below -- and hands that to searchLoaded(), which wires
-  // up the search box right away but doesn't call loadIndex() until the
-  // first keystroke, so a reader who never searches downloads neither file.
-  // The two files are fetched together, then parsed and loaded a step at a
-  // time, handing the main thread back between the steps. A pair that are
-  // not of the same build (one from the browser's cache, one from after a
-  // deploy) is fetched once more past the cache. See
-  // builder/vendor/just-the-docs/README.md.
+  // index"). The build writes search-index.json (builder/search-index.mjs):
+  // the search entries and their lunr index in one file, `{docs, index}`,
+  // so that the page can never hold entries of one build beside an index of
+  // another. The page loads the index with lunr.Index.load rather than
+  // building it: about 0.75 s on a desktop against 3 s, and half the heap.
+  // initSearch() only defines how to load it -- loadIndex() below -- and
+  // hands that to searchLoaded(), which wires up the search box right away
+  // but doesn't call loadIndex() until the first keystroke, so a reader who
+  // never searches downloads nothing for it. The file is parsed in one task
+  // and the index loaded in the next, handing the main thread back between
+  // them. See builder/vendor/just-the-docs/README.md.
   function loadIndex(onSuccess, onError) {
-    var base = (window.jtdBaseurl || '') + '/assets/js/';
-    fetchBoth('', true);
-
-    function fetchBoth(query, retry) {
-      var texts = {};
-      var pending = 2;
-      var failed = false;
-      get('search-data.json', 'docs');
-      get('search-index.json', 'index');
-
-      function get(file, key) {
-        var request = new XMLHttpRequest();
-        request.open('GET', base + file + query, true);
-        request.onload = function() {
-          if (failed) return;
-          if (request.status >= 200 && request.status < 400) {
-            texts[key] = request.responseText;
-            if (--pending === 0) setTimeout(function() { parse(texts, retry); }, 0);
-          } else {
-            failed = true;
-            console.log('Error loading ' + file + '. Request status: ' + request.status);
-            onError();
-          }
-        };
-        request.onerror = function() {
-          if (failed) return;
-          failed = true;
-          console.log('There was a connection error');
-          onError();
-        };
-        request.send();
-      }
-    }
-
-    function parse(texts, retry) {
-      var docs, serialized;
-      try {
-        docs = JSON.parse(texts.docs);
-      } catch (e) {
-        console.log('Error loading search data: ' + e);
+    var request = new XMLHttpRequest();
+    request.open('GET', (window.jtdBaseurl || '') + '/assets/js/search-index.json', true);
+    request.onload = function() {
+      if (request.status < 200 || request.status >= 400) {
+        console.log('Error loading search-index.json. Request status: ' + request.status);
         onError();
         return;
       }
       setTimeout(function() {
+        var data;
         try {
-          serialized = JSON.parse(texts.index);
+          data = JSON.parse(request.responseText);
         } catch (e) {
           console.log('Error loading search index: ' + e);
           onError();
           return;
         }
-        if (!sameBuild(docs, serialized)) {
-          if (retry) {
-            fetchBoth('?v=' + Date.now(), false);
-          } else {
-            console.log('Error loading search index: search-index.json is not of the same build as search-data.json');
-            onError();
-          }
-          return;
-        }
         setTimeout(function() {
           try {
-            onSuccess(indexFromData(docs, serialized), docs);
+            onSuccess(indexFromData(data), data.docs);
           } catch (e) {
             console.log('Error loading search index: ' + e);
             onError();
           }
         }, 0);
       }, 0);
-    }
+    };
+    request.onerror = function() {
+      console.log('There was a connection error');
+      onError();
+    };
+    request.send();
   }
 
   searchLoaded(loadIndex);
@@ -219,40 +180,13 @@ function installSearchPatches() {
   accumulateSetUnions();
 }
 
-// Patched: whether the parsed search-index.json (`serialized`) is the index
-// of the parsed search-data.json (`docs`). The build adds to lunr's JSON the
-// number of entries and docsDigest() of them (searchIndexFile() in
-// builder/search-index.mjs), since an index's entries are numbers into the
-// data. Called from initSearch() above and from offline.mjs's copy of it.
-function sameBuild(docs, serialized) {
-  var check = serialized && serialized.tbdocs;
-  return !!check && check.entries === Object.keys(docs).length && check.digest === docsDigest(docs);
-}
-
-// Patched: FNV-1a over each entry's number, title, URL and the length of its
-// content, as docsDigest() in builder/search-index.mjs computes it.
-function docsDigest(docs) {
-  var h = 0x811c9dc5;
-  for (var id in docs) {
-    var doc = docs[id];
-    var s = id + '\n' + doc.title + '\n' + doc.relUrl + '\n' + String(doc.content).length + '\n';
-    for (var i = 0; i < s.length; i++) {
-      h ^= s.charCodeAt(i);
-      h = Math.imul(h, 0x01000193);
-    }
-  }
-  return ('0000000' + (h >>> 0).toString(16)).slice(-8);
-}
-
-// Patched: the index from the parsed search-index.json, once the patches
-// are in. Throws if the index is not of `docs`' build. Called from
-// initSearch() above and from offline.mjs's copy of it.
-function indexFromData(docs, serialized) {
-  if (!sameBuild(docs, serialized)) {
-    throw new Error('the search index is not of the same build as the search data');
-  }
+// Patched: the lunr index from the parsed search-index.json (`data`, whose
+// `index` is lunr's JSON and `docs` the entries it indexes), once the
+// patches are in. Called from initSearch() above and from offline.mjs's copy
+// of it.
+function indexFromData(data) {
   installSearchPatches();
-  return lunr.Index.load(serialized);
+  return lunr.Index.load(data.index);
 }
 
 // Patched: a name as the `exact` and `primary` fields hold it -- lowercased,

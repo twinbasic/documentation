@@ -6,7 +6,7 @@
 // One entry point: writeOffline(staticFiles, site, destRoot,
 // { auxStats, sitePaths, onlineSitePaths }). The render workers derive each
 // page's offline HTML and write it during their flush, so writeOffline writes
-// the rest: the patched just-the-docs.js, search-data.js, the redirect
+// the rest: the patched just-the-docs.js, the redirect
 // stubs, the static files and the theme assets. sitePaths is the set
 // the caller built with buildSitePathsSync (offline-rewrite.mjs), which
 // holds the pure-compute rewrite helpers; onlineSitePaths is the online
@@ -16,7 +16,7 @@
 //
 //   §A  Top-level orchestration
 //   §B  Site-paths set (enumerateVendoredThemeAssets)
-//   §G  just-the-docs.js patches + search-data.js wrapper
+//   §G  just-the-docs.js patches
 //   §H  Static-file pass + theme-asset pass
 
 import { promises as fs } from "node:fs";
@@ -112,8 +112,6 @@ export async function writeOffline(
   const jtdDest = path.join(deps.offlineRoot, "assets/js/just-the-docs.js");
   const jtdPatches = await patchJustTheDocsJs(jtdSrc, jtdDest);
   subT?.lap("jtdPatch");
-  await writeSearchDataJs(path.join(deps.offlineRoot, "assets/js/search-data.js"), auxStats?.search?.json ?? null);
-  subT?.lap("searchDataJs");
   await writeOfflineNavJs(site, deps);
   subT?.lap("navJs");
 
@@ -272,7 +270,8 @@ export function enumerateVendoredThemeAssets() {
 }
 
 // ---------------------------------------------------------------------------
-// §G  just-the-docs.js patches + search-data.js wrapper
+// §G  just-the-docs.js patches (the search index's script, search-index.js,
+// is written by the searchIndex task: builder/search-index.mjs)
 // ---------------------------------------------------------------------------
 
 // The "Patched by _plugins/offlinify.rb" comment strings are kept
@@ -298,43 +297,32 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
   // initSearch() only defines how to load the index -- loadIndex() below --
   // and hands that to searchLoaded(), which wires up the search box right
   // away but doesn't call loadIndex() until the first keystroke. The online
-  // copy fetches search-data.json and search-index.json, which browsers
-  // block under file://; here the two are scripts that set a global each
-  // (search-data.js and search-index.js), added to the page then, so a page
-  // never searched from loads neither.
-  function loadScript(name, global, done, fail) {
-    if (window[global]) {
-      done();
+  // copy fetches search-index.json, which browsers block under file://; here
+  // it is a script that sets window.SEARCH_INDEX (search-index.js, the
+  // entries and their index in one), added to the page then, so a page never
+  // searched from loads nothing for it.
+  function loadIndex(onSuccess, onError) {
+    if (window.SEARCH_INDEX) {
+      setTimeout(build, 0);
       return;
     }
     var script = document.createElement('script');
-    script.src = (window.OFFLINE_SITE_ROOT || '') + 'assets/js/' + name;
-    script.onload = done;
-    script.onerror = fail;
+    script.src = (window.OFFLINE_SITE_ROOT || '') + 'assets/js/search-index.js';
+    script.onload = function() { setTimeout(build, 0); };
+    script.onerror = function() {
+      // Removed, so that the next keystroke's retry adds it again.
+      document.head.removeChild(script);
+      console.log('Offlinify: search-index.js did not load');
+      onError();
+    };
     document.head.appendChild(script);
-  }
 
-  function loadIndex(onSuccess, onError) {
-    var pending = 2;
-    var failed = false;
-    function loaded() {
-      if (!failed && --pending === 0) setTimeout(build, 0);
-    }
-    function failure(name) {
-      return function() {
-        if (failed) return;
-        failed = true;
-        console.log('Offlinify: ' + name + ' did not load');
-        onError();
-      };
-    }
-    loadScript('search-data.js', 'SEARCH_DATA', loaded, failure('search-data.js'));
-    loadScript('search-index.js', 'SEARCH_INDEX', loaded, failure('search-index.js'));
     function build() {
       try {
-        var docs = window.SEARCH_DATA;
-        if (!docs || !window.SEARCH_INDEX) {
-          console.log('Offlinify: search-data.js or search-index.js set no data');
+        var data = window.SEARCH_INDEX;
+        var docs = data && data.docs;
+        if (!docs || !data.index) {
+          console.log('Offlinify: search-index.js set no index');
           onError();
           return;
         }
@@ -365,9 +353,9 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
             docs[i].url = siteRoot + rel + hash;
           }
         }
-        // The online copy's lunr patches, its check that the two files are
-        // of one build, and lunr.Index.load (indexFromData()).
-        onSuccess(indexFromData(docs, window.SEARCH_INDEX), docs);
+        // The online copy's lunr patches and lunr.Index.load
+        // (indexFromData()).
+        onSuccess(indexFromData(data), docs);
       } catch (e) {
         console.log('Error loading search index: ' + e);
         onError();
@@ -483,27 +471,6 @@ async function writeOfflineNavJs(site, deps) {
   if (misses) warnMisses(NAV_SCRIPT_REL, misses, missed);
   deps.counters.unresolved += misses;
   await writeFileMkdirp(path.join(deps.offlineRoot, NAV_SCRIPT_REL), navScript(rewritten));
-}
-
-// §6.10  writeSearchDataJs -- wrap the JSON as a window.SEARCH_DATA
-// assignment so a <script src=> can load it under file://.
-async function writeSearchDataJs(destPath, jsonBytes) {
-  if (jsonBytes == null) return 0;
-  const js = deriveOfflineSearchDataJs(jsonBytes);
-  await writeFileMkdirp(destPath, js);
-  return js.length;
-}
-
-// Pure-compute: wrap the search-data.json bytes as a JS global so a
-// <script src=> can load them under file://. Re-stringifies the parsed
-// JSON without indentation (Phase 11 B10) -- the offline tree's
-// search-data.js is consumed only by the lunr runtime, which doesn't
-// care about formatting; minification shaves ~1.1 MB off the offline
-// asset footprint. The online search-data.json keeps its pretty-printed
-// shape (Phase 6 unchanged).
-export function deriveOfflineSearchDataJs(jsonBytes) {
-  const minified = JSON.stringify(JSON.parse(jsonBytes));
-  return `window.SEARCH_DATA = ${minified};\n`;
 }
 
 // ---------------------------------------------------------------------------

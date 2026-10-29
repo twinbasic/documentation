@@ -11,7 +11,7 @@ everything here either feeds a compile step or is copied verbatim into
 |---|---|---|
 | `_sass/` | Gem's `_sass/` at v0.10.1, **patched in tree** --- 30 of the 36 files vendored in `e7dd843` have diverged: 26 modified and 4 deleted. See [In-tree patches to `_sass/`](#in-tree-patches-to-_sass) for which, why, and which must survive a re-vendor. | [`builder/scss.mjs`](../../scss.mjs) compiles `docs/assets/css/just-the-docs-combined.scss` against these sources via Dart Sass; the load-path ordering puts `docs/_sass/` first so our `custom/custom.scss` shadows the gem's empty one. |
 | `assets/js/just-the-docs.js` | Gem's `assets/js/just-the-docs.js` at v0.10.1, **patched in tree**. | [`builder/write.mjs`](../../write.mjs)'s `copyTheme` copies it to `_site/assets/js/just-the-docs.js`; [`builder/offline.mjs`](../../offline.mjs) re-derives an offline-mode variant via [`acorn`](https://www.npmjs.com/package/acorn)-AST patching. |
-| `assets/js/vendor/lunr.min.js` | Gem's `assets/js/vendor/lunr.min.js` at v0.10.1, unmodified. | Copied verbatim by `copyTheme`. The search index that drives it is the in-process [`builder/search.mjs`](../../search.mjs) output (`assets/js/search-data.json`). |
+| `assets/js/vendor/lunr.min.js` | Gem's `assets/js/vendor/lunr.min.js` at v0.10.1, unmodified. | Copied verbatim by `copyTheme`. The search index that drives it is [`builder/search-index.mjs`](../../search-index.mjs)'s `assets/js/search-index.json`, which holds the entries [`builder/search.mjs`](../../search.mjs) writes to `assets/js/search-data.json` and their index. |
 
 `LICENSE.txt` is the upstream MIT licence, copied verbatim from the tag and
 covering all three --- see [Licence](#licence).
@@ -407,32 +407,31 @@ leaves the index unset, so the next keystroke retries. `searchLoaded()`
 takes `loadIndex` in place of `(index, docs)` -- it, and everything below
 `update()`'s lazy-load gate, stays a single shared function; only
 `initSearch()` differs between the two copies (XHR fetch vs. adding the
-offline tree's scripts to the page).
+offline tree's script to the page).
 
 **Every page built the whole index in the reader's browser, about 3 s and
 290 MB of heap on a desktop, before its first search.** The build now
 builds it ([`builder/search-index.mjs`](../../search-index.mjs), on threads
-of its own and merged into exactly the index `lunr()` makes) and writes it
-as lunr's JSON, `search-index.json`. `initSearch()`'s `loadIndex()` fetches
-`search-data.json` and `search-index.json` together, then parses the one,
-the other and loads the index in three tasks (`setTimeout(fn, 0)` between
+of its own and merged into exactly the index `lunr()` makes) and writes it,
+as lunr's JSON, into `search-index.json` together with the search entries it
+indexes: `{"docs": ..., "index": ...}`, one file, so that the page can never
+hold entries of one deploy beside an index of another (an index's entries
+are numbers into them). `initSearch()`'s `loadIndex()` fetches that file,
+parses it and loads the index in two tasks (`setTimeout(fn, 0)` between
 them, so the box takes keystrokes), through `indexFromData()`:
 `installSearchPatches()` (the query-time patches, which the index's token
 set needs before `lunr.Index.load` makes it) and `lunr.Index.load`. About
 0.75 s and 140 MB in headless Chrome, of which the download is 0.2 s on
-localhost. The index carries the number of entries and a digest of them
-(`sameBuild()`, `docsDigest()`; the build's `searchIndexFile()` adds them),
-because its entries are numbers into the search data and a browser may hold
-one file of an earlier deploy in its cache: a pair that disagree is fetched
-once more with a query string past the cache, and then refused. The offline
-copy of `initSearch()` adds `search-data.js` and `search-index.js` to the
-page on the first keystroke, as scripts setting `window.SEARCH_DATA` and
-`window.SEARCH_INDEX` (a page under `file://` can load a script but not
-fetch a file), and calls the same `indexFromData()`; no offline page loads
-either before that. `test/search.test.mjs`'s loading guard checks that an
-index the page loads answers as the build's does and that an index of
-another build is refused; `test/search-index.test.mjs` checks the build's
-index is `lunr()`'s. See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s
+localhost. The page no longer fetches `search-data.json`, which stays for
+the build's own checks and the eval tools. The offline copy of
+`initSearch()` adds `search-index.js` to the page on the first keystroke, a
+script setting `window.SEARCH_INDEX` to the same `{docs, index}` (a page
+under `file://` can load a script but not fetch a file), and calls the same
+`indexFromData()`; no offline page loads it before that, and the offline
+tree has no `search-data.js`. `test/search.test.mjs`'s loading guard checks
+that both copies take the entries and the index from the one file and that
+an index the page loads answers as the build's does;
+`test/search-index.test.mjs` checks the build's index is `lunr()`'s. See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s
 "The pre-built index".
 
 ## Licence
@@ -524,7 +523,7 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
    patches (`installSearchPatches()`: the dot-run-split tokenizer wrapper
    with its entity decoding, the separated token-set keys and the
    accumulating unions), the lazy load of the pre-built index
-   (`loadIndex()`, `indexFromData()`, `sameBuild()`, `docsDigest()`), the
+   (`loadIndex()`, `indexFromData()`), the
    exact-name and all-words-first query, the index-term query clauses and
    the stem twins' whole-name clause in `assets/js/just-the-docs.js` (see
    above). On a lunr upgrade, check `test/search.test.mjs`'s token-set key

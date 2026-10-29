@@ -23,11 +23,11 @@ const ONLINE_AUX = [
   "assets/js/search-index.json",
   "tB/symbols.json",
 ];
-// The offline tree carries no sitemap, and the search data and index not as
-// JSON but as the JS wrappers writeOffline generates around them, since a
-// page under file:// can load a script but not fetch a file; and the nav.js
-// that puts the whole nav tree in place of a page's part of it.
-const OFFLINE_AUX = ["assets/js/search-data.js", "assets/js/search-index.js", "assets/js/nav.js"];
+// The offline tree carries no sitemap, and the search index (with the search
+// entries in it) not as JSON but as a script, search-index.js, since a page
+// under file:// can load a script but not fetch a file; and the nav.js that
+// puts the whole nav tree in place of a page's part of it.
+const OFFLINE_AUX = ["assets/js/search-index.js", "assets/js/nav.js"];
 
 // Every relative path a tree receives. `which` is "online" or "offline";
 // the PDF tree's contents come from writePdf, which knows them exactly.

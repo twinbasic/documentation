@@ -2,13 +2,14 @@
 // Query the site's own search box from the command line.
 //
 // This is a faithful replica, not an approximation: it loads the real
-// search-data.json and search-index.json the build emitted and the real
-// vendored lunr, and it reproduces just-the-docs.js's query construction
-// exactly (trailing wildcard, the edit-distance fallback). The index is the
-// build's own: built by builder/search-index.mjs, the one definition of its
-// fields, boosts and patches, which this file imports; a site with no
-// search-index.json (a snapshot from before it existed) has its index built
-// here, by the same code.
+// search-index.json the build emitted (the search entries and their index,
+// as the page loads them) and the real vendored lunr, and it reproduces
+// just-the-docs.js's query construction exactly (trailing wildcard, the
+// edit-distance fallback). The index is the build's own: built by
+// builder/search-index.mjs, the one definition of its fields, boosts and
+// patches, which this file imports; a site with no search-index.json (a
+// snapshot from before it existed) has its index built here from
+// search-data.json, by the same code.
 //
 // It exists because navigation and search fail on DIFFERENT pages, so judging
 // discoverability by either one alone is misleading. A page can be search
@@ -126,11 +127,13 @@ export function load(site) {
     }
   }
   const lunr = loadLunr(lunrPath);
+  // search-index.json holds the entries and their index, `{docs, index}`.
+  if (fs.existsSync(indexPath)) {
+    const { docs, index } = JSON.parse(fs.readFileSync(indexPath, "utf8"));
+    return { lunr, docs, index: lunr.Index.load(index) };
+  }
   const docs = JSON.parse(fs.readFileSync(dataPath, "utf8"));
-  const index = fs.existsSync(indexPath)
-    ? lunr.Index.load(JSON.parse(fs.readFileSync(indexPath, "utf8")))
-    : buildIndex(lunr, docs);
-  return { lunr, docs, index };
+  return { lunr, docs, index: buildIndex(lunr, docs) };
 }
 
 // Matches just-the-docs.js's smart dot split exactly (see that file and
