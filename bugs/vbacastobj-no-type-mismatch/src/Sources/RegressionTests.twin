@@ -1,0 +1,64 @@
+' Regression tests: vbaCastObj raises 13, Type mismatch, when the object does not have the
+' interface asked for, as VB6's own __vbaCastObj (msvbvm60) does, and still returns the
+' interface when it does, and Nothing for Nothing. On BETA 1010 it returns Nothing with no
+' error, for an interface the object lacks and for a String given as the interface ID (whose
+' text is not an interface ID). The VB6 project beside this one calls __vbaCastObj with the
+' same arguments.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Type InterfaceGuid
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Private Iid As InterfaceGuid
+
+    ' The address of the interface ID {Data1-0000-0000-C000-000000000046}: 0 is IUnknown,
+    ' &H20400 IDispatch, &H12345 an interface nothing has.
+    Private Function StdIid(ByVal Data1 As Long) As LongPtr
+        Iid.Data1 = Data1
+        Iid.Data4(0) = &HC0
+        Iid.Data4(7) = &H46
+        StdIid = VarPtr(Iid)
+    End Function
+
+    [TestCase]
+    Public Sub Control_IUnknown_ReturnsTheInterface()
+        Assert.Strict.IsNotNothing vbaCastObj(New Collection, StdIid(0))
+    End Sub
+
+    [TestCase]
+    Public Sub Control_IDispatch_ReturnsTheInterface()
+        Assert.Strict.IsNotNothing vbaCastObj(New Collection, StdIid(&H20400))
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Nothing_ReturnsNothing()
+        Assert.Strict.IsNothing vbaCastObj(Nothing, StdIid(0))
+    End Sub
+
+    [TestCase]
+    Public Sub InterfaceItLacks_Raises13()
+        Dim E As Long, U As IUnknown
+        On Error Resume Next
+        Set U = vbaCastObj(New Collection, StdIid(&H12345))
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 13&, E
+    End Sub
+
+    [TestCase]
+    Public Sub StringGivenAsTheInterfaceId_Raises13()
+        Dim E As Long, U As IUnknown
+        On Error Resume Next
+        Set U = vbaCastObj(New Collection, "{00000000-0000-0000-C000-000000000046}")
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 13&, E
+    End Sub
+
+End Module

@@ -19,8 +19,18 @@ Syntax: **LOF(** *filenumber* **)**
 > [!NOTE]
 > Use the **FileLen** function to obtain the length of a file that is not open.
 
+<!-- errors: generated from errors/VBA.FileSystem.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *filenumber* is not the number of an open file |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *filenumber* is **Null** |
+
 > [!NOTE] BETA 1010
-> **LOF** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
+> When *filenumber* is not the number of an open file, VB6 and 64-bit VBA raise error [52 (`&H34`)](tb:Errors#52), *Bad file name or number*, instead.
+
+<!-- /errors -->
 
 ### Example
 

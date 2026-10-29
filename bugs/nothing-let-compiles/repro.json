@@ -1,0 +1,16 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS Control_SetObject$",
+      "^PASS Control_IsNothing$",
+      "^PASS Control_SetVariant$",
+      "^FAIL LetLong_Nothing: ",
+      "^FAIL LetString_Nothing: ",
+      "^FAIL LetBoolean_Nothing: ",
+      "^FAIL EqualsComparison_Nothing: ",
+      "^FAIL NotEqualsComparison_Nothing: "
+    ]
+  }
+}

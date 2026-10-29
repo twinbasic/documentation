@@ -1,0 +1,17 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.FileCopy_MissingSource_Raises53$",
+      "^PASS RegressionTests\\.FileCopy_SourceOpenForAppend_Raises55$",
+      "^FAIL RegressionTests\\.FileCopy_OntoItself_Raises70: .*Actual: 55 ",
+      "^FAIL RegressionTests\\.FileCopy_OntoItselfOtherCase_Raises70: .*Actual: 55 ",
+      "^FAIL RegressionTests\\.FileCopy_SourceOpenLockRead_Raises70: .*Actual: 55 ",
+      "^FAIL RegressionTests\\.FileCopy_SourceFolder_Raises75: .*Actual: 70 ",
+      "^FAIL RegressionTests\\.FileCopy_DestinationFolder_Raises75: .*Actual: 70 ",
+      "^FAIL RegressionTests\\.FileCopy_DestinationReadOnly_Raises75: .*Actual: 70 ",
+      "^FAIL RegressionTests\\.FileCopy_DestinationHidden_Raises75: .*Actual: 70 "
+    ]
+  }
+}

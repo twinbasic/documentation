@@ -20,6 +20,15 @@ This is the copy-with-addref primitive --- equivalent to a regular `Set DstObjec
 
 The return value mirrors the assigned pointer.
 
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *SrcObjPtr* is **Null** |
+
+<!-- /errors -->
+
 ### See Also
 
 - [vbaObjSet](vbaObjSet) function -- move-without-addref counterpart

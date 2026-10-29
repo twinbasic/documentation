@@ -1,0 +1,124 @@
+# The VBA ErrObject class (the Err object). Format: WIP.Errors.md.
+# A case that raises the number it was asked to raise, or that sets Number, clears Err when
+# Number is that number, so that it reports 0; a runtime that raises or keeps another
+# number reports that one. HelpFile, HelpContext and ReturnHResult have no cases: assigning
+# them fails twinBASIC's build (bugs/err-helpfile-helpcontext-codegen).
+beta: 1010
+pages:
+  Reference/Default/VBA/ErrObject/Raise.md:
+    rows:
+      - error: 5
+        when: "*number* is 0 after rounding, or **Empty**"
+        cases:
+          - { run: Err.Raise 0 }
+          - { run: Err.Raise 0.4 }
+          - { run: Err.Raise 0.5 }
+          - { run: Err.Raise Empty }
+          - { run: Err.Raise "0" }
+      - error: 94
+        when: "an argument is **Null**"
+        cases:
+          - { run: Err.Raise Null }
+          - { run: "Err.Raise 5, Null" }
+          - { run: "Err.Raise 5, , Null" }
+          - { run: "Err.Raise 5, , , Null" }
+          - { run: "Err.Raise 5, , , , Null" }
+    quiet:
+      # an extension (owner, 2026-10-28): VB6 and 64-bit VBA raise 5 (the page's NOTE)
+      - { run: "Err.Raise 65536\nIf Err.Number = 65536 Then Err.Clear", only: tb }
+      - { run: "Err.Raise 100000\nIf Err.Number = 100000 Then Err.Clear", only: tb }
+      - { run: "Err.Raise 2147483647\nIf Err.Number = 2147483647 Then Err.Clear", only: tb }
+      - { run: "Err.Raise 1\nIf Err.Number = 1 Then Err.Clear" }
+      - { run: "Err.Raise 65535\nIf Err.Number = 65535 Then Err.Clear" }
+      - { run: "Err.Raise -1\nIf Err.Number = -1 Then Err.Clear" }
+      - { run: "Err.Raise True\nIf Err.Number = -1 Then Err.Clear" }
+      - { run: "Err.Raise -2147483648#\nIf Err.Number = -2147483648# Then Err.Clear" }
+      - { run: "Err.Raise vbObjectError + 513\nIf Err.Number = vbObjectError + 513 Then Err.Clear" }
+      - { run: "Err.Raise 5, 7\nIf Err.Number = 5 Then Err.Clear" }
+      - { run: "Err.Raise 5, , 7\nIf Err.Number = 5 Then Err.Clear" }
+      - { run: "Err.Raise 5, , , , 1.5\nIf Err.Number = 5 Then Err.Clear" }
+      - { run: "Err.Raise 5, , , , -1\nIf Err.Number = 5 Then Err.Clear" }
+      # HRESULTs that every runtime raises as given
+      - { run: "Err.Raise &H80004005\nIf Err.Number = &H80004005 Then Err.Clear" }
+      - { run: "Err.Raise &H80020009\nIf Err.Number = &H80020009 Then Err.Clear" }
+      - { run: "Err.Raise &H80070002\nIf Err.Number = &H80070002 Then Err.Clear" }
+      - { run: "Err.Raise &H8000FFFF\nIf Err.Number = &H8000FFFF Then Err.Clear" }
+      - { run: "Err.Raise &H80004003\nIf Err.Number = &H80004003 Then Err.Clear" }
+      - { run: "Err.Raise vbObjectError\nIf Err.Number = vbObjectError Then Err.Clear" }
+      # HRESULTs that VB6 and 64-bit VBA raise as a VB number (the page's NOTE)
+      - { run: "Err.Raise &H80070057\nIf Err.Number = &H80070057 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H8007000E\nIf Err.Number = &H8007000E Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80070005\nIf Err.Number = &H80070005 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80004001\nIf Err.Number = &H80004001 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80004002\nIf Err.Number = &H80004002 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80004004\nIf Err.Number = &H80004004 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80020003\nIf Err.Number = &H80020003 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80020005\nIf Err.Number = &H80020005 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80020006\nIf Err.Number = &H80020006 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80020008\nIf Err.Number = &H80020008 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H8002000A\nIf Err.Number = &H8002000A Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H8002000B\nIf Err.Number = &H8002000B Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H8002000E\nIf Err.Number = &H8002000E Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80020011\nIf Err.Number = &H80020011 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80030002\nIf Err.Number = &H80030002 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80030003\nIf Err.Number = &H80030003 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80030005\nIf Err.Number = &H80030005 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80030070\nIf Err.Number = &H80030070 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80040112\nIf Err.Number = &H80040112 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H80040154\nIf Err.Number = &H80040154 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H800401E3\nIf Err.Number = &H800401E3 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H800401F3\nIf Err.Number = &H800401F3 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H800A0005\nIf Err.Number = &H800A0005 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H800A0035\nIf Err.Number = &H800A0035 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H800A01A8\nIf Err.Number = &H800A01A8 Then Err.Clear", only: tb }
+      - { run: "Err.Raise &H800AFFFF\nIf Err.Number = &H800AFFFF Then Err.Clear", only: tb }
+  Reference/Default/VBA/ErrObject/Number.md:
+    rows:
+      - error: 94
+        when: "*errorNumber* is **Null**"
+        cases:
+          - { run: Err.Number = Null }
+    quiet:
+      # an extension (owner, 2026-10-28): VB6 and 64-bit VBA raise 5 (the page's NOTE)
+      - { run: "Err.Number = 65536\nIf Err.Number = 65536 Then Err.Clear", only: tb }
+      - { run: "Err.Number = 2147483647\nIf Err.Number = 2147483647 Then Err.Clear", only: tb }
+      - { run: Err.Number = 0 }
+      - { run: Err.Number = 0.4 }
+      - { run: "Err.Number = 5\nIf Err.Number = 5 Then Err.Clear" }
+      - { run: "Err.Number = 65535\nIf Err.Number = 65535 Then Err.Clear" }
+      - { run: "Err.Number = -1\nIf Err.Number = -1 Then Err.Clear" }
+      - { run: "Err.Number = vbObjectError + 513\nIf Err.Number = vbObjectError + 513 Then Err.Clear" }
+      - { run: "Err.Number = &H80004005\nIf Err.Number = &H80004005 Then Err.Clear" }
+      # HRESULTs that VB6 and 64-bit VBA store as a VB number (the page's NOTE)
+      - { run: "Err.Number = &H80070057\nIf Err.Number = &H80070057 Then Err.Clear", only: tb }
+      - { run: "Err.Number = &H80004001\nIf Err.Number = &H80004001 Then Err.Clear", only: tb }
+      - { run: "Err.Number = &H800A0035\nIf Err.Number = &H800A0035 Then Err.Clear", only: tb }
+  Reference/Default/VBA/ErrObject/Description.md:
+    rows:
+      - error: 94
+        when: "*errorDescription* is **Null**"
+        cases:
+          - { run: Err.Description = Null }
+    quiet:
+      - { run: Err.Description = "x" }
+      - { run: Err.Description = "" }
+      - { run: Err.Description = 5 }
+  Reference/Default/VBA/ErrObject/Source.md:
+    rows:
+      - error: 94
+        when: "*errorSource* is **Null**"
+        cases:
+          - { run: Err.Source = Null }
+    quiet:
+      - { run: Err.Source = "x" }
+      - { run: Err.Source = 5 }
+  Reference/Default/VBA/ErrObject/LastDllError.md:
+    quiet:
+      - Err.LastDllError
+  Reference/Default/VBA/ErrObject/LastHresult.md:
+    quiet:
+      - { expr: Err.LastHresult, only: tb }
+  Reference/Default/VBA/ErrObject/Clear.md:
+    quiet:
+      - { run: Err.Clear }
+      - { run: "Err.Raise 5\nErr.Clear" }

@@ -1,0 +1,128 @@
+' Regression tests: Collection's Item, Remove and Add take an index or a position as VB6 and
+' 64-bit VBA do: a Currency, Decimal or Date number like any other number; 5 for a number on
+' an empty collection (Item); 13 for Null, an object or a number outside the Long range
+' (Item, Remove); 9 for a position of -1, True or Empty, and 13 for a key of Empty (Add). The controls use a Long, a
+' Double and a Byte, and a string key. tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' A collection holding "a" and "b", without keys.
+    Private Function Two() As Collection
+        Set Two = New Collection
+        Two.Add "a"
+        Two.Add "b"
+    End Function
+
+    ' The error Item(Index) raises on C, or 0 and the item in Got.
+    Private Function ItemError(ByVal C As Collection, ByVal Index As Variant, Optional ByRef Got As Variant) As Long
+        On Error Resume Next
+        Got = C.Item(Index)
+        ItemError = Err.Number
+    End Function
+
+    Private Function RemoveError(ByVal C As Collection, ByVal Index As Variant) As Long
+        On Error Resume Next
+        C.Remove Index
+        RemoveError = Err.Number
+    End Function
+
+    Private Function AddBeforeError(ByVal C As Collection, ByVal Before As Variant) As Long
+        On Error Resume Next
+        C.Add "x", , Before
+        AddBeforeError = Err.Number
+    End Function
+
+    [TestCase]
+    Public Sub Control_ItemOfLongDoubleByte()
+        Dim Got As Variant
+        Assert.Strict.AreEqual 0&, ItemError(Two(), 2&, Got)
+        Assert.Strict.AreEqual "b", Got
+        Assert.Strict.AreEqual 0&, ItemError(Two(), 2#, Got)
+        Assert.Strict.AreEqual 0&, ItemError(Two(), CByte(2), Got)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_ItemOutOfRange_Raises9()
+        Assert.Strict.AreEqual 9&, ItemError(Two(), 3)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_ItemOfMissingKey_Raises5()
+        Assert.Strict.AreEqual 5&, ItemError(Two(), "z")
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Currency_ReturnsItem()
+        Dim Got As Variant
+        Assert.Strict.AreEqual 0&, ItemError(Two(), CCur(2), Got)
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Decimal_ReturnsItem()
+        Assert.Strict.AreEqual 0&, ItemError(Two(), CDec(2))
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Date_ReturnsItem()
+        Assert.Strict.AreEqual 0&, ItemError(Two(), CDate(2))
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_Currency_Removes()
+        Assert.Strict.AreEqual 0&, RemoveError(Two(), CCur(2))
+    End Sub
+
+    [TestCase]
+    Public Sub AddBefore_Currency_Adds()
+        Assert.Strict.AreEqual 0&, AddBeforeError(Two(), CCur(2))
+    End Sub
+
+    [TestCase]
+    Public Sub Item_EmptyCollection_Raises5()
+        Assert.Strict.AreEqual 5&, ItemError(New Collection, 1)
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Null_Raises13()
+        Assert.Strict.AreEqual 13&, ItemError(Two(), Null)
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Object_Raises13()
+        Assert.Strict.AreEqual 13&, ItemError(Two(), New Collection)
+    End Sub
+
+    [TestCase]
+    Public Sub Item_BeyondLong_Raises13()
+        Assert.Strict.AreEqual 13&, ItemError(Two(), 2147483648#)
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_Null_Raises13()
+        Assert.Strict.AreEqual 13&, RemoveError(Two(), Null)
+    End Sub
+
+    [TestCase]
+    Public Sub AddBefore_MinusOne_Raises9()
+        Assert.Strict.AreEqual 9&, AddBeforeError(Two(), -1)
+    End Sub
+
+    [TestCase]
+    Public Sub AddBefore_Empty_Raises9()
+        Assert.Strict.AreEqual 9&, AddBeforeError(Two(), Empty)
+    End Sub
+
+    [TestCase]
+    Public Sub AddBefore_BeyondLong_Raises13()
+        Assert.Strict.AreEqual 13&, AddBeforeError(Two(), 2147483648#)
+    End Sub
+
+    [TestCase]
+    Public Sub Add_EmptyKey_Raises13()
+        Dim C As New Collection
+        On Error Resume Next
+        C.Add "x", Empty
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+End Module

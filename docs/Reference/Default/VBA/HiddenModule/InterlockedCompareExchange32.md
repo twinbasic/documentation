@@ -21,6 +21,15 @@ Syntax: **InterlockedCompareExchange32(** *Target* **,** *NewValue* **,** *OldVa
 
 The compare-and-swap happens as one atomic operation. The return value is the value that was in *Target* at the start of the call --- equal to *OldValueCompare* on success, anything else on failure (in which case *Target* is left unchanged). Wraps the Win32 `InterlockedCompareExchange` intrinsic.
 
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *NewValue* or *OldValueCompare* is **Null** |
+
+<!-- /errors -->
+
 ### See Also
 
 - [InterlockedCompareExchange64](InterlockedCompareExchange64) function

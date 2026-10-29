@@ -1,0 +1,106 @@
+' Regression tests: given Nothing, or an object they cannot use, ConvertIconToBitmap,
+' GetInheritedOwner, TbExpressionService.AddCustomBinder and AddCustomBinderObject raise a
+' run-time error (or, for GetInheritedOwner, return Nothing) instead of ending the program
+' with an access violation; and the object RuntimeCreateGetMessageHook returns can be
+' assigned to a Variant without Set, as any other object without IDispatch can. On BETA 1010
+' each case but the controls ends with an access violation, 32-bit and 64-bit.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Declare PtrSafe Function LoadIconW Lib "user32" (ByVal Inst As LongPtr, ByVal Name As LongPtr) As LongPtr
+
+    ' The controls: each procedure working, or refusing an argument with an error.
+    [TestCase]
+    Public Sub Control_ConvertIconToBitmap_Icon()
+        Dim Icon As StdPicture = CreateStdPictureFromHandle(LoadIconW(0, 32512), vbPicTypeIcon, False)
+        Assert.Strict.AreEqual CLng(vbPicTypeBitmap), CLng(ConvertIconToBitmap(Icon).Type)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_ConvertIconToBitmap_NotAPicture_Raises()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = ConvertIconToBitmap(New Collection)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual -2147467259, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_AddCustomBinderObject_Object()
+        Dim S As New TbExpressionService
+        S.AddCustomBinderObject "D", CreateObject("Scripting.Dictionary")
+        Assert.Strict.AreEqual 0, CInt(S.Compile("D.Count").Evaluate())
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertIconToBitmap_Nothing_RaisesAnError()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = ConvertIconToBitmap(Nothing)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreNotEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub GetInheritedOwner_Nothing_DoesNotCrash()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = GetInheritedOwner(Nothing)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.IsTrue E <> 0 Or R Is Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub GetInheritedOwner_Collection_DoesNotCrash()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = GetInheritedOwner(New Collection)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.IsTrue E <> 0 Or R Is Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub GetInheritedOwner_Dictionary_DoesNotCrash()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = GetInheritedOwner(CreateObject("Scripting.Dictionary"))
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.IsTrue E <> 0 Or R Is Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub AddCustomBinder_Nothing_RaisesAnError()
+        Dim S As New TbExpressionService
+        Dim E As Long
+        On Error Resume Next
+        S.AddCustomBinder Nothing
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreNotEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub AddCustomBinderObject_Nothing_RaisesAnError()
+        Dim S As New TbExpressionService
+        Dim E As Long
+        On Error Resume Next
+        S.AddCustomBinderObject "D", Nothing
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreNotEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub RuntimeCreateGetMessageHook_LetIntoVariant_StoresTheObject()
+        Dim V As Variant
+        V = RuntimeCreateGetMessageHook()
+        Assert.Strict.AreEqual CInt(vbDataObject), VarType(V)
+    End Sub
+
+End Module

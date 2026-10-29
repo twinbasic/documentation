@@ -190,7 +190,7 @@ opens in the IDE and builds (`bundle_extra`, `docs/_config.yml`). It is laid out
 for byte; nothing checks that they agree, so a change to `src/` is packed again by hand
 (`node scripts/impexp.mjs import scripts/impexp/impexp.twinproj scripts/impexp/src
 --overwrite`). It has the same command line, output, exit codes and `--self-test` (the same
-20 tests) as `impexp.mjs` and `impexp.py`, and writes byte-identical project files. Its tests
+21 tests) as `impexp.mjs` and `impexp.py`, and writes byte-identical project files. Its tests
 are that `--self-test` and the commands of `check_impexp_parity.mjs`, which compares it
 when `IMPEXP_EXE` names its built exe, because no gate can build it; CI never sets the
 variable. The check runs the exe through `launchOnDesktop` with `cwd` (`TBBUILD_CWD` in

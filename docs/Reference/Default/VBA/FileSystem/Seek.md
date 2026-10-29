@@ -41,10 +41,23 @@ Syntax: **Seek** [ **#** ] *filenumber*, *position*
 
 Record numbers specified in [Get](../../Core/Get) and [Put](../../Core/Put) statements override file positioning performed by **Seek**.
 
-Performing a file-write operation after a **Seek** operation beyond the end of a file extends the file. Attempting a **Seek** to a negative or zero position causes an error.
+Performing a file-write operation after a **Seek** operation beyond the end of a file extends the file.
+
+<!-- errors: generated from errors/VBA.FileSystem.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *filenumber* is not the number of an open file<br>the statement's *position* is less than 1, after rounding |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *filenumber* or *position* is **Null** |
 
 > [!NOTE] BETA 1010
-> The **Seek** function and statement raise run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*). The statement raises the same error for a *position* of 0, where VB6 raises 63 (*Bad record number*).
+> When *filenumber* is not the number of an open file, VB6 and 64-bit VBA raise error [52 (`&H34`)](tb:Errors#52), *Bad file name or number*, instead.
+
+> [!NOTE] BETA 1010
+> When the statement's *position* is less than 1, after rounding, VB6 and 64-bit VBA raise error [63 (`&H3F`)](tb:Errors#63), *Bad record number*, instead.
+
+<!-- /errors -->
 
 ### Examples
 

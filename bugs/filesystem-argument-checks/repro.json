@@ -1,0 +1,17 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.CurDir_ZeroLength_ReturnsCurrent$",
+      "^PASS RegressionTests\\.FileLen_File_Returns10$",
+      "^PASS RegressionTests\\.Width_255_Accepted$",
+      "^FAIL RegressionTests\\.CurDir_Null_Raises13: .*Actual: 94 ",
+      "^FAIL RegressionTests\\.Dir_Null_Raises13: .*Actual: 94 ",
+      "^FAIL RegressionTests\\.FileLen_Wildcard_Raises52: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.FileDateTime_Wildcard_Raises52: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.Width_Negative_Raises5: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.Input_ZeroCharacters_ReturnsEmpty: .*Actual: -2147467259 "
+    ]
+  }
+}

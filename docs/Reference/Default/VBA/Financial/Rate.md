@@ -33,7 +33,44 @@ An annuity is a series of fixed cash payments made over a period of time. An ann
 
 For all arguments, cash paid out (such as deposits to savings) is represented by negative numbers; cash received (such as dividend checks) is represented by positive numbers.
 
-**Rate** is calculated by iteration. Starting with the value of *guess*, **Rate** cycles through the calculation until the result is accurate to within 0.00001 percent. If **Rate** can't find a result after 20 tries, it fails. If the default 10 percent fails, try a different value for *guess*.
+**Rate** is calculated by iteration. Starting with the value of *guess*, **Rate** cycles through the calculation until the result is accurate to within 0.00001 percent, and fails if it finds none in 20 tries. If it fails from the default of 10 percent, try a different value for *guess*.
+
+<!-- bug: rate-fails -->
+> [!WARNING] BETA 1010
+> Given a lump sum (a *pmt* of 0) over an even number of periods, **Rate** can return a rate below -1 and raise no error: `Rate(2, 0, 100, -121)` and `Rate(4, 0, 100, -146.41)` return -2.1. VB6 returns 0.1.
+
+<!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | a rate exists (twinBASIC finds one only for a few annuities, none of them with a *pmt* other than 0)<br>**Rate** finds no result in 20 tries from *guess* (a *guess* of -1 or less, or far from the result, included), or *nper* is 0 or less<br>*nper* is less than 1 and the result is beyond the range of a **Double** |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *nper* is less than 1 and *pmt* is 0 |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *fv* or *type* is a string that is not a number<br>*fv* or *type* is **Null** |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *nper*, *pmt* or *pv* is **Null** |
+
+> [!NOTE] BETA 1010
+> When a rate exists (twinBASIC finds one only for a few annuities, none of them with a *pmt* other than 0), VB6 and 64-bit VBA raise no error.
+
+> [!NOTE] BETA 1010
+> When **Rate** finds no result in 20 tries from *guess* (a *guess* of -1 or less, or far from the result, included), or *nper* is 0 or less, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When *nper* is less than 1 and the result is beyond the range of a **Double**, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*, instead.
+
+> [!NOTE] BETA 1010
+> When *nper* is less than 1 and *pmt* is 0, VB6 and 64-bit VBA raise no error.
+
+> [!NOTE] BETA 1010
+> When *guess* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*; twinBASIC raises none.
+
+> [!NOTE] BETA 1010
+> When *guess* is a string that is not a number, or an error value, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*; twinBASIC raises none.
+
+> [!NOTE] BETA 1010
+> When *fv* or *type* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*, instead.
+
+<!-- /errors -->
 
 ### Example
 

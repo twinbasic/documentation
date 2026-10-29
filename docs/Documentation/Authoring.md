@@ -286,7 +286,9 @@ symbols: [_HiddenModule]
 ---
 ```
 
-On a statement page the first name is the statement and the rest are its keywords; on an operator page each is an operator of its own --- the comparison operators page lists `["=", "<>", "<", "<=", ">", ">="]`, quoted, because a bare `>` is YAML syntax. Only two pages need it today. A page in a package folder that gives the index no entry at all is named after the build's summary.
+On a statement page the first name is the statement and the rest are its keywords; on an operator page each is an operator of its own --- the comparison operators page lists `["=", "<>", "<", "<=", ">", ">="]`, quoted, because a bare `>` is YAML syntax. Quote `True`, `False` and `Null` as well: YAML reads them bare as a boolean and as no value, and the build refuses an entry that is not a name. Only two pages need it today. A page in a package folder that gives the index no entry at all is named after the build's summary.
+
+Two summary pages outside the package folders are read too, and their `symbols:` list names the page's `##` sections: each intrinsic type of [Data Types](../../Reference/Data-Types), and each keyword of [Literal Keywords](../../Reference/Literal-Keywords) (`["Nothing", "Null", "Empty", "True", "False"]`). A name with no `##` heading of its own fails the build.
 
 ## Index entries for the site search
 

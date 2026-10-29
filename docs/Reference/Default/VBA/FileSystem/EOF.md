@@ -24,8 +24,18 @@ The **EOF** function returns **False** until the end of the file has been reache
 
 With files opened for **Binary** access, an attempt to read through the file by using the **Input** function until **EOF** returns **True** generates an error. Use the [LOF](LOF) and **Loc** functions instead of **EOF** when reading binary files with **Input**, or use **Get** when using the **EOF** function. With files opened for **Output**, **EOF** always returns **True**.
 
+<!-- errors: generated from errors/VBA.FileSystem.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *filenumber* is not the number of an open file |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *filenumber* is **Null** |
+
 > [!NOTE] BETA 1010
-> **EOF** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
+> When *filenumber* is not the number of an open file, VB6 and 64-bit VBA raise error [52 (`&H34`)](tb:Errors#52), *Bad file name or number*, instead.
+
+<!-- /errors -->
 
 ### Example
 

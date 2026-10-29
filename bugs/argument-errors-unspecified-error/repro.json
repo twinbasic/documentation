@@ -30,7 +30,17 @@
       "^FAIL RegressionTests.MsgBox_HelpFileWithoutContext_Raises5: .*Actual: -2147467259 ",
       "^FAIL RegressionTests.InputBox_HelpFileWithoutContext_Raises5: .*Actual: -2147467259 ",
       "^FAIL RegressionTests.SendKeys_UnknownKeyCode_Raises5: .*Actual: -2147352567 ",
-      "^FAIL RegressionTests.SendKeys_WaitNull_Raises94: .*Actual: -2147352567 "
+      "^FAIL RegressionTests.SendKeys_WaitNull_Raises94: .*Actual: -2147352567 ",
+      "^FAIL RegressionTests.DDB_LifeZero_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.SLN_LifeZero_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.SYD_PeriodAboveLife_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.IPmt_NperZero_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.PPmt_NperNegative_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Pmt_RateAndNperZero_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.NPer_RateAndPmtZero_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Rate_NperZero_Raises5: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.Rate_NperBelowOneOverflow_Raises6: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests.IRR_NoReceipt_Raises5: .*Actual: -2147467259 "
     ]
   }
 }

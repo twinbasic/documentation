@@ -945,6 +945,36 @@ def _self_test():
         test('A command line in the wrong shape is refused before anything is read',
              t_command_line)
 
+        def t_quote_mistake():
+            why = [
+                'ERROR: an argument holds a double quote, which no Windows file name can hold:',
+                '         C:\\my out" --overwrite',
+                '       A backslash just before a closing quote, as in "C:\\out\\", makes Windows keep',
+                '       the quote in the argument, and the rest of the command line runs into it.',
+            ]
+            meant = '       Leave the backslash off the end of a name in quotes. The command meant is:'
+            eq(quote_mistake(['export', 'P.twinproj', 'tree', '--overwrite'], 'impexp'), None,
+               'no quote')
+            eq(quote_mistake(['export', 'P.twinproj', 'C:\\my out" --overwrite'], 'impexp'),
+               '\n'.join(why + [meant,
+                                '         impexp export P.twinproj "C:\\my out" --overwrite']),
+               'a folder in quotes')
+
+            def last(argv):
+                return quote_mistake(argv, 'impexp').split('\n')[-1]
+            eq(last(['export', 'P.twinproj', 'out\\" --overwrite']),
+               '         impexp export P.twinproj out --overwrite', 'two backslashes')
+            eq(last(['export', 'P.twinproj', 'C:" --overwrite']),
+               '         impexp export P.twinproj C:\\ --overwrite', 'a drive')
+            eq(last(['import', 'C:\\a b\\P.twinproj" tree']),
+               '         impexp import "C:\\a b\\P.twinproj" tree', 'the project')
+            eq(last(['export"']), '       Leave the backslash off the end of a name in quotes.',
+               'nothing to suggest')
+            eq(len(quote_mistake(['export"'], 'impexp').split('\n')), 5,
+               'no command when it would be refused')
+        test('A double quote in an argument is answered with the command it meant',
+             t_quote_mistake)
+
         def t_exit_codes():
             eq(','.join(str(v) for v in EXIT.values()), '0,1,2,3,4,5,6',
                'the documented codes')
@@ -1091,34 +1121,110 @@ def _usage_error(message):
     return EXIT['usage']
 
 
-def main(argv):
-    overwrite = False
-    words = []
-    show_help = run_self_test = False
+def parse_command_line(argv):
+    """The options and the words of a command line, and what is wrong with it.
+
+    A dict of overwrite, help, self_test, words and problem, which is None when
+    nothing is. An unknown option is wrong even after --help.
+    """
+    c = dict(overwrite=False, help=False, self_test=False, words=[], problem=None)
     for a in argv:
         if a == '--overwrite':
-            overwrite = True
+            c['overwrite'] = True
         elif a == '--self-test':
-            run_self_test = True
+            c['self_test'] = True
         elif a in ('--help', '-h'):
-            show_help = True
+            c['help'] = True
         elif len(a) > 1 and a.startswith('-'):
-            return _usage_error(f'unknown option: {a}')
+            c['problem'] = f'unknown option: {a}'
+            return c
         else:
-            words.append(a)
-    if show_help:
+            c['words'].append(a)
+    if c['help']:
+        return c
+    if c['self_test']:
+        if c['words']:
+            c['problem'] = '--self-test takes no other arguments'
+        return c
+    words = c['words']
+    c['problem'] = command_line_error(words[0] if words else None, words[1:])
+    return c
+
+
+def _shell_word(a):
+    """An argument as it is typed at a command prompt: in quotes when it holds
+    a space or a character cmd.exe reads."""
+    return f'"{a}"' if a == '' or re.search(r'[ \t&|<>^()%!,;=]', a) else a
+
+
+def quote_mistake(argv, program):
+    """The error for a command line that holds a double quote, or None.
+
+    Windows splits a command line so that a backslash just before a quote
+    keeps the quote in the argument: `"C:\\out\\" --overwrite` arrives as one
+    argument, `C:\\out" --overwrite`. No Windows file name holds a double
+    quote, so an argument that does is this mistake. The command it meant is
+    each such argument's text before the quote, less the backslashes at its
+    end, followed by the words the quote swallowed; it is shown, after
+    `program`, only when it passes the checks a command line must pass. The
+    arguments are not repaired here: the tB executable reads `"C:\\out\\"` as
+    the folder, and a reader who learnt that the script repairs it would
+    expect the same of every program.
+    """
+    bad = next((a for a in argv if '"' in a), None)
+    if bad is None:
+        return None
+    meant = []
+    for a in argv:
+        q = a.find('"')
+        if q < 0:
+            meant.append(a)
+            continue
+        head = re.sub(r'\\+$', '', a[:q])
+        if re.fullmatch(r'[A-Za-z]:', head):
+            head += '\\'
+        if head:
+            meant.append(head)
+        meant.extend(w for w in re.split(r'[ \t]+', a[q + 1:].replace('"', ' ')) if w)
+    lines = [
+        'ERROR: an argument holds a double quote, which no Windows file name can hold:',
+        f'         {bad}',
+        '       A backslash just before a closing quote, as in "C:\\out\\", makes Windows keep',
+        '       the quote in the argument, and the rest of the command line runs into it.',
+    ]
+    if parse_command_line(meant)['problem'] is None:
+        lines.append('       Leave the backslash off the end of a name in quotes. The command meant is:')
+        lines.append(f'         {program} ' + ' '.join(_shell_word(w) for w in meant))
+    else:
+        lines.append('       Leave the backslash off the end of a name in quotes.')
+    return '\n'.join(lines)
+
+
+def _program_text():
+    """How this script was run, for a command to copy: the interpreter and the
+    script as it was named."""
+    name = os.path.splitext(os.path.basename(sys.executable))[0] or 'python'
+    return f'{name} {_shell_word(sys.argv[0])}'
+
+
+def main(argv):
+    mistake = quote_mistake(argv, _program_text())
+    if mistake is not None:
+        _err(mistake)
+        return EXIT['usage']
+    c = parse_command_line(argv)
+    if c['problem']:
+        return _usage_error(c['problem'])
+    if c['help']:
         _out(USAGE)
         return 0
-    if run_self_test:
-        if words:
-            return _usage_error('--self-test takes no other arguments')
+    if c['self_test']:
         return _self_test()
+    overwrite = c['overwrite']
 
-    verb = words[0] if words else None
+    words = c['words']
+    verb = words[0]
     args = words[1:]
-    problem = command_line_error(verb, args)
-    if problem:
-        return _usage_error(problem)
     project = args[0]
     folder = args[1] if len(args) > 1 else None
 

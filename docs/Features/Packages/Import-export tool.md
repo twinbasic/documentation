@@ -73,10 +73,20 @@ comes first. The verb says what happens to it: `export` takes source out of the 
 | `--help` | prints the usage | no | yes |
 
 ```batch
-twinBASIC_win32.exe export "C:\Projects\MyProject.twinproj" "C:\Projects\MyProject\"
+twinBASIC_win32.exe export "C:\Projects\MyProject.twinproj" "C:\Projects\MyProject"
 node impexp.mjs import MyProject.twinproj MyProject --overwrite
 impexp_win32.exe import MyProject.twinproj MyProject --overwrite
 ```
+
+> [!NOTE]
+> Do not end a folder name in quotes with a backslash when running the script. The script
+> splits its command line by the Windows rule that a backslash before a quote makes the quote
+> part of the argument, so `"C:\Projects\MyProject\" --overwrite` reaches it as one argument,
+> `C:\Projects\MyProject" --overwrite`. No Windows file name can hold a double quote, so the
+> script refuses any argument that holds one, exits with code `2`, and prints the command
+> without the backslash, ready to copy. The tB executable splits its command line by its own
+> rule and takes the folder with or without the backslash, although its usage message shows
+> one. `"C:\Projects\MyProject"` works with both.
 
 A package is a project file too: every folder under the installation's `packages\` holds one,
 named `package.twinproj`, so every command works on packages as well.
@@ -117,6 +127,7 @@ message that names only `export` and `import`; given no arguments at all, it doe
 | A `.twinpack` file for `export` or `import` | not accepted, see below | accepted |
 | A project that embeds a package | `import` fails, see below | packed |
 | Paths | folders need backslashes, and `export` needs a full path, with backslashes, to the project | any form |
+| A folder in quotes that ends with a backslash, `"C:\out\"` | accepted | refused, and the command without the backslash printed; see the note under [Usage](#usage) |
 | `export` refused because `--overwrite` is missing | writes the files that were not there yet | writes nothing |
 | Files in the folder that the project does not hold | left in place, with no warning | left in place, and listed in a warning |
 | A `.git` folder | packed by `import`, and written back by `export` | skipped by both |
@@ -220,7 +231,7 @@ The steps, in order:
    commit leaves the changes out. The script refuses the whole export, and exits `3`.
 
    ```batch
-   twinBASIC_win32.exe export "C:\Projects\MyProject.twinproj" "C:\Projects\MyProject\src\" --overwrite > tb.log
+   twinBASIC_win32.exe export "C:\Projects\MyProject.twinproj" "C:\Projects\MyProject\src" --overwrite > tb.log
    find "... DONE" tb.log > nul || exit /b 1
    ```
 
@@ -238,7 +249,7 @@ The steps, in order:
    comes first, as in every command:
 
    ```batch
-   twinBASIC_win32.exe import "C:\Projects\MyProject.twinproj" "C:\Projects\MyProject\src\" --overwrite > tb.log
+   twinBASIC_win32.exe import "C:\Projects\MyProject.twinproj" "C:\Projects\MyProject\src" --overwrite > tb.log
    find "... DONE" tb.log > nul || exit /b 1
    ```
 

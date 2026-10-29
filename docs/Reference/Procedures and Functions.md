@@ -46,7 +46,7 @@ permalink: /Reference/Procedures-and-Functions
 - [CompilerVersion](../tB/Modules/Compilation/CompilerVersion) -- returns the twinBASIC compiler version number
 - [ConvertIconToBitmap](../tB/Modules/HiddenModule/ConvertIconToBitmap) -- converts an icon picture to a bitmap picture
 - [Cos](../tB/Modules/Math/Cos) -- returns the cosine of an angle
-- [CreateGUID](../tB/Modules/HiddenModule/CreateGUID) -- generates a fresh GUID and returns it as a registry-formatted string
+- [CreateGUID](../tB/Modules/HiddenModule/CreateGUID) -- generates a fresh GUID and returns it as a string
 - [CreateObject](../tB/Modules/Interaction/CreateObject) -- creates a new instance of a COM/Automation object
 - [CreateStdPictureFromHandle](../tB/Modules/HiddenModule/CreateStdPictureFromHandle) -- wraps a GDI bitmap or icon handle in an **stdole.StdPicture**
 - [CSng](../tB/Modules/Conversion/CSng) -- coerces an expression to a **Single**

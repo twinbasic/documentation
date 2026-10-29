@@ -27,6 +27,17 @@ Syntax: *hook*.**RegisterMessage** *ParentHWND* **,** *Mode* **,** *MessageType*
 
 The subscription is recorded but does not start firing until [**Start**](Start) is called on the hook. Existing subscriptions are not disturbed by adding new ones.
 
+**RegisterMessage** checks none of its arguments: a window that does not exist, a *Mode* that is not one of the three values, and the same subscription given twice are accepted.
+
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *ParentHWND*, *Mode* or *MessageType* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 ```tb check_build inherits=Form

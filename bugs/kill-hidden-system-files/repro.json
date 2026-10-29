@@ -1,0 +1,15 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.Kill_NormalFile_Deletes$",
+      "^PASS RegressionTests\\.Kill_ReadOnlyFile_RaisesAndKeepsIt$",
+      "^FAIL RegressionTests\\.Kill_HiddenFile_Raises53: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.Kill_SystemFile_Raises53: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.Kill_HiddenSystemFile_Raises53: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.Kill_WildcardMatchingOnlyAHiddenFile_Raises53: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.Kill_Wildcard_LeavesHiddenFile: .*Actual: False\\. "
+    ]
+  }
+}

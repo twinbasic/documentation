@@ -30,6 +30,34 @@ An annuity is a series of fixed cash payments made over a period of time. An ann
 
 For all arguments, cash paid out (such as deposits to savings) is represented by negative numbers; cash received (such as dividend checks) is represented by positive numbers.
 
+<!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *rate* and *pmt* are of opposite signs, as in a loan or a savings plan, and a number of periods exists<br>no number of periods exists, as when *pmt* does not cover the interest, or *rate* is -1 and *pmt* is greater than 0 |
+| [11 (`&HB`)](tb:Errors#11), *Division by zero* | *pmt* is 0 and *rate* is not 0, or *rate* is -1 and *pmt* is less than 0 |
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *rate* and *pmt* are both 0 |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *fv* or *type* is a string that is not a number<br>*fv* or *type* is **Null** |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *rate*, *pmt* or *pv* is **Null** |
+
+> [!NOTE] BETA 1010
+> When *rate* and *pmt* are of opposite signs, as in a loan or a savings plan, and a number of periods exists, VB6 and 64-bit VBA raise no error.
+
+> [!NOTE] BETA 1010
+> When no number of periods exists, as when *pmt* does not cover the interest, or *rate* is -1 and *pmt* is greater than 0, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When *pmt* is 0 and *rate* is not 0, or *rate* is -1 and *pmt* is less than 0, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When *rate* and *pmt* are both 0, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
+
+> [!NOTE] BETA 1010
+> When *fv* or *type* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*, instead.
+
+<!-- /errors -->
+
 ### Example
 
 This example uses the **NPer** function to return the number of periods during which payments must be made to pay off a loan whose value is contained in `PVal`. Also provided are the interest percentage rate per period (`APR / 12`), the payment (`Payment`), the future value of the loan (`FVal`), and a number that indicates whether the payment is due at the beginning or end of the payment period (`PayType`).

@@ -1,0 +1,20 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.Control_RequiredNull_Raises94$",
+      "^PASS RegressionTests\\.Control_OptionalString_Raises13$",
+      "^PASS RegressionTests\\.Control_OptionalNumber$",
+      "^FAIL RegressionTests\\.FV_PvNull_Raises94: .*Actual: 13 ",
+      "^FAIL RegressionTests\\.FV_TypeNull_Raises94: .*Actual: 13 ",
+      "^FAIL RegressionTests\\.PV_FvNull_Raises94: .*Actual: 13 ",
+      "^FAIL RegressionTests\\.Pmt_FvNull_Raises94: .*Actual: 13 ",
+      "^FAIL RegressionTests\\.NPer_TypeNull_Raises94: .*Actual: 13 ",
+      "^FAIL RegressionTests\\.IPmt_FvNull_Raises94: .*Actual: 13 ",
+      "^FAIL RegressionTests\\.PPmt_TypeNull_Raises94: .*Actual: 13 ",
+      "^FAIL RegressionTests\\.Rate_TypeNull_Raises94: .*Actual: 13 ",
+      "^FAIL RegressionTests\\.DDB_FactorNull_Raises94: .*Actual: 13 "
+    ]
+  }
+}

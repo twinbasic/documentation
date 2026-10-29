@@ -1,0 +1,149 @@
+' Regression tests: NPer returns the number of periods of a loan or a savings plan, as VB6 and
+' 64-bit VBA do, whatever the signs of rate and pmt, and raises 5 where no number of periods
+' exists. The controls have rate and pmt of the same sign, or a rate of 0.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_PositivePmt()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, 100, -1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 10.5886444594232) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_RateZero()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0, -100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 10) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SameSigns()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, 100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - -9.57859403981317) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Loan_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 10.5886444594232) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub CarLoan_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.1 / 12, -500, 20000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 48.8582651211073) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub LoanWithBalance_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -100, 1000, 100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 11.5886444594232) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub LoanDueAtStart_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -100, 1000, 0, 1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 10.4781450851168) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub SavingsPlan_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -100, 0, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 9.57859403981317) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub NegativeRate_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(-0.5, 100, -1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 2.58496250072116) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub PmtBelowInterest_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -1, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PmtZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, 0, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub RateMinusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(-1, -100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+End Module

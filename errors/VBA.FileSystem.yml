@@ -1,0 +1,894 @@
+# The VBA FileSystem module. Format: WIP.Errors.md. Every case runs under the files harness, in a
+# folder of its own that is the current directory: a.txt (10 bytes), empty.txt, ro.txt
+# (read-only), hid.txt (hidden), the empty folder sub, and full, which holds f.txt.
+beta: 1010
+pages:
+  Reference/Default/VBA/FileSystem/ChDir.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "*path* names no folder that exists, which includes a file, a drive that does not exist, a zero-length string, and a name with a wildcard or a character a name cannot hold"
+        vb6: 76
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'ChDir "nosuch"' }
+          - { run: 'ChDir "nosub\deeper"' }
+          - { run: 'ChDir ""' }
+          - { run: 'ChDir " "' }
+          - { run: 'ChDir "a.txt"' }
+          - { run: 'ChDir files_NoDrive & ":\"' }
+          - { run: 'ChDir files_NoDrive & ":\x"' }
+          - { run: 'ChDir String(300, "a")' }
+          - { run: 'ChDir "*"' }
+          - { run: 'ChDir "su?"' }
+          - { run: 'ChDir "a<b"' }
+          - { run: 'ChDir 5' }
+      - error: 94
+        when: "*path* is **Null**"
+        cases:
+          - { run: 'ChDir Null' }
+    quiet:
+      - { run: 'ChDir "sub": files_Expect CurDir$ = files_Dir & "\sub"' }
+      - { run: 'ChDir "sub\": files_Expect CurDir$ = files_Dir & "\sub"' }
+      - { run: 'ChDir "..": files_Expect CurDir$ <> files_Dir' }
+      - { run: 'ChDir files_Dir & "\full": files_Expect CurDir$ = files_Dir & "\full"' }
+  Reference/Default/VBA/FileSystem/ChDrive.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "*drive* starts with a letter that no drive has"
+        vb6: 68
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'ChDrive files_NoDrive' }
+          - { run: 'ChDrive files_NoDrive & ":\"' }
+      - error: -2147467259
+        when: "*drive* starts with a digit, a space or a punctuation character"
+        vb6: 5
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'ChDrive "1"' }
+          - { run: 'ChDrive " "' }
+          - { run: 'ChDrive "?"' }
+          - { run: 'ChDrive "\"' }
+          - { run: 'ChDrive "@"' }
+          - { run: 'ChDrive "["' }
+          - { run: 'ChDrive 5' }
+      - error: 94
+        when: "*drive* is **Null**"
+        cases:
+          - { run: 'ChDrive Null' }
+    quiet:
+      - { run: 'ChDrive ""' }
+      - { run: 'ChDrive Empty' }
+      - { run: 'ChDrive Left$(files_Dir, 1)' }
+      - { run: 'ChDrive LCase$(Left$(files_Dir, 1))' }
+      - { run: 'ChDrive Left$(files_Dir, 1) & "xyz"' }
+      - { run: 'ChDrive Left$(files_Dir, 3)' }
+  Reference/Default/VBA/FileSystem/CurDir.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "*drive* starts with a letter that no drive has"
+        vb6: 68
+        bug: file-errors-unspecified
+        cases:
+          - CurDir(files_NoDrive)
+          - CurDir$(files_NoDrive)
+      - error: -2147467259
+        when: "*drive* starts with a digit, a space or a punctuation character"
+        vb6: 5
+        bug: file-errors-unspecified
+        cases:
+          - CurDir("1")
+          - CurDir(" ")
+          - CurDir("?")
+          - CurDir("@")
+          - CurDir$("1")
+          - { expr: CurDir(5), only: tb }
+      - error: 94
+        when: "*drive* is **Null**"
+        vb6: 13
+        bug: filesystem-argument-checks
+        cases:
+          - CurDir(Null)
+          - CurDir$(Null)
+    quiet:
+      - CurDir
+      - CurDir("")
+      - CurDir$
+      - CurDir$("")
+      - CurDir(Left$(files_Dir, 1))
+      - CurDir(LCase$(Left$(files_Dir, 1)) & "xyz")
+      - { decl: Dim S As String, setup: 'S = Left$(files_Dir, 1)', expr: CurDir(S) }
+      - { decl: Dim V As Variant, setup: 'V = Left$(files_Dir, 1)', expr: CurDir(V) }
+      - { run: 'files_Expect CurDir = files_Dir' }
+  Reference/Default/VBA/FileSystem/Dir.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "**Dir** is called without *pathname* after it has returned a zero-length string"
+        vb6: 5
+        bug: file-errors-unspecified
+        cases:
+          - { setup: 'Result = Dir("nosuch.txt")', expr: Dir() }
+          - { setup: 'Result = Dir("nosuch.txt")', expr: Dir }
+          - { setup: 'Result = Dir("a.txt")', run: 'Result = Dir(): Result = Dir()' }
+      - error: -2147467259
+        when: "*pathname* names a file and ends in a backslash"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - Dir("a.txt\")
+      - error: -2147467259
+        when: "a name in *pathname* is longer than 255 characters"
+        vb6: 53
+        bug: file-errors-unspecified
+        cases:
+          - Dir(String(256, "a"))
+          - Dir(String(300, "a"))
+      - error: 94
+        when: "*pathname* is **Null**"
+        vb6: 13
+        bug: filesystem-argument-checks
+        cases:
+          - Dir(Null)
+          - 'Dir(Null, 0)'
+      - error: 94
+        when: "*attributes* is **Null**"
+        cases:
+          - 'Dir("a.txt", Null)'
+    quiet:
+      - { run: 'files_Expect Dir("a.txt") = "a.txt"' }
+      - { run: 'files_Expect Dir("nosuch.txt") = ""' }
+      - { setup: 'Result = Dir("a.txt")', run: 'files_Expect Dir() = ""' }
+      - Dir("")
+      - 'Dir("", 8)'
+      - 'Dir("*.txt", 8)'
+      - 'Dir("*", 16)'
+      - 'Dir("*", 32)'
+      - 'Dir("*", 63)'
+      - Dir("nosub\*")
+      - Dir(files_NoDrive & ":\*")
+      - Dir("a<b")
+      - Dir("sub")
+      - 'Dir("sub", 16)'
+      - Dir(files_Dir & "\")
+      - Dir("sub\")
+      - { run: 'files_Expect Dir("hid.txt") = ""' }
+      - { run: 'files_Expect Dir("hid.txt", 2) = "hid.txt"' }
+      - { run: 'files_Expect Dir("*", -1) = Dir("*", 23)', only: tb }
+      - { run: 'files_Expect Dir("*", 64) = Dir("*", 0)', only: tb }
+      - { run: 'files_Expect Dir("h*", -1) = "hid.txt"', only: tb }
+      - { expr: 'Dir("*", 128)', only: tb }
+      - { expr: 'Dir("*", 256)', only: tb }
+      - { expr: 'Dir("*", 1024)', only: tb }
+      - { expr: 'Dir("*", 2147483647)', only: tb }
+      - { setup: 'MkDir "5"', run: 'files_Expect Dir(5, 16) = "5"', only: tb }
+      - { expr: Dir(True), only: tb }
+      - { expr: Dir(5.5), only: tb }
+  Reference/Default/VBA/FileSystem/EOF.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "*filenumber* is not the number of an open file"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - EOF(99)
+          - EOF(0)
+          - EOF(-1)
+          - EOF(256)
+          - EOF(512)
+          - { setup: 'Open "a.txt" For Input As #1', run: "Close #1\nResult = EOF(1)" }
+      - error: 94
+        when: "*filenumber* is **Null**"
+        cases:
+          - EOF(Null)
+    quiet:
+      - { setup: 'Open "a.txt" For Input As #1', run: 'files_Expect Not EOF(1)' }
+      - { setup: 'Open "empty.txt" For Input As #1', run: 'files_Expect EOF(1)' }
+      - { setup: 'Open "a.txt" For Output As #1', expr: EOF(1) }
+      - { setup: 'Open "a.txt" For Append As #1', expr: EOF(1) }
+      - { setup: 'Open "a.txt" For Binary As #1', expr: EOF(1) }
+      - { setup: 'Open "a.txt" For Random As #1 Len = 4', expr: EOF(1) }
+      - { setup: 'Open "a.txt" For Input As #300', expr: EOF(300) }
+  Reference/Default/VBA/FileSystem/FileAttr.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "*filenumber* is not the number of an open file"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - 'FileAttr(99, 1)'
+          - 'FileAttr(0, 1)'
+          - 'FileAttr(99, 0)'
+      - error: -2147467259
+        when: "*returntype* is not 1, after rounding"
+        vb6: 5
+        bug: file-errors-unspecified
+        cases:
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'FileAttr(1, 2)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'FileAttr(1, 0)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'FileAttr(1, 3)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'FileAttr(1, -1)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'FileAttr(1, 1.6)' }
+      - error: 94
+        when: "*filenumber* or *returntype* is **Null**"
+        cases:
+          - 'FileAttr(Null, 1)'
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'FileAttr(1, Null)' }
+    quiet:
+      - { setup: 'Open "a.txt" For Input As #1', run: 'files_Expect FileAttr(1, 1) = 1' }
+      - { setup: 'Open "a.txt" For Input As #1', run: 'files_Expect FileAttr(1, 1.4) = 1' }
+      - { setup: 'Open "a.txt" For Output As #1', run: 'files_Expect FileAttr(1, 1) = 2' }
+      - { setup: 'Open "a.txt" For Random As #1', run: 'files_Expect FileAttr(1, 1) = 4' }
+      - { setup: 'Open "a.txt" For Append As #1', run: 'files_Expect FileAttr(1, 1) = 8' }
+      - { setup: 'Open "a.txt" For Binary As #1', run: 'files_Expect FileAttr(1, 1) = 32' }
+  Reference/Default/VBA/FileSystem/FileCopy.md:
+    harness: files
+    rows:
+      - error: 53
+        when: "*source* does not exist"
+        cases:
+          - { run: 'FileCopy "nosuch.txt", "b.txt"' }
+      - error: 76
+        when: "the folder or drive named in *source* or *destination* does not exist, or *destination* ends in a backslash"
+        cases:
+          - { run: 'FileCopy "nosub\a.txt", "b.txt"' }
+          - { run: 'FileCopy "a.txt", "nosub\b.txt"' }
+          - { run: 'FileCopy files_NoDrive & ":\a.txt", "b.txt"' }
+          - { run: 'FileCopy "a.txt", files_NoDrive & ":\a.txt"' }
+          - { run: 'FileCopy "a.txt", "sub\"' }
+      - error: 55
+        when: "*source* is open with write access or locked against reading, or *destination* is open"
+        cases:
+          - { setup: 'Open "a.txt" For Binary Access Read Lock Read Write As #1', run: 'FileCopy "a.txt", "b.txt"' }
+          - { setup: 'Open "a.txt" For Append As #1', run: 'FileCopy "a.txt", "b.txt"' }
+          - { setup: 'Open "a.txt" For Output As #1', run: 'FileCopy "a.txt", "b.txt"' }
+          - { setup: 'Open "a.txt" For Binary As #1', run: 'FileCopy "a.txt", "b.txt"' }
+          - { setup: 'Open "a.txt" For Random As #1', run: 'FileCopy "a.txt", "b.txt"' }
+          - { setup: 'Open "a.txt" For Binary Access Write As #1', run: 'FileCopy "a.txt", "b.txt"' }
+          - { setup: 'Open "a.txt" For Binary Access Read Write As #1', run: 'FileCopy "a.txt", "b.txt"' }
+          - { setup: 'Open "b.txt" For Output As #1', run: 'FileCopy "a.txt", "b.txt"' }
+          - { setup: 'Open "empty.txt" For Input As #1', run: 'FileCopy "a.txt", "empty.txt"' }
+          - { setup: 'Open "empty.txt" For Binary Access Read As #1', run: 'FileCopy "a.txt", "empty.txt"' }
+      - error: 55
+        when: "*destination* names the same file as *source*"
+        vb6: 70
+        bug: filecopy-error-numbers
+        cases:
+          - { run: 'FileCopy "a.txt", "a.txt"' }
+          - { run: 'FileCopy "a.txt", "A.TXT"' }
+          - { run: 'FileCopy "a.txt", ".\a.txt"' }
+      - error: 55
+        when: "*source* is open **For Input** with **Lock Read**"
+        vb6: 70
+        bug: filecopy-error-numbers
+        cases:
+          - { setup: 'Open "a.txt" For Input Lock Read As #1', run: 'FileCopy "a.txt", "b.txt"' }
+      - error: 70
+        when: "*source* is a folder, or *destination* is a folder or a read-only or hidden file"
+        vb6: 75
+        bug: filecopy-error-numbers
+        cases:
+          - { run: 'FileCopy "sub", "b.txt"' }
+          - { run: 'FileCopy "full", "b.txt"' }
+          - { run: 'FileCopy "a.txt", "sub"' }
+          - { run: 'FileCopy "a.txt", "ro.txt"' }
+          - { run: 'FileCopy "a.txt", "hid.txt"' }
+      - error: -2147467259
+        when: "*source* or *destination* is a zero-length string"
+        vb6: 75
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'FileCopy "", "b.txt"' }
+          - { run: 'FileCopy "a.txt", ""' }
+      - error: -2147467259
+        when: "*source* or *destination* holds a wildcard or a character a file name cannot hold"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'FileCopy "*.txt", "b.txt"' }
+          - { run: 'FileCopy "a.tx?", "b.txt"' }
+          - { run: 'FileCopy "a.txt", "b*.txt"' }
+          - { run: 'FileCopy "a.txt", "a<b"' }
+      - error: 94
+        when: "*source* or *destination* is **Null**"
+        cases:
+          - { run: 'FileCopy Null, "b.txt"' }
+          - { run: 'FileCopy "a.txt", Null' }
+    quiet:
+      - { run: 'FileCopy "a.txt", "b.txt": files_Expect FileLen("b.txt") = 10' }
+      - { run: 'FileCopy "a.txt", "sub\b.txt": files_Expect FileLen("sub\b.txt") = 10' }
+      - { run: 'FileCopy "a.txt", "empty.txt": files_Expect FileLen("empty.txt") = 10' }
+      - { run: 'FileCopy "ro.txt", "b.txt": files_Expect FileLen("b.txt") = 1' }
+      - { run: 'FileCopy "a.txt", "ro.txt": Err.Clear: files_Expect FileLen("ro.txt") = 1' }
+      - { setup: 'Open "a.txt" For Input As #1', run: 'FileCopy "a.txt", "b.txt": files_Expect FileLen("b.txt") = 10' }
+      - { setup: 'Open "a.txt" For Input Shared As #1', run: 'FileCopy "a.txt", "b.txt"' }
+      - { setup: 'Open "a.txt" For Binary Access Read As #1', run: 'FileCopy "a.txt", "b.txt": files_Expect FileLen("b.txt") = 10', only: tb }
+      - { setup: 'Open "a.txt" For Binary Access Read Shared As #1', run: 'FileCopy "a.txt", "b.txt"', only: tb }
+      - { setup: 'Open "a.txt" For Random Access Read As #1', run: 'FileCopy "a.txt", "b.txt"', only: tb }
+      - { setup: 'Open "a.txt" For Binary Access Read Lock Write As #1', run: 'FileCopy "a.txt", "b.txt"', only: tb }
+  Reference/Default/VBA/FileSystem/FileDateTime.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "no file or folder has the name *pathname*, which includes a zero-length string, a folder named with a backslash at its end, and a name with a character a name cannot hold"
+        vb6: 53
+        bug: file-errors-unspecified
+        cases:
+          - FileDateTime("nosuch.txt")
+          - FileDateTime("")
+          - FileDateTime("sub\")
+          - FileDateTime("a<b")
+          - FileDateTime(String(300, "a"))
+      - error: -2147467259
+        when: "the folder or drive named in *pathname* does not exist"
+        vb6: 76
+        bug: file-errors-unspecified
+        cases:
+          - FileDateTime("nosub\a.txt")
+          - FileDateTime(files_NoDrive & ":\a.txt")
+      - error: -2147467259
+        when: "*pathname* holds a wildcard that matches no file or folder"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - FileDateTime("z*")
+          - FileDateTime("a?txt")
+      - error: 0
+        when: "*pathname* holds a wildcard that matches a file or folder"
+        vb6: 52
+        bug: filesystem-argument-checks
+        cases:
+          - FileDateTime("*.txt")
+          - FileDateTime("e*")
+          - FileDateTime("a.tx?")
+          - FileDateTime("su*")
+      - error: 94
+        when: "*pathname* is **Null**"
+        cases:
+          - FileDateTime(Null)
+    quiet:
+      - FileDateTime("a.txt")
+      - FileDateTime("A.TXT")
+      - FileDateTime("sub")
+      - FileDateTime("hid.txt")
+      - FileDateTime(files_Dir & "\a.txt")
+      - { setup: 'Open "a.txt" For Output As #1', expr: FileDateTime("a.txt") }
+  Reference/Default/VBA/FileSystem/FileLen.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "no file or folder has the name *pathname*, which includes a zero-length string, a folder named with a backslash at its end, and a name with a character a name cannot hold"
+        vb6: 53
+        bug: file-errors-unspecified
+        cases:
+          - FileLen("nosuch.txt")
+          - FileLen("")
+          - FileLen("sub\")
+          - FileLen("a<b")
+          - FileLen(String(300, "a"))
+      - error: -2147467259
+        when: "the folder or drive named in *pathname* does not exist"
+        vb6: 76
+        bug: file-errors-unspecified
+        cases:
+          - FileLen("nosub\a.txt")
+          - FileLen(files_NoDrive & ":\a.txt")
+      - error: -2147467259
+        when: "*pathname* holds a wildcard that matches no file or folder"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - FileLen("z*")
+          - FileLen("a?txt")
+      - error: 0
+        when: "*pathname* holds a wildcard that matches a file or folder"
+        vb6: 52
+        bug: filesystem-argument-checks
+        cases:
+          - FileLen("*.txt")
+          - FileLen("e*")
+          - FileLen("a.tx?")
+          - FileLen("?.txt")
+          - FileLen("su*")
+          - FileLen("h*")
+      - error: 94
+        when: "*pathname* is **Null**"
+        cases:
+          - FileLen(Null)
+    quiet:
+      - { run: 'files_Expect FileLen("a.txt") = 10' }
+      - { run: 'files_Expect FileLen("A.TXT") = 10' }
+      - { run: 'files_Expect FileLen("empty.txt") = 0' }
+      - { run: 'files_Expect FileLen(files_Dir & "\a.txt") = 10' }
+      - FileLen("sub")
+      - FileLen("hid.txt")
+      - { setup: 'Open "a.txt" For Append As #1: Print #1, "x"', run: 'files_Expect FileLen("a.txt") = 10' }
+  Reference/Default/VBA/FileSystem/FreeFile.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "every file number from 1 to 255 is in use"
+        vb6: 67
+        bug: file-errors-unspecified
+        cases:
+          - { decl: Dim I As Long, setup: 'For I = 1 To 255: Open "f" & I For Output As #I: Next', expr: FreeFile }
+          - { decl: Dim I As Long, setup: 'For I = 1 To 255: Open "f" & I For Output As #I: Next', expr: FreeFile(0) }
+      - error: 94
+        when: "*rangenumber* is **Null**"
+        cases:
+          - FreeFile(Null)
+    quiet:
+      - { run: 'files_Expect FreeFile = 1' }
+      - { run: 'files_Expect FreeFile() = 1' }
+      - { run: 'files_Expect FreeFile(0) = 1' }
+      - { run: 'files_Expect FreeFile(0.5) = 1' }
+      - { run: 'files_Expect FreeFile(1) = 256' }
+      - { run: 'files_Expect FreeFile(1.5) = 256' }
+      - { run: 'files_Expect FreeFile(2) = 256' }
+      - { run: 'files_Expect FreeFile(-1) = 256' }
+      - { run: 'files_Expect FreeFile("1") = 256' }
+      - { setup: 'Open "b.txt" For Output As #1', run: 'files_Expect FreeFile = 2' }
+      - { decl: Dim I As Long, setup: 'For I = 1 To 255: Open "f" & I For Output As #I: Next', run: 'files_Expect FreeFile(1) = 256' }
+  Reference/Default/VBA/FileSystem/GetAttr.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "no file or folder has the name *pathname*, or it is a zero-length string"
+        vb6: 53
+        bug: file-errors-unspecified
+        cases:
+          - GetAttr("nosuch.txt")
+          - GetAttr("")
+          - GetAttr(String(300, "a"))
+      - error: -2147467259
+        when: "the folder or drive named in *pathname* does not exist"
+        vb6: 76
+        bug: file-errors-unspecified
+        cases:
+          - GetAttr("nosub\a.txt")
+          - GetAttr(files_NoDrive & ":\a.txt")
+          - GetAttr(files_NoDrive & ":\")
+      - error: -2147467259
+        when: "*pathname* holds a wildcard"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - GetAttr("*.txt")
+          - GetAttr("a?txt")
+          - GetAttr("a.tx?")
+      - error: -2147467259
+        when: "*pathname* holds a character a name cannot hold, or names a file with a backslash at its end"
+        vb6: 5
+        bug: file-errors-unspecified
+        cases:
+          - GetAttr("a<b")
+          - GetAttr("a.txt\")
+      - error: 94
+        when: "*pathname* is **Null**"
+        cases:
+          - GetAttr(Null)
+    quiet:
+      - { run: 'files_Expect GetAttr("ro.txt") = 1' }
+      - { run: 'files_Expect GetAttr("hid.txt") = 2' }
+      - { run: 'files_Expect GetAttr("sub") = 16' }
+      - { run: 'files_Expect GetAttr("sub\") = 16' }
+      - { run: 'files_Expect 16 = (GetAttr(files_Dir & "\") And 16)' }
+      - GetAttr("a.txt")
+      - { setup: 'Open "a.txt" For Output As #1', expr: GetAttr("a.txt") }
+  Reference/Default/VBA/FileSystem/Input.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "*Number* is more characters than are left in a file open for **Input**"
+        vb6: 62
+        bug: file-errors-unspecified
+        cases:
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'Input(11, #1)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'Input$(11, #1)' }
+          - { setup: 'Open "a.txt" For Input As #1', run: 'Result = Input(10, #1): Result = Input(1, #1)' }
+          - { setup: 'Open "empty.txt" For Input As #1', expr: 'Input(1, #1)' }
+          - { setup: 'Open "a.txt" For Input As #1', run: 'Seek #1, 100: Result = Input(1, #1)' }
+      - error: -2147467259
+        when: "the file is open for **Output**, **Append** or **Random**"
+        vb6: 54
+        bug: file-errors-unspecified
+        cases:
+          - { setup: 'Open "a.txt" For Output As #1', expr: 'Input(1, #1)' }
+          - { setup: 'Open "a.txt" For Append As #1', expr: 'Input(1, #1)' }
+          - { setup: 'Open "a.txt" For Random As #1 Len = 4', expr: 'Input(1, #1)' }
+      - error: -2147467259
+        when: "*Number* is negative, after rounding"
+        vb6: 5
+        bug: file-errors-unspecified
+        cases:
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'Input(-1, #1)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'Input(-0.6, #1)' }
+          - { setup: 'Open "a.txt" For Binary As #1', expr: 'Input(-1, #1)' }
+      - error: -2147467259
+        when: "*FileNumber* is not the number of an open file"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - 'Input(1, #99)'
+          - 'Input$(1, #99)'
+          - 'Input(1, #0)'
+      - error: -2147467259
+        when: "*Number* is 0, after rounding"
+        vb6: 0
+        bug: filesystem-argument-checks
+        cases:
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'Input(0, #1)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'Input$(0, #1)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'Input(0.4, #1)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'Input(-0.4, #1)' }
+          - { setup: 'Open "empty.txt" For Input As #1', expr: 'Input(0, #1)' }
+          - { setup: 'Open "a.txt" For Binary As #1', expr: 'Input(0, #1)' }
+      - error: 94
+        when: "*Number* or *FileNumber* is **Null**"
+        cases:
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'Input(Null, #1)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'Input$(Null, #1)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'Input(1, Null)' }
+    quiet:
+      - { setup: 'Open "a.txt" For Input As #1', run: 'files_Expect Input(1, #1) = "a"' }
+      - { setup: 'Open "a.txt" For Input As #1', run: 'files_Expect Input(10, #1) = "abc" & vbCrLf & "def" & vbCrLf' }
+      - { setup: 'Open "a.txt" For Input As #1', run: 'files_Expect Input$(3, 1) = "abc"' }
+      - { setup: 'Open "a.txt" For Binary As #1', run: 'files_Expect Input(11, #1) = "abc" & vbCrLf & "def" & vbCrLf' }
+      - { setup: 'Open "a.txt" For Binary As #1', run: 'Result = Input(10, #1): files_Expect Input(1, #1) = ""' }
+      - { setup: 'Open "a.txt" For Binary As #1', expr: 'Input(1000000, #1)' }
+      - { setup: 'Open "a.txt" For Binary Access Write As #1', expr: 'Input(1, #1)' }
+  Reference/Default/VBA/FileSystem/InputB.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "*Number* is more bytes than are left in a file open for **Input**"
+        vb6: 62
+        bug: file-errors-unspecified
+        cases:
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'InputB(11, #1)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'InputB$(11, #1)' }
+          - { setup: 'Open "empty.txt" For Input As #1', expr: 'InputB(1, #1)' }
+      - error: -2147467259
+        when: "the file is open for **Output**, **Append** or **Random**"
+        vb6: 54
+        bug: file-errors-unspecified
+        cases:
+          - { setup: 'Open "a.txt" For Output As #1', expr: 'InputB(1, #1)' }
+          - { setup: 'Open "a.txt" For Append As #1', expr: 'InputB(1, #1)' }
+          - { setup: 'Open "a.txt" For Random As #1 Len = 4', expr: 'InputB(1, #1)' }
+      - error: -2147467259
+        when: "*Number* is negative, after rounding"
+        vb6: 5
+        bug: file-errors-unspecified
+        cases:
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'InputB(-1, #1)' }
+      - error: -2147467259
+        when: "*FileNumber* is not the number of an open file"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - 'InputB(1, #99)'
+          - 'InputB$(1, #99)'
+      - error: 94
+        when: "*Number* or *FileNumber* is **Null**"
+        cases:
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'InputB(Null, #1)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'InputB$(Null, #1)' }
+          - { setup: 'Open "a.txt" For Input As #1', expr: 'InputB(1, Null)' }
+    quiet:
+      - { setup: 'Open "a.txt" For Input As #1', expr: 'InputB(1, #1)' }
+      - { setup: 'Open "a.txt" For Input As #1', expr: 'InputB(10, #1)' }
+      - { setup: 'Open "a.txt" For Input As #1', expr: 'InputB(0, #1)' }
+      - { setup: 'Open "a.txt" For Binary As #1', expr: 'InputB(10, #1)' }
+      - { setup: 'Open "a.txt" For Binary As #1', expr: 'InputB(11, #1)' }
+  Reference/Default/VBA/FileSystem/Kill.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "no file matches *pathname*, which includes a folder, a folder or drive that does not exist, and a zero-length string"
+        vb6: 53
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'Kill "nosuch.txt"' }
+          - { run: 'Kill "*.zzz"' }
+          - { run: 'Kill "sub"' }
+          - { run: 'Kill "full"' }
+          - { run: 'Kill "sub\"' }
+          - { run: 'Kill ""' }
+          - { run: 'Kill "nosub\a.txt"' }
+          - { run: 'Kill "nosub\*"' }
+          - { run: 'Kill files_NoDrive & ":\a.txt"' }
+          - { run: 'Kill "a<b"' }
+      - error: -2147467259
+        when: "the file, or a file a wildcard matches, is read-only"
+        vb6: 75
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'Kill "ro.txt"' }
+          - { run: 'Kill "*.txt"' }
+      - error: -2147467259
+        when: "the file, or a file a wildcard matches, is open"
+        vb6: 55
+        bug: file-errors-unspecified
+        cases:
+          - { setup: 'Open "a.txt" For Input As #1', run: 'Kill "a.txt"' }
+          - { setup: 'Open "a.txt" For Output As #1', run: 'Kill "a.txt"' }
+          - { setup: 'Open "a.txt" For Binary As #1', run: 'Kill "a.txt"' }
+          - { setup: 'Open "a.txt" For Input As #1', run: 'Kill "A.TXT"' }
+          - { setup: 'Open "a.txt" For Input As #1', run: 'Kill files_Dir & "\a.txt"' }
+          - { setup: 'Open "a.txt" For Input As #1', run: 'Kill "a.tx?"' }
+          - { setup: 'Open "a.txt" For Input As #1', run: 'Kill "*.txt"' }
+      - error: 0
+        when: "*pathname* names a hidden or system file"
+        vb6: 53
+        bug: kill-hidden-system-files
+        cases:
+          - { run: 'Kill "hid.txt"' }
+          - { run: 'Kill "h*"' }
+          - { setup: 'SetAttr "a.txt", vbSystem', run: 'Kill "a.txt"' }
+          - { setup: 'SetAttr "a.txt", vbHidden + vbSystem', run: 'Kill "a.txt"' }
+      - error: 94
+        when: "*pathname* is **Null**"
+        cases:
+          - { run: 'Kill Null' }
+    quiet:
+      - { run: 'Kill "a.txt": files_Expect files_Attr("a.txt") = -1' }
+      - { run: 'Kill "A.TXT": files_Expect files_Attr("a.txt") = -1' }
+      - { setup: 'SetAttr "a.txt", vbArchive', run: 'Kill "a.txt": files_Expect files_Attr("a.txt") = -1' }
+      - { run: 'Kill "full\*": files_Expect files_Attr("full\f.txt") = -1' }
+      - { run: 'Kill "*.txt": Err.Clear: files_Expect files_Attr("a.txt") = -1 And files_Attr("empty.txt") = -1 And files_Attr("ro.txt") <> -1' }
+      - { setup: 'Open "a.txt" For Input As #1: Close #1', run: 'Kill "a.txt"' }
+      - { setup: 'SetAttr "ro.txt", vbNormal: SetAttr "hid.txt", vbNormal', run: 'Kill "*.txt": files_Expect files_Attr("ro.txt") = -1' }
+  Reference/Default/VBA/FileSystem/LOF.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "*filenumber* is not the number of an open file"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - LOF(99)
+          - LOF(0)
+          - LOF(-1)
+          - LOF(512)
+      - error: 94
+        when: "*filenumber* is **Null**"
+        cases:
+          - LOF(Null)
+    quiet:
+      - { setup: 'Open "a.txt" For Input As #1', run: 'files_Expect LOF(1) = 10' }
+      - { setup: 'Open "a.txt" For Output As #1', run: 'files_Expect LOF(1) = 0' }
+      - { setup: 'Open "a.txt" For Append As #1', run: 'files_Expect LOF(1) = 10' }
+      - { setup: 'Open "a.txt" For Binary As #1', run: 'files_Expect LOF(1) = 10' }
+      - { setup: 'Open "a.txt" For Random As #1', run: 'files_Expect LOF(1) = 10' }
+  Reference/Default/VBA/FileSystem/Loc.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "*filenumber* is not the number of an open file"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - Loc(99)
+          - Loc(0)
+          - Loc(-1)
+          - Loc(512)
+      - error: 94
+        when: "*filenumber* is **Null**"
+        cases:
+          - Loc(Null)
+    quiet:
+      - { setup: 'Open "a.txt" For Input As #1', expr: Loc(1) }
+      - { setup: 'Open "a.txt" For Output As #1', expr: Loc(1) }
+      - { setup: 'Open "a.txt" For Append As #1', expr: Loc(1) }
+      - { setup: 'Open "a.txt" For Binary As #1', run: 'Result = Input(3, #1): files_Expect Loc(1) = 3' }
+      - { setup: 'Open "a.txt" For Random As #1', expr: Loc(1) }
+  Reference/Default/VBA/FileSystem/MkDir.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "*path* already exists, as a folder or as a file"
+        vb6: 75
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'MkDir "sub"' }
+          - { run: 'MkDir "a.txt"' }
+          - { run: 'MkDir "."' }
+      - error: -2147467259
+        when: "the folder or drive that would hold *path* does not exist, or *path* is a zero-length string or a name a folder cannot have"
+        vb6: 76
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'MkDir "nosub\new"' }
+          - { run: 'MkDir files_NoDrive & ":\new"' }
+          - { run: 'MkDir ""' }
+          - { run: 'MkDir " "' }
+          - { run: 'MkDir "a<b"' }
+          - { run: 'MkDir "a*b"' }
+          - { run: 'MkDir String(300, "a")' }
+      - error: 94
+        when: "*path* is **Null**"
+        cases:
+          - { run: 'MkDir Null' }
+    quiet:
+      - { run: 'MkDir "new": files_Expect files_Attr("new") = 16' }
+      - { run: 'MkDir "new\": files_Expect files_Attr("new") = 16' }
+      - { run: 'MkDir "sub\new": files_Expect files_Attr("sub\new") = 16' }
+      - { run: 'MkDir files_Dir & "\new": files_Expect files_Attr("new") = 16' }
+      - { run: 'MkDir 5: files_Expect files_Attr("5") = 16' }
+  Reference/Default/VBA/FileSystem/Reset.md:
+    harness: files
+    quiet:
+      - { run: Reset }
+      - { run: "Reset\nReset" }
+      - { setup: 'Open "a.txt" For Input As #1', run: "Reset\nKill \"a.txt\"" }
+      - { setup: 'Open "b.txt" For Output As #2', run: "Reset\nOpen \"b.txt\" For Output As #3" }
+      - { setup: 'Open "b.txt" For Output As #1: Print #1, "x"', run: "Reset\nfiles_Expect FileLen(\"b.txt\") = 3" }
+      - { setup: 'Open "b.txt" For Output As #300: Print #300, "x"', run: "Reset\nfiles_Expect FileLen(\"b.txt\") = 3" }
+  Reference/Default/VBA/FileSystem/RmDir.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "no folder has the name *path*, which includes a file, a zero-length string, and a name with a wildcard or a character a name cannot hold"
+        vb6: 76
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'RmDir "nosuch"' }
+          - { run: 'RmDir "nosub\x"' }
+          - { run: 'RmDir files_NoDrive & ":\x"' }
+          - { run: 'RmDir "a.txt"' }
+          - { run: 'RmDir ""' }
+          - { run: 'RmDir "*"' }
+          - { run: 'RmDir "su?"' }
+          - { run: 'RmDir "a<b"' }
+      - error: -2147467259
+        when: "the folder holds a file or a folder, or it is the current directory"
+        vb6: 75
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'RmDir "full"' }
+          - { setup: 'MkDir "sub\new"', run: 'RmDir "sub"' }
+          - { run: 'RmDir "."' }
+          - { run: 'RmDir files_Dir' }
+          - { run: 'ChDir "sub": RmDir files_Dir & "\sub"' }
+      - error: 94
+        when: "*path* is **Null**"
+        cases:
+          - { run: 'RmDir Null' }
+    quiet:
+      - { run: 'RmDir "sub": files_Expect files_Attr("sub") = -1' }
+      - { run: 'RmDir "sub\": files_Expect files_Attr("sub") = -1' }
+      - { run: 'RmDir files_Dir & "\sub": files_Expect files_Attr("sub") = -1' }
+      - { run: 'Kill "full\f.txt": RmDir "full": files_Expect files_Attr("full") = -1' }
+  Reference/Default/VBA/FileSystem/Seek.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "*filenumber* is not the number of an open file"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - Seek(99)
+          - Seek(0)
+          - { run: 'Seek #99, 1' }
+          - { run: 'Seek #0, 1' }
+      - error: -2147467259
+        when: "the statement's *position* is less than 1, after rounding"
+        vb6: 63
+        bug: file-errors-unspecified
+        cases:
+          - { setup: 'Open "a.txt" For Input As #1', run: 'Seek #1, 0' }
+          - { setup: 'Open "a.txt" For Input As #1', run: 'Seek #1, -1' }
+          - { setup: 'Open "a.txt" For Input As #1', run: 'Seek #1, 0.4' }
+          - { setup: 'Open "a.txt" For Random As #1 Len = 4', run: 'Seek #1, 0' }
+          - { setup: 'Open "a.txt" For Output As #1', run: 'Seek #1, 0' }
+          - { setup: 'Open "a.txt" For Binary As #1', run: 'Seek #1, 0' }
+      - error: 94
+        when: "*filenumber* or *position* is **Null**"
+        cases:
+          - Seek(Null)
+          - { run: 'Seek #Null, 1' }
+          - { setup: 'Open "a.txt" For Input As #1', run: 'Seek #1, Null' }
+    quiet:
+      - { setup: 'Open "a.txt" For Input As #1', run: 'files_Expect Seek(1) = 1' }
+      - { setup: 'Open "a.txt" For Input As #1', run: 'Seek #1, 1' }
+      - { setup: 'Open "a.txt" For Input As #1', run: 'Seek #1, 0.6: files_Expect Seek(1) = 1' }
+      - { setup: 'Open "a.txt" For Input As #1', run: 'Seek #1, 100: files_Expect EOF(1)' }
+      - { setup: 'Open "a.txt" For Input As #1', run: 'Seek #1, 2147483647' }
+      - { setup: 'Open "a.txt" For Random As #1 Len = 4', run: 'Seek #1, 100' }
+      - { setup: 'Open "a.txt" For Output As #1', run: 'Seek #1, 5' }
+      - { setup: 'Open "a.txt" For Append As #1', run: 'Seek #1, 1' }
+      - { setup: 'Open "a.txt" For Binary As #1', run: 'Seek #1, 2147483647' }
+  Reference/Default/VBA/FileSystem/SetAttr.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "no file or folder has the name *pathname*, which includes one in a folder or drive that does not exist, a zero-length string, and a name with a character a name cannot hold"
+        vb6: 53
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'SetAttr "nosuch.txt", vbReadOnly' }
+          - { run: 'SetAttr "nosub\a.txt", vbReadOnly' }
+          - { run: 'SetAttr files_NoDrive & ":\a.txt", vbReadOnly' }
+          - { run: 'SetAttr "", vbReadOnly' }
+          - { run: 'SetAttr "a<b", vbReadOnly' }
+      - error: -2147467259
+        when: "*pathname* holds a wildcard"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'SetAttr "*.txt", vbReadOnly' }
+      - error: 0
+        when: "the file is open for **Output**, **Append**, **Binary** or **Random**"
+        vb6: 55
+        bug: setattr-open-file-no-error
+        cases:
+          - { setup: 'Open "a.txt" For Output As #1', run: 'SetAttr "a.txt", vbReadOnly' }
+          - { setup: 'Open "a.txt" For Append As #1', run: 'SetAttr "a.txt", vbReadOnly' }
+          - { setup: 'Open "a.txt" For Binary As #1', run: 'SetAttr "a.txt", vbReadOnly' }
+          - { setup: 'Open "a.txt" For Random As #1', run: 'SetAttr "a.txt", vbReadOnly' }
+      - error: 94
+        when: "*pathname* or *attributes* is **Null**"
+        cases:
+          - { run: 'SetAttr Null, vbReadOnly' }
+          - { run: 'SetAttr "a.txt", Null' }
+    quiet:
+      - { run: 'SetAttr "a.txt", vbReadOnly: files_Expect files_Attr("a.txt") = 1' }
+      - { run: 'SetAttr "a.txt", vbNormal: files_Expect files_Attr("a.txt") = 128' }
+      - { run: 'SetAttr "a.txt", vbHidden: files_Expect files_Attr("a.txt") = 2' }
+      - { run: 'SetAttr "a.txt", vbSystem: files_Expect files_Attr("a.txt") = 4' }
+      - { run: 'SetAttr "a.txt", vbArchive: files_Expect files_Attr("a.txt") = 32' }
+      - { run: 'SetAttr "a.txt", 39: files_Expect files_Attr("a.txt") = 39' }
+      - { run: 'SetAttr "a.txt", 1.4: files_Expect files_Attr("a.txt") = 1' }
+      - { run: 'SetAttr "ro.txt", vbNormal: files_Expect files_Attr("ro.txt") = 128' }
+      - { run: 'SetAttr "sub", vbNormal: files_Expect files_Attr("sub") = 16' }
+      - { run: 'SetAttr "sub", vbReadOnly: files_Expect files_Attr("sub") = 17' }
+      - { setup: 'Open "a.txt" For Input As #1', run: 'SetAttr "a.txt", vbReadOnly' }
+      - { run: 'SetAttr "a.txt", vbDirectory: files_Expect files_Attr("a.txt") = 128', only: tb }
+      - { run: 'SetAttr "a.txt", vbVolume + vbReadOnly: files_Expect files_Attr("a.txt") = 1', only: tb }
+      - { run: 'SetAttr "a.txt", 256: files_Expect files_Attr("a.txt") = 256', only: tb }
+      - { run: 'SetAttr "a.txt", 8192: files_Expect files_Attr("a.txt") = 8192', only: tb }
+      - { run: 'SetAttr "a.txt", 39 + 8192: files_Expect files_Attr("a.txt") = 39 + 8192', only: tb }
+      - { run: 'SetAttr "a.txt", -1', only: tb }
+      - { run: 'SetAttr "sub", vbDirectory: files_Expect files_Attr("sub") = 16', only: tb }
+  Reference/Default/VBA/FileSystem/Width.md:
+    harness: files
+    rows:
+      - error: -2147467259
+        when: "*FileNumber* is not the number of an open file"
+        vb6: 52
+        bug: file-errors-unspecified
+        cases:
+          - { run: 'Width #99, 5' }
+          - { run: 'Width #0, 5' }
+      - error: 0
+        when: "*Width* is negative, after rounding"
+        vb6: 5
+        bug: filesystem-argument-checks
+        cases:
+          - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, -1' }
+          - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, -0.6' }
+          - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, -32768' }
+      - error: 94
+        when: "*Width* is **Null**"
+        cases:
+          - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, Null' }
+    quiet:
+      - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, 5' }
+      - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, 0' }
+      - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, -0.4' }
+      - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, 255' }
+      - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, 255.4' }
+      - { setup: 'Open "a.txt" For Input As #1', run: 'Width #1, 5' }
+      - { setup: 'Open "a.txt" For Append As #1', run: 'Width #1, 5' }
+      - { setup: 'Open "a.txt" For Binary As #1', run: 'Width #1, 5' }
+      - { setup: 'Open "a.txt" For Random As #1', run: 'Width #1, 5' }
+      - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, 3: Print #1, "ab"; "cd"; "ef";: Close #1: files_Expect FileLen("b.txt") = 10' }
+      - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, 255.6', only: tb }
+      - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, 32767', only: tb }
+      - { setup: 'Open "b.txt" For Output As #1', run: 'Width #1, 300: Print #1, String(200, "a"); String(200, "a");: Close #1: files_Expect FileLen("b.txt") = 402', only: tb }

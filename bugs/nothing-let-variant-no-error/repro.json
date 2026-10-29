@@ -1,0 +1,12 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Control_SetVariant_HoldsNothing$",
+      "^PASS RegressionTests.Control_LetObject_Raises91$",
+      "^FAIL RegressionTests.LetVariant_Raises91: .*Expected: 91 .*Actual: 0 ",
+      "^FAIL RegressionTests.LetVariant_LeavesItEmpty: "
+    ]
+  }
+}

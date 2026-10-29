@@ -24,10 +24,13 @@
 //     operators". The first word of each form is the statement or operator,
 //     the rest keywords of it: Loop, Next, Wend, Then. Attributes.md, which is
 //     /tB/Core/Attributes, has one attribute to each `##`.
-//   - Reference/Data-Types.md, the one page outside /tB/ that is read: each
-//     intrinsic type its `symbols:` names is a `type`, at the `##` heading of
-//     that name, a short section that links to the type's own page (owner,
-//     2026-10-18). A name with no such heading fails the build.
+//   - The two summary pages outside /tB/, SUMMARY_PAGES: each name the
+//     page's `symbols:` lists is at the `##` heading of that name, and a name
+//     with no such heading fails the build. On Reference/Data-Types.md each
+//     intrinsic type is a `type`, its section a short one that links to the
+//     type's own page (owner, 2026-10-18); on Reference/Literal-Keywords.md
+//     Nothing, Null, Empty, True and False are each a `keyword`, which the
+//     search ranks first, as it does a statement.
 //   - A package folder: a page is a type's when its title or first heading
 //     names a type the package declares ("Strings Module" is Strings, "Len,
 //     LenB" is Len and LenB). A page under a type's page in the nav, named
@@ -72,6 +75,14 @@ export const PACKAGE_FOLDERS = [
 const CORE_FOLDER = "Reference/Core/";
 const ATTRIBUTES_PAGE = "Reference/Attributes.md";
 export const DATA_TYPES_PAGE = "Reference/Data-Types.md";
+export const LITERAL_KEYWORDS_PAGE = "Reference/Literal-Keywords.md";
+
+// The summary pages outside /tB/ that are read, and the kind of each name
+// their `symbols:` lists, at the `##` heading of that name.
+const SUMMARY_PAGES = new Map([
+  [DATA_TYPES_PAGE, "type"],
+  [LITERAL_KEYWORDS_PAGE, "keyword"],
+]);
 
 // Section headings under which every heading names a member, and the kind
 // each gives one the packages do not declare.
@@ -247,11 +258,13 @@ export function deriveSymbolIndex({ pages, api }) {
   const tbPages = pages.filter((p) => String(p.url).startsWith("/tB/"));
 
   // ---- the language
-  const dataTypes = pages.find((p) => p.src === DATA_TYPES_PAGE);
-  for (const name of dataTypes?.symbols ?? []) {
-    const h = dataTypes.headings.find((x) => x.level === 2 && x.id && x.text.toLowerCase() === name.toLowerCase());
-    if (!h) throw new Error(`${DATA_TYPES_PAGE} names ${name} in symbols: and has no ## ${name} heading`);
-    add(entry(name, null, null, "type", `${dataTypes.url}#${h.id}`));
+  for (const [src, kind] of SUMMARY_PAGES) {
+    const summary = pages.find((p) => p.src === src);
+    for (const name of summary?.symbols ?? []) {
+      const h = summary.headings.find((x) => x.level === 2 && x.id && x.text.toLowerCase() === name.toLowerCase());
+      if (!h) throw new Error(`${src} names ${name} in symbols: and has no ## ${name} heading`);
+      add(entry(name, null, null, kind, `${summary.url}#${h.id}`));
+    }
   }
   for (const page of tbPages) {
     if (page.src === ATTRIBUTES_PAGE) {
@@ -605,23 +618,29 @@ export const SYMBOL_INDEX_REL = "tB/symbols.json";
 
 /**
  * The build's pages as deriveSymbolIndex reads them: those under /tB/, and the
- * data types page, with the headings of their rendered HTML.
+ * summary pages, with the headings of their rendered HTML.
  */
 export function symbolPages(pages) {
   return pages
     .filter(
       (p) =>
-        (String(p.permalink ?? "").startsWith("/tB/") || p.srcRel === DATA_TYPES_PAGE) &&
+        (String(p.permalink ?? "").startsWith("/tB/") || SUMMARY_PAGES.has(p.srcRel)) &&
         typeof p.renderedContent === "string",
     )
     .map((p) => {
       const fm = p.frontmatter ?? {};
+      // YAML reads an unquoted True, False or Null as a boolean or null, which would be
+      // indexed as "true", "false" or "null": every name must be written as a string.
+      const odd = fm.symbols == null ? undefined : [].concat(fm.symbols).find((s) => typeof s !== "string");
+      if (odd !== undefined) {
+        throw new Error(`${p.srcRel}: symbols: holds ${JSON.stringify(odd)}, not a name; put the name in quotes`);
+      }
       return {
         src: p.srcRel,
         url: p.permalink,
         title: fm.title,
         parent: fm.parent,
-        symbols: fm.symbols == null ? null : [].concat(fm.symbols).map(String),
+        symbols: fm.symbols == null ? null : [].concat(fm.symbols),
         excludeFromDocs: fm.exclude_from_docs == null ? null : [].concat(fm.exclude_from_docs).map(String),
         headings: headingsOf(p.renderedContent),
       };

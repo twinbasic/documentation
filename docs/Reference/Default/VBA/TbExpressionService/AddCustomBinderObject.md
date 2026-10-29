@@ -28,6 +28,19 @@ Member resolution is performed by name through the standard COM/IDispatch protoc
 
 Multiple objects can be bound to the same service, each under its own *name*. They are consulted in the order they were added.
 
+<!-- bug: nothing-argument-crashes -->
+> [!WARNING] BETA 1010
+> An *object* of **Nothing** ends the program with an access violation, in a 32-bit and a 64-bit build alike.
+
+<!-- errors: generated from errors/VBA.TbExpressionService.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *name* or *flags* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example exposes the host's report object so that an expression can refer to its properties either by qualified name or by bare name.

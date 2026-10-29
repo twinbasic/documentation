@@ -5,6 +5,17 @@ Option Explicit
 ' Build and run it with:  node scripts/bug_repro.mjs vb6 file-errors-unspecified
 ' File number 9 is out.txt, so no case closes every file or uses number 9.
 
+Private Declare Function GetLogicalDrives Lib "kernel32" () As Long
+
+' A drive letter that no drive has, from Z down.
+Private Function NoDrive() As String
+    Dim m As Long, i As Long
+    m = GetLogicalDrives()
+    For i = 25 To 3 Step -1
+        If (m And (2 ^ i)) = 0 Then NoDrive = Chr$(65 + i): Exit Function
+    Next
+End Function
+
 Sub Show(ByVal Label As String)
     Print #9, Label & ": " & Err.Number & " " & Err.Description
 End Sub
@@ -246,6 +257,161 @@ Sub Cases()
     Put #f, 1, "longer than four bytes"
     Show "Put a record longer than Len"
     Close #f
+
+    ' ---- added by batch 7 of the run-time errors work (WIP.Errors.md)
+    Dim i As Long, here As String
+
+    Err.Clear
+    ChDir d & "\exists.txt"
+    Show "ChDir to a file"
+
+    Err.Clear
+    ChDir ""
+    Show "ChDir to a zero-length string"
+
+    Err.Clear
+    ChDir d & "\*"
+    Show "ChDir to a wildcard"
+
+    Err.Clear
+    ChDrive NoDrive()
+    Show "ChDrive to a drive that does not exist"
+
+    Err.Clear
+    ChDrive "1"
+    Show "ChDrive to a character that is not a letter"
+
+    Err.Clear
+    s = CurDir(NoDrive())
+    Show "CurDir of a drive that does not exist"
+
+    Err.Clear
+    s = CurDir("1")
+    Show "CurDir of a character that is not a letter"
+
+    Err.Clear
+    s = Dir(d & "\missing.txt")
+    Err.Clear
+    s = Dir()
+    Show "Dir without a pathname after it returned a zero-length string"
+
+    Err.Clear
+    s = Dir(d & "\exists.txt\")
+    Show "Dir of a file name with a backslash at its end"
+
+    Err.Clear
+    s = Dir(d & "\" & String(256, "a"))
+    Show "Dir of a name longer than 255 characters"
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\exists.txt" For Input As #f
+    n = FileAttr(f, 2)
+    Show "FileAttr with a returntype of 2"
+    Close #f
+
+    Err.Clear
+    FileCopy "", d & "\copy.txt"
+    Show "FileCopy from a zero-length string"
+
+    Err.Clear
+    FileCopy d & "\*.txt", d & "\copy.txt"
+    Show "FileCopy from a wildcard"
+
+    Err.Clear
+    n = FileLen(d & "\nofolder\x.txt")
+    Show "FileLen in missing folder"
+
+    Err.Clear
+    n = FileLen(d & "\z*")
+    Show "FileLen of a wildcard that matches nothing"
+
+    Err.Clear
+    For i = 1 To 255
+        If i <> 9 Then Open d & "\n" & i & ".txt" For Output As #i
+    Next
+    Err.Clear
+    f = FreeFile
+    Show "FreeFile with every file number from 1 to 255 in use"
+    For i = 1 To 255
+        If i <> 9 Then Close #i
+    Next
+
+    Err.Clear
+    n = GetAttr(d & "\*.txt")
+    Show "GetAttr of a wildcard"
+
+    Err.Clear
+    n = GetAttr(d & "\a<b")
+    Show "GetAttr of a name with a character a name cannot hold"
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\exists.txt" For Input As #f
+    s = Input(4, #f)
+    Show "Input past the end of the file"
+    Close #f
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\output.txt" For Output As #f
+    s = Input(1, #f)
+    Show "Input from a file open For Output"
+    Close #f
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\exists.txt" For Input As #f
+    s = Input(-1, #f)
+    Show "Input of a negative number of characters"
+    Close #f
+
+    Err.Clear
+    s = Input(1, #99)
+    Show "Input from file number 99, not open"
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\exists.txt" For Input As #f
+    s = InputB(4, #f)
+    Show "InputB past the end of the file"
+    Close #f
+
+    Err.Clear
+    Kill d & "\full"
+    Show "Kill of a folder"
+
+    Err.Clear
+    Kill d & "\read*"
+    Show "Kill of a pattern that matches a read-only file"
+
+    Err.Clear
+    MkDir ""
+    Show "MkDir of a zero-length string"
+
+    Err.Clear
+    RmDir d & "\exists.txt"
+    Show "RmDir of a file"
+
+    Err.Clear
+    here = CurDir$
+    MkDir d & "\cwd"
+    ChDrive d
+    ChDir d & "\cwd"
+    Err.Clear
+    RmDir d & "\cwd"
+    Show "RmDir of the current directory"
+    ChDrive here
+    ChDir here
+    RmDir d & "\cwd"
+
+    Err.Clear
+    SetAttr d & "\*.txt", vbNormal
+    Show "SetAttr of a wildcard"
+
+    Err.Clear
+    Width #99, 5
+    Show "Width of file number 99, not open"
 
     Err.Clear
     SetAttr d & "\readonly.txt", vbNormal

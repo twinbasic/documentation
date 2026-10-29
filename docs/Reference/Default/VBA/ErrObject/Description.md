@@ -23,6 +23,15 @@ When generating a user-defined error, assign a short description of the error to
 > [!WARNING] BETA 1010
 > For a number that has no built-in message, **Raise** without a *description* leaves **Description** as an empty string, a Windows system message or `Automation error`, depending on the number, and raises no error. VBA and VB6 place `Application-defined or object-defined error` there. [**Raise**](Raise) has the table.
 
+<!-- errors: generated from errors/VBA.ErrObject.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *errorDescription* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example assigns a user-defined message to the **Description** property of the **Err** object.

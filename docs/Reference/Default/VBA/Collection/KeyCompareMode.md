@@ -32,7 +32,18 @@ The *compare* argument settings are:
 
 The default comparison mode is **vbTextCompare**, whatever the module's **Option Compare** setting, so a new **Collection** matches keys as VBA's does.
 
-The mode can be changed only while the collection holds no item added with a key. Once one has been added, setting a different mode raises run-time error 5, *Can't change KeyCompareMode once keyed items have been added to the collection*, and the mode stays as it was. Items added without a key do not prevent the change, and neither do keyed items that have since been removed. Setting the mode the collection already has raises no error. A *compare* value other than **vbBinaryCompare** or **vbTextCompare** raises run-time error 5, *Invalid procedure call or argument*.
+The mode can be changed only while the collection holds no item added with a key. Items added without a key do not prevent the change, and neither do keyed items that have since been removed or cleared. Setting the mode the collection already has is allowed at any time.
+
+<!-- errors: generated from errors/VBA.Collection.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *compare* is not **vbBinaryCompare** or **vbTextCompare** after rounding |
+| [5 (`&H5`)](tb:Errors#5), *Can't change KeyCompareMode once keyed items have been added to the collection* | the mode is changed while the collection holds an item added with a key; the mode stays as it was |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *compare* is **Null** |
+
+<!-- /errors -->
 
 ### Example
 

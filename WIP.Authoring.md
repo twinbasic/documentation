@@ -127,7 +127,17 @@ both. A page whose title cannot name its subject says so with `symbols:`, which 
 those names. Two pages need it: the (Default) module (`[_HiddenModule]`) and the comparison
 operators (`["=", "<>", "<", "<=", ">", ">="]`, quoted, since a bare `>` is YAML). On a
 Core statement page the first name is the statement and the rest its keywords; on an
-operator page each is an operator.
+operator page each is an operator. **Quote `True`, `False` and `Null` too**: YAML reads them
+bare as a boolean and as null, and `symbolPages` fails the build on any entry that is not a
+string, rather than index it as `true`.
+
+Two summary pages outside `/tB/` are read as well (`SUMMARY_PAGES` in
+[builder/symbols.mjs](builder/symbols.mjs)): each name of their `symbols:` is at the `##`
+heading of that name, a `type` on `Reference/Data-Types.md` and a `keyword` on
+`Reference/Literal-Keywords.md` (owner, 2026-10-29: one page for **Nothing**, **Null**,
+**Empty**, **True** and **False**, a section each). `keyword` rather than `constant`, because
+the search ranks a keyword with no package first and a constant not; it is also VBA's word
+for them. A name with no such heading fails the build.
 
 The build names any page in a package folder that gives the index no entry, after its
 summary line. That is the cue for a third. **Do not add `symbols:` to change how a page

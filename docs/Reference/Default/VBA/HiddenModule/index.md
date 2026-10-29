@@ -32,7 +32,7 @@ FreeMem Buffer
 
 ## Object references and casting
 
-[**vbaObjAddref**](vbaObjAddref), [**vbaObjSet**](vbaObjSet), and [**vbaObjSetAddref**](vbaObjSetAddref) manipulate COM reference counts directly. [**vbaCastObj**](vbaCastObj) returns the object reinterpreted as another COM interface, given its IID. [**CreateGUID**](CreateGUID) generates a fresh GUID and returns it as a registry-formatted string.
+[**vbaObjAddref**](vbaObjAddref), [**vbaObjSet**](vbaObjSet), and [**vbaObjSetAddref**](vbaObjSetAddref) manipulate COM reference counts directly. [**vbaCastObj**](vbaCastObj) returns the object reinterpreted as another COM interface, given its IID. [**CreateGUID**](CreateGUID) generates a fresh GUID and returns it as a string.
 
 ## Atomic operations
 
@@ -65,7 +65,7 @@ Five members are declared **Hidden** and **Restricted**, so IntelliSense lists l
 - [AddClassInstanceFlag](AddClassInstanceFlag) -- sets a flag on a class instance
 - [AllocMem](AllocMem) -- allocates a block of native memory and returns its address
 - [ConvertIconToBitmap](ConvertIconToBitmap) -- converts an icon picture to a bitmap picture
-- [CreateGUID](CreateGUID) -- generates a fresh GUID and returns it as a registry-formatted string
+- [CreateGUID](CreateGUID) -- generates a fresh GUID and returns it as a string
 - [CreateStdPictureFromHandle](CreateStdPictureFromHandle) -- wraps a GDI bitmap or icon handle in an **stdole.StdPicture**
 - [Emit](Emit) -- injects custom **Byte** values into the codegen stream of the enclosing procedure
 - [EmitAny](EmitAny) -- injects custom typed values into the codegen stream of the enclosing procedure

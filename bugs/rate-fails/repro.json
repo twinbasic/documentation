@@ -1,0 +1,23 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.Control_PmtZeroOnePeriod$",
+      "^PASS RegressionTests\\.Control_PmtZeroThreePeriods$",
+      "^PASS RegressionTests\\.Control_NperNull_Raises94$",
+      "^FAIL RegressionTests\\.PmtZeroTwoPeriods_ReturnsPositiveRate: .*Actual: False ",
+      "^FAIL RegressionTests\\.PmtZeroFourPeriods_ReturnsPositiveRate: .*Actual: False ",
+      "^FAIL RegressionTests\\.Loan_ReturnsRate: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests\\.Mortgage_ReturnsRate: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests\\.DueAtStart_ReturnsRate: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests\\.SavingsPlan_ReturnsRate: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests\\.SignsReversed_ReturnsRate: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests\\.PmtZeroTenPeriods_ReturnsRate: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests\\.WithGuess_ReturnsRate: .*Actual: -2147467259 ",
+      "^FAIL RegressionTests\\.NperBelowOne_ReturnsRate: .*Actual: 5 ",
+      "^FAIL RegressionTests\\.GuessNull_Raises94: .*Actual: 0 ",
+      "^FAIL RegressionTests\\.GuessString_Raises13: .*Actual: 0 "
+    ]
+  }
+}

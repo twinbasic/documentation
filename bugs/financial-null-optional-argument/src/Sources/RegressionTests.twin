@@ -1,0 +1,140 @@
+' Regression tests: a Null optional argument of a Financial function (pv, fv, type, factor)
+' raises 94, Invalid use of Null, as VB6 and 64-bit VBA do. The controls are a Null required
+' argument (94), a string that is not a number (13) and a number in the optional argument.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_RequiredNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(Null, 10, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_OptionalString_Raises13()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(0.01, 10, -100, "abc")
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 13&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_OptionalNumber()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(0.01, 10, -100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub FV_PvNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(0.01, 10, -100, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub FV_TypeNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(0.01, 10, -100, 0, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PV_FvNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PV(0.01, 10, -100, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Pmt_FvNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Pmt(0.01, 10, 1000, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub NPer_TypeNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, 100, -1000, 0, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub IPmt_FvNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IPmt(0.01, 1, 10, 1000, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_TypeNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PPmt(0.01, 1, 10, 1000, 0, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Rate_TypeNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(1, 0, 100, -110, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub DDB_FactorNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = DDB(1000, 100, 5, 1, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+End Module

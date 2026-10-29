@@ -13,7 +13,7 @@ Syntax: **InterlockedIncrement32(** *Target* **)** **As Long**
 *Target*
 : *required* **Long**. The 32-bit variable to increment, passed by reference.
 
-The read, add, and write happen as one atomic operation. The return value is the post-increment value of *Target*. Wraps the Win32 `InterlockedIncrement` intrinsic.
+The read, add, and write happen as one atomic operation. The return value is the post-increment value of *Target*. Wraps the Win32 `InterlockedIncrement` intrinsic. No overflow error is raised: incrementing 2,147,483,647 gives -2,147,483,648.
 
 ### See Also
 

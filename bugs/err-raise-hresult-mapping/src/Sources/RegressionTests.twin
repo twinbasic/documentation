@@ -1,0 +1,77 @@
+' Regression tests: Err.Raise of an HRESULT that has a VB error of the same meaning raises
+' that VB error, as VB6 and 64-bit VBA do, and assigning one to Err.Number stores the VB
+' error. The controls raise a VB number and an HRESULT that VB keeps as it is.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function Raised(ByVal Number As Long) As Long
+        On Error Resume Next
+        Err.Raise Number
+        Raised = Err.Number
+    End Function
+
+    [TestCase]
+    Public Sub Control_Raise5_Raises5()
+        Assert.Strict.AreEqual 5&, Raised(5)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_RaiseEFail_RaisesEFail()
+        Assert.Strict.AreEqual &H80004005, Raised(&H80004005)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_RaiseDispException_RaisesDispException()
+        Assert.Strict.AreEqual &H80020009, Raised(&H80020009)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_EInvalidArg_Raises5()
+        Assert.Strict.AreEqual 5&, Raised(&H80070057)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_EOutOfMemory_Raises7()
+        Assert.Strict.AreEqual 7&, Raised(&H8007000E)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_ENotImpl_Raises445()
+        Assert.Strict.AreEqual 445&, Raised(&H80004001)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_ENoInterface_Raises430()
+        Assert.Strict.AreEqual 430&, Raised(&H80004002)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_DispUnknownName_Raises438()
+        Assert.Strict.AreEqual 438&, Raised(&H80020006)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_DispTypeMismatch_Raises13()
+        Assert.Strict.AreEqual 13&, Raised(&H80020005)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_ClassNotRegistered_Raises429()
+        Assert.Strict.AreEqual 429&, Raised(&H80040154)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_VbErrorAsHResult_Raises53()
+        Assert.Strict.AreEqual 53&, Raised(&H800A0035)
+    End Sub
+
+    [TestCase]
+    Public Sub Number_EInvalidArg_Is5()
+        Err.Number = &H80070057
+        Dim N As Long = Err.Number
+        Err.Clear
+        Assert.Strict.AreEqual 5&, N
+    End Sub
+
+End Module

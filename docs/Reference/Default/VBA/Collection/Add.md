@@ -28,9 +28,34 @@ Syntax: *object*.**Add** *item* [ **,** *key* ] [ **,** *before* ] [ **,** *afte
 
 If neither *before* nor *after* is specified, the new item is added at the end of the collection.
 
-Whether *before* or *after* is a string expression or a numeric expression, it must refer to an existing member of the collection, or an error occurs.
+> [!NOTE]
+> A *before* of one more than **Count** adds the item at the end, and an *after* of 0 adds it at the start. VB6 and 64-bit VBA raise error 9, *Subscript out of range*, for both.
 
-An error also occurs if a specified *key* duplicates the *key* for an existing member of the collection. Key comparison is governed by the [**KeyCompareMode**](KeyCompareMode) property.
+Key comparison is governed by the [**KeyCompareMode**](KeyCompareMode) property.
+
+<!-- errors: generated from errors/VBA.Collection.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [457 (`&H1C9`)](tb:Errors#457), *This key is already associated with an element of this collection* | *key* is already the key of an item in the collection, as [**KeyCompareMode**](KeyCompareMode) compares keys (by default `"A"` and `"a"` are the same key) |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *key* is not a **String**: a number, **True**, **Null**, an object, **Nothing** or an array<br>*before* or *after* is -1, **True** or **Empty**<br>*before* or *after* is a **Currency**, **Decimal** or **Date** value<br>*before* or *after* is **Null**, an object or **Nothing**, and the collection is not empty |
+| [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | both *before* and *after* are given<br>*before* or *after* is given and the collection is empty<br>*before* or *after* is a string that is not the key of an item |
+| [9 (`&H9`)](tb:Errors#9), *Subscript out of range* | *before* is a number that, rounded, is less than 1 or greater than **Count** + 1, or *after* one that is less than 0 or greater than **Count**<br>*before* or *after* is a number outside the **Long** range |
+
+> [!NOTE] BETA 1010
+> When *key* is **Empty**, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*; twinBASIC raises none.
+
+> [!NOTE] BETA 1010
+> When *before* or *after* is -1, **True** or **Empty**, VB6 and 64-bit VBA raise error [9 (`&H9`)](tb:Errors#9), *Subscript out of range*, instead.
+
+> [!NOTE] BETA 1010
+> When *before* or *after* is a **Currency**, **Decimal** or **Date** value, VB6 and 64-bit VBA raise no error.
+
+> [!NOTE] BETA 1010
+> When *before* or *after* is a number outside the **Long** range, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
+
+<!-- /errors -->
 
 ### Example
 

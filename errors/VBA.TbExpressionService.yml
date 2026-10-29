@@ -1,0 +1,119 @@
+# The VBA TbExpressionService class, with ITbExpression. Format: WIP.Errors.md.
+# Every case is `only: tb`: VB6 and VBA have none of these. Every page runs under the
+# expression harness, which spends the first error of the process (WIP.Errors.md).
+# Evaluate's -2147467259 rows are bugs/expression-service-error-numbers: when it is fixed, an
+# error raised while evaluating reaches the caller unchanged. Compile's rows and the harness are
+# in no entry (the owner: the entry asks only for errors to pass through unchanged).
+# No case for AddCustomBinder or Bind, which need a class implementing ITbCustomBinder that
+# the probe module cannot declare, nor for AddCustomBinder Nothing and AddCustomBinderObject
+# with an object of Nothing, which crash (an access violation, 32-bit and 64-bit; the pages'
+# WARNINGs).
+beta: 1010
+pages:
+  Reference/Default/VBA/TbExpressionService/Compile.md:
+    harness: expression
+    rows:
+      - error: -2147467259
+        when: "*expression* is a zero-length string or is not an expression"
+        cases:
+          - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: 'S.Compile("")', only: tb }
+          - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: 'S.Compile("1 2")', only: tb }
+          - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: 'S.Compile("1 + * 2")', only: tb }
+          - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: 'S.Compile(")")', only: tb }
+          - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: 'S.Compile("Sqr(4")', only: tb }
+          - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: 'S.Compile("""abc")', only: tb }
+          - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: 'S.Compile("Err.Raise 5")', only: tb }
+      - error: -2147467259
+        when: "*expression* names something that no registered binder resolves (any name, when no binder is registered), or calls a function with the wrong number of arguments"
+        cases:
+          - { decl: Dim S As New TbExpressionService, expr: 'S.Compile("Sqr(2)")', only: tb }
+          - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: 'S.Compile("Foo")', only: tb }
+          - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: 'S.Compile("D.Count")', only: tb }
+          - { decl: Dim S As New TbExpressionService, setup: 'S.AddCustomBinderObject "D", CreateObject("Scripting.Dictionary")', expr: 'S.Compile("Count")', only: tb }
+          - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: 'S.Compile("Sqr(1, 2)")', only: tb }
+      - error: 94
+        when: "*expression* is **Null**"
+        cases:
+          - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: S.Compile(Null), only: tb }
+    quiet:
+      - { decl: Dim S As New TbExpressionService, run: "If S.Compile(\"1 + 1\").Evaluate() <> 2 Then Err.Raise 1001", only: tb }
+      # an error in evaluating is raised by Evaluate, not by Compile
+      - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: 'S.Compile("1 / 0")', only: tb }
+      - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, expr: 'S.Compile("CInt(""abc"")")', only: tb }
+      # a bug: a dangling operator or parenthesis is ignored (bugs/expression-service-dangling-tokens; the page's WARNING)
+      - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, run: "If S.Compile(\"2 +\").Evaluate() <> 2 Then Err.Raise 1001", only: tb }
+      - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, run: "If S.Compile(\"(2\").Evaluate() <> 2 Then Err.Raise 1001", only: tb }
+      - { decl: Dim S As New TbExpressionService, setup: S.AddStdLibraryBinder, run: "If S.Compile(\"2)\").Evaluate() <> 2 Then Err.Raise 1001", only: tb }
+  Reference/Default/VBA/TbExpressionService/Evaluate.md:
+    harness: expression
+    rows:
+      - error: -2147467259
+        when: "evaluating the expression raises an error, whatever its number: division by zero, a type mismatch, an argument a function refuses"
+        cases:
+          - decl: "Dim S As New TbExpressionService\nDim E As ITbExpression"
+            setup: "S.AddStdLibraryBinder\nSet E = S.Compile(\"1 / 0\")"
+            expr: E.Evaluate()
+            only: tb
+          - decl: "Dim S As New TbExpressionService\nDim E As ITbExpression"
+            setup: "S.AddStdLibraryBinder\nSet E = S.Compile(\"CInt(\"\"abc\"\")\")"
+            expr: E.Evaluate()
+            only: tb
+          - decl: "Dim S As New TbExpressionService\nDim E As ITbExpression"
+            setup: "S.AddStdLibraryBinder\nSet E = S.Compile(\"Sqr(-1)\")"
+            expr: E.Evaluate()
+            only: tb
+          - decl: "Dim S As New TbExpressionService\nDim E As ITbExpression"
+            setup: "S.AddStdLibraryBinder\nSet E = S.Compile(\"Mid(\"\"abc\"\", 0)\")"
+            expr: E.Evaluate()
+            only: tb
+      - error: -2147467259
+        when: "the expression calls a member of a bound object that the object does not have, or with the wrong number of arguments"
+        cases:
+          - decl: "Dim S As New TbExpressionService\nDim E As ITbExpression\nDim D As Object"
+            setup: "Set D = CreateObject(\"Scripting.Dictionary\")\nS.AddCustomBinderObject \"D\", D\nSet E = S.Compile(\"D.Nope\")"
+            expr: E.Evaluate()
+            only: tb
+          - decl: "Dim S As New TbExpressionService\nDim E As ITbExpression\nDim D As Object"
+            setup: "Set D = CreateObject(\"Scripting.Dictionary\")\nS.AddCustomBinderObject \"D\", D\nSet E = S.Compile(\"D.Item(1, 2)\")"
+            expr: E.Evaluate()
+            only: tb
+      - error: -2147467259
+        when: "a member of a bound object that the expression calls raises an error, whatever its number"
+        message: Automation error
+        cases:
+          - decl: "Dim S As New TbExpressionService\nDim E As ITbExpression\nDim D As Object"
+            setup: "Set D = CreateObject(\"Scripting.Dictionary\")\nD.Add 1, 1\nS.AddCustomBinderObject \"D\", D\nSet E = S.Compile(\"D.Add(1, 2)\")"
+            expr: E.Evaluate()
+            only: tb
+    quiet:
+      - decl: "Dim S As New TbExpressionService\nDim E As ITbExpression\nDim D As Object"
+        setup: "Set D = CreateObject(\"Scripting.Dictionary\")\nS.AddCustomBinderObject \"D\", D\nSet E = S.Compile(\"D.Count\")"
+        run: "If E.Evaluate() <> 0 Then Err.Raise 1001\nD.Add 1, 1\nIf E.Evaluate() <> 1 Then Err.Raise 1001"
+        only: tb
+      # the compiled expression keeps the service and the bound object alive
+      - decl: "Dim S As New TbExpressionService\nDim E As ITbExpression\nDim D As Object"
+        setup: "Set D = CreateObject(\"Scripting.Dictionary\")\nS.AddCustomBinderObject \"D\", D\nSet E = S.Compile(\"D.Count\")\nSet D = Nothing\nSet S = Nothing"
+        expr: E.Evaluate()
+        only: tb
+  Reference/Default/VBA/TbExpressionService/AddCustomBinderObject.md:
+    harness: expression
+    rows:
+      - error: 94
+        when: "*name* or *flags* is **Null**"
+        cases:
+          - { decl: Dim S As New TbExpressionService, run: 'S.AddCustomBinderObject Null, CreateObject("Scripting.Dictionary")', only: tb }
+          - { decl: Dim S As New TbExpressionService, run: 'S.AddCustomBinderObject "D", CreateObject("Scripting.Dictionary"), Null', only: tb }
+    quiet:
+      - { decl: Dim S As New TbExpressionService, run: "S.AddCustomBinderObject \"D\", CreateObject(\"Scripting.Dictionary\"), IsAppObject\nIf S.Compile(\"Count\").Evaluate() <> 0 Then Err.Raise 1001", only: tb }
+      - { decl: Dim S As New TbExpressionService, run: "S.AddCustomBinderObject \"C\", New Collection\nIf S.Compile(\"C.Count\").Evaluate() <> 0 Then Err.Raise 1001", only: tb }
+      # neither the name nor the flags are checked, and a name may be given twice
+      - { decl: Dim S As New TbExpressionService, run: 'S.AddCustomBinderObject "", CreateObject("Scripting.Dictionary")', only: tb }
+      - { decl: Dim S As New TbExpressionService, run: 'S.AddCustomBinderObject "1x", CreateObject("Scripting.Dictionary")', only: tb }
+      - { decl: Dim S As New TbExpressionService, run: 'S.AddCustomBinderObject "D", CreateObject("Scripting.Dictionary"), 2', only: tb }
+      - { decl: Dim S As New TbExpressionService, run: 'S.AddCustomBinderObject "D", CreateObject("Scripting.Dictionary"), -1', only: tb }
+      - { decl: Dim S As New TbExpressionService, run: "S.AddCustomBinderObject \"D\", CreateObject(\"Scripting.Dictionary\")\nS.AddCustomBinderObject \"D\", New Collection\nResult = S.Compile(\"D.Count\").Evaluate()", only: tb }
+  Reference/Default/VBA/TbExpressionService/AddStdLibraryBinder.md:
+    harness: expression
+    quiet:
+      - { decl: Dim S As New TbExpressionService, run: "S.AddStdLibraryBinder\nIf S.Compile(\"Sqr(4)\").Evaluate() <> 2 Then Err.Raise 1001", only: tb }
+      - { decl: Dim S As New TbExpressionService, run: "S.AddStdLibraryBinder\nS.AddStdLibraryBinder\nIf S.Compile(\"Sqr(4)\").Evaluate() <> 2 Then Err.Raise 1001", only: tb }

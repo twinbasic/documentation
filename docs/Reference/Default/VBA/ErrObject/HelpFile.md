@@ -20,6 +20,10 @@ If a Help file is specified in **HelpFile**, it is automatically called when the
 
 Write routines to handle typical errors. When programming with an object, the object's Help file can improve error handling or display a meaningful message to the user when an error isn't recoverable.
 
+<!-- bug: err-helpfile-helpcontext-codegen -->
+> [!NOTE] BETA 1010
+> A statement that assigns **HelpFile**, such as `Err.HelpFile = "MyHelp.chm"`, compiles, but the build fails with a code-generation error in the procedure that holds it. [**Raise**](Raise) sets **HelpFile** without the problem, and so does an assignment through a variable declared **As Object** that holds **Err**.
+
 ### Example
 
 This example uses the **HelpFile** property of the **Err** object to start the Help system.

@@ -1,0 +1,235 @@
+' Regression tests: the Financial functions check their arguments as 64-bit VBA does: 5 for a
+' period outside 1 to nper (IPmt, PPmt), for an nper of 0 (Pmt, PPmt), for MIRR of one element
+' or a rate of -1, and for NPV at a rate of -1; 11 for MIRR with no payment; a DDB of a life
+' below 1; and with a rate of -1, FV's 6 and PV's 0, 11 and 6; SLN's 6 for an infinite result.
+' VB6 agrees but for FV (11), PV and SLN (no error, infinity). The controls pass in all.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_IPmtLastPeriod()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IPmt(0.01, 10.9999999, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_PmtRateMinusTwo_Raises11()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Pmt(-2, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 11&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_DDBLifeOne()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = DDB(1000, 100, 1, 0.5)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 900) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub IPmt_PerZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IPmt(0.01, 0, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub IPmt_PerNperPlusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IPmt(0.01, 11, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_PerZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PPmt(0.01, 0, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_PerNperPlusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PPmt(0.01, 11, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Pmt_NperZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Pmt(0.01, 0, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_NperZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PPmt(0.01, 1, 0, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_OneElement_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(0)
+        A(0) = -100
+        R = MIRR(A, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_ReinvestRateMinusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(2)
+        A(0) = -100
+        A(1) = 50
+        A(2) = 60
+        R = MIRR(A, 0.1, -1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_NoPayment_Raises11()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(1)
+        A(0) = 100
+        A(1) = 110
+        R = MIRR(A, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 11&, E
+    End Sub
+
+    [TestCase]
+    Public Sub NPV_RateMinusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(2)
+        A(0) = -100
+        A(1) = 50
+        A(2) = 60
+        R = NPV(-1, A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub DDB_LifeBelowOne_Returns900()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = DDB(1000, 100, 0.5, 0.5)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 900) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub FV_RateMinusOneNegativeNper_Raises6()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(-1, -1, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 6&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PV_RateMinusOneNperZero_Returns0()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PV(-1, 0, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub PV_RateMinusOne_Raises11()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PV(-1, 10, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 11&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PV_RateMinusOneNegativeNper_Raises6()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PV(-1, -1, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 6&, E
+    End Sub
+
+    [TestCase]
+    Public Sub SLN_InfiniteResult_Raises6()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = SLN(1000, 100, 1E-308)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 6&, E
+    End Sub
+
+End Module

@@ -1,0 +1,20 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.Control_Raise5_Raises5$",
+      "^PASS RegressionTests\\.Control_RaiseEFail_RaisesEFail$",
+      "^PASS RegressionTests\\.Control_RaiseDispException_RaisesDispException$",
+      "^FAIL RegressionTests\\.Raise_EInvalidArg_Raises5: .*Actual: -2147024809 ",
+      "^FAIL RegressionTests\\.Raise_EOutOfMemory_Raises7: .*Actual: -2147024882 ",
+      "^FAIL RegressionTests\\.Raise_ENotImpl_Raises445: .*Actual: -2147467263 ",
+      "^FAIL RegressionTests\\.Raise_ENoInterface_Raises430: .*Actual: -2147467262 ",
+      "^FAIL RegressionTests\\.Raise_DispUnknownName_Raises438: .*Actual: -2147352570 ",
+      "^FAIL RegressionTests\\.Raise_DispTypeMismatch_Raises13: .*Actual: -2147352571 ",
+      "^FAIL RegressionTests\\.Raise_ClassNotRegistered_Raises429: .*Actual: -2147221164 ",
+      "^FAIL RegressionTests\\.Raise_VbErrorAsHResult_Raises53: .*Actual: -2146828235 ",
+      "^FAIL RegressionTests\\.Number_EInvalidArg_Is5: .*Actual: -2147024809 "
+    ]
+  }
+}

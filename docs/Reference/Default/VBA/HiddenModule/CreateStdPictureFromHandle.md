@@ -21,6 +21,19 @@ Syntax: **CreateStdPictureFromHandle(** *Handle* **,** *Type* **,** *TakeOwnersh
 
 The result is a regular **stdole.StdPicture** equivalent to one returned by **LoadPicture**, suitable for assignment to a **Picture** property.
 
+With `vbPicTypeBitmap`, *Handle* is not checked: 0, or a handle that is not a bitmap's, gives a picture and raises nothing.
+
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *Handle* is not of the kind *Type* names: 0 for an icon, or a bitmap for an icon, a metafile or an enhanced metafile |
+| [-2147418113 (`&H8000FFFF`)](tb:Errors#-2147418113), *Catastrophic failure* | *Type* is less than 0 or greater than 4 |
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | an argument is **Null** |
+
+<!-- /errors -->
+
 ### See Also
 
 - [PictureToByteArray](PictureToByteArray) function

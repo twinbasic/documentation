@@ -1,0 +1,187 @@
+' Regression tests: Rate returns the rate of an annuity, as VB6 and 64-bit VBA do, for a loan,
+' a mortgage, a savings plan, payments due at the start, a guess and an nper below 1, and
+' the positive rate (0.1, not -2.1) of a lump sum over an even number of periods; and it raises
+' 94 for a guess of Null and 13 for a guess that is not a number. The controls are two
+' lump sums Rate answers rightly (one and three periods) and a Null nper.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_PmtZeroOnePeriod()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(1, 0, 100, -110)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_PmtZeroThreePeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(3, 0, 100, -133.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_NperNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(Null, -100, 800)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PmtZeroTwoPeriods_ReturnsPositiveRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(2, 0, 100, -121)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub PmtZeroFourPeriods_ReturnsPositiveRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(4, 0, 100, -146.41)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Loan_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, -100, 800)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0427749780351) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Mortgage_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(360, -600, 100000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0050058250068) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub DueAtStart_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, -100, 800, 0, 1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.053446167382) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub SavingsPlan_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, -100, 0, 1200)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0398902762) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub SignsReversed_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, 100, -800)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0427749780351) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub PmtZeroTenPeriods_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, 0, 1000, -2000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0717734625363) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub WithGuess_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, -100, 800, 0, 0, 0.04)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0427749780351) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub NperBelowOne_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(0.5, 0, 100, -110)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.21) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub GuessNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(1, 0, 100, -110, 0, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub GuessString_Raises13()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(1, 0, 100, -110, 0, "abc")
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 13&, E
+    End Sub
+
+End Module

@@ -70,7 +70,38 @@ harnesses (`dialog`, `keys`, `window`): 164 cases, all agreeing in all four runt
 Shell; DoEvents quiet; Beep nothing (D3). `argument-errors-unspecified-error` extended, three
 entries queued (*Batch 6b findings*). No row is `bug: pending`, and no question is open.
 
-**Next: batch 7**, VBA `FileSystem`.
+**Batch 7 is done** (2026-10-27), VBA `FileSystem`, under a new harness (`files`): 448 cases in
+`errors/VBA.FileSystem.yml`, all agreeing in all four runtimes; sections on 21 of the module's 22
+pages (Reset raises nothing; the index documents nothing). The owner's rulings applied (six
+extensions, three bugs); `file-errors-unspecified` extended by 30 cases, three entries queued
+(*Batch 7 findings*). No row is `bug: pending`, and no question is open.
+
+**Batch 8 is done** (2026-10-28), VBA `Collection` and `ErrObject`: 259 cases in
+`errors/VBA.Collection.yml` and `errors/VBA.ErrObject.yml`, all agreeing in all four runtimes;
+sections on 10 of the 20 member pages (Count, both Clears, Items, Keys, LastDllError and
+LastHresult raise nothing; HelpFile, HelpContext and ReturnHResult cannot be probed, their
+assignment failing twinBASIC's build; the indexes document nothing). The owner's rulings
+applied (two extensions, one bug); three entries queued (*Batch 8 findings*). No row is `bug:
+pending`, and no question is open.
+
+**Batch 9 is done** (2026-10-28), VBA `Financial`: 349 cases in `errors/VBA.Financial.yml`,
+all agreeing in all four runtimes; sections on all 13 member pages (the index documents
+nothing); `-2147418113` (`E_UNEXPECTED`) added to `messages.yml` and measured. The owner's
+rulings applied: five entries queued, `argument-errors-unspecified-error` extended, and PV's 11
+for an infinite result an extension (*Batch 9 findings*). No row is `bug: pending`, and no
+question is open.
+
+**Batch 10 is done** (2026-10-28), VBA `HiddenModule`,
+`Compilation` and `TbExpressionService`: 280 cases in `errors/VBA.HiddenModule.yml`,
+`VBA.Compilation.yml` and `VBA.TbExpressionService.yml`, every one `only: tb` (VB6 and VBA have
+none of these procedures), all agreeing in both twinBASIC builds; sections on 35 pages; two new
+harnesses, `native` and `expression`; four HRESULTs added to `messages.yml` and measured. The
+owner's rulings applied: four entries queued (`nothing-argument-crashes`,
+`expression-service-dangling-tokens`, `expression-service-error-numbers`,
+`vbacastobj-no-type-mismatch`), and `CreateGUID`'s braceless form and `AllocMem(0)`'s error are
+the spec (*Batch 10 findings*). No question is open.
+
+**Next: batch 11**, Core file I/O statements.
 
 ## Owner's decisions
 
@@ -84,7 +115,10 @@ entries queued (*Batch 6b findings*). No row is `bug: pending`, and no question 
   VB6, and twinBASIC 64-bit, compared with **64-bit VBA, whose behaviour must be respected**
   (owner): a difference between twinBASIC 64-bit and 64-bit VBA is a bug, exactly as one from
   VB6 is, with a NOTE and a queued reproducer. (Before: twinBASIC 64-bit for operators and
-  `Math` only, and no VBA.)
+  `Math` only, and no VBA.) **Where VB6 and 64-bit VBA differ, twinBASIC does as 64-bit VBA
+  does**, in both builds (owner, 2026-10-28): matching 64-bit VBA is an extension against VB6
+  (`only: [tb, vba64]` cases, a NOTE in the prose), and matching neither is a bug whose
+  reproducer asserts 64-bit VBA's number.
 - **Scope.** `docs/Reference/Default/` (VBA, VB, VBRUN), `docs/Reference/Core/` (statements and
   operators) and `docs/Reference/Built-In/`. Not `Contributed/`.
 - **Existing error prose moves into the tables.** A page that states an error in a sentence
@@ -177,19 +211,14 @@ What `errors.mjs messages` found (BETA 1010):
   these the two messages differ, and the file says `{ raised, error }`. The sections show
   `Err.Description` (owner: settled); showing `Error$(n)` instead would be a one-line change in
   `renderSection` (`.raised` to `.error`).
-- **Differences from VB6 that batch 8 (`ErrObject`) should take up**, none queued yet (batch 3
-  queued `Error$` above 65535, `error-function-above-65535`):
-  `Err.Raise n` of a number from 1 to 65535 without a message of its own leaves
-  `Err.Description` empty in twinBASIC below 747, and from 747 up gives the Windows system
-  message of that number (*Page fault was a transition fault.* for 747); VB6 gives
-  *Application-defined or object-defined error* (the central page says so in a NOTE).
-  VB6's `Err.Raise` of a common HRESULT raises its own number instead (`&H80070057` raises 5,
-  `&H80004001` 445, `&H80004002` 430, `&H80020003` 438, `&H80040154` 429, ...) and describes
-  the rest as *Automation error* with the HRESULT's text on a second line; twinBASIC keeps the
-  HRESULT and its text. `Err.Raise 65536` raises 5 in VB6, and `Error$(65536)` raises 6;
-  twinBASIC raises 65536 as *Automation error*, and `Error$(65536)` is generic. twinBASIC's
-  `Error$` of a few HRESULTs is VB's message (`Error$(&H80070057)` is *Invalid procedure call
-  or argument*), VB6's is generic.
+- **Differences from VB6 found here, and where each went** (batch 8 took them up):
+  `Err.Raise n` without a description, *Application-defined or object-defined error* in VB6 and
+  empty or a system message in twinBASIC, is filed (`err-raise-defaults`, #2504; the central
+  page's NOTE). VB's `Err.Raise` of a common HRESULT as its own number is queued
+  (`err-raise-hresult-mapping`). `Err.Raise 65536`, 5 in VB6, is an extension (owner,
+  2026-10-28; the Raise page's NOTE). `Error$` above 65535 is filed (`error-function-above-65535`). Left alone:
+  twinBASIC's `Error$` of a few HRESULTs is VB's message (`Error$(&H80070057)` is *Invalid
+  procedure call or argument*), VB6's is generic.
 
 ## Tooling
 
@@ -376,6 +405,31 @@ Windows refuses). `check_errors.mjs` reports a harness the data names and has no
   becomes the foreground one, and AppActivate raises nothing for that; in twinBASIC, activating a
   new window there takes 2 s from the third on (not on the user's desktop), so `errors.mjs`
   gives a twinBASIC probe 120 s.
+- **`files`** (batch 7) --- every procedure that names or opens a file. `files_Begin` makes
+  `files_Dir`, `tbdocsErrorsProbe` and the process id under the temporary folder, makes it the
+  current directory (Windows' own calls, so no statement under test sets it up) and fills it:
+  `a.txt` (`abc`, CR LF, `def`, CR LF: 10 bytes), `empty.txt`, `ro.txt` (read-only), `hid.txt`
+  (hidden), the empty folder `sub` and `full`, which holds `f.txt`. A case names its files
+  relatively. `files_End` closes every file, puts the current directory back and deletes the
+  folder whatever its files' attributes, keeping the case's error; it deletes nothing whose path
+  does not end in the folder's own name. `files_Begin` raises 1003 when it cannot make or enter
+  the folder, so a case never runs in another folder. `files_Attr(name)` is
+  `GetFileAttributesW` (-1: no such file), `files_Expect Cond` raises 1001, `files_NoDrive` is a
+  letter no drive has. **A probe line that starts `Reset:` is a label**, not the statement: put
+  `Reset` on a line of its own (`run: "Reset\n..."`). Check after a run that no
+  `tbdocsErrorsProbe*` folder is left in `%TEMP%`.
+- **`native`** (batch 10) --- **twinBASIC only**: every case that uses it is `only: tb`, so it uses
+  twinBASIC syntax. What the (Default) module's procedures take: `native_Icon` (the shared
+  `IDI_APPLICATION` icon), `native_Bitmap` (a 2 x 2 bitmap that `native_End` deletes unless
+  `native_Keep` says a picture owns it), `native_Window` (a hidden `STATIC` window, made by
+  `native_Begin`), `native_Handler` (a `GetMessageHookHelper.GetMessageHandler` that does
+  nothing), `native_StdIid(Data1)` (the address of the interface ID
+  `{Data1-0000-0000-C000-000000000046}`, for `vbaCastObj`) and the enumeration `native_Kind`
+  (-3 to 7).
+- **`expression`** (batch 10) --- twinBASIC only. In a built exe the first error the expression
+  service (`Eval`, `TbExpressionService`) raises in a process has the description *Automation
+  error*, every later one *Unspecified error*; `expression_Begin` raises the first once and
+  clears it, so a case's description does not depend on which case runs first (`--only`).
 
 **YAML pitfalls**, each met in batch 2:
 
@@ -443,6 +497,14 @@ What the probes must respect (BETA 1010; `errors.mjs` already does all of it):
   builds a failing project again without the case named in the error.
 - **A case that allocates near the string limit raises 14** (`String(1073741823, "a")` in
   32-bit): use it to show that the 5 above the limit is a check of its own, never as a row.
+- **A case that crashes stops the probe, and every later case reports `none`** (`the probe
+  stopped before it ended: exception 0xc0000005`), as a hang does. Explore one page per probe
+  (a data file holding only that page), then one case per probe for a page that stops; a case
+  that crashes is a WARNING by hand, never a case.
+- **The probe is one module**: a case cannot declare a class, an interface or a `Type`. A
+  harness can hold a `Type`, an `Enum`, a `Declare` and procedures; a fact that needs a class
+  (`GetNameFromDispID` on a twinBASIC class) is checked with `tbrun` on a tree of its own and
+  stated in the page's prose.
 
 ## Batch 2 findings (VBA `Strings`, BETA 1010)
 
@@ -864,6 +926,243 @@ twinBASIC's InputBox fault (a string it never set); a reproducer's VB6 project m
 InputBox when it carries the dialog harness (`reproAnswersBoxes`). The broker's startup race
 (four clients, all ENOENT) is fixed on both sides (WIP.Broker.md).
 
+## Batch 7 findings (VBA `FileSystem`, BETA 1010, 2026-10-27)
+
+twinBASIC 64-bit agrees with 32-bit on every case, and 64-bit VBA with VB6, so every difference
+is twinBASIC against both.
+
+- **-2147467259 where VB raises a number, almost everywhere** (`file-errors-unspecified`, queued
+  since BETA 1005 and extended by 30 cases): 5, 52, 53, 54, 62, 63, 67, 68, 75, 76. The page's old
+  hand NOTEs went; the rows' generated NOTEs replace them. The Core pages (Open, Name, Get, Put,
+  Print, Line Input) keep their hand NOTEs until batch 11. What VB raises for a bad name differs
+  by procedure: GetAttr 5 for `<` or a file name ending in a backslash, FileLen and FileDateTime
+  53 for those, Dir 52 for the backslash; a wildcard is 52 everywhere but ChDir, MkDir and RmDir
+  (76) and Kill (53 when nothing matches).
+- **Null raises 94 everywhere**, but `CurDir(Null)` and `Dir(Null)` raise 13 in VB
+  (`filesystem-argument-checks`).
+- **Owner's rulings (2026-10-27)**. Extensions, with a NOTE saying what VB does and
+  twinBASIC-only quiet cases: Dir's *attributes* outside 0 to 63 (unknown bits ignored; VB 5);
+  a non-String argument to Dir and CurDir, converted as ChDir and ChDrive convert theirs in VB
+  (`Dir(5)`; VB 13); FileCopy of a source open for reading only, not locked against reading
+  (VB 55 for any mode but Input); SetAttr's *attributes* wherever Windows accepts them ("tB
+  extension where the attributes are valid for the underlying WINAPI; where the WINAPI fails,
+  SetAttr must correctly raise an error"; VB 5 for anything but sums of 1, 2, 4, 32, and 16 on a
+  folder); Width from 256 to 32,767 (VB 5). Bugs (`filesystem-argument-checks`): a negative Width
+  (no error, a new line before each item), FileLen and FileDateTime of a wildcard that matches (the
+  first match's value; VB 52), and with them `Input(0)` (-2147467259; VB returns `""`) and the
+  Null 13.
+- **Kill deletes hidden and system files** (`kill-hidden-system-files`, a WARNING): VB raises 53
+  for one named alone and skips it in a wildcard.
+- **FileCopy's numbers** (`filecopy-error-numbers`): 70 for a folder or a read-only or hidden
+  destination (VB 75), 55 for a copy onto itself or of a source open `Lock Read` (VB 70).
+- **SetAttr of a file open for writing**: no error (VB 55), `setattr-open-file-no-error`, queued
+  since BETA 1005; its WARNING stays beside the generated NOTE.
+- **Agree in all four**: FileCopy's 53, 55 and 76; Binary-mode `Input` past the end returns
+  what is left, with no error; `InputB(0)` returns `""`; `FreeFile` takes any *rangenumber*
+  (nonzero after rounding is 256 to 511), and with 256 to 511 all in use `FreeFile(1)` returns
+  512, which `Open` accepts; Reset closes files 256 to 511 too; Width does not wrap inside one
+  item; Kill stops at an open file a wildcard matches, after the files before it.
+- **Page edits**: the error sentences of Dir, FileCopy, Kill, RmDir and Seek went into the
+  tables; Width's parameter is an **Integer** from 0 to 32,767 (32,768 is the conversion's 6);
+  CurDir's section moved below both functions, and ChDrive's, Dir's, MkDir's and RmDir's above
+  their See Also, which those pages put before the Example (`spliceSection` places a new
+  section before the first Example, so a page with See Also first needs moving by hand once).
+
+## Batch 8 findings (VBA `Collection` and `ErrObject`, BETA 1010, 2026-10-27)
+
+twinBASIC 64-bit agrees with 32-bit on every case, and 64-bit VBA with VB6.
+
+- **Assigning `Err.HelpFile`, `Err.HelpContext`, or `Err.ReturnHResult` in a module procedure,
+  compiles and fails the build** with a codegen error (`err-helpfile-helpcontext-codegen`); in
+  test mode the procedure aborts. So the data has no case for those three pages (a case would
+  fail the whole probe): each page has a hand NOTE, and Raise's *helpfile* and *helpcontext*
+  are covered on the Raise page. When it is fixed, add `Err.HelpFile = Null` and
+  `Err.HelpContext = Null` (94 in VB6 and VBA) as rows. ReturnHResult's example now sits in a
+  class (its build failed as a module function; `examples.bat --build` is clean).
+- **VB turns HRESULTs into VB numbers; twinBASIC does not** (`err-raise-hresult-mapping`):
+  `Err.Raise` of 22 HRESULTs tried raises a VB number in VB6 and 64-bit VBA (`E_INVALIDARG`
+  5, `E_NOTIMPL` 445, the `DISP_E_` ones, `&H800A0000 + n` as *n*, ...), and `Err.Number =` of
+  one stores the VB number without raising. Data rows cannot hold one `vb6:` per HRESULT, so
+  the Raise page has a hand NOTE with the table, and twinBASIC's side is `only: tb` quiet cases
+  (wrapped, below). `Err.Raise &H800A0000` raises nothing at all in VB6 and VBA; not written.
+- **How a case says "raised what it was asked"**: `Err.Raise n` (and `Err.Number = n`) then
+  `If Err.Number = n Then Err.Clear`, so the case reports 0, and a runtime that raises or keeps
+  another number reports that. `Err.Number = 65536` raises 5 in VB (an `On Error GoTo` handler
+  is entered); `Err.Number = &H80070057` only stores 5.
+- **Collection** (`collection-index-checks`): a `Currency`, `Decimal` or `Date` index is
+  refused (Item and Remove 9, Add's position 13; VB takes it as a number); Item of a number on
+  an empty collection 9 (VB 5; Remove is 5 in both); Item and Remove of `Null`, an object, an
+  array, an error value or a number beyond `Long` 9 (VB 13); Add's position of -1, `True` or
+  `Empty` 13 (VB 9). Agree in all four: duplicate key 457 (`""` is a key); a non-String key 13
+  (a number too: VB does not convert it); both positions 5; a position on an empty collection
+  5, `Null` there too; a string position or index that is no key 5.
+- **Owner's rulings (2026-10-28)**. Extensions, each with a NOTE in the page's prose and
+  `only: tb` quiet cases: `Err.Raise` and `Err.Number =` of a number above 65535 (twinBASIC
+  raises or sets it; VB raises 5), and `Collection.Add` with *before* one more than **Count**
+  (adds at the end) or *after* 0 (adds at the start; VB raises 9 for both). A bug, in
+  `collection-index-checks`: `Collection.Add` with a *key* of **Empty** adds the item without a
+  key (VB 13).
+- **Page edits**: the error sentences of Add, Item, Remove and KeyCompareMode went into the
+  tables; the central page has a NOTE on `Err.Raise` of an HRESULT.
+
+## Batch 9 findings (VBA `Financial`, BETA 1010, 2026-10-28)
+
+twinBASIC 64-bit agrees with 32-bit on every case. Unlike the earlier batches, **VB6 and 64-bit
+VBA differ** where a result is infinite: VB6 returns infinity from SLN and PV, 64-bit VBA raises
+6 or 11 (the rows carry `vba64:`). The values behind the defects below were read with a value
+probe (twinBASIC through `tbrun`, VB6 through `vb6run`), not only the error numbers.
+
+- **Every parameter is a Double** in twinBASIC's declarations and in VBA's; FV, PV, Pmt and
+  PPmt said **Integer** for *nper* (and PPmt for *per*), from VBA-Docs. Fixed on the pages.
+- **The -2147467259 family** (`argument-errors-unspecified-error`): every argument check where
+  VB raises 5 (and Rate's 6), in DDB, SLN, SYD, IPmt, PPmt, Pmt, NPer, Rate and IRR.
+- **Rate fails for almost every annuity**: -2147467259 for every case tried with *pmt* other
+  than 0, and for `Rate(10, 0, 1000, -2000)`; it answers `Rate(1, 0, 100, -110)` and
+  `Rate(2, 0, 100, -121)`. It also raises 5 for an *nper* below 1 with *pmt* 0 (VB answers), and
+  never checks *guess*: **Null**, `"abc"` and an error value pass (VB 94, 13, 13).
+- **NPer raises 6 when *rate* and *pmt* have opposite signs**, which is every loan and savings
+  plan at a positive rate (`NPer(0.01, -100, 1000)` is 10.59 in VB6); where it answers, the value
+  is right. Where no number of periods exists it raises 6 or 11, VB 5.
+- **Null in an optional Variant argument raises 13**, VB 94: *pv*/*fv* and *type* of FV, PV, Pmt,
+  NPer, IPmt, PPmt and Rate, and DDB's *factor*.
+- **Arrays**: IRR, MIRR and NPV of an array never sized **crash** (access violation, 32-bit and
+  64-bit, IDE and exe; VB 5), a hand WARNING on each page and no case; a 2-D array raises
+  -2147418113, *Catastrophic failure* (VB 5).
+- **Missing checks that return a value** (hand WARNINGs beside the generated NOTEs): IPmt and
+  PPmt take any *per* (VB 5 when *per* is 0 or less, or *nper* + 1 or more); MIRR returns -1 for
+  one element, a rate for a *finance_rate* or *reinvest_rate* of -1 (VB 5), and infinity or NaN
+  for *values* with no negative element (VB 11); NPV returns NaN for a *rate* of -1 (VB 5).
+- **Other differences**: DDB refuses a *life* between 0 and 1 (VB answers); Pmt and PPmt raise 11
+  for an *nper* of 0 (VB 5); FV raises 5 for *rate* -1 and a negative *nper* (VB6 11, 64-bit VBA
+  6); PV raises -2147467259 for a *rate* of -1 (VB6 returns infinity or 0; 64-bit VBA 11, 6, or 0
+  for *nper* 0).
+- **Infinite results**: PV raises 11 (as 64-bit VBA does; VB6 returns infinity), SLN returns
+  infinity (as VB6 does; 64-bit VBA raises 6). FV raises 6 in all four.
+- **Agree in all four**: **Null** in a required argument 94; a string that is not a number in an
+  optional argument 13; Pmt's 6 and 11 for a *rate* of -1 or -2; IRR's guess 94 and 13; FV's 6;
+  any *type* is taken (only 0 means the end of the period).
+- **Page edits**: SLN's, SYD's and DDB's "All arguments must be positive numbers" and NPV's (and
+  MIRR's half of) "must contain at least one negative value and one positive value" are
+  `<!-- VBA: -->` comments (all four take what they forbid); IRR's and Rate's "If ... can't find a
+  result after 20 tries, it fails" is reworded, the table carrying the error; the module index no
+  longer says MIRR takes a *guess* or that every array needs both signs.
+
+- **Rate's wrong root** (found writing its reproducer): for a lump sum (*pmt* 0) over an even
+  number of periods it returns -2.1 where VB6 returns 0.1 (`Rate(2, 0, 100, -121)`,
+  `Rate(4, 0, 100, -146.41)`; one and three periods are right). Silent, so a WARNING by hand on
+  Rate, in `rate-fails`. Not in the data: a value, not an error.
+
+**Owner's rulings (2026-10-28)**:
+
+1. **The five entries accepted**, as proposed, and queued with `tests` reproducers and VB6
+   sides: `rate-fails` (3 PASS, 12 FAIL), `nper-opposite-signs-overflow` (3, 9),
+   `financial-null-optional-argument` (3, 9), `financial-array-arguments` (3 PASS, 4
+   ACCESS_VIOLATION, 3 FAIL), `financial-argument-checks` (3, 16). `argument-errors-unspecified-error`
+   extended by one case per function (DDB, SLN, SYD, IPmt, PPmt, Pmt, NPer, Rate twice, IRR: 3
+   PASS, 35 FAIL now).
+2. **Where VB6 and 64-bit VBA differ, twinBASIC does as 64-bit VBA does.** So PV's 11 for an
+   infinite result is an extension against VB6 (cases `only: [tb, vba64]`, a NOTE in PV's
+   prose), and SLN's infinity is a bug (`financial-argument-checks`, asserting 6).
+3. **A *rate* of -1 in FV and PV, by the same rule**: FV is to raise 6, and PV 0, 11 or 6 by
+   the sign of *nper*, as 64-bit VBA; in `financial-argument-checks`, whose cases assert 64-bit
+   VBA's numbers (its VB6 side prints VB6's, which differ in those four cases).
+
+A reproducer's case asserts 64-bit VBA's number where the two VB runtimes differ; say so in the
+entry, since the VB6 project then disagrees with the module.
+
+## Batch 10 findings (VBA `HiddenModule`, `Compilation`, `TbExpressionService`, BETA 1010, 2026-10-28)
+
+Every procedure is twinBASIC's own, so every case is `only: tb` and no row has a `vb6:`: a
+defect here is one against the page or against what the procedure is for, not against VB.
+twinBASIC 64-bit agrees with 32-bit on every case but `AllocMem(2000000000)` (a `win64: 0`
+row). The pages with no section raise nothing of their own: `Compilation`'s eight (compile-time
+intrinsics), `CreateGUID`, the `GetDeclared...` six, `StackArgsSize`, `StackOffset`,
+`InterlockedIncrement32`/`Decrement32`, `Start`, `Stop`, `RuntimeCreateGetMessageHook`,
+`UnprotectedAccess`, `vbaAryMove`, `vbaRefVarAry`, `AddStdLibraryBinder`; and `Emit`, `EmitAny`,
+`InternalGetReturnAddress` (fails a 64-bit build), `AddCustomBinder` and `Bind` have no case.
+
+- **Null raises 94** for every numeric or string argument, **424** for an object one
+  (`AddClassInstanceFlag`, `ConvertIconToBitmap`, `GetInheritedOwner`, `GetNameFromDispID`,
+  `PictureToByteArray`, `vbaCastObj`).
+- **Raw HRESULTs** where the procedure fails: `AllocMem` of 0 or less -2147024882
+  (`E_OUTOFMEMORY`, as for a block too big); `CreateStdPictureFromHandle` -2147467259 for a
+  handle of the wrong kind and -2147418113 for a *Type* outside 0 to 4 (a bitmap handle is never
+  checked); `ConvertIconToBitmap` -2147467259 for anything but an icon, 5 and 13 for its
+  *BackColor* as `TranslateColor`; `PictureToByteArray` -2147467262 for a non-picture;
+  `GetNameFromDispID`'s four (the page's hand table, now data), and `ShowPropertyPageEditor`'s
+  -2147467261 and -2147467262. On an object of a twinBASIC class `GetNameFromDispID` raises 5
+  (-4: -2147319765), checked with `tbrun` on a tree with a class: a sentence on the page.
+- **The expression service** (`Eval`, `Compile`, `Evaluate`): every failure is -2147467259, a
+  name it cannot resolve and a syntax error alike, and so is **any error inside the expression**
+  (11, 13, 5, a bound object's 457): its number is lost (NOTEs on Eval and Evaluate).
+  `Eval("CVErr(5)")` and `Eval("Len(Null)")` raise it too, though `Len(Null)` is **Null**
+  outside an expression. **Some malformed expressions are accepted silently**: `"2 +"`,
+  `"2 Mod"`, `"(2"`, `"2)"` give 2 (WARNINGs on Eval and Compile; quiet cases). The first error of
+  a process says *Automation error*, later ones *Unspecified error*; in the IDE, always
+  *Automation error* (NOTEs; the `expression` harness).
+- **Crashes** (access violation, 32-bit and 64-bit; a WARNING by hand on each page, no case):
+  `ConvertIconToBitmap(Nothing)`; `GetInheritedOwner` of **Nothing** or of an object that is not
+  a control (a `Collection` in both builds, a `Scripting.Dictionary` in 64-bit);
+  `AddCustomBinder Nothing`; `AddCustomBinderObject name, Nothing`; and `V =
+  RuntimeCreateGetMessageHook()` into a Variant without `Set` (`Set V =` is fine, and a Let of
+  another non-dispatch object, a twinBASIC class behind an `IUnknown` interface, stores it with
+  no error, so the fault is the hook object's). Also, with no WARNING (misuse of an internal or
+  of a raw address): `AddClassInstanceFlag` of -1, an address of 0 to `GetMem*`, `PutMem*` and
+  `vbaCopyBytes` (`FreeMem 0` and `vbaObjAddref 0` are quiet), and `vbaCastObj` given a number or
+  (32-bit) **Null** as *IID*.
+- **Pages corrected from what twinBASIC does**: `CreateGUID` returns 36 characters without
+  braces (the page said `{...}`; the index pages too); `vbaCastObj` reads *IID* as the address of a
+  GUID, so a String gives **Nothing** silently (the page said it took a String; its example and
+  `GetDeclaredTypeIid`'s now use `VarPtr` of a GUID and print the IID); `PictureToByteArray(Nothing)`
+  is a `Byte` array with no bounds; `FreeMem 0` does nothing; `Compile` without a binder takes
+  `"1 + 1"`; `AllocMem`'s and `Compile`'s error sentences went into the tables. Added:
+  `RegisterMessage` checks no argument, `InterlockedIncrement32`/`Decrement32` wrap with no error.
+- **Out of this batch**: `Set X = obj` where *X* is declared as an interface *obj* does not
+  have raises -2147467262 (`E_NOINTERFACE`); VB6 raises 13. Not checked in VB6 here, not queued:
+  for a Core batch.
+
+**Owner's rulings (2026-10-28)**, and what was done:
+
+1. **The crashes: one entry**, GetInheritedOwner of a non-control in it: queued as
+   `nothing-argument-crashes` (3 PASS, 7 FAIL with ACCESS_VIOLATION; the `Scripting.Dictionary`
+   case passes in 32-bit), the five WARNINGs tagged.
+2. **Malformed expressions: an entry**, `expression-service-dangling-tokens` (3 PASS, 8 FAIL), the
+   two WARNINGs and the quiet cases' comments tagged.
+3. **The lost error number: "investigate what is most appropriate from a tB user's perspective,
+   and proceed accordingly"**. Both VB-family evaluators keep the error: VBScript's `Eval`
+   (`MSScriptControl.ScriptControl` from VB6) raises 11, 13 (*Type mismatch: 'CInt'*), 6, 5 and
+   450 for `1 / 0`, `CInt("abc")`, `CInt(40000)`, `Sqr(-1)`, `Sqr(1, 2)`, and 1002 *Syntax error*
+   or 1006 *Expected ')'* for every malformed expression; Access's `Eval` (64-bit VBA, VbaSession)
+   raises 11, 13, 6, 5, returns **Null** for `Len(Null)`, and raises 2431, 2434, 2435, 2436, 2439
+   for syntax errors and argument counts. So a bug: queued as `expression-service-error-numbers`.
+   **Owner, then: "Eval should not be special casing errors"** unless VB does, which it does
+   not, and **the entry asks only for errors to be passed through unchanged** (2 PASS, 7 FAIL:
+   11, 13, 6, 5 and a bound object's 457, and the description *Division by zero*). Left out of it,
+   and in no entry: a compile failure's number and description (no direct code to compare:
+   `Sqr(1, 2)` does not compile), `Eval("Len(Null)")` and `Eval("CVErr(5)")` (Eval fails where
+   direct code returns a value), and the unstable description (the description NOTEs, untagged,
+   and the `expression` harness). **Owner: they stay NOTEs, with no entry** (untagged, so no
+   retired entry removes them: check them against each new BETA, as every labelled callout is).
+   The Evaluate page's prose states the propagation, the tagged NOTEs say what BETA 1010 does.
+4. **"What does VBx do?" for `vbaCastObj`**: VB6's own `__vbaCastObj` (msvbvm60, called through a
+   `Declare`) returns the interface for a GUID's address, 0 for **Nothing**, and raises **13,
+   Type mismatch** for an interface the object lacks, a String's text read as an IID included;
+   twinBASIC returns **Nothing** for both. VBE7.DLL exports no `__vba` procedure, so 64-bit VBA
+   cannot be asked. **Owner: a bug.** Queued as `vbacastobj-no-type-mismatch` (3 PASS, 2 FAIL;
+   VB6 side calling `__vbaCastObj`); the data's row is `error: 0`, `vb6: 13` (its cases `only:
+   tb`, so the NOTE names VB6 alone); the page states the 13 and has a WARNING.
+5. **"What does VBx do?" for `CreateGUID`**: nothing to compare. VB6 and VBA have no CreateGUID,
+   nor does Access (`Application.CreateGUID` 438, `Eval("CreateGUID()")` 2425), and no runtime
+   exports one. VB code makes one with `CreateObject("Scriptlet.TypeLib").Guid`, which is braced
+   (`{...}`, and two trailing NULs: 40 characters), or `StringFromGUID2`, braced. twinBASIC's
+   `GetDeclaredTypeIid` and its kin return the braced form; `CreateGUID` the 36-character form the
+   `ClassId` and `InterfaceId` attributes take. **Owner: the existing behaviour is the spec**,
+   as the page now states it.
+6. **"What does VBx do?" for `AllocMem(0)`**: nothing to compare: no AllocMem in VB6, VBA, msvbvm60
+   or VBE7 (their GetMem/PutMem family has no allocator). Windows' allocators (`HeapAlloc`,
+   `CoTaskMemAlloc`, `GlobalAlloc`) return a block for 0 bytes. **Owner: the existing behaviour
+   is the spec**: the page's row of -2147024882 for 0 or less stands.
+
 ## The 64-bit VBA re-check (BETA 1010, Office 365 x64, VBA 7.1 VBE7.DLL 7.01.1158, 2026-10-22)
 
 Batches 2 to 5 and `Core.yml` in all four runtimes. Every runtime agreed with the data as it
@@ -945,10 +1244,10 @@ each can be run when there is budget. Status is kept here.
 | 5 | VBA `DateTime` | 20 | done: 17 sections, 328 cases; owner's questions answered 2026-10-22 |
 | 6a | VBA `Information`, and `Interaction`'s non-interactive procedures: `CallByName`, `CallByDispId`, `Choose`, `Command`, `CreateObject`, `GetObject`, `Environ`, `IIf`, `If`, `Partition`, `Switch`, `RaiseEventByName`, `RaiseEventByName2`, `SaveSetting`, `GetSetting`, `GetAllSettings`, `DeleteSetting` (owner split batch 6, 2026-10-22) | 45 | done: 27 sections, 302 cases; four entries queued 2026-10-22 |
 | 6b | `Interaction`'s interactive procedures: `AppActivate`, `Beep`, `DoEvents`, `InputBox`, `MsgBox`, `SendKeys`, `Shell`, under the `dialog`, `keys` and `window` harnesses (`Shell` only with programs that do not exist or `cmd.exe /c exit`) | 7 | done: 5 sections, 164 cases; three entries queued 2026-10-27 |
-| 7 | VBA `FileSystem` | 23 | not started |
-| 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | not started |
-| 9 | VBA `Financial` | 14 | not started |
-| 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | not started |
+| 7 | VBA `FileSystem`, under the `files` harness | 23 | done: 21 sections, 448 cases; three entries queued, one extended, 2026-10-27 |
+| 8 | VBA `Collection` and `ErrObject` (and the `Err.Raise` differences under *The central page*) | 22 | done: 10 sections, 259 cases; three entries queued 2026-10-27; owner's rulings 2026-10-28 |
+| 9 | VBA `Financial` | 14 | done: 13 sections, 349 cases; five entries queued, one extended; owner's rulings 2026-10-28 |
+| 10 | VBA `HiddenModule`, then `Compilation` and `TbExpressionService` (`Constants` has nothing to raise) | 68 | 35 sections, 280 cases, harnesses `native` and `expression`; four entries queued; owner's rulings 2026-10-28 |
 | 11 | Core file I/O statements (`Open`, `Get`, `Put`, `Input`, ...: errors 52--75) | 15 | not started |
 | 12 | Core arrays and control flow (`ReDim`, `Erase`, `Resume`, `Return`, ...); ReDim has data already, in `errors/Core.yml` | 15 | not started |
 | 13 | Operators: the matrix generator and its pages | 25 | not started |

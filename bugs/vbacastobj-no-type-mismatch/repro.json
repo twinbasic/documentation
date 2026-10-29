@@ -1,0 +1,13 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Control_IUnknown_ReturnsTheInterface$",
+      "^PASS RegressionTests.Control_IDispatch_ReturnsTheInterface$",
+      "^PASS RegressionTests.Control_Nothing_ReturnsNothing$",
+      "^FAIL RegressionTests.InterfaceItLacks_Raises13: .*Expected: 13 .*Actual: 0 ",
+      "^FAIL RegressionTests.StringGivenAsTheInterfaceId_Raises13: .*Expected: 13 .*Actual: 0 "
+    ]
+  }
+}

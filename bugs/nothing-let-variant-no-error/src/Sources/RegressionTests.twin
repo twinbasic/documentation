@@ -1,0 +1,46 @@
+' Regression tests: assigning Nothing to a Variant without Set raises 91, Object variable or With
+' block variable not set, and leaves the Variant Empty, as VB6 does: it reads the assignment as
+' a Let of the default value of an object that is not there. On BETA 1010 the Variant holds
+' Nothing and no error is raised. The controls: Set stores Nothing, and a Let of Nothing to an
+' Object variable raises 91 in both.
+' The VB6 project beside this one runs the same statements.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub LetVariant_Raises91()
+        Dim Value As Variant
+        Value = 3
+        On Error Resume Next
+        Value = Nothing
+        Assert.Strict.AreEqual 91, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub LetVariant_LeavesItEmpty()
+        Dim Value As Variant
+        Value = 3
+        On Error Resume Next
+        Value = Nothing
+        On Error GoTo 0
+        Assert.Strict.IsTrue IsEmpty(Value)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SetVariant_HoldsNothing()
+        Dim Value As Variant
+        Value = 3
+        Set Value = Nothing
+        Assert.Strict.IsTrue Value Is Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub Control_LetObject_Raises91()
+        Dim Obj As Object
+        On Error Resume Next
+        Obj = Nothing
+        Assert.Strict.AreEqual 91, Err.Number
+    End Sub
+
+End Module

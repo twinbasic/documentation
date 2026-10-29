@@ -18,6 +18,15 @@ Syntax: **PutMem4** *Address* **,** *Value*
 
 The bytes are written in the host's native byte order --- little-endian on x86 and x64. The address is written directly with no bounds or alignment check.
 
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *Address* or *Value* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 This example writes a 32-bit value to a buffer and reads it back.

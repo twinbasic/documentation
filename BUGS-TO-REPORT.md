@@ -1150,17 +1150,17 @@ Severity: crash. The crash is in the read, so no `On Error` handler helps, and a
 ## File statements and functions raise *Unspecified error* (-2147467259) in place of VB6's error numbers
 
 **Describe the bug**
-When a file statement or function fails, twinBASIC raises run-time error -2147467259 (`&H80004005`, *Unspecified error*) where VB6 raises a numbered error: 52 *Bad file name or number*, 53 *File not found*, 55 *File already open*, 58 *File already exists*, 59 *Bad record length*, 63 *Bad record number*, 75 *Path/File access error* or 76 *Path not found*. Of 42 failing file operations, 37 raise -2147467259, and the other 5 match VB6. An `On Error` handler written for VB6, which tests `Err.Number` for one of those numbers, does not recognise the error. Observed in a run of the reproducer project, in the IDE and in a built exe alike.
+When a file statement or function fails, twinBASIC raises run-time error -2147467259 (`&H80004005`, *Unspecified error*) where VB6 and 64-bit VBA raise a numbered error: 5 *Invalid procedure call or argument*, 52 *Bad file name or number*, 53 *File not found*, 54 *Bad file mode*, 55 *File already open*, 58 *File already exists*, 59 *Bad record length*, 62 *Input past end of file*, 63 *Bad record number*, 67 *Too many files*, 68 *Device unavailable*, 75 *Path/File access error* or 76 *Path not found*. Of 72 failing file operations, 67 raise -2147467259, and the other 5 match VB6. An `On Error` handler written for VB6, which tests `Err.Number` for one of those numbers, does not recognise the error. Observed in a run of the reproducer project, in the IDE and in a built exe alike.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `file-errors-unspecified.twinproj` (attached as `file-errors-unspecified.zip`) and run it (F5). Its `Sub Main` makes a folder in `%TEMP%`, makes 42 file operations fail one at a time under `On Error Resume Next`, and prints `<case>: <Err.Number> <Err.Description>` after each. The smallest of them:
+1. Open `file-errors-unspecified.twinproj` (attached as `file-errors-unspecified.zip`) and run it (F5). Its `Sub Main` makes a folder in `%TEMP%`, makes 72 file operations fail one at a time under `On Error Resume Next`, and prints `<case>: <Err.Number> <Err.Description>` after each. The smallest of them:
    ```
    On Error Resume Next
    Kill Environ$("TEMP") & "\no-such-file.txt"
    Debug.Print Err.Number, Err.Description
    ```
-2. See `-2147467259 Unspecified error` in each of these 37 cases, where the same program built in VB6 (attached as `file-errors-unspecified-vb6.zip`) prints the number shown:
+2. See `-2147467259 Unspecified error` in each of these 67 cases, where the same program built in VB6 (attached as `file-errors-unspecified-vb6.zip`) prints the number shown:
 
    | operation that fails | VB6 |
    |---|---|
@@ -1186,26 +1186,51 @@ Steps to reproduce the behavior:
    | `EOF`, `LOF`, `Loc`, `Seek`, `FileAttr`, `Get #`, `Put #`, `Print #` and `Line Input #` with file number 99, which is not open (9 cases) | 52 |
    | `Seek #f, 0` | 63 |
    | `Put` of a 22-character string to a `Random` file opened with `Len = 4` | 59 |
+   | `ChDir` to a file, to `""` and to a wildcard (3 cases) | 76 |
+   | `ChDrive` and `CurDir` of a drive letter no drive has (2 cases) | 68 |
+   | `ChDrive` and `CurDir` of `"1"`, which is not a letter (2 cases) | 5 |
+   | `Dir()` after `Dir` has returned `""` | 5 |
+   | `Dir` of a file name with a backslash at its end | 52 |
+   | `Dir` of a name of 256 characters | 53 |
+   | `FileAttr` with a *returntype* of 2 | 5 |
+   | `FileCopy` from `""` | 75 |
+   | `FileCopy` from a wildcard | 52 |
+   | `FileLen` of a file in a folder that does not exist | 76 |
+   | `FileLen` of a wildcard that matches nothing | 52 |
+   | `FreeFile` with every file number from 1 to 255 in use | 67 |
+   | `GetAttr` of a wildcard | 52 |
+   | `GetAttr` of a name with `<` in it | 5 |
+   | `Input` and `InputB` of more characters than are left in a file open `For Input` (2 cases) | 62 |
+   | `Input` from a file open `For Output` | 54 |
+   | `Input` of -1 characters | 5 |
+   | `Input` from file number 99, which is not open | 52 |
+   | `Kill` of a folder | 53 |
+   | `Kill` of a wildcard that matches a read-only file | 75 |
+   | `MkDir ""` | 76 |
+   | `RmDir` of a file | 76 |
+   | `RmDir` of the current directory | 75 |
+   | `SetAttr` of a wildcard | 52 |
+   | `Width #99`, which is not open | 52 |
 
 3. See the 5 cases that match VB6: `FileCopy` of a file that does not exist (53) and into a folder that does not exist (76), `Line Input #` past the end of the file (62), and `Close` of a file number that is not open and `SetAttr` of a file open `For Input`, which raise no error in either.
 
 **Expected behavior**
-The numbers in the table, with VB6's descriptions, as for the 5 cases that already match. A VB6 program that handles a missing file by testing `Err.Number = 53` takes its other branch in twinBASIC.
+The numbers in the table, with VB6's descriptions, as for the 5 cases that already match; 64-bit VBA raises the same numbers. A VB6 program that handles a missing file by testing `Err.Number = 53` takes its other branch in twinBASIC.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-This extends #2345, which reports the first row of the table, and is part of #56. `FileCopy` raises VB6's numbers, since #2451 fixed it.
+This extends #2345, which reports the first row of the table, and is part of #56. `FileCopy` raises VB6's numbers for a source or a folder that does not exist, since #2451 fixed it; the numbers it raises for the other failures are a separate report.
 
-The same in a built exe as in the IDE, and the same with the project setting *Use Unicode Standard Library* set to No. In code compiled with LLVM the number is the same, and the description is *Application-defined or object-defined error*.
+The same in a built exe as in the IDE, and the same with the project setting *Use Unicode Standard Library* set to No. In code compiled with LLVM the number is the same, and the description is *Application-defined or object-defined error*. A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
 
 What does not reproduce it: the `DirListBox` and `FileListBox` controls trap the error themselves, and raise 76 for a `Path` that does not exist, as VB6 does.
 
 Severity: moderate. An error is raised wherever VB6 raises one, so no failure goes unreported. But a handler that tests for the number does not recognise the error, a handler that shows `Err.Description` shows *Unspecified error*, and code that decides a file exists from `Err.Number <> 53` decides wrongly.
 
-<!-- Reproducer: bugs/file-errors-unspecified/ (mode run; expect lists the 37 lines that print -2147467259, so a fix of some statements and not others shows as NO LONGER REPRODUCES). verify reproduces on BETA 1005; VB6 side in vb6/, built and run by bug_repro.mjs vb6; the built-exe and LLVM results and the Use Unicode Standard Library check are from probes in a local scratch folder, not in the repository. Found while testing scripts/imagestrip/, a twinBASIC console program that strips the metadata from the images in the IDE's CSS files. Stated in a NOTE naming BETA 1005 on each of these pages: docs/Reference/Core/Open.md, Name.md, Get.md, Put.md, Print.md (under "Writing to a file") and Line-Input.md; docs/Reference/Default/VBA/FileSystem/Kill.md, GetAttr.md, SetAttr.md (the NOTE, not the WARNING, which belongs to the SetAttr entry), FileLen.md, FileDateTime.md, MkDir.md, RmDir.md, ChDir.md, EOF.md, LOF.md, Loc.md, Seek.md and FileAttr.md. When a statement is fixed, its NOTE goes, and its page states the error number it raises with no mention of the defect. -->
+<!-- Reproducer: bugs/file-errors-unspecified/ (mode run; expect lists the 67 lines that print -2147467259, so a fix of some statements and not others shows as NO LONGER REPRODUCES). verify reproduces on BETA 1010; VB6 side in vb6/, built and run by bug_repro.mjs vb6; the built-exe and LLVM results and the Use Unicode Standard Library check are from probes in a local scratch folder, not in the repository; 64-bit and 64-bit VBA from the run-time errors data (errors/VBA.FileSystem.yml, `errors.mjs run`, all four runtimes). Found while testing scripts/imagestrip/, a twinBASIC console program that strips the metadata from the images in the IDE's CSS files; the 30 cases from ChDir to a file on were added 2026-10-27 by batch 7 of WIP.Errors.md. Stated in a NOTE on each of these pages: docs/Reference/Core/Open.md, Name.md, Get.md, Put.md, Print.md (under "Writing to a file") and Line-Input.md (hand NOTEs, until batch 11); and in the Common Errors sections (rows `bug: file-errors-unspecified`) of docs/Reference/Default/VBA/FileSystem/ChDir, ChDrive, CurDir, Dir, EOF, FileAttr, FileCopy, FileDateTime, FileLen, FreeFile, GetAttr, Input, InputB, Kill, LOF, Loc, MkDir, RmDir, Seek, SetAttr and Width, from errors/VBA.FileSystem.yml. When a statement is fixed, its row's cases move to a row of VB's number and the NOTE goes (a hand NOTE goes, and its page states the error number it raises with no mention of the defect). -->
 
 ---
 
@@ -1237,7 +1262,7 @@ Error 55 for a file open `For Output`, `Append`, `Binary` or `Random`, with its 
 **Additional context**
 Severity: low, but silent. No error is raised, and the file's attributes change where VB6 leaves them alone: the file stays read-only until its attributes are set back.
 
-<!-- Reproducer: bugs/setattr-open-file-no-error/ (mode run; expect lists the four lines for the write modes). verify reproduces on BETA 1005; VB6 side in vb6/. Found while checking the error numbers of the file statements (the entry above). Stated in docs/Reference/Default/VBA/FileSystem/SetAttr.md: the sentence that SetAttr sets the attributes of an open file without an error, and the WARNING after it, naming BETA 1005. The VBA-Docs sentence it replaced ("A run-time error occurs when setting the attributes of an open file") was true of neither product as written. When fixed, the WARNING goes and the sentence says that SetAttr raises error 55 for a file open for Output, Append, Binary or Random, and sets the attributes of a file open for Input. -->
+<!-- Reproducer: bugs/setattr-open-file-no-error/ (mode run; expect lists the four lines for the write modes). verify reproduces on BETA 1005; VB6 side in vb6/. Found while checking the error numbers of the file statements (the entry above). Stated in docs/Reference/Default/VBA/FileSystem/SetAttr.md: the sentence that SetAttr sets the attributes of an open file without an error, the WARNING after it, and the Common Errors section's NOTE (the row `bug: setattr-open-file-no-error` in errors/VBA.FileSystem.yml, whose cases 64-bit twinBASIC and 64-bit VBA agree with, batch 7 of WIP.Errors.md, 2026-10-27). VB6 and 64-bit VBA also raise 55 for a file open For Binary Access Read, which the row leaves out. The VBA-Docs sentence it replaced ("A run-time error occurs when setting the attributes of an open file") was true of neither product as written. When fixed, the WARNING goes and the sentence says that SetAttr raises error 55 for a file open for Output, Append, Binary or Random, and sets the attributes of a file open for Input. -->
 
 ---
 
@@ -7259,13 +7284,14 @@ Given an argument they refuse, several runtime procedures raise -2147467259 (`&H
 - `Shell` with a zero-length path, spaces, a folder, a file that is not a program, or a path longer than 32,767 characters: 5; with a program or folder that does not exist, or an unclosed quotation mark: 53, *File not found*; with a *windowstyle* less than 0 or greater than 10: 5.
 - `MsgBox` and `InputBox` with a *helpfile* and no *context*: 5.
 - `SendKeys` raises -2147352567 (`&H80020009`), *Exception occurred.*, instead: for an unknown key code (`{INS}` and `{F17}` included), an unclosed brace, a count in braces that is not a whole number from 0 to 8,175, unbalanced parentheses or `++`, VB raises 5; for a *wait* of `Null`, 94; for a *wait* string that is not a `Boolean`, 13.
+- The Financial functions, where VB raises 5: `DDB`, `SLN` and `SYD` with a *life* of 0 or less (`SLN`: of 0), `DDB` and `SYD` with a *period* of 0 or less or greater than *life*, or a *salvage* less than 0, and `DDB` with a *factor* of 0 or less; `IPmt` with an *nper* of 0 or less and `PPmt` with an *nper* less than 0; `Pmt` with a *rate* and an *nper* of 0, and `NPer` with a *rate* and a *pmt* of 0; `Rate` with an *nper* of 0 or less, or no result in 20 tries from *guess*; `IRR` with no payment or no receipt in *values*, or no result in 20 tries. `Rate` with an *nper* below 1 whose result is beyond the range of a `Double`: VB raises 6.
 
 It is the pattern of #2544 (`ReDim` with inverted bounds raises -2147467259 where VB6 raises 9). Observed in the compiler's test mode and in built exes, 32-bit and 64-bit.
 
 **To Reproduce**
 Steps to reproduce the behavior:
 1. Open `argument-errors-unspecified-error.twinproj` (attached as `argument-errors-unspecified-error.zip`).
-2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other twenty-five fail, each with `Err.Number` -2147467259, or -2147352567 for the two `SendKeys` cases.
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other thirty-five fail, each with `Err.Number` -2147467259, or -2147352567 for the two `SendKeys` cases.
 
 The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`argument-errors-unspecified-error-vb6.zip`) prints; 64-bit VBA raises the same numbers. No case writes to the registry: the registry procedures are given names that do not exist.
 ```vb
@@ -7507,6 +7533,88 @@ Module RegressionTests
         Assert.Strict.AreEqual 94&, Err.Number
     End Sub
 
+    ' The Financial functions (batch 9).
+    [TestCase]
+    Public Sub DDB_LifeZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = DDB(1000, 100, 0, 1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub SLN_LifeZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = SLN(1000, 100, 0)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub SYD_PeriodAboveLife_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = SYD(1000, 100, 5, 6)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub IPmt_NperZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = IPmt(0.01, 1, 0, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_NperNegative_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = PPmt(0.01, 1, -10, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Pmt_RateAndNperZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = Pmt(0, 0, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub NPer_RateAndPmtZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = NPer(0, 0, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Rate_NperZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = Rate(0, -100, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Rate_NperBelowOneOverflow_Raises6()
+        Dim R As Double
+        On Error Resume Next
+        R = Rate(0.5, -100, 1000)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub IRR_NoReceipt_Raises5()
+        Dim R As Double, F(1) As Double
+        F(0) = -100: F(1) = -110
+        On Error Resume Next
+        R = IRR(F)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
 End Module
 ```
 
@@ -7524,7 +7632,7 @@ A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01
 
 What does not reproduce it: the errors these procedures already raise with VB's numbers, such as `LBound` of an array not yet sized (9), `QBColor` outside 0 to 15 (5), `RGB` with a negative component (5), and `Null` for any of the arguments above (94).
 
-<!-- Reproducer: bugs/argument-errors-unspecified-error/ (mode test: `tbrun --tests`; expect lists the three PASS and twenty-five FAIL lines); run on BETA 1010 with `bug_repro.mjs run`; 64-bit from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: argument-errors-unspecified-error`) of LBound, UBound, Switch, Partition, Environ, GetObject, CallByName, SaveSetting, GetSetting, GetAllSettings, DeleteSetting, AppActivate, Shell, MsgBox, InputBox and SendKeys, from errors/VBA.Information.yml and errors/VBA.Interaction.yml; when fixed, each row's `error` becomes VB's number and its `vb6` and `bug` go, and the NOTEs with them. Found 2026-10-22 by batch 6a of WIP.Errors.md; grouped as one entry by the owner. The interactive procedures added 2026-10-27 by batch 6b (owner: SendKeys' -2147352567 joins it); the VB6 side carries a copy of errors/harnesses/dialog.bas for its MsgBox and InputBox cases. -->
+<!-- Reproducer: bugs/argument-errors-unspecified-error/ (mode test: `tbrun --tests`; expect lists the three PASS and thirty-five FAIL lines); run on BETA 1010 with `bug_repro.mjs run`; 64-bit from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: argument-errors-unspecified-error`) of LBound, UBound, Switch, Partition, Environ, GetObject, CallByName, SaveSetting, GetSetting, GetAllSettings, DeleteSetting, AppActivate, Shell, MsgBox, InputBox and SendKeys, from errors/VBA.Information.yml and errors/VBA.Interaction.yml, and of DDB, SLN, SYD, IPmt, PPmt, Pmt, NPer, Rate and IRR, from errors/VBA.Financial.yml (the Financial functions added 2026-10-28 by batch 9); when fixed, each row's `error` becomes VB's number and its `vb6` and `bug` go, and the NOTEs with them. Found 2026-10-22 by batch 6a of WIP.Errors.md; grouped as one entry by the owner. The interactive procedures added 2026-10-27 by batch 6b (owner: SendKeys' -2147352567 joins it); the VB6 side carries a copy of errors/harnesses/dialog.bas for its MsgBox and InputBox cases. -->
 
 ---
 
@@ -8493,3 +8601,2534 @@ Severity: low. Programs on the user's own desktop are not affected.
 When the window is created hidden and shown with `SW_SHOWNA`, the 2 s moves from `CreateWindowEx` into `AppActivate`; so the wait belongs to the activation of a new window, whichever call makes it. The program never calls `GetForegroundWindow` during it. On a private desktop no window becomes the foreground window; something in the twinBASIC runtime apparently waits for that, with a 2 s limit.
 
 <!-- Reproducer: bugs/private-desktop-window-activation-delay/ (mode run with exe: `tbrun --exe`, which starts the exe on a private desktop; expect lists windows 2 to 4 at 2 s); verified on BETA 1010 by `bug_repro.mjs verify`. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints 0.00 for every step on a private desktop. On the user's desktop (owner, 2026-10-27, a run of the same program from the session's scratchpad) twinBASIC took 0.02 s a window. Not stated on any page: the documentation does not run on a private desktop; scripts/errors.mjs gives a twinBASIC probe 120 s because of it (WIP.Errors.md, the window harness). Found 2026-10-22 by batch 6b of WIP.Errors.md; owner: a bug, surprising for anyone who tests on a private desktop. -->
+
+---
+
+## `Kill` deletes hidden and system files, where VB6 and VBA raise error 53 and leave them
+
+**Describe the bug**
+`Kill` deletes a file that has the hidden or the system attribute, and raises no error. VB6 and 64-bit VBA never delete such a file: `Kill` of a hidden or system file raises 53, *File not found*, and leaves it, and a wildcard skips such files, deleting the others it matches (and raising 53 when it matches nothing else). So `Kill "*.*"` in twinBASIC also deletes the hidden and system files of the folder, which a VB6 program relies on it to keep. Observed by running the reproducer's test cases.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `kill-hidden-system-files.twinproj` (attached as `kill-hidden-system-files.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the other five fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`kill-hidden-system-files-vb6.zip`) prints; 64-bit VBA raises the same numbers. Every case runs under a copy of a files harness, which makes a folder of the case's own under `%TEMP%` the current directory, fills it with the files the case names, and deletes it after the case, so no case touches any other file. The harness is in the attached project, left out below.
+```vb
+' Regression tests: Kill refuses a hidden or a system file with error 53, as VB6 and 64-bit VBA
+' do, and a wildcard skips such files, where twinBASIC deletes them.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+    ' ... the copy of the files harness: in the attached project. files_Begin makes a folder of
+    ' the case's own the current directory, with a.txt (10 bytes), empty.txt, ro.txt (read-only),
+    ' hid.txt (hidden), the empty folder sub and the folder full holding f.txt; files_End closes
+    ' every file, deletes the folder and keeps the case's error; files_Attr is GetFileAttributesW ...
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub Kill_NormalFile_Deletes()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Kill "a.txt"
+        Holds = files_Attr("a.txt") = -1
+        files_End
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub Kill_ReadOnlyFile_RaisesAndKeepsIt()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Kill "ro.txt"
+        Holds = files_Attr("ro.txt") <> -1
+        files_End
+        Assert.Strict.AreNotEqual 0&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    [TestCase]
+    Public Sub Kill_HiddenFile_Raises53()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Kill "hid.txt"
+        Holds = files_Attr("hid.txt") <> -1
+        files_End
+        Assert.Strict.AreEqual 53&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    [TestCase]
+    Public Sub Kill_SystemFile_Raises53()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        SetAttr "a.txt", vbSystem
+        Kill "a.txt"
+        Holds = files_Attr("a.txt") <> -1
+        files_End
+        Assert.Strict.AreEqual 53&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    [TestCase]
+    Public Sub Kill_HiddenSystemFile_Raises53()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        SetAttr "a.txt", vbHidden + vbSystem
+        Kill "a.txt"
+        Holds = files_Attr("a.txt") <> -1
+        files_End
+        Assert.Strict.AreEqual 53&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    [TestCase]
+    Public Sub Kill_WildcardMatchingOnlyAHiddenFile_Raises53()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Kill "h*"
+        Holds = files_Attr("hid.txt") <> -1
+        files_End
+        Assert.Strict.AreEqual 53&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    [TestCase]
+    Public Sub Kill_Wildcard_LeavesHiddenFile()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        SetAttr "ro.txt", vbNormal
+        Kill "*.txt"
+        Holds = files_Attr("hid.txt") <> -1
+        files_End
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 53 for `Kill` of a hidden or a system file, the file left in place, and a wildcard that skips hidden and system files, as VB6 and 64-bit VBA do.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: high. Files are deleted that a VB6 or VBA program would keep, with no error: `desktop.ini`, `Thumbs.db` and other hidden or system files in a folder a program empties with `Kill "*.*"`.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a file with the read-only attribute (75 in VB, -2147467259 in twinBASIC, the entry on *Unspecified error*, and the file kept in all three); a file with only the archive attribute, which all of them delete.
+
+<!-- Reproducer: bugs/kill-hidden-system-files/ (mode test: `tbrun --tests`; expect lists the two PASS and five FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`, and in a 64-bit run (`run --arch win64`); 64-bit VBA from the run-time errors data (`errors.mjs run`, all four runtimes). Both sides carry a copy of errors/harnesses/files.bas. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case and whether the file is as the case expects. Stated in the WARNING on docs/Reference/Default/VBA/FileSystem/Kill.md and in its Common Errors section (row `bug: kill-hidden-system-files` in errors/VBA.FileSystem.yml); when fixed, the row's cases move to a row of 53, and the NOTE and the WARNING go. Found 2026-10-27 by batch 7 of WIP.Errors.md. -->
+
+---
+
+## `FileCopy` raises 70 where VB6 and VBA raise 75, and 55 where they raise 70
+
+**Describe the bug**
+When `FileCopy` fails for one of these reasons, it raises another number than VB6 and 64-bit VBA:
+- *source* is a folder, or *destination* is a folder, a read-only file or a hidden file: twinBASIC raises 70, *Permission denied*; VB raises 75, *Path/File access error*.
+- *destination* is *source* itself, by any spelling (`"a.txt"`, `"A.TXT"`, `".\a.txt"`), or *source* is open `For Input Lock Read`: twinBASIC raises 55, *File already open*; VB raises 70.
+
+An error is raised in each case, and nothing is copied, but a handler written for VB6 or VBA does not recognise it.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `filecopy-error-numbers.twinproj` (attached as `filecopy-error-numbers.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the other seven fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`filecopy-error-numbers-vb6.zip`) prints; 64-bit VBA raises the same numbers. Every case runs under a copy of a files harness, which makes a folder of the case's own under `%TEMP%` the current directory, fills it with the files the case names, and deletes it after the case, so no case touches any other file. The harness is in the attached project, left out below.
+```vb
+' Regression tests: FileCopy raises VB6's numbers, 70 for a copy onto its own source or of a
+' source locked against reading, and 75 for a folder or a read-only or hidden destination.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+    ' ... the copy of the files harness: in the attached project. files_Begin makes a folder of
+    ' the case's own the current directory, with a.txt (10 bytes), empty.txt, ro.txt (read-only),
+    ' hid.txt (hidden), the empty folder sub and the folder full holding f.txt; files_End closes
+    ' every file, deletes the folder and keeps the case's error; files_Attr is GetFileAttributesW ...
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub FileCopy_MissingSource_Raises53()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "nosuch.txt", "b.txt"
+        files_End
+        Assert.Strict.AreEqual 53&, Err.Number
+    End Sub
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub FileCopy_SourceOpenForAppend_Raises55()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Open "a.txt" For Append As #1
+        FileCopy "a.txt", "b.txt"
+        files_End
+        Assert.Strict.AreEqual 55&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_OntoItself_Raises70()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "a.txt", "a.txt"
+        files_End
+        Assert.Strict.AreEqual 70&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_OntoItselfOtherCase_Raises70()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "a.txt", "A.TXT"
+        files_End
+        Assert.Strict.AreEqual 70&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_SourceOpenLockRead_Raises70()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Open "a.txt" For Input Lock Read As #1
+        FileCopy "a.txt", "b.txt"
+        files_End
+        Assert.Strict.AreEqual 70&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_SourceFolder_Raises75()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "sub", "b.txt"
+        files_End
+        Assert.Strict.AreEqual 75&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_DestinationFolder_Raises75()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "a.txt", "sub"
+        files_End
+        Assert.Strict.AreEqual 75&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_DestinationReadOnly_Raises75()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "a.txt", "ro.txt"
+        Holds = FileLen("ro.txt") = 1
+        files_End
+        Assert.Strict.AreEqual 75&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    [TestCase]
+    Public Sub FileCopy_DestinationHidden_Raises75()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        FileCopy "a.txt", "hid.txt"
+        Holds = FileLen("hid.txt") = 1
+        files_End
+        Assert.Strict.AreEqual 75&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+75 for a folder or a read-only or hidden destination, and 70 for a copy onto the source or of a source locked against reading, as VB6 and 64-bit VBA raise.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. Each failure raises an error, but not the number a VB6 or VBA handler tests for.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a source that does not exist (53) or a folder that does not exist (76), which #2451 fixed; a source open with write access (55 in all). The other failures of `FileCopy` that raise -2147467259 (a zero-length name, a wildcard) are in the entry on *Unspecified error*. twinBASIC also copies a source open with `Access Read` in any mode, where VB raises 55; the owner takes that as an extension.
+
+<!-- Reproducer: bugs/filecopy-error-numbers/ (mode test: `tbrun --tests`; expect lists the two PASS and seven FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`, and in a 64-bit run (`run --arch win64`); 64-bit VBA from the run-time errors data (`errors.mjs run`, all four runtimes). Both sides carry a copy of errors/harnesses/files.bas. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors section of docs/Reference/Default/VBA/FileSystem/FileCopy.md (rows `bug: filecopy-error-numbers` in errors/VBA.FileSystem.yml); when fixed, each row's cases move to a row of VB's number and the NOTEs go. Found 2026-10-27 by batch 7 of WIP.Errors.md. -->
+
+---
+
+## `CurDir`, `Dir`, `FileDateTime`, `FileLen`, `Input` and `Width` check their arguments differently from VB6 and VBA
+
+**Describe the bug**
+Given these arguments, the procedures do something other than VB6 and 64-bit VBA:
+- `CurDir(Null)` and `Dir(Null)` raise 94, *Invalid use of Null*; VB raises 13, *Type mismatch*.
+- `FileLen` and `FileDateTime` of a name with a wildcard that matches something (`"*.txt"`, `"e*"`, `"a.tx?"`) return the length or the date of the first match, which may be a hidden file or a folder, and raise nothing; VB raises 52, *Bad file name or number*. (A wildcard that matches nothing raises -2147467259, the entry on *Unspecified error*; so does `"a?txt"`.)
+- `Width #f, n` with a negative *n* raises nothing, and `Print #f` then starts a new line before each item after the first; VB raises 5, *Invalid procedure call or argument*.
+- `Input(0, #f)` raises -2147467259, *Unspecified error*; VB returns a zero-length string. (`InputB(0, #f)` returns one in both.)
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `filesystem-argument-checks.twinproj` (attached as `filesystem-argument-checks.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other six fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`filesystem-argument-checks-vb6.zip`) prints; 64-bit VBA raises the same numbers. Every case runs under a copy of a files harness, which makes a folder of the case's own under `%TEMP%` the current directory, fills it with the files the case names, and deletes it after the case, so no case touches any other file. The harness is in the attached project, left out below.
+```vb
+' Regression tests: CurDir, Dir, FileDateTime, FileLen, Input and Width check their arguments
+' as VB6 and 64-bit VBA do: 13 for a Null drive or path, 52 for a wildcard where a file name is
+' expected, 5 for a negative width, and no error for Input of 0 characters.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+    ' ... the copy of the files harness: in the attached project. files_Begin makes a folder of
+    ' the case's own the current directory, with a.txt (10 bytes), empty.txt, ro.txt (read-only),
+    ' hid.txt (hidden), the empty folder sub and the folder full holding f.txt; files_End closes
+    ' every file, deletes the folder and keeps the case's error; files_Attr is GetFileAttributesW ...
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub CurDir_ZeroLength_ReturnsCurrent()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        V = CurDir("")
+        files_End
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub FileLen_File_Returns10()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        V = FileLen("a.txt")
+        Holds = V = 10
+        files_End
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+    ' A control: twinBASIC already does this.
+    [TestCase]
+    Public Sub Width_255_Accepted()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Open "b.txt" For Output As #1
+        Width #1, 255
+        files_End
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub CurDir_Null_Raises13()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        V = CurDir(Null)
+        files_End
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Dir_Null_Raises13()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        V = Dir(Null)
+        files_End
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileLen_Wildcard_Raises52()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        V = FileLen("*.txt")
+        files_End
+        Assert.Strict.AreEqual 52&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FileDateTime_Wildcard_Raises52()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        V = FileDateTime("e*")
+        files_End
+        Assert.Strict.AreEqual 52&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Width_Negative_Raises5()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Open "b.txt" For Output As #1
+        Width #1, -1
+        files_End
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Input_ZeroCharacters_ReturnsEmpty()
+        Dim V As Variant, Holds As Boolean
+        On Error Resume Next
+        files_Begin
+        Open "a.txt" For Input As #1
+        V = Input(0, #1)
+        Holds = V = ""
+        files_End
+        Assert.Strict.AreEqual 0&, Err.Number
+        Assert.Strict.IsTrue Holds
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+13 for a `Null` drive or path, 52 for a wildcard in `FileLen` and `FileDateTime`, 5 for a negative width, and a zero-length string from `Input(0, #f)`, as VB6 and 64-bit VBA give.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045), system locale 1033
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium for `FileLen` and `FileDateTime`, which return a value for a file the program did not name, silently, and for a negative `Width`, which changes what `Print #` writes, silently. Low for the rest.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a *Width* from 0 to 255, or from 256 to 32,767, which twinBASIC takes as a line width where VB raises 5 (the owner takes that as an extension); `FileLen` and `FileDateTime` of a file or a folder named without a wildcard; `Input` of 1 or more characters.
+
+<!-- Reproducer: bugs/filesystem-argument-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and six FAIL lines); verified on BETA 1010 by `bug_repro.mjs verify`, and in a 64-bit run (`run --arch win64`); 64-bit VBA from the run-time errors data (`errors.mjs run`, all four runtimes). Both sides carry a copy of errors/harnesses/files.bas. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: filesystem-argument-checks` in errors/VBA.FileSystem.yml) of CurDir, Dir, FileDateTime, FileLen, Input and Width under docs/Reference/Default/VBA/FileSystem/, and in the WARNINGs on FileDateTime.md, FileLen.md and Width.md; when fixed, each row's cases move to a row of VB's number (Input's to its quiet cases), and the NOTEs and the WARNINGs go. Found 2026-10-27 by batch 7 of WIP.Errors.md; owner: bugs, while Dir's attributes, non-String arguments of Dir and CurDir, FileCopy of a source open for reading, SetAttr's attributes and a Width above 255 are extensions. -->
+
+---
+
+## Assigning `Err.HelpFile` or `Err.HelpContext`, or `Err.ReturnHResult` in a module, compiles but fails the build with a codegen error
+
+**Describe the bug**
+A statement that assigns `Err.HelpFile` or `Err.HelpContext` compiles with no diagnostic, but the build fails with a code-generation error in the procedure that holds it:
+```
+[LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #3
+[LINKER] FAILED due to compilation errors '...\ErrHelpfileHelpcontextCodegen_win32.exe'
+[BUILD] failed
+```
+The same happens through `With Err`, `VBA.Err` and a variable declared `As ErrObject`, for a constant or a variable value, and for `Err.ReturnHResult` assigned in a procedure of a module. In the compiler's test mode, which builds nothing, each such procedure ends at once as *aborted*.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Create a project whose only module is:
+   ```vb
+   Module Startup
+       Public Sub Main()
+           Err.HelpFile = "x"
+           Debug.Print Err.HelpFile
+       End Sub
+   End Module
+   ```
+2. Compile it: no diagnostic. Build it: the build fails with the error above, naming the line of the assignment.
+3. Or open `err-helpfile-helpcontext-codegen.twinproj` (attached as `err-helpfile-helpcontext-codegen.zip`) and run its test cases, the module below, with the class `Thing` it calls. On BETA 1010 the five controls pass and the other four end as *aborted*.
+
+The module is meant to be adapted as a regression test. Each case assigns a property of `Err` and reads it back; the attached VB6 project (`err-helpfile-helpcontext-codegen-vb6.zip`) makes the same assignments and prints `HelpFile: [x]`, `HelpContext: 5` and `HelpFile through ErrObject: [y]`.
+```vb
+' The issue's regression tests. Each assigns one property of Err and reads it back.
+' The controls (Description, Source, Number, HelpFile and HelpContext through an
+' Object variable, and ReturnHResult in a class method) pass; HelpFile and
+' HelpContext assigned through Err itself, or through a variable declared As
+' ErrObject, and ReturnHResult in a module procedure, do not build.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_SetDescription()
+        Err.Description = "x"
+        Assert.Strict.AreEqual "x", Err.Description
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SetSource()
+        Err.Source = "x"
+        Assert.Strict.AreEqual "x", Err.Source
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SetNumber()
+        Err.Number = 5
+        Assert.Strict.AreEqual 5&, Err.Number
+        Err.Clear
+    End Sub
+
+    [TestCase]
+    Public Sub Control_LateBoundHelpFileAndContext()
+        Dim o As Object
+        Set o = Err
+        o.HelpFile = "x"
+        o.HelpContext = 5
+        Assert.Strict.AreEqual "x", Err.HelpFile
+        Assert.Strict.AreEqual 5&, Err.HelpContext
+    End Sub
+
+    [TestCase]
+    Public Sub SetHelpFile()
+        Err.HelpFile = "x"
+        Assert.Strict.AreEqual "x", Err.HelpFile
+    End Sub
+
+    [TestCase]
+    Public Sub SetHelpContext()
+        Err.HelpContext = 5
+        Assert.Strict.AreEqual 5&, Err.HelpContext
+    End Sub
+
+    [TestCase]
+    Public Sub SetHelpFileThroughErrObjectVariable()
+        Dim e As ErrObject
+        Set e = Err
+        e.HelpFile = "x"
+        Assert.Strict.AreEqual "x", Err.HelpFile
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SetReturnHResultInClassMethod()
+        Dim t As New Thing
+        t.Status
+        Assert.Strict.AreEqual 1&, Err.LastHresult
+    End Sub
+
+    [TestCase]
+    Public Sub SetReturnHResultInModule()
+        Err.ReturnHResult = 1
+        Assert.Strict.AreEqual 0&, Err.Number
+    End Sub
+
+End Module
+```
+```vb
+' A class whose method sets the HRESULT it returns, as the ReturnHResult page shows.
+Class Thing
+
+    Public Function Status() As Long
+        Err.ReturnHResult = 1
+    End Function
+
+End Class
+```
+
+**Expected behavior**
+The assignments build and set the property, as in VB6 and 64-bit VBA, which assign `HelpFile` and `HelpContext` like any other property of `Err`. If assigning `ReturnHResult` outside a method of a class is meant to be refused, a diagnostic that says so at compile time, rather than a failed build.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. The build fails, so nothing is lost, and there are ways round it: `Err.Raise` sets both properties through its *helpfile* and *helpcontext* arguments, and an assignment through a variable declared `As Object` that holds `Err` works.
+
+A 64-bit build fails the same way.
+
+What does not reproduce it: assigning `Err.Description`, `Err.Source` or `Err.Number`; reading `Err.HelpFile` or `Err.HelpContext`; assigning them late-bound, through an `Object` variable; assigning `Err.ReturnHResult` in a method of a class, which builds and gives the caller its value in `Err.LastHresult`.
+
+<!-- Reproducer: bugs/err-helpfile-helpcontext-codegen/ (mode test: `tbrun --tests`; expect lists the five PASS and four FAIL lines, each FAIL "aborted"); verified on BETA 1010, and in a 64-bit run (`run --arch win64`). The build failure of step 2 was checked with `tbbuild --build` on a one-line project. VB6 side in vb6/ (VB6 6.0). Stated in NOTEs on docs/Reference/Default/VBA/ErrObject/HelpFile.md, HelpContext.md and ReturnHResult.md; when fixed, the NOTEs go and errors/VBA.ErrObject.yml gets the HelpFile and HelpContext pages' cases (`Err.HelpFile = Null` and `Err.HelpContext = Null`, which raise 94 in VB6 and 64-bit VBA). Found 2026-10-27 by batch 8 of WIP.Errors.md, where the probe's build failed. -->
+
+---
+
+## `Err.Raise` and `Err.Number` keep an `HRESULT` that VB6 and VBA turn into the VB error of the same meaning
+
+**Describe the bug**
+`Err.Raise` of an `HRESULT` raises that `HRESULT`, and assigning one to `Err.Number` stores it. VB6 and 64-bit VBA raise, and store, the VB error of the same meaning for many of them: `Err.Raise &H80070057` (`E_INVALIDARG`) raises 5, *Invalid procedure call or argument*, there, and twinBASIC raises -2147024809. A handler that tests `Err.Number` for the VB number does not recognise the error.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `err-raise-hresult-mapping.twinproj` (attached as `err-raise-hresult-mapping.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other nine fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`err-raise-hresult-mapping-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: Err.Raise of an HRESULT that has a VB error of the same meaning raises
+' that VB error, as VB6 and 64-bit VBA do, and assigning one to Err.Number stores the VB
+' error. The controls raise a VB number and an HRESULT that VB keeps as it is.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function Raised(ByVal Number As Long) As Long
+        On Error Resume Next
+        Err.Raise Number
+        Raised = Err.Number
+    End Function
+
+    [TestCase]
+    Public Sub Control_Raise5_Raises5()
+        Assert.Strict.AreEqual 5&, Raised(5)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_RaiseEFail_RaisesEFail()
+        Assert.Strict.AreEqual &H80004005, Raised(&H80004005)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_RaiseDispException_RaisesDispException()
+        Assert.Strict.AreEqual &H80020009, Raised(&H80020009)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_EInvalidArg_Raises5()
+        Assert.Strict.AreEqual 5&, Raised(&H80070057)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_EOutOfMemory_Raises7()
+        Assert.Strict.AreEqual 7&, Raised(&H8007000E)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_ENotImpl_Raises445()
+        Assert.Strict.AreEqual 445&, Raised(&H80004001)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_ENoInterface_Raises430()
+        Assert.Strict.AreEqual 430&, Raised(&H80004002)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_DispUnknownName_Raises438()
+        Assert.Strict.AreEqual 438&, Raised(&H80020006)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_DispTypeMismatch_Raises13()
+        Assert.Strict.AreEqual 13&, Raised(&H80020005)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_ClassNotRegistered_Raises429()
+        Assert.Strict.AreEqual 429&, Raised(&H80040154)
+    End Sub
+
+    [TestCase]
+    Public Sub Raise_VbErrorAsHResult_Raises53()
+        Assert.Strict.AreEqual 53&, Raised(&H800A0035)
+    End Sub
+
+    [TestCase]
+    Public Sub Number_EInvalidArg_Is5()
+        Err.Number = &H80070057
+        Dim N As Long = Err.Number
+        Err.Clear
+        Assert.Strict.AreEqual 5&, N
+    End Sub
+
+End Module
+```
+
+Every `HRESULT` tried, with what `Err.Raise` gives (twinBASIC raises each one as it is):
+
+| `HRESULT` | VB6 and 64-bit VBA |
+|---|---|
+| `&H80070057` `E_INVALIDARG` | 5 |
+| `&H8007000E` `E_OUTOFMEMORY` | 7 |
+| `&H80070005` `E_ACCESSDENIED` | 70 |
+| `&H80004001` `E_NOTIMPL` | 445 |
+| `&H80004002` `E_NOINTERFACE` | 430 |
+| `&H80004004` `E_ABORT` | 287 |
+| `&H80020003` `DISP_E_MEMBERNOTFOUND` | 438 |
+| `&H80020005` `DISP_E_TYPEMISMATCH` | 13 |
+| `&H80020006` `DISP_E_UNKNOWNNAME` | 438 |
+| `&H80020008` `DISP_E_BADVARTYPE` | 458 |
+| `&H8002000A` `DISP_E_OVERFLOW` | 6 |
+| `&H8002000B` `DISP_E_BADINDEX` | 9 |
+| `&H8002000E` `DISP_E_BADPARAMCOUNT` | 450 |
+| `&H80020011` `DISP_E_NOTACOLLECTION` | 451 |
+| `&H80030002` `STG_E_FILENOTFOUND` | 432 |
+| `&H80030003` `STG_E_PATHNOTFOUND` | 76 |
+| `&H80030005` `STG_E_ACCESSDENIED` | 70 |
+| `&H80030070` `STG_E_MEDIUMFULL` | 61 |
+| `&H80040112` `CLASS_E_NOTLICENSED` | 429 |
+| `&H80040154` `REGDB_E_CLASSNOTREG` | 429 |
+| `&H800401E3` `MK_E_UNAVAILABLE` | 429 |
+| `&H800401F3` `CO_E_CLASSSTRING` | 429 |
+| `&H800A0005`, `&H800A0035`, `&H800A01A8`, `&H800AFFFF` (a VB error as an `HRESULT`) | 5, 53, 424, 65535 (the low 16 bits) |
+| `&H80004005` `E_FAIL`, `&H80020009` `DISP_E_EXCEPTION`, `&H80070002`, `&H80070006`, `&H8007000B`, `&H80070020`, `&H80070070`, `&H8007007E`, `&H8000FFFF` `E_UNEXPECTED`, `&H80004003` `E_POINTER`, `&H80040000` (`vbObjectError`) | the same `HRESULT` |
+
+`Err.Number = &H80070057`, `&H80004001` and `&H800A0035` leave `Err.Number` 5, 445 and 53 in VB6 and 64-bit VBA, without raising an error.
+
+**Expected behavior**
+The VB number, as VB6 and 64-bit VBA give, for `Err.Raise` and for an assignment to `Err.Number`, so that a handler written for VB sees the number it tests for.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low to medium. An error is raised in every case, but code that raises an `HRESULT` it got from an API, or a class that reports `E_INVALIDARG` the way COM code does, reaches a handler that tests for 5 with a number it does not recognise.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+Related: the queued entry on late-bound calls (`latebound-hresult-mapping`) is about the `HRESULT` a late-bound call returns, which VB maps the same way; this one is about `Err.Raise` and `Err.Number` themselves.
+
+What does not reproduce it: an `HRESULT` that VB keeps as it is (the last row of the table); a VB number from 1 to 65535. twinBASIC also raises a positive number above 65535, where VB raises 5; the owner takes that as an extension.
+
+<!-- Reproducer: bugs/err-raise-hresult-mapping/ (mode test: `tbrun --tests`; expect lists the three PASS and nine FAIL lines); verified on BETA 1010. The table comes from the run-time errors data's exploration in all four runtimes (`errors.mjs run`: twinBASIC 32-bit and 64-bit, VB6 and 64-bit VBA); errors/VBA.ErrObject.yml keeps twinBASIC's side as `only: tb` quiet cases of Raise.md and Number.md. VB6 side in vb6/ (VB6 6.0). Stated in the hand NOTEs (BETA 1010) on docs/Reference/Default/VBA/ErrObject/Raise.md, which has the table, and Number.md; when fixed, the NOTEs go, the `only: tb` quiet cases become rows of their VB numbers, and the central page's note on Err.Raise of an HRESULT (docs/Reference/Run-time-Errors.md) is checked. Found 2026-10-27 by batch 8 of WIP.Errors.md. -->
+
+---
+
+## `Collection`'s `Item`, `Remove` and `Add` check an index or a position differently from VB6 and VBA
+
+**Describe the bug**
+Given these indexes and positions, a `Collection` does something other than VB6 and 64-bit VBA:
+- A `Currency`, `Decimal` or `Date` number is refused: `Item` and `Remove` raise 9, *Subscript out of range*, and `Add`'s *before* and *after* raise 13, *Type mismatch*, where VB takes the number as it takes a `Long` or a `Double` (`C.Item(CCur(2))` is the second item).
+- `Item` of a number on an empty collection raises 9; VB raises 5, *Invalid procedure call or argument*, as twinBASIC's own `Remove` does.
+- `Item` and `Remove` of `Null`, an object, `Nothing`, an array, an error value or a number outside the `Long` range raise 9; VB raises 13. So does `Add`'s *before* of a number outside the `Long` range.
+- `Add`'s *before* or *after* of -1, `True` or `Empty` raises 13; VB raises 9, as for any other position that is not an item's.
+- `Add` with a *key* of `Empty` adds the item without a key and raises nothing; VB raises 13, as for any other key that is not a `String`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `collection-index-checks.twinproj` (attached as `collection-index-checks.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other fourteen fail.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`collection-index-checks-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: Collection's Item, Remove and Add take an index or a position as VB6 and
+' 64-bit VBA do: a Currency, Decimal or Date number like any other number; 5 for a number on
+' an empty collection (Item); 13 for Null, an object or a number outside the Long range
+' (Item, Remove); 9 for a position of -1, True or Empty, and 13 for a key of Empty (Add). The controls use a Long, a
+' Double and a Byte, and a string key. tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' A collection holding "a" and "b", without keys.
+    Private Function Two() As Collection
+        Set Two = New Collection
+        Two.Add "a"
+        Two.Add "b"
+    End Function
+
+    ' The error Item(Index) raises on C, or 0 and the item in Got.
+    Private Function ItemError(ByVal C As Collection, ByVal Index As Variant, Optional ByRef Got As Variant) As Long
+        On Error Resume Next
+        Got = C.Item(Index)
+        ItemError = Err.Number
+    End Function
+
+    Private Function RemoveError(ByVal C As Collection, ByVal Index As Variant) As Long
+        On Error Resume Next
+        C.Remove Index
+        RemoveError = Err.Number
+    End Function
+
+    Private Function AddBeforeError(ByVal C As Collection, ByVal Before As Variant) As Long
+        On Error Resume Next
+        C.Add "x", , Before
+        AddBeforeError = Err.Number
+    End Function
+
+    [TestCase]
+    Public Sub Control_ItemOfLongDoubleByte()
+        Dim Got As Variant
+        Assert.Strict.AreEqual 0&, ItemError(Two(), 2&, Got)
+        Assert.Strict.AreEqual "b", Got
+        Assert.Strict.AreEqual 0&, ItemError(Two(), 2#, Got)
+        Assert.Strict.AreEqual 0&, ItemError(Two(), CByte(2), Got)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_ItemOutOfRange_Raises9()
+        Assert.Strict.AreEqual 9&, ItemError(Two(), 3)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_ItemOfMissingKey_Raises5()
+        Assert.Strict.AreEqual 5&, ItemError(Two(), "z")
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Currency_ReturnsItem()
+        Dim Got As Variant
+        Assert.Strict.AreEqual 0&, ItemError(Two(), CCur(2), Got)
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Decimal_ReturnsItem()
+        Assert.Strict.AreEqual 0&, ItemError(Two(), CDec(2))
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Date_ReturnsItem()
+        Assert.Strict.AreEqual 0&, ItemError(Two(), CDate(2))
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_Currency_Removes()
+        Assert.Strict.AreEqual 0&, RemoveError(Two(), CCur(2))
+    End Sub
+
+    [TestCase]
+    Public Sub AddBefore_Currency_Adds()
+        Assert.Strict.AreEqual 0&, AddBeforeError(Two(), CCur(2))
+    End Sub
+
+    [TestCase]
+    Public Sub Item_EmptyCollection_Raises5()
+        Assert.Strict.AreEqual 5&, ItemError(New Collection, 1)
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Null_Raises13()
+        Assert.Strict.AreEqual 13&, ItemError(Two(), Null)
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Object_Raises13()
+        Assert.Strict.AreEqual 13&, ItemError(Two(), New Collection)
+    End Sub
+
+    [TestCase]
+    Public Sub Item_BeyondLong_Raises13()
+        Assert.Strict.AreEqual 13&, ItemError(Two(), 2147483648#)
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_Null_Raises13()
+        Assert.Strict.AreEqual 13&, RemoveError(Two(), Null)
+    End Sub
+
+    [TestCase]
+    Public Sub AddBefore_MinusOne_Raises9()
+        Assert.Strict.AreEqual 9&, AddBeforeError(Two(), -1)
+    End Sub
+
+    [TestCase]
+    Public Sub AddBefore_Empty_Raises9()
+        Assert.Strict.AreEqual 9&, AddBeforeError(Two(), Empty)
+    End Sub
+
+    [TestCase]
+    Public Sub AddBefore_BeyondLong_Raises13()
+        Assert.Strict.AreEqual 13&, AddBeforeError(Two(), 2147483648#)
+    End Sub
+
+    [TestCase]
+    Public Sub Add_EmptyKey_Raises13()
+        Dim C As New Collection
+        On Error Resume Next
+        C.Add "x", Empty
+        Assert.Strict.AreEqual 13&, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The numbers VB6 and 64-bit VBA give: a `Currency`, `Decimal` or `Date` index or position taken as a number; 5 for `Item` of a number on an empty collection; 13 for `Null`, an object, an array or a number outside the `Long` range; 9 for a position of -1, `True` or `Empty`; 13 for a key of `Empty`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium for the `Currency`, `Decimal` and `Date` indexes, which VB code passes without thinking (a `Currency` loop counter, a value read from a database field), and which twinBASIC refuses. Low for the key of `Empty`, whose item can then be reached only by its position. Low for the rest: an error is raised where VB raises one, with another number.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: an index or a position of `Byte`, `Integer`, `Long`, `LongLong`, `Single` or `Double`, rounded as VB rounds it; a string key; a number out of range on a collection that has items (9 in all); `Remove` on an empty collection (5 in all); `Add`'s *before* or *after* given on an empty collection (5 in all). twinBASIC also takes a *before* of one more than `Count` as the end and an *after* of 0 as the start, where VB raises 9; the owner takes those as extensions.
+
+<!-- Reproducer: bugs/collection-index-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and fourteen FAIL lines); verified on BETA 1010; 64-bit and 64-bit VBA from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB's number for each case. Stated in the Common Errors sections (rows `bug: collection-index-checks` in errors/VBA.Collection.yml) of Add, Item and Remove under docs/Reference/Default/VBA/Collection/; when fixed, each row's cases move to a row of VB's number (the Currency, Decimal and Date ones to the quiet cases), and the NOTEs go. Found 2026-10-27 by batch 8 of WIP.Errors.md; owner, 2026-10-28: the `Empty` key is a bug, while a *before* of Count + 1 and an *after* of 0 are extensions (a NOTE on Add.md). -->
+
+---
+
+## `Rate` raises -2147467259 for almost every annuity, and returns -2.1 for a lump sum where VB6 returns 0.1
+
+**Describe the bug**
+`Rate` raises -2147467259 (`&H80004005`), *Unspecified error*, for almost every annuity that VB6 and 64-bit VBA solve: a loan (`Rate(10, -100, 800)` is 0.0427749780351145 in VB6), a mortgage (`Rate(360, -600, 100000)`), a savings plan (`Rate(10, -100, 0, 1200)`), payments due at the start of the period, the signs reversed, a *guess* given, and a lump sum over ten periods (`Rate(10, 0, 1000, -2000)`). Of the annuities tried, it answers only some lump sums (a *pmt* of 0), such as those over one to four periods, and for an even number of periods it returns the wrong root: `Rate(2, 0, 100, -121)` and `Rate(4, 0, 100, -146.41)` are -2.1, where VB6 returns 0.1. (-2.1 also solves the equation, but no annuity has a rate below -1.)
+
+Also:
+- With an *nper* below 1 and a *pmt* of 0 it raises 5, *Invalid procedure call or argument*; VB6 returns the rate (`Rate(0.5, 0, 100, -110)` is 0.21).
+- It does not check *guess*: a *guess* of `Null`, a string that is not a number, or an error value raises nothing, where VB raises 94, *Invalid use of Null*, and 13, *Type mismatch*.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `rate-fails.twinproj` (attached as `rate-fails.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other twelve fail.
+
+The module is meant to be adapted as a regression test. Each case asserts what VB6 returns or raises, which the attached VB6 project (`rate-fails-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: Rate returns the rate of an annuity, as VB6 and 64-bit VBA do, for a loan,
+' a mortgage, a savings plan, payments due at the start, a guess and an nper below 1, and
+' the positive rate (0.1, not -2.1) of a lump sum over an even number of periods; and it raises
+' 94 for a guess of Null and 13 for a guess that is not a number. The controls are two
+' lump sums Rate answers rightly (one and three periods) and a Null nper.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_PmtZeroOnePeriod()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(1, 0, 100, -110)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_PmtZeroThreePeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(3, 0, 100, -133.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_NperNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(Null, -100, 800)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PmtZeroTwoPeriods_ReturnsPositiveRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(2, 0, 100, -121)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub PmtZeroFourPeriods_ReturnsPositiveRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(4, 0, 100, -146.41)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Loan_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, -100, 800)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0427749780351) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Mortgage_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(360, -600, 100000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0050058250068) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub DueAtStart_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, -100, 800, 0, 1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.053446167382) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub SavingsPlan_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, -100, 0, 1200)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0398902762) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub SignsReversed_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, 100, -800)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0427749780351) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub PmtZeroTenPeriods_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, 0, 1000, -2000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0717734625363) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub WithGuess_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(10, -100, 800, 0, 0, 0.04)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0427749780351) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub NperBelowOne_ReturnsRate()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(0.5, 0, 100, -110)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.21) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub GuessNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(1, 0, 100, -110, 0, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub GuessString_Raises13()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(1, 0, 100, -110, 0, "abc")
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 13&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The rate VB6 and 64-bit VBA return, found from the default *guess* of 0.1 or from the one given: 0.0427749780351145 for `Rate(10, -100, 800)`, 0.1 for `Rate(2, 0, 100, -121)`, 0.21 for `Rate(0.5, 0, 100, -110)`; and 94 or 13 for a *guess* of `Null` or one that is not a number.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: high. `Rate` cannot be used for a loan or a savings plan, its main use, and where it does answer it can return a rate below -1 with no error.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+Related: the queued entry on refused arguments (`argument-errors-unspecified-error`) covers `Rate`'s -2147467259 where VB raises 5 or 6 (no result in 20 tries, an *nper* of 0 or less); this one is about the annuities that have a rate.
+
+What does not reproduce it: a lump sum over one or three periods (`Rate(1, 0, 100, -110)` and `Rate(3, 0, 100, -133.1)` are 0.1); `Null` in *nper*, *pmt* or *pv* (94 in all).
+
+<!-- Reproducer: bugs/rate-fails/ (mode test: `tbrun --tests`; expect lists the three PASS and twelve FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; 64-bit VBA's numbers from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints VB6's number and value for each case. Stated in the Common Errors section (rows `bug: rate-fails` in errors/VBA.Financial.yml) and a WARNING (BETA 1010, the wrong root) of docs/Reference/Default/VBA/Financial/Rate.md; when fixed, the rows' cases move to the quiet cases (the *guess* ones to rows of 94 and 13), and the NOTEs and the WARNING go. Found 2026-10-28 by batch 9 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
+
+---
+
+## `NPer` raises error 6 for a loan or a savings plan, where VB6 returns the number of periods
+
+**Describe the bug**
+Given a *rate* and a *pmt* of opposite signs, as in every loan or savings plan at a positive rate, `NPer` raises 6, *Overflow*, where VB6 and 64-bit VBA return the number of periods. `NPer(0.01, -100, 1000)`, a loan of 1000 repaid at 100 a period at 1% a period, is 10.5886444594232 in VB6; so are a car loan (`NPer(0.1 / 12, -500, 20000)`, 48.86), a loan with a balance left (*fv*), one with payments due at the start, a savings plan (`NPer(0.01, -100, 0, 1000)`, 9.58) and a negative rate with a positive payment (`NPer(-0.5, 100, -1000)`, 2.58).
+
+Where no number of periods exists, it raises 6 (a payment that does not cover the interest, `NPer(0.01, -1, 1000)`) or 11, *Division by zero* (a *pmt* of 0, a *rate* of -1), where VB raises 5, *Invalid procedure call or argument*.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `nper-opposite-signs-overflow.twinproj` (attached as `nper-opposite-signs-overflow.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other nine fail.
+
+The module is meant to be adapted as a regression test. Each case asserts what VB6 returns or raises, which the attached VB6 project (`nper-opposite-signs-overflow-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: NPer returns the number of periods of a loan or a savings plan, as VB6 and
+' 64-bit VBA do, whatever the signs of rate and pmt, and raises 5 where no number of periods
+' exists. The controls have rate and pmt of the same sign, or a rate of 0.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_PositivePmt()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, 100, -1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 10.5886444594232) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_RateZero()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0, -100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 10) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SameSigns()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, 100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - -9.57859403981317) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Loan_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 10.5886444594232) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub CarLoan_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.1 / 12, -500, 20000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 48.8582651211073) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub LoanWithBalance_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -100, 1000, 100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 11.5886444594232) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub LoanDueAtStart_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -100, 1000, 0, 1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 10.4781450851168) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub SavingsPlan_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -100, 0, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 9.57859403981317) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub NegativeRate_ReturnsPeriods()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(-0.5, 100, -1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 2.58496250072116) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub PmtBelowInterest_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, -1, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PmtZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, 0, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub RateMinusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(-1, -100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The number of periods VB6 and 64-bit VBA return, whatever the signs of *rate* and *pmt*, and 5 where no number of periods exists.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: high. `NPer` fails for a loan, its main use. An error is raised, so no wrong value reaches the program.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+Related: the queued entry on refused arguments (`argument-errors-unspecified-error`) covers `NPer` with a *rate* and a *pmt* of 0 (-2147467259; VB 5).
+
+What does not reproduce it: a *rate* and a *pmt* of the same sign (`NPer(0.01, 100, -1000)` is 10.5886444594232, and `NPer(0.01, 100, 1000)` is -9.57859403981317, as in VB6); a *rate* of 0 (`NPer(0, -100, 1000)` is 10).
+
+<!-- Reproducer: bugs/nper-opposite-signs-overflow/ (mode test: `tbrun --tests`; expect lists the three PASS and nine FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; 64-bit VBA's numbers from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0). Stated in the Common Errors section (rows `bug: nper-opposite-signs-overflow` in errors/VBA.Financial.yml) of docs/Reference/Default/VBA/Financial/NPer.md; when fixed, the first row's cases move to the quiet cases, the others become a row of 5, and the NOTEs go. Found 2026-10-28 by batch 9 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
+
+---
+
+## `Null` in an optional argument of a Financial function raises 13, where VB6 raises 94
+
+**Describe the bug**
+Given `Null` as an optional argument --- *pv*, *fv* or *type* of `FV`, `PV`, `Pmt`, `NPer`, `IPmt`, `PPmt` and `Rate`, or *factor* of `DDB` --- these functions raise 13, *Type mismatch*. VB6 and 64-bit VBA raise 94, *Invalid use of Null*, as twinBASIC itself does for `Null` in a required argument.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `financial-null-optional-argument.twinproj` (attached as `financial-null-optional-argument.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other nine fail, each with `Err.Number` 13.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`financial-null-optional-argument-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: a Null optional argument of a Financial function (pv, fv, type, factor)
+' raises 94, Invalid use of Null, as VB6 and 64-bit VBA do. The controls are a Null required
+' argument (94), a string that is not a number (13) and a number in the optional argument.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_RequiredNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(Null, 10, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_OptionalString_Raises13()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(0.01, 10, -100, "abc")
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 13&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_OptionalNumber()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(0.01, 10, -100, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub FV_PvNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(0.01, 10, -100, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub FV_TypeNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(0.01, 10, -100, 0, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PV_FvNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PV(0.01, 10, -100, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Pmt_FvNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Pmt(0.01, 10, 1000, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub NPer_TypeNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPer(0.01, 100, -1000, 0, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub IPmt_FvNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IPmt(0.01, 1, 10, 1000, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_TypeNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PPmt(0.01, 1, 10, 1000, 0, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Rate_TypeNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Rate(1, 0, 100, -110, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+    [TestCase]
+    Public Sub DDB_FactorNull_Raises94()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = DDB(1000, 100, 5, 1, Null)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 94&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+94, *Invalid use of Null*, as VB6 and 64-bit VBA raise.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low. An error is raised where VB raises one, with another number.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: `Null` in a required argument (94 in all); a string that is not a number in an optional argument (13 in all).
+
+<!-- Reproducer: bugs/financial-null-optional-argument/ (mode test: `tbrun --tests`; expect lists the three PASS and nine FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; 64-bit VBA's numbers from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0). Stated in the Common Errors sections (rows `bug: financial-null-optional-argument` in errors/VBA.Financial.yml) of DDB, FV, IPmt, NPer, PPmt, PV, Pmt and Rate under docs/Reference/Default/VBA/Financial/; when fixed, each row becomes a row of 94 and its NOTE goes. Found 2026-10-28 by batch 9 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
+
+---
+
+## `IRR`, `MIRR` and `NPV` end the program for an array that has never been sized, and raise &H8000FFFF for one of two dimensions
+
+**Describe the bug**
+Given a `Double` array that has never been sized (`Dim A() As Double` with no `ReDim`), or one emptied by `Erase`, `IRR`, `MIRR` and `NPV` end the program with an access violation, in a built exe and in the IDE, 32-bit and 64-bit. In the compiler's test mode the case reports `NATIVE EXCEPTION: ACCESS_VIOLATION`. VB6 and 64-bit VBA raise 5, *Invalid procedure call or argument*.
+
+Given an array of two dimensions, they raise -2147418113 (`&H8000FFFF`), *Catastrophic failure*, where VB raises 5.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `financial-array-arguments.twinproj` (attached as `financial-array-arguments.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass, the four unsized cases end with an access violation, and the three two-dimensional ones fail with `Err.Number` -2147418113.
+
+The module is meant to be adapted as a regression test. Each case asserts VB6's number, which the attached VB6 project (`financial-array-arguments-vb6.zip`) prints; 64-bit VBA raises the same numbers.
+```vb
+' Regression tests: IRR, MIRR and NPV raise 5, Invalid procedure call or argument, for an
+' array that has never been sized or has been erased, and for one of two dimensions, as VB6
+' and 64-bit VBA do. On BETA 1010 the unsized cases end with an access violation. The
+' controls are each function of a sized one-dimensional array.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_IRR()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(1)
+        A(0) = -100
+        A(1) = 110
+        R = IRR(A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.1) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_MIRR()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(2)
+        A(0) = -100
+        A(1) = 50
+        A(2) = 60
+        R = MIRR(A, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0.0723805294763609) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub Control_NPV()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(2)
+        A(0) = -100
+        A(1) = 50
+        A(2) = 60
+        R = NPV(0.1, A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - -4.50788880540947) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub IRR_Unsized_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IRR(A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub IRR_Erased_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(1)
+        A(0) = -100
+        A(1) = 110
+        Erase A
+        R = IRR(A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_Unsized_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = MIRR(A, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub NPV_Unsized_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = NPV(0.1, A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub IRR_TwoDimensions_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        B(0, 0) = -100
+        B(1, 0) = 110
+        B(0, 1) = -100
+        B(1, 1) = 110
+        R = IRR(B)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_TwoDimensions_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        B(0, 0) = -100
+        B(1, 0) = 110
+        B(0, 1) = -100
+        B(1, 1) = 110
+        R = MIRR(B, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub NPV_TwoDimensions_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        B(0, 0) = -100
+        B(1, 0) = 110
+        B(0, 1) = -100
+        B(1, 1) = 110
+        R = NPV(0.1, B)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+5, *Invalid procedure call or argument*, as VB6 and 64-bit VBA raise, for an array that has never been sized, has been erased, or has more than one dimension.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: high for the access violation: the program ends without a chance to save its data, and an array that is filled later, or emptied by `Erase`, is an ordinary state for one passed to these functions. Low for the two dimensions.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a sized one-dimensional array, whatever its lower bound (`Dim A(1 To 3) As Double` works).
+
+<!-- Reproducer: bugs/financial-array-arguments/ (mode test: `tbrun --tests`; expect lists the three PASS lines, four FAIL lines with ACCESS_VIOLATION and three with -2147418113); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; the crash also in built exes (`errors.mjs run`), and 64-bit VBA's numbers from the run-time errors data. VB6 side in vb6/ (VB6 6.0). Stated in a WARNING (BETA 1010) each on docs/Reference/Default/VBA/Financial/IRR.md, MIRR.md and NPV.md, for the crash, and in their Common Errors sections (rows `bug: financial-array-arguments` in errors/VBA.Financial.yml), for two dimensions; when fixed, the WARNINGs go, the unsized cases join a row of 5 with the two-dimensional ones, and the NOTEs go. Found 2026-10-28 by batch 9 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
+
+---
+
+## `IPmt`, `PPmt`, `MIRR`, `NPV`, `DDB`, `Pmt`, `FV`, `PV` and `SLN` check their arguments differently from 64-bit VBA
+
+**Describe the bug**
+Given these arguments, the Financial functions do something other than 64-bit VBA:
+- `IPmt` and `PPmt` take any *per*. For a *per* of 0 or less, or of *nper* + 1 or more, they return a value computed for a period outside the annuity (`IPmt(0.01, 0, 10, 1000)` is -10.946357193576) and raise nothing; VB raises 5, *Invalid procedure call or argument*.
+- `MIRR` returns -1 for *values* of one element and a rate for a *finance_rate* or *reinvest_rate* of -1, where VB raises 5; and infinity or NaN for *values* with no element less than 0, where VB raises 11, *Division by zero*.
+- `NPV` returns NaN for a *rate* of -1; VB raises 5.
+- `DDB` raises -2147467259 (`&H80004005`), *Unspecified error*, for a *life* greater than 0 and less than 1; VB returns the depreciation (`DDB(1000, 100, 0.5, 0.5)` is 900).
+- `Pmt` and `PPmt` raise 11 for an *nper* of 0; VB raises 5.
+- With a *rate* of -1, `FV` raises 5 for a negative *nper*, where 64-bit VBA raises 6, *Overflow* (VB6 11), and `PV` raises -2147467259, where 64-bit VBA returns 0 for an *nper* of 0 and raises 11 for a positive *nper* and 6 for a negative one (VB6 raises nothing, and returns 0, infinity or NaN).
+- `SLN` returns infinity for a result beyond the range of a `Double` (`SLN(1000, 100, 1E-308)`), where 64-bit VBA raises 6 (VB6 returns infinity).
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `financial-argument-checks.twinproj` (attached as `financial-argument-checks.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other sixteen fail.
+
+The module is meant to be adapted as a regression test. Each case asserts 64-bit VBA's number. The attached VB6 project (`financial-argument-checks-vb6.zip`) prints VB6's, which are the same but for the four cases of `FV`, `PV` and `SLN` that the list above gives.
+```vb
+' Regression tests: the Financial functions check their arguments as 64-bit VBA does: 5 for a
+' period outside 1 to nper (IPmt, PPmt), for an nper of 0 (Pmt, PPmt), for MIRR of one element
+' or a rate of -1, and for NPV at a rate of -1; 11 for MIRR with no payment; a DDB of a life
+' below 1; and with a rate of -1, FV's 6 and PV's 0, 11 and 6; SLN's 6 for an infinite result.
+' VB6 agrees but for FV (11), PV and SLN (no error, infinity). The controls pass in all.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Control_IPmtLastPeriod()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IPmt(0.01, 10.9999999, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_PmtRateMinusTwo_Raises11()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Pmt(-2, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 11&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_DDBLifeOne()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = DDB(1000, 100, 1, 0.5)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 900) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub IPmt_PerZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IPmt(0.01, 0, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub IPmt_PerNperPlusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = IPmt(0.01, 11, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_PerZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PPmt(0.01, 0, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_PerNperPlusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PPmt(0.01, 11, 10, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Pmt_NperZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = Pmt(0.01, 0, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_NperZero_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PPmt(0.01, 1, 0, 1000)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_OneElement_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(0)
+        A(0) = -100
+        R = MIRR(A, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_ReinvestRateMinusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(2)
+        A(0) = -100
+        A(1) = 50
+        A(2) = 60
+        R = MIRR(A, 0.1, -1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub MIRR_NoPayment_Raises11()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(1)
+        A(0) = 100
+        A(1) = 110
+        R = MIRR(A, 0.1, 0.1)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 11&, E
+    End Sub
+
+    [TestCase]
+    Public Sub NPV_RateMinusOne_Raises5()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        ReDim A(2)
+        A(0) = -100
+        A(1) = 50
+        A(2) = 60
+        R = NPV(-1, A)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, E
+    End Sub
+
+    [TestCase]
+    Public Sub DDB_LifeBelowOne_Returns900()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = DDB(1000, 100, 0.5, 0.5)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 900) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub FV_RateMinusOneNegativeNper_Raises6()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = FV(-1, -1, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 6&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PV_RateMinusOneNperZero_Returns0()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PV(-1, 0, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 0&, E
+        Assert.Strict.IsTrue Abs(R - 0) < 0.000001
+    End Sub
+
+    [TestCase]
+    Public Sub PV_RateMinusOne_Raises11()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PV(-1, 10, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 11&, E
+    End Sub
+
+    [TestCase]
+    Public Sub PV_RateMinusOneNegativeNper_Raises6()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = PV(-1, -1, -100)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 6&, E
+    End Sub
+
+    [TestCase]
+    Public Sub SLN_InfiniteResult_Raises6()
+        Dim A() As Double, B(1, 1) As Double
+        Dim E As Long, R As Variant
+        On Error Resume Next
+        R = SLN(1000, 100, 1E-308)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 6&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The numbers 64-bit VBA gives, as listed above. Where VB6 and 64-bit VBA differ (`FV`, `PV`, `SLN`), twinBASIC is to do as 64-bit VBA does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium for `IPmt`, `PPmt`, `MIRR` and `NPV`, which return a value with no error for arguments VB refuses, so a mistake in a program goes unnoticed. Low for the rest: an error is raised where VB raises one, with another number, or (`DDB`) a value VB computes is refused.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+Related: the queued entry on refused arguments (`argument-errors-unspecified-error`) covers these functions' -2147467259 where VB raises 5.
+
+What does not reproduce it: a *per* just below *nper* + 1 (`IPmt(0.01, 10.9999999, 10, 1000)`); `Pmt` with a *rate* of -2 and an even *nper* (11 in all); `DDB` with a *life* of 1. `PV` already raises 11 for a result beyond the range of a `Double`, as 64-bit VBA does (VB6 returns infinity).
+
+<!-- Reproducer: bugs/financial-argument-checks/ (mode test: `tbrun --tests`; expect lists the three PASS and sixteen FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; 64-bit VBA's numbers from the run-time errors data (`errors.mjs run`, all four runtimes). VB6 side in vb6/ (VB6 6.0). Stated in the Common Errors sections (rows `bug: financial-argument-checks` in errors/VBA.Financial.yml) of DDB, FV, IPmt, MIRR, NPV, PPmt, PV, Pmt and SLN under docs/Reference/Default/VBA/Financial/, and in WARNINGs (BETA 1010) on IPmt, PPmt, MIRR and NPV for the values returned with no error; when fixed, each row becomes a row of 64-bit VBA's number (DDB's to the quiet cases), and the NOTEs and WARNINGs go. Found 2026-10-28 by batch 9 of WIP.Errors.md; owner, 2026-10-28: a bug, twinBASIC to do as 64-bit VBA where VB6 and 64-bit VBA differ; PV's 11 for a result beyond the range of a Double is that, not a bug. -->
+
+---
+
+## `ConvertIconToBitmap`, `GetInheritedOwner`, `AddCustomBinder` and `AddCustomBinderObject` end the program when given `Nothing`
+
+**Describe the bug**
+Five calls end the program with an access violation, in a built exe and in the IDE, 32-bit and 64-bit; in the compiler's test mode the case reports `NATIVE EXCEPTION: ACCESS_VIOLATION`:
+
+- `ConvertIconToBitmap(Nothing)`. Given any other object that is not an icon (a `Collection`, a bitmap picture) it raises -2147467259, as it should.
+- `GetInheritedOwner(Nothing)`, and `GetInheritedOwner` of an object that is not a control: a `Collection` in both builds, a `Scripting.Dictionary` in a 64-bit build (in a 32-bit one it returns).
+- `TbExpressionService.AddCustomBinder Nothing`.
+- `TbExpressionService.AddCustomBinderObject "D", Nothing`.
+- `V = RuntimeCreateGetMessageHook()`, a `Let` of the hook object into a `Variant`. `Set V = RuntimeCreateGetMessageHook()` works, and so does a `Let` of the same object held in a variable declared `As IGetMessageHook`; a `Let` of an object of a twinBASIC class behind an interface without `IDispatch` stores it with no error, so the fault is in the hook object.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `nothing-argument-crashes.twinproj` (attached as `nothing-argument-crashes.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the other seven end with an access violation; the `Scripting.Dictionary` case passes in a 32-bit build.
+
+The module is meant to be adapted as a regression test. A case asserts only that an error is raised (or, for `GetInheritedOwner`, that it returns `Nothing`), not which: VB6 and VBA have none of these procedures.
+```vb
+' Regression tests: given Nothing, or an object they cannot use, ConvertIconToBitmap,
+' GetInheritedOwner, TbExpressionService.AddCustomBinder and AddCustomBinderObject raise a
+' run-time error (or, for GetInheritedOwner, return Nothing) instead of ending the program
+' with an access violation; and the object RuntimeCreateGetMessageHook returns can be
+' assigned to a Variant without Set, as any other object without IDispatch can. On BETA 1010
+' each case but the controls ends with an access violation, 32-bit and 64-bit.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Declare PtrSafe Function LoadIconW Lib "user32" (ByVal Inst As LongPtr, ByVal Name As LongPtr) As LongPtr
+
+    ' The controls: each procedure working, or refusing an argument with an error.
+    [TestCase]
+    Public Sub Control_ConvertIconToBitmap_Icon()
+        Dim Icon As StdPicture = CreateStdPictureFromHandle(LoadIconW(0, 32512), vbPicTypeIcon, False)
+        Assert.Strict.AreEqual CLng(vbPicTypeBitmap), CLng(ConvertIconToBitmap(Icon).Type)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_ConvertIconToBitmap_NotAPicture_Raises()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = ConvertIconToBitmap(New Collection)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual -2147467259, E
+    End Sub
+
+    [TestCase]
+    Public Sub Control_AddCustomBinderObject_Object()
+        Dim S As New TbExpressionService
+        S.AddCustomBinderObject "D", CreateObject("Scripting.Dictionary")
+        Assert.Strict.AreEqual 0, CInt(S.Compile("D.Count").Evaluate())
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertIconToBitmap_Nothing_RaisesAnError()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = ConvertIconToBitmap(Nothing)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreNotEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub GetInheritedOwner_Nothing_DoesNotCrash()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = GetInheritedOwner(Nothing)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.IsTrue E <> 0 Or R Is Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub GetInheritedOwner_Collection_DoesNotCrash()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = GetInheritedOwner(New Collection)
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.IsTrue E <> 0 Or R Is Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub GetInheritedOwner_Dictionary_DoesNotCrash()
+        Dim E As Long, R As Object
+        On Error Resume Next
+        Set R = GetInheritedOwner(CreateObject("Scripting.Dictionary"))
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.IsTrue E <> 0 Or R Is Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub AddCustomBinder_Nothing_RaisesAnError()
+        Dim S As New TbExpressionService
+        Dim E As Long
+        On Error Resume Next
+        S.AddCustomBinder Nothing
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreNotEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub AddCustomBinderObject_Nothing_RaisesAnError()
+        Dim S As New TbExpressionService
+        Dim E As Long
+        On Error Resume Next
+        S.AddCustomBinderObject "D", Nothing
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreNotEqual 0&, E
+    End Sub
+
+    [TestCase]
+    Public Sub RuntimeCreateGetMessageHook_LetIntoVariant_StoresTheObject()
+        Dim V As Variant
+        V = RuntimeCreateGetMessageHook()
+        Assert.Strict.AreEqual CInt(vbDataObject), VarType(V)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+A run-time error for **Nothing**, as `GetNameFromDispID(Nothing, 0)` raises -2147467261, *Invalid pointer*, and as VB's `CallByName` raises 5 for an object of **Nothing**; for `GetInheritedOwner`, an error or **Nothing**. A `Let` of the hook object into a `Variant` stores it, as a `Let` of any other object without `IDispatch` does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: high: the program ends without a chance to save its data, and an object variable that is still **Nothing** is an ordinary mistake that an error handler should be able to catch.
+
+A 64-bit build gives the same results, but for `GetInheritedOwner` of a `Scripting.Dictionary` (above).
+
+What does not reproduce it: any of these procedures given the object it is meant for (the controls), or an object of the wrong kind other than those named (`ConvertIconToBitmap` of a bitmap or a `Collection` raises -2147467259).
+
+<!-- Reproducer: bugs/nothing-argument-crashes/ (mode test: `tbrun --tests`; expect lists the three PASS lines, six FAIL lines with ACCESS_VIOLATION and the Dictionary case as either); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; the crashes also in built exes (`errors.mjs run` while exploring). No VB6 side: VB6 and VBA have none of these procedures. Stated in a WARNING (BETA 1010) each on docs/Reference/Default/VBA/HiddenModule/ConvertIconToBitmap.md, GetInheritedOwner.md and RuntimeCreateGetMessageHook.md, and docs/Reference/Default/VBA/TbExpressionService/AddCustomBinder.md and AddCustomBinderObject.md; when fixed, the WARNINGs go, and the error each raises becomes a row in errors/VBA.HiddenModule.yml or VBA.TbExpressionService.yml. Found 2026-10-28 by batch 10 of WIP.Errors.md; owner, 2026-10-28: a bug, one entry, GetInheritedOwner of a non-control included. -->
+
+---
+
+## `Eval` and `TbExpressionService.Compile` accept an expression that ends in an operator or has an unmatched parenthesis
+
+**Describe the bug**
+`Eval` and `TbExpressionService.Compile` accept some malformed expressions without an error: the part they cannot read is left out, and the value is that of what comes before it. `Eval("2 +")`, `Eval("2 Mod")`, `Eval("(2")` and `Eval("2)")` each return 2, and `Compile` of each gives an expression whose value is 2. Other malformed expressions are refused with -2147467259: `"1 2"`, `"2 * (3 + 4"`, `"Sqr(4"`, `")"`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `expression-service-dangling-tokens.twinproj` (attached as `expression-service-dangling-tokens.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the eight other cases fail: no error is raised.
+
+The module is meant to be adapted as a regression test. A case asserts only that an error is raised, not which.
+```vb
+' Regression tests: Eval and TbExpressionService.Compile refuse a malformed expression with a
+' run-time error, as they refuse "1 2", instead of leaving out the part they cannot read. On
+' BETA 1010 an expression that ends in an operator, or has a parenthesis with no partner at
+' either end, is accepted, and its value is that of what comes before the fault: each case
+' below gives 2. VBScript's Eval refuses each with 1002, Syntax error, or 1006, Expected ')';
+' Access's Eval with 2431, 2435 or 2436.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function EvalError(ByVal Source As String) As Long
+        Dim V As Variant
+        On Error Resume Next
+        V = Eval(Source)
+        EvalError = Err.Number
+    End Function
+
+    Private Function CompileError(ByVal Source As String) As Long
+        Dim S As New TbExpressionService
+        Dim E As ITbExpression
+        S.AddStdLibraryBinder
+        On Error Resume Next
+        Set E = S.Compile(Source)
+        CompileError = Err.Number
+    End Function
+
+    ' The controls: a well-formed expression, and malformed ones that are refused.
+    [TestCase]
+    Public Sub Control_Eval_WellFormed()
+        Assert.Strict.AreEqual 2, CInt(Eval("(2)"))
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Eval_TwoNumbers_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("1 2")
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Compile_UnclosedAfterOperator_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("2 * (3 + 4")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_TrailingPlus_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("2 +")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_TrailingMod_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("2 Mod")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_UnclosedParenthesis_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("(2")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_UnopenedParenthesis_Raises()
+        Assert.Strict.AreNotEqual 0&, EvalError("2)")
+    End Sub
+
+    [TestCase]
+    Public Sub Compile_TrailingPlus_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("2 +")
+    End Sub
+
+    [TestCase]
+    Public Sub Compile_TrailingMod_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("2 Mod")
+    End Sub
+
+    [TestCase]
+    Public Sub Compile_UnclosedParenthesis_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("(2")
+    End Sub
+
+    [TestCase]
+    Public Sub Compile_UnopenedParenthesis_Raises()
+        Assert.Strict.AreNotEqual 0&, CompileError("2)")
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+A run-time error for each, as for `"1 2"`. VBScript's `Eval` (through `MSScriptControl.ScriptControl` in VB6) raises 1002, *Syntax error*, for `"2 +"`, `"2 Mod"` and `"2)"`, and 1006, *Expected ')'*, for `"(2"`; Access's `Eval` in 64-bit VBA raises 2431, *The expression you entered contains invalid syntax.*, 2436 (a missing closing parenthesis) and 2435 (too many closing parentheses).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium: a wrong value with no error, for text a user typed, the very input an expression service is given.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: two operands with no operator (`"1 2"`), an unclosed parenthesis after an operator (`"2 * (3 + 4"`, `"2 + (3"`), an unclosed argument list (`"Sqr(4"`), a lone `")"`, `"+"` or `"-"`. `"2 *"` is accepted, `"2 * "` with a trailing space is refused.
+
+Related: the queued entry `expression-service-error-numbers`, on the number these functions raise.
+
+<!-- Reproducer: bugs/expression-service-dangling-tokens/ (mode test: `tbrun --tests`; expect lists the three PASS and eight FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; VBScript's numbers from VB6 with MSScriptControl, Access's from VbaSession (scripts/lib/vba.mjs). No VB6 side: VB6 has no Eval. Stated in a WARNING (BETA 1010) each on docs/Reference/Default/VBA/HiddenModule/Eval.md and docs/Reference/Default/VBA/TbExpressionService/Compile.md, and as quiet cases (comment `bugs/expression-service-dangling-tokens`) in errors/VBA.HiddenModule.yml and VBA.TbExpressionService.yml; when fixed, the WARNINGs go and the quiet cases join Eval's and Compile's rows of the error raised. Found 2026-10-28 by batch 10 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
+
+---
+
+## `Eval` and `ITbExpression.Evaluate` raise -2147467259 for every error inside the expression, instead of passing it on unchanged
+
+**Describe the bug**
+An error that a function, an operator or a bound object's member raises while `Eval` or `ITbExpression.Evaluate` evaluates an expression does not reach the caller as it was raised. Whatever it was, the caller gets -2147467259 (`&H80004005`): `Eval("1 / 0")` raises -2147467259, not 11, *Division by zero*; `CInt("abc")` in an expression not 13, `CInt(40000)` not 6, `Sqr(-1)` not 5; and a bound object's error, a `Scripting.Dictionary`'s `Add` of a key it holds, not 457. Each of these raises its own number when the same code is written in a procedure.
+
+The description is lost with the number: in a built exe the first such error of the process has the description *Automation error* and every later one *Unspecified error*; in the IDE every one has *Automation error*.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `expression-service-error-numbers.twinproj` (attached as `expression-service-error-numbers.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the seven other cases fail, each with -2147467259 (and the description case with *Automation error*).
+
+The module is meant to be adapted as a regression test. Each case asserts the number, or the description, that the same code raises written in a procedure.
+```vb
+' Regression tests: an error raised by a function, an operator or a bound object's member
+' while Eval or ITbExpression.Evaluate evaluates an expression reaches the caller unchanged,
+' with the number and description the same code raises written in a procedure, as VBScript's
+' Eval and Access's Eval pass it on. On BETA 1010 each of these raises -2147467259, whose
+' description is "Automation error" in the IDE and in an exe's first such error, and
+' "Unspecified error" after it.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Function EvalError(ByVal Source As String) As Long
+        Dim V As Variant
+        On Error Resume Next
+        V = Eval(Source)
+        EvalError = Err.Number
+    End Function
+
+    ' The controls: an expression that raises nothing, and a bound object's error raised by
+    ' the same call written in a procedure.
+    [TestCase]
+    Public Sub Control_Eval_Sum()
+        Assert.Strict.AreEqual 4, CInt(Eval("2 + 2"))
+    End Sub
+
+    [TestCase]
+    Public Sub Control_DictionaryAddOfAKeyItHolds_Raises457()
+        Dim D As Object = CreateObject("Scripting.Dictionary")
+        Dim E As Long
+        D.Add 1, 1
+        On Error Resume Next
+        D.Add 1, 2
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 457&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_DivisionByZero_Raises11()
+        Assert.Strict.AreEqual 11&, EvalError("1 / 0")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_DivisionByZero_DescriptionIsDivisionByZero()
+        Dim V As Variant, D As String
+        On Error Resume Next
+        V = Eval("1 / 0")
+        D = Err.Description
+        On Error GoTo 0
+        Assert.Strict.AreEqual "Division by zero", D
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_CIntOfText_Raises13()
+        Assert.Strict.AreEqual 13&, EvalError("CInt(""abc"")")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_CIntOverflow_Raises6()
+        Assert.Strict.AreEqual 6&, EvalError("CInt(40000)")
+    End Sub
+
+    [TestCase]
+    Public Sub Eval_SqrOfNegative_Raises5()
+        Assert.Strict.AreEqual 5&, EvalError("Sqr(-1)")
+    End Sub
+
+    [TestCase]
+    Public Sub Evaluate_DivisionByZero_Raises11()
+        Dim S As New TbExpressionService
+        Dim X As ITbExpression, V As Variant, E As Long
+        S.AddStdLibraryBinder
+        Set X = S.Compile("1 / 0")
+        On Error Resume Next
+        V = X.Evaluate()
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 11&, E
+    End Sub
+
+    [TestCase]
+    Public Sub Evaluate_BoundObjectsError_Raises457()
+        Dim S As New TbExpressionService
+        Dim D As Object = CreateObject("Scripting.Dictionary")
+        Dim X As ITbExpression, V As Variant, E As Long
+        D.Add 1, 1
+        S.AddCustomBinderObject "D", D
+        Set X = S.Compile("D.Add(1, 2)")
+        On Error Resume Next
+        V = X.Evaluate()
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 457&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The error reaches the caller unchanged, with the number and description it has when the same code is written in a procedure: `Eval` and `Evaluate` add nothing of their own. That is what the VB family's expression evaluators do: Access's `Eval` in 64-bit VBA raises 11, 13, 6 and 5 for the four `Eval` cases, with the same descriptions as direct code, and VBScript's `Eval` (through `MSScriptControl.ScriptControl` in VB6) the same numbers.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: medium: an error handler cannot tell a division by zero from a type mismatch or a bound object's own error, and a handler written for one number never runs. The class's own documentation says an error inside the expression propagates out of `Evaluate` like any other run-time error.
+
+A 64-bit build gives the same results. 64-bit VBA here is VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: an expression that raises nothing.
+
+Related: the queued entry `expression-service-dangling-tokens`, on malformed expressions that are accepted.
+
+<!-- Reproducer: bugs/expression-service-error-numbers/ (mode test: `tbrun --tests`; expect lists the two PASS and seven FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`; the descriptions in exes with `tbrun --exe` and `errors.mjs run`; VBScript's numbers from VB6 with MSScriptControl, Access's from VbaSession (scripts/lib/vba.mjs). No VB6 side: VB6 has no Eval. Stated in the first NOTE (BETA 1010) on docs/Reference/Default/VBA/HiddenModule/Eval.md and on docs/Reference/Default/VBA/TbExpressionService/Evaluate.md, and in their Common Errors sections (the rows of errors raised while evaluating, -2147467259, in errors/VBA.HiddenModule.yml and VBA.TbExpressionService.yml); when fixed, those rows become the errors' own numbers and the NOTEs go. Not in this entry (owner, 2026-10-28: it asks only that errors pass through unchanged): a compile failure's number and description, `Eval("Len(Null)")` and `Eval("CVErr(5)")`, and the description NOTEs with the `expression` harness. Found 2026-10-28 by batch 10 of WIP.Errors.md; owner, 2026-10-28: Eval is not to special-case errors, unless VB does, which it does not. -->
+
+---
+
+## `vbaCastObj` returns `Nothing` for an interface the object does not have, where VB6's `__vbaCastObj` raises 13
+
+**Describe the bug**
+`vbaCastObj(Obj, IID)` asks *Obj* for the interface whose ID is at the address *IID*. When *Obj* does not have it, `vbaCastObj` returns `Nothing` and raises no error. VB6's own `__vbaCastObj`, which msvbvm60 exports and which `vbaCastObj` mirrors, raises 13, *Type mismatch*, there: it is the function VB6's compiled code calls for a `Set` to a variable of an interface type, and the 13 is the error that `Set` raises. A `String` given as *IID* is the same case: its text is read as the interface ID, which no object has, so VB6 raises 13 and twinBASIC returns `Nothing`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `vbacastobj-no-type-mismatch.twinproj` (attached as `vbacastobj-no-type-mismatch.zip`).
+2. Run its test cases, the module below. On BETA 1010 the three controls pass and the two other cases fail: `Err.Number` is 0.
+3. Build and run the VB6 project (attached as `vbacastobj-no-type-mismatch-vb6.zip`), which calls `__vbaCastObj` through a `Declare` with the same arguments. It prints:
+   ```
+   Control_IUnknown_ReturnsTheInterface: 0 an interface
+   Control_IDispatch_ReturnsTheInterface: 0 an interface
+   Control_Nothing_ReturnsNothing: 0 Nothing
+   InterfaceItLacks_Raises13: 13 Nothing
+   StringGivenAsTheInterfaceId_Raises13: 13 Nothing
+   ```
+
+The module is meant to be adapted as a regression test. Each case asserts what VB6's `__vbaCastObj` does.
+```vb
+' Regression tests: vbaCastObj raises 13, Type mismatch, when the object does not have the
+' interface asked for, as VB6's own __vbaCastObj (msvbvm60) does, and still returns the
+' interface when it does, and Nothing for Nothing. On BETA 1010 it returns Nothing with no
+' error, for an interface the object lacks and for a String given as the interface ID (whose
+' text is not an interface ID). The VB6 project beside this one calls __vbaCastObj with the
+' same arguments.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    Private Type InterfaceGuid
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Private Iid As InterfaceGuid
+
+    ' The address of the interface ID {Data1-0000-0000-C000-000000000046}: 0 is IUnknown,
+    ' &H20400 IDispatch, &H12345 an interface nothing has.
+    Private Function StdIid(ByVal Data1 As Long) As LongPtr
+        Iid.Data1 = Data1
+        Iid.Data4(0) = &HC0
+        Iid.Data4(7) = &H46
+        StdIid = VarPtr(Iid)
+    End Function
+
+    [TestCase]
+    Public Sub Control_IUnknown_ReturnsTheInterface()
+        Assert.Strict.IsNotNothing vbaCastObj(New Collection, StdIid(0))
+    End Sub
+
+    [TestCase]
+    Public Sub Control_IDispatch_ReturnsTheInterface()
+        Assert.Strict.IsNotNothing vbaCastObj(New Collection, StdIid(&H20400))
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Nothing_ReturnsNothing()
+        Assert.Strict.IsNothing vbaCastObj(Nothing, StdIid(0))
+    End Sub
+
+    [TestCase]
+    Public Sub InterfaceItLacks_Raises13()
+        Dim E As Long, U As IUnknown
+        On Error Resume Next
+        Set U = vbaCastObj(New Collection, StdIid(&H12345))
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 13&, E
+    End Sub
+
+    [TestCase]
+    Public Sub StringGivenAsTheInterfaceId_Raises13()
+        Dim E As Long, U As IUnknown
+        On Error Resume Next
+        Set U = vbaCastObj(New Collection, "{00000000-0000-0000-C000-000000000046}")
+        E = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 13&, E
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+13, *Type mismatch*, as VB6's `__vbaCastObj` raises, when the object does not have the interface; the interface when it does; `Nothing` for an object of `Nothing`, as now.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low to medium: code ported from VB6 that relies on the 13 from `__vbaCastObj` goes on with `Nothing`, and code that passes the IID as text, as the function's documentation once said it could, always gets `Nothing` and never learns why.
+
+A 64-bit build gives the same results. 64-bit VBA cannot be compared: VBE7.DLL exports no `__vba` function.
+
+What does not reproduce it: an interface the object has (`IUnknown`, `IDispatch` of a `Collection`), and an object of `Nothing`, for which both return `Nothing` with no error.
+
+<!-- Reproducer: bugs/vbacastobj-no-type-mismatch/ (mode test: `tbrun --tests`; expect lists the three PASS and two FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`. VB6 side in vb6/ (VB6 6.0), calling msvbvm60's __vbaCastObj. Stated in a WARNING (BETA 1010) on docs/Reference/Default/VBA/HiddenModule/vbaCastObj.md, and in its Common Errors section (row `bug: vbacastobj-no-type-mismatch`, error 0, vb6 13, in errors/VBA.HiddenModule.yml); when fixed, the row becomes a row of 13 with no vb6:, and the WARNING and the NOTE go. Found 2026-10-28 by batch 10 of WIP.Errors.md; owner, 2026-10-28: a bug. -->
+
+---
+
+## Assigning `Nothing` without `Set` to a variable that is not an object, or comparing with `Nothing` by `=`, compiles, where VB6 and VBA refuse it
+
+**Describe the bug**
+`Nothing` is an object reference: it is assigned with `Set` and compared with `Is`. VB6 and 64-bit VBA refuse, when they compile, a Let of `Nothing` to a variable that is neither an object nor a `Variant` (`Count = Nothing` for a `Long`, a `String` or a `Boolean`), and `Nothing` as an operand of `=` or `<>` (`If Obj = Nothing`, `Count <> Nothing`), each with *Invalid use of object*. twinBASIC compiles every one of them with no diagnostic, and each raises 91, *Object variable or With block variable not set*, when it runs. An error the compiler could report is put off until the line runs, so a mistake on a path that rarely runs is found late or not at all.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `nothing-let-compiles.twinproj` (attached as `nothing-let-compiles.zip`).
+2. Compile it. On BETA 1010 it compiles with no error. The module's five lines marked `error` are each one of the forms above; the three marked `none` are the forms VB6 and VBA compile too (`Set Items = Nothing`, `Items Is Nothing`, `Set Value = Nothing`).
+3. The same lines in VB6 6.0 and in 64-bit VBA each stop the compile with *Compile error: Invalid use of object*.
+
+The module is meant to be adapted as a regression test, as compile cases.
+```vb
+Module NothingLetTests
+
+    Private Sub Uses()
+        Dim Count As Long, Text As String, Flag As Boolean, Items As Collection, Value As Variant, Obj As Object
+        Count = Nothing  ' CASE LetLong_Nothing: error
+        Text = Nothing  ' CASE LetString_Nothing: error
+        Flag = Nothing  ' CASE LetBoolean_Nothing: error
+        If Obj = Nothing Then Count = 1  ' CASE EqualsComparison_Nothing: error
+        Flag = (Count <> Nothing)  ' CASE NotEqualsComparison_Nothing: error
+        Set Items = Nothing  ' CASE Control_SetObject: none
+        If Items Is Nothing Then Count = 1  ' CASE Control_IsNothing: none
+        Set Value = Nothing  ' CASE Control_SetVariant: none
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+A compile error on each of the five lines, as VB6 and 64-bit VBA give (*Invalid use of object*); no change to the three controls.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low: the code is wrong in every runtime, and twinBASIC does report it, but only when the line runs, as error 91.
+
+A 64-bit build gives the same results. VBA was 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access.
+
+What does not reproduce it: a Let of `Nothing` to a variable declared `As Object` (`Obj = Nothing`), which VB6 and VBA compile too and which raises 91 in all three, and to a `Variant`, which VB6 and VBA also compile (the queued entry `nothing-let-variant-no-error` is about what twinBASIC does with it). `Items = Nothing` for a `Collection` is refused by twinBASIC as well, with TB5092, *Missing argument 'Index'*, from the collection's default member.
+
+<!-- Reproducer: bugs/nothing-let-compiles/ (mode test: `tbrun --tests`, compile cases; expect lists the three PASS and five FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`. No VB6 side: VB6 refuses the project at compile, checked with scripts/vb6run.mjs on each line; 64-bit VBA checked with VbaSession, one module per line. Stated in a NOTE (BETA 1010) under Nothing on docs/Reference/Literal-Keywords.md; when fixed, the NOTE goes. Found 2026-10-29 writing that page; owner, 2026-10-29: a bug. -->
+
+---
+
+## A `Variant` assigned `Nothing` without `Set` holds `Nothing`, where VB6 and VBA raise 91 and leave it `Empty`
+
+**Describe the bug**
+`Value = Nothing`, with `Value` a `Variant` and no `Set`, makes `Value` hold `Nothing`, as `Set Value = Nothing` does, and raises no error. VB6 and 64-bit VBA read it as a Let of the default value of an object that is not there: they raise 91, *Object variable or With block variable not set*, and leave the `Variant` `Empty`. Code that leaves out `Set` by mistake therefore runs on in twinBASIC, where in VB6 and VBA it stops.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `nothing-let-variant-no-error.twinproj` (attached as `nothing-let-variant-no-error.zip`).
+2. Run its test cases, the module below. On BETA 1010 the two controls pass and the two other cases fail: `Err.Number` is 0, and the `Variant` holds `Nothing`.
+3. Build and run the VB6 project (attached as `nothing-let-variant-no-error-vb6.zip`), which runs the same statements. It prints:
+   ```
+   LetVariant: error 91, Value Empty
+   Control_SetVariant: Value Is Nothing True
+   Control_LetObject: error 91
+   ```
+
+The module is meant to be adapted as a regression test. Each case asserts what VB6 and 64-bit VBA do.
+```vb
+' Regression tests: assigning Nothing to a Variant without Set raises 91, Object variable or With
+' block variable not set, and leaves the Variant Empty, as VB6 does: it reads the assignment as
+' a Let of the default value of an object that is not there. On BETA 1010 the Variant holds
+' Nothing and no error is raised. The controls: Set stores Nothing, and a Let of Nothing to an
+' Object variable raises 91 in both.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub LetVariant_Raises91()
+        Dim Value As Variant
+        Value = 3
+        On Error Resume Next
+        Value = Nothing
+        Assert.Strict.AreEqual 91, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub LetVariant_LeavesItEmpty()
+        Dim Value As Variant
+        Value = 3
+        On Error Resume Next
+        Value = Nothing
+        On Error GoTo 0
+        Assert.Strict.IsTrue IsEmpty(Value)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SetVariant_HoldsNothing()
+        Dim Value As Variant
+        Value = 3
+        Set Value = Nothing
+        Assert.Strict.IsTrue Value Is Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub Control_LetObject_Raises91()
+        Dim Obj As Object
+        On Error Resume Next
+        Obj = Nothing
+        Assert.Strict.AreEqual 91, Err.Number
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Error 91, with the `Variant` left `Empty`, as VB6 and 64-bit VBA do.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1010
+
+**Additional context**
+Severity: low: the missing `Set` goes unreported, and the `Variant` holds what `Set` would have stored.
+
+A 64-bit build gives the same results. 64-bit VBA, 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access, gives what VB6 gives.
+
+What does not reproduce it: `Set Value = Nothing`, which holds `Nothing` in all three, and a Let of `Nothing` to an `Object` variable, which raises 91 in all three.
+
+Related: the queued entry `nothing-let-compiles`, on the forms VB6 and VBA refuse when they compile.
+
+<!-- Reproducer: bugs/nothing-let-variant-no-error/ (mode test: `tbrun --tests`; expect lists the two PASS and two FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`. VB6 side in vb6/ (VB6 6.0); 64-bit VBA checked with VbaSession. Stated in a WARNING (BETA 1010) under Nothing on docs/Reference/Literal-Keywords.md; when fixed, the WARNING goes. Found 2026-10-29 writing that page; owner, 2026-10-29: a bug. -->
+

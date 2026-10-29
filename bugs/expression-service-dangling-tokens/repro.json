@@ -1,0 +1,19 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Control_Eval_WellFormed$",
+      "^PASS RegressionTests.Control_Eval_TwoNumbers_Raises$",
+      "^PASS RegressionTests.Control_Compile_UnclosedAfterOperator_Raises$",
+      "^FAIL RegressionTests.Eval_TrailingPlus_Raises: .*Actual: 0 ",
+      "^FAIL RegressionTests.Eval_TrailingMod_Raises: .*Actual: 0 ",
+      "^FAIL RegressionTests.Eval_UnclosedParenthesis_Raises: .*Actual: 0 ",
+      "^FAIL RegressionTests.Eval_UnopenedParenthesis_Raises: .*Actual: 0 ",
+      "^FAIL RegressionTests.Compile_TrailingPlus_Raises: .*Actual: 0 ",
+      "^FAIL RegressionTests.Compile_TrailingMod_Raises: .*Actual: 0 ",
+      "^FAIL RegressionTests.Compile_UnclosedParenthesis_Raises: .*Actual: 0 ",
+      "^FAIL RegressionTests.Compile_UnopenedParenthesis_Raises: .*Actual: 0 "
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+' A class whose method sets the HRESULT it returns, as the ReturnHResult page shows.
+Class Thing
+
+    Public Function Status() As Long
+        Err.ReturnHResult = 1
+    End Function
+
+End Class

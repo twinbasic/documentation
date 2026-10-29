@@ -236,4 +236,86 @@ Module RegressionTests
         Assert.Strict.AreEqual 94&, Err.Number
     End Sub
 
+    ' The Financial functions (batch 9).
+    [TestCase]
+    Public Sub DDB_LifeZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = DDB(1000, 100, 0, 1)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub SLN_LifeZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = SLN(1000, 100, 0)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub SYD_PeriodAboveLife_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = SYD(1000, 100, 5, 6)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub IPmt_NperZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = IPmt(0.01, 1, 0, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub PPmt_NperNegative_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = PPmt(0.01, 1, -10, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Pmt_RateAndNperZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = Pmt(0, 0, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub NPer_RateAndPmtZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = NPer(0, 0, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Rate_NperZero_Raises5()
+        Dim R As Double
+        On Error Resume Next
+        R = Rate(0, -100, 1000)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Rate_NperBelowOneOverflow_Raises6()
+        Dim R As Double
+        On Error Resume Next
+        R = Rate(0.5, -100, 1000)
+        Assert.Strict.AreEqual 6&, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub IRR_NoReceipt_Raises5()
+        Dim R As Double, F(1) As Double
+        F(0) = -100: F(1) = -110
+        On Error Resume Next
+        R = IRR(F)
+        Assert.Strict.AreEqual 5&, Err.Number
+    End Sub
+
 End Module

@@ -18,6 +18,15 @@ Syntax: **GetMemPtr** *Address* **,** *retVal*
 
 The number of bytes read matches the host's pointer width --- four bytes in 32-bit builds, eight bytes in 64-bit builds. The bytes are interpreted in the host's native byte order. The address is read directly with no bounds or alignment check.
 
+<!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
+### Common Errors
+
+| Error | When |
+|---|---|
+| [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *Address* is **Null** |
+
+<!-- /errors -->
+
 ### Example
 
 ```tb check_build

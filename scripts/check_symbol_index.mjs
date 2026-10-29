@@ -29,7 +29,7 @@
 import { readFile } from "node:fs/promises";
 import { GUARDED_SRC } from "../builder/baseline.mjs";
 import { checkSymbolBaseline } from "../builder/symbol-baseline.mjs";
-import { deriveSymbolIndex, headingsOf, serializeSymbolIndex } from "../builder/symbols.mjs";
+import { deriveSymbolIndex, headingsOf, serializeSymbolIndex, symbolPages } from "../builder/symbols.mjs";
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { baselineFixture, createProbes } from "./lib/gate-probes.mjs";
 import { apiSnapshot, isPublicType, logicalLinesRaw, parseSources, parseTwin, projectNameOf } from "./lib/twin-api.mjs";
@@ -1842,6 +1842,10 @@ const pages = [
     [h(1, "Data Types", "data-types"), h(2, "Quick reference", "quick-reference"), h(2, "Long", "long"),
       h(2, "Overflow", "overflow"), h(2, "String", "string"), h(3, "Fixed-length strings", "fixed-length-strings")],
     { symbols: ["Long", "String"] }),
+  page("Reference/Literal-Keywords.md", "/Reference/Literal-Keywords", "Literal Keywords", "Reference Section",
+    [h(1, "Nothing, Null, Empty, True and False", "nothing-null-empty-true-and-false"), h(2, "Nothing", "nothing"),
+      h(2, "Null", "null"), h(3, "Null in expressions", "null-in-expressions")],
+    { symbols: ["Nothing", "Null"] }),
 ];
 
 const r = deriveSymbolIndex({ pages, api });
@@ -1940,10 +1944,64 @@ check(
   show(r.interfaces),
 );
 check(
-  "only /tB/ pages and the data types page are read",
-  !r.symbols.some((s) => !s.url.startsWith("/tB/") && !s.url.startsWith("/Reference/Data-Types#")) &&
-    !find("Guide").length,
+  "only /tB/ pages and the two summary pages are read",
+  !r.symbols.some(
+    (s) =>
+      !s.url.startsWith("/tB/") &&
+      !s.url.startsWith("/Reference/Data-Types#") &&
+      !s.url.startsWith("/Reference/Literal-Keywords#"),
+  ) && !find("Guide").length,
 );
+check(
+  "a literal keyword is the language's, a keyword at the ## heading its symbols: entry names",
+  show(find("Nothing")) ===
+    show([
+      { name: "Nothing", package: null, container: null, kind: "keyword", url: "/Reference/Literal-Keywords#nothing" },
+    ]) &&
+    urlOf("Null").join() === "/Reference/Literal-Keywords#null" &&
+    !find("Literal").length,
+  show(r.symbols.filter((s) => s.url.startsWith("/Reference/Literal-Keywords"))),
+);
+{
+  const broken = pages.map((p) =>
+    p.src === "Reference/Literal-Keywords.md" ? { ...p, symbols: ["Nothing", "Empty"] } : p,
+  );
+  let error = null;
+  try {
+    deriveSymbolIndex({ pages: broken, api });
+  } catch (e) {
+    error = e;
+  }
+  check(
+    "a keyword the literal keywords page names without its ## heading fails",
+    /Literal-Keywords\.md names Empty/.test(String(error?.message)),
+    String(error?.message),
+  );
+}
+{
+  // An unquoted True, False or Null in symbols: is YAML's boolean or null, not a name.
+  const built = (symbols) => ({
+    srcRel: "Reference/Literal-Keywords.md",
+    permalink: "/Reference/Literal-Keywords",
+    frontmatter: { title: "Literal Keywords", symbols },
+    renderedContent: '<h2 id="true">True</h2>',
+  });
+  let error = null;
+  try {
+    symbolPages([built(["Nothing", true, null])]);
+  } catch (e) {
+    error = e;
+  }
+  check(
+    "a symbols: entry that YAML read as a boolean or null fails, naming the page",
+    /Literal-Keywords\.md: symbols: holds true, not a name/.test(String(error?.message)),
+    String(error?.message),
+  );
+  check(
+    "a symbols: list of quoted names passes as written",
+    show(symbolPages([built(["Nothing", "True"])])[0].symbols) === show(["Nothing", "True"]),
+  );
+}
 check(
   "a data type is the language's, at the ## heading its symbols: entry names",
   show(find("Long")) ===
