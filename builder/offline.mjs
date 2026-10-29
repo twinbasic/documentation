@@ -293,144 +293,85 @@ const JTD_NAVLINK_REPLACEMENT = `function navLink() {
 }`;
 
 const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
-  // Patched by _plugins/offlinify.rb for file:// compatibility, and for
-  // the lazy index build (WIP.Search.md rollout step 5C): initSearch()
-  // only defines how to build the index -- loadIndex() below -- and hands
-  // that to searchLoaded(), which wires up the search box right away but
-  // doesn't call loadIndex() until the first keystroke. window.SEARCH_DATA
-  // is already sitting in memory (preloaded via <script src=> before this
-  // file runs), so there's no fetch to defer here, only the build itself
-  // -- the same ~1.3s / 240MB-heap cost the online copy defers, paid only
-  // by readers who open search.
+  // Patched by _plugins/offlinify.rb for file:// compatibility, and for the
+  // lazy load of the pre-built index (WIP.Search.md, "The pre-built index"):
+  // initSearch() only defines how to load the index -- loadIndex() below --
+  // and hands that to searchLoaded(), which wires up the search box right
+  // away but doesn't call loadIndex() until the first keystroke. The online
+  // copy fetches search-data.json and search-index.json, which browsers
+  // block under file://; here the two are scripts that set a global each
+  // (search-data.js and search-index.js), added to the page then, so a page
+  // never searched from loads neither.
+  function loadScript(name, global, done, fail) {
+    if (window[global]) {
+      done();
+      return;
+    }
+    var script = document.createElement('script');
+    script.src = (window.OFFLINE_SITE_ROOT || '') + 'assets/js/' + name;
+    script.onload = done;
+    script.onerror = fail;
+    document.head.appendChild(script);
+  }
+
   function loadIndex(onSuccess, onError) {
-    try {
-      // The upstream version fires XMLHttpRequest for search-data.json,
-      // which browsers block under file://. We instead read the index
-      // from a global the offline copy preloads via <script src=>.
-      var docs = window.SEARCH_DATA;
-      if (!docs) {
-        console.log('Offlinify: window.SEARCH_DATA not found; ensure search-data.js loads before just-the-docs.js');
+    var pending = 2;
+    var failed = false;
+    function loaded() {
+      if (!failed && --pending === 0) setTimeout(build, 0);
+    }
+    function failure(name) {
+      return function() {
+        if (failed) return;
+        failed = true;
+        console.log('Offlinify: ' + name + ' did not load');
         onError();
-        return;
-      }
-      // Rebuild each doc.url from doc.relUrl (no baseurl prefix) so
-      // search-result clicks land on the right file regardless of
-      // whatever baseurl the site was built with. Upstream sets
-      // \`link.href = doc.url\`, so this is the value users navigate
-      // to. Reading from doc.relUrl each time (not doc.url) keeps this
-      // idempotent, since a failed load can retry and run it again.
-      var siteRoot = window.OFFLINE_SITE_ROOT || '';
-      for (var i in docs) {
-        var rel = docs[i].relUrl;
-        if (typeof rel === 'string' && rel.charAt(0) === '/') {
-          var hash = '';
-          var hashIdx = rel.indexOf('#');
-          if (hashIdx !== -1) {
-            hash = rel.slice(hashIdx);
-            rel = rel.slice(0, hashIdx);
-          }
-          rel = rel.slice(1); // strip leading /
-          if (rel.endsWith('/')) {
-            rel = rel + 'index.html';
-          } else {
-            var lastSlash = rel.lastIndexOf('/');
-            var lastSeg = lastSlash === -1 ? rel : rel.slice(lastSlash + 1);
-            if (lastSeg.indexOf('.') === -1) rel = rel + '.html';
-          }
-          docs[i].url = siteRoot + rel + hash;
+      };
+    }
+    loadScript('search-data.js', 'SEARCH_DATA', loaded, failure('search-data.js'));
+    loadScript('search-index.js', 'SEARCH_INDEX', loaded, failure('search-index.js'));
+    function build() {
+      try {
+        var docs = window.SEARCH_DATA;
+        if (!docs || !window.SEARCH_INDEX) {
+          console.log('Offlinify: search-data.js or search-index.js set no data');
+          onError();
+          return;
         }
-      }
-
-      // Mirrors the online build's dot-run-split patch (see
-      // builder/vendor/just-the-docs/README.md and WIP.Search.md's
-      // "Design" section): wrap lunr.tokenizer once so a run of 2+ dots
-      // ("Do...Loop", "For Each...Next") tokenises as spaces instead of
-      // one opaque token, for both the index and the query. Installed
-      // once, since lunr is a global singleton and loadIndex() can run
-      // again after a failed load; the wrapper carries \`separator\`
-      // itself because the original tokenizer reads
-      // \`lunr.tokenizer.separator\` at call time, which after this
-      // reassignment resolves to the wrapper's own property. Each token's
-      // HTML entities are decoded after the split, by the online copy's
-      // decodeTokenEntities().
-      if (!lunr.tokenizer.dotRunSplit) {
-        var originalTokenizer = lunr.tokenizer;
-        var dotRunSplitTokenizer = function (input) {
-          if (typeof input === 'string') {
-            input = input.replace(/\\.{2,}/g, function (m) {
-              return new Array(m.length + 1).join(' ');
-            });
+        // Rebuild each doc.url from doc.relUrl (no baseurl prefix) so
+        // search-result clicks land on the right file regardless of
+        // whatever baseurl the site was built with. Upstream sets
+        // \`link.href = doc.url\`, so this is the value users navigate
+        // to. Reading from doc.relUrl each time (not doc.url) keeps this
+        // idempotent, since a failed load can retry and run it again.
+        var siteRoot = window.OFFLINE_SITE_ROOT || '';
+        for (var i in docs) {
+          var rel = docs[i].relUrl;
+          if (typeof rel === 'string' && rel.charAt(0) === '/') {
+            var hash = '';
+            var hashIdx = rel.indexOf('#');
+            if (hashIdx !== -1) {
+              hash = rel.slice(hashIdx);
+              rel = rel.slice(0, hashIdx);
+            }
+            rel = rel.slice(1); // strip leading /
+            if (rel.endsWith('/')) {
+              rel = rel + 'index.html';
+            } else {
+              var lastSlash = rel.lastIndexOf('/');
+              var lastSeg = lastSlash === -1 ? rel : rel.slice(lastSlash + 1);
+              if (lastSeg.indexOf('.') === -1) rel = rel + '.html';
+            }
+            docs[i].url = siteRoot + rel + hash;
           }
-          return originalTokenizer(input).map(decodeTokenEntities);
-        };
-        dotRunSplitTokenizer.dotRunSplit = true;
-        dotRunSplitTokenizer.separator = /[\\s\\-\\/]+/;
-        lunr.tokenizer = dotRunSplitTokenizer;
-      }
-      // Mirrors the online build's token-set key patch
-      // (separateTokenSetKeys() is the online copy's), and its set-union
-      // patch (accumulateSetUnions(), likewise).
-      separateTokenSetKeys();
-      accumulateSetUnions();
-
-      // Mirrors the online build's stem-twin patch (stemTwins() and
-      // qualifiedField() are the online copy's).
-      var twins = stemTwins(docs);
-      // Mirrors the online build's sliced build (buildIndexInSlices() is
-      // the online copy's), so the search box takes keystrokes while the
-      // index builds.
-      buildIndexInSlices(function(){
-        this.ref('id');
-        this.field('title', { boost: 200 });
-        this.field('content', { boost: 2 });
-        // Mirrors the online build's just-the-docs.js patch (see
-        // builder/vendor/just-the-docs/README.md and WIP.Search.md's
-        // "Design" §2): the same two symbol-index fields, at the same
-        // boosts. test/search.test.mjs extracts the field/boost list from
-        // both this string and the vendored just-the-docs.js source and
-        // asserts they agree, so the two copies cannot drift apart silently.
-        this.field('names', { boost: 100 });
-        this.field('qualified', { boost: 500 });
-        // Mirrors the online build's exact-name, primary-name and
-        // page-title patches (exactName() is the online copy's, which this
-        // file keeps).
-        this.field('exact', { boost: 50 });
-        this.field('primary', { boost: 1000 });
-        this.field('page', { boost: 5 });
-        // Mirrors the online build's index-term patch (indexField(),
-        // indexedContent() and pinIndexFieldLengths() are the online
-        // copy's).
-        this.field('index', { boost: 1000 });
-        this.field('relUrl');
-        this.metadataWhitelist = ['position'];
-        pinIndexFieldLengths(this);
-        // Mirrors the online build's stop-word patch (step 5A): keep
-        // lunr's default stop words in the index, since many are
-        // twinBASIC keywords (Do, For, If, Is, On, With, Each...) that the
-        // search pipeline's query side never dropped.
-        this.pipeline.remove(lunr.stopWordFilter);
-      }, docs, function(i) {
-        return {
-          id: i,
-          title: docs[i].title,
-          content: indexedContent(docs[i]),
-          names: docs[i].names || '',
-          qualified: qualifiedField(docs[i], twins),
-          exact: (docs[i].names || '').split(/\\s+/).filter(Boolean).map(exactName).join(' '),
-          primary: (docs[i].primary || '').split(/\\s+/).filter(Boolean).map(exactName).join(' '),
-          page: docs[i].doc || '',
-          index: indexField(docs[i]),
-          relUrl: docs[i].relUrl
-        };
-      }, function(index) {
-        onSuccess(index, docs);
-      }, function(e) {
-        console.log('Error building search index: ' + e);
+        }
+        // The online copy's lunr patches, its check that the two files are
+        // of one build, and lunr.Index.load (indexFromData()).
+        onSuccess(indexFromData(docs, window.SEARCH_INDEX), docs);
+      } catch (e) {
+        console.log('Error loading search index: ' + e);
         onError();
-      });
-    } catch (e) {
-      console.log('Error building search index: ' + e);
-      onError();
+      }
     }
   }
 

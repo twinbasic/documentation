@@ -409,16 +409,14 @@ export function rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl,
 
 export const JTD_SCRIPT_TAG_RE = /<script\s+src="([^"]*)just-the-docs\.js"/;
 
-// §6.8  injectSearchSetup -- two <script> tags before the just-the-docs.js
-// tag carry the per-page relative site-root and the lunr-index data load.
+// §6.8  injectSearchSetup -- a <script> tag before the just-the-docs.js tag
+// carries the per-page relative site-root. The search data and index are
+// not loaded here: the offline initSearch() adds their scripts to the page
+// on the first keystroke, from that root (builder/offline.mjs).
 export function injectSearchSetup(html, fileSegs) {
-  return html.replace(JTD_SCRIPT_TAG_RE, (match, prefix) => {
+  return html.replace(JTD_SCRIPT_TAG_RE, (match) => {
     const siteRoot = fileSegs.length === 0 ? "" : "../".repeat(fileSegs.length);
-    return (
-      `<script>window.OFFLINE_SITE_ROOT="${siteRoot}";</script>\n` +
-      `<script src="${prefix}search-data.js"></script>` +
-      match
-    );
+    return `<script>window.OFFLINE_SITE_ROOT="${siteRoot}";</script>\n` + match;
   });
 }
 

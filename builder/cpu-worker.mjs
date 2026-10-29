@@ -18,6 +18,7 @@ import { createMarkdownIt, renderPhase } from "./render.mjs";
 import { renderFullNav, templatePhase, withPartialNav } from "./template.mjs";
 import { unpackShared } from "./sab-broadcast.mjs";
 import { deriveSearchEntries } from "./search.mjs";
+import { writeSearchIndex } from "./search-index.mjs";
 import { computeChunkSeo } from "./seo.mjs";
 import { pictureSvgOutputs, pngPictures } from "./theme-pictures.mjs";
 import { deriveOfflinePage, isWebsiteOnlyLink, websiteOf } from "./offline-rewrite.mjs";
@@ -227,6 +228,17 @@ const handlers = {
       dryRun: !!ctx.opts.dryRun,
       disabled: !!ctx.opts.skipHelpArchive,
     });
+  },
+
+  // search-index.json, the lunr index of the search-data.json searchData
+  // wrote, and the offline tree's search-index.js beside it. On a lane
+  // because the main thread runs one task at a time, and the index takes a
+  // second or two: as a main-thread task it held back the book and the
+  // offline tree. It builds on threads of its own (search-index.mjs).
+  async searchIndex() {
+    if (ctx.opts.dryRun) return { entries: 0, workers: 0, bytes: 0 };
+    const { skipOffline } = sharedData();
+    return writeSearchIndex(ctx.destRoot, { offline: !skipOffline });
   },
 
   // The PDF tree, from what bookPayload packed on the main thread. The book

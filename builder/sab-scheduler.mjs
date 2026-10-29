@@ -37,6 +37,7 @@ export const HANDLERS = {
   helpArchive: 8,
   writePdf: 9,
   checkBook: 10,
+  searchIndex: 11,
 };
 
 // ── SAB layout ───────────────────────────────────────────────────────────────

@@ -56,9 +56,16 @@ node scripts/check_lint.mjs
 @rem Unit tests for builder/search.mjs: the search-data.json generator's
 @rem heading split, generic-section folding (search.fold_headings), the
 @rem titleFound/prefix-entry logic and output determinism, against small
-@rem synthetic pages -- see WIP.Search.md's "Design" §1 and §5. No tree,
-@rem no browser, well under a second.
+@rem synthetic pages -- see WIP.Search.md's "Design" §1 and §5 -- and guards
+@rem that the page loads and queries the index as the build writes it. No
+@rem tree, no browser, about a second.
 node --test test/search.test.mjs
+@if errorlevel 1 goto :fail
+@rem The search index the build writes on several threads
+@rem (builder/search-index.mjs) is, byte for byte, the index lunr makes on
+@rem one, for any number of threads -- see WIP.Search.md, "The pre-built
+@rem index". No tree, no browser, about a second.
+node --test test/search-index.test.mjs
 @if errorlevel 1 goto :fail
 @rem Unit tests for builder/render.mjs's markdown-it plugins, on inputs
 @rem the corpus does not hold, so a plugin that is wrong only there still

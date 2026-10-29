@@ -87,12 +87,18 @@ runs:
       run: node scripts/check_lint.mjs
     # Unit tests for the site search, run by Node's own test runner: what the
     # entries builder/search.mjs writes hold, which the build's check does not
-    # read, and guards that the online client, the offline client and
-    # eval/site_search.mjs's replica still agree. No browser, no built tree,
-    # well under a second.
+    # read, and guards that the page loads and queries the index as the build
+    # writes it, as eval/site_search.mjs's replica does. No browser, no built
+    # tree, about a second.
     - name: Unit-test the site search (test/search.test.mjs)
       shell: bash
       run: node --test test/search.test.mjs
+    # The search index the build writes on several threads
+    # (builder/search-index.mjs) is, byte for byte, the index lunr makes on
+    # one, for any number of threads. No browser, no built tree.
+    - name: Check the split search-index build (test/search-index.test.mjs)
+      shell: bash
+      run: node --test test/search-index.test.mjs
     # Unit tests for builder/render.mjs's markdown-it plugins, on inputs the
     # corpus does not hold: the build compares whole pages, so a plugin that
     # is wrong only on such input passes it. No browser, no built tree.

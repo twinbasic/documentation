@@ -2,9 +2,13 @@
 // Query the site's own search box from the command line.
 //
 // This is a faithful replica, not an approximation: it loads the real
-// search-data.json the build emitted and the real vendored lunr, and it
-// reproduces just-the-docs.js's index configuration and query construction
-// exactly (field boosts, trailing wildcard, the edit-distance fallback).
+// search-data.json and search-index.json the build emitted and the real
+// vendored lunr, and it reproduces just-the-docs.js's query construction
+// exactly (trailing wildcard, the edit-distance fallback). The index is the
+// build's own: built by builder/search-index.mjs, the one definition of its
+// fields, boosts and patches, which this file imports; a site with no
+// search-index.json (a snapshot from before it existed) has its index built
+// here, by the same code.
 //
 // It exists because navigation and search fail on DIFFERENT pages, so judging
 // discoverability by either one alone is misleading. A page can be search
@@ -21,14 +25,14 @@
 // index setup and query logic, instead of forking its own copy that could
 // drift from what the CLI below actually runs.
 
-import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
 import { CliError, exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
+import { buildIndex, exactName, indexTermKey, loadSearchLunr, phraseKey } from "../builder/search-index.mjs";
 
-const require = createRequire(import.meta.url);
+export { buildIndex };
 
 function parseArgs(argv) {
   const { values, positionals, n } = withUsageError(() => {
@@ -61,253 +65,16 @@ function parseArgs(argv) {
 export function resolvePaths(site) {
   return {
     dataPath: path.join(site, "assets/js/search-data.json"),
+    indexPath: path.join(site, "assets/js/search-index.json"),
     lunrPath: path.join(site, "assets/js/vendor/lunr.min.js"),
   };
 }
 
-// Mirrors just-the-docs.js exactly. Do not "improve" this weight: the point
-// is to measure what a reader's search actually returns, not what a
-// better-tuned index would.
-//
-// The client's initSearch() (just-the-docs.js, and offline.mjs's copy of it)
-// sets the tokenizer separator to /[\s\-\/]+/, so `/` splits tokens too.
-// Without this, lunr's default /[\s\-]+/ tokenises differently from the real
-// site and this replica cannot reproduce what it claims to.
-//
-// Mirrors the dot-run-split patch too (WIP.Search.md rollout step 5B, "Design"
-// section): titles like "Do...Loop" and "For Each...Next" tokenise as one
-// opaque token ("do...loop") because lunr's tokenizer tests one character at
-// a time against `separator`, so a `\.{2,}` alternative in that regex can't
-// work. Wrapping lunr.tokenizer instead: a run of 2+ dots in a string input
-// becomes the same number of spaces (keeping character positions valid),
-// then the original tokenizer runs as usual. The wrapper carries `separator`
-// itself, since the original tokenizer reads `lunr.tokenizer.separator` at
-// call time, which after this reassignment resolves to the wrapper's own
-// property. test/search.test.mjs's drift guard checks this installs in all
-// three copies (this file, just-the-docs.js, offline.mjs).
+// The site's lunr with the site's patches installed (builder/search-index.mjs's
+// loadSearchLunr): the tokenizer the index was built with, which a query must
+// tokenize with too, and the two query patches the page installs.
 export function loadLunr(lunrPath) {
-  const lunr = require(lunrPath);
-  const originalTokenizer = lunr.tokenizer;
-  const dotRunSplitTokenizer = function (input) {
-    if (typeof input === "string") {
-      input = input.replace(/\.{2,}/g, (m) => new Array(m.length + 1).join(" "));
-    }
-    return originalTokenizer(input).map(decodeTokenEntities);
-  };
-  dotRunSplitTokenizer.dotRunSplit = true;
-  dotRunSplitTokenizer.separator = /[\s\-\/]+/;
-  lunr.tokenizer = dotRunSplitTokenizer;
-  separateTokenSetKeys(lunr);
-  accumulateSetUnions(lunr);
-  return lunr;
-}
-
-// Matches just-the-docs.js's decodeTokenEntities(): the search data keeps
-// the page's HTML entities, which the client needs for display, so each
-// token's are decoded after the split, keeping its position in the escaped
-// text: `&amp;H80004005` indexes as `h80004005`, not `amp;h80004005`.
-const NAMED_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
-
-function decodeTokenEntities(token) {
-  if (token.str.indexOf("&") === -1) return token;
-  return token.update((str) =>
-    str.replace(/&(amp|lt|gt|quot|apos|nbsp|#[0-9]+|#x[0-9a-f]+);/g, (m, name) => {
-      if (name.charAt(0) !== "#") return NAMED_ENTITIES[name];
-      const code = name.charAt(1) === "x" ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
-      // Lowercased, as lunr's tokenizer lowercases everything else.
-      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code).toLowerCase() : m;
-    }),
-  );
-}
-
-// Matches just-the-docs.js's separateTokenSetKeys(): lunr 2.3.9 keys a token
-// set's nodes for minimisation by TokenSet#toString(), which writes each
-// edge's label and its child's id with nothing between them. `{1 -> 656}`
-// and `{1 -> 6, 5 -> 6}` both key as `01656`, minimisation merges the two
-// nodes, and the index's token set then holds words no entry has and loses
-// real ones (`amp;h80004001`). A trailing-wildcard query that reaches an
-// invented word throws inside lunr: any query with the word `a` did. A `,`
-// after each id keeps the keys apart. Installed once.
-function separateTokenSetKeys(lunr) {
-  if (lunr.TokenSet.prototype.toString.separated) return;
-  const separated = function () {
-    if (this._str) return this._str;
-    let str = this.final ? "1" : "0";
-    for (const label of Object.keys(this.edges).sort()) str += label + this.edges[label].id + ",";
-    return str;
-  };
-  separated.separated = true;
-  lunr.TokenSet.prototype.toString = separated;
-}
-
-// Matches just-the-docs.js's accumulateSetUnions(): lunr 2.3.9's Index#query
-// gathers a REQUIRED clause's entries as a running total, `c = c.union(S)`,
-// once per expanded term and field, and Set#union copies both sets every
-// time, which made a short wildcard word quadratic (`a page`, about 800 ms).
-// A set that union() made takes the next set into itself, in place, with
-// lunr's own length. Installed once.
-function accumulateSetUnions(lunr) {
-  const union = lunr.Set.prototype.union;
-  if (union.accumulates) return;
-  const accumulating = function (other) {
-    if (other === lunr.Set.complete || other === lunr.Set.empty) return union.call(this, other);
-    let set = this;
-    if (set.distinct === undefined) {
-      set = new lunr.Set(Object.keys(this.elements));
-      set.distinct = set.length;
-    }
-    const keys = Object.keys(other.elements);
-    set.length = set.distinct + keys.length;
-    for (const key of keys) {
-      if (!set.elements[key]) {
-        set.elements[key] = true;
-        set.distinct++;
-      }
-    }
-    return set;
-  };
-  accumulating.accumulates = true;
-  lunr.Set.prototype.union = accumulating;
-}
-
-// The two symbol-index fields (see builder/search.mjs's
-// joinSymbolsToEntries and WIP.Search.md's "Design" §2), at the same
-// boosts as both patched copies of just-the-docs.js
-// (builder/vendor/just-the-docs/assets/js/just-the-docs.js and
-// builder/offline.mjs's JTD_INITSEARCH_FN_REPLACEMENT). test/search.test.mjs
-// checks all three field lists agree.
-export function buildIndex(lunr, docs) {
-  const twins = stemTwins(lunr, docs);
-  return lunr(function () {
-    this.ref("id");
-    this.field("title", { boost: 200 });
-    this.field("content", { boost: 2 });
-    this.field("names", { boost: 100 });
-    this.field("qualified", { boost: 500 });
-    // Mirrors the exact-name, primary-name and page-title patches
-    // (WIP.Search.md, "Reader intent"). `exact` and `primary` hold names as
-    // exactName() writes them, from `names` and `primary`; `page` holds
-    // `doc`.
-    this.field("exact", { boost: 50 });
-    this.field("primary", { boost: 1000 });
-    this.field("page", { boost: 5 });
-    // Mirrors the index-term patch: hand-marked terms written whole in
-    // `index` (see indexField()), with its average length pinned at one term
-    // (see pinIndexFieldLengths()).
-    this.field("index", { boost: 1000 });
-    this.field("relUrl");
-    this.metadataWhitelist = ["position"];
-    pinIndexFieldLengths(this);
-    // Mirrors the stop-word patch (step 5A, "Design" section): lunr's index
-    // pipeline runs lunr.stopWordFilter by default, but the search pipeline
-    // never did, so English stop words -- many of them twinBASIC keywords
-    // (Do, For, If, Is, On, With, Each...) -- were dropped from the index
-    // while a query still carried them and could never match.
-    this.pipeline.remove(lunr.stopWordFilter);
-    for (const id in docs) {
-      this.add({
-        id,
-        title: docs[id].title,
-        content: indexedContent(docs[id]),
-        names: docs[id].names || "",
-        qualified: qualifiedField(lunr, docs[id], twins),
-        exact: (docs[id].names || "").split(/\s+/).filter(Boolean).map(exactName).join(" "),
-        primary: (docs[id].primary || "").split(/\s+/).filter(Boolean).map(exactName).join(" "),
-        page: docs[id].doc || "",
-        index: indexField(lunr, docs[id]),
-        relUrl: docs[id].relUrl,
-      });
-    }
-  });
-}
-
-// Matches just-the-docs.js's exactName(): a name, lowercased, with every
-// non-word character spelled as `_` and its hex code, and `_` appended.
-// lunr's trimmer would strip those characters from the ends, turning
-// `#If` into `if` and `<>` into nothing; spelled out, they survive, so
-// `#If`, `Time$` and the operators stay distinct names. The final `_`
-// keeps a whole-name query off every longer name that starts with it
-// (`Node` against `Nodes`); no Porter stemmer rule touches a word ending
-// in it.
-function exactName(name) {
-  return name.toLowerCase().replace(/\W/g, (c) => "_" + c.charCodeAt(0).toString(16)) + "_";
-}
-
-// Matches just-the-docs.js's stemTwins(): the qualified names that the
-// stemmer merges with another name's (`Printer.Font` and `Printer.Fonts`
-// both stem to `printer.font`), which would otherwise tie in `qualified`.
-// Keyed by the name as the tokenizer writes it.
-function stemTwins(lunr, docs) {
-  const byStem = new Map();
-  for (const id in docs) {
-    for (const token of lunr.tokenizer(docs[id].qualified || "")) {
-      const stem = lunr.stemmer(lunr.trimmer(token.clone())).toString();
-      if (!byStem.has(stem)) byStem.set(stem, new Set());
-      byStem.get(stem).add(token.str);
-    }
-  }
-  return new Set([...byStem.values()].filter((names) => names.size > 1).flatMap((names) => [...names]));
-}
-
-// Matches just-the-docs.js's qualifiedField(): the qualified names, and
-// those of them that have a stem twin also whole, as exactName() writes
-// them, so a query naming one finds it and not its twin.
-function qualifiedField(lunr, doc, twins) {
-  const qualified = doc.qualified || "";
-  const whole = lunr
-    .tokenizer(qualified)
-    .filter((t) => twins.has(t.str))
-    .map((t) => exactName(t.str));
-  return whole.length ? `${qualified} ${whole.join(" ")}` : qualified;
-}
-
-// Matches just-the-docs.js's phraseKey() and indexTermKey(): a hand-marked
-// index term as `index` holds it, its words as the index holds words
-// (tokenized, trimmed, stemmed) joined by `_`, with `_` appended, so the
-// whole term is one token that a query matches only by naming all of it.
-function phraseKey(lunr, tokens) {
-  return tokens.map((t) => lunr.stemmer(t.clone()).toString()).join("_") + "_";
-}
-
-function indexTermKey(lunr, term) {
-  const tokens = lunr
-    .tokenizer(term)
-    .map((t) => lunr.trimmer(t))
-    .filter((t) => t.str !== "");
-  return tokens.length ? phraseKey(lunr, tokens) : "";
-}
-
-// Matches just-the-docs.js's indexField(): the main terms as
-// indexTermKey() writes them, the secondary ones (`index_also`) with one
-// more `_`, in one field, since every field costs a slot on every term in
-// the index.
-function indexField(lunr, doc) {
-  const main = (doc.index || []).map((t) => indexTermKey(lunr, t)).filter(Boolean);
-  const also = (doc.index_also || [])
-    .map((t) => indexTermKey(lunr, t))
-    .filter(Boolean)
-    .map((k) => k + "_");
-  return main.concat(also).join(" ");
-}
-
-// Matches just-the-docs.js's indexedContent(): the content with the index
-// terms appended as plain words, so an entry marked `late binding` still
-// has both words when a query requires all of them.
-function indexedContent(doc) {
-  const terms = (doc.index || []).concat(doc.index_also || []);
-  return terms.length ? doc.content + " " + terms.join(" ") : doc.content;
-}
-
-// Matches just-the-docs.js's pinIndexFieldLengths(): `index` is empty on
-// nearly every entry, so BM25's average length for it is near zero and a
-// marked entry's match would count for almost nothing. The average is
-// pinned at one term.
-function pinIndexFieldLengths(builder) {
-  const averageLengths = builder.calculateAverageFieldLengths;
-  builder.calculateAverageFieldLengths = function () {
-    averageLengths.call(this);
-    this.averageFieldLength.index = 1;
-  };
+  return loadSearchLunr(lunrPath);
 }
 
 // Every field but `exact`, `primary` and `index`, which only their own
@@ -346,8 +113,10 @@ export const KIND_WORDS = [
   "field",
 ];
 
+// The site's index as the page loads it: the build's search-index.json, or,
+// for a site from before the build wrote one, built here by the same code.
 export function load(site) {
-  const { dataPath, lunrPath } = resolvePaths(site);
+  const { dataPath, indexPath, lunrPath } = resolvePaths(site);
   for (const p of [dataPath, lunrPath]) {
     if (!fs.existsSync(p)) {
       console.error(
@@ -358,7 +127,9 @@ export function load(site) {
   }
   const lunr = loadLunr(lunrPath);
   const docs = JSON.parse(fs.readFileSync(dataPath, "utf8"));
-  const index = buildIndex(lunr, docs);
+  const index = fs.existsSync(indexPath)
+    ? lunr.Index.load(JSON.parse(fs.readFileSync(indexPath, "utf8")))
+    : buildIndex(lunr, docs);
   return { lunr, docs, index };
 }
 

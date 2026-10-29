@@ -170,12 +170,24 @@ Exit codes: **0** Biome found nothing (with `--staged`, also when no script is s
 
 Unit tests for the site search, run by Node's own test runner. The first group builds search entries from small synthetic pages through `builder/search.mjs` and checks what each entry holds: the split at headings, the folding of generic sections such as See Also into the member they belong to, index marks, the join with the symbol index, and identical output from one build to the next. The build's own check sees only which URLs the index covers.
 
-The rest guard two things:
+The rest guard that the search page agrees with the build. The build writes the index (`builder/search-index.mjs`), and the page under `builder/vendor/just-the-docs/` and its offline copy in `builder/offline.mjs` only load and query it. So the tests check:
 
-- the copies of the search client's query code still agree --- the online client under `builder/vendor/just-the-docs/`, the offline client in `builder/offline.mjs` and the replica in `eval/site_search.mjs`, all three or two of them;
-- the online client's index, built in slices, is the index lunr builds in one call.
+- the page splits text into words as the build does, and writes a name or an index term as the build does;
+- the page's query code and the replica in `eval/site_search.mjs` still agree;
+- an index the page loads answers as the build's does, and the page refuses an index of another build.
 
-No browser, no built tree, well under a second.
+No browser, no built tree, about a second.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
+## search-index.test.mjs
+{: #search-index-test }
+
+    node --test test/search-index.test.mjs
+
+Verifies the search index the build writes. The build makes the index on several threads, merges what they make and writes it as lunr's own JSON (`builder/search-index.mjs`). lunr has no way to merge two indexes, so this test builds a fixture on one thread with lunr itself and on two, three, seven and more threads than entries, and requires the same bytes each time. The fixture holds what the merge has to get right: words that look like numbers, words only a later thread meets, empty fields, HTML entities and hand-marked index terms. It also checks that an index loaded from the file answers as lunr's does, that a thread that fails fails the build, and that the offline tree's `search-index.js` holds the same index.
+
+No browser, no built tree, about a second.
 
 Exit codes: **0** every test passed, **1** a test failed.
 

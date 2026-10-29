@@ -16,11 +16,18 @@
 // Aux files the online tree receives after the pages are written. The symbol
 // index is the online tree's alone: the IDE help add-in fetches it from the
 // site, and the offline tree has no reader for it yet.
-const ONLINE_AUX = ["sitemap.xml", "robots.txt", "assets/js/search-data.json", "tB/symbols.json"];
-// The offline tree carries neither sitemap nor search index, but does
-// get the JS wrapper writeOffline generates around the search data, and
-// the nav.js that puts the whole nav tree in place of a page's part of it.
-const OFFLINE_AUX = ["assets/js/search-data.js", "assets/js/nav.js"];
+const ONLINE_AUX = [
+  "sitemap.xml",
+  "robots.txt",
+  "assets/js/search-data.json",
+  "assets/js/search-index.json",
+  "tB/symbols.json",
+];
+// The offline tree carries no sitemap, and the search data and index not as
+// JSON but as the JS wrappers writeOffline generates around them, since a
+// page under file:// can load a script but not fetch a file; and the nav.js
+// that puts the whole nav tree in place of a page's part of it.
+const OFFLINE_AUX = ["assets/js/search-data.js", "assets/js/search-index.js", "assets/js/nav.js"];
 
 // Every relative path a tree receives. `which` is "online" or "offline";
 // the PDF tree's contents come from writePdf, which knows them exactly.

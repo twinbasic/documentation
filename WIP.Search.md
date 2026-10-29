@@ -396,17 +396,24 @@ In the client's `update()`, for each token the tokenizer produces:
   engine and search stops working. (Trimming query tokens, see "Query
   construction", subsumes this.)
 
-### 4. Both copies of the client
+### 4. The index's one definition, and the two copies of the client
+
+The index is built by the build, in
+[builder/search-index.mjs](builder/search-index.mjs) ("The pre-built index",
+below): its fields and boosts (`FIELDS`), what fills each field, and the
+patches to lunr that decide what a word becomes. `eval/site_search.mjs`
+imports it. Nothing else declares a field.
 
 The online client is the vendored
 `builder/vendor/just-the-docs/assets/js/just-the-docs.js`, patched in place.
-Every change goes on the patch list in its README. The offline build replaces
+Every change goes on the patch list in its README. It loads the index and
+queries it; it keeps copies of what a query needs (the tokenizer patches,
+`exactName()`, `phraseKey()`, `indexTermKey()`), which `test/search.test.mjs`
+runs beside the build's on the same inputs. The offline build replaces
 `initSearch` with its own copy, `JTD_INITSEARCH_FN_REPLACEMENT` in
-[builder/offline.mjs](builder/offline.mjs), which builds its own lunr index,
-so it needs the same fields at the same boosts. It uses the query code in
-`update()` unchanged, so it inherits query changes. A unit test extracts the
-field/boost list from both sources and asserts they agree, so they cannot
-drift apart silently.
+[builder/offline.mjs](builder/offline.mjs), which loads the same index from a
+script instead of fetching it. It uses the query code in `update()`
+unchanged, so it inherits query changes.
 
 ### 5. Tests and tooling
 
@@ -476,15 +483,16 @@ wrapper sets `wrapper.separator = /[\s\-\/]+/`, the client's separator, so
 `/` still splits (`a/b` → `a`, `b`). It runs on the shared global `lunr`, so
 it applies to the index build and every query alike.
 
-### C. Build the index lazily, on the first keystroke, with visible feedback
+### C. Load the index lazily, on the first keystroke, with visible feedback
 
-Building the lunr index on every page load would cost about 1.3 s and 240 MB of
-heap on a desktop, paid by every reader whether or not they open search. So
-`initSearch()` only defines *how* to build the index (`loadIndex(onSuccess,
-onError)`, which fetches via XHR and installs the stop-word and dot-run
-patches) and hands that function to `searchLoaded()`. `searchLoaded()` wires
-up the search box's listeners at once but calls `loadIndex()` only on the
-first `keyup` that leaves the box non-empty.
+A page loads nothing for search until the reader types: `initSearch()` only
+defines *how* to load the index (`loadIndex(onSuccess, onError)`) and hands
+that function to `searchLoaded()`. `searchLoaded()` wires up the search box's
+listeners at once but calls `loadIndex()` only on the first `keyup` that
+leaves the box non-empty. (The index was first built in the page, and this
+kept its cost off readers who never search; the build now writes it, "The
+pre-built index" below, and the load stays lazy, since it is still two
+downloads and most of a second.)
 
 That first keystroke calls `loadIndexNow()`:
 - It shows "Loading search index..." in the same slot and style as "No
@@ -492,12 +500,9 @@ That first keystroke calls `loadIndexNow()`:
   the same text in the `a11y-status` live region.
 - It yields (a `requestAnimationFrame` raced by a 100 ms timer, since frames
   never fire in a hidden tab, then `setTimeout(fn, 0)`) so that the message
-  paints before the build starts.
-- The build runs 25 ms at a time and yields between slices
-  (`buildIndexInSlices()`: an entry added, a hundred fields' vectors, a term
-  put into the token set), so the reader can keep typing; the longest task is
-  about 50 ms. Built in one piece, the index held the main thread for about
-  1.6 s and the box took no keystrokes.
+  paints before the load starts.
+- The load hands the main thread back between its steps (parsing the data,
+  parsing the index, `lunr.Index.load`), so the reader can keep typing.
 - A keystroke during the load leaves the message in place until results
   replace it, with no empty panel in between, online and offline.
 
@@ -505,9 +510,10 @@ When `loadIndex()` finishes, `finishLoad()` searches whatever is in the box
 *at that moment*, not what was typed when the load started. Only one load is
 in flight at a time (`indexLoading`, checked at the top of `loadIndexNow()`);
 a keystroke mid-load just updates `currentInput` and returns from `update()`.
-A failed load (bad XHR status, parse error, or an exception building the
-index) shows "Search is unavailable" plus the matching `a11y-status` text and
-leaves the index `null`, so the next keystroke retries from scratch.
+A failed load (bad XHR status, parse error, an index of another build, or an
+exception loading it) shows "Search is unavailable" plus the matching
+`a11y-status` text and leaves the index `null`, so the next keystroke
+retries from scratch.
 
 `update()` keeps its prefix (the dedup check, the `search-active` class, the
 iOS scroll workaround) and its keyboard/focus/blur listeners. The query part
@@ -515,17 +521,89 @@ is `doSearch(input)`, gated behind `if (index === null) {
 loadIndexNow(); return; }`. `searchLoaded()` takes `loadIndex`, not
 `(index, docs)`.
 
-`builder/offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` works the same way:
-its `window.SEARCH_DATA` is already in memory (preloaded by a `<script src=>`
-the offline HTML injects), so there is no fetch to defer, but the *build*
-still waits for the first `loadIndexNow()`, with the same feedback.
-`eval/site_search.mjs` mirrors parts A and B exactly; there is no lazy build
-to mirror, since the CLI always wants an index.
+`builder/offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` works the same way,
+adding the offline tree's two scripts to the page on the first keystroke.
 
-**Cost per page view**, median of 15 interleaved runs on a desktop: index
-build 1,294 ms, heap 243 MB. With the lazy build these costs are paid once per
-page, and only by readers who type into the search box; a page never searched
-from pays nothing.
+## The pre-built index
+
+**Decided (owner, 2026-10-29).** The reader's annoyance: every page they
+open builds the whole index again on its first search. Three ways were
+measured; the owner chose the pre-built index now and a compact index format
+as the eventual fix ("Future work"), not keeping the page alive between
+navigations.
+
+- **Keeping the index between pages.** No browser storage helps: the
+  index's cost is not its format but making lunr's object graph, and
+  `sessionStorage` (a window's own) holds about 5 MB. IndexedDB is the
+  origin's, and its read is a structured clone, measured slower than
+  `JSON.parse` of the same index (1.8 to 2.5 s against 0.4 s, in Node).
+  The download itself is the HTTP cache's: GitHub Pages sends
+  `max-age=600` and an ETag.
+- **Keeping the page alive** (navigating by fetching the next page and
+  swapping its content): the one way to build the index once per tab;
+  touches navigation, scroll, focus and accessibility. Not chosen.
+- **Shipping the built index** (this section): chosen.
+
+**What the page does.** The build writes `assets/js/search-index.json`, the
+index of `search-data.json` as lunr's own JSON (`Index#toJSON`), plus a
+`tbdocs` key with the number of entries and `docsDigest()` of them. On the
+first keystroke the page fetches both files, parses each and calls
+`lunr.Index.load`, a step per task, through `indexFromData()`, which first
+installs the query patches (`installSearchPatches()`; the token set
+`Index.load` makes needs the separated keys). An index whose check does not
+match the data is fetched once more past the cache (`?v=`), then refused:
+its entries are numbers into the data, and a browser can hold one of the two
+from before a deploy. The offline tree gets the index as `search-index.js`
+(`window.SEARCH_INDEX = JSON.parse('...')`, JSON text being faster for a
+browser to parse than the same data as script), and no offline page loads
+`search-data.js` until the first keystroke either.
+
+**Measured** in headless Chrome against the built site, median of 5, from
+the first keystroke to an index that answers:
+
+| | time | heap | download (gzipped) |
+|---|---|---|---|
+| built in the page (before) | 3.0 to 3.2 s | +293 MB | 2.2 MB |
+| pre-built, all positions | 0.75 s | +143 MB | 2.2 + 8.2 MB |
+| pre-built, title and content positions only | 0.71 s | +139 MB | 2.2 + 8.0 MB |
+| pre-built, no positions | 0.54 s | +94 MB | 2.2 + 4.9 MB |
+
+Of the 0.75 s, about 0.2 s is the download (on localhost), 0.3 s
+`JSON.parse` and 0.2 s `Index.load`. Positions are kept: they place each
+result's preview and its highlighting, and only content's are many. The
+serialised index is 38 MB raw. The 1.3 s this file once gave for the page's
+build was out of date: the corpus had grown to 12,100 entries.
+
+**The build makes it on threads** (`builder/search-index.mjs`,
+`search-index-worker.mjs`). On one thread lunr took 3.6 to 4.8 s: `add()`
+76% of it, the field vectors 13%, the token set 6% (never needed here: it is
+not in the JSON, and `Index.load` makes it), the average lengths and the
+fields' preparation the rest. lunr cannot merge two indexes, but `add()` is
+independent per entry, so each thread adds a contiguous run of the entries;
+the build merges their postings, numbers every term in the order a single
+build first meets it (a thread's terms in its own order, the threads in
+entry order; never in key order, which puts number-like terms first), sums
+each term's document count and each field's length, computes `lunr.idf` and
+the averages (the `index` field's pinned at 1), and has each thread make its
+entries' vectors with lunr's own `createFieldVectors`, `lunr.idf` answering
+from those totals. The JSON is written as `toJSON` writes it. The result is
+byte for byte `JSON.stringify(lunr(config))` for any number of threads, on
+the site (checked at 1, 3 and 8 threads against the index the old replica
+built) and on `test/search-index.test.mjs`'s fixture, which also failed, as
+it should, when the pinned average or the term order was broken on purpose.
+On 16 threads: 4.8 s on one, 2.8 on two, 1.9 on four, 1.6 on six, 1.4 on
+eight; the build uses half the machine, at most eight, and one for every 500
+entries.
+
+**What it costs the build.** The `searchIndex` task runs on a lane, reading
+`search-data.json` from disk: as a main-thread task it held back
+`bookPayload`, `writeAux` and `writeOffline` (the main thread runs one task
+at a time), which cost 1.9 s. On a lane it takes about 2.3 s after
+`searchData`, and it is now the last task of a build without the help
+archive (`compare_trees`: 6.2 s before, 7.9 s after); with the archive,
+`helpArchive` waits for it. The help archive gains `search-index.js`
+deflated, 8.4 MB (54.7 to 63.1 MB), and the add-in's project download 64.1
+MB (was 55.7).
 
 ## Step numbers in code comments
 
@@ -1238,6 +1316,22 @@ The counts are in "Resuming this work"; the diagnoses are here.
   conditional breakpoints (the Debug menu shows none; check the IDE first).
 
 ## Future work
+
+### A compact index format
+
+The owner's eventual fix for the cost of a search's first keystroke on every
+page (2026-10-29; "The pre-built index"): an index the build writes in a
+form the page reads with no parsing, typed arrays over one `ArrayBuffer`
+(the term list, the postings, the vectors), in place of lunr's object graph.
+Loading would take tens of milliseconds and little heap, on every page,
+with nothing kept between pages. It means replacing lunr's `Index` and its
+query code, and `eval/site_search.mjs` must follow exactly, so that
+`eval/search_quality.mjs`'s baseline still measures what a reader gets. What
+it must reproduce: BM25 with lunr's `k1` 1.2 and `b` 0.75, each field's
+boost, the trailing wildcard and edit-distance expansion over the token
+set, the REQUIRED clauses and the query's own weighting, and match
+positions for the previews. Start by measuring what the query engine costs
+the page as it is.
 
 ### Operators
 
