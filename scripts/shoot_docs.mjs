@@ -2453,12 +2453,32 @@ const TABS_BUTTON = ".codicon-triangle-down[title='Tabs List']";
 const SAMPLE_FILE = (rest) => `/SampleProject/${rest}`;
 const RESOURCES = ["Resources/MANIFEST/#1.xml", "Resources/STRING/Strings.json", "Resources/MESSAGETABLE/Strings.json"];
 
-// The tabs of the editor, left to right: name and the boxes of the tab and its close icon.
+// The tabs of the editor, left to right: name and the boxes of the tab and its close icon. A tab
+// whose file is loading or being saved shows a spinner in place of its close icon (the IDE gives
+// the button the class progressSpinnerIcon, and its close icon's classes back once done): its
+// `close` is null then. A module just added is such a tab for a moment.
 const editorTabs = (c) =>
   c.evaluate(`(() => [...document.querySelectorAll(".tabItem")].map((t) => {
-    const box = (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
+    const box = (e) => e && (({ x, y, width, height }) => ({ x, y, width, height }))(e.getBoundingClientRect());
     return { name: t.querySelector(".tabItemText").textContent.trim(), tab: box(t), close: box(t.querySelector(".tabItemIconRight")) };
   }).filter((t) => t.tab.width))()`);
+
+// Waits, in the page, for the tab named `name` to show its close icon: a MutationObserver on the
+// tab bar settles the moment the IDE gives the button its classes back, whether a load or a save
+// cleared the spinner. True once it shows it, or the tab is gone; false after `ms`.
+const tabCloseIcon = (c, name, ms = 5000) =>
+  c.evaluate(
+    `new Promise((resolve) => {
+  const tab = [...document.querySelectorAll(".tabItem")].find((t) => t.getBoundingClientRect().width && t.querySelector(".tabItemText")?.textContent.trim() === ${JSON.stringify(name)});
+  const ready = () => !tab || !tab.isConnected || !!tab.querySelector(".tabItemIconRight");
+  if (ready()) return resolve(true);
+  const done = (value) => { obs.disconnect(); clearTimeout(timer); resolve(value); };
+  const obs = new MutationObserver(() => { if (ready()) done(true); });
+  obs.observe(tab.parentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
+  const timer = setTimeout(() => done(false), ${ms});
+})`,
+    { awaitPromise: true, timeout: ms + 5000 },
+  );
 
 // Closes the tabs whose names are not in `keep`, each with a real click on its close icon
 // (a tab that is closed any other way is not in the Tabs List's Recently Closed). With
@@ -2470,6 +2490,12 @@ async function closeTabs(c, keep = [], { discard = false } = {}) {
     const tabs = await editorTabs(c);
     const t = tabs.find((x) => !keep.includes(x.name));
     if (!t) return;
+    // a tab still loading or saving has no close icon yet: the tabs are read again once it has
+    if (!t.close) {
+      if (!(await tabCloseIcon(c, t.name)))
+        throw new Error(`the tab ${t.name} showed no close icon in 5 s (still loading or saving)`);
+      continue;
+    }
     await clickAt(c, t.close.x + t.close.width / 2, t.close.y + t.close.height / 2);
     const closed = async () => (await editorTabs(c)).length < tabs.length;
     const asked = async () => (await modals(c)).some((m) => m.title === "twinBASIC");
