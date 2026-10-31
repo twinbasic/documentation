@@ -12,44 +12,11 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { decodePng } from "../lib/png.mjs";
 import { changeMap, compareImages, NOISE_LEVELS, NOISE_SHARE } from "../lib/shot-change.mjs";
-import { runGit } from "../lib/shot-revision.mjs";
 import { cardHtml, esc, figuresIn, meterHtml, pageHtml, pctText, sizeText, tocItem } from "../lib/shot-views.mjs";
 import { pngSize, slugOf, themeOf } from "./redraw.mjs";
 
 /** The generator a sheet names in its <meta>, by which a folder is known to hold one. */
 export const SHEET_GENERATOR = "scripts/svgshot/sheet.mjs";
-
-const inside = (dir, root) => {
-  const rel = path.relative(root, dir);
-  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
-};
-
-/**
- * Why `dir` may not take a sheet, or null: it is under one of `docsRoots`, or inside a
- * git working tree at a path git does not ignore: a sheet and its pictures may hold the
- * Windows user name (sheet.mjs draws them without the check), so they must never be
- * committed or published. `git` stands in for running git in the probes:
- * git(args, cwd) returns its exit code and output, {status, stdout}.
- */
-export function outputRefusal(dir, docsRoots, git = runGit) {
-  const abs = path.resolve(dir);
-  for (const root of docsRoots) if (inside(abs, path.resolve(root))) return `${abs} is under ${path.resolve(root)}`;
-  let near = abs;
-  while (!existsSync(near) || !statSync(near).isDirectory()) {
-    const up = path.dirname(near);
-    if (up === near) return null;
-    near = up;
-  }
-  const top = git(["rev-parse", "--show-toplevel"], near);
-  if (top.status !== 0) return null;
-  const root = path.resolve(top.stdout.trim());
-  const rel = path.relative(root, abs).replace(/\\/g, "/");
-  if (rel === "") return `${abs} is the root of the git working tree`;
-  const ignored = git(["check-ignore", "-q", "--", rel], root);
-  if (ignored.status === 0) return null;
-  if (ignored.status === 1) return `${abs} is inside the git working tree ${root}, at a path git does not ignore`;
-  return `git check-ignore could not say whether ${abs} is ignored`;
-}
 
 /**
  * Whether the folder `dir` may be written over: it does not exist, is empty, or

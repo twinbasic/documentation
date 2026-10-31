@@ -5,13 +5,16 @@
 // and its --cleanup puts back every picture git reports modified that is within that noise of
 // the revision's. svgshot/sheet.mjs --against lists the pictures that differ from a revision
 // and reads the revision's pictures here too. The noise rule itself is withinNoise, in
-// shot-change.mjs: every caller passes it in.
+// shot-change.mjs: every caller passes it in. And where a folder of pictures that may hold the
+// Windows user name may be written (outputRefusal): a sheet, or a run's stage.
 //
 // Git is run in the docs folder, so that the repository that holds it answers, whichever
 // checkout the script is in. The reads are batched: one `git cat-file --batch` process for
 // any number of files.
 
 import { execFileSync } from "node:child_process";
+import { existsSync, statSync } from "node:fs";
+import path from "node:path";
 import { isOutputTree } from "../../lib/markdown-files.mjs";
 
 /**
@@ -239,4 +242,36 @@ export function planCleanup(pictures, before, after, near) {
     }
   }
   return plan;
+}
+
+const inside = (dir, root) => {
+  const rel = path.relative(root, dir);
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+};
+
+/**
+ * Why `dir` may not take a folder of pictures that may hold the Windows user name, or
+ * null: it is under one of `docsRoots`, or inside a git working tree at a path git does
+ * not ignore. A sheet (sheet.mjs draws its pictures without the check) and a run's stage
+ * (shot-stage.mjs: its bundles hold the page's text) must never be committed or published. `git` stands in for running git in the probes:
+ * git(args, cwd) returns its exit code and output, {status, stdout}.
+ */
+export function outputRefusal(dir, docsRoots, git = runGit) {
+  const abs = path.resolve(dir);
+  for (const root of docsRoots) if (inside(abs, path.resolve(root))) return `${abs} is under ${path.resolve(root)}`;
+  let near = abs;
+  while (!existsSync(near) || !statSync(near).isDirectory()) {
+    const up = path.dirname(near);
+    if (up === near) return null;
+    near = up;
+  }
+  const top = git(["rev-parse", "--show-toplevel"], near);
+  if (top.status !== 0) return null;
+  const root = path.resolve(top.stdout.trim());
+  const rel = path.relative(root, abs).replace(/\\/g, "/");
+  if (rel === "") return `${abs} is the root of the git working tree`;
+  const ignored = git(["check-ignore", "-q", "--", rel], root);
+  if (ignored.status === 0) return null;
+  if (ignored.status === 1) return `${abs} is inside the git working tree ${root}, at a path git does not ignore`;
+  return `git check-ignore could not say whether ${abs} is ignored`;
 }

@@ -95,6 +95,7 @@ import {
 import {
   changedPictures,
   openRevision,
+  outputRefusal,
   parseCatFileBatch,
   parseNameStatus,
   parseUntracked,
@@ -123,7 +124,6 @@ import {
   sortChangeRows,
   mayWriteSheet,
   notDrawn,
-  outputRefusal,
   SHEET_GENERATOR,
   sheetHtml,
   sortRows,

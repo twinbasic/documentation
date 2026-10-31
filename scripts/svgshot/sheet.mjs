@@ -28,7 +28,7 @@ import {
   withUsageError,
 } from "../../lib/cli.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../../lib/repo-paths.mjs";
-import { changedPictures, readRevisionFiles } from "../lib/shot-revision.mjs";
+import { changedPictures, outputRefusal, readRevisionFiles } from "../lib/shot-revision.mjs";
 import { listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
 import { SVG_FAITHFUL } from "../lib/shot-policy.mjs";
@@ -48,15 +48,7 @@ import {
   themeOf,
   writeJudged,
 } from "./redraw.mjs";
-import {
-  changeFiles,
-  changeSheetHtml,
-  compareRevisionPicture,
-  mayWriteSheet,
-  notDrawn,
-  outputRefusal,
-  sheetHtml,
-} from "./sheets.mjs";
+import { changeFiles, changeSheetHtml, compareRevisionPicture, mayWriteSheet, notDrawn, sheetHtml } from "./sheets.mjs";
 
 exitOnCrash();
 
