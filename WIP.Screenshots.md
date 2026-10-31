@@ -932,8 +932,8 @@ the PNG was just captured from, and the build shows it in place of the PNG
   `scripts/svgshot/redraw.mjs` (`redraw`, `writeJudged`, `runShards`/`inBrowser`, the
   `judgedFiles` names: `<slug>.svg-diff.png` and `<slug>.svg` as `--diffs` names them).
   `shoot_docs.mjs --diffs` is to call `sheetHtml` over its diffs folder in a later commit.
-  On BETA 1033's retake: 40 PNGs with no SVG, 17 with a bundle, in about 7 s; `--all`, 553
-  pictures, about a minute.
+  A sheet of the pictures with no SVG takes seconds; `--all`, over some 550 pictures, about a
+  minute.
 - **The bar** (`SVG_FAITHFUL` in `shoot_docs.mjs`): an SVG with more than 0.25% of its pixels 96
   grey levels or more off is not written, and an older one is removed. Anything not drawn falls
   to it.
