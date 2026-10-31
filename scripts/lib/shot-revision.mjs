@@ -185,7 +185,10 @@ export function openRevision(root, rev, git = runGit) {
  * What becomes of a new capture `png` of a picture (PNG bytes): `revision` the picture as the
  * revision has it, or null (a new shot, a file git does not track, or the reference turned
  * off), `disk` the file as it is, or null, and `near(a, b)` the noise rule over two PNG files.
- * Returns {state, write}, `write` the bytes the file is to hold, null when it stays as it is:
+ * Returns {state, write, against}, `write` the bytes the file is to hold, null when it stays as
+ * it is, and `against` the picture the capture was found equal to, near or beyond noise of:
+ * "revision", "disk", or null for a new picture. The review's regions of change are worked
+ * out against it (shot-queue.mjs's reviewPicture).
  *
  *   restored   the capture is the revision's picture, or within noise of it, and the file
  *              is not (an earlier run's drift, or none): the file becomes the revision's
@@ -197,12 +200,13 @@ export function openRevision(root, rev, git = runGit) {
  */
 export function pictureFate(png, revision, disk, near) {
   if (revision && (revision.equals(png) || near(revision, png))) {
-    if (disk?.equals(revision)) return { state: revision.equals(png) ? "unchanged" : "noise", write: null };
-    return { state: "restored", write: revision };
+    const against = "revision";
+    if (disk?.equals(revision)) return { state: revision.equals(png) ? "unchanged" : "noise", write: null, against };
+    return { state: "restored", write: revision, against };
   }
-  if (disk?.equals(png)) return { state: "unchanged", write: null };
-  if (disk && near(disk, png)) return { state: "noise", write: null };
-  return { state: disk ? "updated" : "new", write: png };
+  if (disk?.equals(png)) return { state: "unchanged", write: null, against: "disk" };
+  if (disk && near(disk, png)) return { state: "noise", write: null, against: "disk" };
+  return { state: disk ? "updated" : "new", write: png, against: disk ? "disk" : null };
 }
 
 // An SVG's text with CRLF made LF: git counts a checkout under core.autocrlf as the same file.

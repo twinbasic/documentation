@@ -5,8 +5,9 @@
 // lacks, is a block, part of which survives. The measure chooses what is shown first and
 // decides nothing: the verdicts are shot-policy.mjs's.
 
-import { changeRegions } from "./shot-change.mjs";
-import { svgRule } from "./shot-policy.mjs";
+import { decodePng } from "./png.mjs";
+import { changeRegions, strengthOf } from "./shot-change.mjs";
+import { pngRule, svgRule } from "./shot-policy.mjs";
 
 // The pixels a region's gaps are closed by and it is eroded by. Closing first joins a word's
 // strokes into one block: a stroke of the IDE's text at 2x is 2 or 3 pixels thick, and the
@@ -62,7 +63,9 @@ const small = (kept) => kept.length <= WORD_BLOCKS && kept.every((r) => r.core <
 /**
  * Why a picture's PNG needs a look, or null: the first argument is decidePicture's verdict
  * ({state, by, earlier}), `regions` pngRegions' for the capture against the picture it was
- * judged against: for `noise` and `restored`, the one it was found within noise of.
+ * judged against: for `noise` and `restored`, the one it was found within noise of. Null
+ * `regions`, for a capture with nothing to measure it against (a new picture, or one of
+ * another size), needs a look only for an earlier decision.
  * Returns {why, text}, `why` one of:
  *
  *   earlier   a review decided about other bytes of this picture; the rule judged these
@@ -76,6 +79,7 @@ const small = (kept) => kept.length <= WORD_BLOCKS && kept.every((r) => r.core <
 export function pngLook({ state, by, earlier }, regions) {
   if (by === "decision") return null;
   if (earlier) return { why: "earlier", text: `a review kept the ${earlier} picture of other bytes` };
+  if (!regions) return null;
   if (state === "noise" || state === "restored")
     return surviving(regions).length
       ? { why: "faint", text: "kept as within noise, but a part of the change survives the erosion" }
@@ -104,4 +108,38 @@ export function svgLook({ faithful, by, earlier }, regions) {
   if (faithful && kept.length) return { why: "part", text: "accepted, but a part of it survives the erosion" };
   if (!faithful && !kept.length) return { why: "fringe", text: "refused, but nothing survives the erosion: fringes" };
   return null;
+}
+
+/**
+ * What the review shows of a capture `png` (PNG bytes) that decidePicture judged (`verdict`):
+ * its strength map and its regions of change against `reference`, the picture
+ * `verdict.against` names (the revision's, the file or the dark picture, as PNG bytes; null
+ * for a new picture), with the picture's noise rule (pngRule of its `entry`), and why it
+ * needs a look (pngLook). Returns {strength, regions, look}: `strength` is null when there is
+ * nothing to measure (no reference, one of another size, or the same bytes), and `regions`
+ * null when the capture cannot be measured, [] when it is the reference.
+ */
+export function reviewPicture(verdict, png, reference, entry = null) {
+  let strength = null;
+  let regions = null;
+  if (reference?.equals(png)) regions = [];
+  else if (reference) {
+    const A = decodePng(reference);
+    const B = decodePng(png);
+    if (A.width === B.width && A.height === B.height) {
+      strength = strengthOf(A, B);
+      regions = pngRegions(strength, pngRule(entry));
+    }
+  }
+  return { strength, regions, look: pngLook(verdict, regions) };
+}
+
+/**
+ * What the review shows of an SVG that decideSvg judged (`verdict`), from diffSvg's
+ * `strength` map: its regions at the bar's levels (svgRegions, with the picture's `entry`)
+ * and why it needs a look (svgLook). Returns {regions, look}.
+ */
+export function reviewSvg(verdict, strength, entry = null) {
+  const regions = svgRegions(strength, entry);
+  return { regions, look: svgLook(verdict, regions) };
 }

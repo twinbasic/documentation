@@ -65,7 +65,8 @@ export const pngSize = (png) => ({ w: png.readUInt32BE(16), h: png.readUInt32BE(
  * A review's decision about these bytes takes the place of the rule: "new" counts the capture
  * as differing from every picture it is compared with, "old" as within noise of the one it
  * would go back to (the revision's, else the file); a light picture with the dark one's
- * pixels is still found by the rule. Returns {state, write, size, dark, by, earlier}, `size`
+ * pixels is still found by the rule. Returns {state, write, against, size, dark, by, earlier},
+ * `against` pictureFate's, or "dark" for a light picture judged against the dark one, `size`
  * the capture's {w, h}, `dark` the dark picture's when it is another size, else null, `by`
  * "decision" or "rule", and `earlier` a review's decision about other bytes ("old" or
  * "new"), which the rule judged this capture without, else null:
@@ -86,9 +87,10 @@ export function decidePicture({ png, theme, dark, revision, disk, near, entry = 
   if (theme === "light" && dark) {
     const d = pngSize(dark);
     if (Math.abs(d.w - size.w) > SIZE_SLACK || Math.abs(d.h - size.h) > SIZE_SLACK)
-      return { state: "too-far", write: null, size, dark: d, ...why };
+      return { state: "too-far", write: null, against: "dark", size, dark: d, ...why };
     if (d.w !== size.w || d.h !== size.h) other = d;
-    if (decided !== "new" && byRule(dark, png)) return { state: "dark", write: null, size, dark: other, ...why };
+    if (decided !== "new" && byRule(dark, png))
+      return { state: "dark", write: null, against: "dark", size, dark: other, ...why };
   }
   const nearBy = decided === "new" ? () => false : decided === "old" ? () => true : byRule;
   return { ...pictureFate(png, revision, disk, nearBy), size, dark: other, ...why };

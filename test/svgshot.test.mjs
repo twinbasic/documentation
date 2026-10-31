@@ -86,6 +86,8 @@ import {
 import {
   pngLook,
   pngRegions,
+  reviewPicture,
+  reviewSvg,
   SURVIVES,
   surviving,
   svgLook,
@@ -1780,29 +1782,29 @@ describe("the picture at a git revision", () => {
 
   test("a capture within noise of the revision's picture leaves the file as the revision has it", () => {
     // the file drifted, or is gone: put back
-    assert.deepEqual(fate(HEAD, HEAD, DRIFT), { state: "restored", write: HEAD });
-    assert.deepEqual(fate(DRIFT, HEAD, DRIFT), { state: "restored", write: HEAD });
-    assert.deepEqual(fate(DRIFT, HEAD, null), { state: "restored", write: HEAD });
+    assert.deepEqual(fate(HEAD, HEAD, DRIFT), { state: "restored", write: HEAD, against: "revision" });
+    assert.deepEqual(fate(DRIFT, HEAD, DRIFT), { state: "restored", write: HEAD, against: "revision" });
+    assert.deepEqual(fate(DRIFT, HEAD, null), { state: "restored", write: HEAD, against: "revision" });
     // an earlier run's real change goes too, when the IDE draws the revision's picture again
-    assert.deepEqual(fate(HEAD, HEAD, CHANGE), { state: "restored", write: HEAD });
+    assert.deepEqual(fate(HEAD, HEAD, CHANGE), { state: "restored", write: HEAD, against: "revision" });
     // the file is the revision's already
-    assert.deepEqual(fate(HEAD, HEAD, HEAD), { state: "unchanged", write: null });
-    assert.deepEqual(fate(DRIFT, HEAD, HEAD), { state: "noise", write: null });
+    assert.deepEqual(fate(HEAD, HEAD, HEAD), { state: "unchanged", write: null, against: "revision" });
+    assert.deepEqual(fate(DRIFT, HEAD, HEAD), { state: "noise", write: null, against: "revision" });
   });
 
   test("a capture beyond noise of the revision's picture is compared with the file", () => {
-    assert.deepEqual(fate(CHANGE, HEAD, CHANGE), { state: "unchanged", write: null });
-    assert.deepEqual(fate(CHANGE2, HEAD, CHANGE), { state: "noise", write: null });
-    assert.deepEqual(fate(OTHER, HEAD, CHANGE), { state: "updated", write: OTHER });
-    assert.deepEqual(fate(OTHER, HEAD, HEAD), { state: "updated", write: OTHER });
-    assert.deepEqual(fate(OTHER, HEAD, null), { state: "new", write: OTHER });
+    assert.deepEqual(fate(CHANGE, HEAD, CHANGE), { state: "unchanged", write: null, against: "disk" });
+    assert.deepEqual(fate(CHANGE2, HEAD, CHANGE), { state: "noise", write: null, against: "disk" });
+    assert.deepEqual(fate(OTHER, HEAD, CHANGE), { state: "updated", write: OTHER, against: "disk" });
+    assert.deepEqual(fate(OTHER, HEAD, HEAD), { state: "updated", write: OTHER, against: "disk" });
+    assert.deepEqual(fate(OTHER, HEAD, null), { state: "new", write: OTHER, against: null });
   });
 
   test("with no picture at the revision, the file is the only reference", () => {
-    assert.deepEqual(fate(DRIFT, null, DRIFT), { state: "unchanged", write: null });
-    assert.deepEqual(fate(DRIFT, null, HEAD), { state: "noise", write: null });
-    assert.deepEqual(fate(OTHER, null, HEAD), { state: "updated", write: OTHER });
-    assert.deepEqual(fate(OTHER, null, null), { state: "new", write: OTHER });
+    assert.deepEqual(fate(DRIFT, null, DRIFT), { state: "unchanged", write: null, against: "disk" });
+    assert.deepEqual(fate(DRIFT, null, HEAD), { state: "noise", write: null, against: "disk" });
+    assert.deepEqual(fate(OTHER, null, HEAD), { state: "updated", write: OTHER, against: "disk" });
+    assert.deepEqual(fate(OTHER, null, null), { state: "new", write: OTHER, against: null });
   });
 
   test("a picture put back takes the revision's SVG, or loses its own when the revision has none", () => {
@@ -2107,6 +2109,43 @@ describe("which pictures need a look (shot-queue.mjs)", () => {
     assert.equal(svgLook({ ...rule, earlier: false }, []).why, "earlier");
   });
 
+  test("a capture is measured against the picture its verdict names, when there is one of its size", () => {
+    // a picture 60 by 40, grey, with a block of 12 by 12 a level or many off
+    const image = (level, w = 60, h = 40) => {
+      const rgba = new Uint8Array(w * h * 4).fill(128);
+      for (let y = 10; y < 22; y++)
+        for (let x = 10; x < 22; x++) rgba.fill(128 + level, (y * w + x) * 4, (y * w + x) * 4 + 3);
+      return encodePng({ width: w, height: h, rgba });
+    };
+    const base = image(0);
+    const faint = reviewPicture({ state: "noise", by: "rule", earlier: null }, image(3), base);
+    assert.equal(faint.strength.data.length, 60 * 40);
+    assert.equal(faint.regions.length, 1);
+    assert.equal(faint.look.why, "faint");
+    // the same bytes: nothing to measure, and no region
+    assert.deepEqual(reviewPicture({ ...taken, state: "unchanged" }, base, base), {
+      strength: null,
+      regions: [],
+      look: null,
+    });
+    // a new picture, or one of another size: nothing measured, and no look but an earlier decision's
+    assert.deepEqual(reviewPicture({ ...taken, state: "new" }, base, null), {
+      strength: null,
+      regions: null,
+      look: null,
+    });
+    assert.equal(reviewPicture(taken, image(0, 61), base).look, null);
+    assert.equal(reviewPicture({ ...taken, earlier: "old" }, image(0, 61), base).look.why, "earlier");
+    // the picture's rectangles left out
+    const left = reviewPicture({ state: "noise", by: "rule", earlier: null }, image(3), base, {
+      png: { ignore: [[0, 0, 30, 30]] },
+    });
+    assert.deepEqual(left.regions, []);
+    // an SVG's from its strength map
+    const icon = paintMap(200, 100, blocks([20, 20, 52, 52]));
+    assert.equal(reviewSvg({ faithful: true, by: "rule", earlier: null }, icon).look.why, "part");
+  });
+
   test("from the strength maps: a word changed, a caret, a part missing and a fringe", () => {
     const rule = pngRule(null);
     assert.equal(pngLook(taken, pngRegions(paintMap(200, 100, word(20, 20)), rule)).why, "small");
@@ -2161,6 +2200,7 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
     assert.deepEqual(decide(OTHER, "dark", null, DARK, DARK), {
       state: "updated",
       write: OTHER,
+      against: "disk",
       size: { w: 100, h: 50 },
       dark: null,
       by: "rule",
@@ -2174,6 +2214,7 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
     assert.deepEqual(decide(NEAR, "light", DARK, null, OTHER), {
       state: "dark",
       write: null,
+      against: "dark",
       size: { w: 100, h: 50 },
       dark: null,
       by: "rule",
@@ -2186,7 +2227,7 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
     assert.deepEqual(decide(shot(103, 50, "x"), "light", DARK).state, "new");
     // beyond it: a failure, whatever the files hold
     const far = decide(shot(100 + SIZE_SLACK + 1, 50, "x"), "light", DARK, DARK, DARK);
-    assert.deepEqual([far.state, far.write, far.dark], ["too-far", null, { w: 100, h: 50 }]);
+    assert.deepEqual([far.state, far.write, far.against, far.dark], ["too-far", null, "dark", { w: 100, h: 50 }]);
     assert.equal(decide(shot(100 + SIZE_SLACK, 50, "x"), "light", DARK).state, "new");
     // with no dark picture, as a dark one
     assert.equal(decide(NEAR, "light", null, null, DARK).state, "noise");
