@@ -104,7 +104,7 @@ When **True**, the control resizes itself to fit the assigned [**Picture**](#pic
 The background colour of the control's drawing surface, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Setting it erases everything drawn with the graphics methods and [**Print**](#print), as [**Cls**](#cls) does, even when the colour is the one already set. Unlike **Cls**, it leaves [**CurrentX**](#currentx) and [**CurrentY**](#currenty) as they are. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 > [!WARNING] BETA 1033
-> Setting **BackColor** to the colour it already has erases nothing. Setting a different colour erases the surface, but also resets **CurrentX** and **CurrentY** to **0**.
+> Setting **BackColor** to the colour it already has erases nothing. When [**AutoRedraw**](#autoredraw) is **True**, setting a different colour also resets **CurrentX** and **CurrentY** to **0**.
 
 ### BorderStyle
 {: .no_toc }
@@ -369,6 +369,9 @@ A reference to the [**Form**](../Form) (or **UserControl**) that ultimately cont
 {: .no_toc }
 
 The picture displayed in the control's client area. **StdPicture**. **Default property.** Use **Set** to assign a new picture, **Nothing** to clear it. Assigning when [**AutoSize**](#autosize) is **True** resizes the control to fit.
+
+> [!WARNING] BETA 1033
+> When [**AutoRedraw**](#autoredraw) is **True**, setting **Picture** resets [**CurrentX**](#currentx) and [**CurrentY**](#currenty) to **0**.
 
 ### PictureDpiScaling
 {: .no_toc }

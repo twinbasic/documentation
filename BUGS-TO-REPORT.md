@@ -11132,3 +11132,52 @@ Related: the queued entry `nothing-let-compiles`, on the forms VB6 and VBA refus
 
 <!-- Reproducer: bugs/nothing-let-variant-no-error/ (mode test: `tbrun --tests`; expect lists the two PASS and two FAIL lines); run on BETA 1010, 32-bit and 64-bit, with `bug_repro.mjs run`. VB6 side in vb6/ (VB6 6.0); 64-bit VBA checked with VbaSession. Stated in a WARNING (BETA 1010) under Nothing on docs/Reference/Literal-Keywords.md; when fixed, the WARNING goes. Found 2026-10-29 writing that page; owner, 2026-10-29: a bug. -->
 
+---
+
+## Setting `BackColor` or `Picture` with `AutoRedraw` on resets `CurrentX` and `CurrentY` to 0, where VB6 keeps them
+
+**Describe the bug**
+On a Form or a PictureBox whose `AutoRedraw` is True, setting `BackColor` to a different colour, or setting `Picture`, moves the drawing position to the top left corner: `CurrentX` and `CurrentY` read 0 afterwards, so the next `Print`, or `Line` or `PSet` with `Step`, starts at 0, 0. VB6 leaves `CurrentX` and `CurrentY` as they were; only `Cls` resets them. Observed by reading `CurrentX` and `CurrentY` back after setting the property.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `backcolor-resets-current-xy.twinproj` (attached as `backcolor-resets-current-xy.zip`). Its `Sub Main` loads `Form1` and adds a PictureBox with `Controls.Add`. For each case it sets `AutoRedraw`, `ScaleMode = vbPixels`, `BackColor = vbWhite`, `CurrentX = 50` and `CurrentY = 40`, then sets `BackColor` (or `Picture`) and prints `CurrentX` and `CurrentY`. The last line is `Cls`, for comparison.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   Form, AutoRedraw True, new colour: 0 0
+   Form, AutoRedraw False, new colour: 50 40
+   Form, AutoRedraw True, same colour: 50 40
+   PictureBox, AutoRedraw True, new colour: 0 0
+   PictureBox, AutoRedraw False, new colour: 50 40
+   Form, AutoRedraw True, Picture set: 0 0
+   Form, Cls: 0 0
+   ```
+
+**Expected behavior**
+What VB6 prints: the position is kept in every case, and only `Cls` resets it.
+```
+Form, AutoRedraw True, new colour: 50 40
+Form, AutoRedraw False, new colour: 50 40
+Form, AutoRedraw True, same colour: 50 40
+PictureBox, AutoRedraw True, new colour: 50 40
+PictureBox, AutoRedraw False, new colour: 50 40
+Form, AutoRedraw True, Picture set: 50 40
+Form, Cls: 0 0
+```
+The VB6 project, attached as `backcolor-resets-current-xy-vb6.zip`, prints exactly these lines.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1033
+
+**Additional context**
+Severity: low, but silent: text printed after a change of colour lands in the top left corner instead of where the program put it, and nothing reports it.
+
+A 64-bit build gives the same results, and so does BETA 1010. What does not reproduce it: `AutoRedraw` False, and setting `BackColor` to the colour it already has.
+
+The cause, read in the VB package's `Graphics.twin` as BETA 1010 ships it: the `BackColor` handler (`SignificantChange(OldValue)`) and `PictureChanged` call `SignificantChange()`, which with `AutoRedraw` calls the public `Cls`, and `Cls` ends by setting `InternalCurrentX` and `InternalCurrentY` to 0. Erasing the surface through a routine that does not move the position, and leaving the reset to `Cls` alone, would match VB6.
+
+This is separate from the PictureBox report on Discord (2026-10-28), that setting `BackColor` to the colour it already has erases nothing on a PictureBox, where VB6 erases it; that is fixed in BETA 1034. The position was not part of that report.
+
+<!-- Reproducer: bugs/backcolor-resets-current-xy/ (mode run; expect lists the three "0 0" lines above); run on BETA 1033, 32-bit and 64-bit, and on BETA 1010, with `bug_repro.mjs run`. VB6 side in vb6/ (`bug_repro.mjs vb6 backcolor-resets-current-xy` prints the expected lines). Stated in WARNINGs (BETA 1033) under BackColor and Picture on docs/Reference/Default/VB/Form/index.md and docs/Reference/Default/VB/PictureBox/index.md; when fixed, the Picture WARNINGs go, and the position sentence of the BackColor ones (the PictureBox one also states the same-colour defect, fixed in BETA 1034 per Wayne Phillips on Discord, 2026-10-30). Found 2026-10-31 checking Wayne's "one for the documentation" note of 2026-10-30; owner, 2026-10-31: file it. Re-run on BETA 1034, which reworks this code. -->
+

@@ -1,0 +1,11 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Form, AutoRedraw True, new colour: 0 0$",
+      "^PictureBox, AutoRedraw True, new colour: 0 0$",
+      "^Form, AutoRedraw True, Picture set: 0 0$"
+    ]
+  }
+}

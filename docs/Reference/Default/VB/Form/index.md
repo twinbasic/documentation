@@ -150,7 +150,7 @@ When **False**, drawing primitives --- [**Cls**](#cls), [**Circle**](#circle), [
 The background colour of the form's client area, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Used as the fill colour for [**Cls**](#cls) and as the canvas behind [**Picture**](#picture). Setting it to a different colour erases everything drawn with the graphics methods and [**Print**](#print), as **Cls** does, but leaves [**CurrentX**](#currentx) and [**CurrentY**](#currenty) as they are. Setting it to the colour it already has erases nothing; on a [**PictureBox**](../PictureBox#backcolor) it erases the drawing all the same. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 > [!WARNING] BETA 1033
-> Setting a different **BackColor** also resets **CurrentX** and **CurrentY** to **0**.
+> When [**AutoRedraw**](#autoredraw) is **True**, setting a different **BackColor** also resets **CurrentX** and **CurrentY** to **0**.
 
 ### BorderStyle
 {: .no_toc }
@@ -407,6 +407,9 @@ The form's opacity as a percentage (0--100, default 100). Values outside the ran
 {: .no_toc }
 
 A **StdPicture** drawn as the form's background. Painted before any drawing primitives or child controls. Assigning **Nothing** removes the background.
+
+> [!WARNING] BETA 1033
+> When [**AutoRedraw**](#autoredraw) is **True**, setting **Picture** resets [**CurrentX**](#currentx) and [**CurrentY**](#currenty) to **0**.
 
 ### PictureDpiScaling
 {: .no_toc }
