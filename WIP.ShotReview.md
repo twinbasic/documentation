@@ -58,6 +58,19 @@ Two decisions are made by fixed thresholds, and neither threshold holds for ever
 - **One session at a time.**
 - **No code is duplicated between the tool and the command-line tools** (owner): what they
   share is moved into modules both call. See [Factoring](#factoring).
+- **The server listens on a fixed port, 4180, with `--port`** to choose another (owner,
+  2026-10-31), so that a page's and a picture's address can be kept; not a port from `tbbroker`.
+- **The overview also lists the pictures under `docs/` that differ from the baseline but that
+  no run of the session reported** (a retake from a terminal, an edit), as a group of their own
+  (owner, 2026-10-31): HEAD's picture against the file, with no verdict to override. The
+  overview then covers what `sheet.mjs --against` covers.
+- **The static sheets show a picture's allowances** (owner, 2026-10-31), as the overview does:
+  `sheet.mjs` reads the manifest, as the command-line tools already do.
+- **When HEAD moves under an open session** (a commit made outside the tool), the session keeps
+  its baseline and the overview warns, as step 5 does; and the overview offers to **move the
+  session to the new HEAD on demand** (owner, 2026-10-31). Moving makes the new HEAD the
+  baseline (and its build the baseline's build); a verdict judged against the old baseline
+  goes back to the queue, since the picture it was judged against has changed.
 
 ## The pages
 
@@ -290,10 +303,12 @@ Each step ends tested and usable on its own.
 4. **`--stage`, `--events` and stop** in `shoot_docs.mjs` and `replay.mjs`. Done.
 5. **The server and the session store**, the overview and the detail page read-only, live.
    Done.
-6. **Decisions and allowances** applied through `shot-apply.mjs`, judged again at once.
+6. **Decisions and allowances** applied through `shot-apply.mjs`, judged again at once. With
+   them, the group of pictures changed outside the session's runs, and the action that moves
+   the session to a new HEAD ([Decisions](#decisions-owner)).
 7. **The runs page**: retake, replay, clean up, stop.
 8. **The commit panel**.
-9. **`sheet.mjs` on the shared views**; the tool's entry in `Tools-IDE.md`, its node in
+9. **`sheet.mjs` on the shared views**, showing each picture's allowances; the tool's entry in `Tools-IDE.md`, its node in
    `Tools-Groups.dot` (its command-line cases are in `scripts/lib/cli-cases.mjs` since step 5), its tests in
    `test.bat` (and so in Tools.md's list and the `run-gates` action), and the row in
    WIP.md's *Which file to open*.
@@ -339,6 +354,23 @@ make the same calls. Today a run's verdicts are only shown: nothing is applied t
 until step 6 a retake through the tool changes nothing in the working tree. The actions go
 into the detail page's PNG and SVG rows, and the server takes its first POST requests (it
 answers 405 to any today).
+
+Also in step 6, from the owner's answers of 2026-10-31:
+
+- **The pictures changed outside the session's runs.** `changedPictures(DOCS_DIR,
+  baseline.hash)` (`shot-revision.mjs`) lists them; those no run reported become a group of the
+  overview (between Only noise and Unchanged is a reasonable place; it needs a key in `GROUPS`
+  and a part in `reviewPictures` for pictures with no run). Their detail page compares HEAD's
+  picture with the file, its map drawn by `changeMap` (there is no strength map staged), and
+  has no verdict row. The list is read again when the overview is, since a terminal run can
+  change it at any time.
+- **Moving the session to a new HEAD.** A button beside the "HEAD is now ..." notice: a POST
+  that sets `session.data.baseline` to HEAD (`revisionOf`, and the build from the manifest at
+  it, as `shot_review.mjs` makes a baseline), reopens the server's `revision`, and clears
+  `headNow`. A verdict whose `against` was `revision` was judged against the old baseline's
+  picture, so it goes back to Needs a look (a new `why`, such as `baseline`, in `pngLook`'s
+  sense, set by the model when a verdict's run is older than the move; record the move's time
+  in the session).
 
 Step 5 was checked with the tests in `test/svgshot.test.mjs` and with three real runs started
 by the tool in one session, the tool closed between them: a retake of `Close_Question` whose
@@ -409,11 +441,6 @@ MutationObserver (`tabCloseIcon`).
 
 ## Open
 
-- **The server's port.** A stable default with `--port`, as bookmarks need, or a port from
-  `tbbroker`, which today leases one only with a desktop. Step 5 took the first, 4180, until
-  the owner decides.
-- **Pictures changed outside the session.** The overview shows what the session's runs
-  reported; a picture under `docs/` that differs from the baseline for another reason (a run
-  from a terminal, an edit) is not on it, though `sheet.mjs --against` lists it. Whether the
-  overview lists those too, as the static sheet does, is not decided.
-- **Allowances in the static sheets**: whether `sheet.mjs` shows them, as the overview does.
+Nothing: the questions open after step 5 (the port, pictures changed outside the session,
+allowances in the static sheets, HEAD moving under a session) were answered by the owner on
+2026-10-31 and are under [Decisions](#decisions-owner).
