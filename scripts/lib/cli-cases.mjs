@@ -903,6 +903,11 @@ bad("scripts/shoot_docs.mjs", ["--jobs=17"], "--jobs expects a whole number from
   );
   bad("scripts/shot_review.mjs", ["--jobs", "2"], "shot_review: --jobs is for a run: --retake or --replay\n");
   bad("scripts/shot_review.mjs", ["--replay", "a", "--ide", "x"], "shot_review: --ide is for --retake\n");
+  bad(
+    "scripts/shot_review.mjs",
+    ["--archived", "x", "--retake", "a"],
+    "--archived and --retake cannot be given together\n",
+  );
 }
 
 // check_examples prints "check_examples: " before the message.

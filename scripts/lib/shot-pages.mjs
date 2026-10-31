@@ -1,10 +1,10 @@
 // The screenshot review tool's pages (WIP.ShotReview.md, The pages): the overview, every
-// picture of the session as a card in its group, the detail page of one picture, and the runs
-// page, made of the pieces in shot-views.mjs. Each page is whole HTML; a page keeps itself
-// current by fetching itself again when the server says over its event stream that something
-// it shows has changed. Its actions (a decision, an allowance, the session moved to HEAD, a run
-// started or stopped) are POSTs of JSON to the server, which applies them and says so over the
-// same stream.
+// picture of the session as a card in its group, the detail page of one picture, the runs
+// page and the commit page, made of the pieces in shot-views.mjs. Each page is whole HTML; a
+// page keeps itself current by fetching itself again when the server says over its event
+// stream that something it shows has changed. Its actions (a decision, an allowance, the
+// session moved to HEAD, a run started or stopped, the commit) are POSTs of JSON to the server,
+// which applies them and says so over the same stream.
 //
 // Every address the pages link to is made here (hrefs), and the server answers each.
 
@@ -43,6 +43,10 @@ export const hrefs = {
   log: (n) => `/log/${n}`,
   /** The session's runs, and the forms that start one. */
   runs: "/runs",
+  /** What a commit of the session takes, and its message. */
+  commitPage: "/commit",
+  /** POST: the session's own files committed ({message, files}), and the session closed. */
+  commit: "/api/commit",
   events: "/events",
   /** POST: a review's action on a picture (shot-server.mjs's act). */
   act: (out) => `/api/picture/${encodePath(out)}`,
@@ -91,11 +95,14 @@ form.run label{display:inline-block;max-width:100%;margin:2px 14px 6px 0}form.ru
 form.run input[type=text]{width:32em;max-width:100%;box-sizing:border-box}form.run button{font:inherit;padding:3px 12px}
 article.run{border:1px solid var(--line);border-radius:6px;margin:0 0 12px;padding:6px 12px;overflow-wrap:anywhere}article.run h3{margin:4px 0}
 ul.jobs{list-style:none;padding:0;margin:6px 0}ul.jobs li{margin:2px 0}ul.jobs progress,article.run>progress{width:200px;vertical-align:middle;margin-right:8px}
+form.commit{margin:0 0 12px}form.commit label{display:block;margin:6px 0 2px}form.commit textarea{width:100%;max-width:900px;box-sizing:border-box;font:inherit}
+form.commit button{font:inherit;padding:3px 12px}.status.err{white-space:pre-wrap}ul.left{columns:2 420px;padding-left:18px}
 pre.log{max-height:20em;overflow:auto;font-size:12px;border:1px solid var(--line);padding:6px;margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}
 </style>`;
 
 // The page's script: the event stream, the page fetched again when something it shows has
-// changed (the values of a form marked data-keep kept), the comparison's modes, the keys j and
+// changed (the values of a form marked data-keep kept, but a field still at its data-default,
+// which takes the new page's), the comparison's modes, the keys j and
 // k for the next and previous picture, and the pictures selected on the overview, which the
 // runs page's forms take in place of a pattern (kept in the browser, as a convenience).
 const REVIEW_SCRIPT = `<script>
@@ -151,7 +158,9 @@ const REVIEW_SCRIPT = `<script>
     const y = scrollY;
     const kept = [];
     for (const f of document.querySelectorAll("form[data-keep][id]"))
-      for (const el of f.elements) if (el.name) kept.push([f.id, el.name, el.type === "checkbox" ? el.checked : el.value]);
+      for (const el of f.elements)
+        if (el.name && !(el.dataset.default !== undefined && el.value === el.dataset.default))
+          kept.push([f.id, el.name, el.type === "checkbox" ? el.checked : el.value]);
     const a = document.activeElement;
     const focus = a?.form?.id && a.form.hasAttribute("data-keep") ? [a.form.id, a.name] : null;
     document.body.replaceWith(doc.body);
@@ -165,6 +174,7 @@ const REVIEW_SCRIPT = `<script>
     init();
     draws();
     showPicked();
+    defaults();
     scrollTo(0, y);
   };
   let timer = null;
@@ -192,7 +202,18 @@ const REVIEW_SCRIPT = `<script>
     s.textContent = text;
     s.classList.toggle("err", !!err);
   };
-  const controls = () => document.querySelectorAll("button[data-act], form.allow button, form.run button");
+  const controls = () => document.querySelectorAll("button[data-act], form.allow button, form.run button, form.commit button");
+  // A field with a default (the commit's message): its button that puts the default back is
+  // enabled once the field differs from it.
+  const defaults = () => {
+    for (const el of document.querySelectorAll("[data-default]")) {
+      const b = el.form?.querySelector("button[data-reset-message]");
+      if (b) b.disabled = el.value === el.dataset.default;
+    }
+  };
+  document.addEventListener("input", (e) => {
+    if (e.target.matches?.("[data-default]")) defaults();
+  });
   const post = async (url, body, from) => {
     say(from, "applying...");
     for (const b of controls()) b.disabled = true;
@@ -208,6 +229,13 @@ const REVIEW_SCRIPT = `<script>
   };
   document.addEventListener("click", (e) => {
     if (e.target.closest?.("button[data-clear-picked]")) return setPicked([]);
+    const reset = e.target.closest?.("button[data-reset-message]");
+    if (reset) {
+      const el = reset.form.querySelector("[data-default]");
+      el.value = el.dataset.default;
+      defaults();
+      return el.focus();
+    }
     const b = e.target.closest?.("button[data-act]");
     if (!b) return;
     e.preventDefault();
@@ -215,6 +243,11 @@ const REVIEW_SCRIPT = `<script>
     post(b.dataset.url, JSON.parse(b.dataset.act), b);
   });
   document.addEventListener("submit", (e) => {
+    const k = e.target.closest?.("form.commit");
+    if (k) {
+      e.preventDefault();
+      return post(k.getAttribute("action"), { message: k.elements.message.value, files: JSON.parse(k.dataset.files) }, k);
+    }
     const r = e.target.closest?.("form.run");
     if (r) {
       e.preventDefault();
@@ -285,7 +318,7 @@ const REVIEW_SCRIPT = `<script>
       };
     }
   };
-  document.addEventListener("DOMContentLoaded", () => { init(); draws(); showPicked(); live(); });
+  document.addEventListener("DOMContentLoaded", () => { init(); draws(); showPicked(); defaults(); live(); });
 })();
 </script>`;
 
@@ -455,6 +488,31 @@ ${[...runs]
 </table>`
     : `<p class="notice">No run yet: start one on the <a href="${hrefs.runs}">runs page</a>, or start the tool with <code>--retake &lt;regex&gt;</code> or <code>--replay &lt;regex&gt;</code>.</p>`;
 
+// That HEAD is now `headNow` (its short hash), not the session's `baseline`, with the button
+// that moves the session to it when `canMove`.
+const headNotice = (headNow, baseline, canMove) =>
+  `HEAD is now ${esc(headNow)}: this session compares with its baseline, ${esc(baseline.short)}, until it is committed or moved.${
+    canMove
+      ? ` Moving it makes ${esc(headNow)} the baseline; a verdict judged against ${esc(baseline.short)}'s picture goes back to Needs a look.${actionsHtml(
+          [actionButton(`Move the session to ${headNow}`, hrefs.moveBaseline, { action: "move" })],
+        )}`
+      : ""
+  }`;
+
+// That the session served is an archived one, `closed` the commit that closed it.
+const archivedNotice = (closed) =>
+  `An archived session${closed.short ? `, closed by ${esc(closed.short)} (${esc(closed.message ?? "")})` : ""}: nothing in it can be changed. Its pictures under docs are shown as they are now.`;
+
+// The links at the top of the overview and the runs page.
+const topNav = (here) =>
+  `<nav class="pager">${[
+    ["overview", hrefs.overview(), "Overview"],
+    ["runs", hrefs.runs, "Runs"],
+    ["commit", hrefs.commitPage, "Commit"],
+  ]
+    .map(([key, href, text]) => `<a href="${href}"${key === here ? ' aria-current="page"' : ""}>${text}</a>`)
+    .join("")}</nav>`;
+
 // The bar that says how many pictures are selected for a run, with `more` (HTML) after it.
 const pickedBar = (more) =>
   `<div class="picked notice" hidden><span class="count"></span>${more} <button type="button" data-clear-picked>Clear the selection</button></div>`;
@@ -466,7 +524,8 @@ const pickedBar = (more) =>
  * exit, done, listed}], oldest first (the server's runRow); `baseline` the session's ({hash, short, build, moved}); `headNow` HEAD's short
  * hash when it is no longer the baseline, else null, and `canMove` whether the session can be
  * moved to it; `newestIde` the newest install's build, or null; `resume` {index, total, out}
- * for the queue's place, or null; `exists(path)` whether a file is under docs/.
+ * for the queue's place, or null; `exists(path)` whether a file is under docs/; `archived` the
+ * commit that closed the session ({short, message}) when it is an archived one, else null.
  */
 export function overviewHtml({
   groups,
@@ -479,6 +538,7 @@ export function overviewHtml({
   newestIde,
   resume,
   exists,
+  archived = null,
 }) {
   const shown = groups.filter((g) => g.pictures.length);
   const filters = FILTERS.map(
@@ -489,16 +549,8 @@ export function overviewHtml({
     ? `<p><a href="${hrefs.picture(resume.out, "look")}">Resume at ${resume.index + 1} of ${resume.total}</a> in Needs a look</p>`
     : "";
   const notices = [];
-  if (headNow)
-    notices.push(
-      `HEAD is now ${esc(headNow)}: this session compares with its baseline, ${esc(baseline.short)}, until it is committed or moved.${
-        canMove
-          ? ` Moving it makes ${esc(headNow)} the baseline; a verdict judged against ${esc(baseline.short)}'s picture goes back to Needs a look.${actionsHtml(
-              [actionButton(`Move the session to ${headNow}`, hrefs.moveBaseline, { action: "move" })],
-            )}`
-          : ""
-      }`,
-    );
+  if (archived) notices.push(archivedNotice(archived));
+  if (headNow) notices.push(headNotice(headNow, baseline, canMove));
   if (baseline.moved)
     notices.push(
       `The session was moved to ${esc(baseline.short)} from ${esc(baseline.moved.from)} on ${esc(baseline.moved.at)}.`,
@@ -524,7 +576,8 @@ ${cards}`;
     intro: `Every picture this session's runs took or drew, against the baseline ${esc(baseline.short)}${baseline.build ? ` (its pictures taken on BETA ${baseline.build} at newest)` : ""}, and every other picture under docs that differs from it. Each verdict is applied under docs as it arrives, and again when a review decides otherwise.`,
     summary: shown.map((g) => [g.title, g.pictures.length]),
     contents: shown.map((g) => `<li><a href="#g-${g.key}">${esc(g.title)}</a> (${g.pictures.length})</li>`).join("\n"),
-    body: `${notices.map((n) => `<div class="notice">${n}</div>`).join("\n")}
+    body: `${topNav("overview")}
+${notices.map((n) => `<div class="notice">${n}</div>`).join("\n")}
 ${pickedBar(`: <a href="${hrefs.runs}">start a run of them</a>.`)}
 <nav class="filters">${filters}</nav>
 ${resumeLink}${runsTableHtml(runs)}
@@ -607,7 +660,7 @@ const AGAINST = { revision: "HEAD", disk: "the file", dark: "the dark picture" }
 function pagerHtml({ p, filter, place, prev, next }) {
   const filterLabel = (FILTERS.find(([k]) => k === filter) ?? FILTERS[0])[1];
   const groupTitle = (GROUPS.find(([k]) => k === p.group) ?? [null, p.group])[1];
-  return `<nav class="pager"><a href="${hrefs.overview(filter)}#${anchor(p.out)}">Overview</a><a href="${hrefs.runs}">Runs</a>${
+  return `<nav class="pager"><a href="${hrefs.overview(filter)}#${anchor(p.out)}">Overview</a><a href="${hrefs.runs}">Runs</a><a href="${hrefs.commitPage}">Commit</a>${
     prev ? `<a rel="prev" href="${hrefs.picture(prev.out, filter)}">Previous (k)</a>` : ""
   }<span class="where">${place.index + 1} of ${place.total} · ${esc(filter === "all" ? groupTitle : filterLabel)}</span>${
     next ? `<a rel="next" href="${hrefs.picture(next.out, filter)}">Next (j)</a>` : ""
@@ -1004,7 +1057,7 @@ ${fields.join("\n")}
   ];
   const newestCleanup = [...runs].reverse().find((r) => r.kind === "cleanup")?.n ?? null;
   const list = [...runs].reverse().map((r) => runArticle(r, { newestCleanup, busy }));
-  const body = `<nav class="pager"><a href="${hrefs.overview()}">Overview</a></nav>
+  const body = `${topNav("runs")}
 ${busy ? `<p class="notice">Run ${busy.n}, a ${esc((KIND_TEXT[busy.kind] ?? busy.kind).toLowerCase())}, is running: a new run starts once it has ended.</p>` : ""}
 ${pickedBar(": a run started here takes them in place of a pattern.")}
 <h2>A new run</h2>
@@ -1018,5 +1071,106 @@ ${list.length ? list.join("\n") : "<p>No run yet.</p>"}`;
     head: HEAD,
     intro: `The runs of the session of ${esc(baseline.short)}, newest first, and the forms that start one.`,
     body,
+  });
+}
+
+// ---- the commit page ------------------------------------------------------------------
+
+// The most of the working tree's other changes the commit page lists.
+const LEFT_OUT_SHOWN = 200;
+
+/**
+ * The commit page: `plan` and `message` the server's commitState (shot-review.mjs's commitPlan
+ * and commitMessage), or `error` why git could not be read, or neither for an archived session;
+ * `baseline` the session's;
+ * `refusal` why it cannot be committed now, or null; `headNow` and `canMove` as the overview's;
+ * `lastCommit` the commit that closed the session before this one ({short, message, archive}),
+ * or null; `archived` the archived sessions (listArchived's), newest first.
+ */
+export function commitHtml({
+  plan,
+  message,
+  error,
+  baseline,
+  refusal,
+  headNow,
+  canMove = false,
+  lastCommit = null,
+  archived = [],
+}) {
+  const notices = [];
+  if (lastCommit)
+    notices.push(
+      `Committed ${esc(lastCommit.short)}: ${esc(lastCommit.message)}. The session it closed is archived as <code>${esc(lastCommit.archive)}</code>, and this is the next one, whose baseline is ${esc(baseline.short)}.`,
+    );
+  if (headNow) notices.push(headNotice(headNow, baseline, canMove));
+  else if (refusal) notices.push(esc(refusal));
+  const sections = [];
+  if (error) sections.push(`<p class="notice">git could not be read: ${esc(error)}</p>`);
+  // (no plan: an archived session, whose commit holds what it changed)
+  else if (plan && !plan.files.length) sections.push("<p>The session has changed nothing to commit.</p>");
+  else if (plan) {
+    const c = plan.counts;
+    const by = [
+      c.svgByAllowance ? `${c.svgByAllowance} by allowance` : null,
+      c.svgByReview ? `${c.svgByReview} by review` : null,
+    ].filter(Boolean);
+    const rows = [
+      ["PNGs changed by the tool's verdict", `${c.changed}${c.created ? ` (${c.created} new)` : ""}`],
+      ["PNGs taken by review, against it", c.taken],
+      ["PNGs kept at HEAD by review, against it", c.kept],
+      ["Light pictures removed", c.dropped],
+      ["SVGs written", `${c.svgWritten}${by.length ? ` (${by.join(", ")})` : ""}`],
+      ["SVGs removed", c.svgRemoved],
+      ["The manifest", c.manifest ? "changed" : "unchanged"],
+    ];
+    const fileRow = (f) =>
+      `<tr><td><code>${f.out ? `<a href="${hrefs.picture(f.out)}">${esc(f.path)}</a>` : esc(f.path)}</code></td><td>${esc(f.status)}</td><td>${esc(f.why)}</td></tr>`;
+    const files = JSON.stringify(plan.files.map((f) => f.path));
+    const disabled = refusal ? ` disabled title="${esc(refusal)}"` : "";
+    sections.push(`<h2>What the session changed</h2>
+<table>
+${rows.map(([what, n]) => `<tr><th>${esc(what)}</th><td>${esc(String(n))}</td></tr>`).join("\n")}
+</table>
+<form class="commit" id="commit" data-keep action="${hrefs.commit}" data-files="${esc(files)}" data-acts>
+<h2>The commit</h2>
+<p class="meta">Commits the ${plan.files.length === 1 ? "file below" : `${plan.files.length} files below`} and nothing else: a file git does not track yet is added first, and one removed is committed as a deletion. The repository's hooks run. Committing closes the session: it is archived, and the next one's baseline is the new commit.</p>
+<label for="commit-message">Message</label>
+<textarea name="message" id="commit-message" rows="3" spellcheck="true" data-default="${esc(message ?? "")}">${esc(message ?? "")}</textarea>
+<p><button type="submit"${disabled}>Commit ${plan.files.length === 1 ? "1 file" : `${plan.files.length} files`}</button> <button type="button" data-reset-message disabled>Back to the default message</button> <span class="status" role="status"></span></p>
+</form>
+<h2>The files (${plan.files.length})</h2>
+<table>
+<tr><th>File</th><th>In the working tree</th><th>What the session did</th></tr>
+${plan.files.map(fileRow).join("\n")}
+</table>`);
+  }
+  if (plan?.leftOut.length) {
+    const shown = plan.leftOut.slice(0, LEFT_OUT_SHOWN);
+    const more = plan.leftOut.length - shown.length;
+    sections.push(`<h2>Left out (${plan.leftOut.length})</h2>
+<p>The working tree's other changes, which the commit does not take: pictures changed outside the session's runs among them.</p>
+<ul class="left">${shown.map((c) => `<li><code>${esc(c.path)}</code> ${esc(c.status)}</li>`).join("")}${more ? `<li>and ${more} more</li>` : ""}</ul>`);
+  }
+  if (archived.length)
+    sections.push(`<h2>Archived sessions (${archived.length})</h2>
+<p>Each opens again, read-only, on another port while this one is open:</p>
+<table>
+<tr><th>Closed by</th><th>Baseline</th><th>Runs</th><th>Opened by</th></tr>
+${archived
+  .map(
+    (a) =>
+      `<tr><td>${a.closed ? `${esc(a.closed.short)}, ${esc(whenText(a.closed.at))}: ${esc(a.closed.message)}` : ""}</td><td>${esc(a.baseline.short)}</td><td>${a.runs}</td><td><code>node scripts/shot_review.mjs --archived ${esc(a.id)} --port 4181</code></td></tr>`,
+  )
+  .join("\n")}
+</table>`);
+  return pageHtml({
+    generator: REVIEW_GENERATOR,
+    title: "Screenshot review: commit",
+    head: HEAD,
+    intro: `What a commit of the session of ${esc(baseline.short)} takes: the pictures and SVGs its runs reported that git reports changed, and the manifest.`,
+    body: `${topNav("commit")}
+${notices.map((n) => `<div class="notice">${n}</div>`).join("\n")}
+${sections.join("\n")}`,
   });
 }

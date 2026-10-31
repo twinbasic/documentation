@@ -1,10 +1,12 @@
 // What the screenshot review tool shows of a session (WIP.ShotReview.md, The pages): every
 // picture its runs reported, each with the newest verdict on its PNG and on its SVG, and the
-// group of the overview it is in. Nothing here reads a file: the server reads each run's
-// events (shot-session.mjs) and verdicts (shot-stage.mjs), and passes in what else the model
-// needs to know, such as whether a file is under docs/.
+// group of the overview it is in; and what a commit of the session takes, with its default
+// message. Nothing here reads a file: the server reads each run's events (shot-session.mjs)
+// and verdicts (shot-stage.mjs), and git's status (shot-revision.mjs), and passes in what else
+// the model needs to know, such as whether a file is under docs/.
 
 import { svgOf } from "./shot-apply.mjs";
+import { SVG_FAITHFUL } from "./shot-policy.mjs";
 
 /** The overview's groups, in its order: [key, heading]. */
 export const GROUPS = [
@@ -230,4 +232,135 @@ export function neighbours(list, out) {
   const index = list.findIndex((p) => p.out === out);
   if (index < 0) return { index, prev: null, next: null };
   return { index, prev: list[index - 1] ?? null, next: list[index + 1] ?? null };
+}
+
+// ---- the commit -----------------------------------------------------------------------
+//
+// The session's own files (WIP.ShotReview.md, Commit) are the PNG and the SVG of each picture a
+// run of it reported, and the manifest; of those, a commit takes the ones git reports changed.
+// A clean-up's pictures are not among them: it puts a picture back as the baseline has it, and
+// the session is committed only while its baseline is HEAD, so what a clean-up put back has
+// nothing to commit. A picture changed outside the session's runs is left out, with every other
+// change of the working tree.
+
+const writes = (state) => state === "new" || state === "updated";
+
+// Whether a picture's entry in the manifest changes its SVG's bar.
+const svgAllowance = (entry) => !!(entry?.svg?.bar || entry?.svg?.ignore);
+
+/**
+ * What a commit of the session takes: `pictures` reviewPictures', `changes` what the working
+ * tree changed ([{path, status}], paths from the repository's root: shot-revision.mjs's
+ * workingChanges), `docsPrefix` the pictures' folder from the repository's root with a closing
+ * slash ("docs/"), `manifestPath` the manifest's ("test/shots/manifest.json"), and `entry(out)`
+ * a picture's entry in the manifest, or null.
+ *
+ * Returns {files, leftOut, counts, build}: `files` the files to commit, [{path, status, out,
+ * part, why}], `part` "png", "svg" or "manifest" and `why` what the session did to it; `leftOut`
+ * the working tree's other changes ([{path, status}]); `counts` {changed, created, taken, kept,
+ * dropped, svgWritten, svgByAllowance, svgByReview, svgRemoved, manifest}; and `build` the newest
+ * build a PNG committed was taken on, or null. A PNG kept at the baseline by a review is counted
+ * (`kept`) though it has nothing to commit, as its decision is in the manifest.
+ */
+export function commitPlan({ pictures, changes, docsPrefix, manifestPath, entry = () => null }) {
+  const status = new Map(changes.map((c) => [c.path, c.status]));
+  const files = [];
+  const counts = {
+    changed: 0,
+    created: 0,
+    taken: 0,
+    kept: 0,
+    dropped: 0,
+    svgWritten: 0,
+    svgByAllowance: 0,
+    svgByReview: 0,
+    svgRemoved: 0,
+    manifest: false,
+  };
+  let build = null;
+  const take = (file, part, why, out = null) => files.push({ path: file, status: status.get(file), out, part, why });
+  for (const p of pictures) {
+    if (p.outside || (!p.png && !p.svg)) continue;
+    const pngPath = docsPrefix + p.out;
+    const svgPath = docsPrefix + svgOf(p.out);
+    const png = p.png;
+    if (status.has(pngPath)) {
+      let why;
+      if (status.get(pngPath) === "deleted") {
+        counts.dropped++;
+        why = png?.state === "once" ? "removed: the picture is taken once" : "removed: the dark picture's pixels";
+      } else if (png?.by === "decision" && writes(png.state)) {
+        counts.taken++;
+        why = "taken by review, against the tool's verdict";
+      } else {
+        counts.changed++;
+        if (status.get(pngPath) === "added") counts.created++;
+        why = status.get(pngPath) === "added" ? "new" : "changed by the tool's verdict";
+      }
+      if (png?.build && writes(png.state) && (build === null || png.build > build)) build = png.build;
+      take(pngPath, "png", why, p.out);
+    } else if (png?.by === "decision" && !writes(png.state) && png.state !== "dark" && png.state !== "once")
+      counts.kept++;
+    if (status.has(svgPath)) {
+      let why;
+      if (status.get(svgPath) === "deleted") {
+        counts.svgRemoved++;
+        why = "removed";
+      } else {
+        counts.svgWritten++;
+        why = "written";
+        if (p.svg?.by === "decision") {
+          counts.svgByReview++;
+          why = "written: accepted by review";
+        } else if (svgAllowance(entry(p.out)) && !(p.svg?.stats?.pct96 < SVG_FAITHFUL)) {
+          counts.svgByAllowance++;
+          why = "written: accepted by its allowance";
+        }
+      }
+      take(svgPath, "svg", why, p.out);
+    }
+  }
+  if (status.has(manifestPath)) {
+    counts.manifest = true;
+    take(manifestPath, "manifest", "the review's decisions and allowances, and the builds");
+  }
+  files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  const committed = new Set(files.map((f) => f.path));
+  return { files, leftOut: changes.filter((c) => !committed.has(c.path)), counts, build };
+}
+
+const many = (n, one, more = `${one}s`) => `${n} ${n === 1 ? one : more}`;
+
+/**
+ * A commit's default message, one line, from commitPlan's `counts` and `build`: "Screenshots
+ * retaken on BETA 1501: 39 pictures changed, 3 kept at HEAD by review; 35 SVGs written (2 by
+ * allowance), 1 removed". Null when there is nothing to commit.
+ */
+export function commitMessage({ counts: c, build }) {
+  const pictures = [];
+  if (c.changed) pictures.push(`${many(c.changed, "picture")} changed${c.created ? ` (${c.created} new)` : ""}`);
+  if (c.taken) pictures.push(`${c.taken} taken by review`);
+  if (c.kept) pictures.push(`${c.kept} kept at HEAD by review`);
+  if (c.dropped) pictures.push(`${many(c.dropped, "light picture")} removed`);
+  const svgs = [];
+  if (c.svgWritten) {
+    const by = [
+      c.svgByAllowance ? `${c.svgByAllowance} by allowance` : null,
+      c.svgByReview ? `${c.svgByReview} by review` : null,
+    ].filter(Boolean);
+    svgs.push(`${many(c.svgWritten, "SVG")} written${by.length ? ` (${by.join(", ")})` : ""}`);
+  }
+  if (c.svgRemoved) svgs.push(c.svgWritten ? `${c.svgRemoved} removed` : `${many(c.svgRemoved, "SVG")} removed`);
+  const parts = [pictures.join(", "), svgs.join(", ")].filter(Boolean).join("; ");
+  if (!parts) return c.manifest ? "Screenshot review: the manifest's decisions and allowances" : null;
+  const changes = c.changed || c.taken || c.dropped;
+  const what =
+    build && changes
+      ? `Screenshots retaken on BETA ${build}`
+      : changes
+        ? "Screenshots retaken"
+        : pictures.length
+          ? "Screenshots reviewed"
+          : "Screenshot SVGs drawn again";
+  return `${what}: ${parts}`;
 }

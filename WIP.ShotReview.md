@@ -2,12 +2,11 @@
 
 A localhost tool for reviewing what `shoot_docs.mjs` and `replay.mjs` decided about each
 picture, overriding it, starting retakes and replays, and committing the result. **Design
-agreed with the owner on 2026-10-31; steps 1 to 7 of [the order of work](#order-of-work) are
-done (step 1 but for the commit helper, which step 8 makes): the tool runs as
-`node scripts/shot_review.mjs`, applies each verdict under `docs/` as it arrives, takes a
-review's decisions and allowances, and starts and stops its runs from its runs page; it does
-not commit yet.** The mockups it was agreed on were inline in that session and are not kept:
-the pages are described below instead.
+agreed with the owner on 2026-10-31; steps 1 to 8 of [the order of work](#order-of-work) are
+done: the tool runs as `node scripts/shot_review.mjs`, applies each verdict under `docs/` as it
+arrives, takes a review's decisions and allowances, starts and stops its runs from its runs
+page, and commits the session's own files from its commit page.** The mockups it was agreed
+on were inline in that session and are not kept: the pages are described below instead.
 
 The tool covers everything the command-line screenshot tools do, interactively, with a person
 deciding where a threshold cannot (owner). The command-line tools stay, and both reach the
@@ -297,8 +296,8 @@ uses it. `shoot_docs.mjs` cannot run in a gate, so a move is checked by its test
 Each step ends tested and usable on its own.
 
 1. **The moves**, no behaviour changed: the table's *After* column, with `shoot_docs.mjs`,
-   `replay.mjs` and `sheet.mjs` calling the shared modules. Done but for the commit helper: see
-   [Where the work stands](#where-the-work-stands).
+   `replay.mjs` and `sheet.mjs` calling the shared modules. Done (the commit helper with step
+   8): see [Where the work stands](#where-the-work-stands).
 2. **The manifest**: read and written by one module; `shoot_docs.mjs` and `replay.mjs` judge
    with its allowances, honour its decisions and record `build`. Done.
 3. **The strength map, the regions and the queue's rules**, tested on fixtures. Done.
@@ -309,7 +308,7 @@ Each step ends tested and usable on its own.
    them, the group of pictures changed outside the session's runs, and the action that moves
    the session to a new HEAD ([Decisions](#decisions-owner)). Done.
 7. **The runs page**: retake, replay, clean up, stop. Done.
-8. **The commit panel**.
+8. **The commit panel**. Done.
 9. **`sheet.mjs` on the shared views**, showing each picture's allowances; the tool's entry in `Tools-IDE.md`, its node in
    `Tools-Groups.dot` (its command-line cases are in `scripts/lib/cli-cases.mjs` since step 5), its tests in
    `test.bat` (and so in Tools.md's list and the `run-gates` action), and the row in
@@ -317,7 +316,7 @@ Each step ends tested and usable on its own.
 
 ## Where the work stands
 
-On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and steps 2 to 7. Each move kept the command-line tools' output as it was, checked as
+On `staging` since 2026-10-31, steps 1 to 8. Each move kept the command-line tools' output as it was, checked as
 [below](#checking-a-move).
 
 | Row of the factoring table | Where it is now |
@@ -336,6 +335,7 @@ On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and st
 | The sheets' HTML | the pieces in `scripts/lib/shot-views.mjs`: `pageHtml({generator, title, intro, summary, contents, body})`, `cardHtml({out, meta, meter, figures})`, `figuresIn(folder)` (`href`, `figure`, `thumb`), `meterHtml`, `tocItem`, `esc`, `anchor`, `sizeText`, `pctText`. The two pages, their rows, their order, their commands and the output-folder rules (`mayWriteSheet`, `SHEET_GENERATOR`) are in `scripts/svgshot/sheets.mjs`, and `outputRefusal`, which the stage shares, in `shot-revision.mjs`; `redraw.mjs` keeps drawing and the shards |
 | Server-sent events | `createSseChannel()` in `lib/sse.mjs`: `handle(req, res)`, `send(event, data)`, `close()`; `builder/serve.mjs` uses one |
 | The installs | `listIdes()` in `scripts/lib/tb-install.mjs`, newest first, `[{build, exe}]` |
+| Commit | `workingChanges(root)` (`{top, changes}`, `parseStatus` of `git status --porcelain=v1 -z --no-renames --untracked-files=all`) and `commitPaths(root, {paths, added, message})` in `shot-revision.mjs`: `git add` of the paths git does not track, then `git commit --only` of every path named, literal pathspecs on stdin, hooks run; git's own words in the Error when it refuses |
 
 What step 5 added, the tool itself:
 
@@ -384,10 +384,43 @@ programs inherit and which the terminal's Ctrl+C does not reach. `startRun` now 
 (detached elsewhere only), and the three `git` calls of `shot-revision.mjs` pass `windowsHide`
 too; a retake and a stopped retake run so flashed nothing (owner).
 
-**Next: step 8**, the commit panel ([Commit](#commit)), with the commit helper beside `runGit`
-in `shot-revision.mjs` (the factoring table's last row). The session's own files are those its
-applier wrote (each run's `review/`, `held/`) and the manifest; a clean-up's are the pictures
-its log names as put back.
+What step 8 added:
+
+| Part | Where it is |
+|---|---|
+| What a commit takes | `commitPlan({pictures, changes, docsPrefix, manifestPath, entry})` in `shot-review.mjs`, pure: of the session's own files (the PNG and the SVG of each picture a run reported, and the manifest), those git reports changed, each with what the session did to it; the working tree's other changes `leftOut`; the counts and the newest `build` of a PNG committed. `commitMessage(plan)` is the default message, one line, the plan's own example word for word. An SVG is "by allowance" when its picture's entry changes its bar and its `stats.pct96` is not below `SVG_FAITHFUL`: the default bar would have refused it |
+| The commit | the server's `commit(body)`: refused while a run runs, while HEAD is not the baseline (the refusal names HEAD, and the session is to be moved to it first), when `body.files` is not the list the page was drawn with, or for an empty message; then `commitPaths`, then `onCommit`, whose answer the server serves from then on (`session`, `revision`, a new applier, the runs read again). POST `/api/commit` (`hrefs.commit`), `{message, files}` |
+| The commit page | `/commit` (`hrefs.commitPage`), `commitHtml` in `shot-pages.mjs`: the counts, the message in a text box with its default as `data-default` and **Back to the default message**, enabled once the box differs (the page's script; a refresh keeps an edited message and takes a new default otherwise), the files with their status and why, what is left out (200 at most), and the archived sessions, each with the command that opens it. Overview, Runs and Commit link to each other at the top of each page |
+| Closing the session | `session.archive(commit)` in `shot-session.mjs`: `closed` {hash, short, message, at} recorded, `session/` moved to `archive/<id>/session/` (copied and removed if a file in it is held open), its lock left out, `<id>` the commit's short hash (`-2`, `-3` after it when taken). `archiveRoot(root, id)` is a root `openSession` opens; `listArchived(root)` lists them, newest closed first. In `shot_review.mjs`, `onCommit` archives, takes the lock again and opens the next session, the commit as its baseline |
+| An archived session | `shot_review.mjs --archived <id> [--port N]`: the session opened from the archive with `readOnly`, no lock, no run, nothing applied; every POST is refused (403), the overview says it is archived and that the pictures under docs are shown as they are now, and the commit page lists the archived sessions only |
+
+**A clean-up's pictures are not the session's to commit**, as the note before this step
+guessed they might be: a clean-up puts a picture back as the baseline has it, and the session is
+committed only while its baseline is HEAD, so what it put back is as HEAD has it and git reports
+nothing. With HEAD moved under the session, committing them would undo the pictures of the
+commit made outside it. A PNG kept at HEAD by a review has nothing to commit either, but its
+decision is in the manifest, which is, and the message counts it.
+
+Step 8 was checked with the tests in `test/svgshot.test.mjs` (`parseStatus`; `commitPaths` in a
+scratch repository, a new file added, a removed one a deletion, another change and a staged file
+left as they were; `archive` and `listArchived`; `commitPlan` and `commitMessage` over every kind
+of picture; and the server in a scratch repository with the stand-in run: refused while it runs,
+for another list of files and for an empty message, then committed, archived, the next session
+served, and the archived one opened read-only), and with the real tool in this worktree, on port
+4183: a retake of `Menu_File_Project` (dark `unchanged`, light `noise`, as in steps 6 and 7), the
+commit page with nothing to commit and the working tree's one other change left out; the light
+capture taken on its page, after which the commit page listed it and the manifest (1 taken by
+review; the default message `Screenshots retaken on BETA 1034: 1 taken by review`); Back to the
+default message enabled by an edit and putting the default back; an edited message kept while
+the page fetched itself again; Commit, which committed those two files and nothing else, with the
+edited message, archived the session as the commit's hash and showed the next session's empty
+page with the archived one listed; and `--archived <id>` on port 4181, which showed the session
+as committed and refused a POST. The commit took several seconds on this repository (its hooks,
+and git over 5,000 files), during which the page says "applying...". The test commit was then
+dropped from the branch (`git reset --keep`).
+
+**Next: step 9**: `sheet.mjs` on the shared views, showing each picture's allowances, and the
+tool's documentation and gates (the list in [the order of work](#order-of-work)).
 
 Left from step 6, small: `openManifest().save` writes LF, so a manifest checked out with CRLF
 shows as modified with no diff once the tool (or `shoot_docs.mjs`) has saved it, even after a

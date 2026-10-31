@@ -15,20 +15,27 @@
 // One run at a time: a picture's verdicts are applied in the runs' order (shot-verdicts.mjs),
 // which two runs at once would not keep, and a clean-up writes under docs/ itself, so while
 // one runs nothing else may write there and a review's actions wait for it.
+//
+// The commit takes the session's own files and nothing else (shot-review.mjs's commitPlan, from
+// git's status), while no run runs and the baseline is HEAD; it closes the session, and the
+// server then serves the next one, whose baseline is the new commit.
 
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import path from "node:path";
-import { DOCS_DIR } from "../../lib/repo-paths.mjs";
+import { DOCS_DIR, REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { createSseChannel } from "../../lib/sse.mjs";
 import { decodePng } from "./png.mjs";
 import { svgOf } from "./shot-apply.mjs";
 import { changeMap, shareOff, strengthPicture } from "./shot-change.mjs";
 import { hashOf } from "./shot-manifest.mjs";
-import { detailHtml, hrefs, outsideHtml, overviewHtml, runsHtml } from "./shot-pages.mjs";
+import { commitHtml, detailHtml, hrefs, outsideHtml, overviewHtml, runsHtml } from "./shot-pages.mjs";
 import { pngRule, pngSize, svgRule } from "./shot-policy.mjs";
+import { commitPaths, workingChanges } from "./shot-revision.mjs";
 import { createApplier } from "./shot-verdicts.mjs";
 import {
+  commitMessage,
+  commitPlan,
   FILTERS,
   filterPictures,
   isOverridden,
@@ -78,11 +85,16 @@ const TAIL_LINES = 8;
  * from the baseline ([{out, status}], changedPictures'), `ides` the installs a retake can be run
  * on, newest first ([{build, exe}], listIdes'), `onLine(run, line)` called for each line of a run
  * meant for a person, and `command` the probes' stand-in for the tools a run starts (startRun).
+ * `repoRoot` is a folder of the git working tree the session's files are committed in;
+ * `onCommit({hash, short, message})` closes the session once its files are committed, and
+ * returns the next one, {session, revision, archive}, `archive` the closed one's id in the
+ * archive; `archived()` lists the archived sessions (shot-session.mjs's listArchived), which
+ * the commit page names; and `readOnly` serves an archived session: nothing may be changed.
  * Returns {server, listen(port, host), start({tool, args}), live(), close(), model(),
- * applyPending()}: `listen` resolves to the port it listens on; `start` starts a run (runOf's),
- * and returns startRun's handle, or throws while another runs; `live` the handles of the runs
- * that are running; `applyPending` applies what the runs reported and was not applied yet, and
- * returns how many parts.
+ * applyPending(), session()}: `listen` resolves to the port it listens on; `start` starts a run
+ * (runOf's), and returns startRun's handle, or throws while another runs; `live` the handles of
+ * the runs that are running; `applyPending` applies what the runs reported and was not applied
+ * yet, and returns how many parts; `session` the session it serves now.
  */
 export function createReviewServer({
   session,
@@ -96,11 +108,20 @@ export function createReviewServer({
   ides = [],
   onLine,
   command,
+  repoRoot = REPO_ROOT,
+  onCommit = () => {
+    throw new Error("this server cannot close its session");
+  },
+  archived = () => [],
+  readOnly = false,
 }) {
   const newestIde = ides[0]?.build ?? null;
   const sse = createSseChannel();
   let revision = initialRevision;
-  const applier = createApplier({ session, docsRoot, bundlesRoot, revision: () => revision, manifest });
+  let applier = createApplier({ session, docsRoot, bundlesRoot, revision: () => revision, manifest });
+  // The commit that closed the session before this one, as the pages say so: {hash, short,
+  // message, archive}, or null.
+  let lastCommit = null;
   // HEAD as it is now, when it is not the baseline: read again at most once a second.
   let headSeen = { at: 0, value: null };
   const headNow = () => {
@@ -128,12 +149,16 @@ export function createReviewServer({
   };
   // run n -> {record, live, handle, events, facts, verdicts}
   const runs = new Map();
-  for (const record of session.data.runs) {
-    const files = runPaths(session.root, record.n);
-    const events = readEvents(files.events);
-    const verdicts = new Map(readVerdicts(files.stage).map((v) => [v.out, { png: v.png, svg: v.svg }]));
-    runs.set(record.n, { record, live: false, handle: null, events, facts: runFacts(record.tool, events), verdicts });
-  }
+  const loadRuns = () => {
+    runs.clear();
+    for (const record of session.data.runs) {
+      const files = runPaths(session.root, record.n);
+      const events = readEvents(files.events);
+      const verdicts = new Map(readVerdicts(files.stage).map((v) => [v.out, { png: v.png, svg: v.svg }]));
+      runs.set(record.n, { record, live: false, handle: null, events, facts: runFacts(record.tool, events), verdicts });
+    }
+  };
+  loadRuns();
   const stageFile = (n, rel) => path.join(runPaths(session.root, n).stage, rel);
   const exists = (rel) => existsSync(path.join(docsRoot, rel));
   const entry = (out) => manifest().entry(out);
@@ -348,6 +373,7 @@ export function createReviewServer({
       newestIde,
       resume: look.length ? { index: at, total: look.length, out: look[at].out } : null,
       exists,
+      archived: readOnly ? (session.data.closed ?? {}) : null,
     });
   }
   // The run that is running, as the pages say so: {n, kind}, or null.
@@ -533,6 +559,88 @@ export function createReviewServer({
     measures.clear();
   }
 
+  // ---- the commit ----
+  // What a commit of the session takes, from git's status now: {plan, message, error}, the plan
+  // commitPlan's and the message its default, or `error` why git could not be read.
+  // A path as git names it (long names, links resolved), for a file that may not be there yet.
+  const real = (file) => {
+    if (existsSync(file)) return realpathSync.native(file);
+    const up = path.dirname(file);
+    return up === file ? file : path.join(real(up), path.basename(file));
+  };
+  function commitState() {
+    try {
+      const { top, changes } = workingChanges(repoRoot);
+      const rel = (file) => path.relative(real(top), real(file)).replace(/\\/g, "/");
+      const plan = commitPlan({
+        pictures: model().pictures,
+        changes,
+        docsPrefix: `${rel(docsRoot)}/`,
+        manifestPath: rel(manifest().file),
+        entry,
+      });
+      return { plan, message: commitMessage(plan), error: null };
+    } catch (e) {
+      return { plan: null, message: null, error: e.message };
+    }
+  }
+  // Why the session cannot be committed now, or null: a run, or a baseline that is not HEAD.
+  const commitRefusal = () => {
+    if (readOnly) return "this session is archived: it was committed when it was closed";
+    const busy = liveRuns()[0];
+    if (busy) return `run ${busy.record.n} is running: commit once it has ended`;
+    const h = headNow();
+    if (h)
+      return `HEAD is now ${h.short}, not the baseline, ${session.data.baseline.short}: move the session to HEAD first, so that what is committed was judged against HEAD's pictures`;
+    return null;
+  };
+  // Commits the session's own files with `body.message`, when `body.files` (their paths) is
+  // still what the session would commit; then the session is closed and the next one served
+  // (onCommit, which archives it and opens the next).
+  function commit(body) {
+    const refused = commitRefusal();
+    if (refused) throw new Error(refused);
+    const { plan, error } = commitState();
+    if (error) throw new Error(`git could not be read: ${error}`);
+    const paths = plan.files.map((f) => f.path);
+    if (!paths.length) throw new Error("the session has changed nothing to commit");
+    const asked = Array.isArray(body.files) ? [...body.files].sort() : null;
+    if (!asked || asked.length !== paths.length || asked.some((p, i) => p !== paths[i]))
+      throw new Error("what the session would commit has changed since the page was drawn: look at it again");
+    const message = typeof body.message === "string" ? body.message.trim() : "";
+    if (!message) throw new Error("the message is empty");
+    const added = plan.files.filter((f) => f.status === "added").map((f) => f.path);
+    const done = commitPaths(repoRoot, { paths, added, message });
+    let next;
+    try {
+      next = onCommit({ ...done, message });
+    } catch (e) {
+      throw new Error(`committed ${done.short}, but the session could not be closed: ${e.message}`);
+    }
+    session = next.session;
+    revision = next.revision;
+    applier = createApplier({ session, docsRoot, bundlesRoot, revision: () => revision, manifest });
+    loadRuns();
+    headSeen = { at: 0, value: null };
+    changedSeen = { at: 0, value: [] };
+    maps.clear();
+    measures.clear();
+    lastCommit = { ...done, message, archive: next.archive };
+    return lastCommit;
+  }
+  function commitPage() {
+    const state = readOnly ? { plan: null, message: null, error: null } : commitState();
+    return commitHtml({
+      ...state,
+      baseline: session.data.baseline,
+      refusal: commitRefusal(),
+      headNow: headNow()?.short ?? null,
+      canMove: !!revisionAt,
+      lastCommit,
+      archived: archived(),
+    });
+  }
+
   // ---- answering ----
   let port = null;
   const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
@@ -567,6 +675,7 @@ export function createReviewServer({
     const origin = req.headers.origin;
     if (origin !== `http://${req.headers.host}`)
       return sendJson(res, 403, { error: "only the tool's own pages may change anything" });
+    if (readOnly) return sendJson(res, 403, { error: "this session is archived: nothing in it can be changed" });
     if (!/^application\/json\b/i.test(req.headers["content-type"] ?? ""))
       return sendJson(res, 415, { error: "the body must be JSON" });
     let body;
@@ -594,6 +703,11 @@ export function createReviewServer({
         moveToHead();
         sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
         return sendJson(res, 200, { ok: true, baseline: session.data.baseline });
+      }
+      if (url.pathname === hrefs.commit) {
+        const done = commit(body);
+        sse.send("update", { outs: [], runs: true });
+        return sendJson(res, 200, { ok: true, hash: done.hash, short: done.short, archive: done.archive });
       }
       if (url.pathname === hrefs.startRun) {
         const { run } = startRequest(body);
@@ -631,6 +745,7 @@ export function createReviewServer({
     const [first, ...rest] = segs;
     if (url.pathname === "/") return page(req, res, overview(filter));
     if (url.pathname === hrefs.runs) return page(req, res, runsPage());
+    if (url.pathname === hrefs.commitPage) return page(req, res, commitPage());
     if (url.pathname === hrefs.events) return sse.handle(req, res);
     if (first === "picture") {
       const out = rest.join("/");
@@ -720,6 +835,7 @@ export function createReviewServer({
     start,
     live,
     model,
+    session: () => session,
     applyPending: () => applier.pending(),
     close() {
       sse.close();

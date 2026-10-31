@@ -6,7 +6,8 @@
 // the revision's. svgshot/sheet.mjs --against lists the pictures that differ from a revision
 // and reads the revision's pictures here too. The noise rule itself is withinNoise, in
 // shot-change.mjs: every caller passes it in. And where a folder of pictures that may hold the
-// Windows user name may be written (outputRefusal): a sheet, or a run's stage.
+// Windows user name may be written (outputRefusal): a sheet, or a run's stage. And what the
+// working tree changed, and a commit of some of it, for the screenshot review tool's commit.
 //
 // Git is run in the docs folder, so that the repository that holds it answers, whichever
 // checkout the script is in. The reads are batched: one `git cat-file --batch` process for
@@ -253,6 +254,83 @@ export function planCleanup(pictures, before, after, near) {
     }
   }
   return plan;
+}
+
+// ---- the working tree, and a commit of some of it -------------------------------------
+//
+// The screenshot review tool commits the files its session changed and nothing else
+// (WIP.ShotReview.md, Commit), so it asks git what the working tree changed, and commits a
+// list of paths by name.
+
+/**
+ * The changes git reports, from the text of `git status --porcelain=v1 -z --no-renames
+ * --untracked-files=all` ("XY path", separated by NUL): [{path, status}], `path` from the
+ * repository's root, `status` "added" (not tracked yet, or added to the index), "deleted" (from
+ * the working tree or the index) or "modified", sorted by path.
+ */
+export function parseStatus(text) {
+  const found = [];
+  for (const entry of text.split("\0")) {
+    if (entry.length < 4) continue;
+    const [x, y, p] = [entry[0], entry[1], entry.slice(3)];
+    const status = x === "D" || y === "D" ? "deleted" : x === "?" || x === "A" ? "added" : "modified";
+    found.push({ path: p, status });
+  }
+  return found.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+}
+
+/**
+ * What the working tree of the folder `root` changed: {top, changes}, `top` the repository's
+ * root and `changes` parseStatus' list, ignored files left out. Throws an Error that says why
+ * when the folder is not in a git working tree.
+ */
+export function workingChanges(root, git = runGit) {
+  const top = git(["rev-parse", "--show-toplevel"], root);
+  if (top.status !== 0) throw new Error(`${root} is not in a git working tree`);
+  const dir = top.stdout.trim();
+  const status = git(["status", "--porcelain=v1", "-z", "--no-renames", "--untracked-files=all"], dir);
+  if (status.status !== 0) throw new Error(`git status failed in ${dir}`);
+  return { top: path.resolve(dir), changes: parseStatus(status.stdout) };
+}
+
+// Runs git in `cwd` with `input` on its stdin, and returns its output; throws an Error with
+// what git said, stdout and stderr, when it fails.
+function gitSaying(args, cwd, input) {
+  try {
+    return execFileSync("git", args, {
+      cwd,
+      input,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+      windowsHide: true,
+    });
+  } catch (e) {
+    const said = `${e.stdout ?? ""}${e.stderr ?? ""}`.trim();
+    throw new Error(`git ${args[0]} failed${said ? `: ${said}` : ` (${e.message})`}`);
+  }
+}
+
+const literalSpecs = (paths) => `${paths.map((p) => `:(literal)${p}`).join("\0")}\0`;
+
+/**
+ * Commits the files `paths` (from the root of the repository whose working tree holds `root`)
+ * with the message `message`, and nothing else: each of `added`, which git does not track yet,
+ * is added first, and then every path is committed as the working tree holds it (`git commit
+ * --only`), a file removed as a deletion. Whatever else the index holds stays in it, not
+ * committed. The repository's hooks run. Returns {hash, short}, the new commit. Throws an Error
+ * with git's own words when git refuses: a hook, nothing to commit, an empty message.
+ */
+export function commitPaths(root, { paths, added = [], message }) {
+  if (!paths.length) throw new Error("no file to commit");
+  const { top } = workingChanges(root);
+  if (added.length) gitSaying(["add", "--pathspec-from-file=-", "--pathspec-file-nul"], top, literalSpecs(added));
+  gitSaying(
+    ["commit", "--quiet", "--only", "-m", message, "--pathspec-from-file=-", "--pathspec-file-nul"],
+    top,
+    literalSpecs(paths),
+  );
+  const hash = gitSaying(["rev-parse", "HEAD"], top).trim();
+  return { hash, short: gitSaying(["rev-parse", "--short=8", hash], top).trim() };
 }
 
 const inside = (dir, root) => {

@@ -11,16 +11,29 @@
 //   session/runs/<n>/log.txt       the run's lines meant for a person, stdout and stderr
 //   session/runs/<n>/held/         what each picture held before the run's verdict on it was
 //                                  applied (shot-apply.mjs's holdPicture, shot-verdicts.mjs)
-//   archive/<id>/                  a closed session: a commit closes one
+//   archive/<id>/session/          a closed session, as session/ was: a commit closes one, and
+//                                  <id> is the commit's short hash
 //
-// session.json is {format, created, baseline: {hash, short, build, moved}, runs, place}: `build`
+// session.json is {format, created, baseline: {hash, short, build, moved}, runs, place, closed}: `build`
 // the newest build the manifest at the baseline records, or null, and `moved` {at, from} when
 // the session was moved to this baseline from another (`from` its short hash); each run {n, tool, args,
 // started, ended, exit, stopped, interrupted}, `args` its options as the command line gives
 // them, without --stage and --events, which the tool adds; `place` the picture the queue was
-// left at, or null. A clean-up run (tool "cleanup") has only its log.
+// left at, or null; `closed` {hash, short, message, at}, the commit that closed it, once it is
+// archived. A clean-up run (tool "cleanup") has only its log.
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 
@@ -186,7 +199,54 @@ export function openSession(root, baseline, now = () => new Date().toISOString()
       data.baseline = { ...baseline, moved: { at: now(), from: data.baseline.short } };
       save();
     },
+    /**
+     * Closes the session with the commit `commit` ({hash, short, message}), recorded as
+     * `closed` with the time, and moves its folder into the archive, without its lock: the
+     * archived session is opened again by openSession(archiveRoot(root, id)). Returns `id`, the
+     * commit's short hash (with -2, -3 ... when an archived session has it already). No run may
+     * be running: its files are moved.
+     */
+    archive(commit) {
+      data.closed = { ...commit, at: now() };
+      save();
+      let id = commit.short;
+      for (let k = 2; existsSync(archiveRoot(root, id)); k++) id = `${commit.short}-${k}`;
+      const to = sessionPaths(archiveRoot(root, id)).dir;
+      mkdirSync(path.dirname(to), { recursive: true });
+      try {
+        renameSync(paths.dir, to);
+      } catch {
+        // a file in it held open for a moment (a scanner, an indexer): copied, then removed
+        cpSync(paths.dir, to, { recursive: true });
+        rmSync(paths.dir, { recursive: true, force: true, maxRetries: 5 });
+      }
+      rmSync(path.join(to, "lock"), { force: true });
+      return id;
+    },
   };
+}
+
+/** The root of the archived session `id` under `root`, which openSession opens. */
+export const archiveRoot = (root, id) => path.join(sessionPaths(root).archive, id);
+
+/**
+ * The sessions archived under `root`, the newest closed first: [{id, closed, baseline, runs}],
+ * `closed` {hash, short, message, at}, `runs` how many it had. A folder that holds no session is
+ * left out.
+ */
+export function listArchived(root) {
+  const dir = sessionPaths(root).archive;
+  if (!existsSync(dir)) return [];
+  const found = [];
+  for (const id of readdirSync(dir)) {
+    const file = sessionPaths(archiveRoot(root, id)).file;
+    try {
+      const s = parseSession(readFileSync(file, "utf8"), file);
+      found.push({ id, closed: s.closed ?? null, baseline: s.baseline, runs: s.runs.length });
+    } catch {}
+  }
+  const at = (a) => a.closed?.at ?? "";
+  return found.sort((a, b) => (at(a) < at(b) ? 1 : at(a) > at(b) ? -1 : a.id < b.id ? -1 : 1));
 }
 
 /** Appends `value` as a line of JSON to the events file of a run. */

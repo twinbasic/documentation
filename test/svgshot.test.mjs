@@ -111,7 +111,9 @@ import {
 } from "../scripts/lib/shot-change.mjs";
 import {
   acquireLock,
+  archiveRoot,
   commandOf,
+  listArchived,
   newestBuild,
   openSession,
   parseSession,
@@ -120,6 +122,8 @@ import {
   sessionPaths,
 } from "../scripts/lib/shot-session.mjs";
 import {
+  commitMessage,
+  commitPlan,
   filterPictures,
   groupOf,
   hasSvg,
@@ -146,16 +150,19 @@ import {
 } from "../scripts/lib/shot-queue.mjs";
 import {
   changedPictures,
+  commitPaths,
   openRevision,
   outputRefusal,
   parseCatFileBatch,
   parseNameStatus,
+  parseStatus,
   parseUntracked,
   pictureFate,
   planCleanup,
   restoreFromRevision,
   revisionOf,
   svgFate,
+  workingChanges,
 } from "../scripts/lib/shot-revision.mjs";
 import {
   judgedFiles,
@@ -1963,6 +1970,78 @@ describe("the picture at a git revision", () => {
     assert.equal(fs.readFileSync(path.join(docs, "a.svg"), "utf8"), "<svg/>\n");
     assert.equal(git("status", "--porcelain").toString(), "");
   });
+
+  test("reads git's status of the working tree, sorted by path", () => {
+    assert.deepEqual(parseStatus(" M b.txt\0 D a b.svg\0A  staged.txt\0?? e/z.txt\0D  gone.png\0AM n.txt\0"), [
+      { path: "a b.svg", status: "deleted" },
+      { path: "b.txt", status: "modified" },
+      { path: "e/z.txt", status: "added" },
+      { path: "gone.png", status: "deleted" },
+      { path: "n.txt", status: "added" },
+      { path: "staged.txt", status: "added" },
+    ]);
+    assert.deepEqual(parseStatus(""), []);
+  });
+
+  test("commits the paths named and nothing else, a new one added first and one removed as a deletion", (t) => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-commit-"));
+    t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
+    const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] }).toString();
+    try {
+      git("init", "-q");
+    } catch {
+      t.skip("no git");
+      return;
+    }
+    // commitPaths runs git with the repository's own settings
+    for (const [k, v] of [
+      ["core.autocrlf", "false"],
+      ["user.name", "t"],
+      ["user.email", "t@t"],
+      ["commit.gpgsign", "false"],
+    ])
+      git("config", k, v);
+    const docs = path.join(repo, "docs");
+    fs.mkdirSync(path.join(docs, "two words"), { recursive: true });
+    fs.writeFileSync(path.join(docs, "two words", "a.png"), "a");
+    fs.writeFileSync(path.join(docs, "a.svg"), "<svg/>\n");
+    fs.writeFileSync(path.join(repo, "other.txt"), "o\n");
+    git("add", ".");
+    git("commit", "-q", "-m", "x");
+    fs.writeFileSync(path.join(docs, "two words", "a.png"), "b");
+    fs.rmSync(path.join(docs, "a.svg"));
+    fs.mkdirSync(path.join(docs, "new"));
+    fs.writeFileSync(path.join(docs, "new", "n.png"), "n");
+    fs.writeFileSync(path.join(repo, "other.txt"), "changed\n");
+    fs.writeFileSync(path.join(repo, "staged.txt"), "s\n");
+    git("add", "staged.txt");
+
+    const { top, changes } = workingChanges(docs);
+    assert.equal(fs.realpathSync.native(top), fs.realpathSync.native(repo));
+    assert.deepEqual(changes, [
+      { path: "docs/a.svg", status: "deleted" },
+      { path: "docs/new/n.png", status: "added" },
+      { path: "docs/two words/a.png", status: "modified" },
+      { path: "other.txt", status: "modified" },
+      { path: "staged.txt", status: "added" },
+    ]);
+    const done = commitPaths(docs, {
+      paths: ["docs/a.svg", "docs/new/n.png", "docs/two words/a.png"],
+      added: ["docs/new/n.png"],
+      message: "Screenshots: 2 pictures",
+    });
+    assert.equal(done.hash, git("rev-parse", "HEAD").trim());
+    assert.equal(done.short, done.hash.slice(0, 8));
+    assert.equal(git("log", "-1", "--format=%B").trim(), "Screenshots: 2 pictures");
+    assert.equal(
+      git("show", "--name-status", "--format=", "HEAD"),
+      "D\tdocs/a.svg\nA\tdocs/new/n.png\nM\tdocs/two words/a.png\n",
+    );
+    // what the commit did not name is as it was: changed, and staged
+    assert.equal(git("status", "--porcelain"), " M other.txt\nA  staged.txt\n");
+    assert.throws(() => commitPaths(docs, { paths: ["other.txt"], message: "" }), /^Error: git commit failed/);
+    assert.throws(() => commitPaths(docs, { paths: [], message: "m" }), /no file to commit/);
+  });
 });
 
 describe("the records a child writes among its lines (record-lines.mjs)", () => {
@@ -2825,6 +2904,34 @@ describe("the screenshot review's session (shot-session.mjs)", () => {
     }
   });
 
+  test("is archived by the commit that closes it, without its lock, opened from the archive, and listed newest first", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-session-"));
+    try {
+      const commit = { hash: "c".repeat(40), short: "cccccccc", message: "Screenshots retaken" };
+      const s = openSession(root, baseline, () => "t1");
+      s.addRun({ tool: "replay", args: [] });
+      acquireLock(sessionPaths(root).lock);
+      assert.equal(s.archive(commit), "cccccccc");
+      assert.equal(fs.existsSync(sessionPaths(root).dir), false);
+      assert.equal(fs.existsSync(sessionPaths(archiveRoot(root, "cccccccc")).lock), false);
+      const archived = openSession(archiveRoot(root, "cccccccc"), () => assert.fail("an archived session is not made"));
+      assert.deepEqual([archived.data.closed, archived.data.runs.length], [{ ...commit, at: "t1" }, 1]);
+      // a second session closed by a commit of the same short hash
+      openSession(root, baseline, () => "t2").archive(commit);
+      fs.mkdirSync(path.join(sessionPaths(root).archive, "empty"));
+      assert.deepEqual(
+        listArchived(root).map((a) => [a.id, a.closed.at, a.baseline.short, a.runs]),
+        [
+          ["cccccccc-2", "t2", "aaaaaaaa", 0],
+          ["cccccccc", "t1", "aaaaaaaa", 1],
+        ],
+      );
+      assert.deepEqual(listArchived(path.join(root, "none")), []);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("refuses a file that is not a session", () => {
     assert.throws(() => parseSession("{"), /not JSON/);
     assert.throws(() => parseSession('{"format":2}'), /format 1/);
@@ -3083,6 +3190,121 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     const { index, prev, next } = neighbours(pictures, B);
     assert.deepEqual([index, prev.out, next.out], [1, A, C]);
     assert.deepEqual(neighbours(pictures, "x.png"), { index: -1, prev: null, next: null });
+  });
+
+  test("a commit takes the session's own files that git reports changed, and says what it did to each", () => {
+    const I = "IDE/Images/";
+    const pictures = [
+      {
+        out: `${I}A.png`,
+        png: { state: "updated", by: "rule", build: 1501 },
+        svg: { state: "updated", by: "rule", stats: { pct96: 0.1 } },
+      },
+      { out: `${I}B.light.png`, png: { state: "dark", by: "rule" }, svg: null },
+      { out: `${I}C.png`, png: { state: "restored", by: "decision" }, svg: null },
+      // written by the rule, but only with its allowance: 0.4% is past the default bar
+      {
+        out: `${I}D.png`,
+        png: { state: "new", by: "rule", build: 1502 },
+        svg: { state: "new", by: "rule", stats: { pct96: 0.4 } },
+      },
+      {
+        out: `${I}E.png`,
+        png: { state: "updated", by: "decision", build: 1501 },
+        svg: { state: "new", by: "decision" },
+      },
+      { out: `${I}F.png`, png: null, svg: null, outside: "modified" },
+      { out: `${I}G.png`, png: null, svg: { state: "removed", by: "rule" } },
+      // a retake whose picture is as HEAD has it: nothing to commit, and not counted
+      { out: `${I}H.png`, png: { state: "unchanged", by: "rule" }, svg: { state: "unchanged" } },
+    ];
+    const changes = [
+      ["docs/IDE/Images/A.png", "modified"],
+      ["docs/IDE/Images/A.svg", "modified"],
+      ["docs/IDE/Images/B.light.png", "deleted"],
+      ["docs/IDE/Images/B.light.svg", "deleted"],
+      ["docs/IDE/Images/D.png", "added"],
+      ["docs/IDE/Images/D.svg", "added"],
+      ["docs/IDE/Images/E.png", "modified"],
+      ["docs/IDE/Images/E.svg", "added"],
+      ["docs/IDE/Images/F.png", "modified"],
+      ["docs/IDE/Images/G.svg", "deleted"],
+      ["README.md", "modified"],
+      ["test/shots/manifest.json", "modified"],
+    ].map(([p, status]) => ({ path: p, status }));
+    const plan = commitPlan({
+      pictures,
+      changes,
+      docsPrefix: "docs/",
+      manifestPath: "test/shots/manifest.json",
+      entry: (out) => (out.endsWith("D.png") ? { svg: { bar: { share: 1 } } } : null),
+    });
+    assert.deepEqual(
+      plan.files.map((f) => [f.path.replace("docs/IDE/Images/", ""), f.status, f.part, f.why]),
+      [
+        ["A.png", "modified", "png", "changed by the tool's verdict"],
+        ["A.svg", "modified", "svg", "written"],
+        ["B.light.png", "deleted", "png", "removed: the dark picture's pixels"],
+        ["B.light.svg", "deleted", "svg", "removed"],
+        ["D.png", "added", "png", "new"],
+        ["D.svg", "added", "svg", "written: accepted by its allowance"],
+        ["E.png", "modified", "png", "taken by review, against the tool's verdict"],
+        ["E.svg", "added", "svg", "written: accepted by review"],
+        ["G.svg", "deleted", "svg", "removed"],
+        ["test/shots/manifest.json", "modified", "manifest", "the review's decisions and allowances, and the builds"],
+      ],
+    );
+    assert.equal(plan.files[0].out, `${I}A.png`);
+    assert.deepEqual(
+      plan.leftOut.map((c) => c.path),
+      ["docs/IDE/Images/F.png", "README.md"],
+    );
+    assert.deepEqual(plan.counts, {
+      changed: 2,
+      created: 1,
+      taken: 1,
+      kept: 1,
+      dropped: 1,
+      svgWritten: 3,
+      svgByAllowance: 1,
+      svgByReview: 1,
+      svgRemoved: 2,
+      manifest: true,
+    });
+    assert.equal(plan.build, 1502);
+    assert.equal(
+      commitMessage(plan),
+      "Screenshots retaken on BETA 1502: 2 pictures changed (1 new), 1 taken by review, 1 kept at HEAD by review, 1 light picture removed; 3 SVGs written (1 by allowance, 1 by review), 2 removed",
+    );
+
+    // the plan's own example, a replay alone, the manifest alone, and nothing
+    const none = Object.fromEntries(Object.keys(plan.counts).map((k) => [k, k === "manifest" ? false : 0]));
+    const counts = (c) => ({ ...none, ...c });
+    assert.equal(
+      commitMessage({
+        counts: counts({ changed: 39, kept: 3, svgWritten: 35, svgByAllowance: 2, svgRemoved: 1 }),
+        build: 1501,
+      }),
+      "Screenshots retaken on BETA 1501: 39 pictures changed, 3 kept at HEAD by review; 35 SVGs written (2 by allowance), 1 removed",
+    );
+    assert.equal(
+      commitMessage({ counts: counts({ svgWritten: 1, manifest: true }), build: null }),
+      "Screenshot SVGs drawn again: 1 SVG written",
+    );
+    assert.equal(
+      commitMessage({ counts: counts({ svgRemoved: 2 }), build: null }),
+      "Screenshot SVGs drawn again: 2 SVGs removed",
+    );
+    assert.equal(
+      commitMessage({ counts: counts({ kept: 1, manifest: true }), build: null }),
+      "Screenshots reviewed: 1 kept at HEAD by review",
+    );
+    assert.equal(
+      commitMessage({ counts: counts({ manifest: true }), build: null }),
+      "Screenshot review: the manifest's decisions and allowances",
+    );
+    assert.equal(commitMessage({ counts: counts({}), build: null }), null);
+    assert.deepEqual(commitPlan({ pictures, changes: [], docsPrefix: "docs/", manifestPath: "m.json" }).files, []);
   });
 
   test("an address encodes each segment of a path, and a loupe crops and enlarges its region", () => {
@@ -3687,6 +3909,172 @@ if (cleanupArgs.includes("--cleanup")) {
       for (const h of app.live()) h.kill();
       await app.close();
       fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("commits the session's own files and nothing else, closes the session, and serves the next one", async (t) => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-commit-"));
+    const reviewRoot = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-session-"));
+    t.after(() => {
+      fs.rmSync(repo, { recursive: true, force: true });
+      fs.rmSync(reviewRoot, { recursive: true, force: true });
+    });
+    const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] }).toString();
+    try {
+      git("init", "-q");
+    } catch {
+      t.skip("no git");
+      return;
+    }
+    for (const [k, v] of [
+      ["core.autocrlf", "false"],
+      ["user.name", "t"],
+      ["user.email", "t@t"],
+      ["commit.gpgsign", "false"],
+    ])
+      git("config", k, v);
+    const docs = path.join(repo, "docs");
+    fs.mkdirSync(path.join(docs, "IDE", "Images"), { recursive: true });
+    fs.mkdirSync(path.join(repo, "test", "shots"), { recursive: true });
+    fs.writeFileSync(path.join(docs, A), flat(false));
+    fs.writeFileSync(path.join(repo, "other.txt"), "o\n");
+    git("add", ".");
+    git("commit", "-q", "-m", "x");
+    const script = path.join(reviewRoot, "fake-run.mjs");
+    fs.writeFileSync(script, FAKE);
+    const manifestFile = path.join(repo, "test", "shots", "manifest.json");
+    const baselineOf = (hash) => ({ hash, short: hash.slice(0, 8), build: null });
+    const headHash = () => git("rev-parse", "HEAD").trim();
+    let committed = null;
+    const app = createReviewServer({
+      session: openSession(reviewRoot, () => baselineOf(headHash())),
+      revision: openRevision(docs, "HEAD"),
+      manifest: () => openManifest(manifestFile),
+      docsRoot: docs,
+      repoRoot: repo,
+      head: () => baselineOf(headHash()),
+      revisionAt: (hash) => openRevision(docs, hash),
+      command: { script },
+      onCommit(commit) {
+        committed = commit;
+        const archive = app.session().archive(commit);
+        return {
+          session: openSession(reviewRoot, () => baselineOf(commit.hash)),
+          revision: openRevision(docs, commit.hash),
+          archive,
+        };
+      },
+      archived: () => listArchived(reviewRoot),
+    });
+    let archivedApp = null;
+    try {
+      const port = await app.listen(0);
+      const base = `http://127.0.0.1:${port}`;
+      const get = async (p) => (await fetch(base + p)).text();
+      const post = async (p, body) => {
+        const res = await fetch(base + p, {
+          method: "POST",
+          headers: { origin: base, "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        return [res.status, await res.json()];
+      };
+      const handle = app.start({ tool: "shoot_docs", args: ["--only", "A|B"] });
+      await until("A's SVG verdict", () => app.model().pictures.find((p) => p.out === A)?.svg);
+      fs.writeFileSync(path.join(repo, "other.txt"), "changed\n");
+      const files = ["docs/IDE/Images/A.png", "docs/IDE/Images/A.svg", "test/shots/manifest.json"];
+      const message = "Screenshots retaken on BETA 1501: 1 picture changed; 1 SVG written";
+
+      // nothing is committed while a run runs
+      let page = await get(hrefs.commitPage);
+      assert.match(
+        page,
+        /<button type="submit" disabled title="run 1 is running: commit once it has ended">Commit 3 files</,
+      );
+      assert.match((await post(hrefs.commit, { message, files }))[1].error, /run 1 is running/);
+      handle.stop();
+      await handle.exited;
+      await until("the run's end", () => !app.live().length);
+
+      // the files the session changed, its default message, and the other change left out
+      page = await get(hrefs.commitPage);
+      assert.ok(page.includes(`data-files="${JSON.stringify(files).replace(/"/g, "&quot;")}"`));
+      assert.ok(page.includes(`data-default="${message}">${message}</textarea>`));
+      assert.match(page, /<button type="submit">Commit 3 files</);
+      assert.ok(
+        page.includes(
+          `<tr><td><code><a href="/picture/IDE/Images/A.png">docs/IDE/Images/A.png</a></code></td><td>modified</td><td>changed by the tool's verdict</td></tr>`,
+        ),
+      );
+      assert.match(page, /<h2>Left out \(1\)<\/h2>[\s\S]*<li><code>other\.txt<\/code> modified<\/li>/);
+      assert.match(await get("/"), /<a href="\/commit">Commit<\/a>/);
+
+      // refused: another list of files than the session's, and an empty message
+      assert.match(
+        (await post(hrefs.commit, { message, files: files.slice(1) }))[1].error,
+        /has changed since the page was drawn/,
+      );
+      assert.match((await post(hrefs.commit, { message: "  ", files }))[1].error, /the message is empty/);
+      assert.equal(headHash(), app.session().data.baseline.hash);
+
+      // committed: those files and nothing else, the session archived and the next one served
+      const [status, done] = await post(hrefs.commit, { message: "Screenshots: A", files: [...files].reverse() });
+      assert.equal(status, 200, done.error);
+      assert.deepEqual([done.hash, done.short, done.archive], [headHash(), committed.short, committed.short]);
+      assert.equal(git("log", "-1", "--format=%B").trim(), "Screenshots: A");
+      assert.equal(
+        git("show", "--name-status", "--format=", "HEAD"),
+        "M\tdocs/IDE/Images/A.png\nA\tdocs/IDE/Images/A.svg\nA\ttest/shots/manifest.json\n",
+      );
+      assert.equal(git("status", "--porcelain"), " M other.txt\n");
+      assert.deepEqual([app.session().data.baseline.hash, app.session().data.runs], [done.hash, []]);
+      assert.deepEqual(app.model().pictures, []);
+      page = await get(hrefs.commitPage);
+      assert.match(
+        page,
+        new RegExp(
+          `Committed ${done.short}: Screenshots: A\\. The session it closed is archived as <code>${done.short}</code>`,
+        ),
+      );
+      assert.match(page, /The session has changed nothing to commit\./);
+      assert.match(
+        page,
+        new RegExp(`<code>node scripts/shot_review\\.mjs --archived ${done.short} --port 4181</code>`),
+      );
+      assert.doesNotMatch(await get("/"), /HEAD is now/);
+
+      // the archived session, read-only
+      const archived = openSession(archiveRoot(reviewRoot, done.short), () => assert.fail("it is there"));
+      assert.equal(archived.data.closed.message, "Screenshots: A");
+      archivedApp = createReviewServer({
+        session: archived,
+        revision: openRevision(docs, archived.data.baseline.hash),
+        manifest: () => openManifest(manifestFile),
+        docsRoot: docs,
+        repoRoot: repo,
+        readOnly: true,
+      });
+      const aPort = await archivedApp.listen(0);
+      const aBase = `http://127.0.0.1:${aPort}`;
+      assert.match(await (await fetch(`${aBase}/`)).text(), new RegExp(`An archived session, closed by ${done.short}`));
+      assert.deepEqual(
+        archivedApp.model().pictures.map((p) => p.out),
+        [A, B],
+      );
+      const refused = await fetch(`${aBase}${hrefs.act(A)}`, {
+        method: "POST",
+        headers: { origin: aBase, "content-type": "application/json" },
+        body: JSON.stringify({ action: "judge" }),
+      });
+      assert.deepEqual(
+        [refused.status, (await refused.json()).error],
+        [403, "this session is archived: nothing in it can be changed"],
+      );
+      assert.match(await (await fetch(`${aBase}${hrefs.commitPage}`)).text(), /this session is archived/);
+    } finally {
+      for (const h of app.live()) h.kill();
+      await app.close();
+      await archivedApp?.close();
     }
   });
 });
