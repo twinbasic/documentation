@@ -420,7 +420,10 @@ and git over 5,000 files), during which the page says "applying...". The test co
 dropped from the branch (`git reset --keep`).
 
 **Next: step 9**: `sheet.mjs` on the shared views, showing each picture's allowances, and the
-tool's documentation and gates (the list in [the order of work](#order-of-work)).
+tool's documentation and gates (the list in [the order of work](#order-of-work)). With it, one
+small change to step 8 (owner, 2026-10-31): while the commit runs, its status says
+"committing...", not the "applying..." every other action says (the page's script, `post` in
+`REVIEW_SCRIPT` in `shot-pages.mjs`, which takes the text from the control that sent it).
 
 Left from step 6, small: `openManifest().save` writes LF, so a manifest checked out with CRLF
 shows as modified with no diff once the tool (or `shoot_docs.mjs`) has saved it, even after a
