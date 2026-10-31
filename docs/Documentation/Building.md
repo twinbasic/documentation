@@ -73,6 +73,7 @@ Do not drop `--check-audit-index` when typing the underlying build command: with
       && node scripts/check_ci_workflows.mjs \
       && node scripts/check_lint.mjs \
       && node --test test/search.test.mjs \
+      && node --test test/search-index.test.mjs \
       && node --test test/render.test.mjs \
       && node --test test/strftime.test.mjs \
       && node --test test/png.test.mjs \

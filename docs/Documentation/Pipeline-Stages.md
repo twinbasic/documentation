@@ -123,6 +123,7 @@ export const HANDLERS = {
   scssLight: 3, scssDark: 4, dot: 5,
   buildInfo: 6, render: 7,
   helpArchive: 8, writePdf: 9, checkBook: 10,
+  searchIndex: 11,
 };
 ```
 
@@ -423,6 +424,17 @@ searchData.expected = ["renderJoin", "prepDest", "symbolIndex"]
 
 Calls `writeSearchDataFromChunks(state.searchChunks, destRoot, symbolIndex.symbols)` from `search.mjs`. It flattens the per-chunk entry arrays and joins `symbolIndex`'s symbols onto the matching entries by URL (`joinSymbolsToEntries`, adding the `names` / `qualified` / `primary` fields -- see `WIP.Search.md`'s "Design" §2). It then renumbers the global `i` index, checks that no index term is the main entry (`index`) of two entries (`checkIndexTerms`, which throws naming them), and writes `assets/js/search-data.json`. Returns `{ entries, json }`. The workers did the heavy work (heading split, content sanitisation, URL encoding); this task only joins and concatenates. It depends on `symbolIndex` for the `symbols` array.
 
+### `searchIndex` (worker)
+
+```js
+searchIndex.expected = ["searchData"]
+searchIndex.handler  = "searchIndex"
+```
+
+Calls `writeSearchIndex(destRoot, { offline })` from `search-index.mjs`, which reads the `search-data.json` that `searchData` wrote and writes `assets/js/search-index.json` beside it: `{"docs": ..., "index": ...}`, the search entries and their lunr index, as lunr's own JSON, in one file, which the site's search box loads (`lunr.Index.load`) instead of building the index in the browser. One file, so that the page can never hold the entries of one deploy beside the index of another; `search-data.json` stays for the link check and the eval tools. Unless the build writes no offline tree, the task also writes the offline tree's `assets/js/search-index.js`, the same file as a script that sets `window.SEARCH_INDEX`, since a page under `file://` can load a script but not fetch a file. Returns `{ entries, workers, bytes }`.
+
+The index is built on threads of the task's own (`search-index-worker.mjs`), up to eight, one for every 500 entries, so a small tree starts none. Each thread adds a run of the entries to a `lunr.Builder` of its own; the task merges the postings, numbering each term as one build would, works out the totals the field vectors need, and has each thread make its entries' vectors. The result is byte for byte what `lunr()` makes on one thread, which [`test/search-index.test.mjs`](Tools-Toolchain-Tests#search-index-test) checks. The task runs on a worker rather than on the main thread because the main thread runs one task at a time, and as one of them it held back `bookPayload`, `writeAux` and `writeOffline` for the second or two the index takes. `helpArchive` and `checkReport` wait for it.
+
 ### `symbolIndex` (main)
 
 ```js
@@ -469,16 +481,16 @@ Returns `{ redirectStats, sitemapStats, searchStats }` (the search stats come fr
 writeOffline.expected = ["writeAux", "writeAssets"]
 ```
 
-Calls `writeOffline(state.staticFiles, state.site, destRoot, { auxStats, sitePaths, profileOffline })` from `offline.mjs`. `render:i` / `flush:i` have already rewritten and written the per-page HTML. This task does the rest: CSS `url()` rewriting, the `just-the-docs.js` AST patch (`deriveOfflineJtdJs`), the `search-data.js` wrapper (`deriveOfflineSearchDataJs`), the offline `nav.js` (the whole nav tree with its links relative to the site's root), theme assets and redirect stubs. `sitePaths` comes from `state.sitePaths`.
+Calls `writeOffline(state.staticFiles, state.site, destRoot, { auxStats, sitePaths, profileOffline })` from `offline.mjs`. `render:i` / `flush:i` have already rewritten and written the per-page HTML. This task does the rest: CSS `url()` rewriting, the `just-the-docs.js` AST patch (`deriveOfflineJtdJs`), the offline `nav.js` (the whole nav tree with its links relative to the site's root), theme assets and redirect stubs. `sitePaths` comes from `state.sitePaths`.
 
 ### `helpArchive` (worker)
 
 ```js
-helpArchive.expected = ["flushJoin", "scss", "writeOffline"]
+helpArchive.expected = ["flushJoin", "scss", "searchIndex", "writeOffline"]
 helpArchive.handler  = "helpArchive"
 ```
 
-Writes `add-in/Resources/HELP/site.zip`, the archive of the offline tree, less the sections in `HELP_ARCHIVE_SKIP`, that the IDE help add-in embeds (see [Build and Generation Tools](Tools-Build#the-help-archive)). The three predecessors between them write the whole offline tree. The handler calls `helpArchiveStep` from `help-archive-step.mjs`, with the `skipOffline` flag it reads from `dispatch`'s shared broadcast (`sharedData()` in `cpu-worker.mjs`), and reads the offline tree from disk. It runs on a worker because it needs nothing that `dispatch` has not broadcast, and the main thread meanwhile does the work that follows `writeOffline`.
+Writes `add-in/Resources/HELP/site.zip`, the archive of the offline tree, less the sections in `HELP_ARCHIVE_SKIP`, that the IDE help add-in embeds (see [Build and Generation Tools](Tools-Build#the-help-archive)). The four predecessors between them write the whole offline tree. The handler calls `helpArchiveStep` from `help-archive-step.mjs`, with the `skipOffline` flag it reads from `dispatch`'s shared broadcast (`sharedData()` in `cpu-worker.mjs`), and reads the offline tree from disk. It runs on a worker because it needs nothing that `dispatch` has not broadcast, and the main thread meanwhile does the work that follows `writeOffline`.
 
 The zip comes back as a plain byte array. `submit` wraps it again as a `Buffer` over the same memory, which `addinProject` packs into the add-in's project file and `runBuild` checks the offline tree against once the Gantt chart is injected (`recheckHelpArchive`). The step writes nothing for a source root other than `docs`, a `--dest` other than `docs/_site`, and under `--serve`, `--dry-run` or `--no-help-archive`.
 
@@ -544,7 +556,7 @@ Runs on the lane that wrote the book, so the 6.5--16 MB string never crosses bac
 ### `checkReport` (main, terminal)
 
 ```js
-checkReport.expected = ["linkJoin", "checkBook", "scss", "symbolIndex", "addinProject"]
+checkReport.expected = ["linkJoin", "checkBook", "scss", "symbolIndex", "searchIndex", "addinProject", "packageTests"]
 checkReport.execute({ linkJoin, checkBook }) → void
 ```
 
@@ -554,7 +566,7 @@ Formats every tree's result, decides the exit code, and optionally writes the ma
 - **`--check-findings <path>`** writes the findings as JSON for [`check_links_diff.mjs`](Tools-Site-Checks#check-links-diff) to diff against the standalone script's. It is written *before* the exit code is decided, so a failing check still produces the file.
 - **`--check-audit-index`** also diffs the tree index the build derived from its own records against what landed on disk. It catches a *spurious* index entry, which makes the checker treat a path as existing when it 404s in production; the findings comparison cannot see this. Cost is one `readdir` per tree.
 
-`scss`, `symbolIndex` and `addinProject` are in `expected` because their output files are in the tree index from the moment `dispatch` builds it, and `--check-audit-index` reads the tree off disk. Without the edge, the audit can run first and report a file as "indexed but not on disk" on a small fixture.
+`scss`, `symbolIndex`, `searchIndex`, `addinProject` and `packageTests` are in `expected` because their output files are in the tree index from the moment `dispatch` builds it, and `--check-audit-index` reads the tree off disk. Without the edge, the audit can run first and report a file as "indexed but not on disk" on a small fixture.
 
 ---
 
@@ -898,6 +910,20 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `renderEntryString` | `(entry) → string` | Per-entry JSON shape matching the upstream template output byte for byte. |
 | `searchIncludes` | `(page) → boolean` | The opt-out predicate: a page is indexed when it has a `title` and does not set `search_exclude: true`. Exported for `linkJoin`, as `sitemapIncludes` is. |
 
+### `search-index.mjs`
+
+The one definition of the site search's lunr index: its fields and boosts (`FIELDS`), what each field holds, and the patches to lunr that decide what a word becomes. The page (`just-the-docs.js`) keeps its own copies of what a query needs, which `test/search.test.mjs` compares with these.
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `writeSearchIndex` | `(destRoot, { offline }) → Promise<{ entries, workers, bytes }>` | Reads `search-data.json`, writes `search-index.json` and, when `offline`, the offline tree's `search-index.js`. Used by the `searchIndex` task. |
+| `buildIndexJson` | `(docs, { workers, lunrPath }) → Promise<string>` | The index of the parsed search data as lunr's JSON, built on `workers` threads (`search-index-worker.mjs`); one builds it on the calling thread with `lunr()` itself. Every worker count gives the same bytes. |
+| `buildIndex` | `(lunr, docs) → lunr.Index` | The index built by `lunr()` on the calling thread: what the split build must equal. `eval/site_search.mjs` uses it for a site with no `search-index.json`. |
+| `loadSearchLunr` | `(lunrPath?) → lunr` | The vendored lunr with the site's patches installed, once per copy. |
+| `searchIndexFile` | `(indexJson, docs) → string` | `search-index.json`'s text: `{"docs": ..., "index": ...}`, the entries minified and the index as given. |
+| `offlineSearchIndexJs` | `(fileText) → string` | Wraps `search-index.json` as `window.SEARCH_INDEX = JSON.parse('…')` for the offline tree. |
+| `defaultIndexWorkers` | `(entries) → number` | The threads the build gives an index: half the machine, at most eight, one per 500 entries. |
+
 ### `symbols.mjs`
 
 | Symbol | Signature | Description |
@@ -956,7 +982,6 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `writeOffline` | `(staticFiles, site, destRoot, { auxStats?, profileOffline?, sitePaths }) → Promise<stats>` | Offline tree writer. Render workers have already written the per-page HTML from `page.offlineHtml`; `sitePaths` is the set `dispatch` built with `buildSitePathsSync`. |
 | `enumerateVendoredThemeAssets` | `() → string[]` | Lists the relative paths under `builder/vendor/just-the-docs/assets/`. `dispatch` uses it to build the site-paths set without reading `_site/`. |
 | `deriveOfflineJtdJs` | `(src) → string` | AST-based patcher: uses `acorn` to replace `navLink` and `initSearch` in `just-the-docs.js` with offline-compatible implementations. A parse failure means the re-extracted file is something acorn cannot read. |
-| `deriveOfflineSearchDataJs` | `(jsonBytes) → string` | Wraps `search-data.json` as `window.SEARCH_DATA = …` and minifies. `<script src=>` cannot fetch JSON under `file://`. |
 | `deriveOfflinePage`, `deriveOfflineRedirect`, `deriveOfflineCss` | (re-exported from `offline-rewrite.mjs`) | Pure-compute helpers used by both the offline writer and the worker render handler. |
 
 ### `offline-rewrite.mjs`

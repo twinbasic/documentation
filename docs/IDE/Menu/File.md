@@ -19,7 +19,7 @@ The commands from **Close Project** to **Clean** work on the open project, and a
 ## Open and close
 
 **New Project...** (<kbd>Ctrl</kbd>+<kbd>N</kbd>) and **Open Recent...**
-: Open the **New / Open Project** dialog, on its **New** tab and on its **Recent** tab. Nothing is closed until you press **Open** in it. See [New Project](../../Project/New) and [Open a project](../../Projects/Saving-and-Exporting#open-a-project).
+: Open the **New / Open Project** dialog, on its **New** section and on its **Recent** section. Nothing is closed until you press **Open** in it. See [New Project](../../Project/New) and [Open a project](../../Projects/Saving-and-Exporting#open-a-project).
 
 **Open Project...** (<kbd>Ctrl</kbd>+<kbd>O</kbd>)
 : Opens a project file, or a `.vbp` file, which is imported as a new project. See [Open a project](../../Projects/Saving-and-Exporting#open-a-project).

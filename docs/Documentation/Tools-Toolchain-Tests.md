@@ -170,12 +170,24 @@ Exit codes: **0** Biome found nothing (with `--staged`, also when no script is s
 
 Unit tests for the site search, run by Node's own test runner. The first group builds search entries from small synthetic pages through `builder/search.mjs` and checks what each entry holds: the split at headings, the folding of generic sections such as See Also into the member they belong to, index marks, the join with the symbol index, and identical output from one build to the next. The build's own check sees only which URLs the index covers.
 
-The rest guard two things:
+The rest guard that the search page agrees with the build. The build writes the index (`builder/search-index.mjs`), and the page under `builder/vendor/just-the-docs/` and its offline copy in `builder/offline.mjs` only load and query it. So the tests check:
 
-- the copies of the search client's query code still agree --- the online client under `builder/vendor/just-the-docs/`, the offline client in `builder/offline.mjs` and the replica in `eval/site_search.mjs`, all three or two of them;
-- the online client's index, built in slices, is the index lunr builds in one call.
+- the page splits text into words as the build does, and writes a name or an index term as the build does;
+- the page's query code and the replica in `eval/site_search.mjs` still agree;
+- the page and its offline copy take the entries and the index from the one file the build writes, and an index the page loads answers as the build's does.
 
-No browser, no built tree, well under a second.
+No browser, no built tree, about a second.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
+## search-index.test.mjs
+{: #search-index-test }
+
+    node --test test/search-index.test.mjs
+
+Verifies the search index the build writes. The build makes the index on several threads, merges what they make and writes it as lunr's own JSON (`builder/search-index.mjs`). lunr has no way to merge two indexes, so this test builds a fixture on one thread with lunr itself and on two, three, seven and more threads than entries, and requires the same bytes each time. The fixture holds what the merge has to get right: words that look like numbers, words only a later thread meets, empty fields, HTML entities and hand-marked index terms. It also checks that an index loaded from the file answers as lunr's does, that a thread that fails fails the build, that `search-index.json` holds the search entries and their index and nothing else, and that the offline tree's `search-index.js` holds the same.
+
+No browser, no built tree, about a second.
 
 Exit codes: **0** every test passed, **1** a test failed.
 
@@ -262,6 +274,8 @@ Unit tests for the SVG screenshot converter. They cover:
 - Web fonts: the `@font-face` rule that CSS font matching picks for the text, read from a WOFF2 file and cut at each weight a variable font is drawn at. When a font is split into files by `unicode-range`, each character is drawn from the file whose range holds it.
 - How the `<svg>` icons inside a page are found and kept apart.
 - `scripts/svgshot/colour-filter.mjs`, which turns a CSS filter such as `brightness()` or `invert()` into the colours it produces, so the picture needs no SVG filter (a PDF viewer would show one as a bitmap). The tests check the colours step by step, and that an embedded image keeps a real filter.
+- `scripts/svgshot/redraw.mjs`, shared by [`replay.mjs`](Tools-IDE#replay) and [`sheet.mjs`](Tools-IDE#svg-sheet): a picture drawn again from its bundle, or listed as needing a retake, and failed when its SVG holds the Windows user name unless the caller turns that check off; the list of pictures, with the build's output trees left out; the folders a sheet may not be written to; and the sheet's page, worst picture first. The sheet of changes against a git revision (`sheet.mjs --against`) is tested the same way, with no git and no browser: the change list read from git's output (the PNGs only, untracked ones added), the calls made to git, the noise rule of `scripts/lib/shot-change.mjs` and its comparison of pictures of one size and of two, the difference map's colours, the order of the rows, the commands that restore the pictures within noise, and the page.
+- `scripts/lib/shot-revision.mjs`, which [`shoot_docs.mjs`](Tools-IDE#shoot-docs) compares a new capture with: what becomes of a capture with the picture at a git revision or without one, within the noise of it, of the file on disk or of neither; the SVG that goes with a picture put back as the revision has it; which modified pictures `--cleanup` puts back; git's batch output, a name with spaces and a missing one included; and, in a scratch git repository, a revision's files read in one process and a text file put back as a checkout writes it, with the index left alone.
 
 What the SVG keeps of an image it embeds is `compactImage`'s, from `scripts/lib/compact-image.mjs`, which [`compact-image.test.mjs`](#compact-image-test) tests. No browser, no built tree, well under a second.
 

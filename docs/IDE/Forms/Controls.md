@@ -44,7 +44,7 @@ Adding a **QRCode** control shows a message that the control is licensed under t
 - A band that selects nothing selects the form.
 - <kbd>Shift</kbd> pressed on the background while a control is selected starts no band.
 
-![A form in the designer while a band is dragged on it: a dashed rectangle runs from the empty part of the form at the right across Label1 and into the right half of Text1.](Images/Controls_RubberBand.png){:width="386" height="333"}
+![A form in the designer while a band is dragged on it: a dashed rectangle runs from the empty part of the form at the right across Label1 and into the right half of Text1.](Images/Controls_RubberBand.png){:width="387" height="333"}
 
 <kbd>Ctrl</kbd>+<kbd>A</kbd> selects every control on the form, including those inside containers. It does not select the form. The right-click menu has **Select All** too.
 
@@ -52,7 +52,7 @@ Adding a **QRCode** control shows a message that the control is licensed under t
 
 The object drop-down at the top of [PROPERTIES](Properties) lists the form and every control, and choosing one selects it. It reaches a control that is hidden, outside the visible part of the form or covered by another. Menu items that are not visible are selected in the [menu editor](Menu-Editor).
 
-![Three controls selected on a form: Command1 with blue grabbers, Text1 with green ones and Check1 with orange ones.](Images/Controls_MultiSelect.png){:width="386" height="333"}
+![Three controls selected on a form: Command1 with blue grabbers, Text1 with green ones and Check1 with orange ones.](Images/Controls_MultiSelect.png){:width="387" height="333"}
 
 ## Move a control
 
@@ -108,7 +108,7 @@ A container is a control that holds other controls: a **Frame**, a **PictureBox*
 
 While a tool is selected, moving the pointer over a container outlines the container in red. The next control goes inside it. Hold <kbd>Ctrl</kbd> while you click to draw the control on the form instead.
 
-![A form in the designer with a tool selected and the pointer inside Frame1: a red outline surrounds the frame.](Images/Controls_Container.png){:width="386" height="333"}
+![A form in the designer with a tool selected and the pointer inside Frame1: a red outline surrounds the frame.](Images/Controls_Container.png){:width="387" height="333"}
 
 Moving a container moves its controls, and deleting it deletes them. A paste with a container selected goes inside it, and <kbd>Esc</kbd> on a control inside selects the container. **Center In Container** needs all selected controls to have the same parent. Otherwise it moves nothing and shows the notification *Selected controls are inside different containers*.
 
@@ -133,7 +133,7 @@ Renaming a control does not change the code. A handler such as `Text1_Change` st
 
 ## In-place editing
 
-With **IDE: Show in-place editing toolbar in the form designer** on, which is the default, a small toolbar shows below a single selected control. It is hidden while you drag. What it holds depends on the control.
+With **Show in-place editing toolbar in the designer** on, which is the default, a small toolbar shows below a single selected control. It is hidden while you drag. What it holds depends on the control.
 
 | Control | Tools |
 |---|---|

@@ -61,9 +61,9 @@
 </a>
 </g>
 </g>
-<g id="clust28" class="cluster">
+<g id="clust29" class="cluster">
 <title>cluster_defects</title>
-<g id="a_clust28"><a xlink:href="Tools-Defects" xlink:title="Covers the tools that build and verify reproducer projects for twinBASIC defects, that run VB6 code to compare it with twinBASIC, and that patch the JavaScript of the IDE to test a fix.">
+<g id="a_clust29"><a xlink:href="Tools-Defects" xlink:title="Covers the tools that build and verify reproducer projects for twinBASIC defects, that run VB6 code to compare it with twinBASIC, and that patch the JavaScript of the IDE to test a fix.">
 <path fill="none" stroke="#7a8090" d="M418,-49.6C418,-49.6 533,-49.6 533,-49.6 539,-49.6 545,-55.6 545,-61.6 545,-61.6 545,-168 545,-168 545,-174 539,-180 533,-180 533,-180 418,-180 418,-180 412,-180 406,-174 406,-168 406,-168 406,-61.6 406,-61.6 406,-55.6 412,-49.6 418,-49.6"/>
 <text xml:space="preserve" text-anchor="middle" x="475.27" y="-164.3" font-family="Inter,system-ui,-apple-system,Segoe UI,sans-serif" font-size="13.00">Defect Reproducers</text>
 </a>
@@ -736,28 +736,37 @@
 </a>
 </g>
 </g>
-<!-- d1 -->
+<!-- i9 -->
 <g id="node76" class="node">
+<title>i9</title>
+<g id="a_node76"><a xlink:href="Tools-IDE#svg-sheet" xlink:title="Writes a page that shows, for each picture with no SVG, the PNG, the SVG drawn again from its bundle and a map of their differences, the worst first.">
+<path fill="#fef7e0" stroke="#f9ab00" d="M747.63,-41.6C747.63,-41.6 674.37,-41.6 674.37,-41.6 670.77,-41.6 667.17,-38 667.17,-34.4 667.17,-34.4 667.17,-27.2 667.17,-27.2 667.17,-23.6 670.77,-20 674.37,-20 674.37,-20 747.63,-20 747.63,-20 751.23,-20 754.83,-23.6 754.83,-27.2 754.83,-27.2 754.83,-34.4 754.83,-34.4 754.83,-38 751.23,-41.6 747.63,-41.6"/>
+<text xml:space="preserve" text-anchor="middle" x="711" y="-27.5" font-family="Inter,system-ui,-apple-system,Segoe UI,sans-serif" font-size="11.00">svgshot/sheet</text>
+</a>
+</g>
+</g>
+<!-- d1 -->
+<g id="node77" class="node">
 <title>d1</title>
-<g id="a_node76"><a xlink:href="Tools-Defects#bug-repro" xlink:title="Builds, runs and verifies the reproducer projects for the entries of BUGS&#45;TO&#45;REPORT.md, one folder for each entry.">
+<g id="a_node77"><a xlink:href="Tools-Defects#bug-repro" xlink:title="Builds, runs and verifies the reproducer projects for the entries of BUGS&#45;TO&#45;REPORT.md, one folder for each entry.">
 <path fill="#fef7e0" stroke="#f9ab00" d="M526.27,-144.4C526.27,-144.4 473.73,-144.4 473.73,-144.4 470.13,-144.4 466.53,-140.8 466.53,-137.2 466.53,-137.2 466.53,-130 466.53,-130 466.53,-126.4 470.13,-122.8 473.73,-122.8 473.73,-122.8 526.27,-122.8 526.27,-122.8 529.87,-122.8 533.47,-126.4 533.47,-130 533.47,-130 533.47,-137.2 533.47,-137.2 533.47,-140.8 529.87,-144.4 526.27,-144.4"/>
 <text xml:space="preserve" text-anchor="middle" x="500" y="-130.3" font-family="Inter,system-ui,-apple-system,Segoe UI,sans-serif" font-size="11.00">bug_repro</text>
 </a>
 </g>
 </g>
 <!-- d2 -->
-<g id="node77" class="node">
+<g id="node78" class="node">
 <title>d2</title>
-<g id="a_node77"><a xlink:href="Tools-Defects#vb6run" xlink:title="Builds and runs VB6 code, to compare what a documented sample prints in twinBASIC with what it prints in VB6.">
+<g id="a_node78"><a xlink:href="Tools-Defects#vb6run" xlink:title="Builds and runs VB6 code, to compare what a documented sample prints in twinBASIC with what it prints in VB6.">
 <path fill="#fef7e0" stroke="#f9ab00" d="M519.8,-113.8C519.8,-113.8 480.2,-113.8 480.2,-113.8 476.6,-113.8 473,-110.2 473,-106.6 473,-106.6 473,-99.4 473,-99.4 473,-95.8 476.6,-92.2 480.2,-92.2 480.2,-92.2 519.8,-92.2 519.8,-92.2 523.4,-92.2 527,-95.8 527,-99.4 527,-99.4 527,-106.6 527,-106.6 527,-110.2 523.4,-113.8 519.8,-113.8"/>
 <text xml:space="preserve" text-anchor="middle" x="500" y="-99.7" font-family="Inter,system-ui,-apple-system,Segoe UI,sans-serif" font-size="11.00">vb6run</text>
 </a>
 </g>
 </g>
 <!-- d3 -->
-<g id="node78" class="node">
+<g id="node79" class="node">
 <title>d3</title>
-<g id="a_node78"><a xlink:href="Tools-Defects#ide-js" xlink:title="Reads, names and patches the minified JavaScript of the twinBASIC IDE, to test a fix for an IDE defect on a patched copy of the install and write its fix shape.">
+<g id="a_node79"><a xlink:href="Tools-Defects#ide-js" xlink:title="Reads, names and patches the minified JavaScript of the twinBASIC IDE, to test a fix for an IDE defect on a patched copy of the install and write its fix shape.">
 <path fill="#fef7e0" stroke="#f9ab00" d="M519.8,-83.2C519.8,-83.2 480.2,-83.2 480.2,-83.2 476.6,-83.2 473,-79.6 473,-76 473,-76 473,-68.8 473,-68.8 473,-65.2 476.6,-61.6 480.2,-61.6 480.2,-61.6 519.8,-61.6 519.8,-61.6 523.4,-61.6 527,-65.2 527,-68.8 527,-68.8 527,-76 527,-76 527,-79.6 523.4,-83.2 519.8,-83.2"/>
 <text xml:space="preserve" text-anchor="middle" x="500" y="-69.1" font-family="Inter,system-ui,-apple-system,Segoe UI,sans-serif" font-size="11.00">ide_js</text>
 </a>
@@ -830,6 +839,7 @@
 <!-- i3&#45;&gt;i5 -->
 <!-- i4&#45;&gt;i8 -->
 <!-- i5&#45;&gt;i7 -->
+<!-- i8&#45;&gt;i9 -->
 <!-- d1&#45;&gt;d2 -->
 <!-- d2&#45;&gt;d3 -->
 </g>

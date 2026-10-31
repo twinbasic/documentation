@@ -12,14 +12,14 @@ redirect_from:
 
 The Format menu holds the commands that line up and order the controls selected in the form designer. [Arranging controls](../../Forms/Arranging) explains them.
 
-![The Format menu with two controls selected in the form designer: every command is available.](Images/Menu_Format_1.png){:width="232" height="281"}
+![The Format menu with two controls selected in the form designer: every command is available.](Images/Menu_Format_1.png){:width="233" height="281"}
 
 Every command acts on the selection in a form designer, so every command is greyed out until a designer is open with a selection. The commands need different numbers of controls: **Align**, **Make Same Size** and the two spacing submenus need two or more, **Make Equal** three or more, and the other commands one or more. The same commands are in the designer's [right-click menu](../../Forms/Controls#the-right-click-menu).
 
 > [!WARNING] BETA 1010
 > The spacing commands and **Make Same Size** can leave the new positions or sizes out of the saved form. [Arranging controls](../../Forms/Arranging) says what to do instead.
 
-![The Format menu with no control selected, every command greyed out.](Images/Menu_Format.png){:width="232" height="281"}
+![The Format menu with no control selected, every command greyed out.](Images/Menu_Format.png){:width="233" height="281"}
 
 ## Align
 

@@ -12,7 +12,7 @@ redirect_from:
 
 The Edit menu holds the commands that change and search text. [Writing code](../../Code/) explains them.
 
-![The Edit menu open while the code editor has the focus, with no command greyed out. Its groups run from Undo and Redo through the clipboard commands, with Paste As Comment between Paste and Delete, then Find, Replace and Find In Project, the indent and format commands, the Quick Find group, the fold and unfold commands, and finally Go To Line/Column and four Transform To case commands. Most entries show a keyboard shortcut at the right.](Images/Menu_Edit.png){:width="297" height="771"}
+![The Edit menu open while the code editor has the focus, with no command greyed out. Its groups run from Undo and Redo through the clipboard commands, with Paste As Comment between Paste and Delete, then Find, Replace and Find In Project, the indent and format commands, the Quick Find group, the fold and unfold commands, and finally Go To Line/Column and four Transform To case commands. Most entries show a keyboard shortcut at the right.](Images/Menu_Edit.png){:width="298" height="771"}
 
 The picture shows the menu while the code editor has the focus. The commands act on the code editor, so which ones are available depends on what has the focus. With nothing in focus, **Paste As Comment** is missing and every command is greyed out. While the form designer has the focus, **Paste As Comment** is missing and the text commands, from **Cut** and **Copy** to the **Transform To** items, are greyed out.
 

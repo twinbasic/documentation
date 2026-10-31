@@ -27,14 +27,52 @@ export function svgClip(svg) {
  */
 export async function diffSvg(page, svg, ref, { refOrigin = { x: 0, y: 0 }, scale = 2, tile = 16, top = 12 } = {}) {
   const clip = svgClip(svg);
-  await page.setViewport({ width: Math.ceil(clip.w), height: Math.ceil(clip.h), deviceScaleFactor: scale });
-  const svgUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+  // A picture half a CSS px past a whole one (397 by 161.5) is drawn at the whole size
+  // above it, its viewBox widened by as much, and the render cut to the PNG's pixels.
+  // Chromium lays the page out at 1x under the emulated scale, so it snaps an <img> of
+  // 161.5 to 162 and stretches the picture a device pixel taller, its bottom rows half
+  // a pixel low. (A canvas drawImage at the PNG's size would not do either: without the
+  // GPU it draws an SVG otherwise than an <img> is drawn.)
+  const W = Math.ceil(clip.w);
+  const H = Math.ceil(clip.h);
+  const shown =
+    W === clip.w && H === clip.h
+      ? svg
+      : svg.replace(
+          /^(<svg\b[^>]*?)\swidth="[^"]*"\sheight="[^"]*"\sviewBox="[^"]*"/,
+          `$1 width="${W}" height="${H}" viewBox="${clip.x} ${clip.y} ${W} ${H}"`,
+        );
+  if (shown === svg && (W !== clip.w || H !== clip.h))
+    throw new Error("the SVG's root has no width, height and viewBox");
+  await page.setViewport({ width: W, height: H, deviceScaleFactor: scale });
+  const svgUrl = `data:image/svg+xml;base64,${Buffer.from(shown).toString("base64")}`;
   await page.setContent(
     `<!doctype html><style>html,body{margin:0;background:transparent}img{display:block}</style>` +
-      `<img id="s" width="${clip.w}" height="${clip.h}" src="${svgUrl}">`,
+      `<img id="s" width="${W}" height="${H}" src="${svgUrl}">`,
   );
   await page.evaluate(() => document.getElementById("s").decode());
-  const render = await page.screenshot({ omitBackground: true, clip: { x: 0, y: 0, width: clip.w, height: clip.h } });
+  const shot = await page.screenshot({ omitBackground: true, clip: { x: 0, y: 0, width: W, height: H } });
+  const render =
+    W === clip.w && H === clip.h
+      ? shot
+      : await page
+          .evaluate(
+            async (src, w, h) => {
+              const img = new Image();
+              img.src = src;
+              await img.decode();
+              const c = document.createElement("canvas");
+              c.width = w;
+              c.height = h;
+              c.getContext("2d").drawImage(img, 0, 0);
+              const url = c.toDataURL("image/png");
+              return url.slice(url.indexOf(",") + 1);
+            },
+            `data:image/png;base64,${Buffer.from(shot).toString("base64")}`,
+            Math.round(clip.w * scale),
+            Math.round(clip.h * scale),
+          )
+          .then((b64) => Buffer.from(b64, "base64"));
 
   const out = await page.evaluate(
     async ({ refUrl, renderUrl, clip, refOrigin, scale, tile, top }) => {

@@ -22,7 +22,7 @@ A breakpoint pauses the program on a line you choose. Once it is paused, the ste
 
 Click in the margin of the code editor beside a line, or put the caret in the line and press <kbd>F9</kbd> (**Debug → Toggle Breakpoint**). Either one sets the breakpoint at once, or clears it if the line has one. Nothing is asked, and no line is selected first. A breakpoint belongs to a code editor: a form designer has no margin, and <kbd>F9</kbd> does nothing there.
 
-![The margin of the code editor beside the loop of a function. Line 24 has a red dot. The mouse pointer rests in the margin of line 23, above it, which shows a fainter dot. A label with an arrow names each dot.](Images/Breakpoint_Glyphs.png){:width="722" height="180"}
+![The margin of the code editor beside the loop of a function. Line 24 has a red dot. The mouse pointer rests in the margin of line 23, above it, which shows a fainter dot. A label with an arrow names each dot.](Images/Breakpoint_Glyphs.png){:width="723" height="180"}
 
 The margin shows four marks:
 

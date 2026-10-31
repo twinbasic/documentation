@@ -10,13 +10,13 @@ index_also: dark mode
 
 # Themes
 
-A theme sets the colours, fonts and borders of the whole IDE, including the colours of the code. Three themes ship with the IDE, and you can add your own by writing a short text file.
+A theme sets the colours, fonts and borders of the whole IDE, including the colours of the code. Six themes ship with the IDE, and you can add your own by writing a short text file.
 
 ## Choose a theme
 
 Point at **Window → Theme**. The submenu lists the themes, and a tick marks the one in use.
 
-![The Window menu with Theme highlighted and its submenu open to the right, listing Classic (Light), a ticked Dark, and Light, with Reload from disk below a separator.](../Menu/Images/Menu_Window_Theme.png){:width="312" height="219"}
+![The Window menu with Theme highlighted and its submenu open to the right, listing Aurora (Dark), Classic (Light), a ticked Dark, High Contrast Dark (Dark), High Contrast Light (Light) and Light, with Reload from disk below a separator.](../Menu/Images/Menu_Window_Theme.png){:width="361" height="288"}
 
 You can also click the icon with the tooltip **Change IDE Theme** in the menu bar. It opens the same list.
 
@@ -30,6 +30,12 @@ The IDE ships with these themes:
 
 **Classic (Light)**
 : The Light theme with the semantic highlighting of the code effectively turned off, so the code is plainer.
+
+**Aurora (Dark)**
+: A dark theme in deep blue-grey tones.
+
+**High Contrast Dark (Dark)** and **High Contrast Light (Light)**
+: Themes with stronger contrast: a black or a white background, and more saturated colours for the code.
 
 A theme you add is listed as its file name, followed by **Light** or **Dark** in brackets: **Red (Light)**. The word in brackets is the family of the theme that it inherits from.
 

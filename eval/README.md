@@ -79,8 +79,10 @@ without it the runner takes whatever `claude` is on `PATH`, which changes with e
 Round 10 found 2.1.212 there, where rounds 8 and 9 had run the desktop app's bundled 2.1.280,
 and passed that one's path instead.
 
-**Snapshot the search index with the corpus**: copy `docs/_site/assets/js/search-data.json`
-and `assets/js/vendor/lunr.min.js` beside it, and give every case `--site <snapshot>`.
+**Snapshot the search index with the corpus**: copy `docs/_site/assets/js/search-data.json`,
+`search-index.json` and `assets/js/vendor/lunr.min.js` beside them, and give every case
+`--site <snapshot>`. (A snapshot without `search-index.json`, from before the build wrote it,
+still works: `site_search.mjs` builds the index from the data, with the build's own code.)
 `site_search.mjs` otherwise reads the live `docs/_site/`, and a rebuild during the round
 --- a fix pass running alongside, say --- moves the ranks under the evaluators' feet. **Keep the
 snapshot after the round**: the next round re-runs this round's queries against both indexes,

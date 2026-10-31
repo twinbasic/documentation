@@ -46,7 +46,7 @@ export const GANTT_SECTION = {
   deriveRedirects: "Spine", deriveSitemap: "Spine", packTests: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
   renderJoin: "Render", flushJoin: "Write",
-  writeAssets: "Write", searchData: "Write", symbolIndex: "Write", helpArchive: "Write", addinProject: "Write", packageTests: "Write", writeAux: "Write",
+  writeAssets: "Write", searchData: "Write", searchIndex: "Write", symbolIndex: "Write", helpArchive: "Write", addinProject: "Write", packageTests: "Write", writeAux: "Write",
   writeOffline: "Write", bookPayload: "Write", writePdf: "Write",
   linkJoin: "Check", checkBook: "Check", checkReport: "Check",
 };

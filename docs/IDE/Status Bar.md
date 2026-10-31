@@ -42,7 +42,7 @@ The badge reads **LIMITED** while some of the four are connected and some are no
 
 - [Pre Order](https://twinbasic.com/preorder.html)
 
-![An olive status bar badge, orange in the light theme, with a warning triangle, reading COMMUNITY EDITION.](Images/Licence_CommunityEdition.png){:width="150" height="25"}
+![An olive status bar badge, orange in the light theme, with a warning triangle, reading COMMUNITY EDITION.](Images/Licence_CommunityEdition.png){:width="151" height="25"}
 
 - Community Edition
 - Professional Edition
@@ -50,7 +50,7 @@ The badge reads **LIMITED** while some of the four are connected and some are no
 
 ## Links
 
-![Four icons in the status bar, after its badges: a Ko-fi coffee cup holding a heart, the Discord face, the Twitter bird and the GitHub cat.](Images/Links.png){:width="127" height="27"}
+![Four icons in the status bar, after its badges: a Ko-fi coffee cup holding a heart, the Discord face, the Twitter bird and the GitHub cat.](Images/Links.png){:width="128" height="27"}
 
 - https://ko-fi.com/twinbasic
 - https://discord.com/invite/UaW9GgKKuE

@@ -11,7 +11,7 @@ everything here either feeds a compile step or is copied verbatim into
 |---|---|---|
 | `_sass/` | Gem's `_sass/` at v0.10.1, **patched in tree** --- 30 of the 36 files vendored in `e7dd843` have diverged: 26 modified and 4 deleted. See [In-tree patches to `_sass/`](#in-tree-patches-to-_sass) for which, why, and which must survive a re-vendor. | [`builder/scss.mjs`](../../scss.mjs) compiles `docs/assets/css/just-the-docs-combined.scss` against these sources via Dart Sass; the load-path ordering puts `docs/_sass/` first so our `custom/custom.scss` shadows the gem's empty one. |
 | `assets/js/just-the-docs.js` | Gem's `assets/js/just-the-docs.js` at v0.10.1, **patched in tree**. | [`builder/write.mjs`](../../write.mjs)'s `copyTheme` copies it to `_site/assets/js/just-the-docs.js`; [`builder/offline.mjs`](../../offline.mjs) re-derives an offline-mode variant via [`acorn`](https://www.npmjs.com/package/acorn)-AST patching. |
-| `assets/js/vendor/lunr.min.js` | Gem's `assets/js/vendor/lunr.min.js` at v0.10.1, unmodified. | Copied verbatim by `copyTheme`. The search index that drives it is the in-process [`builder/search.mjs`](../../search.mjs) output (`assets/js/search-data.json`). |
+| `assets/js/vendor/lunr.min.js` | Gem's `assets/js/vendor/lunr.min.js` at v0.10.1, unmodified. | Copied verbatim by `copyTheme`. The search index that drives it is [`builder/search-index.mjs`](../../search-index.mjs)'s `assets/js/search-index.json`, which holds the entries [`builder/search.mjs`](../../search.mjs) writes to `assets/js/search-data.json` and their index. |
 
 `LICENSE.txt` is the upstream MIT licence, copied verbatim from the tag and
 covering all three --- see [Licence](#licence).
@@ -134,6 +134,19 @@ pass through untouched, so the offline build inherits this fix for free.
 [`eval/site_search.mjs`](../../../eval/site_search.mjs) mirrors the same
 filter, so the replica returns what the site does.
 
+**The page no longer builds the search index.** The build does, in
+[`builder/search-index.mjs`](../../search-index.mjs), and writes it as
+`search-index.json` (and the offline tree's `search-index.js`), which
+`initSearch()` loads with `lunr.Index.load` (the last entry below). So the
+index's fields and boosts, what fills each field (`exactName()`,
+`stemTwins()`, `qualifiedField()`, `indexField()`, `indexedContent()`,
+`pinIndexFieldLengths()`) and the stop-word removal now live there, once:
+where an entry below says `initSearch()` adds a field or fills it, that is
+the build's index definition today, and neither this file nor `offline.mjs`
+declares a field. This file keeps what a query needs: the tokenizer patches
+(`installSearchPatches()`), `exactName()`, `phraseKey()` and
+`indexTermKey()`, which `test/search.test.mjs` checks against the build's.
+
 **Two extra fields joined in from the symbol index.** `initSearch()` adds
 `this.field('names', { boost: 100 })` and `this.field('qualified', { boost:
 500 })` (see the qualified-name change, below), and passes `docs[i].names || ''` / `docs[i].qualified || ''` in the
@@ -141,10 +154,7 @@ matching `this.add({...})`. The values come from `builder/search.mjs`'s
 `joinSymbolsToEntries`, which attaches bare symbol names (`names`) and their
 `Container.Name` forms (`qualified`) to each `search-data.json` entry at
 build time -- see [`../../../WIP.Search.md`](../../../WIP.Search.md)'s
-"Design" §2 for why they are two fields, not one. `offline.mjs`'s
-`JTD_INITSEARCH_FN_REPLACEMENT` carries the same two fields at the same
-boosts, since it builds its own lunr index rather than inheriting
-`initSearch()`.
+"Design" §2 for why they are two fields, not one.
 
 **Qualified names ("Form.PaintPicture") missed their target because the
 tokenizer never splits on `.`.** `update()`'s smart dot split keeps each
@@ -161,20 +171,17 @@ reuses the same expanded token list. `update()` is not one of the two
 functions the offline AST patcher replaces, so the offline build inherits
 this for free, same as the asterisk guard above.
 [`eval/site_search.mjs`](../../../eval/site_search.mjs) mirrors the split
-exactly. `test/search.test.mjs` extracts the `names`/`qualified` field and
-boost list from this file, `offline.mjs`, and `eval/site_search.mjs` and
-asserts all three agree, so the two client copies (and the eval replica)
-cannot drift apart silently.
+exactly, and `test/search.test.mjs` checks that every field either queries
+is a field of the build's index.
 
 **Stop words were dropped from the index but never from the query, so
 every twinBASIC keyword was unfindable.** lunr's index pipeline runs
 `lunr.stopWordFilter` by default; its search pipeline never did, so a
 query for `Do`, `For`, `If`, `Is`, `On`, `With` or `Each` still carried that
 exact token, which by then existed nowhere in the index (`Do` ranked 18th,
-`With` 55th, `Is` 177th). The fix is `this.pipeline.remove(
-lunr.stopWordFilter)` inside the `lunr(function(){...})` builder in both
-copies (and `eval/site_search.mjs`'s `buildIndex`), which keeps stop words
-in the index instead. See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s
+`With` 55th, `Is` 177th). The fix is `pipeline.remove(lunr.stopWordFilter)`
+on the index's builder, now in `builder/search-index.mjs`'s `configure()`,
+which keeps stop words in the index instead. See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s
 "Design §5" for the queries this trades away (short common words, mostly
 other `vbXxx` prefixes, now crowd into a few more results than before).
 
@@ -190,10 +197,10 @@ used to be set directly -- and the wrapper has to carry `separator` itself,
 because the original tokenizer reads `lunr.tokenizer.separator` at call
 time, which after this reassignment resolves to the wrapper's own property,
 not the original function's. Since it patches the shared global `lunr`
-object, it applies to the index build and every query alike.
-`eval/site_search.mjs` installs the same wrapper. `test/search.test.mjs`'s
-drift guard checks all three copies remove the stop-word filter and install
-this wrapper, alongside its existing field/boost check.
+object, it applies to every query; it lives in `installSearchPatches()`.
+The build installs the same wrapper before it builds the index
+(`builder/search-index.mjs`), and `test/search.test.mjs`'s tokenizer guard
+checks that the two tokenize every text alike.
 
 **A reader typing a name got a longer name, a same-named member, or a
 section that only mentioned it.** Four changes, measured in
@@ -240,11 +247,10 @@ section that only mentioned it.** Four changes, measured in
   the word to keep the `Mid =` statement out. See
   [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Kind words".
 
-`exact` and `page` are derived in the browser; `primary` is the one field
-`search-data.json` gained (23 KB raw, 4 KB gzipped).
-`offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` adds the same three fields;
-`exactName()`, `KIND_WORDS` and the query changes sit outside
-`initSearch()`, so the offline build inherits them.
+`exact` and `page` are derived when the index is built; `primary` is the one
+field `search-data.json` gained (23 KB raw, 4 KB gzipped). `exactName()`,
+`KIND_WORDS` and the query changes sit outside `initSearch()`, so the
+offline build inherits them.
 
 **A page could not be found by a term its text never uses.** The `#If` /
 `#Const` page never says "conditional compilation". Authors now name such
@@ -274,9 +280,7 @@ index entries":
   zero, BM25 took a marked entry for a thousand times longer than average,
   and its match counted for almost nothing.
 
-`offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` declares the same field and
-fills it and the content the same way; the helpers and the query sit outside
-`initSearch()`.
+The query sits outside `initSearch()`, so the offline build inherits it.
 
 **A qualified name found its container's page, or every other control's
 member of that name, first.** `FileListBox.Name` ranked the FileListBox
@@ -304,8 +308,7 @@ stem twins":
   word is required over every text field at boost 0, and scored by a
   second clause over `plainFields` (all text fields for a qualified name).
 
-`offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` carries the new boost; the
-query sits outside `initSearch()`.
+The query sits outside `initSearch()`, so the offline build inherits it.
 
 **Two qualified names that stem alike tied.** `Printer.Font` and
 `Printer.Fonts` both stem to `printer.font`, so every clause scored them
@@ -326,9 +329,7 @@ alike and `Printer.Fonts` came second; so did `Collection.Item`,
   field that bare names are ranked by, and `InStrB` fell behind its own
   section.
 
-`offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` finds the twins and fills
-`qualified` the same way; the helpers and the query sit outside
-`initSearch()`.
+The query sits outside `initSearch()`, so the offline build inherits it.
 
 **Any query with the word `a` threw inside lunr.** lunr 2.3.9 minimises its
 token set by merging nodes whose `TokenSet#toString()` keys match, and that
@@ -340,11 +341,10 @@ found no postings for it and threw. Whether keys collide depends on the
 term set and the id each node happens to get, so a content change can
 start or stop it; this branch's terms started it. `separateTokenSetKeys()`
 replaces `TokenSet#toString()` with one that ends each id with `,`,
-installed once from `initSearch()` beside the tokenizer wrapper. It is a
-fix to lunr, not to this theme: drop it if a lunr upgrade fixes the key.
-See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "lunr patches".
-
-`offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` calls it too.
+installed once by `installSearchPatches()` beside the tokenizer wrapper,
+before `lunr.Index.load` makes the token set. It is a fix to lunr, not to
+this theme: drop it if a lunr upgrade fixes the key. See
+[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "lunr patches".
 
 **Multi-word queries with a short word were slow.** `a page` took about
 800 ms per keystroke, `a p` 1.3 s. lunr 2.3.9's `Index#query` gathers the
@@ -357,7 +357,7 @@ that, once it has made a set, adds the next set into it in place: lunr's
 only unions are running totals that drop the set they replace. It keeps
 lunr's own `length`, which `intersect()` uses to pick the set it walks.
 Every page and section title as a query ranks exactly as before, score for
-score. Installed once from `initSearch()`, and from `offline.mjs`'s copy.
+score. Installed once by `installSearchPatches()`.
 It is a fix to lunr, not to this theme: drop it if a lunr upgrade fixes
 `union`. See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "lunr
 patches".
@@ -371,7 +371,7 @@ pages that mention it. `decodeTokenEntities()` decodes each token after
 the tokenizer splits it (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`,
 `&nbsp;` and numeric references, lowercased), so the token keeps its
 position in the escaped text. The dot-run-split wrapper calls it, in
-`initSearch()` and in `offline.mjs`'s copy. A decoded separator (`&#45;`,
+`installSearchPatches()` and in the build's copy. A decoded separator (`&#45;`,
 a hyphen) doesn't split its token. See
 [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "lunr patches".
 
@@ -389,67 +389,50 @@ kept in `searchLoaded()`'s `titleKeys`. See
 [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Whole titles". It sits outside `initSearch()`, so `offline.mjs` needs no change.
 
 **The index was fetched and built synchronously on every page load, even
-for readers who never opened search.** About 1.3s and 240MB of heap on a
-desktop -- see [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Design
-§5" cost table. `initSearch()` now only defines *how* to build the index
-(`loadIndex(onSuccess, onError)`) and hands that to `searchLoaded()`, which
-wires up the search box's listeners immediately but doesn't call
-`loadIndex()` until the first `keyup` (upstream's trigger for `update()`)
-that leaves the box non-empty. That first keystroke shows a loading message
-(reusing `.search-no-result`) and the matching `a11y-status` text, then
-yields: a frame (`requestAnimationFrame`) raced by a 100 ms timer, since
-frames never fire in a hidden tab, then `setTimeout(fn, 0)`, so the message
-paints before the build begins. It then searches whatever is in
-the box *when the build finishes*, which may differ from what triggered it,
+for readers who never opened search.** `initSearch()` now only defines *how*
+to load the index (`loadIndex(onSuccess, onError)`) and hands that to
+`searchLoaded()`, which wires up the search box's listeners immediately but
+doesn't call `loadIndex()` until the first `keyup` (upstream's trigger for
+`update()`) that leaves the box non-empty. That first keystroke shows a
+loading message (reusing `.search-no-result`) and the matching `a11y-status`
+text, then yields: a frame (`requestAnimationFrame`) raced by a 100 ms
+timer, since frames never fire in a hidden tab, then `setTimeout(fn, 0)`, so
+the message paints before the load begins. It then searches whatever is in
+the box *when the load finishes*, which may differ from what triggered it,
 since the reader may keep typing. Only one load is ever in flight; a
 keystroke mid-load leaves the loading message in place (`update()` checks
-for the unbuilt index before it clears the panel) and just changes what
+for the unloaded index before it clears the panel) and just changes what
 gets searched at the end. A failed load shows "Search is unavailable" and
-leaves the index unset, so the next keystroke retries. `searchLoaded()` now
+leaves the index unset, so the next keystroke retries. `searchLoaded()`
 takes `loadIndex` in place of `(index, docs)` -- it, and everything below
-`update()`'s new lazy-build gate, stays a single shared function; only
-`initSearch()` differs between the two copies (XHR fetch vs. reading the
-offline build's preloaded `window.SEARCH_DATA`), and both install the
-stop-word and dot-run-split patches above from inside their own
-`loadIndex()`. `eval/site_search.mjs` has no lazy build to mirror -- the
-CLI always wants an index built up front.
+`update()`'s lazy-load gate, stays a single shared function; only
+`initSearch()` differs between the two copies (XHR fetch vs. adding the
+offline tree's script to the page).
 
-**The build held the main thread for about 1.6 s, so the search box took no
-keystrokes while "Loading search index..." showed**, and the first search
-was for the text typed before the build began. `buildIndexInSlices(config,
-docs, entry, onSuccess, onError)` does lunr 2.3.9's own work, in its own
-order, `INDEX_SLICE_MS` (25 ms) at a time, and yields between slices
-through a `MessageChannel` message, which a browser does not clamp to 4 ms
-as it does nested timeouts. `lunr(config)` gives a new builder two
-pipelines, calls `config` on it and calls `build()`, which works out the
-average field lengths, each field's vector (`createFieldVectors()`) and
-the token set (`TokenSet.fromArray()` over the sorted terms), then makes
-the `Index`. The pieces are an entry added (`config` no longer adds them;
-`entry(id)` returns the one for `docs[id]`), `FIELDS_PER_PIECE` (100)
-fields' vectors, and a term put into a `TokenSet.Builder`. The vectors are
-lunr's own `createFieldVectors()`, called on a view of the builder
-(`Object.create(builder)`) whose `fieldTermFrequencies` holds only that
-piece's fields. That method caches each term's idf for one call only, so
-each piece would count the documents of every common term again, which
-made the vectors 6 to 13 times as slow; while a piece runs, `lunr.idf`,
-which lunr looks up at call time, answers from a cache kept for the whole
-build, by the term's number (`posting._index`), and is put back in a
-`finally`. A slice that throws reports through `onError`, as a failed
-fetch does: "Search is unavailable", and the next keystroke retries.
-`test/search.test.mjs`'s sliced-build guard checks that the index comes
-out the same as `lunr(config)`'s, sliced one piece at a time and as the
-site slices it, and that `lunr.idf` is put back after a throw.
-
-Measured in headless Chrome on the built site, typing ahead of the build,
-each version three times over: in one piece, the longest main-thread task
-took 1.6 to 1.7 s, the keystrokes waited for it, and the first query
-searched `f`; with only the entries sliced, 0.35 to 0.38 s (the unsliced
-`build()`); sliced throughout, 52 to 54 ms, and the first query searched
-`form`. The whole load took 1.46 to 1.73 s in one piece and 1.55 to 1.83
-s sliced. Both copies of `initSearch()` call `buildIndexInSlices()`; it
-sits outside them, so `offline.mjs` carries it unchanged. `loadIndexNow()`
-also shows the loading message again when the box was cleared mid-load and
-the reader types again.
+**Every page built the whole index in the reader's browser, about 3 s and
+290 MB of heap on a desktop, before its first search.** The build now
+builds it ([`builder/search-index.mjs`](../../search-index.mjs), on threads
+of its own and merged into exactly the index `lunr()` makes) and writes it,
+as lunr's JSON, into `search-index.json` together with the search entries it
+indexes: `{"docs": ..., "index": ...}`, one file, so that the page can never
+hold entries of one deploy beside an index of another (an index's entries
+are numbers into them). `initSearch()`'s `loadIndex()` fetches that file,
+parses it and loads the index in two tasks (`setTimeout(fn, 0)` between
+them, so the box takes keystrokes), through `indexFromData()`:
+`installSearchPatches()` (the query-time patches, which the index's token
+set needs before `lunr.Index.load` makes it) and `lunr.Index.load`. About
+0.75 s and 140 MB in headless Chrome, of which the download is 0.2 s on
+localhost. The page no longer fetches `search-data.json`, which stays for
+the build's own checks and the eval tools. The offline copy of
+`initSearch()` adds `search-index.js` to the page on the first keystroke, a
+script setting `window.SEARCH_INDEX` to the same `{docs, index}` (a page
+under `file://` can load a script but not fetch a file), and calls the same
+`indexFromData()`; no offline page loads it before that, and the offline
+tree has no `search-data.js`. `test/search.test.mjs`'s loading guard checks
+that both copies take the entries and the index from the one file and that
+an index the page loads answers as the build's does;
+`test/search-index.test.mjs` checks the build's index is `lunr()`'s. See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s
+"The pre-built index".
 
 ## Licence
 
@@ -536,30 +519,29 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
    checks that a control is reachable and named, not that its ring is visible.
 
 5. Re-apply the copy-button patch, the edit-distance cap, the asterisk
-   guard and query-token trim, the `names`/`qualified` fields, the smart dot
-   split, the stop-word removal, the dot-run-split tokenizer wrapper, the
-   lazy index build and its slices, the `exact`/`primary`/`page` fields with the
-   exact-name and all-words-first query, the `index` field with its
-   helpers and query clauses, the stem twins held whole in `qualified`,
-   and the separated token-set keys in `assets/js/just-the-docs.js` (see
+   guard and query-token trim, the smart dot split, the query-time lunr
+   patches (`installSearchPatches()`: the dot-run-split tokenizer wrapper
+   with its entity decoding, the separated token-set keys and the
+   accumulating unions), the lazy load of the pre-built index
+   (`loadIndex()`, `indexFromData()`), the
+   exact-name and all-words-first query, the index-term query clauses and
+   the stem twins' whole-name clause in `assets/js/just-the-docs.js` (see
    above). On a lunr upgrade, check `test/search.test.mjs`'s token-set key
-   guard: it says whether the new lunr still collides. Check too that the
-   new `lunr()` and `Builder#build()` still work as `buildIndexInSlices()`
-   repeats them, and that `createFieldVectors()` still reads
-   `fieldTermFrequencies` and calls `lunr.idf` through the namespace; the
-   sliced-build guard fails if the index comes out different. Diffing against
-   the previous vendored copy via `git diff` is the easiest way to spot
-   what needs to come back. Then re-check `offline.mjs`'s
-   `JTD_INITSEARCH_FN_REPLACEMENT` still carries the same six extra fields
-   at the same boosts and the same stop-word/dot-run-split/lazy-build patches,
-   and still builds through `buildIndexInSlices()`, and
-   run `test/search.test.mjs`'s field-list drift guard and its stop-word/
-   dot-run-split sibling guard -- both fail loudly if the re-vendor left the
-   copies out of step. If upstream's `initSearch()`/`searchLoaded()` split
-   changed shape (a signature change, a rename), `deriveOfflineJtdJs`'s
-   `JTD_INITSEARCH_FN_REPLACEMENT` and the offline `loadIndex()` it defines
-   may need a matching update -- see [`../../../WIP.Search.md`](../../../WIP.Search.md)'s
-   "Design §5" for how the two functions divide the work now.
+   guard: it says whether the new lunr still collides. Check too that
+   `Builder#add()` and `createFieldVectors()` still keep the state
+   `builder/search-index.mjs` merges (`invertedIndex` postings with
+   `_index`, `fieldTermFrequencies`, `fieldLengths`) and that
+   `createFieldVectors()` still calls `lunr.idf` through the namespace;
+   `test/search-index.test.mjs` fails if the split build comes out
+   different from `lunr()`'s. Diffing against the previous vendored copy via
+   `git diff` is the easiest way to spot what needs to come back. Then run
+   `test/search.test.mjs`: its tokenizer, index-term and loading guards fail
+   loudly if the page and the build no longer agree. If upstream's
+   `initSearch()`/`searchLoaded()` split changed shape (a signature change,
+   a rename), `deriveOfflineJtdJs`'s `JTD_INITSEARCH_FN_REPLACEMENT` and the
+   offline `loadIndex()` it defines may need a matching update -- see
+   [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "The pre-built
+   index" for how the two functions divide the work now.
 
 6. Inspect the entry point at `docs/assets/css/just-the-docs-combined.scss`
    --- if the upstream `_includes/css/just-the-docs.scss.liquid` Liquid

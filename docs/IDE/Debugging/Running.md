@@ -35,7 +35,7 @@ Which of them work depends on the [state of the program](../Debugging/#the-three
 
 The toolbar buttons and the menu items follow the same rules. [Breakpoints and stepping](Breakpoints-and-Stepping) describes the paused state.
 
-![The run and step buttons of the toolbar while the program is paused: a green triangle, a grey pause sign, a red square and three step arrows. The pause sign alone is greyed out. A label with an arrow names each of the other five buttons.](Images/Toolbar_Paused.png){:width="256" height="175"}
+![The run and step buttons of the toolbar while the program is paused: a green triangle, a grey pause sign, a red square and three step arrows. The pause sign alone is greyed out. A label with an arrow names each of the other five buttons.](Images/Toolbar_Paused.png){:width="256" height="176"}
 
 At a run-time error, **End** ends only the procedure that failed; see [Traps](Breakpoints-and-Stepping#traps).
 

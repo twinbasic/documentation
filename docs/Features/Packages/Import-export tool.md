@@ -148,8 +148,8 @@ project from TWINSERV or from a TWINPACK file is embedded in it by default, as a
 `Packages\` (see [Linked Packages](Linked)). `export` writes that folder out, but `import`
 stops at the first folder inside `Packages\`: it writes nothing, prints neither `... DONE` nor
 `... FAILED`, and exits with code `999`. Five of the project files that come with the IDE are
-like this, among them the **WinNativeCommonCtls** package and the *Standard EXE (plus VBCCR
-v1.8)* template. The script packs them. An export made by the IDE's **File → Export Project**
+like this, among them the **WinNativeCommonCtls** package and the *Standard EXE (+VBCCR)*
+template. The script packs them. An export made by the IDE's **File → Export Project**
 stops the same way, because it holds the compiler packages under `Packages\`; see [Packing
 the export back into a project](../../tB/IDE/Projects/Saving-and-Exporting#packing-the-export-back-into-a-project).
 

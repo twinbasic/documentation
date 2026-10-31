@@ -13,9 +13,9 @@ twinBASIC reports a warning, as the code is written, for a common bad practice o
 
 Each warning has a level: **WARNING**, **HINT**, **INFO**, **IGNORE** or **ERROR**. A warning at **IGNORE** is not reported, and one at **ERROR** is reported as an error, so the project does not build. In a new project the Compiler Warnings list of Project Settings shows TB0015 and TB0030 at **HINT**, TB0018 to TB0021, TB0024, TB0025 and TB0029 at **IGNORE**, and every other warning at **WARNING**.
 
-The levels for the whole project are in the **Compiler Warnings** section of [Project Settings](../../tB/IDE/Project-Settings#compiler-warnings):
+The levels for the whole project are in the **Compiler Warnings** group of [Project Settings](../../tB/IDE/Project-Settings#compiler-warnings). Each row of its list has a drop-down for the level, then the code and the text of the warning. The **Filter warnings...** box above the list narrows it to the rows whose code or text holds the words typed:
 
-![The Compiler Warnings list of the Project Settings dialog, showing warnings TB0001 to TB0016, each with a dropdown set to WARNING except TB0015, which is set to HINT](../Images/017bd6f8-4b35-43a9-b6be-84cba69daf64.png){:width="846" height="344"}
+![The Compiler Warnings list of the Project Settings dialog, showing warnings TB0001 to TB0016. Each row has a drop-down at its left, set to WARNING except for TB0015, which is set to HINT, then the bold code and the text of the warning](../Images/017bd6f8-4b35-43a9-b6be-84cba69daf64.png){:width="979" height="584"}
 
 Three attributes change the level in one class, module or procedure: [**IgnoreWarnings**](../../tB/Core/Attributes#ignorewarnings) turns the named warnings off, [**EnforceWarnings**](../../tB/Core/Attributes#enforcewarnings) reports them as warnings, also one that is at **IGNORE** in the project, and [**EnforceErrors**](../../tB/Core/Attributes#enforceerrors) reports them as errors. Each takes one or more codes, written in full with the leading zeroes and not quoted:
 
@@ -400,7 +400,7 @@ Debug.Print i
 
 Reports a duplicate definition as a warning: *Duplicate definition, consider changing the name to be unique*. A name declared twice in one module, procedure, **Enum** or **Type** is error TB5134 instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1033
 > The Compiler Warnings list of Project Settings shows this warning with the code TB0032, the code of [Unused Line Label](#tb0032-unused-line-label).
 
 <!-- BETA 1007 (tbbuild, every warning set to WARNING in project.warnings): none of

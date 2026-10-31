@@ -10,7 +10,7 @@ permalink: /Tutorials/WebView2/Building-A-Browser-Shell
 
 A short worked tutorial: turn a [**WebView2**](../../tB/Packages/WebView2/WebView2/) control into a working browser with an address bar, back / forward / reload buttons, zoom, and a few helpers (DevTools, Task Manager, PDF export).
 
-The complete project ships as *Sample 1a --- WebView2 Examples* in the New-Project dialog (form *Example 1*). This tutorial describes its key pieces.
+The complete project ships as *Sample 1a --- WebView2 Examples*, the card **WebView2 Examples** in the **Samples** section of the New-Project dialog (form *Example 1*). This tutorial describes its key pieces.
 
 ## The form
 

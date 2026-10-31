@@ -20,9 +20,63 @@ import fs from "node:fs";
 import path from "node:path";
 import { checkIndexTerms, deriveSearchEntries, joinSymbolsToEntries, renderEntryString } from "../builder/search.mjs";
 import { createMarkdownIt } from "../builder/render.mjs";
+import {
+  decodeTokenEntities,
+  entryFor,
+  FIELDS,
+  exactName as buildExactName,
+  indexField,
+  indexedContent,
+  indexTermKey as buildIndexTermKey,
+  LUNR_PATH,
+  phraseKey as buildPhraseKey,
+  qualifiedField,
+  searchIndexFile,
+  stemTwins,
+} from "../builder/search-index.mjs";
 import { buildIndex, loadLunr, search } from "../eval/site_search.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+
+// The page's script, and one of its top-level functions by name.
+const CLIENT = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
+function clientFn(name) {
+  const m = CLIENT.match(new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\r?\\n\\}`));
+  assert.ok(m, `just-the-docs.js has no ${name}()`);
+  return m[0];
+}
+
+// The page's search functions, each as the page has it, on the copy of lunr
+// given; the functions read `lunr` as the page's global.
+const PAGE_FNS = [
+  "decodeTokenEntities",
+  "separateTokenSetKeys",
+  "accumulateSetUnions",
+  "installSearchPatches",
+  "indexFromData",
+  "exactName",
+  "phraseKey",
+  "indexTermKey",
+];
+function pageWith(lunr) {
+  const table = CLIENT.match(/var NAMED_ENTITIES = \{[^}]*\};/);
+  assert.ok(table, "just-the-docs.js has no NAMED_ENTITIES");
+  const src = `${table[0]}\n${PAGE_FNS.map(clientFn).join("\n")}\nreturn { ${PAGE_FNS.join(", ")} };`;
+  return { lunr, ...new Function("lunr", src)(lunr) };
+}
+
+// A copy of the vendored lunr of its own, unpatched, as a page gets it: the
+// page's patches go on it without touching the build's copy.
+function freshLunr() {
+  const module = { exports: {} };
+  new Function("module", "exports", "define", fs.readFileSync(LUNR_PATH, "utf8"))(module, module.exports, undefined);
+  return module.exports;
+}
+
+// The build's copy of lunr, patched (builder/search-index.mjs).
+const builderLunr = () => loadLunr(LUNR_PATH);
 
 // A minimal tbdocs page, holding exactly the fields deriveSearchEntries
 // and extractSections read: frontmatter.title (+ optional
@@ -482,169 +536,129 @@ describe("renderEntryString: byte stability", () => {
   });
 });
 
-// The field-list drift guard for WIP.Search.md's "Design" §4: the online
-// client (builder/vendor/just-the-docs/assets/js/just-the-docs.js), the
-// offline client's own copy (JTD_INITSEARCH_FN_REPLACEMENT in
-// builder/offline.mjs) and the eval replica (eval/site_search.mjs) each
-// build their own lunr index and so each declare the field list by hand.
-// Nothing at build time compares them -- this test is what stands in for
-// that, extracting each one's {field: boost} pairs by regex and asserting
-// all three agree. A change to one field list without the others is
-// exactly the drift this exists to catch.
-describe("field list drift guard: online client, offline client, eval replica", () => {
-  // Matches `this.field('name', { boost: N })` (also bare `this.field('name')`,
-  // which has no explicit boost -- none of the three sources currently do
-  // that, but a bare field is still a field the other two must declare).
-  const FIELD_RE = /this\.field\(\s*['"]([\w]+)['"]\s*(?:,\s*\{\s*boost:\s*(\d+)\s*\})?\s*\)/g;
-
-  function extractFields(src) {
-    const fields = {};
-    for (const m of src.matchAll(FIELD_RE)) {
-      fields[m[1]] = m[2] === undefined ? null : Number(m[2]);
+// The index has one definition, builder/search-index.mjs, which the build
+// runs and the eval replica imports (WIP.Search.md, "The pre-built index").
+// The page and the offline copy only load it, so neither may declare a field
+// of its own; and every field a query names must be a field of the index.
+describe("one index definition: the build, the page, the offline copy and the replica", () => {
+  test("only builder/search-index.mjs declares the index's fields", () => {
+    for (const rel of [
+      "builder/vendor/just-the-docs/assets/js/just-the-docs.js",
+      "builder/offline.mjs",
+      "eval/site_search.mjs",
+    ]) {
+      assert.doesNotMatch(read(rel), /\.field\(\s*['"]\w+['"]/, `${rel} declares a field of its own`);
     }
-    return fields;
-  }
+    assert.ok(FIELDS.length >= 4, "sanity: expected at least title/content/names/qualified");
+  });
 
-  test("just-the-docs.js, offline.mjs and site_search.mjs declare the same fields at the same boosts", () => {
-    const onlineSrc = fs.readFileSync(
-      path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/just-the-docs.js"),
-      "utf8",
-    );
-    const offlineSrc = fs.readFileSync(path.join(REPO_ROOT, "builder/offline.mjs"), "utf8");
-    const evalSrc = fs.readFileSync(path.join(REPO_ROOT, "eval/site_search.mjs"), "utf8");
+  test("every field a query names is a field of the index", () => {
+    const fields = new Set(FIELDS.map(([name]) => name));
+    for (const rel of ["builder/vendor/just-the-docs/assets/js/just-the-docs.js", "eval/site_search.mjs"]) {
+      const src = read(rel);
+      const lists = [
+        ...src.matchAll(/(?:textFields|plainFields|TEXT_FIELDS|PLAIN_FIELDS)\s*=\s*(\[[^\]]*\])/g),
+        ...src.matchAll(/fields:\s*(\[[^\]]*\])/g),
+      ];
+      assert.ok(lists.length >= 4, `${rel}: found no field lists`);
+      for (const [, list] of lists) {
+        for (const [, name] of list.matchAll(/['"](\w+)['"]/g)) {
+          assert.ok(fields.has(name), `${rel} queries \`${name}\`, which the index has no field for`);
+        }
+      }
+    }
+  });
 
-    const online = extractFields(onlineSrc);
-    // offline.mjs has two initSearch-shaped functions in view once you count
-    // comments mentioning `this.field(...)`: only JTD_INITSEARCH_FN_REPLACEMENT
-    // actually calls it, so extracting over the whole file is safe -- there is
-    // exactly one declaration site.
-    const offline = extractFields(offlineSrc);
-    const evalReplica = extractFields(evalSrc);
-
-    assert.ok(Object.keys(online).length >= 4, "sanity: expected at least title/content/names/qualified");
-    assert.deepEqual(offline, online, "offline.mjs's field list has drifted from just-the-docs.js");
-    assert.deepEqual(evalReplica, online, "eval/site_search.mjs's field list has drifted from just-the-docs.js");
+  test("the index keeps English stop words, many of them twinBASIC keywords", () => {
+    const docs = {
+      0: { doc: "Do...Loop", title: "Do...Loop", content: "Repeats a block.", relUrl: "/Do" },
+      1: { doc: "With", title: "With", content: "Runs statements on one object.", relUrl: "/With" },
+      2: { doc: "Other", title: "Other", content: "Something else.", relUrl: "/Other" },
+    };
+    const lunr = builderLunr();
+    const ctx = { lunr, index: buildIndex(lunr, docs), docs };
+    assert.equal(docs[search(ctx, "Do")[0].ref].relUrl, "/Do");
+    assert.equal(docs[search(ctx, "With")[0].ref].relUrl, "/With");
+    assert.equal(docs[search(ctx, "loop")[0].ref].relUrl, "/Do", "a dot run did not split its title");
   });
 });
 
-// Sibling to the field-list drift guard above, for WIP.Search.md's rollout
-// step 5 (parts A and B): the online client, the offline client and the
-// eval replica must all (1) remove lunr's stop-word filter from the index
-// pipeline, so English stop words that double as twinBASIC keywords (Do,
-// For, If, Is, On, With, Each...) stay searchable, and (2) install the
-// dot-run-split tokenizer wrapper, so titles like "Do...Loop" and "For
-// Each...Next" tokenise into words instead of one opaque token. Neither
-// shows up in a field/boost pair, so extractFields() above can't catch a
-// drift here -- this checks for the two patches by name instead.
-describe("stop-word and dot-run-split guard: online client, offline client, eval replica", () => {
-  test("just-the-docs.js, offline.mjs and site_search.mjs all remove the stop-word filter", () => {
-    const onlineSrc = fs.readFileSync(
-      path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/just-the-docs.js"),
-      "utf8",
-    );
-    const offlineSrc = fs.readFileSync(path.join(REPO_ROOT, "builder/offline.mjs"), "utf8");
-    const evalSrc = fs.readFileSync(path.join(REPO_ROOT, "eval/site_search.mjs"), "utf8");
-
-    const STOP_WORD_RE = /this\.pipeline\.remove\(\s*lunr\.stopWordFilter\s*\)/;
-    assert.match(onlineSrc, STOP_WORD_RE, "just-the-docs.js no longer removes lunr.stopWordFilter");
-    assert.match(
-      offlineSrc,
-      STOP_WORD_RE,
-      "offline.mjs's JTD_INITSEARCH_FN_REPLACEMENT no longer removes lunr.stopWordFilter",
-    );
-    assert.match(evalSrc, STOP_WORD_RE, "eval/site_search.mjs no longer removes lunr.stopWordFilter");
+// The tokenizer decides what a word becomes, in the index and in a query
+// alike, so the build's (installPatches() in builder/search-index.mjs) and
+// the page's (installSearchPatches() in just-the-docs.js) must tokenize every
+// text the same way: a run of 2+ dots as spaces, `/` as a separator, each
+// token's HTML entities decoded after the split, and each token's position
+// kept in the text as written. Compared by what they produce, on a copy of
+// lunr of the page's own.
+describe("tokenizer guard: the build and the page", () => {
+  test("installSearchPatches() tokenizes as the build does", () => {
+    const page = pageWith(freshLunr());
+    page.installSearchPatches();
+    assert.ok(page.lunr.tokenizer.dotRunSplit, "the page's tokenizer has no dot-run split");
+    const build = builderLunr();
+    for (const text of [
+      "Do...Loop For Each...Next If...Then...Else",
+      "a/b c-d e\tf",
+      "Err &amp;H80004005 at&amp;t &lt;&lt;= &#45;&gt; &nbsp;x&nbsp;y &#8617; &bogus;",
+      "Form.PaintPicture Debug.Print 1.0 e.g. i.e.",
+      "Straße Time$ #If <>",
+      "",
+    ]) {
+      const tokens = (lunr) => lunr.tokenizer(text).map((t) => [t.str, t.metadata.position]);
+      assert.deepEqual(tokens(page.lunr), tokens(build), `${JSON.stringify(text)} tokenizes differently`);
+    }
   });
 
-  test("just-the-docs.js, offline.mjs and site_search.mjs all install the dot-run-split tokenizer wrapper", () => {
-    const onlineSrc = fs.readFileSync(
-      path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/just-the-docs.js"),
-      "utf8",
+  test("installSearchPatches() installs once, and the page installs it before it loads the index", () => {
+    const page = pageWith(freshLunr());
+    page.installSearchPatches();
+    const tokenizer = page.lunr.tokenizer;
+    page.installSearchPatches();
+    assert.equal(page.lunr.tokenizer, tokenizer, "a second call wrapped the tokenizer again");
+    assert.match(
+      clientFn("indexFromData"),
+      /installSearchPatches\(\);\s*return lunr\.Index\.load\(data\.index\);/,
+      "indexFromData() doesn't install the patches before lunr.Index.load",
     );
-    const offlineSrc = fs.readFileSync(path.join(REPO_ROOT, "builder/offline.mjs"), "utf8");
-    const evalSrc = fs.readFileSync(path.join(REPO_ROOT, "eval/site_search.mjs"), "utf8");
-
-    // Loose on purpose -- the wrapper's exact variable names may reasonably
-    // differ between the three copies. What must agree is: a marker flag
-    // (`dotRunSplit`) so the wrapper installs only once, a replace of 2+
-    // dot runs, and the wrapper carrying its own `separator`.
-    for (const [label, src] of [
-      ["just-the-docs.js", onlineSrc],
-      ["offline.mjs", offlineSrc],
-      ["eval/site_search.mjs", evalSrc],
-    ]) {
-      assert.match(src, /dotRunSplit/, `${label} has no dotRunSplit marker -- the dot-run-split wrapper looks missing`);
-      assert.match(
-        src,
-        /\\\.\{2,\}/,
-        `${label} has no /\\.{2,}/ dot-run pattern -- the dot-run-split wrapper looks missing`,
-      );
-      // Loose on the exact escaping (offline.mjs's copy lives inside a JS
-      // template literal, so its backslashes are doubled) -- just checks
-      // for "<something>.separator = /[<char class>]+/" somewhere in the
-      // wrapper.
-      assert.match(
-        src,
-        /\.separator\s*=\s*\/\[[^\]]*\]\+\//,
-        `${label}'s dot-run-split wrapper doesn't set its own .separator`,
-      );
-    }
   });
 });
 
 // Sibling to the guards above, for WIP.Search.md's "Reader intent" changes.
-// The `exact`, `primary` and `page` fields are covered by the field-list
-// guard; what it can't see is how they are filled and queried. The index
-// side lives in each copy's own lunr builder, so all three must derive
-// `exact` and `primary` with exactName() and `page` from `doc`. The query
-// side lives in update() (the offline build inherits it) and in the eval
-// replica, so those two must write names the same way, share the kind
-// words, trim tokens, keep the name fields out of the ordinary clauses,
-// add the exact-name clause, and require every word first as a stem with a
-// trailing wildcard.
-describe("reader-intent guard: online client, offline client, eval replica", () => {
-  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+// The index side is the build's entryFor(): `exact` and `primary` hold names
+// as exactName() writes them, and `page` holds `doc`. The query side lives
+// in update() (the offline copy inherits it) and in the eval replica, so
+// those two must write names as the build does, share the kind words, trim
+// tokens, keep the name fields out of the ordinary clauses, add the
+// exact-name clause, and require every word first as a stem with a trailing
+// wildcard.
+describe("reader-intent guard: the build, the page, the eval replica", () => {
   const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
-  const offlineSrc = read("builder/offline.mjs");
   const evalSrc = read("eval/site_search.mjs");
 
-  test("all three derive `exact` with exactName() and `page` from `doc`", () => {
-    for (const [label, src] of [
-      ["just-the-docs.js", onlineSrc],
-      ["offline.mjs", offlineSrc],
-      ["eval/site_search.mjs", evalSrc],
-    ]) {
-      assert.match(
-        src,
-        /exact:\s*\(docs\[\w+\]\.names \|\| ['"]{2}\)[^\n]*\.map\(exactName\)/,
-        `${label} doesn't fill \`exact\` from names via exactName()`,
-      );
-      assert.match(
-        src,
-        /primary:\s*\(docs\[\w+\]\.primary \|\| ['"]{2}\)[^\n]*\.map\(exactName\)/,
-        `${label} doesn't fill \`primary\` via exactName()`,
-      );
-      assert.match(src, /page:\s*docs\[\w+\]\.doc \|\| ['"]{2}/, `${label} doesn't fill \`page\` from doc`);
-    }
+  test("the build fills `exact` and `primary` with exactName(), and `page` from `doc`", () => {
+    const lunr = builderLunr();
+    const docs = {
+      0: { doc: "Strings", title: "Left", content: "x", names: "Left Left$", primary: "Left", relUrl: "/L" },
+    };
+    const entry = entryFor(lunr, docs, "0", new Set());
+    assert.equal(entry.exact, `${buildExactName("Left")} ${buildExactName("Left$")}`);
+    assert.equal(entry.primary, buildExactName("Left"));
+    assert.equal(entry.page, "Strings");
+    assert.equal(entryFor(lunr, { 0: { title: "T", content: "" } }, "0", new Set()).exact, "");
   });
 
   // exactName() and the kind-word list are compared by what they produce,
-  // not by their text: the online copy is ES5 and the replica is not.
-  function extractExactName(src, label) {
-    const m = src.match(/function exactName\(name\) \{[\s\S]*?\n\}/);
-    assert.ok(m, `${label} has no exactName()`);
-    return new Function(`return (${m[0]});`)();
-  }
+  // not by their text: the online copy is ES5 and the others are not.
   function extractKindWords(src, label) {
     const m = src.match(/KIND_WORDS = (\[[^\]]*\])/);
     assert.ok(m, `${label} has no KIND_WORDS`);
     return new Function(`return ${m[1]};`)();
   }
 
-  test("the online client and the eval replica write names and kind words the same way", () => {
-    const online = extractExactName(onlineSrc, "just-the-docs.js");
-    const replica = extractExactName(evalSrc, "eval/site_search.mjs");
+  test("the page writes names as the build does, and shares the replica's kind words", () => {
+    const online = pageWith(freshLunr()).exactName;
     for (const n of ["Node", "Time$", "#If", "<>", "<<=", "Form.PaintPicture", "vb_Name", "Straße"]) {
-      assert.equal(online(n), replica(n), `exactName(${JSON.stringify(n)}) differs`);
+      assert.equal(online(n), buildExactName(n), `exactName(${JSON.stringify(n)}) differs`);
     }
     // lunr's trimmer strips non-word characters from both ends of a token,
     // so a written name must start and end with a word character.
@@ -802,19 +816,14 @@ describe("qualified-name guard: online client, eval replica", () => {
 
   // Stem twins (WIP.Search.md, "Qualified names and stem twins"): `Printer.Font` and
   // `Printer.Fonts` stem alike, so `qualified` also holds each whole.
-  test("all three fill `qualified` via qualifiedField(), and both queries match a whole name there", () => {
+  test("the build fills `qualified` via qualifiedField(), and both queries match a whole name there", () => {
+    const docs = { 0: { qualified: "Printer.Font" }, 1: { qualified: "Printer.Fonts" } };
+    const twins = stemTwins(lunr, docs);
+    assert.equal(entryFor(lunr, docs, "1", twins).qualified, qualifiedField(lunr, docs[1], twins));
     for (const [label, src] of [
       ["just-the-docs.js", read("builder/vendor/just-the-docs/assets/js/just-the-docs.js")],
-      ["offline.mjs", read("builder/offline.mjs")],
       ["eval/site_search.mjs", read("eval/site_search.mjs")],
     ]) {
-      assert.match(src, /twins = stemTwins\((lunr, )?docs\)/, `${label} doesn't find the stem twins`);
-      assert.match(
-        src,
-        /qualified:\s*qualifiedField\((lunr, )?docs\[\w+\], twins\)/,
-        `${label} doesn't fill \`qualified\` via qualifiedField()`,
-      );
-      if (label === "offline.mjs") continue;
       assert.match(
         src,
         /term\(wholeQualified, \{ fields: \[['"]qualified['"]\], boost: 10 \}\)/,
@@ -823,19 +832,7 @@ describe("qualified-name guard: online client, eval replica", () => {
     }
   });
 
-  test("the online client and the eval replica find the same twins and write the same field", () => {
-    const fn = (src, name, label) => {
-      const m = src.match(new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`));
-      assert.ok(m, `${label} has no ${name}()`);
-      return m[0];
-    };
-    const names = ["exactName", "stemTwins", "qualifiedField"];
-    const load = (src, label) => names.map((n) => fn(src, n, label)).join("\n") + `\nreturn { ${names.join(", ")} };`;
-    const online = new Function(
-      "lunr",
-      load(read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"), "just-the-docs.js"),
-    )(lunr);
-    const replica = new Function(load(read("eval/site_search.mjs"), "eval/site_search.mjs"))();
+  test("the build finds the stem twins and writes each whole as the page's query does", () => {
     const docs = {
       0: { qualified: "Printer.Font Printer.FontCount" },
       1: { qualified: "Printer.Fonts" },
@@ -843,20 +840,13 @@ describe("qualified-name guard: online client, eval replica", () => {
       3: { qualified: "Form.PaintPicture" },
       4: {},
     };
-    const onlineTwins = online.stemTwins(docs);
-    const replicaTwins = replica.stemTwins(lunr, docs);
-    assert.deepEqual(Object.keys(onlineTwins).sort(), [...replicaTwins].sort());
-    assert.deepEqual([...replicaTwins].sort(), ["printer.font", "printer.fonts", "strings.left", "strings.left$"]);
-    for (const id in docs) {
-      assert.equal(
-        online.qualifiedField(docs[id], onlineTwins),
-        replica.qualifiedField(lunr, docs[id], replicaTwins),
-        `qualifiedField(${JSON.stringify(docs[id])}) differs`,
-      );
-    }
+    const twins = stemTwins(lunr, docs);
+    assert.deepEqual([...twins].sort(), ["printer.font", "printer.fonts", "strings.left", "strings.left$"]);
     // A name with no twin is held as before.
-    assert.equal(online.qualifiedField(docs[3], onlineTwins), "Form.PaintPicture");
-    assert.equal(online.qualifiedField(docs[1], onlineTwins), "Printer.Fonts printer_2efonts_");
+    assert.equal(qualifiedField(lunr, docs[3], twins), "Form.PaintPicture");
+    assert.equal(qualifiedField(lunr, docs[1], twins), "Printer.Fonts printer_2efonts_");
+    // The whole name is the one the page's query writes for `Printer.Fonts`.
+    assert.equal(pageWith(freshLunr()).exactName("printer.fonts"), "printer_2efonts_");
   });
 
   test("the replica tells stem twins apart, typed with a dot or as two words", () => {
@@ -1061,41 +1051,19 @@ describe("index marks: render.mjs lifts them off headings", () => {
   });
 });
 
-// The index-term patch in the three copies. indexTermKey(), indexField()
-// and indexedContent() are compared by what they produce, like exactName()
-// above, and the query side is checked to build the same key as the index
-// side.
-describe("index-term guard: online client, offline client, eval replica", () => {
-  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+// The index-term patch: the build writes each term with indexTermKey() and
+// indexField(), and the page's query must build the same key from the words
+// a reader types. Compared by what they produce, like exactName() above.
+describe("index-term guard: the build, the page, the eval replica", () => {
   const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
-  const offlineSrc = read("builder/offline.mjs");
   const evalSrc = read("eval/site_search.mjs");
-  const lunr = loadLunr(path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js"));
+  const lunr = builderLunr();
 
-  const fn = (src, name, label) => {
-    const m = src.match(new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`));
-    assert.ok(m, `${label} has no ${name}()`);
-    return m[0];
-  };
-
-  test("all three fill the index field and the content with the terms, and pin the average length", () => {
-    for (const [label, src] of [
-      ["just-the-docs.js", onlineSrc],
-      ["offline.mjs", offlineSrc],
-      ["eval/site_search.mjs", evalSrc],
-    ]) {
-      assert.match(
-        src,
-        /index:\s*indexField\((lunr, )?docs\[\w+\]\)/,
-        `${label} doesn't fill \`index\` via indexField()`,
-      );
-      assert.match(
-        src,
-        /content:\s*indexedContent\(docs\[\w+\]\)/,
-        `${label} doesn't fill \`content\` via indexedContent()`,
-      );
-      assert.match(src, /pinIndexFieldLengths\(this\)/, `${label} doesn't pin the index field's average length`);
-    }
+  test("the build fills the index field and the content with the terms; both queries name them", () => {
+    const doc = { title: "T", content: "Body.", index: ["late binding"], index_also: ["File I/O"] };
+    const entry = entryFor(lunr, { 0: doc }, "0", new Set());
+    assert.equal(entry.index, indexField(lunr, doc));
+    assert.equal(entry.content, indexedContent(doc));
     for (const [label, src] of [
       ["just-the-docs.js", onlineSrc],
       ["eval/site_search.mjs", evalSrc],
@@ -1114,11 +1082,9 @@ describe("index-term guard: online client, offline client, eval replica", () => 
     }
   });
 
-  test("the online client and the eval replica write a term the same way, and a query names it the same way", () => {
-    const names = ["phraseKey", "indexTermKey", "indexField", "indexedContent"];
-    const load = (src, label) => names.map((n) => fn(src, n, label)).join("\n") + `\nreturn { ${names.join(", ")} };`;
-    const online = new Function("lunr", load(onlineSrc, "just-the-docs.js"))(lunr);
-    const replica = new Function(load(evalSrc, "eval/site_search.mjs"))();
+  test("the page writes a term as the build does, and a query names it the same way", () => {
+    const page = pageWith(freshLunr());
+    page.installSearchPatches();
     for (const t of [
       "late binding",
       "64-bit compilation",
@@ -1126,38 +1092,47 @@ describe("index-term guard: online client, offline client, eval replica", () => 
       "Do...Loop",
       "#If directives",
       "conditional compilation",
+      "&amp;H80004005 codes",
       "  ",
     ]) {
-      assert.equal(online.indexTermKey(t), replica.indexTermKey(lunr, t), `indexTermKey(${JSON.stringify(t)}) differs`);
+      assert.equal(page.indexTermKey(t), buildIndexTermKey(lunr, t), `indexTermKey(${JSON.stringify(t)}) differs`);
     }
-    for (const doc of [
-      { content: "Body." },
-      { content: "Body.", index: ["late binding"] },
-      { content: "Body.", index: ["late binding", "  "], index_also: ["64-bit compilation", "File I/O"] },
-    ]) {
-      assert.equal(online.indexField(doc), replica.indexField(lunr, doc), `indexField(${JSON.stringify(doc)}) differs`);
-      assert.equal(
-        online.indexedContent(doc),
-        replica.indexedContent(doc),
-        `indexedContent(${JSON.stringify(doc)}) differs`,
-      );
-    }
-    assert.equal(online.indexedContent({ content: "Body." }), "Body.");
+    assert.equal(indexedContent({ content: "Body." }), "Body.");
+    assert.equal(
+      indexedContent({ content: "Body.", index: ["late binding"], index_also: ["File I/O"] }),
+      "Body. late binding File I/O",
+    );
     // A secondary term is its main key with one more `_`, which is how the
-    // query tells them apart.
-    assert.equal(online.indexField({ index_also: ["late binding"] }), online.indexTermKey("late binding") + "_");
-    assert.equal(online.indexTermKey("  "), "");
+    // query tells them apart; a term of no words is left out.
+    assert.equal(indexField(lunr, { index_also: ["late binding"] }), buildIndexTermKey(lunr, "late binding") + "_");
+    assert.equal(
+      indexField(lunr, { index: ["late binding", "  "], index_also: ["File I/O"] }),
+      `${buildIndexTermKey(lunr, "late binding")} ${buildIndexTermKey(lunr, "File I/O")}_`,
+    );
+    assert.equal(buildIndexTermKey(lunr, "  "), "");
+    // The page's query key: the typed words, tokenized and trimmed, as
+    // phraseKey() joins them.
     const queryKey = (q) =>
-      online.phraseKey(
-        lunr
+      page.phraseKey(
+        page.lunr
           .tokenizer(q)
-          .map((t) => lunr.trimmer(t))
+          .map((t) => page.lunr.trimmer(t))
           .filter((t) => t.str !== ""),
       );
-    assert.equal(queryKey("Late-Binding"), online.indexTermKey("late binding"));
-    assert.equal(queryKey("64 bit compilations"), online.indexTermKey("64-bit compilation"));
+    assert.equal(queryKey("Late-Binding"), buildIndexTermKey(lunr, "late binding"));
+    assert.equal(queryKey("64 bit compilations"), buildIndexTermKey(lunr, "64-bit compilation"));
+    assert.equal(
+      queryKey("late binding"),
+      buildPhraseKey(
+        lunr,
+        lunr
+          .tokenizer("late binding")
+          .map((t) => lunr.trimmer(t))
+          .filter((t) => t.str !== ""),
+      ),
+    );
     // One token, so no field split or stemmer touches it again at index time.
-    assert.equal(lunr.tokenizer(online.indexTermKey("64-bit compilation")).length, 1);
+    assert.equal(lunr.tokenizer(buildIndexTermKey(lunr, "64-bit compilation")).length, 1);
   });
 
   test("the replica ranks a marked entry first, and its secondary entry next", () => {
@@ -1185,10 +1160,10 @@ describe("index-term guard: online client, offline client, eval replica", () => 
 // which runs each edge's label into its child's id, so two different nodes
 // can share a key and be merged: the index's token set then holds invented
 // words, and a wildcard query reaching one throws (WIP.Search.md, "lunr
-// patches"). All three copies install separated keys.
-describe("token-set key guard: online client, offline client, eval replica", () => {
-  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
-  const lunrPath = path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js");
+// patches"). The page installs separated keys before Index.load makes the
+// token set, and so does the build's copy of lunr, which the replica queries.
+describe("token-set key guard: the page and the build's lunr", () => {
+  const lunrPath = LUNR_PATH;
   const lunr = loadLunr(lunrPath);
   const lunrsOwn = new Function(
     `return ${read(path.relative(REPO_ROOT, lunrPath)).match(/TokenSet\.prototype\.toString=(function\(\)\{.*?return e\})/)[1]};`,
@@ -1230,16 +1205,12 @@ describe("token-set key guard: online client, offline client, eval replica", () 
     assert.ok(exact(tokenSet(lunr.TokenSet.prototype.toString)), "the replica's keys still collide");
   });
 
-  test("all three install the separated keys when they build the index", () => {
+  test("the page and the build install the separated keys with their patches", () => {
     assert.match(
-      read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"),
+      clientFn("installSearchPatches"),
       /lunr\.tokenizer = dotRunSplitTokenizer;\s*\}\s*separateTokenSetKeys\(\);/,
     );
-    assert.match(
-      read("builder/offline.mjs"),
-      /lunr\.tokenizer = dotRunSplitTokenizer;\s*\}\s*(\/\/[^\n]*\n\s*)*separateTokenSetKeys\(\);/,
-    );
-    assert.match(read("eval/site_search.mjs"), /\s+separateTokenSetKeys\(lunr\);\s+(\w+\(lunr\);\s+)*return lunr;/);
+    assert.match(read("builder/search-index.mjs"), /\s+separateTokenSetKeys\(lunr\);\s+accumulateSetUnions\(lunr\);/);
   });
 });
 
@@ -1247,8 +1218,7 @@ describe("token-set key guard: online client, offline client, eval replica", () 
 // words that reads the same as a result's title, or its page title plus
 // title, scores three times as much, after lunr ranks.
 describe("whole-title guard: online client, eval replica", () => {
-  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
-  const lunr = loadLunr(path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js"));
+  const lunr = loadLunr(LUNR_PATH);
   const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
   const evalSrc = read("eval/site_search.mjs");
   const fn = (src, name, label) => {
@@ -1261,13 +1231,21 @@ describe("whole-title guard: online client, eval replica", () => {
     assert.ok(m, `${label} has no WHOLE_TITLE_BOOST`);
     return m[0];
   };
-  const names = ["phraseKey", "indexTermKey", "boostWholeTitles"];
-  const load = (src, label) =>
+  // The page has its own phraseKey() and indexTermKey(); the replica uses
+  // the build's (builder/search-index.mjs).
+  const load = (src, label, names) =>
     `var ${boost(src, label)}\n` + names.map((n) => fn(src, n, label)).join("\n") + "\nreturn boostWholeTitles;";
 
   test("both boost the same results by the same factor", () => {
-    const online = new Function("lunr", load(onlineSrc, "just-the-docs.js"))(lunr);
-    const replica = new Function(load(evalSrc, "eval/site_search.mjs"))();
+    const online = new Function(
+      "lunr",
+      load(onlineSrc, "just-the-docs.js", ["phraseKey", "indexTermKey", "boostWholeTitles"]),
+    )(lunr);
+    const replica = new Function(
+      "phraseKey",
+      "indexTermKey",
+      load(evalSrc, "eval/site_search.mjs", ["boostWholeTitles"]),
+    )(buildPhraseKey, buildIndexTermKey);
     assert.equal(boost(onlineSrc, "just-the-docs.js"), boost(evalSrc, "eval/site_search.mjs"));
     const docs = {
       0: { doc: "DTPicker", title: "DTPicker class" },
@@ -1336,19 +1314,16 @@ describe("whole-title guard: online client, eval replica", () => {
 });
 
 // Entities (WIP.Search.md, "lunr patches"): the search data
-// keeps the page's HTML entities, which the results panel needs, so each
-// copy's tokenizer wrapper decodes them per token, after the split.
-describe("entity guard: online client, offline client, eval replica", () => {
-  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
-  const lunr = loadLunr(path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js"));
-  const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
-  const evalSrc = read("eval/site_search.mjs");
+// keeps the page's HTML entities, which the results panel needs, so the
+// build's and the page's tokenizer wrappers decode them per token, after the
+// split.
+describe("entity guard: the build, the page", () => {
+  const lunr = loadLunr(LUNR_PATH);
 
-  test("all three decode each token in the tokenizer wrapper", () => {
+  test("both decode each token in the tokenizer wrapper", () => {
     for (const [label, src] of [
-      ["just-the-docs.js", onlineSrc],
-      ["offline.mjs", read("builder/offline.mjs")],
-      ["eval/site_search.mjs", evalSrc],
+      ["just-the-docs.js", clientFn("installSearchPatches")],
+      ["builder/search-index.mjs", read("builder/search-index.mjs")],
     ]) {
       assert.match(
         src,
@@ -1358,16 +1333,11 @@ describe("entity guard: online client, offline client, eval replica", () => {
     }
   });
 
-  test("the online client and the replica decode alike, keeping each token's position", () => {
-    const load = (src, label) => {
-      const table = src.match(/(var|const) NAMED_ENTITIES = \{[^}]*\};/);
-      const fn = src.match(/function decodeTokenEntities\(token\) \{[\s\S]*?\r?\n\}/);
-      assert.ok(table && fn, `${label} has no decodeTokenEntities()`);
-      return new Function(`${table[0]}\n${fn[0]}\nreturn decodeTokenEntities;`)();
-    };
-    const online = load(onlineSrc, "just-the-docs.js");
-    const replica = load(evalSrc, "eval/site_search.mjs");
-    const text = "Err &amp;H80004005 at&amp;t &lt;&lt;= &#45;&gt; &#8617; &#x41; &bogus; &#1114112; plain";
+  test("the page and the build decode alike, keeping each token's position", () => {
+    const online = pageWith(freshLunr()).decodeTokenEntities;
+    const replica = decodeTokenEntities;
+    const text =
+      "Err &amp;H80004005 at&amp;t &lt;&lt;= &#45;&gt; &#8617; &#x41; &bogus; &#1114112; a&nbsp;b &quot;&apos; plain";
     // Tokens as lunr's tokenizer makes them: lowercased, positioned in the
     // escaped text.
     const tokens = (decode) =>
@@ -1380,7 +1350,7 @@ describe("entity guard: online client, offline client, eval replica", () => {
     );
     assert.deepEqual(
       a.map((t) => t.str),
-      ["err", "&h80004005", "at&t", "<<=", "->", "↩", "a", "&bogus;", "&#1114112;", "plain"],
+      ["err", "&h80004005", "at&t", "<<=", "->", "↩", "a", "&bogus;", "&#1114112;", "a\u{A0}b", "\"'", "plain"],
     );
     assert.deepEqual(
       a[1].metadata.position,
@@ -1413,10 +1383,10 @@ describe("entity guard: online client, offline client, eval replica", () => {
 // lunr 2.3.9's Index#query gathers a REQUIRED clause's entries as a running
 // total of set unions, and each union copied both sets, so a short wildcard
 // word made a query quadratic (WIP.Search.md, "lunr
-// patches"). All three copies install a union that adds in place.
-describe("set-union guard: online client, offline client, eval replica", () => {
-  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
-  const lunrPath = path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js");
+// patches"). The page and the build's copy of lunr, which the replica
+// queries, install a union that adds in place.
+describe("set-union guard: the page and the build's lunr", () => {
+  const lunrPath = LUNR_PATH;
   const lunr = loadLunr(lunrPath);
   const ownSrc = read(path.relative(REPO_ROOT, lunrPath)).match(
     /Set\.prototype\.union=(function\(e\)\{return .*?\)\)\})/,
@@ -1512,16 +1482,9 @@ describe("set-union guard: online client, offline client, eval replica", () => {
     assert.ok(patched[0].length > 1, "the fixture no longer exercises the all-words pass");
   });
 
-  test("all three install it when they build the index", () => {
-    assert.match(
-      read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"),
-      /\s+separateTokenSetKeys\(\);\s*accumulateSetUnions\(\);/,
-    );
-    assert.match(read("builder/offline.mjs"), /\s+separateTokenSetKeys\(\);\s*accumulateSetUnions\(\);/);
-    assert.match(
-      read("eval/site_search.mjs"),
-      /\s+separateTokenSetKeys\(lunr\);\s+accumulateSetUnions\(lunr\);\s+return lunr;/,
-    );
+  test("the page and the build install it with their patches", () => {
+    assert.match(clientFn("installSearchPatches"), /\s+separateTokenSetKeys\(\);\s*accumulateSetUnions\(\);/);
+    assert.match(read("builder/search-index.mjs"), /\s+separateTokenSetKeys\(lunr\);\s+accumulateSetUnions\(lunr\);/);
   });
 });
 
@@ -1607,97 +1570,61 @@ describe("kind-word guard: online client, eval replica", () => {
   });
 });
 
-// Sliced build: both clients build the index through buildIndexInSlices(),
-// which does lunr 2.3.9's own build a piece at a time, reaching into
-// lunr.Builder's internals and swapping lunr.idf while it makes the vectors.
-// The index must come out the same as lunr(config)'s, sliced as finely as it
-// can be (one piece a slice, three fields' vectors a piece) and as the site
-// slices it, and lunr.idf must be put back, even when the build throws.
-describe("sliced-build guard: online client against lunr()", () => {
-  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
-  const lunr = loadLunr(path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js"));
-  const src = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
-  const fnSrc = src.match(/function buildIndexInSlices\([^)]*\) \{[\s\S]*?\r?\n\}/);
-  const constant = (name) => {
-    const m = src.match(new RegExp(`var ${name} = (\\d+);`));
-    assert.ok(m, `just-the-docs.js has no ${name}`);
-    return Number(m[1]);
+// Loading the pre-built index (WIP.Search.md, "The pre-built index"): the
+// page loads search-index.json, the search entries and their index in one
+// file, and the index with lunr.Index.load. An index the page loads must
+// answer as the build's own does, and the page must take its entries from
+// the same file, so that the two are always of one build. That the build's
+// index is lunr()'s, on any number of threads, is
+// test/search-index.test.mjs's.
+describe("loading guard: the page loads what the build wrote", () => {
+  // biome-ignore format: a table, one entry per line
+  const docs = {
+    0: { doc: "Form", title: "Form class", content: "A window. Forms hold controls.", names: "Form", primary: "Form", relUrl: "/Form" },
+    1: { doc: "Form", title: "Show", content: "Shows the form. A modal form waits.", names: "Show", qualified: "Form.Show", relUrl: "/Form#show" },
+    2: { doc: "Debug", title: "Print", content: "Prints to the debug window (&amp;H80004005).", names: "Print", qualified: "Debug.Print", relUrl: "/Debug#print" },
+    3: { doc: "Do...Loop", title: "Do...Loop", content: "Repeats a block. Straße\u{A0}x", relUrl: "/Do", index: ["loop statement"] },
+    4: { doc: "Empty", title: "Empty", content: "", relUrl: "/Empty" },
   };
-  const sliced = (sliceMs, fieldsPerPiece) => {
-    assert.ok(fnSrc, "just-the-docs.js has no buildIndexInSlices()");
-    return new Function(
-      "lunr",
-      `var INDEX_SLICE_MS = ${sliceMs};\nvar FIELDS_PER_PIECE = ${fieldsPerPiece};\n${fnSrc[0]}\nreturn buildIndexInSlices;`,
-    )(lunr);
-  };
-  const build = (buildIndexInSlices, config, docs, entry) =>
-    new Promise((resolve, reject) => buildIndexInSlices(config, docs, entry, resolve, reject));
+  const lunr = builderLunr();
+  const fileText = () => searchIndexFile(JSON.stringify(buildIndex(lunr, docs)), docs);
 
-  const docs = [
-    { title: "Form", body: "A form is a window. Forms hold controls." },
-    { title: "Form.Show", body: "Shows the form. A modal form waits." },
-    { title: "Debug.Print", body: "Prints to the debug window." },
-    { title: "Do...Loop", body: "Repeats a block while a condition holds." },
-    { title: "Print", body: "Prints a line. See also Debug.Print and Form.Print." },
-    { title: "Window", body: "" },
-  ];
-  const fields = function () {
-    this.ref("id");
-    this.field("title", { boost: 10 });
-    this.field("body");
-    this.metadataWhitelist = ["position"];
-  };
-  const entry = (i) => ({ id: i, title: docs[i].title, body: docs[i].body });
-  const whole = lunr(function () {
-    fields.call(this);
-    for (const i of Object.keys(docs)) this.add(entry(i));
+  test("the file holds the entries as search-data.json has them, and their index", () => {
+    const data = JSON.parse(fileText());
+    assert.deepEqual(Object.keys(data), ["docs", "index"]);
+    assert.deepEqual(data.docs, docs);
+    assert.deepEqual(data.index, JSON.parse(JSON.stringify(buildIndex(lunr, docs))));
   });
-  const same = (index, label) => {
-    assert.equal(
-      JSON.stringify(index.toJSON()),
-      JSON.stringify(whole.toJSON()),
-      `${label}: the index differs from lunr()'s`,
-    );
-    assert.deepEqual(
-      index.tokenSet.toArray(),
-      whole.tokenSet.toArray(),
-      `${label}: the token set differs from lunr()'s`,
-    );
-    for (const q of ["form", "f*", "window print", "debug"]) {
-      assert.deepEqual(index.search(q), whole.search(q), `${label}: ${JSON.stringify(q)} finds other results`);
+
+  test("an index the page loads answers as the build's does", () => {
+    const page = pageWith(freshLunr());
+    const loaded = page.indexFromData(JSON.parse(fileText()));
+    const built = buildIndex(lunr, docs);
+    for (const q of ["form", "f*", "window print", "debug", "h80004005", "loop", "do", "strasse", "straße"]) {
+      assert.deepEqual(
+        loaded.search(q).map((r) => [r.ref, r.score]),
+        built.search(q).map((r) => [r.ref, r.score]),
+        `${JSON.stringify(q)} finds other results`,
+      );
     }
-  };
-
-  test("the index is lunr()'s, sliced finely and as the site slices it", async () => {
-    const idf = lunr.idf;
-    same(await build(sliced(0, 3), fields, docs, entry), "one piece a slice");
-    same(
-      await build(sliced(constant("INDEX_SLICE_MS"), constant("FIELDS_PER_PIECE")), fields, docs, entry),
-      "the site's slices",
-    );
-    assert.equal(lunr.idf, idf, "lunr.idf was not put back");
+    assert.ok(page.lunr.tokenizer.dotRunSplit, "indexFromData() did not install the page's patches");
   });
 
-  test("a build that throws reports it and puts lunr.idf back", async () => {
-    const idf = lunr.idf;
-    // `boost` is read only while the vectors are made, so this throws with
-    // lunr.idf swapped.
-    const throwing = function () {
-      fields.call(this);
-      Object.defineProperty(this._fields.title, "boost", {
-        get: () => {
-          throw new Error("boost");
-        },
-      });
-    };
-    await assert.rejects(build(sliced(0, 3), throwing, docs, entry), /boost/);
-    assert.equal(lunr.idf, idf, "lunr.idf was not put back after a throw");
-    await assert.rejects(
-      build(sliced(0, 3), fields, docs, (i) => {
-        if (i === "2") throw new Error("entry");
-        return entry(i);
-      }),
-      /entry/,
+  test("the online copy fetches one file, and the offline copy loads one script, both taking the entries from it", () => {
+    const online = clientFn("initSearch");
+    assert.match(online, /'\/assets\/js\/search-index\.json'/);
+    assert.doesNotMatch(online, /search-data/, "the page fetches the entries from a second file");
+    assert.match(online, /onSuccess\(indexFromData\(data\), data\.docs\)/);
+    const offline = read("builder/offline.mjs").match(/const JTD_INITSEARCH_FN_REPLACEMENT = `[\s\S]*?\n\}`;/)?.[0];
+    assert.ok(offline, "offline.mjs has no JTD_INITSEARCH_FN_REPLACEMENT");
+    assert.match(offline, /'assets\/js\/search-index\.js'/);
+    assert.doesNotMatch(
+      offline,
+      /search-data\.js|SEARCH_DATA/,
+      "the offline page loads the entries from a second file",
     );
+    assert.match(offline, /var docs = data && data\.docs;/);
+    assert.match(offline, /onSuccess\(indexFromData\(data\), docs\)/);
+    assert.doesNotMatch(read("builder/offline-rewrite.mjs"), /search-data\.js/, "an offline page loads its data again");
   });
 });

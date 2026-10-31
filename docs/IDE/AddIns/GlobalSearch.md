@@ -17,7 +17,7 @@ Developer
 
 The global search add in will contain a [Toolbar](../Reference/Toolbar) item.
 
-![A single toolbar button labelled Global Search.](Images/Toolbar_GlobalSearch.png){:width="101" height="35"}
+![A single toolbar button labelled Global Search.](Images/Toolbar_GlobalSearch.png){:width="102" height="35"}
 
 ![The Global Search tool window before a search: an empty search box with a magnifier icon, and four clear checkboxes labelled In packages, Match case, Whole word and Exclude comments.](Images/GlobalSearch.png){:width="352" height="124"}
 

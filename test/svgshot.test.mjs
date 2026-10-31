@@ -14,11 +14,17 @@
 // inlineSvgsIn, which lists the ones to read in the page, and scopeIds, which keeps the ids of
 // two icons apart in one picture; the reading of an <svg> itself is in the page and is
 // measured by the bench pages. And colour-filter.mjs, which bakes a filter of colour functions
-// into the colours its group paints.
+// into the colours its group paints. And redraw.mjs, which replay.mjs and sheet.mjs share:
+// redraw, which draws a picture again from its bundle or names its retake, and fails on the
+// user name unless its caller turns the check off; the pictures listed; the folders a sheet
+// is refused; and the sheet's page. And the sheet of changes against a git revision
+// (sheet.mjs --against): git's change list, the comparison of two pictures over two sizes,
+// the noise rule, the order and the page.
 //
 // Runs with a bare `node --test test/svgshot.test.mjs`: no tree, no build.
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -36,7 +42,43 @@ import {
   trimSnapshot,
   writeBundle,
 } from "../scripts/svgshot/bundle.mjs";
-import { webFontFiles } from "../scripts/svgshot/capture.mjs";
+import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
+import { decodePng, encodePng } from "../scripts/lib/png.mjs";
+import { changeMap, compareImages, withinNoise } from "../scripts/lib/shot-change.mjs";
+import {
+  openRevision,
+  parseCatFileBatch,
+  pictureFate,
+  planCleanup,
+  restoreFromRevision,
+  revisionOf,
+  svgFate,
+} from "../scripts/lib/shot-revision.mjs";
+import {
+  changedPictures,
+  cleanupCommand,
+  changeFiles,
+  changeSheetHtml,
+  compareRevisionPicture,
+  judgedFiles,
+  listPictures,
+  parseNameStatus,
+  parseUntracked,
+  restoreCommand,
+  sortChangeRows,
+  mayWriteSheet,
+  notDrawn,
+  outputRefusal,
+  pngSize,
+  redraw,
+  retakeText,
+  SHEET_GENERATOR,
+  sheetHtml,
+  shareOf,
+  slugOf,
+  sortRows,
+  themeOf,
+} from "../scripts/svgshot/redraw.mjs";
 import {
   bakeable,
   bakeColour,
@@ -66,10 +108,12 @@ import {
   framesIn,
   frameView,
   inlineSvgsIn,
+  nativeTextField,
   naturalSize,
   oneLine,
   scopeIds,
   selectLabel,
+  shadowShowsThrough,
   underlineBand,
   untransformBox,
   unzoom,
@@ -309,6 +353,52 @@ describe("bundles", () => {
     }
   });
 
+  test("is drawn again by redraw, which checks for the user name unless told not to", async () => {
+    // redraw wants every style the converter reads: the rest are given as absent.
+    const short = bundleOf(measured);
+    const bundle = structuredClone(short);
+    const extra = SNAPSHOT_STYLES.filter((s) => !STYLES.includes(s));
+    bundle.styles = [...STYLES, ...extra];
+    for (const row of bundle.snapshot.documents[0].layout.styles) row.push(...extra.map(() => -1));
+    const { svg, misses } = await renderBundle(bundle);
+    assert.equal(svg, (await renderBundle(short)).svg);
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "redraw-test-"));
+    try {
+      const bundlesRoot = path.join(root, "bundles");
+      const docsRoot = path.join(root, "docs");
+      fs.mkdirSync(path.join(docsRoot, "Images"), { recursive: true });
+      const png = Buffer.from("the picture");
+      fs.writeFileSync(path.join(docsRoot, "Images/x.png"), png);
+      writeBundle(bundlesRoot, "Images/x.png", short, png, misses);
+      const args = { bundlesRoot, docsRoot, out: "Images/x.png" };
+      assert.match((await redraw({ ...args, user: "nobody" })).retake, /^the bundle has no display, /);
+      writeBundle(bundlesRoot, "Images/x.png", bundle, png, misses);
+      const drawn = await redraw({ ...args, user: "nobody" });
+      assert.deepEqual(drawn.notes, []);
+      assert.match(drawn.svg, />Shown<\/text>/);
+      // The page's text holds "Shown": as a user name, it fails the picture, unless the
+      // caller (sheet.mjs alone) turns the check off.
+      await assert.rejects(redraw({ ...args, user: "SHOWN" }), /holds the Windows user name/);
+      assert.equal((await redraw({ ...args, user: "SHOWN", checkUserName: false })).svg, drawn.svg);
+      // A PNG that is not the bundle's is a retake, or with `stale` a note on a drawing.
+      fs.writeFileSync(path.join(docsRoot, "Images/x.png"), Buffer.from("another picture"));
+      const why = "the PNG is not the one the bundle was taken with";
+      assert.deepEqual(await redraw({ ...args, user: "nobody" }), { retake: why });
+      assert.deepEqual((await redraw({ ...args, user: "nobody", stale: true })).notes, [why]);
+      // A question the bundle has no answer for: its text is the detail, kept out of the reason.
+      writeBundle(bundlesRoot, "Images/x.png", bundle, png, []);
+      fs.writeFileSync(path.join(docsRoot, "Images/x.png"), png);
+      const asked = await redraw({ ...args, user: "nobody" });
+      assert.equal(asked.retake, "no answer for 1 question");
+      assert.equal(retakeText(asked), `no answer for 1 question: ${misses[0]}`);
+      assert.deepEqual(await redraw({ ...args, out: "Images/y.png", user: "nobody" }), {
+        retake: "there is no bundle",
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("counts each question a bundle has no answer for, once", async () => {
     const { misses } = await renderBundle(
       bundleOf((key) => ({ ...measured(key), allRuns: [], widths: [], metrics: {} })),
@@ -317,6 +407,78 @@ describe("bundles", () => {
       misses.map((m) => m.split(" ")[0]),
       ["fonts", "metrics", "width"],
     );
+  });
+
+  // The select's box with a blurred outer shadow and the background colour `bg`: the shadow
+  // is drawn outside the border box only, as Chromium paints it (shadowShowsThrough).
+  const shadowed = (bg, clip = "border-box") => {
+    const bundle = bundleOf(measured);
+    bundle.styles = [...STYLES, "box-shadow", "background-clip"];
+    const { strings, documents } = bundle.snapshot;
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const styles = documents[0].layout.styles;
+    for (const st of styles) st.push(s("none"), s("border-box"));
+    styles[2][1] = s(bg);
+    styles[2][STYLES.length] = s("rgba(0, 0, 0, 0.5) 2px 2px 3px 0px");
+    styles[2][STYLES.length + 1] = s(clip);
+    return renderBundle(bundle);
+  };
+
+  test("clips an outer shadow to outside a box whose background does not cover it", async () => {
+    // Transparent, translucent, or clipped inside the border box: the shadow would show through.
+    for (const [bg, clip] of [
+      ["rgba(0, 0, 0, 0)", "border-box"],
+      ["rgba(240, 240, 240, 0.5)", "border-box"],
+      ["rgb(240, 240, 240)", "padding-box"],
+    ]) {
+      const { svg } = await shadowed(bg, clip);
+      assert.match(
+        svg,
+        /<clipPath id="(\w+)"><path clip-rule="evenodd" d="M7\.5 7\.5H216\.5V36\.5H7\.5ZM10 10h200v20h-200Z"\/><\/clipPath>/,
+        `${bg} ${clip}`,
+      );
+      assert.match(
+        svg,
+        /<g clip-path="url\(#\w+\)"><rect x="12" y="12" width="200" height="20" fill="rgba\(0, 0, 0, 0\.5\)" filter=/,
+      );
+    }
+    assert.equal(shadowShowsThrough({ "background-color": "rgb(1, 2, 3)" }), false);
+    assert.equal(
+      shadowShowsThrough({ "background-color": "rgb(1, 2, 3)", "background-clip": "border-box, content-box" }),
+      true,
+    );
+    // An opaque colour over the whole border box hides the shadow under it: no clip.
+    const { svg } = await shadowed("rgb(240, 240, 240)");
+    assert.doesNotMatch(svg, /clip-rule="evenodd"/);
+    assert.match(svg, /<rect x="12" y="12" width="200" height="20" fill="rgba\(0, 0, 0, 0\.5\)" filter=/);
+  });
+
+  test("draws a text field left with the browser's border and background as Chromium's native one", () => {
+    const own = {
+      appearance: "auto",
+      "background-color": "rgb(255, 255, 255)",
+      "background-image": "none",
+      ...Object.fromEntries(
+        ["top", "right", "bottom", "left"].flatMap((s) => [
+          [`border-${s}-style`, "inset"],
+          [`border-${s}-width`, "2px"],
+          [`border-${s}-color`, "rgb(118, 118, 118)"],
+        ]),
+      ),
+    };
+    const field = (style, attrs = {}, name = "INPUT") => ({ style: { ...own, ...style }, node: { name, attrs } });
+    assert.equal(nativeTextField(field({})), true);
+    assert.equal(nativeTextField(field({}, { type: "password" })), true);
+    // Styled, or not a text field: drawn from its style.
+    assert.equal(nativeTextField(field({ "border-left-color": "rgb(0, 0, 0)" })), false);
+    assert.equal(nativeTextField(field({ "background-color": "rgb(250, 250, 250)" })), false);
+    assert.equal(nativeTextField(field({ "border-top-left-radius": "3px" })), false);
+    assert.equal(nativeTextField(field({ appearance: "none" })), false);
+    assert.equal(nativeTextField(field({}, { type: "checkbox" })), false);
+    assert.equal(nativeTextField(field({}, {}, "TEXTAREA")), false);
   });
 
   test("refuses a bundle of another version, the one before this format included", async () => {
@@ -1107,5 +1269,595 @@ describe("web fonts as WOFF2", () => {
       "italic",
     );
     assert.equal(css, 'font-family:"f0";font-weight:normal;font-style:normal');
+  });
+});
+
+// redraw.mjs's parts that need no browser: what sheet.mjs lists, where it may write, and the page.
+describe("the sheet", () => {
+  const PNG = (w, h) => {
+    const b = Buffer.alloc(33);
+    b.writeUInt32BE(0x89504e47, 0);
+    b.write("IHDR", 12, "latin1");
+    b.writeUInt32BE(w, 16);
+    b.writeUInt32BE(h, 20);
+    return b;
+  };
+
+  test("names a picture's files by its path and theme", () => {
+    assert.equal(slugOf("IDE/Menu/Images/Menu_File.light.png"), "IDE__Menu__Images__Menu_File.light");
+    assert.equal(themeOf("a/X.light.png"), "light");
+    assert.equal(themeOf("a/X.png"), "dark");
+    assert.deepEqual(judgedFiles("a/X.png"), {
+      png: "a__X.png",
+      svg: "a__X.svg",
+      render: "a__X.svg-render.png",
+      diff: "a__X.svg-diff.png",
+    });
+    assert.deepEqual(pngSize(PNG(800, 600)), [800, 600]);
+    assert.equal(pngSize(Buffer.from("not a png at all, but long enough")), null);
+    assert.deepEqual(shareOf(["a", "b", "c", "d", "e"], { k: 1, of: 2 }), ["b", "d"]);
+  });
+
+  test("lists every PNG with whether an SVG is beside it, the output trees left out", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "sheet-list-"));
+    try {
+      for (const f of ["b/Y.png", "b/Y.svg", "a/X.light.png", "_site/Z.png", "_site-offline/Z.png", "c/d.txt"]) {
+        fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true });
+        fs.writeFileSync(path.join(root, f), "x");
+      }
+      assert.deepEqual(listPictures(root), [
+        { out: "a/X.light.png", svg: false },
+        { out: "b/Y.png", svg: true },
+      ]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("is never written under docs or where git would take it", () => {
+    const docs = path.join(REPO_ROOT, "docs");
+    assert.match(outputRefusal(path.join(docs, "sheet"), [docs]), /is under/);
+    assert.match(outputRefusal(docs, [docs]), /is under/);
+    // A docs folder given elsewhere is refused the same way.
+    const elsewhere = path.join(os.tmpdir(), "sheet-docs");
+    assert.match(outputRefusal(path.join(elsewhere, "x"), [elsewhere]), /is under/);
+    // Inside the repository: a folder git ignores is allowed, any other refused.
+    assert.equal(outputRefusal(path.join(REPO_ROOT, ".svgshot-bundles", "sheet"), [docs]), null);
+    assert.match(outputRefusal(path.join(REPO_ROOT, "scripts", "sheet"), [docs]), /does not ignore/);
+    assert.match(outputRefusal(REPO_ROOT, [docs]), /root of the git working tree/);
+    // Outside any working tree, as git answers it (here, a stand-in).
+    const noRepo = () => ({ status: 128, stdout: "" });
+    assert.equal(outputRefusal(path.join(os.tmpdir(), "sheet"), [docs], noRepo), null);
+    const unsure = (args) =>
+      args[0] === "rev-parse" ? { status: 0, stdout: os.tmpdir() } : { status: 128, stdout: "" };
+    assert.match(outputRefusal(path.join(os.tmpdir(), "sheet"), [docs], unsure), /could not say/);
+  });
+
+  test("replaces only a folder that is new, empty or a sheet", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "sheet-out-"));
+    try {
+      assert.equal(mayWriteSheet(path.join(root, "new")), true);
+      assert.equal(mayWriteSheet(root), true);
+      fs.writeFileSync(path.join(root, "index.html"), "<p>someone's page</p>");
+      assert.equal(mayWriteSheet(root), false);
+      fs.writeFileSync(path.join(root, "index.html"), sheetHtml({ rows: [], plain: [], bar: 0.25, all: false }));
+      assert.equal(mayWriteSheet(root), true);
+      assert.equal(mayWriteSheet(path.join(root, "index.html")), false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("puts the judged pictures worst first, those not drawn after them", () => {
+    const rows = [
+      { out: "b.png", pct96: 0.3 },
+      { out: "c.png", error: "x" },
+      { out: "a.png", pct96: 5 },
+      { out: "d.png", pct96: 0.3 },
+    ];
+    assert.deepEqual(
+      sortRows(rows).map((r) => r.out),
+      ["a.png", "b.png", "d.png", "c.png"],
+    );
+    assert.deepEqual(notDrawn({ resizer: 1, "a frame of another process": 2 }), [
+      ["a frame of another process", 2],
+      ["resizer", 1],
+    ]);
+  });
+
+  test("writes a page that links each picture's files and escapes what it shows", () => {
+    const files = (out) => ({ ...judgedFiles(out) });
+    const html = sheetHtml({
+      rows: [
+        {
+          out: "IDE/A&B.png",
+          theme: "dark",
+          size: [800, 600],
+          pct96: 0.4,
+          pct32: 1,
+          pct8: 2,
+          faithful: false,
+          source: "bundle",
+          notes: [],
+          notDrawn: [["filter <x>", 2]],
+          files: files("IDE/A&B.png"),
+        },
+        {
+          out: "IDE/Z.light.png",
+          theme: "light",
+          size: [10, 10],
+          pct96: 9,
+          pct32: 9,
+          pct8: 9,
+          source: "file",
+          files: files("IDE/Z.light.png"),
+        },
+        {
+          out: "IDE/Gone.png",
+          theme: "dark",
+          size: null,
+          error: "the bundle is of format 1",
+          files: { png: "IDE__Gone.png" },
+        },
+      ],
+      plain: [{ out: "Other/P.png", size: [5, 6], files: { png: "Other__P.png" } }],
+      bar: 0.25,
+      all: false,
+    });
+    assert.ok(html.includes(`<meta name="generator" content="${SHEET_GENERATOR}">`));
+    assert.ok(html.includes("<title>Pictures with no SVG</title>"));
+    // Worst first, and the one not drawn after the drawn ones.
+    const order = ["IDE/Z.light.png", "IDE/A&amp;B.png", "IDE/Gone.png"].map((t) => html.indexOf(`<h3>${t}</h3>`));
+    assert.ok(
+      order.every((i, k) => i > 0 && (k === 0 || i > order[k - 1])),
+      String(order),
+    );
+    assert.ok(html.includes('href="pictures/IDE__A%26B.svg-diff.png"'));
+    assert.ok(html.includes('src="pictures/IDE__A%26B.svg-render.png"'));
+    assert.ok(html.includes("the converter did not draw: filter &lt;x&gt; x2"));
+    assert.ok(html.includes("<b>not drawn: the bundle is of format 1</b>"));
+    assert.ok(html.includes("the SVG file beside the PNG"));
+    assert.ok(html.includes("Other/P.png, 5 x 6 px"));
+    assert.ok(!html.includes("IDE__Gone.svg"));
+    assert.ok(sheetHtml({ rows: [], plain: [], bar: 0.25, all: true }).includes("Every picture against its SVG"));
+  });
+});
+
+// The sheet of changes against a git revision (sheet.mjs --against): the change list from git's
+// output, the comparison of two pictures over two sizes, the noise rule, the order and the page.
+describe("the change sheet", () => {
+  // An image of one colour, `w` by `h`, and a PNG file of it; `paint` changes pixels.
+  const image = (w, h, grey = 100, paint = () => {}) => {
+    const rgba = new Uint8Array(w * h * 4);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        rgba.set([grey, grey, grey, 255], i);
+        paint(rgba, x, y, i);
+      }
+    return { width: w, height: h, rgba };
+  };
+  const setGrey = (x0, y0, x1, y1, grey) => (rgba, x, y, i) => {
+    if (x >= x0 && x < x1 && y >= y0 && y < y1) rgba.set([grey, grey, grey, 255], i);
+  };
+
+  test("reads the change list from git's output, the PNGs only", () => {
+    const text = [
+      "M",
+      "IDE/A.png",
+      "A",
+      "IDE/B.light.png",
+      "D",
+      "IDE/C.png",
+      "M",
+      "IDE/page.md",
+      "T",
+      "x/D.PNG",
+      "",
+    ].join("\0");
+    assert.deepEqual(parseNameStatus(text), [
+      { out: "IDE/A.png", status: "modified" },
+      { out: "IDE/B.light.png", status: "added" },
+      { out: "IDE/C.png", status: "deleted" },
+      { out: "x/D.PNG", status: "modified" },
+    ]);
+    assert.deepEqual(parseNameStatus(""), []);
+    // The build's output trees are not pictures of the docs, and a path listed twice is one.
+    assert.deepEqual(parseNameStatus(["A", "_site/Z.png", "A", "a.png", "M", "a.png", ""].join("\0")), [
+      { out: "a.png", status: "added" },
+    ]);
+    assert.deepEqual(parseUntracked("n/New.png\0n/note.txt\0"), [{ out: "n/New.png", status: "added" }]);
+  });
+
+  test("asks git, in the docs folder, for the revision's commit and what differs from it", () => {
+    const calls = [];
+    const git = (args, cwd) => {
+      calls.push({ args, cwd });
+      const a = args.join(" ");
+      if (a === "rev-parse --show-prefix") return { status: 0, stdout: "docs/\n" };
+      if (a === "rev-parse --verify --quiet main^{commit}") return { status: 0, stdout: `${"ab12".repeat(10)}\n` };
+      if (a === "rev-parse --verify --quiet nope^{commit}") return { status: 1, stdout: "" };
+      if (args[0] === "rev-parse" && args[1] === "--short=8") return { status: 0, stdout: "ab12ab12\n" };
+      if (args[0] === "diff") return { status: 0, stdout: "M\0a.png\0D\0b.png\0" };
+      if (args[0] === "ls-files") return { status: 0, stdout: "c.png\0" };
+      return { status: 128, stdout: "" };
+    };
+    const found = changedPictures("/some/docs", "main", git);
+    assert.equal(found.hash, "ab12".repeat(10));
+    assert.equal(found.short, "ab12ab12");
+    assert.equal(found.prefix, "docs/");
+    assert.deepEqual(found.pictures, [
+      { out: "a.png", status: "modified" },
+      { out: "b.png", status: "deleted" },
+      { out: "c.png", status: "added" },
+    ]);
+    assert.ok(calls.every((c) => c.cwd === "/some/docs"));
+    // It compares the working tree with the commit, named by its hash, relative to the folder.
+    const diff = calls.find((c) => c.args[0] === "diff").args;
+    assert.deepEqual(diff.slice(0, 5), ["diff", "--name-status", "--no-renames", "--relative", "-z"]);
+    assert.ok(diff.includes("ab12".repeat(10)));
+    assert.throws(() => changedPictures("/some/docs", "nope", git), /no revision nope/);
+    assert.throws(() => changedPictures("/some/docs", "--output=x", git), /not a revision/);
+    assert.throws(() => changedPictures("/some/docs", "", git), /not a revision/);
+    assert.throws(
+      () => changedPictures("/x", "main", () => ({ status: 128, stdout: "" })),
+      /not in a git working tree/,
+    );
+  });
+
+  test("applies the noise rule the screenshotter applies", () => {
+    const a = image(100, 100);
+    assert.equal(withinNoise(a, image(100, 100)), true);
+    // 50 pixels (0.5%) off by 16 levels: noise; 51 pixels, or 17 levels: not.
+    const patch = (n, grey) =>
+      image(100, 100, 100, (rgba, x, y, i) => (y * 100 + x < n ? rgba.set([grey, grey, grey, 255], i) : 0));
+    assert.equal(withinNoise(a, patch(50, 116)), true);
+    assert.equal(withinNoise(a, patch(51, 116)), false);
+    assert.equal(withinNoise(a, patch(1, 117)), false);
+    // Pictures of two sizes are never the same picture.
+    assert.equal(withinNoise(a, image(100, 101)), false);
+    // A rectangle left out is not looked at: row 0 holds all 80 changed pixels, a smaller one not.
+    assert.equal(withinNoise(a, patch(80, 200), [{ x0: 0, y0: 0, x1: 100, y1: 1 }]), true);
+    assert.equal(withinNoise(a, patch(80, 200), [{ x0: 0, y0: 0, x1: 79, y1: 1 }]), false);
+  });
+
+  test("compares two pictures of one size over their pixels", () => {
+    const a = image(10, 10);
+    const b = image(10, 10, 100, setGrey(0, 0, 2, 5, 220)); // 10 pixels, 120 levels
+    const c = image(10, 10, 100, setGrey(0, 0, 1, 1, 105)); // 1 pixel, 5 levels
+    const st = compareImages(a, b);
+    assert.deepEqual([st.sameSize, st.total, st.differing, st.beyond, st.faint], [true, 100, 10, 10, 0]);
+    assert.equal(st.pctBeyond, 10);
+    assert.equal(st.noiseOnly, false);
+    const faint = compareImages(a, c);
+    assert.deepEqual([faint.differing, faint.beyond, faint.faint, faint.pctBeyond], [1, 0, 1, 0]);
+    assert.equal(faint.noiseOnly, true);
+    assert.equal(compareImages(a, image(10, 10)).noiseOnly, true);
+  });
+
+  test("compares two pictures of two sizes aligned at the top left, and the map shows the larger", () => {
+    const small = image(4, 2);
+    const large = image(6, 5, 100, setGrey(0, 0, 1, 1, 250));
+    const st = compareImages(small, large);
+    assert.equal(st.sameSize, false);
+    assert.deepEqual(
+      [st.old, st.new, st.canvas, st.common],
+      [
+        [4, 2],
+        [6, 5],
+        [6, 5],
+        [4, 2],
+      ],
+    );
+    // The one pixel of the shared area that differs, and the 22 that only the larger has.
+    assert.deepEqual([st.total, st.differing, st.beyond], [30, 23, 23]);
+    assert.equal(st.noiseOnly, false);
+    // The same the other way round: the shared area is the same, the others are only the old picture's.
+    assert.equal(compareImages(large, small).differing, 23);
+    const map = decodePng(changeMap(small, large));
+    assert.deepEqual([map.width, map.height], [6, 5]);
+    const at = (x, y) => [...map.rgba.subarray((y * 6 + x) * 4, (y * 6 + x) * 4 + 3)];
+    assert.deepEqual(at(0, 0), [255, 0, 0]); // 150 levels: red
+    assert.deepEqual(at(1, 0), at(2, 1)); // the same pixel: dark grey
+    assert.ok(at(1, 0)[0] === at(1, 0)[1] && at(1, 0)[0] < 60);
+    assert.deepEqual(at(5, 4), [220, 0, 220]); // only the new picture has it: magenta
+    assert.deepEqual(
+      [...decodePng(changeMap(large, small)).rgba.subarray((4 * 6 + 5) * 4, (4 * 6 + 5) * 4 + 3)],
+      [0, 190, 220],
+    );
+    // One grey level is yellow.
+    const one = decodePng(changeMap(image(2, 2), image(2, 2, 100, setGrey(0, 0, 1, 1, 101))));
+    assert.deepEqual([...one.rgba.subarray(0, 3)], [255, 255, 0]);
+  });
+
+  test("makes a row for each kind of picture, the map only for one in both", () => {
+    const png = (img) => encodePng(img);
+    const same = compareRevisionPicture({ out: "a/X.png", status: "modified" }, png(image(8, 8)), png(image(8, 8)));
+    assert.equal(same.row.kind, "noise");
+    assert.equal(same.row.stats.differing, 0);
+    assert.deepEqual(same.row.files, { old: "a__X.old.png", new: "a__X.new.png", map: "a__X.change.png" });
+    assert.ok(Buffer.isBuffer(same.map));
+    const moved = compareRevisionPicture(
+      { out: "a/Y.light.png", status: "modified" },
+      png(image(8, 8)),
+      png(image(8, 8, 100, setGrey(0, 0, 8, 8, 200))),
+    );
+    assert.equal(moved.row.kind, "changed");
+    assert.equal(moved.row.theme, "light");
+    const added = compareRevisionPicture({ out: "n.png", status: "added" }, null, png(image(3, 3)));
+    assert.deepEqual(
+      [added.row.kind, added.map, added.row.sizeNew, added.row.files],
+      ["added", null, [3, 3], { new: "n.new.png" }],
+    );
+    const gone = compareRevisionPicture({ out: "g.png", status: "deleted" }, png(image(3, 4)), null);
+    assert.deepEqual([gone.row.kind, gone.row.sizeOld, gone.row.files], ["deleted", [3, 4], { old: "g.old.png" }]);
+    const bad = compareRevisionPicture(
+      { out: "b.png", status: "modified" },
+      Buffer.from("not a png"),
+      png(image(2, 2)),
+    );
+    assert.equal(bad.row.kind, "error");
+    assert.match(bad.row.error, /not a PNG/);
+    assert.equal(bad.map, null);
+    assert.deepEqual(changeFiles("a/X.light.png"), {
+      old: "a__X.light.old.png",
+      new: "a__X.light.new.png",
+      map: "a__X.light.change.png",
+    });
+  });
+
+  test("puts the most changed first, then the noise, the added and the deleted", () => {
+    const row = (out, kind, pctBeyond, pctDiffering = pctBeyond) => ({
+      out,
+      kind,
+      stats: pctBeyond === undefined ? undefined : { pctBeyond, pctDiffering },
+    });
+    const rows = [
+      row("d.png", "deleted"),
+      row("n2.png", "noise", 0, 0.2),
+      row("a.png", "added"),
+      row("c1.png", "changed", 5),
+      row("e.png", "error"),
+      row("n1.png", "noise", 0, 0.4),
+      row("c3.png", "changed", 40),
+      row("c2.png", "changed", 5, 9),
+      row("b.png", "added"),
+    ];
+    assert.deepEqual(
+      sortChangeRows(rows).map((r) => r.out),
+      ["c3.png", "c2.png", "c1.png", "e.png", "n1.png", "n2.png", "a.png", "b.png", "d.png"],
+    );
+  });
+
+  test("quotes a path with a space in the command that restores pictures", () => {
+    assert.equal(
+      restoreCommand("HEAD", "docs/", ["IDE/A.png", "Two Words/B.light.png"]),
+      'git checkout HEAD -- docs/IDE/A.png "docs/Two Words/B.light.png"',
+    );
+    assert.equal(restoreCommand("HEAD~1", "", ["a.png"]), "git checkout HEAD~1 -- a.png");
+  });
+
+  test("writes a page that names the revision, orders its sections and shows the restore command", () => {
+    const rows = [
+      { out: "IDE/Gone.png", kind: "deleted", theme: "dark", sizeOld: [5, 6], files: { old: "IDE__Gone.old.png" } },
+      { out: "IDE/New&.png", kind: "added", theme: "dark", sizeNew: [7, 8], files: { new: "IDE__New&.new.png" } },
+      {
+        out: "IDE/Noisy one.png",
+        kind: "noise",
+        theme: "dark",
+        sizeOld: [10, 10],
+        sizeNew: [10, 10],
+        stats: compareImages(image(10, 10), image(10, 10, 100, setGrey(0, 0, 1, 1, 104))),
+        files: { old: "o.png", new: "n.png", map: "m.png" },
+      },
+      {
+        out: "IDE/Big.png",
+        kind: "changed",
+        theme: "dark",
+        sizeOld: [4, 2],
+        sizeNew: [6, 5],
+        stats: compareImages(image(4, 2), image(6, 5, 100, setGrey(0, 0, 1, 1, 250))),
+        files: { old: "big.old.png", new: "big.new.png", map: "big.change.png" },
+      },
+    ];
+    const html = changeSheetHtml({ rows, rev: "HEAD", hash: "abcdef0123456789", short: "abcdef01", prefix: "docs/" });
+    assert.ok(html.includes(`<meta name="generator" content="${SHEET_GENERATOR}">`));
+    assert.ok(html.includes("<title>Pictures changed since HEAD (abcdef01)</title>"));
+    assert.ok(html.includes("abcdef0123456789"));
+    const at = (t) => html.indexOf(t);
+    const order = [
+      '<h2 id="changed">',
+      "<h3>IDE/Big.png</h3>",
+      '<h2 id="noise">',
+      "<h3>IDE/Noisy one.png</h3>",
+      '<h2 id="added">',
+      "<h3>IDE/New&amp;.png</h3>",
+      '<h2 id="deleted">',
+      "<h3>IDE/Gone.png</h3>",
+    ].map(at);
+    assert.ok(
+      order.every((i, k) => i > 0 && (k === 0 || i > order[k - 1])),
+      String(order),
+    );
+    assert.ok(html.includes("most likely rewritten in error"));
+    assert.ok(html.includes("<pre>git checkout HEAD -- &quot;docs/IDE/Noisy one.png&quot;</pre>"));
+    assert.ok(html.includes("<pre>node scripts/shoot_docs.mjs --cleanup</pre>"));
+    assert.ok(html.includes("size changed from 4 x 2 px to 6 x 5 px"));
+    assert.ok(html.includes("compared aligned at the top left over the common 4 x 2 px"));
+    assert.ok(html.includes('href="pictures/big.change.png"'));
+    assert.ok(html.includes('href="pictures/IDE__New%26.new.png"'));
+    // One figure for an added or a deleted picture.
+    assert.ok(!html.includes("IDE__Gone.new.png"));
+    // With nothing within noise there is no command.
+    const none = changeSheetHtml({
+      rows: rows.filter((r) => r.kind !== "noise"),
+      rev: "v1",
+      hash: "h",
+      short: "s",
+      prefix: "",
+    });
+    assert.ok(!none.includes("git checkout"));
+    assert.ok(!none.includes("--cleanup"));
+    assert.ok(none.includes("<title>Pictures changed since v1 (s)</title>"));
+  });
+
+  test("names the cleanup command with the sheet's revision, --only and --docs", () => {
+    assert.equal(cleanupCommand("HEAD"), "node scripts/shoot_docs.mjs --cleanup");
+    assert.equal(
+      cleanupCommand("HEAD~1", { only: "^IDE/(A|B)", docs: "D:/two words/docs" }),
+      'node scripts/shoot_docs.mjs --cleanup --against HEAD~1 --only "^IDE/(A|B)" --out "D:/two words/docs"',
+    );
+  });
+});
+
+describe("the picture at a git revision", () => {
+  const png = (tag) => Buffer.from(`png ${tag}`);
+  // The noise rule as a table: a capture is near the pictures named beside it.
+  const nearTo = (pairs) => (a, b) =>
+    pairs.some(([x, y]) => (a.equals(x) && b.equals(y)) || (a.equals(y) && b.equals(x)));
+  const HEAD = png("head");
+  const DRIFT = png("drift"); // within noise of HEAD
+  const CHANGE = png("change"); // an earlier run's real change
+  const CHANGE2 = png("change2"); // within noise of CHANGE, not of HEAD
+  const OTHER = png("other"); // near nothing
+  const near = nearTo([
+    [HEAD, DRIFT],
+    [CHANGE, CHANGE2],
+  ]);
+  const fate = (capture, revision, disk) => pictureFate(capture, revision, disk, near);
+
+  test("a capture within noise of the revision's picture leaves the file as the revision has it", () => {
+    // the file drifted, or is gone: put back
+    assert.deepEqual(fate(HEAD, HEAD, DRIFT), { state: "restored", write: HEAD });
+    assert.deepEqual(fate(DRIFT, HEAD, DRIFT), { state: "restored", write: HEAD });
+    assert.deepEqual(fate(DRIFT, HEAD, null), { state: "restored", write: HEAD });
+    // an earlier run's real change goes too, when the IDE draws the revision's picture again
+    assert.deepEqual(fate(HEAD, HEAD, CHANGE), { state: "restored", write: HEAD });
+    // the file is the revision's already
+    assert.deepEqual(fate(HEAD, HEAD, HEAD), { state: "unchanged", write: null });
+    assert.deepEqual(fate(DRIFT, HEAD, HEAD), { state: "noise", write: null });
+  });
+
+  test("a capture beyond noise of the revision's picture is compared with the file", () => {
+    assert.deepEqual(fate(CHANGE, HEAD, CHANGE), { state: "unchanged", write: null });
+    assert.deepEqual(fate(CHANGE2, HEAD, CHANGE), { state: "noise", write: null });
+    assert.deepEqual(fate(OTHER, HEAD, CHANGE), { state: "updated", write: OTHER });
+    assert.deepEqual(fate(OTHER, HEAD, HEAD), { state: "updated", write: OTHER });
+    assert.deepEqual(fate(OTHER, HEAD, null), { state: "new", write: OTHER });
+  });
+
+  test("with no picture at the revision, the file is the only reference", () => {
+    assert.deepEqual(fate(DRIFT, null, DRIFT), { state: "unchanged", write: null });
+    assert.deepEqual(fate(DRIFT, null, HEAD), { state: "noise", write: null });
+    assert.deepEqual(fate(OTHER, null, HEAD), { state: "updated", write: OTHER });
+    assert.deepEqual(fate(OTHER, null, null), { state: "new", write: OTHER });
+  });
+
+  test("a picture put back takes the revision's SVG, or loses its own when the revision has none", () => {
+    const svg = Buffer.from("<svg/>\n");
+    assert.equal(svgFate(svg, Buffer.from("<svg/>\r\n")), "keep");
+    assert.equal(svgFate(svg, svg), "keep");
+    assert.equal(svgFate(svg, Buffer.from("<svg>x</svg>\n")), "write");
+    assert.equal(svgFate(svg, null), "write");
+    assert.equal(svgFate(null, svg), "remove");
+    assert.equal(svgFate(null, null), "keep");
+  });
+
+  test("cleanup resets a modified picture within noise, and leaves real changes, added and deleted ones", () => {
+    const before = new Map([
+      ["a.png", HEAD],
+      ["b.png", HEAD],
+      ["c.png", HEAD],
+    ]);
+    const after = new Map([
+      ["a.png", DRIFT],
+      ["b.png", OTHER],
+      ["c.png", null],
+    ]);
+    const plan = planCleanup(
+      [
+        { out: "a.png", status: "modified" },
+        { out: "b.png", status: "modified" },
+        { out: "c.png", status: "modified" },
+        { out: "n.png", status: "added" },
+        { out: "d.png", status: "deleted" },
+      ],
+      (out) => before.get(out),
+      (out) => after.get(out),
+      (a, b) => {
+        if (!b) throw new Error("not a PNG");
+        return near(a, b);
+      },
+    );
+    assert.deepEqual(plan, {
+      reset: ["a.png"],
+      real: ["b.png"],
+      added: ["n.png"],
+      deleted: ["d.png"],
+      unreadable: [{ out: "c.png", error: "not a PNG" }],
+    });
+  });
+
+  test("reads git cat-file's batch output, a missing name and a name with spaces included", () => {
+    const names = ["h:docs/a.png", "h:docs/two words.svg", "h:docs/b.png"];
+    const buf = Buffer.concat([
+      Buffer.from(`${"a".repeat(40)} blob 3\nPNG\n`),
+      Buffer.from("h:docs/two words.svg missing\n"),
+      Buffer.from(`${"b".repeat(40)} blob 4\n\n\0\n\n\n`),
+    ]);
+    const got = parseCatFileBatch(buf, names);
+    assert.equal(got.get(names[0]).toString(), "PNG");
+    assert.equal(got.get(names[1]), null);
+    assert.deepEqual([...got.get(names[2])], [10, 0, 10, 10]);
+    assert.throws(() => parseCatFileBatch(Buffer.from(""), ["x"]), /ends before x/);
+  });
+
+  test("names the revision's commit and the folder's place in the repository", () => {
+    const git = (args) => {
+      const a = args.join(" ");
+      if (a === "rev-parse --show-prefix") return { status: 0, stdout: "docs/\n" };
+      if (a === "rev-parse --verify --quiet HEAD^{commit}") return { status: 0, stdout: `${"cd34".repeat(10)}\n` };
+      if (args[1] === "--short=8") return { status: 0, stdout: "cd34cd34\n" };
+      return { status: 1, stdout: "" };
+    };
+    assert.deepEqual(revisionOf("/r/docs", "HEAD", git), {
+      hash: "cd34".repeat(10),
+      short: "cd34cd34",
+      prefix: "docs/",
+    });
+    assert.throws(() => revisionOf("/r/docs", "nope", git), /no revision nope/);
+    assert.throws(() => revisionOf("/r/docs", "-x", git), /not a revision/);
+  });
+
+  test("reads a revision's files in one process and puts a text file back as a checkout writes it", (t) => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-revision-"));
+    t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
+    const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] });
+    try {
+      git("init", "-q");
+    } catch {
+      t.skip("no git");
+      return;
+    }
+    // the same line endings on every machine; the index is written from the same files
+    git("config", "core.autocrlf", "false");
+    const docs = path.join(repo, "docs");
+    fs.mkdirSync(path.join(docs, "two words"), { recursive: true });
+    fs.writeFileSync(path.join(docs, "two words", "a.png"), Buffer.from([137, 80, 0, 10, 13, 10]));
+    fs.writeFileSync(path.join(docs, "a.svg"), "<svg/>\n");
+    git("add", ".");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "x");
+    const rev = openRevision(docs, "HEAD");
+    assert.equal(rev.prefix, "docs/");
+    const got = rev.read(["two words/a.png", "a.svg", "none.png"]);
+    assert.deepEqual([...got.get("two words/a.png")], [137, 80, 0, 10, 13, 10]);
+    assert.equal(got.get("a.svg").toString(), "<svg/>\n");
+    assert.equal(got.get("none.png"), null);
+    assert.equal(rev.bytes("a.svg").toString(), "<svg/>\n");
+    // put back by git, as a checkout writes it, and the index left alone
+    fs.writeFileSync(path.join(docs, "a.svg"), "<svg>changed</svg>\n");
+    restoreFromRevision(docs, rev.hash, ["a.svg"]);
+    assert.equal(fs.readFileSync(path.join(docs, "a.svg"), "utf8"), "<svg/>\n");
+    assert.equal(git("status", "--porcelain").toString(), "");
   });
 });

@@ -12,7 +12,7 @@ While the twinBASIC IDE still has a lot of work planned, it already includes a n
 ## Theme System
 {: index="dark mode" }
 
-Fully theme-able, with Dark (default), Light, and Classic (Light) built in. A theme is a short `.theme` text file of `Name: value;` pairs, which can inherit from another theme, so adding your own takes one small file. [Themes](../../tB/IDE/Customising/Themes) explains how.
+Fully theme-able, with six themes built in: Dark (the default), Light, Classic (Light), Aurora (Dark), High Contrast Dark and High Contrast Light. A theme is a short `.theme` text file of `Name: value;` pairs, which can inherit from another theme, so adding your own takes one small file. [Themes](../../tB/IDE/Customising/Themes) explains how.
 
 ## Code Navigation and Structure
 
@@ -61,6 +61,6 @@ The classic file-based view is still used by default, you can activate the new v
 
 Project forms and packages are stored as JSON format data, and you can view this by right-click in Project Explorer and selecting **View As JSON**. This is particularly interesting for packages as it exposes the entire code in a more parseable format.
 
-![The Project Explorer with the Packages folder open, and the right-click menu of CustomControlsPackage with View As JSON highlighted](../Images/22660f54-ff5d-4b21-93d3-39715f1f35ed.png){:width="485" height="409"}
+![The Project Explorer with the Packages folder open, and the right-click menu of CustomControlsPackage with View As JSON highlighted](../Images/22660f54-ff5d-4b21-93d3-39715f1f35ed.png){:width="486" height="409"}
 
-![The CustomControls package shown as JSON in the editor, listing its components with their events, fields and procedures](../Images/a6525b1d-ac22-4303-ae27-7984c20eba0c.png){:width="756" height="198"}
+![The CustomControls package shown as JSON in the editor, listing its components with their events, fields and procedures](../Images/a6525b1d-ac22-4303-ae27-7984c20eba0c.png){:width="757" height="198"}

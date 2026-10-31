@@ -151,6 +151,7 @@ import {
   numberOption,
   parseCli,
   printHelpAndExit,
+  refuseTogether,
   regexOption,
   withUsageError,
 } from "../lib/cli.mjs";
@@ -162,6 +163,8 @@ import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "
 import { composite, uncomposite } from "./lib/shot-composite.mjs";
 import { decodePng, encodePng } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
+import { inRects, withinNoise } from "./lib/shot-change.mjs";
+import { openRevision, pictureFate, planCleanup, restoreFromRevision, svgFate } from "./lib/shot-revision.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
@@ -183,6 +186,7 @@ import {
 } from "./lib/tb-ide.mjs";
 import { dropBundle, writeBundle } from "./svgshot/bundle.mjs";
 import { svgOfPage } from "./svgshot/capture.mjs";
+import { changedPictures } from "./svgshot/redraw.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
 import { holdsUserName, judgeSvg, SVG_FAITHFUL, writeSvg } from "./svgshot/keep.mjs";
 import { stageProject, unpackProject } from "./lib/tb-project.mjs";
@@ -245,7 +249,8 @@ const SCALE = 2;
 const LCD_TEXT = "--disable-lcd-text";
 const BROWSER_ARGS = `--force-device-scale-factor=1 ${LCD_TEXT}`;
 
-const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--ide <twinBASIC.exe>] [--svg] [-h, --help]
+const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--ide <twinBASIC.exe>] [--svg] [--against <rev> | --against-disk] [-h, --help]
+       node scripts/shoot_docs.mjs --cleanup [--dry-run] [--only <regex>] [--out <dir>] [--against <rev>]
 
 Takes the pictures of the IDE that the documentation shows, from IDEs on a
 private desktop, at 2x, each in the IDE's dark theme (X.png) and then in its Light
@@ -278,10 +283,14 @@ public web pages the FAQ shows, in a Chrome on a private desktop, once (setup
 web; it and webpage need the network).
 A light picture can be a few pixels off the dark one's size, since Light lays
 the window out a little differently; the site shows each at its own size.
-Each setup is one IDE, started when a picture in it is selected. A picture is
-written only when it differs from the file already there by more than a
-capture's noise (a few grey levels at a few edge pixels); each is reported as
-new, updated or unchanged, and the run ends with how many of each
+Each setup is one IDE, started when a picture in it is selected. A capture is
+compared first with the picture as git has it at HEAD (--against, --against-disk),
+then with the file already there: one that is HEAD's picture, but for a capture's
+noise (a few grey levels at a few edge pixels), puts the file back as HEAD has it,
+with its SVG, when it holds anything else (an earlier run's drift), and is
+reported restored; else a picture is written only when it differs from the file
+by more than that noise. Each is reported as new, updated, restored or
+unchanged, and the run ends with how many of each
 theme came out each way. The IDE's registry entries and the
 saved settings of the add-ins it loads are put back afterwards. The help add-in's pane
 shows pages from docs/_site, so run build.bat first for those.
@@ -302,7 +311,8 @@ name.
                    the differing region magnified under them. Also one for each
                    two captures of one state that disagree, named .capture-<n>,
                    one for each picture left as it is because it differs only by
-                   a capture's noise, named .noise, and one of the two themes of
+                   a capture's noise, named .noise, one for each picture restored,
+                   the file and the revision's, named .restored, and one of the two themes of
                    a light picture refused for its size, named .size. Files of
                    the same name are overwritten
   --jobs <n>       how many IDEs run at once (default 6). The setups are queued,
@@ -326,16 +336,41 @@ name.
                    from, goes to the bundle cache for scripts/svgshot/replay.mjs
   --bundles <dir>  with --svg, the bundle cache (default .svgshot-bundles in the
                    repository, which git ignores); never under docs
+  --against <rev>  compare each capture first with the picture as the git revision
+                   <rev> has it (default HEAD), read with git run in the output
+                   folder, in one process for the run's pictures: a capture that
+                   is that picture, or within a capture's noise of it, leaves the
+                   file as the revision has it (restored, with its SVG: the
+                   revision's, or none when it has none), so that a picture does
+                   not drift from the repository's over several runs. A picture
+                   the revision does not have is compared with the file only. With
+                   the default, an output folder outside git is compared with its
+                   files only
+  --against-disk   compare each capture with the file on disk only, as if the
+                   revision had none of the pictures
+  --cleanup        start no IDE: put back every PNG under the output folder that
+                   git reports modified against the revision (--against, default
+                   HEAD) and that is within a capture's noise of the revision's,
+                   with its SVG (the revision's, or none when it has none). An
+                   added or deleted PNG, one that differs beyond noise, and one
+                   whose SVG alone changed are real changes and are left alone.
+                   Prints each path put back and a summary. Takes --only (a PNG is
+                   chosen when the regex matches its dark path or its .light.png),
+                   --out and --against, and none of the options that need an IDE
+  --dry-run        with --cleanup, list what it would put back and change nothing
   -h, --help       print this text and exit
 
 Exit codes:
-  0  every picture was written or was unchanged
+  0  every picture was written or was unchanged (with --cleanup: every modified
+     picture was compared)
   1  a picture failed: an element was not found, the page showed the user name,
      a light picture's size is more than 32 pixels off the dark one's (the IDE
      was not in the state the dark picture shows), the add-in did not build, or
-     the demo project does not compile
+     the demo project does not compile; with --cleanup, a picture could not be
+     read as a PNG
   2  the tool could not run: a refused command line, no IDE, no built site, a
-     registry it could not record, or a crash
+     registry it could not record, no such revision (or, with --against or
+     --cleanup, no git repository), or a crash
   3  the registry or the work folder was not put back; see the lines above`;
 
 const { values } = withUsageError(() =>
@@ -348,12 +383,23 @@ const { values } = withUsageError(() =>
       jobs: { type: "string" },
       ide: { type: "string" },
       svg: { type: "boolean", default: false },
+      against: { type: "string" },
+      "against-disk": { type: "boolean", default: false },
+      cleanup: { type: "boolean", default: false },
+      "dry-run": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
     stopAt: ["help"],
   }),
 );
 if (values.help) printHelpAndExit(USAGE);
+withUsageError(() => {
+  refuseTogether(values, ["against", "against-disk"]);
+  if (values.cleanup)
+    for (const other of ["against-disk", "diffs", "bundles", "jobs", "ide", "svg"])
+      refuseTogether(values, ["cleanup", other]);
+});
+if (values.dryRun && !values.cleanup) die(2, "--dry-run is for --cleanup");
 const only = values.only === undefined ? null : withUsageError(() => regexOption(values.only, { option: "--only" }));
 const jobCount = withUsageError(() =>
   numberOption(values.jobs ?? "6", { option: "--jobs", integer: true, min: 1, max: 16 }),
@@ -374,6 +420,76 @@ for (const [option, root] of [
 }
 // The fonts' cuts are kept beside the bundles, as replay.mjs keeps them (fonts.mjs).
 if (bundlesRoot) useSubsetCache(path.join(bundlesRoot, "subsets"));
+
+// The revision a capture is compared with before the file on disk (--against, HEAD by default;
+// none with --against-disk), and the one --cleanup puts pictures back to.
+const AGAINST = values.against ?? "HEAD";
+
+// --cleanup: no IDE. Every PNG git reports modified against the revision that is within a
+// capture's noise of the revision's goes back to the revision's bytes, with its SVG.
+if (values.cleanup) {
+  let found;
+  let revision;
+  try {
+    found = changedPictures(outRoot, AGAINST);
+    revision = openRevision(outRoot, found.hash);
+  } catch (e) {
+    die(2, e.message);
+  }
+  // --only as a shot's: a picture is chosen when it matches its dark path or its light one.
+  const chosen = (out) => {
+    const dark = out.replace(/\.light\.png$/i, ".png");
+    return !only || only.test(dark) || only.test(dark.replace(/\.png$/i, ".light.png"));
+  };
+  const pictures = found.pictures.filter((p) => chosen(p.out));
+  const modified = pictures.filter((p) => p.status === "modified").map((p) => p.out);
+  const before = revision.read(modified);
+  const decoded = (bytes, what) => {
+    if (!bytes) throw new Error(`${what} has no such file`);
+    return decodePng(bytes);
+  };
+  const plan = planCleanup(
+    pictures,
+    (out) => before.get(out),
+    (out) => readFileSync(path.join(outRoot, out)),
+    (a, b) => withinNoise(decoded(a, AGAINST), decoded(b, "the working tree")),
+  );
+  const svgOf = (out) => out.replace(/\.png$/i, ".svg");
+  const svgBefore = revision.read(plan.reset.map(svgOf));
+  const verb = values.dryRun ? "would be put back" : "put back";
+  // An SVG is text, written as a checkout writes it (line endings), by git, all in one process.
+  const svgWrites = [];
+  for (const out of plan.reset) {
+    const svgFile = path.join(outRoot, svgOf(out));
+    const svgAtRevision = svgBefore.get(svgOf(out));
+    const svgNow = existsSync(svgFile) ? readFileSync(svgFile) : null;
+    const svg = svgFate(svgAtRevision, svgNow);
+    if (!values.dryRun) {
+      writeFileSync(path.join(outRoot, out), before.get(out));
+      if (svg === "write") svgWrites.push(svgOf(out));
+      if (svg === "remove") rmSync(svgFile);
+    }
+    const svgText = {
+      keep: "",
+      write: ", and its SVG",
+      remove: `; its SVG ${values.dryRun ? "would be removed" : "removed"}, as ${found.short} has none`,
+    }[svg];
+    console.log(`${out}: ${verb} as ${found.short} has it${svgText}`);
+  }
+  try {
+    restoreFromRevision(outRoot, found.hash, svgWrites);
+  } catch (e) {
+    die(2, `git could not put the SVGs back: ${e.message}`);
+  }
+  for (const { out, error } of plan.unreadable) console.error(`${out}: not compared: ${error}`);
+  const n = (list, one, many = `${one}s`) => `${list.length} ${list.length === 1 ? one : many}`;
+  console.log(
+    `${AGAINST} (${found.short}): ${n(plan.reset, "picture")} within a capture's noise ${verb}${values.dryRun ? " (a dry run: nothing changed)" : ""}; ` +
+      `${n(plan.real, "real change")} left; skipped ${plan.added.length} added and ${plan.deleted.length} deleted` +
+      (plan.unreadable.length ? `; ${plan.unreadable.length} not compared` : ""),
+  );
+  process.exit(plan.unreadable.length ? 1 : 0);
+}
 
 // test/harness.json gives the IDE's waits their limits (test/harness.md).
 try {
@@ -527,7 +643,8 @@ async function cutoutOff(conn) {
 
 // What one running setup keeps, on its connection as `c.shot` (the detached window's
 // connection shares it): `name` the setup's, for its lines; `reference` the bytes of the
-// file the running shot writes, when there is one, which `capture` prefers the version of a
+// picture the running shot writes as the revision has it (--against) and as its file holds
+// it, a list of those there are (or one, or null), which `capture` prefers the version of a
 // picture that equals; `editedOriginal` the module of the sample that a shot has replaced in
 // the page, to put back; for a light picture, `prefer` the dark picture when no light file is
 // there yet; with --svg, `svg` the SVG of the picture `capture` returned last.
@@ -553,31 +670,10 @@ function writeDiff(name, out, before, after, { suffix = "", labels } = {}) {
   }
 }
 
-// Whether two captures (PNG files) are the same picture but for a capture's noise: one size, no
-// channel of any pixel more than NOISE_LEVELS grey levels apart, and no more than NOISE_SHARE of
-// the pixels apart at all. The noise seen: 1 to 14 levels, along a shadow's or an arrow's edge,
-// at a rounded corner, in a scaled bitmap (34 pixels; 81 on About's Close button; the most, 563
-// along a dialog's top edge, 0.13% of it). A change the IDE draws moves text or colour by far
-// more than 16 levels.
+// Whether two captures (PNG files) are the same picture but for a capture's noise
+// (withinNoise, scripts/lib/shot-change.mjs, which holds the rule and what it rests on).
 // The pixels inside `rects` (unsteadyRects) are left out.
-const NOISE_LEVELS = 16;
-const NOISE_SHARE = 0.005;
-function nearly(a, b, rects = []) {
-  const A = decodePng(a);
-  const B = decodePng(b);
-  if (A.width !== B.width || A.height !== B.height) return false;
-  const most = Math.max(1, Math.floor(A.width * A.height * NOISE_SHARE));
-  let apart = 0;
-  for (let i = 0; i < A.rgba.length; i += 4) {
-    let d = 0;
-    for (let k = 0; k < 4; k++) d = Math.max(d, Math.abs(A.rgba[i + k] - B.rgba[i + k]));
-    if (!d || inRects(rects, (i / 4) % A.width, Math.floor(i / 4 / A.width))) continue;
-    if (d > NOISE_LEVELS || ++apart > most) return false;
-  }
-  return true;
-}
-
-const inRects = (rects, x, y) => rects.some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
+const nearly = (a, b, rects = []) => withinNoise(decodePng(a), decodePng(b), rects);
 
 // Whether two captures are the same picture outside `rects`: byte for byte when there are none.
 function same(a, b, rects) {
@@ -659,7 +755,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     if (clip) params.clip = { ...clip, scale: 1 };
     // A picture that has not changed is final at its first capture once the page is quiet
     // and two frames are drawn, so the page is captured back to back, with no rest, until
-    // one capture equals the file already there or two in a row agree. But a capture is not
+    // one capture equals the picture wanted (the revision's or the file's) or two in a row agree. But a capture is not
     // byte-stable: the compositor draws some pictures in two or more versions, a few pixels
     // to tens of thousands apart, from one capture to the next (a submenu's shadow corner, a
     // gradient's dither, the striped ground round a designer), and no way of taking it
@@ -667,13 +763,16 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     // scrollbars and the alpha channel); and some states are still on their way when the
     // shot's own condition is met (a rename box's colour, a designer's readout fading in). So
     // a picture two captures agree on that is not the file is not kept at once: the captures
-    // go on, CAPTURE_GAPS apart, until one equals the file or CAPTURE_BUDGET_MS have gone,
+    // go on, CAPTURE_GAPS apart, until one equals a picture wanted or CAPTURE_BUDGET_MS have gone,
     // and the last two that agreed are kept. A picture is rewritten only when the IDE draws
     // something else.
+    // The pictures wanted are the revision's (--against) and the file's: a capture equal to
+    // either ends the captures, and keep() decides what it means.
     // A new light picture has no file to equal, and prefers the dark picture (`prefer`) as
     // long as its first capture is within the noise of it: then one the theme does not change
     // comes out with the dark one's pixels. Else it is taken as a new picture.
-    const want = conn.shot.reference;
+    const wants = [conn.shot.reference].flat().filter(Boolean);
+    const want = wants.length > 0;
     let prefer = want ? null : conn.shot.prefer;
     // With --svg, the SVG of the same clip, read while the page is still as captured
     // (the cut-out on, the menu open, the overlay drawn); a cut-out has no background.
@@ -700,7 +799,8 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     for (let i = 0; ; i++) {
       const { data } = await conn.send("Page.captureScreenshot", params);
       const png = Buffer.from(data, "base64");
-      if (want && same(want, png, masks)) return await picked(want);
+      const equal = wants.find((w) => same(w, png, masks));
+      if (equal) return await picked(equal);
       if (prefer && i === 0 && !nearly(prefer, png, masks)) prefer = null;
       if (prefer && same(prefer, png, masks)) return await picked(prefer);
       if (last && !same(last, png, masks) && conn.shot.out) {
@@ -939,10 +1039,20 @@ async function fixPageSize(c) {
 // the options the schema does not list. Returns what differed from the defaults.
 const PAGE_DEFAULTS = `(() => {
   const blocked = new Set(["RemoveRecentsList"]);
+  // The New / Open Project dialog (BETA 1033's) reads the recent list from the host object
+  // itself, and remembers the section it was left on as the setting NEWFRONTPAGE: the list is
+  // the tool's own (window.__shotRecents, setRecents), the section is never read or saved.
+  window.__shotRecents = [];
+  const FRONT_PAGE = "NEWFRONTPAGE";
   hostAppObject = new Proxy(hostAppObject, {
     get(target, key) {
       if (blocked.has(key)) return async () => undefined;
-      return Reflect.get(target, key);
+      if (key === "GetRecentsList") return async () => window.__shotRecents.join("?");
+      const member = Reflect.get(target, key);
+      if (key === "GetIDESetting" || key === "SaveIDESetting") {
+        return (...a) => (String(a[0]) === FRONT_PAGE ? Promise.resolve("") : member(...a));
+      }
+      return member;
     },
   });
   const differed = [];
@@ -974,11 +1084,13 @@ const PAGE_DEFAULTS = `(() => {
   return JSON.stringify(differed);
 })()`;
 
-// The recent list the New / Open Project dialog shows, from now on.
-const setRecents = (c, entries) =>
-  c.evaluate(`window.HostGetRecentsList = (e) => {
+// The recent list the New / Open Project dialog shows, from the next time it opens: the
+// projects' paths, each shown as both its name and its path.
+const setRecents = (c, paths) =>
+  c.evaluate(`window.__shotRecents = ${JSON.stringify(paths)};
+window.HostGetRecentsList = (e) => {
   e.classList.add("frontPageListViewLIST");
-  listviewFromArray(e, ${JSON.stringify(entries)}, () => {});
+  listviewFromArray(e, ${JSON.stringify(paths.map((p) => ({ name: p, projectPath: p })))}, () => {});
 }`);
 
 // ---------------------------------------------------------------- setups
@@ -1121,9 +1233,9 @@ async function startSample(run) {
 // references, the warnings and the aliases a Project Settings picture shows. Without the
 // VB package the form cannot compile, so the form and the line that shows it go
 // (`keepForm` leaves them, for a variant that has the package). `stage`, a folder, is copied
-// onto the project as well. The build path is the templates' own: the dialog draws a row
-// again now and then with the project's real value, over the one a shot sets in the page
-// (templateBuildPath), and the lane's default is in its temporary folder, under the user's.
+// onto the project as well. The build path is the templates' own: the lane's default is in its
+// temporary folder, under the user's, and the dialog draws a row again now and then with the
+// project's real value, over any other a shot could set in the page.
 const startSettings =
   (variant, { keepForm = false, stage = null } = {}) =>
   async (run) => {
@@ -1689,62 +1801,78 @@ const inNewProject = (c, run) => inDialog(c, { command: "tbProject_New", title: 
 
 const dialogOut = (dir, name) => `${dir}/Images/${name}.png`;
 
-// `annotate`: the primitives drawn over the picture (lib/shot-annotate.mjs).
-const newProjectShot = (name, prepare = async () => {}, { out = dialogOut("IDE", name), annotate = null } = {}) => ({
+// `annotate`: the primitives drawn over the picture (lib/shot-annotate.mjs). `recents`: the
+// recent list, set before the dialog opens, since it reads the list as it opens, and emptied
+// again afterwards.
+const newProjectShot = (
+  name,
+  prepare = async () => {},
+  { out = dialogOut("IDE", name), annotate = null, recents = null } = {},
+) => ({
   out,
   setup: "no-project",
   annotate,
-  take: ({ c }) =>
-    inNewProject(c, async () => {
-      await prepare(c);
-      return dialogShot(c, name, undefined, annotate);
-    }),
+  async take({ c }) {
+    if (recents) await setRecents(c, recents);
+    try {
+      return await inNewProject(c, async () => {
+        await prepare(c);
+        return dialogShot(c, name, undefined, annotate);
+      });
+    } finally {
+      if (recents) await setRecents(c, []);
+    }
+  },
 });
 
-const samplesTab = async (c) => {
-  await clickInModal(c, "Samples", ".buttonGroupItem");
+// A section of the dialog's rail (New, Samples, Recent), with a real click on its name.
+const dialogSection = async (c, title) => {
+  await clickInModal(c, title, ".fp2-railItemText");
   await dialogStill(c);
 };
+const samplesTab = (c) => dialogSection(c, "Samples");
 
-// Scrolls the Samples list until the sample whose title starts with `title` is
-// `above` pixels under the list's top edge.
+// Scrolls the Samples section until the sample whose name starts with `title` ("Sample 10.",
+// as the IDE lists it: its card shows the name without the number) is `above` pixels under
+// the section's top edge.
 async function scrollSamples(c, title, above = 12) {
   const found = await c.evaluate(`(() => {
-  const l = document.querySelector(".frontPageListView");
-  const it = [...l.querySelectorAll(".frontPageListViewItem")].find((e) => e.innerText.startsWith(${JSON.stringify(title)}));
+  const l = document.querySelector("#fp2root .fp2-content");
+  const it = [...l.querySelectorAll(".fp2-card")].find((e) => e.fp2Item?.name.startsWith(${JSON.stringify(title)}));
   if (!it) return false;
   l.scrollTop += it.getBoundingClientRect().top - l.getBoundingClientRect().top - ${above};
   return true;
 })()`);
-  if (!found) throw new Error(`the Samples tab lists no ${title}`);
+  if (!found) throw new Error(`the Samples section lists no ${title}`);
   await frames(c);
 }
 
-// Anchors in the New / Open Project dialog, for the annotations of its pictures.
-const NEW_TILE = (title) => ({ css: ".frontPageListViewItem", text: title });
-const SAMPLE_TITLE = (title) => ({ css: ".frontPageListViewItem", text: title, own: true });
-const DIALOG_TAB = (title) => ({ css: ".buttonGroupItem", text: title });
+// Anchors in the New / Open Project dialog, for the annotations of its pictures: a card by the
+// name it shows (a sample's without its number), that name alone, and a section of the rail.
+const NEW_TILE = (title) => ({ css: "#fp2root .fp2-card", text: title });
+const SAMPLE_TITLE = (title) => ({ css: "#fp2root .fp2-cardName", text: title, own: true });
+// The Samples section scrolled so that a sample's row of cards is the second shown, the row
+// above it whole and no part of the one before: a gap (10 px) and one row (a card of 66 and a
+// gap of 10).
+const SECOND_ROW = 10 + 66 + 10;
+const DIALOG_TAB = (title) => ({ css: "#fp2root .fp2-railItem", text: title });
+
+// A row of the Recent section whose project path is `path`: its point a third of the way in.
+const recentRow = (c, path) =>
+  c.evaluate(`(() => {
+  const e = [...document.querySelectorAll("#fp2root .fp2-row")].find((x) => x.getBoundingClientRect().width && x.fp2Item?.projectPath === ${JSON.stringify(path)});
+  const r = e && e.getBoundingClientRect();
+  return r ? { x: r.x + r.width / 3, y: r.y + r.height / 2 } : null;
+})()`);
 
 const dialogShots = [
   newProjectShot("New_Project"),
   newProjectShot("New_Project_Samples", samplesTab),
-  newProjectShot("New_Project_Recent_1", async (c) => {
-    await setRecents(c, []);
-    await clickInModal(c, "New", ".buttonGroupItem");
-    await dialogStill(c);
-    await clickInModal(c, "Recent", ".buttonGroupItem");
-    await dialogStill(c);
-  }),
-  newProjectShot("New_Project_Recent_2", async (c) => {
-    // blank names, as the picture has always had
-    await setRecents(c, [
-      { name: " ", projectPath: "x1" },
-      { name: " ", projectPath: "x2" },
-    ]);
-    await clickInModal(c, "New", ".buttonGroupItem");
-    await dialogStill(c);
-    await clickInModal(c, "Recent", ".buttonGroupItem");
-    await dialogStill(c);
+  newProjectShot("New_Project_Recent_1", (c) => dialogSection(c, "Recent")),
+  // two made-up projects, as a reader's list would hold (owner: not blank entries, which no
+  // reader sees); paths of no machine's user
+  newProjectShot("New_Project_Recent_2", (c) => dialogSection(c, "Recent"), {
+    recents: ["C:\\Projects\\InvoiceManager\\InvoiceManager.twinproj", "D:\\Work\\ImageViewer\\ImageViewer.twinproj"],
   }),
   {
     out: dialogOut("IDE", "Components_Message"),
@@ -1765,25 +1893,26 @@ const dialogShots = [
       ),
   },
   {
-    // The LLVM rows of IDE Options, the default thread count among them: the title
-    // bar and the rows from the one above the threads', scrolled to.
+    // The LLVM rows of IDE Options, the default thread count among them: the group Compiler,
+    // which holds those three rows, from the title bar to the end of its section.
     out: "LLVM/Images/llvmdoc2.png",
     setup: "project",
     take: ({ c }) =>
       inDialog(c, { command: "tbIde_ShowIDEOptions", title: "IDE Options", close: "Close" }, async () => {
-        const scrolled = await c.evaluate(`(() => {
-  const m = [...document.querySelectorAll(".modalDialogContainer")].pop();
-  const text = (t) => [...m.querySelectorAll("*")].find((e) => e.children.length === 0 && e.textContent.trim() === t);
-  const above = text("Monaco: Render Whitespace");
-  const row = text("LLVM Compiler: Maximum number of threads");
-  const scroller = m.querySelector(".ideOptionsDialog");
-  if (!above || !row || !scroller) return false;
-  scroller.scrollTop += above.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 10;
-  return true;
-})()`);
-        if (!scrolled) throw new Error("IDE Options has no LLVM rows to scroll to");
-        await frames(c);
-        return dialogShot(c, "llvmdoc2", (m) => ({ x: m.x, y: m.y, width: m.width, height: 187 }));
+        await settingsGroup(c, "Compiler", "tbis");
+        const rows = await c.evaluate(
+          `[...document.querySelectorAll(".tbis-optionRow")].filter((r) => r.getBoundingClientRect().height).map((r) => r.dataset.optionId).join(" ")`,
+        );
+        if (rows !== "llvmThreadCount llvmSlowThresholdMs llvmKeepCacheAlive") {
+          throw new Error(`IDE Options' Compiler shows other rows than the LLVM ones: ${rows}`);
+        }
+        const s = await shownRect(c, ".tbis-settingsPane .tbis-groupSection");
+        return dialogShot(c, "llvmdoc2", (m) => ({
+          x: m.x,
+          y: m.y,
+          width: m.width,
+          height: s.y + s.height + 14 - m.y,
+        }));
       }),
   },
   {
@@ -1843,11 +1972,11 @@ const dialogShots = [
   newProjectShot("FAQ_ImportVBP", async () => {}, {
     out: "Miscellaneous/Images/7e1cb69c-6db3-4f3f-aea1-c1fae25938a2.png",
     annotate: [
-      // from below the tile, up at its icon
+      // from below the card, up at its icon (36 px square, 15 px in from the card's left and top)
       {
         type: "arrow",
-        from: { of: NEW_TILE("Import from VBP"), at: "bottom", dy: 22 },
-        to: { of: NEW_TILE("Import from VBP"), at: "bottom", dy: -44 },
+        from: { of: NEW_TILE("Import from VBP"), at: "bottom-left", dx: 33, dy: 34 },
+        to: { of: NEW_TILE("Import from VBP"), at: "bottom-left", dx: 33, dy: -12 },
       },
     ],
   }),
@@ -1855,26 +1984,26 @@ const dialogShots = [
     "Package_Sample",
     async (c) => {
       await samplesTab(c);
-      await scrollSamples(c, "Sample 7.", 118);
+      await scrollSamples(c, "Sample 7.", SECOND_ROW);
     },
     {
       out: "Features/Packages/Images/6ad7a172-0e1b-4276-ac89-042681552507.png",
-      annotate: [{ type: "ring", on: SAMPLE_TITLE("Sample 7. Package") }],
+      annotate: [{ type: "ring", on: SAMPLE_TITLE("Package") }],
     },
   ),
   newProjectShot(
     "ccSampleProject",
     async (c) => {
       await samplesTab(c);
-      await scrollSamples(c, "Sample 6.", 118);
+      await scrollSamples(c, "Sample 6.", SECOND_ROW);
     },
     {
       out: "Tutorials/CustomControls/Images/ccSampleProject.png",
       annotate: [
         { type: "ring", on: DIALOG_TAB("Samples") },
-        { type: "badge", n: 1, on: DIALOG_TAB("Samples"), side: "below", dx: -14 },
-        { type: "ring", on: SAMPLE_TITLE("Sample 6. CustomControls") },
-        { type: "badge", n: 2, on: SAMPLE_TITLE("Sample 6. CustomControls"), side: "left" },
+        { type: "badge", n: 1, on: DIALOG_TAB("Samples"), side: "right" },
+        { type: "ring", on: SAMPLE_TITLE("CustomControls") },
+        { type: "badge", n: 2, on: SAMPLE_TITLE("CustomControls"), side: "right" },
       ],
     },
   ),
@@ -1883,8 +2012,8 @@ const dialogShots = [
     annotate: [
       {
         type: "arrow",
-        from: { of: NEW_TILE("Sample 1a. WebView2 Examples"), at: "right", dx: -24 },
-        to: SAMPLE_TITLE("Sample 1a. WebView2 Examples"),
+        from: { of: NEW_TILE("WebView2 Examples"), at: "right", dx: -24 },
+        to: SAMPLE_TITLE("WebView2 Examples"),
       },
     ],
   }),
@@ -2430,13 +2559,14 @@ const removePointer = (c) => c.evaluate(`document.getElementById("tbShotPointer"
 
 // A capture of a part of the page, with the annotations over it if any, the clip grown to
 // hold them.
-async function annotatedClip(c, name, area, annotate = null, options = {}) {
+// `view`: the page's size, when a shot has made it other than IDE_SIZE.
+async function annotatedClip(c, name, area, annotate = null, { view = null, ...options } = {}) {
   try {
     if (annotate) {
       const { box } = await annotateOver(c, annotate);
       if (box) area = union(area, box);
     }
-    return await capture(c, name, snapOut(area), { away: () => parkMouse(c), ...options });
+    return await capture(c, name, snapOut(area, view?.width, view?.height), { away: () => parkMouse(c), ...options });
   } finally {
     if (annotate) await unannotate(c);
   }
@@ -3258,12 +3388,46 @@ async function takeEditorOptions({ c }) {
   }
 }
 
-// ---- Project Settings: a dialog of rows, each `<key>_HEADER`, `_CONTENT` and `_DESCRIPTION`
-// in a list that scrolls under a filter box
+// ---- Project Settings (BETA 1033's dialog; IDE Options is drawn by the same code, its classes
+// `tbis-` for `tbps-`): a rail of the option groups under a filter box, and a pane that shows
+// the group chosen (All, at first). In the pane each option is a row, `.tbps-optionRow` with the
+// option's id as `data-option-id` (ids hold dots, so never a class selector), its name and
+// description above each other on the left and its control on the right.
 
-const SETTINGS_LIST = ".configEditorContainerInner";
-const settingPart = (key, part) => `[class~="${key}_${part}"]`;
+const SETTINGS_PANE = ".tbps-settingsPane";
+const settingRowCss = (key) => `.tbps-optionRow[data-option-id="${key}"]`;
+const SETTING_PARTS = { NAME: ".tbps-optionName", DESC: ".tbps-optionDesc", VALUE: ".tbps-optionValueCol" };
+// A part of the row of `key`: NAME, DESC or VALUE.
+const settingPart = (key, part) => `${settingRowCss(key)} ${SETTING_PARTS[part]}`;
 const SETTING = (key, part) => ({ css: settingPart(key, part) });
+
+// A group of the rail (`prefix` tbis for IDE Options), with a real click on its name; the pane
+// then shows that group's rows only.
+async function settingsGroup(c, title, prefix = "tbps") {
+  await clickInModal(c, title, `.${prefix}-navItemText`);
+  const chosen = await waitFor(
+    c,
+    () =>
+      c.evaluate(
+        `[...document.querySelectorAll(".${prefix}-navItemSelected .${prefix}-navItemText")].some((e) => e.textContent.trim() === ${JSON.stringify(title)})`,
+      ),
+    { timeout: 3000, interval: 50 },
+  );
+  if (!chosen) throw new Error(`the rail's ${title} was not chosen`);
+  await dialogStill(c);
+}
+
+// Types `text` into the filter box above the rail, a real click and real keys.
+async function settingsFilter(c, text) {
+  const box = await shownRect(c, ".tbps-settingsSearch");
+  if (!box) throw new Error("Project Settings has no filter box");
+  await clickAt(c, box.x + box.width / 2, box.y + box.height / 2);
+  await typeText(c, text);
+  await dialogStill(c);
+}
+
+// The section of the group shown in the pane, as a rectangle.
+const settingsSection = (c) => shownRect(c, `${SETTINGS_PANE} .tbps-groupSection`);
 
 // The first element matching `css` that is drawn, as a rectangle.
 const shownRect = (c, css) =>
@@ -3274,28 +3438,21 @@ const shownRect = (c, css) =>
   return { x: r.x, y: r.y, width: r.width, height: r.height };
 })()`);
 
-// Scrolls the list until the row of `key` is `below` pixels under the filter box.
+// Scrolls the pane until the row of `key`, which it shows, is `below` pixels under its top edge.
 async function scrollToSetting(c, key, below = 6) {
   const done = await c.evaluate(`(() => {
-  const list = document.querySelector(${JSON.stringify(SETTINGS_LIST)});
-  const h = document.querySelector(${JSON.stringify(settingPart(key, "HEADER"))});
-  const banner = document.querySelector(".filterBanner");
-  if (!list || !h || !banner) return false;
-  const row = h.closest(".optionEnabled") || h.parentElement;
-  list.scrollTop += row.getBoundingClientRect().top - banner.getBoundingClientRect().bottom - ${below};
+  const pane = document.querySelector(${JSON.stringify(SETTINGS_PANE)});
+  const row = document.querySelector(${JSON.stringify(settingRowCss(key))});
+  if (!pane || !row || !row.getBoundingClientRect().height) return false;
+  pane.scrollTop += row.getBoundingClientRect().top - pane.getBoundingClientRect().top - ${below};
   return true;
 })()`);
-  if (!done) throw new Error(`Project Settings has no row ${key}`);
+  if (!done) throw new Error(`Project Settings shows no row ${key}`);
   await frames(c);
 }
 
-// The row of `key` as a rectangle, its dotted lines included.
-const settingRow = (c, key) =>
-  c.evaluate(`(() => {
-  const h = document.querySelector(${JSON.stringify(settingPart(key, "HEADER"))});
-  const r = (h.closest(".optionEnabled") || h.parentElement).getBoundingClientRect();
-  return { x: r.x, y: r.y, width: r.width, height: r.height };
-})()`);
+// The row of `key` as a rectangle.
+const settingRow = (c, key) => shownRect(c, settingRowCss(key));
 
 // A path in the dialog that holds the Windows user name (the build path the lane stages the
 // project with, a library registered under the profile folder) names the user "User"
@@ -3313,36 +3470,51 @@ const nameUserAsUserIn = (c, css) =>
 })()`);
 const nameUserAsUser = (c) => nameUserAsUserIn(c, null);
 
-// The lane stages the project with a build path in its temporary folder, and the dialog shows
-// it: the template's own path instead, typed as a user would (input and change), so that the
-// dialog holds it and does not put the real path back when it draws the row again, as it does
-// now and then over the value nameUserAsUser sets; Cancel keeps nothing. capture refuses the
-// picture if the real path shows all the same, in or out of the clip. For every shot of the
-// dialog in which the row may be drawn.
-const templateBuildPath = (c) =>
-  c.evaluate(`(() => {
-  const i = document.querySelector(${JSON.stringify(`${settingPart("project.buildPath", "CONTENT")} input`)});
-  i.value = "\${SourcePath}\\\\Build\\\\\${ProjectName}_\${Architecture}.\${FileExtension}";
-  i.dispatchEvent(new Event("input", { bubbles: true }));
-  i.dispatchEvent(new Event("change", { bubbles: true }));
-})()`);
+// Project > References filters the dialog to the library references and marks their row with a
+// flash for 2.5 s (tbps_applyFilter), whose class stays on the row while it lasts, animations
+// off or not: waits for it to be taken off.
+async function noFlash(c) {
+  if (
+    !(await waitFor(c, () => c.evaluate(`!document.querySelector(".tbps-highlight")`), {
+      timeout: 5000,
+      interval: 100,
+    }))
+  )
+    throw new Error("a Project Settings row stayed marked");
+  await frames(c);
+}
 
-// The dialog of Project > Project Settings (or Project > References, which filters its
-// list to the library references), picture `out` of it, Cancel to close it. `prepare(c)`
-// scrolls or switches it; `clipOf(box, c)` takes a part of the dialog.
+// The dialog of Project > Project Settings (or Project > References, which filters it to the
+// library references), picture `out` of it, Cancel to close it. `prepare(c)` chooses a group
+// or scrolls; `clipOf(box, c)` takes a part of the dialog; `unsteady`, capture's. The settings
+// setups stage the project with the build path the templates have (startSettings), so no row
+// shows a path under the user's folder.
 const settingsShot = (
   out,
-  { setup = "settings", command: id = "tbProject_ShowSettings", prepare = null, clipOf = (m) => m, annotate = null },
+  {
+    setup = "settings",
+    command: id = "tbProject_ShowSettings",
+    prepare = null,
+    clipOf = (m) => m,
+    annotate = null,
+    unsteady = null,
+  },
 ) => ({
   out,
   setup,
   take: ({ c }) =>
     inDialog(c, { command: id, title: "Project Settings", close: "Cancel", still: 500 }, async () => {
+      await noFlash(c);
       await nameUserAsUser(c);
       if (prepare) await prepare(c);
-      return dialogShot(c, out, (m) => clipOf(m, c), annotate);
+      return dialogShot(c, out, (m) => clipOf(m, c), annotate, { unsteady });
     }),
 });
+
+// The count of changed settings in the dialog's footer, an `unsteady` region of every picture
+// that holds the footer (owner): BETA 1033 counts a setting changed as the dialog opens, and
+// what it counts is no matter to the reader.
+const CHANGED_COUNT = { on: { css: ".tbps-changedCount" } };
 
 const LIBRARY_REFERENCES = "tbProject_ShowReferences";
 
@@ -3354,121 +3526,108 @@ const lastReferenceBottom = (c) =>
 })()`);
 
 const settingsShots = [
-  // the two compiler option sections at the end of the list
+  // the two compiler option sections, the group Optimization, each a column of flags taller
+  // than half the pane: scrolled to the first, shown whole, and the start of the second (its
+  // first flags, Enable LLVM Compilation among them)
   settingsShot("LLVM/Images/llvmdoc1.png", {
     async prepare(c) {
-      await templateBuildPath(c);
-      await c.evaluate(
-        `(() => { const l = document.querySelector(${JSON.stringify(SETTINGS_LIST)}); l.scrollTop = l.scrollHeight; })()`,
-      );
+      await settingsGroup(c, "Optimization");
+      await scrollToSetting(c, "compiler.buildOptions");
     },
+    unsteady: [CHANGED_COUNT],
   }),
+  // the group Tracing: its two rows, from the title bar
   settingsShot("Features/Images/4fc2bf99-2bec-4943-837d-21038d791574.png", {
-    prepare: (c) => scrollToSetting(c, "compiler.traceFlags"),
-    clipOf: (m) => ({ x: m.x, y: m.y, width: 760, height: 531 }),
-  }),
-  settingsShot("Features/Images/569150839-9ffc87ac-250d-40a4-bb47-669b607ad76f.png", {
-    async prepare(c) {
-      await templateBuildPath(c);
-      await scrollToSetting(c, "project.buildPath");
+    prepare: (c) => settingsGroup(c, "Tracing"),
+    clipOf: async (m, c) => {
+      const s = await settingsSection(c);
+      return { x: m.x, y: m.y, width: m.width, height: s.y + s.height + 14 - m.y };
     },
-    clipOf: (m) => ({ x: m.x, y: m.y, width: m.width, height: 460 }),
-    // the label's text and the input of the row, as the old picture boxed them
-    annotate: [
-      {
-        type: "box",
-        on: {
-          span: [
-            { css: settingPart("project.fusionBuildPath", "HEADER"), own: true },
-            SETTING("project.fusionBuildPath", "CONTENT"),
-          ],
-        },
-        pad: 6,
-      },
-    ],
   }),
+  // the Build Output Path row above the ActiveX Fusion Host one, which the group Build puts
+  // fourteen rows apart: "Output Path" typed into the filter box shows the two together, the
+  // Fusion row boxed; from the title bar to the Fusion row
+  settingsShot("Features/Images/569150839-9ffc87ac-250d-40a4-bb47-669b607ad76f.png", {
+    prepare: (c) => settingsFilter(c, "Output Path"),
+    clipOf: async (m, c) => {
+      const r = await settingRow(c, "project.fusionBuildPath");
+      return { x: m.x, y: m.y, width: m.width, height: r.y + r.height + 8 - m.y };
+    },
+    annotate: [{ type: "box", on: { css: settingRowCss("project.fusionBuildPath") }, pad: 2 }],
+  }),
+  // the group Compiler, from the title bar to the Option Explicit On row
   settingsShot("Miscellaneous/Images/01009879-fdbc-4a8e-8683-353aab6193df.png", {
-    prepare: (c) => scrollToSetting(c, "project.optionExplicit"),
-    clipOf: (m) => ({ x: m.x, y: m.y, width: 740, height: 140 }),
+    prepare: (c) => settingsGroup(c, "Compiler"),
+    clipOf: async (m, c) => {
+      const r = await settingRow(c, "project.optionExplicit");
+      return { x: m.x, y: m.y, width: m.width, height: r.y + r.height + 1 - m.y };
+    },
   }),
   settingsShot("IDE/Images/project settings description text.png", {
-    prepare: (c) => scrollToSetting(c, "project.optionExplicit"),
+    prepare: (c) => settingsGroup(c, "Compiler"),
     clipOf: async (_m, c) => {
       const r = await settingRow(c, "project.optionExplicit");
-      return { x: r.x, y: r.y - 1, width: 900, height: r.height + 2 };
+      return { x: r.x, y: r.y - 1, width: r.width, height: r.height + 2 };
     },
-    // from the empty space under the row's label, level with the description, along to its first word
+    // the description is under the name, against the row's left edge: from the empty space
+    // to the right of its text, level with it, back to its last word
     annotate: [
       {
         type: "arrow",
-        from: { of: SETTING("project.optionExplicit", "DESCRIPTION"), at: "left", dx: -130 },
-        to: { css: settingPart("project.optionExplicit", "DESCRIPTION"), own: true },
+        from: { of: { ...SETTING("project.optionExplicit", "DESC"), own: true }, at: "right", dx: 130 },
+        to: { ...SETTING("project.optionExplicit", "DESC"), own: true },
       },
     ],
   }),
   settingsShot("Features/Images/017bd6f8-4b35-43a9-b6be-84cba69daf64.png", {
-    // the first sixteen warnings, shown whole: the list scrolls in a box of its own
+    // the group Compiler Warnings, the first sixteen warnings shown whole: the list scrolls in
+    // a box of its own, which the page lets grow
     async prepare(c) {
-      await c.evaluate(`(() => {
-  const w = document.querySelector(".warningOptions");
-  w.style.height = "360px";
-  w.style.maxHeight = "none";
-})()`);
-      await scrollToSetting(c, "project.warnings", -40);
+      await settingsGroup(c, "Compiler Warnings");
+      await c.evaluate(`document.querySelector(".tbps-warningsList").style.maxHeight = "none"`);
+      await frames(c);
     },
     clipOf: async (_m, c) =>
       c.evaluate(`(() => {
-  const rows = [...document.querySelectorAll(".warningOptions .warningDiv")].map((e) => e.getBoundingClientRect());
-  const w = document.querySelector(".warningOptions").getBoundingClientRect();
+  const w = document.querySelector(".tbps-warningsList").getBoundingClientRect();
+  const rows = [...document.querySelectorAll(".tbps-warningsList .tbps-warningRow")].map((e) => e.getBoundingClientRect());
   const first = rows[0];
   const last = rows[15];
   return { x: w.x - 6, y: first.y - 6, width: w.width + 12, height: last.bottom - first.y + 8 };
 })()`),
   }),
   settingsShot("Miscellaneous/Images/2a1c71fd-f81c-4bd3-b61a-0f2979e8961f.png", {
-    // the Compiler Warnings section, its heading to the fifteenth warning, TB0002's list drawn
-    // open below its select and the two warnings Option Explicit is about ringed
+    // the group Compiler Warnings, its title to the fifteenth warning, TB0002's list drawn open
+    // below its select and the two warnings Option Explicit is about ringed
     async prepare(c) {
-      // the build path row is outside the clip, but on the page the user-name check reads
-      await templateBuildPath(c);
-      await c.evaluate(`(() => {
-  const w = document.querySelector(".warningOptions");
-  w.style.height = "360px";
-  w.style.maxHeight = "none";
-})()`);
-      await scrollToSetting(c, "project.warnings", 12);
+      await settingsGroup(c, "Compiler Warnings");
+      await c.evaluate(`document.querySelector(".tbps-warningsList").style.maxHeight = "none"`);
+      await frames(c);
     },
     clipOf: async (_m, c) =>
       c.evaluate(`(() => {
-  // the heading's own text, not its box, which reaches the dialog's left edge
-  const range = document.createRange();
-  range.selectNodeContents(document.querySelector(${JSON.stringify(settingPart("project.warnings", "HEADER"))}));
-  const h = range.getBoundingClientRect();
-  const w = document.querySelector(".warningOptions").getBoundingClientRect();
-  const rows = [...document.querySelectorAll(".warningOptions .warningDiv")].map((e) => e.getBoundingClientRect());
-  // as far right as the old picture: the longest description (TB0004's) goes on past it
-  const x = Math.min(h.x, w.x) - 12;
-  return { x, y: h.y - 8, width: w.x + 760 - x, height: rows[14].bottom + 1 - (h.y - 8) };
+  const s = document.querySelector(${JSON.stringify(SETTINGS_PANE)}).getBoundingClientRect();
+  const t = [...document.querySelectorAll(".tbps-groupTitle")].find((e) => e.getBoundingClientRect().width).getBoundingClientRect();
+  const rows = [...document.querySelectorAll(".tbps-warningsList .tbps-warningRow")].map((e) => e.getBoundingClientRect());
+  const w = document.querySelector(".tbps-warningsList").getBoundingClientRect();
+  const y = t.y - 8;
+  return { x: s.x + 8, y, width: w.right + 12 - (s.x + 8), height: rows[14].bottom + 1 - y };
 })()`),
     annotate: [
-      { type: "list", select: { css: ".warningDiv:has(.warning_TB0002_warning) .warningState" } },
-      {
-        // one ring round both codes, its round ends clear of their first and last letters
-        type: "ring",
-        on: {
-          span: [
-            { css: ".warningDescription b", text: "TB0002" },
-            { css: ".warningDescription b", text: "TB0003" },
-          ],
-        },
-        pad: 2,
-        padX: 11,
-      },
+      { type: "list", select: { css: ".tbps-warningRow:has(.warning_TB0002_warning) .tbps-warningState" } },
+      // a ring round each code: the rows are 36 px apart, and one ring round both would be a
+      // circle through their letters
+      { type: "ring", on: { css: ".tbps-warningDesc b", text: "TB0002" }, pad: 2, padX: 4 },
+      { type: "ring", on: { css: ".tbps-warningDesc b", text: "TB0003" }, pad: 2, padX: 4 },
     ],
   }),
-  settingsShot("IDE/Images/ProjectSettings_LibraryReferences.png", { command: LIBRARY_REFERENCES }),
+  settingsShot("IDE/Images/ProjectSettings_LibraryReferences.png", {
+    command: LIBRARY_REFERENCES,
+    unsteady: [CHANGED_COUNT],
+  }),
   settingsShot("IDE/Images/ProjectSettings_AvailableCOMReferences.png", {
     command: LIBRARY_REFERENCES,
+    unsteady: [CHANGED_COUNT],
     async prepare(c) {
       await clickInModal(c, "Available COM References");
       const listed = await waitFor(
@@ -3501,7 +3660,8 @@ const settingsShots = [
   settingsShot("Features/Images/569100769-f1f2790a-0094-4843-809f-a8a9e928fd41.png", {
     setup: "settings-fusion",
     command: LIBRARY_REFERENCES,
-    // the table scrolled right to the Locale to Fusion columns, from the label to the list's foot
+    // the table scrolled right to the Locale to Fusion columns, from the label to the list's foot,
+    // the rail left out
     async prepare(c) {
       await c.evaluate(`(() => {
   const l = [...document.querySelectorAll(".referencesListNewOuter")].find((e) => e.getBoundingClientRect().width > 0);
@@ -3509,20 +3669,28 @@ const settingsShots = [
 })()`);
       await frames(c);
     },
-    clipOf: async (m, c) => {
-      const label = await shownRect(c, settingPart("project.references", "HEADER"));
+    clipOf: async (_m, c) => {
+      const label = await shownRect(c, settingPart("project.references", "NAME"));
       const list = await shownRect(c, ".referencesListNewOuter");
-      return { x: m.x, y: label.y - 12, width: m.width, height: list.y + list.height + 8 - (label.y - 12) };
+      const x = label.x - 12;
+      return {
+        x,
+        y: label.y - 12,
+        width: list.x + list.width + 12 - x,
+        height: list.y + list.height + 8 - (label.y - 12),
+      };
     },
   }),
   settingsShot("Tutorials/WebView2/Images/tbWebView2References.png", {
     setup: "settings-webview2",
     command: LIBRARY_REFERENCES,
     // the label, the tabs and the rows of the list
-    clipOf: async (m, c) => {
-      const label = await shownRect(c, settingPart("project.references", "HEADER"));
+    clipOf: async (_m, c) => {
+      const label = await shownRect(c, settingPart("project.references", "NAME"));
+      const list = await shownRect(c, ".referencesListNewOuter");
       const bottom = await lastReferenceBottom(c);
-      return { x: m.x, y: label.y - 12, width: m.width, height: bottom + 12 - (label.y - 12) };
+      const x = label.x - 12;
+      return { x, y: label.y - 12, width: list.x + list.width + 12 - x, height: bottom + 12 - (label.y - 12) };
     },
   }),
 ];
@@ -6209,10 +6377,11 @@ const projectsShots = [
         if (!(await waitModal(c, "Project Settings", { timeout: 10000 })))
           throw new Error("Project Settings did not open");
         await dialogStill(c, { ms: 500 });
+        // the group General, so that no row shows the build path the lane stages the project
+        // with, which is under the user's folder; its one change is then the description typed
+        await settingsGroup(c, "General");
         await nameUserAsUser(c);
-        await templateBuildPath(c);
-        await scrollToSetting(c, "project.description");
-        const input = `${settingPart("project.description", "CONTENT")} input`;
+        const input = `${settingPart("project.description", "VALUE")} input`;
         const i = await shownRect(c, input);
         if (!i) throw new Error("Project Settings shows no description box");
         await clickAt(c, i.x + i.width - 6, i.y + i.height / 2);
@@ -6233,7 +6402,10 @@ const projectsShots = [
         await parkMouse(c);
         await frames(c);
         const [settings] = await modals(c);
-        return await capture(c, "Settings_Close", snapOut(settings), {});
+        // the Project ID box shows the id the lane gives the project, its slot's
+        // (laneProjectId), which differs from run to run
+        const unsteady = [CHANGED_COUNT, { on: { css: `${settingPart("project.id", "VALUE")} input` } }];
+        return await capture(c, "Settings_Close", snapOut(settings), { unsteady });
       } finally {
         if ((await modals(c)).length === 2) await modalButton(c, "Yes, close");
         await resetUi(c);
@@ -6419,19 +6591,12 @@ const projectsShots = [
     setup: "projects-start",
     async take({ c }) {
       await resetUi(c);
-      await setRecents(
-        c,
-        RECENT_GONE.map((p) => ({ name: p, projectPath: p })),
-      );
+      await setRecents(c, RECENT_GONE);
       try {
         await command(c, "tbProject_OpenRecent");
         if (!(await waitModal(c, "New / Open", { timeout: 10000 }))) throw new Error("Open Recent opened no dialog");
         await dialogStill(c);
-        const row = await c.evaluate(`(() => {
-  const e = [...document.querySelectorAll(".frontPageListViewItem")].find((x) => x.getBoundingClientRect().width && x.textContent.trim() === ${JSON.stringify(RECENT_GONE[0])});
-  const r = e && e.getBoundingClientRect();
-  return r ? { x: r.x + r.width / 3, y: r.y + r.height / 2 } : null;
-})()`);
+        const row = await recentRow(c, RECENT_GONE[0]);
         if (!row) throw new Error("the Recent tab does not list the entry");
         await mouseMove(c, row.x, row.y);
         for (const clickCount of [1, 2]) {
@@ -6680,11 +6845,11 @@ async function prepareBuildingNew(run) {
   if (!(await waitModal(c, "New / Open", { timeout: 10000 }))) throw new Error("New Project opened no dialog");
   await dialogStill(c);
   const tile = await c.evaluate(`(() => {
-  const e = [...document.querySelectorAll(".frontPageListViewItem")].find((x) => x.getBoundingClientRect().width && x.innerText.trim().startsWith("Standard EXE"));
+  const e = [...document.querySelectorAll("#fp2root .fp2-card")].find((x) => x.getBoundingClientRect().width && x.fp2Item?.name === "Standard EXE");
   const r = e && e.getBoundingClientRect();
   return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
 })()`);
-  if (!tile) throw new Error("the New tab has no Standard EXE tile");
+  if (!tile) throw new Error("the New section has no Standard EXE card");
   await clickAt(c, tile.x, tile.y);
   await clickInModal(c, "Open", ".msgBoxButton");
   if (!(await waitModal(c, "New Project Options", { timeout: 60000 }))) {
@@ -7164,17 +7329,13 @@ const buildingShots = [
     async take({ c }) {
       await resetUi(c);
       const project = hklmProject();
-      await setRecents(c, [{ name: project, projectPath: project }]);
+      await setRecents(c, [project]);
       let shown = false;
       try {
         await command(c, "tbProject_OpenRecent");
         if (!(await waitModal(c, "New / Open", { timeout: 10000 }))) throw new Error("Open Recent opened no dialog");
         await dialogStill(c);
-        const row = await c.evaluate(`(() => {
-  const e = [...document.querySelectorAll(".frontPageListViewItem")].find((x) => x.getBoundingClientRect().width && x.textContent.trim() === ${JSON.stringify(project)});
-  const r = e && e.getBoundingClientRect();
-  return r ? { x: r.x + r.width / 3, y: r.y + r.height / 2 } : null;
-})()`);
+        const row = await recentRow(c, project);
         if (!row) throw new Error("the Recent tab does not list the project");
         await mouseMove(c, row.x, row.y);
         for (const clickCount of [1, 2]) {
@@ -11358,7 +11519,10 @@ async function packagesClean({ c, packages }) {
 
 // Project > References, Cancel to close it.
 const inReferences = (c, run) =>
-  inDialog(c, { command: LIBRARY_REFERENCES, title: "Project Settings", close: "Cancel", still: 500 }, run);
+  inDialog(c, { command: LIBRARY_REFERENCES, title: "Project Settings", close: "Cancel", still: 500 }, async () => {
+    await noFlash(c);
+    return run();
+  });
 
 const PE_SETTINGS = { css: '.panelHeaderIcon[title="Project Settings"]' };
 // The IDE's completion list, its own box rather than Monaco's suggest widget.
@@ -11533,18 +11697,41 @@ function missingLinkedShot(out, options) {
 // A rectangle from the left and top of `a` to the right and bottom of `b`.
 const span = (a, b) => ({ x: a.x, y: a.y, width: b.x + b.width - a.x, height: b.y + b.height - a.y });
 
-// Project Settings opened by the Project Explorer's gear, a real click, scrolled to Library
-// References, on Available Packages; the gear, the heading and the tab ringed and numbered. The
+// Project Settings opened by the Project Explorer's gear, a real click, its group Library
+// References chosen in the rail, on Available Packages; the gear, the rail's Library References
+// and the tab ringed and numbered, the steps a reader takes. The
 // dialog is shown whole, from its title, with the gear beside it, which a smaller page does
 // not make narrower: the dialog then covers the gear.
+// BETA 1033's dialog is 1202 px wide, which covers the gear in a page 1280 wide: the page is made
+// E749_WIDTH wide for this picture, the dialog then centred clear of the Project Explorer.
+const E749_WIDTH = 1400;
+
 async function takeE749(c) {
+  await c.send("Emulation.setDeviceMetricsOverride", {
+    ...IDE_SIZE,
+    width: E749_WIDTH,
+    deviceScaleFactor: SCALE,
+    mobile: false,
+  });
+  try {
+    await frames(c);
+    return await takeE749Wide(c);
+  } finally {
+    await c.send("Emulation.setDeviceMetricsOverride", { ...IDE_SIZE, deviceScaleFactor: SCALE, mobile: false });
+    await frames(c);
+  }
+}
+
+async function takeE749Wide(c) {
   const gear = await rectOf(c, PE_SETTINGS.css);
   if (!gear) throw new Error("the Project Explorer has no Project Settings button");
   await clickAt(c, gear.x + gear.width / 2, gear.y + gear.height / 2);
   if (!(await waitModal(c, "Project Settings"))) throw new Error("Project Settings did not open");
   try {
     await dialogStill(c, { ms: 500 });
-    await scrollToSetting(c, "project.references", 10);
+    const open = (await modals(c)).pop();
+    if (open.x + open.width + 8 > gear.x) throw new Error("the dialog covers the Project Explorer's gear");
+    await settingsGroup(c, "Library References");
     await referencesTab(c, "Available Packages");
     // The build path the lane stages the project with names the user's folder, and so do
     // libraries registered under it, in the list of Available COM References that the whole
@@ -11563,16 +11750,22 @@ async function takeE749(c) {
     const x = dialog.x - 10;
     const y = dialog.y - 10;
     const area = { x, y, width: gear.x + gear.width + 30 - x, height: list.y + list.height + 12 - y };
-    const heading = { css: settingPart("project.references", "HEADER"), own: true };
+    const heading = { css: ".tbps-navItem", text: "Library References" };
     const tab = REFERENCES_TAB("Available Packages");
-    const png = await annotatedClip(c, "e749e10f", area, [
-      { type: "ring", on: PE_SETTINGS },
-      { type: "badge", n: 1, on: PE_SETTINGS, side: "below" },
-      { type: "ring", on: heading },
-      { type: "badge", n: 2, on: heading, side: "below" },
-      { type: "ring", on: tab },
-      { type: "badge", n: 3, on: tab, side: "right" },
-    ]);
+    const png = await annotatedClip(
+      c,
+      "e749e10f",
+      area,
+      [
+        { type: "ring", on: PE_SETTINGS },
+        { type: "badge", n: 1, on: PE_SETTINGS, side: "below" },
+        { type: "ring", on: heading },
+        { type: "badge", n: 2, on: heading, side: "right" },
+        { type: "ring", on: tab },
+        { type: "badge", n: 3, on: tab, side: "right" },
+      ],
+      { view: { ...IDE_SIZE, width: E749_WIDTH } },
+    );
     return png;
   } finally {
     await closeModal(c, "Cancel");
@@ -11652,10 +11845,10 @@ const packageServerShots = [
       await packagesClean(ctx);
       return inReferences(c, async () => {
         await referencesTab(c, "Available Packages");
-        const heading = await shownRect(c, settingPart("project.references", "HEADER"));
+        const heading = await shownRect(c, settingPart("project.references", "NAME"));
         const list = await referencesList(c);
         const tip = await shownRect(c, LOGIN_TIP.css);
-        const x = heading.x + heading.width - 130;
+        const x = heading.x - 12;
         const y = heading.y - 12;
         const tab = REFERENCES_TAB("Available Packages");
         return annotatedClip(
@@ -11711,10 +11904,10 @@ const packageServerShots = [
         await tickPackage(c, FILE_PROPS);
         try {
           await referencesTab(c, "Enabled Libraries");
-          const heading = await shownRect(c, settingPart("project.references", "HEADER"));
+          const heading = await shownRect(c, settingPart("project.references", "NAME"));
           const last = await shownRect(c, ENABLED_ROW_OF(FILE_PROPS));
           const version = await shownRect(c, VERSION_HEADER);
-          const x = heading.x + heading.width - 130;
+          const x = heading.x - 12;
           const y = heading.y - 12;
           return await annotatedClip(c, "f2fd8374", {
             x,
@@ -12990,6 +13183,22 @@ const JOB_SECONDS = {
 const selected = SHOTS.filter((s) => !only || THEMES.some((theme) => only.test(themedOut(s.out, theme))));
 const wanted = Object.keys(SETUPS).filter((name) => selected.some((s) => s.setup === name));
 if (!selected.length) die(2, `no picture's path matches ${values.only}`);
+
+// The pictures as the revision has them (--against, HEAD by default), each capture's first
+// reference, read in one git process for every selected picture in both themes. With the
+// default, an output folder outside git has none, and a capture is compared with the file only.
+let revision = null;
+if (!values.againstDisk) {
+  try {
+    revision = openRevision(outRoot, AGAINST);
+    revision.read(selected.flatMap((s) => THEMES.map((theme) => themedOut(s.out, theme))));
+    console.log(`each capture is compared with ${AGAINST} (${revision.short}) first, then with its file`);
+  } catch (e) {
+    if (values.against !== undefined) die(2, e.message);
+    revision = null;
+    console.log(`each capture is compared with its file only: ${e.message}`);
+  }
+}
 if (wanted.includes("help") && !existsSync(path.join(SITE, "tB", "symbols.json"))) {
   die(2, `no built site in ${SITE}: run build.bat first`);
 }
@@ -13091,9 +13300,11 @@ const SIZE_SLACK = 32;
 // picture's path. A light picture is compared with the dark one (`dark`, this run's, or the
 // file's): one with the same pixels, but for a capture's noise (`nearly`), is not kept, and a
 // light file there already is removed, since the page shows X.png in both themes then; one
-// more than SIZE_SLACK off its size fails. A picture within a capture's noise of its file is
-// not written either. Returns whether the picture was written, or null for a light picture
-// that is the dark one.
+// more than SIZE_SLACK off its size fails. A picture within a capture's noise of the revision's
+// (--against) leaves the file as the revision has it, with its SVG (pictureFate,
+// lib/shot-revision.mjs); one within a capture's noise of its file is not written either.
+// Returns whether the picture was written, "restored" for one put back as the revision has
+// it, or null for a light picture that is the dark one.
 function keep(name, out, png, theme, dark, scale = SCALE) {
   const file = path.join(outRoot, themedOut(out, theme));
   const { w, h } = pngSize(png);
@@ -13125,31 +13336,58 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
     }
   }
   mkdirSync(path.dirname(file), { recursive: true });
-  let state = "new";
-  let write = true;
-  if (existsSync(file)) {
-    const was = readFileSync(file);
-    if (was.equals(png)) {
-      state = "unchanged";
-      write = false;
-    } else if (nearly(was, png)) {
-      // a run now and then settles on the other version of a capture's noise for every
-      // capture of a state (WIP.Screenshots.md, Capture): the file stays as it is
-      state = "unchanged but for a capture's noise";
-      write = false;
-      writeDiff(name, themedOut(out, theme), was, png, { suffix: ".noise" });
-    } else {
-      state = "updated";
-      writeDiff(name, themedOut(out, theme), was, png);
-    }
-  }
-  if (write) writeFileSync(file, png);
+  // The picture as the revision has it comes first (--against): a capture within a capture's
+  // noise of it puts the file back as the revision has it, so that a picture does not drift
+  // from the repository's over several runs, each within noise of the file before it.
+  const was = existsSync(file) ? readFileSync(file) : null;
+  const atRevision = revision ? revision.bytes(themedOut(out, theme)) : null;
+  const fate = pictureFate(png, atRevision, was, nearly);
+  // a run now and then settles on the other version of a capture's noise for every
+  // capture of a state (WIP.Screenshots.md, Capture): the file then stays as it is
+  const STATES = {
+    new: "new",
+    updated: "updated",
+    unchanged: "unchanged",
+    noise: "unchanged but for a capture's noise",
+    restored: `restored as ${AGAINST} has it`,
+  };
+  const state = STATES[fate.state];
+  if (fate.state === "noise") writeDiff(name, themedOut(out, theme), was ?? atRevision, png, { suffix: ".noise" });
+  if (fate.state === "updated") writeDiff(name, themedOut(out, theme), was, png);
+  if (fate.state === "restored" && was)
+    writeDiff(name, themedOut(out, theme), was, atRevision, {
+      suffix: ".restored",
+      labels: { before: "FILE", after: AGAINST.toUpperCase() },
+    });
+  if (fate.write) writeFileSync(file, fate.write);
   count(theme, state);
   say(
     name,
     `${themedOut(out, theme)}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${Math.round(w / scale)}" height="${Math.round(h / scale)}"}${other})`,
   );
-  return write;
+  if (fate.state === "restored") {
+    restoreSvg(name, themedOut(out, theme));
+    return "restored";
+  }
+  return fate.write !== null;
+}
+
+// A picture put back as the revision has it takes the revision's SVG with it, or loses its
+// SVG when the revision has none, so that the pair stays matched.
+function restoreSvg(name, out) {
+  const svgOut = out.replace(/\.png$/i, ".svg");
+  const file = path.join(outRoot, svgOut);
+  const atRevision = revision.bytes(svgOut);
+  const fate = svgFate(atRevision, existsSync(file) ? readFileSync(file) : null);
+  // as a checkout writes it (line endings), by git
+  if (fate === "write") restoreFromRevision(outRoot, revision.hash, [svgOut]);
+  if (fate === "remove") rmSync(file);
+  const text = {
+    keep: `as ${AGAINST} has it`,
+    write: `restored as ${AGAINST} has it`,
+    remove: `removed, as ${AGAINST} has none`,
+  };
+  if (fate !== "keep" || atRevision) say(name, `${svgOut}: ${text[fate]}`);
 }
 
 // A `once` picture has no light file: one left from before is removed, and its SVG.
@@ -13327,7 +13565,7 @@ async function runJob(job) {
         const darkFile = path.join(outRoot, shot.out);
         const dark =
           theme === "dark" ? null : (darks.get(shot.out) ?? (existsSync(darkFile) ? readFileSync(darkFile) : null));
-        state.reference = existsSync(file) ? readFileSync(file) : null;
+        state.reference = [revision?.bytes(out), existsSync(file) ? readFileSync(file) : null].filter(Boolean);
         state.prefer = dark;
         state.out = out;
         state.svg = null;
@@ -13339,9 +13577,10 @@ async function runJob(job) {
           const kept = keep(job.name, shot.out, png, theme, dark, Buffer.isBuffer(taken) ? SCALE : taken.scale);
           if (shot.once) dropLight(job.name, shot.out);
           // A light picture that is the dark one is not kept, and neither is its SVG or bundle.
+          // One put back as the revision has it has had its SVG put back with it.
           const svgFile = path.join(outRoot, out.replace(/\.png$/i, ".svg"));
-          if (values.svg && kept !== null) await keepSvg(job.name, out, png, state.svg, kept);
-          else if (values.svg) {
+          if (values.svg && kept !== null && kept !== "restored") await keepSvg(job.name, out, png, state.svg, kept);
+          else if (values.svg && kept === null) {
             if (existsSync(svgFile)) rmSync(svgFile);
             dropBundle(bundlesRoot, out);
           }

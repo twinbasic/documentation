@@ -91,137 +91,102 @@ function disableHeadStyleSheets() {
 // Site search
 
 function initSearch() {
-  // Patched: lazy index build (WIP.Search.md rollout step 5C). Building
-  // the lunr index eagerly, on every page load, cost about 1.3s and
-  // 240MB of heap even for readers who never open search (see
-  // WIP.Search.md's per-page-view cost table). initSearch() now only
-  // defines how to fetch and build the index -- loadIndex() below -- and
-  // hands that to searchLoaded(), which wires up the search box right
-  // away but doesn't call loadIndex() until the first keystroke. See
-  // builder/vendor/just-the-docs/README.md.
+  // Patched: a pre-built index, loaded lazily (WIP.Search.md, "The pre-built
+  // index"). The build writes search-index.json (builder/search-index.mjs):
+  // the search entries and their lunr index in one file, `{docs, index}`,
+  // so that the page can never hold entries of one build beside an index of
+  // another. The page loads the index with lunr.Index.load rather than
+  // building it: about 0.75 s on a desktop against 3 s, and half the heap.
+  // initSearch() only defines how to load it -- loadIndex() below -- and
+  // hands that to searchLoaded(), which wires up the search box right away
+  // but doesn't call loadIndex() until the first keystroke, so a reader who
+  // never searches downloads nothing for it. The file is parsed in one task
+  // and the index loaded in the next, handing the main thread back between
+  // them. See builder/vendor/just-the-docs/README.md.
   function loadIndex(onSuccess, onError) {
     var request = new XMLHttpRequest();
-    request.open('GET', (window.jtdBaseurl || '') + '/assets/js/search-data.json', true);
-
-    request.onload = function(){
-      if (request.status >= 200 && request.status < 400) {
-        try {
-          var docs = JSON.parse(request.responseText);
-
-          // Patched: split runs of 2+ dots into spaces before tokenising
-          // (step 5B). Titles like "Do...Loop" and "For Each...Next"
-          // tokenised as a single token ("do...loop"), because lunr's
-          // tokenizer tests one character at a time against `separator`,
-          // so a `\.{2,}` alternative in that regex can't work. Wrapping
-          // lunr.tokenizer instead: for a string input, every run of 2+
-          // dots becomes the same number of spaces (character positions
-          // stay valid, so match highlighting still works), then the
-          // original tokenizer runs as usual; non-string input (arrays,
-          // null) passes through unchanged. Installed once -- lunr is a
-          // global singleton and loadIndex() can run again after a failed
-          // load -- and the wrapper has to carry `separator` itself,
-          // because the original tokenizer reads `lunr.tokenizer.separator`
-          // at call time, which after this reassignment resolves to the
-          // wrapper's own property, not the original function's. See
-          // builder/vendor/just-the-docs/README.md and WIP.Search.md's
-          // "Design" section.
-          if (!lunr.tokenizer.dotRunSplit) {
-            var originalTokenizer = lunr.tokenizer;
-            var dotRunSplitTokenizer = function (input) {
-              if (typeof input === 'string') {
-                input = input.replace(/\.{2,}/g, function (m) {
-                  return new Array(m.length + 1).join(' ');
-                });
-              }
-              return originalTokenizer(input).map(decodeTokenEntities);
-            };
-            dotRunSplitTokenizer.dotRunSplit = true;
-            dotRunSplitTokenizer.separator = /[\s\-\/]+/;
-            lunr.tokenizer = dotRunSplitTokenizer;
-          }
-          separateTokenSetKeys();
-          accumulateSetUnions();
-
-          var twins = stemTwins(docs);
-          buildIndexInSlices(function(){
-            this.ref('id');
-            this.field('title', { boost: 200 });
-            this.field('content', { boost: 2 });
-            // Patched: two extra fields joined in at build time from the symbol
-            // index (builder/search.mjs's joinSymbolsToEntries) -- bare names
-            // ("PaintPicture") and their qualified "Container.Name" forms
-            // ("Form.PaintPicture"). Two fields, not one, because BM25 discounts
-            // a match inside a long field, and the qualified forms are longer;
-            // splitting them keeps the short bare names scoring well on their
-            // own. See builder/vendor/just-the-docs/README.md and
-            // WIP.Search.md's "Design" §2. `qualified` weighs most of the two
-            // since only a qualified name reaches it (see doSearch()), and
-            // naming one is the most specific thing a reader can type
-            // (WIP.Search.md, "Qualified names and stem twins").
-            this.field('names', { boost: 100 });
-            this.field('qualified', { boost: 500 });
-            // Patched: `exact` holds each bare name whole (see exactName()
-            // below), for a query naming it exactly; `primary` holds the same
-            // for the names that are types or language elements (the build
-            // lists them), so `Left` finds the Strings function before 40
-            // controls' Left properties; `page` holds the page's title, so a
-            // page whose title the reader typed outranks a section of another
-            // page that only mentions it. See WIP.Search.md, "Reader intent".
-            this.field('exact', { boost: 50 });
-            this.field('primary', { boost: 1000 });
-            this.field('page', { boost: 5 });
-            // Patched: `index` holds the entry's hand-marked index terms
-            // (builder/search.mjs's attachIndexMarks), as indexField() below
-            // writes them. See WIP.Search.md, "Hand-marked index entries".
-            this.field('index', { boost: 1000 });
-            this.field('relUrl');
-            this.metadataWhitelist = ['position']
-            pinIndexFieldLengths(this);
-            // Patched: keep stop words in the index (step 5A). lunr's index
-            // pipeline runs lunr.stopWordFilter by default, but its search
-            // pipeline never did, so English stop words were dropped from the
-            // index while a query still carried them and could never match --
-            // many are twinBASIC keywords (Do, For, If, Is, On, With, Each...).
-            // See WIP.Search.md's "Design" section.
-            this.pipeline.remove(lunr.stopWordFilter);
-          }, docs, function(i) {
-            return {
-              id: i,
-              title: docs[i].title,
-              content: indexedContent(docs[i]),
-              names: docs[i].names || '',
-              qualified: qualifiedField(docs[i], twins),
-              exact: (docs[i].names || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
-              primary: (docs[i].primary || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
-              page: docs[i].doc || '',
-              index: indexField(docs[i]),
-              relUrl: docs[i].relUrl
-            };
-          }, function(index) {
-            onSuccess(index, docs);
-          }, function(e) {
-            console.log('Error building search index: ' + e);
-            onError();
-          });
-        } catch (e) {
-          console.log('Error building search index: ' + e);
-          onError();
-        }
-      } else {
-        console.log('Error loading ajax request. Request status:' + request.status);
+    request.open('GET', (window.jtdBaseurl || '') + '/assets/js/search-index.json', true);
+    request.onload = function() {
+      if (request.status < 200 || request.status >= 400) {
+        console.log('Error loading search-index.json. Request status: ' + request.status);
         onError();
+        return;
       }
+      setTimeout(function() {
+        var data;
+        try {
+          data = JSON.parse(request.responseText);
+        } catch (e) {
+          console.log('Error loading search index: ' + e);
+          onError();
+          return;
+        }
+        setTimeout(function() {
+          try {
+            onSuccess(indexFromData(data), data.docs);
+          } catch (e) {
+            console.log('Error loading search index: ' + e);
+            onError();
+          }
+        }, 0);
+      }, 0);
     };
-
-    request.onerror = function(){
+    request.onerror = function() {
       console.log('There was a connection error');
       onError();
     };
-
     request.send();
   }
 
   searchLoaded(loadIndex);
+}
+
+// Patched: the lunr patches a query needs, installed once on the global lunr
+// before the index is loaded (the token set is made by Index.load). The
+// build installs the same ones before it builds the index
+// (builder/search-index.mjs), and test/search.test.mjs checks that they
+// tokenize alike. Called from initSearch() above and from offline.mjs's copy
+// of it.
+//
+// The tokenizer: runs of 2+ dots become spaces before tokenising (step 5B),
+// since titles like "Do...Loop" and "For Each...Next" tokenised as a single
+// token ("do...loop") -- lunr's tokenizer tests one character at a time
+// against `separator`, so a `\.{2,}` alternative in that regex can't work.
+// Every run of 2+ dots becomes the same number of spaces (character
+// positions stay valid, so match highlighting still works), then the
+// original tokenizer runs as usual; non-string input (arrays, null) passes
+// through unchanged. Each token's HTML entities are then decoded
+// (decodeTokenEntities() below). The wrapper has to carry `separator`
+// itself, because the original tokenizer reads `lunr.tokenizer.separator`
+// at call time, which after this reassignment resolves to the wrapper's own
+// property. See builder/vendor/just-the-docs/README.md and WIP.Search.md's
+// "Design" section.
+function installSearchPatches() {
+  if (!lunr.tokenizer.dotRunSplit) {
+    var originalTokenizer = lunr.tokenizer;
+    var dotRunSplitTokenizer = function (input) {
+      if (typeof input === 'string') {
+        input = input.replace(/\.{2,}/g, function (m) {
+          return new Array(m.length + 1).join(' ');
+        });
+      }
+      return originalTokenizer(input).map(decodeTokenEntities);
+    };
+    dotRunSplitTokenizer.dotRunSplit = true;
+    dotRunSplitTokenizer.separator = /[\s\-\/]+/;
+    lunr.tokenizer = dotRunSplitTokenizer;
+  }
+  separateTokenSetKeys();
+  accumulateSetUnions();
+}
+
+// Patched: the lunr index from the parsed search-index.json (`data`, whose
+// `index` is lunr's JSON and `docs` the entries it indexes), once the
+// patches are in. Called from initSearch() above and from offline.mjs's copy
+// of it.
+function indexFromData(data) {
+  installSearchPatches();
+  return lunr.Index.load(data.index);
 }
 
 // Patched: a name as the `exact` and `primary` fields hold it -- lowercased,
@@ -230,8 +195,9 @@ function initSearch() {
 // turning `#If` into `if` and `<>` into nothing; spelled out, they survive,
 // so `#If`, `Time$` and the operators stay distinct names. The final `_`
 // keeps a whole-name query off every longer name that starts with it (`Node`
-// against `Nodes`); no Porter stemmer rule touches a word ending in it. Used
-// by initSearch() above and doSearch() below.
+// against `Nodes`); no Porter stemmer rule touches a word ending in it. The
+// build writes the fields with the same function (builder/search-index.mjs);
+// used here by doSearch() below, for a query naming a whole name.
 function exactName(name) {
   return name.toLowerCase().replace(/\W/g, function(c) {
     return '_' + c.charCodeAt(0).toString(16);
@@ -242,8 +208,9 @@ function exactName(name) {
 // `&lt;`), since the results panel inserts its text as HTML and highlights by
 // character position in it. The index took them as written, so
 // `&amp;H80004005` was the term `amp;h80004005`, which no query reaches. The
-// tokenizer wrapper in initSearch() (and in offline.mjs's copy of it) decodes
-// each token here, after the split: the token keeps its position in the
+// tokenizer wrapper in installSearchPatches() (and the build's, in
+// builder/search-index.mjs) decodes each token here, after the split: the
+// token keeps its position in the
 // escaped text, so highlighting still lines up. A decoded character that
 // would separate words (`&#45;`, a hyphen) doesn't split its token. See
 // WIP.Search.md, "lunr patches".
@@ -337,42 +304,6 @@ function namesTheThing(result, name) {
   });
 }
 
-// Patched: the qualified names that the stemmer merges with another name's
-// (`Printer.Font` and `Printer.Fonts` both stem to `printer.font`), which
-// would otherwise tie in `qualified`: 104 names, mostly a function and its
-// `$` form. Keyed by the name as the tokenizer writes it. Used by
-// initSearch() above, with qualifiedField().
-function stemTwins(docs) {
-  var byStem = {};
-  for (var i in docs) {
-    lunr.tokenizer(docs[i].qualified || '').forEach(function(token) {
-      var stem = lunr.stemmer(lunr.trimmer(token.clone())).toString();
-      (byStem[stem] = byStem[stem] || {})[token.str] = true;
-    });
-  }
-  var twins = {};
-  for (var stem in byStem) {
-    var names = Object.keys(byStem[stem]);
-    if (names.length > 1) names.forEach(function(name) { twins[name] = true; });
-  }
-  return twins;
-}
-
-// Patched: a search entry's `qualified` field. Its qualified names, and
-// those of them that have a stem twin also whole, as exactName() writes
-// them, so that a query naming one (see doSearch()) finds it and not its
-// twin. Only those: held for every qualified name, the whole names took
-// 19 MB more heap; for the twins, 0.3 MB.
-function qualifiedField(doc, twins) {
-  var qualified = doc.qualified || '';
-  var whole = lunr.tokenizer(qualified).filter(function(token) {
-    return twins[token.str];
-  }).map(function(token) {
-    return exactName(token.str);
-  });
-  return whole.length ? qualified + ' ' + whole.join(' ') : qualified;
-}
-
 // Patched: a hand-marked index term as the `index` field holds it -- its
 // words as the index holds words (tokenized, trimmed and stemmed), joined by
 // `_`, with `_` appended, so the whole term is one token. A query matches it
@@ -391,156 +322,6 @@ function indexTermKey(term) {
     return t.str !== '';
   });
   return tokens.length ? phraseKey(tokens) : '';
-}
-
-// Patched: a search entry's `index` field. Its main terms (`index`) as
-// indexTermKey() writes them, and its secondary ones (`index_also`) with one
-// more `_`, so that doSearch() can weigh the two apart within one field. One
-// field, not two, because lunr gives every term in the whole index a slot
-// for every field: as two fields, with the words below as a third, the
-// index took 24 MB more heap; as one, 5 MB.
-function indexField(doc) {
-  var main = (doc.index || []).map(indexTermKey).filter(Boolean);
-  var also = (doc.index_also || []).map(indexTermKey).filter(Boolean).map(function(k) {
-    return k + '_';
-  });
-  return main.concat(also).join(' ');
-}
-
-// Patched: a search entry's content, with its index terms appended as plain
-// words, so an entry marked `late binding` still has both words when a query
-// requires all of them.
-function indexedContent(doc) {
-  var terms = (doc.index || []).concat(doc.index_also || []);
-  return terms.length ? doc.content + ' ' + terms.join(' ') : doc.content;
-}
-
-// Patched: BM25 scales a match by its field's length against the average
-// length of that field, and `index` is empty on nearly every entry, so its
-// average is near zero and a marked entry looked a thousand times too long:
-// its match counted for almost nothing, and would count for more with every
-// page marked. A term fills the field on its own, so the average is pinned
-// at one term. Called from the lunr builder function in initSearch().
-function pinIndexFieldLengths(builder) {
-  var averageLengths = builder.calculateAverageFieldLengths;
-  builder.calculateAverageFieldLengths = function() {
-    averageLengths.call(this);
-    this.averageFieldLength.index = 1;
-  };
-}
-
-// Patched: builds the index as lunr(config) does, but INDEX_SLICE_MS worth at
-// a time, handing the main thread back to the browser between slices, so the
-// search box takes keystrokes while the index builds. Built in one piece, the
-// index held the main thread for about 1.6 s on a desktop, the search box
-// took no keystrokes until it was done, and the first search was for the
-// text typed before the build began. `entry(id)` gives the entry to add for
-// docs[id]. The work is lunr 2.3.9's own, in its own order: lunr(config)
-// gives a new builder two pipelines and calls `config` on it, and build()
-// works out the average field lengths, then each field's vector
-// (createFieldVectors()), then the token set (TokenSet.fromArray() over the
-// sorted terms), then makes the Index. Only the pieces are new: an entry
-// added, FIELDS_PER_PIECE fields' vectors, a term put into the token set.
-// test/search.test.mjs checks that the index comes out the same as
-// lunr(config)'s. Called from initSearch() above and from offline.mjs's copy
-// of it.
-var INDEX_SLICE_MS = 25;
-var FIELDS_PER_PIECE = 100;
-function buildIndexInSlices(config, docs, entry, onSuccess, onError) {
-  var builder = new lunr.Builder();
-  builder.pipeline.add(lunr.trimmer, lunr.stopWordFilter, lunr.stemmer);
-  builder.searchPipeline.add(lunr.stemmer);
-  config.call(builder, builder);
-
-  var ids = Object.keys(docs);
-  var added = 0;
-  var fields = null; // the field refs, once every entry is in
-  var vectored = 0;
-  var vectors = {};
-  var idfs = [];
-  var terms = null; // the sorted terms, once every vector is made
-  var tokens = null;
-  var inserted = 0;
-
-  // Does one piece of the build, and returns false once none is left.
-  function piece() {
-    if (added < ids.length) {
-      builder.add(entry(ids[added++]));
-    } else if (!fields) {
-      builder.calculateAverageFieldLengths();
-      fields = Object.keys(builder.fieldTermFrequencies);
-    } else if (vectored < fields.length) {
-      addFieldVectors(fields.slice(vectored, vectored + FIELDS_PER_PIECE));
-      vectored += FIELDS_PER_PIECE;
-    } else if (!terms) {
-      terms = Object.keys(builder.invertedIndex).sort();
-      tokens = new lunr.TokenSet.Builder();
-    } else if (inserted < terms.length) {
-      tokens.insert(terms[inserted++]);
-    } else {
-      return false;
-    }
-    return true;
-  }
-
-  // lunr's own createFieldVectors(), on a view of the builder that holds
-  // only `refs`' term frequencies. That method caches each term's idf for
-  // the one call, so a piece would count the documents of every common term
-  // again, which made the vectors 6 to 13 times as slow; lunr.idf answers from
-  // `idfs` meanwhile, by the term's number, which each posting holds.
-  function addFieldVectors(refs) {
-    var view = Object.create(builder);
-    view.fieldTermFrequencies = {};
-    for (var i = 0; i < refs.length; i++) {
-      view.fieldTermFrequencies[refs[i]] = builder.fieldTermFrequencies[refs[i]];
-    }
-    var idf = lunr.idf;
-    lunr.idf = function(posting, documentCount) {
-      if (idfs[posting._index] === undefined) idfs[posting._index] = idf(posting, documentCount);
-      return idfs[posting._index];
-    };
-    try {
-      view.createFieldVectors();
-    } finally {
-      lunr.idf = idf;
-    }
-    for (var ref in view.fieldVectors) vectors[ref] = view.fieldVectors[ref];
-  }
-
-  // A message rather than setTimeout(fn, 0), which a browser delays by at
-  // least 4 ms once timeouts are nested five deep.
-  var channel = new MessageChannel();
-  channel.port1.onmessage = slice;
-  channel.port2.postMessage(null);
-
-  function slice() {
-    var index;
-    try {
-      var until = Date.now() + INDEX_SLICE_MS;
-      var more;
-      do {
-        more = piece();
-      } while (more && Date.now() < until);
-      if (more) {
-        channel.port2.postMessage(null);
-        return;
-      }
-      tokens.finish();
-      index = new lunr.Index({
-        invertedIndex: builder.invertedIndex,
-        fieldVectors: vectors,
-        tokenSet: tokens.root,
-        fields: Object.keys(builder._fields),
-        pipeline: builder.searchPipeline
-      });
-    } catch (e) {
-      channel.port1.close();
-      onError(e);
-      return;
-    }
-    channel.port1.close();
-    onSuccess(index);
-  }
 }
 
 // Patched: a query of two or more words that reads the same as a result's
@@ -580,7 +361,7 @@ function boostWholeTitles(results, docs, baseTokens, keys) {
 var KIND_WORDS = ['operator', 'statement', 'attribute', 'keyword', 'directive', 'class', 'method', 'property', 'module', 'function', 'constant', 'enum', 'object', 'member', 'sub', 'package', 'interface', 'control', 'event', 'type', 'field'];
 
 function searchLoaded(loadIndex) {
-  // Patched: index/docs start out unbuilt (step 5C) -- loadIndex() (from
+  // Patched: index/docs start out unloaded (step 5C) -- loadIndex() (from
   // initSearch(), above) isn't called until the first non-empty keystroke,
   // in loadIndexNow() below.
   var index = null;
@@ -620,12 +401,13 @@ function searchLoaded(loadIndex) {
     if (statusEl) statusEl.textContent = text;
   }
 
-  // Patched: starts the deferred fetch + build (step 5C). Only one load
+  // Patched: starts the deferred fetch + load (step 5C). Only one load
   // ever runs at a time -- a keystroke that lands while `indexLoading` is
   // true just returns here, and finishLoad() re-reads the search box once
-  // the build finishes, so it searches whatever is in it by then, not
-  // whatever triggered the load. The build hands the main thread back
-  // between slices (buildIndexInSlices()), so the reader can keep typing.
+  // the load finishes, so it searches whatever is in it by then, not
+  // whatever triggered the load. The load hands the main thread back
+  // between its steps (loadIndex() in initSearch()), so the reader can keep
+  // typing.
   function loadIndexNow() {
     if (indexLoading) {
       // Clearing the box mid-load empties the panel; typing again says so
@@ -764,8 +546,9 @@ function searchLoaded(loadIndex) {
     // container its name begins (`vbfile*` to `vbfileattribute.*`). Two
     // adjacent words, joined with a dot, name a member as a qualified name
     // does (`FileListBox Name`). Both also match a whole name, for the names
-    // `qualified` holds whole (see qualifiedField()). See WIP.Search.md,
-    // "Qualified names and stem twins".
+    // `qualified` holds whole (see qualifiedField() in
+    // builder/search-index.mjs). See WIP.Search.md, "Qualified names and
+    // stem twins".
     var plainTokens = queryTokens.filter(function(token) {
       return qualifiedTokens.indexOf(token) === -1;
     });
@@ -800,8 +583,9 @@ function searchLoaded(loadIndex) {
     // Patched: hand-marked index terms. Every run of up to four
     // consecutive words, written as indexTermKey() writes a term, so a query
     // matches a term by naming all of it, alone or among other words. A
-    // secondary term (the key with one more `_`, see indexField()) weighs a
-    // fifth of a main one: the field's boost of 1000 against 200.
+    // secondary term (the key with one more `_`, see indexField() in
+    // builder/search-index.mjs) weighs a fifth of a main one: the field's
+    // boost of 1000 against 200.
     var indexKeys = [];
     for (var a = 0; a < baseTokens.length; a++) {
       for (var b = a + 1; b <= baseTokens.length && b - a <= 4; b++) {

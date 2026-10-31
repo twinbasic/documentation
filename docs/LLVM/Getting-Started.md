@@ -22,9 +22,9 @@ During compilation, LLVM translates your code into an *intermediate representati
 
 You turn LLVM on in [Project Settings](../tB/IDE/Project-Settings). It is off by default while it is experimental. Project Settings has these options for it:
 
-![The Project Settings dialog scrolled to its two compiler option sections, Compiler Options (BUILD) and Compiler Options (DEBUG). Each has the same unticked boxes in two columns: Enable LLVM Compilation, LLVM: Generate optimized code, LLVM: Optimize for smaller filesize, and one LLVM: Target CPUs with box for each of AES, AVX, AVX2, BMI2, FMA, FXSR, LZCNT, POPCNT, RDSEED, SHA, SSE, SSE2, SSE3, SSE4.1, SSE4.2, SSSE3, XSAVE, XSAVEC, XSAVEOPT and XSAVES. Under the BUILD section a note says that software built for a CPU feature will not run on a CPU without it. Under the DEBUG section a bold note says that LLVM compilation in the IDE debug environment is not recommended, because LLVM-compiled code cannot be debugged.](Images/llvmdoc1.png){:width="1102" height="774"}
+![The Project Settings dialog with its Optimization group chosen in the rail, scrolled to Compiler Options (BUILD): a single column of unticked boxes, Enable LLVM Compilation, LLVM: Generate optimized code, LLVM: Optimize for smaller filesize, and one LLVM: Target CPUs with box for each of AES, AVX, AVX2, BMI2, FMA, FXSR, LZCNT, POPCNT, RDSEED, SHA, SSE, SSE2, SSE3, SSE4.1, SSE4.2, SSSE3, XSAVE, XSAVEC, XSAVEOPT and XSAVES. Its description says that software built for a CPU feature will not run on a CPU without it. Compiler Options (DEBUG) follows, with the same boxes, cut off after SSE2, and a bold note in its description saying that LLVM compilation in the IDE debug environment is not recommended, because LLVM-compiled code cannot be debugged.](Images/llvmdoc1.png){:width="1202" height="838"}
 
-The same options appear in two sections:
+The same options appear in two settings of the dialog's **Optimization** group:
 
 - **Compiler Options (BUILD)** applies when you build the project into an EXE, a DLL or another output file.
 - **Compiler Options (DEBUG)** applies when you run the project from the IDE.
@@ -89,15 +89,15 @@ All other language features should work, in both 32-bit and 64-bit builds. Pleas
 
 Besides the project settings, three settings in [IDE Options](../tB/IDE/Customising/IDE-Options) control how LLVM works when it is on. Changing any of the three ends the LLVM cache process and restarts the compiler at once, with no question asked.
 
-![Part of the twinBASIC IDE Options dialog, showing three LLVM settings: LLVM Compiler: Maximum number of threads, set to its default of 1; LLVM Compiler: Complex procedure reporting threshold (milliseconds), set to 10000; and LLVM Compiler: Keep cache process alive after exiting the IDE, ticked.](Images/llvmdoc2.png){:width="628" height="187"}
+![Part of the twinBASIC IDE Options dialog with its Compiler group chosen in the rail, showing three LLVM settings: LLVM - Maximum number of threads, set to its default of 1; LLVM - Complex procedure reporting threshold (milliseconds), set to 10000; and LLVM - Keep cache process alive after exiting the IDE, set to Yes.](Images/llvmdoc2.png){:width="1002" height="375"}
 
-**LLVM Compiler: Maximum number of threads**
+**LLVM - Maximum number of threads**
 : The number of threads the LLVM compiler can create. More threads can make LLVM compilation faster, but use more memory. If LLVM compilation starts to crash, this value is probably too high, and lowering it should stop the crashes. The default is 1, but newer computers can probably handle 10 or more.
 
-**LLVM Compiler: Complex procedure reporting threshold (milliseconds)**
+**LLVM - Complex procedure reporting threshold (milliseconds)**
 : A compile time. Every procedure that takes at least this long to compile is listed in the [Debug Console](../tB/IDE/Debugging/Debug-Console), which shows the procedures you may want to split up to reduce compile time. The default is 10000 milliseconds, which is 10 seconds.
 
-**LLVM Compiler: Keep cache process alive after exiting the IDE**
+**LLVM - Keep cache process alive after exiting the IDE**
 : Keeps the LLVM cache running after you exit the IDE, so that LLVM does not have to do a long full compile again. It is on by default.
 
 ## Per-procedure LLVM options

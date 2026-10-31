@@ -164,11 +164,12 @@ digraph tools_groups {
         i1 [label="addin_test"]     i2 [label="ide_test"]
         i3 [label="try_help_addin"] i4 [label="shoot_docs"]
         i5 [label="imagestrip"]     i8 [label="probe_theme_semicolon"]
-        i7 [label="svgshot/replay"]
+        i7 [label="svgshot/replay"] i9 [label="svgshot/sheet"]
         i1 -> i3 -> i5 -> i7
-        i2 -> i4 -> i8
+        i2 -> i4 -> i8 -> i9
         { rank=same; i3 i4 }
         { rank=same; i5 i8 }
+        { rank=same; i7 i9 }
     }
     subgraph cluster_defects {
         margin=12
@@ -379,6 +380,8 @@ digraph tools_groups {
         tooltip="Draws the SVG of each picture again from its saved bundle, with the converter as it is now. Starts no IDE and takes no picture."]
     i8 [URL="Tools-IDE#probe-theme-semicolon"
         tooltip="Lists the properties that the IDE silently drops when it loads the theme files it ships, because a property lacks its semicolon."]
+    i9 [URL="Tools-IDE#svg-sheet"
+        tooltip="Writes a page that shows, for each picture with no SVG, the PNG, the SVG drawn again from its bundle and a map of their differences, the worst first."]
 
     d1 [URL="Tools-Defects#bug-repro"
         tooltip="Builds, runs and verifies the reproducer projects for the entries of BUGS-TO-REPORT.md, one folder for each entry."]

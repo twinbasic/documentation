@@ -58,7 +58,7 @@ Moving the caret alone records nothing. The positions are not saved with the pro
 
 A bookmark marks a line so that you can return to it. A bookmarked line shows a light-blue box with a black border in the margin.
 
-![A module with two bookmarked lines, the first lines of the procedures Twice and Third. Each shows a light-blue box with a black border in the margin, left of its line number, and a label reading Bookmark has an arrow up to the lower one.](Images/Bookmarks.png){:width="565" height="372"}
+![A module with two bookmarked lines, the first lines of the procedures Twice and Third. Each shows a light-blue box with a black border in the margin, left of its line number, and a label reading Bookmark has an arrow up to the lower one.](Images/Bookmarks.png){:width="566" height="373"}
 
 | Command | Key |
 |---|---|
@@ -110,7 +110,7 @@ The **...** button in the header of the panel opens a menu of eleven items that 
 **Show Class Fields**, **Show Module Variables**, **Show Enumerations**, **Show User Defined Types**, **Show DLL Declares**, **Show Constructors**, **Show Properties (Get/Let/Set)**, **Show Procedures**, **Show Variables** and **Show Parameters**
 : Each shows or hides the symbols of that kind. All are on by default.
 
-![The OUTLINE panel listing the module Helpers, with its ... menu open: Sort Alphabetically, not ticked, then a separator and the ten Show items from Show Class Fields to Show Parameters, all ticked.](Images/Outline_Menu.png){:width="518" height="301"}
+![The OUTLINE panel listing the module Helpers, with its ... menu open: Sort Alphabetically, not ticked, then a separator and the ten Show items from Show Class Fields to Show Parameters, all ticked.](Images/Outline_Menu.png){:width="519" height="301"}
 
 The menu is in English whatever the IDE language is.
 

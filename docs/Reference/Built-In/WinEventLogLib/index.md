@@ -17,7 +17,7 @@ indexed_from: beta-x-1010
 
 The **WinEventLogLib** built-in package writes entries to the Windows Event Log from twinBASIC. Define two enumerations --- one naming the event IDs the application can report, one naming the categories those events belong to --- and the generic [**EventLog**](EventLog) class handles registration, registry setup, and the per-event `ReportEventW` call.
 
-The package is a built-in package shipped with twinBASIC. Add it through Project → References (**Ctrl-T**) → Available Packages.
+The package is a built-in package shipped with twinBASIC. Add it through Project → References... (**Ctrl-T**) → the **Available Packages** tab.
 
 * TOC
 {:toc}

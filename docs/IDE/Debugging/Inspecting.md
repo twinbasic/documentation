@@ -132,14 +132,14 @@ The Call Stack shows the frames of the other threads of the program as well. A f
 
 While the program is paused, pointing at an expression in the editor evaluates it in the active frame, and the popup shows `expression:   value`. The popup appears about a second after the pointer stops.
 
-![The paused line subtotal = subtotal + items(i).Quantity * price, with a popup above it reading subtotal: 360.](Images/Hover_Paused.png){:width="544" height="90"}
+![The paused line subtotal = subtotal + items(i).Quantity * price, with a popup above it reading subtotal: 360.](Images/Hover_Paused.png){:width="545" height="90"}
 
 The IDE builds the expression like this:
 
 - If the pointer is inside a selection, the expression is the selected text. Select `x + y`, point at it, and the popup shows its value.
 - Otherwise it is the word under the pointer, extended to the left over `.` and `!` and over an argument list in brackets, and to the right over an argument list that follows. Pointing at `Items` in `obj.Items(i).Name` evaluates the whole `obj.Items(i).Name`.
 
-![The same line with items(i).Quantity * price selected, and a popup reading items(i).Quantity * price: 141.6.](Images/Hover_Selection.png){:width="603" height="90"}
+![The same line with items(i).Quantity * price selected, and a popup reading items(i).Quantity * price: 141.6.](Images/Hover_Selection.png){:width="604" height="90"}
 
 A user-defined type shows `{user defined type, 8 bytes}` and one line for each field. An object shows its address. A word that is not an expression, such as a keyword or a type name, shows `(compile error: Unrecognized symbol 'For')`. A name that is not in the active frame shows the same message.
 

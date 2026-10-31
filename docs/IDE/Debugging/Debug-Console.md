@@ -13,7 +13,7 @@ index: immediate window
 
 The **DEBUG CONSOLE** panel is a scrolling log of what a run writes, and an input row that runs one line of code at a time.
 
-![The Debug Console pane with its three header buttons outlined at the top right. Labels above the pane, with arrows, name the first two buttons Auto Scroll and Clear Debug Console. The Options menu of the third button is open below it, offering Invert Output Direction and a ticked Show Timestamps, and a label at its right, also with an arrow, names it Options. The input row is outlined along the bottom edge, and a label with an arrow names it Input.](../Images/DebugConsole.png){:width="914" height="326"}
+![The Debug Console pane with its three header buttons outlined at the top right. Labels above the pane, with arrows, name the first two buttons Auto Scroll and Clear Debug Console. The Options menu of the third button is open below it, offering Invert Output Direction and a ticked Show Timestamps, and a label at its right, also with an arrow, names it Options. The input row is outlined along the bottom edge, and a label with an arrow names it Input.](../Images/DebugConsole.png){:width="915" height="326"}
 
 The panel is docked at the bottom of the default layout. <kbd>Ctrl</kbd>+<kbd>G</kbd> shows it, and moves the keyboard focus to the input row.
 
@@ -41,7 +41,7 @@ The header of the panel has three buttons.
 
 ### Auto Scroll
 
-The ![Auto Scroll button, an arrow pointing down at a bar](../Images/DebugConsole_AutoScroll.png){:width="16" height="16"} button keeps the newest output in view. While Auto Scroll is on, the console scrolls to each new line as it arrives: to the bottom, or to the top when **Invert Output Direction** is ticked. It is on each time the IDE starts, and the button is highlighted while it is on.
+The ![Auto Scroll button, an arrow pointing down at a bar](../Images/DebugConsole_AutoScroll.png){:width="17" height="17"} button keeps the newest output in view. While Auto Scroll is on, the console scrolls to each new line as it arrives: to the bottom, or to the top when **Invert Output Direction** is ticked. It is on each time the IDE starts, and the button is highlighted while it is on.
 
 Scrolling away from the newest line turns Auto Scroll off, so earlier output stays in view while the program goes on writing. Scrolling back until the newest line shows turns it on again.
 
@@ -49,11 +49,11 @@ Clicking the button turns Auto Scroll off until it is clicked again. Scrolling b
 
 ### Clear Debug Console
 
-The ![Clear Debug Console button](../Images/DebugConsole_Clear.png){:width="16" height="16"} button empties the console. It asks for no confirmation.
+The ![Clear Debug Console button](../Images/DebugConsole_Clear.png){:width="17" height="17"} button empties the console. It asks for no confirmation.
 
 ### Options
 
-The ![Options button, three dots](../Images/DebugConsole_Options.png){:width="16" height="16"} button opens a menu of two items, each with a tick when it is on.
+The ![Options button, three dots](../Images/DebugConsole_Options.png){:width="17" height="17"} button opens a menu of two items, each with a tick when it is on.
 
 **Invert Output Direction**
 : Off by default. Puts the newest line at the top.
@@ -135,7 +135,7 @@ End Sub
 
 Two project settings control the log. **Trace Flags** choose what the compiler records, with a box for each of eleven flags, and **Trace Output** chooses where the log goes: the path of a file, or `${DEBUG}` for this console only.
 
-![The Project Settings dialog scrolled to the Trace Flags row, a column of eleven unticked boxes from Trace Procedure Entry and Exit points to Trace RaiseEvent calls and arguments, and to the Trace Output row, an empty text box above a description of the ${SESSIONID}, ${DATE}, ${TIME} and ${DEBUG} placeholders.](../../Features/Images/4fc2bf99-2bec-4943-837d-21038d791574.png){:width="760" height="531"}
+![The Project Settings dialog with its Tracing group chosen in the rail: the Trace Flags row, a column of eleven unticked boxes from Trace Procedure Entry and Exit points to Trace RaiseEvent calls and arguments, and to the Trace Output row, an empty text box above a description of the ${SESSIONID}, ${DATE}, ${TIME} and ${DEBUG} placeholders.](../../Features/Images/4fc2bf99-2bec-4943-837d-21038d791574.png){:width="1202" height="613"}
 
 [Trace Flags](../Project-Settings#trace-flags) and [Trace Output](../Project-Settings#trace-output) describe each flag and the placeholders.
 

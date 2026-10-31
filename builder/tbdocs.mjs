@@ -996,6 +996,23 @@ const TASKS = {
     submit() {},
   },
 
+  // Write search-index.json, the search entries searchData wrote to
+  // search-data.json and their lunr index in one file, which the page loads
+  // instead of building the index -- see builder/search-index.mjs and
+  // WIP.Search.md, "The pre-built index" -- and the offline tree's
+  // search-index.js, which wraps it as a script. It
+  // runs on a lane (cpu-worker.mjs), reading search-data.json from disk: the
+  // main thread runs one task at a time, and as one of them the index held
+  // back the book and the offline tree. The index is built on threads of
+  // its own. The offline file is written here rather than by writeOffline so
+  // that the rest of the offline tree need not wait for the index;
+  // helpArchive, which zips that tree, waits for both.
+  searchIndex: {
+    expected: ["searchData"],
+    handler: "searchIndex",
+    submit() {},
+  },
+
   // Write tB/symbols.json, the symbol index the IDE help add-in reads -- see
   // builder/symbols.mjs. renderJoin because an entry's anchor is the id the
   // render gave its heading, read from the HTML; prepDest for the tree. The
@@ -1043,8 +1060,9 @@ const TASKS = {
   // Write the IDE help add-in's archive of the offline tree -- see
   // builder/help-archive-step.mjs. The offline tree must be complete, so it
   // waits for every task that writes into it: flushJoin (the pages, written by
-  // the render lanes' flushes), scss (the offline stylesheet) and writeOffline
-  // (the rest: statics, theme assets, redirect stubs, nav.js, search-data.js).
+  // the render lanes' flushes), scss (the offline stylesheet), searchIndex
+  // (search-index.js) and writeOffline (the rest: statics, theme assets,
+  // redirect stubs, nav.js).
   // Nothing else writes there before the Gantt injection, which runBuild does
   // after the graph; recheckHelpArchive checks that at the end. The Gantt chart
   // is injected after this task; the archive leaves out both files it writes
@@ -1052,7 +1070,7 @@ const TASKS = {
   // It runs on a worker (cpu-worker.mjs), so the main thread writes the book
   // meanwhile; it reads skipOffline from dispatch's broadcast.
   helpArchive: {
-    expected: ["flushJoin", "scss", "writeOffline"],
+    expected: ["flushJoin", "scss", "searchIndex", "writeOffline"],
     handler: "helpArchive",
     // The zip crosses the thread boundary as a plain Uint8Array; make it a
     // Buffer again, without copying, for addinProject.
@@ -1166,7 +1184,7 @@ const TASKS = {
 
   // Write redirect stubs + sitemap/robots. Waits for writeAssets (theme on
   // disk), searchData, deriveRedirects, and deriveSitemap.
-  // Passes searchStats through to writeOffline (for search-data.js).
+  // Passes searchStats through, for the summary line and the link check.
   writeAux: {
     expected: ["writeAssets", "searchData", "flushJoin", "deriveRedirects", "deriveSitemap"],
     runOnMain: true,
@@ -1183,14 +1201,15 @@ const TASKS = {
 
   // Produce _site-offline/. Depends on writeAux (redirects + sitemap on
   // disk) and writeAssets (theme assets on disk for the CSS-rewrite +
-  // JTD-patch passes). Offline page HTML is already on disk from flush.
+  // JTD-patch passes). Offline page HTML is already on disk from flush, and
+  // search-index.js is written by searchIndex.
   writeOffline: {
     expected: ["writeAux", "writeAssets"],
     runOnMain: true,
-    async execute({ writeAux: { redirectStats, sitemapStats, searchStats } }, ctx, state) {
+    async execute({ writeAux: { redirectStats, sitemapStats } }, ctx, state) {
       const skipOffline = skipsOffline(ctx, state);
       if (ctx.opts.dryRun || skipOffline) return null;
-      const auxStats = { redirects: redirectStats, sitemap: sitemapStats, search: searchStats };
+      const auxStats = { redirects: redirectStats, sitemap: sitemapStats };
       return writeOffline(state.staticFiles, state.site, ctx.destRoot, {
         auxStats,
         sitePaths: state.sitePaths,
@@ -1350,8 +1369,9 @@ const TASKS = {
     // symbolIndex for the same reason: tB/symbols.json is in the online tree's
     // index, and the audit must not look for it before it is written. And
     // addinProject: the add-in's project file is in both trees' indexes. And
-    // packageTests: the package test projects are in the online tree's.
-    expected: ["linkJoin", "checkBook", "scss", "symbolIndex", "addinProject", "packageTests"],
+    // packageTests: the package test projects are in the online tree's. And
+    // searchIndex: search-index.json is in the online tree's.
+    expected: ["linkJoin", "checkBook", "scss", "symbolIndex", "searchIndex", "addinProject", "packageTests"],
     runOnMain: true,
     async execute({ linkJoin: trees, checkBook: book }, ctx, state) {
       if (!state.checkTrees) return null;
@@ -1631,6 +1651,13 @@ export async function runBuild(opts) {
       `  ${pc.bold("aux:")}   ${auxResult.redirectStats.written} redirect stubs, ` +
         `${auxResult.sitemapStats.entries} sitemap entries, ` +
         `${auxResult.searchStats.entries} search-index entries`,
+    );
+  }
+  const searchIndexStats = results.get("searchIndex");
+  if (searchIndexStats?.bytes) {
+    console.log(
+      `  ${pc.bold("search:")} index of ${searchIndexStats.entries} entries built on ` +
+        `${searchIndexStats.workers} thread(s), ${(searchIndexStats.bytes / 1048576).toFixed(1)} MB`,
     );
   }
   const symbolStats = results.get("symbolIndex");

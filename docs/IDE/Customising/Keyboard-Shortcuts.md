@@ -26,7 +26,7 @@ To remove a default key, override the command in a group of your own with no key
 
 Point at **Window → Keyboard Shortcuts**. The submenu lists the built-in group, which is always ticked, then your groups as **Custom** *n*. *name*, then **Manage Keyboard Shortcuts...**.
 
-![The Window menu with Keyboard Shortcuts highlighted and its submenu open to the right: a ticked Default Built-in Keyboard Shortcuts above Manage Keyboard Shortcuts.](../Menu/Images/Menu_Window_KeyboardShortcuts.png){:width="404" height="159"}
+![The Window menu with Keyboard Shortcuts highlighted and its submenu open to the right: a ticked Default Built-in Keyboard Shortcuts above Manage Keyboard Shortcuts.](../Menu/Images/Menu_Window_KeyboardShortcuts.png){:width="405" height="159"}
 
 A tick means the group is on. Click a group to switch it on or off. The change applies at once: menu items show their new keys. The IDE keeps the set of groups that are on.
 
@@ -38,13 +38,13 @@ Menu items show their keys in the order <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Al
 
 Choose **Window → Keyboard Shortcuts → Manage Keyboard Shortcuts...** to create, edit and delete groups.
 
-![The Manage Keyboard Shortcuts dialog. A paragraph across the top explains that groups are merged in the order listed, and how to override an existing shortcut or add one alongside it. The left pane holds the single built-in group, DEFAULT; the right pane shows its JSON with the Edit as JSON box ticked, mapping names such as tbEditor_SelectAll and tbEditor_ClipboardCopy to KEYDOWN sequences. Save Changes is greyed out.](../Menu/Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts.png){:width="1016" height="736"}
+![The Manage Keyboard Shortcuts dialog. A paragraph across the top explains that groups are merged in the order listed, and how to override an existing shortcut or add one alongside it. The left pane holds the single built-in group, DEFAULT; the right pane shows its JSON with the Edit as JSON box ticked, mapping names such as tbEditor_SelectAll and tbEditor_ClipboardCopy to KEYDOWN sequences. Save Changes is greyed out.](../Menu/Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts.png){:width="1016" height="740"}
 
 The text across the top of the dialog describes the layering, and how to override a shortcut and how to add one. The list on the left holds `<DEFAULT> (built-in group)`, which is read-only, and then your groups. Each of yours has a close icon that deletes it. The pane on the right holds the selected group as JSON in a monospace text area.
 
 The **Edit as JSON** box is ticked. If you clear it, the pane shows only the text *Keyboard editor coming soon....*, so keep it ticked.
 
-![The same dialog with the Edit as JSON box cleared: the editing pane is empty apart from the line Keyboard editor coming soon.](../Menu/Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts_1.png){:width="1016" height="736"}
+![The same dialog with the Edit as JSON box cleared: the editing pane is empty apart from the line Keyboard editor coming soon.](../Menu/Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts_1.png){:width="1016" height="740"}
 
 **Add New...**
 : Asks for a name, then creates a group that holds one sample entry, `{"tbMisc_ShowTestMessage":["{KEYDOWN}{CTRL}0"]}`. <kbd>Ctrl</kbd>+<kbd>0</kbd> then opens a test dialog that reads *This is just a test modal dialog.* A name that starts with `<` is refused with a message that says *Custom panel name cannot begin with '<'*, although it means a group name.

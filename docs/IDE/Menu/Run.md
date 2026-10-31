@@ -12,7 +12,7 @@ redirect_from:
 
 The Run menu holds the three commands that start, pause and end a run. [Running](../../Debugging/Running) explains them.
 
-![The Run menu open while a program runs: Start, with F5 beside a play triangle, is greyed out; Break, with CTRL+BREAK beside a pause icon, and End, beside a stop icon, are available.](Images/Menu_Run.png){:width="168" height="103"}
+![The Run menu open while a program runs: Start, with F5 beside a play triangle, is greyed out; Break, with CTRL+BREAK beside a pause icon, and End, beside a stop icon, are available.](Images/Menu_Run.png){:width="169" height="103"}
 
 **Start** (<kbd>F5</kbd>)
 : Starts the program when nothing runs, and continues it when it is paused. The toolbar button is titled **Start / Continue**. It works when a project is open and the program is idle or paused. See [Start, Break and End](../../Debugging/Running#start-break-and-end).

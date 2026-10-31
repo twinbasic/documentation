@@ -43,7 +43,7 @@ A build does not save the project and does not ask you to. The compiler builds t
 
 A project made from a template, a sample or a folder, or imported from a VB6 project, has no `.twinproj` file until it is saved. **Build** and **Clean** both open a box titled **twinBASIC** for such a project, with the question **You must first save the project.  Save now?** and the buttons **Save** and **Cancel**.
 
-![The question a build of a project with no file asks, in a box titled twinBASIC.](Images/Save_First.png){:width="362" height="144"}
+![The question a build of a project with no file asks, in a box titled twinBASIC.](Images/Save_First.png){:width="377" height="148"}
 
 **Cancel** closes the box. Nothing is written, and the console prints nothing. **Save** opens the Windows **Save As** dialog, with the name of the project's folder proposed, such as `NewProject`.
 

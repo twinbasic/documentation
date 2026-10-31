@@ -10,11 +10,11 @@ redirect_from:
 
 # Help Menu
 
-![The Help menu open with every entry available, each beside its own icon: About twinBASIC, Licence Agreement and Automatic IDE Error Reporting; the Discord, GitHub and Twitter support links; Purchase A Licence, Enter Licence Key and Buy us a Coffee; and a closing status line reading Compiler services TRACE mode: Disabled.](Images/Menu_Help.png){:width="268" height="294"}
+![The Help menu open with every entry available, each beside its own icon: About twinBASIC, Licence Agreement and Automatic IDE Error Reporting; the Discord, GitHub and Twitter support links; Purchase A Licence, Enter Licence Key and Buy us a Coffee; and a closing status line reading Compiler services TRACE mode: Disabled.](Images/Menu_Help.png){:width="269" height="294"}
 
 ## About twinBASIC...
 
-![The About twinBASIC dialog. Beneath the twinBASIC logo it gives the version of the IDE and the copyright as 2026 twinBASIC Ltd, followed by an italic paragraph thanking the community and a SPECIAL THANKS line marked coming soon. A VIP Gold Supporters band heads a grid of four sponsor logos and two empty See your logo here placeholders. Below that, ten third-party open-source libraries are listed against the licence file each one ships --- Monaco, Codicon, LLVM, LodePNG, Spectrum, Grapick, ChartJS, jQuery, VbQRCodegen and LZ4 --- above a green band naming the licence edition, and a Close button.](Images/Menu_Help_About.png){:width="506" height="880"}
+![The About twinBASIC dialog. Beneath the twinBASIC logo it gives the version of the IDE and the copyright as 2026 twinBASIC Ltd, followed by an italic paragraph thanking the community and a SPECIAL THANKS line marked coming soon. A VIP Gold Supporters band heads a grid of four sponsor logos and two empty See your logo here placeholders. Below that, ten third-party open-source libraries are listed against the licence file each one ships --- Monaco, Codicon, LLVM, LodePNG, Spectrum, Grapick, ChartJS, jQuery, VbQRCodegen and LZ4 --- above a green band naming the licence edition, and a Close button.](Images/Menu_Help_About.png){:width="501" height="880"}
 
 ## Licence Agreement...
 

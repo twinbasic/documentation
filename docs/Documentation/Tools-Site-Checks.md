@@ -83,7 +83,7 @@ Three details are easy to break:
 
 - It scans **`_site-offline/`, not `_site/`**. The online tree's root-absolute asset URLs (`/assets/css/…`) resolve to nothing under `file://`, so every page would load unstyled and every colour-contrast result would be a meaningless black-on-white pass.
 - It scans **each page in both themes**, because dark mode is a separate palette (applied via `[data-theme=dark]`).
-- It **blocks the search index** (`search-data.js` + `lunr.min.js`): the ~3.2 MB of index per page never reaches the DOM axe examines, and blocking it cuts the run from ~27 s to ~9 s with identical results. `just-the-docs.js` is not blocked, because it installs the search combobox ARIA, and blocking it would make axe see less.
+- It **blocks the search index** (`search-index.js` and `lunr.min.js`), which never reaches the DOM axe examines. A page loads the index only when the reader types in the search box, so today only `lunr.min.js` is requested; when every page loaded the search data, blocking it cut the run from ~27 s to ~9 s with identical results. `just-the-docs.js` is not blocked, because it installs the search combobox ARIA, and blocking it would make axe see less.
 
 Run `build.bat` first, so `_site-offline/` is up to date.
 

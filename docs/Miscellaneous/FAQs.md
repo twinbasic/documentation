@@ -236,16 +236,16 @@ Anyone who has ever tested their own programs against a wide variety of AV engin
 
 The easiest way is through the import wizard. When you first start the twinBASIC IDE, you're presented with the New Project dialog- this contains an 'Import from VBP' option:
 
-![The New / Open Project dialog on its New tab, showing a grid of project templates from Standard EXE to Import from folder, with a red arrow pointing up at the Import from VBP tile.](Images/7e1cb69c-6db3-4f3f-aea1-c1fae25938a2.png){:width="522" height="405"}
+![The New / Open Project dialog on its New section, showing a grid of project template cards from Standard EXE to Import from folder, with a red arrow pointing up at the icon of the Import from VBP card.](Images/7e1cb69c-6db3-4f3f-aea1-c1fae25938a2.png){:width="970" height="728"}
 
 You can import individual files, from VB projects or any type, through the Import option on the Add menu, under Project or by right clicking the desired folder in the Project Explorer pane:
 
-![The Project Explorer context menu opened on a project's Sources folder, with the Add submenu expanded beside it. A red arrow points at Add, and a second arrow points at Import, which is ringed among the Add Folder, Add Windows Form and Add Resource entries.](Images/2b32ab8c-fabc-4f42-9e6b-06e85574eaf4.png){:width="753" height="626"}
+![The Project Explorer context menu opened on a project's Sources folder, with the Add submenu expanded beside it. A red arrow points at Add, and a second arrow points at Import, which is ringed among the Add Folder, Add Windows Form and Add Resource entries.](Images/2b32ab8c-fabc-4f42-9e6b-06e85574eaf4.png){:width="754" height="626"}
 
 > [!NOTE]
 > You can select .bas/.cls files individually, but to import Forms, UserControls, Property Pages, and Resource Files you must currently select the .vbp file they're associated with. You'll then be shown a list of files you can import (with their new twinBASIC extensions .tbform/.twin etc-- make sure to import both, e.g. for Form1.frm you'll see Form1.frm.tbform and Form1.frm.twin:
 
-![The Import from twinproj dialog: a tick-box tree of everything found in ImportDemo.vbp, with the Resources branch expanded over its ICON and MANIFEST folders and a Sources branch below, where a module from a folder beside the project's sits in a PARENT-FOLDER branch. Form1.frm.tbform and Form1.frm.twin are both ticked.](Images/16833fae-4bd7-418f-bb16-691a611a5b01.png){:width="468" height="397"}
+![The Import from twinproj dialog: a tick-box tree of everything found in ImportDemo.vbp, with the Resources branch expanded over its ICON and MANIFEST folders and a Sources branch below, where a module from a folder beside the project's sits in a PARENT-FOLDER branch. Form1.frm.tbform and Form1.frm.twin are both ticked.](Images/16833fae-4bd7-418f-bb16-691a611a5b01.png){:width="469" height="401"}
 
 Importing a .vbp also carries over its [startup object](tB/IDE/Project-Settings#startup-object) and its [icon form](tB/IDE/Project-Settings#icon-form). A VB6 project that was linked as a console program --- its `LinkSwitches` line contains `/SUBSYSTEM:CONSOLE`, written in capitals --- becomes a [console application](tB/IDE/Project-Settings#is-console-application). No other linker switch is carried over.
 
@@ -283,24 +283,24 @@ In a built ActiveX DLL, these lines have the same effect as the twinBASIC attrib
 
 While use is strongly recommended and considered a best practice, twinBASIC **does not** require `Option Explicit`. If you're seeing these errors, you may have overlooked a new feature of twinBASIC: automatically enabling `Option Explicit` project-wide. When you import a VB6 project, or create a new one, a small dialog pops up:
 
-![The twinBASIC New Project Options dialog: a Project Name box above ticked boxes for Option Explicit ON at project scope, Visual Styles and Include Common Controls, and a DPI Awareness dropdown set to SYSTEM_DPI_AWARE.](Images/05306a72-4ff6-427d-8970-969ef0c582e6.png){:width="514" height="275"}
+![The twinBASIC New Project Options dialog: a Project Name box above ticked boxes for Option Explicit ON at project scope, Visual Styles and Include Common Controls, and a DPI Awareness dropdown set to SYSTEM_DPI_AWARE.](Images/05306a72-4ff6-427d-8970-969ef0c582e6.png){:width="529" height="279"}
 
-If you leave "Option Explicit ON" checked, that means it will be enforced project-wide, regardless of whether `Option Explicit` is used in the form/module/etc itself. If you uncheck it, you won't get any errors for it, just a warning: "This variable has been auto-declared by the compiler due to Option Explicit being OFF". If you want, you can disable that warning in Project Settings:
+If you leave "Option Explicit ON" checked, that means it will be enforced project-wide, regardless of whether `Option Explicit` is used in the form/module/etc itself. If you uncheck it, you won't get any errors for it, just a warning: "This variable has been auto-declared by the compiler due to Option Explicit being OFF". If you want, you can disable that warning in the **Compiler Warnings** group of Project Settings, by choosing **IGNORE** for TB0002 in its drop-down:
 
-![The Compiler Warnings section of Project Settings, listing warnings TB0001 to TB0015 with a severity dropdown against each. TB0002 and TB0003 are ringed in red, and the dropdown of TB0002 is open below it on its WARNING, HINT, INFO, IGNORE and ERROR choices, WARNING marked as the current one.](Images/2a1c71fd-f81c-4bd3-b61a-0f2979e8961f.png){:width="899" height="374"}
+![The Compiler Warnings group of Project Settings, with its description, a Filter warnings box and the warnings TB0001 to TB0015, each with a severity drop-down at its left. TB0002 and TB0003 are ringed in red, and the drop-down of TB0002 is open below it on its WARNING, HINT, INFO, IGNORE and ERROR choices, WARNING marked as the current one.](Images/2a1c71fd-f81c-4bd3-b61a-0f2979e8961f.png){:width="997" height="689"}
 
-For an existing project, the Project Scope Option Explicit can be turned on or off from Project Settings, under "Option Explicit On":
+For an existing project, the Project Scope Option Explicit can be turned on or off from the **Option Explicit On** setting in the **Compiler** group of Project Settings:
 
-![The Project Settings dialog below its filter box, showing the Option Explicit On row with a dropdown set to Yes, above the note that this takes effect only when the source file does not specify Option Explicit itself.](Images/01009879-fdbc-4a8e-8683-353aab6193df.png){:width="740" height="140"}
+![The Project Settings dialog with the Compiler group chosen in its rail. The group shows Conditional Compilation Args, Runtime Binding Of DLL Declares and Option Explicit On. The last has No, Yes and Default: Yes buttons, with Yes chosen, and under its name the note that it takes effect only when the source file does not specify Option Explicit itself.](Images/01009879-fdbc-4a8e-8683-353aab6193df.png){:width="1202" height="298"}
 
 </details>
 
 <details>
 <summary markdown=span id="addins"><b>Does twinBASIC support addins?</b></summary>
 
-Addins for VB6 and VBA are not supported by the twinBASIC IDE. However, tB has its own addin infrastructure based on modern web technologies. See Samples 10 through 16 in the 'Samples' tab of the New Project dialog:
+Addins for VB6 and VBA are not supported by the twinBASIC IDE. However, tB has its own addin infrastructure based on modern web technologies. See Samples 10 through 16, the cards named *twinBASIC IDE Addin*, alone or with a variant in brackets, in the **Samples** section of the New Project dialog:
 
-![The New / Open Project dialog on its Samples tab, scrolled to the addin samples: Sample 10 twinBASIC IDE Addin followed by its Chart, Monaco, ListView and VirtualListView variants, with the list continuing below.](Images/0e24eb5c-c9af-49a9-a908-03968b211554.png){:width="522" height="405"} 
+![The New / Open Project dialog on its Samples section, scrolled to its end: twinBASIC IDE Addin (Sample 10) followed by its Chart, Monaco, ListView, VirtualListView, GlobalSearch and TODO Widgets demo variants, then the remaining samples down to OOP Inheritance Example (Animals).](Images/0e24eb5c-c9af-49a9-a908-03968b211554.png){:width="970" height="728"} 
 
 twinBASIC supports **creating** addins for VBA. It's currently the only tool that supports creating these addins for 64bit Office using a language with 100% compatible syntax. See Sample 4 and Sample 5.
 
@@ -354,12 +354,12 @@ For other standard types, you must use the # (pound sign) followed their number.
 <summary markdown=span id="app-icon"><b>How do I set my own icon for my program?</b></summary>
 
 By default newly created projects use the twinBASIC logo.  
-Imported projects use the icon of the Form chosen in Settings. This can be modified or set for all projects in the same way: in the Settings dialog for your project, there is an "Icon Form" option from which you can select which Form's icon will be used for your exe.
+Imported projects use the icon of the Form chosen in Project Settings. This can be modified or set for all projects in the same way: in the **Startup** group of the Project Settings dialog for your project, the **Icon Form** setting is a drop-down from which you can select which Form's icon will be used for your exe.
 
 If you don't set that option, or your project contains no Forms, the icon can be managed manually through the Resources folder.  
 If you're not already familiar with using resources in twinBASIC, see the FAQ entry right above this one. In this scenario, the icon used for your application in Explorer is the one in the Resources\ICON folder that comes first alphabetically. If you do not have an ICON folder in your project, you can create one by right-clicking the Resources folder and selecting Add->Add folder.
 
-![The Project Explorer with the ICON folder under Resources expanded to two entries, MyOwnIcon.ico above twinBASIC.ico, beside the Toolbox and a form open in the designer.](Images/8611d12a-d7a6-48cc-9544-cb27c5299aa5.png){:width="642" height="461"}
+![The Project Explorer with the ICON folder under Resources expanded to two entries, MyOwnIcon.ico above twinBASIC.ico, beside the Toolbox and a form open in the designer.](Images/8611d12a-d7a6-48cc-9544-cb27c5299aa5.png){:width="642" height="462"}
 
 In the above picture, MyOwnIcon.ico would be used by Explorer and other apps to represent your .exe, as it comes before twinBASIC.ico alphabetically. 
 

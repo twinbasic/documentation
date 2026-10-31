@@ -124,6 +124,17 @@ export function transparent(c) {
   return m ? Number.parseFloat(m[1].split(",")[3]) === 0 : false;
 }
 
+// Whether a box's outer box-shadow would show through the box. Chromium paints an outer
+// shadow outside the border box only, and paintBox draws each one whole under the box, which
+// its own background hides when that is an opaque colour filling the border box. Where it is
+// not (a transparent or translucent colour, a background clipped to the padding or content
+// box), the shadows are clipped to what lies outside the border box. A focused dialog button
+// of BETA 1033 is such a box: its background is a theme variable no theme defines.
+export function shadowShowsThrough(st) {
+  const c = rgba(st["background-color"]);
+  return !c || c.a < 1 || splitTop(st["background-clip"] ?? "border-box").at(-1) !== "border-box";
+}
+
 function intersect(a, b) {
   const x = Math.max(a.x, b.x);
   const y = Math.max(a.y, b.y);
@@ -338,6 +349,30 @@ export function selectLabel(select) {
 const TEXT_INPUTS = new Set(["text", "search", "email", "url", "tel", "number", "password"]);
 const BUTTON_INPUTS = new Set(["button", "submit", "reset"]);
 const CHECKABLE_INPUTS = new Set(["checkbox", "radio"]);
+
+/**
+ * Whether Chromium draws layout object `l` as its native text field rather than
+ * by its CSS: a text <input> whose border and background the page leaves as the
+ * browser's own, 2px inset rgb(118, 118, 118) on white. Styling either turns the
+ * native look off, so every other field is drawn from its style.
+ */
+export function nativeTextField(l) {
+  const st = l.style;
+  if (l.node.name !== "INPUT" || !st || st.appearance === "none") return false;
+  if (!TEXT_INPUTS.has((l.node.attrs.type ?? "text").toLowerCase())) return false;
+  const own = SIDES.every(
+    (s) =>
+      st[`border-${s}-style`] === "inset" &&
+      st[`border-${s}-width`] === "2px" &&
+      st[`border-${s}-color`] === "rgb(118, 118, 118)",
+  );
+  const square = ["top-left", "top-right", "bottom-right", "bottom-left"].every(
+    (c) => (st[`border-${c}-radius`] ?? "0px") === "0px",
+  );
+  return (
+    own && square && st["background-color"] === "rgb(255, 255, 255)" && (st["background-image"] ?? "none") === "none"
+  );
+}
 
 /**
  * The text a native <input> or <textarea> shows, which is no DOM text:
@@ -1368,12 +1403,14 @@ export function renderSvg(
     const r = radii(st, b.w, b.h);
     const bw = borders(st);
     const shadows = parseShadows(st["box-shadow"]);
+    const outer = [];
+    let reach = { x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h };
     for (const s of [...shadows].reverse()) {
       if (s.inset || transparent(s.color)) continue;
       const sb = { x: b.x + s.x - s.spread, y: b.y + s.y - s.spread, w: b.w + 2 * s.spread, h: b.h + 2 * s.spread };
       let attrs = `fill="${s.color}"`;
+      const m = s.blur * 1.5;
       if (s.blur > 0) {
-        const m = s.blur * 1.5;
         const id = def(
           `b${s.blur}|${sb.x}|${sb.y}|${sb.w}|${sb.h}`,
           (id) =>
@@ -1381,10 +1418,25 @@ export function renderSvg(
         );
         attrs += ` filter="url(#${id})"`;
       }
-      out.push(shape(sb, r, attrs));
+      reach = {
+        x0: Math.min(reach.x0, sb.x - m),
+        y0: Math.min(reach.y0, sb.y - m),
+        x1: Math.max(reach.x1, sb.x + sb.w + m),
+        y1: Math.max(reach.y1, sb.y + sb.h + m),
+      };
+      outer.push(shape(sb, r, attrs));
     }
+    if (outer.length && shadowShowsThrough(st)) {
+      // What the shadows reach, less the border box with its own corners.
+      const box = rrectPath(b, r) ?? `M${num(b.x)} ${num(b.y)}h${num(b.w)}v${num(b.h)}h${num(-b.w)}Z`;
+      const d = `M${num(reach.x0)} ${num(reach.y0)}H${num(reach.x1)}V${num(reach.y1)}H${num(reach.x0)}Z${box}`;
+      const id = def(`o${d}`, (id) => `<clipPath id="${id}"><path clip-rule="evenodd" d="${d}"/></clipPath>`);
+      out.push(`<g clip-path="url(#${id})">${outer.join("")}</g>`);
+    } else out.push(...outer);
     const ground = [];
-    if (!transparent(st["background-color"])) {
+    const native = nativeTextField(l) ? paintNativeTextField(b) : null;
+    if (native) ground.push(native.ground);
+    else if (!transparent(st["background-color"])) {
       // The colour fills the last layer's clip box.
       const under = backgroundBoxes(st, b, r, bw)[splitTop(st["background-clip"] ?? "border-box").at(-1)];
       ground.push(shape(under?.box ?? b, under?.r ?? r, `fill="${st["background-color"]}"`));
@@ -1409,7 +1461,8 @@ export function renderSvg(
           `M${num(hole.x)} ${num(hole.y)}h${num(hole.w)}v${num(hole.h)}h${num(-hole.w)}Z"/>`,
       );
     }
-    if (bw.some((s) => s.width > 0)) {
+    if (native) out.push(native.border);
+    else if (bw.some((s) => s.width > 0)) {
       // A collapsed table border is shared between two cells, and drawn here by each.
       if ((l.node.name === "TD" || l.node.name === "TH") && st["border-collapse"] === "collapse")
         note("collapsed table border");
@@ -2015,6 +2068,27 @@ export function renderSvg(
     return [
       `<g transform="translate(${num(b.x + (b.w - side) / 2)} ${num(b.y + (b.h - side) / 2)}) scale(${num(side / 13)})"${fade}>${art}</g>`,
     ];
+  }
+
+  // Chromium's native Fluent text field (nativeTextField), over the border box `b`:
+  // a white ground and a 1px rgb(118, 118, 118) border along its edge, with rounded
+  // corners, drawn without antialiasing. The CSS border is not drawn; its 2px still
+  // place the text. Fitted against Edge by bench/textfield.html: drawn with
+  // crispEdges, an outer radius from 2.1 to 2.3px and an inner one 1px less gives
+  // every pixel of Edge's border, so 2.2 and 1.2.
+  function paintNativeTextField(b) {
+    const round = (v) => [
+      [v, v],
+      [v, v],
+      [v, v],
+      [v, v],
+    ];
+    const outer = rrectPath(b, round(2.2));
+    const inner = rrectPath(deflate(b, 1, 1, 1, 1), round(1.2));
+    return {
+      ground: `<path d="${outer}" fill="#fff" shape-rendering="crispEdges"/>`,
+      border: `<path fill-rule="evenodd" fill="rgb(118, 118, 118)" shape-rendering="crispEdges" d="${outer}${inner}"/>`,
+    };
   }
 
   // The text of a native <input> or <textarea> is not DOM text. It is set in the

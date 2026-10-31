@@ -18,9 +18,9 @@ The compiler will notify you if a newer version of a package in your project is 
 
 ![The DEBUG CONSOLE showing a PACKAGE CHECK notice for the OLEGuids package: the project has version 1.0.0.9, marked with a red cross, and version 1.0.0.10 is available](Images/db4636f6-d988-4e31-94a2-c4c170418e81.png){:width="640" height="72"}
 
-If you find an updated package is available on TWINSERV, you must first remove the old package from your project by deselecting it. Open Settings to References and, on the **Enabled Libraries** tab, untick the box. The IDE deletes the project's copy of the package, the folder `/Packages/<name>`, at once, without asking (see the warning under [Replacing an embedded copy](#replacing-an-embedded-copy)):
+If you find an updated package is available on TWINSERV, you must first remove the old package from your project by deselecting it. Open **Project** > **References...** and, on the **Enabled Libraries** tab, untick the box. The IDE manages the `/Packages` folder from the project's embedded packages, so it removes that package's folder, `/Packages/<name>` (see the warning under [Replacing an embedded copy](#replacing-an-embedded-copy)):
 
-![The Enabled Libraries tab listing the ticked VBA, VBRUN and VB compatibility packages, OLE Automation, and the EMBEDDED-PACKAGE OLE Guid and interface definitions package with the library symbol OLEGuids and version 1.0.0.10, its tick box ringed in red](Images/a1331a0e-3ba3-45cf-8dc3-2e24f0fa1fe6.png){:width="859" height="246"}
+![The Enabled Libraries tab listing the ticked VBA, VBRUN and VB compatibility packages, OLE Automation, and the EMBEDDED-PACKAGE OLE Guid and interface definitions package with the library symbol OLEGuids and version 1.0.0.10, its tick box ringed in red](Images/a1331a0e-3ba3-45cf-8dc3-2e24f0fa1fe6.png){:width="880" height="261"}
 
 Then go to the Available Packages tab and check the box for the latest version and **after it's done** downloading, which may take a few seconds since some packages are a few MB, press **Apply Changes**. In the Debug Console you'll first see
 
@@ -57,13 +57,13 @@ The IDE refuses to import a package that the project already contains, whatever 
 
 So the old copy has to be removed first:
 
-1. Open [Project Settings](../../tB/IDE/Project-Settings#library-references). Under **Library References**, on the **Enabled Libraries** tab, untick the package, and press **Apply Changes**. The IDE saves the project and restarts the compiler.
+1. Open [Project Settings](../../tB/IDE/Project-Settings#library-references) and select **Library References** in its rail. On the **Enabled Libraries** tab, untick the package, and press **Apply Changes**. The IDE saves the project and restarts the compiler.
 2. Open Project Settings again. On the **Available Packages** tab, press **Import from file...** and choose the new `.twinpack` file.
-3. Tick the package in the **Available Packages** list. BETA 1010 adds the imported package to the list but does not tick it.
+3. Tick the package in the **Available Packages** list. BETA 1033 adds the imported package to the list but does not tick it.
 4. Press **Apply Changes** again. The project now uses the new build.
 
 > [!WARNING]
-> Unticking the package in step 1 deletes the project's copy of it, `/Packages/<name>`, at once. The IDE does not ask first. If you changed any of the package's files inside this project, copy them somewhere else before you untick it.
+> The IDE manages everything under `/Packages` from the project's embedded packages, so unticking the package in step 1 removes its folder, `/Packages/<name>`, with every file in it. If you changed any of the package's files inside this project, copy them somewhere else before you untick it.
 
 > [!IMPORTANT]
 > Give step 1 its own **Apply Changes**. When the untick, the import and the tick share one **Apply Changes**, the compiler can go on running the old build until the project is saved and the compiler restarted. Restarting the compiler without saving brings the old copy back.

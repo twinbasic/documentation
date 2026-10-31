@@ -12,7 +12,7 @@ indexed_from: beta-x-1010
 
 The **WinNamedPipesLib** built-in package exposes Windows named pipes as twinBASIC objects with an asynchronous, IOCP-driven I/O model. One process hosts a [**NamedPipeServer**](NamedPipeServer); other processes use a [**NamedPipeClientManager**](NamedPipeClientManager) to open one or more [**NamedPipeClientConnection**](NamedPipeClientConnection) instances to it. Writes complete in the background; messages and connection-lifecycle changes are delivered as events.
 
-The package is a built-in package shipped with twinBASIC. Add it through Project → References (**Ctrl-T**) → Available Packages.
+The package is a built-in package shipped with twinBASIC. Add it through Project → References... (**Ctrl-T**) → the **Available Packages** tab.
 
 * TOC
 {:toc}

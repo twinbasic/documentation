@@ -75,7 +75,7 @@ The state is kept in the registry, in a value for each project path, under `Proj
 
 **File → Close Project** closes the project. If it has changes that are not saved, a box asks **You've made changes to this project.  Save now?**, with three buttons.
 
-![The box You've made changes to this project. Save now?, with the buttons Save, Discard Changes and Cancel.](Images/Close_Question.png){:width="389" height="158"}
+![The box You've made changes to this project. Save now?, with the buttons Save, Discard Changes and Cancel.](Images/Close_Question.png){:width="397" height="162"}
 
 - **Save** saves the project, with the **Save As** dialog first if it has no file, and then closes it.
 - **Discard Changes** closes it and leaves the file on disk as it was.
@@ -85,7 +85,7 @@ The state is kept in the registry, in a value for each project path, under `Proj
 
 ## Open a project
 
-- **File → New Project...** (<kbd>Ctrl</kbd>+<kbd>N</kbd>) and **File → Open Recent...** open the **New / Open Project** dialog, which has the tabs **New**, **Samples** and **Recent**. **Open Recent...** starts on the **Recent** tab. A **Recent (VB6)** tab shows too when the machine has a VB6 history. [New Project](../Project/New) describes the dialog.
+- **File → New Project...** (<kbd>Ctrl</kbd>+<kbd>N</kbd>) and **File → Open Recent...** open the **New / Open Project** dialog, which has the sections **New**, **Samples** and **Recent**. **Open Recent...** starts on the **Recent** section. A **Recent (VB6)** section shows too when the machine has a VB6 history. [New Project](../Project/New) describes the dialog.
 - **File → Open Project...** (<kbd>Ctrl</kbd>+<kbd>O</kbd>) opens the Windows **Open** dialog. A `.vbp` file is imported as a VB6 project; the result is unsaved. The import keeps the `Attribute` lines of the VB6 files as they are, and the [FAQ](../../../FAQ#vb6-import) says what becomes of each file and each line. A project opened with **Import from folder...** is unsaved as well.
 
 The project that is open is closed before the new one loads, and the question above comes at that point. In the **New / Open Project** dialog, it comes when you press **Open**, not before.
@@ -96,7 +96,7 @@ The **Recent** tab lists the full paths of the projects you opened last, the new
 
 A project whose file is gone shows the box **Failed to load the project (error code ERROR_FILE_NOT_FOUND)**, with the path and the question **Do you want to remove it from the list of recently opened projects?** The **New / Open Project** dialog has closed by then. The buttons are **Remove It** and **Keep It**. **Keep It** moves the entry to the top. Either way the IDE is left with no project open, because the previous one was closed first. A damaged file opens a native Windows message box instead.
 
-![The box Failed to load the project (error code ERROR_FILE_NOT_FOUND), with the path C:\Projects\Inventory\Inventory.twinproj, the question Do you want to remove it from the list of recently opened projects?, and the buttons Remove It and Keep It.](Images/Failed_To_Load.png){:width="522" height="169"}
+![The box Failed to load the project (error code ERROR_FILE_NOT_FOUND), with the path C:\Projects\Inventory\Inventory.twinproj, the question Do you want to remove it from the list of recently opened projects?, and the buttons Remove It and Keep It.](Images/Failed_To_Load.png){:width="530" height="173"}
 
 ## Open a folder
 

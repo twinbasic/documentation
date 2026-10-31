@@ -782,7 +782,7 @@ The built-in group follows. The names are the IDE's command names, and each is f
 
 Lists the themes and switches between them. See [Themes](../../Customising/Themes).
 
-- **Classic (Light)**, **Dark** and **Light** --- the three themes that ship with the IDE. A tick marks the theme in use.
+- **Aurora (Dark)**, **Classic (Light)**, **Dark**, **High Contrast Dark (Dark)**, **High Contrast Light (Light)** and **Light** --- the six themes that ship with the IDE. A tick marks the theme in use.
 - Any theme added as a `.theme` file is listed after these, as its file name and its family, such as **Red (Light)**.
 - **Reload from disk** --- reads the theme files again, so that a new or edited file takes effect without restarting the IDE.
 

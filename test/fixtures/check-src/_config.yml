@@ -13,6 +13,7 @@ baseurl: ""
 offline_exclude:
   - sitemap.xml
   - assets/js/search-data.json
+  - assets/js/search-index.json
 
 # Same role as docs/_config.yml's list, trimmed to what this tree holds.
 # Without it the fixture published its own _config.yml and both .scss

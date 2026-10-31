@@ -90,7 +90,7 @@ Debug.Print Sink.Text()
 
 Two things have to be right, and the compiler reports the same error for both.
 
-**Expose the package's private symbols.** In *Project Settings* → *Library References*, on the **Enabled Libraries** tab, click the pencil beside the VB package's library symbol and prefix it with an asterisk --- `*VB`. The asterisk is the instruction, not part of the name; see [Library symbols](../../../Features/Packages/Library-Symbols). Without it the interface is invisible.
+**Expose the package's private symbols.** In **Project Settings**, select **Library References** in the rail and, on the **Enabled Libraries** tab, click the pencil beside the VB package's library symbol and prefix it with an asterisk --- `*VB`. The asterisk is the instruction, not part of the name; see [Library symbols](../../../Features/Packages/Library-Symbols). Without it the interface is invisible.
 
 **Qualify the name.** `Implements IVBPrint` on its own does not resolve even after that; write `VB.IVBPrint`, or whatever the library symbol has been renamed to. With the symbol set to `*MyVB`, the declaration is `Implements MyVB.IVBPrint`.
 

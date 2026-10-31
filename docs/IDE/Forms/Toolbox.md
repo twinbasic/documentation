@@ -32,7 +32,7 @@ The first group has no title bar. It starts with **Pointer**, the tool for selec
 
 Each tool is an icon. A tool whose control runs in a separate process shows a small label, **32-bit** or **64-bit**, and a tooltip says that the control is hosted by a separate 32-bit EXE process at run time.
 
-By default the Toolbox shows icons only. The **...** button in the title bar opens a menu with one item, **Show Control Names**, which is ticked while the names are shown. Choosing it saves the IDE option **IDE: Show toolbox icons only** at once. See [IDE Options](../Customising/IDE-Options#form-designer-and-toolbox).
+By default the Toolbox shows icons only. The **...** button in the title bar opens a menu with one item, **Show Control Names**, which is ticked while the names are shown. Choosing it saves the IDE option **Show toolbox icons only** at once. See [IDE Options](../Customising/IDE-Options#form-designer-and-toolbox).
 
 ![The docked Toolbox of a Windows form with control names shown, scrolled to its end. The first group, without a title bar, ends with ListBox to MultiFrame; under it the COMMON CONTROLS group lists DTPicker, ImageList, ListView, MonthView, ProgressBar, Slider, TreeView and UpDown, and More components ends the list.](Images/Toolbox_Form.png){:width="216" height="791"}
 
@@ -60,7 +60,7 @@ The magnifier in the title bar opens a search box under it. Typing a printable c
 The Toolbox has no list of components to pick from and no way to remove a control. ActiveX controls reach it as **COM references** of the project:
 
 1. Choose **More components...** at the end of the Toolbox. It is not shown for a report.
-2. In the box, choose **GoTo COM References**. Project Settings opens on the **Available COM References** tab, filtered to the `project.references` setting.
+2. In the box, choose **GoTo COM References**. Project Settings opens filtered to the `project.references` setting, on the **Enabled Libraries** tab. Choose the **Available COM References** tab.
 3. Add the reference to the type library that holds the control, as [Project Settings](../Project-Settings#library-references) describes.
 
 A selected ActiveX control has an **ActiveX Properties...** item in its [right-click menu](Controls#the-right-click-menu).
@@ -69,7 +69,7 @@ A selected ActiveX control has an **ActiveX Properties...** item in its [right-c
 
 The box says *Components list coming soon!* and that, for now, you must add ordinary COM references to the appropriate ActiveX type library, after which the components appear in the form designer automatically. It has two buttons, **GoTo COM References** and **OK**, which closes it.
 
-![A twinBASIC information box reading Components list coming soon, explaining that for now ordinary COM references to the appropriate ActiveX type library must be added and the components will then appear in the form designer automatically, above a GoTo COM References button and an OK button.](../Images/Components_Message.png){:width="654" height="169"}
+![A twinBASIC information box reading Components list coming soon, explaining that for now ordinary COM references to the appropriate ActiveX type library must be added and the components will then appear in the form designer automatically, above a GoTo COM References button and an OK button.](../Images/Components_Message.png){:width="662" height="173"}
 
 [Project Settings](../Project-Settings#library-references) describes the references and the **Available COM References** tab. Package controls such as **WebView2**, **CefBrowser** and the Common Controls appear in groups named for their package, when the project refers to the package and the form is a Windows form. [Packages](../../../Features/Packages/) describes how to add a package.
 

@@ -111,7 +111,7 @@ The tree scrolls to keep the selected row in view. <kbd>Page Up</kbd>, <kbd>Page
 
 ### What a click opens
 
-Whether a click opens a file depends on the option **File Explorer: Single-Click Preview**, which is off by default. With the option off, one click selects a row, and a double-click or <kbd>Enter</kbd> opens the file in a normal tab. With the option on, one click opens the file in a *preview tab*. [IDE Options](../Customising/IDE-Options#project-explorer-tabs-and-start-up) describes the option, and [Editor](../Code/Editor#tabs) describes preview tabs. A double-click on a folder opens or closes it.
+Whether a click opens a file depends on the option **Single-Click Preview**, which is off by default. With the option off, one click selects a row, and a double-click or <kbd>Enter</kbd> opens the file in a normal tab. With the option on, one click opens the file in a *preview tab*. [IDE Options](../Customising/IDE-Options#project-explorer-tabs-and-start-up) describes the option, and [Editor](../Code/Editor#tabs) describes preview tabs. A double-click on a folder opens or closes it.
 
 What opens depends on the kind of file.
 

@@ -80,6 +80,7 @@ offline_exclude:
   - sitemap.xml
   - book.html
   - assets/js/search-data.json
+  - assets/js/search-index.json
 
 # Files and patterns that tbdocs's discover phase excludes from the source
 # tree. Uses fast-glob syntax: ** crosses directory separators, * stays

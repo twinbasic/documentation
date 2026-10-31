@@ -64,7 +64,7 @@ When you open a project from its file, from **Open Recent** or from the command 
 
 **safeMode** opens the project's files without starting the compiler's services. It gives access to the project's files when the compiler's services get in the way, for example when the compiler keeps crashing. After a project loads in safe mode, a box explains it, in these words: **SafeMode is designed to give you access to the file system of your project, without starting all of the associated compiler services. Use this mode to investigate / fix / recover your code before saving and restarting in normal mode.** Choose **OK**.
 
-![The box the IDE shows once a project is open in safe mode, with an OK button.](Images/Safe_Mode.png){:width="547" height="188"}
+![The box the IDE shows once a project is open in safe mode, with an OK button.](Images/Safe_Mode.png){:width="556" height="192"}
 
 In safe mode:
 

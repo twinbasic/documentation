@@ -51,7 +51,7 @@ Syntax: **Debug.TracePrint** [ *outputlist* ]
 *outputlist*
 : *optional* Expressions to write, with the same comma and semicolon rules as [**Print**](#print).
 
-Where the message goes is a project setting rather than a property of the call: *Compilation: Trace Output* selects the debug console or a file, and *Compilation: Trace Flags* selects what is traced. **Tracing works in a compiled executable as well as under the IDE**, which is the reason to prefer it over **Print** for anything you want to diagnose on a machine that has no IDE on it. See [Debugging Features](../../Features/Compiler-IDE/Debugging).
+Where the message goes is a project setting rather than a property of the call: **Trace Output** selects the debug console or a file, and **Trace Flags** selects what is traced; both are in the **Tracing** group of Project Settings. **Tracing works in a compiled executable as well as under the IDE**, which is the reason to prefer it over **Print** for anything you want to diagnose on a machine that has no IDE on it. See [Debugging Features](../../Features/Compiler-IDE/Debugging).
 
 ```tb check_build
 Public Sub ProcessOrder(ByVal orderId As Long)

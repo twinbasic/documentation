@@ -14,7 +14,7 @@ exclude_from_docs:
 
 The **WinServicesLib** built-in package wraps the Windows Service Control Manager so a twinBASIC EXE can run as one or more Windows services. The same EXE typically does double duty as the install / control-panel tool when launched normally and as the service host when launched by the SCM; both modes coexist in a single `Sub Main`. The package handles the SCM handshake, the service-thread dispatch, the control-code routing, and the install / uninstall registry plumbing.
 
-The package is a built-in package shipped with twinBASIC. Add it through Project → References (**Ctrl-T**) → Available Packages.
+The package is a built-in package shipped with twinBASIC. Add it through Project → References... (**Ctrl-T**) → the **Available Packages** tab.
 
 * TOC
 {:toc}

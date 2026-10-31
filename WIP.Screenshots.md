@@ -73,9 +73,20 @@ Measured:
   `tbKeyboardShortcuts_ShowManageKeyboardShortcuts`, `tbPanels_ShowManagePanelLayouts`,
   `tbProject_New`, `tbToolbox_ShowMoreComponents`), closed by a real click on their Close /
   Cancel / OK button.
+- **The New / Open Project dialog** was rewritten in BETA 1033 (`#fp2root`, its classes
+  `fp2-*`, the whole module at the end of `ide/main.js`): a search box, a rail of sections
+  (New, Samples, Recent, and Recent (VB6) only when that list has entries) with counts, cards
+  for New and Samples (`.fp2-card`) and rows for Recent (`.fp2-row`), 970 by 728 CSS px. A
+  card or row carries its item as `fp2Item` (`name`, `projectPath`): a sample's card shows its
+  name without "Sample N.", so the tool finds a sample by `fp2Item.name` and anchors on the
+  name as drawn (`SAMPLE_TITLE`). `.fp2-content` is what scrolls.
 - **What the user's machine leaks into a picture**, and the answer for each:
   - the recent-projects lists (twinBASIC and VB6) read the user's registry: overridden in the
-    page (`HostGetRecentsList`, `HostGetVB6RecentProjects`), nothing read or written;
+    page (`HostGetRecentsList`, `HostGetVB6RecentProjects`), nothing read or written. BETA
+    1033's New / Open Project dialog reads the twinBASIC list from `hostAppObject.GetRecentsList`
+    itself, as it opens, so `PAGE_DEFAULTS` answers that call from `window.__shotRecents`
+    (`setRecents`, which a shot calls before it opens the dialog), and that dialog's remembered
+    section, the setting `NEWFRONTPAGE`, is neither read nor saved;
   - the IDE's settings (View's ticks, IDE Options' values, the debugger options, the language
     tick, user panel layouts) live in `HKCU\...\twinBASIC_IDE\IDESettings`, not in the lane's
     private APPDATA — see Machine state in the pictures. The IDE is started with
@@ -131,6 +142,22 @@ Measured:
   its file is left as it is** (`nearly`: one size, no channel more than 16 levels apart, at most
   0.5% of the pixels apart), reported `unchanged but for a capture's noise`, with a `.noise`
   picture under `--diffs`. The same test decides that a light picture is the dark one.
+- **The reference is the picture at `HEAD`, then the file** (owner; `pictureFate` in
+  `scripts/lib/shot-revision.mjs`). Compared with the file alone, a picture drifted from
+  `HEAD` over the runs of one retake, each step within noise of the file before it, and a run
+  could keep the other noise version of a picture (`git checkout --` was the fix). So
+  `capture` stops at a capture equal to `HEAD`'s picture or the file's, and `keep` compares
+  with `HEAD`'s first: within noise of it (or equal), the file becomes `HEAD`'s bytes, reported
+  `restored as HEAD has it` when it held anything else, and its SVG goes back to `HEAD`'s, or
+  is removed when `HEAD` has none, so the pair stays matched (`restoreSvg`, the SVG written by
+  `git restore --worktree`, so that its line endings are a checkout's; no SVG is drawn and the
+  bundle stays as it is). Not near `HEAD`'s but within noise of the file: an earlier run of the
+  retake wrote that change, unchanged. Else written. A picture `HEAD` lacks (a new shot, an
+  untracked file) has the file as its only reference. The run's pictures at `HEAD` are read in
+  one `git cat-file --batch` at the start, in the `--out` folder. `--against <rev>` takes
+  another revision, `--against-disk` turns it off; with the default, an `--out` outside git
+  falls back to the file. `--cleanup` applies the same rule with no IDE (see [The
+  tool](#the-tool)).
 - **A shot may name where the page flickers of its own accord** (`unsteady` in `capture`'s
   options): a list of `{on, pad}`, `on` an annotation anchor (see [Annotations](#annotations))
   and `pad` how far round its box, in CSS px (1 by default, an edge's anti-aliasing). Every
@@ -196,10 +223,21 @@ as the IDE's own pop-up list, beside the select.
 
 ## The tool
 
-`scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--ide <path>] [--jobs N] [--diffs <dir>] [--svg]`,
+`scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--ide <path>] [--jobs N] [--diffs <dir>] [--svg] [--against <rev> | --against-disk]`,
 Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool could not run,
 3 not put back.
 
+- **Cleanup** (owner): `shoot_docs.mjs --cleanup [--dry-run] [--only] [--out] [--against]`
+  starts no IDE and no browser. Each PNG git reports modified against the revision (`HEAD`)
+  that is within noise of the revision's is reset to its bytes, with its SVG as `restored` does
+  (the SVGs in one `git restore --worktree`), so that only real changes stay in the tree.
+  Added and deleted PNGs, one beyond noise, and one whose SVG alone changed are left alone.
+  `--dry-run` lists; the IDE options (`--ide`, `--jobs`, `--svg`, `--bundles`, `--diffs`,
+  `--against-disk`) are refused with it. One noise rule: the capture's `nearly`, `--cleanup`
+  and `sheet.mjs --against`'s within-noise section all call `withinNoise`
+  (`scripts/lib/shot-change.mjs`), and the sheet shows the `--cleanup` command beside its
+  `git checkout` one. On the BETA 1033 retake its dry run puts back none of the 329 modified
+  pictures.
 - **Setups**: one IDE each --- `no-project` (menus, dialogs, panels), `help` (the add-in's eight,
   `test/addin/helpdemo`), `project`, `sample`, the `settings` setups, `glyphs`, `global-search`
   (Sample 15 exported from the install, built into the lane's copy as an add-in, its own project
@@ -227,7 +265,8 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   state lives on the connection (`c.shot`), never in module variables.
 - **Diffs**: `--diffs <dir>` (never under `docs/`) writes, for each picture that differs from the
   file on disk, the committed picture, the new one and an amplified difference map side by side
-  (`scripts/lib/shot-diff.mjs`, `composeComparison` with `amplify` in `scripts/lib/png.mjs`).
+  (`scripts/lib/shot-diff.mjs`, `composeComparison` with `amplify` in `scripts/lib/png.mjs`);
+  `.noise` for one left as it is, `.restored` (the file and `HEAD`'s) for one put back.
 - **Shots**: a table of `{out, setup, take, annotate?}`, `out` the picture's path under
   `docs/`; `--only` matches it or its `.light.png`, and selects the shot in both themes.
   `take(ctx)` brings the IDE to the state and returns the clip (or the parts of a composite);
@@ -252,7 +291,11 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   ("the pane did not show /tB/Modules/Interaction/MsgBox", the setup taking minutes instead of
   about 90 s), `sample6` ("the Project Explorer has no row Sources" or "Packages"), and `web`
   and `webpage`, whose pages are live and change of their own accord. A picture that fails the
-  same way twice is a real fault.
+  same way twice is a real fault. Under load (six IDEs starting at once, once at three) a setup
+  now and then fails with "the IDE's settings were not made the defaults: its page ran no hook,
+  even after a reload": `checkDefaults` fails closed, so nothing of the user's reaches a picture.
+  Retry such a setup once in a fresh IDE; if the retry fails too, stop and leave it to the owner
+  (owner).
 - **`Features/Images/a6525b1d...png` changes width from run to run** (1512 or 1514 px); its
   light picture is narrower again (1498). Each comes out within the 32-pixel tolerance, so the
   run passes, but the file can be rewritten for the width alone.
@@ -855,6 +898,16 @@ the PNG was just captured from, and the build shows it in place of the PNG
   clip shows the half of the edge the PNG cuts off. That column alone put a small picture past
   the bar (a 16-pixel icon at 11%, a menu at 0.5%), so `capture` gives `svgOfPage` the clip
   with the PNG's width and height.
+- **The judge draws a half-pixel picture at the whole size above it** (`diffSvg`). BETA 1033
+  centres its dialogs at half pixels (Close_Question 397 by 161.5), and Chromium, laying the
+  judge's page out at 1x under the emulated scale, snaps an `<img>` of 161.5 to 162 and
+  stretches the picture a device pixel taller: every message box came out 0.29--0.39% strongly
+  off, the 16-pixel glyphs 2.9%. So its copy of the SVG gets the whole size and a viewBox
+  widened by as much, and the render is cut to the PNG's pixels; a whole-size picture is drawn
+  as before. A canvas `drawImage` at the PNG's size is no answer: without the GPU (replay's
+  browsers) it draws an SVG otherwise than an `<img>`. The boxes stay snapped to whole CSS px
+  (`grid` 1) even where the IDE lays them out at half pixels: snapping to device pixels made
+  95 pictures worse and let none more pass the bar.
 - **A converter change is tried with `replay.mjs`, not a retake** (owner).
   `capture.mjs`'s `collectBundle` reads everything the converter needs from the page into a
   *bundle*: the snapshot, its style names (positional, so a bundle carries its own list), and
@@ -911,6 +964,32 @@ the PNG was just captured from, and the build shows it in place of the PNG
   which is what the filter's own merge paints. One SVG serves screen and book, since the
   bake is exact. Blurred shadows stay bitmaps in
   the PDF, which loses nothing.
+- **The sheet of the pictures with no SVG** (owner): `scripts/svgshot/sheet.mjs --out <dir>`
+  writes `index.html` and a `pictures/` folder, openable from `file://`: each PNG with no SVG
+  beside it (`--all`: every PNG) that has a bundle is drawn again and judged as replay does,
+  worst first, PNG, render and difference map side by side; then the ones with no bundle as
+  thumbnails. A bundle whose PNG has changed is drawn anyway, with a note (`redraw`'s `stale`).
+  The sheet is for the owner alone, so it is drawn with `checkUserName: false` and may show the
+  user name (owner); `outputRefusal` keeps it out of `docs/` and out of any path git does not
+  ignore, and an existing folder must hold an earlier sheet. What it shares with replay is
+  `scripts/svgshot/redraw.mjs` (`redraw`, `writeJudged`, `runShards`/`inBrowser`, the
+  `judgedFiles` names: `<slug>.svg-diff.png` and `<slug>.svg` as `--diffs` names them).
+  `shoot_docs.mjs --diffs` is to call `sheetHtml` over its diffs folder in a later commit.
+  A sheet of the pictures with no SVG takes seconds; `--all`, over some 550 pictures, about a
+  minute.
+- **The sheet of changes against a revision** (owner): `sheet.mjs --out <dir> --against <rev>`
+  reviews what a screenshot run rewrote: each PNG under `--docs` that git (run in that folder,
+  so its repository answers) reports changed against the revision, working tree against commit,
+  untracked PNGs added, as old / new / difference map (`scripts/lib/shot-change.mjs`; sizes that
+  differ are compared aligned at the top left, the map shows the larger). Order: changed, most
+  changed first (share of pixels more than 16 levels off); then the pictures within the noise
+  rule (`withinNoise`, the rule `shoot_docs.mjs` moved there: 16 levels, 0.5% of the pixels),
+  which shoot_docs never writes over a file, so they are most likely rewritten in error (owner),
+  with one `git checkout <rev> -- <paths>` and the `shoot_docs.mjs --cleanup` command, which the
+  page only shows; then added, then deleted. The revision's pictures are read in one `git
+  cat-file --batch` (`readRevisionFiles`, `scripts/lib/shot-revision.mjs`). PNG
+  against PNG, no browser: 337 pictures in about 30 s. On the BETA 1033 retake none was within
+  noise.
 - **The bar** (`SVG_FAITHFUL` in `shoot_docs.mjs`): an SVG with more than 0.25% of its pixels 96
   grey levels or more off is not written, and an older one is removed. Anything not drawn falls
   to it.
@@ -1016,7 +1095,15 @@ IDE's WebView2 draw (on this Windows 10 machine too): 15 px, a round-ended 9 px 
 light or dark default by `color-scheme`; the docs site's dark theme sets `scrollbar-color`, which
 turns its own `::-webkit-scrollbar` rules off. **A focus ring** (`outline-style: auto`,
 `paintFocusRing`) is a 2 px band in the outline colour and a 1 px white one outside it. Both were
-fitted in Edge on bench pages of their own.
+fitted in Edge on bench pages of their own. **A native text field** (`nativeTextField`,
+`paintNativeTextField`): Chromium draws an `<input>` whose border and background the page leaves
+as its own (`2px inset rgb(118, 118, 118)` on white, which BETA 1033 leaves its dialogs' text
+boxes) as its Fluent text field, not by that border: a white ground and a 1 px border of the same
+grey along the border box, rounded, with no antialiasing, the ground's corners showing what is
+under them, a focused field (outline none) the same. The CSS border's 2 px still place the text.
+Drawn as two `crispEdges` paths, rounded 2.2 and 1.2 px: any outer radius from 2.1 to 2.3 gives
+every pixel of Edge's border (`bench/textfield.html`). A field the page styles in either way is
+drawn from its style.
 
 **An inline `<svg>`** in the page is drawn as a nested `<svg>` in its box's content box, in its
 place in paint order (`paintInlineSvg`, from `paintBox`), so a CSS transform, opacity, border and
@@ -1034,7 +1121,7 @@ coordinates, which the picture's `viewBox` is in.
 
 **The bench** (`node scripts/svgshot/bench.mjs`, outside every gate, needs Edge and fontTools)
 draws the pages under `scripts/svgshot/bench/` (scrollbars, native scrollbars, drop-down lists,
-underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
+native text fields, underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
 annotation layer, SVG in frames), served from `127.0.0.1` with the site's fonts under `/fonts/`
 (a `file:` page cannot `fetch` its font bytes), with the converter
 and compares them with the browser's own picture: in Edge, whose Chromium is the IDE's WebView2's

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Native text fields</title>
+<!--
+  A text field whose border and background are the browser's own (2px inset
+  rgb(118, 118, 118) on white) is drawn by Chromium as its native Fluent text
+  field, not by its CSS border: snapshot-svg.mjs's paintNativeTextField. BETA
+  1033 leaves the IDE's dialog text boxes so (New Project's Project Name, the
+  sign-in form's). Placed at whole and half pixels, as the IDE's dialogs are,
+  on white and on a coloured ground, and one focused with no outline, as the
+  IDE's first field is.
+-->
+<style>
+body { margin: 0; background: #fff; color: #000; font: 14.3px "Segoe UI", sans-serif; }
+div { position: absolute; }
+.ground { left: 0; top: 200px; width: 800px; height: 200px; background: rgb(196, 220, 240); }
+.tall { height: 25px; box-sizing: border-box; }
+input:focus { outline: none; }
+</style>
+<body>
+<div style="left:10px;top:10px"><input value="NewProject"></div>
+<div style="left:200.5px;top:10.5px"><input value="NewProject"></div>
+<div style="left:400px;top:10px"><input class="tall" style="width:150px" value="NewProject"></div>
+<div style="left:600.5px;top:10.5px"><input class="tall" style="width:150px" value="NewProject"></div>
+<div style="left:10px;top:60px"><input type="password" value="secret"></div>
+<div style="left:200.5px;top:60.5px"><input type="password" style="width:220px" value="secret"></div>
+<div style="left:10px;top:110px"><input class="tall" style="width:100px" value=""></div>
+<div style="left:200px;top:110px"><input id="focused" class="tall" style="width:150px" value="focused"></div>
+<div class="ground">
+  <div style="left:10px;top:20px"><input value="on a ground"></div>
+  <div style="left:200.5px;top:20.5px"><input class="tall" style="width:150px" value="on a ground"></div>
+  <div style="left:400px;top:20px"><input type="password" value="secret"></div>
+</div>
+<script>document.getElementById("focused").focus();</script>
+</body>
+</html>
