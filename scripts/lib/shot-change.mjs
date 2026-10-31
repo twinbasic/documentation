@@ -183,13 +183,16 @@ export function changeRegions(strength, options) {
  * Compares two images aligned at the top left, over the area they share; a pixel only
  * one of them has counts as changed beyond noise. Returns
  * {sameSize, old: [w, h], new: [w, h], canvas: [w, h], common: [w, h], total, differing,
- * beyond, faint, pctBeyond, pctDiffering, noiseOnly}: `total` the pixels of the larger
+ * beyond, faint, pctBeyond, pctDiffering, levels, noiseOnly}: `total` the pixels of the larger
  * canvas, `differing` those that differ at all, `beyond` those that differ by more
- * than NOISE_LEVELS or exist in one picture only, `faint` those that differ by 1 to
- * NOISE_LEVELS, the two percentages of `total` (not rounded), and `noiseOnly` whether
- * the pictures are of one size and within noise (withinNoise), identical ones included.
+ * than `levels` or exist in one picture only, `faint` those that differ by 1 to
+ * `levels`, the two percentages of `total` (not rounded), and `noiseOnly` whether
+ * the pictures are of one size and within the noise rule `rule` (withinNoise's, a picture's
+ * pngRule; `levels` is its levels, NOISE_LEVELS by default), identical ones included. The
+ * rule's rectangles are left out of `noiseOnly` only.
  */
-export function compareImages(A, B) {
+export function compareImages(A, B, rule = {}) {
+  const levels = rule.levels ?? NOISE_LEVELS;
   const cw = Math.min(A.width, B.width);
   const ch = Math.min(A.height, B.height);
   const w = Math.max(A.width, B.width);
@@ -203,7 +206,7 @@ export function compareImages(A, B) {
       const d = pixelDiff(A, (y * A.width + x) * 4, B, (y * B.width + x) * 4);
       if (!d) continue;
       differing++;
-      if (d > NOISE_LEVELS) beyond++;
+      if (d > levels) beyond++;
       else faint++;
     }
   }
@@ -223,7 +226,8 @@ export function compareImages(A, B) {
     faint,
     pctBeyond: (beyond / total) * 100,
     pctDiffering: (differing / total) * 100,
-    noiseOnly: sameSize && withinNoise(A, B),
+    levels,
+    noiseOnly: sameSize && withinNoise(A, B, rule),
   };
 }
 

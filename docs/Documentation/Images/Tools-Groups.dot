@@ -135,7 +135,8 @@ digraph tools_groups {
         t23 [label="check_impexp_parity"]  t24 [label="check_axe_patch_equiv"]
         t25 [label="indexer.test"]          t26 [label="check_package_tests"]
         t27 [label="broker.test"]           t28 [label="ide-js.test"]
-        t1 -> t5 -> t9  -> t13 -> t17 -> t21 -> t25
+        t29 [label="shot-review.test"]
+        t1 -> t5 -> t9  -> t13 -> t17 -> t21 -> t25 -> t29
         t2 -> t6 -> t10 -> t14 -> t18 -> t22 -> t26
         t3 -> t7 -> t11 -> t15 -> t19 -> t23 -> t27
         t4 -> t8 -> t12 -> t16 -> t20 -> t24 -> t28
@@ -165,7 +166,8 @@ digraph tools_groups {
         i3 [label="try_help_addin"] i4 [label="shoot_docs"]
         i5 [label="imagestrip"]     i8 [label="probe_theme_semicolon"]
         i7 [label="svgshot/replay"] i9 [label="svgshot/sheet"]
-        i1 -> i3 -> i5 -> i7
+        i10 [label="shot_review"]
+        i1 -> i3 -> i5 -> i7 -> i10
         i2 -> i4 -> i8 -> i9
         { rank=same; i3 i4 }
         { rank=same; i5 i8 }
@@ -188,7 +190,7 @@ digraph tools_groups {
     edge [weight=1]
     w10 -> s1    b7 -> c1
     s9 -> t1    s10 -> t2   cp2 -> t3   c6 -> t4
-    t25 -> e1   t22 -> i1   t28 -> d1
+    t29 -> e1   t22 -> i1   t28 -> d1
 
     // ---- links ----
     // Each link has a tooltip describing the tool or group, which a pointer shows on hover.
@@ -354,6 +356,8 @@ digraph tools_groups {
          tooltip="Tests tbbroker and its Node client: leases, held processes, waiting, ports, and desktops left with windows on them. Skipped unless a built broker is named."]
     t28 [URL="Tools-Toolchain-Tests#ide-js-test"
          tooltip="Runs unit tests for ide_js.mjs: the byte-exact round trip of a minified file, how a local's name carries to another build, and a fix patched in as the smallest edit."]
+    t29 [URL="Tools-Toolchain-Tests#shot-review-test"
+         tooltip="Runs unit tests for the screenshot review tool: its session, its pages, its writes under docs, and its server with a stand-in run and a commit in a scratch repository."]
 
     e1 [URL="Tools-Samples#check-examples"
         tooltip="Compiles the code samples marked check_build and reports each diagnostic against the page line it came from. Samples marked check_run are also run."]
@@ -382,6 +386,8 @@ digraph tools_groups {
         tooltip="Lists the properties that the IDE silently drops when it loads the theme files it ships, because a property lacks its semicolon."]
     i9 [URL="Tools-IDE#svg-sheet"
         tooltip="Writes a page that shows, for each picture with no SVG, the PNG, the SVG drawn again from its bundle and a map of their differences, the worst first."]
+    i10 [URL="Tools-IDE#shot-review"
+         tooltip="Serves a page in the browser for reviewing what the screenshot tools decided about each picture, deciding otherwise, starting runs and committing the result."]
 
     d1 [URL="Tools-Defects#bug-repro"
         tooltip="Builds, runs and verifies the reproducer projects for the entries of BUGS-TO-REPORT.md, one folder for each entry."]

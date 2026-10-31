@@ -97,6 +97,13 @@ node --test test/compact-image.test.mjs
 @rem No tree, no browser, well under a second.
 node --test test/svgshot.test.mjs
 @if errorlevel 1 goto :fail
+@rem The screenshot review tool (scripts/shot_review.mjs, WIP.ShotReview.md):
+@rem its session, what its pages show, its writes under a scratch docs folder,
+@rem and its server, followed through a stand-in run in place of shoot_docs.mjs
+@rem and its commit in a scratch repository. Starts no IDE and no browser;
+@rem needs git. No tree, about 3 s.
+node --test test/shot-review.test.mjs
+@if errorlevel 1 goto :fail
 @rem check_examples.mjs's probes: batching, crash isolation through a fake
 @rem lane, the canaries and the fence classifier. check_examples.mjs needs a
 @rem twinBASIC install, so it runs only by hand; its probes need none.

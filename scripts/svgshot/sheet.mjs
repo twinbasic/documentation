@@ -9,6 +9,9 @@
 // to review what a screenshot run rewrote. PNG against PNG: no SVG is drawn, no bundle is
 // read and no browser starts.
 //
+// Both judge each picture under docs/ with its allowances and a review's decisions from the
+// manifest (test/shots/manifest.json), as the tools that write the pictures do, and show them.
+//
 // It writes only into the folder it is given, which may not be under docs/ or anywhere
 // git does not ignore: the SVGs are drawn without the user-name check (the sheet is
 // for its owner alone; owner), so the sheet and its pictures can hold the Windows user
@@ -31,7 +34,9 @@ import { DOCS_DIR } from "../../lib/repo-paths.mjs";
 import { changedPictures, outputRefusal, readRevisionFiles } from "../lib/shot-revision.mjs";
 import { BUNDLE_CACHE, listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
-import { SVG_FAITHFUL } from "../lib/shot-policy.mjs";
+import { MANIFEST, openManifest } from "../lib/shot-manifest.mjs";
+import { SVG_FAITHFUL, svgRule } from "../lib/shot-policy.mjs";
+import { allowancesOf } from "../lib/shot-views.mjs";
 import { judgeSvg } from "./keep.mjs";
 import {
   defaultJobs,
@@ -62,6 +67,8 @@ judges it (an SVG is kept below ${SVG_FAITHFUL}% of its pixels far off the PNG's
 worst first, with its PNG, the SVG's render and the difference map; then the
 pictures with no bundle, as thumbnails. Starts no IDE and writes nothing under
 docs; needs Python with fontTools for a font cut not in the cache, as replay does.
+A picture under docs is judged, by either kind of sheet, with its allowances
+and a review's decisions in test/shots/manifest.json, which the sheet shows.
 
 The pictures are drawn without the check for the Windows user name, so the sheet
 can hold it: <dir> must not be under docs, nor inside a git working tree at a
@@ -83,8 +90,9 @@ path git does not ignore.
                    tag, HEAD), as the revision has it, as it is now and the
                    difference map, read with git run in the --docs folder, so that
                    folder's own repository answers. Most changed first; then the
-                   pictures that differ only within the screenshotter's noise rule
-                   (which it never writes: most likely rewritten in error), with a
+                   pictures that differ only within the screenshotter's noise rule,
+                   or that a review kept old (which it never writes: most
+                   likely rewritten in error), with a
                    git command that would restore them and the shoot_docs.mjs
                    --cleanup one that would with their SVGs, shown and never run; then the
                    added; then the deleted. No SVG is drawn, no bundle is read and
@@ -95,7 +103,8 @@ Exit codes:
   0  the sheet was written, every picture in it drawn or shown
   1  the sheet was written, but a picture could not be drawn or compared (it is listed so)
   2  the tool could not run: a refused command line, a refused output folder, no
-     bundle cache, no browser, no such revision, or a crash`;
+     bundle cache, no browser, no such revision, a manifest it cannot read, or a
+     crash`;
 
 const { values } = withUsageError(() =>
   parseCli(process.argv.slice(2), {
@@ -132,6 +141,18 @@ const bundlesRoot = path.resolve(values.bundles ?? BUNDLE_CACHE);
 const picturesDir = path.join(outRoot, "pictures");
 const SHARD_ENV = "SVGSHOT_SHEET_SHARD";
 const SHARD = shardOf(SHARD_ENV);
+
+// The manifest (lib/shot-manifest.mjs): its entries are for the pictures under docs/, so a
+// sheet of another folder judges without them, as shoot_docs.mjs and replay.mjs do.
+let manifest = null;
+if (docsRoot === path.resolve(DOCS_DIR)) {
+  try {
+    manifest = openManifest(MANIFEST);
+  } catch (e) {
+    refuse(e.message);
+  }
+}
+const entryOf = (out) => manifest?.entry(out) ?? null;
 
 const refusal = outputRefusal(outRoot, [docsRoot, DOCS_DIR]);
 if (refusal) refuse(`--out must not be under docs nor where git would take it: ${refusal}`);
@@ -182,7 +203,7 @@ if (values.against !== undefined) {
         if (!before) throw new Error(`${found.short} has no file ${item.out}`);
       }
       if (item.status !== "deleted") after = readFileSync(path.join(docsRoot, item.out));
-      result = compareRevisionPicture(item, before, after);
+      result = compareRevisionPicture(item, before, after, entryOf(item.out));
     } catch (e) {
       result = {
         row: {
@@ -249,14 +270,19 @@ async function draw({ out, source }, browser) {
     png = readFileSync(path.join(docsRoot, out));
     stats = { unsupported: {} };
   }
-  const { diff, faithful } = await judgeSvg(browser, svg, png, stats);
+  const entry = entryOf(out);
+  const { diff, faithful, by, verdict } = await judgeSvg(browser, svg, png, stats, entry);
   Object.assign(row.files, writeJudged(picturesDir, out, diff, { render: true, svg }));
+  const allowance = allowancesOf(entry).svg;
   return {
     ...row,
     pct96: diff.stats.pct96,
     pct32: diff.stats.pct32,
     pct8: diff.stats.pct8,
     faithful,
+    by,
+    allowance,
+    own: allowance ? { share: +verdict.share.toFixed(3), bar: svgRule(entry).share } : null,
     notDrawn: notDrawn(stats.unsupported),
   };
 }

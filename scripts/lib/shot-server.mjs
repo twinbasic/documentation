@@ -373,6 +373,7 @@ export function createReviewServer({
       newestIde,
       resume: look.length ? { index: at, total: look.length, out: look[at].out } : null,
       exists,
+      entry,
       archived: readOnly ? (session.data.closed ?? {}) : null,
     });
   }

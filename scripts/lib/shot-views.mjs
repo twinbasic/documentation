@@ -1,10 +1,12 @@
 // The HTML pieces the pages about screenshots are made of: the page itself, a picture's
-// card, a figure, a thumbnail, a line of the contents and a meter. scripts/svgshot/sheets.mjs
-// builds the two static sheets from them, and the screenshot review tool is to build its
-// pages from the same pieces, with its actions added (WIP.ShotReview.md).
+// card, a figure, a thumbnail, a line of the contents, a meter, a chip and a picture's
+// allowances. scripts/svgshot/sheets.mjs builds the two static sheets from them, and the
+// screenshot review tool its pages, with its actions added (shot-pages.mjs, WIP.ShotReview.md).
 //
 // Each takes text where it says text, and escapes it, and HTML where it says HTML, which
 // it puts in as it is. Nothing here reads or writes a file.
+
+import { pngRule, svgRule } from "./shot-policy.mjs";
 
 /** `s` as text in HTML, in an element or in an attribute's quotes. */
 export const esc = (s) =>
@@ -18,6 +20,27 @@ export const sizeText = (size) => (size ? `${size[0]} x ${size[1]} px` : "size u
 
 /** A share of the pixels, as text: two decimals, and "under 0.01" for what would round to none. */
 export const pctText = (pct) => (pct === 0 ? "0" : pct < 0.01 ? "under 0.01" : pct.toFixed(2));
+
+const rectsNote = (rects) => (rects.length ? `, ${rects.length} rectangle${rects.length > 1 ? "s" : ""} left out` : "");
+
+/**
+ * The allowances of a picture's entry in the manifest (or null), as text: {png, svg}, each the
+ * rule it is judged by when an allowance changes it, else null. The review tool's overview and
+ * the static sheets show them alike.
+ */
+export function allowancesOf(entry) {
+  let png = null;
+  let svg = null;
+  if (entry?.png?.noise || entry?.png?.ignore?.length) {
+    const r = pngRule(entry);
+    png = `PNG allowance: within noise when no pixel is more than ${r.levels} levels off and at most ${+(r.share * 100).toFixed(4)}% are off at all${rectsNote(r.rects)}`;
+  }
+  if (entry?.svg?.bar || entry?.svg?.ignore?.length) {
+    const r = svgRule(entry);
+    svg = `SVG allowance: written below ${r.share}% of the pixels ${r.levels} levels or more off${rectsNote(r.rects)}`;
+  }
+  return { png, svg };
+}
 
 const PAGE_STYLE = `:root{color-scheme:light dark;--bg:#fff;--fg:#1b1b1b;--mut:#666;--line:#ccc;--card:#f6f6f6;--bar:#d33;--lim:#080;--link:#2a6ed8}
 @media (prefers-color-scheme:dark){:root{--bg:#1b1b1b;--fg:#e6e6e6;--mut:#a0a0a0;--line:#444;--card:#262626;--bar:#e55;--lim:#4c4;--link:#7aaaff}}
@@ -91,9 +114,12 @@ export function figuresIn(folder) {
   return { href, figure, thumb };
 }
 
-/** A bar `pct` of the way to `full` percent, with a mark at `mark` percent; `title` is its tooltip (text). */
+/**
+ * A bar `pct` of the way to `full` percent, with a mark at `mark` percent (at its end when
+ * `mark` is past `full`: a picture's own limit can be); `title` is its tooltip (text).
+ */
 export const meterHtml = (pct, full, mark, title) =>
-  `<span class="bar" title="${esc(title)}"><i style="width:${Math.min(100, (pct / full) * 100)}%"></i><b style="left:${(mark / full) * 100}%"></b></span>`;
+  `<span class="bar" title="${esc(title)}"><i style="width:${Math.min(100, (pct / full) * 100)}%"></i><b style="left:${Math.min(100, (mark / full) * 100)}%"></b></span>`;
 
 /**
  * A picture's card, with the id `anchor(out)`: its path `out` (text) as the heading, the

@@ -8,7 +8,7 @@
 //
 // Every address the pages link to is made here (hrefs), and the server answers each.
 
-import { anchor, chipHtml, esc, pageHtml, sizeText } from "./shot-views.mjs";
+import { allowancesOf, anchor, chipHtml, esc, pageHtml, sizeText } from "./shot-views.mjs";
 import { FILTERS, GROUPS } from "./shot-review.mjs";
 import { pngRule, svgRule } from "./shot-policy.mjs";
 import { SURVIVES } from "./shot-queue.mjs";
@@ -214,8 +214,9 @@ const REVIEW_SCRIPT = `<script>
   document.addEventListener("input", (e) => {
     if (e.target.matches?.("[data-default]")) defaults();
   });
+  // A form may name its own progress text in data-busy (the commit's "committing...").
   const post = async (url, body, from) => {
-    say(from, "applying...");
+    say(from, from.closest("[data-busy]")?.dataset.busy || "applying...");
     for (const b of controls()) b.disabled = true;
     try {
       const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -382,8 +383,11 @@ const runButtons = (out, busy, { replay = true } = {}) => [
 const actionsHtml = (buttons) =>
   `<div class="actions" data-acts>${buttons.join("")}<span class="status" role="status"></span></div>`;
 
-/** The chips of a picture `p` (reviewPictures'): its state, and why it needs a look. */
-export function chipsOf(p) {
+/**
+ * The chips of a picture `p` (reviewPictures'): its state, why it needs a look, and the
+ * allowances of `entry`, its entry in the manifest (or null).
+ */
+export function chipsOf(p, entry = null) {
   const chips = [];
   if (p.outside) chips.push(chipHtml(`changed outside the runs: ${p.outside}`, "change"));
   if (p.progress) chips.push(chipHtml("in progress", "progress"));
@@ -416,6 +420,9 @@ export function chipsOf(p) {
     );
     if (p.svg.look) chips.push(chipHtml(`SVG: ${p.svg.look.why}`, "look", p.svg.look.text));
   }
+  const allowed = allowancesOf(entry);
+  if (allowed.png) chips.push(chipHtml("PNG: allowance", "review", allowed.png));
+  if (allowed.svg) chips.push(chipHtml("SVG: allowance", "review", allowed.svg));
   return chips.join("");
 }
 
@@ -427,13 +434,13 @@ export function thumbOf(p, exists) {
   return exists(p.out) ? hrefs.docs(p.out) : null;
 }
 
-const cardOf = (p, filter, exists) => {
+const cardOf = (p, filter, exists, entry) => {
   const thumb = thumbOf(p, exists);
   const link = hrefs.picture(p.out, filter);
   return `<article class="card" id="${anchor(p.out)}">
 <label class="pick"><input type="checkbox" data-pick="${esc(p.out)}" aria-label="Select ${esc(p.out)} for a run"> select</label>
 ${thumb ? `<a href="${link}"><img src="${thumb}" loading="lazy" alt="${esc(p.out)}"></a>` : ""}<h3><a href="${link}">${esc(p.out)}</a></h3>
-<p class="chips">${chipsOf(p)}</p>
+<p class="chips">${chipsOf(p, entry(p.out))}</p>
 </article>`;
 };
 
@@ -524,8 +531,9 @@ const pickedBar = (more) =>
  * exit, done, listed}], oldest first (the server's runRow); `baseline` the session's ({hash, short, build, moved}); `headNow` HEAD's short
  * hash when it is no longer the baseline, else null, and `canMove` whether the session can be
  * moved to it; `newestIde` the newest install's build, or null; `resume` {index, total, out}
- * for the queue's place, or null; `exists(path)` whether a file is under docs/; `archived` the
- * commit that closed the session ({short, message}) when it is an archived one, else null.
+ * for the queue's place, or null; `exists(path)` whether a file is under docs/; `entry(out)` a
+ * picture's entry in the manifest, or null; `archived` the commit that closed the session
+ * ({short, message}) when it is an archived one, else null.
  */
 export function overviewHtml({
   groups,
@@ -538,6 +546,7 @@ export function overviewHtml({
   newestIde,
   resume,
   exists,
+  entry = () => null,
   archived = null,
 }) {
   const shown = groups.filter((g) => g.pictures.length);
@@ -559,7 +568,7 @@ export function overviewHtml({
     notices.push(`BETA ${newestIde} found: the baseline's pictures were taken on BETA ${baseline.build} at newest.`);
   const group = (g) => {
     const cards = `<div class="cards">
-${g.pictures.map((p) => cardOf(p, filter, exists)).join("\n")}
+${g.pictures.map((p) => cardOf(p, filter, exists, entry)).join("\n")}
 </div>`;
     const heading = `${esc(g.title)} (${g.pictures.length})`;
     return g.key === "unchanged"
@@ -932,7 +941,7 @@ ${actionsHtml(runButtons(p.out, busy))}
 </section>`;
   const svgPic = files.svgPng ?? null;
   const body = `${nav}
-<p class="meta">${theme} theme, ${esc(sizeText(size))}; ${chipsOf(p)}</p>
+<p class="meta">${theme} theme, ${esc(sizeText(size))}; ${chipsOf(p, entry)}</p>
 ${notes.map((n) => `<p class="notice">${n}</p>`).join("\n")}
 ${compare}
 ${pngRow}
@@ -1132,7 +1141,7 @@ export function commitHtml({
 <table>
 ${rows.map(([what, n]) => `<tr><th>${esc(what)}</th><td>${esc(String(n))}</td></tr>`).join("\n")}
 </table>
-<form class="commit" id="commit" data-keep action="${hrefs.commit}" data-files="${esc(files)}" data-acts>
+<form class="commit" id="commit" data-keep data-busy="committing..." action="${hrefs.commit}" data-files="${esc(files)}" data-acts>
 <h2>The commit</h2>
 <p class="meta">Commits the ${plan.files.length === 1 ? "file below" : `${plan.files.length} files below`} and nothing else: a file git does not track yet is added first, and one removed is committed as a deletion. The repository's hooks run. Committing closes the session: it is archived, and the next one's baseline is the new commit.</p>
 <label for="commit-message">Message</label>

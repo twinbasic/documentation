@@ -12,8 +12,20 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { decodePng } from "../lib/png.mjs";
 import { changeMap, compareImages, NOISE_LEVELS, NOISE_SHARE } from "../lib/shot-change.mjs";
-import { cardHtml, esc, figuresIn, meterHtml, pageHtml, pctText, sizeText, tocItem } from "../lib/shot-views.mjs";
+import {
+  allowancesOf,
+  cardHtml,
+  esc,
+  figuresIn,
+  meterHtml,
+  pageHtml,
+  pctText,
+  sizeText,
+  tocItem,
+} from "../lib/shot-views.mjs";
 import { slugOf } from "../lib/shot-apply.mjs";
+import { pngDecision } from "../lib/shot-manifest.mjs";
+import { cleanupResets, pngRule } from "../lib/shot-policy.mjs";
 import { pngSize, themeOf } from "./redraw.mjs";
 
 /** The generator a sheet names in its <meta>, by which a folder is known to hold one. */
@@ -45,9 +57,12 @@ export const sortRows = (rows) =>
 
 /**
  * The sheet, a page that needs no other file but the pictures it links: `rows` the
- * judged pictures, each {out, theme, size, pct96, pct32, pct8, faithful, source
- * ("bundle" or "file"), notes, notDrawn, files: {png, render, diff, svg}} or {out,
- * theme, size, error, files: {png}}; `plain` the pictures with no drawing, each
+ * judged pictures, each {out, theme, size, pct96, pct32, pct8, faithful, by, allowance,
+ * own, source ("bundle" or "file"), notes, notDrawn, files: {png, render, diff, svg}} or
+ * {out, theme, size, error, files: {png}}, `by` "decision" or "rule" (decideSvg's),
+ * `allowance` the SVG's allowance as text or null, and `own` {share, bar} when it has one:
+ * the share off by its own bar's levels and rectangles, and its bar's share (percent);
+ * `plain` the pictures with no drawing, each
  * {out, size, files: {png}}; `bar` SVG_FAITHFUL; `all` whether pictures with an SVG
  * are included; `folder` the folder the files are in, relative to the page.
  */
@@ -56,7 +71,10 @@ export function sheetHtml({ rows, plain, bar, all, folder = "pictures" }) {
   const sorted = sortRows(rows);
   const judged = sorted.filter((r) => r.error === undefined);
   const title = all ? "Every picture against its SVG" : "Pictures with no SVG";
-  const meter = (pct) => meterHtml(pct, 10, bar, `${pct}% strongly off; the bar is ${bar}%`);
+  const meter = (r) =>
+    r.own
+      ? meterHtml(r.own.share, 10, r.own.bar, `${r.own.share}% off by its own bar; the bar is ${r.own.bar}%`)
+      : meterHtml(r.pct96, 10, bar, `${r.pct96}% strongly off; the bar is ${bar}%`);
   const card = (r) => {
     // Each fact is HTML: text from elsewhere is escaped as it is put in.
     const facts = [`${r.theme} theme`, sizeText(r.size)];
@@ -64,6 +82,8 @@ export function sheetHtml({ rows, plain, bar, all, folder = "pictures" }) {
       facts.push(
         `<b>${r.pct96}% strongly off</b> (the bar is ${bar}%), ${r.pct32}% off by 32 levels or more, ${r.pct8}% by 8 or more`,
       );
+      if (r.allowance) facts.push(`${esc(r.allowance)}: <b>${r.own.share}% off by it</b>`);
+      if (r.by === "decision") facts.push(`<b>${r.faithful ? "accepted" : "refused"} by a review's decision</b>`);
       facts.push(r.source === "file" ? "the SVG file beside the PNG" : "drawn again from its bundle");
       if (r.notDrawn?.length)
         facts.push(
@@ -78,7 +98,7 @@ export function sheetHtml({ rows, plain, bar, all, folder = "pictures" }) {
     return cardHtml({
       out: r.out,
       meta: `${facts.join(", ")}${r.files.svg ? ` (<a href="${href(r.files.svg)}">the SVG</a>)` : ""}`,
-      meter: r.error === undefined ? meter(r.pct96) : "",
+      meter: r.error === undefined ? meter(r) : "",
       figures,
     });
   };
@@ -89,7 +109,7 @@ export function sheetHtml({ rows, plain, bar, all, folder = "pictures" }) {
   return pageHtml({
     generator: SHEET_GENERATOR,
     title,
-    intro: `${all ? "Every PNG under docs" : "Every PNG under docs with no SVG of the same name beside it"}, the build's output trees left out. A picture with a bundle is drawn again from it with the converter as it is now, and judged as the tools judge an SVG: the share of its pixels more than 96 grey levels off the PNG's, a shift of one pixel allowed. An SVG is kept only below ${bar}% (the green mark on each bar, whose full width is 10%). Select a picture to open it full size.`,
+    intro: `${all ? "Every PNG under docs" : "Every PNG under docs with no SVG of the same name beside it"}, the build's output trees left out. A picture with a bundle is drawn again from it with the converter as it is now, and judged as the tools judge an SVG: the share of its pixels more than 96 grey levels off the PNG's, a shift of one pixel allowed. An SVG is kept only below ${bar}% (the green mark on each bar, whose full width is 10%), or below the bar of its own allowance in the manifest, which its bar then shows, unless a review decided otherwise. Select a picture to open it full size.`,
     summary: [
       [all ? "PNGs" : "PNGs with no SVG", rows.length + plain.length],
       ["drawn and judged", judged.length],
@@ -118,18 +138,27 @@ export const changeFiles = (out) => {
 
 /**
  * Compares the picture `item` ({out, status}) as the revision has it (`before`, bytes, or
- * null) and as it is now (`after`). Returns {row, map}: the row of the change sheet --
- * {out, theme, status, kind, sizeOld, sizeNew, stats, error, files} -- and the difference
- * map as PNG bytes, null for an added or deleted picture or one that could not be read.
- * `kind` is "changed", "noise" (the same picture but for a capture's noise, which
- * shoot_docs.mjs never writes over a file, and puts back as HEAD has it; withinNoise, as
- * its --cleanup applies it), "added", "deleted" or "error" (a file this
- * tool cannot read as a PNG, with `error` the reason).
+ * null) and as it is now (`after`), with `entry` its entry in the manifest (or null). Returns
+ * {row, map}: the row of the change sheet -- {out, theme, status, kind, by, share, allowance,
+ * sizeOld, sizeNew, stats, error, files} -- and the difference map as PNG bytes, null for an
+ * added or deleted picture or one that could not be read. `kind` is "changed", "noise" (what
+ * shoot_docs.mjs --cleanup puts back as the revision has it: within the picture's noise rule
+ * of it, or kept old by a review's decision; cleanupResets), "added", "deleted" or "error" (a
+ * file this tool cannot read as a PNG, with `error` the reason); `by` "decision" or "rule";
+ * `share` the noise rule's share (percent) and `allowance` the PNG's allowance as text, or null.
  */
-export function compareRevisionPicture(item, before, after) {
+export function compareRevisionPicture(item, before, after, entry = null) {
   const { out, status } = item;
   const names = changeFiles(out);
-  const row = { out, theme: themeOf(out), status, files: {} };
+  const rule = pngRule(entry);
+  const row = {
+    out,
+    theme: themeOf(out),
+    status,
+    share: rule.share * 100,
+    allowance: allowancesOf(entry).png,
+    files: {},
+  };
   if (before) {
     row.sizeOld = pngSize(before);
     row.files.old = names.old;
@@ -143,9 +172,11 @@ export function compareRevisionPicture(item, before, after) {
   try {
     const A = decodePng(before);
     const B = decodePng(after);
-    const stats = compareImages(A, B);
+    const stats = compareImages(A, B, rule);
+    const resets = cleanupResets({ before, after, entry, near: () => stats.noiseOnly });
+    const by = pngDecision(entry, after) ? "decision" : "rule";
     row.files.map = names.map;
-    return { row: { ...row, stats, kind: stats.noiseOnly ? "noise" : "changed" }, map: changeMap(A, B) };
+    return { row: { ...row, stats, by, kind: resets ? "noise" : "changed" }, map: changeMap(A, B) };
   } catch (e) {
     return { row: { ...row, kind: "error", error: e.message }, map: null };
   }
@@ -225,9 +256,12 @@ export function changeSheetHtml({ rows, rev, hash, short, prefix, folder = "pict
       facts.push(
         st.differing === 0
           ? "the same pixels in a different file"
-          : `<b>${pctText(st.pctBeyond)}% changed beyond noise</b> (by more than ${NOISE_LEVELS} grey levels${st.sameSize ? "" : ", or in one picture only"}), ${pctText((st.faint / st.total) * 100)}% by ${NOISE_LEVELS} or fewer`,
+          : `<b>${pctText(st.pctBeyond)}% changed beyond noise</b> (by more than ${st.levels} grey levels${st.sameSize ? "" : ", or in one picture only"}), ${pctText((st.faint / st.total) * 100)}% by ${st.levels} or fewer`,
       );
     }
+    if (r.allowance) facts.push(esc(r.allowance));
+    if (r.by === "decision")
+      facts.push(`<b>${r.kind === "noise" ? "kept old" : "taken new"} by a review's decision</b>`);
     const figures = [];
     if (r.files.old) figures.push(figure(r.files.old, `As ${short} has it`));
     if (r.files.new) figures.push(figure(r.files.new, "As it is now"));
@@ -235,13 +269,14 @@ export function changeSheetHtml({ rows, rev, hash, short, prefix, folder = "pict
       figures.push(
         figure(r.files.map, "Difference (yellow: 1 grey level, shading to red at 128 or more; dark grey: the same)"),
       );
+    const mark = r.share ?? NOISE_SHARE * 100;
     const tip = st
-      ? `${pctText(st.pctBeyond)}% changed beyond noise; the mark is ${NOISE_SHARE * 100}%, the share of the pixels the noise rule lets differ`
+      ? `${pctText(st.pctBeyond)}% changed beyond noise; the mark is ${mark}%, the share of the pixels the noise rule lets differ`
       : "";
     return cardHtml({
       out: r.out,
       meta: facts.join(", "),
-      meter: st ? meterHtml(st.pctBeyond, 10, NOISE_SHARE * 100, tip) : "",
+      meter: st ? meterHtml(st.pctBeyond, 10, mark, tip) : "",
       figures,
     });
   };
@@ -249,7 +284,7 @@ export function changeSheetHtml({ rows, rev, hash, short, prefix, folder = "pict
   const group = (id, heading, list, note = "") =>
     `<h2 id="${id}">${esc(heading)} (${list.length})</h2>
 ${note}${list.length ? list.map(card).join("\n") : "<p>None.</p>"}`;
-  const noiseNote = `<p>These differ from ${esc(short)} within the noise rule the screenshotter applies (no pixel more than ${NOISE_LEVELS} grey levels off, and at most ${NOISE_SHARE * 100}% of the pixels off at all), and it never writes a capture that does: a run that kept the other version of the noise, or drift over several runs, left them.</p>
+  const noiseNote = `<p>These differ from ${esc(short)} within the noise rule the screenshotter applies (no pixel more than ${NOISE_LEVELS} grey levels off, and at most ${NOISE_SHARE * 100}% of the pixels off at all, unless the picture has an allowance of its own in the manifest), or a review decided to keep the old picture, and it never writes a capture that does: a run that kept the other version of the noise, or drift over several runs, left them.</p>
 ${
   noise.length
     ? `<p>To put them all back as ${esc(short)} has them, run this in the repository's root (this page only shows it; nothing has been run):</p>

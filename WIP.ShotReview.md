@@ -2,10 +2,12 @@
 
 A localhost tool for reviewing what `shoot_docs.mjs` and `replay.mjs` decided about each
 picture, overriding it, starting retakes and replays, and committing the result. **Design
-agreed with the owner on 2026-10-31; steps 1 to 8 of [the order of work](#order-of-work) are
+agreed with the owner on 2026-10-31; all nine steps of [the order of work](#order-of-work) are
 done: the tool runs as `node scripts/shot_review.mjs`, applies each verdict under `docs/` as it
 arrives, takes a review's decisions and allowances, starts and stops its runs from its runs
-page, and commits the session's own files from its commit page.** The mockups it was agreed
+page, and commits the session's own files from its commit page; `sheet.mjs` judges and shows
+each picture's allowances; the tool is documented in `Tools-IDE.md` and its tests are a gate of
+`test.bat`.** The mockups it was agreed
 on were inline in that session and are not kept: the pages are described below instead.
 
 The tool covers everything the command-line screenshot tools do, interactively, with a person
@@ -312,11 +314,11 @@ Each step ends tested and usable on its own.
 9. **`sheet.mjs` on the shared views**, showing each picture's allowances; the tool's entry in `Tools-IDE.md`, its node in
    `Tools-Groups.dot` (its command-line cases are in `scripts/lib/cli-cases.mjs` since step 5), its tests in
    `test.bat` (and so in Tools.md's list and the `run-gates` action), and the row in
-   WIP.md's *Which file to open*.
+   WIP.md's *Which file to open*. Done.
 
 ## Where the work stands
 
-On `staging` since 2026-10-31, steps 1 to 8. Each move kept the command-line tools' output as it was, checked as
+On `staging` since 2026-10-31, steps 1 to 9. Each move kept the command-line tools' output as it was, checked as
 [below](#checking-a-move).
 
 | Row of the factoring table | Where it is now |
@@ -419,11 +421,33 @@ as committed and refused a POST. The commit took several seconds on this reposit
 and git over 5,000 files), during which the page says "applying...". The test commit was then
 dropped from the branch (`git reset --keep`).
 
-**Next: step 9**: `sheet.mjs` on the shared views, showing each picture's allowances, and the
-tool's documentation and gates (the list in [the order of work](#order-of-work)). With it, one
-small change to step 8 (owner, 2026-10-31): while the commit runs, its status says
-"committing...", not the "applying..." every other action says (the page's script, `post` in
-`REVIEW_SCRIPT` in `shot-pages.mjs`, which takes the text from the control that sent it).
+What step 9 added:
+
+| Part | Where it is |
+|---|---|
+| A picture's allowances as text | `allowancesOf(entry)` in `shot-views.mjs`, `{png, svg}`: the rule each allowance makes, with the defaults filled in from `pngRule` and `svgRule`, or null. The overview's cards and a picture's page show each as a chip, `PNG: allowance` and `SVG: allowance`, the rule as its tooltip (`chipsOf(p, entry)`; `overviewHtml` takes `entry(out)` from the server) |
+| The sheet of pictures with no SVG | `sheet.mjs` reads the manifest when `--docs` is `docs` (as `shoot_docs.mjs` and `replay.mjs` do for their `--out`) and passes each picture's entry to `judgeSvg`, so an SVG is judged by its own bar and a review's decision. A row has `by`, `allowance` and `own` ({share, bar}: the share off at its bar's levels with its rectangles left out, and its bar); its card shows the allowance with that share, or "accepted/refused by a review's decision", and its meter is drawn against its own bar |
+| The sheet of changes | `compareRevisionPicture(item, before, after, entry)` compares by `pngRule(entry)` (`compareImages(A, B, rule)` takes the rule: its `levels` split beyond from faint, and `noiseOnly` is `withinNoise` with the whole rule) and files a picture as noise by `cleanupResets`, so the group is exactly what the `--cleanup` command it shows puts back. A row has `by`, `share` and `allowance`; the card says "kept old" or "taken new by a review's decision", and the meter's mark is the rule's share. `meterHtml` clamps a mark past the meter's full width to its end (an allowance of 100% is past the 10% the bar shows) |
+| The commit's status | the commit form has `data-busy="committing..."`, and the page script's `post` says the `data-busy` text of the form or control that sent an action, else "applying..." |
+| The tests | the review tool's four suites moved from `test/svgshot.test.mjs` into `test/shot-review.test.mjs` (session, pages, writes under docs, server), each file keeping the imports it uses; the modules the tool shares with the command-line tools stay tested in `svgshot.test.mjs`. The new file is a step of `test.bat`, of the `run-gates` action, of Tools.md's list (31 steps; `check_gate_lists.mjs` now reads number words up to forty) and of Building.md's command, with an entry of its own in `Tools-Toolchain-Tests.md` and a row in WIP.md's roster |
+| The documentation | `shot_review.mjs` in `Tools-IDE.md` (after `sheet.mjs`, which now says how it reads the manifest), node `i10` in `Tools-Groups.dot` and `t29` for its tests (the next row's edge to the samples moved to it), the landing page's line, and WIP.md's *Which file to open* row naming the tool |
+
+Step 9 was checked with the tests (121 in `svgshot.test.mjs`, 22 in `shot-review.test.mjs`:
+the allowances as text and as chips, the overview's chips after an allowance through the server,
+the change sheet with an allowance, a rectangle left out and a decision each way, the no-SVG
+sheet's card with its own bar and a decision, the clamped mark, and the commit form's
+`data-busy` and the script that reads it), with `build.bat`, `check.bat` and `test.bat`, and by
+running both sheets with an entry put in the manifest for the run and taken out after (`git
+checkout` of it): `--against 16765345^ --only IDE/Menu/` filed `Menu_View.light.png`, with a PNG
+allowance of 255 levels and 100%, under noise (0 changed beyond noise, its card naming the rule)
+and `Menu_Edit.png`, with a "keep old" decision on its file, as kept old by a review although its
+size changed; `--all --only Menu_Add-Ins` judged `Menu_Add-Ins.png` by an SVG bar of 32 levels
+and 5% (0.081% off by it, the same as its `pct32`), and its light picture, with no entry, by the
+default bar. The "committing..." text was not seen in a browser during a real commit: the page
+and its script are checked by the server test only.
+
+Nothing of the plan is left. What is left is small: the next paragraph, and the PNG-size
+cleanup after the checks of the earlier steps.
 
 Left from step 6, small: `openManifest().save` writes LF, so a manifest checked out with CRLF
 shows as modified with no diff once the tool (or `shoot_docs.mjs`) has saved it, even after a

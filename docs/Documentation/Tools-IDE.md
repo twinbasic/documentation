@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Tools-IDE
 # IDE Automation
 {: .no_toc }
 
-Operates the twinBASIC IDE to test add-ins and the IDE itself, to try the help add-in by hand, and to take the documentation's IDE screenshots. The command-line conventions every tool shares are under [Command-line conventions](Tools#command-line-conventions).
+Operates the twinBASIC IDE to test add-ins and the IDE itself, to try the help add-in by hand, and to take the documentation's IDE screenshots and review them. The command-line conventions every tool shares are under [Command-line conventions](Tools#command-line-conventions).
 
 * TOC goes here
 {:toc}
@@ -195,11 +195,44 @@ Each picture that has a bundle is drawn again from it, with the converter as it 
 1. the pictures that differ from the revision only within the noise rule of [`shoot_docs.mjs`](#shoot-docs) (no pixel more than 16 grey levels off, and at most 0.5% of the pixels off at all). That tool never writes a capture within that rule of a file, so such a picture was most likely rewritten in error. This section shows one `git checkout <rev> -- <paths>` command that would restore them all, with paths from the repository's root, and the [`shoot_docs.mjs --cleanup`](#shoot-docs) command that would restore them with their SVGs. The tool only shows them and never runs them;
 1. the added pictures, which are new in the working folder, and then the deleted ones, each with a single picture.
 
+A picture with an entry in `test/shots/manifest.json` is judged by it on either page, as [`shoot_docs.mjs`](#shoot-docs) and its `--cleanup` judge it: an SVG by its own bar, a PNG by its own noise rule, and either by a review's decision about the same bytes. A picture listed within noise is then exactly one that `--cleanup` puts back. Its card says what its entry changes, and its bar marks its own limit. The file is read only when `--docs` is `docs`.
+
 It compares PNG with PNG: no SVG is drawn, no bundle is read and no browser starts, so a run over several hundred pictures takes about half a minute. `--against` is not combined with `--all`, `--bundles` or `--jobs`; `--only` and `--docs` apply as before. A revision the repository does not have, or a `--docs` folder outside a git working folder, is refused before anything is written.
 
 The pictures on the page are drawn without the check for the Windows user name, so the page and its pictures can show it. So the folder may not be under `docs`, nor inside a git working folder at a path git does not ignore; a folder that already holds files must hold an earlier page of this tool, which is replaced.
 
-Exit codes: **0** the page was written; **1** the page was written, but a picture could not be drawn or compared, and is listed with the reason; **2** the tool could not run: a refused command line, a refused folder, no bundle folder, no browser, no such revision, or a crash.
+Exit codes: **0** the page was written; **1** the page was written, but a picture could not be drawn or compared, and is listed with the reason; **2** the tool could not run: a refused command line, a refused folder, no bundle folder, no browser, no such revision, a `test/shots/manifest.json` it cannot read, or a crash.
+
+## shot_review.mjs
+{: #shot-review }
+
+    node scripts/shot_review.mjs [--port N] [--retake <regex> | --replay <regex>] [--jobs N] [--ide <twinBASIC.exe>]
+    node scripts/shot_review.mjs --archived <id> [--port N]
+
+Reviews what [`shoot_docs.mjs`](#shoot-docs) and [`replay.mjs`](#replay) decided about each picture, in a browser. Both decide with fixed limits: whether a capture differs from the picture enough to be written, and whether an SVG is close enough to its PNG. No limit is right for every picture. A caret or a clock in a large window can count as a change, and a word missing from a large SVG can be within its bar. This tool shows each decision beside the pictures it was made on, and lets a person decide otherwise. It also starts and stops the runs, and commits the result.
+
+It serves its pages at `http://127.0.0.1:4180/`, on the loopback address only; `--port` chooses another port. Open that address in a browser while the tool runs, and press Ctrl+C in its terminal to close it.
+
+The tool works in a *session*: a folder in `.shot-review` at the repository's root, which git ignores, since what it holds can show the Windows user name. A session's *baseline* is the commit its pictures are compared with: `HEAD` when the session was made. Closing the tool loses nothing, and the next start opens the same session. Only one tool at a time holds it.
+
+**The overview** (`/`) shows every picture the session's runs took or drew, as cards in groups: in progress, needs a look, changed (most changed first), only noise, changed outside the runs, unchanged, and added, deleted or failed. *Needs a look* holds the pictures whose decision a person should check, chosen from the regions of the picture that changed: a capture taken although only a fringe or a caret changed, or only a word or two; a capture kept as noise although a block of it changed; an SVG accepted although a part of it is missing, or refused for a fringe alone. *Changed outside the runs* holds the pictures under `docs` that differ from the baseline although no run of the session reported them, such as a retake from a terminal. Each card shows a chip for each decision, why the picture needs a look, and its allowances. Filters show only the pictures that need a look, those with an allowance or a decision (*Overridden*), or those with no SVG. **Resume at** goes back to where the review of *Needs a look* was left.
+
+**A picture's page** compares the picture at the baseline with the new capture: side by side, by a swipe, by blinking between them, and as a difference map, with the SVG against its PNG and its own map. Below them, each region that changed is cropped and enlarged. The page's choices:
+
+- **Keep the old picture** or **Take the new capture**, and **Accept the SVG** or **No SVG**. A decision is kept in `test/shots/manifest.json` for exactly the bytes it was made on. A later capture with other bytes is judged by the rule again, and goes back to *Needs a look*.
+- **Allowances**: the picture's own noise rule (the grey levels and the share of pixels) and its SVG's own bar, each with rectangles left out of the comparison. Drag on the picture to draw a rectangle. An allowance lasts, across retakes, until it is removed.
+- **Back to the tool's verdicts** removes the picture's decisions.
+- **Retake this picture** and **Replay its SVG** start a run of the one picture.
+
+Each change judges the picture again at once and writes the result under `docs`. The keys J and K move to the next and the previous picture.
+
+**The runs page** (`/runs`) starts a retake (`shoot_docs.mjs --svg`, with an IDE chosen from the installs found), a replay (`replay.mjs`) or a clean-up (`shoot_docs.mjs --cleanup`, whose list of pictures is shown first) of the pictures matching a pattern or of those selected on the overview. One run runs at a time. Each run shows the command line it is the same as, its progress by setup, and its log, and **Stop** ends a retake or a replay as its own end would: its IDEs end and the registry is put back. **Kill** ends its process at once, which skips that, and is offered only after a stop. `--retake <regex>` or `--replay <regex>` starts a run as the tool opens; `--jobs` and `--ide` are its options.
+
+A retake or a replay runs with `--stage` and `--events`, so it writes nothing under `docs` itself. The tool applies each decision under `docs` as it arrives, and a picture can be reviewed while the run goes on. A retake and a clean-up compare with the session's baseline (`--against`), whatever `HEAD` is. When `HEAD` moves under the session, the overview says so and offers to move the session to it.
+
+**The commit page** (`/commit`) commits the session's own files and nothing else: the PNGs and SVGs its runs reported that git reports changed, and `test/shots/manifest.json`. It counts them, lists them, and lists the working folder's other changes as left out. The message is one line by default, such as *Screenshots retaken on BETA 1034: 1 taken by review*, can be edited, and **Back to the default message** puts it back. The commit runs the repository's hooks. It is refused while a run runs, or while `HEAD` is not the baseline. A commit closes the session: it is archived as `.shot-review/archive/<id>`, `<id>` the commit's short hash, and the tool goes on with the next session, whose baseline is the new commit. `--archived <id>` opens an archived session again, read-only, beside the open one on another `--port`.
+
+Exit codes: **0** the tool was closed; **2** the tool could not run: a refused command line, the port in use, the session held by another tool, no archived session of that id, no git working folder, or a crash.
 
 ## imagestrip
 {: #imagestrip }
