@@ -143,7 +143,10 @@ when:
 
 - **PNG**: the tool took the new capture, but nothing survives (most likely noise: a caret, a
   clock, a fringe), or what survives is small (a block or two the size of a word: a real
-  change small enough to miss).
+  change small enough to miss); or the tool kept the old picture as within noise (`noise`, or
+  `restored` to `HEAD`'s), but something survives (owner, 2026-10-31): a faint block, a tint over
+  less than 0.5% of the picture, which *keep old → take new* is for. Its regions are those of the
+  capture against the picture it was found within noise of.
 - **SVG**: the tool accepted it, but something survives (a part missing, whatever the share);
   or the tool rejected it, and nothing survives (fringes only, most likely acceptable).
 
@@ -319,9 +322,12 @@ at 200 levels. The constants were chosen from the pictures: each stage drawn ove
 retaken PNGs (the changed pixels, what the closing adds, the core, the boxes), and the counts
 over every SVG and the PNGs of the BETA 1010 and 1033 retakes.
 
-**Not in the rules, to ask the owner:** a capture within noise (kept as the file) whose faint
-difference is a block that survives: a tint over less than 0.5% of the picture, which *keep old
-→ take new* is for. The rules send to the queue only a capture the tool took.
+**Before step 4: the PNG rule for a capture kept as within noise** (owner, 2026-10-31; [the
+queue](#the-queue)) is not in `shot-queue.mjs` yet. `pngLook` returns null for every state but
+`updated`; it is to return `{why: "faint", ...}` for `noise` and `restored` when a region
+survives, with a test beside the others in `test/svgshot.test.mjs` ("which pictures need a
+look"), and the line on [Tools-Toolchain-Tests](docs/Documentation/Tools-Toolchain-Tests.md)
+that lists what the queue sends.
 
 Step 2 was checked with the runs [below](#checking-a-move), whose states it left as they were
 with an empty manifest, and with an allowance and a decision on `Menu_Tools_IDEOptions`: the
