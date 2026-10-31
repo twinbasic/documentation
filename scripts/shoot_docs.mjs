@@ -164,14 +164,9 @@ import { composite, uncomposite } from "./lib/shot-composite.mjs";
 import { decodePng, encodePng } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
 import { inRects, withinNoise } from "./lib/shot-change.mjs";
-import {
-  changedPictures,
-  openRevision,
-  pictureFate,
-  planCleanup,
-  restoreFromRevision,
-  svgFate,
-} from "./lib/shot-revision.mjs";
+import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
+import { applyPicture, applySvg, dropPicture, restorePictures, svgOf } from "./lib/shot-apply.mjs";
+import { decidePicture, SVG_FAITHFUL } from "./lib/shot-policy.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
@@ -191,10 +186,10 @@ import {
   sleep,
   waitForCompile,
 } from "./lib/tb-ide.mjs";
-import { dropBundle, writeBundle } from "./svgshot/bundle.mjs";
+import { writeBundle } from "./svgshot/bundle.mjs";
 import { svgOfPage } from "./svgshot/capture.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
-import { holdsUserName, judgeSvg, SVG_FAITHFUL, writeSvg } from "./svgshot/keep.mjs";
+import { holdsUserName, judgeSvg } from "./svgshot/keep.mjs";
 import { stageProject, unpackProject } from "./lib/tb-project.mjs";
 import { holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { guard, presentKeys, press, serverRequests } from "../test/ide/building-kit.mjs";
@@ -460,32 +455,20 @@ if (values.cleanup) {
     (out) => readFileSync(path.join(outRoot, out)),
     (a, b) => withinNoise(decoded(a, AGAINST), decoded(b, "the working tree")),
   );
-  const svgOf = (out) => out.replace(/\.png$/i, ".svg");
-  const svgBefore = revision.read(plan.reset.map(svgOf));
   const verb = values.dryRun ? "would be put back" : "put back";
-  // An SVG is text, written as a checkout writes it (line endings), by git, all in one process.
-  const svgWrites = [];
+  let fates;
+  try {
+    fates = restorePictures(outRoot, revision, plan.reset, { dryRun: values.dryRun });
+  } catch (e) {
+    die(2, e.message);
+  }
   for (const out of plan.reset) {
-    const svgFile = path.join(outRoot, svgOf(out));
-    const svgAtRevision = svgBefore.get(svgOf(out));
-    const svgNow = existsSync(svgFile) ? readFileSync(svgFile) : null;
-    const svg = svgFate(svgAtRevision, svgNow);
-    if (!values.dryRun) {
-      writeFileSync(path.join(outRoot, out), before.get(out));
-      if (svg === "write") svgWrites.push(svgOf(out));
-      if (svg === "remove") rmSync(svgFile);
-    }
     const svgText = {
       keep: "",
       write: ", and its SVG",
       remove: `; its SVG ${values.dryRun ? "would be removed" : "removed"}, as ${found.short} has none`,
-    }[svg];
+    }[fates.get(out).fate];
     console.log(`${out}: ${verb} as ${found.short} has it${svgText}`);
-  }
-  try {
-    restoreFromRevision(outRoot, found.hash, svgWrites);
-  } catch (e) {
-    die(2, `git could not put the SVGs back: ${e.message}`);
   }
   for (const { out, error } of plan.unreadable) console.error(`${out}: not compared: ${error}`);
   const n = (list, one, many = `${one}s`) => `${list.length} ${list.length === 1 ? one : many}`;
@@ -13292,62 +13275,49 @@ const tally = { dark: {}, light: {} };
 const count = (theme, state) => {
   tally[theme][state] = (tally[theme][state] ?? 0) + 1;
 };
-const pngSize = (png) => ({ w: png.readUInt32BE(16), h: png.readUInt32BE(20) });
-
-// How far, in device pixels, a light picture's width or height may be from the dark one's.
-// The Light theme lays the window out a little differently (its toolbar is 4 CSS pixels
-// shorter, a panel's title bar 3, some buttons narrower), so a clip worked out from the page's
-// elements comes out up to a few pixels off, and the page shows each picture at its own size
-// (builder/theme-pictures.mjs). A larger difference is not the theme's: most likely the IDE
-// was not in the state the dark picture shows.
-const SIZE_SLACK = 32;
-
 // Writes a picture when its bytes differ from the file's; says which. `out` is the dark
-// picture's path. A light picture is compared with the dark one (`dark`, this run's, or the
-// file's): one with the same pixels, but for a capture's noise (`nearly`), is not kept, and a
-// light file there already is removed, since the page shows X.png in both themes then; one
-// more than SIZE_SLACK off its size fails. A picture within a capture's noise of the revision's
-// (--against) leaves the file as the revision has it, with its SVG (pictureFate,
-// lib/shot-revision.mjs); one within a capture's noise of its file is not written either.
-// Returns whether the picture was written, "restored" for one put back as the revision has
-// it, or null for a light picture that is the dark one.
+// picture's path. What becomes of it is decidePicture's (lib/shot-policy.mjs): a light picture
+// is compared with the dark one (`dark`, this run's, or the file's), and one with the same
+// pixels, but for a capture's noise (`nearly`), is not kept, and a light file there already is
+// removed, since the page shows X.png in both themes then; one more than SIZE_SLACK off its
+// size fails. A picture within a capture's noise of the revision's (--against) leaves the file
+// as the revision has it, with its SVG (pictureFate, lib/shot-revision.mjs); one within a
+// capture's noise of its file is not written either. The verdict is written by applyPicture
+// (lib/shot-apply.mjs). Returns whether the picture was written, "restored" for one put back
+// as the revision has it, or null for a light picture that is the dark one.
 function keep(name, out, png, theme, dark, scale = SCALE) {
-  const file = path.join(outRoot, themedOut(out, theme));
-  const { w, h } = pngSize(png);
-  let other = "";
-  if (theme === "light" && dark) {
-    const d = pngSize(dark);
-    if (Math.abs(d.w - w) > SIZE_SLACK || Math.abs(d.h - h) > SIZE_SLACK) {
-      writeDiff(name, themedOut(out, theme), dark, png, {
-        suffix: ".size",
-        labels: { before: "DARK", after: "LIGHT" },
-      });
-      throw new Error(
-        `the light picture is ${w}x${h} px and the dark one ${d.w}x${d.h} px: more than the theme's layout moves`,
-      );
-    }
-    if (d.w !== w || d.h !== h) {
-      count(theme, "of another size than the dark picture");
-      other = `; the dark picture is ${d.w}x${d.h} px`;
-    }
-    if (nearly(dark, png)) {
-      const had = existsSync(file);
-      if (had) rmSync(file);
-      count(theme, "the same as the dark picture");
-      say(
-        name,
-        `${themedOut(out, theme)}: the dark picture's pixels, but for a capture's noise: ${had ? "removed" : "not written"}`,
-      );
-      return null;
-    }
-  }
-  mkdirSync(path.dirname(file), { recursive: true });
+  const themed = themedOut(out, theme);
+  const file = path.join(outRoot, themed);
   // The picture as the revision has it comes first (--against): a capture within a capture's
   // noise of it puts the file back as the revision has it, so that a picture does not drift
   // from the repository's over several runs, each within noise of the file before it.
   const was = existsSync(file) ? readFileSync(file) : null;
-  const atRevision = revision ? revision.bytes(themedOut(out, theme)) : null;
-  const fate = pictureFate(png, atRevision, was, nearly);
+  const atRevision = revision ? revision.bytes(themed) : null;
+  const fate = decidePicture({ png, theme, dark, revision: atRevision, disk: was, near: nearly });
+  const { w, h } = fate.size;
+  if (fate.state === "too-far") {
+    writeDiff(name, themed, dark, png, {
+      suffix: ".size",
+      labels: { before: "DARK", after: "LIGHT" },
+    });
+    throw new Error(
+      `the light picture is ${w}x${h} px and the dark one ${fate.dark.w}x${fate.dark.h} px: more than the theme's layout moves`,
+    );
+  }
+  let other = "";
+  if (fate.dark) {
+    count(theme, "of another size than the dark picture");
+    other = `; the dark picture is ${fate.dark.w}x${fate.dark.h} px`;
+  }
+  if (fate.state === "dark") {
+    const { removed } = applyPicture(outRoot, themed, fate, revision);
+    count(theme, "the same as the dark picture");
+    say(
+      name,
+      `${themed}: the dark picture's pixels, but for a capture's noise: ${removed ? "removed" : "not written"}`,
+    );
+    return null;
+  }
   // a run now and then settles on the other version of a capture's noise for every
   // capture of a state (WIP.Screenshots.md, Capture): the file then stays as it is
   const STATES = {
@@ -13358,53 +13328,38 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
     restored: `restored as ${AGAINST} has it`,
   };
   const state = STATES[fate.state];
-  if (fate.state === "noise") writeDiff(name, themedOut(out, theme), was ?? atRevision, png, { suffix: ".noise" });
-  if (fate.state === "updated") writeDiff(name, themedOut(out, theme), was, png);
+  if (fate.state === "noise") writeDiff(name, themed, was ?? atRevision, png, { suffix: ".noise" });
+  if (fate.state === "updated") writeDiff(name, themed, was, png);
   if (fate.state === "restored" && was)
-    writeDiff(name, themedOut(out, theme), was, atRevision, {
+    writeDiff(name, themed, was, atRevision, {
       suffix: ".restored",
       labels: { before: "FILE", after: AGAINST.toUpperCase() },
     });
-  if (fate.write) writeFileSync(file, fate.write);
+  // A picture put back as the revision has it takes the revision's SVG with it, or loses its
+  // SVG when the revision has none, so that the pair stays matched.
+  const applied = applyPicture(outRoot, themed, fate, revision);
   count(theme, state);
   say(
     name,
-    `${themedOut(out, theme)}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${Math.round(w / scale)}" height="${Math.round(h / scale)}"}${other})`,
+    `${themed}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${Math.round(w / scale)}" height="${Math.round(h / scale)}"}${other})`,
   );
   if (fate.state === "restored") {
-    restoreSvg(name, themedOut(out, theme));
+    const text = {
+      keep: `as ${AGAINST} has it`,
+      write: `restored as ${AGAINST} has it`,
+      remove: `removed, as ${AGAINST} has none`,
+    };
+    const { fate: svg, atRevision: svgAtRevision } = applied.svg;
+    if (svg !== "keep" || svgAtRevision) say(name, `${svgOf(themed)}: ${text[svg]}`);
     return "restored";
   }
   return fate.write !== null;
 }
 
-// A picture put back as the revision has it takes the revision's SVG with it, or loses its
-// SVG when the revision has none, so that the pair stays matched.
-function restoreSvg(name, out) {
-  const svgOut = out.replace(/\.png$/i, ".svg");
-  const file = path.join(outRoot, svgOut);
-  const atRevision = revision.bytes(svgOut);
-  const fate = svgFate(atRevision, existsSync(file) ? readFileSync(file) : null);
-  // as a checkout writes it (line endings), by git
-  if (fate === "write") restoreFromRevision(outRoot, revision.hash, [svgOut]);
-  if (fate === "remove") rmSync(file);
-  const text = {
-    keep: `as ${AGAINST} has it`,
-    write: `restored as ${AGAINST} has it`,
-    remove: `removed, as ${AGAINST} has none`,
-  };
-  if (fate !== "keep" || atRevision) say(name, `${svgOut}: ${text[fate]}`);
-}
-
 // A `once` picture has no light file: one left from before is removed, and its SVG.
 function dropLight(name, out) {
-  const svg = path.join(outRoot, themedOut(out, "light").replace(/\.png$/i, ".svg"));
-  if (existsSync(svg)) rmSync(svg);
-  if (bundlesRoot) dropBundle(bundlesRoot, themedOut(out, "light"));
-  const file = path.join(outRoot, themedOut(out, "light"));
-  if (!existsSync(file)) return;
-  rmSync(file);
-  say(name, `${themedOut(out, "light")}: removed (the picture is taken once, in no theme)`);
+  if (dropPicture(outRoot, themedOut(out, "light"), bundlesRoot))
+    say(name, `${themedOut(out, "light")}: removed (the picture is taken once, in no theme)`);
 }
 
 // With --svg: one headless browser for the whole run, which renders each SVG to
@@ -13419,7 +13374,7 @@ const svgResults = [];
 // picture's bundle goes to the bundle cache whether or not its SVG is written,
 // so that replay.mjs can draw it again once the converter draws it better.
 async function keepSvg(name, out, png, picture, written) {
-  const svgOut = out.replace(/\.png$/i, ".svg");
+  const svgOut = svgOf(out);
   const file = path.join(outRoot, svgOut);
   // An SVG is drawn from the whole page, layers the picture does not show included, and those
   // can differ from run to run (a designer still drawing under a floating panel); and one that
@@ -13430,11 +13385,7 @@ async function keepSvg(name, out, png, picture, written) {
     say(name, `${svgOut}: unchanged, as its PNG is`);
     return;
   }
-  const drop = (why) => {
-    const had = existsSync(file);
-    if (had) rmSync(file);
-    say(name, `${svgOut}: ${had ? "removed" : "not written"}, the PNG is kept (${why})`);
-  };
+  const drop = (why) => say(name, `${svgOut}: ${applySvg(outRoot, svgOut, null)}, the PNG is kept (${why})`);
   if (!picture) {
     drop("the picture is not a single capture");
     return;
@@ -13463,7 +13414,7 @@ async function keepSvg(name, out, png, picture, written) {
       writeFileSync(path.join(diffsRoot, `${out.replace(/[\\/]/g, "__").replace(/\.png$/i, "")}.svg`), svg);
     return;
   }
-  const state = writeSvg(file, svg);
+  const state = applySvg(outRoot, svgOut, svg);
   say(
     name,
     `${svgOut}: ${state} (${(bytes / 1024).toFixed(0)} KB against the PNG's ${(png.length / 1024).toFixed(0)} KB; ${measures})`,
@@ -13584,12 +13535,8 @@ async function runJob(job) {
           if (shot.once) dropLight(job.name, shot.out);
           // A light picture that is the dark one is not kept, and neither is its SVG or bundle.
           // One put back as the revision has it has had its SVG put back with it.
-          const svgFile = path.join(outRoot, out.replace(/\.png$/i, ".svg"));
           if (values.svg && kept !== null && kept !== "restored") await keepSvg(job.name, out, png, state.svg, kept);
-          else if (values.svg && kept === null) {
-            if (existsSync(svgFile)) rmSync(svgFile);
-            dropBundle(bundlesRoot, out);
-          }
+          else if (values.svg && kept === null) dropPicture(outRoot, out, bundlesRoot);
         } catch (e) {
           complain(job.name, `${out}: FAILED: ${e.message}`);
           count(theme, "failed");

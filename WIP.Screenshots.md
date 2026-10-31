@@ -150,7 +150,7 @@ Measured:
   `capture` stops at a capture equal to `HEAD`'s picture or the file's, and `keep` compares
   with `HEAD`'s first: within noise of it (or equal), the file becomes `HEAD`'s bytes, reported
   `restored as HEAD has it` when it held anything else, and its SVG goes back to `HEAD`'s, or
-  is removed when `HEAD` has none, so the pair stays matched (`restoreSvg`, the SVG written by
+  is removed when `HEAD` has none, so the pair stays matched (`restorePictures` in `scripts/lib/shot-apply.mjs`, the SVG written by
   `git restore --worktree`, so that its line endings are a checkout's; no SVG is drawn and the
   bundle stays as it is). Not near `HEAD`'s but within noise of the file: an earlier run of the
   retake wrote that change, unchanged. Else written. A picture `HEAD` lacks (a new shot, an
@@ -991,7 +991,7 @@ the PNG was just captured from, and the build shows it in place of the PNG
   cat-file --batch` (`readRevisionFiles`, `scripts/lib/shot-revision.mjs`). PNG
   against PNG, no browser: 337 pictures in about 30 s. On the BETA 1033 retake none was within
   noise.
-- **The bar** (`SVG_FAITHFUL` in `shoot_docs.mjs`): an SVG with more than 0.25% of its pixels 96
+- **The bar** (`SVG_FAITHFUL` in `scripts/lib/shot-policy.mjs`): an SVG with more than 0.25% of its pixels 96
   grey levels or more off is not written, and an older one is removed. Anything not drawn falls
   to it.
 - **An SVG changes with its PNG** (owner). The SVG of a picture whose PNG is not rewritten
@@ -1005,7 +1005,7 @@ the PNG was just captured from, and the build shows it in place of the PNG
   so, since no `.gitattributes` rule can tell it from a diagram's SVG. An SVG icon embedded as
   text and the annotation layer's XML hold line breaks; so each is written as the space an XML
   parser makes of a break inside a tag, or `&#10;` in text, the same character. A checkout then
-  changes only the last line ending, which `keepSvg` ignores when it compares.
+  changes only the last line ending, which `writeSvg` (`scripts/lib/shot-apply.mjs`) ignores when it compares.
 
 **Scrollbars.** The IDE styles every scrollbar with `::-webkit-scrollbar` rules
 (`ide/styles.css`, coloured by theme variables), a second family under `.modalDialogContainer`.

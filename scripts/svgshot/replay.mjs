@@ -1,7 +1,8 @@
 // Draws each picture's SVG again from its bundle (bundle.mjs), the converter as it
 // is now, without taking the picture again: what to run after a change to the
 // converter, in place of shoot_docs.mjs --svg. Each SVG is judged against its PNG
-// and written or removed as shoot_docs.mjs does (keep.mjs).
+// and written or removed as shoot_docs.mjs does (keep.mjs, lib/shot-policy.mjs's decideSvg,
+// lib/shot-apply.mjs's applySvg).
 //
 // A bundle answers only what the converter asked when the picture was taken. A
 // picture is left as it is, and listed as needing a retake, when its PNG is no
@@ -12,14 +13,16 @@
 // has no answer for (a miss the capture did not have). The list ends with the
 // shoot_docs.mjs command that takes them again.
 
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { userInfo } from "node:os";
 import path from "node:path";
 import { exitOnCrash, numberOption, parseCli, printHelpAndExit, regexOption, withUsageError } from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
-import { judgeSvg, SVG_FAITHFUL, writeSvg } from "./keep.mjs";
+import { applySvg, svgOf } from "../lib/shot-apply.mjs";
+import { SVG_FAITHFUL } from "../lib/shot-policy.mjs";
+import { judgeSvg } from "./keep.mjs";
 import {
   defaultJobs,
   inBrowser,
@@ -115,7 +118,7 @@ const retakes = [];
 let failed = 0;
 const say = (out, line) => console.log(`${out.replace(/\.png$/i, ".svg")}: ${line}`);
 async function replay(out, browser) {
-  const svgFile = path.join(outRoot, out).replace(/\.png$/i, ".svg");
+  const svgFile = path.join(outRoot, svgOf(out));
   const drawn = await redraw({ bundlesRoot, docsRoot: outRoot, out, user: USER });
   if (drawn.retake) {
     const why = retakeText(drawn);
@@ -134,15 +137,8 @@ async function replay(out, browser) {
   }
   const { diff, faithful, measures } = await judgeSvg(browser, svg, png, stats);
   if (diffsRoot) writeJudged(diffsRoot, out, diff);
-  let state;
-  if (!faithful) {
-    state = existsSync(svgFile) ? "removed" : "not written";
-    if (state === "removed") rmSync(svgFile);
-    say(out, `${state}, the PNG is kept (${measures})`);
-  } else {
-    state = writeSvg(svgFile, svg);
-    say(out, `${state} (${measures})`);
-  }
+  const state = applySvg(outRoot, svgOf(out), faithful ? svg : null);
+  say(out, faithful ? `${state} (${measures})` : `${state}, the PNG is kept (${measures})`);
   counts[state] = (counts[state] ?? 0) + 1;
 }
 

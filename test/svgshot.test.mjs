@@ -20,7 +20,9 @@
 // is refused; and the sheet's page. And the sheet of changes against a git revision
 // (sheet.mjs --against): git's change list, the comparison of two pictures over two sizes,
 // the noise rule, the order and the page. And lib/record-lines.mjs, the records a child
-// process writes among its lines, which runShards reads.
+// process writes among its lines, which runShards reads. And what becomes of a picture and
+// its SVG: lib/shot-policy.mjs's decisions, and lib/shot-apply.mjs's writing of them, in a
+// scratch folder and a scratch repository.
 //
 // Runs with a bare `node --test test/svgshot.test.mjs`: no tree, no build.
 
@@ -47,6 +49,8 @@ import {
 import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
 import { decodePng, encodePng } from "../scripts/lib/png.mjs";
 import { parseRecord, readRecords, recordLine } from "../scripts/lib/record-lines.mjs";
+import { applyPicture, applySvg, dropPicture, restorePictures } from "../scripts/lib/shot-apply.mjs";
+import { decidePicture, decideSvg, SIZE_SLACK, SVG_FAITHFUL } from "../scripts/lib/shot-policy.mjs";
 import { changeMap, compareImages, withinNoise } from "../scripts/lib/shot-change.mjs";
 import {
   changedPictures,
@@ -1897,5 +1901,143 @@ describe("the records a child writes among its lines (record-lines.mjs)", () => 
     await ended;
     assert.deepEqual(lines, ["one", "two", "@@other 2", "last"]);
     assert.deepEqual(records, [["k", { n: 1 }]]);
+  });
+});
+
+describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs)", () => {
+  // A PNG's header with its size, and a tag that tells two of one size apart.
+  const shot = (w, h, tag) => {
+    const b = Buffer.alloc(24);
+    b.writeUInt32BE(w, 16);
+    b.writeUInt32BE(h, 20);
+    return Buffer.concat([b, Buffer.from(tag)]);
+  };
+  const DARK = shot(100, 50, "dark");
+  const NEAR = shot(100, 50, "near"); // within noise of DARK
+  const SHIFTED = shot(103, 50, "shifted"); // within noise of DARK, a few pixels wider
+  const OTHER = shot(100, 50, "other"); // near nothing
+  const isNear = (x) => x.equals(NEAR) || x.equals(SHIFTED);
+  const near = (a, b) => a.equals(b) || (a.equals(DARK) && isNear(b)) || (b.equals(DARK) && isNear(a));
+  const decide = (png, theme, dark, revision = null, disk = null) =>
+    decidePicture({ png, theme, dark, revision, disk, near });
+
+  test("a dark picture is pictureFate's, with its size", () => {
+    assert.deepEqual(decide(OTHER, "dark", null, DARK, DARK), {
+      state: "updated",
+      write: OTHER,
+      size: { w: 100, h: 50 },
+      dark: null,
+    });
+    assert.deepEqual(decide(NEAR, "dark", null, DARK, OTHER).state, "restored");
+  });
+
+  test("a light picture is compared with the dark one first", () => {
+    // the dark one's pixels: no light file
+    assert.deepEqual(decide(NEAR, "light", DARK, null, OTHER), {
+      state: "dark",
+      write: null,
+      size: { w: 100, h: 50 },
+      dark: null,
+    });
+    // of another size, within the theme's slack: named, then judged
+    const wider = decide(SHIFTED, "light", DARK);
+    assert.equal(wider.state, "dark");
+    assert.deepEqual(wider.dark, { w: 100, h: 50 });
+    assert.deepEqual(decide(shot(103, 50, "x"), "light", DARK).state, "new");
+    // beyond it: a failure, whatever the files hold
+    const far = decide(shot(100 + SIZE_SLACK + 1, 50, "x"), "light", DARK, DARK, DARK);
+    assert.deepEqual([far.state, far.write, far.dark], ["too-far", null, { w: 100, h: 50 }]);
+    assert.equal(decide(shot(100 + SIZE_SLACK, 50, "x"), "light", DARK).state, "new");
+    // with no dark picture, as a dark one
+    assert.equal(decide(NEAR, "light", null, null, DARK).state, "noise");
+  });
+
+  test("an SVG is faithful below the bar, the default one or another", () => {
+    assert.equal(decideSvg({ pct96: SVG_FAITHFUL - 0.001 }).faithful, true);
+    assert.equal(decideSvg({ pct96: SVG_FAITHFUL }).faithful, false);
+    assert.equal(decideSvg({ pct96: 0.3 }, { bar: 0.35 }).faithful, true);
+  });
+
+  test("writes a verdict into the folder, and removes what is not kept", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-apply-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const at = (out) => path.join(root, out);
+    // a new picture in a folder not there yet; a picture within noise writes nothing
+    assert.deepEqual(applyPicture(root, "a/X.png", { state: "new", write: OTHER }, null), {
+      removed: false,
+      svg: null,
+    });
+    assert.ok(fs.readFileSync(at("a/X.png")).equals(OTHER));
+    applyPicture(root, "a/X.png", { state: "noise", write: null }, null);
+    assert.ok(fs.readFileSync(at("a/X.png")).equals(OTHER));
+    // a light picture that is the dark one: its file removed, if there
+    fs.writeFileSync(at("a/X.light.png"), NEAR);
+    assert.equal(applyPicture(root, "a/X.light.png", { state: "dark", write: null }, null).removed, true);
+    assert.equal(fs.existsSync(at("a/X.light.png")), false);
+    assert.equal(applyPicture(root, "a/X.light.png", { state: "dark", write: null }, null).removed, false);
+    // an SVG: written, the same but for a checkout's last line ending, changed, then dropped
+    assert.equal(applySvg(root, "a/X.svg", "<svg/>"), "new");
+    fs.writeFileSync(at("a/X.svg"), "<svg/>\r\n");
+    assert.equal(applySvg(root, "a/X.svg", "<svg/>\n"), "unchanged");
+    assert.equal(applySvg(root, "a/X.svg", "<svg>x</svg>"), "updated");
+    assert.equal(applySvg(root, "a/X.svg", null), "removed");
+    assert.equal(applySvg(root, "a/X.svg", null), "not written");
+    // a picture dropped: its PNG, its SVG and its bundle, the other theme's bundle kept
+    const bundles = path.join(root, "bundles");
+    writeBundle(bundles, "a/X.png", { v: 1 }, OTHER, []);
+    writeBundle(bundles, "a/X.light.png", { v: 2 }, OTHER, []);
+    fs.writeFileSync(at("a/X.light.png"), OTHER);
+    fs.writeFileSync(at("a/X.light.svg"), "<svg/>");
+    assert.equal(dropPicture(root, "a/X.light.png", bundles), true);
+    assert.equal(fs.existsSync(at("a/X.light.png")) || fs.existsSync(at("a/X.light.svg")), false);
+    assert.equal(readBundle(bundles, "a/X.light.png"), null);
+    assert.equal(readBundle(bundles, "a/X.png").v, 1);
+    assert.equal(dropPicture(root, "a/X.light.png", null), false);
+  });
+
+  test("puts pictures back as a revision has them, each with its SVG", (t) => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-apply-git-"));
+    t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
+    const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] });
+    try {
+      git("init", "-q");
+    } catch {
+      t.skip("no git");
+      return;
+    }
+    git("config", "core.autocrlf", "false");
+    const docs = path.join(repo, "docs");
+    const at = (out) => path.join(docs, out);
+    fs.mkdirSync(docs);
+    // a.png has an SVG at the revision, b.png has none
+    fs.writeFileSync(at("a.png"), DARK);
+    fs.writeFileSync(at("a.svg"), "<svg/>\n");
+    fs.writeFileSync(at("b.png"), DARK);
+    git("add", ".");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "x");
+    const rev = openRevision(docs, "HEAD");
+    // a.png drifted and its SVG changed; b.png drifted and gained an SVG
+    fs.writeFileSync(at("a.png"), NEAR);
+    fs.writeFileSync(at("a.svg"), "<svg>x</svg>\n");
+    fs.writeFileSync(at("b.png"), NEAR);
+    fs.writeFileSync(at("b.svg"), "<svg/>\n");
+    const expected = new Map([
+      ["a.png", { fate: "write", atRevision: true }],
+      ["b.png", { fate: "remove", atRevision: false }],
+    ]);
+    // a dry run says what it would do and writes nothing
+    assert.deepEqual(restorePictures(docs, rev, ["a.png", "b.png"], { dryRun: true }), expected);
+    assert.ok(fs.readFileSync(at("a.png")).equals(NEAR));
+    assert.equal(fs.existsSync(at("b.svg")), true);
+    assert.deepEqual(restorePictures(docs, rev, ["a.png", "b.png"]), expected);
+    assert.equal(git("status", "--porcelain").toString(), "");
+    // through applyPicture, for a capture it put back
+    fs.writeFileSync(at("a.png"), NEAR);
+    assert.deepEqual(applyPicture(docs, "a.png", { state: "restored", write: DARK }, rev), {
+      removed: false,
+      svg: { fate: "keep", atRevision: true },
+    });
+    assert.equal(git("status", "--porcelain").toString(), "");
+    assert.throws(() => restorePictures(docs, rev, ["none.png"]), /has no none\.png/);
   });
 });

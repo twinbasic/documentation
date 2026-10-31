@@ -1,7 +1,7 @@
 // What the tools that draw a picture's SVG again from its bundle have in common:
 // replay.mjs, which writes the SVGs beside their PNGs, and sheet.mjs, which writes a
 // sheet of them to look at. Finding the pictures and their bundles, drawing one again
-// and judging it (keep.mjs's bar), writing what the judge made into a folder, running
+// and judging it (keep.mjs, against lib/shot-policy.mjs's bar), writing what the judge made into a folder, running
 // the pictures in processes of their own, and the sheet's HTML. And what sheet.mjs --against
 // uses to show the pictures that differ from a git revision (the list of them is
 // changedPictures, in scripts/lib/shot-revision.mjs): the comparison of each picture

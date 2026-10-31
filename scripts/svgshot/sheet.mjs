@@ -1,6 +1,6 @@
 // Writes a sheet to look at: an HTML page of the pictures under docs/ that have no SVG
 // beside them, each drawn again from its bundle with the converter as it is now and
-// judged against its PNG as replay.mjs and shoot_docs.mjs --svg judge it (keep.mjs's
+// judged against its PNG as replay.mjs and shoot_docs.mjs --svg judge it (lib/shot-policy.mjs's
 // bar), worst first, with the PNG, the SVG's render and the difference map side by
 // side; then the pictures with no bundle, as thumbnails. With --all, every picture.
 //
@@ -31,7 +31,8 @@ import { DOCS_DIR, REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { changedPictures, readRevisionFiles } from "../lib/shot-revision.mjs";
 import { listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
-import { judgeSvg, SVG_FAITHFUL } from "./keep.mjs";
+import { SVG_FAITHFUL } from "../lib/shot-policy.mjs";
+import { judgeSvg } from "./keep.mjs";
 import {
   changeFiles,
   changeSheetHtml,
