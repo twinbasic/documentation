@@ -40,30 +40,42 @@ table{border-collapse:collapse}td,th{border:1px solid var(--line);padding:3px 10
 
 /**
  * A page: the head with `generator` in its <meta name="generator"> (by which a folder is
- * known to hold a page of that tool), the `title` (text) and `intro` (HTML), the
- * `summary` table ([[label, value]], text), the `contents` (the <li>s of the list, HTML),
- * and `body` (HTML).
+ * known to hold a page of that tool), and `head` (HTML) after its style, the `title` (text)
+ * and `intro` (HTML), the `summary` table ([[label, value]], text), the `contents` (the
+ * <li>s of the list, HTML), and `body` (HTML). A page with no `summary` has no table, and one
+ * with no `contents` no list.
  */
-export function pageHtml({ generator, title, intro, summary, contents, body }) {
+export function pageHtml({ generator, title, intro, summary, contents, body, head = "" }) {
+  const table = summary
+    ? `<table>
+${summary.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join("\n")}
+</table>
+`
+    : "";
+  const list =
+    contents === undefined
+      ? ""
+      : `<h2>Contents</h2>
+<ol>
+${contents}
+</ol>
+`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="generator" content="${generator}">
 <title>${esc(title)}</title>
 <style>
-${PAGE_STYLE}</style></head><body>
+${PAGE_STYLE}</style>${head}</head><body>
 <h1>${esc(title)}</h1>
 <p>${intro}</p>
-<table>
-${summary.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join("\n")}
-</table>
-<h2>Contents</h2>
-<ol>
-${contents}
-</ol>
-${body}
+${table}${list}${body}
 </body></html>
 `;
 }
+
+/** A chip: a short `text` (text) with the classes `classes` and the tooltip `title` (text). */
+export const chipHtml = (text, classes = "", title = "") =>
+  `<span class="chip${classes ? ` ${classes}` : ""}"${title ? ` title="${esc(title)}"` : ""}>${esc(text)}</span>`;
 
 /**
  * For files in `folder`, relative to the page: `href`, a file's link; `figure`, a linked

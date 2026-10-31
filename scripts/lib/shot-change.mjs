@@ -228,6 +228,18 @@ const overWhite = (img, i) => {
   return [over(img.rgba[i]), over(img.rgba[i + 1]), over(img.rgba[i + 2])];
 };
 
+// A difference map's colour of a pixel of `B` (its offset `j`) that differs by `d` levels: a
+// dark grey copy of it when `d` is 0, else yellow for one level, shading to red at 128 and more.
+function mapColour(d, B, j) {
+  if (!d) {
+    const [r, g, b] = overWhite(B, j);
+    const v = 24 + Math.round((0.299 * r + 0.587 * g + 0.114 * b) * 0.25);
+    return [v, v, v];
+  }
+  const t = Math.min(1, Math.log2(d) / 7);
+  return [255, Math.round(255 * (1 - t)), 0];
+}
+
 /** The map's colour of a pixel only the old picture has, and of one only the new picture has. */
 export const ONLY_OLD = [0, 190, 220];
 export const ONLY_NEW = [220, 0, 220];
@@ -253,21 +265,34 @@ export function changeMap(A, B) {
       else if (!inA) colour = ONLY_NEW;
       else {
         const j = (y * B.width + x) * 4;
-        const d = pixelDiff(A, (y * A.width + x) * 4, B, j);
-        if (!d) {
-          const [r, g, b] = overWhite(B, j);
-          const v = 24 + Math.round((0.299 * r + 0.587 * g + 0.114 * b) * 0.25);
-          colour = [v, v, v];
-        } else {
-          const t = Math.min(1, Math.log2(d) / 7);
-          colour = [255, Math.round(255 * (1 - t)), 0];
-        }
+        colour = mapColour(pixelDiff(A, (y * A.width + x) * 4, B, j), B, j);
       }
       rgba[o] = colour[0];
       rgba[o + 1] = colour[1];
       rgba[o + 2] = colour[2];
       rgba[o + 3] = 255;
     }
+  }
+  return encodePng({ width: w, height: h, rgba });
+}
+
+/**
+ * A strength map (strengthOf, or diffSvg's) drawn as changeMap draws two pictures of one
+ * size, as a PNG file: `B` is the picture it was measured on (decodePng), of the map's size,
+ * whose dark grey copy shows where nothing differs. The screenshot review tool draws its
+ * difference maps from the strength maps a run stages.
+ */
+export function strengthPicture(strength, B) {
+  const { width: w, height: h, data } = strength;
+  if (B.width !== w || B.height !== h)
+    throw new Error(`the map is ${w} x ${h} px and the picture ${B.width} x ${B.height} px`);
+  const rgba = new Uint8Array(w * h * 4);
+  for (let i = 0; i < data.length; i++) {
+    const colour = mapColour(data[i], B, i * 4);
+    rgba[i * 4] = colour[0];
+    rgba[i * 4 + 1] = colour[1];
+    rgba[i * 4 + 2] = colour[2];
+    rgba[i * 4 + 3] = 255;
   }
   return encodePng({ width: w, height: h, rgba });
 }

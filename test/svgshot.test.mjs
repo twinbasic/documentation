@@ -36,6 +36,7 @@ import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import { describe, test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
   BUNDLE_VERSION,
@@ -89,8 +90,30 @@ import {
   regionMasks,
   shareOff,
   strengthOf,
+  strengthPicture,
   withinNoise,
 } from "../scripts/lib/shot-change.mjs";
+import {
+  acquireLock,
+  commandOf,
+  newestBuild,
+  openSession,
+  parseSession,
+  readEvents,
+  runPaths,
+  sessionPaths,
+} from "../scripts/lib/shot-session.mjs";
+import {
+  filterPictures,
+  groupOf,
+  hasSvg,
+  neighbours,
+  reviewPictures,
+  runFacts,
+  verdictOfEvent,
+} from "../scripts/lib/shot-review.mjs";
+import { encodePath, hrefs, loupesHtml } from "../scripts/lib/shot-pages.mjs";
+import { createReviewServer } from "../scripts/lib/shot-server.mjs";
 import {
   FAINT_LEVEL,
   pngLook,
@@ -2682,5 +2705,433 @@ describe("the screenshot manifest (shot-manifest.mjs)", () => {
   test("the repository's own manifest reads", () => {
     const m = openManifest();
     assert.equal(m.text(), fs.readFileSync(m.file, "utf8").replace(/\r\n/g, "\n"));
+  });
+});
+
+describe("the screenshot review's session (shot-session.mjs)", () => {
+  const baseline = () => ({ hash: "a".repeat(40), short: "aaaaaaaa", build: 1500 });
+
+  test("is made with its baseline, numbers its runs, and marks one left running as interrupted", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-session-"));
+    try {
+      const s = openSession(root, baseline, () => "t0");
+      assert.deepEqual(s.data, { format: 1, created: "t0", baseline: baseline(), runs: [], place: null });
+      const one = s.addRun({ tool: "shoot_docs", args: ["--svg", "--only", "Menu_File|Close"] });
+      const two = s.addRun({ tool: "replay", args: [] });
+      assert.deepEqual([one.n, two.n], [1, 2]);
+      s.endRun(1, { exit: 0, stopped: false });
+      s.setPlace("IDE/Images/A.png");
+      assert.throws(() => s.addRun({ tool: "rm", args: [] }), /no such tool/);
+      const again = openSession(
+        root,
+        () => assert.fail("a session there is not made again"),
+        () => "t1",
+      );
+      assert.deepEqual(
+        again.data.runs.map((r) => [r.n, r.ended, r.interrupted]),
+        [
+          [1, "t0", false],
+          [2, "t1", true],
+        ],
+      );
+      assert.equal(again.data.place, "IDE/Images/A.png");
+      assert.equal(runPaths(root, 2).stage, path.join(root, "session", "runs", "2", "stage"));
+      assert.equal(commandOf(one), 'node scripts/shoot_docs.mjs --svg --only "Menu_File|Close"');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("refuses a file that is not a session", () => {
+    assert.throws(() => parseSession("{"), /not JSON/);
+    assert.throws(() => parseSession('{"format":2}'), /format 1/);
+    assert.throws(() => parseSession(JSON.stringify({ format: 1, baseline: baseline(), runs: [{ n: 1 }] })), /a run/);
+  });
+
+  test("is held by one tool: a lock of a process still running refuses, one of a process ended is taken", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-session-"));
+    try {
+      const lock = sessionPaths(root).lock;
+      const release = acquireLock(lock, 100, () => true);
+      assert.throws(() => acquireLock(lock, 200, () => true), /process 100/);
+      const taken = acquireLock(lock, 200, () => false);
+      release();
+      assert.equal(fs.readFileSync(lock, "utf8"), "200");
+      taken();
+      assert.equal(fs.existsSync(lock), false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("reads a run's events, a last line cut short left out, and the newest build", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shot-session-"));
+    try {
+      const file = path.join(dir, "events.jsonl");
+      assert.deepEqual(readEvents(file), []);
+      fs.writeFileSync(file, '{"type":"run"}\n{"type":"picture","out":"a.png"}\n{"type":"sv');
+      assert.deepEqual(
+        readEvents(file).map((e) => e.type),
+        ["run", "picture"],
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    assert.equal(newestBuild({ "a.png": { build: 1010 }, "b.png": {}, "c.png": { build: 1034 } }), 1034);
+    assert.equal(newestBuild({}), null);
+  });
+});
+
+describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", () => {
+  const A = "IDE/Images/A.png";
+  const B = "IDE/Images/B.png";
+  const C = "IDE/Images/C.png";
+  const D = "IDE/Images/D.light.png";
+  const E = "IDE/Images/E.png";
+  const run = (n, tool, live, events, verdicts) => ({
+    n,
+    tool,
+    live,
+    facts: runFacts(tool, events),
+    verdicts: new Map(Object.entries(verdicts).map(([out, v]) => [out, { png: null, svg: null, ...v }])),
+  });
+  const jobs = (...pictures) => ({ type: "run", svg: true, jobs: [{ name: "j", pictures }] });
+
+  test("a run's events say what it lists, its jobs, its failures and what it did not take", () => {
+    const f = runFacts("shoot_docs", [
+      jobs(A, B),
+      { type: "job", job: "j", state: "started" },
+      { type: "failed", out: A, error: "boom" },
+      { type: "stopping" },
+      { type: "skipped", out: B },
+    ]);
+    assert.deepEqual(f.listed, [A, B]);
+    assert.equal(f.svg, true);
+    assert.deepEqual(f.jobs.get("j"), { pictures: 2, state: "started", error: null });
+    assert.equal(f.jobOf.get(B), "j");
+    assert.equal(f.failed.get(A), "boom");
+    assert.deepEqual([...f.skipped], [B]);
+    assert.equal(f.stopping, true);
+    const r = runFacts("replay", [
+      { type: "run", pictures: [C] },
+      { type: "retake", out: C, why: "no bundle" },
+    ]);
+    assert.deepEqual([r.listed, r.svg, r.retakes.get(C)], [[C], true, "no bundle"]);
+    assert.deepEqual(verdictOfEvent({ type: "svg", job: "j", out: A, state: "new" }), ["svg", { state: "new" }]);
+  });
+
+  test("a job that fails before it reaches a picture fails the picture, with the job's error", () => {
+    const events = [
+      jobs(A, B),
+      { type: "job", job: "j", state: "started" },
+      { type: "job", job: "j", state: "failed", error: "no hook" },
+      { type: "job", job: "j", state: "done" },
+    ];
+    assert.deepEqual(runFacts("shoot_docs", events).jobs.get("j"), { pictures: 2, state: "failed", error: "no hook" });
+    const { pictures } = reviewPictures([run(1, "shoot_docs", false, events, { [A]: { png: { state: "new" } } })]);
+    const at = (out) => pictures.find((p) => p.out === out);
+    assert.deepEqual([at(A).group, at(A).failed], ["added", null]);
+    assert.deepEqual([at(B).group, at(B).failed], ["failed", { run: 1, error: "its job, j, failed: no hook" }]);
+  });
+
+  test("a picture takes the newest verdicts, and a retake's PNG drops an older run's SVG", () => {
+    const runs = [
+      run(1, "shoot_docs", false, [jobs(A, B, C), { type: "failed", out: C, error: "boom" }], {
+        [A]: { png: { state: "updated" }, svg: { state: "new" } },
+        [B]: { png: { state: "noise" }, svg: { state: "unchanged" } },
+      }),
+      run(2, "replay", false, [{ type: "run", pictures: [A, D] }], {
+        [A]: { svg: { state: "updated" } },
+        [D]: { svg: { state: "removed" } },
+      }),
+      run(3, "shoot_docs", true, [jobs(A, E)], { [A]: { png: { state: "unchanged" } } }),
+    ];
+    const { pictures, groups } = reviewPictures(runs);
+    const at = (out) => pictures.find((p) => p.out === out);
+    assert.deepEqual([at(A).png, at(A).svg, at(A).progress], [{ run: 3, state: "unchanged" }, null, true]);
+    assert.deepEqual([at(E).progress, at(E).group], [true, "progress"]);
+    assert.deepEqual(
+      [B, C, D].map((out) => at(out).group),
+      ["noise", "failed", "changed"],
+    );
+    assert.equal(at(C).failed.error, "boom");
+    assert.deepEqual(
+      groups.map((g) => g.key),
+      ["progress", "look", "changed", "noise", "unchanged", "added", "deleted", "failed"],
+    );
+    assert.deepEqual(
+      pictures.map((p) => p.out),
+      [A, E, D, B, C],
+    );
+    // the same runs once the third has ended: A's PNG is unchanged, and it has no SVG verdict
+    const ended = reviewPictures(runs.map((r) => ({ ...r, live: false })));
+    assert.equal(ended.pictures.find((p) => p.out === A).group, "unchanged");
+  });
+
+  test("the Changed group is ordered by how much each changed, and a look comes first", () => {
+    const runs = [
+      run(1, "shoot_docs", false, [jobs(A, B, C)], {
+        [A]: { png: { state: "updated" } },
+        [B]: { png: { state: "updated" } },
+        [C]: { png: { state: "updated", look: { why: "small", text: "small" } } },
+      }),
+    ];
+    const share = { [A]: 0.5, [B]: 3 };
+    const { groups } = reviewPictures(runs, { measure: (p) => share[p.out] });
+    const by = Object.fromEntries(groups.map((g) => [g.key, g.pictures.map((p) => p.out)]));
+    assert.deepEqual([by.look, by.changed], [[C], [B, A]]);
+  });
+
+  test("a picture the run takes once, or the dark one's light picture, is deleted only when its file is there", () => {
+    const p = { out: D, png: { state: "dark" }, svg: null, progress: false, failed: null };
+    assert.equal(
+      groupOf(p, () => true),
+      "deleted",
+    );
+    assert.equal(
+      groupOf(p, () => false),
+      "unchanged",
+    );
+    assert.equal(
+      groupOf({ ...p, png: { state: "new" } }, () => false),
+      "added",
+    );
+  });
+
+  test("the filters: no SVG after the verdicts are applied, and a picture's neighbours in a list", () => {
+    const pictures = [
+      { out: A, svg: { state: "new" } },
+      { out: B, svg: { state: "not written" } },
+      { out: C, svg: null },
+      { out: E, svg: { state: "unchanged" }, group: "look" },
+    ];
+    const exists = (f) => f === "IDE/Images/E.svg";
+    assert.deepEqual(
+      pictures.map((p) => hasSvg(p, exists)),
+      [true, false, false, true],
+    );
+    assert.deepEqual(
+      filterPictures(pictures, "nosvg", { exists }).map((p) => p.out),
+      [B, C],
+    );
+    assert.deepEqual(
+      filterPictures(pictures, "look").map((p) => p.out),
+      [E],
+    );
+    assert.deepEqual(
+      filterPictures(pictures, "overridden", { overridden: (out) => out === A }).map((p) => p.out),
+      [A],
+    );
+    assert.equal(filterPictures(pictures, "nonsense").length, 4);
+    const { index, prev, next } = neighbours(pictures, B);
+    assert.deepEqual([index, prev.out, next.out], [1, A, C]);
+    assert.deepEqual(neighbours(pictures, "x.png"), { index: -1, prev: null, next: null });
+  });
+
+  test("an address encodes each segment of a path, and a loupe crops and enlarges its region", () => {
+    assert.equal(hrefs.picture("IDE/Images/A b#.png", "look"), "/picture/IDE/Images/A%20b%23.png?filter=look");
+    assert.equal(hrefs.picture(A, "all"), `/picture/${A}`);
+    assert.equal(encodePath("a/b c"), "a/b%20c");
+    const html = loupesHtml(
+      [{ x0: 100, y0: 50, x1: 130, y1: 60, pixels: 300, core: 40 }],
+      [400, 200],
+      { src: "/o", label: "HEAD" },
+      { src: "/n", label: "new" },
+    );
+    // 30 x 10 px with 6 px round it, enlarged 4 times
+    assert.match(
+      html,
+      /width:168px;height:88px;background-image:url\('\/o'\);background-size:1600px 800px;background-position:-376px -176px/,
+    );
+    assert.match(html, /HEAD \| new: 30 x 10 px at 100, 50/);
+    assert.equal(loupesHtml([], [400, 200], {}, {}), "");
+  });
+
+  test("a strength map is drawn as changeMap draws the two pictures it was measured on", () => {
+    const img = (shade) => {
+      const rgba = new Uint8Array(30 * 20 * 4);
+      for (let i = 0; i < 600; i++) rgba.set([i % 7 === 0 ? shade : 40, 60, 80, 255], i * 4);
+      return decodePng(Buffer.from(encodePng({ width: 30, height: 20, rgba })));
+    };
+    const [a, b] = [img(40), img(200)];
+    assert.deepEqual(Buffer.from(strengthPicture(strengthOf(a, b), b)), Buffer.from(changeMap(a, b)));
+    assert.throws(() => strengthPicture(strengthOf(a, b), { ...b, width: 29 }), /30 x 20 px/);
+  });
+});
+
+describe("the screenshot review's server (shot-server.mjs)", () => {
+  const A = "IDE/Images/A.png";
+  const B = "IDE/Images/B.light.png";
+  // A flat grey picture 40 x 30, with a bright block in it when `block`: the capture of A,
+  // against HEAD's without it. The stand-in run below has its own copy, from its source.
+  const flat = (block) => {
+    const rgba = new Uint8Array(40 * 30 * 4);
+    for (let i = 0; i < 1200; i++) {
+      const [x, y] = [i % 40, Math.floor(i / 40)];
+      const s = block && x >= 10 && x < 30 && y >= 8 && y < 22 ? 250 : 40;
+      rgba.set([s, s, s, 255], i * 4);
+    }
+    return Buffer.from(encodePng({ width: 40, height: 30, rgba }));
+  };
+  const lib = (name) => JSON.stringify(pathToFileURL(path.join(REPO_ROOT, "scripts", "lib", name)).href);
+  // A run as shoot_docs.mjs --stage --events makes one: A taken and its SVG accepted, then a
+  // wait for the stop line, after which B is not taken.
+  const FAKE = `import { onStop, writeRecord } from ${lib("record-lines.mjs")};
+import { pngVerdict, stageCapture, stageSvg, svgVerdict, writeVerdict } from ${lib("shot-stage.mjs")};
+import { reviewPicture, reviewSvg } from ${lib("shot-queue.mjs")};
+import { encodePng } from ${lib("png.mjs")};
+const flat = ${flat.toString()};
+const args = process.argv.slice(2);
+const stage = args[args.indexOf("--stage") + 1];
+if (args[0] !== "--only" || !args.includes("--events")) process.exit(2);
+const ev = (type, v = {}) => writeRecord("shot-event", { type, ...v });
+const [A, B] = ${JSON.stringify([A, B])};
+ev("run", { tool: "shoot_docs", svg: true, jobs: [{ name: "j", setup: "s", pictures: [A, B] }] });
+ev("job", { job: "j", state: "started" });
+console.log("taking " + A);
+const cap = flat(true);
+const fate = { state: "updated", write: cap, against: "revision", size: { w: 40, h: 30 }, dark: null, by: "rule", earlier: null };
+const review = reviewPicture(fate, cap, flat(false), null);
+const part = pngVerdict({ decision: fate, review, build: 1501, staged: stageCapture(stage, A, cap, review.strength) });
+writeVerdict(stage, A, "png", part);
+ev("picture", { job: "j", out: A, ...part });
+const strength = { width: 40, height: 30, data: new Uint8Array(1200) };
+const judged = { faithful: true, by: "rule", share: 0, earlier: null };
+const svg = svgVerdict({ state: "new", verdict: judged, review: reviewSvg(judged, strength), stats: { pct8: 0, pct32: 0, pct96: 0 }, measures: "0% off", staged: stageSvg(stage, A, "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='15'/>", strength) });
+writeVerdict(stage, A, "svg", svg);
+ev("svg", { job: "j", out: A, ...svg });
+onStop(process.stdin, () => {
+  ev("stopping");
+  ev("skipped", { job: "j", out: B });
+  ev("job", { job: "j", state: "done" });
+  ev("summary", { stopped: true, exit: 0 });
+  process.exit(0);
+});
+`;
+
+  const until = async (what, ok) => {
+    for (const t0 = Date.now(); !ok(); ) {
+      if (Date.now() - t0 > 15000) assert.fail(`timed out waiting for ${what}`);
+      await new Promise((r) => setTimeout(r, 20));
+    }
+  };
+
+  test("follows a run as it reports, serves its pages and files to the loopback host only, and reads the run back", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-"));
+    const docs = path.join(root, "docs");
+    fs.mkdirSync(docs);
+    const script = path.join(root, "fake-run.mjs");
+    fs.writeFileSync(script, FAKE);
+    const head = flat(false);
+    const revision = { hash: "a".repeat(40), short: "aaaaaaaa", bytes: (out) => (out === A ? head : null) };
+    const manifest = () => ({ entry: () => null });
+    const make = () =>
+      createReviewServer({
+        session: openSession(root, () => ({ hash: revision.hash, short: revision.short, build: 1500 })),
+        revision,
+        manifest,
+        docsRoot: docs,
+        command: { script },
+      });
+    const app = make();
+    let app2 = null;
+    try {
+      const port = await app.listen(0);
+      const base = `http://127.0.0.1:${port}`;
+      const get = async (p) => {
+        const res = await fetch(base + p);
+        return {
+          status: res.status,
+          type: res.headers.get("content-type"),
+          body: Buffer.from(await res.arrayBuffer()),
+        };
+      };
+      const events = [];
+      const stream = await fetch(`${base}/events`);
+      const reader = stream.body.getReader();
+      (async () => {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          events.push(Buffer.from(value).toString());
+        }
+      })().catch(() => {});
+
+      const handle = app.start({ tool: "shoot_docs", args: ["--only", "A|B"] });
+      const pic = (out) => app.model().pictures.find((p) => p.out === out);
+      await until("A's SVG verdict", () => pic(A)?.svg);
+      assert.equal(pic(A).group, "look");
+      assert.equal(pic(A).png.look.why, "small");
+      assert.equal(pic(B).group, "progress");
+
+      const overview = await get("/");
+      assert.equal(overview.status, 200);
+      const html = overview.body.toString();
+      assert.match(html, /In progress \(1\)/);
+      assert.match(html, /Needs a look \(1\)/);
+      assert.match(html, /Resume at 1 of 1/);
+      assert.match(html, /<code>node scripts\/shoot_docs\.mjs --only &quot;A\|B&quot;<\/code>/);
+      const detail = await get(`/picture/${A}?filter=look`);
+      assert.equal(detail.status, 200);
+      assert.match(detail.body.toString(), /<body data-out="IDE\/Images\/A\.png">/);
+      assert.match(detail.body.toString(), /1 of 1 · Needs a look/);
+      assert.equal(app.model().pictures.length, 2);
+      const capture = await get(hrefs.run(1, pic(A).png.capture));
+      assert.deepEqual([capture.status, capture.type], [200, "image/png"]);
+      assert.deepEqual(decodePng(capture.body).width, 40);
+      assert.deepEqual((await get(hrefs.reference(1, A))).body, head);
+      assert.deepEqual((await get(hrefs.head(A))).body, head);
+      const map = await get(hrefs.map(1, "png", A));
+      assert.deepEqual([map.status, decodePng(map.body).height], [200, 30]);
+      assert.equal((await get(hrefs.map(1, "svg", A))).status, 200);
+      assert.equal((await get(hrefs.run(1, pic(A).svg.svg))).type, "image/svg+xml");
+      assert.equal((await get("/file/run/1/%2E%2E/%2E%2E/session.json")).status, 404);
+      assert.equal((await get("/picture/IDE/Images/Nothing.png")).status, 404);
+      assert.equal((await get("/file/docs/x.txt")).status, 404);
+      const forged = await new Promise((resolve, reject) => {
+        import("node:http").then(({ request }) =>
+          request({ port, path: "/", headers: { host: `docs.example:${port}` } }, (res) => {
+            res.resume();
+            resolve(res.statusCode);
+          })
+            .on("error", reject)
+            .end(),
+        );
+      });
+      assert.equal(forged, 403);
+
+      handle.stop();
+      assert.equal(await handle.exited, 0);
+      await until("the run's end", () => !app.live().length);
+      assert.equal(pic(B).group, "failed");
+      assert.equal(pic(B).skipped, 1);
+      assert.match(events.join(""), /event: update\ndata: \{"outs":\["IDE\/Images\/A\.png"\]\}/);
+      const files = runPaths(root, 1);
+      assert.match(fs.readFileSync(files.log, "utf8"), /^taking IDE\/Images\/A\.png$/m);
+      assert.equal(readEvents(files.events).at(-1).type, "summary");
+      const state = JSON.parse((await get("/api/state")).body);
+      assert.deepEqual(
+        [state.runs[0].stopped, state.runs[0].exit, state.runs[0].done, state.runs[0].listed],
+        [true, 0, 2, 2],
+      );
+
+      // The session opened again: its run read back from the stage and the events.
+      await app.close();
+      app2 = make();
+      const again = app2.model().pictures;
+      assert.deepEqual(
+        again.map((p) => [p.out, p.group]),
+        [
+          [A, "look"],
+          [B, "failed"],
+        ],
+      );
+    } finally {
+      // a run left waiting for its stop line would keep the test's process alive
+      for (const h of app.live()) h.kill();
+      await app.close();
+      await app2?.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });

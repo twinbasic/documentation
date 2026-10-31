@@ -46,3 +46,7 @@ indexer/.packages/
 # shoot_docs.mjs --svg: each picture's bundle (scripts/svgshot/bundle.mjs), what its SVG
 # is drawn from, for scripts/svgshot/replay.mjs. Bundles hold the Windows user name.
 /.svgshot-bundles/
+
+# scripts/shot_review.mjs: the screenshot review's session and its runs' stages
+# (scripts/lib/shot-session.mjs), which hold the Windows user name.
+/.shot-review/

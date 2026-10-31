@@ -444,6 +444,7 @@ const HELP_TOOLS = {
   "scripts/pick_a11y_sample.mjs": null,
   "scripts/probe_build_twice.mjs": null,
   "scripts/probe_theme_semicolon.mjs": null,
+  "scripts/shot_review.mjs": null,
   "scripts/survey_tooling.mjs": null,
   "scripts/sweep_a11y.mjs": null,
   "scripts/sweep_attributes.mjs": null,
@@ -491,6 +492,7 @@ const REFUSALS = {
   "scripts/ide_test.mjs": ["ide"],
   "scripts/try_help_addin.mjs": ["ide"],
   "scripts/shoot_docs.mjs": ["ide"],
+  "scripts/shot_review.mjs": ["port"],
   "scripts/bug_repro.mjs": ["ide"],
   "scripts/build_dot_metrics.mjs": [null],
   "scripts/census_attributes.mjs": ["out"],
@@ -892,6 +894,15 @@ bad("scripts/shoot_docs.mjs", ["--jobs=17"], "--jobs expects a whole number from
   bad("scripts/shoot_docs.mjs", ["--cleanup", "--events"], "--cleanup and --events cannot be given together\n");
   bad("scripts/svgshot/replay.mjs", ["--stage", underDocs], `replay: --stage: ${underDocs} is under ${docs}\n`);
   bad("scripts/svgshot/replay.mjs", ["--stage", "s", "--diffs", "d"], "--stage and --diffs cannot be given together\n");
+  // The screenshot review tool: a run is a retake or a replay, and its options are for one.
+  bad("scripts/shot_review.mjs", ["--port", "0"], "--port expects a whole number from 1 to 65535, got: 0\n");
+  bad(
+    "scripts/shot_review.mjs",
+    ["--retake", "a", "--replay", "b"],
+    "--retake and --replay cannot be given together\n",
+  );
+  bad("scripts/shot_review.mjs", ["--jobs", "2"], "shot_review: --jobs is for a run: --retake or --replay\n");
+  bad("scripts/shot_review.mjs", ["--replay", "a", "--ide", "x"], "shot_review: --ide is for --retake\n");
 }
 
 // check_examples prints "check_examples: " before the message.

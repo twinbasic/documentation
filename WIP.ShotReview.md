@@ -2,8 +2,9 @@
 
 A localhost tool for reviewing what `shoot_docs.mjs` and `replay.mjs` decided about each
 picture, overriding it, starting retakes and replays, and committing the result. **Design
-agreed with the owner on 2026-10-31; steps 1 to 4 of [the order of work](#order-of-work) are
-done (step 1 but for the commit helper, which step 8 makes), and the tool itself is not started.** The mockups it was agreed on were inline in that
+agreed with the owner on 2026-10-31; steps 1 to 5 of [the order of work](#order-of-work) are
+done (step 1 but for the commit helper, which step 8 makes): the tool runs, read-only, as
+`node scripts/shot_review.mjs`.** The mockups it was agreed on were inline in that
 session and are not kept: the pages are described below instead.
 
 The tool covers everything the command-line screenshot tools do, interactively, with a person
@@ -217,10 +218,14 @@ strength map. The manifest is read and written only for the default `--out`: its
 ## Sessions
 
 A session is a folder in the gitignored `.shot-review/` (beside `.svgshot-bundles/`; it can
-hold the user name): `session.json` (the baseline commit and its build, the runs, every
-decision with its time, the queue's place) and a folder per run with what the run produced
-(below). Closing the tool loses nothing; opening it again opens the session. A commit
-archives it.
+hold the user name): `session/session.json` (the baseline commit and its build, the runs, every
+decision with its time, the queue's place), `session/lock` (the process id of the tool that
+holds it), and `session/runs/<n>/` per run: `stage/` (the run's `--stage`), `events.jsonl`
+(each event as it arrived, for what the stage does not hold: failures, pictures not taken,
+the jobs) and `log.txt` (its lines for a person). Closing the tool loses nothing; opening it
+again opens the session, a run that had not ended marked interrupted. A commit archives it
+into `archive/<id>/`. The folder is under the repository's root, so a worktree has a session of
+its own.
 
 ## Runs
 
@@ -284,17 +289,18 @@ Each step ends tested and usable on its own.
 3. **The strength map, the regions and the queue's rules**, tested on fixtures. Done.
 4. **`--stage`, `--events` and stop** in `shoot_docs.mjs` and `replay.mjs`. Done.
 5. **The server and the session store**, the overview and the detail page read-only, live.
+   Done.
 6. **Decisions and allowances** applied through `shot-apply.mjs`, judged again at once.
 7. **The runs page**: retake, replay, clean up, stop.
 8. **The commit panel**.
 9. **`sheet.mjs` on the shared views**; the tool's entry in `Tools-IDE.md`, its node in
-   `Tools-Groups.dot`, its command-line cases in `scripts/lib/cli-cases.mjs`, its tests in
+   `Tools-Groups.dot` (its command-line cases are in `scripts/lib/cli-cases.mjs` since step 5), its tests in
    `test.bat` (and so in Tools.md's list and the `run-gates` action), and the row in
    WIP.md's *Which file to open*.
 
 ## Where the work stands
 
-On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and steps 2 to 4. Each move kept the command-line tools' output as it was, checked as
+On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and steps 2 to 5. Each move kept the command-line tools' output as it was, checked as
 [below](#checking-a-move).
 
 | Row of the factoring table | Where it is now |
@@ -314,16 +320,33 @@ On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and st
 | Server-sent events | `createSseChannel()` in `lib/sse.mjs`: `handle(req, res)`, `send(event, data)`, `close()`; `builder/serve.mjs` uses one |
 | The installs | `listIdes()` in `scripts/lib/tb-install.mjs`, newest first, `[{build, exe}]` |
 
-**Next: step 5**, the server and the session store, with the overview and the detail page
-read-only and live. A run is a child process with `--stage <session>/runs/<n>` and `--events`;
-the tool reads its records with `readRecords`, passes them to the pages through
-`createSseChannel`, and after a restart rebuilds a run's pictures from `readVerdicts` and
-`readStrength`. Still to write for step 6, where the tool applies a verdict: moving a staged
-bundle into the cache (`readBundle` from the stage, `writeBundle` into `.svgshot-bundles`), and
-the "dark" verdict's two calls (`applyPicture`, then `dropPicture` for its SVG and bundle) as
-one function in `shot-apply.mjs`, so that `shoot_docs.mjs` and the tool make the same calls. The
-tool's pages will add their actions to the pieces in `shot-views.mjs`; until then only
-`sheets.mjs` calls them.
+What step 5 added, the tool itself:
+
+| Part | Where it is |
+|---|---|
+| The tool | `scripts/shot_review.mjs [--port N] [--retake <regex> \| --replay <regex>] [--jobs N] [--ide <exe>]`: takes the session's lock, makes the session with HEAD as its baseline (`build` the newest the manifest at HEAD records) when there is none, serves it on `127.0.0.1:4180`, and starts a run when asked (a retake is `shoot_docs.mjs --svg --only`). Until step 7's runs page, a run is started only from its command line. Ctrl+C stops the runs by their stdin and waits, a second Ctrl+C kills them. Its command-line cases are in `scripts/lib/cli-cases.mjs` already |
+| The session | `scripts/lib/shot-session.mjs`: `REVIEW_ROOT`, `RUN_TOOLS`, `sessionPaths`, `runPaths`, `openSession(root, baseline)` (`addRun`, `endRun`, `setPlace`, `run`), `acquireLock(file)`, `parseSession`, `commandOf(run)` (the command line without `--stage` and `--events`), `newestBuild`, `appendEvent`, `readEvents` |
+| A run | `startRun(session, {tool, args}, {onEvent, onLine, onExit})` in `scripts/lib/shot-runs.mjs`: the tool spawned from the repository's root in a process group of its own (`detached`, so that the Ctrl+C that closes the review tool does not end the run before it puts the registry back), its events appended to `events.jsonl` and its other lines, stdout and stderr, to `log.txt`; `{run, stop, kill, exited}` |
+| The model | `scripts/lib/shot-review.mjs`, pure: `runFacts(tool, events)` (listed, jobs and `jobOf`, failed, skipped, retakes, stopping, summary), `verdictOfEvent`, `reviewPictures(runs, {exists, measure})` (each part from the newest run that gave one, a newer PNG verdict dropping an older SVG; `progress` while a live run owes a part; a picture whose job failed before reaching it failed with the job's error), `groupOf`, `GROUPS`, `FILTERS`, `filterPictures`, `hasSvg`, `isOverridden`, `neighbours` |
+| The pages | `scripts/lib/shot-pages.mjs`: `overviewHtml`, `detailHtml`, `chipsOf`, `loupesHtml` (a region cropped by CSS from the whole picture, enlarged up to 4 times, at most 360 by 240 CSS px), `hrefs` (every address the server answers); built on `pageHtml` (which now takes `head`, and leaves out the table or the contents when it is given none) and `chipHtml` in `shot-views.mjs`. A page fetches itself again 400 ms after an `update` event that names a picture it shows, and replaces its body; the detail page's comparison mode is kept in `sessionStorage` |
+| The server | `createReviewServer({session, revision, manifest, docsRoot, headNow, newestIde, onLine, command})` in `scripts/lib/shot-server.mjs`: the pages, `/events`, `/api/state`, `/log/<n>`, the files (`/file/head`, `/file/docs`, `/file/run/<n>`, `/file/ref/<n>`, the picture the capture was judged against) and the difference maps drawn from a run's strength maps (`/map/<n>/png|svg/<out>`, `strengthPicture` in `shot-change.mjs`, which colours as `changeMap` does, the last 16 kept). It answers only a request whose Host is the loopback address at its port; a run's verdicts are read back from `readVerdicts` and its other events from `readEvents` when the session is opened again. The Changed group is ordered by the share of a PNG's pixels beyond its noise levels, from its strength map, else the SVG's share off its PNG |
+
+**Next: step 6**, decisions and allowances. Still to write for it, where the tool applies a
+verdict: moving a staged bundle into the cache (`readBundle` from the stage, `writeBundle` into
+`.svgshot-bundles`), and the "dark" verdict's two calls (`applyPicture`, then `dropPicture` for
+its SVG and bundle) as one function in `shot-apply.mjs`, so that `shoot_docs.mjs` and the tool
+make the same calls. Today a run's verdicts are only shown: nothing is applied to `docs/`, so
+until step 6 a retake through the tool changes nothing in the working tree. The actions go
+into the detail page's PNG and SVG rows, and the server takes its first POST requests (it
+answers 405 to any today).
+
+Step 5 was checked with the tests in `test/svgshot.test.mjs` and with three real runs started
+by the tool in one session, the tool closed between them: a retake of `Close_Question` whose
+job failed in the harness (`the IDE's settings were not made the defaults: its page ran no
+hook, even after a reload`, which a second run did not meet: a flake of `launchIde`'s hook, not
+the tool's), which showed that a job's failure must reach its pictures; the same retake again
+(both `unchanged`); and `Menu_File|Menu_Tools` (`Menu_File_Project.light` `noise`, its map the
+one-level text rows the queue's `FAINT_LEVEL` is for). `git status` stayed clean under `docs/`.
 
 Step 4 was checked with the runs [below](#checking-a-move), staged and not, which printed the
 same lines, the staged ones writing nothing under `docs/` (`git status` clean) and their
@@ -387,5 +410,10 @@ MutationObserver (`tabCloseIcon`).
 ## Open
 
 - **The server's port.** A stable default with `--port`, as bookmarks need, or a port from
-  `tbbroker`, which today leases one only with a desktop.
+  `tbbroker`, which today leases one only with a desktop. Step 5 took the first, 4180, until
+  the owner decides.
+- **Pictures changed outside the session.** The overview shows what the session's runs
+  reported; a picture under `docs/` that differs from the baseline for another reason (a run
+  from a terminal, an edit) is not on it, though `sheet.mjs --against` lists it. Whether the
+  overview lists those too, as the static sheet does, is not decided.
 - **Allowances in the static sheets**: whether `sheet.mjs` shows them, as the overview does.
