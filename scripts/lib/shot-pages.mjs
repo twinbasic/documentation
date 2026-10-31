@@ -1,9 +1,10 @@
 // The screenshot review tool's pages (WIP.ShotReview.md, The pages): the overview, every
-// picture of the session as a card in its group, and the detail page of one picture, made of
-// the pieces in shot-views.mjs. Each page is whole HTML; a page keeps itself current by
-// fetching itself again when the server says over its event stream that something it shows
-// has changed. Its actions (a decision, an allowance, the session moved to HEAD) are POSTs of
-// JSON to the server, which applies them and says so over the same stream.
+// picture of the session as a card in its group, the detail page of one picture, and the runs
+// page, made of the pieces in shot-views.mjs. Each page is whole HTML; a page keeps itself
+// current by fetching itself again when the server says over its event stream that something
+// it shows has changed. Its actions (a decision, an allowance, the session moved to HEAD, a run
+// started or stopped) are POSTs of JSON to the server, which applies them and says so over the
+// same stream.
 //
 // Every address the pages link to is made here (hrefs), and the server answers each.
 
@@ -11,6 +12,7 @@ import { anchor, chipHtml, esc, pageHtml, sizeText } from "./shot-views.mjs";
 import { FILTERS, GROUPS } from "./shot-review.mjs";
 import { pngRule, svgRule } from "./shot-policy.mjs";
 import { SURVIVES } from "./shot-queue.mjs";
+import { RUN_KINDS } from "./shot-runs.mjs";
 
 /** The generator the tool's pages name in their <meta>. */
 export const REVIEW_GENERATOR = "scripts/shot_review.mjs";
@@ -39,11 +41,17 @@ export const hrefs = {
   /** The difference map of a picture changed outside the session's runs, against the baseline's. */
   outsideMap: (out) => `/map/outside/${encodePath(out)}`,
   log: (n) => `/log/${n}`,
+  /** The session's runs, and the forms that start one. */
+  runs: "/runs",
   events: "/events",
   /** POST: a review's action on a picture (shot-server.mjs's act). */
   act: (out) => `/api/picture/${encodePath(out)}`,
   /** POST: the session moved to HEAD. */
   moveBaseline: "/api/baseline",
+  /** POST: a run started (shot-runs.mjs's runOf takes the body). */
+  startRun: "/api/runs",
+  /** POST: the run `n` stopped or ended ({action: "stop" | "kill"}). */
+  runAct: (n) => `/api/run/${n}`,
 };
 
 const REVIEW_STYLE = `<style>
@@ -76,12 +84,48 @@ form.allow fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 10
 form.allow label{display:inline-block;margin:2px 14px 2px 0}form.allow input[type=number]{width:6em}
 form.allow textarea{width:100%;max-width:600px;font:12px var(--mono,monospace)}
 .draw{cursor:crosshair;user-select:none}.draw .new{position:absolute;box-sizing:border-box;border:2px dashed #08f;pointer-events:none}
+.card .pick{float:right;font-size:12px;color:var(--mut)}td code{overflow-wrap:anywhere}
+.picked{position:sticky;top:0;background:var(--card);z-index:1}.picked button{font:inherit;padding:1px 10px}
+form.run{border:1px solid var(--line);border-radius:6px;margin:0 0 12px;padding:6px 12px}form.run h3{margin:4px 0 6px}
+form.run label{display:inline-block;max-width:100%;margin:2px 14px 6px 0}form.run input[type=number]{width:5em}
+form.run input[type=text]{width:32em;max-width:100%;box-sizing:border-box}form.run button{font:inherit;padding:3px 12px}
+article.run{border:1px solid var(--line);border-radius:6px;margin:0 0 12px;padding:6px 12px;overflow-wrap:anywhere}article.run h3{margin:4px 0}
+ul.jobs{list-style:none;padding:0;margin:6px 0}ul.jobs li{margin:2px 0}ul.jobs progress,article.run>progress{width:200px;vertical-align:middle;margin-right:8px}
+pre.log{max-height:20em;overflow:auto;font-size:12px;border:1px solid var(--line);padding:6px;margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}
 </style>`;
 
 // The page's script: the event stream, the page fetched again when something it shows has
-// changed, the comparison's modes, and the keys j and k for the next and previous picture.
+// changed (the values of a form marked data-keep kept), the comparison's modes, the keys j and
+// k for the next and previous picture, and the pictures selected on the overview, which the
+// runs page's forms take in place of a pattern (kept in the browser, as a convenience).
 const REVIEW_SCRIPT = `<script>
 (() => {
+  const PICKED = "shot-review-selected";
+  const picked = () => {
+    try { const v = JSON.parse(localStorage.getItem(PICKED) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
+  };
+  const showPicked = () => {
+    const list = picked();
+    for (const c of document.querySelectorAll("input[data-pick]")) c.checked = list.includes(c.dataset.pick);
+    for (const bar of document.querySelectorAll(".picked")) {
+      bar.hidden = !list.length;
+      bar.title = list.join("\\n");
+      const n = bar.querySelector(".count");
+      if (n) n.textContent = list.length === 1 ? "1 picture selected" : list.length + " pictures selected";
+    }
+    for (const f of document.querySelectorAll("form.run")) if (f.elements.only) f.elements.only.disabled = list.length > 0;
+  };
+  const setPicked = (list) => {
+    try { localStorage.setItem(PICKED, JSON.stringify(list)); } catch {}
+    showPicked();
+  };
+  document.addEventListener("change", (e) => {
+    const c = e.target.closest?.("input[data-pick]");
+    if (!c) return;
+    const list = picked().filter((o) => o !== c.dataset.pick);
+    if (c.checked) list.push(c.dataset.pick);
+    setPicked(list);
+  });
   let blink = null;
   const setMode = (c, m) => {
     c.dataset.mode = m;
@@ -105,9 +149,22 @@ const REVIEW_SCRIPT = `<script>
     if (!res.ok) return;
     const doc = new DOMParser().parseFromString(await res.text(), "text/html");
     const y = scrollY;
+    const kept = [];
+    for (const f of document.querySelectorAll("form[data-keep][id]"))
+      for (const el of f.elements) if (el.name) kept.push([f.id, el.name, el.type === "checkbox" ? el.checked : el.value]);
+    const a = document.activeElement;
+    const focus = a?.form?.id && a.form.hasAttribute("data-keep") ? [a.form.id, a.name] : null;
     document.body.replaceWith(doc.body);
+    for (const [id, name, v] of kept) {
+      const el = document.getElementById(id)?.elements[name];
+      if (!el) continue;
+      if (el.type === "checkbox") el.checked = v;
+      else el.value = v;
+    }
+    if (focus) document.getElementById(focus[0])?.elements[focus[1]]?.focus();
     init();
     draws();
+    showPicked();
     scrollTo(0, y);
   };
   let timer = null;
@@ -135,7 +192,7 @@ const REVIEW_SCRIPT = `<script>
     s.textContent = text;
     s.classList.toggle("err", !!err);
   };
-  const controls = () => document.querySelectorAll("button[data-act], form.allow button");
+  const controls = () => document.querySelectorAll("button[data-act], form.allow button, form.run button");
   const post = async (url, body, from) => {
     say(from, "applying...");
     for (const b of controls()) b.disabled = true;
@@ -150,12 +207,28 @@ const REVIEW_SCRIPT = `<script>
     }
   };
   document.addEventListener("click", (e) => {
+    if (e.target.closest?.("button[data-clear-picked]")) return setPicked([]);
     const b = e.target.closest?.("button[data-act]");
     if (!b) return;
     e.preventDefault();
+    if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
     post(b.dataset.url, JSON.parse(b.dataset.act), b);
   });
   document.addEventListener("submit", (e) => {
+    const r = e.target.closest?.("form.run");
+    if (r) {
+      e.preventDefault();
+      const body = { kind: r.dataset.kind };
+      for (const el of r.elements) {
+        if (!el.name || el.disabled) continue;
+        if (el.type === "checkbox") body[el.name] = el.checked;
+        else if (el.value.trim() !== "") body[el.name] = el.value.trim();
+      }
+      if (r.hasAttribute("data-dry-run")) body.dryRun = true;
+      const list = picked();
+      if (list.length) body.pictures = list;
+      return post(r.getAttribute("action"), body, r);
+    }
     const f = e.target.closest?.("form.allow");
     if (!f) return;
     e.preventDefault();
@@ -212,7 +285,7 @@ const REVIEW_SCRIPT = `<script>
       };
     }
   };
-  document.addEventListener("DOMContentLoaded", () => { init(); draws(); live(); });
+  document.addEventListener("DOMContentLoaded", () => { init(); draws(); showPicked(); live(); });
 })();
 </script>`;
 
@@ -243,10 +316,34 @@ export function svgStateText(svg) {
 
 /**
  * A button that POSTs `act` (JSON) to `url`, `pressed` true or false for one of a choice, or
- * null. The page's script sends it (REVIEW_SCRIPT).
+ * null; `confirm` a question the page asks first, `disabled` why it cannot be used now (its
+ * title), or null. The page's script sends it (REVIEW_SCRIPT).
  */
-export const actionButton = (label, url, act, { pressed = null, title = "" } = {}) =>
-  `<button type="button" data-url="${esc(url)}" data-act="${esc(JSON.stringify(act))}"${pressed === null ? "" : ` aria-pressed="${pressed}"`}${title ? ` title="${esc(title)}"` : ""}>${esc(label)}</button>`;
+export const actionButton = (label, url, act, { pressed = null, title = "", confirm = "", disabled = null } = {}) =>
+  `<button type="button" data-url="${esc(url)}" data-act="${esc(JSON.stringify(act))}"${pressed === null ? "" : ` aria-pressed="${pressed}"`}${confirm ? ` data-confirm="${esc(confirm)}"` : ""}${disabled ? ` disabled title="${esc(disabled)}"` : title ? ` title="${esc(title)}"` : ""}>${esc(label)}</button>`;
+
+// Why a run cannot be started while `busy` ({n, kind}) runs, or null.
+const busyText = (busy) => (busy ? `run ${busy.n} is running: a new run starts once it has ended` : null);
+
+/** A retake of `out` and a replay of its SVG, as buttons on its page. */
+const runButtons = (out, busy, { replay = true } = {}) => [
+  actionButton(
+    "Retake this picture",
+    hrefs.startRun,
+    { kind: "retake", pictures: [out] },
+    { disabled: busyText(busy) },
+  ),
+  ...(replay
+    ? [
+        actionButton(
+          "Replay its SVG",
+          hrefs.startRun,
+          { kind: "replay", pictures: [out] },
+          { disabled: busyText(busy) },
+        ),
+      ]
+    : []),
+];
 
 /** A row of actions, with the place their progress and failures are said. */
 const actionsHtml = (buttons) =>
@@ -301,38 +398,72 @@ const cardOf = (p, filter, exists) => {
   const thumb = thumbOf(p, exists);
   const link = hrefs.picture(p.out, filter);
   return `<article class="card" id="${anchor(p.out)}">
+<label class="pick"><input type="checkbox" data-pick="${esc(p.out)}" aria-label="Select ${esc(p.out)} for a run"> select</label>
 ${thumb ? `<a href="${link}"><img src="${thumb}" loading="lazy" alt="${esc(p.out)}"></a>` : ""}<h3><a href="${link}">${esc(p.out)}</a></h3>
 <p class="chips">${chipsOf(p)}</p>
 </article>`;
 };
 
 const runState = (r) => {
-  if (r.live) return r.stopping ? "stopping" : "running";
+  if (r.live) return r.stopping || r.stopAsked ? "stopping" : "running";
   if (r.interrupted) return "interrupted: the tool closed while it ran";
   if (r.stopped) return `stopped, exit ${r.exit}`;
   return `ended, exit ${r.exit}`;
 };
 
-const runsHtml = (runs) =>
+const KIND_TEXT = Object.fromEntries(RUN_KINDS);
+const runTitle = (r) => `${KIND_TEXT[r.kind] ?? r.kind}${r.dryRun ? ", a dry run" : ""}`;
+
+/** Stop for a run that is running, and once it has been asked to stop, Kill. */
+function stopButtons(r) {
+  if (!r.live || r.kind === "cleanup") return [];
+  if (!r.stopAsked)
+    return [
+      actionButton(
+        "Stop",
+        hrefs.runAct(r.n),
+        { action: "stop" },
+        { title: "finish the picture in hand, end the IDEs and put the registry back" },
+      ),
+    ];
+  return [
+    actionButton(
+      "Kill",
+      hrefs.runAct(r.n),
+      { action: "kill" },
+      {
+        confirm: `End run ${r.n}'s process at once? Its IDEs are not ended and the registry is not put back.`,
+        title: "end its process at once, which skips putting the registry back",
+      },
+    ),
+  ];
+}
+
+const runsTableHtml = (runs) =>
   runs.length
     ? `<h2>Runs</h2>
+<p><a href="${hrefs.runs}">Runs</a>: start a retake, a replay or a clean-up, or stop one.</p>
 <table>
-<tr><th>Run</th><th>State</th><th>Pictures</th><th>The same as</th></tr>
+<tr><th>Run</th><th>Kind</th><th>State</th><th>Pictures</th><th>The same as</th></tr>
 ${[...runs]
   .reverse()
   .map(
     (r) =>
-      `<tr><td>${r.n}</td><td>${esc(runState(r))}</td><td>${r.done} of ${r.listed}</td><td><code>${esc(r.command)}</code> (<a href="${hrefs.log(r.n)}">log</a>)</td></tr>`,
+      `<tr><td>${r.n}</td><td>${esc(runTitle(r))}</td><td>${esc(runState(r))}${stopButtons(r).length ? ` <span data-acts>${stopButtons(r).join("")}<span class="status" role="status"></span></span>` : ""}</td><td>${r.kind === "cleanup" ? "" : `${r.done} of ${r.listed}`}</td><td><code>${esc(r.command)}</code> (<a href="${hrefs.log(r.n)}">log</a>)</td></tr>`,
   )
   .join("\n")}
 </table>`
-    : `<p class="notice">No run yet. Start the tool with <code>--retake &lt;regex&gt;</code> or <code>--replay &lt;regex&gt;</code> to start one.</p>`;
+    : `<p class="notice">No run yet: start one on the <a href="${hrefs.runs}">runs page</a>, or start the tool with <code>--retake &lt;regex&gt;</code> or <code>--replay &lt;regex&gt;</code>.</p>`;
+
+// The bar that says how many pictures are selected for a run, with `more` (HTML) after it.
+const pickedBar = (more) =>
+  `<div class="picked notice" hidden><span class="count"></span>${more} <button type="button" data-clear-picked>Clear the selection</button></div>`;
 
 /**
  * The overview: `groups` reviewPictures' groups, with only the pictures the filter shows;
  * `filter` its key; `counts` how many pictures each filter shows ({all, look, overridden,
- * nosvg}); `runs` [{n, command, live, stopping, interrupted, stopped, exit, done, listed}],
- * oldest first; `baseline` the session's ({hash, short, build, moved}); `headNow` HEAD's short
+ * nosvg}); `runs` [{n, kind, dryRun, command, live, stopping, stopAsked, interrupted, stopped,
+ * exit, done, listed}], oldest first (the server's runRow); `baseline` the session's ({hash, short, build, moved}); `headNow` HEAD's short
  * hash when it is no longer the baseline, else null, and `canMove` whether the session can be
  * moved to it; `newestIde` the newest install's build, or null; `resume` {index, total, out}
  * for the queue's place, or null; `exists(path)` whether a file is under docs/.
@@ -394,8 +525,9 @@ ${cards}`;
     summary: shown.map((g) => [g.title, g.pictures.length]),
     contents: shown.map((g) => `<li><a href="#g-${g.key}">${esc(g.title)}</a> (${g.pictures.length})</li>`).join("\n"),
     body: `${notices.map((n) => `<div class="notice">${n}</div>`).join("\n")}
+${pickedBar(`: <a href="${hrefs.runs}">start a run of them</a>.`)}
 <nav class="filters">${filters}</nav>
-${resumeLink}${runsHtml(runs)}
+${resumeLink}${runsTableHtml(runs)}
 ${shown.length ? shown.map(group).join("\n") : "<p>No picture.</p>"}`,
   });
 }
@@ -475,7 +607,7 @@ const AGAINST = { revision: "HEAD", disk: "the file", dark: "the dark picture" }
 function pagerHtml({ p, filter, place, prev, next }) {
   const filterLabel = (FILTERS.find(([k]) => k === filter) ?? FILTERS[0])[1];
   const groupTitle = (GROUPS.find(([k]) => k === p.group) ?? [null, p.group])[1];
-  return `<nav class="pager"><a href="${hrefs.overview(filter)}#${anchor(p.out)}">Overview</a>${
+  return `<nav class="pager"><a href="${hrefs.overview(filter)}#${anchor(p.out)}">Overview</a><a href="${hrefs.runs}">Runs</a>${
     prev ? `<a rel="prev" href="${hrefs.picture(prev.out, filter)}">Previous (k)</a>` : ""
   }<span class="where">${place.index + 1} of ${place.total} · ${esc(filter === "all" ? groupTitle : filterLabel)}</span>${
     next ? `<a rel="next" href="${hrefs.picture(next.out, filter)}">Next (j)</a>` : ""
@@ -500,7 +632,7 @@ const HOLDS = {
  * baseline's picture against the file, and no verdict. `files` {head, docs}, each {src, size}
  * or null; `map` the difference map's address, or null; the rest as detailHtml's.
  */
-export function outsideHtml({ p, filter, place, prev, next, files, map, baseline }) {
+export function outsideHtml({ p, filter, place, prev, next, files, map, baseline, busy = null }) {
   const size = files.docs?.size ?? files.head?.size ?? null;
   const figs = [];
   if (files.head) figs.push(figureHtml(files.head.src, files.head.size, `HEAD (${baseline.short})`));
@@ -516,6 +648,7 @@ export function outsideHtml({ p, filter, place, prev, next, files, map, baseline
   const body = `${pagerHtml({ p, filter, place, prev, next })}
 <p class="meta">${esc(sizeText(size))}; ${chipsOf(p)}</p>
 <p class="notice">No run of this session reported this picture: its file is ${esc(p.outside)} against the baseline, ${esc(baseline.short)} (a retake from a terminal, or an edit). It has no verdict to override; a retake of it through this tool judges it.</p>
+${p.outside === "deleted" ? "" : actionsHtml(runButtons(p.out, busy, { replay: false }))}
 <div class="trio">${figs.join("\n")}</div>`;
   return pageHtml({
     generator: REVIEW_GENERATOR,
@@ -572,7 +705,8 @@ ${drawOn(svgPic, "svg-ignore", entry?.svg?.ignore)}
  * svg}, each {src, size} or null, and `maps` {png, svg}, each an address or null; `rules`
  * {png: pngRule, svg: svgRule} of its entry in the manifest, `entry` that entry (or null),
  * `build` the build the manifest records for its file, or null; `baseline` the session's;
- * `error` why the last application of its verdicts failed, or null.
+ * `error` why the last application of its verdicts failed, or null; `busy` the run that is
+ * running ({n, kind}), or null.
  */
 export function detailHtml({
   p,
@@ -587,6 +721,7 @@ export function detailHtml({
   build,
   baseline,
   error = null,
+  busy = null,
 }) {
   const groupTitle = (GROUPS.find(([k]) => k === p.group) ?? [null, p.group])[1];
   const nav = pagerHtml({ p, filter, place, prev, next });
@@ -725,8 +860,9 @@ ${files.svgPng && files.svg ? loupesHtml(svg.regions, svgSize, { src: files.svgP
   if (p.skipped && !png && !svg) notes.push(`Run ${p.skipped} was stopped before it took this picture.`);
   if (error) notes.push(`Its verdict could not be applied: ${esc(error)}. Judge it again to try again.`);
   const judged = png || svg;
-  const footer = judged
-    ? `<section>
+  const footer = `${
+    judged
+      ? `<section>
 <h2>Judge again</h2>
 <p>Judging again puts the picture back as each run found it and applies each run's verdict again, judged with the manifest as it is now and against the session's baseline, ${esc(baseline.short)}.</p>
 ${actionsHtml([
@@ -734,7 +870,13 @@ ${actionsHtml([
   actionButton("Back to the tool's verdicts", act, { action: "rule" }, { title: "remove this picture's decisions" }),
 ])}
 </section>`
-    : "";
+      : ""
+  }
+<section>
+<h2>Runs of this picture</h2>
+<p>A retake takes it again (in both themes, a program's window once), with its SVG, against the baseline, ${esc(baseline.short)}; a replay draws its SVG again from its bundle. Other options are on the <a href="${hrefs.runs}">runs page</a>.</p>
+${actionsHtml(runButtons(p.out, busy))}
+</section>`;
   const svgPic = files.svgPng ?? null;
   const body = `${nav}
 <p class="meta">${theme} theme, ${esc(sizeText(size))}; ${chipsOf(p)}</p>
@@ -751,4 +893,130 @@ ${footer}`;
     intro: `In the group ${esc(groupTitle)}.`,
     body,
   }).replace("<body>", `<body data-out="${esc(p.out)}">`);
+}
+
+// ---- the runs page --------------------------------------------------------------------
+
+// A time a session records (ISO, UTC) as the local date and time, to the second.
+const whenText = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const two = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+};
+
+// How far a run is: a bar for each job of a retake, one for a replay.
+function progressHtml(r) {
+  if (r.kind === "cleanup" || !r.listed) return "";
+  const bar = (done, total) => `<progress max="${total}" value="${done}"></progress>${done} of ${total}`;
+  if (!r.jobs.length) return `<p>${bar(r.done, r.listed)}</p>`;
+  const state = (j) => {
+    if (j.state === "failed") return `: failed: ${esc(j.error ?? "no reason given")}`;
+    return j.state === "waiting" ? ", waiting" : j.state === "done" ? ", done" : "";
+  };
+  return `<ul class="jobs">${r.jobs.map((j) => `<li><code>${esc(j.name)}</code> ${bar(j.done, j.pictures)}${state(j)}</li>`).join("")}</ul>`;
+}
+
+/** A run of the session as the runs page shows it: `r` the server's runRow, with `log`. */
+function runArticle(r, { newestCleanup, busy }) {
+  const times = [`started ${whenText(r.started)}`, r.ended ? `ended ${whenText(r.ended)}` : null].filter(Boolean);
+  const buttons = stopButtons(r);
+  if (r.kind === "cleanup" && r.dryRun && !r.live && r.exit === 0 && r.n === newestCleanup)
+    buttons.push(
+      actionButton(
+        "Put them back",
+        hrefs.startRun,
+        { kind: "cleanup", ...(r.only ? { only: r.only } : {}) },
+        { disabled: busyText(busy), title: "the same clean-up, not a dry run" },
+      ),
+    );
+  const note =
+    r.live && r.stopAsked && r.kind !== "cleanup"
+      ? "<p>Stopping: it finishes the picture in hand, ends its IDEs and puts the registry back. Kill ends its process at once, which skips that.</p>"
+      : "";
+  return `<article class="run" id="run-${r.n}">
+<h3>Run ${r.n}: ${esc(runTitle(r))}, ${esc(runState(r))}</h3>
+<p class="meta">${esc(times.join("; "))}</p>
+<p>The same as <code>${esc(r.command)}</code> (<a href="${hrefs.log(r.n)}">the whole log</a>)</p>
+${progressHtml(r)}${note}${buttons.length ? actionsHtml(buttons) : ""}${r.log?.length ? `<pre class="log">${esc(r.log.join("\n"))}</pre>` : ""}
+</article>`;
+}
+
+/**
+ * The runs page: the session's `runs` (the server's runRow, each with `log`, the lines of its
+ * log to show, or null), oldest first; `baseline` the session's; `ides` the builds of the
+ * installs a retake can use, newest first; `busy` the run that is running ({n, kind}), or null.
+ * A form for each kind of run, whose pictures are a pattern or those selected on the overview.
+ */
+export function runsHtml({ runs, baseline, ides, busy }) {
+  const disabled = busy ? ` disabled title="${esc(busyText(busy))}"` : "";
+  const onlyField = `<label>Pictures (<code>--only</code>) <input type="text" name="only" size="40" placeholder="every picture" spellcheck="false"></label>`;
+  const jobsField = (placeholder) =>
+    `<label>Jobs <input type="number" name="jobs" min="1" max="16" step="1" placeholder="${esc(placeholder)}"></label>`;
+  const newer = (b) => baseline.build && b > baseline.build;
+  const ideField = ides.length
+    ? `<label>IDE <select name="ide">${ides
+        .map(
+          (b, i) =>
+            `<option value="${b}"${i === 0 ? " selected" : ""}>BETA ${b}${newer(b) ? `: newer than the baseline's BETA ${baseline.build}` : ""}</option>`,
+        )
+        .join("")}</select></label>`
+    : `<p class="meta">No install was found on the Desktop, so the retake uses <code>TB_IDE</code>.</p>`;
+  const form = (kind, title, fields, submit, about, extra = "") =>
+    `<form class="run" id="start-${kind}" data-kind="${kind}" data-keep${extra} action="${hrefs.startRun}" data-acts>
+<h3>${esc(title)}</h3>
+<p class="meta">${about}</p>
+${fields.join("\n")}
+<p><button type="submit"${disabled}>${esc(submit)}</button> <span class="status" role="status"></span></p>
+</form>`;
+  const forms = [
+    form(
+      "retake",
+      "Retake",
+      [
+        ideField,
+        onlyField,
+        `<label><input type="checkbox" name="svg" checked> SVG too (<code>--svg</code>)</label>`,
+        jobsField("6"),
+      ],
+      "Start the retake",
+      `<code>shoot_docs.mjs</code>: takes the pictures again in IDEs on private desktops, each compared with the baseline, ${esc(baseline.short)}.`,
+    ),
+    form(
+      "replay",
+      "Replay",
+      [
+        onlyField,
+        `<label><input type="checkbox" name="recheck"> Compare every SVG (<code>--recheck</code>)</label>`,
+        jobsField("half the processors"),
+      ],
+      "Start the replay",
+      "<code>replay.mjs</code>: draws the SVGs again from their bundles, with the converter as it is now. No IDE.",
+    ),
+    form(
+      "cleanup",
+      "Clean-up",
+      [onlyField],
+      "List what it would put back",
+      `<code>shoot_docs.mjs --cleanup</code>: puts back every picture under docs that differs from the baseline, ${esc(baseline.short)}, only by a capture's noise. Its list comes first (<code>--dry-run</code>), with a button that puts them back.`,
+      " data-dry-run",
+    ),
+  ];
+  const newestCleanup = [...runs].reverse().find((r) => r.kind === "cleanup")?.n ?? null;
+  const list = [...runs].reverse().map((r) => runArticle(r, { newestCleanup, busy }));
+  const body = `<nav class="pager"><a href="${hrefs.overview()}">Overview</a></nav>
+${busy ? `<p class="notice">Run ${busy.n}, a ${esc((KIND_TEXT[busy.kind] ?? busy.kind).toLowerCase())}, is running: a new run starts once it has ended.</p>` : ""}
+${pickedBar(": a run started here takes them in place of a pattern.")}
+<h2>A new run</h2>
+<p>One run at a time. Each verdict is applied under docs as it arrives.</p>
+${forms.join("\n")}
+<h2>The session's runs</h2>
+${list.length ? list.join("\n") : "<p>No run yet.</p>"}`;
+  return pageHtml({
+    generator: REVIEW_GENERATOR,
+    title: "Screenshot review: runs",
+    head: HEAD,
+    intro: `The runs of the session of ${esc(baseline.short)}, newest first, and the forms that start one.`,
+    body,
+  });
 }

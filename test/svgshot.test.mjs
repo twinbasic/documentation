@@ -130,6 +130,7 @@ import {
 } from "../scripts/lib/shot-review.mjs";
 import { chipsOf, encodePath, hrefs, loupesHtml } from "../scripts/lib/shot-pages.mjs";
 import { againstOf, createApplier } from "../scripts/lib/shot-verdicts.mjs";
+import { kindOf, onlyOf, runOf } from "../scripts/lib/shot-runs.mjs";
 import { createReviewServer } from "../scripts/lib/shot-server.mjs";
 import {
   FAINT_LEVEL,
@@ -2862,6 +2863,60 @@ describe("the screenshot review's session (shot-session.mjs)", () => {
     assert.equal(newestBuild({ "a.png": { build: 1010 }, "b.png": {}, "c.png": { build: 1034 } }), 1034);
     assert.equal(newestBuild({}), null);
   });
+
+  test("makes a run's arguments from a request, the pictures as a pattern that matches each alone, and refuses one that is not a run", () => {
+    const base = baseline();
+    const h = base.hash;
+    assert.deepEqual(runOf({ kind: "retake", only: "Menu_File", jobs: "2", ide: "C:/tb/twinBASIC.exe" }, base), {
+      tool: "shoot_docs",
+      args: ["--svg", "--only", "Menu_File", "--against", h, "--jobs", "2", "--ide", "C:/tb/twinBASIC.exe"],
+    });
+    assert.deepEqual(runOf({ kind: "retake", svg: false }, base), { tool: "shoot_docs", args: ["--against", h] });
+    assert.deepEqual(runOf({ kind: "replay", only: " ", recheck: true }, base), {
+      tool: "replay",
+      args: ["--recheck"],
+    });
+    const pictures = ["IDE/Images/A.png", "IDE/Images/A (1).light.png"];
+    const cleanup = runOf({ kind: "cleanup", dryRun: true, pictures }, base);
+    assert.deepEqual(cleanup, {
+      tool: "cleanup",
+      args: [
+        "--cleanup",
+        "--dry-run",
+        "--only",
+        "^(?:IDE/Images/A\\.png|IDE/Images/A \\(1\\)\\.light\\.png)$",
+        "--against",
+        h,
+      ],
+    });
+    const pattern = new RegExp(cleanup.args[3]);
+    assert.deepEqual(
+      [...pictures, "IDE/Images/AxPng", "IDE/Images/A.png.svg"].map((p) => pattern.test(p)),
+      [true, true, false, false],
+    );
+    assert.equal(onlyOf(["a.png"]), "^(?:a\\.png)$");
+    assert.equal(
+      commandOf({ tool: "cleanup", args: ["--cleanup", "--against", h] }),
+      `node scripts/shoot_docs.mjs --cleanup --against ${h}`,
+    );
+    assert.deepEqual(
+      ["shoot_docs", "replay", "cleanup"].map((tool) => kindOf({ tool })),
+      ["retake", "replay", "cleanup"],
+    );
+    for (const [request, refusal] of [
+      [{ kind: "rm" }, /no such kind of run: rm/],
+      [{ kind: "retake", only: "(" }, /--only expects a regular expression/],
+      [{ kind: "retake", jobs: "17" }, /--jobs/],
+      [{ kind: "retake", recheck: true }, /a retake takes no --recheck/],
+      [{ kind: "replay", ide: "C:/tb/twinBASIC.exe" }, /a replay takes no IDE/],
+      [{ kind: "replay", svg: false }, /a replay takes no --svg/],
+      [{ kind: "cleanup", jobs: "2" }, /a clean-up takes no --jobs/],
+      [{ kind: "replay", dryRun: true }, /a replay takes no --dry-run/],
+      [{ kind: "retake", only: "A", pictures: ["A.png"] }, /a pattern or the pictures, not both/],
+      [{ kind: "retake", pictures: [] }, /no picture was given/],
+    ])
+      assert.throws(() => runOf(request, base), refusal);
+  });
 });
 
 describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", () => {
@@ -3223,7 +3278,7 @@ import { encodePng } from ${lib("png.mjs")};
 const flat = ${flat.toString()};
 const args = process.argv.slice(2);
 const stage = args[args.indexOf("--stage") + 1];
-if (args[0] !== "--only" || !args.includes("--events")) process.exit(2);
+if (!args.includes("--only") || !args.includes("--events")) process.exit(2);
 const ev = (type, v = {}) => writeRecord("shot-event", { type, ...v });
 const [A, B] = ${JSON.stringify([A, B])};
 ev("run", { tool: "shoot_docs", svg: true, jobs: [{ name: "j", setup: "s", pictures: [A, B] }] });
@@ -3496,6 +3551,138 @@ onStop(process.stdin, () => {
 
       handle.stop();
       assert.equal(await handle.exited, 0);
+    } finally {
+      for (const h of app.live()) h.kill();
+      await app.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  // A clean-up as shoot_docs.mjs --cleanup makes one, put before the stand-in run: its list,
+  // and, when it is not a dry run, a wait for the file "go" beside it before it ends.
+  const CLEANUP = `const cleanupArgs = process.argv.slice(2);
+if (cleanupArgs.includes("--cleanup")) {
+  const { existsSync } = await import("node:fs");
+  if (cleanupArgs.includes("--stage") || cleanupArgs.includes("--events")) process.exit(2);
+  const dry = cleanupArgs.includes("--dry-run");
+  console.log("IDE/Images/Z.png: " + (dry ? "would be put back" : "put back") + " as aaaaaaaa has it");
+  if (!dry) while (!existsSync(new URL("./go", import.meta.url))) await new Promise((r) => setTimeout(r, 20));
+  process.exit(0);
+}
+`;
+
+  test("starts, stops and lists runs from its runs page, one at a time, and holds a review's actions while a clean-up runs", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-runs-"));
+    const docs = path.join(root, "docs");
+    const Z = "IDE/Images/Z.png";
+    fs.mkdirSync(path.join(docs, "IDE", "Images"), { recursive: true });
+    fs.writeFileSync(path.join(docs, Z), flat(true));
+    const script = path.join(root, "fake-run.mjs");
+    fs.writeFileSync(script, CLEANUP + FAKE);
+    const hash = "a".repeat(40);
+    let changed = [{ out: Z, status: "modified" }];
+    const app = createReviewServer({
+      session: openSession(root, () => ({ hash, short: "aaaaaaaa", build: 1500 })),
+      revision: stubRevision("a", { [A]: flat(false), [Z]: flat(false) }),
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+      docsRoot: docs,
+      changed: () => changed,
+      ides: [{ build: 1501, exe: "C:/tb/twinBASIC.exe" }],
+      command: { script },
+    });
+    try {
+      const port = await app.listen(0);
+      const base = `http://127.0.0.1:${port}`;
+      const get = async (p) => (await fetch(base + p)).text();
+      const post = async (p, body) => {
+        const res = await fetch(base + p, {
+          method: "POST",
+          headers: { origin: base, "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        return [res.status, await res.json()];
+      };
+      const ended = (n) => until(`run ${n}'s end`, () => !app.live().length);
+
+      const empty = await get(hrefs.runs);
+      assert.match(empty, /No run yet\./);
+      assert.match(empty, /<option value="1501" selected>BETA 1501: newer than the baseline's BETA 1500<\/option>/);
+      for (const kind of ["retake", "replay", "cleanup"])
+        assert.match(empty, new RegExp(`id="start-${kind}" data-kind="${kind}"`));
+      assert.match(await get("/"), /No run yet: start one on the <a href="\/runs">runs page<\/a>/);
+
+      // a clean-up's list first, with the button that puts them back
+      assert.deepEqual(await post(hrefs.startRun, { kind: "cleanup", dryRun: true, only: "Z" }), [
+        200,
+        { ok: true, run: 1 },
+      ]);
+      await ended(1);
+      let page = await get(hrefs.runs);
+      assert.match(page, /Run 1: Clean-up, a dry run, ended, exit 0/);
+      assert.match(page, /<pre class="log">IDE\/Images\/Z\.png: would be put back as aaaaaaaa has it<\/pre>/);
+      assert.match(page, new RegExp(`node scripts/shoot_docs\\.mjs --cleanup --dry-run --only Z --against ${hash}`));
+      assert.match(
+        page,
+        /data-act="\{&quot;kind&quot;:&quot;cleanup&quot;,&quot;only&quot;:&quot;Z&quot;\}"[^>]*>Put them back</,
+      );
+
+      // the clean-up itself: nothing else starts and a review's actions wait until it ends
+      assert.equal((await post(hrefs.startRun, { kind: "cleanup", only: "Z" }))[0], 200);
+      assert.equal(app.model().pictures.find((p) => p.out === Z).group, "outside");
+      const [busy, refused] = await post(hrefs.startRun, { kind: "replay" });
+      assert.deepEqual([busy, refused.error], [400, "run 2 is running: a new run starts once it has ended"]);
+      assert.match(
+        (await post(hrefs.act(Z), { action: "judge" }))[1].error,
+        /run 2, a clean-up, is putting pictures back/,
+      );
+      assert.match((await post(hrefs.moveBaseline, {}))[1].error, /run 2, a clean-up/);
+      assert.match((await post(hrefs.runAct(2), { action: "stop" }))[1].error, /a clean-up cannot be stopped/);
+      assert.match(await get(hrefs.runs), /Run 2, a clean-up, is running/);
+      changed = [];
+      fs.writeFileSync(path.join(root, "go"), "");
+      await ended(2);
+      // what it put back has left the outside group at once, not once git is read again a second later
+      assert.equal(app.model().pictures.length, 0);
+      assert.doesNotMatch(await get(hrefs.runs), /Put them back/);
+
+      // a retake of the pictures selected, on the install chosen by its build
+      assert.match(
+        (await post(hrefs.startRun, { kind: "retake", ide: "999" }))[1].error,
+        /no install of BETA 999 was found/,
+      );
+      assert.deepEqual(await post(hrefs.startRun, { kind: "retake", pictures: [A], ide: "1501" }), [
+        200,
+        { ok: true, run: 3 },
+      ]);
+      await until("A's SVG verdict", () => app.model().pictures.find((p) => p.out === A)?.svg);
+      const [state] = JSON.parse(await get("/api/state")).runs.slice(-1);
+      assert.deepEqual(state.args, [
+        "--svg",
+        "--only",
+        "^(?:IDE/Images/A\\.png)$",
+        "--against",
+        hash,
+        "--ide",
+        "C:/tb/twinBASIC.exe",
+      ]);
+      assert.deepEqual(state.jobs, [{ name: "j", state: "started", error: null, pictures: 2, done: 1 }]);
+      page = await get(hrefs.runs);
+      assert.match(page, /<li><code>j<\/code> <progress max="2" value="1"><\/progress>1 of 2<\/li>/);
+      assert.match(page, /<pre class="log">taking IDE\/Images\/A\.png<\/pre>/);
+      assert.match(page, />Stop</);
+      assert.match(
+        await get(`/picture/${A}`),
+        /<button[^>]*disabled title="run 3 is running[^"]*">Retake this picture</,
+      );
+      assert.match((await post(hrefs.runAct(3), { action: "kill" }))[1].error, /stop run 3 first/);
+      assert.deepEqual(await post(hrefs.runAct(3), { action: "stop" }), [200, { ok: true }]);
+      await ended(3);
+      page = await get(hrefs.runs);
+      assert.match(page, /Run 3: Retake, stopped, exit 0/);
+      assert.doesNotMatch(page, />Stop<|>Kill</);
+      assert.match((await post(hrefs.runAct(3), { action: "stop" }))[1].error, /run 3 is not running/);
+      assert.match(await get(`/picture/${A}`), /<button[^>]*>Retake this picture</);
+      assert.doesNotMatch(await get(`/picture/${A}`), /disabled title="run/);
     } finally {
       for (const h of app.live()) h.kill();
       await app.close();

@@ -30,7 +30,7 @@ import { applyPicture, applySvg, heldOf, holdPicture, svgOf, unholdPicture } fro
 import { pngsNear } from "./shot-change.mjs";
 import { decidePicture, decideSvg, svgFollowsPng } from "./shot-policy.mjs";
 import { reviewPicture, reviewSvg } from "./shot-queue.mjs";
-import { runPaths } from "./shot-session.mjs";
+import { optionOf, runPaths } from "./shot-session.mjs";
 import {
   pngVerdict,
   readReviewed,
@@ -51,10 +51,7 @@ const readIf = (file) => (existsSync(file) ? readFileSync(file) : null);
 const written = (state) => state === "new" || state === "updated";
 
 /** The revision a run's captures were compared with (its --against), or null. */
-export function againstOf(run) {
-  const k = run?.args?.indexOf("--against") ?? -1;
-  return k >= 0 ? (run.args[k + 1] ?? null) : null;
-}
+export const againstOf = (run) => optionOf(run, "--against");
 
 /**
  * The applier of the session `session` (openSession): `docsRoot` the pictures' folder,

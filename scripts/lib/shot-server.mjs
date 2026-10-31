@@ -11,6 +11,10 @@
 // what the pages show is shot-review.mjs's. It also writes the session (shot-session.mjs): its
 // runs, the queue's place and the baseline. A request that changes anything is a POST of JSON
 // from the tool's own pages: one from another origin is refused.
+//
+// One run at a time: a picture's verdicts are applied in the runs' order (shot-verdicts.mjs),
+// which two runs at once would not keep, and a clean-up writes under docs/ itself, so while
+// one runs nothing else may write there and a review's actions wait for it.
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -21,7 +25,7 @@ import { decodePng } from "./png.mjs";
 import { svgOf } from "./shot-apply.mjs";
 import { changeMap, shareOff, strengthPicture } from "./shot-change.mjs";
 import { hashOf } from "./shot-manifest.mjs";
-import { detailHtml, hrefs, outsideHtml, overviewHtml } from "./shot-pages.mjs";
+import { detailHtml, hrefs, outsideHtml, overviewHtml, runsHtml } from "./shot-pages.mjs";
 import { pngRule, pngSize, svgRule } from "./shot-policy.mjs";
 import { createApplier } from "./shot-verdicts.mjs";
 import {
@@ -33,8 +37,8 @@ import {
   runFacts,
   verdictOfEvent,
 } from "./shot-review.mjs";
-import { startRun } from "./shot-runs.mjs";
-import { commandOf, readEvents, runPaths } from "./shot-session.mjs";
+import { kindOf, runOf, startRun } from "./shot-runs.mjs";
+import { commandOf, optionOf, readEvents, runPaths } from "./shot-session.mjs";
 import { readStrength, readVerdicts } from "./shot-stage.mjs";
 
 const TYPES = { ".png": "image/png", ".svg": "image/svg+xml" };
@@ -58,8 +62,12 @@ const sizeOf = (png) => {
 // The most difference maps kept drawn: drawing one decodes a picture of up to 4.5 M pixels.
 const MAPS_KEPT = 16;
 
-// The most bytes a POST's body may have: an allowance with its rectangles.
-const MOST_BODY = 64 * 1024;
+// The most bytes a POST's body may have: an allowance with its rectangles, or a run of the
+// pictures selected on the overview.
+const MOST_BODY = 256 * 1024;
+
+// The lines of a run's log the runs page shows while it runs: the last few.
+const TAIL_LINES = 8;
 
 /**
  * The server of the session `session` (openSession): `revision` the baseline as openRevision
@@ -67,11 +75,12 @@ const MOST_BODY = 64 * 1024;
  * folder, `bundlesRoot` the bundle cache (or null), `head()` the baseline HEAD would make
  * ({hash, short, build}; null for none, or an error thrown when there is none to read),
  * `revisionAt(hash)` a revision as openRevision gives it, `changed()` the pictures that differ
- * from the baseline ([{out, status}], changedPictures'), `newestIde` the newest install's build,
- * `onLine(run, line)` called for each line of a run meant for a person, and `command` the
- * probes' stand-in for the tools a run starts (startRun). Returns {server, listen(port, host),
- * start({tool, args}), live(), close(), model(), applyPending()}: `listen` resolves to the port it
- * listens on; `start` starts a run, and returns startRun's handle; `live` the handles of the runs
+ * from the baseline ([{out, status}], changedPictures'), `ides` the installs a retake can be run
+ * on, newest first ([{build, exe}], listIdes'), `onLine(run, line)` called for each line of a run
+ * meant for a person, and `command` the probes' stand-in for the tools a run starts (startRun).
+ * Returns {server, listen(port, host), start({tool, args}), live(), close(), model(),
+ * applyPending()}: `listen` resolves to the port it listens on; `start` starts a run (runOf's),
+ * and returns startRun's handle, or throws while another runs; `live` the handles of the runs
  * that are running; `applyPending` applies what the runs reported and was not applied yet, and
  * returns how many parts.
  */
@@ -84,10 +93,11 @@ export function createReviewServer({
   head = () => null,
   revisionAt = null,
   changed = () => [],
-  newestIde = null,
+  ides = [],
   onLine,
   command,
 }) {
+  const newestIde = ides[0]?.build ?? null;
   const sse = createSseChannel();
   let revision = initialRevision;
   const applier = createApplier({ session, docsRoot, bundlesRoot, revision: () => revision, manifest });
@@ -190,14 +200,22 @@ export function createReviewServer({
     const r = runs.get(record.n);
     r.live = false;
     r.handle = null;
-    sse.send("update", { outs: listedOf(r), runs: true });
+    if (record.tool === "cleanup") {
+      // what it put back is no longer changed: every page that shows a picture may differ
+      changedSeen = { at: 0, value: [] };
+      sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
+    } else sse.send("update", { outs: listedOf(r), runs: true });
   };
+  const liveRuns = () => [...runs.values()].filter((r) => r.live);
   function start({ tool, args }) {
+    const busy = liveRuns()[0];
+    if (busy) throw new Error(`run ${busy.record.n} is running: a new run starts once it has ended`);
     const handle = startRun(session, { tool, args }, { onEvent, onExit, onLine, command });
     runs.set(handle.run.n, {
       record: handle.run,
       live: true,
       handle,
+      stopAsked: false,
       events: [],
       facts: runFacts(tool, []),
       verdicts: new Map(),
@@ -205,22 +223,72 @@ export function createReviewServer({
     sse.send("update", { outs: [], runs: true });
     return handle;
   }
-  const live = () => [...runs.values()].filter((r) => r.live).map((r) => r.handle);
+  const live = () => liveRuns().map((r) => r.handle);
+  // A run the runs page asks for: its IDE named by its build, which is looked up among the installs.
+  function startRequest(body) {
+    let ide;
+    if (body.ide !== undefined && body.ide !== null && body.ide !== "") {
+      const found = ides.find((i) => String(i.build) === String(body.ide));
+      if (!found) throw new Error(`no install of BETA ${body.ide} was found`);
+      ide = found.exe;
+    }
+    return start(runOf({ ...body, ide }, session.data.baseline));
+  }
+  // Stop asks a run to stop (its own stop: its IDEs end and the registry is put back); kill ends
+  // its process, and is offered only once a stop has been asked for.
+  function runAction(n, action) {
+    const r = runs.get(n);
+    if (!r?.live) throw new Error(`run ${n} is not running`);
+    if (action === "stop") {
+      if (r.record.tool === "cleanup") throw new Error("a clean-up cannot be stopped: it ends in seconds");
+      r.stopAsked = true;
+      r.handle.stop();
+    } else if (action === "kill") {
+      if (!r.stopAsked) throw new Error(`stop run ${n} first: ending its process skips putting the registry back`);
+      r.handle.kill();
+    } else throw new Error(`no such action: ${action}`);
+    sse.send("update", { outs: [], runs: true });
+  }
+  // A clean-up writes under docs/ itself: while it runs a review's actions wait.
+  const cleaning = () => liveRuns().find((r) => r.record.tool === "cleanup") ?? null;
+  const refuseWhileCleaning = () => {
+    const c = cleaning();
+    if (c) throw new Error(`run ${c.record.n}, a clean-up, is putting pictures back: try again once it has ended`);
+  };
 
-  // A run's summary line for the overview.
+  // A run as the pages show it: its record, the command line it is the same as, and how far it is.
   const runRow = (r) => {
     const owed = r.record.tool === "replay" ? "svg" : "png";
-    const done = r.facts.listed.filter(
-      (out) => r.verdicts.get(out)?.[owed] || r.facts.failed.has(out) || r.facts.skipped.has(out),
-    ).length;
+    const isDone = (out) => r.verdicts.get(out)?.[owed] || r.facts.failed.has(out) || r.facts.skipped.has(out);
+    const done = r.facts.listed.filter(isDone).length;
+    const jobs = [...r.facts.jobs].map(([name, j]) => ({
+      name,
+      state: j.state,
+      error: j.error,
+      pictures: j.pictures,
+      done: r.facts.listed.filter((out) => r.facts.jobOf.get(out) === name && isDone(out)).length,
+    }));
     return {
       ...r.record,
+      kind: kindOf(r.record),
+      dryRun: r.record.args.includes("--dry-run"),
+      only: optionOf(r.record, "--only"),
       command: commandOf(r.record),
       live: r.live,
       stopping: r.facts.stopping,
+      stopAsked: !!r.stopAsked,
       done,
       listed: r.facts.listed.length,
+      jobs,
     };
+  };
+  // The lines of a run's log the runs page shows: a clean-up's whole (what it put back), the
+  // last few of a run that is running, none of one that has ended (its log has them).
+  const logOf = (r) => {
+    if (r.record.tool !== "cleanup" && !r.live) return null;
+    const text = readIf(runPaths(session.root, r.record.n).log)?.toString("utf8") ?? "";
+    const lines = text.split(/\r?\n/).filter((l) => l !== "");
+    return r.record.tool === "cleanup" ? lines : lines.slice(-TAIL_LINES);
   };
 
   // ---- the files the pages show ----
@@ -282,6 +350,19 @@ export function createReviewServer({
       exists,
     });
   }
+  // The run that is running, as the pages say so: {n, kind}, or null.
+  const busyRun = () => {
+    const r = liveRuns()[0];
+    return r ? { n: r.record.n, kind: kindOf(r.record) } : null;
+  };
+  function runsPage() {
+    return runsHtml({
+      runs: [...runs.values()].map((r) => ({ ...runRow(r), log: logOf(r) })),
+      baseline: session.data.baseline,
+      ides: ides.map(({ build }) => build),
+      busy: busyRun(),
+    });
+  }
   function detail(out, wanted) {
     const m = model();
     const p = m.pictures.find((q) => q.out === out);
@@ -306,6 +387,7 @@ export function createReviewServer({
         files: { head: file(hrefs.head(out), atHead), docs: file(hrefs.docs(out), now) },
         map: atHead && now ? hrefs.outsideMap(out) : null,
         baseline: session.data.baseline,
+        busy: busyRun(),
       });
     }
     const n = p.png?.run;
@@ -342,6 +424,7 @@ export function createReviewServer({
       build: e?.build ?? null,
       baseline: session.data.baseline,
       error: applier.errors.get(out) ?? null,
+      busy: busyRun(),
     });
   }
 
@@ -368,6 +451,7 @@ export function createReviewServer({
     return rects.length ? rects : undefined;
   };
   function act(out, body) {
+    refuseWhileCleaning();
     const p = model().pictures.find((q) => q.out === out);
     if (!p || p.outside) throw new Error(`${out} has no verdict of this session to act on`);
     const m = manifest();
@@ -437,6 +521,7 @@ export function createReviewServer({
 
   // Moves the session to HEAD: the new baseline's picture is what a capture is judged against.
   function moveToHead() {
+    refuseWhileCleaning();
     const h = head();
     if (!h || !revisionAt) throw new Error("HEAD cannot be read");
     if (h.hash === session.data.baseline.hash) return;
@@ -503,21 +588,29 @@ export function createReviewServer({
     } catch {
       return sendJson(res, 404, { error: "no such address" });
     }
+    const out = segs[0] === "api" && segs[1] === "picture" ? segs.slice(2).join("/") : null;
     try {
       if (url.pathname === hrefs.moveBaseline) {
         moveToHead();
         sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
         return sendJson(res, 200, { ok: true, baseline: session.data.baseline });
       }
-      if (segs[0] === "api" && segs[1] === "picture") {
-        const out = segs.slice(2).join("/");
+      if (url.pathname === hrefs.startRun) {
+        const { run } = startRequest(body);
+        return sendJson(res, 200, { ok: true, run: run.n });
+      }
+      if (segs[0] === "api" && segs[1] === "run" && segs.length === 3 && runs.has(Number(segs[2]))) {
+        runAction(Number(segs[2]), body.action);
+        return sendJson(res, 200, { ok: true });
+      }
+      if (out !== null) {
         if (!isDocsPath(out)) return sendJson(res, 404, { error: "no such picture" });
         act(out, body);
         sse.send("update", { outs: [out] });
         return sendJson(res, 200, { ok: true });
       }
     } catch (e) {
-      sse.send("update", { outs: [segs.slice(2).join("/")] });
+      if (out !== null) sse.send("update", { outs: [out] });
       return sendJson(res, 400, { error: e.message });
     }
     return sendJson(res, 404, { error: "no such address" });
@@ -537,6 +630,7 @@ export function createReviewServer({
     const filter = FILTERS.some(([k]) => k === url.searchParams.get("filter")) ? url.searchParams.get("filter") : "all";
     const [first, ...rest] = segs;
     if (url.pathname === "/") return page(req, res, overview(filter));
+    if (url.pathname === hrefs.runs) return page(req, res, runsPage());
     if (url.pathname === hrefs.events) return sse.handle(req, res);
     if (first === "picture") {
       const out = rest.join("/");

@@ -2,13 +2,14 @@
 // page of every picture a session's runs took or drew, grouped by what shoot_docs.mjs and
 // replay.mjs decided about it, and a page for each picture, which show each run's verdicts as
 // they arrive. The session is in the gitignored .shot-review/ (lib/shot-session.mjs), and a
-// run is the command-line tool as a child process with --stage and --events
-// (lib/shot-runs.mjs). The server is lib/shot-server.mjs, its pages lib/shot-pages.mjs.
+// run is shoot_docs.mjs or svgshot/replay.mjs as a child process with --stage and --events,
+// or shoot_docs.mjs --cleanup (lib/shot-runs.mjs). The server is lib/shot-server.mjs, its pages lib/shot-pages.mjs.
 //
 // While a run is staged the tool is the only writer under docs/: each verdict is applied as it
 // arrives, and again when a review decides otherwise or changes an allowance (lib/shot-verdicts.mjs),
-// and a review's decisions and allowances go to the manifest. The runs page and the commit come
-// in the plan's later steps.
+// and a review's decisions and allowances go to the manifest. Its runs page starts a retake, a
+// replay or a clean-up, one at a time, and stops one; --retake and --replay start one as it
+// opens. The commit comes in the plan's later step.
 
 import path from "node:path";
 import {
@@ -26,6 +27,7 @@ import { listIdes } from "./lib/tb-install.mjs";
 import { MANIFEST, openManifest, parseManifest } from "./lib/shot-manifest.mjs";
 import { changedPictures, openRevision, revisionOf } from "./lib/shot-revision.mjs";
 import { BUNDLE_CACHE } from "./svgshot/bundle.mjs";
+import { runOf } from "./lib/shot-runs.mjs";
 import { createReviewServer } from "./lib/shot-server.mjs";
 import { acquireLock, newestBuild, openSession, REVIEW_ROOT, sessionPaths } from "./lib/shot-session.mjs";
 
@@ -39,10 +41,13 @@ grouped by what was decided about it, with a page for each that compares it
 with the picture at the session's baseline, and the pictures that differ
 from the baseline otherwise. Each verdict is applied under docs as it
 arrives, and a picture's page can decide otherwise or change its allowances
-(test/shots/manifest.json), which judges it again at once. The session is
-made when there is none, with HEAD as its baseline, and one tool at a time
-holds it; closing the tool loses nothing, and what a run reported and was
-not applied is applied when the session is opened again.
+(test/shots/manifest.json), which judges it again at once. Its runs page
+(/runs) starts a retake, a replay or a clean-up of the pictures matching a
+pattern or of those selected on the overview, one run at a time, and stops
+the one that runs; a picture's page retakes it or replays its SVG. The
+session is made when there is none, with HEAD as its baseline, and one tool
+at a time holds it; closing the tool loses nothing, and what a run reported
+and was not applied is applied when the session is opened again.
 
   --port N          the port to listen on, on the loopback address only
                     (default ${DEFAULT_PORT})
@@ -52,10 +57,13 @@ not applied is applied when the session is opened again.
   --ide <exe>       the retake's --ide
   -h, --help        print this text and exit
 
-A run is the command-line tool with --stage, a folder of the session, and
---events; a retake is compared with the session's baseline (--against). Ctrl+C stops a run that is running as its own stop does (its IDEs end
-and the registry is put back), then closes the tool; a second Ctrl+C ends the
-run's process at once.
+A retake is scripts/shoot_docs.mjs and a replay scripts/svgshot/replay.mjs,
+each run with --stage, a folder of the session, and --events; a retake and a
+clean-up are compared with the session's baseline (--against). A clean-up
+(scripts/shoot_docs.mjs --cleanup) is not staged: it writes under docs
+itself, and a review's actions wait while it runs. Ctrl+C stops a run that is
+running as its own stop does (its IDEs end and the registry is put back), then
+closes the tool; a second Ctrl+C ends the run's process at once.
 
 Exit codes:
   0  the tool was closed
@@ -121,7 +129,7 @@ const app = createReviewServer({
   head: () => baselineAt(revisionOf(DOCS_DIR, "HEAD")),
   revisionAt: (hash) => openRevision(DOCS_DIR, hash),
   changed: () => changedPictures(DOCS_DIR, session.data.baseline.hash).pictures,
-  newestIde: listIdes()[0]?.build ?? null,
+  ides: listIdes(),
   onLine: (run, line) => console.log(`run ${run.n}: ${line}`),
 });
 const applied = app.applyPending();
@@ -137,20 +145,12 @@ console.log(
   `screenshot review: http://127.0.0.1:${listening}/ (the session of ${session.data.baseline.short}, ${session.data.runs.length} runs)`,
 );
 
-const runOptions = () => [
-  ...(values.jobs === undefined ? [] : ["--jobs", values.jobs]),
-  ...(values.ide === undefined ? [] : ["--ide", values.ide]),
-];
-if (values.retake !== undefined) {
-  const { run } = app.start({
-    tool: "shoot_docs",
-    args: ["--svg", "--only", values.retake, "--against", session.data.baseline.hash, ...runOptions()],
-  });
-  console.log(`run ${run.n} started: a retake of ${values.retake}`);
-}
-if (values.replay !== undefined) {
-  const { run } = app.start({ tool: "replay", args: ["--only", values.replay, ...runOptions()] });
-  console.log(`run ${run.n} started: a replay of ${values.replay}`);
+for (const kind of ["retake", "replay"]) {
+  if (values[kind] === undefined) continue;
+  const { run } = app.start(
+    runOf({ kind, only: values[kind], jobs: values.jobs, ide: values.ide }, session.data.baseline),
+  );
+  console.log(`run ${run.n} started: a ${kind} of ${values[kind]}`);
 }
 
 // Ctrl+C: the runs stopped as their own stop does, then the tool closed; a second one ends them at once.

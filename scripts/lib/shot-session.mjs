@@ -18,7 +18,7 @@
 // the session was moved to this baseline from another (`from` its short hash); each run {n, tool, args,
 // started, ended, exit, stopped, interrupted}, `args` its options as the command line gives
 // them, without --stage and --events, which the tool adds; `place` the picture the queue was
-// left at, or null.
+// left at, or null. A clean-up run (tool "cleanup") has only its log.
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -29,11 +29,25 @@ export const REVIEW_ROOT = path.join(REPO_ROOT, ".shot-review");
 
 export const SESSION_FORMAT = 1;
 
-/** The tools a session runs, by the name a run records, as their paths from the repository's root. */
+/**
+ * The tools a session runs, by the name a run records, as their paths from the repository's
+ * root. A clean-up is shoot_docs.mjs --cleanup, whose args name --cleanup: it writes under
+ * docs/ itself, and has no stage and no events.
+ */
 export const RUN_TOOLS = {
   shoot_docs: "scripts/shoot_docs.mjs",
   replay: "scripts/svgshot/replay.mjs",
+  cleanup: "scripts/shoot_docs.mjs",
 };
+
+/** The tools whose runs are staged (--stage and --events), the review tool applying their verdicts. */
+export const STAGED_TOOLS = new Set(["shoot_docs", "replay"]);
+
+/** The value of the option `option` (`--only`) in a run's args, or null. */
+export function optionOf(run, option) {
+  const k = run?.args?.indexOf(option) ?? -1;
+  return k >= 0 ? (run.args[k + 1] ?? null) : null;
+}
 
 /** The files of the session under `root` (REVIEW_ROOT). */
 export const sessionPaths = (root) => {

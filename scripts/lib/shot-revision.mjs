@@ -25,7 +25,12 @@ export function runGit(args, cwd) {
   try {
     return {
       status: 0,
-      stdout: execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }),
+      stdout: execFileSync("git", args, {
+        cwd,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+        windowsHide: true,
+      }),
     };
   } catch (e) {
     return { status: typeof e.status === "number" ? e.status : 128, stdout: "" };
@@ -144,6 +149,7 @@ export function readRevisionFiles(root, hash, prefix, outs) {
     input: `${names.join("\n")}\n`,
     maxBuffer: 2 ** 31 - 1,
     stdio: ["pipe", "pipe", "ignore"],
+    windowsHide: true,
   });
   const byName = parseCatFileBatch(buf, names);
   return new Map(unique.map((out, i) => [out, byName.get(names[i])]));
@@ -161,6 +167,7 @@ export function restoreFromRevision(root, hash, outs) {
     cwd: root,
     input: `${outs.map((out) => `:(literal)${out}`).join("\0")}\0`,
     stdio: ["pipe", "ignore", "pipe"],
+    windowsHide: true,
   });
 }
 

@@ -2,11 +2,12 @@
 
 A localhost tool for reviewing what `shoot_docs.mjs` and `replay.mjs` decided about each
 picture, overriding it, starting retakes and replays, and committing the result. **Design
-agreed with the owner on 2026-10-31; steps 1 to 6 of [the order of work](#order-of-work) are
+agreed with the owner on 2026-10-31; steps 1 to 7 of [the order of work](#order-of-work) are
 done (step 1 but for the commit helper, which step 8 makes): the tool runs as
-`node scripts/shot_review.mjs`, applies each verdict under `docs/` as it arrives, and takes a
-review's decisions and allowances; its runs are still started from its command line.** The mockups it was agreed on were inline in that
-session and are not kept: the pages are described below instead.
+`node scripts/shot_review.mjs`, applies each verdict under `docs/` as it arrives, takes a
+review's decisions and allowances, and starts and stops its runs from its runs page; it does
+not commit yet.** The mockups it was agreed on were inline in that session and are not kept:
+the pages are described below instead.
 
 The tool covers everything the command-line screenshot tools do, interactively, with a person
 deciding where a threshold cannot (owner). The command-line tools stay, and both reach the
@@ -307,7 +308,7 @@ Each step ends tested and usable on its own.
 6. **Decisions and allowances** applied through `shot-apply.mjs`, judged again at once. With
    them, the group of pictures changed outside the session's runs, and the action that moves
    the session to a new HEAD ([Decisions](#decisions-owner)). Done.
-7. **The runs page**: retake, replay, clean up, stop.
+7. **The runs page**: retake, replay, clean up, stop. Done.
 8. **The commit panel**.
 9. **`sheet.mjs` on the shared views**, showing each picture's allowances; the tool's entry in `Tools-IDE.md`, its node in
    `Tools-Groups.dot` (its command-line cases are in `scripts/lib/cli-cases.mjs` since step 5), its tests in
@@ -316,7 +317,7 @@ Each step ends tested and usable on its own.
 
 ## Where the work stands
 
-On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and steps 2 to 6. Each move kept the command-line tools' output as it was, checked as
+On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and steps 2 to 7. Each move kept the command-line tools' output as it was, checked as
 [below](#checking-a-move).
 
 | Row of the factoring table | Where it is now |
@@ -340,9 +341,9 @@ What step 5 added, the tool itself:
 
 | Part | Where it is |
 |---|---|
-| The tool | `scripts/shot_review.mjs [--port N] [--retake <regex> \| --replay <regex>] [--jobs N] [--ide <exe>]`: takes the session's lock, makes the session with HEAD as its baseline (`build` the newest the manifest at HEAD records) when there is none, serves it on `127.0.0.1:4180`, and starts a run when asked (a retake is `shoot_docs.mjs --svg --only`). Until step 7's runs page, a run is started only from its command line. Ctrl+C stops the runs by their stdin and waits, a second Ctrl+C kills them. Its command-line cases are in `scripts/lib/cli-cases.mjs` already |
+| The tool | `scripts/shot_review.mjs [--port N] [--retake <regex> \| --replay <regex>] [--jobs N] [--ide <exe>]`: takes the session's lock, makes the session with HEAD as its baseline (`build` the newest the manifest at HEAD records) when there is none, serves it on `127.0.0.1:4180`, and starts a run when asked (`runOf`, step 7: a retake is `shoot_docs.mjs --svg --only`). Ctrl+C stops the runs by their stdin and waits, a second Ctrl+C kills them. Its command-line cases are in `scripts/lib/cli-cases.mjs` already |
 | The session | `scripts/lib/shot-session.mjs`: `REVIEW_ROOT`, `RUN_TOOLS`, `sessionPaths`, `runPaths`, `openSession(root, baseline)` (`addRun`, `endRun`, `setPlace`, `run`), `acquireLock(file)`, `parseSession`, `commandOf(run)` (the command line without `--stage` and `--events`), `newestBuild`, `appendEvent`, `readEvents` |
-| A run | `startRun(session, {tool, args}, {onEvent, onLine, onExit})` in `scripts/lib/shot-runs.mjs`: the tool spawned from the repository's root in a process group of its own (`detached`, so that the Ctrl+C that closes the review tool does not end the run before it puts the registry back), its events appended to `events.jsonl` and its other lines, stdout and stderr, to `log.txt`; `{run, stop, kill, exited}` |
+| A run | `startRun(session, {tool, args}, {onEvent, onLine, onExit})` in `scripts/lib/shot-runs.mjs`: the tool spawned from the repository's root, hidden, on a console of its own that the Ctrl+C closing the review tool does not reach (so that the run puts the registry back; see step 7 below for why it is never `detached` on Windows), its events appended to `events.jsonl` and its other lines, stdout and stderr, to `log.txt`; `{run, stop, kill, exited}` |
 | The model | `scripts/lib/shot-review.mjs`, pure: `runFacts(tool, events)` (listed, jobs and `jobOf`, failed, skipped, retakes, stopping, summary), `verdictOfEvent`, `reviewPictures(runs, {exists, measure})` (each part from the newest run that gave one, a newer PNG verdict dropping an older SVG; `progress` while a live run owes a part; a picture whose job failed before reaching it failed with the job's error), `groupOf`, `GROUPS`, `FILTERS`, `filterPictures`, `hasSvg`, `isOverridden`, `neighbours` |
 | The pages | `scripts/lib/shot-pages.mjs`: `overviewHtml`, `detailHtml`, `chipsOf`, `loupesHtml` (a region cropped by CSS from the whole picture, enlarged up to 4 times, at most 360 by 240 CSS px), `hrefs` (every address the server answers); built on `pageHtml` (which now takes `head`, and leaves out the table or the contents when it is given none) and `chipHtml` in `shot-views.mjs`. A page fetches itself again 400 ms after an `update` event that names a picture it shows, and replaces its body; the detail page's comparison mode is kept in `sessionStorage` |
 | The server | `createReviewServer({session, revision, manifest, docsRoot, headNow, newestIde, onLine, command})` in `scripts/lib/shot-server.mjs`: the pages, `/events`, `/api/state`, `/log/<n>`, the files (`/file/head`, `/file/docs`, `/file/run/<n>`, `/file/ref/<n>`, the picture the capture was judged against) and the difference maps drawn from a run's strength maps (`/map/<n>/png|svg/<out>`, `strengthPicture` in `shot-change.mjs`, which colours as `changeMap` does, the last 16 kept). It answers only a request whose Host is the loopback address at its port; a run's verdicts are read back from `readVerdicts` and its other events from `readEvents` when the session is opened again. The Changed group is ordered by the share of a PNG's pixels beyond its noise levels, from its strength map, else the SVG's share off its PNG |
@@ -362,17 +363,49 @@ What step 6 added:
 | Moving to HEAD | `session.moveBaseline(baseline)` (`moved: {at, from}`); the server's `head()` and `revisionAt(hash)`; HEAD is read again at most once a second, so the notice follows a commit made while the tool is open. Each verdict as applied records the baseline it was judged against (`baseline`, a run's `--against` on arrival), and `reviewPictures(runs, {baseline})` gives one judged against the revision of another baseline the look `baseline` until it is judged again |
 | A retake's revision | `shot_review.mjs --retake` passes `--against <baseline>`, so that a run judges against the session's baseline whatever HEAD is (`againstOf(run)`) |
 
-**Next: step 7**, the runs page: retake, replay, clean up and stop from the page. `app.start`
-already takes `{tool, args}`; a retake's args must carry `--against <baseline>` as
-`shot_review.mjs` passes it. A clean-up (`--cleanup`) writes under `docs/` itself and is no
-staged run: it needs the session's runs stopped first, and the pictures it resets then show in
-the outside group.
+What step 7 added:
+
+| Part | Where it is |
+|---|---|
+| A run from a request | `runOf({kind, only, pictures, svg, jobs, ide, recheck, dryRun}, baseline)` in `scripts/lib/shot-runs.mjs`, `{tool, args}`, for the runs page and `shot_review.mjs --retake / --replay` alike: `kind` "retake", "replay" or "cleanup" (`RUN_KINDS`), a retake and a clean-up `--against` the baseline, `pictures` made a pattern that matches each alone (`onlyOf`), and every option the kind does not take refused; `kindOf(run)` |
+| A clean-up run | tool `cleanup` in `RUN_TOOLS` (`shoot_docs.mjs`, its args naming `--cleanup`), not in `STAGED_TOOLS`, so `runArgs(tool, args, stage)` gives it no `--stage` and no `--events`: it has only its log. `optionOf(run, option)` in `shot-session.mjs` (`againstOf` is one) |
+| One run at a time | the server's `start` refuses while a run is live: a picture's layers are applied in the runs' order, which two runs at once would not keep. While a clean-up runs, a review's actions and the move to HEAD are refused (`refuseWhileCleaning`); when it ends, the pictures changed outside the runs are read again at once |
+| Stop and kill | POST `/api/run/<n>` (`hrefs.runAct`), `{action}`: `stop` (not for a clean-up, which ends in seconds), and `kill` only once a stop has been asked for (`stopAsked`), behind the page's confirmation. Start is POST `/api/runs` (`hrefs.startRun`), the IDE named by its build among the installs (`ides`, `listIdes()`) |
+| The runs page | `/runs`, `runsHtml` in `shot-pages.mjs`: a form for each kind (a retake's IDE, newest first, marked when newer than the baseline's build; its pictures, `--svg` and jobs; a replay's `--recheck`; a clean-up's dry run first, then **Put them back** on the newest one), and each run newest first with its command line, a progress bar for each job (`runRow`'s `jobs`), Stop or Kill, and its log: a clean-up's whole, the last 8 lines of one that runs. A form keeps its values when the page fetches itself again (`data-keep`) |
+| Pictures selected | a checkbox on each card of the overview, kept in the browser (`localStorage`, `shot-review-selected`); the runs page's forms take the selection in place of a pattern, and a bar on both pages says how many and clears it. A picture's page has **Retake this picture** and **Replay its SVG**, and a picture changed outside the runs **Retake this picture**, each greyed while a run is live |
+
+**A run is never `detached` on Windows.** Step 5 started each run with `detached: true` to keep
+the review tool's Ctrl+C from it. On Windows that is `DETACHED_PROCESS`: the run has no console
+at all, and every console program it starts without `windowsHide` (`git` in
+`shot-revision.mjs`, PowerShell, `reg`) opens a console window on the user's desktop, which the
+owner saw flash during a retake. `windowsHide` with no stdio inherited, as the lane runner
+spawns its children, is `CREATE_NO_WINDOW`: a console of its own with no window, which those
+programs inherit and which the terminal's Ctrl+C does not reach. `startRun` now spawns that way
+(detached elsewhere only), and the three `git` calls of `shot-revision.mjs` pass `windowsHide`
+too; a retake and a stopped retake run so flashed nothing (owner).
+
+**Next: step 8**, the commit panel ([Commit](#commit)), with the commit helper beside `runGit`
+in `shot-revision.mjs` (the factoring table's last row). The session's own files are those its
+applier wrote (each run's `review/`, `held/`) and the manifest; a clean-up's are the pictures
+its log names as put back.
 
 Left from step 6, small: `openManifest().save` writes LF, so a manifest checked out with CRLF
 shows as modified with no diff once the tool (or `shoot_docs.mjs`) has saved it, even after a
 decision is removed again. An allowance is applied as soon as it is submitted; there is no
 preview of the verdict it would give without applying it (the plan's "shows the verdict it
 gives" is met by the page showing the new verdict).
+
+Step 7 was checked with the tests in `test/svgshot.test.mjs` (`runOf` on its own, and the
+server with a stand-in clean-up and run: the dry run's list and its button, a second run
+refused, a review's actions held while a clean-up runs, the outside group read again after it,
+a retake of selected pictures on an install named by its build, its progress by job, Kill
+refused before Stop), and with the real tool in a worktree, each run started from the page or
+its API: a dry-run clean-up (nothing to put back), a retake of `Menu_File_Project` typed into the
+form (dark `unchanged`, light `noise`, as in step 6), a replay of the picture selected on the
+overview (the pattern `^(?:IDE/Projects/Images/Menu_File_Project\.light\.png)$`; a new
+worktree's bundle cache has none), and retakes of `IDE/Menu/Images/Menu_` stopped by the page's
+Stop after their first job (the IDEs ended, the registry put back, the rest `not taken`), Kill
+shown in Stop's place with its warning. `docs/` stayed as HEAD has it.
 
 Step 6 was checked with the tests in `test/svgshot.test.mjs` (the applier on its own, and the
 server with a stand-in run: a verdict applied as it arrives, decisions, allowances, the

@@ -3,23 +3,87 @@
 // (--stage) and asked for its events (--events). Its events are kept in the run's events
 // file as they arrive and its other lines in its log, so that a session opened again finds
 // them (shot-session.mjs). A run is stopped by a line on its stdin (record-lines.mjs), which
-// lets it end its IDEs and put the registry back.
+// lets it end its IDEs and put the registry back. A clean-up (shoot_docs.mjs --cleanup) is a
+// run with neither: it starts no IDE and ends in seconds.
+//
+// What a run is started with is runOf's, for the runs page and the tool's command line alike.
 
 import { spawn } from "node:child_process";
 import { appendFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
+import { numberOption, regexOption } from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { readRecords, sendStop } from "./record-lines.mjs";
-import { appendEvent, RUN_TOOLS, runPaths } from "./shot-session.mjs";
+import { appendEvent, RUN_TOOLS, runPaths, STAGED_TOOLS } from "./shot-session.mjs";
 
 /** The kind of record a run writes its events as (--events). */
 export const EVENT_KIND = "shot-event";
 
 /**
- * The arguments a run of `tool` is started with, after the script: its own `args`, then the
- * stage and --events.
+ * The arguments a run of `tool` is started with, after the script: its own `args`, then, for a
+ * staged tool, the stage and --events.
  */
-export const runArgs = (args, stage) => [...args, "--stage", stage, "--events"];
+export const runArgs = (tool, args, stage) => (STAGED_TOOLS.has(tool) ? [...args, "--stage", stage, "--events"] : args);
+
+/** The kinds of run the review tool starts: [kind, what it is called]. */
+export const RUN_KINDS = [
+  ["retake", "Retake"],
+  ["replay", "Replay"],
+  ["cleanup", "Clean-up"],
+];
+
+/** A pattern that matches each of `pictures` (paths under docs/) exactly, and nothing else. */
+export const onlyOf = (pictures) =>
+  `^(?:${pictures.map((out) => out.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})$`;
+
+// A field of a request left empty: undefined, null or blank.
+const empty = (v) => v === undefined || v === null || (typeof v === "string" && v.trim() === "");
+
+/**
+ * The run a request asks for, as {tool, args}, args as the command line gives them (startRun
+ * adds the stage): `kind` "retake" (shoot_docs.mjs, compared with the session's `baseline`,
+ * {hash}), "replay" (svgshot/replay.mjs) or "cleanup" (shoot_docs.mjs --cleanup against the
+ * baseline, `dryRun` for the list of what it would put back); the pictures `only`, a pattern, or
+ * `pictures`, their paths under docs/, or neither for every picture; `svg` a retake's --svg (on
+ * unless false), `jobs` its or a replay's --jobs, `ide` a retake's twinBASIC.exe, and `recheck`
+ * a replay's. Throws, with a message for a person, on a request that is not one.
+ */
+export function runOf({ kind, only, pictures, svg = true, jobs, ide, recheck = false, dryRun = false }, baseline) {
+  if (!RUN_KINDS.some(([k]) => k === kind)) throw new Error(`no such kind of run: ${kind}`);
+  const refuse = (what, ok) => {
+    if (!ok) throw new Error(`a ${RUN_KINDS.find(([k]) => k === kind)[1].toLowerCase()} takes no ${what}`);
+  };
+  refuse("IDE", kind === "retake" || empty(ide));
+  refuse("--svg", kind === "retake" || svg === true);
+  refuse("--recheck", kind === "replay" || !recheck);
+  refuse("--dry-run", kind === "cleanup" || !dryRun);
+  refuse("--jobs", kind !== "cleanup" || empty(jobs));
+  if (!empty(only) && pictures !== undefined) throw new Error("give a pattern or the pictures, not both");
+  let pattern = null;
+  if (pictures !== undefined) {
+    if (!Array.isArray(pictures) || !pictures.length || pictures.some((p) => typeof p !== "string" || !p))
+      throw new Error("no picture was given");
+    pattern = onlyOf(pictures);
+  } else if (!empty(only)) {
+    regexOption(String(only), { option: "--only" });
+    pattern = String(only);
+  }
+  const onlyArgs = pattern === null ? [] : ["--only", pattern];
+  const jobArgs = empty(jobs)
+    ? []
+    : ["--jobs", String(numberOption(String(jobs), { option: "--jobs", integer: true, min: 1, max: 16 }))];
+  const against = ["--against", baseline.hash];
+  if (kind === "retake")
+    return {
+      tool: "shoot_docs",
+      args: [...(svg ? ["--svg"] : []), ...onlyArgs, ...against, ...jobArgs, ...(empty(ide) ? [] : ["--ide", ide])],
+    };
+  if (kind === "replay") return { tool: "replay", args: [...onlyArgs, ...(recheck ? ["--recheck"] : []), ...jobArgs] };
+  return { tool: "cleanup", args: ["--cleanup", ...(dryRun ? ["--dry-run"] : []), ...onlyArgs, ...against] };
+}
+
+/** The kind of the run `run` (a session's record), as RUN_KINDS names it. */
+export const kindOf = (run) => (run.tool === "shoot_docs" ? "retake" : run.tool);
 
 /**
  * Starts a run of `tool` with `args` in `session` (openSession): adds it to the session and
@@ -40,13 +104,18 @@ export function startRun(
   mkdirSync(files.dir, { recursive: true });
   const node = command?.node ?? process.execPath;
   const script = command?.script ?? path.join(REPO_ROOT, RUN_TOOLS[tool]);
-  // A process group of its own, so that the Ctrl+C that closes the tool does not end the run
-  // before it has put the registry back: the tool stops it by its stdin instead.
-  const child = spawn(node, [script, ...runArgs(args, files.stage)], {
+  // The Ctrl+C that closes the tool must not end the run before it has put the registry back:
+  // the tool stops it by its stdin instead. On Windows, windowsHide with no stdio inherited is
+  // CREATE_NO_WINDOW: a console of its own with no window, which the terminal's Ctrl+C does not
+  // reach and which every console program the run starts (git, PowerShell, reg) inherits.
+  // Never detached there: that is DETACHED_PROCESS, no console at all, and each of those
+  // programs then opens a console window on the user's desktop. Elsewhere, a process group of
+  // its own.
+  const child = spawn(node, [script, ...runArgs(tool, args, files.stage)], {
     cwd: REPO_ROOT,
     stdio: ["pipe", "pipe", "pipe"],
     windowsHide: true,
-    detached: true,
+    detached: process.platform !== "win32",
   });
   // A stop sent as the run ends meets a closed pipe.
   child.stdin.on("error", () => {});
