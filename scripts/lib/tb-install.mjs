@@ -23,21 +23,14 @@ import path from "node:path";
 export const MIN_BUILD = 1007;
 
 /**
- * The twinBASIC IDE executable, or null.
- *
- * Without a path from --ide or TB_IDE, the newest twinBASIC_IDE_BETA_<n> on the
- * Desktop that holds a twinBASIC.exe and is not older than MIN_BUILD. The
- * Desktop is under USERPROFILE, else under the home folder: without the
- * fallback, a missing USERPROFILE searched a `Desktop` folder relative to the
- * working directory.
- *
- * @param {string} [explicit]  a path from --ide, which wins outright
+ * Every twinBASIC_IDE_BETA_<n> on the Desktop that holds a twinBASIC.exe and is
+ * not older than MIN_BUILD, newest first: [{build, exe}]. The Desktop is under
+ * USERPROFILE, else under the home folder: without the fallback, a missing
+ * USERPROFILE searched a `Desktop` folder relative to the working directory.
  */
-export function findIde(explicit) {
-  const named = explicit ?? process.env.TB_IDE;
-  if (named) return named;
+export function listIdes() {
   const desktop = path.join(process.env.USERPROFILE || os.homedir(), "Desktop");
-  let best = null;
+  const found = [];
   try {
     for (const name of readdirSync(desktop)) {
       const m = /^twinBASIC_IDE_BETA_(\d+)$/.exec(name);
@@ -45,13 +38,24 @@ export function findIde(explicit) {
       const exe = path.join(desktop, name, "twinBASIC.exe");
       if (!existsSync(exe)) continue;
       const build = Number(m[1]);
-      if (build < MIN_BUILD) continue;
-      if (!best || build > best.build) best = { build, exe };
+      if (build >= MIN_BUILD) found.push({ build, exe });
     }
   } catch {
     /* no Desktop, or unreadable */
   }
-  return best?.exe ?? null;
+  return found.sort((a, b) => b.build - a.build);
+}
+
+/**
+ * The twinBASIC IDE executable, or null: without a path from --ide or TB_IDE,
+ * the newest install listIdes finds.
+ *
+ * @param {string} [explicit]  a path from --ide, which wins outright
+ */
+export function findIde(explicit) {
+  const named = explicit ?? process.env.TB_IDE;
+  if (named) return named;
+  return listIdes()[0]?.exe ?? null;
 }
 
 /**
