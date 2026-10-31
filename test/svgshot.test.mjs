@@ -1517,8 +1517,11 @@ describe("the change sheet", () => {
     // Pictures of two sizes are never the same picture.
     assert.equal(withinNoise(a, image(100, 101)), false);
     // A rectangle left out is not looked at: row 0 holds all 80 changed pixels, a smaller one not.
-    assert.equal(withinNoise(a, patch(80, 200), [{ x0: 0, y0: 0, x1: 100, y1: 1 }]), true);
-    assert.equal(withinNoise(a, patch(80, 200), [{ x0: 0, y0: 0, x1: 79, y1: 1 }]), false);
+    assert.equal(withinNoise(a, patch(80, 200), { rects: [{ x0: 0, y0: 0, x1: 100, y1: 1 }] }), true);
+    assert.equal(withinNoise(a, patch(80, 200), { rects: [{ x0: 0, y0: 0, x1: 79, y1: 1 }] }), false);
+    // Other limits: 17 levels within 17, 51 pixels within a share of 0.51%.
+    assert.equal(withinNoise(a, patch(1, 117), { levels: 17 }), true);
+    assert.equal(withinNoise(a, patch(51, 116), { share: 0.0051 }), true);
   });
 
   test("compares two pictures of one size over their pixels", () => {

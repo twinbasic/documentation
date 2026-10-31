@@ -24,21 +24,21 @@ const pixelDiff = (A, i, B, j) => {
 
 /**
  * Whether two images are the same picture but for a capture's noise: one size, no
- * channel of any pixel more than NOISE_LEVELS grey levels apart, and no more than
- * NOISE_SHARE of the pixels apart at all (at least one). The noise seen: 1 to 14
+ * channel of any pixel more than `levels` grey levels apart (NOISE_LEVELS), and no
+ * more than `share` of the pixels apart at all (NOISE_SHARE; at least one pixel). The noise seen: 1 to 14
  * levels, along a shadow's or an arrow's edge, at a rounded corner, in a scaled
  * bitmap (34 pixels; 81 on About's Close button; the most, 563 along a dialog's top
  * edge, 0.13% of it). A change the IDE draws moves text or colour by far more than
  * 16 levels. The pixels inside `rects` are left out. Identical images are within it.
  */
-export function withinNoise(A, B, rects = []) {
+export function withinNoise(A, B, { levels = NOISE_LEVELS, share = NOISE_SHARE, rects = [] } = {}) {
   if (A.width !== B.width || A.height !== B.height) return false;
-  const most = Math.max(1, Math.floor(A.width * A.height * NOISE_SHARE));
+  const most = Math.max(1, Math.floor(A.width * A.height * share));
   let apart = 0;
   for (let i = 0; i < A.rgba.length; i += 4) {
     const d = pixelDiff(A, i, B, i);
     if (!d || inRects(rects, (i / 4) % A.width, Math.floor(i / 4 / A.width))) continue;
-    if (d > NOISE_LEVELS || ++apart > most) return false;
+    if (d > levels || ++apart > most) return false;
   }
   return true;
 }

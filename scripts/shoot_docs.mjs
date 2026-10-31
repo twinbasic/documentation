@@ -673,7 +673,7 @@ function writeDiff(name, out, before, after, { suffix = "", labels } = {}) {
 // Whether two captures (PNG files) are the same picture but for a capture's noise
 // (withinNoise, scripts/lib/shot-change.mjs, which holds the rule and what it rests on).
 // The pixels inside `rects` (unsteadyRects) are left out.
-const nearly = (a, b, rects = []) => withinNoise(decodePng(a), decodePng(b), rects);
+const nearly = (a, b, rects = []) => withinNoise(decodePng(a), decodePng(b), { rects });
 
 // Whether two captures are the same picture outside `rects`: byte for byte when there are none.
 function same(a, b, rects) {
