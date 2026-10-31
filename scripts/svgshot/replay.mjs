@@ -26,7 +26,7 @@ import {
   withUsageError,
 } from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
-import { listBundles } from "./bundle.mjs";
+import { BUNDLE_CACHE, listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
 import { applySvg, svgOf } from "../lib/shot-apply.mjs";
 import { MANIFEST, openManifest } from "../lib/shot-manifest.mjs";
@@ -124,7 +124,7 @@ const jobs = withUsageError(() =>
     max: 32,
   }),
 );
-const bundlesRoot = path.resolve(values.bundles ?? path.join(REPO_ROOT, ".svgshot-bundles"));
+const bundlesRoot = path.resolve(values.bundles ?? BUNDLE_CACHE);
 const outRoot = path.resolve(values.out ?? path.join(REPO_ROOT, "docs"));
 // A child process the parent started (below) has its share of the pictures in this
 // variable, "k/n" (redraw.mjs runShards).

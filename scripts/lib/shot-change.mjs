@@ -5,7 +5,7 @@
 //
 // Images are what png.mjs's decodePng returns: {width, height, rgba}.
 
-import { encodePng } from "./png.mjs";
+import { decodePng, encodePng } from "./png.mjs";
 
 /** The most grey levels a channel of a pixel may differ by, in a capture's noise. */
 export const NOISE_LEVELS = 16;
@@ -42,6 +42,12 @@ export function withinNoise(A, B, { levels = NOISE_LEVELS, share = NOISE_SHARE, 
   }
   return true;
 }
+
+/**
+ * withinNoise of two PNG files (bytes), `rule` its limits and rectangles: the `near` that
+ * decidePicture and cleanupResets (shot-policy.mjs) take.
+ */
+export const pngsNear = (a, b, rule = {}) => withinNoise(decodePng(a), decodePng(b), rule);
 
 // ---- the strength map and its regions ---------------------------------------------------
 //

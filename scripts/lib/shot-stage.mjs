@@ -13,6 +13,12 @@
 //   maps/<slug>.svg.strength   PNG (diffSvg): see writeStrength
 //   verdicts/<slug>.json       what was decided, {out, png, svg}: each part as the run's
 //                              event about it carries it (shoot_docs.mjs, replay.mjs)
+//   review/verdicts/<slug>.json  the review tool's own: the verdict as it applied it under
+//                              docs/ (shot-verdicts.mjs), {out, png, svg, done}, each part
+//                              judged again when a review decided otherwise or changed an
+//                              allowance, and `done` the parts applied
+//   review/maps/<slug>.png.strength  the capture's strength map measured again, when a
+//                              verdict judged again names another picture to measure against
 //
 // `<slug>` is the picture's path with its folders joined by __ (slugOf, shot-apply.mjs). A
 // stage may hold the Windows user name (a bundle holds the page's text), so it is refused
@@ -193,6 +199,40 @@ export function writeVerdict(dir, out, part, value) {
   verdict[part] = value;
   writeStaged(file, `${JSON.stringify(verdict, null, 2)}\n`);
   return verdict;
+}
+
+/**
+ * The verdict on the picture `out` in the stage `dir`, as the run wrote it ({out, png, svg}),
+ * or null.
+ */
+export function readVerdict(dir, out) {
+  const file = stagedFiles(dir, out).verdict;
+  return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null;
+}
+
+/**
+ * The review tool's files of the picture `out` in the stage `dir`: {verdict, pngStrength},
+ * absolute, and `pngStrengthName`, the map's name as a verdict names it.
+ */
+export function reviewedFiles(dir, out) {
+  const s = slugOf(out);
+  const pngStrength = path.join(dir, "review", "maps", `${s}.png.strength`);
+  return {
+    verdict: path.join(dir, "review", "verdicts", `${s}.json`),
+    pngStrength,
+    pngStrengthName: named(dir, pngStrength),
+  };
+}
+
+/** The verdict the review tool applied on the picture `out` ({out, png, svg, done}), or null. */
+export function readReviewed(dir, out) {
+  const file = reviewedFiles(dir, out).verdict;
+  return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null;
+}
+
+/** Writes the verdict the review tool applied on a picture, {out, png, svg, done}. */
+export function writeReviewed(dir, verdict) {
+  writeStaged(reviewedFiles(dir, verdict.out).verdict, `${JSON.stringify(verdict, null, 2)}\n`);
 }
 
 /** Every verdict in the stage `dir`, sorted by path: [{out, png, svg}]. */

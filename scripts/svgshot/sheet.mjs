@@ -27,9 +27,9 @@ import {
   regexOption,
   withUsageError,
 } from "../../lib/cli.mjs";
-import { DOCS_DIR, REPO_ROOT } from "../../lib/repo-paths.mjs";
+import { DOCS_DIR } from "../../lib/repo-paths.mjs";
 import { changedPictures, outputRefusal, readRevisionFiles } from "../lib/shot-revision.mjs";
-import { listBundles } from "./bundle.mjs";
+import { BUNDLE_CACHE, listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
 import { SVG_FAITHFUL } from "../lib/shot-policy.mjs";
 import { judgeSvg } from "./keep.mjs";
@@ -128,7 +128,7 @@ const jobs = withUsageError(() =>
 );
 const outRoot = path.resolve(values.out);
 const docsRoot = path.resolve(values.docs ?? DOCS_DIR);
-const bundlesRoot = path.resolve(values.bundles ?? path.join(REPO_ROOT, ".svgshot-bundles"));
+const bundlesRoot = path.resolve(values.bundles ?? BUNDLE_CACHE);
 const picturesDir = path.join(outRoot, "pictures");
 const SHARD_ENV = "SVGSHOT_SHEET_SHARD";
 const SHARD = shardOf(SHARD_ENV);

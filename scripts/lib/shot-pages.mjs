@@ -2,12 +2,14 @@
 // picture of the session as a card in its group, and the detail page of one picture, made of
 // the pieces in shot-views.mjs. Each page is whole HTML; a page keeps itself current by
 // fetching itself again when the server says over its event stream that something it shows
-// has changed. Read-only: the actions come with the decisions (step 6 of the plan).
+// has changed. Its actions (a decision, an allowance, the session moved to HEAD) are POSTs of
+// JSON to the server, which applies them and says so over the same stream.
 //
 // Every address the pages link to is made here (hrefs), and the server answers each.
 
 import { anchor, chipHtml, esc, pageHtml, sizeText } from "./shot-views.mjs";
 import { FILTERS, GROUPS } from "./shot-review.mjs";
+import { pngRule, svgRule } from "./shot-policy.mjs";
 import { SURVIVES } from "./shot-queue.mjs";
 
 /** The generator the tool's pages name in their <meta>. */
@@ -30,10 +32,18 @@ export const hrefs = {
   run: (n, rel) => `/file/run/${n}/${encodePath(rel)}`,
   /** The picture the run `n` judged its capture of `out` against. */
   reference: (n, out) => `/file/ref/${n}/${encodePath(out)}`,
+  /** The PNG `out` as the run `n`'s layer found it, before its verdict was applied. */
+  held: (n, out) => `/file/held/${n}/${encodePath(out)}`,
   /** The difference map of the run `n`'s capture of `out` ("png") or of its SVG ("svg"). */
   map: (n, part, out) => `/map/${n}/${part}/${encodePath(out)}`,
+  /** The difference map of a picture changed outside the session's runs, against the baseline's. */
+  outsideMap: (out) => `/map/outside/${encodePath(out)}`,
   log: (n) => `/log/${n}`,
   events: "/events",
+  /** POST: a review's action on a picture (shot-server.mjs's act). */
+  act: (out) => `/api/picture/${encodePath(out)}`,
+  /** POST: the session moved to HEAD. */
+  moveBaseline: "/api/baseline",
 };
 
 const REVIEW_STYLE = `<style>
@@ -59,6 +69,13 @@ nav.pager{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 0}nav.pager .
 .loupe .crop{border:1px solid var(--line);background-repeat:no-repeat;image-rendering:pixelated}
 dl.facts{display:grid;grid-template-columns:max-content 1fr;gap:2px 14px;margin:6px 0}dl.facts dt{color:var(--mut)}dl.facts dd{margin:0}
 section.muted{opacity:.55}
+.actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}.actions button,form.allow button{font:inherit;padding:3px 12px}
+.actions button[aria-pressed=true]{font-weight:700;outline:2px solid var(--link)}
+.status{color:var(--mut);font-size:13px}.status.err{color:var(--bar)}
+form.allow fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 10px;padding:6px 10px}
+form.allow label{display:inline-block;margin:2px 14px 2px 0}form.allow input[type=number]{width:6em}
+form.allow textarea{width:100%;max-width:600px;font:12px var(--mono,monospace)}
+.draw{cursor:crosshair;user-select:none}.draw .new{position:absolute;box-sizing:border-box;border:2px dashed #08f;pointer-events:none}
 </style>`;
 
 // The page's script: the event stream, the page fetched again when something it shows has
@@ -90,6 +107,7 @@ const REVIEW_SCRIPT = `<script>
     const y = scrollY;
     document.body.replaceWith(doc.body);
     init();
+    draws();
     scrollTo(0, y);
   };
   let timer = null;
@@ -109,7 +127,92 @@ const REVIEW_SCRIPT = `<script>
     const a = rel && document.querySelector('a[rel="' + rel + '"]');
     if (a) location.href = a.href;
   });
-  document.addEventListener("DOMContentLoaded", () => { init(); live(); });
+  // An action: a POST of JSON, its progress and any failure said beside the buttons, the page
+  // fetched again once it is applied.
+  const say = (from, text, err) => {
+    const s = (from.closest("[data-acts]") || document).querySelector(".status");
+    if (!s) return;
+    s.textContent = text;
+    s.classList.toggle("err", !!err);
+  };
+  const controls = () => document.querySelectorAll("button[data-act], form.allow button");
+  const post = async (url, body, from) => {
+    say(from, "applying...");
+    for (const b of controls()) b.disabled = true;
+    try {
+      const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || res.statusText);
+      await refresh();
+    } catch (e) {
+      for (const b of controls()) b.disabled = false;
+      say(from, e.message, true);
+    }
+  };
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest?.("button[data-act]");
+    if (!b) return;
+    e.preventDefault();
+    post(b.dataset.url, JSON.parse(b.dataset.act), b);
+  });
+  document.addEventListener("submit", (e) => {
+    const f = e.target.closest?.("form.allow");
+    if (!f) return;
+    e.preventDefault();
+    const v = (n) => f.elements[n].value.trim();
+    const body = e.submitter && e.submitter.value === "defaults"
+      ? { action: "allowance", png: {}, svg: {} }
+      : {
+          action: "allowance",
+          png: { levels: v("pngLevels"), share: v("pngShare"), ignore: v("pngIgnore") },
+          svg: { levels: v("svgLevels"), share: v("svgShare"), ignore: v("svgIgnore") },
+        };
+    post(f.getAttribute("action"), body, f);
+  });
+  // A rectangle drawn on a picture by dragging, in its device pixels, added to its list.
+  const draws = () => {
+    for (const d of document.querySelectorAll(".draw")) {
+      const img = d.querySelector("img");
+      const list = document.getElementById(d.dataset.target);
+      const W = Number(d.dataset.w);
+      const H = Number(d.dataset.h);
+      let start = null;
+      let box = null;
+      const at = (e) => {
+        const r = img.getBoundingClientRect();
+        const clamp = (v, most) => Math.max(0, Math.min(most, Math.round(v)));
+        return [clamp(((e.clientX - r.left) / r.width) * W, W), clamp(((e.clientY - r.top) / r.height) * H, H)];
+      };
+      const rect = (e) => {
+        const [x, y] = at(e);
+        return [Math.min(x, start[0]), Math.min(y, start[1]), Math.max(x, start[0]), Math.max(y, start[1])];
+      };
+      d.onpointerdown = (e) => {
+        e.preventDefault();
+        start = at(e);
+        box = document.createElement("i");
+        box.className = "new";
+        d.append(box);
+        d.setPointerCapture(e.pointerId);
+      };
+      d.onpointermove = (e) => {
+        if (!start) return;
+        const [x0, y0, x1, y1] = rect(e);
+        Object.assign(box.style, { left: (x0 / W) * 100 + "%", top: (y0 / H) * 100 + "%", width: ((x1 - x0) / W) * 100 + "%", height: ((y1 - y0) / H) * 100 + "%" });
+      };
+      d.onpointerup = (e) => {
+        if (!start) return;
+        const r = rect(e);
+        start = null;
+        if (r[2] - r[0] < 2 || r[3] - r[1] < 2) {
+          box.remove();
+          return;
+        }
+        list.value = (list.value.trim() ? list.value.trim() + "\\n" : "") + "[" + r.join(", ") + "]";
+      };
+    }
+  };
+  document.addEventListener("DOMContentLoaded", () => { init(); draws(); live(); });
 })();
 </script>`;
 
@@ -138,13 +241,25 @@ export function svgStateText(svg) {
   return `${svg.state}${svg.faithful === null ? "" : ", accepted"}`;
 }
 
+/**
+ * A button that POSTs `act` (JSON) to `url`, `pressed` true or false for one of a choice, or
+ * null. The page's script sends it (REVIEW_SCRIPT).
+ */
+export const actionButton = (label, url, act, { pressed = null, title = "" } = {}) =>
+  `<button type="button" data-url="${esc(url)}" data-act="${esc(JSON.stringify(act))}"${pressed === null ? "" : ` aria-pressed="${pressed}"`}${title ? ` title="${esc(title)}"` : ""}>${esc(label)}</button>`;
+
+/** A row of actions, with the place their progress and failures are said. */
+const actionsHtml = (buttons) =>
+  `<div class="actions" data-acts>${buttons.join("")}<span class="status" role="status"></span></div>`;
+
 /** The chips of a picture `p` (reviewPictures'): its state, and why it needs a look. */
 export function chipsOf(p) {
   const chips = [];
+  if (p.outside) chips.push(chipHtml(`changed outside the runs: ${p.outside}`, "change"));
   if (p.progress) chips.push(chipHtml("in progress", "progress"));
   if (p.failed) chips.push(chipHtml("failed", "fail", p.failed.error));
   if (p.retake) chips.push(chipHtml("needs a retake", "fail", p.retake.why));
-  if (!p.png && !p.svg && !p.failed && !p.retake && !p.progress)
+  if (!p.png && !p.svg && !p.failed && !p.retake && !p.progress && !p.outside)
     chips.push(
       p.skipped
         ? chipHtml("not taken", "fail", `run ${p.skipped} was stopped first`)
@@ -217,12 +332,23 @@ ${[...runs]
  * The overview: `groups` reviewPictures' groups, with only the pictures the filter shows;
  * `filter` its key; `counts` how many pictures each filter shows ({all, look, overridden,
  * nosvg}); `runs` [{n, command, live, stopping, interrupted, stopped, exit, done, listed}],
- * oldest first; `baseline` the session's ({hash, short, build}); `headNow` HEAD's short hash
- * when it is no longer the baseline, else null; `newestIde` the newest install's build, or
- * null; `resume` {index, total, out} for the queue's place, or null; `exists(path)` whether a
- * file is under docs/.
+ * oldest first; `baseline` the session's ({hash, short, build, moved}); `headNow` HEAD's short
+ * hash when it is no longer the baseline, else null, and `canMove` whether the session can be
+ * moved to it; `newestIde` the newest install's build, or null; `resume` {index, total, out}
+ * for the queue's place, or null; `exists(path)` whether a file is under docs/.
  */
-export function overviewHtml({ groups, filter, counts, runs, baseline, headNow, newestIde, resume, exists }) {
+export function overviewHtml({
+  groups,
+  filter,
+  counts,
+  runs,
+  baseline,
+  headNow,
+  canMove = false,
+  newestIde,
+  resume,
+  exists,
+}) {
   const shown = groups.filter((g) => g.pictures.length);
   const filters = FILTERS.map(
     ([key, label]) =>
@@ -234,7 +360,17 @@ export function overviewHtml({ groups, filter, counts, runs, baseline, headNow, 
   const notices = [];
   if (headNow)
     notices.push(
-      `HEAD is now ${esc(headNow)}: this session compares with its baseline, ${esc(baseline.short)}, until it is committed.`,
+      `HEAD is now ${esc(headNow)}: this session compares with its baseline, ${esc(baseline.short)}, until it is committed or moved.${
+        canMove
+          ? ` Moving it makes ${esc(headNow)} the baseline; a verdict judged against ${esc(baseline.short)}'s picture goes back to Needs a look.${actionsHtml(
+              [actionButton(`Move the session to ${headNow}`, hrefs.moveBaseline, { action: "move" })],
+            )}`
+          : ""
+      }`,
+    );
+  if (baseline.moved)
+    notices.push(
+      `The session was moved to ${esc(baseline.short)} from ${esc(baseline.moved.from)} on ${esc(baseline.moved.at)}.`,
     );
   if (newestIde && baseline.build && newestIde > baseline.build)
     notices.push(`BETA ${newestIde} found: the baseline's pictures were taken on BETA ${baseline.build} at newest.`);
@@ -254,10 +390,10 @@ ${cards}`;
     generator: REVIEW_GENERATOR,
     title: "Screenshot review",
     head: HEAD,
-    intro: `Every picture this session's runs took or drew, against the baseline ${esc(baseline.short)}${baseline.build ? ` (its pictures taken on BETA ${baseline.build} at newest)` : ""}. Nothing is written under docs until a verdict is applied.`,
+    intro: `Every picture this session's runs took or drew, against the baseline ${esc(baseline.short)}${baseline.build ? ` (its pictures taken on BETA ${baseline.build} at newest)` : ""}, and every other picture under docs that differs from it. Each verdict is applied under docs as it arrives, and again when a review decides otherwise.`,
     summary: shown.map((g) => [g.title, g.pictures.length]),
     contents: shown.map((g) => `<li><a href="#g-${g.key}">${esc(g.title)}</a> (${g.pictures.length})</li>`).join("\n"),
-    body: `${notices.map((n) => `<p class="notice">${n}</p>`).join("\n")}
+    body: `${notices.map((n) => `<div class="notice">${n}</div>`).join("\n")}
 <nav class="filters">${filters}</nav>
 ${resumeLink}${runsHtml(runs)}
 ${shown.length ? shown.map(group).join("\n") : "<p>No picture.</p>"}`,
@@ -334,22 +470,127 @@ const rectsText = (rects) =>
 
 const AGAINST = { revision: "HEAD", disk: "the file", dark: "the dark picture" };
 
+// The pager of a picture's page: the overview, its neighbours in the list it was opened from,
+// and its place there.
+function pagerHtml({ p, filter, place, prev, next }) {
+  const filterLabel = (FILTERS.find(([k]) => k === filter) ?? FILTERS[0])[1];
+  const groupTitle = (GROUPS.find(([k]) => k === p.group) ?? [null, p.group])[1];
+  return `<nav class="pager"><a href="${hrefs.overview(filter)}#${anchor(p.out)}">Overview</a>${
+    prev ? `<a rel="prev" href="${hrefs.picture(prev.out, filter)}">Previous (k)</a>` : ""
+  }<span class="where">${place.index + 1} of ${place.total} · ${esc(filter === "all" ? groupTitle : filterLabel)}</span>${
+    next ? `<a rel="next" href="${hrefs.picture(next.out, filter)}">Next (j)</a>` : ""
+  }</nav>`;
+}
+
+const written = (state) => state === "new" || state === "updated";
+
+// What the file holds once a PNG verdict is applied, as a few words.
+const HOLDS = {
+  new: "the new capture",
+  updated: "the new capture",
+  unchanged: "the picture it held, which the capture equals",
+  noise: "the picture it held: the capture is within noise of it",
+  restored: "HEAD's picture",
+  dark: "nothing: the page shows the dark picture",
+  once: "nothing: the picture is taken once",
+};
+
+/**
+ * The page of a picture changed outside the session's runs (reviewPictures' `outside`): the
+ * baseline's picture against the file, and no verdict. `files` {head, docs}, each {src, size}
+ * or null; `map` the difference map's address, or null; the rest as detailHtml's.
+ */
+export function outsideHtml({ p, filter, place, prev, next, files, map, baseline }) {
+  const size = files.docs?.size ?? files.head?.size ?? null;
+  const figs = [];
+  if (files.head) figs.push(figureHtml(files.head.src, files.head.size, `HEAD (${baseline.short})`));
+  if (files.docs) figs.push(figureHtml(files.docs.src, files.docs.size, "The file"));
+  if (map)
+    figs.push(
+      figureHtml(
+        map,
+        size,
+        "Difference (yellow: 1 grey level, shading to red at 128 or more; cyan and magenta: only in one)",
+      ),
+    );
+  const body = `${pagerHtml({ p, filter, place, prev, next })}
+<p class="meta">${esc(sizeText(size))}; ${chipsOf(p)}</p>
+<p class="notice">No run of this session reported this picture: its file is ${esc(p.outside)} against the baseline, ${esc(baseline.short)} (a retake from a terminal, or an edit). It has no verdict to override; a retake of it through this tool judges it.</p>
+<div class="trio">${figs.join("\n")}</div>`;
+  return pageHtml({
+    generator: REVIEW_GENERATOR,
+    title: p.out,
+    head: HEAD,
+    intro: "Changed outside the session's runs.",
+    body,
+  }).replace("<body>", `<body data-out="${esc(p.out)}">`);
+}
+
+/**
+ * The allowances of a picture, as a form: the PNG's noise rule and the SVG's bar, each with its
+ * rectangles left out, which are drawn on `pngPic` and `svgPic` ({src, size}) by dragging.
+ * Empty fields are the defaults, which the placeholders show.
+ */
+function allowanceHtml(url, entry, pngPic, svgPic) {
+  const dp = pngRule(null);
+  const ds = svgRule(null);
+  const noise = entry?.png?.noise ?? {};
+  const bar = entry?.svg?.bar ?? {};
+  const rectLines = (list) => (list ?? []).map((r) => `[${r.join(", ")}]`).join("\n");
+  const toRects = (list) => (list ?? []).map(([x0, y0, x1, y1]) => ({ x0, y0, x1, y1 }));
+  const drawOn = (pic, id, rects) =>
+    pic?.size
+      ? `<p class="meta">Drag on the picture to add a rectangle.</p><span class="pic draw" data-target="${id}" data-w="${pic.size[0]}" data-h="${pic.size[1]}"><img src="${pic.src}" alt="Where a rectangle is drawn" width="${Math.round(pic.size[0] / 2)}" height="${Math.round(pic.size[1] / 2)}" draggable="false">${overlayOf(null, toRects(rects), pic.size)}</span>`
+      : "";
+  const field = (name, label, value, placeholder, attrs) =>
+    `<label>${esc(label)} <input type="number" name="${name}" value="${value ?? ""}" placeholder="${placeholder}" ${attrs}></label>`;
+  return `<section>
+<h2>Allowances</h2>
+<p>An allowance changes the rule for this picture alone, in this theme, until it is removed; the picture is judged again with it at once. Empty is the default.</p>
+<form class="allow" action="${esc(url)}" data-acts>
+<fieldset><legend>PNG: the noise rule</legend>
+${field("pngLevels", "Levels", noise.levels, dp.levels, 'min="0" max="255" step="1"')}${field("pngShare", "Share (%)", noise.share, +(dp.share * 100).toFixed(4), 'min="0" max="100" step="any"')}
+<label for="png-ignore">Rectangles left out, [x0, y0, x1, y1] in device pixels</label>
+<textarea id="png-ignore" name="pngIgnore" rows="3">${esc(rectLines(entry?.png?.ignore))}</textarea>
+${drawOn(pngPic, "png-ignore", entry?.png?.ignore)}
+</fieldset>
+<fieldset><legend>SVG: the bar</legend>
+${field("svgLevels", "Levels", bar.levels, ds.levels, 'min="1" max="255" step="1"')}${field("svgShare", "Share (%)", bar.share, ds.share, 'min="0" max="100" step="any"')}
+<label for="svg-ignore">Rectangles left out, [x0, y0, x1, y1] in device pixels</label>
+<textarea id="svg-ignore" name="svgIgnore" rows="3">${esc(rectLines(entry?.svg?.ignore))}</textarea>
+${drawOn(svgPic, "svg-ignore", entry?.svg?.ignore)}
+</fieldset>
+<button type="submit" value="apply">Apply the allowances</button> <button type="submit" value="defaults">Back to the defaults</button> <span class="status" role="status"></span>
+</form>
+</section>`;
+}
+
 /**
  * The detail page of one picture: `p` reviewPictures' picture; `filter` the filter it was
  * opened from, `place` {index, total, group} its place in that filter's list, `prev` and
  * `next` its neighbours there (pictures, or null); `files` {head, reference, capture, svgPng,
  * svg}, each {src, size} or null, and `maps` {png, svg}, each an address or null; `rules`
- * {png: pngRule, svg: svgRule} of its entry in the manifest, `build` the build the manifest
- * records for its file, or null; `baseline` the session's.
+ * {png: pngRule, svg: svgRule} of its entry in the manifest, `entry` that entry (or null),
+ * `build` the build the manifest records for its file, or null; `baseline` the session's;
+ * `error` why the last application of its verdicts failed, or null.
  */
-export function detailHtml({ p, filter, place, prev, next, files, maps, rules, build, baseline }) {
-  const filterLabel = (FILTERS.find(([k]) => k === filter) ?? FILTERS[0])[1];
+export function detailHtml({
+  p,
+  filter,
+  place,
+  prev,
+  next,
+  files,
+  maps,
+  rules,
+  entry = null,
+  build,
+  baseline,
+  error = null,
+}) {
   const groupTitle = (GROUPS.find(([k]) => k === p.group) ?? [null, p.group])[1];
-  const nav = `<nav class="pager"><a href="${hrefs.overview(filter)}#${anchor(p.out)}">Overview</a>${
-    prev ? `<a rel="prev" href="${hrefs.picture(prev.out, filter)}">Previous (k)</a>` : ""
-  }<span class="where">${place.index + 1} of ${place.total} · ${esc(filter === "all" ? groupTitle : filterLabel)}</span>${
-    next ? `<a rel="next" href="${hrefs.picture(next.out, filter)}">Next (j)</a>` : ""
-  }</nav>`;
+  const nav = pagerHtml({ p, filter, place, prev, next });
+  const act = hrefs.act(p.out);
   const png = p.png;
   const svg = p.svg;
   const size = files.capture?.size ?? files.head?.size ?? null;
@@ -393,24 +634,35 @@ ${maps.png ? `<div class="view mapview">${figureHtml(maps.png, size, `Difference
   let pngRow = "";
   if (png) {
     const rule = rules.png;
+    const decided = png.by === "decision" ? (written(png.state) ? "new" : "old") : null;
+    const choice =
+      files.capture && png.state !== "failed" && png.state !== "once"
+        ? actionsHtml([
+            actionButton("Keep the old picture", act, { action: "png", keep: "old" }, { pressed: decided === "old" }),
+            actionButton("Take the new capture", act, { action: "png", keep: "new" }, { pressed: decided === "new" }),
+            ...(decided ? [actionButton("Back to the rule", act, { action: "png", keep: null })] : []),
+          ])
+        : "";
     pngRow = `<section>
 <h2>PNG: ${esc(pngStateText(png))}</h2>
-${png.look ? `<p class="notice">Needs a look: ${esc(png.look.text)}.</p>` : ""}${factsHtml([
-  ["Decided by", png.by === "decision" ? "a review's decision about these bytes" : "the rule"],
-  ["Earlier decision", png.earlier ? esc(`a review kept the ${png.earlier} picture of other bytes`) : null],
-  ["Judged against", png.against ? esc(AGAINST[png.against] ?? png.against) : "nothing: a new picture"],
+${png.look ? `<p class="notice">Needs a look: ${esc(png.look.text)}.</p>` : ""}${HOLDS[png.state] ? `<p>The file holds ${esc(HOLDS[png.state])}.</p>` : ""}${choice}${factsHtml(
   [
-    "Regions of change",
-    png.regionCount === null
-      ? "not measured"
-      : `${png.regionCount}, ${png.regions.filter((r) => r.core >= SURVIVES).length} surviving the erosion`,
+    ["Decided by", png.by === "decision" ? "a review's decision about these bytes" : "the rule"],
+    ["Earlier decision", png.earlier ? esc(`a review kept the ${png.earlier} picture of other bytes`) : null],
+    ["Judged against", png.against ? esc(AGAINST[png.against] ?? png.against) : "nothing: a new picture"],
+    [
+      "Regions of change",
+      png.regionCount === null
+        ? "not measured"
+        : `${png.regionCount}, ${png.regions.filter((r) => r.core >= SURVIVES).length} surviving the erosion`,
+    ],
+    ["Taken on", png.build ? `BETA ${png.build}` : null],
+    ["The file's build", build ? `BETA ${build}` : "unknown"],
+    ["Noise levels", `${rule.levels}`],
+    ["Noise share", pct(rule.share)],
+    ["Left out", esc(rectsText(rule.rects))],
   ],
-  ["Taken on", png.build ? `BETA ${png.build}` : null],
-  ["The file's build", build ? `BETA ${build}` : "unknown"],
-  ["Noise levels", `${rule.levels}`],
-  ["Noise share", pct(rule.share)],
-  ["Left out", esc(rectsText(rule.rects))],
-])}
+)}
 ${files.capture && before ? loupesHtml(png.regions, size, { src: before.src, label: beforeLabel }, { src: files.capture.src, label: "new" }) : ""}
 </section>`;
   }
@@ -433,9 +685,18 @@ ${files.capture && before ? loupesHtml(png.regions, size, { src: before.src, lab
           overlayOf(svg.regions, rule.rects, svgSize),
         ),
       );
+    const accepted = svg.by === "decision" ? svg.faithful : null;
+    const stays = !restored && svg.state === "unchanged" && svg.why && svg.faithful !== null;
+    const choice = svg.svg
+      ? actionsHtml([
+          actionButton("Accept the SVG", act, { action: "svg", accept: true }, { pressed: accepted === true }),
+          actionButton("No SVG", act, { action: "svg", accept: false }, { pressed: accepted === false }),
+          ...(accepted === null ? [] : [actionButton("Back to the bar", act, { action: "svg", accept: null })]),
+        ])
+      : "";
     svgRow = `<section${restored ? ' class="muted"' : ""}>
 <h2>SVG: ${esc(svgStateText(svg))}</h2>
-${restored ? "<p>The PNG goes back to HEAD's, and its SVG goes back with it.</p>" : ""}${svg.look ? `<p class="notice">Needs a look: ${esc(svg.look.text)}.</p>` : ""}${factsHtml(
+${restored ? "<p>The PNG goes back to HEAD's, and its SVG goes back with it.</p>" : ""}${stays ? `<p>The SVG stays as it is (${esc(svg.why)}): it was judged all the same, and is written as judged if a review takes the capture.</p>` : ""}${svg.look ? `<p class="notice">Needs a look: ${esc(svg.look.text)}.</p>` : ""}${restored ? "" : choice}${factsHtml(
   [
     ["Run", `${svg.run}`],
     ["Decided by", svg.by === "decision" ? "a review's decision about these bytes" : svg.by ? "the rule" : null],
@@ -462,12 +723,27 @@ ${files.svgPng && files.svg ? loupesHtml(svg.regions, svgSize, { src: files.svgP
   if (p.failed) notes.push(`Run ${p.failed.run} failed on it: ${esc(p.failed.error)}`);
   if (p.retake) notes.push(`Run ${p.retake.run} could not draw it again: ${esc(p.retake.why)}`);
   if (p.skipped && !png && !svg) notes.push(`Run ${p.skipped} was stopped before it took this picture.`);
+  if (error) notes.push(`Its verdict could not be applied: ${esc(error)}. Judge it again to try again.`);
+  const judged = png || svg;
+  const footer = judged
+    ? `<section>
+<h2>Judge again</h2>
+<p>Judging again puts the picture back as each run found it and applies each run's verdict again, judged with the manifest as it is now and against the session's baseline, ${esc(baseline.short)}.</p>
+${actionsHtml([
+  actionButton("Judge it again", act, { action: "judge" }),
+  actionButton("Back to the tool's verdicts", act, { action: "rule" }, { title: "remove this picture's decisions" }),
+])}
+</section>`
+    : "";
+  const svgPic = files.svgPng ?? null;
   const body = `${nav}
 <p class="meta">${theme} theme, ${esc(sizeText(size))}; ${chipsOf(p)}</p>
 ${notes.map((n) => `<p class="notice">${n}</p>`).join("\n")}
 ${compare}
 ${pngRow}
-${svgRow}`;
+${svgRow}
+${judged ? allowanceHtml(act, entry, files.capture, svgPic) : ""}
+${footer}`;
   return pageHtml({
     generator: REVIEW_GENERATOR,
     title: p.out,

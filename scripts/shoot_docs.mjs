@@ -163,10 +163,10 @@ import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "
 import { composite, uncomposite } from "./lib/shot-composite.mjs";
 import { decodePng, encodePng } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
-import { inRects, withinNoise } from "./lib/shot-change.mjs";
+import { inRects, pngsNear, withinNoise } from "./lib/shot-change.mjs";
 import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
 import { applyPicture, applySvg, dropPicture, restorePictures, svgOf } from "./lib/shot-apply.mjs";
-import { cleanupResets, decidePicture, pngRule, SVG_FAITHFUL } from "./lib/shot-policy.mjs";
+import { cleanupResets, decidePicture, pngRule, SVG_FAITHFUL, svgFollowsPng } from "./lib/shot-policy.mjs";
 import { MANIFEST, openManifest } from "./lib/shot-manifest.mjs";
 import { reviewPicture, reviewSvg } from "./lib/shot-queue.mjs";
 import {
@@ -199,7 +199,7 @@ import {
   sleep,
   waitForCompile,
 } from "./lib/tb-ide.mjs";
-import { writeBundle } from "./svgshot/bundle.mjs";
+import { BUNDLE_CACHE, writeBundle } from "./svgshot/bundle.mjs";
 import { svgOfPage } from "./svgshot/capture.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
 import { holdsUserName, judgeSvg } from "./svgshot/keep.mjs";
@@ -252,7 +252,7 @@ const DEMO_FILE = "/Inventory/Sources/Inventory.twin";
 const DEMO_SOURCE = path.join(DEMO, "Sources", "Inventory.twin");
 const SITE = path.join(REPO_ROOT, "docs", "_site");
 const DEFAULT_OUT = path.join(REPO_ROOT, "docs");
-const DEFAULT_BUNDLES = path.join(REPO_ROOT, ".svgshot-bundles");
+const DEFAULT_BUNDLES = BUNDLE_CACHE;
 
 // The IDE page's size in CSS pixels, and the detached window's. Both at 2x.
 const IDE_SIZE = { width: 1280, height: 880 };
@@ -750,7 +750,7 @@ function writeDiff(name, out, before, after, { suffix = "", labels } = {}) {
 // (withinNoise, scripts/lib/shot-change.mjs, which holds the rule and what it rests on).
 // `rule` is withinNoise's: its limits, and `rects` the pixels left out (unsteadyRects, or a
 // picture's entry in the manifest, pngRule).
-const nearly = (a, b, rule = {}) => withinNoise(decodePng(a), decodePng(b), rule);
+const nearly = pngsNear;
 
 // Whether two captures are the same picture outside `rects`: byte for byte when there are none.
 function same(a, b, rects) {
@@ -13476,7 +13476,8 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
     other = `; the dark picture is ${fate.dark.w}x${fate.dark.h} px`;
   }
   if (fate.state === "dark") {
-    const { removed } = applyPicture(outRoot, themed, fate, revision, { dryRun });
+    // its SVG and bundle go with it
+    const { removed } = applyPicture(outRoot, themed, fate, revision, { dryRun, svg: values.svg, bundlesRoot });
     if (removed) recordBuild(themed, null);
     count(theme, "the same as the dark picture");
     say(
@@ -13581,10 +13582,13 @@ const svgResults = [];
 // written before is removed. Says how much of it differs from the PNG. The
 // picture's bundle goes to the bundle cache whether or not its SVG is written,
 // so that replay.mjs can draw it again once the converter draws it better. `holds` is
-// the PNG the file holds once its verdict is applied, which the bundle names. With
-// --stage the SVG, its strength map and its bundle go to the stage, whether or not it is
-// faithful, and nothing else is written.
-async function keepSvg(name, out, png, picture, written, holds) {
+// the PNG the file holds once its verdict is applied, which the bundle names. `kept` is
+// keep's: whether the PNG was written, "restored", or null for a light picture that is the
+// dark one. With --stage the SVG, its strength map and its bundle go to the stage, whether or
+// not it is faithful, and nothing else is written; an SVG that stays with its PNG, or goes
+// with it, is judged and staged all the same, its verdict "unchanged", for the review tool,
+// which writes it when a review takes the capture.
+async function keepSvg(name, out, png, picture, kept, holds) {
   const svgOut = svgOf(out);
   const file = path.join(outRoot, svgOut);
   const dryRun = !!stageRoot;
@@ -13592,15 +13596,20 @@ async function keepSvg(name, out, png, picture, written, holds) {
     if (stageRoot) writeVerdict(stageRoot, out, "svg", part);
     event("svg", { job: name, out, ...part });
   };
-  // An SVG is drawn from the whole page, layers the picture does not show included, and those
-  // can differ from run to run (a designer still drawing under a floating panel); and one that
-  // sits on SVG_FAITHFUL's bar is written in one run and removed in the next. So the SVG of a
-  // picture whose PNG was not written stays as it is, with its bundle (owner): it changes
-  // with its PNG, or when replay.mjs draws it again after a change to the converter.
-  if (!written && existsSync(file)) {
-    say(name, `${svgOut}: unchanged, as its PNG is`);
-    report(svgVerdict({ state: "unchanged", why: "its PNG is not written" }));
-    return;
+  // The SVG of a picture whose PNG was not written stays as it is, with its bundle
+  // (svgFollowsPng, lib/shot-policy.mjs); one whose PNG went back to the revision's, or is the
+  // dark one's, went with it (keep).
+  const byPng =
+    kept === null ? "the light picture is the dark one" : kept === "restored" ? `its PNG is ${AGAINST}'s` : null;
+  const follows = !byPng && svgFollowsPng({ written: kept, svgOnDisk: existsSync(file) });
+  let staysWhy = null;
+  if (!follows) {
+    staysWhy = byPng ?? "its PNG is not written";
+    if (!byPng) say(name, `${svgOut}: unchanged, as its PNG is`);
+    if (!stageRoot || !picture) {
+      report(svgVerdict({ state: "unchanged", why: staysWhy }));
+      return;
+    }
   }
   const drop = (why, judged = {}) => {
     const state = applySvg(outRoot, svgOut, null, { dryRun });
@@ -13621,7 +13630,8 @@ async function keepSvg(name, out, png, picture, written, holds) {
   const { diff, verdict, faithful, by, measures } = await judgeSvg(await svgBrowser, svg, png, stats, entry);
   const how = by === "decision" ? `; ${faithful ? "accepted" : "refused"} by a review` : "";
   // To see what went wrong, an SVG not written goes beside its difference map.
-  const diffs = diffsRoot ? Object.values(writeJudged(diffsRoot, out, diff, { svg: faithful ? null : svg })) : [];
+  const diffs =
+    diffsRoot && !staysWhy ? Object.values(writeJudged(diffsRoot, out, diff, { svg: faithful ? null : svg })) : [];
   const judged = {
     verdict,
     review: stageRoot || values.events ? reviewSvg(verdict, diff.strength, entry) : null,
@@ -13630,6 +13640,11 @@ async function keepSvg(name, out, png, picture, written, holds) {
     diffs,
     staged: stageRoot ? stageSvg(stageRoot, out, svg, diff.strength) : null,
   };
+  if (staysWhy) {
+    // what stays with its PNG needs no look until a review takes the capture
+    report(svgVerdict({ state: "unchanged", why: staysWhy, ...judged, review: { ...judged.review, look: null } }));
+    return;
+  }
   const bytes = Buffer.byteLength(svg);
   svgResults.push({ out: svgOut, bytes, png: png.length, faithful, ...diff.stats });
   if (!faithful) {
@@ -13769,12 +13784,11 @@ async function runJob(job) {
             Buffer.isBuffer(taken) ? SCALE : taken.scale,
           );
           if (shot.once) dropLight(job.name, shot.out);
-          // A light picture that is the dark one is not kept, and neither is its SVG or bundle.
-          // One put back as the revision has it has had its SVG put back with it. With --stage
-          // the verdict "dark" says so, and nothing is removed.
-          if (values.svg && kept !== null && kept !== "restored")
+          // A light picture that is the dark one is not kept, and neither is its SVG or bundle
+          // (keep). One put back as the revision has it has had its SVG put back with it. With
+          // --stage their SVGs are judged and staged all the same (keepSvg).
+          if (values.svg && ((kept !== null && kept !== "restored") || stageRoot))
             await keepSvg(job.name, out, png, state.svg, kept, holds);
-          else if (values.svg && kept === null && !stageRoot) dropPicture(outRoot, out, bundlesRoot);
         } catch (e) {
           complain(job.name, `${out}: FAILED: ${e.message}`);
           count(theme, "failed");

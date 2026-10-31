@@ -41,6 +41,7 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
   BUNDLE_VERSION,
   bundleFile,
+  copyBundle,
   dropBundle,
   drawBundle,
   listBundles,
@@ -54,14 +55,28 @@ import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
 import { decodePng, encodePng } from "../scripts/lib/png.mjs";
 import { onStop, parseRecord, readRecords, recordLine, sendStop, STOP_LINE } from "../scripts/lib/record-lines.mjs";
 import {
+  pngVerdict,
+  readReviewed,
   readStrength,
   readVerdicts,
+  stageCapture,
   stagedFiles,
   stageRefusal,
+  stageSvg,
+  svgVerdict,
   writeStrength,
   writeVerdict,
 } from "../scripts/lib/shot-stage.mjs";
-import { applyPicture, applySvg, dropPicture, restorePictures, slugOf } from "../scripts/lib/shot-apply.mjs";
+import {
+  applyPicture,
+  applySvg,
+  dropPicture,
+  heldOf,
+  holdPicture,
+  restorePictures,
+  slugOf,
+  unholdPicture,
+} from "../scripts/lib/shot-apply.mjs";
 import {
   cleanupResets,
   decidePicture,
@@ -69,6 +84,7 @@ import {
   pngRule,
   SIZE_SLACK,
   SVG_FAITHFUL,
+  svgFollowsPng,
   svgRule,
 } from "../scripts/lib/shot-policy.mjs";
 import {
@@ -112,7 +128,8 @@ import {
   runFacts,
   verdictOfEvent,
 } from "../scripts/lib/shot-review.mjs";
-import { encodePath, hrefs, loupesHtml } from "../scripts/lib/shot-pages.mjs";
+import { chipsOf, encodePath, hrefs, loupesHtml } from "../scripts/lib/shot-pages.mjs";
+import { againstOf, createApplier } from "../scripts/lib/shot-verdicts.mjs";
 import { createReviewServer } from "../scripts/lib/shot-server.mjs";
 import {
   FAINT_LEVEL,
@@ -2542,6 +2559,71 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
     assert.equal(readBundle(bundles, "a/X.light.png"), null);
     assert.equal(readBundle(bundles, "a/X.png").v, 1);
     assert.equal(dropPicture(root, "a/X.light.png", null), false);
+    // a light picture that is the dark one, with --svg: its SVG and bundle go with it
+    writeBundle(bundles, "a/X.light.png", { v: 3 }, OTHER, []);
+    fs.writeFileSync(at("a/X.light.png"), NEAR);
+    fs.writeFileSync(at("a/X.light.svg"), "<svg/>");
+    const darkVerdict = { state: "dark", write: null };
+    assert.equal(
+      applyPicture(root, "a/X.light.png", darkVerdict, null, { dryRun: true, svg: true, bundlesRoot: bundles }).removed,
+      true,
+    );
+    assert.ok(fs.existsSync(at("a/X.light.svg")));
+    assert.equal(
+      applyPicture(root, "a/X.light.png", darkVerdict, null, { svg: true, bundlesRoot: bundles }).removed,
+      true,
+    );
+    assert.equal(fs.existsSync(at("a/X.light.png")) || fs.existsSync(at("a/X.light.svg")), false);
+    assert.equal(readBundle(bundles, "a/X.light.png"), null);
+    // a once picture's light file goes with its SVG, --svg or not
+    fs.writeFileSync(at("a/X.light.png"), NEAR);
+    fs.writeFileSync(at("a/X.light.svg"), "<svg/>");
+    assert.equal(applyPicture(root, "a/X.light.png", { state: "once", write: null }, null).removed, true);
+    assert.equal(fs.existsSync(at("a/X.light.svg")), false);
+  });
+
+  test("an SVG is judged with its PNG when the PNG is written or there is no SVG to keep", () => {
+    assert.equal(svgFollowsPng({ written: true, svgOnDisk: true }), true);
+    assert.equal(svgFollowsPng({ written: false, svgOnDisk: false }), true);
+    assert.equal(svgFollowsPng({ written: false, svgOnDisk: true }), false);
+  });
+
+  test("keeps what a picture held, and puts it back, its build and bundle included", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-hold-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const docs = path.join(root, "docs");
+    const bundles = path.join(root, "bundles");
+    const held = path.join(root, "held");
+    const at = (out) => path.join(docs, out);
+    fs.mkdirSync(path.join(docs, "a"), { recursive: true });
+    fs.writeFileSync(at("a/X.png"), DARK);
+    fs.writeFileSync(at("a/X.svg"), "<svg>old</svg>\r\n");
+    writeBundle(bundles, "a/X.png", { v: 1 }, DARK, []);
+    writeBundle(bundles, "a/X.light.png", { v: 2 }, DARK, []);
+    holdPicture(held, docs, "a/X.png", bundles, 1010);
+    holdPicture(held, docs, "a/Y.png", bundles, null);
+    const kept = heldOf(held, "a/X.png");
+    assert.deepEqual([kept.png, kept.svg, kept.bundle, kept.build], [true, true, true, 1010]);
+    assert.ok(kept.pngBytes.equals(DARK));
+    assert.deepEqual([heldOf(held, "a/Y.png").png, heldOf(held, "a/Z.png")], [false, null]);
+    // the picture changed, its SVG removed, its bundle replaced; and a picture added
+    fs.writeFileSync(at("a/X.png"), OTHER);
+    fs.rmSync(at("a/X.svg"));
+    writeBundle(bundles, "a/X.png", { v: 9 }, OTHER, []);
+    fs.writeFileSync(at("a/Y.png"), OTHER);
+    assert.equal(unholdPicture(held, docs, "a/X.png", bundles), 1010);
+    assert.ok(fs.readFileSync(at("a/X.png")).equals(DARK));
+    assert.equal(fs.readFileSync(at("a/X.svg"), "utf8"), "<svg>old</svg>\r\n");
+    assert.deepEqual([readBundle(bundles, "a/X.png").v, readBundle(bundles, "a/X.light.png").v], [1, 2]);
+    assert.equal(unholdPicture(held, docs, "a/Y.png", bundles), null);
+    assert.equal(fs.existsSync(at("a/Y.png")), false);
+    assert.equal(unholdPicture(held, docs, "a/Z.png", bundles), undefined);
+    // a bundle copied naming another PNG; one copied from where there is none removes it
+    copyBundle(bundles, path.join(root, "b2"), "a/X.png", OTHER);
+    assert.equal(readBundle(path.join(root, "b2"), "a/X.png").png, pngHash(OTHER));
+    assert.equal(copyBundle(path.join(root, "none"), bundles, "a/X.light.png"), false);
+    assert.equal(readBundle(bundles, "a/X.light.png"), null);
+    assert.equal(readBundle(bundles, "a/X.png").v, 1);
   });
 
   test("puts pictures back as a revision has them, each with its SVG", (t) => {
@@ -2857,7 +2939,7 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     assert.equal(at(C).failed.error, "boom");
     assert.deepEqual(
       groups.map((g) => g.key),
-      ["progress", "look", "changed", "noise", "unchanged", "added", "deleted", "failed"],
+      ["progress", "look", "changed", "noise", "outside", "unchanged", "added", "deleted", "failed"],
     );
     assert.deepEqual(
       pictures.map((p) => p.out),
@@ -2880,6 +2962,26 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     const { groups } = reviewPictures(runs, { measure: (p) => share[p.out] });
     const by = Object.fromEntries(groups.map((g) => [g.key, g.pictures.map((p) => p.out)]));
     assert.deepEqual([by.look, by.changed], [[C], [B, A]]);
+  });
+
+  test("a picture no run reported is changed outside the runs, and a verdict judged against another baseline needs a look", () => {
+    const runs = [
+      run(1, "shoot_docs", false, [jobs(A, B)], {
+        [A]: { png: { state: "noise", against: "revision", baseline: "old" } },
+        [B]: { png: { state: "updated", against: "disk", baseline: "old" } },
+      }),
+    ];
+    const outside = [
+      { out: A, status: "modified" },
+      { out: C, status: "added" },
+    ];
+    const { pictures } = reviewPictures(runs, { outside, baseline: "new" });
+    const at = (out) => pictures.find((p) => p.out === out);
+    assert.deepEqual([at(C).group, at(C).outside, at(A).outside], ["outside", "added", null]);
+    assert.deepEqual([at(A).group, at(A).png.look.why], ["look", "baseline"]);
+    assert.deepEqual([at(B).group, at(B).png.look], ["changed", undefined]);
+    assert.equal(reviewPictures(runs, { baseline: "old" }).pictures.find((p) => p.out === A).group, "noise");
+    assert.match(chipsOf(at(C)), /changed outside the runs: added/);
   });
 
   test("a picture the run takes once, or the dark one's light picture, is deleted only when its file is there", () => {
@@ -2959,6 +3061,144 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
   });
 });
 
+describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => {
+  const A = "IDE/Images/A.png";
+  // A grey picture 40 x 30, with a bright block when `block`.
+  const grey = (block) => {
+    const rgba = new Uint8Array(40 * 30 * 4);
+    for (let i = 0; i < 1200; i++) {
+      const [x, y] = [i % 40, Math.floor(i / 40)];
+      const s = block && x >= 10 && x < 30 && y >= 8 && y < 22 ? 250 : 40;
+      rgba.set([s, s, s, 255], i * 4);
+    }
+    return Buffer.from(encodePng({ width: 40, height: 30, rgba }));
+  };
+  const OLD = grey(false);
+  const NEW = grey(true);
+  const QUIET = { width: 40, height: 30, data: new Uint8Array(1200) };
+
+  test("applies a run's verdicts as they arrive, judges them again after a review, and drops a replay's SVG of another PNG", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const docs = path.join(root, "docs");
+    const bundles = path.join(root, "bundles");
+    const manifestFile = path.join(root, "manifest.json");
+    const at = (out) => path.join(docs, out);
+    fs.mkdirSync(path.dirname(at(A)), { recursive: true });
+    fs.writeFileSync(at(A), OLD);
+    fs.writeFileSync(at("IDE/Images/A.svg"), "<svg>old</svg>");
+    const m0 = openManifest(manifestFile);
+    m0.setBuild(A, 1010);
+    m0.save();
+    const base = "a".repeat(40);
+    const session = openSession(root, () => ({ hash: base, short: "aaaaaaaa", build: 1010 }));
+    const revision = { hash: base, short: "aaaaaaaa", bytes: (out) => (out === A ? OLD : null), read: () => new Map() };
+    const applier = createApplier({
+      session,
+      docsRoot: docs,
+      bundlesRoot: bundles,
+      revision: () => revision,
+      manifest: () => openManifest(manifestFile),
+    });
+
+    // run 1, a retake: the capture differs from the file, and its SVG is faithful
+    const run1 = session.addRun({ tool: "shoot_docs", args: ["--svg", "--against", base] });
+    assert.equal(againstOf(run1), base);
+    const stage1 = runPaths(root, 1).stage;
+    const fate = {
+      state: "updated",
+      write: NEW,
+      against: "disk",
+      size: { w: 40, h: 30 },
+      dark: null,
+      by: "rule",
+      earlier: null,
+    };
+    writeVerdict(
+      stage1,
+      A,
+      "png",
+      pngVerdict({ decision: fate, review: null, build: 1501, staged: stageCapture(stage1, A, NEW, null) }),
+    );
+    const judged = { faithful: true, by: "rule", share: 0, earlier: null };
+    writeVerdict(
+      stage1,
+      A,
+      "svg",
+      svgVerdict({
+        state: "updated",
+        verdict: judged,
+        measures: "0% off",
+        staged: stageSvg(stage1, A, "<svg>new</svg>", QUIET),
+      }),
+    );
+    writeBundle(path.join(stage1, "bundles"), A, { v: 1 }, NEW, []);
+    assert.equal(applier.arrive(1, A, "png"), true);
+    assert.equal(applier.arrive(1, A, "png"), false);
+    assert.ok(fs.readFileSync(at(A)).equals(NEW));
+    assert.equal(openManifest(manifestFile).entry(A).build, 1501);
+    assert.equal(applier.arrive(1, A, "svg"), true);
+    assert.equal(fs.readFileSync(at("IDE/Images/A.svg"), "utf8"), "<svg>new</svg>");
+    assert.equal(readBundle(bundles, A).png, pngHash(NEW));
+    assert.deepEqual(readReviewed(stage1, A).done, ["png", "svg"]);
+    assert.equal(readReviewed(stage1, A).png.baseline, base);
+
+    // a review keeps the old picture: it and its SVG go back, and so does the build
+    const m = openManifest(manifestFile);
+    m.setPart(A, "png", "decision", { keep: "old", capture: hashOf(NEW) });
+    m.save();
+    applier.rejudge(A, 1);
+    assert.equal(applier.errors.size, 0);
+    assert.ok(fs.readFileSync(at(A)).equals(OLD));
+    assert.equal(fs.readFileSync(at("IDE/Images/A.svg"), "utf8"), "<svg>old</svg>");
+    assert.equal(openManifest(manifestFile).entry(A).build, 1010);
+    assert.equal(readBundle(bundles, A), null);
+    const kept = applier.reviewed(1, A);
+    assert.deepEqual(
+      [kept.png.state, kept.png.by, kept.svg.state, kept.svg.why],
+      ["noise", "decision", "unchanged", "its PNG is not written"],
+    );
+
+    // then takes the new capture, and refuses its SVG
+    const m2 = openManifest(manifestFile);
+    m2.setPart(A, "png", "decision", { keep: "new", capture: hashOf(NEW) });
+    m2.setPart(A, "svg", "decision", { accept: false, svg: hashOf("<svg>new</svg>"), png: hashOf(NEW) });
+    m2.save();
+    applier.rejudge(A, 1);
+    assert.ok(fs.readFileSync(at(A)).equals(NEW));
+    assert.equal(fs.existsSync(at("IDE/Images/A.svg")), false);
+    assert.deepEqual([applier.reviewed(1, A).svg.state, applier.reviewed(1, A).svg.by], ["removed", "decision"]);
+
+    // run 2, a replay, draws an SVG of the new PNG; a review then keeps the old picture, and
+    // the replay's SVG, of a PNG no longer the file's, is dropped
+    session.addRun({ tool: "replay", args: [] });
+    const stage2 = runPaths(root, 2).stage;
+    writeVerdict(
+      stage2,
+      A,
+      "svg",
+      svgVerdict({
+        state: "new",
+        verdict: judged,
+        measures: "0% off",
+        staged: stageSvg(stage2, A, "<svg>replayed</svg>", QUIET),
+      }),
+    );
+    // the review refused another SVG: this one is judged by the bar
+    assert.equal(applier.pending(), 1);
+    assert.equal(fs.readFileSync(at("IDE/Images/A.svg"), "utf8"), "<svg>replayed</svg>");
+    assert.equal(applier.reviewed(2, A).svg.earlier, false);
+    const m3 = openManifest(manifestFile);
+    m3.setPart(A, "png", "decision", { keep: "old", capture: hashOf(NEW) });
+    m3.save();
+    applier.rejudge(A, 1);
+    assert.ok(fs.readFileSync(at(A)).equals(OLD));
+    assert.equal(fs.readFileSync(at("IDE/Images/A.svg"), "utf8"), "<svg>old</svg>");
+    assert.deepEqual([applier.reviewed(2, A).svg, applier.reviewed(2, A).done], [null, ["svg"]]);
+    assert.equal(readReviewed(stage2, A).svg, null);
+  });
+});
+
 describe("the screenshot review's server (shot-server.mjs)", () => {
   const A = "IDE/Images/A.png";
   const B = "IDE/Images/B.light.png";
@@ -3009,6 +3249,14 @@ onStop(process.stdin, () => {
 });
 `;
 
+  // A revision as openRevision gives one, of the commit "<c>" repeated, holding `files`.
+  const stubRevision = (c, files) => ({
+    hash: c.repeat(40),
+    short: c.repeat(8),
+    bytes: (out) => files[out] ?? null,
+    read: (outs) => new Map(outs.map((out) => [out, files[out] ?? null])),
+  });
+
   const until = async (what, ok) => {
     for (const t0 = Date.now(); !ok(); ) {
       if (Date.now() - t0 > 15000) assert.fail(`timed out waiting for ${what}`);
@@ -3023,13 +3271,13 @@ onStop(process.stdin, () => {
     const script = path.join(root, "fake-run.mjs");
     fs.writeFileSync(script, FAKE);
     const head = flat(false);
-    const revision = { hash: "a".repeat(40), short: "aaaaaaaa", bytes: (out) => (out === A ? head : null) };
-    const manifest = () => ({ entry: () => null });
+    const revision = stubRevision("a", { [A]: head });
+    const manifestFile = path.join(root, "manifest.json");
     const make = () =>
       createReviewServer({
         session: openSession(root, () => ({ hash: revision.hash, short: revision.short, build: 1500 })),
         revision,
-        manifest,
+        manifest: () => openManifest(manifestFile),
         docsRoot: docs,
         command: { script },
       });
@@ -3131,6 +3379,126 @@ onStop(process.stdin, () => {
       for (const h of app.live()) h.kill();
       await app.close();
       await app2?.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("applies a verdict as it arrives, takes a review's decisions and allowances, lists what changed outside its runs, and moves to HEAD", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-act-"));
+    const docs = path.join(root, "docs");
+    const Z = "IDE/Images/Z.png";
+    fs.mkdirSync(path.join(docs, "IDE", "Images"), { recursive: true });
+    fs.writeFileSync(path.join(docs, Z), flat(true));
+    const script = path.join(root, "fake-run.mjs");
+    fs.writeFileSync(script, FAKE);
+    const head = flat(false);
+    const capture = flat(true);
+    const manifestFile = path.join(root, "manifest.json");
+    const app = createReviewServer({
+      session: openSession(root, () => ({ hash: "a".repeat(40), short: "aaaaaaaa", build: 1500 })),
+      revision: stubRevision("a", { [A]: head, [Z]: head }),
+      manifest: () => openManifest(manifestFile),
+      docsRoot: docs,
+      // a commit made outside the tool, whose A is the capture
+      head: () => ({ hash: "b".repeat(40), short: "bbbbbbbb", build: 1501 }),
+      revisionAt: (hash) => stubRevision(hash[0], { [A]: capture }),
+      changed: () => [
+        { out: Z, status: "modified" },
+        { out: A, status: "added" },
+      ],
+      command: { script },
+    });
+    try {
+      const port = await app.listen(0);
+      const base = `http://127.0.0.1:${port}`;
+      const get = async (p) => {
+        const res = await fetch(base + p);
+        return { status: res.status, text: await res.text() };
+      };
+      const post = async (p, body, headers = {}) => {
+        const res = await fetch(base + p, {
+          method: "POST",
+          headers: { origin: base, "content-type": "application/json", ...headers },
+          body: JSON.stringify(body),
+        });
+        return [res.status, await res.json()];
+      };
+      const docsA = () => fs.readFileSync(path.join(docs, A));
+      const svgA = path.join(docs, "IDE/Images/A.svg");
+      const pic = (out) => app.model().pictures.find((p) => p.out === out);
+      const handle = app.start({ tool: "shoot_docs", args: ["--only", "A|B"] });
+      await until("A's SVG verdict", () => pic(A)?.svg);
+
+      // applied as it arrived: the capture and its SVG
+      assert.ok(docsA().equals(capture));
+      assert.ok(fs.existsSync(svgA));
+      assert.equal(openManifest(manifestFile).entry(A).build, 1501);
+
+      // Z, which no run reported, is changed outside the runs; A, which one did, is not
+      assert.deepEqual([pic(Z).group, pic(A).outside], ["outside", null]);
+      const overview = await get("/");
+      assert.match(overview.text, /Changed outside the session's runs \(1\)/);
+      assert.match(overview.text, /Move the session to bbbbbbbb/);
+      assert.match((await get(`/picture/${Z}`)).text, /No run of this session reported this picture/);
+      assert.equal((await get(hrefs.outsideMap(Z))).status, 200);
+
+      // a POST from another origin, or not of JSON, changes nothing
+      assert.equal(
+        (await post(hrefs.act(A), { action: "png", keep: "old" }, { origin: "http://docs.example" }))[0],
+        403,
+      );
+      assert.equal(
+        (await post(hrefs.act(A), { action: "png", keep: "old" }, { "content-type": "text/plain" }))[0],
+        415,
+      );
+      assert.equal(openManifest(manifestFile).entry(A).png, undefined);
+
+      // keep the old picture: HEAD's goes back, its SVG with it (HEAD has none)
+      assert.deepEqual(await post(hrefs.act(A), { action: "png", keep: "old" }), [200, { ok: true }]);
+      assert.ok(docsA().equals(head));
+      assert.equal(fs.existsSync(svgA), false);
+      assert.deepEqual([pic(A).png.state, pic(A).png.by, pic(A).group], ["restored", "decision", "noise"]);
+      assert.deepEqual(openManifest(manifestFile).entry(A).png.decision, { keep: "old", capture: hashOf(capture) });
+      assert.match((await get(`/picture/${A}`)).text, /aria-pressed="true">Keep the old picture/);
+
+      // moved to HEAD: the verdict judged against the old baseline's picture needs a look,
+      // and judged again it is against the new one's, which is the capture
+      assert.deepEqual((await post(hrefs.moveBaseline, { action: "move" }))[0], 200);
+      assert.equal(app.model().pictures.find((p) => p.out === A).png.look.why, "baseline");
+      assert.doesNotMatch((await get("/")).text, /Move the session to/);
+      assert.equal((await post(hrefs.act(A), { action: "judge" }))[0], 200);
+      assert.deepEqual([pic(A).png.state, pic(A).png.look], ["restored", null]);
+      assert.ok(docsA().equals(capture));
+
+      // an allowance refused, then applied; back to the defaults and to the rule
+      const [status, refused] = await post(hrefs.act(A), { action: "allowance", png: { levels: "300" } });
+      assert.equal(status, 400);
+      assert.match(refused.error, /noise levels must be a whole number from 0 to 255/);
+      const allowance = {
+        action: "allowance",
+        png: { levels: "255", share: "100", ignore: "[0, 0, 4, 4]" },
+        svg: { share: "1" },
+      };
+      assert.equal((await post(hrefs.act(A), allowance))[0], 200);
+      // (the file is HEAD's picture, put back: its build is not known)
+      assert.deepEqual(openManifest(manifestFile).entry(A), {
+        png: {
+          noise: { levels: 255, share: 100 },
+          ignore: [[0, 0, 4, 4]],
+          decision: { keep: "old", capture: hashOf(capture) },
+        },
+        svg: { bar: { share: 1 } },
+      });
+      assert.equal((await post(hrefs.act(A), { action: "allowance", png: {}, svg: {} }))[0], 200);
+      assert.equal((await post(hrefs.act(A), { action: "rule" }))[0], 200);
+      assert.equal(openManifest(manifestFile).entry(A), null);
+      assert.deepEqual([pic(A).png.by, pic(A).png.state], ["rule", "restored"]);
+
+      handle.stop();
+      assert.equal(await handle.exited, 0);
+    } finally {
+      for (const h of app.live()) h.kill();
+      await app.close();
       fs.rmSync(root, { recursive: true, force: true });
     }
   });

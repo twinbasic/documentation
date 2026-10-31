@@ -4,10 +4,13 @@
 // only and answers a request only when it names the loopback address as its host, since
 // its pages and pictures can hold the Windows user name.
 //
-// It decides nothing and writes nothing under docs/: the verdicts are the runs' (shot-policy.mjs,
-// in shoot_docs.mjs and replay.mjs), read from their stages and events, and the model of what
-// the pages show is shot-review.mjs's. The one thing it writes is the session (shot-session.mjs):
-// its runs, and the queue's place.
+// It decides nothing by code of its own: the verdicts are the runs' (shot-policy.mjs, in
+// shoot_docs.mjs and replay.mjs), read from their stages and events, applied under docs/ as
+// they arrive and judged again when a review decides otherwise, both by shot-verdicts.mjs; a
+// review's decisions and allowances go to the manifest (shot-manifest.mjs); and the model of
+// what the pages show is shot-review.mjs's. It also writes the session (shot-session.mjs): its
+// runs, the queue's place and the baseline. A request that changes anything is a POST of JSON
+// from the tool's own pages: one from another origin is refused.
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -16,9 +19,11 @@ import { DOCS_DIR } from "../../lib/repo-paths.mjs";
 import { createSseChannel } from "../../lib/sse.mjs";
 import { decodePng } from "./png.mjs";
 import { svgOf } from "./shot-apply.mjs";
-import { shareOff, strengthPicture } from "./shot-change.mjs";
-import { detailHtml, hrefs, overviewHtml } from "./shot-pages.mjs";
+import { changeMap, shareOff, strengthPicture } from "./shot-change.mjs";
+import { hashOf } from "./shot-manifest.mjs";
+import { detailHtml, hrefs, outsideHtml, overviewHtml } from "./shot-pages.mjs";
 import { pngRule, pngSize, svgRule } from "./shot-policy.mjs";
+import { createApplier } from "./shot-verdicts.mjs";
 import {
   FILTERS,
   filterPictures,
@@ -53,26 +58,64 @@ const sizeOf = (png) => {
 // The most difference maps kept drawn: drawing one decodes a picture of up to 4.5 M pixels.
 const MAPS_KEPT = 16;
 
+// The most bytes a POST's body may have: an allowance with its rectangles.
+const MOST_BODY = 64 * 1024;
+
 /**
  * The server of the session `session` (openSession): `revision` the baseline as openRevision
  * gives it, `manifest()` the manifest as it is now (openManifest), `docsRoot` the pictures'
- * folder, `headNow` HEAD's short hash when it is no longer the baseline, `newestIde` the
- * newest install's build, `onLine(run, line)` called for each line of a run meant for a
- * person, and `command` the probes' stand-in for the tools a run starts (startRun). Returns {server, listen(port, host), start({tool, args}), live(), stopAll(),
- * close(), model()}: `listen` resolves to the port it listens on; `start` starts a run, and
- * returns startRun's handle; `live` the handles of the runs that are running.
+ * folder, `bundlesRoot` the bundle cache (or null), `head()` the baseline HEAD would make
+ * ({hash, short, build}; null for none, or an error thrown when there is none to read),
+ * `revisionAt(hash)` a revision as openRevision gives it, `changed()` the pictures that differ
+ * from the baseline ([{out, status}], changedPictures'), `newestIde` the newest install's build,
+ * `onLine(run, line)` called for each line of a run meant for a person, and `command` the
+ * probes' stand-in for the tools a run starts (startRun). Returns {server, listen(port, host),
+ * start({tool, args}), live(), close(), model(), applyPending()}: `listen` resolves to the port it
+ * listens on; `start` starts a run, and returns startRun's handle; `live` the handles of the runs
+ * that are running; `applyPending` applies what the runs reported and was not applied yet, and
+ * returns how many parts.
  */
 export function createReviewServer({
   session,
-  revision,
+  revision: initialRevision,
   manifest,
   docsRoot = DOCS_DIR,
-  headNow = null,
+  bundlesRoot = null,
+  head = () => null,
+  revisionAt = null,
+  changed = () => [],
   newestIde = null,
   onLine,
   command,
 }) {
   const sse = createSseChannel();
+  let revision = initialRevision;
+  const applier = createApplier({ session, docsRoot, bundlesRoot, revision: () => revision, manifest });
+  // HEAD as it is now, when it is not the baseline: read again at most once a second.
+  let headSeen = { at: 0, value: null };
+  const headNow = () => {
+    if (Date.now() - headSeen.at > 1000) {
+      let value = null;
+      try {
+        const h = head();
+        value = h && h.hash !== session.data.baseline.hash ? h : null;
+      } catch {}
+      headSeen = { at: Date.now(), value };
+    }
+    return headSeen.value;
+  };
+  // The pictures changed outside the session's runs: read again at most once a second.
+  let changedSeen = { at: 0, value: [] };
+  const outside = () => {
+    if (Date.now() - changedSeen.at > 1000) {
+      let value = [];
+      try {
+        value = changed();
+      } catch {}
+      changedSeen = { at: Date.now(), value };
+    }
+    return changedSeen.value;
+  };
   // run n -> {record, live, handle, events, facts, verdicts}
   const runs = new Map();
   for (const record of session.data.runs) {
@@ -105,6 +148,14 @@ export function createReviewServer({
     }
     return measures.get(key);
   };
+  // A run's verdicts as the pages show them: each part as it was applied (shot-verdicts.mjs),
+  // judged again after a review, else as the run reported it.
+  const shownVerdict = (n, out, v) => {
+    const done = applier.reviewed(n, out);
+    if (!done || !v) return v ?? null;
+    return { png: done.done.includes("png") ? done.png : v.png, svg: done.done.includes("svg") ? done.svg : v.svg };
+  };
+  const shownVerdicts = (r) => new Map([...r.verdicts].map(([out, v]) => [out, shownVerdict(r.record.n, out, v)]));
   const model = () =>
     reviewPictures(
       [...runs.values()].map((r) => ({
@@ -112,9 +163,9 @@ export function createReviewServer({
         tool: r.record.tool,
         live: r.live,
         facts: r.facts,
-        verdicts: r.verdicts,
+        verdicts: shownVerdicts(r),
       })),
-      { exists, measure },
+      { exists, measure, outside: outside(), baseline: session.data.baseline.hash },
     );
   const filterOptions = { overridden: (out) => isOverridden(entry(out)), exists };
 
@@ -129,6 +180,8 @@ export function createReviewServer({
       const v = r.verdicts.get(e.out) ?? { png: null, svg: null };
       v[part] = value;
       r.verdicts.set(e.out, v);
+      // applied as it arrives: the stage holds the verdict by the time its event is written
+      applier.arrive(record.n, e.out, part);
     }
     if (e.out) sse.send("update", { outs: [e.out] });
     else sse.send("update", { outs: e.type === "run" || e.type === "summary" ? listedOf(r) : [], runs: true });
@@ -171,12 +224,13 @@ export function createReviewServer({
   };
 
   // ---- the files the pages show ----
-  const verdictOf = (n, out) => runs.get(n)?.verdicts.get(out) ?? null;
-  // The picture the run `n` judged its capture of `out` against.
+  const verdictOf = (n, out) => shownVerdict(n, out, runs.get(n)?.verdicts.get(out));
+  // The picture the run `n` judged its capture of `out` against: the file is as the run's layer
+  // found it, before its verdict was applied.
   function referenceBytes(n, out) {
     const against = verdictOf(n, out)?.png?.against;
     if (against === "revision") return revision.bytes(out);
-    if (against === "disk") return readIf(path.join(docsRoot, out));
+    if (against === "disk") return applier.heldPng(n, out) ?? readIf(path.join(docsRoot, out));
     if (against === "dark") {
       const dark = out.replace(/\.light\.png$/i, ".png");
       const staged = verdictOf(n, dark)?.png?.capture;
@@ -184,10 +238,12 @@ export function createReviewServer({
     }
     return null;
   }
-  // The PNG the run `n` compared its SVG of `out` with: its capture, else the file.
+  // The PNG the run `n` compared its SVG of `out` with: its capture, else the file as the run's
+  // layer found it (a replay's).
   function svgPngBytes(n, out) {
     const capture = verdictOf(n, out)?.png?.capture;
-    return capture ? readIf(stageFile(n, capture)) : readIf(path.join(docsRoot, out));
+    if (capture) return readIf(stageFile(n, capture));
+    return applier.heldPng(n, out) ?? readIf(path.join(docsRoot, out));
   }
   const maps = new Map();
   function mapBytes(n, part, out) {
@@ -219,7 +275,8 @@ export function createReviewServer({
       counts,
       runs: [...runs.values()].map(runRow),
       baseline: session.data.baseline,
-      headNow,
+      headNow: headNow()?.short ?? null,
+      canMove: !!revisionAt,
       newestIde,
       resume: look.length ? { index: at, total: look.length, out: look[at].out } : null,
       exists,
@@ -239,6 +296,18 @@ export function createReviewServer({
     }
     if (filter === "look") session.setPlace(out);
     const file = (src, bytes) => (bytes ? { src, size: sizeOf(bytes) } : null);
+    const pager = { filter, place: { index: place.index, total: list.length }, prev: place.prev, next: place.next };
+    if (p.outside) {
+      const atHead = revision.bytes(out);
+      const now = readIf(path.join(docsRoot, out));
+      return outsideHtml({
+        p,
+        ...pager,
+        files: { head: file(hrefs.head(out), atHead), docs: file(hrefs.docs(out), now) },
+        map: atHead && now ? hrefs.outsideMap(out) : null,
+        baseline: session.data.baseline,
+      });
+    }
     const n = p.png?.run;
     const files = {
       head: file(hrefs.head(out), revision.bytes(out)),
@@ -250,28 +319,133 @@ export function createReviewServer({
     if (p.svg) {
       const s = p.svg.run;
       const capture = verdictOf(s, out)?.png?.capture;
+      const held = applier.heldPng(s, out);
       files.svgPng = capture
         ? file(hrefs.run(s, capture), readIf(stageFile(s, capture)))
-        : file(hrefs.docs(out), readIf(path.join(docsRoot, out)));
+        : held
+          ? file(hrefs.held(s, out), held)
+          : file(hrefs.docs(out), readIf(path.join(docsRoot, out)));
       if (p.svg.svg) files.svg = { src: hrefs.run(s, p.svg.svg), size: null };
       else if (exists(svgOf(out))) files.svg = { src: hrefs.docs(svgOf(out)), size: null };
     }
     const e = entry(out);
     return detailHtml({
       p,
-      filter,
-      place: { index: place.index, total: list.length },
-      prev: place.prev,
-      next: place.next,
+      ...pager,
       files,
       maps: {
         png: p.png?.strength ? hrefs.map(n, "png", out) : null,
         svg: p.svg?.strength ? hrefs.map(p.svg.run, "svg", out) : null,
       },
       rules: { png: pngRule(e), svg: svgRule(e) },
+      entry: e,
       build: e?.build ?? null,
       baseline: session.data.baseline,
+      error: applier.errors.get(out) ?? null,
     });
+  }
+
+  // ---- what a review changes ----
+  // Each action changes the manifest, then judges the picture again from the run whose verdict
+  // it is about (applier.rejudge), so that what the file holds is what the pages then show.
+  const capturedBytes = (p) => (p.png?.capture ? readIf(stageFile(p.png.run, p.png.capture)) : null);
+  const firstRun = (p) => Math.min(...[p.png?.run, p.svg?.run].filter((n) => n !== undefined));
+  // A noise rule's or a bar's limits from a form: a number, or empty for the default.
+  const limit = (value, what, { integer = false, min, max }) => {
+    if (value === null || value === undefined || value === "") return undefined;
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < min || n > max || (integer && !Number.isInteger(n)))
+      throw new Error(`${what} must be ${integer ? "a whole number" : "a number"} from ${min} to ${max}`);
+    return n;
+  };
+  const rectsOf = (value, what) => {
+    if (value === null || value === undefined || value === "") return undefined;
+    const list = Array.isArray(value) ? value : String(value).match(/-?\d+/g)?.map(Number);
+    const flat = list?.flat() ?? [];
+    if (flat.length % 4) throw new Error(`${what} must be four numbers for each rectangle: x0, y0, x1, y1`);
+    const rects = [];
+    for (let k = 0; k < flat.length; k += 4) rects.push(flat.slice(k, k + 4));
+    return rects.length ? rects : undefined;
+  };
+  function act(out, body) {
+    const p = model().pictures.find((q) => q.out === out);
+    if (!p || p.outside) throw new Error(`${out} has no verdict of this session to act on`);
+    const m = manifest();
+    let from;
+    switch (body.action) {
+      case "png": {
+        const capture = capturedBytes(p);
+        if (!capture) throw new Error("there is no capture to decide about");
+        if (body.keep !== "old" && body.keep !== "new" && body.keep !== null)
+          throw new Error('keep must be "old", "new" or null');
+        m.setPart(out, "png", "decision", body.keep ? { keep: body.keep, capture: hashOf(capture) } : undefined);
+        from = p.png.run;
+        break;
+      }
+      case "svg": {
+        if (!p.svg?.svg) throw new Error("there is no SVG to decide about");
+        if (typeof body.accept !== "boolean" && body.accept !== null)
+          throw new Error("accept must be true, false or null");
+        const svgText = readFileSync(stageFile(p.svg.run, p.svg.svg), "utf8");
+        const png = svgPngBytes(p.svg.run, out);
+        m.setPart(
+          out,
+          "svg",
+          "decision",
+          body.accept === null ? undefined : { accept: body.accept, svg: hashOf(svgText), png: hashOf(png) },
+        );
+        from = p.svg.run;
+        break;
+      }
+      case "allowance": {
+        const { png = {}, svg = {} } = body;
+        const noise = {
+          levels: limit(png.levels, "The noise levels", { integer: true, min: 0, max: 255 }),
+          share: limit(png.share, "The noise share", { min: 0, max: 100 }),
+        };
+        const bar = {
+          levels: limit(svg.levels, "The bar's levels", { integer: true, min: 1, max: 255 }),
+          share: limit(svg.share, "The bar's share", { min: 0, max: 100 }),
+        };
+        const defined = (o) => (Object.values(o).some((v) => v !== undefined) ? o : undefined);
+        m.setPart(out, "png", "noise", defined(noise));
+        m.setPart(out, "png", "ignore", rectsOf(png.ignore, "The PNG's rectangles"));
+        m.setPart(out, "svg", "bar", defined(bar));
+        m.setPart(out, "svg", "ignore", rectsOf(svg.ignore, "The SVG's rectangles"));
+        from = firstRun(p);
+        break;
+      }
+      case "rule":
+        m.setPart(out, "png", "decision", undefined);
+        m.setPart(out, "svg", "decision", undefined);
+        from = firstRun(p);
+        break;
+      case "judge":
+        from = firstRun(p);
+        break;
+      default:
+        throw new Error(`no such action: ${body.action}`);
+    }
+    if (!Number.isFinite(from)) throw new Error(`${out} has no verdict of this session to act on`);
+    m.save();
+    applier.rejudge(out, from);
+    maps.clear();
+    measures.clear();
+    const error = applier.errors.get(out);
+    if (error) throw new Error(`judged again, but not applied: ${error}`);
+  }
+
+  // Moves the session to HEAD: the new baseline's picture is what a capture is judged against.
+  function moveToHead() {
+    const h = head();
+    if (!h || !revisionAt) throw new Error("HEAD cannot be read");
+    if (h.hash === session.data.baseline.hash) return;
+    revision = revisionAt(h.hash);
+    session.moveBaseline(h);
+    headSeen = { at: 0, value: null };
+    changedSeen = { at: 0, value: [] };
+    maps.clear();
+    measures.clear();
   }
 
   // ---- answering ----
@@ -301,9 +475,58 @@ export function createReviewServer({
   };
   const page = (req, res, html) => send(res, 200, "text/html; charset=utf-8", req.method === "HEAD" ? undefined : html);
 
+  const sendJson = (res, status, value) => send(res, status, "application/json", `${JSON.stringify(value)}\n`);
+  // A POST: JSON from one of the tool's own pages. A page of another origin can send a form to
+  // the loopback address, but not with this content type unasked, and not with this Origin.
+  async function post(req, res, url) {
+    const origin = req.headers.origin;
+    if (origin !== `http://${req.headers.host}`)
+      return sendJson(res, 403, { error: "only the tool's own pages may change anything" });
+    if (!/^application\/json\b/i.test(req.headers["content-type"] ?? ""))
+      return sendJson(res, 415, { error: "the body must be JSON" });
+    let body;
+    try {
+      const chunks = [];
+      let size = 0;
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > MOST_BODY) throw new Error("the body is too large");
+        chunks.push(chunk);
+      }
+      body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+    } catch (e) {
+      return sendJson(res, 400, { error: `the body could not be read: ${e.message}` });
+    }
+    let segs;
+    try {
+      segs = url.pathname.split("/").slice(1).map(decodeURIComponent);
+    } catch {
+      return sendJson(res, 404, { error: "no such address" });
+    }
+    try {
+      if (url.pathname === hrefs.moveBaseline) {
+        moveToHead();
+        sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
+        return sendJson(res, 200, { ok: true, baseline: session.data.baseline });
+      }
+      if (segs[0] === "api" && segs[1] === "picture") {
+        const out = segs.slice(2).join("/");
+        if (!isDocsPath(out)) return sendJson(res, 404, { error: "no such picture" });
+        act(out, body);
+        sse.send("update", { outs: [out] });
+        return sendJson(res, 200, { ok: true });
+      }
+    } catch (e) {
+      sse.send("update", { outs: [segs.slice(2).join("/")] });
+      return sendJson(res, 400, { error: e.message });
+    }
+    return sendJson(res, 404, { error: "no such address" });
+  }
+
   function handle(req, res) {
     if (!hostAllowed(req.headers.host)) return send(res, 403, "text/plain", "only the loopback address is answered\n");
-    if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, "text/plain", "read-only\n");
+    if (req.method === "POST") return post(req, res, new URL(req.url, "http://127.0.0.1"));
+    if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, "text/plain", "not answered\n");
     const url = new URL(req.url, "http://127.0.0.1");
     let segs;
     try {
@@ -331,7 +554,12 @@ export function createReviewServer({
         res,
         200,
         "application/json",
-        JSON.stringify({ baseline: session.data.baseline, runs: [...runs.values()].map(runRow), pictures: m.pictures }),
+        JSON.stringify({
+          baseline: session.data.baseline,
+          runs: [...runs.values()].map(runRow),
+          pictures: m.pictures,
+          errors: Object.fromEntries(applier.errors),
+        }),
       );
     }
     if (first === "file") {
@@ -347,7 +575,15 @@ export function createReviewServer({
         return notFound(res);
       if (kind === "run") return sendFile(req, res, rel, readIf(stageFile(n, rel)));
       if (kind === "ref" && isDocsPath(rel)) return sendFile(req, res, rel, referenceBytes(n, rel));
+      if (kind === "held" && isDocsPath(rel)) return sendFile(req, res, rel, applier.heldPng(n, rel));
       return notFound(res);
+    }
+    if (first === "map" && rest[0] === "outside") {
+      const out = rest.slice(1).join("/");
+      if (!isDocsPath(out)) return notFound(res);
+      const [a, b] = [revision.bytes(out), readIf(path.join(docsRoot, out))];
+      if (!a || !b) return notFound(res);
+      return sendFile(req, res, "map.png", changeMap(decodePng(a), decodePng(b)));
     }
     if (first === "map") {
       const [nText, part, ...more] = rest;
@@ -364,12 +600,15 @@ export function createReviewServer({
     return notFound(res);
   }
 
+  const failed = (res, e) => {
+    if (!res.headersSent) send(res, 500, "text/plain; charset=utf-8", `${e.stack ?? e}\n`);
+    else res.end();
+  };
   const server = createServer((req, res) => {
     try {
-      handle(req, res);
+      handle(req, res)?.catch?.((e) => failed(res, e));
     } catch (e) {
-      if (!res.headersSent) send(res, 500, "text/plain; charset=utf-8", `${e.stack ?? e}\n`);
-      else res.end();
+      failed(res, e);
     }
   });
   return {
@@ -387,6 +626,7 @@ export function createReviewServer({
     start,
     live,
     model,
+    applyPending: () => applier.pending(),
     close() {
       sse.close();
       const closed = new Promise((resolve) => server.close(() => resolve()));

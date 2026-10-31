@@ -39,8 +39,12 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { brotliCompressSync, brotliDecompressSync, constants } from "node:zlib";
+import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { PictureFonts, webRulesFor, withFaces } from "./fonts.mjs";
 import { decodeSnapshot, oneLine, parseShadows, renderSvg, unzoom } from "./snapshot-svg.mjs";
+
+/** The bundle cache: gitignored, outside docs/, since a bundle holds the Windows user name. */
+export const BUNDLE_CACHE = path.join(REPO_ROOT, ".svgshot-bundles");
 
 /**
  * The format of a bundle; one of another version is not read. Version 2 keeps a
@@ -379,6 +383,22 @@ export function dropBundle(root, out) {
 
 /** The bundle of the picture `out`, or null. */
 export const readBundle = (root, out) => readPair(bundleFile(root, out))[themeOf(out).theme];
+
+/**
+ * Puts the bundle of the picture `out` under `fromRoot` in its place under `toRoot` as it is,
+ * or, when `png` is given, naming that PNG as the one it was taken with; removes the one under
+ * `toRoot` when `fromRoot` has none. The other theme's bundle under `toRoot` is kept. Returns
+ * whether there was one to copy. The screenshot review tool moves a run's staged bundles into
+ * the cache with it, naming the PNG the file holds once a review has decided.
+ */
+export function copyBundle(fromRoot, toRoot, out, png = null) {
+  const bundle = readBundle(fromRoot, out);
+  const file = bundleFile(toRoot, out);
+  const pair = readPair(file);
+  pair[themeOf(out).theme] = bundle && png ? { ...bundle, png: pngHash(png) } : bundle;
+  writePair(file, pair);
+  return !!bundle;
+}
 
 /** Every picture with a bundle under `root`, as its path under docs/ with forward slashes. */
 export function listBundles(root) {

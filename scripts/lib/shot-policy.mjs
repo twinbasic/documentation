@@ -97,6 +97,15 @@ export function decidePicture({ png, theme, dark, revision, disk, near, entry = 
 }
 
 /**
+ * Whether a picture's SVG is judged and written with its PNG: when its PNG is written
+ * (`written`), or when there is no SVG to keep (`svgOnDisk` false). An SVG drawn from the whole
+ * page can differ from run to run in layers the picture does not show, so the SVG of a
+ * picture whose PNG stays stays with it (owner): it changes with its PNG, or when replay.mjs
+ * draws it again.
+ */
+export const svgFollowsPng = ({ written, svgOnDisk }) => !!written || !svgOnDisk;
+
+/**
  * Whether --cleanup puts the file `after` (bytes) back as the revision has it (`before`):
  * a review's decision about these bytes ("old" puts it back, "new" leaves it), else
  * whether it is within the picture's noise rule of the revision's (`near` as decidePicture's).

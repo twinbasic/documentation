@@ -219,6 +219,21 @@ export function openManifest(file = MANIFEST) {
       const { build: _, ...rest } = entry(out);
       m.pictures[out] = rest;
     },
+    /**
+     * Sets the key `key` of the part `part` ("png" or "svg") of a picture's entry to `value`
+     * (a decision, an allowance), or removes it when `value` is undefined. Throws, changing
+     * nothing, when the entry would not be one the manifest reads.
+     */
+    setPart(out, part, key, value) {
+      const e = structuredClone(entry(out) ?? {});
+      const p = { ...e[part] };
+      if (value === undefined) delete p[key];
+      else p[key] = value;
+      e[part] = p;
+      const next = pruned(e, ["build", "png", "svg"]) ?? {};
+      checkEntry(out, next);
+      m.pictures[out] = next;
+    },
     text: () => manifestText(m),
     save() {
       const text = manifestText(m);

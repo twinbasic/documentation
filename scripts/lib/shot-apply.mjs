@@ -5,7 +5,7 @@
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { dropBundle } from "../svgshot/bundle.mjs";
+import { copyBundle, dropBundle } from "../svgshot/bundle.mjs";
 import { restoreFromRevision, svgFate } from "./shot-revision.mjs";
 
 /** The SVG beside the picture `out`. */
@@ -69,15 +69,24 @@ export function restorePictures(outRoot, revision, outs, { dryRun = false } = {}
 
 /**
  * Writes the verdict on a capture of the picture `out` (decidePicture): the bytes the file is
- * to hold, if any; for "dark", the light file removed; for "restored", the picture and its SVG
- * put back as `revision` has them (restorePictures). Returns {removed, svg}: whether a file
- * was removed, and for "restored" restorePictures' answer for the picture, else null. With
- * `dryRun` nothing is written, and the answer is what would be done (a run's stage,
+ * to hold, if any; for "dark" and "once", the light file removed, and its SVG and its bundle
+ * under `bundlesRoot` (dropPicture), for "dark" only with `svg`; for "restored", the picture and its SVG put
+ * back as `revision` has them (restorePictures). Returns {removed, svg}: whether the picture's
+ * file was removed, and for "restored" restorePictures' answer for the picture, else null.
+ * With `dryRun` nothing is written, and the answer is what would be done (a run's stage,
  * shot-stage.mjs, whose verdicts the review tool applies).
  */
-export function applyPicture(outRoot, out, decision, revision, { dryRun = false } = {}) {
+export function applyPicture(
+  outRoot,
+  out,
+  decision,
+  revision,
+  { dryRun = false, svg = false, bundlesRoot = null } = {},
+) {
   const file = path.join(outRoot, out);
-  if (decision.state === "dark") {
+  if (decision.state === "dark" || decision.state === "once") {
+    if (svg || decision.state === "once")
+      return { removed: dropPicture(outRoot, out, bundlesRoot, { dryRun }), svg: null };
     const had = existsSync(file);
     if (had && !dryRun) rmSync(file);
     return { removed: had, svg: null };
@@ -102,6 +111,81 @@ export function applySvg(outRoot, svgOut, svg, { dryRun = false } = {}) {
   if (!existsSync(file)) return "not written";
   if (!dryRun) rmSync(file);
   return "removed";
+}
+
+// ---- what a picture held before a verdict was applied --------------------------------
+//
+// The screenshot review tool applies a run's verdicts as they arrive, and a review may then
+// decide otherwise: it puts the picture back as it was before the run's verdict and applies
+// the verdict decided. So before it applies a run's verdict on a picture it keeps what the
+// picture held, in a folder of the run's (`dir`):
+//
+//   <slug>.json          {out, png, svg, bundle, build}: whether each was there, and the build
+//                        the manifest recorded for the file (null for none)
+//   files/<out>          the PNG, and files/<X.svg> its SVG, when there
+//   bundles/             its bundle, laid out as the bundle cache is (bundle.mjs)
+
+const heldFiles = (dir, out) => ({
+  record: path.join(dir, `${slugOf(out)}.json`),
+  png: path.join(dir, "files", out),
+  svg: path.join(dir, "files", svgOf(out)),
+  bundles: path.join(dir, "bundles"),
+});
+
+/** What `dir` keeps of the picture `out` (holdPicture), or null when it keeps nothing. */
+export function heldOf(dir, out) {
+  const f = heldFiles(dir, out);
+  if (!existsSync(f.record)) return null;
+  const held = JSON.parse(readFileSync(f.record, "utf8"));
+  return {
+    ...held,
+    pngBytes: held.png ? readFileSync(f.png) : null,
+    svgText: held.svg ? readFileSync(f.svg, "utf8") : null,
+  };
+}
+
+/**
+ * Keeps in `dir` what the picture `out` under `outRoot` holds now: its PNG, its SVG, its
+ * bundle under `bundlesRoot` (or none) and `build`, the build the manifest records for it.
+ * What `dir` kept of it before is replaced.
+ */
+export function holdPicture(dir, outRoot, out, bundlesRoot, build) {
+  const f = heldFiles(dir, out);
+  const keep = (from, to) => {
+    if (!existsSync(from)) {
+      rmSync(to, { force: true });
+      return false;
+    }
+    mkdirSync(path.dirname(to), { recursive: true });
+    writeFileSync(to, readFileSync(from));
+    return true;
+  };
+  const png = keep(path.join(outRoot, out), f.png);
+  const svg = keep(path.join(outRoot, svgOf(out)), f.svg);
+  const bundle = bundlesRoot ? copyBundle(bundlesRoot, f.bundles, out) : false;
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(f.record, `${JSON.stringify({ out, png, svg, bundle, build: build ?? null })}\n`);
+}
+
+/**
+ * Puts the picture `out` under `outRoot` back as `dir` keeps it (holdPicture): its PNG, its
+ * SVG and its bundle, each removed when it was not there. Returns the build kept, or
+ * undefined when `dir` keeps nothing of the picture and nothing was done.
+ */
+export function unholdPicture(dir, outRoot, out, bundlesRoot) {
+  const held = heldOf(dir, out);
+  if (!held) return undefined;
+  const put = (bytes, to) => {
+    if (bytes === null) rmSync(to, { force: true });
+    else {
+      mkdirSync(path.dirname(to), { recursive: true });
+      writeFileSync(to, bytes);
+    }
+  };
+  put(held.pngBytes, path.join(outRoot, out));
+  put(held.svgText, path.join(outRoot, svgOf(out)));
+  if (bundlesRoot) copyBundle(heldFiles(dir, out).bundles, bundlesRoot, out);
+  return held.build;
 }
 
 /**

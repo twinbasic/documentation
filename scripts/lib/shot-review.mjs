@@ -12,6 +12,7 @@ export const GROUPS = [
   ["look", "Needs a look"],
   ["changed", "Changed, most changed first"],
   ["noise", "Only noise"],
+  ["outside", "Changed outside the session's runs"],
   ["unchanged", "Unchanged"],
   ["added", "Added"],
   ["deleted", "Deleted"],
@@ -102,6 +103,7 @@ export const SVG_CHANGES = new Set(["new", "updated", "removed"]);
  * file is under docs/.
  */
 export function groupOf(p, exists) {
+  if (p.outside) return "outside";
   if (p.progress) return "progress";
   if (p.failed) return "failed";
   if (p.png?.look || p.svg?.look) return "look";
@@ -128,18 +130,33 @@ export function groupOf(p, exists) {
  * verdict from the newest run that gave it one, and its SVG verdict from the newest run since
  * then: an SVG changes with its PNG, so a retake's PNG verdict drops an older SVG's.
  *
+ * `outside` lists the pictures under docs/ that differ from the baseline ([{out, status}], as
+ * changedPictures gives them): those no run reported are in a group of their own, with
+ * `outside` their status. A PNG verdict judged against the revision (`against`) of another
+ * baseline than `baseline` (its `baseline`, which the review tool records as it applies it)
+ * needs a look, `why` "baseline": the picture it was judged against has changed.
+ *
  * Returns {pictures, groups}: each picture {out, png, svg, failed, retake, skipped, progress,
- * group, measure}, `png` and `svg` with the run that gave them as `run`, `failed` and `retake`
- * {run, error | why} or null, `skipped` the run that did not take it, or null; `progress`
- * whether a run that is running still owes it a verdict; `measure` how much it changed, from
- * `measure(p)`, which orders the Changed group, most first. `groups` is GROUPS with each
- * one's pictures, [{key, title, pictures}].
+ * outside, group, measure}, `png` and `svg` with the run that gave them as `run`, `failed` and
+ * `retake` {run, error | why} or null, `skipped` the run that did not take it, or null;
+ * `progress` whether a run that is running still owes it a verdict; `measure` how much it
+ * changed, from `measure(p)`, which orders the Changed group, most first. `groups` is GROUPS
+ * with each one's pictures, [{key, title, pictures}].
  */
-export function reviewPictures(runs, { exists = () => false, measure = () => 0 } = {}) {
+export function reviewPictures(runs, { exists = () => false, measure = () => 0, outside = [], baseline = null } = {}) {
   const byOut = new Map();
   const at = (out) => {
     if (!byOut.has(out))
-      byOut.set(out, { out, png: null, svg: null, failed: null, retake: null, skipped: null, progress: false });
+      byOut.set(out, {
+        out,
+        png: null,
+        svg: null,
+        failed: null,
+        retake: null,
+        skipped: null,
+        progress: false,
+        outside: null,
+      });
     return byOut.get(out);
   };
   for (const run of [...runs].sort((a, b) => a.n - b.n)) {
@@ -165,8 +182,14 @@ export function reviewPictures(runs, { exists = () => false, measure = () => 0 }
         p.failed = { run: n, error: `its job, ${facts.jobOf.get(out)}, failed: ${job.error}` };
     }
   }
+  for (const { out, status } of outside) if (!byOut.has(out)) at(out).outside = status;
   const pictures = [...byOut.values()].sort((a, b) => (a.out < b.out ? -1 : a.out > b.out ? 1 : 0));
   for (const p of pictures) {
+    if (baseline && p.png?.against === "revision" && p.png.baseline && p.png.baseline !== baseline)
+      p.png = {
+        ...p.png,
+        look: { why: "baseline", text: "judged against the picture of the session's earlier baseline" },
+      };
     p.group = groupOf(p, exists);
     p.measure = p.group === "changed" ? measure(p) : 0;
   }

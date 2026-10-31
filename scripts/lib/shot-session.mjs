@@ -9,10 +9,13 @@
 //   session/runs/<n>/stage/        the run's stage (shot-stage.mjs)
 //   session/runs/<n>/events.jsonl  each event the run reported (--events), a JSON object a line
 //   session/runs/<n>/log.txt       the run's lines meant for a person, stdout and stderr
+//   session/runs/<n>/held/         what each picture held before the run's verdict on it was
+//                                  applied (shot-apply.mjs's holdPicture, shot-verdicts.mjs)
 //   archive/<id>/                  a closed session: a commit closes one
 //
-// session.json is {format, created, baseline: {hash, short, build}, runs, place}: `build` the
-// newest build the manifest at the baseline records, or null; each run {n, tool, args,
+// session.json is {format, created, baseline: {hash, short, build, moved}, runs, place}: `build`
+// the newest build the manifest at the baseline records, or null, and `moved` {at, from} when
+// the session was moved to this baseline from another (`from` its short hash); each run {n, tool, args,
 // started, ended, exit, stopped, interrupted}, `args` its options as the command line gives
 // them, without --stage and --events, which the tool adds; `place` the picture the queue was
 // left at, or null.
@@ -159,6 +162,14 @@ export function openSession(root, baseline, now = () => new Date().toISOString()
     setPlace(out) {
       if (data.place === out) return;
       data.place = out;
+      save();
+    },
+    /**
+     * Makes `baseline` ({hash, short, build}) the session's, recording when and which one it
+     * replaced as `moved`, {at, from}.
+     */
+    moveBaseline(baseline) {
+      data.baseline = { ...baseline, moved: { at: now(), from: data.baseline.short } };
       save();
     },
   };

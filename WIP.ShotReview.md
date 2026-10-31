@@ -2,9 +2,10 @@
 
 A localhost tool for reviewing what `shoot_docs.mjs` and `replay.mjs` decided about each
 picture, overriding it, starting retakes and replays, and committing the result. **Design
-agreed with the owner on 2026-10-31; steps 1 to 5 of [the order of work](#order-of-work) are
-done (step 1 but for the commit helper, which step 8 makes): the tool runs, read-only, as
-`node scripts/shot_review.mjs`.** The mockups it was agreed on were inline in that
+agreed with the owner on 2026-10-31; steps 1 to 6 of [the order of work](#order-of-work) are
+done (step 1 but for the commit helper, which step 8 makes): the tool runs as
+`node scripts/shot_review.mjs`, applies each verdict under `docs/` as it arrives, and takes a
+review's decisions and allowances; its runs are still started from its command line.** The mockups it was agreed on were inline in that
 session and are not kept: the pages are described below instead.
 
 The tool covers everything the command-line screenshot tools do, interactively, with a person
@@ -305,7 +306,7 @@ Each step ends tested and usable on its own.
    Done.
 6. **Decisions and allowances** applied through `shot-apply.mjs`, judged again at once. With
    them, the group of pictures changed outside the session's runs, and the action that moves
-   the session to a new HEAD ([Decisions](#decisions-owner)).
+   the session to a new HEAD ([Decisions](#decisions-owner)). Done.
 7. **The runs page**: retake, replay, clean up, stop.
 8. **The commit panel**.
 9. **`sheet.mjs` on the shared views**, showing each picture's allowances; the tool's entry in `Tools-IDE.md`, its node in
@@ -315,7 +316,7 @@ Each step ends tested and usable on its own.
 
 ## Where the work stands
 
-On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and steps 2 to 5. Each move kept the command-line tools' output as it was, checked as
+On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and steps 2 to 6. Each move kept the command-line tools' output as it was, checked as
 [below](#checking-a-move).
 
 | Row of the factoring table | Where it is now |
@@ -328,7 +329,7 @@ On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and st
 | The queue's rules | `scripts/lib/shot-queue.mjs`: `pngRegions(strength, pngRule, level)`, `svgRegions(strength, entry)`, `surviving`, `keptAsNoise(state)`, `pngLook(verdict, regions)` and `svgLook(verdict, regions)`, each `{why, text}` or null (`why` for a PNG: `earlier`, `noise`, `small`, `faint`); `reviewPicture(verdict, png, reference, entry)` (`{strength, regions, look}`, measured against the picture `verdict.against` names: decidePicture and pictureFate return `against`, "revision", "disk", "dark" or null) and `reviewSvg(verdict, strength, entry)`; the constants `QUEUE_CLOSE`, `QUEUE_ERODE`, `SURVIVES`, `WORD_CORE`, `WORD_BLOCKS`, `FAINT_LEVEL` |
 | A run's stage and events | `scripts/lib/shot-stage.mjs`: `stageFolders(dir)` (`pictures`, `bundles`, `diffs`, `maps`, `verdicts`), `stagedFiles(dir, out)`, `stageRefusal(dir, docsRoots)` (outputRefusal, and a stage must be new or empty), `stageCapture`, `stageSvg`, `writeStrength` / `readStrength` (8 bytes of size, then the map deflated), `writeVerdict(dir, out, part, value)` / `readVerdicts(dir)`, and the verdict shapes `pngVerdict` and `svgVerdict`, which the `picture` and `svg` events carry too (at most `STAGED_REGIONS`, 64, regions, and `regionCount`). `shoot_docs.mjs` and `replay.mjs` write nothing else with `--stage`: `applyPicture`, `applySvg`, `writeSvg`, `dropPicture` and `restorePictures` take `{dryRun}`, and say what would be done. Events: `run`, `job` (`started`, `done`, `failed`), `picture`, `svg`, `failed`, `skipped`, `retake` (replay), `stopping`, `summary`. Stop: `STOP_LINE`, `onStop(stream, fn)`, `sendStop(child)` in `record-lines.mjs`; `runShards(env, jobs, {signal})` passes it to each child, `inBrowser(items, fn, {stopped})` returns the items not started |
 | The manifest | `scripts/lib/shot-manifest.mjs`: `MANIFEST`, `openManifest(file)` (`entry`, `setBuild`, `clearBuild`, `save`, `text`), `parseManifest`, `manifestText`, `pngDecision`, `earlierPngDecision`, `svgDecision`, `hashOf`. `shoot_docs.mjs` passes each picture's rectangles to `capture` as `c.shot.ignore`, left out as its unsteady regions are, and records `build` (`buildNumber(ide)`) in `keep` and `dropLight` |
-| Writing a verdict | `scripts/lib/shot-apply.mjs`: `applyPicture(outRoot, out, decision, revision)`, `applySvg(outRoot, svgOut, svg or null)`, `restorePictures(outRoot, revision, outs, {dryRun})` (the PNGs and their SVGs, the SVGs by one `git restore`; `--cleanup` and a `restored` picture both use it), `dropPicture(outRoot, out, bundlesRoot)`, `writeSvg`, `svgOf`. What stays in `shoot_docs.mjs`'s `keep` and `keepSvg`: the counts, the lines it prints, the `--diffs` pictures, the bundle written, the user-name check, and the rule that an SVG stays as it is when its PNG was not written |
+| Writing a verdict | `scripts/lib/shot-apply.mjs`: `applyPicture(outRoot, out, decision, revision, {svg, bundlesRoot})` (for "dark", with `svg`, and for "once", the light file's SVG and bundle go too, through `dropPicture`: the "dark" verdict's two calls of step 5 made one), `applySvg(outRoot, svgOut, svg or null)`, `restorePictures(outRoot, revision, outs, {dryRun})` (the PNGs and their SVGs, the SVGs by one `git restore`; `--cleanup` and a `restored` picture both use it), `dropPicture(outRoot, out, bundlesRoot)`, `writeSvg`, `svgOf`. What stays in `shoot_docs.mjs`'s `keep` and `keepSvg`: the counts, the lines it prints, the `--diffs` pictures, the bundle written, the user-name check, and the rule that an SVG stays as it is when its PNG was not written |
 | The git listing | `changedPictures`, `parseNameStatus`, `parseUntracked` in `scripts/lib/shot-revision.mjs` |
 | A child's report | `scripts/lib/record-lines.mjs`: `recordLine`, `writeRecord`, `parseRecord`, `readRecords(stream, kinds, {onRecord, onLine})`; `runShards` reads `svgshot-result` records with it, and `--events` writes `shot-event` records the same way (a shard's pass through its parent as lines) |
 | The sheets' HTML | the pieces in `scripts/lib/shot-views.mjs`: `pageHtml({generator, title, intro, summary, contents, body})`, `cardHtml({out, meta, meter, figures})`, `figuresIn(folder)` (`href`, `figure`, `thumb`), `meterHtml`, `tocItem`, `esc`, `anchor`, `sizeText`, `pctText`. The two pages, their rows, their order, their commands and the output-folder rules (`mayWriteSheet`, `SHEET_GENERATOR`) are in `scripts/svgshot/sheets.mjs`, and `outputRefusal`, which the stage shares, in `shot-revision.mjs`; `redraw.mjs` keeps drawing and the shards |
@@ -346,31 +347,43 @@ What step 5 added, the tool itself:
 | The pages | `scripts/lib/shot-pages.mjs`: `overviewHtml`, `detailHtml`, `chipsOf`, `loupesHtml` (a region cropped by CSS from the whole picture, enlarged up to 4 times, at most 360 by 240 CSS px), `hrefs` (every address the server answers); built on `pageHtml` (which now takes `head`, and leaves out the table or the contents when it is given none) and `chipHtml` in `shot-views.mjs`. A page fetches itself again 400 ms after an `update` event that names a picture it shows, and replaces its body; the detail page's comparison mode is kept in `sessionStorage` |
 | The server | `createReviewServer({session, revision, manifest, docsRoot, headNow, newestIde, onLine, command})` in `scripts/lib/shot-server.mjs`: the pages, `/events`, `/api/state`, `/log/<n>`, the files (`/file/head`, `/file/docs`, `/file/run/<n>`, `/file/ref/<n>`, the picture the capture was judged against) and the difference maps drawn from a run's strength maps (`/map/<n>/png|svg/<out>`, `strengthPicture` in `shot-change.mjs`, which colours as `changeMap` does, the last 16 kept). It answers only a request whose Host is the loopback address at its port; a run's verdicts are read back from `readVerdicts` and its other events from `readEvents` when the session is opened again. The Changed group is ordered by the share of a PNG's pixels beyond its noise levels, from its strength map, else the SVG's share off its PNG |
 
-**Next: step 6**, decisions and allowances. Still to write for it, where the tool applies a
-verdict: moving a staged bundle into the cache (`readBundle` from the stage, `writeBundle` into
-`.svgshot-bundles`), and the "dark" verdict's two calls (`applyPicture`, then `dropPicture` for
-its SVG and bundle) as one function in `shot-apply.mjs`, so that `shoot_docs.mjs` and the tool
-make the same calls. Today a run's verdicts are only shown: nothing is applied to `docs/`, so
-until step 6 a retake through the tool changes nothing in the working tree. The actions go
-into the detail page's PNG and SVG rows, and the server takes its first POST requests (it
-answers 405 to any today).
+What step 6 added:
 
-Also in step 6, from the owner's answers of 2026-10-31:
+| Part | Where it is |
+|---|---|
+| Applying the verdicts | `createApplier({session, docsRoot, bundlesRoot, revision(), manifest()})` in `scripts/lib/shot-verdicts.mjs`: `arrive(n, out, part)` applies a part of a run's verdict as its event arrives, as the run decided it; `pending()` applies what was reported and not applied (the tool opened again); `rejudge(out, from)` applies every layer of a picture again from the run `from` on, judged anew with the manifest as it is and against the baseline; `reviewed(n, out)`, `heldPng(n, out)`, `errors`. Its header has the rules. What it applied is the stage's `review/` (`readReviewed`, `writeReviewed`, `reviewedFiles` in `shot-stage.mjs`), which the server shows in place of the run's own verdicts; a verdict judged again whose reference changed has its strength map measured again into `review/maps/` |
+| What a picture held | before a run's verdict on a picture is applied, `holdPicture(dir, outRoot, out, bundlesRoot, build)` keeps its PNG, SVG, bundle and manifest build in `runs/<n>/held/`; `unholdPicture` puts them back (each removed that was not there) and returns the build; `heldOf`. Putting a picture back as its first layer found it undoes that layer and every later one, which is how a decision is applied: there is no other undo |
+| A bundle into the cache | `copyBundle(fromRoot, toRoot, out, png)` in `svgshot/bundle.mjs`, naming the PNG the file holds once a review has decided (the run named the one it expected); `BUNDLE_CACHE` there, the one default for `shoot_docs.mjs`, `replay.mjs`, `sheet.mjs` and the tool |
+| The SVG with its PNG | `svgFollowsPng({written, svgOnDisk})` in `shot-policy.mjs`, which `shoot_docs.mjs`'s `keepSvg` and the applier both ask. With `--stage`, `keepSvg` judges and stages the SVG of a picture whose PNG is not written too ("unchanged", `why` its reason, no look), and of one restored or the dark one's, so that a review that takes the capture can write the SVG as judged; the lines printed are the same, and without `--stage` nothing changed |
+| The noise rule over files | `pngsNear(a, b, rule)` in `shot-change.mjs`, `shoot_docs.mjs`'s `nearly` |
+| The manifest's setter | `setPart(out, part, key, value)` on `openManifest`'s object: a decision or an allowance set, or removed with `undefined`, checked as `parseManifest` checks an entry |
+| The actions | POSTs of JSON to `/api/picture/<out>` (`hrefs.act`), `{action}`: `png` (`keep` "old", "new" or null), `svg` (`accept` true, false or null), `allowance` (`png` and `svg`, each `{levels, share, ignore}`, empty for the default), `rule` (the picture's decisions removed: "Back to the tool's verdicts"), `judge`; and `/api/baseline` (`hrefs.moveBaseline`). Each changes the manifest, then `rejudge`s from the run the verdict is about. A POST is refused unless its Origin is the server's own and its body JSON, since a page of any origin can send a form to the loopback address. The detail page's PNG and SVG rows have the choices, an Allowances form (a rectangle is drawn by dragging on the picture, in device pixels) and Judge again; the page's script sends them and says "applying..." or the error beside the buttons |
+| Changed outside the runs | the server's `changed()` (`changedPictures` against the baseline, read at most once a second); `reviewPictures(runs, {outside})` puts those no run reported in the group `outside`, between Only noise and Unchanged; `outsideHtml` compares HEAD's picture with the file, its map `/map/outside/<out>` drawn by `changeMap` |
+| Moving to HEAD | `session.moveBaseline(baseline)` (`moved: {at, from}`); the server's `head()` and `revisionAt(hash)`; HEAD is read again at most once a second, so the notice follows a commit made while the tool is open. Each verdict as applied records the baseline it was judged against (`baseline`, a run's `--against` on arrival), and `reviewPictures(runs, {baseline})` gives one judged against the revision of another baseline the look `baseline` until it is judged again |
+| A retake's revision | `shot_review.mjs --retake` passes `--against <baseline>`, so that a run judges against the session's baseline whatever HEAD is (`againstOf(run)`) |
 
-- **The pictures changed outside the session's runs.** `changedPictures(DOCS_DIR,
-  baseline.hash)` (`shot-revision.mjs`) lists them; those no run reported become a group of the
-  overview (between Only noise and Unchanged is a reasonable place; it needs a key in `GROUPS`
-  and a part in `reviewPictures` for pictures with no run). Their detail page compares HEAD's
-  picture with the file, its map drawn by `changeMap` (there is no strength map staged), and
-  has no verdict row. The list is read again when the overview is, since a terminal run can
-  change it at any time.
-- **Moving the session to a new HEAD.** A button beside the "HEAD is now ..." notice: a POST
-  that sets `session.data.baseline` to HEAD (`revisionOf`, and the build from the manifest at
-  it, as `shot_review.mjs` makes a baseline), reopens the server's `revision`, and clears
-  `headNow`. A verdict whose `against` was `revision` was judged against the old baseline's
-  picture, so it goes back to Needs a look (a new `why`, such as `baseline`, in `pngLook`'s
-  sense, set by the model when a verdict's run is older than the move; record the move's time
-  in the session).
+**Next: step 7**, the runs page: retake, replay, clean up and stop from the page. `app.start`
+already takes `{tool, args}`; a retake's args must carry `--against <baseline>` as
+`shot_review.mjs` passes it. A clean-up (`--cleanup`) writes under `docs/` itself and is no
+staged run: it needs the session's runs stopped first, and the pictures it resets then show in
+the outside group.
+
+Left from step 6, small: `openManifest().save` writes LF, so a manifest checked out with CRLF
+shows as modified with no diff once the tool (or `shoot_docs.mjs`) has saved it, even after a
+decision is removed again. An allowance is applied as soon as it is submitted; there is no
+preview of the verdict it would give without applying it (the plan's "shows the verdict it
+gives" is met by the page showing the new verdict).
+
+Step 6 was checked with the tests in `test/svgshot.test.mjs` (the applier on its own, and the
+server with a stand-in run: a verdict applied as it arrives, decisions, allowances, the
+outside group, the move), and with the real tool in a worktree: a retake of
+`Menu_File_Project` (dark `unchanged`, light `noise`, both SVGs judged and staged as
+"unchanged"), nothing written under `docs/`; the light picture taken through a POST and through
+the page's own button (the PNG written, the decision and BETA 1034 in the manifest, the SVG as
+judged the same as the file), a rectangle drawn on the SVG's picture and applied as an
+allowance, then the defaults and the rule again, after which `docs/` was as HEAD has it. The
+[checks of a move](#checking-a-move) printed the states listed there, and the restore case
+staged the same lines, its verdicts as listed.
 
 Step 5 was checked with the tests in `test/svgshot.test.mjs` and with three real runs started
 by the tool in one session, the tool closed between them: a retake of `Close_Question` whose
