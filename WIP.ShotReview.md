@@ -2,8 +2,8 @@
 
 A localhost tool for reviewing what `shoot_docs.mjs` and `replay.mjs` decided about each
 picture, overriding it, starting retakes and replays, and committing the result. **Design
-agreed with the owner on 2026-10-31; step 1 of [the order of work](#order-of-work) is under
-way, and the tool itself is not started.** The mockups it was agreed on were inline in that
+agreed with the owner on 2026-10-31; step 1 of [the order of work](#order-of-work) is done
+but for three rows that later steps make, and the tool itself is not started.** The mockups it was agreed on were inline in that
 session and are not kept: the pages are described below instead.
 
 The tool covers everything the command-line screenshot tools do, interactively, with a person
@@ -244,7 +244,7 @@ uses it. `shoot_docs.mjs` cannot run in a gate, so a move is checked by its test
 Each step ends tested and usable on its own.
 
 1. **The moves**, no behaviour changed: the table's *After* column, with `shoot_docs.mjs`,
-   `replay.mjs` and `sheet.mjs` calling the shared modules. Mostly done: see
+   `replay.mjs` and `sheet.mjs` calling the shared modules. Done but for three rows: see
    [Where the work stands](#where-the-work-stands).
 2. **The manifest**: read and written by one module; `shoot_docs.mjs` and `replay.mjs` judge
    with its allowances, honour its decisions and record `build`.
@@ -261,8 +261,8 @@ Each step ends tested and usable on its own.
 
 ## Where the work stands
 
-On `staging` since 2026-10-31 (the commits from `95378e8f` to `c833323a`), step 1 but for the
-rows below. Each move kept the command-line tools' output as it was, checked as
+On `staging` since 2026-10-31, step 1 but for the three rows that are new code (below). Each
+move kept the command-line tools' output as it was, checked as
 [below](#checking-a-move).
 
 | Row of the factoring table | Where it is now |
@@ -273,23 +273,14 @@ rows below. Each move kept the command-line tools' output as it was, checked as
 | Writing a verdict | `scripts/lib/shot-apply.mjs`: `applyPicture(outRoot, out, decision, revision)`, `applySvg(outRoot, svgOut, svg or null)`, `restorePictures(outRoot, revision, outs, {dryRun})` (the PNGs and their SVGs, the SVGs by one `git restore`; `--cleanup` and a `restored` picture both use it), `dropPicture(outRoot, out, bundlesRoot)`, `writeSvg`, `svgOf`. What stays in `shoot_docs.mjs`'s `keep` and `keepSvg`: the counts, the lines it prints, the `--diffs` pictures, the bundle written, the user-name check, and the rule that an SVG stays as it is when its PNG was not written |
 | The git listing | `changedPictures`, `parseNameStatus`, `parseUntracked` in `scripts/lib/shot-revision.mjs` |
 | A child's report | `scripts/lib/record-lines.mjs`: `recordLine`, `writeRecord`, `parseRecord`, `readRecords(stream, kinds, {onRecord, onLine})`; `runShards` reads `svgshot-result` records with it. `--events` is to write `shot-event` records the same way |
+| The sheets' HTML | the pieces in `scripts/lib/shot-views.mjs`: `pageHtml({generator, title, intro, summary, contents, body})`, `cardHtml({out, meta, meter, figures})`, `figuresIn(folder)` (`href`, `figure`, `thumb`), `meterHtml`, `tocItem`, `esc`, `anchor`, `sizeText`, `pctText`. The two pages, their rows, their order, their commands and the output-folder rules (`outputRefusal`, `mayWriteSheet`, `SHEET_GENERATOR`) are in `scripts/svgshot/sheets.mjs`; `redraw.mjs` keeps drawing and the shards |
 | Server-sent events | `createSseChannel()` in `lib/sse.mjs`: `handle(req, res)`, `send(event, data)`, `close()`; `builder/serve.mjs` uses one |
 | The installs | `listIdes()` in `scripts/lib/tb-install.mjs`, newest first, `[{build, exe}]` |
 
-**Next: the views module**, the last move. The sheets' HTML is in `scripts/svgshot/redraw.mjs`
-from `SHEET_GENERATOR` to the end: the private pieces `esc`, `anchor`, `sizeText`, `pageHtml`
-(the page skeleton both sheets share), `figuresIn`, `meterHtml`, `pctText`, `shellQuote`, and
-the two pages `sheetHtml` (the pictures with no SVG) and `changeSheetHtml` (`--against`),
-with their row helpers (`sortRows`, `sortChangeRows`, `restoreCommand`, `cleanupCommand`,
-`changeFiles`, `compareRevisionPicture`) and the output-folder rules (`outputRefusal`,
-`mayWriteSheet`). The pieces go to a module of their own that the tool will import too (a
-card, a figure, a meter, the page); `test/svgshot.test.mjs` tests both pages through their
-exports, so the tests show whether the move changed anything. The tool's own pages will add
-their actions to the same pieces; until then nothing calls them but `sheet.mjs`.
-
-**Then step 2**, the manifest. The three rows left in the table are new code, made in the
+**Next: step 2**, the manifest. The three rows left in the table are new code, made in the
 steps that need them: the strength map and `changeRegions` in step 3, the commit helper in
-step 8.
+step 8. The tool's pages will add their actions to the pieces in `shot-views.mjs` (step 5);
+until then only `sheets.mjs` calls them.
 
 **A small cleanup, in no step:** a PNG's size is read from its header by four copies of one
 line (`pngSize` in `shot-policy.mjs` as `{w, h}`, in `redraw.mjs` as `[w, h]` or null, in

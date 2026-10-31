@@ -16,8 +16,9 @@
 // measured by the bench pages. And colour-filter.mjs, which bakes a filter of colour functions
 // into the colours its group paints. And redraw.mjs, which replay.mjs and sheet.mjs share:
 // redraw, which draws a picture again from its bundle or names its retake, and fails on the
-// user name unless its caller turns the check off; the pictures listed; the folders a sheet
-// is refused; and the sheet's page. And the sheet of changes against a git revision
+// user name unless its caller turns the check off; and the pictures listed. And sheets.mjs:
+// the folders a sheet is refused, and the sheet's page, made of lib/shot-views.mjs's pieces.
+// And the sheet of changes against a git revision
 // (sheet.mjs --against): git's change list, the comparison of two pictures over two sizes,
 // the noise rule, the order and the page. And lib/record-lines.mjs, the records a child
 // process writes among its lines, which runShards reads. And what becomes of a picture and
@@ -65,27 +66,29 @@ import {
   svgFate,
 } from "../scripts/lib/shot-revision.mjs";
 import {
+  judgedFiles,
+  listPictures,
+  pngSize,
+  redraw,
+  retakeText,
+  shareOf,
+  slugOf,
+  themeOf,
+} from "../scripts/svgshot/redraw.mjs";
+import {
   cleanupCommand,
   changeFiles,
   changeSheetHtml,
   compareRevisionPicture,
-  judgedFiles,
-  listPictures,
   restoreCommand,
   sortChangeRows,
   mayWriteSheet,
   notDrawn,
   outputRefusal,
-  pngSize,
-  redraw,
-  retakeText,
   SHEET_GENERATOR,
   sheetHtml,
-  shareOf,
-  slugOf,
   sortRows,
-  themeOf,
-} from "../scripts/svgshot/redraw.mjs";
+} from "../scripts/svgshot/sheets.mjs";
 import {
   bakeable,
   bakeColour,
@@ -1279,7 +1282,7 @@ describe("web fonts as WOFF2", () => {
   });
 });
 
-// redraw.mjs's parts that need no browser: what sheet.mjs lists, where it may write, and the page.
+// redraw.mjs's parts that need no browser, what sheet.mjs lists, and sheets.mjs: where it may write, and the page.
 describe("the sheet", () => {
   const PNG = (w, h) => {
     const b = Buffer.alloc(33);

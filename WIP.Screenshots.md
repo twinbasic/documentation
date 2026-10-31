@@ -974,7 +974,8 @@ the PNG was just captured from, and the build shows it in place of the PNG
   user name (owner); `outputRefusal` keeps it out of `docs/` and out of any path git does not
   ignore, and an existing folder must hold an earlier sheet. What it shares with replay is
   `scripts/svgshot/redraw.mjs` (`redraw`, `writeJudged`, `runShards`/`inBrowser`, the
-  `judgedFiles` names: `<slug>.svg-diff.png` and `<slug>.svg` as `--diffs` names them).
+  `judgedFiles` names: `<slug>.svg-diff.png` and `<slug>.svg` as `--diffs` names them); its pages are
+  `scripts/svgshot/sheets.mjs`, made of the pieces in `scripts/lib/shot-views.mjs`.
   `shoot_docs.mjs --diffs` is to call `sheetHtml` over its diffs folder in a later commit.
   A sheet of the pictures with no SVG takes seconds; `--all`, over some 550 pictures, about a
   minute.

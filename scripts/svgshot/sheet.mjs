@@ -34,27 +34,29 @@ import { useSubsetCache } from "./fonts.mjs";
 import { SVG_FAITHFUL } from "../lib/shot-policy.mjs";
 import { judgeSvg } from "./keep.mjs";
 import {
-  changeFiles,
-  changeSheetHtml,
-  compareRevisionPicture,
   defaultJobs,
   inBrowser,
   judgedFiles,
   listPictures,
-  mayWriteSheet,
-  notDrawn,
-  outputRefusal,
   pngSize,
   redraw,
   reportShard,
   retakeText,
   runShards,
-  sheetHtml,
   shardOf,
   shareOf,
   themeOf,
   writeJudged,
 } from "./redraw.mjs";
+import {
+  changeFiles,
+  changeSheetHtml,
+  compareRevisionPicture,
+  mayWriteSheet,
+  notDrawn,
+  outputRefusal,
+  sheetHtml,
+} from "./sheets.mjs";
 
 exitOnCrash();
 
