@@ -2075,9 +2075,24 @@ describe("which pictures need a look (shot-queue.mjs)", () => {
     assert.equal(pngLook(taken, [region(WORD_CORE + 1)]), null);
     assert.equal(pngLook(taken, [region(100), region(100), region(100)]), null);
     // a picture not taken, or decided by a review, does not
-    for (const state of ["new", "noise", "restored", "unchanged", "dark"])
+    for (const state of ["new", "noise", "restored", "unchanged", "dark", "too-far"])
       assert.equal(pngLook({ ...taken, state }, []), null);
     assert.equal(pngLook({ ...taken, by: "decision" }, []), null);
+  });
+
+  test("a capture kept as within noise needs a look when something survives", () => {
+    for (const state of ["noise", "restored"]) {
+      assert.equal(pngLook({ ...taken, state }, [region(SURVIVES)]).why, "faint");
+      assert.equal(pngLook({ ...taken, state }, [region(SURVIVES - 1), region(3)]), null);
+      assert.equal(pngLook({ ...taken, state, by: "decision" }, [region(5000)]), null);
+    }
+    for (const state of ["unchanged", "dark", "new"]) assert.equal(pngLook({ ...taken, state }, [region(5000)]), null);
+    // a tint of 3 levels over a block, within noise, survives; the same over a 2-pixel line does not
+    const rule = pngRule(null);
+    const tint = paintMap(200, 100, (x, y) => (blocks([20, 20, 60, 40])(x, y) ? 3 : 0));
+    assert.equal(pngLook({ ...taken, state: "noise" }, pngRegions(tint, rule)).why, "faint");
+    const line = paintMap(200, 100, (x, y) => (blocks([20, 20, 120, 22])(x, y) ? 3 : 0));
+    assert.equal(pngLook({ ...taken, state: "noise" }, pngRegions(line, rule)), null);
     // a review's decision about other bytes sends it back, whatever the regions
     assert.equal(pngLook({ ...taken, state: "noise", earlier: "new" }, [region(5000)]).why, "earlier");
   });

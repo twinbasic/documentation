@@ -322,12 +322,9 @@ at 200 levels. The constants were chosen from the pictures: each stage drawn ove
 retaken PNGs (the changed pixels, what the closing adds, the core, the boxes), and the counts
 over every SVG and the PNGs of the BETA 1010 and 1033 retakes.
 
-**Before step 4: the PNG rule for a capture kept as within noise** (owner, 2026-10-31; [the
-queue](#the-queue)) is not in `shot-queue.mjs` yet. `pngLook` returns null for every state but
-`updated`; it is to return `{why: "faint", ...}` for `noise` and `restored` when a region
-survives, with a test beside the others in `test/svgshot.test.mjs` ("which pictures need a
-look"), and the line on [Tools-Toolchain-Tests](docs/Documentation/Tools-Toolchain-Tests.md)
-that lists what the queue sends.
+The PNG rule for a capture kept as within noise (owner, 2026-10-31; [the queue](#the-queue))
+is `pngLook`'s `faint`: for `noise` and `restored`, when a region survives. Its regions are
+the caller's to give, from the capture against the picture it was found within noise of.
 
 Step 2 was checked with the runs [below](#checking-a-move), whose states it left as they were
 with an empty manifest, and with an allowance and a decision on `Menu_Tools_IDEOptions`: the

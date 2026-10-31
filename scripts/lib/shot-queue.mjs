@@ -62,7 +62,7 @@ const small = (kept) => kept.length <= WORD_BLOCKS && kept.every((r) => r.core <
 /**
  * Why a picture's PNG needs a look, or null: the first argument is decidePicture's verdict
  * ({state, by, earlier}), `regions` pngRegions' for the capture against the picture it was
- * judged against.
+ * judged against: for `noise` and `restored`, the one it was found within noise of.
  * Returns {why, text}, `why` one of:
  *
  *   earlier   a review decided about other bytes of this picture; the rule judged these
@@ -70,10 +70,16 @@ const small = (kept) => kept.length <= WORD_BLOCKS && kept.every((r) => r.core <
  *             a fringe
  *   small     the capture was taken, and what survives is a block or two the size of a word:
  *             a real change small enough to miss
+ *   faint     the old picture was kept as within noise, but something survives: a tint of
+ *             a few levels, or a change over less than the noise rule's share
  */
 export function pngLook({ state, by, earlier }, regions) {
   if (by === "decision") return null;
   if (earlier) return { why: "earlier", text: `a review kept the ${earlier} picture of other bytes` };
+  if (state === "noise" || state === "restored")
+    return surviving(regions).length
+      ? { why: "faint", text: "kept as within noise, but a part of the change survives the erosion" }
+      : null;
   if (state !== "updated") return null;
   const kept = surviving(regions);
   if (!kept.length) return { why: "noise", text: "taken, but nothing survives the erosion: most likely noise" };
