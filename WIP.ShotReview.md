@@ -2,7 +2,7 @@
 
 A localhost tool for reviewing what `shoot_docs.mjs` and `replay.mjs` decided about each
 picture, overriding it, starting retakes and replays, and committing the result. **Design
-agreed with the owner on 2026-10-31; steps 1 to 3 of [the order of work](#order-of-work) are
+agreed with the owner on 2026-10-31; steps 1 to 4 of [the order of work](#order-of-work) are
 done (step 1 but for the commit helper, which step 8 makes), and the tool itself is not started.** The mockups it was agreed on were inline in that
 session and are not kept: the pages are described below instead.
 
@@ -138,8 +138,11 @@ no core without it and ten regions with it). A region survives with a core of 16
 pixel that differs at all, not only those beyond noise: a retake on a new build often shifts a
 colour by a few levels over a whole window, which counted beyond noise leaves nothing and reads
 as noise (294 of the 361 pictures the BETA 1010 retake changed at their old size; 23 at any
-difference). An SVG's count the pixels at its bar's levels. A picture is in **Needs a look**
-when:
+difference). A capture kept as within noise counts the pixels 2 levels off or more instead
+(`FAINT_LEVEL`, owner, 2026-10-31): its own noise is often a row of text one level off
+(Menu_File_Project.light on BETA 1034: every one of its 1,258 differing pixels 1 level off, and
+cores of 37 to 96 px surviving at level 1, none at 2). An SVG's count the pixels at its bar's
+levels. A picture is in **Needs a look** when:
 
 - **PNG**: the tool took the new capture, but nothing survives (most likely noise: a caret, a
   clock, a fringe), or what survives is small (a block or two the size of a word: a real
@@ -226,7 +229,9 @@ process: `shoot_docs.mjs` is a script with effects at the top level (the registr
 `exitOnCrash`, exit codes), and one code path for both is the point. Two options are added to
 `shoot_docs.mjs` and `replay.mjs` for it:
 
-- **`--stage <dir>`**: write nothing under `docs/` and nothing to `.svgshot-bundles/`; write
+- **`--stage <dir>`**: write nothing under `docs/`, nothing to the manifest and nothing to
+  `.svgshot-bundles/` but the fonts' cuts in its `subsets` (a cache, which depends on the font
+  and its characters alone); write
   each candidate into `<dir>` instead: the capture, its SVG (accepted or not), its bundle, its
   difference maps, its strength map and its verdict. **The tool is then the only writer under
   `docs/`**: it applies each verdict as it arrives, and each override, through the same code
@@ -277,7 +282,7 @@ Each step ends tested and usable on its own.
 2. **The manifest**: read and written by one module; `shoot_docs.mjs` and `replay.mjs` judge
    with its allowances, honour its decisions and record `build`. Done.
 3. **The strength map, the regions and the queue's rules**, tested on fixtures. Done.
-4. **`--stage`, `--events` and stop** in `shoot_docs.mjs` and `replay.mjs`.
+4. **`--stage`, `--events` and stop** in `shoot_docs.mjs` and `replay.mjs`. Done.
 5. **The server and the session store**, the overview and the detail page read-only, live.
 6. **Decisions and allowances** applied through `shot-apply.mjs`, judged again at once.
 7. **The runs page**: retake, replay, clean up, stop.
@@ -289,7 +294,7 @@ Each step ends tested and usable on its own.
 
 ## Where the work stands
 
-On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and steps 2 and 3. Each move kept the command-line tools' output as it was, checked as
+On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and steps 2 to 4. Each move kept the command-line tools' output as it was, checked as
 [below](#checking-a-move).
 
 | Row of the factoring table | Where it is now |
@@ -299,21 +304,34 @@ On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and st
 | An SVG's verdict | `decideSvg(strength, {entry, svg, png})` in `shot-policy.mjs`, with `SVG_FAITHFUL` and `svgRule(entry)` (`{levels, share, rects}`): `{faithful, by, share, earlier}`, `share` counted on the strength map at the bar's levels with its rectangles left out, `earlier` a review's decision about another SVG or PNG (`earlierSvgDecision`). `judgeSvg(browser, svg, png, stats, entry)` asks it |
 | How far an SVG is off | `diffSvg` returns `strength`, `{width, height, data}`, a byte per device pixel of the clip (the distance with the one-pixel shift allowed, in whole levels, so a level's count is the same as from the distance); `stats.pct8`, `pct32` and `pct96` are `shareOff` of it, the same to the third place (a replay of the 476 bundles printed the same lines before and after) |
 | Regions | `scripts/lib/shot-change.mjs`: `strengthOf(A, B)` (two captures' map, withinNoise's distance), `shareOff(strength, {level, rects})`, `changeRegions(strength, {level, close, erode, rects})` (`[{x0, y0, x1, y1, pixels, core}]`, most core first) and `regionMasks`, its three masks, for drawing them |
-| The queue's rules | `scripts/lib/shot-queue.mjs`: `pngRegions(strength, pngRule)`, `svgRegions(strength, entry)`, `surviving`, `pngLook(verdict, regions)` and `svgLook(verdict, regions)`, each `{why, text}` or null; the constants `QUEUE_CLOSE`, `QUEUE_ERODE`, `SURVIVES`, `WORD_CORE`, `WORD_BLOCKS` |
+| The queue's rules | `scripts/lib/shot-queue.mjs`: `pngRegions(strength, pngRule, level)`, `svgRegions(strength, entry)`, `surviving`, `keptAsNoise(state)`, `pngLook(verdict, regions)` and `svgLook(verdict, regions)`, each `{why, text}` or null (`why` for a PNG: `earlier`, `noise`, `small`, `faint`); `reviewPicture(verdict, png, reference, entry)` (`{strength, regions, look}`, measured against the picture `verdict.against` names: decidePicture and pictureFate return `against`, "revision", "disk", "dark" or null) and `reviewSvg(verdict, strength, entry)`; the constants `QUEUE_CLOSE`, `QUEUE_ERODE`, `SURVIVES`, `WORD_CORE`, `WORD_BLOCKS`, `FAINT_LEVEL` |
+| A run's stage and events | `scripts/lib/shot-stage.mjs`: `stageFolders(dir)` (`pictures`, `bundles`, `diffs`, `maps`, `verdicts`), `stagedFiles(dir, out)`, `stageRefusal(dir, docsRoots)` (outputRefusal, and a stage must be new or empty), `stageCapture`, `stageSvg`, `writeStrength` / `readStrength` (8 bytes of size, then the map deflated), `writeVerdict(dir, out, part, value)` / `readVerdicts(dir)`, and the verdict shapes `pngVerdict` and `svgVerdict`, which the `picture` and `svg` events carry too (at most `STAGED_REGIONS`, 64, regions, and `regionCount`). `shoot_docs.mjs` and `replay.mjs` write nothing else with `--stage`: `applyPicture`, `applySvg`, `writeSvg`, `dropPicture` and `restorePictures` take `{dryRun}`, and say what would be done. Events: `run`, `job` (`started`, `done`, `failed`), `picture`, `svg`, `failed`, `skipped`, `retake` (replay), `stopping`, `summary`. Stop: `STOP_LINE`, `onStop(stream, fn)`, `sendStop(child)` in `record-lines.mjs`; `runShards(env, jobs, {signal})` passes it to each child, `inBrowser(items, fn, {stopped})` returns the items not started |
 | The manifest | `scripts/lib/shot-manifest.mjs`: `MANIFEST`, `openManifest(file)` (`entry`, `setBuild`, `clearBuild`, `save`, `text`), `parseManifest`, `manifestText`, `pngDecision`, `earlierPngDecision`, `svgDecision`, `hashOf`. `shoot_docs.mjs` passes each picture's rectangles to `capture` as `c.shot.ignore`, left out as its unsteady regions are, and records `build` (`buildNumber(ide)`) in `keep` and `dropLight` |
 | Writing a verdict | `scripts/lib/shot-apply.mjs`: `applyPicture(outRoot, out, decision, revision)`, `applySvg(outRoot, svgOut, svg or null)`, `restorePictures(outRoot, revision, outs, {dryRun})` (the PNGs and their SVGs, the SVGs by one `git restore`; `--cleanup` and a `restored` picture both use it), `dropPicture(outRoot, out, bundlesRoot)`, `writeSvg`, `svgOf`. What stays in `shoot_docs.mjs`'s `keep` and `keepSvg`: the counts, the lines it prints, the `--diffs` pictures, the bundle written, the user-name check, and the rule that an SVG stays as it is when its PNG was not written |
 | The git listing | `changedPictures`, `parseNameStatus`, `parseUntracked` in `scripts/lib/shot-revision.mjs` |
-| A child's report | `scripts/lib/record-lines.mjs`: `recordLine`, `writeRecord`, `parseRecord`, `readRecords(stream, kinds, {onRecord, onLine})`; `runShards` reads `svgshot-result` records with it. `--events` is to write `shot-event` records the same way |
+| A child's report | `scripts/lib/record-lines.mjs`: `recordLine`, `writeRecord`, `parseRecord`, `readRecords(stream, kinds, {onRecord, onLine})`; `runShards` reads `svgshot-result` records with it, and `--events` writes `shot-event` records the same way (a shard's pass through its parent as lines) |
 | The sheets' HTML | the pieces in `scripts/lib/shot-views.mjs`: `pageHtml({generator, title, intro, summary, contents, body})`, `cardHtml({out, meta, meter, figures})`, `figuresIn(folder)` (`href`, `figure`, `thumb`), `meterHtml`, `tocItem`, `esc`, `anchor`, `sizeText`, `pctText`. The two pages, their rows, their order, their commands and the output-folder rules (`mayWriteSheet`, `SHEET_GENERATOR`) are in `scripts/svgshot/sheets.mjs`, and `outputRefusal`, which the stage shares, in `shot-revision.mjs`; `redraw.mjs` keeps drawing and the shards |
 | Server-sent events | `createSseChannel()` in `lib/sse.mjs`: `handle(req, res)`, `send(event, data)`, `close()`; `builder/serve.mjs` uses one |
 | The installs | `listIdes()` in `scripts/lib/tb-install.mjs`, newest first, `[{build, exe}]` |
 
-**Next: step 4**, `--stage`, `--events` and stop in `shoot_docs.mjs` and `replay.mjs`. A staged
-candidate's verdict carries its look (`pngLook`, `svgLook`) and its strength map, which the
-PNG's needs from `strengthOf` of the capture and the picture it was judged against (the
-revision's, else the file); `--events` writes `shot-event` records with
-`scripts/lib/record-lines.mjs`. The tool's pages will add their actions to the pieces in
-`shot-views.mjs` (step 5); until then only `sheets.mjs` calls them.
+**Next: step 5**, the server and the session store, with the overview and the detail page
+read-only and live. A run is a child process with `--stage <session>/runs/<n>` and `--events`;
+the tool reads its records with `readRecords`, passes them to the pages through
+`createSseChannel`, and after a restart rebuilds a run's pictures from `readVerdicts` and
+`readStrength`. Still to write for step 6, where the tool applies a verdict: moving a staged
+bundle into the cache (`readBundle` from the stage, `writeBundle` into `.svgshot-bundles`), and
+the "dark" verdict's two calls (`applyPicture`, then `dropPicture` for its SVG and bundle) as
+one function in `shot-apply.mjs`, so that `shoot_docs.mjs` and the tool make the same calls. The
+tool's pages will add their actions to the pieces in `shot-views.mjs`; until then only
+`sheets.mjs` calls them.
+
+Step 4 was checked with the runs [below](#checking-a-move), staged and not, which printed the
+same lines, the staged ones writing nothing under `docs/` (`git status` clean) and their
+verdicts saying the same (the restore case: `restored`, its SVG `keep` as HEAD has it, the light
+SVG `new`); a staged `replay.mjs --recheck` of six pictures; and a stop sent after a few seconds
+to `replay.mjs` over the 476 bundles (8 drawn, 467 `skipped`, its four children each stopped) and
+to `shoot_docs.mjs --jobs 1` (one job finished, the two not started skipped, the registry put
+back, exit 0).
 
 Step 3 was checked with a replay of every bundle (`--recheck`), whose lines, sorted, were the
 same before and after, and with `svg.ignore` on Properties_ColourPicker.light (a rectangle over
@@ -323,8 +341,8 @@ retaken PNGs (the changed pixels, what the closing adds, the core, the boxes), a
 over every SVG and the PNGs of the BETA 1010 and 1033 retakes.
 
 The PNG rule for a capture kept as within noise (owner, 2026-10-31; [the queue](#the-queue))
-is `pngLook`'s `faint`: for `noise` and `restored`, when a region survives. Its regions are
-the caller's to give, from the capture against the picture it was found within noise of.
+is `pngLook`'s `faint`: for `noise` and `restored`, when a region survives at `FAINT_LEVEL`.
+`reviewPicture` measures it against the picture it was found within noise of.
 
 Step 2 was checked with the runs [below](#checking-a-move), whose states it left as they were
 with an empty manifest, and with an allowance and a decision on `Menu_Tools_IDEOptions`: the
