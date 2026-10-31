@@ -13,7 +13,8 @@ import path from "node:path";
 import { decodePng } from "../lib/png.mjs";
 import { changeMap, compareImages, NOISE_LEVELS, NOISE_SHARE } from "../lib/shot-change.mjs";
 import { cardHtml, esc, figuresIn, meterHtml, pageHtml, pctText, sizeText, tocItem } from "../lib/shot-views.mjs";
-import { pngSize, slugOf, themeOf } from "./redraw.mjs";
+import { slugOf } from "../lib/shot-apply.mjs";
+import { pngSize, themeOf } from "./redraw.mjs";
 
 /** The generator a sheet names in its <meta>, by which a folder is known to hold one. */
 export const SHEET_GENERATOR = "scripts/svgshot/sheet.mjs";

@@ -51,8 +51,16 @@ import {
 } from "../scripts/svgshot/bundle.mjs";
 import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
 import { decodePng, encodePng } from "../scripts/lib/png.mjs";
-import { parseRecord, readRecords, recordLine } from "../scripts/lib/record-lines.mjs";
-import { applyPicture, applySvg, dropPicture, restorePictures } from "../scripts/lib/shot-apply.mjs";
+import { onStop, parseRecord, readRecords, recordLine, sendStop, STOP_LINE } from "../scripts/lib/record-lines.mjs";
+import {
+  readStrength,
+  readVerdicts,
+  stagedFiles,
+  stageRefusal,
+  writeStrength,
+  writeVerdict,
+} from "../scripts/lib/shot-stage.mjs";
+import { applyPicture, applySvg, dropPicture, restorePictures, slugOf } from "../scripts/lib/shot-apply.mjs";
 import {
   cleanupResets,
   decidePicture,
@@ -114,7 +122,6 @@ import {
   redraw,
   retakeText,
   shareOf,
-  slugOf,
   themeOf,
 } from "../scripts/svgshot/redraw.mjs";
 import {
@@ -1945,6 +1952,81 @@ describe("the records a child writes among its lines (record-lines.mjs)", () => 
     await ended;
     assert.deepEqual(lines, ["one", "two", "@@other 2", "last"]);
     assert.deepEqual(records, [["k", { n: 1 }]]);
+  });
+
+  test("a child is stopped once by a line on its stdin, across chunks, and by nothing else", () => {
+    const stream = new PassThrough();
+    let stops = 0;
+    onStop(stream, () => stops++);
+    stream.write("go\nsto");
+    assert.equal(stops, 0);
+    stream.write("p\r\nstop\n");
+    assert.equal(stops, 1);
+    // a child started with a piped stdin is sent the line; one without is not
+    const sent = [];
+    sendStop({ stdin: { writable: true, write: (text) => sent.push(text) } });
+    sendStop({ stdin: null });
+    assert.deepEqual(sent, [`${STOP_LINE}\n`]);
+  });
+});
+
+describe("a run's stage (shot-stage.mjs)", () => {
+  test("names each picture's files, and keeps both parts of its verdict", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shot-stage-"));
+    try {
+      const out = "IDE/Images/Menu_File.light.png";
+      const files = stagedFiles(dir, out);
+      assert.equal(files.capture, path.join(dir, "pictures", "IDE", "Images", "Menu_File.light.png"));
+      assert.equal(files.svg, path.join(dir, "pictures", "IDE", "Images", "Menu_File.light.svg"));
+      assert.equal(files.verdict, path.join(dir, "verdicts", "IDE__Images__Menu_File.light.json"));
+      assert.equal(files.pngStrength, path.join(dir, "maps", "IDE__Images__Menu_File.light.png.strength"));
+      assert.deepEqual(writeVerdict(dir, out, "png", { state: "updated" }), {
+        out,
+        png: { state: "updated" },
+        svg: null,
+      });
+      writeVerdict(dir, out, "svg", { faithful: true });
+      writeVerdict(dir, "A/b.png", "png", { state: "new" });
+      assert.deepEqual(readVerdicts(dir), [
+        { out: "A/b.png", png: { state: "new" }, svg: null },
+        { out, png: { state: "updated" }, svg: { faithful: true } },
+      ]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a strength map is written and read back, and a file that is not one refused", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shot-stage-"));
+    try {
+      const map = paintMap(300, 200, blocks([10, 10, 40, 30]));
+      const file = path.join(dir, "maps", "x.png.strength");
+      writeStrength(file, map);
+      assert.ok(fs.statSync(file).size < 1000);
+      assert.deepEqual(readStrength(file), map);
+      const bad = Buffer.from(fs.readFileSync(file));
+      bad.writeUInt32BE(301, 0);
+      fs.writeFileSync(file, bad);
+      assert.throws(() => readStrength(file), /not 301 by 200/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("is one run's: never under docs, where git would take it, or in a folder that holds anything", () => {
+    const docs = path.join(REPO_ROOT, "docs");
+    assert.match(stageRefusal(path.join(docs, "stage"), [docs]), /is under/);
+    assert.match(stageRefusal(path.join(REPO_ROOT, "scripts", "stage"), [docs]), /does not ignore/);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shot-stage-"));
+    try {
+      assert.equal(stageRefusal(path.join(dir, "new"), [docs]), null);
+      assert.equal(stageRefusal(dir, [docs]), null);
+      fs.writeFileSync(path.join(dir, "x"), "");
+      assert.match(stageRefusal(dir, [docs]), /is not empty/);
+      assert.match(stageRefusal(path.join(dir, "x"), [docs]), /is a file/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

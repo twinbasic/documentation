@@ -12,6 +12,13 @@ import { restoreFromRevision, svgFate } from "./shot-revision.mjs";
 export const svgOf = (out) => out.replace(/\.png$/i, ".svg");
 
 /**
+ * A picture's name in a flat folder: its path under docs/ with the folders joined by
+ * `__` and no `.png` (IDE__Menu__Images__Menu_File.light), as shoot_docs.mjs --diffs
+ * and replay.mjs --diffs name their files, and a stage its maps and verdicts (shot-stage.mjs).
+ */
+export const slugOf = (out) => out.replace(/[\\/]/g, "__").replace(/\.png$/i, "");
+
+/**
  * Writes `svg` to `file` unless it holds it already: "new", "updated" or
  * "unchanged". The file may have been checked out with CRLF line endings, on its
  * last line alone (the SVG is on one line, oneLine in snapshot-svg.mjs).

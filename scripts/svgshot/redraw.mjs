@@ -17,16 +17,10 @@ import { readRecords, writeRecord } from "../lib/record-lines.mjs";
 import { BUNDLE_VERSION, pngHash, readBundle, renderBundle } from "./bundle.mjs";
 import { SNAPSHOT_STYLES } from "./capture.mjs";
 import { holdsUserName } from "./keep.mjs";
+import { slugOf } from "../lib/shot-apply.mjs";
 
 /** A picture's theme from its path under docs/: "light" for X.light.png, else "dark". */
 export const themeOf = (out) => (/\.light\.png$/i.test(out) ? "light" : "dark");
-
-/**
- * A picture's name in a flat folder: its path under docs/ with the folders joined by
- * `__` and no `.png` (IDE__Menu__Images__Menu_File.light), as shoot_docs.mjs --diffs
- * and replay.mjs --diffs name their files.
- */
-export const slugOf = (out) => out.replace(/[\\/]/g, "__").replace(/\.png$/i, "");
 
 /**
  * The files a judged picture can have in a flat folder, relative to it: the PNG's
