@@ -3,14 +3,16 @@
 // (or another revision) before the file on disk, so that a picture does not drift from the
 // repository's over several runs, each step within a capture's noise of the file before it;
 // and its --cleanup puts back every picture git reports modified that is within that noise of
-// the revision's. svgshot/sheet.mjs --against reads the revision's pictures here too. The
-// noise rule itself is withinNoise, in shot-change.mjs: every caller passes it in.
+// the revision's. svgshot/sheet.mjs --against lists the pictures that differ from a revision
+// and reads the revision's pictures here too. The noise rule itself is withinNoise, in
+// shot-change.mjs: every caller passes it in.
 //
 // Git is run in the docs folder, so that the repository that holds it answers, whichever
 // checkout the script is in. The reads are batched: one `git cat-file --batch` process for
 // any number of files.
 
 import { execFileSync } from "node:child_process";
+import { isOutputTree } from "../../lib/markdown-files.mjs";
 
 /**
  * Runs git in `cwd` and returns {status, stdout}: status 0 and its output as text, or its
@@ -25,6 +27,58 @@ export function runGit(args, cwd) {
   } catch (e) {
     return { status: typeof e.status === "number" ? e.status : 128, stdout: "" };
   }
+}
+
+/**
+ * The pictures git reports changed, from the text of `git diff --name-status
+ * --no-renames -z` (status, path, status, path, ... separated by NUL): [{out,
+ * status}], status "modified", "added" or "deleted", the PNGs only, the build's output
+ * trees left out, sorted by path.
+ */
+export function parseNameStatus(text) {
+  const parts = text.split("\0");
+  const found = [];
+  for (let i = 0; i + 1 < parts.length; i += 2) {
+    const letter = parts[i].trim()[0];
+    const status = letter === "A" ? "added" : letter === "D" ? "deleted" : "modified";
+    found.push({ out: parts[i + 1], status });
+  }
+  return keepPictures(found);
+}
+
+/** The PNGs of a list of paths from `git ls-files -z` (NUL separated), as [{out, status: "added"}]. */
+export const parseUntracked = (text) =>
+  keepPictures(
+    text
+      .split("\0")
+      .filter(Boolean)
+      .map((out) => ({ out, status: "added" })),
+  );
+
+function keepPictures(list) {
+  const seen = new Set();
+  return list
+    .filter(({ out }) => /\.png$/i.test(out) && !isOutputTree(out.split("/")[0]) && !seen.has(out) && seen.add(out))
+    .sort((a, b) => (a.out < b.out ? -1 : a.out > b.out ? 1 : 0));
+}
+
+/**
+ * The PNGs under `docsRoot` that differ from the revision `rev`, read with git run in
+ * `docsRoot` (so its own repository answers, whichever checkout this script is in):
+ * {hash, short, prefix, pictures}, `prefix` the folder's path from the repository's root
+ * with a closing slash (empty at the root), `pictures` as parseNameStatus gives them,
+ * with the PNGs git does not track yet, which are added. The working tree is compared,
+ * not the index. Throws an Error that says why when `rev` is not a commit there or the
+ * folder is not in a git working tree. `git` stands in for running git in the probes.
+ */
+export function changedPictures(docsRoot, rev, git = runGit) {
+  const { hash: id, short, prefix } = revisionOf(docsRoot, rev, git);
+  const diff = git(["diff", "--name-status", "--no-renames", "--relative", "-z", id, "--", "."], docsRoot);
+  if (diff.status !== 0) throw new Error(`git diff against ${rev} failed in ${docsRoot}`);
+  const untracked = git(["ls-files", "-z", "--others", "--exclude-standard", "--", "."], docsRoot);
+  if (untracked.status !== 0) throw new Error(`git ls-files failed in ${docsRoot}`);
+  const pictures = keepPictures([...parseNameStatus(diff.stdout), ...parseUntracked(untracked.stdout)]);
+  return { hash: id, short, prefix, pictures };
 }
 
 /**

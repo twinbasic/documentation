@@ -46,8 +46,11 @@ import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
 import { decodePng, encodePng } from "../scripts/lib/png.mjs";
 import { changeMap, compareImages, withinNoise } from "../scripts/lib/shot-change.mjs";
 import {
+  changedPictures,
   openRevision,
   parseCatFileBatch,
+  parseNameStatus,
+  parseUntracked,
   pictureFate,
   planCleanup,
   restoreFromRevision,
@@ -55,15 +58,12 @@ import {
   svgFate,
 } from "../scripts/lib/shot-revision.mjs";
 import {
-  changedPictures,
   cleanupCommand,
   changeFiles,
   changeSheetHtml,
   compareRevisionPicture,
   judgedFiles,
   listPictures,
-  parseNameStatus,
-  parseUntracked,
   restoreCommand,
   sortChangeRows,
   mayWriteSheet,

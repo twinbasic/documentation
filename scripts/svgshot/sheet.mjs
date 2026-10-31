@@ -28,14 +28,13 @@ import {
   withUsageError,
 } from "../../lib/cli.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../../lib/repo-paths.mjs";
-import { readRevisionFiles } from "../lib/shot-revision.mjs";
+import { changedPictures, readRevisionFiles } from "../lib/shot-revision.mjs";
 import { listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
 import { judgeSvg, SVG_FAITHFUL } from "./keep.mjs";
 import {
   changeFiles,
   changeSheetHtml,
-  changedPictures,
   compareRevisionPicture,
   defaultJobs,
   inBrowser,

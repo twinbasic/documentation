@@ -164,7 +164,14 @@ import { composite, uncomposite } from "./lib/shot-composite.mjs";
 import { decodePng, encodePng } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
 import { inRects, withinNoise } from "./lib/shot-change.mjs";
-import { openRevision, pictureFate, planCleanup, restoreFromRevision, svgFate } from "./lib/shot-revision.mjs";
+import {
+  changedPictures,
+  openRevision,
+  pictureFate,
+  planCleanup,
+  restoreFromRevision,
+  svgFate,
+} from "./lib/shot-revision.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
@@ -186,7 +193,6 @@ import {
 } from "./lib/tb-ide.mjs";
 import { dropBundle, writeBundle } from "./svgshot/bundle.mjs";
 import { svgOfPage } from "./svgshot/capture.mjs";
-import { changedPictures } from "./svgshot/redraw.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
 import { holdsUserName, judgeSvg, SVG_FAITHFUL, writeSvg } from "./svgshot/keep.mjs";
 import { stageProject, unpackProject } from "./lib/tb-project.mjs";
