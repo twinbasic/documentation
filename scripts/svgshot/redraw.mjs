@@ -13,7 +13,7 @@ import { availableParallelism } from "node:os";
 import path from "node:path";
 import { isOutputTree } from "../../lib/markdown-files.mjs";
 import { LAUNCH_ARGS, launchBrowser } from "../lib/browser.mjs";
-import { readRecords, writeRecord } from "../lib/record-lines.mjs";
+import { readRecords, sendStop, writeRecord } from "../lib/record-lines.mjs";
 import { BUNDLE_VERSION, pngHash, readBundle, renderBundle } from "./bundle.mjs";
 import { SNAPSHOT_STYLES } from "./capture.mjs";
 import { holdsUserName } from "./keep.mjs";
@@ -150,20 +150,22 @@ export const shareOf = (items, shard) => items.filter((_, i) => i % shard.of ===
  * own errors. Without the GPU: the browsers of every process share one, which held a
  * replay to the speed of four processes; drawn in software, eight go faster. An SVG's
  * bytes do not depend on it, only how close its render comes to the PNG, which the
- * bar judges.
+ * bar judges. Once `stopped()` is true no further item is started. Resolves to the items
+ * not started.
  */
-export async function inBrowser(items, fn) {
+export async function inBrowser(items, fn, { stopped = () => false } = {}) {
   const browser = await launchBrowser({ args: [...LAUNCH_ARGS, "--disable-gpu"] });
+  let next = 0;
   try {
-    let next = 0;
     await Promise.all(
       Array.from({ length: Math.min(2, items.length) }, async () => {
-        while (next < items.length) await fn(items[next++], browser);
+        while (next < items.length && !stopped()) await fn(items[next++], browser);
       }),
     );
   } finally {
     await browser.close();
   }
+  return items.slice(next);
 }
 
 /** Ends a child's output with what it found, on a line of its own that runShards reads. */
@@ -174,9 +176,10 @@ export const reportShard = (result) => writeRecord(RESULT, result);
  * the variable `envName`, since drawing a picture is JavaScript that one process runs
  * one at a time. Their output is passed on, line by line, but for the line each ends
  * with (reportShard). Resolves to [{result, code}] in the children's order, `result`
- * null for a child that reported nothing.
+ * null for a child that reported nothing. When `signal` (an AbortSignal) aborts, each
+ * child is sent the stop line on its stdin (lib/record-lines.mjs's sendStop).
  */
-export function runShards(envName, jobs) {
+export function runShards(envName, jobs, { signal = null } = {}) {
   return Promise.all(
     Array.from(
       { length: jobs },
@@ -184,8 +187,14 @@ export function runShards(envName, jobs) {
         new Promise((resolve) => {
           const child = spawn(process.execPath, process.argv.slice(1), {
             env: { ...process.env, [envName]: `${k}/${jobs}` },
-            stdio: ["ignore", "pipe", "inherit"],
+            stdio: [signal ? "pipe" : "ignore", "pipe", "inherit"],
           });
+          if (signal) {
+            const stop = () => sendStop(child);
+            if (signal.aborted) stop();
+            else signal.addEventListener("abort", stop, { once: true });
+            child.on("close", () => signal.removeEventListener("abort", stop));
+          }
           let result = null;
           readRecords(child.stdout, [RESULT], {
             onRecord: (_, value) => {

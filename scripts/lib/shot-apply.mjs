@@ -21,12 +21,13 @@ export const slugOf = (out) => out.replace(/[\\/]/g, "__").replace(/\.png$/i, ""
 /**
  * Writes `svg` to `file` unless it holds it already: "new", "updated" or
  * "unchanged". The file may have been checked out with CRLF line endings, on its
- * last line alone (the SVG is on one line, oneLine in snapshot-svg.mjs).
+ * last line alone (the SVG is on one line, oneLine in snapshot-svg.mjs). With `dryRun`
+ * nothing is written, and the state is what would be.
  */
-export function writeSvg(file, svg) {
+export function writeSvg(file, svg, { dryRun = false } = {}) {
   let state = "new";
   if (existsSync(file)) state = readFileSync(file, "utf8").replace(/\r\n/g, "\n") === svg ? "unchanged" : "updated";
-  if (state !== "unchanged") writeFileSync(file, svg);
+  if (state !== "unchanged" && !dryRun) writeFileSync(file, svg);
   return state;
 }
 
@@ -70,17 +71,20 @@ export function restorePictures(outRoot, revision, outs, { dryRun = false } = {}
  * Writes the verdict on a capture of the picture `out` (decidePicture): the bytes the file is
  * to hold, if any; for "dark", the light file removed; for "restored", the picture and its SVG
  * put back as `revision` has them (restorePictures). Returns {removed, svg}: whether a file
- * was removed, and for "restored" restorePictures' answer for the picture, else null.
+ * was removed, and for "restored" restorePictures' answer for the picture, else null. With
+ * `dryRun` nothing is written, and the answer is what would be done (a run's stage,
+ * shot-stage.mjs, whose verdicts the review tool applies).
  */
-export function applyPicture(outRoot, out, decision, revision) {
+export function applyPicture(outRoot, out, decision, revision, { dryRun = false } = {}) {
   const file = path.join(outRoot, out);
   if (decision.state === "dark") {
     const had = existsSync(file);
-    if (had) rmSync(file);
+    if (had && !dryRun) rmSync(file);
     return { removed: had, svg: null };
   }
-  if (decision.state === "restored") return { removed: false, svg: restorePictures(outRoot, revision, [out]).get(out) };
-  if (decision.write) {
+  if (decision.state === "restored")
+    return { removed: false, svg: restorePictures(outRoot, revision, [out], { dryRun }).get(out) };
+  if (decision.write && !dryRun) {
     mkdirSync(path.dirname(file), { recursive: true });
     writeFileSync(file, decision.write);
   }
@@ -90,25 +94,27 @@ export function applyPicture(outRoot, out, decision, revision) {
 /**
  * Writes the SVG of a picture (`svgOut` its path) when it was found faithful, or removes the
  * one there when it was not (`svg` null): writeSvg's state, else "removed" or "not written".
+ * With `dryRun` nothing is written, and the state is what would be.
  */
-export function applySvg(outRoot, svgOut, svg) {
+export function applySvg(outRoot, svgOut, svg, { dryRun = false } = {}) {
   const file = path.join(outRoot, svgOut);
-  if (svg !== null) return writeSvg(file, svg);
+  if (svg !== null) return writeSvg(file, svg, { dryRun });
   if (!existsSync(file)) return "not written";
-  rmSync(file);
+  if (!dryRun) rmSync(file);
   return "removed";
 }
 
 /**
  * Removes the picture `out`, its SVG and, when there is a bundle cache (`bundlesRoot`), its
- * bundle. Returns whether the picture's file was there.
+ * bundle. Returns whether the picture's file was there. With `dryRun` nothing is removed.
  */
-export function dropPicture(outRoot, out, bundlesRoot) {
+export function dropPicture(outRoot, out, bundlesRoot, { dryRun = false } = {}) {
+  const file = path.join(outRoot, out);
+  const had = existsSync(file);
+  if (dryRun) return had;
   const svg = path.join(outRoot, svgOf(out));
   if (existsSync(svg)) rmSync(svg);
   if (bundlesRoot) dropBundle(bundlesRoot, out);
-  const file = path.join(outRoot, out);
-  if (!existsSync(file)) return false;
-  rmSync(file);
-  return true;
+  if (had) rmSync(file);
+  return had;
 }

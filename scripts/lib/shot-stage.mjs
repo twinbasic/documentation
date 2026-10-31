@@ -68,6 +68,98 @@ export function writeStaged(file, bytes) {
   writeFileSync(file, bytes);
 }
 
+// A staged file's path as a verdict names it: relative to the stage, with forward slashes.
+const named = (dir, file) => path.relative(dir, file).replace(/\\/g, "/");
+
+/**
+ * Puts a capture of the picture `out` into the stage `dir`, with its strength map against
+ * the picture it was judged against when there is one (reviewPicture). Returns the names of
+ * the files written, {capture, strength}, `strength` null when there is no map.
+ */
+export function stageCapture(dir, out, png, strength) {
+  const files = stagedFiles(dir, out);
+  writeStaged(files.capture, png);
+  if (strength) writeStrength(files.pngStrength, strength);
+  return { capture: named(dir, files.capture), strength: strength ? named(dir, files.pngStrength) : null };
+}
+
+/**
+ * Puts the SVG of the picture `out` into the stage `dir`, with its strength map against its
+ * PNG (diffSvg), whether or not it was found faithful. Returns the names of the files
+ * written, {svg, strength}.
+ */
+export function stageSvg(dir, out, svg, strength) {
+  const files = stagedFiles(dir, out);
+  writeStaged(files.svg, svg);
+  writeStrength(files.svgStrength, strength);
+  return { svg: named(dir, files.svg), strength: named(dir, files.svgStrength) };
+}
+
+/**
+ * The most regions a verdict lists, the largest cores first: the loupes show the first few,
+ * and a change over a whole window can make thousands. The rest are in the strength map.
+ */
+export const STAGED_REGIONS = 64;
+
+// A verdict's regions: the first STAGED_REGIONS, and how many there are (null for none measured).
+const regionsOf = (regions) =>
+  regions
+    ? { regions: regions.slice(0, STAGED_REGIONS), regionCount: regions.length }
+    : { regions: null, regionCount: null };
+
+/**
+ * The png part of a verdict, as a --stage file and an --events record carry it: what
+ * decidePicture decided (`decision`, its `write` left out), the regions and the look
+ * reviewPicture found (`review`), the build the capture was taken on, the difference
+ * pictures written (their names in the diffs folder), and the files staged (stageCapture),
+ * or null.
+ */
+export function pngVerdict({ decision, review, build, diffs = [], staged = null }) {
+  const { write, ...rest } = decision;
+  return {
+    ...rest,
+    writes: write !== null && write !== undefined,
+    build,
+    look: review?.look ?? null,
+    ...regionsOf(review?.regions ?? null),
+    diffs,
+    ...(staged ?? {}),
+  };
+}
+
+/**
+ * The svg part of a verdict: `state` what is done with the file (applySvg's, or "unchanged"
+ * when it stays with its PNG), `why` the reason it is not written, or null; `verdict`
+ * decideSvg's and `review` reviewSvg's, null for an SVG not judged; `stats` diffSvg's
+ * shares (pct8, pct32, pct96); `measures` the line a person reads; `diffs` the difference
+ * pictures written; and the files staged (stageSvg), or null.
+ */
+export function svgVerdict({
+  state,
+  why = null,
+  verdict = null,
+  review = null,
+  stats = null,
+  measures = null,
+  diffs = [],
+  staged = null,
+}) {
+  return {
+    state,
+    why,
+    faithful: verdict?.faithful ?? null,
+    by: verdict?.by ?? null,
+    share: verdict?.share ?? null,
+    earlier: verdict?.earlier ?? null,
+    stats: stats && { pct8: stats.pct8, pct32: stats.pct32, pct96: stats.pct96 },
+    measures,
+    look: review?.look ?? null,
+    ...regionsOf(review?.regions ?? null),
+    diffs,
+    ...(staged ?? {}),
+  };
+}
+
 /**
  * Writes a strength map ({width, height, data}, a byte per pixel: shot-change.mjs) to
  * `file`: its width and height, 4 bytes each, big-endian, then its bytes, deflated. Most of

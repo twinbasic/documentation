@@ -884,6 +884,14 @@ bad("scripts/shoot_docs.mjs", ["--jobs=17"], "--jobs expects a whole number from
 {
   const underDocs = path.join(REPO_ROOT, "docs", "x");
   bad("scripts/shoot_docs.mjs", ["--diffs", underDocs], `--diffs must not be under docs: ${underDocs}\n`);
+  // A stage (lib/shot-stage.mjs) holds the difference pictures and the bundles, and is never under docs.
+  const docs = path.join(REPO_ROOT, "docs");
+  bad("scripts/shoot_docs.mjs", ["--stage", underDocs], `--stage: ${underDocs} is under ${docs}\n`);
+  bad("scripts/shoot_docs.mjs", ["--stage", "s", "--diffs", "d"], "--stage and --diffs cannot be given together\n");
+  bad("scripts/shoot_docs.mjs", ["--stage", "s", "--bundles", "b"], "--stage and --bundles cannot be given together\n");
+  bad("scripts/shoot_docs.mjs", ["--cleanup", "--events"], "--cleanup and --events cannot be given together\n");
+  bad("scripts/svgshot/replay.mjs", ["--stage", underDocs], `replay: --stage: ${underDocs} is under ${docs}\n`);
+  bad("scripts/svgshot/replay.mjs", ["--stage", "s", "--diffs", "d"], "--stage and --diffs cannot be given together\n");
 }
 
 // check_examples prints "check_examples: " before the message.

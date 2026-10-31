@@ -13,16 +13,27 @@
 // has no answer for (a miss the capture did not have). The list ends with the
 // shoot_docs.mjs command that takes them again.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { userInfo } from "node:os";
 import path from "node:path";
-import { exitOnCrash, numberOption, parseCli, printHelpAndExit, regexOption, withUsageError } from "../../lib/cli.mjs";
+import {
+  exitOnCrash,
+  numberOption,
+  parseCli,
+  printHelpAndExit,
+  refuseTogether,
+  regexOption,
+  withUsageError,
+} from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
 import { applySvg, svgOf } from "../lib/shot-apply.mjs";
 import { MANIFEST, openManifest } from "../lib/shot-manifest.mjs";
 import { SVG_FAITHFUL } from "../lib/shot-policy.mjs";
+import { reviewSvg } from "../lib/shot-queue.mjs";
+import { stageFolders, stageRefusal, stageSvg, svgVerdict, writeVerdict } from "../lib/shot-stage.mjs";
+import { onStop, writeRecord } from "../lib/record-lines.mjs";
 import { judgeSvg } from "./keep.mjs";
 import {
   defaultJobs,
@@ -38,7 +49,7 @@ import {
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/svgshot/replay.mjs [--only <regex>] [--bundles <dir>] [--out <dir>] [--diffs <dir>] [--jobs N] [-h, --help]
+const USAGE = `usage: node scripts/svgshot/replay.mjs [--only <regex>] [--bundles <dir>] [--out <dir>] [--diffs <dir> | --stage <dir>] [--events] [--recheck] [--jobs N] [-h, --help]
 
 Draws each picture's SVG again from the bundle shoot_docs.mjs --svg saved when it
 took the picture, with the converter as it is now, and writes it beside its PNG
@@ -64,12 +75,23 @@ command that takes them again.
   --diffs <dir>    write each SVG's difference map there, as <name>.svg-diff.png
   --recheck        compare every SVG with its PNG, also one that is the same
                    bytes as the file (which the bar passed when it was written)
+  --stage <dir>    write nothing under the output folder: put each SVG drawn
+                   (faithful or not), its difference map, its strength map and
+                   what was decided about it into <dir> instead, for the
+                   screenshot review tool to apply (scripts/lib/shot-stage.mjs).
+                   <dir> must be new or empty, and neither under docs nor where
+                   git would take it. Not with --diffs, which it holds
+  --events         also write a line per event on stdout, @@shot-event {json}
+                   (the run, each SVG's verdict, a retake, a failure, the
+                   summary), among the lines meant for a person; and stop when a
+                   line "stop" arrives on stdin: no further SVG is drawn
   --jobs N         processes drawing at once, each with a browser of its own
                    (default: half the logical processors, at most 8)
   -h, --help       print this text and exit
 
 Exit codes:
-  0  every picture was drawn again: written, unchanged, or left as a PNG
+  0  every picture was drawn again: written, unchanged, or left as a PNG; a run
+     stopped (--events) exits as for the pictures it drew
   1  a picture needs a retake, could not be drawn, or its SVG holds the Windows
      user name
   2  the tool could not run: a refused command line, no bundle cache, no browser,
@@ -83,6 +105,8 @@ const { values } = withUsageError(() =>
       out: { type: "string" },
       diffs: { type: "string" },
       recheck: { type: "boolean", default: false },
+      stage: { type: "string" },
+      events: { type: "boolean", default: false },
       jobs: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -90,6 +114,7 @@ const { values } = withUsageError(() =>
   }),
 );
 if (values.help) printHelpAndExit(USAGE);
+withUsageError(() => refuseTogether(values, ["stage", "diffs"]));
 const only = values.only === undefined ? null : withUsageError(() => regexOption(values.only, { option: "--only" }));
 const jobs = withUsageError(() =>
   numberOption(values.jobs ?? String(defaultJobs()), {
@@ -101,7 +126,30 @@ const jobs = withUsageError(() =>
 );
 const bundlesRoot = path.resolve(values.bundles ?? path.join(REPO_ROOT, ".svgshot-bundles"));
 const outRoot = path.resolve(values.out ?? path.join(REPO_ROOT, "docs"));
-const diffsRoot = values.diffs === undefined ? null : path.resolve(values.diffs);
+// A child process the parent started (below) has its share of the pictures in this
+// variable, "k/n" (redraw.mjs runShards).
+const SHARD_ENV = "SVGSHOT_REPLAY_SHARD";
+const SHARD = shardOf(SHARD_ENV);
+// With --stage, the run's stage (lib/shot-stage.mjs), which holds the difference maps: nothing
+// is written under the output folder. The parent checks it and makes it; its children share it.
+const stageRoot = values.stage === undefined ? null : path.resolve(values.stage);
+if (stageRoot && !SHARD) {
+  const refused = stageRefusal(stageRoot, [path.join(REPO_ROOT, "docs"), outRoot]);
+  if (refused) {
+    console.error(`replay: --stage: ${refused}`);
+    process.exit(2);
+  }
+  mkdirSync(stageRoot, { recursive: true });
+}
+const diffsRoot = stageRoot
+  ? stageFolders(stageRoot).diffs
+  : values.diffs === undefined
+    ? null
+    : path.resolve(values.diffs);
+// --events: a record per event on stdout (lib/record-lines.mjs); a child's pass through its parent.
+const event = (type, value = {}) => {
+  if (values.events) writeRecord("shot-event", { type, ...value });
+};
 // The manifest's entries are for the pictures under docs/: another folder is judged without them.
 let manifest = null;
 if (outRoot === path.resolve(REPO_ROOT, "docs")) {
@@ -120,11 +168,6 @@ const USER = userInfo().username;
 // The fonts' cuts are kept beside the bundles: a picture drawn again mostly cuts what it did.
 useSubsetCache(path.join(bundlesRoot, "subsets"));
 
-// A child process the parent started (below) has its share of the pictures in this
-// variable, "k/n" (redraw.mjs runShards).
-const SHARD_ENV = "SVGSHOT_REPLAY_SHARD";
-const SHARD = shardOf(SHARD_ENV);
-
 // Every picture with a bundle under the cache, as its path under docs with forward slashes.
 const outs = listBundles(bundlesRoot).filter((out) => !only || only.test(out));
 
@@ -132,6 +175,11 @@ const counts = {};
 const retakes = [];
 let failed = 0;
 const say = (out, line) => console.log(`${out.replace(/\.png$/i, ".svg")}: ${line}`);
+// The verdict on a picture's SVG, as --stage keeps it and --events says it (lib/shot-stage.mjs).
+const report = (out, part) => {
+  if (stageRoot) writeVerdict(stageRoot, out, "svg", part);
+  event("svg", { out, ...part });
+};
 async function replay(out, browser) {
   const svgFile = path.join(outRoot, svgOf(out));
   const drawn = await redraw({ bundlesRoot, docsRoot: outRoot, out, user: USER });
@@ -140,6 +188,7 @@ async function replay(out, browser) {
     retakes.push({ out, why });
     counts["need a retake"] = (counts["need a retake"] ?? 0) + 1;
     say(out, `left as it is, needs a retake (${why})`);
+    event("retake", { out, why });
     return;
   }
   const { png, svg, stats } = drawn;
@@ -155,35 +204,68 @@ async function replay(out, browser) {
   ) {
     say(out, "unchanged (the same SVG as the file)");
     counts.unchanged = (counts.unchanged ?? 0) + 1;
+    report(out, svgVerdict({ state: "unchanged", why: "the same SVG as the file" }));
     return;
   }
-  const { diff, faithful, by, measures } = await judgeSvg(browser, svg, png, stats, entry);
-  if (diffsRoot) writeJudged(diffsRoot, out, diff);
-  const state = applySvg(outRoot, svgOf(out), faithful ? svg : null);
+  const { diff, verdict, faithful, by, measures } = await judgeSvg(browser, svg, png, stats, entry);
+  const diffs = diffsRoot ? Object.values(writeJudged(diffsRoot, out, diff)) : [];
+  const state = applySvg(outRoot, svgOf(out), faithful ? svg : null, { dryRun: !!stageRoot });
   const how = by === "decision" ? `; ${faithful ? "accepted" : "refused"} by a review` : "";
   say(out, faithful ? `${state} (${measures}${how})` : `${state}, the PNG is kept (${measures}${how})`);
   counts[state] = (counts[state] ?? 0) + 1;
+  if (!stageRoot && !values.events) return;
+  report(
+    out,
+    svgVerdict({
+      state,
+      why: faithful ? null : measures,
+      verdict,
+      review: reviewSvg(verdict, diff.strength, entry),
+      stats: diff.stats,
+      measures,
+      diffs,
+      staged: stageRoot ? stageSvg(stageRoot, out, svg, diff.strength) : null,
+    }),
+  );
 }
+
+// --events: a line "stop" on stdin stops the run (lib/record-lines.mjs). The parent passes it on
+// to its children, and each draws no further picture.
+const stop = new AbortController();
+if (values.events) onStop(process.stdin, () => stop.abort());
 
 if (SHARD) {
   // A child: its share of the pictures, then what it found, on a line of its own.
-  await inBrowser(shareOf(outs, SHARD), async (out, browser) => {
-    try {
-      await replay(out, browser);
-    } catch (e) {
-      failed++;
-      counts.failed = (counts.failed ?? 0) + 1;
-      say(out, `FAILED: ${e.message}`);
-    }
-  });
+  const left = await inBrowser(
+    shareOf(outs, SHARD),
+    async (out, browser) => {
+      try {
+        await replay(out, browser);
+      } catch (e) {
+        failed++;
+        counts.failed = (counts.failed ?? 0) + 1;
+        say(out, `FAILED: ${e.message}`);
+        event("failed", { out, error: e.message });
+      }
+    },
+    { stopped: () => stop.signal.aborted },
+  );
+  for (const out of left) event("skipped", { out });
+  if (left.length) counts["not drawn: the run was stopped"] = left.length;
   reportShard({ counts, retakes, failed });
   process.exit(0);
 }
 
 // The parent: `jobs` children, each with a browser of its own.
-const children = (await runShards(SHARD_ENV, Math.min(jobs, outs.length))).map(
-  ({ result, code }) => result ?? { counts: { failed: 1 }, retakes: [], failed: code || 1 },
-);
+event("run", { tool: "replay", pictures: outs, stage: stageRoot, recheck: values.recheck });
+if (values.events)
+  stop.signal.addEventListener("abort", () => {
+    console.log("stopping: no further SVG is drawn");
+    event("stopping");
+  });
+const children = (
+  await runShards(SHARD_ENV, Math.min(jobs, outs.length), { signal: values.events ? stop.signal : null })
+).map(({ result, code }) => result ?? { counts: { failed: 1 }, retakes: [], failed: code || 1 });
 for (const c of children) {
   for (const [k, n] of Object.entries(c.counts)) counts[k] = (counts[k] ?? 0) + n;
   retakes.push(...c.retakes);
@@ -204,4 +286,6 @@ if (retakes.length) {
   const regex = names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
   console.log(`to take them again: node scripts/shoot_docs.mjs --svg --only "${regex}"`);
 }
-process.exit(failed || retakes.length ? 1 : 0);
+const exitCode = failed || retakes.length ? 1 : 0;
+event("summary", { counts, retakes, stopped: stop.signal.aborted, exit: exitCode });
+process.exit(exitCode);
