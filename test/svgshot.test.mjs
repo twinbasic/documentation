@@ -66,10 +66,12 @@ import {
   framesIn,
   frameView,
   inlineSvgsIn,
+  nativeTextField,
   naturalSize,
   oneLine,
   scopeIds,
   selectLabel,
+  shadowShowsThrough,
   underlineBand,
   untransformBox,
   unzoom,
@@ -317,6 +319,78 @@ describe("bundles", () => {
       misses.map((m) => m.split(" ")[0]),
       ["fonts", "metrics", "width"],
     );
+  });
+
+  // The select's box with a blurred outer shadow and the background colour `bg`: the shadow
+  // is drawn outside the border box only, as Chromium paints it (shadowShowsThrough).
+  const shadowed = (bg, clip = "border-box") => {
+    const bundle = bundleOf(measured);
+    bundle.styles = [...STYLES, "box-shadow", "background-clip"];
+    const { strings, documents } = bundle.snapshot;
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const styles = documents[0].layout.styles;
+    for (const st of styles) st.push(s("none"), s("border-box"));
+    styles[2][1] = s(bg);
+    styles[2][STYLES.length] = s("rgba(0, 0, 0, 0.5) 2px 2px 3px 0px");
+    styles[2][STYLES.length + 1] = s(clip);
+    return renderBundle(bundle);
+  };
+
+  test("clips an outer shadow to outside a box whose background does not cover it", async () => {
+    // Transparent, translucent, or clipped inside the border box: the shadow would show through.
+    for (const [bg, clip] of [
+      ["rgba(0, 0, 0, 0)", "border-box"],
+      ["rgba(240, 240, 240, 0.5)", "border-box"],
+      ["rgb(240, 240, 240)", "padding-box"],
+    ]) {
+      const { svg } = await shadowed(bg, clip);
+      assert.match(
+        svg,
+        /<clipPath id="(\w+)"><path clip-rule="evenodd" d="M7\.5 7\.5H216\.5V36\.5H7\.5ZM10 10h200v20h-200Z"\/><\/clipPath>/,
+        `${bg} ${clip}`,
+      );
+      assert.match(
+        svg,
+        /<g clip-path="url\(#\w+\)"><rect x="12" y="12" width="200" height="20" fill="rgba\(0, 0, 0, 0\.5\)" filter=/,
+      );
+    }
+    assert.equal(shadowShowsThrough({ "background-color": "rgb(1, 2, 3)" }), false);
+    assert.equal(
+      shadowShowsThrough({ "background-color": "rgb(1, 2, 3)", "background-clip": "border-box, content-box" }),
+      true,
+    );
+    // An opaque colour over the whole border box hides the shadow under it: no clip.
+    const { svg } = await shadowed("rgb(240, 240, 240)");
+    assert.doesNotMatch(svg, /clip-rule="evenodd"/);
+    assert.match(svg, /<rect x="12" y="12" width="200" height="20" fill="rgba\(0, 0, 0, 0\.5\)" filter=/);
+  });
+
+  test("draws a text field left with the browser's border and background as Chromium's native one", () => {
+    const own = {
+      appearance: "auto",
+      "background-color": "rgb(255, 255, 255)",
+      "background-image": "none",
+      ...Object.fromEntries(
+        ["top", "right", "bottom", "left"].flatMap((s) => [
+          [`border-${s}-style`, "inset"],
+          [`border-${s}-width`, "2px"],
+          [`border-${s}-color`, "rgb(118, 118, 118)"],
+        ]),
+      ),
+    };
+    const field = (style, attrs = {}, name = "INPUT") => ({ style: { ...own, ...style }, node: { name, attrs } });
+    assert.equal(nativeTextField(field({})), true);
+    assert.equal(nativeTextField(field({}, { type: "password" })), true);
+    // Styled, or not a text field: drawn from its style.
+    assert.equal(nativeTextField(field({ "border-left-color": "rgb(0, 0, 0)" })), false);
+    assert.equal(nativeTextField(field({ "background-color": "rgb(250, 250, 250)" })), false);
+    assert.equal(nativeTextField(field({ "border-top-left-radius": "3px" })), false);
+    assert.equal(nativeTextField(field({ appearance: "none" })), false);
+    assert.equal(nativeTextField(field({}, { type: "checkbox" })), false);
+    assert.equal(nativeTextField(field({}, {}, "TEXTAREA")), false);
   });
 
   test("refuses a bundle of another version, the one before this format included", async () => {

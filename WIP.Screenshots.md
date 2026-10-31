@@ -866,6 +866,16 @@ the PNG was just captured from, and the build shows it in place of the PNG
   an inline `<svg>` is `svgs`, pairs of a layout object's key and what `inlineSvg` read. The
   annotation layer's box is already in document coordinates in its markup, so a scrolled page
   needs nothing more. `bundle.mjs`'s `renderBundle` draws the
+- **The judge draws a half-pixel picture at the whole size above it** (`diffSvg`). BETA 1033
+  centres its dialogs at half pixels (Close_Question 397 by 161.5), and Chromium, laying the
+  judge's page out at 1x under the emulated scale, snaps an `<img>` of 161.5 to 162 and
+  stretches the picture a device pixel taller: every message box came out 0.29--0.39% strongly
+  off, the 16-pixel glyphs 2.9%. So its copy of the SVG gets the whole size and a viewBox
+  widened by as much, and the render is cut to the PNG's pixels; a whole-size picture is drawn
+  as before. A canvas `drawImage` at the PNG's size is no answer: without the GPU (replay's
+  browsers) it draws an SVG otherwise than an `<img>`. The boxes stay snapped to whole CSS px
+  (`grid` 1) even where the IDE lays them out at half pixels: snapping to device pixels made
+  95 pictures worse and let none more pass the bar.
   SVG from it alone, and `svgOfPage` is the one then the other, so a replay with the converter
   unchanged gives the same bytes. `--svg` saves every picture's bundle, faithful or not, in
   `.svgshot-bundles/` (gitignored, never under `docs/`: a bundle holds the user name), **one
@@ -1016,7 +1026,15 @@ IDE's WebView2 draw (on this Windows 10 machine too): 15 px, a round-ended 9 px 
 light or dark default by `color-scheme`; the docs site's dark theme sets `scrollbar-color`, which
 turns its own `::-webkit-scrollbar` rules off. **A focus ring** (`outline-style: auto`,
 `paintFocusRing`) is a 2 px band in the outline colour and a 1 px white one outside it. Both were
-fitted in Edge on bench pages of their own.
+fitted in Edge on bench pages of their own. **A native text field** (`nativeTextField`,
+`paintNativeTextField`): Chromium draws an `<input>` whose border and background the page leaves
+as its own (`2px inset rgb(118, 118, 118)` on white, which BETA 1033 leaves its dialogs' text
+boxes) as its Fluent text field, not by that border: a white ground and a 1 px border of the same
+grey along the border box, rounded, with no antialiasing, the ground's corners showing what is
+under them, a focused field (outline none) the same. The CSS border's 2 px still place the text.
+Drawn as two `crispEdges` paths, rounded 2.2 and 1.2 px: any outer radius from 2.1 to 2.3 gives
+every pixel of Edge's border (`bench/textfield.html`). A field the page styles in either way is
+drawn from its style.
 
 **An inline `<svg>`** in the page is drawn as a nested `<svg>` in its box's content box, in its
 place in paint order (`paintInlineSvg`, from `paintBox`), so a CSS transform, opacity, border and
@@ -1034,7 +1052,7 @@ coordinates, which the picture's `viewBox` is in.
 
 **The bench** (`node scripts/svgshot/bench.mjs`, outside every gate, needs Edge and fontTools)
 draws the pages under `scripts/svgshot/bench/` (scrollbars, native scrollbars, drop-down lists,
-underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
+native text fields, underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
 annotation layer, SVG in frames), served from `127.0.0.1` with the site's fonts under `/fonts/`
 (a `file:` page cannot `fetch` its font bytes), with the converter
 and compares them with the browser's own picture: in Edge, whose Chromium is the IDE's WebView2's

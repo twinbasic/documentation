@@ -2,7 +2,7 @@
 // in a browser, taken as a PNG at device scale 2 as shoot_docs takes the IDE,
 // and drawn as an SVG by capture.mjs's svgOfPage; diff.mjs compares the two.
 // So a change that draws a replicated part or a text decoration wrongly -- a
-// scrollbar, a drop-down list, an underline, a focus ring, a frame, a web font
+// scrollbar, a drop-down list, a native text field, an underline, a focus ring, a frame, a web font
 // split by unicode-range, an inline <svg>, the annotation layer on a scrolled
 // page -- shows here without an IDE, in seconds. The documents of the frames page
 // are under bench/frames/, which is no page of its own.

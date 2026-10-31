@@ -1,5 +1,5 @@
 {
-  "browser": "Edg/155.0.4283.45",
+  "browser": "Edg/156.0.4314.50",
   "pages": {
     "decoration": {
       "pct32": 0.046,
@@ -45,6 +45,11 @@
       "pct32": 0.098,
       "pct96": 0.001,
       "tile": 0.113
+    },
+    "textfield": {
+      "pct32": 0.011,
+      "pct96": 0,
+      "tile": 0.029
     },
     "webfont-split": {
       "pct32": 0.041,
