@@ -5,8 +5,8 @@
 // by a review on the same bytes, take its place; and acts on the verdict through
 // shot-apply.mjs.
 
-import { NOISE_LEVELS, NOISE_SHARE } from "./shot-change.mjs";
-import { earlierPngDecision, pngDecision, svgDecision } from "./shot-manifest.mjs";
+import { NOISE_LEVELS, NOISE_SHARE, shareOff } from "./shot-change.mjs";
+import { earlierPngDecision, earlierSvgDecision, pngDecision, svgDecision } from "./shot-manifest.mjs";
 import { pictureFate } from "./shot-revision.mjs";
 
 // How far, in device pixels, a light picture's width or height may be from the dark one's.
@@ -27,6 +27,9 @@ export const SVG_FAITHFUL = 0.25;
 /** The level at which the SVG's bar counts its pixels off by default (diff.mjs's pct96). */
 const SVG_BAR_LEVELS = 96;
 
+// A manifest's rectangles, [x0, y0, x1, y1], as withinNoise and shareOff take them.
+const rectsOf = (list) => (list ?? []).map(([x0, y0, x1, y1]) => ({ x0, y0, x1, y1 }));
+
 /**
  * The noise rule for a picture, from its entry in the manifest (or null): {levels, share,
  * rects}, as withinNoise takes it (`share` a fraction, `rects` {x0, y0, x1, y1}).
@@ -36,14 +39,17 @@ export function pngRule(entry) {
   return {
     levels: noise.levels ?? NOISE_LEVELS,
     share: noise.share === undefined ? NOISE_SHARE : noise.share / 100,
-    rects: (entry?.png?.ignore ?? []).map(([x0, y0, x1, y1]) => ({ x0, y0, x1, y1 })),
+    rects: rectsOf(entry?.png?.ignore),
   };
 }
 
-/** The SVG's bar for a picture, from its entry (or null): {levels, share}, `share` a percentage. */
+/**
+ * The SVG's bar for a picture, from its entry (or null): {levels, share, rects}, `share` a
+ * percentage and `rects` the rectangles left out ({x0, y0, x1, y1}).
+ */
 export function svgRule(entry) {
   const bar = entry?.svg?.bar ?? {};
-  return { levels: bar.levels ?? SVG_BAR_LEVELS, share: bar.share ?? SVG_FAITHFUL };
+  return { levels: bar.levels ?? SVG_BAR_LEVELS, share: bar.share ?? SVG_FAITHFUL, rects: rectsOf(entry?.svg?.ignore) };
 }
 
 /** A PNG's width and height, from its header: {w, h}. */
@@ -100,15 +106,20 @@ export function cleanupResets({ before, after, near, entry = null }) {
 }
 
 /**
- * Whether an SVG is close enough to its PNG to be written, from the shares diffSvg reports
- * (`stats.pct8`, `pct32`, `pct96`, percent): the share at the bar's levels must stay below
- * its share (svgRule, from the picture's `entry` in the manifest, or null). A review's
- * decision about this SVG (`svg`, its text) against this PNG (`png`, bytes) takes the bar's
- * place. Returns {faithful, by}, `by` "decision" or "rule".
+ * Whether an SVG is close enough to its PNG to be written, from the strength map diffSvg
+ * returns: the share of its pixels at the bar's levels or more, its rectangles left out
+ * (shareOff), must stay below the bar's share (svgRule, from the picture's `entry` in the
+ * manifest, or null). A review's decision about this SVG (`svg`, its text) against this PNG
+ * (`png`, bytes) takes the bar's place. Returns {faithful, by, share, earlier}, `by`
+ * "decision" or "rule", `share` the share at the bar's levels (percent), and `earlier` a
+ * review's decision about another SVG or PNG (true or false), which the bar judged this one
+ * without, else null.
  */
-export function decideSvg(stats, { entry = null, svg = null, png = null } = {}) {
+export function decideSvg(strength, { entry = null, svg = null, png = null } = {}) {
+  const { levels, share: bar, rects } = svgRule(entry);
+  const share = shareOff(strength, { level: levels, rects });
+  const earlier = earlierSvgDecision(entry, svg, png);
   const decided = svgDecision(entry, svg, png);
-  if (decided !== null) return { faithful: decided, by: "decision" };
-  const { levels, share } = svgRule(entry);
-  return { faithful: stats[`pct${levels}`] < share, by: "rule" };
+  if (decided !== null) return { faithful: decided, by: "decision", share, earlier };
+  return { faithful: share < bar, by: "rule", share, earlier };
 }

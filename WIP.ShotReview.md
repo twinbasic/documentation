@@ -2,8 +2,8 @@
 
 A localhost tool for reviewing what `shoot_docs.mjs` and `replay.mjs` decided about each
 picture, overriding it, starting retakes and replays, and committing the result. **Design
-agreed with the owner on 2026-10-31; steps 1 and 2 of [the order of work](#order-of-work) are
-done (step 1 but for three rows that later steps make), and the tool itself is not started.** The mockups it was agreed on were inline in that
+agreed with the owner on 2026-10-31; steps 1 to 3 of [the order of work](#order-of-work) are
+done (step 1 but for the commit helper, which step 8 makes), and the tool itself is not started.** The mockups it was agreed on were inline in that
 session and are not kept: the pages are described below instead.
 
 The tool covers everything the command-line screenshot tools do, interactively, with a person
@@ -127,10 +127,19 @@ is the next session's baseline, and the old session is archived and can still be
 
 ## The queue
 
-The changed pixels are grouped into connected regions, and every region is eroded by 2 device
-pixels. A fringe (a line 1 to 3 px thick along an edge, antialiasing or ClearType) is gone
-after the erosion; text that changed, or a part the SVG lacks, is a block, and part of it
-survives. A picture is in **Needs a look** when:
+The changed pixels are grouped into connected regions, their gaps of up to 4 device pixels
+closed first, and every region is eroded by 2 device pixels. A fringe (a line 1 to 3 px thick
+along an edge, antialiasing or ClearType) or a caret is gone after the erosion; text that
+changed, or a part the SVG lacks, is a block, and part of it survives. The closing is what
+makes text a block: a stroke of the IDE's text at 2x is 2 or 3 px thick, so the erosion alone
+takes every stroke of a word (Designer_Zoom50's SVG, its text drawn at the wrong size, keeps
+no core without it and ten regions with it). A region survives with a core of 16 px or more
+(`SURVIVES`): where two fringes cross, the closing leaves 1 to 15. A PNG's regions count every
+pixel that differs at all, not only those beyond noise: a retake on a new build often shifts a
+colour by a few levels over a whole window, which counted beyond noise leaves nothing and reads
+as noise (294 of the 361 pictures the BETA 1010 retake changed at their old size; 23 at any
+difference). An SVG's count the pixels at its bar's levels. A picture is in **Needs a look**
+when:
 
 - **PNG**: the tool took the new capture, but nothing survives (most likely noise: a caret, a
   clock, a fringe), or what survives is small (a block or two the size of a word: a real
@@ -138,8 +147,15 @@ survives. A picture is in **Needs a look** when:
 - **SVG**: the tool accepted it, but something survives (a part missing, whatever the share);
   or the tool rejected it, and nothing survives (fringes only, most likely acceptable).
 
-The same regions give the loupes. The erosion and "small" are constants of the tool, not of
-the decisions.
+A decision a review made about other bytes of the picture sends it back too, whatever the
+regions. "Small" is at most two surviving regions (`WORD_BLOCKS`) of at most 1,200 px of core
+each (`WORD_CORE`): a version number changing in the call stack leaves 224 to 265, a name 127 px
+wide 781. On the SVGs of the 476 bundles of 2026-10-31 the rules put 10 in the queue: 8
+accepted with a part surviving, among them two that are wrong (Menu_Help's SVG lacks the
+menu's cup icon, IDE-FeatureMap.light's draws in full a text the IDE cuts off with
+an ellipsis), and tB-Blue's two, refused for 4 pixels of 1,024. The same regions give the
+loupes. The closing, the erosion and "small" are constants of the tool (`scripts/lib/shot-queue.mjs`),
+not of the decisions.
 
 ## Remembered overrides
 
@@ -186,9 +202,9 @@ written to `docs/` (new, updated), stays when the file stays (noise, restored), 
 the file is removed (a light picture with the dark one's pixels, a `once` picture's light
 file). A picture with no entry shows "build unknown" until it is next written. Only what
 differs from the defaults is stored, and the file is written only when what it holds changes,
-in a fixed order (pictures by path), so its diffs are small. Until the strength map exists
-(step 3) an SVG's bar is at 8, 32 or 96 levels, the three `diff.mjs` counts, and `svg.ignore`
-is refused. The manifest is read and written only for the default `--out`: its paths are under
+in a fixed order (pictures by path), so its diffs are small. An SVG's bar is at any level
+from 1 to 255, and `svg.ignore` takes rectangles as `png.ignore` does, both counted on the
+strength map. The manifest is read and written only for the default `--out`: its paths are under
 `docs/`. A light picture decided "new" is kept even with the dark one's pixels; one decided
 "old" is still found to be the dark one by the rule.
 
@@ -235,7 +251,7 @@ and the writes are inline in `shoot_docs.mjs` (`keep`, `keepSvg`, `restoreSvg`, 
 | An SVG's verdict | `judgeSvg`'s `faithful` against `SVG_FAITHFUL`, acted on in `keepSvg` and again in `replay` | `decideSvg` (pure) in `shot-policy.mjs`, from the strength map and the allowance |
 | Writing a verdict | `keep`, `keepSvg`, `restoreSvg`, `dropLight` in `shoot_docs.mjs`; `replay` in `replay.mjs` | `applyPicture` / `applySvg` in a new `scripts/lib/shot-apply.mjs` (PNG, SVG, bundle, the SVG going back with its PNG through `svgFate`), called by `shoot_docs.mjs`, `replay.mjs`, `--cleanup` and the tool |
 | How far an SVG is off | `diff.mjs` counts pixels at 8, 32 and 96 levels in the page | also returns the strength map (a byte per pixel, the one-pixel shift allowed), from which any level's share, rectangles left out and regions are worked out in Node, without drawing again; `pct8`/`pct32`/`pct96` derived from it |
-| Regions | none | `changeRegions(strength, w, h, {level, erode})` in `shot-change.mjs`, for PNG and SVG alike |
+| Regions | none | `changeRegions(strength, {level, close, erode, rects})` in `shot-change.mjs`, for PNG and SVG alike |
 | The sheets' HTML | `sheetHtml`, `changeSheetHtml` and their pieces in `redraw.mjs` | the pieces (card, figure, meter, page) in a views module shared by `sheet.mjs` and the tool; a static sheet is the overview without its actions |
 | `redraw.mjs`'s other contents | git change listing (`changedPictures`, `parseNameStatus`, ...) beside drawing | the git listing to `shot-revision.mjs`; `redraw.mjs` keeps drawing and the shards |
 | A child's report | `reportShard` / `runShards`, the `@@svgshot-result` line | one module for the prefixed-line protocol, used by the shards and by `--events` |
@@ -253,11 +269,11 @@ uses it. `shoot_docs.mjs` cannot run in a gate, so a move is checked by its test
 Each step ends tested and usable on its own.
 
 1. **The moves**, no behaviour changed: the table's *After* column, with `shoot_docs.mjs`,
-   `replay.mjs` and `sheet.mjs` calling the shared modules. Done but for three rows: see
+   `replay.mjs` and `sheet.mjs` calling the shared modules. Done but for the commit helper: see
    [Where the work stands](#where-the-work-stands).
 2. **The manifest**: read and written by one module; `shoot_docs.mjs` and `replay.mjs` judge
    with its allowances, honour its decisions and record `build`. Done.
-3. **The strength map, the regions and the queue's rules**, tested on fixtures.
+3. **The strength map, the regions and the queue's rules**, tested on fixtures. Done.
 4. **`--stage`, `--events` and stop** in `shoot_docs.mjs` and `replay.mjs`.
 5. **The server and the session store**, the overview and the detail page read-only, live.
 6. **Decisions and allowances** applied through `shot-apply.mjs`, judged again at once.
@@ -270,15 +286,17 @@ Each step ends tested and usable on its own.
 
 ## Where the work stands
 
-On `staging` since 2026-10-31, step 1 but for the three rows that are new code (below), and
-step 2. Each move kept the command-line tools' output as it was, checked as
+On `staging` since 2026-10-31, step 1 but for the commit helper (step 8), and steps 2 and 3. Each move kept the command-line tools' output as it was, checked as
 [below](#checking-a-move).
 
 | Row of the factoring table | Where it is now |
 |---|---|
 | The noise rule | `withinNoise(A, B, {levels, share, rects})`, `scripts/lib/shot-change.mjs` |
 | A PNG's verdict | `decidePicture({png, theme, dark, revision, disk, near, entry})` in `scripts/lib/shot-policy.mjs`, with `SIZE_SLACK`: pictureFate's states plus `too-far` and `dark` (a light picture with the dark one's pixels), and `by` ("decision" or "rule") and `earlier` (a decision about other bytes). `near(a, b, rule)` takes `pngRule(entry)`; `cleanupResets` is `--cleanup`'s verdict, with the path passed through `planCleanup` |
-| An SVG's verdict | `decideSvg(stats, {entry, svg, png})` in `shot-policy.mjs`, with `SVG_FAITHFUL` and `svgRule(entry)`: `{faithful, by}`. `judgeSvg(browser, svg, png, stats, entry)` asks it. It reads `stats.pct8`, `pct32` or `pct96` until the strength map exists (step 3) |
+| An SVG's verdict | `decideSvg(strength, {entry, svg, png})` in `shot-policy.mjs`, with `SVG_FAITHFUL` and `svgRule(entry)` (`{levels, share, rects}`): `{faithful, by, share, earlier}`, `share` counted on the strength map at the bar's levels with its rectangles left out, `earlier` a review's decision about another SVG or PNG (`earlierSvgDecision`). `judgeSvg(browser, svg, png, stats, entry)` asks it |
+| How far an SVG is off | `diffSvg` returns `strength`, `{width, height, data}`, a byte per device pixel of the clip (the distance with the one-pixel shift allowed, in whole levels, so a level's count is the same as from the distance); `stats.pct8`, `pct32` and `pct96` are `shareOff` of it, the same to the third place (a replay of the 476 bundles printed the same lines before and after) |
+| Regions | `scripts/lib/shot-change.mjs`: `strengthOf(A, B)` (two captures' map, withinNoise's distance), `shareOff(strength, {level, rects})`, `changeRegions(strength, {level, close, erode, rects})` (`[{x0, y0, x1, y1, pixels, core}]`, most core first) and `regionMasks`, its three masks, for drawing them |
+| The queue's rules | `scripts/lib/shot-queue.mjs`: `pngRegions(strength, pngRule)`, `svgRegions(strength, entry)`, `surviving`, `pngLook(verdict, regions)` and `svgLook(verdict, regions)`, each `{why, text}` or null; the constants `QUEUE_CLOSE`, `QUEUE_ERODE`, `SURVIVES`, `WORD_CORE`, `WORD_BLOCKS` |
 | The manifest | `scripts/lib/shot-manifest.mjs`: `MANIFEST`, `openManifest(file)` (`entry`, `setBuild`, `clearBuild`, `save`, `text`), `parseManifest`, `manifestText`, `pngDecision`, `earlierPngDecision`, `svgDecision`, `hashOf`. `shoot_docs.mjs` passes each picture's rectangles to `capture` as `c.shot.ignore`, left out as its unsteady regions are, and records `build` (`buildNumber(ide)`) in `keep` and `dropLight` |
 | Writing a verdict | `scripts/lib/shot-apply.mjs`: `applyPicture(outRoot, out, decision, revision)`, `applySvg(outRoot, svgOut, svg or null)`, `restorePictures(outRoot, revision, outs, {dryRun})` (the PNGs and their SVGs, the SVGs by one `git restore`; `--cleanup` and a `restored` picture both use it), `dropPicture(outRoot, out, bundlesRoot)`, `writeSvg`, `svgOf`. What stays in `shoot_docs.mjs`'s `keep` and `keepSvg`: the counts, the lines it prints, the `--diffs` pictures, the bundle written, the user-name check, and the rule that an SVG stays as it is when its PNG was not written |
 | The git listing | `changedPictures`, `parseNameStatus`, `parseUntracked` in `scripts/lib/shot-revision.mjs` |
@@ -287,12 +305,23 @@ step 2. Each move kept the command-line tools' output as it was, checked as
 | Server-sent events | `createSseChannel()` in `lib/sse.mjs`: `handle(req, res)`, `send(event, data)`, `close()`; `builder/serve.mjs` uses one |
 | The installs | `listIdes()` in `scripts/lib/tb-install.mjs`, newest first, `[{build, exe}]` |
 
-**Next: step 3**, the strength map, the regions and the queue's rules: `diff.mjs` returns the
-strength map, `pct8`/`pct32`/`pct96` derived from it, `changeRegions` in `shot-change.mjs`, and
-then an SVG's bar at any level and `svg.ignore` in the manifest (`checkEntry` refuses it
-today). The other row left in the table, the commit helper, is step 8. The tool's pages will
-add their actions to the pieces in `shot-views.mjs` (step 5); until then only `sheets.mjs`
-calls them.
+**Next: step 4**, `--stage`, `--events` and stop in `shoot_docs.mjs` and `replay.mjs`. A staged
+candidate's verdict carries its look (`pngLook`, `svgLook`) and its strength map, which the
+PNG's needs from `strengthOf` of the capture and the picture it was judged against (the
+revision's, else the file); `--events` writes `shot-event` records with
+`scripts/lib/record-lines.mjs`. The tool's pages will add their actions to the pieces in
+`shot-views.mjs` (step 5); until then only `sheets.mjs` calls them.
+
+Step 3 was checked with a replay of every bundle (`--recheck`), whose lines, sorted, were the
+same before and after, and with `svg.ignore` on Properties_ColourPicker.light (a rectangle over
+the strip at x 740 to 760 takes its 0.268% strongly off to 0.001%, and the SVG is kept) and a bar
+at 200 levels. The constants were chosen from the pictures: each stage drawn over 8 SVGs and 5
+retaken PNGs (the changed pixels, what the closing adds, the core, the boxes), and the counts
+over every SVG and the PNGs of the BETA 1010 and 1033 retakes.
+
+**Not in the rules, to ask the owner:** a capture within noise (kept as the file) whose faint
+difference is a block that survives: a tint over less than 0.5% of the picture, which *keep old
+→ take new* is for. The rules send to the queue only a capture the tool took.
 
 Step 2 was checked with the runs [below](#checking-a-move), whose states it left as they were
 with an empty manifest, and with an allowance and a decision on `Menu_Tools_IDEOptions`: the

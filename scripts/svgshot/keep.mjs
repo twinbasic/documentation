@@ -19,7 +19,8 @@ export const holdsUserName = (svg, user) =>
 
 /**
  * `svg` against the PNG it was taken with, in a page of `browser`:
- * {diff, faithful, by, measures}, `faithful` and `by` decideSvg's verdict, with the
+ * {diff, faithful, by, measures}, `diff` diffSvg's (its strength map among it), `faithful`
+ * and `by` decideSvg's verdict, with the
  * picture's `entry` in the manifest (or null), and `measures` the line that says how far
  * off it is and what the converter did not draw (`stats.unsupported`).
  */
@@ -33,14 +34,16 @@ export async function judgeSvg(browser, svg, png, stats, entry = null) {
     await page.close();
   }
   const unsupported = Object.entries(stats.unsupported).map(([k, n]) => `${k} x${n}`);
+  const { faithful, by, share } = decideSvg(diff.strength, { entry, svg, png });
   // A picture with a bar of its own says so, with the share at that bar's levels.
   const rule = svgRule(entry);
-  const own = entry?.svg?.bar
-    ? `; its own bar is ${rule.share}% at ${rule.levels} levels, and ${diff.stats[`pct${rule.levels}`]}% are off by that`
-    : "";
+  const left = rule.rects.length ? `, ${rule.rects.length} rectangle${rule.rects.length > 1 ? "s" : ""} left out` : "";
+  const own =
+    entry?.svg?.bar || rule.rects.length
+      ? `; its own bar is ${rule.share}% at ${rule.levels} levels${left}, and ${share}% are off by that`
+      : "";
   const measures =
     `${diff.stats.pct32}% of pixels differ, ${diff.stats.pct96}% strongly${own}` +
     `${unsupported.length ? `; not drawn: ${unsupported.join(", ")}` : ""}`;
-  const { faithful, by } = decideSvg(diff.stats, { entry, svg, png });
   return { diff, faithful, by, measures };
 }

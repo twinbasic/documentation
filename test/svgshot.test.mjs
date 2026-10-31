@@ -64,6 +64,7 @@ import {
 } from "../scripts/lib/shot-policy.mjs";
 import {
   earlierPngDecision,
+  earlierSvgDecision,
   hashOf,
   manifestText,
   openManifest,
@@ -71,7 +72,26 @@ import {
   pngDecision,
   svgDecision,
 } from "../scripts/lib/shot-manifest.mjs";
-import { changeMap, compareImages, NOISE_LEVELS, NOISE_SHARE, withinNoise } from "../scripts/lib/shot-change.mjs";
+import {
+  changeMap,
+  changeRegions,
+  compareImages,
+  NOISE_LEVELS,
+  NOISE_SHARE,
+  regionMasks,
+  shareOff,
+  strengthOf,
+  withinNoise,
+} from "../scripts/lib/shot-change.mjs";
+import {
+  pngLook,
+  pngRegions,
+  SURVIVES,
+  surviving,
+  svgLook,
+  svgRegions,
+  WORD_CORE,
+} from "../scripts/lib/shot-queue.mjs";
 import {
   changedPictures,
   openRevision,
@@ -1926,6 +1946,185 @@ describe("the records a child writes among its lines (record-lines.mjs)", () => 
   });
 });
 
+// A strength map `w` by `h` whose pixels, in reading order, are the [count, level] runs of
+// `runs`, the rest 0.
+function strengthMap(runs, w = 100, h = 100) {
+  const data = new Uint8Array(w * h);
+  let at = 0;
+  for (const [n, level] of runs) {
+    data.fill(level, at, at + n);
+    at += n;
+  }
+  return { width: w, height: h, data };
+}
+
+// A strength map `w` by `h` with `level(x, y)` at each pixel (0, or undefined, for none).
+function paintMap(w, h, level) {
+  const data = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) data[y * w + x] = level(x, y) ?? 0;
+  return { width: w, height: h, data };
+}
+
+// A level of 200 inside each of `rects`, [x0, y0, x1, y1] (x1 and y1 not included).
+const blocks =
+  (...rects) =>
+  (x, y) =>
+    rects.some(([x0, y0, x1, y1]) => x >= x0 && x < x1 && y >= y0 && y < y1) ? 200 : 0;
+
+// Five strokes 2 pixels thick and 3 apart, 14 high: what a word of the IDE's text at 2x leaves.
+const word = (x0, y0) => (x, y) => (y >= y0 && y < y0 + 14 && x >= x0 && x < x0 + 25 && (x - x0) % 5 < 2 ? 200 : 0);
+
+describe("the strength map and its regions (shot-change.mjs)", () => {
+  test("a strength map of two pictures is each pixel's largest difference of a channel", () => {
+    const A = { width: 2, height: 1, rgba: new Uint8Array([10, 10, 10, 255, 0, 0, 0, 255]) };
+    const B = { width: 2, height: 1, rgba: new Uint8Array([10, 40, 10, 255, 0, 0, 0, 200]) };
+    assert.deepEqual([...strengthOf(A, B).data], [30, 55]);
+    assert.throws(() => strengthOf(A, { width: 1, height: 2, rgba: A.rgba }), /two sizes/);
+  });
+
+  test("the share at a level counts the pixels at it or more, rounded as diffSvg rounds", () => {
+    const m = strengthMap([
+      [3, 8],
+      [2, 32],
+      [1, 96],
+    ]);
+    assert.deepEqual(
+      [8, 32, 96, 97].map((level) => shareOff(m, { level })),
+      [0.06, 0.03, 0.01, 0],
+    );
+    // a rectangle left out still counts in the whole
+    assert.equal(shareOff(m, { level: 8, rects: [{ x0: 0, y0: 0, x1: 3, y1: 1 }] }), 0.03);
+    assert.equal(shareOff(strengthMap([[1, 50]], 3, 1), { level: 1 }), 33.333);
+  });
+
+  test("a line up to 4 pixels thick leaves no core, a block keeps its middle", () => {
+    const one = (level) => changeRegions(paintMap(60, 40, level), { level: 1 });
+    // a fringe, a caret, a line 4 thick
+    assert.deepEqual(one(blocks([5, 10, 55, 11])), [{ x0: 5, y0: 10, x1: 55, y1: 11, pixels: 50, core: 0 }]);
+    assert.equal(one(blocks([20, 5, 22, 35]))[0].core, 0);
+    assert.equal(one(blocks([5, 10, 55, 14]))[0].core, 0);
+    // 5 thick is the thinnest that survives, as a line 1 pixel thick
+    assert.equal(one(blocks([5, 10, 55, 15]))[0].core, 46);
+    // a block 10 by 10 keeps 6 by 6
+    assert.deepEqual(one(blocks([10, 10, 20, 20])), [{ x0: 10, y0: 10, x1: 20, y1: 20, pixels: 100, core: 36 }]);
+  });
+
+  test("closing joins a word's strokes into one block, which survives", () => {
+    const m = paintMap(60, 40, word(10, 10));
+    const open = changeRegions(m, { level: 1, close: 0 });
+    assert.equal(open.length, 5);
+    assert.ok(open.every((r) => r.core === 0));
+    const closed = changeRegions(m, { level: 1 });
+    assert.equal(closed.length, 1);
+    // the box and the count are the changed pixels', the core the closed region's
+    assert.deepEqual(closed[0], { x0: 10, y0: 10, x1: 32, y1: 24, pixels: 140, core: 180 });
+    // a gap of 5 is not closed
+    const apart = paintMap(60, 40, blocks([10, 10, 20, 20], [25, 10, 35, 20]));
+    assert.equal(changeRegions(apart, { level: 1 }).length, 2);
+    assert.equal(changeRegions(paintMap(60, 40, blocks([10, 10, 20, 20], [24, 10, 34, 20])), { level: 1 }).length, 1);
+  });
+
+  test("closing keeps every changed pixel, along the picture's edge too", () => {
+    const m = paintMap(20, 20, blocks([0, 0, 20, 6]));
+    const { mask, closed, core } = regionMasks(m, { level: 1 });
+    for (let i = 0; i < mask.length; i++) assert.ok(closed[i] >= mask[i]);
+    // outside the picture counts as unchanged: the erosion takes 2 rows from the edge
+    assert.equal(
+      core.reduce((a, b) => a + b, 0),
+      16 * 2,
+    );
+    assert.deepEqual(changeRegions(m, { level: 1 }), [{ x0: 0, y0: 0, x1: 20, y1: 6, pixels: 120, core: 32 }]);
+  });
+
+  test("regions touching at a corner are one, and the most core comes first", () => {
+    const corner = paintMap(20, 20, (x, y) => ((x === 3 && y === 3) || (x === 4 && y === 4) ? 99 : 0));
+    assert.equal(changeRegions(corner, { level: 1, close: 0 }).length, 1);
+    const two = paintMap(80, 40, blocks([2, 2, 4, 30], [40, 5, 60, 25]));
+    assert.deepEqual(
+      changeRegions(two, { level: 1 }).map((r) => [r.x0, r.core]),
+      [
+        [40, 256],
+        [2, 0],
+      ],
+    );
+  });
+
+  test("counts only the pixels at the level, and leaves the rectangles out", () => {
+    const m = paintMap(60, 40, (x, y) => (x >= 10 && x < 20 && y >= 10 && y < 20 ? (x < 15 ? 50 : 150) : 0));
+    assert.deepEqual(
+      changeRegions(m, { level: 100 }).map((r) => [r.x0, r.x1, r.pixels]),
+      [[15, 20, 50]],
+    );
+    assert.deepEqual(changeRegions(m, { level: 1, rects: [{ x0: 0, y0: 0, x1: 60, y1: 40 }] }), []);
+    assert.deepEqual(changeRegions(strengthMap([]), { level: 1 }), []);
+  });
+});
+
+describe("which pictures need a look (shot-queue.mjs)", () => {
+  const region = (core) => ({ x0: 0, y0: 0, x1: 10, y1: 10, pixels: 100, core });
+  const taken = { state: "updated", by: "rule", earlier: null };
+
+  test("a region survives with a core of SURVIVES pixels", () => {
+    assert.deepEqual(surviving([region(SURVIVES), region(SURVIVES - 1), region(0)]), [region(SURVIVES)]);
+  });
+
+  test("a capture taken needs a look when nothing survives, or a word or two does", () => {
+    assert.equal(pngLook(taken, []).why, "noise");
+    assert.equal(pngLook(taken, [region(SURVIVES - 1), region(3)]).why, "noise");
+    assert.equal(pngLook(taken, [region(WORD_CORE), region(SURVIVES)]).why, "small");
+    assert.equal(pngLook(taken, [region(WORD_CORE + 1)]), null);
+    assert.equal(pngLook(taken, [region(100), region(100), region(100)]), null);
+    // a picture not taken, or decided by a review, does not
+    for (const state of ["new", "noise", "restored", "unchanged", "dark"])
+      assert.equal(pngLook({ ...taken, state }, []), null);
+    assert.equal(pngLook({ ...taken, by: "decision" }, []), null);
+    // a review's decision about other bytes sends it back, whatever the regions
+    assert.equal(pngLook({ ...taken, state: "noise", earlier: "new" }, [region(5000)]).why, "earlier");
+  });
+
+  test("an SVG needs a look when accepted with something surviving, or refused with nothing", () => {
+    const rule = { faithful: true, by: "rule", earlier: null };
+    assert.equal(svgLook(rule, [region(SURVIVES)]).why, "part");
+    assert.equal(svgLook(rule, [region(SURVIVES - 1)]), null);
+    assert.equal(svgLook({ ...rule, faithful: false }, [region(3)]).why, "fringe");
+    assert.equal(svgLook({ ...rule, faithful: false }, [region(SURVIVES)]), null);
+    assert.equal(svgLook({ ...rule, by: "decision" }, [region(5000)]), null);
+    assert.equal(svgLook({ ...rule, earlier: false }, []).why, "earlier");
+  });
+
+  test("from the strength maps: a word changed, a caret, a part missing and a fringe", () => {
+    const rule = pngRule(null);
+    assert.equal(pngLook(taken, pngRegions(paintMap(200, 100, word(20, 20)), rule)).why, "small");
+    assert.equal(pngLook(taken, pngRegions(paintMap(200, 100, blocks([50, 10, 52, 40])), rule)).why, "noise");
+    // a whole window a few levels off is a change, not noise
+    assert.equal(
+      pngLook(
+        taken,
+        pngRegions(
+          paintMap(200, 100, () => 3),
+          rule,
+        ),
+      ),
+      null,
+    );
+    // the caret inside a rectangle left out leaves nothing at all
+    const caret = paintMap(200, 100, (x, y) => blocks([50, 10, 52, 40])(x, y) || word(100, 20)(x, y));
+    const left = pngRule({ png: { ignore: [[40, 0, 60, 100]] } });
+    assert.equal(pngRegions(caret, left).length, 1);
+    // an SVG at its bar's level: an icon missing survives, a fringe at 95 levels is not counted
+    const icon = paintMap(200, 100, blocks([20, 20, 52, 52]));
+    assert.equal(svgLook({ faithful: true, by: "rule", earlier: null }, svgRegions(icon)).why, "part");
+    const faint = paintMap(200, 100, (x, y) => (blocks([20, 20, 52, 52])(x, y) ? 95 : 0));
+    assert.deepEqual(svgRegions(faint), []);
+    assert.equal(svgRegions(faint, { svg: { bar: { levels: 32 } } }).length, 1);
+    assert.equal(
+      svgLook({ faithful: false, by: "rule", earlier: null }, svgRegions(paintMap(200, 100, blocks([0, 50, 200, 51]))))
+        .why,
+      "fringe",
+    );
+  });
+});
+
 describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs)", () => {
   // A PNG's header with its size, and a tag that tells two of one size apart.
   const shot = (w, h, tag) => {
@@ -1979,15 +2178,43 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
   });
 
   test("an SVG is faithful below the bar, the default one or a picture's own", () => {
-    assert.deepEqual(decideSvg({ pct96: SVG_FAITHFUL - 0.001 }), { faithful: true, by: "rule" });
-    assert.equal(decideSvg({ pct96: SVG_FAITHFUL }).faithful, false);
+    // 10,000 pixels: SVG_FAITHFUL (0.25%) is 25 of them
+    assert.deepEqual(decideSvg(strengthMap([[24, 96]])), { faithful: true, by: "rule", share: 0.24, earlier: null });
+    assert.equal(decideSvg(strengthMap([[25, 255]])).faithful, false);
+    assert.equal(decideSvg(strengthMap([[1000, 95]])).faithful, true);
     const wider = { svg: { bar: { share: 0.35 } } };
-    assert.equal(decideSvg({ pct96: 0.3 }, { entry: wider }).faithful, true);
-    // a bar at another level counts the pixels off at that level
+    assert.equal(decideSvg(strengthMap([[30, 96]]), { entry: wider }).faithful, true);
+    // a bar at another level counts the pixels at that level or more, at any level
     const at32 = { svg: { bar: { levels: 32, share: 1 } } };
-    assert.equal(decideSvg({ pct96: 0, pct32: 1.5 }, { entry: at32 }).faithful, false);
-    assert.equal(decideSvg({ pct96: 5, pct32: 0.5 }, { entry: at32 }).faithful, true);
-    assert.deepEqual(svgRule(null), { levels: 96, share: SVG_FAITHFUL });
+    assert.equal(decideSvg(strengthMap([[150, 40]]), { entry: at32 }).faithful, false);
+    assert.equal(
+      decideSvg(
+        strengthMap([
+          [50, 31],
+          [50, 200],
+        ]),
+        { entry: at32 },
+      ).share,
+      0.5,
+    );
+    const at50 = { svg: { bar: { levels: 50, share: 0.5 } } };
+    assert.equal(
+      decideSvg(
+        strengthMap([
+          [30, 60],
+          [100, 49],
+        ]),
+        { entry: at50 },
+      ).faithful,
+      true,
+    );
+    assert.equal(decideSvg(strengthMap([[60, 50]]), { entry: at50 }).faithful, false);
+    // the pixels inside a rectangle left out are not counted: the first 100 are row 0
+    const row0 = { svg: { ignore: [[0, 0, 100, 1]] } };
+    assert.deepEqual(decideSvg(strengthMap([[100, 255]]), { entry: row0 }).share, 0);
+    assert.deepEqual(decideSvg(strengthMap([[101, 255]]), { entry: row0 }).share, 0.01);
+    assert.deepEqual(svgRule(null), { levels: 96, share: SVG_FAITHFUL, rects: [] });
+    assert.deepEqual(svgRule(row0).rects, [{ x0: 0, y0: 0, x1: 100, y1: 1 }]);
   });
 
   test("a review's decision takes the rule's place for the bytes it was made on, and no others", () => {
@@ -2071,14 +2298,24 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
     assert.equal(svgDecision(svgEntry, "<svg/>", OTHER), true);
     assert.equal(svgDecision(svgEntry, "<svg/>", NEAR), null);
     assert.equal(svgDecision(svgEntry, "<svg />", OTHER), null);
-    assert.deepEqual(decideSvg({ pct96: 50 }, { entry: svgEntry, svg: "<svg/>", png: OTHER }), {
+    const half = strengthMap([[5000, 255]]);
+    assert.deepEqual(decideSvg(half, { entry: svgEntry, svg: "<svg/>", png: OTHER }), {
       faithful: true,
       by: "decision",
+      share: 50,
+      earlier: null,
     });
-    assert.deepEqual(decideSvg({ pct96: 50 }, { entry: svgEntry, svg: "<svg/>", png: NEAR }), {
+    // the same SVG against another PNG: judged by the bar, the decision shown as an earlier one
+    assert.deepEqual(decideSvg(half, { entry: svgEntry, svg: "<svg/>", png: NEAR }), {
       faithful: false,
       by: "rule",
+      share: 50,
+      earlier: true,
     });
+    assert.equal(earlierSvgDecision(svgEntry, "<svg />", OTHER), true);
+    assert.equal(earlierSvgDecision(svgEntry, "<svg/>", OTHER), null);
+    assert.equal(earlierSvgDecision(null, "<svg/>", OTHER), null);
+    assert.equal(decideSvg(half, { svg: "<svg/>", png: OTHER }).earlier, null);
   });
 
   test("an allowance changes the noise rule the picture is judged with", () => {
@@ -2192,7 +2429,7 @@ describe("the screenshot manifest (shot-manifest.mjs)", () => {
     pictures: {
       "IDE/Images/B.png": { build: 1010 },
       "IDE/Images/A.light.png": {
-        svg: { decision: { accept: true, svg: H, png: H }, bar: { share: 0.35 } },
+        svg: { decision: { accept: true, svg: H, png: H }, ignore: [[0, 0, 8, 8]], bar: { levels: 50, share: 0.35 } },
         png: { decision: { keep: "old", capture: H }, ignore: [[812, 40, 900, 64]], noise: { share: 0.5 } },
         build: 1501,
       },
@@ -2222,8 +2459,12 @@ describe("the screenshot manifest (shot-manifest.mjs)", () => {
       },
       "svg": {
         "bar": {
+          "levels": 50,
           "share": 0.35
         },
+        "ignore": [
+          [0, 0, 8, 8]
+        ],
         "decision": {
           "accept": true,
           "svg": "${H}",
@@ -2262,8 +2503,10 @@ describe("the screenshot manifest (shot-manifest.mjs)", () => {
     bad({ "a.png": { png: { ignore: [[5, 0, 5, 9]] } } }, /png\.ignore\[0\] is not \[x0, y0, x1, y1\]/);
     bad({ "a.png": { png: { decision: { keep: "both", capture: H } } } }, /png\.decision\.keep/);
     bad({ "a.png": { png: { decision: { keep: "old", capture: "x" } } } }, /png\.decision\.capture is not a SHA-1/);
-    bad({ "a.png": { svg: { bar: { levels: 50 } } } }, /svg\.bar\.levels is not one of 8, 32, 96/);
-    bad({ "a.png": { svg: { ignore: [] } } }, /svg has an unknown key, ignore/);
+    bad({ "a.png": { svg: { bar: { levels: 0 } } } }, /svg\.bar\.levels is not a number of grey levels, 1 to 255/);
+    bad({ "a.png": { svg: { bar: { levels: 32.5 } } } }, /svg\.bar\.levels/);
+    bad({ "a.png": { svg: { ignore: [[0, 9, 4, 3]] } } }, /svg\.ignore\[0\] is not \[x0, y0, x1, y1\]/);
+    bad({ "a.png": { svg: { other: [] } } }, /svg has an unknown key, other/);
     bad({ "a.png": { svg: { decision: { accept: "yes", svg: H, png: H } } } }, /svg\.decision\.accept/);
   });
 

@@ -14,7 +14,11 @@
 //                    picture's device pixels (x1 and y1 not included)
 //   png.decision     {keep: "old" | "new", capture}: what a review decided about the capture
 //                    whose SHA-1 is `capture`; any other capture is judged by the rule
-//   svg.bar          {levels, share}: the SVG's bar (SVG_FAITHFUL at 96 levels)
+//   svg.bar          {levels, share}: the SVG's bar (SVG_FAITHFUL at 96 levels): the share
+//                    of its pixels at least `levels` off the PNG's (1 to 255) must stay below
+//                    `share`
+//   svg.ignore       [[x0, y0, x1, y1], ...]: rectangles left out of the SVG's comparison,
+//                    as png.ignore
 //   svg.decision     {accept, svg, png}: whether the SVG whose SHA-1 is `svg`, compared with
 //                    the PNG whose SHA-1 is `png`, is written whatever the bar says
 //
@@ -30,9 +34,6 @@ import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 export const MANIFEST = path.join(REPO_ROOT, "test", "shots", "manifest.json");
 
 export const MANIFEST_FORMAT = 1;
-
-/** The levels at which an SVG's difference from its PNG is counted (diff.mjs): its bar's `levels` is one of them. */
-export const SVG_LEVELS = [8, 32, 96];
 
 /** The SHA-1 of a file's bytes, or of a text as UTF-8 with its line endings LF, as hex. */
 export const hashOf = (data) =>
@@ -86,16 +87,16 @@ function checkEntry(where, e) {
   }
   if (e.svg !== undefined) {
     const w = `${where}.svg`;
-    // A rectangle left out of an SVG's comparison needs the strength map, which diff.mjs
-    // does not return yet (WIP.ShotReview.md, step 3): svg.ignore is refused until it does.
-    checkKeys(w, e.svg, ["bar", "decision"]);
-    const { bar, decision } = e.svg;
+    checkKeys(w, e.svg, ["bar", "ignore", "decision"]);
+    const { bar, ignore, decision } = e.svg;
     if (bar !== undefined) {
       checkKeys(`${w}.bar`, bar, ["levels", "share"]);
-      if (bar.levels !== undefined && !SVG_LEVELS.includes(bar.levels))
-        throw new Error(`${w}.bar.levels is not one of ${SVG_LEVELS.join(", ")}`);
+      // At 0 levels every pixel is off: a bar counts the pixels at least one level off.
+      if (bar.levels !== undefined && !(Number.isInteger(bar.levels) && bar.levels >= 1 && bar.levels <= 255))
+        throw new Error(`${w}.bar.levels is not a number of grey levels, 1 to 255`);
       if (bar.share !== undefined) checkShare(`${w}.bar.share`, bar.share);
     }
+    if (ignore !== undefined) checkRects(`${w}.ignore`, ignore);
     if (decision !== undefined) {
       checkKeys(`${w}.decision`, decision, ["accept", "svg", "png"]);
       if (typeof decision.accept !== "boolean") throw new Error(`${w}.decision.accept is not true or false`);
@@ -143,7 +144,7 @@ function pruned(value, order = []) {
 }
 const ENTRY_ORDER = {
   png: ["noise", "ignore", "decision"],
-  svg: ["bar", "decision"],
+  svg: ["bar", "ignore", "decision"],
   noise: ["levels", "share"],
   bar: ["levels", "share"],
   decision: ["keep", "capture", "accept", "svg", "png"],
@@ -187,6 +188,13 @@ export function svgDecision(entry, svg, png) {
   const d = entry?.svg?.decision;
   if (!d || svg === null || png === null) return null;
   return d.svg === hashOf(svg) && d.png === hashOf(png) ? d.accept : null;
+}
+
+/** The decision a review made about another SVG, or about this one against another PNG: true, false, or null. */
+export function earlierSvgDecision(entry, svg, png) {
+  const d = entry?.svg?.decision;
+  if (!d || svg === null || png === null) return null;
+  return d.svg === hashOf(svg) && d.png === hashOf(png) ? null : d.accept;
 }
 
 /**
