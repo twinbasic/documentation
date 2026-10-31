@@ -2,8 +2,9 @@
 
 A localhost tool for reviewing what `shoot_docs.mjs` and `replay.mjs` decided about each
 picture, overriding it, starting retakes and replays, and committing the result. **Design
-agreed with the owner on 2026-10-31; nothing is implemented yet.** The mockups it was agreed
-on were inline in that session and are not kept: the pages are described below instead.
+agreed with the owner on 2026-10-31; step 1 of [the order of work](#order-of-work) is under
+way, and the tool itself is not started.** The mockups it was agreed on were inline in that
+session and are not kept: the pages are described below instead.
 
 The tool covers everything the command-line screenshot tools do, interactively, with a person
 deciding where a threshold cannot (owner). The command-line tools stay, and both reach the
@@ -243,7 +244,8 @@ uses it. `shoot_docs.mjs` cannot run in a gate, so a move is checked by its test
 Each step ends tested and usable on its own.
 
 1. **The moves**, no behaviour changed: the table's *After* column, with `shoot_docs.mjs`,
-   `replay.mjs` and `sheet.mjs` calling the shared modules.
+   `replay.mjs` and `sheet.mjs` calling the shared modules. Mostly done: see
+   [Where the work stands](#where-the-work-stands).
 2. **The manifest**: read and written by one module; `shoot_docs.mjs` and `replay.mjs` judge
    with its allowances, honour its decisions and record `build`.
 3. **The strength map, the regions and the queue's rules**, tested on fixtures.
@@ -256,6 +258,70 @@ Each step ends tested and usable on its own.
    `Tools-Groups.dot`, its command-line cases in `scripts/lib/cli-cases.mjs`, its tests in
    `test.bat` (and so in Tools.md's list and the `run-gates` action), and the row in
    WIP.md's *Which file to open*.
+
+## Where the work stands
+
+On `staging` since 2026-10-31 (the commits from `95378e8f` to `c833323a`), step 1 but for the
+rows below. Each move kept the command-line tools' output as it was, checked as
+[below](#checking-a-move).
+
+| Row of the factoring table | Where it is now |
+|---|---|
+| The noise rule | `withinNoise(A, B, {levels, share, rects})`, `scripts/lib/shot-change.mjs` |
+| A PNG's verdict | `decidePicture({png, theme, dark, revision, disk, near})` in `scripts/lib/shot-policy.mjs`, with `SIZE_SLACK`: pictureFate's states plus `too-far` and `dark` (a light picture with the dark one's pixels). It does not read the manifest yet (step 2) |
+| An SVG's verdict | `decideSvg(stats, {bar})` in `shot-policy.mjs`, with `SVG_FAITHFUL` (moved from `keep.mjs`); `judgeSvg` asks it. It reads `stats.pct96` until the strength map exists (step 3) |
+| Writing a verdict | `scripts/lib/shot-apply.mjs`: `applyPicture(outRoot, out, decision, revision)`, `applySvg(outRoot, svgOut, svg or null)`, `restorePictures(outRoot, revision, outs, {dryRun})` (the PNGs and their SVGs, the SVGs by one `git restore`; `--cleanup` and a `restored` picture both use it), `dropPicture(outRoot, out, bundlesRoot)`, `writeSvg`, `svgOf`. What stays in `shoot_docs.mjs`'s `keep` and `keepSvg`: the counts, the lines it prints, the `--diffs` pictures, the bundle written, the user-name check, and the rule that an SVG stays as it is when its PNG was not written |
+| The git listing | `changedPictures`, `parseNameStatus`, `parseUntracked` in `scripts/lib/shot-revision.mjs` |
+| A child's report | `scripts/lib/record-lines.mjs`: `recordLine`, `writeRecord`, `parseRecord`, `readRecords(stream, kinds, {onRecord, onLine})`; `runShards` reads `svgshot-result` records with it. `--events` is to write `shot-event` records the same way |
+| Server-sent events | `createSseChannel()` in `lib/sse.mjs`: `handle(req, res)`, `send(event, data)`, `close()`; `builder/serve.mjs` uses one |
+| The installs | `listIdes()` in `scripts/lib/tb-install.mjs`, newest first, `[{build, exe}]` |
+
+**Next: the views module**, the last move. The sheets' HTML is in `scripts/svgshot/redraw.mjs`
+from `SHEET_GENERATOR` to the end: the private pieces `esc`, `anchor`, `sizeText`, `pageHtml`
+(the page skeleton both sheets share), `figuresIn`, `meterHtml`, `pctText`, `shellQuote`, and
+the two pages `sheetHtml` (the pictures with no SVG) and `changeSheetHtml` (`--against`),
+with their row helpers (`sortRows`, `sortChangeRows`, `restoreCommand`, `cleanupCommand`,
+`changeFiles`, `compareRevisionPicture`) and the output-folder rules (`outputRefusal`,
+`mayWriteSheet`). The pieces go to a module of their own that the tool will import too (a
+card, a figure, a meter, the page); `test/svgshot.test.mjs` tests both pages through their
+exports, so the tests show whether the move changed anything. The tool's own pages will add
+their actions to the same pieces; until then nothing calls them but `sheet.mjs`.
+
+**Then step 2**, the manifest. The three rows left in the table are new code, made in the
+steps that need them: the strength map and `changeRegions` in step 3, the commit helper in
+step 8.
+
+**A small cleanup, in no step:** a PNG's size is read from its header by four copies of one
+line (`pngSize` in `shot-policy.mjs` as `{w, h}`, in `redraw.mjs` as `[w, h]` or null, in
+`svgshot/probe.mjs` as `{width, height}`, and the test's `PNG` helper writes one); one reader
+in `scripts/lib/png.mjs` would replace the first three.
+
+### Checking a move
+
+`shoot_docs.mjs` cannot run in a gate. A move that touches what it decides or writes is
+checked by its unit tests in `test/svgshot.test.mjs` and by these runs, before the change and
+after, in a worktree (they write under `docs/`; `git checkout -- docs` after each). Every
+state line must be the same, bytes and percentages aside. The three setups they use
+(`no-project`, `projects`, `project`) do not need the built site.
+
+```sh
+node scripts/shoot_docs.mjs --svg --only "Menu_Tools|Close_Question|Menu_File" --jobs 2
+```
+
+All `unchanged` (one light picture may be `unchanged but for a capture's noise`). Then, with
+`Menu_Tools_IDEOptions` alone (`--only "Menu_Tools_IDEOptions" --jobs 1`):
+
+- `Menu_File.png` copied over `Menu_Tools_IDEOptions.png` and `Menu_Tools_IDEOptions.light.svg`
+  deleted: the dark picture `restored as HEAD has it`, its SVG `as HEAD has it`, the light SVG
+  `new`.
+- The same copy, with `--against-disk`: the dark picture `updated` and its SVG `updated`.
+
+Read the whole log, not lines filtered out of it: an error raised in the page arrives with
+the page's own stack on the lines after `FAILED`, and its line and column inside the evaluated
+script name the helper that raised it. That is how the `Close_Question` crash was found: a
+tab the IDE is still loading or saving shows a spinner in place of its close icon (the button's
+class is `progressSpinnerIcon`, `ide/main.js`), and `closeTabs` now waits for the icon with a
+MutationObserver (`tabCloseIcon`).
 
 ## Open
 
