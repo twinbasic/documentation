@@ -333,7 +333,7 @@ const literalSpecs = (paths) => `${paths.map((p) => `:(literal)${p}`).join("\0")
  */
 export async function commitPaths(root, { paths, added = [], message }) {
   if (!paths.length) throw new Error("no file to commit");
-  const { top } = workingChanges(root);
+  const top = path.resolve((await gitSaying(["rev-parse", "--show-toplevel"], root)).trim());
   if (added.length) await gitSaying(["add", "--pathspec-from-file=-", "--pathspec-file-nul"], top, literalSpecs(added));
   await gitSaying(
     ["commit", "--quiet", "--only", "-m", message, "--pathspec-from-file=-", "--pathspec-file-nul"],

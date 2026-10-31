@@ -299,7 +299,14 @@ export function commitPlan({ pictures, changes, docsPrefix, manifestPath, entry 
       }
       if (png?.build && writes(png.state) && (build === null || png.build > build)) build = png.build;
       take(pngPath, "png", why, p.out);
-    } else if (png?.by === "decision" && !writes(png.state) && png.state !== "dark" && png.state !== "once")
+    } else if (
+      png?.by === "decision" &&
+      entry(p.out)?.png?.decision?.keep === "old" &&
+      !writes(png.state) &&
+      png.state !== "dark" &&
+      png.state !== "once"
+    )
+      // (a "new" decision about a capture that is the file's own bytes kept nothing against the tool)
       counts.kept++;
     if (status.has(svgPath)) {
       let why;

@@ -423,6 +423,8 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
       { out: `${I}G.png`, png: null, svg: { state: "removed", by: "rule" } },
       // a retake whose picture is as HEAD has it: nothing to commit, and not counted
       { out: `${I}H.png`, png: { state: "unchanged", by: "rule" }, svg: { state: "unchanged" } },
+      // a review took a capture that HEAD now has: judged by that decision, but nothing kept against the tool
+      { out: `${I}J.png`, png: { state: "unchanged", by: "decision" }, svg: null },
     ];
     const changes = [
       ["docs/IDE/Images/A.png", "modified"],
@@ -443,7 +445,12 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
       changes,
       docsPrefix: "docs/",
       manifestPath: "test/shots/manifest.json",
-      entry: (out) => (out.endsWith("D.png") ? { svg: { bar: { share: 1 } } } : null),
+      entry: (out) =>
+        ({
+          [`${I}C.png`]: { png: { decision: { keep: "old", capture: "c" } } },
+          [`${I}D.png`]: { svg: { bar: { share: 1 } } },
+          [`${I}J.png`]: { png: { decision: { keep: "new", capture: "j" } } },
+        })[out] ?? null,
     });
     assert.deepEqual(
       plan.files.map((f) => [f.path.replace("docs/IDE/Images/", ""), f.status, f.part, f.why]),
