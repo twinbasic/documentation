@@ -53,7 +53,7 @@ import {
   writeBundle,
 } from "../scripts/svgshot/bundle.mjs";
 import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
-import { decodePng, encodePng } from "../scripts/lib/png.mjs";
+import { decodePng, encodePng, pngSize } from "../scripts/lib/png.mjs";
 import { onStop, parseRecord, readRecords, recordLine, sendStop, STOP_LINE } from "../scripts/lib/record-lines.mjs";
 import {
   readStrength,
@@ -134,15 +134,7 @@ import {
   svgFate,
   workingChanges,
 } from "../scripts/lib/shot-revision.mjs";
-import {
-  judgedFiles,
-  listPictures,
-  pngSize,
-  redraw,
-  retakeText,
-  shareOf,
-  themeOf,
-} from "../scripts/svgshot/redraw.mjs";
+import { judgedFiles, listPictures, redraw, retakeText, shareOf, themeOf } from "../scripts/svgshot/redraw.mjs";
 import {
   cleanupCommand,
   changeFiles,
@@ -1353,7 +1345,7 @@ describe("web fonts as WOFF2", () => {
 describe("the sheet", () => {
   const PNG = (w, h) => {
     const b = Buffer.alloc(33);
-    b.writeUInt32BE(0x89504e47, 0);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b);
     b.write("IHDR", 12, "latin1");
     b.writeUInt32BE(w, 16);
     b.writeUInt32BE(h, 20);
@@ -1371,7 +1363,12 @@ describe("the sheet", () => {
       diff: "a__X.svg-diff.png",
     });
     assert.deepEqual(pngSize(PNG(800, 600)), [800, 600]);
+    assert.deepEqual(pngSize(new Uint8Array(PNG(3, 4))), [3, 4]);
+    assert.deepEqual(pngSize(encodePng({ width: 2, height: 5, rgba: new Uint8Array(40) })), [2, 5]);
     assert.equal(pngSize(Buffer.from("not a png at all, but long enough")), null);
+    assert.equal(pngSize(PNG(8, 8).subarray(0, 23)), null);
+    // A JPEG's bytes read as a PNG's header would give a size of millions: not a PNG.
+    assert.equal(pngSize(Buffer.from("ffd8ffe000104a46494600010100000100010000ff", "hex")), null);
     assert.deepEqual(shareOf(["a", "b", "c", "d", "e"], { k: 1, of: 2 }), ["b", "d"]);
   });
 
@@ -2470,6 +2467,8 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
   // A PNG's header with its size, and a tag that tells two of one size apart.
   const shot = (w, h, tag) => {
     const b = Buffer.alloc(24);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b);
+    b.write("IHDR", 12, "latin1");
     b.writeUInt32BE(w, 16);
     b.writeUInt32BE(h, 20);
     return Buffer.concat([b, Buffer.from(tag)]);
@@ -2934,9 +2933,24 @@ describe("the screenshot manifest (shot-manifest.mjs)", () => {
     fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/\n/g, "\r\n"));
     const again = openManifest(file);
     assert.equal(again.save(), false);
-    again.clearBuild("a.png");
-    again.clearBuild("c.png");
+    // ... and a CRLF file stays CRLF when it is written
+    again.setBuild("a.png", 1034);
     assert.equal(again.save(), true);
+    const crlf = fs.readFileSync(file, "utf8");
+    assert.equal(crlf, manifestText({ format: 1, pictures: { "a.png": { build: 1034 } } }).replace(/\n/g, "\r\n"));
+    // a change made and taken back leaves it as it was, byte for byte
+    const back = openManifest(file);
+    back.setBuild("a.png", 1010);
+    assert.equal(back.save(), true);
+    back.setBuild("a.png", 1034);
+    assert.equal(back.save(), true);
+    assert.equal(fs.readFileSync(file, "utf8"), crlf);
+    // an LF file stays LF
+    fs.writeFileSync(file, crlf.replace(/\r\n/g, "\n"));
+    const lf = openManifest(file);
+    lf.clearBuild("a.png");
+    lf.clearBuild("c.png");
+    assert.equal(lf.save(), true);
     assert.equal(fs.readFileSync(file, "utf8"), manifestText({ format: 1, pictures: {} }));
     assert.deepEqual(fs.readdirSync(dir), ["manifest.json"]);
   });

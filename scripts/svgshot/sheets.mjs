@@ -10,7 +10,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
-import { decodePng } from "../lib/png.mjs";
+import { decodePng, pngSize } from "../lib/png.mjs";
 import { changeMap, compareImages, NOISE_LEVELS, NOISE_SHARE } from "../lib/shot-change.mjs";
 import {
   allowancesOf,
@@ -26,7 +26,7 @@ import {
 import { slugOf } from "../lib/shot-apply.mjs";
 import { pngDecision } from "../lib/shot-manifest.mjs";
 import { cleanupResets, pngRule } from "../lib/shot-policy.mjs";
-import { pngSize, themeOf } from "./redraw.mjs";
+import { themeOf } from "./redraw.mjs";
 
 /** The generator a sheet names in its <meta>, by which a folder is known to hold one. */
 export const SHEET_GENERATOR = "scripts/svgshot/sheet.mjs";

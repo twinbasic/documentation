@@ -24,6 +24,7 @@
 // used wherever an anchor can (`{ of: { ref }, at }` too). The layer is then captured like any
 // other part of the page; the annotation layer is over it.
 
+import { pngSize } from "./png.mjs";
 import { annotate, unannotate } from "./shot-annotate.mjs";
 
 export const COMPOSITE_ID = "tbShotComposite";
@@ -93,12 +94,15 @@ export async function composite(conn, parts, primitives = [], { gap = 40, margin
   }
   // each at its own pixel size, halved: a capture of a clip a half pixel wide can come out a
   // device pixel narrower than the clip, and drawn at the clip's size it would be resampled
-  const images = parts.map((p) => ({
-    src: `data:image/png;base64,${p.png.toString("base64")}`,
-    ...placed.get(p),
-    width: p.png.readUInt32BE(16) / SCALE,
-    height: p.png.readUInt32BE(20) / SCALE,
-  }));
+  const images = parts.map((p) => {
+    const [width, height] = pngSize(p.png);
+    return {
+      src: `data:image/png;base64,${p.png.toString("base64")}`,
+      ...placed.get(p),
+      width: width / SCALE,
+      height: height / SCALE,
+    };
+  });
   await conn.evaluate(
     `(async () => {
   document.getElementById(${JSON.stringify(COMPOSITE_ID)})?.remove();

@@ -34,6 +34,7 @@ import { DOCS_DIR } from "../../lib/repo-paths.mjs";
 import { changedPictures, outputRefusal, readRevisionFiles } from "../lib/shot-revision.mjs";
 import { BUNDLE_CACHE, listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
+import { pngSize } from "../lib/png.mjs";
 import { MANIFEST, openManifest } from "../lib/shot-manifest.mjs";
 import { SVG_FAITHFUL, svgRule } from "../lib/shot-policy.mjs";
 import { allowancesOf } from "../lib/shot-views.mjs";
@@ -43,7 +44,6 @@ import {
   inBrowser,
   judgedFiles,
   listPictures,
-  pngSize,
   redraw,
   reportShard,
   retakeText,

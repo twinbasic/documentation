@@ -53,12 +53,6 @@ export function listPictures(docsRoot) {
     .map((out) => ({ out, svg: existsSync(path.join(docsRoot, out.replace(/\.png$/i, ".svg"))) }));
 }
 
-/** A PNG's size in pixels, [width, height], from its header; null for bytes that are not a PNG. */
-export function pngSize(png) {
-  if (png.length < 24 || png.readUInt32BE(0) !== 0x89504e47 || png.toString("latin1", 12, 16) !== "IHDR") return null;
-  return [png.readUInt32BE(16), png.readUInt32BE(20)];
-}
-
 /**
  * Draws the SVG of the picture `out` (its path under `docsRoot`) again from its
  * bundle under `bundlesRoot`, with the converter as it is now. Returns

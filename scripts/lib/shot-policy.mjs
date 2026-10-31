@@ -5,6 +5,7 @@
 // by a review on the same bytes, take its place; and acts on the verdict through
 // shot-apply.mjs.
 
+import { pngSize } from "./png.mjs";
 import { NOISE_LEVELS, NOISE_SHARE, shareOff } from "./shot-change.mjs";
 import { earlierPngDecision, earlierSvgDecision, pngDecision, svgDecision } from "./shot-manifest.mjs";
 import { pictureFate } from "./shot-revision.mjs";
@@ -52,8 +53,12 @@ export function svgRule(entry) {
   return { levels: bar.levels ?? SVG_BAR_LEVELS, share: bar.share ?? SVG_FAITHFUL, rects: rectsOf(entry?.svg?.ignore) };
 }
 
-/** A PNG's width and height, from its header: {w, h}. */
-export const pngSize = (png) => ({ w: png.readUInt32BE(16), h: png.readUInt32BE(20) });
+/** A capture's width and height, from its header (png.mjs's pngSize): {w, h}, as a verdict gives them. */
+function sizeOf(png) {
+  const size = pngSize(png);
+  if (!size) throw new Error("a capture that is not a PNG");
+  return { w: size[0], h: size[1] };
+}
 
 /**
  * What becomes of a new capture `png` (PNG bytes) of the picture in `theme`. `dark` is the
@@ -78,14 +83,14 @@ export const pngSize = (png) => ({ w: png.readUInt32BE(16), h: png.readUInt32BE(
  *              as pictureFate says, `write` the bytes the file is to hold or null
  */
 export function decidePicture({ png, theme, dark, revision, disk, near, entry = null }) {
-  const size = pngSize(png);
+  const size = sizeOf(png);
   const decided = pngDecision(entry, png);
   const why = { by: decided ? "decision" : "rule", earlier: earlierPngDecision(entry, png) };
   const rule = pngRule(entry);
   const byRule = (a, b) => near(a, b, rule);
   let other = null;
   if (theme === "light" && dark) {
-    const d = pngSize(dark);
+    const d = sizeOf(dark);
     if (Math.abs(d.w - size.w) > SIZE_SLACK || Math.abs(d.h - size.h) > SIZE_SLACK)
       return { state: "too-far", write: null, against: "dark", size, dark: d, ...why };
     if (d.w !== size.w || d.h !== size.h) other = d;

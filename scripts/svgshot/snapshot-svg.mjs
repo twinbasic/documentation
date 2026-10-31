@@ -77,6 +77,7 @@
 // painted last.
 
 import { compactImage } from "../lib/compact-image.mjs";
+import { pngSize } from "../lib/png.mjs";
 import { bakeable, bakeMarkup, colourSteps, filterSteps, stepPrimitive, stepsOpacity } from "./colour-filter.mjs";
 import { FACES_MARK } from "./fonts.mjs";
 import { gradientSvg, parseGradient } from "./gradient.mjs";
@@ -1045,8 +1046,8 @@ export function naturalSize(url) {
   // 4 million wide by 4 billion tall.
   if (body.length > 26 && body[0] === 0x42 && body[1] === 0x4d && body.readUInt32LE(14) >= 40)
     return { w: Math.abs(body.readInt32LE(18)), h: Math.abs(body.readInt32LE(22)) };
-  if (body.length > 24 && body.readUInt32BE(0) === 0x89504e47)
-    return { w: body.readUInt32BE(16), h: body.readUInt32BE(20) };
+  const png = pngSize(body);
+  if (png) return { w: png[0], h: png[1] };
   if (body.length > 10 && body.toString("latin1", 0, 4) === "GIF8")
     return { w: body.readUInt16LE(6), h: body.readUInt16LE(8) };
   if (body.length > 4 && body[0] === 0xff && body[1] === 0xd8) return jpegSize(body);

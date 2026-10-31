@@ -25,12 +25,12 @@ import { createServer } from "node:http";
 import path from "node:path";
 import { DOCS_DIR, REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { createSseChannel } from "../../lib/sse.mjs";
-import { decodePng } from "./png.mjs";
+import { decodePng, pngSize } from "./png.mjs";
 import { svgOf } from "./shot-apply.mjs";
 import { changeMap, shareOff, strengthPicture } from "./shot-change.mjs";
 import { hashOf } from "./shot-manifest.mjs";
 import { commitHtml, detailHtml, hrefs, outsideHtml, overviewHtml, runsHtml } from "./shot-pages.mjs";
-import { pngRule, pngSize, svgRule } from "./shot-policy.mjs";
+import { pngRule, svgRule } from "./shot-policy.mjs";
 import { commitPaths, workingChanges } from "./shot-revision.mjs";
 import { createApplier } from "./shot-verdicts.mjs";
 import {
@@ -56,15 +56,6 @@ const isDocsPath = (p) =>
   /^[^\\]+\.(png|svg)$/i.test(p) && !p.startsWith("/") && !p.split("/").some((s) => s === "" || s === "..");
 
 const readIf = (file) => (existsSync(file) && statSync(file).isFile() ? readFileSync(file) : null);
-
-const sizeOf = (png) => {
-  try {
-    const { w, h } = pngSize(png);
-    return [w, h];
-  } catch {
-    return null;
-  }
-};
 
 // The most difference maps kept drawn: drawing one decodes a picture of up to 4.5 M pixels.
 const MAPS_KEPT = 16;
@@ -403,7 +394,7 @@ export function createReviewServer({
       place = neighbours(list, out);
     }
     if (filter === "look") session.setPlace(out);
-    const file = (src, bytes) => (bytes ? { src, size: sizeOf(bytes) } : null);
+    const file = (src, bytes) => (bytes ? { src, size: pngSize(bytes) } : null);
     const pager = { filter, place: { index: place.index, total: list.length }, prev: place.prev, next: place.next };
     if (p.outside) {
       const atHead = revision.bytes(out);

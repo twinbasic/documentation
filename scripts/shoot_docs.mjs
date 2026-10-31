@@ -161,7 +161,7 @@ import { frameEval, frameOf, serveLoopback } from "../test/addin/pages.mjs";
 import { launchBrowser } from "./lib/browser.mjs";
 import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "./lib/shot-annotate.mjs";
 import { composite, uncomposite } from "./lib/shot-composite.mjs";
-import { decodePng, encodePng } from "./lib/png.mjs";
+import { decodePng, encodePng, pngSize } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
 import { inRects, pngsNear, withinNoise } from "./lib/shot-change.mjs";
 import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
@@ -859,7 +859,8 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     const picked = async (png) => {
       refuseUserName(await textOf(conn, frame), name, "the page as captured");
       if (values.svg) {
-        const size = { width: png.readUInt32BE(16) / SCALE, height: png.readUInt32BE(20) / SCALE };
+        const [width, height] = pngSize(png);
+        const size = { width: width / SCALE, height: height / SCALE };
         conn.shot.svg = await svgOfPage(conn, clip && { ...clip, ...size }, { background: !keep });
         if (holdsUserName(conn.shot.svg.svg, USER)) throw new Error(`the SVG of ${name} holds the Windows user name`);
       }

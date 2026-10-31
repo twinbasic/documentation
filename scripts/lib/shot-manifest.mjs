@@ -201,7 +201,8 @@ export function earlierSvgDecision(entry, svg, png) {
  * The manifest in `file`, or an empty one when there is none: `entry(out)` a picture's entry
  * or null; `setBuild(out, build)` and `clearBuild(out)`, for a capture written and a file
  * removed; and `save()`, which writes the file when what it holds has changed (a CRLF
- * checkout of the same text is the same), through a file beside it renamed over it.
+ * checkout of the same text is the same), with the line endings it had (LF for a new one),
+ * through a file beside it renamed over it.
  */
 export function openManifest(file = MANIFEST) {
   const had = existsSync(file) ? readFileSync(file, "utf8") : null;
@@ -237,10 +238,12 @@ export function openManifest(file = MANIFEST) {
     text: () => manifestText(m),
     save() {
       const text = manifestText(m);
-      const now = existsSync(file) ? readFileSync(file, "utf8").replace(/\r\n/g, "\n") : null;
-      if (now === text) return false;
+      const raw = existsSync(file) ? readFileSync(file, "utf8") : null;
+      if (raw?.replace(/\r\n/g, "\n") === text) return false;
+      // The file keeps its line endings: written LF over a CRLF checkout, git would list it as
+      // modified with no diff, and still would after a decision is removed again.
       const temp = `${file}.${process.pid}.tmp`;
-      writeFileSync(temp, text);
+      writeFileSync(temp, raw?.includes("\r\n") ? text.replace(/\n/g, "\r\n") : text);
       renameSync(temp, file);
       return true;
     },

@@ -446,14 +446,23 @@ and 5% (0.081% off by it, the same as its `pct32`), and its light picture, with 
 default bar. The "committing..." text was not seen in a browser during a real commit: the page
 and its script are checked by the server test only.
 
-Nothing of the plan is left. What is left is small: the next paragraph, and the PNG-size
-cleanup after the checks of the earlier steps.
+Nothing of the plan is left. The two small things left after step 9 are fixed:
 
-Left from step 6, small: `openManifest().save` writes LF, so a manifest checked out with CRLF
-shows as modified with no diff once the tool (or `shoot_docs.mjs`) has saved it, even after a
-decision is removed again. An allowance is applied as soon as it is submitted; there is no
-preview of the verdict it would give without applying it (the plan's "shows the verdict it
-gives" is met by the page showing the new verdict).
+- **The manifest keeps its line endings.** `openManifest().save` wrote LF, so a manifest checked
+  out with CRLF showed as modified with no diff once the tool (or `shoot_docs.mjs`) had saved it,
+  even after a decision was removed again. It now writes the line endings the file had (LF for a
+  new one); the manifest test saves a CRLF file, changes it and puts it back byte for byte.
+- **One reader of a PNG's size**, `pngSize(bytes)` in `scripts/lib/png.mjs`: `[width, height]`
+  from the header, null for bytes without the PNG signature and IHDR. It replaced the copies in
+  `shot-policy.mjs` (whose verdicts keep `{w, h}`, through `sizeOf`), `shot-server.mjs`,
+  `svgshot/redraw.mjs`, `svgshot/probe.mjs`, `shot-composite.mjs`, `shoot_docs.mjs` and
+  `snapshot-svg.mjs`'s `naturalSize`; the tests' fake headers carry the whole signature now.
+  `builder/theme-pictures.mjs` and `builder/vendor-assets.mjs` keep theirs: `builder/` may import
+  nothing under `scripts/` but `impexp.mjs` (`biome.jsonc`).
+
+An allowance is applied as soon as it is submitted; there is no preview of the verdict it would
+give without applying it (the plan's "shows the verdict it gives" is met by the page showing the
+new verdict).
 
 Step 7 was checked with the tests in `test/svgshot.test.mjs` (`runOf` on its own, and the
 server with a stand-in clean-up and run: the dry run's list and its button, a second run
@@ -512,12 +521,6 @@ and `png.noise` at 255 levels and 100% leave it `unchanged but for a capture's n
 `--against-disk`, and `--cleanup --dry-run` puts it back; a `keep: "new"` decision on the
 file's hash makes it a real change; and `svg.bar` at 8 levels and 0.001% has `replay.mjs`
 remove the light SVG.
-
-**A small cleanup, in no step:** a PNG's size is read from its header by four copies of one
-line (`pngSize` in `shot-policy.mjs` as `{w, h}`, in `redraw.mjs` as `[w, h]` or null, in
-`svgshot/probe.mjs` as `{width, height}`, and the test's `PNG` helper writes one); one reader
-in `scripts/lib/png.mjs` would replace the first three.
-
 ### Checking a move
 
 `shoot_docs.mjs` cannot run in a gate. A move that touches what it decides or writes is
