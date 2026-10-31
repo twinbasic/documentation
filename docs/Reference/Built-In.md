@@ -8,7 +8,7 @@ has_toc: false
 
 # Built-In Packages
 
-These packages are built into twinBASIC and are always available, even offline. To use them, add them to Project → References (Ctrl-T) → Available Packages.
+These packages are built into twinBASIC and are always available, even offline. To use them, add them to Project → References... (Ctrl-T) → the **Available Packages** tab.
 
 - [AppGlobalClassObject Package](../AppGlobalClassObject/) -- the `App` global object available in every twinBASIC project without a reference: executable metadata (**EXEName**, **Path**, **Title**), version information (**Major**, **Minor**, **Revision**, **Build**, **CompanyName**, **FileDescription**, **LegalCopyright**), the instance handle (**hInstance**), and the IDE-vs-compiled test (**IsInIDE**)
 - [Assert Package](../Assert/) -- assertion functions for unit tests -- three modules (**Exact**, **Strict**, **Permissive**) sharing the same fifteen-member API with different comparison strictness

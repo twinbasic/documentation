@@ -20,7 +20,7 @@ To create a project that uses the CEF package, add the right compiler-package re
 
 Use **v145** unless you specifically need to support older operating systems. The package source compiles against all three --- picking the reference sets the `CEF_VERSION` compiler constant, which selects the matching API.
 
-Add the reference through **Project** → **References** (Ctrl-T) → **TWINPACK PACKAGES**. Tick the desired CEF package, close the dialog, and restart the compiler. Once added, **CefBrowser** appears in the form-designer toolbox.
+Add the reference through **Project** → **References...** (Ctrl-T) → the **Available Packages** tab. Tick the desired CEF package and press **Apply Changes**, which restarts the compiler. Once added, **CefBrowser** appears in the form-designer toolbox.
 
 > [!WARNING]
 > Older Chromium versions should not be used for browsing untrusted content from the public Internet --- they carry unpatched security vulnerabilities. v49 and v109 remain appropriate for tightly controlled environments where the browser loads only trusted local or internal content; for general web browsing, use v145.
@@ -82,7 +82,7 @@ For the full reference, see the [**CefBrowser** class reference](../../tB/Packag
 
 ## Samples
 
-If you prefer to start with a sample, **Sample 1b --- Chromium Embedded Framework Examples** is available in the new-project dialog. It mirrors **Sample 1a --- WebView2 Examples** almost feature-for-feature, with the differences called out where the CEF package doesn't yet expose a WebView2 equivalent.
+If you prefer to start with a sample, Sample 1b is available in the new-project dialog, as the card **Chromium Embedded Framework Examples** in its **Samples** section. It mirrors Sample 1a, **WebView2 Examples**, almost feature-for-feature, with the differences called out where the CEF package doesn't yet expose a WebView2 equivalent.
 
 ## Where next
 

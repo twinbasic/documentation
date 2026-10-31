@@ -8,11 +8,13 @@ index: new project dialog
 
 # New Project
 
-![The New / Open Project dialog on its New tab, headed with the version of the IDE. Eight project templates sit in two rows: Standard EXE, which is selected, ActiveX Control, ActiveX DLL, Standard DLL marked non-ActiveX, Standard EXE (Console App), Standard EXE plus VBCCR v1.8 marked experimental, Import from VBP and Import from folder. Browse, Open and Cancel run along the bottom.](Images/New_Project.png){:width="522" height="405"}
+![The New / Open Project dialog on its New section, with a search box and the version of the IDE across the top and the sections New, Samples and Recent down the left, each with a count. Eight project templates sit as cards in three rows: Standard EXE, which is selected, ActiveX Control, ActiveX DLL, Standard DLL marked non-ActiveX, Standard EXE (+VBCCR) marked experimental, Standard EXE marked Console App, Import from VBP and Import from folder. Browse, Open and Cancel run along the bottom.](Images/New_Project.png){:width="970" height="728"}
 
 ![The IDE File menu open with no project loaded. New Project, Open Project, Open Recent and Exit are available; Close Project, Save Project, Save Project As, Export Project, Save Current Document, Build and Clean are all greyed out.](Menu/Images/Menu_File.png){:width="190" height="337"}
 
 Shortcut: <kbd>Ctrl</kbd>+<kbd>N</kbd>
+
+The dialog lists its sections down the left, each with the number of entries it holds: **New**, **Samples**, **Recent**, and **Recent (VB6)**, which shows only when the machine has a VB6 history and lists the `.vbp` files VB6 opened recently. Double-click an entry, or select it and press <kbd>Enter</kbd> or **Open**, to open it; <kbd>Up</kbd> and <kbd>Down</kbd> move the selection. The search box at the top looks in every section at once: it lists the entries whose name or path holds every word typed, grouped by section, with the matching text marked, and <kbd>Esc</kbd> empties it. **Browse...** opens the Windows **Open** dialog, as **File → Open Project...** does.
 
 ## Options
 {: index="standard exe; create an ActiveX DLL; create ActiveX DLL" index_also="create a DLL project; create dll project; create a dll; create dll" }
@@ -21,8 +23,8 @@ Shortcut: <kbd>Ctrl</kbd>+<kbd>N</kbd>
 - ActiveX Control
 - ActiveX DLL
 - Standard DLL
+- Standard EXE (+VBCCR)
 - Standard EXE (Console App)
-- Standard EXE (plus VBCCR v1.8)
 - Import from VBP...
 - [Import from folder...](#import-from-folder)
 
@@ -38,9 +40,9 @@ If the folder holds the compiler packages under `Packages`, as an export by the 
 
 ## Samples
 
-![The same dialog on its Samples tab, a scrolling column of sample projects headed by Sample 0. Reports (Experimental), which is selected, then Sample 1. HelloWorld, Sample 1a. WebView2 Examples, Sample 1b. Chromium Embedded Framework Examples and Sample 2. GetIPAddresses, with the list running on past the bottom of the panel.](Images/New_Project_Samples.png){:width="522" height="405"}
+![The same dialog on its Samples section, two scrolling columns of sample cards named without their numbers: Reports (Experimental), which is selected, then HelloWorld, WebView2 Examples, Chromium Embedded Framework Examples, GetIPAddresses, MyCodeLibrary and on, running past the bottom of the panel.](Images/New_Project_Samples.png){:width="970" height="728"}
 
-Each row is labelled **Sample** followed by its number. The numbering is the dialog's own: **1a** and **1b** sit between **1** and **2**.
+Each card shows its sample's name without its number. The cards are in the order of the numbers, by which the documentation names the samples (*Sample 6*, CustomControls). The numbering is the IDE's own: **1a** and **1b** sit between **1** and **2**.
 
 - **0.** Reports (Experimental)
 - **1.** HelloWorld
@@ -58,8 +60,8 @@ Each row is labelled **Sample** followed by its number. The numbering is the dia
 - **11.** twinBASIC IDE Addin (Chart)
 - **12.** twinBASIC IDE Addin (Monaco)
 - **13.** twinBASIC IDE Addin (ListView)
-- **14.** twinBASIC IDE Addin (VirutalListView)
-- **15.** twinBASIC IDE Addin (Global Search)
+- **14.** twinBASIC IDE Addin (VirtualListView)
+- **15.** twinBASIC IDE Addin (GlobalSearch)
 - **16.** twinBASIC IDE Addin (TODO Widgets demo)
 - **17.** Static Library Example (SQLITE3)
 - **18.** Static Library Example (libdeflate)
@@ -71,14 +73,14 @@ Each row is labelled **Sample** followed by its number. The numbering is the dia
 
 ## Recent
 
-If you haven't opened any projects, or removed all then this tab will be blank.
+If no project has been opened, or every entry has been removed, the section reads **Nothing here yet.** and **Open** is greyed out.
 
-![The same dialog on its Recent tab with nothing listed, an empty grey panel between the tab strip and the Browse, Open and Cancel buttons.](Images/New_Project_Recent_1.png){:width="522" height="405"}
+![The same dialog on its Recent section with a count of 0 and nothing listed: Nothing here yet. Open a project and it will appear here. The Open button is greyed out.](Images/New_Project_Recent_1.png){:width="970" height="728"}
 
-A list of recent projects will be displayed, resizing depending on how many are in the list.
+Otherwise each recently opened project is a row that shows its path.
 
-![The Recent tab holding two entries, the first highlighted white and the second grey, each with a small X button at its right edge. Both rows read blank because the project paths have been erased from the screenshot.](Images/New_Project_Recent_2.png){:width="522" height="405"}
+![The Recent section holding two entries, the first selected with a blue outline, each with a clock icon at its left, the project's path, and a small X button at its right edge. The paths are C:\Projects\InvoiceManager\InvoiceManager.twinproj and D:\Work\ImageViewer\ImageViewer.twinproj.](Images/New_Project_Recent_2.png){:width="970" height="728"}
 
 _Removed paths_
 
-Click on the X to remove from the list.
+Click the X at a row's right edge to remove the project from the list.

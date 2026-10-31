@@ -29,9 +29,9 @@ Each open file has a tab. The tab shows the file's icon, its name and a close bu
 > [!NOTE] BETA 1010
 > A tab is tinted only when the compiler reports its file while the tab is open. A tab opened after that report stays untinted until the compiler checks the file again, for example after the next edit to it. The Project Explorer row is tinted either way.
 
-A tab in italics is a *preview tab*. When **File Explorer: Single-Click Preview** is on, a single click on a file in the Project Explorer opens it in a preview tab, and the next single click replaces it. A double-click, or any edit, makes the tab permanent. The **Find / Replace** panel also opens the files it visits in a preview tab. [IDE Options](../Customising/IDE-Options) describes the option.
+A tab in italics is a *preview tab*. When **Single-Click Preview** is on, a single click on a file in the Project Explorer opens it in a preview tab, and the next single click replaces it. A double-click, or any edit, makes the tab permanent. The **Find / Replace** panel also opens the files it visits in a preview tab. [IDE Options](../Customising/IDE-Options) describes the option.
 
-![Four tabs, each named by a label with an arrow up to it. Types.twin is a normal tab. Inventory.twin is tinted, labelled Has warnings. Watcher.twin has a dot in place of its close button, labelled Unsaved changes. Ev.twin, the selected tab, has its name in italics, labelled Preview tab.](Images/Tabs_States.png){:width="465" height="135"}
+![Four tabs, each named by a label with an arrow up to it. Types.twin is a normal tab. Inventory.twin is tinted, labelled Has warnings. Watcher.twin has a dot in place of its close button, labelled Unsaved changes. Ev.twin, the selected tab, has its name in italics, labelled Preview tab.](Images/Tabs_States.png){:width="470" height="135"}
 
 ### Close a tab
 
@@ -53,7 +53,7 @@ Right-click a tab for a menu of four items:
 **Close All**
 : Closes every tab, and asks about each file that has unsaved changes.
 
-![The right-click menu of the tab Helpers.twin, open under the tab, with the items Close, Close Others, Close Saved and Close All.](Images/Tab_Menu.png){:width="499" height="142"}
+![The right-click menu of the tab Helpers.twin, open under the tab, with the items Close, Close Others, Close Saved and Close All.](Images/Tab_Menu.png){:width="500" height="142"}
 
 The tab menu is in English whatever the [language of the IDE](../Customising/#the-language-of-the-ide) is.
 
@@ -77,11 +77,11 @@ When there are no open files and nothing recently closed, the menu holds **(empt
 
 While the menu is open, type to filter the open files. Each character you type is added to a filter, which matches any part of the path without regard to case, and the matching part is drawn in red. **Backspace** removes a character and <kbd>Esc</kbd> closes the menu. When nothing matches, the menu reads **(no matches for** and the text you typed**)**. The filter does not apply to **Recently Closed**.
 
-![The open Tabs List menu, holding a Recently Closed submenu entry above a separator and one open file beneath it, Sources/frmMain.tbform.](../Images/Editor_TabsList_Example.png){:width="187" height="66"}
+![The open Tabs List menu, holding a Recently Closed submenu entry above a separator and one open file beneath it, Sources/frmMain.tbform.](../Images/Editor_TabsList_Example.png){:width="188" height="66"}
 
 With no open file, the menu holds only **Recently Closed**:
 
-![The Tabs List button with its menu open directly beneath it, holding a single entry, Recently Closed, with a submenu arrow and no files listed under it.](../Images/Editor_TabsList_RecentlyClosed.png){:width="152" height="54"}
+![The Tabs List button with its menu open directly beneath it, holding a single entry, Recently Closed, with a submenu arrow and no files listed under it.](../Images/Editor_TabsList_RecentlyClosed.png){:width="153" height="54"}
 
 Its submenu lists the closed files:
 
@@ -91,7 +91,7 @@ The command `tbEditor_OpenTabsDropDown` opens the Tabs List too. It has no key b
 
 ### Tabs that do not fit
 
-By default the tabs wrap onto more than one row. With **IDE: Single row of code panel tabs** on, the strip has two scroll buttons at its left and right ends. Hold one to scroll the strip, or turn the mouse wheel over the strip to scroll it sideways. When you select a tab, the strip scrolls it into view. The **Tabs List** button reaches every tab in either mode.
+By default the tabs wrap onto more than one row. With **Single row of code panel tabs** on, the strip has two scroll buttons at its left and right ends. Hold one to scroll the strip, or turn the mouse wheel over the strip to scroll it sideways. When you select a tab, the strip scrolls it into view. The **Tabs List** button reaches every tab in either mode.
 
 ## The navigation combo boxes
 
@@ -125,7 +125,7 @@ Private Sub src_Changed(ByVal n As Long)
 End Sub
 ```
 
-With **IDE: Use new Handles/Implements syntax** on, the `Sub` line ends with `Handles src.Changed`. For a control on a form, the skeleton names the control and the event, such as `Private Sub Text1_Change()`. The parameters come from the event.
+With **Use new Handles/Implements syntax** on, the `Sub` line ends with `Handles src.Changed`. For a control on a form, the skeleton names the control and the event, such as `Private Sub Text1_Change()`. The parameters come from the event.
 
 The [History](Navigating#history) panel names each of its entries from these three values.
 
@@ -148,7 +148,7 @@ The commands in this part work on the line the caret is on, or on every line of 
 
 ### Indent and outdent
 
-<kbd>Ctrl</kbd>+<kbd>]</kbd> indents the selected lines by one level, and <kbd>Ctrl</kbd>+<kbd>[</kbd> outdents them. The toolbar buttons are **Indent Block** and **Outdent Block**. <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> do the same, except that <kbd>Tab</kbd> accepts an entry while the [completion list](IntelliSense#the-completion-list) is open. The width of a level is **Tab Size** in [IDE Options](../Customising/IDE-Options).
+<kbd>Ctrl</kbd>+<kbd>]</kbd> indents the selected lines by one level, and <kbd>Ctrl</kbd>+<kbd>[</kbd> outdents them. The toolbar buttons are **Indent Block** and **Outdent Block**. <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> do the same, except that <kbd>Tab</kbd> accepts an entry while the [completion list](IntelliSense#the-completion-list) is open. The width of a level is **TAB Spaces Amount** in [IDE Options](../Customising/IDE-Options).
 
 ### Lines
 
@@ -219,7 +219,7 @@ The fold arrows in the margin fold and unfold a block. **Show Code Folding** in 
 
 The editor does its own clipboard work, and it re-indents what you paste.
 
-- **Copy** and **Cut** replace each tab in the text with spaces, as many as **Tab Size**. They also store the column where the selection started.
+- **Copy** and **Cut** replace each tab in the text with spaces, as many as **TAB Spaces Amount**. They also store the column where the selection started.
 - **Paste** puts the text where the caret is and re-indents it to the code around it. The first line takes the indent of the nearest code line above, plus one level if that line starts a block. A block that starts with `End`, `Next`, `Loop`, `Else`, `ElseIf`, `Wend` or `Case` goes one level out. Each other line keeps its indent relative to the first. A tab in text that comes from another program becomes spaces, and the text is then re-indented.
 - A paste of a single line, such as `End If`, goes in as it is, at the caret.
 - **Paste As Comment** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>) pastes the same way, and puts `' ` before each line that is not blank. It is on the **Edit** menu and on the right-click menu. A line that is already a comment gets a second `'`.
@@ -268,7 +268,7 @@ Paste on a blank line, or with the caret at the end of the indent. Pasting at th
 
 **Edit → Format Document** and **Format Selection** re-indent the code. They have no keys; <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> does nothing.
 
-The formatter changes only the indent of each line. It trims the line and sets the indent to four spaces for each level, whatever **Tab Size** is. It does not change the words, their case or the spacing inside the line. It adds a level after `Class`, `Module`, `Type`, `Enum`, `For`, `While`, `Do`, `With`, a block `If`, `#If`, `Sub`, `Function` and `Property`, and takes it away at the matching End. `ElseIf` and `Else` lines sit at the level of their `If`. A `Select Case` indents its `Case` lines one level and their bodies two. A continuation line is indented two levels deeper than its statement. The members of an interface get one level and no End.
+The formatter changes only the indent of each line. It trims the line and sets the indent to four spaces for each level, whatever **TAB Spaces Amount** is. It does not change the words, their case or the spacing inside the line. It adds a level after `Class`, `Module`, `Type`, `Enum`, `For`, `While`, `Do`, `With`, a block `If`, `#If`, `Sub`, `Function` and `Property`, and takes it away at the matching End. `ElseIf` and `Else` lines sit at the level of their `If`. A `Select Case` indents its `Case` lines one level and their bodies two. A continuation line is indented two levels deeper than its statement. The members of an interface get one level and no End.
 
 > [!WARNING] BETA 1010
 > **Format Selection** fails when the selection starts on a continuation line, which is a line after one that ends in ` _`. Nothing is formatted, and a box opens with the text *IDE startup failure*, followed by *JS Promise Rejection(1): Assignment to constant variable.* If the IDE was started by opening the project's `.twinproj` file, it then closes. With unsaved changes, it first asks whether to save them: choose **Save**, or **Cancel** to keep the IDE open. Save before you format, start the selection on the first line of the statement, or use **Format Document**.
@@ -326,7 +326,7 @@ The palette also lists **Rename Symbol** (see [above](#rename-symbol-and-change-
 
 The key beside an action in the palette is the key Monaco gives it. It is not always a key that works in the IDE. The IDE stops every key press with <kbd>Ctrl</kbd> held from reaching the editor, apart from the commands it binds itself. So a palette action that shows a key with <kbd>Ctrl</kbd> does not respond to that key. The Monaco keys <kbd>F1</kbd>, <kbd>F8</kbd>, <kbd>Shift</kbd>+<kbd>F8</kbd> and <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> do nothing. <kbd>F1</kbd> does not open the palette, so open it from the menu.
 
-![The command palette open at the top of the editor, over the code. Its box holds only the prompt character, and the list under it starts with Add Cursor Above, Add Cursor Below, Add Cursors To Bottom and Add Cursors to Line Ends.](Images/Command_Palette.png){:width="735" height="235"}
+![The command palette open at the top of the editor, over the code. Its box holds only the prompt character, and the list under it starts with Add Cursor Above, Add Cursor Below, Add Cursors To Bottom and Add Cursors to Line Ends.](Images/Command_Palette.png){:width="736" height="235"}
 
 ## Save often
 

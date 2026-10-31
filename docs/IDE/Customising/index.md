@@ -10,7 +10,7 @@ has_toc: false
 
 The IDE lets you change its fonts and behaviour, its colours, the arrangement of its panels, the keys that run its commands and the language of its menus.
 
-- [**IDE Options**](IDE-Options) --- the 31 options in the **IDE Options** dialog, and what each one changes.
+- [**IDE Options**](IDE-Options) --- the 32 options in the **IDE Options** dialog, and what each one changes.
 - [**Themes**](Themes) --- choose a theme, or write your own `.theme` file.
 - [**Panel layouts**](Panel-Layouts) --- save and switch the arrangement of the panels, and control how panels can be moved.
 - [**Keyboard shortcuts**](Keyboard-Shortcuts) --- add, replace or remove the keys of any IDE command.
@@ -56,7 +56,7 @@ The [FAQ](../../../FAQ#ide-data-storage) lists the other folders the IDE uses.
 
 Choose the language of the menus and dialogs under **Window → Language**. The submenu lists every language pack, and a tick marks the one in use.
 
-![The Window menu with Language highlighted and its submenu open to the right, listing nineteen languages in one tall column from Catalan and German through to Chinese Simplified and Chinese Traditional. Each is named in English with its own native spelling beside it, and English, British English, carries the tick.](../Menu/Images/Menu_Window_Language.png){:width="390" height="577"}
+![The Window menu with Language highlighted and its submenu open to the right, listing nineteen languages in one tall column from Catalan and German through to Chinese Simplified and Chinese Traditional. Each is named in English with its own native spelling beside it, and English, British English, carries the tick.](../Menu/Images/Menu_Window_Language.png){:width="391" height="577"}
 
 The submenu shows these names, in this order. Each name is the one its pack gives itself, so some differ from the usual English spelling: the Indonesian entry begins *Indonesia*, and the Italian one ends in a brace. The entries for Hindi, Japanese, Malayalam, Russian and the two Chinese packs also give the language's own name, in its own script, in brackets. The table shows only their English names.
 

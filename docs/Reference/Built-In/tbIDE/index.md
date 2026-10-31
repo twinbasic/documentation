@@ -12,7 +12,7 @@ indexed_from: beta-x-1010
 
 The **tbIDE** package is the **addin SDK** for the twinBASIC IDE. An addin is a Standard DLL that the IDE loads at start-up; the DLL exports one factory function, returns one object implementing the [**AddIn**](AddIn) contract, and from there everything happens through the [**Host**](Host) object the IDE passes in. The package itself is **type-only** --- every public symbol is an interface or a CoClass; the actual implementations live in the twinBASIC IDE binary, and the addin DLL binds against the type declarations and lets the IDE marshal calls into its implementations at run time.
 
-The package is a built-in *compiler* package shipped with twinBASIC. The addin samples 10 to 16 reference it already, but a project started from the **Standard DLL** template does not, and without the reference every name in the package --- `AddIn`, `Host` and the rest --- is *TB5079 Unrecognized datatype symbol*. Add it through Project → References (**Ctrl-T**) → Available Packages: tick the row **twinBASIC - IDE Extensibility Package**, marked **[BUILT-IN]**, whose library symbol is **tbIDE**, and press **Apply Changes**.
+The package is a built-in *compiler* package shipped with twinBASIC. The addin samples 10 to 16 reference it already, but a project started from the **Standard DLL** template does not, and without the reference every name in the package --- `AddIn`, `Host` and the rest --- is *TB5079 Unrecognized datatype symbol*. Add it through Project → References... (**Ctrl-T**) → the **Available Packages** tab: tick the row **twinBASIC - IDE Extensibility Package**, marked **[BUILT-IN]**, whose library symbol is **tbIDE**, and press **Apply Changes**.
 
 * TOC
 {:toc}

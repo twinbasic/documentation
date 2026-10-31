@@ -55,7 +55,7 @@ The designer lists no page-size control. Set the page by typing **ReportWidth** 
 
 Each of the three bars shows only while the pointer is over it.
 
-![The report designer with a ruler along the top and the five section bars, Report Header to Report Footer. Report Header holds a label reading Sales by region, and Report Detail a short line and a label reading Region. The Report Detail bar is selected and drawn darker than the others. The PAGE WIDTH bar shows at the right as a blue vertical line with its name beside it.](Images/Report_Controls.png){:width="947" height="450"}
+![The report designer with a ruler along the top and the five section bars, Report Header to Report Footer. Report Header holds a label reading Sales by region, and Report Detail a short line and a label reading Region. The Report Detail bar is selected and drawn darker than the others. The PAGE WIDTH bar shows at the right as a blue vertical line with its name beside it.](Images/Report_Controls.png){:width="948" height="450"}
 
 ## Controls in a report
 

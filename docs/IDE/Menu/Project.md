@@ -12,7 +12,7 @@ redirect_from:
 
 The Project menu holds the commands that add to the project, change its references and settings, and open its folders. [Projects and files](../../Projects/) explains them.
 
-![The Project menu open with every command greyed out, because no project is open. Add has a submenu arrow, and References shows its key.](Images/Menu_Project.png){:width="200" height="169"}
+![The Project menu open with every command greyed out, because no project is open. Add has a submenu arrow, and References shows its key.](Images/Menu_Project.png){:width="201" height="169"}
 
 Every command needs an open project, and is greyed out until one is.
 
@@ -25,10 +25,10 @@ Every command needs an open project, and is greyed out until one is.
 {: index_also="add reference" }
 
 **References...** (<kbd>Ctrl</kbd>+<kbd>T</kbd>)
-: Opens [Project Settings](../../Project-Settings) with the filter `project.references`, so that only the **Library References** section shows. See [References and packages](../../Projects/References-and-Packages).
+: Opens [Project Settings](../../Project-Settings) with the filter `project.references`, so that only the **Library References** section shows, on its **Enabled Libraries** tab. See [References and packages](../../Projects/References-and-Packages).
 
 **Project Settings...**
-: Opens the whole [Project Settings](../../Project-Settings) dialog. It has no key.
+: Opens the whole [Project Settings](../../Project-Settings) dialog, with **All** chosen in its rail. It has no key.
 
 ## Folders
 

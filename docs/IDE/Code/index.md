@@ -27,7 +27,7 @@ The editor is a panel titled **EDITOR**. **View → EDITOR** shows it. From top 
 3. The three navigation combo boxes, which you can place above the code, below it or hide.
 4. The code. A margin at its left holds line numbers, fold arrows, bookmarks and the marks for breakpoints. A minimap can sit at its right.
 
-![The EDITOR panel with the module Helpers open and two more files, Types.twin and Inventory.twin, as tabs. Labels with arrows name its parts: Options, the ... button at the right of the header; Tab strip; Tabs List, the button at the right end of the tab strip; Combo boxes, the three boxes above the code; Margin, with the line numbers and the fold arrows; and Minimap, at the right of the code.](Images/Editor_Panel.png){:width="1165" height="644"}
+![The EDITOR panel with the module Helpers open and two more files, Types.twin and Inventory.twin, as tabs. Labels with arrows name its parts: Options, the ... button at the right of the header; Tab strip; Tabs List, the button at the right end of the tab strip; Combo boxes, the three boxes above the code; Margin, with the line numbers and the fold arrows; and Minimap, at the right of the code.](Images/Editor_Panel.png){:width="1165" height="645"}
 
 The status bar shows the position of the caret, **Ln** and **Col**, at its right end while a code editor is active. Clicking it opens [Go To Line/Column](Navigating#go-to-a-line).
 

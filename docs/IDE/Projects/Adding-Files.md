@@ -25,7 +25,7 @@ The **Add** menu opens in three ways, and the three lists are the same.
 - Choose the **Add...** button in the title bar of the panel.
 - Choose **Project → Add**.
 
-![The Project Explorer's right-click menu on the Sources folder, with the Add submenu open beside it. The submenu runs from folders and forms through modules and classes to Import and the three resources. Cut, Copy, Paste and both View As entries of the main menu are greyed out.](../Images/RightClick-Add.png){:width="510" height="492"}
+![The Project Explorer's right-click menu on the Sources folder, with the Add submenu open beside it. The submenu runs from folders and forms through modules and classes to Import and the three resources. Cut, Copy, Paste and both View As entries of the main menu are greyed out.](../Images/RightClick-Add.png){:width="511" height="492"}
 
 Choosing an item from the object view switches the panel to the file view first, because the new file appears in the tree.
 
@@ -109,7 +109,7 @@ A file with any extension but the three below is copied into the project unchang
 
 A file with the extension `.twinproj`, `.twinpack` or `.vbp` is not copied. The IDE reads it and opens the dialog **Import from twinproj...**, which lists what the file holds, as a tree with a check box on every entry. A VB6 project is listed with its files already converted: `Form1.frm.tbform` and `Form1.frm.twin` for a form. Tick both.
 
-![The Import from twinproj dialog. A tick-box tree lists everything found in a VB6 project, with a Resources branch open over its ICON and MANIFEST folders and a Sources branch below. The two files of a form are both ticked.](../../Miscellaneous/Images/16833fae-4bd7-418f-bb16-691a611a5b01.png){:width="468" height="397"}
+![The Import from twinproj dialog. A tick-box tree lists everything found in a VB6 project, with a Resources branch open over its ICON and MANIFEST folders and a Sources branch below. The two files of a form are both ticked.](../../Miscellaneous/Images/16833fae-4bd7-418f-bb16-691a611a5b01.png){:width="469" height="401"}
 
 The tree shows the project's folders and files but not its `Packages`, `Settings`, `References` and `ImportedTypeLibraries` entries, and not the `.meta` file. Ticking a folder ticks everything in it. Ticking a file leaves its folders part-ticked. The **Import** button is hidden until something is ticked. Click the box of a row, or double-click the row, to tick it.
 
@@ -134,7 +134,7 @@ A resource is a file that the build embeds in the program, such as an icon, a bi
 
 The IDE has no resource editors. An icon, a bitmap, a cursor, another image or a PDF opens in a read-only [preview tab](Project-Explorer#what-a-click-opens), and every other resource opens as text. The version information of the program is not a file: it is the **VERSION Resource** section of [Project Settings](../Project-Settings#version-resource).
 
-![The Project Explorer's ICON folder open to two entries, MyOwnIcon.ico above twinBASIC.ico, beside the Toolbox and a form open in the designer.](../../Miscellaneous/Images/8611d12a-d7a6-48cc-9544-cb27c5299aa5.png){:width="642" height="461"}
+![The Project Explorer's ICON folder open to two entries, MyOwnIcon.ico above twinBASIC.ico, beside the Toolbox and a form open in the designer.](../../Miscellaneous/Images/8611d12a-d7a6-48cc-9544-cb27c5299aa5.png){:width="642" height="462"}
 
 ![The editor with a tab named AppIcon.ico, the twinBASIC icon drawn in the middle of it, beside the Project Explorer. In the tree, Resources is open over ICON and MANIFEST, and ICON is open over AppIcon.ico, which is selected.](Images/Resource_Preview.png){:width="898" height="302"}
 
@@ -148,7 +148,7 @@ The [FAQ](../../../FAQ#app-icon) describes how the program gets its icon, from t
 
 If the file exists already, a box says **File already exists:** and gives the path. **Replace it** writes the template over the file and selects its tab. **Cancel** selects the tab of the existing file.
 
-![The box File already exists: /MyProject/RESOURCES/MANIFEST/#1.xml, with the folder Resources written in capitals, and the buttons Replace it and Cancel.](Images/Resource_Exists.png){:width="369" height="158"}
+![The box File already exists: /MyProject/RESOURCES/MANIFEST/#1.xml, with the folder Resources written in capitals, and the buttons Replace it and Cancel.](Images/Resource_Exists.png){:width="377" height="162"}
 
 ### Visual Styles Manifest
 {: index="visual styles" }

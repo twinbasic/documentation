@@ -22,7 +22,7 @@ The commands that change files change the project in memory. Nothing reaches the
 
 A right click on a row opens the menu for the rows selected. A right click on a row that is not selected selects it first. A right click on the empty space below the tree opens the menu with nothing selected, and then only **Add** and **Export...** are available.
 
-![The right-click menu of Startup.twin. Add with a submenu arrow is above a line, then Cut, Copy, Paste, Copy Name, Copy Path, View As JSON, View As Markdown Preview, Rename, Export... and Delete Permanently. Paste and both View As items are greyed out. Cut, Copy, Paste, Rename and Delete Permanently show their keys.](Images/RightClick-File.png){:width="218" height="273"}
+![The right-click menu of Startup.twin. Add with a submenu arrow is above a line, then Cut, Copy, Paste, Copy Name, Copy Path, View As JSON, View As Markdown Preview, Rename, Export... and Delete Permanently. Paste and both View As items are greyed out. Cut, Copy, Paste, Rename and Delete Permanently show their keys.](Images/RightClick-File.png){:width="219" height="273"}
 
 An item that does not apply is greyed out, not hidden. The keys work when the tree has the focus in the file view.
 
@@ -133,9 +133,9 @@ This command exports the rows you select. **File → Export Project** exports th
 
 The first lines of the tab are a comment that gives the `URI:` of the file and the `SNAPSHOT:` time. The tab is a copy as it was when you chose the command, and it does not follow later changes. It does include the changes that are open in the designer and not yet saved. A second **View As JSON** on the same file opens a second tab of the same name.
 
-![The Project Explorer with the Packages folder open and the right-click menu of a package, with View As JSON highlighted.](../../Features/Images/22660f54-ff5d-4b21-93d3-39715f1f35ed.png){:width="485" height="409"}
+![The Project Explorer with the Packages folder open and the right-click menu of a package, with View As JSON highlighted.](../../Features/Images/22660f54-ff5d-4b21-93d3-39715f1f35ed.png){:width="486" height="409"}
 
-![A package shown as JSON in the editor, listing its components with their events, fields and procedures.](../../Features/Images/a6525b1d-ac22-4303-ae27-7984c20eba0c.png){:width="756" height="198"}
+![A package shown as JSON in the editor, listing its components with their events, fields and procedures.](../../Features/Images/a6525b1d-ac22-4303-ae27-7984c20eba0c.png){:width="757" height="198"}
 
 **View As Markdown Preview** is available for a `.md` file. It opens the formatted text in a read-only tab titled `MD: 'Notes.md':`, which is a copy as it was when you chose the command.
 
@@ -143,13 +143,13 @@ The first lines of the tab are a comment that gives the `URI:` of the file and t
 
 Select the rows, and press <kbd>Delete</kbd> or choose **Delete Permanently**. The IDE removes the rows from the project. Nothing goes to the Recycle Bin, because the files never existed on disk. The tabs open on a deleted file, or on a file in a deleted folder, are closed.
 
-When **File Explorer: Ask Before Delete Files** is on, which is the default, a box asks first. [IDE Options](../Customising/IDE-Options#project-explorer-tabs-and-start-up) describes the option. The box depends on the selection, and each says that you will not be able to undo the operation.
+When **Ask Before Delete Files** is on, which is the default, a box asks first. [IDE Options](../Customising/IDE-Options#project-explorer-tabs-and-start-up) describes the option. The box depends on the selection, and each says that you will not be able to undo the operation.
 
 - For one row: **Are you sure you want to delete** *the path*, with **Delete** and **Cancel**.
 - For one row that has a partner, a designer file or its `.twin` file: the two paths, with **Delete Both**, **Delete** *the file's name*, and **Cancel**. The second button deletes only the file you selected.
 - For several rows: **Are you sure you want to delete the selected items?**, with **Delete** and **Cancel**.
 
-![The box for frmMain.tbform: Are you sure you want to delete the following files?, the paths /MyProject/Sources/frmMain.tbform and /MyProject/Sources/frmMain.twin, and You will not be able to undo this operation. The buttons are Delete Both, Delete frmMain.tbform and Cancel.](Images/Delete_Pair.png){:width="415" height="188"}
+![The box for frmMain.tbform: Are you sure you want to delete the following files?, the paths /MyProject/Sources/frmMain.tbform and /MyProject/Sources/frmMain.twin, and You will not be able to undo this operation. The buttons are Delete Both, Delete frmMain.tbform and Cancel.](Images/Delete_Pair.png){:width="424" height="192"}
 
 With the option off, the rows are deleted at once.
 

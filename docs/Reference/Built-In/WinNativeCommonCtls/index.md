@@ -12,7 +12,7 @@ indexed_from: beta-x-1010
 
 The **WinNativeCommonCtls** built-in package is a VB6-compatible replacement for **Microsoft Common Controls 6.0** (the legacy `MSCOMCTL.OCX`), reimplemented on top of the Win32 ComCtl32 controls in `COMCTL32.DLL` and `MSFTEDIT.DLL`. It ships eight controls that mirror the MSCOMCTL member names where possible, with the same property / method / event spellings VB6 developers will recognise.
 
-The package is a built-in package shipped with twinBASIC. Add it through Project → References (**Ctrl-T**) → Available Packages.
+The package is a built-in package shipped with twinBASIC. Add it through Project → References... (**Ctrl-T**) → the **Available Packages** tab.
 
 * TOC
 {:toc}

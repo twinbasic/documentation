@@ -694,7 +694,7 @@ Calculate implicit enum values as a flag set (powers of 2).
 
 With the IDE option **Always show IDE Inline Code Hints** on, the editor shows the value of each member:
 
-![An Enum named MyFlags marked with the Flags attribute, with four members flag1 to flag4. The editor's inline hints after the members read 1 << 0 to 1 << 3, each with the value in hexadecimal, from &H00000001& to &H00000008&.](Images/flags-attribute.png){:width="357" height="142"}
+![An Enum named MyFlags marked with the Flags attribute, with four members flag1 to flag4. The editor's inline hints after the members read 1 << 0 to 1 << 3, each with the value in hexadecimal, from &H00000001& to &H00000008&.](Images/flags-attribute.png){:width="358" height="142"}
 
 ## FloatingPointErrorChecks  (optional Bool)
 {: #floatingpointerrorchecks }
@@ -1414,7 +1414,7 @@ Applicable to: **Library**
 > [!NOTE]
 > This attribute is generated in the **Library** modules that twinBASIC generates for COM references in a project. It cannot be manually created.
 
-The version of the imported type library, as a **major.minor** pair --- `[Version(2.0)]` for version 2.0 of OLE Automation. It matches the version recorded against the reference in the project settings, and is the version shown beside the library in the **References** dialog.
+The version of the imported type library, as a **major.minor** pair --- `[Version(2.0)]` for version 2.0 of OLE Automation. It matches the version recorded against the reference in the project settings, and is the version shown beside the library in the **Version** column of the Library References list of Project Settings.
 
 Not to be confused with the project's own version, which is set from the project settings rather than by an attribute. See [**LibraryId**](#libraryid) for the shape of a generated **Library** module.
 

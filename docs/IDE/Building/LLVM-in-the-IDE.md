@@ -16,18 +16,18 @@ This page describes what the IDE shows when a project is compiled with LLVM: whe
 
 ## Where the options are
 
-The options are in two sections of [Project Settings](../Project-Settings): [*Compiler Options (BUILD)*](../Project-Settings#compiler-options-build) and [*Compiler Options (DEBUG)*](../Project-Settings#compiler-options-debug). Each has a tick box, **Enable LLVM Compilation**, two for optimization and one for each CPU feature.
+The options are two settings of the **Optimization** group of [Project Settings](../Project-Settings): [*Compiler Options (BUILD)*](../Project-Settings#compiler-options-build) and [*Compiler Options (DEBUG)*](../Project-Settings#compiler-options-debug). Each is a column of tick boxes: **Enable LLVM Compilation**, two for optimization and one for each CPU feature.
 
 - **Build** compiles with the *BUILD* options. The file that it writes is the one compiled with LLVM.
-- **Start** (<kbd>F5</kbd>) runs the project with the *DEBUG* options. The IDE cannot debug code that LLVM compiled, so the description of this section advises against turning LLVM on there.
+- **Start** (<kbd>F5</kbd>) runs the project with the *DEBUG* options. The IDE cannot debug code that LLVM compiled, so the description of this setting advises against turning LLVM on there.
 
-The IDE has no **Build with LLVM** button. Both sections are empty in a new project.
+The IDE has no **Build with LLVM** button. No box of either setting is ticked in a new project.
 
-The IDE Options has three more, which belong to the compiler and its cache and are not part of any project: the number of threads, the threshold for reporting a complex procedure, and whether the cache process stays alive after the IDE closes. A change to any of them restarts the compiler. See [Compiler and LLVM](../Customising/IDE-Options#compiler-and-llvm).
+The **Compiler** group of IDE Options has three more, which belong to the compiler and its cache and are not part of any project: **LLVM - Maximum number of threads**, **LLVM - Complex procedure reporting threshold (milliseconds)**, and **LLVM - Keep cache process alive after exiting the IDE**. A change to any of them restarts the compiler. See [Compiler and LLVM](../Customising/IDE-Options#compiler-and-llvm).
 
 ## The licence banners
 
-LLVM compilation depends on the licence. When the settings dialog is drawn, each of the two sections shows a banner next to the licence badge, if the licence limits it:
+LLVM compilation depends on the licence. When the settings dialog is drawn, each of the two settings shows a banner next to the licence badge, if the licence limits it:
 
 - With a **Personal** licence, the banner says that the optimizations apply only to the built-in packages (VB, VBA, VBRUN) and not to your own code, and advises an upgrade to a Professional licence.
 - With a **Community** licence, the banner says that the optimizations are not applied, and advises an upgrade to a paid licence.
@@ -40,7 +40,7 @@ The banner follows the licence badge at the moment the dialog opens. [Getting St
 
 When the compiler reports progress, the IDE opens a box titled **Compiling...** with a progress bar, and the compiler can also fill an item of the status bar with the percentage, such as **LLVM: n%**. The box is modal: the IDE cannot be used until it closes, and it closes by itself when the build ends. Which builds report progress is the compiler's choice. A small project compiled with LLVM takes a fraction of a second, so the box is gone almost at once.
 
-![The Compiling... box of an LLVM build, its progress bar at the start.](Images/Compiling.png){:width="302" height="71"}
+![The Compiling... box of an LLVM build, its progress bar at the start.](Images/Compiling.png){:width="302" height="74"}
 
 > [!NOTE] BETA 1010
 > If another box opens while **Compiling...** is on screen, the end of the build closes that box instead of the progress box, so the other box is lost. The **Compiling...** box stays, with no button, and the IDE cannot be used. Restart the IDE.

@@ -16,7 +16,7 @@ The menu editor designs the menus of a form on the form itself: you add a menu a
 
 The bar is on a Windows form, an MDI form and a user control. A CustomControls form and a report do not have it. No menu item or key opens the menu editor. The menus are [**Menu**](../../Packages/VB/Menu/) controls, and they belong to the form. The [Toolbox](Toolbox) does not list **Menu**.
 
-![The Form Menu bar above a form: the menu File, then a text box holding &Edit for a new menu, then the + menu button.](Images/MenuEditor_Bar.png){:width="380" height="80"}
+![The Form Menu bar above a form: the menu File, then a text box holding &Edit for a new menu, then the + menu button.](Images/MenuEditor_Bar.png){:width="381" height="80"}
 
 ## Add a menu
 
@@ -36,7 +36,7 @@ Click a menu in the bar to open its drop-down, which lists the items. The **+** 
 - The shortcut text of an item shows at the right of its row, taken from its **ShortcutId**.
 - A tick shows an item whose **Checked** is True, and an arrow an item that has items of its own. A caption is grey with a light shadow when **Enabled** is False, and faded when **Visible** is False.
 
-![The File menu of the Form Menu bar open below it, listing Open, a separator line and Exit, with a + button at the end. The right-click menu of Open is open over it: Rename; Cut, Copy and the greyed Paste Before, Paste After and Paste Into; Move Up and Move Down; Toggle Checked, Toggle Enabled and Toggle Visible; Insert Above, Insert Below, Insert Seperator Above and Insert Seperator Below; and Delete, with the keys of five of them.](Images/MenuEditor_Open.png){:width="392" height="473"}
+![The File menu of the Form Menu bar open below it, listing Open, a separator line and Exit, with a + button at the end. The right-click menu of Open is open over it: Rename; Cut, Copy and the greyed Paste Before, Paste After and Paste Into; Move Up and Move Down; Toggle Checked, Toggle Enabled and Toggle Visible; Insert Above, Insert Below, Insert Seperator Above and Insert Seperator Below; and Delete, with the keys of five of them.](Images/MenuEditor_Open.png){:width="393" height="473"}
 
 ### The right-click menu of an item
 

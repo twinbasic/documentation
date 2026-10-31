@@ -18,7 +18,7 @@ These tutorials demonstrate the most common patterns:
 - [JavaScript interop](JavaScript-Interop) -- the two bridges between BASIC and the page: messages and scripted calls.
 - [Driving Monaco from twinBASIC](Driving-Monaco) -- a case study combining everything above: embed Microsoft's Monaco editor next to a live HTML preview pane.
 
-The complete sample code for the last four tutorials ships as *Sample 1b --- Chromium Embedded Framework Examples* in the New-Project dialog, mirroring *Sample 1a --- WebView2 Examples* almost feature-for-feature.
+The complete sample code for the last four tutorials ships as *Sample 1b --- Chromium Embedded Framework Examples*, the card **Chromium Embedded Framework Examples** in the **Samples** section of the New-Project dialog, mirroring *Sample 1a --- WebView2 Examples* almost feature-for-feature.
 
 > [!IMPORTANT]
 > The CEF package is currently in **BETA**. Several features available on [**WebView2**](../../tB/Packages/WebView2/WebView2/) are not yet exposed --- see the [WebView2 parity](../../tB/Packages/CEF/#webview2-parity) section of the reference for the current gap list.

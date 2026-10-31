@@ -15,7 +15,7 @@ permalink: /tB/Packages/Contributed/tbFileSysTools/
 
 **Author:** GCuser99. **Version:** 1.9.0.0. **On GitHub:** [GCuser99/tbFileSysTools](https://github.com/GCuser99/tbFileSysTools), in the folder *Package*.
 
-The **tbFileSysTools** contributed package, listed in the Available Packages dialog as *File System Tools - Modern Replacement for FSO*, reads and changes files, folders and drives, as the **FileSystemObject** of the Scripting Runtime does, and is written in twinBASIC. It reads and writes text files in any Windows code page, with detection of the encoding and handling of byte-order marks (BOMs), detects and converts line endings, streams files of any size, and works with paths longer than 260 characters.
+The **tbFileSysTools** contributed package, listed on the Available Packages tab of Project Settings as *File System Tools - Modern Replacement for FSO*, reads and changes files, folders and drives, as the **FileSystemObject** of the Scripting Runtime does, and is written in twinBASIC. It reads and writes text files in any Windows code page, with detection of the encoding and handling of byte-order marks (BOMs), detects and converts line endings, streams files of any size, and works with paths longer than 260 characters.
 
 It has two ways in. The [**FileSystemTools**](FileSystemTools) module holds the code, as procedures that a project calls by name, with no object to create. The [**FileSystemObject**](FileSystemObject) class has the same procedures as members of an object, for code written for the Scripting Runtime. The objects that both return, [**File**](File), [**Folder**](Folder), [**Drive**](Drive) and [**TextStream**](TextStream), and the collections [**Files**](Files), [**Folders**](Folders) and [**Drives**](Drives), have the members of the Scripting Runtime's objects of the same names, and some more.
 
@@ -102,7 +102,7 @@ Set f = fso.GetFile(fso.BuildPath(fso.GetSpecialFolderPath(sfSystemFolder), "ker
 Debug.Print f.Size
 ```
 
-The other ways out are to remove the reference to the Scripting Runtime, or to list **tbFileSysTools** above it in the References dialog. The procedures of the module (**FileExists**, **GetFile**, **CopyFile** and the rest) do not collide with anything in the Scripting Runtime, which has no module-level procedures.
+The other ways out are to remove the reference to the Scripting Runtime, or to list **tbFileSysTools** above it in the Enabled Libraries list of Project Settings, which is in order of priority. The procedures of the module (**FileExists**, **GetFile**, **CopyFile** and the rest) do not collide with anything in the Scripting Runtime, which has no module-level procedures.
 
 ## Errors
 

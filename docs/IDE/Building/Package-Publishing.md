@@ -48,7 +48,7 @@ Changing the *Build Type* of a project in [Project Settings](../Project-Settings
 
 ### Editing a value
 
-An **EDIT** link opens [Project Settings](../Project-Settings), with the filter box already holding the id of the setting: `project.name`, `project.description`, `project.licence`, `project.packageVisibility` or `project.version`. The filter for **Version** is a text filter, so it lists every setting whose id contains `project.version`: the four numbers, *Auto-Increment* and the version texts.
+An **EDIT** link opens [Project Settings](../Project-Settings), with the filter box already holding the id of the setting: `project.name`, `project.description`, `project.licence`, `project.packageVisibility` or `project.version`. The filter works as text typed in the box does, so the rail lists only the group that holds the setting, and for **Version** the dialog lists every setting whose id contains `project.version`: the four numbers, *Auto-Increment* and the version texts, in the **Version Info** group.
 
 Change the value and press **Apply Changes**. The pane shows the new values once the compiler has them, and the console prints `[COMPILER] Project settings updated`. A change that needs the compiler to restart prints `[COMPILER] Project settings changes require compiler-restart`, and the IDE saves the project and restarts.
 
@@ -58,9 +58,9 @@ TWINSERV accepts a package only from a publisher that has an account. The accoun
 
 **SIGN IN** opens a box titled **twinBASIC Publisher Login / Signup**. The terms and conditions are beside two forms, which two tabs choose, **LOGIN** and **REGISTER**. The box has one button, **Cancel**. It opens on **LOGIN**, with the password box focused, when the IDE knows a publisher name, and on **REGISTER** when it does not.
 
-![The publisher sign-in box on its LOGIN tab, a name typed and the password empty, Remember password on this device ticked; the terms and conditions fill its right side.](Images/SignIn_Login.png){:width="826" height="603"}
+![The publisher sign-in box on its LOGIN tab, a name typed and the password empty, Remember password on this device ticked; the terms and conditions fill its right side.](Images/SignIn_Login.png){:width="831" height="607"}
 
-![The publisher sign-in box on its REGISTER tab after SIGN UP with a three-letter username: the error line in red under the form.](Images/SignIn_Register.png){:width="826" height="603"}
+![The publisher sign-in box on its REGISTER tab after SIGN UP with a three-letter username: the error line in red under the form.](Images/SignIn_Register.png){:width="831" height="607"}
 
 **To register**, fill in **USERNAME** (at least 4 characters, visible to everyone), **EMAIL** (used for account recovery only), **PASSWORD** (at least 8 characters), tick **I agree to the terms & conditions**, and press **SIGN UP**. The IDE checks these on your machine first, in this order, and shows the first fault as **ERROR:** under the form, with the field focused: **Username must be at least 4 characters long**, **invalid email address**, **Password must be at least 8 characters long**, **You must agree to the terms and conditions**. The server can still refuse the name (**Username already taken.**). When the account is made, a box says **Publisher account created successfully.  You will now be logged in.**
 
@@ -91,11 +91,11 @@ The password is stored in the IDE's settings in the registry with a simple obfus
 
 The confirmation reads **IMPORTANT: Please check the following information before publishing to the online database:** and then lists **PUBLISHER**, **PACKAGE NAMESPACE**, **PACKAGE DESCRIPTION**, **PACKAGE VERSION** and **PACKAGE LICENCE**. For a package with the visibility **PUBLIC**, the box starts with **WARNING: publishing a PUBLIC package will allow everyone to download the package and see the sourcecode within it.** Its buttons are **Continue**, which is the default, and **Cancel**.
 
-![The confirmation PUBLISH THIS PACKAGE shows for a private package, listing the publisher and the package's details, with Continue as the default button.](Images/Publish_Confirm.png){:width="704" height="302"}
+![The confirmation PUBLISH THIS PACKAGE shows for a private package, listing the publisher and the package's details, with Continue as the default button.](Images/Publish_Confirm.png){:width="713" height="306"}
 
 **Continue** prints `[PUBLISH] attempting to publish project '<name>' to the online database...` in the console. The result is not in the console: a box with **OK** shows it.
 
-![The box that shows the result of a publish, here a success, with an OK button.](Images/Publish_Result.png){:width="691" height="158"}
+![The box that shows the result of a publish, here a success, with an OK button.](Images/Publish_Result.png){:width="699" height="162"}
 
 | Result | The box says |
 |---|---|

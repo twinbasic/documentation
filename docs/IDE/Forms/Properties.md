@@ -91,7 +91,7 @@ Right-click a value to open a menu with:
 
 There is no item that resets a property to its default, and nothing marks a property that still has its default.
 
-![The PROPERTIES pane of Command1 with the right-click menu of the BackColor value open: Copy, a greyed Paste, Copy '-2147483633' To... and SYSTEM COLORS, whose submenu lists the system colour constants from vbScrollBars to vbMenuBarFlat.](Images/Properties_SystemColours.png){:width="693" height="757"}
+![The PROPERTIES pane of Command1 with the right-click menu of the BackColor value open: Copy, a greyed Paste, Copy '-2147483633' To... and SYSTEM COLORS, whose submenu lists the system colour constants from vbScrollBars to vbMenuBarFlat.](Images/Properties_SystemColours.png){:width="694" height="757"}
 
 ### What an edit also changes
 

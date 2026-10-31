@@ -14,9 +14,9 @@ redirect_from:
 
 To create projects that use WebView2, your projects must include both the `WinNativeForms` package and the `WebView2` package in your projects.  
 
-Both of these packages can be added through the `Project` > `References` menu option, which opens Project Settings at its Library References, and the **Available Packages** tab.  Ensure both packages are ticked, and then apply the changes and restart the compiler.
+Both of these packages can be added through the `Project` > `References` menu option, which opens Project Settings at its Library References, on the **Enabled Libraries** tab.  Select the **Available Packages** tab and ensure both packages are ticked, and then press **Apply Changes**, which restarts the compiler.
 
-![The Library References list of Project Settings on its Enabled Libraries tab, with the WebView2 and WinNativeForms packages (the latter listed as the VB Compatibility Package) ticked among the VBA, VBRUN and OLE Automation libraries](Images/tbWebView2References.png){:width="1102" height="226"}
+![The Library References list of Project Settings on its Enabled Libraries tab, with the WebView2 and WinNativeForms packages (the latter listed as the VB Compatibility Package) ticked among the VBA, VBRUN and OLE Automation libraries](Images/tbWebView2References.png){:width="997" height="294"}
 
 Once you've added the package references, you should find that the WebView2 control is now available to you in the form designer:
 
@@ -38,6 +38,6 @@ For what each property does, see the [WebView2 control class](../../tB/Packages/
 
 ## Samples
 
-If you prefer to start with a sample, have a look at `Sample 1a. WebView2 Examples`, available in the new-project dialog:
+If you prefer to start with a sample, have a look at Sample 1a, the card named **WebView2 Examples** in the **Samples** section of the new-project dialog:
 
-![The New / Open Project dialog on the Samples tab, with a red arrow pointing at the title of Sample 1a. WebView2 Examples](Images/tbWebView2Sample0.png){:width="522" height="405"}
+![The New / Open Project dialog on its Samples section, with a red arrow pointing at the name of the WebView2 Examples sample, Sample 1a](Images/tbWebView2Sample0.png){:width="970" height="728"}

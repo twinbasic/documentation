@@ -60,7 +60,7 @@ A project with *Register DLLs to HKLM* at **Yes** registers its DLL under `HKEY_
 
 Its one button is **Continue Anyway**. The box does not appear when *Register DLL after build* is **No**. An IDE that runs as an administrator shows **ADMIN** in its title area and does not open it.
 
-![The warning box the IDE shows as it opens a project that registers to HKEY_LOCAL_MACHINE while the IDE is not elevated, with one button.](Images/HKLM_Warning.png){:width="532" height="245"}
+![The warning box the IDE shows as it opens a project that registers to HKEY_LOCAL_MACHINE while the IDE is not elevated, with one button.](Images/HKLM_Warning.png){:width="541" height="249"}
 
 > [!NOTE] BETA 1010
 > The warning opens twice each time you open the project, and also for a Standard EXE project that has *Register DLLs to HKLM* at **Yes**, although an EXE registers nothing. Choose **Continue Anyway** each time. To stop the box, set *Register DLLs to HKLM* or *Register DLL after build* to **No**.
@@ -81,7 +81,7 @@ For a DLL registered under `HKEY_LOCAL_MACHINE`, in an IDE that is not elevated,
 
 **Build failed: unable to unregister the previous DLL.   Continue anyway?**
 
-![The box a build shows when it cannot deregister the previous DLL.](Images/Delete_It_And_Continue.png){:width="537" height="158"}
+![The box a build shows when it cannot deregister the previous DLL.](Images/Delete_It_And_Continue.png){:width="545" height="162"}
 
 ### Delete It And Continue
 {: #delete-it-and-continue }

@@ -12,11 +12,11 @@ A CustomControl is simply an ordinary twinBASIC class, with a few extra attribut
 > [!TIP]
 > It is highly advisable to look at and experiment with the sample project provided with twinBASIC before trying to implement your own CustomControl.
 
-![The New / Open Project dialog on the Samples tab. A red ring and the number 1 mark the Samples tab; a red ring and the number 2 mark the title of Sample 6. CustomControls.](Images/ccSampleProject.png){:width="522" height="405"}
+![The New / Open Project dialog on its Samples section. A red ring and the number 1 mark Samples in the list of sections at the left; a red ring and the number 2 mark the name of the CustomControls sample, Sample 6.](Images/ccSampleProject.png){:width="970" height="728"}
 
 ***
 ## CustomControl() attribute
-![The CustomControl attribute of the class MyGrid in the editor, naming the image /Miscellaneous/MyGrid.png.](Images/ccCustomControlAttribute.png){:width="347" height="34"}
+![The CustomControl attribute of the class MyGrid in the editor, naming the image /Miscellaneous/MyGrid.png.](Images/ccCustomControlAttribute.png){:width="348" height="34"}
 
 This is a required attribute for all CustomControls.  You must provide the relative path to an image file within your project that can be used to identify your control in the form designer toolbox.  We recommend that you put the image file in the Miscellaneous folder in your project.
 
@@ -26,7 +26,7 @@ In the CustomControls sample, the controls are in the CustomControls package, so
 
 ***
 ##  ClassId() attribute
-![The ClassId attribute of the class MyGrid in the editor, with a GUID, under its CustomControl attribute.](Images/ccClassIdAttribute.png){:width="382" height="52"}
+![The ClassId attribute of the class MyGrid in the editor, with a GUID, under its CustomControl attribute.](Images/ccClassIdAttribute.png){:width="383" height="52"}
 
 This is a required attribute for all CustomControls.  You must provide a unique CLSID (GUID) in order for the form engine to work with your control. 
 
@@ -37,13 +37,13 @@ This is a required attribute for all CustomControls.  You must provide a unique 
 
 ***
 ##  COMCreatable() attribute
-![The three attributes of the class MyGrid in the editor, CustomControl, ClassId and COMCreatable(False), above the line Class MyGrid. A red arrow points at the COMCreatable attribute.](Images/ccCOMCreatable.png){:width="382" height="88"}
+![The three attributes of the class MyGrid in the editor, CustomControl, ClassId and COMCreatable(False), above the line Class MyGrid. A red arrow points at the COMCreatable attribute.](Images/ccCOMCreatable.png){:width="383" height="88"}
 
 This is an optional attribute, but it is usually advisable to set this attribute to False, as you don't need to instantiate CustomControls from external COM environments.
 
 ***
 ## Must implement ICustomControl
-![The editor's hover over ICustomControl in the line Implements CustomControls.ICustomControl of the class MyGrid. It names the interface, in package CustomControls, and lists its members Initialize, Destroy and Paint.](Images/ccICustomControl.png){:width="637" height="277"}
+![The editor's hover over ICustomControl in the line Implements CustomControls.ICustomControl of the class MyGrid. It names the interface, in package CustomControls, and lists its members Initialize, Destroy and Paint.](Images/ccICustomControl.png){:width="646" height="286"}
 
 All CustomControls *must* implement [`CustomControls.ICustomControl`](../../tB/Packages/CustomControls/Framework/ICustomControl).  This interface currently has 3 methods that you must implement:
 

@@ -60,9 +60,9 @@ The designer file holds only these few properties at first. When you save, the f
 
 If the project does not refer to the package an item needs, the item shows a box titled **twinBASIC** instead of creating a form. It reads *Package needed* and the package's name, and says that you must first add a reference to the package, and that the compiler restarts after you click the button.
 
-![A twinBASIC message box headed Package needed: CustomControls, saying that a reference to the CustomControls package must be added to the project first and that the compiler will be restarted once it is, above an Add CustomControls package button and a Cancel button.](../Images/RightClick-Add-CustomControlsForm-Popup.png){:width="539" height="194"}
+![A twinBASIC message box headed Package needed: CustomControls, saying that a reference to the CustomControls package must be added to the project first and that the compiler will be restarted once it is, above an Add CustomControls package button and a Cancel button.](../Images/RightClick-Add-CustomControlsForm-Popup.png){:width="545" height="198"}
 
-![A twinBASIC message box headed Package needed: WinNativeForms, saying that a reference to the WinNativeForms package must be added to the project first and that the compiler will be restarted once it is, above an Add WinNativeForms package button and a Cancel button.](Images/Designer_PackageNeeded.png){:width="544" height="194"}
+![A twinBASIC message box headed Package needed: WinNativeForms, saying that a reference to the WinNativeForms package must be added to the project first and that the compiler will be restarted once it is, above an Add WinNativeForms package button and a Cancel button.](Images/Designer_PackageNeeded.png){:width="549" height="198"}
 
 The button, **Add WinNativeForms package** or **Add CustomControls package**, adds the reference and restarts the compiler. It creates no form. Choose the **Add** item again to create one. **Cancel** creates nothing.
 
@@ -70,7 +70,7 @@ The button, **Add WinNativeForms package** or **Add CustomControls package**, ad
 
 A designer opens for any of its four kinds of file when you open the file:
 
-- Double-click it in the Project Explorer, or single-click when **File Explorer: Single-Click Preview** is on. See [IDE Options](../Customising/IDE-Options#project-explorer-tabs-and-start-up).
+- Double-click it in the Project Explorer, or single-click when **Single-Click Preview** is on. See [IDE Options](../Customising/IDE-Options#project-explorer-tabs-and-start-up).
 - Open it from **OPEN EDITORS**, or double-click a row in **DIAGNOSTICS** that names it.
 - Create it with an **Add** item.
 
@@ -90,7 +90,7 @@ A file that the designer cannot use opens in one of three ways:
 
 ### The two files of a form
 
-A form's designer file and its `.twin` file belong together. Renaming one in the Project Explorer asks *Rename* the partner *to* the new name *also?*, and **YES** renames both. **Delete Permanently** on one of the pair offers **Delete Both**, **Delete** the file's name, and **Cancel**, when the IDE asks before it deletes files. See [IDE Options](../Customising/IDE-Options#project-explorer-tabs-and-start-up) for **File Explorer: Ask Before Delete Files**.
+A form's designer file and its `.twin` file belong together. Renaming one in the Project Explorer asks *Rename* the partner *to* the new name *also?*, and **YES** renames both. **Delete Permanently** on one of the pair offers **Delete Both**, **Delete** the file's name, and **Cancel**, when the IDE asks before it deletes files. See [IDE Options](../Customising/IDE-Options#project-explorer-tabs-and-start-up) for **Ask Before Delete Files**.
 
 ### View a form as JSON
 
@@ -104,7 +104,7 @@ Three commands open the code file from the designer:
 - **View → Code Editor**.
 - **View Code** in the designer's [right-click menu](Controls#the-right-click-menu).
 
-None of them has a key. The code file opens in a normal tab, or in a preview tab when **File Explorer: Single-Click Preview** is on.
+None of them has a key. The code file opens in a normal tab, or in a preview tab when **Single-Click Preview** is on.
 
 From the code file, **View → Object Designer** and <kbd>Shift</kbd>+<kbd>F7</kbd> open the designer. The command looks for a `.tbform`, then a `.tbcontrol`, a `.tbppage` and a `.tbreport` with the same name. The toolbar button works from either side. <kbd>F7</kbd> and <kbd>Esc</kbd> do nothing in a designer.
 
@@ -133,7 +133,7 @@ The designer uses the IDE's toolbar for its buttons. A button is greyed out unle
 | Tab-index badges | Yellow circles that show while you hold <kbd>Ctrl</kbd>. See [Tab order](#tab-order). |
 | In-place toolbar | The small bar below a selected control. See [In-place editing](Controls#in-place-editing). |
 
-![A form in the designer at 100 %, with a File menu and the + menu button in the bar above it. The form holds two text boxes, a label, two command buttons, a check box, a frame round one of the text boxes, and a control array of two buttons. The label is selected: eight round grabbers surround it, and a bar of editing buttons sits below it. Under the form, a box at the left shows the pointer position and one at the right the form's size, 380 x 270. Labels with arrows name the grabbers, the bar and the two boxes.](Images/Designer_Selected.png){:width="548" height="387"}
+![A form in the designer at 100 %, with a File menu and the + menu button in the bar above it. The form holds two text boxes, a label, two command buttons, a check box, a frame round one of the text boxes, and a control array of two buttons. The label is selected: eight round grabbers surround it, and a bar of editing buttons sits below it. Under the form, a box at the left shows the pointer position and one at the right the form's size, 380 x 270. Labels with arrows name the grabbers, the bar and the two boxes.](Images/Designer_Selected.png){:width="549" height="387"}
 
 While the designer loads, an overlay lists the steps of the connection to the compiler, with a progress bar. A failure reads *error 802; connection closed*, *803 connection errored* or *804 connection abandoned*. **Ignore and continue** hides the overlay. The overlay shows for a fraction of a second on a normal start.
 
@@ -158,7 +158,7 @@ The grid options are in the panel that opens when the pointer enters the grid bu
 **Grid Width** and **Grid Height**
 : Default 10 pixels each. The smallest value is 1.
 
-![The grid options panel open below the grid button of the toolbar. Show Grid and Multi-coloured Grabbers are ticked, Align Controls To Grid and Show Outlines are not, and Grid Width and Grid Height each hold 10.](Images/Designer_GridOptions.png){:width="227" height="191"}
+![The grid options panel open below the grid button of the toolbar. Show Grid and Multi-coloured Grabbers are ticked, Align Controls To Grid and Show Outlines are not, and Grid Width and Grid Height each hold 10.](Images/Designer_GridOptions.png){:width="227" height="192"}
 
 These options belong to the form. They are saved in the form file, so another form can have another grid. Changing one is an undo step, marks the form changed and refreshes the designer from the compiler.
 
@@ -174,7 +174,7 @@ With a designer focused, the **View** menu shows **Zoom In** and **Zoom Out** in
 
 ![The zoom box of the toolbar showing 50 %, with its list open below it and 50 % highlighted between 25 % and 75 %; the list scrolls on to further values.](Images/Designer_Zoom.png){:width="240" height="119"}
 
-![frmMain in the designer at 50 %, drawn at half size with its grid hidden; the readout under it still gives 380 x 270.](Images/Designer_Zoom50.png){:width="196" height="172"}
+![frmMain in the designer at 50 %, drawn at half size with its grid hidden; the readout under it still gives 380 x 270.](Images/Designer_Zoom50.png){:width="197" height="173"}
 
 
 > [!NOTE] BETA 1010
@@ -191,7 +191,7 @@ A locked control is drawn grey, with a lock icon. You cannot move or size it wit
 
 The lock is stored under the control's name, so it follows a rename, and it covers every member of a control array.
 
-![A form with Show Outlines on, so that a dashed outline surrounds every control. The command button Command1 is selected and locked: a grey lock icon shows on it and its grabbers are grey. The other buttons are unlocked.](Images/Designer_Locked.png){:width="386" height="333"}
+![A form with Show Outlines on, so that a dashed outline surrounds every control. The command button Command1 is selected and locked: a grey lock icon shows on it and its grabbers are grey. The other buttons are unlocked.](Images/Designer_Locked.png){:width="387" height="333"}
 
 > [!WARNING] BETA 1010
 > Locking or unlocking controls does not mark the form changed. If you lock a control and close the tab, the IDE asks no question, and the lock is gone when you open the form again. The lock is saved only with the next real change. After you lock a control, make another change to the form, such as moving a control, before you save.
@@ -202,7 +202,7 @@ Holding <kbd>Ctrl</kbd> while the designer has the focus shows a yellow circle a
 
 There is no tab-order dialog and no tool that sets the order by clicking. You set **TabIndex** as a property in [PROPERTIES](Properties). A new control gets the highest **TabIndex** plus one.
 
-![A form while Ctrl is held. Yellow circles at the top right of the text boxes, the check box and the command buttons hold their TabIndex values, 0, 2, 3, 5, 6 and 7.](Images/Designer_TabIndex.png){:width="386" height="333"}
+![A form while Ctrl is held. Yellow circles at the top right of the text boxes, the check box and the command buttons hold their TabIndex values, 0, 2, 3, 5, 6 and 7.](Images/Designer_TabIndex.png){:width="387" height="333"}
 
 ## Save, undo and history
 

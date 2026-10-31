@@ -76,9 +76,11 @@ This additional EXE acts as the out-of-process container for those controls and 
 
 A project-level setting allows you to control where the Fusion host EXE is generated:
 
-- **ActiveX Fusion Host EXE Output Path**
+- **ActiveX Fusion Host EXE - Output Path**
 
-![The Project Settings dialog with the Build Output Path row, which holds the standard build path, above the ActiveX Fusion Host EXE Output Path row, whose empty text box and label are outlined in red.](Images/569150839-9ffc87ac-250d-40a4-bb47-669b607ad76f.png){:width="1102" height="460"}
+Typing `Output Path` in the filter box of [Project Settings](../tB/IDE/Project-Settings) lists every setting whose text holds both words: the two output path settings of the **Build** group, and **Trace Output** in the **Tracing** group. The Fusion host's setting is the second **Build** row:
+
+![The Project Settings dialog with Output Path typed in the filter box, so that the rail lists only Build and Tracing. The Build group shows the Build Output Path row, which holds the standard build path, above the ActiveX Fusion Host EXE - Output Path row, whose empty text box, name and description are outlined in red.](Images/569150839-9ffc87ac-250d-40a4-bb47-669b607ad76f.png){:width="1202" height="488"}
 
 If left blank (default), the standard build path set in the project settings is used.  Unless overriden, the standard build path is:
 `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`
@@ -93,7 +95,7 @@ This allows Fusion host EXEs to be clearly distinguished from normal build outpu
 
 Each COM reference (type library) exposes Fusion-specific options.
 
-![The Library References list of Project Settings on its Enabled Libraries tab, scrolled to the right. Beside each library's identifier are the Locale, Licence and Date columns, a Use ActiveX Controls tick box, an ActiveX Fusion Mode drop-down set to auto or fusionAllTo32, and a Fusion: Async Events tick box, ticked for one library.](Images/569100769-f1f2790a-0094-4843-809f-a8a9e928fd41.png){:width="1102" height="439"}
+![The Library References list of Project Settings on its Enabled Libraries tab, scrolled to the right. Beside each library's identifier are the Locale, Licence and Date columns, a Use ActiveX Controls tick box, an ActiveX Fusion Mode drop-down set to auto or fusionAllTo32, and a Fusion: Async Events tick box, ticked for one library.](Images/569100769-f1f2790a-0094-4843-809f-a8a9e928fd41.png){:width="997" height="507"}
 
 ### ActiveX Fusion Mode
 

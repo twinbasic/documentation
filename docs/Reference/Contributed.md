@@ -8,7 +8,7 @@ has_toc: false
 
 # Contributed Packages
 
-Community-authored packages published through TWINSERV, the twinBASIC package registry. To use a contributed package, add it to Project → References (Ctrl-T) → Available Packages.
+Community-authored packages published through TWINSERV, the twinBASIC package registry. To use a contributed package, add it to Project → References... (Ctrl-T) → the **Available Packages** tab.
 
 Each package is versioned apart from twinBASIC, and its section says which version it documents. Packages that are not yet ready for use in a program are listed under [Experimental Packages](../Experimental/).
 

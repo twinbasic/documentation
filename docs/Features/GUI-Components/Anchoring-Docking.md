@@ -11,7 +11,7 @@ redirect_from:
 
 One of the new form designer features you see in twinBASIC is the 'Anchors' property, in the **LAYOUT** group of the PROPERTIES panel:
 
-![The PROPERTIES panel for the TextBox Text1, showing its LAYOUT group, with the Anchors row underlined](../Images/b26da59b-4e98-40b7-b97b-bb3cef4ca1d0.png){:width="401" height="191"}
+![The PROPERTIES panel for the TextBox Text1, showing its LAYOUT group, with the Anchors row underlined](../Images/b26da59b-4e98-40b7-b97b-bb3cef4ca1d0.png){:width="402" height="191"}
 
 Clicking the arrow on the left expands it to provide 4 options:
 

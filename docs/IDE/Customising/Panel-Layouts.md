@@ -30,7 +30,7 @@ Point at **Window → Panel Layouts**. The submenu lists, in this order:
 4. One item for each layout you saved, labelled **Custom** *n*. *name*, in the order you created them.
 5. **Save Current Panel Layout As...** and **Manage Panel Layouts...**.
 
-![The Window menu with Panel Layouts highlighted and its submenu open to the right: a ticked Default Built-in Layout with CTRL+#, Full Screen Editor Layout, then Save Current Panel Layout As and Manage Panel Layouts.](../Menu/Images/Menu_Window_PanelLayouts.png){:width="389" height="159"}
+![The Window menu with Panel Layouts highlighted and its submenu open to the right: a ticked Default Built-in Layout with CTRL+#, Full Screen Editor Layout, then Save Current Panel Layout As and Manage Panel Layouts.](../Menu/Images/Menu_Window_PanelLayouts.png){:width="390" height="159"}
 
 A tick marks the layout in use. Choosing a layout applies it at once: the IDE closes every floating panel, builds the docked arrangement again and opens the floating panels the layout holds.
 
@@ -58,7 +58,7 @@ A name may be any text. If a layout of that name exists, the new one replaces it
 
 Choose **Window → Panel Layouts → Manage Panel Layouts...** to add and delete layouts and to edit them as text.
 
-![The Manage Panel Layouts dialog. Its left pane lists two built-in layouts, DEFAULT and FULLSCREEN, with DEFAULT selected; the right pane shows that layout JSON --- a docked tree of TOOLBAR, TOOLBOX and EDITOR entries with percentage sizes. Add New sits at the bottom left, with a greyed-out Save Changes and a Cancel button at the right.](../Menu/Images/Menu_Window_PanelLayouts_ManagePanelLayouts_Default.png){:width="1016" height="638"}
+![The Manage Panel Layouts dialog. Its left pane lists two built-in layouts, DEFAULT and FULLSCREEN, with DEFAULT selected; the right pane shows that layout JSON --- a docked tree of TOOLBAR, TOOLBOX and EDITOR entries with percentage sizes. Add New sits at the bottom left, with a greyed-out Save Changes and a Cancel button at the right.](../Menu/Images/Menu_Window_PanelLayouts_ManagePanelLayouts_Default.png){:width="1016" height="642"}
 
 The list on the left holds `<DEFAULT> (built-in)` and `<FULLSCREEN> (built-in)`, which are read-only, and then your layouts. Each of yours has a close icon that removes it. The pane on the right shows the selected layout as text, which you can edit unless it is a built-in layout.
 
@@ -104,7 +104,7 @@ The panel ids are `TOOLBAR`, `TOOLBOX`, `EDITOR`, `DEBUG CONSOLE`, `PROBLEMS`, `
 
 Text that is not valid JSON turns red. If you save it anyway, the layout holds nothing. When you choose it, the IDE shows the warning *WARNING: bad panel layout data in '&lt;name&gt;'.  Reverting to &lt;DEFAULT&gt; instead.* and applies the Default layout. A bad `floating` list shows *WARNING: bad floating panel layout data in '&lt;name&gt;'.*
 
-![The same dialog with FULLSCREEN selected instead, its JSON showing a TOOLBAR sized to fit its content, a TOOLBOX at about 8.5 per cent, and an EDITOR and PROPERTIES pair filling the rest.](../Menu/Images/Menu_Window_PanelLayouts_ManagePanelLayouts_Fullscreen.png){:width="1016" height="638"}
+![The same dialog with FULLSCREEN selected instead, its JSON showing a TOOLBAR sized to fit its content, a TOOLBOX at about 8.5 per cent, and an EDITOR and PROPERTIES pair filling the rest.](../Menu/Images/Menu_Window_PanelLayouts_ManagePanelLayouts_Fullscreen.png){:width="1016" height="642"}
 
 The two built-in layouts, as text:
 

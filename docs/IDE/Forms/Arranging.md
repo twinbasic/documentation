@@ -16,7 +16,7 @@ index:
 
 The **Format** menu lines up the controls you have selected: it aligns their edges, gives them the same width or height, spaces them evenly, centres them in their container and changes their order. This page describes what each command does to the controls. The [Format menu](../Reference/Menu/Format) page lists the commands.
 
-![The Format menu with two controls selected in the form designer: all of its commands are available rather than greyed out.](../Menu/Images/Menu_Format_1.png){:width="232" height="281"}
+![The Format menu with two controls selected in the form designer: all of its commands are available rather than greyed out.](../Menu/Images/Menu_Format_1.png){:width="233" height="281"}
 
 The same commands are in the right-click menu of a selection, and most have a button in the toolbar. They act on the controls selected in the designer, so the whole menu is greyed out until a designer is open with a selection.
 
@@ -37,7 +37,7 @@ None of the controls is the reference. The first control you clicked has no spec
 
 ## Align
 
-![The Format menu with Align highlighted and its submenu open to the right. Left, Center (Horizontal) and Right sit above Top, Center (Vertical) and Bottom, with To Grid on its own below; the four edge commands have ALT plus arrow-key shortcuts. All are available.](../Menu/Images/Menu_Format_Align.png){:width="436" height="281"}
+![The Format menu with Align highlighted and its submenu open to the right. Left, Center (Horizontal) and Right sit above Top, Center (Vertical) and Bottom, with To Grid on its own below; the four edge commands have ALT plus arrow-key shortcuts. All are available.](../Menu/Images/Menu_Format_Align.png){:width="437" height="281"}
 
 **Left**, **Right**, **Top** and **Bottom** move every control to an edge of the selection. They compare positions in form coordinates, so they work across containers.
 
@@ -76,7 +76,7 @@ A command changes nothing when the controls already have the same size.
 
 ## Space the controls evenly
 
-![The Format menu with Horizontal Spacing highlighted and its submenu open to the right. Make Equal, Increase, Decrease and Remove are all available.](../Menu/Images/Menu_Format_HorizontalSpacing.png){:width="345" height="281"}
+![The Format menu with Horizontal Spacing highlighted and its submenu open to the right. Make Equal, Increase, Decrease and Remove are all available.](../Menu/Images/Menu_Format_HorizontalSpacing.png){:width="346" height="281"}
 
 **Horizontal Spacing** works on the controls sorted by **Left**. **Vertical Spacing** does the same by **Top**, with the grid height and the bottom edge. In both, the first control stays where it is.
 

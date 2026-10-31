@@ -40,7 +40,7 @@ The Debug menu holds the commands for stepping through a paused program, for wat
 
 ## Debugger Options
 
-![The Debug menu with no project open, its other entries greyed out, Debugger Options highlighted and its submenu open to the right, holding two entries: Break On All Errors, unticked, and Allow Breakpoints (Debuggable), ticked.](Images/Menu_Debug_DebuggerOptions.png){:width="534" height="285"}
+![The Debug menu with no project open, its other entries greyed out, Debugger Options highlighted and its submenu open to the right, holding two entries: Break On All Errors, unticked, and Allow Breakpoints (Debuggable), ticked.](Images/Menu_Debug_DebuggerOptions.png){:width="535" height="285"}
 
 ![A close-up of that submenu on its own: a tick against Allow Breakpoints (Debuggable) and none against Break On All Errors.](Images/Menu_Debug_DebuggerOptions_2.png){:width="252" height="56"}
 

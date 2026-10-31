@@ -10,7 +10,7 @@ redirect_from:
 
 # Add-Ins Menu
 
-![The Add-Ins menu open on a greyed-out placeholder line reading no addins loaded, and nothing else.](Images/Menu_Add-Ins.png){:width="157" height="57"}
+![The Add-Ins menu open on a greyed-out placeholder line reading no addins loaded, and nothing else.](Images/Menu_Add-Ins.png){:width="158" height="57"}
 
 {no addins loaded}
 

@@ -10,7 +10,7 @@ permalink: /Tutorials/CEF/Building-A-Browser-Shell
 
 A short worked tutorial: turn a [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) control into a working browser with an address bar, back / forward / reload buttons, zoom, and a few helpers (DevTools, PDF export).
 
-The complete project ships as *Sample 1b --- Chromium Embedded Framework Examples* in the New-Project dialog (form *Example 1*). This tutorial describes its key pieces.
+The complete project ships as *Sample 1b --- Chromium Embedded Framework Examples*, the card **Chromium Embedded Framework Examples** in the **Samples** section of the New-Project dialog (form *Example 1*). This tutorial describes its key pieces.
 
 ## The form
 

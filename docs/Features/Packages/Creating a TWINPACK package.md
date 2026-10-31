@@ -11,19 +11,19 @@ redirect_from:
 
 # Creating a TWINPACK package
 
-To create a new TWINPACK package, navigate to the twinBASIC New Project dialog, and under the 'Samples' tab, choose the option labelled 'Package':
+To create a new TWINPACK package, navigate to the twinBASIC New Project dialog, and in its **Samples** section, choose the card labelled **Package**:
 
-![The New / Open Project dialog on the Samples tab, with a red ring round the title of Sample 7. Package](Images/6ad7a172-0e1b-4276-ac89-042681552507.png){:width="522" height="405"}
+![The New / Open Project dialog on its Samples section, with a red ring round the name of the Package sample, Sample 7](Images/6ad7a172-0e1b-4276-ac89-042681552507.png){:width="970" height="728"}
 
 Once you've created the project, you should find the extra 'PACKAGE PUBLISHING' panel as a popup:
 
 ![The PACKAGE PUBLISHING panel, floating over the editor, with EDIT links for Namespace, Description, Licence, Visibility and Version and a SIGN IN link for Publisher, above the PUBLISH THIS PACKAGE button](Images/9eeffbcf-d73e-4a92-bce5-811ed60aba98.png){:width="348" height="378"}
 
-You should now edit the Namespace, Description, Licence, Visibility and Version properties appropriately by using the package manager 'EDIT' links, which open Project Settings at the individual setting.   Once you've edited a value, press **Apply Changes** in order for your change to be reflected in the package manager panel. [Package Publishing](../../tB/IDE/Building/Package-Publishing) describes the panel.
+You should now edit the Namespace, Description, Licence, Visibility and Version properties appropriately by using the package manager 'EDIT' links, which open Project Settings with the setting's id in the filter box, so that the dialog lists only that setting (for Version, the settings of the version).   Once you've edited a value, press **Apply Changes** in order for your change to be reflected in the package manager panel. [Package Publishing](../../tB/IDE/Building/Package-Publishing) describes the panel.
 
 - **Namespace:** this is the symbol that will be used to group your components in projects that reference your package.  For example, a package that provides a series of different dialog classes might use the namespace `Dialogs`.
-- **Description:** this is the descriptive text that will appear in the `Settings`->`References` list.  If you plan to share this package, think carefully about the description so that others can discover your package through TWINSERV.
-- **Licence:** this short text appears in the `Settings`->`References` list, alongside the Description.  If you plan to share this package, it is important that you enter this field, and the value you enter here should appropriately match the content of the LICENCE.md file (e.g. 'MIT', 'LGPL' etc).
+- **Description:** this is the descriptive text that will appear in the Library References list of Project Settings.  If you plan to share this package, think carefully about the description so that others can discover your package through TWINSERV.
+- **Licence:** this short text appears in the Library References list of Project Settings, alongside the Description.  If you plan to share this package, it is important that you enter this field, and the value you enter here should appropriately match the content of the LICENCE.md file (e.g. 'MIT', 'LGPL' etc).
 - **Visibility:** determines whether the package is visible to only you (PRIVATE) or everyone (PUBLIC).  The value set here only takes effect when you use the 'PUBLISH THIS PACKAGE' button to publish your package in the package manager service, TWINSERV.
 - **Version:** the package's version number, in four parts: the **(VERSION) Major**, **(VERSION) Minor**, **(VERSION) Build** and **(VERSION) Revision** settings. A build copies them unchanged into the TWINPACK file, and a project that references the package shows them in the **Version** column of its **Library References** list. TWINSERV refuses to publish a version it already has: the IDE then reports *Package already uploaded with this exact version number.* For a package from a TWINPACK file the IDE does not compare versions at all. It accepts a lower version as well as a higher one, and it refuses to import a package that the project already contains, whatever the version. So raising the Version does not update the projects that use the package; see [Updating a package you built yourself](Updating#updating-a-package-you-built-yourself).
 

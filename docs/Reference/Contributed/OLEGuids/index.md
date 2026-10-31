@@ -17,7 +17,7 @@ The package is a twinBASIC implementation of `OLEGuids.tlb`, the type library of
 
 ## Using the package
 
-Add the package in Project → References (Ctrl-T) → Available Packages. The interfaces and structures are then visible to the whole project. Two things can be done with an interface:
+Add the package in Project → References... (Ctrl-T) → the **Available Packages** tab. The interfaces and structures are then visible to the whole project. Two things can be done with an interface:
 
 - **Call it.** Declare a variable of the interface type and assign an object to it. The assignment asks the object for that interface, and a call through the variable runs the object's method.
 - **Implement it.** Name it in an [**Implements**](../../../Core/Implements) statement in a class, and write each method. A class cannot implement an interface that has a `[PreserveSig]` member (see [How the declarations differ from Windows](#how-the-declarations-differ-from-windows)).

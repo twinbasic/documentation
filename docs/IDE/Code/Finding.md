@@ -88,7 +88,7 @@ The labels of the panel are in English whatever the IDE language is.
 **Cancel**
 : Closes the panel. It shows only while the panel floats.
 
-![The Direction dropdown with its list open below it, offering All, marked as the current choice, then Down and Up.](../Images/FindReplace_Direction.png){:width="232" height="99"}
+![The Direction dropdown with its list open below it, offering All, marked as the current choice, then Down and Up.](../Images/FindReplace_Direction.png){:width="233" height="99"}
 
 The panel keeps the text of **Find What** and **Replace With** that you searched with, and the options. <kbd>Down</kbd> in the **Find What** box shows the newest search, and each further <kbd>Down</kbd> an older one. <kbd>Up</kbd> goes back to newer ones. The IDE keeps this history and the options for each project.
 
@@ -163,7 +163,7 @@ If **Find What** is not in the `/pattern/flags` form, a box says **Invalid forma
 
 **Find In Project** has no dialog and no list of results of its own. It opens the **Find / Replace** panel with **Current Project** ticked, and you go through the matches with **Find Next**.
 
-![The Find / Replace panel floating over the editor, with Twice in Find What, Current Project ticked, and Inside Packages available but not ticked. Behind it, Find Next has gone on to a second file and selected the match Twice in its line Count = Count + Twice(n).](Images/Find_Project.png){:width="648" height="349"}
+![The Find / Replace panel floating over the editor, with Twice in Find What, Current Project ticked, and Inside Packages available but not ticked. Behind it, Find Next has gone on to a second file and selected the match Twice in its line Count = Count + Twice(n).](Images/Find_Project.png){:width="649" height="349"}
 
 A project search:
 
@@ -172,7 +172,7 @@ A project search:
 - does not look in the packages unless **Inside Packages** is ticked;
 - does not look in forms (`.tbform` files);
 - always goes down, whatever **Direction** says;
-- opens each file that holds a match in a tab. The tab is a preview tab when **File Explorer: Single-Click Preview** is on.
+- opens each file that holds a match in a tab. The tab is a preview tab when **Single-Click Preview** is on.
 
 **Replace All** does not work in a project search. The panel says **Sorry, Replace-All not yet supported in project-scope**. Use **Replace** and **Find Next** to go through the matches one at a time, or switch to **Current File** and repeat the replacement in each file.
 
@@ -192,7 +192,7 @@ The Quick Find widget searches the file you are in, with a small box at the top 
 
 The widget opens with the selected text in its box, and with the count of the matches, such as *1 of 10*. Its toggles are **Match Case**, **Match Whole Word**, **Use Regular Expression** and **Find in Selection**, and the replace row has **Preserve Case**. <kbd>Shift</kbd>+<kbd>Enter</kbd> does nothing. The IDE does not remember the toggles between uses.
 
-![The Quick Find widget at the top right of the editor, opened with Quick Replace so that its replace row shows. Its box holds Twice, with the toggles beside it and the count 2 of 2, and both matches of Twice are marked in the code.](Images/Quick_Find.png){:width="751" height="430"}
+![The Quick Find widget at the top right of the editor, opened with Quick Replace so that its replace row shows. Its box holds Twice, with the toggles beside it and the count 2 of 2, and both matches of Twice are marked in the code.](Images/Quick_Find.png){:width="752" height="430"}
 
 With a word selected, <kbd>Ctrl</kbd>+<kbd>F3</kbd> in the code goes to its next occurrence and shows the widget.
 

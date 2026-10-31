@@ -10,7 +10,7 @@ permalink: /Tutorials/CEF/Driving-Monaco
 
 A case study combining everything from the previous tutorials: a form with **two** [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) controls --- the Microsoft Monaco editor on the left, a live HTML preview on the right. As the user types, Monaco posts the edited source to twinBASIC, which mirrors it into the preview pane.
 
-The complete project ships as *Sample 1b --- Chromium Embedded Framework Examples* in the New-Project dialog (form *Example 3*).
+The complete project ships as *Sample 1b --- Chromium Embedded Framework Examples*, the card **Chromium Embedded Framework Examples** in the **Samples** section of the New-Project dialog (form *Example 3*).
 
 ## Architecture
 
