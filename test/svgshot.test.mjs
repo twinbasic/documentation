@@ -92,6 +92,7 @@ import {
   withinNoise,
 } from "../scripts/lib/shot-change.mjs";
 import {
+  FAINT_LEVEL,
   pngLook,
   pngRegions,
   reviewPicture,
@@ -2204,6 +2205,13 @@ describe("which pictures need a look (shot-queue.mjs)", () => {
     assert.equal(faint.strength.data.length, 60 * 40);
     assert.equal(faint.regions.length, 1);
     assert.equal(faint.look.why, "faint");
+    // kept as within noise, a pixel counts from FAINT_LEVEL: a block one level off is a capture's noise
+    assert.equal(FAINT_LEVEL, 2);
+    const one = reviewPicture({ state: "restored", by: "rule", earlier: null }, image(1), base);
+    assert.deepEqual([one.regions, one.look], [[], null]);
+    assert.equal(reviewPicture({ state: "restored", by: "rule", earlier: null }, image(2), base).look.why, "faint");
+    // a capture taken counts every pixel off: the same block one level off is a change, not noise
+    assert.equal(reviewPicture(taken, image(1), base).regions.length, 1);
     // the same bytes: nothing to measure, and no region
     assert.deepEqual(reviewPicture({ ...taken, state: "unchanged" }, base, base), {
       strength: null,
