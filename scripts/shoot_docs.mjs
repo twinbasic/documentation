@@ -162,6 +162,7 @@ import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "
 import { composite, uncomposite } from "./lib/shot-composite.mjs";
 import { decodePng, encodePng } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
+import { inRects, withinNoise } from "./lib/shot-change.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
@@ -553,31 +554,10 @@ function writeDiff(name, out, before, after, { suffix = "", labels } = {}) {
   }
 }
 
-// Whether two captures (PNG files) are the same picture but for a capture's noise: one size, no
-// channel of any pixel more than NOISE_LEVELS grey levels apart, and no more than NOISE_SHARE of
-// the pixels apart at all. The noise seen: 1 to 14 levels, along a shadow's or an arrow's edge,
-// at a rounded corner, in a scaled bitmap (34 pixels; 81 on About's Close button; the most, 563
-// along a dialog's top edge, 0.13% of it). A change the IDE draws moves text or colour by far
-// more than 16 levels.
+// Whether two captures (PNG files) are the same picture but for a capture's noise
+// (withinNoise, scripts/lib/shot-change.mjs, which holds the rule and what it rests on).
 // The pixels inside `rects` (unsteadyRects) are left out.
-const NOISE_LEVELS = 16;
-const NOISE_SHARE = 0.005;
-function nearly(a, b, rects = []) {
-  const A = decodePng(a);
-  const B = decodePng(b);
-  if (A.width !== B.width || A.height !== B.height) return false;
-  const most = Math.max(1, Math.floor(A.width * A.height * NOISE_SHARE));
-  let apart = 0;
-  for (let i = 0; i < A.rgba.length; i += 4) {
-    let d = 0;
-    for (let k = 0; k < 4; k++) d = Math.max(d, Math.abs(A.rgba[i + k] - B.rgba[i + k]));
-    if (!d || inRects(rects, (i / 4) % A.width, Math.floor(i / 4 / A.width))) continue;
-    if (d > NOISE_LEVELS || ++apart > most) return false;
-  }
-  return true;
-}
-
-const inRects = (rects, x, y) => rects.some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
+const nearly = (a, b, rects = []) => withinNoise(decodePng(a), decodePng(b), rects);
 
 // Whether two captures are the same picture outside `rects`: byte for byte when there are none.
 function same(a, b, rects) {

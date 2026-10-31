@@ -934,6 +934,17 @@ the PNG was just captured from, and the build shows it in place of the PNG
   `shoot_docs.mjs --diffs` is to call `sheetHtml` over its diffs folder in a later commit.
   A sheet of the pictures with no SVG takes seconds; `--all`, over some 550 pictures, about a
   minute.
+- **The sheet of changes against a revision** (owner): `sheet.mjs --out <dir> --against <rev>`
+  reviews what a screenshot run rewrote: each PNG under `--docs` that git (run in that folder,
+  so its repository answers) reports changed against the revision, working tree against commit,
+  untracked PNGs added, as old / new / difference map (`scripts/lib/shot-change.mjs`; sizes that
+  differ are compared aligned at the top left, the map shows the larger). Order: changed, most
+  changed first (share of pixels more than 16 levels off); then the pictures within the noise
+  rule (`withinNoise`, the rule `shoot_docs.mjs` moved there: 16 levels, 0.5% of the pixels),
+  which shoot_docs never writes over a file, so they are most likely rewritten in error (owner),
+  with one `git checkout <rev> -- <paths>` the page only shows; then added, then deleted. PNG
+  against PNG, no browser: 337 pictures in about 30 s. On the BETA 1033 retake none was within
+  noise.
 - **The bar** (`SVG_FAITHFUL` in `shoot_docs.mjs`): an SVG with more than 0.25% of its pixels 96
   grey levels or more off is not written, and an older one is removed. Anything not drawn falls
   to it.

@@ -2,7 +2,10 @@
 // replay.mjs, which writes the SVGs beside their PNGs, and sheet.mjs, which writes a
 // sheet of them to look at. Finding the pictures and their bundles, drawing one again
 // and judging it (keep.mjs's bar), writing what the judge made into a folder, running
-// the pictures in processes of their own, and the sheet's HTML.
+// the pictures in processes of their own, and the sheet's HTML. And what sheet.mjs --against
+// uses to show the pictures that differ from a git revision: the change list from git, the
+// comparison of each picture (scripts/lib/shot-change.mjs), their order and the page, which
+// shares its skeleton with the other sheet.
 //
 // Nothing here writes under docs/: each writer is given its folder.
 
@@ -12,6 +15,8 @@ import { availableParallelism } from "node:os";
 import path from "node:path";
 import { isOutputTree } from "../../lib/markdown-files.mjs";
 import { LAUNCH_ARGS, launchBrowser } from "../lib/browser.mjs";
+import { decodePng } from "../lib/png.mjs";
+import { changeMap, compareImages, NOISE_LEVELS, NOISE_SHARE } from "../lib/shot-change.mjs";
 import { BUNDLE_VERSION, pngHash, readBundle, renderBundle } from "./bundle.mjs";
 import { SNAPSHOT_STYLES } from "./capture.mjs";
 import { holdsUserName } from "./keep.mjs";
@@ -279,6 +284,63 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 const anchor = (out) => `p-${out.replace(/[^A-Za-z0-9]+/g, "-")}`;
 const sizeText = (size) => (size ? `${size[0]} x ${size[1]} px` : "size unknown");
 
+const SHEET_STYLE = `:root{color-scheme:light dark;--bg:#fff;--fg:#1b1b1b;--mut:#666;--line:#ccc;--card:#f6f6f6;--bar:#d33;--lim:#080;--link:#2a6ed8}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1b1b;--fg:#e6e6e6;--mut:#a0a0a0;--line:#444;--card:#262626;--bar:#e55;--lim:#4c4;--link:#7aaaff}}
+body{margin:0 auto;max-width:1500px;padding:16px;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,Segoe UI,sans-serif}
+h1{margin-top:0}h3{margin:0 0 4px;word-break:break-all}a{color:var(--link)}
+section{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:12px;margin:16px 0}
+.meta{margin:0 0 6px;color:var(--mut)}
+.trio{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.trio figure{margin:0;flex:1 1 30%;min-width:260px}
+.trio img{max-width:100%;max-height:520px;border:1px solid var(--line);background:repeating-conic-gradient(#8884 0 25%,#0000 0 50%) 0 0/16px 16px;display:block}
+figcaption{font-size:12px;color:var(--mut);margin-top:2px;word-break:break-all}
+.bar{position:relative;display:block;height:10px;max-width:500px;border:1px solid var(--line);margin:2px 0 8px}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--bar)}
+.bar b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--lim)}
+.pct{color:var(--mut)}
+.thumbs{display:flex;flex-wrap:wrap;gap:12px}
+.thumb{margin:0;width:230px}.thumb img{max-width:230px;max-height:150px;border:1px solid var(--line);background:repeating-conic-gradient(#8884 0 25%,#0000 0 50%) 0 0/16px 16px}
+table{border-collapse:collapse}td,th{border:1px solid var(--line);padding:3px 10px;text-align:left}
+`;
+
+/**
+ * The page both sheets share: the head with the generator mark that identifies a sheet,
+ * the title and `intro` (HTML), the `summary` table ([[label, value]], text), the
+ * `contents` (the <li>s of the list), and `body` (HTML).
+ */
+function pageHtml({ title, intro, summary, contents, body }) {
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="generator" content="${SHEET_GENERATOR}">
+<title>${esc(title)}</title>
+<style>
+${SHEET_STYLE}</style></head><body>
+<h1>${esc(title)}</h1>
+<p>${intro}</p>
+<table>
+${summary.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join("\n")}
+</table>
+<h2>Contents</h2>
+<ol>
+${contents}
+</ol>
+${body}
+</body></html>
+`;
+}
+
+/** The link and the figure (a linked picture with its caption) for files in `folder`, relative to the page. */
+function figuresIn(folder) {
+  const href = (name) => `${folder}/${encodeURIComponent(name)}`;
+  const figure = (name, caption) =>
+    `<figure><a href="${href(name)}"><img src="${href(name)}" loading="lazy" alt="${esc(caption)}"></a><figcaption>${esc(caption)}</figcaption></figure>`;
+  return { href, figure };
+}
+
+/** A bar `pct` of the way to `full` percent, with a mark at `mark` percent; `title` is its tooltip (text). */
+const meterHtml = (pct, full, mark, title) =>
+  `<span class="bar" title="${esc(title)}"><i style="width:${Math.min(100, (pct / full) * 100)}%"></i><b style="left:${(mark / full) * 100}%"></b></span>`;
+
 /**
  * The sheet, a page that needs no other file but the pictures it links: `rows` the
  * judged pictures, each {out, theme, size, pct96, pct32, pct8, faithful, source
@@ -288,16 +350,11 @@ const sizeText = (size) => (size ? `${size[0]} x ${size[1]} px` : "size unknown"
  * are included; `folder` the folder the files are in, relative to the page.
  */
 export function sheetHtml({ rows, plain, bar, all, folder = "pictures" }) {
-  const href = (name) => `${folder}/${encodeURIComponent(name)}`;
+  const { href, figure } = figuresIn(folder);
   const sorted = sortRows(rows);
   const judged = sorted.filter((r) => r.error === undefined);
   const title = all ? "Every picture against its SVG" : "Pictures with no SVG";
-  const meter = (pct) => {
-    const w = Math.min(100, (pct / 10) * 100);
-    return `<span class="bar" title="${pct}% strongly off; the bar is ${bar}%"><i style="width:${w}%"></i><b style="left:${(bar / 10) * 100}%"></b></span>`;
-  };
-  const figure = (name, caption) =>
-    `<figure><a href="${href(name)}"><img src="${href(name)}" loading="lazy" alt="${esc(caption)}"></a><figcaption>${esc(caption)}</figcaption></figure>`;
+  const meter = (pct) => meterHtml(pct, 10, bar, `${pct}% strongly off; the bar is ${bar}%`);
   const card = (r) => {
     // Each fact is HTML: text from elsewhere is escaped as it is put in.
     const facts = [`${r.theme} theme`, sizeText(r.size)];
@@ -335,48 +392,264 @@ ${r.error === undefined ? meter(r.pct96) : ""}
         `<li><a href="#${anchor(r.out)}">${esc(r.out)}</a> <span class="pct">${r.pct96 ?? "not drawn"}${r.pct96 === undefined ? "" : "%"}</span></li>`,
     )
     .join("\n");
-  return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="generator" content="${SHEET_GENERATOR}">
-<title>${title}</title>
-<style>
-:root{color-scheme:light dark;--bg:#fff;--fg:#1b1b1b;--mut:#666;--line:#ccc;--card:#f6f6f6;--bar:#d33;--lim:#080;--link:#2a6ed8}
-@media (prefers-color-scheme:dark){:root{--bg:#1b1b1b;--fg:#e6e6e6;--mut:#a0a0a0;--line:#444;--card:#262626;--bar:#e55;--lim:#4c4;--link:#7aaaff}}
-body{margin:0 auto;max-width:1500px;padding:16px;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,Segoe UI,sans-serif}
-h1{margin-top:0}h3{margin:0 0 4px;word-break:break-all}a{color:var(--link)}
-section{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:12px;margin:16px 0}
-.meta{margin:0 0 6px;color:var(--mut)}
-.trio{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
-.trio figure{margin:0;flex:1 1 30%;min-width:260px}
-.trio img{max-width:100%;max-height:520px;border:1px solid var(--line);background:repeating-conic-gradient(#8884 0 25%,#0000 0 50%) 0 0/16px 16px;display:block}
-figcaption{font-size:12px;color:var(--mut);margin-top:2px;word-break:break-all}
-.bar{position:relative;display:block;height:10px;max-width:500px;border:1px solid var(--line);margin:2px 0 8px}
-.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--bar)}
-.bar b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--lim)}
-.pct{color:var(--mut)}
-.thumbs{display:flex;flex-wrap:wrap;gap:12px}
-.thumb{margin:0;width:230px}.thumb img{max-width:230px;max-height:150px;border:1px solid var(--line);background:repeating-conic-gradient(#8884 0 25%,#0000 0 50%) 0 0/16px 16px}
-table{border-collapse:collapse}td,th{border:1px solid var(--line);padding:3px 10px;text-align:left}
-</style></head><body>
-<h1>${title}</h1>
-<p>${all ? "Every PNG under docs" : "Every PNG under docs with no SVG of the same name beside it"}, the build's output trees left out. A picture with a bundle is drawn again from it with the converter as it is now, and judged as the tools judge an SVG: the share of its pixels more than 96 grey levels off the PNG's, a shift of one pixel allowed. An SVG is kept only below ${bar}% (the green mark on each bar, whose full width is 10%). Select a picture to open it full size.</p>
-<table>
-<tr><th>${all ? "PNGs" : "PNGs with no SVG"}</th><td>${rows.length + plain.length}</td></tr>
-<tr><th>drawn and judged</th><td>${judged.length}</td></tr>
-<tr><th>could not be drawn</th><td>${rows.length - judged.length}</td></tr>
-<tr><th>with nothing to draw from</th><td>${plain.length}</td></tr>
-</table>
-<h2>Contents</h2>
-<ol>
-${toc}
-<li><a href="#plain">Pictures with nothing to draw from</a></li>
-</ol>
-<h2>Drawn, worst first</h2>
+  return pageHtml({
+    title,
+    intro: `${all ? "Every PNG under docs" : "Every PNG under docs with no SVG of the same name beside it"}, the build's output trees left out. A picture with a bundle is drawn again from it with the converter as it is now, and judged as the tools judge an SVG: the share of its pixels more than 96 grey levels off the PNG's, a shift of one pixel allowed. An SVG is kept only below ${bar}% (the green mark on each bar, whose full width is 10%). Select a picture to open it full size.`,
+    summary: [
+      [all ? "PNGs" : "PNGs with no SVG", rows.length + plain.length],
+      ["drawn and judged", judged.length],
+      ["could not be drawn", rows.length - judged.length],
+      ["with nothing to draw from", plain.length],
+    ],
+    contents: `${toc}
+<li><a href="#plain">Pictures with nothing to draw from</a></li>`,
+    body: `<h2>Drawn, worst first</h2>
 ${sorted.map(card).join("\n")}
 <h2 id="plain">With nothing to draw from (no bundle${all ? " and no SVG" : ""})</h2>
 <div class="thumbs">
 ${thumbs}
-</div>
-</body></html>
-`;
+</div>`,
+  });
+}
+
+// ---- the sheet of changes against a git revision ----------------------------------------
+
+/**
+ * The pictures git reports changed, from the text of `git diff --name-status
+ * --no-renames -z` (status, path, status, path, ... separated by NUL): [{out,
+ * status}], status "modified", "added" or "deleted", the PNGs only, the build's output
+ * trees left out, sorted by path.
+ */
+export function parseNameStatus(text) {
+  const parts = text.split("\0");
+  const found = [];
+  for (let i = 0; i + 1 < parts.length; i += 2) {
+    const letter = parts[i].trim()[0];
+    const status = letter === "A" ? "added" : letter === "D" ? "deleted" : "modified";
+    found.push({ out: parts[i + 1], status });
+  }
+  return keepPictures(found);
+}
+
+/** The PNGs of a list of paths from `git ls-files -z` (NUL separated), as [{out, status: "added"}]. */
+export const parseUntracked = (text) =>
+  keepPictures(
+    text
+      .split("\0")
+      .filter(Boolean)
+      .map((out) => ({ out, status: "added" })),
+  );
+
+function keepPictures(list) {
+  const seen = new Set();
+  return list
+    .filter(({ out }) => /\.png$/i.test(out) && !isOutputTree(out.split("/")[0]) && !seen.has(out) && seen.add(out))
+    .sort((a, b) => (a.out < b.out ? -1 : a.out > b.out ? 1 : 0));
+}
+
+/**
+ * The PNGs under `docsRoot` that differ from the revision `rev`, read with git run in
+ * `docsRoot` (so its own repository answers, whichever checkout this script is in):
+ * {hash, short, prefix, pictures}, `prefix` the folder's path from the repository's root
+ * with a closing slash (empty at the root), `pictures` as parseNameStatus gives them,
+ * with the PNGs git does not track yet, which are added. The working tree is compared,
+ * not the index. Throws an Error that says why when `rev` is not a commit there or the
+ * folder is not in a git working tree. `git` stands in for running git in the probes.
+ */
+export function changedPictures(docsRoot, rev, git = runGit) {
+  if (rev === "" || rev.startsWith("-")) throw new Error(`not a revision: ${JSON.stringify(rev)}`);
+  const where = git(["rev-parse", "--show-prefix"], docsRoot);
+  if (where.status !== 0) throw new Error(`${docsRoot} is not in a git working tree`);
+  const hash = git(["rev-parse", "--verify", "--quiet", `${rev}^{commit}`], docsRoot);
+  if (hash.status !== 0) throw new Error(`no revision ${rev} in the git repository of ${docsRoot}`);
+  const id = hash.stdout.trim();
+  const short = git(["rev-parse", "--short=8", id], docsRoot).stdout.trim() || id.slice(0, 8);
+  const diff = git(["diff", "--name-status", "--no-renames", "--relative", "-z", id, "--", "."], docsRoot);
+  if (diff.status !== 0) throw new Error(`git diff against ${rev} failed in ${docsRoot}`);
+  const untracked = git(["ls-files", "-z", "--others", "--exclude-standard", "--", "."], docsRoot);
+  if (untracked.status !== 0) throw new Error(`git ls-files failed in ${docsRoot}`);
+  const pictures = keepPictures([...parseNameStatus(diff.stdout), ...parseUntracked(untracked.stdout)]);
+  return { hash: id, short, prefix: where.stdout.trim(), pictures };
+}
+
+/** The bytes of the PNG `out` (a path under `docsRoot`) as the commit `hash` has it. */
+export function revisionBytes(docsRoot, hash, out) {
+  return execFileSync("git", ["show", `${hash}:./${out}`], {
+    cwd: docsRoot,
+    maxBuffer: 256 * 1024 * 1024,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+}
+
+/** The files a picture of the change sheet can have in a flat folder: the old PNG, the new one and the map. */
+export const changeFiles = (out) => {
+  const s = slugOf(out);
+  return { old: `${s}.old.png`, new: `${s}.new.png`, map: `${s}.change.png` };
+};
+
+/**
+ * Compares the picture `item` ({out, status}) as the revision has it (`before`, bytes, or
+ * null) and as it is now (`after`). Returns {row, map}: the row of the change sheet --
+ * {out, theme, status, kind, sizeOld, sizeNew, stats, error, files} -- and the difference
+ * map as PNG bytes, null for an added or deleted picture or one that could not be read.
+ * `kind` is "changed", "noise" (the same picture but for a capture's noise, which
+ * shoot_docs.mjs never writes over a file), "added", "deleted" or "error" (a file this
+ * tool cannot read as a PNG, with `error` the reason).
+ */
+export function compareRevisionPicture(item, before, after) {
+  const { out, status } = item;
+  const names = changeFiles(out);
+  const row = { out, theme: themeOf(out), status, files: {} };
+  if (before) {
+    row.sizeOld = pngSize(before);
+    row.files.old = names.old;
+  }
+  if (after) {
+    row.sizeNew = pngSize(after);
+    row.files.new = names.new;
+  }
+  if (status === "added") return { row: { ...row, kind: "added" }, map: null };
+  if (status === "deleted") return { row: { ...row, kind: "deleted" }, map: null };
+  try {
+    const A = decodePng(before);
+    const B = decodePng(after);
+    const stats = compareImages(A, B);
+    row.files.map = names.map;
+    return { row: { ...row, stats, kind: stats.noiseOnly ? "noise" : "changed" }, map: changeMap(A, B) };
+  } catch (e) {
+    return { row: { ...row, kind: "error", error: e.message }, map: null };
+  }
+}
+
+const KIND_RANK = { error: 0, changed: 0, noise: 1, added: 2, deleted: 3 };
+
+/**
+ * The change sheet's rows in the order it shows them: the changed pictures, most changed
+ * first (the share changed beyond noise, then the share that differs at all, then the
+ * path), those that could not be read after them; then the pictures that differ only by
+ * a capture's noise, in the same order; then the added; then the deleted, by path.
+ */
+export const sortChangeRows = (rows) =>
+  [...rows].sort((a, b) => {
+    const k = KIND_RANK[a.kind] - KIND_RANK[b.kind];
+    if (k) return k;
+    const share = (r) => (r.stats ? [r.stats.pctBeyond, r.stats.pctDiffering] : [-1, -1]);
+    const [ab, ad] = share(a);
+    const [bb, bd] = share(b);
+    return bb - ab || bd - ad || (a.out < b.out ? -1 : a.out > b.out ? 1 : 0);
+  });
+
+const shellQuote = (p) => (/[^A-Za-z0-9_./:@%+=,~^{}-]/.test(p) ? `"${p}"` : p);
+
+/**
+ * The command that puts the pictures `outs` (paths under the docs folder, which is
+ * `prefix` from the repository's root) back as the revision `rev` has them, to be run
+ * in the repository's root. The tool only shows it.
+ */
+export const restoreCommand = (rev, prefix, outs) =>
+  `git checkout ${shellQuote(rev)} -- ${outs.map((o) => shellQuote(prefix + o)).join(" ")}`;
+
+// A share of the pixels, as text: two decimals, and "under 0.01" for what would round to none.
+const pctText = (pct) => (pct === 0 ? "0" : pct < 0.01 ? "under 0.01" : pct.toFixed(2));
+
+/**
+ * The change sheet, a page that needs no other file but the pictures it links: `rows`
+ * from compareRevisionPicture; `rev` the revision as the command line gave it, `hash`
+ * and `short` the commit it names, `prefix` the docs folder's path from the repository's
+ * root; `folder` the folder the files are in, relative to the page.
+ */
+export function changeSheetHtml({ rows, rev, hash, short, prefix, folder = "pictures" }) {
+  const { figure } = figuresIn(folder);
+  const sorted = sortChangeRows(rows);
+  const kinds = (...wanted) => sorted.filter((r) => wanted.includes(r.kind));
+  const changed = kinds("changed", "error");
+  const noise = kinds("noise");
+  const added = kinds("added");
+  const deleted = kinds("deleted");
+  const title = `Pictures changed since ${rev} (${short})`;
+  const sizes = (r) =>
+    r.sizeOld && r.sizeNew && (r.sizeOld[0] !== r.sizeNew[0] || r.sizeOld[1] !== r.sizeNew[1])
+      ? `size changed from ${sizeText(r.sizeOld)} to ${sizeText(r.sizeNew)}`
+      : sizeText(r.sizeNew ?? r.sizeOld);
+  const card = (r) => {
+    // Each fact is HTML: text from elsewhere is escaped as it is put in.
+    const facts = [`${r.theme} theme`, esc(sizes(r))];
+    if (r.error !== undefined) facts.push(`<b>not compared: ${esc(r.error)}</b>`);
+    const st = r.stats;
+    if (st) {
+      if (!st.sameSize)
+        facts.push(
+          `compared aligned at the top left over the common ${st.common[0]} x ${st.common[1]} px; the map shows the whole ${st.canvas[0]} x ${st.canvas[1]} px, a pixel only the old picture has cyan, one only the new picture has magenta`,
+        );
+      facts.push(
+        st.differing === 0
+          ? "the same pixels in a different file"
+          : `<b>${pctText(st.pctBeyond)}% changed beyond noise</b> (by more than ${NOISE_LEVELS} grey levels${st.sameSize ? "" : ", or in one picture only"}), ${pctText((st.faint / st.total) * 100)}% by ${NOISE_LEVELS} or fewer`,
+      );
+    }
+    const figures = [];
+    if (r.files.old) figures.push(figure(r.files.old, `As ${short} has it`));
+    if (r.files.new) figures.push(figure(r.files.new, "As it is now"));
+    if (r.files.map)
+      figures.push(
+        figure(r.files.map, "Difference (yellow: 1 grey level, shading to red at 128 or more; dark grey: the same)"),
+      );
+    const tip = st
+      ? `${pctText(st.pctBeyond)}% changed beyond noise; the mark is ${NOISE_SHARE * 100}%, the share of the pixels the noise rule lets differ`
+      : "";
+    return `<section id="${anchor(r.out)}">
+<h3>${esc(r.out)}</h3>
+<p class="meta">${facts.join(", ")}</p>
+${st ? meterHtml(st.pctBeyond, 10, NOISE_SHARE * 100, tip) : ""}
+<div class="trio">${figures.join("\n")}</div>
+</section>`;
+  };
+  const toc = (list) =>
+    list
+      .map(
+        (r) =>
+          `<li><a href="#${anchor(r.out)}">${esc(r.out)}</a> <span class="pct">${r.stats ? `${pctText(r.stats.pctBeyond)}%` : esc(r.kind)}</span></li>`,
+      )
+      .join("\n");
+  const group = (id, heading, list, note = "") =>
+    `<h2 id="${id}">${esc(heading)} (${list.length})</h2>
+${note}${list.length ? list.map(card).join("\n") : "<p>None.</p>"}`;
+  const noiseNote = `<p>These differ from ${esc(short)} within the noise rule the screenshotter applies (no pixel more than ${NOISE_LEVELS} grey levels off, and at most ${NOISE_SHARE * 100}% of the pixels off at all), and it never writes a capture that does: a run that kept the other version of the noise, or drift over several runs, left them.</p>
+${
+  noise.length
+    ? `<p>To put them all back as ${esc(short)} has them, run this in the repository's root (this page only shows it; nothing has been run):</p>
+<pre>${esc(
+        restoreCommand(
+          rev,
+          prefix,
+          noise.map((r) => r.out),
+        ),
+      )}</pre>
+`
+    : ""
+}`;
+  const section = (id, heading, list) =>
+    `<li><a href="#${id}">${esc(heading)}</a> (${list.length})\n<ol>\n${toc(list)}\n</ol></li>`;
+  return pageHtml({
+    title,
+    intro: `Every PNG under docs that differs from the commit ${esc(hash)} (${esc(rev)}): the picture as the commit has it, as it is now, and the difference between them, aligned at the top left. The change is the share of pixels that differ by more than ${NOISE_LEVELS} grey levels (or exist in one picture only). Select a picture to open it full size.`,
+    summary: [
+      ["changed", changed.length],
+      ["differ only by capture noise", noise.length],
+      ["added", added.length],
+      ["deleted", deleted.length],
+    ],
+    contents: [
+      section("changed", "Changed, most changed first", changed),
+      section("noise", "Differ only by capture noise", noise),
+      section("added", "Added", added),
+      section("deleted", "Deleted", deleted),
+    ].join("\n"),
+    body: [
+      group("changed", "Changed, most changed first", changed),
+      group("noise", "Differ only by capture noise, most likely rewritten in error", noise, noiseNote),
+      group("added", "Added", added),
+      group("deleted", "Deleted", deleted),
+    ].join("\n"),
+  });
 }

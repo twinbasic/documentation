@@ -172,6 +172,7 @@ Exit codes: **0** every picture was drawn again; **1** a picture needs a retake,
 {: #svg-sheet }
 
     node scripts/svgshot/sheet.mjs --out <dir> [--docs <dir>] [--bundles <dir>] [--only <regex>] [--all] [--jobs N]
+    node scripts/svgshot/sheet.mjs --out <dir> --against <rev> [--docs <dir>] [--only <regex>]
 
 Writes a page that shows how far each picture's SVG is from its PNG, to look at in a browser. By default it shows every picture under `docs` that has no SVG beside it, which is the list of pictures the SVG converter still draws wrongly. The page is `index.html` in the folder `--out` names, with the pictures it shows in its `pictures` folder, so it opens from the disk with no server.
 
@@ -179,9 +180,17 @@ Each picture that has a bundle is drawn again from it, with the converter as it 
 
 `--all` shows every picture, also those that have an SVG: a picture with a bundle is drawn again from it, and one without a bundle has its SVG file compared as it is. `--only` takes the pictures whose path under `docs` matches a regular expression, a light picture's path ending in `.light.png`. `--docs` is the folder the pictures are in, `docs` by default, and `--bundles` the bundle folder, `.svgshot-bundles` by default, where new font cuts are kept as `replay.mjs` keeps them. `--jobs` is how many processes draw at once, by default half the logical processors and at most 8. The tool starts no IDE and writes nothing under `docs`.
 
+**`--against <rev>`** writes a page of another kind: it compares each PNG under `docs` with the same file at a git revision (a commit, a branch, a tag, `HEAD`), to review what a screenshot run rewrote. Git runs in the `--docs` folder, so that folder's own repository answers, and the folder as it is on disk is compared with the revision, tracked and untracked files alike. Each picture that differs is shown as the revision has it, as it is now and as a map of the differences, each opening at full size, with its path, theme, both sizes and the share of its pixels that changed by more than 16 grey levels. The map is dark grey where the pictures agree, yellow for a difference of one grey level and red for 128 or more. Pictures of two sizes are compared aligned at the top left over the area they share, and the row says so; the map shows the whole of the larger picture, a pixel only the old picture has cyan and one only the new picture has magenta. The page opens with a heading that names the revision and its commit, then lists:
+
+1. the changed pictures, most changed first;
+1. the pictures that differ from the revision only within the noise rule of [`shoot_docs.mjs`](#shoot-docs) (no pixel more than 16 grey levels off, and at most 0.5% of the pixels off at all). That tool never writes a capture within that rule of a file, so such a picture was most likely rewritten in error. This section shows one `git checkout <rev> -- <paths>` command that would restore them all, with paths from the repository's root. The tool only shows it and never runs it;
+1. the added pictures, which are new in the working folder, and then the deleted ones, each with a single picture.
+
+It compares PNG with PNG: no SVG is drawn, no bundle is read and no browser starts, so a run over several hundred pictures takes about half a minute. `--against` is not combined with `--all`, `--bundles` or `--jobs`; `--only` and `--docs` apply as before. A revision the repository does not have, or a `--docs` folder outside a git working folder, is refused before anything is written.
+
 The pictures on the page are drawn without the check for the Windows user name, so the page and its pictures can show it. So the folder may not be under `docs`, nor inside a git working folder at a path git does not ignore; a folder that already holds files must hold an earlier page of this tool, which is replaced.
 
-Exit codes: **0** the page was written; **1** the page was written, but a picture could not be drawn, and is listed with the reason; **2** the tool could not run: a refused command line, a refused folder, no bundle folder, no browser, or a crash.
+Exit codes: **0** the page was written; **1** the page was written, but a picture could not be drawn or compared, and is listed with the reason; **2** the tool could not run: a refused command line, a refused folder, no bundle folder, no browser, no such revision, or a crash.
 
 ## imagestrip
 {: #imagestrip }
