@@ -101,7 +101,10 @@ When **True**, the control resizes itself to fit the assigned [**Picture**](#pic
 ### BackColor
 {: .no_toc }
 
-The background colour of the control's drawing surface, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Assigning a new value invalidates the surface and triggers a repaint. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
+The background colour of the control's drawing surface, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Setting it erases everything drawn with the graphics methods and [**Print**](#print), as [**Cls**](#cls) does, even when the colour is the one already set. Unlike **Cls**, it leaves [**CurrentX**](#currentx) and [**CurrentY**](#currenty) as they are. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
+
+> [!WARNING] BETA 1033
+> Setting **BackColor** to the colour it already has erases nothing. Setting a different colour erases the surface, but also resets **CurrentX** and **CurrentY** to **0**.
 
 ### BorderStyle
 {: .no_toc }
@@ -258,7 +261,7 @@ Shortcut for [**Font**](#font)`.Underline`. **Boolean**.
 ### ForeColor
 {: .no_toc }
 
-The colour used by the graphics-method pen (lines, circles, points) and by [**Print**](#print) text, as an **OLE_COLOR**. Defaults to the system button-text colour. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
+The colour used by the graphics-method pen (lines, circles, points) and by [**Print**](#print) text, as an **OLE_COLOR**. Defaults to the system button-text colour. Setting it to the colour it already has leaves the text colour of [**hDC**](#hdc) unchanged, so a colour set there with the Windows **SetTextColor** function stays in effect. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### HasDC
 {: .no_toc }

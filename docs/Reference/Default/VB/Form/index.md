@@ -147,7 +147,10 @@ When **False**, drawing primitives --- [**Cls**](#cls), [**Circle**](#circle), [
 ### BackColor
 {: .no_toc }
 
-The background colour of the form's client area, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Used as the fill colour for [**Cls**](#cls) and as the canvas behind [**Picture**](#picture). A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
+The background colour of the form's client area, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Used as the fill colour for [**Cls**](#cls) and as the canvas behind [**Picture**](#picture). Setting it to a different colour erases everything drawn with the graphics methods and [**Print**](#print), as **Cls** does, but leaves [**CurrentX**](#currentx) and [**CurrentY**](#currenty) as they are. Setting it to the colour it already has erases nothing; on a [**PictureBox**](../PictureBox#backcolor) it erases the drawing all the same. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
+
+> [!WARNING] BETA 1033
+> Setting a different **BackColor** also resets **CurrentX** and **CurrentY** to **0**.
 
 ### BorderStyle
 {: .no_toc }
@@ -258,7 +261,7 @@ When **True** (default), text drawn on the form has a transparent background, le
 ### ForeColor
 {: .no_toc }
 
-The pen colour used by [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), and the text drawn by [**Print**](#print). **OLE_COLOR**. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
+The pen colour used by [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), and the text drawn by [**Print**](#print). **OLE_COLOR**. Setting it to the colour it already has leaves the text colour of [**hDC**](#hdc) unchanged, so a colour set there with the Windows **SetTextColor** function stays in effect. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### hDC
 {: .no_toc }
