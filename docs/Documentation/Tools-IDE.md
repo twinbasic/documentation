@@ -127,6 +127,8 @@ A picture is written only when it differs by more than the noise two captures of
 
 The capture is then compared with the picture at `HEAD` first. One that is that picture, or within the noise of it, leaves the file as `HEAD` has it, with its SVG (the one at `HEAD`, or none when `HEAD` has none), and is reported `restored` when the file held anything else. Comparing with the file alone, a retake over several runs could drift from the repository's picture in steps each within the noise of the file before it, or keep the other version of the noise. A capture that is not near the picture at `HEAD` is compared with the file: within the noise of it, the file stays, since an earlier run of the same retake wrote that change; else the file is written. A picture `HEAD` does not have is compared with the file only. Each picture is reported as `new`, `updated`, `restored` or `unchanged`; a second run with nothing changed reports every picture `unchanged`.
 
+Each picture can have an entry in `test/shots/manifest.json`, keyed by its path under `docs` (a light picture's with `.light`). A run records there the twinBASIC build of each picture it writes. An entry can also change how its picture is judged. It can give the picture a noise rule of its own, with other limits or with rectangles, in the picture's pixels, left out of the comparison, and it can give the picture's SVG another bar. It can also hold a decision made in a review: to keep the old picture or take the new one, for one capture, or to accept or refuse one SVG compared with one PNG. A decision applies only to exactly the bytes it was made on, and any other capture is judged by the rule. `--cleanup` follows the same entries. A run into a folder other than `docs` neither reads the file nor writes it.
+
 The Windows user name must never be in a published picture. Before each one is kept, the visible text of its page is searched for the name, and a picture whose page holds it is refused.
 
 Every picture is twice the size it is shown at. A page that shows one gives it a `{:width
@@ -155,7 +157,7 @@ Exit codes: **0** every picture was written or was unchanged (with `--cleanup`, 
 
 Draws each picture's SVG again, with the SVG converter as it is now, from the bundle that [`shoot_docs.mjs --svg`](#shoot-docs) saved when it took the picture. It starts no IDE and takes no picture, so a change to the converter under `scripts/svgshot/` is tried on every picture in about 20 seconds.
 
-Each SVG is compared with its PNG and written, left unchanged or removed as `shoot_docs.mjs` does. An SVG that comes out the same as the file already there is not compared again, so a replay with the converter unchanged reports every picture `unchanged`.
+Each SVG is compared with its PNG and written, left unchanged or removed as `shoot_docs.mjs` does. An SVG that comes out the same as the file already there is not compared again, so a replay with the converter unchanged reports every picture `unchanged`. A picture whose entry in `test/shots/manifest.json` names its SVG is compared again all the same, and judged by that entry as `shoot_docs.mjs` judges it.
 
 Cutting an SVG's fonts down to the characters it draws takes most of the time, so each cut is kept in the `subsets` folder of the bundle folder, named by a hash of the font, the characters and the cutting script. [`shoot_docs.mjs --svg`](#shoot-docs) keeps and reuses them the same way.
 

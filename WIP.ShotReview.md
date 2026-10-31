@@ -2,8 +2,8 @@
 
 A localhost tool for reviewing what `shoot_docs.mjs` and `replay.mjs` decided about each
 picture, overriding it, starting retakes and replays, and committing the result. **Design
-agreed with the owner on 2026-10-31; step 1 of [the order of work](#order-of-work) is done
-but for three rows that later steps make, and the tool itself is not started.** The mockups it was agreed on were inline in that
+agreed with the owner on 2026-10-31; steps 1 and 2 of [the order of work](#order-of-work) are
+done (step 1 but for three rows that later steps make), and the tool itself is not started.** The mockups it was agreed on were inline in that
 session and are not kept: the pages are described below instead.
 
 The tool covers everything the command-line screenshot tools do, interactively, with a person
@@ -161,8 +161,9 @@ Two kinds, which last for different times:
 Both are kept in **the manifest**, with the build each picture was taken on. **The
 command-line tools read it too**: `shoot_docs.mjs` and `replay.mjs` judge with each picture's
 allowances and honour its decisions, so that a run from a terminal and a run from the tool
-come out the same. Proposed shape, outside `docs/` so the publish allowlist never meets it
-(the path is open):
+come out the same. It is **`test/shots/manifest.json`** (owner, 2026-10-31), outside `docs/`
+so the publish allowlist never meets it, read and written by `scripts/lib/shot-manifest.mjs`
+alone (its header has the format):
 
 ```json
 {
@@ -172,16 +173,24 @@ come out the same. Proposed shape, outside `docs/` so the publish allowlist neve
       "build": 1501,
       "png": { "noise": { "levels": 16, "share": 0.5 }, "ignore": [[812, 40, 900, 64]],
                "decision": { "keep": "old", "capture": "<sha1>" } },
-      "svg": { "bar": { "levels": 96, "share": 0.35 }, "ignore": [],
+      "svg": { "bar": { "levels": 96, "share": 0.35 },
                "decision": { "accept": true, "svg": "<sha1>", "png": "<sha1>" } }
     }
   }
 }
 ```
 
-`build` is written when a capture is written to `docs/`, and stays when the file stays (noise,
-restored). A picture with no entry shows "build unknown" until it is next written. Only what
-differs from the defaults is stored.
+A picture of each theme is an entry of its own (`X.light.png`). Both shares are percentages,
+as the rules are stated (0.5% of the pixels, 0.25%). `build` is written when a capture is
+written to `docs/` (new, updated), stays when the file stays (noise, restored), and goes when
+the file is removed (a light picture with the dark one's pixels, a `once` picture's light
+file). A picture with no entry shows "build unknown" until it is next written. Only what
+differs from the defaults is stored, and the file is written only when what it holds changes,
+in a fixed order (pictures by path), so its diffs are small. Until the strength map exists
+(step 3) an SVG's bar is at 8, 32 or 96 levels, the three `diff.mjs` counts, and `svg.ignore`
+is refused. The manifest is read and written only for the default `--out`: its paths are under
+`docs/`. A light picture decided "new" is kept even with the dark one's pixels; one decided
+"old" is still found to be the dark one by the rule.
 
 ## Sessions
 
@@ -247,7 +256,7 @@ Each step ends tested and usable on its own.
    `replay.mjs` and `sheet.mjs` calling the shared modules. Done but for three rows: see
    [Where the work stands](#where-the-work-stands).
 2. **The manifest**: read and written by one module; `shoot_docs.mjs` and `replay.mjs` judge
-   with its allowances, honour its decisions and record `build`.
+   with its allowances, honour its decisions and record `build`. Done.
 3. **The strength map, the regions and the queue's rules**, tested on fixtures.
 4. **`--stage`, `--events` and stop** in `shoot_docs.mjs` and `replay.mjs`.
 5. **The server and the session store**, the overview and the detail page read-only, live.
@@ -261,15 +270,16 @@ Each step ends tested and usable on its own.
 
 ## Where the work stands
 
-On `staging` since 2026-10-31, step 1 but for the three rows that are new code (below). Each
-move kept the command-line tools' output as it was, checked as
+On `staging` since 2026-10-31, step 1 but for the three rows that are new code (below), and
+step 2. Each move kept the command-line tools' output as it was, checked as
 [below](#checking-a-move).
 
 | Row of the factoring table | Where it is now |
 |---|---|
 | The noise rule | `withinNoise(A, B, {levels, share, rects})`, `scripts/lib/shot-change.mjs` |
-| A PNG's verdict | `decidePicture({png, theme, dark, revision, disk, near})` in `scripts/lib/shot-policy.mjs`, with `SIZE_SLACK`: pictureFate's states plus `too-far` and `dark` (a light picture with the dark one's pixels). It does not read the manifest yet (step 2) |
-| An SVG's verdict | `decideSvg(stats, {bar})` in `shot-policy.mjs`, with `SVG_FAITHFUL` (moved from `keep.mjs`); `judgeSvg` asks it. It reads `stats.pct96` until the strength map exists (step 3) |
+| A PNG's verdict | `decidePicture({png, theme, dark, revision, disk, near, entry})` in `scripts/lib/shot-policy.mjs`, with `SIZE_SLACK`: pictureFate's states plus `too-far` and `dark` (a light picture with the dark one's pixels), and `by` ("decision" or "rule") and `earlier` (a decision about other bytes). `near(a, b, rule)` takes `pngRule(entry)`; `cleanupResets` is `--cleanup`'s verdict, with the path passed through `planCleanup` |
+| An SVG's verdict | `decideSvg(stats, {entry, svg, png})` in `shot-policy.mjs`, with `SVG_FAITHFUL` and `svgRule(entry)`: `{faithful, by}`. `judgeSvg(browser, svg, png, stats, entry)` asks it. It reads `stats.pct8`, `pct32` or `pct96` until the strength map exists (step 3) |
+| The manifest | `scripts/lib/shot-manifest.mjs`: `MANIFEST`, `openManifest(file)` (`entry`, `setBuild`, `clearBuild`, `save`, `text`), `parseManifest`, `manifestText`, `pngDecision`, `earlierPngDecision`, `svgDecision`, `hashOf`. `shoot_docs.mjs` passes each picture's rectangles to `capture` as `c.shot.ignore`, left out as its unsteady regions are, and records `build` (`buildNumber(ide)`) in `keep` and `dropLight` |
 | Writing a verdict | `scripts/lib/shot-apply.mjs`: `applyPicture(outRoot, out, decision, revision)`, `applySvg(outRoot, svgOut, svg or null)`, `restorePictures(outRoot, revision, outs, {dryRun})` (the PNGs and their SVGs, the SVGs by one `git restore`; `--cleanup` and a `restored` picture both use it), `dropPicture(outRoot, out, bundlesRoot)`, `writeSvg`, `svgOf`. What stays in `shoot_docs.mjs`'s `keep` and `keepSvg`: the counts, the lines it prints, the `--diffs` pictures, the bundle written, the user-name check, and the rule that an SVG stays as it is when its PNG was not written |
 | The git listing | `changedPictures`, `parseNameStatus`, `parseUntracked` in `scripts/lib/shot-revision.mjs` |
 | A child's report | `scripts/lib/record-lines.mjs`: `recordLine`, `writeRecord`, `parseRecord`, `readRecords(stream, kinds, {onRecord, onLine})`; `runShards` reads `svgshot-result` records with it. `--events` is to write `shot-event` records the same way |
@@ -277,10 +287,20 @@ move kept the command-line tools' output as it was, checked as
 | Server-sent events | `createSseChannel()` in `lib/sse.mjs`: `handle(req, res)`, `send(event, data)`, `close()`; `builder/serve.mjs` uses one |
 | The installs | `listIdes()` in `scripts/lib/tb-install.mjs`, newest first, `[{build, exe}]` |
 
-**Next: step 2**, the manifest. The three rows left in the table are new code, made in the
-steps that need them: the strength map and `changeRegions` in step 3, the commit helper in
-step 8. The tool's pages will add their actions to the pieces in `shot-views.mjs` (step 5);
-until then only `sheets.mjs` calls them.
+**Next: step 3**, the strength map, the regions and the queue's rules: `diff.mjs` returns the
+strength map, `pct8`/`pct32`/`pct96` derived from it, `changeRegions` in `shot-change.mjs`, and
+then an SVG's bar at any level and `svg.ignore` in the manifest (`checkEntry` refuses it
+today). The other row left in the table, the commit helper, is step 8. The tool's pages will
+add their actions to the pieces in `shot-views.mjs` (step 5); until then only `sheets.mjs`
+calls them.
+
+Step 2 was checked with the runs [below](#checking-a-move), whose states it left as they were
+with an empty manifest, and with an allowance and a decision on `Menu_Tools_IDEOptions`: the
+light picture copied over the dark one (the same size; `withinNoise` never matches two sizes)
+and `png.noise` at 255 levels and 100% leave it `unchanged but for a capture's noise` under
+`--against-disk`, and `--cleanup --dry-run` puts it back; a `keep: "new"` decision on the
+file's hash makes it a real change; and `svg.bar` at 8 levels and 0.001% has `replay.mjs`
+remove the light SVG.
 
 **A small cleanup, in no step:** a PNG's size is read from its header by four copies of one
 line (`pngSize` in `shot-policy.mjs` as `{w, h}`, in `redraw.mjs` as `[w, h]` or null, in
@@ -316,7 +336,6 @@ MutationObserver (`tabCloseIcon`).
 
 ## Open
 
-- **The manifest's path.** Outside `docs/`; beside `shoot_docs.mjs` is one choice.
 - **The server's port.** A stable default with `--port`, as bookmarks need, or a port from
   `tbbroker`, which today leases one only with a desktop.
 - **Allowances in the static sheets**: whether `sheet.mjs` shows them, as the overview does.

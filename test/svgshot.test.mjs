@@ -22,8 +22,10 @@
 // (sheet.mjs --against): git's change list, the comparison of two pictures over two sizes,
 // the noise rule, the order and the page. And lib/record-lines.mjs, the records a child
 // process writes among its lines, which runShards reads. And what becomes of a picture and
-// its SVG: lib/shot-policy.mjs's decisions, and lib/shot-apply.mjs's writing of them, in a
-// scratch folder and a scratch repository.
+// its SVG: lib/shot-policy.mjs's decisions, with a picture's allowances and a review's
+// decisions, and lib/shot-apply.mjs's writing of them, in a scratch folder and a scratch
+// repository. And lib/shot-manifest.mjs, the manifest those come from: its text, what it
+// refuses, and its saving.
 //
 // Runs with a bare `node --test test/svgshot.test.mjs`: no tree, no build.
 
@@ -51,8 +53,25 @@ import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
 import { decodePng, encodePng } from "../scripts/lib/png.mjs";
 import { parseRecord, readRecords, recordLine } from "../scripts/lib/record-lines.mjs";
 import { applyPicture, applySvg, dropPicture, restorePictures } from "../scripts/lib/shot-apply.mjs";
-import { decidePicture, decideSvg, SIZE_SLACK, SVG_FAITHFUL } from "../scripts/lib/shot-policy.mjs";
-import { changeMap, compareImages, withinNoise } from "../scripts/lib/shot-change.mjs";
+import {
+  cleanupResets,
+  decidePicture,
+  decideSvg,
+  pngRule,
+  SIZE_SLACK,
+  SVG_FAITHFUL,
+  svgRule,
+} from "../scripts/lib/shot-policy.mjs";
+import {
+  earlierPngDecision,
+  hashOf,
+  manifestText,
+  openManifest,
+  parseManifest,
+  pngDecision,
+  svgDecision,
+} from "../scripts/lib/shot-manifest.mjs";
+import { changeMap, compareImages, NOISE_LEVELS, NOISE_SHARE, withinNoise } from "../scripts/lib/shot-change.mjs";
 import {
   changedPictures,
   openRevision,
@@ -1930,6 +1949,8 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
       write: OTHER,
       size: { w: 100, h: 50 },
       dark: null,
+      by: "rule",
+      earlier: null,
     });
     assert.deepEqual(decide(NEAR, "dark", null, DARK, OTHER).state, "restored");
   });
@@ -1941,6 +1962,8 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
       write: null,
       size: { w: 100, h: 50 },
       dark: null,
+      by: "rule",
+      earlier: null,
     });
     // of another size, within the theme's slack: named, then judged
     const wider = decide(SHIFTED, "light", DARK);
@@ -1955,10 +1978,127 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
     assert.equal(decide(NEAR, "light", null, null, DARK).state, "noise");
   });
 
-  test("an SVG is faithful below the bar, the default one or another", () => {
-    assert.equal(decideSvg({ pct96: SVG_FAITHFUL - 0.001 }).faithful, true);
+  test("an SVG is faithful below the bar, the default one or a picture's own", () => {
+    assert.deepEqual(decideSvg({ pct96: SVG_FAITHFUL - 0.001 }), { faithful: true, by: "rule" });
     assert.equal(decideSvg({ pct96: SVG_FAITHFUL }).faithful, false);
-    assert.equal(decideSvg({ pct96: 0.3 }, { bar: 0.35 }).faithful, true);
+    const wider = { svg: { bar: { share: 0.35 } } };
+    assert.equal(decideSvg({ pct96: 0.3 }, { entry: wider }).faithful, true);
+    // a bar at another level counts the pixels off at that level
+    const at32 = { svg: { bar: { levels: 32, share: 1 } } };
+    assert.equal(decideSvg({ pct96: 0, pct32: 1.5 }, { entry: at32 }).faithful, false);
+    assert.equal(decideSvg({ pct96: 5, pct32: 0.5 }, { entry: at32 }).faithful, true);
+    assert.deepEqual(svgRule(null), { levels: 96, share: SVG_FAITHFUL });
+  });
+
+  test("a review's decision takes the rule's place for the bytes it was made on, and no others", () => {
+    const decision = (keep, png) => ({ png: { decision: { keep, capture: hashOf(png) } } });
+    // "old": within noise of what it would go back to; "new": unlike everything
+    assert.equal(
+      decidePicture({
+        png: OTHER,
+        theme: "dark",
+        dark: null,
+        revision: DARK,
+        disk: DARK,
+        near,
+        entry: decision("old", OTHER),
+      }).state,
+      "noise",
+    );
+    const old = decidePicture({
+      png: OTHER,
+      theme: "dark",
+      dark: null,
+      revision: DARK,
+      disk: NEAR,
+      near,
+      entry: decision("old", OTHER),
+    });
+    assert.deepEqual([old.state, old.write, old.by], ["restored", DARK, "decision"]);
+    const fresh = decidePicture({
+      png: NEAR,
+      theme: "dark",
+      dark: null,
+      revision: DARK,
+      disk: DARK,
+      near,
+      entry: decision("new", NEAR),
+    });
+    assert.deepEqual([fresh.state, fresh.write, fresh.by], ["updated", NEAR, "decision"]);
+    // a light picture kept "new" is kept even with the dark one's pixels; "old" is still found to be the dark one
+    assert.equal(
+      decidePicture({
+        png: NEAR,
+        theme: "light",
+        dark: DARK,
+        revision: null,
+        disk: null,
+        near,
+        entry: decision("new", NEAR),
+      }).state,
+      "new",
+    );
+    assert.equal(
+      decidePicture({
+        png: NEAR,
+        theme: "light",
+        dark: DARK,
+        revision: null,
+        disk: null,
+        near,
+        entry: decision("old", NEAR),
+      }).state,
+      "dark",
+    );
+    // a decision about other bytes: judged by the rule, and named
+    const other = decidePicture({
+      png: NEAR,
+      theme: "dark",
+      dark: null,
+      revision: DARK,
+      disk: DARK,
+      near,
+      entry: decision("new", OTHER),
+    });
+    assert.deepEqual([other.state, other.by, other.earlier], ["noise", "rule", "new"]);
+    assert.equal(pngDecision(decision("old", OTHER), OTHER), "old");
+    assert.equal(pngDecision(decision("old", OTHER), NEAR), null);
+    assert.equal(earlierPngDecision(decision("old", OTHER), NEAR), "old");
+    assert.equal(earlierPngDecision(decision("old", OTHER), OTHER), null);
+    assert.equal(pngDecision(decision("old", OTHER), null), null);
+    // an SVG's: the SVG's text, line endings aside, against the same PNG
+    const svgEntry = { svg: { decision: { accept: true, svg: hashOf("<svg/>"), png: hashOf(OTHER) } } };
+    assert.equal(svgDecision(svgEntry, "<svg/>", OTHER), true);
+    assert.equal(svgDecision(svgEntry, "<svg/>", NEAR), null);
+    assert.equal(svgDecision(svgEntry, "<svg />", OTHER), null);
+    assert.deepEqual(decideSvg({ pct96: 50 }, { entry: svgEntry, svg: "<svg/>", png: OTHER }), {
+      faithful: true,
+      by: "decision",
+    });
+    assert.deepEqual(decideSvg({ pct96: 50 }, { entry: svgEntry, svg: "<svg/>", png: NEAR }), {
+      faithful: false,
+      by: "rule",
+    });
+  });
+
+  test("an allowance changes the noise rule the picture is judged with", () => {
+    assert.deepEqual(pngRule(null), { levels: NOISE_LEVELS, share: NOISE_SHARE, rects: [] });
+    const entry = { png: { noise: { levels: 40, share: 1.5 }, ignore: [[1, 2, 30, 40]] } };
+    assert.deepEqual(pngRule(entry), { levels: 40, share: 0.015, rects: [{ x0: 1, y0: 2, x1: 30, y1: 40 }] });
+    // decidePicture hands the rule to near
+    const seen = [];
+    const spy = (_a, _b, rule) => {
+      seen.push(rule);
+      return false;
+    };
+    decidePicture({ png: OTHER, theme: "dark", dark: null, revision: DARK, disk: DARK, near: spy, entry });
+    assert.ok(seen.length > 0 && seen.every((r) => r.levels === 40 && r.rects.length === 1));
+    // --cleanup: the decision about the file's bytes, else the rule
+    const rule = (_a, _b, r) => r.levels === 40;
+    assert.equal(cleanupResets({ before: DARK, after: OTHER, near: rule, entry }), true);
+    assert.equal(cleanupResets({ before: DARK, after: OTHER, near: rule, entry: null }), false);
+    const kept = { ...entry, png: { ...entry.png, decision: { keep: "new", capture: hashOf(OTHER) } } };
+    assert.equal(cleanupResets({ before: DARK, after: OTHER, near: rule, entry: kept }), false);
   });
 
   test("writes a verdict into the folder, and removes what is not kept", (t) => {
@@ -2042,5 +2182,116 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
     });
     assert.equal(git("status", "--porcelain").toString(), "");
     assert.throws(() => restorePictures(docs, rev, ["none.png"]), /has no none\.png/);
+  });
+});
+
+describe("the screenshot manifest (shot-manifest.mjs)", () => {
+  const H = "a".repeat(40);
+  const full = {
+    format: 1,
+    pictures: {
+      "IDE/Images/B.png": { build: 1010 },
+      "IDE/Images/A.light.png": {
+        svg: { decision: { accept: true, svg: H, png: H }, bar: { share: 0.35 } },
+        png: { decision: { keep: "old", capture: H }, ignore: [[812, 40, 900, 64]], noise: { share: 0.5 } },
+        build: 1501,
+      },
+    },
+  };
+
+  test("is written by path, each entry's keys in order, a rectangle on one line, and read back the same", () => {
+    const text = manifestText(full);
+    assert.equal(
+      text,
+      `{
+  "format": 1,
+  "pictures": {
+    "IDE/Images/A.light.png": {
+      "build": 1501,
+      "png": {
+        "noise": {
+          "share": 0.5
+        },
+        "ignore": [
+          [812, 40, 900, 64]
+        ],
+        "decision": {
+          "keep": "old",
+          "capture": "${H}"
+        }
+      },
+      "svg": {
+        "bar": {
+          "share": 0.35
+        },
+        "decision": {
+          "accept": true,
+          "svg": "${H}",
+          "png": "${H}"
+        }
+      }
+    },
+    "IDE/Images/B.png": {
+      "build": 1010
+    }
+  }
+}
+`,
+    );
+    assert.equal(manifestText(parseManifest(text)), text);
+    assert.equal(manifestText(parseManifest(text.replace(/\n/g, "\r\n"))), text);
+    // an entry left with nothing in it goes
+    assert.equal(
+      manifestText({ format: 1, pictures: { "a.png": { png: { ignore: [] } } } }),
+      manifestText({ format: 1, pictures: {} }),
+    );
+  });
+
+  test("refuses what it cannot read, naming the key", () => {
+    const bad = (pictures, why) =>
+      assert.throws(() => parseManifest(JSON.stringify({ format: 1, pictures }), "m"), why);
+    assert.throws(() => parseManifest("{", "m"), /m is not JSON/);
+    assert.throws(() => parseManifest('{"format": 2, "pictures": {}}', "m"), /m is of format 2, not 1/);
+    assert.throws(() => parseManifest('{"format": 1, "extra": 0}', "m"), /m has an unknown key, extra/);
+    bad({ "a\\b.png": {} }, /not a path under docs with forward slashes/);
+    bad({ "../a.png": {} }, /not a path under docs/);
+    bad({ "a.jpg": {} }, /not a path under docs/);
+    bad({ "a.png": { build: 0 } }, /m's a\.png\.build is not a build number/);
+    bad({ "a.png": { png: { noise: { levels: 300 } } } }, /png\.noise\.levels/);
+    bad({ "a.png": { png: { noise: { share: 101 } } } }, /png\.noise\.share is not a percentage/);
+    bad({ "a.png": { png: { ignore: [[5, 0, 5, 9]] } } }, /png\.ignore\[0\] is not \[x0, y0, x1, y1\]/);
+    bad({ "a.png": { png: { decision: { keep: "both", capture: H } } } }, /png\.decision\.keep/);
+    bad({ "a.png": { png: { decision: { keep: "old", capture: "x" } } } }, /png\.decision\.capture is not a SHA-1/);
+    bad({ "a.png": { svg: { bar: { levels: 50 } } } }, /svg\.bar\.levels is not one of 8, 32, 96/);
+    bad({ "a.png": { svg: { ignore: [] } } }, /svg has an unknown key, ignore/);
+    bad({ "a.png": { svg: { decision: { accept: "yes", svg: H, png: H } } } }, /svg\.decision\.accept/);
+  });
+
+  test("records a build, and is saved only when what it holds changes", (t) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shot-manifest-"));
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+    const file = path.join(dir, "manifest.json");
+    const m = openManifest(file);
+    assert.equal(m.entry("a.png"), null);
+    assert.equal(m.save(), true); // a new file, with no pictures
+    assert.equal(m.save(), false);
+    m.setBuild("a.png", 1010);
+    m.setBuild("b.png", null); // a build that could not be read records nothing
+    assert.equal(m.save(), true);
+    assert.deepEqual(openManifest(file).entry("a.png"), { build: 1010 });
+    // a CRLF checkout of the same text is the same
+    fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/\n/g, "\r\n"));
+    const again = openManifest(file);
+    assert.equal(again.save(), false);
+    again.clearBuild("a.png");
+    again.clearBuild("c.png");
+    assert.equal(again.save(), true);
+    assert.equal(fs.readFileSync(file, "utf8"), manifestText({ format: 1, pictures: {} }));
+    assert.deepEqual(fs.readdirSync(dir), ["manifest.json"]);
+  });
+
+  test("the repository's own manifest reads", () => {
+    const m = openManifest();
+    assert.equal(m.text(), fs.readFileSync(m.file, "utf8").replace(/\r\n/g, "\n"));
   });
 });

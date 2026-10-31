@@ -219,10 +219,11 @@ export function svgFate(revision, disk) {
 /**
  * Sorts the pictures git reports changed against a revision (`pictures`, [{out, status}] as
  * changedPictures gives them) into what shoot_docs.mjs --cleanup does with each: `before(out)`
- * the revision's PNG, `after(out)` the file's, `near(a, b)` the noise rule over two PNG files.
- * Returns {reset, real, added, deleted, unreadable}, each a list of paths but `unreadable`,
- * [{out, error}]: a modified picture within noise of the revision's is reset, any other is a
- * real change, and an added or deleted one is a real change that is not compared.
+ * the revision's PNG, `after(out)` the file's, `near(a, b, out)` whether the file goes back to
+ * the revision's (the noise rule over two PNG files, and the picture's entry in the manifest:
+ * shot-policy.mjs's cleanupResets). Returns {reset, real, added, deleted, unreadable}, each a
+ * list of paths but `unreadable`, [{out, error}]: a modified picture near the revision's is
+ * reset, any other is a real change, and an added or deleted one is a real change that is not compared.
  */
 export function planCleanup(pictures, before, after, near) {
   const plan = { reset: [], real: [], added: [], deleted: [], unreadable: [] };
@@ -232,7 +233,7 @@ export function planCleanup(pictures, before, after, near) {
       continue;
     }
     try {
-      plan[near(before(out), after(out)) ? "reset" : "real"].push(out);
+      plan[near(before(out), after(out), out) ? "reset" : "real"].push(out);
     } catch (e) {
       plan.unreadable.push({ out, error: e.message });
     }

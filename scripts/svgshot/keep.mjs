@@ -3,7 +3,7 @@
 // enough is decideSvg's (lib/shot-policy.mjs), and the SVG is written by applySvg
 // (lib/shot-apply.mjs).
 
-import { decideSvg } from "../lib/shot-policy.mjs";
+import { decideSvg, svgRule } from "../lib/shot-policy.mjs";
 import { diffSvg, svgClip } from "./diff.mjs";
 
 /**
@@ -19,10 +19,11 @@ export const holdsUserName = (svg, user) =>
 
 /**
  * `svg` against the PNG it was taken with, in a page of `browser`:
- * {diff, faithful, measures}, `faithful` decideSvg's verdict and `measures` the line
- * that says how far off it is and what the converter did not draw (`stats.unsupported`).
+ * {diff, faithful, by, measures}, `faithful` and `by` decideSvg's verdict, with the
+ * picture's `entry` in the manifest (or null), and `measures` the line that says how far
+ * off it is and what the converter did not draw (`stats.unsupported`).
  */
-export async function judgeSvg(browser, svg, png, stats) {
+export async function judgeSvg(browser, svg, png, stats, entry = null) {
   const page = await browser.newPage();
   let diff;
   try {
@@ -32,8 +33,14 @@ export async function judgeSvg(browser, svg, png, stats) {
     await page.close();
   }
   const unsupported = Object.entries(stats.unsupported).map(([k, n]) => `${k} x${n}`);
+  // A picture with a bar of its own says so, with the share at that bar's levels.
+  const rule = svgRule(entry);
+  const own = entry?.svg?.bar
+    ? `; its own bar is ${rule.share}% at ${rule.levels} levels, and ${diff.stats[`pct${rule.levels}`]}% are off by that`
+    : "";
   const measures =
-    `${diff.stats.pct32}% of pixels differ, ${diff.stats.pct96}% strongly` +
+    `${diff.stats.pct32}% of pixels differ, ${diff.stats.pct96}% strongly${own}` +
     `${unsupported.length ? `; not drawn: ${unsupported.join(", ")}` : ""}`;
-  return { diff, faithful: decideSvg(diff.stats).faithful, measures };
+  const { faithful, by } = decideSvg(diff.stats, { entry, svg, png });
+  return { diff, faithful, by, measures };
 }

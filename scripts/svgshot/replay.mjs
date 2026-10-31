@@ -21,6 +21,7 @@ import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
 import { applySvg, svgOf } from "../lib/shot-apply.mjs";
+import { MANIFEST, openManifest } from "../lib/shot-manifest.mjs";
 import { SVG_FAITHFUL } from "../lib/shot-policy.mjs";
 import { judgeSvg } from "./keep.mjs";
 import {
@@ -45,6 +46,10 @@ as shoot_docs.mjs does: written when no more than ${SVG_FAITHFUL}% of its pixels
 are far off the PNG's and its bytes differ from the file's, else not written and
 an older one removed. Takes no picture and starts no IDE; needs Python with
 fontTools, as --svg does.
+
+A picture's entry in test/shots/manifest.json changes its bar, and a review's
+decision about the same SVG against the same PNG takes the bar's place, as in
+shoot_docs.mjs. The manifest is read only for the default --out.
 
 A picture whose PNG is not the one its bundle was taken with, whose bundle is of
 another format than the converter reads, whose bundle lacks a computed style the
@@ -97,6 +102,16 @@ const jobs = withUsageError(() =>
 const bundlesRoot = path.resolve(values.bundles ?? path.join(REPO_ROOT, ".svgshot-bundles"));
 const outRoot = path.resolve(values.out ?? path.join(REPO_ROOT, "docs"));
 const diffsRoot = values.diffs === undefined ? null : path.resolve(values.diffs);
+// The manifest's entries are for the pictures under docs/: another folder is judged without them.
+let manifest = null;
+if (outRoot === path.resolve(REPO_ROOT, "docs")) {
+  try {
+    manifest = openManifest(MANIFEST);
+  } catch (e) {
+    console.error(`replay: ${e.message}`);
+    process.exit(2);
+  }
+}
 if (!existsSync(bundlesRoot)) {
   console.error(`replay: no bundle cache at ${bundlesRoot}; shoot_docs.mjs --svg writes it`);
   process.exit(2);
@@ -128,17 +143,25 @@ async function replay(out, browser) {
     return;
   }
   const { png, svg, stats } = drawn;
+  const entry = manifest?.entry(out) ?? null;
   // The same bytes as the file, beside the PNG its bundle was taken with: the bar passed this
-  // SVG against that PNG when it was written, and would again. Most of a replay is this.
-  if (!values.recheck && existsSync(svgFile) && readFileSync(svgFile, "utf8").replace(/\r\n/g, "\n") === svg) {
+  // SVG against that PNG when it was written, and would again. Most of a replay is this. A
+  // picture whose entry names its SVG is judged again: its bar or its decision may have changed.
+  if (
+    !values.recheck &&
+    !entry?.svg &&
+    existsSync(svgFile) &&
+    readFileSync(svgFile, "utf8").replace(/\r\n/g, "\n") === svg
+  ) {
     say(out, "unchanged (the same SVG as the file)");
     counts.unchanged = (counts.unchanged ?? 0) + 1;
     return;
   }
-  const { diff, faithful, measures } = await judgeSvg(browser, svg, png, stats);
+  const { diff, faithful, by, measures } = await judgeSvg(browser, svg, png, stats, entry);
   if (diffsRoot) writeJudged(diffsRoot, out, diff);
   const state = applySvg(outRoot, svgOf(out), faithful ? svg : null);
-  say(out, faithful ? `${state} (${measures})` : `${state}, the PNG is kept (${measures})`);
+  const how = by === "decision" ? `; ${faithful ? "accepted" : "refused"} by a review` : "";
+  say(out, faithful ? `${state} (${measures}${how})` : `${state}, the PNG is kept (${measures}${how})`);
   counts[state] = (counts[state] ?? 0) + 1;
 }
 

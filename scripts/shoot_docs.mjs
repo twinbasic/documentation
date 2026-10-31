@@ -166,7 +166,8 @@ import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.
 import { inRects, withinNoise } from "./lib/shot-change.mjs";
 import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
 import { applyPicture, applySvg, dropPicture, restorePictures, svgOf } from "./lib/shot-apply.mjs";
-import { decidePicture, SVG_FAITHFUL } from "./lib/shot-policy.mjs";
+import { cleanupResets, decidePicture, pngRule, SVG_FAITHFUL } from "./lib/shot-policy.mjs";
+import { MANIFEST, openManifest } from "./lib/shot-manifest.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
@@ -194,7 +195,7 @@ import { stageProject, unpackProject } from "./lib/tb-project.mjs";
 import { holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { guard, presentKeys, press, serverRequests } from "../test/ide/building-kit.mjs";
 import { checkHarness } from "./lib/harness-settings.mjs";
-import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
+import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
 import {
   answerMessageBox,
@@ -299,6 +300,12 @@ shows pages from docs/_site, so run build.bat first for those.
 A picture is refused, and the run fails, when the visible text of the page it
 was taken from, or a text of the program window it is of, holds the Windows user
 name.
+
+With the default --out, test/shots/manifest.json is read and written: each
+picture written gets the build it was taken on there, and a picture's entry can
+change its noise rule (levels, share, rectangles left out) and its SVG's bar,
+and hold a review's decision about one capture, or one SVG against one PNG,
+which takes the rule's place for those bytes only (--cleanup too).
 
   --only <regex>   only the pictures whose path under the output folder
                    (IDE/Menu/Images/Menu_File.png, or its .light.png) matches;
@@ -426,6 +433,18 @@ if (bundlesRoot) useSubsetCache(path.join(bundlesRoot, "subsets"));
 // none with --against-disk), and the one --cleanup puts pictures back to.
 const AGAINST = values.against ?? "HEAD";
 
+// The manifest (lib/shot-manifest.mjs): its entries are for the pictures under docs/, so a run
+// into another folder neither reads it nor writes it.
+let manifest = null;
+if (outRoot === path.resolve(DEFAULT_OUT)) {
+  try {
+    manifest = openManifest(MANIFEST);
+  } catch (e) {
+    die(2, e.message);
+  }
+}
+const entryOf = (out) => manifest?.entry(out) ?? null;
+
 // --cleanup: no IDE. Every PNG git reports modified against the revision that is within a
 // capture's noise of the revision's goes back to the revision's bytes, with its SVG.
 if (values.cleanup) {
@@ -453,7 +472,13 @@ if (values.cleanup) {
     pictures,
     (out) => before.get(out),
     (out) => readFileSync(path.join(outRoot, out)),
-    (a, b) => withinNoise(decoded(a, AGAINST), decoded(b, "the working tree")),
+    (a, b, out) =>
+      cleanupResets({
+        before: a,
+        after: b,
+        entry: entryOf(out),
+        near: (x, y, rule) => withinNoise(decoded(x, AGAINST), decoded(y, "the working tree"), rule),
+      }),
   );
   const verb = values.dryRun ? "would be put back" : "put back";
   let fates;
@@ -488,6 +513,8 @@ try {
 }
 const ide = findIde(values.ide || undefined);
 if (unsupportedIde(ide)) die(2, unsupportedIde(ide));
+// The build the manifest records for each picture written, or null when it cannot be read.
+const BUILD = buildNumber(ide);
 if (!ide || !existsSync(ide)) {
   die(
     2,
@@ -636,8 +663,18 @@ async function cutoutOff(conn) {
 // it, a list of those there are (or one, or null), which `capture` prefers the version of a
 // picture that equals; `editedOriginal` the module of the sample that a shot has replaced in
 // the page, to put back; for a light picture, `prefer` the dark picture when no light file is
-// there yet; with --svg, `svg` the SVG of the picture `capture` returned last.
-const newShotState = (name) => ({ name, out: null, reference: null, prefer: null, editedOriginal: null, svg: null });
+// there yet; `ignore` the rectangles the picture's entry in the manifest leaves out of its
+// comparison (pngRule), which `capture` leaves out as it does the shot's unsteady regions;
+// with --svg, `svg` the SVG of the picture `capture` returned last.
+const newShotState = (name) => ({
+  name,
+  out: null,
+  reference: null,
+  prefer: null,
+  ignore: null,
+  editedOriginal: null,
+  svg: null,
+});
 
 // A line of output, prefixed with the setup it is from (they run at once).
 const say = (name, text) => console.log(`[${name}] ${text}`);
@@ -661,8 +698,9 @@ function writeDiff(name, out, before, after, { suffix = "", labels } = {}) {
 
 // Whether two captures (PNG files) are the same picture but for a capture's noise
 // (withinNoise, scripts/lib/shot-change.mjs, which holds the rule and what it rests on).
-// The pixels inside `rects` (unsteadyRects) are left out.
-const nearly = (a, b, rects = []) => withinNoise(decodePng(a), decodePng(b), { rects });
+// `rule` is withinNoise's: its limits, and `rects` the pixels left out (unsteadyRects, or a
+// picture's entry in the manifest, pngRule).
+const nearly = (a, b, rule = {}) => withinNoise(decodePng(a), decodePng(b), rule);
 
 // Whether two captures are the same picture outside `rects`: byte for byte when there are none.
 function same(a, b, rects) {
@@ -780,7 +818,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     // Outside its unsteady regions a capture is compared byte for byte, as everywhere else;
     // one that matches the file or the dark picture there keeps that picture's bytes, so a
     // pixel that flickers does not rewrite the file on every run.
-    const masks = await unsteadyRects(conn, clip, unsteady);
+    const masks = [...(await unsteadyRects(conn, clip, unsteady)), ...(conn.shot.ignore ?? [])];
     const t0 = Date.now();
     let last = null;
     let agreed = null;
@@ -790,7 +828,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
       const png = Buffer.from(data, "base64");
       const equal = wants.find((w) => same(w, png, masks));
       if (equal) return await picked(equal);
-      if (prefer && i === 0 && !nearly(prefer, png, masks)) prefer = null;
+      if (prefer && i === 0 && !nearly(prefer, png, { rects: masks })) prefer = null;
       if (prefer && same(prefer, png, masks)) return await picked(prefer);
       if (last && !same(last, png, masks) && conn.shot.out) {
         writeDiff(conn.shot.name, conn.shot.out, last, png, {
@@ -7838,13 +7876,13 @@ function ccShot(name, parts, { before = null, after = null } = {}) {
       try {
         if (before) await before(c);
         // the parts are not the picture: capture keeps the first two captures that agree
-        const { reference, prefer } = c.shot;
-        Object.assign(c.shot, { reference: null, prefer: null });
+        const { reference, prefer, ignore } = c.shot;
+        Object.assign(c.shot, { reference: null, prefer: null, ignore: null });
         let made;
         try {
           made = await parts(c);
         } finally {
-          Object.assign(c.shot, { reference, prefer });
+          Object.assign(c.shot, { reference, prefer, ignore });
         }
         try {
           const { box } = await composite(
@@ -9234,8 +9272,8 @@ const codePasteAsCommentShot = {
   setup: "code-chapter",
   async take({ c }) {
     await chapterTabs(c, ["Helpers.twin"]);
-    const { reference, prefer } = c.shot;
-    Object.assign(c.shot, { reference: null, prefer: null });
+    const { reference, prefer, ignore } = c.shot;
+    Object.assign(c.shot, { reference: null, prefer: null, ignore: null });
     let made;
     try {
       made = await editedThenUndone(c, async () => {
@@ -9268,7 +9306,7 @@ const codePasteAsCommentShot = {
         return [before, { ...after, column: 1 }];
       });
     } finally {
-      Object.assign(c.shot, { reference, prefer });
+      Object.assign(c.shot, { reference, prefer, ignore });
     }
     try {
       const { box } = await composite(c, made, [
@@ -13308,9 +13346,11 @@ const count = (theme, state) => {
 // removed, since the page shows X.png in both themes then; one more than SIZE_SLACK off its
 // size fails. A picture within a capture's noise of the revision's (--against) leaves the file
 // as the revision has it, with its SVG (pictureFate, lib/shot-revision.mjs); one within a
-// capture's noise of its file is not written either. The verdict is written by applyPicture
-// (lib/shot-apply.mjs). Returns whether the picture was written, "restored" for one put back
-// as the revision has it, or null for a light picture that is the dark one.
+// capture's noise of its file is not written either. The picture's entry in the manifest
+// can change the noise rule, and a review's decision about these bytes takes its place. The
+// verdict is written by applyPicture (lib/shot-apply.mjs), and the manifest records the
+// build of a capture written. Returns whether the picture was written, "restored" for one
+// put back as the revision has it, or null for a light picture that is the dark one.
 function keep(name, out, png, theme, dark, scale = SCALE) {
   const themed = themedOut(out, theme);
   const file = path.join(outRoot, themed);
@@ -13319,7 +13359,21 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
   // from the repository's over several runs, each within noise of the file before it.
   const was = existsSync(file) ? readFileSync(file) : null;
   const atRevision = revision ? revision.bytes(themed) : null;
-  const fate = decidePicture({ png, theme, dark, revision: atRevision, disk: was, near: nearly });
+  const fate = decidePicture({
+    png,
+    theme,
+    dark,
+    revision: atRevision,
+    disk: was,
+    near: nearly,
+    entry: entryOf(themed),
+  });
+  const review =
+    fate.by === "decision"
+      ? "; as a review decided"
+      : fate.earlier
+        ? `; a review decided "${fate.earlier}" about another capture, and this one is judged by the rule`
+        : "";
   const { w, h } = fate.size;
   if (fate.state === "too-far") {
     writeDiff(name, themed, dark, png, {
@@ -13337,10 +13391,11 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
   }
   if (fate.state === "dark") {
     const { removed } = applyPicture(outRoot, themed, fate, revision);
+    if (removed) recordBuild(themed, null);
     count(theme, "the same as the dark picture");
     say(
       name,
-      `${themed}: the dark picture's pixels, but for a capture's noise: ${removed ? "removed" : "not written"}`,
+      `${themed}: the dark picture's pixels, but for a capture's noise: ${removed ? "removed" : "not written"}${review}`,
     );
     return null;
   }
@@ -13364,10 +13419,11 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
   // A picture put back as the revision has it takes the revision's SVG with it, or loses its
   // SVG when the revision has none, so that the pair stays matched.
   const applied = applyPicture(outRoot, themed, fate, revision);
+  if (fate.state === "new" || fate.state === "updated") recordBuild(themed, BUILD);
   count(theme, state);
   say(
     name,
-    `${themed}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${Math.round(w / scale)}" height="${Math.round(h / scale)}"}${other})`,
+    `${themed}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${Math.round(w / scale)}" height="${Math.round(h / scale)}"}${other}${review})`,
   );
   if (fate.state === "restored") {
     const text = {
@@ -13382,10 +13438,22 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
   return fate.write !== null;
 }
 
+// The manifest's record of the build a picture's file was taken on: `build` for a capture
+// written, null for a file removed. A picture whose file stays (unchanged, noise, restored)
+// keeps the build it has. Saved at once: the jobs share the manifest, and keep is synchronous.
+function recordBuild(out, build) {
+  if (!manifest) return;
+  if (build === null) manifest.clearBuild(out);
+  else manifest.setBuild(out, build);
+  manifest.save();
+}
+
 // A `once` picture has no light file: one left from before is removed, and its SVG.
 function dropLight(name, out) {
-  if (dropPicture(outRoot, themedOut(out, "light"), bundlesRoot))
+  if (dropPicture(outRoot, themedOut(out, "light"), bundlesRoot)) {
+    recordBuild(themedOut(out, "light"), null);
     say(name, `${themedOut(out, "light")}: removed (the picture is taken once, in no theme)`);
+  }
 }
 
 // With --svg: one headless browser for the whole run, which renders each SVG to
@@ -13423,7 +13491,8 @@ async function keepSvg(name, out, png, picture, written) {
   const pngFile = path.join(outRoot, out);
   if (bundlesRoot) writeBundle(bundlesRoot, out, bundle, existsSync(pngFile) ? readFileSync(pngFile) : png, misses);
   svgBrowser ??= launchBrowser();
-  const { diff, faithful, measures } = await judgeSvg(await svgBrowser, svg, png, stats);
+  const { diff, faithful, by, measures } = await judgeSvg(await svgBrowser, svg, png, stats, entryOf(out));
+  const review = by === "decision" ? `; ${faithful ? "accepted" : "refused"} by a review` : "";
   if (diffsRoot) {
     mkdirSync(diffsRoot, { recursive: true });
     writeFileSync(
@@ -13434,7 +13503,7 @@ async function keepSvg(name, out, png, picture, written) {
   const bytes = Buffer.byteLength(svg);
   svgResults.push({ out: svgOut, bytes, png: png.length, faithful, ...diff.stats });
   if (!faithful) {
-    drop(measures);
+    drop(`${measures}${review}`);
     // To see what went wrong, the SVG goes beside its difference map.
     if (diffsRoot)
       writeFileSync(path.join(diffsRoot, `${out.replace(/[\\/]/g, "__").replace(/\.png$/i, "")}.svg`), svg);
@@ -13443,7 +13512,7 @@ async function keepSvg(name, out, png, picture, written) {
   const state = applySvg(outRoot, svgOut, svg);
   say(
     name,
-    `${svgOut}: ${state} (${(bytes / 1024).toFixed(0)} KB against the PNG's ${(png.length / 1024).toFixed(0)} KB; ${measures})`,
+    `${svgOut}: ${state} (${(bytes / 1024).toFixed(0)} KB against the PNG's ${(png.length / 1024).toFixed(0)} KB; ${measures}${review})`,
   );
 }
 
@@ -13550,6 +13619,7 @@ async function runJob(job) {
           theme === "dark" ? null : (darks.get(shot.out) ?? (existsSync(darkFile) ? readFileSync(darkFile) : null));
         state.reference = [revision?.bytes(out), existsSync(file) ? readFileSync(file) : null].filter(Boolean);
         state.prefer = dark;
+        state.ignore = pngRule(entryOf(out)).rects;
         state.out = out;
         state.svg = null;
         try {
@@ -13570,6 +13640,7 @@ async function runJob(job) {
         } finally {
           state.reference = null;
           state.prefer = null;
+          state.ignore = null;
           state.out = null;
         }
       }
