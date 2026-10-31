@@ -168,6 +168,21 @@ The tool needs Python with fontTools, as `--svg` does, for a cut that is not kep
 
 Exit codes: **0** every picture was drawn again; **1** a picture needs a retake, could not be drawn, or its SVG holds the Windows user name; **2** the tool could not run: a refused command line, no bundle folder, no browser, or a crash.
 
+## sheet.mjs
+{: #svg-sheet }
+
+    node scripts/svgshot/sheet.mjs --out <dir> [--docs <dir>] [--bundles <dir>] [--only <regex>] [--all] [--jobs N]
+
+Writes a page that shows how far each picture's SVG is from its PNG, to look at in a browser. By default it shows every picture under `docs` that has no SVG beside it, which is the list of pictures the SVG converter still draws wrongly. The page is `index.html` in the folder `--out` names, with the pictures it shows in its `pictures` folder, so it opens from the disk with no server.
+
+Each picture that has a bundle is drawn again from it, with the converter as it is now, as [`replay.mjs`](#replay) draws it, and compared with its PNG in the same way: the share of its pixels more than 96 grey levels off the PNG's, with a shift of one pixel allowed. Those pictures come first, the worst first, each with its path, theme, size, how far off it is, and the PNG, the SVG's render and a map of the differences side by side. Selecting a picture opens it at full size. A picture whose PNG has changed since its bundle was saved is drawn all the same, with a note. The pictures with no bundle follow, as small pictures.
+
+`--all` shows every picture, also those that have an SVG: a picture with a bundle is drawn again from it, and one without a bundle has its SVG file compared as it is. `--only` takes the pictures whose path under `docs` matches a regular expression, a light picture's path ending in `.light.png`. `--docs` is the folder the pictures are in, `docs` by default, and `--bundles` the bundle folder, `.svgshot-bundles` by default, where new font cuts are kept as `replay.mjs` keeps them. `--jobs` is how many processes draw at once, by default half the logical processors and at most 8. The tool starts no IDE and writes nothing under `docs`.
+
+The pictures on the page are drawn without the check for the Windows user name, so the page and its pictures can show it. So the folder may not be under `docs`, nor inside a git working folder at a path git does not ignore; a folder that already holds files must hold an earlier page of this tool, which is replaced.
+
+Exit codes: **0** the page was written; **1** the page was written, but a picture could not be drawn, and is listed with the reason; **2** the tool could not run: a refused command line, a refused folder, no bundle folder, no browser, or a crash.
+
 ## imagestrip
 {: #imagestrip }
 

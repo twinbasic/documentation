@@ -921,6 +921,19 @@ the PNG was just captured from, and the build shows it in place of the PNG
   which is what the filter's own merge paints. One SVG serves screen and book, since the
   bake is exact. Blurred shadows stay bitmaps in
   the PDF, which loses nothing.
+- **The sheet of the pictures with no SVG** (owner): `scripts/svgshot/sheet.mjs --out <dir>`
+  writes `index.html` and a `pictures/` folder, openable from `file://`: each PNG with no SVG
+  beside it (`--all`: every PNG) that has a bundle is drawn again and judged as replay does,
+  worst first, PNG, render and difference map side by side; then the ones with no bundle as
+  thumbnails. A bundle whose PNG has changed is drawn anyway, with a note (`redraw`'s `stale`).
+  The sheet is for the owner alone, so it is drawn with `checkUserName: false` and may show the
+  user name (owner); `outputRefusal` keeps it out of `docs/` and out of any path git does not
+  ignore, and an existing folder must hold an earlier sheet. What it shares with replay is
+  `scripts/svgshot/redraw.mjs` (`redraw`, `writeJudged`, `runShards`/`inBrowser`, the
+  `judgedFiles` names: `<slug>.svg-diff.png` and `<slug>.svg` as `--diffs` names them).
+  `shoot_docs.mjs --diffs` is to call `sheetHtml` over its diffs folder in a later commit.
+  On BETA 1033's retake: 40 PNGs with no SVG, 17 with a bundle, in about 7 s; `--all`, 553
+  pictures, about a minute.
 - **The bar** (`SVG_FAITHFUL` in `shoot_docs.mjs`): an SVG with more than 0.25% of its pixels 96
   grey levels or more off is not written, and an older one is removed. Anything not drawn falls
   to it.

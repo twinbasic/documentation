@@ -14,7 +14,10 @@
 // inlineSvgsIn, which lists the ones to read in the page, and scopeIds, which keeps the ids of
 // two icons apart in one picture; the reading of an <svg> itself is in the page and is
 // measured by the bench pages. And colour-filter.mjs, which bakes a filter of colour functions
-// into the colours its group paints.
+// into the colours its group paints. And redraw.mjs, which replay.mjs and sheet.mjs share:
+// redraw, which draws a picture again from its bundle or names its retake, and fails on the
+// user name unless its caller turns the check off; the pictures listed; the folders a sheet
+// is refused; and the sheet's page.
 //
 // Runs with a bare `node --test test/svgshot.test.mjs`: no tree, no build.
 
@@ -36,7 +39,23 @@ import {
   trimSnapshot,
   writeBundle,
 } from "../scripts/svgshot/bundle.mjs";
-import { webFontFiles } from "../scripts/svgshot/capture.mjs";
+import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
+import {
+  judgedFiles,
+  listPictures,
+  mayWriteSheet,
+  notDrawn,
+  outputRefusal,
+  pngSize,
+  redraw,
+  retakeText,
+  SHEET_GENERATOR,
+  sheetHtml,
+  shareOf,
+  slugOf,
+  sortRows,
+  themeOf,
+} from "../scripts/svgshot/redraw.mjs";
 import {
   bakeable,
   bakeColour,
@@ -306,6 +325,52 @@ describe("bundles", () => {
       assert.deepEqual(listBundles(root), ["Images/x.png"]);
       dropBundle(root, "Images/x.png");
       assert.equal(fs.existsSync(bundleFile(root, "Images/x.png")), false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("is drawn again by redraw, which checks for the user name unless told not to", async () => {
+    // redraw wants every style the converter reads: the rest are given as absent.
+    const short = bundleOf(measured);
+    const bundle = structuredClone(short);
+    const extra = SNAPSHOT_STYLES.filter((s) => !STYLES.includes(s));
+    bundle.styles = [...STYLES, ...extra];
+    for (const row of bundle.snapshot.documents[0].layout.styles) row.push(...extra.map(() => -1));
+    const { svg, misses } = await renderBundle(bundle);
+    assert.equal(svg, (await renderBundle(short)).svg);
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "redraw-test-"));
+    try {
+      const bundlesRoot = path.join(root, "bundles");
+      const docsRoot = path.join(root, "docs");
+      fs.mkdirSync(path.join(docsRoot, "Images"), { recursive: true });
+      const png = Buffer.from("the picture");
+      fs.writeFileSync(path.join(docsRoot, "Images/x.png"), png);
+      writeBundle(bundlesRoot, "Images/x.png", short, png, misses);
+      const args = { bundlesRoot, docsRoot, out: "Images/x.png" };
+      assert.match((await redraw({ ...args, user: "nobody" })).retake, /^the bundle has no display, /);
+      writeBundle(bundlesRoot, "Images/x.png", bundle, png, misses);
+      const drawn = await redraw({ ...args, user: "nobody" });
+      assert.deepEqual(drawn.notes, []);
+      assert.match(drawn.svg, />Shown<\/text>/);
+      // The page's text holds "Shown": as a user name, it fails the picture, unless the
+      // caller (sheet.mjs alone) turns the check off.
+      await assert.rejects(redraw({ ...args, user: "SHOWN" }), /holds the Windows user name/);
+      assert.equal((await redraw({ ...args, user: "SHOWN", checkUserName: false })).svg, drawn.svg);
+      // A PNG that is not the bundle's is a retake, or with `stale` a note on a drawing.
+      fs.writeFileSync(path.join(docsRoot, "Images/x.png"), Buffer.from("another picture"));
+      const why = "the PNG is not the one the bundle was taken with";
+      assert.deepEqual(await redraw({ ...args, user: "nobody" }), { retake: why });
+      assert.deepEqual((await redraw({ ...args, user: "nobody", stale: true })).notes, [why]);
+      // A question the bundle has no answer for: its text is the detail, kept out of the reason.
+      writeBundle(bundlesRoot, "Images/x.png", bundle, png, []);
+      fs.writeFileSync(path.join(docsRoot, "Images/x.png"), png);
+      const asked = await redraw({ ...args, user: "nobody" });
+      assert.equal(asked.retake, "no answer for 1 question");
+      assert.equal(retakeText(asked), `no answer for 1 question: ${misses[0]}`);
+      assert.deepEqual(await redraw({ ...args, out: "Images/y.png", user: "nobody" }), {
+        retake: "there is no bundle",
+      });
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -1181,5 +1246,156 @@ describe("web fonts as WOFF2", () => {
       "italic",
     );
     assert.equal(css, 'font-family:"f0";font-weight:normal;font-style:normal');
+  });
+});
+
+// redraw.mjs's parts that need no browser: what sheet.mjs lists, where it may write, and the page.
+describe("the sheet", () => {
+  const PNG = (w, h) => {
+    const b = Buffer.alloc(33);
+    b.writeUInt32BE(0x89504e47, 0);
+    b.write("IHDR", 12, "latin1");
+    b.writeUInt32BE(w, 16);
+    b.writeUInt32BE(h, 20);
+    return b;
+  };
+
+  test("names a picture's files by its path and theme", () => {
+    assert.equal(slugOf("IDE/Menu/Images/Menu_File.light.png"), "IDE__Menu__Images__Menu_File.light");
+    assert.equal(themeOf("a/X.light.png"), "light");
+    assert.equal(themeOf("a/X.png"), "dark");
+    assert.deepEqual(judgedFiles("a/X.png"), {
+      png: "a__X.png",
+      svg: "a__X.svg",
+      render: "a__X.svg-render.png",
+      diff: "a__X.svg-diff.png",
+    });
+    assert.deepEqual(pngSize(PNG(800, 600)), [800, 600]);
+    assert.equal(pngSize(Buffer.from("not a png at all, but long enough")), null);
+    assert.deepEqual(shareOf(["a", "b", "c", "d", "e"], { k: 1, of: 2 }), ["b", "d"]);
+  });
+
+  test("lists every PNG with whether an SVG is beside it, the output trees left out", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "sheet-list-"));
+    try {
+      for (const f of ["b/Y.png", "b/Y.svg", "a/X.light.png", "_site/Z.png", "_site-offline/Z.png", "c/d.txt"]) {
+        fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true });
+        fs.writeFileSync(path.join(root, f), "x");
+      }
+      assert.deepEqual(listPictures(root), [
+        { out: "a/X.light.png", svg: false },
+        { out: "b/Y.png", svg: true },
+      ]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("is never written under docs or where git would take it", () => {
+    const docs = path.join(REPO_ROOT, "docs");
+    assert.match(outputRefusal(path.join(docs, "sheet"), [docs]), /is under/);
+    assert.match(outputRefusal(docs, [docs]), /is under/);
+    // A docs folder given elsewhere is refused the same way.
+    const elsewhere = path.join(os.tmpdir(), "sheet-docs");
+    assert.match(outputRefusal(path.join(elsewhere, "x"), [elsewhere]), /is under/);
+    // Inside the repository: a folder git ignores is allowed, any other refused.
+    assert.equal(outputRefusal(path.join(REPO_ROOT, ".svgshot-bundles", "sheet"), [docs]), null);
+    assert.match(outputRefusal(path.join(REPO_ROOT, "scripts", "sheet"), [docs]), /does not ignore/);
+    assert.match(outputRefusal(REPO_ROOT, [docs]), /root of the git working tree/);
+    // Outside any working tree, as git answers it (here, a stand-in).
+    const noRepo = () => ({ status: 128, stdout: "" });
+    assert.equal(outputRefusal(path.join(os.tmpdir(), "sheet"), [docs], noRepo), null);
+    const unsure = (args) =>
+      args[0] === "rev-parse" ? { status: 0, stdout: os.tmpdir() } : { status: 128, stdout: "" };
+    assert.match(outputRefusal(path.join(os.tmpdir(), "sheet"), [docs], unsure), /could not say/);
+  });
+
+  test("replaces only a folder that is new, empty or a sheet", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "sheet-out-"));
+    try {
+      assert.equal(mayWriteSheet(path.join(root, "new")), true);
+      assert.equal(mayWriteSheet(root), true);
+      fs.writeFileSync(path.join(root, "index.html"), "<p>someone's page</p>");
+      assert.equal(mayWriteSheet(root), false);
+      fs.writeFileSync(path.join(root, "index.html"), sheetHtml({ rows: [], plain: [], bar: 0.25, all: false }));
+      assert.equal(mayWriteSheet(root), true);
+      assert.equal(mayWriteSheet(path.join(root, "index.html")), false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("puts the judged pictures worst first, those not drawn after them", () => {
+    const rows = [
+      { out: "b.png", pct96: 0.3 },
+      { out: "c.png", error: "x" },
+      { out: "a.png", pct96: 5 },
+      { out: "d.png", pct96: 0.3 },
+    ];
+    assert.deepEqual(
+      sortRows(rows).map((r) => r.out),
+      ["a.png", "b.png", "d.png", "c.png"],
+    );
+    assert.deepEqual(notDrawn({ resizer: 1, "a frame of another process": 2 }), [
+      ["a frame of another process", 2],
+      ["resizer", 1],
+    ]);
+  });
+
+  test("writes a page that links each picture's files and escapes what it shows", () => {
+    const files = (out) => ({ ...judgedFiles(out) });
+    const html = sheetHtml({
+      rows: [
+        {
+          out: "IDE/A&B.png",
+          theme: "dark",
+          size: [800, 600],
+          pct96: 0.4,
+          pct32: 1,
+          pct8: 2,
+          faithful: false,
+          source: "bundle",
+          notes: [],
+          notDrawn: [["filter <x>", 2]],
+          files: files("IDE/A&B.png"),
+        },
+        {
+          out: "IDE/Z.light.png",
+          theme: "light",
+          size: [10, 10],
+          pct96: 9,
+          pct32: 9,
+          pct8: 9,
+          source: "file",
+          files: files("IDE/Z.light.png"),
+        },
+        {
+          out: "IDE/Gone.png",
+          theme: "dark",
+          size: null,
+          error: "the bundle is of format 1",
+          files: { png: "IDE__Gone.png" },
+        },
+      ],
+      plain: [{ out: "Other/P.png", size: [5, 6], files: { png: "Other__P.png" } }],
+      bar: 0.25,
+      all: false,
+    });
+    assert.ok(html.includes(`<meta name="generator" content="${SHEET_GENERATOR}">`));
+    assert.ok(html.includes("<title>Pictures with no SVG</title>"));
+    // Worst first, and the one not drawn after the drawn ones.
+    const order = ["IDE/Z.light.png", "IDE/A&amp;B.png", "IDE/Gone.png"].map((t) => html.indexOf(`<h3>${t}</h3>`));
+    assert.ok(
+      order.every((i, k) => i > 0 && (k === 0 || i > order[k - 1])),
+      String(order),
+    );
+    assert.ok(html.includes('href="pictures/IDE__A%26B.svg-diff.png"'));
+    assert.ok(html.includes('src="pictures/IDE__A%26B.svg-render.png"'));
+    assert.ok(html.includes("the converter did not draw: filter &lt;x&gt; x2"));
+    assert.ok(html.includes("<b>not drawn: the bundle is of format 1</b>"));
+    assert.ok(html.includes("the SVG file beside the PNG"));
+    assert.ok(html.includes("Other/P.png, 5 x 6 px"));
+    assert.ok(!html.includes("IDE__Gone.svg"));
+    assert.ok(sheetHtml({ rows: [], plain: [], bar: 0.25, all: true }).includes("Every picture against its SVG"));
   });
 });
