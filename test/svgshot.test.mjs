@@ -2057,7 +2057,7 @@ describe("the picture at a git revision", () => {
     assert.deepEqual(parseStatus(""), []);
   });
 
-  test("commits the paths named and nothing else, a new one added first and one removed as a deletion", (t) => {
+  test("commits the paths named and nothing else, a new one added first and one removed as a deletion, without blocking", async (t) => {
     const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-commit-"));
     t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
     const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] }).toString();
@@ -2099,11 +2099,17 @@ describe("the picture at a git revision", () => {
       { path: "other.txt", status: "modified" },
       { path: "staged.txt", status: "added" },
     ]);
-    const done = commitPaths(docs, {
+    // A timer set before the commit fires while git runs: the process is not held up.
+    let ticked = false;
+    setTimeout(() => {
+      ticked = true;
+    }, 0);
+    const done = await commitPaths(docs, {
       paths: ["docs/a.svg", "docs/new/n.png", "docs/two words/a.png"],
       added: ["docs/new/n.png"],
       message: "Screenshots: 2 pictures",
     });
+    assert.equal(ticked, true);
     assert.equal(done.hash, git("rev-parse", "HEAD").trim());
     assert.equal(done.short, done.hash.slice(0, 8));
     assert.equal(git("log", "-1", "--format=%B").trim(), "Screenshots: 2 pictures");
@@ -2113,8 +2119,8 @@ describe("the picture at a git revision", () => {
     );
     // what the commit did not name is as it was: changed, and staged
     assert.equal(git("status", "--porcelain"), " M other.txt\nA  staged.txt\n");
-    assert.throws(() => commitPaths(docs, { paths: ["other.txt"], message: "" }), /^Error: git commit failed/);
-    assert.throws(() => commitPaths(docs, { paths: [], message: "m" }), /no file to commit/);
+    await assert.rejects(commitPaths(docs, { paths: ["other.txt"], message: "" }), /^Error: git commit failed/);
+    await assert.rejects(commitPaths(docs, { paths: [], message: "m" }), /no file to commit/);
   });
 });
 

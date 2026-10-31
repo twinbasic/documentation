@@ -81,10 +81,11 @@ const TAIL_LINES = 8;
  * returns the next one, {session, revision, archive}, `archive` the closed one's id in the
  * archive; `archived()` lists the archived sessions (shot-session.mjs's listArchived), which
  * the commit page names; and `readOnly` serves an archived session: nothing may be changed.
- * Returns {server, listen(port, host), start({tool, args}), live(), close(), model(),
+ * Returns {server, listen(port, host), start({tool, args}), live(), committing(), close(), model(),
  * applyPending(), session()}: `listen` resolves to the port it listens on; `start` starts a run
- * (runOf's), and returns startRun's handle, or throws while another runs; `live` the handles of
- * the runs that are running; `applyPending` applies what the runs reported and was not applied
+ * (runOf's), and returns startRun's handle, or throws while another runs or a commit is under
+ * way; `live` the handles of the runs that are running; `committing` a promise that settles when
+ * the commit under way has ended, or null when none is; `applyPending` applies what the runs reported and was not applied
  * yet, and returns how many parts; `session` the session it serves now.
  */
 export function createReviewServer({
@@ -113,9 +114,15 @@ export function createReviewServer({
   // The commit that closed the session before this one, as the pages say so: {hash, short,
   // message, archive}, or null.
   let lastCommit = null;
-  // HEAD as it is now, when it is not the baseline: read again at most once a second.
+  // The commit under way, as the pages say so, {message, at, plan, done}, `plan` the one it
+  // commits and `done` its promise; null when none is. git runs as a child process, so the
+  // server goes on answering while it and the repository's hooks run.
+  let committing = null;
+  // HEAD as it is now, when it is not the baseline: read again at most once a second. While a
+  // commit is under way HEAD moves to it before the session is closed, which is no news.
   let headSeen = { at: 0, value: null };
   const headNow = () => {
+    if (committing) return null;
     if (Date.now() - headSeen.at > 1000) {
       let value = null;
       try {
@@ -224,6 +231,7 @@ export function createReviewServer({
   };
   const liveRuns = () => [...runs.values()].filter((r) => r.live);
   function start({ tool, args }) {
+    refuseWhileCommitting();
     const busy = liveRuns()[0];
     if (busy) throw new Error(`run ${busy.record.n} is running: a new run starts once it has ended`);
     const handle = startRun(session, { tool, args }, { onEvent, onExit, onLine, command });
@@ -268,9 +276,14 @@ export function createReviewServer({
   // A clean-up writes under docs/ itself: while it runs a review's actions wait.
   const cleaning = () => liveRuns().find((r) => r.record.tool === "cleanup") ?? null;
   const refuseWhileCleaning = () => {
+    refuseWhileCommitting();
     const c = cleaning();
     if (c) throw new Error(`run ${c.record.n}, a clean-up, is putting pictures back: try again once it has ended`);
   };
+  // While a commit is under way nothing the session would commit changes: no run, no action.
+  function refuseWhileCommitting() {
+    if (committing) throw new Error("the session is being committed: try again once the commit has ended");
+  }
 
   // A run as the pages show it: its record, the command line it is the same as, and how far it is.
   const runRow = (r) => {
@@ -366,10 +379,13 @@ export function createReviewServer({
       exists,
       entry,
       archived: readOnly ? (session.data.closed ?? {}) : null,
+      committing: committing ? { message: committing.message, at: committing.at } : null,
     });
   }
-  // The run that is running, as the pages say so: {n, kind}, or null.
+  // What keeps a new run from starting, as the pages say so: the run that is running, {n,
+  // kind}, or the commit under way, {commit: true, message, at}; null when nothing does.
   const busyRun = () => {
+    if (committing) return { commit: true, message: committing.message, at: committing.at };
     const r = liveRuns()[0];
     return r ? { n: r.record.n, kind: kindOf(r.record) } : null;
   };
@@ -576,9 +592,11 @@ export function createReviewServer({
       return { plan: null, message: null, error: e.message };
     }
   }
-  // Why the session cannot be committed now, or null: a run, or a baseline that is not HEAD.
+  // Why the session cannot be committed now, or null: a commit under way, a run, or a baseline
+  // that is not HEAD.
   const commitRefusal = () => {
     if (readOnly) return "this session is archived: it was committed when it was closed";
+    if (committing) return "the session is being committed";
     const busy = liveRuns()[0];
     if (busy) return `run ${busy.record.n} is running: commit once it has ended`;
     const h = headNow();
@@ -588,7 +606,8 @@ export function createReviewServer({
   };
   // Commits the session's own files with `body.message`, when `body.files` (their paths) is
   // still what the session would commit; then the session is closed and the next one served
-  // (onCommit, which archives it and opens the next).
+  // (onCommit, which archives it and opens the next). What is checked is checked at once; git
+  // then runs without blocking, while every page says the commit is under way (`committing`).
   function commit(body) {
     const refused = commitRefusal();
     if (refused) throw new Error(refused);
@@ -602,28 +621,41 @@ export function createReviewServer({
     const message = typeof body.message === "string" ? body.message.trim() : "";
     if (!message) throw new Error("the message is empty");
     const added = plan.files.filter((f) => f.status === "added").map((f) => f.path);
-    const done = commitPaths(repoRoot, { paths, added, message });
-    let next;
-    try {
-      next = onCommit({ ...done, message });
-    } catch (e) {
-      throw new Error(`committed ${done.short}, but the session could not be closed: ${e.message}`);
-    }
-    session = next.session;
-    revision = next.revision;
-    applier = createApplier({ session, docsRoot, bundlesRoot, revision: () => revision, manifest });
-    loadRuns();
-    headSeen = { at: 0, value: null };
-    changedSeen = { at: 0, value: [] };
-    maps.clear();
-    measures.clear();
-    lastCommit = { ...done, message, archive: next.archive };
-    return lastCommit;
+    const done = (async () => {
+      const made = await commitPaths(repoRoot, { paths, added, message });
+      let next;
+      try {
+        next = onCommit({ ...made, message });
+      } catch (e) {
+        throw new Error(`committed ${made.short}, but the session could not be closed: ${e.message}`);
+      }
+      session = next.session;
+      revision = next.revision;
+      applier = createApplier({ session, docsRoot, bundlesRoot, revision: () => revision, manifest });
+      loadRuns();
+      headSeen = { at: 0, value: null };
+      changedSeen = { at: 0, value: [] };
+      maps.clear();
+      measures.clear();
+      lastCommit = { ...made, message, archive: next.archive };
+      return lastCommit;
+    })().finally(() => {
+      committing = null;
+      sse.send("update", { outs: [], runs: true });
+    });
+    committing = { message, at: new Date().toISOString(), plan, done };
+    sse.send("update", { outs: [], runs: true });
+    return done;
   }
   function commitPage() {
-    const state = readOnly ? { plan: null, message: null, error: null } : commitState();
+    const state = readOnly
+      ? { plan: null, message: null, error: null }
+      : committing
+        ? { plan: committing.plan, message: committing.message, error: null }
+        : commitState();
     return commitHtml({
       ...state,
+      committing: committing ? { message: committing.message, at: committing.at } : null,
       baseline: session.data.baseline,
       refusal: commitRefusal(),
       headNow: headNow()?.short ?? null,
@@ -697,8 +729,7 @@ export function createReviewServer({
         return sendJson(res, 200, { ok: true, baseline: session.data.baseline });
       }
       if (url.pathname === hrefs.commit) {
-        const done = commit(body);
-        sse.send("update", { outs: [], runs: true });
+        const done = await commit(body);
         return sendJson(res, 200, { ok: true, hash: done.hash, short: done.short, archive: done.archive });
       }
       if (url.pathname === hrefs.startRun) {
@@ -826,6 +857,7 @@ export function createReviewServer({
     },
     start,
     live,
+    committing: () => committing?.done.catch(() => {}) ?? null,
     model,
     session: () => session,
     applyPending: () => applier.pending(),

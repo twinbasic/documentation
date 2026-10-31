@@ -1126,7 +1126,10 @@ if (cleanupArgs.includes("--cleanup")) {
   test("commits the session's own files and nothing else, closes the session, and serves the next one", async (t) => {
     const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-commit-"));
     const reviewRoot = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-session-"));
+    // the file the test's pre-commit hook waits for; written here too, so a failed test lets git end
+    const gate = path.join(reviewRoot, "gate");
     t.after(() => {
+      fs.writeFileSync(gate, "");
       fs.rmSync(repo, { recursive: true, force: true });
       fs.rmSync(reviewRoot, { recursive: true, force: true });
     });
@@ -1231,8 +1234,31 @@ if (cleanupArgs.includes("--cleanup")) {
       assert.match((await post(hrefs.commit, { message: "  ", files }))[1].error, /the message is empty/);
       assert.equal(headHash(), app.session().data.baseline.hash);
 
+      // While git and the hooks run, the server answers, every page says the commit is under
+      // way, and nothing can change: a pre-commit hook holds the commit until the gate is there.
+      const hook = path.join(repo, ".git", "hooks", "pre-commit");
+      fs.writeFileSync(hook, `#!/bin/sh\nwhile [ ! -e "${gate.replace(/\\/g, "/")}" ]; do sleep 0.05; done\n`);
+      fs.chmodSync(hook, 0o755);
+      const pending = post(hrefs.commit, { message: "Screenshots: A", files: [...files].reverse() });
+      await until("the commit to be under way", () => app.committing() !== null);
+      page = await get(hrefs.commitPage);
+      assert.match(page, /<span class="status" role="status">committing\.\.\.<\/span>/);
+      assert.match(page, /Committing the session: <q>Screenshots: A<\/q>/);
+      assert.match(page, /data-default="Screenshots: A" readonly>Screenshots: A<\/textarea>/);
+      assert.match(page, /<button type="submit" disabled title="the session is being committed">Commit 3 files</);
+      assert.match(await get("/"), /Committing the session: <q>Screenshots: A<\/q>/);
+      assert.match(await get(hrefs.runs), /<p class="notice">Committing the session/);
+      assert.match(await get(`/picture/${A}`), /disabled title="the session is being committed: a new run starts/);
+      assert.match((await post(hrefs.act(A), { action: "png", keep: "old" }))[1].error, /being committed/);
+      assert.match((await post(hrefs.startRun, { kind: "replay", only: "A" }))[1].error, /being committed/);
+      assert.match((await post(hrefs.commit, { message, files }))[1].error, /being committed/);
+      assert.equal(headHash(), app.session().data.baseline.hash);
+      fs.writeFileSync(gate, "");
+
       // committed: those files and nothing else, the session archived and the next one served
-      const [status, done] = await post(hrefs.commit, { message: "Screenshots: A", files: [...files].reverse() });
+      const [status, done] = await pending;
+      fs.rmSync(hook);
+      assert.equal(app.committing(), null);
       assert.equal(status, 200, done.error);
       assert.deepEqual([done.hash, done.short, done.archive], [headHash(), committed.short, committed.short]);
       assert.equal(git("log", "-1", "--format=%B").trim(), "Screenshots: A");

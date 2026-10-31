@@ -356,8 +356,17 @@ export function svgStateText(svg) {
 export const actionButton = (label, url, act, { pressed = null, title = "", confirm = "", disabled = null } = {}) =>
   `<button type="button" data-url="${esc(url)}" data-act="${esc(JSON.stringify(act))}"${pressed === null ? "" : ` aria-pressed="${pressed}"`}${confirm ? ` data-confirm="${esc(confirm)}"` : ""}${disabled ? ` disabled title="${esc(disabled)}"` : title ? ` title="${esc(title)}"` : ""}>${esc(label)}</button>`;
 
-// Why a run cannot be started while `busy` ({n, kind}) runs, or null.
-const busyText = (busy) => (busy ? `run ${busy.n} is running: a new run starts once it has ended` : null);
+// Why a run cannot be started while `busy` ({n, kind} a run, {commit: true} a commit) is under way, or null.
+const busyText = (busy) =>
+  busy
+    ? busy.commit
+      ? "the session is being committed: a new run starts once the commit has ended"
+      : `run ${busy.n} is running: a new run starts once it has ended`
+    : null;
+
+// That the session is being committed, `committing` {message, at}, as the text of a notice.
+const committingNotice = (committing) =>
+  `Committing the session: <q>${esc(committing.message)}</q>. Its pictures cannot be changed and no run can start until the commit has ended, which takes a few seconds while the repository's hooks run.`;
 
 /** A retake of `out` and a replay of its SVG, as buttons on its page. */
 const runButtons = (out, busy, { replay = true } = {}) => [
@@ -533,7 +542,8 @@ const pickedBar = (more) =>
  * moved to it; `newestIde` the newest install's build, or null; `resume` {index, total, out}
  * for the queue's place, or null; `exists(path)` whether a file is under docs/; `entry(out)` a
  * picture's entry in the manifest, or null; `archived` the commit that closed the session
- * ({short, message}) when it is an archived one, else null.
+ * ({short, message}) when it is an archived one, else null; `committing` the commit under way
+ * ({message, at}), or null.
  */
 export function overviewHtml({
   groups,
@@ -548,6 +558,7 @@ export function overviewHtml({
   exists,
   entry = () => null,
   archived = null,
+  committing = null,
 }) {
   const shown = groups.filter((g) => g.pictures.length);
   const filters = FILTERS.map(
@@ -559,6 +570,7 @@ export function overviewHtml({
     : "";
   const notices = [];
   if (archived) notices.push(archivedNotice(archived));
+  if (committing) notices.push(`${committingNotice(committing)} <a href="${hrefs.commitPage}">The commit page</a>.`);
   if (headNow) notices.push(headNotice(headNow, baseline, canMove));
   if (baseline.moved)
     notices.push(
@@ -1007,7 +1019,8 @@ ${progressHtml(r)}${note}${buttons.length ? actionsHtml(buttons) : ""}${r.log?.l
 /**
  * The runs page: the session's `runs` (the server's runRow, each with `log`, the lines of its
  * log to show, or null), oldest first; `baseline` the session's; `ides` the builds of the
- * installs a retake can use, newest first; `busy` the run that is running ({n, kind}), or null.
+ * installs a retake can use, newest first; `busy` the run that is running ({n, kind}), the commit
+ * under way ({commit: true, message, at}), or null.
  * A form for each kind of run, whose pictures are a pattern or those selected on the overview.
  */
 export function runsHtml({ runs, baseline, ides, busy }) {
@@ -1067,7 +1080,13 @@ ${fields.join("\n")}
   const newestCleanup = [...runs].reverse().find((r) => r.kind === "cleanup")?.n ?? null;
   const list = [...runs].reverse().map((r) => runArticle(r, { newestCleanup, busy }));
   const body = `${topNav("runs")}
-${busy ? `<p class="notice">Run ${busy.n}, a ${esc((KIND_TEXT[busy.kind] ?? busy.kind).toLowerCase())}, is running: a new run starts once it has ended.</p>` : ""}
+${
+  busy?.commit
+    ? `<p class="notice">${committingNotice(busy)}</p>`
+    : busy
+      ? `<p class="notice">Run ${busy.n}, a ${esc((KIND_TEXT[busy.kind] ?? busy.kind).toLowerCase())}, is running: a new run starts once it has ended.</p>`
+      : ""
+}
 ${pickedBar(": a run started here takes them in place of a pattern.")}
 <h2>A new run</h2>
 <p>One run at a time. Each verdict is applied under docs as it arrives.</p>
@@ -1094,7 +1113,9 @@ const LEFT_OUT_SHOWN = 200;
  * `baseline` the session's;
  * `refusal` why it cannot be committed now, or null; `headNow` and `canMove` as the overview's;
  * `lastCommit` the commit that closed the session before this one ({short, message, archive}),
- * or null; `archived` the archived sessions (listArchived's), newest first.
+ * or null; `archived` the archived sessions (listArchived's), newest first; `committing` the
+ * commit under way ({message, at}), or null: then `plan` and `message` are the ones it commits,
+ * and the page shows it in progress, as it does when fetched again or opened in another tab.
  */
 export function commitHtml({
   plan,
@@ -1106,13 +1127,15 @@ export function commitHtml({
   canMove = false,
   lastCommit = null,
   archived = [],
+  committing = null,
 }) {
   const notices = [];
   if (lastCommit)
     notices.push(
       `Committed ${esc(lastCommit.short)}: ${esc(lastCommit.message)}. The session it closed is archived as <code>${esc(lastCommit.archive)}</code>, and this is the next one, whose baseline is ${esc(baseline.short)}.`,
     );
-  if (headNow) notices.push(headNotice(headNow, baseline, canMove));
+  if (committing) notices.push(committingNotice(committing));
+  else if (headNow) notices.push(headNotice(headNow, baseline, canMove));
   else if (refusal) notices.push(esc(refusal));
   const sections = [];
   if (error) sections.push(`<p class="notice">git could not be read: ${esc(error)}</p>`);
@@ -1145,8 +1168,8 @@ ${rows.map(([what, n]) => `<tr><th>${esc(what)}</th><td>${esc(String(n))}</td></
 <h2>The commit</h2>
 <p class="meta">Commits the ${plan.files.length === 1 ? "file below" : `${plan.files.length} files below`} and nothing else: a file git does not track yet is added first, and one removed is committed as a deletion. The repository's hooks run. Committing closes the session: it is archived, and the next one's baseline is the new commit.</p>
 <label for="commit-message">Message</label>
-<textarea name="message" id="commit-message" rows="3" spellcheck="true" data-default="${esc(message ?? "")}">${esc(message ?? "")}</textarea>
-<p><button type="submit"${disabled}>Commit ${plan.files.length === 1 ? "1 file" : `${plan.files.length} files`}</button> <button type="button" data-reset-message disabled>Back to the default message</button> <span class="status" role="status"></span></p>
+<textarea name="message" id="commit-message" rows="3" spellcheck="true" data-default="${esc(message ?? "")}"${committing ? " readonly" : ""}>${esc(message ?? "")}</textarea>
+<p><button type="submit"${disabled}>Commit ${plan.files.length === 1 ? "1 file" : `${plan.files.length} files`}</button> <button type="button" data-reset-message disabled>Back to the default message</button> <span class="status" role="status">${committing ? "committing..." : ""}</span></p>
 </form>
 <h2>The files (${plan.files.length})</h2>
 <table>

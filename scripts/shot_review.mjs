@@ -82,9 +82,11 @@ A retake is scripts/shoot_docs.mjs and a replay scripts/svgshot/replay.mjs,
 each run with --stage, a folder of the session, and --events; a retake and a
 clean-up are compared with the session's baseline (--against). A clean-up
 (scripts/shoot_docs.mjs --cleanup) is not staged: it writes under docs
-itself, and a review's actions wait while it runs. Ctrl+C stops a run that is
-running as its own stop does (its IDEs end and the registry is put back), then
-closes the tool; a second Ctrl+C ends the run's process at once.
+itself, and a review's actions wait while it runs. A commit runs git without
+holding up the pages, which say it is under way; meanwhile nothing can be
+changed and no run started. Ctrl+C stops a run that is running as its own stop
+does (its IDEs end and the registry is put back), waits for a commit under way
+to end, then closes the tool; a second Ctrl+C ends the run's process at once.
 
 Exit codes:
   0  the tool was closed
@@ -230,6 +232,13 @@ process.on("SIGINT", async () => {
     console.log("stopping the runs: Ctrl+C again ends their processes at once, which skips putting the registry back");
     for (const h of live) h.stop();
     await Promise.all(live.map((h) => h.exited));
+  }
+  // A commit under way is let finish: git runs on a console of its own, which Ctrl+C does not
+  // reach, and the session it commits is archived only once it has.
+  const commit = app.committing();
+  if (commit) {
+    console.log("waiting for the commit to end");
+    await commit;
   }
   await app.close();
   release();

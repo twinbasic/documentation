@@ -13,7 +13,7 @@
 // checkout the script is in. The reads are batched: one `git cat-file --batch` process for
 // any number of files.
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { isOutputTree } from "../../lib/markdown-files.mjs";
@@ -293,21 +293,31 @@ export function workingChanges(root, git = runGit) {
   return { top: path.resolve(dir), changes: parseStatus(status.stdout) };
 }
 
-// Runs git in `cwd` with `input` on its stdin, and returns its output; throws an Error with
-// what git said, stdout and stderr, when it fails.
-function gitSaying(args, cwd, input) {
-  try {
-    return execFileSync("git", args, {
-      cwd,
-      input,
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"],
-      windowsHide: true,
+// Runs git in `cwd` with `input` on its stdin, without blocking: resolves to its output, or
+// rejects with an Error with what git said, stdout and stderr, when it fails. Its stdio is
+// piped and its window hidden, so it has a console of its own: the Ctrl+C that closes the
+// review tool does not reach it, and a commit under way is not cut short.
+function gitSaying(args, cwd, input = "") {
+  return new Promise((resolve, reject) => {
+    const child = spawn("git", args, { cwd, stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
+    let out = "";
+    let err = "";
+    child.stdout.setEncoding("utf8").on("data", (d) => {
+      out += d;
     });
-  } catch (e) {
-    const said = `${e.stdout ?? ""}${e.stderr ?? ""}`.trim();
-    throw new Error(`git ${args[0]} failed${said ? `: ${said}` : ` (${e.message})`}`);
-  }
+    child.stderr.setEncoding("utf8").on("data", (d) => {
+      err += d;
+    });
+    child.on("error", (e) => reject(new Error(`git ${args[0]} failed (${e.message})`)));
+    child.on("close", (code) => {
+      if (code === 0) return resolve(out);
+      const said = `${out}${err}`.trim();
+      reject(new Error(`git ${args[0]} failed${said ? `: ${said}` : ` (exit code ${code})`}`));
+    });
+    // git may end before it has read stdin (a refusal): the pipe's error is the exit's.
+    child.stdin.on("error", () => {});
+    child.stdin.end(input);
+  });
 }
 
 const literalSpecs = (paths) => `${paths.map((p) => `:(literal)${p}`).join("\0")}\0`;
@@ -317,20 +327,21 @@ const literalSpecs = (paths) => `${paths.map((p) => `:(literal)${p}`).join("\0")
  * with the message `message`, and nothing else: each of `added`, which git does not track yet,
  * is added first, and then every path is committed as the working tree holds it (`git commit
  * --only`), a file removed as a deletion. Whatever else the index holds stays in it, not
- * committed. The repository's hooks run. Returns {hash, short}, the new commit. Throws an Error
- * with git's own words when git refuses: a hook, nothing to commit, an empty message.
+ * committed. The repository's hooks run. Resolves to {hash, short}, the new commit, without
+ * blocking the process while git and its hooks run (seconds on this repository). Rejects with
+ * an Error with git's own words when git refuses: a hook, nothing to commit, an empty message.
  */
-export function commitPaths(root, { paths, added = [], message }) {
+export async function commitPaths(root, { paths, added = [], message }) {
   if (!paths.length) throw new Error("no file to commit");
   const { top } = workingChanges(root);
-  if (added.length) gitSaying(["add", "--pathspec-from-file=-", "--pathspec-file-nul"], top, literalSpecs(added));
-  gitSaying(
+  if (added.length) await gitSaying(["add", "--pathspec-from-file=-", "--pathspec-file-nul"], top, literalSpecs(added));
+  await gitSaying(
     ["commit", "--quiet", "--only", "-m", message, "--pathspec-from-file=-", "--pathspec-file-nul"],
     top,
     literalSpecs(paths),
   );
-  const hash = gitSaying(["rev-parse", "HEAD"], top).trim();
-  return { hash, short: gitSaying(["rev-parse", "--short=8", hash], top).trim() };
+  const hash = (await gitSaying(["rev-parse", "HEAD"], top)).trim();
+  return { hash, short: (await gitSaying(["rev-parse", "--short=8", hash], top)).trim() };
 }
 
 const inside = (dir, root) => {
