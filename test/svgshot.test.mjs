@@ -19,7 +19,8 @@
 // user name unless its caller turns the check off; the pictures listed; the folders a sheet
 // is refused; and the sheet's page. And the sheet of changes against a git revision
 // (sheet.mjs --against): git's change list, the comparison of two pictures over two sizes,
-// the noise rule, the order and the page.
+// the noise rule, the order and the page. And lib/record-lines.mjs, the records a child
+// process writes among its lines, which runShards reads.
 //
 // Runs with a bare `node --test test/svgshot.test.mjs`: no tree, no build.
 
@@ -28,6 +29,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { PassThrough } from "node:stream";
 import { describe, test } from "node:test";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
@@ -44,6 +46,7 @@ import {
 } from "../scripts/svgshot/bundle.mjs";
 import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
 import { decodePng, encodePng } from "../scripts/lib/png.mjs";
+import { parseRecord, readRecords, recordLine } from "../scripts/lib/record-lines.mjs";
 import { changeMap, compareImages, withinNoise } from "../scripts/lib/shot-change.mjs";
 import {
   changedPictures,
@@ -1862,5 +1865,37 @@ describe("the picture at a git revision", () => {
     restoreFromRevision(docs, rev.hash, ["a.svg"]);
     assert.equal(fs.readFileSync(path.join(docs, "a.svg"), "utf8"), "<svg/>\n");
     assert.equal(git("status", "--porcelain").toString(), "");
+  });
+});
+
+describe("the records a child writes among its lines (record-lines.mjs)", () => {
+  test("reads a record of a kind it is told, and passes any other line on", () => {
+    const line = recordLine("svgshot-result", { counts: { new: 2 }, why: "a b" });
+    assert.equal(line, '@@svgshot-result {"counts":{"new":2},"why":"a b"}');
+    assert.deepEqual(parseRecord(line, ["svgshot-result"]), {
+      kind: "svgshot-result",
+      value: { counts: { new: 2 }, why: "a b" },
+    });
+    assert.equal(parseRecord(line, ["shot-event"]), null);
+    assert.equal(parseRecord("a/b.svg: unchanged", ["svgshot-result"]), null);
+    assert.throws(() => parseRecord("@@svgshot-result {", ["svgshot-result"]), SyntaxError);
+  });
+
+  test("splits a stream into lines across its chunks, CRLF or LF, the last one too", async () => {
+    const stream = new PassThrough();
+    const lines = [];
+    const records = [];
+    readRecords(stream, ["k"], {
+      onRecord: (kind, value) => records.push([kind, value]),
+      onLine: (text) => lines.push(text),
+    });
+    const ended = new Promise((resolve) => stream.on("end", resolve));
+    stream.write("one\r\ntw");
+    stream.write('o\n@@k {"n":');
+    stream.write("1}\n@@other 2\nlast");
+    stream.end();
+    await ended;
+    assert.deepEqual(lines, ["one", "two", "@@other 2", "last"]);
+    assert.deepEqual(records, [["k", { n: 1 }]]);
   });
 });

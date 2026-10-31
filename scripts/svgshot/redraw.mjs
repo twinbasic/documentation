@@ -17,6 +17,7 @@ import path from "node:path";
 import { isOutputTree } from "../../lib/markdown-files.mjs";
 import { LAUNCH_ARGS, launchBrowser } from "../lib/browser.mjs";
 import { decodePng } from "../lib/png.mjs";
+import { readRecords, writeRecord } from "../lib/record-lines.mjs";
 import { changeMap, compareImages, NOISE_LEVELS, NOISE_SHARE } from "../lib/shot-change.mjs";
 import { runGit } from "../lib/shot-revision.mjs";
 import { BUNDLE_VERSION, pngHash, readBundle, renderBundle } from "./bundle.mjs";
@@ -140,7 +141,8 @@ export function writeJudged(dir, out, diff, { render = false, svg = null } = {})
 /** How many processes draw at once by default: half the logical processors, at most 8. */
 export const defaultJobs = () => Math.min(8, Math.max(1, Math.floor(availableParallelism() / 2)));
 
-const RESULT = "@@svgshot-result ";
+// the kind of the record a child ends its output with (lib/record-lines.mjs)
+const RESULT = "svgshot-result";
 
 /**
  * This process's share of the pictures when it is a child runShards started, as
@@ -177,7 +179,7 @@ export async function inBrowser(items, fn) {
 }
 
 /** Ends a child's output with what it found, on a line of its own that runShards reads. */
-export const reportShard = (result) => console.log(`${RESULT}${JSON.stringify(result)}`);
+export const reportShard = (result) => writeRecord(RESULT, result);
 
 /**
  * Starts `jobs` children of this script, with its arguments, each told its share in
@@ -197,14 +199,11 @@ export function runShards(envName, jobs) {
             stdio: ["ignore", "pipe", "inherit"],
           });
           let result = null;
-          let rest = "";
-          child.stdout.on("data", (d) => {
-            const lines = (rest + d).split("\n");
-            rest = lines.pop();
-            for (const line of lines) {
-              if (line.startsWith(RESULT)) result = JSON.parse(line.slice(RESULT.length));
-              else console.log(line.replace(/\r$/, ""));
-            }
+          readRecords(child.stdout, [RESULT], {
+            onRecord: (_, value) => {
+              result = value;
+            },
+            onLine: (line) => console.log(line),
           });
           child.on("close", (code) => resolve({ result, code }));
         }),
