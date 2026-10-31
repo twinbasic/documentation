@@ -3,6 +3,7 @@
 The documentation's IDE screenshots go stale with every beta. `scripts/shoot_docs.mjs` retakes
 them from a live IDE: every picture of the IDE the documentation holds, annotations included,
 and the program windows and web pages that sit beside them. The owner's decisions behind it are marked (owner).
+A tool for reviewing a run and overriding its decisions is planned in [WIP.ShotReview.md](WIP.ShotReview.md).
 
 ## What there is to retake
 
