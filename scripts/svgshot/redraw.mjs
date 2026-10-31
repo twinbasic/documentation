@@ -9,7 +9,7 @@
 //
 // Nothing here writes under docs/: each writer is given its folder.
 
-import { execFileSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import path from "node:path";
@@ -17,6 +17,7 @@ import { isOutputTree } from "../../lib/markdown-files.mjs";
 import { LAUNCH_ARGS, launchBrowser } from "../lib/browser.mjs";
 import { decodePng } from "../lib/png.mjs";
 import { changeMap, compareImages, NOISE_LEVELS, NOISE_SHARE } from "../lib/shot-change.mjs";
+import { revisionOf, runGit } from "../lib/shot-revision.mjs";
 import { BUNDLE_VERSION, pngHash, readBundle, renderBundle } from "./bundle.mjs";
 import { SNAPSHOT_STYLES } from "./capture.mjs";
 import { holdsUserName } from "./keep.mjs";
@@ -247,17 +248,6 @@ export function outputRefusal(dir, docsRoots, git = runGit) {
   return `git check-ignore could not say whether ${abs} is ignored`;
 }
 
-function runGit(args, cwd) {
-  try {
-    return {
-      status: 0,
-      stdout: execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }),
-    };
-  } catch (e) {
-    return { status: typeof e.status === "number" ? e.status : 128, stdout: "" };
-  }
-}
-
 /**
  * Whether the folder `dir` may be written over: it does not exist, is empty, or
  * holds a sheet (its index.html names SHEET_GENERATOR).
@@ -457,28 +447,13 @@ function keepPictures(list) {
  * folder is not in a git working tree. `git` stands in for running git in the probes.
  */
 export function changedPictures(docsRoot, rev, git = runGit) {
-  if (rev === "" || rev.startsWith("-")) throw new Error(`not a revision: ${JSON.stringify(rev)}`);
-  const where = git(["rev-parse", "--show-prefix"], docsRoot);
-  if (where.status !== 0) throw new Error(`${docsRoot} is not in a git working tree`);
-  const hash = git(["rev-parse", "--verify", "--quiet", `${rev}^{commit}`], docsRoot);
-  if (hash.status !== 0) throw new Error(`no revision ${rev} in the git repository of ${docsRoot}`);
-  const id = hash.stdout.trim();
-  const short = git(["rev-parse", "--short=8", id], docsRoot).stdout.trim() || id.slice(0, 8);
+  const { hash: id, short, prefix } = revisionOf(docsRoot, rev, git);
   const diff = git(["diff", "--name-status", "--no-renames", "--relative", "-z", id, "--", "."], docsRoot);
   if (diff.status !== 0) throw new Error(`git diff against ${rev} failed in ${docsRoot}`);
   const untracked = git(["ls-files", "-z", "--others", "--exclude-standard", "--", "."], docsRoot);
   if (untracked.status !== 0) throw new Error(`git ls-files failed in ${docsRoot}`);
   const pictures = keepPictures([...parseNameStatus(diff.stdout), ...parseUntracked(untracked.stdout)]);
-  return { hash: id, short, prefix: where.stdout.trim(), pictures };
-}
-
-/** The bytes of the PNG `out` (a path under `docsRoot`) as the commit `hash` has it. */
-export function revisionBytes(docsRoot, hash, out) {
-  return execFileSync("git", ["show", `${hash}:./${out}`], {
-    cwd: docsRoot,
-    maxBuffer: 256 * 1024 * 1024,
-    stdio: ["ignore", "pipe", "ignore"],
-  });
+  return { hash: id, short, prefix, pictures };
 }
 
 /** The files a picture of the change sheet can have in a flat folder: the old PNG, the new one and the map. */
@@ -493,7 +468,8 @@ export const changeFiles = (out) => {
  * {out, theme, status, kind, sizeOld, sizeNew, stats, error, files} -- and the difference
  * map as PNG bytes, null for an added or deleted picture or one that could not be read.
  * `kind` is "changed", "noise" (the same picture but for a capture's noise, which
- * shoot_docs.mjs never writes over a file), "added", "deleted" or "error" (a file this
+ * shoot_docs.mjs never writes over a file, and puts back as HEAD has it; withinNoise, as
+ * its --cleanup applies it), "added", "deleted" or "error" (a file this
  * tool cannot read as a PNG, with `error` the reason).
  */
 export function compareRevisionPicture(item, before, after) {
@@ -549,6 +525,20 @@ const shellQuote = (p) => (/[^A-Za-z0-9_./:@%+=,~^{}-]/.test(p) ? `"${p}"` : p);
 export const restoreCommand = (rev, prefix, outs) =>
   `git checkout ${shellQuote(rev)} -- ${outs.map((o) => shellQuote(prefix + o)).join(" ")}`;
 
+/**
+ * The command that puts back, with no IDE, every picture that differs from the revision
+ * `rev` only within the noise rule, its SVG with it (shoot_docs.mjs --cleanup), to be run in
+ * the repository's root: `only` the sheet's --only, `docs` its --docs, each as given, or
+ * undefined. The tool only shows it.
+ */
+export const cleanupCommand = (rev, { only, docs } = {}) =>
+  [
+    "node scripts/shoot_docs.mjs --cleanup",
+    rev === "HEAD" ? "" : ` --against ${shellQuote(rev)}`,
+    only === undefined ? "" : ` --only ${shellQuote(only)}`,
+    docs === undefined ? "" : ` --out ${shellQuote(docs)}`,
+  ].join("");
+
 // A share of the pixels, as text: two decimals, and "under 0.01" for what would round to none.
 const pctText = (pct) => (pct === 0 ? "0" : pct < 0.01 ? "under 0.01" : pct.toFixed(2));
 
@@ -558,7 +548,7 @@ const pctText = (pct) => (pct === 0 ? "0" : pct < 0.01 ? "under 0.01" : pct.toFi
  * and `short` the commit it names, `prefix` the docs folder's path from the repository's
  * root; `folder` the folder the files are in, relative to the page.
  */
-export function changeSheetHtml({ rows, rev, hash, short, prefix, folder = "pictures" }) {
+export function changeSheetHtml({ rows, rev, hash, short, prefix, folder = "pictures", only, docs }) {
   const { figure } = figuresIn(folder);
   const sorted = sortChangeRows(rows);
   const kinds = (...wanted) => sorted.filter((r) => wanted.includes(r.kind));
@@ -625,6 +615,8 @@ ${
           noise.map((r) => r.out),
         ),
       )}</pre>
+<p>Or this, which also puts back each one's SVG as ${esc(short)} has it (removed where it has none) and starts no IDE; with <code>--dry-run</code> it only lists them:</p>
+<pre>${esc(cleanupCommand(rev, { only, docs }))}</pre>
 `
     : ""
 }`;

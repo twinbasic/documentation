@@ -131,6 +131,22 @@ Measured:
   its file is left as it is** (`nearly`: one size, no channel more than 16 levels apart, at most
   0.5% of the pixels apart), reported `unchanged but for a capture's noise`, with a `.noise`
   picture under `--diffs`. The same test decides that a light picture is the dark one.
+- **The reference is the picture at `HEAD`, then the file** (owner; `pictureFate` in
+  `scripts/lib/shot-revision.mjs`). Compared with the file alone, a picture drifted from
+  `HEAD` over the runs of one retake, each step within noise of the file before it, and a run
+  could keep the other noise version of a picture (`git checkout --` was the fix). So
+  `capture` stops at a capture equal to `HEAD`'s picture or the file's, and `keep` compares
+  with `HEAD`'s first: within noise of it (or equal), the file becomes `HEAD`'s bytes, reported
+  `restored as HEAD has it` when it held anything else, and its SVG goes back to `HEAD`'s, or
+  is removed when `HEAD` has none, so the pair stays matched (`restoreSvg`, the SVG written by
+  `git restore --worktree`, so that its line endings are a checkout's; no SVG is drawn and the
+  bundle stays as it is). Not near `HEAD`'s but within noise of the file: an earlier run of the
+  retake wrote that change, unchanged. Else written. A picture `HEAD` lacks (a new shot, an
+  untracked file) has the file as its only reference. The run's pictures at `HEAD` are read in
+  one `git cat-file --batch` at the start, in the `--out` folder. `--against <rev>` takes
+  another revision, `--against-disk` turns it off; with the default, an `--out` outside git
+  falls back to the file. `--cleanup` applies the same rule with no IDE (see [The
+  tool](#the-tool)).
 - **A shot may name where the page flickers of its own accord** (`unsteady` in `capture`'s
   options): a list of `{on, pad}`, `on` an annotation anchor (see [Annotations](#annotations))
   and `pad` how far round its box, in CSS px (1 by default, an edge's anti-aliasing). Every
@@ -196,10 +212,21 @@ as the IDE's own pop-up list, beside the select.
 
 ## The tool
 
-`scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--ide <path>] [--jobs N] [--diffs <dir>] [--svg]`,
+`scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--ide <path>] [--jobs N] [--diffs <dir>] [--svg] [--against <rev> | --against-disk]`,
 Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool could not run,
 3 not put back.
 
+- **Cleanup** (owner): `shoot_docs.mjs --cleanup [--dry-run] [--only] [--out] [--against]`
+  starts no IDE and no browser. Each PNG git reports modified against the revision (`HEAD`)
+  that is within noise of the revision's is reset to its bytes, with its SVG as `restored` does
+  (the SVGs in one `git restore --worktree`), so that only real changes stay in the tree.
+  Added and deleted PNGs, one beyond noise, and one whose SVG alone changed are left alone.
+  `--dry-run` lists; the IDE options (`--ide`, `--jobs`, `--svg`, `--bundles`, `--diffs`,
+  `--against-disk`) are refused with it. One noise rule: the capture's `nearly`, `--cleanup`
+  and `sheet.mjs --against`'s within-noise section all call `withinNoise`
+  (`scripts/lib/shot-change.mjs`), and the sheet shows the `--cleanup` command beside its
+  `git checkout` one. On the BETA 1033 retake its dry run puts back none of the 329 modified
+  pictures.
 - **Setups**: one IDE each --- `no-project` (menus, dialogs, panels), `help` (the add-in's eight,
   `test/addin/helpdemo`), `project`, `sample`, the `settings` setups, `glyphs`, `global-search`
   (Sample 15 exported from the install, built into the lane's copy as an add-in, its own project
@@ -227,7 +254,8 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   state lives on the connection (`c.shot`), never in module variables.
 - **Diffs**: `--diffs <dir>` (never under `docs/`) writes, for each picture that differs from the
   file on disk, the committed picture, the new one and an amplified difference map side by side
-  (`scripts/lib/shot-diff.mjs`, `composeComparison` with `amplify` in `scripts/lib/png.mjs`).
+  (`scripts/lib/shot-diff.mjs`, `composeComparison` with `amplify` in `scripts/lib/png.mjs`);
+  `.noise` for one left as it is, `.restored` (the file and `HEAD`'s) for one put back.
 - **Shots**: a table of `{out, setup, take, annotate?}`, `out` the picture's path under
   `docs/`; `--only` matches it or its `.light.png`, and selects the shot in both themes.
   `take(ctx)` brings the IDE to the state and returns the clip (or the parts of a composite);
@@ -942,7 +970,9 @@ the PNG was just captured from, and the build shows it in place of the PNG
   changed first (share of pixels more than 16 levels off); then the pictures within the noise
   rule (`withinNoise`, the rule `shoot_docs.mjs` moved there: 16 levels, 0.5% of the pixels),
   which shoot_docs never writes over a file, so they are most likely rewritten in error (owner),
-  with one `git checkout <rev> -- <paths>` the page only shows; then added, then deleted. PNG
+  with one `git checkout <rev> -- <paths>` and the `shoot_docs.mjs --cleanup` command, which the
+  page only shows; then added, then deleted. The revision's pictures are read in one `git
+  cat-file --batch` (`readRevisionFiles`, `scripts/lib/shot-revision.mjs`). PNG
   against PNG, no browser: 337 pictures in about 30 s. On the BETA 1033 retake none was within
   noise.
 - **The bar** (`SVG_FAITHFUL` in `shoot_docs.mjs`): an SVG with more than 0.25% of its pixels 96

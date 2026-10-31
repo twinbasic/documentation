@@ -158,6 +158,17 @@ const CASES = [
   { tool: "scripts/shoot_docs.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
   { tool: "scripts/shoot_docs.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
   { tool: "scripts/shoot_docs.mjs", args: ["--ide", "no-such.exe"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
+  // The reference a capture is compared with, and --cleanup, which starts no IDE: the options that
+  // need one are refused with it, and a folder outside git has no revision to put pictures back to.
+  { tool: "scripts/shoot_docs.mjs", args: ["--against", "HEAD", "--against-disk"], exit: 2, stderr: "--against and --against-disk cannot be given together\n" },
+  { tool: "scripts/shoot_docs.mjs", args: ["--against", ""], exit: 2, stderr: "--against needs a non-empty value\n" },
+  { tool: "scripts/shoot_docs.mjs", args: ["--dry-run"], exit: 2, stderr: "--dry-run is for --cleanup\n" },
+  { tool: "scripts/shoot_docs.mjs", args: ["--cleanup", "--ide", "no-such.exe"], exit: 2, stderr: "--cleanup and --ide cannot be given together\n" },
+  { tool: "scripts/shoot_docs.mjs", args: ["--cleanup", "--svg"], exit: 2, stderr: "--cleanup and --svg cannot be given together\n" },
+  { tool: "scripts/shoot_docs.mjs", args: ["--cleanup", "--jobs", "2"], exit: 2, stderr: "--cleanup and --jobs cannot be given together\n" },
+  { tool: "scripts/shoot_docs.mjs", args: ["--cleanup", "--against-disk"], exit: 2, stderr: "--cleanup and --against-disk cannot be given together\n" },
+  { tool: "scripts/shoot_docs.mjs", args: ["--cleanup", "--against=-x"], exit: 2, stderr: 'not a revision: "-x"\n' },
+  { tool: "scripts/shoot_docs.mjs", args: ["--cleanup", "--dry-run", "--out", "."], exit: 2, stderr: / is not in a git working tree\n$/ },
   { tool: "scripts/check_examples.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_examples\.mjs \[options\]\n/ },
   { tool: "scripts/check_examples.mjs", args: ["--jobs", "0"], exit: 2, stderr: "check_examples: --jobs expects a whole number of at least 1, got: 0\n" },
   { tool: "scripts/check_examples.mjs", args: ["--batch", "1.5"], exit: 2, stderr: "check_examples: --batch expects a whole number of at least 1, got: 1.5\n" },

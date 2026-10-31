@@ -24,6 +24,7 @@
 // Runs with a bare `node --test test/svgshot.test.mjs`: no tree, no build.
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -45,7 +46,17 @@ import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
 import { decodePng, encodePng } from "../scripts/lib/png.mjs";
 import { changeMap, compareImages, withinNoise } from "../scripts/lib/shot-change.mjs";
 import {
+  openRevision,
+  parseCatFileBatch,
+  pictureFate,
+  planCleanup,
+  restoreFromRevision,
+  revisionOf,
+  svgFate,
+} from "../scripts/lib/shot-revision.mjs";
+import {
   changedPictures,
+  cleanupCommand,
   changeFiles,
   changeSheetHtml,
   compareRevisionPicture,
@@ -1670,6 +1681,7 @@ describe("the change sheet", () => {
     );
     assert.ok(html.includes("most likely rewritten in error"));
     assert.ok(html.includes("<pre>git checkout HEAD -- &quot;docs/IDE/Noisy one.png&quot;</pre>"));
+    assert.ok(html.includes("<pre>node scripts/shoot_docs.mjs --cleanup</pre>"));
     assert.ok(html.includes("size changed from 4 x 2 px to 6 x 5 px"));
     assert.ok(html.includes("compared aligned at the top left over the common 4 x 2 px"));
     assert.ok(html.includes('href="pictures/big.change.png"'));
@@ -1685,6 +1697,167 @@ describe("the change sheet", () => {
       prefix: "",
     });
     assert.ok(!none.includes("git checkout"));
+    assert.ok(!none.includes("--cleanup"));
     assert.ok(none.includes("<title>Pictures changed since v1 (s)</title>"));
+  });
+
+  test("names the cleanup command with the sheet's revision, --only and --docs", () => {
+    assert.equal(cleanupCommand("HEAD"), "node scripts/shoot_docs.mjs --cleanup");
+    assert.equal(
+      cleanupCommand("HEAD~1", { only: "^IDE/(A|B)", docs: "D:/two words/docs" }),
+      'node scripts/shoot_docs.mjs --cleanup --against HEAD~1 --only "^IDE/(A|B)" --out "D:/two words/docs"',
+    );
+  });
+});
+
+describe("the picture at a git revision", () => {
+  const png = (tag) => Buffer.from(`png ${tag}`);
+  // The noise rule as a table: a capture is near the pictures named beside it.
+  const nearTo = (pairs) => (a, b) =>
+    pairs.some(([x, y]) => (a.equals(x) && b.equals(y)) || (a.equals(y) && b.equals(x)));
+  const HEAD = png("head");
+  const DRIFT = png("drift"); // within noise of HEAD
+  const CHANGE = png("change"); // an earlier run's real change
+  const CHANGE2 = png("change2"); // within noise of CHANGE, not of HEAD
+  const OTHER = png("other"); // near nothing
+  const near = nearTo([
+    [HEAD, DRIFT],
+    [CHANGE, CHANGE2],
+  ]);
+  const fate = (capture, revision, disk) => pictureFate(capture, revision, disk, near);
+
+  test("a capture within noise of the revision's picture leaves the file as the revision has it", () => {
+    // the file drifted, or is gone: put back
+    assert.deepEqual(fate(HEAD, HEAD, DRIFT), { state: "restored", write: HEAD });
+    assert.deepEqual(fate(DRIFT, HEAD, DRIFT), { state: "restored", write: HEAD });
+    assert.deepEqual(fate(DRIFT, HEAD, null), { state: "restored", write: HEAD });
+    // an earlier run's real change goes too, when the IDE draws the revision's picture again
+    assert.deepEqual(fate(HEAD, HEAD, CHANGE), { state: "restored", write: HEAD });
+    // the file is the revision's already
+    assert.deepEqual(fate(HEAD, HEAD, HEAD), { state: "unchanged", write: null });
+    assert.deepEqual(fate(DRIFT, HEAD, HEAD), { state: "noise", write: null });
+  });
+
+  test("a capture beyond noise of the revision's picture is compared with the file", () => {
+    assert.deepEqual(fate(CHANGE, HEAD, CHANGE), { state: "unchanged", write: null });
+    assert.deepEqual(fate(CHANGE2, HEAD, CHANGE), { state: "noise", write: null });
+    assert.deepEqual(fate(OTHER, HEAD, CHANGE), { state: "updated", write: OTHER });
+    assert.deepEqual(fate(OTHER, HEAD, HEAD), { state: "updated", write: OTHER });
+    assert.deepEqual(fate(OTHER, HEAD, null), { state: "new", write: OTHER });
+  });
+
+  test("with no picture at the revision, the file is the only reference", () => {
+    assert.deepEqual(fate(DRIFT, null, DRIFT), { state: "unchanged", write: null });
+    assert.deepEqual(fate(DRIFT, null, HEAD), { state: "noise", write: null });
+    assert.deepEqual(fate(OTHER, null, HEAD), { state: "updated", write: OTHER });
+    assert.deepEqual(fate(OTHER, null, null), { state: "new", write: OTHER });
+  });
+
+  test("a picture put back takes the revision's SVG, or loses its own when the revision has none", () => {
+    const svg = Buffer.from("<svg/>\n");
+    assert.equal(svgFate(svg, Buffer.from("<svg/>\r\n")), "keep");
+    assert.equal(svgFate(svg, svg), "keep");
+    assert.equal(svgFate(svg, Buffer.from("<svg>x</svg>\n")), "write");
+    assert.equal(svgFate(svg, null), "write");
+    assert.equal(svgFate(null, svg), "remove");
+    assert.equal(svgFate(null, null), "keep");
+  });
+
+  test("cleanup resets a modified picture within noise, and leaves real changes, added and deleted ones", () => {
+    const before = new Map([
+      ["a.png", HEAD],
+      ["b.png", HEAD],
+      ["c.png", HEAD],
+    ]);
+    const after = new Map([
+      ["a.png", DRIFT],
+      ["b.png", OTHER],
+      ["c.png", null],
+    ]);
+    const plan = planCleanup(
+      [
+        { out: "a.png", status: "modified" },
+        { out: "b.png", status: "modified" },
+        { out: "c.png", status: "modified" },
+        { out: "n.png", status: "added" },
+        { out: "d.png", status: "deleted" },
+      ],
+      (out) => before.get(out),
+      (out) => after.get(out),
+      (a, b) => {
+        if (!b) throw new Error("not a PNG");
+        return near(a, b);
+      },
+    );
+    assert.deepEqual(plan, {
+      reset: ["a.png"],
+      real: ["b.png"],
+      added: ["n.png"],
+      deleted: ["d.png"],
+      unreadable: [{ out: "c.png", error: "not a PNG" }],
+    });
+  });
+
+  test("reads git cat-file's batch output, a missing name and a name with spaces included", () => {
+    const names = ["h:docs/a.png", "h:docs/two words.svg", "h:docs/b.png"];
+    const buf = Buffer.concat([
+      Buffer.from(`${"a".repeat(40)} blob 3\nPNG\n`),
+      Buffer.from("h:docs/two words.svg missing\n"),
+      Buffer.from(`${"b".repeat(40)} blob 4\n\n\0\n\n\n`),
+    ]);
+    const got = parseCatFileBatch(buf, names);
+    assert.equal(got.get(names[0]).toString(), "PNG");
+    assert.equal(got.get(names[1]), null);
+    assert.deepEqual([...got.get(names[2])], [10, 0, 10, 10]);
+    assert.throws(() => parseCatFileBatch(Buffer.from(""), ["x"]), /ends before x/);
+  });
+
+  test("names the revision's commit and the folder's place in the repository", () => {
+    const git = (args) => {
+      const a = args.join(" ");
+      if (a === "rev-parse --show-prefix") return { status: 0, stdout: "docs/\n" };
+      if (a === "rev-parse --verify --quiet HEAD^{commit}") return { status: 0, stdout: `${"cd34".repeat(10)}\n` };
+      if (args[1] === "--short=8") return { status: 0, stdout: "cd34cd34\n" };
+      return { status: 1, stdout: "" };
+    };
+    assert.deepEqual(revisionOf("/r/docs", "HEAD", git), {
+      hash: "cd34".repeat(10),
+      short: "cd34cd34",
+      prefix: "docs/",
+    });
+    assert.throws(() => revisionOf("/r/docs", "nope", git), /no revision nope/);
+    assert.throws(() => revisionOf("/r/docs", "-x", git), /not a revision/);
+  });
+
+  test("reads a revision's files in one process and puts a text file back as a checkout writes it", (t) => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-revision-"));
+    t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
+    const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] });
+    try {
+      git("init", "-q");
+    } catch {
+      t.skip("no git");
+      return;
+    }
+    // the same line endings on every machine; the index is written from the same files
+    git("config", "core.autocrlf", "false");
+    const docs = path.join(repo, "docs");
+    fs.mkdirSync(path.join(docs, "two words"), { recursive: true });
+    fs.writeFileSync(path.join(docs, "two words", "a.png"), Buffer.from([137, 80, 0, 10, 13, 10]));
+    fs.writeFileSync(path.join(docs, "a.svg"), "<svg/>\n");
+    git("add", ".");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "x");
+    const rev = openRevision(docs, "HEAD");
+    assert.equal(rev.prefix, "docs/");
+    const got = rev.read(["two words/a.png", "a.svg", "none.png"]);
+    assert.deepEqual([...got.get("two words/a.png")], [137, 80, 0, 10, 13, 10]);
+    assert.equal(got.get("a.svg").toString(), "<svg/>\n");
+    assert.equal(got.get("none.png"), null);
+    assert.equal(rev.bytes("a.svg").toString(), "<svg/>\n");
+    // put back by git, as a checkout writes it, and the index left alone
+    fs.writeFileSync(path.join(docs, "a.svg"), "<svg>changed</svg>\n");
+    restoreFromRevision(docs, rev.hash, ["a.svg"]);
+    assert.equal(fs.readFileSync(path.join(docs, "a.svg"), "utf8"), "<svg/>\n");
+    assert.equal(git("status", "--porcelain").toString(), "");
   });
 });

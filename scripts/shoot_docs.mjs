@@ -151,6 +151,7 @@ import {
   numberOption,
   parseCli,
   printHelpAndExit,
+  refuseTogether,
   regexOption,
   withUsageError,
 } from "../lib/cli.mjs";
@@ -163,6 +164,7 @@ import { composite, uncomposite } from "./lib/shot-composite.mjs";
 import { decodePng, encodePng } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
 import { inRects, withinNoise } from "./lib/shot-change.mjs";
+import { openRevision, pictureFate, planCleanup, restoreFromRevision, svgFate } from "./lib/shot-revision.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
@@ -184,6 +186,7 @@ import {
 } from "./lib/tb-ide.mjs";
 import { dropBundle, writeBundle } from "./svgshot/bundle.mjs";
 import { svgOfPage } from "./svgshot/capture.mjs";
+import { changedPictures } from "./svgshot/redraw.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
 import { holdsUserName, judgeSvg, SVG_FAITHFUL, writeSvg } from "./svgshot/keep.mjs";
 import { stageProject, unpackProject } from "./lib/tb-project.mjs";
@@ -246,7 +249,8 @@ const SCALE = 2;
 const LCD_TEXT = "--disable-lcd-text";
 const BROWSER_ARGS = `--force-device-scale-factor=1 ${LCD_TEXT}`;
 
-const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--ide <twinBASIC.exe>] [--svg] [-h, --help]
+const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--ide <twinBASIC.exe>] [--svg] [--against <rev> | --against-disk] [-h, --help]
+       node scripts/shoot_docs.mjs --cleanup [--dry-run] [--only <regex>] [--out <dir>] [--against <rev>]
 
 Takes the pictures of the IDE that the documentation shows, from IDEs on a
 private desktop, at 2x, each in the IDE's dark theme (X.png) and then in its Light
@@ -279,10 +283,14 @@ public web pages the FAQ shows, in a Chrome on a private desktop, once (setup
 web; it and webpage need the network).
 A light picture can be a few pixels off the dark one's size, since Light lays
 the window out a little differently; the site shows each at its own size.
-Each setup is one IDE, started when a picture in it is selected. A picture is
-written only when it differs from the file already there by more than a
-capture's noise (a few grey levels at a few edge pixels); each is reported as
-new, updated or unchanged, and the run ends with how many of each
+Each setup is one IDE, started when a picture in it is selected. A capture is
+compared first with the picture as git has it at HEAD (--against, --against-disk),
+then with the file already there: one that is HEAD's picture, but for a capture's
+noise (a few grey levels at a few edge pixels), puts the file back as HEAD has it,
+with its SVG, when it holds anything else (an earlier run's drift), and is
+reported restored; else a picture is written only when it differs from the file
+by more than that noise. Each is reported as new, updated, restored or
+unchanged, and the run ends with how many of each
 theme came out each way. The IDE's registry entries and the
 saved settings of the add-ins it loads are put back afterwards. The help add-in's pane
 shows pages from docs/_site, so run build.bat first for those.
@@ -303,7 +311,8 @@ name.
                    the differing region magnified under them. Also one for each
                    two captures of one state that disagree, named .capture-<n>,
                    one for each picture left as it is because it differs only by
-                   a capture's noise, named .noise, and one of the two themes of
+                   a capture's noise, named .noise, one for each picture restored,
+                   the file and the revision's, named .restored, and one of the two themes of
                    a light picture refused for its size, named .size. Files of
                    the same name are overwritten
   --jobs <n>       how many IDEs run at once (default 6). The setups are queued,
@@ -327,16 +336,41 @@ name.
                    from, goes to the bundle cache for scripts/svgshot/replay.mjs
   --bundles <dir>  with --svg, the bundle cache (default .svgshot-bundles in the
                    repository, which git ignores); never under docs
+  --against <rev>  compare each capture first with the picture as the git revision
+                   <rev> has it (default HEAD), read with git run in the output
+                   folder, in one process for the run's pictures: a capture that
+                   is that picture, or within a capture's noise of it, leaves the
+                   file as the revision has it (restored, with its SVG: the
+                   revision's, or none when it has none), so that a picture does
+                   not drift from the repository's over several runs. A picture
+                   the revision does not have is compared with the file only. With
+                   the default, an output folder outside git is compared with its
+                   files only
+  --against-disk   compare each capture with the file on disk only, as if the
+                   revision had none of the pictures
+  --cleanup        start no IDE: put back every PNG under the output folder that
+                   git reports modified against the revision (--against, default
+                   HEAD) and that is within a capture's noise of the revision's,
+                   with its SVG (the revision's, or none when it has none). An
+                   added or deleted PNG, one that differs beyond noise, and one
+                   whose SVG alone changed are real changes and are left alone.
+                   Prints each path put back and a summary. Takes --only (a PNG is
+                   chosen when the regex matches its dark path or its .light.png),
+                   --out and --against, and none of the options that need an IDE
+  --dry-run        with --cleanup, list what it would put back and change nothing
   -h, --help       print this text and exit
 
 Exit codes:
-  0  every picture was written or was unchanged
+  0  every picture was written or was unchanged (with --cleanup: every modified
+     picture was compared)
   1  a picture failed: an element was not found, the page showed the user name,
      a light picture's size is more than 32 pixels off the dark one's (the IDE
      was not in the state the dark picture shows), the add-in did not build, or
-     the demo project does not compile
+     the demo project does not compile; with --cleanup, a picture could not be
+     read as a PNG
   2  the tool could not run: a refused command line, no IDE, no built site, a
-     registry it could not record, or a crash
+     registry it could not record, no such revision (or, with --against or
+     --cleanup, no git repository), or a crash
   3  the registry or the work folder was not put back; see the lines above`;
 
 const { values } = withUsageError(() =>
@@ -349,12 +383,23 @@ const { values } = withUsageError(() =>
       jobs: { type: "string" },
       ide: { type: "string" },
       svg: { type: "boolean", default: false },
+      against: { type: "string" },
+      "against-disk": { type: "boolean", default: false },
+      cleanup: { type: "boolean", default: false },
+      "dry-run": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
     stopAt: ["help"],
   }),
 );
 if (values.help) printHelpAndExit(USAGE);
+withUsageError(() => {
+  refuseTogether(values, ["against", "against-disk"]);
+  if (values.cleanup)
+    for (const other of ["against-disk", "diffs", "bundles", "jobs", "ide", "svg"])
+      refuseTogether(values, ["cleanup", other]);
+});
+if (values.dryRun && !values.cleanup) die(2, "--dry-run is for --cleanup");
 const only = values.only === undefined ? null : withUsageError(() => regexOption(values.only, { option: "--only" }));
 const jobCount = withUsageError(() =>
   numberOption(values.jobs ?? "6", { option: "--jobs", integer: true, min: 1, max: 16 }),
@@ -375,6 +420,76 @@ for (const [option, root] of [
 }
 // The fonts' cuts are kept beside the bundles, as replay.mjs keeps them (fonts.mjs).
 if (bundlesRoot) useSubsetCache(path.join(bundlesRoot, "subsets"));
+
+// The revision a capture is compared with before the file on disk (--against, HEAD by default;
+// none with --against-disk), and the one --cleanup puts pictures back to.
+const AGAINST = values.against ?? "HEAD";
+
+// --cleanup: no IDE. Every PNG git reports modified against the revision that is within a
+// capture's noise of the revision's goes back to the revision's bytes, with its SVG.
+if (values.cleanup) {
+  let found;
+  let revision;
+  try {
+    found = changedPictures(outRoot, AGAINST);
+    revision = openRevision(outRoot, found.hash);
+  } catch (e) {
+    die(2, e.message);
+  }
+  // --only as a shot's: a picture is chosen when it matches its dark path or its light one.
+  const chosen = (out) => {
+    const dark = out.replace(/\.light\.png$/i, ".png");
+    return !only || only.test(dark) || only.test(dark.replace(/\.png$/i, ".light.png"));
+  };
+  const pictures = found.pictures.filter((p) => chosen(p.out));
+  const modified = pictures.filter((p) => p.status === "modified").map((p) => p.out);
+  const before = revision.read(modified);
+  const decoded = (bytes, what) => {
+    if (!bytes) throw new Error(`${what} has no such file`);
+    return decodePng(bytes);
+  };
+  const plan = planCleanup(
+    pictures,
+    (out) => before.get(out),
+    (out) => readFileSync(path.join(outRoot, out)),
+    (a, b) => withinNoise(decoded(a, AGAINST), decoded(b, "the working tree")),
+  );
+  const svgOf = (out) => out.replace(/\.png$/i, ".svg");
+  const svgBefore = revision.read(plan.reset.map(svgOf));
+  const verb = values.dryRun ? "would be put back" : "put back";
+  // An SVG is text, written as a checkout writes it (line endings), by git, all in one process.
+  const svgWrites = [];
+  for (const out of plan.reset) {
+    const svgFile = path.join(outRoot, svgOf(out));
+    const svgAtRevision = svgBefore.get(svgOf(out));
+    const svgNow = existsSync(svgFile) ? readFileSync(svgFile) : null;
+    const svg = svgFate(svgAtRevision, svgNow);
+    if (!values.dryRun) {
+      writeFileSync(path.join(outRoot, out), before.get(out));
+      if (svg === "write") svgWrites.push(svgOf(out));
+      if (svg === "remove") rmSync(svgFile);
+    }
+    const svgText = {
+      keep: "",
+      write: ", and its SVG",
+      remove: `; its SVG ${values.dryRun ? "would be removed" : "removed"}, as ${found.short} has none`,
+    }[svg];
+    console.log(`${out}: ${verb} as ${found.short} has it${svgText}`);
+  }
+  try {
+    restoreFromRevision(outRoot, found.hash, svgWrites);
+  } catch (e) {
+    die(2, `git could not put the SVGs back: ${e.message}`);
+  }
+  for (const { out, error } of plan.unreadable) console.error(`${out}: not compared: ${error}`);
+  const n = (list, one, many = `${one}s`) => `${list.length} ${list.length === 1 ? one : many}`;
+  console.log(
+    `${AGAINST} (${found.short}): ${n(plan.reset, "picture")} within a capture's noise ${verb}${values.dryRun ? " (a dry run: nothing changed)" : ""}; ` +
+      `${n(plan.real, "real change")} left; skipped ${plan.added.length} added and ${plan.deleted.length} deleted` +
+      (plan.unreadable.length ? `; ${plan.unreadable.length} not compared` : ""),
+  );
+  process.exit(plan.unreadable.length ? 1 : 0);
+}
 
 // test/harness.json gives the IDE's waits their limits (test/harness.md).
 try {
@@ -528,7 +643,8 @@ async function cutoutOff(conn) {
 
 // What one running setup keeps, on its connection as `c.shot` (the detached window's
 // connection shares it): `name` the setup's, for its lines; `reference` the bytes of the
-// file the running shot writes, when there is one, which `capture` prefers the version of a
+// picture the running shot writes as the revision has it (--against) and as its file holds
+// it, a list of those there are (or one, or null), which `capture` prefers the version of a
 // picture that equals; `editedOriginal` the module of the sample that a shot has replaced in
 // the page, to put back; for a light picture, `prefer` the dark picture when no light file is
 // there yet; with --svg, `svg` the SVG of the picture `capture` returned last.
@@ -639,7 +755,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     if (clip) params.clip = { ...clip, scale: 1 };
     // A picture that has not changed is final at its first capture once the page is quiet
     // and two frames are drawn, so the page is captured back to back, with no rest, until
-    // one capture equals the file already there or two in a row agree. But a capture is not
+    // one capture equals the picture wanted (the revision's or the file's) or two in a row agree. But a capture is not
     // byte-stable: the compositor draws some pictures in two or more versions, a few pixels
     // to tens of thousands apart, from one capture to the next (a submenu's shadow corner, a
     // gradient's dither, the striped ground round a designer), and no way of taking it
@@ -647,13 +763,16 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     // scrollbars and the alpha channel); and some states are still on their way when the
     // shot's own condition is met (a rename box's colour, a designer's readout fading in). So
     // a picture two captures agree on that is not the file is not kept at once: the captures
-    // go on, CAPTURE_GAPS apart, until one equals the file or CAPTURE_BUDGET_MS have gone,
+    // go on, CAPTURE_GAPS apart, until one equals a picture wanted or CAPTURE_BUDGET_MS have gone,
     // and the last two that agreed are kept. A picture is rewritten only when the IDE draws
     // something else.
+    // The pictures wanted are the revision's (--against) and the file's: a capture equal to
+    // either ends the captures, and keep() decides what it means.
     // A new light picture has no file to equal, and prefers the dark picture (`prefer`) as
     // long as its first capture is within the noise of it: then one the theme does not change
     // comes out with the dark one's pixels. Else it is taken as a new picture.
-    const want = conn.shot.reference;
+    const wants = [conn.shot.reference].flat().filter(Boolean);
+    const want = wants.length > 0;
     let prefer = want ? null : conn.shot.prefer;
     // With --svg, the SVG of the same clip, read while the page is still as captured
     // (the cut-out on, the menu open, the overlay drawn); a cut-out has no background.
@@ -680,7 +799,8 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     for (let i = 0; ; i++) {
       const { data } = await conn.send("Page.captureScreenshot", params);
       const png = Buffer.from(data, "base64");
-      if (want && same(want, png, masks)) return await picked(want);
+      const equal = wants.find((w) => same(w, png, masks));
+      if (equal) return await picked(equal);
       if (prefer && i === 0 && !nearly(prefer, png, masks)) prefer = null;
       if (prefer && same(prefer, png, masks)) return await picked(prefer);
       if (last && !same(last, png, masks) && conn.shot.out) {
@@ -12970,6 +13090,22 @@ const JOB_SECONDS = {
 const selected = SHOTS.filter((s) => !only || THEMES.some((theme) => only.test(themedOut(s.out, theme))));
 const wanted = Object.keys(SETUPS).filter((name) => selected.some((s) => s.setup === name));
 if (!selected.length) die(2, `no picture's path matches ${values.only}`);
+
+// The pictures as the revision has them (--against, HEAD by default), each capture's first
+// reference, read in one git process for every selected picture in both themes. With the
+// default, an output folder outside git has none, and a capture is compared with the file only.
+let revision = null;
+if (!values.againstDisk) {
+  try {
+    revision = openRevision(outRoot, AGAINST);
+    revision.read(selected.flatMap((s) => THEMES.map((theme) => themedOut(s.out, theme))));
+    console.log(`each capture is compared with ${AGAINST} (${revision.short}) first, then with its file`);
+  } catch (e) {
+    if (values.against !== undefined) die(2, e.message);
+    revision = null;
+    console.log(`each capture is compared with its file only: ${e.message}`);
+  }
+}
 if (wanted.includes("help") && !existsSync(path.join(SITE, "tB", "symbols.json"))) {
   die(2, `no built site in ${SITE}: run build.bat first`);
 }
@@ -13071,9 +13207,11 @@ const SIZE_SLACK = 32;
 // picture's path. A light picture is compared with the dark one (`dark`, this run's, or the
 // file's): one with the same pixels, but for a capture's noise (`nearly`), is not kept, and a
 // light file there already is removed, since the page shows X.png in both themes then; one
-// more than SIZE_SLACK off its size fails. A picture within a capture's noise of its file is
-// not written either. Returns whether the picture was written, or null for a light picture
-// that is the dark one.
+// more than SIZE_SLACK off its size fails. A picture within a capture's noise of the revision's
+// (--against) leaves the file as the revision has it, with its SVG (pictureFate,
+// lib/shot-revision.mjs); one within a capture's noise of its file is not written either.
+// Returns whether the picture was written, "restored" for one put back as the revision has
+// it, or null for a light picture that is the dark one.
 function keep(name, out, png, theme, dark, scale = SCALE) {
   const file = path.join(outRoot, themedOut(out, theme));
   const { w, h } = pngSize(png);
@@ -13105,31 +13243,58 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
     }
   }
   mkdirSync(path.dirname(file), { recursive: true });
-  let state = "new";
-  let write = true;
-  if (existsSync(file)) {
-    const was = readFileSync(file);
-    if (was.equals(png)) {
-      state = "unchanged";
-      write = false;
-    } else if (nearly(was, png)) {
-      // a run now and then settles on the other version of a capture's noise for every
-      // capture of a state (WIP.Screenshots.md, Capture): the file stays as it is
-      state = "unchanged but for a capture's noise";
-      write = false;
-      writeDiff(name, themedOut(out, theme), was, png, { suffix: ".noise" });
-    } else {
-      state = "updated";
-      writeDiff(name, themedOut(out, theme), was, png);
-    }
-  }
-  if (write) writeFileSync(file, png);
+  // The picture as the revision has it comes first (--against): a capture within a capture's
+  // noise of it puts the file back as the revision has it, so that a picture does not drift
+  // from the repository's over several runs, each within noise of the file before it.
+  const was = existsSync(file) ? readFileSync(file) : null;
+  const atRevision = revision ? revision.bytes(themedOut(out, theme)) : null;
+  const fate = pictureFate(png, atRevision, was, nearly);
+  // a run now and then settles on the other version of a capture's noise for every
+  // capture of a state (WIP.Screenshots.md, Capture): the file then stays as it is
+  const STATES = {
+    new: "new",
+    updated: "updated",
+    unchanged: "unchanged",
+    noise: "unchanged but for a capture's noise",
+    restored: `restored as ${AGAINST} has it`,
+  };
+  const state = STATES[fate.state];
+  if (fate.state === "noise") writeDiff(name, themedOut(out, theme), was ?? atRevision, png, { suffix: ".noise" });
+  if (fate.state === "updated") writeDiff(name, themedOut(out, theme), was, png);
+  if (fate.state === "restored" && was)
+    writeDiff(name, themedOut(out, theme), was, atRevision, {
+      suffix: ".restored",
+      labels: { before: "FILE", after: AGAINST.toUpperCase() },
+    });
+  if (fate.write) writeFileSync(file, fate.write);
   count(theme, state);
   say(
     name,
     `${themedOut(out, theme)}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${Math.round(w / scale)}" height="${Math.round(h / scale)}"}${other})`,
   );
-  return write;
+  if (fate.state === "restored") {
+    restoreSvg(name, themedOut(out, theme));
+    return "restored";
+  }
+  return fate.write !== null;
+}
+
+// A picture put back as the revision has it takes the revision's SVG with it, or loses its
+// SVG when the revision has none, so that the pair stays matched.
+function restoreSvg(name, out) {
+  const svgOut = out.replace(/\.png$/i, ".svg");
+  const file = path.join(outRoot, svgOut);
+  const atRevision = revision.bytes(svgOut);
+  const fate = svgFate(atRevision, existsSync(file) ? readFileSync(file) : null);
+  // as a checkout writes it (line endings), by git
+  if (fate === "write") restoreFromRevision(outRoot, revision.hash, [svgOut]);
+  if (fate === "remove") rmSync(file);
+  const text = {
+    keep: `as ${AGAINST} has it`,
+    write: `restored as ${AGAINST} has it`,
+    remove: `removed, as ${AGAINST} has none`,
+  };
+  if (fate !== "keep" || atRevision) say(name, `${svgOut}: ${text[fate]}`);
 }
 
 // A `once` picture has no light file: one left from before is removed, and its SVG.
@@ -13307,7 +13472,7 @@ async function runJob(job) {
         const darkFile = path.join(outRoot, shot.out);
         const dark =
           theme === "dark" ? null : (darks.get(shot.out) ?? (existsSync(darkFile) ? readFileSync(darkFile) : null));
-        state.reference = existsSync(file) ? readFileSync(file) : null;
+        state.reference = [revision?.bytes(out), existsSync(file) ? readFileSync(file) : null].filter(Boolean);
         state.prefer = dark;
         state.out = out;
         state.svg = null;
@@ -13319,9 +13484,10 @@ async function runJob(job) {
           const kept = keep(job.name, shot.out, png, theme, dark, Buffer.isBuffer(taken) ? SCALE : taken.scale);
           if (shot.once) dropLight(job.name, shot.out);
           // A light picture that is the dark one is not kept, and neither is its SVG or bundle.
+          // One put back as the revision has it has had its SVG put back with it.
           const svgFile = path.join(outRoot, out.replace(/\.png$/i, ".svg"));
-          if (values.svg && kept !== null) await keepSvg(job.name, out, png, state.svg, kept);
-          else if (values.svg) {
+          if (values.svg && kept !== null && kept !== "restored") await keepSvg(job.name, out, png, state.svg, kept);
+          else if (values.svg && kept === null) {
             if (existsSync(svgFile)) rmSync(svgFile);
             dropBundle(bundlesRoot, out);
           }

@@ -28,6 +28,7 @@ import {
   withUsageError,
 } from "../../lib/cli.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../../lib/repo-paths.mjs";
+import { readRevisionFiles } from "../lib/shot-revision.mjs";
 import { listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
 import { judgeSvg, SVG_FAITHFUL } from "./keep.mjs";
@@ -47,7 +48,6 @@ import {
   redraw,
   reportShard,
   retakeText,
-  revisionBytes,
   runShards,
   sheetHtml,
   shardOf,
@@ -91,7 +91,8 @@ path git does not ignore.
                    folder's own repository answers. Most changed first; then the
                    pictures that differ only within the screenshotter's noise rule
                    (which it never writes: most likely rewritten in error), with a
-                   command that would restore them, shown and never run; then the
+                   git command that would restore them and the shoot_docs.mjs
+                   --cleanup one that would with their SVGs, shown and never run; then the
                    added; then the deleted. No SVG is drawn, no bundle is read and
                    no browser starts. Not combined with --all, --bundles or --jobs
   -h, --help       print this text and exit
@@ -162,6 +163,18 @@ if (values.against !== undefined) {
     refuse(e.message);
   }
   const listed = found.pictures.filter((p) => !only || only.test(p.out));
+  // The revision's pictures, in one git process.
+  let atRevision;
+  try {
+    atRevision = readRevisionFiles(
+      docsRoot,
+      found.hash,
+      found.prefix,
+      listed.filter((p) => p.status !== "added").map((p) => p.out),
+    );
+  } catch (e) {
+    refuse(`git could not read the pictures of ${values.against}: ${e.message}`);
+  }
   clearSheet();
   const rows = [];
   for (const item of listed) {
@@ -170,7 +183,10 @@ if (values.against !== undefined) {
     let after = null;
     let result;
     try {
-      if (item.status !== "added") before = revisionBytes(docsRoot, found.hash, item.out);
+      if (item.status !== "added") {
+        before = atRevision.get(item.out);
+        if (!before) throw new Error(`${found.short} has no file ${item.out}`);
+      }
       if (item.status !== "deleted") after = readFileSync(path.join(docsRoot, item.out));
       result = compareRevisionPicture(item, before, after);
     } catch (e) {
@@ -193,7 +209,15 @@ if (values.against !== undefined) {
   }
   writeFileSync(
     path.join(outRoot, "index.html"),
-    changeSheetHtml({ rows, rev: values.against, hash: found.hash, short: found.short, prefix: found.prefix }),
+    changeSheetHtml({
+      rows,
+      rev: values.against,
+      hash: found.hash,
+      short: found.short,
+      prefix: found.prefix,
+      only: values.only,
+      docs: values.docs,
+    }),
   );
   const count = (kind) => rows.filter((r) => r.kind === kind).length;
   console.log(
