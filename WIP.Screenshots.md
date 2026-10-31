@@ -73,9 +73,20 @@ Measured:
   `tbKeyboardShortcuts_ShowManageKeyboardShortcuts`, `tbPanels_ShowManagePanelLayouts`,
   `tbProject_New`, `tbToolbox_ShowMoreComponents`), closed by a real click on their Close /
   Cancel / OK button.
+- **The New / Open Project dialog** was rewritten in BETA 1033 (`#fp2root`, its classes
+  `fp2-*`, the whole module at the end of `ide/main.js`): a search box, a rail of sections
+  (New, Samples, Recent, and Recent (VB6) only when that list has entries) with counts, cards
+  for New and Samples (`.fp2-card`) and rows for Recent (`.fp2-row`), 970 by 728 CSS px. A
+  card or row carries its item as `fp2Item` (`name`, `projectPath`): a sample's card shows its
+  name without "Sample N.", so the tool finds a sample by `fp2Item.name` and anchors on the
+  name as drawn (`SAMPLE_TITLE`). `.fp2-content` is what scrolls.
 - **What the user's machine leaks into a picture**, and the answer for each:
   - the recent-projects lists (twinBASIC and VB6) read the user's registry: overridden in the
-    page (`HostGetRecentsList`, `HostGetVB6RecentProjects`), nothing read or written;
+    page (`HostGetRecentsList`, `HostGetVB6RecentProjects`), nothing read or written. BETA
+    1033's New / Open Project dialog reads the twinBASIC list from `hostAppObject.GetRecentsList`
+    itself, as it opens, so `PAGE_DEFAULTS` answers that call from `window.__shotRecents`
+    (`setRecents`, which a shot calls before it opens the dialog), and that dialog's remembered
+    section, the setting `NEWFRONTPAGE`, is neither read nor saved;
   - the IDE's settings (View's ticks, IDE Options' values, the debugger options, the language
     tick, user panel layouts) live in `HKCU\...\twinBASIC_IDE\IDESettings`, not in the lane's
     private APPDATA — see Machine state in the pictures. The IDE is started with
@@ -280,7 +291,11 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   ("the pane did not show /tB/Modules/Interaction/MsgBox", the setup taking minutes instead of
   about 90 s), `sample6` ("the Project Explorer has no row Sources" or "Packages"), and `web`
   and `webpage`, whose pages are live and change of their own accord. A picture that fails the
-  same way twice is a real fault.
+  same way twice is a real fault. Under load (six IDEs starting at once, once at three) a setup
+  now and then fails with "the IDE's settings were not made the defaults: its page ran no hook,
+  even after a reload": `checkDefaults` fails closed, so nothing of the user's reaches a picture.
+  Retry such a setup once in a fresh IDE; if the retry fails too, stop and leave it to the owner
+  (owner).
 - **`Features/Images/a6525b1d...png` changes width from run to run** (1512 or 1514 px); its
   light picture is narrower again (1498). Each comes out within the 32-pixel tolerance, so the
   run passes, but the file can be rewritten for the width alone.
@@ -883,6 +898,16 @@ the PNG was just captured from, and the build shows it in place of the PNG
   clip shows the half of the edge the PNG cuts off. That column alone put a small picture past
   the bar (a 16-pixel icon at 11%, a menu at 0.5%), so `capture` gives `svgOfPage` the clip
   with the PNG's width and height.
+- **The judge draws a half-pixel picture at the whole size above it** (`diffSvg`). BETA 1033
+  centres its dialogs at half pixels (Close_Question 397 by 161.5), and Chromium, laying the
+  judge's page out at 1x under the emulated scale, snaps an `<img>` of 161.5 to 162 and
+  stretches the picture a device pixel taller: every message box came out 0.29--0.39% strongly
+  off, the 16-pixel glyphs 2.9%. So its copy of the SVG gets the whole size and a viewBox
+  widened by as much, and the render is cut to the PNG's pixels; a whole-size picture is drawn
+  as before. A canvas `drawImage` at the PNG's size is no answer: without the GPU (replay's
+  browsers) it draws an SVG otherwise than an `<img>`. The boxes stay snapped to whole CSS px
+  (`grid` 1) even where the IDE lays them out at half pixels: snapping to device pixels made
+  95 pictures worse and let none more pass the bar.
 - **A converter change is tried with `replay.mjs`, not a retake** (owner).
   `capture.mjs`'s `collectBundle` reads everything the converter needs from the page into a
   *bundle*: the snapshot, its style names (positional, so a bundle carries its own list), and
@@ -894,16 +919,6 @@ the PNG was just captured from, and the build shows it in place of the PNG
   an inline `<svg>` is `svgs`, pairs of a layout object's key and what `inlineSvg` read. The
   annotation layer's box is already in document coordinates in its markup, so a scrolled page
   needs nothing more. `bundle.mjs`'s `renderBundle` draws the
-- **The judge draws a half-pixel picture at the whole size above it** (`diffSvg`). BETA 1033
-  centres its dialogs at half pixels (Close_Question 397 by 161.5), and Chromium, laying the
-  judge's page out at 1x under the emulated scale, snaps an `<img>` of 161.5 to 162 and
-  stretches the picture a device pixel taller: every message box came out 0.29--0.39% strongly
-  off, the 16-pixel glyphs 2.9%. So its copy of the SVG gets the whole size and a viewBox
-  widened by as much, and the render is cut to the PNG's pixels; a whole-size picture is drawn
-  as before. A canvas `drawImage` at the PNG's size is no answer: without the GPU (replay's
-  browsers) it draws an SVG otherwise than an `<img>`. The boxes stay snapped to whole CSS px
-  (`grid` 1) even where the IDE lays them out at half pixels: snapping to device pixels made
-  95 pictures worse and let none more pass the bar.
   SVG from it alone, and `svgOfPage` is the one then the other, so a replay with the converter
   unchanged gives the same bytes. `--svg` saves every picture's bundle, faithful or not, in
   `.svgshot-bundles/` (gitignored, never under `docs/`: a bundle holds the user name), **one
