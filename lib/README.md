@@ -39,6 +39,11 @@ given code (`die`), and makes a crash exit 2 (`exitOnCrash`).
 `scripts/check_cli.mjs` carries its probes and the tools' recorded
 command-line cases.
 
+[sse.mjs](sse.mjs) is a channel of server-sent events (`createSseChannel`):
+it answers a page's `EventSource` request, keeps the stream open, and writes
+each event to every page holding it. `builder/serve.mjs` sends its
+live-reload over one.
+
 `scripts/check_tree_fresh.mjs` counts `lib/` among the inputs that decide the
 built bytes, beside `docs/` and `builder/`, so an edit here marks every built
 tree stale, and `check.bat` and `book.bat` refuse it until the next build.
