@@ -899,7 +899,8 @@ the PNG was just captured from, and the build shows it in place of the PNG
   0,0,0,0 in the render, 255 levels off. A replay of the 476 bundles (2026-11-01) lowered 58
   cut-outs' share strongly off and raised none, and accepted two SVGs it had refused for that
   edge alone: Properties_SystemColours.light (0.442% to 0) and Properties_ColourPicker.light
-  (0.268% to 0.001%, the strip step 3 of WIP.ShotReview.md left out by hand).
+  (0.268% to 0.001%, the strip step 3 of WIP.ShotReview.md used to try `svg.ignore`, in a
+  manifest entry that was never committed).
 - **The SVG's size is the PNG's.** A clip half a CSS pixel past a whole one (a menu 168.5 wide)
   is captured a device pixel short of it, 168 wide, from the same origin; an SVG of the whole
   clip shows the half of the edge the PNG cuts off. That column alone put a small picture past
