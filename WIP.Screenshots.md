@@ -891,9 +891,15 @@ the PNG was just captured from, and the build shows it in place of the PNG
   as tB-Red are the IDE's own asset at its own size, and stay so (owner).
 - `fonts.mjs` gives each run's characters to the font files Chromium used for them, and
   `subset_font.py` cuts each file to the characters drawn, as WOFF2.
-- `diff.mjs` renders the SVG as an `<img>` at 2x and compares it with the PNG by luminance and
-  alpha, a shift of one device pixel allowed, so that the PNGs' ClearType fringes mostly cancel
-  out.
+- `diff.mjs` renders the SVG as an `<img>` at 2x and compares it with the PNG by luminance, a
+  shift of one device pixel allowed, so that the PNGs' ClearType fringes mostly cancel
+  out. **The luminance is each pixel's as seen over black and over white**, the larger of the
+  two distances: the colour of a pixel nearly transparent is rounding, and compared on its own
+  (with alpha beside it) it put a cut-out's shadow edge, alpha 1 at 255,255,255 in the PNG and
+  0,0,0,0 in the render, 255 levels off. A replay of the 476 bundles (2026-11-01) lowered 58
+  cut-outs' share strongly off and raised none, and accepted two SVGs it had refused for that
+  edge alone: Properties_SystemColours.light (0.442% to 0) and Properties_ColourPicker.light
+  (0.268% to 0.001%, the strip step 3 of WIP.ShotReview.md left out by hand).
 - **The SVG's size is the PNG's.** A clip half a CSS pixel past a whole one (a menu 168.5 wide)
   is captured a device pixel short of it, 168 wide, from the same origin; an SVG of the whole
   clip shows the half of the edge the PNG cuts off. That column alone put a small picture past

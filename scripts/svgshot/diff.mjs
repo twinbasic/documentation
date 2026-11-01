@@ -115,14 +115,22 @@ export async function diffSvg(page, svg, ref, { refOrigin = { x: 0, y: 0 }, scal
       const strength = new Uint8Array(W * H);
       let strict32 = 0;
       let sum = 0;
-      // Luminance and alpha, not each channel: ClearType draws a glyph's edge
-      // as colour fringes that hold the same coverage, which a channel-wise
-      // distance counts as a difference and a luminance one mostly does not.
-      const dist = (x, p, y, q) =>
-        Math.max(
-          Math.abs(0.299 * (x[p] - y[q]) + 0.587 * (x[p + 1] - y[q + 1]) + 0.114 * (x[p + 2] - y[q + 2])),
-          Math.abs(x[p + 3] - y[q + 3]),
-        );
+      // Luminance, not each channel: ClearType draws a glyph's edge as colour
+      // fringes that hold the same coverage, which a channel-wise distance counts
+      // as a difference and a luminance one mostly does not. The luminance is the
+      // pixel's as seen over black and over white, the two backgrounds that set it
+      // furthest apart: the colour of a pixel nearly transparent is rounding
+      // (a shadow's last pixels, alpha 1, are 255,255,255 in a cut-out and 0,0,0
+      // in a render), and compared alone it put 255 levels between two pixels that
+      // differ by 1 of opacity. Between opaque pixels it is the luminance's distance.
+      const dist = (x, p, y, q) => {
+        const black =
+          (0.299 * (x[p] * x[p + 3] - y[q] * y[q + 3]) +
+            0.587 * (x[p + 1] * x[p + 3] - y[q + 1] * y[q + 3]) +
+            0.114 * (x[p + 2] * x[p + 3] - y[q + 2] * y[q + 3])) /
+          255;
+        return Math.max(Math.abs(black), Math.abs(black - (x[p + 3] - y[q + 3])));
+      };
       const near = (x, y, p, px, py) => {
         let best = 1e9;
         for (let dy = -1; dy <= 1; dy++) {
