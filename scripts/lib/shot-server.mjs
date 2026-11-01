@@ -228,6 +228,44 @@ export function createReviewServer({
 
   // ---- runs ----
   const listedOf = (r) => r.facts.listed;
+  // A run's verdicts are applied in order, one in each turn of the event loop, so that the
+  // server answers between them: a replay reports several pictures a second, each taking 0.1 s
+  // or more to apply (its bundle copied into the cache), and applied as their events were read
+  // they held every request up for as long as the replay ran. A run that has exited stays live
+  // until its verdicts are applied, so that nothing that waits for a run's end (a new run, a
+  // commit, Remove) meets one half applied. close() applies what is left at once, then `shut`
+  // stops the queue.
+  const queue = [];
+  let draining = false;
+  let shut = false;
+  const enqueue = (job) => {
+    queue.push(job);
+    if (draining) return;
+    draining = true;
+    setImmediate(drain);
+  };
+  function drain() {
+    const job = shut ? null : queue.shift();
+    if (!job) {
+      draining = false;
+      return;
+    }
+    try {
+      job();
+    } finally {
+      setImmediate(drain);
+    }
+  }
+  // applied as it arrives: the stage holds the verdict by the time its event is written; one
+  // that could not be read is tried again a moment later. A run removed meanwhile is not.
+  const applyArrival = (n, out, part) => {
+    if (!runs.has(n)) return;
+    if (applier.arrive(n, out, part)) sse.send("update", { outs: [out] });
+    else if (applier.errors.has(out))
+      setTimeout(() => {
+        if (!shut && runs.has(n) && applier.arrive(n, out, part)) sse.send("update", { outs: [out] });
+      }, 500);
+  };
   const onEvent = (record, e) => {
     const r = runs.get(record.n);
     r.events.push(e);
@@ -237,26 +275,23 @@ export function createReviewServer({
       const v = r.verdicts.get(e.out) ?? { png: null, svg: null };
       v[part] = value;
       r.verdicts.set(e.out, v);
-      // applied as it arrives: the stage holds the verdict by the time its event is written;
-      // one that could not be read is tried again a moment later
-      if (!applier.arrive(record.n, e.out, part) && applier.errors.has(e.out))
-        setTimeout(() => {
-          if (applier.arrive(record.n, e.out, part)) sse.send("update", { outs: [e.out] });
-        }, 500);
+      enqueue(() => applyArrival(record.n, e.out, part));
     }
     if (e.out) sse.send("update", { outs: [e.out] });
     else sse.send("update", { outs: e.type === "run" || e.type === "summary" ? listedOf(r) : [], runs: true });
   };
-  const onExit = (record) => {
-    const r = runs.get(record.n);
-    r.live = false;
-    r.handle = null;
-    if (record.tool === "cleanup") {
-      // what it put back is no longer changed: every page that shows a picture may differ
-      changedSeen = { at: 0, value: [] };
-      sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
-    } else sse.send("update", { outs: listedOf(r), runs: true });
-  };
+  const onExit = (record) =>
+    enqueue(() => {
+      const r = runs.get(record.n);
+      if (!r) return;
+      r.live = false;
+      r.handle = null;
+      if (record.tool === "cleanup") {
+        // what it put back is no longer changed: every page that shows a picture may differ
+        changedSeen = { at: 0, value: [] };
+        sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
+      } else sse.send("update", { outs: listedOf(r), runs: true });
+    });
   const liveRuns = () => [...runs.values()].filter((r) => r.live);
   function start({ tool, args }) {
     refuseWhileCommitting();
@@ -997,6 +1032,9 @@ export function createReviewServer({
     session: () => session,
     applyPending: () => applier.pending(),
     close() {
+      // what the runs reported is applied before the server stops, at once
+      while (queue.length) queue.shift()();
+      shut = true;
       sse.close();
       const closed = new Promise((resolve) => server.close(() => resolve()));
       server.closeAllConnections();

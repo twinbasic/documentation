@@ -296,14 +296,35 @@ const REVIEW_SCRIPT = `<script>
     defaults();
     scrollTo(0, y);
   };
+  // The page fetches itself 400 ms after an update, and once in 400 ms at most while updates
+  // keep coming: put off by each one, it never did while a replay reported several a second.
+  // One fetch at a time; an update during one fetches again after it.
   let timer = null;
+  let fetching = false;
+  let again = false;
+  const fetchNow = async () => {
+    timer = null;
+    if (fetching) {
+      again = true;
+      return;
+    }
+    fetching = true;
+    try {
+      await refresh();
+    } finally {
+      fetching = false;
+      if (again) {
+        again = false;
+        timer ??= setTimeout(fetchNow, 400);
+      }
+    }
+  };
   const update = (data) => {
     const d = JSON.parse(data);
     const me = document.body.dataset.out;
     // a picture's page follows its picture, and the runs, which its run buttons wait for
     if (me && !d.runs && !(d.outs || []).includes(me)) return;
-    clearTimeout(timer);
-    timer = setTimeout(refresh, 400);
+    timer ??= setTimeout(fetchNow, 400);
   };
   // The event stream: one for every page of the tool in the browser, since the browser opens
   // six connections to the server at most and a stream holds one for as long as it is open.

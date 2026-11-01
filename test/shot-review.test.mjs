@@ -1090,6 +1090,9 @@ onStop(process.stdin, () => {
       );
       assert.match(html, /<div class="cards" data-group="look">/);
       assert.match(html, /g\.indeterminate = n > 0 && n < outs\.length;/);
+      // a page fetches itself once in 400 ms while updates keep coming, not put off by each
+      assert.match(html, /timer \?\?= setTimeout\(fetchNow, 400\);/);
+      assert.doesNotMatch(html, /clearTimeout\(timer\)/);
       assert.match(html, /Resume at 1 of 1/);
       assert.match(html, /<code>node scripts\/shoot_docs\.mjs --only &quot;A\|B&quot;<\/code>/);
       const detail = await get(`/picture/${A}?filter=look`);
