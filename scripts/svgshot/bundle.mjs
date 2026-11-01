@@ -12,7 +12,8 @@
 // clip, by frame id) the answers its measuring layer gave -- font metrics, run
 // widths, the ink an underline skips, where an ellipsis cuts a line (`cuts`, the
 // questions, as `skips` are kept beside their answers), the text a focused field has
-// selected and its colours (`selection`), the placeholder colour, the canvases'
+// selected and its colours (`selection`; a bundle taken before it was read has none, and a
+// field with text is a miss), the placeholder colour, the canvases'
 // pixels, the annotation layer (its box already in the document's coordinates,
 // so that a scrolled page needs nothing more) -- the platform fonts of each run,
 // the web fonts a run was drawn with, each scrolling box's scrollbar styles, each
@@ -57,6 +58,15 @@ export const BUNDLE_CACHE = path.join(REPO_ROOT, ".svgshot-bundles");
  * one file picked, and adds the inline <svg>s.
  */
 export const BUNDLE_VERSION = 2;
+
+// The selection of a bundle that holds none: the converter asks which field it is in only for
+// a field that shows text (snapshot-svg.mjs's selectionIn), and that question is the miss.
+const unknownSelection = (miss) => ({
+  get backendNodeId() {
+    miss("the selection of a text field that shows text");
+    return undefined;
+  },
+});
 
 // Every document of a decoded snapshot, the page's first, with its frames' after it.
 function documentsOf(page) {
@@ -162,8 +172,9 @@ export function drawBundle(bundle) {
       // a bundle taken before the clear buttons were read cannot say whether one shows
       searchButton: (key) =>
         buttons ? (buttons.get(key) ?? null) : miss("the clear button of a search field that shows text"),
-      // a bundle taken before the selection was read has none: it is drawn as before
-      selection: m.selection ?? null,
+      // a bundle taken before the selection was read cannot say whether a field that shows
+      // text had some of it selected (null is a bundle's answer that nothing was)
+      selection: "selection" in m ? m.selection : unknownSelection(miss),
       inner: m.inner,
     };
   };

@@ -499,8 +499,9 @@ describe("list markers", () => {
 describe("a search field's clear button", () => {
   // A bundle of an <input type="search"> 200 by 25 at 10.5, 10 that shows "format", with the
   // clear buttons `buttons` read ([layout object's key, what searchButton read] pairs), or none
-  // read when undefined (a bundle taken before they were).
-  function bundleOf(buttons) {
+  // read when undefined (a bundle taken before they were); with `selectionRead` false, no
+  // selection read either.
+  function bundleOf(buttons, { selectionRead = true } = {}) {
     const strings = [];
     const s = (v) => {
       const i = strings.indexOf(v);
@@ -514,6 +515,7 @@ describe("a search field's clear button", () => {
       "font-size",
       "font-weight",
       "font-style",
+      "-webkit-text-fill-color",
       ...["top", "right", "bottom", "left"].flatMap((side) => [`padding-${side}`, `border-${side}-width`]),
     ];
     const style = [
@@ -524,6 +526,7 @@ describe("a search field's clear button", () => {
       "13px",
       "400",
       "normal",
+      "rgb(214, 214, 214)",
       ...Array(8).fill("0px"),
     ].map(s);
     const names = ["#document", "HTML", "BODY", "INPUT"];
@@ -586,6 +589,7 @@ describe("a search field's clear button", () => {
           svgs: [],
           scrollbars: [],
           ...(buttons ? { searchButtons: buttons } : {}),
+          ...(selectionRead ? { selection: null } : {}),
         },
       ],
     };
@@ -628,6 +632,12 @@ describe("a search field's clear button", () => {
     const { drawn, misses } = drawBundle(bundleOf(undefined));
     assert.ok(misses.includes("the clear button of a search field that shows text"), misses.join("; "));
     assert.doesNotMatch(drawn.svg, /stroke-linecap/);
+  });
+
+  test("the field's selection is a question a bundle taken before it was read has no answer for", () => {
+    const what = "the selection of a text field that shows text";
+    assert.ok(drawBundle(bundleOf([["0:2", shown]], { selectionRead: false })).misses.includes(what));
+    assert.ok(!drawBundle(bundleOf([["0:2", shown]])).misses.includes(what));
   });
 });
 

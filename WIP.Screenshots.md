@@ -1188,7 +1188,11 @@ clipped to the field. A selection in a window without focus (other colours, whic
 property gives) and one of the document's own text are reported as not drawn. A bundle taken
 before cannot say a field had a selection; the PNGs that show one were found by the colour
 (Variables_Edit, Designer_AddName, Rename_Box, both themes), and a retake of each took it from
-refused (0.65% to 0.77% strongly off) or 0.248% to 0% strongly off. **An attribute with no
+refused (0.65% to 0.77% strongly off) or 0.248% to 0% strongly off. Until 2026-11-02 such a
+bundle was drawn as if no field had a selection, so a replay drew Variables_Edit's old bundle
+(its retake's PNG stayed, so the cache kept the old bundle) without it again; since then a field
+that shows text in a bundle with no `selection` is a miss (`unknownSelection` in `bundle.mjs`),
+and replay lists the picture as needing a retake: 62 of the cache's 481 pictures that day. **An attribute with no
 value** (`disabled`) is the empty string, which DevTools writes as -1, the index of no string;
 `decodeSnapshot` read it as no attribute until 2026-11-01, so no control was ever drawn disabled
 (Find_Project's greyed "Current Module", set `.disabled` by the IDE). **A disabled checkbox or
