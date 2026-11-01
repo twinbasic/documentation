@@ -250,6 +250,9 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     assert.equal(f.failed.get(A), "boom");
     assert.deepEqual([...f.skipped], [B]);
     assert.equal(f.stopping, true);
+    // the build the run event names, which Retake what failed takes when the run named no IDE
+    assert.equal(f.build, null);
+    assert.equal(runFacts("shoot_docs", [{ ...jobs(A), build: 1033 }]).build, 1033);
     const r = runFacts("replay", [
       { type: "run", pictures: [C] },
       { type: "retake", out: C, why: "no bundle" },
@@ -999,13 +1002,14 @@ onStop(process.stdin, () => {
     const head = flat(false);
     const revision = stubRevision("a", { [A]: head });
     const manifestFile = path.join(root, "manifest.json");
-    const make = () =>
+    const make = (more = {}) =>
       createReviewServer({
         session: openSession(root, () => ({ hash: revision.hash, short: revision.short, build: 1500 })),
         revision,
         manifest: () => openManifest(manifestFile),
         docsRoot: docs,
         command: { script },
+        ...more,
       });
     const app = make();
     let app2 = null;
@@ -1150,6 +1154,26 @@ onStop(process.stdin, () => {
         tool: "shoot_docs",
         args: ["--only", onlyOf([B]), "--against", "a".repeat(40)],
       });
+      // a run that named no IDE is retaken on the build its run event names, not the newest
+      // install; with that build gone, the button says so
+      await app2.close();
+      const eventsFile = runPaths(root, 1).events;
+      const [first, ...rest] = fs.readFileSync(eventsFile, "utf8").split("\n");
+      fs.writeFileSync(eventsFile, [JSON.stringify({ ...JSON.parse(first), build: 1501 }), ...rest].join("\n"));
+      const retakeOn = async (ides) => {
+        const probe = make({ ides });
+        try {
+          const page = await (await fetch(`http://127.0.0.1:${await probe.listen(0)}${hrefs.runs}`)).text();
+          return /<button[^>]*>Retake what failed \(1\)<\/button>/.exec(page)[0].replace(/&quot;/g, '"');
+        } finally {
+          await probe.close();
+        }
+      };
+      const newer = { build: 1600, exe: "C:/tb1600/twinBASIC.exe" };
+      assert.match(await retakeOn([newer, { build: 1501, exe: "C:/tb1501/twinBASIC.exe" }]), /"ide":1501/);
+      assert.match(await retakeOn([newer]), /disabled title="the IDE run 1 used, BETA 1501, is no longer found"/);
+      app2 = make();
+      await app2.listen(port2);
 
       // Removed: what it wrote under docs undone, its record and folder gone.
       assert.match(

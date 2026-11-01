@@ -153,7 +153,9 @@ put back keeps the run, and Remove again tries again. A clean-up keeps no layers
 one leaves what it put back. A retake that has ended with pictures it failed on (a failure
 reported, a job that failed before reaching them, or a staged verdict that says so) has
 **Retake what failed (N)**: a new retake of exactly those pictures, with the run's `--svg`
-and its IDE (by its build among the installs found; disabled when that install is gone).
+and its IDE (by its build among the installs found; disabled when that install is gone). A run
+that named no IDE (`shot_review.mjs --retake` without `--ide`) is retaken on the build its run
+event records, the newest install when it ran, not the newest now.
 Continuing the failed run itself was turned down (owner): its layers would come after a later
 run's, and a run has one start, one end and one summary. The failed pictures have no verdict
 of that run, so the new run's are their only ones, and they leave the Failed group. Below, a

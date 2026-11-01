@@ -466,18 +466,24 @@ export function createReviewServer({
     };
     // What "Retake what failed" retakes of a retake that has ended: the pictures it failed on
     // (failedOf), with its --svg and its IDE, by the build it is among the installs found
-    // (missing: no longer found).
+    // (missing: no longer found). A run that named no IDE ran on the newest install then, whose
+    // build its run event records: that build, not the newest install now.
     const failedRetake = (r) => {
       if (r.record.tool !== "shoot_docs" || r.live || r.record.args.includes("--dry-run")) return null;
       const pictures = failedOf(r);
       if (!pictures.length) return null;
       const exe = optionOf(r.record, "--ide");
-      const found = exe ? ides.find((i) => path.resolve(i.exe) === path.resolve(exe)) : null;
+      const build = r.facts.build;
+      const found = exe
+        ? ides.find((i) => path.resolve(i.exe) === path.resolve(exe))
+        : build
+          ? ides.find((i) => i.build === build)
+          : null;
       return {
         pictures,
         svg: r.record.args.includes("--svg"),
         ide: found?.build ?? null,
-        missing: exe && !found ? exe : null,
+        missing: found ? null : exe ? exe : build ? `BETA ${build}` : null,
       };
     };
     return runsHtml({

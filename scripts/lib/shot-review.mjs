@@ -31,10 +31,10 @@ export const FILTERS = [
 ];
 
 /**
- * What the events of a run of `tool` ("shoot_docs" or "replay") say: {listed, svg, jobs,
+ * What the events of a run of `tool` ("shoot_docs" or "replay") say: {listed, svg, build, jobs,
  * failed, skipped, retakes, stopping, summary}. `listed` the pictures the run is to take or
  * draw, in its order; `svg` whether it gives each an SVG verdict (a replay's are SVG verdicts
- * only); `jobs` a Map from a job's name to {pictures, state, error}, state "waiting",
+ * only); `build` the IDE's build a retake ran on, or null; `jobs` a Map from a job's name to {pictures, state, error}, state "waiting",
  * "started", "done" or "failed" (a job that failed is then reported done, and stays failed),
  * and `jobOf` from a picture to its job's name; `failed` a Map from a picture to its error;
  * `skipped` the pictures a stopped run did not take; `retakes` a Map from a picture replay
@@ -44,6 +44,7 @@ export function runFacts(tool, events) {
   const facts = {
     listed: [],
     svg: tool === "replay",
+    build: null,
     jobs: new Map(),
     jobOf: new Map(),
     failed: new Map(),
@@ -57,6 +58,7 @@ export function runFacts(tool, events) {
       if (tool === "replay") facts.listed = e.pictures ?? [];
       else {
         facts.svg = !!e.svg;
+        facts.build = e.build ?? null;
         facts.listed = (e.jobs ?? []).flatMap((j) => j.pictures);
         for (const j of e.jobs ?? []) {
           facts.jobs.set(j.name, { pictures: j.pictures.length, state: "waiting", error: null });
