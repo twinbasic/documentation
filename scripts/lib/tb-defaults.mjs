@@ -91,14 +91,15 @@ const READY_LIMIT = 60 * 1000;
  * @param {string} o.profile  the IDE's WEBVIEW2_USER_DATA_FOLDER
  * @param {number} o.since    when it was started; a DevToolsActivePort older than 2 s before is left over
  * @returns {{ error: Error | null, closed: Promise<void>, ready: Promise<void>, stop: () => void }}
- *   `error` is why no hook was installed (set once known); `ready` settles once the hook is
- *   installed, has failed or was stopped; `stop` ends the polling and closes the
+ *   `error` is why no hook was installed (set once known); `failures` the pages it could not
+ *   prepare; `ready` settles once the hook is installed with every page then known prepared,
+ *   has failed or was stopped; `stop` ends the polling and closes the
  *   connection, and is called when the IDE ends or fails to start. A hook that was installed leaves
  *   the page's `window.__tbDefaults`, which attachIde checks.
  */
 export function installDefaultsHook({ profile, since }) {
   let markReady;
-  const hook = { error: null, closed: null, ready: new Promise((r) => (markReady = r)), stop: () => {} };
+  const hook = { error: null, failures: [], closed: null, ready: new Promise((r) => (markReady = r)), stop: () => {} };
   let stopped = false;
   let client = null;
   hook.stop = () => {
@@ -130,6 +131,11 @@ export function installDefaultsHook({ profile, since }) {
     if (stopped) return;
     client = await connect(`ws://127.0.0.1:${port}${wsPath}`, { what: `the IDE's browser on port ${port}` });
     const source = hookSource();
+    // Every page prepared while the hook is set up, which `ready` waits for. A page that existed
+    // before the auto-attach (the case checkDefaults reloads for) is attached by setAutoAttach
+    // itself and prepared from its event: a reload before its script is added loads it unhooked
+    // again, as a shoot_docs run of ten IDEs at once did on BETA 1033.
+    const preparing = [];
     const prepare = async ({ sessionId, targetInfo }) => {
       try {
         if (targetInfo.type === "page") {
@@ -142,7 +148,13 @@ export function installDefaultsHook({ profile, since }) {
       }
     };
     client.on((m) => {
-      if (m.method === "Target.attachedToTarget") prepare(m.params).catch(() => {});
+      if (m.method !== "Target.attachedToTarget") return;
+      const { targetInfo } = m.params;
+      preparing.push(
+        prepare(m.params).catch((e) => {
+          if (targetInfo.type === "page") hook.failures.push(`${targetInfo.url || "a page"}: ${e.message}`);
+        }),
+      );
     });
     await client.send("Target.setDiscoverTargets", { discover: true });
     await client.send("Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: true, flatten: true });
@@ -153,6 +165,7 @@ export function installDefaultsHook({ profile, since }) {
       const { sessionId } = await client.send("Target.attachToTarget", { targetId: t.targetId, flatten: true });
       await prepare({ sessionId, targetInfo: t });
     }
+    await Promise.all(preparing);
   })()
     .catch((e) => {
       if (!stopped) hook.error = e;
@@ -186,8 +199,9 @@ export async function checkDefaults(c, hook) {
     await wait(50);
     if (await ran()) return;
   }
+  const failed = hook.failures?.length ? `; preparing a page failed: ${hook.failures.join("; ")}` : "";
   throw new Error(
     "the IDE's settings were not made the defaults: its page ran no hook, even after a reload " +
-      "(it would have the user's settings; userSettings: true is the opt-out)",
+      `(it would have the user's settings; userSettings: true is the opt-out)${failed}`,
   );
 }

@@ -1209,7 +1209,11 @@ answered, never their values), and reloads the page once when it is missing: the
 the script, the reload takes about 40 ms, and the UI and the command-line project come back. The reload
 waits for the hook to be installed (`hook.ready`): the hook connects on its own, and in a `shoot_docs
 --jobs 10` run on BETA 1033 the help setup's page was reloaded before it had attached, loaded unhooked
-again, and failed the setup. A marker still
+again, and failed the setup. `ready` also waits for the pages being prepared: a page that existed
+before the auto-attach is attached by `setAutoAttach` itself and prepared from its event, which `ready`
+did not wait for, so in another `--jobs 10` run on BETA 1033 (2026-11-01) a debugging setup's page was
+reloaded before its script was added, and failed the setup the same way. A page that could not be
+prepared is named in the error. A marker still
 missing after that is a harness error, exit 2, since the run would have the user's settings. The hook's
 connection lives as long as the process, so a `tbbuild --keep` IDE is hooked until `tbbuild` ends.
 
