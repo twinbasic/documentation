@@ -1218,7 +1218,14 @@ sample setup the same way with every page prepared, for a reason still unknown. 
 also adds the script on its own connection to the page before the reload, which is open while the
 page reloads whatever became of the hook's session, and a marker still missing after that reports
 the page's address and state, the last check's error, the check's steps and the hook's (`trace`:
-connected, each page attached and prepared, ready, a closed connection), each with its time. A marker still
+connected, each page attached and prepared, ready, a closed connection), each with its time. Those
+named the cause in a `--jobs 16` retake on BETA 1033 (2026-11-02, settings-webview2), and likely the
+sample setup's too: `attach` takes the target listed as `main.htm`, which it is while its navigation
+there is still pending, so the check found `about:blank` with no marker, and its reload loaded
+`about:blank` again and cancelled the navigation (the page "about:blank, complete" after the reload,
+every page prepared). So `checkDefaults` first waits, a minute at most, for the page to commit
+`main.htm`, whose document may then have run the hook after all, and fails with "its page never loaded
+main.htm" rather than reload a page that has not. A marker still
 missing after that is a harness error, exit 2, since the run would have the user's settings. The hook's
 connection lives as long as the process, so a `tbbuild --keep` IDE is hooked until `tbbuild` ends.
 

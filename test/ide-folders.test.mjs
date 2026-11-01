@@ -80,10 +80,15 @@ describe("the check that an IDE runs with the default settings (checkDefaults)",
   // A page that runs the hook's script only when it loads after the hook has attached, as the
   // IDE's main.htm does: a reload before then loads it unhooked again.
   // `own` is whether a script the check adds on its own connection runs at the next document.
+  // `main` is whether main.htm has committed: a reload before then loads about:blank again, and
+  // the navigation to main.htm is lost.
   const fakePage = ({ own = false } = {}) => {
-    const state = { hooked: false, marked: false, reloads: 0, added: 0 };
+    const state = { hooked: false, marked: false, main: true, lost: false, reloads: 0, added: 0 };
     const c = {
-      evaluate: async (expression) => (expression.includes("readyState") ? "main.htm, complete" : state.marked),
+      evaluate: async (expression) =>
+        expression.includes("readyState")
+          ? `${state.main ? "main.htm" : "about:blank"}, complete`
+          : { main: state.main, ran: state.main && state.marked },
       send: async (method) => {
         if (method === "Page.addScriptToEvaluateOnNewDocument") {
           state.added++;
@@ -91,13 +96,37 @@ describe("the check that an IDE runs with the default settings (checkDefaults)",
         }
         if (method === "Page.reload") {
           state.reloads++;
+          if (!state.main) state.lost = true;
           state.marked = state.hooked;
         }
         return {};
       },
     };
-    return { state, c };
+    // main.htm commits after `ms`, the hook's script run in it when `marked`, unless a reload lost it
+    const commit = (ms, marked) =>
+      setTimeout(() => {
+        if (state.lost) return;
+        state.main = true;
+        state.marked = marked;
+      }, ms);
+    return { state, c, commit };
   };
+
+  test("waits for a page still on its way to main.htm, and does not reload one that ran the hook", async () => {
+    const { state, c, commit } = fakePage();
+    state.main = false;
+    commit(200, true);
+    await checkDefaults(c, { error: null, ready: Promise.resolve() });
+    assert.deepEqual([state.main, state.reloads], [true, 0]);
+  });
+
+  test("reloads a page that committed main.htm late without the hook only once it has committed", async () => {
+    const { state, c, commit } = fakePage({ own: true });
+    state.main = false;
+    commit(200, false);
+    await checkDefaults(c, { error: null, ready: Promise.resolve() });
+    assert.deepEqual([state.lost, state.marked, state.reloads], [false, true, 1]);
+  });
 
   test("waits for a hook still on its way before it reloads the page", async () => {
     const { state, c } = fakePage();

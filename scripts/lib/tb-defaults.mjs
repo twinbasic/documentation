@@ -83,6 +83,12 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // How long checkDefaults waits for the hook to be installed before it reloads the page.
 const READY_LIMIT = 60 * 1000;
 
+// How long checkDefaults waits for the page it attached to to commit main.htm.
+const MAIN_LIMIT = 60 * 1000;
+
+// Runs in the page: whether its document is main.htm yet, and whether the hook's script ran in it.
+const LOOK = "({ main: /main\\.htm$/i.test(location.pathname), ran: !!window.__tbDefaults })";
+
 /**
  * Start hooking the IDE whose WebView2 profile is `profile`, from before it has started.
  * The file is polled every 5 ms: launchIde's own poll is at 100 ms and answers too late.
@@ -201,16 +207,35 @@ export function installDefaultsHook({ profile, since }) {
  */
 export async function checkDefaults(c, hook) {
   let lastError = null;
-  const ran = () =>
-    c.evaluate("!!window.__tbDefaults").catch((e) => {
+  const look = () =>
+    c.evaluate(LOOK).catch((e) => {
       lastError = e.message;
-      return false;
+      return { main: false, ran: false };
     });
-  if (await ran()) return;
+  let seen = await look();
+  if (seen.ran) return;
   const begun = Date.now();
   const steps = [];
   const step = (what) => steps.push(`${((Date.now() - begun) / 1000).toFixed(1)} s ${what}`);
+  const fail = (what) => fails(c, hook, what, steps, lastError);
   step("no marker");
+  // attachIde attaches to the page listed as main.htm, which it is while its navigation there is
+  // still pending: the document is about:blank, and a reload loads that again and cancels the
+  // navigation, so the page stays blank (a shoot_docs run of 16 IDEs at once on BETA 1033). The
+  // check waits for main.htm to commit, and its document may then have run the hook after all.
+  if (!seen.main) {
+    for (const until = Date.now() + MAIN_LIMIT; !seen.main && Date.now() < until; ) {
+      await wait(50);
+      seen = await look();
+    }
+    if (!seen.main) {
+      step("main.htm still not committed");
+      throw await fail("its page never loaded main.htm");
+    }
+    step("main.htm committed");
+    if (seen.ran) return;
+  }
+  const ran = async () => (await look()).ran;
   // The hook connects on its own, and on a busy machine (ten jobs at once) it can still be on
   // its way: a reload before it has attached loads the page unhooked again, and the hook then
   // attaches to a page whose document has committed. So the reload waits for it.
@@ -234,13 +259,18 @@ export async function checkDefaults(c, hook) {
     if (await ran()) return;
   }
   step("still no marker");
+  throw await fail("its page ran no hook, even after a reload");
+}
+
+// The error checkDefaults throws: `what` went wrong, and what the page, the check and the hook did.
+async function fails(c, hook, what, steps, lastError) {
   const page = await c
     .evaluate("location.href + ', ' + document.readyState")
     .then((s) => `the page is ${s}`)
     .catch((e) => `the page answers nothing: ${e.message}`);
   const failed = hook.failures?.length ? `; preparing a page failed: ${hook.failures.join("; ")}` : "";
-  throw new Error(
-    "the IDE's settings were not made the defaults: its page ran no hook, even after a reload " +
+  return new Error(
+    `the IDE's settings were not made the defaults: ${what} ` +
       `(it would have the user's settings; userSettings: true is the opt-out)${failed}; ${page}` +
       `${lastError ? `; the last check failed: ${lastError}` : ""}; the check: ${steps.join(", ")}` +
       `${hook.trace?.length ? `; the hook: ${hook.trace.join(", ")}` : ""}`,
