@@ -387,10 +387,10 @@ const busyText = (busy) =>
 const committingNotice = (committing) =>
   `Committing the session: <q>${esc(committing.message)}</q>. Its pictures cannot be changed and no run can start until the commit has ended, which takes a few seconds while the repository's hooks run.`;
 
-// Why a replay of a picture's SVG would draw nothing: the bundle cache has no bundle of it
-// (a staged run's bundle goes there only with an SVG the review writes).
+// Why a replay of a picture's SVG would draw nothing: the bundle cache has no bundle of it. A
+// bundle goes there only with the SVG it drew (a retake whose PNG stays leaves none).
 const NO_BUNDLE =
-  "the bundle cache has no bundle of this picture, so a replay would draw nothing: a retake makes one, and a run's SVG can be accepted on the SVG row";
+  "the bundle cache has no bundle of this picture, so a replay would draw nothing: accepting a run's SVG on the SVG row puts its bundle there, as does a retake that writes the PNG";
 
 /**
  * A retake of `out` and a replay of its SVG, as buttons on its page; `bundled` false when the

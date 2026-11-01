@@ -281,7 +281,9 @@ console.log(
   }`,
 );
 if (!outs.length && only)
-  console.log(`no bundle in ${path.relative(process.cwd(), bundlesRoot) || "."} matches --only: a retake makes one`);
+  console.log(
+    `no bundle in ${path.relative(process.cwd(), bundlesRoot) || "."} matches --only: a bundle is kept with the SVG drawn from it`,
+  );
 if (retakes.length) {
   // shoot_docs.mjs --only matches a shot's out, the dark picture's path: one regex for all.
   const names = [...new Set(retakes.map((r) => path.posix.basename(r.out).replace(/(\.light)?\.png$/i, "")))];

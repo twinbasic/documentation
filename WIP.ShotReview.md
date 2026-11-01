@@ -125,9 +125,10 @@ keyboard; owner).
   is greyed out and reads that the SVG goes back with it (an SVG changes with its PNG, owner,
   [WIP.Screenshots.md](WIP.Screenshots.md#pictures-as-svg)).
 - **Retake this picture** and **Replay its SVG**: a run of one picture. Replay is greyed out,
-  with the reason, when the bundle cache has no bundle of the picture: a staged run's bundle goes
-  there only with an SVG the review writes, so a picture whose PNG and SVG stayed may have none,
-  and a replay would draw nothing. A picture's page fetches itself again on an update that says
+  with the reason, when the bundle cache has no bundle of the picture: a bundle goes there only
+  with the SVG drawn from it (a retake whose PNG stays writes none, staged or not), so a picture
+  whose PNG and SVG stayed may have none, and a replay would draw nothing. Accepting a run's SVG
+  on the SVG row puts its bundle there. 54 of the 513 SVGs under docs had none on 2026-11-01. A picture's page fetches itself again on an update that says
   the runs changed, not only on one that names it, since its run buttons wait for a run to end.
 - **Back to the tool's verdicts**.
 
