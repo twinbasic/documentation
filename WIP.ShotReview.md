@@ -122,7 +122,16 @@ from), its place ("4 of 17 · Needs a look"), and the keys j/k.
 
 The session's runs, newest first, each with its kind, its options, the command line it is the
 same as (so it can be run again from a terminal), and while it runs a progress bar per job
-(`help`, `no-project`, ...) and **Stop**. Below, a form for a new run:
+(`help`, `no-project`, ...) and **Stop**. A run that has ended has **Remove**, which undoes it
+as if it had not run (owner): each picture it held is put back as its layer found it, the
+later runs' layers on that picture are applied again from there, judged anew (the applier's
+`undo`, dark pictures before light ones), and its record moves to the session's `removed`, so
+that its number is never given again, and its folder is deleted. Forgetting a run while
+leaving its writes under `docs/` was turned down: a picture only it changed would then be
+changed outside the runs, which the commit leaves out. A run that is running is stopped
+first; while a clean-up runs or a commit is under way, Remove waits. A picture that cannot be
+put back keeps the run, and Remove again tries again. A clean-up keeps no layers, so removing
+one leaves what it put back. Below, a form for a new run:
 
 - **Retake**: `shoot_docs.mjs`, with the IDE chosen from the installs found (the newest
   offered when it is newer than the session's baseline: "BETA 1501 found"), the pictures
@@ -363,7 +372,7 @@ What step 6 added:
 | Part | Where it is |
 |---|---|
 | Applying the verdicts | `createApplier({session, docsRoot, bundlesRoot, revision(), manifest()})` in `scripts/lib/shot-verdicts.mjs`: `arrive(n, out, part)` applies a part of a run's verdict as its event arrives, as the run decided it; `pending()` applies what was reported and not applied (the tool opened again); `rejudge(out, from)` applies every layer of a picture again from the run `from` on, judged anew with the manifest as it is and against the baseline; `reviewed(n, out)`, `heldPng(n, out)`, `errors`. Its header has the rules. What it applied is the stage's `review/` (`readReviewed`, `writeReviewed`, `reviewedFiles` in `shot-stage.mjs`), which the server shows in place of the run's own verdicts; a verdict judged again whose reference changed has its strength map measured again into `review/maps/` |
-| What a picture held | before a run's verdict on a picture is applied, `holdPicture(dir, outRoot, out, bundlesRoot, build)` keeps its PNG, SVG, bundle and manifest build in `runs/<n>/held/`; `unholdPicture` puts them back (each removed that was not there) and returns the build; `heldOf`. Putting a picture back as its first layer found it undoes that layer and every later one, which is how a decision is applied: there is no other undo |
+| What a picture held | before a run's verdict on a picture is applied, `holdPicture(dir, outRoot, out, bundlesRoot, build)` keeps its PNG, SVG, bundle and manifest build in `runs/<n>/held/`; `unholdPicture` puts them back (each removed that was not there) and returns the build; `heldOf`. Putting a picture back as its first layer found it undoes that layer and every later one, which is how a decision is applied and a run removed (`heldPictures(dir)` lists what a run held) |
 | A bundle into the cache | `copyBundle(fromRoot, toRoot, out, png)` in `svgshot/bundle.mjs`, naming the PNG the file holds once a review has decided (the run named the one it expected); `BUNDLE_CACHE` there, the one default for `shoot_docs.mjs`, `replay.mjs`, `sheet.mjs` and the tool |
 | The SVG with its PNG | `svgFollowsPng({written, svgOnDisk})` in `shot-policy.mjs`, which `shoot_docs.mjs`'s `keepSvg` and the applier both ask. With `--stage`, `keepSvg` judges and stages the SVG of a picture whose PNG is not written too ("unchanged", `why` its reason, no look), and of one restored or the dark one's, so that a review that takes the capture can write the SVG as judged; the lines printed are the same, and without `--stage` nothing changed |
 | The noise rule over files | `pngsNear(a, b, rule)` in `shot-change.mjs`, `shoot_docs.mjs`'s `nearly` |

@@ -55,8 +55,10 @@ from the baseline otherwise. Each verdict is applied under docs as it
 arrives, and a picture's page can decide otherwise or change its allowances
 (test/shots/manifest.json), which judges it again at once. Its runs page
 (/runs) starts a retake, a replay or a clean-up of the pictures matching a
-pattern or of those selected on the overview, one run at a time, and stops
-the one that runs; a picture's page retakes it or replays its SVG. The
+pattern or of those selected on the overview, one run at a time, stops
+the one that runs, and removes one that has ended, as if it had not run (what
+it wrote under docs is put back, and later runs' verdicts on those pictures
+are judged again); a picture's page retakes it or replays its SVG. The
 session is made when there is none, with HEAD as its baseline, and one tool
 at a time holds it; closing the tool loses nothing, and what a run reported
 and was not applied is applied when the session is opened again.

@@ -26,7 +26,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { copyBundle, readBundle } from "../svgshot/bundle.mjs";
-import { applyPicture, applySvg, heldOf, holdPicture, svgOf, unholdPicture } from "./shot-apply.mjs";
+import { applyPicture, applySvg, heldOf, heldPictures, holdPicture, svgOf, unholdPicture } from "./shot-apply.mjs";
 import { pngsNear } from "./shot-change.mjs";
 import { decidePicture, decideSvg, svgFollowsPng } from "./shot-policy.mjs";
 import { reviewPicture, reviewSvg } from "./shot-queue.mjs";
@@ -64,6 +64,11 @@ export const againstOf = (run) => optionOf(run, "--against");
  *                          runs' order: the session opened again after the tool stopped
  *                          between a verdict and its application. Returns how many
  *   rejudge(out, from)     applies again every layer of `out` from the run `from` on
+ *   undo(n)                undoes the run `n`'s layers, as if it had not run: each picture it
+ *                          held put back as its layer found it, and the later layers applied
+ *                          again from there. Returns {outs, later, failed}: the pictures it
+ *                          held, those of them a later run has a verdict on, and a Map from
+ *                          each that could not be put back to why
  *   reviewed(n, out)       the verdict applied, {out, png, svg, done}, or null
  *   heldPng(n, out)        the PNG the run `n`'s layer found, or null
  *   errors                 a Map from a picture to why its last application failed
@@ -254,34 +259,44 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
     return count;
   }
 
-  function rejudge(out, from) {
-    const layers = session.data.runs
+  // The runs after `from` (or from it on, with `inclusive`) that have a verdict on `out`, in order.
+  const layersOf = (out, from, inclusive) =>
+    session.data.runs
       .map((r) => r.n)
-      .filter((n) => n >= from && readVerdict(stageOf(n), out))
+      .filter((n) => (inclusive ? n >= from : n > from) && readVerdict(stageOf(n), out))
       .sort((a, b) => a - b);
+
+  // Applies the layers `layers` of `out` again, in order, each judged anew with what the
+  // picture holds when it is reached; the first finds the picture as it is now.
+  function reapply(out, layers, m) {
+    for (const n of layers) {
+      const staged = readVerdict(stageOf(n), out);
+      // the PNG the layer found when it was applied, which a replay compared its SVG with
+      const found = heldOf(heldDir(n), out)?.pngBytes ?? null;
+      hold(n, out, m);
+      const r = { out, png: null, svg: null, done: [] };
+      if (staged.png) {
+        r.png = applyPng(n, out, staged.png, true, m);
+        r.done.push("png");
+      }
+      if (staged.svg) {
+        const now = readIf(path.join(docsRoot, out));
+        const moved = !staged.png && found && !(now && now.equals(found));
+        // a replay's SVG of a PNG that is no longer the file's is dropped
+        if (!moved) r.svg = applySvgPart(n, out, staged.svg, r.png, m);
+        r.done.push("svg");
+      }
+      keepReviewed(n, r);
+    }
+  }
+
+  function rejudge(out, from) {
+    const layers = layersOf(out, from, true);
     if (!layers.length) return;
     const m = manifest();
     try {
       unhold(layers[0], out, m);
-      for (const n of layers) {
-        const staged = readVerdict(stageOf(n), out);
-        // the PNG the layer found when it was applied, which a replay compared its SVG with
-        const found = heldOf(heldDir(n), out)?.pngBytes ?? null;
-        hold(n, out, m);
-        const r = { out, png: null, svg: null, done: [] };
-        if (staged.png) {
-          r.png = applyPng(n, out, staged.png, true, m);
-          r.done.push("png");
-        }
-        if (staged.svg) {
-          const now = readIf(path.join(docsRoot, out));
-          const moved = !staged.png && found && !(now && now.equals(found));
-          // a replay's SVG of a PNG that is no longer the file's is dropped
-          if (!moved) r.svg = applySvgPart(n, out, staged.svg, r.png, m);
-          r.done.push("svg");
-        }
-        keepReviewed(n, r);
-      }
+      reapply(out, layers, m);
       m.save();
       errors.delete(out);
     } catch (e) {
@@ -290,10 +305,36 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
     }
   }
 
+  // Undoes the run `n`'s layers: each picture it held put back as the layer found it, and the
+  // later runs' layers on it applied again from there. The dark pictures go first, since a
+  // light one is judged against its dark one as the layer finds it.
+  function undo(n) {
+    const outs = heldPictures(heldDir(n)).sort((a, b) => Number(LIGHT.test(a)) - Number(LIGHT.test(b)));
+    const failed = new Map();
+    const later = [];
+    const m = manifest();
+    for (const out of outs) {
+      try {
+        unhold(n, out, m);
+        const layers = layersOf(out, n, false);
+        if (layers.length) later.push(out);
+        reapply(out, layers, m);
+        errors.delete(out);
+      } catch (e) {
+        failed.set(out, e.message);
+        errors.set(out, e.message);
+      }
+    }
+    m.save();
+    for (const key of [...cache.keys()]) if (key.startsWith(`${n}\u0000`)) cache.delete(key);
+    return { outs, later, failed };
+  }
+
   return {
     arrive,
     pending,
     rejudge,
+    undo,
     reviewed,
     heldPng: (n, out) => heldOf(heldDir(n), out)?.pngBytes ?? null,
     errors,

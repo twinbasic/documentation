@@ -3,7 +3,7 @@
 // review tool write a picture, an SVG or a bundle from, so that each writes the same files
 // for the same verdict. Paths are under `outRoot` with forward slashes, as a shot's `out`.
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { copyBundle, dropBundle } from "../svgshot/bundle.mjs";
 import { restoreFromRevision, svgFate } from "./shot-revision.mjs";
@@ -142,6 +142,15 @@ export function heldOf(dir, out) {
     pngBytes: held.png ? readFileSync(f.png) : null,
     svgText: held.svg ? readFileSync(f.svg, "utf8") : null,
   };
+}
+
+/** The pictures `dir` keeps anything of (holdPicture), sorted. */
+export function heldPictures(dir) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((name) => name.endsWith(".json"))
+    .map((name) => JSON.parse(readFileSync(path.join(dir, name), "utf8")).out)
+    .sort();
 }
 
 /**

@@ -266,6 +266,7 @@ export function createReviewServer({
   // Stop asks a run to stop (its own stop: its IDEs end and the registry is put back); kill ends
   // its process, and is offered only once a stop has been asked for.
   function runAction(n, action) {
+    if (action === "remove") return removeRun(n);
     const r = runs.get(n);
     if (!r?.live) throw new Error(`run ${n} is not running`);
     if (action === "stop") {
@@ -277,6 +278,30 @@ export function createReviewServer({
       r.handle.kill();
     } else throw new Error(`no such action: ${action}`);
     sse.send("update", { outs: [], runs: true });
+  }
+  // Removes a run that has ended, as if it had not run: its layers undone under docs/ (each
+  // picture put back as the run found it, and later runs' layers applied again on it), then its
+  // record and folder. A run that is running is stopped first. A picture that cannot be put
+  // back keeps the run, so that removing it again tries again. Returns {pictures, later}.
+  function removeRun(n) {
+    refuseWhileCleaning();
+    const r = runs.get(n);
+    if (!r) throw new Error(`no run ${n}`);
+    if (r.live) throw new Error(`run ${n} is running: stop it first, then remove it`);
+    const { outs, later, failed } = applier.undo(n);
+    // the pictures it put back may no longer differ from the baseline, or may now
+    changedSeen = { at: 0, value: [] };
+    if (failed.size) {
+      sse.send("update", { outs, runs: true });
+      const [out, why] = failed.entries().next().value;
+      throw new Error(
+        `${failed.size} of the ${outs.length} pictures run ${n} changed could not be put back (${out}: ${why}); run ${n} is kept, and removing it again tries again`,
+      );
+    }
+    session.removeRun(n);
+    runs.delete(n);
+    sse.send("update", { outs, runs: true });
+    return { pictures: outs.length, later: later.length };
   }
   // A clean-up writes under docs/ itself: while it runs a review's actions wait.
   const cleaning = () => liveRuns().find((r) => r.record.tool === "cleanup") ?? null;
@@ -395,8 +420,14 @@ export function createReviewServer({
     return r ? { n: r.record.n, kind: kindOf(r.record) } : null;
   };
   function runsPage() {
+    // what removing a run would undo: the pictures it reported, and those a later run took too
+    const removal = (r) => {
+      const outs = [...r.verdicts.keys()];
+      const later = [...runs.values()].filter((o) => o.record.n > r.record.n);
+      return { pictures: outs.length, later: outs.filter((out) => later.some((o) => o.verdicts.has(out))).length };
+    };
     return runsHtml({
-      runs: [...runs.values()].map((r) => ({ ...runRow(r), log: logOf(r) })),
+      runs: [...runs.values()].map((r) => ({ ...runRow(r), log: logOf(r), removal: removal(r) })),
       baseline: session.data.baseline,
       ides: ides.map(({ build }) => build),
       busy: busyRun(),
@@ -748,8 +779,8 @@ export function createReviewServer({
         return sendJson(res, 200, { ok: true, run: run.n });
       }
       if (segs[0] === "api" && segs[1] === "run" && segs.length === 3 && runs.has(Number(segs[2]))) {
-        runAction(Number(segs[2]), body.action);
-        return sendJson(res, 200, { ok: true });
+        const done = runAction(Number(segs[2]), body.action);
+        return sendJson(res, 200, { ok: true, ...done });
       }
       if (out !== null) {
         if (!isDocsPath(out)) return sendJson(res, 404, { error: "no such picture" });

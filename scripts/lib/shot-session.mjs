@@ -151,7 +151,7 @@ export function acquireLock(file, pid = process.pid, alive = isAlive) {
  * The session under `root`, created when there is none with the baseline `baseline()` returns
  * ({hash, short, build}). Its runs that had not ended when the tool that started them stopped
  * are marked `interrupted`. Returns {root, paths, data, save(), run(n), addRun({tool, args}),
- * endRun(n, fields), setPlace(out)}; each change is saved at once.
+ * removeRun(n), endRun(n, fields), setPlace(out)}; each change is saved at once.
  */
 export function openSession(root, baseline, now = () => new Date().toISOString()) {
   const paths = sessionPaths(root);
@@ -176,11 +176,30 @@ export function openSession(root, baseline, now = () => new Date().toISOString()
     run,
     addRun({ tool, args }) {
       if (!RUN_TOOLS[tool]) throw new Error(`no such tool: ${tool}`);
-      const n = data.runs.reduce((m, r) => Math.max(m, r.n), 0) + 1;
+      // a removed run's number is not given again: a page or a cache may still name it
+      const n = [...data.runs, ...(data.removed ?? [])].reduce((m, r) => Math.max(m, r.n), 0) + 1;
       const r = { n, tool, args, started: now(), ended: null, exit: null, stopped: false, interrupted: false };
       data.runs.push(r);
       save();
       return r;
+    },
+    /**
+     * Removes the run `n` from the session, once its layers are undone (the applier's undo):
+     * its record goes to `removed`, {n, tool, args, started, removed}, and its folder is
+     * deleted. Returns whether the folder could be deleted; one held open stays, unused.
+     */
+    removeRun(n) {
+      const r = run(n);
+      if (!r) throw new Error(`no run ${n}`);
+      data.runs = data.runs.filter((x) => x !== r);
+      data.removed = [...(data.removed ?? []), { n, tool: r.tool, args: r.args, started: r.started, removed: now() }];
+      save();
+      try {
+        rmSync(runPaths(root, n).dir, { recursive: true, force: true, maxRetries: 5 });
+        return true;
+      } catch {
+        return false;
+      }
     },
     endRun(n, fields) {
       Object.assign(run(n), { ended: now(), ...fields });

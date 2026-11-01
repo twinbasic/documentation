@@ -507,7 +507,7 @@ function stopButtons(r) {
 const runsTableHtml = (runs) =>
   runs.length
     ? `<h2>Runs</h2>
-<p><a href="${hrefs.runs}">Runs</a>: start a retake, a replay or a clean-up, or stop one.</p>
+<p><a href="${hrefs.runs}">Runs</a>: start a retake, a replay or a clean-up, stop one, or remove one.</p>
 <table>
 <tr><th>Run</th><th>Kind</th><th>State</th><th>Pictures</th><th>The same as</th></tr>
 ${[...runs]
@@ -1015,9 +1015,39 @@ function progressHtml(r) {
 }
 
 /** A run of the session as the runs page shows it: `r` the server's runRow, with `log`. */
+// Remove for a run that has ended: its layers undone under docs/, then its record and folder.
+function removeButton(r, busy) {
+  if (r.live) return [];
+  const { pictures, later } = r.removal ?? { pictures: 0, later: 0 };
+  const confirm =
+    r.kind === "cleanup"
+      ? `Remove run ${r.n}, a clean-up, from the session? What it put back stays as it is.`
+      : `Remove run ${r.n}? Every picture it changed goes back to how it was before it ran${
+          later
+            ? `, and the ${later} of its ${pictures} pictures a later run took too are judged again from that run's capture`
+            : ""
+        }. Its captures and files are deleted. This cannot be undone.`;
+  return [
+    actionButton(
+      "Remove",
+      hrefs.runAct(r.n),
+      { action: "remove" },
+      {
+        confirm,
+        disabled: busy?.commit
+          ? "the session is being committed"
+          : busy?.kind === "cleanup"
+            ? `run ${busy.n}, a clean-up, is putting pictures back`
+            : null,
+        title: "undo what it did under docs and delete it, as if it had not run",
+      },
+    ),
+  ];
+}
+
 function runArticle(r, { newestCleanup, busy }) {
   const times = [`started ${whenText(r.started)}`, r.ended ? `ended ${whenText(r.ended)}` : null].filter(Boolean);
-  const buttons = stopButtons(r);
+  const buttons = [...stopButtons(r), ...removeButton(r, busy)];
   if (r.kind === "cleanup" && r.dryRun && !r.live && r.exit === 0 && r.n === newestCleanup)
     buttons.push(
       actionButton(

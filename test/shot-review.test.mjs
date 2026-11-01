@@ -619,6 +619,80 @@ describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => 
     );
   });
 
+  test("undoes a run: each picture it changed put back, a later run's layer judged again on it, and its number not given again", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-undo-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const docs = path.join(root, "docs");
+    const B = "IDE/Images/B.png";
+    const at = (out) => path.join(docs, out);
+    fs.mkdirSync(path.dirname(at(A)), { recursive: true });
+    fs.writeFileSync(at(A), OLD);
+    fs.writeFileSync(at(B), OLD);
+    // a third picture, unlike both
+    const rgba = new Uint8Array(1200 * 4).fill(200);
+    const OTHER = Buffer.from(encodePng({ width: 40, height: 30, rgba }));
+    const base = "a".repeat(40);
+    const session = openSession(root, () => ({ hash: base, short: "aaaaaaaa", build: 1010 }));
+    const revision = { hash: base, short: "aaaaaaaa", bytes: () => OLD, read: () => new Map() };
+    const applier = createApplier({
+      session,
+      docsRoot: docs,
+      bundlesRoot: null,
+      revision: () => revision,
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+    });
+    const take = (n, out, png) => {
+      const stage = runPaths(root, n).stage;
+      const fate = {
+        state: "updated",
+        write: png,
+        against: "revision",
+        size: { w: 40, h: 30 },
+        dark: null,
+        by: "rule",
+        earlier: null,
+      };
+      writeVerdict(
+        stage,
+        out,
+        "png",
+        pngVerdict({ decision: fate, review: null, build: 1501, staged: stageCapture(stage, out, png, null) }),
+      );
+      assert.equal(applier.arrive(n, out, "png"), true);
+    };
+    // run 1 changes A and B; run 2 takes A again
+    session.addRun({ tool: "shoot_docs", args: ["--against", base] });
+    take(1, A, NEW);
+    take(1, B, NEW);
+    session.addRun({ tool: "shoot_docs", args: ["--against", base] });
+    take(2, A, OTHER);
+    assert.deepEqual([fs.readFileSync(at(A)), fs.readFileSync(at(B))], [OTHER, NEW]);
+    assert.deepEqual(applier.heldPng(2, A), NEW);
+
+    const { outs, later, failed } = applier.undo(1);
+    assert.deepEqual([outs, later, failed.size], [[A, B], [A], 0]);
+    // B as it was before run 1; A run 2's capture, judged again against what it now finds
+    assert.deepEqual([fs.readFileSync(at(A)), fs.readFileSync(at(B))], [OTHER, OLD]);
+    assert.deepEqual(applier.heldPng(2, A), OLD);
+    assert.equal(applier.reviewed(2, A).png.state, "updated");
+
+    assert.equal(session.removeRun(1), true);
+    assert.equal(fs.existsSync(runPaths(root, 1).dir), false);
+    assert.deepEqual(
+      session.data.runs.map((r) => r.n),
+      [2],
+    );
+    assert.deepEqual(
+      session.data.removed.map((r) => r.n),
+      [1],
+    );
+    // a removed run's number is not given again
+    assert.equal(session.addRun({ tool: "shoot_docs", args: [] }).n, 3);
+    session.removeRun(3);
+    assert.equal(session.addRun({ tool: "shoot_docs", args: [] }).n, 4);
+    assert.throws(() => session.removeRun(1), /no run 1/);
+  });
+
   test("applies a run's verdicts as they arrive, judges them again after a review, and drops a replay's SVG of another PNG", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -853,6 +927,15 @@ onStop(process.stdin, () => {
       assert.equal(pic(A).group, "look");
       assert.equal(pic(A).png.look.why, "small");
       assert.equal(pic(B).group, "progress");
+      const removeLive = await fetch(base + hrefs.runAct(1), {
+        method: "POST",
+        headers: { origin: base, "content-type": "application/json" },
+        body: JSON.stringify({ action: "remove" }),
+      });
+      assert.deepEqual(
+        [removeLive.status, (await removeLive.json()).error],
+        [400, "run 1 is running: stop it first, then remove it"],
+      );
 
       const overview = await get("/");
       assert.equal(overview.status, 200);
@@ -933,6 +1016,24 @@ onStop(process.stdin, () => {
       const failedPage = await fetch(`http://127.0.0.1:${port2}/picture/${B}`);
       assert.equal(failedPage.status, 200);
       assert.match(await failedPage.text(), /Regions of change<\/dt><dd>not measured/);
+
+      // Removed: what it wrote under docs undone, its record and folder gone.
+      const base2 = `http://127.0.0.1:${port2}`;
+      assert.match(
+        await (await fetch(base2 + hrefs.runs)).text(),
+        /data-confirm="Remove run 1\? Every picture it changed goes back to how it was before it ran\./,
+      );
+      assert.equal(fs.existsSync(path.join(docs, A)), true);
+      const removed = await fetch(base2 + hrefs.runAct(1), {
+        method: "POST",
+        headers: { origin: base2, "content-type": "application/json" },
+        body: JSON.stringify({ action: "remove" }),
+      });
+      assert.deepEqual(await removed.json(), { ok: true, pictures: 1, later: 0 });
+      assert.equal(fs.existsSync(path.join(docs, A)), false);
+      assert.deepEqual(app2.model().pictures, []);
+      assert.equal(fs.existsSync(runPaths(root, 1).dir), false);
+      assert.doesNotMatch(await (await fetch(base2 + hrefs.runs)).text(), /Run 1:/);
     } finally {
       // a run left waiting for its stop line would keep the test's process alive
       for (const h of app.live()) h.kill();
