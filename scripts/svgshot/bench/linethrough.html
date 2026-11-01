@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Struck-through text</title>
+<!--
+  Solid line-throughs, with each thing snapshot-svg.mjs's lineThroughAbove and
+  decorationsOf depend on: the sizes where the line's position and thickness
+  step, in the fonts the rule was fitted in, at fractional positions, the line's
+  own colour and its text's, a line-through with an underline, and one inside
+  another. The line goes over the glyphs and is never cut by them.
+-->
+<style>
+body { margin: 0; background: #fff; color: #000; font: 14px "Segoe UI", sans-serif; }
+.r { position: relative; padding: 3px 10px; white-space: pre; }
+.s { text-decoration: line-through; }
+</style>
+<body>
+<div class="r"><span class="s" style="font-size:8px">Eight</span>  <span class="s" style="font-size:11px">Eleven</span>  <span class="s" style="font-size:13px">Thirteen</span>  <span class="s" style="font-size:13.5px">Thirteen and a half</span>  <span class="s" style="font-size:19px">Nineteen</span>  <span class="s" style="font-size:20px">Twenty</span>  <span class="s" style="font-size:26px">Bold</span></div>
+<div class="r" style="font-family:Consolas"><span class="s" style="font-size:10px">Consolas</span>  <span class="s" style="font-size:13px">Scripting</span>  <span class="s" style="font-size:20px">Runtime</span>  <span class="s" style="font-size:30px">gone</span></div>
+<div class="r" style="font-family:Arial"><span class="s" style="font-size:12px">Arial</span>  <span class="s" style="font-size:13.5px">struck</span>  <span class="s" style="font-family:'Times New Roman';font-size:16px">Times</span>  <span class="s" style="font-family:Verdana;font-size:14px">Verdana</span>  <span class="s" style="font-family:Tahoma;font-size:18px">Tahoma</span></div>
+<div class="r" style="top:0.3px"><span class="s">at a third of a pixel</span>  <span class="s" style="position:relative;top:0.5px">and at a half</span></div>
+<div class="r"><span class="s" style="color:#06c;text-decoration-color:#c00">red line, blue text</span>  <span class="s" style="color:#080">green</span>  <span style="text-decoration:underline line-through">under and through</span>  <span class="s">outer <span class="s" style="text-decoration-color:#c00;font-size:20px">inner</span> outer</span></div>
+<div class="r" style="font-size:13px"><span class="s">Microsoft Scripting Runtime</span>  (C:\Windows\System32\scrrun.dll)</div>
+</body>
+</html>

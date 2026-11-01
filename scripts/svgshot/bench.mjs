@@ -112,6 +112,17 @@ async function autoThumb(page) {
   return n;
 }
 
+// The environment without __COMPAT_LAYER, which Windows' application-health detection puts on a
+// process and its children inherit (DetectorsAppHealth). Edge 156 started under one starts itself
+// again without it (--edge-skip-compat-layer-relaunch) and exits with code 0 at once: Puppeteer
+// reports a failed launch, and the browser it started runs on, holding its profile. Started
+// without the variable, Edge is in the state it would start itself again in, and stays.
+function withoutCompatLayer(env) {
+  const out = { ...env };
+  for (const k of Object.keys(out)) if (k.toUpperCase() === "__COMPAT_LAYER") delete out[k];
+  return out;
+}
+
 // Edge's executable, in the folders it installs into, for the machine or for the user.
 function edge() {
   const roots = [process.env["ProgramFiles(x86)"], process.env.ProgramFiles, process.env.LOCALAPPDATA];
@@ -241,6 +252,7 @@ await withBrowser(
     executablePath,
     args: [...LAUNCH_ARGS, "--force-device-scale-factor=1", "--disable-lcd-text"],
     ignoreDefaultArgs: ["--hide-scrollbars"],
+    env: withoutCompatLayer(process.env),
   },
 );
 server.close();

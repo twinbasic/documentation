@@ -1171,7 +1171,21 @@ as the IDE is, text without ClearType. Each page is held to the figures recorded
 `bench/baseline.json` (`--update` records them): no page comes out exact, and a fixed limit
 would miss a small fault (arrows a quarter too tall move a page from 0.025% to 0.064%). `node scripts/svgshot/pixels.mjs <png> x y w h --beside <png>` prints a
 rectangle of two pictures as letters, one per colour: how an edge, a stroke or a blend came out.
-A new replica gets a page there.
+A new replica gets a page there; `linethrough.html` is the line-through's.
+
+**Edge is started without `__COMPAT_LAYER`** (`withoutCompatLayer` in `bench.mjs`). Windows'
+application-health detection can put `__COMPAT_LAYER=DetectorsAppHealth` on a process, and its
+children inherit it (it was on every Bash and Node process of a session on 2026-11-01, and on
+neither the user's nor the machine's environment). Edge 156.0.4314.58 started under a
+compatibility layer starts itself again without it (`--edge-skip-compat-layer-relaunch`, the
+first process exiting with code 0 after about 20 ms), so Puppeteer reported "Failed to launch the
+browser process: Code: 0" and the browser it had started ran on, holding its temporary profile:
+42 such browsers were left by the failed runs. No Puppeteer flag has a part in it; Edge stays
+when started without the variable. Puppeteer's own Chrome, which the other tools use, does not
+start itself again. Under 156.0.4314.58 the pages' figures moved a little (svg-frame 0.098% to
+0.110% at 32 levels, decoration 0.046% to 0.051%, outline 0.071% to 0.078%), the same with the
+converter as it was before that day's changes; the baseline was recorded again then, with
+linethrough and scrollbars-cutout, which had none.
 
 **Not drawn yet:** a thin platform scrollbar (`scrollbar-width: thin`), a zoomed frame's
 scrollbars, a textarea's resize grip, a number input's spin buttons, an indeterminate checkbox,
