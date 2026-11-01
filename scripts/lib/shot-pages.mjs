@@ -90,7 +90,7 @@ form.allow fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 10
 form.allow label{display:inline-block;margin:2px 14px 2px 0}form.allow input[type=number]{width:6em}
 form.allow textarea{width:100%;max-width:600px;font:12px var(--mono,monospace)}
 .draw{cursor:crosshair;user-select:none}.draw .new{position:absolute;box-sizing:border-box;border:2px dashed #08f;pointer-events:none}
-.card .pick{float:right;font-size:12px;color:var(--mut)}td code{overflow-wrap:anywhere}
+.card .pick{float:right;font-size:12px;color:var(--mut)}.pickgroup{font-size:13px;font-weight:400;color:var(--mut);margin-left:10px;white-space:nowrap}td code{overflow-wrap:anywhere}
 .picked{position:sticky;top:0;background:var(--card);z-index:1}.picked button{font:inherit;padding:1px 10px}
 form.run{border:1px solid var(--line);border-radius:6px;margin:0 0 12px;padding:6px 12px}form.run h3{margin:4px 0 6px}
 form.run label{display:inline-block;max-width:100%;margin:2px 14px 6px 0}form.run input[type=number]{width:5em}
@@ -113,9 +113,20 @@ const REVIEW_SCRIPT = `<script>
   const picked = () => {
     try { const v = JSON.parse(localStorage.getItem(PICKED) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
   };
+  // the pictures the group \`key\` shows on the page
+  const groupOuts = (key) =>
+    [...document.querySelectorAll('.cards[data-group="' + key + '"] input[data-pick]')].map((c) => c.dataset.pick);
   const showPicked = () => {
     const list = picked();
     for (const c of document.querySelectorAll("input[data-pick]")) c.checked = list.includes(c.dataset.pick);
+    // a group's box: ticked when all its pictures are selected, mixed when some are; a mixed box
+    // is unticked, so a click selects them all
+    for (const g of document.querySelectorAll("input[data-pick-group]")) {
+      const outs = groupOuts(g.dataset.pickGroup);
+      const n = outs.filter((o) => list.includes(o)).length;
+      g.checked = outs.length > 0 && n === outs.length;
+      g.indeterminate = n > 0 && n < outs.length;
+    }
     for (const bar of document.querySelectorAll(".picked")) {
       bar.hidden = !list.length;
       bar.title = list.join("\\n");
@@ -129,6 +140,13 @@ const REVIEW_SCRIPT = `<script>
     showPicked();
   };
   document.addEventListener("change", (e) => {
+    const g = e.target.closest?.("input[data-pick-group]");
+    if (g) {
+      const outs = groupOuts(g.dataset.pickGroup);
+      const list = picked().filter((o) => !outs.includes(o));
+      setPicked(g.checked ? [...list, ...outs] : list);
+      return;
+    }
     const c = e.target.closest?.("input[data-pick]");
     if (!c) return;
     const list = picked().filter((o) => o !== c.dataset.pick);
@@ -613,10 +631,12 @@ export function overviewHtml({
   if (newestIde && baseline.build && newestIde > baseline.build)
     notices.push(`BETA ${newestIde} found: the baseline's pictures were taken on BETA ${baseline.build} at newest.`);
   const group = (g) => {
-    const cards = `<div class="cards">
+    const cards = `<div class="cards" data-group="${g.key}">
 ${g.pictures.map((p) => cardOf(p, filter, exists, entry)).join("\n")}
 </div>`;
-    const heading = `${esc(g.title)} (${g.pictures.length})`;
+    // selects every picture of the group, or none; mixed while some are (REVIEW_SCRIPT)
+    const pickAll = `<label class="pickgroup"><input type="checkbox" data-pick-group="${g.key}" aria-label="Select every picture in ${esc(g.title)} for a run"> select all</label>`;
+    const heading = `${esc(g.title)} (${g.pictures.length}) ${pickAll}`;
     return g.key === "unchanged"
       ? `<details id="g-${g.key}"><summary><h2 style="display:inline">${heading}</h2></summary>
 ${cards}

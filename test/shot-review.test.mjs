@@ -1052,6 +1052,13 @@ onStop(process.stdin, () => {
       const html = overview.body.toString();
       assert.match(html, /In progress \(1\)/);
       assert.match(html, /Needs a look \(1\)/);
+      // each group selects its pictures, or none (the page's script keeps its mixed state)
+      assert.match(
+        html,
+        /<input type="checkbox" data-pick-group="look" aria-label="Select every picture in Needs a look/,
+      );
+      assert.match(html, /<div class="cards" data-group="look">/);
+      assert.match(html, /g\.indeterminate = n > 0 && n < outs\.length;/);
       assert.match(html, /Resume at 1 of 1/);
       assert.match(html, /<code>node scripts\/shoot_docs\.mjs --only &quot;A\|B&quot;<\/code>/);
       const detail = await get(`/picture/${A}?filter=look`);
