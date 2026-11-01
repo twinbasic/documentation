@@ -72,8 +72,8 @@
       "tile": 0.113
     },
     "textfield": {
-      "pct32": 0.011,
-      "pct96": 0,
+      "pct32": 0.015,
+      "pct96": 0.001,
       "tile": 0.029
     },
     "webfont-split": {

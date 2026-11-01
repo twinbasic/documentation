@@ -9,7 +9,9 @@
   1033 leaves the IDE's dialog text boxes so (New Project's Project Name, the
   sign-in form's). Placed at whole and half pixels, as the IDE's dialogs are,
   on white and on a coloured ground, and one focused with no outline, as the
-  IDE's first field is.
+  IDE's first field is. Last, fields of the IDE's own style whose padding leaves a content
+  box shorter than the line, as the Object View's search field is: Chromium centres the
+  line on the content box and shows it over the padding (paintTextControl).
 -->
 <style>
 body { margin: 0; background: #fff; color: #000; font: 14.3px "Segoe UI", sans-serif; }
@@ -17,6 +19,8 @@ div { position: absolute; }
 .ground { left: 0; top: 200px; width: 800px; height: 200px; background: rgb(196, 220, 240); }
 .tall { height: 25px; box-sizing: border-box; }
 input:focus { outline: none; }
+.short { box-sizing: border-box; height: 17px; width: 94px; padding: 5px; border: none; border-radius: 3px; font: 13px "Segoe UI", sans-serif; background: rgba(255, 255, 255, 0.9); }
+.red { padding: 3px; background: rgb(133, 42, 42); }
 </style>
 <body>
 <div style="left:10px;top:10px"><input value="NewProject"></div>
@@ -27,6 +31,9 @@ input:focus { outline: none; }
 <div style="left:200.5px;top:60.5px"><input type="password" style="width:220px" value="secret"></div>
 <div style="left:10px;top:110px"><input class="tall" style="width:100px" value=""></div>
 <div style="left:200px;top:110px"><input id="focused" class="tall" style="width:150px" value="focused"></div>
+<div class="red" style="left:400px;top:110px"><input class="short" value="Util"></div>
+<div class="red" style="left:520.5px;top:110.5px"><input class="short" value="Utility gj"></div>
+<div class="red" style="left:640px;top:110px"><input class="short" style="height:13px" value="Utility gj"></div>
 <div class="ground">
   <div style="left:10px;top:20px"><input value="on a ground"></div>
   <div style="left:200.5px;top:20.5px"><input class="tall" style="width:150px" value="on a ground"></div>

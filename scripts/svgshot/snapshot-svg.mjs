@@ -2504,8 +2504,11 @@ export function renderSvg(
   // content box (the border box less border and padding): in one line centred
   // vertically for an input, from the top for a textarea (a long line is cut
   // at the edge, not wrapped), aligned by text-align, and moved by how far the
-  // control is scrolled. An input's text is clipped to the content box, a
-  // textarea's to the padding box, which it scrolls in.
+  // control is scrolled. An input's text is clipped to the content box across,
+  // and down to its line too where the line is taller (Chromium centres the line
+  // on a content box shorter than it and shows it over the padding: the Object
+  // View's search field), within the padding box; a textarea's to the padding
+  // box, which it scrolls in.
   function paintTextControl(l, bw) {
     const c = shownControlText(l);
     if (!c) return [];
@@ -2531,9 +2534,13 @@ export function renderSvg(
     const m = env.metrics(key);
     const lh = st["line-height"]?.endsWith("px") ? px(st["line-height"]) : m.line || m.height;
     const textarea = l.node.name === "TEXTAREA";
-    const shows = textarea
-      ? deflate(b, bw[0].width, bw[1].width + scrollbarW, bw[2].width + scrollbarH, bw[3].width)
-      : box;
+    const padding = deflate(b, bw[0].width, bw[1].width + scrollbarW, bw[2].width + scrollbarH, bw[3].width);
+    let shows = textarea ? padding : box;
+    if (!textarea && lh > box.h) {
+      const y0 = Math.max(padding.y, Math.floor(box.y + (box.h - lh) / 2));
+      const y1 = Math.min(padding.y + padding.h, Math.ceil(box.y + (box.h + lh) / 2));
+      shows = { ...box, y: y0, h: y1 - y0 };
+    }
     const align = BUTTON_INPUTS.has((l.node.attrs.type ?? "").toLowerCase()) ? "center" : (st["text-align"] ?? "start");
     const shown = c.placeholder
       ? { ...st, color: env.placeholderColor, "-webkit-text-fill-color": env.placeholderColor }
