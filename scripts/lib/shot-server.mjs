@@ -467,9 +467,16 @@ export function createReviewServer({
     // What "Retake what failed" retakes of a retake that has ended: the pictures it failed on
     // (failedOf), with its --svg and its IDE, by the build it is among the installs found
     // (missing: no longer found). A run that named no IDE ran on the newest install then, whose
-    // build its run event records: that build, not the newest install now.
+    // build its run event records: that build, not the newest install now. Of a replay that has
+    // ended: the pictures it failed on and those it says need a retake, with their SVGs, on the
+    // newest install, as the runs page's retake is by default: a replay runs no IDE.
     const failedRetake = (r) => {
-      if (r.record.tool !== "shoot_docs" || r.live || r.record.args.includes("--dry-run")) return null;
+      if (r.live) return null;
+      if (r.record.tool === "replay") {
+        const pictures = [...new Set([...failedOf(r), ...r.facts.retakes.keys()])].sort();
+        return pictures.length ? { pictures, svg: true, ide: null, missing: null } : null;
+      }
+      if (r.record.tool !== "shoot_docs" || r.record.args.includes("--dry-run")) return null;
       const pictures = failedOf(r);
       if (!pictures.length) return null;
       const exe = optionOf(r.record, "--ide");

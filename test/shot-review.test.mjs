@@ -36,6 +36,7 @@ import { hashOf, openManifest } from "../scripts/lib/shot-manifest.mjs";
 import { changeMap, strengthOf, strengthPicture } from "../scripts/lib/shot-change.mjs";
 import {
   acquireLock,
+  appendEvent,
   archiveRoot,
   commandOf,
   listArchived,
@@ -1222,6 +1223,44 @@ onStop(process.stdin, () => {
       for (const h of app.live()) h.kill();
       await app.close();
       await app2?.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("offers a replay that ended with pictures it could not draw again a retake of them", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-replay-"));
+    const docs = path.join(root, "docs");
+    fs.mkdirSync(docs);
+    const revision = stubRevision("a", {});
+    const session = openSession(root, () => ({ hash: revision.hash, short: revision.short, build: 1500 }));
+    session.addRun({ tool: "replay", args: ["--only", "A|B"] });
+    const { dir, events } = runPaths(root, 1);
+    fs.mkdirSync(dir, { recursive: true });
+    appendEvent(events, { type: "run", tool: "replay", pictures: [A, B] });
+    appendEvent(events, { type: "retake", out: B, why: "no answer for 1 question" });
+    appendEvent(events, { type: "summary", counts: {}, retakes: [{ out: B, why: "no answer for 1 question" }] });
+    session.endRun(1, { exit: 1, stopped: false });
+    const app = createReviewServer({
+      session,
+      revision,
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+      docsRoot: docs,
+    });
+    try {
+      const page = await (await fetch(`http://127.0.0.1:${await app.listen(0)}${hrefs.runs}`)).text();
+      const retake =
+        /<button type="button" data-url="\/api\/runs" data-act="([^"]*)"[^>]*>Retake what failed \(1\)<\/button>/.exec(
+          page,
+        );
+      assert.ok(retake, "the replay offers Retake what failed");
+      assert.deepEqual(JSON.parse(retake[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&")), {
+        kind: "retake",
+        pictures: [B],
+        svg: true,
+      });
+      assert.match(page, /title="a new retake of the picture run 1 failed on or could not draw again:/);
+    } finally {
+      await app.close();
       fs.rmSync(root, { recursive: true, force: true });
     }
   });

@@ -459,6 +459,8 @@ export function textNeeds(decoded, clip) {
   const keys = new Set();
   const runs = new Map();
   const skips = new Map();
+  const cuts = new Map();
+  const { lineOf } = ellipsisLines(decoded);
   const add = (st, s) => {
     const key = fontKey(st);
     keys.add(key);
@@ -475,7 +477,7 @@ export function textNeeds(decoded, clip) {
     const st = textStyle(l);
     if (!st) continue;
     const { lines } = st.visibility === "visible" ? decorationsOf(l) : { lines: [] };
-    for (const b of l.boxes) {
+    for (const [k, b] of l.boxes.entries()) {
       if (!overlaps(b, clip)) continue;
       const s = l.text.substr(b.start, b.length);
       add(st, s);
@@ -485,9 +487,106 @@ export function textNeeds(decoded, clip) {
             const [top, height] = inkBand(u);
             skips.set(`${fontKey(st)}\u0000${s}\u0000${top}\u0000${height}`, [fontKey(st), s, top, height]);
           }
+      // A fragment of a line that an ellipsis cuts: the ellipsis, and how much of it fits before one.
+      const line = lineOf(l, k);
+      if (line && b.x < line.end) {
+        add(line.block.style, ELLIPSIS);
+        const cut = cutNeed(line, l, k);
+        cuts.set(cut.join("\u0000"), cut);
+      }
     }
   }
-  return { keys: [...keys], runs: [...runs.values()], skips: [...skips.values()] };
+  return { keys: [...keys], runs: [...runs.values()], skips: [...skips.values()], cuts: [...cuts.values()] };
+}
+
+// --- text-overflow: ellipsis -------------------------------------------------
+
+/** What text-overflow: ellipsis draws where it cuts a line. */
+export const ELLIPSIS = "…";
+
+// How far a line's content must reach past its end to overflow it: a LayoutUnit.
+const LAYOUT_UNIT = 1 / 64;
+
+/** The element whose box holds the line a text node is on: the nearest above it that is not inline. */
+function lineBlock(node) {
+  for (let n = node.parent; n; n = n.parent) {
+    const d = n.style?.display;
+    if (d && d !== "inline" && d !== "contents") return n;
+  }
+  return null;
+}
+
+/**
+ * The lines of a document that text-overflow: ellipsis cuts. A line is cut when
+ * the block that holds it clips its overflow, sets text-overflow: ellipsis, and
+ * the line's text reaches past `end`, the right edge of the block's content box.
+ * Each line is {frags, end, block}: its text fragments left to right, each
+ * {l, k, t} (a text layout object, the index of its fragment, the fragment), and
+ * the block's layout object, whose style the ellipsis is drawn in. Returns
+ * {lineOf(l, k), unknown}: the line of a fragment when it is cut, else null; and
+ * how many lines would be cut if their block set ellipsis, in a snapshot taken
+ * without text-overflow among its styles, which cannot say whether it does.
+ */
+export function ellipsisLines(decoded) {
+  const byBlock = new Map();
+  for (const l of decoded.layouts) {
+    if (l.text === undefined || !l.boxes.length) continue;
+    const block = lineBlock(l.node);
+    const st = block?.box?.style;
+    if (!st || st["overflow-x"] === "visible" || st["text-overflow"] === "clip") continue;
+    if (!byBlock.has(block)) byBlock.set(block, []);
+    for (const [k, t] of l.boxes.entries()) byBlock.get(block).push({ l, k, t });
+  }
+  const cut = new Map();
+  let unknown = 0;
+  for (const [block, frags] of byBlock) {
+    const b = block.box;
+    const st = b.style;
+    const end = b.exact.x + b.exact.w - borders(st)[1].width - gutters(b).v - px(st["padding-right"]);
+    // A line: the fragments whose boxes overlap each other's vertically.
+    frags.sort((p, q) => p.t.y - q.t.y || p.t.x - q.t.x);
+    const lines = [];
+    for (const f of frags) {
+      const line = lines.at(-1);
+      if (line && f.t.y < line.bottom) {
+        line.frags.push(f);
+        line.bottom = Math.max(line.bottom, f.t.y + f.t.h);
+      } else lines.push({ frags: [f], bottom: f.t.y + f.t.h });
+    }
+    for (const { frags: line } of lines) {
+      if (!line.some((f) => f.t.x + f.t.w > end + LAYOUT_UNIT)) continue;
+      if (st["text-overflow"] === undefined) {
+        unknown++;
+        continue;
+      }
+      if (st["text-overflow"] !== "ellipsis") continue;
+      line.sort((p, q) => p.t.x - q.t.x);
+      const entry = { frags: line, end, block: b };
+      for (const f of line) cut.set(`${f.l.key}|${f.k}`, entry);
+    }
+  }
+  return { lineOf: (l, k) => cut.get(`${l.key}|${k}`) ?? null, unknown };
+}
+
+/**
+ * What the page is asked about fragment `k` of `l` on a cut `line`:
+ * [fontKey, text, the ellipsis's fontKey, the room from the fragment's start to
+ * the line's end, whether it is the line's first fragment]. The page answers how
+ * many UTF-16 units of the text fit before an ellipsis in that room, at a
+ * grapheme's end, and how wide they are: [length, width]. Nothing fits is 0,
+ * except in the first fragment, which keeps its first grapheme, as Chromium's
+ * NGLineTruncator does.
+ */
+function cutNeed(line, l, k) {
+  const t = l.boxes[k];
+  const first = line.frags[0];
+  return [
+    fontKey(textStyle(l)),
+    l.text.substr(t.start, t.length),
+    fontKey(line.block.style),
+    line.end - t.x,
+    first.l.key === l.key && first.k === k,
+  ];
 }
 
 // --- text decorations --------------------------------------------------------
@@ -1152,6 +1251,8 @@ function filterPrimitives(steps) {
  * @param inkGaps   (fontKey, text, top, height) => [[from, to]] the stretches of the run, in CSS px from
  *                  its start, where its ink is in the band (inkBand) an underline skips; null draws
  *                  every underline whole
+ * @param cut       (...cutNeed) => [length, width]: how much of a fragment fits before the ellipsis of
+ *                  a line text-overflow: ellipsis cuts; null, or no answer, draws the line whole
  * @param placeholderColor  what an empty <input> shows its placeholder in
  * @param canvases  [{x, y, w, h, href}] pictures of the page's <canvas> elements
  * @param fonts     a PictureFonts (fonts.mjs): text is set in subsets of its fonts, embedded
@@ -1167,7 +1268,7 @@ function filterPrimitives(steps) {
  *                  with no entry is drawn by other means (the annotation layer). null: none was
  *                  read, and each is reported as not drawn
  * @param frames    (document) => what was measured in that frame's own document, {metrics, textWidth,
- *                  inkGaps, placeholderColor, canvases, fontsFor, scrollbars, svgs}, as the parameters
+ *                  inkGaps, cut, placeholderColor, canvases, fontsFor, scrollbars, svgs}, as the parameters
  *                  of the same names (the page's own are the defaults) and {inner}, the frame's viewport
  *                  {w, h}; null or no function: the frame is drawn with the page's own. The frame
  *                  is measured in its own document because a font name and a style rule mean what
@@ -1180,6 +1281,7 @@ export function renderSvg(
     metrics,
     textWidth = null,
     inkGaps = null,
+    cut = null,
     placeholderColor = "rgb(117, 117, 117)",
     canvases = [],
     fonts = null,
@@ -1192,8 +1294,21 @@ export function renderSvg(
   },
 ) {
   // What was measured in the document being painted: the page's, and in a frame its own.
-  const pageEnv = { metrics, textWidth, inkGaps, placeholderColor, canvases, fontsFor, scrollbars, svgs, inner: null };
+  const pageEnv = {
+    metrics,
+    textWidth,
+    inkGaps,
+    cut,
+    placeholderColor,
+    canvases,
+    fontsFor,
+    scrollbars,
+    svgs,
+    inner: null,
+  };
   let env = pageEnv;
+  // The lines text-overflow: ellipsis cuts in the document being painted (ellipsisLines).
+  let cutLines = null;
   const defs = [];
   const ids = new Map();
   const def = (key, make) => {
@@ -2216,7 +2331,9 @@ export function renderSvg(
   // goes under the glyphs, and leaves a gap round each stretch of the fragment's
   // ink that is in its band (inkBand), as wide as the line is thick on each side.
   // A line-through goes over the glyphs, whole, where lineThroughAbove puts it.
-  // Only the fragments in `view` are drawn: textNeeds measures only those.
+  // Only the fragments in `view` are drawn: textNeeds measures only those. On a
+  // line text-overflow: ellipsis cuts, a fragment is drawn as far as cutPlan says,
+  // and the ellipsis after the last one shown.
   function paintText(l, view) {
     const st = textStyle(l);
     if (!st || st.visibility !== "visible") return [];
@@ -2225,9 +2342,16 @@ export function renderSvg(
     const { lines, undrawn } = decorationsOf(l);
     for (const what of undrawn) note(what);
     const out = [];
-    for (const t of l.boxes) {
-      if (!overlaps(t, view)) continue;
-      const s = l.text.substr(t.start, t.length);
+    for (const [k, whole] of l.boxes.entries()) {
+      if (!overlaps(whole, view)) continue;
+      const line = cutLines?.lineOf(l, k);
+      const plan = line ? cutPlan(line) : null;
+      const id = `${l.key}|${k}`;
+      const part = plan?.parts.get(id);
+      if (part && !part.length) continue;
+      const full = l.text.substr(whole.start, whole.length);
+      const s = part ? full.slice(0, part.length) : full;
+      const t = part ? { ...whole, w: part.width } : whole;
       const baseline = Math.round(t.y + base);
       for (const u of lines) {
         if (u.kind !== "underline") continue;
@@ -2235,15 +2359,52 @@ export function renderSvg(
         const line = underline(t, baseline + u.offset, u, gaps);
         if (line) out.push(line);
       }
-      if (s.trim()) out.push(textRun(st, s, t.x, t.y + base, t.w));
+      if (s.trim()) out.push(textRun(st, s, t.x, t.y + base, t.w, full));
       // a line-through is painted over the text, whole
       for (const u of lines) {
         if (u.kind !== "line-through") continue;
         const line = underline(t, baseline - lineThroughAbove(Math.round(base), u.reach), u, []);
         if (line) out.push(line);
       }
+      if (plan?.after === id) out.push(textRun(line.block.style, ELLIPSIS, t.x + t.w, t.y + base, plan.width));
     }
     return out;
+  }
+
+  // How text-overflow: ellipsis cuts a line (ellipsisLines), as Chromium's
+  // NGLineTruncator does: the fragments that end before the line's end less the
+  // ellipsis are drawn whole; the first that does not is cut to what fits (the
+  // page's answer to cutNeed), and those after it are hidden; a fragment other
+  // than the first of which nothing fits is hidden too, and the ellipsis follows
+  // the one before it. {parts, after, width}: each fragment not drawn whole, by
+  // "key|index", {length, width}; the fragment the ellipsis follows; its width.
+  // Null when the page was not asked: the line is drawn whole.
+  const plans = new WeakMap();
+  function cutPlan(line) {
+    if (plans.has(line)) return plans.get(line);
+    let plan = null;
+    const width = env.cut && env.textWidth?.(fontKey(line.block.style), ELLIPSIS);
+    if (width != null) {
+      const parts = new Map();
+      let after = null;
+      let done = false;
+      for (const [i, f] of line.frags.entries()) {
+        const id = `${f.l.key}|${f.k}`;
+        if (done) parts.set(id, { length: 0, width: 0 });
+        else if (f.t.x + f.t.w <= line.end - width + LAYOUT_UNIT) after = id;
+        else {
+          const got = env.cut(...cutNeed(line, f.l, f.k));
+          if (!got) break;
+          const [length, w] = got;
+          parts.set(id, { length, width: w });
+          if (length || i === 0) after = id;
+          done = true;
+        }
+      }
+      if (done) plan = { parts, after, width };
+    }
+    plans.set(line, plan);
+    return plan;
   }
 
   // The line under a text fragment `t`, at `y`, as one rect, or as one path where
@@ -2269,9 +2430,10 @@ export function renderSvg(
   // One run of text, in the picture's own subset faces when the run's fonts can
   // be loaded and in the computed font-family otherwise. `width` is the run's
   // laid-out width: textLength holds a viewer that shapes it differently to it.
-  function textRun(st, s, x, baseline, width) {
+  // `whole` is the run the fonts were asked for: of a cut run, the run before it was cut.
+  function textRun(st, s, x, baseline, width, whole = s) {
     stats.texts++;
-    const sources = fonts && env.fontsFor ? env.fontsFor(fontKey(st), s) : null;
+    const sources = fonts && env.fontsFor ? env.fontsFor(fontKey(st), whole) : null;
     const face = sources?.length ? fonts.css(s, sources, st["font-weight"], st["font-style"]) : null;
     if (!face) note("text in an unembedded font");
     const fit = width && [...s].length > 1 ? ` textLength="${num(width)}" lengthAdjust="spacing"` : "";
@@ -2345,6 +2507,9 @@ export function renderSvg(
     items.sort((a, b) => a.l.paint - b.l.paint || a.l.li - b.l.li);
     const body = [];
     const open = [];
+    // A frame is painted inside its owner's document: its lines are its own until it is done.
+    const outerLines = cutLines;
+    cutLines = ellipsisLines(doc);
     for (const it of items) {
       const l = it.l;
       const n = l.node;
@@ -2404,6 +2569,7 @@ export function renderSvg(
       body.push(...content);
     }
     while (open.length) closeGroup(body, open.pop());
+    cutLines = outerLines;
     return body;
   }
 

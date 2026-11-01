@@ -163,7 +163,10 @@ that named no IDE (`shot_review.mjs --retake` without `--ide`) is retaken on the
 event records, the newest install when it ran, not the newest now.
 Continuing the failed run itself was turned down (owner): its layers would come after a later
 run's, and a run has one start, one end and one summary. The failed pictures have no verdict
-of that run, so the new run's are their only ones, and they leave the Failed group. Below, a
+of that run, so the new run's are their only ones, and they leave the Failed group. A replay
+that has ended with pictures it failed on, or that it says need a retake (their bundles cannot
+answer what the converter now asks), has **Retake what failed (N)** too (owner, 2026-11-01): a
+retake of those pictures with `--svg`, on the newest install, since a replay runs no IDE. Below, a
 form for a new run:
 
 - **Retake**: `shoot_docs.mjs`, with the IDE chosen from the installs found (the newest

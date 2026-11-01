@@ -1230,7 +1230,8 @@ function removeButton(r, busy) {
 
 // Retake what failed, for a retake that has ended with pictures it failed on: a new retake of
 // exactly those, with the run's --svg and IDE. They have no verdict of the failed run, so the
-// new run's are their only ones.
+// new run's are their only ones. For a replay that has ended with pictures it failed on or
+// could not draw again from their bundles: a retake of those, with their SVGs.
 function retakeFailedButton(r, busy) {
   const f = r.failedRetake;
   if (!f) return [];
@@ -1242,9 +1243,9 @@ function retakeFailedButton(r, busy) {
       { kind: "retake", pictures: f.pictures, svg: f.svg, ...(f.ide ? { ide: f.ide } : {}) },
       {
         disabled: f.missing ? `the IDE run ${r.n} used, ${f.missing}, is no longer found` : busyText(busy),
-        title: `a new retake of the ${n === 1 ? "picture" : `${n} pictures`} run ${r.n} failed on${
-          f.ide ? `, on BETA ${f.ide}` : ""
-        }:\n${f.pictures.join("\n")}`,
+        title: `a new retake of the ${n === 1 ? "picture" : `${n} pictures`} run ${r.n} ${
+          r.tool === "replay" ? "failed on or could not draw again" : "failed on"
+        }${f.ide ? `, on BETA ${f.ide}` : ""}:\n${f.pictures.join("\n")}`,
       },
     ),
   ];

@@ -176,6 +176,8 @@ import {
   canvasColor,
   decodeSnapshot,
   decoratingBoxes,
+  ELLIPSIS,
+  ellipsisLines,
   elementTransform,
   embeddedImage,
   frameGeometry,
@@ -186,9 +188,11 @@ import {
   nativeTextField,
   naturalSize,
   oneLine,
+  renderSvg,
   scopeIds,
   selectLabel,
   shadowShowsThrough,
+  textNeeds,
   underlineBand,
   untransformBox,
   unzoom,
@@ -236,6 +240,107 @@ describe("lineThroughAbove", () => {
     ];
     for (const [size, ascent, above] of measured)
       assert.equal(lineThroughAbove(ascent, size / 10), above, `${size} px`);
+  });
+});
+
+describe("text-overflow: ellipsis", () => {
+  // A <div> 100 px wide at 10, 10 whose one line of text, at 20, is 200 px wide.
+  const TEXT = "Datatype has not been explicitly declared";
+  const KEY = JSON.stringify(["normal", "400", "13px", "Arial"]);
+  function page({ overflow = "hidden", textOverflow = "ellipsis" } = {}) {
+    const names = ["display", "visibility", "color", "font-family", "font-size", "font-weight", "font-style"];
+    const styleNames = [...names, "overflow-x", ...(textOverflow ? ["text-overflow"] : [])];
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = (clip) => [
+      ...["block", "visible", "rgb(0, 0, 0)", "Arial", "13px", "400", "normal"].map(s),
+      s(clip ? overflow : "visible"),
+      ...(textOverflow ? [s(clip ? textOverflow : "clip")] : []),
+    ];
+    const nodeNames = ["#document", "HTML", "BODY", "DIV", "#text"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2, 3],
+            nodeType: [9, 1, 1, 1, 3],
+            nodeName: nodeNames.map(s),
+            nodeValue: nodeNames.map((n) => (n === "#text" ? s(TEXT) : -1)),
+            attributes: nodeNames.map(() => []),
+          },
+          layout: {
+            nodeIndex: [1, 2, 3, 4],
+            styles: [style(false), style(false), style(true), []],
+            bounds: [
+              [0, 0, 400, 100],
+              [0, 0, 400, 100],
+              [10, 10, 100, 16],
+              [20, 10, 200, 16],
+            ],
+            text: [-1, -1, -1, s(TEXT)],
+            paintOrders: [0, 1, 2, 3],
+          },
+          textBoxes: { layoutIndex: [3], bounds: [[20, 10, 200, 16]], start: [0], length: [TEXT.length] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, styleNames);
+  }
+  const text = (doc) => doc.layouts.find((l) => l.text !== undefined);
+  const draw = (doc, cut) =>
+    renderSvg(doc, {
+      clip: { x: 0, y: 0, w: 400, h: 100 },
+      metrics: () => ({ ascent: 12, height: 15, line: 15 }),
+      textWidth: (_key, s) => (s === ELLIPSIS ? 8 : null),
+      cut,
+    }).svg;
+
+  test("cuts a line its block clips and ends in an ellipsis, past its content box", () => {
+    const doc = page();
+    const line = ellipsisLines(doc).lineOf(text(doc), 0);
+    assert.equal(line.end, 110);
+    assert.equal(line.frags.length, 1);
+    const needs = textNeeds(doc, { x: 0, y: 0, w: 400, h: 100 });
+    assert.deepEqual(needs.cuts, [[KEY, TEXT, KEY, 90, true]]);
+    assert.ok(needs.runs.some(([key, s]) => key === KEY && s === ELLIPSIS));
+  });
+
+  test("draws what fits, then the ellipsis after it", () => {
+    const svg = draw(page(), (...need) => {
+      assert.deepEqual(need, [KEY, TEXT, KEY, 90, true]);
+      return [8, 50];
+    });
+    assert.match(svg, /<text [^>]*x="20"[^>]*>Datatype<\/text>/);
+    assert.match(svg, new RegExp(`<text [^>]*x="70"[^>]*>${ELLIPSIS}</text>`));
+    assert.doesNotMatch(svg, /explicitly/);
+  });
+
+  test("draws the line whole where the page was not asked", () => {
+    assert.match(
+      draw(page(), () => null),
+      /explicitly declared<\/text>/,
+    );
+  });
+
+  test("leaves a line alone that is not clipped or not set to ellipsis", () => {
+    for (const doc of [page({ overflow: "visible" }), page({ textOverflow: "clip" })]) {
+      const { lineOf, unknown } = ellipsisLines(doc);
+      assert.equal(lineOf(text(doc), 0), null);
+      assert.equal(unknown, 0);
+    }
+  });
+
+  test("counts a clipped line as unknown in a snapshot without text-overflow", () => {
+    const doc = page({ textOverflow: null });
+    const { lineOf, unknown } = ellipsisLines(doc);
+    assert.equal(lineOf(text(doc), 0), null);
+    assert.equal(unknown, 1);
   });
 });
 

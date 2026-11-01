@@ -1066,6 +1066,22 @@ finds the ink by drawing the run 16 times as large on a canvas in the measuring 
 overline, line-through, every style but solid, and `text-underline-position` other than auto.
 `test/svgshot.test.mjs` holds the fitted figures.
 
+**An ellipsis cuts a line as Chromium's `NGLineTruncator` does** (`ellipsisLines`, `cutNeed`,
+`cutPlan` in `snapshot-svg.mjs`; 2026-11-01, after the DIAGNOSTICS pane of IDE-FeatureMap drew
+its messages whole, cut by the block's clip, where the PNG ends them in `...`). The snapshot gives
+the whole text of an elided line, so the converter finds the lines itself: the block that holds
+the line (the nearest box above the text that is not inline) clips its overflow, sets
+`text-overflow: ellipsis`, and the line's text reaches past its content box. The fragments that
+end before the line's end less the ellipsis are drawn whole, the first that does not is cut, the
+rest are hidden, and the ellipsis, in the block's style, follows the last one shown. Where the
+fragment is cut is the page's answer (`capture.mjs`'s `measure`, `cuts`): the longest start of the
+run, at a grapheme's end, measured with a Range over the run as laid out, no wider than its room
+less the ellipsis; the line's first fragment keeps one grapheme if none fits. Left out: right to
+left, an atomic inline on the line, and a block scrolled sideways. `text-overflow` is in
+`MISSABLE_STYLES`: a bundle taken before it was read is still drawn, and replay asks for a retake
+only of a picture with a line its block clips (the miss `text-overflow of a line its block
+clips`): 18 of the 480 bundles of 2026-11-01, some of which may clip with no ellipsis.
+
 **A background image is sized by its bytes** (`naturalSize`), not by the type its URL names:
 the IDE calls a JPEG and a BMP `image/png`. The About dialog's EXCALIBUR logo is such a JPEG,
 drawn with `background-size: contain`; read as a PNG, its JFIF header gave 4,718,592 by about 4.3

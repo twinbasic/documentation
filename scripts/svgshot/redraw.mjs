@@ -15,7 +15,7 @@ import { isOutputTree } from "../../lib/markdown-files.mjs";
 import { LAUNCH_ARGS, launchBrowser } from "../lib/browser.mjs";
 import { readRecords, sendStop, writeRecord } from "../lib/record-lines.mjs";
 import { BUNDLE_VERSION, pngHash, readBundle, renderBundle } from "./bundle.mjs";
-import { SNAPSHOT_STYLES } from "./capture.mjs";
+import { MISSABLE_STYLES, SNAPSHOT_STYLES } from "./capture.mjs";
 import { holdsUserName } from "./keep.mjs";
 import { slugOf } from "../lib/shot-apply.mjs";
 
@@ -80,7 +80,7 @@ export async function redraw({ bundlesRoot, docsRoot, out, user, stale = false, 
   }
   if (bundle.version !== BUNDLE_VERSION)
     return { retake: `the bundle is of format ${bundle.version}, the converter reads ${BUNDLE_VERSION}` };
-  const lacking = SNAPSHOT_STYLES.filter((s) => !bundle.styles.includes(s));
+  const lacking = SNAPSHOT_STYLES.filter((s) => !bundle.styles.includes(s) && !MISSABLE_STYLES.has(s));
   if (lacking.length) return { retake: `the bundle has no ${lacking.join(", ")}` };
   const { svg, stats, misses } = await renderBundle(bundle);
   const had = new Set(bundle.misses ?? []);
