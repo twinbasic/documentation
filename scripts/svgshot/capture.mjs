@@ -265,7 +265,8 @@ function measure({ keys, runs, skips, view, measureId, overlays }) {
 // the specificity of the selector it stands for, so that Chromium itself
 // cascades the rules and resolves their var()s. The probe is an element of an
 // unknown name, which no page rule but a `*` one matches, under a hidden
-// parent that carries what the part inherits from the element.
+// parent that carries what the part inherits from the element, a child of the
+// root element, where no rule of the form `body *` reaches it.
 //
 // `viewport` is set for the scrollbars of a document's viewport, whose style
 // source is the <body> or the root element (`this`): they take the standard
@@ -444,7 +445,9 @@ function scrollbarParts({ styleNames, parts, viewport = false }) {
         rule.selectorText = `${rule.selectorText}, ${added.join(", ")}`;
       }
     }
-    (scope instanceof ShadowRoot ? scope : document.body).append(host);
+    // Under the root element, not the body: a cut-out's `body *{visibility:hidden !important}`
+    // (shoot_docs.mjs) would match the probes there, and hide every part.
+    (scope instanceof ShadowRoot ? scope : document.documentElement).append(host);
     const out = {};
     for (const [k, p] of parts.entries()) {
       if (!matched[k]) {

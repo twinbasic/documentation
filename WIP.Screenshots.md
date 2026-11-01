@@ -1018,7 +1018,10 @@ cannot be copied onto an element of the tool's own: Chromium drops a `var()` sho
 `background: var(...)`. So `scrollbarParts` gives each rule that styles this element's
 scrollbars, for a moment, one more selector, matching a probe element per part with the
 specificity of the selector it stands for; Chromium cascades and resolves the `var()`s, and the
-rules are put back. The parts are laid out as Chromium's custom scrollbar theme does: a button's
+rules are put back. The probes hang under the root element, not the body: a cut-out's `body
+*{visibility:hidden !important}` matched them there, and every part of the scrollbar came out
+hidden, undrawn (the Properties panel's in Properties_SystemColours and four other cut-outs;
+`bench/scrollbars-cutout.html`). The parts are laid out as Chromium's custom scrollbar theme does: a button's
 length its `height` (vertical) or `width`, `auto` being the platform's scrollbar thickness, which
 the page measures; the thumb as long as its share of the content, never shorter than its own
 length, whose `auto` is 17 px (Windows' thumb length at 96 DPI; no page property shows it, and
@@ -1124,7 +1127,7 @@ not found by `url()`, and a `<use>` still finds its target there. **The annotati
 coordinates, which the picture's `viewBox` is in.
 
 **The bench** (`node scripts/svgshot/bench.mjs`, outside every gate, needs Edge and fontTools)
-draws the pages under `scripts/svgshot/bench/` (scrollbars, native scrollbars, drop-down lists,
+draws the pages under `scripts/svgshot/bench/` (scrollbars, a scrollbar in a cut-out, native scrollbars, drop-down lists,
 native text fields, underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
 annotation layer, SVG in frames), served from `127.0.0.1` with the site's fonts under `/fonts/`
 (a `file:` page cannot `fetch` its font bytes), with the converter
