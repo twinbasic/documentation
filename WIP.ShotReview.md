@@ -98,8 +98,9 @@ has it). Grouped, in this order:
 4. **Only noise**: the capture was within noise of `HEAD`'s and the file stays.
 5. **Unchanged**, collapsed.
 6. **Program windows: PNG only** (owner, 2026-11-01): a running program's window, which
-   Windows draws, so there is no page to draw an SVG from (svgVerdict's `window`, `WINDOW_WHY`;
-   `isWindow` also reads the reason a run before the mark gave). One whose PNG changed or was
+   Windows draws, so there is no page to draw an SVG from (svgVerdict's `window`, `WINDOW_WHY`).
+   A run before the mark gave them the reason it gave References_Detail, whose shot turned its
+   SVG off, so their verdicts are not taken as one: a retake marks them. One whose PNG changed or was
    added stays in that group; the *No SVG* filter leaves them out, and their page offers no replay.
 7. **Added**, **deleted**, **failed**.
 

@@ -415,10 +415,11 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     assert.equal(groupOf(at("noise"), exists), "windows");
     assert.equal(groupOf(at("updated"), exists), "changed");
     assert.equal(groupOf(at("new"), exists), "added");
-    // a run before the mark said only why
+    // a run before the mark said the same of References_Detail, whose shot turned its SVG off:
+    // that is no mark
     assert.equal(
       groupOf(at("unchanged", { state: "not written", why: "the picture is not a single capture" }), exists),
-      "windows",
+      "unchanged",
     );
     assert.equal(groupOf(at("unchanged", { state: "not written", why: "refused" }), exists), "unchanged");
     // the No SVG filter leaves them out, and their chip says why there is none

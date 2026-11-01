@@ -101,13 +101,13 @@ function owes(run, v) {
  */
 export const SVG_CHANGES = new Set(["new", "updated", "removed"]);
 
-// What a run before 2026-11-01 said of a picture of program windows, which it did not mark;
-// the one shot that turned its SVG off (References_Detail) said the same, until the converter
-// drew a line-through and it was taken again with its SVG.
-const OLD_WINDOW_WHY = "the picture is not a single capture";
-
-/** Whether `p` is a picture of program windows, of which no SVG is drawn (svgVerdict's `window`). */
-export const isWindow = (p) => !!p.svg?.window || p.svg?.why === OLD_WINDOW_WHY;
+/**
+ * Whether `p` is a picture of program windows, of which no SVG is drawn (svgVerdict's
+ * `window`). A run before the mark said "the picture is not a single capture" of these and of
+ * a shot that turned its SVG off (References_Detail) alike, so its verdict is not one: a
+ * retake marks it.
+ */
+export const isWindow = (p) => !!p.svg?.window;
 
 /**
  * The group of the overview the picture `p` is in (GROUPS): `exists(path)` says whether a
