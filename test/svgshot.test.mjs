@@ -344,6 +344,88 @@ describe("text-overflow: ellipsis", () => {
   });
 });
 
+describe("outlines", () => {
+  // A <div> 100 by 20 at 10, 10 with the outline `outline` (style width colour) and the radius `radius`.
+  const NAMES = [
+    "display",
+    "visibility",
+    "outline-style",
+    "outline-width",
+    "outline-color",
+    "outline-offset",
+    ...["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`),
+  ];
+  function page(style, width, radius = "0px", offset = "0px") {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const plain = ["block", "visible", "none", "0px", "rgb(0, 0, 0)", "0px", "0px", "0px", "0px", "0px"].map(s);
+    const names = ["#document", "HTML", "BODY", "DIV"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2],
+            nodeType: [9, 1, 1, 1],
+            nodeName: names.map(s),
+            nodeValue: names.map(() => -1),
+            attributes: names.map(() => []),
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [
+              plain,
+              plain,
+              ["block", "visible", style, width, "rgba(0, 0, 0, 0.47)", offset, radius, radius, radius, radius].map(s),
+            ],
+            bounds: [
+              [0, 0, 200, 100],
+              [0, 0, 200, 100],
+              [10, 10, 100, 20],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, NAMES);
+  }
+  const draw = (doc) =>
+    renderSvg(doc, { clip: { x: 0, y: 0, w: 200, h: 100 }, metrics: () => ({ ascent: 12, height: 15, line: 15 }) }).svg;
+
+  test("a solid one with square corners is one stroked rectangle round the box", () => {
+    assert.match(
+      draw(page("solid", "1px")),
+      /<rect x="9\.5" y="9\.5" width="101" height="21" fill="none" stroke="rgba\(0, 0, 0, 0\.47\)" stroke-width="1"\/>/,
+    );
+    // moved out by its offset
+    assert.match(draw(page("solid", "2px", "0px", "3px")), /<rect x="6" y="6" width="108" height="28" fill="none"/);
+  });
+
+  test("a dashed one is drawn as a dashed border round the box, each side's dashes laid out as a border's", () => {
+    const svg = draw(page("dashed", "1px"));
+    assert.doesNotMatch(svg, /<rect [^>]*stroke=/);
+    const sides = svg.match(
+      /<path d="[^"]*" fill="none" stroke="rgba\(0, 0, 0, 0\.47\)" stroke-width="1" stroke-dasharray="[^"]*"\/>/g,
+    );
+    assert.equal(sides?.length, 4);
+    assert.match(svg, /<path d="M9 9\.5H111"/);
+  });
+
+  test("a solid one follows the box's rounded corners, moved out with it", () => {
+    const svg = draw(page("solid", "1px", "4px"));
+    assert.doesNotMatch(svg, /<rect [^>]*stroke=/);
+    assert.match(svg, /<path fill-rule="evenodd" fill="rgba\(0, 0, 0, 0\.47\)" d="M14 9H106A5 5 0 0 1 111 14/);
+  });
+});
+
 describe("bordersCover", () => {
   const side = (width, style = "solid", color = "rgb(153, 153, 153)") => ({ width, style, color });
   test("is true where every side of a width is opaque and fills it, and the background is then drawn in the padding box", () => {
@@ -481,6 +563,14 @@ describe("colour filters", () => {
       '<use href="#d5"/>',
     );
     assert.equal(defs[5], '<g id="d5" filter="url(#dF)"><use href="#d4"/></g>');
+  });
+
+  test("bakeMarkup with no colour step (opacity() alone) changes nothing, and wraps no picture", () => {
+    const defs = ['<image id="d0" width="1" height="1" href="data:image/svg+xml,x"/>'];
+    const { ctx } = converter(defs, new Map());
+    const markup = '<use href="#d0"/><rect fill="rgb(1, 2, 3)"/>';
+    assert.equal(bakeMarkup(markup, { key: "opacity(0.5)", steps: steps("opacity(0.5)") }, ctx), markup);
+    assert.equal(defs.length, 1);
   });
 });
 

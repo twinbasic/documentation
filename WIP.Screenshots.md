@@ -964,8 +964,10 @@ the PNG was just captured from, and the build shows it in place of the PNG
   300 dpi bitmap, text included: the book would lose the text of 44 of its 110 SVGs that way. Every CSS
   filter function but `blur()` and `drop-shadow()` is an affine colour map, which commutes with
   antialiasing, so mapping each fill, stroke, gradient stop and text class under the group paints
-  the same picture on screen, to a channel's rounding; `opacity()` becomes the group's opacity.
-  A real filter stays only round an embedded image (a `<g filter>` def wrapping it) and over a
+  the same picture on screen, to a channel's rounding; `opacity()` becomes the group's opacity,
+  and a filter of `opacity()` alone bakes nothing (`bakeMarkup`: the form designer's padlock,
+  `filter: opacity(0.5)` on a `::before`, was wrapped in a filter of no primitive, which draws
+  nothing, until 2026-11-01). A real filter stays only round an embedded image (a `<g filter>` def wrapping it) and over a
   group that blends or already holds a real filter group. A `drop-shadow()` last in the list
   (the IDE's toolbar codicons glow with one) is split the same way: the shadow alone, from a
   copy of the group under a filter that blurs its alpha, then the group over it unfiltered,
@@ -1152,7 +1154,15 @@ IDE's WebView2 draw (on this Windows 10 machine too): 15 px, a round-ended 9 px 
 light or dark default by `color-scheme`; the docs site's dark theme sets `scrollbar-color`, which
 turns its own `::-webkit-scrollbar` rules off. **A focus ring** (`outline-style: auto`,
 `paintFocusRing`) is a 2 px band in the outline colour and a 1 px white one outside it. Both were
-fitted in Edge on bench pages of their own. **A native text field** (`nativeTextField`,
+fitted in Edge on bench pages of their own. **An outline of any other style** (`paintOutline`) is
+drawn as Chromium's OutlinePainter draws it, through the border painter: a border of the
+outline's style, width and colour round the border box moved out by the offset, its rounded
+corners moved out with it; so the form designer's `1px dashed` outline of each control is dashed
+as a border is, and a menu's or dialog's rounded outline is rounded. A solid one with square
+corners stays one stroked `<rect>`, the same pixels, so 300 SVGs kept their bytes. Before
+2026-11-01 every outline was a square solid rectangle; on the 453 SVGs the replay measured, 133
+came closer to their PNG and 7 went 0.001% further, Designer_Locked from 0.389% strongly off to
+0.001%. **A native text field** (`nativeTextField`,
 `paintNativeTextField`): Chromium draws an `<input>` whose border and background the page leaves
 as its own (`2px inset rgb(118, 118, 118)` on white, which BETA 1033 leaves its dialogs' text
 boxes) as its Fluent text field, not by that border: a white ground and a 1 px border of the same

@@ -1662,13 +1662,7 @@ export function renderSvg(
       if (st.appearance !== "none") out.push(...paintCheckable(l));
     } else if (l.node.name === "INPUT" || l.node.name === "TEXTAREA") out.push(...paintTextControl(l, bw));
     if (st["outline-style"] === "auto" && px(st["outline-width"]) > 0) out.push(...paintFocusRing(st, b, r, bw));
-    else if (st["outline-style"] !== "none" && px(st["outline-width"]) > 0) {
-      const w = px(st["outline-width"]);
-      const o = px(st["outline-offset"]) + w / 2;
-      out.push(
-        `<rect ${rectAttrs({ x: b.x - o, y: b.y - o, w: b.w + 2 * o, h: b.h + 2 * o })} fill="none" stroke="${st["outline-color"]}" stroke-width="${num(w)}"/>`,
-      );
-    }
+    else if (st["outline-style"] !== "none" && px(st["outline-width"]) > 0) out.push(...paintOutline(st, b, r));
     stats.boxes++;
     return out;
   }
@@ -1756,6 +1750,34 @@ export function renderSvg(
       `<path fill-rule="evenodd" fill="#fff" d="${band(2)}${band(1)}"/>`,
       `<path fill-rule="evenodd" fill="${st["outline-color"]}" d="${band(1)}${band(-1)}"/>`,
     ];
+  }
+
+  // An outline of any style but auto, as Chromium paints it (OutlinePainter, through the border
+  // painter): a border of the outline's style, width and colour round the border box `b` moved
+  // out by the outline's offset, its rounded corners (radii `r`) moved out with it. So a dashed
+  // or dotted outline lays out its marks as such a border does, and an inset or outset one shades
+  // its sides as a border does.
+  function paintOutline(st, b, r) {
+    const w = px(st["outline-width"]);
+    const o = px(st["outline-offset"]) + w;
+    const style = st["outline-style"];
+    const box = { x: b.x - o, y: b.y - o, w: b.w + 2 * o, h: b.h + 2 * o };
+    if (box.w <= 0 || box.h <= 0) return [];
+    const sides = SIDES.map((side) => ({
+      width: w,
+      color: borderColor(style, side, st["outline-color"]),
+      style: style === "inset" || style === "outset" ? "solid" : style,
+    }));
+    const radii = r.map(([rx, ry]) => (rx > 0 && ry > 0 ? [Math.max(0, rx + o), Math.max(0, ry + o)] : [0, 0]));
+    // A solid one with square corners is the same pixels as one stroked rectangle, which every
+    // SVG drew before the other styles were (300 SVGs keep their bytes).
+    if (style === "solid" && radii.every(([rx]) => rx === 0)) {
+      const m = w / 2;
+      return [
+        `<rect ${rectAttrs({ x: box.x + m, y: box.y + m, w: box.w - w, h: box.h - w })} fill="none" stroke="${st["outline-color"]}" stroke-width="${num(w)}"/>`,
+      ];
+    }
+    return paintBorders(box, radii, sides);
   }
 
   function paintBorders(b, r, bw) {
