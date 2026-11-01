@@ -443,8 +443,33 @@ allowance of 255 levels and 100%, under noise (0 changed beyond noise, its card 
 and `Menu_Edit.png`, with a "keep old" decision on its file, as kept old by a review although its
 size changed; `--all --only Menu_Add-Ins` judged `Menu_Add-Ins.png` by an SVG bar of 32 levels
 and 5% (0.081% off by it, the same as its `pct32`), and its light picture, with no entry, by the
-default bar. The "committing..." text was not seen in a browser during a real commit: the page
-and its script are checked by the server test only.
+default bar.
+
+**The commit runs without blocking** (owner, 2026-11-01, after step 9):
+
+| Part | Where it is |
+|---|---|
+| git as a child process | `commitPaths` in `shot-revision.mjs` is `async`: `gitSaying` spawns git with its stdio piped and its window hidden, so it has a console of its own, which the tool's Ctrl+C does not reach. It finds the repository's root with `git rev-parse --show-toplevel`, not a second `git status` |
+| The commit under way | the server's `committing` ({message, at, plan, done}): `commit(body)` checks what it checks at once, then sets it, sends an update and returns the promise of the commit; the POST answers when it has ended. Meanwhile the server answers every request: the commit page is drawn from `committing.plan` (no `git status`) with "committing..." in its status, the message read-only and Commit disabled; the overview and the runs page carry a notice (`committingNotice` in `shot-pages.mjs`); `busyRun()` is `{commit: true, message, at}`, so every run button is greyed with its reason; `refuseWhileCommitting` refuses a review's action, the move to HEAD, a run and a second commit; `headNow()` is null, since HEAD moves to the commit before the session is closed |
+| Ctrl+C | `app.committing()` is the promise of the commit under way, or null; `shot_review.mjs` waits for it before closing |
+| The default message | `commitPlan` counts a PNG as kept at HEAD only when its picture's decision is "old": a "new" decision about a capture that is the file's own bytes (taken in an earlier session) had made it say "1 kept at HEAD by review" for a commit of an allowance |
+
+It was checked with the tests (a timer that fires while `commitPaths` runs; the server's commit
+held open by a `pre-commit` hook that waits for a file, while the commit page, the overview and
+the runs page say it is under way and a review's action, a run and a second commit are refused;
+`commitPlan` with both decisions), and with the real tool in a scratch worktree, on port 4183,
+whose test commits were then thrown away with the worktree's branch:
+
+- In the browser, a recorder put into the commit page logged every text of its status and notices
+  while **Commit** was clicked: "committing..." from the click, with the buttons disabled, then the
+  notice as the page fetched itself again, then the next session's page with its "Committed" notice.
+  The overview, fetched every 700 ms meanwhile, said the commit was under way. No answer came for
+  about 4 s after the click: that was the recorder's own load, overview renders of about half a
+  second each queued behind the browser's six connections to the host, not the commit.
+- A script committing through the API while it fetched `/runs` every 100 ms: while git and the
+  hook ran, `/runs` answered in 1 to 3 ms. Two waits remain, of about 0.3 s before git starts (the
+  checks: `git status` and the plan) and 0.4 s at the end (`onCommit`: the session archived, the
+  next one opened); making those asynchronous too is not worth it.
 
 Nothing of the plan is left. The two small things left after step 9 are fixed:
 
