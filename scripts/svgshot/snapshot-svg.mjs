@@ -592,6 +592,12 @@ export function textNeeds(decoded, clip, { selection = null } = {}) {
 /** What text-overflow: ellipsis draws where it cuts a line. */
 export const ELLIPSIS = "…";
 
+// The radius of each corner of a focus ring's path round a box with no rounded corner
+// (paintFocusRing), in CSS px: fitted to Edge's pixels round square boxes with no border, a
+// border of 1 and 2 px, an outline 3 px wide and an offset of 4 px, all alike (the squared error
+// against a square ring's 6% of it; 3 px gives 17% more than 2.85).
+const FOCUS_RING_RADIUS = 2.85;
+
 // The blue of a search field's clear button in a light colour scheme, from the top
 // of its box to the bottom (paintSearchButton): Edge's picture, read row by row.
 const SEARCH_CLEAR_STOPS = [
@@ -1878,18 +1884,21 @@ export function renderSvg(
   // against it. The path is the border box moved out by the outline offset, and
   // in by the width of the border, up to 1px a side (so a control's own 1px border
   // lies under the inner band, and a box with none has the ring astride its
-  // edge); a corner's radius moves with the path. Fitted against Edge by
-  // bench/outline.html.
+  // edge); a corner's radius moves with the path. A box with no rounded corner
+  // gets Chromium's default ring, FOCUS_RING_RADIUS round every corner of the path
+  // (whatever its border, offset or outline width); a box with some keeps its
+  // square ones square. Fitted against Edge by bench/outline.html.
   function paintFocusRing(st, b, r, bw) {
     const sides = bw.map((s) => px(st["outline-offset"]) - Math.min(1, s.width));
     const mean = sides.reduce((sum, v) => sum + v, 0) / 4;
-    // The path moved out by `d` more: its box, and its radii (a square corner stays square).
+    const rounded = r.some(([rx, ry]) => rx > 0 && ry > 0);
+    // The path moved out by `d` more: its box, and its radii.
     const band = (d) => {
       const [t, rt, bt, lt] = sides.map((v) => v + d);
       const box = { x: b.x - lt, y: b.y - t, w: Math.max(0, b.w + lt + rt), h: Math.max(0, b.h + t + bt) };
-      const radii = r.map(([rx, ry]) =>
-        rx > 0 && ry > 0 ? [Math.max(0, rx + mean + d), Math.max(0, ry + mean + d)] : [0, 0],
-      );
+      const radii = rounded
+        ? r.map(([rx, ry]) => (rx > 0 && ry > 0 ? [Math.max(0, rx + mean + d), Math.max(0, ry + mean + d)] : [0, 0]))
+        : r.map(() => [Math.max(0, FOCUS_RING_RADIUS + d), Math.max(0, FOCUS_RING_RADIUS + d)]);
       return rrectPath(box, radii) ?? `M${num(box.x)} ${num(box.y)}h${num(box.w)}v${num(box.h)}h${num(-box.w)}Z`;
     };
     return [

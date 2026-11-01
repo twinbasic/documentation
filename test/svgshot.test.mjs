@@ -838,6 +838,22 @@ describe("outlines", () => {
     assert.doesNotMatch(svg, /<rect [^>]*stroke=/);
     assert.match(svg, /<path fill-rule="evenodd" fill="rgba\(0, 0, 0, 0\.47\)" d="M14 9H106A5 5 0 0 1 111 14/);
   });
+
+  test("a focus ring round square corners is rounded by Chromium's default radius, moved out with each band", () => {
+    const svg = draw(page("auto", "1px"));
+    // the white band from 1 to 2 px out, the path's 2.85 px radius grown by each
+    assert.match(
+      svg,
+      /<path fill-rule="evenodd" fill="#fff" d="M12\.85 8H107\.15A4\.85 4\.85 0 0 1 112 12\.85[^"]*M12\.85 9H107\.15A3\.85 3\.85 0 0 1 111 12\.85/,
+    );
+    // the band in the outline colour from 1 px in to 1 px out
+    assert.match(
+      svg,
+      /fill="rgba\(0, 0, 0, 0\.47\)" d="M12\.85 9H[^"]*M12\.85 11H107\.15A1\.85 1\.85 0 0 1 109 12\.85/,
+    );
+    // a box's own rounded corners are the ring's, not the default
+    assert.match(draw(page("auto", "1px", "4px")), /fill="#fff" d="M14 8H106A6 6 0 0 1 112 14/);
+  });
 });
 
 describe("bordersCover", () => {

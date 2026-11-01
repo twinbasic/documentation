@@ -1154,7 +1154,14 @@ IDE's WebView2 draw (on this Windows 10 machine too): 15 px, a round-ended 9 px 
 light or dark default by `color-scheme`; the docs site's dark theme sets `scrollbar-color`, which
 turns its own `::-webkit-scrollbar` rules off. **A focus ring** (`outline-style: auto`,
 `paintFocusRing`) is a 2 px band in the outline colour and a 1 px white one outside it. Both were
-fitted in Edge on bench pages of their own. **An outline of any other style** (`paintOutline`) is
+fitted in Edge on bench pages of their own. Round a box with no rounded corner the ring is not
+square: Chromium gives its path a default radius, which the converter left out until 2026-11-01
+(Help_Search's focused field, owner). `FOCUS_RING_RADIUS`, 2.85 px at the path and grown or shrunk
+with each band, is fitted to Edge's pixels round square boxes with no border, borders of 1 and 2 px,
+an outline 3 px wide and an offset of 4 px, which all came out alike (the squared error 6% of a
+square ring's; 3 px gives 17% more). `bench/outline.html` went from 0.078% of its pixels off
+(0.022% strongly) to 0.033% (0%); a replay changed no SVG, the one picture with such a ring being
+Help_Search, which needs a retake for its clear button. **An outline of any other style** (`paintOutline`) is
 drawn as Chromium's OutlinePainter draws it, through the border painter: a border of the
 outline's style, width and colour round the border box moved out by the offset, its rounded
 corners moved out with it; so the form designer's `1px dashed` outline of each control is dashed
