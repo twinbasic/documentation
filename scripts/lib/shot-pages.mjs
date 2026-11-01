@@ -178,15 +178,30 @@ const REVIEW_SCRIPT = `<script>
     scrollTo(0, y);
   };
   let timer = null;
+  const update = (data) => {
+    const d = JSON.parse(data);
+    const me = document.body.dataset.out;
+    if (me && !(d.outs || []).includes(me)) return;
+    clearTimeout(timer);
+    timer = setTimeout(refresh, 400);
+  };
+  // The event stream: one for every page of the tool in the browser, since the browser opens
+  // six connections to the server at most and a stream holds one for as long as it is open.
+  // The page that holds the lock holds the stream and passes each update to the others; when
+  // it goes, the lock passes to another page. (A shared worker would be simpler, but in some
+  // browsers one cannot reach the server.)
   const live = () => {
-    const es = new EventSource(${JSON.stringify(hrefs.events)});
-    es.addEventListener("update", (e) => {
-      const d = JSON.parse(e.data);
-      const me = document.body.dataset.out;
-      if (me && !(d.outs || []).includes(me)) return;
-      clearTimeout(timer);
-      timer = setTimeout(refresh, 400);
-    });
+    const open = (pass) => {
+      const es = new EventSource(${JSON.stringify(hrefs.events)});
+      es.addEventListener("update", (e) => {
+        update(e.data);
+        pass?.(e.data);
+      });
+    };
+    if (!navigator.locks || typeof BroadcastChannel !== "function") return open();
+    const channel = new BroadcastChannel("shot-review-events");
+    channel.onmessage = (e) => update(e.data);
+    navigator.locks.request("shot-review-events", () => new Promise(() => open((d) => channel.postMessage(d))));
   };
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea, select")) return;

@@ -1,8 +1,9 @@
 // The screenshot review tool's server (WIP.ShotReview.md): the pages of one session
 // (shot-pages.mjs), the files they show, and the session's runs, whose events reach the pages
-// over server-sent events (lib/sse.mjs) as they arrive. It listens on the loopback address
-// only and answers a request only when it names the loopback address as its host, since
-// its pages and pictures can hold the Windows user name.
+// over server-sent events (lib/sse.mjs) as they arrive, through one stream that one of the
+// pages holds for all of them in the browser. It listens on the loopback address only and
+// answers a request only when it names the loopback address as its host, since its pages and
+// pictures can hold the Windows user name.
 //
 // It decides nothing by code of its own: the verdicts are the runs' (shot-policy.mjs, in
 // shoot_docs.mjs and replay.mjs), read from their stages and events, applied under docs/ as
@@ -682,13 +683,19 @@ export function createReviewServer({
     res.end(body);
   };
   const notFound = (res, what = "not found") => send(res, 404, "text/plain; charset=utf-8", `${what}\n`);
+  // A file is asked for again on every visit to a page (no-cache), and answered with its
+  // bytes only when they are not the ones the browser holds: its tag is their hash.
   const sendFile = (req, res, name, bytes) => {
     if (!bytes) return notFound(res);
     const type = TYPES[path.extname(name).toLowerCase()];
     if (!type) return notFound(res);
-    send(res, 200, type, req.method === "HEAD" ? undefined : bytes, {
+    const etag = `"${hashOf(bytes)}"`;
+    const headers = {
+      etag,
       "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src data:",
-    });
+    };
+    if (req.headers["if-none-match"]?.split(/\s*,\s*/).includes(etag)) return send(res, 304, type, undefined, headers);
+    send(res, 200, type, req.method === "HEAD" ? undefined : bytes, headers);
   };
   const page = (req, res, html) => send(res, 200, "text/html; charset=utf-8", req.method === "HEAD" ? undefined : html);
 

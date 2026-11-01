@@ -819,6 +819,17 @@ onStop(process.stdin, () => {
       assert.deepEqual(decodePng(capture.body).width, 40);
       assert.deepEqual((await get(hrefs.reference(1, A))).body, head);
       assert.deepEqual((await get(hrefs.head(A))).body, head);
+      // a file the browser holds is not sent again
+      const tagged = await fetch(base + hrefs.head(A));
+      const etag = tagged.headers.get("etag");
+      await tagged.arrayBuffer();
+      assert.match(etag, /^"[0-9a-f]{40}"$/);
+      const held = await fetch(base + hrefs.head(A), { headers: { "if-none-match": etag } });
+      assert.deepEqual([held.status, (await held.arrayBuffer()).byteLength], [304, 0]);
+      const other = await fetch(base + hrefs.head(A), { headers: { "if-none-match": '"0"' } });
+      assert.deepEqual([other.status, Buffer.from(await other.arrayBuffer())], [200, head]);
+      // the pages' one event stream is held by the page that holds the lock
+      assert.match(html, /navigator\.locks\.request\("shot-review-events"/);
       const map = await get(hrefs.map(1, "png", A));
       assert.deepEqual([map.status, decodePng(map.body).height], [200, 30]);
       assert.equal((await get(hrefs.map(1, "svg", A))).status, 200);

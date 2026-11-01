@@ -260,7 +260,15 @@ process: `shoot_docs.mjs` is a script with effects at the top level (the registr
   and a run never write one picture at once.
 - **`--events`**: a line per event on stdout, `@@shot-event {json}` (run started, job started,
   picture verdict, SVG verdict, job done, summary), beside the lines meant for a person. The
-  tool reads them and sends them to the pages over server-sent events.
+  tool reads them and sends them to the pages over server-sent events. **The browser holds one
+  stream for all the tool's pages**: the page that holds the Web Lock `shot-review-events`
+  holds it and passes each update to the others over a BroadcastChannel of that name, and the
+  lock passes to another page when it goes. A browser opens six HTTP/1.1 connections to a host
+  at most, and a stream holds one while its page is open, so a stream for each page left a
+  seventh page, or its pictures, waiting for minutes. A shared worker cannot do it: in the
+  desktop app's browser pane (Electron 44) a shared worker's `fetch` and `EventSource` never
+  reach the server. A picture is answered with an ETag, its bytes' hash, and with 304 when
+  the browser has those bytes.
 
 **Stop** is a line on the child's stdin: the child takes no further shot, finishes the one in
 hand, ends its IDEs and puts the registry back, as at its normal end. Killing it would skip
