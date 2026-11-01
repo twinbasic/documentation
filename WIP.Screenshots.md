@@ -1133,9 +1133,14 @@ an `<iframe>` on `127.0.0.1` while the page is on `localhost`: another site, so 
 Variable", and the last rule of a family can be its italic file. A family split by
 `unicode-range` (Microsoft's Segoe UI Variable: five files per weight, Latin, Latin Extended,
 Cyrillic, Greek, symbols) gives a run every rule whose range holds one of its characters
-(`webRulesFor`, the last such rule per character, as CSS does), only those files are read, and
-`PictureFonts.css` gives each file only the characters in its own range even where its cmap
-has more. A variable WOFF2 is read in `fonts.mjs` and cut at each weight the picture uses,
+(`webRulesFor`, every such rule per character, the later first, as CSS does), only those files
+are read, and `PictureFonts.css` gives each file only the characters in its own range even
+where its cmap has more. Where two rules hold a character, the later file draws it and one
+with no glyph for it passes it to the earlier (CSS Fonts 4, the composite face): the IDE
+declares `codicon` twice, its own `codicon.ttf` (`codicon.css`) and then Monaco's
+(`editor.main.css`), which has no coffee cup, so Menu_Help's cup is the IDE's file's
+(2026-11-02; until then only the last rule was kept and the cup was missing;
+`bench/webfont-twice.html`). A variable WOFF2 is read in `fonts.mjs` and cut at each weight the picture uses,
 held to the weights its rule declares (`subset_font.py`'s `weight`); its other axes stay
 variable. A font fontTools cannot cut gets no face and its text falls back, reported
 as "text in a font that could not be cut" (`subset_font.py` answers that job with an error

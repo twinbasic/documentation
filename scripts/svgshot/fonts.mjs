@@ -249,12 +249,15 @@ export function parseUnicodeRange(text) {
 /**
  * Of the @font-face rules of one family and one style and weight, `rules` in
  * the order the page declares them ({range, ...}, `range` the rule's
- * unicode-range text), the ones a browser draws `text` with: for each character,
- * the last rule whose range holds it (a later rule wins where ranges overlap),
- * as Chromium looks it up in a font split into files by range. A character no
- * rule holds is drawn in the next family of the list, which is not a web font.
- * Later rules come first, so that a character both files have goes to the later,
- * as PictureFonts.css gives it to the first face that has it.
+ * unicode-range text), the ones a browser may draw `text` with: for each
+ * character, every rule whose range holds it. A browser tries them from the last
+ * declared, and a file with no glyph for the character passes it to the rule
+ * before (CSS Fonts 4, the composite face): the IDE declares codicon twice, its
+ * own codicon.ttf and then Monaco's, which has no coffee cup, and Chromium draws
+ * the cup from the IDE's. A character no rule holds is drawn in the next family
+ * of the list, which is not a web font. Later rules come first, so that a
+ * character both files have goes to the later, as PictureFonts.css gives it to
+ * the first face that has it.
  */
 export function webRulesFor(rules, text) {
   const ranges = rules.map((r) => parseUnicodeRange(r.range));
@@ -262,10 +265,7 @@ export function webRulesFor(rules, text) {
   for (const ch of text) {
     const cp = ch.codePointAt(0);
     for (let i = rules.length - 1; i >= 0; i--) {
-      if (ranges[i].some(([from, to]) => cp >= from && cp <= to)) {
-        chosen.add(i);
-        break;
-      }
+      if (ranges[i].some(([from, to]) => cp >= from && cp <= to)) chosen.add(i);
     }
   }
   return [...chosen].sort((a, b) => b - a).map((i) => rules[i]);

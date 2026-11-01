@@ -1871,13 +1871,20 @@ describe("unicode-range", () => {
     assert.deepEqual(chosen(""), []);
   });
 
-  test("where ranges overlap the later rule has the character, and comes first", () => {
+  test("where ranges overlap the later rule comes first, and the earlier is kept for what it lacks", () => {
     const overlap = [
       { name: "all", range: "" },
       { name: "latin", range: "U+0-7F" },
     ];
-    assert.deepEqual(chosen("ab", overlap), ["latin"]);
-    assert.deepEqual(chosen("a一", overlap), ["latin", "all"]);
+    // a character the later file has no glyph for is drawn from the earlier one
+    assert.deepEqual(chosen("ab", overlap), ["latin", "all"]);
+    assert.deepEqual(chosen("一", overlap), ["all"]);
+    // the IDE's codicon twice, its own file and then Monaco's, with no range
+    const codicon = [
+      { name: "ide", range: "" },
+      { name: "monaco", range: "" },
+    ];
+    assert.deepEqual(chosen("\u{EC15}", codicon), ["monaco", "ide"]);
   });
 });
 
