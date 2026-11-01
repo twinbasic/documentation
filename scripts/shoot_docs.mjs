@@ -6682,11 +6682,7 @@ const projectsShots = [
         await frames(c);
         const [m] = await modals(c);
         const area = { ...m, height: (await lastReferenceBottom(c)) + 12 - m.y };
-        const png = await capture(c, "References_Detail", snapOut(area), {});
-        // No SVG: the converter does not draw a line-through (snapshot-svg.mjs), and the struck
-        // Scripting is what the picture is about; the page shows the PNG.
-        c.shot.svg = null;
-        return png;
+        return capture(c, "References_Detail", snapOut(area), {});
       }),
   },
   {

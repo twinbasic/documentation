@@ -35,7 +35,9 @@
 //   the spaces that white-space: pre keeps at the start and the end of a line
 //   are underlined, where Chromium leaves them out; and a thickness of
 //   from-font is drawn as auto (and counted as not drawn, as it is the font's
-//   own).
+//   own);
+// - a line-through is sized as the underline is and placed from the text's
+//   ascent (lineThroughAbove), over the glyphs and whole, as Chromium draws it.
 //
 // What the snapshot lacks, drawn as replicas of what Chromium paints: the
 // closed <select> (paintSelect), a checkbox and a radio button
@@ -46,9 +48,9 @@
 // (paintFocusRing). Not drawn: the thinner native scrollbar
 // (scrollbar-width: thin), a resize grip, a number input's spin buttons, an
 // indeterminate checkbox (the snapshot does not say), conic gradients, the 2011
-// -webkit-radial-gradient and the filter blur(); an overline, a
-// line-through, a dotted, dashed, wavy or double text decoration, and an
-// underline placed by text-underline-position (decorationsOf). Drawn wrongly: a
+// -webkit-radial-gradient and the filter blur(); an overline, a dotted,
+// dashed, wavy or double text decoration, and an underline placed by
+// text-underline-position (decorationsOf). Drawn wrongly: a
 // collapsed table border, doubled.
 //
 // A frame: the snapshot holds the document of an <iframe> of the same process as
@@ -561,12 +563,28 @@ export function inkBand({ offset, thickness }) {
 }
 
 /**
+ * Where Chromium draws the solid line-through of a text whose ascent, rounded to whole px, is
+ * `ascent`, as the top of the line above the baseline (rounded as underlineBand's line is): the
+ * line's top is 2/3 of the ascent below the text's top, less half the line's thickness before
+ * it is rounded (`reach`), rounded to whole px. Its thickness is the underline's. Fitted against
+ * headless Chromium at 25 sizes from 8 to 64 px, fractional ones included, in Segoe UI,
+ * Consolas, Arial, Times New Roman, Verdana and Tahoma, each at three fractional positions:
+ * every one of the 450 (the font's own strikeout position, OS/2 yStrikeoutPosition, is not
+ * what it uses; Segoe UI's is 0.26 of the size, the line's centre 0.35).
+ */
+export function lineThroughAbove(ascent, reach) {
+  return ascent - Math.round((2 * ascent) / 3 - reach / 2);
+}
+
+/**
  * The decorations of a text layout object that are drawn and those that are
- * not: {lines, undrawn}. `lines` are its solid underlines, outermost box first,
- * each as {offset, thickness, reach, color, skipInk} (underlineBand's, the
- * colour, and whether the line gives way to ink); `undrawn` names what the
- * decorations ask for that is not drawn, for note(): every line but a solid
- * underline, and an underline where Chromium does not put it by default.
+ * not: {lines, undrawn}. `lines` are its solid underlines and line-throughs,
+ * outermost box first, each as {kind, offset, thickness, reach, color, skipInk}
+ * (`kind` "underline" or "line-through"; underlineBand's figures, an underline's
+ * offset below the baseline; the colour; and whether the line gives way to ink,
+ * which a line-through never does); `undrawn` names what the decorations ask for
+ * that is not drawn, for note(): an overline, every style but solid, and an
+ * underline where Chromium does not put it by default.
  *
  * The line is the colour of the box that sets it, not of the text under it, and
  * by default that is the fill colour of its text, which a transparent fill takes
@@ -578,15 +596,16 @@ export function decorationsOf(l) {
   for (const d of decoratingBoxes(l.node.type === 3 ? l.node.parent : l.node)) {
     const style = d["text-decoration-style"] ?? "solid";
     for (const line of d["text-decoration-line"].split(/\s+/)) {
-      if (line !== "underline") undrawn.push(`text-decoration-line ${line}`);
+      if (line !== "underline" && line !== "line-through") undrawn.push(`text-decoration-line ${line}`);
       else if (style !== "solid") undrawn.push(`text-decoration-style ${style}`);
-      else if ((d["text-underline-position"] ?? "auto") !== "auto") undrawn.push("text-underline-position");
+      else if (line === "underline" && (d["text-underline-position"] ?? "auto") !== "auto")
+        undrawn.push("text-underline-position");
       else {
         if (d["text-decoration-thickness"] === "from-font") undrawn.push("text-decoration-thickness from-font");
         const fill = d["-webkit-text-fill-color"];
         const color = d["text-decoration-color"] === d.color && fill ? fill : d["text-decoration-color"];
-        if (!transparent(color))
-          lines.push({ ...underlineBand(d), color, skipInk: (d["text-decoration-skip-ink"] ?? "auto") !== "none" });
+        const skipInk = line === "underline" && (d["text-decoration-skip-ink"] ?? "auto") !== "none";
+        if (!transparent(color)) lines.push({ kind: line, ...underlineBand(d), color, skipInk });
       }
     }
   }
@@ -2196,6 +2215,7 @@ export function renderSvg(
   // exact (fractional) positions of the fragment, whitespace included. The line
   // goes under the glyphs, and leaves a gap round each stretch of the fragment's
   // ink that is in its band (inkBand), as wide as the line is thick on each side.
+  // A line-through goes over the glyphs, whole, where lineThroughAbove puts it.
   // Only the fragments in `view` are drawn: textNeeds measures only those.
   function paintText(l, view) {
     const st = textStyle(l);
@@ -2208,12 +2228,20 @@ export function renderSvg(
     for (const t of l.boxes) {
       if (!overlaps(t, view)) continue;
       const s = l.text.substr(t.start, t.length);
+      const baseline = Math.round(t.y + base);
       for (const u of lines) {
+        if (u.kind !== "underline") continue;
         const gaps = u.skipInk && s.trim() ? (env.inkGaps?.(key, s, ...inkBand(u)) ?? []) : [];
-        const line = underline(t, Math.round(t.y + base) + u.offset, u, gaps);
+        const line = underline(t, baseline + u.offset, u, gaps);
         if (line) out.push(line);
       }
       if (s.trim()) out.push(textRun(st, s, t.x, t.y + base, t.w));
+      // a line-through is painted over the text, whole
+      for (const u of lines) {
+        if (u.kind !== "line-through") continue;
+        const line = underline(t, baseline - lineThroughAbove(Math.round(base), u.reach), u, []);
+        if (line) out.push(line);
+      }
     }
     return out;
   }

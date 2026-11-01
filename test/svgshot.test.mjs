@@ -179,6 +179,7 @@ import {
   elementTransform,
   embeddedImage,
   frameGeometry,
+  lineThroughAbove,
   framesIn,
   frameView,
   inlineSvgsIn,
@@ -216,6 +217,25 @@ describe("naturalSize", () => {
     assert.deepEqual(naturalSize(png([...ihdr, 0, 0, 0, 16, 0, 0, 0, 9, 8, 6, 0, 0, 0])), { w: 16, h: 9 });
     const gif = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 20, 0, 10, 0, 0, 0, 0];
     assert.deepEqual(naturalSize(png(gif)), { w: 20, h: 10 });
+  });
+});
+
+describe("lineThroughAbove", () => {
+  test("puts the line where Chromium draws it, from the rounded ascent and the thickness before rounding", () => {
+    // [font size, rounded ascent, the line's top above the baseline], measured in headless Chromium
+    const measured = [
+      [8, 9, 3], // Segoe UI
+      [11, 12, 5],
+      [19, 21, 8],
+      [26, 28, 11],
+      [48, 52, 20],
+      [64, 69, 26],
+      [10, 9, 3], // Consolas
+      [40, 37, 14],
+      [13.5, 12, 5], // Arial
+    ];
+    for (const [size, ascent, above] of measured)
+      assert.equal(lineThroughAbove(ascent, size / 10), above, `${size} px`);
   });
 });
 
