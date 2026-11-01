@@ -20,6 +20,7 @@ export const GROUPS = [
   ["windows", "Program windows: PNG only"],
   ["added", "Added"],
   ["deleted", "Deleted"],
+  ["retake", "Needs a retake"],
   ["failed", "Failed or not taken"],
 ];
 
@@ -120,6 +121,9 @@ export function groupOf(p, exists) {
   if (p.outside) return "outside";
   if (p.progress) return "progress";
   if (p.failed || p.png?.state === "failed") return "failed";
+  // a replay could not draw its SVG again from its bundle: whatever the PNG's verdict, the
+  // SVG under docs is left as it was until a retake
+  if (p.retake) return "retake";
   if (p.png?.look || p.svg?.look) return "look";
   if (!p.png && !p.svg) return "failed";
   switch (p.png?.state) {
@@ -197,7 +201,11 @@ export function reviewPictures(
     for (const out of facts.skipped) if (!run.verdicts.has(out)) at(out).skipped = n;
     for (const out of facts.listed) {
       const p = at(out);
-      const owed = !facts.failed.has(out) && !facts.skipped.has(out) && owes(run, run.verdicts.get(out));
+      const owed =
+        !facts.failed.has(out) &&
+        !facts.skipped.has(out) &&
+        !facts.retakes.has(out) &&
+        owes(run, run.verdicts.get(out));
       p.progress = run.live && owed;
       // a picture its job never reached, the job having failed first
       const job = facts.jobs.get(facts.jobOf.get(out));

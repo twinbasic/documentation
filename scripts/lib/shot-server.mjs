@@ -508,7 +508,9 @@ export function createReviewServer({
   // A run as the pages show it: its record, the command line it is the same as, and how far it is.
   const runRow = (r) => {
     const owed = r.record.tool === "replay" ? "svg" : "png";
-    const isDone = (out) => r.verdicts.get(out)?.[owed] || r.facts.failed.has(out) || r.facts.skipped.has(out);
+    // a picture a replay passed on for a retake is done with, and said beside the count
+    const isDone = (out) =>
+      r.verdicts.get(out)?.[owed] || r.facts.failed.has(out) || r.facts.skipped.has(out) || r.facts.retakes.has(out);
     const done = r.facts.listed.filter(isDone).length;
     const failed = new Set(failedOf(r));
     const ofJob = (name) => r.facts.listed.filter((out) => r.facts.jobOf.get(out) === name);
@@ -531,6 +533,7 @@ export function createReviewServer({
       stopAsked: !!r.stopAsked,
       done,
       failed: failed.size,
+      retakes: r.facts.retakes.size,
       listed: r.facts.listed.length,
       jobs,
     };

@@ -302,7 +302,19 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     assert.equal(at(C).failed.error, "boom");
     assert.deepEqual(
       groups.map((g) => g.key),
-      ["progress", "look", "changed", "noise", "outside", "unchanged", "windows", "added", "deleted", "failed"],
+      [
+        "progress",
+        "look",
+        "changed",
+        "noise",
+        "outside",
+        "unchanged",
+        "windows",
+        "added",
+        "deleted",
+        "retake",
+        "failed",
+      ],
     );
     assert.deepEqual(
       pictures.map((p) => p.out),
@@ -311,6 +323,37 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     // the same runs once the third has ended: A's PNG is unchanged, and it has no SVG verdict
     const ended = reviewPictures(runs.map((r) => ({ ...r, live: false })));
     assert.equal(ended.pictures.find((p) => p.out === A).group, "unchanged");
+  });
+
+  test("a picture a replay passed on for a retake is in Needs a retake, not in progress, whatever its PNG", () => {
+    const runs = [
+      run(1, "shoot_docs", false, [jobs(A, B)], {
+        [A]: { png: { state: "unchanged" }, svg: { state: "unchanged" } },
+        [B]: { png: { state: "unchanged" }, svg: { state: "unchanged" } },
+      }),
+      run(
+        2,
+        "replay",
+        true,
+        [
+          { type: "run", pictures: [A, B, C] },
+          { type: "retake", out: A, why: "no bundle" },
+        ],
+        {},
+      ),
+    ];
+    const at = (pictures, out) => pictures.find((p) => p.out === out);
+    const live = reviewPictures(runs).pictures;
+    assert.deepEqual([at(live, A).group, at(live, A).progress], ["retake", false]);
+    assert.deepEqual([at(live, B).group, at(live, C).group], ["progress", "progress"]);
+    const ended = reviewPictures(runs.map((r) => ({ ...r, live: false }))).pictures;
+    assert.deepEqual([at(ended, A).group, at(ended, A).retake], ["retake", { run: 2, why: "no bundle" }]);
+    // a later run's verdict on it takes it out of the group
+    const retaken = reviewPictures([
+      ...runs.map((r) => ({ ...r, live: false })),
+      run(3, "shoot_docs", false, [jobs(A)], { [A]: { png: { state: "unchanged" }, svg: { state: "updated" } } }),
+    ]).pictures;
+    assert.deepEqual([at(retaken, A).group, at(retaken, A).retake], ["changed", null]);
   });
 
   test("the Changed group is ordered by how much each changed, and a look comes first", () => {

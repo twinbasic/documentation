@@ -102,7 +102,13 @@ has it). Grouped, in this order:
    A run before the mark gave them the reason it gave References_Detail, whose shot turned its
    SVG off, so their verdicts are not taken as one: a retake marks them. One whose PNG changed or was
    added stays in that group; the *No SVG* filter leaves them out, and their page offers no replay.
-7. **Added**, **deleted**, **failed**.
+7. **Added**, **deleted**.
+8. **Needs a retake** (owner, 2026-11-01): pictures a replay could not draw again from their
+   bundles (`retake` events), whatever their PNG's verdict, until a later run gives them one. A
+   replay counts them as done in its progress and says how many beside the count; before, they
+   showed as in progress for as long as the replay ran, then under their PNG's group, Unchanged
+   for most, which is collapsed.
+9. **Failed**.
 
 A row of counts at the top, filters (all, needs a look, overridden, no SVG), and **Resume at
 *n* of *m*** to go back to where the queue was left. The two pages of `sheet.mjs` become views

@@ -674,7 +674,7 @@ ${[...runs]
   .reverse()
   .map(
     (r) =>
-      `<tr><td>${r.n}</td><td>${esc(runTitle(r))}</td><td>${esc(runState(r))}${stopButtons(r).length ? ` <span data-acts>${stopButtons(r).join("")}<span class="status" role="status"></span></span>` : ""}</td><td>${r.kind === "cleanup" ? "" : `${r.done} of ${r.listed}${failedText(r.failed)}`}</td><td><code>${esc(r.command)}</code> (<a href="${hrefs.log(r.n)}">log</a>)</td></tr>`,
+      `<tr><td>${r.n}</td><td>${esc(runTitle(r))}</td><td>${esc(runState(r))}${stopButtons(r).length ? ` <span data-acts>${stopButtons(r).join("")}<span class="status" role="status"></span></span>` : ""}</td><td>${r.kind === "cleanup" ? "" : `${r.done} of ${r.listed}${failedText(r.failed)}${retakesText(r.retakes)}`}</td><td><code>${esc(r.command)}</code> (<a href="${hrefs.log(r.n)}">log</a>)</td></tr>`,
   )
   .join("\n")}
 </table>`
@@ -1349,13 +1349,15 @@ const whenText = (iso) => {
 // How far a run is: a bar for each job of a retake, one for a replay.
 // How many pictures failed, after a count of those done: nothing for none.
 const failedText = (failed) => (failed ? `, <span class="fail">${failed} failed</span>` : "");
+// How many a replay passed on for a retake, likewise.
+const retakesText = (n) => (n ? `, <span class="fail">${n} ${n === 1 ? "needs" : "need"} a retake</span>` : "");
 
 function progressHtml(r) {
   if (r.kind === "cleanup" || !r.listed) return "";
   // a failed picture counts as done, so how many failed is said beside the count
   const bar = (done, total, failed) =>
     `<progress max="${total}" value="${done}"></progress>${done} of ${total}${failedText(failed)}`;
-  if (!r.jobs.length) return `<p>${bar(r.done, r.listed, r.failed)}</p>`;
+  if (!r.jobs.length) return `<p>${bar(r.done, r.listed, r.failed)}${retakesText(r.retakes)}</p>`;
   const state = (j) => {
     if (j.state === "failed") return `: failed: ${esc(j.error ?? "no reason given")}`;
     return j.state === "waiting" ? ", waiting" : j.state === "done" ? ", done" : "";
