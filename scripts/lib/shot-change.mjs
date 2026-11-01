@@ -15,11 +15,21 @@ export const NOISE_SHARE = 0.005;
 /** Whether the pixel (x, y) is inside one of `rects`, each {x0, y0, x1, y1} (x1 and y1 not included). */
 export const inRects = (rects, x, y) => rects.some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
 
-// The largest difference of any channel (alpha included) of two pixels, by index into each rgba.
-const pixelDiff = (A, i, B, j) => {
+// The largest difference of any colour channel of two pixels, by index into each rgba, as
+// seen over black and over white, the two backgrounds that set them furthest apart: the
+// colour of a pixel nearly transparent is rounding (a shadow's last pixels, alpha 1, are
+// 255,255,255 in one capture and 0,0,0 in another), and compared alone it put 255 levels
+// between two pixels that differ by 1 of opacity. Between opaque pixels it is the channels'
+// own difference; between transparent ones, none. Rounded to a whole level.
+export const pixelDiff = (A, i, B, j) => {
+  const a = A.rgba[i + 3];
+  const b = B.rgba[j + 3];
   let d = 0;
-  for (let k = 0; k < 4; k++) d = Math.max(d, Math.abs(A.rgba[i + k] - B.rgba[j + k]));
-  return d;
+  for (let k = 0; k < 3; k++) {
+    const black = (A.rgba[i + k] * a - B.rgba[j + k] * b) / 255;
+    d = Math.max(d, Math.abs(black), Math.abs(black - (a - b)));
+  }
+  return Math.round(d);
 };
 
 /**

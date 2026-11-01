@@ -99,6 +99,7 @@ import {
   compareImages,
   NOISE_LEVELS,
   NOISE_SHARE,
+  pixelDiff,
   pngsNear,
   regionMasks,
   shareOff,
@@ -1660,6 +1661,25 @@ describe("the change sheet", () => {
     assert.equal(withinNoise(a, patch(51, 116), { share: 0.0051 }), true);
   });
 
+  test("measures two pixels as seen over black and over white", () => {
+    const px = (...rgba) => ({ rgba: new Uint8Array(rgba) });
+    const d = (p, q) => pixelDiff(p, 0, q, 0);
+    // opaque: the largest channel's difference
+    assert.equal(d(px(10, 20, 30, 255), px(10, 25, 27, 255)), 5);
+    // a shadow's last pixel, its colour rounding: 1 of opacity apart, not 255 levels
+    assert.equal(d(px(255, 255, 255, 1), px(0, 0, 0, 0)), 1);
+    assert.equal(d(px(255, 255, 255, 2), px(0, 0, 0, 2)), 2);
+    // transparent pixels of any colour are the same
+    assert.equal(d(px(255, 0, 9, 0), px(0, 0, 0, 0)), 0);
+    // black at alpha 100 and 200: the same over black, 100 apart over white
+    assert.equal(d(px(0, 0, 0, 100), px(0, 0, 0, 200)), 100);
+    // opaque white and nothing: 255 apart over black
+    assert.equal(d(px(255, 255, 255, 255), px(0, 0, 0, 0)), 255);
+    // a cut-out's shadow edge within noise, though its colours are 255 apart
+    const edge = (grey, alpha) => ({ width: 1, height: 1, rgba: new Uint8Array([grey, grey, grey, alpha]) });
+    assert.equal(withinNoise(edge(255, 1), edge(0, 1), { share: 1 }), true);
+  });
+
   test("compares two pictures of one size over their pixels", () => {
     const a = image(10, 10);
     const b = image(10, 10, 100, setGrey(0, 0, 2, 5, 220)); // 10 pixels, 120 levels
@@ -2404,9 +2424,10 @@ describe("which pictures need a look (shot-queue.mjs)", () => {
   });
 
   test("a capture is measured against the picture its verdict names, when there is one of its size", () => {
-    // a picture 60 by 40, grey, with a block of 12 by 12 a level or many off
+    // a picture 60 by 40, grey and opaque, with a block of 12 by 12 a level or many off
     const image = (level, w = 60, h = 40) => {
       const rgba = new Uint8Array(w * h * 4).fill(128);
+      for (let i = 3; i < rgba.length; i += 4) rgba[i] = 255;
       for (let y = 10; y < 22; y++)
         for (let x = 10; x < 22; x++) rgba.fill(128 + level, (y * w + x) * 4, (y * w + x) * 4 + 3);
       return encodePng({ width: w, height: h, rgba });

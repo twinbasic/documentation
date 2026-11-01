@@ -19,7 +19,11 @@ same result for the same inputs: see [Factoring](#factoring).
 Two decisions are made by fixed thresholds, and neither threshold holds for every picture:
 
 - **Did the PNG change?** `withinNoise` (`scripts/lib/shot-change.mjs`): no channel more than
-  16 levels off, and no more than 0.5% of the pixels off at all. A pixel more than 16 levels
+  16 levels off, and no more than 0.5% of the pixels off at all. A channel's difference is as
+  seen over black and over white (`pixelDiff`), so a cut-out's shadow edge, its colour at
+  alpha 1 being rounding, is 1 level off, not 255 (2026-11-01; on the BETA 1010 retake it took
+  Properties_ColourPicker's pixels beyond noise from about 3,900 to 33, and changed no
+  verdict, nor anything on the BETA 1033 retake or run of 2026-11-01). A pixel more than 16 levels
   off fails it at once, so a real change ("Foo" to "Bar") is always caught, at any size. It
   fails the other way: one caret or clock pixel in a large window makes it "changed". So the
   usual override here is *take new → keep old*; *keep old → take new* is for a faint change
