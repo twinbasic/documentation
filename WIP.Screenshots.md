@@ -1162,7 +1162,21 @@ as a border is, and a menu's or dialog's rounded outline is rounded. A solid one
 corners stays one stroked `<rect>`, the same pixels, so 300 SVGs kept their bytes. Before
 2026-11-01 every outline was a square solid rectangle; on the 453 SVGs the replay measured, 133
 came closer to their PNG and 7 went 0.001% further, Designer_Locked from 0.389% strongly off to
-0.001%. **A native text field** (`nativeTextField`,
+0.001%. **A text field's selection** (2026-11-01; `selectedParts`, `blendWithWhite`,
+`paintTextControl`) is painted by Chromium outside the DOM, so the snapshot does not hold it:
+`capture.mjs` asks each document for its focused field (inside shadow roots too) with text
+selected, the range, whether the window has focus, and the colours, before the text is measured,
+so that the parts before, in and after the selection are runs of their own. The colours are the
+field's `::selection` when the page gives it a ground, drawn as given, else the system colours
+`SelectedItem` and `SelectedItemText` (WebView2's, rgb(25, 103, 210); `Highlight` is Windows',
+rgb(0, 120, 215), which no selection is drawn in), the ground made translucent as Chromium's
+`Color::BlendWithWhite` makes it: rgba(0, 65, 198, 0.8), which over white is the PNG's
+rgb(51, 103, 209) to the level. The ground is the selected part's width and the line's height,
+clipped to the field. A selection in a window without focus (other colours, which no page
+property gives) and one of the document's own text are reported as not drawn. A bundle taken
+before cannot say a field had a selection; the PNGs that show one were found by the colour
+(Variables_Edit, Designer_AddName, Rename_Box, both themes), and a retake of each took it from
+refused (0.65% to 0.77% strongly off) or 0.248% to 0% strongly off. **A native text field** (`nativeTextField`,
 `paintNativeTextField`): Chromium draws an `<input>` whose border and background the page leaves
 as its own (`2px inset rgb(118, 118, 118)` on white, which BETA 1033 leaves its dialogs' text
 boxes) as its Fluent text field, not by that border: a white ground and a 1 px border of the same

@@ -175,6 +175,7 @@ import {
   bordersCover,
   canvasColor,
   decodeSnapshot,
+  blendWithWhite,
   decoratingBoxes,
   ELLIPSIS,
   ellipsisLines,
@@ -190,6 +191,7 @@ import {
   oneLine,
   renderSvg,
   scopeIds,
+  selectedParts,
   selectLabel,
   shadowShowsThrough,
   textNeeds,
@@ -341,6 +343,133 @@ describe("text-overflow: ellipsis", () => {
     const { lineOf, unknown } = ellipsisLines(doc);
     assert.equal(lineOf(text(doc), 0), null);
     assert.equal(unknown, 1);
+  });
+});
+
+describe("a text field's selection", () => {
+  test("selectedParts splits each line at the selection, a tab expanded from the line's start", () => {
+    assert.deepEqual(selectedParts("360", false, "8", 0, 3), [{ before: "", selected: "360", after: "" }]);
+    assert.deepEqual(selectedParts("abcdef", false, "8", 2, 4), [{ before: "ab", selected: "cd", after: "ef" }]);
+    // a textarea's lines, the range across their break, a tab of 4
+    assert.deepEqual(selectedParts("ab\r\n\tcd\nef", true, "4", 1, 6), [
+      { before: "a", selected: "b", after: "" },
+      { before: "", selected: "    c", after: "d" },
+      // a line after the range is after the selection whole
+      { before: "", selected: "", after: "ef" },
+    ]);
+  });
+
+  test("blendWithWhite makes Chromium's own selection colour translucent, as Color::BlendWithWhite does", () => {
+    // WebView2's SelectedItem, which paints rgb(51, 103, 209) over white
+    assert.equal(blendWithWhite("rgb(25, 103, 210)"), "rgba(0, 65, 198, 0.8)");
+    // a light colour blends at the first alpha
+    assert.equal(blendWithWhite("rgb(200, 200, 200)"), "rgba(163, 163, 163, 0.6)");
+    assert.equal(blendWithWhite("rgba(1, 2, 3, 0.5)"), "rgba(1, 2, 3, 0.5)");
+  });
+
+  // An <input> 100 by 17 at 10, 10, its node's backend id 4, holding "360 x".
+  const NAMES = [
+    "display",
+    "visibility",
+    "color",
+    "font-family",
+    "font-size",
+    "font-weight",
+    "font-style",
+    "text-align",
+    "-webkit-text-fill-color",
+  ];
+  function page() {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = ["block", "visible", "rgb(0, 0, 0)", "Arial", "13px", "400", "normal", "start", "rgb(0, 0, 0)"].map(
+      s,
+    );
+    const names = ["#document", "HTML", "BODY", "INPUT"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2],
+            nodeType: [9, 1, 1, 1],
+            nodeName: names.map(s),
+            nodeValue: names.map(() => -1),
+            backendNodeId: [1, 2, 3, 4],
+            attributes: names.map(() => []),
+            inputValue: { index: [3], value: [s("360 x")] },
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [style, style, style],
+            bounds: [
+              [0, 0, 200, 100],
+              [0, 0, 200, 100],
+              [10, 10, 100, 17],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, NAMES);
+  }
+  const KEY = JSON.stringify(["normal", "400", "13px", "Arial"]);
+  const WIDTHS = { "360 x": 34, 360: 21, " x": 13, "": 0 };
+  const draw = (selection) =>
+    renderSvg(page(), {
+      clip: { x: 0, y: 0, w: 200, h: 100 },
+      metrics: () => ({ ascent: 12, height: 15, line: 17 }),
+      textWidth: (key, text) => (key === KEY ? (WIDTHS[text] ?? null) : null),
+      selection,
+    });
+  // what was not drawn, but for the text's fonts, which the fixture gives none of
+  const notDrawn = ({ stats }) =>
+    Object.fromEntries(Object.entries(stats.unsupported).filter(([what]) => what !== "text in an unembedded font"));
+  const selected = {
+    backendNodeId: 4,
+    start: 0,
+    end: 3,
+    focused: true,
+    given: false,
+    background: "rgb(25, 103, 210)",
+    color: "rgb(255, 255, 255)",
+  };
+
+  test("textNeeds measures the parts of a selected line", () => {
+    const { runs } = textNeeds(page(), { x: 0, y: 0, w: 200, h: 100 }, { selection: selected });
+    assert.deepEqual(runs.map(([, text]) => text).sort(), ["360", "360 x", " x"].sort());
+  });
+
+  test("the selected part is drawn on the selection's ground, blended as Chromium blends it, in its colour", () => {
+    const drawn = draw(selected);
+    const { svg } = drawn;
+    assert.match(svg, /<rect x="10" y="10" width="21" height="17" fill="rgba\(0, 65, 198, 0\.8\)"\/>/);
+    assert.match(svg, /<text class="(t\d+)" x="10" y="[\d.]+" textLength="21" lengthAdjust="spacing">360<\/text>/);
+    assert.match(svg, /<text class="t\d+" x="31" y="[\d.]+" textLength="13" lengthAdjust="spacing"> x<\/text>/);
+    // the selected text in the selection's colour, the rest in the field's
+    assert.match(svg, /fill:rgb\(255, 255, 255\)/);
+    assert.deepEqual(notDrawn(drawn), {});
+    // a colour the page gives is drawn as it is
+    assert.match(draw({ ...selected, given: true, background: "rgb(1, 2, 3)" }).svg, /fill="rgb\(1, 2, 3\)"\/>/);
+  });
+
+  test("a selection in a window without focus, or outside a field, is reported as not drawn", () => {
+    const blurred = draw({ ...selected, focused: false });
+    assert.doesNotMatch(blurred.svg, /<rect x="10" y="10" width="21"/);
+    assert.match(blurred.svg, />360 x<\/text>/);
+    assert.deepEqual(notDrawn(blurred), { "a text selection in a window without focus": 1 });
+    assert.deepEqual(notDrawn(draw({ outside: true })), { "a text selection outside a text field": 1 });
+    // another field's selection, or none, draws the field's text whole
+    assert.match(draw({ ...selected, backendNodeId: 9 }).svg, />360 x<\/text>/);
+    assert.match(draw(null).svg, />360 x<\/text>/);
   });
 });
 

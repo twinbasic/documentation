@@ -294,6 +294,45 @@ function measure({ keys, runs, skips, cuts, view, measureId, overlays }) {
   });
 }
 
+// Runs in the page: the text field that has the focus, looked for inside shadow roots too, when
+// it has text selected, else null.
+function focusedField() {
+  let a = document.activeElement;
+  while (a?.shadowRoot?.activeElement) a = a.shadowRoot.activeElement;
+  const field = a && (a.localName === "input" || a.localName === "textarea");
+  return field && a.selectionStart !== null && a.selectionStart !== a.selectionEnd ? a : null;
+}
+
+// Runs in the page, on a text field (`this`): what it has selected and in what colours: the
+// field's ::selection when the page gives it a ground (`given`), else the system colours
+// SelectedItem and SelectedItemText, which are Chromium's own selection colours (Highlight is
+// Windows', which WebView2 does not draw a selection in), before the converter blends the
+// ground as Chromium does (snapshot-svg.mjs's blendWithWhite).
+function fieldSelection() {
+  const own = getComputedStyle(this, "::selection");
+  const given = own.backgroundColor !== "rgba(0, 0, 0, 0)";
+  const probe = document.createElement("span");
+  probe.style.cssText = "position:fixed;background-color:SelectedItem;color:SelectedItemText";
+  document.documentElement.append(probe);
+  const system = getComputedStyle(probe);
+  const [ground, text] = [system.backgroundColor, system.color];
+  probe.remove();
+  return {
+    start: this.selectionStart,
+    end: this.selectionEnd,
+    focused: document.hasFocus(),
+    given,
+    background: given ? own.backgroundColor : ground,
+    color: given ? own.color : text,
+  };
+}
+
+// Runs in the page: whether the document's own text (not a field's) has a selection.
+function documentSelected() {
+  const s = getSelection();
+  return !!s && s.rangeCount > 0 && !s.isCollapsed && s.toString() !== "";
+}
+
 // Runs in the page, on a scrolling element (`this`): the computed style of
 // each part of its scrollbars that has a ::-webkit-scrollbar style, as
 // {custom, parts: {key: style | null}}; `parts` lists the parts Chromium makes,
@@ -967,10 +1006,34 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
     await conn.send("DOM.disable").catch(() => {});
   }
 
+  // The text selected in a document, which Chromium paints outside the DOM, so that the
+  // snapshot does not hold it: a focused text field's, as {backendNodeId, start, end, focused,
+  // background, color} (fieldSelection), {outside: true} for a selection of the document's own
+  // text, or null for none.
+  async function selectionOf(context) {
+    const { result } = await conn.send("Runtime.evaluate", {
+      expression: `(${focusedField})()`,
+      ...(context === undefined ? {} : { contextId: context }),
+    });
+    if (!result.objectId) return (await run(context, `(${documentSelected})()`)) ? { outside: true } : null;
+    try {
+      const { result: got } = await conn.send("Runtime.callFunctionOn", {
+        objectId: result.objectId,
+        functionDeclaration: String(fieldSelection),
+        returnByValue: true,
+      });
+      const { node } = await conn.send("DOM.describeNode", { objectId: result.objectId });
+      return { backendNodeId: node.backendNodeId, ...got.value };
+    } finally {
+      await conn.send("Runtime.releaseObject", { objectId: result.objectId }).catch(() => {});
+    }
+  }
+
   // What a document's text needs, measured in the document itself: the page's
   // own fonts, styles and canvases are what its runs are drawn with.
   async function measureDocument({ doc, view, context, geometry, inner }) {
-    const { keys, runs, skips, cuts } = textNeeds(doc, view);
+    const selection = await selectionOf(context);
+    const { keys, runs, skips, cuts } = textNeeds(doc, view, { selection });
     const overlays = context === undefined ? OVERLAYS : [];
 
     // Each inline <svg> in the view (the annotation layer apart), as its own element in the
@@ -1094,6 +1157,7 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
       page,
       skips,
       cuts,
+      selection,
       platform: [...platform],
       webFonts,
       fontFiles,

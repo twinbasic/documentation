@@ -11,7 +11,8 @@
 // each document measured (the page's, and each frame of the same process in the
 // clip, by frame id) the answers its measuring layer gave -- font metrics, run
 // widths, the ink an underline skips, where an ellipsis cuts a line (`cuts`, the
-// questions, as `skips` are kept beside their answers), the placeholder colour, the canvases'
+// questions, as `skips` are kept beside their answers), the text a focused field has
+// selected and its colours (`selection`), the placeholder colour, the canvases'
 // pixels, the annotation layer (its box already in the document's coordinates,
 // so that a scrolled page needs nothing more) -- the platform fonts of each run,
 // the web fonts a run was drawn with, each scrolling box's scrollbar styles, each
@@ -154,6 +155,8 @@ export function drawBundle(bundle) {
       },
       scrollbars: new Map(m.scrollbars),
       svgs: new Map(m.svgs),
+      // a bundle taken before the selection was read has none: it is drawn as before
+      selection: m.selection ?? null,
       inner: m.inner,
     };
   };

@@ -437,6 +437,58 @@ function controlLines(text, textarea, tabSize) {
 }
 
 /**
+ * The lines of a text control's text (controlLines) with the part of each that the range
+ * [start, end) of its text selects (UTF-16 offsets, as the field's selectionStart and
+ * selectionEnd): [{before, selected, after}], one per line, `selected` "" on a line the range
+ * does not reach. A tab is spaces up to the next stop from the line's start, so the drawn part
+ * before an offset is that offset's prefix expanded.
+ */
+export function selectedParts(text, textarea, tabSize, start, end) {
+  const raw = textarea ? text.split(/(?<=\n)/) : [text];
+  const out = [];
+  let from = 0;
+  for (const piece of raw) {
+    const line = piece.replace(/\r?\n$/, "");
+    const at = (offset) =>
+      controlLines(line.slice(0, Math.min(Math.max(offset - from, 0), line.length)), false, tabSize)[0].length;
+    const [drawn] = controlLines(line, false, tabSize);
+    const [s, e] = [at(start), at(end)];
+    out.push({ before: drawn.slice(0, s), selected: drawn.slice(s, e), after: drawn.slice(e) });
+    from += piece.length;
+  }
+  return out;
+}
+
+/**
+ * An opaque colour as Chromium's Color::BlendWithWhite makes it, which Chromium paints its own
+ * selection's ground in (LayoutTheme's ActiveSelectionBackgroundColor): the first alpha of 60%,
+ * 66.7%, 73.3% and 80% at which a colour over white looks the same with no channel below 0,
+ * else 80% with such a channel at 0; each channel cut to a whole number toward 0, as Chromium
+ * casts it. WebView2's SelectedItem, rgb(25, 103, 210), is rgba(0, 65, 198, 0.8), which paints
+ * rgb(51, 103, 209) over white, the PNG's selection to the level. A colour with alpha already,
+ * or one that cannot be read, is returned as it is.
+ */
+export function blendWithWhite(colour) {
+  const c = rgba(colour);
+  if (!c || c.a !== 1) return colour;
+  let out = colour;
+  for (let alpha = 153; alpha <= 204; alpha += 17) {
+    const blend = (v) => Math.trunc((v - (255 - alpha)) / (alpha / 255));
+    const [r, g, b] = [c.r, c.g, c.b].map(blend);
+    out = `rgba(${Math.max(0, r)}, ${Math.max(0, g)}, ${Math.max(0, b)}, ${num(alpha / 255)})`;
+    if (r >= 0 && g >= 0 && b >= 0) break;
+  }
+  return out;
+}
+
+/**
+ * The selection a document's focused text field shows (capture.mjs's selectionOf), when it is
+ * the one of `node`: {start, end, focused, given, background, color}, or null.
+ */
+const selectionIn = (selection, node) =>
+  selection?.backendNodeId !== undefined && selection.backendNodeId === node.backendNodeId ? selection : null;
+
+/**
  * controlText of a layout object that is visible and large enough to show it:
  * the code editor's hidden 1 by 1 textarea holds the module's whole text and
  * shows none of it.
@@ -453,9 +505,11 @@ function shownControlText(l) {
  * What the picture's text needs measured in a browser: every font (as
  * fontKey strings), every run of text with its font, [fontKey, text], and every
  * run an underline has to skip the ink of, [fontKey, text, top, height]: the band
- * below the baseline (CSS px) in which Chromium looks for it (inkBand).
+ * below the baseline (CSS px) in which Chromium looks for it (inkBand). `selection` is the text
+ * a focused field has selected (capture.mjs's selectionOf), or null: the parts of its lines
+ * before, in and after it are runs of their own (selectedParts).
  */
-export function textNeeds(decoded, clip) {
+export function textNeeds(decoded, clip, { selection = null } = {}) {
   const keys = new Set();
   const runs = new Map();
   const skips = new Map();
@@ -470,8 +524,12 @@ export function textNeeds(decoded, clip) {
     if (l.node.name === "SELECT" && l.style && overlaps(l.bounds, clip)) add(l.style, selectLabel(l.node));
     if (l.style && l.node.box === l && overlaps(l.bounds, clip)) {
       const c = shownControlText(l);
-      if (c)
-        for (const line of controlLines(c.text, l.node.name === "TEXTAREA", l.style["tab-size"])) add(l.style, line);
+      const textarea = l.node.name === "TEXTAREA";
+      if (c) for (const line of controlLines(c.text, textarea, l.style["tab-size"])) add(l.style, line);
+      const sel = c && !c.placeholder ? selectionIn(selection, l.node) : null;
+      if (sel)
+        for (const part of selectedParts(c.text, textarea, l.style["tab-size"], sel.start, sel.end))
+          if (part.selected) for (const s of [part.before, part.selected, part.after]) add(l.style, s);
     }
     if (l.text === undefined) continue;
     const st = textStyle(l);
@@ -496,7 +554,12 @@ export function textNeeds(decoded, clip) {
       }
     }
   }
-  return { keys: [...keys], runs: [...runs.values()], skips: [...skips.values()], cuts: [...cuts.values()] };
+  return {
+    keys: [...keys],
+    runs: [...runs.values()],
+    skips: [...skips.values()],
+    cuts: [...cuts.values()],
+  };
 }
 
 // --- text-overflow: ellipsis -------------------------------------------------
@@ -1253,6 +1316,10 @@ function filterPrimitives(steps) {
  *                  every underline whole
  * @param cut       (...cutNeed) => [length, width]: how much of a fragment fits before the ellipsis of
  *                  a line text-overflow: ellipsis cuts; null, or no answer, draws the line whole
+ * @param selection the text selected in the document, which Chromium paints outside the DOM
+ *                  (capture.mjs's selectionOf): {backendNodeId, start, end, focused, background,
+ *                  color} for a focused text field's, {outside: true} for one in the document's
+ *                  own text, which is not drawn, or null for none
  * @param placeholderColor  what an empty <input> shows its placeholder in
  * @param canvases  [{x, y, w, h, href}] pictures of the page's <canvas> elements
  * @param fonts     a PictureFonts (fonts.mjs): text is set in subsets of its fonts, embedded
@@ -1268,7 +1335,7 @@ function filterPrimitives(steps) {
  *                  with no entry is drawn by other means (the annotation layer). null: none was
  *                  read, and each is reported as not drawn
  * @param frames    (document) => what was measured in that frame's own document, {metrics, textWidth,
- *                  inkGaps, cut, placeholderColor, canvases, fontsFor, scrollbars, svgs}, as the parameters
+ *                  inkGaps, cut, selection, placeholderColor, canvases, fontsFor, scrollbars, svgs}, as the parameters
  *                  of the same names (the page's own are the defaults) and {inner}, the frame's viewport
  *                  {w, h}; null or no function: the frame is drawn with the page's own. The frame
  *                  is measured in its own document because a font name and a style rule mean what
@@ -1282,6 +1349,7 @@ export function renderSvg(
     textWidth = null,
     inkGaps = null,
     cut = null,
+    selection = null,
     placeholderColor = "rgb(117, 117, 117)",
     canvases = [],
     fonts = null,
@@ -1299,6 +1367,7 @@ export function renderSvg(
     textWidth,
     inkGaps,
     cut,
+    selection,
     placeholderColor,
     canvases,
     fontsFor,
@@ -2325,19 +2394,44 @@ export function renderSvg(
       ? { ...st, color: env.placeholderColor, "-webkit-text-fill-color": env.placeholderColor }
       : st;
     const lines = controlLines(c.text, textarea, st["tab-size"]);
+    // The text the field has selected: its part of each line, drawn on the selection's ground in
+    // its colour; in a window without focus Chromium draws it in other colours, which no page
+    // property gives, so it is not drawn.
+    let sel = c.placeholder ? null : selectionIn(env.selection, l.node);
+    if (sel && !sel.focused) {
+      note("a text selection in a window without focus");
+      sel = null;
+    }
+    const parts = sel ? selectedParts(c.text, textarea, st["tab-size"], sel.start, sel.end) : null;
+    const selectedStyle = sel && { ...st, color: sel.color, "-webkit-text-fill-color": sel.color };
     // The text moves by how far the control is scrolled; only a textarea scrolls down.
     const sx = l.scroll?.x ?? 0;
     const top = textarea ? at.y - (l.scroll?.y ?? 0) : at.y + (at.h - lh) / 2;
     const runs = [];
     for (const [i, line] of lines.entries()) {
-      if (!line.trim()) continue;
+      const part = parts?.[i]?.selected ? parts[i] : null;
+      if (!line.trim() && !part) continue;
       const y = top + i * lh;
       if (y + lh < shows.y || y > shows.y + shows.h) continue;
       const w = env.textWidth?.(key, line) ?? null;
       let x = at.x - sx;
       if (w !== null && align.endsWith("center")) x = at.x + (at.w - w) / 2 - sx;
       else if (w !== null && (align === "right" || align === "end")) x = at.x + at.w - w - sx;
-      runs.push(textRun(shown, line, x, y + (lh - m.height) / 2 + m.ascent, w));
+      const baseline = y + (lh - m.height) / 2 + m.ascent;
+      // a selected line: the part before, the selection's ground and its text, the part after
+      const widths = part && [part.before, part.selected].map((s) => (s ? env.textWidth?.(key, s) : 0));
+      if (part && widths.every((v) => v !== null && v !== undefined)) {
+        const [wb, ws] = widths;
+        if (part.before.trim()) runs.push(textRun(shown, part.before, x, baseline, wb));
+        // Chromium's own colour is made translucent; one the page gives is drawn as it is
+        const ground = sel.given ? sel.background : blendWithWhite(sel.background);
+        runs.push(`<rect ${rectAttrs({ x: x + wb, y, w: ws, h: lh })} fill="${ground}"/>`);
+        if (part.selected.trim()) runs.push(textRun(selectedStyle, part.selected, x + wb, baseline, ws));
+        if (part.after.trim())
+          runs.push(textRun(shown, part.after, x + wb + ws, baseline, env.textWidth?.(key, part.after) ?? null));
+        continue;
+      }
+      runs.push(textRun(shown, line, x, baseline, w));
     }
     if (!runs.length) return [];
     const id = def(
@@ -2532,6 +2626,9 @@ export function renderSvg(
     // A frame is painted inside its owner's document: its lines are its own until it is done.
     const outerLines = cutLines;
     cutLines = ellipsisLines(doc);
+    // Chromium paints a selection of the document's own text outside the DOM, as it paints a
+    // field's; only a field's is drawn (paintTextControl).
+    if (env.selection?.outside) note("a text selection outside a text field");
     for (const it of items) {
       const l = it.l;
       const n = l.node;
