@@ -14,7 +14,7 @@ import path from "node:path";
 import { isOutputTree } from "../../lib/markdown-files.mjs";
 import { LAUNCH_ARGS, launchBrowser } from "../lib/browser.mjs";
 import { readRecords, sendStop, writeRecord } from "../lib/record-lines.mjs";
-import { BUNDLE_VERSION, pngHash, readBundle, renderBundle } from "./bundle.mjs";
+import { BUNDLE_VERSION, drawBundle, pngHash, readBundle, renderBundle } from "./bundle.mjs";
 import { MISSABLE_STYLES, SNAPSHOT_STYLES } from "./capture.mjs";
 import { holdsUserName } from "./keep.mjs";
 import { slugOf } from "../lib/shot-apply.mjs";
@@ -68,6 +68,34 @@ export function listPictures(docsRoot) {
  */
 export async function redraw({ bundlesRoot, docsRoot, out, user, stale = false, checkUserName = true }) {
   const bundle = readBundle(bundlesRoot, out);
+  const ready = readyToDraw(bundle, docsRoot, out, stale);
+  if (ready.retake) return ready;
+  const { png, notes } = ready;
+  const { svg, stats, misses } = await renderBundle(bundle);
+  const missed = newMisses(bundle, misses);
+  if (missed) {
+    if (!stale) return missed;
+    notes.push(missed.retake);
+  }
+  if (checkUserName && holdsUserName(svg, user)) throw new Error("the SVG holds the Windows user name");
+  return { png, svg, stats, notes };
+}
+
+/**
+ * Why the bundle of the picture `out` under `bundlesRoot` cannot draw it again, as redraw says it
+ * ({retake, detail}), or null when it can: what a retake whose PNG stays is told by, since its SVG
+ * is then what a replay would write and cannot (lib/shot-policy.mjs's svgFollowsPng). Draws it
+ * without cutting its fonts (drawBundle), a fraction of a redraw.
+ */
+export function staleBundle({ bundlesRoot, docsRoot, out }) {
+  const bundle = readBundle(bundlesRoot, out);
+  const ready = readyToDraw(bundle, docsRoot, out, false);
+  return ready.retake ? ready : newMisses(bundle, drawBundle(bundle).misses);
+}
+
+// What stops `bundle` drawing the picture `out` again before it is drawn: {retake}, else the PNG
+// the file holds and the notes, the PNG's among them with `stale`.
+function readyToDraw(bundle, docsRoot, out, stale) {
   if (!bundle) return { retake: "there is no bundle" };
   const pngFile = path.join(docsRoot, out);
   if (!existsSync(pngFile)) return { retake: "the PNG is gone" };
@@ -82,16 +110,19 @@ export async function redraw({ bundlesRoot, docsRoot, out, user, stale = false, 
     return { retake: `the bundle is of format ${bundle.version}, the converter reads ${BUNDLE_VERSION}` };
   const lacking = SNAPSHOT_STYLES.filter((s) => !bundle.styles.includes(s) && !MISSABLE_STYLES.has(s));
   if (lacking.length) return { retake: `the bundle has no ${lacking.join(", ")}` };
-  const { svg, stats, misses } = await renderBundle(bundle);
+  return { png, notes };
+}
+
+// The questions of a drawing of `bundle` (`misses`) that its capture had an answer for, as a
+// retake ({retake, detail}), or null.
+function newMisses(bundle, misses) {
   const had = new Set(bundle.misses ?? []);
   const fresh = misses.filter((m) => !had.has(m));
-  if (fresh.length) {
-    const why = `no answer for ${fresh.length} question${fresh.length > 1 ? "s" : ""}`;
-    if (!stale) return { retake: why, detail: fresh.slice(0, 3).join("; ") };
-    notes.push(why);
-  }
-  if (checkUserName && holdsUserName(svg, user)) throw new Error("the SVG holds the Windows user name");
-  return { png, svg, stats, notes };
+  if (!fresh.length) return null;
+  return {
+    retake: `no answer for ${fresh.length} question${fresh.length > 1 ? "s" : ""}`,
+    detail: fresh.slice(0, 3).join("; "),
+  };
 }
 
 /** A retake as a line of console output: its reason, then the bundle's text, if any. */

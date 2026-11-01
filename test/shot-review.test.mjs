@@ -1037,6 +1037,8 @@ describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => 
       bundlesRoot: bundles,
       revision: () => revision,
       manifest: () => openManifest(manifestFile),
+      // the cache's bundles, not drawable, taken as able to draw the picture again
+      staleOf: () => null,
     });
 
     // run 1, a retake: the capture differs from the file, and its SVG is faithful
@@ -1148,7 +1150,7 @@ describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => 
     assert.equal(readReviewed(stage2, A).svg, null);
   });
 
-  test("caches the bundle of an SVG that stays with its PNG only when it is the file's SVG, and puts the old one back when the run is undone", (t) => {
+  test("caches the bundle of an SVG that stays with its PNG only when it is the file's SVG, writes the SVG when the cache's bundle is stale, and puts both back when a run is undone", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-bundle-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     const docs = path.join(root, "docs");
@@ -1162,13 +1164,17 @@ describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => 
     const base = "a".repeat(40);
     const session = openSession(root, () => ({ hash: base, short: "aaaaaaaa", build: 1010 }));
     const revision = { hash: base, short: "aaaaaaaa", bytes: () => OLD, read: () => new Map() };
+    // whether the cache's bundle can draw the picture again (staleBundle), as the test says
+    let stale = null;
     const applier = createApplier({
       session,
       docsRoot: docs,
       bundlesRoot: bundles,
       revision: () => revision,
       manifest: () => openManifest(path.join(root, "manifest.json")),
+      staleOf: () => stale,
     });
+    const svgFile = () => fs.readFileSync(at("IDE/Images/A.svg"), "utf8");
     // a retake whose capture is the file's PNG, its SVG `svg`, its bundle { v: n }
     const retake = (n, svg) => {
       session.addRun({ tool: "shoot_docs", args: ["--svg", "--against", base] });
@@ -1203,20 +1209,34 @@ describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => 
       writeBundle(path.join(stage, "bundles"), A, { v: n }, OLD, []);
       assert.equal(applier.arrive(n, A, "png"), true);
       assert.equal(applier.arrive(n, A, "svg"), true);
-      assert.equal(applier.reviewed(n, A).svg.why, "its PNG is not written");
-      assert.equal(fs.readFileSync(at("IDE/Images/A.svg"), "utf8"), "<svg>same</svg>\r\n");
+      assert.equal(applier.errors.size, 0);
     };
 
     // the same SVG: the run's bundle takes the old one's place, naming the file's PNG
     retake(1, "<svg>same</svg>\n");
+    assert.equal(applier.reviewed(1, A).svg.why, "its PNG is not written");
+    assert.equal(svgFile(), "<svg>same</svg>\r\n");
     assert.deepEqual([readBundle(bundles, A).v, readBundle(bundles, A).png], [1, pngHash(OLD)]);
     // another SVG: the cache keeps the bundle the file's SVG was drawn from
     retake(2, "<svg>other</svg>\n");
+    assert.equal(svgFile(), "<svg>same</svg>\r\n");
     assert.equal(readBundle(bundles, A).v, 1);
     // undoing run 1 puts the cache's bundle back as run 1 found it
     applier.undo(1);
     assert.equal(applier.errors.size, 0);
     assert.equal(readBundle(bundles, A).v, 0);
+
+    // the cache's bundle cannot draw the picture again: the run's SVG is written though its PNG
+    // stays, and its bundle cached naming the file's PNG
+    stale = { retake: "the bundle is of format 2, the converter reads 3" };
+    retake(3, "<svg>newer</svg>\n");
+    assert.deepEqual([applier.reviewed(3, A).svg.state, svgFile()], ["updated", "<svg>newer</svg>\n"]);
+    assert.deepEqual([readBundle(bundles, A).v, readBundle(bundles, A).png], [3, pngHash(OLD)]);
+    // and undoing it puts the file's SVG and the cache's bundle back
+    stale = null;
+    applier.undo(3);
+    assert.equal(applier.errors.size, 0);
+    assert.deepEqual([svgFile(), readBundle(bundles, A).v], ["<svg>same</svg>\r\n", 0]);
   });
 });
 

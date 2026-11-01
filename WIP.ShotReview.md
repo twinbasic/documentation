@@ -160,8 +160,10 @@ keyboard; owner).
 - **Retake this picture** and **Replay its SVG**: a run of one picture. Replay is greyed out,
   with the reason, when the bundle cache has no bundle of the picture: a bundle goes there only
   with the SVG drawn from it (a retake whose PNG stays writes one only when the SVG it drew is
-  the file's to the byte, line endings aside: `bundleFollowsSvg`, owner, 2026-11-02), so a
-  picture whose PNG and SVG stayed may have none, and a replay would draw nothing. Accepting a run's SVG
+  the file's to the byte, line endings aside, `bundleFollowsSvg`, or when the cache's bundle
+  cannot draw the picture again, `staleBundle`, which writes the SVG too; owner, 2026-11-02), so a
+  picture whose PNG and SVG stayed may have none until its next retake, and a replay would draw
+  nothing. Accepting a run's SVG
   on the SVG row puts its bundle there. 54 of the 513 SVGs under docs had none on 2026-11-01. A picture's page fetches itself again on an update that says
   the runs changed, not only on one that names it, since its run buttons wait for a run to end.
 - **Back to the tool's verdicts**.

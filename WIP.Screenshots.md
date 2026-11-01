@@ -955,7 +955,11 @@ the PNG was just captured from, and the build shows it in place of the PNG
   `svgs`) does not read a version 1 bundle, and replay lists every one as needing a retake.
   Reading version 1 would replay a split font with the one file it
   kept, and a picture with an inline `<svg>` without it, and nothing in a version 1 bundle
-  says which pictures have either. Answering misses offline in headless
+  says which pictures have either. Version 3 (2026-11-02) keeps every web font rule whose range
+  holds a character a run draws, as `webRulesFor` has chosen them since 4e05975c: a version 2
+  bundle kept the last rule only, so a family the page declares twice (the IDE's `codicon`, its own
+  file and then Monaco's) was drawn from one file and nothing said so; 4e05975c should have raised
+  it. Answering misses offline in headless
   Chromium, and drawing bundles in `tbdocs`, are later steps, not done: the second needs the
   bundles committed, so cleaned of the user name, and complete, since CI
   has no Windows fonts to measure with.
@@ -1022,7 +1026,17 @@ the PNG was just captured from, and the build shows it in place of the PNG
   bundles captured before 59b14ac0, whose cut-outs' styled scrollbars were recorded hidden:
   Properties_ColourPicker and its light picture, 2b32ab8c-fabc-4f42-9e6b-06e85574eaf4 and its
   light picture, ccGridButtonImage and its light picture, and Properties_SystemColours (1.30% of
-  its pixels 8 levels off its PNG, against 0.15% for the SVG run 5 of that day drew).
+  its pixels 8 levels off its PNG, against 0.15% for the SVG run 5 of that day drew). **So does a
+  run whose picture's cached bundle cannot draw it again** (owner, 2026-11-02; `svgFollowsPng`'s
+  `stale`, from `redraw.mjs`'s `staleBundle`: no bundle, another format, another PNG, or a question
+  it has no answer for, what replay lists as needing a retake): the run's SVG is then what a
+  replay would write and cannot, so it is judged and written as with its PNG, and its bundle
+  cached. Without it the file kept an older converter's SVG for as long as its PNG did not change:
+  the retake of 2026-11-02 drew 53 SVGs faithful to 0.013% or better that differed from their
+  files only by the second `codicon` face of 4e05975c, which their version 2 bundles could not
+  draw, and every one stayed. The applier asks `staleBundle` itself, as the picture and the cache
+  are when it applies the verdict (up to 0.35 s for the largest bundle, Help_Pane's, one per turn
+  of the server's event loop).
 - **One line** (`oneLine`). Git checks a picture's SVG out with CRLF where `core.autocrlf` says
   so, since no `.gitattributes` rule can tell it from a diagram's SVG. An SVG icon embedded as
   text and the annotation layer's XML hold line breaks; so each is written as the space an XML
@@ -1193,9 +1207,8 @@ before cannot say a field had a selection; the PNGs that show one were found by 
 (Variables_Edit, Designer_AddName, Rename_Box, both themes), and a retake of each took it from
 refused (0.65% to 0.77% strongly off) or 0.248% to 0% strongly off. Until 2026-11-02 such a
 bundle was drawn as if no field had a selection, so a replay drew Variables_Edit's old bundle
-(its retake's PNG stayed, so the cache kept the old bundle) without it again; since then a field
-that shows text in a bundle with no `selection` is a miss (`unknownSelection` in `bundle.mjs`),
-and replay lists the picture as needing a retake: 62 of the cache's 481 pictures that day. **An attribute with no
+(its retake's PNG stayed, so the cache kept the old bundle) without it again. Every bundle of
+version 3 records the selection, and an older one is not read. **An attribute with no
 value** (`disabled`) is the empty string, which DevTools writes as -1, the index of no string;
 `decodeSnapshot` read it as no attribute until 2026-11-01, so no control was ever drawn disabled
 (Find_Project's greyed "Current Module", set `.disabled` by the IDE). **A disabled checkbox or

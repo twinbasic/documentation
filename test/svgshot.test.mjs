@@ -137,7 +137,15 @@ import {
   svgFate,
   workingChanges,
 } from "../scripts/lib/shot-revision.mjs";
-import { judgedFiles, listPictures, redraw, retakeText, shareOf, themeOf } from "../scripts/svgshot/redraw.mjs";
+import {
+  judgedFiles,
+  listPictures,
+  redraw,
+  retakeText,
+  shareOf,
+  staleBundle,
+  themeOf,
+} from "../scripts/svgshot/redraw.mjs";
 import {
   cleanupCommand,
   changeFiles,
@@ -500,9 +508,8 @@ describe("list markers", () => {
 describe("a search field's clear button", () => {
   // A bundle of an <input type="search"> 200 by 25 at 10.5, 10 that shows "format", with the
   // clear buttons `buttons` read ([layout object's key, what searchButton read] pairs), or none
-  // read when undefined (a bundle taken before they were); with `selectionRead` false, no
-  // selection read either.
-  function bundleOf(buttons, { selectionRead = true } = {}) {
+  // read when undefined (a bundle taken before they were).
+  function bundleOf(buttons) {
     const strings = [];
     const s = (v) => {
       const i = strings.indexOf(v);
@@ -590,7 +597,7 @@ describe("a search field's clear button", () => {
           svgs: [],
           scrollbars: [],
           ...(buttons ? { searchButtons: buttons } : {}),
-          ...(selectionRead ? { selection: null } : {}),
+          selection: null,
         },
       ],
     };
@@ -633,12 +640,6 @@ describe("a search field's clear button", () => {
     const { drawn, misses } = drawBundle(bundleOf(undefined));
     assert.ok(misses.includes("the clear button of a search field that shows text"), misses.join("; "));
     assert.doesNotMatch(drawn.svg, /stroke-linecap/);
-  });
-
-  test("the field's selection is a question a bundle taken before it was read has no answer for", () => {
-    const what = "the selection of a text field that shows text";
-    assert.ok(drawBundle(bundleOf([["0:2", shown]], { selectionRead: false })).misses.includes(what));
-    assert.ok(!drawBundle(bundleOf([["0:2", shown]])).misses.includes(what));
   });
 });
 
@@ -1177,6 +1178,35 @@ describe("bundles", () => {
     }
   });
 
+  test("staleBundle says why the cache's bundle cannot draw a picture again, as redraw does, or null", async () => {
+    const bundle = structuredClone(bundleOf(measured));
+    const extra = SNAPSHOT_STYLES.filter((s) => !STYLES.includes(s));
+    bundle.styles = [...STYLES, ...extra];
+    for (const row of bundle.snapshot.documents[0].layout.styles) row.push(...extra.map(() => -1));
+    const { misses } = await renderBundle(bundle);
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "stale-test-"));
+    try {
+      const bundlesRoot = path.join(root, "bundles");
+      const docsRoot = path.join(root, "docs");
+      fs.mkdirSync(path.join(docsRoot, "Images"), { recursive: true });
+      const png = Buffer.from("the picture");
+      fs.writeFileSync(path.join(docsRoot, "Images/x.png"), png);
+      const args = { bundlesRoot, docsRoot, out: "Images/x.png" };
+      assert.deepEqual(staleBundle(args), { retake: "there is no bundle" });
+      writeBundle(bundlesRoot, "Images/x.png", bundle, png, misses);
+      assert.equal(staleBundle(args), null);
+      // a question its capture had no answer for either is no reason
+      writeBundle(bundlesRoot, "Images/x.png", bundle, png, []);
+      assert.deepEqual(staleBundle(args), { retake: "no answer for 1 question", detail: misses[0] });
+      writeBundle(bundlesRoot, "Images/x.png", { ...bundle, version: BUNDLE_VERSION - 1 }, png, misses);
+      assert.match(staleBundle(args).retake, /^the bundle is of format /);
+      writeBundle(bundlesRoot, "Images/x.png", bundle, Buffer.from("another picture"), misses);
+      assert.deepEqual(staleBundle(args), { retake: "the PNG is not the one the bundle was taken with" });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("counts each question a bundle has no answer for, once", async () => {
     const { misses } = await renderBundle(
       bundleOf((key) => ({ ...measured(key), allRuns: [], widths: [], metrics: {} })),
@@ -1261,8 +1291,8 @@ describe("bundles", () => {
 
   test("refuses a bundle of another version, the one before this format included", async () => {
     await assert.rejects(renderBundle({ ...bundleOf(measured), version: BUNDLE_VERSION + 1 }), /a bundle of version/);
-    assert.equal(BUNDLE_VERSION, 2);
-    await assert.rejects(renderBundle({ ...bundleOf(measured), version: 1 }), /a bundle of version 1, not 2/);
+    assert.equal(BUNDLE_VERSION, 3);
+    await assert.rejects(renderBundle({ ...bundleOf(measured), version: 2 }), /a bundle of version 2, not 3/);
   });
 
   describe("web fonts in a bundle", () => {
@@ -3495,6 +3525,8 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
     assert.equal(svgFollowsPng({ written: false, svgOnDisk: false }), true);
     assert.equal(svgFollowsPng({ written: false, svgOnDisk: true }), false);
     assert.equal(svgFollowsPng({ written: false, svgOnDisk: true, accepted: true }), true);
+    assert.equal(svgFollowsPng({ written: false, svgOnDisk: true, stale: { retake: "there is no bundle" } }), true);
+    assert.equal(svgFollowsPng({ written: false, svgOnDisk: true, stale: null }), false);
   });
 
   test("the bundle of an SVG that stays goes into the cache when the SVG is the file's, line endings aside", () => {

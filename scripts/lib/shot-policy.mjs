@@ -109,9 +109,14 @@ export function decidePicture({ png, theme, dark, revision, disk, near, entry = 
  * draws it again, or when a review accepts the new one (`accepted`: svgDecision of this SVG
  * against this capture is true; owner, 2026-11-01). That is how an SVG drawn from a bundle
  * the capture recorded wrongly is replaced, which a replay of that bundle cannot do: the
- * scrollbars of a cut-out recorded hidden before 59b14ac0.
+ * scrollbars of a cut-out recorded hidden before 59b14ac0. And when the cache's bundle of the
+ * picture cannot draw it again (`stale`: redraw.mjs's staleBundle, a reason or null; no bundle,
+ * another format, another PNG, a question it has no answer for), the run's SVG is what a replay
+ * would write and cannot, so it is judged and written as with its PNG, and its bundle cached
+ * (owner, 2026-11-02): otherwise the file keeps an older converter's SVG until its PNG changes.
  */
-export const svgFollowsPng = ({ written, svgOnDisk, accepted = false }) => !!written || !svgOnDisk || !!accepted;
+export const svgFollowsPng = ({ written, svgOnDisk, accepted = false, stale = null }) =>
+  !!written || !svgOnDisk || !!accepted || !!stale;
 
 /**
  * Whether the bundle of a picture whose SVG stays with its PNG (svgFollowsPng false) goes into

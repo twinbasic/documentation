@@ -14,8 +14,9 @@
 //   a capture       decidePicture: the baseline's picture, the file as the layer found it,
 //                   the run's capture of the dark picture (else the dark file as the layer found
 //                   it, else as it is) and the picture's entry in the manifest
-//   its SVG         decideSvg on its strength map, written when its PNG is or a review accepted
-//                   it (svgFollowsPng), its bundle into the cache naming the PNG the file then
+//   its SVG         decideSvg on its strength map, written when its PNG is, a review accepted
+//                   it or the cache's bundle cannot draw the picture again (svgFollowsPng,
+//                   staleBundle), its bundle into the cache naming the PNG the file then
 //                   holds; the bundle of one that stays goes there too when the SVG drawn is
 //                   the file's (bundleFollowsSvg)
 //   a replay's SVG  decideSvg against the file's PNG; dropped when that PNG is no longer the one
@@ -28,6 +29,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { copyBundle, readBundle } from "../svgshot/bundle.mjs";
+import { staleBundle } from "../svgshot/redraw.mjs";
 import { applyPicture, applySvg, heldOf, heldPictures, holdPicture, svgOf, unholdPicture } from "./shot-apply.mjs";
 import { pngsNear } from "./shot-change.mjs";
 import { svgDecision } from "./shot-manifest.mjs";
@@ -58,8 +60,10 @@ export const againstOf = (run) => optionOf(run, "--against");
 
 /**
  * The applier of the session `session` (openSession): `docsRoot` the pictures' folder,
- * `bundlesRoot` the bundle cache, `revision()` the baseline as openRevision gives it now, and
- * `manifest()` the manifest as it is now (openManifest). Returns:
+ * `bundlesRoot` the bundle cache, `revision()` the baseline as openRevision gives it now,
+ * `manifest()` the manifest as it is now (openManifest), and `staleOf(out)` why the cache's bundle
+ * of `out` cannot draw it again, or null (by default redraw.mjs's staleBundle on the cache; the
+ * tests, whose bundles are not drawable, give their own). Returns:
  *
  *   arrive(n, out, part)   applies the part ("png" or "svg") of the run `n`'s verdict on `out`,
  *                          unless it is applied already
@@ -80,7 +84,7 @@ export const againstOf = (run) => optionOf(run, "--against");
  * judging it again (rejudge) tries again. So does a verdict that cannot be read: arrive then
  * applies nothing, and can be called again.
  */
-export function createApplier({ session, docsRoot, bundlesRoot, revision, manifest }) {
+export function createApplier({ session, docsRoot, bundlesRoot, revision, manifest, staleOf = null }) {
   const stageOf = (n) => runPaths(session.root, n).stage;
   const heldDir = (n) => path.join(runPaths(session.root, n).dir, "held");
   const errors = new Map();
@@ -178,6 +182,17 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
     return { ...part, restoredSvg: applied.svg };
   }
 
+  // Why the cache's bundle of `out` cannot draw the picture as the file holds it now (staleBundle),
+  // or null; a bundle that cannot be read cannot either.
+  function cacheStale(out) {
+    if (staleOf) return staleOf(out);
+    try {
+      return staleBundle({ bundlesRoot, docsRoot, out });
+    } catch (e) {
+      return { retake: `its bundle cannot be read: ${e.message}` };
+    }
+  }
+
   // The svg part of the run `n`'s verdict on `out` applied, its PNG's part as applied `png`
   // (null for a replay's). Returns the part as applied.
   function applySvgPart(n, out, staged, png, m) {
@@ -209,7 +224,10 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
       const bundles = stageFolders(stage).bundles;
       if (bundlesRoot && holds && readBundle(bundles, out)) copyBundle(bundles, bundlesRoot, out, holds);
     };
-    if (png && !svgFollowsPng({ written: written(png.state), svgOnDisk: !!held?.svg, accepted })) {
+    // the cache's bundle cannot draw the picture again: the run's SVG is what a replay would write
+    const stale =
+      png && !written(png.state) && !!held?.svg && !accepted && !!staged.svg && bundlesRoot ? cacheStale(out) : null;
+    if (png && !svgFollowsPng({ written: written(png.state), svgOnDisk: !!held?.svg, accepted, stale })) {
       // the same SVG as the file's: its bundle goes into the cache all the same
       const onDisk = readIf(path.join(docsRoot, svgOut));
       if (

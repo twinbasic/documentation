@@ -187,7 +187,7 @@ import {
   writeVerdict,
 } from "./lib/shot-stage.mjs";
 import { onStop, writeRecord } from "./lib/record-lines.mjs";
-import { writeJudged } from "./svgshot/redraw.mjs";
+import { staleBundle, writeJudged } from "./svgshot/redraw.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
@@ -13643,12 +13643,17 @@ async function keepSvg(name, out, png, picture, kept, holds, window = false) {
     event("svg", { job: name, out, ...part });
   };
   // The SVG of a picture whose PNG was not written stays as it is, with its bundle unless the
-  // SVG drawn is the same, unless a review accepted this one (svgFollowsPng, lib/shot-policy.mjs); one whose PNG went back to
+  // SVG drawn is the same, unless a review accepted this one or the cache's bundle cannot draw
+  // it again (svgFollowsPng, lib/shot-policy.mjs); one whose PNG went back to
   // the revision's, or is the dark one's, went with it (keep).
   const byPng =
     kept === null ? "the light picture is the dark one" : kept === "restored" ? `its PNG is ${AGAINST}'s` : null;
+  const svgOnDisk = existsSync(file);
   const accepted = !byPng && !!picture && svgDecision(entryOf(out), picture.svg, png) === true;
-  const follows = !byPng && svgFollowsPng({ written: kept, svgOnDisk: existsSync(file), accepted });
+  const stale = !byPng && !!picture && !kept && svgOnDisk && !accepted ? cacheStale(out) : null;
+  const follows = !byPng && svgFollowsPng({ written: kept, svgOnDisk, accepted, stale });
+  if (stale)
+    say(name, `${svgOut}: judged though its PNG stays (its cached bundle cannot draw it again: ${stale.retake})`);
   let staysWhy = null;
   if (!follows) {
     staysWhy = byPng ?? "its PNG is not written";
@@ -13717,6 +13722,16 @@ async function keepSvg(name, out, png, picture, kept, holds, window = false) {
     `${svgOut}: ${state} (${(bytes / 1024).toFixed(0)} KB against the PNG's ${(png.length / 1024).toFixed(0)} KB; ${measures}${how})`,
   );
   report(svgVerdict({ state, ...judged }));
+}
+
+// Why the cache's bundle of `out` cannot draw the picture again (redraw.mjs's staleBundle), or
+// null; a bundle that cannot be read cannot either. The cache itself, with --stage too.
+function cacheStale(out) {
+  try {
+    return staleBundle({ bundlesRoot: bundleCache, docsRoot: outRoot, out });
+  } catch (e) {
+    return { retake: `its bundle cannot be read: ${e.message}` };
+  }
 }
 
 // Ends a job's IDE and what it served.
