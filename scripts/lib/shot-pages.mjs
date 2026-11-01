@@ -73,6 +73,7 @@ nav.pager{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 0}nav.pager .
 .modes{margin-bottom:8px}.modes button{font:inherit;padding:2px 10px}.modes button[aria-pressed=true]{font-weight:700}
 .pic,.stack{position:relative;display:inline-block;max-width:100%;vertical-align:top}
 .pic img,.stack img{display:block;max-width:100%;height:auto;background:repeating-conic-gradient(#8884 0 25%,#0000 0 50%) 0 0/16px 16px}
+.trio .pic img[style]{max-height:none;max-width:min(100%,calc(520px * var(--w) / var(--h)))}
 .stack img.top{position:absolute;left:0;top:0}.swipe .stack img.top{clip-path:inset(0 0 0 var(--x,50%))}.blink .stack.old img.top{visibility:hidden}
 .swipe input{display:block;width:100%;max-width:600px}
 .box{position:absolute;box-sizing:border-box;border:2px solid #0bf;pointer-events:none}.box.fringe{border-style:dashed;opacity:.6}
@@ -630,8 +631,14 @@ const boxStyle = (r, [w, h]) =>
   `left:${(r.x0 / w) * 100}%;top:${(r.y0 / h) * 100}%;width:${((r.x1 - r.x0) / w) * 100}%;height:${((r.y1 - r.y0) / h) * 100}%`;
 
 /** A picture at half its size in device pixels (the pictures are 2x), with `overlay` (HTML) over it. */
-const picHtml = (src, size, alt, overlay = "") =>
-  `<span class="pic"><img src="${src}" alt="${esc(alt)}"${size ? ` width="${Math.round(size[0] / 2)}" height="${Math.round(size[1] / 2)}"` : ""}>${overlay}</span>`;
+// A picture shown at half its pixel size, its shape kept: --w and --h let a row of them cap the
+// height by capping the width (.trio .pic img), since a height capped alone squashes a picture
+// whose width its attribute sets.
+const picHtml = (src, size, alt, overlay = "") => {
+  if (!size) return `<span class="pic"><img src="${src}" alt="${esc(alt)}">${overlay}</span>`;
+  const [w, h] = size.map((v) => Math.round(v / 2));
+  return `<span class="pic"><img src="${src}" alt="${esc(alt)}" width="${w}" height="${h}" style="--w:${w};--h:${h}">${overlay}</span>`;
+};
 
 const figureHtml = (src, size, caption, overlay = "") =>
   `<figure>${picHtml(src, size, caption, overlay)}<figcaption>${esc(caption)}</figcaption></figure>`;
