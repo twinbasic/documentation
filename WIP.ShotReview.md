@@ -110,7 +110,8 @@ keyboard; owner).
   difference map, and the SVG against the new PNG with its own map. Below them, a **loupe**
   for each region of change: the region cropped and enlarged, old and new, so that a small
   change in a large window is as easy to see as in a small dialog.
-- **The PNG row**: the tool's verdict and its reason, the choice *keep old / take new*, and
+- **The PNG row**: the tool's verdict and its reason, the choice *keep old / take new* (not
+  offered when the capture is HEAD's picture byte for byte, where both write the same file), and
   the parameters: noise levels, share, and the rectangles left out (drawn on the picture).
   Changing a parameter judges the picture again at once and shows the verdict it gives.
 - **The SVG row**: the share strongly off, the verdict, the choice *accept / no SVG*, and the

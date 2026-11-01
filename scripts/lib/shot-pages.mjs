@@ -74,6 +74,7 @@ nav.pager{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 0}nav.pager .
 .pic,.stack{position:relative;display:inline-block;max-width:100%;vertical-align:top}
 .pic img,.stack img{display:block;max-width:100%;height:auto;background:repeating-conic-gradient(#8884 0 25%,#0000 0 50%) 0 0/16px 16px}
 .trio .pic img[style]{max-height:none;max-width:min(100%,calc(520px * var(--w) / var(--h)))}
+.stack img{background:repeating-conic-gradient(color-mix(in srgb,#888 26.7%,var(--card)) 0 25%,var(--card) 0 50%) 0 0/16px 16px}
 .stack img.top{position:absolute;left:0;top:0}.swipe .stack img.top{clip-path:inset(0 0 0 var(--x,50%))}.blink .stack.old img.top{visibility:hidden}
 .swipe input{display:block;width:100%;max-width:600px}
 .box{position:absolute;box-sizing:border-box;border:2px solid #0bf;pointer-events:none}.box.fringe{border-style:dashed;opacity:.6}
@@ -873,8 +874,11 @@ ${maps.png ? `<div class="view mapview">${figureHtml(maps.png, size, `Difference
   if (png) {
     const rule = rules.png;
     const decided = png.by === "decision" ? (written(png.state) ? "new" : "old") : null;
-    const choice =
-      files.capture && png.state !== "failed" && png.state !== "once"
+    // a capture that is HEAD's picture byte for byte: keeping and taking write the same file
+    const same = png.state === "unchanged" && png.against === "revision";
+    const choice = same
+      ? `<p>The capture is HEAD's picture byte for byte: there is nothing to keep or take.</p>${decided ? actionsHtml([actionButton("Back to the rule", act, { action: "png", keep: null })]) : ""}`
+      : files.capture && png.state !== "failed" && png.state !== "once"
         ? actionsHtml([
             actionButton("Keep the old picture", act, { action: "png", keep: "old" }, { pressed: decided === "old" }),
             actionButton("Take the new capture", act, { action: "png", keep: "new" }, { pressed: decided === "new" }),

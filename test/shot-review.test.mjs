@@ -56,7 +56,8 @@ import {
   runFacts,
   verdictOfEvent,
 } from "../scripts/lib/shot-review.mjs";
-import { chipsOf, encodePath, hrefs, loupesHtml } from "../scripts/lib/shot-pages.mjs";
+import { chipsOf, detailHtml, encodePath, hrefs, loupesHtml } from "../scripts/lib/shot-pages.mjs";
+import { pngRule, svgRule } from "../scripts/lib/shot-policy.mjs";
 import { againstOf, createApplier } from "../scripts/lib/shot-verdicts.mjs";
 import { kindOf, onlyOf, runOf } from "../scripts/lib/shot-runs.mjs";
 import { createReviewServer } from "../scripts/lib/shot-server.mjs";
@@ -541,6 +542,28 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     );
     assert.match(html, /HEAD \| new: 30 x 10 px at 100, 50/);
     assert.equal(loupesHtml([], [400, 200], {}, {}), "");
+  });
+
+  test("a capture that is HEAD's picture byte for byte offers no choice of picture, only the way back from a decision", () => {
+    const page = (png, against = "revision") =>
+      detailHtml({
+        p: { out: A, group: "look", png: { run: 1, regions: [], regionCount: 0, ...png, against }, svg: null },
+        filter: "all",
+        place: { index: 0, total: 1, group: "look" },
+        prev: null,
+        next: null,
+        files: { head: { src: "/h", size: [4, 4] }, capture: { src: "/c", size: [4, 4] } },
+        maps: {},
+        rules: { png: pngRule(null), svg: svgRule(null) },
+        build: null,
+        baseline: { hash: "a".repeat(40), short: "aaaaaaaa" },
+      });
+    const same = page({ state: "unchanged", by: "rule" });
+    assert.match(same, /nothing to keep or take/);
+    assert.doesNotMatch(same, /Take the new capture|Back to the rule/);
+    assert.match(page({ state: "unchanged", by: "decision" }), /Back to the rule/);
+    // the file is the capture and differs from HEAD's: keeping the old picture puts HEAD's back
+    assert.match(page({ state: "unchanged", by: "rule" }, "disk"), /Keep the old picture/);
   });
 
   test("a strength map is drawn as changeMap draws the two pictures it was measured on", () => {
