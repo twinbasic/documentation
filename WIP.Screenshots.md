@@ -1007,7 +1007,10 @@ the PNG was just captured from, and the build shows it in place of the PNG
   and leave rectangles out (`svgRule`): it is counted on `diffSvg`'s strength map, a byte per
   pixel, so no level needs the picture drawn again.
 - **An SVG changes with its PNG** (owner). The SVG of a picture whose PNG is not rewritten
-  (unchanged, or within a capture's noise) stays as it is, with its bundle, when there is one:
+  (unchanged, or within a capture's noise) stays as it is, with its bundle, when there is one
+  (unless the SVG the run drew is the file's to the byte, line endings aside: its bundle then
+  replaces the cache's, which it keeps drawing the file's SVG and naming the file's PNG, and
+  answers what the converter has learnt to ask since; `bundleFollowsSvg`, owner, 2026-11-02):
   it is drawn from the whole page, layers the picture does not show included, and those
   differ from run to run (PackagePublishing_1, a floating panel over a form designer still
   drawing; CallStack_Frames.light), and one sitting on the bar (Properties_SystemColours.light

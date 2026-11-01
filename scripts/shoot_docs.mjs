@@ -166,7 +166,14 @@ import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.
 import { inRects, pngsNear, withinNoise } from "./lib/shot-change.mjs";
 import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
 import { applyPicture, applySvg, dropPicture, restorePictures, svgOf } from "./lib/shot-apply.mjs";
-import { cleanupResets, decidePicture, pngRule, SVG_FAITHFUL, svgFollowsPng } from "./lib/shot-policy.mjs";
+import {
+  bundleFollowsSvg,
+  cleanupResets,
+  decidePicture,
+  pngRule,
+  SVG_FAITHFUL,
+  svgFollowsPng,
+} from "./lib/shot-policy.mjs";
 import { MANIFEST, openManifest, svgDecision } from "./lib/shot-manifest.mjs";
 import { reviewPicture, reviewSvg } from "./lib/shot-queue.mjs";
 import {
@@ -13635,8 +13642,8 @@ async function keepSvg(name, out, png, picture, kept, holds, window = false) {
     if (stageRoot) writeVerdict(stageRoot, out, "svg", part);
     event("svg", { job: name, out, ...part });
   };
-  // The SVG of a picture whose PNG was not written stays as it is, with its bundle, unless a
-  // review accepted this one (svgFollowsPng, lib/shot-policy.mjs); one whose PNG went back to
+  // The SVG of a picture whose PNG was not written stays as it is, with its bundle unless the
+  // SVG drawn is the same, unless a review accepted this one (svgFollowsPng, lib/shot-policy.mjs); one whose PNG went back to
   // the revision's, or is the dark one's, went with it (keep).
   const byPng =
     kept === null ? "the light picture is the dark one" : kept === "restored" ? `its PNG is ${AGAINST}'s` : null;
@@ -13645,7 +13652,16 @@ async function keepSvg(name, out, png, picture, kept, holds, window = false) {
   let staysWhy = null;
   if (!follows) {
     staysWhy = byPng ?? "its PNG is not written";
-    if (!byPng) say(name, `${svgOut}: unchanged, as its PNG is`);
+    // the same SVG as the file's: its bundle goes into the cache all the same (bundleFollowsSvg);
+    // with --stage the review tool decides that, as it writes the cache
+    const refresh =
+      !byPng &&
+      !stageRoot &&
+      !!picture &&
+      !!bundlesRoot &&
+      bundleFollowsSvg({ svg: picture.svg, svgOnDisk: readFileSync(file, "utf8") });
+    if (refresh) writeBundle(bundlesRoot, out, picture.bundle, holds ?? png, picture.misses);
+    if (!byPng) say(name, `${svgOut}: unchanged, as its PNG is${refresh ? "; the same SVG, its bundle cached" : ""}`);
     if (!stageRoot || !picture) {
       report(svgVerdict({ state: "unchanged", why: staysWhy }));
       return;

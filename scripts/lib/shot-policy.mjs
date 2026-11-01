@@ -114,6 +114,18 @@ export function decidePicture({ png, theme, dark, revision, disk, near, entry = 
 export const svgFollowsPng = ({ written, svgOnDisk, accepted = false }) => !!written || !svgOnDisk || !!accepted;
 
 /**
+ * Whether the bundle of a picture whose SVG stays with its PNG (svgFollowsPng false) goes into
+ * the bundle cache all the same: when the SVG drawn from it (`svg`) is the file's (`svgOnDisk`,
+ * its text, or null), line endings aside (owner, 2026-11-02). The cache keeps each picture's
+ * bundle with the SVG drawn from it and naming the PNG the file holds, which a bundle that draws
+ * the file's SVG to the byte keeps true; and a newer bundle answers what the converter has
+ * learnt to ask since the older was taken (a text field's selection), which replay.mjs would
+ * otherwise list as needing a retake after every retake that leaves the PNG as it is.
+ */
+export const bundleFollowsSvg = ({ svg, svgOnDisk }) =>
+  svgOnDisk !== null && svg.replace(/\r\n/g, "\n") === svgOnDisk.replace(/\r\n/g, "\n");
+
+/**
  * Whether --cleanup puts the file `after` (bytes) back as the revision has it (`before`):
  * a review's decision about these bytes ("old" puts it back, "new" leaves it), else
  * whether it is within the picture's noise rule of the revision's (`near` as decidePicture's).

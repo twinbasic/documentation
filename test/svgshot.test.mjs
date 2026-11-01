@@ -74,6 +74,7 @@ import {
   unholdPicture,
 } from "../scripts/lib/shot-apply.mjs";
 import {
+  bundleFollowsSvg,
   cleanupResets,
   decidePicture,
   decideSvg,
@@ -3494,6 +3495,12 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
     assert.equal(svgFollowsPng({ written: false, svgOnDisk: false }), true);
     assert.equal(svgFollowsPng({ written: false, svgOnDisk: true }), false);
     assert.equal(svgFollowsPng({ written: false, svgOnDisk: true, accepted: true }), true);
+  });
+
+  test("the bundle of an SVG that stays goes into the cache when the SVG is the file's, line endings aside", () => {
+    assert.equal(bundleFollowsSvg({ svg: "<svg>a</svg>\n", svgOnDisk: "<svg>a</svg>\r\n" }), true);
+    assert.equal(bundleFollowsSvg({ svg: "<svg>a</svg>\n", svgOnDisk: "<svg>b</svg>\n" }), false);
+    assert.equal(bundleFollowsSvg({ svg: "<svg>a</svg>\n", svgOnDisk: null }), false);
   });
 
   test("keeps what a picture held, and puts it back, its build and bundle included", (t) => {

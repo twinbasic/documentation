@@ -1147,6 +1147,77 @@ describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => 
     assert.deepEqual([applier.reviewed(2, A).svg, applier.reviewed(2, A).done], [null, ["svg"]]);
     assert.equal(readReviewed(stage2, A).svg, null);
   });
+
+  test("caches the bundle of an SVG that stays with its PNG only when it is the file's SVG, and puts the old one back when the run is undone", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-bundle-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const docs = path.join(root, "docs");
+    const bundles = path.join(root, "bundles");
+    const at = (out) => path.join(docs, out);
+    fs.mkdirSync(path.dirname(at(A)), { recursive: true });
+    fs.writeFileSync(at(A), OLD);
+    fs.writeFileSync(at("IDE/Images/A.svg"), "<svg>same</svg>\r\n");
+    // the cache's bundle, taken before the converter asked what the run's bundle answers
+    writeBundle(bundles, A, { v: 0 }, OLD, []);
+    const base = "a".repeat(40);
+    const session = openSession(root, () => ({ hash: base, short: "aaaaaaaa", build: 1010 }));
+    const revision = { hash: base, short: "aaaaaaaa", bytes: () => OLD, read: () => new Map() };
+    const applier = createApplier({
+      session,
+      docsRoot: docs,
+      bundlesRoot: bundles,
+      revision: () => revision,
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+    });
+    // a retake whose capture is the file's PNG, its SVG `svg`, its bundle { v: n }
+    const retake = (n, svg) => {
+      session.addRun({ tool: "shoot_docs", args: ["--svg", "--against", base] });
+      const stage = runPaths(root, n).stage;
+      const fate = {
+        state: "unchanged",
+        write: null,
+        against: "revision",
+        size: { w: 40, h: 30 },
+        dark: null,
+        by: "rule",
+        earlier: null,
+      };
+      writeVerdict(
+        stage,
+        A,
+        "png",
+        pngVerdict({ decision: fate, review: null, build: 1501, staged: stageCapture(stage, A, OLD, null) }),
+      );
+      writeVerdict(
+        stage,
+        A,
+        "svg",
+        svgVerdict({
+          state: "unchanged",
+          why: "its PNG is not written",
+          verdict: { faithful: true, by: "rule", share: 0, earlier: null },
+          measures: "0% off",
+          staged: stageSvg(stage, A, svg, QUIET),
+        }),
+      );
+      writeBundle(path.join(stage, "bundles"), A, { v: n }, OLD, []);
+      assert.equal(applier.arrive(n, A, "png"), true);
+      assert.equal(applier.arrive(n, A, "svg"), true);
+      assert.equal(applier.reviewed(n, A).svg.why, "its PNG is not written");
+      assert.equal(fs.readFileSync(at("IDE/Images/A.svg"), "utf8"), "<svg>same</svg>\r\n");
+    };
+
+    // the same SVG: the run's bundle takes the old one's place, naming the file's PNG
+    retake(1, "<svg>same</svg>\n");
+    assert.deepEqual([readBundle(bundles, A).v, readBundle(bundles, A).png], [1, pngHash(OLD)]);
+    // another SVG: the cache keeps the bundle the file's SVG was drawn from
+    retake(2, "<svg>other</svg>\n");
+    assert.equal(readBundle(bundles, A).v, 1);
+    // undoing run 1 puts the cache's bundle back as run 1 found it
+    applier.undo(1);
+    assert.equal(applier.errors.size, 0);
+    assert.equal(readBundle(bundles, A).v, 0);
+  });
 });
 
 describe("the screenshot review's server (shot-server.mjs)", () => {

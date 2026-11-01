@@ -16,7 +16,8 @@
 //                   it, else as it is) and the picture's entry in the manifest
 //   its SVG         decideSvg on its strength map, written when its PNG is or a review accepted
 //                   it (svgFollowsPng), its bundle into the cache naming the PNG the file then
-//                   holds
+//                   holds; the bundle of one that stays goes there too when the SVG drawn is
+//                   the file's (bundleFollowsSvg)
 //   a replay's SVG  decideSvg against the file's PNG; dropped when that PNG is no longer the one
 //                   the replay compared it with
 //
@@ -30,7 +31,7 @@ import { copyBundle, readBundle } from "../svgshot/bundle.mjs";
 import { applyPicture, applySvg, heldOf, heldPictures, holdPicture, svgOf, unholdPicture } from "./shot-apply.mjs";
 import { pngsNear } from "./shot-change.mjs";
 import { svgDecision } from "./shot-manifest.mjs";
-import { decidePicture, decideSvg, svgFollowsPng } from "./shot-policy.mjs";
+import { bundleFollowsSvg, decidePicture, decideSvg, svgFollowsPng } from "./shot-policy.mjs";
 import { reviewPicture, reviewSvg } from "./shot-queue.mjs";
 import { optionOf, runPaths } from "./shot-session.mjs";
 import {
@@ -201,9 +202,27 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
         readFileSync(path.join(stage, staged.svg), "utf8"),
         readFileSync(path.join(stage, png.capture)),
       ) === true;
-    if (png && !svgFollowsPng({ written: written(png.state), svgOnDisk: !!held?.svg, accepted }))
-      return stays("unchanged", "its PNG is not written");
     const svgOut = svgOf(out);
+    // the bundle names the PNG the file holds, which replay.mjs compares with
+    const cacheBundle = () => {
+      const holds = readIf(path.join(docsRoot, out));
+      const bundles = stageFolders(stage).bundles;
+      if (bundlesRoot && holds && readBundle(bundles, out)) copyBundle(bundles, bundlesRoot, out, holds);
+    };
+    if (png && !svgFollowsPng({ written: written(png.state), svgOnDisk: !!held?.svg, accepted })) {
+      // the same SVG as the file's: its bundle goes into the cache all the same
+      const onDisk = readIf(path.join(docsRoot, svgOut));
+      if (
+        staged.svg &&
+        onDisk &&
+        bundleFollowsSvg({
+          svg: readFileSync(path.join(stage, staged.svg), "utf8"),
+          svgOnDisk: onDisk.toString("utf8"),
+        })
+      )
+        cacheBundle();
+      return stays("unchanged", "its PNG is not written");
+    }
     if (!staged.svg) {
       // a replay's SVG the same as the file's: nothing to write
       if (!png) return staged;
@@ -219,10 +238,7 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
     const entry = m.entry(out);
     const verdict = decideSvg(strength, { entry, svg: svgText, png: compared });
     const state = applySvg(docsRoot, svgOut, verdict.faithful ? svgText : null);
-    // the bundle names the PNG the file holds, which replay.mjs compares with
-    const holds = readIf(path.join(docsRoot, out));
-    const bundles = stageFolders(stage).bundles;
-    if (bundlesRoot && holds && readBundle(bundles, out)) copyBundle(bundles, bundlesRoot, out, holds);
+    cacheBundle();
     return svgVerdict({
       state,
       why: verdict.faithful ? null : (staged.measures ?? staged.why),
