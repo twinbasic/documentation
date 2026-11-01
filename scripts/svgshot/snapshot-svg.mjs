@@ -323,6 +323,30 @@ export function inlineSvgsIn(decoded, clip) {
   return out;
 }
 
+// An <input type="search"> that shows text, the only kind whose clear button Chromium can show.
+function isSearchField(l) {
+  const n = l.node;
+  return (
+    n.name === "INPUT" &&
+    n.box === l &&
+    (n.attrs.type ?? "").toLowerCase() === "search" &&
+    !!n.inputValue &&
+    l.style?.visibility === "visible" &&
+    l.bounds.w > 0 &&
+    l.bounds.h > 0
+  );
+}
+
+/**
+ * The layout objects of the search fields in `clip` that show text: Chromium
+ * draws each one's clear button from the field's user-agent shadow tree, which
+ * the snapshot leaves out, so capture.mjs asks the page for it (searchButtonOf)
+ * and renderSvg draws it (`searchButton`).
+ */
+export function searchFieldsIn(decoded, clip) {
+  return decoded.layouts.filter((l) => isSearchField(l) && overlaps(l.bounds, clip));
+}
+
 /**
  * `markup` (what capture.mjs's inlineSvg gives) with every id given `prefix`,
  * and each reference to one: `href="#id"` and `url(#id)`, in a tag and nowhere
@@ -567,6 +591,16 @@ export function textNeeds(decoded, clip, { selection = null } = {}) {
 
 /** What text-overflow: ellipsis draws where it cuts a line. */
 export const ELLIPSIS = "…";
+
+// The blue of a search field's clear button in a light colour scheme, from the top
+// of its box to the bottom (paintSearchButton): Edge's picture, read row by row.
+const SEARCH_CLEAR_STOPS = [
+  [0.1, "rgb(64, 121, 187)"],
+  [0.3, "rgb(63, 108, 179)"],
+  [0.5, "rgb(58, 96, 162)"],
+  [0.7, "rgb(47, 81, 138)"],
+  [0.9, "rgb(35, 66, 114)"],
+];
 
 // The text of a ::marker that Chromium paints as a shape (paintSymbolMarker): the
 // symbol of disc, circle, square (Chromium's black square, not the spec's small
@@ -1366,8 +1400,14 @@ function filterPrimitives(steps) {
  *                  capture.mjs's inlineSvg reads them, or {failed} where it could not; an <svg>
  *                  with no entry is drawn by other means (the annotation layer). null: none was
  *                  read, and each is reported as not drawn
+ * @param searchButton  (layout object's key) => the clear button of a search field that shows
+ *                  text (searchFieldsIn), as capture.mjs's searchButton reads it: {x, y, w, h}
+ *                  from the field's border box, its opacity, visibility, display, appearance and
+ *                  whether it is drawn dark; {failed}, or null for none. null: none was read, and
+ *                  each is reported as not drawn
  * @param frames    (document) => what was measured in that frame's own document, {metrics, textWidth,
- *                  inkGaps, cut, selection, placeholderColor, canvases, fontsFor, scrollbars, svgs}, as the parameters
+ *                  inkGaps, cut, selection, placeholderColor, canvases, fontsFor, scrollbars, svgs,
+ *                  searchButton}, as the parameters
  *                  of the same names (the page's own are the defaults) and {inner}, the frame's viewport
  *                  {w, h}; null or no function: the frame is drawn with the page's own. The frame
  *                  is measured in its own document because a font name and a style rule mean what
@@ -1390,6 +1430,7 @@ export function renderSvg(
     overlays = [],
     scrollbars = null,
     svgs = null,
+    searchButton = null,
     frames = null,
   },
 ) {
@@ -1405,6 +1446,7 @@ export function renderSvg(
     fontsFor,
     scrollbars,
     svgs,
+    searchButton,
     inner: null,
   };
   let env = pageEnv;
@@ -1761,7 +1803,10 @@ export function renderSvg(
     if (l.node.name === "SELECT") out.push(...paintSelect(l, bw));
     else if (l.node.name === "INPUT" && CHECKABLE_INPUTS.has(l.node.attrs.type?.toLowerCase())) {
       if (st.appearance !== "none") out.push(...paintCheckable(l));
-    } else if (l.node.name === "INPUT" || l.node.name === "TEXTAREA") out.push(...paintTextControl(l, bw));
+    } else if (l.node.name === "INPUT" || l.node.name === "TEXTAREA") {
+      out.push(...paintTextControl(l, bw));
+      if (isSearchField(l)) out.push(...paintSearchButton(l));
+    }
     if (st["outline-style"] === "auto" && px(st["outline-width"]) > 0) out.push(...paintFocusRing(st, b, r, bw));
     else if (st["outline-style"] !== "none" && px(st["outline-width"]) > 0) out.push(...paintOutline(st, b, r));
     stats.boxes++;
@@ -2380,6 +2425,48 @@ export function renderSvg(
           : `<rect width="13" height="13" rx="2" fill="#767676"/><rect x="1" y="1" width="11" height="11" rx="1" fill="#fff"/>`;
     return [
       `<g transform="translate(${num(b.x + (b.w - side) / 2)} ${num(b.y + (b.h - side) / 2)}) scale(${num(side / 13)})">${art}</g>`,
+    ];
+  }
+
+  // A search field's clear button, which Chromium paints with its theme's picture
+  // when the button is shown (opacity 1: the field has text and the focus or the
+  // pointer, or the page shows it): in the button's box, snapped, an X of two
+  // strokes 0.235 of the box wide with round ends, a sixth of the box in from its
+  // corners (fitted to the coverage of Edge's picture at 18 and 42 device px); for
+  // a light colour scheme blue, darker towards the bottom, and white for a dark
+  // one. Checked by bench/search.html.
+  function paintSearchButton(l) {
+    if (!env.searchButton) {
+      note("a search field's clear button");
+      return [];
+    }
+    const got = env.searchButton(l.key);
+    if (got?.failed) note("a search field's clear button that could not be read");
+    if (!got || got.failed || !(got.opacity > 0) || got.visibility !== "visible" || got.display === "none") return [];
+    if (got.appearance !== "auto" && got.appearance !== "searchfield-cancel-button") {
+      note("a search field's clear button the page styles");
+      return [];
+    }
+    const e = l.exact ?? l.bounds;
+    const x = Math.round(e.x + got.x);
+    const y = Math.round(e.y + got.y);
+    const side = Math.min(Math.round(e.x + got.x + got.w) - x, Math.round(e.y + got.y + got.h) - y);
+    if (!(side > 0)) return [];
+    let paint = "#fff";
+    if (!got.dark) {
+      const id = def(
+        "search-clear",
+        (id) =>
+          `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="9">` +
+          SEARCH_CLEAR_STOPS.map(([at, c]) => `<stop offset="${at}" stop-color="${c}"/>`).join("") +
+          "</linearGradient>",
+      );
+      paint = `url(#${id})`;
+    }
+    const fade = got.opacity < 1 ? ` opacity="${num(got.opacity)}"` : "";
+    return [
+      `<g transform="translate(${num(x)} ${num(y)}) scale(${num(side / 9)})"${fade}>` +
+        `<path d="M1.5 1.5L7.5 7.5M7.5 1.5L1.5 7.5" fill="none" stroke="${paint}" stroke-width="2.1" stroke-linecap="round"/></g>`,
     ];
   }
 

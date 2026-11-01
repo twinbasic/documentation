@@ -16,7 +16,10 @@
 // pixels, the annotation layer (its box already in the document's coordinates,
 // so that a scrolled page needs nothing more) -- the platform fonts of each run,
 // the web fonts a run was drawn with, each scrolling box's scrollbar styles, each
-// inline <svg>'s markup, and a frame's viewport and zoom.
+// inline <svg>'s markup, each search field's clear button (`searchButtons`,
+// [layout object's key, what capture.mjs's searchButton read] pairs; a bundle
+// taken before they were read has none, and a field with text is a miss), and a
+// frame's viewport and zoom.
 //
 // A web font is kept as the @font-face rules of its family that some run was
 // drawn with: per font key, `webFonts[key]` lists them in the page's order, each
@@ -100,6 +103,7 @@ export function drawBundle(bundle) {
     const gaps = new Map(m.skips.map((skip, k) => [skip.join("\u0000"), page.gaps[k]]));
     const cuts = new Map((m.cuts ?? []).map((cut, k) => [cut.join("\u0000"), page.cuts[k]]));
     const platform = new Map(m.platform);
+    const buttons = m.searchButtons ? new Map(m.searchButtons) : null;
     const miss = (what) => {
       misses.add(what);
       return null;
@@ -155,6 +159,9 @@ export function drawBundle(bundle) {
       },
       scrollbars: new Map(m.scrollbars),
       svgs: new Map(m.svgs),
+      // a bundle taken before the clear buttons were read cannot say whether one shows
+      searchButton: (key) =>
+        buttons ? (buttons.get(key) ?? null) : miss("the clear button of a search field that shows text"),
       // a bundle taken before the selection was read has none: it is drawn as before
       selection: m.selection ?? null,
       inner: m.inner,

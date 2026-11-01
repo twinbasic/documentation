@@ -19,7 +19,10 @@
 //   4. the annotation layer (svg#tbShotAnnotation) as XML, its text moved onto
 //      the picture's own faces, and each other inline <svg> in the clip as XML
 //      with the styles the page gives its elements resolved (inlineSvg), read
-//      before step 2 so that its text is measured too.
+//      before step 2 so that its text is measured too;
+//   5. the clear button of each search field that shows text, which is in the
+//      field's user-agent shadow tree, where the snapshot does not reach and
+//      DevTools does (searchButtonOf).
 // The measuring layer is removed again before this returns.
 //
 // Steps 2 and 3, and the scrollbar styles, are done in each document that shows
@@ -40,6 +43,7 @@ import {
   inlineSvgsIn,
   scrollbarPartList,
   scrollersIn,
+  searchFieldsIn,
   textNeeds,
   unzoom,
   viewportScroller,
@@ -324,6 +328,30 @@ function fieldSelection() {
     given,
     background: given ? own.backgroundColor : ground,
     color: given ? own.color : text,
+  };
+}
+
+// Runs in the page, on a search field's clear button (`this`, an element of the field's
+// user-agent shadow tree): its box from the field's border box, and what decides whether and
+// how Chromium paints it. It is drawn dark when its used colour scheme is dark: a
+// `color-scheme` that offers dark alone, or dark and light with the user preferring dark.
+function searchButton() {
+  const field = this.getRootNode().host.getBoundingClientRect();
+  const own = this.getBoundingClientRect();
+  const s = getComputedStyle(this);
+  const scheme = s.colorScheme;
+  const dark =
+    /\bdark\b/.test(scheme) && (!/\blight\b/.test(scheme) || matchMedia("(prefers-color-scheme: dark)").matches);
+  return {
+    x: own.x - field.x,
+    y: own.y - field.y,
+    w: own.width,
+    h: own.height,
+    opacity: Number(s.opacity),
+    visibility: s.visibility,
+    display: s.display,
+    appearance: s.appearance,
+    dark,
   };
 }
 
@@ -1029,6 +1057,44 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
     }
   }
 
+  // The clear button of the search field `backendNodeId`, as searchButton reads it in the
+  // document's world `context`, or null when the field has none: DevTools finds it in the
+  // field's user-agent shadow tree (its `pseudo` is -webkit-search-cancel-button), which the
+  // page's own script cannot open.
+  async function searchButtonOf(backendNodeId, context) {
+    const { node } = await conn.send("DOM.describeNode", { backendNodeId, depth: -1, pierce: true });
+    const isButton = (n) => {
+      const a = n.attributes ?? [];
+      for (let k = 0; k < a.length; k += 2)
+        if (a[k] === "pseudo" && a[k + 1] === "-webkit-search-cancel-button") return true;
+      return false;
+    };
+    const button = (function find(n) {
+      for (const c of [...(n.shadowRoots ?? []), ...(n.children ?? [])]) {
+        if (isButton(c)) return c;
+        const hit = find(c);
+        if (hit) return hit;
+      }
+      return null;
+    })(node);
+    if (!button) return null;
+    const { object } = await conn.send("DOM.resolveNode", {
+      backendNodeId: button.backendNodeId,
+      ...(context === undefined ? {} : { executionContextId: context }),
+    });
+    try {
+      const { result, exceptionDetails } = await conn.send("Runtime.callFunctionOn", {
+        objectId: object.objectId,
+        functionDeclaration: String(searchButton),
+        returnByValue: true,
+      });
+      if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? exceptionDetails.text);
+      return result.value;
+    } finally {
+      await conn.send("Runtime.releaseObject", { objectId: object.objectId }).catch(() => {});
+    }
+  }
+
   // What a document's text needs, measured in the document itself: the page's
   // own fonts, styles and canvases are what its runs are drawn with.
   async function measureDocument({ doc, view, context, geometry, inner }) {
@@ -1153,6 +1219,17 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
     const bars = geometry && viewportScroller(doc, geometry, inner);
     if (bars) await partsOf(bars, viewportStyleSources(doc), true);
 
+    // Each search field's clear button, which the snapshot does not hold.
+    const searchButtons = new Map();
+    for (const l of searchFieldsIn(doc, view)) {
+      try {
+        searchButtons.set(l.key, await searchButtonOf(l.node.backendNodeId, context));
+      } catch (error) {
+        // A field that has gone since the snapshot: the picture says so.
+        searchButtons.set(l.key, { failed: String(error.message ?? error) });
+      }
+    }
+
     return {
       page,
       skips,
@@ -1163,6 +1240,7 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
       fontFiles,
       svgs: [...svgs],
       scrollbars: [...scrollbars],
+      searchButtons: [...searchButtons],
       inner,
     };
   }

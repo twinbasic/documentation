@@ -1208,6 +1208,22 @@ on the ascent, unsnapped. `bench/list-marker.html` (Segoe UI 9 to 24 px, Inter 1
 updated 11 SVGs, all closer (Help_Hover 0.031% strongly off to 0%, SignIn_Login and
 SignIn_Register, SignatureHelp_Expanded, ccICustomControl and ac019c1a), and changed no other verdict.
 
+**A search field's clear button** (`paintSearchButton`; `searchButtonOf` and `searchButton` in
+`capture.mjs`): Chromium draws the X of an `<input type="search">` that shows text from the
+field's user-agent shadow tree, which DOMSnapshot leaves out, so Help_Search's SVG had no X
+(owner, 2026-11-01). The capture finds the button with `DOM.describeNode` (`pierce`, its `pseudo`
+`-webkit-search-cancel-button`), and reads in the page, on the element `DOM.resolveNode` gives, its
+box from the field's border box, its opacity (0 for an empty field, 1 with the focus or the
+pointer: `html.css`), visibility, display, appearance and used colour scheme; the bundle keeps
+them as `searchButtons`. A bundle taken before has no answer, a miss, so Help_Search and
+Help_Choices (both themes) need a retake. The X is the button's box snapped, two round-capped
+strokes 0.235 of it wide, their ends a sixth in from its corners (fitted to the coverage of Edge's
+picture at 18 and 42 device px, the squared error from 278 to 34 at 42 against strokes a third
+wide); for a light scheme in Edge's blue, shaded from rgb(64, 121, 187) at the top to rgb(35, 66,
+114) at the bottom (five stops read row by row), for a dark one white. The help pane's field is
+in a light scheme on the IDE's dark ground, so its X is blue. `bench/search.html` is at 0.034% of
+its pixels off, none strongly.
+
 **An inline `<svg>`** in the page is drawn as a nested `<svg>` in its box's content box, in its
 place in paint order (`paintInlineSvg`, from `paintBox`), so a CSS transform, opacity, border and
 padding apply as to any box. `inlineSvg` (`capture.mjs`) reads it in the page, in a frame's
@@ -1224,7 +1240,7 @@ coordinates, which the picture's `viewBox` is in.
 
 **The bench** (`node scripts/svgshot/bench.mjs`, outside every gate, needs Edge and fontTools)
 draws the pages under `scripts/svgshot/bench/` (scrollbars, a scrollbar in a cut-out, native scrollbars, drop-down lists,
-native text fields, checkboxes and radio buttons, list markers, underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
+native text fields, checkboxes and radio buttons, list markers, a search field's clear button, underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
 annotation layer, SVG in frames), served from `127.0.0.1` with the site's fonts under `/fonts/`
 (a `file:` page cannot `fetch` its font bytes), with the converter
 and compares them with the browser's own picture: in Edge, whose Chromium is the IDE's WebView2's

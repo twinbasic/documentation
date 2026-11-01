@@ -3,7 +3,7 @@
 // and drawn as an SVG by capture.mjs's svgOfPage; diff.mjs compares the two.
 // So a change that draws a replicated part or a text decoration wrongly -- a
 // scrollbar, a drop-down list, a native text field, a checkbox or radio button (disabled ones over
-// two grounds), a list marker painted as a shape, an underline, a focus ring, a frame, a web font
+// two grounds), a list marker painted as a shape, a search field's clear button, an underline, a focus ring, a frame, a web font
 // split by unicode-range, an inline <svg>, the annotation layer on a scrolled
 // page -- shows here without an IDE, in seconds. The documents of the frames page
 // are under bench/frames/, which is no page of its own.

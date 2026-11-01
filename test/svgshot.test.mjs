@@ -496,6 +496,141 @@ describe("list markers", () => {
   });
 });
 
+describe("a search field's clear button", () => {
+  // A bundle of an <input type="search"> 200 by 25 at 10.5, 10 that shows "format", with the
+  // clear buttons `buttons` read ([layout object's key, what searchButton read] pairs), or none
+  // read when undefined (a bundle taken before they were).
+  function bundleOf(buttons) {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const styles = [
+      "display",
+      "visibility",
+      "color",
+      "font-family",
+      "font-size",
+      "font-weight",
+      "font-style",
+      ...["top", "right", "bottom", "left"].flatMap((side) => [`padding-${side}`, `border-${side}-width`]),
+    ];
+    const style = [
+      "block",
+      "visible",
+      "rgb(214, 214, 214)",
+      "Segoe UI",
+      "13px",
+      "400",
+      "normal",
+      ...Array(8).fill("0px"),
+    ].map(s);
+    const names = ["#document", "HTML", "BODY", "INPUT"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2],
+            nodeType: [9, 1, 1, 1],
+            nodeName: names.map(s),
+            nodeValue: names.map(() => -1),
+            backendNodeId: names.map((_, i) => 100 + i),
+            attributes: [[], [], [], [s("type"), s("search")]],
+            inputValue: { index: [3], value: [s("format")] },
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [style, style, style],
+            bounds: [
+              [0, 0, 300, 50],
+              [0, 0, 300, 50],
+              [10.5, 10, 200, 25],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    const key = JSON.stringify(["normal", "400", "13px", "Segoe UI"]);
+    return {
+      version: BUNDLE_VERSION,
+      styles,
+      view: { x: 0, y: 0, w: 300, h: 50 },
+      background: true,
+      snapshot,
+      docs: [
+        {
+          frameId: "PAGE",
+          scale: null,
+          inner: null,
+          page: {
+            allRuns: [[key, "format"]],
+            widths: [37],
+            metrics: { [key]: { ascent: 14, height: 18, line: 18 } },
+            gaps: [],
+            overlays: [],
+            marked: [],
+            canvases: [],
+            placeholderColor: "rgb(117, 117, 117)",
+          },
+          skips: [],
+          platform: [],
+          webFonts: {},
+          fontFiles: {},
+          svgs: [],
+          scrollbars: [],
+          ...(buttons ? { searchButtons: buttons } : {}),
+        },
+      ],
+    };
+  }
+  // The help pane's button as searchButton reads it: 9 px square, 8.5 px in from the field's right.
+  const shown = {
+    x: 182.5,
+    y: 8,
+    w: 9,
+    h: 9,
+    opacity: 1,
+    visibility: "visible",
+    display: "block",
+    appearance: "auto",
+    dark: false,
+  };
+  const X =
+    /<g transform="translate\(193 18\) scale\(1\)"><path d="M1\.5 1\.5L7\.5 7\.5M7\.5 1\.5L1\.5 7\.5" fill="none" stroke="([^"]+)" stroke-width="2\.1" stroke-linecap="round"\/><\/g>/;
+
+  test("is drawn in its box, snapped, in the light scheme's blue, shaded from top to bottom", () => {
+    const { drawn, misses } = drawBundle(bundleOf([["0:2", shown]]));
+    const [, paint] = drawn.svg.match(X) ?? [];
+    assert.match(paint ?? "", /^url\(#d\d+\)$/, drawn.svg);
+    assert.match(
+      drawn.svg,
+      /<linearGradient id="d\d+" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="9"><stop offset="0\.1" stop-color="rgb\(64, 121, 187\)"\/>/,
+    );
+    assert.ok(!misses.some((m) => m.includes("clear button")));
+  });
+
+  test("is white in a dark scheme, faded as the page fades it, and not drawn while hidden", () => {
+    assert.equal(drawBundle(bundleOf([["0:2", { ...shown, dark: true }]])).drawn.svg.match(X)?.[1], "#fff");
+    assert.match(drawBundle(bundleOf([["0:2", { ...shown, opacity: 0.5 }]])).drawn.svg, /scale\(1\)" opacity="0\.5">/);
+    for (const hidden of [{ opacity: 0 }, { visibility: "hidden" }, { display: "none" }])
+      assert.doesNotMatch(drawBundle(bundleOf([["0:2", { ...shown, ...hidden }]])).drawn.svg, /stroke-linecap/);
+    assert.doesNotMatch(drawBundle(bundleOf([["0:2", null]])).drawn.svg, /stroke-linecap/);
+  });
+
+  test("is a question a bundle taken before the buttons were read has no answer for", () => {
+    const { drawn, misses } = drawBundle(bundleOf(undefined));
+    assert.ok(misses.includes("the clear button of a search field that shows text"), misses.join("; "));
+    assert.doesNotMatch(drawn.svg, /stroke-linecap/);
+  });
+});
+
 describe("a text field's selection", () => {
   test("selectedParts splits each line at the selection, a tab expanded from the line's start", () => {
     assert.deepEqual(selectedParts("360", false, "8", 0, 3), [{ before: "", selected: "360", after: "" }]);
