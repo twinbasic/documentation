@@ -1071,6 +1071,19 @@ the IDE calls a JPEG and a BMP `image/png`. The About dialog's EXCALIBUR logo is
 drawn with `background-size: contain`; read as a PNG, its JFIF header gave 4,718,592 by about 4.3
 billion pixels, and the logo would come out 0.054 px wide.
 
+**A background stops at the borders that cover it** (`backgroundClip`, `bordersCover`): a box
+with square corners whose sides are all opaque and fill their width (solid, inset, outset,
+groove, ridge) has its background drawn in its padding box, not under its borders. Drawn under
+them, it showed at their antialiased edges wherever the SVG is drawn at a scale other than 2x
+(a seam of two antialiased edges): Menu_File_Project's separators, an inset border 2 px tall
+over `rgb(89, 89, 89)`, came out 159 and 209 at 1.5x where the PNG, and the same borders drawn
+as CSS, are 197 and 247; clipped, 196 and 247. At 2x the edges fall on whole pixels and nothing
+changes (a replay of the 478 bundles of 2026-11-01: no verdict changed and no share strongly off
+rose; seven rose by 0.02 to 0.07% at 8 levels, boxes at fractional positions), but 396 SVGs
+come out with other bytes. A rounded box keeps its background under its borders: a curved inner
+edge is antialiased at any scale, and the clip left a seam there at 2x (the designer's round
+selection handles).
+
 **An `<embed>` of an image is drawn as an `<img>`** (`embeddedImage`): Chromium stretches the
 image to the element's box, as for an `<img>` (checked in headless Chromium: a 10 by 10 PNG in a
 100 by 60 `<embed>` filled it), and an ICO draws in an SVG `<image>`. The resource preview shows

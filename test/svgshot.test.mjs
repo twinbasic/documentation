@@ -171,6 +171,8 @@ import {
   webRulesFor,
 } from "../scripts/svgshot/fonts.mjs";
 import {
+  backgroundClip,
+  bordersCover,
   canvasColor,
   decodeSnapshot,
   decoratingBoxes,
@@ -214,6 +216,40 @@ describe("naturalSize", () => {
     assert.deepEqual(naturalSize(png([...ihdr, 0, 0, 0, 16, 0, 0, 0, 9, 8, 6, 0, 0, 0])), { w: 16, h: 9 });
     const gif = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 20, 0, 10, 0, 0, 0, 0];
     assert.deepEqual(naturalSize(png(gif)), { w: 20, h: 10 });
+  });
+});
+
+describe("bordersCover", () => {
+  const side = (width, style = "solid", color = "rgb(153, 153, 153)") => ({ width, style, color });
+  test("is true where every side of a width is opaque and fills it, and the background is then drawn in the padding box", () => {
+    // the menu separator: four 1 px sides of an inset border, as borders() gives them
+    const separator = [
+      side(1),
+      side(1, "solid", "rgb(238, 238, 238)"),
+      side(1, "solid", "rgb(255, 255, 255)"),
+      side(1),
+    ];
+    const square = [
+      [0, 0],
+      [0, 0],
+      [0, 0],
+      [0, 0],
+    ];
+    assert.equal(bordersCover(separator), true);
+    assert.equal(backgroundClip("border-box", separator, square), "padding-box");
+    // a rounded box keeps its background under its borders: its curved inner edge is antialiased
+    const round = square.map(() => [8, 8]);
+    assert.equal(backgroundClip("border-box", separator, round), "border-box");
+    // a side of no width is no gap; groove and ridge fill their side too
+    assert.equal(bordersCover([side(0), side(2, "groove"), side(0), side(2, "ridge")]), true);
+    // the background shows between double, dotted and dashed marks, and through a translucent side
+    for (const style of ["double", "dotted", "dashed"])
+      assert.equal(bordersCover([side(1), side(1, style), side(1), side(1)]), false);
+    assert.equal(bordersCover([side(1), side(1, "solid", "rgba(0, 0, 0, 0.5)"), side(1), side(1)]), false);
+    // no border at all: nothing to avoid, and the clip asked for is kept
+    assert.equal(bordersCover([side(0), side(0), side(0), side(0)]), false);
+    assert.equal(backgroundClip("border-box", [side(0), side(0), side(0), side(0)], square), "border-box");
+    assert.equal(backgroundClip("content-box", separator, square), "content-box");
   });
 });
 

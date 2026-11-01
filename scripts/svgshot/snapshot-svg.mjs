@@ -125,6 +125,33 @@ export function transparent(c) {
   return m ? Number.parseFloat(m[1].split(",")[3]) === 0 : false;
 }
 
+// The border styles that fill their side: solid, and inset and outset as borders() gives them,
+// and groove and ridge. Double, dotted and dashed show the background between their marks.
+const FILLING = new Set(["solid", "groove", "ridge"]);
+
+/**
+ * Whether a box's borders `bw` (borders()) hide what lies under them: every side either of no
+ * width, or of an opaque colour in a style that fills it.
+ */
+export function bordersCover(bw) {
+  return (
+    bw.some((s) => s.width > 0) && bw.every((s) => s.width === 0 || (FILLING.has(s.style) && rgba(s.color)?.a === 1))
+  );
+}
+
+/**
+ * The box a background layer is drawn in, from its background-clip `clip`: the padding box in
+ * place of the border box where the borders cover the rest (bordersCover) and the corners `r`
+ * (radii()) are square. Chromium never lets a background show at the antialiased edge of an
+ * opaque border; drawn whole under the borders, it does wherever the picture is drawn at a scale
+ * other than its own, a 1.5x screen or the PDF (a menu separator, an inset border 2 px tall over
+ * a dark background, came out darker at 1.5x). A rounded box keeps it under its borders: a
+ * curved inner edge is antialiased at any scale, and the background clipped to it leaves a seam
+ * of two antialiased edges there (the designer's round selection handles, at 2x).
+ */
+export const backgroundClip = (clip, bw, r) =>
+  clip === "border-box" && r.every(([a, b]) => a === 0 && b === 0) && bordersCover(bw) ? "padding-box" : clip;
+
 // Whether a box's outer box-shadow would show through the box. Chromium paints an outer
 // shadow outside the border box only, and paintBox draws each one whole under the box, which
 // its own background hides when that is an opaque colour filling the border box. Where it is
@@ -1447,7 +1474,9 @@ export function renderSvg(
     if (native) ground.push(native.ground);
     else if (!transparent(st["background-color"])) {
       // The colour fills the last layer's clip box.
-      const under = backgroundBoxes(st, b, r, bw)[splitTop(st["background-clip"] ?? "border-box").at(-1)];
+      const under = backgroundBoxes(st, b, r, bw)[
+        backgroundClip(splitTop(st["background-clip"] ?? "border-box").at(-1), bw, r)
+      ];
       ground.push(shape(under?.box ?? b, under?.r ?? r, `fill="${st["background-color"]}"`));
     }
     const bg = st["background-image"];
@@ -1751,7 +1780,7 @@ export function renderSvg(
       }
       // Where the image is placed (the origin box) and where it shows (the clip box).
       const area = (boxes[origins[k % origins.length]] ?? boxes["padding-box"]).box;
-      const { box: cb, r: cr } = boxes[clips[k % clips.length]] ?? boxes["border-box"];
+      const { box: cb, r: cr } = boxes[backgroundClip(clips[k % clips.length], bw, r)] ?? boxes["border-box"];
       if (cb.w <= 0 || cb.h <= 0) return;
       const url = m ? m[1].replace(/\\"/g, '"') : null;
       const nat = url ? naturalSize(url) : null;
