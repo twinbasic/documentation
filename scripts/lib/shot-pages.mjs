@@ -81,6 +81,9 @@ nav.pager{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 0}nav.pager .
 .ignore{position:absolute;background:#08f3;outline:1px dashed #08f;pointer-events:none}
 .loupes{display:flex;flex-wrap:wrap;gap:16px}.loupe figure{margin:0}.loupe .pair{display:flex;gap:4px}
 .loupe .crop{border:1px solid var(--line);background-repeat:no-repeat;image-rendering:pixelated}
+.zoomable img{cursor:zoom-in}.zoom-views{display:flex;flex-wrap:wrap;gap:12px}.zoom-views figure{margin:0}
+.zoom-views canvas{display:block;max-width:100%;height:auto;border:1px solid var(--line);cursor:crosshair}.zoom-views figcaption{font-size:13px;color:var(--mut)}
+.zoom button[aria-pressed=true]{font-weight:700;outline:2px solid var(--link)}
 dl.facts{display:grid;grid-template-columns:max-content 1fr;gap:2px 14px;margin:6px 0}dl.facts dt{color:var(--mut)}dl.facts dd{margin:0}
 section.muted{opacity:.55}
 .actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}.actions button,form.allow button{font:inherit;padding:3px 12px}
@@ -161,7 +164,103 @@ const REVIEW_SCRIPT = `<script>
     if (m === "blink") { const s = c.querySelector(".blink .stack"); blink = setInterval(() => s.classList.toggle("old"), 600); }
     try { sessionStorage.setItem("shot-review-mode", m); } catch {}
   };
+  // The zoom of a group of figures (.zoomable, zoomedTrio): a click on a picture opens the panel
+  // after the group on that place, each picture drawn at its device size (an SVG rasterised
+  // there, as the judge compares it) and enlarged without smoothing, the colour of its pixel at
+  // the centre under it. A click in the panel moves the centre; the zoom outlives the page
+  // fetching itself again.
+  const ZOOM_SIZE = 300;
+  const ZOOM_LEVELS = [2, 4, 8, 16];
+  let zoom = null;
+  const rasters = new Map();
+  const rasterOf = (img, w, h) => {
+    const key = img.currentSrc || img.src;
+    if (!rasters.has(key)) {
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      c.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0, w, h);
+      rasters.set(key, c);
+    }
+    return rasters.get(key);
+  };
+  const renderZoom = async () => {
+    const group = document.querySelector(".zoomable");
+    const panel = group && group.nextElementSibling;
+    if (!panel || !panel.classList.contains("zoom")) return;
+    panel.hidden = !zoom;
+    if (!zoom) return;
+    const w = +group.dataset.zoomW;
+    const h = +group.dataset.zoomH;
+    const imgs = [...group.querySelectorAll("figure img")];
+    await Promise.all(imgs.map((i) => (i.complete ? null : i.decode().catch(() => null))));
+    const dpr = devicePixelRatio || 1;
+    const span = ZOOM_SIZE / zoom.level;
+    const sx = Math.max(0, Math.min(w - span, zoom.x - span / 2));
+    const sy = Math.max(0, Math.min(h - span, zoom.y - span / 2));
+    const x = Math.floor(zoom.x);
+    const y = Math.floor(zoom.y);
+    const views = panel.querySelector(".zoom-views");
+    views.textContent = "";
+    for (const img of imgs) {
+      const src = rasterOf(img, w, h);
+      const c = document.createElement("canvas");
+      c.width = c.height = Math.round(ZOOM_SIZE * dpr);
+      c.style.width = ZOOM_SIZE + "px";
+      const g = c.getContext("2d");
+      g.imageSmoothingEnabled = false;
+      g.drawImage(src, sx, sy, span, span, 0, 0, c.width, c.height);
+      const k = c.width / span;
+      g.strokeStyle = "#0bf";
+      g.lineWidth = Math.max(1, dpr);
+      g.strokeRect((x - sx) * k, (y - sy) * k, k, k);
+      // shown narrower than ZOOM_SIZE where the page is narrow
+      c.onclick = (e) => {
+        zoom.x = sx + (e.offsetX / c.clientWidth) * span;
+        zoom.y = sy + (e.offsetY / c.clientHeight) * span;
+        renderZoom();
+      };
+      let rgba = "";
+      try {
+        rgba = ": " + [...src.getContext("2d").getImageData(x, y, 1, 1).data].join(", ");
+      } catch {}
+      const fig = document.createElement("figure");
+      const cap = document.createElement("figcaption");
+      cap.textContent = (img.alt || "") + rgba;
+      fig.append(c, cap);
+      views.append(fig);
+    }
+    panel.querySelector(".zoom-where").textContent = "at " + x + ", " + y + " device px, each shown " + zoom.level + " CSS px wide; + and - zoom, Escape closes";
+    for (const b of panel.querySelectorAll("[data-zoom-level]")) b.setAttribute("aria-pressed", String(+b.dataset.zoomLevel === zoom.level));
+  };
+  const initZoom = () => {
+    const group = document.querySelector(".zoomable");
+    if (!group) return;
+    rasters.clear();
+    for (const img of group.querySelectorAll("figure img"))
+      img.onclick = (e) => {
+        const r = img.getBoundingClientRect();
+        zoom = {
+          x: ((e.clientX - r.left) / r.width) * +group.dataset.zoomW,
+          y: ((e.clientY - r.top) / r.height) * +group.dataset.zoomH,
+          level: zoom ? zoom.level : 8,
+        };
+        renderZoom().then(() => group.nextElementSibling.scrollIntoView({ block: "nearest" }));
+      };
+    const panel = group.nextElementSibling;
+    for (const b of panel.querySelectorAll("[data-zoom-level]"))
+      b.onclick = () => {
+        zoom.level = +b.dataset.zoomLevel;
+        renderZoom();
+      };
+    panel.querySelector("[data-zoom-close]").onclick = () => {
+      zoom = null;
+      renderZoom();
+    };
+    renderZoom();
+  };
   const init = () => {
+    initZoom();
     const c = document.querySelector(".compare");
     if (!c) return;
     let m = null;
@@ -227,6 +326,14 @@ const REVIEW_SCRIPT = `<script>
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea, select")) return;
     // j and k as in vi and most lists of the web; the arrows for left and right on the keyboard
+    // while a zoom is open: + and - change its level, Escape closes it
+    if (zoom && (e.key === "+" || e.key === "=" || e.key === "-" || e.key === "Escape")) {
+      if (e.key === "Escape") zoom = null;
+      else zoom.level = ZOOM_LEVELS[Math.max(0, Math.min(ZOOM_LEVELS.length - 1, ZOOM_LEVELS.indexOf(zoom.level) + (e.key === "-" ? -1 : 1)))];
+      renderZoom();
+      e.preventDefault();
+      return;
+    }
     const rel = { j: "next", k: "prev", ArrowRight: "next", ArrowLeft: "prev" }[e.key];
     const a = rel && document.querySelector('a[rel="' + rel + '"]');
     if (a) location.href = a.href;
@@ -681,6 +788,22 @@ const picHtml = (src, size, alt, overlay = "") => {
 const figureHtml = (src, size, caption, overlay = "") =>
   `<figure>${picHtml(src, size, caption, overlay)}<figcaption>${esc(caption)}</figcaption></figure>`;
 
+/**
+ * Figures that zoom on a click (`figs`, figureHtml's, of pictures `size` device px), and the panel
+ * that shows the same place of each, enlarged without smoothing. The page's script draws each
+ * picture at `size`, an SVG rasterised there as the judge compares it, so that what is enlarged
+ * is the picture's own device pixels (REVIEW_SCRIPT's zoom).
+ */
+const zoomedTrio = (
+  figs,
+  size,
+) => `<div class="trio zoomable" data-zoom-w="${size[0]}" data-zoom-h="${size[1]}" title="Click to zoom">${figs.join("\n")}</div>
+<div class="zoom" hidden><div class="actions">${[2, 4, 8, 16]
+  .map((k) => `<button type="button" data-zoom-level="${k}">×${k}</button>`)
+  .join(
+    "",
+  )}<button type="button" data-zoom-close>Close</button><span class="status zoom-where"></span></div><div class="zoom-views"></div></div>`;
+
 /** The boxes of `regions` and the rectangles left out (`rects`) over a picture of `size`. */
 function overlayOf(regions, rects, size) {
   if (!size) return "";
@@ -996,7 +1119,7 @@ ${restored ? "<p>The PNG goes back to HEAD's, and its SVG goes back with it.</p>
     ["Left out", esc(rectsText(rule.rects))],
   ],
 )}
-<div class="trio">${figs.join("\n")}</div>
+${svgSize && figs.length ? zoomedTrio(figs, svgSize) : `<div class="trio">${figs.join("\n")}</div>`}
 ${files.svgPng && files.svg ? loupesHtml(svg.regions, svgSize, { src: files.svgPng.src, label: "PNG" }, { src: files.svg.src, label: "SVG" }) : ""}
 </section>`;
   }

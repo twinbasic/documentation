@@ -618,6 +618,32 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     assert.match(page({ state: "updated", why: null }), />No SVG</);
   });
 
+  test("the SVG's pictures zoom on a click, each at its device size", () => {
+    const html = detailHtml({
+      p: {
+        out: A,
+        group: "look",
+        png: null,
+        svg: { run: 1, state: "unchanged", svg: "pictures/A.svg", regions: [], faithful: true, by: "rule", share: 0 },
+      },
+      filter: "all",
+      place: { index: 0, total: 1, group: "look" },
+      prev: null,
+      next: null,
+      files: { svgPng: { src: "/p", size: [380, 674] }, svg: { src: "/s", size: [380, 674] } },
+      maps: { svg: "/m" },
+      rules: { png: pngRule(null), svg: svgRule(null) },
+      build: null,
+      baseline: { hash: "a".repeat(40), short: "aaaaaaaa" },
+    });
+    // the three pictures in a group that zooms, its panel after it, closed, with its levels
+    assert.match(html, /<div class="trio zoomable" data-zoom-w="380" data-zoom-h="674"/);
+    assert.match(html, /<div class="zoom" hidden>/);
+    for (const k of [2, 4, 8, 16]) assert.match(html, new RegExp(`data-zoom-level="${k}"`));
+    // the page's script draws each picture at its device size, an SVG rasterised there
+    assert.match(html, /drawImage\(img, 0, 0, w, h\)/);
+  });
+
   test("a picture's page offers no replay without a bundle, and fetches itself again when the runs change", () => {
     const page = (bundled) =>
       detailHtml({

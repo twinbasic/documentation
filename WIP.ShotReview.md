@@ -126,9 +126,14 @@ keyboard; owner).
 - **The SVG row**: the share strongly off, the verdict, the choice *accept / no SVG*, and the
   parameters: levels, share, rectangles left out. When the SVG stays with its PNG (the PNG not
   written), the choice is *accept this SVG in place of the file's* alone, which writes it
-  (owner, 2026-11-01): a refusal would refuse the run's SVG, not the file's, and change nothing. When the PNG goes back to `HEAD`'s, the row
-  is greyed out and reads that the SVG goes back with it (an SVG changes with its PNG, owner,
-  [WIP.Screenshots.md](WIP.Screenshots.md#pictures-as-svg)).
+  (owner, 2026-11-01): a refusal would refuse the run's SVG, not the file's, and change nothing.
+  When the PNG goes back to `HEAD`'s, the row is greyed out and reads that the SVG goes back with
+  it (an SVG changes with its PNG, owner, [WIP.Screenshots.md](WIP.Screenshots.md#pictures-as-svg)).
+  A click on any of the row's three pictures (the PNG, the SVG, the map) opens a zoom of that
+  place in all three (owner, 2026-11-01; `zoomedTrio`, the page script's `renderZoom`): each
+  drawn at the picture's device size, the SVG rasterised there as the judge compares it, and
+  enlarged 2, 4, 8 or 16 times without smoothing, with each one's colour at the centre; a click
+  in the zoom moves it, + and - change the level, Escape closes it.
 - **Retake this picture** and **Replay its SVG**: a run of one picture. Replay is greyed out,
   with the reason, when the bundle cache has no bundle of the picture: a bundle goes there only
   with the SVG drawn from it (a retake whose PNG stays writes none, staged or not), so a picture
