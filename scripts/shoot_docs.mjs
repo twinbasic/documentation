@@ -176,6 +176,7 @@ import {
   stageRefusal,
   stageSvg,
   svgVerdict,
+  WINDOW_WHY,
   writeVerdict,
 } from "./lib/shot-stage.mjs";
 import { onStop, writeRecord } from "./lib/record-lines.mjs";
@@ -11148,7 +11149,8 @@ const SC_KEYMENU = 0xf100;
 const WM_CANCELMODE = 0x1f;
 
 // The pictures of windows side by side, their tops level, WINDOW_GAP apart on a transparent
-// ground, as a PNG to be shown at its size at 96 DPI.
+// ground, as a PNG to be shown at its size at 96 DPI; `window` marks a picture of program
+// windows, which Windows draws: there is no page to draw an SVG from (keepSvg).
 function besideEachOther(windows) {
   const { dpi } = windows[0];
   const gap = Math.round((WINDOW_GAP * dpi) / 96);
@@ -11161,7 +11163,7 @@ function besideEachOther(windows) {
       rgba.set(p.rgba.subarray(y * p.width * 4, (y + 1) * p.width * 4), (y * width + x0) * 4);
     x0 += p.width + gap;
   }
-  return { png: encodePng({ width, height, rgba }), scale: dpi / 96 };
+  return { png: encodePng({ width, height, rgba }), scale: dpi / 96, window: true };
 }
 
 // Starts the program with `scene` on the setup's desktop, waits for its form, runs `fn` with
@@ -13588,8 +13590,9 @@ const svgResults = [];
 // dark one. With --stage the SVG, its strength map and its bundle go to the stage, whether or
 // not it is faithful, and nothing else is written; an SVG that stays with its PNG, or goes
 // with it, is judged and staged all the same, its verdict "unchanged", for the review tool,
-// which writes it when a review takes the capture.
-async function keepSvg(name, out, png, picture, kept, holds) {
+// which writes it when a review takes the capture. `window` says the picture is of program
+// windows (besideEachOther), of which no SVG is drawn: its verdict is marked so.
+async function keepSvg(name, out, png, picture, kept, holds, window = false) {
   const svgOut = svgOf(out);
   const file = path.join(outRoot, svgOut);
   const dryRun = !!stageRoot;
@@ -13619,7 +13622,11 @@ async function keepSvg(name, out, png, picture, kept, holds) {
     report(svgVerdict({ state, why, ...judged }));
   };
   if (!picture) {
-    drop("the picture is not a single capture");
+    // a picture of program windows is marked, for the review tool's group of them
+    const why = window ? WINDOW_WHY : "its shot draws no SVG of it";
+    const state = applySvg(outRoot, svgOut, null, { dryRun });
+    say(name, `${svgOut}: ${state}, the PNG is kept (${why})`);
+    report(svgVerdict({ state, why, window }));
     return;
   }
   const { svg, stats, misses, bundle } = picture;
@@ -13790,7 +13797,7 @@ async function runJob(job) {
           // (keep). One put back as the revision has it has had its SVG put back with it. With
           // --stage their SVGs are judged and staged all the same (keepSvg).
           if (values.svg && ((kept !== null && kept !== "restored") || stageRoot))
-            await keepSvg(job.name, out, png, state.svg, kept, holds);
+            await keepSvg(job.name, out, png, state.svg, kept, holds, !Buffer.isBuffer(taken) && !!taken.window);
         } catch (e) {
           complain(job.name, `${out}: FAILED: ${e.message}`);
           count(theme, "failed");

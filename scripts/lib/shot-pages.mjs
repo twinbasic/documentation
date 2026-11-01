@@ -9,7 +9,7 @@
 // Every address the pages link to is made here (hrefs), and the server answers each.
 
 import { allowancesOf, anchor, chipHtml, esc, pageHtml, sizeText } from "./shot-views.mjs";
-import { FILTERS, GROUPS } from "./shot-review.mjs";
+import { FILTERS, GROUPS, isWindow } from "./shot-review.mjs";
 import { pngRule, svgRule } from "./shot-policy.mjs";
 import { SURVIVES } from "./shot-queue.mjs";
 import { RUN_KINDS } from "./shot-runs.mjs";
@@ -361,6 +361,7 @@ export const pngStateText = (png) => PNG_STATES[png.state] ?? png.state;
 
 /** What the tool decided about a picture's SVG, as a few words. */
 export function svgStateText(svg) {
+  if (isWindow({ svg })) return "PNG only: a program's window";
   if (svg.state === "not written") return svg.faithful === false ? "refused" : "none";
   if (svg.state === "removed") return "removed";
   if (svg.state === "unchanged") return "unchanged";
@@ -1002,7 +1003,7 @@ ${actionsHtml([
 <section>
 <h2>Runs of this picture</h2>
 <p>A retake takes it again (in both themes, a program's window once), with its SVG, against the baseline, ${esc(baseline.short)}; a replay draws its SVG again from its bundle. Other options are on the <a href="${hrefs.runs}">runs page</a>.</p>
-${actionsHtml(runButtons(p.out, busy, { bundled }))}
+${actionsHtml(runButtons(p.out, busy, { bundled, replay: !isWindow(p) }))}
 </section>`;
   const svgPic = files.svgPng ?? null;
   const body = `${nav}

@@ -16,6 +16,7 @@ export const GROUPS = [
   ["noise", "Only noise"],
   ["outside", "Changed outside the session's runs"],
   ["unchanged", "Unchanged"],
+  ["windows", "Program windows: PNG only"],
   ["added", "Added"],
   ["deleted", "Deleted"],
   ["failed", "Failed or not taken"],
@@ -100,6 +101,14 @@ function owes(run, v) {
  */
 export const SVG_CHANGES = new Set(["new", "updated", "removed"]);
 
+// What a run before 2026-11-01 said of a picture of program windows, which it did not mark;
+// the one shot that turned its SVG off (References_Detail) said the same, until the converter
+// drew a line-through and it was taken again with its SVG.
+const OLD_WINDOW_WHY = "the picture is not a single capture";
+
+/** Whether `p` is a picture of program windows, of which no SVG is drawn (svgVerdict's `window`). */
+export const isWindow = (p) => !!p.svg?.window || p.svg?.why === OLD_WINDOW_WHY;
+
 /**
  * The group of the overview the picture `p` is in (GROUPS): `exists(path)` says whether a
  * file is under docs/.
@@ -115,6 +124,10 @@ export function groupOf(p, exists) {
       return "changed";
     case "new":
       return "added";
+  }
+  // a program's window has no SVG to look at or miss: a group of its own unless its PNG changed
+  if (isWindow(p)) return "windows";
+  switch (p.png?.state) {
     case "noise":
     case "restored":
       return "noise";
@@ -231,7 +244,8 @@ export function hasSvg(p, exists) {
 export function filterPictures(pictures, filter, { overridden = () => false, exists = () => false } = {}) {
   if (filter === "look") return pictures.filter((p) => p.group === "look");
   if (filter === "overridden") return pictures.filter((p) => overridden(p.out));
-  if (filter === "nosvg") return pictures.filter((p) => !hasSvg(p, exists));
+  // a program's window cannot have one: its own group says so
+  if (filter === "nosvg") return pictures.filter((p) => !hasSvg(p, exists) && !isWindow(p));
   return pictures;
 }
 

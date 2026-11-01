@@ -29,6 +29,7 @@ import {
   stagedFiles,
   stageSvg,
   svgVerdict,
+  WINDOW_WHY,
   writeVerdict,
 } from "../scripts/lib/shot-stage.mjs";
 import { hashOf, openManifest } from "../scripts/lib/shot-manifest.mjs";
@@ -294,7 +295,7 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     assert.equal(at(C).failed.error, "boom");
     assert.deepEqual(
       groups.map((g) => g.key),
-      ["progress", "look", "changed", "noise", "outside", "unchanged", "added", "deleted", "failed"],
+      ["progress", "look", "changed", "noise", "outside", "unchanged", "windows", "added", "deleted", "failed"],
     );
     assert.deepEqual(
       pictures.map((p) => p.out),
@@ -401,6 +402,28 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     const { index, prev, next } = neighbours(pictures, B);
     assert.deepEqual([index, prev.out, next.out], [1, A, C]);
     assert.deepEqual(neighbours(pictures, "x.png"), { index: -1, prev: null, next: null });
+  });
+
+  test("a picture of program windows is a group of its own, PNG only, unless its PNG changed", () => {
+    const why = WINDOW_WHY;
+    const svg = svgVerdict({ state: "not written", why, window: true });
+    assert.equal(svg.window, true);
+    assert.equal("window" in svgVerdict({ state: "not written", why: "refused" }), false);
+    const exists = () => true;
+    const at = (png, part = svg) => ({ out: A, png: { state: png, look: null }, svg: part });
+    assert.equal(groupOf(at("unchanged"), exists), "windows");
+    assert.equal(groupOf(at("noise"), exists), "windows");
+    assert.equal(groupOf(at("updated"), exists), "changed");
+    assert.equal(groupOf(at("new"), exists), "added");
+    // a run before the mark said only why
+    assert.equal(
+      groupOf(at("unchanged", { state: "not written", why: "the picture is not a single capture" }), exists),
+      "windows",
+    );
+    assert.equal(groupOf(at("unchanged", { state: "not written", why: "refused" }), exists), "unchanged");
+    // the No SVG filter leaves them out, and their chip says why there is none
+    assert.deepEqual(filterPictures([at("unchanged")], "nosvg", { exists: () => false }), []);
+    assert.match(chipsOf(at("unchanged")), /SVG: PNG only: a program's window/);
   });
 
   test("a commit takes the session's own files that git reports changed, and says what it did to each", () => {

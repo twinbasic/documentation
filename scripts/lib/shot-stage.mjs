@@ -147,12 +147,16 @@ export function pngVerdict({ decision, review, build, diffs = [], staged = null 
   };
 }
 
+/** Why a picture of program windows has no SVG: the converter draws a page's DOM snapshot. */
+export const WINDOW_WHY = "a program's window, which Windows draws: there is no page to draw an SVG from";
+
 /**
  * The svg part of a verdict: `state` what is done with the file (applySvg's, or "unchanged"
  * when it stays with its PNG), `why` the reason it is not written, or null; `verdict`
  * decideSvg's and `review` reviewSvg's, null for an SVG not judged; `stats` diffSvg's
  * shares (pct8, pct32, pct96); `measures` the line a person reads; `diffs` the difference
- * pictures written; and the files staged (stageSvg), or null.
+ * pictures written; and the files staged (stageSvg), or null. `window` marks a picture of
+ * program windows (`window: true`), of which no SVG is drawn (WINDOW_WHY).
  */
 export function svgVerdict({
   state,
@@ -163,10 +167,12 @@ export function svgVerdict({
   measures = null,
   diffs = [],
   staged = null,
+  window = false,
 }) {
   return {
     state,
     why,
+    ...(window ? { window: true } : {}),
     faithful: verdict?.faithful ?? null,
     by: verdict?.by ?? null,
     share: verdict?.share ?? null,
