@@ -103,8 +103,8 @@ pre.log{max-height:20em;overflow:auto;font-size:12px;border:1px solid var(--line
 
 // The page's script: the event stream, the page fetched again when something it shows has
 // changed (the values of a form marked data-keep kept, but a field still at its data-default,
-// which takes the new page's), the comparison's modes, the keys j and
-// k for the next and previous picture, and the pictures selected on the overview, which the
+// which takes the new page's), the comparison's modes, the keys j and → for the next picture
+// and k and ← for the previous one, and the pictures selected on the overview, which the
 // runs page's forms take in place of a pattern (kept in the browser, as a convenience).
 const REVIEW_SCRIPT = `<script>
 (() => {
@@ -206,7 +206,8 @@ const REVIEW_SCRIPT = `<script>
   };
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea, select")) return;
-    const rel = { j: "next", k: "prev" }[e.key];
+    // j and k as in vi and most lists of the web; the arrows for left and right on the keyboard
+    const rel = { j: "next", k: "prev", ArrowRight: "next", ArrowLeft: "prev" }[e.key];
     const a = rel && document.querySelector('a[rel="' + rel + '"]');
     if (a) location.href = a.href;
   });
@@ -710,9 +711,9 @@ function pagerHtml({ p, filter, place, prev, next }) {
   const filterLabel = (FILTERS.find(([k]) => k === filter) ?? FILTERS[0])[1];
   const groupTitle = (GROUPS.find(([k]) => k === p.group) ?? [null, p.group])[1];
   return `<nav class="pager"><a href="${hrefs.overview(filter)}#${anchor(p.out)}">Overview</a><a href="${hrefs.runs}">Runs</a><a href="${hrefs.commitPage}">Commit</a>${
-    prev ? `<a rel="prev" href="${hrefs.picture(prev.out, filter)}">Previous (k)</a>` : ""
+    prev ? `<a rel="prev" href="${hrefs.picture(prev.out, filter)}">Previous (k, ←)</a>` : ""
   }<span class="where">${place.index + 1} of ${place.total} · ${esc(filter === "all" ? groupTitle : filterLabel)}</span>${
-    next ? `<a rel="next" href="${hrefs.picture(next.out, filter)}">Next (j)</a>` : ""
+    next ? `<a rel="next" href="${hrefs.picture(next.out, filter)}">Next (j, →)</a>` : ""
   }</nav>`;
 }
 

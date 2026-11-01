@@ -102,7 +102,9 @@ of this one: `--against` is the overview itself, the pictures with no SVG a filt
 ### Detail
 
 One picture: previous and next (in the order of the overview, within the filter it was opened
-from), its place ("4 of 17 · Needs a look"), and the keys j/k.
+from), its place ("4 of 17 · Needs a look"), and the keys j and → for the next picture, k and
+← for the previous (j/k as in vi and most lists of the web, the arrows for left and right on the
+keyboard; owner).
 
 - **The comparison**: `HEAD` and the new capture side by side, a swipe, blinking, the
   difference map, and the SVG against the new PNG with its own map. Below them, a **loupe**
