@@ -143,7 +143,7 @@ node scripts/tbrun.mjs <exported-source-dir>         # what does it print
 - **A project's own unit tests: `tbrun --tests`.** It builds nothing: it runs each `[TestCase]` Sub of each `[TestFixture]` Module in the compiler's test mode, the debugger's `evaluate` request with `isTest`, which the IDE itself never sends (BETA 1010 has no test runner a person can use), and prints `PASS` or `FAIL` for each. A failed assertion, an unhandled error and an access violation each end only their case. A defect that is a diagnostic is a compile case instead, a line ending `' CASE <Name>: <codes | error | none>`. A follow-up issue's regression tests are written this way: [WIP.Harness.md](WIP.Harness.md#running-a-projects-test-cases).
 - **Measuring LLVM: `tbrun --llvm`** (or `--compiler-options "<s>"`) compiles the whole probe with LLVM, by setting `compiler.debugOptions` --- what a `[RunAfterBuild]` run is compiled with; `compiler.buildOptions` alone does not reach it (BETA 1010) --- and `compiler.buildOptions`, for the exe. It refuses a Community or Personal licence. `--exe` also runs the built exe on a private desktop; the exe runs `Sub Main` and prints with `TbRun.Out`, a module `tbrun` adds, because `Debug.Print` writes nothing in an exe.
 - **A census is evidence, not applicability.** The corpus not using an attribute somewhere does not mean the compiler refuses it there, and the reverse also holds. Only a probe settles that.
-- **The sweep is the probe for a whole attribute.** Before writing or changing an attribute's `Applicable to:` line, run `sweep_attributes.mjs --names <Name>` (a minute or a few; the once-per-project ones, `RunAfterBuild` and `RunBeforeStartupObject`, take several); it tries every declaration site, not only the ones already claimed. **Always pass `--out` and `--dump-results`**: a run piped through `tail` keeps one line of a report that takes ten minutes. A clean build there means the compiler accepts the attribute, not that it does anything, and an Enum member cannot be tested at all (see [WIP.Harness.md](WIP.Harness.md#sweeping-every-attribute-at-every-site)).
+- **The sweep is the probe for a whole attribute.** Before writing or changing an attribute's `Applicable to:` line, run `sweep_attributes.mjs --names <Name>` (a minute or a few; the once-per-project ones, `RunAfterBuild` and `RunBeforeStartupObject`, take several); it tries every declaration site, not only the ones already claimed. A clean build there means the compiler accepts the attribute, not that it does anything, and an Enum member cannot be tested at all (see [WIP.Harness.md](WIP.Harness.md#sweeping-every-attribute-at-every-site)).
 - **End an IDE by its pid, never by image name.** `taskkill /IM twinBASIC.exe` ends every other run's IDE, another session's included, and the user's own. `tbbuild --keep` prints the pid for this reason.
 
 Why each of those is true, what the WebView/CDP route costs, why the harness
@@ -751,6 +751,14 @@ they are.
   left as written. A doubled backslash arrives doubled, which is a different string.
   Write the brace form, `\u{FEFF}`, which arrives intact (a regex needs the `u` flag
   for it), and check a file you have written for raw non-ASCII.
+- **Never filter a command's output without keeping the whole of it** (owner). Any command
+  whose output goes through `tail`, `head`, `grep`, `Select-Object`, `Select-String` or the
+  like is first teed to a file in the session's scratchpad or `%TEMP%`
+  (`cmd 2>&1 | tee "$S/run.log" | tail -20`; in PowerShell, `Tee-Object -FilePath`), and the
+  file is read when the filtered lines turn out not to be enough. A filter that keeps the
+  wrong lines otherwise costs the whole run again: a probe of several minutes was run twice
+  for it. A tool that writes its report to a file of its own (`--out`, `--dump-results`) is
+  given one as well.
 - Don't push or force-push without explicit user request.
 - **Use `gh` read-only.** Viewing, listing and searching are fine: `gh issue view`, `gh pr view`,
   `gh run list`, `gh search`, `gh api` with GET. Anything that writes to GitHub is the owner's
