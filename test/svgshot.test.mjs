@@ -422,6 +422,80 @@ describe("checkboxes and radio buttons", () => {
   });
 });
 
+describe("list markers", () => {
+  // An <li> whose ::marker has the text `text` in one fragment at `box`, in a font of `size` px
+  // whose ascent is `ascent`, as DevTools gives it: the marker a node of its own with the pseudo
+  // type, holding a box and the text.
+  function page(text, box, size = "13px", ascent = 14.03) {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const names = ["display", "visibility", "color", "font-family", "font-size", "font-weight", "font-style"];
+    const style = ["block", "visible", "rgb(97, 97, 97)", "Segoe UI", size, "400", "normal"].map(s);
+    const nodeNames = ["#document", "HTML", "BODY", "LI", "::marker"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2, 3],
+            nodeType: [9, 1, 1, 1, 1],
+            nodeName: nodeNames.map(s),
+            nodeValue: nodeNames.map(() => -1),
+            attributes: [[], [], [], [], []],
+            pseudoType: { index: [4], value: [s("marker")] },
+          },
+          layout: {
+            nodeIndex: [1, 2, 3, 4, 4],
+            styles: [style, style, style, style, style],
+            bounds: [[0, 0, 500, 400], [0, 0, 500, 400], [0, 0, 500, 400], box, box],
+            text: [-1, -1, -1, -1, s(text)],
+            paintOrders: [0, 1, 2, 3, 4],
+          },
+          textBoxes: { layoutIndex: [4], bounds: [box], start: [0], length: [text.length] },
+        },
+      ],
+    };
+    const doc = decodeSnapshot(snapshot, names);
+    return renderSvg(doc, { clip: { x: 0, y: 0, w: 500, h: 400 }, metrics: () => ({ ascent, height: 17, line: 17 }) })
+      .svg;
+  }
+
+  test("a disc is a circle sized from the ascent, not the bullet's glyph", () => {
+    // Help_Hover's marker: an ascent of 14 makes a disc 5 px across, 1 px in and 7 px down, snapped
+    const svg = page("\u{2022} ", [398.65625, 294.625, 7, 17]);
+    assert.ok(svg.includes('<ellipse cx="402.5" cy="304.5" rx="2.5" ry="2.5" fill="rgb(97, 97, 97)"/>'), svg);
+    assert.doesNotMatch(svg, /<text/);
+  });
+
+  test("a circle is stroked 1 px wide on the same circle, a square fills its square", () => {
+    assert.ok(
+      page("\u{25E6} ", [10, 20, 7, 17]).includes(
+        '<ellipse cx="13.5" cy="29.5" rx="2.5" ry="2.5" fill="none" stroke="rgb(97, 97, 97)" stroke-width="1"/>',
+      ),
+    );
+    assert.ok(
+      page("\u{25A0} ", [10, 20, 7, 17]).includes('<rect x="11" y="27" width="5" height="5" fill="rgb(97, 97, 97)"/>'),
+    );
+  });
+
+  test("a disclosure triangle is 0.66 of the font size, its foot on the ascent", () => {
+    // 6.6 px for a 10 px font, its top at 20 + 10 - 6.6
+    const closed = page("\u{25B8} ", [10, 20, 7, 13], "10px", 10);
+    assert.ok(closed.includes('<path d="M10 23.4L15.676 26.7L10 30Z" fill="rgb(97, 97, 97)"/>'), closed);
+    const open = page("\u{25BE} ", [10, 20, 7, 13], "10px", 10);
+    assert.ok(open.includes('<path d="M10 23.862L13.3 29.538L16.6 23.862Z"'), open);
+  });
+
+  test("other marker text is drawn as text", () => {
+    assert.match(page("1. ", [10, 20, 14, 17]), /<text[^>]*>1\. <\/text>/);
+  });
+});
+
 describe("a text field's selection", () => {
   test("selectedParts splits each line at the selection, a tab expanded from the line's start", () => {
     assert.deepEqual(selectedParts("360", false, "8", 0, 3), [{ before: "", selected: "360", after: "" }]);

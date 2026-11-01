@@ -568,6 +568,37 @@ export function textNeeds(decoded, clip, { selection = null } = {}) {
 /** What text-overflow: ellipsis draws where it cuts a line. */
 export const ELLIPSIS = "…";
 
+// The text of a ::marker that Chromium paints as a shape (paintSymbolMarker): the
+// symbol of disc, circle, square (Chromium's black square, not the spec's small
+// one), disclosure-open and disclosure-closed (right to left, its point to the
+// left), and the space after it. A triangle is its corners in a unit square.
+const SYMBOL_MARKERS = {
+  "\u{2022} ": { shape: "disc" },
+  "\u{25E6} ": { shape: "circle" },
+  "\u{25A0} ": { shape: "square" },
+  "\u{25BE} ": {
+    triangle: [
+      [0, 0.07],
+      [0.5, 0.93],
+      [1, 0.07],
+    ],
+  },
+  "\u{25B8} ": {
+    triangle: [
+      [0, 0],
+      [0.86, 0.5],
+      [0, 1],
+    ],
+  },
+  "\u{25C2} ": {
+    triangle: [
+      [1, 0],
+      [0.14, 0.5],
+      [1, 1],
+    ],
+  },
+};
+
 // How far a line's content must reach past its end to overflow it: a LayoutUnit.
 const LAYOUT_UNIT = 1 / 64;
 
@@ -2473,6 +2504,8 @@ export function renderSvg(
     if (!st || st.visibility !== "visible") return [];
     const key = fontKey(st);
     const base = env.metrics(key).ascent;
+    const symbol = (l.node.pseudo === "marker" || l.node.parent?.pseudo === "marker") && SYMBOL_MARKERS[l.text];
+    if (symbol) return l.boxes.filter((t) => overlaps(t, view)).map((t) => paintSymbolMarker(t, st, symbol, base));
     const { lines, undrawn } = decorationsOf(l);
     for (const what of undrawn) note(what);
     const out = [];
@@ -2503,6 +2536,38 @@ export function renderSvg(
       if (plan?.after === id) out.push(textRun(line.block.style, ELLIPSIS, t.x + t.w, t.y + base, plan.width));
     }
     return out;
+  }
+
+  // A list marker that is a symbol (SYMBOL_MARKERS), which Chromium paints as a
+  // shape, not as the glyph its text is (NGTextFragmentPainter::PaintSymbol,
+  // ListMarker::RelativeSymbolMarkerRect), in the fragment `t`: a disc, a circle
+  // or a square b = ((2a/3) + 1)/2 px across, a being the font's ascent in whole
+  // px and each division a whole one, 1 px from the fragment's left and
+  // 3(a - 2a/3)/2 below its top, snapped to pixels; a disc filled, a circle
+  // stroked 1 px wide on it, a square filled. A disclosure triangle is in a square
+  // of 0.66 times the font size whose foot is on the ascent, Chromium's canonical
+  // triangle scaled into it, unsnapped. Fitted by bench/list-marker.html, whose
+  // shapes are these sizes in Segoe UI from 9 to 24 px and in Inter at 10.5.
+  function paintSymbolMarker(t, st, symbol, ascent) {
+    const a = Math.round(ascent);
+    const fill = st.color;
+    if (symbol.triangle) {
+      const s = px(st["font-size"]) * 0.66;
+      const [x, y] = [t.x, t.y + a - s];
+      const d = symbol.triangle.map(([u, v], k) => `${k ? "L" : "M"}${num(x + u * s)} ${num(y + v * s)}`).join("");
+      return `<path d="${d}Z" fill="${fill}"/>`;
+    }
+    const third = Math.trunc((a * 2) / 3);
+    const b = Math.trunc((third + 1) / 2);
+    const x0 = Math.round(t.x + 1);
+    const y0 = Math.round(t.y + Math.trunc((3 * (a - third)) / 2));
+    const w = Math.round(t.x + 1 + b) - x0;
+    const h = Math.round(t.y + Math.trunc((3 * (a - third)) / 2) + b) - y0;
+    if (symbol.shape === "square") return `<rect ${rectAttrs({ x: x0, y: y0, w, h })} fill="${fill}"/>`;
+    const at = `cx="${num(x0 + w / 2)}" cy="${num(y0 + h / 2)}" rx="${num(w / 2)}" ry="${num(h / 2)}"`;
+    return symbol.shape === "disc"
+      ? `<ellipse ${at} fill="${fill}"/>`
+      : `<ellipse ${at} fill="none" stroke="${fill}" stroke-width="1"/>`;
   }
 
   // How text-overflow: ellipsis cuts a line (ellipsisLines), as Chromium's

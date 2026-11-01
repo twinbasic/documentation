@@ -1194,6 +1194,20 @@ Drawn as two `crispEdges` paths, rounded 2.2 and 1.2 px: any outer radius from 2
 every pixel of Edge's border (`bench/textfield.html`). A field the page styles in either way is
 drawn from its style.
 
+**A list marker that is a symbol** (`paintSymbolMarker`, `SYMBOL_MARKERS`): Chromium paints a
+`::marker` of disc, circle, square or a disclosure triangle as a shape, not as the glyph of its
+text (`NGTextFragmentPainter::PaintSymbol`), so the converter drew Help_Hover's bullets as Segoe
+UI's "•", about half as wide (owner, 2026-11-01). Each is known by its text (the symbol and a
+space; square is U+25A0, not the spec's U+25AA), which a bundle has, so a replay redraws it with
+no retake. A disc, circle or square is ((2a/3) + 1)/2 px across in whole-number arithmetic, `a`
+the font's ascent rounded, 1 px from the fragment's left and 3(a - 2a/3)/2 below its top, snapped
+to whole CSS px (`ListMarker::RelativeSymbolMarkerRect`); a circle is stroked 1 px wide on it. A
+disclosure triangle is Chromium's canonical one in a square of 0.66 times the font size, its foot
+on the ascent, unsnapped. `bench/list-marker.html` (Segoe UI 9 to 24 px, Inter 10.5 px) went from
+0.195% of its pixels off to 0.001%, every marker's box Edge's to the pixel; a replay of every bundle
+updated 11 SVGs, all closer (Help_Hover 0.031% strongly off to 0%, SignIn_Login and
+SignIn_Register, SignatureHelp_Expanded, ccICustomControl and ac019c1a), and changed no other verdict.
+
 **An inline `<svg>`** in the page is drawn as a nested `<svg>` in its box's content box, in its
 place in paint order (`paintInlineSvg`, from `paintBox`), so a CSS transform, opacity, border and
 padding apply as to any box. `inlineSvg` (`capture.mjs`) reads it in the page, in a frame's
@@ -1210,7 +1224,7 @@ coordinates, which the picture's `viewBox` is in.
 
 **The bench** (`node scripts/svgshot/bench.mjs`, outside every gate, needs Edge and fontTools)
 draws the pages under `scripts/svgshot/bench/` (scrollbars, a scrollbar in a cut-out, native scrollbars, drop-down lists,
-native text fields, underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
+native text fields, checkboxes and radio buttons, list markers, underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
 annotation layer, SVG in frames), served from `127.0.0.1` with the site's fonts under `/fonts/`
 (a `file:` page cannot `fetch` its font bytes), with the converter
 and compares them with the browser's own picture: in Edge, whose Chromium is the IDE's WebView2's
