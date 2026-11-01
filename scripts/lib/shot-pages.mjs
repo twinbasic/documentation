@@ -883,7 +883,8 @@ ${png.look ? `<p class="notice">Needs a look: ${esc(png.look.text)}.</p>` : ""}$
     ["Judged against", png.against ? esc(AGAINST[png.against] ?? png.against) : "nothing: a new picture"],
     [
       "Regions of change",
-      png.regionCount === null
+      // a failed capture's verdict has neither
+      !png.regions
         ? "not measured"
         : `${png.regionCount}, ${png.regions.filter((r) => r.core >= SURVIVES).length} surviving the erosion`,
     ],

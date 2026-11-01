@@ -865,7 +865,9 @@ onStop(process.stdin, () => {
       );
 
       // The session opened again: its run read back from the stage and the events.
+      // B's capture failed, as shoot_docs.mjs stages that: a verdict with no regions
       await app.close();
+      writeVerdict(runPaths(root, 1).stage, B, "png", { state: "failed", error: "boom" });
       app2 = make();
       const again = app2.model().pictures;
       assert.deepEqual(
@@ -875,6 +877,10 @@ onStop(process.stdin, () => {
           [B, "failed"],
         ],
       );
+      const port2 = await app2.listen(0);
+      const failedPage = await fetch(`http://127.0.0.1:${port2}/picture/${B}`);
+      assert.equal(failedPage.status, 200);
+      assert.match(await failedPage.text(), /Regions of change<\/dt><dd>not measured/);
     } finally {
       // a run left waiting for its stop line would keep the test's process alive
       for (const h of app.live()) h.kill();

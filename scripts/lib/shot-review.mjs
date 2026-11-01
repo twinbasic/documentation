@@ -107,7 +107,7 @@ export const SVG_CHANGES = new Set(["new", "updated", "removed"]);
 export function groupOf(p, exists) {
   if (p.outside) return "outside";
   if (p.progress) return "progress";
-  if (p.failed) return "failed";
+  if (p.failed || p.png?.state === "failed") return "failed";
   if (p.png?.look || p.svg?.look) return "look";
   if (!p.png && !p.svg) return "failed";
   switch (p.png?.state) {
