@@ -335,6 +335,9 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     assert.deepEqual([at(A).group, at(A).png.look.why], ["look", "baseline"]);
     assert.deepEqual([at(B).group, at(B).png.look], ["changed", undefined]);
     assert.equal(reviewPictures(runs, { baseline: "old" }).pictures.find((p) => p.out === A).group, "noise");
+    // a commit that did not change A's picture leaves its verdict as it was
+    const kept = reviewPictures(runs, { baseline: "new", stale: (out, hash) => !(out === A && hash === "old") });
+    assert.deepEqual([kept.pictures.find((p) => p.out === A).group], ["noise"]);
     assert.match(chipsOf(at(C)), /changed outside the runs: added/);
   });
 
@@ -1077,7 +1080,10 @@ onStop(process.stdin, () => {
       docsRoot: docs,
       // a commit made outside the tool, whose A is the capture
       head: () => ({ hash: "b".repeat(40), short: "bbbbbbbb", build: 1501 }),
+      baselineOf: (rev) => (rev.startsWith("a") ? { hash: "a".repeat(40), short: "aaaaaaaa", build: 1500 } : null),
       revisionAt: (hash) => stubRevision(hash[0], { [A]: capture }),
+      // the commit changed A's picture
+      changedBetween: () => new Set([A]),
       changed: () => [
         { out: Z, status: "modified" },
         { out: A, status: "added" },
@@ -1142,6 +1148,14 @@ onStop(process.stdin, () => {
       assert.deepEqual((await post(hrefs.moveBaseline, { action: "move" }))[0], 200);
       assert.equal(app.model().pictures.find((p) => p.out === A).png.look.why, "baseline");
       assert.doesNotMatch((await get("/")).text, /Move the session to/);
+      // moved back, which changes no file: the verdict is compared with its own baseline again
+      assert.match((await get("/")).text, /Move back to aaaaaaaa/);
+      assert.deepEqual((await post(hrefs.moveBaseline, { action: "back" }))[0], 200);
+      assert.deepEqual([app.session().data.baseline.short, pic(A).group], ["aaaaaaaa", "noise"]);
+      assert.equal(app.session().data.baseline.moved.fromHash, "b".repeat(40));
+      assert.ok(docsA().equals(head));
+      assert.deepEqual((await post(hrefs.moveBaseline, { action: "move" }))[0], 200);
+      assert.equal(pic(A).png.look.why, "baseline");
       assert.equal((await post(hrefs.act(A), { action: "judge" }))[0], 200);
       assert.deepEqual([pic(A).png.state, pic(A).png.look], ["restored", null]);
       assert.ok(docsA().equals(capture));

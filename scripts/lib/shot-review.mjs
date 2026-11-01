@@ -136,7 +136,9 @@ export function groupOf(p, exists) {
  * changedPictures gives them): those no run reported are in a group of their own, with
  * `outside` their status. A PNG verdict judged against the revision (`against`) of another
  * baseline than `baseline` (its `baseline`, which the review tool records as it applies it)
- * needs a look, `why` "baseline": the picture it was judged against has changed.
+ * needs a look, `why` "baseline", when `stale(out, hash)` says the picture differs between that
+ * commit and the baseline: the picture it was judged against has changed. A move to a commit
+ * that changed no picture leaves every verdict as it was.
  *
  * Returns {pictures, groups}: each picture {out, png, svg, failed, retake, skipped, progress,
  * outside, group, measure}, `png` and `svg` with the run that gave them as `run`, `failed` and
@@ -145,7 +147,10 @@ export function groupOf(p, exists) {
  * changed, from `measure(p)`, which orders the Changed group, most first. `groups` is GROUPS
  * with each one's pictures, [{key, title, pictures}].
  */
-export function reviewPictures(runs, { exists = () => false, measure = () => 0, outside = [], baseline = null } = {}) {
+export function reviewPictures(
+  runs,
+  { exists = () => false, measure = () => 0, outside = [], baseline = null, stale = () => true } = {},
+) {
   const byOut = new Map();
   const at = (out) => {
     if (!byOut.has(out))
@@ -187,7 +192,13 @@ export function reviewPictures(runs, { exists = () => false, measure = () => 0, 
   for (const { out, status } of outside) if (!byOut.has(out)) at(out).outside = status;
   const pictures = [...byOut.values()].sort((a, b) => (a.out < b.out ? -1 : a.out > b.out ? 1 : 0));
   for (const p of pictures) {
-    if (baseline && p.png?.against === "revision" && p.png.baseline && p.png.baseline !== baseline)
+    if (
+      baseline &&
+      p.png?.against === "revision" &&
+      p.png.baseline &&
+      p.png.baseline !== baseline &&
+      stale(p.out, p.png.baseline)
+    )
       p.png = {
         ...p.png,
         look: { why: "baseline", text: "judged against the picture of the session's earlier baseline" },

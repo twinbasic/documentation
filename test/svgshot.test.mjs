@@ -119,6 +119,7 @@ import {
   WORD_CORE,
 } from "../scripts/lib/shot-queue.mjs";
 import {
+  changedBetween,
   changedPictures,
   commitPaths,
   openRevision,
@@ -2043,6 +2044,16 @@ describe("the picture at a git revision", () => {
     restoreFromRevision(docs, rev.hash, ["a.svg"]);
     assert.equal(fs.readFileSync(path.join(docs, "a.svg"), "utf8"), "<svg/>\n");
     assert.equal(git("status", "--porcelain").toString(), "");
+    // what differs between two commits, under the folder only: a commit outside it changes nothing
+    fs.writeFileSync(path.join(repo, "tool.mjs"), "x\n");
+    git("add", ".");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "y");
+    const second = openRevision(docs, "HEAD").hash;
+    assert.deepEqual([...changedBetween(docs, rev.hash, second)], []);
+    fs.writeFileSync(path.join(docs, "two words", "a.png"), Buffer.from([1]));
+    git("add", ".");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "z");
+    assert.deepEqual([...changedBetween(docs, rev.hash, openRevision(docs, "HEAD").hash)], ["two words/a.png"]);
   });
 
   test("reads git's status of the working tree, sorted by path", () => {

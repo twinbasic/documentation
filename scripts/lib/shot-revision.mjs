@@ -91,6 +91,16 @@ export function changedPictures(docsRoot, rev, git = runGit) {
 }
 
 /**
+ * The files under the folder `root` (paths from it, forward slashes) that differ between the
+ * commits `a` and `b`, as a Set: one git process. `git` stands in for running git in the probes.
+ */
+export function changedBetween(root, a, b, git = runGit) {
+  const diff = git(["diff", "--name-only", "--no-renames", "--relative", "-z", a, b, "--", "."], root);
+  if (diff.status !== 0) throw new Error(`git diff between ${a} and ${b} failed in ${root}`);
+  return new Set(diff.stdout.split("\0").filter(Boolean));
+}
+
+/**
  * The commit `rev` names in the git repository of the folder `root`: {hash, short,
  * prefix}, `prefix` the folder's path from the repository's root with a closing slash
  * (empty at the root). Throws an Error that says why when `rev` is not a commit there or

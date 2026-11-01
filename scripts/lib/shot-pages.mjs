@@ -50,7 +50,7 @@ export const hrefs = {
   events: "/events",
   /** POST: a review's action on a picture (shot-server.mjs's act). */
   act: (out) => `/api/picture/${encodePath(out)}`,
-  /** POST: the session moved to HEAD. */
+  /** POST: the session moved to HEAD ({action: "move"}), or back to the baseline the last move left ({action: "back"}). */
   moveBaseline: "/api/baseline",
   /** POST: a run started (shot-runs.mjs's runOf takes the body). */
   startRun: "/api/runs",
@@ -590,7 +590,13 @@ export function overviewHtml({
   if (headNow) notices.push(headNotice(headNow, baseline, canMove));
   if (baseline.moved)
     notices.push(
-      `The session was moved to ${esc(baseline.short)} from ${esc(baseline.moved.from)} on ${esc(baseline.moved.at)}.`,
+      `The session was moved to ${esc(baseline.short)} from ${esc(baseline.moved.from)} on ${esc(baseline.moved.at)}.${
+        canMove && !archived
+          ? ` Moving it back changes no file: the verdicts are compared with ${esc(baseline.moved.from)}'s pictures again.${actionsHtml(
+              [actionButton(`Move back to ${baseline.moved.from}`, hrefs.moveBaseline, { action: "back" })],
+            )}`
+          : ""
+      }`,
     );
   if (newestIde && baseline.build && newestIde > baseline.build)
     notices.push(`BETA ${newestIde} found: the baseline's pictures were taken on BETA ${baseline.build} at newest.`);

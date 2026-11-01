@@ -73,7 +73,10 @@ const TAIL_LINES = 8;
  * gives it, `manifest()` the manifest as it is now (openManifest), `docsRoot` the pictures'
  * folder, `bundlesRoot` the bundle cache (or null), `head()` the baseline HEAD would make
  * ({hash, short, build}; null for none, or an error thrown when there is none to read),
- * `revisionAt(hash)` a revision as openRevision gives it, `changed()` the pictures that differ
+ * `baselineOf(rev)` the baseline the commit `rev` would make, as `head()` does for HEAD, which
+ * the move back to the earlier baseline takes, `revisionAt(hash)` a revision as openRevision
+ * gives it, `changedBetween(a, b)` the pictures that differ between two commits (a Set of paths
+ * under docs/; null: every picture is taken to differ), `changed()` the pictures that differ
  * from the baseline ([{out, status}], changedPictures'), `ides` the installs a retake can be run
  * on, newest first ([{build, exe}], listIdes'), `onLine(run, line)` called for each line of a run
  * meant for a person, and `command` the probes' stand-in for the tools a run starts (startRun).
@@ -96,7 +99,9 @@ export function createReviewServer({
   docsRoot = DOCS_DIR,
   bundlesRoot = null,
   head = () => null,
+  baselineOf = () => null,
   revisionAt = null,
+  changedBetween = null,
   changed = () => [],
   ides = [],
   onLine,
@@ -199,8 +204,25 @@ export function createReviewServer({
         facts: r.facts,
         verdicts: shownVerdicts(r),
       })),
-      { exists, measure, outside: outside(), baseline: session.data.baseline.hash },
+      { exists, measure, outside: outside(), baseline: session.data.baseline.hash, stale },
     );
+  // Whether the picture `out` differs between the commit `hash` and the baseline: a verdict
+  // judged against that commit's picture then needs a look. One git diff per pair of commits,
+  // kept; one that cannot be read takes every picture to differ.
+  const between = new Map();
+  const stale = (out, hash) => {
+    if (!changedBetween) return true;
+    const key = `${hash}..${session.data.baseline.hash}`;
+    if (!between.has(key)) {
+      let set = null;
+      try {
+        set = changedBetween(hash, session.data.baseline.hash);
+      } catch {}
+      between.set(key, set);
+    }
+    const set = between.get(key);
+    return set ? set.has(out) : true;
+  };
   const filterOptions = { overridden: (out) => isOverridden(entry(out)), exists };
 
   // ---- runs ----
@@ -626,17 +648,36 @@ export function createReviewServer({
   }
 
   // Moves the session to HEAD: the new baseline's picture is what a capture is judged against.
-  function moveToHead() {
-    refuseWhileCleaning();
-    const h = head();
-    if (!h || !revisionAt) throw new Error("HEAD cannot be read");
-    if (h.hash === session.data.baseline.hash) return;
-    revision = revisionAt(h.hash);
-    session.moveBaseline(h);
+  // The session moved to the baseline `b` ({hash, short, build}). Nothing under docs/ changes:
+  // what changes is the pictures the verdicts are compared with, so a move is undone by moving
+  // back.
+  function moveTo(b) {
+    if (b.hash === session.data.baseline.hash) return;
+    revision = revisionAt(b.hash);
+    session.moveBaseline(b);
     headSeen = { at: 0, value: null };
     changedSeen = { at: 0, value: [] };
     maps.clear();
     measures.clear();
+  }
+  function moveToHead() {
+    refuseWhileCleaning();
+    const h = head();
+    if (!h || !revisionAt) throw new Error("HEAD cannot be read");
+    moveTo(h);
+  }
+  // Back to the baseline the last move left: its commit by hash (a session moved before the hash
+  // was recorded names it by its short hash).
+  function moveBack() {
+    refuseWhileCleaning();
+    const from = session.data.baseline.moved;
+    if (!from) throw new Error("the session has not been moved");
+    let b = null;
+    try {
+      b = baselineOf(from.fromHash ?? from.from);
+    } catch {}
+    if (!b || !revisionAt) throw new Error(`the earlier baseline, ${from.from}, cannot be read`);
+    moveTo(b);
   }
 
   // ---- the commit ----
@@ -802,7 +843,8 @@ export function createReviewServer({
     const out = segs[0] === "api" && segs[1] === "picture" ? segs.slice(2).join("/") : null;
     try {
       if (url.pathname === hrefs.moveBaseline) {
-        moveToHead();
+        if (body.action === "back") moveBack();
+        else moveToHead();
         sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
         return sendJson(res, 200, { ok: true, baseline: session.data.baseline });
       }

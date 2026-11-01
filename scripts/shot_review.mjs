@@ -27,7 +27,7 @@ import {
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 import { listIdes } from "./lib/tb-install.mjs";
 import { MANIFEST, openManifest, parseManifest } from "./lib/shot-manifest.mjs";
-import { changedPictures, openRevision, revisionOf } from "./lib/shot-revision.mjs";
+import { changedBetween, changedPictures, openRevision, revisionOf } from "./lib/shot-revision.mjs";
 import { BUNDLE_CACHE } from "./svgshot/bundle.mjs";
 import { runOf } from "./lib/shot-runs.mjs";
 import { createReviewServer } from "./lib/shot-server.mjs";
@@ -182,7 +182,9 @@ if (values.archived !== undefined) {
     manifest: () => openManifest(),
     bundlesRoot: BUNDLE_CACHE,
     head: () => baselineAt(revisionOf(DOCS_DIR, "HEAD")),
+    baselineOf: (rev) => baselineAt(revisionOf(DOCS_DIR, rev)),
     revisionAt: (hash) => openRevision(DOCS_DIR, hash),
+    changedBetween: (a, b) => changedBetween(DOCS_DIR, a, b),
     changed: () => changedPictures(DOCS_DIR, session.data.baseline.hash).pictures,
     ides: listIdes(),
     onLine: (run, line) => console.log(`run ${run.n}: ${line}`),

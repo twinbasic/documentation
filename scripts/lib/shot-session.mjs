@@ -212,10 +212,13 @@ export function openSession(root, baseline, now = () => new Date().toISOString()
     },
     /**
      * Makes `baseline` ({hash, short, build}) the session's, recording when and which one it
-     * replaced as `moved`, {at, from}.
+     * replaced as `moved`, {at, from, fromHash}, `from` its short hash.
      */
     moveBaseline(baseline) {
-      data.baseline = { ...baseline, moved: { at: now(), from: data.baseline.short } };
+      data.baseline = {
+        ...baseline,
+        moved: { at: now(), from: data.baseline.short, fromHash: data.baseline.hash },
+      };
       save();
     },
     /**
