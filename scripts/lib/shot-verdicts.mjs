@@ -69,7 +69,8 @@ export const againstOf = (run) => optionOf(run, "--against");
  *   errors                 a Map from a picture to why its last application failed
  *
  * An application that fails is recorded in `errors` and leaves the picture as far as it got;
- * judging it again (rejudge) tries again.
+ * judging it again (rejudge) tries again. So does a verdict that cannot be read: arrive then
+ * applies nothing, and can be called again.
  */
 export function createApplier({ session, docsRoot, bundlesRoot, revision, manifest }) {
   const stageOf = (n) => runPaths(session.root, n).stage;
@@ -219,7 +220,13 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
   }
 
   function arrive(n, out, part) {
-    const staged = readVerdict(stageOf(n), out);
+    let staged;
+    try {
+      staged = readVerdict(stageOf(n), out);
+    } catch (e) {
+      errors.set(out, `run ${n}'s verdict could not be read: ${e.message}`);
+      return false;
+    }
     if (!staged?.[part]) return false;
     const r = reviewed(n, out) ?? { out, png: null, svg: null, done: [] };
     if (r.done.includes(part)) return false;

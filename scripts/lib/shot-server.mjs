@@ -214,8 +214,12 @@ export function createReviewServer({
       const v = r.verdicts.get(e.out) ?? { png: null, svg: null };
       v[part] = value;
       r.verdicts.set(e.out, v);
-      // applied as it arrives: the stage holds the verdict by the time its event is written
-      applier.arrive(record.n, e.out, part);
+      // applied as it arrives: the stage holds the verdict by the time its event is written;
+      // one that could not be read is tried again a moment later
+      if (!applier.arrive(record.n, e.out, part) && applier.errors.has(e.out))
+        setTimeout(() => {
+          if (applier.arrive(record.n, e.out, part)) sse.send("update", { outs: [e.out] });
+        }, 500);
     }
     if (e.out) sse.send("update", { outs: [e.out] });
     else sse.send("update", { outs: e.type === "run" || e.type === "summary" ? listedOf(r) : [], runs: true });

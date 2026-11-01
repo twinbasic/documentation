@@ -128,7 +128,13 @@ export function startRun(
     onRecord: (_, value) => {
       appendEvent(files.events, value);
       if (value.type === "summary") stopped ||= !!value.stopped;
-      onEvent(run, value);
+      // A fault in taking an event must not end the tool: the run would lose its pipe and end
+      // without putting the registry back.
+      try {
+        onEvent(run, value);
+      } catch (e) {
+        line(`the review tool could not take the event ${JSON.stringify(value.type)}: ${e.stack ?? e}`);
+      }
     },
     onLine: line,
   });

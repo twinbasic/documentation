@@ -26,6 +26,7 @@ import {
   pngVerdict,
   readReviewed,
   stageCapture,
+  stagedFiles,
   stageSvg,
   svgVerdict,
   writeVerdict,
@@ -566,6 +567,57 @@ describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => 
   const OLD = grey(false);
   const NEW = grey(true);
   const QUIET = { width: 40, height: 30, data: new Uint8Array(1200) };
+
+  test("a verdict read while the run writes it is not applied, and is applied when called again", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-read-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const docs = path.join(root, "docs");
+    fs.mkdirSync(path.join(docs, "IDE", "Images"), { recursive: true });
+    fs.writeFileSync(path.join(docs, A), OLD);
+    const base = "a".repeat(40);
+    const session = openSession(root, () => ({ hash: base, short: "aaaaaaaa", build: 1010 }));
+    const revision = { hash: base, short: "aaaaaaaa", bytes: () => OLD, read: () => new Map() };
+    const applier = createApplier({
+      session,
+      docsRoot: docs,
+      bundlesRoot: null,
+      revision: () => revision,
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+    });
+    session.addRun({ tool: "shoot_docs", args: ["--against", base] });
+    const stage = runPaths(root, 1).stage;
+    const fate = {
+      state: "updated",
+      write: NEW,
+      against: "revision",
+      size: { w: 40, h: 30 },
+      dark: null,
+      by: "rule",
+      earlier: null,
+    };
+    writeVerdict(
+      stage,
+      A,
+      "png",
+      pngVerdict({ decision: fate, review: null, build: 1501, staged: stageCapture(stage, A, NEW, null) }),
+    );
+    // the file as a reader met it while the run wrote it in place: empty
+    const file = stagedFiles(stage, A).verdict;
+    const whole = fs.readFileSync(file);
+    fs.writeFileSync(file, "");
+    assert.equal(applier.arrive(1, A, "png"), false);
+    assert.match(applier.errors.get(A), /run 1's verdict could not be read/);
+    assert.deepEqual(fs.readFileSync(path.join(docs, A)), OLD);
+    fs.writeFileSync(file, whole);
+    assert.equal(applier.arrive(1, A, "png"), true);
+    assert.equal(applier.errors.has(A), false);
+    assert.deepEqual(fs.readFileSync(path.join(docs, A)), NEW);
+    // a staged file is renamed into place: no temporary file is left beside it
+    assert.deepEqual(
+      fs.readdirSync(path.dirname(file)).filter((f) => f.endsWith(".tmp")),
+      [],
+    );
+  });
 
   test("applies a run's verdicts as they arrive, judges them again after a review, and drops a replay's SVG of another PNG", (t) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-"));

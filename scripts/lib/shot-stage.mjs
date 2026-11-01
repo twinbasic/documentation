@@ -25,7 +25,7 @@
 // under docs/ and wherever git would take it (outputRefusal).
 
 import { deflateRawSync, inflateRawSync } from "node:zlib";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { slugOf, svgOf } from "./shot-apply.mjs";
 import { outputRefusal } from "./shot-revision.mjs";
@@ -71,7 +71,21 @@ export function stageRefusal(dir, docsRoots) {
 /** Writes `bytes` (a Buffer or text) to `file`, making its folder. */
 export function writeStaged(file, bytes) {
   mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, bytes);
+  // Written whole and renamed into place: the review tool reads a verdict as its event
+  // arrives, while the run may be writing the file again with its other part, and a file
+  // written in place is empty for a moment.
+  const temp = `${file}.${process.pid}.tmp`;
+  writeFileSync(temp, bytes);
+  for (let tries = 0; ; tries++) {
+    try {
+      renameSync(temp, file);
+      return;
+    } catch (e) {
+      // a reader holding the file open on Windows: wait a moment and try again
+      if (tries >= 50 || !["EPERM", "EACCES", "EBUSY"].includes(e.code)) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+    }
+  }
 }
 
 // A staged file's path as a verdict names it: relative to the stage, with forward slashes.
