@@ -1017,10 +1017,24 @@ onStop(process.stdin, () => {
       assert.equal(failedPage.status, 200);
       assert.match(await failedPage.text(), /Regions of change<\/dt><dd>not measured/);
 
-      // Removed: what it wrote under docs undone, its record and folder gone.
       const base2 = `http://127.0.0.1:${port2}`;
+      const runsPage = await (await fetch(base2 + hrefs.runs)).text();
+      // Retake what failed: a new retake of the picture run 1 failed on, with its --svg (none)
+      const retake =
+        /<button type="button" data-url="\/api\/runs" data-act="([^"]*)"[^>]*>Retake what failed \(1\)<\/button>/.exec(
+          runsPage,
+        );
+      assert.ok(retake, "run 1 offers Retake what failed");
+      const act = JSON.parse(retake[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"));
+      assert.deepEqual(act, { kind: "retake", pictures: [B], svg: false });
+      assert.deepEqual(runOf(act, { hash: "a".repeat(40) }), {
+        tool: "shoot_docs",
+        args: ["--only", onlyOf([B]), "--against", "a".repeat(40)],
+      });
+
+      // Removed: what it wrote under docs undone, its record and folder gone.
       assert.match(
-        await (await fetch(base2 + hrefs.runs)).text(),
+        runsPage,
         /data-confirm="Remove run 1\? Every picture it changed goes back to how it was before it ran\./,
       );
       assert.equal(fs.existsSync(path.join(docs, A)), true);

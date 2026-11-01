@@ -1045,9 +1045,31 @@ function removeButton(r, busy) {
   ];
 }
 
+// Retake what failed, for a retake that has ended with pictures it failed on: a new retake of
+// exactly those, with the run's --svg and IDE. They have no verdict of the failed run, so the
+// new run's are their only ones.
+function retakeFailedButton(r, busy) {
+  const f = r.failedRetake;
+  if (!f) return [];
+  const n = f.pictures.length;
+  return [
+    actionButton(
+      `Retake what failed (${n})`,
+      hrefs.startRun,
+      { kind: "retake", pictures: f.pictures, svg: f.svg, ...(f.ide ? { ide: f.ide } : {}) },
+      {
+        disabled: f.missing ? `the IDE run ${r.n} used, ${f.missing}, is no longer found` : busyText(busy),
+        title: `a new retake of the ${n === 1 ? "picture" : `${n} pictures`} run ${r.n} failed on${
+          f.ide ? `, on BETA ${f.ide}` : ""
+        }:\n${f.pictures.join("\n")}`,
+      },
+    ),
+  ];
+}
+
 function runArticle(r, { newestCleanup, busy }) {
   const times = [`started ${whenText(r.started)}`, r.ended ? `ended ${whenText(r.ended)}` : null].filter(Boolean);
-  const buttons = [...stopButtons(r), ...removeButton(r, busy)];
+  const buttons = [...stopButtons(r), ...retakeFailedButton(r, busy), ...removeButton(r, busy)];
   if (r.kind === "cleanup" && r.dryRun && !r.live && r.exit === 0 && r.n === newestCleanup)
     buttons.push(
       actionButton(

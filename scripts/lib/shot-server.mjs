@@ -426,8 +426,34 @@ export function createReviewServer({
       const later = [...runs.values()].filter((o) => o.record.n > r.record.n);
       return { pictures: outs.length, later: outs.filter((out) => later.some((o) => o.verdicts.has(out))).length };
     };
+    // What "Retake what failed" retakes of a retake that has ended: the pictures it failed on (a
+    // failure reported, its job failed before reaching it, or a verdict that says so), with its
+    // --svg and its IDE, by the build it is among the installs found (missing: no longer found).
+    const failedRetake = (r) => {
+      if (r.record.tool !== "shoot_docs" || r.live || r.record.args.includes("--dry-run")) return null;
+      const f = r.facts;
+      const pictures = f.listed.filter((out) => {
+        const png = r.verdicts.get(out)?.png;
+        if (png) return png.state === "failed";
+        return f.failed.has(out) || f.jobs.get(f.jobOf.get(out))?.state === "failed";
+      });
+      if (!pictures.length) return null;
+      const exe = optionOf(r.record, "--ide");
+      const found = exe ? ides.find((i) => path.resolve(i.exe) === path.resolve(exe)) : null;
+      return {
+        pictures,
+        svg: r.record.args.includes("--svg"),
+        ide: found?.build ?? null,
+        missing: exe && !found ? exe : null,
+      };
+    };
     return runsHtml({
-      runs: [...runs.values()].map((r) => ({ ...runRow(r), log: logOf(r), removal: removal(r) })),
+      runs: [...runs.values()].map((r) => ({
+        ...runRow(r),
+        log: logOf(r),
+        removal: removal(r),
+        failedRetake: failedRetake(r),
+      })),
       baseline: session.data.baseline,
       ides: ides.map(({ build }) => build),
       busy: busyRun(),

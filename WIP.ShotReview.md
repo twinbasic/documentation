@@ -131,7 +131,14 @@ leaving its writes under `docs/` was turned down: a picture only it changed woul
 changed outside the runs, which the commit leaves out. A run that is running is stopped
 first; while a clean-up runs or a commit is under way, Remove waits. A picture that cannot be
 put back keeps the run, and Remove again tries again. A clean-up keeps no layers, so removing
-one leaves what it put back. Below, a form for a new run:
+one leaves what it put back. A retake that has ended with pictures it failed on (a failure
+reported, a job that failed before reaching them, or a staged verdict that says so) has
+**Retake what failed (N)**: a new retake of exactly those pictures, with the run's `--svg`
+and its IDE (by its build among the installs found; disabled when that install is gone).
+Continuing the failed run itself was turned down (owner): its layers would come after a later
+run's, and a run has one start, one end and one summary. The failed pictures have no verdict
+of that run, so the new run's are their only ones, and they leave the Failed group. Below, a
+form for a new run:
 
 - **Retake**: `shoot_docs.mjs`, with the IDE chosen from the installs found (the newest
   offered when it is newer than the session's baseline: "BETA 1501 found"), the pictures
