@@ -930,16 +930,25 @@ ${files.capture && before ? loupesHtml(png.regions, size, { src: before.src, lab
       );
     const accepted = svg.by === "decision" ? svg.faithful : null;
     const stays = !restored && svg.state === "unchanged" && svg.why && svg.faithful !== null;
+    // An SVG that stays with its PNG can be accepted in place of the file's; refusing it would
+    // refuse this one, not the file's, and change nothing.
     const choice = svg.svg
       ? actionsHtml([
-          actionButton("Accept the SVG", act, { action: "svg", accept: true }, { pressed: accepted === true }),
-          actionButton("No SVG", act, { action: "svg", accept: false }, { pressed: accepted === false }),
+          actionButton(
+            stays ? "Accept this SVG in place of the file's" : "Accept the SVG",
+            act,
+            { action: "svg", accept: true },
+            { pressed: accepted === true },
+          ),
+          ...(stays
+            ? []
+            : [actionButton("No SVG", act, { action: "svg", accept: false }, { pressed: accepted === false })]),
           ...(accepted === null ? [] : [actionButton("Back to the bar", act, { action: "svg", accept: null })]),
         ])
       : "";
     svgRow = `<section${restored ? ' class="muted"' : ""}>
 <h2>SVG: ${esc(svgStateText(svg))}</h2>
-${restored ? "<p>The PNG goes back to HEAD's, and its SVG goes back with it.</p>" : ""}${stays ? `<p>The SVG stays as it is (${esc(svg.why)}): it was judged all the same, and is written as judged if a review takes the capture.</p>` : ""}${svg.look ? `<p class="notice">Needs a look: ${esc(svg.look.text)}.</p>` : ""}${restored ? "" : choice}${factsHtml(
+${restored ? "<p>The PNG goes back to HEAD's, and its SVG goes back with it.</p>" : ""}${stays ? `<p>The file's SVG stays as it is (${esc(svg.why)}). This one was judged all the same, and is written as judged if a review takes the capture or accepts it.</p>` : ""}${svg.look ? `<p class="notice">Needs a look: ${esc(svg.look.text)}.</p>` : ""}${restored ? "" : choice}${factsHtml(
   [
     ["Run", `${svg.run}`],
     ["Decided by", svg.by === "decision" ? "a review's decision about these bytes" : svg.by ? "the rule" : null],

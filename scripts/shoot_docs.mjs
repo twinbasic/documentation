@@ -167,7 +167,7 @@ import { inRects, pngsNear, withinNoise } from "./lib/shot-change.mjs";
 import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
 import { applyPicture, applySvg, dropPicture, restorePictures, svgOf } from "./lib/shot-apply.mjs";
 import { cleanupResets, decidePicture, pngRule, SVG_FAITHFUL, svgFollowsPng } from "./lib/shot-policy.mjs";
-import { MANIFEST, openManifest } from "./lib/shot-manifest.mjs";
+import { MANIFEST, openManifest, svgDecision } from "./lib/shot-manifest.mjs";
 import { reviewPicture, reviewSvg } from "./lib/shot-queue.mjs";
 import {
   pngVerdict,
@@ -13597,12 +13597,13 @@ async function keepSvg(name, out, png, picture, kept, holds) {
     if (stageRoot) writeVerdict(stageRoot, out, "svg", part);
     event("svg", { job: name, out, ...part });
   };
-  // The SVG of a picture whose PNG was not written stays as it is, with its bundle
-  // (svgFollowsPng, lib/shot-policy.mjs); one whose PNG went back to the revision's, or is the
-  // dark one's, went with it (keep).
+  // The SVG of a picture whose PNG was not written stays as it is, with its bundle, unless a
+  // review accepted this one (svgFollowsPng, lib/shot-policy.mjs); one whose PNG went back to
+  // the revision's, or is the dark one's, went with it (keep).
   const byPng =
     kept === null ? "the light picture is the dark one" : kept === "restored" ? `its PNG is ${AGAINST}'s` : null;
-  const follows = !byPng && svgFollowsPng({ written: kept, svgOnDisk: existsSync(file) });
+  const accepted = !byPng && !!picture && svgDecision(entryOf(out), picture.svg, png) === true;
+  const follows = !byPng && svgFollowsPng({ written: kept, svgOnDisk: existsSync(file), accepted });
   let staysWhy = null;
   if (!follows) {
     staysWhy = byPng ?? "its PNG is not written";

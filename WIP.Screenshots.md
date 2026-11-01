@@ -1010,7 +1010,14 @@ the PNG was just captured from, and the build shows it in place of the PNG
   differ from run to run (PackagePublishing_1, a floating panel over a form designer still
   drawing; CallStack_Frames.light), and one sitting on the bar (Properties_SystemColours.light
   at 0.251%, 94490c87) was written in one run and removed in the next. `replay.mjs` draws it
-  again after a change to the converter.
+  again after a change to the converter. **A review that accepts a run's SVG writes it all the
+  same** (owner, 2026-11-01; `svgFollowsPng`'s `accepted`, which `shoot_docs.mjs` and the review
+  tool's applier both ask): that is the way to replace an SVG drawn from a bundle the capture
+  recorded wrongly, which a replay redraws as wrongly. Seven were so on 2026-11-01, drawn from
+  bundles captured before 59b14ac0, whose cut-outs' styled scrollbars were recorded hidden:
+  Properties_ColourPicker and its light picture, 2b32ab8c-fabc-4f42-9e6b-06e85574eaf4 and its
+  light picture, ccGridButtonImage and its light picture, and Properties_SystemColours (1.30% of
+  its pixels 8 levels off its PNG, against 0.15% for the SVG run 5 of that day drew).
 - **One line** (`oneLine`). Git checks a picture's SVG out with CRLF where `core.autocrlf` says
   so, since no `.gitattributes` rule can tell it from a diagram's SVG. An SVG icon embedded as
   text and the annotation layer's XML hold line breaks; so each is written as the space an XML

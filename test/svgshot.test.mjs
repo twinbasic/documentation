@@ -2776,10 +2776,11 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
     assert.equal(fs.existsSync(at("a/X.light.svg")), false);
   });
 
-  test("an SVG is judged with its PNG when the PNG is written or there is no SVG to keep", () => {
+  test("an SVG is judged with its PNG when the PNG is written, there is no SVG to keep, or a review accepted it", () => {
     assert.equal(svgFollowsPng({ written: true, svgOnDisk: true }), true);
     assert.equal(svgFollowsPng({ written: false, svgOnDisk: false }), true);
     assert.equal(svgFollowsPng({ written: false, svgOnDisk: true }), false);
+    assert.equal(svgFollowsPng({ written: false, svgOnDisk: true, accepted: true }), true);
   });
 
   test("keeps what a picture held, and puts it back, its build and bundle included", (t) => {

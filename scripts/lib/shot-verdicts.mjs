@@ -14,8 +14,9 @@
 //   a capture       decidePicture: the baseline's picture, the file as the layer found it,
 //                   the run's capture of the dark picture (else the dark file as the layer found
 //                   it, else as it is) and the picture's entry in the manifest
-//   its SVG         decideSvg on its strength map, written when its PNG is (svgFollowsPng),
-//                   its bundle into the cache naming the PNG the file then holds
+//   its SVG         decideSvg on its strength map, written when its PNG is or a review accepted
+//                   it (svgFollowsPng), its bundle into the cache naming the PNG the file then
+//                   holds
 //   a replay's SVG  decideSvg against the file's PNG; dropped when that PNG is no longer the one
 //                   the replay compared it with
 //
@@ -28,6 +29,7 @@ import path from "node:path";
 import { copyBundle, readBundle } from "../svgshot/bundle.mjs";
 import { applyPicture, applySvg, heldOf, heldPictures, holdPicture, svgOf, unholdPicture } from "./shot-apply.mjs";
 import { pngsNear } from "./shot-change.mjs";
+import { svgDecision } from "./shot-manifest.mjs";
 import { decidePicture, decideSvg, svgFollowsPng } from "./shot-policy.mjs";
 import { reviewPicture, reviewSvg } from "./shot-queue.mjs";
 import { optionOf, runPaths } from "./shot-session.mjs";
@@ -189,9 +191,18 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
         "its PNG is the baseline's",
       );
     }
-    if (png && !svgFollowsPng({ written: written(png.state), svgOnDisk: !!held?.svg }))
-      return stays("unchanged", "its PNG is not written");
     const stage = stageOf(n);
+    // a review that accepted this SVG against this capture writes it, though its PNG stays
+    const accepted =
+      !!png?.capture &&
+      !!staged.svg &&
+      svgDecision(
+        m.entry(out),
+        readFileSync(path.join(stage, staged.svg), "utf8"),
+        readFileSync(path.join(stage, png.capture)),
+      ) === true;
+    if (png && !svgFollowsPng({ written: written(png.state), svgOnDisk: !!held?.svg, accepted }))
+      return stays("unchanged", "its PNG is not written");
     const svgOut = svgOf(out);
     if (!staged.svg) {
       // a replay's SVG the same as the file's: nothing to write

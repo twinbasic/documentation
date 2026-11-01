@@ -106,9 +106,12 @@ export function decidePicture({ png, theme, dark, revision, disk, near, entry = 
  * (`written`), or when there is no SVG to keep (`svgOnDisk` false). An SVG drawn from the whole
  * page can differ from run to run in layers the picture does not show, so the SVG of a
  * picture whose PNG stays stays with it (owner): it changes with its PNG, or when replay.mjs
- * draws it again.
+ * draws it again, or when a review accepts the new one (`accepted`: svgDecision of this SVG
+ * against this capture is true; owner, 2026-11-01). That is how an SVG drawn from a bundle
+ * the capture recorded wrongly is replaced, which a replay of that bundle cannot do: the
+ * scrollbars of a cut-out recorded hidden before 59b14ac0.
  */
-export const svgFollowsPng = ({ written, svgOnDisk }) => !!written || !svgOnDisk;
+export const svgFollowsPng = ({ written, svgOnDisk, accepted = false }) => !!written || !svgOnDisk || !!accepted;
 
 /**
  * Whether --cleanup puts the file `after` (bytes) back as the revision has it (`before`):

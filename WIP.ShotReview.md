@@ -119,7 +119,9 @@ keyboard; owner).
   the parameters: noise levels, share, and the rectangles left out (drawn on the picture).
   Changing a parameter judges the picture again at once and shows the verdict it gives.
 - **The SVG row**: the share strongly off, the verdict, the choice *accept / no SVG*, and the
-  parameters: levels, share, rectangles left out. When the PNG goes back to `HEAD`'s, the row
+  parameters: levels, share, rectangles left out. When the SVG stays with its PNG (the PNG not
+  written), the choice is *accept this SVG in place of the file's* alone, which writes it
+  (owner, 2026-11-01): a refusal would refuse the run's SVG, not the file's, and change nothing. When the PNG goes back to `HEAD`'s, the row
   is greyed out and reads that the SVG goes back with it (an SVG changes with its PNG, owner,
   [WIP.Screenshots.md](WIP.Screenshots.md#pictures-as-svg)).
 - **Retake this picture** and **Replay its SVG**: a run of one picture.

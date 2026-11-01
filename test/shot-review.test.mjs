@@ -566,6 +566,31 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     assert.match(page({ state: "unchanged", by: "rule" }, "disk"), /Keep the old picture/);
   });
 
+  test("an SVG that stays with its PNG can be accepted in place of the file's, and not refused", () => {
+    const page = (svg) =>
+      detailHtml({
+        p: {
+          out: A,
+          group: "look",
+          png: { run: 1, state: "unchanged", by: "rule", against: "revision", regions: [], regionCount: 0 },
+          svg: { run: 1, svg: "pictures/A.svg", regions: [], faithful: true, by: "rule", share: 0, ...svg },
+        },
+        filter: "all",
+        place: { index: 0, total: 1, group: "look" },
+        prev: null,
+        next: null,
+        files: { head: { src: "/h", size: [4, 4] }, capture: { src: "/c", size: [4, 4] } },
+        maps: {},
+        rules: { png: pngRule(null), svg: svgRule(null) },
+        build: null,
+        baseline: { hash: "a".repeat(40), short: "aaaaaaaa" },
+      });
+    const stays = page({ state: "unchanged", why: "its PNG is not written" });
+    assert.match(stays, />Accept this SVG in place of the file's</);
+    assert.doesNotMatch(stays, />No SVG</);
+    assert.match(page({ state: "updated", why: null }), />No SVG</);
+  });
+
   test("a strength map is drawn as changeMap draws the two pictures it was measured on", () => {
     const img = (shade) => {
       const rgba = new Uint8Array(30 * 20 * 4);
@@ -800,6 +825,18 @@ describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => 
       [kept.png.state, kept.png.by, kept.svg.state, kept.svg.why],
       ["noise", "decision", "unchanged", "its PNG is not written"],
     );
+
+    // accepts the run's SVG though the PNG stays: it takes the file's SVG's place, its bundle
+    // naming the PNG the file holds
+    const ma = openManifest(manifestFile);
+    ma.setPart(A, "svg", "decision", { accept: true, svg: hashOf("<svg>new</svg>"), png: hashOf(NEW) });
+    ma.save();
+    applier.rejudge(A, 1);
+    assert.equal(applier.errors.size, 0);
+    assert.ok(fs.readFileSync(at(A)).equals(OLD));
+    assert.equal(fs.readFileSync(at("IDE/Images/A.svg"), "utf8"), "<svg>new</svg>");
+    assert.deepEqual([applier.reviewed(1, A).svg.state, applier.reviewed(1, A).svg.by], ["updated", "decision"]);
+    assert.equal(readBundle(bundles, A).png, pngHash(OLD));
 
     // then takes the new capture, and refuses its SVG
     const m2 = openManifest(manifestFile);
