@@ -591,6 +591,29 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     assert.match(page({ state: "updated", why: null }), />No SVG</);
   });
 
+  test("a picture's page offers no replay without a bundle, and fetches itself again when the runs change", () => {
+    const page = (bundled) =>
+      detailHtml({
+        p: { out: A, group: "look", png: null, svg: null },
+        filter: "all",
+        place: { index: 0, total: 1, group: "look" },
+        prev: null,
+        next: null,
+        files: { head: { src: "/h", size: [4, 4] } },
+        maps: {},
+        rules: { png: pngRule(null), svg: svgRule(null) },
+        build: null,
+        baseline: { hash: "a".repeat(40), short: "aaaaaaaa" },
+        bundled,
+      });
+    const replay = (html) => /<button[^>]*>Replay its SVG</.exec(html)[0];
+    assert.match(replay(page(false)), / disabled title="the bundle cache has no bundle of this picture/);
+    assert.doesNotMatch(replay(page(true)), /disabled/);
+    assert.doesNotMatch(replay(page(null)), /disabled/);
+    // an update that names no picture of the page but says the runs changed: the run buttons
+    assert.match(page(true), /if \(me && !d\.runs && !\(d\.outs \|\| \[\]\)\.includes\(me\)\) return;/);
+  });
+
   test("a strength map is drawn as changeMap draws the two pictures it was measured on", () => {
     const img = (shade) => {
       const rgba = new Uint8Array(30 * 20 * 4);

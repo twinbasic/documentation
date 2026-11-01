@@ -26,6 +26,7 @@ import { createServer } from "node:http";
 import path from "node:path";
 import { DOCS_DIR, REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { createSseChannel } from "../../lib/sse.mjs";
+import { readBundle } from "../svgshot/bundle.mjs";
 import { decodePng, pngSize } from "./png.mjs";
 import { svgOf } from "./shot-apply.mjs";
 import { changeMap, shareOff, strengthPicture } from "./shot-change.mjs";
@@ -553,6 +554,7 @@ export function createReviewServer({
       baseline: session.data.baseline,
       error: applier.errors.get(out) ?? null,
       busy: busyRun(),
+      bundled: bundlesRoot ? !!readBundle(bundlesRoot, out) : null,
     });
   }
 

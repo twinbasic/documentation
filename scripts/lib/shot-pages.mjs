@@ -183,7 +183,8 @@ const REVIEW_SCRIPT = `<script>
   const update = (data) => {
     const d = JSON.parse(data);
     const me = document.body.dataset.out;
-    if (me && !(d.outs || []).includes(me)) return;
+    // a picture's page follows its picture, and the runs, which its run buttons wait for
+    if (me && !d.runs && !(d.outs || []).includes(me)) return;
     clearTimeout(timer);
     timer = setTimeout(refresh, 400);
   };
@@ -386,8 +387,16 @@ const busyText = (busy) =>
 const committingNotice = (committing) =>
   `Committing the session: <q>${esc(committing.message)}</q>. Its pictures cannot be changed and no run can start until the commit has ended, which takes a few seconds while the repository's hooks run.`;
 
-/** A retake of `out` and a replay of its SVG, as buttons on its page. */
-const runButtons = (out, busy, { replay = true } = {}) => [
+// Why a replay of a picture's SVG would draw nothing: the bundle cache has no bundle of it
+// (a staged run's bundle goes there only with an SVG the review writes).
+const NO_BUNDLE =
+  "the bundle cache has no bundle of this picture, so a replay would draw nothing: a retake makes one, and a run's SVG can be accepted on the SVG row";
+
+/**
+ * A retake of `out` and a replay of its SVG, as buttons on its page; `bundled` false when the
+ * bundle cache has none of it.
+ */
+const runButtons = (out, busy, { replay = true, bundled = null } = {}) => [
   actionButton(
     "Retake this picture",
     hrefs.startRun,
@@ -400,7 +409,7 @@ const runButtons = (out, busy, { replay = true } = {}) => [
           "Replay its SVG",
           hrefs.startRun,
           { kind: "replay", pictures: [out] },
-          { disabled: busyText(busy) },
+          { disabled: busyText(busy) ?? (bundled === false ? NO_BUNDLE : null) },
         ),
       ]
     : []),
@@ -810,7 +819,7 @@ ${drawOn(svgPic, "svg-ignore", entry?.svg?.ignore)}
  * {png: pngRule, svg: svgRule} of its entry in the manifest, `entry` that entry (or null),
  * `build` the build the manifest records for its file, or null; `baseline` the session's;
  * `error` why the last application of its verdicts failed, or null; `busy` the run that is
- * running ({n, kind}), or null.
+ * running ({n, kind}), or null; `bundled` false when the bundle cache has no bundle of it.
  */
 export function detailHtml({
   p,
@@ -826,6 +835,7 @@ export function detailHtml({
   baseline,
   error = null,
   busy = null,
+  bundled = null,
 }) {
   const groupTitle = (GROUPS.find(([k]) => k === p.group) ?? [null, p.group])[1];
   const nav = pagerHtml({ p, filter, place, prev, next });
@@ -992,7 +1002,7 @@ ${actionsHtml([
 <section>
 <h2>Runs of this picture</h2>
 <p>A retake takes it again (in both themes, a program's window once), with its SVG, against the baseline, ${esc(baseline.short)}; a replay draws its SVG again from its bundle. Other options are on the <a href="${hrefs.runs}">runs page</a>.</p>
-${actionsHtml(runButtons(p.out, busy))}
+${actionsHtml(runButtons(p.out, busy, { bundled }))}
 </section>`;
   const svgPic = files.svgPng ?? null;
   const body = `${nav}
