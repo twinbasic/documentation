@@ -1213,7 +1213,12 @@ again, and failed the setup. `ready` also waits for the pages being prepared: a 
 before the auto-attach is attached by `setAutoAttach` itself and prepared from its event, which `ready`
 did not wait for, so in another `--jobs 10` run on BETA 1033 (2026-11-01) a debugging setup's page was
 reloaded before its script was added, and failed the setup the same way. A page that could not be
-prepared is named in the error. A marker still
+prepared is named in the error. That was not the whole cause: the next `--jobs 10` run failed a
+sample setup the same way with every page prepared, for a reason still unknown. So `checkDefaults`
+also adds the script on its own connection to the page before the reload, which is open while the
+page reloads whatever became of the hook's session, and a marker still missing after that reports
+the page's address and state, the last check's error, the check's steps and the hook's (`trace`:
+connected, each page attached and prepared, ready, a closed connection), each with its time. A marker still
 missing after that is a harness error, exit 2, since the run would have the user's settings. The hook's
 connection lives as long as the process, so a `tbbuild --keep` IDE is hooked until `tbbuild` ends.
 

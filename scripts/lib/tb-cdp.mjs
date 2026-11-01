@@ -62,6 +62,7 @@ export async function connect(wsUrl, { timeout = 30 * 1000, what = wsUrl } = {})
   let id = 0;
   const pending = new Map();
   const listeners = [];
+  const closeListeners = [];
   ws.onmessage = (ev) => {
     // A frame that is not JSON is dropped. It is an event callback, so a throw
     // here is an uncaught exception, which ends the whole process -- once a tool
@@ -84,6 +85,7 @@ export async function connect(wsUrl, { timeout = 30 * 1000, what = wsUrl } = {})
   ws.onclose = () => {
     for (const { rej } of pending.values()) rej(new Error("the DevTools connection closed"));
     pending.clear();
+    for (const l of closeListeners) l();
   };
 
   const send = (method, params = {}, { timeout: ms = timeout, sessionId } = {}) =>
@@ -136,6 +138,7 @@ export async function connect(wsUrl, { timeout = 30 * 1000, what = wsUrl } = {})
     send,
     evaluate,
     on: (fn) => listeners.push(fn),
+    onClose: (fn) => closeListeners.push(fn),
     close: () => ws.close(),
   };
 }

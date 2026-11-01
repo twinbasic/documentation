@@ -79,11 +79,16 @@ describe("the folders an IDE leaves", () => {
 describe("the check that an IDE runs with the default settings (checkDefaults)", () => {
   // A page that runs the hook's script only when it loads after the hook has attached, as the
   // IDE's main.htm does: a reload before then loads it unhooked again.
-  const fakePage = () => {
-    const state = { hooked: false, marked: false, reloads: 0 };
+  // `own` is whether a script the check adds on its own connection runs at the next document.
+  const fakePage = ({ own = false } = {}) => {
+    const state = { hooked: false, marked: false, reloads: 0, added: 0 };
     const c = {
-      evaluate: async () => state.marked,
+      evaluate: async (expression) => (expression.includes("readyState") ? "main.htm, complete" : state.marked),
       send: async (method) => {
+        if (method === "Page.addScriptToEvaluateOnNewDocument") {
+          state.added++;
+          if (own) state.hooked = true;
+        }
         if (method === "Page.reload") {
           state.reloads++;
           state.marked = state.hooked;
@@ -114,6 +119,29 @@ describe("the check that an IDE runs with the default settings (checkDefaults)",
     state.marked = true;
     await checkDefaults(c, { error: null, ready: Promise.resolve() });
     assert.equal(state.reloads, 0);
+  });
+
+  test("adds the script on its own connection before the reload, so a page the hook's session missed is hooked", async () => {
+    const { state, c } = fakePage({ own: true });
+    await checkDefaults(c, { error: null, ready: Promise.resolve() });
+    assert.deepEqual([state.marked, state.added, state.reloads], [true, 1, 1]);
+  });
+
+  test("says what the page, the check and the hook did when the page is still not hooked", async () => {
+    const { c } = fakePage();
+    await assert.rejects(
+      checkDefaults(c, {
+        error: null,
+        failures: [],
+        trace: ["0.4 s connected", "0.5 s ready"],
+        ready: Promise.resolve(),
+      }),
+      (e) =>
+        /its page ran no hook, even after a reload/.test(e.message) &&
+        /the page is main\.htm, complete/.test(e.message) &&
+        /the script added to the page/.test(e.message) &&
+        /the hook: 0\.4 s connected, 0\.5 s ready/.test(e.message),
+    );
   });
 
   test("says why when the hook could not be installed", async () => {

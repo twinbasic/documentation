@@ -99,7 +99,16 @@ const READY_LIMIT = 60 * 1000;
  */
 export function installDefaultsHook({ profile, since }) {
   let markReady;
-  const hook = { error: null, failures: [], closed: null, ready: new Promise((r) => (markReady = r)), stop: () => {} };
+  const hook = {
+    error: null,
+    failures: [],
+    trace: [],
+    closed: null,
+    ready: new Promise((r) => (markReady = r)),
+    stop: () => {},
+  };
+  // What the hook did, with its time since `since`, for the error checkDefaults throws.
+  const note = (what) => hook.trace.push(`${((Date.now() - since) / 1000).toFixed(1)} s ${what}`);
   let stopped = false;
   let client = null;
   hook.stop = () => {
@@ -130,17 +139,22 @@ export function installDefaultsHook({ profile, since }) {
     }
     if (stopped) return;
     client = await connect(`ws://127.0.0.1:${port}${wsPath}`, { what: `the IDE's browser on port ${port}` });
+    note("connected");
+    client.onClose(() => note("the connection closed"));
     const source = hookSource();
     // Every page prepared while the hook is set up, which `ready` waits for. A page that existed
     // before the auto-attach (the case checkDefaults reloads for) is attached by setAutoAttach
     // itself and prepared from its event: a reload before its script is added loads it unhooked
     // again, as a shoot_docs run of ten IDEs at once did on BETA 1033.
     const preparing = [];
-    const prepare = async ({ sessionId, targetInfo }) => {
+    const prepare = async ({ sessionId, targetInfo, waitingForDebugger }) => {
       try {
         if (targetInfo.type === "page") {
+          const page = `${targetInfo.url || "a page"}${waitingForDebugger ? ", paused" : ""}`;
+          note(`attached ${page}`);
           await client.send("Page.enable", {}, { sessionId });
           await client.send("Page.addScriptToEvaluateOnNewDocument", { source }, { sessionId });
+          note(`prepared ${page}`);
         }
       } finally {
         // A target left paused never loads; one that is gone answers with an error.
@@ -166,6 +180,7 @@ export function installDefaultsHook({ profile, since }) {
       await prepare({ sessionId, targetInfo: t });
     }
     await Promise.all(preparing);
+    note("ready");
   })()
     .catch((e) => {
       if (!stopped) hook.error = e;
@@ -176,16 +191,26 @@ export function installDefaultsHook({ profile, since }) {
 
 /**
  * Whether the main page ran the hook, and if it did not, one reload, which the hook's session
- * has the script waiting for: the page was hooked after its document had begun (about 1 launch
- * in 50 on the dev box). Throws when it still did not, since the IDE would have the user's
- * settings. Called by attachIde on a connection to the page.
+ * and this connection have the script waiting for: the page was hooked after its document had
+ * begun (about 1 launch in 50 on the dev box). Throws when it still did not, since the IDE would
+ * have the user's settings, saying what the page, the check and the hook did. Called by
+ * attachIde on a connection to the page.
  *
  * @param {{ evaluate: Function, send: Function }} c  the connection
  * @param {{ error: Error | null }} hook
  */
 export async function checkDefaults(c, hook) {
-  const ran = () => c.evaluate("!!window.__tbDefaults").catch(() => false);
+  let lastError = null;
+  const ran = () =>
+    c.evaluate("!!window.__tbDefaults").catch((e) => {
+      lastError = e.message;
+      return false;
+    });
   if (await ran()) return;
+  const begun = Date.now();
+  const steps = [];
+  const step = (what) => steps.push(`${((Date.now() - begun) / 1000).toFixed(1)} s ${what}`);
+  step("no marker");
   // The hook connects on its own, and on a busy machine (ten jobs at once) it can still be on
   // its way: a reload before it has attached loads the page unhooked again, and the hook then
   // attaches to a page whose document has committed. So the reload waits for it.
@@ -193,15 +218,31 @@ export async function checkDefaults(c, hook) {
   await Promise.race([hook.ready, new Promise((r) => (timer = setTimeout(r, READY_LIMIT)))]);
   clearTimeout(timer);
   if (hook.error) throw new Error(`the IDE's settings were not made the defaults: ${hook.error.message}`);
+  step("the hook ready");
   if (await ran()) return;
+  // The script is added on this connection too, which stays open while the page reloads, so the
+  // reload is hooked whatever became of the hook's own session: a shoot_docs run of ten IDEs at
+  // once on BETA 1033 still reloaded a page unhooked once the hook waited for its pages.
+  await c.send("Page.addScriptToEvaluateOnNewDocument", { source: hookSource() }).then(
+    () => step("the script added to the page"),
+    (e) => step(`adding the script to the page failed: ${e.message}`),
+  );
   await c.send("Page.reload", {});
+  step("reloaded");
   for (let i = 0; i < 400; i++) {
     await wait(50);
     if (await ran()) return;
   }
+  step("still no marker");
+  const page = await c
+    .evaluate("location.href + ', ' + document.readyState")
+    .then((s) => `the page is ${s}`)
+    .catch((e) => `the page answers nothing: ${e.message}`);
   const failed = hook.failures?.length ? `; preparing a page failed: ${hook.failures.join("; ")}` : "";
   throw new Error(
     "the IDE's settings were not made the defaults: its page ran no hook, even after a reload " +
-      `(it would have the user's settings; userSettings: true is the opt-out)${failed}`,
+      `(it would have the user's settings; userSettings: true is the opt-out)${failed}; ${page}` +
+      `${lastError ? `; the last check failed: ${lastError}` : ""}; the check: ${steps.join(", ")}` +
+      `${hook.trace?.length ? `; the hook: ${hook.trace.join(", ")}` : ""}`,
   );
 }
