@@ -175,6 +175,7 @@ import {
   decodeSnapshot,
   decoratingBoxes,
   elementTransform,
+  embeddedImage,
   frameGeometry,
   framesIn,
   frameView,
@@ -213,6 +214,20 @@ describe("naturalSize", () => {
     assert.deepEqual(naturalSize(png([...ihdr, 0, 0, 0, 16, 0, 0, 0, 9, 8, 6, 0, 0, 0])), { w: 16, h: 9 });
     const gif = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 20, 0, 10, 0, 0, 0, 0];
     assert.deepEqual(naturalSize(png(gif)), { w: 20, h: 10 });
+  });
+});
+
+describe("embeddedImage", () => {
+  const node = (name, attrs) => ({ name, attrs });
+  test("is the data: image an <embed> shows, which Chromium draws as an <img>", () => {
+    const ico = "data:image/x-icon;base64,AAABAAEAQD8Q";
+    assert.equal(embeddedImage(node("EMBED", { src: ico, class: "embeddedPreview" })), ico);
+    assert.equal(embeddedImage(node("EMBED", { src: "data:IMAGE/PNG;base64,iVBO" })), "data:IMAGE/PNG;base64,iVBO");
+    // a plugin's resource, a file the SVG cannot reach, no source, or another element: none
+    assert.equal(embeddedImage(node("EMBED", { src: "data:application/pdf;base64,JVBE" })), null);
+    assert.equal(embeddedImage(node("EMBED", { src: "http://localhost/a.ico" })), null);
+    assert.equal(embeddedImage(node("EMBED", {})), null);
+    assert.equal(embeddedImage(node("IMG", { src: ico })), null);
   });
 });
 

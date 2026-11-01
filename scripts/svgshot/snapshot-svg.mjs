@@ -1030,6 +1030,14 @@ function jpegSize(b) {
   return null;
 }
 
+// The image an <embed> shows, or null. Chromium draws an <embed> whose resource is an image as
+// it draws an <img>, stretched to its box (the IDE's resource preview: an ICO in an <embed>).
+// Only a data: image is taken: any other resource is a plugin's, or a file the SVG cannot reach.
+export function embeddedImage(node) {
+  const url = node.name === "EMBED" ? node.attrs.src : null;
+  return url && /^data:image\//i.test(url) ? url : null;
+}
+
 // Natural size of a data: image, or null when it has none (an SVG with only a viewBox).
 export function naturalSize(url) {
   const m = /^data:([^;,]+)((?:;[^;,]*)*),(.*)$/s.exec(url);
@@ -1479,8 +1487,9 @@ export function renderSvg(
         stats.canvases++;
       } else note("canvas without a picture");
     }
-    if (l.node.name === "IMG" && l.node.src) {
-      const id = imageDef(l.node.src);
+    const image = l.node.name === "IMG" ? l.node.src : embeddedImage(l.node);
+    if (image) {
+      const id = imageDef(image);
       out.push(`<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"/>`);
       stats.images++;
     }

@@ -1071,6 +1071,13 @@ the IDE calls a JPEG and a BMP `image/png`. The About dialog's EXCALIBUR logo is
 drawn with `background-size: contain`; read as a PNG, its JFIF header gave 4,718,592 by about 4.3
 billion pixels, and the logo would come out 0.054 px wide.
 
+**An `<embed>` of an image is drawn as an `<img>`** (`embeddedImage`): Chromium stretches the
+image to the element's box, as for an `<img>` (checked in headless Chromium: a 10 by 10 PNG in a
+100 by 60 `<embed>` filled it), and an ICO draws in an SVG `<image>`. The resource preview shows
+an `.ico` so (Resource_Preview: the tB icon, an `<embed>` of a `data:image/x-icon` URL, which was
+missing and put 0.35% of its pixels strongly off; now 0%). Only a `data:` image is taken; the
+snapshot's `currentSourceURL` is an `<img>`'s alone, so the URL is the `src` attribute.
+
 **Frames** (owner: cross-origin frames in general). A frame of the same site (the
 docked help pane: the documentation on another `localhost` port) is in the IDE's process, and
 `DOMSnapshot.captureSnapshot` returns its document beside the page's: the `<iframe>` node's
