@@ -140,7 +140,7 @@
 // not a page: the texts of the window and its child windows are searched instead,
 // and what the program draws itself is the fixture's own text (see programShot).
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import path from "node:path";
 import puppeteer from "puppeteer";
@@ -266,6 +266,7 @@ const BROWSER_ARGS = `--force-device-scale-factor=1 ${LCD_TEXT}`;
 
 const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir> | --stage <dir>] [--events] [--jobs N] [--ide <twinBASIC.exe>] [--svg] [--against <rev> | --against-disk] [-h, --help]
        node scripts/shoot_docs.mjs --cleanup [--dry-run] [--only <regex>] [--out <dir>] [--against <rev>]
+       node scripts/shoot_docs.mjs --list [--only <regex>]
 
 Takes the pictures of the IDE that the documentation shows, from IDEs on a
 private desktop, at 2x, each in the IDE's dark theme (X.png) and then in its Light
@@ -393,6 +394,11 @@ which takes the rule's place for those bytes only (--cleanup too).
                    a person; and stop when a line "stop" arrives on stdin: no
                    further picture is taken, the IDEs end and the registry is put
                    back, as at the normal end
+  --list           start no IDE and take nothing: print the table's pictures as one
+                   line of JSON, [{out, setup, once, window}], each \`out\` the dark
+                   picture's path (its light one is X.light.png, unless \`once\`) and
+                   \`window\` whether it is of a program's window, which has no SVG.
+                   Takes --only, and none of the other options
   -h, --help       print this text and exit
 
 Exit codes:
@@ -425,6 +431,7 @@ const { values } = withUsageError(() =>
       "dry-run": { type: "boolean", default: false },
       stage: { type: "string" },
       events: { type: "boolean", default: false },
+      list: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
     stopAt: ["help"],
@@ -432,6 +439,22 @@ const { values } = withUsageError(() =>
 );
 if (values.help) printHelpAndExit(USAGE);
 withUsageError(() => {
+  if (values.list)
+    for (const other of [
+      "out",
+      "diffs",
+      "bundles",
+      "jobs",
+      "ide",
+      "svg",
+      "against",
+      "against-disk",
+      "cleanup",
+      "dry-run",
+      "stage",
+      "events",
+    ])
+      refuseTogether(values, ["list", other]);
   refuseTogether(values, ["against", "against-disk"]);
   for (const other of ["diffs", "bundles"]) refuseTogether(values, ["stage", other]);
   if (values.cleanup)
@@ -559,11 +582,12 @@ try {
 } catch (e) {
   die(2, e.message);
 }
-const ide = findIde(values.ide || undefined);
-if (unsupportedIde(ide)) die(2, unsupportedIde(ide));
+// --list reads the table alone, and needs no IDE.
+const ide = values.list ? null : findIde(values.ide || undefined);
+if (!values.list && unsupportedIde(ide)) die(2, unsupportedIde(ide));
 // The build the manifest records for each picture written, or null when it cannot be read.
 const BUILD = buildNumber(ide);
-if (!ide || !existsSync(ide)) {
+if (!values.list && (!ide || !existsSync(ide))) {
   die(
     2,
     "no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
@@ -5795,6 +5819,7 @@ const formsChapterShots = [
     out: FORMS_IMAGE("Preview_Window"),
     setup: "forms-chapter",
     once: true,
+    window: true,
     async take(ctx) {
       const { c } = ctx;
       await formsDesigner(c);
@@ -11201,6 +11226,7 @@ const programShot = (out, scene, { grow = false } = {}) => ({
   out,
   setup: "programs",
   once: true,
+  window: true,
   take: (ctx) =>
     withProgram(ctx, scene, async (dir, w) => {
       const shown = [await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "before.png"), { active: true })];
@@ -11221,6 +11247,7 @@ const listViewShot = {
   out: "Features/Images/021f6cbf-acce-445d-ade7-3fcad0af4927.png",
   setup: "programs",
   once: true,
+  window: true,
   async take(ctx) {
     const { c } = ctx;
     const dir = path.join(ctx.signals, "ide");
@@ -13126,7 +13153,10 @@ function helpPlaces() {
 
 // Each shot is a picture: `out` its path under the output folder, `setup` the IDE
 // it is taken in, `take(ctx)` which brings that IDE to the state it shows and
-// returns the picture's bytes. Within a setup they run in the order here.
+// returns the picture's bytes. Within a setup they run in the order here. `once`
+// takes it in the dark pass only, and `window` says that it is of a program's
+// window (its take returns {window: true}), which --list reports: a shot whose take
+// and table disagree fails.
 const helpShot = (name) => ({
   out: `IDE/AddIns/Images/Help_${name}.png`,
   setup: "help",
@@ -13190,6 +13220,15 @@ const SHOTS = [
   ...packageServerShots,
   ...notIdeShots,
 ];
+
+// --list: the table's pictures, as the screenshot review tool's page of every picture reads them.
+if (values.list) {
+  const listed = SHOTS.filter((s) => !only || THEMES.some((theme) => only.test(themedOut(s.out, theme))));
+  const row = (s) => ({ out: s.out, setup: s.setup, once: !!s.once, window: !!s.window });
+  // written at once: the process ends before an asynchronous write to a pipe would be done
+  writeSync(1, `${JSON.stringify(listed.map(row))}\n`);
+  process.exit(0);
+}
 
 // ---------------------------------------------------------------- the jobs
 
@@ -13778,6 +13817,12 @@ async function runJob(job) {
         try {
           // a take returns the PNG's bytes, or { png, scale } for a picture not at SCALE
           const taken = await shot.take(ctx);
+          // the table says which shots are of a program's window, for --list: it must say so truly
+          const window = !Buffer.isBuffer(taken) && !!taken.window;
+          if (window !== !!shot.window)
+            throw new Error(
+              `the shot ${window ? "took a program's window" : "is marked window: true"} and ${window ? "is not marked window: true" : "took no program's window"} in the table`,
+            );
           const png = Buffer.isBuffer(taken) ? taken : taken.png;
           if (theme === "dark") darks.set(shot.out, png);
           const { kept, holds } = keep(
@@ -13793,7 +13838,7 @@ async function runJob(job) {
           // (keep). One put back as the revision has it has had its SVG put back with it. With
           // --stage their SVGs are judged and staged all the same (keepSvg).
           if (values.svg && ((kept !== null && kept !== "restored") || stageRoot))
-            await keepSvg(job.name, out, png, state.svg, kept, holds, !Buffer.isBuffer(taken) && !!taken.window);
+            await keepSvg(job.name, out, png, state.svg, kept, holds, window);
         } catch (e) {
           complain(job.name, `${out}: FAILED: ${e.message}`);
           count(theme, "failed");

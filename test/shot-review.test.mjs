@@ -48,17 +48,20 @@ import {
   sessionPaths,
 } from "../scripts/lib/shot-session.mjs";
 import {
+  allPictures,
+  appliedVerdict,
   commitMessage,
   commitPlan,
   filterPictures,
   groupOf,
   hasSvg,
   neighbours,
+  noSvgReason,
   reviewPictures,
   runFacts,
   verdictOfEvent,
 } from "../scripts/lib/shot-review.mjs";
-import { chipsOf, detailHtml, encodePath, hrefs, loupesHtml } from "../scripts/lib/shot-pages.mjs";
+import { allHtml, chipsOf, detailHtml, encodePath, hrefs, loupesHtml, plainHtml } from "../scripts/lib/shot-pages.mjs";
 import { pngRule, svgRule } from "../scripts/lib/shot-policy.mjs";
 import { againstOf, createApplier } from "../scripts/lib/shot-verdicts.mjs";
 import { kindOf, onlyOf, runOf } from "../scripts/lib/shot-runs.mjs";
@@ -678,6 +681,154 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     assert.deepEqual(Buffer.from(strengthPicture(strengthOf(a, b), b)), Buffer.from(changeMap(a, b)));
     assert.throws(() => strengthPicture(strengthOf(a, b), { ...b, width: 29 }), /30 x 20 px/);
   });
+
+  test("a run's verdict as the review applied it takes each part the review applied", () => {
+    const v = { png: { state: "updated" }, svg: { state: "new" } };
+    assert.equal(appliedVerdict(v, null), v);
+    assert.equal(appliedVerdict(null, { done: ["png"] }), null);
+    assert.deepEqual(appliedVerdict(v, { done: ["png"], png: { state: "noise" }, svg: null }), {
+      png: { state: "noise" },
+      svg: { state: "new" },
+    });
+  });
+
+  test("every picture of the table, with why one has no SVG from the newest verdict that says", () => {
+    const shots = [
+      { out: "IDE/Images/W.png", setup: "programs", once: true, window: true },
+      { out: A, setup: "s", once: false, window: false },
+      { out: B, setup: "s", once: false, window: false },
+      { out: C, setup: "s", once: false, window: false },
+      { out: E, setup: "s", once: false, window: false },
+      { out: "IDE/Images/Gone.png", setup: "s", once: false, window: false },
+    ];
+    const files = new Set([
+      "IDE/Images/W.png",
+      A,
+      "IDE/Images/A.light.png",
+      "IDE/Images/A.svg",
+      B,
+      "IDE/Images/B.light.png",
+      C,
+      E,
+      "IDE/Images/E.svg",
+    ]);
+    const refused = { state: "not written", faithful: false, share: 0.4 };
+    const unjudged = { state: "unchanged", why: "its PNG is not written", faithful: null };
+    const verdicts = {
+      // the newest verdict says nothing, the one before it does
+      "IDE/Images/A.light.png": [
+        { svg: unjudged, where: { session: null, run: 3 } },
+        { svg: refused, where: { session: "abc1234", run: 2 } },
+      ],
+      [B]: [{ svg: { state: "unchanged", faithful: true }, where: { session: null, run: 1 } }],
+    };
+    const { pictures, groups } = allPictures({
+      shots,
+      exists: (p) => files.has(p),
+      entry: (out) => (out === E ? { build: 1034, svg: { bar: { levels: 96, share: 1 } } } : null),
+      verdicts: (out) => verdicts[out] ?? [],
+    });
+    const at = (out) => pictures.find((p) => p.out === out);
+    assert.deepEqual(
+      groups.map((g) => [g.key, g.pictures.map((p) => p.out)]),
+      [
+        ["windows", ["IDE/Images/W.png"]],
+        // by reason, then path: accepted, refused, unknown
+        ["nosvg", ["IDE/Images/B.png", "IDE/Images/A.light.png", "IDE/Images/B.light.png", C]],
+        ["missing", ["IDE/Images/Gone.png"]],
+        ["overridden", [E]],
+        ["svg", [A]],
+      ],
+    );
+    assert.deepEqual(at("IDE/Images/A.light.png").reason, {
+      why: "refused",
+      text: "refused: 0.4% of its pixels strongly off its PNG",
+      where: { session: "abc1234", run: 2 },
+    });
+    assert.equal(at(B).reason.why, "accepted");
+    assert.match(at(B).reason.text, /^drawn and accepted, but not written: its PNG was not written$/);
+    assert.deepEqual(at(C).reason, { why: "unknown", text: "no verdict of any session says why", where: null });
+    assert.equal(at("IDE/Images/W.png").reason.why, "window");
+    // a light picture not under docs is the dark one's pixels: the dark one is shown in both themes
+    assert.equal(at(C).bothThemes, true);
+    assert.equal(at(A).bothThemes, false);
+    assert.equal(
+      pictures.some((p) => p.out === "IDE/Images/C.light.png"),
+      false,
+    );
+    assert.equal(at(E).build, 1034);
+    assert.equal(noSvgReason(unjudged), null);
+    assert.deepEqual(noSvgReason({ state: "not written", why: "its shot draws no SVG of it" }), {
+      why: "none",
+      text: "its shot draws no SVG of it",
+    });
+  });
+
+  test("the page of every picture says why each has no SVG, offers their replay, and a picture's plain page its runs", () => {
+    const p = {
+      out: C,
+      setup: "s",
+      window: false,
+      once: false,
+      png: true,
+      svg: false,
+      bothThemes: true,
+      build: null,
+      reason: {
+        why: "refused",
+        text: "refused: 0.4% of its pixels strongly off its PNG",
+        where: { session: "abc1234", run: 2 },
+      },
+      group: "nosvg",
+    };
+    const html = allHtml({
+      groups: [{ key: "nosvg", title: "No SVG", pictures: [p] }],
+      baseline: { short: "aaaaaaaa" },
+      bundled: () => true,
+    });
+    assert.match(html, /<a href="\/all" aria-current="page">All pictures<\/a>/);
+    assert.match(html, /no SVG: refused/);
+    assert.match(html, /refused: 0\.4% of its pixels strongly off its PNG \(run 2 of session abc1234\)/);
+    assert.match(html, /one picture for both themes/);
+    assert.match(html, /build unknown/);
+    const replay = /data-act="([^"]*)"[^>]*>Judge their SVGs again from their bundles \(1\)/.exec(html);
+    assert.deepEqual(JSON.parse(replay[1].replace(/&quot;/g, '"')), { kind: "replay", pictures: [C], recheck: true });
+    assert.deepEqual(runOf({ kind: "replay", pictures: [C], recheck: true }, { hash: "a".repeat(40) }), {
+      tool: "replay",
+      args: ["--only", onlyOf([C]), "--recheck"],
+    });
+    // with no bundle, no replay, and the card says so
+    const none = allHtml({
+      groups: [{ key: "nosvg", title: "No SVG", pictures: [p] }],
+      baseline: { short: "aaaaaaaa" },
+      bundled: () => false,
+    });
+    assert.doesNotMatch(none, /Judge their SVGs again/);
+    assert.match(none, /no bundle/);
+    const plain = plainHtml({
+      p,
+      place: { index: 0, total: 1 },
+      prev: null,
+      next: null,
+      files: { head: null, docs: { src: hrefs.docs(C), size: [80, 60] }, svg: null },
+      baseline: { short: "aaaaaaaa" },
+      bundled: true,
+    });
+    assert.match(plain, /<body data-out="IDE\/Images\/C\.png">/);
+    assert.match(plain, />Retake this picture</);
+    assert.match(plain, />Replay its SVG</);
+    assert.match(plain, /1 of 1 · All pictures/);
+    // a program's window offers a retake only
+    const windowPage = plainHtml({
+      p: { ...p, window: true, reason: { why: "window", text: "a window", where: null } },
+      place: { index: 0, total: 1 },
+      prev: null,
+      next: null,
+      files: { head: null, docs: null, svg: null },
+      baseline: { short: "aaaaaaaa" },
+    });
+    assert.doesNotMatch(windowPage, />Replay its SVG</);
+  });
 });
 
 describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => {
@@ -1226,6 +1377,86 @@ onStop(process.stdin, () => {
       for (const h of app.live()) h.kill();
       await app.close();
       await app2?.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("serves every picture of the table as the working tree has it, with why one has no SVG from an archived session, and a plain page for one", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-all-"));
+    const docs = path.join(root, "docs");
+    const C = "IDE/Images/C.png";
+    fs.mkdirSync(path.join(docs, "IDE", "Images"), { recursive: true });
+    fs.writeFileSync(path.join(docs, C), flat(false));
+    fs.writeFileSync(path.join(docs, A), flat(false));
+    fs.writeFileSync(path.join(docs, "IDE/Images/A.svg"), "<svg/>");
+    const revision = stubRevision("a", { [C]: flat(false) });
+    const base = () => ({ hash: revision.hash, short: revision.short, build: 1500 });
+    // a closed session whose replay refused C's SVG
+    const closed = openSession(archiveRoot(root, "abc1234"), base);
+    closed.addRun({ tool: "replay", args: [] });
+    writeVerdict(
+      runPaths(archiveRoot(root, "abc1234"), 1).stage,
+      C,
+      "svg",
+      svgVerdict({ state: "not written", verdict: { faithful: false, share: 0.4 } }),
+    );
+    let table = [
+      { out: A, setup: "s", once: true, window: false },
+      { out: C, setup: "s", once: false, window: false },
+    ];
+    let reads = 0;
+    const app = createReviewServer({
+      session: openSession(root, base),
+      revision,
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+      docsRoot: docs,
+      archived: () => listArchived(root),
+      shots: async () => {
+        reads++;
+        if (!table) throw new Error("no table");
+        return table;
+      },
+    });
+    try {
+      const at = `http://127.0.0.1:${await app.listen(0)}`;
+      const all = await (await fetch(at + hrefs.all)).text();
+      assert.match(all, /No SVG \(1\)/);
+      assert.match(all, /refused: 0\.4% of its pixels strongly off its PNG \(run 1 of session abc1234\)/);
+      assert.match(all, /With an SVG \(1\)/);
+      // the table is read once while it is fresh
+      await fetch(at + hrefs.all);
+      assert.equal(reads, 1);
+      // C, which no run of this session reported, has a plain page; a picture the table does not name has none
+      const plain = await fetch(at + hrefs.picture(C));
+      assert.equal(plain.status, 200);
+      const text = await plain.text();
+      assert.match(text, /<body data-out="IDE\/Images\/C\.png">/);
+      assert.match(text, /No run of this session reported this picture/);
+      assert.equal((await fetch(at + hrefs.picture("IDE/Images/Nope.png"))).status, 404);
+      // the overview links to the page
+      assert.match(await (await fetch(`${at}/`)).text(), /<a href="\/all">All pictures<\/a>/);
+      // a table that cannot be read is said so, on a server that has none yet
+      table = null;
+      const app2 = createReviewServer({
+        session: openSession(root, base),
+        revision,
+        manifest: () => openManifest(path.join(root, "manifest.json")),
+        docsRoot: docs,
+        shots: async () => {
+          throw new Error("shoot_docs.mjs --list exited 2");
+        },
+      });
+      try {
+        const at2 = `http://127.0.0.1:${await app2.listen(0)}`;
+        assert.match(
+          await (await fetch(at2 + hrefs.all)).text(),
+          /The table of shots could not be read: shoot_docs\.mjs --list exited 2/,
+        );
+      } finally {
+        await app2.close();
+      }
+    } finally {
+      await app.close();
       fs.rmSync(root, { recursive: true, force: true });
     }
   });

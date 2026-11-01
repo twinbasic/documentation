@@ -29,7 +29,7 @@ import { listIdes } from "./lib/tb-install.mjs";
 import { MANIFEST, openManifest, parseManifest } from "./lib/shot-manifest.mjs";
 import { changedBetween, changedPictures, openRevision, revisionOf } from "./lib/shot-revision.mjs";
 import { BUNDLE_CACHE } from "./svgshot/bundle.mjs";
-import { runOf } from "./lib/shot-runs.mjs";
+import { listShots, runOf } from "./lib/shot-runs.mjs";
 import { createReviewServer } from "./lib/shot-server.mjs";
 import {
   acquireLock,
@@ -156,6 +156,7 @@ if (values.archived !== undefined) {
       manifest: () => openManifest(),
       bundlesRoot: BUNDLE_CACHE,
       archived: () => listArchived(REVIEW_ROOT),
+      shots: () => listShots(),
       readOnly: true,
     });
   } catch (e) {
@@ -199,6 +200,7 @@ if (values.archived !== undefined) {
       return { session, revision: openRevision(DOCS_DIR, commit.hash), archive };
     },
     archived: () => listArchived(REVIEW_ROOT),
+    shots: () => listShots(),
   });
   const applied = app.applyPending();
   if (applied) console.log(`applied ${applied} verdicts the session's runs had reported and were not applied`);

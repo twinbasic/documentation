@@ -252,9 +252,9 @@ export function openSession(root, baseline, now = () => new Date().toISOString()
 export const archiveRoot = (root, id) => path.join(sessionPaths(root).archive, id);
 
 /**
- * The sessions archived under `root`, the newest closed first: [{id, closed, baseline, runs}],
- * `closed` {hash, short, message, at}, `runs` how many it had. A folder that holds no session is
- * left out.
+ * The sessions archived under `root`, the newest closed first: [{id, root, closed, baseline,
+ * runs}], `root` the one openSession opens, `closed` {hash, short, message, at}, `runs` how many
+ * it had. A folder that holds no session is left out.
  */
 export function listArchived(root) {
   const dir = sessionPaths(root).archive;
@@ -264,7 +264,13 @@ export function listArchived(root) {
     const file = sessionPaths(archiveRoot(root, id)).file;
     try {
       const s = parseSession(readFileSync(file, "utf8"), file);
-      found.push({ id, closed: s.closed ?? null, baseline: s.baseline, runs: s.runs.length });
+      found.push({
+        id,
+        root: archiveRoot(root, id),
+        closed: s.closed ?? null,
+        baseline: s.baseline,
+        runs: s.runs.length,
+      });
     } catch {}
   }
   const at = (a) => a.closed?.at ?? "";

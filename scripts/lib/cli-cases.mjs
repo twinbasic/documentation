@@ -169,6 +169,10 @@ const CASES = [
   { tool: "scripts/shoot_docs.mjs", args: ["--cleanup", "--against-disk"], exit: 2, stderr: "--cleanup and --against-disk cannot be given together\n" },
   { tool: "scripts/shoot_docs.mjs", args: ["--cleanup", "--against=-x"], exit: 2, stderr: 'not a revision: "-x"\n' },
   { tool: "scripts/shoot_docs.mjs", args: ["--cleanup", "--dry-run", "--out", "."], exit: 2, stderr: / is not in a git working tree\n$/ },
+  // --list needs no IDE: the table, as one line of JSON, with no IDE found
+  { tool: "scripts/shoot_docs.mjs", args: ["--list", "--only", "^IDE/Menu/Images/Menu_File\\.png$"], exit: 0, stdout: '[{"out":"IDE/Menu/Images/Menu_File.png","setup":"no-project","once":false,"window":false}]\n' },
+  { tool: "scripts/shoot_docs.mjs", args: ["--list", "--svg"], exit: 2, stderr: "--list and --svg cannot be given together\n" },
+  { tool: "scripts/shoot_docs.mjs", args: ["--list", "--ide", "no-such.exe"], exit: 2, stderr: "--list and --ide cannot be given together\n" },
   { tool: "scripts/check_examples.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_examples\.mjs \[options\]\n/ },
   { tool: "scripts/check_examples.mjs", args: ["--jobs", "0"], exit: 2, stderr: "check_examples: --jobs expects a whole number of at least 1, got: 0\n" },
   { tool: "scripts/check_examples.mjs", args: ["--batch", "1.5"], exit: 2, stderr: "check_examples: --batch expects a whole number of at least 1, got: 1.5\n" },

@@ -7,6 +7,7 @@
 
 import { svgOf } from "./shot-apply.mjs";
 import { SVG_FAITHFUL } from "./shot-policy.mjs";
+import { WINDOW_WHY } from "./shot-stage.mjs";
 
 /** The overview's groups, in its order: [key, heading]. */
 export const GROUPS = [
@@ -259,6 +260,117 @@ export function neighbours(list, out) {
   const index = list.findIndex((p) => p.out === out);
   if (index < 0) return { index, prev: null, next: null };
   return { index, prev: list[index - 1] ?? null, next: list[index + 1] ?? null };
+}
+
+/**
+ * A run's verdict on a picture, `v` ({png, svg} as its stage holds it, or null), as the review
+ * tool applied it: `done` is what it applied (shot-stage.mjs's readReviewed), or null, and each
+ * part it applied takes the place of the run's.
+ */
+export function appliedVerdict(v, done) {
+  if (!done || !v) return v ?? null;
+  return { png: done.done.includes("png") ? done.png : v.png, svg: done.done.includes("svg") ? done.svg : v.svg };
+}
+
+// ---- every picture --------------------------------------------------------------------
+//
+// The page of every picture (WIP.ShotReview.md, All pictures) shows the pictures as the working
+// tree has them, whatever any session did: every picture shoot_docs.mjs's table names
+// (shoot_docs.mjs --list), each with its PNG and SVG as they are under docs/, its build and
+// allowances from the manifest, and for one with no SVG, why, from the newest verdict that says.
+
+/** The groups of the page of every picture, in its order: [key, heading]. */
+export const ALL_GROUPS = [
+  ["windows", "No SVG: program windows"],
+  ["nosvg", "No SVG"],
+  ["missing", "Not under docs"],
+  ["overridden", "With an allowance or a review's decision"],
+  ["svg", "With an SVG"],
+];
+
+/** The light picture of a dark one's path. */
+const lightOf = (out) => out.replace(/\.png$/i, ".light.png");
+
+// A verdict's share is a percentage already (decideSvg's, as the manifest's).
+const pctText = (share) => `${+share.toFixed(3)}%`;
+
+/**
+ * What an SVG verdict (svgVerdict's shape) says of why its picture has no SVG, {why, text}, or
+ * null when it says nothing: an SVG left as it was with its PNG, and not judged. `why` is
+ * "window", "refused", "accepted" (judged faithful, and not written: its PNG was not) or "none"
+ * (no SVG was drawn).
+ */
+export function noSvgReason(svg) {
+  if (!svg) return null;
+  if (svg.window) return { why: "window", text: WINDOW_WHY };
+  if (svg.faithful === false)
+    return {
+      why: "refused",
+      text: `refused: ${svg.share !== null && svg.share !== undefined ? `${pctText(svg.share)} of its pixels strongly off its PNG` : (svg.measures ?? svg.why ?? "too far off its PNG")}`,
+    };
+  if (svg.faithful === true)
+    return { why: "accepted", text: `drawn and accepted, but not written: ${svg.why ?? "its PNG was not written"}` };
+  if (svg.state === "not written" || svg.state === "removed")
+    return { why: "none", text: svg.why ?? "no SVG was drawn of it" };
+  return null;
+}
+
+/**
+ * Every picture the table `shots` names (shoot_docs.mjs --list: [{out, setup, once, window}],
+ * `out` the dark picture's), as the page of every picture shows them: the dark picture, and the
+ * light one when the table takes it and it is under docs/ (one that is not is the dark one's
+ * pixels, and the page shows the dark one in both themes). `exists(path)` says whether a file is
+ * under docs/, `entry(out)` a picture's entry in the manifest, or null, and `verdicts(out)` the
+ * SVG verdicts any session gave it, newest first, [{svg, where}], `where` {session, run} (the
+ * session's id, null for the one being served).
+ *
+ * Returns {pictures, groups}: each picture {out, setup, window, once, png, svg, bothThemes,
+ * build, reason, group}, `png` and `svg` whether each file is under docs/, `bothThemes` that the
+ * dark picture is shown in both themes, `build` the manifest's, and `reason` for a picture with
+ * no SVG {why, text, where}: the table's for a program's window, else the newest verdict's that
+ * says (noSvgReason), with where it is from, else {why: "unknown"}. `groups` is ALL_GROUPS with
+ * each one's pictures, [{key, title, pictures}]; the No SVG group is ordered by reason, then path.
+ */
+export function allPictures({ shots, exists, entry = () => null, verdicts = () => [] }) {
+  const pictures = [];
+  for (const shot of shots) {
+    const light = lightOf(shot.out);
+    const outs = [shot.out, ...(!shot.once && exists(light) ? [light] : [])];
+    for (const out of outs) {
+      const e = entry(out);
+      const p = {
+        out,
+        setup: shot.setup,
+        window: !!shot.window,
+        once: !!shot.once,
+        png: exists(out),
+        svg: exists(svgOf(out)),
+        bothThemes: out === shot.out && !shot.once && outs.length === 1,
+        build: e?.build ?? null,
+        reason: null,
+        group: null,
+      };
+      if (!p.svg) {
+        if (p.window) p.reason = { ...noSvgReason({ window: true }), where: null };
+        else {
+          const said = verdicts(out).find((v) => noSvgReason(v.svg));
+          p.reason = said
+            ? { ...noSvgReason(said.svg), where: said.where }
+            : { why: "unknown", text: "no verdict of any session says why", where: null };
+        }
+      }
+      p.group = !p.png ? "missing" : !p.svg ? (p.window ? "windows" : "nosvg") : isOverridden(e) ? "overridden" : "svg";
+      pictures.push(p);
+    }
+  }
+  pictures.sort((a, b) => (a.out < b.out ? -1 : a.out > b.out ? 1 : 0));
+  const groups = ALL_GROUPS.map(([key, title]) => ({ key, title, pictures: pictures.filter((p) => p.group === key) }));
+  groups
+    .find((g) => g.key === "nosvg")
+    .pictures.sort((a, b) =>
+      a.reason.why < b.reason.why ? -1 : a.reason.why > b.reason.why ? 1 : a.out < b.out ? -1 : 1,
+    );
+  return { pictures: groups.flatMap((g) => g.pictures), groups };
 }
 
 // ---- the commit -----------------------------------------------------------------------

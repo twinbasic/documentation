@@ -20,6 +20,38 @@ import { appendEvent, RUN_TOOLS, runPaths, STAGED_TOOLS } from "./shot-session.m
 export const EVENT_KIND = "shot-event";
 
 /**
+ * The table of shots, as `shoot_docs.mjs --list` prints it: a promise of [{out, setup, once,
+ * window}]. It runs as a child, hidden as a run is (startRun), and starts no IDE; `command` is
+ * the probes' stand-in for it, {node, script}.
+ */
+export function listShots({ command } = {}) {
+  const node = command?.node ?? process.execPath;
+  const script = command?.script ?? path.join(REPO_ROOT, RUN_TOOLS.shoot_docs);
+  return new Promise((resolve, reject) => {
+    const child = spawn(node, [script, "--list"], {
+      cwd: REPO_ROOT,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+    const out = [];
+    const err = [];
+    child.stdout.on("data", (d) => out.push(d));
+    child.stderr.on("data", (d) => err.push(d));
+    child.on("error", reject);
+    child.on("close", (code) => {
+      const text = Buffer.concat(out).toString("utf8");
+      if (code !== 0)
+        return reject(new Error(`shoot_docs.mjs --list exited ${code}: ${Buffer.concat(err).toString("utf8").trim()}`));
+      try {
+        resolve(JSON.parse(text));
+      } catch (e) {
+        reject(new Error(`shoot_docs.mjs --list printed no table: ${e.message}`));
+      }
+    });
+  });
+}
+
+/**
  * The arguments a run of `tool` is started with, after the script: its own `args`, then, for a
  * staged tool, the stage and --events.
  */

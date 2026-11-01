@@ -108,6 +108,23 @@ A row of counts at the top, filters (all, needs a look, overridden, no SVG), and
 *n* of *m*** to go back to where the queue was left. The two pages of `sheet.mjs` become views
 of this one: `--against` is the overview itself, the pictures with no SVG a filter.
 
+### All pictures
+
+Every picture `shoot_docs.mjs` takes, as the working tree has it, whatever any session did
+(owner, 2026-11-01: after a commit the overview is empty, and the pictures with no SVG are worth
+seeing). The pictures are the table's (`shoot_docs.mjs --list`, which starts no IDE; a shot of a
+program's window says so in the table, `window: true`, and a shot whose take and table disagree
+fails), each dark picture and the light one when it is under docs. A card shows the PNG, whether
+it has an SVG, the manifest's build and its allowances, and for a picture with no SVG why: the
+table's for a window, else the newest SVG verdict of this session or of an archived one that says
+(owner's option 1: no drawing; `noSvgReason`, which takes "refused", "accepted" but not written,
+and "none drawn", and passes over a verdict of an SVG left with its PNG and not judged), else
+"unknown". Groups: no SVG of a program's window, no SVG, not under docs, an allowance or a
+decision, with an SVG (collapsed). The No SVG group has **Judge their SVGs again from their
+bundles**, a replay with `--recheck` of those with a bundle: option 2 on demand. A card opens the
+picture's page of verdicts when the session has one, else a plain page: the baseline's picture,
+the file, its SVG, why it has none, and Retake and Replay, previous and next in this page's order.
+
 ### Detail
 
 One picture: previous and next (in the order of the overview, within the filter it was opened
@@ -537,6 +554,15 @@ Nothing of the plan is left. The two small things left after step 9 are fixed:
   `snapshot-svg.mjs`'s `naturalSize`; the tests' fake headers carry the whole signature now.
   `builder/theme-pictures.mjs` and `builder/vendor-assets.mjs` keep theirs: `builder/` may import
   nothing under `scripts/` but `impexp.mjs` (`biome.jsonc`).
+
+**The page of every picture** (owner, 2026-11-01, after the plan; [All pictures](#all-pictures)):
+
+| Part | Where it is |
+|---|---|
+| The table | `shoot_docs.mjs --list` (`[{out, setup, once, window}]`, written with `writeSync` before `process.exit`, so a pipe gets all of it); `listShots()` in `shot-runs.mjs` runs it hidden; the server reads it when `/all` is first asked for, again after `SHOTS_FRESH` (30 s), one read at a time |
+| The model | `allPictures({shots, exists, entry, verdicts})`, `noSvgReason(svg)`, `ALL_GROUPS` and `appliedVerdict(v, done)` (a run's verdict as the review applied it, which the server's `shownVerdict` now asks too) in `shot-review.mjs` |
+| The verdicts | the server's `verdictsOf()`: this session's model, then each archived session's pictures (`closedSessionPictures(root)`, its runs read as `loadRuns` reads them, through `readRun`), the newest closed first, each read once; `listArchived` now gives each one's `root` |
+| The pages | `allHtml` and `plainHtml` in `shot-pages.mjs`, `hrefs.all`; *All pictures* in the top links and a picture's pager; `/picture/<out>` falls back to the plain page for a picture of the table no run of the session reported |
 
 An allowance is applied as soon as it is submitted; there is no preview of the verdict it would
 give without applying it (the plan's "shows the verdict it gives" is met by the page showing the

@@ -43,6 +43,8 @@ export const hrefs = {
   log: (n) => `/log/${n}`,
   /** The session's runs, and the forms that start one. */
   runs: "/runs",
+  /** Every picture shoot_docs.mjs takes, as the working tree has it, whatever any session did. */
+  all: "/all",
   /** What a commit of the session takes, and its message. */
   commitPage: "/commit",
   /** POST: the session's own files committed ({message, files}), and the session closed. */
@@ -697,6 +699,7 @@ const archivedNotice = (closed) =>
 const topNav = (here) =>
   `<nav class="pager">${[
     ["overview", hrefs.overview(), "Overview"],
+    ["all", hrefs.all, "All pictures"],
     ["runs", hrefs.runs, "Runs"],
     ["commit", hrefs.commitPage, "Commit"],
   ]
@@ -885,7 +888,7 @@ const AGAINST = { revision: "HEAD", disk: "the file", dark: "the dark picture" }
 function pagerHtml({ p, filter, place, prev, next }) {
   const filterLabel = (FILTERS.find(([k]) => k === filter) ?? FILTERS[0])[1];
   const groupTitle = (GROUPS.find(([k]) => k === p.group) ?? [null, p.group])[1];
-  return `<nav class="pager"><a href="${hrefs.overview(filter)}#${anchor(p.out)}">Overview</a><a href="${hrefs.runs}">Runs</a><a href="${hrefs.commitPage}">Commit</a>${
+  return `<nav class="pager"><a href="${hrefs.overview(filter)}#${anchor(p.out)}">Overview</a><a href="${hrefs.all}#${anchor(p.out)}">All pictures</a><a href="${hrefs.runs}">Runs</a><a href="${hrefs.commitPage}">Commit</a>${
     prev ? `<a rel="prev" href="${hrefs.picture(prev.out, filter)}">Previous (k, ←)</a>` : ""
   }<span class="where">${place.index + 1} of ${place.total} · ${esc(filter === "all" ? groupTitle : filterLabel)}</span>${
     next ? `<a rel="next" href="${hrefs.picture(next.out, filter)}">Next (j, →)</a>` : ""
@@ -933,6 +936,152 @@ ${p.outside === "deleted" ? "" : actionsHtml(runButtons(p.out, busy, { replay: f
     title: p.out,
     head: HEAD,
     intro: "Changed outside the session's runs.",
+    body,
+  }).replace("<body>", `<body data-out="${esc(p.out)}">`);
+}
+
+// ---- every picture --------------------------------------------------------------------
+
+// Where a verdict that says why a picture has no SVG is from ({session, run}), as words.
+const whereText = (where) =>
+  where ? `run ${where.run} of ${where.session ? `session ${esc(where.session)}` : "this session"}` : "";
+
+// The chips of a picture of the page of every picture (shot-review.mjs's allPictures), `entry`
+// its entry in the manifest, `bundled` whether the bundle cache has a bundle of it (null: no cache).
+function everyChips(p, entry, bundled) {
+  const chips = [];
+  if (!p.png) chips.push(chipHtml("no PNG under docs", "fail", "the table names it, and docs has no such file"));
+  else if (p.window) chips.push(chipHtml("PNG only: a program's window", "", p.reason?.text ?? ""));
+  else if (!p.svg)
+    chips.push(chipHtml(`no SVG: ${p.reason.why === "unknown" ? "why unknown" : p.reason.why}`, "fail", p.reason.text));
+  else chips.push(chipHtml("SVG"));
+  if (p.bothThemes)
+    chips.push(chipHtml("one picture for both themes", "", "its light picture is the dark one's pixels"));
+  if (p.once) chips.push(chipHtml("taken once", "", "in the dark theme only, as the program draws it"));
+  chips.push(
+    chipHtml(p.build ? `BETA ${p.build}` : "build unknown", "", "the build the manifest records it was taken on"),
+  );
+  if (!p.svg && !p.window && bundled === false) chips.push(chipHtml("no bundle", "", NO_BUNDLE));
+  const allowed = allowancesOf(entry);
+  if (allowed.png) chips.push(chipHtml("PNG: allowance", "review", allowed.png));
+  if (allowed.svg) chips.push(chipHtml("SVG: allowance", "review", allowed.svg));
+  return chips.join("");
+}
+
+// Why a picture of the page of every picture has no SVG, as a paragraph, or "".
+const reasonHtml = (p) =>
+  p.svg || !p.reason
+    ? ""
+    : `<p class="meta">${esc(p.reason.text)}${p.reason.where ? ` (${whereText(p.reason.where)})` : ""}</p>`;
+
+/**
+ * The page of every picture shoot_docs.mjs takes (shot-review.mjs's allPictures): `groups` its
+ * groups, `error` why the table could not be read, or null; `baseline` the session's;
+ * `bundled(out)` whether the bundle cache has a bundle of a picture (null: no cache); `entry(out)`
+ * a picture's entry in the manifest, or null; `busy` what keeps a run from starting, or null;
+ * `archived` the commit that closed the session when it is an archived one, else null.
+ */
+export function allHtml({
+  groups,
+  error = null,
+  baseline,
+  bundled: bundledAt = () => null,
+  entry = () => null,
+  busy = null,
+  archived = null,
+}) {
+  const shown = groups.filter((g) => g.pictures.length);
+  // whether a picture has a bundle matters only for one with no SVG, and reading one is slow
+  // (a bundle file is decompressed): asked once each, for those only
+  const asked = new Map();
+  const bundledIf = (p) => {
+    if (!p.png || p.svg || p.window) return null;
+    if (!asked.has(p.out)) asked.set(p.out, bundledAt(p.out));
+    return asked.get(p.out);
+  };
+  const card = (p) => {
+    const link = hrefs.picture(p.out);
+    return `<article class="card" id="${anchor(p.out)}">
+<label class="pick"><input type="checkbox" data-pick="${esc(p.out)}" aria-label="Select ${esc(p.out)} for a run"> select</label>
+${p.png ? `<a href="${link}"><img src="${hrefs.docs(p.out)}" loading="lazy" alt="${esc(p.out)}"></a>` : ""}<h3><a href="${link}">${esc(p.out)}</a></h3>
+<p class="chips">${everyChips(p, entry(p.out), bundledIf(p))}</p>
+${reasonHtml(p)}
+</article>`;
+  };
+  const group = (g) => {
+    const cards = `<div class="cards" data-group="${g.key}">
+${g.pictures.map(card).join("\n")}
+</div>`;
+    const pickAll = `<label class="pickgroup"><input type="checkbox" data-pick-group="${g.key}" aria-label="Select every picture in ${esc(g.title)} for a run"> select all</label>`;
+    const heading = `${esc(g.title)} (${g.pictures.length}) ${pickAll}`;
+    // the SVGs of the pictures with no SVG judged again from their bundles: a replay with --recheck
+    const replayable = g.key === "nosvg" ? g.pictures.filter((p) => bundledIf(p) !== false).map((p) => p.out) : [];
+    const replay = replayable.length
+      ? actionsHtml([
+          actionButton(
+            `Judge their SVGs again from their bundles (${replayable.length})`,
+            hrefs.startRun,
+            { kind: "replay", pictures: replayable, recheck: true },
+            {
+              disabled: busyText(busy),
+              title:
+                "a replay with --recheck of each picture here with a bundle: its SVG drawn again and judged, and written when it is faithful",
+            },
+          ),
+        ])
+      : "";
+    return g.key === "svg"
+      ? `<details id="g-${g.key}"><summary><h2 style="display:inline">${heading}</h2></summary>
+${cards}
+</details>`
+      : `<h2 id="g-${g.key}">${heading}</h2>
+${replay}${cards}`;
+  };
+  const notices = [];
+  if (archived) notices.push(archivedNotice(archived));
+  if (error) notices.push(`The table of shots could not be read: ${esc(error)}`);
+  return pageHtml({
+    generator: REVIEW_GENERATOR,
+    title: "Every picture",
+    head: HEAD,
+    intro: `Every picture <code>shoot_docs.mjs</code> takes, as the working tree has it now, whatever any session did: its PNG and SVG under docs, the build the manifest records and its allowances, and, for one with no SVG, why, from the newest verdict of this session or an archived one that says. The session's baseline is ${esc(baseline.short)}.`,
+    summary: shown.map((g) => [g.title, g.pictures.length]),
+    contents: shown.map((g) => `<li><a href="#g-${g.key}">${esc(g.title)}</a> (${g.pictures.length})</li>`).join("\n"),
+    body: `${topNav("all")}
+${notices.map((n) => `<div class="notice">${n}</div>`).join("\n")}
+${pickedBar(`: <a href="${hrefs.runs}">start a run of them</a>.`)}
+${shown.length ? shown.map(group).join("\n") : "<p>No picture.</p>"}`,
+  });
+}
+
+/**
+ * The page of a picture no run of this session reported, opened from the page of every picture:
+ * `p` allPictures' picture, `place` {index, total} and `prev` and `next` its neighbours there;
+ * `files` {head, docs, svg}, each {src, size} or null; `entry` its entry in the manifest, or
+ * null; `baseline` the session's; `busy` what keeps a run from starting, or null; `bundled`
+ * whether the bundle cache has a bundle of it (null: no cache).
+ */
+export function plainHtml({ p, place, prev, next, files, entry = null, baseline, busy = null, bundled = null }) {
+  const figs = [];
+  if (files.head) figs.push(figureHtml(files.head.src, files.head.size, `HEAD (${baseline.short})`));
+  if (files.docs) figs.push(figureHtml(files.docs.src, files.docs.size, "The file"));
+  if (files.svg) figs.push(figureHtml(files.svg.src, files.docs?.size ?? null, "Its SVG"));
+  const pager = `<nav class="pager"><a href="${hrefs.overview()}">Overview</a><a href="${hrefs.all}#${anchor(p.out)}">All pictures</a><a href="${hrefs.runs}">Runs</a><a href="${hrefs.commitPage}">Commit</a>${
+    prev ? `<a rel="prev" href="${hrefs.picture(prev.out)}">Previous (k, ←)</a>` : ""
+  }<span class="where">${place.index + 1} of ${place.total} · All pictures</span>${
+    next ? `<a rel="next" href="${hrefs.picture(next.out)}">Next (j, →)</a>` : ""
+  }</nav>`;
+  const body = `${pager}
+<p class="meta">${esc(sizeText(files.docs?.size ?? files.head?.size ?? null))}; ${everyChips(p, entry, bundled)}</p>
+${reasonHtml(p)}
+<p class="notice">No run of this session reported this picture: it is shown as the working tree has it, with no verdict to override. A retake of it, or a replay of its SVG, through this tool judges it.</p>
+${actionsHtml(runButtons(p.out, busy, { replay: p.png && !p.window, bundled }))}
+<div class="trio">${figs.join("\n")}</div>`;
+  return pageHtml({
+    generator: REVIEW_GENERATOR,
+    title: p.out,
+    head: HEAD,
+    intro: "A picture of the table of shots, as the working tree has it.",
     body,
   }).replace("<body>", `<body data-out="${esc(p.out)}">`);
 }

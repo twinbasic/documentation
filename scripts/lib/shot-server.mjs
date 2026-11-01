@@ -31,11 +31,22 @@ import { decodePng, pngSize } from "./png.mjs";
 import { svgOf } from "./shot-apply.mjs";
 import { changeMap, shareOff, strengthPicture } from "./shot-change.mjs";
 import { hashOf } from "./shot-manifest.mjs";
-import { commitHtml, detailHtml, hrefs, outsideHtml, overviewHtml, runsHtml } from "./shot-pages.mjs";
+import {
+  allHtml,
+  commitHtml,
+  detailHtml,
+  hrefs,
+  outsideHtml,
+  overviewHtml,
+  plainHtml,
+  runsHtml,
+} from "./shot-pages.mjs";
 import { pngRule, svgRule } from "./shot-policy.mjs";
 import { commitPaths, workingChanges } from "./shot-revision.mjs";
 import { createApplier } from "./shot-verdicts.mjs";
 import {
+  allPictures,
+  appliedVerdict,
   commitMessage,
   commitPlan,
   FILTERS,
@@ -47,10 +58,36 @@ import {
   verdictOfEvent,
 } from "./shot-review.mjs";
 import { kindOf, runOf, startRun } from "./shot-runs.mjs";
-import { commandOf, optionOf, readEvents, runPaths } from "./shot-session.mjs";
-import { readStrength, readVerdicts } from "./shot-stage.mjs";
+import { commandOf, optionOf, parseSession, readEvents, runPaths, sessionPaths } from "./shot-session.mjs";
+import { readReviewed, readStrength, readVerdicts } from "./shot-stage.mjs";
 
 const TYPES = { ".png": "image/png", ".svg": "image/svg+xml" };
+
+// How long the table of shots (shoot_docs.mjs --list) is used before it is read again: it changes
+// only with the tool's code.
+const SHOTS_FRESH = 30000;
+
+// What a run of the session under `root` left, `record` its record in the session: its events,
+// what they say (runFacts) and its verdicts, {out => {png, svg}}, as its stage holds them.
+function readRun(root, record) {
+  const files = runPaths(root, record.n);
+  const events = readEvents(files.events);
+  const verdicts = new Map(readVerdicts(files.stage).map((v) => [v.out, { png: v.png, svg: v.svg }]));
+  return { events, facts: runFacts(record.tool, events), verdicts };
+}
+
+// The pictures of a closed session under `root`, as its overview showed them: each run's
+// verdicts as the review applied them (appliedVerdict, readReviewed).
+function closedSessionPictures(root) {
+  const data = parseSession(readFileSync(sessionPaths(root).file, "utf8"));
+  const runs = data.runs.map((record) => {
+    const { facts, verdicts } = readRun(root, record);
+    const stage = runPaths(root, record.n).stage;
+    const applied = new Map([...verdicts].map(([out, v]) => [out, appliedVerdict(v, readReviewed(stage, out))]));
+    return { n: record.n, tool: record.tool, live: false, facts, verdicts: applied };
+  });
+  return reviewPictures(runs).pictures;
+}
 
 // A picture's or an SVG's path under docs/, as a URL gives it: forward slashes, no empty or
 // parent segment.
@@ -85,7 +122,9 @@ const TAIL_LINES = 8;
  * `onCommit({hash, short, message})` closes the session once its files are committed, and
  * returns the next one, {session, revision, archive}, `archive` the closed one's id in the
  * archive; `archived()` lists the archived sessions (shot-session.mjs's listArchived), which
- * the commit page names; and `readOnly` serves an archived session: nothing may be changed.
+ * the commit page names and whose verdicts the page of every picture reads; `shots()` the table
+ * of shots, a promise of [{out, setup, once, window}] (shot-runs.mjs's listShots), or null for
+ * no page of every picture; and `readOnly` serves an archived session: nothing may be changed.
  * Returns {server, listen(port, host), start({tool, args}), live(), committing(), close(), model(),
  * applyPending(), session()}: `listen` resolves to the port it listens on; `start` starts a run
  * (runOf's), and returns startRun's handle, or throws while another runs or a commit is under
@@ -112,6 +151,7 @@ export function createReviewServer({
     throw new Error("this server cannot close its session");
   },
   archived = () => [],
+  shots = null,
   readOnly = false,
 }) {
   const newestIde = ides[0]?.build ?? null;
@@ -156,12 +196,8 @@ export function createReviewServer({
   const runs = new Map();
   const loadRuns = () => {
     runs.clear();
-    for (const record of session.data.runs) {
-      const files = runPaths(session.root, record.n);
-      const events = readEvents(files.events);
-      const verdicts = new Map(readVerdicts(files.stage).map((v) => [v.out, { png: v.png, svg: v.svg }]));
-      runs.set(record.n, { record, live: false, handle: null, events, facts: runFacts(record.tool, events), verdicts });
-    }
+    for (const record of session.data.runs)
+      runs.set(record.n, { record, live: false, handle: null, ...readRun(session.root, record) });
   };
   loadRuns();
   const stageFile = (n, rel) => path.join(runPaths(session.root, n).stage, rel);
@@ -190,11 +226,7 @@ export function createReviewServer({
   };
   // A run's verdicts as the pages show them: each part as it was applied (shot-verdicts.mjs),
   // judged again after a review, else as the run reported it.
-  const shownVerdict = (n, out, v) => {
-    const done = applier.reviewed(n, out);
-    if (!done || !v) return v ?? null;
-    return { png: done.done.includes("png") ? done.png : v.png, svg: done.done.includes("svg") ? done.svg : v.svg };
-  };
+  const shownVerdict = (n, out, v) => appliedVerdict(v, applier.reviewed(n, out));
   const shownVerdicts = (r) => new Map([...r.verdicts].map(([out, v]) => [out, shownVerdict(r.record.n, out, v)]));
   const model = () =>
     reviewPictures(
@@ -225,6 +257,106 @@ export function createReviewServer({
     return set ? set.has(out) : true;
   };
   const filterOptions = { overridden: (out) => isOverridden(entry(out)), exists };
+
+  // ---- every picture ----
+  // The table of shots, read when the page of every picture is first asked for and again once
+  // it is older than SHOTS_FRESH; one read at a time. A read that fails keeps the table read
+  // before it, if any.
+  let shotTable = { at: 0, value: null, loading: null };
+  function table() {
+    if (!shots) return Promise.reject(new Error("this server was given no table of shots"));
+    if (shotTable.value && Date.now() - shotTable.at < SHOTS_FRESH) return Promise.resolve(shotTable.value);
+    shotTable.loading ??= Promise.resolve()
+      .then(() => shots())
+      .then(
+        (value) => {
+          shotTable = { at: Date.now(), value, loading: null };
+          return value;
+        },
+        (e) => {
+          shotTable = { ...shotTable, loading: null };
+          if (shotTable.value) return shotTable.value;
+          throw e;
+        },
+      );
+    return shotTable.loading;
+  }
+  // The SVG verdicts any session gave each picture, newest first: this session's as its overview
+  // has them, then each archived session's, the newest closed first (read once each: a closed
+  // session does not change). An archived session served read-only is this session.
+  const closedSessions = new Map();
+  function closedPicturesOf(a) {
+    if (!closedSessions.has(a.id)) {
+      let byOut = new Map();
+      try {
+        byOut = new Map(closedSessionPictures(a.root).map((p) => [p.out, p]));
+      } catch {}
+      closedSessions.set(a.id, byOut);
+    }
+    return closedSessions.get(a.id);
+  }
+  function verdictsOf() {
+    const mine = new Map(model().pictures.map((p) => [p.out, p]));
+    const closed = archived()
+      .filter((a) => a.root && path.resolve(a.root) !== path.resolve(session.root))
+      .map((a) => [a.id, closedPicturesOf(a)]);
+    return (out) =>
+      [[null, mine], ...closed].flatMap(([id, byOut]) => {
+        const p = byOut.get(out);
+        return p?.svg ? [{ svg: p.svg, where: { session: id, run: p.svg.run } }] : [];
+      });
+  }
+  async function everyPicture() {
+    return allPictures({ shots: await table(), exists, entry, verdicts: verdictsOf() });
+  }
+  async function allPage() {
+    let all = null;
+    let error = null;
+    try {
+      all = await everyPicture();
+    } catch (e) {
+      error = e.message;
+    }
+    return allHtml({
+      groups: all?.groups ?? [],
+      error,
+      baseline: session.data.baseline,
+      bundled: (out) => (bundlesRoot ? !!readBundle(bundlesRoot, out) : null),
+      entry,
+      busy: busyRun(),
+      archived: readOnly ? (session.data.closed ?? {}) : null,
+    });
+  }
+  // The page of a picture no run of this session reported, from the page of every picture: the
+  // baseline's picture against the file, its SVG, why it has none, and its runs. Null when the
+  // table does not name it.
+  async function plainPage(out) {
+    let all;
+    try {
+      all = await everyPicture();
+    } catch {
+      return null;
+    }
+    const place = neighbours(all.pictures, out);
+    if (place.index < 0) return null;
+    const p = all.pictures[place.index];
+    const file = (src, bytes) => (bytes ? { src, size: pngSize(bytes) } : null);
+    return plainHtml({
+      p,
+      place: { index: place.index, total: all.pictures.length },
+      prev: place.prev,
+      next: place.next,
+      files: {
+        head: file(hrefs.head(out), revision.bytes(out)),
+        docs: file(hrefs.docs(out), readIf(path.join(docsRoot, out))),
+        svg: p.svg ? { src: hrefs.docs(svgOf(out)), size: null } : null,
+      },
+      entry: entry(out),
+      baseline: session.data.baseline,
+      busy: busyRun(),
+      bundled: bundlesRoot ? !!readBundle(bundlesRoot, out) : null,
+    });
+  }
 
   // ---- runs ----
   const listedOf = (r) => r.facts.listed;
@@ -939,11 +1071,17 @@ export function createReviewServer({
     if (url.pathname === "/") return page(req, res, overview(filter));
     if (url.pathname === hrefs.runs) return page(req, res, runsPage());
     if (url.pathname === hrefs.commitPage) return page(req, res, commitPage());
+    if (url.pathname === hrefs.all) return allPage().then((html) => page(req, res, html));
     if (url.pathname === hrefs.events) return sse.handle(req, res);
     if (first === "picture") {
       const out = rest.join("/");
-      const html = isDocsPath(out) ? detail(out, filter) : null;
-      return html ? page(req, res, html) : notFound(res, `${out} is not a picture of this session`);
+      if (!isDocsPath(out)) return notFound(res, `${out} is not a picture`);
+      // a picture of the session has its page of verdicts; any other the table names, a plain one
+      const html = detail(out, filter);
+      if (html) return page(req, res, html);
+      return plainPage(out).then((plain) =>
+        plain ? page(req, res, plain) : notFound(res, `${out} is not a picture of this session or of the table`),
+      );
     }
     if (first === "log") {
       const n = Number(rest[0]);
