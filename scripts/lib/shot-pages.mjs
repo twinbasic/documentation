@@ -64,7 +64,7 @@ const REVIEW_STYLE = `<style>
 .card img{display:block;max-width:100%;max-height:150px;margin:0 auto 6px;border:1px solid var(--line);background:repeating-conic-gradient(#8884 0 25%,#0000 0 50%) 0 0/16px 16px}
 .card h3{font-size:13px;margin:0 0 4px}
 .chip{display:inline-block;font-size:12px;line-height:1.5;padding:0 7px;border-radius:9px;border:1px solid var(--line);margin:2px 4px 0 0}
-.chip.look{border-color:#c80;color:#c80}.chip.fail{border-color:var(--bar);color:var(--bar)}
+.chip.look{border-color:#c80;color:#c80}.chip.fail{border-color:var(--bar);color:var(--bar)}span.fail{color:var(--bar)}
 .chip.progress{border-style:dashed}.chip.review{border-color:var(--link);color:var(--link)}.chip.change{font-weight:600}
 nav.filters a,nav.pager a{margin-right:14px}nav a[aria-current]{font-weight:700;color:var(--fg)}
 nav.pager{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 0}nav.pager .where{margin-right:14px;color:var(--mut)}
@@ -514,7 +514,7 @@ ${[...runs]
   .reverse()
   .map(
     (r) =>
-      `<tr><td>${r.n}</td><td>${esc(runTitle(r))}</td><td>${esc(runState(r))}${stopButtons(r).length ? ` <span data-acts>${stopButtons(r).join("")}<span class="status" role="status"></span></span>` : ""}</td><td>${r.kind === "cleanup" ? "" : `${r.done} of ${r.listed}`}</td><td><code>${esc(r.command)}</code> (<a href="${hrefs.log(r.n)}">log</a>)</td></tr>`,
+      `<tr><td>${r.n}</td><td>${esc(runTitle(r))}</td><td>${esc(runState(r))}${stopButtons(r).length ? ` <span data-acts>${stopButtons(r).join("")}<span class="status" role="status"></span></span>` : ""}</td><td>${r.kind === "cleanup" ? "" : `${r.done} of ${r.listed}${failedText(r.failed)}`}</td><td><code>${esc(r.command)}</code> (<a href="${hrefs.log(r.n)}">log</a>)</td></tr>`,
   )
   .join("\n")}
 </table>`
@@ -1003,18 +1003,27 @@ const whenText = (iso) => {
 };
 
 // How far a run is: a bar for each job of a retake, one for a replay.
+// How many pictures failed, after a count of those done: nothing for none.
+const failedText = (failed) => (failed ? `, <span class="fail">${failed} failed</span>` : "");
+
 function progressHtml(r) {
   if (r.kind === "cleanup" || !r.listed) return "";
-  const bar = (done, total) => `<progress max="${total}" value="${done}"></progress>${done} of ${total}`;
-  if (!r.jobs.length) return `<p>${bar(r.done, r.listed)}</p>`;
+  // a failed picture counts as done, so how many failed is said beside the count
+  const bar = (done, total, failed) =>
+    `<progress max="${total}" value="${done}"></progress>${done} of ${total}${failedText(failed)}`;
+  if (!r.jobs.length) return `<p>${bar(r.done, r.listed, r.failed)}</p>`;
   const state = (j) => {
     if (j.state === "failed") return `: failed: ${esc(j.error ?? "no reason given")}`;
     return j.state === "waiting" ? ", waiting" : j.state === "done" ? ", done" : "";
   };
-  return `<ul class="jobs">${r.jobs.map((j) => `<li><code>${esc(j.name)}</code> ${bar(j.done, j.pictures)}${state(j)}</li>`).join("")}</ul>`;
+  return `<ul class="jobs">${r.jobs
+    .map(
+      (j) =>
+        `<li><code>${esc(j.name)}</code> ${bar(j.done, j.pictures, j.state === "failed" ? 0 : j.failed)}${state(j)}</li>`,
+    )
+    .join("")}</ul>`;
 }
 
-/** A run of the session as the runs page shows it: `r` the server's runRow, with `log`. */
 // Remove for a run that has ended: its layers undone under docs/, then its record and folder.
 function removeButton(r, busy) {
   if (r.live) return [];
@@ -1067,6 +1076,7 @@ function retakeFailedButton(r, busy) {
   ];
 }
 
+/** A run of the session as the runs page shows it: `r` the server's runRow, with `log`. */
 function runArticle(r, { newestCleanup, busy }) {
   const times = [`started ${whenText(r.started)}`, r.ended ? `ended ${whenText(r.ended)}` : null].filter(Boolean);
   const buttons = [...stopButtons(r), ...retakeFailedButton(r, busy), ...removeButton(r, busy)];

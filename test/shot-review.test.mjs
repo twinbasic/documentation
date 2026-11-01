@@ -1019,6 +1019,8 @@ onStop(process.stdin, () => {
 
       const base2 = `http://127.0.0.1:${port2}`;
       const runsPage = await (await fetch(base2 + hrefs.runs)).text();
+      // a failed picture counts as done, and the job says how many failed
+      assert.match(runsPage, /<code>j<\/code> <progress[^>]*><\/progress>2 of 2, <span class="fail">1 failed<\/span>/);
       // Retake what failed: a new retake of the picture run 1 failed on, with its --svg (none)
       const retake =
         /<button type="button" data-url="\/api\/runs" data-act="([^"]*)"[^>]*>Retake what failed \(1\)<\/button>/.exec(
@@ -1289,7 +1291,7 @@ if (cleanupArgs.includes("--cleanup")) {
         "--ide",
         "C:/tb/twinBASIC.exe",
       ]);
-      assert.deepEqual(state.jobs, [{ name: "j", state: "started", error: null, pictures: 2, done: 1 }]);
+      assert.deepEqual(state.jobs, [{ name: "j", state: "started", error: null, pictures: 2, done: 1, failed: 0 }]);
       page = await get(hrefs.runs);
       assert.match(page, /<li><code>j<\/code> <progress max="2" value="1"><\/progress>1 of 2<\/li>/);
       assert.match(page, /<pre class="log">taking IDE\/Images\/A\.png<\/pre>/);

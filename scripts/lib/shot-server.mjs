@@ -320,12 +320,15 @@ export function createReviewServer({
     const owed = r.record.tool === "replay" ? "svg" : "png";
     const isDone = (out) => r.verdicts.get(out)?.[owed] || r.facts.failed.has(out) || r.facts.skipped.has(out);
     const done = r.facts.listed.filter(isDone).length;
+    const failed = new Set(failedOf(r));
+    const ofJob = (name) => r.facts.listed.filter((out) => r.facts.jobOf.get(out) === name);
     const jobs = [...r.facts.jobs].map(([name, j]) => ({
       name,
       state: j.state,
       error: j.error,
       pictures: j.pictures,
-      done: r.facts.listed.filter((out) => r.facts.jobOf.get(out) === name && isDone(out)).length,
+      done: ofJob(name).filter(isDone).length,
+      failed: ofJob(name).filter((out) => failed.has(out)).length,
     }));
     return {
       ...r.record,
@@ -337,10 +340,22 @@ export function createReviewServer({
       stopping: r.facts.stopping,
       stopAsked: !!r.stopAsked,
       done,
+      failed: failed.size,
       listed: r.facts.listed.length,
       jobs,
     };
   };
+  // The pictures a run failed on: a failure reported, its job failed before reaching it, or a
+  // staged verdict that says so. A failed picture counts as done in a job's progress, so the
+  // pages say how many of those failed.
+  function failedOf(r) {
+    const f = r.facts;
+    return f.listed.filter((out) => {
+      const png = r.verdicts.get(out)?.png;
+      if (png) return png.state === "failed";
+      return f.failed.has(out) || f.jobs.get(f.jobOf.get(out))?.state === "failed";
+    });
+  }
   // The lines of a run's log the runs page shows: a clean-up's whole (what it put back), the
   // last few of a run that is running, none of one that has ended (its log has them).
   const logOf = (r) => {
@@ -426,17 +441,12 @@ export function createReviewServer({
       const later = [...runs.values()].filter((o) => o.record.n > r.record.n);
       return { pictures: outs.length, later: outs.filter((out) => later.some((o) => o.verdicts.has(out))).length };
     };
-    // What "Retake what failed" retakes of a retake that has ended: the pictures it failed on (a
-    // failure reported, its job failed before reaching it, or a verdict that says so), with its
-    // --svg and its IDE, by the build it is among the installs found (missing: no longer found).
+    // What "Retake what failed" retakes of a retake that has ended: the pictures it failed on
+    // (failedOf), with its --svg and its IDE, by the build it is among the installs found
+    // (missing: no longer found).
     const failedRetake = (r) => {
       if (r.record.tool !== "shoot_docs" || r.live || r.record.args.includes("--dry-run")) return null;
-      const f = r.facts;
-      const pictures = f.listed.filter((out) => {
-        const png = r.verdicts.get(out)?.png;
-        if (png) return png.state === "failed";
-        return f.failed.has(out) || f.jobs.get(f.jobOf.get(out))?.state === "failed";
-      });
+      const pictures = failedOf(r);
       if (!pictures.length) return null;
       const exe = optionOf(r.record, "--ide");
       const found = exe ? ides.find((i) => path.resolve(i.exe) === path.resolve(exe)) : null;
