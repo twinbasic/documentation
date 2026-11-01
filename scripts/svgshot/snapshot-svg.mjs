@@ -218,7 +218,8 @@ function decodeDocument(snapshot, di, styleNames, grid, seen) {
   const nodes = N.parentIndex.map((parent, i) => {
     const attrs = {};
     const a = N.attributes[i] ?? [];
-    for (let k = 0; k < a.length; k += 2) attrs[S[a[k]]] = S[a[k + 1]];
+    // DevTools writes an empty string as -1: an attribute with no value (disabled) is there, as ""
+    for (let k = 0; k < a.length; k += 2) attrs[S[a[k]]] = a[k + 1] >= 0 ? S[a[k + 1]] : "";
     return {
       i,
       parentIndex: parent,
@@ -2312,25 +2313,42 @@ export function renderSvg(
 
   // A native checkbox or radio button, as Chromium's default theme draws them:
   // a square (a circle) as wide as the box is wide and tall, whichever is
-  // less, centred in it, designed on a 13 by 13 grid and scaled to fit. A
-  // disabled one is the same, faded.
+  // less, centred in it, designed on a 13 by 13 grid and scaled to fit; checked,
+  // in the accent #0075ff (the IDE's and Edge's, sampled). A disabled one
+  // (`disabled`, which DevTools gives as "") is translucent, the ground under it
+  // showing through: a fill of rgba(245, 245, 245, 0.68), its border, a checked
+  // box's ground and a radio's dot in the border's #767676 at 30% over it, and a
+  // check mark in white at 60% over that. Fitted by bench/checkable.html over
+  // white and over rgb(43, 43, 43), each part to the level (248 and 180, 209 and
+  // 162, 237 and 218); Find_Project's "Current Module" is the same.
   function paintCheckable(l) {
     const b = l.bounds;
     const side = Math.min(b.w, b.h);
     if (!(side > 0)) return [];
     const radio = l.node.attrs.type.toLowerCase() === "radio";
     const on = l.node.checked;
-    const blue = "#0078d7";
-    const art = radio
-      ? `<circle cx="6.5" cy="6.5" r="6.5" fill="${on ? blue : "#767676"}"/><circle cx="6.5" cy="6.5" r="5.5" fill="#fff"/>` +
-        (on ? `<circle cx="6.5" cy="6.5" r="3.75" fill="${blue}"/>` : "")
-      : on
-        ? `<rect width="13" height="13" rx="2" fill="${blue}"/>` +
-          `<path d="M3.1 6.3L5.3 10L10.3 2.7" fill="none" stroke="#fff" stroke-width="1.8"/>`
-        : `<rect width="13" height="13" rx="2" fill="#767676"/><rect x="1" y="1" width="11" height="11" rx="1" fill="#fff"/>`;
-    const fade = l.node.attrs.disabled === undefined ? "" : ' opacity="0.5"';
+    const blue = "#0075ff";
+    const mark = (colour) => `<path d="M3.1 6.3L5.3 10L10.3 2.7" fill="none" stroke="${colour}" stroke-width="1.8"/>`;
+    let art;
+    if (l.node.attrs.disabled !== undefined) {
+      const fill = "rgba(245, 245, 245, 0.68)";
+      const line = "rgba(118, 118, 118, 0.3)";
+      art = radio
+        ? `<circle cx="6.5" cy="6.5" r="6.5" fill="${fill}"/><circle cx="6.5" cy="6.5" r="6" fill="none" stroke="${line}" stroke-width="1"/>` +
+          (on ? `<circle cx="6.5" cy="6.5" r="3.75" fill="${line}"/>` : "")
+        : `<rect width="13" height="13" rx="2" fill="${fill}"/>` +
+          (on
+            ? `<rect width="13" height="13" rx="2" fill="${line}"/>${mark("rgba(255, 255, 255, 0.6)")}`
+            : `<rect x="0.5" y="0.5" width="12" height="12" rx="1.5" fill="none" stroke="${line}" stroke-width="1"/>`);
+    } else
+      art = radio
+        ? `<circle cx="6.5" cy="6.5" r="6.5" fill="${on ? blue : "#767676"}"/><circle cx="6.5" cy="6.5" r="5.5" fill="#fff"/>` +
+          (on ? `<circle cx="6.5" cy="6.5" r="3.75" fill="${blue}"/>` : "")
+        : on
+          ? `<rect width="13" height="13" rx="2" fill="${blue}"/>${mark("#fff")}`
+          : `<rect width="13" height="13" rx="2" fill="#767676"/><rect x="1" y="1" width="11" height="11" rx="1" fill="#fff"/>`;
     return [
-      `<g transform="translate(${num(b.x + (b.w - side) / 2)} ${num(b.y + (b.h - side) / 2)}) scale(${num(side / 13)})"${fade}>${art}</g>`,
+      `<g transform="translate(${num(b.x + (b.w - side) / 2)} ${num(b.y + (b.h - side) / 2)}) scale(${num(side / 13)})">${art}</g>`,
     ];
   }
 

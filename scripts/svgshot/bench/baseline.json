@@ -1,6 +1,11 @@
 {
   "browser": "Edg/156.0.4314.58",
   "pages": {
+    "checkable": {
+      "pct32": 0.036,
+      "pct96": 0,
+      "tile": 0.049
+    },
     "decoration": {
       "pct32": 0.051,
       "pct96": 0.005,

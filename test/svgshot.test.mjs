@@ -346,6 +346,82 @@ describe("text-overflow: ellipsis", () => {
   });
 });
 
+describe("checkboxes and radio buttons", () => {
+  // An <input type> 13 by 13 at 10, 10 with the attributes `attrs`, [name, value or -1], -1 being
+  // how DevTools writes an empty string (the value of `disabled`).
+  function page(type, attrs = [], checked = false) {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = ["block", "visible", "auto"].map(s);
+    const names = ["#document", "HTML", "BODY", "INPUT"];
+    const own = [s("type"), s(type), ...attrs.flatMap(([name, value]) => [s(name), value === -1 ? -1 : s(value)])];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2],
+            nodeType: [9, 1, 1, 1],
+            nodeName: names.map(s),
+            nodeValue: names.map(() => -1),
+            attributes: [[], [], [], own],
+            ...(checked ? { inputChecked: { index: [3] } } : {}),
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [style, style, style],
+            bounds: [
+              [0, 0, 100, 50],
+              [0, 0, 100, 50],
+              [10, 10, 13, 13],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, ["display", "visibility", "appearance"]);
+  }
+  const draw = (doc) => renderSvg(doc, { clip: { x: 0, y: 0, w: 100, h: 50 }, metrics: () => ({}) }).svg;
+
+  test("an attribute DevTools gives with no value is there, as an empty string", () => {
+    const input = page("radio", [["disabled", -1]]).nodes[3];
+    assert.equal(input.attrs.disabled, "");
+    assert.equal(input.attrs.type, "radio");
+  });
+
+  test("a checked one is in the accent #0075ff", () => {
+    assert.match(draw(page("checkbox", [], true)), /<rect width="13" height="13" rx="2" fill="#0075ff"\/>/);
+    assert.match(draw(page("radio", [], true)), /<circle cx="6\.5" cy="6\.5" r="3\.75" fill="#0075ff"\/>/);
+  });
+
+  test("a disabled one is translucent: its fill, then its border and a checked one's dot or ground at 30%", () => {
+    const fill = 'fill="rgba(245, 245, 245, 0.68)"';
+    const line = "rgba(118, 118, 118, 0.3)";
+    const radio = draw(page("radio", [["disabled", -1]]));
+    assert.match(radio, new RegExp(`<circle cx="6\\.5" cy="6\\.5" r="6\\.5" ${fill.replace(/[().]/g, "\\$&")}/>`));
+    assert.ok(radio.includes(`<circle cx="6.5" cy="6.5" r="6" fill="none" stroke="${line}" stroke-width="1"/>`));
+    assert.doesNotMatch(radio, /opacity/);
+    assert.ok(
+      draw(page("radio", [["disabled", -1]], true)).includes(`<circle cx="6.5" cy="6.5" r="3.75" fill="${line}"/>`),
+    );
+    const box = draw(page("checkbox", [["disabled", -1]], true));
+    assert.ok(
+      box.includes(`<rect width="13" height="13" rx="2" ${fill}/><rect width="13" height="13" rx="2" fill="${line}"/>`),
+    );
+    assert.ok(box.includes('stroke="rgba(255, 255, 255, 0.6)"'));
+    // with no disabled attribute, it is drawn opaque
+    assert.match(draw(page("radio")), /<circle cx="6\.5" cy="6\.5" r="6\.5" fill="#767676"\/>/);
+  });
+});
+
 describe("a text field's selection", () => {
   test("selectedParts splits each line at the selection, a tab expanded from the line's start", () => {
     assert.deepEqual(selectedParts("360", false, "8", 0, 3), [{ before: "", selected: "360", after: "" }]);

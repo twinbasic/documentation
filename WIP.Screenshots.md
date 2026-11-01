@@ -1176,7 +1176,15 @@ clipped to the field. A selection in a window without focus (other colours, whic
 property gives) and one of the document's own text are reported as not drawn. A bundle taken
 before cannot say a field had a selection; the PNGs that show one were found by the colour
 (Variables_Edit, Designer_AddName, Rename_Box, both themes), and a retake of each took it from
-refused (0.65% to 0.77% strongly off) or 0.248% to 0% strongly off. **A native text field** (`nativeTextField`,
+refused (0.65% to 0.77% strongly off) or 0.248% to 0% strongly off. **An attribute with no
+value** (`disabled`) is the empty string, which DevTools writes as -1, the index of no string;
+`decodeSnapshot` read it as no attribute until 2026-11-01, so no control was ever drawn disabled
+(Find_Project's greyed "Current Module", set `.disabled` by the IDE). **A disabled checkbox or
+radio button** (`paintCheckable`) is translucent, fitted by `bench/checkable.html` over white and
+over rgb(43, 43, 43), each part to the level: a fill of rgba(245, 245, 245, 0.68), its border, a
+checked box's ground and a radio's dot in #767676 at 30% over it, a check mark in white at 60%
+over that; the bench page went from 0.556% of its pixels off to 0.036%. A checked control's accent
+is #0075ff (sampled in Find_Project and in Edge), not the #0078d7 it was drawn in. **A native text field** (`nativeTextField`,
 `paintNativeTextField`): Chromium draws an `<input>` whose border and background the page leaves
 as its own (`2px inset rgb(118, 118, 118)` on white, which BETA 1033 leaves its dialogs' text
 boxes) as its Fluent text field, not by that border: a white ground and a 1 px border of the same
