@@ -61,12 +61,18 @@ function cachedCut(key) {
 }
 
 // Written beside and renamed into place, so that a picture drawn at the same time
-// never reads half a file.
+// never reads half a file. On Windows the rename fails (EPERM) while another process
+// renames the same cut into place or reads it; the key names the cut's inputs, so that
+// file holds the same cut, and the one in hand is used without keeping it.
 function keepCut(key, result) {
   const file = path.join(subsetCache, `${key}.json`);
   const temp = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}`;
   fs.writeFileSync(temp, JSON.stringify(result));
-  fs.renameSync(temp, file);
+  try {
+    fs.renameSync(temp, file);
+  } catch {
+    fs.rmSync(temp, { force: true });
+  }
 }
 
 // --- reading a font's tables ----------------------------------------------------
