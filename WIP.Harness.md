@@ -1206,7 +1206,10 @@ The recent lists are left alone: `test/ide/recent-projects-copies.test.mjs` need
 A probe of 50 launches hooked 49. The one miss was a page whose document began before the script was
 added. `attachIde` therefore checks `window.__tbDefaults`, the marker the script sets (it lists the keys
 answered, never their values), and reloads the page once when it is missing: the hook's session still holds
-the script, the reload takes about 40 ms, and the UI and the command-line project come back. A marker still
+the script, the reload takes about 40 ms, and the UI and the command-line project come back. The reload
+waits for the hook to be installed (`hook.ready`): the hook connects on its own, and in a `shoot_docs
+--jobs 10` run on BETA 1033 the help setup's page was reloaded before it had attached, loaded unhooked
+again, and failed the setup. A marker still
 missing after that is a harness error, exit 2, since the run would have the user's settings. The hook's
 connection lives as long as the process, so a `tbbuild --keep` IDE is hooked until `tbbuild` ends.
 

@@ -80,6 +80,9 @@ export const hookSource = () => `(${pageHook})(${JSON.stringify(BLANKED_KEYS)})`
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// How long checkDefaults waits for the hook to be installed before it reloads the page.
+const READY_LIMIT = 60 * 1000;
+
 /**
  * Start hooking the IDE whose WebView2 profile is `profile`, from before it has started.
  * The file is polled every 5 ms: launchIde's own poll is at 100 ms and answers too late.
@@ -87,18 +90,21 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
  * @param {object} o
  * @param {string} o.profile  the IDE's WEBVIEW2_USER_DATA_FOLDER
  * @param {number} o.since    when it was started; a DevToolsActivePort older than 2 s before is left over
- * @returns {{ error: Error | null, closed: Promise<void>, stop: () => void }}
- *   `error` is why no hook was installed (set once known); `stop` ends the polling and closes the
+ * @returns {{ error: Error | null, closed: Promise<void>, ready: Promise<void>, stop: () => void }}
+ *   `error` is why no hook was installed (set once known); `ready` settles once the hook is
+ *   installed, has failed or was stopped; `stop` ends the polling and closes the
  *   connection, and is called when the IDE ends or fails to start. A hook that was installed leaves
  *   the page's `window.__tbDefaults`, which attachIde checks.
  */
 export function installDefaultsHook({ profile, since }) {
-  const hook = { error: null, closed: null, stop: () => {} };
+  let markReady;
+  const hook = { error: null, closed: null, ready: new Promise((r) => (markReady = r)), stop: () => {} };
   let stopped = false;
   let client = null;
   hook.stop = () => {
     stopped = true;
     client?.close();
+    markReady();
   };
   hook.closed = (async () => {
     const file = path.join(profile, "EBWebView", "DevToolsActivePort");
@@ -147,9 +153,11 @@ export function installDefaultsHook({ profile, since }) {
       const { sessionId } = await client.send("Target.attachToTarget", { targetId: t.targetId, flatten: true });
       await prepare({ sessionId, targetInfo: t });
     }
-  })().catch((e) => {
-    if (!stopped) hook.error = e;
-  });
+  })()
+    .catch((e) => {
+      if (!stopped) hook.error = e;
+    })
+    .finally(() => markReady());
   return hook;
 }
 
@@ -165,7 +173,14 @@ export function installDefaultsHook({ profile, since }) {
 export async function checkDefaults(c, hook) {
   const ran = () => c.evaluate("!!window.__tbDefaults").catch(() => false);
   if (await ran()) return;
+  // The hook connects on its own, and on a busy machine (ten jobs at once) it can still be on
+  // its way: a reload before it has attached loads the page unhooked again, and the hook then
+  // attaches to a page whose document has committed. So the reload waits for it.
+  let timer;
+  await Promise.race([hook.ready, new Promise((r) => (timer = setTimeout(r, READY_LIMIT)))]);
+  clearTimeout(timer);
   if (hook.error) throw new Error(`the IDE's settings were not made the defaults: ${hook.error.message}`);
+  if (await ran()) return;
   await c.send("Page.reload", {});
   for (let i = 0; i < 400; i++) {
     await wait(50);

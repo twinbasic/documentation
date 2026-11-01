@@ -5,6 +5,9 @@
 // The folders are tested with no IDE: the handle names a process id that cannot be a process, so
 // the IDE is already gone when shutdownIde looks at its folders, as it is after waitForExit.
 //
+// It also tests checkDefaults (scripts/lib/tb-defaults.mjs), which an IDE's start-up runs, on a
+// fake page.
+//
 // Runs with a bare `node --test test/ide-folders.test.mjs`: no tree, no IDE.
 
 import assert from "node:assert/strict";
@@ -14,6 +17,7 @@ import path from "node:path";
 import { after, before, describe, test } from "node:test";
 import { shutdownIde, shutdownIdeAsync } from "../scripts/lib/tb-ide.mjs";
 import { removeTreeAsync } from "../scripts/lib/tb-ide-copy.mjs";
+import { checkDefaults } from "../scripts/lib/tb-defaults.mjs";
 
 describe("the folders an IDE leaves", () => {
   // Windows process ids are multiples of four, so this is never a process, and
@@ -69,5 +73,57 @@ describe("the folders an IDE leaves", () => {
     await removeTreeAsync(dir);
     assert.equal(existsSync(dir), false);
     await removeTreeAsync(dir);
+  });
+});
+
+describe("the check that an IDE runs with the default settings (checkDefaults)", () => {
+  // A page that runs the hook's script only when it loads after the hook has attached, as the
+  // IDE's main.htm does: a reload before then loads it unhooked again.
+  const fakePage = () => {
+    const state = { hooked: false, marked: false, reloads: 0 };
+    const c = {
+      evaluate: async () => state.marked,
+      send: async (method) => {
+        if (method === "Page.reload") {
+          state.reloads++;
+          state.marked = state.hooked;
+        }
+        return {};
+      },
+    };
+    return { state, c };
+  };
+
+  test("waits for a hook still on its way before it reloads the page", async () => {
+    const { state, c } = fakePage();
+    const hook = {
+      error: null,
+      ready: new Promise((r) =>
+        setTimeout(() => {
+          state.hooked = true;
+          r();
+        }, 200),
+      ),
+    };
+    await checkDefaults(c, hook);
+    assert.deepEqual([state.marked, state.reloads], [true, 1]);
+  });
+
+  test("does not reload a page the hook reached before its document committed", async () => {
+    const { state, c } = fakePage();
+    state.marked = true;
+    await checkDefaults(c, { error: null, ready: Promise.resolve() });
+    assert.equal(state.reloads, 0);
+  });
+
+  test("says why when the hook could not be installed", async () => {
+    const { c } = fakePage();
+    await assert.rejects(
+      checkDefaults(c, {
+        error: new Error("the IDE wrote no DevToolsActivePort in a minute"),
+        ready: Promise.resolve(),
+      }),
+      /the IDE's settings were not made the defaults: the IDE wrote no DevToolsActivePort in a minute/,
+    );
   });
 });
