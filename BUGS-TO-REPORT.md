@@ -11407,3 +11407,108 @@ Tested on a copy of BETA 1034 with this change (3 edits in `main.js`, every othe
 
 <!-- Reproducer: bugs/language-pack-semicolon-cut/ (mode lane: asserted by `ide-test.bat --only language` (test/ide/language.test.mjs), the test "a ';' and a space end a pack's string inside its quotes: the Help menu reads PHELP, and TB0022's message ends at its semicolon", which passes on BETA 1034; the control "control: a ';' with no space after it stays in a pack's string: the View menu reads PVIEW;WHOLE" passes too). No project and no zip. docs/IDE/Customising/index.md carries a NOTE (BETA 1034) for it under Language packs, and docs/Features/Compiler-IDE/Compiler-Warnings.md one under TB0022; when a fixed build is released, both go. Found 2026-11-02 documenting TB0034 to TB0037. Fix: bugs/language-pack-semicolon-cut/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/language-pack-semicolon-cut/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only language` tests it (the entry's test then fails, which is the fix working). The replay of both readers over the shipped packs was a scratch script; the claim that only TB0022 differs is from it. -->
 
+---
+
+## An `Import Library` statement that names an import library crashes the compiler
+
+**Describe the bug**
+An `Import Library` statement whose file is an import library, a `.lib` that lists the exports of a DLL and holds no code, crashes the compiler. The IDE prints `NATIVE EXCEPTION: ACCESS_VIOLATION` in the DEBUG CONSOLE, restarts the compiler on the same project, and it crashes again, so nothing in the project compiles while the statement is there. The statement alone does it: no `Declare` uses its namespace. The Windows SDK's own `user32.lib` does it, and so does an import library of one function made with `lib /def`. Observed in the IDE, in a 32-bit and a 64-bit build.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `import-library-import-lib-crash.twinproj` (attached as `import-library-import-lib-crash.zip`). Its `Miscellaneous` folder holds `myimp_32.lib` and `myimp_64.lib`, import libraries for one function of `user32.dll`, made with `lib /def:myimp.def /machine:x86` and `/machine:x64` from `myimp.def`, which is there too:
+   ```
+   LIBRARY user32.dll
+   EXPORTS
+       GetDesktopWindow
+   ```
+   Its one source file, `Startup.twin`, is, without its comments:
+   ```
+   #If Win64 Then
+       Import Library "/Miscellaneous/myimp_64.lib" As MYIMP
+   #Else
+       Import Library "/Miscellaneous/myimp_32.lib" As MYIMP
+   #End If
+
+   Module Startup
+
+       Public Sub Main()
+       End Sub
+
+   End Module
+   ```
+2. Let the IDE compile it (it does so on opening).
+3. See the DEBUG CONSOLE: `NATIVE EXCEPTION: ACCESS_VIOLATION  {no-basic-code} [$1EB32CF6:twinBASIC_win32.dll+00132CF6]`, then `restarting from MEMORY [...]`, and the same exception again, with a list of the compiler's threads in which the failing one is `>>> thread 0004: ParsingFileStart, Startup.twin`.
+
+**Expected behavior**
+A diagnostic, or the library linked. An import library holds no code, so the compiler can refuse it with an error that names the file, as it refuses an object file of the other architecture (TB5060, *incorrect OBJ file format*), or resolve its functions as it resolves those of a DLL named in `Link`. Either way the project keeps compiling.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The Windows SDK's `user32.lib` (10.0.26100.0, x86 and x64) crashes the compiler in the same way, alone and with a `Declare` that uses its namespace; so does `myimp_64.lib` with a `Declare` of `GetDesktopWindow`. A library of object files, which `lib.exe` writes from `.obj` files, links and works. The reproducer crashes BETA 1010 too. A user on Discord met it with the SDK's `user32.lib` and `winmm.lib` on BETA 996, as a crash loop that ended in Safe Mode.
+
+Severity: medium. Nothing in the project compiles until the statement is removed, and the crash does not say which statement or file causes it.
+
+<!-- Reproducer: bugs/import-library-import-lib-crash/ (mode compile; expect is tbbuild exit 4, the compiler crashing; verify reproduces on BETA 1034 and BETA 1010). The exception text above is from the IDE's DEBUG CONSOLE (tbbuild --keep on the reproducer, win32, then the console read over CDP). The SDK user32.lib cases were scratch projects, not kept: the SDK's file cannot go into a reproducer. docs/Features/Advanced/Static-Linking.md carries a WARNING (BETA 1034) for it under "What can be linked", and its Dependencies section says an import library cannot be imported; when a fixed build is released, the WARNING goes and that sentence says what the build does. Found 2026-11-02 rewriting that page. -->
+
+---
+
+## In a 64-bit build, the `__except` handler of statically linked C code never runs, and the exception ends the program
+
+**Describe the bug**
+C code linked into a program with `Import Library` that handles an exception with `__try` and `__except` links without an error in a 64-bit build, but its handler never runs: the exception ends the program instead. In an IDE run the run stops at `NATIVE EXCEPTION: INT_DIVIDE_BY_ZERO`, and the built exe ends with exit code `0xC0000094` (`STATUS_INTEGER_DIVIDE_BY_ZERO`). Observed in the IDE and in the exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `static-seh-handler-not-run.twinproj` (attached as `static-seh-handler-not-run.zip`), and set the build to win64. Its `Miscellaneous` folder holds `seh.c`:
+   ```
+   int seh_div(int a, int b)
+   {
+       int r = -1;
+       __try { r = a / b; }
+       __except (1) { r = -2; }
+       return r;
+   }
+   ```
+   and `seh_64.obj`, compiled from it with `cl /c /Gw /Gy /GS- seh.c /Fo"seh_64.obj"` (MSVC 14.44, x64). Its one source file, `Startup.twin`, is, without its comments:
+   ```
+   Import Library "/Miscellaneous/seh_64.obj" As SEHLIB Link "stdlib"
+
+   Module Startup
+
+       Private Declare PtrSafe Function seh_div CDecl Lib SEHLIB (ByVal a As Long, ByVal b As Long) As Long
+
+       Public Sub Main()
+           Debug.Print "seh_div(6, 3) = " & seh_div(6, 3)
+           Debug.Print "seh_div(6, 0) = " & seh_div(6, 0)
+       End Sub
+
+       [RunAfterBuild]
+       Private Sub Built()
+           Debug.Cls
+           Main
+       End Sub
+
+   End Module
+   ```
+2. Build it. The `[RunAfterBuild]` Sub runs `Main` in the IDE.
+3. See the DEBUG CONSOLE: `seh_div(6, 3) = 2`, then `NATIVE EXCEPTION: INT_DIVIDE_BY_ZERO /Startup.twin; Startup.Main LINE 000013 [CONTINUABLE]`, and no line for `seh_div(6, 0)`.
+4. Run the built exe. It ends with exit code -1073741676 (`0xC0000094`), and the Application event log records the exception in `StaticSehHandlerNotRun_win64.exe`.
+
+**Expected behavior**
+`seh_div(6, 0) = -2`: the division raises inside `__try`, and the `__except` handler returns -2. Linked by Microsoft's linker into a C program that calls `seh_div(6, 3)` and `seh_div(6, 0)`, the same `seh_64.obj` returns 2 and -2. If twinBASIC's linker cannot make the handler work, an error at the `Import Library` statement, as a 32-bit build gives: there `__try` needs `__except_handler3`, and the statement is TB5058, *linker error: unrecognized symbol '__except_handler3'*.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The reproducer behaves the same on BETA 1010. `Link "stdlib", "kernel32"` and `Link "stdlib", "ntdll"` also link it without an error.
+
+Severity: medium. Code written to handle an error crashes the program instead, with nothing at build time to say so; the SQLite sample is compiled with `SQLITE_OMIT_SEH`, which leaves its handlers out.
+
+<!-- Reproducer: bugs/static-seh-handler-not-run/ (mode run, win64, exe; expect is tbrun exit 5, the probe not returning, with the IDE's NATIVE EXCEPTION line, the exe's exit 0xC0000094, and no "seh_div(6, 0) = -2" line; verify reproduces on BETA 1034 and BETA 1010). The control with Microsoft's linker was a scratch C program (sehmain.c, cl and link from VS 2022), not kept. The kernel32 and ntdll variants were compiled only (tbbuild), not run. docs/Features/Advanced/Static-Linking.md carries a WARNING (BETA 1034) for it under "What can be linked"; when a fixed build is released, the WARNING goes, and the page's list says whether exception handling works in a 64-bit build. Found 2026-11-02 rewriting that page. -->
+

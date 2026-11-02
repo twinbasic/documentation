@@ -1,0 +1,17 @@
+' myimp_32.lib and myimp_64.lib are import libraries for one function of user32.dll, GetDesktopWindow,
+' made from myimp.def with lib.exe:
+'     lib /def:myimp.def /machine:x86 /out:myimp_32.lib
+'     lib /def:myimp.def /machine:x64 /out:myimp_64.lib
+' The Import Library statement alone crashes the compiler, in a 32-bit and in a 64-bit build.
+#If Win64 Then
+    Import Library "/Miscellaneous/myimp_64.lib" As MYIMP
+#Else
+    Import Library "/Miscellaneous/myimp_32.lib" As MYIMP
+#End If
+
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+End Module
