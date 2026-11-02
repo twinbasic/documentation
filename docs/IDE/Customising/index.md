@@ -15,7 +15,20 @@ The IDE lets you change its fonts and behaviour, its colours, the arrangement of
 - [**Panel layouts**](Panel-Layouts) --- save and switch the arrangement of the panels, and control how panels can be moved.
 - [**Keyboard shortcuts**](Keyboard-Shortcuts) --- add, replace or remove the keys of any IDE command.
 
-The language of the IDE is described below, on this page.
+Zoom and the language of the IDE are described below, on this page.
+
+## Zoom
+{: index="zoom; IDE zoom" }
+
+Each part of the IDE that can be zoomed has a setting of its own. <kbd>Ctrl</kbd> with the mouse wheel zooms none of them.
+
+**The whole IDE.** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>+</kbd> makes the IDE bigger and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>-</kbd> makes it smaller. The <kbd>+</kbd> and <kbd>-</kbd> keys of the numeric keypad work too. Each press changes [**IDE Font Size**](IDE-Options#theme-and-fonts) by 1px, and the IDE's icons and scroll bars are sized in proportion to its text. The new size is saved at once, so the IDE starts at it the next time. No key returns the IDE to its normal size: choose 13px, the default, in the **IDE Font Size** list of **IDE Options**.
+
+**The code editor.** <kbd>Ctrl</kbd>+<kbd>+</kbd> and <kbd>Ctrl</kbd>+<kbd>-</kbd> change the size of the code by 1px, as the **Code Editor Font Size** option, and save it at once. See [Word wrap and zoom](../Code/Editor#word-wrap-and-zoom).
+
+**The form designer.** The zoom box in the toolbar scales the form you are designing, from 25% to 400%, and **View → Zoom In** and **View → Zoom Out** step through it. The zoom is not saved. See [Zoom](../Forms/Designer#zoom) in the form designer's chapter.
+
+**The Webpage pane.** Its own zoom list scales the page it shows, from 50% to 150%. It starts at 70%, and keeps the zoom you choose. See [Webpage](../Project/Webpage).
 
 ## Where the IDE keeps its settings
 
