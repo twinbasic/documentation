@@ -281,6 +281,7 @@ function decodeDocument(snapshot, di, styleNames, grid, seen) {
     if (l.style && l.text === undefined && !l.node.box) l.node.box = l;
   }
   for (const n of nodes) n.style = n.box?.style ?? n.layouts.find((l) => l.style)?.style ?? null;
+  const zoomUnknown = applyZoom(nodes, layouts, styleNames.includes("zoom"));
   const decoded = {
     id: di,
     url: str(doc.documentURL),
@@ -291,6 +292,8 @@ function decodeDocument(snapshot, di, styleNames, grid, seen) {
     owner: null,
     nodes,
     layouts,
+    // A bundle taken before zoom was read, with an element whose inline style zooms it (zoomUnknown).
+    zoomUnknown,
   };
   // The document of a frame, when the snapshot holds it: a frame of another process is no document here.
   for (const [i, k] of content) {
@@ -299,6 +302,94 @@ function decodeDocument(snapshot, di, styleNames, grid, seen) {
     nodes[i].frame.owner = nodes[i];
   }
   return decoded;
+}
+
+// The computed styles that are lengths in px, which Chromium reports as they are before an
+// element's CSS zoom (applyZoom).
+const ZOOMED_LENGTHS = [
+  "background-size",
+  "background-position",
+  ...["top", "right", "bottom", "left"].map((s) => `border-${s}-width`),
+  ...["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`),
+  "outline-width",
+  "outline-offset",
+  "box-shadow",
+  "font-size",
+  "line-height",
+  "tab-size",
+  "text-decoration-thickness",
+  "text-underline-offset",
+  "transform-origin",
+  "filter",
+  "clip-path",
+  ...["top", "right", "bottom", "left"].map((s) => `padding-${s}`),
+];
+
+// A computed zoom as a factor: a number, a percentage, or `normal`.
+function zoomFactor(v) {
+  const m = /^\s*(-?[\d.]+(?:e[+-]?\d+)?)(%?)\s*$/i.exec(v ?? "");
+  const z = m ? Number(m[1]) / (m[2] ? 100 : 1) : 1;
+  return z > 0 ? z : 1;
+}
+
+// The zoom an element's inline style sets, or null.
+function inlineZoom(n) {
+  const m = /(?:^|;)\s*zoom\s*:\s*([^;!]+)/i.exec(n.attrs?.style ?? "");
+  return m ? zoomFactor(m[1]) : null;
+}
+
+const scaledPx = (v, z) =>
+  v.replace(/url\([^)]*\)|(-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)px/gi, (all, n) =>
+    n === undefined ? all : `${Math.round(Number(n) * z * 1e4) / 1e4}px`,
+  );
+
+// A computed transform's translation scaled by `z`: matrix(a, b, c, d, e, f) and matrix3d's
+// m41 to m43.
+function scaledMatrix(v, z) {
+  const m = /^(matrix(?:3d)?)\(([^)]*)\)$/.exec(v ?? "");
+  if (!m) return v;
+  const k = m[2].split(",").map(Number);
+  const moved = m[1] === "matrix" ? [4, 5] : [12, 13, 14];
+  for (const i of moved) k[i] = Math.round(k[i] * z * 1e4) / 1e4;
+  return `${m[1]}(${k.join(", ")})`;
+}
+
+/**
+ * Puts the computed styles under a CSS zoom into the space of the boxes. The snapshot gives
+ * an element's layout and text boxes as drawn, but its computed styles as getComputedStyle
+ * does, before the zoom: under the form designer's `zoom: 50%` (Designer_Zoom50) a control
+ * 55 px wide said font-size 13px, line-height 24.1px and background-size 110px 24px. Each
+ * length is scaled by the element's effective zoom, its own `zoom` times its ancestors', and
+ * so are its offset, client and scroll rects, which said 110 by 24 for that control. The
+ * style of a text layout object is its element's, own zoom and all, so a text node takes its
+ * parent's zoom and adds none. Returns true when the styles hold no zoom (a bundle taken
+ * before it was read) and an element's inline style sets one other than 1, which the
+ * styles cannot then be drawn from; nothing is scaled then.
+ */
+function applyZoom(nodes, layouts, known) {
+  if (!known) return nodes.some((n) => (inlineZoom(n) ?? 1) !== 1);
+  const zoom = new Map();
+  const zoomOf = (n) => {
+    if (!n) return 1;
+    if (zoom.has(n)) return zoom.get(n);
+    const own = n.type === 1 ? zoomFactor(n.style?.zoom) : 1;
+    const z = zoomOf(n.parent) * own;
+    zoom.set(n, z);
+    return z;
+  };
+  const scaled = (r, z) => r && Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v * z]));
+  for (const l of layouts) {
+    const z = zoomOf(l.node);
+    if (z === 1) continue;
+    // offsetRects, clientRects and scrollRects are offsetWidth, clientWidth and scrollWidth: before the zoom too
+    l.offset = scaled(l.offset, z);
+    l.client = scaled(l.client, z);
+    l.scroll = scaled(l.scroll, z);
+    if (!l.style) continue;
+    for (const p of ZOOMED_LENGTHS) if (l.style[p]) l.style[p] = scaledPx(l.style[p], z);
+    if (l.style.transform) l.style.transform = scaledMatrix(l.style.transform, z);
+  }
+  return false;
 }
 
 /** Whether `n`, or an element above it, is an <svg>. */

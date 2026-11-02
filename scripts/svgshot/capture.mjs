@@ -104,13 +104,14 @@ export const SNAPSHOT_STYLES = [
   "position",
   ...["top", "right", "bottom", "left"].map((s) => `padding-${s}`),
   "-webkit-text-fill-color",
+  "zoom",
 ];
 
 // The styles a bundle taken before they were read can do without: the converter
 // asks for them only where they matter, and a bundle without them says so as a
-// miss (text-overflow, accent-color: bundle.mjs drawBundle), so that only the pictures
-// that need one are retaken.
-export const MISSABLE_STYLES = new Set(["text-overflow", "accent-color"]);
+// miss (text-overflow, accent-color, zoom: bundle.mjs drawBundle), so that only the
+// pictures that need one are retaken.
+export const MISSABLE_STYLES = new Set(["text-overflow", "accent-color", "zoom"]);
 
 // What a scrollbar part's box is drawn from: its styles, and its size along the bar.
 const PART_STYLES = [

@@ -184,6 +184,8 @@ export function drawBundle(bundle) {
   // Nor, before accent-color was read, the colour of a checked checkbox or radio button.
   for (const doc of measured.keys())
     if (accentUnknown(doc)) misses.add("accent-color of a checked checkbox or radio button");
+  // Nor, before zoom was read, the size of what an element its inline style zooms holds.
+  for (const doc of measured.keys()) if (doc.zoomUnknown) misses.add("zoom of an element its inline style zooms");
 
   const mine = measured.get(decoded);
   if (!mine) throw new Error("the bundle has no measurements of the page");
