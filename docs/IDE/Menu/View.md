@@ -12,7 +12,7 @@ redirect_from:
 
 The View menu switches between a file's code and its designer, moves around the code, changes the zoom, and shows the panels of the IDE.
 
-![The View menu open while the code editor has the focus. Code Editor and Object Browser are greyed out. Object Designer, Definition and Last Position are available, and so are Increase Font Size and Decrease Font Size, with CTRL++ and CTRL+-. Below them the seventeen panel names from EDITOR down to MEMORY 1 are all available, each beside its own icon, with CTRL+L against CALL STACK and CTRL+G against DEBUG CONSOLE.](Images/Menu_View.png){:width="218" height="626"}
+![The View menu open while the code editor has the focus. Code Editor is greyed out. Object Designer, Definition, Last Position and Object Browser, with F2, are available, and so are Increase Font Size and Decrease Font Size, with CTRL++ and CTRL+-. Below them the seventeen panel names from EDITOR down to MEMORY 1 are all available, each beside its own icon, with CTRL+L against CALL STACK and CTRL+G against DEBUG CONSOLE.](Images/Menu_View.png){:width="218" height="626"}
 
 The picture shows the menu while the code editor has the focus. The upper commands depend on what has the focus; the panel names are always available.
 
@@ -32,8 +32,8 @@ The picture shows the menu while the code editor has the focus. The upper comman
 **Last Position** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F2</kbd>)
 : Goes back to the place the caret was before. See [Last Position](../../Code/Navigating#last-position).
 
-**Object Browser**
-: Always greyed out. It has no function.
+**Object Browser** (<kbd>F2</kbd>)
+: Opens the Object Browser, which lists the components and members of the project and of its libraries, and goes to where each is declared. It needs a project open. See [Object Browser](../../Code/Object-Browser).
 
 ## Zoom
 

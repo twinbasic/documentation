@@ -63,7 +63,7 @@ Choose **Window → Panel Layouts → Manage Panel Layouts...** to add and delet
 The list on the left holds `<DEFAULT> (built-in)` and `<FULLSCREEN> (built-in)`, which are read-only, and then your layouts. Each of yours has a close icon that removes it. The pane on the right shows the selected layout as text, which you can edit unless it is a built-in layout.
 
 **Add New...**
-: Asks for a name in a box that reads *&lt;new name&gt;*. <kbd>Enter</kbd> creates a layout that is a copy of the Default layout, and <kbd>Esc</kbd> cancels. A name that starts with `<` is refused with the message *Custom panel name cannot begin with '<'*.
+: Asks for a name in a box that reads *&lt;new name&gt;*. <kbd>Enter</kbd> creates a layout that is a copy of the Default layout, and <kbd>Esc</kbd> cancels. A name that starts with `<` is refused with the message *Custom panel name cannot begin with '<'*. A name that contains a vertical bar is refused with *Group name cannot contain '|'*, and a name already in use with *Group already exists*.
 
 **Save Changes**
 : Greyed out until you change something. It saves the layouts and, if a named layout is in use, applies it again.

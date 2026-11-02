@@ -150,9 +150,13 @@ Additional low-level memory, threading, and introspection functions are document
 
 twinBASIC compiles to either 32-bit or 64-bit native code. The target is set per-project. See [Features → 64-bit Compilation](../Features/64bit) and use `#If Win64 Then` / `#If Win32 Then` to conditionally compile architecture-specific code.
 
-### Static linking (Fusion)
+### Static linking
 
-twinBASIC can statically link its runtime into the output EXE, producing a single-file distributable with no separate runtime DLL. See [Features → Fusion](../Features/Fusion).
+The `Import Library` statement links compiled C code from `.obj`, `.lib` and `.a` files into the program, which calls its functions through `Declare` statements with no DLL beside it. The feature is experimental. See [Features → Static Linking](../Features/Advanced/Static-Linking).
+
+### Fusion
+
+A 64-bit program can host some 32-bit ActiveX controls, which run in a 32-bit helper process. See [Features → Fusion](../Features/Fusion).
 
 ### Multithreading
 

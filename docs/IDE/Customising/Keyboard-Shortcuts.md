@@ -47,7 +47,7 @@ The **Edit as JSON** box is ticked. If you clear it, the pane shows only the tex
 ![The same dialog with the Edit as JSON box cleared: the editing pane is empty apart from the line Keyboard editor coming soon.](../Menu/Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts_1.png){:width="1016" height="740"}
 
 **Add New...**
-: Asks for a name, then creates a group that holds one sample entry, `{"tbMisc_ShowTestMessage":["{KEYDOWN}{CTRL}0"]}`. <kbd>Ctrl</kbd>+<kbd>0</kbd> then opens a test dialog that reads *This is just a test modal dialog.* A name that starts with `<` is refused with a message that says *Custom panel name cannot begin with '<'*, although it means a group name.
+: Asks for a name, then creates a group that holds one sample entry, `{"tbMisc_ShowTestMessage":["{KEYDOWN}{CTRL}0"]}`. <kbd>Ctrl</kbd>+<kbd>0</kbd> then opens a test dialog that reads *This is just a test modal dialog.* A name that starts with `<` is refused with a message that says *Custom panel name cannot begin with '<'*, although it means a group name. A name that contains a vertical bar is refused with *Group name cannot contain '|'*, because the IDE saves the list of groups that are on as their names, each between two bars, such as `|Mine||Other|`. A name already in use is refused with *Group already exists*.
 
 **Save Changes**
 : Greyed out until you change something. It saves the groups, switches on the groups you added, and applies the result.
@@ -56,9 +56,6 @@ The **Edit as JSON** box is ticked. If you clear it, the pane shows only the tex
 : Discards every change made in the dialog.
 
 Text that is not valid JSON turns red. The IDE ignores a group whose text is not valid when it merges the groups.
-
-> [!WARNING] BETA 1010
-> A group whose name contains a vertical bar (`|`) can break the list of groups that are on. The IDE saves the list as the names, each between two bars, such as `|Mine||Other|`. A name with a bar inside it can match part of another name. For example, with groups named `A|B` and `B` both on, clicking `B` in the menu leaves it ticked, and clicking it again switches off both groups, and leaves a broken entry in the saved list. Nothing warns you. Do not use `|` in a group name.
 
 ## The text of a group
 

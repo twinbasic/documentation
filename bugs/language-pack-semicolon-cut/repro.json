@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:language",
+  "tests": [
+    "a ';' and a space end a pack's string inside its quotes: the Help menu reads PHELP, and TB0022's message ends at its semicolon"
+  ],
+  "steps": "1. Open any project with the line `counts = small`, where `Dim counts() As Long` and `Dim small() As Integer` (ReDim small first): the DIAGNOSTICS panel shows TB0022 as Suspicious array assignment, although en-gb.lang gives it as Suspicious array assignment; subtypes do not match.\n2. Put a pack in %APPDATA%\\twinBASIC\\locale with the line MenuCaptionHelp: \"Help; more\"; restart the IDE and choose the pack under Window, Language: the Help menu reads Help.\nControl: MenuCaptionView: \"View;more\" reads View;more."
+}

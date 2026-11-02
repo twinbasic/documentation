@@ -34,10 +34,10 @@
 //
 // An entry's text is stored escaped: an add-in's PrintText of "<b>&copy=1"
 // is stored as "&lt;b&gt;&amp;copy=1" (measured), so decoding gives
-// back exactly what was printed, markup and ampersands included. Except for
-// the IDE's own bug (twinbasic/twinbasic#2444): text that continues a line left open
-// by `Debug.Print ...;` is escaped twice, so the console shows "&amp;" for
-// "&", and so does this reader. It returns what the console shows.
+// back exactly what was printed, markup and ampersands included. Up to BETA
+// 1010, text that continued a line left open by `Debug.Print ...;` was escaped
+// twice (twinbasic/twinbasic#2444, fixed by BETA 1034), so the console showed
+// "&amp;" for "&", and so did this reader. It returns what the console shows.
 //
 // A mark (consoleMark) is checked in the same evaluate as the read, so a
 // clear cannot fall between the two. The entry that was last when the mark

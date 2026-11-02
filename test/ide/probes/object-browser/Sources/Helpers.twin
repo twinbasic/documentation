@@ -1,0 +1,33 @@
+Module Helpers
+    ' test/ide/object-browser.test.mjs finds the lines it needs by their text.
+    Public Const BigValue As Long = &H8000&
+    Public Counter As Long
+
+    Public Enum Colour
+        Red = 1
+        Green = 2
+        Blue = 4
+    End Enum
+
+    Public Type Point
+        X As Long
+        Y As Long
+    End Type
+
+    Public Declare PtrSafe Function GetTickCount Lib "kernel32" () As Long
+
+    Public Function Twice(ByVal n As Long) As Long
+        Return n * 2
+    End Function
+
+    Private Sub Unseen()
+        Counter = 0
+    End Sub
+
+    Public Sub Main()
+        Dim c As New Circle
+        c.Radius = 2
+        c.Name = "Disc"
+        Debug.Print Twice(3), c.Circumference(), c.Name
+    End Sub
+End Module

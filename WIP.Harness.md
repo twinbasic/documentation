@@ -1200,6 +1200,10 @@ never navigates twice. The script puts a setter on `window.hostAppObject`, which
 wraps the host object: `GetIDESetting` answers `""` for the blanked keys and `"{}"` for `GENERAL` and
 `GENERAL2`, every other call goes through with `this` bound to the real object. The keys it left
 unanswered are the licence's, `LICENCEAGREEMENTV3`, `ALLOWERRORREPORTINGV3`, `PUBLISHER` and `NEWYEAR_*`.
+A new build can add a key, which is read from the user's registry until it is blanked: BETA 1023 added
+`OBJECT_BROWSER` (the Object Browser's view, filters, sorts and pane sizes) and BETA 1033 `NEWFRONTPAGE` (the
+New / Open Project dialog's section), both blanked since 2026-11-02. After a new BETA, list the keys the page passes
+to `GetIDESetting` (a search of the install's `ide/*.js` for the call) and compare them with `BLANKED_KEYS`.
 The recent lists are left alone: `test/ide/recent-projects-copies.test.mjs` needs the IDE's own, and
 `shoot_docs.mjs`'s `PAGE_DEFAULTS` empties them where a picture shows them.
 
@@ -1819,7 +1823,8 @@ unit changed takes the later build's change back out. Before patching a build ot
 one a fix was written on, run `shape` on it: its diff is exactly what the patch changes.
 
 **The IDE does not check `main.js`.** A copy of BETA 1010 with the two edits of
-`export-verbose-done-escaped`'s fix ran the export lane: the defect's test reported that it
+`export-verbose-done-escaped`'s fix (that entry and `debug-print-escaped-twice` were retired
+once BETA 1034 fixed both; the fix and the reproducers are in git history) ran the export lane: the defect's test reported that it
 no longer reproduced, its two controls and the lane's six other tests passed, and
 `bug_repro.mjs verify debug-print-escaped-twice` said NO LONGER REPRODUCES (it reproduces on an
 unpatched, byte-identical copy). That was the study's prototype; the tool's patch of the

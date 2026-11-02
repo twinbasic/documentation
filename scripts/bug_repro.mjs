@@ -638,7 +638,8 @@ const MODES = ["compile", "build", "run", "test", "cli", "lane", "probe", "manua
 const warned = new Set();
 // What `expect` may hold in each mode. A lane reproducer has no `expect`: its tests are what it expects.
 const EXPECT_KEYS = {
-  compile: ["exit", "diagnostics", "noDiagnostics"],
+  // `output` and `absent` are matched against tbbuild's --json report, one diagnostic to a line.
+  compile: ["exit", "diagnostics", "noDiagnostics", "output", "absent"],
   build: ["exit", "message"],
   // `message` is what tbrun writes to stderr, a failed build's lines included.
   run: ["exit", "output", "absent", "message", "imagesDiffer"],

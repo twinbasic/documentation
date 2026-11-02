@@ -8,13 +8,14 @@ has_toc: false
 
 # Writing code
 
-The code editor and the panels you use beside it: tabs, editing commands, IntelliSense, navigation, searching and the list of problems.
+The code editor and the panels you use beside it: tabs, editing commands, IntelliSense, navigation, searching, the list of problems and the Object Browser.
 
 - [**Editor**](Editor) --- the editor panel and its tabs, the three navigation combo boxes, editing commands, formatting, Auto Prettify and the command palette.
 - [**IntelliSense**](IntelliSense) --- the completion list, signature help, hover, inline code hints and CodeLens.
 - [**Navigating**](Navigating) --- Go To Definition, Last Position, bookmarks, Go To Line/Column, and the Outline, Open Editors and History panels.
 - [**Finding**](Finding) --- the **Find / Replace** panel, searching the whole project, the Quick Find widget and regular expressions.
 - [**Diagnostics**](Diagnostics) --- the panel that lists the errors and warnings the compiler finds, and how to filter and copy them.
+- [**Object Browser**](Object-Browser) --- the dialog that lists the components and members of the project and its libraries, searches them, and goes to their declarations.
 
 The commands of these pages are listed by menu in the [Edit menu](../Reference/Menu/Edit) and [View menu](../Reference/Menu/View) reference pages. Everything that sets how the editor looks, such as its fonts, the minimap and the IntelliSense mode, is in [IDE Options](../Customising/IDE-Options).
 

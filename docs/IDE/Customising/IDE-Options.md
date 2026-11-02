@@ -69,7 +69,7 @@ No question is asked. About two seconds after **Save Changes**, the **tB Service
 : Default Dark. The IDE's theme: **Aurora**, **Classic**, **Dark**, **High Contrast Dark**, **High Contrast Light** or **Light**, the themes that **Window → Theme** lists. See [Themes](Themes).
 
 **IDE Font Size**
-: Default 13px. The size of the IDE's own text. The list runs from 8px to 30px in steps of 1px, and 13px is the normal size: the whole IDE is scaled in proportion. <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>+</kbd> makes the text 1px bigger with no upper limit, so it can pass 30px, and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>-</kbd> makes it 1px smaller, down to 8px. Both keys save the new size at once.
+: Default 13px. The size of the IDE's own text. The list runs from 8px to 30px in steps of 1px, and 13px is the normal size: the toolbar's icons are scaled in proportion to it. <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>+</kbd> makes the text 1px bigger with no upper limit, so it can pass 30px, and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>-</kbd> makes it 1px smaller, down to 8px. Both keys save the new size at once.
 
 **IDE Font**
 : Default Segoe UI. The typeface of the IDE's own text. Segoe UI is also the fallback.
@@ -106,7 +106,7 @@ No question is asked. About two seconds after **Save Changes**, the **tB Service
 ## IntelliSense and hover
 
 **Intellisense mode**
-: Default MODERN. When the IntelliSense list opens. See [Intellisense modes](#intellisense-modes).
+: Default LEGACY. When the IntelliSense list opens. See [Intellisense modes](#intellisense-modes).
 
 **Signature-Help Show First Line Of Docs**
 : Default on. The collapsed signature-help box includes the first line of the procedure's documentation. <kbd>F1</kbd> expands the box.

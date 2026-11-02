@@ -1056,12 +1056,12 @@ Each line stays as it is typed, as it does in the code editor. The code editor's
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
+ - twinBASIC compiler version: BETA 1034
 
 **Additional context**
 What does not reproduce it: a word that is already the list's first entry, and not a procedure, keeps its space, so `total = 6` stays as it is. `? total` and `Debug.Print total` stay as they are. Escape before the space closes the list, and the space is then typed. With the IDE's IntelliSense mode set to LEGACY or MANUAL, the list does not open while the first word of a line is typed, and `Print total` and `Call Touch(total)` stay as they are.
 
-In the default mode, MODERN, the console asks for the list after every key and answers within a few milliseconds, so the list is open at the space whenever a line is typed at an ordinary speed. Every keyword that starts a longer name is replaced in the same way, and the others type as they are: `Do` becomes `DockModeConstants`, `For` becomes `FormArrangeConstants`, `On` becomes `OnErrorCatch`, `Get` becomes `GetAllSettings()` and `RaiseEvent` becomes `RaiseEventByName()`, while `Dim`, `End`, `Exit`, `With`, `Open`, `Close`, `ReDim`, `Stop` and `GoTo` stay. The same happens with no program running: `Print 1 + 1` becomes `Printer1 + 1`.
+In the mode MODERN (the default up to BETA 1010; since BETA 1033 the default is LEGACY), the console asks for the list after every key and answers within a few milliseconds, so the list is open at the space whenever a line is typed at an ordinary speed. Every keyword that starts a longer name is replaced in the same way, and the others type as they are: `Do` becomes `DockModeConstants`, `For` becomes `FormArrangeConstants`, `On` becomes `OnErrorCatch`, `Get` becomes `GetAllSettings()` and `RaiseEvent` becomes `RaiseEventByName()`, while `Dim`, `End`, `Exit`, `With`, `Open`, `Close`, `ReDim`, `Stop` and `GoTo` stay. The same happens with no program running: `Print 1 + 1` becomes `Printer1 + 1`.
 
 Severity: moderate. `Print`, `Call` and `Set` begin lines that are often typed in the console, and each becomes a line the console refuses. The only ways round it are Escape before the space and another IntelliSense mode.
 
@@ -5342,60 +5342,6 @@ The reference is not one of the compiler's installed packages, and its own name 
 Severity: low. A type library is labelled as a package.
 
 <!-- Reproducer: bugs/imported-typelib-linked-package/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "a type library imported on Available COM References is listed in Enabled Libraries as [LINKED-PACKAGE]", which passes on BETA 1010; the file dialog is answered in the page, and the dialog is closed with Cancel). No project and no zip. docs/IDE/Projects/References-and-Packages.md, under Import from file (its third NOTE), carries a NOTE for it; when a fixed build is released, that NOTE changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D33). -->
-
----
-
-## With Export Verbose, each DONE line of Export Project shows &#92; for every backslash
-
-**Describe the bug**
-With *Export Verbose* on (Project Settings, Export), Export Project prints a `DONE:` line in the DEBUG CONSOLE for each file it writes. Every backslash in those paths shows as the text `&#92;`. The files are written correctly. It was observed in an IDE started with an `APPDATA` of its own, reading the console's lines and the rows it draws, and the folder written.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open any project, and set *Export Verbose* to YES in Project Settings, Export.
-2. Export Project into an empty folder.
-3. The DEBUG CONSOLE shows `[EXPORT]  DONE: &#92;Settings`, `[EXPORT]  DONE: &#92;Sources&#92;Startup.twin`, and so on for each file.
-
-**Expected behavior**
-`[EXPORT]  DONE: \Settings`, `[EXPORT]  DONE: \Sources\Startup.twin`.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
-
-**Additional context**
-Also on BETA 1007, with the same lines. The other `[EXPORT]` lines are right: the first line, `exporting current project to "\\?\C:\...\"...`, the `COMPLETED (... folders, ... files)` line, and, when the export folder already holds files, each `DELETED: \\?\C:\...` line. The files written and their contents are right.
-
-The cause looks to be the one in #2444. The compiler sends each `DONE` line in three parts: `[EXPORT]  DONE: `, then the path, then the line break. `debugOutputPartial` in `ide/main.js` adds the path to a line that is still open, and passes it through `TEXTtoHTML` twice, so `\` is stored as `&amp;#92;` and drawn as `&#92;`. A `DELETED` line comes in one part and is escaped once.
-
-Severity: cosmetic. The paths are hard to read, and a path copied from the console is wrong.
-
-**Fix shape**
-
-`debugOutputPartial` in `ide/main.js`, BETA 1010, in a readable form. The local names are ours, not twinBASIC's (`text`, `colorClass`, `isHTML`, `timeStamp`, `endsLine`, `addedHTML`, `lineHTML`, `stampHTML`); the build calls them `e`, `t`, `o`, `n`, `r`, `i`, `n`, `i`.
-
-```diff
-@@ -6,11 +6,11 @@
-   if (debugConsolePartialLineItem) {
-     let lineHTML = debugConsoleContent.onAsyncGetItemHTML(debugConsolePartialLineItem);
-     if (debugConsolePartialLineItem_LastColorClass === colorClass) {
--      text = TEXTtoHTML(text);
-+      text = isHTML ? text : TEXTtoHTML(text);
-     } else {
-       text = "</span><span class='" + colorClass + "'>" + (isHTML ? text : TEXTtoHTML(text));
-     }
--    var addedHTML = isHTML ? text : TEXTtoHTML(text);
-+    var addedHTML = text;
-     debugConsoleContent.updateItem(
-       debugConsolePartialLineItem,
-       lineHTML + addedHTML + (endsLine ? "</span>" : ""),
-```
-
-Both branches of the `if` already escape `text`, so the second `TEXTtoHTML` escapes it again (this bug and #2444); after a colour change it also escapes the `</span><span>` markup that the `else` branch added. The first changed line is a related case: HTML text that continues a line in the same colour is escaped, though it is HTML. Drop that line if `isHTML` never continues a line.
-
-Tested on a copy of BETA 1010 with this change (two edits in `main.js`, every other byte the same): the DONE lines read `DONE: \Settings` and `DONE: \Sources\Startup.twin`, the other `[EXPORT]` lines are unchanged, and #2444's reproducer no longer reproduces.
-
-<!-- Reproducer: bugs/export-verbose-done-escaped/ (mode lane: asserted by `ide-test.bat --only "^export$"` (test/ide/export.test.mjs), the test "with Export Verbose, every DONE line shows &#92; for each backslash of the path, and the files are right", which passes on BETA 1010 and on BETA 1007; the controls "control: with Export Verbose, a second export's DELETED lines show the paths' backslashes" and "control: without Export Verbose, the first line and the COMPLETED line show the path's backslashes" pass too; the exports go into the lane's work folder through the IDE's own exportProjectTo(), which the menu command calls). No project and no zip. Its cause is twinbasic/twinbasic#2444's (bugs/filed/debug-print-escaped-twice/), so the owner may mark it *CAPTURED IN EXISTING #2444* instead of filing it. docs/IDE/Projects/Saving-and-Exporting.md, under Export Project (the paragraph on Export Verbose), carries a NOTE for it; when a fixed build is released, that NOTE goes. First seen on BETA 1005 while taking the documentation's screenshots (WIP.Screenshots.md, "Not taken: the export console"). Fix: bugs/export-verbose-done-escaped/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/export-verbose-done-escaped/fix.js` on BETA 1010, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only "^export$"` tests it (the entry's test then reports that it no longer reproduces). -->
 
 ---
 
@@ -11180,4 +11126,389 @@ The cause, read in the VB package's `Graphics.twin` as BETA 1010 ships it: the `
 This is separate from the PictureBox report on Discord (2026-10-28), that setting `BackColor` to the colour it already has erases nothing on a PictureBox, where VB6 erases it; that is fixed in BETA 1034, which reworked this code and still resets the position. The position was not part of that report.
 
 <!-- Reproducer: bugs/backcolor-resets-current-xy/ (mode run; expect lists the three "0 0" lines above); run on BETA 1034 and 1033, 32-bit and 64-bit, and on BETA 1010, with `bug_repro.mjs run`; `verify` on 1034, 2026-10-31: reproduces. VB6 side in vb6/ (`bug_repro.mjs vb6 backcolor-resets-current-xy` prints the expected lines). Stated in WARNINGs (BETA 1034) under BackColor and Picture on docs/Reference/Default/VB/Form/index.md and docs/Reference/Default/VB/PictureBox/index.md; when fixed, all four go. The same-colour PictureBox defect is fixed in BETA 1034 (checked with GetPixel), and its sentence is gone from the PictureBox WARNING. Found 2026-10-31 checking Wayne's "one for the documentation" note of 2026-10-30; owner, 2026-10-31: file it. -->
+
+---
+
+## In the Object Browser, Tab moves the focus from the search box to Aa and no further
+
+**Describe the bug**
+In the Object Browser (View → Object Browser, F2), Tab moves the focus from the search box to the **Aa** button and no further: every later Tab leaves the focus on **Aa**. Shift+Tab from the search box goes to the **Project / Library** box, then to the Description's copy button, and stops there. So Back and Forward, Browse and Results, the sort and filter buttons, the Components and Members lists and the Description cannot be reached from the keyboard; only a click puts the focus in a list. It was observed in an IDE started with an `APPDATA` of its own, pressing the keys and reading which element had the focus after each.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project, put the caret in the code editor, and press F2. The Object Browser opens with the focus in its search box.
+2. Press Tab: the focus goes to **Aa**.
+3. Press Tab a few more times: the focus stays on **Aa**.
+4. Click in the search box and press Shift+Tab three times: the focus goes to **Project / Library**, then to the copy button at the top right of the Description, and stays there.
+
+**Expected behavior**
+Tab and Shift+Tab move through every control of the dialog and wrap at its ends. The Object Browser's own key handler is written for that: it collects the dialog's buttons, inputs, selects and lists, and wraps Tab from the last to the first and Shift+Tab from the first to the last, leaving the moves in between to the browser.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The cause is in `showModalDialog` in `ide/main.js`, which the Object Browser opens in. The dialog container's `onkeydown` takes Tab and Shift+Tab (and Right and Left) for itself whenever the focused element is not an `input` or a `textarea`: it moves the highlight between the footer buttons (**Go to Definition** and **Close**), and prevents the default. The search box is an `input`, so its Tab reaches the browser and moves to **Aa**; **Aa** is a `button`, so its Tab is taken. Other dialogs were not tried.
+
+Once a list has the focus (by a click), its keys work: Up, Down, Home, End, type-ahead, and Enter for Go to Definition. Escape closes the dialog from anywhere in it.
+
+Severity: low for a mouse user; a keyboard user cannot reach the lists at all.
+
+**Fix shape**
+
+`showModalDialog` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`content`, `buttons`, `caption`, `onClose`, `keepUnlocked`, `noButtonKeys`, `container`, `previous`, `startLeft`, `startTop`, `startX`, `startY`, `dragging`, `titleBar`, `closeBox`, `cancelButton`, `acceptButton`, `focusedButton`, `firstButton`, `lastButton`, `buttonBar`, `leadingSpacer`, `hasSpacer`, `down`, `move`, `dx`, `dy`, `up`, `press`, `event`, `inTextBox`, `button`, `element`, `click`, `mouseDown`); the build calls them `e`, `t`, `o`, `n`, `i`, `r`, `a`, `s`, `l`, `d`, `c`, `u`, `p`, `f`, `g`, `m`, `h`, `v`, `b`, `C`, `y`, `E`, `D`, `e`, `e`, `t`, `o`, `e`, `e`, `e`, `e`, `e`, `t`, `t`, `t`.
+
+```diff
+@@ -93,6 +93,29 @@
+       }
+     }
+     if (!noButtonKeys) {
++      // Tab and Shift+Tab move the focus through the dialog's own controls while one of them
++      // has it, wrapping at the ends, where a dialog that does so itself has done it already.
++      if (
++        event.key === "Tab" &&
++        container.contains(document.activeElement) &&
++        document.activeElement !== container
++      ) {
++        if (!event.defaultPrevented) {
++          const controls = [
++            ...container.querySelectorAll("button, input, select, textarea, [tabindex]"),
++          ].filter(
++            (control) =>
++              control.tabIndex >= 0 && !control.disabled && control.getClientRects().length,
++          );
++          const current = controls.indexOf(document.activeElement);
++          const step = event.shiftKey ? controls.length - 1 : 1;
++          if (controls.length)
++            controls[current < 0 ? 0 : (current + step) % controls.length].focus();
++          event.preventDefault();
++        }
++        event.stopPropagation();
++        return;
++      }
+       if ((event.key === "Tab" && !event.shiftKey) || event.key === "ArrowRight") {
+         if (
+           document.activeElement.localName == "input" ||
+```
+
+While a control inside the dialog has the focus, Tab now moves it to the next control the dialog shows, and Shift+Tab to the one before, wrapping inside the dialog, so the focus never leaves it for the IDE behind. The footer buttons are `div`s with no tab stop, so they are not among the controls; Right and Left still move their highlight, and Enter still presses the highlighted one. The Object Browser wraps at its own ends in a handler that runs first and prevents the default, so `defaultPrevented` leaves that move alone. With the focus on the container itself, as when a dialog has just opened, Tab still moves the footer highlight as before. One change for other dialogs: Tab from a text box also stays inside the dialog now, where before it went wherever the browser sent it.
+
+Tested on a copy of BETA 1034 with this change (12 edits in `main.js`, most of them parentheses round an arrow function's parameter, every other byte the same): Tab from the search box goes to **Aa**, **Browse**, **Results** and the sort button of Components in turn, and Shift+Tab goes to **Project / Library**, the copy button and the Description; the Object Browser lane's other 19 tests pass, and so do the five tests of the Customising lane, which type names into the Manage Keyboard Shortcuts and Manage Panel Layouts dialogs.
+
+<!-- Reproducer: bugs/object-browser-tab-stops/ (mode lane: asserted by `ide-test.bat --only object-browser` (test/ide/object-browser.test.mjs), the test "Tab moves the focus from the search box to Aa and no further; Shift+Tab to Project / Library, then to the copy button, and no further", which passes on BETA 1034; the control "control: a click on a list gives it the focus, and the keys then move in it" passes too). No project and no zip. docs/IDE/Code/Object-Browser.md carries a NOTE (BETA 1034) for it, under "Using the keyboard"; when a fixed build is released, that NOTE goes. Found 2026-11-02 writing that page. Fix: bugs/object-browser-tab-stops/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/object-browser-tab-stops/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only object-browser` tests it (the entry's test then fails, which is the fix working). -->
+
+---
+
+## The messages of TB0034, and of TB0035 for an `Object`, leave out the names they report
+
+**Describe the bug**
+Two of the warnings new in BETA 1034 print their message with its names missing. TB0034, for a `Declare` of a legacy DLL, leaves both DLL names empty. TB0035, for a conversion from an `Object` to a class or interface type, shows its placeholders `{0}`, `{1}` and `{2}` as they are. The text is the same in the DIAGNOSTICS panel and in the code editor's squiggle.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `warning-message-names-blank.twinproj` (attached as `warning-message-names-blank.zip`). Its one source file, `Startup.twin`:
+   ```
+   [EnforceWarnings(TB0035)]
+   Module Startup
+       Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" (ByRef PicDesc As Any, ByRef RefIID As Any, ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
+
+       Public Sub Main()
+           Dim o As Object
+           Dim v As Variant
+           Dim f As StdFont
+           Set f = o
+           Set f = v
+       End Sub
+   End Module
+   ```
+2. See three warnings in the DIAGNOSTICS panel:
+   ```
+   TB0034 Use of legacy DLL  has been redirected to 
+   TB0035 Conversion from type {0} to type {1} might fail at runtime.  Use {2}(expression) to avoid this message
+   TB0035 Conversion from type Variant to type Font might fail at runtime.  Use CType(Of Font)(expression) to avoid this message
+   ```
+
+**Expected behavior**
+TB0034 names both DLLs, as TB0015 did for the same `Declare` in BETA 1033: `use of legacy OLEPRO32.DLL has been redirected to OLEAUT32.DLL`. TB0035 names the two types and the conversion for an `Object`, as it does for a `Variant`: `Conversion from type Object to type Font might fail at runtime.  Use CType(Of Font)(expression) to avoid this message`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`locale/en-gb.lang` gives the two messages as `Use of legacy DLL {0} has been redirected to {1}` and `Conversion from type {0} to type {1} might fail at runtime.  Use {2}(expression) to avoid this message`, so the values the compiler has for these two cases do not reach the text: for TB0034 it fills in two empty strings, for TB0035 nothing at all.
+
+TB0035 leaves its placeholders for every `Object` source tried: an `Object` variable, a function that returns `Object`, and an `Object` passed to a `StdFont` parameter, with a `StdFont`, a class of the project and an interface of the project as the target. A `Variant` source, a `Variant` item of a `Collection` included, names its types. TB0034 is the same in a win32 and a win64 build.
+
+Severity: low; the message no longer says which DLL is replaced, or which conversion to write.
+
+<!-- Reproducer: bugs/warning-message-names-blank/ (mode compile; expect.output matches TB0034's row with no DLL names and TB0035's row with {0}, {1} and {2}, in tbbuild's --json report, where the IDE's double spaces are single). docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0034 and one under TB0035 that say so; when a fixed build is released, those sentences go. Found 2026-11-02 writing those sections. -->
+
+---
+
+## TB0034 is reported as a warning whatever level Project Settings or an attribute gives it
+
+**Describe the bug**
+TB0034, the warning for a `Declare` of a legacy DLL that twinBASIC redirects to another, is always reported as a warning. The level the Compiler Warnings list of Project Settings gives it is not applied: at **IGNORE**, **HINT** or **ERROR** it is still a warning, and `[IgnoreWarnings(TB0034)]` and `[EnforceErrors(TB0034)]` change nothing either. TB0015, the warning for a `Declare` that twinBASIC implements itself, follows its level. In a new project the list shows TB0034 at **HINT**.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `tb0034-level-ignored.twinproj` (attached as `tb0034-level-ignored.zip`). Its Settings put TB0015 and TB0034 at **IGNORE**, and its one source file, `Startup.twin`, is:
+   ```
+   Module Startup
+       Private Declare PtrSafe Sub GetMem4 Lib "msvbvm60" (ByVal Src As LongPtr, ByVal Dst As LongPtr)
+       Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" (ByRef PicDesc As Any, ByRef RefIID As Any, ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
+
+       Public Sub Main()
+       End Sub
+   End Module
+
+   [IgnoreWarnings(TB0034)]
+   Module ByAttribute
+       Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" (ByRef PicDesc As Any, ByRef RefIID As Any, ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
+   End Module
+   ```
+2. See two warnings, one for each `olepro32` declaration, and nothing for the `msvbvm60` one:
+   ```
+   TB0034 Use of legacy DLL  has been redirected to      [4,38]
+   TB0034 Use of legacy DLL  has been redirected to      [13,38]
+   ```
+
+**Expected behavior**
+TB0034 follows its level, as TB0015 does: not reported at **IGNORE**, a hint at **HINT**, an error at **ERROR**. In a new project, whose list shows TB0034 at **HINT**, it is a hint.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Also tried, each with the same result, a warning: TB0034 at **HINT** and at **ERROR** in Project Settings (TB0015 at **ERROR** becomes an error), and `[EnforceErrors(TB0034)]` on the module. In BETA 1033 the same `Declare` drew TB0015 as a warning in a new project, although the list showed TB0015 at **HINT**; BETA 1034 gave the message a code of its own, and its level is still not applied.
+
+Severity: low; the warning cannot be turned off, so a project that declares such a function always shows it.
+
+<!-- Reproducer: bugs/tb0034-level-ignored/ (mode compile; expect.output matches a WARNING row for TB0034 at each declaration, and expect.absent TB0015, the control). docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0034 that says so; when a fixed build is released, that sentence goes. It replaces the NOTE (BETA 1010) that TB0015 carried: TB0015 follows its level in BETA 1034. Found 2026-11-02 writing that section. -->
+
+---
+
+## TB0035 is not reported in a new project, although the Compiler Warnings list shows it at WARNING
+
+**Describe the bug**
+In a project whose Settings give TB0035 no level, as a new project's do, TB0035 is not reported at all, but the Compiler Warnings list of Project Settings shows it at **WARNING**. TB0035 is reported once it is named: in the project's `project.warnings`, or with `[EnforceWarnings(TB0035)]`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `tb0035-default-not-reported.twinproj` (attached as `tb0035-default-not-reported.zip`). Its Settings give no warning a level, as a new Standard EXE's do, and its one source file, `Startup.twin`, is:
+   ```
+   Module Startup
+       Public Sub Main()
+           Dim o As Object
+           Dim f As StdFont
+           Set f = o
+       End Sub
+   End Module
+   ```
+2. See no diagnostics.
+3. Open Project Settings, Compiler Warnings: TB0035 is at **WARNING**.
+
+**Expected behavior**
+The list and the compiler agree. Either TB0035 is reported, as a warning, as the list says, or the list shows it at **IGNORE**, as it does for TB0020, the neighbouring *Suspicious interface conversion*, which the compiler also leaves out by default.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The other warnings new in BETA 1034 agree with the list: TB0036 and TB0037 are reported as warnings in a new project, as the list shows. TB0034 does not (reported separately: it is a warning whatever its level).
+
+Severity: low; the list says that conversions from `Object` and `Variant` are checked, and they are not.
+
+<!-- Reproducer: bugs/tb0035-default-not-reported/ (mode compile; expect.noDiagnostics, the bug state. It cannot tell which side a fix changes: a build whose list shows TB0035 at IGNORE still reproduces, so look at the list when it stops reproducing or when a new build comes). docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0035 that says so. Found 2026-11-02 writing that section. -->
+
+---
+
+## A language pack's string is cut at a semicolon followed by a space, so TB0022's message ends at *Suspicious array assignment*
+
+**Describe the bug**
+The IDE reads a language pack's strings by splitting the file at every `;` followed by a space, a tab or a line break, before it looks at the quotes. So a string that holds `; ` inside its double quotes ends there, and the rest of it is dropped without a word. Since BETA 1034 the compiler's messages are strings of the pack too, and `en-gb.lang` gives TB0022 as `"Suspicious array assignment; subtypes do not match"`, so the warning reads only *Suspicious array assignment*. A translator's string with `; ` in it is cut the same way.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and add these lines to a procedure:
+   ```
+   Dim counts() As Long
+   Dim small() As Integer
+   ReDim small(3)
+   counts = small
+   ```
+2. See TB0022 in the DIAGNOSTICS panel: `Suspicious array assignment`.
+3. Put a pack `zz-zz.lang` in `%APPDATA%\twinBASIC\locale` with these lines, restart the IDE, and choose *Probe Pack* under **Window, Language**:
+   ```
+   FriendlyName: "Probe Pack";
+   inherits: en-gb;
+   MenuCaptionHelp: "PHELP; CUT";
+   MenuCaptionView: "PVIEW;WHOLE";
+   ```
+4. See the Help menu read `PHELP`. The View menu reads `PVIEW;WHOLE`: a `;` with no space after it stays in the string.
+
+**Expected behavior**
+A `;` inside a string's quotes is part of the string: TB0022 reads *Suspicious array assignment; subtypes do not match*, and the Help menu `PHELP; CUT`. `locale\README.txt` describes a pack as properties written as in `en-gb.lang`, each a quoted string, and says nothing that keeps a string from holding `; `; `en-gb.lang` itself holds one.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Of all the strings of the 19 packs BETA 1034 ships, only TB0022 of `en-gb.lang` holds `; ` inside its quotes, so the shipped packs lose only that one today. A reader that ends a value only at a `;` outside quotes would not do: several shipped packs leave a quote unclosed before a `;` at the end of the line (`ja-jp.lang` line 206, `MenuShortcutKeyARROWLEFT: "左←;`, and the `DialogSaveChangesToProjectCaptionMain` lines of `de-de.lang`, `it-it.lang` and `fr-fr.lang`), and the present reader still ends those values at the line's end. With such a reader `ja-jp.lang` would lose 71 strings. The fix below keeps that.
+
+Severity: low; a message or a translation is shorter than written, and nothing says so.
+
+**Fix shape**
+
+`applyLanguagePack` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`packName`, `pack`, `packText`, `entries`, `language`, `entry`, `colon`, `key`, `value`); the build calls them `e`, `t`, `o`, `n`, `t`, `e`, `t`, `o`, `n`.
+
+```diff
+@@ -19,11 +19,25 @@
+   if (pack && pack.text) {
+     var packText = pack.text + "\r\n";
+     packText = packText.replace(/\/\*[\s\S]*?\*\//g, "");
+-    packText = packText.replace(/; /g, "%;%");
+-    packText = packText.replace(/;\t/g, "%;%");
+-    packText = packText.replace(/;\n/g, "%;%");
+-    packText = packText.replace(/;\r\n/g, "%;%");
+-    var entries = packText.split("%;%");
++    var entries = [];
++    var entryStart = 0;
++    var inQuotes = false;
++    var lineEnd = /[ \t]*\r?\n/y;
++    for (let index = 0; index < packText.length; index++) {
++      const character = packText[index];
++      if (character === '"') {
++        inQuotes = !inQuotes;
++      } else if (character === ";") {
++        lineEnd.lastIndex = index + 1;
++        const next = packText[index + 1];
++        if (lineEnd.test(packText) || (!inQuotes && (next === " " || next === "\t"))) {
++          entries.push(packText.slice(entryStart, index));
++          entryStart = index + 1;
++          inQuotes = false;
++        }
++      }
++    }
++    entries.push(packText.slice(entryStart));
+     entries.forEach((entry) => {
+       let colon = entry.indexOf(":");
+       if (colon !== -1) {
+```
+
+A `;` followed by a space or a tab now ends a value only outside its quotes, so a string may hold `; `. A `;` that ends its line, with only spaces or tabs after it, ends the value as before, quotes or not, and the next value starts outside quotes, so a pack that leaves a quote unclosed before such a `;` reads as it does today. Read this way, the 19 packs BETA 1034 ships give every string the value they give now, except TB0022 of `en-gb.lang`, which is whole.
+
+Tested on a copy of BETA 1034 with this change (3 edits in `main.js`, every other byte the same): the Help menu reads `PHELP; CUT`, and the text the IDE passes to the compiler for TB0022 is `Suspicious array assignment; subtypes do not match`; the View menu still reads `PVIEW;WHOLE`, and the language lane's seven other tests pass.
+
+<!-- Reproducer: bugs/language-pack-semicolon-cut/ (mode lane: asserted by `ide-test.bat --only language` (test/ide/language.test.mjs), the test "a ';' and a space end a pack's string inside its quotes: the Help menu reads PHELP, and TB0022's message ends at its semicolon", which passes on BETA 1034; the control "control: a ';' with no space after it stays in a pack's string: the View menu reads PVIEW;WHOLE" passes too). No project and no zip. docs/IDE/Customising/index.md carries a NOTE (BETA 1034) for it under Language packs, and docs/Features/Compiler-IDE/Compiler-Warnings.md one under TB0022; when a fixed build is released, both go. Found 2026-11-02 documenting TB0034 to TB0037. Fix: bugs/language-pack-semicolon-cut/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/language-pack-semicolon-cut/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only language` tests it (the entry's test then fails, which is the fix working). The replay of both readers over the shipped packs was a scratch script; the claim that only TB0022 differs is from it. -->
+
+---
+
+## An `Import Library` statement that names an import library crashes the compiler
+
+**Describe the bug**
+An `Import Library` statement whose file is an import library, a `.lib` that lists the exports of a DLL and holds no code, crashes the compiler. The IDE prints `NATIVE EXCEPTION: ACCESS_VIOLATION` in the DEBUG CONSOLE, restarts the compiler on the same project, and it crashes again, so nothing in the project compiles while the statement is there. The statement alone does it: no `Declare` uses its namespace. The Windows SDK's own `user32.lib` does it, and so does an import library of one function made with `lib /def`. Observed in the IDE, in a 32-bit and a 64-bit build.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `import-library-import-lib-crash.twinproj` (attached as `import-library-import-lib-crash.zip`). Its `Miscellaneous` folder holds `myimp_32.lib` and `myimp_64.lib`, import libraries for one function of `user32.dll`, made with `lib /def:myimp.def /machine:x86` and `/machine:x64` from `myimp.def`, which is there too:
+   ```
+   LIBRARY user32.dll
+   EXPORTS
+       GetDesktopWindow
+   ```
+   Its one source file, `Startup.twin`, is, without its comments:
+   ```
+   #If Win64 Then
+       Import Library "/Miscellaneous/myimp_64.lib" As MYIMP
+   #Else
+       Import Library "/Miscellaneous/myimp_32.lib" As MYIMP
+   #End If
+
+   Module Startup
+
+       Public Sub Main()
+       End Sub
+
+   End Module
+   ```
+2. Let the IDE compile it (it does so on opening).
+3. See the DEBUG CONSOLE: `NATIVE EXCEPTION: ACCESS_VIOLATION  {no-basic-code} [$1EB32CF6:twinBASIC_win32.dll+00132CF6]`, then `restarting from MEMORY [...]`, and the same exception again, with a list of the compiler's threads in which the failing one is `>>> thread 0004: ParsingFileStart, Startup.twin`.
+
+**Expected behavior**
+A diagnostic, or the library linked. An import library holds no code, so the compiler can refuse it with an error that names the file, as it refuses an object file of the other architecture (TB5060, *incorrect OBJ file format*), or resolve its functions as it resolves those of a DLL named in `Link`. Either way the project keeps compiling.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The Windows SDK's `user32.lib` (10.0.26100.0, x86 and x64) crashes the compiler in the same way, alone and with a `Declare` that uses its namespace; so does `myimp_64.lib` with a `Declare` of `GetDesktopWindow`. A library of object files, which `lib.exe` writes from `.obj` files, links and works. The reproducer crashes BETA 1010 too. A user on Discord met it with the SDK's `user32.lib` and `winmm.lib` on BETA 996, as a crash loop that ended in Safe Mode.
+
+Severity: medium. Nothing in the project compiles until the statement is removed, and the crash does not say which statement or file causes it.
+
+<!-- Reproducer: bugs/import-library-import-lib-crash/ (mode compile; expect is tbbuild exit 4, the compiler crashing; verify reproduces on BETA 1034 and BETA 1010). The exception text above is from the IDE's DEBUG CONSOLE (tbbuild --keep on the reproducer, win32, then the console read over CDP). The SDK user32.lib cases were scratch projects, not kept: the SDK's file cannot go into a reproducer. docs/Features/Advanced/Static-Linking.md carries a WARNING (BETA 1034) for it under "What can be linked", and its Dependencies section says an import library cannot be imported; when a fixed build is released, the WARNING goes and that sentence says what the build does. Found 2026-11-02 rewriting that page. -->
+
+---
+
+## In a 64-bit build, the `__except` handler of statically linked C code never runs, and the exception ends the program
+
+**Describe the bug**
+C code linked into a program with `Import Library` that handles an exception with `__try` and `__except` links without an error in a 64-bit build, but its handler never runs: the exception ends the program instead. In an IDE run the run stops at `NATIVE EXCEPTION: INT_DIVIDE_BY_ZERO`, and the built exe ends with exit code `0xC0000094` (`STATUS_INTEGER_DIVIDE_BY_ZERO`). Observed in the IDE and in the exe.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `static-seh-handler-not-run.twinproj` (attached as `static-seh-handler-not-run.zip`), and set the build to win64. Its `Miscellaneous` folder holds `seh.c`:
+   ```
+   int seh_div(int a, int b)
+   {
+       int r = -1;
+       __try { r = a / b; }
+       __except (1) { r = -2; }
+       return r;
+   }
+   ```
+   and `seh_64.obj`, compiled from it with `cl /c /Gw /Gy /GS- seh.c /Fo"seh_64.obj"` (MSVC 14.44, x64). Its one source file, `Startup.twin`, is, without its comments:
+   ```
+   Import Library "/Miscellaneous/seh_64.obj" As SEHLIB Link "stdlib"
+
+   Module Startup
+
+       Private Declare PtrSafe Function seh_div CDecl Lib SEHLIB (ByVal a As Long, ByVal b As Long) As Long
+
+       Public Sub Main()
+           Debug.Print "seh_div(6, 3) = " & seh_div(6, 3)
+           Debug.Print "seh_div(6, 0) = " & seh_div(6, 0)
+       End Sub
+
+       [RunAfterBuild]
+       Private Sub Built()
+           Debug.Cls
+           Main
+       End Sub
+
+   End Module
+   ```
+2. Build it. The `[RunAfterBuild]` Sub runs `Main` in the IDE.
+3. See the DEBUG CONSOLE: `seh_div(6, 3) = 2`, then `NATIVE EXCEPTION: INT_DIVIDE_BY_ZERO /Startup.twin; Startup.Main LINE 000013 [CONTINUABLE]`, and no line for `seh_div(6, 0)`.
+4. Run the built exe. It ends with exit code -1073741676 (`0xC0000094`), and the Application event log records the exception in `StaticSehHandlerNotRun_win64.exe`.
+
+**Expected behavior**
+`seh_div(6, 0) = -2`: the division raises inside `__try`, and the `__except` handler returns -2. Linked by Microsoft's linker into a C program that calls `seh_div(6, 3)` and `seh_div(6, 0)`, the same `seh_64.obj` returns 2 and -2. If twinBASIC's linker cannot make the handler work, an error at the `Import Library` statement, as a 32-bit build gives: there `__try` needs `__except_handler3`, and the statement is TB5058, *linker error: unrecognized symbol '__except_handler3'*.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The reproducer behaves the same on BETA 1010. `Link "stdlib", "kernel32"` and `Link "stdlib", "ntdll"` also link it without an error.
+
+Severity: medium. Code written to handle an error crashes the program instead, with nothing at build time to say so; the SQLite sample is compiled with `SQLITE_OMIT_SEH`, which leaves its handlers out.
+
+<!-- Reproducer: bugs/static-seh-handler-not-run/ (mode run, win64, exe; expect is tbrun exit 5, the probe not returning, with the IDE's NATIVE EXCEPTION line, the exe's exit 0xC0000094, and no "seh_div(6, 0) = -2" line; verify reproduces on BETA 1034 and BETA 1010). The control with Microsoft's linker was a scratch C program (sehmain.c, cl and link from VS 2022), not kept. The kernel32 and ntdll variants were compiled only (tbbuild), not run. docs/Features/Advanced/Static-Linking.md carries a WARNING (BETA 1034) for it under "What can be linked"; when a fixed build is released, the WARNING goes, and the page's list says whether exception handling works in a 64-bit build. Found 2026-11-02 rewriting that page. -->
 

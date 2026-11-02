@@ -27,7 +27,7 @@
 // LoadTypeLibEx and REGKIND_NONE, by a 64-bit PowerShell (typeLibrary), which
 // cannot run the 32-bit DLL's code.
 //
-// Each test states what BETA 1010 does. If one fails after an IDE update, the
+// Each test states what BETA 1034 does. If one fails after an IDE update, the
 // IDE has changed: update the FAQ's VB6-import answer
 // (docs/Miscellaneous/FAQs.md), the entry "Some VB6 attribute lines have no
 // effect in a built type library" in BUGS-TO-REPORT.md or bugs/filed/, and
@@ -263,17 +263,18 @@ scenario("VB6 import", (lane) => {
 
     c = await lane.openNoProject();
     assert.ok(await waitModal(c, "New / Open"), "the IDE showed no New / Open Project dialog");
-    // The tiles are listed once the IDE has the samples and projects from its host.
+    // The cards are listed once the IDE has the samples and projects from its host
+    // (BETA 1033's dialog, #fp2root; a double-click on a card's name reaches the card).
     await waitFor(
       c,
       () =>
         c.evaluate(
-          `[...document.querySelectorAll(".frontPageListViewItem")].some((e) => e.textContent.trim() === "Import from VBP...")`,
+          `[...document.querySelectorAll("#fp2root .fp2-cardName")].some((e) => e.textContent.trim() === "Import from VBP...")`,
         ),
       { timeout: 30 * 1000 },
     );
     await standIn(c, "OpenProjectVBP", vbp);
-    await click(c, { css: ".frontPageListViewItem", text: "Import from VBP..." }, { clickCount: 2 });
+    await click(c, { css: "#fp2root .fp2-cardName", text: "Import from VBP..." }, { clickCount: 2 });
     assert.ok(await waitModal(c, "New Project Options"), "the import showed no New Project Options dialog");
     await click(c, "OKBTN");
     assert.ok(

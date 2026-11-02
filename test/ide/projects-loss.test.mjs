@@ -26,7 +26,7 @@
 // lane's own copy, in its work folder. projects-kit.mjs says what the page's guard does. A
 // project file a test leaves damaged is read with impexp's readProject, and never opened.
 //
-// Each test states what BETA 1005 does; the tests named "control" pass whether or not the defects
+// Each test states what BETA 1034 does; the tests named "control" pass whether or not the defects
 // are fixed. If another fails after an IDE update, the IDE has changed: update the entry in
 // BUGS-TO-REPORT.md, or its report in bugs/filed/, the callout on the page of docs/IDE/Projects/
 // that carries it, and then this file.
@@ -161,16 +161,17 @@ scenario("Project Explorer: lost work and unasked saves", (lane) => {
     const copy = path.join(lane.work, "reopened", "project.twinproj");
     mkdirSync(path.dirname(copy), { recursive: true });
     copyFileSync(file, copy);
+    // As Lane.open launches: on the lane's slot, with a DevTools port Windows picks.
     const run = await launchIde({
       exe: lane.copy(),
       project: copy,
-      port: lane.port,
+      slot: await lane.leased(),
       show: lane.show,
       env: { APPDATA: lane.appdataDir() },
     });
     let c2 = null;
     try {
-      c2 = await attachIde(lane.port);
+      c2 = await attachIde(run.port);
       assert.ok(c2, "the IDE never exposed a debug port");
       const outcome = compileOutcome(await waitForCompile(c2, { project: copy, timeout: ms }), { name: copy });
       await sleep(Math.max(0, ms - (Date.now() - t0)));

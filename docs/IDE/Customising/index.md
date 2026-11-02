@@ -15,7 +15,20 @@ The IDE lets you change its fonts and behaviour, its colours, the arrangement of
 - [**Panel layouts**](Panel-Layouts) --- save and switch the arrangement of the panels, and control how panels can be moved.
 - [**Keyboard shortcuts**](Keyboard-Shortcuts) --- add, replace or remove the keys of any IDE command.
 
-The language of the IDE is described below, on this page.
+Zoom and the language of the IDE are described below, on this page.
+
+## Zoom
+{: index="zoom; IDE zoom" }
+
+Each part of the IDE that can be zoomed has a setting of its own. <kbd>Ctrl</kbd> with the mouse wheel zooms none of them.
+
+**The whole IDE.** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>+</kbd> makes the IDE bigger and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>-</kbd> makes it smaller. The <kbd>+</kbd> and <kbd>-</kbd> keys of the numeric keypad work too. Each press changes [**IDE Font Size**](IDE-Options#theme-and-fonts) by 1px, and the toolbar's icons are sized in proportion to the IDE's text. The new size is saved at once, so the IDE starts at it the next time. No key returns the IDE to its normal size: choose 13px, the default, in the **IDE Font Size** list of **IDE Options**.
+
+**The code editor.** <kbd>Ctrl</kbd>+<kbd>+</kbd> and <kbd>Ctrl</kbd>+<kbd>-</kbd> change the size of the code by 1px, as the **Code Editor Font Size** option, and save it at once. See [Word wrap and zoom](../Code/Editor#word-wrap-and-zoom).
+
+**The form designer.** The zoom box in the toolbar scales the form you are designing, from 25% to 400%, and **View → Zoom In** and **View → Zoom Out** step through it. The zoom is not saved. See [Zoom](../Forms/Designer#zoom) in the form designer's chapter.
+
+**The Webpage pane.** Its own zoom list scales the page it shows, from 50% to 150%. It starts at 70%, and keeps the zoom you choose. See [Webpage](../Project/Webpage).
 
 ## Where the IDE keeps its settings
 
@@ -96,7 +109,9 @@ These parts stay in English:
 - **Restart the compiler** and **Flush the LLVM compiler cache** on the **Tools** menu;
 - **Automatic IDE Error Reporting...** on the **Help** menu;
 - most text in the Debug Console;
-- the compiler's messages and the hover text: they stay in English after a switch, and after a restart of the compiler.
+- the hover text, also after a restart of the compiler.
+
+The compiler's warnings and errors stay in English as well, because no pack that ships with the IDE translates them yet. Since BETA 1034 a pack can translate them: see [Language packs](#language-packs). The compiler uses the new language the next time it checks a file, so a message already shown, in the [**DIAGNOSTICS**](../Code/Diagnostics) panel or in the code editor, keeps its text until you edit its file or restart the compiler.
 
 ### Language packs
 
@@ -110,6 +125,11 @@ To write a pack, copy `en-gb.lang` and translate it. The `README.txt` in the IDE
 - Follow with the properties, as in `en-gb.lang`. You need only the strings you translate: the rest come from `en-gb.lang`.
 
 A pack is a text file of `Name: value;` pairs, as a [theme](Themes#the-format-of-a-theme-file) is, with `/* ... */` comments. Each value is a string in double quotes. Write two double quotes for one inside a string. A line break inside the quotes is kept. In a string, `{%Name}` stands for another string and `{%1}` and `{%2}` mark the places where the IDE fills in a value.
+
+> [!NOTE] BETA 1034
+> A `;` followed by a space, a tab or a line break ends the string even inside its quotes, and the rest of the string is lost: `"Save; then close"` reads *Save*. A `;` with no space after it stays in the string. `en-gb.lang` has one such string, the warning TB0022, so the warning reads only *Suspicious array assignment*.
+
+Since BETA 1034 the compiler also takes the text of its warnings and errors from the pack: a string named after a code, such as `TB0024`, is the text of the message with that code. `en-gb.lang` holds the English text of the [warnings](../../../Features/Compiler-IDE/Compiler-Warnings) and of the error TB5079, *Unrecognized symbol*. In those strings `{0}`, `{1}` and so on mark the values the compiler fills in, such as a variable's name. A string named after any other code replaces that message too, and `{0}` in it stands for the compiler's English message.
 
 A line `inherits: <pack>;` makes the pack take its missing strings from another pack instead of from `en-gb.lang`.
 

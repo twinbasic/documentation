@@ -1,0 +1,7 @@
+Module Startup
+    Public Sub Main()
+        Dim o As Object
+        Dim f As StdFont
+        Set f = o       ' TB0035, which the Compiler Warnings list shows at WARNING, is not reported
+    End Sub
+End Module

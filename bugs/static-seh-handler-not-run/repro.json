@@ -1,0 +1,10 @@
+{
+  "mode": "run",
+  "arch": "win64",
+  "exe": true,
+  "expect": {
+    "exit": 5,
+    "output": ["^seh_div\\(6, 3\\) = 2$", "NATIVE EXCEPTION: INT_DIVIDE_BY_ZERO", "^--- exe: exit -1073741676 \\(0xC0000094\\)$"],
+    "absent": ["^seh_div\\(6, 0\\) = -2$"]
+  }
+}

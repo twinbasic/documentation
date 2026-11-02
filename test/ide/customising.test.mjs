@@ -1,12 +1,8 @@
-// Customising the IDE: custom themes and keyboard-shortcut groups, tested against three entries in
-// BUGS-TO-REPORT.md:
-//
-//   "A `Dark.theme` or `Light.theme` in `%APPDATA%\twinBASIC\themes` stops every custom theme from
-//   inheriting, and Reload from disk from applying the theme" (bugs/theme-override-breaks-inheritance)
-//   "Two themes that inherit from each other freeze the IDE, and choosing one fails with a stack
-//   overflow" (bugs/theme-inherit-loop)
-//   "A keyboard-shortcut group whose name contains `|` switches other groups on and off"
-//   (bugs/keyboard-group-bar-name)
+// Customising the IDE: custom themes and keyboard-shortcut groups, tested against the entry in
+// BUGS-TO-REPORT.md "A `Dark.theme` or `Light.theme` in `%APPDATA%\twinBASIC\themes` stops every
+// custom theme from inheriting, and Reload from disk from applying the theme"
+// (bugs/theme-override-breaks-inheritance), and for what BETA 1034 does where two retired entries
+// (a theme inheritance loop, and a group name holding `|`) were defects up to BETA 1010.
 //
 // No project is opened: each IDE starts as from its icon, and the New / Open dialog is cancelled.
 // The custom theme files go only into the lane's own APPDATA (<work>\appdata\twinBASIC\themes), which
@@ -24,7 +20,7 @@
 //
 // The tests share the lane's IDE in order: the first two run in an IDE started with one custom theme,
 // AtStart (inherits light); the third starts a new IDE with a Dark.theme beside it; the fourth uses
-// whichever IDE is open. Each test states what BETA 1010 does. If one fails after an IDE update, the
+// whichever IDE is open. Each test states what BETA 1034 does. If one fails after an IDE update, the
 // IDE has changed: update the entry in BUGS-TO-REPORT.md, or its report in bugs/filed/, the WARNING on
 // docs/IDE/Customising/Themes.md or Keyboard-Shortcuts.md, and then this file.
 //
@@ -70,6 +66,10 @@ const GUARD_JS = `(() => {
   });
   window.__errors = [];
   window.addEventListener("error", (e) => window.__errors.push(String(e.message)));
+  // Every message msgBox shows, as text: a box the Enter that answered a name box can close at once.
+  window.__msg = [];
+  const real = msgBox;
+  msgBox = function (t, ...r) { window.__msg.push(String(t).replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim()); return real.apply(this, [t, ...r]); };
   window.__maxGap = 0;
   let last = performance.now();
   setInterval(() => {
@@ -189,36 +189,29 @@ scenario("customising the IDE", (lane) => {
     assert.equal(s.menu, GREEN, `Reload from disk did not apply the edit: ${JSON.stringify(s)}`);
   });
 
-  test("two themes that inherit each other freeze the page, and choosing one fails with a stack overflow", async (t) => {
+  // Up to BETA 1010 the loop froze the page for seconds, and choosing either theme failed with a
+  // stack overflow; BETA 1034 refuses the loop when it reads the themes.
+  test("two themes that inherit each other: Reload from disk names one in an alert, leaves the other out, and the page does not stop", async (t) => {
     if (!lane.run) await startIde();
     writeTheme("LoopA", theme("LoopB", LOOP_A));
     writeTheme("LoopB", theme("LoopA", "rgb(2, 2, 2)"));
     await c.evaluate(`window.__maxGap = 0; window.__errors.length = 0`);
+    c.dialogs.length = 0;
     await chooseTheme("Reload from disk");
-    const read = await waitFor(
-      c,
-      () => c.evaluate(`customThemes.length === customThemesCount && customThemes.some((t) => t.name === "LoopB")`),
-      { timeout: 60 * 1000, interval: 500 },
-    );
-    assert.ok(read, "Reload from disk never read LoopA.theme and LoopB.theme");
-    await sleep(500);
+    const alerted = await waitFor(c, async () => c.dialogs.length > 0, { timeout: 20 * 1000, interval: 250 });
+    assert.ok(alerted, "Reload from disk showed no alert");
+    await sleep(1500);
+    // The alert is answered by the harness; taken out here, the lane's close does not fail on it.
+    const dialogs = c.dialogs.splice(0).map((d) => `${d.type}: ${d.message}`);
     const gap = Math.round(await c.evaluate("window.__maxGap"));
-    t.diagnostic(`the page did not run for ${gap} ms`);
-    assert.ok(gap >= 2000, `the page never stopped for 2 s: its longest pause was ${gap} ms`);
+    const errors = await c.evaluate("window.__errors.slice()");
     const menu = await themeMenu();
-    assert.ok(menu.includes("LoopB (undefined)"), `LoopB is not listed as LoopB (undefined): ${JSON.stringify(menu)}`);
-    const loopA = menu.find((m) => m.replace("[x] ", "").startsWith("LoopA ("));
-    assert.ok(loopA, `LoopA is not listed: ${JSON.stringify(menu)}`);
-    await c.evaluate(`window.__errors.length = 0`);
-    await chooseTheme("LoopA");
-    const s = await themeState();
-    t.diagnostic(`after choosing LoopA: ${JSON.stringify(s)}`);
-    assert.equal(s.colorTheme, "LoopA", `choosing LoopA did not select it: ${JSON.stringify(s)}`);
-    assert.notEqual(s.menu, LOOP_A, `LoopA's menu colour was applied: ${JSON.stringify(s)}`);
-    assert.ok(
-      s.errors.some((e) => /Maximum call stack size exceeded/.test(e)),
-      `choosing LoopA raised no stack overflow: ${JSON.stringify(s.errors)}`,
-    );
+    t.diagnostic(JSON.stringify({ dialogs, gap, errors, menu }));
+    assert.deepEqual(dialogs, ["alert: Invalid theme file detected: LoopB.theme\n(recursive inheritance)"]);
+    assert.ok(gap < 2000, `the page stopped for ${gap} ms`);
+    assert.deepEqual(errors, []);
+    assert.ok(!menu.some((m) => m.replace("[x] ", "").startsWith("LoopA")), `LoopA is listed: ${JSON.stringify(menu)}`);
+    assert.ok(menu.includes("LoopB (Dark)"), `LoopB is not listed as LoopB (Dark): ${JSON.stringify(menu)}`);
   });
 
   test("a Dark.theme in the APPDATA themes folder unlinks every custom theme, and Reload from disk stops applying", async (t) => {
@@ -254,22 +247,25 @@ scenario("customising the IDE", (lane) => {
     assert.equal(s.menu, RED, `Reload from disk applied the edit: ${JSON.stringify(s)}`);
   });
 
-  test("a group named A|B switches B on with it, and toggling B twice switches both off", async (t) => {
+  // Up to BETA 1010 a group named A|B could be added, and it switched B on and off with it, since the
+  // IDE keeps the groups that are on as |name| pairs; BETA 1034 refuses such a name, in the Manage
+  // Panel Layouts dialog too, and refuses a name already in use.
+  test("Add New... refuses a group or layout name that contains | or is in use, with a message, and adds nothing", async (t) => {
     if (!lane.run) await startIde();
     // The user's own groups, which the IDE read from the registry, are set aside in the page.
     await c.evaluate(
       `customKeyboardShortcutGroups = {}; activeKeyboardShortcutGroupNames = ""; syncActiveKeyboardShortcuts()`,
     );
 
-    // Manage Keyboard Shortcuts, Add New..., the name, Enter, Save Changes.
-    async function addGroup(name) {
-      await c.evaluate(`executeIdeCommand("tbKeyboardShortcuts_ShowManageKeyboardShortcuts")`);
+    // The dialog a command opens, checked by its title.
+    async function openDialog(command, title) {
+      await c.evaluate(`executeIdeCommand(${JSON.stringify(command)})`);
       await sleep(800);
-      assert.deepEqual(
-        await modalTitles(),
-        ["Manage Keyboard Shortcuts"],
-        "the Manage Keyboard Shortcuts dialog did not open",
-      );
+      assert.deepEqual(await modalTitles(), [title], `the ${title} dialog did not open`);
+    }
+    // Add New..., the name, Enter: the messages msgBox showed. A box the Enter left open is answered.
+    async function addName(name) {
+      await c.evaluate("window.__msg.length = 0");
       await clickModalButton("Add New...");
       const box = await c.evaluate(`(() => {
         const i = document.querySelector(".configEditorEntryNew");
@@ -281,42 +277,34 @@ scenario("customising the IDE", (lane) => {
       await typeText(c, name);
       await pressKey(c, "Enter");
       await sleep(500);
-      await clickModalButton("Save Changes");
-      assert.deepEqual(await modalTitles(), [], "Save Changes did not close the dialog");
+      if ((await modalTitles()).length > 1) await clickModalButton("OK");
+      return c.evaluate("window.__msg.splice(0)");
     }
-
+    const saveDisabled = () => c.evaluate(`document.getElementById("SAVEBTN").classList.contains("disabled")`);
     const keyState = () =>
       c.evaluate(`({
         groups: Object.keys(customKeyboardShortcutGroups),
         active: activeKeyboardShortcutGroupNames,
-        ticked: getCustomKeyboardShortcutMenuOptions().filter((o) => o.name).map((o) => (o.codicon === "check" ? "[x] " : "") + o.name.replace(/^.* \\d+\\. /, "")),
       })`);
 
-    await addGroup("A|B");
-    await addGroup("B");
-    let s = await keyState();
-    t.diagnostic(`both added: ${JSON.stringify(s)}`);
-    assert.deepEqual(s.groups, ["A|B", "B"], `the groups are not A|B and B: ${JSON.stringify(s)}`);
-    assert.equal(s.active, "|A|B||B|", `both groups are not on: ${JSON.stringify(s)}`);
-    assert.deepEqual(s.ticked, ["[x] A|B", "[x] B"], `both groups are not ticked: ${JSON.stringify(s)}`);
+    await openDialog("tbKeyboardShortcuts_ShowManageKeyboardShortcuts", "Manage Keyboard Shortcuts");
+    assert.deepEqual(await addName("A|B"), ["Group name cannot contain '|'"]);
+    assert.equal(await saveDisabled(), true, "Save Changes is enabled after the refused name");
+    assert.deepEqual(await addName("B"), []);
+    assert.equal(await saveDisabled(), false, "Save Changes is not enabled after B");
+    assert.deepEqual(await addName("B"), ["Group already exists"]);
+    await clickModalButton("Save Changes");
+    assert.deepEqual(await modalTitles(), [], "Save Changes did not close the dialog");
+    const s = await keyState();
+    t.diagnostic(`keyboard groups: ${JSON.stringify(s)}`);
+    assert.deepEqual(s, { groups: ["B"], active: "|B|" });
 
-    // B is the second custom group: Window > Keyboard Shortcuts > Custom 2. B runs this command.
-    await c.evaluate(`executeIdeCommand("tbKeyboardShortcuts_ToggleActiveKeyboardShortcutGroupCustom2")`);
-    await sleep(500);
-    s = await keyState();
-    t.diagnostic(`B clicked once: ${JSON.stringify(s)}`);
-    assert.equal(s.active, "|A|B|", `the first click on B did not leave |A|B|: ${JSON.stringify(s)}`);
-    assert.deepEqual(
-      s.ticked,
-      ["[x] A|B", "[x] B"],
-      `B is not still ticked after the first click: ${JSON.stringify(s)}`,
-    );
-
-    await c.evaluate(`executeIdeCommand("tbKeyboardShortcuts_ToggleActiveKeyboardShortcutGroupCustom2")`);
-    await sleep(500);
-    s = await keyState();
-    t.diagnostic(`B clicked twice: ${JSON.stringify(s)}`);
-    assert.equal(s.active, "|A", `the second click on B did not leave |A: ${JSON.stringify(s)}`);
-    assert.deepEqual(s.ticked, ["A|B", "B"], `A|B and B are not both off: ${JSON.stringify(s)}`);
+    await openDialog("tbPanels_ShowManagePanelLayouts", "Manage Panel Layouts");
+    assert.deepEqual(await addName("A|B"), ["Group name cannot contain '|'"]);
+    assert.deepEqual(await addName("Mine"), []);
+    assert.deepEqual(await addName("Mine"), ["Group already exists"]);
+    await clickModalButton("Cancel");
+    assert.deepEqual(await modalTitles(), [], "Cancel did not close the dialog");
+    assert.equal(await c.evaluate(`"Mine" in customPanelLayouts`), false, "Cancel kept the layout Mine");
   });
 });

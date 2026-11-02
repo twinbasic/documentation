@@ -257,10 +257,10 @@ Paste on a blank line, or with the caret at the end of the indent. Pasting at th
 
 ## Rename Symbol and Change All Occurrences
 
-**Rename Symbol** is on the right-click menu and has the key <kbd>F2</kbd>. It opens a box over the word with its name selected.
+**Rename Symbol** is on the right-click menu, which shows the key <kbd>F2</kbd> beside it. <kbd>F2</kbd> opens the [Object Browser](Object-Browser) instead, in the editor as everywhere else.
 
-> [!NOTE] BETA 1005
-> Rename Symbol renames nothing. Typing a new name changes the box, but <kbd>Enter</kbd> and <kbd>Esc</kbd> do nothing, and the box stays open until you click in the code. To rename a name that is used in one file, use **Change All Occurrences**. For a name used in several files, use the [Find / Replace](Finding) panel with **Whole Word Only** and **Current Project**, and replace one match at a time, because **Replace All** does not work in project scope.
+> [!NOTE] BETA 1034
+> Rename Symbol does nothing: choosing it from the right-click menu opens no box and changes no name. To rename a name that is used in one file, use **Change All Occurrences**. For a name used in several files, use the [Find / Replace](Finding) panel with **Whole Word Only** and **Current Project**, and replace one match at a time, because **Replace All** does not work in project scope.
 
 **Change All Occurrences**, on the right-click menu only, gives a cursor to every occurrence of the word under the caret in the file. Type the new name to replace them all. The match is on text, not on meaning: the word is also changed inside strings and comments. A longer name that contains the word, such as `totalPrice` for `total`, is not changed. One <kbd>Ctrl</kbd>+<kbd>Z</kbd> restores all of them. Other files are not touched.
 

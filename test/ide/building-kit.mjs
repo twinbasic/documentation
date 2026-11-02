@@ -162,6 +162,24 @@ export async function clickText(c, text, { scope = "*", startsWith = false } = {
   await sleep(600);
 }
 
+/**
+ * Click, with the mouse, the card of the New / Open Project dialog (BETA 1033's,
+ * #fp2root) whose item is named `name`. A card is found by its item rather than its
+ * text, because the cards of Standard EXE (+VBCCR) and Standard EXE (Console App)
+ * also show the name Standard EXE, with their variant in a badge.
+ */
+export async function clickCard(c, name) {
+  const p = await c.evaluate(`(() => {
+    const e = [...document.querySelectorAll("#fp2root .fp2-card")]
+      .find((x) => x.getBoundingClientRect().width && x.fp2Item?.name === ${J(name)});
+    const r = e && e.getBoundingClientRect();
+    return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+  })()`);
+  if (!p) throw new Error(`the New / Open Project dialog shows no card named ${J(name)}`);
+  await clickAt(c, p.x, p.y);
+  await sleep(600);
+}
+
 /** A root menu (File, View, ...) opened with the mouse, then one of its items. */
 export async function menu(c, root, item) {
   await clickText(c, root, { scope: "[id^=rootMenu]" });

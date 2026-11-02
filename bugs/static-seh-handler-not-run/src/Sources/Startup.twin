@@ -1,0 +1,22 @@
+' Build as win64. seh_64.obj is seh.c compiled for x64 with:
+'     cl /c /Gw /Gy /GS- seh.c /Fo"seh_64.obj"
+' seh_div divides a by b inside __try, and its __except handler returns -2 when the division raises.
+' seh_div(6, 0) should return -2; the exception ends the program instead, in the IDE and in the exe.
+Import Library "/Miscellaneous/seh_64.obj" As SEHLIB Link "stdlib"
+
+Module Startup
+
+    Private Declare PtrSafe Function seh_div CDecl Lib SEHLIB (ByVal a As Long, ByVal b As Long) As Long
+
+    Public Sub Main()
+        Debug.Print "seh_div(6, 3) = " & seh_div(6, 3)
+        Debug.Print "seh_div(6, 0) = " & seh_div(6, 0)
+    End Sub
+
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Main
+    End Sub
+
+End Module

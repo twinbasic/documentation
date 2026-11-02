@@ -63,7 +63,7 @@ Syntax:
 : *optional* The calling convention of the DLL procedure: **CDecl**, **ThisCall** or **FastCall**. The default is stdcall, the convention of nearly all Windows API functions. A twinBASIC extension; see [Calling Conventions](../../Features/Advanced/API-Declarations#calling-conventions).
 
 *libname*
-: Name of the DLL or code resource that contains the declared procedure.
+: Name of the DLL or code resource that contains the declared procedure. In twinBASIC it can also be, without quotes, the namespace of a statically linked library that an **Import Library** statement names; see [Static Linking](../../Features/Advanced/Static-Linking).
 
 **Alias** *aliasname*
 : *optional* Indicates that the procedure being called has another name in the DLL. This is useful when the external procedure name is the same as a keyword. Alias also applies when a DLL procedure has the same name as a public variable, constant, or any other procedure in the same scope. Alias is also useful when any characters in the DLL procedure name aren't allowed by the DLL naming convention.  
