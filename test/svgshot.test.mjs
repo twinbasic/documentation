@@ -1385,6 +1385,85 @@ describe("bundles", () => {
     assert.equal(accentUnknown(control({}, true, { ...shown, appearance: "none" })), false);
   });
 
+  test("puts the styles under a CSS zoom into the space of the boxes, or says it cannot", () => {
+    // What Chromium's snapshot gives: each element's own zoom, and its lengths before the zoom.
+    const names = ["display", "font-size", "border-top-width", "background-image", "transform", "transform-origin"];
+    const snapshotOf = (styleNames) => {
+      const strings = [];
+      const s = (v) => {
+        const i = strings.indexOf(v);
+        return i >= 0 ? i : strings.push(v) - 1;
+      };
+      const style = (zoom) =>
+        [
+          "block",
+          "13px",
+          "2px",
+          'url("data:x/2px")',
+          "matrix(1, 0, 0, 1, 10, 6)",
+          "800px 26px",
+          ...(styleNames.includes("zoom") ? [zoom] : []),
+        ].map(s);
+      const nodeNames = ["#document", "HTML", "DIV", "DIV", "#text", "SPAN", "#text"];
+      return {
+        strings,
+        documents: [
+          {
+            documentURL: s("http://localhost:1/"),
+            frameId: s("PAGE"),
+            nodes: {
+              parentIndex: [-1, 0, 1, 2, 3, 3, 5],
+              nodeType: [9, 1, 1, 1, 3, 1, 3],
+              nodeName: nodeNames.map(s),
+              nodeValue: nodeNames.map((n) => (n === "#text" ? s("x") : -1)),
+              attributes: nodeNames.map((_n, i) => (i === 2 ? [s("style"), s("zoom: 50%;")] : [])),
+            },
+            // A text layout object has its element's style, own zoom and all.
+            layout: {
+              nodeIndex: [1, 2, 3, 4, 5, 6],
+              styles: ["1", "0.5", "1", "1", "2", "2"].map(style),
+              bounds: [[0, 0, 400, 100], ...Array(5).fill([0, 0, 50, 10])],
+              text: [-1, -1, -1, s("x"), -1, s("x")],
+              offsetRects: [[], [0, 0, 100, 20], [], [], [], []],
+              clientRects: [[], [0, 0, 96, 16], [], [], [], []],
+              scrollRects: [[], [8, 4, 300, 16], [], [], [], []],
+            },
+            textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+          },
+        ],
+      };
+    };
+    const doc = decodeSnapshot(snapshotOf([...names, "zoom"]), [...names, "zoom"]);
+    const [html, zoomed, inner, text, span, spanText] = doc.layouts.map((l) => l.style);
+    assert.equal(doc.zoomUnknown, false);
+    assert.equal(html["font-size"], "13px");
+    for (const st of [zoomed, inner, text]) {
+      assert.equal(st["font-size"], "6.5px");
+      assert.equal(st["border-top-width"], "1px");
+      assert.equal(st.transform, "matrix(1, 0, 0, 1, 5, 3)");
+      assert.equal(st["transform-origin"], "400px 13px");
+      // a px inside a url() is not a length
+      assert.equal(st["background-image"], 'url("data:x/2px")');
+    }
+    // offsetWidth, clientWidth and scrollWidth are before the zoom too.
+    const box = doc.layouts[1];
+    assert.deepEqual(
+      [box.offset, box.client, box.scroll],
+      [
+        { w: 50, h: 10 },
+        { w: 48, h: 8 },
+        { x: 4, y: 2, w: 150, h: 8 },
+      ],
+    );
+    // zoom: 2 inside zoom: 50% draws at 1.
+    assert.equal(span["font-size"], "13px");
+    assert.equal(spanText["font-size"], "13px");
+    // A bundle taken before zoom was read: nothing scaled, and the inline zoom says so.
+    const old = decodeSnapshot(snapshotOf(names), names);
+    assert.equal(old.zoomUnknown, true);
+    assert.equal(old.layouts[2].style["font-size"], "13px");
+  });
+
   test("draws a text field left with the browser's border and background as Chromium's native one", () => {
     const own = {
       appearance: "auto",

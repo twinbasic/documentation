@@ -421,8 +421,11 @@ whose project does not refer to the VB package.
   `tbFormDesigner_TurnGridIndicatorsOff` (what the toolbar's grid button toggles; settled by the
   form's style changing), because the scaled dots differ in every capture even with the ground
   left out. The change is the form's (its tab shows it changed, so the clip is formStateShot's,
-  without the tab row), and `formsReset` discards it: the shots after it keep their dots. Its
-  SVG is 4 % off the PNG (the scaled text), so the page shows the PNG.
+  without the tab row), and `formsReset` discards it: the shots after it keep their dots. The
+  designer scales the form with an inline `zoom: 50%`, under which the snapshot gives the boxes
+  zoomed and the computed lengths not (font-size 13px in a control 55 px wide); the converter
+  scales them by each element's effective zoom (`applyZoom`, `snapshot-svg.mjs`), and the SVG is
+  0% strongly off its PNG (it was 1.7 %, the text drawn at twice its size).
 - **The Toolbox is scrolled with the mouse wheel**: a capture never holds more than the real
   window's height, so a taller page does not show more of it. Show Control Names is set from the
   panel's `...` menu and put back afterwards (saved nowhere). The search of Toolbox_Search is
@@ -1105,6 +1108,21 @@ left, an atomic inline on the line, and a block scrolled sideways. `text-overflo
 `MISSABLE_STYLES`: a bundle taken before it was read is still drawn, and replay asks for a retake
 only of a picture with a line its block clips (the miss `text-overflow of a line its block
 clips`): 18 of the 480 bundles of 2026-11-01, some of which may clip with no ellipsis.
+
+**A CSS zoom scales the computed lengths** (`applyZoom` in `snapshot-svg.mjs`, 2026-11-02, after
+Designer_Zoom50's text came out at twice its size). Chromium's snapshot gives the layout and text
+boxes under a `zoom` as drawn, but the computed styles as getComputedStyle does, before the zoom,
+and each element's `zoom` as its own factor (1 below the zoomed element; a text node reports its
+element's). The converter multiplies the element's own factors down the tree and scales by the
+product every px length it reads (`ZOOMED_LENGTHS`: font size, line height, borders, radii,
+outline, shadows, padding, background size and position, transform origin, filter, clip path)
+and a transform matrix's translation, and its offset, client and scroll rects, which are before
+the zoom too (a scroller's scrollbar is its box less its borders and client width); a px inside a
+`url()` is left alone. Not scaled: a scrollbar's part styles, which the page reads itself, and the
+zoom of an element with no box (`display: contents`). `zoom` is in `MISSABLE_STYLES`: replay asks for a retake only
+of a picture whose bundle has an element with an inline zoom other than 1 (the miss `zoom of an
+element its inline style zooms`): Designer_Zoom, Designer_Zoom50 and Webpage of the 532 bundles of
+2026-11-02, the first and last drawn as before.
 
 **A background image is sized by its bytes** (`naturalSize`), not by the type its URL names:
 the IDE calls a JPEG and a BMP `image/png`. The About dialog's EXCALIBUR logo is such a JPEG,
