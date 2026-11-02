@@ -140,7 +140,7 @@ You can also create a post in the #bugs channel of the [twinBASIC Discord server
 
 Yes. Most of the front-end UI can be localized, with translations supplied by members of the community. The IDE ships with language packs for 18 languages besides the base British English. Choose one under **Window → Language**. [The language of the IDE](tB/IDE/Customising/#the-language-of-the-ide) lists the packs as the menu shows them, says what stays in English, and says how to write a pack: a pack is a UTF-8 text file in a `locale` folder, and the IDE reads the packs when it starts. Translators share new and updated packs in [#langpacks on the tB Discord server](https://discord.com/channels/927638153546829845/1329533568376115282).
 
-Since BETA 1034 a pack can also translate the compiler's warnings, whose English text is in `en-gb.lang`. The hover information and the compiler's error messages cannot be translated yet.
+Since BETA 1034 a pack can also translate the compiler's warnings and errors, though no pack that ships with the IDE does yet; `en-gb.lang` holds the English text of the warnings. The hover information cannot be translated yet.
 
 </details>
 

@@ -109,7 +109,9 @@ These parts stay in English:
 - **Restart the compiler** and **Flush the LLVM compiler cache** on the **Tools** menu;
 - **Automatic IDE Error Reporting...** on the **Help** menu;
 - most text in the Debug Console;
-- the compiler's messages and the hover text: they stay in English after a switch, and after a restart of the compiler.
+- the hover text, also after a restart of the compiler.
+
+The compiler's warnings and errors stay in English as well, because no pack that ships with the IDE translates them yet. Since BETA 1034 a pack can translate them: see [Language packs](#language-packs). The compiler uses the new language the next time it checks a file, so a message already shown, in the [**DIAGNOSTICS**](../Code/Diagnostics) panel or in the code editor, keeps its text until you edit its file or restart the compiler.
 
 ### Language packs
 
@@ -123,6 +125,8 @@ To write a pack, copy `en-gb.lang` and translate it. The `README.txt` in the IDE
 - Follow with the properties, as in `en-gb.lang`. You need only the strings you translate: the rest come from `en-gb.lang`.
 
 A pack is a text file of `Name: value;` pairs, as a [theme](Themes#the-format-of-a-theme-file) is, with `/* ... */` comments. Each value is a string in double quotes. Write two double quotes for one inside a string. A line break inside the quotes is kept. In a string, `{%Name}` stands for another string and `{%1}` and `{%2}` mark the places where the IDE fills in a value.
+
+Since BETA 1034 the compiler also takes the text of its warnings and errors from the pack: a string named after a code, such as `TB0024`, is the text of the message with that code. `en-gb.lang` holds the English text of the [warnings](../../../Features/Compiler-IDE/Compiler-Warnings) and of the error TB5079, *Unrecognized symbol*. In those strings `{0}`, `{1}` and so on mark the values the compiler fills in, such as a variable's name. A string named after any other code replaces that message too, and `{0}` in it stands for the compiler's English message.
 
 A line `inherits: <pack>;` makes the pack take its missing strings from another pack instead of from `en-gb.lang`.
 

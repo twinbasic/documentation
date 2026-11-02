@@ -1,0 +1,7 @@
+Module Language
+    ' unused gives the warning TB0024 (Settings makes it a warning). The lane types lines below it
+    ' that give the errors TB5079 and TB5179, and another unused variable.
+    Public Sub Main()
+        Dim unused As Long
+    End Sub
+End Module
