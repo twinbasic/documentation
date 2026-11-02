@@ -12643,17 +12643,20 @@ async function webPage(c, url, width) {
 // settled; its box. A page that is still building itself after it has loaded (Microsoft's
 // replaces its content, and the document's scroll goes back to the top) is waited for: the page
 // is left until nothing in it has changed for a second, then scrolled, and that again until
-// the element stays where it was put.
+// the element stays where it was put. An element too near the document's end to reach `top`
+// (a release's Assets list on its own page) stays below it, with the document scrolled to its end.
 async function scrolledTo(c, find, top) {
   const at = () =>
     c.evaluate(
       `(() => { const e = ${find}; if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
     );
+  const atEnd = () => c.evaluate("scrollY + innerHeight >= document.documentElement.scrollHeight - 1");
   for (let i = 0; i < 6; i++) {
     await dialogStill(c, { ms: 1000, timeout: 15000, root: "document.body", what: "page" });
     const box = await waitFor(c, at, { timeout: 15000, interval: 200 });
     if (!box) throw new Error(`nothing on the page answers ${find}`);
     if (Math.abs(box.y - top) < 1) return box;
+    if (box.y > top && (await atEnd())) return box;
     await c.evaluate(`window.scrollBy(0, ${Math.round(box.y - top)})`);
     await sleep(500);
   }
@@ -12708,19 +12711,27 @@ const webView2Shot = {
   },
 };
 
-// The newest twinBASIC release on GitHub, its Assets list opened with a real click, as the
-// FAQ tells the reader to: the first release of the repository's list of releases, in a window
-// wide enough for the start of the file's SHA-256. The list, without the release's box around it.
+// The twinBASIC release of the run's own build on GitHub, its Assets list opened with a real
+// click, as the FAQ tells the reader to, in a window wide enough for the start of the file's
+// SHA-256. The list, without the release's box around it. The release's own page, not the
+// list of releases, whose first release is whichever was published last: a retake on the
+// build the picture was taken on shows the same release.
 const ASSETS = `[...document.querySelectorAll("summary")].find((s) => /^Assets/.test(s.textContent.trim()))`;
-const RELEASE_WIDTH = 1280;
+// A release's page has no side bar, so its list spans the window: at 949 CSS pixels the list is
+// 891 wide, as the FAQ shows it, the width it had in the list of releases at 1280.
+const RELEASE_WIDTH = 949;
 // the widest the zip's time is drawn ("23 minutes ago"), in CSS pixels
 const RELEASE_TIME_WIDTH = 104;
+// A release's tag names its build in four digits: beta-x-0999, beta-x-1035.
+const releaseUrl = (build) =>
+  `https://github.com/twinbasic/twinbasic/releases/tag/beta-x-${String(build).padStart(4, "0")}`;
 const releaseShot = {
   out: "Miscellaneous/Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png",
   setup: "web",
   once: true,
   async take({ c }) {
-    await webPage(c, "https://github.com/twinbasic/twinbasic/releases", RELEASE_WIDTH);
+    if (BUILD == null) throw new Error("the IDE's build is not known, so neither is its release");
+    await webPage(c, releaseUrl(BUILD), RELEASE_WIDTH);
     const summary = await scrolledTo(c, ASSETS, 120);
     const open = () => c.evaluate(`${ASSETS}.parentElement.open && /\\.zip/.test(${ASSETS}.parentElement.innerText)`);
     if (!(await open())) {
