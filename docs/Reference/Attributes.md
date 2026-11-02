@@ -1210,7 +1210,13 @@ Applicable to: [**Function**](Function), [**Sub**](Sub), [**Property Get**](Prop
 
 Specifies a function that runs after your exe is built. There's `App.LastBuildPath` to know where it is if you're e.g. signing the executable.
 
-Only one **[RunAfterBuild]** is allowed per project. A second one is a compile error.
+Only one **[RunAfterBuild]** is allowed per project. A second one is a compile error. A **[RunAfterBuild]** procedure in a package that the project references does not run, and does not count as the project's one.
+
+<!-- BETA 1034 (tbrun --exe): a package embedded in a Standard EXE, with a
+     [RunAfterBuild] Sub that appends to a file. With a [RunAfterBuild] in the
+     project too, only the project's ran and there was no TB5114 (win32 and
+     win64); with none in the project, the build ran nothing (win32). The same
+     Sub moved into the project wrote its file. -->
 
 The procedure runs whatever the project's modules and procedures are called: a module may have the project's name, and the module that holds the procedure may also hold a procedure with the module's own name, such as a `Sub Probe` in a module `Probe`.
 
@@ -1235,6 +1241,13 @@ Applicable to: [procedure](../Gloss#procedure) in a [**Module**](Module)
 Runs the function before the project's startup object. Returning **True** suppresses the startup object entirely; returning **False** lets startup proceed as normal.
 
 A **Function** is the usual form, returning a **Boolean**. A **Function** of another type, or a **Property Get**, works the same way: a result of 0 or **Nothing** lets startup proceed, and any other result suppresses the startup object. A **Sub** runs too, and then the startup object never runs.
+
+A procedure with the attribute in a package that the project references runs too, before the startup object, whether or not the project calls the package.
+
+<!-- BETA 1034 (tbrun --exe, win32 and win64): a package embedded in a
+     Standard EXE, with a [RunBeforeStartupObject] Function returning False;
+     the project called nothing in the package. The exe printed the package's
+     line, then Main's. -->
 
 > [!NOTE] BETA 1010
 > The attribute is not allowed on a generic procedure, such as `Sub Pre(Of T)()`. The project compiles in the editor without an error, but building it fails with the message *Build FAILED due to invalid RunBeforeStartupObject procedure*, which names neither the procedure nor the reason.

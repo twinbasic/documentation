@@ -60,7 +60,7 @@ Each value below is the one code sees unless a `#Const` redefines the constant. 
 ### `TWINBASIC_BUILD_TYPE`
 
 **Purpose:** Allows conditional compilation based on whether the project is an exe, dll, or ocx.\
-**Value:** A `String` that can be one of "Standard EXE", "Standard DLL", "ActiveX DLL", or "ActiveX Control", determined by the "Build Type" option in Project Settings.
+**Value:** A `String` that can be one of "Standard EXE", "Standard DLL", "ActiveX DLL", "ActiveX Control", "Package TWINPACK" or "TypeLibrary TLB", determined by the "Build Type" option in Project Settings.
 
 ## Usage
 

@@ -56,9 +56,9 @@ Yes, see the [twinBASIC Roadmap](https://twinbasic.com/roadmap) on the twinBASIC
 <details>
 <summary markdown=span id="new-features"><b>What new features does twinBASIC have compared to VB6?</b></summary>
 
-**Many!** It has 64bit compilation (using VBA7x64 compatible syntax), generics, overloading, [multithreading](Features/Advanced/Multithreading) (through the API for now; built-in syntax is on the roadmap for 2027), inheritance, ability to define interfaces and coclasses in your project using BASIC-style syntax, Unicode support in all controls and the editor (.twin files only), support for modern image formats, numerous enhancements to *Implements*, ability to create standard DLLs and kernel mode drivers, ability to set UDT packing alignment, and dozens of others, all available *right now*, with many more planned in the future.
+**Many!** It has 64bit compilation (using VBA7x64 compatible syntax), generics, overloading, [multithreading](Features/Advanced/Multithreading) (through the API for now; built-in syntax is on the roadmap for 2027), inheritance, ability to define interfaces and coclasses in your project using BASIC-style syntax, Unicode support in all controls and the editor (.twin files only), support for modern image formats, numerous enhancements to *Implements*, ability to create standard DLLs and kernel mode drivers, ability to set UDT packing alignment, and dozens of others, all available *right now*, with many more planned in the future. Since BETA 1018 it can also build a type library on its own, a `.tlb` file, from the interfaces, coclasses, enumerations and types a project declares in BASIC: the [**TypeLibrary TLB**](tB/IDE/Project-Settings#build-type) build type, which is still experimental.
 
-For a full list of all the new features available right now, see the [Features](Features/) section of this documentation.
+For a full list of all the new features available right now, see the [Features](Features/) section of this documentation. Since BETA 1023 the IDE also has an [Object Browser](tB/IDE/Code/Object-Browser), which <kbd>F2</kbd> opens, as in VB6.
 
 </details>
 
@@ -132,6 +132,14 @@ Other than those special cases, it's exceedingly rare for projects to depend on 
 The best way is to [create an issue](https://github.com/twinbasic/twinbasic/issues) in the twinBASIC GitHub repository.
 
 You can also create a post in the #bugs channel of the [twinBASIC Discord server](https://discord.gg/UaW9GgKKuE).
+
+A bug can be fixed only once it can be reproduced, so a report needs:
+
+- the twinBASIC version, which **Help → About twinBASIC...** shows as *twinBASIC IDE BETA* and a number, and the version of Windows;
+- the smallest project that shows the problem, ready to run: attach the `.twinproj` file, or paste the code;
+- the steps that make the problem appear, what you expected, and what happened instead.
+
+For a program that crashes, also attach a trace log. In Project Settings, tick every box under [Trace Flags](tB/IDE/Project-Settings#trace-flags) except **Buffered Trace Log File Writing**, which is not for tracing a crash, and set [Trace Output](tB/IDE/Project-Settings#trace-output) to the path of a file that includes `${SESSIONID}`. Then run the program until it crashes. With `${DEBUG}` as the trace output, the log goes to the DEBUG CONSOLE instead. [The trace logger](tB/IDE/Debugging/Debug-Console#the-trace-logger) describes the log.
 
 </details>
 
@@ -304,6 +312,56 @@ For an existing project, the Project Scope Option Explicit can be turned on or o
 </details>
 
 <details>
+<summary markdown=span id="binary-compatibility"><b>How do I keep an ActiveX DLL or control binary compatible with its VB6 build?</b></summary>
+
+twinBASIC has no **Binary Compatibility** setting like VB6's. A program that uses a COM component finds its type library and its classes by their GUIDs, so a twinBASIC build that is to replace the VB6 one must have the same GUIDs. Unless the project gives them, every build generates new ones.
+
+- Give each public class the GUIDs of the VB6 class: [`[ClassId]`](tB/Core/Attributes#classid) for the class, [`[InterfaceId]`](tB/Core/Attributes#interfaceid) for its interface and [`[EventInterfaceId]`](tB/Core/Attributes#eventinterfaceid) for its event interface. Give each public **Enum** its GUID with [`[EnumId]`](tB/Core/Attributes#enumid); without it, the enumeration has no GUID in the type library.
+- Set [Project ID](tB/IDE/Project-Settings#project-id) to the GUID of the VB6 type library, and [Use Project ID for type library ID](tB/IDE/Project-Settings#use-project-id-for-type-library-id) to **Yes**. With **No**, the default, the type library gets a new GUID at every build. Set its version too, under [Type Library Version](tB/IDE/Project-Settings#type-library-version).
+
+```tb check_build
+[ClassId("6F1B2D4A-3C5E-4A7B-9D2F-1E3C5A7B9D01")]
+[InterfaceId("6F1B2D4A-3C5E-4A7B-9D2F-1E3C5A7B9D02")]
+[EventInterfaceId("6F1B2D4A-3C5E-4A7B-9D2F-1E3C5A7B9D03")]
+Public Class Customer
+    [EnumId("6F1B2D4A-3C5E-4A7B-9D2F-1E3C5A7B9D04")]
+    Public Enum CustomerKind
+        ckPerson = 1
+        ckCompany = 2
+    End Enum
+
+    Public Event Changed()
+
+    Public Kind As CustomerKind
+End Class
+```
+
+The OLE/COM Object Viewer of the Windows SDK (`oleview.exe`) shows the GUIDs of the VB6 build: **File → View TypeLib...** opens the type library of its DLL or OCX.
+
+The attributes go in front of the `Class` line, which only a `.twin` file has: in a `.cls` file a `[ClassId]` line is a syntax error, TB5182. So move each public class of a `.cls` file into a `.twin` file, between `Class` and `End Class` lines. The UserControls and property pages of an imported project are already in `.twin` files, where the import gave them new GUIDs: replace those with the VB6 ones.
+
+</details>
+
+<details>
+<summary markdown=span id="vb6-ocx"><b>Can I use VB6's own ActiveX controls, such as MSCOMCTL.OCX?</b></summary>
+
+Yes, in a 32-bit build. The controls that ship with VB6 are 32-bit, and a 64-bit program cannot load them, except through [Fusion](Features/Fusion), which hosts some 32-bit controls in a helper process. The [WinNativeCommonCtls](tB/Packages/WinNativeCommonCtls/) package has 64-bit versions of eight of the Common Controls.
+
+Each control must be registered on the computer. On 64-bit Windows, VB6 puts its controls in `C:\Windows\SysWOW64`, and a 32-bit control is registered from there, from a command prompt run as administrator:
+
+```batch
+C:\Windows\SysWOW64\regsvr32.exe C:\Windows\SysWOW64\MSCOMCTL.OCX
+```
+
+Then add the control's library to the project as a COM reference, as [Add ActiveX controls and components](tB/IDE/Forms/Toolbox#add-activex-controls-and-components) describes, and its controls are in the Toolbox.
+
+Most of VB6's controls are licensed: a development environment can put one on a form only when the control's design-time licence is in the registry. Installing VB6 installs the licences, so without VB6 the twinBASIC form designer cannot create the controls. The licences are on the VB6 or Visual Studio 6 CD, as `.srg` files in its `OS\SYSTEM` folder, most of them named like the control's file; **MSFLXGRD.OCX**'s is `VSDBFLEX.SRG`. An `.srg` file is a registry file without its first line. Add the line `Windows Registry Editor Version 5.00` and an empty line at its top, save it with the extension `.reg`, and open it to add the licence to the registry.
+
+A program built with these controls needs them registered on every computer it runs on, as a VB6 program does.
+
+</details>
+
+<details>
 <summary markdown=span id="addins"><b>Does twinBASIC support addins?</b></summary>
 
 Addins for VB6 and VBA are not supported by the twinBASIC IDE. However, tB has its own addin infrastructure based on modern web technologies. See Samples 10 through 16, the cards named *twinBASIC IDE Addin*, alone or with a variant in brackets, in the **Samples** section of the New Project dialog:
@@ -318,6 +376,19 @@ There are two locations that the addins can be installed to. Each has a `win32` 
 2. `<twinbasic unzip folder>\addins\win32\` or `...\win64\` --- if you want to modify your twinBASIC installation. This is not generally recommended.
 
 The IDE loads the addins in the folder that matches the project's build target: `win32`, unless the project is set to build for win64. An addin that should load either way needs a build of each. See [Add Ins](tB/IDE/AddIns/) for more.
+
+This documentation has an addin of its own, the [Help Add-In](tB/IDE/AddIns/Help): press <kbd>F1</kbd> on a name in the code editor, and the page that documents the name opens in a pane of the IDE. [Getting the add-in](tB/IDE/AddIns/Help#getting-the-add-in) says how to build and install it.
+
+</details>
+
+<details>
+<summary markdown=span id="packages-reviewed"><b>Are the packages in the Available Packages list reviewed or endorsed?</b></summary>
+
+The packages that ship with twinBASIC show `[BUILT-IN]` as their publisher in the [list](tB/IDE/Projects/References-and-Packages#available-packages). Every other package there is published on TWINSERV by its author, and anyone with a TWINSERV account can publish one, as [Creating a TWINPACK Package](Features/Packages/Creating-TWINPACK) describes. Those packages are not part of twinBASIC. The list shows who published a package, and nothing in it marks a package as reviewed or endorsed.
+
+A package is not compiled code but twinBASIC source, so you can read all of it before you build: a package that the project embeds has a folder under **Packages** in the [Project Explorer](tB/IDE/Projects/Project-Explorer). Its code runs as part of your program. A [`[RunAfterBuild]`](tB/Core/Attributes#runafterbuild) procedure in a package does not run, so building a project runs nothing from its packages. A [`[RunBeforeStartupObject]`](tB/Core/Attributes#runbeforestartupobject) procedure in a package does run, in the built program, before the startup object, even when nothing in the project calls the package.
+
+This documentation describes a number of the packages under [Contributed Packages](tB/Packages/Contributed/), each with its defects, and lists the ones that do not compile or have defects a program would meet under [Experimental Packages](tB/Packages/Experimental/).
 
 </details>
 
