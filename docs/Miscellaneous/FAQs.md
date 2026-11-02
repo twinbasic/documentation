@@ -20,7 +20,9 @@ twinBASIC is a new BASIC language and development environment (IDE) aiming to be
 <details open>
 <summary markdown=span id="authors"><b>Who is behind twinBASIC?</b></summary>
 
-twinBASIC is the work of Wayne Phillips, who operates the company [Everything Access](https://www.everythingaccess.com/), a well established provider of professional tools and services for Microsoft Access and VBA generally, including the popular vbWatchdog software.
+twinBASIC is developed by [TWINBASIC LTD](https://twinbasic.com/about), a family-run software company registered in England and Wales. It is led by Wayne Phillips, who created twinBASIC, and Louise Phillips. Wayne ran the business as a sole trader until TWINBASIC LTD took it over on 10 November 2025 ([announcement](https://twinbasic.com/news/twinbasic-incorporation)). In July 2026 the company took its first outside investment, led by RepSoft, LLC ([announcement](https://twinbasic.com/news/twinbasic-investment-july2026)).
+
+Wayne is also known for [Everything Access](https://www.everythingaccess.com/), a well-established provider of professional tools and services for Microsoft Access and VBA, including the popular vbWatchdog software. Everything Access is now a brand of TWINBASIC LTD.
 
 </details>
 
@@ -34,9 +36,11 @@ The latest version can be downloaded from the [Releases section](https://github.
 <details>
 <summary markdown=span id="current-status"><b>What is the current status of the project?</b></summary>
 
-twinBASIC is currently late into the **Beta** stage, under development and not yet at a stable 1.0 release. All of the VB6/VBA7 syntax and intrinsic functions have been implemented. All of the basic controls except the OLE control, and about half of the Common Controls, have been implemented. It supports Forms, Classes, and UserControls-- both as compiled OCX/DLL controls and as in-project code (i.e. like .ctl files). However, not all features of these, such as properties, events, and methods, have been completed. Additionally, ActiveX EXEs and VBG project group support are not yet implemented, and there's a fair number of bugs remaining.
+twinBASIC is currently late into the **Beta** stage: it is under active development, with a new build published almost every day, and not yet at a stable 1.0 release. The [twinBASIC Roadmap](https://twinbasic.com/roadmap) plans a release candidate for 16 November 2026 and version 1.0 for 14 December 2026; both dates are tentative, and the release may come later.
 
-However, **tB can already run many existing projects**, even fairly complex and large ones. Many community members have managed to get their apps and other open source apps up and running with little to no difficulty, and created new projects from scratch. Check out these examples for a good real world demonstrate of how far along the project is:
+Nearly all of the VB6/VBA7 syntax and intrinsic functions have been implemented. All of the basic controls have been implemented except the [OLE](tB/Packages/VB/OLE/) container control, which is a placeholder, and so have eight of the fourteen Microsoft Common Controls, in the [WinNativeCommonCtls](tB/Packages/WinNativeCommonCtls/) package. It supports Forms, Classes, and UserControls --- both as compiled OCX/DLL controls and as in-project code (i.e. like .ctl files). However, not all features of these, such as properties, events, and methods, have been completed. Additionally, ActiveX EXEs and VBG project group support are not yet implemented (to share code between projects, one project can use another as a [linked package](Features/Packages/Linked)), and there's a fair number of bugs remaining.
+
+However, **tB can already run many existing projects**, even fairly complex and large ones. Many community members have managed to get their apps and other open source apps up and running with little to no difficulty, and created new projects from scratch. Check out these examples for a good real-world demonstration of how far along the project is:
 
 Krool's [VBCCR](https://github.com/Kr00l/VBCCR) and [VBFlexGrid](https://github.com/Kr00l/VBFLXGRD) controls, Ben Clothier's [TwinBasicSevenZip](https://github.com/bclothier/TwinBasicSevenZip), Carles PV's [Lemmings](https://github.com/fafalone/Lems64), Don Jarrett's [basicNES](https://github.com/fafalone/basicNES) Nintendo emulator, and Jon Johnson's [ucShellBrowse/ucShellTree](https://github.com/fafalone/ShellControls), [FileActivityMon ETW Event Tracer](https://github.com/fafalone/EventTrace), [cTaskDialog](https://github.com/fafalone/cTaskDialog64), and [many more](https://github.com/fafalone).
 
@@ -45,16 +49,16 @@ Krool's [VBCCR](https://github.com/Kr00l/VBCCR) and [VBFlexGrid](https://github.
 <details>
 <summary markdown=span id="feature-timeline"><b>Is there an estimated timeline for when expected features will become available?</b></summary>
 
-Yes, see the [twinBASIC Roadmap](https://github.com/twinbasic/twinbasic/issues/335) in the Issues section for the latest update to the timeline. This roadmap only covers major components; smaller features are implemented in a less formal manner, usually when the related part of the codebase is being worked on.
+Yes, see the [twinBASIC Roadmap](https://twinbasic.com/roadmap) on the twinBASIC website for the latest update to the timeline. This roadmap only covers major components; smaller features are implemented in a less formal manner, usually when the related part of the codebase is being worked on.
 
 </details>
 
 <details>
 <summary markdown=span id="new-features"><b>What new features does twinBASIC have compared to VB6?</b></summary>
 
-**Many!** It has 64bit compilation (using VBA7x64 compatible syntax), generics, overloading, multithreading (API-only right now, built in syntax coming soon), inheritance, ability to define interfaces and coclasses in your project using BASIC-style syntax, Unicode support in all controls and the editor (.twin files only), support for modern image formats, numerous enhancements to *Implements*, ability to create standard DLLs and kernel mode drivers, ability to set UDT packing alignment, and dozens of others, all available *right now*, with many more planned in the future.
+**Many!** It has 64bit compilation (using VBA7x64 compatible syntax), generics, overloading, [multithreading](Features/Advanced/Multithreading) (through the API for now; built-in syntax is on the roadmap for 2027), inheritance, ability to define interfaces and coclasses in your project using BASIC-style syntax, Unicode support in all controls and the editor (.twin files only), support for modern image formats, numerous enhancements to *Implements*, ability to create standard DLLs and kernel mode drivers, ability to set UDT packing alignment, and dozens of others, all available *right now*, with many more planned in the future.
 
-For a full list of all the new features available right now, see the Wiki article [Overview of features new to twinBASIC](Features).
+For a full list of all the new features available right now, see the [Features](Features/) section of this documentation.
 
 </details>
 
@@ -63,7 +67,7 @@ For a full list of all the new features available right now, see the Wiki articl
 
 [twinBASIC Home Page](https://twinbasic.com)
 
-twinBASIC GitHub: [Main section](https://github.com/twinbasic/twinbasic) \| [Issues](https://github.com/twinbasic/twinbasic/issues) \| [Discussions](https://github.com/twinbasic/twinbasic/discussions) \| [Language Design](https://github.com/twinbasic/lang-design) \| [ Language Specification](https://github.com/twinbasic/lang-spec) \| [Documentation](https://docs.twinbasic.com)
+twinBASIC GitHub: [Main section](https://github.com/twinbasic/twinbasic) \| [Issues](https://github.com/twinbasic/twinbasic/issues) \| [Discussions](https://github.com/twinbasic/twinbasic/discussions) \| [Language Design](https://github.com/twinbasic/lang-design) \| [Language Specification](https://github.com/twinbasic/lang-spec) \| [Documentation](https://docs.twinbasic.com)
 
 [twinBASIC Discord](https://discord.gg/UaW9GgKKuE)
 
@@ -74,14 +78,14 @@ twinBASIC GitHub: [Main section](https://github.com/twinbasic/twinbasic) \| [Iss
 <details>
 <summary markdown=span id="open-source"><b>Is twinBASIC Open Source?</b></summary>
 
-While open source models are possible in the future, at this time the compiler is not. There are plans in the works to open source the IDE. To address some of the major concerns this presents, once tB hits it first major release, the source code will be placed in escrow, to be released to the community in the event the author disappears or is unable to continue working on it due to death or serious illness/injury. 
+No. twinBASIC has been a closed-source, commercial project from the start, and neither the compiler nor the IDE is open source. Wayne Phillips [has said](https://github.com/twinbasic/twinbasic/issues/1472#issuecomment-1411092862) that he would like to see it open-sourced eventually. To address some of the major concerns a closed-source tool presents, once tB hits its first major release, the source code will be placed in escrow, to be released to the community in the event the author disappears or is unable to continue working on it due to death or serious illness/injury.
 
 </details>
 
 <details>
 <summary markdown=span id="cost"><b>How much does twinBASIC cost?</b></summary>
 
-There are 4 basic editions of twinBASIC: The Community Edition is FREE. A splash screen is placed on compiled 64bit binaries and certain features like [advanced optimized compilation](LLVM/Getting-Started) and future cross-platform compilation are unavailable, but there are no restrictions on core language features or royalties imposed. To get those features, subscriptions are available for the Personal, Professional and Ultimate editions. There are also VIP editions that come with perpetual licenses. For more details on what's included with each edition, and to see current pricing, [see this page](https://twinbasic.com/licensing).
+There are 4 basic editions of twinBASIC: The Community Edition is FREE, including for commercial use. The 64-bit programs it builds show a brief twinBASIC startup notice, and it has no [optimized (LLVM) compilation](LLVM/Getting-Started#availability), but there are no restrictions on core language features or royalties imposed. Subscriptions are available for the Personal, Professional and Ultimate editions. The Personal Edition removes the startup notice but does not allow commercial use, and its LLVM compilation covers only the built-in packages. Cross-platform compilation, planned for version 2, will be in the Ultimate Edition only. There are also VIP editions that come with perpetual licenses. For more details on what's included with each edition, and to see current pricing, [see this page](https://twinbasic.com/licensing).
 
 > [!NOTE]
 > You can change the subscription level at any time and the Community Edition is always available. There will be no lockout (see [the previous statement regarding escrow](#open-source)) so you will always have the ability to develop, test and compile. 
@@ -91,12 +95,12 @@ There are 4 basic editions of twinBASIC: The Community Edition is FREE. A splash
 <details>
 <summary markdown=span id="perpetual-license"><b>Can I pay a one-time fee for a perpetual license?</b></summary>
 
-Due to the need for continuing income to be able to develop twinBASIC, subscriptions are the primary model for premium versions, which [are available](https://twinbasic.com/licensing) on a month-to-month or yearly basis. However, right now for a limited time, a buy-once perpetual license is available in the form of the [VIP Silver and Gold Lifetime Licence Initiatives](https://twinbasic.com/licensing). This provides not only a lifetime license to twinBASIC including updates and new versions, but numerous additional benefits available only to people who purchase this license. 
+Due to the need for continuing income to be able to develop twinBASIC, subscriptions are the primary model for premium versions, which [are available](https://twinbasic.com/licensing) on a month-to-month or yearly basis. However, until the 1.0 release, buy-once perpetual licenses are available as the [VIP Silver and VIP Gold editions](https://twinbasic.com/licensing). VIP Silver covers versions 1.x through 5.x, betas included; VIP Gold is a lifetime license covering all future versions. Both come with additional benefits available only to people who purchase them.
 
 </details>
 
 <details>
-<summary markdown=span id="commercial-use"><b>Can twinBASIC be used to develop commercial products, and are royalties are owed?</b></summary>
+<summary markdown=span id="commercial-use"><b>Can twinBASIC be used to develop commercial products, and are royalties owed?</b></summary>
 
 All versions of twinBASIC except the Personal Edition can be used to develop commercial products, on a ROYALTY FREE basis, including the free Community Edition. Nothing is owed for selling programs or other products created with twinBASIC editions allowing commercial use. The twinBASIC software itself, however, may not be redistributed without appropriate license.
 
@@ -107,14 +111,14 @@ All versions of twinBASIC except the Personal Edition can be used to develop com
 
 Backwards compatibility refers to matching all publicly documented syntax, included controls, component and control behavior, and control appearance. It does not include undocumented, proprietary internal implementation details. So for example all language keywords, functions, and methods are present and should give the same results, and Forms/Classes/UserControls should implement all the same publicly documented interfaces, but twinBASIC exe files are not internally structured in the same way, and there isn't compatibility with the undocumented VB project info structures in the exe, whose contents have been reverse engineered over the years by the community. 
 
-Currently, all basic controls have reimplementations in twinBASIC that support Unicode and 64bit compilation except the OLE control; and a number of the primary Common Controls have also been reimplemented. Eventually, all controls shipped with VB6 Enterprise Edition will be reimplemented. Until that time, the original controls will still work in 32bit builds, and community members provide some alternatives, for example Krool's VBCCR controls and VBFlexGrid control all work and have 64bit-compatible twinBASIC versions.
+Currently, all basic controls have reimplementations in twinBASIC that support Unicode and 64bit compilation except the OLE control; and eight of the Common Controls have also been reimplemented. Eventually, all controls shipped with VB6 Enterprise Edition will be reimplemented: the [roadmap](https://twinbasic.com/roadmap) plans the remaining ones, such as Winsock, MAPI, Adodc, DataGrid and MSCOMM, from 2027. Until that time, the original controls will still work in 32bit builds, and community members provide some alternatives, for example Krool's VBCCR controls and VBFlexGrid control all work and have 64bit-compatible twinBASIC versions.
 
 </details>
 
 <details>
 <summary markdown=span id="when-it-does-not-work"><b>So some of my projects won't work?</b></summary>
 
-Most projects do not use these reverse engineered internals, but some do: most commonly, for self-subclassing and callbacks inside Forms/Classes/UserControls; and also for multithreading and inline assembly. These routines have native support in twinBASIC without requiring internals hacks, so replacing these small parts of a few programs is very simple: `AddressOf` is supported on class members, so you can use regular subclassing and callback methods as you would if they were in a .bas module. `CreateThread` can be called without any special steps. And tB supports statically linked .obj files allowing incorporation of code from other languages, inline assembly in the form of `Emit()`/`EmitAny()` to insert instructions, and further support is planned in the future.
+Most projects do not use these reverse engineered internals, but some do: most commonly, for self-subclassing and callbacks inside Forms/Classes/UserControls; and also for multithreading and inline assembly. These routines have native support in twinBASIC without requiring internals hacks, so replacing these small parts of a few programs is very simple: `AddressOf` is supported on class members, so you can use regular subclassing and callback methods as you would if they were in a .bas module. `CreateThread` can be called without any special steps. And tB supports [statically linked](Features/Advanced/Static-Linking) .obj files allowing incorporation of code from other languages (still experimental, and only for code that needs nothing from the C runtime), inline assembly in the form of `Emit()`/`EmitAny()` to insert instructions, and further support is planned in the future.
 
 Additionally, twinBASIC redirects the most common msvbvm60.dll (also msvbvm50.dll/vbe6.dll/vbe7.dll) functions used as `Declare` statements by users, all of which also work in x64, if you add the `PtrSafe` keyword like any other DLL definition. The following functions currently have redirects: `VarPtr, GetMem1, GetMem2, GetMem4, GetMem8, PutMem1, PutMem2, PutMem4, PutMem8, __vbaObjSet, __vbaObjSetAddRef, __vbaObjAddRef, __vbaCastObj, __vbaCopyBytes, __vbaCopyBytesZero, __vbaRefVarAry`, and `__vbaAryMove`. You may continue to use these with `Declare` statements to support the particular signatures you prefer. Further, declares for olepro32.dll are redirected to identical functions in oleaut32.dll, as olepro32 was deprecated by NT4 and doesn't have a 64bit version.
 
@@ -134,9 +138,9 @@ You can also create a post in the #bugs channel of the [twinBASIC Discord server
 <details>
 <summary markdown=span id="localization"><b>Is the twinBASIC IDE available in other languages?</b></summary>
 
-Yes. The whole front-end UI can be localized, with translations supplied by members of the community. The IDE ships with language packs for 18 languages besides the base British English. Choose one under **Window → Language**. [The language of the IDE](tB/IDE/Customising/#the-language-of-the-ide) lists the packs as the menu shows them, says what stays in English, and says how to write a pack: a pack is a UTF-8 text file in a `locale` folder, and the IDE reads the packs when it starts. Translators share new and updated packs in [#langpacks on the tB Discord server](https://discord.com/channels/927638153546829845/1329533568376115282).
+Yes. Most of the front-end UI can be localized, with translations supplied by members of the community. The IDE ships with language packs for 18 languages besides the base British English. Choose one under **Window → Language**. [The language of the IDE](tB/IDE/Customising/#the-language-of-the-ide) lists the packs as the menu shows them, says what stays in English, and says how to write a pack: a pack is a UTF-8 text file in a `locale` folder, and the IDE reads the packs when it starts. Translators share new and updated packs in [#langpacks on the tB Discord server](https://discord.com/channels/927638153546829845/1329533568376115282).
 
-Internal text such as the hover information does not yet support localization, but this is planned for the future.
+Since BETA 1034 a pack can also translate the compiler's warnings, whose English text is in `en-gb.lang`. The hover information and the compiler's error messages cannot be translated yet.
 
 </details>
 
@@ -169,7 +173,7 @@ You can also manually configure Windows 7 with the proper updates. First, make s
 <summary markdown=span id="missing-files"><b>The IDE reports missing files when I try to launch it.</b></summary>
 
 
-If, when launching the twinBASIC IDE, you are notified of missing files, the most likely reason is that the anti-virus software installed on your PC has quarantined some of the files needed by twinBASIC, mistakenly thinking that they contain a virus or other malware. Such erroneous detections are common with newly released software, so please be assured this is just a false-positive detection --- see also [the previous entry](#false-scanner-alerts) for context.
+If, when launching the twinBASIC IDE, you are notified of missing files, the most likely reason is that the anti-virus software installed on your PC has quarantined some of the files needed by twinBASIC, mistakenly thinking that they contain a virus or other malware. Such erroneous detections are common with newly released software, so please be assured this is just a false-positive detection --- see also [Is twinBASIC safe?](#false-scanner-alerts) below for context.
 
 To get the twinBASIC IDE to launch successfully, configure your anti-virus software to disregard the twinBASIC executable files (EXEs and DLLs) within the root folder, and the `bin` subfolder. This usually means adding the root folder and the `bin` subfolder to an 'exception list' in your anti-virus software.
 
@@ -186,7 +190,9 @@ tB does not require a full installation process, you need only extract the ZIP f
 
 ![The expanded Assets list of a GitHub release: the release's twinBASIC_IDE_BETA zip file with the start of its SHA-256, its size and its age, above the two automatic source code archives.](Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png){:width="891" height="183"}
 
-Download the zip and extract it to an **empty** folder. Do not simply overwrite a previous version; either delete everything in the folder or use a different one. Odd errors have been known to occur otherwise.  It will run from this folder; some settings will be placed in AppData. 
+Download the zip and extract it to an **empty** folder. Do not simply overwrite a previous version; either delete everything in the folder or use a different one. Odd errors have been known to occur otherwise.  It will run from this folder; some settings will be placed in AppData.
+
+If Windows refuses to delete some of the old files, a twinBASIC process is still running. By default the LLVM cache process, `bin\twinBASIC_win64.exe`, stays alive after the IDE closes: end it in Task Manager, or turn off **LLVM - Keep cache process alive after exiting the IDE** in [IDE Options](tB/IDE/Customising/IDE-Options#compiler-and-llvm).
 
 </details>
 
@@ -227,6 +233,8 @@ In addition to the directory you extract the IDE to, twinBASIC stores files and 
 
 Anyone who has ever tested their own programs against a wide variety of AV engines knows that unless your exe is 64bit and signed with a high-level certificate (and maybe not even then, until it's manually added to a trust list), false positives in a small number are simply a way of life. twinBASIC's IDE and compiler executables, like all apps in its position, may trigger a small number of positives on services like VirusTotal, particularly 32bit apps. These are almost always not from major vendors and/or "AI" based algorithmic detection.
 
+Every executable and DLL of the IDE is signed with TWINBASIC LTD's code-signing certificate. The **Digital Signatures** tab of a file's **Properties** shows the signature.
+
 </details>
 
 ## Using twinBASIC
@@ -234,16 +242,16 @@ Anyone who has ever tested their own programs against a wide variety of AV engin
 <details>
 <summary markdown=span id="vb6-import"><b>How do I import my VB6 project into twinBASIC?</b></summary>
 
-The easiest way is through the import wizard. When you first start the twinBASIC IDE, you're presented with the New Project dialog- this contains an 'Import from VBP' option:
+The easiest way is through the import wizard. When you first start the twinBASIC IDE, you're presented with the New / Open Project dialog --- its **New** section has an **Import from VBP...** card:
 
 ![The New / Open Project dialog on its New section, showing a grid of project template cards from Standard EXE to Import from folder, with a red arrow pointing up at the icon of the Import from VBP card.](Images/7e1cb69c-6db3-4f3f-aea1-c1fae25938a2.png){:width="970" height="728"}
 
-You can import individual files, from VB projects or any type, through the Import option on the Add menu, under Project or by right clicking the desired folder in the Project Explorer pane:
+You can import individual files, from VB projects of any type, through the Import option on the Add menu, under Project or by right clicking the desired folder in the Project Explorer pane:
 
 ![The Project Explorer context menu opened on a project's Sources folder, with the Add submenu expanded beside it. A red arrow points at Add, and a second arrow points at Import, which is ringed among the Add Folder, Add Windows Form and Add Resource entries.](Images/2b32ab8c-fabc-4f42-9e6b-06e85574eaf4.png){:width="754" height="626"}
 
 > [!NOTE]
-> You can select .bas/.cls files individually, but to import Forms, UserControls, Property Pages, and Resource Files you must currently select the .vbp file they're associated with. You'll then be shown a list of files you can import (with their new twinBASIC extensions .tbform/.twin etc-- make sure to import both, e.g. for Form1.frm you'll see Form1.frm.tbform and Form1.frm.twin:
+> You can select .bas/.cls files individually, but to import Forms, UserControls, Property Pages, and Resource Files you must currently select the .vbp file they're associated with. You'll then be shown a list of files you can import (with their new twinBASIC extensions .tbform/.twin and so on --- make sure to import both, e.g. for Form1.frm you'll see Form1.frm.tbform and Form1.frm.twin:
 
 ![The Import from twinproj dialog: a tick-box tree of everything found in ImportDemo.vbp, with the Resources branch expanded over its ICON and MANIFEST folders and a Sources branch below, where a module from a folder beside the project's sits in a PARENT-FOLDER branch. Form1.frm.tbform and Form1.frm.twin are both ticked.](Images/16833fae-4bd7-418f-bb16-691a611a5b01.png){:width="469" height="401"}
 
@@ -270,9 +278,9 @@ In a built ActiveX DLL, these lines have the same effect as the twinBASIC attrib
 
 `VB_Name` is the name of the module or class. A class with `VB_Exposed = False` is left out of the type library. A class with `VB_Creatable = False` is not marked creatable there, and a class with `VB_GlobalNameSpace = True` is marked as an application object (`appobject`).
 
-<!-- Checked on BETA 1010 by test/ide/vb6-import.test.mjs (ide-test.bat --only vb6-import): it imports test/ide/probes/vb6-import with Import from VBP..., checks the converted files, then builds the project with project.dllRegisterAfterBuild false and reads the DLL's type library. The twinBASIC-attribute column: a class written with those attributes built into the same DLL gave the same help strings, dispatch IDs and flags (scratch probe, 2026-10-14). The WARNING below is the BUGS-TO-REPORT entry "Some VB6 attribute lines have no effect in a built type library". -->
+<!-- Checked on BETA 1034 by test/ide/vb6-import.test.mjs (ide-test.bat --only vb6-import): it imports test/ide/probes/vb6-import with Import from VBP..., checks the converted files, then builds the project with project.dllRegisterAfterBuild false and reads the DLL's type library. The twinBASIC-attribute column: a class written with those attributes built into the same DLL gave the same help strings, dispatch IDs and flags (scratch probe, 2026-10-14). The WARNING below is the BUGS-TO-REPORT entry "Some VB6 attribute lines have no effect in a built type library". -->
 
-> [!WARNING] BETA 1010
+> [!WARNING] BETA 1034
 > Some `Attribute` lines have no effect, and nothing says so. `VB_HelpID` and `VB_VarHelpID` give no help context ID. `VB_VarMemberFlags` leaves a public field neither hidden nor nonbrowsable. `VB_MemberFlags = "200"` (the user-interface default) and `"14"` (the data-binding flags `bindable` and `displaybind`) set no flag. A component moved from VB6 loses these when it is built again. In a `.twin` file, `[Hidden]` on a public field does hide it.
 </details>
 
@@ -320,13 +328,13 @@ Currently tB does not have a dedicated resource editor; instead, resources are m
 
 ![The right of the IDE window: its title bar, the toolbar, the editor and the Project Explorer. In the tree the Resources branch is expanded over an ICON folder holding twinBASIC.ico, a MANIFEST folder holding #1.xml and the folders MESSAGETABLE and STRING, above the Sources branch.](Images/71ddde83-a091-47e3-b5b8-681954b0639d.png){:width="940" height="426"}
 
-You can create additional folders here, using their standard names. For example a BITMAP group could be added, then used with `LoadResImage`. Unlike its predecessor, tB does not restrict the type of resources: you can create any type of folder you want, and import binary data into it. For example, some community projects have inserted `UIFILE` resources for Ribbon controls and `DIALOG` resources for property sheets. Resources can be imported by right-clicking the folder you want them in, and selecting Add->Import file... from the menu.
+You can create additional folders here, using their standard names. For example a BITMAP group could be added, then used with `LoadResImage`. Unlike its predecessor, tB does not restrict the type of resources: you can create any type of folder you want, and import binary data into it. For example, some community projects have inserted `UIFILE` resources for Ribbon controls and `DIALOG` resources for property sheets. Resources can be imported by right-clicking the folder you want them in, and selecting **Add → Import...** from the menu.
 
 If you're importing a project, the resources in a linked .res file will be imported automatically.
 
 ### Strings
 
-String table resources are currently treated specially; they're edited in the IDE as JSON. If you import from VBP with a .res, string resources will be automatically converted. If you right click the 'Resources' folder, and go to the 'Add' submenu, at the bottom, you'll find "Add resource: String table" that adds one populated with example strings:
+String table resources are currently treated specially; they're edited in the IDE as JSON. If you import from VBP with a .res, string resources will be automatically converted. If you right click the 'Resources' folder, and go to the 'Add' submenu, at the bottom, you'll find **Add Resource: String Table**, which adds one populated with example strings:
 
 ![An editor tab holding Strings.json, a JSON array of two entries, each carrying an id, a name and one line per locale, keyed LCID_0000 for the neutral text through LCID_0809. The Project Explorer beside it shows the file inside a STRING folder under Resources.](Images/97cc8655-7a8b-47f3-b52c-eb1ddfce662f.png){:width="1040" height="417"}
 
@@ -343,7 +351,7 @@ RCDATA
 STRING  
 MESSAGETABLE
 
-For other standard types, you must use the # (pound sign) followed their number. For example, for DIALOG (RT_DIALOG) resources, do not name the folder dialog, it must be named `#5`. ANICURSOR would be named `#21`. And so on, for the [standard types](https://learn.microsoft.com/en-us/windows/win32/menurc/resource-types) with `RT_` constants. For any others, you can use any name you want, e.g. UIFILE can just be named UIFILE. 
+For other standard types, you must use the # (pound sign) followed by their number. For example, for DIALOG (RT_DIALOG) resources, do not name the folder dialog, it must be named `#5`. ANICURSOR would be named `#21`. And so on, for the [standard types](https://learn.microsoft.com/en-us/windows/win32/menurc/resource-types) with `RT_` constants. For any others, you can use any name you want, e.g. UIFILE can just be named UIFILE. 
 
 > [!NOTE]
 > At this time, .res files can only be imported as part of a VBP.
@@ -357,7 +365,7 @@ By default newly created projects use the twinBASIC logo.
 Imported projects use the icon of the Form chosen in Project Settings. This can be modified or set for all projects in the same way: in the **Startup** group of the Project Settings dialog for your project, the **Icon Form** setting is a drop-down from which you can select which Form's icon will be used for your exe.
 
 If you don't set that option, or your project contains no Forms, the icon can be managed manually through the Resources folder.  
-If you're not already familiar with using resources in twinBASIC, see the FAQ entry right above this one. In this scenario, the icon used for your application in Explorer is the one in the Resources\ICON folder that comes first alphabetically. If you do not have an ICON folder in your project, you can create one by right-clicking the Resources folder and selecting Add->Add folder.
+If you're not already familiar with using resources in twinBASIC, see the FAQ entry right above this one. In this scenario, the icon used for your application in Explorer is the one in the Resources\ICON folder that comes first alphabetically. If you do not have an ICON folder in your project, you can create one by right-clicking the Resources folder and selecting **Add → Add Folder**.
 
 ![The Project Explorer with the ICON folder under Resources expanded to two entries, MyOwnIcon.ico above twinBASIC.ico, beside the Toolbox and a form open in the designer.](Images/8611d12a-d7a6-48cc-9544-cb27c5299aa5.png){:width="642" height="462"}
 
@@ -366,7 +374,7 @@ In the above picture, MyOwnIcon.ico would be used by Explorer and other apps to 
 > [!NOTE]
 > This will not be set as the icon of any form; icons for forms are set by the "Icon" property in the Properties list.
 
-You may set both the Icon Form option and include additional ICON resources. In this scenario, the Icon Form will take precedence- it will be inserted as #1, making it the first possible entry and therefore being used by Explorer. Do not use #1 for any of your additional icons in Resources in this scenario, the results may be unpredictable.
+You may set both the Icon Form option and include additional ICON resources. In this scenario, the Icon Form will take precedence --- it will be inserted as #1, making it the first possible entry and therefore being used by Explorer. Do not use #1 for any of your additional icons in Resources in this scenario, the results may be unpredictable.
 
 </details> 
 
@@ -374,7 +382,7 @@ You may set both the Icon Form option and include additional ICON resources. In 
 <summary markdown=span id="runtime-requirements"><b>What are the runtime requirements for twinBASIC-produced EXEs/binaries?</b></summary>
 
 Programs and modules/controls produced by twinBASIC have no native dependencies besides standard Windows system DLLs and are completely standalone/portable, besides of course 3rd party files your code may use. No runtime is required to be present.  
-Currently the minimum supported Windows version is **Windows XP**, with Windows 2000 support likely in the future. There are no current plans to support Windows ME, 98, 95, NT4, or earlier versions, as these lack key features for basic modernization provided by tB.  
+Currently the minimum supported Windows version is **Windows XP**, the default of the project's [Target OS Version](tB/IDE/Project-Settings#target-os-version) setting. Since BETA 844 a program can also run on Windows 2000 when that setting is changed to Windows 2000. There are no current plans to support Windows ME, 98, 95, NT4, or earlier versions, as these lack key features for basic modernization provided by tB.  
 Certain new tB-exclusive features like child control transparency require newer versions only if they're used.  
 Everything should also work under WINE and ReactOS, but testing, while successful, has been minimal. Please share your experiences if you try this.
 
