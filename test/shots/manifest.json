@@ -1,4 +1,107 @@
 {
   "format": 1,
-  "pictures": {}
+  "pictures": {
+    "Features/Images/017bd6f8-4b35-43a9-b6be-84cba69daf64.png": {
+      "build": 1034
+    },
+    "Features/Images/IDE-FeatureMap.light.png": {
+      "build": 1034
+    },
+    "Features/Images/IDE-FeatureMap.png": {
+      "build": 1033
+    },
+    "Features/Packages/Images/f66fb240-dcb7-46ee-896d-78c3789a7876.png": {
+      "svg": {
+        "ignore": [
+          [315, 62, 347, 98]
+        ]
+      }
+    },
+    "IDE/AddIns/Images/Help_Hover.light.png": {
+      "build": 1034
+    },
+    "IDE/AddIns/Images/Help_Window.light.png": {
+      "build": 1033
+    },
+    "IDE/AddIns/Images/Help_Window.png": {
+      "build": 1033
+    },
+    "IDE/Code/Images/Find_Project.light.png": {
+      "build": 1033,
+      "png": {
+        "decision": {
+          "keep": "new",
+          "capture": "f8ddf475a3530d5f85e655cc9e043580a4d6dc6a"
+        }
+      }
+    },
+    "IDE/Debugging/Images/Breakpoint_Glyphs.png": {
+      "svg": {
+        "decision": {
+          "accept": true,
+          "svg": "4b52861db66f4f13ddaf731366acac3b0e3871be",
+          "png": "8919bfcc19bfcfb1487102fd424add44e8f7ee73"
+        }
+      }
+    },
+    "IDE/Forms/Images/Designer_Locked.light.png": {
+      "build": 1033
+    },
+    "IDE/Forms/Images/Designer_TabIndex.png": {
+      "build": 1033
+    },
+    "IDE/Images/Webpage.light.png": {
+      "build": 1033
+    },
+    "IDE/Images/Webpage.png": {
+      "build": 1033
+    },
+    "IDE/Images/tB-Blue.light.png": {
+      "svg": {
+        "decision": {
+          "accept": true,
+          "svg": "9ff1e9105794c660016f03aee9a5287311e9195f",
+          "png": "bb4f36721a3c092252779384656298b5fec14df3"
+        }
+      }
+    },
+    "IDE/Images/tB-Blue.png": {
+      "svg": {
+        "decision": {
+          "accept": true,
+          "svg": "f59da4f3e111df2a7e44cada92b70f8610474f84",
+          "png": "5d15fed6680196af9602352c7bf62bb82b7f4db2"
+        }
+      }
+    },
+    "IDE/Projects/Images/Settings_Close.light.png": {
+      "build": 1033,
+      "svg": {
+        "decision": {
+          "accept": true,
+          "svg": "b1fcb50bd794d5c40093186abe0434a04e788f69",
+          "png": "61acb0566f3d0e908e56b57686f41597ff85a31f"
+        }
+      }
+    },
+    "IDE/Projects/Images/Settings_Close.png": {
+      "build": 1033,
+      "svg": {
+        "decision": {
+          "accept": true,
+          "svg": "e8232943e8cd1e8c20d6da4e695449a79093a12a",
+          "png": "e086a9f70a093c3f44d41ae253d63f759789e2bf"
+        }
+      }
+    },
+    "Miscellaneous/Images/0e24eb5c-c9af-49a9-a908-03968b211554.light.png": {
+      "build": 1034
+    },
+    "Miscellaneous/Images/0e24eb5c-c9af-49a9-a908-03968b211554.png": {
+      "build": 1034
+    },
+    "Miscellaneous/Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png": {
+      "build": 1033
+    }
+  }
 }
