@@ -11198,3 +11198,130 @@ Tested on a copy of BETA 1034 with this change (12 edits in `main.js`, most of t
 
 <!-- Reproducer: bugs/object-browser-tab-stops/ (mode lane: asserted by `ide-test.bat --only object-browser` (test/ide/object-browser.test.mjs), the test "Tab moves the focus from the search box to Aa and no further; Shift+Tab to Project / Library, then to the copy button, and no further", which passes on BETA 1034; the control "control: a click on a list gives it the focus, and the keys then move in it" passes too). No project and no zip. docs/IDE/Code/Object-Browser.md carries a NOTE (BETA 1034) for it, under "Using the keyboard"; when a fixed build is released, that NOTE goes. Found 2026-11-02 writing that page. Fix: bugs/object-browser-tab-stops/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/object-browser-tab-stops/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only object-browser` tests it (the entry's test then fails, which is the fix working). -->
 
+---
+
+## The messages of TB0034, and of TB0035 for an `Object`, leave out the names they report
+
+**Describe the bug**
+Two of the warnings new in BETA 1034 print their message with its names missing. TB0034, for a `Declare` of a legacy DLL, leaves both DLL names empty. TB0035, for a conversion from an `Object` to a class or interface type, shows its placeholders `{0}`, `{1}` and `{2}` as they are. The text is the same in the DIAGNOSTICS panel and in the code editor's squiggle.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `warning-message-names-blank.twinproj` (attached as `warning-message-names-blank.zip`). Its one source file, `Startup.twin`:
+   ```
+   [EnforceWarnings(TB0035)]
+   Module Startup
+       Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" (ByRef PicDesc As Any, ByRef RefIID As Any, ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
+
+       Public Sub Main()
+           Dim o As Object
+           Dim v As Variant
+           Dim f As StdFont
+           Set f = o
+           Set f = v
+       End Sub
+   End Module
+   ```
+2. See three warnings in the DIAGNOSTICS panel:
+   ```
+   TB0034 Use of legacy DLL  has been redirected to 
+   TB0035 Conversion from type {0} to type {1} might fail at runtime.  Use {2}(expression) to avoid this message
+   TB0035 Conversion from type Variant to type Font might fail at runtime.  Use CType(Of Font)(expression) to avoid this message
+   ```
+
+**Expected behavior**
+TB0034 names both DLLs, as TB0015 did for the same `Declare` in BETA 1033: `use of legacy OLEPRO32.DLL has been redirected to OLEAUT32.DLL`. TB0035 names the two types and the conversion for an `Object`, as it does for a `Variant`: `Conversion from type Object to type Font might fail at runtime.  Use CType(Of Font)(expression) to avoid this message`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`locale/en-gb.lang` gives the two messages as `Use of legacy DLL {0} has been redirected to {1}` and `Conversion from type {0} to type {1} might fail at runtime.  Use {2}(expression) to avoid this message`, so the values the compiler has for these two cases do not reach the text: for TB0034 it fills in two empty strings, for TB0035 nothing at all.
+
+TB0035 leaves its placeholders for every `Object` source tried: an `Object` variable, a function that returns `Object`, and an `Object` passed to a `StdFont` parameter, with a `StdFont`, a class of the project and an interface of the project as the target. A `Variant` source, a `Variant` item of a `Collection` included, names its types. TB0034 is the same in a win32 and a win64 build.
+
+Severity: low; the message no longer says which DLL is replaced, or which conversion to write.
+
+<!-- Reproducer: bugs/warning-message-names-blank/ (mode compile; expect.output matches TB0034's row with no DLL names and TB0035's row with {0}, {1} and {2}, in tbbuild's --json report, where the IDE's double spaces are single). docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0034 and one under TB0035 that say so; when a fixed build is released, those sentences go. Found 2026-11-02 writing those sections. -->
+
+---
+
+## TB0034 is reported as a warning whatever level Project Settings or an attribute gives it
+
+**Describe the bug**
+TB0034, the warning for a `Declare` of a legacy DLL that twinBASIC redirects to another, is always reported as a warning. The level the Compiler Warnings list of Project Settings gives it is not applied: at **IGNORE**, **HINT** or **ERROR** it is still a warning, and `[IgnoreWarnings(TB0034)]` and `[EnforceErrors(TB0034)]` change nothing either. TB0015, the warning for a `Declare` that twinBASIC implements itself, follows its level. In a new project the list shows TB0034 at **HINT**.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `tb0034-level-ignored.twinproj` (attached as `tb0034-level-ignored.zip`). Its Settings put TB0015 and TB0034 at **IGNORE**, and its one source file, `Startup.twin`, is:
+   ```
+   Module Startup
+       Private Declare PtrSafe Sub GetMem4 Lib "msvbvm60" (ByVal Src As LongPtr, ByVal Dst As LongPtr)
+       Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" (ByRef PicDesc As Any, ByRef RefIID As Any, ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
+
+       Public Sub Main()
+       End Sub
+   End Module
+
+   [IgnoreWarnings(TB0034)]
+   Module ByAttribute
+       Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" (ByRef PicDesc As Any, ByRef RefIID As Any, ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
+   End Module
+   ```
+2. See two warnings, one for each `olepro32` declaration, and nothing for the `msvbvm60` one:
+   ```
+   TB0034 Use of legacy DLL  has been redirected to      [4,38]
+   TB0034 Use of legacy DLL  has been redirected to      [13,38]
+   ```
+
+**Expected behavior**
+TB0034 follows its level, as TB0015 does: not reported at **IGNORE**, a hint at **HINT**, an error at **ERROR**. In a new project, whose list shows TB0034 at **HINT**, it is a hint.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Also tried, each with the same result, a warning: TB0034 at **HINT** and at **ERROR** in Project Settings (TB0015 at **ERROR** becomes an error), and `[EnforceErrors(TB0034)]` on the module. In BETA 1033 the same `Declare` drew TB0015 as a warning in a new project, although the list showed TB0015 at **HINT**; BETA 1034 gave the message a code of its own, and its level is still not applied.
+
+Severity: low; the warning cannot be turned off, so a project that declares such a function always shows it.
+
+<!-- Reproducer: bugs/tb0034-level-ignored/ (mode compile; expect.output matches a WARNING row for TB0034 at each declaration, and expect.absent TB0015, the control). docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0034 that says so; when a fixed build is released, that sentence goes. It replaces the NOTE (BETA 1010) that TB0015 carried: TB0015 follows its level in BETA 1034. Found 2026-11-02 writing that section. -->
+
+---
+
+## TB0035 is not reported in a new project, although the Compiler Warnings list shows it at WARNING
+
+**Describe the bug**
+In a project whose Settings give TB0035 no level, as a new project's do, TB0035 is not reported at all, but the Compiler Warnings list of Project Settings shows it at **WARNING**. TB0035 is reported once it is named: in the project's `project.warnings`, or with `[EnforceWarnings(TB0035)]`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `tb0035-default-not-reported.twinproj` (attached as `tb0035-default-not-reported.zip`). Its Settings give no warning a level, as a new Standard EXE's do, and its one source file, `Startup.twin`, is:
+   ```
+   Module Startup
+       Public Sub Main()
+           Dim o As Object
+           Dim f As StdFont
+           Set f = o
+       End Sub
+   End Module
+   ```
+2. See no diagnostics.
+3. Open Project Settings, Compiler Warnings: TB0035 is at **WARNING**.
+
+**Expected behavior**
+The list and the compiler agree. Either TB0035 is reported, as a warning, as the list says, or the list shows it at **IGNORE**, as it does for TB0020, the neighbouring *Suspicious interface conversion*, which the compiler also leaves out by default.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The other warnings new in BETA 1034 agree with the list: TB0036 and TB0037 are reported as warnings in a new project, as the list shows. TB0034 does not (reported separately: it is a warning whatever its level).
+
+Severity: low; the list says that conversions from `Object` and `Variant` are checked, and they are not.
+
+<!-- Reproducer: bugs/tb0035-default-not-reported/ (mode compile; expect.noDiagnostics, the bug state. It cannot tell which side a fix changes: a build whose list shows TB0035 at IGNORE still reproduces, so look at the list when it stops reproducing or when a new build comes). docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0035 that says so. Found 2026-11-02 writing that section. -->
+

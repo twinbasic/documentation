@@ -1,0 +1,14 @@
+Module Startup
+    ' Settings puts TB0015 and TB0034 at IGNORE. TB0015 is not reported; TB0034 is, as a warning.
+    Private Declare PtrSafe Sub GetMem4 Lib "msvbvm60" (ByVal Src As LongPtr, ByVal Dst As LongPtr)
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" (ByRef PicDesc As Any, ByRef RefIID As Any, ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
+
+    Public Sub Main()
+    End Sub
+End Module
+
+' The attribute does not turn it off either.
+[IgnoreWarnings(TB0034)]
+Module ByAttribute
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" (ByRef PicDesc As Any, ByRef RefIID As Any, ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
+End Module

@@ -1,0 +1,13 @@
+[EnforceWarnings(TB0035)]
+Module Startup
+    ' TB0034: the message should name OLEPRO32.DLL and OLEAUT32.DLL, as BETA 1033's TB0015 did
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" (ByRef PicDesc As Any, ByRef RefIID As Any, ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
+
+    Public Sub Main()
+        Dim o As Object
+        Dim v As Variant
+        Dim f As StdFont
+        Set f = o       ' TB0035 with {0}, {1} and {2} in its message
+        Set f = v       ' TB0035 naming Variant and Font, as it should
+    End Sub
+End Module
