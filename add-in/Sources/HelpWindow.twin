@@ -50,7 +50,9 @@ Class HelpWindow
     ' own settings: the control then fails with error 8007139F, "Error occurred
     ' creating the WebView2 controller". So under the test switch they are
     ' removed, and the lane may ask for a debugging port of the window's own,
-    ' to read its page with.
+    ' to read its page with, and for more arguments (the screenshot tool asks
+    ' for --force-device-scale-factor=1, as its IDEs have, so that the page's
+    ' DOM snapshot is in CSS pixels on a display that is scaled).
     Private Sub WebView_Create() Handles WebView.Create
         If TestSwitchOn() Then
             ClearEnvironmentVariable "WEBVIEW2_USER_DATA_FOLDER"
@@ -59,7 +61,8 @@ Class HelpWindow
             Dim port As String = Environ$("TB_DOCS_HELP_WINDOW_PORT")
             If Len(port) > 0 Then
                 WebView.EnvironmentOptions.AdditionalBrowserArguments = _
-                    "--remote-debugging-port=" & port & " --remote-allow-origins=*"
+                    Trim$("--remote-debugging-port=" & port & " --remote-allow-origins=* " & _
+                    Environ$("TB_DOCS_HELP_WINDOW_ARGS"))
             End If
         Else
             Dim folder As String = Environ$("LOCALAPPDATA") & "\tbDocsHelp"

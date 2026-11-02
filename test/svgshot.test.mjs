@@ -20,7 +20,8 @@
 // the folders a sheet is refused, and the sheet's page, made of lib/shot-views.mjs's pieces.
 // And the sheet of changes against a git revision
 // (sheet.mjs --against): git's change list, the comparison of two pictures over two sizes,
-// the noise rule, the order and the page. And lib/record-lines.mjs, the records a child
+// the noise rule, the order and the page. And the url()s of a frozen page's style sheets
+// (lib/shot-freeze.mjs; the freezing itself is in the page). And lib/record-lines.mjs, the records a child
 // process writes among its lines, which runShards reads. And what becomes of a picture and
 // its SVG: lib/shot-policy.mjs's decisions, with a picture's allowances and a review's
 // decisions, and lib/shot-apply.mjs's writing of them, in a scratch folder and a scratch
@@ -53,6 +54,7 @@ import {
   writeBundle,
 } from "../scripts/svgshot/bundle.mjs";
 import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
+import { cssUrls, rewriteCssUrls } from "../scripts/lib/shot-freeze.mjs";
 import { decodePng, encodePng, pngSize } from "../scripts/lib/png.mjs";
 import { onStop, parseRecord, readRecords, recordLine, sendStop, STOP_LINE } from "../scripts/lib/record-lines.mjs";
 import {
@@ -1867,9 +1869,17 @@ describe("frames", () => {
     assert.deepEqual(bars.client, { w: 273, h: 188 });
     assert.deepEqual(bars.scroll, { x: 0, y: 30, w: 300, h: 500 });
     assert.deepEqual(bars.bounds, geometry.box);
-    // A viewport the document fits in has none, and nor does a zoomed frame (not drawn).
+    // A viewport the document fits in has none.
     assert.equal(viewportGutters(doc, { w: 273, h: 188 }), null);
-    assert.equal(viewportScroller(doc, { ...geometry, scale: 0.75 }, inner), null);
+    // A zoomed frame's bars are as thick in the parent's px as any, and the rest of the
+    // stand-in is in the parent's px too: a frame at 0.75 whose viewport is 293 by 188 of
+    // its own px, 20 of them its bar, has a bar 15 px thick in a box of 219.75 by 141.
+    const box = { x: 106, y: 56, w: 219.75, h: 141 };
+    const zoomed = viewportScroller(doc, { box, scale: 0.75 }, { w: 293, h: 188 });
+    assert.deepEqual(zoomed.viewport, { v: 15, h: 0 });
+    assert.deepEqual(zoomed.client, { w: 204.75, h: 141 });
+    assert.deepEqual(zoomed.scroll, { x: 0, y: 22.5, w: 225, h: 375 });
+    assert.deepEqual(zoomed.bounds, box);
     // The <body> is the first element whose scrollbar rules style the viewport, then the root element.
     assert.deepEqual(
       viewportStyleSources(doc).map((n) => n.name),
@@ -1886,6 +1896,24 @@ describe("frames", () => {
     assert.equal(canvasColor(page), "rgb(4, 4, 4)");
     for (const n of doc.nodes) if (n.style) n.style["background-color"] = "rgba(0, 0, 0, 0)";
     assert.equal(canvasColor(doc), null);
+  });
+});
+
+describe("a frozen page's style sheets (shot-freeze.mjs)", () => {
+  test("the url()s of a sheet are found as Chromium writes them and as an author does, references into the document left out", () => {
+    const text = `@font-face{src:url("../fonts/a \\"b\\".woff2") format("woff2")} .x{background:url('i.png')} .y{background-image:url( bare.svg )} .z{filter:url(#f)} .w{mask:url("#m")}`;
+    assert.deepEqual(
+      cssUrls(text).map((u) => u.url),
+      ['../fonts/a "b".woff2', "i.png", "bare.svg"],
+    );
+    for (const u of cssUrls(text)) assert.match(text.slice(u.start, u.end), /^url\(.*\)$/);
+  });
+
+  test("each url() is replaced by what it is given, quoted and escaped, and one given null stays as it was", async () => {
+    const text = `a{b:url(x.png)} c{d:url("y.woff2")} e{f:url(#g)}`;
+    const out = await rewriteCssUrls(text, async (u) => (u === "x.png" ? 'data:image/png;base64,QQ"' : null));
+    assert.equal(out, `a{b:url("data:image/png;base64,QQ\\"")} c{d:url("y.woff2")} e{f:url(#g)}`);
+    assert.equal(await rewriteCssUrls("no urls here", async () => "z"), "no urls here");
   });
 });
 

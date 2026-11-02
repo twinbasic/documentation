@@ -1143,12 +1143,33 @@ canvas colour (the root's background, else the body's, else none) and under its 
 scrollbars. `svgOfPage` measures each frame in an isolated world of its own
 (`Page.createIsolatedWorld`), so its `@font-face` rules and styles apply; one `PictureFonts`
 serves the whole picture. A frame of another site is a target of its own and is not in the
-snapshot: it is reported as "a frame of another process" (Help_Window's, the Webpage pane's).
-Not done yet, and the way to do it: attach to that frame's own target (`Target.setAutoAttach`
-with `flatten`, or the targets `shoot_docs` already finds for the PNGs), take its snapshot and
-measure it there, and nest it at its `<iframe>`'s content box as a same-site frame is
-(`DOM.getFrameOwner` names the `<iframe>` of a frame id). A bench page gets such a frame from
-an `<iframe>` on `127.0.0.1` while the page is on `localhost`: another site, so its own process.
+snapshot: it is reported as "a frame of another process". The two pictures that had one are
+taken another way (owner, 2026-11-02: the shot substitutes a local copy for the remote page):
+`scripts/lib/shot-freeze.mjs` freezes the page from its own target into one document (its
+scripts left out, its style sheets from the CSSOM, each `url()` and `<img>` a `data:` URL, its
+form values as attributes, its scroll put back), and `showFrozen` shows it in an `<iframe
+srcdoc>` of the page the picture is taken of, which is that page's own process. Help_Window's
+docs frame takes the copy by srcdoc (its `src` comes back after the picture); the Webpage pane,
+a second WebView2 the host lays over the pane and no frame at all, gets a frame of the IDE's
+page at the pane body's place, zoomed by CSS as the pane's page is (70%: the frame is 1/0.7 of
+the pane's size, so the copy is laid out as wide as the page was), so its PNG is no longer
+pasted together from two captures. A copy of the docs home page and of MsgBox, in a frame, is
+the live page to the pixel in Chrome, and its SVG 0.011% strongly off at most. Both pictures'
+PNGs on BETA 1034: Webpage within noise of HEAD's, Help_Window's text a device pixel or two
+off (next paragraph). Their SVGs: Webpage 0% and 0.008% strongly off, Help_Window 0% and 0.002%.
+
+Two faults showed on the way. **The viewport scrollbars of a zoomed frame** were not drawn;
+`viewportScroller` now gives them in the parent's px (a bar is as thick there as in a frame
+that is not zoomed; the gutters, scroll and extent times the frame's scale). **A scrollbar
+rule in an `@media` or `@supports` that does not hold** (the site's dark theme only, in a light
+picture) made `scrollbarParts` take the viewport's bar as custom and draw it transparent; it
+now visits only the blocks in force, and a sheet whose own media does not match not at all.
+And **the help window's WebView2 followed the display's scaling** (144 DPI on the dev box),
+the one WebView2 without `--force-device-scale-factor=1`: its DOM snapshot was in the
+display's px, 1.5 times its CSS px, and the whole SVG was drawn that much too large, the
+shell's title bar included. The add-in now takes further browser arguments for its window
+under the test switch, `TB_DOCS_HELP_WINDOW_ARGS`, and the help setup passes that flag; the
+PNG's text then falls a device pixel or two otherwise, at the same layout.
 
 **Web fonts** are found by CSS font matching on the run's `font-family` list, style and weight
 (`webFontFiles`, in the page), not by the face's own name: the site's Inter calls itself "Inter

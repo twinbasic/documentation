@@ -1186,7 +1186,12 @@ not: a restart saves a harness about a second against opening a new IDE.
      the add-in also removes `WEBVIEW2_USER_DATA_FOLDER` and
      `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` from the compiler's environment (P19), and
      starts the control with the DevTools port in `TB_DOCS_HELP_WINDOW_PORT`, through which
-     the lane operates the window's page. The `%LOCALAPPDATA%` path is not run by any lane.
+     the lane operates the window's page, and with the further arguments in
+     `TB_DOCS_HELP_WINDOW_ARGS` beside it: `shoot_docs`'s help setup passes
+     `--force-device-scale-factor=1`, without which, on a display scaled to 150%, the page's
+     DOM snapshot is in the display's pixels and Help_Window's SVG is drawn 1.5 times too large
+     (the help lane passes none, so that it tests the window at the display's scale). The
+     `%LOCALAPPDATA%` path is not run by any lane.
    - **The lanes** read the add-in's test-switch lines: `window shown`, `window hidden`,
      `window state max|normal|min`, `window drag` and `window chrome custom|native style
      <hex of GWL_STYLE>`. They check the bar's one row and the four buttons, no `WS_CAPTION`

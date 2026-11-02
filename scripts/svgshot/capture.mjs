@@ -497,14 +497,20 @@ function scrollbarParts({ styleNames, parts, viewport = false }) {
   const matched = parts.map(() => false);
   let custom = false;
 
-  // Every style rule that names a scrollbar part, in the element's own scope.
+  // Every style rule that names a scrollbar part, in the element's own scope, and in
+  // force: one inside an @media or @supports whose condition does not hold (a site's
+  // dark theme only, in a light picture) styles nothing.
   const rules = [];
   const visit = (list) => {
     for (const r of list) {
       if (r instanceof CSSStyleRule) {
         if (r.selectorText.includes("::-webkit-scrollbar")) rules.push(r);
       } else if (r instanceof CSSImportRule) {
-        if (r.styleSheet) visit(r.styleSheet.cssRules);
+        if (r.styleSheet && (!r.media.mediaText || matchMedia(r.media.mediaText).matches)) visit(r.styleSheet.cssRules);
+      } else if (r instanceof CSSMediaRule) {
+        if (matchMedia(r.media.mediaText).matches) visit(r.cssRules);
+      } else if (r instanceof CSSSupportsRule) {
+        if (CSS.supports(r.conditionText)) visit(r.cssRules);
       } else if (r.cssRules) visit(r.cssRules);
     }
   };
@@ -513,6 +519,7 @@ function scrollbarParts({ styleNames, parts, viewport = false }) {
       ? [...scope.styleSheets, ...scope.adoptedStyleSheets]
       : [...document.styleSheets, ...document.adoptedStyleSheets];
   for (const sheet of sheets) {
+    if (sheet.disabled || (sheet.media?.mediaText && !matchMedia(sheet.media.mediaText).matches)) continue;
     try {
       visit(sheet.cssRules);
     } catch {

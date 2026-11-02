@@ -60,8 +60,8 @@
 // place and the frame's scroll offset, and scaled when the frame is zoomed; its
 // canvas colour under it and its viewport scrollbars over it. Not drawn: a frame
 // of another process, which has no document in the snapshot (a cross-site
-// <iframe> has a DevTools target of its own), a transformed frame, the scrollbars
-// of a zoomed frame, and the rounded corners of a frame's clip.
+// <iframe> has a DevTools target of its own), a transformed frame, and the
+// rounded corners of a frame's clip.
 //
 // An inline <svg> in the page is not converted from its layout objects, which
 // hold no path data. It is a replaced element: the caller reads the markup of each
@@ -1134,23 +1134,28 @@ export function viewportGutters(doc, inner) {
  * shows none. The scrollbars are the part of the frame's viewport (`inner`, its
  * innerWidth and innerHeight) that the root element's client box leaves out.
  * `bounds` is the frame's viewport in the parent: the bars are drawn there, at
- * the scale of the parent and not the frame's. A zoomed frame has none here:
- * a bar is as thick in the parent's px as in a frame that is not zoomed.
+ * the scale of the parent and not the frame's. A bar of a zoomed frame is as
+ * thick in the parent's px as one of a frame that is not, so the whole stand-in
+ * is in the parent's px: the gutters (in the frame's px) times the frame's
+ * scale, and the scroll and what it scrolls over likewise, so that the thumb is
+ * where the scroll's share of it puts it.
  */
 export function viewportScroller(doc, geometry, inner) {
-  const viewport = viewportGutters(doc, inner);
-  if (!viewport || geometry.scale !== 1) return null;
+  const own = viewportGutters(doc, inner);
+  if (!own) return null;
+  const s = geometry.scale;
+  const viewport = { v: Math.round(own.v * s), h: Math.round(own.h * s) };
   const root = rootBox(doc);
   return {
     key: `${doc.id}:viewport`,
     node: { name: "#viewport", attrs: {} },
     bounds: geometry.box,
-    client: { w: inner.w - viewport.v, h: inner.h - viewport.h },
+    client: { w: inner.w * s - viewport.v, h: inner.h * s - viewport.h },
     scroll: {
-      x: doc.scroll.x,
-      y: doc.scroll.y,
-      w: root.scroll?.w ?? doc.content.w,
-      h: root.scroll?.h ?? doc.content.h,
+      x: doc.scroll.x * s,
+      y: doc.scroll.y * s,
+      w: (root.scroll?.w ?? doc.content.w) * s,
+      h: (root.scroll?.h ?? doc.content.h) * s,
     },
     style: VIEWPORT_STYLE,
     viewport,
@@ -2867,7 +2872,6 @@ export function renderSvg(
     unzoom(doc, scale);
     const shown = frameView(view, geometry, doc);
     if (!shown) return [];
-    if (scale !== 1 && viewportGutters(doc, mine.inner)) note("scrollbars of a zoomed frame");
     if (radii(st, l.bounds.w, l.bounds.h).some(([a, b]) => a > 0 || b > 0)) note("frame with rounded corners");
     const outer = env;
     env = mine;

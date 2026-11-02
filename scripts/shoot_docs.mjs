@@ -166,6 +166,7 @@ import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.
 import { inRects, pngsNear, withinNoise } from "./lib/shot-change.mjs";
 import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
 import { applyPicture, applySvg, dropPicture, restorePictures, svgOf } from "./lib/shot-apply.mjs";
+import { freezePage, showFrozen } from "./lib/shot-freeze.mjs";
 import {
   bundleFollowsSvg,
   cleanupResets,
@@ -1247,6 +1248,10 @@ async function startHelp(run) {
     env: {
       TB_DOCS_HELP_SITE: run.origin,
       TB_DOCS_HELP_WINDOW_PORT: String(slot.port),
+      // The window's WebView2 at a scale of 1, as the IDE's is (Lane's browserArgs): on
+      // a scaled display its DOM snapshot would otherwise be in the display's pixels,
+      // and its SVG drawn that much too large.
+      TB_DOCS_HELP_WINDOW_ARGS: "--force-device-scale-factor=1",
       TB_DOCS_HELP_REAL_TITLEBAR: "0",
     },
   });
@@ -12442,16 +12447,21 @@ async function cancelImport(c) {
 // ---- webpage: the demo open, and the Webpage pane on its own, floating, showing the
 // documentation's home page at the IDE's default zoom, 70%. The pane's page is a second
 // WebView2 that the IDE's host lays over the pane, so a capture of the IDE's page holds the
-// pane's header and an empty body: the page is captured from its own DevTools target (the
-// host's WebView2s share the IDE's port) at the same 2x and put where the host puts it, one
-// pixel inside the pane's body (syncPosition). The pane's settings are the IDE's defaults with
-// the documentation's address, in the page only (the IDE's call that saves them is one
+// pane's header and an empty body: the page is set from its own DevTools target (the
+// host's WebView2s share the IDE's port) to the size of the pane's body at the same 2x,
+// frozen (shot-freeze.mjs), and shown in a frame of the IDE's page where the host puts it,
+// one pixel inside the pane's body (syncPosition), zoomed as the pane is, so that the
+// picture and its SVG are both of the IDE's page. The pane's settings are the IDE's defaults with the
+// documentation's address, in the page only (the IDE's call that saves them is one
 // PAGE_DEFAULTS has made do nothing). The page follows the OS's light or dark preference,
-// set to the theme of the picture.
+// set to the theme of the picture in both pages.
 
 const WEBPAGE_URL = "https://docs.twinbasic.com/";
 const WEBPAGE_PANEL = "webpagePanel._this.sectionHeader.panelDiv";
 const WEBPAGE_BOX = { left: 140, top: 120, width: 340, height: 500 };
+// The pane's zoom, which its page is drawn at, and so the frame that shows the copy.
+const WEBPAGE_ZOOM = 0.7;
+const FROZEN_FRAME = `document.getElementById("tbShotFrozen")`;
 
 // The pane's page's target once it shows `url` and has loaded, its fonts and images too.
 async function paneTarget(port, url) {
@@ -12478,16 +12488,6 @@ async function paneTarget(port, url) {
   return p;
 }
 
-// Copies the pixels of `part` into `whole` (both decoded pictures) at (x, y).
-function paste(whole, part, x, y) {
-  for (let row = 0; row < part.height; row++) {
-    whole.rgba.set(
-      part.rgba.subarray(row * part.width * 4, (row + 1) * part.width * 4),
-      ((y + row) * whole.width + x) * 4,
-    );
-  }
-}
-
 async function prepareWebpage(run) {
   return { ...(await prepareProject(run)), port: run.lane.port };
 }
@@ -12498,7 +12498,9 @@ const webpageShot = {
   async take({ c, port }) {
     await resetUi(c);
     const dark = await pageIsDark(c);
-    await c.evaluate(`liveWebpanelSettings = { zoom: 0.7, url: ${JSON.stringify(WEBPAGE_URL)}, mobileMode: false }`);
+    await c.evaluate(
+      `liveWebpanelSettings = { zoom: ${WEBPAGE_ZOOM}, url: ${JSON.stringify(WEBPAGE_URL)}, mobileMode: false }`,
+    );
     await command(c, "tbWebpage_ShowPanel");
     let p = null;
     try {
@@ -12517,36 +12519,46 @@ const webpageShot = {
         throw new Error(`the Webpage pane's address is ${await url()}, not ${WEBPAGE_URL}`);
       }
       p = await paneTarget(port, WEBPAGE_URL);
-      p.shot = newShotState("webpage");
       const inner = await rectOf(c, ".webpagePanelInner");
       const view = { width: inner.width - 2, height: inner.height - 2 };
       if (!Number.isInteger(inner.x) || !Number.isInteger(inner.y) || !Number.isInteger(view.width)) {
         throw new Error(`the Webpage pane's body is not on whole pixels: ${JSON.stringify(inner)}`);
       }
-      await p.send("Emulation.setEmulatedMedia", {
-        features: [{ name: "prefers-color-scheme", value: dark ? "dark" : "light" }],
-      });
+      const scheme = { features: [{ name: "prefers-color-scheme", value: dark ? "dark" : "light" }] };
+      await p.send("Emulation.setEmulatedMedia", scheme);
       await p.send("Emulation.setDeviceMetricsOverride", { ...view, deviceScaleFactor: SCALE, mobile: false });
       await p.evaluate("window.scrollTo(0, 0)");
       await frames(p);
-      const page = decodePng(await capture(p, "webpage", null));
-      if (page.width !== view.width * SCALE || page.height !== view.height * SCALE) {
-        throw new Error(
-          `the pane's page came out ${page.width}x${page.height} px, not ${view.width}x${view.height} at 2x`,
-        );
-      }
+      refuseUserName(await p.evaluate("document.body.innerText"), "Webpage", "the pane's page");
+      const html = await freezePage(p, { css: QUIET_CSS });
+      // Neither the IDE's style sheets nor the pane's own follow the OS's preference, so
+      // setting it in the IDE's page changes only the frame's.
+      await c.send("Emulation.setEmulatedMedia", scheme);
+      // The frame is zoomed as the pane is, so that the copy is laid out as wide as the
+      // pane's page and drawn at its size; a box around it puts it in the pane's place,
+      // since a zoom scales the frame's own left and top too.
+      await c.evaluate(`(() => {
+  const box = document.createElement("div");
+  box.id = "tbShotFrozenBox";
+  box.style.cssText = "position:fixed;left:${inner.x + 1}px;top:${inner.y + 1}px;width:${view.width}px;height:${view.height}px;overflow:hidden;z-index:2147483647";
+  const f = document.createElement("iframe");
+  f.id = "tbShotFrozen";
+  f.style.cssText = "display:block;border:0;margin:0;padding:0;zoom:${WEBPAGE_ZOOM};width:${view.width / WEBPAGE_ZOOM}px;height:${view.height / WEBPAGE_ZOOM}px";
+  box.append(f);
+  document.body.append(box);
+})()`);
+      await showFrozen(c, FROZEN_FRAME, html);
       const panel = await c.evaluate(
         `(() => { const r = ${WEBPAGE_PANEL}.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
       );
-      const clip = snapOut(panel);
-      const whole = decodePng(await capture(c, "Webpage", clip, { frame: p, away: () => parkMouse(c) }));
-      paste(whole, page, (inner.x + 1 - clip.x) * SCALE, (inner.y + 1 - clip.y) * SCALE);
-      return encodePng(whole);
+      return await capture(c, "Webpage", snapOut(panel), { away: () => parkMouse(c) });
     } finally {
       if (p) {
         await p.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
         p.close();
       }
+      await c.evaluate(`document.getElementById("tbShotFrozenBox")?.remove()`).catch(() => {});
+      await c.send("Emulation.setEmulatedMedia", { media: "", features: [] }).catch(() => {});
       await command(c, "tbWebpage_HidePanel");
     }
   },
@@ -13120,17 +13132,25 @@ function helpTakes(ctx) {
         throw new Error("the window's page did not load");
       }
       // The window's page is a string the add-in loads, so its frame of the docs is on
-      // another site, a target of its own.
+      // another site, a target of its own, which the SVG cannot draw: the docs page is
+      // frozen from that target and shown in the same frame by srcdoc, which is the
+      // window page's own process (shot-freeze.mjs), and the frame's address comes back
+      // after the picture.
       const frame = await waitFor(c, () => attach(windowPort, origin, { type: "iframe" }).catch(() => null), {
         timeout: 30000,
       });
       if (!frame) throw new Error(`no frame of ${origin} on the window's DevTools port ${windowPort}`);
+      const HELP_FRAME = `document.getElementById("helpPage")`;
       let png;
       try {
         await pageDrawn(win, frame);
-        png = await snap(win, "Window", null, { frame });
+        refuseUserName(await frame.evaluate("document.body.innerText"), "Window", "the window's docs page");
+        const html = await freezePage(frame, { css: QUIET_CSS });
+        await showFrozen(win, HELP_FRAME, html);
+        png = await snap(win, "Window", null);
       } finally {
         frame.close();
+        await win.evaluate(`${HELP_FRAME}?.removeAttribute("srcdoc")`).catch(() => {});
       }
       // The help back in the pane, with the window's Attach button, for the pictures of the
       // next theme.
