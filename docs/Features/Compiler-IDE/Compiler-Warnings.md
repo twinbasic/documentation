@@ -292,6 +292,9 @@ Reports an implicit conversion between an enumeration and a numeric type. It is 
 
 An array assigned to an array of another element type, *suspicious array assignment; subtypes do not match*.
 
+> [!NOTE] BETA 1034
+> The message reads only *Suspicious array assignment*: the IDE cuts the text that `en-gb.lang` gives it at its semicolon. See [Language packs](../../tB/IDE/Customising/#language-packs).
+
 ```tb check_build
 Dim counts() As Long
 Dim small() As Integer
@@ -551,4 +554,5 @@ End Sub
        argument (BETA 1033: TB0026); AddressOf and CType(Of) draw nothing; the
        delegate made from a LongPtr calls the procedure. TB0022's and TB0026's
        samples still draw TB0022 and TB0026. TB0022's message in BETA 1034 is cut at
-       its "; " by the IDE's language-pack reader: "Suspicious array assignment". -->
+       its "; " by the IDE's language-pack reader: "Suspicious array assignment"
+       (bugs/language-pack-semicolon-cut, asserted by the language lane). -->

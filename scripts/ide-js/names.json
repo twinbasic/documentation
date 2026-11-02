@@ -361,6 +361,75 @@
           "refs": 0
         }
       }
+    },
+    "applyLanguagePack": {
+      "namedOn": "BETA 1034",
+      "shape": "22e73f2f6b3e21b1",
+      "names": {
+        "0#0": {
+          "name": "packName",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 5
+        },
+        "0#1": {
+          "name": "pack",
+          "was": "t",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 7
+        },
+        "0#2": {
+          "name": "packText",
+          "was": "o",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 12
+        },
+        "0#3": {
+          "name": "entries",
+          "was": "n",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0/0#0": {
+          "name": "language",
+          "was": "t",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 1
+        },
+        "0/4/0#0": {
+          "name": "entry",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 3
+        },
+        "0/4/0#1": {
+          "name": "colon",
+          "was": "t",
+          "def": "Variable",
+          "kind": "let",
+          "refs": 4
+        },
+        "0/4/0#2": {
+          "name": "key",
+          "was": "o",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 4
+        },
+        "0/4/0#3": {
+          "name": "value",
+          "was": "n",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        }
+      }
     }
   }
 }

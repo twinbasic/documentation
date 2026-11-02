@@ -11325,3 +11325,85 @@ Severity: low; the list says that conversions from `Object` and `Variant` are ch
 
 <!-- Reproducer: bugs/tb0035-default-not-reported/ (mode compile; expect.noDiagnostics, the bug state. It cannot tell which side a fix changes: a build whose list shows TB0035 at IGNORE still reproduces, so look at the list when it stops reproducing or when a new build comes). docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0035 that says so. Found 2026-11-02 writing that section. -->
 
+---
+
+## A language pack's string is cut at a semicolon followed by a space, so TB0022's message ends at *Suspicious array assignment*
+
+**Describe the bug**
+The IDE reads a language pack's strings by splitting the file at every `;` followed by a space, a tab or a line break, before it looks at the quotes. So a string that holds `; ` inside its double quotes ends there, and the rest of it is dropped without a word. Since BETA 1034 the compiler's messages are strings of the pack too, and `en-gb.lang` gives TB0022 as `"Suspicious array assignment; subtypes do not match"`, so the warning reads only *Suspicious array assignment*. A translator's string with `; ` in it is cut the same way.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and add these lines to a procedure:
+   ```
+   Dim counts() As Long
+   Dim small() As Integer
+   ReDim small(3)
+   counts = small
+   ```
+2. See TB0022 in the DIAGNOSTICS panel: `Suspicious array assignment`.
+3. Put a pack `zz-zz.lang` in `%APPDATA%\twinBASIC\locale` with these lines, restart the IDE, and choose *Probe Pack* under **Window, Language**:
+   ```
+   FriendlyName: "Probe Pack";
+   inherits: en-gb;
+   MenuCaptionHelp: "PHELP; CUT";
+   MenuCaptionView: "PVIEW;WHOLE";
+   ```
+4. See the Help menu read `PHELP`. The View menu reads `PVIEW;WHOLE`: a `;` with no space after it stays in the string.
+
+**Expected behavior**
+A `;` inside a string's quotes is part of the string: TB0022 reads *Suspicious array assignment; subtypes do not match*, and the Help menu `PHELP; CUT`. `locale\README.txt` describes a pack as properties written as in `en-gb.lang`, each a quoted string, and says nothing that keeps a string from holding `; `; `en-gb.lang` itself holds one.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Of all the strings of the 19 packs BETA 1034 ships, only TB0022 of `en-gb.lang` holds `; ` inside its quotes, so the shipped packs lose only that one today. A reader that ends a value only at a `;` outside quotes would not do: several shipped packs leave a quote unclosed before a `;` at the end of the line (`ja-jp.lang` line 206, `MenuShortcutKeyARROWLEFT: "左←;`, and the `DialogSaveChangesToProjectCaptionMain` lines of `de-de.lang`, `it-it.lang` and `fr-fr.lang`), and the present reader still ends those values at the line's end. With such a reader `ja-jp.lang` would lose 71 strings. The fix below keeps that.
+
+Severity: low; a message or a translation is shorter than written, and nothing says so.
+
+**Fix shape**
+
+`applyLanguagePack` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`packName`, `pack`, `packText`, `entries`, `language`, `entry`, `colon`, `key`, `value`); the build calls them `e`, `t`, `o`, `n`, `t`, `e`, `t`, `o`, `n`.
+
+```diff
+@@ -19,11 +19,25 @@
+   if (pack && pack.text) {
+     var packText = pack.text + "\r\n";
+     packText = packText.replace(/\/\*[\s\S]*?\*\//g, "");
+-    packText = packText.replace(/; /g, "%;%");
+-    packText = packText.replace(/;\t/g, "%;%");
+-    packText = packText.replace(/;\n/g, "%;%");
+-    packText = packText.replace(/;\r\n/g, "%;%");
+-    var entries = packText.split("%;%");
++    var entries = [];
++    var entryStart = 0;
++    var inQuotes = false;
++    var lineEnd = /[ \t]*\r?\n/y;
++    for (let index = 0; index < packText.length; index++) {
++      const character = packText[index];
++      if (character === '"') {
++        inQuotes = !inQuotes;
++      } else if (character === ";") {
++        lineEnd.lastIndex = index + 1;
++        const next = packText[index + 1];
++        if (lineEnd.test(packText) || (!inQuotes && (next === " " || next === "\t"))) {
++          entries.push(packText.slice(entryStart, index));
++          entryStart = index + 1;
++          inQuotes = false;
++        }
++      }
++    }
++    entries.push(packText.slice(entryStart));
+     entries.forEach((entry) => {
+       let colon = entry.indexOf(":");
+       if (colon !== -1) {
+```
+
+A `;` followed by a space or a tab now ends a value only outside its quotes, so a string may hold `; `. A `;` that ends its line, with only spaces or tabs after it, ends the value as before, quotes or not, and the next value starts outside quotes, so a pack that leaves a quote unclosed before such a `;` reads as it does today. Read this way, the 19 packs BETA 1034 ships give every string the value they give now, except TB0022 of `en-gb.lang`, which is whole.
+
+Tested on a copy of BETA 1034 with this change (3 edits in `main.js`, every other byte the same): the Help menu reads `PHELP; CUT`, and the text the IDE passes to the compiler for TB0022 is `Suspicious array assignment; subtypes do not match`; the View menu still reads `PVIEW;WHOLE`, and the language lane's seven other tests pass.
+
+<!-- Reproducer: bugs/language-pack-semicolon-cut/ (mode lane: asserted by `ide-test.bat --only language` (test/ide/language.test.mjs), the test "a ';' and a space end a pack's string inside its quotes: the Help menu reads PHELP, and TB0022's message ends at its semicolon", which passes on BETA 1034; the control "control: a ';' with no space after it stays in a pack's string: the View menu reads PVIEW;WHOLE" passes too). No project and no zip. docs/IDE/Customising/index.md carries a NOTE (BETA 1034) for it under Language packs, and docs/Features/Compiler-IDE/Compiler-Warnings.md one under TB0022; when a fixed build is released, both go. Found 2026-11-02 documenting TB0034 to TB0037. Fix: bugs/language-pack-semicolon-cut/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/language-pack-semicolon-cut/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only language` tests it (the entry's test then fails, which is the fix working). The replay of both readers over the shipped packs was a scratch script; the claim that only TB0022 differs is from it. -->
+

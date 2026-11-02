@@ -7,12 +7,19 @@
 // with the IDE has any of these strings. A switch changes no message already shown: the compiler
 // uses the new language when it next checks the file, after an edit or a restart of the compiler.
 //
+// It is also tested against one entry in BUGS-TO-REPORT.md:
+//
+//   "A language pack's string is cut at a semicolon followed by a space, so TB0022's message ends at
+//   *Suspicious array assignment*" (bugs/language-pack-semicolon-cut)
+//
 // The project in probes/language has one file, Language.twin, with the warning TB0024 (an unused
 // local variable, which its Settings makes a warning). The lane types two lines into it that give
-// the errors TB5079 (an unrecognised name) and TB5179 (an expression cut short), and later one more
-// unused variable. The pack, zz-zz.lang ("Probe Pack"), goes only into the lane's own APPDATA
+// the errors TB5079 (an unrecognised name) and TB5179 (an expression cut short), later one more
+// unused variable, and last four lines that give the warning TB0022 (an array assigned to one of
+// another type). The pack, zz-zz.lang ("Probe Pack"), goes only into the lane's own APPDATA
 // (<work>\appdata\twinBASIC\locale), which the IDE reads as its second locale folder. It inherits
-// en-gb and gives the File menu, TB0024, TB5079 and TB5179 texts of its own.
+// en-gb and gives the File menu, TB0024, TB5079 and TB5179 texts of its own, the Help menu a text
+// with "; " inside its quotes and the View menu one with a ";" and no space after it.
 //
 // Choosing a language saves the IDE's options. The lane's IDE writes none of its settings
 // (--no-save-ide-settings, IDE_FLAGS in scripts/lib/tb-ide.mjs). The page's hostAppObject is
@@ -20,8 +27,10 @@
 // calls the flags do not guard, as customising.test.mjs does. Nothing here reaches SaveSetting, so
 // lanes.mjs names no settings for this lane.
 //
-// The tests share the lane's IDE in order. Each states what BETA 1034 does. If one fails after an
-// IDE update, the IDE has changed: update the two pages above, and then this file.
+// The tests share the lane's IDE in order. Each states what BETA 1034 does; the test named "control"
+// passes whether or not the defect is fixed. If another fails after an IDE update, the IDE has
+// changed: update the entry in BUGS-TO-REPORT.md, or its report in bugs/filed/, the two pages
+// above and Compiler-Warnings.md (TB0022), and then this file.
 //
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.
 
@@ -56,8 +65,14 @@ const PACK = [
   "TB0024: \"PROBE unused local '{0}'\";",
   "TB5079: \"PROBE unrecognised symbol '{0}'\";",
   'TB5179: "PROBE TB5179 [{0}]";',
+  'MenuCaptionHelp: "PHELP; CUT";',
+  'MenuCaptionView: "PVIEW;WHOLE";',
   "",
 ].join("\r\n");
+
+// TB0022's text in en-gb.lang, which holds a semicolon and a space.
+const TB0022_WHOLE = "Suspicious array assignment; subtypes do not match";
+const TB0022_CUT = "Suspicious array assignment";
 
 // What the compiler reports for the probe's lines, in English and in the pack. `Debug.Print 1 +`
 // gives two errors, TB5179 and a TB5079 for the end of the line.
@@ -92,12 +107,14 @@ const GUARD_JS = `(() => {
 })()`;
 
 // The messages as the code editor has them ("TB0024: ...") and the DIAGNOSTICS panel's rows as
-// they read ("TB0024Unused ... [5,13]"), the language chosen and the File menu's caption.
+// they read ("TB0024Unused ... [5,13]"), the language chosen and the captions of the File, Help and
+// View menus.
 const STATE_JS = `(() => {
   const rows = [...(problemsPanel.tree.sectionHeader.parentNode).querySelectorAll(".problemNodeItem")]
     .map((e) => e.innerText.replace(/\\s+/g, " ").trim());
   const markers = monaco.editor.getModelMarkers({}).map((m) => m.message).sort();
-  return { language: liveIDEOptions.language, file: rootMenuFile.innerText, rows, markers };
+  return { language: liveIDEOptions.language, file: rootMenuFile.innerText, help: rootMenuHelp.innerText,
+    view: rootMenuView.innerText, rows, markers };
 })()`;
 
 // Each pack's codes: the names of its strings that are a diagnostic's code.
@@ -226,5 +243,26 @@ scenario("language", (lane) => {
     await chooseLanguage(PACK_NAME);
     await restartCompiler(c, { project: lane.project });
     await waitForMessages(t, "restarted", messages(PACKED, EDITED));
+  });
+
+  test("a ';' and a space end a pack's string inside its quotes: the Help menu reads PHELP, and TB0022's message ends at its semicolon", async (t) => {
+    const s = await state();
+    const read = await c.evaluate(`({
+      file: customLanguages.find((l) => l.fullName === "en-gb.lang").text.includes(${JSON.stringify(TB0022_WHOLE)}),
+      table: activeLanguageData.TB0022,
+    })`);
+    t.diagnostic(JSON.stringify({ help: s.help, read }));
+    assert.equal(s.help, "PHELP");
+    assert.ok(read.file, "en-gb.lang does not hold TB0022's whole text");
+    assert.equal(read.table, TB0022_CUT);
+    await addLines(DIM_LINE, ["Dim counts() As Long", "Dim small() As Integer", "ReDim small(3)", "counts = small"]);
+    const tb0022 = () => state().then((x) => x.markers.find((m) => m.startsWith("TB0022")));
+    const shown = await waitFor(c, tb0022, { timeout: 30 * 1000, interval: 300 });
+    t.diagnostic(`TB0022's marker: ${JSON.stringify(shown)}`);
+    assert.equal(shown, `TB0022: ${TB0022_CUT}`);
+  });
+
+  test("control: a ';' with no space after it stays in a pack's string: the View menu reads PVIEW;WHOLE", async () => {
+    assert.equal((await state()).view, "PVIEW;WHOLE");
   });
 });
