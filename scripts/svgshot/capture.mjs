@@ -92,6 +92,7 @@ export const SNAPSHOT_STYLES = [
   "text-underline-position",
   "float",
   "appearance",
+  "accent-color",
   "overflow-x",
   "overflow-y",
   "resize",
@@ -107,9 +108,9 @@ export const SNAPSHOT_STYLES = [
 
 // The styles a bundle taken before they were read can do without: the converter
 // asks for them only where they matter, and a bundle without them says so as a
-// miss (text-overflow: bundle.mjs drawBundle), so that only the pictures that
-// need one are retaken.
-export const MISSABLE_STYLES = new Set(["text-overflow"]);
+// miss (text-overflow, accent-color: bundle.mjs drawBundle), so that only the pictures
+// that need one are retaken.
+export const MISSABLE_STYLES = new Set(["text-overflow", "accent-color"]);
 
 // What a scrollbar part's box is drawn from: its styles, and its size along the bar.
 const PART_STYLES = [

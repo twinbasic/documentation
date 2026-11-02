@@ -180,6 +180,8 @@ import {
   webRulesFor,
 } from "../scripts/svgshot/fonts.mjs";
 import {
+  accentInk,
+  accentUnknown,
   backgroundClip,
   bordersCover,
   canvasColor,
@@ -1308,6 +1310,29 @@ describe("bundles", () => {
       assert.doesNotMatch(svg, /<g clip-path="url\(#\w+\)"><use/, `${size} ${radius}`);
       assert.match(svg, /<use href="#\w+" transform="translate\([\d.]+ [\d.]+\) scale\([\d.]+ [\d.]+\)"\/>/);
     }
+  });
+
+  test("draws a checked control's white parts in the ink its accent-color gives", () => {
+    // The fitted points: white down to a 3:1 contrast with white, dark below it.
+    assert.equal(accentInk("rgb(71, 116, 164)"), "#fff");
+    assert.equal(accentInk("rgb(148, 148, 148)"), "#fff");
+    assert.equal(accentInk("rgb(150, 150, 150)"), "rgb(59, 59, 59)");
+    assert.equal(accentInk("rgb(255, 0, 0)"), "#fff");
+    assert.equal(accentInk("rgb(0, 192, 192)"), "rgb(59, 59, 59)");
+    assert.equal(accentInk("#0075ff"), "#fff");
+  });
+
+  test("knows when a bundle cannot say a checked control's accent-color", () => {
+    const control = (attrs, checked, style) => ({
+      layouts: [{ node: { name: "INPUT", attrs: { type: "checkbox", ...attrs }, checked }, style }],
+    });
+    const shown = { visibility: "visible", appearance: "auto" };
+    assert.equal(accentUnknown(control({}, true, shown)), true);
+    assert.equal(accentUnknown(control({}, true, { ...shown, "accent-color": "auto" })), false);
+    // Unchecked or disabled, it is drawn without its accent.
+    assert.equal(accentUnknown(control({}, false, shown)), false);
+    assert.equal(accentUnknown(control({ disabled: "" }, true, shown)), false);
+    assert.equal(accentUnknown(control({}, true, { ...shown, appearance: "none" })), false);
   });
 
   test("draws a text field left with the browser's border and background as Chromium's native one", () => {

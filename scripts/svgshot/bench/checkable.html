@@ -7,13 +7,16 @@
   unchecked and checked, enabled and disabled, at the default 13 by 13 and at 20 by 20, over
   white and over the IDE's dark ground (rgb(43, 43, 43)), whose colour a disabled control's
   translucent parts let through. A disabled one is marked by its `disabled` attribute, which
-  DevTools gives as an empty string.
+  DevTools gives as an empty string. The last row sets accent-color: the IDE's #4774a4
+  (formDesigner.css, on every checkbox), and a light one, whose check mark is dark.
 -->
 <style>
 body { margin: 0; background: #fff; }
-.ground { position: absolute; top: 0; width: 200px; height: 160px; }
+.ground { position: absolute; top: 0; width: 200px; height: 190px; }
 input { position: absolute; margin: 0; }
 .big { width: 20px; height: 20px; }
+.ide { accent-color: #4774a4; }
+.light { accent-color: #ffd84a; }
 </style>
 <body>
 <div class="ground" style="left:0;background:#fff"></div>
@@ -42,5 +45,16 @@ input { position: absolute; margin: 0; }
 <input type="checkbox" class="big" style="left:250px;top:90px" checked disabled>
 <input type="radio" name="k" class="big" style="left:280px;top:90px" disabled>
 <input type="radio" name="l" class="big" style="left:310px;top:90px" checked disabled>
+<input type="checkbox" class="ide" style="left:20px;top:130px">
+<input type="checkbox" class="ide" style="left:50px;top:130px" checked>
+<input type="radio" name="m" class="ide" style="left:80px;top:130px" checked>
+<input type="checkbox" class="ide" style="left:110px;top:130px" checked disabled>
+<input type="checkbox" class="light" style="left:140px;top:130px" checked>
+<input type="radio" name="n" class="light" style="left:170px;top:130px" checked>
+<input type="checkbox" class="ide big" style="left:20px;top:155px" checked>
+<input type="checkbox" class="ide" style="left:220px;top:130px" checked>
+<input type="radio" name="o" class="ide" style="left:250px;top:130px" checked>
+<input type="checkbox" class="light" style="left:280px;top:130px" checked>
+<input type="radio" name="p" class="light" style="left:310px;top:130px" checked>
 </body>
 </html>

@@ -405,6 +405,45 @@ const TEXT_INPUTS = new Set(["text", "search", "email", "url", "tel", "number", 
 const BUTTON_INPUTS = new Set(["button", "submit", "reset"]);
 const CHECKABLE_INPUTS = new Set(["checkbox", "radio"]);
 
+/** Chromium's accent for a checked checkbox or radio button whose accent-color is auto. */
+const DEFAULT_ACCENT = "#0075ff";
+
+/**
+ * The parts Chromium draws white on a checked control's accent (the check mark, a radio's
+ * ring inside its border): white while the accent's contrast with white is 3:1 or more, else
+ * rgb(59, 59, 59). Fitted in Edge over grey accents (white up to 148, dark from 150: 3.03:1
+ * and 2.96:1) and six hues; the higher contrast of the two would make 148's dark.
+ */
+export function accentInk(accent) {
+  const c = rgba(accent);
+  if (!c) return "#fff";
+  const lin = (v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  const l = 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+  return 1.05 / (l + 0.05) >= 3 ? "#fff" : "rgb(59, 59, 59)";
+}
+
+/**
+ * Whether a document draws a checked, enabled checkbox or radio button whose accent-color
+ * its styles do not hold: a bundle taken before accent-color was read cannot say what colour
+ * it is (the IDE sets #4774a4 on every checkbox, formDesigner.css).
+ */
+export function accentUnknown(decoded) {
+  return decoded.layouts.some(
+    (l) =>
+      l.node.name === "INPUT" &&
+      CHECKABLE_INPUTS.has(l.node.attrs.type?.toLowerCase()) &&
+      l.node.checked &&
+      l.node.attrs.disabled === undefined &&
+      l.style &&
+      l.style.visibility === "visible" &&
+      l.style.appearance !== "none" &&
+      l.style["accent-color"] === undefined,
+  );
+}
+
 /**
  * Whether Chromium draws layout object `l` as its native text field rather than
  * by its CSS: a text <input> whose border and background the page leaves as the
@@ -2415,7 +2454,8 @@ export function renderSvg(
   // A native checkbox or radio button, as Chromium's default theme draws them:
   // a square (a circle) as wide as the box is wide and tall, whichever is
   // less, centred in it, designed on a 13 by 13 grid and scaled to fit; checked,
-  // in the accent #0075ff (the IDE's and Edge's, sampled). A disabled one
+  // in its accent-color, #0075ff where that is auto, with its white parts in the
+  // accent's ink (accentInk). A disabled one
   // (`disabled`, which DevTools gives as "") is translucent, the ground under it
   // showing through: a fill of rgba(245, 245, 245, 0.68), its border, a checked
   // box's ground and a radio's dot in the border's #767676 at 30% over it, and a
@@ -2428,7 +2468,9 @@ export function renderSvg(
     if (!(side > 0)) return [];
     const radio = l.node.attrs.type.toLowerCase() === "radio";
     const on = l.node.checked;
-    const blue = "#0075ff";
+    const given = l.style["accent-color"];
+    const blue = given && given !== "auto" ? given : DEFAULT_ACCENT;
+    const ink = accentInk(blue);
     const mark = (colour) => `<path d="M3.1 6.3L5.3 10L10.3 2.7" fill="none" stroke="${colour}" stroke-width="1.8"/>`;
     let art;
     if (l.node.attrs.disabled !== undefined) {
@@ -2443,10 +2485,10 @@ export function renderSvg(
             : `<rect x="0.5" y="0.5" width="12" height="12" rx="1.5" fill="none" stroke="${line}" stroke-width="1"/>`);
     } else
       art = radio
-        ? `<circle cx="6.5" cy="6.5" r="6.5" fill="${on ? blue : "#767676"}"/><circle cx="6.5" cy="6.5" r="5.5" fill="#fff"/>` +
+        ? `<circle cx="6.5" cy="6.5" r="6.5" fill="${on ? blue : "#767676"}"/><circle cx="6.5" cy="6.5" r="5.5" fill="${on ? ink : "#fff"}"/>` +
           (on ? `<circle cx="6.5" cy="6.5" r="3.75" fill="${blue}"/>` : "")
         : on
-          ? `<rect width="13" height="13" rx="2" fill="${blue}"/>${mark("#fff")}`
+          ? `<rect width="13" height="13" rx="2" fill="${blue}"/>${mark(ink)}`
           : `<rect width="13" height="13" rx="2" fill="#767676"/><rect x="1" y="1" width="11" height="11" rx="1" fill="#fff"/>`;
     return [
       `<g transform="translate(${num(b.x + (b.w - side) / 2)} ${num(b.y + (b.h - side) / 2)}) scale(${num(side / 13)})">${art}</g>`,

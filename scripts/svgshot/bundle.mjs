@@ -46,7 +46,15 @@ import path from "node:path";
 import { brotliCompressSync, brotliDecompressSync, constants } from "node:zlib";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { PictureFonts, webRulesFor, withFaces } from "./fonts.mjs";
-import { decodeSnapshot, ellipsisLines, oneLine, parseShadows, renderSvg, unzoom } from "./snapshot-svg.mjs";
+import {
+  accentUnknown,
+  decodeSnapshot,
+  ellipsisLines,
+  oneLine,
+  parseShadows,
+  renderSvg,
+  unzoom,
+} from "./snapshot-svg.mjs";
 
 /** The bundle cache: gitignored, outside docs/, since a bundle holds the Windows user name. */
 export const BUNDLE_CACHE = path.join(REPO_ROOT, ".svgshot-bundles");
@@ -173,6 +181,9 @@ export function drawBundle(bundle) {
   // clips ends in an ellipsis: the question is one it has no answer for.
   for (const doc of measured.keys())
     if (ellipsisLines(doc).unknown) misses.add("text-overflow of a line its block clips");
+  // Nor, before accent-color was read, the colour of a checked checkbox or radio button.
+  for (const doc of measured.keys())
+    if (accentUnknown(doc)) misses.add("accent-color of a checked checkbox or radio button");
 
   const mine = measured.get(decoded);
   if (!mine) throw new Error("the bundle has no measurements of the page");
