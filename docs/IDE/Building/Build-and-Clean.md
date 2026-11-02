@@ -49,7 +49,7 @@ A project made from a template, a sample or a folder, or imported from a VB6 pro
 
 The build does not go on after the dialog. Press **Build** again. The folder you chose is now `${SourcePath}`, so the default build path puts the file in a `Build` folder in it.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > **Save** in this box makes the file you choose the project's file, but writes no `.twinproj` there, and nothing is built. The project stays changed, and **File → Close Project** still asks **You've made changes to this project.  Save now?** Press <kbd>Ctrl</kbd>+<kbd>S</kbd> after the dialog to write the file.
 
 A project that you opened from a `.twinproj` file has its file, and builds with no question. [Saving and exporting](../Projects/Saving-and-Exporting#a-project-with-no-file) describes the project with no file.

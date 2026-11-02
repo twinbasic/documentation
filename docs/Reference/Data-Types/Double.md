@@ -77,7 +77,7 @@ A result too large for the type raises error 6, *Overflow*: `1E+308 * 10` does, 
 
 A **Double** can hold the IEEE values infinity and NaN, which can arrive from memory or from a COM component, but arithmetic never produces one: it raises an error instead. As in VB6, they print as `1.#INF`, `-1.#INF`, `1.#QNAN` and, for the indeterminate value, `-1.#IND`. A comparison with NaN does not follow the IEEE rules: `NaN = NaN` is True, as in VB6, and so is `NaN = 0`, so a comparison cannot tell a NaN from a number.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > A 64-bit build prints infinity and NaN as `inf`, `-inf`, `nan` and `-nan(ind)`, and **Format** with a number picture such as `"0.00"` gives `inf.00` and `nan.00`. A 32-bit build and VB6 print `1.#INF` and `1.#QNAN`, and **Format** gives `1.#INF` and `1.#R`. Do not test or parse the text of these values.
 
 ```tb check_run
@@ -96,8 +96,8 @@ Debug.Print Err.Number              ' 0
 Debug.Print Value                   ' 0
 ```
 
-> [!WARNING] BETA 1010
-> A **Double** addition, subtraction, multiplication or exponentiation (`^`) that overflows raises no error in code compiled with LLVM: the result is infinity, and 0 for `^`. Code compiled without LLVM raises error 6, as VB6 does. See [Language support](../../LLVM/Getting-Started#language-support).
+> [!WARNING] BETA 1034
+> An exponentiation (`^`) that overflows raises no error in code compiled with LLVM, and its result is 0. In a 32-bit build compiled with LLVM, and not for SSE2, a **Double** addition, subtraction or multiplication that overflows raises no error either, and its result is infinity. Code compiled without LLVM raises error 6, as VB6 does. See [Language support](../../LLVM/Getting-Started#language-support).
 
 ## Example
 

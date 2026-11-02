@@ -261,7 +261,7 @@ Public Sub Convert()
 End Sub
 ```
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > A member of another enumeration, written as a constant (`day = vbOK`), converts without a warning.
 
 ### TB0020: Suspicious Interface Conversion
@@ -284,7 +284,7 @@ End Sub
 
 Reports an implicit conversion between an enumeration and a numeric type. It is at **IGNORE** by default.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > None of these conversions draws TB0021. A whole number assigned to a variable of an enumeration, or an enumeration value assigned to a **Long**, converts without a warning. A **Double**, **Single**, **Currency** or **Variant** assigned to a variable of an enumeration draws [TB0019](#tb0019-implicit-enumeration-conversion), and an enumeration value assigned to an **Integer**, **Byte** or **Single** draws [TB0018](#tb0018-implicit-narrowing-conversion).
 
 ### TB0022: Suspicious Assignment

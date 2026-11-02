@@ -45,16 +45,16 @@ If an object has registered itself as single-instance, only one instance is ever
 | [-2147023174 (`&H800706BA`)](tb:Errors#-2147023174), *The RPC server is unavailable.* | *servername* names a computer that cannot be reached |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *class* or *servername* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *class* is not a registered class name, such as a number, or a CLSID in braces without `new:`, VB6 and 64-bit VBA raise error [429 (`&H1AD`)](tb:Errors#429), *ActiveX component can't create object*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *class* is `new:` with a CLSID that is not registered, VB6 and 64-bit VBA raise error [429 (`&H1AD`)](tb:Errors#429), *ActiveX component can't create object*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *class* is `new:` followed by text that is not a CLSID, VB6 and 64-bit VBA raise error [429 (`&H1AD`)](tb:Errors#429), *ActiveX component can't create object*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *class* is a zero-length string, VB6 and 64-bit VBA raise error [429 (`&H1AD`)](tb:Errors#429), *ActiveX component can't create object*, instead.
 
 <!-- /errors -->

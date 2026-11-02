@@ -40,16 +40,16 @@ In determining which application to activate, *title* is compared to the title s
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *title* is **Null** |
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | no window has *title* as its title, or its beginning or end, and no process with *title* as its task ID has a window (0, a negative number, **True** and **Empty** included) |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When no window has *title* as its title, or its beginning or end, and no process with *title* as its task ID has a window (0, a negative number, **True** and **Empty** included), VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When the window *title* names is hidden, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *wait* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*; twinBASIC raises none.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *wait* is a string that is not a **Boolean**, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*; twinBASIC raises none.
 
 <!-- /errors -->

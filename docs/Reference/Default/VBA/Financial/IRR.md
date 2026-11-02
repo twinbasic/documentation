@@ -24,7 +24,7 @@ The **IRR** function uses the order of values within the array to interpret the 
 **IRR** is calculated by iteration. Starting with the value of *guess*, **IRR** cycles through the calculation until the result is accurate to within 0.00001 percent, and fails if it finds none in 20 tries.
 
 <!-- bug: financial-array-arguments -->
-> [!WARNING] BETA 1010
+> [!WARNING] BETA 1034
 > Given an array that has never been sized (`Dim A() As Double` with no **ReDim**, or one emptied by **Erase**), **IRR** ends the program with an access violation, in a 32-bit and a 64-bit build. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
 
 <!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
@@ -37,10 +37,10 @@ The **IRR** function uses the order of values within the array to interpret the 
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *guess* is a string that is not a number |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *guess* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *values* has no element less than 0 or none greater than 0, or **IRR** finds no result in 20 tries from *guess* (a *guess* of -1 or less, or far from the result, included), VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *values* has more than one dimension, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
 <!-- /errors -->

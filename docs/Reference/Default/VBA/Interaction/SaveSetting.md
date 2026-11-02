@@ -41,7 +41,7 @@ The root of these registry settings is: `Computer\HKEY_CURRENT_USER\Software\VB 
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *appname*, *section* or *key* is a zero-length string |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | an argument is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *appname*, *section* or *key* is a zero-length string, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
 <!-- /errors -->

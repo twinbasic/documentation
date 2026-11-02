@@ -1,7 +1,7 @@
 # The VBA Compilation module. Format: WIP.Errors.md.
 # Every case is `only: tb`: VB6 and VBA have none of these procedures. Each member is a
 # compile-time intrinsic or a hint to the compiler, and raises nothing at run time.
-beta: 1010
+beta: 1034
 pages:
   Reference/Default/VBA/Compilation/CompilerVersion.md:
     quiet:

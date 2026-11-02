@@ -1,5 +1,5 @@
 # The VBA Conversion module. Format: WIP.Errors.md.
-beta: 1010
+beta: 1034
 pages:
   Reference/Default/VBA/Conversion/Bin.md:
     rows:
@@ -99,13 +99,6 @@ pages:
       - CCur("-922337203685477.5808")
   Reference/Default/VBA/Conversion/CDate.md:
     rows:
-      - error: 6
-        when: "*expression* is a **Decimal** less than -657,434 or 2,958,466 or more"
-        vb6: 13
-        bug: cdate-string-decimal-out-of-range
-        cases:
-          - CDate(CDec(2958466))
-          - CDate(CDec(-657435))
       - error: 13
         when: "*expression* is a string that is not a date, a time or a number (a zero-length string included), or a date after December 31, 9999"
         cases:
@@ -113,6 +106,15 @@ pages:
           - CDate("")
           - CDate("13/13/2020")
           - CDate("1/1/10000")
+      - error: 13
+        when: "*expression* is a **Decimal**, or a string that holds a number, less than -657,434 or 2,958,466 or more"
+        cases:
+          - CDate(CDec(2958466))
+          - CDate(CDec(-657435))
+          - CDate("2958466")
+          - CDate("-657435")
+          - CDate("3000000")
+          - CDate("1e10")
       - error: 94
         when: "*expression* is **Null**"
         cases: [CDate(Null)]
@@ -129,15 +131,6 @@ pages:
           - CDate(CLng(3000000))
           - CDate(CSng(3000000))
           - CDate(CCur(2958466))
-      - error: 0
-        when: "**CDate** is given a string that holds a number less than -657,434 or 2,958,466 or more"
-        vb6: 13
-        bug: cdate-string-decimal-out-of-range
-        cases:
-          - CDate("2958466")
-          - CDate("-657435")
-          - CDate("3000000")
-          - CDate("1e10")
     quiet:
       - CDate(2958465)
       - CDate(2958465.9999)
@@ -502,10 +495,8 @@ pages:
       - error: 94
         when: "*string* is **Null**"
         cases: [Val(Null)]
-      - error: 0
-        when: "**Val** is given a *string* that holds a number followed by the **Integer** (`%`), **Long** (`&`) or **Currency** (`@`) type-declaration character, and the number is outside the range of that type"
-        vb6: 6
-        bug: val-suffix-overflow-no-error
+      - error: 6
+        when: "*string* holds a number followed by the **Integer** (`%`), **Long** (`&`) or **Currency** (`@`) type-declaration character, and the number is outside the range of that type"
         cases:
           - Val("32768%")
           - Val("-32769%")

@@ -294,7 +294,7 @@ The restriction to modules is not an oversight. Folding a call to a method would
 
 Calls are folded only when **Constant Function Folding** is set to **Yes** in [Project Settings](../IDE/Project-Settings#constant-function-folding). A **Property Get** in a module folds as a function does. On a **Sub** the attribute is accepted and has no effect.
 
-> [!WARNING] BETA 1010
+> [!WARNING] BETA 1034
 > The compiler also accepts the attribute on a **Declare Function**. With **Constant Function Folding** on, a call to such a function whose arguments are all constants crashes the compiler during the build, though the project compiles without an error.
 
 <!-- BETA 1005 (tbrun --exe, counting calls through a module counter): with
@@ -1055,7 +1055,7 @@ When set, a global instance of the class is created when the application starts.
 
 This attribute is equivalent to the `VB_PredeclaredId` attribute in VBx .cls files.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > In an ActiveX build, the class is marked `appobject` in the type library as well as `predeclid`, which is what [AppObject](#appobject) gives it, so a client that references the library treats the members of the class as global names.
 
 <!-- BETA 1005 and 1010, ActiveX DLL dumped with TLI: [PredeclaredId] and [AppObject]
@@ -1114,7 +1114,7 @@ End Property
 
 A property takes the page from its first accessor in the source, normally the **Property Get**, whichever kind of accessor that is. Written on a later accessor, the attribute has no effect, though its name is still checked; when two accessors name different pages, the control reports the first one's. On a **Sub**, a **Function** or a **Public** variable of the control, the control reports the page for that member's DISPID in the same way. In a class that is not a **UserControl**, or on an **Interface** member, the compiler accepts the attribute and it has no effect. The legacy line `Attribute Caption.VB_ProcData.VB_Invoke_Property = "CaptionPage"` inside the **Property Get** means the same. The argument must be a **String**: `[PropertyPage]` with no argument, or with a **Boolean** or a number, is TB5163, *Expected a single String argument*. On a procedure, a name that matches no property page in the project is error TB5259, *Failed to find named PropertyPage '...' for procedure '...'*. That includes an empty string and a name that differs only in case. A variable's name is not checked.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > VB6 stores a property's page as `"PageName;Category"` in the legacy attribute, with the category the property sheet groups the property under. twinBASIC reads such a legacy line and drops what follows the semicolon. **[PropertyPage]** takes the whole string as the name, so `[PropertyPage("CaptionPage;Appearance")]` is TB5259.
 
 The pages the control offers as a whole are listed in its [**PropertyPages**](../Packages/VB/UserControl/#propertypages) property.
@@ -1206,9 +1206,24 @@ This is attribute has the same function as the [**restricted** MIDL attribute][M
 
 Syntax: **[RunAfterBuild** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Function**](Function), [**Sub**](Sub), [**Property Get**](Property) in a [**Module**](Module)
+Applicable to: [**Sub**](Sub) in a [**Module**](Module)
 
-Specifies a function that runs after your exe is built. There's `App.LastBuildPath` to know where it is if you're e.g. signing the executable.
+Specifies a procedure that runs after your exe is built. There's `App.LastBuildPath` to know where it is if you're e.g. signing the executable.
+
+The procedure is a **Sub** with no parameters that is not generic. On a **Function**, a **Property Get**, a **Sub** that has a parameter, even an optional one, or a generic **Sub**, the attribute is error TB5155:
+
+```tb check_build expect-error=TB5155
+[RunAfterBuild]
+Public Function Signed() As Boolean
+    Signed = True
+End Function
+```
+
+```tb check_build expect-error=TB5155
+[RunAfterBuild]
+Public Sub Signed(Of T)()
+End Sub
+```
 
 Only one **[RunAfterBuild]** is allowed per project. A second one is a compile error. A **[RunAfterBuild]** procedure in a package that the project references does not run, and does not count as the project's one.
 
@@ -1223,13 +1238,11 @@ The procedure runs whatever the project's modules and procedures are called: a m
 > [!NOTE]
 > VB6 refuses a module that has the project's name, with *Name conflicts with existing module, project, or object library*. It allows a procedure named like its module.
 
-> [!WARNING] BETA 1010
-> The compiler also accepts the attribute on a generic **Sub**, such as `Sub Signed(Of T)()`, and counts it as the project's one **[RunAfterBuild]**. The build gives no error or warning, and the DEBUG CONSOLE reports the procedure as executed, but its body does not run.
-
-<!-- BETA 1005 (tbbuild --build): a [RunAfterBuild] Boolean Function and a
-     Property Get in a Module ran during the build (each wrote a file); a generic
-     Sub did not, with no diagnostic. Bug: runafterbuild-generic-sub-never-runs
-     in BUGS-TO-REPORT.md. -->
+<!-- BETA 1034: sweep_attributes --names RunAfterBuild accepts it on a Sub, a
+     Private Sub and a Static Sub in a Module only; a Function (Boolean and
+     object-returning included), a Property Get and a generic Sub are refused.
+     tbrun: each of those, and a Sub with an Optional parameter, is TB5155
+     "[RunAfterBuild] can only be used on a simple parameterless Sub". -->
 
 ## RunBeforeStartupObject
 {: #runbeforestartupobject }
@@ -1249,10 +1262,10 @@ A procedure with the attribute in a package that the project references runs too
      the project called nothing in the package. The exe printed the package's
      line, then Main's. -->
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > The attribute is not allowed on a generic procedure, such as `Sub Pre(Of T)()`. The project compiles in the editor without an error, but building it fails with the message *Build FAILED due to invalid RunBeforeStartupObject procedure*, which names neither the procedure nor the reason.
 
-> [!WARNING] BETA 1010
+> [!WARNING] BETA 1034
 > The compiler accepts the attribute on more than one procedure, with no error or warning, and the built program runs only the last of them; the others never run. It also accepts the attribute on a procedure with parameters, which then runs with arbitrary values for its parameters, even for an **Optional** parameter that has a default. Give the attribute to one procedure, with no parameters.
 
 <!-- BETA 1010 (bug_repro run --exe, win32 and win64): of three procedures with

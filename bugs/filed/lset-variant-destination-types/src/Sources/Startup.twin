@@ -9,15 +9,30 @@ Module Startup
         LSet v = "abc"
         Debug.Print "LSet, destination Null:    error " & Err.Number
 
-        v = New Collection
+        Set v = New Collection
         Err.Clear
         LSet v = "abc"
         Debug.Print "LSet, destination Object:  error " & Err.Number
+
+        Set v = New Collection
+        Err.Clear
+        RSet v = "abc"
+        Debug.Print "RSet, destination Object:  error " & Err.Number
 
         v = True
         Err.Clear
         RSet v = "ab"
         Debug.Print "RSet, destination True:    [" & v & "] Len " & Len(v)
+
+        v = True
+        Err.Clear
+        LSet v = "ab"
+        Debug.Print "LSet, destination True:    [" & v & "] Len " & Len(v)
+
+        v = False
+        Err.Clear
+        LSet v = "ab"
+        Debug.Print "LSet, destination False:   [" & v & "] Len " & Len(v)
     End Sub
 
 End Module

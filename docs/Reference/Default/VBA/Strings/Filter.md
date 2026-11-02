@@ -48,7 +48,7 @@ The array returned by the **Filter** function contains only enough elements to c
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *sourcearray* is **Null**, or has more than one dimension |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *match*, *include* or *compare* is **Null**, or an element of *sourcearray* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *compare* is 2 (**vbDatabaseCompare**), VB6 raises error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 <!-- /errors -->

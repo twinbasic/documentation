@@ -53,7 +53,7 @@ Syntax: **InternalGetReturnAddress()** **As LongPtr**
 
 The function is provided for code generated in debug mode. It uses special internal bindings, so it may not behave like a regular function. In a 32-bit build compiled without LLVM it returns a non-zero address, in an IDE run and in a built exe alike. In code compiled with LLVM it returns 0.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > A procedure that calls **InternalGetReturnAddress** fails code generation in a 64-bit build, with or without LLVM, and the project does not build.
 
 <!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->

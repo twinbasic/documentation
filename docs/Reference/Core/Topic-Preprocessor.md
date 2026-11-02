@@ -38,7 +38,7 @@ The directive's behaviour mirrors the runtime [**If...Then...Else**](If-Then-Els
 > The [**Option Compare**](Option) statement does not affect expressions in `#If`/`#ElseIf`. They are always evaluated as if **Option Compare Text** were in effect.
 
 <!-- bug: ifdef-function-call-is-zero -->
-> [!WARNING] BETA 1010
+> [!WARNING] BETA 1034
 > A function call in an `#If`, `#ElseIf` or `#Const` expression is always 0, with no error or warning. `#If CBool(1) Then` and `#If Len("abc") = 3 Then` are both false, and `#If Not CBool(Win64) Then` is true in a 64-bit build. VB6 evaluates `CBool`, `CLng`, `Abs` and `Len` there. To test whether a constant is 0, compare it with 0, as in `#If Win64 = 0 Then`.
 
 ## #Const directive

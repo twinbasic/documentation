@@ -42,18 +42,18 @@ To add days to *date*, use Day of Year ("y"), Day ("d"), or Weekday ("w").
 > [!NOTE]
 > When the "w" interval is used to add days to a date, **DateAdd** adds the total number of days specified, not just workdays (Monday through Friday).
 
-**DateAdd** won't return an invalid date. The following example adds one month to January 31:
+**DateAdd** won't return an invalid date. The first two lines of the following example add one month to January 31:
 
-```tb check_build
-DateAdd("m", 1, "31-Jan-95")
+```tb check_build check_run
+Debug.Print Format$(DateAdd("m", 1, #1/31/1995#), "yyyy-mm-dd")    ' 1995-02-28
+Debug.Print Format$(DateAdd("m", 1, #1/31/1996#), "yyyy-mm-dd")    ' 1996-02-29
+Debug.Print Format$(DateAdd("m", -1, #3/31/2026#), "yyyy-mm-dd")   ' 2026-02-28
+Debug.Print Format$(DateAdd("yyyy", 1, #2/29/2024#), "yyyy-mm-dd") ' 2025-02-28
 ```
 
-In this case, **DateAdd** returns 28-Feb-95, not 31-Feb-95. If *date* is 31-Jan-96, it returns 29-Feb-96 because 1996 is a leap year.
+**DateAdd** returns 28-Feb-95, not 31-Feb-95. If *date* is 31-Jan-96, it returns 29-Feb-96 because 1996 is a leap year. Subtracting a month, and adding or subtracting a quarter or a year, stops at the last day of the shorter month in the same way, as the last two lines show.
 
-> [!WARNING] BETA 1010
-> **DateAdd** with the "m", "q" or "yyyy" interval does not stop at the last day of a shorter month: it counts the extra days into the next month and raises no error. `DateAdd("m", 1, "31-Jan-95")` returns 3-Mar-95, `DateAdd("m", -1, #3/31/2026#)` returns 3-Mar-2026, and `DateAdd("yyyy", 1, #2/29/2024#)` returns 1-Mar-2025. VB6 returns 28-Feb-95, 28-Feb-2026 and 28-Feb-2025.
-
-> [!WARNING] BETA 1010
+> [!WARNING] BETA 1034
 > **DateAdd** with the "yyyy", "q" or "m" interval raises no error when the result would be before January 1, 100, and returns a date in the 1900s or 2000s instead: `DateAdd("yyyy", -1, #1/1/100#)` returns January 1, 1999, and `DateAdd("m", -1, #1/1/100#)` returns December 1, 1999. VB6 raises error 5.
 
 If *number* isn't a **Long** value, it is rounded to the nearest whole number before being evaluated.
@@ -72,10 +72,10 @@ If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *date* is a string that is not a date |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *interval* or *number* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When the result with an *interval* of "yyyy", "q" or "m" would be before January 1, 100, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *date* is a number outside the range of dates, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
 <!-- /errors -->

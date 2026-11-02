@@ -42,7 +42,7 @@ When the compiler reports progress, the IDE opens a box titled **Compiling...** 
 
 ![The Compiling... box of an LLVM build, its progress bar at the start.](Images/Compiling.png){:width="302" height="74"}
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > If another box opens while **Compiling...** is on screen, the end of the build closes that box instead of the progress box, so the other box is lost. The **Compiling...** box stays, with no button, and the IDE cannot be used. Restart the IDE.
 
 ## The cache

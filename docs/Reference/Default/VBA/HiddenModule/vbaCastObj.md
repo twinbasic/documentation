@@ -21,7 +21,7 @@ A direct wrapper over **IUnknown::QueryInterface**, as VB6's runtime function `_
 *IID* is read as the address of a **GUID**. A **String** is not converted: its text is not an interface ID, as `"{00000000-0000-0000-C000-000000000046}"` is not. A **GUID** variable passed itself, rather than its address, ends a 32-bit program with an access violation.
 
 <!-- bug: vbacastobj-no-type-mismatch -->
-> [!WARNING] BETA 1010
+> [!WARNING] BETA 1034
 > **vbaCastObj** raises no error when *Obj* does not have the interface, or when *IID* is a **String**: it returns **Nothing**.
 
 <!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->
@@ -31,7 +31,7 @@ A direct wrapper over **IUnknown::QueryInterface**, as VB6's runtime function `_
 |---|---|
 | [424 (`&H1A8`)](tb:Errors#424), *Object required* | *Obj* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *Obj* does not have the interface *IID* names, or *IID* is a **String**, whose text is not read as an interface ID, VB6 raises error [13 (`&HD`)](tb:Errors#13), *Type mismatch*; twinBASIC raises none.
 
 <!-- /errors -->

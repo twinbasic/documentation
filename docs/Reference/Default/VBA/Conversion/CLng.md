@@ -20,6 +20,14 @@ The return type is **Long**.
 
 When the fractional part is exactly `0.5`, **CLng** always rounds it to the nearest even number. For example, `0.5` rounds to `0`, and `1.5` rounds to `2`. **CLng** differs from the [**Fix**](Fix) and [**Int**](Int) functions, which truncate, rather than round, the fractional part of a number.
 
+```tb check_build check_run
+Dim Half As Double, TwoAndAHalf As Double, MinusHalf As Double
+Half = 0.5: TwoAndAHalf = 2.5: MinusHalf = -0.5
+Debug.Print CLng(Half)          ' 0
+Debug.Print CLng(TwoAndAHalf)   ' 2
+Debug.Print CLng(MinusHalf)     ' 0
+```
+
 <!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
 ### Common Errors
 

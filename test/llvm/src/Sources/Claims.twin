@@ -1,0 +1,421 @@
+' The claims the documentation makes about code compiled with LLVM, each printed as one line
+' "key: value". test/llvm/run.mjs runs this project in 32-bit and 64-bit, with LLVM off and on
+' for the whole project, in an IDE run and in the built exe, and compares every line with
+' expect.json. README.md beside run.mjs names the page that states each claim.
+'
+' Which procedures LLVM compiled is read three ways, since no one way works everywhere: whether
+' Debug.Assert evaluated its condition (it does only in an IDE run of code compiled without
+' LLVM), whether InternalGetReturnAddress returned 0 (it does under LLVM; 32-bit only, since a
+' 64-bit build cannot generate code for it: gra64/), and the error a Double multiplication that
+' overflows raised (6 without LLVM; none with it, except in 32-bit code built for SSE2).
+'
+' Under LLVM for the whole project (run.mjs's llvm modes), a procedure that is not compiled
+' with LLVM must not call one that is: an IDE run ends in an access violation (the WARNING
+' under Per-procedure LLVM options). So MarkEvaluated, which every variant calls, is marked
+' [CompilerOptions("")] too, and the variants call nothing else of this project.
+Module Claims
+
+    Private Sink As Double
+    Private Evaluated As Boolean
+
+    [RunAfterBuild]
+    Public Sub Built()
+        Debug.Cls
+        Report
+    End Sub
+
+    Public Sub Report()
+        Dim big As Double = 1E+308
+
+        ' Per-procedure LLVM options: which spellings turn LLVM on, and the long sample.
+        Out "default", Default(big)
+        Out "llvm", Llvm(big)
+        Out "llvm-comma", LlvmComma(big)
+        Out "llvm-space", LlvmSpace(big)
+        Out "llvm-comma-space", LlvmCommaSpace(big)
+        Out "optimize-only", OptimizeOnly(big)
+        Out "optimize-size-only", OptimizeSizeOnly(big)
+        Out "cpu-only", CpuOnly(big)
+        Out "empty", EmptyString(big)
+        Out "llvm-sse", LlvmSse(big)
+        Out "llvm-sse2", LlvmSse2(big)
+        Out "all-cpu", AllCpu(big)
+
+        ' Debug.Assert under LLVM does not stop.
+        AssertFalseLlvm
+        Out "assert-false-llvm-went-on", True
+
+        ' UnrollLoop does not change what the loop does.
+        Dim values(1 To 100) As Long
+        Dim n As Long
+        For n = 1 To 100
+            values(n) = n
+        Next
+        Out "unroll-llvm", TotalLlvm(values)
+
+        ' Arithmetic that overflows: each operation's error, and what the variable then holds.
+        Out "double-llvm", DoubleLlvm(big)
+        Out "double-llvm-sse2", DoubleLlvmSse2(big)
+        Out "double-llvm-checks", DoubleLlvmChecks(big)
+        Out "double-plain", DoublePlain(big)
+        Out "single-llvm", SingleLlvm(3E+38)
+        Out "single-plain", SinglePlain(3E+38)
+
+        ' For...Next with a ByVal step and a later ByRef Boolean: the count of passes, and i after.
+        Dim flag As Boolean
+        Out "for-step-llvm", StepLlvm(3, flag)
+        Out "for-step-plain", StepPlain(3, flag)
+    End Sub
+
+    Private Sub Out(ByVal key As String, ByVal value As Variant)
+        TbRun.Out key & ": " & CStr(value)
+    End Sub
+
+    [CompilerOptions("")]
+    Private Function MarkEvaluated() As Boolean
+        Evaluated = True
+        MarkEvaluated = True
+    End Function
+
+    ' The project's own options.
+    Private Function Default(ByVal x As Double) As String
+        Dim facts As String
+        Evaluated = False
+        Debug.Assert MarkEvaluated()
+        facts = IIf(Evaluated, "assert evaluated", "assert skipped")
+        #If Win64 = False Then
+            facts = facts & IIf(InternalGetReturnAddress() = 0, ", return address 0", ", return address set")
+        #End If
+        On Error Resume Next
+        Sink = x * 10
+        facts = facts & ", overflow error " & Err.Number
+        Default = facts
+    End Function
+
+    [CompilerOptions("+llvm")]
+    Private Function Llvm(ByVal x As Double) As String
+        Dim facts As String
+        Evaluated = False
+        Debug.Assert MarkEvaluated()
+        facts = IIf(Evaluated, "assert evaluated", "assert skipped")
+        #If Win64 = False Then
+            facts = facts & IIf(InternalGetReturnAddress() = 0, ", return address 0", ", return address set")
+        #End If
+        On Error Resume Next
+        Sink = x * 10
+        facts = facts & ", overflow error " & Err.Number
+        Llvm = facts
+    End Function
+
+    ' Commas.
+    [CompilerOptions("+llvm,+optimize")]
+    Private Function LlvmComma(ByVal x As Double) As String
+        Dim facts As String
+        Evaluated = False
+        Debug.Assert MarkEvaluated()
+        facts = IIf(Evaluated, "assert evaluated", "assert skipped")
+        #If Win64 = False Then
+            facts = facts & IIf(InternalGetReturnAddress() = 0, ", return address 0", ", return address set")
+        #End If
+        On Error Resume Next
+        Sink = x * 10
+        facts = facts & ", overflow error " & Err.Number
+        LlvmComma = facts
+    End Function
+
+    ' Spaces.
+    [CompilerOptions("+llvm +optimize")]
+    Private Function LlvmSpace(ByVal x As Double) As String
+        Dim facts As String
+        Evaluated = False
+        Debug.Assert MarkEvaluated()
+        facts = IIf(Evaluated, "assert evaluated", "assert skipped")
+        #If Win64 = False Then
+            facts = facts & IIf(InternalGetReturnAddress() = 0, ", return address 0", ", return address set")
+        #End If
+        On Error Resume Next
+        Sink = x * 10
+        facts = facts & ", overflow error " & Err.Number
+        LlvmSpace = facts
+    End Function
+
+    ' Commas and spaces.
+    [CompilerOptions("+llvm, +optimize")]
+    Private Function LlvmCommaSpace(ByVal x As Double) As String
+        Dim facts As String
+        Evaluated = False
+        Debug.Assert MarkEvaluated()
+        facts = IIf(Evaluated, "assert evaluated", "assert skipped")
+        #If Win64 = False Then
+            facts = facts & IIf(InternalGetReturnAddress() = 0, ", return address 0", ", return address set")
+        #End If
+        On Error Resume Next
+        Sink = x * 10
+        facts = facts & ", overflow error " & Err.Number
+        LlvmCommaSpace = facts
+    End Function
+
+    ' No +llvm.
+    [CompilerOptions("+optimize")]
+    Private Function OptimizeOnly(ByVal x As Double) As String
+        Dim facts As String
+        Evaluated = False
+        Debug.Assert MarkEvaluated()
+        facts = IIf(Evaluated, "assert evaluated", "assert skipped")
+        #If Win64 = False Then
+            facts = facts & IIf(InternalGetReturnAddress() = 0, ", return address 0", ", return address set")
+        #End If
+        On Error Resume Next
+        Sink = x * 10
+        facts = facts & ", overflow error " & Err.Number
+        OptimizeOnly = facts
+    End Function
+
+    ' No +llvm.
+    [CompilerOptions("+optimize,+optimizesize")]
+    Private Function OptimizeSizeOnly(ByVal x As Double) As String
+        Dim facts As String
+        Evaluated = False
+        Debug.Assert MarkEvaluated()
+        facts = IIf(Evaluated, "assert evaluated", "assert skipped")
+        #If Win64 = False Then
+            facts = facts & IIf(InternalGetReturnAddress() = 0, ", return address 0", ", return address set")
+        #End If
+        On Error Resume Next
+        Sink = x * 10
+        facts = facts & ", overflow error " & Err.Number
+        OptimizeSizeOnly = facts
+    End Function
+
+    ' No +llvm.
+    [CompilerOptions("+sse2")]
+    Private Function CpuOnly(ByVal x As Double) As String
+        Dim facts As String
+        Evaluated = False
+        Debug.Assert MarkEvaluated()
+        facts = IIf(Evaluated, "assert evaluated", "assert skipped")
+        #If Win64 = False Then
+            facts = facts & IIf(InternalGetReturnAddress() = 0, ", return address 0", ", return address set")
+        #End If
+        On Error Resume Next
+        Sink = x * 10
+        facts = facts & ", overflow error " & Err.Number
+        CpuOnly = facts
+    End Function
+
+    ' An empty string: LLVM off.
+    [CompilerOptions("")]
+    Private Function EmptyString(ByVal x As Double) As String
+        Dim facts As String
+        Evaluated = False
+        Debug.Assert MarkEvaluated()
+        facts = IIf(Evaluated, "assert evaluated", "assert skipped")
+        #If Win64 = False Then
+            facts = facts & IIf(InternalGetReturnAddress() = 0, ", return address 0", ", return address set")
+        #End If
+        On Error Resume Next
+        Sink = x * 10
+        facts = facts & ", overflow error " & Err.Number
+        EmptyString = facts
+    End Function
+
+    [CompilerOptions("+llvm,+sse")]
+    Private Function LlvmSse(ByVal x As Double) As String
+        Dim facts As String
+        Evaluated = False
+        Debug.Assert MarkEvaluated()
+        facts = IIf(Evaluated, "assert evaluated", "assert skipped")
+        #If Win64 = False Then
+            facts = facts & IIf(InternalGetReturnAddress() = 0, ", return address 0", ", return address set")
+        #End If
+        On Error Resume Next
+        Sink = x * 10
+        facts = facts & ", overflow error " & Err.Number
+        LlvmSse = facts
+    End Function
+
+    [CompilerOptions("+llvm,+sse2")]
+    Private Function LlvmSse2(ByVal x As Double) As String
+        Dim facts As String
+        Evaluated = False
+        Debug.Assert MarkEvaluated()
+        facts = IIf(Evaluated, "assert evaluated", "assert skipped")
+        #If Win64 = False Then
+            facts = facts & IIf(InternalGetReturnAddress() = 0, ", return address 0", ", return address set")
+        #End If
+        On Error Resume Next
+        Sink = x * 10
+        facts = facts & ", overflow error " & Err.Number
+        LlvmSse2 = facts
+    End Function
+
+    ' The long sample of the page.
+    [CompilerOptions("+llvm,+optimize,+optimizesize,+aes,+avx,+avx2,+bmi2,+fma,+fxsr,+lzcnt,+popcnt,+rdseed,+sha,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+xsave,+xsavec,+xsaveopt,+xsaves")]
+    Private Function AllCpu(ByVal x As Double) As String
+        Dim facts As String
+        Evaluated = False
+        Debug.Assert MarkEvaluated()
+        facts = IIf(Evaluated, "assert evaluated", "assert skipped")
+        #If Win64 = False Then
+            facts = facts & IIf(InternalGetReturnAddress() = 0, ", return address 0", ", return address set")
+        #End If
+        On Error Resume Next
+        Sink = x * 10
+        facts = facts & ", overflow error " & Err.Number
+        AllCpu = facts
+    End Function
+
+    [CompilerOptions("+llvm")]
+    Private Sub AssertFalseLlvm()
+        Debug.Assert False
+    End Sub
+
+    [CompilerOptions("+llvm,+optimize")]
+    Private Function TotalLlvm(Values() As Long) As Long
+        Dim i As Long
+        For i = LBound(Values) To UBound(Values)
+            UnrollLoop 8
+            TotalLlvm += Values(i)
+        Next
+    End Function
+
+    [CompilerOptions("+llvm")]
+    Private Function DoubleLlvm(ByVal x As Double) As String
+        Dim v As Double, r As String
+        Dim ten As Double = 10, tenth As Double = 0.1, two As Double = 2, zero As Double = 0
+        On Error Resume Next
+        v = 1: Err.Clear: v = x + x
+        r = r & "+ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = -x - x
+        r = r & "- " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x * ten
+        r = r & "* " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x ^ two
+        r = r & "^ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x / tenth
+        r = r & "/ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x / zero
+        r = r & "/0 " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        DoubleLlvm = r
+    End Function
+
+    [CompilerOptions("+llvm,+sse2")]
+    Private Function DoubleLlvmSse2(ByVal x As Double) As String
+        Dim v As Double, r As String
+        Dim ten As Double = 10, tenth As Double = 0.1, two As Double = 2, zero As Double = 0
+        On Error Resume Next
+        v = 1: Err.Clear: v = x + x
+        r = r & "+ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = -x - x
+        r = r & "- " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x * ten
+        r = r & "* " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x ^ two
+        r = r & "^ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x / tenth
+        r = r & "/ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x / zero
+        r = r & "/0 " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        DoubleLlvmSse2 = r
+    End Function
+
+    [CompilerOptions("+llvm")]
+    [FloatingPointErrorChecks(True)]
+    Private Function DoubleLlvmChecks(ByVal x As Double) As String
+        Dim v As Double, r As String
+        Dim ten As Double = 10, tenth As Double = 0.1, two As Double = 2, zero As Double = 0
+        On Error Resume Next
+        v = 1: Err.Clear: v = x + x
+        r = r & "+ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = -x - x
+        r = r & "- " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x * ten
+        r = r & "* " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x ^ two
+        r = r & "^ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x / tenth
+        r = r & "/ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x / zero
+        r = r & "/0 " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        DoubleLlvmChecks = r
+    End Function
+
+    [CompilerOptions("")]
+    Private Function DoublePlain(ByVal x As Double) As String
+        Dim v As Double, r As String
+        Dim ten As Double = 10, tenth As Double = 0.1, two As Double = 2, zero As Double = 0
+        On Error Resume Next
+        v = 1: Err.Clear: v = x + x
+        r = r & "+ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = -x - x
+        r = r & "- " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x * ten
+        r = r & "* " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x ^ two
+        r = r & "^ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x / tenth
+        r = r & "/ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x / zero
+        r = r & "/0 " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 1E+308, "inf", IIf(v < -1E+308, "-inf", CStr(v))))) & "; "
+        DoublePlain = r
+    End Function
+
+    [CompilerOptions("+llvm")]
+    Private Function SingleLlvm(ByVal x As Single) As String
+        Dim v As Single, r As String
+        Dim ten As Single = 10, tenth As Single = 0.1, two As Single = 2, zero As Single = 0
+        On Error Resume Next
+        v = 1: Err.Clear: v = x + x
+        r = r & "+ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 3.4E+38, "inf", IIf(v < -3.4E+38, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = -x - x
+        r = r & "- " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 3.4E+38, "inf", IIf(v < -3.4E+38, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x * ten
+        r = r & "* " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 3.4E+38, "inf", IIf(v < -3.4E+38, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x ^ two
+        r = r & "^ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 3.4E+38, "inf", IIf(v < -3.4E+38, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x / tenth
+        r = r & "/ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 3.4E+38, "inf", IIf(v < -3.4E+38, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x / zero
+        r = r & "/0 " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 3.4E+38, "inf", IIf(v < -3.4E+38, "-inf", CStr(v))))) & "; "
+        SingleLlvm = r
+    End Function
+
+    [CompilerOptions("")]
+    Private Function SinglePlain(ByVal x As Single) As String
+        Dim v As Single, r As String
+        Dim ten As Single = 10, tenth As Single = 0.1, two As Single = 2, zero As Single = 0
+        On Error Resume Next
+        v = 1: Err.Clear: v = x + x
+        r = r & "+ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 3.4E+38, "inf", IIf(v < -3.4E+38, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = -x - x
+        r = r & "- " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 3.4E+38, "inf", IIf(v < -3.4E+38, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x * ten
+        r = r & "* " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 3.4E+38, "inf", IIf(v < -3.4E+38, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x ^ two
+        r = r & "^ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 3.4E+38, "inf", IIf(v < -3.4E+38, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x / tenth
+        r = r & "/ " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 3.4E+38, "inf", IIf(v < -3.4E+38, "-inf", CStr(v))))) & "; "
+        v = 1: Err.Clear: v = x / zero
+        r = r & "/0 " & Err.Number & " " & IIf(v = 1, "kept", IIf(v = 0, "0", IIf(v > 3.4E+38, "inf", IIf(v < -3.4E+38, "-inf", CStr(v))))) & "; "
+        SinglePlain = r
+    End Function
+
+    [CompilerOptions("+llvm")]
+    Private Function StepLlvm(ByVal x As Long, ByRef b As Boolean) As String
+        Dim i As Long, count As Long
+        For i = 1 To 7 Step x
+            count = count + 1
+        Next
+        StepLlvm = count & " " & i
+    End Function
+
+    [CompilerOptions("")]
+    Private Function StepPlain(ByVal x As Long, ByRef b As Boolean) As String
+        Dim i As Long, count As Long
+        For i = 1 To 7 Step x
+            count = count + 1
+        Next
+        StepPlain = count & " " & i
+    End Function
+
+End Module

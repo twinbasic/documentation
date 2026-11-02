@@ -45,12 +45,9 @@ Val("&HFFFF")
 
 | Error | When |
 |---|---|
-| [6 (`&H6`)](tb:Errors#6), *Overflow* | *string* holds a number outside the range of a **Double** |
+| [6 (`&H6`)](tb:Errors#6), *Overflow* | *string* holds a number outside the range of a **Double**<br>*string* holds a number followed by the **Integer** (`%`), **Long** (`&`) or **Currency** (`@`) type-declaration character, and the number is outside the range of that type |
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *string* holds a number with a fractional part followed by the **Integer** (`%`) or **Long** (`&`) type-declaration character, such as `"50.5%"` |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *string* is **Null** |
-
-> [!NOTE] BETA 1010
-> When **Val** is given a *string* that holds a number followed by the **Integer** (`%`), **Long** (`&`) or **Currency** (`@`) type-declaration character, and the number is outside the range of that type, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
 
 <!-- /errors -->
 

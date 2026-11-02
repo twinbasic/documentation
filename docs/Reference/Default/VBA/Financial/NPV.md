@@ -31,11 +31,11 @@ The net present value calculation is based on future cash flows. If the first ca
 The **NPV** function is similar to the [**PV**](PV) function (present value) except that the **PV** function allows cash flows to begin either at the end or the beginning of a period. Unlike the variable **NPV** cash flow values, **PV** cash flows must be fixed throughout the investment.
 
 <!-- bug: financial-array-arguments -->
-> [!WARNING] BETA 1010
+> [!WARNING] BETA 1034
 > Given an array that has never been sized (`Dim A() As Double` with no **ReDim**, or one emptied by **Erase**), **NPV** ends the program with an access violation, in a 32-bit and a 64-bit build. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
 
 <!-- bug: financial-argument-checks -->
-> [!WARNING] BETA 1010
+> [!WARNING] BETA 1034
 > Given a *rate* of -1, **NPV** returns NaN (not a number) and raises no error. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
 
 <!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
@@ -46,10 +46,10 @@ The **NPV** function is similar to the [**PV**](PV) function (present value) exc
 | [-2147418113 (`&H8000FFFF`)](tb:Errors#-2147418113), *Catastrophic failure* | *values* has more than one dimension |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *rate* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *rate* is -1, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *values* has more than one dimension, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
 <!-- /errors -->

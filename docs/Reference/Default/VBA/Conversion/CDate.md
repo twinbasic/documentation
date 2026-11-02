@@ -26,26 +26,19 @@ Use the **IsDate** function to determine whether *expression* can be converted t
 
 A **Date** holds a day number from -657,434 (January 1, 100) to 2,958,465 (December 31, 9999), with the time of day as its fraction.
 
-> [!WARNING] BETA 1010
-> **CDate** of a number outside that range, or of a string that holds one, raises no error: `CDate(2958466)`, `CDate(-657435)`, `CDate(1E+300)` and `CDate("3000000")` each return a **Date** that holds the number, and **CStr**, **Format** and **Year** of it then raise error 5, *Invalid procedure call or argument*. VB6 raises error 6, *Overflow*, for the number and error 13, *Type mismatch*, for the string. Compare a day number with -657,434 and 2,958,465 before converting it, or use [**CVDate**](CVDate), which raises error 13 for a number outside the range.
+> [!WARNING] BETA 1034
+> **CDate** of a number outside that range raises no error: `CDate(2958466)`, `CDate(-657435)` and `CDate(1E+300)` each return a **Date** that holds the number, and **CStr**, **Format** and **Year** of it then raise error 5, *Invalid procedure call or argument*. VB6 raises error 6, *Overflow*. Compare a day number with -657,434 and 2,958,465 before converting it, or use [**CVDate**](CVDate), which raises error 13 for a number outside the range.
 
 <!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
 ### Common Errors
 
 | Error | When |
 |---|---|
-| [6 (`&H6`)](tb:Errors#6), *Overflow* | *expression* is a **Decimal** less than -657,434 or 2,958,466 or more |
-| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *expression* is a string that is not a date, a time or a number (a zero-length string included), or a date after December 31, 9999 |
+| [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *expression* is a string that is not a date, a time or a number (a zero-length string included), or a date after December 31, 9999<br>*expression* is a **Decimal**, or a string that holds a number, less than -657,434 or 2,958,466 or more |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *expression* is **Null** |
 
-> [!NOTE] BETA 1010
-> When *expression* is a **Decimal** less than -657,434 or 2,958,466 or more, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
-
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When **CDate** is given a number of another type than **Decimal** that is less than -657,434 or 2,958,466 or more, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
-
-> [!NOTE] BETA 1010
-> When **CDate** is given a string that holds a number less than -657,434 or 2,958,466 or more, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*; twinBASIC raises none.
 
 <!-- /errors -->
 

@@ -7,7 +7,19 @@ exactly that.
 
 Like WIP.md, this file is not rendered through tbdocs.
 
-## Where things stand (2026-10-22)
+## Where things stand (2026-11-02)
+
+**Re-checked on BETA 1034 (2026-11-02):** `errors.mjs run --runtime tb --runtime win64` over
+every file, 2,911 cases. 24 disagreed, each a fix in BETA 1034 that brings twinBASIC to VB6:
+their rows are now plain rows and their filed reproducers are deleted
+(`redim-inverted-bounds-error`, `cdate-string-decimal-out-of-range`,
+`val-suffix-overflow-no-error`, `abs-minimum-widens-type`, `round-null-negative-digits`,
+`string-null-character`). `trig-above-2-to-63` is fixed for Cos and Sin from 2^63 up only:
+from 9,223,372,000,000,000,000 to 2^63 all three still return a value where VB6 raises 5,
+and Tan still raises -2147348207 from 2^63 up (rows kept, the Cos and Sin ones split). Every
+file's `beta:` is 1034. The changed pages (ReDim, CDate, Val, String, Abs, Cos, Sin, Round)
+were run in all four runtimes and agree; VB6 and 64-bit VBA were not re-run for the rest.
+The batch narratives below are as each batch left them.
 
 **Batches 0, 1 and 2 are done, reviewed by the owner, and committed on `staging`.** The
 tooling, the central page and every page of the VBA `Strings` module are in place: 339 cases

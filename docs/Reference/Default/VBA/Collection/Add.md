@@ -43,16 +43,16 @@ Key comparison is governed by the [**KeyCompareMode**](KeyCompareMode) property.
 | [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | both *before* and *after* are given<br>*before* or *after* is given and the collection is empty<br>*before* or *after* is a string that is not the key of an item |
 | [9 (`&H9`)](tb:Errors#9), *Subscript out of range* | *before* is a number that, rounded, is less than 1 or greater than **Count** + 1, or *after* one that is less than 0 or greater than **Count**<br>*before* or *after* is a number outside the **Long** range |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *key* is **Empty**, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*; twinBASIC raises none.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *before* or *after* is -1, **True** or **Empty**, VB6 and 64-bit VBA raise error [9 (`&H9`)](tb:Errors#9), *Subscript out of range*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *before* or *after* is a **Currency**, **Decimal** or **Date** value, VB6 and 64-bit VBA raise no error.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *before* or *after* is a number outside the **Long** range, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
 <!-- /errors -->

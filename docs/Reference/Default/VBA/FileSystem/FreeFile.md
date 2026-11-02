@@ -26,7 +26,7 @@ Use **FreeFile** to supply a file number that is not already in use.
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | every file number from 1 to 255 is in use |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *rangenumber* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When every file number from 1 to 255 is in use, VB6 and 64-bit VBA raise error [67 (`&H43`)](tb:Errors#67), *Too many files*, instead.
 
 <!-- /errors -->

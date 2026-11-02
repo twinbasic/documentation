@@ -3,9 +3,9 @@
   "expect": {
     "exit": 0,
     "output": [
-      "^LSet, destination Null:    error 13$",
-      "^LSet, destination Object:  error 13$",
-      "^RSet, destination True:    \\[ab\\] Len 2$"
+      "^RSet, destination Object:  error 13$",
+      "^LSet, destination True:    \\[ab\\] Len 2$",
+      "^LSet, destination False:   \\[a\\] Len 1$"
     ]
   },
   "issue": 2482

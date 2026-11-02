@@ -24,7 +24,7 @@ When generating an error from user code, pass the source to [**Raise**](Raise). 
 
 When an error occurs that twinBASIC raises itself, such as a division by zero, **Source** is an empty string too, in a standard module and in a class module alike.
 
-> [!WARNING] BETA 1010
+> [!WARNING] BETA 1034
 > It does not fill in **Source**, and raises no error. VBA and VB6 fill it in automatically with the name of the project, for an error that the runtime raises and for **Raise** without a source argument. A program that reads **Err.Source** to find where an error came from gets an empty string.
 
 <!-- errors: generated from errors/VBA.ErrObject.yml by scripts/errors.mjs write; edit the data, not this section -->
@@ -45,9 +45,9 @@ When handling errors, do not rely on the **Source** property (or any **Err** pro
 ```tb check_build
 Dim myObjectID As String, myHelpFile As String, myHelpContext As Long
 myObjectID = "MyApp.MyClass"
-Err.Raise vbObjectError + 894, myObjectID, _
-          "Was not able to complete your task", _
-          myHelpFile, myHelpContext
+Err.Raise Number:=vbObjectError + 894, Source:=myObjectID, _
+          Description:="Was not able to complete your task", _
+          HelpFile:=myHelpFile, HelpContext:=myHelpContext
 ```
 
 ### See Also

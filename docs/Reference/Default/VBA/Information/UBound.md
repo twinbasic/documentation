@@ -47,10 +47,10 @@ For an array `Dim A(1 To 100, 0 To 3, -3 To 4)`, **UBound** returns:
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *arrayname* is a **Variant** that holds no array, **Empty** and **Null** included |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *dimension* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *dimension* is less than 1 or greater than the number of dimensions of *arrayname*, after rounding, VB6 and 64-bit VBA raise error [9 (`&H9`)](tb:Errors#9), *Subscript out of range*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *dimension* is greater than 32,767, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*, instead.
 
 <!-- /errors -->

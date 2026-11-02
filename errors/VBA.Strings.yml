@@ -1,5 +1,5 @@
 # The VBA Strings module. Format: WIP.Errors.md.
-beta: 1010
+beta: 1034
 pages:
   Reference/Default/VBA/Strings/Asc.md:
     rows:
@@ -600,13 +600,8 @@ pages:
           - String(Null, "a")
           - String$(Null, "a")
           - String$(3, Null)
-      - error: 94
-        when: "**String** is given a *character* that is **Null**"
-        vb6: 0
-        bug: string-null-character
-        cases:
-          - String(3, Null)
     quiet:
+      - String(3, Null)
       - String(0, "a")
       - String(3, "abc")
       - String(3, 65)

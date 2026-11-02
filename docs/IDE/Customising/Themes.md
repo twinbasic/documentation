@@ -70,7 +70,7 @@ MenuBackColor:                  red;
 SymbolClassTextDecoration:      underline;
 ```
 
-> [!WARNING] BETA 1010
+> [!WARNING] BETA 1034
 > A file named `Dark.theme` or `Light.theme` in `%APPDATA%\twinBASIC\themes` breaks the inheritance of every custom theme. The IDE ignores the file's contents, but still counts it, and so it never links the themes to their parents. Every custom theme, and **Classic (Light)** with them, is listed as `(undefined)` in place of **Light** or **Dark**. Choosing one gives the dark base with only that theme's own properties changed, and **Reload from disk** no longer applies the edits you make. No error is shown. To change one of the shipped themes, give your file another name and inherit from the shipped theme: `inherits: dark;`.
 
 A chain of `inherits:` lines must not return to a theme in it. When `LoopA` has the line `inherits: LoopB;` and `LoopB` has `inherits: LoopA;`, **Reload from disk** shows the alert *Invalid theme file detected: LoopB.theme (recursive inheritance)*. `LoopA` is then left out of the **Theme** list, and `LoopB` is listed with the dark base.

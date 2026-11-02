@@ -58,14 +58,11 @@ Debug.Print DateAdd("m", 1, #1/31/2026#)          ' 2/28/2026 -- clamped to last
 Debug.Print DateDiff("d", #1/1/2026#, #5/9/2026#) ' 128
 ```
 
-> [!WARNING] BETA 1010
-> **DateAdd** does not clamp to the last day of the month, and the first line of the sample prints `3/3/2026`. VB6 prints `2/28/2026`. [**DateAdd**](DateAdd) describes the cases.
-
 ## Calendar selection
 
 The [**Calendar**](Calendar) property selects the calendar --- **vbCalGreg** (Gregorian, the default) or **vbCalHijri** (Hijri) --- used by the rest of the module. The setting controls how **Date$** formats the system date, how arguments to **DateSerial**, **DateValue**, **DateAdd**, and **DateDiff** are interpreted, and how the parts returned by **DatePart**, **Year**, **Month**, **Day**, and **Weekday** are reported.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > twinBASIC has not implemented **Calendar** yet: it always reads as **vbCalGreg**, and setting it raises an error.
 
 ## Members

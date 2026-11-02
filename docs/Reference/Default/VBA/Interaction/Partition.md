@@ -53,13 +53,13 @@ Any argument may be a decimal value, but is rounded to the nearest even integer 
 |---|---|
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *start* is less than 0, *stop* is not greater than *start*, or *interval* is less than 1, after rounding<br>an argument is a string that is not a number<br>an argument is outside the range of a **LongLong** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *start* is less than 0, *stop* is not greater than *start*, or *interval* is less than 1, after rounding, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When an argument is a string that is not a number, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When an argument is outside the range of a **LongLong**, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*, instead.
 
 <!-- /errors -->

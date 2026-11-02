@@ -3,7 +3,7 @@
 # Number is that number, so that it reports 0; a runtime that raises or keeps another
 # number reports that one. HelpFile, HelpContext and ReturnHResult have no cases: assigning
 # them fails twinBASIC's build (bugs/err-helpfile-helpcontext-codegen).
-beta: 1010
+beta: 1034
 pages:
   Reference/Default/VBA/ErrObject/Raise.md:
     rows:

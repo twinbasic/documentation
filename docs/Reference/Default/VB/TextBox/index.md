@@ -279,10 +279,17 @@ When **True**, the user can scroll, select, and copy text but cannot modify it. 
 ### MaxLength
 {: .no_toc }
 
-The maximum number of characters the user can type into the control. **Long**, default `0` --- when zero, the OS imposes its own limit (typically 32 767 characters for single-line, much larger for multi-line). Setting **MaxLength** below the current text length does not truncate what is already there, but blocks further typing until the user deletes enough characters.
+The maximum number of characters the user can type into the control. **Long**, default `0` --- when zero, the OS imposes its own limit (typically 32 767 characters for single-line, much larger for multi-line). Setting **MaxLength** below the current text length does not truncate what is already there, but blocks further typing until the user deletes enough characters. A string assigned to [**Text**](#text) in code is cut to **MaxLength** characters, and one assigned to **SelText** adds only as many characters as **MaxLength** leaves room for. Neither raises an error:
 
-> [!WARNING] BETA 1010
-> Assigning [**Text**](#text) in code is not limited by **MaxLength**. The whole string is stored, and no error is raised. VB6 truncates the string to **MaxLength** characters. Truncate the string in code before assigning it, with **Left$**.
+```tb check_build check_run project=form
+Load Form1
+Dim t As TextBox
+Set t = Form1.Controls.Add("VB.TextBox", "txtLimit")
+t.MaxLength = 3
+t.Text = "abcdef"
+Debug.Print t.Text   ' abc
+Unload Form1
+```
 
 ### MouseIcon
 {: .no_toc }
