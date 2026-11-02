@@ -178,7 +178,12 @@ Measured:
   `tabIndexRings`, a ring from 2 px inside the circle to 6 px beyond it, so the number is still
   compared): the shadow over the grid's dots is dithered in one of two versions, about 600
   pixels apart, the same two bytes for bytes in every run. A shot without it compares byte for
-  byte.
+  byte. **Never use it for what differs between runs and shows**: the file keeps the old
+  pixels there, and an SVG written in a later run (a review's, or a stale bundle's) shows the
+  new ones beside them. Settle it instead. Settings_Close left its Project ID box out, the id the
+  lane gave the project for its slot, until a retake on 2026-11-02 wrote its light SVG with
+  another id than its PNG's; every project a setup opens now has one id, `DOCS_PROJECT_ID`
+  (Lane's `projectId`), and the box is compared.
 - **Settle by condition, not by sleep.** Fixed sleeps would be most of a run (a closed menu leaves a
   2x8 px empty `#contextMenu`, so a wait for it to vanish always runs out its 2 s).
   A menu is closed when it holds no items; a dialog is still when a MutationObserver has seen no

@@ -257,6 +257,13 @@ const CODE = path.join(REPO_ROOT, "test", "shots", "code");
 const FEATUREMAP = path.join(REPO_ROOT, "test", "shots", "featuremap");
 const SETTINGS_FIXTURES = path.join(REPO_ROOT, "test", "shots", "settings");
 const DEMO_FILE = "/Inventory/Sources/Inventory.twin";
+// The project.id of every project a setup opens (Lane's projectId), in place of the lane's own
+// for its slot, which differed from run to run: Project Settings shows it (Settings_Close). One id
+// for all IDEs at once is safe here: the recent lists are not written (IDE_FLAGS), ProjectState is
+// keyed by the project's path, each IDE has a temp folder and an APPDATA of its own, and the
+// one type library a build registers (the ax fixture's, under the project's id) has class GUIDs
+// that are fixed already.
+const DOCS_PROJECT_ID = "{D0C5D0C5-0000-4000-8000-00000000D0C5}";
 const DEMO_SOURCE = path.join(DEMO, "Sources", "Inventory.twin");
 const SITE = path.join(REPO_ROOT, "docs", "_site");
 const DEFAULT_OUT = path.join(REPO_ROOT, "docs");
@@ -6539,10 +6546,7 @@ const projectsShots = [
         await parkMouse(c);
         await frames(c);
         const [settings] = await modals(c);
-        // the Project ID box shows the id the lane gives the project, its slot's
-        // (laneProjectId), which differs from run to run
-        const unsteady = [CHANGED_COUNT, { on: { css: `${settingPart("project.id", "VALUE")} input` } }];
-        return await capture(c, "Settings_Close", snapOut(settings), { unsteady });
+        return await capture(c, "Settings_Close", snapOut(settings), { unsteady: [CHANGED_COUNT] });
       } finally {
         if ((await modals(c)).length === 2) await modalButton(c, "Yes, close");
         await resetUi(c);
@@ -13800,6 +13804,7 @@ async function runJob(job) {
     ide,
     show: false,
     browserArgs: BROWSER_ARGS,
+    projectId: DOCS_PROJECT_ID,
   });
   const state = newShotState(job.name);
   running.add(run);
