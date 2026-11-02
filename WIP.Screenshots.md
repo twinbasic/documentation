@@ -335,7 +335,7 @@ the page once real ones are shown, as History's times are.
 
 Setup `code-chapter` (three parts): FeatureTour, the feature map's Inventory project, with
 `test/shots/codechapter/` staged onto it (`Helpers`, `Ev`/`Ev2`, `Watcher`) and the project's
-warnings set so that TB0016 is a hint and TB0012 information. Its 20 pictures are under
+warnings set so that TB0016 is a hint and TB0012 information. Its 21 pictures are under
 `docs/IDE/Code/Images/`, plus `Menu_Edit` and `Menu_View`, taken with the code focused.
 
 - **Each picture starts from the default layout and its own tabs** (`chapterTabs`), and closes
@@ -347,6 +347,10 @@ warnings set so that TB0016 is a hint and TB0012 information. Its 20 pictures ar
   when it opens on a file already reported: Tabs_States edits Inventory and undoes it.
 - Edits are made in the page and undone (`editedThenUndone`) or discarded with their tab; the
   clipboard is the tool's own text (`FAKE_CLIPBOARD`), never the host's.
+- **The Object Browser opens with its default settings** (view, filters, sorts, pane sizes) in
+  every IDE: the setting `OBJECT_BROWSER` is in `BLANKED_KEYS`, and the IDE saves nothing, so the
+  light pass opens it as the dark one did. `Object_Browser` chooses Inventory and Total by real
+  clicks, so that the Description shows a declaration and its line.
 
 ## The "Running and debugging" chapter
 

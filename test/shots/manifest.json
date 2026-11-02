@@ -35,6 +35,12 @@
         }
       }
     },
+    "IDE/Code/Images/Object_Browser.light.png": {
+      "build": 1034
+    },
+    "IDE/Code/Images/Object_Browser.png": {
+      "build": 1034
+    },
     "IDE/Debugging/Images/Breakpoint_Glyphs.png": {
       "svg": {
         "decision": {

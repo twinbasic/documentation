@@ -26,7 +26,9 @@ import { connect } from "./tb-cdp.mjs";
 // parsed as the options' objects, and "" in their place is the first run's mark: the IDE then
 // opens its Options dialog and goes no further. The others take "" as a fresh install's
 // answer: JSON.parse fails inside a try and the variable keeps its default, parseJson gives
-// undefined, and an empty targetArchitectureMemory reads as "unknown". Not here, and
+// undefined, an empty targetArchitectureMemory reads as "unknown", and the Object Browser
+// (OBJECT_BROWSER, BETA 1023) and the New / Open Project dialog's section (NEWFRONTPAGE, BETA
+// 1033) test the length first and keep their defaults. Not here, and
 // answered from the registry: the licence's keys, LICENCEAGREEMENTV3, ALLOWERRORREPORTINGV3,
 // PUBLISHER and NEWYEAR_*, which are not settings of how the IDE looks.
 export const BLANKED_KEYS = {
@@ -41,6 +43,8 @@ export const BLANKED_KEYS = {
   WEBPANEL_SETTINGS: "",
   FORMS_windowsPalette: "",
   targetArchitectureMemory: "",
+  OBJECT_BROWSER: "",
+  NEWFRONTPAGE: "",
 };
 
 // Runs in the page, in every document of the IDE's browser; only main.htm does anything.

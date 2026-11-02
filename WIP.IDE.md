@@ -104,7 +104,8 @@ for contributors.
   so.
 - **Defects the twinBASIC developers already know of** (owner) are not queued, but a page that
   describes the feature still carries the callout rule 6 calls for:
-  - Rename Symbol (<kbd>F2</kbd>) renames nothing;
+  - Rename Symbol renames nothing (on BETA 1034 it opens no box at all, and <kbd>F2</kbd>, which
+    the right-click menu still shows beside it, opens the Object Browser);
   - accepting a function from the completion list by typing `(` doubles the parenthesis
     (`Area(()`).
 - Callouts follow WIP.md rule 6. A twinBASIC defect found while writing goes into
@@ -210,4 +211,3 @@ From the survey of BETA 1005. Each chapter's fact sheet confirms the items in it
 - **Themes:** custom `.theme` files in a `themes` folder.
 - **Webpage:** mobile mode, and back, forward and reload.
 - **Troubleshooting:** the DevTools command (`tbIdeDevTools_Show`, which has no menu item).
-- The **View → Object Browser** item does nothing; say so.

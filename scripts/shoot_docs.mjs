@@ -9729,6 +9729,44 @@ const codeDiagnosticsMenuShot = annotatedPanelShot(
   },
 );
 
+// The Object Browser, opened from the code with only a caret (so its search is empty), with
+// Inventory chosen in Components and Total in Members by real clicks, so that the Description shows
+// a function's declaration and the line it is on. The dialog's own colours are the same in every
+// theme; only its title bar follows the theme. It opens with its default settings in every IDE the
+// tool starts: the setting OBJECT_BROWSER is answered "no saved value" (scripts/lib/tb-defaults.mjs).
+const obRow = (c, label, name) =>
+  c.evaluate(`(() => {
+  const b = window.__twinBasicObjectBrowser?.element.querySelector('.tbob-listbox[aria-label=${JSON.stringify(label)}]');
+  const r = b && [...b.querySelectorAll(".tbob-item")].find((e) => e.querySelector(".tbob-itemname")?.textContent === ${JSON.stringify(name)});
+  if (!r) return null;
+  const q = r.getBoundingClientRect();
+  return { x: q.x + q.width / 2, y: q.y + q.height / 2 };
+})()`);
+const codeObjectBrowserShot = {
+  out: CHAPTER_IMAGE("Object_Browser"),
+  setup: "code-chapter",
+  async take({ c }) {
+    await chapterTabs(c, ["Inventory.twin"]);
+    await caretOn(c, "Public Function Total(", { offset: 4 });
+    return inDialog(c, { command: "tbShowObjectBrowser", title: "Object Browser", close: "Close" }, async () => {
+      for (const [label, name] of [
+        ["Components", "Inventory"],
+        ["Members", "Total"],
+      ]) {
+        const p = await obRow(c, label, name);
+        if (!p) throw new Error(`the Object Browser's ${label} list has no ${name}`);
+        await clickAt(c, p.x, p.y);
+        await dialogStill(c);
+      }
+      const text = await c.evaluate(`document.querySelector(".tbob-description").innerText`);
+      if (!text.includes("Total(ByVal taxRate As Double) As Double")) {
+        throw new Error(`the Description does not show Total: ${JSON.stringify(text)}`);
+      }
+      return dialogShot(c, "Object_Browser");
+    });
+  },
+};
+
 const codeChapterShots = [
   codeEditorPanelShot,
   codeTabsStatesShot,
@@ -9751,6 +9789,7 @@ const codeChapterShots = [
   codeOutlineMenuShot,
   codeDiagnosticsRowsShot,
   codeDiagnosticsMenuShot,
+  codeObjectBrowserShot,
 ];
 
 // ---- the "Running and debugging" chapter (setup debugging): the Writing code chapter's project,

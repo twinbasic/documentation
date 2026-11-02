@@ -485,7 +485,7 @@ A combination of code and data that can be treated as a unit, for example, a con
 
 ## Object Browser
 
-A dialog box in which you can examine the contents of an object library to get information about the objects provided.
+A dialog box in which you can examine the contents of an object library to get information about the objects provided. The twinBASIC IDE's is described under [Object Browser](IDE/Code/Object-Browser).
 
 ## Object data type
 

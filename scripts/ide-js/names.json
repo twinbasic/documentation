@@ -110,6 +110,257 @@
           "refs": 4
         }
       }
+    },
+    "showModalDialog": {
+      "namedOn": "BETA 1034",
+      "shape": "a5d811b2364e1882",
+      "names": {
+        "0#0": {
+          "name": "content",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 2
+        },
+        "0#1": {
+          "name": "buttons",
+          "was": "t",
+          "def": "Parameter",
+          "kind": "param1",
+          "refs": 2
+        },
+        "0#2": {
+          "name": "caption",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param2",
+          "refs": 2
+        },
+        "0#3": {
+          "name": "onClose",
+          "was": "n",
+          "def": "Parameter",
+          "kind": "param3",
+          "refs": 2
+        },
+        "0#4": {
+          "name": "keepUnlocked",
+          "was": "i",
+          "def": "Parameter",
+          "kind": "param4",
+          "refs": 1
+        },
+        "0#5": {
+          "name": "noButtonKeys",
+          "was": "r",
+          "def": "Parameter",
+          "kind": "param5",
+          "refs": 3
+        },
+        "0#6": {
+          "name": "container",
+          "was": "a",
+          "def": "Variable",
+          "kind": "let",
+          "refs": 22
+        },
+        "0#7": {
+          "name": "previous",
+          "was": "s",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 4
+        },
+        "0#8": {
+          "name": "startLeft",
+          "was": "l",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0#9": {
+          "name": "startTop",
+          "was": "d",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0#10": {
+          "name": "startX",
+          "was": "c",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0#11": {
+          "name": "startY",
+          "was": "u",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0#12": {
+          "name": "dragging",
+          "was": "p",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 3
+        },
+        "0#13": {
+          "name": "titleBar",
+          "was": "f",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 9
+        },
+        "0#14": {
+          "name": "closeBox",
+          "was": "g",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 6
+        },
+        "0#15": {
+          "name": "cancelButton",
+          "was": "m",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 8
+        },
+        "0#16": {
+          "name": "acceptButton",
+          "was": "h",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0#17": {
+          "name": "focusedButton",
+          "was": "v",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 27
+        },
+        "0#18": {
+          "name": "firstButton",
+          "was": "b",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 4
+        },
+        "0#19": {
+          "name": "lastButton",
+          "was": "C",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 8
+        },
+        "0#20": {
+          "name": "buttonBar",
+          "was": "y",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 4
+        },
+        "0#21": {
+          "name": "leadingSpacer",
+          "was": "E",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0#22": {
+          "name": "hasSpacer",
+          "was": "D",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 3
+        },
+        "0/1#0": {
+          "name": "down",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 3
+        },
+        "0/2#0": {
+          "name": "move",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 2
+        },
+        "0/2#1": {
+          "name": "dx",
+          "was": "t",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0/2#2": {
+          "name": "dy",
+          "was": "o",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0/3#0": {
+          "name": "up",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 0
+        },
+        "0/4/0#0": {
+          "name": "press",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 1
+        },
+        "0/5#0": {
+          "name": "event",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 12
+        },
+        "0/5/0/0#0": {
+          "name": "inTextBox",
+          "was": "e",
+          "def": "Variable",
+          "kind": "const",
+          "refs": 2
+        },
+        "0/6/0#0": {
+          "name": "button",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 21
+        },
+        "0/6/0#1": {
+          "name": "element",
+          "was": "t",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 7
+        },
+        "0/6/0/0/0/0#0": {
+          "name": "click",
+          "was": "t",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 1
+        },
+        "0/6/0/0/0/1/0#0": {
+          "name": "mouseDown",
+          "was": "t",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 0
+        }
+      }
     }
   }
 }

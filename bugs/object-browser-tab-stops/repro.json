@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:object-browser",
+  "tests": [
+    "Tab moves the focus from the search box to Aa and no further; Shift+Tab to Project / Library, then to the copy button, and no further"
+  ],
+  "steps": "1. Open any project, put the caret in the code editor and press F2. The Object Browser opens with the focus in its search box.\n2. Press Tab: the focus goes to Aa. Press Tab again a few times: the focus stays on Aa.\n3. Click in the search box and press Shift+Tab three times: the focus goes to Project / Library, then to the Description's copy button, and stays there.\nControl: a click on the Components list gives it the focus, and Down then moves its selection."
+}

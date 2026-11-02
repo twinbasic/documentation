@@ -149,3 +149,4 @@ The three panels are in no built-in layout, so each comes up floating the first 
 - [Editor](Editor) -- the combo boxes, tabs and editing commands
 - [Finding](Finding) -- search the file or the project
 - [Diagnostics](Diagnostics) -- the list of problems
+- [Object Browser](Object-Browser) -- find a component or member by name, and go to its declaration

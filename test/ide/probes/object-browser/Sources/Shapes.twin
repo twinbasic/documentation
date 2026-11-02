@@ -1,0 +1,32 @@
+Class Shape
+    Private mName As String
+
+    Public Event Changed(ByVal what As String)
+
+    Public Property Get Name() As String
+        Name = mName
+    End Property
+
+    Public Property Let Name(ByVal value As String)
+        mName = value
+        RaiseEvent Changed("Name")
+    End Property
+
+    Public Function Area() As Double
+        Return 0
+    End Function
+
+    Public Sub Describe()
+        Debug.Print mName
+    End Sub
+End Class
+
+Class Circle
+    Inherits Shape
+
+    Public Radius As Double
+
+    Public Function Circumference() As Double
+        Return 2 * 3.14159 * Radius
+    End Function
+End Class

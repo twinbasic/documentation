@@ -47,4 +47,5 @@ export default [
   { file: "building-hklm.test.mjs" },
   { file: "building-llvm-box.test.mjs" },
   { file: "zoom.test.mjs" },
+  { file: "object-browser.test.mjs" },
 ];

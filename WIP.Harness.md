@@ -1200,6 +1200,10 @@ never navigates twice. The script puts a setter on `window.hostAppObject`, which
 wraps the host object: `GetIDESetting` answers `""` for the blanked keys and `"{}"` for `GENERAL` and
 `GENERAL2`, every other call goes through with `this` bound to the real object. The keys it left
 unanswered are the licence's, `LICENCEAGREEMENTV3`, `ALLOWERRORREPORTINGV3`, `PUBLISHER` and `NEWYEAR_*`.
+A new build can add a key, which is read from the user's registry until it is blanked: BETA 1023 added
+`OBJECT_BROWSER` (the Object Browser's view, filters, sorts and pane sizes) and BETA 1033 `NEWFRONTPAGE` (the
+New / Open Project dialog's section), both blanked since 2026-11-02. After a new BETA, list the keys the page passes
+to `GetIDESetting` (a search of the install's `ide/*.js` for the call) and compare them with `BLANKED_KEYS`.
 The recent lists are left alone: `test/ide/recent-projects-copies.test.mjs` needs the IDE's own, and
 `shoot_docs.mjs`'s `PAGE_DEFAULTS` empties them where a picture shows them.
 

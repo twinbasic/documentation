@@ -11127,3 +11127,74 @@ This is separate from the PictureBox report on Discord (2026-10-28), that settin
 
 <!-- Reproducer: bugs/backcolor-resets-current-xy/ (mode run; expect lists the three "0 0" lines above); run on BETA 1034 and 1033, 32-bit and 64-bit, and on BETA 1010, with `bug_repro.mjs run`; `verify` on 1034, 2026-10-31: reproduces. VB6 side in vb6/ (`bug_repro.mjs vb6 backcolor-resets-current-xy` prints the expected lines). Stated in WARNINGs (BETA 1034) under BackColor and Picture on docs/Reference/Default/VB/Form/index.md and docs/Reference/Default/VB/PictureBox/index.md; when fixed, all four go. The same-colour PictureBox defect is fixed in BETA 1034 (checked with GetPixel), and its sentence is gone from the PictureBox WARNING. Found 2026-10-31 checking Wayne's "one for the documentation" note of 2026-10-30; owner, 2026-10-31: file it. -->
 
+---
+
+## In the Object Browser, Tab moves the focus from the search box to Aa and no further
+
+**Describe the bug**
+In the Object Browser (View → Object Browser, F2), Tab moves the focus from the search box to the **Aa** button and no further: every later Tab leaves the focus on **Aa**. Shift+Tab from the search box goes to the **Project / Library** box, then to the Description's copy button, and stops there. So Back and Forward, Browse and Results, the sort and filter buttons, the Components and Members lists and the Description cannot be reached from the keyboard; only a click puts the focus in a list. It was observed in an IDE started with an `APPDATA` of its own, pressing the keys and reading which element had the focus after each.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project, put the caret in the code editor, and press F2. The Object Browser opens with the focus in its search box.
+2. Press Tab: the focus goes to **Aa**.
+3. Press Tab a few more times: the focus stays on **Aa**.
+4. Click in the search box and press Shift+Tab three times: the focus goes to **Project / Library**, then to the copy button at the top right of the Description, and stays there.
+
+**Expected behavior**
+Tab and Shift+Tab move through every control of the dialog and wrap at its ends. The Object Browser's own key handler is written for that: it collects the dialog's buttons, inputs, selects and lists, and wraps Tab from the last to the first and Shift+Tab from the first to the last, leaving the moves in between to the browser.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The cause is in `showModalDialog` in `ide/main.js`, which the Object Browser opens in. The dialog container's `onkeydown` takes Tab and Shift+Tab (and Right and Left) for itself whenever the focused element is not an `input` or a `textarea`: it moves the highlight between the footer buttons (**Go to Definition** and **Close**), and prevents the default. The search box is an `input`, so its Tab reaches the browser and moves to **Aa**; **Aa** is a `button`, so its Tab is taken. Other dialogs were not tried.
+
+Once a list has the focus (by a click), its keys work: Up, Down, Home, End, type-ahead, and Enter for Go to Definition. Escape closes the dialog from anywhere in it.
+
+Severity: low for a mouse user; a keyboard user cannot reach the lists at all.
+
+**Fix shape**
+
+`showModalDialog` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`content`, `buttons`, `caption`, `onClose`, `keepUnlocked`, `noButtonKeys`, `container`, `previous`, `startLeft`, `startTop`, `startX`, `startY`, `dragging`, `titleBar`, `closeBox`, `cancelButton`, `acceptButton`, `focusedButton`, `firstButton`, `lastButton`, `buttonBar`, `leadingSpacer`, `hasSpacer`, `down`, `move`, `dx`, `dy`, `up`, `press`, `event`, `inTextBox`, `button`, `element`, `click`, `mouseDown`); the build calls them `e`, `t`, `o`, `n`, `i`, `r`, `a`, `s`, `l`, `d`, `c`, `u`, `p`, `f`, `g`, `m`, `h`, `v`, `b`, `C`, `y`, `E`, `D`, `e`, `e`, `t`, `o`, `e`, `e`, `e`, `e`, `e`, `t`, `t`, `t`.
+
+```diff
+@@ -93,6 +93,29 @@
+       }
+     }
+     if (!noButtonKeys) {
++      // Tab and Shift+Tab move the focus through the dialog's own controls while one of them
++      // has it, wrapping at the ends, where a dialog that does so itself has done it already.
++      if (
++        event.key === "Tab" &&
++        container.contains(document.activeElement) &&
++        document.activeElement !== container
++      ) {
++        if (!event.defaultPrevented) {
++          const controls = [
++            ...container.querySelectorAll("button, input, select, textarea, [tabindex]"),
++          ].filter(
++            (control) =>
++              control.tabIndex >= 0 && !control.disabled && control.getClientRects().length,
++          );
++          const current = controls.indexOf(document.activeElement);
++          const step = event.shiftKey ? controls.length - 1 : 1;
++          if (controls.length)
++            controls[current < 0 ? 0 : (current + step) % controls.length].focus();
++          event.preventDefault();
++        }
++        event.stopPropagation();
++        return;
++      }
+       if ((event.key === "Tab" && !event.shiftKey) || event.key === "ArrowRight") {
+         if (
+           document.activeElement.localName == "input" ||
+```
+
+While a control inside the dialog has the focus, Tab now moves it to the next control the dialog shows, and Shift+Tab to the one before, wrapping inside the dialog, so the focus never leaves it for the IDE behind. The footer buttons are `div`s with no tab stop, so they are not among the controls; Right and Left still move their highlight, and Enter still presses the highlighted one. The Object Browser wraps at its own ends in a handler that runs first and prevents the default, so `defaultPrevented` leaves that move alone. With the focus on the container itself, as when a dialog has just opened, Tab still moves the footer highlight as before. One change for other dialogs: Tab from a text box also stays inside the dialog now, where before it went wherever the browser sent it.
+
+Tested on a copy of BETA 1034 with this change (12 edits in `main.js`, most of them parentheses round an arrow function's parameter, every other byte the same): Tab from the search box goes to **Aa**, **Browse**, **Results** and the sort button of Components in turn, and Shift+Tab goes to **Project / Library**, the copy button and the Description; the Object Browser lane's other 19 tests pass, and so do the five tests of the Customising lane, which type names into the Manage Keyboard Shortcuts and Manage Panel Layouts dialogs.
+
+<!-- Reproducer: bugs/object-browser-tab-stops/ (mode lane: asserted by `ide-test.bat --only object-browser` (test/ide/object-browser.test.mjs), the test "Tab moves the focus from the search box to Aa and no further; Shift+Tab to Project / Library, then to the copy button, and no further", which passes on BETA 1034; the control "control: a click on a list gives it the focus, and the keys then move in it" passes too). No project and no zip. docs/IDE/Code/Object-Browser.md carries a NOTE (BETA 1034) for it, under "Using the keyboard"; when a fixed build is released, that NOTE goes. Found 2026-11-02 writing that page. Fix: bugs/object-browser-tab-stops/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/object-browser-tab-stops/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only object-browser` tests it (the entry's test then fails, which is the fix working). -->
+
