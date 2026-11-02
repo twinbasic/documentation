@@ -133,6 +133,13 @@ runs:
     - name: Unit-test that SVG screenshots are one line (test/svgshot.test.mjs)
       shell: bash
       run: node --test test/svgshot.test.mjs
+    # The screenshot review tool (scripts/shot_review.mjs): its session, what
+    # its pages show, its writes under a scratch docs folder, and its server,
+    # followed through a stand-in run, with its commit in a scratch repository.
+    # No IDE, no browser, no built tree; git. About 3 s.
+    - name: Unit-test the screenshot review tool (test/shot-review.test.mjs)
+      shell: bash
+      run: node --test test/shot-review.test.mjs
     # check_examples.mjs's probes: batching, crash isolation through a fake
     # lane, the canaries and the fence classifier. check_examples.mjs needs a
     # twinBASIC install, which CI has not; its probes need none.

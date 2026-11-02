@@ -3,6 +3,7 @@
 The documentation's IDE screenshots go stale with every beta. `scripts/shoot_docs.mjs` retakes
 them from a live IDE: every picture of the IDE the documentation holds, annotations included,
 and the program windows and web pages that sit beside them. The owner's decisions behind it are marked (owner).
+A run is reviewed, and its decisions overridden, with `node scripts/shot_review.mjs`: [WIP.ShotReview.md](WIP.ShotReview.md).
 
 ## What there is to retake
 
@@ -149,7 +150,7 @@ Measured:
   `capture` stops at a capture equal to `HEAD`'s picture or the file's, and `keep` compares
   with `HEAD`'s first: within noise of it (or equal), the file becomes `HEAD`'s bytes, reported
   `restored as HEAD has it` when it held anything else, and its SVG goes back to `HEAD`'s, or
-  is removed when `HEAD` has none, so the pair stays matched (`restoreSvg`, the SVG written by
+  is removed when `HEAD` has none, so the pair stays matched (`restorePictures` in `scripts/lib/shot-apply.mjs`, the SVG written by
   `git restore --worktree`, so that its line endings are a checkout's; no SVG is drawn and the
   bundle stays as it is). Not near `HEAD`'s but within noise of the file: an earlier run of the
   retake wrote that change, unchanged. Else written. A picture `HEAD` lacks (a new shot, an
@@ -177,7 +178,12 @@ Measured:
   `tabIndexRings`, a ring from 2 px inside the circle to 6 px beyond it, so the number is still
   compared): the shadow over the grid's dots is dithered in one of two versions, about 600
   pixels apart, the same two bytes for bytes in every run. A shot without it compares byte for
-  byte.
+  byte. **Never use it for what differs between runs and shows**: the file keeps the old
+  pixels there, and an SVG written in a later run (a review's, or a stale bundle's) shows the
+  new ones beside them. Settle it instead. Settings_Close left its Project ID box out, the id the
+  lane gave the project for its slot, until a retake on 2026-11-02 wrote its light SVG with
+  another id than its PNG's; every project a setup opens now has one id, `DOCS_PROJECT_ID`
+  (Lane's `projectId`), and the box is compared.
 - **Settle by condition, not by sleep.** Fixed sleeps would be most of a run (a closed menu leaves a
   2x8 px empty `#contextMenu`, so a wait for it to vanish always runs out its 2 s).
   A menu is closed when it holds no items; a dialog is still when a MutationObserver has seen no
@@ -890,9 +896,16 @@ the PNG was just captured from, and the build shows it in place of the PNG
   as tB-Red are the IDE's own asset at its own size, and stay so (owner).
 - `fonts.mjs` gives each run's characters to the font files Chromium used for them, and
   `subset_font.py` cuts each file to the characters drawn, as WOFF2.
-- `diff.mjs` renders the SVG as an `<img>` at 2x and compares it with the PNG by luminance and
-  alpha, a shift of one device pixel allowed, so that the PNGs' ClearType fringes mostly cancel
-  out.
+- `diff.mjs` renders the SVG as an `<img>` at 2x and compares it with the PNG by luminance, a
+  shift of one device pixel allowed, so that the PNGs' ClearType fringes mostly cancel
+  out. **The luminance is each pixel's as seen over black and over white**, the larger of the
+  two distances: the colour of a pixel nearly transparent is rounding, and compared on its own
+  (with alpha beside it) it put a cut-out's shadow edge, alpha 1 at 255,255,255 in the PNG and
+  0,0,0,0 in the render, 255 levels off. A replay of the 476 bundles (2026-11-01) lowered 58
+  cut-outs' share strongly off and raised none, and accepted two SVGs it had refused for that
+  edge alone: Properties_SystemColours.light (0.442% to 0) and Properties_ColourPicker.light
+  (0.268% to 0.001%, the strip step 3 of WIP.ShotReview.md used to try `svg.ignore`, in a
+  manifest entry that was never committed).
 - **The SVG's size is the PNG's.** A clip half a CSS pixel past a whole one (a menu 168.5 wide)
   is captured a device pixel short of it, 168 wide, from the same origin; an SVG of the whole
   clip shows the half of the edge the PNG cuts off. That column alone put a small picture past
@@ -947,7 +960,11 @@ the PNG was just captured from, and the build shows it in place of the PNG
   `svgs`) does not read a version 1 bundle, and replay lists every one as needing a retake.
   Reading version 1 would replay a split font with the one file it
   kept, and a picture with an inline `<svg>` without it, and nothing in a version 1 bundle
-  says which pictures have either. Answering misses offline in headless
+  says which pictures have either. Version 3 (2026-11-02) keeps every web font rule whose range
+  holds a character a run draws, as `webRulesFor` has chosen them since 4e05975c: a version 2
+  bundle kept the last rule only, so a family the page declares twice (the IDE's `codicon`, its own
+  file and then Monaco's) was drawn from one file and nothing said so; 4e05975c should have raised
+  it. Answering misses offline in headless
   Chromium, and drawing bundles in `tbdocs`, are later steps, not done: the second needs the
   bundles committed, so cleaned of the user name, and complete, since CI
   has no Windows fonts to measure with.
@@ -956,8 +973,10 @@ the PNG was just captured from, and the build shows it in place of the PNG
   300 dpi bitmap, text included: the book would lose the text of 44 of its 110 SVGs that way. Every CSS
   filter function but `blur()` and `drop-shadow()` is an affine colour map, which commutes with
   antialiasing, so mapping each fill, stroke, gradient stop and text class under the group paints
-  the same picture on screen, to a channel's rounding; `opacity()` becomes the group's opacity.
-  A real filter stays only round an embedded image (a `<g filter>` def wrapping it) and over a
+  the same picture on screen, to a channel's rounding; `opacity()` becomes the group's opacity,
+  and a filter of `opacity()` alone bakes nothing (`bakeMarkup`: the form designer's padlock,
+  `filter: opacity(0.5)` on a `::before`, was wrapped in a filter of no primitive, which draws
+  nothing, until 2026-11-01). A real filter stays only round an embedded image (a `<g filter>` def wrapping it) and over a
   group that blends or already holds a real filter group. A `drop-shadow()` last in the list
   (the IDE's toolbar codicons glow with one) is split the same way: the shadow alone, from a
   copy of the group under a filter that blurs its alpha, then the group over it unfiltered,
@@ -973,7 +992,8 @@ the PNG was just captured from, and the build shows it in place of the PNG
   user name (owner); `outputRefusal` keeps it out of `docs/` and out of any path git does not
   ignore, and an existing folder must hold an earlier sheet. What it shares with replay is
   `scripts/svgshot/redraw.mjs` (`redraw`, `writeJudged`, `runShards`/`inBrowser`, the
-  `judgedFiles` names: `<slug>.svg-diff.png` and `<slug>.svg` as `--diffs` names them).
+  `judgedFiles` names: `<slug>.svg-diff.png` and `<slug>.svg` as `--diffs` names them); its pages are
+  `scripts/svgshot/sheets.mjs`, made of the pieces in `scripts/lib/shot-views.mjs`.
   `shoot_docs.mjs --diffs` is to call `sheetHtml` over its diffs folder in a later commit.
   A sheet of the pictures with no SVG takes seconds; `--all`, over some 550 pictures, about a
   minute.
@@ -990,21 +1010,43 @@ the PNG was just captured from, and the build shows it in place of the PNG
   cat-file --batch` (`readRevisionFiles`, `scripts/lib/shot-revision.mjs`). PNG
   against PNG, no browser: 337 pictures in about 30 s. On the BETA 1033 retake none was within
   noise.
-- **The bar** (`SVG_FAITHFUL` in `shoot_docs.mjs`): an SVG with more than 0.25% of its pixels 96
+- **The bar** (`SVG_FAITHFUL` in `scripts/lib/shot-policy.mjs`): an SVG with more than 0.25% of its pixels 96
   grey levels or more off is not written, and an older one is removed. Anything not drawn falls
-  to it.
+  to it. A picture's entry in `test/shots/manifest.json` can move it, to any level and share,
+  and leave rectangles out (`svgRule`): it is counted on `diffSvg`'s strength map, a byte per
+  pixel, so no level needs the picture drawn again.
 - **An SVG changes with its PNG** (owner). The SVG of a picture whose PNG is not rewritten
-  (unchanged, or within a capture's noise) stays as it is, with its bundle, when there is one:
+  (unchanged, or within a capture's noise) stays as it is, with its bundle, when there is one
+  (unless the SVG the run drew is the file's to the byte, line endings aside: its bundle then
+  replaces the cache's, which it keeps drawing the file's SVG and naming the file's PNG, and
+  answers what the converter has learnt to ask since; `bundleFollowsSvg`, owner, 2026-11-02):
   it is drawn from the whole page, layers the picture does not show included, and those
   differ from run to run (PackagePublishing_1, a floating panel over a form designer still
   drawing; CallStack_Frames.light), and one sitting on the bar (Properties_SystemColours.light
   at 0.251%, 94490c87) was written in one run and removed in the next. `replay.mjs` draws it
-  again after a change to the converter.
+  again after a change to the converter. **A review that accepts a run's SVG writes it all the
+  same** (owner, 2026-11-01; `svgFollowsPng`'s `accepted`, which `shoot_docs.mjs` and the review
+  tool's applier both ask): that is the way to replace an SVG drawn from a bundle the capture
+  recorded wrongly, which a replay redraws as wrongly. Seven were so on 2026-11-01, drawn from
+  bundles captured before 59b14ac0, whose cut-outs' styled scrollbars were recorded hidden:
+  Properties_ColourPicker and its light picture, 2b32ab8c-fabc-4f42-9e6b-06e85574eaf4 and its
+  light picture, ccGridButtonImage and its light picture, and Properties_SystemColours (1.30% of
+  its pixels 8 levels off its PNG, against 0.15% for the SVG run 5 of that day drew). **So does a
+  run whose picture's cached bundle cannot draw it again** (owner, 2026-11-02; `svgFollowsPng`'s
+  `stale`, from `redraw.mjs`'s `staleBundle`: no bundle, another format, another PNG, or a question
+  it has no answer for, what replay lists as needing a retake): the run's SVG is then what a
+  replay would write and cannot, so it is judged and written as with its PNG, and its bundle
+  cached. Without it the file kept an older converter's SVG for as long as its PNG did not change:
+  the retake of 2026-11-02 drew 53 SVGs faithful to 0.013% or better that differed from their
+  files only by the second `codicon` face of 4e05975c, which their version 2 bundles could not
+  draw, and every one stayed. The applier asks `staleBundle` itself, as the picture and the cache
+  are when it applies the verdict (up to 0.35 s for the largest bundle, Help_Pane's, one per turn
+  of the server's event loop).
 - **One line** (`oneLine`). Git checks a picture's SVG out with CRLF where `core.autocrlf` says
   so, since no `.gitattributes` rule can tell it from a diagram's SVG. An SVG icon embedded as
   text and the annotation layer's XML hold line breaks; so each is written as the space an XML
   parser makes of a break inside a tag, or `&#10;` in text, the same character. A checkout then
-  changes only the last line ending, which `keepSvg` ignores when it compares.
+  changes only the last line ending, which `writeSvg` (`scripts/lib/shot-apply.mjs`) ignores when it compares.
 
 **Scrollbars.** The IDE styles every scrollbar with `::-webkit-scrollbar` rules
 (`ide/styles.css`, coloured by theme variables), a second family under `.modalDialogContainer`.
@@ -1014,7 +1056,10 @@ cannot be copied onto an element of the tool's own: Chromium drops a `var()` sho
 `background: var(...)`. So `scrollbarParts` gives each rule that styles this element's
 scrollbars, for a moment, one more selector, matching a probe element per part with the
 specificity of the selector it stands for; Chromium cascades and resolves the `var()`s, and the
-rules are put back. The parts are laid out as Chromium's custom scrollbar theme does: a button's
+rules are put back. The probes hang under the root element, not the body: a cut-out's `body
+*{visibility:hidden !important}` matched them there, and every part of the scrollbar came out
+hidden, undrawn (the Properties panel's in Properties_SystemColours and four other cut-outs;
+`bench/scrollbars-cutout.html`). The parts are laid out as Chromium's custom scrollbar theme does: a button's
 length its `height` (vertical) or `width`, `auto` being the platform's scrollbar thickness, which
 the page measures; the thumb as long as its share of the content, never shorter than its own
 length, whose `auto` is 17 px (Windows' thumb length at 96 DPI; no page property shows it, and
@@ -1045,10 +1090,46 @@ finds the ink by drawing the run 16 times as large on a canvas in the measuring 
 overline, line-through, every style but solid, and `text-underline-position` other than auto.
 `test/svgshot.test.mjs` holds the fitted figures.
 
+**An ellipsis cuts a line as Chromium's `NGLineTruncator` does** (`ellipsisLines`, `cutNeed`,
+`cutPlan` in `snapshot-svg.mjs`; 2026-11-01, after the DIAGNOSTICS pane of IDE-FeatureMap drew
+its messages whole, cut by the block's clip, where the PNG ends them in `...`). The snapshot gives
+the whole text of an elided line, so the converter finds the lines itself: the block that holds
+the line (the nearest box above the text that is not inline) clips its overflow, sets
+`text-overflow: ellipsis`, and the line's text reaches past its content box. The fragments that
+end before the line's end less the ellipsis are drawn whole, the first that does not is cut, the
+rest are hidden, and the ellipsis, in the block's style, follows the last one shown. Where the
+fragment is cut is the page's answer (`capture.mjs`'s `measure`, `cuts`): the longest start of the
+run, at a grapheme's end, measured with a Range over the run as laid out, no wider than its room
+less the ellipsis; the line's first fragment keeps one grapheme if none fits. Left out: right to
+left, an atomic inline on the line, and a block scrolled sideways. `text-overflow` is in
+`MISSABLE_STYLES`: a bundle taken before it was read is still drawn, and replay asks for a retake
+only of a picture with a line its block clips (the miss `text-overflow of a line its block
+clips`): 18 of the 480 bundles of 2026-11-01, some of which may clip with no ellipsis.
+
 **A background image is sized by its bytes** (`naturalSize`), not by the type its URL names:
 the IDE calls a JPEG and a BMP `image/png`. The About dialog's EXCALIBUR logo is such a JPEG,
 drawn with `background-size: contain`; read as a PNG, its JFIF header gave 4,718,592 by about 4.3
 billion pixels, and the logo would come out 0.054 px wide.
+
+**A background stops at the borders that cover it** (`backgroundClip`, `bordersCover`): a box
+with square corners whose sides are all opaque and fill their width (solid, inset, outset,
+groove, ridge) has its background drawn in its padding box, not under its borders. Drawn under
+them, it showed at their antialiased edges wherever the SVG is drawn at a scale other than 2x
+(a seam of two antialiased edges): Menu_File_Project's separators, an inset border 2 px tall
+over `rgb(89, 89, 89)`, came out 159 and 209 at 1.5x where the PNG, and the same borders drawn
+as CSS, are 197 and 247; clipped, 196 and 247. At 2x the edges fall on whole pixels and nothing
+changes (a replay of the 478 bundles of 2026-11-01: no verdict changed and no share strongly off
+rose; seven rose by 0.02 to 0.07% at 8 levels, boxes at fractional positions), but 396 SVGs
+come out with other bytes. A rounded box keeps its background under its borders: a curved inner
+edge is antialiased at any scale, and the clip left a seam there at 2x (the designer's round
+selection handles).
+
+**An `<embed>` of an image is drawn as an `<img>`** (`embeddedImage`): Chromium stretches the
+image to the element's box, as for an `<img>` (checked in headless Chromium: a 10 by 10 PNG in a
+100 by 60 `<embed>` filled it), and an ICO draws in an SVG `<image>`. The resource preview shows
+an `.ico` so (Resource_Preview: the tB icon, an `<embed>` of a `data:image/x-icon` URL, which was
+missing and put 0.35% of its pixels strongly off; now 0%). Only a `data:` image is taken; the
+snapshot's `currentSourceURL` is an `<img>`'s alone, so the URL is the `src` attribute.
 
 **Frames** (owner: cross-origin frames in general). A frame of the same site (the
 docked help pane: the documentation on another `localhost` port) is in the IDE's process, and
@@ -1062,21 +1143,47 @@ canvas colour (the root's background, else the body's, else none) and under its 
 scrollbars. `svgOfPage` measures each frame in an isolated world of its own
 (`Page.createIsolatedWorld`), so its `@font-face` rules and styles apply; one `PictureFonts`
 serves the whole picture. A frame of another site is a target of its own and is not in the
-snapshot: it is reported as "a frame of another process" (Help_Window's, the Webpage pane's).
-Not done yet, and the way to do it: attach to that frame's own target (`Target.setAutoAttach`
-with `flatten`, or the targets `shoot_docs` already finds for the PNGs), take its snapshot and
-measure it there, and nest it at its `<iframe>`'s content box as a same-site frame is
-(`DOM.getFrameOwner` names the `<iframe>` of a frame id). A bench page gets such a frame from
-an `<iframe>` on `127.0.0.1` while the page is on `localhost`: another site, so its own process.
+snapshot: it is reported as "a frame of another process". The two pictures that had one are
+taken another way (owner, 2026-11-02: the shot substitutes a local copy for the remote page):
+`scripts/lib/shot-freeze.mjs` freezes the page from its own target into one document (its
+scripts left out, its style sheets from the CSSOM, each `url()` and `<img>` a `data:` URL, its
+form values as attributes, its scroll put back), and `showFrozen` shows it in an `<iframe
+srcdoc>` of the page the picture is taken of, which is that page's own process. Help_Window's
+docs frame takes the copy by srcdoc (its `src` comes back after the picture); the Webpage pane,
+a second WebView2 the host lays over the pane and no frame at all, gets a frame of the IDE's
+page at the pane body's place, zoomed by CSS as the pane's page is (70%: the frame is 1/0.7 of
+the pane's size, so the copy is laid out as wide as the page was), so its PNG is no longer
+pasted together from two captures. A copy of the docs home page and of MsgBox, in a frame, is
+the live page to the pixel in Chrome, and its SVG 0.011% strongly off at most. Both pictures'
+PNGs on BETA 1034: Webpage within noise of HEAD's, Help_Window's text a device pixel or two
+off (next paragraph). Their SVGs: Webpage 0% and 0.008% strongly off, Help_Window 0% and 0.002%.
+
+Two faults showed on the way. **The viewport scrollbars of a zoomed frame** were not drawn;
+`viewportScroller` now gives them in the parent's px (a bar is as thick there as in a frame
+that is not zoomed; the gutters, scroll and extent times the frame's scale). **A scrollbar
+rule in an `@media` or `@supports` that does not hold** (the site's dark theme only, in a light
+picture) made `scrollbarParts` take the viewport's bar as custom and draw it transparent; it
+now visits only the blocks in force, and a sheet whose own media does not match not at all.
+And **the help window's WebView2 followed the display's scaling** (144 DPI on the dev box),
+the one WebView2 without `--force-device-scale-factor=1`: its DOM snapshot was in the
+display's px, 1.5 times its CSS px, and the whole SVG was drawn that much too large, the
+shell's title bar included. The add-in now takes further browser arguments for its window
+under the test switch, `TB_DOCS_HELP_WINDOW_ARGS`, and the help setup passes that flag; the
+PNG's text then falls a device pixel or two otherwise, at the same layout.
 
 **Web fonts** are found by CSS font matching on the run's `font-family` list, style and weight
 (`webFontFiles`, in the page), not by the face's own name: the site's Inter calls itself "Inter
 Variable", and the last rule of a family can be its italic file. A family split by
 `unicode-range` (Microsoft's Segoe UI Variable: five files per weight, Latin, Latin Extended,
 Cyrillic, Greek, symbols) gives a run every rule whose range holds one of its characters
-(`webRulesFor`, the last such rule per character, as CSS does), only those files are read, and
-`PictureFonts.css` gives each file only the characters in its own range even where its cmap
-has more. A variable WOFF2 is read in `fonts.mjs` and cut at each weight the picture uses,
+(`webRulesFor`, every such rule per character, the later first, as CSS does), only those files
+are read, and `PictureFonts.css` gives each file only the characters in its own range even
+where its cmap has more. Where two rules hold a character, the later file draws it and one
+with no glyph for it passes it to the earlier (CSS Fonts 4, the composite face): the IDE
+declares `codicon` twice, its own `codicon.ttf` (`codicon.css`) and then Monaco's
+(`editor.main.css`), which has no coffee cup, so Menu_Help's cup is the IDE's file's
+(2026-11-02; until then only the last rule was kept and the cup was missing;
+`bench/webfont-twice.html`). A variable WOFF2 is read in `fonts.mjs` and cut at each weight the picture uses,
 held to the weights its rule declares (`subset_font.py`'s `weight`); its other axes stay
 variable. A font fontTools cannot cut gets no face and its text falls back, reported
 as "text in a font that could not be cut" (`subset_font.py` answers that job with an error
@@ -1095,7 +1202,47 @@ IDE's WebView2 draw (on this Windows 10 machine too): 15 px, a round-ended 9 px 
 light or dark default by `color-scheme`; the docs site's dark theme sets `scrollbar-color`, which
 turns its own `::-webkit-scrollbar` rules off. **A focus ring** (`outline-style: auto`,
 `paintFocusRing`) is a 2 px band in the outline colour and a 1 px white one outside it. Both were
-fitted in Edge on bench pages of their own. **A native text field** (`nativeTextField`,
+fitted in Edge on bench pages of their own. Round a box with no rounded corner the ring is not
+square: Chromium gives its path a default radius, which the converter left out until 2026-11-01
+(Help_Search's focused field, owner). `FOCUS_RING_RADIUS`, 2.85 px at the path and grown or shrunk
+with each band, is fitted to Edge's pixels round square boxes with no border, borders of 1 and 2 px,
+an outline 3 px wide and an offset of 4 px, which all came out alike (the squared error 6% of a
+square ring's; 3 px gives 17% more). `bench/outline.html` went from 0.078% of its pixels off
+(0.022% strongly) to 0.033% (0%); a replay changed no SVG, the one picture with such a ring being
+Help_Search, which needs a retake for its clear button. **An outline of any other style** (`paintOutline`) is
+drawn as Chromium's OutlinePainter draws it, through the border painter: a border of the
+outline's style, width and colour round the border box moved out by the offset, its rounded
+corners moved out with it; so the form designer's `1px dashed` outline of each control is dashed
+as a border is, and a menu's or dialog's rounded outline is rounded. A solid one with square
+corners stays one stroked `<rect>`, the same pixels, so 300 SVGs kept their bytes. Before
+2026-11-01 every outline was a square solid rectangle; on the 453 SVGs the replay measured, 133
+came closer to their PNG and 7 went 0.001% further, Designer_Locked from 0.389% strongly off to
+0.001%. **A text field's selection** (2026-11-01; `selectedParts`, `blendWithWhite`,
+`paintTextControl`) is painted by Chromium outside the DOM, so the snapshot does not hold it:
+`capture.mjs` asks each document for its focused field (inside shadow roots too) with text
+selected, the range, whether the window has focus, and the colours, before the text is measured,
+so that the parts before, in and after the selection are runs of their own. The colours are the
+field's `::selection` when the page gives it a ground, drawn as given, else the system colours
+`SelectedItem` and `SelectedItemText` (WebView2's, rgb(25, 103, 210); `Highlight` is Windows',
+rgb(0, 120, 215), which no selection is drawn in), the ground made translucent as Chromium's
+`Color::BlendWithWhite` makes it: rgba(0, 65, 198, 0.8), which over white is the PNG's
+rgb(51, 103, 209) to the level. The ground is the selected part's width and the line's height,
+clipped to the field. A selection in a window without focus (other colours, which no page
+property gives) and one of the document's own text are reported as not drawn. A bundle taken
+before cannot say a field had a selection; the PNGs that show one were found by the colour
+(Variables_Edit, Designer_AddName, Rename_Box, both themes), and a retake of each took it from
+refused (0.65% to 0.77% strongly off) or 0.248% to 0% strongly off. Until 2026-11-02 such a
+bundle was drawn as if no field had a selection, so a replay drew Variables_Edit's old bundle
+(its retake's PNG stayed, so the cache kept the old bundle) without it again. Every bundle of
+version 3 records the selection, and an older one is not read. **An attribute with no
+value** (`disabled`) is the empty string, which DevTools writes as -1, the index of no string;
+`decodeSnapshot` read it as no attribute until 2026-11-01, so no control was ever drawn disabled
+(Find_Project's greyed "Current Module", set `.disabled` by the IDE). **A disabled checkbox or
+radio button** (`paintCheckable`) is translucent, fitted by `bench/checkable.html` over white and
+over rgb(43, 43, 43), each part to the level: a fill of rgba(245, 245, 245, 0.68), its border, a
+checked box's ground and a radio's dot in #767676 at 30% over it, a check mark in white at 60%
+over that; the bench page went from 0.556% of its pixels off to 0.036%. A checked control's accent
+is #0075ff (sampled in Find_Project and in Edge), not the #0078d7 it was drawn in. **A native text field** (`nativeTextField`,
 `paintNativeTextField`): Chromium draws an `<input>` whose border and background the page leaves
 as its own (`2px inset rgb(118, 118, 118)` on white, which BETA 1033 leaves its dialogs' text
 boxes) as its Fluent text field, not by that border: a white ground and a 1 px border of the same
@@ -1104,6 +1251,36 @@ under them, a focused field (outline none) the same. The CSS border's 2 px still
 Drawn as two `crispEdges` paths, rounded 2.2 and 1.2 px: any outer radius from 2.1 to 2.3 gives
 every pixel of Edge's border (`bench/textfield.html`). A field the page styles in either way is
 drawn from its style.
+
+**A list marker that is a symbol** (`paintSymbolMarker`, `SYMBOL_MARKERS`): Chromium paints a
+`::marker` of disc, circle, square or a disclosure triangle as a shape, not as the glyph of its
+text (`NGTextFragmentPainter::PaintSymbol`), so the converter drew Help_Hover's bullets as Segoe
+UI's "•", about half as wide (owner, 2026-11-01). Each is known by its text (the symbol and a
+space; square is U+25A0, not the spec's U+25AA), which a bundle has, so a replay redraws it with
+no retake. A disc, circle or square is ((2a/3) + 1)/2 px across in whole-number arithmetic, `a`
+the font's ascent rounded, 1 px from the fragment's left and 3(a - 2a/3)/2 below its top, snapped
+to whole CSS px (`ListMarker::RelativeSymbolMarkerRect`); a circle is stroked 1 px wide on it. A
+disclosure triangle is Chromium's canonical one in a square of 0.66 times the font size, its foot
+on the ascent, unsnapped. `bench/list-marker.html` (Segoe UI 9 to 24 px, Inter 10.5 px) went from
+0.195% of its pixels off to 0.001%, every marker's box Edge's to the pixel; a replay of every bundle
+updated 11 SVGs, all closer (Help_Hover 0.031% strongly off to 0%, SignIn_Login and
+SignIn_Register, SignatureHelp_Expanded, ccICustomControl and ac019c1a), and changed no other verdict.
+
+**A search field's clear button** (`paintSearchButton`; `searchButtonOf` and `searchButton` in
+`capture.mjs`): Chromium draws the X of an `<input type="search">` that shows text from the
+field's user-agent shadow tree, which DOMSnapshot leaves out, so Help_Search's SVG had no X
+(owner, 2026-11-01). The capture finds the button with `DOM.describeNode` (`pierce`, its `pseudo`
+`-webkit-search-cancel-button`), and reads in the page, on the element `DOM.resolveNode` gives, its
+box from the field's border box, its opacity (0 for an empty field, 1 with the focus or the
+pointer: `html.css`), visibility, display, appearance and used colour scheme; the bundle keeps
+them as `searchButtons`. A bundle taken before has no answer, a miss, so Help_Search and
+Help_Choices (both themes) need a retake. The X is the button's box snapped, two round-capped
+strokes 0.235 of it wide, their ends a sixth in from its corners (fitted to the coverage of Edge's
+picture at 18 and 42 device px, the squared error from 278 to 34 at 42 against strokes a third
+wide); for a light scheme in Edge's blue, shaded from rgb(64, 121, 187) at the top to rgb(35, 66,
+114) at the bottom (five stops read row by row), for a dark one white. The help pane's field is
+in a light scheme on the IDE's dark ground, so its X is blue. `bench/search.html` is at 0.034% of
+its pixels off, none strongly.
 
 **An inline `<svg>`** in the page is drawn as a nested `<svg>` in its box's content box, in its
 place in paint order (`paintInlineSvg`, from `paintBox`), so a CSS transform, opacity, border and
@@ -1120,8 +1297,8 @@ not found by `url()`, and a `<use>` still finds its target there. **The annotati
 coordinates, which the picture's `viewBox` is in.
 
 **The bench** (`node scripts/svgshot/bench.mjs`, outside every gate, needs Edge and fontTools)
-draws the pages under `scripts/svgshot/bench/` (scrollbars, native scrollbars, drop-down lists,
-native text fields, underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
+draws the pages under `scripts/svgshot/bench/` (scrollbars, a scrollbar in a cut-out, native scrollbars, drop-down lists,
+native text fields, checkboxes and radio buttons, list markers, a search field's clear button, underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
 annotation layer, SVG in frames), served from `127.0.0.1` with the site's fonts under `/fonts/`
 (a `file:` page cannot `fetch` its font bytes), with the converter
 and compares them with the browser's own picture: in Edge, whose Chromium is the IDE's WebView2's
@@ -1130,7 +1307,21 @@ as the IDE is, text without ClearType. Each page is held to the figures recorded
 `bench/baseline.json` (`--update` records them): no page comes out exact, and a fixed limit
 would miss a small fault (arrows a quarter too tall move a page from 0.025% to 0.064%). `node scripts/svgshot/pixels.mjs <png> x y w h --beside <png>` prints a
 rectangle of two pictures as letters, one per colour: how an edge, a stroke or a blend came out.
-A new replica gets a page there.
+A new replica gets a page there; `linethrough.html` is the line-through's.
+
+**Edge is started without `__COMPAT_LAYER`** (`withoutCompatLayer` in `bench.mjs`). Windows'
+application-health detection can put `__COMPAT_LAYER=DetectorsAppHealth` on a process, and its
+children inherit it (it was on every Bash and Node process of a session on 2026-11-01, and on
+neither the user's nor the machine's environment). Edge 156.0.4314.58 started under a
+compatibility layer starts itself again without it (`--edge-skip-compat-layer-relaunch`, the
+first process exiting with code 0 after about 20 ms), so Puppeteer reported "Failed to launch the
+browser process: Code: 0" and the browser it had started ran on, holding its temporary profile:
+42 such browsers were left by the failed runs. No Puppeteer flag has a part in it; Edge stays
+when started without the variable. Puppeteer's own Chrome, which the other tools use, does not
+start itself again. Under 156.0.4314.58 the pages' figures moved a little (svg-frame 0.098% to
+0.110% at 32 levels, decoration 0.046% to 0.051%, outline 0.071% to 0.078%), the same with the
+converter as it was before that day's changes; the baseline was recorded again then, with
+linethrough and scrollbars-cutout, which had none.
 
 **Not drawn yet:** a thin platform scrollbar (`scrollbar-width: thin`), a zoomed frame's
 scrollbars, a textarea's resize grip, a number input's spin buttons, an indeterminate checkbox,

@@ -140,7 +140,7 @@
 // not a page: the texts of the window and its child windows are searched instead,
 // and what the program draws itself is the fixture's own text (see programShot).
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import path from "node:path";
 import puppeteer from "puppeteer";
@@ -161,10 +161,34 @@ import { frameEval, frameOf, serveLoopback } from "../test/addin/pages.mjs";
 import { launchBrowser } from "./lib/browser.mjs";
 import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "./lib/shot-annotate.mjs";
 import { composite, uncomposite } from "./lib/shot-composite.mjs";
-import { decodePng, encodePng } from "./lib/png.mjs";
+import { decodePng, encodePng, pngSize } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
-import { inRects, withinNoise } from "./lib/shot-change.mjs";
-import { openRevision, pictureFate, planCleanup, restoreFromRevision, svgFate } from "./lib/shot-revision.mjs";
+import { inRects, pngsNear, withinNoise } from "./lib/shot-change.mjs";
+import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
+import { applyPicture, applySvg, dropPicture, restorePictures, svgOf } from "./lib/shot-apply.mjs";
+import { freezePage, showFrozen } from "./lib/shot-freeze.mjs";
+import {
+  bundleFollowsSvg,
+  cleanupResets,
+  decidePicture,
+  pngRule,
+  SVG_FAITHFUL,
+  svgFollowsPng,
+} from "./lib/shot-policy.mjs";
+import { MANIFEST, openManifest, svgDecision } from "./lib/shot-manifest.mjs";
+import { reviewPicture, reviewSvg } from "./lib/shot-queue.mjs";
+import {
+  pngVerdict,
+  stageCapture,
+  stageFolders,
+  stageRefusal,
+  stageSvg,
+  svgVerdict,
+  WINDOW_WHY,
+  writeVerdict,
+} from "./lib/shot-stage.mjs";
+import { onStop, writeRecord } from "./lib/record-lines.mjs";
+import { staleBundle, writeJudged } from "./svgshot/redraw.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
@@ -184,16 +208,15 @@ import {
   sleep,
   waitForCompile,
 } from "./lib/tb-ide.mjs";
-import { dropBundle, writeBundle } from "./svgshot/bundle.mjs";
+import { BUNDLE_CACHE, writeBundle } from "./svgshot/bundle.mjs";
 import { svgOfPage } from "./svgshot/capture.mjs";
-import { changedPictures } from "./svgshot/redraw.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
-import { holdsUserName, judgeSvg, SVG_FAITHFUL, writeSvg } from "./svgshot/keep.mjs";
+import { holdsUserName, judgeSvg } from "./svgshot/keep.mjs";
 import { stageProject, unpackProject } from "./lib/tb-project.mjs";
 import { holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { guard, presentKeys, press, serverRequests } from "../test/ide/building-kit.mjs";
 import { checkHarness } from "./lib/harness-settings.mjs";
-import { findIde, unsupportedIde } from "./lib/tb-install.mjs";
+import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
 import {
   answerMessageBox,
@@ -235,10 +258,17 @@ const CODE = path.join(REPO_ROOT, "test", "shots", "code");
 const FEATUREMAP = path.join(REPO_ROOT, "test", "shots", "featuremap");
 const SETTINGS_FIXTURES = path.join(REPO_ROOT, "test", "shots", "settings");
 const DEMO_FILE = "/Inventory/Sources/Inventory.twin";
+// The project.id of every project a setup opens (Lane's projectId), in place of the lane's own
+// for its slot, which differed from run to run: Project Settings shows it (Settings_Close). One id
+// for all IDEs at once is safe here: the recent lists are not written (IDE_FLAGS), ProjectState is
+// keyed by the project's path, each IDE has a temp folder and an APPDATA of its own, and the
+// one type library a build registers (the ax fixture's, under the project's id) has class GUIDs
+// that are fixed already.
+const DOCS_PROJECT_ID = "{D0C5D0C5-0000-4000-8000-00000000D0C5}";
 const DEMO_SOURCE = path.join(DEMO, "Sources", "Inventory.twin");
 const SITE = path.join(REPO_ROOT, "docs", "_site");
 const DEFAULT_OUT = path.join(REPO_ROOT, "docs");
-const DEFAULT_BUNDLES = path.join(REPO_ROOT, ".svgshot-bundles");
+const DEFAULT_BUNDLES = BUNDLE_CACHE;
 
 // The IDE page's size in CSS pixels, and the detached window's. Both at 2x.
 const IDE_SIZE = { width: 1280, height: 880 };
@@ -249,8 +279,9 @@ const SCALE = 2;
 const LCD_TEXT = "--disable-lcd-text";
 const BROWSER_ARGS = `--force-device-scale-factor=1 ${LCD_TEXT}`;
 
-const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--ide <twinBASIC.exe>] [--svg] [--against <rev> | --against-disk] [-h, --help]
+const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir> | --stage <dir>] [--events] [--jobs N] [--ide <twinBASIC.exe>] [--svg] [--against <rev> | --against-disk] [-h, --help]
        node scripts/shoot_docs.mjs --cleanup [--dry-run] [--only <regex>] [--out <dir>] [--against <rev>]
+       node scripts/shoot_docs.mjs --list [--only <regex>]
 
 Takes the pictures of the IDE that the documentation shows, from IDEs on a
 private desktop, at 2x, each in the IDE's dark theme (X.png) and then in its Light
@@ -298,6 +329,12 @@ shows pages from docs/_site, so run build.bat first for those.
 A picture is refused, and the run fails, when the visible text of the page it
 was taken from, or a text of the program window it is of, holds the Windows user
 name.
+
+With the default --out, test/shots/manifest.json is read and written: each
+picture written gets the build it was taken on there, and a picture's entry can
+change its noise rule (levels, share, rectangles left out) and its SVG's bar,
+and hold a review's decision about one capture, or one SVG against one PNG,
+which takes the rule's place for those bytes only (--cleanup too).
 
   --only <regex>   only the pictures whose path under the output folder
                    (IDE/Menu/Images/Menu_File.png, or its .light.png) matches;
@@ -358,11 +395,31 @@ name.
                    chosen when the regex matches its dark path or its .light.png),
                    --out and --against, and none of the options that need an IDE
   --dry-run        with --cleanup, list what it would put back and change nothing
+  --stage <dir>    write nothing under the output folder, to the bundle cache or
+                   to the manifest: put each picture's capture, its SVG (faithful
+                   or not), its bundle, its difference pictures, its strength maps
+                   and what was decided about it into <dir> instead, for the
+                   screenshot review tool to apply (scripts/lib/shot-stage.mjs).
+                   <dir> must be new or empty, and neither under docs nor where
+                   git would take it. The lines printed say what was decided, as
+                   without it. Not with --diffs, which it holds, or --bundles
+  --events         also write a line per event on stdout, @@shot-event {json}
+                   (the run, each job started and done, each picture's verdict,
+                   each SVG's, a failure, the summary), among the lines meant for
+                   a person; and stop when a line "stop" arrives on stdin: no
+                   further picture is taken, the IDEs end and the registry is put
+                   back, as at the normal end
+  --list           start no IDE and take nothing: print the table's pictures as one
+                   line of JSON, [{out, setup, once, window}], each \`out\` the dark
+                   picture's path (its light one is X.light.png, unless \`once\`) and
+                   \`window\` whether it is of a program's window, which has no SVG.
+                   Takes --only, and none of the other options
   -h, --help       print this text and exit
 
 Exit codes:
   0  every picture was written or was unchanged (with --cleanup: every modified
-     picture was compared)
+     picture was compared); a run stopped (--events) exits as for the pictures
+     it took
   1  a picture failed: an element was not found, the page showed the user name,
      a light picture's size is more than 32 pixels off the dark one's (the IDE
      was not in the state the dark picture shows), the add-in did not build, or
@@ -387,6 +444,9 @@ const { values } = withUsageError(() =>
       "against-disk": { type: "boolean", default: false },
       cleanup: { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
+      stage: { type: "string" },
+      events: { type: "boolean", default: false },
+      list: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
     stopAt: ["help"],
@@ -394,9 +454,26 @@ const { values } = withUsageError(() =>
 );
 if (values.help) printHelpAndExit(USAGE);
 withUsageError(() => {
+  if (values.list)
+    for (const other of [
+      "out",
+      "diffs",
+      "bundles",
+      "jobs",
+      "ide",
+      "svg",
+      "against",
+      "against-disk",
+      "cleanup",
+      "dry-run",
+      "stage",
+      "events",
+    ])
+      refuseTogether(values, ["list", other]);
   refuseTogether(values, ["against", "against-disk"]);
+  for (const other of ["diffs", "bundles"]) refuseTogether(values, ["stage", other]);
   if (values.cleanup)
-    for (const other of ["against-disk", "diffs", "bundles", "jobs", "ide", "svg"])
+    for (const other of ["against-disk", "diffs", "bundles", "jobs", "ide", "svg", "stage", "events"])
       refuseTogether(values, ["cleanup", other]);
 });
 if (values.dryRun && !values.cleanup) die(2, "--dry-run is for --cleanup");
@@ -405,10 +482,21 @@ const jobCount = withUsageError(() =>
   numberOption(values.jobs ?? "6", { option: "--jobs", integer: true, min: 1, max: 16 }),
 );
 const outRoot = path.resolve(values.out ?? DEFAULT_OUT);
-const diffsRoot = values.diffs === undefined ? null : path.resolve(values.diffs);
+// With --stage, the run's stage (lib/shot-stage.mjs): it holds the difference pictures and the
+// bundles, and nothing is written under the output folder, to the bundle cache or to the
+// manifest. The review tool applies its verdicts.
+const stageRoot = values.stage === undefined ? null : path.resolve(values.stage);
+if (stageRoot) {
+  const refused = stageRefusal(stageRoot, [DEFAULT_OUT, outRoot]);
+  if (refused) die(2, `--stage: ${refused}`);
+  mkdirSync(stageRoot, { recursive: true });
+}
+const staged = stageRoot ? stageFolders(stageRoot) : null;
+const diffsRoot = staged ? staged.diffs : values.diffs === undefined ? null : path.resolve(values.diffs);
 // With --svg, each picture's bundle (svgshot/bundle.mjs), for replay.mjs: never under docs,
 // since a bundle holds the Windows user name.
-const bundlesRoot = values.svg ? path.resolve(values.bundles ?? DEFAULT_BUNDLES) : null;
+const bundleCache = path.resolve(values.bundles ?? DEFAULT_BUNDLES);
+const bundlesRoot = !values.svg ? null : staged ? staged.bundles : bundleCache;
 // path.relative gives an absolute path across drives, which is outside docs and does not start with "..".
 for (const [option, root] of [
   ["--diffs", diffsRoot],
@@ -418,12 +506,30 @@ for (const [option, root] of [
   const rel = path.relative(path.join(REPO_ROOT, "docs"), root);
   if (!rel.startsWith("..") && !path.isAbsolute(rel)) die(2, `${option} must not be under docs: ${root}`);
 }
-// The fonts' cuts are kept beside the bundles, as replay.mjs keeps them (fonts.mjs).
-if (bundlesRoot) useSubsetCache(path.join(bundlesRoot, "subsets"));
+// The fonts' cuts are kept beside the bundles, as replay.mjs keeps them (fonts.mjs): in the
+// bundle cache with --stage too, since a cut depends on the font and its characters alone.
+if (values.svg) useSubsetCache(path.join(bundleCache, "subsets"));
+
+// --events: a record per event on stdout (lib/record-lines.mjs), for the review tool.
+const event = (type, value = {}) => {
+  if (values.events) writeRecord("shot-event", { type, ...value });
+};
 
 // The revision a capture is compared with before the file on disk (--against, HEAD by default;
 // none with --against-disk), and the one --cleanup puts pictures back to.
 const AGAINST = values.against ?? "HEAD";
+
+// The manifest (lib/shot-manifest.mjs): its entries are for the pictures under docs/, so a run
+// into another folder neither reads it nor writes it.
+let manifest = null;
+if (outRoot === path.resolve(DEFAULT_OUT)) {
+  try {
+    manifest = openManifest(MANIFEST);
+  } catch (e) {
+    die(2, e.message);
+  }
+}
+const entryOf = (out) => manifest?.entry(out) ?? null;
 
 // --cleanup: no IDE. Every PNG git reports modified against the revision that is within a
 // capture's noise of the revision's goes back to the revision's bytes, with its SVG.
@@ -452,34 +558,28 @@ if (values.cleanup) {
     pictures,
     (out) => before.get(out),
     (out) => readFileSync(path.join(outRoot, out)),
-    (a, b) => withinNoise(decoded(a, AGAINST), decoded(b, "the working tree")),
+    (a, b, out) =>
+      cleanupResets({
+        before: a,
+        after: b,
+        entry: entryOf(out),
+        near: (x, y, rule) => withinNoise(decoded(x, AGAINST), decoded(y, "the working tree"), rule),
+      }),
   );
-  const svgOf = (out) => out.replace(/\.png$/i, ".svg");
-  const svgBefore = revision.read(plan.reset.map(svgOf));
   const verb = values.dryRun ? "would be put back" : "put back";
-  // An SVG is text, written as a checkout writes it (line endings), by git, all in one process.
-  const svgWrites = [];
+  let fates;
+  try {
+    fates = restorePictures(outRoot, revision, plan.reset, { dryRun: values.dryRun });
+  } catch (e) {
+    die(2, e.message);
+  }
   for (const out of plan.reset) {
-    const svgFile = path.join(outRoot, svgOf(out));
-    const svgAtRevision = svgBefore.get(svgOf(out));
-    const svgNow = existsSync(svgFile) ? readFileSync(svgFile) : null;
-    const svg = svgFate(svgAtRevision, svgNow);
-    if (!values.dryRun) {
-      writeFileSync(path.join(outRoot, out), before.get(out));
-      if (svg === "write") svgWrites.push(svgOf(out));
-      if (svg === "remove") rmSync(svgFile);
-    }
     const svgText = {
       keep: "",
       write: ", and its SVG",
       remove: `; its SVG ${values.dryRun ? "would be removed" : "removed"}, as ${found.short} has none`,
-    }[svg];
+    }[fates.get(out).fate];
     console.log(`${out}: ${verb} as ${found.short} has it${svgText}`);
-  }
-  try {
-    restoreFromRevision(outRoot, found.hash, svgWrites);
-  } catch (e) {
-    die(2, `git could not put the SVGs back: ${e.message}`);
   }
   for (const { out, error } of plan.unreadable) console.error(`${out}: not compared: ${error}`);
   const n = (list, one, many = `${one}s`) => `${list.length} ${list.length === 1 ? one : many}`;
@@ -497,9 +597,12 @@ try {
 } catch (e) {
   die(2, e.message);
 }
-const ide = findIde(values.ide || undefined);
-if (unsupportedIde(ide)) die(2, unsupportedIde(ide));
-if (!ide || !existsSync(ide)) {
+// --list reads the table alone, and needs no IDE.
+const ide = values.list ? null : findIde(values.ide || undefined);
+if (!values.list && unsupportedIde(ide)) die(2, unsupportedIde(ide));
+// The build the manifest records for each picture written, or null when it cannot be read.
+const BUILD = buildNumber(ide);
+if (!values.list && (!ide || !existsSync(ide))) {
   die(
     2,
     "no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
@@ -647,8 +750,18 @@ async function cutoutOff(conn) {
 // it, a list of those there are (or one, or null), which `capture` prefers the version of a
 // picture that equals; `editedOriginal` the module of the sample that a shot has replaced in
 // the page, to put back; for a light picture, `prefer` the dark picture when no light file is
-// there yet; with --svg, `svg` the SVG of the picture `capture` returned last.
-const newShotState = (name) => ({ name, out: null, reference: null, prefer: null, editedOriginal: null, svg: null });
+// there yet; `ignore` the rectangles the picture's entry in the manifest leaves out of its
+// comparison (pngRule), which `capture` leaves out as it does the shot's unsteady regions;
+// with --svg, `svg` the SVG of the picture `capture` returned last.
+const newShotState = (name) => ({
+  name,
+  out: null,
+  reference: null,
+  prefer: null,
+  ignore: null,
+  editedOriginal: null,
+  svg: null,
+});
 
 // A line of output, prefixed with the setup it is from (they run at once).
 const say = (name, text) => console.log(`[${name}] ${text}`);
@@ -656,24 +769,28 @@ const complain = (name, text) => console.error(`[${name}] ${text}`);
 
 // With --diffs, the difference picture of `before` and `after` (PNG files) for the picture
 // `out`, as <out with its folders joined by __ and no extension>.<theme><suffix>.png, the
-// theme dark or light. A failure to write it is said, and fails nothing.
+// theme dark or light (--stage: in its diffs folder). A failure to write it is said, and fails
+// nothing. Returns the name written, or null.
 function writeDiff(name, out, before, after, { suffix = "", labels } = {}) {
-  if (!diffsRoot) return;
+  if (!diffsRoot) return null;
   const theme = /\.light\.png$/i.test(out) ? "light" : "dark";
   const base = out.replace(/[\\/]/g, "__").replace(/(\.light)?\.png$/i, "");
   const file = path.join(diffsRoot, `${base}.${theme}${suffix}.png`);
   try {
     mkdirSync(diffsRoot, { recursive: true });
     writeFileSync(file, diffPicture(before, after, labels));
+    return path.basename(file);
   } catch (e) {
     complain(name, `the difference picture ${file} was not written: ${e.message}`);
+    return null;
   }
 }
 
 // Whether two captures (PNG files) are the same picture but for a capture's noise
 // (withinNoise, scripts/lib/shot-change.mjs, which holds the rule and what it rests on).
-// The pixels inside `rects` (unsteadyRects) are left out.
-const nearly = (a, b, rects = []) => withinNoise(decodePng(a), decodePng(b), rects);
+// `rule` is withinNoise's: its limits, and `rects` the pixels left out (unsteadyRects, or a
+// picture's entry in the manifest, pngRule).
+const nearly = pngsNear;
 
 // Whether two captures are the same picture outside `rects`: byte for byte when there are none.
 function same(a, b, rects) {
@@ -782,7 +899,8 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     const picked = async (png) => {
       refuseUserName(await textOf(conn, frame), name, "the page as captured");
       if (values.svg) {
-        const size = { width: png.readUInt32BE(16) / SCALE, height: png.readUInt32BE(20) / SCALE };
+        const [width, height] = pngSize(png);
+        const size = { width: width / SCALE, height: height / SCALE };
         conn.shot.svg = await svgOfPage(conn, clip && { ...clip, ...size }, { background: !keep });
         if (holdsUserName(conn.shot.svg.svg, USER)) throw new Error(`the SVG of ${name} holds the Windows user name`);
       }
@@ -791,7 +909,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     // Outside its unsteady regions a capture is compared byte for byte, as everywhere else;
     // one that matches the file or the dark picture there keeps that picture's bytes, so a
     // pixel that flickers does not rewrite the file on every run.
-    const masks = await unsteadyRects(conn, clip, unsteady);
+    const masks = [...(await unsteadyRects(conn, clip, unsteady)), ...(conn.shot.ignore ?? [])];
     const t0 = Date.now();
     let last = null;
     let agreed = null;
@@ -801,7 +919,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
       const png = Buffer.from(data, "base64");
       const equal = wants.find((w) => same(w, png, masks));
       if (equal) return await picked(equal);
-      if (prefer && i === 0 && !nearly(prefer, png, masks)) prefer = null;
+      if (prefer && i === 0 && !nearly(prefer, png, { rects: masks })) prefer = null;
       if (prefer && same(prefer, png, masks)) return await picked(prefer);
       if (last && !same(last, png, masks) && conn.shot.out) {
         writeDiff(conn.shot.name, conn.shot.out, last, png, {
@@ -1130,6 +1248,10 @@ async function startHelp(run) {
     env: {
       TB_DOCS_HELP_SITE: run.origin,
       TB_DOCS_HELP_WINDOW_PORT: String(slot.port),
+      // The window's WebView2 at a scale of 1, as the IDE's is (Lane's browserArgs): on
+      // a scaled display its DOM snapshot would otherwise be in the display's pixels,
+      // and its SVG drawn that much too large.
+      TB_DOCS_HELP_WINDOW_ARGS: "--force-device-scale-factor=1",
       TB_DOCS_HELP_REAL_TITLEBAR: "0",
     },
   });
@@ -2464,12 +2586,32 @@ const TABS_BUTTON = ".codicon-triangle-down[title='Tabs List']";
 const SAMPLE_FILE = (rest) => `/SampleProject/${rest}`;
 const RESOURCES = ["Resources/MANIFEST/#1.xml", "Resources/STRING/Strings.json", "Resources/MESSAGETABLE/Strings.json"];
 
-// The tabs of the editor, left to right: name and the boxes of the tab and its close icon.
+// The tabs of the editor, left to right: name and the boxes of the tab and its close icon. A tab
+// whose file is loading or being saved shows a spinner in place of its close icon (the IDE gives
+// the button the class progressSpinnerIcon, and its close icon's classes back once done): its
+// `close` is null then. A module just added is such a tab for a moment.
 const editorTabs = (c) =>
   c.evaluate(`(() => [...document.querySelectorAll(".tabItem")].map((t) => {
-    const box = (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
+    const box = (e) => e && (({ x, y, width, height }) => ({ x, y, width, height }))(e.getBoundingClientRect());
     return { name: t.querySelector(".tabItemText").textContent.trim(), tab: box(t), close: box(t.querySelector(".tabItemIconRight")) };
   }).filter((t) => t.tab.width))()`);
+
+// Waits, in the page, for the tab named `name` to show its close icon: a MutationObserver on the
+// tab bar settles the moment the IDE gives the button its classes back, whether a load or a save
+// cleared the spinner. True once it shows it, or the tab is gone; false after `ms`.
+const tabCloseIcon = (c, name, ms = 5000) =>
+  c.evaluate(
+    `new Promise((resolve) => {
+  const tab = [...document.querySelectorAll(".tabItem")].find((t) => t.getBoundingClientRect().width && t.querySelector(".tabItemText")?.textContent.trim() === ${JSON.stringify(name)});
+  const ready = () => !tab || !tab.isConnected || !!tab.querySelector(".tabItemIconRight");
+  if (ready()) return resolve(true);
+  const done = (value) => { obs.disconnect(); clearTimeout(timer); resolve(value); };
+  const obs = new MutationObserver(() => { if (ready()) done(true); });
+  obs.observe(tab.parentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
+  const timer = setTimeout(() => done(false), ${ms});
+})`,
+    { awaitPromise: true, timeout: ms + 5000 },
+  );
 
 // Closes the tabs whose names are not in `keep`, each with a real click on its close icon
 // (a tab that is closed any other way is not in the Tabs List's Recently Closed). With
@@ -2481,6 +2623,12 @@ async function closeTabs(c, keep = [], { discard = false } = {}) {
     const tabs = await editorTabs(c);
     const t = tabs.find((x) => !keep.includes(x.name));
     if (!t) return;
+    // a tab still loading or saving has no close icon yet: the tabs are read again once it has
+    if (!t.close) {
+      if (!(await tabCloseIcon(c, t.name)))
+        throw new Error(`the tab ${t.name} showed no close icon in 5 s (still loading or saving)`);
+      continue;
+    }
     await clickAt(c, t.close.x + t.close.width / 2, t.close.y + t.close.height / 2);
     const closed = async () => (await editorTabs(c)).length < tabs.length;
     const asked = async () => (await modals(c)).some((m) => m.title === "twinBASIC");
@@ -5690,6 +5838,7 @@ const formsChapterShots = [
     out: FORMS_IMAGE("Preview_Window"),
     setup: "forms-chapter",
     once: true,
+    window: true,
     async take(ctx) {
       const { c } = ctx;
       await formsDesigner(c);
@@ -6402,10 +6551,7 @@ const projectsShots = [
         await parkMouse(c);
         await frames(c);
         const [settings] = await modals(c);
-        // the Project ID box shows the id the lane gives the project, its slot's
-        // (laneProjectId), which differs from run to run
-        const unsteady = [CHANGED_COUNT, { on: { css: `${settingPart("project.id", "VALUE")} input` } }];
-        return await capture(c, "Settings_Close", snapOut(settings), { unsteady });
+        return await capture(c, "Settings_Close", snapOut(settings), { unsteady: [CHANGED_COUNT] });
       } finally {
         if ((await modals(c)).length === 2) await modalButton(c, "Yes, close");
         await resetUi(c);
@@ -6577,11 +6723,7 @@ const projectsShots = [
         await frames(c);
         const [m] = await modals(c);
         const area = { ...m, height: (await lastReferenceBottom(c)) + 12 - m.y };
-        const png = await capture(c, "References_Detail", snapOut(area), {});
-        // No SVG: the converter does not draw a line-through (snapshot-svg.mjs), and the struck
-        // Scripting is what the picture is about; the page shows the PNG.
-        c.shot.svg = null;
-        return png;
+        return capture(c, "References_Detail", snapOut(area), {});
       }),
   },
   {
@@ -7823,13 +7965,13 @@ function ccShot(name, parts, { before = null, after = null } = {}) {
       try {
         if (before) await before(c);
         // the parts are not the picture: capture keeps the first two captures that agree
-        const { reference, prefer } = c.shot;
-        Object.assign(c.shot, { reference: null, prefer: null });
+        const { reference, prefer, ignore } = c.shot;
+        Object.assign(c.shot, { reference: null, prefer: null, ignore: null });
         let made;
         try {
           made = await parts(c);
         } finally {
-          Object.assign(c.shot, { reference, prefer });
+          Object.assign(c.shot, { reference, prefer, ignore });
         }
         try {
           const { box } = await composite(
@@ -9219,8 +9361,8 @@ const codePasteAsCommentShot = {
   setup: "code-chapter",
   async take({ c }) {
     await chapterTabs(c, ["Helpers.twin"]);
-    const { reference, prefer } = c.shot;
-    Object.assign(c.shot, { reference: null, prefer: null });
+    const { reference, prefer, ignore } = c.shot;
+    Object.assign(c.shot, { reference: null, prefer: null, ignore: null });
     let made;
     try {
       made = await editedThenUndone(c, async () => {
@@ -9253,7 +9395,7 @@ const codePasteAsCommentShot = {
         return [before, { ...after, column: 1 }];
       });
     } finally {
-      Object.assign(c.shot, { reference, prefer });
+      Object.assign(c.shot, { reference, prefer, ignore });
     }
     try {
       const { box } = await composite(c, made, [
@@ -11044,7 +11186,8 @@ const SC_KEYMENU = 0xf100;
 const WM_CANCELMODE = 0x1f;
 
 // The pictures of windows side by side, their tops level, WINDOW_GAP apart on a transparent
-// ground, as a PNG to be shown at its size at 96 DPI.
+// ground, as a PNG to be shown at its size at 96 DPI; `window` marks a picture of program
+// windows, which Windows draws: there is no page to draw an SVG from (keepSvg).
 function besideEachOther(windows) {
   const { dpi } = windows[0];
   const gap = Math.round((WINDOW_GAP * dpi) / 96);
@@ -11057,7 +11200,7 @@ function besideEachOther(windows) {
       rgba.set(p.rgba.subarray(y * p.width * 4, (y + 1) * p.width * 4), (y * width + x0) * 4);
     x0 += p.width + gap;
   }
-  return { png: encodePng({ width, height, rgba }), scale: dpi / 96 };
+  return { png: encodePng({ width, height, rgba }), scale: dpi / 96, window: true };
 }
 
 // Starts the program with `scene` on the setup's desktop, waits for its form, runs `fn` with
@@ -11099,6 +11242,7 @@ const programShot = (out, scene, { grow = false } = {}) => ({
   out,
   setup: "programs",
   once: true,
+  window: true,
   take: (ctx) =>
     withProgram(ctx, scene, async (dir, w) => {
       const shown = [await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "before.png"), { active: true })];
@@ -11119,6 +11263,7 @@ const listViewShot = {
   out: "Features/Images/021f6cbf-acce-445d-ade7-3fcad0af4927.png",
   setup: "programs",
   once: true,
+  window: true,
   async take(ctx) {
     const { c } = ctx;
     const dir = path.join(ctx.signals, "ide");
@@ -12302,16 +12447,21 @@ async function cancelImport(c) {
 // ---- webpage: the demo open, and the Webpage pane on its own, floating, showing the
 // documentation's home page at the IDE's default zoom, 70%. The pane's page is a second
 // WebView2 that the IDE's host lays over the pane, so a capture of the IDE's page holds the
-// pane's header and an empty body: the page is captured from its own DevTools target (the
-// host's WebView2s share the IDE's port) at the same 2x and put where the host puts it, one
-// pixel inside the pane's body (syncPosition). The pane's settings are the IDE's defaults with
-// the documentation's address, in the page only (the IDE's call that saves them is one
+// pane's header and an empty body: the page is set from its own DevTools target (the
+// host's WebView2s share the IDE's port) to the size of the pane's body at the same 2x,
+// frozen (shot-freeze.mjs), and shown in a frame of the IDE's page where the host puts it,
+// one pixel inside the pane's body (syncPosition), zoomed as the pane is, so that the
+// picture and its SVG are both of the IDE's page. The pane's settings are the IDE's defaults with the
+// documentation's address, in the page only (the IDE's call that saves them is one
 // PAGE_DEFAULTS has made do nothing). The page follows the OS's light or dark preference,
-// set to the theme of the picture.
+// set to the theme of the picture in both pages.
 
 const WEBPAGE_URL = "https://docs.twinbasic.com/";
 const WEBPAGE_PANEL = "webpagePanel._this.sectionHeader.panelDiv";
 const WEBPAGE_BOX = { left: 140, top: 120, width: 340, height: 500 };
+// The pane's zoom, which its page is drawn at, and so the frame that shows the copy.
+const WEBPAGE_ZOOM = 0.7;
+const FROZEN_FRAME = `document.getElementById("tbShotFrozen")`;
 
 // The pane's page's target once it shows `url` and has loaded, its fonts and images too.
 async function paneTarget(port, url) {
@@ -12338,16 +12488,6 @@ async function paneTarget(port, url) {
   return p;
 }
 
-// Copies the pixels of `part` into `whole` (both decoded pictures) at (x, y).
-function paste(whole, part, x, y) {
-  for (let row = 0; row < part.height; row++) {
-    whole.rgba.set(
-      part.rgba.subarray(row * part.width * 4, (row + 1) * part.width * 4),
-      ((y + row) * whole.width + x) * 4,
-    );
-  }
-}
-
 async function prepareWebpage(run) {
   return { ...(await prepareProject(run)), port: run.lane.port };
 }
@@ -12358,7 +12498,9 @@ const webpageShot = {
   async take({ c, port }) {
     await resetUi(c);
     const dark = await pageIsDark(c);
-    await c.evaluate(`liveWebpanelSettings = { zoom: 0.7, url: ${JSON.stringify(WEBPAGE_URL)}, mobileMode: false }`);
+    await c.evaluate(
+      `liveWebpanelSettings = { zoom: ${WEBPAGE_ZOOM}, url: ${JSON.stringify(WEBPAGE_URL)}, mobileMode: false }`,
+    );
     await command(c, "tbWebpage_ShowPanel");
     let p = null;
     try {
@@ -12377,36 +12519,46 @@ const webpageShot = {
         throw new Error(`the Webpage pane's address is ${await url()}, not ${WEBPAGE_URL}`);
       }
       p = await paneTarget(port, WEBPAGE_URL);
-      p.shot = newShotState("webpage");
       const inner = await rectOf(c, ".webpagePanelInner");
       const view = { width: inner.width - 2, height: inner.height - 2 };
       if (!Number.isInteger(inner.x) || !Number.isInteger(inner.y) || !Number.isInteger(view.width)) {
         throw new Error(`the Webpage pane's body is not on whole pixels: ${JSON.stringify(inner)}`);
       }
-      await p.send("Emulation.setEmulatedMedia", {
-        features: [{ name: "prefers-color-scheme", value: dark ? "dark" : "light" }],
-      });
+      const scheme = { features: [{ name: "prefers-color-scheme", value: dark ? "dark" : "light" }] };
+      await p.send("Emulation.setEmulatedMedia", scheme);
       await p.send("Emulation.setDeviceMetricsOverride", { ...view, deviceScaleFactor: SCALE, mobile: false });
       await p.evaluate("window.scrollTo(0, 0)");
       await frames(p);
-      const page = decodePng(await capture(p, "webpage", null));
-      if (page.width !== view.width * SCALE || page.height !== view.height * SCALE) {
-        throw new Error(
-          `the pane's page came out ${page.width}x${page.height} px, not ${view.width}x${view.height} at 2x`,
-        );
-      }
+      refuseUserName(await p.evaluate("document.body.innerText"), "Webpage", "the pane's page");
+      const html = await freezePage(p, { css: QUIET_CSS });
+      // Neither the IDE's style sheets nor the pane's own follow the OS's preference, so
+      // setting it in the IDE's page changes only the frame's.
+      await c.send("Emulation.setEmulatedMedia", scheme);
+      // The frame is zoomed as the pane is, so that the copy is laid out as wide as the
+      // pane's page and drawn at its size; a box around it puts it in the pane's place,
+      // since a zoom scales the frame's own left and top too.
+      await c.evaluate(`(() => {
+  const box = document.createElement("div");
+  box.id = "tbShotFrozenBox";
+  box.style.cssText = "position:fixed;left:${inner.x + 1}px;top:${inner.y + 1}px;width:${view.width}px;height:${view.height}px;overflow:hidden;z-index:2147483647";
+  const f = document.createElement("iframe");
+  f.id = "tbShotFrozen";
+  f.style.cssText = "display:block;border:0;margin:0;padding:0;zoom:${WEBPAGE_ZOOM};width:${view.width / WEBPAGE_ZOOM}px;height:${view.height / WEBPAGE_ZOOM}px";
+  box.append(f);
+  document.body.append(box);
+})()`);
+      await showFrozen(c, FROZEN_FRAME, html);
       const panel = await c.evaluate(
         `(() => { const r = ${WEBPAGE_PANEL}.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
       );
-      const clip = snapOut(panel);
-      const whole = decodePng(await capture(c, "Webpage", clip, { frame: p, away: () => parkMouse(c) }));
-      paste(whole, page, (inner.x + 1 - clip.x) * SCALE, (inner.y + 1 - clip.y) * SCALE);
-      return encodePng(whole);
+      return await capture(c, "Webpage", snapOut(panel), { away: () => parkMouse(c) });
     } finally {
       if (p) {
         await p.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
         p.close();
       }
+      await c.evaluate(`document.getElementById("tbShotFrozenBox")?.remove()`).catch(() => {});
+      await c.send("Emulation.setEmulatedMedia", { media: "", features: [] }).catch(() => {});
       await command(c, "tbWebpage_HidePanel");
     }
   },
@@ -12503,17 +12655,20 @@ async function webPage(c, url, width) {
 // settled; its box. A page that is still building itself after it has loaded (Microsoft's
 // replaces its content, and the document's scroll goes back to the top) is waited for: the page
 // is left until nothing in it has changed for a second, then scrolled, and that again until
-// the element stays where it was put.
+// the element stays where it was put. An element too near the document's end to reach `top`
+// (a release's Assets list on its own page) stays below it, with the document scrolled to its end.
 async function scrolledTo(c, find, top) {
   const at = () =>
     c.evaluate(
       `(() => { const e = ${find}; if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
     );
+  const atEnd = () => c.evaluate("scrollY + innerHeight >= document.documentElement.scrollHeight - 1");
   for (let i = 0; i < 6; i++) {
     await dialogStill(c, { ms: 1000, timeout: 15000, root: "document.body", what: "page" });
     const box = await waitFor(c, at, { timeout: 15000, interval: 200 });
     if (!box) throw new Error(`nothing on the page answers ${find}`);
     if (Math.abs(box.y - top) < 1) return box;
+    if (box.y > top && (await atEnd())) return box;
     await c.evaluate(`window.scrollBy(0, ${Math.round(box.y - top)})`);
     await sleep(500);
   }
@@ -12568,19 +12723,27 @@ const webView2Shot = {
   },
 };
 
-// The newest twinBASIC release on GitHub, its Assets list opened with a real click, as the
-// FAQ tells the reader to: the first release of the repository's list of releases, in a window
-// wide enough for the start of the file's SHA-256. The list, without the release's box around it.
+// The twinBASIC release of the run's own build on GitHub, its Assets list opened with a real
+// click, as the FAQ tells the reader to, in a window wide enough for the start of the file's
+// SHA-256. The list, without the release's box around it. The release's own page, not the
+// list of releases, whose first release is whichever was published last: a retake on the
+// build the picture was taken on shows the same release.
 const ASSETS = `[...document.querySelectorAll("summary")].find((s) => /^Assets/.test(s.textContent.trim()))`;
-const RELEASE_WIDTH = 1280;
+// A release's page has no side bar, so its list spans the window: at 949 CSS pixels the list is
+// 891 wide, as the FAQ shows it, the width it had in the list of releases at 1280.
+const RELEASE_WIDTH = 949;
 // the widest the zip's time is drawn ("23 minutes ago"), in CSS pixels
 const RELEASE_TIME_WIDTH = 104;
+// A release's tag names its build in four digits: beta-x-0999, beta-x-1035.
+const releaseUrl = (build) =>
+  `https://github.com/twinbasic/twinbasic/releases/tag/beta-x-${String(build).padStart(4, "0")}`;
 const releaseShot = {
   out: "Miscellaneous/Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png",
   setup: "web",
   once: true,
   async take({ c }) {
-    await webPage(c, "https://github.com/twinbasic/twinbasic/releases", RELEASE_WIDTH);
+    if (BUILD == null) throw new Error("the IDE's build is not known, so neither is its release");
+    await webPage(c, releaseUrl(BUILD), RELEASE_WIDTH);
     const summary = await scrolledTo(c, ASSETS, 120);
     const open = () => c.evaluate(`${ASSETS}.parentElement.open && /\\.zip/.test(${ASSETS}.parentElement.innerText)`);
     if (!(await open())) {
@@ -12969,17 +13132,25 @@ function helpTakes(ctx) {
         throw new Error("the window's page did not load");
       }
       // The window's page is a string the add-in loads, so its frame of the docs is on
-      // another site, a target of its own.
+      // another site, a target of its own, which the SVG cannot draw: the docs page is
+      // frozen from that target and shown in the same frame by srcdoc, which is the
+      // window page's own process (shot-freeze.mjs), and the frame's address comes back
+      // after the picture.
       const frame = await waitFor(c, () => attach(windowPort, origin, { type: "iframe" }).catch(() => null), {
         timeout: 30000,
       });
       if (!frame) throw new Error(`no frame of ${origin} on the window's DevTools port ${windowPort}`);
+      const HELP_FRAME = `document.getElementById("helpPage")`;
       let png;
       try {
         await pageDrawn(win, frame);
-        png = await snap(win, "Window", null, { frame });
+        refuseUserName(await frame.evaluate("document.body.innerText"), "Window", "the window's docs page");
+        const html = await freezePage(frame, { css: QUIET_CSS });
+        await showFrozen(win, HELP_FRAME, html);
+        png = await snap(win, "Window", null);
       } finally {
         frame.close();
+        await win.evaluate(`${HELP_FRAME}?.removeAttribute("srcdoc")`).catch(() => {});
       }
       // The help back in the pane, with the window's Attach button, for the pictures of the
       // next theme.
@@ -13024,7 +13195,10 @@ function helpPlaces() {
 
 // Each shot is a picture: `out` its path under the output folder, `setup` the IDE
 // it is taken in, `take(ctx)` which brings that IDE to the state it shows and
-// returns the picture's bytes. Within a setup they run in the order here.
+// returns the picture's bytes. Within a setup they run in the order here. `once`
+// takes it in the dark pass only, and `window` says that it is of a program's
+// window (its take returns {window: true}), which --list reports: a shot whose take
+// and table disagree fails.
 const helpShot = (name) => ({
   out: `IDE/AddIns/Images/Help_${name}.png`,
   setup: "help",
@@ -13088,6 +13262,15 @@ const SHOTS = [
   ...packageServerShots,
   ...notIdeShots,
 ];
+
+// --list: the table's pictures, as the screenshot review tool's page of every picture reads them.
+if (values.list) {
+  const listed = SHOTS.filter((s) => !only || THEMES.some((theme) => only.test(themedOut(s.out, theme))));
+  const row = (s) => ({ out: s.out, setup: s.setup, once: !!s.once, window: !!s.window });
+  // written at once: the process ends before an asynchronous write to a pipe would be done
+  writeSync(1, `${JSON.stringify(listed.map(row))}\n`);
+  process.exit(0);
+}
 
 // ---------------------------------------------------------------- the jobs
 
@@ -13233,6 +13416,37 @@ function planJobs() {
 }
 const jobs = planJobs();
 
+// The pictures a job takes in each theme: a `once` shot in the dark pass only.
+const passes = (job) => THEMES.map((theme) => [theme, theme === "dark" ? job.shots : job.shots.filter((s) => !s.once)]);
+if (stageRoot) console.log(`staging every picture in ${stageRoot}: nothing is written under ${outRoot}`);
+event("run", {
+  tool: "shoot_docs",
+  build: BUILD,
+  against: revision ? revision.short : null,
+  svg: values.svg,
+  stage: stageRoot,
+  jobs: jobs.map((job) => ({
+    name: job.name,
+    setup: job.setup,
+    pictures: passes(job).flatMap(([theme, shots]) => shots.map((s) => themedOut(s.out, theme))),
+  })),
+});
+
+// --events: a line "stop" on stdin stops the run (lib/record-lines.mjs). No further picture
+// is taken and no further job started; each job's IDE ends as at the run's normal end.
+let stopping = false;
+if (values.events)
+  onStop(process.stdin, () => {
+    stopping = true;
+    console.log("stopping: no further picture is taken");
+    event("stopping");
+  });
+// A picture a stopped run does not take.
+const notTaken = (name, out, theme) => {
+  count(theme, "not taken: the run was stopped");
+  event("skipped", { job: name, out });
+};
+
 // The run's folder is named for this process, so that runs at once never share one; each job
 // takes its slot from tbbroker as it starts (runJob). A folder an earlier run left, whose
 // process has ended, goes.
@@ -13286,62 +13500,73 @@ const tally = { dark: {}, light: {} };
 const count = (theme, state) => {
   tally[theme][state] = (tally[theme][state] ?? 0) + 1;
 };
-const pngSize = (png) => ({ w: png.readUInt32BE(16), h: png.readUInt32BE(20) });
-
-// How far, in device pixels, a light picture's width or height may be from the dark one's.
-// The Light theme lays the window out a little differently (its toolbar is 4 CSS pixels
-// shorter, a panel's title bar 3, some buttons narrower), so a clip worked out from the page's
-// elements comes out up to a few pixels off, and the page shows each picture at its own size
-// (builder/theme-pictures.mjs). A larger difference is not the theme's: most likely the IDE
-// was not in the state the dark picture shows.
-const SIZE_SLACK = 32;
-
 // Writes a picture when its bytes differ from the file's; says which. `out` is the dark
-// picture's path. A light picture is compared with the dark one (`dark`, this run's, or the
-// file's): one with the same pixels, but for a capture's noise (`nearly`), is not kept, and a
-// light file there already is removed, since the page shows X.png in both themes then; one
-// more than SIZE_SLACK off its size fails. A picture within a capture's noise of the revision's
-// (--against) leaves the file as the revision has it, with its SVG (pictureFate,
-// lib/shot-revision.mjs); one within a capture's noise of its file is not written either.
-// Returns whether the picture was written, "restored" for one put back as the revision has
-// it, or null for a light picture that is the dark one.
+// picture's path. What becomes of it is decidePicture's (lib/shot-policy.mjs): a light picture
+// is compared with the dark one (`dark`, this run's, or the file's), and one with the same
+// pixels, but for a capture's noise (`nearly`), is not kept, and a light file there already is
+// removed, since the page shows X.png in both themes then; one more than SIZE_SLACK off its
+// size fails. A picture within a capture's noise of the revision's (--against) leaves the file
+// as the revision has it, with its SVG (pictureFate, lib/shot-revision.mjs); one within a
+// capture's noise of its file is not written either. The picture's entry in the manifest
+// can change the noise rule, and a review's decision about these bytes takes its place. The
+// verdict is written by applyPicture (lib/shot-apply.mjs), and the manifest records the
+// build of a capture written; with --stage nothing is written but the stage (reportPicture),
+// and the lines say what was decided. Returns {kept, holds}: `kept` whether the picture was
+// written, "restored" for one put back as the revision has it, or null for a light picture
+// that is the dark one; `holds` the bytes the file holds once the verdict is applied.
 function keep(name, out, png, theme, dark, scale = SCALE) {
-  const file = path.join(outRoot, themedOut(out, theme));
-  const { w, h } = pngSize(png);
-  let other = "";
-  if (theme === "light" && dark) {
-    const d = pngSize(dark);
-    if (Math.abs(d.w - w) > SIZE_SLACK || Math.abs(d.h - h) > SIZE_SLACK) {
-      writeDiff(name, themedOut(out, theme), dark, png, {
-        suffix: ".size",
-        labels: { before: "DARK", after: "LIGHT" },
-      });
-      throw new Error(
-        `the light picture is ${w}x${h} px and the dark one ${d.w}x${d.h} px: more than the theme's layout moves`,
-      );
-    }
-    if (d.w !== w || d.h !== h) {
-      count(theme, "of another size than the dark picture");
-      other = `; the dark picture is ${d.w}x${d.h} px`;
-    }
-    if (nearly(dark, png)) {
-      const had = existsSync(file);
-      if (had) rmSync(file);
-      count(theme, "the same as the dark picture");
-      say(
-        name,
-        `${themedOut(out, theme)}: the dark picture's pixels, but for a capture's noise: ${had ? "removed" : "not written"}`,
-      );
-      return null;
-    }
-  }
-  mkdirSync(path.dirname(file), { recursive: true });
+  const themed = themedOut(out, theme);
+  const file = path.join(outRoot, themed);
   // The picture as the revision has it comes first (--against): a capture within a capture's
   // noise of it puts the file back as the revision has it, so that a picture does not drift
   // from the repository's over several runs, each within noise of the file before it.
   const was = existsSync(file) ? readFileSync(file) : null;
-  const atRevision = revision ? revision.bytes(themedOut(out, theme)) : null;
-  const fate = pictureFate(png, atRevision, was, nearly);
+  const atRevision = revision ? revision.bytes(themed) : null;
+  const fate = decidePicture({
+    png,
+    theme,
+    dark,
+    revision: atRevision,
+    disk: was,
+    near: nearly,
+    entry: entryOf(themed),
+  });
+  const review =
+    fate.by === "decision"
+      ? "; as a review decided"
+      : fate.earlier
+        ? `; a review decided "${fate.earlier}" about another capture, and this one is judged by the rule`
+        : "";
+  const { w, h } = fate.size;
+  if (fate.state === "too-far") {
+    writeDiff(name, themed, dark, png, {
+      suffix: ".size",
+      labels: { before: "DARK", after: "LIGHT" },
+    });
+    throw new Error(
+      `the light picture is ${w}x${h} px and the dark one ${fate.dark.w}x${fate.dark.h} px: more than the theme's layout moves`,
+    );
+  }
+  // the picture the capture was judged against, which its regions of change are measured on
+  const reference = { revision: atRevision, disk: was, dark }[fate.against] ?? null;
+  const dryRun = !!stageRoot;
+  let other = "";
+  if (fate.dark) {
+    count(theme, "of another size than the dark picture");
+    other = `; the dark picture is ${fate.dark.w}x${fate.dark.h} px`;
+  }
+  if (fate.state === "dark") {
+    // its SVG and bundle go with it
+    const { removed } = applyPicture(outRoot, themed, fate, revision, { dryRun, svg: values.svg, bundlesRoot });
+    if (removed) recordBuild(themed, null);
+    count(theme, "the same as the dark picture");
+    say(
+      name,
+      `${themed}: the dark picture's pixels, but for a capture's noise: ${removed ? "removed" : "not written"}${review}`,
+    );
+    reportPicture(name, themed, png, fate, reference, []);
+    return { kept: null, holds: null };
+  }
   // a run now and then settles on the other version of a capture's noise for every
   // capture of a state (WIP.Screenshots.md, Capture): the file then stays as it is
   const STATES = {
@@ -13352,53 +13577,78 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
     restored: `restored as ${AGAINST} has it`,
   };
   const state = STATES[fate.state];
-  if (fate.state === "noise") writeDiff(name, themedOut(out, theme), was ?? atRevision, png, { suffix: ".noise" });
-  if (fate.state === "updated") writeDiff(name, themedOut(out, theme), was, png);
+  const diffs = [];
+  if (fate.state === "noise") diffs.push(writeDiff(name, themed, was ?? atRevision, png, { suffix: ".noise" }));
+  if (fate.state === "updated") diffs.push(writeDiff(name, themed, was, png));
   if (fate.state === "restored" && was)
-    writeDiff(name, themedOut(out, theme), was, atRevision, {
-      suffix: ".restored",
-      labels: { before: "FILE", after: AGAINST.toUpperCase() },
-    });
-  if (fate.write) writeFileSync(file, fate.write);
+    diffs.push(
+      writeDiff(name, themed, was, atRevision, {
+        suffix: ".restored",
+        labels: { before: "FILE", after: AGAINST.toUpperCase() },
+      }),
+    );
+  // A picture put back as the revision has it takes the revision's SVG with it, or loses its
+  // SVG when the revision has none, so that the pair stays matched.
+  const applied = applyPicture(outRoot, themed, fate, revision, { dryRun });
+  if (fate.state === "new" || fate.state === "updated") recordBuild(themed, BUILD);
   count(theme, state);
   say(
     name,
-    `${themedOut(out, theme)}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${Math.round(w / scale)}" height="${Math.round(h / scale)}"}${other})`,
+    `${themed}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${Math.round(w / scale)}" height="${Math.round(h / scale)}"}${other}${review})`,
   );
+  reportPicture(name, themed, png, fate, reference, diffs.filter(Boolean), applied.svg);
+  const holds = fate.write ?? was;
   if (fate.state === "restored") {
-    restoreSvg(name, themedOut(out, theme));
-    return "restored";
+    const text = {
+      keep: `as ${AGAINST} has it`,
+      write: `restored as ${AGAINST} has it`,
+      remove: `removed, as ${AGAINST} has none`,
+    };
+    const { fate: svg, atRevision: svgAtRevision } = applied.svg;
+    if (svg !== "keep" || svgAtRevision) say(name, `${svgOf(themed)}: ${text[svg]}`);
+    return { kept: "restored", holds };
   }
-  return fate.write !== null;
+  return { kept: fate.write !== null, holds };
 }
 
-// A picture put back as the revision has it takes the revision's SVG with it, or loses its
-// SVG when the revision has none, so that the pair stays matched.
-function restoreSvg(name, out) {
-  const svgOut = out.replace(/\.png$/i, ".svg");
-  const file = path.join(outRoot, svgOut);
-  const atRevision = revision.bytes(svgOut);
-  const fate = svgFate(atRevision, existsSync(file) ? readFileSync(file) : null);
-  // as a checkout writes it (line endings), by git
-  if (fate === "write") restoreFromRevision(outRoot, revision.hash, [svgOut]);
-  if (fate === "remove") rmSync(file);
-  const text = {
-    keep: `as ${AGAINST} has it`,
-    write: `restored as ${AGAINST} has it`,
-    remove: `removed, as ${AGAINST} has none`,
-  };
-  if (fate !== "keep" || atRevision) say(name, `${svgOut}: ${text[fate]}`);
+// With --stage or --events, the verdict on the capture `png` of the picture `themed`
+// (decidePicture's `fate`): its regions of change against `reference`, the picture it was
+// judged against, and why it needs a look (reviewPicture, lib/shot-queue.mjs); with --stage
+// the capture and its strength map are staged and the verdict written (lib/shot-stage.mjs).
+// `diffs` names the difference pictures written, and `restoredSvg` is what becomes of the SVG
+// of a picture put back as the revision has it (restorePictures).
+function reportPicture(name, themed, png, fate, reference, diffs, restoredSvg = null) {
+  if (!stageRoot && !values.events) return;
+  const review = reviewPicture(fate, png, reference, entryOf(themed));
+  const files = stageRoot ? stageCapture(stageRoot, themed, png, review.strength) : null;
+  const part = { ...pngVerdict({ decision: fate, review, build: BUILD, diffs, staged: files }), restoredSvg };
+  if (stageRoot) writeVerdict(stageRoot, themed, "png", part);
+  event("picture", { job: name, out: themed, ...part });
 }
 
-// A `once` picture has no light file: one left from before is removed, and its SVG.
+// The manifest's record of the build a picture's file was taken on: `build` for a capture
+// written, null for a file removed. A picture whose file stays (unchanged, noise, restored)
+// keeps the build it has. Saved at once: the jobs share the manifest, and keep is synchronous.
+// With --stage the verdict carries the build, and the review tool records it.
+function recordBuild(out, build) {
+  if (!manifest || stageRoot) return;
+  if (build === null) manifest.clearBuild(out);
+  else manifest.setBuild(out, build);
+  manifest.save();
+}
+
+// A `once` picture has no light file: one left from before is removed, and its SVG. With
+// --stage it is left, and the verdict "once" says it goes.
 function dropLight(name, out) {
-  const svg = path.join(outRoot, themedOut(out, "light").replace(/\.png$/i, ".svg"));
-  if (existsSync(svg)) rmSync(svg);
-  if (bundlesRoot) dropBundle(bundlesRoot, themedOut(out, "light"));
-  const file = path.join(outRoot, themedOut(out, "light"));
-  if (!existsSync(file)) return;
-  rmSync(file);
-  say(name, `${themedOut(out, "light")}: removed (the picture is taken once, in no theme)`);
+  const light = themedOut(out, "light");
+  if (!dropPicture(outRoot, light, bundlesRoot, { dryRun: !!stageRoot })) return;
+  recordBuild(light, null);
+  say(name, `${light}: removed (the picture is taken once, in no theme)`);
+  if (!stageRoot && !values.events) return;
+  const decision = { state: "once", write: null, against: null, size: null, dark: null, by: "rule", earlier: null };
+  const part = pngVerdict({ decision, review: null, build: null });
+  if (stageRoot) writeVerdict(stageRoot, light, "png", part);
+  event("picture", { job: name, out: light, ...part });
 }
 
 // With --svg: one headless browser for the whole run, which renders each SVG to
@@ -13411,57 +13661,112 @@ const svgResults = [];
 // holds the user name; an SVG that is not faithful is not written, and one
 // written before is removed. Says how much of it differs from the PNG. The
 // picture's bundle goes to the bundle cache whether or not its SVG is written,
-// so that replay.mjs can draw it again once the converter draws it better.
-async function keepSvg(name, out, png, picture, written) {
-  const svgOut = out.replace(/\.png$/i, ".svg");
+// so that replay.mjs can draw it again once the converter draws it better. `holds` is
+// the PNG the file holds once its verdict is applied, which the bundle names. `kept` is
+// keep's: whether the PNG was written, "restored", or null for a light picture that is the
+// dark one. With --stage the SVG, its strength map and its bundle go to the stage, whether or
+// not it is faithful, and nothing else is written; an SVG that stays with its PNG, or goes
+// with it, is judged and staged all the same, its verdict "unchanged", for the review tool,
+// which writes it when a review takes the capture. `window` says the picture is of program
+// windows (besideEachOther), of which no SVG is drawn: its verdict is marked so.
+async function keepSvg(name, out, png, picture, kept, holds, window = false) {
+  const svgOut = svgOf(out);
   const file = path.join(outRoot, svgOut);
-  // An SVG is drawn from the whole page, layers the picture does not show included, and those
-  // can differ from run to run (a designer still drawing under a floating panel); and one that
-  // sits on SVG_FAITHFUL's bar is written in one run and removed in the next. So the SVG of a
-  // picture whose PNG was not written stays as it is, with its bundle (owner): it changes
-  // with its PNG, or when replay.mjs draws it again after a change to the converter.
-  if (!written && existsSync(file)) {
-    say(name, `${svgOut}: unchanged, as its PNG is`);
-    return;
+  const dryRun = !!stageRoot;
+  const report = (part) => {
+    if (stageRoot) writeVerdict(stageRoot, out, "svg", part);
+    event("svg", { job: name, out, ...part });
+  };
+  // The SVG of a picture whose PNG was not written stays as it is, with its bundle unless the
+  // SVG drawn is the same, unless a review accepted this one or the cache's bundle cannot draw
+  // it again (svgFollowsPng, lib/shot-policy.mjs); one whose PNG went back to
+  // the revision's, or is the dark one's, went with it (keep).
+  const byPng =
+    kept === null ? "the light picture is the dark one" : kept === "restored" ? `its PNG is ${AGAINST}'s` : null;
+  const svgOnDisk = existsSync(file);
+  const accepted = !byPng && !!picture && svgDecision(entryOf(out), picture.svg, png) === true;
+  const stale = !byPng && !!picture && !kept && svgOnDisk && !accepted ? cacheStale(out) : null;
+  const follows = !byPng && svgFollowsPng({ written: kept, svgOnDisk, accepted, stale });
+  if (stale)
+    say(name, `${svgOut}: judged though its PNG stays (its cached bundle cannot draw it again: ${stale.retake})`);
+  let staysWhy = null;
+  if (!follows) {
+    staysWhy = byPng ?? "its PNG is not written";
+    // the same SVG as the file's: its bundle goes into the cache all the same (bundleFollowsSvg);
+    // with --stage the review tool decides that, as it writes the cache
+    const refresh =
+      !byPng &&
+      !stageRoot &&
+      !!picture &&
+      !!bundlesRoot &&
+      bundleFollowsSvg({ svg: picture.svg, svgOnDisk: readFileSync(file, "utf8") });
+    if (refresh) writeBundle(bundlesRoot, out, picture.bundle, holds ?? png, picture.misses);
+    if (!byPng) say(name, `${svgOut}: unchanged, as its PNG is${refresh ? "; the same SVG, its bundle cached" : ""}`);
+    if (!stageRoot || !picture) {
+      report(svgVerdict({ state: "unchanged", why: staysWhy }));
+      return;
+    }
   }
-  const drop = (why) => {
-    const had = existsSync(file);
-    if (had) rmSync(file);
-    say(name, `${svgOut}: ${had ? "removed" : "not written"}, the PNG is kept (${why})`);
+  const drop = (why, judged = {}) => {
+    const state = applySvg(outRoot, svgOut, null, { dryRun });
+    say(name, `${svgOut}: ${state}, the PNG is kept (${why})`);
+    report(svgVerdict({ state, why, ...judged }));
   };
   if (!picture) {
-    drop("the picture is not a single capture");
+    // a picture of program windows is marked, for the review tool's group of them
+    const why = window ? WINDOW_WHY : "its shot draws no SVG of it";
+    const state = applySvg(outRoot, svgOut, null, { dryRun });
+    say(name, `${svgOut}: ${state}, the PNG is kept (${why})`);
+    report(svgVerdict({ state, why, window }));
     return;
   }
   const { svg, stats, misses, bundle } = picture;
   if (holdsUserName(svg, USER)) throw new Error(`the SVG of ${out} holds the Windows user name`);
   // The bundle names the PNG as the file holds it: a capture within the noise of the file
   // leaves the file as it was, and that file is what replay.mjs compares with.
-  const pngFile = path.join(outRoot, out);
-  if (bundlesRoot) writeBundle(bundlesRoot, out, bundle, existsSync(pngFile) ? readFileSync(pngFile) : png, misses);
+  if (bundlesRoot) writeBundle(bundlesRoot, out, bundle, holds ?? png, misses);
   svgBrowser ??= launchBrowser();
-  const { diff, faithful, measures } = await judgeSvg(await svgBrowser, svg, png, stats);
-  if (diffsRoot) {
-    mkdirSync(diffsRoot, { recursive: true });
-    writeFileSync(
-      path.join(diffsRoot, `${out.replace(/[\\/]/g, "__").replace(/\.png$/i, "")}.svg-diff.png`),
-      diff.diff,
-    );
+  const entry = entryOf(out);
+  const { diff, verdict, faithful, by, measures } = await judgeSvg(await svgBrowser, svg, png, stats, entry);
+  const how = by === "decision" ? `; ${faithful ? "accepted" : "refused"} by a review` : "";
+  // To see what went wrong, an SVG not written goes beside its difference map.
+  const diffs =
+    diffsRoot && !staysWhy ? Object.values(writeJudged(diffsRoot, out, diff, { svg: faithful ? null : svg })) : [];
+  const judged = {
+    verdict,
+    review: stageRoot || values.events ? reviewSvg(verdict, diff.strength, entry) : null,
+    stats: diff.stats,
+    measures,
+    diffs,
+    staged: stageRoot ? stageSvg(stageRoot, out, svg, diff.strength) : null,
+  };
+  if (staysWhy) {
+    // what stays with its PNG needs no look until a review takes the capture
+    report(svgVerdict({ state: "unchanged", why: staysWhy, ...judged, review: { ...judged.review, look: null } }));
+    return;
   }
   const bytes = Buffer.byteLength(svg);
   svgResults.push({ out: svgOut, bytes, png: png.length, faithful, ...diff.stats });
   if (!faithful) {
-    drop(measures);
-    // To see what went wrong, the SVG goes beside its difference map.
-    if (diffsRoot)
-      writeFileSync(path.join(diffsRoot, `${out.replace(/[\\/]/g, "__").replace(/\.png$/i, "")}.svg`), svg);
+    drop(`${measures}${how}`, judged);
     return;
   }
-  const state = writeSvg(file, svg);
+  const state = applySvg(outRoot, svgOut, svg, { dryRun });
   say(
     name,
-    `${svgOut}: ${state} (${(bytes / 1024).toFixed(0)} KB against the PNG's ${(png.length / 1024).toFixed(0)} KB; ${measures})`,
+    `${svgOut}: ${state} (${(bytes / 1024).toFixed(0)} KB against the PNG's ${(png.length / 1024).toFixed(0)} KB; ${measures}${how})`,
   );
+  report(svgVerdict({ state, ...judged }));
+}
+
+// Why the cache's bundle of `out` cannot draw the picture again (redraw.mjs's staleBundle), or
+// null; a bundle that cannot be read cannot either. The cache itself, with --stage too.
+function cacheStale(out) {
+  try {
+    return staleBundle({ bundlesRoot: bundleCache, docsRoot: outRoot, out });
+  } catch (e) {
+    return { retake: `its bundle cannot be read: ${e.message}` };
+  }
 }
 
 // Ends a job's IDE and what it served.
@@ -13508,6 +13813,7 @@ async function runJob(job) {
   const setup = SETUPS[job.setup];
   const started = Date.now();
   say(job.name, `starting (${job.shots.length} pictures)`);
+  event("job", { job: job.name, state: "started" });
   const run = {
     name: job.name,
     step: "start",
@@ -13529,6 +13835,7 @@ async function runJob(job) {
     ide,
     show: false,
     browserArgs: BROWSER_ARGS,
+    projectId: DOCS_PROJECT_ID,
   });
   const state = newShotState(job.name);
   running.add(run);
@@ -13549,48 +13856,66 @@ async function runJob(job) {
     // does not change comes out identical to it rather than a capture's noise away.
     // A `once` shot, a picture the IDE's theme has no part in (a running program's window), is
     // taken in the dark pass only; a job of them has no light pass.
+    // A run stopped (--events) takes no further picture, and switches no theme.
     const darks = new Map();
     const prepared = await setupState(run.c, ctx);
-    for (const theme of THEMES) {
-      const shots = theme === "dark" ? job.shots : job.shots.filter((s) => !s.once);
+    for (const [theme, shots] of passes(job)) {
       if (!shots.length) continue;
-      if (theme !== "dark") {
+      if (theme !== "dark" && !stopping) {
         await backToPrepared(run.c, ctx, prepared);
         await ensureTheme(run.c, theme);
         say(job.name, `the IDE in its ${THEME_NAME[theme]} theme`);
       }
       for (const shot of shots) {
         const out = themedOut(shot.out, theme);
+        if (stopping) {
+          notTaken(job.name, out, theme);
+          continue;
+        }
         const file = path.join(outRoot, out);
         const darkFile = path.join(outRoot, shot.out);
         const dark =
           theme === "dark" ? null : (darks.get(shot.out) ?? (existsSync(darkFile) ? readFileSync(darkFile) : null));
         state.reference = [revision?.bytes(out), existsSync(file) ? readFileSync(file) : null].filter(Boolean);
         state.prefer = dark;
+        state.ignore = pngRule(entryOf(out)).rects;
         state.out = out;
         state.svg = null;
         try {
           // a take returns the PNG's bytes, or { png, scale } for a picture not at SCALE
           const taken = await shot.take(ctx);
+          // the table says which shots are of a program's window, for --list: it must say so truly
+          const window = !Buffer.isBuffer(taken) && !!taken.window;
+          if (window !== !!shot.window)
+            throw new Error(
+              `the shot ${window ? "took a program's window" : "is marked window: true"} and ${window ? "is not marked window: true" : "took no program's window"} in the table`,
+            );
           const png = Buffer.isBuffer(taken) ? taken : taken.png;
           if (theme === "dark") darks.set(shot.out, png);
-          const kept = keep(job.name, shot.out, png, theme, dark, Buffer.isBuffer(taken) ? SCALE : taken.scale);
+          const { kept, holds } = keep(
+            job.name,
+            shot.out,
+            png,
+            theme,
+            dark,
+            Buffer.isBuffer(taken) ? SCALE : taken.scale,
+          );
           if (shot.once) dropLight(job.name, shot.out);
-          // A light picture that is the dark one is not kept, and neither is its SVG or bundle.
-          // One put back as the revision has it has had its SVG put back with it.
-          const svgFile = path.join(outRoot, out.replace(/\.png$/i, ".svg"));
-          if (values.svg && kept !== null && kept !== "restored") await keepSvg(job.name, out, png, state.svg, kept);
-          else if (values.svg && kept === null) {
-            if (existsSync(svgFile)) rmSync(svgFile);
-            dropBundle(bundlesRoot, out);
-          }
+          // A light picture that is the dark one is not kept, and neither is its SVG or bundle
+          // (keep). One put back as the revision has it has had its SVG put back with it. With
+          // --stage their SVGs are judged and staged all the same (keepSvg).
+          if (values.svg && ((kept !== null && kept !== "restored") || stageRoot))
+            await keepSvg(job.name, out, png, state.svg, kept, holds, window);
         } catch (e) {
           complain(job.name, `${out}: FAILED: ${e.message}`);
           count(theme, "failed");
           failed = 1;
+          if (stageRoot) writeVerdict(stageRoot, out, "png", { state: "failed", error: e.message });
+          event("failed", { job: job.name, out, error: e.message });
         } finally {
           state.reference = null;
           state.prefer = null;
+          state.ignore = null;
           state.out = null;
         }
       }
@@ -13604,6 +13929,7 @@ async function runJob(job) {
       (run.step === "open" && / does not compile\n/.test(e.message)) ||
       run.step === "shoot";
     failed = Math.max(failed, own ? 1 : 2);
+    event("job", { job: job.name, state: "failed", error: e.message });
   }
   await endRun(run);
   // what a setup checks or gives back once its IDE has ended
@@ -13615,14 +13941,22 @@ async function runJob(job) {
       failed = Math.max(failed, 1);
     }
   }
-  say(job.name, `done in ${((Date.now() - started) / 1000).toFixed(1)} s`);
+  const seconds = (Date.now() - started) / 1000;
+  say(job.name, `done in ${seconds.toFixed(1)} s`);
+  event("job", { job: job.name, state: "done", seconds });
 }
 
-// --jobs IDEs at a time, each taking the next of the queue when its job ends.
+// --jobs IDEs at a time, each taking the next of the queue when its job ends. Once the run is
+// stopped, a job not started starts no IDE, and its pictures are not taken.
 {
   const queue = [...jobs];
   const worker = async () => {
-    for (let job = queue.shift(); job; job = queue.shift()) await runJob(job);
+    for (let job = queue.shift(); job; job = queue.shift()) {
+      if (!stopping) await runJob(job);
+      else
+        for (const [theme, shots] of passes(job))
+          for (const s of shots) notTaken(job.name, themedOut(s.out, theme), theme);
+    }
   };
   await Promise.all(Array.from({ length: Math.min(jobCount, jobs.length) }, worker));
 }
@@ -13662,6 +13996,15 @@ try {
 } catch (e) {
   problems.push(`${PACKAGE_ROOT} could not be removed (${e.code})`);
 }
+const exitCode = problems.length ? 3 : failed;
+event("summary", {
+  tally,
+  svg: { written: svgResults.filter((r) => r.faithful).length, left: svgResults.filter((r) => !r.faithful).length },
+  seconds: (Date.now() - t0) / 1000,
+  stopped: stopping,
+  problems,
+  exit: exitCode,
+});
 if (problems.length) {
   console.error(problems.join("\n"));
   process.exit(3);

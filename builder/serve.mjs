@@ -14,6 +14,7 @@ import { watch } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { isOutputTree } from "../lib/markdown-files.mjs";
+import { createSseChannel } from "../lib/sse.mjs";
 import { runBuild, createWorkerPool, EXIT_ERROR } from "./tbdocs.mjs";
 import { createStaticHandler } from "./static-files.mjs";
 
@@ -26,35 +27,11 @@ function injectReloadScript(html) {
   return html.slice(0, idx) + RELOAD_SCRIPT + html.slice(idx);
 }
 
-// §C — SSE endpoint
-const sseClients = new Set();
-
-function sseHandler(req, res) {
-  res.statusCode = 200;
-  res.setHeader("content-type", "text/event-stream");
-  res.setHeader("cache-control", "no-store");
-  res.setHeader("connection", "keep-alive");
-  res.write(": connected\n\n");
-  sseClients.add(res);
-
-  const keepalive = setInterval(() => {
-    try {
-      res.write(": keepalive\n\n");
-    } catch {}
-  }, 30000);
-
-  req.on("close", () => {
-    clearInterval(keepalive);
-    sseClients.delete(res);
-  });
-}
+// §C — SSE endpoint (lib/sse.mjs)
+const reloads = createSseChannel();
 
 function notifyReload() {
-  for (const res of sseClients) {
-    try {
-      res.write("event: reload\ndata: 1\n\n");
-    } catch {}
-  }
+  reloads.send("reload", "1");
 }
 
 // §A — Static file handler factory
@@ -145,7 +122,7 @@ export async function runServe(opts) {
   const server = createServer(async (req, res) => {
     const url = req.url ?? "/";
     if (url === "/_tbdocs/reload" || url.startsWith("/_tbdocs/reload?")) {
-      sseHandler(req, res);
+      reloads.handle(req, res);
       return;
     }
     await staticHandler(req, res);
@@ -216,12 +193,7 @@ export async function runServe(opts) {
   process.on("SIGINT", () => {
     console.log("serve: shutting down.");
     ac.abort();
-    for (const res of sseClients) {
-      try {
-        res.end();
-      } catch {}
-    }
-    sseClients.clear();
+    reloads.close();
     pool.destroy();
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 100).unref();

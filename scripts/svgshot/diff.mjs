@@ -7,6 +7,8 @@
 // glyph placed a fraction of a pixel differently is not a difference, a
 // missing one is.
 
+import { shareOff } from "../lib/shot-change.mjs";
+
 /** The clip an SVG picture names on its root (`data-clip`, page CSS px), else its own size at 0,0. */
 export function svgClip(svg) {
   const root = /<svg\b[^>]*>/.exec(svg)?.[0] ?? "";
@@ -23,7 +25,11 @@ export function svgClip(svg) {
  * px. Returns the statistics -- the share of pixels (percent) differing by at
  * least 8, 32 and 96 levels, the same for 32 without the one-pixel tolerance,
  * the mean, and the `top` worst `tile`-px tiles in page CSS px -- with the
- * render, the reference cropped to the clip, and the difference map, as PNGs.
+ * render, the reference cropped to the clip, and the difference map, as PNGs,
+ * and the strength map: {width, height, data}, a byte per device pixel of the
+ * clip, row by row, the distance with the one-pixel tolerance in whole levels
+ * (0 to 255), from which the share at any level, with rectangles left out, and the
+ * regions of change are worked out (shot-change.mjs's shareOff and changeRegions).
  */
 export async function diffSvg(page, svg, ref, { refOrigin = { x: 0, y: 0 }, scale = 2, tile = 16, top = 12 } = {}) {
   const clip = svgClip(svg);
@@ -106,19 +112,25 @@ export async function diffSvg(page, svg, ref, { refOrigin = { x: 0, y: 0 }, scal
       const T = Math.round(tile * scale);
       const tilesX = Math.ceil(W / T);
       const tiles = new Map();
-      let over8 = 0;
-      let over32 = 0;
-      let over96 = 0;
+      const strength = new Uint8Array(W * H);
       let strict32 = 0;
       let sum = 0;
-      // Luminance and alpha, not each channel: ClearType draws a glyph's edge
-      // as colour fringes that hold the same coverage, which a channel-wise
-      // distance counts as a difference and a luminance one mostly does not.
-      const dist = (x, p, y, q) =>
-        Math.max(
-          Math.abs(0.299 * (x[p] - y[q]) + 0.587 * (x[p + 1] - y[q + 1]) + 0.114 * (x[p + 2] - y[q + 2])),
-          Math.abs(x[p + 3] - y[q + 3]),
-        );
+      // Luminance, not each channel: ClearType draws a glyph's edge as colour
+      // fringes that hold the same coverage, which a channel-wise distance counts
+      // as a difference and a luminance one mostly does not. The luminance is the
+      // pixel's as seen over black and over white, the two backgrounds that set it
+      // furthest apart: the colour of a pixel nearly transparent is rounding
+      // (a shadow's last pixels, alpha 1, are 255,255,255 in a cut-out and 0,0,0
+      // in a render), and compared alone it put 255 levels between two pixels that
+      // differ by 1 of opacity. Between opaque pixels it is the luminance's distance.
+      const dist = (x, p, y, q) => {
+        const black =
+          (0.299 * (x[p] * x[p + 3] - y[q] * y[q + 3]) +
+            0.587 * (x[p + 1] * x[p + 3] - y[q + 1] * y[q + 3]) +
+            0.114 * (x[p + 2] * x[p + 3] - y[q + 2] * y[q + 3])) /
+          255;
+        return Math.max(Math.abs(black), Math.abs(black - (x[p + 3] - y[q + 3])));
+      };
       const near = (x, y, p, px, py) => {
         let best = 1e9;
         for (let dy = -1; dy <= 1; dy++) {
@@ -140,18 +152,16 @@ export async function diffSvg(page, svg, ref, { refOrigin = { x: 0, y: 0 }, scal
         const pyl = Math.floor(i / W);
         const diff = Math.max(near(a, b, p, pxl, pyl), near(b, a, p, pxl, pyl));
         sum += diff;
+        // Whole levels: a level's count (diff >= n) is the same from the byte as from the distance.
+        strength[i] = diff >= 255 ? 255 : Math.floor(diff);
         const lum = (a[p] * 0.3 + a[p + 1] * 0.59 + a[p + 2] * 0.11) * 0.25 + 180;
         let rgb = [lum, lum, lum];
-        if (diff >= 8) over8++;
         if (diff >= 32) {
-          over32++;
           const key = Math.floor(i / W / T) * tilesX + Math.floor((i % W) / T);
           tiles.set(key, (tiles.get(key) ?? 0) + 1);
         }
-        if (diff >= 96) {
-          over96++;
-          rgb = [230, 0, 0];
-        } else if (diff >= 32) rgb = [255, 140, 0];
+        if (diff >= 96) rgb = [230, 0, 0];
+        else if (diff >= 32) rgb = [255, 140, 0];
         else if (diff >= 8) rgb = [220, 200, 0];
         o[p] = rgb[0];
         o[p + 1] = rgb[1];
@@ -168,12 +178,14 @@ export async function diffSvg(page, svg, ref, { refOrigin = { x: 0, y: 0 }, scal
           y: clip.y + Math.floor(key / tilesX) * tile,
           share: +(n / (T * T)).toFixed(3),
         }));
+      // The map as base64, in pieces: String.fromCharCode takes only so many arguments.
+      let bytes = "";
+      for (let k = 0; k < strength.length; k += 0x8000)
+        bytes += String.fromCharCode.apply(null, strength.subarray(k, k + 0x8000));
       return {
+        strength: btoa(bytes),
         stats: {
           size: [W, H],
-          pct8: +((100 * over8) / pixels).toFixed(3),
-          pct32: +((100 * over32) / pixels).toFixed(3),
-          pct96: +((100 * over96) / pixels).toFixed(3),
           strictPct32: +((100 * strict32) / pixels).toFixed(3),
           mean: +(sum / pixels).toFixed(3),
           worst,
@@ -193,7 +205,17 @@ export async function diffSvg(page, svg, ref, { refOrigin = { x: 0, y: 0 }, scal
     },
   );
   const png = (url) => Buffer.from(url.slice(url.indexOf(",") + 1), "base64");
-  return { clip, stats: out.stats, render: Buffer.from(render), diff: png(out.diffUrl), refCrop: png(out.refUrl) };
+  const [w, h] = out.stats.size;
+  const strength = { width: w, height: h, data: new Uint8Array(Buffer.from(out.strength, "base64")) };
+  const { size, ...rest } = out.stats;
+  const stats = {
+    size,
+    pct8: shareOff(strength, { level: 8 }),
+    pct32: shareOff(strength, { level: 32 }),
+    pct96: shareOff(strength, { level: 96 }),
+    ...rest,
+  };
+  return { clip, stats, strength, render: Buffer.from(render), diff: png(out.diffUrl), refCrop: png(out.refUrl) };
 }
 
 /** Reference above render above difference, magnified without smoothing, for the page area `zoom`. */

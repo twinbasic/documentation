@@ -2,8 +2,9 @@
 // in a browser, taken as a PNG at device scale 2 as shoot_docs takes the IDE,
 // and drawn as an SVG by capture.mjs's svgOfPage; diff.mjs compares the two.
 // So a change that draws a replicated part or a text decoration wrongly -- a
-// scrollbar, a drop-down list, a native text field, an underline, a focus ring, a frame, a web font
-// split by unicode-range, an inline <svg>, the annotation layer on a scrolled
+// scrollbar, a drop-down list, a native text field, a checkbox or radio button (disabled ones over
+// two grounds), a list marker painted as a shape, a search field's clear button, an underline, a focus ring, a frame, a web font
+// split by unicode-range, a web font declared twice whose later file lacks a glyph, an inline <svg>, the annotation layer on a scrolled
 // page -- shows here without an IDE, in seconds. The documents of the frames page
 // are under bench/frames/, which is no page of its own.
 //
@@ -110,6 +111,17 @@ async function autoThumb(page) {
     if (rgba[p] > 200 && rgba[p + 2] < 50) n++;
   }
   return n;
+}
+
+// The environment without __COMPAT_LAYER, which Windows' application-health detection puts on a
+// process and its children inherit (DetectorsAppHealth). Edge 156 started under one starts itself
+// again without it (--edge-skip-compat-layer-relaunch) and exits with code 0 at once: Puppeteer
+// reports a failed launch, and the browser it started runs on, holding its profile. Started
+// without the variable, Edge is in the state it would start itself again in, and stays.
+function withoutCompatLayer(env) {
+  const out = { ...env };
+  for (const k of Object.keys(out)) if (k.toUpperCase() === "__COMPAT_LAYER") delete out[k];
+  return out;
 }
 
 // Edge's executable, in the folders it installs into, for the machine or for the user.
@@ -241,6 +253,7 @@ await withBrowser(
     executablePath,
     args: [...LAUNCH_ARGS, "--force-device-scale-factor=1", "--disable-lcd-text"],
     ignoreDefaultArgs: ["--hide-scrollbars"],
+    env: withoutCompatLayer(process.env),
   },
 );
 server.close();

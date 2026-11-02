@@ -16,10 +16,19 @@
 // measured by the bench pages. And colour-filter.mjs, which bakes a filter of colour functions
 // into the colours its group paints. And redraw.mjs, which replay.mjs and sheet.mjs share:
 // redraw, which draws a picture again from its bundle or names its retake, and fails on the
-// user name unless its caller turns the check off; the pictures listed; the folders a sheet
-// is refused; and the sheet's page. And the sheet of changes against a git revision
+// user name unless its caller turns the check off; and the pictures listed. And sheets.mjs:
+// the folders a sheet is refused, and the sheet's page, made of lib/shot-views.mjs's pieces.
+// And the sheet of changes against a git revision
 // (sheet.mjs --against): git's change list, the comparison of two pictures over two sizes,
-// the noise rule, the order and the page.
+// the noise rule, the order and the page. And the url()s of a frozen page's style sheets
+// (lib/shot-freeze.mjs; the freezing itself is in the page). And lib/record-lines.mjs, the records a child
+// process writes among its lines, which runShards reads. And what becomes of a picture and
+// its SVG: lib/shot-policy.mjs's decisions, with a picture's allowances and a review's
+// decisions, and lib/shot-apply.mjs's writing of them, in a scratch folder and a scratch
+// repository. And lib/shot-manifest.mjs, the manifest those come from: its text, what it
+// refuses, and its saving. And a run's stage (lib/shot-stage.mjs), the strength map and its
+// regions (lib/shot-change.mjs) and which pictures need a look (lib/shot-queue.mjs). The
+// screenshot review tool's own modules are tested in test/shot-review.test.mjs.
 //
 // Runs with a bare `node --test test/svgshot.test.mjs`: no tree, no build.
 
@@ -28,11 +37,13 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { PassThrough } from "node:stream";
 import { describe, test } from "node:test";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
   BUNDLE_VERSION,
   bundleFile,
+  copyBundle,
   dropBundle,
   drawBundle,
   listBundles,
@@ -43,42 +54,113 @@ import {
   writeBundle,
 } from "../scripts/svgshot/bundle.mjs";
 import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
-import { decodePng, encodePng } from "../scripts/lib/png.mjs";
-import { changeMap, compareImages, withinNoise } from "../scripts/lib/shot-change.mjs";
+import { cssUrls, rewriteCssUrls } from "../scripts/lib/shot-freeze.mjs";
+import { decodePng, encodePng, pngSize } from "../scripts/lib/png.mjs";
+import { onStop, parseRecord, readRecords, recordLine, sendStop, STOP_LINE } from "../scripts/lib/record-lines.mjs";
 import {
+  readStrength,
+  readVerdicts,
+  stagedFiles,
+  stageRefusal,
+  writeStrength,
+  writeVerdict,
+} from "../scripts/lib/shot-stage.mjs";
+import {
+  applyPicture,
+  applySvg,
+  dropPicture,
+  heldOf,
+  holdPicture,
+  restorePictures,
+  slugOf,
+  unholdPicture,
+} from "../scripts/lib/shot-apply.mjs";
+import {
+  bundleFollowsSvg,
+  cleanupResets,
+  decidePicture,
+  decideSvg,
+  pngRule,
+  SIZE_SLACK,
+  SVG_FAITHFUL,
+  svgFollowsPng,
+  svgRule,
+} from "../scripts/lib/shot-policy.mjs";
+import {
+  earlierPngDecision,
+  earlierSvgDecision,
+  hashOf,
+  manifestText,
+  openManifest,
+  parseManifest,
+  pngDecision,
+  svgDecision,
+} from "../scripts/lib/shot-manifest.mjs";
+import {
+  changeMap,
+  changeRegions,
+  compareImages,
+  NOISE_LEVELS,
+  NOISE_SHARE,
+  pixelDiff,
+  pngsNear,
+  regionMasks,
+  shareOff,
+  strengthOf,
+  withinNoise,
+} from "../scripts/lib/shot-change.mjs";
+import { allowancesOf, meterHtml } from "../scripts/lib/shot-views.mjs";
+import {
+  FAINT_LEVEL,
+  pngLook,
+  pngRegions,
+  reviewPicture,
+  reviewSvg,
+  SURVIVES,
+  surviving,
+  svgLook,
+  svgRegions,
+  WORD_CORE,
+} from "../scripts/lib/shot-queue.mjs";
+import {
+  changedBetween,
+  changedPictures,
+  commitPaths,
   openRevision,
+  outputRefusal,
   parseCatFileBatch,
+  parseNameStatus,
+  parseStatus,
+  parseUntracked,
   pictureFate,
   planCleanup,
   restoreFromRevision,
   revisionOf,
   svgFate,
+  workingChanges,
 } from "../scripts/lib/shot-revision.mjs";
 import {
-  changedPictures,
+  judgedFiles,
+  listPictures,
+  redraw,
+  retakeText,
+  shareOf,
+  staleBundle,
+  themeOf,
+} from "../scripts/svgshot/redraw.mjs";
+import {
   cleanupCommand,
   changeFiles,
   changeSheetHtml,
   compareRevisionPicture,
-  judgedFiles,
-  listPictures,
-  parseNameStatus,
-  parseUntracked,
   restoreCommand,
   sortChangeRows,
   mayWriteSheet,
   notDrawn,
-  outputRefusal,
-  pngSize,
-  redraw,
-  retakeText,
   SHEET_GENERATOR,
   sheetHtml,
-  shareOf,
-  slugOf,
   sortRows,
-  themeOf,
-} from "../scripts/svgshot/redraw.mjs";
+} from "../scripts/svgshot/sheets.mjs";
 import {
   bakeable,
   bakeColour,
@@ -100,20 +182,32 @@ import {
   webRulesFor,
 } from "../scripts/svgshot/fonts.mjs";
 import {
+  accentInk,
+  accentUnknown,
+  backgroundClip,
+  bordersCover,
   canvasColor,
   decodeSnapshot,
+  blendWithWhite,
   decoratingBoxes,
+  ELLIPSIS,
+  ellipsisLines,
   elementTransform,
+  embeddedImage,
   frameGeometry,
+  lineThroughAbove,
   framesIn,
   frameView,
   inlineSvgsIn,
   nativeTextField,
   naturalSize,
   oneLine,
+  renderSvg,
   scopeIds,
+  selectedParts,
   selectLabel,
   shadowShowsThrough,
+  textNeeds,
   underlineBand,
   untransformBox,
   unzoom,
@@ -142,6 +236,687 @@ describe("naturalSize", () => {
     assert.deepEqual(naturalSize(png([...ihdr, 0, 0, 0, 16, 0, 0, 0, 9, 8, 6, 0, 0, 0])), { w: 16, h: 9 });
     const gif = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 20, 0, 10, 0, 0, 0, 0];
     assert.deepEqual(naturalSize(png(gif)), { w: 20, h: 10 });
+  });
+});
+
+describe("lineThroughAbove", () => {
+  test("puts the line where Chromium draws it, from the rounded ascent and the thickness before rounding", () => {
+    // [font size, rounded ascent, the line's top above the baseline], measured in headless Chromium
+    const measured = [
+      [8, 9, 3], // Segoe UI
+      [11, 12, 5],
+      [19, 21, 8],
+      [26, 28, 11],
+      [48, 52, 20],
+      [64, 69, 26],
+      [10, 9, 3], // Consolas
+      [40, 37, 14],
+      [13.5, 12, 5], // Arial
+    ];
+    for (const [size, ascent, above] of measured)
+      assert.equal(lineThroughAbove(ascent, size / 10), above, `${size} px`);
+  });
+});
+
+describe("text-overflow: ellipsis", () => {
+  // A <div> 100 px wide at 10, 10 whose one line of text, at 20, is 200 px wide.
+  const TEXT = "Datatype has not been explicitly declared";
+  const KEY = JSON.stringify(["normal", "400", "13px", "Arial"]);
+  function page({ overflow = "hidden", textOverflow = "ellipsis" } = {}) {
+    const names = ["display", "visibility", "color", "font-family", "font-size", "font-weight", "font-style"];
+    const styleNames = [...names, "overflow-x", ...(textOverflow ? ["text-overflow"] : [])];
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = (clip) => [
+      ...["block", "visible", "rgb(0, 0, 0)", "Arial", "13px", "400", "normal"].map(s),
+      s(clip ? overflow : "visible"),
+      ...(textOverflow ? [s(clip ? textOverflow : "clip")] : []),
+    ];
+    const nodeNames = ["#document", "HTML", "BODY", "DIV", "#text"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2, 3],
+            nodeType: [9, 1, 1, 1, 3],
+            nodeName: nodeNames.map(s),
+            nodeValue: nodeNames.map((n) => (n === "#text" ? s(TEXT) : -1)),
+            attributes: nodeNames.map(() => []),
+          },
+          layout: {
+            nodeIndex: [1, 2, 3, 4],
+            styles: [style(false), style(false), style(true), []],
+            bounds: [
+              [0, 0, 400, 100],
+              [0, 0, 400, 100],
+              [10, 10, 100, 16],
+              [20, 10, 200, 16],
+            ],
+            text: [-1, -1, -1, s(TEXT)],
+            paintOrders: [0, 1, 2, 3],
+          },
+          textBoxes: { layoutIndex: [3], bounds: [[20, 10, 200, 16]], start: [0], length: [TEXT.length] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, styleNames);
+  }
+  const text = (doc) => doc.layouts.find((l) => l.text !== undefined);
+  const draw = (doc, cut) =>
+    renderSvg(doc, {
+      clip: { x: 0, y: 0, w: 400, h: 100 },
+      metrics: () => ({ ascent: 12, height: 15, line: 15 }),
+      textWidth: (_key, s) => (s === ELLIPSIS ? 8 : null),
+      cut,
+    }).svg;
+
+  test("cuts a line its block clips and ends in an ellipsis, past its content box", () => {
+    const doc = page();
+    const line = ellipsisLines(doc).lineOf(text(doc), 0);
+    assert.equal(line.end, 110);
+    assert.equal(line.frags.length, 1);
+    const needs = textNeeds(doc, { x: 0, y: 0, w: 400, h: 100 });
+    assert.deepEqual(needs.cuts, [[KEY, TEXT, KEY, 90, true]]);
+    assert.ok(needs.runs.some(([key, s]) => key === KEY && s === ELLIPSIS));
+  });
+
+  test("draws what fits, then the ellipsis after it", () => {
+    const svg = draw(page(), (...need) => {
+      assert.deepEqual(need, [KEY, TEXT, KEY, 90, true]);
+      return [8, 50];
+    });
+    assert.match(svg, /<text [^>]*x="20"[^>]*>Datatype<\/text>/);
+    assert.match(svg, new RegExp(`<text [^>]*x="70"[^>]*>${ELLIPSIS}</text>`));
+    assert.doesNotMatch(svg, /explicitly/);
+  });
+
+  test("draws the line whole where the page was not asked", () => {
+    assert.match(
+      draw(page(), () => null),
+      /explicitly declared<\/text>/,
+    );
+  });
+
+  test("leaves a line alone that is not clipped or not set to ellipsis", () => {
+    for (const doc of [page({ overflow: "visible" }), page({ textOverflow: "clip" })]) {
+      const { lineOf, unknown } = ellipsisLines(doc);
+      assert.equal(lineOf(text(doc), 0), null);
+      assert.equal(unknown, 0);
+    }
+  });
+
+  test("counts a clipped line as unknown in a snapshot without text-overflow", () => {
+    const doc = page({ textOverflow: null });
+    const { lineOf, unknown } = ellipsisLines(doc);
+    assert.equal(lineOf(text(doc), 0), null);
+    assert.equal(unknown, 1);
+  });
+});
+
+describe("checkboxes and radio buttons", () => {
+  // An <input type> 13 by 13 at 10, 10 with the attributes `attrs`, [name, value or -1], -1 being
+  // how DevTools writes an empty string (the value of `disabled`).
+  function page(type, attrs = [], checked = false) {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = ["block", "visible", "auto"].map(s);
+    const names = ["#document", "HTML", "BODY", "INPUT"];
+    const own = [s("type"), s(type), ...attrs.flatMap(([name, value]) => [s(name), value === -1 ? -1 : s(value)])];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2],
+            nodeType: [9, 1, 1, 1],
+            nodeName: names.map(s),
+            nodeValue: names.map(() => -1),
+            attributes: [[], [], [], own],
+            ...(checked ? { inputChecked: { index: [3] } } : {}),
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [style, style, style],
+            bounds: [
+              [0, 0, 100, 50],
+              [0, 0, 100, 50],
+              [10, 10, 13, 13],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, ["display", "visibility", "appearance"]);
+  }
+  const draw = (doc) => renderSvg(doc, { clip: { x: 0, y: 0, w: 100, h: 50 }, metrics: () => ({}) }).svg;
+
+  test("an attribute DevTools gives with no value is there, as an empty string", () => {
+    const input = page("radio", [["disabled", -1]]).nodes[3];
+    assert.equal(input.attrs.disabled, "");
+    assert.equal(input.attrs.type, "radio");
+  });
+
+  test("a checked one is in the accent #0075ff", () => {
+    assert.match(draw(page("checkbox", [], true)), /<rect width="13" height="13" rx="2" fill="#0075ff"\/>/);
+    assert.match(draw(page("radio", [], true)), /<circle cx="6\.5" cy="6\.5" r="3\.75" fill="#0075ff"\/>/);
+  });
+
+  test("a disabled one is translucent: its fill, then its border and a checked one's dot or ground at 30%", () => {
+    const fill = 'fill="rgba(245, 245, 245, 0.68)"';
+    const line = "rgba(118, 118, 118, 0.3)";
+    const radio = draw(page("radio", [["disabled", -1]]));
+    assert.match(radio, new RegExp(`<circle cx="6\\.5" cy="6\\.5" r="6\\.5" ${fill.replace(/[().]/g, "\\$&")}/>`));
+    assert.ok(radio.includes(`<circle cx="6.5" cy="6.5" r="6" fill="none" stroke="${line}" stroke-width="1"/>`));
+    assert.doesNotMatch(radio, /opacity/);
+    assert.ok(
+      draw(page("radio", [["disabled", -1]], true)).includes(`<circle cx="6.5" cy="6.5" r="3.75" fill="${line}"/>`),
+    );
+    const box = draw(page("checkbox", [["disabled", -1]], true));
+    assert.ok(
+      box.includes(`<rect width="13" height="13" rx="2" ${fill}/><rect width="13" height="13" rx="2" fill="${line}"/>`),
+    );
+    assert.ok(box.includes('stroke="rgba(255, 255, 255, 0.6)"'));
+    // with no disabled attribute, it is drawn opaque
+    assert.match(draw(page("radio")), /<circle cx="6\.5" cy="6\.5" r="6\.5" fill="#767676"\/>/);
+  });
+});
+
+describe("list markers", () => {
+  // An <li> whose ::marker has the text `text` in one fragment at `box`, in a font of `size` px
+  // whose ascent is `ascent`, as DevTools gives it: the marker a node of its own with the pseudo
+  // type, holding a box and the text.
+  function page(text, box, size = "13px", ascent = 14.03) {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const names = ["display", "visibility", "color", "font-family", "font-size", "font-weight", "font-style"];
+    const style = ["block", "visible", "rgb(97, 97, 97)", "Segoe UI", size, "400", "normal"].map(s);
+    const nodeNames = ["#document", "HTML", "BODY", "LI", "::marker"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2, 3],
+            nodeType: [9, 1, 1, 1, 1],
+            nodeName: nodeNames.map(s),
+            nodeValue: nodeNames.map(() => -1),
+            attributes: [[], [], [], [], []],
+            pseudoType: { index: [4], value: [s("marker")] },
+          },
+          layout: {
+            nodeIndex: [1, 2, 3, 4, 4],
+            styles: [style, style, style, style, style],
+            bounds: [[0, 0, 500, 400], [0, 0, 500, 400], [0, 0, 500, 400], box, box],
+            text: [-1, -1, -1, -1, s(text)],
+            paintOrders: [0, 1, 2, 3, 4],
+          },
+          textBoxes: { layoutIndex: [4], bounds: [box], start: [0], length: [text.length] },
+        },
+      ],
+    };
+    const doc = decodeSnapshot(snapshot, names);
+    return renderSvg(doc, { clip: { x: 0, y: 0, w: 500, h: 400 }, metrics: () => ({ ascent, height: 17, line: 17 }) })
+      .svg;
+  }
+
+  test("a disc is a circle sized from the ascent, not the bullet's glyph", () => {
+    // Help_Hover's marker: an ascent of 14 makes a disc 5 px across, 1 px in and 7 px down, snapped
+    const svg = page("\u{2022} ", [398.65625, 294.625, 7, 17]);
+    assert.ok(svg.includes('<ellipse cx="402.5" cy="304.5" rx="2.5" ry="2.5" fill="rgb(97, 97, 97)"/>'), svg);
+    assert.doesNotMatch(svg, /<text/);
+  });
+
+  test("a circle is stroked 1 px wide on the same circle, a square fills its square", () => {
+    assert.ok(
+      page("\u{25E6} ", [10, 20, 7, 17]).includes(
+        '<ellipse cx="13.5" cy="29.5" rx="2.5" ry="2.5" fill="none" stroke="rgb(97, 97, 97)" stroke-width="1"/>',
+      ),
+    );
+    assert.ok(
+      page("\u{25A0} ", [10, 20, 7, 17]).includes('<rect x="11" y="27" width="5" height="5" fill="rgb(97, 97, 97)"/>'),
+    );
+  });
+
+  test("a disclosure triangle is 0.66 of the font size, its foot on the ascent", () => {
+    // 6.6 px for a 10 px font, its top at 20 + 10 - 6.6
+    const closed = page("\u{25B8} ", [10, 20, 7, 13], "10px", 10);
+    assert.ok(closed.includes('<path d="M10 23.4L15.676 26.7L10 30Z" fill="rgb(97, 97, 97)"/>'), closed);
+    const open = page("\u{25BE} ", [10, 20, 7, 13], "10px", 10);
+    assert.ok(open.includes('<path d="M10 23.862L13.3 29.538L16.6 23.862Z"'), open);
+  });
+
+  test("other marker text is drawn as text", () => {
+    assert.match(page("1. ", [10, 20, 14, 17]), /<text[^>]*>1\. <\/text>/);
+  });
+});
+
+describe("a search field's clear button", () => {
+  // A bundle of an <input type="search"> 200 by 25 at 10.5, 10 that shows "format", with the
+  // clear buttons `buttons` read ([layout object's key, what searchButton read] pairs), or none
+  // read when undefined (a bundle taken before they were).
+  function bundleOf(buttons) {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const styles = [
+      "display",
+      "visibility",
+      "color",
+      "font-family",
+      "font-size",
+      "font-weight",
+      "font-style",
+      "-webkit-text-fill-color",
+      ...["top", "right", "bottom", "left"].flatMap((side) => [`padding-${side}`, `border-${side}-width`]),
+    ];
+    const style = [
+      "block",
+      "visible",
+      "rgb(214, 214, 214)",
+      "Segoe UI",
+      "13px",
+      "400",
+      "normal",
+      "rgb(214, 214, 214)",
+      ...Array(8).fill("0px"),
+    ].map(s);
+    const names = ["#document", "HTML", "BODY", "INPUT"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2],
+            nodeType: [9, 1, 1, 1],
+            nodeName: names.map(s),
+            nodeValue: names.map(() => -1),
+            backendNodeId: names.map((_, i) => 100 + i),
+            attributes: [[], [], [], [s("type"), s("search")]],
+            inputValue: { index: [3], value: [s("format")] },
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [style, style, style],
+            bounds: [
+              [0, 0, 300, 50],
+              [0, 0, 300, 50],
+              [10.5, 10, 200, 25],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    const key = JSON.stringify(["normal", "400", "13px", "Segoe UI"]);
+    return {
+      version: BUNDLE_VERSION,
+      styles,
+      view: { x: 0, y: 0, w: 300, h: 50 },
+      background: true,
+      snapshot,
+      docs: [
+        {
+          frameId: "PAGE",
+          scale: null,
+          inner: null,
+          page: {
+            allRuns: [[key, "format"]],
+            widths: [37],
+            metrics: { [key]: { ascent: 14, height: 18, line: 18 } },
+            gaps: [],
+            overlays: [],
+            marked: [],
+            canvases: [],
+            placeholderColor: "rgb(117, 117, 117)",
+          },
+          skips: [],
+          platform: [],
+          webFonts: {},
+          fontFiles: {},
+          svgs: [],
+          scrollbars: [],
+          ...(buttons ? { searchButtons: buttons } : {}),
+          selection: null,
+        },
+      ],
+    };
+  }
+  // The help pane's button as searchButton reads it: 9 px square, 8.5 px in from the field's right.
+  const shown = {
+    x: 182.5,
+    y: 8,
+    w: 9,
+    h: 9,
+    opacity: 1,
+    visibility: "visible",
+    display: "block",
+    appearance: "auto",
+    dark: false,
+  };
+  const X =
+    /<g transform="translate\(193 18\) scale\(1\)"><path d="M1\.5 1\.5L7\.5 7\.5M7\.5 1\.5L1\.5 7\.5" fill="none" stroke="([^"]+)" stroke-width="2\.1" stroke-linecap="round"\/><\/g>/;
+
+  test("is drawn in its box, snapped, in the light scheme's blue, shaded from top to bottom", () => {
+    const { drawn, misses } = drawBundle(bundleOf([["0:2", shown]]));
+    const [, paint] = drawn.svg.match(X) ?? [];
+    assert.match(paint ?? "", /^url\(#d\d+\)$/, drawn.svg);
+    assert.match(
+      drawn.svg,
+      /<linearGradient id="d\d+" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="9"><stop offset="0\.1" stop-color="rgb\(64, 121, 187\)"\/>/,
+    );
+    assert.ok(!misses.some((m) => m.includes("clear button")));
+  });
+
+  test("is white in a dark scheme, faded as the page fades it, and not drawn while hidden", () => {
+    assert.equal(drawBundle(bundleOf([["0:2", { ...shown, dark: true }]])).drawn.svg.match(X)?.[1], "#fff");
+    assert.match(drawBundle(bundleOf([["0:2", { ...shown, opacity: 0.5 }]])).drawn.svg, /scale\(1\)" opacity="0\.5">/);
+    for (const hidden of [{ opacity: 0 }, { visibility: "hidden" }, { display: "none" }])
+      assert.doesNotMatch(drawBundle(bundleOf([["0:2", { ...shown, ...hidden }]])).drawn.svg, /stroke-linecap/);
+    assert.doesNotMatch(drawBundle(bundleOf([["0:2", null]])).drawn.svg, /stroke-linecap/);
+  });
+
+  test("is a question a bundle taken before the buttons were read has no answer for", () => {
+    const { drawn, misses } = drawBundle(bundleOf(undefined));
+    assert.ok(misses.includes("the clear button of a search field that shows text"), misses.join("; "));
+    assert.doesNotMatch(drawn.svg, /stroke-linecap/);
+  });
+});
+
+describe("a text field's selection", () => {
+  test("selectedParts splits each line at the selection, a tab expanded from the line's start", () => {
+    assert.deepEqual(selectedParts("360", false, "8", 0, 3), [{ before: "", selected: "360", after: "" }]);
+    assert.deepEqual(selectedParts("abcdef", false, "8", 2, 4), [{ before: "ab", selected: "cd", after: "ef" }]);
+    // a textarea's lines, the range across their break, a tab of 4
+    assert.deepEqual(selectedParts("ab\r\n\tcd\nef", true, "4", 1, 6), [
+      { before: "a", selected: "b", after: "" },
+      { before: "", selected: "    c", after: "d" },
+      // a line after the range is after the selection whole
+      { before: "", selected: "", after: "ef" },
+    ]);
+  });
+
+  test("blendWithWhite makes Chromium's own selection colour translucent, as Color::BlendWithWhite does", () => {
+    // WebView2's SelectedItem, which paints rgb(51, 103, 209) over white
+    assert.equal(blendWithWhite("rgb(25, 103, 210)"), "rgba(0, 65, 198, 0.8)");
+    // a light colour blends at the first alpha
+    assert.equal(blendWithWhite("rgb(200, 200, 200)"), "rgba(163, 163, 163, 0.6)");
+    assert.equal(blendWithWhite("rgba(1, 2, 3, 0.5)"), "rgba(1, 2, 3, 0.5)");
+  });
+
+  // An <input> 100 by 17 at 10, 10, its node's backend id 4, holding "360 x".
+  const NAMES = [
+    "display",
+    "visibility",
+    "color",
+    "font-family",
+    "font-size",
+    "font-weight",
+    "font-style",
+    "text-align",
+    "-webkit-text-fill-color",
+  ];
+  function page() {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = ["block", "visible", "rgb(0, 0, 0)", "Arial", "13px", "400", "normal", "start", "rgb(0, 0, 0)"].map(
+      s,
+    );
+    const names = ["#document", "HTML", "BODY", "INPUT"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2],
+            nodeType: [9, 1, 1, 1],
+            nodeName: names.map(s),
+            nodeValue: names.map(() => -1),
+            backendNodeId: [1, 2, 3, 4],
+            attributes: names.map(() => []),
+            inputValue: { index: [3], value: [s("360 x")] },
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [style, style, style],
+            bounds: [
+              [0, 0, 200, 100],
+              [0, 0, 200, 100],
+              [10, 10, 100, 17],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, NAMES);
+  }
+  const KEY = JSON.stringify(["normal", "400", "13px", "Arial"]);
+  const WIDTHS = { "360 x": 34, 360: 21, " x": 13, "": 0 };
+  const draw = (selection) =>
+    renderSvg(page(), {
+      clip: { x: 0, y: 0, w: 200, h: 100 },
+      metrics: () => ({ ascent: 12, height: 15, line: 17 }),
+      textWidth: (key, text) => (key === KEY ? (WIDTHS[text] ?? null) : null),
+      selection,
+    });
+  // what was not drawn, but for the text's fonts, which the fixture gives none of
+  const notDrawn = ({ stats }) =>
+    Object.fromEntries(Object.entries(stats.unsupported).filter(([what]) => what !== "text in an unembedded font"));
+  const selected = {
+    backendNodeId: 4,
+    start: 0,
+    end: 3,
+    focused: true,
+    given: false,
+    background: "rgb(25, 103, 210)",
+    color: "rgb(255, 255, 255)",
+  };
+
+  test("textNeeds measures the parts of a selected line", () => {
+    const { runs } = textNeeds(page(), { x: 0, y: 0, w: 200, h: 100 }, { selection: selected });
+    assert.deepEqual(runs.map(([, text]) => text).sort(), ["360", "360 x", " x"].sort());
+  });
+
+  test("the selected part is drawn on the selection's ground, blended as Chromium blends it, in its colour", () => {
+    const drawn = draw(selected);
+    const { svg } = drawn;
+    assert.match(svg, /<rect x="10" y="10" width="21" height="17" fill="rgba\(0, 65, 198, 0\.8\)"\/>/);
+    assert.match(svg, /<text class="(t\d+)" x="10" y="[\d.]+" textLength="21" lengthAdjust="spacing">360<\/text>/);
+    assert.match(svg, /<text class="t\d+" x="31" y="[\d.]+" textLength="13" lengthAdjust="spacing"> x<\/text>/);
+    // the selected text in the selection's colour, the rest in the field's
+    assert.match(svg, /fill:rgb\(255, 255, 255\)/);
+    assert.deepEqual(notDrawn(drawn), {});
+    // a colour the page gives is drawn as it is
+    assert.match(draw({ ...selected, given: true, background: "rgb(1, 2, 3)" }).svg, /fill="rgb\(1, 2, 3\)"\/>/);
+  });
+
+  test("a selection in a window without focus, or outside a field, is reported as not drawn", () => {
+    const blurred = draw({ ...selected, focused: false });
+    assert.doesNotMatch(blurred.svg, /<rect x="10" y="10" width="21"/);
+    assert.match(blurred.svg, />360 x<\/text>/);
+    assert.deepEqual(notDrawn(blurred), { "a text selection in a window without focus": 1 });
+    assert.deepEqual(notDrawn(draw({ outside: true })), { "a text selection outside a text field": 1 });
+    // another field's selection, or none, draws the field's text whole
+    assert.match(draw({ ...selected, backendNodeId: 9 }).svg, />360 x<\/text>/);
+    assert.match(draw(null).svg, />360 x<\/text>/);
+  });
+});
+
+describe("outlines", () => {
+  // A <div> 100 by 20 at 10, 10 with the outline `outline` (style width colour) and the radius `radius`.
+  const NAMES = [
+    "display",
+    "visibility",
+    "outline-style",
+    "outline-width",
+    "outline-color",
+    "outline-offset",
+    ...["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`),
+  ];
+  function page(style, width, radius = "0px", offset = "0px") {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const plain = ["block", "visible", "none", "0px", "rgb(0, 0, 0)", "0px", "0px", "0px", "0px", "0px"].map(s);
+    const names = ["#document", "HTML", "BODY", "DIV"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2],
+            nodeType: [9, 1, 1, 1],
+            nodeName: names.map(s),
+            nodeValue: names.map(() => -1),
+            attributes: names.map(() => []),
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [
+              plain,
+              plain,
+              ["block", "visible", style, width, "rgba(0, 0, 0, 0.47)", offset, radius, radius, radius, radius].map(s),
+            ],
+            bounds: [
+              [0, 0, 200, 100],
+              [0, 0, 200, 100],
+              [10, 10, 100, 20],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, NAMES);
+  }
+  const draw = (doc) =>
+    renderSvg(doc, { clip: { x: 0, y: 0, w: 200, h: 100 }, metrics: () => ({ ascent: 12, height: 15, line: 15 }) }).svg;
+
+  test("a solid one with square corners is one stroked rectangle round the box", () => {
+    assert.match(
+      draw(page("solid", "1px")),
+      /<rect x="9\.5" y="9\.5" width="101" height="21" fill="none" stroke="rgba\(0, 0, 0, 0\.47\)" stroke-width="1"\/>/,
+    );
+    // moved out by its offset
+    assert.match(draw(page("solid", "2px", "0px", "3px")), /<rect x="6" y="6" width="108" height="28" fill="none"/);
+  });
+
+  test("a dashed one is drawn as a dashed border round the box, each side's dashes laid out as a border's", () => {
+    const svg = draw(page("dashed", "1px"));
+    assert.doesNotMatch(svg, /<rect [^>]*stroke=/);
+    const sides = svg.match(
+      /<path d="[^"]*" fill="none" stroke="rgba\(0, 0, 0, 0\.47\)" stroke-width="1" stroke-dasharray="[^"]*"\/>/g,
+    );
+    assert.equal(sides?.length, 4);
+    assert.match(svg, /<path d="M9 9\.5H111"/);
+  });
+
+  test("a solid one follows the box's rounded corners, moved out with it", () => {
+    const svg = draw(page("solid", "1px", "4px"));
+    assert.doesNotMatch(svg, /<rect [^>]*stroke=/);
+    assert.match(svg, /<path fill-rule="evenodd" fill="rgba\(0, 0, 0, 0\.47\)" d="M14 9H106A5 5 0 0 1 111 14/);
+  });
+
+  test("a focus ring round square corners is rounded by Chromium's default radius, moved out with each band", () => {
+    const svg = draw(page("auto", "1px"));
+    // the white band from 1 to 2 px out, the path's 2.85 px radius grown by each
+    assert.match(
+      svg,
+      /<path fill-rule="evenodd" fill="#fff" d="M12\.85 8H107\.15A4\.85 4\.85 0 0 1 112 12\.85[^"]*M12\.85 9H107\.15A3\.85 3\.85 0 0 1 111 12\.85/,
+    );
+    // the band in the outline colour from 1 px in to 1 px out
+    assert.match(
+      svg,
+      /fill="rgba\(0, 0, 0, 0\.47\)" d="M12\.85 9H[^"]*M12\.85 11H107\.15A1\.85 1\.85 0 0 1 109 12\.85/,
+    );
+    // a box's own rounded corners are the ring's, not the default
+    assert.match(draw(page("auto", "1px", "4px")), /fill="#fff" d="M14 8H106A6 6 0 0 1 112 14/);
+  });
+});
+
+describe("bordersCover", () => {
+  const side = (width, style = "solid", color = "rgb(153, 153, 153)") => ({ width, style, color });
+  test("is true where every side of a width is opaque and fills it, and the background is then drawn in the padding box", () => {
+    // the menu separator: four 1 px sides of an inset border, as borders() gives them
+    const separator = [
+      side(1),
+      side(1, "solid", "rgb(238, 238, 238)"),
+      side(1, "solid", "rgb(255, 255, 255)"),
+      side(1),
+    ];
+    const square = [
+      [0, 0],
+      [0, 0],
+      [0, 0],
+      [0, 0],
+    ];
+    assert.equal(bordersCover(separator), true);
+    assert.equal(backgroundClip("border-box", separator, square), "padding-box");
+    // a rounded box keeps its background under its borders: its curved inner edge is antialiased
+    const round = square.map(() => [8, 8]);
+    assert.equal(backgroundClip("border-box", separator, round), "border-box");
+    // a side of no width is no gap; groove and ridge fill their side too
+    assert.equal(bordersCover([side(0), side(2, "groove"), side(0), side(2, "ridge")]), true);
+    // the background shows between double, dotted and dashed marks, and through a translucent side
+    for (const style of ["double", "dotted", "dashed"])
+      assert.equal(bordersCover([side(1), side(1, style), side(1), side(1)]), false);
+    assert.equal(bordersCover([side(1), side(1, "solid", "rgba(0, 0, 0, 0.5)"), side(1), side(1)]), false);
+    // no border at all: nothing to avoid, and the clip asked for is kept
+    assert.equal(bordersCover([side(0), side(0), side(0), side(0)]), false);
+    assert.equal(backgroundClip("border-box", [side(0), side(0), side(0), side(0)], square), "border-box");
+    assert.equal(backgroundClip("content-box", separator, square), "content-box");
+  });
+});
+
+describe("embeddedImage", () => {
+  const node = (name, attrs) => ({ name, attrs });
+  test("is the data: image an <embed> shows, which Chromium draws as an <img>", () => {
+    const ico = "data:image/x-icon;base64,AAABAAEAQD8Q";
+    assert.equal(embeddedImage(node("EMBED", { src: ico, class: "embeddedPreview" })), ico);
+    assert.equal(embeddedImage(node("EMBED", { src: "data:IMAGE/PNG;base64,iVBO" })), "data:IMAGE/PNG;base64,iVBO");
+    // a plugin's resource, a file the SVG cannot reach, no source, or another element: none
+    assert.equal(embeddedImage(node("EMBED", { src: "data:application/pdf;base64,JVBE" })), null);
+    assert.equal(embeddedImage(node("EMBED", { src: "http://localhost/a.ico" })), null);
+    assert.equal(embeddedImage(node("EMBED", {})), null);
+    assert.equal(embeddedImage(node("IMG", { src: ico })), null);
   });
 });
 
@@ -234,6 +1009,14 @@ describe("colour filters", () => {
       '<use href="#d5"/>',
     );
     assert.equal(defs[5], '<g id="d5" filter="url(#dF)"><use href="#d4"/></g>');
+  });
+
+  test("bakeMarkup with no colour step (opacity() alone) changes nothing, and wraps no picture", () => {
+    const defs = ['<image id="d0" width="1" height="1" href="data:image/svg+xml,x"/>'];
+    const { ctx } = converter(defs, new Map());
+    const markup = '<use href="#d0"/><rect fill="rgb(1, 2, 3)"/>';
+    assert.equal(bakeMarkup(markup, { key: "opacity(0.5)", steps: steps("opacity(0.5)") }, ctx), markup);
+    assert.equal(defs.length, 1);
   });
 });
 
@@ -399,6 +1182,35 @@ describe("bundles", () => {
     }
   });
 
+  test("staleBundle says why the cache's bundle cannot draw a picture again, as redraw does, or null", async () => {
+    const bundle = structuredClone(bundleOf(measured));
+    const extra = SNAPSHOT_STYLES.filter((s) => !STYLES.includes(s));
+    bundle.styles = [...STYLES, ...extra];
+    for (const row of bundle.snapshot.documents[0].layout.styles) row.push(...extra.map(() => -1));
+    const { misses } = await renderBundle(bundle);
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "stale-test-"));
+    try {
+      const bundlesRoot = path.join(root, "bundles");
+      const docsRoot = path.join(root, "docs");
+      fs.mkdirSync(path.join(docsRoot, "Images"), { recursive: true });
+      const png = Buffer.from("the picture");
+      fs.writeFileSync(path.join(docsRoot, "Images/x.png"), png);
+      const args = { bundlesRoot, docsRoot, out: "Images/x.png" };
+      assert.deepEqual(staleBundle(args), { retake: "there is no bundle" });
+      writeBundle(bundlesRoot, "Images/x.png", bundle, png, misses);
+      assert.equal(staleBundle(args), null);
+      // a question its capture had no answer for either is no reason
+      writeBundle(bundlesRoot, "Images/x.png", bundle, png, []);
+      assert.deepEqual(staleBundle(args), { retake: "no answer for 1 question", detail: misses[0] });
+      writeBundle(bundlesRoot, "Images/x.png", { ...bundle, version: BUNDLE_VERSION - 1 }, png, misses);
+      assert.match(staleBundle(args).retake, /^the bundle is of format /);
+      writeBundle(bundlesRoot, "Images/x.png", bundle, Buffer.from("another picture"), misses);
+      assert.deepEqual(staleBundle(args), { retake: "the PNG is not the one the bundle was taken with" });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("counts each question a bundle has no answer for, once", async () => {
     const { misses } = await renderBundle(
       bundleOf((key) => ({ ...measured(key), allRuns: [], widths: [], metrics: {} })),
@@ -456,6 +1268,123 @@ describe("bundles", () => {
     assert.match(svg, /<rect x="12" y="12" width="200" height="20" fill="rgba\(0, 0, 0, 0\.5\)" filter=/);
   });
 
+  // The select's box with a picture for its background, `size` and centred, and its corners
+  // rounded by `radius`.
+  const PICTURE =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAARklEQVRYw+3WIQoAIBBFQRWbyfsfyuBBTHaPIChomdeXgZ829tbCaXOM49sUPgUGg8FgMBj8vnzzN5VaTQ0Gg8FgMBi8bwFG0AiWOjVj3QAAAABJRU5ErkJggg==";
+  const pictured = (size, radius) => {
+    const bundle = bundleOf(measured);
+    const corners = ["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`);
+    const extra = ["background-image", "background-size", "background-position", "background-repeat", ...corners];
+    bundle.styles = [...STYLES, ...extra];
+    const { strings, documents } = bundle.snapshot;
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const styles = documents[0].layout.styles;
+    for (const st of styles) st.push(s("none"), s("auto"), s("0% 0%"), s("repeat"), ...corners.map(() => s("0px")));
+    const own = [`url("${PICTURE}")`, size, "50% 50%", "no-repeat", ...corners.map(() => radius)];
+    own.forEach((v, k) => {
+      styles[2][STYLES.length + k] = s(v);
+    });
+    return renderBundle(bundle);
+  };
+
+  test("clips a background picture that reaches into a rounded corner to the corner", async () => {
+    const { svg } = await pictured("200px 20px", "3px");
+    const clip =
+      /<clipPath id="(\w+)"><path d="M13 10H207A3 3 0 0 1 210 13V27A3 3 0 0 1 207 30H13A3 3 0 0 1 10 27V13A3 3 0 0 1 13 10Z"\/><\/clipPath>/;
+    const [, id] = clip.exec(svg) ?? [];
+    assert.ok(id, svg);
+    assert.match(
+      svg,
+      new RegExp(
+        `<g clip-path="url\\(#${id}\\)"><use href="#\\w+" transform="translate\\(10 10\\) scale\\(200 20\\)"/></g>`,
+      ),
+    );
+    // Clear of the corners, or in a square box: drawn as it is.
+    for (const [size, radius] of [
+      ["16px 16px", "3px"],
+      ["200px 20px", "0px"],
+    ]) {
+      const { svg } = await pictured(size, radius);
+      assert.doesNotMatch(svg, /<g clip-path="url\(#\w+\)"><use/, `${size} ${radius}`);
+      assert.match(svg, /<use href="#\w+" transform="translate\([\d.]+ [\d.]+\) scale\([\d.]+ [\d.]+\)"\/>/);
+    }
+  });
+
+  // The select's box with 1px solid borders, grey at the top and left and black at the right
+  // and bottom (the IDE's Import from file... button), its corners rounded by `radius`.
+  const bordered = (radius) => {
+    const bundle = bundleOf(measured);
+    const sides = ["top", "right", "bottom", "left"];
+    const corners = ["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`);
+    const extra = [
+      ...sides.flatMap((s) => [`border-${s}-width`, `border-${s}-style`, `border-${s}-color`]),
+      ...corners,
+    ];
+    bundle.styles = [...STYLES, ...extra];
+    const { strings, documents } = bundle.snapshot;
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const styles = documents[0].layout.styles;
+    for (const st of styles)
+      st.push(...sides.flatMap(() => [s("0px"), s("none"), s("rgb(0, 0, 0)")]), ...corners.map(() => s("0px")));
+    const colours = ["rgb(133, 133, 133)", "rgb(0, 0, 0)", "rgb(0, 0, 0)", "rgb(133, 133, 133)"];
+    const own = [...colours.flatMap((c) => ["1px", "solid", c]), ...corners.map(() => radius)];
+    own.forEach((v, k) => {
+      styles[2][STYLES.length + k] = s(v);
+    });
+    return renderBundle(bundle);
+  };
+
+  test("draws rounded sides of different colours as the rounded ring, each in its side's wedge", async () => {
+    const { svg } = await bordered("5px");
+    const ring =
+      "M15 10H205A5 5 0 0 1 210 15V25A5 5 0 0 1 205 30H15A5 5 0 0 1 10 25V15A5 5 0 0 1 15 10Z" +
+      "M15 11H205A4 4 0 0 1 209 15V25A4 4 0 0 1 205 29H15A4 4 0 0 1 11 25V15A4 4 0 0 1 15 11Z";
+    const drawn = [
+      ...svg.matchAll(/<path fill-rule="evenodd" fill="([^"]+)" d="([^"]+)" clip-path="url\(#(\w+)\)"\/>/g),
+    ];
+    assert.deepEqual(
+      drawn.map((m) => [m[1], m[2]]),
+      ["rgb(133, 133, 133)", "rgb(0, 0, 0)", "rgb(0, 0, 0)", "rgb(133, 133, 133)"].map((c) => [c, ring]),
+    );
+    // The top's wedge reaches 5px in along each diagonal, past the corners' curves.
+    const top = new RegExp(`<clipPath id="${drawn[0][3]}"><polygon points="10 10 210 10 205 15 15 15"/></clipPath>`);
+    assert.match(svg, top);
+    // Square corners keep their trapezoids.
+    const square = (await bordered("0px")).svg;
+    assert.match(square, /<polygon points="10 10 210 10 209 11 11 11" fill="rgb\(133, 133, 133\)"\/>/);
+    assert.doesNotMatch(square, /fill-rule="evenodd" fill="rgb\(133, 133, 133\)"/);
+  });
+
+  test("draws a checked control's white parts in the ink its accent-color gives", () => {
+    // The fitted points: white down to a 3:1 contrast with white, dark below it.
+    assert.equal(accentInk("rgb(71, 116, 164)"), "#fff");
+    assert.equal(accentInk("rgb(148, 148, 148)"), "#fff");
+    assert.equal(accentInk("rgb(150, 150, 150)"), "rgb(59, 59, 59)");
+    assert.equal(accentInk("rgb(255, 0, 0)"), "#fff");
+    assert.equal(accentInk("rgb(0, 192, 192)"), "rgb(59, 59, 59)");
+    assert.equal(accentInk("#0075ff"), "#fff");
+  });
+
+  test("knows when a bundle cannot say a checked control's accent-color", () => {
+    const control = (attrs, checked, style) => ({
+      layouts: [{ node: { name: "INPUT", attrs: { type: "checkbox", ...attrs }, checked }, style }],
+    });
+    const shown = { visibility: "visible", appearance: "auto" };
+    assert.equal(accentUnknown(control({}, true, shown)), true);
+    assert.equal(accentUnknown(control({}, true, { ...shown, "accent-color": "auto" })), false);
+    // Unchecked or disabled, it is drawn without its accent.
+    assert.equal(accentUnknown(control({}, false, shown)), false);
+    assert.equal(accentUnknown(control({ disabled: "" }, true, shown)), false);
+    assert.equal(accentUnknown(control({}, true, { ...shown, appearance: "none" })), false);
+  });
+
   test("draws a text field left with the browser's border and background as Chromium's native one", () => {
     const own = {
       appearance: "auto",
@@ -483,8 +1412,8 @@ describe("bundles", () => {
 
   test("refuses a bundle of another version, the one before this format included", async () => {
     await assert.rejects(renderBundle({ ...bundleOf(measured), version: BUNDLE_VERSION + 1 }), /a bundle of version/);
-    assert.equal(BUNDLE_VERSION, 2);
-    await assert.rejects(renderBundle({ ...bundleOf(measured), version: 1 }), /a bundle of version 1, not 2/);
+    assert.equal(BUNDLE_VERSION, 3);
+    await assert.rejects(renderBundle({ ...bundleOf(measured), version: 2 }), /a bundle of version 2, not 3/);
   });
 
   describe("web fonts in a bundle", () => {
@@ -940,9 +1869,17 @@ describe("frames", () => {
     assert.deepEqual(bars.client, { w: 273, h: 188 });
     assert.deepEqual(bars.scroll, { x: 0, y: 30, w: 300, h: 500 });
     assert.deepEqual(bars.bounds, geometry.box);
-    // A viewport the document fits in has none, and nor does a zoomed frame (not drawn).
+    // A viewport the document fits in has none.
     assert.equal(viewportGutters(doc, { w: 273, h: 188 }), null);
-    assert.equal(viewportScroller(doc, { ...geometry, scale: 0.75 }, inner), null);
+    // A zoomed frame's bars are as thick in the parent's px as any, and the rest of the
+    // stand-in is in the parent's px too: a frame at 0.75 whose viewport is 293 by 188 of
+    // its own px, 20 of them its bar, has a bar 15 px thick in a box of 219.75 by 141.
+    const box = { x: 106, y: 56, w: 219.75, h: 141 };
+    const zoomed = viewportScroller(doc, { box, scale: 0.75 }, { w: 293, h: 188 });
+    assert.deepEqual(zoomed.viewport, { v: 15, h: 0 });
+    assert.deepEqual(zoomed.client, { w: 204.75, h: 141 });
+    assert.deepEqual(zoomed.scroll, { x: 0, y: 22.5, w: 225, h: 375 });
+    assert.deepEqual(zoomed.bounds, box);
     // The <body> is the first element whose scrollbar rules style the viewport, then the root element.
     assert.deepEqual(
       viewportStyleSources(doc).map((n) => n.name),
@@ -959,6 +1896,24 @@ describe("frames", () => {
     assert.equal(canvasColor(page), "rgb(4, 4, 4)");
     for (const n of doc.nodes) if (n.style) n.style["background-color"] = "rgba(0, 0, 0, 0)";
     assert.equal(canvasColor(doc), null);
+  });
+});
+
+describe("a frozen page's style sheets (shot-freeze.mjs)", () => {
+  test("the url()s of a sheet are found as Chromium writes them and as an author does, references into the document left out", () => {
+    const text = `@font-face{src:url("../fonts/a \\"b\\".woff2") format("woff2")} .x{background:url('i.png')} .y{background-image:url( bare.svg )} .z{filter:url(#f)} .w{mask:url("#m")}`;
+    assert.deepEqual(
+      cssUrls(text).map((u) => u.url),
+      ['../fonts/a "b".woff2', "i.png", "bare.svg"],
+    );
+    for (const u of cssUrls(text)) assert.match(text.slice(u.start, u.end), /^url\(.*\)$/);
+  });
+
+  test("each url() is replaced by what it is given, quoted and escaped, and one given null stays as it was", async () => {
+    const text = `a{b:url(x.png)} c{d:url("y.woff2")} e{f:url(#g)}`;
+    const out = await rewriteCssUrls(text, async (u) => (u === "x.png" ? 'data:image/png;base64,QQ"' : null));
+    assert.equal(out, `a{b:url("data:image/png;base64,QQ\\"")} c{d:url("y.woff2")} e{f:url(#g)}`);
+    assert.equal(await rewriteCssUrls("no urls here", async () => "z"), "no urls here");
   });
 });
 
@@ -1104,13 +2059,20 @@ describe("unicode-range", () => {
     assert.deepEqual(chosen(""), []);
   });
 
-  test("where ranges overlap the later rule has the character, and comes first", () => {
+  test("where ranges overlap the later rule comes first, and the earlier is kept for what it lacks", () => {
     const overlap = [
       { name: "all", range: "" },
       { name: "latin", range: "U+0-7F" },
     ];
-    assert.deepEqual(chosen("ab", overlap), ["latin"]);
-    assert.deepEqual(chosen("a一", overlap), ["latin", "all"]);
+    // a character the later file has no glyph for is drawn from the earlier one
+    assert.deepEqual(chosen("ab", overlap), ["latin", "all"]);
+    assert.deepEqual(chosen("一", overlap), ["all"]);
+    // the IDE's codicon twice, its own file and then Monaco's, with no range
+    const codicon = [
+      { name: "ide", range: "" },
+      { name: "monaco", range: "" },
+    ];
+    assert.deepEqual(chosen("\u{EC15}", codicon), ["monaco", "ide"]);
   });
 });
 
@@ -1272,11 +2234,11 @@ describe("web fonts as WOFF2", () => {
   });
 });
 
-// redraw.mjs's parts that need no browser: what sheet.mjs lists, where it may write, and the page.
+// redraw.mjs's parts that need no browser, what sheet.mjs lists, and sheets.mjs: where it may write, and the page.
 describe("the sheet", () => {
   const PNG = (w, h) => {
     const b = Buffer.alloc(33);
-    b.writeUInt32BE(0x89504e47, 0);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b);
     b.write("IHDR", 12, "latin1");
     b.writeUInt32BE(w, 16);
     b.writeUInt32BE(h, 20);
@@ -1294,7 +2256,12 @@ describe("the sheet", () => {
       diff: "a__X.svg-diff.png",
     });
     assert.deepEqual(pngSize(PNG(800, 600)), [800, 600]);
+    assert.deepEqual(pngSize(new Uint8Array(PNG(3, 4))), [3, 4]);
+    assert.deepEqual(pngSize(encodePng({ width: 2, height: 5, rgba: new Uint8Array(40) })), [2, 5]);
     assert.equal(pngSize(Buffer.from("not a png at all, but long enough")), null);
+    assert.equal(pngSize(PNG(8, 8).subarray(0, 23)), null);
+    // A JPEG's bytes read as a PNG's header would give a size of millions: not a PNG.
+    assert.equal(pngSize(Buffer.from("ffd8ffe000104a46494600010100000100010000ff", "hex")), null);
     assert.deepEqual(shareOf(["a", "b", "c", "d", "e"], { k: 1, of: 2 }), ["b", "d"]);
   });
 
@@ -1421,6 +2388,67 @@ describe("the sheet", () => {
     assert.ok(!html.includes("IDE__Gone.svg"));
     assert.ok(sheetHtml({ rows: [], plain: [], bar: 0.25, all: true }).includes("Every picture against its SVG"));
   });
+
+  test("describes a picture's allowances, and nothing for an entry with none", () => {
+    assert.deepEqual(allowancesOf(null), { png: null, svg: null });
+    assert.deepEqual(allowancesOf({ build: 1501, png: { decision: { keep: "old", capture: "x" } } }), {
+      png: null,
+      svg: null,
+    });
+    const both = allowancesOf({
+      png: {
+        noise: { share: 0.8 },
+        ignore: [
+          [0, 0, 4, 4],
+          [8, 8, 9, 9],
+        ],
+      },
+      svg: { bar: { levels: 200 } },
+    });
+    assert.equal(
+      both.png,
+      `PNG allowance: within noise when no pixel is more than ${NOISE_LEVELS} levels off and at most 0.8% are off at all, 2 rectangles left out`,
+    );
+    assert.equal(both.svg, `SVG allowance: written below ${SVG_FAITHFUL}% of the pixels 200 levels or more off`);
+    assert.match(allowancesOf({ svg: { ignore: [[0, 0, 1, 1]] } }).svg, /96 levels or more off, 1 rectangle left out$/);
+    // A limit of its own past the meter's full width is marked at its end.
+    assert.ok(meterHtml(0, 10, 100, "").includes('<b style="left:100%">'));
+  });
+
+  test("shows a picture's own bar and a review's decision on its card", () => {
+    const row = {
+      out: "IDE/A.png",
+      theme: "dark",
+      size: [10, 10],
+      pct96: 0.4,
+      pct32: 1,
+      pct8: 2,
+      source: "bundle",
+      files: judgedFiles("IDE/A.png"),
+    };
+    const html = sheetHtml({
+      rows: [
+        {
+          ...row,
+          faithful: true,
+          by: "rule",
+          allowance: "SVG allowance: written below 0.5% of the pixels 96 levels or more off",
+          own: { share: 0.4, bar: 0.5 },
+        },
+        { ...row, out: "IDE/B.png", faithful: true, by: "decision", allowance: null, own: null },
+      ],
+      plain: [],
+      bar: 0.25,
+      all: false,
+    });
+    assert.ok(
+      html.includes("SVG allowance: written below 0.5% of the pixels 96 levels or more off: <b>0.4% off by it</b>"),
+    );
+    assert.ok(html.includes('title="0.4% off by its own bar; the bar is 0.5%"'));
+    assert.ok(html.includes('<b style="left:5%">'));
+    assert.ok(html.includes("<b>accepted by a review's decision</b>"));
+    assert.ok(html.includes('title="0.4% strongly off; the bar is 0.25%"'));
+  });
 });
 
 // The sheet of changes against a git revision (sheet.mjs --against): the change list from git's
@@ -1517,8 +2545,30 @@ describe("the change sheet", () => {
     // Pictures of two sizes are never the same picture.
     assert.equal(withinNoise(a, image(100, 101)), false);
     // A rectangle left out is not looked at: row 0 holds all 80 changed pixels, a smaller one not.
-    assert.equal(withinNoise(a, patch(80, 200), [{ x0: 0, y0: 0, x1: 100, y1: 1 }]), true);
-    assert.equal(withinNoise(a, patch(80, 200), [{ x0: 0, y0: 0, x1: 79, y1: 1 }]), false);
+    assert.equal(withinNoise(a, patch(80, 200), { rects: [{ x0: 0, y0: 0, x1: 100, y1: 1 }] }), true);
+    assert.equal(withinNoise(a, patch(80, 200), { rects: [{ x0: 0, y0: 0, x1: 79, y1: 1 }] }), false);
+    // Other limits: 17 levels within 17, 51 pixels within a share of 0.51%.
+    assert.equal(withinNoise(a, patch(1, 117), { levels: 17 }), true);
+    assert.equal(withinNoise(a, patch(51, 116), { share: 0.0051 }), true);
+  });
+
+  test("measures two pixels as seen over black and over white", () => {
+    const px = (...rgba) => ({ rgba: new Uint8Array(rgba) });
+    const d = (p, q) => pixelDiff(p, 0, q, 0);
+    // opaque: the largest channel's difference
+    assert.equal(d(px(10, 20, 30, 255), px(10, 25, 27, 255)), 5);
+    // a shadow's last pixel, its colour rounding: 1 of opacity apart, not 255 levels
+    assert.equal(d(px(255, 255, 255, 1), px(0, 0, 0, 0)), 1);
+    assert.equal(d(px(255, 255, 255, 2), px(0, 0, 0, 2)), 2);
+    // transparent pixels of any colour are the same
+    assert.equal(d(px(255, 0, 9, 0), px(0, 0, 0, 0)), 0);
+    // black at alpha 100 and 200: the same over black, 100 apart over white
+    assert.equal(d(px(0, 0, 0, 100), px(0, 0, 0, 200)), 100);
+    // opaque white and nothing: 255 apart over black
+    assert.equal(d(px(255, 255, 255, 255), px(0, 0, 0, 0)), 255);
+    // a cut-out's shadow edge within noise, though its colours are 255 apart
+    const edge = (grey, alpha) => ({ width: 1, height: 1, rgba: new Uint8Array([grey, grey, grey, alpha]) });
+    assert.equal(withinNoise(edge(255, 1), edge(0, 1), { share: 1 }), true);
   });
 
   test("compares two pictures of one size over their pixels", () => {
@@ -1604,6 +2654,52 @@ describe("the change sheet", () => {
       new: "a__X.light.new.png",
       map: "a__X.light.change.png",
     });
+  });
+
+  test("judges a picture with its allowance and a review's decision, as --cleanup does", () => {
+    const png = (img) => encodePng(img);
+    const before = png(image(10, 10));
+    // One pixel 30 levels off: a change by the default rule.
+    const after = png(image(10, 10, 100, setGrey(0, 0, 1, 1, 130)));
+    const item = { out: "a/X.png", status: "modified" };
+    const plain = compareRevisionPicture(item, before, after);
+    assert.deepEqual(
+      [plain.row.kind, plain.row.by, plain.row.share, plain.row.allowance],
+      ["changed", "rule", NOISE_SHARE * 100, null],
+    );
+    // Within noise at 32 levels, as --cleanup judges it with the same entry.
+    const loose = { png: { noise: { levels: 32, share: 1 } } };
+    const allowed = compareRevisionPicture(item, before, after, loose);
+    assert.deepEqual([allowed.row.kind, allowed.row.by, allowed.row.share], ["noise", "rule", 1]);
+    assert.equal(allowed.row.stats.levels, 32);
+    assert.equal(allowed.row.stats.beyond, 0);
+    assert.equal(cleanupResets({ before, after, entry: loose, near: pngsNear }), true);
+    assert.match(allowed.row.allowance, /^PNG allowance: within noise when no pixel is more than 32 levels off/);
+    // The pixel left out by a rectangle.
+    const left = compareRevisionPicture(item, before, after, { png: { ignore: [[0, 0, 1, 1]] } });
+    assert.equal(left.row.kind, "noise");
+    assert.match(left.row.allowance, /1 rectangle left out$/);
+    // A review's decision about these bytes takes the rule's place, both ways.
+    const kept = compareRevisionPicture(item, before, after, {
+      png: { decision: { keep: "old", capture: hashOf(after) } },
+    });
+    assert.deepEqual([kept.row.kind, kept.row.by, kept.row.allowance], ["noise", "decision", null]);
+    const taken = compareRevisionPicture(item, before, after, {
+      png: { noise: { levels: 32 }, decision: { keep: "new", capture: hashOf(after) } },
+    });
+    assert.deepEqual([taken.row.kind, taken.row.by], ["changed", "decision"]);
+    // The page says so on the card, and the meter's mark is the picture's own share.
+    const html = changeSheetHtml({
+      rows: [allowed.row, { ...kept.row, out: "a/K.png" }, { ...taken.row, out: "a/T.png" }],
+      rev: "HEAD",
+      hash: "h",
+      short: "s",
+      prefix: "docs/",
+    });
+    assert.ok(html.includes("by more than 32 grey levels"));
+    assert.ok(html.includes("<b>kept old by a review's decision</b>"));
+    assert.ok(html.includes("<b>taken new by a review's decision</b>"));
+    assert.ok(html.includes('<b style="left:10%">'));
   });
 
   test("puts the most changed first, then the noise, the added and the deleted", () => {
@@ -1728,29 +2824,29 @@ describe("the picture at a git revision", () => {
 
   test("a capture within noise of the revision's picture leaves the file as the revision has it", () => {
     // the file drifted, or is gone: put back
-    assert.deepEqual(fate(HEAD, HEAD, DRIFT), { state: "restored", write: HEAD });
-    assert.deepEqual(fate(DRIFT, HEAD, DRIFT), { state: "restored", write: HEAD });
-    assert.deepEqual(fate(DRIFT, HEAD, null), { state: "restored", write: HEAD });
+    assert.deepEqual(fate(HEAD, HEAD, DRIFT), { state: "restored", write: HEAD, against: "revision" });
+    assert.deepEqual(fate(DRIFT, HEAD, DRIFT), { state: "restored", write: HEAD, against: "revision" });
+    assert.deepEqual(fate(DRIFT, HEAD, null), { state: "restored", write: HEAD, against: "revision" });
     // an earlier run's real change goes too, when the IDE draws the revision's picture again
-    assert.deepEqual(fate(HEAD, HEAD, CHANGE), { state: "restored", write: HEAD });
+    assert.deepEqual(fate(HEAD, HEAD, CHANGE), { state: "restored", write: HEAD, against: "revision" });
     // the file is the revision's already
-    assert.deepEqual(fate(HEAD, HEAD, HEAD), { state: "unchanged", write: null });
-    assert.deepEqual(fate(DRIFT, HEAD, HEAD), { state: "noise", write: null });
+    assert.deepEqual(fate(HEAD, HEAD, HEAD), { state: "unchanged", write: null, against: "revision" });
+    assert.deepEqual(fate(DRIFT, HEAD, HEAD), { state: "noise", write: null, against: "revision" });
   });
 
   test("a capture beyond noise of the revision's picture is compared with the file", () => {
-    assert.deepEqual(fate(CHANGE, HEAD, CHANGE), { state: "unchanged", write: null });
-    assert.deepEqual(fate(CHANGE2, HEAD, CHANGE), { state: "noise", write: null });
-    assert.deepEqual(fate(OTHER, HEAD, CHANGE), { state: "updated", write: OTHER });
-    assert.deepEqual(fate(OTHER, HEAD, HEAD), { state: "updated", write: OTHER });
-    assert.deepEqual(fate(OTHER, HEAD, null), { state: "new", write: OTHER });
+    assert.deepEqual(fate(CHANGE, HEAD, CHANGE), { state: "unchanged", write: null, against: "disk" });
+    assert.deepEqual(fate(CHANGE2, HEAD, CHANGE), { state: "noise", write: null, against: "disk" });
+    assert.deepEqual(fate(OTHER, HEAD, CHANGE), { state: "updated", write: OTHER, against: "disk" });
+    assert.deepEqual(fate(OTHER, HEAD, HEAD), { state: "updated", write: OTHER, against: "disk" });
+    assert.deepEqual(fate(OTHER, HEAD, null), { state: "new", write: OTHER, against: null });
   });
 
   test("with no picture at the revision, the file is the only reference", () => {
-    assert.deepEqual(fate(DRIFT, null, DRIFT), { state: "unchanged", write: null });
-    assert.deepEqual(fate(DRIFT, null, HEAD), { state: "noise", write: null });
-    assert.deepEqual(fate(OTHER, null, HEAD), { state: "updated", write: OTHER });
-    assert.deepEqual(fate(OTHER, null, null), { state: "new", write: OTHER });
+    assert.deepEqual(fate(DRIFT, null, DRIFT), { state: "unchanged", write: null, against: "disk" });
+    assert.deepEqual(fate(DRIFT, null, HEAD), { state: "noise", write: null, against: "disk" });
+    assert.deepEqual(fate(OTHER, null, HEAD), { state: "updated", write: OTHER, against: "disk" });
+    assert.deepEqual(fate(OTHER, null, null), { state: "new", write: OTHER, against: null });
   });
 
   test("a picture put back takes the revision's SVG, or loses its own when the revision has none", () => {
@@ -1859,5 +2955,946 @@ describe("the picture at a git revision", () => {
     restoreFromRevision(docs, rev.hash, ["a.svg"]);
     assert.equal(fs.readFileSync(path.join(docs, "a.svg"), "utf8"), "<svg/>\n");
     assert.equal(git("status", "--porcelain").toString(), "");
+    // what differs between two commits, under the folder only: a commit outside it changes nothing
+    fs.writeFileSync(path.join(repo, "tool.mjs"), "x\n");
+    git("add", ".");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "y");
+    const second = openRevision(docs, "HEAD").hash;
+    assert.deepEqual([...changedBetween(docs, rev.hash, second)], []);
+    fs.writeFileSync(path.join(docs, "two words", "a.png"), Buffer.from([1]));
+    git("add", ".");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "z");
+    assert.deepEqual([...changedBetween(docs, rev.hash, openRevision(docs, "HEAD").hash)], ["two words/a.png"]);
+  });
+
+  test("reads git's status of the working tree, sorted by path", () => {
+    assert.deepEqual(parseStatus(" M b.txt\0 D a b.svg\0A  staged.txt\0?? e/z.txt\0D  gone.png\0AM n.txt\0"), [
+      { path: "a b.svg", status: "deleted" },
+      { path: "b.txt", status: "modified" },
+      { path: "e/z.txt", status: "added" },
+      { path: "gone.png", status: "deleted" },
+      { path: "n.txt", status: "added" },
+      { path: "staged.txt", status: "added" },
+    ]);
+    assert.deepEqual(parseStatus(""), []);
+  });
+
+  test("commits the paths named and nothing else, a new one added first and one removed as a deletion, without blocking", async (t) => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-commit-"));
+    t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
+    const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] }).toString();
+    try {
+      git("init", "-q");
+    } catch {
+      t.skip("no git");
+      return;
+    }
+    // commitPaths runs git with the repository's own settings
+    for (const [k, v] of [
+      ["core.autocrlf", "false"],
+      ["user.name", "t"],
+      ["user.email", "t@t"],
+      ["commit.gpgsign", "false"],
+    ])
+      git("config", k, v);
+    const docs = path.join(repo, "docs");
+    fs.mkdirSync(path.join(docs, "two words"), { recursive: true });
+    fs.writeFileSync(path.join(docs, "two words", "a.png"), "a");
+    fs.writeFileSync(path.join(docs, "a.svg"), "<svg/>\n");
+    fs.writeFileSync(path.join(repo, "other.txt"), "o\n");
+    git("add", ".");
+    git("commit", "-q", "-m", "x");
+    fs.writeFileSync(path.join(docs, "two words", "a.png"), "b");
+    fs.rmSync(path.join(docs, "a.svg"));
+    fs.mkdirSync(path.join(docs, "new"));
+    fs.writeFileSync(path.join(docs, "new", "n.png"), "n");
+    fs.writeFileSync(path.join(repo, "other.txt"), "changed\n");
+    fs.writeFileSync(path.join(repo, "staged.txt"), "s\n");
+    git("add", "staged.txt");
+
+    const { top, changes } = workingChanges(docs);
+    assert.equal(fs.realpathSync.native(top), fs.realpathSync.native(repo));
+    assert.deepEqual(changes, [
+      { path: "docs/a.svg", status: "deleted" },
+      { path: "docs/new/n.png", status: "added" },
+      { path: "docs/two words/a.png", status: "modified" },
+      { path: "other.txt", status: "modified" },
+      { path: "staged.txt", status: "added" },
+    ]);
+    // A timer set before the commit fires while git runs: the process is not held up.
+    let ticked = false;
+    setTimeout(() => {
+      ticked = true;
+    }, 0);
+    const done = await commitPaths(docs, {
+      paths: ["docs/a.svg", "docs/new/n.png", "docs/two words/a.png"],
+      added: ["docs/new/n.png"],
+      message: "Screenshots: 2 pictures",
+    });
+    assert.equal(ticked, true);
+    assert.equal(done.hash, git("rev-parse", "HEAD").trim());
+    assert.equal(done.short, done.hash.slice(0, 8));
+    assert.equal(git("log", "-1", "--format=%B").trim(), "Screenshots: 2 pictures");
+    assert.equal(
+      git("show", "--name-status", "--format=", "HEAD"),
+      "D\tdocs/a.svg\nA\tdocs/new/n.png\nM\tdocs/two words/a.png\n",
+    );
+    // what the commit did not name is as it was: changed, and staged
+    assert.equal(git("status", "--porcelain"), " M other.txt\nA  staged.txt\n");
+    await assert.rejects(commitPaths(docs, { paths: ["other.txt"], message: "" }), /^Error: git commit failed/);
+    await assert.rejects(commitPaths(docs, { paths: [], message: "m" }), /no file to commit/);
+  });
+});
+
+describe("the records a child writes among its lines (record-lines.mjs)", () => {
+  test("reads a record of a kind it is told, and passes any other line on", () => {
+    const line = recordLine("svgshot-result", { counts: { new: 2 }, why: "a b" });
+    assert.equal(line, '@@svgshot-result {"counts":{"new":2},"why":"a b"}');
+    assert.deepEqual(parseRecord(line, ["svgshot-result"]), {
+      kind: "svgshot-result",
+      value: { counts: { new: 2 }, why: "a b" },
+    });
+    assert.equal(parseRecord(line, ["shot-event"]), null);
+    assert.equal(parseRecord("a/b.svg: unchanged", ["svgshot-result"]), null);
+    assert.throws(() => parseRecord("@@svgshot-result {", ["svgshot-result"]), SyntaxError);
+  });
+
+  test("splits a stream into lines across its chunks, CRLF or LF, the last one too", async () => {
+    const stream = new PassThrough();
+    const lines = [];
+    const records = [];
+    readRecords(stream, ["k"], {
+      onRecord: (kind, value) => records.push([kind, value]),
+      onLine: (text) => lines.push(text),
+    });
+    const ended = new Promise((resolve) => stream.on("end", resolve));
+    stream.write("one\r\ntw");
+    stream.write('o\n@@k {"n":');
+    stream.write("1}\n@@other 2\nlast");
+    stream.end();
+    await ended;
+    assert.deepEqual(lines, ["one", "two", "@@other 2", "last"]);
+    assert.deepEqual(records, [["k", { n: 1 }]]);
+  });
+
+  test("a child is stopped once by a line on its stdin, across chunks, and by nothing else", () => {
+    const stream = new PassThrough();
+    let stops = 0;
+    onStop(stream, () => stops++);
+    stream.write("go\nsto");
+    assert.equal(stops, 0);
+    stream.write("p\r\nstop\n");
+    assert.equal(stops, 1);
+    // a child started with a piped stdin is sent the line; one without is not
+    const sent = [];
+    sendStop({ stdin: { writable: true, write: (text) => sent.push(text) } });
+    sendStop({ stdin: null });
+    assert.deepEqual(sent, [`${STOP_LINE}\n`]);
+  });
+});
+
+describe("a run's stage (shot-stage.mjs)", () => {
+  test("names each picture's files, and keeps both parts of its verdict", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shot-stage-"));
+    try {
+      const out = "IDE/Images/Menu_File.light.png";
+      const files = stagedFiles(dir, out);
+      assert.equal(files.capture, path.join(dir, "pictures", "IDE", "Images", "Menu_File.light.png"));
+      assert.equal(files.svg, path.join(dir, "pictures", "IDE", "Images", "Menu_File.light.svg"));
+      assert.equal(files.verdict, path.join(dir, "verdicts", "IDE__Images__Menu_File.light.json"));
+      assert.equal(files.pngStrength, path.join(dir, "maps", "IDE__Images__Menu_File.light.png.strength"));
+      assert.deepEqual(writeVerdict(dir, out, "png", { state: "updated" }), {
+        out,
+        png: { state: "updated" },
+        svg: null,
+      });
+      writeVerdict(dir, out, "svg", { faithful: true });
+      writeVerdict(dir, "A/b.png", "png", { state: "new" });
+      assert.deepEqual(readVerdicts(dir), [
+        { out: "A/b.png", png: { state: "new" }, svg: null },
+        { out, png: { state: "updated" }, svg: { faithful: true } },
+      ]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a strength map is written and read back, and a file that is not one refused", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shot-stage-"));
+    try {
+      const map = paintMap(300, 200, blocks([10, 10, 40, 30]));
+      const file = path.join(dir, "maps", "x.png.strength");
+      writeStrength(file, map);
+      assert.ok(fs.statSync(file).size < 1000);
+      assert.deepEqual(readStrength(file), map);
+      const bad = Buffer.from(fs.readFileSync(file));
+      bad.writeUInt32BE(301, 0);
+      fs.writeFileSync(file, bad);
+      assert.throws(() => readStrength(file), /not 301 by 200/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("is one run's: never under docs, where git would take it, or in a folder that holds anything", () => {
+    const docs = path.join(REPO_ROOT, "docs");
+    assert.match(stageRefusal(path.join(docs, "stage"), [docs]), /is under/);
+    assert.match(stageRefusal(path.join(REPO_ROOT, "scripts", "stage"), [docs]), /does not ignore/);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shot-stage-"));
+    try {
+      assert.equal(stageRefusal(path.join(dir, "new"), [docs]), null);
+      assert.equal(stageRefusal(dir, [docs]), null);
+      fs.writeFileSync(path.join(dir, "x"), "");
+      assert.match(stageRefusal(dir, [docs]), /is not empty/);
+      assert.match(stageRefusal(path.join(dir, "x"), [docs]), /is a file/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+// A strength map `w` by `h` whose pixels, in reading order, are the [count, level] runs of
+// `runs`, the rest 0.
+function strengthMap(runs, w = 100, h = 100) {
+  const data = new Uint8Array(w * h);
+  let at = 0;
+  for (const [n, level] of runs) {
+    data.fill(level, at, at + n);
+    at += n;
+  }
+  return { width: w, height: h, data };
+}
+
+// A strength map `w` by `h` with `level(x, y)` at each pixel (0, or undefined, for none).
+function paintMap(w, h, level) {
+  const data = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) data[y * w + x] = level(x, y) ?? 0;
+  return { width: w, height: h, data };
+}
+
+// A level of 200 inside each of `rects`, [x0, y0, x1, y1] (x1 and y1 not included).
+const blocks =
+  (...rects) =>
+  (x, y) =>
+    rects.some(([x0, y0, x1, y1]) => x >= x0 && x < x1 && y >= y0 && y < y1) ? 200 : 0;
+
+// Five strokes 2 pixels thick and 3 apart, 14 high: what a word of the IDE's text at 2x leaves.
+const word = (x0, y0) => (x, y) => (y >= y0 && y < y0 + 14 && x >= x0 && x < x0 + 25 && (x - x0) % 5 < 2 ? 200 : 0);
+
+describe("the strength map and its regions (shot-change.mjs)", () => {
+  test("a strength map of two pictures is each pixel's largest difference of a channel", () => {
+    const A = { width: 2, height: 1, rgba: new Uint8Array([10, 10, 10, 255, 0, 0, 0, 255]) };
+    const B = { width: 2, height: 1, rgba: new Uint8Array([10, 40, 10, 255, 0, 0, 0, 200]) };
+    assert.deepEqual([...strengthOf(A, B).data], [30, 55]);
+    assert.throws(() => strengthOf(A, { width: 1, height: 2, rgba: A.rgba }), /two sizes/);
+  });
+
+  test("the share at a level counts the pixels at it or more, rounded as diffSvg rounds", () => {
+    const m = strengthMap([
+      [3, 8],
+      [2, 32],
+      [1, 96],
+    ]);
+    assert.deepEqual(
+      [8, 32, 96, 97].map((level) => shareOff(m, { level })),
+      [0.06, 0.03, 0.01, 0],
+    );
+    // a rectangle left out still counts in the whole
+    assert.equal(shareOff(m, { level: 8, rects: [{ x0: 0, y0: 0, x1: 3, y1: 1 }] }), 0.03);
+    assert.equal(shareOff(strengthMap([[1, 50]], 3, 1), { level: 1 }), 33.333);
+  });
+
+  test("a line up to 4 pixels thick leaves no core, a block keeps its middle", () => {
+    const one = (level) => changeRegions(paintMap(60, 40, level), { level: 1 });
+    // a fringe, a caret, a line 4 thick
+    assert.deepEqual(one(blocks([5, 10, 55, 11])), [{ x0: 5, y0: 10, x1: 55, y1: 11, pixels: 50, core: 0 }]);
+    assert.equal(one(blocks([20, 5, 22, 35]))[0].core, 0);
+    assert.equal(one(blocks([5, 10, 55, 14]))[0].core, 0);
+    // 5 thick is the thinnest that survives, as a line 1 pixel thick
+    assert.equal(one(blocks([5, 10, 55, 15]))[0].core, 46);
+    // a block 10 by 10 keeps 6 by 6
+    assert.deepEqual(one(blocks([10, 10, 20, 20])), [{ x0: 10, y0: 10, x1: 20, y1: 20, pixels: 100, core: 36 }]);
+  });
+
+  test("closing joins a word's strokes into one block, which survives", () => {
+    const m = paintMap(60, 40, word(10, 10));
+    const open = changeRegions(m, { level: 1, close: 0 });
+    assert.equal(open.length, 5);
+    assert.ok(open.every((r) => r.core === 0));
+    const closed = changeRegions(m, { level: 1 });
+    assert.equal(closed.length, 1);
+    // the box and the count are the changed pixels', the core the closed region's
+    assert.deepEqual(closed[0], { x0: 10, y0: 10, x1: 32, y1: 24, pixels: 140, core: 180 });
+    // a gap of 5 is not closed
+    const apart = paintMap(60, 40, blocks([10, 10, 20, 20], [25, 10, 35, 20]));
+    assert.equal(changeRegions(apart, { level: 1 }).length, 2);
+    assert.equal(changeRegions(paintMap(60, 40, blocks([10, 10, 20, 20], [24, 10, 34, 20])), { level: 1 }).length, 1);
+  });
+
+  test("closing keeps every changed pixel, along the picture's edge too", () => {
+    const m = paintMap(20, 20, blocks([0, 0, 20, 6]));
+    const { mask, closed, core } = regionMasks(m, { level: 1 });
+    for (let i = 0; i < mask.length; i++) assert.ok(closed[i] >= mask[i]);
+    // outside the picture counts as unchanged: the erosion takes 2 rows from the edge
+    assert.equal(
+      core.reduce((a, b) => a + b, 0),
+      16 * 2,
+    );
+    assert.deepEqual(changeRegions(m, { level: 1 }), [{ x0: 0, y0: 0, x1: 20, y1: 6, pixels: 120, core: 32 }]);
+  });
+
+  test("regions touching at a corner are one, and the most core comes first", () => {
+    const corner = paintMap(20, 20, (x, y) => ((x === 3 && y === 3) || (x === 4 && y === 4) ? 99 : 0));
+    assert.equal(changeRegions(corner, { level: 1, close: 0 }).length, 1);
+    const two = paintMap(80, 40, blocks([2, 2, 4, 30], [40, 5, 60, 25]));
+    assert.deepEqual(
+      changeRegions(two, { level: 1 }).map((r) => [r.x0, r.core]),
+      [
+        [40, 256],
+        [2, 0],
+      ],
+    );
+  });
+
+  test("counts only the pixels at the level, and leaves the rectangles out", () => {
+    const m = paintMap(60, 40, (x, y) => (x >= 10 && x < 20 && y >= 10 && y < 20 ? (x < 15 ? 50 : 150) : 0));
+    assert.deepEqual(
+      changeRegions(m, { level: 100 }).map((r) => [r.x0, r.x1, r.pixels]),
+      [[15, 20, 50]],
+    );
+    assert.deepEqual(changeRegions(m, { level: 1, rects: [{ x0: 0, y0: 0, x1: 60, y1: 40 }] }), []);
+    assert.deepEqual(changeRegions(strengthMap([]), { level: 1 }), []);
+  });
+});
+
+describe("which pictures need a look (shot-queue.mjs)", () => {
+  const region = (core) => ({ x0: 0, y0: 0, x1: 10, y1: 10, pixels: 100, core });
+  const taken = { state: "updated", by: "rule", earlier: null };
+
+  test("a region survives with a core of SURVIVES pixels", () => {
+    assert.deepEqual(surviving([region(SURVIVES), region(SURVIVES - 1), region(0)]), [region(SURVIVES)]);
+  });
+
+  test("a capture taken needs a look when nothing survives, or a word or two does", () => {
+    assert.equal(pngLook(taken, []).why, "noise");
+    assert.equal(pngLook(taken, [region(SURVIVES - 1), region(3)]).why, "noise");
+    assert.equal(pngLook(taken, [region(WORD_CORE), region(SURVIVES)]).why, "small");
+    assert.equal(pngLook(taken, [region(WORD_CORE + 1)]), null);
+    assert.equal(pngLook(taken, [region(100), region(100), region(100)]), null);
+    // a picture not taken, or decided by a review, does not
+    for (const state of ["new", "noise", "restored", "unchanged", "dark", "too-far"])
+      assert.equal(pngLook({ ...taken, state }, []), null);
+    assert.equal(pngLook({ ...taken, by: "decision" }, []), null);
+  });
+
+  test("a capture kept as within noise needs a look when something survives", () => {
+    for (const state of ["noise", "restored"]) {
+      assert.equal(pngLook({ ...taken, state }, [region(SURVIVES)]).why, "faint");
+      assert.equal(pngLook({ ...taken, state }, [region(SURVIVES - 1), region(3)]), null);
+      assert.equal(pngLook({ ...taken, state, by: "decision" }, [region(5000)]), null);
+    }
+    for (const state of ["unchanged", "dark", "new"]) assert.equal(pngLook({ ...taken, state }, [region(5000)]), null);
+    // a tint of 3 levels over a block, within noise, survives; the same over a 2-pixel line does not
+    const rule = pngRule(null);
+    const tint = paintMap(200, 100, (x, y) => (blocks([20, 20, 60, 40])(x, y) ? 3 : 0));
+    assert.equal(pngLook({ ...taken, state: "noise" }, pngRegions(tint, rule)).why, "faint");
+    const line = paintMap(200, 100, (x, y) => (blocks([20, 20, 120, 22])(x, y) ? 3 : 0));
+    assert.equal(pngLook({ ...taken, state: "noise" }, pngRegions(line, rule)), null);
+    // a review's decision about other bytes sends it back, whatever the regions
+    assert.equal(pngLook({ ...taken, state: "noise", earlier: "new" }, [region(5000)]).why, "earlier");
+  });
+
+  test("an SVG needs a look when accepted with something surviving, or refused with nothing", () => {
+    const rule = { faithful: true, by: "rule", earlier: null };
+    assert.equal(svgLook(rule, [region(SURVIVES)]).why, "part");
+    assert.equal(svgLook(rule, [region(SURVIVES - 1)]), null);
+    assert.equal(svgLook({ ...rule, faithful: false }, [region(3)]).why, "fringe");
+    assert.equal(svgLook({ ...rule, faithful: false }, [region(SURVIVES)]), null);
+    assert.equal(svgLook({ ...rule, by: "decision" }, [region(5000)]), null);
+    assert.equal(svgLook({ ...rule, earlier: false }, []).why, "earlier");
+  });
+
+  test("a capture is measured against the picture its verdict names, when there is one of its size", () => {
+    // a picture 60 by 40, grey and opaque, with a block of 12 by 12 a level or many off
+    const image = (level, w = 60, h = 40) => {
+      const rgba = new Uint8Array(w * h * 4).fill(128);
+      for (let i = 3; i < rgba.length; i += 4) rgba[i] = 255;
+      for (let y = 10; y < 22; y++)
+        for (let x = 10; x < 22; x++) rgba.fill(128 + level, (y * w + x) * 4, (y * w + x) * 4 + 3);
+      return encodePng({ width: w, height: h, rgba });
+    };
+    const base = image(0);
+    const faint = reviewPicture({ state: "noise", by: "rule", earlier: null }, image(3), base);
+    assert.equal(faint.strength.data.length, 60 * 40);
+    assert.equal(faint.regions.length, 1);
+    assert.equal(faint.look.why, "faint");
+    // kept as within noise, a pixel counts from FAINT_LEVEL: a block one level off is a capture's noise
+    assert.equal(FAINT_LEVEL, 2);
+    const one = reviewPicture({ state: "restored", by: "rule", earlier: null }, image(1), base);
+    assert.deepEqual([one.regions, one.look], [[], null]);
+    assert.equal(reviewPicture({ state: "restored", by: "rule", earlier: null }, image(2), base).look.why, "faint");
+    // a capture taken counts every pixel off: the same block one level off is a change, not noise
+    assert.equal(reviewPicture(taken, image(1), base).regions.length, 1);
+    // the same bytes: nothing to measure, and no region
+    assert.deepEqual(reviewPicture({ ...taken, state: "unchanged" }, base, base), {
+      strength: null,
+      regions: [],
+      look: null,
+    });
+    // a new picture, or one of another size: nothing measured, and no look but an earlier decision's
+    assert.deepEqual(reviewPicture({ ...taken, state: "new" }, base, null), {
+      strength: null,
+      regions: null,
+      look: null,
+    });
+    assert.equal(reviewPicture(taken, image(0, 61), base).look, null);
+    assert.equal(reviewPicture({ ...taken, earlier: "old" }, image(0, 61), base).look.why, "earlier");
+    // the picture's rectangles left out
+    const left = reviewPicture({ state: "noise", by: "rule", earlier: null }, image(3), base, {
+      png: { ignore: [[0, 0, 30, 30]] },
+    });
+    assert.deepEqual(left.regions, []);
+    // an SVG's from its strength map
+    const icon = paintMap(200, 100, blocks([20, 20, 52, 52]));
+    assert.equal(reviewSvg({ faithful: true, by: "rule", earlier: null }, icon).look.why, "part");
+  });
+
+  test("from the strength maps: a word changed, a caret, a part missing and a fringe", () => {
+    const rule = pngRule(null);
+    assert.equal(pngLook(taken, pngRegions(paintMap(200, 100, word(20, 20)), rule)).why, "small");
+    assert.equal(pngLook(taken, pngRegions(paintMap(200, 100, blocks([50, 10, 52, 40])), rule)).why, "noise");
+    // a whole window a few levels off is a change, not noise
+    assert.equal(
+      pngLook(
+        taken,
+        pngRegions(
+          paintMap(200, 100, () => 3),
+          rule,
+        ),
+      ),
+      null,
+    );
+    // the caret inside a rectangle left out leaves nothing at all
+    const caret = paintMap(200, 100, (x, y) => blocks([50, 10, 52, 40])(x, y) || word(100, 20)(x, y));
+    const left = pngRule({ png: { ignore: [[40, 0, 60, 100]] } });
+    assert.equal(pngRegions(caret, left).length, 1);
+    // an SVG at its bar's level: an icon missing survives, a fringe at 95 levels is not counted
+    const icon = paintMap(200, 100, blocks([20, 20, 52, 52]));
+    assert.equal(svgLook({ faithful: true, by: "rule", earlier: null }, svgRegions(icon)).why, "part");
+    const faint = paintMap(200, 100, (x, y) => (blocks([20, 20, 52, 52])(x, y) ? 95 : 0));
+    assert.deepEqual(svgRegions(faint), []);
+    assert.equal(svgRegions(faint, { svg: { bar: { levels: 32 } } }).length, 1);
+    assert.equal(
+      svgLook({ faithful: false, by: "rule", earlier: null }, svgRegions(paintMap(200, 100, blocks([0, 50, 200, 51]))))
+        .why,
+      "fringe",
+    );
+  });
+});
+
+describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs)", () => {
+  // A PNG's header with its size, and a tag that tells two of one size apart.
+  const shot = (w, h, tag) => {
+    const b = Buffer.alloc(24);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b);
+    b.write("IHDR", 12, "latin1");
+    b.writeUInt32BE(w, 16);
+    b.writeUInt32BE(h, 20);
+    return Buffer.concat([b, Buffer.from(tag)]);
+  };
+  const DARK = shot(100, 50, "dark");
+  const NEAR = shot(100, 50, "near"); // within noise of DARK
+  const SHIFTED = shot(103, 50, "shifted"); // within noise of DARK, a few pixels wider
+  const OTHER = shot(100, 50, "other"); // near nothing
+  const isNear = (x) => x.equals(NEAR) || x.equals(SHIFTED);
+  const near = (a, b) => a.equals(b) || (a.equals(DARK) && isNear(b)) || (b.equals(DARK) && isNear(a));
+  const decide = (png, theme, dark, revision = null, disk = null) =>
+    decidePicture({ png, theme, dark, revision, disk, near });
+
+  test("a dark picture is pictureFate's, with its size", () => {
+    assert.deepEqual(decide(OTHER, "dark", null, DARK, DARK), {
+      state: "updated",
+      write: OTHER,
+      against: "disk",
+      size: { w: 100, h: 50 },
+      dark: null,
+      by: "rule",
+      earlier: null,
+    });
+    assert.deepEqual(decide(NEAR, "dark", null, DARK, OTHER).state, "restored");
+  });
+
+  test("a light picture is compared with the dark one first", () => {
+    // the dark one's pixels: no light file
+    assert.deepEqual(decide(NEAR, "light", DARK, null, OTHER), {
+      state: "dark",
+      write: null,
+      against: "dark",
+      size: { w: 100, h: 50 },
+      dark: null,
+      by: "rule",
+      earlier: null,
+    });
+    // of another size, within the theme's slack: named, then judged
+    const wider = decide(SHIFTED, "light", DARK);
+    assert.equal(wider.state, "dark");
+    assert.deepEqual(wider.dark, { w: 100, h: 50 });
+    assert.deepEqual(decide(shot(103, 50, "x"), "light", DARK).state, "new");
+    // beyond it: a failure, whatever the files hold
+    const far = decide(shot(100 + SIZE_SLACK + 1, 50, "x"), "light", DARK, DARK, DARK);
+    assert.deepEqual([far.state, far.write, far.against, far.dark], ["too-far", null, "dark", { w: 100, h: 50 }]);
+    assert.equal(decide(shot(100 + SIZE_SLACK, 50, "x"), "light", DARK).state, "new");
+    // with no dark picture, as a dark one
+    assert.equal(decide(NEAR, "light", null, null, DARK).state, "noise");
+  });
+
+  test("an SVG is faithful below the bar, the default one or a picture's own", () => {
+    // 10,000 pixels: SVG_FAITHFUL (0.25%) is 25 of them
+    assert.deepEqual(decideSvg(strengthMap([[24, 96]])), { faithful: true, by: "rule", share: 0.24, earlier: null });
+    assert.equal(decideSvg(strengthMap([[25, 255]])).faithful, false);
+    assert.equal(decideSvg(strengthMap([[1000, 95]])).faithful, true);
+    const wider = { svg: { bar: { share: 0.35 } } };
+    assert.equal(decideSvg(strengthMap([[30, 96]]), { entry: wider }).faithful, true);
+    // a bar at another level counts the pixels at that level or more, at any level
+    const at32 = { svg: { bar: { levels: 32, share: 1 } } };
+    assert.equal(decideSvg(strengthMap([[150, 40]]), { entry: at32 }).faithful, false);
+    assert.equal(
+      decideSvg(
+        strengthMap([
+          [50, 31],
+          [50, 200],
+        ]),
+        { entry: at32 },
+      ).share,
+      0.5,
+    );
+    const at50 = { svg: { bar: { levels: 50, share: 0.5 } } };
+    assert.equal(
+      decideSvg(
+        strengthMap([
+          [30, 60],
+          [100, 49],
+        ]),
+        { entry: at50 },
+      ).faithful,
+      true,
+    );
+    assert.equal(decideSvg(strengthMap([[60, 50]]), { entry: at50 }).faithful, false);
+    // the pixels inside a rectangle left out are not counted: the first 100 are row 0
+    const row0 = { svg: { ignore: [[0, 0, 100, 1]] } };
+    assert.deepEqual(decideSvg(strengthMap([[100, 255]]), { entry: row0 }).share, 0);
+    assert.deepEqual(decideSvg(strengthMap([[101, 255]]), { entry: row0 }).share, 0.01);
+    assert.deepEqual(svgRule(null), { levels: 96, share: SVG_FAITHFUL, rects: [] });
+    assert.deepEqual(svgRule(row0).rects, [{ x0: 0, y0: 0, x1: 100, y1: 1 }]);
+  });
+
+  test("a review's decision takes the rule's place for the bytes it was made on, and no others", () => {
+    const decision = (keep, png) => ({ png: { decision: { keep, capture: hashOf(png) } } });
+    // "old": within noise of what it would go back to; "new": unlike everything
+    assert.equal(
+      decidePicture({
+        png: OTHER,
+        theme: "dark",
+        dark: null,
+        revision: DARK,
+        disk: DARK,
+        near,
+        entry: decision("old", OTHER),
+      }).state,
+      "noise",
+    );
+    const old = decidePicture({
+      png: OTHER,
+      theme: "dark",
+      dark: null,
+      revision: DARK,
+      disk: NEAR,
+      near,
+      entry: decision("old", OTHER),
+    });
+    assert.deepEqual([old.state, old.write, old.by], ["restored", DARK, "decision"]);
+    const fresh = decidePicture({
+      png: NEAR,
+      theme: "dark",
+      dark: null,
+      revision: DARK,
+      disk: DARK,
+      near,
+      entry: decision("new", NEAR),
+    });
+    assert.deepEqual([fresh.state, fresh.write, fresh.by], ["updated", NEAR, "decision"]);
+    // a light picture kept "new" is kept even with the dark one's pixels; "old" is still found to be the dark one
+    assert.equal(
+      decidePicture({
+        png: NEAR,
+        theme: "light",
+        dark: DARK,
+        revision: null,
+        disk: null,
+        near,
+        entry: decision("new", NEAR),
+      }).state,
+      "new",
+    );
+    assert.equal(
+      decidePicture({
+        png: NEAR,
+        theme: "light",
+        dark: DARK,
+        revision: null,
+        disk: null,
+        near,
+        entry: decision("old", NEAR),
+      }).state,
+      "dark",
+    );
+    // a decision about other bytes: judged by the rule, and named
+    const other = decidePicture({
+      png: NEAR,
+      theme: "dark",
+      dark: null,
+      revision: DARK,
+      disk: DARK,
+      near,
+      entry: decision("new", OTHER),
+    });
+    assert.deepEqual([other.state, other.by, other.earlier], ["noise", "rule", "new"]);
+    assert.equal(pngDecision(decision("old", OTHER), OTHER), "old");
+    assert.equal(pngDecision(decision("old", OTHER), NEAR), null);
+    assert.equal(earlierPngDecision(decision("old", OTHER), NEAR), "old");
+    assert.equal(earlierPngDecision(decision("old", OTHER), OTHER), null);
+    assert.equal(pngDecision(decision("old", OTHER), null), null);
+    // an SVG's: the SVG's text, line endings aside, against the same PNG
+    const svgEntry = { svg: { decision: { accept: true, svg: hashOf("<svg/>"), png: hashOf(OTHER) } } };
+    assert.equal(svgDecision(svgEntry, "<svg/>", OTHER), true);
+    assert.equal(svgDecision(svgEntry, "<svg/>", NEAR), null);
+    assert.equal(svgDecision(svgEntry, "<svg />", OTHER), null);
+    const half = strengthMap([[5000, 255]]);
+    assert.deepEqual(decideSvg(half, { entry: svgEntry, svg: "<svg/>", png: OTHER }), {
+      faithful: true,
+      by: "decision",
+      share: 50,
+      earlier: null,
+    });
+    // the same SVG against another PNG: judged by the bar, the decision shown as an earlier one
+    assert.deepEqual(decideSvg(half, { entry: svgEntry, svg: "<svg/>", png: NEAR }), {
+      faithful: false,
+      by: "rule",
+      share: 50,
+      earlier: true,
+    });
+    assert.equal(earlierSvgDecision(svgEntry, "<svg />", OTHER), true);
+    assert.equal(earlierSvgDecision(svgEntry, "<svg/>", OTHER), null);
+    assert.equal(earlierSvgDecision(null, "<svg/>", OTHER), null);
+    assert.equal(decideSvg(half, { svg: "<svg/>", png: OTHER }).earlier, null);
+  });
+
+  test("an allowance changes the noise rule the picture is judged with", () => {
+    assert.deepEqual(pngRule(null), { levels: NOISE_LEVELS, share: NOISE_SHARE, rects: [] });
+    const entry = { png: { noise: { levels: 40, share: 1.5 }, ignore: [[1, 2, 30, 40]] } };
+    assert.deepEqual(pngRule(entry), { levels: 40, share: 0.015, rects: [{ x0: 1, y0: 2, x1: 30, y1: 40 }] });
+    // decidePicture hands the rule to near
+    const seen = [];
+    const spy = (_a, _b, rule) => {
+      seen.push(rule);
+      return false;
+    };
+    decidePicture({ png: OTHER, theme: "dark", dark: null, revision: DARK, disk: DARK, near: spy, entry });
+    assert.ok(seen.length > 0 && seen.every((r) => r.levels === 40 && r.rects.length === 1));
+    // --cleanup: the decision about the file's bytes, else the rule
+    const rule = (_a, _b, r) => r.levels === 40;
+    assert.equal(cleanupResets({ before: DARK, after: OTHER, near: rule, entry }), true);
+    assert.equal(cleanupResets({ before: DARK, after: OTHER, near: rule, entry: null }), false);
+    const kept = { ...entry, png: { ...entry.png, decision: { keep: "new", capture: hashOf(OTHER) } } };
+    assert.equal(cleanupResets({ before: DARK, after: OTHER, near: rule, entry: kept }), false);
+  });
+
+  test("writes a verdict into the folder, and removes what is not kept", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-apply-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const at = (out) => path.join(root, out);
+    // a new picture in a folder not there yet; a picture within noise writes nothing
+    assert.deepEqual(applyPicture(root, "a/X.png", { state: "new", write: OTHER }, null), {
+      removed: false,
+      svg: null,
+    });
+    assert.ok(fs.readFileSync(at("a/X.png")).equals(OTHER));
+    applyPicture(root, "a/X.png", { state: "noise", write: null }, null);
+    assert.ok(fs.readFileSync(at("a/X.png")).equals(OTHER));
+    // a light picture that is the dark one: its file removed, if there
+    fs.writeFileSync(at("a/X.light.png"), NEAR);
+    assert.equal(applyPicture(root, "a/X.light.png", { state: "dark", write: null }, null).removed, true);
+    assert.equal(fs.existsSync(at("a/X.light.png")), false);
+    assert.equal(applyPicture(root, "a/X.light.png", { state: "dark", write: null }, null).removed, false);
+    // an SVG: written, the same but for a checkout's last line ending, changed, then dropped
+    assert.equal(applySvg(root, "a/X.svg", "<svg/>"), "new");
+    fs.writeFileSync(at("a/X.svg"), "<svg/>\r\n");
+    assert.equal(applySvg(root, "a/X.svg", "<svg/>\n"), "unchanged");
+    assert.equal(applySvg(root, "a/X.svg", "<svg>x</svg>"), "updated");
+    assert.equal(applySvg(root, "a/X.svg", null), "removed");
+    assert.equal(applySvg(root, "a/X.svg", null), "not written");
+    // a picture dropped: its PNG, its SVG and its bundle, the other theme's bundle kept
+    const bundles = path.join(root, "bundles");
+    writeBundle(bundles, "a/X.png", { v: 1 }, OTHER, []);
+    writeBundle(bundles, "a/X.light.png", { v: 2 }, OTHER, []);
+    fs.writeFileSync(at("a/X.light.png"), OTHER);
+    fs.writeFileSync(at("a/X.light.svg"), "<svg/>");
+    assert.equal(dropPicture(root, "a/X.light.png", bundles), true);
+    assert.equal(fs.existsSync(at("a/X.light.png")) || fs.existsSync(at("a/X.light.svg")), false);
+    assert.equal(readBundle(bundles, "a/X.light.png"), null);
+    assert.equal(readBundle(bundles, "a/X.png").v, 1);
+    assert.equal(dropPicture(root, "a/X.light.png", null), false);
+    // a light picture that is the dark one, with --svg: its SVG and bundle go with it
+    writeBundle(bundles, "a/X.light.png", { v: 3 }, OTHER, []);
+    fs.writeFileSync(at("a/X.light.png"), NEAR);
+    fs.writeFileSync(at("a/X.light.svg"), "<svg/>");
+    const darkVerdict = { state: "dark", write: null };
+    assert.equal(
+      applyPicture(root, "a/X.light.png", darkVerdict, null, { dryRun: true, svg: true, bundlesRoot: bundles }).removed,
+      true,
+    );
+    assert.ok(fs.existsSync(at("a/X.light.svg")));
+    assert.equal(
+      applyPicture(root, "a/X.light.png", darkVerdict, null, { svg: true, bundlesRoot: bundles }).removed,
+      true,
+    );
+    assert.equal(fs.existsSync(at("a/X.light.png")) || fs.existsSync(at("a/X.light.svg")), false);
+    assert.equal(readBundle(bundles, "a/X.light.png"), null);
+    // a once picture's light file goes with its SVG, --svg or not
+    fs.writeFileSync(at("a/X.light.png"), NEAR);
+    fs.writeFileSync(at("a/X.light.svg"), "<svg/>");
+    assert.equal(applyPicture(root, "a/X.light.png", { state: "once", write: null }, null).removed, true);
+    assert.equal(fs.existsSync(at("a/X.light.svg")), false);
+  });
+
+  test("an SVG is judged with its PNG when the PNG is written, there is no SVG to keep, or a review accepted it", () => {
+    assert.equal(svgFollowsPng({ written: true, svgOnDisk: true }), true);
+    assert.equal(svgFollowsPng({ written: false, svgOnDisk: false }), true);
+    assert.equal(svgFollowsPng({ written: false, svgOnDisk: true }), false);
+    assert.equal(svgFollowsPng({ written: false, svgOnDisk: true, accepted: true }), true);
+    assert.equal(svgFollowsPng({ written: false, svgOnDisk: true, stale: { retake: "there is no bundle" } }), true);
+    assert.equal(svgFollowsPng({ written: false, svgOnDisk: true, stale: null }), false);
+  });
+
+  test("the bundle of an SVG that stays goes into the cache when the SVG is the file's, line endings aside", () => {
+    assert.equal(bundleFollowsSvg({ svg: "<svg>a</svg>\n", svgOnDisk: "<svg>a</svg>\r\n" }), true);
+    assert.equal(bundleFollowsSvg({ svg: "<svg>a</svg>\n", svgOnDisk: "<svg>b</svg>\n" }), false);
+    assert.equal(bundleFollowsSvg({ svg: "<svg>a</svg>\n", svgOnDisk: null }), false);
+  });
+
+  test("keeps what a picture held, and puts it back, its build and bundle included", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-hold-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const docs = path.join(root, "docs");
+    const bundles = path.join(root, "bundles");
+    const held = path.join(root, "held");
+    const at = (out) => path.join(docs, out);
+    fs.mkdirSync(path.join(docs, "a"), { recursive: true });
+    fs.writeFileSync(at("a/X.png"), DARK);
+    fs.writeFileSync(at("a/X.svg"), "<svg>old</svg>\r\n");
+    writeBundle(bundles, "a/X.png", { v: 1 }, DARK, []);
+    writeBundle(bundles, "a/X.light.png", { v: 2 }, DARK, []);
+    holdPicture(held, docs, "a/X.png", bundles, 1010);
+    holdPicture(held, docs, "a/Y.png", bundles, null);
+    const kept = heldOf(held, "a/X.png");
+    assert.deepEqual([kept.png, kept.svg, kept.bundle, kept.build], [true, true, true, 1010]);
+    assert.ok(kept.pngBytes.equals(DARK));
+    assert.deepEqual([heldOf(held, "a/Y.png").png, heldOf(held, "a/Z.png")], [false, null]);
+    // the picture changed, its SVG removed, its bundle replaced; and a picture added
+    fs.writeFileSync(at("a/X.png"), OTHER);
+    fs.rmSync(at("a/X.svg"));
+    writeBundle(bundles, "a/X.png", { v: 9 }, OTHER, []);
+    fs.writeFileSync(at("a/Y.png"), OTHER);
+    assert.equal(unholdPicture(held, docs, "a/X.png", bundles), 1010);
+    assert.ok(fs.readFileSync(at("a/X.png")).equals(DARK));
+    assert.equal(fs.readFileSync(at("a/X.svg"), "utf8"), "<svg>old</svg>\r\n");
+    assert.deepEqual([readBundle(bundles, "a/X.png").v, readBundle(bundles, "a/X.light.png").v], [1, 2]);
+    assert.equal(unholdPicture(held, docs, "a/Y.png", bundles), null);
+    assert.equal(fs.existsSync(at("a/Y.png")), false);
+    assert.equal(unholdPicture(held, docs, "a/Z.png", bundles), undefined);
+    // a bundle copied naming another PNG; one copied from where there is none removes it
+    copyBundle(bundles, path.join(root, "b2"), "a/X.png", OTHER);
+    assert.equal(readBundle(path.join(root, "b2"), "a/X.png").png, pngHash(OTHER));
+    assert.equal(copyBundle(path.join(root, "none"), bundles, "a/X.light.png"), false);
+    assert.equal(readBundle(bundles, "a/X.light.png"), null);
+    assert.equal(readBundle(bundles, "a/X.png").v, 1);
+  });
+
+  test("puts pictures back as a revision has them, each with its SVG", (t) => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-apply-git-"));
+    t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
+    const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] });
+    try {
+      git("init", "-q");
+    } catch {
+      t.skip("no git");
+      return;
+    }
+    git("config", "core.autocrlf", "false");
+    const docs = path.join(repo, "docs");
+    const at = (out) => path.join(docs, out);
+    fs.mkdirSync(docs);
+    // a.png has an SVG at the revision, b.png has none
+    fs.writeFileSync(at("a.png"), DARK);
+    fs.writeFileSync(at("a.svg"), "<svg/>\n");
+    fs.writeFileSync(at("b.png"), DARK);
+    git("add", ".");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "x");
+    const rev = openRevision(docs, "HEAD");
+    // a.png drifted and its SVG changed; b.png drifted and gained an SVG
+    fs.writeFileSync(at("a.png"), NEAR);
+    fs.writeFileSync(at("a.svg"), "<svg>x</svg>\n");
+    fs.writeFileSync(at("b.png"), NEAR);
+    fs.writeFileSync(at("b.svg"), "<svg/>\n");
+    const expected = new Map([
+      ["a.png", { fate: "write", atRevision: true }],
+      ["b.png", { fate: "remove", atRevision: false }],
+    ]);
+    // a dry run says what it would do and writes nothing
+    assert.deepEqual(restorePictures(docs, rev, ["a.png", "b.png"], { dryRun: true }), expected);
+    assert.ok(fs.readFileSync(at("a.png")).equals(NEAR));
+    assert.equal(fs.existsSync(at("b.svg")), true);
+    assert.deepEqual(restorePictures(docs, rev, ["a.png", "b.png"]), expected);
+    assert.equal(git("status", "--porcelain").toString(), "");
+    // through applyPicture, for a capture it put back
+    fs.writeFileSync(at("a.png"), NEAR);
+    assert.deepEqual(applyPicture(docs, "a.png", { state: "restored", write: DARK }, rev), {
+      removed: false,
+      svg: { fate: "keep", atRevision: true },
+    });
+    assert.equal(git("status", "--porcelain").toString(), "");
+    assert.throws(() => restorePictures(docs, rev, ["none.png"]), /has no none\.png/);
+  });
+});
+
+describe("the screenshot manifest (shot-manifest.mjs)", () => {
+  const H = "a".repeat(40);
+  const full = {
+    format: 1,
+    pictures: {
+      "IDE/Images/B.png": { build: 1010 },
+      "IDE/Images/A.light.png": {
+        svg: { decision: { accept: true, svg: H, png: H }, ignore: [[0, 0, 8, 8]], bar: { levels: 50, share: 0.35 } },
+        png: { decision: { keep: "old", capture: H }, ignore: [[812, 40, 900, 64]], noise: { share: 0.5 } },
+        build: 1501,
+      },
+    },
+  };
+
+  test("is written by path, each entry's keys in order, a rectangle on one line, and read back the same", () => {
+    const text = manifestText(full);
+    assert.equal(
+      text,
+      `{
+  "format": 1,
+  "pictures": {
+    "IDE/Images/A.light.png": {
+      "build": 1501,
+      "png": {
+        "noise": {
+          "share": 0.5
+        },
+        "ignore": [
+          [812, 40, 900, 64]
+        ],
+        "decision": {
+          "keep": "old",
+          "capture": "${H}"
+        }
+      },
+      "svg": {
+        "bar": {
+          "levels": 50,
+          "share": 0.35
+        },
+        "ignore": [
+          [0, 0, 8, 8]
+        ],
+        "decision": {
+          "accept": true,
+          "svg": "${H}",
+          "png": "${H}"
+        }
+      }
+    },
+    "IDE/Images/B.png": {
+      "build": 1010
+    }
+  }
+}
+`,
+    );
+    assert.equal(manifestText(parseManifest(text)), text);
+    assert.equal(manifestText(parseManifest(text.replace(/\n/g, "\r\n"))), text);
+    // an entry left with nothing in it goes
+    assert.equal(
+      manifestText({ format: 1, pictures: { "a.png": { png: { ignore: [] } } } }),
+      manifestText({ format: 1, pictures: {} }),
+    );
+  });
+
+  test("refuses what it cannot read, naming the key", () => {
+    const bad = (pictures, why) =>
+      assert.throws(() => parseManifest(JSON.stringify({ format: 1, pictures }), "m"), why);
+    assert.throws(() => parseManifest("{", "m"), /m is not JSON/);
+    assert.throws(() => parseManifest('{"format": 2, "pictures": {}}', "m"), /m is of format 2, not 1/);
+    assert.throws(() => parseManifest('{"format": 1, "extra": 0}', "m"), /m has an unknown key, extra/);
+    bad({ "a\\b.png": {} }, /not a path under docs with forward slashes/);
+    bad({ "../a.png": {} }, /not a path under docs/);
+    bad({ "a.jpg": {} }, /not a path under docs/);
+    bad({ "a.png": { build: 0 } }, /m's a\.png\.build is not a build number/);
+    bad({ "a.png": { png: { noise: { levels: 300 } } } }, /png\.noise\.levels/);
+    bad({ "a.png": { png: { noise: { share: 101 } } } }, /png\.noise\.share is not a percentage/);
+    bad({ "a.png": { png: { ignore: [[5, 0, 5, 9]] } } }, /png\.ignore\[0\] is not \[x0, y0, x1, y1\]/);
+    bad({ "a.png": { png: { decision: { keep: "both", capture: H } } } }, /png\.decision\.keep/);
+    bad({ "a.png": { png: { decision: { keep: "old", capture: "x" } } } }, /png\.decision\.capture is not a SHA-1/);
+    bad({ "a.png": { svg: { bar: { levels: 0 } } } }, /svg\.bar\.levels is not a number of grey levels, 1 to 255/);
+    bad({ "a.png": { svg: { bar: { levels: 32.5 } } } }, /svg\.bar\.levels/);
+    bad({ "a.png": { svg: { ignore: [[0, 9, 4, 3]] } } }, /svg\.ignore\[0\] is not \[x0, y0, x1, y1\]/);
+    bad({ "a.png": { svg: { other: [] } } }, /svg has an unknown key, other/);
+    bad({ "a.png": { svg: { decision: { accept: "yes", svg: H, png: H } } } }, /svg\.decision\.accept/);
+  });
+
+  test("records a build, and is saved only when what it holds changes", (t) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shot-manifest-"));
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+    const file = path.join(dir, "manifest.json");
+    const m = openManifest(file);
+    assert.equal(m.entry("a.png"), null);
+    assert.equal(m.save(), true); // a new file, with no pictures
+    assert.equal(m.save(), false);
+    m.setBuild("a.png", 1010);
+    m.setBuild("b.png", null); // a build that could not be read records nothing
+    assert.equal(m.save(), true);
+    assert.deepEqual(openManifest(file).entry("a.png"), { build: 1010 });
+    // a CRLF checkout of the same text is the same
+    fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/\n/g, "\r\n"));
+    const again = openManifest(file);
+    assert.equal(again.save(), false);
+    // ... and a CRLF file stays CRLF when it is written
+    again.setBuild("a.png", 1034);
+    assert.equal(again.save(), true);
+    const crlf = fs.readFileSync(file, "utf8");
+    assert.equal(crlf, manifestText({ format: 1, pictures: { "a.png": { build: 1034 } } }).replace(/\n/g, "\r\n"));
+    // a change made and taken back leaves it as it was, byte for byte
+    const back = openManifest(file);
+    back.setBuild("a.png", 1010);
+    assert.equal(back.save(), true);
+    back.setBuild("a.png", 1034);
+    assert.equal(back.save(), true);
+    assert.equal(fs.readFileSync(file, "utf8"), crlf);
+    // an LF file stays LF
+    fs.writeFileSync(file, crlf.replace(/\r\n/g, "\n"));
+    const lf = openManifest(file);
+    lf.clearBuild("a.png");
+    lf.clearBuild("c.png");
+    assert.equal(lf.save(), true);
+    assert.equal(fs.readFileSync(file, "utf8"), manifestText({ format: 1, pictures: {} }));
+    assert.deepEqual(fs.readdirSync(dir), ["manifest.json"]);
+  });
+
+  test("the repository's own manifest reads", () => {
+    const m = openManifest();
+    assert.equal(m.text(), fs.readFileSync(m.file, "utf8").replace(/\r\n/g, "\n"));
   });
 });

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>List markers</title>
+<!--
+  The list markers Chromium paints as shapes rather than as their text, as
+  snapshot-svg.mjs's paintSymbolMarker draws them: disc, circle and square, in
+  the IDE's hover font (Segoe UI 13px), in the help pages' Inter, and at the
+  sizes where the ascent the shape is sized from steps, at fractional positions,
+  in a colour of their own; and the disclosure triangles of a closed and an open
+  <details>.
+-->
+<style>
+body { margin: 0; background: #fff; color: #616161; font: 13px "Segoe UI", sans-serif; }
+.c { position: absolute; top: 0; width: 150px; }
+ul { margin: 6px 0; padding-left: 22px; }
+.inter { font-family: Inter, sans-serif; }
+@font-face { font-family: Inter; src: url(/fonts/inter-variable.woff2) format("woff2"); font-weight: 100 900; }
+details { margin: 4px 10px; }
+</style>
+<body>
+<div class="c" style="left:0">
+<ul><li>disc</li><li>second</li></ul>
+<ul style="list-style-type:circle"><li>circle</li><li>second</li></ul>
+<ul style="list-style-type:square"><li>square</li><li>second</li></ul>
+<ul style="position:relative;top:0.4px;left:0.3px"><li>a third off</li></ul>
+<ul style="color:#06c"><li>blue</li></ul>
+</div>
+<div class="c inter" style="left:150px;font-size:10.5px">
+<ul><li>Inter disc</li><li>second</li></ul>
+<ul style="list-style-type:circle"><li>Inter circle</li></ul>
+<ul style="list-style-type:square"><li>Inter square</li></ul>
+<details><summary>closed</summary>hidden</details>
+<details open><summary>open</summary>shown</details>
+</div>
+<div class="c" style="left:300px">
+<ul style="font-size:9px"><li>nine</li></ul>
+<ul style="font-size:11px"><li>eleven</li></ul>
+<ul style="font-size:16px"><li>sixteen</li></ul>
+<ul style="font-size:20px;list-style-type:circle"><li>twenty</li></ul>
+<ul style="font-size:24px;list-style-type:square"><li>twenty-four</li></ul>
+<details style="font-size:16px"><summary>closed</summary>hidden</details>
+</div>
+</body>
+</html>

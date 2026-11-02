@@ -35,7 +35,9 @@
 //   the spaces that white-space: pre keeps at the start and the end of a line
 //   are underlined, where Chromium leaves them out; and a thickness of
 //   from-font is drawn as auto (and counted as not drawn, as it is the font's
-//   own).
+//   own);
+// - a line-through is sized as the underline is and placed from the text's
+//   ascent (lineThroughAbove), over the glyphs and whole, as Chromium draws it.
 //
 // What the snapshot lacks, drawn as replicas of what Chromium paints: the
 // closed <select> (paintSelect), a checkbox and a radio button
@@ -46,9 +48,9 @@
 // (paintFocusRing). Not drawn: the thinner native scrollbar
 // (scrollbar-width: thin), a resize grip, a number input's spin buttons, an
 // indeterminate checkbox (the snapshot does not say), conic gradients, the 2011
-// -webkit-radial-gradient and the filter blur(); an overline, a
-// line-through, a dotted, dashed, wavy or double text decoration, and an
-// underline placed by text-underline-position (decorationsOf). Drawn wrongly: a
+// -webkit-radial-gradient and the filter blur(); an overline, a dotted,
+// dashed, wavy or double text decoration, and an underline placed by
+// text-underline-position (decorationsOf). Drawn wrongly: a
 // collapsed table border, doubled.
 //
 // A frame: the snapshot holds the document of an <iframe> of the same process as
@@ -58,8 +60,8 @@
 // place and the frame's scroll offset, and scaled when the frame is zoomed; its
 // canvas colour under it and its viewport scrollbars over it. Not drawn: a frame
 // of another process, which has no document in the snapshot (a cross-site
-// <iframe> has a DevTools target of its own), a transformed frame, the scrollbars
-// of a zoomed frame, and the rounded corners of a frame's clip.
+// <iframe> has a DevTools target of its own), a transformed frame, and the
+// rounded corners of a frame's clip.
 //
 // An inline <svg> in the page is not converted from its layout objects, which
 // hold no path data. It is a replaced element: the caller reads the markup of each
@@ -77,6 +79,7 @@
 // painted last.
 
 import { compactImage } from "../lib/compact-image.mjs";
+import { pngSize } from "../lib/png.mjs";
 import { bakeable, bakeMarkup, colourSteps, filterSteps, stepPrimitive, stepsOpacity } from "./colour-filter.mjs";
 import { FACES_MARK } from "./fonts.mjs";
 import { gradientSvg, parseGradient } from "./gradient.mjs";
@@ -123,6 +126,33 @@ export function transparent(c) {
   const m = /^rgba\((.*)\)$/.exec(c);
   return m ? Number.parseFloat(m[1].split(",")[3]) === 0 : false;
 }
+
+// The border styles that fill their side: solid, and inset and outset as borders() gives them,
+// and groove and ridge. Double, dotted and dashed show the background between their marks.
+const FILLING = new Set(["solid", "groove", "ridge"]);
+
+/**
+ * Whether a box's borders `bw` (borders()) hide what lies under them: every side either of no
+ * width, or of an opaque colour in a style that fills it.
+ */
+export function bordersCover(bw) {
+  return (
+    bw.some((s) => s.width > 0) && bw.every((s) => s.width === 0 || (FILLING.has(s.style) && rgba(s.color)?.a === 1))
+  );
+}
+
+/**
+ * The box a background layer is drawn in, from its background-clip `clip`: the padding box in
+ * place of the border box where the borders cover the rest (bordersCover) and the corners `r`
+ * (radii()) are square. Chromium never lets a background show at the antialiased edge of an
+ * opaque border; drawn whole under the borders, it does wherever the picture is drawn at a scale
+ * other than its own, a 1.5x screen or the PDF (a menu separator, an inset border 2 px tall over
+ * a dark background, came out darker at 1.5x). A rounded box keeps it under its borders: a
+ * curved inner edge is antialiased at any scale, and the background clipped to it leaves a seam
+ * of two antialiased edges there (the designer's round selection handles, at 2x).
+ */
+export const backgroundClip = (clip, bw, r) =>
+  clip === "border-box" && r.every(([a, b]) => a === 0 && b === 0) && bordersCover(bw) ? "padding-box" : clip;
 
 // Whether a box's outer box-shadow would show through the box. Chromium paints an outer
 // shadow outside the border box only, and paintBox draws each one whole under the box, which
@@ -188,7 +218,8 @@ function decodeDocument(snapshot, di, styleNames, grid, seen) {
   const nodes = N.parentIndex.map((parent, i) => {
     const attrs = {};
     const a = N.attributes[i] ?? [];
-    for (let k = 0; k < a.length; k += 2) attrs[S[a[k]]] = S[a[k + 1]];
+    // DevTools writes an empty string as -1: an attribute with no value (disabled) is there, as ""
+    for (let k = 0; k < a.length; k += 2) attrs[S[a[k]]] = a[k + 1] >= 0 ? S[a[k + 1]] : "";
     return {
       i,
       parentIndex: parent,
@@ -292,6 +323,30 @@ export function inlineSvgsIn(decoded, clip) {
   return out;
 }
 
+// An <input type="search"> that shows text, the only kind whose clear button Chromium can show.
+function isSearchField(l) {
+  const n = l.node;
+  return (
+    n.name === "INPUT" &&
+    n.box === l &&
+    (n.attrs.type ?? "").toLowerCase() === "search" &&
+    !!n.inputValue &&
+    l.style?.visibility === "visible" &&
+    l.bounds.w > 0 &&
+    l.bounds.h > 0
+  );
+}
+
+/**
+ * The layout objects of the search fields in `clip` that show text: Chromium
+ * draws each one's clear button from the field's user-agent shadow tree, which
+ * the snapshot leaves out, so capture.mjs asks the page for it (searchButtonOf)
+ * and renderSvg draws it (`searchButton`).
+ */
+export function searchFieldsIn(decoded, clip) {
+  return decoded.layouts.filter((l) => isSearchField(l) && overlaps(l.bounds, clip));
+}
+
 /**
  * `markup` (what capture.mjs's inlineSvg gives) with every id given `prefix`,
  * and each reference to one: `href="#id"` and `url(#id)`, in a tag and nowhere
@@ -350,6 +405,45 @@ const TEXT_INPUTS = new Set(["text", "search", "email", "url", "tel", "number", 
 const BUTTON_INPUTS = new Set(["button", "submit", "reset"]);
 const CHECKABLE_INPUTS = new Set(["checkbox", "radio"]);
 
+/** Chromium's accent for a checked checkbox or radio button whose accent-color is auto. */
+const DEFAULT_ACCENT = "#0075ff";
+
+/**
+ * The parts Chromium draws white on a checked control's accent (the check mark, a radio's
+ * ring inside its border): white while the accent's contrast with white is 3:1 or more, else
+ * rgb(59, 59, 59). Fitted in Edge over grey accents (white up to 148, dark from 150: 3.03:1
+ * and 2.96:1) and six hues; the higher contrast of the two would make 148's dark.
+ */
+export function accentInk(accent) {
+  const c = rgba(accent);
+  if (!c) return "#fff";
+  const lin = (v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  const l = 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+  return 1.05 / (l + 0.05) >= 3 ? "#fff" : "rgb(59, 59, 59)";
+}
+
+/**
+ * Whether a document draws a checked, enabled checkbox or radio button whose accent-color
+ * its styles do not hold: a bundle taken before accent-color was read cannot say what colour
+ * it is (the IDE sets #4774a4 on every checkbox, formDesigner.css).
+ */
+export function accentUnknown(decoded) {
+  return decoded.layouts.some(
+    (l) =>
+      l.node.name === "INPUT" &&
+      CHECKABLE_INPUTS.has(l.node.attrs.type?.toLowerCase()) &&
+      l.node.checked &&
+      l.node.attrs.disabled === undefined &&
+      l.style &&
+      l.style.visibility === "visible" &&
+      l.style.appearance !== "none" &&
+      l.style["accent-color"] === undefined,
+  );
+}
+
 /**
  * Whether Chromium draws layout object `l` as its native text field rather than
  * by its CSS: a text <input> whose border and background the page leaves as the
@@ -407,6 +501,58 @@ function controlLines(text, textarea, tabSize) {
 }
 
 /**
+ * The lines of a text control's text (controlLines) with the part of each that the range
+ * [start, end) of its text selects (UTF-16 offsets, as the field's selectionStart and
+ * selectionEnd): [{before, selected, after}], one per line, `selected` "" on a line the range
+ * does not reach. A tab is spaces up to the next stop from the line's start, so the drawn part
+ * before an offset is that offset's prefix expanded.
+ */
+export function selectedParts(text, textarea, tabSize, start, end) {
+  const raw = textarea ? text.split(/(?<=\n)/) : [text];
+  const out = [];
+  let from = 0;
+  for (const piece of raw) {
+    const line = piece.replace(/\r?\n$/, "");
+    const at = (offset) =>
+      controlLines(line.slice(0, Math.min(Math.max(offset - from, 0), line.length)), false, tabSize)[0].length;
+    const [drawn] = controlLines(line, false, tabSize);
+    const [s, e] = [at(start), at(end)];
+    out.push({ before: drawn.slice(0, s), selected: drawn.slice(s, e), after: drawn.slice(e) });
+    from += piece.length;
+  }
+  return out;
+}
+
+/**
+ * An opaque colour as Chromium's Color::BlendWithWhite makes it, which Chromium paints its own
+ * selection's ground in (LayoutTheme's ActiveSelectionBackgroundColor): the first alpha of 60%,
+ * 66.7%, 73.3% and 80% at which a colour over white looks the same with no channel below 0,
+ * else 80% with such a channel at 0; each channel cut to a whole number toward 0, as Chromium
+ * casts it. WebView2's SelectedItem, rgb(25, 103, 210), is rgba(0, 65, 198, 0.8), which paints
+ * rgb(51, 103, 209) over white, the PNG's selection to the level. A colour with alpha already,
+ * or one that cannot be read, is returned as it is.
+ */
+export function blendWithWhite(colour) {
+  const c = rgba(colour);
+  if (!c || c.a !== 1) return colour;
+  let out = colour;
+  for (let alpha = 153; alpha <= 204; alpha += 17) {
+    const blend = (v) => Math.trunc((v - (255 - alpha)) / (alpha / 255));
+    const [r, g, b] = [c.r, c.g, c.b].map(blend);
+    out = `rgba(${Math.max(0, r)}, ${Math.max(0, g)}, ${Math.max(0, b)}, ${num(alpha / 255)})`;
+    if (r >= 0 && g >= 0 && b >= 0) break;
+  }
+  return out;
+}
+
+/**
+ * The selection a document's focused text field shows (capture.mjs's selectionOf), when it is
+ * the one of `node`: {start, end, focused, given, background, color}, or null.
+ */
+const selectionIn = (selection, node) =>
+  selection?.backendNodeId !== undefined && selection.backendNodeId === node.backendNodeId ? selection : null;
+
+/**
  * controlText of a layout object that is visible and large enough to show it:
  * the code editor's hidden 1 by 1 textarea holds the module's whole text and
  * shows none of it.
@@ -423,12 +569,16 @@ function shownControlText(l) {
  * What the picture's text needs measured in a browser: every font (as
  * fontKey strings), every run of text with its font, [fontKey, text], and every
  * run an underline has to skip the ink of, [fontKey, text, top, height]: the band
- * below the baseline (CSS px) in which Chromium looks for it (inkBand).
+ * below the baseline (CSS px) in which Chromium looks for it (inkBand). `selection` is the text
+ * a focused field has selected (capture.mjs's selectionOf), or null: the parts of its lines
+ * before, in and after it are runs of their own (selectedParts).
  */
-export function textNeeds(decoded, clip) {
+export function textNeeds(decoded, clip, { selection = null } = {}) {
   const keys = new Set();
   const runs = new Map();
   const skips = new Map();
+  const cuts = new Map();
+  const { lineOf } = ellipsisLines(decoded);
   const add = (st, s) => {
     const key = fontKey(st);
     keys.add(key);
@@ -438,14 +588,18 @@ export function textNeeds(decoded, clip) {
     if (l.node.name === "SELECT" && l.style && overlaps(l.bounds, clip)) add(l.style, selectLabel(l.node));
     if (l.style && l.node.box === l && overlaps(l.bounds, clip)) {
       const c = shownControlText(l);
-      if (c)
-        for (const line of controlLines(c.text, l.node.name === "TEXTAREA", l.style["tab-size"])) add(l.style, line);
+      const textarea = l.node.name === "TEXTAREA";
+      if (c) for (const line of controlLines(c.text, textarea, l.style["tab-size"])) add(l.style, line);
+      const sel = c && !c.placeholder ? selectionIn(selection, l.node) : null;
+      if (sel)
+        for (const part of selectedParts(c.text, textarea, l.style["tab-size"], sel.start, sel.end))
+          if (part.selected) for (const s of [part.before, part.selected, part.after]) add(l.style, s);
     }
     if (l.text === undefined) continue;
     const st = textStyle(l);
     if (!st) continue;
     const { lines } = st.visibility === "visible" ? decorationsOf(l) : { lines: [] };
-    for (const b of l.boxes) {
+    for (const [k, b] of l.boxes.entries()) {
       if (!overlaps(b, clip)) continue;
       const s = l.text.substr(b.start, b.length);
       add(st, s);
@@ -455,9 +609,158 @@ export function textNeeds(decoded, clip) {
             const [top, height] = inkBand(u);
             skips.set(`${fontKey(st)}\u0000${s}\u0000${top}\u0000${height}`, [fontKey(st), s, top, height]);
           }
+      // A fragment of a line that an ellipsis cuts: the ellipsis, and how much of it fits before one.
+      const line = lineOf(l, k);
+      if (line && b.x < line.end) {
+        add(line.block.style, ELLIPSIS);
+        const cut = cutNeed(line, l, k);
+        cuts.set(cut.join("\u0000"), cut);
+      }
     }
   }
-  return { keys: [...keys], runs: [...runs.values()], skips: [...skips.values()] };
+  return {
+    keys: [...keys],
+    runs: [...runs.values()],
+    skips: [...skips.values()],
+    cuts: [...cuts.values()],
+  };
+}
+
+// --- text-overflow: ellipsis -------------------------------------------------
+
+/** What text-overflow: ellipsis draws where it cuts a line. */
+export const ELLIPSIS = "…";
+
+// The radius of each corner of a focus ring's path round a box with no rounded corner
+// (paintFocusRing), in CSS px: fitted to Edge's pixels round square boxes with no border, a
+// border of 1 and 2 px, an outline 3 px wide and an offset of 4 px, all alike (the squared error
+// against a square ring's 6% of it; 3 px gives 17% more than 2.85).
+const FOCUS_RING_RADIUS = 2.85;
+
+// The blue of a search field's clear button in a light colour scheme, from the top
+// of its box to the bottom (paintSearchButton): Edge's picture, read row by row.
+const SEARCH_CLEAR_STOPS = [
+  [0.1, "rgb(64, 121, 187)"],
+  [0.3, "rgb(63, 108, 179)"],
+  [0.5, "rgb(58, 96, 162)"],
+  [0.7, "rgb(47, 81, 138)"],
+  [0.9, "rgb(35, 66, 114)"],
+];
+
+// The text of a ::marker that Chromium paints as a shape (paintSymbolMarker): the
+// symbol of disc, circle, square (Chromium's black square, not the spec's small
+// one), disclosure-open and disclosure-closed (right to left, its point to the
+// left), and the space after it. A triangle is its corners in a unit square.
+const SYMBOL_MARKERS = {
+  "\u{2022} ": { shape: "disc" },
+  "\u{25E6} ": { shape: "circle" },
+  "\u{25A0} ": { shape: "square" },
+  "\u{25BE} ": {
+    triangle: [
+      [0, 0.07],
+      [0.5, 0.93],
+      [1, 0.07],
+    ],
+  },
+  "\u{25B8} ": {
+    triangle: [
+      [0, 0],
+      [0.86, 0.5],
+      [0, 1],
+    ],
+  },
+  "\u{25C2} ": {
+    triangle: [
+      [1, 0],
+      [0.14, 0.5],
+      [1, 1],
+    ],
+  },
+};
+
+// How far a line's content must reach past its end to overflow it: a LayoutUnit.
+const LAYOUT_UNIT = 1 / 64;
+
+/** The element whose box holds the line a text node is on: the nearest above it that is not inline. */
+function lineBlock(node) {
+  for (let n = node.parent; n; n = n.parent) {
+    const d = n.style?.display;
+    if (d && d !== "inline" && d !== "contents") return n;
+  }
+  return null;
+}
+
+/**
+ * The lines of a document that text-overflow: ellipsis cuts. A line is cut when
+ * the block that holds it clips its overflow, sets text-overflow: ellipsis, and
+ * the line's text reaches past `end`, the right edge of the block's content box.
+ * Each line is {frags, end, block}: its text fragments left to right, each
+ * {l, k, t} (a text layout object, the index of its fragment, the fragment), and
+ * the block's layout object, whose style the ellipsis is drawn in. Returns
+ * {lineOf(l, k), unknown}: the line of a fragment when it is cut, else null; and
+ * how many lines would be cut if their block set ellipsis, in a snapshot taken
+ * without text-overflow among its styles, which cannot say whether it does.
+ */
+export function ellipsisLines(decoded) {
+  const byBlock = new Map();
+  for (const l of decoded.layouts) {
+    if (l.text === undefined || !l.boxes.length) continue;
+    const block = lineBlock(l.node);
+    const st = block?.box?.style;
+    if (!st || st["overflow-x"] === "visible" || st["text-overflow"] === "clip") continue;
+    if (!byBlock.has(block)) byBlock.set(block, []);
+    for (const [k, t] of l.boxes.entries()) byBlock.get(block).push({ l, k, t });
+  }
+  const cut = new Map();
+  let unknown = 0;
+  for (const [block, frags] of byBlock) {
+    const b = block.box;
+    const st = b.style;
+    const end = b.exact.x + b.exact.w - borders(st)[1].width - gutters(b).v - px(st["padding-right"]);
+    // A line: the fragments whose boxes overlap each other's vertically.
+    frags.sort((p, q) => p.t.y - q.t.y || p.t.x - q.t.x);
+    const lines = [];
+    for (const f of frags) {
+      const line = lines.at(-1);
+      if (line && f.t.y < line.bottom) {
+        line.frags.push(f);
+        line.bottom = Math.max(line.bottom, f.t.y + f.t.h);
+      } else lines.push({ frags: [f], bottom: f.t.y + f.t.h });
+    }
+    for (const { frags: line } of lines) {
+      if (!line.some((f) => f.t.x + f.t.w > end + LAYOUT_UNIT)) continue;
+      if (st["text-overflow"] === undefined) {
+        unknown++;
+        continue;
+      }
+      if (st["text-overflow"] !== "ellipsis") continue;
+      line.sort((p, q) => p.t.x - q.t.x);
+      const entry = { frags: line, end, block: b };
+      for (const f of line) cut.set(`${f.l.key}|${f.k}`, entry);
+    }
+  }
+  return { lineOf: (l, k) => cut.get(`${l.key}|${k}`) ?? null, unknown };
+}
+
+/**
+ * What the page is asked about fragment `k` of `l` on a cut `line`:
+ * [fontKey, text, the ellipsis's fontKey, the room from the fragment's start to
+ * the line's end, whether it is the line's first fragment]. The page answers how
+ * many UTF-16 units of the text fit before an ellipsis in that room, at a
+ * grapheme's end, and how wide they are: [length, width]. Nothing fits is 0,
+ * except in the first fragment, which keeps its first grapheme, as Chromium's
+ * NGLineTruncator does.
+ */
+function cutNeed(line, l, k) {
+  const t = l.boxes[k];
+  const first = line.frags[0];
+  return [
+    fontKey(textStyle(l)),
+    l.text.substr(t.start, t.length),
+    fontKey(line.block.style),
+    line.end - t.x,
+    first.l.key === l.key && first.k === k,
+  ];
 }
 
 // --- text decorations --------------------------------------------------------
@@ -533,12 +836,28 @@ export function inkBand({ offset, thickness }) {
 }
 
 /**
+ * Where Chromium draws the solid line-through of a text whose ascent, rounded to whole px, is
+ * `ascent`, as the top of the line above the baseline (rounded as underlineBand's line is): the
+ * line's top is 2/3 of the ascent below the text's top, less half the line's thickness before
+ * it is rounded (`reach`), rounded to whole px. Its thickness is the underline's. Fitted against
+ * headless Chromium at 25 sizes from 8 to 64 px, fractional ones included, in Segoe UI,
+ * Consolas, Arial, Times New Roman, Verdana and Tahoma, each at three fractional positions:
+ * every one of the 450 (the font's own strikeout position, OS/2 yStrikeoutPosition, is not
+ * what it uses; Segoe UI's is 0.26 of the size, the line's centre 0.35).
+ */
+export function lineThroughAbove(ascent, reach) {
+  return ascent - Math.round((2 * ascent) / 3 - reach / 2);
+}
+
+/**
  * The decorations of a text layout object that are drawn and those that are
- * not: {lines, undrawn}. `lines` are its solid underlines, outermost box first,
- * each as {offset, thickness, reach, color, skipInk} (underlineBand's, the
- * colour, and whether the line gives way to ink); `undrawn` names what the
- * decorations ask for that is not drawn, for note(): every line but a solid
- * underline, and an underline where Chromium does not put it by default.
+ * not: {lines, undrawn}. `lines` are its solid underlines and line-throughs,
+ * outermost box first, each as {kind, offset, thickness, reach, color, skipInk}
+ * (`kind` "underline" or "line-through"; underlineBand's figures, an underline's
+ * offset below the baseline; the colour; and whether the line gives way to ink,
+ * which a line-through never does); `undrawn` names what the decorations ask for
+ * that is not drawn, for note(): an overline, every style but solid, and an
+ * underline where Chromium does not put it by default.
  *
  * The line is the colour of the box that sets it, not of the text under it, and
  * by default that is the fill colour of its text, which a transparent fill takes
@@ -550,15 +869,16 @@ export function decorationsOf(l) {
   for (const d of decoratingBoxes(l.node.type === 3 ? l.node.parent : l.node)) {
     const style = d["text-decoration-style"] ?? "solid";
     for (const line of d["text-decoration-line"].split(/\s+/)) {
-      if (line !== "underline") undrawn.push(`text-decoration-line ${line}`);
+      if (line !== "underline" && line !== "line-through") undrawn.push(`text-decoration-line ${line}`);
       else if (style !== "solid") undrawn.push(`text-decoration-style ${style}`);
-      else if ((d["text-underline-position"] ?? "auto") !== "auto") undrawn.push("text-underline-position");
+      else if (line === "underline" && (d["text-underline-position"] ?? "auto") !== "auto")
+        undrawn.push("text-underline-position");
       else {
         if (d["text-decoration-thickness"] === "from-font") undrawn.push("text-decoration-thickness from-font");
         const fill = d["-webkit-text-fill-color"];
         const color = d["text-decoration-color"] === d.color && fill ? fill : d["text-decoration-color"];
-        if (!transparent(color))
-          lines.push({ ...underlineBand(d), color, skipInk: (d["text-decoration-skip-ink"] ?? "auto") !== "none" });
+        const skipInk = line === "underline" && (d["text-decoration-skip-ink"] ?? "auto") !== "none";
+        if (!transparent(color)) lines.push({ kind: line, ...underlineBand(d), color, skipInk });
       }
     }
   }
@@ -814,23 +1134,28 @@ export function viewportGutters(doc, inner) {
  * shows none. The scrollbars are the part of the frame's viewport (`inner`, its
  * innerWidth and innerHeight) that the root element's client box leaves out.
  * `bounds` is the frame's viewport in the parent: the bars are drawn there, at
- * the scale of the parent and not the frame's. A zoomed frame has none here:
- * a bar is as thick in the parent's px as in a frame that is not zoomed.
+ * the scale of the parent and not the frame's. A bar of a zoomed frame is as
+ * thick in the parent's px as one of a frame that is not, so the whole stand-in
+ * is in the parent's px: the gutters (in the frame's px) times the frame's
+ * scale, and the scroll and what it scrolls over likewise, so that the thumb is
+ * where the scroll's share of it puts it.
  */
 export function viewportScroller(doc, geometry, inner) {
-  const viewport = viewportGutters(doc, inner);
-  if (!viewport || geometry.scale !== 1) return null;
+  const own = viewportGutters(doc, inner);
+  if (!own) return null;
+  const s = geometry.scale;
+  const viewport = { v: Math.round(own.v * s), h: Math.round(own.h * s) };
   const root = rootBox(doc);
   return {
     key: `${doc.id}:viewport`,
     node: { name: "#viewport", attrs: {} },
     bounds: geometry.box,
-    client: { w: inner.w - viewport.v, h: inner.h - viewport.h },
+    client: { w: inner.w * s - viewport.v, h: inner.h * s - viewport.h },
     scroll: {
-      x: doc.scroll.x,
-      y: doc.scroll.y,
-      w: root.scroll?.w ?? doc.content.w,
-      h: root.scroll?.h ?? doc.content.h,
+      x: doc.scroll.x * s,
+      y: doc.scroll.y * s,
+      w: (root.scroll?.w ?? doc.content.w) * s,
+      h: (root.scroll?.h ?? doc.content.h) * s,
     },
     style: VIEWPORT_STYLE,
     viewport,
@@ -1029,6 +1354,14 @@ function jpegSize(b) {
   return null;
 }
 
+// The image an <embed> shows, or null. Chromium draws an <embed> whose resource is an image as
+// it draws an <img>, stretched to its box (the IDE's resource preview: an ICO in an <embed>).
+// Only a data: image is taken: any other resource is a plugin's, or a file the SVG cannot reach.
+export function embeddedImage(node) {
+  const url = node.name === "EMBED" ? node.attrs.src : null;
+  return url && /^data:image\//i.test(url) ? url : null;
+}
+
 // Natural size of a data: image, or null when it has none (an SVG with only a viewBox).
 export function naturalSize(url) {
   const m = /^data:([^;,]+)((?:;[^;,]*)*),(.*)$/s.exec(url);
@@ -1045,8 +1378,8 @@ export function naturalSize(url) {
   // 4 million wide by 4 billion tall.
   if (body.length > 26 && body[0] === 0x42 && body[1] === 0x4d && body.readUInt32LE(14) >= 40)
     return { w: Math.abs(body.readInt32LE(18)), h: Math.abs(body.readInt32LE(22)) };
-  if (body.length > 24 && body.readUInt32BE(0) === 0x89504e47)
-    return { w: body.readUInt32BE(16), h: body.readUInt32BE(20) };
+  const png = pngSize(body);
+  if (png) return { w: png[0], h: png[1] };
   if (body.length > 10 && body.toString("latin1", 0, 4) === "GIF8")
     return { w: body.readUInt16LE(6), h: body.readUInt16LE(8) };
   if (body.length > 4 && body[0] === 0xff && body[1] === 0xd8) return jpegSize(body);
@@ -1097,6 +1430,12 @@ function filterPrimitives(steps) {
  * @param inkGaps   (fontKey, text, top, height) => [[from, to]] the stretches of the run, in CSS px from
  *                  its start, where its ink is in the band (inkBand) an underline skips; null draws
  *                  every underline whole
+ * @param cut       (...cutNeed) => [length, width]: how much of a fragment fits before the ellipsis of
+ *                  a line text-overflow: ellipsis cuts; null, or no answer, draws the line whole
+ * @param selection the text selected in the document, which Chromium paints outside the DOM
+ *                  (capture.mjs's selectionOf): {backendNodeId, start, end, focused, background,
+ *                  color} for a focused text field's, {outside: true} for one in the document's
+ *                  own text, which is not drawn, or null for none
  * @param placeholderColor  what an empty <input> shows its placeholder in
  * @param canvases  [{x, y, w, h, href}] pictures of the page's <canvas> elements
  * @param fonts     a PictureFonts (fonts.mjs): text is set in subsets of its fonts, embedded
@@ -1111,8 +1450,14 @@ function filterPrimitives(steps) {
  *                  capture.mjs's inlineSvg reads them, or {failed} where it could not; an <svg>
  *                  with no entry is drawn by other means (the annotation layer). null: none was
  *                  read, and each is reported as not drawn
+ * @param searchButton  (layout object's key) => the clear button of a search field that shows
+ *                  text (searchFieldsIn), as capture.mjs's searchButton reads it: {x, y, w, h}
+ *                  from the field's border box, its opacity, visibility, display, appearance and
+ *                  whether it is drawn dark; {failed}, or null for none. null: none was read, and
+ *                  each is reported as not drawn
  * @param frames    (document) => what was measured in that frame's own document, {metrics, textWidth,
- *                  inkGaps, placeholderColor, canvases, fontsFor, scrollbars, svgs}, as the parameters
+ *                  inkGaps, cut, selection, placeholderColor, canvases, fontsFor, scrollbars, svgs,
+ *                  searchButton}, as the parameters
  *                  of the same names (the page's own are the defaults) and {inner}, the frame's viewport
  *                  {w, h}; null or no function: the frame is drawn with the page's own. The frame
  *                  is measured in its own document because a font name and a style rule mean what
@@ -1125,6 +1470,8 @@ export function renderSvg(
     metrics,
     textWidth = null,
     inkGaps = null,
+    cut = null,
+    selection = null,
     placeholderColor = "rgb(117, 117, 117)",
     canvases = [],
     fonts = null,
@@ -1133,12 +1480,28 @@ export function renderSvg(
     overlays = [],
     scrollbars = null,
     svgs = null,
+    searchButton = null,
     frames = null,
   },
 ) {
   // What was measured in the document being painted: the page's, and in a frame its own.
-  const pageEnv = { metrics, textWidth, inkGaps, placeholderColor, canvases, fontsFor, scrollbars, svgs, inner: null };
+  const pageEnv = {
+    metrics,
+    textWidth,
+    inkGaps,
+    cut,
+    selection,
+    placeholderColor,
+    canvases,
+    fontsFor,
+    scrollbars,
+    svgs,
+    searchButton,
+    inner: null,
+  };
   let env = pageEnv;
+  // The lines text-overflow: ellipsis cuts in the document being painted (ellipsisLines).
+  let cutLines = null;
   const defs = [];
   const ids = new Map();
   const def = (key, make) => {
@@ -1286,6 +1649,9 @@ export function renderSvg(
   // The transforms an element and its ancestors paint it under, outermost first: those whose
   // linear part is not the identity (a translation is in the snapshot's boxes already). Each
   // ancestor's own box is put back through the transforms outside it before its own is read.
+  // The box read is the unsnapped one: snapped after the transform, a box before it moves by
+  // a fraction of the snapping (the IDE options' checkboxes, scaled by 1.2 from 656.5 px, came
+  // out 0.2 px up and left, and Edge's own mark drawn there was 0.169% off its PNG, not 0.013%).
   const transformMemo = new Map();
   function transformsOf(n) {
     if (!n) return [];
@@ -1294,7 +1660,7 @@ export function renderSvg(
     const m = n.box ? parseMatrix(n.style?.transform) : null;
     let ts = outer;
     if (m && (m[0] !== 1 || m[1] !== 0 || m[2] !== 0 || m[3] !== 1)) {
-      const bounds = outer.reduceRight((r, t) => untransformBox(r, t.m), n.box.bounds);
+      const bounds = outer.reduceRight((r, t) => untransformBox(r, t.m), n.box.exact);
       const size = n.box.offset ?? { w: bounds.w, h: bounds.h };
       const origin = /^(-?[\d.]+)px (-?[\d.]+)px/.exec(n.style["transform-origin"] ?? "");
       const t = elementTransform(bounds, size, m, origin ? [Number(origin[1]), Number(origin[2])] : null);
@@ -1438,7 +1804,9 @@ export function renderSvg(
     if (native) ground.push(native.ground);
     else if (!transparent(st["background-color"])) {
       // The colour fills the last layer's clip box.
-      const under = backgroundBoxes(st, b, r, bw)[splitTop(st["background-clip"] ?? "border-box").at(-1)];
+      const under = backgroundBoxes(st, b, r, bw)[
+        backgroundClip(splitTop(st["background-clip"] ?? "border-box").at(-1), bw, r)
+      ];
       ground.push(shape(under?.box ?? b, under?.r ?? r, `fill="${st["background-color"]}"`));
     }
     const bg = st["background-image"];
@@ -1478,8 +1846,9 @@ export function renderSvg(
         stats.canvases++;
       } else note("canvas without a picture");
     }
-    if (l.node.name === "IMG" && l.node.src) {
-      const id = imageDef(l.node.src);
+    const image = l.node.name === "IMG" ? l.node.src : embeddedImage(l.node);
+    if (image) {
+      const id = imageDef(image);
       out.push(`<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"/>`);
       stats.images++;
     }
@@ -1487,15 +1856,12 @@ export function renderSvg(
     if (l.node.name === "SELECT") out.push(...paintSelect(l, bw));
     else if (l.node.name === "INPUT" && CHECKABLE_INPUTS.has(l.node.attrs.type?.toLowerCase())) {
       if (st.appearance !== "none") out.push(...paintCheckable(l));
-    } else if (l.node.name === "INPUT" || l.node.name === "TEXTAREA") out.push(...paintTextControl(l, bw));
-    if (st["outline-style"] === "auto" && px(st["outline-width"]) > 0) out.push(...paintFocusRing(st, b, r, bw));
-    else if (st["outline-style"] !== "none" && px(st["outline-width"]) > 0) {
-      const w = px(st["outline-width"]);
-      const o = px(st["outline-offset"]) + w / 2;
-      out.push(
-        `<rect ${rectAttrs({ x: b.x - o, y: b.y - o, w: b.w + 2 * o, h: b.h + 2 * o })} fill="none" stroke="${st["outline-color"]}" stroke-width="${num(w)}"/>`,
-      );
+    } else if (l.node.name === "INPUT" || l.node.name === "TEXTAREA") {
+      out.push(...paintTextControl(l, bw));
+      if (isSearchField(l)) out.push(...paintSearchButton(l));
     }
+    if (st["outline-style"] === "auto" && px(st["outline-width"]) > 0) out.push(...paintFocusRing(st, b, r, bw));
+    else if (st["outline-style"] !== "none" && px(st["outline-width"]) > 0) out.push(...paintOutline(st, b, r));
     stats.boxes++;
     return out;
   }
@@ -1565,18 +1931,21 @@ export function renderSvg(
   // against it. The path is the border box moved out by the outline offset, and
   // in by the width of the border, up to 1px a side (so a control's own 1px border
   // lies under the inner band, and a box with none has the ring astride its
-  // edge); a corner's radius moves with the path. Fitted against Edge by
-  // bench/outline.html.
+  // edge); a corner's radius moves with the path. A box with no rounded corner
+  // gets Chromium's default ring, FOCUS_RING_RADIUS round every corner of the path
+  // (whatever its border, offset or outline width); a box with some keeps its
+  // square ones square. Fitted against Edge by bench/outline.html.
   function paintFocusRing(st, b, r, bw) {
     const sides = bw.map((s) => px(st["outline-offset"]) - Math.min(1, s.width));
     const mean = sides.reduce((sum, v) => sum + v, 0) / 4;
-    // The path moved out by `d` more: its box, and its radii (a square corner stays square).
+    const rounded = r.some(([rx, ry]) => rx > 0 && ry > 0);
+    // The path moved out by `d` more: its box, and its radii.
     const band = (d) => {
       const [t, rt, bt, lt] = sides.map((v) => v + d);
       const box = { x: b.x - lt, y: b.y - t, w: Math.max(0, b.w + lt + rt), h: Math.max(0, b.h + t + bt) };
-      const radii = r.map(([rx, ry]) =>
-        rx > 0 && ry > 0 ? [Math.max(0, rx + mean + d), Math.max(0, ry + mean + d)] : [0, 0],
-      );
+      const radii = rounded
+        ? r.map(([rx, ry]) => (rx > 0 && ry > 0 ? [Math.max(0, rx + mean + d), Math.max(0, ry + mean + d)] : [0, 0]))
+        : r.map(() => [Math.max(0, FOCUS_RING_RADIUS + d), Math.max(0, FOCUS_RING_RADIUS + d)]);
       return rrectPath(box, radii) ?? `M${num(box.x)} ${num(box.y)}h${num(box.w)}v${num(box.h)}h${num(-box.w)}Z`;
     };
     return [
@@ -1585,21 +1954,54 @@ export function renderSvg(
     ];
   }
 
+  // An outline of any style but auto, as Chromium paints it (OutlinePainter, through the border
+  // painter): a border of the outline's style, width and colour round the border box `b` moved
+  // out by the outline's offset, its rounded corners (radii `r`) moved out with it. So a dashed
+  // or dotted outline lays out its marks as such a border does, and an inset or outset one shades
+  // its sides as a border does.
+  function paintOutline(st, b, r) {
+    const w = px(st["outline-width"]);
+    const o = px(st["outline-offset"]) + w;
+    const style = st["outline-style"];
+    const box = { x: b.x - o, y: b.y - o, w: b.w + 2 * o, h: b.h + 2 * o };
+    if (box.w <= 0 || box.h <= 0) return [];
+    const sides = SIDES.map((side) => ({
+      width: w,
+      color: borderColor(style, side, st["outline-color"]),
+      style: style === "inset" || style === "outset" ? "solid" : style,
+    }));
+    const radii = r.map(([rx, ry]) => (rx > 0 && ry > 0 ? [Math.max(0, rx + o), Math.max(0, ry + o)] : [0, 0]));
+    // A solid one with square corners is the same pixels as one stroked rectangle, which every
+    // SVG drew before the other styles were (300 SVGs keep their bytes).
+    if (style === "solid" && radii.every(([rx]) => rx === 0)) {
+      const m = w / 2;
+      return [
+        `<rect ${rectAttrs({ x: box.x + m, y: box.y + m, w: box.w - w, h: box.h - w })} fill="none" stroke="${st["outline-color"]}" stroke-width="${num(w)}"/>`,
+      ];
+    }
+    return paintBorders(box, radii, sides);
+  }
+
   function paintBorders(b, r, bw) {
     const uniform = bw.every(
       (s) => s.width === 0 || (s.color === bw.find((t) => t.width > 0).color && s.style === "solid"),
     );
-    if (uniform) {
-      const color = bw.find((s) => s.width > 0).color;
-      if (transparent(color)) return [];
+    // The ring between the border box and the padding box, each with its corners.
+    const ring = () => {
       const inner = deflate(b, bw[0].width, bw[1].width, bw[2].width, bw[3].width);
       const outerD = rrectPath(b, r) ?? `M${num(b.x)} ${num(b.y)}h${num(b.w)}v${num(b.h)}h${num(-b.w)}Z`;
       const innerD =
         rrectPath(inner, innerRadii(r, bw)) ??
         `M${num(inner.x)} ${num(inner.y)}h${num(inner.w)}v${num(inner.h)}h${num(-inner.w)}Z`;
-      return [`<path fill-rule="evenodd" fill="${color}" d="${outerD}${innerD}"/>`];
+      return `${outerD}${innerD}`;
+    };
+    if (uniform) {
+      const color = bw.find((s) => s.width > 0).color;
+      if (transparent(color)) return [];
+      return [`<path fill-rule="evenodd" fill="${color}" d="${ring()}"/>`];
     }
-    // Sides of different colours: a trapezoid each, with the radius dropped.
+    // Sides of different colours: a trapezoid each, cut at the corners along the diagonal
+    // from the border box's corner through the padding box's.
     const [t, rt, bt, lt] = bw.map((s) => s.width);
     const X0 = b.x;
     const Y0 = b.y;
@@ -1633,9 +2035,41 @@ export function renderSvg(
             ? ""
             : ` clip-path="url(#${def(`k${quads[k].join("|")}`, (id) => `<clipPath id="${id}"><polygon points="${quads[k].map(num).join(" ")}"/></clipPath>`)})"`;
         out.push(rounded ? dashedRounded(b, r, bw, s, clip) : dashedSide(b, k, s, bw, clip));
+      } else if (rounded) {
+        // The ring with its rounded corners, shown in the side's wedge: the trapezoid with its
+        // inner corners moved along the diagonals until it takes in the corners' curves.
+        const wedge = wedges()[k];
+        const id = def(
+          `k${wedge.join("|")}`,
+          (id) => `<clipPath id="${id}"><polygon points="${wedge.map(num).join(" ")}"/></clipPath>`,
+        );
+        out.push(`<path fill-rule="evenodd" fill="${s.color}" d="${ring()}" clip-path="url(#${id})"/>`);
       } else out.push(`<polygon points="${quads[k].map(num).join(" ")}" fill="${s.color}"/>`);
     }
     return out;
+
+    // Each corner's inner point (top left, top right, bottom right, bottom left) moved along
+    // its diagonal by `k` widths, k as many as reach past the corner's radii, and no further
+    // than the box's middle; then the four sides' wedges, as `quads`.
+    function wedges() {
+      const reach = (w, h, [rx, ry]) => {
+        let k = Math.max(1, w > 0 ? rx / w : 0, h > 0 ? ry / h : 0);
+        if (w > 0) k = Math.min(k, b.w / 2 / w);
+        if (h > 0) k = Math.min(k, b.h / 2 / h);
+        return k;
+      };
+      const [ktl, ktr, kbr, kbl] = [reach(lt, t, r[0]), reach(rt, t, r[1]), reach(rt, bt, r[2]), reach(lt, bt, r[3])];
+      const TL = [X0 + lt * ktl, Y0 + t * ktl];
+      const TR = [X1 - rt * ktr, Y0 + t * ktr];
+      const BR = [X1 - rt * kbr, Y1 - bt * kbr];
+      const BL = [X0 + lt * kbl, Y1 - bt * kbl];
+      return [
+        [X0, Y0, X1, Y0, ...TR, ...TL],
+        [X1, Y0, X1, Y1, ...BR, ...TR],
+        [X1, Y1, X0, Y1, ...BL, ...BR],
+        [X0, Y1, X0, Y0, ...TL, ...BL],
+      ];
+    }
   }
 
   // The stroke attributes of a dashed or dotted line `length` long.
@@ -1741,7 +2175,7 @@ export function renderSvg(
       }
       // Where the image is placed (the origin box) and where it shows (the clip box).
       const area = (boxes[origins[k % origins.length]] ?? boxes["padding-box"]).box;
-      const { box: cb, r: cr } = boxes[clips[k % clips.length]] ?? boxes["border-box"];
+      const { box: cb, r: cr } = boxes[backgroundClip(clips[k % clips.length], bw, r)] ?? boxes["border-box"];
       if (cb.w <= 0 || cb.h <= 0) return;
       const url = m ? m[1].replace(/\\"/g, '"') : null;
       const nat = url ? naturalSize(url) : null;
@@ -1829,9 +2263,25 @@ export function renderSvg(
       }
       const uses = [];
       for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) uses.push(tile(xStart + i * w, yStart + j * h));
-      const spills =
-        xStart < cb.x || yStart < cb.y || xStart + nx * w > cb.x + cb.w + 0.01 || yStart + ny * h > cb.y + cb.h + 0.01;
-      if (spills) out.push(`<g clip-path="url(#${clipId()})">${uses.join("")}</g>`);
+      const [x1, y1] = [xStart + nx * w, yStart + ny * h];
+      const spills = xStart < cb.x || yStart < cb.y || x1 > cb.x + cb.w + 0.01 || y1 > cb.y + cb.h + 0.01;
+      // Tiles inside the box still reach into a rounded corner, which cuts them (a toolbox icon
+      // that fills its box, 3 px rounded): the corner's rx by ry square, top left, top right,
+      // bottom right, bottom left.
+      const corners = [
+        [cb.x, cb.y, 1, 1],
+        [cb.x + cb.w, cb.y, -1, 1],
+        [cb.x + cb.w, cb.y + cb.h, -1, -1],
+        [cb.x, cb.y + cb.h, 1, -1],
+      ];
+      const cut = corners.some(([cx, cy, sx, sy], c) => {
+        const [crx, cry] = cr[c];
+        if (crx <= 0 || cry <= 0) return false;
+        const inX = sx > 0 ? xStart < cx + crx : x1 > cx - crx;
+        const inY = sy > 0 ? yStart < cy + cry : y1 > cy - cry;
+        return inX && inY;
+      });
+      if (spills || cut) out.push(`<g clip-path="url(#${clipId()})">${uses.join("")}</g>`);
       else out.push(...uses);
       stats.images++;
     }
@@ -2048,25 +2498,91 @@ export function renderSvg(
 
   // A native checkbox or radio button, as Chromium's default theme draws them:
   // a square (a circle) as wide as the box is wide and tall, whichever is
-  // less, centred in it, designed on a 13 by 13 grid and scaled to fit. A
-  // disabled one is the same, faded.
+  // less, centred in it, designed on a 13 by 13 grid and scaled to fit; checked,
+  // in its accent-color, #0075ff where that is auto, with its white parts in the
+  // accent's ink (accentInk). A disabled one
+  // (`disabled`, which DevTools gives as "") is translucent, the ground under it
+  // showing through: a fill of rgba(245, 245, 245, 0.68), its border, a checked
+  // box's ground and a radio's dot in the border's #767676 at 30% over it, and a
+  // check mark in white at 60% over that. Fitted by bench/checkable.html over
+  // white and over rgb(43, 43, 43), each part to the level (248 and 180, 209 and
+  // 162, 237 and 218); Find_Project's "Current Module" is the same. The check
+  // mark is NativeThemeBase::PaintCheckbox's: from a fifth in and half down, a
+  // fifth across and down, to a fifth in from the right and down, stroked a 0.16th
+  // of the box wide, mitred; Edge draws it so at 13, 16 and 20 px, and a descent
+  // over the points, the width, the joins and the caps moved none of them.
   function paintCheckable(l) {
     const b = l.bounds;
     const side = Math.min(b.w, b.h);
     if (!(side > 0)) return [];
     const radio = l.node.attrs.type.toLowerCase() === "radio";
     const on = l.node.checked;
-    const blue = "#0078d7";
-    const art = radio
-      ? `<circle cx="6.5" cy="6.5" r="6.5" fill="${on ? blue : "#767676"}"/><circle cx="6.5" cy="6.5" r="5.5" fill="#fff"/>` +
-        (on ? `<circle cx="6.5" cy="6.5" r="3.75" fill="${blue}"/>` : "")
-      : on
-        ? `<rect width="13" height="13" rx="2" fill="${blue}"/>` +
-          `<path d="M3.1 6.3L5.3 10L10.3 2.7" fill="none" stroke="#fff" stroke-width="1.8"/>`
-        : `<rect width="13" height="13" rx="2" fill="#767676"/><rect x="1" y="1" width="11" height="11" rx="1" fill="#fff"/>`;
-    const fade = l.node.attrs.disabled === undefined ? "" : ' opacity="0.5"';
+    const given = l.style["accent-color"];
+    const blue = given && given !== "auto" ? given : DEFAULT_ACCENT;
+    const ink = accentInk(blue);
+    const mark = (colour) => `<path d="M2.6 6.5L5.2 9.1L10.4 2.6" fill="none" stroke="${colour}" stroke-width="2.08"/>`;
+    let art;
+    if (l.node.attrs.disabled !== undefined) {
+      const fill = "rgba(245, 245, 245, 0.68)";
+      const line = "rgba(118, 118, 118, 0.3)";
+      art = radio
+        ? `<circle cx="6.5" cy="6.5" r="6.5" fill="${fill}"/><circle cx="6.5" cy="6.5" r="6" fill="none" stroke="${line}" stroke-width="1"/>` +
+          (on ? `<circle cx="6.5" cy="6.5" r="3.75" fill="${line}"/>` : "")
+        : `<rect width="13" height="13" rx="2" fill="${fill}"/>` +
+          (on
+            ? `<rect width="13" height="13" rx="2" fill="${line}"/>${mark("rgba(255, 255, 255, 0.6)")}`
+            : `<rect x="0.5" y="0.5" width="12" height="12" rx="1.5" fill="none" stroke="${line}" stroke-width="1"/>`);
+    } else
+      art = radio
+        ? `<circle cx="6.5" cy="6.5" r="6.5" fill="${on ? blue : "#767676"}"/><circle cx="6.5" cy="6.5" r="5.5" fill="${on ? ink : "#fff"}"/>` +
+          (on ? `<circle cx="6.5" cy="6.5" r="3.75" fill="${blue}"/>` : "")
+        : on
+          ? `<rect width="13" height="13" rx="2" fill="${blue}"/>${mark(ink)}`
+          : `<rect width="13" height="13" rx="2" fill="#767676"/><rect x="1" y="1" width="11" height="11" rx="1" fill="#fff"/>`;
     return [
-      `<g transform="translate(${num(b.x + (b.w - side) / 2)} ${num(b.y + (b.h - side) / 2)}) scale(${num(side / 13)})"${fade}>${art}</g>`,
+      `<g transform="translate(${num(b.x + (b.w - side) / 2)} ${num(b.y + (b.h - side) / 2)}) scale(${num(side / 13)})">${art}</g>`,
+    ];
+  }
+
+  // A search field's clear button, which Chromium paints with its theme's picture
+  // when the button is shown (opacity 1: the field has text and the focus or the
+  // pointer, or the page shows it): in the button's box, snapped, an X of two
+  // strokes 0.235 of the box wide with round ends, a sixth of the box in from its
+  // corners (fitted to the coverage of Edge's picture at 18 and 42 device px); for
+  // a light colour scheme blue, darker towards the bottom, and white for a dark
+  // one. Checked by bench/search.html.
+  function paintSearchButton(l) {
+    if (!env.searchButton) {
+      note("a search field's clear button");
+      return [];
+    }
+    const got = env.searchButton(l.key);
+    if (got?.failed) note("a search field's clear button that could not be read");
+    if (!got || got.failed || !(got.opacity > 0) || got.visibility !== "visible" || got.display === "none") return [];
+    if (got.appearance !== "auto" && got.appearance !== "searchfield-cancel-button") {
+      note("a search field's clear button the page styles");
+      return [];
+    }
+    const e = l.exact ?? l.bounds;
+    const x = Math.round(e.x + got.x);
+    const y = Math.round(e.y + got.y);
+    const side = Math.min(Math.round(e.x + got.x + got.w) - x, Math.round(e.y + got.y + got.h) - y);
+    if (!(side > 0)) return [];
+    let paint = "#fff";
+    if (!got.dark) {
+      const id = def(
+        "search-clear",
+        (id) =>
+          `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="9">` +
+          SEARCH_CLEAR_STOPS.map(([at, c]) => `<stop offset="${at}" stop-color="${c}"/>`).join("") +
+          "</linearGradient>",
+      );
+      paint = `url(#${id})`;
+    }
+    const fade = got.opacity < 1 ? ` opacity="${num(got.opacity)}"` : "";
+    return [
+      `<g transform="translate(${num(x)} ${num(y)}) scale(${num(side / 9)})"${fade}>` +
+        `<path d="M1.5 1.5L7.5 7.5M7.5 1.5L1.5 7.5" fill="none" stroke="${paint}" stroke-width="2.1" stroke-linecap="round"/></g>`,
     ];
   }
 
@@ -2095,8 +2611,11 @@ export function renderSvg(
   // content box (the border box less border and padding): in one line centred
   // vertically for an input, from the top for a textarea (a long line is cut
   // at the edge, not wrapped), aligned by text-align, and moved by how far the
-  // control is scrolled. An input's text is clipped to the content box, a
-  // textarea's to the padding box, which it scrolls in.
+  // control is scrolled. An input's text is clipped to the content box across,
+  // and down to its line too where the line is taller (Chromium centres the line
+  // on a content box shorter than it and shows it over the padding: the Object
+  // View's search field), within the padding box; a textarea's to the padding
+  // box, which it scrolls in.
   function paintTextControl(l, bw) {
     const c = shownControlText(l);
     if (!c) return [];
@@ -2122,27 +2641,56 @@ export function renderSvg(
     const m = env.metrics(key);
     const lh = st["line-height"]?.endsWith("px") ? px(st["line-height"]) : m.line || m.height;
     const textarea = l.node.name === "TEXTAREA";
-    const shows = textarea
-      ? deflate(b, bw[0].width, bw[1].width + scrollbarW, bw[2].width + scrollbarH, bw[3].width)
-      : box;
+    const padding = deflate(b, bw[0].width, bw[1].width + scrollbarW, bw[2].width + scrollbarH, bw[3].width);
+    let shows = textarea ? padding : box;
+    if (!textarea && lh > box.h) {
+      const y0 = Math.max(padding.y, Math.floor(box.y + (box.h - lh) / 2));
+      const y1 = Math.min(padding.y + padding.h, Math.ceil(box.y + (box.h + lh) / 2));
+      shows = { ...box, y: y0, h: y1 - y0 };
+    }
     const align = BUTTON_INPUTS.has((l.node.attrs.type ?? "").toLowerCase()) ? "center" : (st["text-align"] ?? "start");
     const shown = c.placeholder
       ? { ...st, color: env.placeholderColor, "-webkit-text-fill-color": env.placeholderColor }
       : st;
     const lines = controlLines(c.text, textarea, st["tab-size"]);
+    // The text the field has selected: its part of each line, drawn on the selection's ground in
+    // its colour; in a window without focus Chromium draws it in other colours, which no page
+    // property gives, so it is not drawn.
+    let sel = c.placeholder ? null : selectionIn(env.selection, l.node);
+    if (sel && !sel.focused) {
+      note("a text selection in a window without focus");
+      sel = null;
+    }
+    const parts = sel ? selectedParts(c.text, textarea, st["tab-size"], sel.start, sel.end) : null;
+    const selectedStyle = sel && { ...st, color: sel.color, "-webkit-text-fill-color": sel.color };
     // The text moves by how far the control is scrolled; only a textarea scrolls down.
     const sx = l.scroll?.x ?? 0;
     const top = textarea ? at.y - (l.scroll?.y ?? 0) : at.y + (at.h - lh) / 2;
     const runs = [];
     for (const [i, line] of lines.entries()) {
-      if (!line.trim()) continue;
+      const part = parts?.[i]?.selected ? parts[i] : null;
+      if (!line.trim() && !part) continue;
       const y = top + i * lh;
       if (y + lh < shows.y || y > shows.y + shows.h) continue;
       const w = env.textWidth?.(key, line) ?? null;
       let x = at.x - sx;
       if (w !== null && align.endsWith("center")) x = at.x + (at.w - w) / 2 - sx;
       else if (w !== null && (align === "right" || align === "end")) x = at.x + at.w - w - sx;
-      runs.push(textRun(shown, line, x, y + (lh - m.height) / 2 + m.ascent, w));
+      const baseline = y + (lh - m.height) / 2 + m.ascent;
+      // a selected line: the part before, the selection's ground and its text, the part after
+      const widths = part && [part.before, part.selected].map((s) => (s ? env.textWidth?.(key, s) : 0));
+      if (part && widths.every((v) => v !== null && v !== undefined)) {
+        const [wb, ws] = widths;
+        if (part.before.trim()) runs.push(textRun(shown, part.before, x, baseline, wb));
+        // Chromium's own colour is made translucent; one the page gives is drawn as it is
+        const ground = sel.given ? sel.background : blendWithWhite(sel.background);
+        runs.push(`<rect ${rectAttrs({ x: x + wb, y, w: ws, h: lh })} fill="${ground}"/>`);
+        if (part.selected.trim()) runs.push(textRun(selectedStyle, part.selected, x + wb, baseline, ws));
+        if (part.after.trim())
+          runs.push(textRun(shown, part.after, x + wb + ws, baseline, env.textWidth?.(key, part.after) ?? null));
+        continue;
+      }
+      runs.push(textRun(shown, line, x, baseline, w));
     }
     if (!runs.length) return [];
     const id = def(
@@ -2157,26 +2705,115 @@ export function renderSvg(
   // exact (fractional) positions of the fragment, whitespace included. The line
   // goes under the glyphs, and leaves a gap round each stretch of the fragment's
   // ink that is in its band (inkBand), as wide as the line is thick on each side.
-  // Only the fragments in `view` are drawn: textNeeds measures only those.
+  // A line-through goes over the glyphs, whole, where lineThroughAbove puts it.
+  // Only the fragments in `view` are drawn: textNeeds measures only those. On a
+  // line text-overflow: ellipsis cuts, a fragment is drawn as far as cutPlan says,
+  // and the ellipsis after the last one shown.
   function paintText(l, view) {
     const st = textStyle(l);
     if (!st || st.visibility !== "visible") return [];
     const key = fontKey(st);
     const base = env.metrics(key).ascent;
+    const symbol = (l.node.pseudo === "marker" || l.node.parent?.pseudo === "marker") && SYMBOL_MARKERS[l.text];
+    if (symbol) return l.boxes.filter((t) => overlaps(t, view)).map((t) => paintSymbolMarker(t, st, symbol, base));
     const { lines, undrawn } = decorationsOf(l);
     for (const what of undrawn) note(what);
     const out = [];
-    for (const t of l.boxes) {
-      if (!overlaps(t, view)) continue;
-      const s = l.text.substr(t.start, t.length);
+    for (const [k, whole] of l.boxes.entries()) {
+      if (!overlaps(whole, view)) continue;
+      const line = cutLines?.lineOf(l, k);
+      const plan = line ? cutPlan(line) : null;
+      const id = `${l.key}|${k}`;
+      const part = plan?.parts.get(id);
+      if (part && !part.length) continue;
+      const full = l.text.substr(whole.start, whole.length);
+      const s = part ? full.slice(0, part.length) : full;
+      const t = part ? { ...whole, w: part.width } : whole;
+      const baseline = Math.round(t.y + base);
       for (const u of lines) {
+        if (u.kind !== "underline") continue;
         const gaps = u.skipInk && s.trim() ? (env.inkGaps?.(key, s, ...inkBand(u)) ?? []) : [];
-        const line = underline(t, Math.round(t.y + base) + u.offset, u, gaps);
+        const line = underline(t, baseline + u.offset, u, gaps);
         if (line) out.push(line);
       }
-      if (s.trim()) out.push(textRun(st, s, t.x, t.y + base, t.w));
+      if (s.trim()) out.push(textRun(st, s, t.x, t.y + base, t.w, full));
+      // a line-through is painted over the text, whole
+      for (const u of lines) {
+        if (u.kind !== "line-through") continue;
+        const line = underline(t, baseline - lineThroughAbove(Math.round(base), u.reach), u, []);
+        if (line) out.push(line);
+      }
+      if (plan?.after === id) out.push(textRun(line.block.style, ELLIPSIS, t.x + t.w, t.y + base, plan.width));
     }
     return out;
+  }
+
+  // A list marker that is a symbol (SYMBOL_MARKERS), which Chromium paints as a
+  // shape, not as the glyph its text is (NGTextFragmentPainter::PaintSymbol,
+  // ListMarker::RelativeSymbolMarkerRect), in the fragment `t`: a disc, a circle
+  // or a square b = ((2a/3) + 1)/2 px across, a being the font's ascent in whole
+  // px and each division a whole one, 1 px from the fragment's left and
+  // 3(a - 2a/3)/2 below its top, snapped to pixels; a disc filled, a circle
+  // stroked 1 px wide on it, a square filled. A disclosure triangle is in a square
+  // of 0.66 times the font size whose foot is on the ascent, Chromium's canonical
+  // triangle scaled into it, unsnapped. Fitted by bench/list-marker.html, whose
+  // shapes are these sizes in Segoe UI from 9 to 24 px and in Inter at 10.5.
+  function paintSymbolMarker(t, st, symbol, ascent) {
+    const a = Math.round(ascent);
+    const fill = st.color;
+    if (symbol.triangle) {
+      const s = px(st["font-size"]) * 0.66;
+      const [x, y] = [t.x, t.y + a - s];
+      const d = symbol.triangle.map(([u, v], k) => `${k ? "L" : "M"}${num(x + u * s)} ${num(y + v * s)}`).join("");
+      return `<path d="${d}Z" fill="${fill}"/>`;
+    }
+    const third = Math.trunc((a * 2) / 3);
+    const b = Math.trunc((third + 1) / 2);
+    const x0 = Math.round(t.x + 1);
+    const y0 = Math.round(t.y + Math.trunc((3 * (a - third)) / 2));
+    const w = Math.round(t.x + 1 + b) - x0;
+    const h = Math.round(t.y + Math.trunc((3 * (a - third)) / 2) + b) - y0;
+    if (symbol.shape === "square") return `<rect ${rectAttrs({ x: x0, y: y0, w, h })} fill="${fill}"/>`;
+    const at = `cx="${num(x0 + w / 2)}" cy="${num(y0 + h / 2)}" rx="${num(w / 2)}" ry="${num(h / 2)}"`;
+    return symbol.shape === "disc"
+      ? `<ellipse ${at} fill="${fill}"/>`
+      : `<ellipse ${at} fill="none" stroke="${fill}" stroke-width="1"/>`;
+  }
+
+  // How text-overflow: ellipsis cuts a line (ellipsisLines), as Chromium's
+  // NGLineTruncator does: the fragments that end before the line's end less the
+  // ellipsis are drawn whole; the first that does not is cut to what fits (the
+  // page's answer to cutNeed), and those after it are hidden; a fragment other
+  // than the first of which nothing fits is hidden too, and the ellipsis follows
+  // the one before it. {parts, after, width}: each fragment not drawn whole, by
+  // "key|index", {length, width}; the fragment the ellipsis follows; its width.
+  // Null when the page was not asked: the line is drawn whole.
+  const plans = new WeakMap();
+  function cutPlan(line) {
+    if (plans.has(line)) return plans.get(line);
+    let plan = null;
+    const width = env.cut && env.textWidth?.(fontKey(line.block.style), ELLIPSIS);
+    if (width != null) {
+      const parts = new Map();
+      let after = null;
+      let done = false;
+      for (const [i, f] of line.frags.entries()) {
+        const id = `${f.l.key}|${f.k}`;
+        if (done) parts.set(id, { length: 0, width: 0 });
+        else if (f.t.x + f.t.w <= line.end - width + LAYOUT_UNIT) after = id;
+        else {
+          const got = env.cut(...cutNeed(line, f.l, f.k));
+          if (!got) break;
+          const [length, w] = got;
+          parts.set(id, { length, width: w });
+          if (length || i === 0) after = id;
+          done = true;
+        }
+      }
+      if (done) plan = { parts, after, width };
+    }
+    plans.set(line, plan);
+    return plan;
   }
 
   // The line under a text fragment `t`, at `y`, as one rect, or as one path where
@@ -2202,9 +2839,10 @@ export function renderSvg(
   // One run of text, in the picture's own subset faces when the run's fonts can
   // be loaded and in the computed font-family otherwise. `width` is the run's
   // laid-out width: textLength holds a viewer that shapes it differently to it.
-  function textRun(st, s, x, baseline, width) {
+  // `whole` is the run the fonts were asked for: of a cut run, the run before it was cut.
+  function textRun(st, s, x, baseline, width, whole = s) {
     stats.texts++;
-    const sources = fonts && env.fontsFor ? env.fontsFor(fontKey(st), s) : null;
+    const sources = fonts && env.fontsFor ? env.fontsFor(fontKey(st), whole) : null;
     const face = sources?.length ? fonts.css(s, sources, st["font-weight"], st["font-style"]) : null;
     if (!face) note("text in an unembedded font");
     const fit = width && [...s].length > 1 ? ` textLength="${num(width)}" lengthAdjust="spacing"` : "";
@@ -2234,7 +2872,6 @@ export function renderSvg(
     unzoom(doc, scale);
     const shown = frameView(view, geometry, doc);
     if (!shown) return [];
-    if (scale !== 1 && viewportGutters(doc, mine.inner)) note("scrollbars of a zoomed frame");
     if (radii(st, l.bounds.w, l.bounds.h).some(([a, b]) => a > 0 || b > 0)) note("frame with rounded corners");
     const outer = env;
     env = mine;
@@ -2278,6 +2915,12 @@ export function renderSvg(
     items.sort((a, b) => a.l.paint - b.l.paint || a.l.li - b.l.li);
     const body = [];
     const open = [];
+    // A frame is painted inside its owner's document: its lines are its own until it is done.
+    const outerLines = cutLines;
+    cutLines = ellipsisLines(doc);
+    // Chromium paints a selection of the document's own text outside the DOM, as it paints a
+    // field's; only a field's is drawn (paintTextControl).
+    if (env.selection?.outside) note("a text selection outside a text field");
     for (const it of items) {
       const l = it.l;
       const n = l.node;
@@ -2337,6 +2980,7 @@ export function renderSvg(
       body.push(...content);
     }
     while (open.length) closeGroup(body, open.pop());
+    cutLines = outerLines;
     return body;
   }
 

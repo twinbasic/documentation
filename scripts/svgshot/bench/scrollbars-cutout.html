@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>A styled scrollbar in a cut-out</title>
+<!--
+  A scrollbar styled with ::-webkit-scrollbar inside a cut-out, as shoot_docs.mjs
+  makes one: every element under the body hidden with !important, and the
+  cut-out shown again. capture.mjs's scrollbarParts reads each part's style from
+  a probe element; a probe under the body would be matched by the cut-out's rule,
+  and every part of the scrollbar would come out hidden.
+-->
+<style>
+body { margin: 0; background: #fff; font: 13px "Segoe UI", sans-serif; }
+body *{visibility:hidden !important}
+.keep,.keep *{visibility:visible !important}
+.keep { position: absolute; left: 20px; top: 20px; width: 220px; height: 160px; overflow-y: scroll; background: #eee; }
+.keep p { margin: 0 8px; line-height: 24px; }
+::-webkit-scrollbar { width: 16px; height: 16px; }
+::-webkit-scrollbar-button:single-button { background: rgb(240 240 240); display: block; background-repeat: no-repeat; }
+::-webkit-scrollbar-button:single-button:vertical:decrement {
+  height: 14px; background-size: 16px; background-position: center 4px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='rgb(40, 40, 40)'><polygon points='50,0 20,50 80,50'/></svg>");
+}
+::-webkit-scrollbar-button:single-button:vertical:increment {
+  height: 14px; background-size: 16px; background-position: center 2px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='rgb(40, 40, 40)'><polygon points='20,0 80,0 50,50'/></svg>");
+}
+::-webkit-scrollbar-thumb { background: rgb(90 100 110); background-clip: padding-box; border: 4px solid transparent; border-radius: 5px; }
+::-webkit-scrollbar-track { background: rgb(240 240 240); }
+</style>
+<div class="hidden-sibling">Hidden by the cut-out.</div>
+<div class="keep">
+  <p>One</p><p>Two</p><p>Three</p><p>Four</p><p>Five</p><p>Six</p><p>Seven</p><p>Eight</p><p>Nine</p><p>Ten</p><p>Eleven</p><p>Twelve</p>
+</div>
+</html>

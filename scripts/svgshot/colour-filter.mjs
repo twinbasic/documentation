@@ -156,6 +156,9 @@ export function stepPrimitive(s, input, out) {
  *               wrappers: Set of the defs that wrap a picture in one, note(what)}
  */
 export function bakeMarkup(s, bake, ctx) {
+  // No colour step (a filter of opacity() alone, which is the group's opacity): nothing changes.
+  // Baked all the same, a picture was wrapped in a filter of no primitive, which draws nothing.
+  if (!bake.steps.length) return s;
   const out = s
     // What the group references: a paint server, a pattern, a tile, a picture.
     .replace(/(url\(#|href="#)(d\d+)/g, (_, pre, id) => pre + bakeDef(id, bake, ctx))

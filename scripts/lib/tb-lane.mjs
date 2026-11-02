@@ -98,6 +98,9 @@ export class Lane {
    * @param {{ width: number, height: number } | null} [o.page]  the size each IDE's
    *   page is given as the lane attaches to it (fixPageSize); null, the default,
    *   leaves the window's own. addinLane gives a runner's lane PAGE
+   * @param {string} [o.projectId]  the project.id every project the lane opens is given;
+   *   by default laneProjectId's for its slot, which differs from run to run. shoot_docs
+   *   gives one id for all, since a picture can show it
    */
   constructor({
     name,
@@ -109,8 +112,9 @@ export class Lane {
     browserArgs = "",
     page = null,
     userSettings = false,
+    projectId = null,
   }) {
-    Object.assign(this, { name, slot, desktop, work, ide, show, browserArgs, page, userSettings });
+    Object.assign(this, { name, slot, desktop, work, ide, show, browserArgs, page, userSettings, projectId });
     this.port = null; // the open IDE's DevTools port
     this.lease = null; // the slot, as launchIde takes it (leased())
     this.exe = null; // the lane's copy of the install, made on first use
@@ -292,7 +296,7 @@ export class Lane {
       project,
       settings: (original) => ({
         "project.buildPath": buildPath ?? path.join(this.work, "out", `${original["project.name"]}.exe`),
-        "project.id": laneProjectId(2, slot.slot),
+        "project.id": this.projectId ?? laneProjectId(2, slot.slot),
       }),
     });
     const appdata = this.appdataDir();

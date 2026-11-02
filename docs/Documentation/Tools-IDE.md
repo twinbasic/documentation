@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Tools-IDE
 # IDE Automation
 {: .no_toc }
 
-Operates the twinBASIC IDE to test add-ins and the IDE itself, to try the help add-in by hand, and to take the documentation's IDE screenshots. The command-line conventions every tool shares are under [Command-line conventions](Tools#command-line-conventions).
+Operates the twinBASIC IDE to test add-ins and the IDE itself, to try the help add-in by hand, and to take the documentation's IDE screenshots and review them. The command-line conventions every tool shares are under [Command-line conventions](Tools#command-line-conventions).
 
 * TOC goes here
 {:toc}
@@ -100,8 +100,9 @@ Exit codes: **0** the IDE was closed, and the registry is as it was found; **1**
 ## shoot_docs.mjs
 {: #shoot-docs }
 
-    node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--ide <path>] [--svg] [--bundles <dir>] [--against <rev> | --against-disk]
+    node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir> | --stage <dir>] [--events] [--jobs N] [--ide <path>] [--svg] [--bundles <dir>] [--against <rev> | --against-disk]
     node scripts/shoot_docs.mjs --cleanup [--dry-run] [--only <regex>] [--out <dir>] [--against <rev>]
+    node scripts/shoot_docs.mjs --list [--only <regex>]
 
 Takes the documentation's screenshots of the IDE, so that one run regenerates them after a new BETA. Each picture belongs to a *setup*, one IDE brought to a known state. A setup's IDE is started only when one of its pictures is selected. Run `build.bat` first: the help setup's pane pages come from the built site, `docs/_site`, served on `localhost`.
 
@@ -127,6 +128,8 @@ A picture is written only when it differs by more than the noise two captures of
 
 The capture is then compared with the picture at `HEAD` first. One that is that picture, or within the noise of it, leaves the file as `HEAD` has it, with its SVG (the one at `HEAD`, or none when `HEAD` has none), and is reported `restored` when the file held anything else. Comparing with the file alone, a retake over several runs could drift from the repository's picture in steps each within the noise of the file before it, or keep the other version of the noise. A capture that is not near the picture at `HEAD` is compared with the file: within the noise of it, the file stays, since an earlier run of the same retake wrote that change; else the file is written. A picture `HEAD` does not have is compared with the file only. Each picture is reported as `new`, `updated`, `restored` or `unchanged`; a second run with nothing changed reports every picture `unchanged`.
 
+Each picture can have an entry in `test/shots/manifest.json`, keyed by its path under `docs` (a light picture's with `.light`). A run records there the twinBASIC build of each picture it writes. An entry can also change how its picture is judged. It can give the picture a noise rule of its own, with other limits or with rectangles, in the picture's pixels, left out of the comparison, and it can give the picture's SVG another bar. It can also hold a decision made in a review: to keep the old picture or take the new one, for one capture, or to accept or refuse one SVG compared with one PNG. A decision applies only to exactly the bytes it was made on, and any other capture is judged by the rule. `--cleanup` follows the same entries. A run into a folder other than `docs` neither reads the file nor writes it.
+
 The Windows user name must never be in a published picture. Before each one is kept, the visible text of its page is searched for the name, and a picture whose page holds it is refused.
 
 Every picture is twice the size it is shown at. A page that shows one gives it a `{:width
@@ -145,17 +148,20 @@ Flags:
 - `--jobs` is how many IDEs run at once, 6 by default and at most 16. Each runs on a private desktop (a slot from [`tbbroker`](Tools-Compiler#tbbroker)) with a work folder and an install copy of its own, and a DevTools port Windows picks. The setups wait in a queue, the longest first, and the three long ones (no-project, sample and customcontrols) are cut into three parts, each in an IDE of its own. Every line of output starts with the setup or part it is from. `--jobs 1` runs each setup whole, one after another.
 - The help setup's slot also carries a port from the broker for the add-in's detached window, which the add-in has to be told before it binds it. The add-in's saved settings (`tbDocsHelp`) are emptied for the run and, with the IDE's project state, put back at the end.
 - `--svg` also draws each picture as SVG, from the page as it stands at the capture, and writes it beside the PNG as `X.svg` when it is close enough to the PNG (see [A picture as SVG](Authoring#a-picture-as-svg)). An SVG already there is rewritten only when its PNG is. It needs Python with fontTools. What the SVG is drawn from --- the page's layout, styles and measurements --- is saved for each picture as a *bundle* in the folder `--bundles` names, `.svgshot-bundles` in the repository by default, so that [`replay.mjs`](#replay) can draw the SVG again without the IDE. Git ignores that folder, and it must stay outside `docs`: a bundle holds the Windows user name.
+- `--stage` names a folder, new or empty, outside `docs` and at a path git ignores, that takes everything the run would write: nothing is written under the output folder, to the bundle folder or to `test/shots/manifest.json`. Each picture's capture, its SVG whether or not it is close enough, its bundle, its difference pictures, its *strength maps* (how many levels each pixel is off the picture it was compared with, and the SVG's off its PNG) and what was decided about it go there, laid out as `scripts/lib/shot-stage.mjs` describes, so that another program can apply the decisions afterwards. With `--svg`, the SVG of a picture whose PNG is not written is judged and staged too, its decision *unchanged*, so that a program that takes the capture after all can write the SVG as judged. The lines printed say what was decided, as without it. It cannot be given with `--diffs` or `--bundles`. The fonts' cuts are still kept in the bundle folder's `subsets`, since a cut depends only on the font and its characters.
+- `--list` starts no IDE and takes nothing. It prints the tool's table of pictures as one line of JSON: for each, the dark picture's path under `docs` (its light one is `X.light.png`, unless the picture is taken once), its setup, whether it is taken once, and whether it is of a running program's window, which has no SVG. `--only` applies, and every other flag is refused. A shot of a program's window says so in the table, and a shot whose capture and table disagree fails, so the list is always right.
+- `--events` also prints a line for each event, `@@shot-event` followed by JSON: the run with its jobs and pictures, each job started, done or failed, each picture's verdict, each SVG's, a picture that failed or was not taken, and the summary. A picture's verdict says what it was compared with, its regions of change and whether it needs a person to look at it (`scripts/lib/shot-queue.mjs`). With `--events`, a line `stop` on standard input stops the run: no further picture is taken and no further setup started, and the IDEs end and the registry is put back as at the end of a run.
 
-Exit codes: **0** every picture was written or was unchanged (with `--cleanup`, every modified picture was compared); **1** a picture failed (an element was not found, the page showed the user name, or a light picture was more than 32 pixels off the dark one's size), the add-in did not build, or the demo project does not compile, or with `--cleanup` a picture could not be read as a PNG; **2** the tool could not run: a refused command line, no IDE, no built site, a registry it could not record, no such revision (or, with `--against` or `--cleanup`, no git repository), or a crash; **3** the registry or the work folder was not put back (see the lines above).
+Exit codes: **0** every picture was written or was unchanged (with `--cleanup`, every modified picture was compared; a run stopped with `--events` exits as for the pictures it took); **1** a picture failed (an element was not found, the page showed the user name, or a light picture was more than 32 pixels off the dark one's size), the add-in did not build, or the demo project does not compile, or with `--cleanup` a picture could not be read as a PNG; **2** the tool could not run: a refused command line, no IDE, no built site, a registry it could not record, no such revision (or, with `--against` or `--cleanup`, no git repository), or a crash; **3** the registry or the work folder was not put back (see the lines above).
 
 ## replay.mjs
 {: #replay }
 
-    node scripts/svgshot/replay.mjs [--only <regex>] [--bundles <dir>] [--out <dir>] [--diffs <dir>] [--recheck] [--jobs N]
+    node scripts/svgshot/replay.mjs [--only <regex>] [--bundles <dir>] [--out <dir>] [--diffs <dir> | --stage <dir>] [--events] [--recheck] [--jobs N]
 
 Draws each picture's SVG again, with the SVG converter as it is now, from the bundle that [`shoot_docs.mjs --svg`](#shoot-docs) saved when it took the picture. It starts no IDE and takes no picture, so a change to the converter under `scripts/svgshot/` is tried on every picture in about 20 seconds.
 
-Each SVG is compared with its PNG and written, left unchanged or removed as `shoot_docs.mjs` does. An SVG that comes out the same as the file already there is not compared again, so a replay with the converter unchanged reports every picture `unchanged`.
+Each SVG is compared with its PNG and written, left unchanged or removed as `shoot_docs.mjs` does. An SVG that comes out the same as the file already there is not compared again, so a replay with the converter unchanged reports every picture `unchanged`. A picture whose entry in `test/shots/manifest.json` names its SVG is compared again all the same, and judged by that entry as `shoot_docs.mjs` judges it.
 
 Cutting an SVG's fonts down to the characters it draws takes most of the time, so each cut is kept in the `subsets` folder of the bundle folder, named by a hash of the font, the characters and the cutting script. [`shoot_docs.mjs --svg`](#shoot-docs) keeps and reuses them the same way.
 
@@ -167,7 +173,7 @@ A bundle holds only what the converter asked for when the picture was taken. A p
 
 The list ends with the `shoot_docs.mjs --svg --only` command that takes those pictures again.
 
-`--only` takes the pictures whose path under `docs` matches a regular expression, a light picture's path ending in `.light.png`. `--bundles` is the bundle folder, `.svgshot-bundles` by default, and `--out` the folder the pictures are in, `docs` by default. `--diffs` names a folder for each SVG's difference picture against its PNG. `--recheck` compares every SVG with its PNG, also one that is the same as the file, for when the comparison itself has changed. `--jobs` is how many processes draw at once, each with a browser of its own, by default half the logical processors and at most 8.
+`--only` takes the pictures whose path under `docs` matches a regular expression, a light picture's path ending in `.light.png`. `--bundles` is the bundle folder, `.svgshot-bundles` by default, and `--out` the folder the pictures are in, `docs` by default. `--diffs` names a folder for each SVG's difference picture against its PNG. `--recheck` compares every SVG with its PNG, also one that is the same as the file, for when the comparison itself has changed. `--jobs` is how many processes draw at once, each with a browser of its own, by default half the logical processors and at most 8. `--stage` and `--events` work as for [`shoot_docs.mjs`](#shoot-docs): the stage takes each SVG drawn, its difference picture, its strength map and what was decided about it, and nothing is written under the output folder; `stop` on standard input is passed to every process, and each draws no further SVG.
 
 The tool needs Python with fontTools, as `--svg` does, for a cut that is not kept yet.
 
@@ -191,11 +197,46 @@ Each picture that has a bundle is drawn again from it, with the converter as it 
 1. the pictures that differ from the revision only within the noise rule of [`shoot_docs.mjs`](#shoot-docs) (no pixel more than 16 grey levels off, and at most 0.5% of the pixels off at all). That tool never writes a capture within that rule of a file, so such a picture was most likely rewritten in error. This section shows one `git checkout <rev> -- <paths>` command that would restore them all, with paths from the repository's root, and the [`shoot_docs.mjs --cleanup`](#shoot-docs) command that would restore them with their SVGs. The tool only shows them and never runs them;
 1. the added pictures, which are new in the working folder, and then the deleted ones, each with a single picture.
 
+A picture with an entry in `test/shots/manifest.json` is judged by it on either page, as [`shoot_docs.mjs`](#shoot-docs) and its `--cleanup` judge it: an SVG by its own bar, a PNG by its own noise rule, and either by a review's decision about the same bytes. A picture listed within noise is then exactly one that `--cleanup` puts back. Its card says what its entry changes, and its bar marks its own limit. The file is read only when `--docs` is `docs`.
+
 It compares PNG with PNG: no SVG is drawn, no bundle is read and no browser starts, so a run over several hundred pictures takes about half a minute. `--against` is not combined with `--all`, `--bundles` or `--jobs`; `--only` and `--docs` apply as before. A revision the repository does not have, or a `--docs` folder outside a git working folder, is refused before anything is written.
 
 The pictures on the page are drawn without the check for the Windows user name, so the page and its pictures can show it. So the folder may not be under `docs`, nor inside a git working folder at a path git does not ignore; a folder that already holds files must hold an earlier page of this tool, which is replaced.
 
-Exit codes: **0** the page was written; **1** the page was written, but a picture could not be drawn or compared, and is listed with the reason; **2** the tool could not run: a refused command line, a refused folder, no bundle folder, no browser, no such revision, or a crash.
+Exit codes: **0** the page was written; **1** the page was written, but a picture could not be drawn or compared, and is listed with the reason; **2** the tool could not run: a refused command line, a refused folder, no bundle folder, no browser, no such revision, a `test/shots/manifest.json` it cannot read, or a crash.
+
+## shot_review.mjs
+{: #shot-review }
+
+    node scripts/shot_review.mjs [--port N] [--retake <regex> | --replay <regex>] [--jobs N] [--ide <twinBASIC.exe>]
+    node scripts/shot_review.mjs --archived <id> [--port N]
+
+Reviews what [`shoot_docs.mjs`](#shoot-docs) and [`replay.mjs`](#replay) decided about each picture, in a browser. Both decide with fixed limits: whether a capture differs from the picture enough to be written, and whether an SVG is close enough to its PNG. No limit is right for every picture. A caret or a clock in a large window can count as a change, and a word missing from a large SVG can be within its bar. This tool shows each decision beside the pictures it was made on, and lets a person decide otherwise. It also starts and stops the runs, and commits the result.
+
+It serves its pages at `http://127.0.0.1:4180/`, on the loopback address only; `--port` chooses another port. Open that address in a browser while the tool runs, and press Ctrl+C in its terminal to close it.
+
+The tool works in a *session*: a folder in `.shot-review` at the repository's root, which git ignores, since what it holds can show the Windows user name. A session's *baseline* is the commit its pictures are compared with: `HEAD` when the session was made. Closing the tool loses nothing, and the next start opens the same session. Only one tool at a time holds it.
+
+**The overview** (`/`) shows every picture the session's runs took or drew, as cards in groups: in progress, needs a look, changed (most changed first), only noise, changed outside the runs, unchanged, and added, deleted or failed. *Needs a look* holds the pictures whose decision a person should check, chosen from the regions of the picture that changed: a capture taken although only a fringe or a caret changed, or only a word or two; a capture kept as noise although a block of it changed; an SVG accepted although a part of it is missing, or refused for a fringe alone. *Changed outside the runs* holds the pictures under `docs` that differ from the baseline although no run of the session reported them, such as a retake from a terminal. Each card shows a chip for each decision, why the picture needs a look, and its allowances. Filters show only the pictures that need a look, those with an allowance or a decision (*Overridden*), or those with no SVG. **Resume at** goes back to where the review of *Needs a look* was left.
+
+**All pictures** (`/all`) shows every picture `shoot_docs.mjs` takes (the table that [`shoot_docs.mjs --list`](#shoot-docs) prints), as the working folder has it, whatever any session did. So it is the page to open after a commit, when the overview of the new session is empty. Each card shows the picture's PNG and whether it has an SVG, the build `test/shots/manifest.json` records for it, and its allowances. Its groups are the pictures with no SVG that are of a program's window, the other pictures with no SVG, those the table names that are not under `docs`, those with an allowance or a decision, and those with an SVG. A picture with no SVG says why: a program's window, or what the newest verdict of this session or of an archived one said, such as an SVG refused for how far it was off its PNG, with the run and session it is from. When no verdict says, the card says so. **Judge their SVGs again from their bundles** replays the SVGs of the pictures with no SVG that have a bundle, with `--recheck`. A card opens the picture's page of verdicts when the session has one, and otherwise a page that shows the picture at the baseline, the file and its SVG, with **Retake this picture** and **Replay its SVG**.
+
+**A picture's page** compares the picture at the baseline with the new capture: side by side, by a swipe, by blinking between them, and as a difference map, with the SVG against its PNG and its own map. Below them, each region that changed is cropped and enlarged. The page's choices:
+
+- **Keep the old picture** or **Take the new capture**, and **Accept the SVG** or **No SVG**. A decision is kept in `test/shots/manifest.json` for exactly the bytes it was made on. A later capture with other bytes is judged by the rule again, and goes back to *Needs a look*.
+- **Allowances**: the picture's own noise rule (the grey levels and the share of pixels) and its SVG's own bar, each with rectangles left out of the comparison. Drag on the picture to draw a rectangle. An allowance lasts, across retakes, until it is removed.
+- **Back to the tool's verdicts** removes the picture's decisions.
+- **Retake this picture** and **Replay its SVG** start a run of the one picture.
+
+Each change judges the picture again at once and writes the result under `docs`. The keys J and K move to the next and the previous picture.
+
+**The runs page** (`/runs`) starts a retake (`shoot_docs.mjs --svg`, with an IDE chosen from the installs found), a replay (`replay.mjs`) or a clean-up (`shoot_docs.mjs --cleanup`, whose list of pictures is shown first) of the pictures matching a pattern or of those selected on the overview. One run runs at a time. Each run shows the command line it is the same as, its progress by setup, and its log, and **Stop** ends a retake or a replay as its own end would: its IDEs end and the registry is put back. **Kill** ends its process at once, which skips that, and is offered only after a stop. `--retake <regex>` or `--replay <regex>` starts a run as the tool opens; `--jobs` and `--ide` are its options.
+
+A retake or a replay runs with `--stage` and `--events`, so it writes nothing under `docs` itself. The tool applies each decision under `docs` as it arrives, and a picture can be reviewed while the run goes on. A retake and a clean-up compare with the session's baseline (`--against`), whatever `HEAD` is. When `HEAD` moves under the session, the overview says so and offers to move the session to it.
+
+**The commit page** (`/commit`) commits the session's own files and nothing else: the PNGs and SVGs its runs reported that git reports changed, and `test/shots/manifest.json`. It counts them, lists them, and lists the working folder's other changes as left out. The message is one line by default, such as *Screenshots retaken on BETA 1034: 1 taken by review*, can be edited, and **Back to the default message** puts it back. The commit runs the repository's hooks, which take a few seconds. Meanwhile the tool goes on serving its pages, which say that the commit is under way, also when fetched again or opened in another tab, and it refuses any change and any run until the commit has ended. Ctrl+C waits for a commit under way to end before it closes the tool. The commit is refused while a run runs, or while `HEAD` is not the baseline. A commit closes the session: it is archived as `.shot-review/archive/<id>`, `<id>` the commit's short hash, and the tool goes on with the next session, whose baseline is the new commit. `--archived <id>` opens an archived session again, read-only, beside the open one on another `--port`.
+
+Exit codes: **0** the tool was closed; **2** the tool could not run: a refused command line, the port in use, the session held by another tool, no archived session of that id, no git working folder, or a crash.
 
 ## imagestrip
 {: #imagestrip }

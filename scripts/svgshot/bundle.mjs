@@ -10,11 +10,16 @@
 // the computed styles it holds (by position); the clip; and for
 // each document measured (the page's, and each frame of the same process in the
 // clip, by frame id) the answers its measuring layer gave -- font metrics, run
-// widths, the ink an underline skips, the placeholder colour, the canvases'
+// widths, the ink an underline skips, where an ellipsis cuts a line (`cuts`, the
+// questions, as `skips` are kept beside their answers), the text a focused field has
+// selected and its colours (`selection`), the placeholder colour, the canvases'
 // pixels, the annotation layer (its box already in the document's coordinates,
 // so that a scrolled page needs nothing more) -- the platform fonts of each run,
 // the web fonts a run was drawn with, each scrolling box's scrollbar styles, each
-// inline <svg>'s markup, and a frame's viewport and zoom.
+// inline <svg>'s markup, each search field's clear button (`searchButtons`,
+// [layout object's key, what capture.mjs's searchButton read] pairs; a bundle
+// taken before they were read has none, and a field with text is a miss), and a
+// frame's viewport and zoom.
 //
 // A web font is kept as the @font-face rules of its family that some run was
 // drawn with: per font key, `webFonts[key]` lists them in the page's order, each
@@ -39,15 +44,29 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { brotliCompressSync, brotliDecompressSync, constants } from "node:zlib";
+import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { PictureFonts, webRulesFor, withFaces } from "./fonts.mjs";
-import { decodeSnapshot, oneLine, parseShadows, renderSvg, unzoom } from "./snapshot-svg.mjs";
+import {
+  accentUnknown,
+  decodeSnapshot,
+  ellipsisLines,
+  oneLine,
+  parseShadows,
+  renderSvg,
+  unzoom,
+} from "./snapshot-svg.mjs";
+
+/** The bundle cache: gitignored, outside docs/, since a bundle holds the Windows user name. */
+export const BUNDLE_CACHE = path.join(REPO_ROOT, ".svgshot-bundles");
 
 /**
  * The format of a bundle; one of another version is not read. Version 2 keeps a
  * web font as its rules and files (webFonts, fontFiles) where version 1 kept the
- * one file picked, and adds the inline <svg>s.
+ * one file picked, and adds the inline <svg>s. Version 3 keeps every rule whose range
+ * holds a character a run draws (webRulesFor since 4e05975c), where version 2 kept the
+ * last: a family the page declares twice (codicon) was drawn from one file.
  */
-export const BUNDLE_VERSION = 2;
+export const BUNDLE_VERSION = 3;
 
 // Every document of a decoded snapshot, the page's first, with its frames' after it.
 function documentsOf(page) {
@@ -92,7 +111,9 @@ export function drawBundle(bundle) {
     const { page } = m;
     const widths = new Map(page.allRuns.map(([key, text], k) => [`${key}\u0000${text}`, page.widths[k]]));
     const gaps = new Map(m.skips.map((skip, k) => [skip.join("\u0000"), page.gaps[k]]));
+    const cuts = new Map((m.cuts ?? []).map((cut, k) => [cut.join("\u0000"), page.cuts[k]]));
     const platform = new Map(m.platform);
+    const buttons = m.searchButtons ? new Map(m.searchButtons) : null;
     const miss = (what) => {
       misses.add(what);
       return null;
@@ -106,6 +127,10 @@ export function drawBundle(bundle) {
       inkGaps: (...skip) => {
         const id = skip.join("\u0000");
         return gaps.has(id) ? gaps.get(id) : miss(`ink ${JSON.stringify(skip)}`);
+      },
+      cut: (...cut) => {
+        const id = cut.join("\u0000");
+        return cuts.has(id) ? cuts.get(id) : miss(`cut ${JSON.stringify(cut)}`);
       },
       placeholderColor: page.placeholderColor,
       canvases: page.canvases,
@@ -144,9 +169,21 @@ export function drawBundle(bundle) {
       },
       scrollbars: new Map(m.scrollbars),
       svgs: new Map(m.svgs),
+      // a bundle taken before the clear buttons were read cannot say whether one shows
+      searchButton: (key) =>
+        buttons ? (buttons.get(key) ?? null) : miss("the clear button of a search field that shows text"),
+      selection: m.selection,
       inner: m.inner,
     };
   };
+
+  // A bundle taken before text-overflow was read cannot say whether a line its block
+  // clips ends in an ellipsis: the question is one it has no answer for.
+  for (const doc of measured.keys())
+    if (ellipsisLines(doc).unknown) misses.add("text-overflow of a line its block clips");
+  // Nor, before accent-color was read, the colour of a checked checkbox or radio button.
+  for (const doc of measured.keys())
+    if (accentUnknown(doc)) misses.add("accent-color of a checked checkbox or radio button");
 
   const mine = measured.get(decoded);
   if (!mine) throw new Error("the bundle has no measurements of the page");
@@ -379,6 +416,22 @@ export function dropBundle(root, out) {
 
 /** The bundle of the picture `out`, or null. */
 export const readBundle = (root, out) => readPair(bundleFile(root, out))[themeOf(out).theme];
+
+/**
+ * Puts the bundle of the picture `out` under `fromRoot` in its place under `toRoot` as it is,
+ * or, when `png` is given, naming that PNG as the one it was taken with; removes the one under
+ * `toRoot` when `fromRoot` has none. The other theme's bundle under `toRoot` is kept. Returns
+ * whether there was one to copy. The screenshot review tool moves a run's staged bundles into
+ * the cache with it, naming the PNG the file holds once a review has decided.
+ */
+export function copyBundle(fromRoot, toRoot, out, png = null) {
+  const bundle = readBundle(fromRoot, out);
+  const file = bundleFile(toRoot, out);
+  const pair = readPair(file);
+  pair[themeOf(out).theme] = bundle && png ? { ...bundle, png: pngHash(png) } : bundle;
+  writePair(file, pair);
+  return !!bundle;
+}
 
 /** Every picture with a bundle under `root`, as its path under docs/ with forward slashes. */
 export function listBundles(root) {

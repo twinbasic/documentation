@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Search fields</title>
+<!--
+  The clear button of a search field, as snapshot-svg.mjs's paintSearchButton draws it from what
+  capture.mjs's searchButton reads: in a light and a dark colour scheme, over white and over the
+  IDE's dark ground (the help pane's field: a light scheme on rgb(43, 43, 43)), at the default
+  size and at sizes where the button grows and reaches its largest, at fractional positions,
+  half shown by the page; and the fields that show none: one with no text, one without the focus
+  or the page's rule, and one whose button the page hides.
+-->
+<style>
+body { margin: 0; background: #fff; font: 13px "Segoe UI", sans-serif; }
+.ground { position: absolute; top: 0; height: 400px; width: 400px; left: 400px; background: #2b2b2b; }
+input { position: absolute; width: 180px; padding: 3px 6px; }
+.on::-webkit-search-cancel-button { opacity: 1; }
+.half::-webkit-search-cancel-button { opacity: 0.5; }
+.gone::-webkit-search-cancel-button { display: none; }
+.dark { color-scheme: dark; background: #2b2b2b; color: #ddd; }
+.ide { background: transparent; color: rgb(214, 214, 214); border: 1px solid #555; }
+</style>
+<body>
+<div class="ground"></div>
+<input type="search" class="on" value="format" style="left:10px;top:10px">
+<input type="search" class="on" value="format" style="left:210px;top:10px;font-size:18px">
+<input type="search" class="on" value="format" style="left:10px;top:60px;font-size:30px">
+<input type="search" class="on" value="format" style="left:210.4px;top:60.3px">
+<input type="search" class="half" value="format" style="left:210px;top:110px">
+<input type="search" class="on" value="" style="left:10px;top:160px">
+<input type="search" value="format" style="left:210px;top:160px">
+<input type="search" class="on gone" value="format" style="left:10px;top:210px">
+<input type="search" class="on ide" value="format" style="left:410px;top:10px">
+<input type="search" class="on ide" value="format" style="left:610px;top:10px;font-size:20px">
+<input type="search" class="on dark" value="format" style="left:410px;top:60px">
+<input type="search" class="on dark" value="format" style="left:610px;top:60px;font-size:30px">
+<input type="search" class="on dark" value="format" style="left:410.6px;top:120.5px">
+</body>
+</html>

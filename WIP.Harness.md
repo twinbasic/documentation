@@ -1206,7 +1206,26 @@ The recent lists are left alone: `test/ide/recent-projects-copies.test.mjs` need
 A probe of 50 launches hooked 49. The one miss was a page whose document began before the script was
 added. `attachIde` therefore checks `window.__tbDefaults`, the marker the script sets (it lists the keys
 answered, never their values), and reloads the page once when it is missing: the hook's session still holds
-the script, the reload takes about 40 ms, and the UI and the command-line project come back. A marker still
+the script, the reload takes about 40 ms, and the UI and the command-line project come back. The reload
+waits for the hook to be installed (`hook.ready`): the hook connects on its own, and in a `shoot_docs
+--jobs 10` run on BETA 1033 the help setup's page was reloaded before it had attached, loaded unhooked
+again, and failed the setup. `ready` also waits for the pages being prepared: a page that existed
+before the auto-attach is attached by `setAutoAttach` itself and prepared from its event, which `ready`
+did not wait for, so in another `--jobs 10` run on BETA 1033 (2026-11-01) a debugging setup's page was
+reloaded before its script was added, and failed the setup the same way. A page that could not be
+prepared is named in the error. That was not the whole cause: the next `--jobs 10` run failed a
+sample setup the same way with every page prepared, for a reason still unknown. So `checkDefaults`
+also adds the script on its own connection to the page before the reload, which is open while the
+page reloads whatever became of the hook's session, and a marker still missing after that reports
+the page's address and state, the last check's error, the check's steps and the hook's (`trace`:
+connected, each page attached and prepared, ready, a closed connection), each with its time. Those
+named the cause in a `--jobs 16` retake on BETA 1033 (2026-11-02, settings-webview2), and likely the
+sample setup's too: `attach` takes the target listed as `main.htm`, which it is while its navigation
+there is still pending, so the check found `about:blank` with no marker, and its reload loaded
+`about:blank` again and cancelled the navigation (the page "about:blank, complete" after the reload,
+every page prepared). So `checkDefaults` first waits, a minute at most, for the page to commit
+`main.htm`, whose document may then have run the hook after all, and fails with "its page never loaded
+main.htm" rather than reload a page that has not. A marker still
 missing after that is a harness error, exit 2, since the run would have the user's settings. The hook's
 connection lives as long as the process, so a `tbbuild --keep` IDE is hooked until `tbbuild` ends.
 

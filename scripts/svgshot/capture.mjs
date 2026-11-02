@@ -19,7 +19,10 @@
 //   4. the annotation layer (svg#tbShotAnnotation) as XML, its text moved onto
 //      the picture's own faces, and each other inline <svg> in the clip as XML
 //      with the styles the page gives its elements resolved (inlineSvg), read
-//      before step 2 so that its text is measured too.
+//      before step 2 so that its text is measured too;
+//   5. the clear button of each search field that shows text, which is in the
+//      field's user-agent shadow tree, where the snapshot does not reach and
+//      DevTools does (searchButtonOf).
 // The measuring layer is removed again before this returns.
 //
 // Steps 2 and 3, and the scrollbar styles, are done in each document that shows
@@ -40,6 +43,7 @@ import {
   inlineSvgsIn,
   scrollbarPartList,
   scrollersIn,
+  searchFieldsIn,
   textNeeds,
   unzoom,
   viewportScroller,
@@ -77,6 +81,7 @@ export const SNAPSHOT_STYLES = [
   "line-height",
   "text-align",
   "text-align-last",
+  "text-overflow",
   "tab-size",
   "text-decoration-line",
   "text-decoration-style",
@@ -87,6 +92,7 @@ export const SNAPSHOT_STYLES = [
   "text-underline-position",
   "float",
   "appearance",
+  "accent-color",
   "overflow-x",
   "overflow-y",
   "resize",
@@ -100,6 +106,12 @@ export const SNAPSHOT_STYLES = [
   "-webkit-text-fill-color",
 ];
 
+// The styles a bundle taken before they were read can do without: the converter
+// asks for them only where they matter, and a bundle without them says so as a
+// miss (text-overflow, accent-color: bundle.mjs drawBundle), so that only the pictures
+// that need one are retaken.
+export const MISSABLE_STYLES = new Set(["text-overflow", "accent-color"]);
+
 // What a scrollbar part's box is drawn from: its styles, and its size along the bar.
 const PART_STYLES = [
   ...SNAPSHOT_STYLES,
@@ -111,7 +123,7 @@ const MEASURE_ID = "tbSvgMeasure";
 const OVERLAYS = ["svg#tbShotAnnotation", "#tbShotPointer svg"];
 
 // Runs in the page: the measuring layer, the canvases and the overlays.
-function measure({ keys, runs, skips, view, measureId, overlays }) {
+function measure({ keys, runs, skips, cuts, view, measureId, overlays }) {
   const layer = document.createElement("div");
   layer.id = measureId;
   layer.style.cssText = "position:fixed;left:0;top:0;opacity:0;pointer-events:none;z-index:-2147483647";
@@ -170,6 +182,18 @@ function measure({ keys, runs, skips, view, measureId, overlays }) {
     layer.append(s, document.createElement("br"));
   }
 
+  // Each fragment an ellipsis cuts (snapshot-svg.mjs cutNeed), and the ellipsis in the block's font.
+  const cutProbes = cuts.map(([key, text, ellipsisKey]) => {
+    const s = document.createElement("span");
+    s.style.cssText = font(JSON.parse(key));
+    s.textContent = text;
+    const e = document.createElement("span");
+    e.style.cssText = font(JSON.parse(ellipsisKey));
+    e.textContent = "…";
+    layer.append(s, document.createElement("br"), e, document.createElement("br"));
+    return [s.firstChild, e];
+  });
+
   return document.fonts.ready.then(() => {
     // `line` is the height of a line with line-height: normal, `height` the font's content area.
     for (const [key, t, b, d] of probes) {
@@ -182,6 +206,30 @@ function measure({ keys, runs, skips, view, measureId, overlays }) {
     }
     // How wide each run of text is laid out, for the text that is aligned in its box.
     const widths = [...layer.querySelectorAll("span[data-k]")].map((s) => s.getBoundingClientRect().width);
+    // How much of each cut fragment fits before the ellipsis in its room, at a grapheme's
+    // end, [length, width]: the longest start of the run, as the run lays it out, no wider
+    // than the room less the ellipsis. Nothing fits is 0, but the line's first fragment
+    // keeps its first grapheme.
+    const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+    const cutAt = cuts.map(([, text, , room, first], k) => {
+      const [node, ellipsis] = cutProbes[k];
+      const fit = room - ellipsis.getBoundingClientRect().width;
+      const range = document.createRange();
+      range.setStart(node, 0);
+      const widthTo = (end) => {
+        range.setEnd(node, end);
+        return range.getBoundingClientRect().width;
+      };
+      const ends = [...graphemes.segment(text)].map(({ index, segment }) => index + segment.length);
+      let [lo, hi] = [0, ends.length];
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (widthTo(ends[mid - 1]) <= fit + 1 / 128) lo = mid;
+        else hi = mid - 1;
+      }
+      const length = lo ? ends[lo - 1] : first && ends.length ? ends[0] : 0;
+      return [length, length ? widthTo(length) : 0];
+    });
     // Where each run's ink is in a band of `height` CSS px that starts `top` px below
     // the baseline, as stretches [from, to] in CSS px from the run's start: the run
     // drawn 16 times as large on a canvas, whose columns with ink in the band (at
@@ -247,8 +295,71 @@ function measure({ keys, runs, skips, view, measureId, overlays }) {
           // A tainted canvas cannot be read; the converter says it has no picture.
         }
       }
-    return { metrics, widths, gaps, placeholderColor, canvases, overlays: outOverlays, marked, allRuns };
+    return { metrics, widths, gaps, cuts: cutAt, placeholderColor, canvases, overlays: outOverlays, marked, allRuns };
   });
+}
+
+// Runs in the page: the text field that has the focus, looked for inside shadow roots too, when
+// it has text selected, else null.
+function focusedField() {
+  let a = document.activeElement;
+  while (a?.shadowRoot?.activeElement) a = a.shadowRoot.activeElement;
+  const field = a && (a.localName === "input" || a.localName === "textarea");
+  return field && a.selectionStart !== null && a.selectionStart !== a.selectionEnd ? a : null;
+}
+
+// Runs in the page, on a text field (`this`): what it has selected and in what colours: the
+// field's ::selection when the page gives it a ground (`given`), else the system colours
+// SelectedItem and SelectedItemText, which are Chromium's own selection colours (Highlight is
+// Windows', which WebView2 does not draw a selection in), before the converter blends the
+// ground as Chromium does (snapshot-svg.mjs's blendWithWhite).
+function fieldSelection() {
+  const own = getComputedStyle(this, "::selection");
+  const given = own.backgroundColor !== "rgba(0, 0, 0, 0)";
+  const probe = document.createElement("span");
+  probe.style.cssText = "position:fixed;background-color:SelectedItem;color:SelectedItemText";
+  document.documentElement.append(probe);
+  const system = getComputedStyle(probe);
+  const [ground, text] = [system.backgroundColor, system.color];
+  probe.remove();
+  return {
+    start: this.selectionStart,
+    end: this.selectionEnd,
+    focused: document.hasFocus(),
+    given,
+    background: given ? own.backgroundColor : ground,
+    color: given ? own.color : text,
+  };
+}
+
+// Runs in the page, on a search field's clear button (`this`, an element of the field's
+// user-agent shadow tree): its box from the field's border box, and what decides whether and
+// how Chromium paints it. It is drawn dark when its used colour scheme is dark: a
+// `color-scheme` that offers dark alone, or dark and light with the user preferring dark.
+function searchButton() {
+  const field = this.getRootNode().host.getBoundingClientRect();
+  const own = this.getBoundingClientRect();
+  const s = getComputedStyle(this);
+  const scheme = s.colorScheme;
+  const dark =
+    /\bdark\b/.test(scheme) && (!/\blight\b/.test(scheme) || matchMedia("(prefers-color-scheme: dark)").matches);
+  return {
+    x: own.x - field.x,
+    y: own.y - field.y,
+    w: own.width,
+    h: own.height,
+    opacity: Number(s.opacity),
+    visibility: s.visibility,
+    display: s.display,
+    appearance: s.appearance,
+    dark,
+  };
+}
+
+// Runs in the page: whether the document's own text (not a field's) has a selection.
+function documentSelected() {
+  const s = getSelection();
+  return !!s && s.rangeCount > 0 && !s.isCollapsed && s.toString() !== "";
 }
 
 // Runs in the page, on a scrolling element (`this`): the computed style of
@@ -265,7 +376,8 @@ function measure({ keys, runs, skips, view, measureId, overlays }) {
 // the specificity of the selector it stands for, so that Chromium itself
 // cascades the rules and resolves their var()s. The probe is an element of an
 // unknown name, which no page rule but a `*` one matches, under a hidden
-// parent that carries what the part inherits from the element.
+// parent that carries what the part inherits from the element, a child of the
+// root element, where no rule of the form `body *` reaches it.
 //
 // `viewport` is set for the scrollbars of a document's viewport, whose style
 // source is the <body> or the root element (`this`): they take the standard
@@ -385,14 +497,20 @@ function scrollbarParts({ styleNames, parts, viewport = false }) {
   const matched = parts.map(() => false);
   let custom = false;
 
-  // Every style rule that names a scrollbar part, in the element's own scope.
+  // Every style rule that names a scrollbar part, in the element's own scope, and in
+  // force: one inside an @media or @supports whose condition does not hold (a site's
+  // dark theme only, in a light picture) styles nothing.
   const rules = [];
   const visit = (list) => {
     for (const r of list) {
       if (r instanceof CSSStyleRule) {
         if (r.selectorText.includes("::-webkit-scrollbar")) rules.push(r);
       } else if (r instanceof CSSImportRule) {
-        if (r.styleSheet) visit(r.styleSheet.cssRules);
+        if (r.styleSheet && (!r.media.mediaText || matchMedia(r.media.mediaText).matches)) visit(r.styleSheet.cssRules);
+      } else if (r instanceof CSSMediaRule) {
+        if (matchMedia(r.media.mediaText).matches) visit(r.cssRules);
+      } else if (r instanceof CSSSupportsRule) {
+        if (CSS.supports(r.conditionText)) visit(r.cssRules);
       } else if (r.cssRules) visit(r.cssRules);
     }
   };
@@ -401,6 +519,7 @@ function scrollbarParts({ styleNames, parts, viewport = false }) {
       ? [...scope.styleSheets, ...scope.adoptedStyleSheets]
       : [...document.styleSheets, ...document.adoptedStyleSheets];
   for (const sheet of sheets) {
+    if (sheet.disabled || (sheet.media?.mediaText && !matchMedia(sheet.media.mediaText).matches)) continue;
     try {
       visit(sheet.cssRules);
     } catch {
@@ -444,7 +563,9 @@ function scrollbarParts({ styleNames, parts, viewport = false }) {
         rule.selectorText = `${rule.selectorText}, ${added.join(", ")}`;
       }
     }
-    (scope instanceof ShadowRoot ? scope : document.body).append(host);
+    // Under the root element, not the body: a cut-out's `body *{visibility:hidden !important}`
+    // (shoot_docs.mjs) would match the probes there, and hide every part.
+    (scope instanceof ShadowRoot ? scope : document.documentElement).append(host);
     const out = {};
     for (const [k, p] of parts.entries()) {
       if (!matched[k]) {
@@ -921,10 +1042,72 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
     await conn.send("DOM.disable").catch(() => {});
   }
 
+  // The text selected in a document, which Chromium paints outside the DOM, so that the
+  // snapshot does not hold it: a focused text field's, as {backendNodeId, start, end, focused,
+  // background, color} (fieldSelection), {outside: true} for a selection of the document's own
+  // text, or null for none.
+  async function selectionOf(context) {
+    const { result } = await conn.send("Runtime.evaluate", {
+      expression: `(${focusedField})()`,
+      ...(context === undefined ? {} : { contextId: context }),
+    });
+    if (!result.objectId) return (await run(context, `(${documentSelected})()`)) ? { outside: true } : null;
+    try {
+      const { result: got } = await conn.send("Runtime.callFunctionOn", {
+        objectId: result.objectId,
+        functionDeclaration: String(fieldSelection),
+        returnByValue: true,
+      });
+      const { node } = await conn.send("DOM.describeNode", { objectId: result.objectId });
+      return { backendNodeId: node.backendNodeId, ...got.value };
+    } finally {
+      await conn.send("Runtime.releaseObject", { objectId: result.objectId }).catch(() => {});
+    }
+  }
+
+  // The clear button of the search field `backendNodeId`, as searchButton reads it in the
+  // document's world `context`, or null when the field has none: DevTools finds it in the
+  // field's user-agent shadow tree (its `pseudo` is -webkit-search-cancel-button), which the
+  // page's own script cannot open.
+  async function searchButtonOf(backendNodeId, context) {
+    const { node } = await conn.send("DOM.describeNode", { backendNodeId, depth: -1, pierce: true });
+    const isButton = (n) => {
+      const a = n.attributes ?? [];
+      for (let k = 0; k < a.length; k += 2)
+        if (a[k] === "pseudo" && a[k + 1] === "-webkit-search-cancel-button") return true;
+      return false;
+    };
+    const button = (function find(n) {
+      for (const c of [...(n.shadowRoots ?? []), ...(n.children ?? [])]) {
+        if (isButton(c)) return c;
+        const hit = find(c);
+        if (hit) return hit;
+      }
+      return null;
+    })(node);
+    if (!button) return null;
+    const { object } = await conn.send("DOM.resolveNode", {
+      backendNodeId: button.backendNodeId,
+      ...(context === undefined ? {} : { executionContextId: context }),
+    });
+    try {
+      const { result, exceptionDetails } = await conn.send("Runtime.callFunctionOn", {
+        objectId: object.objectId,
+        functionDeclaration: String(searchButton),
+        returnByValue: true,
+      });
+      if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? exceptionDetails.text);
+      return result.value;
+    } finally {
+      await conn.send("Runtime.releaseObject", { objectId: object.objectId }).catch(() => {});
+    }
+  }
+
   // What a document's text needs, measured in the document itself: the page's
   // own fonts, styles and canvases are what its runs are drawn with.
   async function measureDocument({ doc, view, context, geometry, inner }) {
-    const { keys, runs, skips } = textNeeds(doc, view);
+    const selection = await selectionOf(context);
+    const { keys, runs, skips, cuts } = textNeeds(doc, view, { selection });
     const overlays = context === undefined ? OVERLAYS : [];
 
     // Each inline <svg> in the view (the annotation layer apart), as its own element in the
@@ -961,7 +1144,7 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
       }
     }
 
-    const args = JSON.stringify({ keys, runs, skips, view, measureId: MEASURE_ID, overlays });
+    const args = JSON.stringify({ keys, runs, skips, cuts, view, measureId: MEASURE_ID, overlays });
     const page = await run(context, `(${measure})(${args})`, true);
     // The measuring layer's runs, as DevTools nodes, for the fonts Chromium drew them with.
     const { result: layer } = await conn.send("Runtime.evaluate", {
@@ -1044,14 +1227,28 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
     const bars = geometry && viewportScroller(doc, geometry, inner);
     if (bars) await partsOf(bars, viewportStyleSources(doc), true);
 
+    // Each search field's clear button, which the snapshot does not hold.
+    const searchButtons = new Map();
+    for (const l of searchFieldsIn(doc, view)) {
+      try {
+        searchButtons.set(l.key, await searchButtonOf(l.node.backendNodeId, context));
+      } catch (error) {
+        // A field that has gone since the snapshot: the picture says so.
+        searchButtons.set(l.key, { failed: String(error.message ?? error) });
+      }
+    }
+
     return {
       page,
       skips,
+      cuts,
+      selection,
       platform: [...platform],
       webFonts,
       fontFiles,
       svgs: [...svgs],
       scrollbars: [...scrollbars],
+      searchButtons: [...searchButtons],
       inner,
     };
   }

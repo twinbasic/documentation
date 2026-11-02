@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>One family declared twice</title>
+<!--
+  One family, Twice, declared by two @font-face rules alike in every descriptor and with no
+  unicode-range, as the IDE declares codicon (its own codicon.ttf, then Monaco's, which has no
+  coffee cup). The later rule's file draws what it has; a character it has no glyph for is
+  drawn from the earlier rule's file (CSS Fonts 4, the composite face), not from the next
+  family: Cascadia Mono draws the Latin letters, and Inter the letters of Latin Extended-B,
+  which Cascadia Mono lacks. fonts.mjs's webRulesFor gives a character every rule whose
+  range holds it, the later first, and PictureFonts the first of their files with a glyph.
+-->
+<style>
+@font-face { font-family: Twice; font-weight: 400; src: url(/fonts/inter-variable.woff2) format("woff2"); }
+@font-face { font-family: Twice; font-weight: 400; src: url(/fonts/cascadia-mono-variable.woff2) format("woff2"); }
+body { margin: 0; background: #fff; color: #000; }
+p { position: absolute; left: 10px; margin: 0; font: 400 24px Twice, serif; }
+</style>
+<body>
+<p style="top:10px">Mono ƀƁƂƃ mono</p>
+<p style="top:50px">ƇƈƊƋ</p>
+<p style="top:90px">x = ƙ + ƞ</p>
+</body>
+</html>

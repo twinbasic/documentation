@@ -33,6 +33,7 @@ import { tmpdir, userInfo } from "node:os";
 import path from "node:path";
 import { choiceOption, die, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
+import { pngSize } from "../lib/png.mjs";
 import { removeTree } from "../lib/tb-ide-copy.mjs";
 import { leaseSlot, shutdownIde, sleep } from "../lib/tb-ide.mjs";
 import { buildNumber, findIde, unsupportedIde } from "../lib/tb-install.mjs";
@@ -796,7 +797,6 @@ const CENSUS_JS = String.raw`(() => {
 
 // ------------------------------------------------------------ taking a bundle
 
-const pngSize = (png) => ({ width: png.readUInt32BE(16), height: png.readUInt32BE(20) });
 const kb = (file) => `${(statSync(file).size / 1024).toFixed(0)} KB`;
 const say = (text) => console.log(text);
 
@@ -1076,7 +1076,7 @@ async function takeBundle(c, state, extraMeta, buildLabel) {
     ide: { build: buildNumber(ide), folder: path.basename(path.dirname(ide)), label: buildLabel },
     viewport: { ...IDE_SIZE, devicePixelRatio: SCALE },
     page: census.page,
-    png: pngSize(png),
+    png: { width: pngSize(png)[0], height: pngSize(png)[1] },
     captureAgrees: png.equals(png2),
     layoutMetrics: { cssLayoutViewport: metrics.cssLayoutViewport, cssContentSize: metrics.cssContentSize },
     stylesRequested: styles,

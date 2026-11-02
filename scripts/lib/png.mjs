@@ -7,6 +7,7 @@
 // Only `zlib` is used, no dependency. zlib.crc32 is the checksum PNG chunks carry.
 //
 //   decodePng(buf)       -> { width, height, rgba }   8-bit RGB, RGBA and palette, not interlaced
+//   pngSize(buf)         -> [width, height] | null    from the header alone, any PNG
 //   encodePng(image)     -> Buffer                    RGBA, filter 0 on every row
 //   comparePngs(a, b)    -> { sameSize, differing }
 //   composeComparison(tb, vb6, labels, options)       three panels with labels, as an image
@@ -39,6 +40,21 @@ function chunk(type, data) {
   data.copy(out, 8);
   out.writeUInt32BE(zlib.crc32(out.subarray(4, 8 + data.length)), 8 + data.length);
   return out;
+}
+
+/**
+ * A PNG file's size in pixels, [width, height], from its header (IHDR is the first chunk, right
+ * after the signature); null for bytes that are not a PNG. Reads nothing else, so it takes any
+ * PNG, also one decodePng refuses. The screenshot tools' one reader of a picture's size.
+ *
+ * @param {Buffer | Uint8Array} input  the file's bytes, or at least its first 24
+ * @returns {[number, number] | null}
+ */
+export function pngSize(input) {
+  const buf = Buffer.isBuffer(input) ? input : Buffer.from(input.buffer, input.byteOffset, input.byteLength);
+  if (buf.length < 24 || !buf.subarray(0, 8).equals(SIGNATURE) || buf.toString("latin1", 12, 16) !== "IHDR")
+    return null;
+  return [buf.readUInt32BE(16), buf.readUInt32BE(20)];
 }
 
 /**
