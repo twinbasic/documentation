@@ -56,6 +56,7 @@ import {
   pressKey,
   select,
   setCursor,
+  typeText,
   waitFor,
 } from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "../addin/scenario.mjs";
@@ -439,6 +440,58 @@ scenario("the code editor and its panels", (lane) => {
       assert.ok(!text.includes(name), `the Outline shows ${name}: ${JSON.stringify(text)}`);
     }
   });
+
+  // A defect the twinBASIC developers already know of, so it has no entry in
+  // BUGS-TO-REPORT.md (WIP.IDE.md): docs/IDE/Code/IntelliSense.md carries its NOTE. The list
+  // opens as the name is typed in MODERN mode, which the test sets and puts back. It types on a
+  // line of its own after Debug.Print total, and removes the line again.
+  for (const [key, want] of [
+    ["Tab", "Twice()"],
+    ["(", "Twice(()"],
+  ]) {
+    const control = key === "Tab";
+    test(`${control ? "control: " : ""}${key} with Twice selected in the completion list gives ${want}`, async (t) => {
+      const mode = await c.evaluate(`liveIDEOptions.intellisenseMode`);
+      await c.evaluate(`liveIDEOptions.intellisenseMode = "MODERN"; changedIdeOptions();`);
+      t.after(() => c.evaluate(`liveIDEOptions.intellisenseMode = ${JSON.stringify(mode)}; changedIdeOptions();`));
+      await openFile(c, EDITING);
+      const line = MAIN_PRINT + 1;
+      await c.evaluate(`(() => {
+        const m = editor.getModel();
+        m.applyEdits([{ range: new monaco.Range(${MAIN_PRINT}, m.getLineMaxColumn(${MAIN_PRINT}), ${MAIN_PRINT}, m.getLineMaxColumn(${MAIN_PRINT})), text: "\\n        " }]);
+      })()`);
+      t.after(() =>
+        c.evaluate(`(() => {
+          const m = editor.getModel();
+          m.applyEdits([{ range: new monaco.Range(${MAIN_PRINT}, m.getLineMaxColumn(${MAIN_PRINT}), ${line}, m.getLineMaxColumn(${line})), text: "" }]);
+        })()`),
+      );
+      await setCursor(c, line, 9);
+      await typeText(c, "Twi");
+      const open = await waitFor(c, (c) => c.evaluate(`!!context.activeDebugConsoleIntellisense.value`), {
+        timeout: 10 * 1000,
+      });
+      assert.ok(open, "the completion list did not open");
+      // Down selects the first row once the list has its rows; pressed sooner, it selects nothing.
+      const selected = await waitFor(
+        c,
+        async (c) => {
+          await pressKey(c, "ArrowDown");
+          await sleep(150);
+          return c.evaluate(
+            `[...debugConsoleEntryIntellisenseBox.querySelectorAll("*")].some((e) => /selected/i.test(e.className || "") && /Twice/.test(e.textContent || ""))`,
+          );
+        },
+        { timeout: 5 * 1000 },
+      );
+      assert.ok(selected, "Twice was never selected in the list");
+      await pressKey(c, key);
+      await sleep(500);
+      const text = (await editorState(c)).lineText.trim();
+      t.diagnostic(`the line: ${JSON.stringify(text)}`);
+      assert.equal(text, want);
+    });
+  }
 
   test("control: Format Selection re-indents a selection that starts on a Select Case line", async (t) => {
     c.dialogs.length = 0;

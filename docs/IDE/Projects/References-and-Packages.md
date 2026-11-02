@@ -112,7 +112,7 @@ The **Import from file...** button under the lists opens the Windows **Open** di
 > [!NOTE] BETA 1034
 > A package imported with **Import from file...** is listed but not ticked, so the project does not use it. Tick it yourself after the import.
 
-> [!NOTE] BETA 1033
+> [!NOTE] BETA 1034
 > **Import from file...** puts a copy of the package under the project's `Packages` folder. Closing the dialog with **Cancel** leaves the copy there, and the project is not marked as changed.
 
 > [!NOTE] BETA 1034
