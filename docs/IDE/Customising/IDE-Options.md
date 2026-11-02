@@ -106,7 +106,7 @@ No question is asked. About two seconds after **Save Changes**, the **tB Service
 ## IntelliSense and hover
 
 **Intellisense mode**
-: Default MODERN. When the IntelliSense list opens. See [Intellisense modes](#intellisense-modes).
+: Default LEGACY. When the IntelliSense list opens. See [Intellisense modes](#intellisense-modes).
 
 **Signature-Help Show First Line Of Docs**
 : Default on. The collapsed signature-help box includes the first line of the procedure's documentation. <kbd>F1</kbd> expands the box.

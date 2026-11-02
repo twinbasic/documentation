@@ -1819,7 +1819,8 @@ unit changed takes the later build's change back out. Before patching a build ot
 one a fix was written on, run `shape` on it: its diff is exactly what the patch changes.
 
 **The IDE does not check `main.js`.** A copy of BETA 1010 with the two edits of
-`export-verbose-done-escaped`'s fix ran the export lane: the defect's test reported that it
+`export-verbose-done-escaped`'s fix (that entry and `debug-print-escaped-twice` were retired
+once BETA 1034 fixed both; the fix and the reproducers are in git history) ran the export lane: the defect's test reported that it
 no longer reproduced, its two controls and the lane's six other tests passed, and
 `bug_repro.mjs verify debug-print-escaped-twice` said NO LONGER REPRODUCES (it reproduces on an
 unpatched, byte-identical copy). That was the study's prototype; the tool's patch of the

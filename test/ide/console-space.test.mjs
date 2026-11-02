@@ -12,12 +12,12 @@
 //
 // Each line is typed one key at a time, and after each key the lane waits for the
 // console's answer to it, as a person typing at an ordinary speed sees the list:
-// in the IDE's default IntelliSense mode, MODERN, the console asks for the list
-// after every key. The IDE closes the console's list 100 ms after the code editor
+// in the IntelliSense mode MODERN, which the lane sets, the console asks for the
+// list after every key. The IDE closes the console's list 100 ms after the code editor
 // loses the focus, so the focus moves to the console before the first line, and
 // each test checks that the console has it before and after.
 //
-// Each test states what BETA 1010 does. If one fails after an IDE update, the IDE
+// Each test states what BETA 1034 does. If one fails after an IDE update, the IDE
 // has changed: update the entry "A space typed in the Debug Console accepts the
 // IntelliSense list's selection, so `Print x` becomes `Printerx`" in
 // BUGS-TO-REPORT.md, or its report in bugs/filed/, and then this file.
@@ -101,10 +101,13 @@ scenario("a space in the Debug Console", (lane) => {
 
   before(async () => {
     c = await lane.open(PROJECT);
+    // The default is LEGACY since BETA 1033 (MODERN before), in which the console
+    // opens its list only on a ".", so the lane sets MODERN for the IDE it runs.
+    await c.evaluate(`liveIDEOptions.intellisenseMode = "MODERN"; changedIdeOptions();`);
     assert.equal(
       await c.evaluate(`liveIDEOptions["intellisenseMode"]`),
       "MODERN",
-      "the IDE's IntelliSense mode is not its default, MODERN, in which the console asks after every key",
+      "the IDE's IntelliSense mode is not MODERN, in which the console asks after every key",
     );
     await openFile(c, FILE, { line: BREAK, column: 9 });
     await setCursor(c, BREAK, 9);
@@ -123,10 +126,7 @@ scenario("a space in the Debug Console", (lane) => {
 
   test("Print total becomes Printertotal, which the console refuses", async () => {
     assert.equal(await type("Print total"), "Printertotal");
-    assert.ok(
-      await enter((l) => l === "(compile error: Unrecognized symbol 'Printertotal')"),
-      "the console did not refuse it",
-    );
+    assert.ok(await enter(refused), "the console did not refuse it");
   });
 
   test("Escape before the space keeps it, and Print total prints 5", async () => {
