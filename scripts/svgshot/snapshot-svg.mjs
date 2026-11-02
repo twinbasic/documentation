@@ -1981,17 +1981,22 @@ export function renderSvg(
     const uniform = bw.every(
       (s) => s.width === 0 || (s.color === bw.find((t) => t.width > 0).color && s.style === "solid"),
     );
-    if (uniform) {
-      const color = bw.find((s) => s.width > 0).color;
-      if (transparent(color)) return [];
+    // The ring between the border box and the padding box, each with its corners.
+    const ring = () => {
       const inner = deflate(b, bw[0].width, bw[1].width, bw[2].width, bw[3].width);
       const outerD = rrectPath(b, r) ?? `M${num(b.x)} ${num(b.y)}h${num(b.w)}v${num(b.h)}h${num(-b.w)}Z`;
       const innerD =
         rrectPath(inner, innerRadii(r, bw)) ??
         `M${num(inner.x)} ${num(inner.y)}h${num(inner.w)}v${num(inner.h)}h${num(-inner.w)}Z`;
-      return [`<path fill-rule="evenodd" fill="${color}" d="${outerD}${innerD}"/>`];
+      return `${outerD}${innerD}`;
+    };
+    if (uniform) {
+      const color = bw.find((s) => s.width > 0).color;
+      if (transparent(color)) return [];
+      return [`<path fill-rule="evenodd" fill="${color}" d="${ring()}"/>`];
     }
-    // Sides of different colours: a trapezoid each, with the radius dropped.
+    // Sides of different colours: a trapezoid each, cut at the corners along the diagonal
+    // from the border box's corner through the padding box's.
     const [t, rt, bt, lt] = bw.map((s) => s.width);
     const X0 = b.x;
     const Y0 = b.y;
@@ -2025,9 +2030,41 @@ export function renderSvg(
             ? ""
             : ` clip-path="url(#${def(`k${quads[k].join("|")}`, (id) => `<clipPath id="${id}"><polygon points="${quads[k].map(num).join(" ")}"/></clipPath>`)})"`;
         out.push(rounded ? dashedRounded(b, r, bw, s, clip) : dashedSide(b, k, s, bw, clip));
+      } else if (rounded) {
+        // The ring with its rounded corners, shown in the side's wedge: the trapezoid with its
+        // inner corners moved along the diagonals until it takes in the corners' curves.
+        const wedge = wedges()[k];
+        const id = def(
+          `k${wedge.join("|")}`,
+          (id) => `<clipPath id="${id}"><polygon points="${wedge.map(num).join(" ")}"/></clipPath>`,
+        );
+        out.push(`<path fill-rule="evenodd" fill="${s.color}" d="${ring()}" clip-path="url(#${id})"/>`);
       } else out.push(`<polygon points="${quads[k].map(num).join(" ")}" fill="${s.color}"/>`);
     }
     return out;
+
+    // Each corner's inner point (top left, top right, bottom right, bottom left) moved along
+    // its diagonal by `k` widths, k as many as reach past the corner's radii, and no further
+    // than the box's middle; then the four sides' wedges, as `quads`.
+    function wedges() {
+      const reach = (w, h, [rx, ry]) => {
+        let k = Math.max(1, w > 0 ? rx / w : 0, h > 0 ? ry / h : 0);
+        if (w > 0) k = Math.min(k, b.w / 2 / w);
+        if (h > 0) k = Math.min(k, b.h / 2 / h);
+        return k;
+      };
+      const [ktl, ktr, kbr, kbl] = [reach(lt, t, r[0]), reach(rt, t, r[1]), reach(rt, bt, r[2]), reach(lt, bt, r[3])];
+      const TL = [X0 + lt * ktl, Y0 + t * ktl];
+      const TR = [X1 - rt * ktr, Y0 + t * ktr];
+      const BR = [X1 - rt * kbr, Y1 - bt * kbr];
+      const BL = [X0 + lt * kbl, Y1 - bt * kbl];
+      return [
+        [X0, Y0, X1, Y0, ...TR, ...TL],
+        [X1, Y0, X1, Y1, ...BR, ...TR],
+        [X1, Y1, X0, Y1, ...BL, ...BR],
+        [X0, Y1, X0, Y0, ...TL, ...BL],
+      ];
+    }
   }
 
   // The stroke attributes of a dashed or dotted line `length` long.

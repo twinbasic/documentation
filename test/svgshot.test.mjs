@@ -1312,6 +1312,54 @@ describe("bundles", () => {
     }
   });
 
+  // The select's box with 1px solid borders, grey at the top and left and black at the right
+  // and bottom (the IDE's Import from file... button), its corners rounded by `radius`.
+  const bordered = (radius) => {
+    const bundle = bundleOf(measured);
+    const sides = ["top", "right", "bottom", "left"];
+    const corners = ["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`);
+    const extra = [
+      ...sides.flatMap((s) => [`border-${s}-width`, `border-${s}-style`, `border-${s}-color`]),
+      ...corners,
+    ];
+    bundle.styles = [...STYLES, ...extra];
+    const { strings, documents } = bundle.snapshot;
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const styles = documents[0].layout.styles;
+    for (const st of styles)
+      st.push(...sides.flatMap(() => [s("0px"), s("none"), s("rgb(0, 0, 0)")]), ...corners.map(() => s("0px")));
+    const colours = ["rgb(133, 133, 133)", "rgb(0, 0, 0)", "rgb(0, 0, 0)", "rgb(133, 133, 133)"];
+    const own = [...colours.flatMap((c) => ["1px", "solid", c]), ...corners.map(() => radius)];
+    own.forEach((v, k) => {
+      styles[2][STYLES.length + k] = s(v);
+    });
+    return renderBundle(bundle);
+  };
+
+  test("draws rounded sides of different colours as the rounded ring, each in its side's wedge", async () => {
+    const { svg } = await bordered("5px");
+    const ring =
+      "M15 10H205A5 5 0 0 1 210 15V25A5 5 0 0 1 205 30H15A5 5 0 0 1 10 25V15A5 5 0 0 1 15 10Z" +
+      "M15 11H205A4 4 0 0 1 209 15V25A4 4 0 0 1 205 29H15A4 4 0 0 1 11 25V15A4 4 0 0 1 15 11Z";
+    const drawn = [
+      ...svg.matchAll(/<path fill-rule="evenodd" fill="([^"]+)" d="([^"]+)" clip-path="url\(#(\w+)\)"\/>/g),
+    ];
+    assert.deepEqual(
+      drawn.map((m) => [m[1], m[2]]),
+      ["rgb(133, 133, 133)", "rgb(0, 0, 0)", "rgb(0, 0, 0)", "rgb(133, 133, 133)"].map((c) => [c, ring]),
+    );
+    // The top's wedge reaches 5px in along each diagonal, past the corners' curves.
+    const top = new RegExp(`<clipPath id="${drawn[0][3]}"><polygon points="10 10 210 10 205 15 15 15"/></clipPath>`);
+    assert.match(svg, top);
+    // Square corners keep their trapezoids.
+    const square = (await bordered("0px")).svg;
+    assert.match(square, /<polygon points="10 10 210 10 209 11 11 11" fill="rgb\(133, 133, 133\)"\/>/);
+    assert.doesNotMatch(square, /fill-rule="evenodd" fill="rgb\(133, 133, 133\)"/);
+  });
+
   test("draws a checked control's white parts in the ink its accent-color gives", () => {
     // The fitted points: white down to a 3:1 contrast with white, dark below it.
     assert.equal(accentInk("rgb(71, 116, 164)"), "#fff");
