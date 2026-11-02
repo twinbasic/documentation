@@ -2179,9 +2179,25 @@ export function renderSvg(
       }
       const uses = [];
       for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) uses.push(tile(xStart + i * w, yStart + j * h));
-      const spills =
-        xStart < cb.x || yStart < cb.y || xStart + nx * w > cb.x + cb.w + 0.01 || yStart + ny * h > cb.y + cb.h + 0.01;
-      if (spills) out.push(`<g clip-path="url(#${clipId()})">${uses.join("")}</g>`);
+      const [x1, y1] = [xStart + nx * w, yStart + ny * h];
+      const spills = xStart < cb.x || yStart < cb.y || x1 > cb.x + cb.w + 0.01 || y1 > cb.y + cb.h + 0.01;
+      // Tiles inside the box still reach into a rounded corner, which cuts them (a toolbox icon
+      // that fills its box, 3 px rounded): the corner's rx by ry square, top left, top right,
+      // bottom right, bottom left.
+      const corners = [
+        [cb.x, cb.y, 1, 1],
+        [cb.x + cb.w, cb.y, -1, 1],
+        [cb.x + cb.w, cb.y + cb.h, -1, -1],
+        [cb.x, cb.y + cb.h, 1, -1],
+      ];
+      const cut = corners.some(([cx, cy, sx, sy], c) => {
+        const [crx, cry] = cr[c];
+        if (crx <= 0 || cry <= 0) return false;
+        const inX = sx > 0 ? xStart < cx + crx : x1 > cx - crx;
+        const inY = sy > 0 ? yStart < cy + cry : y1 > cy - cry;
+        return inX && inY;
+      });
+      if (spills || cut) out.push(`<g clip-path="url(#${clipId()})">${uses.join("")}</g>`);
       else out.push(...uses);
       stats.images++;
     }

@@ -1264,6 +1264,52 @@ describe("bundles", () => {
     assert.match(svg, /<rect x="12" y="12" width="200" height="20" fill="rgba\(0, 0, 0, 0\.5\)" filter=/);
   });
 
+  // The select's box with a picture for its background, `size` and centred, and its corners
+  // rounded by `radius`.
+  const PICTURE =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAARklEQVRYw+3WIQoAIBBFQRWbyfsfyuBBTHaPIChomdeXgZ829tbCaXOM49sUPgUGg8FgMBj8vnzzN5VaTQ0Gg8FgMBi8bwFG0AiWOjVj3QAAAABJRU5ErkJggg==";
+  const pictured = (size, radius) => {
+    const bundle = bundleOf(measured);
+    const corners = ["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`);
+    const extra = ["background-image", "background-size", "background-position", "background-repeat", ...corners];
+    bundle.styles = [...STYLES, ...extra];
+    const { strings, documents } = bundle.snapshot;
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const styles = documents[0].layout.styles;
+    for (const st of styles) st.push(s("none"), s("auto"), s("0% 0%"), s("repeat"), ...corners.map(() => s("0px")));
+    const own = [`url("${PICTURE}")`, size, "50% 50%", "no-repeat", ...corners.map(() => radius)];
+    own.forEach((v, k) => {
+      styles[2][STYLES.length + k] = s(v);
+    });
+    return renderBundle(bundle);
+  };
+
+  test("clips a background picture that reaches into a rounded corner to the corner", async () => {
+    const { svg } = await pictured("200px 20px", "3px");
+    const clip =
+      /<clipPath id="(\w+)"><path d="M13 10H207A3 3 0 0 1 210 13V27A3 3 0 0 1 207 30H13A3 3 0 0 1 10 27V13A3 3 0 0 1 13 10Z"\/><\/clipPath>/;
+    const [, id] = clip.exec(svg) ?? [];
+    assert.ok(id, svg);
+    assert.match(
+      svg,
+      new RegExp(
+        `<g clip-path="url\\(#${id}\\)"><use href="#\\w+" transform="translate\\(10 10\\) scale\\(200 20\\)"/></g>`,
+      ),
+    );
+    // Clear of the corners, or in a square box: drawn as it is.
+    for (const [size, radius] of [
+      ["16px 16px", "3px"],
+      ["200px 20px", "0px"],
+    ]) {
+      const { svg } = await pictured(size, radius);
+      assert.doesNotMatch(svg, /<g clip-path="url\(#\w+\)"><use/, `${size} ${radius}`);
+      assert.match(svg, /<use href="#\w+" transform="translate\([\d.]+ [\d.]+\) scale\([\d.]+ [\d.]+\)"\/>/);
+    }
+  });
+
   test("draws a text field left with the browser's border and background as Chromium's native one", () => {
     const own = {
       appearance: "auto",
