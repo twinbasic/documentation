@@ -32,7 +32,7 @@
 // the page's guard does) once, and the tests share it in order. None of them saves; what they
 // add (MyFile, a type library's copy) does not stop the project compiling.
 //
-// Each test states what BETA 1005 does; the tests named "control" pass whether or not the defects
+// Each test states what BETA 1034 does; the tests named "control" pass whether or not the defects
 // are fixed. If another fails after an IDE update, the IDE has changed: update the entry in
 // BUGS-TO-REPORT.md, or its report in bugs/filed/, the callout on the page of docs/IDE/Projects/
 // that carries it, and then this file.
@@ -552,6 +552,7 @@ scenario("Project Explorer and Project Settings", (lane) => {
     await sleep(800);
     assert.deepEqual(ref, ["[IMPORTED] Microsoft Data Source Interfaces for ActiveX Data Binding Type Library"]);
     assert.equal(rows.length, 1, `the rows are ${J(rows)}`);
-    assert.match(rows[0], /^\[LINKED-PACKAGE\] Microsoft Data Source Interfaces/);
+    // Since BETA 1033 a row starts with its drag handle, ⠿.
+    assert.match(rows[0], /^(?:⠿ )?\[LINKED-PACKAGE\] Microsoft Data Source Interfaces/);
   });
 });

@@ -13,7 +13,7 @@
 // (tb-lane.mjs), so the test that has asserted the crash clears the console; the IDE has already
 // restarted the compiler by then.
 //
-// Each test states what BETA 1005 does; the test named "control" passes whether or not the defect
+// Each test states what BETA 1034 does; the test named "control" passes whether or not the defect
 // is fixed. If another fails after an IDE update, the IDE has changed: update the entry in
 // BUGS-TO-REPORT.md, or its report in bugs/filed/, the callout on the page of docs/IDE/Projects/
 // that carries it, and then this file.
@@ -87,6 +87,9 @@ scenario("Project Explorer: importing over an open file", (lane) => {
   });
 
   test("Add > Import... of a file over one open in a tab crashes the compiler, leaves the old text in the tab, and the next save writes it back over the import", async (t) => {
+    // Since BETA 1033 the compiler's restart after the crash collapses the tree.
+    await k.expand(P("Sources"));
+    await k.expand(P("Sources/Helpers"));
     await k.doubleClickNode(P("Sources/Helpers/Util.twin"));
     await sleep(1200);
     assert.ok(

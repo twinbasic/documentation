@@ -18,7 +18,7 @@
 //  - no project, then New Project (Standard EXE): "Save in the build's 'You must
 //    first save the project' box writes no project file".
 //
-// Each test states what BETA 1010 does. If one fails after an IDE update, the
+// Each test states what BETA 1034 does. If one fails after an IDE update, the
 // IDE has changed: update the matching entry in BUGS-TO-REPORT.md or
 // bugs/filed/, and then this file.
 //
@@ -34,6 +34,7 @@ import { scenario } from "../addin/scenario.mjs";
 import {
   answer,
   boxes,
+  clickCard,
   clickText,
   diskText,
   guard,
@@ -245,7 +246,7 @@ scenario("Building", (lane) => {
     );
     await sleep(1500);
     await guard(c);
-    await clickText(c, "Standard EXE", { scope: ".frontPageListViewItem" });
+    await clickCard(c, "Standard EXE");
     await answer(c, "Open");
     assert.ok(await waitBox(c, /New Project Options/, { timeout: 60 * 1000 }), "no New Project Options");
     await answer(c, "Continue");
