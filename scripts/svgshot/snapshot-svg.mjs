@@ -1644,6 +1644,9 @@ export function renderSvg(
   // The transforms an element and its ancestors paint it under, outermost first: those whose
   // linear part is not the identity (a translation is in the snapshot's boxes already). Each
   // ancestor's own box is put back through the transforms outside it before its own is read.
+  // The box read is the unsnapped one: snapped after the transform, a box before it moves by
+  // a fraction of the snapping (the IDE options' checkboxes, scaled by 1.2 from 656.5 px, came
+  // out 0.2 px up and left, and Edge's own mark drawn there was 0.169% off its PNG, not 0.013%).
   const transformMemo = new Map();
   function transformsOf(n) {
     if (!n) return [];
@@ -1652,7 +1655,7 @@ export function renderSvg(
     const m = n.box ? parseMatrix(n.style?.transform) : null;
     let ts = outer;
     if (m && (m[0] !== 1 || m[1] !== 0 || m[2] !== 0 || m[3] !== 1)) {
-      const bounds = outer.reduceRight((r, t) => untransformBox(r, t.m), n.box.bounds);
+      const bounds = outer.reduceRight((r, t) => untransformBox(r, t.m), n.box.exact);
       const size = n.box.offset ?? { w: bounds.w, h: bounds.h };
       const origin = /^(-?[\d.]+)px (-?[\d.]+)px/.exec(n.style["transform-origin"] ?? "");
       const t = elementTransform(bounds, size, m, origin ? [Number(origin[1]), Number(origin[2])] : null);
@@ -2461,7 +2464,11 @@ export function renderSvg(
   // box's ground and a radio's dot in the border's #767676 at 30% over it, and a
   // check mark in white at 60% over that. Fitted by bench/checkable.html over
   // white and over rgb(43, 43, 43), each part to the level (248 and 180, 209 and
-  // 162, 237 and 218); Find_Project's "Current Module" is the same.
+  // 162, 237 and 218); Find_Project's "Current Module" is the same. The check
+  // mark is NativeThemeBase::PaintCheckbox's: from a fifth in and half down, a
+  // fifth across and down, to a fifth in from the right and down, stroked a 0.16th
+  // of the box wide, mitred; Edge draws it so at 13, 16 and 20 px, and a descent
+  // over the points, the width, the joins and the caps moved none of them.
   function paintCheckable(l) {
     const b = l.bounds;
     const side = Math.min(b.w, b.h);
@@ -2471,7 +2478,7 @@ export function renderSvg(
     const given = l.style["accent-color"];
     const blue = given && given !== "auto" ? given : DEFAULT_ACCENT;
     const ink = accentInk(blue);
-    const mark = (colour) => `<path d="M3.1 6.3L5.3 10L10.3 2.7" fill="none" stroke="${colour}" stroke-width="1.8"/>`;
+    const mark = (colour) => `<path d="M2.6 6.5L5.2 9.1L10.4 2.6" fill="none" stroke="${colour}" stroke-width="2.08"/>`;
     let art;
     if (l.node.attrs.disabled !== undefined) {
       const fill = "rgba(245, 245, 245, 0.68)";
