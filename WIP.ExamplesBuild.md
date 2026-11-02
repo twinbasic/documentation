@@ -338,7 +338,7 @@ the repository's to commit: four of the nine ship no licence file, and WinReg em
   and the Scripting Runtime itself. The WinReg landing page tells the reader the same.
 - **An error inside an embedded package is the package's, and fails nothing**
   (`splitPackageFaults`). WinReg 1.0.1.1 and ArrayListLib 1.6.151.1 do not compile on BETA
-  1010: each passes a pointer to a `ByRef` structure parameter without `ByVal` (TB5001). The
+  1034: each passes a pointer to a `ByRef` structure parameter without `ByVal` (TB5001). The
   template-alone build finds those rows; the run prints them as a note naming the package
   rather than as a template FAIL, every other template row still fails, and the samples are
   judged by their own rows as before. Their landing pages say so in a NOTE, and both sections
