@@ -1,0 +1,10 @@
+{
+  "mode": "compile",
+  "expect": {
+    "exit": 1,
+    "output": [
+      "TB5079 Unrecognized symbol 'Unrecognized datatype symbol 'NoSuchType''",
+      "TB5079 Unrecognized symbol 'NoSuchName'"
+    ]
+  }
+}

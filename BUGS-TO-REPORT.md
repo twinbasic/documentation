@@ -11512,3 +11512,44 @@ Severity: medium. Code written to handle an error crashes the program instead, w
 
 <!-- Reproducer: bugs/static-seh-handler-not-run/ (mode run, win64, exe; expect is tbrun exit 5, the probe not returning, with the IDE's NATIVE EXCEPTION line, the exe's exit 0xC0000094, and no "seh_div(6, 0) = -2" line; verify reproduces on BETA 1034 and BETA 1010). The control with Microsoft's linker was a scratch C program (sehmain.c, cl and link from VS 2022), not kept. The kernel32 and ntdll variants were compiled only (tbbuild), not run. docs/Features/Advanced/Static-Linking.md carries a WARNING (BETA 1034) for it under "What can be linked"; when a fixed build is released, the WARNING goes, and the page's list says whether exception handling works in a 64-bit build. Found 2026-11-02 rewriting that page. -->
 
+---
+
+## TB5079 for an unknown type puts its whole message inside the message for an unknown name
+
+**Describe the bug**
+Since BETA 1034, the error for a type name that does not exist reads *Unrecognized symbol 'Unrecognized datatype symbol 'NoSuchType''*. BETA 1033 reported *Unrecognized datatype symbol 'NoSuchType'*. The error for an unknown name in an expression is unchanged.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `tb5079-datatype-message-nested.twinproj` (attached as `tb5079-datatype-message-nested.zip`). Its one source file, `Startup.twin`:
+   ```
+   Module Startup
+
+       Public Sub Main()
+           Dim t As NoSuchType
+           Dim n As Long
+           n = NoSuchName
+       End Sub
+
+   End Module
+   ```
+2. See two errors in the DIAGNOSTICS panel:
+   ```
+   TB5079 Unrecognized symbol 'Unrecognized datatype symbol 'NoSuchType''
+   TB5079 Unrecognized symbol 'NoSuchName'
+   ```
+
+**Expected behavior**
+The first error reads `TB5079 Unrecognized datatype symbol 'NoSuchType'`, as in BETA 1033.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`locale/en-gb.lang` has `TB5079: "Unrecognized symbol '{0}'"`. Since BETA 1034 the compiler takes the text of a message from the language pack by its code, and for an unknown type it fills `{0}` with the whole English message rather than the name. The two kinds of TB5079 need two strings in the pack, or the unknown-type message its own code. The messages are the same in a win32 and a win64 build.
+
+Severity: low; the message is longer and repeats itself, but still names the type.
+
+<!-- Reproducer: bugs/tb5079-datatype-message-nested/ (mode compile; expect.output matches the nested message for the type and the plain one for the name, in tbbuild's report; verify reproduces on BETA 1034, and with --ide on BETA 1033 does not). docs/IDE/Code/Diagnostics.md carries a NOTE (BETA 1034) for it under "Common errors"; when a fixed build is released, the NOTE goes. Pages that quote the BETA 1033 text, *Unrecognized datatype symbol '...'*, are right again then: Features/Packages/Library symbols, tbIDE, IVBPrint, Report, IConnectionPoint, Generics, TBMANLIB. Found 2026-11-03 probing the messages for that section. -->
+

@@ -1,0 +1,9 @@
+Module Startup
+
+    Public Sub Main()
+        Dim t As NoSuchType
+        Dim n As Long
+        n = NoSuchName
+    End Sub
+
+End Module
