@@ -1,0 +1,46 @@
+' Let without Set of an object into a Variant. VB6 reads the object's default member,
+' and raises 450 when that member needs an argument, 438 when there is none. twinBASIC
+' stores the object itself when the object comes from a function or New Collection.
+Module Startup
+
+    Private Function NewCollection() As Collection
+        Set NewCollection = New Collection
+    End Function
+
+    Private Function NewNoDefault() As NoDefault
+        Set NewNoDefault = New NoDefault
+    End Function
+
+    Private Function NewWithDefault() As WithDefault
+        Set NewWithDefault = New WithDefault
+    End Function
+
+    Private Sub Show(ByVal Label As String, ByVal Number As Long, ByRef Value As Variant)
+        Debug.Print Label & " Err=" & Number & " " & TypeName(Value)
+    End Sub
+
+    Public Sub Main()
+        Dim v As Variant
+        Dim c As New Collection
+        On Error Resume Next
+        v = Empty: Err.Clear: v = New Collection: Show "v = New Collection         ", Err.Number, v
+        v = Empty: Err.Clear: v = NewCollection(): Show "v = NewCollection()        ", Err.Number, v
+        v = Empty: Err.Clear: v = CreateObject("Scripting.Dictionary"): Show "v = CreateObject(Dict)     ", Err.Number, v
+        v = Empty: Err.Clear: v = NewNoDefault(): Show "v = NewNoDefault()         ", Err.Number, v
+        v = Empty: Err.Clear: v = c: Show "v = c (a Collection)       ", Err.Number, v
+        v = Empty: Err.Clear: v = New NoDefault: Show "v = New NoDefault          ", Err.Number, v
+        v = Empty: Err.Clear: v = NewWithDefault(): Show "v = NewWithDefault()       ", Err.Number, v
+    End Sub
+
+End Module
+
+Class NoDefault
+    Public Total As Long
+End Class
+
+Class WithDefault
+    [DefaultMember]
+    Public Function Value() As Long
+        Return 42
+    End Function
+End Class

@@ -28,9 +28,9 @@ The return type is **String**. The result depends on the type of *expression*:
 
 **CStr** is the internationally aware alternative to [**Str**](Str) for converting a number to a string. **CStr** recognizes different decimal separators properly, depending on the system's locale setting.
 
-<!-- test: bug negative-zero-text-win64 -->
-> [!WARNING] BETA 1034
-> A 64-bit build converts a negative zero of type **Single** or **Double** (a value that equals 0 and has its sign bit set) to `"-0"`. A 32-bit build and VB6 give `"0"`. The same happens when such a value is joined to a string with `&`.
+<!-- test: sample double-text-win32, sample double-text-win64 -->
+> [!NOTE]
+> A 64-bit build converts a negative zero of type **Single** or **Double** (a value that equals 0 and has its sign bit set) to `"-0"`, as 64-bit VBA does. A 32-bit build gives `"0"`, as VB6 does. The same happens when such a value is joined to a string with `&`.
 
 <!-- errors: generated from errors/VBA.Conversion.yml by scripts/errors.mjs write; edit the data, not this section -->
 ### Common Errors

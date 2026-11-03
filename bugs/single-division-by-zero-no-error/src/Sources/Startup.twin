@@ -1,0 +1,28 @@
+' A division by zero whose result is a Single raises no error: each way of dividing
+' into one, and the Double results that raise error 11 as they should.
+Module Startup
+
+    Public Sub Main()
+        Dim one As Single = 1!
+        Dim zero As Single = 0!
+        Dim dOne As Double = 1#
+        Dim dZero As Double = 0#
+        Dim lOne As Long = 1
+        Dim lZero As Long = 0
+        Dim s As Single
+        Dim d As Double
+        Dim n As Long
+        On Error Resume Next
+        s = 5!: Err.Clear: s = one / zero: n = Err.Number: Debug.Print "s = Single / 0      Err=" & n & " s=" & s
+        s = 5!: Err.Clear: s = zero / zero: n = Err.Number: Debug.Print "s = 0! / 0!         Err=" & n & " s=" & s
+        s = 5!: Err.Clear: s = dOne / dZero: n = Err.Number: Debug.Print "s = Double / 0      Err=" & n & " s=" & s
+        s = 5!: Err.Clear: s = lOne / lZero: n = Err.Number: Debug.Print "s = Long / 0        Err=" & n & " s=" & s
+        s = 5!: Err.Clear: s /= zero: n = Err.Number: Debug.Print "s /= 0              Err=" & n & " s=" & s
+        n = -1: Err.Clear: If one / zero > 0 Then n = Err.Number Else n = Err.Number
+        Debug.Print "If Single / 0 > 0   Err=" & n
+        d = 5#: Err.Clear: d = one / zero: n = Err.Number: Debug.Print "d = Single / 0      Err=" & n
+        d = 5#: Err.Clear: d = dOne / dZero: n = Err.Number: Debug.Print "d = Double / 0      Err=" & n
+        d = 5#: Err.Clear: d = dZero / dZero: n = Err.Number: Debug.Print "d = 0# / 0#         Err=" & n
+    End Sub
+
+End Module

@@ -147,9 +147,9 @@ A result that does not fit its type raises error 6, *Overflow*. Some combination
 | **Date** `+` **Integer** | **Date** |
 | **String** `+` **Integer** | **Double**: `"34" + 6` is 40 |
 
-<!-- test: bug single-overflow-no-error -->
+<!-- test: bug single-overflow-no-error, bug single-division-by-zero-no-error -->
 > [!WARNING] BETA 1034
-> An addition, subtraction, multiplication or division whose result is a declared **Single** raises no error when the result overflows: the **Single** holds infinity (`1.#INF`) instead. VB6 raises error 6, *Overflow*. Declare the variable **Double** where an overflow must be caught. Code compiled with LLVM has a similar defect for **Double**; see [Language support](../LLVM/Getting-Started#language-support).
+> An addition, subtraction, multiplication or division whose result is a declared **Single** raises no error when the result overflows: the **Single** holds infinity (`1.#INF`) instead. VB6 raises error 6, *Overflow*. A division by zero stored in a declared **Single** raises no error either, whatever the types of its operands: the **Single** holds infinity, or NaN (`-1.#IND`) for zero divided by zero, where VB6 raises error 11, *Division by zero*, or error 6. Declare the variable **Double** where the error must be caught. Code compiled with LLVM has a similar defect for **Double**; see [Language support](../LLVM/Getting-Started#language-support).
 
 ### Variant operands
 

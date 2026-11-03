@@ -75,11 +75,58 @@ An operation on two **Double** values gives a **Double**. A **Double** combined 
 
 A result too large for the type raises error 6, *Overflow*: `1E+308 * 10` does, and so does `1E+308 + 1E+308`. Dividing by zero raises error 11, *Division by zero*; `0 / 0` raises error 6, and `Sqr(-1)` raises error 5, *Invalid procedure call or argument*. A result too small for the type is 0, with no error. A **Variant** holding a **Double** raises error 6 on overflow too, where a **Variant** holding a smaller type widens.
 
-A **Double** can hold the IEEE values infinity and NaN, which can arrive from memory or from a COM component, but arithmetic never produces one: it raises an error instead. As in VB6, they print as `1.#INF`, `-1.#INF`, `1.#QNAN` and, for the indeterminate value, `-1.#IND`. A comparison with NaN does not follow the IEEE rules: `NaN = NaN` is True, as in VB6, and so is `NaN = 0`, so a comparison cannot tell a NaN from a number.
+A **Double** can hold the IEEE values infinity and NaN, which can arrive from memory or from a COM component, but **Double** arithmetic never produces one: it raises an error instead. A comparison with NaN does not follow the IEEE rules: `NaN = NaN` is True, as in VB6, and so is `NaN = 0`, so a comparison cannot tell a NaN from a number. A **Double** can also hold negative zero, which `Round(-0.5)`, `Fix(-0.5)` and `-x` for an *x* of 0 give; it equals 0.
 
-<!-- test: bug infinity-text-64-bit -->
-> [!NOTE] BETA 1034
-> A 64-bit build prints infinity and NaN as `inf`, `-inf`, `nan` and `-nan(ind)`, and **Format** with a number picture such as `"0.00"` gives `inf.00` and `nan.00`. A 32-bit build and VB6 print `1.#INF` and `1.#QNAN`, and **Format** gives `1.#INF` and `1.#R`. Do not test or parse the text of these values.
+<!-- test: sample double-text-win32, sample double-text-win64 -->
+How these values print depends on the build. A 32-bit build prints them as VB6 does: infinity and NaN as `1.#INF`, `-1.#INF`, `1.#QNAN` and, for the indeterminate value, `-1.#IND`, and negative zero as `0`; **Format** with a number picture such as `"0.00"` gives `1.#INF` and `1.#R`. A 64-bit build prints them as 64-bit VBA does: `inf`, `-inf`, `nan`, `-nan(ind)` and `-0`; **Format** gives `inf.00` and `nan.00`. Do not test or parse the text of these values.
+<!-- /test -->
+
+```tb hidden slot=module
+' Context for the probes below: a Double made from its eight bytes.
+Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, ByRef Source As Any, ByVal Length As LongPtr)
+
+Public Function DoubleFromBits(ByVal Bits As LongLong) As Double
+    Dim Result As Double
+    CopyMemory Result, Bits, 8
+    DoubleFromBits = Result
+End Function
+```
+
+```tb probe check_run id=double-text-win32
+Dim Zero As Double, ZeroS As Single
+Zero = -Zero
+ZeroS = -ZeroS
+Debug.Print CStr(Zero)                                              ' 0
+Debug.Print "[" & Str(Zero) & "]"                                   ' [ 0]
+Debug.Print Format(Zero)                                            ' 0
+Debug.Print "x" & Zero                                              ' x0
+Debug.Print CStr(ZeroS)                                             ' 0
+Debug.Print CStr(Round(-0.5))                                       ' 0
+Debug.Print CStr(DoubleFromBits(&H7FF0000000000000^))               ' 1.#INF
+Debug.Print CStr(DoubleFromBits(&HFFF0000000000000^))               ' -1.#INF
+Debug.Print CStr(DoubleFromBits(&H7FF8000000000000^))               ' 1.#QNAN
+Debug.Print CStr(DoubleFromBits(&HFFF8000000000000^))               ' -1.#IND
+Debug.Print Format(DoubleFromBits(&H7FF0000000000000^), "0.00")     ' 1.#INF
+Debug.Print Format(DoubleFromBits(&H7FF8000000000000^), "0.00")     ' 1.#R
+```
+
+```tb probe check_run id=double-text-win64 arch=win64
+Dim Zero As Double, ZeroS As Single
+Zero = -Zero
+ZeroS = -ZeroS
+Debug.Print CStr(Zero)                                              ' -0
+Debug.Print "[" & Str(Zero) & "]"                                   ' [-0]
+Debug.Print Format(Zero)                                            ' -0
+Debug.Print "x" & Zero                                              ' x-0
+Debug.Print CStr(ZeroS)                                             ' -0
+Debug.Print CStr(Round(-0.5))                                       ' -0
+Debug.Print CStr(DoubleFromBits(&H7FF0000000000000^))               ' inf
+Debug.Print CStr(DoubleFromBits(&HFFF0000000000000^))               ' -inf
+Debug.Print CStr(DoubleFromBits(&H7FF8000000000000^))               ' nan
+Debug.Print CStr(DoubleFromBits(&HFFF8000000000000^))               ' -nan(ind)
+Debug.Print Format(DoubleFromBits(&H7FF0000000000000^), "0.00")     ' inf.00
+Debug.Print Format(DoubleFromBits(&H7FF8000000000000^), "0.00")     ' nan.00
+```
 
 ```tb check_run
 Dim Value As Double = 1E+308

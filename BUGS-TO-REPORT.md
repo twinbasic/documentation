@@ -6021,95 +6021,6 @@ BETA 1007 gives the same results. Severity: low. Few programs write it, but the 
 
 ---
 
-## A 64-bit build prints infinity and NaN as `inf` and `nan`, and `Format` adds the picture's decimals
-
-**Describe the bug**
-A `Double` or `Single` that holds infinity or NaN prints in VB6 as `1.#INF`, `-1.#INF`, `1.#QNAN` and `-1.#IND`, and `Format(x, "0.00")` gives `1.#INF` or `1.#R`. A 32-bit twinBASIC build prints exactly those. A 64-bit build prints the C runtime's text: `inf`, `-inf`, `nan` and `-nan(ind)`, and `Format(x, "0.00")` gives `inf.00` and `nan.00`. `CStr`, `Str`, concatenation and `Debug.Print` all give the same text. Arithmetic raises an error rather than make these values, so they come from memory, a COM component or a file; the reproducer copies their bytes into a variable. It was observed in IDE runs and in built exes.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `infinity-text-64-bit.twinproj` (attached as `infinity-text-64-bit.zip`). Its module `InfinityTextTests`, below, has one `[TestCase]` for each text, asserting what VB6 gives, and a control.
-2. Run the test cases as a 64-bit build (`tbrun --tests --arch win64`). The first eight fail, with the 64-bit text as `Actual`; the control passes. As a 32-bit build all nine pass.
-```vb
-[TestFixture]
-Module InfinityTextTests
-
-    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, ByRef Source As Any, ByVal Length As LongPtr)
-
-    Private Function DoubleFromBits(ByVal Bits As LongLong) As Double
-        Dim result As Double
-        CopyMemory result, Bits, 8
-        Return result
-    End Function
-
-    Private Function SingleFromBits(ByVal Bits As Long) As Single
-        Dim result As Single
-        CopyMemory result, Bits, 4
-        Return result
-    End Function
-
-    [TestCase]
-    Public Sub CStrOfInfinity_Is1HashINF()
-        Assert.Strict.AreEqual "1.#INF", CStr(DoubleFromBits(&H7FF0000000000000^))
-    End Sub
-
-    [TestCase]
-    Public Sub CStrOfNegativeInfinity_IsMinus1HashINF()
-        Assert.Strict.AreEqual "-1.#INF", CStr(DoubleFromBits(&HFFF0000000000000^))
-    End Sub
-
-    [TestCase]
-    Public Sub CStrOfNaN_Is1HashQNAN()
-        Assert.Strict.AreEqual "1.#QNAN", CStr(DoubleFromBits(&H7FF8000000000000^))
-    End Sub
-
-    [TestCase]
-    Public Sub CStrOfIndeterminate_IsMinus1HashIND()
-        Assert.Strict.AreEqual "-1.#IND", CStr(DoubleFromBits(&HFFF8000000000000^))
-    End Sub
-
-    [TestCase]
-    Public Sub ConcatenatedInfinity_Is1HashINF()
-        Assert.Strict.AreEqual "x=1.#INF", "x=" & DoubleFromBits(&H7FF0000000000000^)
-    End Sub
-
-    [TestCase]
-    Public Sub FormatOfInfinity_Is1HashINF()
-        Assert.Strict.AreEqual "1.#INF", Format(DoubleFromBits(&H7FF0000000000000^), "0.00")
-    End Sub
-
-    [TestCase]
-    Public Sub FormatOfNaNWithPicture_Is1HashR()
-        Assert.Strict.AreEqual "1.#R", Format(DoubleFromBits(&H7FF8000000000000^), "0.00")
-    End Sub
-
-    [TestCase]
-    Public Sub CStrOfSingleInfinity_Is1HashINF()
-        Assert.Strict.AreEqual "1.#INF", CStr(SingleFromBits(&H7F800000))
-    End Sub
-
-    [TestCase]
-    Public Sub CStrOfOrdinaryDouble_IsUnchanged()
-        Assert.Strict.AreEqual "1.5", CStr(1.5)
-    End Sub
-
-End Module
-```
-
-**Expected behavior**
-The same text in a 64-bit build as in a 32-bit one and in VB6: `1.#INF`, `-1.#INF`, `1.#QNAN`, `-1.#IND`, and `1.#INF` or `1.#R` from `Format` with a picture. The reproducer's `vb6/` project prints them (attached as `infinity-text-64-bit-vb6.zip`).
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
-
-**Additional context**
-BETA 1007 gives the same results. The reproducer's `repro.json` names the 64-bit build (`"arch": "win64"`). Severity: low. A program meets these values rarely, but one that tests or parses the text, or shows `Format(x, "0.00")` of one, behaves differently in the two builds.
-
-<!-- Reproducer: bugs/infinity-text-64-bit/ (mode test, arch win64: `tbrun --tests --arch win64` runs the nine cases; expect lists the eight FAIL and one PASS line); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas). docs/Reference/Data-Types/Double.md carries the callout for it (the NOTE after the paragraph on infinity and NaN); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
-
----
-
 ## In a 32-bit build, a constant `Double` expression raises error 6 after a constant that overflows a `Long` or `LongLong`
 
 **Describe the bug**
@@ -11638,4 +11549,104 @@ VB6's native code checks nothing either: the same VB6 project compiled to native
 Severity: medium. A wrong `Declare` is the programmer's mistake, but nothing points to it: the program crashes in the procedure that made the call, after the call has returned, and in the IDE the compiler goes down with it. A VB6 programmer expects error 49 at the call.
 
 <!-- Reproducer: bugs/declare-dll-stack-not-checked/ (mode run, win32, exe; expect is tbrun exit 5, the statically linked call's error line, labs(-7) = 7, no "returned from CallDll", and the exe's exit 0xC0000005; verify reproduces on BETA 1034 and with --ide on BETA 1010). Its vb6/ project is compiled to P-Code (CompilationType=-1), which prints error 49 and returns; compiled to native code it faults in OLEAUT32. The MulDiv cases, the stdcall-declared-CDecl static case and the delegate case were scratch probes, not kept. docs/Reference/Core/Declare.md and docs/Features/Advanced/API-Declarations.md carry a WARNING (BETA 1034) for it; when a fixed build is released, the WARNING goes and the pages say which error a mismatch raises. docs/Features/Advanced/Static-Linking.md states the statically linked call's error as prose. Found 2026-11-03 narrowing what tbrun had reported as a 32-bit run that never reached [BUILD] Executing: the run was stopped at the IDE's error panel for the statically linked call's error. -->
+
+---
+
+## A division by zero whose result is a `Single` raises no error, where VB6 raises error 11
+
+**Describe the bug**
+A division by zero whose result is stored in a declared `Single` raises no error: `s = one / zero`, where all three are declared `Single`, leaves `Err.Number` at 0 and `s` at `1.#INF`, and `zero / zero` leaves `s` at `-1.#IND`. VB6 raises error 11, *Division by zero*, and error 6, *Overflow*, for zero divided by zero. It does not depend on the operands: a `Double` or a `Long` divided by zero and stored in a `Single` raises nothing either, and neither does `/=`, nor a comparison of a `Single` quotient, `If one / zero > 0 Then`. The same division stored in a `Double` raises 11, as in VB6. Observed in IDE runs and in built exes, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `single-division-by-zero-no-error.twinproj` (attached as `single-division-by-zero-no-error.zip`). Its `Sub Main` runs each case under `On Error Resume Next`, for example:
+   ```
+   Dim one As Single = 1!
+   Dim zero As Single = 0!
+   Dim s As Single
+   Dim n As Long
+   On Error Resume Next
+   s = 5!: Err.Clear: s = one / zero: n = Err.Number: Debug.Print "s = Single / 0      Err=" & n & " s=" & s
+   ```
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   s = Single / 0      Err=0 s=1.#INF
+   s = 0! / 0!         Err=0 s=-1.#IND
+   s = Double / 0      Err=0 s=1.#INF
+   s = Long / 0        Err=0 s=1.#INF
+   s /= 0              Err=0 s=1.#INF
+   If Single / 0 > 0   Err=0
+   d = Single / 0      Err=11
+   d = Double / 0      Err=11
+   d = 0# / 0#         Err=6
+   ```
+
+**Expected behavior**
+Error 11 for every division by zero, and error 6 for zero divided by zero, whatever the result is stored in, as in VB6. The VB6 project (attached as `single-division-by-zero-no-error-vb6.zip`) prints `Err=11` on every line but the two that divide zero by zero, which print `Err=6`; it has `s = s / 0` where twinBASIC has `s /= 0`. 64-bit VBA raises the same errors.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+BETA 1010 gives the same results. Compiled with LLVM (the whole project), every line raises 11 or 6, as in VB6, and the `Single` keeps its old value. A 64-bit build prints the values as `inf` and `-nan(ind)`, as 64-bit VBA does.
+
+Possibly the same cause as #2476, *A `Single` that overflows raises no error, where VB6 raises error 6*: in both, a `Single` is left holding infinity where a `Double` raises the error. This one is a division by zero, error 11, and it happens with `Double` and `Long` operands too.
+
+What matches VB6: `\` and `Mod` by zero raise 11 into a `Single`; a `Variant` target raises 11; VB6 also leaves infinity in the `Single` after the error, so only the error is missing.
+
+Severity: a silent wrong result. A division by zero that reaches an error handler in VB6 leaves infinity or NaN in the `Single` in twinBASIC, and the program goes on with it.
+
+<!-- Reproducer: bugs/single-division-by-zero-no-error/ (mode run; expect is the four Single lines with Err=0, the comparison with Err=0, and the Double controls with 11 and 6); verify reproduces on BETA 1034, and run reproduces it with --ide on BETA 1010, with --arch win64, and in exes (tbrun --exe on a copy that prints with TbRun.Out, win32 and win64). --llvm raises every error. VB6 side in vb6/: `bug_repro.mjs vb6` prints Err=11 or Err=6 on every line. 64-bit VBA was run through scripts/lib/vba.mjs in a scratch module, not kept. docs/Reference/Core/Divide.md, docs/Reference/Data-Types/Single.md and docs/Reference/Operators.md carry it in the WARNING (BETA 1034) they share with single-overflow-no-error (#2476); when a fixed build is released, its part of each WARNING goes. Found 2026-11-03 in item 12 of the BETA 1034 relabel pass, narrowed in item 17. -->
+
+---
+
+## Assigning an object that a function returns to a `Variant` without `Set` stores the object when its default member cannot be read, where VB6 raises error 450 or 438
+
+**Describe the bug**
+An assignment of an object to a `Variant` without `Set` assigns the value of the object's default member. When the default member needs an argument, as a `Collection`'s `Item` does, VB6 raises error 450, *Wrong number of arguments or invalid property assignment*, and when the class has no default member, error 438, *Object doesn't support this property or method*; the `Variant` keeps its old value. twinBASIC raises an error when the object comes from a variable or from `New` of a twinBASIC class. When it comes from a function's result, from `New Collection` or from `CreateObject`, it raises no error and stores the object itself in the `Variant`, as `Set` would: after `v = NewCollection()`, where `NewCollection` returns a `Collection`, `TypeName(v)` is `Collection`. Observed in IDE runs and in built exes, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `let-object-result-stored.twinproj` (attached as `let-object-result-stored.zip`). Its `Sub Main` makes each assignment under `On Error Resume Next` and prints `Err.Number` and `TypeName(v)`, for example:
+   ```
+   v = Empty: Err.Clear: v = NewCollection(): Show "v = NewCollection()        ", Err.Number, v
+   ```
+   `NoDefault` is a class with no default member, `WithDefault` one whose default member, `Value`, returns 42, and `c` is a `Collection` variable.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   v = New Collection          Err=0 Collection
+   v = NewCollection()         Err=0 Collection
+   v = CreateObject(Dict)      Err=0 Dictionary
+   v = NewNoDefault()          Err=0 NoDefault
+   v = c (a Collection)        Err=-2147352561 Empty
+   v = New NoDefault           Err=438 Empty
+   v = NewWithDefault()        Err=0 Long
+   ```
+
+**Expected behavior**
+Error 450 for each `Collection` and the `Dictionary`, and error 438 for `NoDefault` however it is made, with the `Variant` left `Empty`, as in VB6. The VB6 project (attached as `let-object-result-stored-vb6.zip`) prints:
+```
+v = New Collection          Err=450 Empty
+v = NewCollection()         Err=450 Empty
+v = CreateObject(Dict)      Err=450 Empty
+v = NewNoDefault()          Err=438 Empty
+v = c (a Collection)        Err=450 Empty
+v = New NoDefault           Err=438 Empty
+v = NewWithDefault()        Err=0 Long
+```
+64-bit VBA raises 450 for `New Collection`, a function's `Collection`, a `Collection` variable and `CreateObject("Scripting.Dictionary")` as well.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+BETA 1010 gives the same results. What matches VB6: a default member that needs no argument is read from a function's result as from a variable (`v = NewWithDefault()` assigns the `Long` 42), and `New` of a twinBASIC class with no default member raises 438. The same assignment to a `Long` or a `String` (`l = c`), or to a `Variant` from a parenthesised variable (`v = (c)`), is refused at compile time with TB5092, *Missing argument 'Index'*, where VB6 refuses it with *Argument not optional*.
+
+Where the object is read but the error differs: a `Collection` in a variable raises -2147352561 (`&H8002000F`, `DISP_E_PARAMNOTOPTIONAL`), *Parameter not optional.*, where VB6 raises 450, and a `Scripting.Dictionary` in an `Object` variable -2147352562 (`DISP_E_BADPARAMCOUNT`). An element of a `Variant` array as the target, `va(0) = NewCollection()`, raises -2147352561 rather than storing the object; VB6 raises 450. `New` of a twinBASIC class whose default member needs an argument raises -2147352561, and the same object returned by a function is stored.
+
+Severity: a silent different result. A missing `Set` that VB6 reports at once goes unnoticed: the `Variant` holds the object, and code that used it as a value fails later, far from the mistake, or works by accident. The same assignment also behaves differently depending on whether the object comes from a variable or a function.
+
+<!-- Reproducer: bugs/let-object-result-stored/ (mode run; expect is the four stored-object lines, the New NoDefault 438 control and the NewWithDefault Long control; the v = c line is left out of expect, because its number is also latebound-hresult-mapping's kind of defect and may be fixed apart); verify reproduces on BETA 1034, and run reproduces it with --ide on BETA 1010, with --arch win64, and in an exe (tbrun --exe on a copy that prints with TbRun.Out). VB6 side in vb6/ (Module1.bas, NoDefault.cls, WithDefault.cls): `bug_repro.mjs vb6` prints the expected block. The compile-time cases, the array element, the Object variables and the class whose default member needs an argument come from scratch probes (twinBASIC with tbrun, VB6 with vb6run.mjs), not kept; 64-bit VBA was run through scripts/lib/vba.mjs in a scratch module, not kept. docs/Reference/Core/Let.md carries a WARNING (BETA 1034) for it; when a fixed build is released, the WARNING goes and the page states which error each case raises. Related: latebound-hresult-mapping (the number a failed late-bound call raises). Found 2026-11-03 in item 12 of the BETA 1034 relabel pass (#2482's object case was such an assignment), narrowed in item 17. -->
 
