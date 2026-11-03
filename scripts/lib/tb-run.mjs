@@ -18,6 +18,23 @@ import { timing, timingsOn } from "./tb-timings.mjs";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// The run-time error the IDE's error panel shows, or null. An error the program does not
+// handle stops the run there, and the panel waits for a person (Try Again, Ignore, Stop).
+// event_stopped (ide/main.js) puts the panel's text in activeDebuggingErrorHeader and
+// activeDebuggingError, and the frame it stopped in in activeDebuggingFrameId;
+// clearDebuggingCallframe, at a continue or the run's end, resets the frame and leaves the
+// text, so the frame is what says the panel is open. A breakpoint or Stop has no text.
+const STOPPED_JS = `(() => {
+  if (typeof activeDebuggingFrameId === "undefined" || activeDebuggingFrameId === undefined) return null;
+  if (typeof activeDebuggingError === "undefined" || !activeDebuggingError) return null;
+  return {
+    header: String(activeDebuggingErrorHeader ?? ""),
+    error: String(activeDebuggingError),
+    file: activeDebuggingFileNode ? activeDebuggingFileNode.getFullPath() : null,
+    line: activeDebuggingLine ?? null,
+  };
+})()`;
+
 /**
  * The console's text as lines: blank lines trimmed off both ends, and nothing
  * else done. Reading the backing array rather than the pane means the header,
@@ -46,7 +63,13 @@ export function strip(text, raw = null) {
  * `quietMs` counted from the later of Executing and its last change (a run that
  * prints nothing ends too), or at `runMs` after Executing. A caller whose Sub
  * ends with a marker line passes a `done` that looks for it; one that cannot
- * says `() => false` and relies on the quiet period.
+ * says `() => false` and relies on the quiet period. A run stopped at the IDE's
+ * error panel by an error it does not handle never goes on, so it ends at once.
+ *
+ * Executing is looked for in what the clears erased on every poll of the build,
+ * not only when the console changes: a small project builds, runs its Sub's
+ * Debug.Cls and stops at a panel between two polls, and the console then reads
+ * as empty before the press and after.
  *
  * It throws, with a message that says why, when the IDE has no
  * `clearDebugConsole()` to wrap or no console to read, or the Build button
@@ -59,11 +82,12 @@ export function strip(text, raw = null) {
  * @param {number} [o.runMs]    default: its `compilerRun` (TB_COMPILER_RUN_TIMEOUT)
  * @param {number} [o.quietMs]  default: its `compilerRunQuiet` (TB_COMPILER_RUN_QUIET)
  * @returns {Promise<{captured: string[], last: string, erased: string[], timedOut: boolean,
- *   ended: "done" | "quiet" | "failed" | "build-timeout" | "run-timeout", limitMs: number | null}>}
+ *   ended: "done" | "quiet" | "stopped" | "failed" | "build-timeout" | "run-timeout", limitMs: number | null,
+ *   stopped: {header: string, error: string, file: string | null, line: number | null} | null}>}
  *   `captured` is the console after the run; `last` the same, unsplit; `erased`
  *   every line a clear removed, oldest first; `timedOut` is true when the wait
  *   ended at a limit, `ended` says how it ended, and `limitMs` is the limit that
- *   ended it
+ *   ended it; `stopped` is the error panel's text and place when the run stopped there
  */
 export async function captureRun(
   c,
@@ -90,7 +114,8 @@ export async function captureRun(
     lastChange = Date.now(),
     failedAt = null,
     ended = null,
-    limitMs = null;
+    limitMs = null,
+    stopped = null;
   // When the build's first line, its link line and the Sub's Executing line were
   // first seen, in the console or in what a clear erased. `exec` ends the build
   // phase and starts the run's; the other two are for tb-timings.mjs only.
@@ -134,6 +159,16 @@ export async function captureRun(
       await markLines(now);
       if (marks.exec !== null && done(strip(now))) {
         ended = "done";
+        break;
+      }
+    } else if (marks.exec === null) {
+      // A clear can erase the whole build between two polls: see the comment above.
+      await markLines(now);
+    }
+    if (marks.exec !== null) {
+      stopped = await c.evaluate(STOPPED_JS).catch(() => null);
+      if (stopped) {
+        ended = "stopped";
         break;
       }
     }
@@ -188,7 +223,7 @@ export async function captureRun(
         "a failure they erased cannot be ruled out",
     );
   }
-  return { captured, last, erased: kept.flatMap((text) => text.split("\n")), timedOut, ended, limitMs };
+  return { captured, last, erased: kept.flatMap((text) => text.split("\n")), timedOut, ended, limitMs, stopped };
 }
 
 /**

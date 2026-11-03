@@ -35,7 +35,13 @@ An API declaration, a procedure, a delegate or an interface member can name its 
 | **ThisCall**   | thiscall   | the first in the ECX register, the rest on the stack | the callee       |
 | **FastCall**   | fastcall   | the first two in ECX and EDX, the rest on the stack  | the callee       |
 
-The four follow the Microsoft C/C++ conventions of the same names: `__stdcall`, `__cdecl`, `__thiscall` and `__fastcall`. A declaration must name the convention its counterpart actually uses. A mismatch passes the arguments in the wrong places, leaves the stack unbalanced, and usually crashes.
+The four follow the Microsoft C/C++ conventions of the same names: `__stdcall`, `__cdecl`, `__thiscall` and `__fastcall`. A declaration must name the convention its counterpart actually uses. A mismatch passes the arguments in the wrong places and leaves the stack unbalanced.
+
+In a 32-bit build, a call of a [statically linked](Static-Linking) function, and a call through a [**Delegate**](../../tB/Core/Delegate), check the stack afterwards. A wrong convention there raises run-time error -353703419 (`&HEAEAEA05`), *Bad DLL definition. Stack corruption detected.*, and the stack is put right, so a handler can go on.
+
+<!-- test: bug declare-dll-stack-not-checked -->
+> [!WARNING] BETA 1034
+> In a 32-bit build, a call of a DLL function through a **Declare** whose convention or number of parameters is wrong raises no error. The call returns, with a wrong value when a parameter is missing, and the procedure that made the call ends with an access violation as it returns. In an IDE run the access violation is in the compiler's process, which restarts. VB6 raises error 49, *Bad DLL calling convention*, at the call, in its IDE and in a P-Code exe; a VB6 exe compiled to native code checks nothing either.
 
 A 64-bit build has only one calling convention. There, all four keywords are accepted and have no effect.
 

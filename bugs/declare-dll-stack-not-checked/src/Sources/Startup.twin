@@ -1,0 +1,48 @@
+' Build as win32. labs in msvcrt.dll and add in basic_32.obj are both __cdecl, and both are
+' declared here without CDecl, so each call leaves 4 bytes per argument on the stack.
+' basic_32.obj is basic.c compiled for x86 with:
+'     cl /nologo /c /Gw /Gy /GS- basic.c /Fo"basic_32.obj"
+' The call of add raises -353703419, "Bad DLL definition.  Stack corruption detected.", which
+' the handler reports, and the program goes on. The call of labs raises nothing and returns 7,
+' and CallDll then ends with an access violation as it returns, in the IDE and in the exe.
+Import Library "/Miscellaneous/basic_32.obj" As BASIC
+
+Module Startup
+
+    Private Declare PtrSafe Function add Lib BASIC (ByVal a As Long, ByVal b As Long) As Long
+    Private Declare PtrSafe Function labs Lib "msvcrt" (ByVal x As Long) As Long
+
+    Private Sub Report(ByVal what As String, ByVal value As Long)
+        If Err.Number <> 0 Then
+            Debug.Print what & ": error " & Err.Number & ", " & Err.Description
+        Else
+            Debug.Print what & " = " & value
+        End If
+    End Sub
+
+    Private Sub CallStatic()
+        On Error Resume Next
+        Dim r As Long = add(2, 3)
+        Report "add(2, 3)", r
+    End Sub
+
+    Private Sub CallDll()
+        On Error Resume Next
+        Dim r As Long = labs(-7)
+        Report "labs(-7)", r
+    End Sub
+
+    Public Sub Main()
+        CallStatic
+        Debug.Print "returned from CallStatic"
+        CallDll
+        Debug.Print "returned from CallDll"
+    End Sub
+
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Main
+    End Sub
+
+End Module

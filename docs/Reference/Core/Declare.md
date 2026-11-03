@@ -118,6 +118,10 @@ Declare Sub Second Lib "MyLib" ()
 > [!WARNING] BETA 1034
 > In a 64-bit build with [LLVM](../../LLVM/Getting-Started), a call that passes `ByVal 0&` for the eighth parameter, declared `ByRef` with a 32-bit type such as **Long**, to give the procedure a NULL pointer, can end with an access violation (0xC0000005) and no message box. The eighth parameter of **WideCharToMultiByte** is one such case. Whether the call fails depends on what the stack held before it. The same override for the first to seventh parameters is right. Declare the parameter `ByVal ... As LongPtr` instead. A 32-bit build and a build without LLVM are not affected.
 
+<!-- test: bug declare-dll-stack-not-checked -->
+> [!WARNING] BETA 1034
+> In a 32-bit build, a call of a DLL procedure whose **Declare** names the wrong calling convention, or the wrong number of parameters, raises no error. The call returns, with a wrong value when a parameter is missing, and the procedure that made the call ends with an access violation as it returns; in an IDE run the compiler's process ends with it and restarts. VB6 raises error 49, *Bad DLL calling convention*, at the call in its IDE and in a P-Code exe. A call of a statically linked function raises an error instead; see [Calling Conventions](../../Features/Advanced/API-Declarations#calling-conventions).
+
 ### Example
 
 This example shows how the **Declare** statement is used at the module level of a standard module to declare a reference to an external procedure in a dynamic-link library (DLL). **Declare** statements can be placed in class modules when they are **Private**.

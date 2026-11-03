@@ -65,6 +65,8 @@ The parameters work as they do for a DLL function, and **AddressOf** passes a tw
 
 The default calling convention of a C function is `__cdecl`, so its **Declare** names **CDecl**. A **Declare** without a convention keyword is stdcall (see [Calling Conventions](API-Declarations#calling-conventions)); a 64-bit build has only one convention, and ignores the keyword.
 
+In a 32-bit build, a call through a **Declare** that names the wrong convention raises run-time error -353703419 (`&HEAEAEA05`), *Bad DLL definition. Stack corruption detected.* The call returns no value, the stack is put right, and [**On Error**](../../tB/Core/On-Error) can trap the error.
+
 In a 32-bit build, the C compiler decorates the names in the object file. It puts an underscore before the name of a `__cdecl` or `__stdcall` function, which a **Declare** leaves out: twinBASIC adds it. A `__stdcall` function's name also ends with `@` and the size of its arguments, each rounded up to 4 bytes, and that suffix goes into **Alias**. `int __stdcall add_std(int a, short b)` is `_add_std@8` in a 32-bit file and `add_std` in a 64-bit one:
 
 ```tb inert=external

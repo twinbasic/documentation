@@ -11553,3 +11553,89 @@ Severity: low; the message is longer and repeats itself, but still names the typ
 
 <!-- Reproducer: bugs/tb5079-datatype-message-nested/ (mode compile; expect.output matches the nested message for the type and the plain one for the name, in tbbuild's report; verify reproduces on BETA 1034, and with --ide on BETA 1033 does not). docs/IDE/Code/Diagnostics.md carries a NOTE (BETA 1034) for it under "Common errors"; when a fixed build is released, the NOTE goes. Pages that quote the BETA 1033 text, *Unrecognized datatype symbol '...'*, are right again then: Features/Packages/Library symbols, tbIDE, IVBPrint, Report, IConnectionPoint, Generics, TBMANLIB. Found 2026-11-03 probing the messages for that section. -->
 
+---
+
+## In a 32-bit build, a Declare whose calling convention or parameters do not match the DLL function raises no error, and the procedure that called it ends with an access violation
+
+**Describe the bug**
+In a 32-bit build, a `Declare` of a DLL function that names the wrong calling convention, or the wrong number of parameters, raises no error. The call returns, the stack is left unbalanced, and the procedure that made the call ends with an access violation as it returns. In the IDE the access violation is in the compiler's process, which restarts. The same mistake in a `Declare` of a statically linked function, or in a call through a `Delegate`, raises -353703419, *Bad DLL definition.  Stack corruption detected.*, and the program goes on.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `declare-dll-stack-not-checked.twinproj` (attached as `declare-dll-stack-not-checked.zip`); its build is win32. `labs` in `msvcrt.dll` and `add` in `basic_32.obj` (`basic.c`, beside it in Miscellaneous) are both `__cdecl`, and both are declared without `CDecl`:
+   ```
+   Import Library "/Miscellaneous/basic_32.obj" As BASIC
+
+   Module Startup
+
+       Private Declare PtrSafe Function add Lib BASIC (ByVal a As Long, ByVal b As Long) As Long
+       Private Declare PtrSafe Function labs Lib "msvcrt" (ByVal x As Long) As Long
+
+       Private Sub Report(ByVal what As String, ByVal value As Long)
+           If Err.Number <> 0 Then
+               Debug.Print what & ": error " & Err.Number & ", " & Err.Description
+           Else
+               Debug.Print what & " = " & value
+           End If
+       End Sub
+
+       Private Sub CallStatic()
+           On Error Resume Next
+           Dim r As Long = add(2, 3)
+           Report "add(2, 3)", r
+       End Sub
+
+       Private Sub CallDll()
+           On Error Resume Next
+           Dim r As Long = labs(-7)
+           Report "labs(-7)", r
+       End Sub
+
+       Public Sub Main()
+           CallStatic
+           Debug.Print "returned from CallStatic"
+           CallDll
+           Debug.Print "returned from CallDll"
+       End Sub
+
+       [RunAfterBuild]
+       Private Sub Built()
+           Debug.Cls
+           Main
+       End Sub
+
+   End Module
+   ```
+2. Build it. The `[RunAfterBuild]` Sub runs `Main` in the IDE.
+3. See the DEBUG CONSOLE, which has no `returned from CallDll` line: `CallDll` ends with an access violation as it returns, and the compiler restarts:
+   ```
+   add(2, 3): error -353703419, Bad DLL definition.  Stack corruption detected.
+   returned from CallStatic
+   labs(-7) = 7
+   restarting from MEMORY [...]
+   ```
+4. Run the built exe. It ends with exit code -1073741819 (`0xC0000005`), and the Application event log records the exception at an address on the stack.
+
+**Expected behavior**
+The call of `labs` raises an error, as the call of `add` does, and the program goes on. VB6 raises error 49, *Bad DLL calling convention*, for the same `Declare` in its IDE and in a P-Code exe. The VB6 project, attached as `declare-dll-stack-not-checked-vb6.zip` and compiled to P-Code, prints:
+```
+labs(-7): error 49, Bad DLL calling convention
+returned from CallDll
+```
+Error 49 would suit the statically linked call too, which raises -353703419 (`&HEAEAEA05`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Other mismatches tried, each in a 32-bit IDE run and exe, raise no error either, and end the procedure that made the call with the same access violation: `MulDiv` of kernel32, which is `__stdcall`, declared `CDecl` (the right value, called 1000 times); `MulDiv` declared with a parameter too few (a wrong value, -1 for `MulDiv(6, 4)`) or one too many (the right value), after one call each. In the IDE the access violation either ends the compiler's process, which restarts, or is reported as `NATIVE EXCEPTION: ACCESS_VIOLATION` and turns on TRACE-MODE.
+
+A statically linked call is checked both ways: a `__stdcall` function of the object declared `CDecl` raises -353703419 as well. So is a call through a `Delegate`: a `Delegate Function OneArg (ByVal x As Long) As Long`, without `CDecl`, given the address of `labs` from `GetProcAddress` raises -353703419 when it is called, and the program goes on, in the IDE and in the exe; the same delegate declared `CDecl` returns 7. A 64-bit build has one calling convention, so neither `Declare` in the reproducer is a mismatch there, and both calls return their values.
+
+VB6's native code checks nothing either: the same VB6 project compiled to native code ends with an access violation in OLEAUT32. The check is made by VB6's IDE and its P-Code. The reproducer behaves the same on BETA 1010.
+
+Severity: medium. A wrong `Declare` is the programmer's mistake, but nothing points to it: the program crashes in the procedure that made the call, after the call has returned, and in the IDE the compiler goes down with it. A VB6 programmer expects error 49 at the call.
+
+<!-- Reproducer: bugs/declare-dll-stack-not-checked/ (mode run, win32, exe; expect is tbrun exit 5, the statically linked call's error line, labs(-7) = 7, no "returned from CallDll", and the exe's exit 0xC0000005; verify reproduces on BETA 1034 and with --ide on BETA 1010). Its vb6/ project is compiled to P-Code (CompilationType=-1), which prints error 49 and returns; compiled to native code it faults in OLEAUT32. The MulDiv cases, the stdcall-declared-CDecl static case and the delegate case were scratch probes, not kept. docs/Reference/Core/Declare.md and docs/Features/Advanced/API-Declarations.md carry a WARNING (BETA 1034) for it; when a fixed build is released, the WARNING goes and the pages say which error a mismatch raises. docs/Features/Advanced/Static-Linking.md states the statically linked call's error as prose. Found 2026-11-03 narrowing what tbrun had reported as a 32-bit run that never reached [BUILD] Executing: the run was stopped at the IDE's error panel for the statically linked call's error. -->
+
