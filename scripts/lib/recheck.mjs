@@ -27,7 +27,7 @@ export function checkKey(item, pkg) {
 export const keyKind = (key) => key.split(" ")[0];
 
 /** The kinds a run can be limited to; `none` and a package's probe are never run. */
-export const RUN_KINDS = ["bug", "lane", "sample", "errors", "llvm", "package"];
+export const RUN_KINDS = ["bug", "lane", "sample", "errors", "llvm", "static", "package"];
 
 // `bug_repro.mjs verify`'s line for a reproducer.
 const VERIFY_RE =

@@ -66,6 +66,59 @@ export function runAllText({ pkg, version, tests, expect }) {
   return lines.join("\n");
 }
 
+/**
+ * The text of the module that runs the exe project's cases, written into the staged copy: a built
+ * exe starts at its Sub Main, and only TbRun.Out reaches the run from there. Each case prints a line
+ * that exeOutcomes reads. The [RunAfterBuild] Sub does nothing but tell tbrun the build has ended.
+ *
+ * @param {{fixture: string, name: string}[]} tests
+ */
+export function runExeText(tests) {
+  const lines = [
+    "Module RunExe",
+    "",
+    "    [RunAfterBuild]",
+    "    Public Sub Built()",
+    "        Debug.Cls",
+    '        Debug.Print "built"',
+    "    End Sub",
+    "",
+    "    Public Sub Main()",
+    '        Expect.StartRun ""',
+    "        On Error Resume Next",
+  ];
+  for (const t of tests) {
+    const name = caseName(t);
+    lines.push(
+      "        Expect.StartCase",
+      "        Err.Clear",
+      `        ${name}`,
+      `        TbRun.Out "${EXE_LINE}${name}: " & Expect.Outcome(Err.Number, Err.Description)`,
+    );
+  }
+  lines.push("        On Error GoTo 0", "    End Sub", "", "End Module", "");
+  return lines.join("\n");
+}
+
+const EXE_LINE = "CASE ";
+
+/**
+ * What the exe's lines say of its cases.
+ *
+ * @param {string[]} lines  what tbrun --exe read from TbRun.Out
+ * @returns {Map<string, {kind: "pass" | "fail", detail: string}>}
+ */
+export function exeOutcomes(lines) {
+  const out = new Map();
+  for (const line of lines) {
+    if (!line.startsWith(EXE_LINE)) continue;
+    const at = line.indexOf(":");
+    const detail = normaliseDetail(line.slice(at + 1));
+    out.set(line.slice(EXE_LINE.length, at), detail ? { kind: "fail", detail } : { kind: "pass", detail: "" });
+  }
+  return out;
+}
+
 // Why RunAll skips a case on one architecture, or "": one that never returns would stop the run,
 // and one that ends in a native exception (a stack overflow, an access violation) may take the
 // reader's IDE or exe down with it, as it does a built exe. package_tests.mjs still runs both.

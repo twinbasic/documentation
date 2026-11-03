@@ -967,6 +967,7 @@ The marker goes on the line directly above the callout, with no blank line betwe
 | `sample <id>` | The sample with that `id=` under `docs/`: a `check_run` sample, a [probe](#a-statement-checked-by-a-sample-nobody-sees), or one that is only compiled. It holds while `examples.bat` finds nothing wrong with it. |
 | `errors <name>` | The run-time error data `errors/<name>.yml`. |
 | `llvm <mode>` | A mode of the LLVM claims probe, `test/llvm/run.mjs`. |
+| `static <mode>` | A mode of the static linking claims probe, `test/static-linking/run.mjs`. |
 | `none -- <reason>` | Nothing a program can check. A person checks it again on each new build. |
 
 A contributed package's section names its own test cases too, as the next section says. The callouts of a generated Common Errors section need no marker: their data is what checks them. [`check_callout_evidence.mjs`](Tools-Toolchain-Tests#check-callout-evidence), in `test.bat`, fails a callout labelled `BETA <n>` with neither a marker nor a region around it, and an item that names nothing that exists. After a new build, [`recheck_callouts.mjs`](Tools-Defects#recheck-callouts) runs what each marker names, moves the label of each callout whose evidence still holds to the new build, and lists the rest to be read again.

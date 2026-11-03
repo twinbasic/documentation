@@ -117,6 +117,7 @@ import {
 import {
   CANARIES,
   CANARY_FILES,
+  DECLARES_HOOK,
   DEFAULT_BATCH,
   DEFAULT_JOBS,
   applyExclusions,
@@ -716,7 +717,7 @@ let tidy = null;
 // quiet period or limit from test/harness.json (LIMITS).
 // Whether a batch's own samples bring a [RunAfterBuild] Sub, whose compile a build
 // follows after the link (buildProject); a run batch's dispatcher is captureRun's.
-const runsAfterBuild = (staged) => [...staged.map.values()].some((e) => /\[\s*RunAfterBuild\b/i.test(e.fence.content));
+const runsAfterBuild = (staged) => [...staged.map.values()].some((e) => DECLARES_HOOK.test(e.fence.content));
 const runWait = () => ({
   done: (lines) => lines.some((l) => l.trim() === RUN_DONE),
   runMs: LIMITS.compilerRun,

@@ -146,7 +146,7 @@ A **GdiPlusUser** must exist while any GDI+ object is used. It starts GDI+, and 
 Dim user As GdiPlusUser = GdiPlusUser()
 ```
 
-<!-- test: none -- GDI+ is already started in the process of the test runner, so a GDI+ object made before the first use of a Dim As New GdiPlusUser variable does not fail with status 18 there; it fails only in a program that has not started GDI+ yet -->
+<!-- test: StartupTests.Bitmap_BeforeTheFirstUseOfADimAsNewUser_FailsWithStatus18, StartupTests.Bitmap_AfterSetOfAUser_IsCreated -->
 > [!WARNING] 0.9.45.0
 > A **GdiPlusUser** declared `Dim user As New GdiPlusUser` is not created until the variable is first used, so the GDI+ objects made before that fail with status 18. Use `Dim user As GdiPlusUser = GdiPlusUser()`, or `Set` the variable in the load handler. See [**GdiPlusUser**](GdiPlusUser).
 

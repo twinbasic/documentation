@@ -13,6 +13,8 @@ test/package-tests/
       <Fixture>.twin       [TestFixture] modules of [TestCase] Subs
       RunAll.twin          generated: Sub Main runs every case
     expect.json            how each case fails on the documented version
+    compile/               optional: compile cases that expect an error
+    exe/                   optional: cases that run in a built exe, and a server.mjs for them
     probe/                 optional: a harness for what only a built program shows
 ```
 
@@ -75,6 +77,13 @@ End Module
 - **Resources** a case reads go in the package folder's `Resources/`, laid out as an exported
   project keeps them (`<TYPE>/<NAME>`, such as `BINARY/#101`). The runner stages them and the
   published project carries them, byte for byte.
+- **A claim the IDE's own process changes goes in the package folder's `exe/`**: `[TestCase]` Subs
+  written as any others, which `package_tests.mjs` builds and runs with `tbrun --exe`, in file
+  order in one process, and judges with the rest, under the same names in `expect.json` and in the
+  markers (GdiPlus: the IDE has already started GDI+). `Debug.Print` writes nothing there. A
+  `server.mjs` in the folder is started first, prints its port on its first line, and the exe finds
+  the port in `PACKAGE_TEST_PORT` (TBMANLIB: an HTTPS server whose certificate fails every check).
+  It is not published, and it needs no `RunAll`.
 - A claim that needs a dialog operated or a form shown goes in the package's `probe/` harness, as
   TBMANLIB_Dialog's and xCalendar's do.
 

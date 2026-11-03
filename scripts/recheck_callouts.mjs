@@ -19,6 +19,7 @@
 //   sample   check_examples.mjs --json, over the pages that hold the samples
 //   errors   errors.mjs run, for twinBASIC 32-bit and 64-bit (what VB6 does does not change)
 //   llvm     test/llvm/run.mjs --only <mode>
+//   static   test/static-linking/run.mjs --only <mode>
 //   package  package_tests.mjs --json, for the packages whose cases are named
 //
 // Every tool's output is kept under %TEMP%\recheck-callouts\<pid>\, and --report writes what was
@@ -45,7 +46,7 @@ import {
 } from "./lib/recheck.mjs";
 import { archesOf, collectFences, RUN_MARKER } from "./lib/tb-fences.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
-import { itemText, kindOf, markersOf, SUITES } from "./lib/test-markers.mjs";
+import { CLAIM_PROBES, itemText, kindOf, markersOf, SUITES } from "./lib/test-markers.mjs";
 
 exitOnCrash();
 
@@ -323,10 +324,13 @@ for (const name of todo("errors")) {
   );
 }
 
-// The LLVM claims probe, one mode at a time.
-for (const mode of todo("llvm")) {
-  const r = await runTool("test/llvm/run.mjs", ["--only", mode, ...ideArgs], `llvm-${mode}`);
-  set(`llvm ${mode}`, r.code === 0 ? "holds" : r.code === 1 ? "changed" : "error", `run.mjs exit ${r.code}`, r.log);
+// The claims probes, one mode at a time.
+for (const [kind, folder] of Object.entries(CLAIM_PROBES)) {
+  for (const mode of todo(kind)) {
+    const r = await runTool(`${folder}/run.mjs`, ["--only", mode, ...ideArgs], `${kind}-${mode}`);
+    const status = r.code === 0 ? "holds" : r.code === 1 ? "changed" : "error";
+    set(`${kind} ${mode}`, status, `run.mjs exit ${r.code}`, r.log);
+  }
 }
 
 // The contributed packages' cases.

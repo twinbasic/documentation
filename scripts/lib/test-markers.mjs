@@ -23,6 +23,7 @@
 //                        one; it holds while examples.bat finds nothing wrong with it
 //   errors <name>        the run-time error data errors/<name>.yml, which `errors.mjs run` checks
 //   llvm <mode>          a mode of the LLVM claims probe, test/llvm/run.mjs
+//   static <mode>        a mode of the static linking claims probe, test/static-linking/run.mjs
 //   none -- <reason>     nothing a program can check: a person checks it again
 //
 // The first three belong to a contributed package's section, which has a test project
@@ -50,6 +51,9 @@ const ERRORS_CLOSE_RE = /^<!--[ \t]*\/errors[ \t]*-->[ \t]*$/;
 
 /** The item kinds that name a case of a contributed package's test project. */
 export const PACKAGE_KINDS = new Set(["case", "compile", "probe"]);
+
+/** The claims probes: the item kinds that name a mode of one, and the folder that holds it. */
+export const CLAIM_PROBES = { llvm: "test/llvm", static: "test/static-linking" };
 
 /** The lane suites: the runner a `lane` item's lanes run in, and the file that lists them. */
 export const SUITES = {
@@ -129,8 +133,8 @@ export function markersOf(text) {
 
 /**
  * The items of a marker, each an object with one key: { case: "Fixture.Sub" }, { compile },
- * { probe }, { bug }, { lane: "ide:<lane>" }, { sample }, { errors }, { llvm } or { none }, and
- * { bad: "text" } for one the grammar does not know.
+ * { probe }, { bug }, { lane: "ide:<lane>" }, { sample }, { errors }, { llvm }, { static } or
+ * { none }, and { bad: "text" } for one the grammar does not know.
  */
 export function parseMarker(text) {
   const none = /^none[ \t]*(?:--|:)?[ \t]*(.*)$/.exec(text);
@@ -141,7 +145,7 @@ export function parseMarker(text) {
     .filter(Boolean)
     .map((s) => {
       if (/^\w+\.\w+$/.test(s)) return { case: s };
-      const m = /^(compile|probe|bug|lane|sample|errors|llvm)[ \t]+(\S+)$/.exec(s);
+      const m = /^(compile|probe|bug|lane|sample|errors|llvm|static)[ \t]+(\S+)$/.exec(s);
       if (!m) return { bad: s };
       const [, kind, value] = m;
       const shape = {
@@ -152,6 +156,7 @@ export function parseMarker(text) {
         sample: /^[\w.-]+$/,
         errors: /^[\w.-]+$/,
         llvm: /^[\w-]+$/,
+        static: /^[\w-]+$/,
       }[kind];
       return shape.test(value) ? { [kind]: value } : { bad: s };
     });
@@ -212,9 +217,11 @@ export async function evidenceIndex({ fences, root = REPO_ROOT }) {
           .map((f) => f.slice(0, -4))
       : [],
   );
-  const llvmFile = path.join(root, "test", "llvm", "expect.json");
-  const llvm = new Set(existsSync(llvmFile) ? Object.keys(JSON.parse(readFileSync(llvmFile, "utf8")).modes ?? {}) : []);
-  return { bugs, lanes, samples, errors, llvm };
+  const modesOf = (folder) => {
+    const file = path.join(root, folder, "expect.json");
+    return new Set(existsSync(file) ? Object.keys(JSON.parse(readFileSync(file, "utf8")).modes ?? {}) : []);
+  };
+  return { bugs, lanes, samples, errors, llvm: modesOf(CLAIM_PROBES.llvm), static: modesOf(CLAIM_PROBES.static) };
 }
 
 /**
@@ -229,7 +236,7 @@ export function itemProblem(item, index) {
   const value = item[kind];
   switch (kind) {
     case "bad":
-      return `"${value}" is not an item: Fixture.Sub, compile <Name>, probe <id>, bug <slug>, lane <suite>:<lane>, sample <id>, errors <name>, llvm <mode> or none -- <reason>`;
+      return `"${value}" is not an item: Fixture.Sub, compile <Name>, probe <id>, bug <slug>, lane <suite>:<lane>, sample <id>, errors <name>, llvm <mode>, static <mode> or none -- <reason>`;
     case "bug":
       return index.bugs.has(value) ? null : `no reproducer bugs/${value}/ or bugs/filed/${value}/ with a repro.json`;
     case "lane":
@@ -247,9 +254,10 @@ export function itemProblem(item, index) {
     case "errors":
       return index.errors.has(value) ? null : `no error data errors/${value}.yml`;
     case "llvm":
-      return index.llvm.has(value)
+    case "static":
+      return index[kind].has(value)
         ? null
-        : `no mode ${value} in test/llvm/expect.json (it has ${[...index.llvm].join(", ")})`;
+        : `no mode ${value} in ${CLAIM_PROBES[kind]}/expect.json (it has ${[...index[kind]].join(", ")})`;
     default:
       return null;
   }

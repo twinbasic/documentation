@@ -311,11 +311,13 @@ already consumes. Three whole ones exist:
 | `packages` | the above plus all eleven other shipped packages | `Reference/Built-In/` and the package tutorials |
 | `form` | `console`, a delta | a `check_run` sample that needs a real form: drawing, `Cls`, `Print`, `Scale`, a form property. Never inferred: a fence says `project=form` |
 | `contributed-<Package>` | `console`, a delta: one `Settings` referencing one documented TWINSERV package, embedded | `Reference/Contributed/<Package>/` |
+| `wnc-form` | `packages`, a delta: `form`'s Form1 with a ListView, `ListView1`, on it | a `check_run` sample that looks at what a WinNativeCommonCtls control draws. Never inferred |
+| `activex-control` | `console`, a delta: an ActiveX Control project with a property page, `ProbePage`, and the designer file of a UserControl, `ProbeControl` | a sample of a UserControl: its `slot=file` fence is the class, naming that designer id, and a `projname=` of its own keeps it the only one in its project. Never inferred |
 
 (The table is the three whole templates. The deltas over them --- `vb-private`, `cc-private`,
-`wnc-private`, `cef-private`, `implicit`, `cef`, `webview2` --- are `TEMPLATE_BASE` in
-`scripts/lib/example-batches.mjs`, with `form` and the `contributed-<Package>` ones, which
-`TEMPLATE_BASE` gets from the directories so named.)
+`wnc-private`, `wnc-form`, `activex-control`, `cef-private`, `implicit`, `cef`, `webview2` --- are
+`TEMPLATE_BASE` in `scripts/lib/example-batches.mjs`, with `form` and the `contributed-<Package>`
+ones, which `TEMPLATE_BASE` gets from the directories so named.)
 
 **`contributed-<Package>`: packages embedded, not committed.** A project uses a TWINSERV
 package by embedding its whole exported tree under `Packages/<symbolId>/`, with a reference

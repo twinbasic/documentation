@@ -71,6 +71,8 @@ export const TEMPLATE_BASE = {
   "vb-private": "console",
   "cc-private": "packages",
   "wnc-private": "packages",
+  "wnc-form": "packages",
+  "activex-control": "console",
   "cef-private": "cef",
   implicit: "console",
   form: "console",
@@ -217,11 +219,17 @@ function unitKey(fence) {
   return fence.keys.get("projname") ? `@${fence.keys.get("projname")}` : `#${fence.id}`;
 }
 
+/** A sample that declares a [RunAfterBuild] Sub, of which a project may hold one (TB5114). */
+export const DECLARES_HOOK = /\[\s*RunAfterBuild\b/i;
+
 /**
  * `alone`, given a unit's fences, says whether the unit is to be built in a
  * project of its own with no template Main (`noMain` on the batch): a run that
  * builds passes one for a unit declaring its own `Sub Main`, because a build,
- * unlike a compile, fails on two.
+ * unlike a compile, fails on two. A unit that declares a [RunAfterBuild] Sub
+ * always gets a project of its own, with the template's Main: two of them in a
+ * batch are TB5114, and where a batch ends is no guard, since a new sample on
+ * any page moves it.
  */
 export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_JOBS, alone = null } = {}) {
   // A `hidden` fence is not a unit of its own: it is the PAGE's context, and
@@ -298,7 +306,7 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
       // written by hand, so there are never many.
       // A unit `alone` picks gets one too, built without the template's Main.
       const solo = !!alone?.(members);
-      if (key.startsWith("@") || solo) {
+      if (key.startsWith("@") || solo || members.some((f) => DECLARES_HOOK.test(f.content))) {
         const own = new Set(names);
         for (const rel of pages) for (const n of hiddenNamesFor(rel)) own.add(n);
         batches.push({
@@ -1465,6 +1473,15 @@ export async function runProbes(say) {
   if (soloShape !== "s2! s1,s3" && soloShape !== "s1,s3 s2!") {
     failures.push(`batching: a unit alone picks -> ${soloShape}, want s2 alone and marked`);
   }
+  const hook = { content: "[RunAfterBuild]\nSub Hook()\nEnd Sub\n" };
+  const hooks = makeBatches([{ ...fake("h1"), ...hook }, { ...fake("h2"), ...hook }, fake("p1"), fake("p2")]);
+  const hookShape = hooks
+    .map((b) => `${b.fences.map((f) => f.id)}${b.noMain ? "!" : ""}`)
+    .sort()
+    .join(" ");
+  if (hookShape !== "h1 h2 p1,p2") {
+    failures.push(`batching: two samples with a [RunAfterBuild] -> ${hookShape}, want each alone, with Main`);
+  }
   const soleGroup = makeBatches([fake("g1", "g"), fake("g2", "g")])[0];
   if (splitBatch(soleGroup) !== null) failures.push("split: a projname group was cut in half");
   const mixed = makeBatches([
@@ -2341,6 +2358,12 @@ export async function runProbes(say) {
       !formStage.includes(standIn) &&
       consoleStage.filter((l) => l !== standIn).join("\n") === formStage.join("\n"),
     "templates: the form template's stage set is not the console's less `Public Form1 As Form`",
+  );
+  const packagesStage = declarationsOf(readTemplate("packages", "tbxStage.twin"));
+  const wncFormStage = declarationsOf(readTemplate("wnc-form", "tbxStage.twin"));
+  expect(
+    packagesStage.filter((l) => l !== standIn).join("\n") === wncFormStage.join("\n"),
+    "templates: the wnc-form template's stage set is not the packages template's less `Public Form1 As Form`",
   );
   const formClass = readTemplate("form", "Form1.twin");
   const formDesigner = JSON.parse(readTemplate("form", "Form1.tbform"));

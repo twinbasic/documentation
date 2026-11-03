@@ -270,6 +270,9 @@
     },
     "Utf8Tests.DecodeToByteArray_ReturnsAllTheUtf16Bytes": {
       "fails": "2 of 2 checks failed: number of bytes of DecodeToByteArray for four characters: expected 8, got 4; bytes of DecodeToByteArray for cafe acute: expected \"63 00 61 00 66 00 E9 00\", got \"63 00 61 00\""
+    },
+    "HttpsTests.Send_ACertificateThatProvesNothing_IsRefused": {
+      "fails": "1 of 1 checks failed: the body from a server whose certificate is expired, unknown and for another name: expected \"\", got \"the server's answer\""
     }
   }
 }

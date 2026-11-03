@@ -103,6 +103,19 @@ and WinReg stay in `PENDING` (no test project until a version compiles, owner) w
 alone, which `check_package_tests.mjs` checks both ways: each case named by a marker, each marker
 naming a case. The published project, and so `Sources/`, stays out of it.
 
+A case in the IDE runs in the IDE's process, which has already started GDI+ and has no server that
+speaks TLS. So `exe/` is a third project, run with `tbrun --exe`: its cases are ordinary
+`[TestCase]`s, so a marker and `expect.json` need nothing new, and `recheck_callouts.mjs` reaches
+them through `package_tests.mjs`. One process runs them all, which saves a build per case and makes
+order matter: GDI+ stays started once a `GdiPlusUser` has started it, so the cases that need it
+stopped come first. `TBMANLIB/exe/server.mjs` makes its certificate on every run, with the DER
+written by hand, so that no private key is kept in the repository.
+
+A claim that depends on the date goes through a stand-in, not a case that reads the clock:
+TBMANLIB_Diagnostic's `TimeZoneStandIn` overwrites the start of `GetTimeZoneInformation` for the
+length of a call, in the IDE's process, as DetoursLib's cases do with `MulDiv`, so the defect shows
+in every month and on any machine, with a standard-time case as its control.
+
 ## Markers, and a gate that only tightens
 
 A callout names its cases in an HTML comment on the line above it. The marker lives with the

@@ -58,7 +58,7 @@ Several error texts of the class are written in Chinese. The ones that are not a
 | 1 | no download path was found, or the file could not be read | **FinishDownloadFile**, **UploadFile** |
 <!-- /test -->
 
-<!-- test: none -- the claim is about the certificate of a remote HTTPS server, which a case on the loopback address cannot offer -->
+<!-- test: HttpsTests.Send_ACertificateThatProvesNothing_IsRefused, HttpsTests.WinHttpRequest_ByItself_RefusesTheCertificate -->
 > [!WARNING] 1.0.0.29
 > The class ignores every certificate error: an expired certificate, one from an unknown authority and one issued for another name are all accepted. An HTTPS request therefore encrypts the traffic, but does not prove who the server is, and a program that sends a password or a key with it can send it to an impostor.
 

@@ -33,6 +33,11 @@
 // has that folder and no project: its cases name the rows of the package's own sources. A compile
 // case that names an architecture is run on that one, whatever expect.json's arches says.
 //
+// A [TestCase] that needs a process of its own, because the IDE's has already started something it
+// tests, is in the package folder's exe/: the project is built and run with `tbrun --exe`, every
+// case in order in one process, and judged with the rest. A server.mjs there is started first,
+// prints its port, and is named to the exe by PACKAGE_TEST_PORT.
+//
 // RunAll.twin, which the project's Sub Main runs, is generated from the cases and expect.json:
 // the run writes it again when it is out of date, and says so.
 //
@@ -41,7 +46,7 @@
 // Exit: 0 every case documented, 1 a case fixed or changed, 2 the harness failed or the command
 // line was refused.
 
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -59,6 +64,8 @@ import {
   COMPILE_DIR,
   compileOnlyNames,
   compileSources,
+  EXE_DIR,
+  exeSources,
   RESOURCES_DIR,
   resourceFiles,
   EXPECT_JSON,
@@ -75,12 +82,14 @@ import { embeddedPackages } from "./lib/example-batches.mjs";
 import {
   ARCHES,
   archesOf,
+  exeOutcomes,
   expectationFor,
   expectFrom,
   judge,
   outcomeOf,
   projectCases,
   runAllText,
+  runExeText,
 } from "./lib/package-test-cases.mjs";
 import { unpackProject } from "./lib/tb-project.mjs";
 
@@ -195,6 +204,10 @@ async function runPackage(pkg) {
   const compileProject = projectCases(compileFiles);
   problems.push(...compileProject.problems.map((p) => `${COMPILE_DIR}/: ${p}`));
   if (compileProject.tests.length) problems.push(`${COMPILE_DIR}/ holds a [TestCase]: it holds compile cases only`);
+  const exeFiles = exeSources(ROOT, pkg);
+  const exeProject = projectCases(exeFiles);
+  problems.push(...exeProject.problems.map((p) => `${EXE_DIR}/: ${p}`));
+  if (exeProject.compiles.length) problems.push(`${EXE_DIR}/ holds a compile case: they go in ${COMPILE_DIR}/`);
   if (problems.length) die(2, `${pkg}:\n${problems.map((p) => `  ${p}`).join("\n")}`);
   if (hasProject) {
     refreshRunAll(pkg, version, tests, expect);
@@ -202,7 +215,13 @@ async function runPackage(pkg) {
   }
 
   const compileNames = compileProject.compiles.map((c) => c.name);
-  const names = [...compiles.map((c) => c.name), ...compileNames, ...tests.map((t) => `${t.fixture}.${t.name}`)];
+  const exeNames = exeProject.tests.map((t) => `${t.fixture}.${t.name}`);
+  const names = [
+    ...compiles.map((c) => c.name),
+    ...compileNames,
+    ...tests.map((t) => `${t.fixture}.${t.name}`),
+    ...exeNames,
+  ];
   const twice = names.filter((n, i) => names.indexOf(n) !== i);
   if (twice.length) die(2, `${pkg}: two cases are named ${[...new Set(twice)].join(", ")}`);
   say(`${pkg} ${version}: ${names.length} case${names.length === 1 ? "" : "s"}`);
@@ -220,9 +239,19 @@ async function runPackage(pkg) {
       for (const r of tbrunCases(compileTree, arch, compileHere, opts.timeout))
         outcomes.get(r.name)[arch] = outcomeOf(r);
     }
+    if (exeNames.length && arches.includes(arch)) {
+      const runner = { name: "RunExe.twin", text: runExeText(exeProject.tests) };
+      const exeTree = stageTree(`${pkg}-${EXE_DIR}`, pkg, arch, template, [...exeFiles, runner]);
+      const server = await startServer(pkg);
+      try {
+        for (const [name, o] of exeCases(exeTree, arch, exeNames, server?.port)) outcomes.get(name)[arch] = o;
+      } finally {
+        server?.child.kill();
+      }
+    }
     if (!hasProject || !arches.includes(arch)) continue;
     const tree = stageTree(pkg, pkg, arch, template, files, resourceFiles(ROOT, pkg));
-    const own = names.filter((n) => !compileNames.includes(n));
+    const own = names.filter((n) => !compileNames.includes(n) && !exeNames.includes(n));
     const hangs = own.filter((n) => expectationFor(expect, n, arch).kind === "hang");
     let rest = own.filter((n) => !hangs.includes(n));
     // A case that does not return keeps the compiler busy, so tbrun reports the cases it did not
@@ -335,6 +364,39 @@ function stageTree(label, pkg, arch, template, files, resources = []) {
     writeFileSync(out, r.bytes);
   }
   return tree;
+}
+
+// The package's exe/server.mjs, when it has one, once it has printed its port.
+function startServer(pkg) {
+  const file = path.join(ROOT, pkg, EXE_DIR, "server.mjs");
+  if (!existsSync(file)) return null;
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [file], { stdio: ["ignore", "pipe", "inherit"], windowsHide: true });
+    child.on("error", reject);
+    child.on("exit", (code) => reject(new Error(`${file} exited with code ${code} before it printed a port`)));
+    child.stdout.once("data", (d) => resolve({ child, port: String(d).trim() }));
+  });
+}
+
+// tbrun --exe --json on the exe project; each case's outcome, by name. Exit 6 is an exe that ended
+// badly, which leaves the cases it did not reach with no line, and the reason in their detail.
+function exeCases(tree, arch, names, port) {
+  const args = [TBRUN, tree, "--exe", "--json", "--arch", arch];
+  if (values.ide) args.push("--ide", values.ide);
+  const env = port ? { ...process.env, PACKAGE_TEST_PORT: port } : process.env;
+  const r = spawnSync(process.execPath, args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, env });
+  let run = null;
+  try {
+    run = JSON.parse(r.stdout).exeRun;
+  } catch {
+    // below
+  }
+  if (!run || (r.status !== 0 && r.status !== 6)) {
+    throw new Error(`tbrun --exe exited ${r.status} on ${tree} (${arch}):\n${r.stderr || r.stdout}`);
+  }
+  const got = exeOutcomes(run.lines);
+  const end = run.timedOut ? "the exe was ended at its limit" : `the exe exited with code ${run.exitCode}`;
+  return names.map((n) => [n, got.get(n) ?? { kind: "fail", detail: `no result: ${end}` }]);
 }
 
 // tbrun --tests --json on some of the cases; its cases in the order asked.

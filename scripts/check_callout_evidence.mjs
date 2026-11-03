@@ -128,7 +128,7 @@ const { check, report } = createProbes("check_callout_evidence", "see scripts/li
 
 {
   const items = parseMarker(
-    "bug a-b, lane addin:help, sample x.y-1, errors VBA.Math, llvm win64-llvm, F.S, compile C, probe p1, bug Bad_Slug, lane web:x, wat",
+    "bug a-b, lane addin:help, sample x.y-1, errors VBA.Math, llvm win64-llvm, static links-win32, F.S, compile C, probe p1, bug Bad_Slug, lane web:x, wat",
   );
   check(
     "every kind of item is read, and a malformed one is bad",
@@ -139,6 +139,7 @@ const { check, report } = createProbes("check_callout_evidence", "see scripts/li
         { sample: "x.y-1" },
         { errors: "VBA.Math" },
         { llvm: "win64-llvm" },
+        { static: "links-win32" },
         { case: "F.S" },
         { compile: "C" },
         { probe: "p1" },
@@ -169,6 +170,7 @@ const { check, report } = createProbes("check_callout_evidence", "see scripts/li
     ]),
     errors: new Set(["VBA.Math"]),
     llvm: new Set(["win32"]),
+    static: new Set(["links-win32"]),
   };
   const verdicts = [
     { bug: "a-b" },
@@ -183,11 +185,13 @@ const { check, report } = createProbes("check_callout_evidence", "see scripts/li
     { errors: "VBA.Nope" },
     { llvm: "win32" },
     { llvm: "win99" },
+    { static: "links-win32" },
+    { static: "links-win99" },
     { case: "F.S" },
   ].map((i) => itemProblem(i, index));
   check(
     "an item that names nothing that exists, a fence that is context or two fences with one id is a problem",
-    verdicts.map((v) => (v ? "x" : ".")).join("") === ".x.x.xxx.x.x.",
+    verdicts.map((v) => (v ? "x" : ".")).join("") === ".x.x.xxx.x.x.x.",
     JSON.stringify(verdicts, null, 1),
   );
 }

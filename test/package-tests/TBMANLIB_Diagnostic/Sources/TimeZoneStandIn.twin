@@ -1,0 +1,80 @@
+' TimeZoneStandIn: GetTimeZoneInformation answers for a zone of this module's, in summer time or in
+' standard time, while a case runs, so that the case gives the same verdict in every month and on
+' every machine. Start writes a jump to Answer over the first bytes of the Windows function, and
+' Finish puts them back. A case calls Finish before anything can stop it; another thread that calls
+' the function in between gets the same answer, and nothing else in the process changes.
+Module TimeZoneStandIn
+
+    Private Declare PtrSafe Function GetModuleHandleW Lib "kernel32" (ByVal lpModuleName As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetProcAddress Lib "kernel32" (ByVal hModule As LongPtr, ByVal lpProcName As String) As LongPtr
+    Private Declare PtrSafe Function VirtualProtect Lib "kernel32" (ByVal lpAddress As LongPtr, ByVal dwSize As LongPtr, ByVal flNewProtect As Long, ByRef lpflOldProtect As Long) As Long
+    Private Declare PtrSafe Function FlushInstructionCache Lib "kernel32" (ByVal hProcess As LongPtr, ByVal lpBaseAddress As LongPtr, ByVal dwSize As LongPtr) As Long
+    Private Declare PtrSafe Function GetCurrentProcess Lib "kernel32" () As LongPtr
+    Private Declare PtrSafe Sub CopyBytes Lib "kernel32" Alias "RtlMoveMemory" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
+    Private Const PAGE_EXECUTE_READWRITE As Long = &H40
+    Private Const TIME_ZONE_ID_STANDARD As Long = 1
+    Private Const TIME_ZONE_ID_DAYLIGHT As Long = 2
+
+    ' Where the field of TIME_ZONE_INFORMATION is, after Bias at its start, and the size of it.
+    Private Const OFFSET_DAYLIGHT_BIAS As Long = 168
+    Private Const SIZE_OF_INFORMATION As Long = 172
+
+    Private mTarget As LongPtr
+    Private mSaved() As Byte
+    Private mSummer As Boolean
+
+    ' The zone is an hour east of Greenwich, an hour further in summer: UTC+1, and UTC+2 in summer.
+    Private Function Answer(ByVal Information As LongPtr) As Long
+        Dim blank(0 To SIZE_OF_INFORMATION - 1) As Byte
+        CopyBytes Information, VarPtr(blank(0)), SIZE_OF_INFORMATION
+        Dim bias As Long = -60
+        Dim daylightBias As Long = -60
+        CopyBytes Information, VarPtr(bias), 4
+        CopyBytes Information + OFFSET_DAYLIGHT_BIAS, VarPtr(daylightBias), 4
+        Answer = IIf(mSummer, TIME_ZONE_ID_DAYLIGHT, TIME_ZONE_ID_STANDARD)
+    End Function
+
+    ' mov eax, target; jmp eax, or mov rax, target; jmp rax.
+    Private Function JumpTo(ByVal Target As LongPtr) As Byte()
+        Dim code() As Byte
+#If Win64 Then
+        ReDim code(0 To 11)
+        code(0) = &H48
+        code(1) = &HB8
+        CopyBytes VarPtr(code(2)), VarPtr(Target), 8
+        code(10) = &HFF
+        code(11) = &HE0
+#Else
+        ReDim code(0 To 6)
+        code(0) = &HB8
+        CopyBytes VarPtr(code(1)), VarPtr(Target), 4
+        code(5) = &HFF
+        code(6) = &HE0
+#End If
+        Return code
+    End Function
+
+    Private Sub Overwrite(ByRef Code() As Byte)
+        Dim size As Long = UBound(Code) + 1
+        Dim old As Long
+        VirtualProtect mTarget, size, PAGE_EXECUTE_READWRITE, old
+        CopyBytes mTarget, VarPtr(Code(0)), size
+        VirtualProtect mTarget, size, old, old
+        FlushInstructionCache GetCurrentProcess(), mTarget, size
+    End Sub
+
+    Public Sub Start(ByVal Summer As Boolean)
+        mSummer = Summer
+        mTarget = GetProcAddress(GetModuleHandleW(StrPtr("kernel32")), "GetTimeZoneInformation")
+        Dim code() As Byte = JumpTo(AddressOf Answer)
+        ReDim mSaved(0 To UBound(code))
+        CopyBytes VarPtr(mSaved(0)), mTarget, UBound(code) + 1
+        Overwrite code
+    End Sub
+
+    Public Sub Finish()
+        Overwrite mSaved
+    End Sub
+
+End Module

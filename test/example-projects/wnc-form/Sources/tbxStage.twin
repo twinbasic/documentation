@@ -1,0 +1,87 @@
+' The stage set for the package documentation -- see the console template's copy
+' of this file for why it exists and why the list is written out rather than
+' inferred.
+'
+' The VB half is the same; the rest are the control instances the
+' Reference/Built-In and Tutorials pages assume on their forms.
+'
+' This is the `packages` template's file with ONE line fewer, as the `form` template's
+' is the console's: `Public Form1 As Form`, since this template has a real Form1.
+
+Module tbxStage
+
+    Public UserForm1 As Form
+    Public UserForm2 As Form
+
+    Public Text1 As TextBox
+    Public Text2 As TextBox
+    Public TextBox1 As TextBox
+
+    Public Label1 As Label
+    Public Timer1 As Timer
+    Public Command1 As CommandButton
+    Public Picture1 As PictureBox
+    Public PictureBox1 As PictureBox
+
+    ' Browser controls -- CEF and WebView2.
+    Public CefBrowser1 As CefBrowser
+    Public WebView21 As WebView2
+
+    ' Windows Native Common Controls.
+    Public DTPicker1 As DTPicker
+    Public ImageList1 As ImageList
+    Public ListView1 As ListView
+    Public MonthView1 As MonthView
+    Public ProgressBar1 As ProgressBar
+    Public Slider1 As Slider
+    Public TreeView1 As TreeView
+    Public UpDown1 As UpDown
+
+    ' The VB controls the package pages put on their forms alongside the
+    ' package's own, named as those pages name them.
+    Public List1 As ListBox
+    Public lblStatus As Label
+    Public lblClock As Label
+    Public lstNamedPipes As ListBox
+    Public MyForm As Form
+
+    ' CustomControls -- the Waynes... instances the reference pages assume.
+    Public txtNotes As WaynesTextBox
+    Public lblHeader As WaynesLabel
+    Public lblTitle As WaynesLabel
+    Public btnGo As WaynesButton
+    Public btnDemo As WaynesButton
+    Public btnTab As WaynesButton
+    Public Grid1 As WaynesGrid
+    Public WaynesGrid1 As WaynesGrid
+    Public txtName As WaynesTextBox
+    Public sldProgress As WaynesSlider
+    Public sldVolume As WaynesSlider
+    Public Frame1 As WaynesFrame
+    Public pnlTree As WaynesFrame
+    Public pnlAside As WaynesFrame
+    Public pnlMain As WaynesFrame
+    Public pnlOne As WaynesFrame
+    Public pnlTwo As WaynesFrame
+    Public pnlThree As WaynesFrame
+
+    ' tbIDE. An addin reaches the IDE through a Host, and opens tool windows;
+    ' both are what the addin SDK's pages are written against.
+    Public Host As tbIDE.Host
+    Public myToolWindow As tbIDE.ToolWindow
+    Public myWindow As tbIDE.ToolWindow
+
+    ' The editor and DOM objects an addin has in hand by the time the samples
+    ' run: one comes from Host.Project.Editors, the others from a tool window's
+    ' HTML. The pages name them this way.
+    Public codeEditor As tbIDE.CodeEditor
+    Public element As tbIDE.HtmlElement
+    Public monacoDivElement As tbIDE.HtmlElement
+
+    ' An addin keeps the toolbar buttons it created, so that its handlers can
+    ' reach them later; the Toolbar and Toolbars pages name theirs this way.
+    Public Button1 As tbIDE.Button
+    Public Button2 As tbIDE.Button
+    Public MyButton As tbIDE.Button
+
+End Module

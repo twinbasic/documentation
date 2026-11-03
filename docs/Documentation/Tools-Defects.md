@@ -186,6 +186,7 @@ The build is the IDE's: `--ide`, else `TB_IDE`, else the newest `twinBASIC_IDE_B
 | `sample <id>` | [`check_examples.mjs --json`](Tools-Samples#check-examples), over the pages that hold the samples | the sample has no finding in each architecture it runs in |
 | `errors <name>` | `errors.mjs run`, for 32-bit and 64-bit twinBASIC | every case raises what the data says |
 | `llvm <mode>` | `test/llvm/run.mjs --only <mode>` | the mode prints what `expect.json` says |
+| `static <mode>` | `test/static-linking/run.mjs --only <mode>` | the mode finds what `expect.json` says |
 | a package's cases | [`package_tests.mjs --json`](Tools-Samples#package-tests) | each case is as documented |
 | `none`, a package's `probe` | nobody | never: a person checks it |
 

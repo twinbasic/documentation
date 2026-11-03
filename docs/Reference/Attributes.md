@@ -1117,9 +1117,51 @@ End Property
 
 A property takes the page from its first accessor in the source, normally the **Property Get**, whichever kind of accessor that is. Written on a later accessor, the attribute has no effect, though its name is still checked; when two accessors name different pages, the control reports the first one's. On a **Sub**, a **Function** or a **Public** variable of the control, the control reports the page for that member's DISPID in the same way. In a class that is not a **UserControl**, or on an **Interface** member, the compiler accepts the attribute and it has no effect. The legacy line `Attribute Caption.VB_ProcData.VB_Invoke_Property = "CaptionPage"` inside the **Property Get** means the same. The argument must be a **String**: `[PropertyPage]` with no argument, or with a **Boolean** or a number, is TB5163, *Expected a single String argument*. On a procedure, a name that matches no property page in the project is error TB5259, *Failed to find named PropertyPage '...' for procedure '...'*. That includes an empty string and a name that differs only in case. A variable's name is not checked.
 
-<!-- test: none -- needs a UserControl and a property page in an ActiveX Control project; the comment below says how it was checked -->
+<!-- test: sample propertypage-semicolon, sample propertypage-legacy-semicolon, sample propertypage-legacy-unknown -->
 > [!NOTE] BETA 1034
 > VB6 stores a property's page as `"PageName;Category"` in the legacy attribute, with the category the property sheet groups the property under. twinBASIC reads such a legacy line and drops what follows the semicolon. **[PropertyPage]** takes the whole string as the name, so `[PropertyPage("CaptionPage;Appearance")]` is TB5259.
+
+```tb probe projname=propertypage-semicolon project=activex-control slot=file id=propertypage-semicolon expect-error=TB5259
+[Description("")]
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F51")]
+[ClassId("7B247400-0000-4000-9000-7B2474000F55")]
+[InterfaceId("7B247400-0000-4000-9000-7B2474000F56")]
+[EventInterfaceId("7B247400-0000-4000-9000-7B2474000F57")]
+[COMControl]
+Class ProbeControl
+    [PropertyPage("ProbePage;Appearance")]
+    Public Property Get Caption() As String
+    End Property
+End Class
+```
+
+```tb probe projname=propertypage-legacy-semicolon project=activex-control slot=file id=propertypage-legacy-semicolon
+[Description("")]
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F51")]
+[ClassId("7B247400-0000-4000-9000-7B2474000F55")]
+[InterfaceId("7B247400-0000-4000-9000-7B2474000F56")]
+[EventInterfaceId("7B247400-0000-4000-9000-7B2474000F57")]
+[COMControl]
+Class ProbeControl
+    Public Property Get Caption() As String
+        Attribute Caption.VB_ProcData.VB_Invoke_Property = "ProbePage;Appearance"
+    End Property
+End Class
+```
+
+```tb probe projname=propertypage-legacy-unknown project=activex-control slot=file id=propertypage-legacy-unknown expect-error=TB5259
+[Description("")]
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F51")]
+[ClassId("7B247400-0000-4000-9000-7B2474000F55")]
+[InterfaceId("7B247400-0000-4000-9000-7B2474000F56")]
+[EventInterfaceId("7B247400-0000-4000-9000-7B2474000F57")]
+[COMControl]
+Class ProbeControl
+    Public Property Get Caption() As String
+        Attribute Caption.VB_ProcData.VB_Invoke_Property = "NoSuchPage;Appearance"
+    End Property
+End Class
+```
 
 The pages the control offers as a whole are listed in its [**PropertyPages**](../Packages/VB/UserControl/#propertypages) property.
 

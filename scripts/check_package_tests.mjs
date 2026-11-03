@@ -43,6 +43,8 @@ import { markdownFiles } from "../lib/markdown-files.mjs";
 import {
   COMPILE_DIR,
   compileSources,
+  EXE_DIR,
+  exeSources,
   EXPECT_FILE,
   EXPECT_JSON,
   packageTestNames,
@@ -55,6 +57,7 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { createProbes } from "./lib/gate-probes.mjs";
 import { findCases, judgeCompiles } from "./lib/tb-tests.mjs";
 import {
+  exeOutcomes,
   expectationFor,
   expectFrom,
   judge,
@@ -62,6 +65,7 @@ import {
   outcomeOf,
   projectCases,
   runAllText,
+  runExeText,
 } from "./lib/package-test-cases.mjs";
 import { kindOf, markersOf, PACKAGE_KINDS, parseMarker } from "./lib/test-markers.mjs";
 
@@ -140,6 +144,30 @@ const { check, report } = createProbes("check_package_tests", "see test/package-
     ["{ERROR} /Proj/Packages/Thing/Sources/cOther.twin [7,1]: TB5001 x"],
   );
   check("a case of the project's own source is not met by a package's row", !local.pass, JSON.stringify(local));
+}
+
+{
+  const text = runExeText([
+    { fixture: "A", name: "One" },
+    { fixture: "A", name: "Two" },
+  ]);
+  check(
+    "the exe project's runner tells tbrun the build ended, and runs and prints each case in order",
+    /\[RunAfterBuild\]/.test(text) &&
+      /Public Sub Main\(\)/.test(text) &&
+      text.indexOf('TbRun.Out "CASE A.One: "') > 0 &&
+      text.indexOf('TbRun.Out "CASE A.One: "') < text.indexOf('TbRun.Out "CASE A.Two: "'),
+    text,
+  );
+  const got = exeOutcomes(["built", "CASE A.One: ", "CASE A.Two: 1 of 1 checks failed: x: expected 1, got 2"]);
+  check(
+    "a case's line with nothing after its name passed, and one with a report failed with it, its colons kept",
+    got.size === 2 &&
+      got.get("A.One").kind === "pass" &&
+      got.get("A.Two").kind === "fail" &&
+      got.get("A.Two").detail === "1 of 1 checks failed: x: expected 1, got 2",
+    JSON.stringify([...got]),
+  );
 }
 
 {
@@ -374,6 +402,11 @@ function checkPackage(pkg) {
   const compileProject = projectCases(compileSources(ROOT, pkg));
   out.push(...compileProject.problems.map((p) => `${COMPILE_DIR}/: ${p}`));
   if (compileProject.tests.length) out.push(`${COMPILE_DIR}/ holds a [TestCase]: it holds compile cases only`);
+  const exeFiles = exeSources(ROOT, pkg);
+  const exeProject = projectCases(exeFiles);
+  out.push(...exeProject.problems.map((p) => `${EXE_DIR}/: ${p}`), ...malformedCases(exeFiles, exeProject.tests));
+  if (exeProject.compiles.length) out.push(`${EXE_DIR}/ holds a compile case: they go in ${COMPILE_DIR}/`);
+  const allTests = [...tests, ...exeProject.tests];
   const compiles = [...own, ...compileProject.compiles];
   for (const c of compileProject.compiles)
     if (own.some((x) => x.name === c.name)) out.push(`two compile cases are named ${c.name}`);
@@ -397,7 +430,7 @@ function checkPackage(pkg) {
     )
       out.push(`${EXPECT_JSON}: arches is a non-empty list of win32 and win64, or absent for both`);
   }
-  const caseNames = new Set([...tests.map((t) => `${t.fixture}.${t.name}`), ...compiles.map((c) => c.name)]);
+  const caseNames = new Set([...allTests.map((t) => `${t.fixture}.${t.name}`), ...compiles.map((c) => c.name)]);
   for (const name of Object.keys(expect.cases ?? {})) {
     if (!caseNames.has(name)) out.push(`${EXPECT_JSON} names ${name}, which is not a case`);
     try {
@@ -434,7 +467,7 @@ function checkPackage(pkg) {
       // A bad item, and one that names something outside the project, are
       // check_callout_evidence.mjs's to report.
       for (const item of mk.items.filter((i) => PACKAGE_KINDS.has(kindOf(i)))) {
-        if (item.case && !tests.some((t) => `${t.fixture}.${t.name}` === item.case))
+        if (item.case && !allTests.some((t) => `${t.fixture}.${t.name}` === item.case))
           out.push(`${where}: no [TestCase] ${item.case}`);
         else if (item.compile && !compiles.some((x) => x.name === item.compile))
           out.push(`${where}: no compile case ${item.compile}`);

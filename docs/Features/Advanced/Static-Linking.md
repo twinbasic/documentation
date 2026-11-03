@@ -10,7 +10,7 @@ index: static library
 
 Links compiled C code from `.obj`, `.lib` and `.a` files into the program, which calls its functions through **Declare** statements and needs no DLL beside it.
 
-<!-- test: none -- the page's experiments with MSVC-compiled objects are not kept in the repository: check What can be linked again -->
+<!-- test: static links-win32, static links-win64, static refused-win32, static refused-win64, static sqlite-win32, static sqlite-win64, static detours-win32, static detours-win64 -->
 > [!NOTE] BETA 1034
 > Static linking is experimental. It links code that needs nothing from the C runtime library beyond the few functions twinBASIC provides, and nothing from the C++ runtime. The SQLite amalgamation and SlimDetours link and work; most other C projects do not link without changes. [What can be linked](#what-can-be-linked) lists the limits.
 

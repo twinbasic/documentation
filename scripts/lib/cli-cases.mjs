@@ -1047,7 +1047,10 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
 bad(
   "scripts/recheck_callouts.mjs",
   ["--kinds", "bug,lanes"],
-  thenUsage("--kinds: lanes is not one of bug, lane, sample, errors, llvm, package", "scripts/recheck_callouts.mjs"),
+  thenUsage(
+    "--kinds: lanes is not one of bug, lane, sample, errors, llvm, static, package",
+    "scripts/recheck_callouts.mjs",
+  ),
 );
 
 // build_corpus empties its --dest before it writes, so it refuses one that is or

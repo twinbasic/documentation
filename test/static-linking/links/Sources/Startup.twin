@@ -1,0 +1,30 @@
+' What links: code that calls nothing, and code that calls only functions "stdlib" provides. Each
+' line it prints is `key: value`, and run.mjs compares them with expect.json.
+#If Win64 Then
+    Import Library "/Miscellaneous/basic_64.obj" As BASIC
+    Import Library "/Miscellaneous/crt_64.obj" As CRT Link "stdlib"
+#Else
+    Import Library "/Miscellaneous/basic_32.obj" As BASIC
+    Import Library "/Miscellaneous/crt_32.obj" As CRT Link "stdlib"
+#End If
+
+Module Startup
+
+    Private Declare PtrSafe Function add CDecl Lib BASIC (ByVal a As Long, ByVal b As Long) As Long
+    Private Declare PtrSafe Function crt_strings CDecl Lib CRT (ByRef buf As Byte, ByVal size As Long) As Long
+    Private Declare PtrSafe Function crt_malloc CDecl Lib CRT (ByVal n As Long) As Long
+
+    [RunAfterBuild]
+    Public Sub InTheIde()
+        Debug.Cls
+        Main
+    End Sub
+
+    Public Sub Main()
+        Dim buffer(0 To 15) As Byte
+        TbRun.Out "add: " & add(2, 3)
+        TbRun.Out "strings: " & crt_strings(buffer(0), 16)
+        TbRun.Out "malloc: " & crt_malloc(10)
+    End Sub
+
+End Module
