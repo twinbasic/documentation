@@ -20,7 +20,7 @@ The **TBMANLIB_Diagnostic** contributed package makes a diagnostic report of a W
 
 The package is the reusable part of woeoio's entry for [twinBASIC Monthly Challenge #1](../../../../Challenges/1), *Self-Contained Diagnostic Tool*. The entry is a console program that shows the values on a live screen, or writes a report when it is started with an argument such as `/json`. That program is not in the package; [**FormatterFactory.CreateFormatterFromArg**](FormatterFactory#createformatterfromarg) reads such an argument.
 
-This section documents version 1.0.0.1, published on TWINSERV on 3 February 2026 under the MIT licence. The package compiles in BETA 1005, as a 32-bit and as a 64-bit program. The repository [woeoio/tbman](https://github.com/woeoio/tbman), the toolkit of the same author whose package is [**TBMANLIB**](../TBMANLIB/), does not hold the code of this package.
+This section documents version 1.0.0.1, published on TWINSERV on 3 February 2026 under the MIT licence. The package compiles in BETA 1034, as a 32-bit and as a 64-bit program. The repository [woeoio/tbman](https://github.com/woeoio/tbman), the toolkit of the same author whose package is [**TBMANLIB**](../TBMANLIB/), does not hold the code of this package.
 
 The package has defects: the **Dictionary** class cannot be used, and several members give a wrong result without an error. [Known problems in version 1.0.0.1](#known-problems-in-version-1001) lists them. The sample below uses the parts that work.
 

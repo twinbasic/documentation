@@ -898,14 +898,14 @@ Use one callout per concern, and only for genuine notes: plain "why this is usef
 A callout that is true of one twinBASIC build, or of one version of a package, says so in its label: the rest of the `[!TYPE]` line. The page shows each item of the label as a tag after the callout's title.
 
 ```md
-> [!WARNING] BETA 1005
-> **DateAdd** with the "m", "q" or "yyyy" interval does not stop at the end of a shorter month.
+> [!WARNING] BETA 1034
+> Given a *rate* of -1, **NPV** returns NaN (not a number) and raises no error.
 ```
 
-- `BETA 1005` --- true of that build, the usual label of a defect.
+- `BETA 1034` --- true of that build, the usual label of a defect.
 - `since BETA 984` --- true from that build on.
 - `1.0.0.4` --- true of that version of the package whose section the page is in, written with all four parts.
-- `1.6.151.1, BETA 1005` --- both, separated by a comma.
+- `1.6.151.1, BETA 1034` --- both, separated by a comma.
 - `timeless` --- true of every build and every version: a fact of Windows or COM, behaviour the package exists to reproduce, such as the Scripting Runtime's for a replacement of it, or a design decision the package's sources state. It stands alone, and the page shows no tag for it.
 
 The text then starts with the fact itself, not with "In twinBASIC BETA 1005, ..." or "In version 1.0.0.4, ...". If only part of a callout depends on the build, split it into two callouts. In a contributed package's section every callout has a label: the section's version for what the package does, `BETA <n>` for a fact of twinBASIC alone, or `timeless`. The build fails on a callout there without one, on any other label, and on a package version other than the one the section documents, its landing page's `indexed_from`. So when a section moves to a new version of its package, each callout labelled with the old one is checked again before the build passes. [`twin-index analyze`](Tools-Build#twin-index) lists those callouts, and after a new twinBASIC build, the callouts labelled with an older one.

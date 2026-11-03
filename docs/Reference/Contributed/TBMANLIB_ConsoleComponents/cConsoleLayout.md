@@ -201,7 +201,7 @@ Divides the root panel's content area into a grid of panels.
 Syntax: *object*.**CreateGrid** ( *cols* , *rows* , *namePrefix* ) **As Variant**
 
 *cols*, *rows*
-: *required* **Long** values, the number of columns and rows of the grid. A value of 0 raises error -2147467259, *Unspecified error*.
+: *required* **Long** values, the number of columns and rows of the grid. A value of 0 raises run-time error 9, *Subscript out of range*.
 
 *namePrefix*
 : *required* A **String**. The panels are named *namePrefix*`_0`, *namePrefix*`_1` and so on.

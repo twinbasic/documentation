@@ -299,8 +299,8 @@ Debug.Print UBound(P) & " " & P(0)
 ```
 <!-- /test -->
 
-<!-- test: ArrayTests.SplitByteArray_PositionZero_RaisesUnspecifiedError -->
-A *position* of 0 raises the error *Unspecified error* (-2147467259), because the first part would be dimensioned with an upper bound of -1.
+<!-- test: ArrayTests.SplitByteArray_PositionZero_RaisesSubscriptOutOfRange -->
+A *position* of 0 raises run-time error 9, *Subscript out of range*, because the first part would be dimensioned with an upper bound of -1.
 <!-- /test -->
 
 ### SplitByteArrayByKeyword
@@ -325,7 +325,7 @@ Returns a **Variant** array, from 0, of **Byte** arrays: the parts between the o
 
 <!-- test: ArrayTests.SplitByteArrayByKeyword_KeywordAtStart_GivesAnEmptyFirstPart, ArrayTests.SplitByteArrayByKeyword_KeywordAtEnd_GivesAnEmptyLastPart -->
 > [!WARNING] 1.0.0.29
-> A keyword at the very start raises the error of a *position* of 0 in [**SplitByteArray**](#splitbytearray), *Unspecified error* (-2147467259). A keyword at the very end leaves a last part that is an array with one element holding 0, and not an empty array.
+> A keyword at the very start raises the error of a *position* of 0 in [**SplitByteArray**](#splitbytearray), error 9, *Subscript out of range*. A keyword at the very end leaves a last part that is an array with one element holding 0, and not an empty array.
 
 ```tb check_build check_run
 Dim Bytes() As Byte
@@ -343,7 +343,7 @@ Parts = ToolsArray.SplitByteArrayByKeyword(Bytes, ",")
 Debug.Print Err.Number
 ' Output:
 ' 2 0 0
-' -2147467259
+' 9
 ```
 
 ```tb check_build check_run

@@ -417,8 +417,8 @@ Module RunAll
         Expect.EndCase "Br_PathIteratorTests.Enumerate_OnlyOneIndex_IsRefused", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
-        Br_PathIteratorTests.Enumerate_EmptyPath_RaisesUnspecifiedError
-        Expect.EndCase "Br_PathIteratorTests.Enumerate_EmptyPath_RaisesUnspecifiedError", Err.Number, Err.Description
+        Br_PathIteratorTests.Enumerate_EmptyPath_RaisesSubscriptOutOfRange
+        Expect.EndCase "Br_PathIteratorTests.Enumerate_EmptyPath_RaisesSubscriptOutOfRange", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         Br_PathIteratorTests.CopyData_DoesWhatEnumerateDoes
@@ -449,12 +449,12 @@ Module RunAll
         Expect.EndCase "Br_PathTests.PathData_Get_ReturnsThePoints", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
-        Br_PathTests.GetPoints_EmptyPath_RaisesUnspecifiedError
-        Expect.EndCase "Br_PathTests.GetPoints_EmptyPath_RaisesUnspecifiedError", Err.Number, Err.Description
+        Br_PathTests.GetPoints_EmptyPath_RaisesSubscriptOutOfRange
+        Expect.EndCase "Br_PathTests.GetPoints_EmptyPath_RaisesSubscriptOutOfRange", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
-        Br_PathTests.GetTypes_EmptyPath_RaisesUnspecifiedError
-        Expect.EndCase "Br_PathTests.GetTypes_EmptyPath_RaisesUnspecifiedError", Err.Number, Err.Description
+        Br_PathTests.GetTypes_EmptyPath_RaisesSubscriptOutOfRange
+        Expect.EndCase "Br_PathTests.GetTypes_EmptyPath_RaisesSubscriptOutOfRange", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         Br_PathTests.Types_OfTwoFiguresWithAClosedOneAndAMarker

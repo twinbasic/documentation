@@ -1,29 +1,8 @@
 {
   "version": "1.0.17.0",
   "cases": {
-    "ColourTests.TitleFontColor_ColoursTheTitle": {
-      "fails": "1 of 1 checks failed: the pixels of the colour given to TitleFontColor: expected True, got False"
-    },
-    "ColourTests.TitleFontColor_DefaultColoursTheTitle": {
-      "fails": "1 of 1 checks failed: the pixels of the default TitleFontColor, orange: expected True, got False"
-    },
-    "ColourTests.DayFontColor_ColoursTheDayNames": {
-      "fails": "1 of 1 checks failed: the pixels of the colour given to DayFontColor: expected True, got False"
-    },
-    "ColourTests.GridFontColor_ColoursTheDayNumbers": {
-      "fails": "1 of 1 checks failed: the pixels of the colour given to GridFontColor: expected True, got False"
-    },
-    "ColourTests.GridFont_DaysOfTheMonthsBeforeAndAfterAreGrey": {
-      "fails": "1 of 1 checks failed: the pixels of grey (&HAAAAAA) for the days of September and November in the grid for October 2026: expected True, got False"
-    },
     "ColourTests.GridLinesColor_Flat_DefaultIsDrawnAsTheSystemColour": {
       "fails": "1 of 2 checks failed: the colour of a vertical line with the default GridLinesColor and GridCellEffect Flat: expected 10526880, got 16"
-    },
-    "EnabledTests.Enabled_False_DrawsTheTitleInGrey": {
-      "fails": "1 of 1 checks failed: the pixels of the grey (&HBCBCBC) of a disabled title: expected True, got False"
-    },
-    "EnabledTests.Enabled_False_DrawsTheDayNamesAndNumbersInGrey": {
-      "fails": "1 of 1 checks failed: the pixels of the grey (&H999999) of disabled day names and day numbers: expected True, got False"
     },
     "GridTests.Value_InAnotherMonth_PlacesTheGrid": {
       "fails": "1 of 1 checks failed: the date of row 2, column 6 after Value is set to March 15, 2026: expected 3/15/2026, got 10/19/2025"
@@ -54,18 +33,6 @@
     },
     "LayoutTests.Title_ThatIsWiderThanTheSpaceBesideTheLists_IsNotCutOff": {
       "fails": "1 of 1 checks failed: the title \"September 2026\" in the default font reaches the left edge of the control: expected False, got True"
-    },
-    "MethodTests.NextMonth_FromJanuary31_SelectsTheLastDayOfFebruary": {
-      "fails": "1 of 1 checks failed: Value after NextMonth with January 31, 2026 selected: expected 2/28/2026, got 3/3/2026"
-    },
-    "MethodTests.PreviousMonth_FromMarch31_SelectsTheLastDayOfFebruary": {
-      "fails": "1 of 1 checks failed: Value after PreviousMonth with March 31, 2026 selected: expected 2/28/2026, got 3/3/2026"
-    },
-    "MethodTests.NextYear_FromFebruary29_SelectsFebruary28": {
-      "fails": "1 of 1 checks failed: Value after NextYear with February 29, 2024 selected: expected 2/28/2025, got 3/1/2025"
-    },
-    "MethodTests.PreviousYear_FromFebruary29_SelectsFebruary28": {
-      "fails": "1 of 1 checks failed: Value after PreviousYear with February 29, 2024 selected: expected 2/28/2023, got 3/1/2023"
     },
     "MouseTests.MouseDown_IsRaisedByAPress": {
       "fails": "2 of 2 checks failed: the MouseDown events raised by a left press on a day: expected 1, got 0; the MouseDown events raised by a right press on the title area: expected 1, got 0"

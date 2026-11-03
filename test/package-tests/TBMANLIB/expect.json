@@ -11,7 +11,7 @@
       "fails": "2 of 3 checks failed: first variable after the assignment to Extend: expected \"one\", got \"A\"; second variable after the assignment to Extend: expected \"two\", got \"C\""
     },
     "ArrayTests.SplitByteArrayByKeyword_KeywordAtStart_GivesAnEmptyFirstPart": {
-      "fails": "1 of 1 checks failed: split of ,a at a comma raised error -2147467259 Unspecified error: expected 0, got -2147467259"
+      "fails": "1 of 1 checks failed: split of ,a at a comma raised error 9 Subscript out of range: expected 0, got 9"
     },
     "ArrayTests.SplitByteArrayByKeyword_KeywordAtEnd_GivesAnEmptyLastPart": {
       "fails": "1 of 3 checks failed: the last part of a, split at a comma has no elements: expected True, got False"

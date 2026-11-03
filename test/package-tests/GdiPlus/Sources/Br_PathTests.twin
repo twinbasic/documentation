@@ -93,20 +93,20 @@ Module Br_PathTests
     End Sub
 
     [TestCase]
-    Public Sub GetPoints_EmptyPath_RaisesUnspecifiedError()
+    Public Sub GetPoints_EmptyPath_RaisesSubscriptOutOfRange()
         Expect.Begin
         Dim user As GdiPlusUser = GdiPlusUser()
         Dim p As GraphicsPath = New GraphicsPath()
-        Expect.AreEqual -2147467259, CaughtError(p, "points"), "error raised by GetPoints on an empty path"
+        Expect.AreEqual 9, CaughtError(p, "points"), "error raised by GetPoints on an empty path"
         Expect.Done
     End Sub
 
     [TestCase]
-    Public Sub GetTypes_EmptyPath_RaisesUnspecifiedError()
+    Public Sub GetTypes_EmptyPath_RaisesSubscriptOutOfRange()
         Expect.Begin
         Dim user As GdiPlusUser = GdiPlusUser()
         Dim p As GraphicsPath = New GraphicsPath()
-        Expect.AreEqual -2147467259, CaughtError(p, "types"), "error raised by GetTypes on an empty path"
+        Expect.AreEqual 9, CaughtError(p, "types"), "error raised by GetTypes on an empty path"
         Expect.Done
     End Sub
 
