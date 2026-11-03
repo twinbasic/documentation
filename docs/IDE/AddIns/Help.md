@@ -137,6 +137,8 @@ Esc
 
 The search goes round past the end, and ignores case. The text scrolls to show each match. A search that finds nothing draws a red ring inside the box where the text is typed, and leaves the selection where it was. The setting **Find in the shortcut editors** turns this off.
 
+![The top of the text of Manage Keyboard Shortcuts, with the find box hanging from its top right edge: a dark red bar holding a box with ctrl typed in it, and a close button. In the text, the first match, CTRL in the line {KEYDOWN}{CTRL}A, is selected.](Images/Help_Find.png){:width="795" height="184"}
+
 ## Getting the add-in
 
 The add-in is a twinBASIC project, which the IDE builds into two DLLs, one for each bitness.

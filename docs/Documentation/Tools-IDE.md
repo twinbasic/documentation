@@ -106,7 +106,7 @@ Exit codes: **0** the IDE was closed, and the registry is as it was found; **1**
 
 Takes the documentation's screenshots of the IDE, so that one run regenerates them after a new BETA. Each picture belongs to a *setup*, one IDE brought to a known state. A setup's IDE is started only when one of its pictures is selected. Run `build.bat` first: the help setup's pane pages come from the built site, `docs/_site`, served on `localhost`.
 
-- **help** builds the help add-in in `add-in/` into a private copy of the twinBASIC install and opens the demo project `test/addin/helpdemo`. It takes the eight pictures of the [Help Add-In](../../tB/IDE/AddIns/Help) page, `docs/IDE/AddIns/Images/Help_<Name>.png`.
+- **help** builds the help add-in in `add-in/` into a private copy of the twinBASIC install and opens the demo project `test/addin/helpdemo`. It takes the nine pictures of the [Help Add-In](../../tB/IDE/AddIns/Help) page, `docs/IDE/AddIns/Images/Help_<Name>.png`.
 - **no-project** starts the IDE with no project open: the menus under `docs/IDE/Menu/Images/`, and the dialogs that need no project --- New / Open Project and its tabs, the Manage Keyboard Shortcuts and Manage Panel Layouts dialogs, and the ones the FAQ shows.
 - **project** opens the demo project without the add-in, for the dialogs that need a project open: About, whose licence line needs the compiler, and IDE Options, whose font lists do.
 - **sample**, **settings** and **glyphs** open `test/shots/sample`, a small Standard EXE made for the pictures. They take the panels and the editor with a project, Project Settings (with the settings files of `test/shots/settings`), and the icons the pages show inline.

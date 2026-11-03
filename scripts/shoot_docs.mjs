@@ -13204,6 +13204,56 @@ function helpTakes(ctx) {
     }
   });
 
+  // The find box over the text of Manage Keyboard Shortcuts, after a search for ctrl: the
+  // top of the text area, the box at its top right and the first match selected. The text
+  // area keeps the focus for the capture (dialogShot would blur it), so the match shows as
+  // selected.
+  shoot("Find", () =>
+    inDialog(
+      c,
+      { command: "tbKeyboardShortcuts_ShowManageKeyboardShortcuts", title: "Manage Keyboard", close: "Cancel" },
+      async () => {
+        const AREA = ".modalDialogContainer textarea.genericMonospaceTextArea";
+        const onArea = (expr) =>
+          c.evaluate(
+            `(() => { const a = document.querySelector(${JSON.stringify(AREA)}); return a ? ${expr} : null; })()`,
+          );
+        if (!(await onArea("(a.focus(), a.setSelectionRange(0, 0), (a.scrollTop = 0), true)"))) {
+          throw new Error("the dialog has no text area");
+        }
+        await pressKey(c, "f", { ctrl: true });
+        const boxFocused = () =>
+          c.evaluate(
+            `document.activeElement !== null && document.activeElement === document.querySelector(".tbDocsFindBar input")`,
+          );
+        if (!(await waitFor(c, boxFocused))) throw new Error("Ctrl+F opened no find box");
+        await typeText(c, "ctrl");
+        await pressKey(c, "Enter");
+        const found = () =>
+          onArea(
+            `document.activeElement === a && a.value.substring(a.selectionStart, a.selectionEnd).toLowerCase() === "ctrl"`,
+          );
+        if (!(await waitFor(c, found))) throw new Error("Enter in the find box selected no match");
+        await dialogStill(c);
+        // The text area's first LINES lines, whole: the find script's rect of the
+        // selected match gives the line's height and, by the match's line, the first
+        // line's top, in the text area's scrolling space (scrolled to its top).
+        const LINES = 12;
+        const { area, bar, end } = await onArea(`(() => {
+  const box = (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
+  const m = window.tbDocsTextFind.visible(a).rect;
+  const line = a.value.substring(0, a.selectionStart).split("\\n").length - 1;
+  const height = m.bottom - m.top;
+  const first = m.top - line * height;
+  return { area: box(a), bar: box(document.querySelector(".tbDocsFindBar")), end: a.getBoundingClientRect().y + a.clientTop + first + ${LINES} * height };
+})()`);
+        // The top of the text area, its border included, and the box.
+        const top = grow({ ...area, height: end - area.y }, 1);
+        return snap(c, "Find", snapOut(union(top, bar)));
+      },
+    ),
+  );
+
   return takes;
 }
 
@@ -13245,7 +13295,7 @@ const helpShot = (name) => ({
 });
 
 const SHOTS = [
-  ...["Pane", "Hover", "Search", "Choices", "Description", "Settings", "Toolbar", "Window"].map(helpShot),
+  ...["Pane", "Hover", "Search", "Choices", "Description", "Settings", "Toolbar", "Window", "Find"].map(helpShot),
   aboutShot,
   servicesShot,
   servicesTooltipShot,
