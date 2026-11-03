@@ -2,6 +2,7 @@
 title: ByteSwap
 parent: Math Module
 permalink: /tB/Modules/Math/ByteSwap
+index: TB5023
 ---
 # ByteSwap
 {: .no_toc }

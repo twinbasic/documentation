@@ -429,7 +429,7 @@ Debug.Print i
 ```
 
 ### TB0033: Duplicate Definition
-{: index="TB0033" }
+{: index="TB0033; TB5134" }
 
 Reports a duplicate definition as a warning: *Duplicate definition, consider changing the name to be unique*. A name declared twice in one module, procedure, **Enum** or **Type** is error TB5134 instead.
 

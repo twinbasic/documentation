@@ -33,6 +33,7 @@ Each counter is also a switch. Click it to show or hide the problems of that kin
 The commands `tbProblems_ToggleShowErrors`, `tbProblems_ToggleShowWarnings`, `tbProblems_ToggleShowHints` and `tbProblems_ToggleShowInfos` flip the same switches. They have no keys by default.
 
 ## The list
+{: index="TB5000" }
 
 The list has one group for each file that has a problem to show. The group's header is the file's name, and pointing at it shows the path. Click the arrow at the left of the header, or double-click the header, to collapse or expand the group.
 

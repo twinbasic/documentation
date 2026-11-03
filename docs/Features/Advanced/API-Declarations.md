@@ -24,6 +24,7 @@ Both represent a fully Unicode operation, but the allows direct use of the `Stri
 > This does **not** change the underlying data types-- the `String` type is a `BSTR`, not an `LPWSTR`, so in the event an API returns a pre-allocated `LPWSTR`, rather than filling a buffer you have created, it will not provide a valid `String` type. This would be the case where an API parameter is given as `[out] LPWSTR *arg`.
 
 ## Calling Conventions
+{: index="TB5258" }
 
 An API declaration, a procedure, a delegate or an interface member can name its calling convention. The keyword goes directly after the name. Without one, the convention is stdcall, as in VBA.
 
@@ -64,6 +65,7 @@ End Function
 ```
 
 ### ThisCall in interfaces
+{: index="TB5004" }
 
 Some C++ interfaces are not COM interfaces, and their methods use thiscall rather than stdcall. RichEdit's `ITextServices` and `ITextHost` are examples. Mark each such member **ThisCall** in the **Interface** definition:
 

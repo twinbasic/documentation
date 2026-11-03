@@ -50,6 +50,7 @@ When the constant type is not explicitly declared by using **As** *type*, the co
 Constants declared in a **Sub**, **Function**, or **Property** procedure are local to that procedure. A constant declared outside a procedure is defined throughout the module in which it is declared. Constants can be used anywhere an expression is allowed.
 
 ## Array constants
+{: index="TB5002; TB5028; TB5050; TB5078; TB5109; TB5250" }
 
 *(twinBASIC)* A constant can also be a one-dimensional array, whose elements are given with [**Array**](../Modules/Information/Array):
 

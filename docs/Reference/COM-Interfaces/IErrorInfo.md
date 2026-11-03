@@ -27,6 +27,7 @@ The method that fails and the code that calls it follow a fixed order:
 **GetErrorInfo** returns `S_FALSE`, and no object, when the slot is empty. Its first argument is reserved and must be 0.
 
 ## Declaration
+{: index="TB5106" }
 
 **IErrorInfo** derives from **IUnknown** and has the interface identifier `1CF2B120-547D-101B-8E65-08002B2BD119`. **ISupportErrorInfo** has `DF0B3D60-548F-101B-8E65-08002B2BD119` and **ICreateErrorInfo** has `22F03340-547D-101B-8E65-08002B2BD119`.
 

@@ -2,6 +2,7 @@
 title: ShiftUnsignedRight
 parent: Math Module
 permalink: /tB/Modules/Math/ShiftUnsignedRight
+index_also: TB5023
 ---
 # ShiftUnsignedRight
 {: .no_toc }

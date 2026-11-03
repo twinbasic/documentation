@@ -103,6 +103,7 @@ The first point is optional. When it is left out, *X1* and *Y1* are passed as `0
 | *(no arguments)* | 0 | `0, 0, 0, 0` |
 
 ## Any object can take the syntax
+{: index="TB5075; TB5212" index_also="TB5103" }
 
 The compiler reads the syntax from the method name alone: **Line**, **Circle**, **PSet** or **Scale**. It does not look at the type of the object. All of these use it:
 

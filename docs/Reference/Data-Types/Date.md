@@ -44,6 +44,7 @@ Debug.Print CDbl(#12/31/9999#)      ' 2958465
 ```
 
 ## Date literals
+{: index="TB5085" }
 
 A date literal is a date, a time of day, or both, written between number signs (`#`). Its type is **Date**, and its value is fixed when the project is compiled: the executable holds the number, not the text, so the regional settings of the machine that runs the program do not affect it.
 

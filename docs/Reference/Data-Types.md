@@ -16,7 +16,7 @@ For the twinBASIC-specific additions to this set --- **LongLong**, **LongPtr**, 
 ---
 
 ## Quick reference
-{: index="type-declaration character; type character; type char; typedecl character; typedecl char" }
+{: index="type-declaration character; type character; type char; typedecl character; typedecl char" index_also="TB5028" }
 
 | Type | Suffix | Storage | Range |
 |------|--------|---------|-------|

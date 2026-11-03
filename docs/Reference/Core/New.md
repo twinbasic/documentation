@@ -3,6 +3,7 @@ title: New
 parent: Statements
 permalink: /tB/Core/New
 vba_attribution: true
+index: TB5074; TB5121
 ---
 # New
 {: .no_toc }

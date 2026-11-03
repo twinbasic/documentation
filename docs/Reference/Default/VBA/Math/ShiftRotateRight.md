@@ -2,6 +2,7 @@
 title: ShiftRotateRight
 parent: Math Module
 permalink: /tB/Modules/Math/ShiftRotateRight
+index_also: TB5023
 ---
 # ShiftRotateRight
 {: .no_toc }

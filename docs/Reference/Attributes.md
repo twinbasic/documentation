@@ -3,6 +3,7 @@ title: Attributes
 parent: Reference Section
 nav_order: 6
 permalink: /tB/Core/Attributes
+index: TB5155
 ---
 
 # Attributes
@@ -23,13 +24,13 @@ Multiple attributes can be specified in the same square braces, separated by com
 
 ---
 
-The available attributes are listed below in alphabetic order. Not every attribute applies to every language element. The applicability of each attribute is given below its syntax.
+The available attributes are listed below in alphabetic order. Not every attribute applies to every language element. The applicability of each attribute is given below its syntax. An attribute written where it does not apply is a compile error, depending on the place either TB5155, *This attribute is not supported in this context*, or TB5182, *Syntax error. No handler for this symbol*.
 * TOC
 {:toc}
 ---
 
 ## AllowUnpopulatedVtableEntry
-{: #allowunpopulatedvtableentry }
+{: #allowunpopulatedvtableentry index="TB65535" }
 
 Syntax: **[AllowUnpopulatedVtableEntry]**
 
@@ -85,7 +86,7 @@ Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#pr
 Disables or enables array element access bounds checking within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **ArrayBoundsChecks(False)** turns the check off. **ArrayBoundsChecks(True)** turns it back on where the project setting [**Disable Array Bounds Checks**](../IDE/Project-Settings#disable-array-bounds-checks) has turned it off for the whole project.
 
 ## BindOnlyIfNoArguments  (optional Bool)
-{: #bindonlyifnoarguments }
+{: #bindonlyifnoarguments index_also="TB5030" }
 
 Syntax: **[BindOnlyIfNoArguments** [ **( True** \| **False )** ] **]**
 
@@ -191,7 +192,7 @@ On a **Class**, it marks the class as an ActiveX control (the `control` flag of 
      library flag changes. -->
 
 ## COMCreatable  (optional Bool)
-{: #comcreatable }
+{: #comcreatable index_also="TB5121; TB5135" }
 
 Syntax: **[COMCreatable** [ **( True** \| **False )** ] **]**
 
@@ -374,7 +375,7 @@ When false, turns off breakpoints and stepping for the method, class or module. 
      Interface it is accepted and a Stop in an implementing class still breaks. -->
 
 ## DebugOnly  (optional Bool)
-{: #debugonly }
+{: #debugonly index="TB5162" }
 
 Syntax: **[DebugOnly** [ **( True** \| **False )** ] **]**
 
@@ -543,7 +544,7 @@ Indicates that the interface exposes methods via **IDispatch** late-binding. Thi
 It is usually written combined with the other attributes on the interface rather than alone --- `[Hidden, DispInterface, COMExtensible]`. See [**LibraryId**](#libraryid) for what a generated **Library** module looks like.
 
 ## DllExport  (optional String)
-{: #dllexport }
+{: #dllexport index="TB5163" }
 
 Syntax: **[DllExport** [ **("** export name **")** ] **]**
 
@@ -597,7 +598,7 @@ Indicates that the interface exposes methods through the OLE VTable binding. The
 See [**LibraryId**](#libraryid) for what a generated **Library** module looks like.
 
 ## EnforceErrors  (Warning code list)
-{: #enforceerrors }
+{: #enforceerrors index="TB5169" }
 
 Syntax: **[EnforceErrors** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
 
@@ -606,7 +607,7 @@ Applicable to: [**Class**](Class), [**Interface**](Interface), [**Module**](Modu
 Reports the named warnings as errors within the class, interface, module or procedure the attribute is applied to. The codes are written bare, as for [IgnoreWarnings](#ignorewarnings). With `[EnforceErrors(TB0009)]` on a procedure, a call to a procedure marked [Unimplemented](#unimplemented) is an error where it would otherwise be warning TB0009. Written bare it is accepted and has no effect. With **True** or **False** in place of a code it is error TB5169, *Expected an error code in the format of TBxxxx*.
 
 ## EnforceWarnings  (Warning code list)
-{: #enforcewarnings }
+{: #enforcewarnings index_also="TB5169" }
 
 Syntax: **[EnforceWarnings** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
 
@@ -1090,7 +1091,7 @@ Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFol
 ```
 
 ## PropertyPage  (String)
-{: #propertypage }
+{: #propertypage index="TB5259" index_also="TB5163" }
 
 Syntax: **[PropertyPage("** page name **")]**
 
@@ -1202,7 +1203,7 @@ This is attribute has the same function as the [**restricted** MIDL attribute][M
 [MIDL restricted]: https://learn.microsoft.com/en-us/windows/win32/midl/restricted
 
 ## RunAfterBuild  (optional Bool)
-{: #runafterbuild }
+{: #runafterbuild index="TB5114" index_also="TB5155" }
 
 Syntax: **[RunAfterBuild** [ **( True** \| **False )** ] **]**
 
@@ -1225,7 +1226,7 @@ Public Sub Signed(Of T)()
 End Sub
 ```
 
-Only one **[RunAfterBuild]** is allowed per project. A second one is a compile error. A **[RunAfterBuild]** procedure in a package that the project references does not run, and does not count as the project's one.
+Only one **[RunAfterBuild]** is allowed per project. A second one is compile error TB5114, *encountered too many [RunAfterBuild] attributes. Only allowed one per-project.* A **[RunAfterBuild]** procedure in a package that the project references does not run, and does not count as the project's one.
 
 <!-- BETA 1034 (tbrun --exe): a package embedded in a Standard EXE, with a
      [RunAfterBuild] Sub that appends to a file. With a [RunAfterBuild] in the

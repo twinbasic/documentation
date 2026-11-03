@@ -10,6 +10,7 @@ permalink: /Features/Advanced/Classes-and-Modules
 twinBASIC provides several enhancements for classes and modules.
 
 ## Parameterized Class Constructors
+{: index="TB5073" index_also="TB5121" }
 
 A class can have a `Sub New` constructor, and the constructor can take arguments. The compiler treats the `Class_Initialize` event as another constructor, one that takes no arguments. [`New`](../../tB/Core/New) runs only the constructor that its arguments match --- it does not run `Sub New` and `Class_Initialize` one after the other:
 
@@ -22,6 +23,7 @@ A class can have a `Sub New` constructor, and the constructor can take arguments
 > A `Sub New` declared `Private` is meant to make construction private, so that only code inside the class creates objects with it. This is not enforced: `New MyClass` in another module of the project, or in a project that references a package with the class, compiles and runs the private constructor.
 
 ### Example
+{: index="TB5135" }
 
 For example a class can have:
 
@@ -41,6 +43,7 @@ then created by `Dim mc As MyClass = New MyClass(123)`, which sets `MyClassVar` 
 > A class that is not `Private` is exposed to COM, and COM creates objects without arguments. So a class whose `Sub New` takes arguments must be `Private`, have the `[COMCreatable(False)]` attribute, or also have a constructor that takes no arguments --- a `Class_Initialize()`, or a second `Sub New` with no parameters. Otherwise it fails to compile with TB5135. `Class_Initialize()` replaces `New` in callers of a compiled OCX.
 
 ### `Class_Initialize` or `Sub New`?
+{: index="TB5053" }
 
 Both are constructors: code that runs once, as the object is created, before anything else can use it. Only one of them runs for any one object. `Class_Initialize` is inherited from VB6 and VBA, and follows COM's rule that an object is created without arguments; `Sub New` is twinBASIC's addition. They differ in what they can take and who can use them:
 

@@ -2,6 +2,7 @@
 title: Delegate
 parent: Statements
 permalink: /tB/Core/Delegate
+index: TB5227
 ---
 # Delegate
 {: .no_toc }

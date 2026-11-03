@@ -22,7 +22,7 @@ A program uses a library in three steps:
 A package can carry the files and the statements, so that a project that references it needs neither; the [DetoursLib](../../tB/Packages/Contributed/DetoursLib/) package links SlimDetours this way.
 
 ## Syntax
-{: index="Import Library" }
+{: index="Import Library; TB5137" }
 
 **Import Library** "*path*" **As** *namespace* [ **Link** "*dependency*" [ **,** "*dependency*" ] ... ]
 

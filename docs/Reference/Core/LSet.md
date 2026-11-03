@@ -3,6 +3,7 @@ title: LSet
 parent: Statements
 permalink: /tB/Core/LSet
 vba_attribution: true
+index: TB5249
 ---
 # LSet
 {: .no_toc }
