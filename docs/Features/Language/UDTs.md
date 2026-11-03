@@ -58,10 +58,12 @@ End Type
 
 UDTs of these types are still stack allocated structs that can be used with standard Win32 APIs.
 
-> [!WARNING] BETA 1010
+<!-- test: bug udt-array-element-method-call-crash -->
+> [!WARNING] BETA 1034
 > A method or property of a UDT called on an element of an array of the UDT, such as `a(1).Sum`, ends the program with an access violation, in 32-bit and 64-bit builds. A variable of the type, a UDT member of another UDT, and an element of an array declared inside a UDT are not affected. Copy the element to a variable first.
 
-> [!NOTE] BETA 1010
+<!-- test: bug udt-method-assign-me-codegen -->
+> [!NOTE] BETA 1034
 > Assigning **Me** whole inside a method of a UDT, as in `Copy = Me` or `Return Me`, is a code generation error that fails the build once the method is called. Copy the members one by one.
 
 ## Custom UDT Packing

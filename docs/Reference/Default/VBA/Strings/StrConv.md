@@ -57,7 +57,7 @@ When converting from a **Byte** array in ANSI format to a string, use the **StrC
 | [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument* | *conversion* is a value the table does not list, or combines **vbUnicode**, **vbFromUnicode**, **vbUTF8** or **vbFromUTF8** with another value<br>*conversion* includes **vbWide**, **vbNarrow**, **vbKatakana** or **vbHiragana** on a system whose locale is not East Asian<br>*conversion* includes **vbWide**, **vbNarrow**, **vbKatakana** or **vbHiragana** and *LCID* names an East Asian locale, on a system whose locale is not East Asian<br>*LCID* is not a valid locale identifier |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *conversion* or *LCID* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *conversion* includes **vbWide**, **vbNarrow**, **vbKatakana** or **vbHiragana** and *LCID* names an East Asian locale, on a system whose locale is not East Asian, VB6 and 64-bit VBA raise no error.
 
 <!-- /errors -->

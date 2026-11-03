@@ -20,7 +20,7 @@ The **TBMANLIB_Diagnostic** contributed package makes a diagnostic report of a W
 
 The package is the reusable part of woeoio's entry for [twinBASIC Monthly Challenge #1](../../../../Challenges/1), *Self-Contained Diagnostic Tool*. The entry is a console program that shows the values on a live screen, or writes a report when it is started with an argument such as `/json`. That program is not in the package; [**FormatterFactory.CreateFormatterFromArg**](FormatterFactory#createformatterfromarg) reads such an argument.
 
-This section documents version 1.0.0.1, published on TWINSERV on 3 February 2026 under the MIT licence. The package compiles in BETA 1005, as a 32-bit and as a 64-bit program. The repository [woeoio/tbman](https://github.com/woeoio/tbman), the toolkit of the same author whose package is [**TBMANLIB**](../TBMANLIB/), does not hold the code of this package.
+This section documents version 1.0.0.1, published on TWINSERV on 3 February 2026 under the MIT licence. The package compiles in BETA 1034, as a 32-bit and as a 64-bit program. The repository [woeoio/tbman](https://github.com/woeoio/tbman), the toolkit of the same author whose package is [**TBMANLIB**](../TBMANLIB/), does not hold the code of this package.
 
 The package has defects: the **Dictionary** class cannot be used, and several members give a wrong result without an error. [Known problems in version 1.0.0.1](#known-problems-in-version-1001) lists them. The sample below uses the parts that work.
 
@@ -140,7 +140,7 @@ The package has four modules whose contents a program has no need for:
 > - **[FormatBytes](FormatHelper#formatbytes) with no decimals leaves the decimal separator in the text**, as in `4. KB`. The `Page Size` item of [**CPUInfoCollector**](Collectors#cpuinfocollector) is written this way.
 > - **[NetworkInfoCollector](Collectors#networkinfocollector) lists the first adapter only in a 64-bit program.** It reads the adapters in steps of 640 bytes, and the records are 704 bytes apart in a 64-bit program. The summary may then have no `Primary IP`. A 32-bit program lists every adapter.
 
-<!-- test: none -- the defect shows only while daylight saving time is in effect, so no case gives the same verdict all year -->
+<!-- test: CollectorTests.LocaleCollector_InSummerTime_ReportsTheOffsetOfTheClock, CollectorTests.LocaleCollector_InStandardTime_ReportsTheOffsetOfTheClock -->
 > [!WARNING] 1.0.0.1
 > **[LocaleCollector](Collectors#localecollector) reports the offset of standard time as `Timezone` all year.** In summer time the item is behind the clock by the daylight saving offset: `UTC+1` where the clock is at UTC+2, as in Central European Summer Time.
 

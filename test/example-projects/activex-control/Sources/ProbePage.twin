@@ -1,0 +1,15 @@
+' A property page for the samples of a UserControl, as Add Windows PropertyPage writes one. The
+' UserControl has only its designer file here, ProbeControl.tbform: its class is the sample, a
+' `slot=file` fence that names the same designer id, each in a project of its own (`projname=`).
+
+[Description("")]
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F50")]
+[ClassId("7B247400-0000-4000-9000-7B2474000F52")]
+[InterfaceId("7B247400-0000-4000-9000-7B2474000F53")]
+[EventInterfaceId("7B247400-0000-4000-9000-7B2474000F54")]
+Class ProbePage
+
+    Sub New()
+    End Sub
+
+End Class

@@ -102,6 +102,7 @@ The toolbar always paints; it cannot be hidden. The plus and minus buttons step 
 Clicking the toolbar's plus or minus button automatically switches [**ZoomAutoFit**](#zoomautofit) to **vbZoomAutoFitNever** so the user's manual zoom is preserved.
 
 ## Drawing inside sections
+{: index="TB5018" }
 
 Every section's repaint raises [**BeforePaintSection**](#beforepaintsection) on the report, with the [**Section**](#beforepaintsection) being drawn as the argument. During this event, [**hDC**](#hdc) returns the metafile device context that the section is being recorded into --- drawing primitives ([**Line**](#line), [**Circle**](#circle), [**PSet**](#pset), [**PaintPicture**](#paintpicture), [**Print**](#print), and direct GDI calls through [**hDC**](#hdc)) write straight into that section's image. Outside the event, [**hDC**](#hdc) returns the report window's own DC, suitable for screen drawing only.
 

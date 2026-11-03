@@ -1164,6 +1164,30 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
         `Ctrl+F opened no find box: ${JSON.stringify(await findBox())}`,
       );
       assert.equal(await modals(), 1, "Ctrl+F closed the dialog");
+      // The box is drawn as the IDE's own search bar, the one the Project Explorer and the
+      // Toolbox open: the same computed style as an element of the IDE's classes.
+      const look = await c.evaluate(`(() => {
+        const bar = document.querySelector(".tbDocsFindBar");
+        const probe = document.createElement("div");
+        probe.className = "objListSearchBar";
+        const entry = document.createElement("input");
+        entry.className = "objListSearchEntry";
+        probe.appendChild(entry);
+        document.body.appendChild(probe);
+        const of = (e, names) => { const s = getComputedStyle(e); return Object.fromEntries(names.map((n) => [n, s[n]])); };
+        const BAR = ["backgroundColor", "borderBottomLeftRadius", "borderBottomRightRadius", "paddingTop", "paddingLeft", "height", "display"];
+        const ENTRY = ["backgroundColor", "borderTopWidth", "borderTopLeftRadius", "paddingTop"];
+        const out = {
+          bar: of(bar, BAR), ide: of(probe, BAR),
+          entry: of(bar.querySelector("input"), ENTRY), ideEntry: of(entry, ENTRY),
+          close: bar.querySelector(".codicon-close.objListSearchClose") !== null,
+        };
+        probe.remove();
+        return out;
+      })()`);
+      assert.deepEqual(look.bar, look.ide, "the find box is not drawn as the IDE's search bar");
+      assert.deepEqual(look.entry, look.ideEntry, "the find box's entry is not drawn as the IDE's");
+      assert.ok(look.close, "the find box has no close button");
       await typeText(c, WORD);
       await pressKey(c, "Enter");
       await selectionIs(at[0], "Enter: the first match");
@@ -1210,6 +1234,21 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       assert.ok(await waitFor(c, async () => (await findBox()) === null), "Esc did not close the find box");
       assert.equal(await modals(), 1, "Esc closed the dialog");
       assert.equal((await selection()).focused, true, "the text area has not got the focus after Esc");
+
+      // Its close button closes it the same way.
+      await pressKey(c, "f", { ctrl: true });
+      assert.ok(await waitFor(c, async () => (await findBox())?.focused === true), "Ctrl+F did not open the box again");
+      const shut = await c.evaluate(`(() => {
+        const r = document.querySelector(".tbDocsFindBar .objListSearchClose").getBoundingClientRect();
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+      })()`);
+      await clickAt(c, shut.x, shut.y);
+      assert.ok(
+        await waitFor(c, async () => (await findBox()) === null),
+        "the close button did not close the find box",
+      );
+      assert.equal(await modals(), 1, "the close button closed the dialog");
+      assert.equal((await selection()).focused, true, "the text area has not got the focus after the close button");
 
       // With the box closed, F3 and Shift+F3 go on with the last query.
       await keyDown("F3");

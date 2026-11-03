@@ -10,7 +10,9 @@
 //
 // with `Fixture.Sub` for a [TestCase], `compile <Name>` for a compile case, `probe <id>` for a
 // scenario of the package's probe/ harness, or `none -- <reason>` for a callout no program can
-// check. This gate reads only the sources: the section's pages, the project's files and the
+// check. A marker may also name what any page's marker can (scripts/lib/test-markers.mjs), a
+// reproducer under bugs/ for a fact of twinBASIC, say: scripts/check_callout_evidence.mjs checks
+// those items. This gate reads only the sources: the section's pages, the project's files and the
 // template that names the package's version. It needs no twinBASIC install; running the cases is
 // scripts/package_tests.mjs.
 //
@@ -41,6 +43,8 @@ import { markdownFiles } from "../lib/markdown-files.mjs";
 import {
   COMPILE_DIR,
   compileSources,
+  EXE_DIR,
+  exeSources,
   EXPECT_FILE,
   EXPECT_JSON,
   packageTestNames,
@@ -53,16 +57,17 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { createProbes } from "./lib/gate-probes.mjs";
 import { findCases, judgeCompiles } from "./lib/tb-tests.mjs";
 import {
+  exeOutcomes,
   expectationFor,
   expectFrom,
   judge,
   malformedCases,
-  markersOf,
   outcomeOf,
-  parseMarker,
   projectCases,
   runAllText,
+  runExeText,
 } from "./lib/package-test-cases.mjs";
+import { kindOf, markersOf, PACKAGE_KINDS, parseMarker } from "./lib/test-markers.mjs";
 
 exitOnCrash();
 
@@ -103,6 +108,67 @@ const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
 const { check, report } = createProbes("check_package_tests", "see test/package-tests/README.md");
 
 // ---------------------------------------------------------------- probes
+
+{
+  // A row of the package's own sources is not a row of the project's, and the reverse.
+  const body = [
+    "Module M",
+    "    ' CASE InThePackage: package TB5001 Libs/cThing.twin:21",
+    "    ' CASE OnlyWin64: win64 package TB5001 cOther.twin:7",
+    "    ' CASE OnAnotherLine: package TB5001 cOther.twin:8",
+    "    ' CASE OtherCode: package TB5079 cOther.twin:7",
+    "End Module",
+  ].join("\n");
+  const { compiles } = findCases([{ name: "M.twin", text: body }]);
+  check(
+    "a compile case that names a package's row takes its file, line and architecture from the comment",
+    compiles.length === 4 &&
+      compiles[0].inPackage &&
+      compiles[0].file === "Libs/cThing.twin" &&
+      compiles[0].line === 21 &&
+      !compiles[0].arch &&
+      compiles[1].arch === "win64",
+    JSON.stringify(compiles),
+  );
+  const judged = judgeCompiles(compiles, [
+    "{ERROR} /Proj/Packages/Thing/Sources/Libs/cThing.twin [21,54]: TB5001 Validation of call",
+    "{ERROR} /Proj/Packages/Thing/Sources/cOther.twin [7,1]: TB5001 Validation of call",
+  ]);
+  check(
+    "a package's row passes on its file, line and code, and fails on any other",
+    judged.map((r) => r.pass).join() === "true,true,false,false",
+    JSON.stringify(judged),
+  );
+  const [local] = judgeCompiles(
+    [{ name: "L", file: "cOther.twin", line: 7, codes: ["TB5001"], anyError: false }],
+    ["{ERROR} /Proj/Packages/Thing/Sources/cOther.twin [7,1]: TB5001 x"],
+  );
+  check("a case of the project's own source is not met by a package's row", !local.pass, JSON.stringify(local));
+}
+
+{
+  const text = runExeText([
+    { fixture: "A", name: "One" },
+    { fixture: "A", name: "Two" },
+  ]);
+  check(
+    "the exe project's runner tells tbrun the build ended, and runs and prints each case in order",
+    /\[RunAfterBuild\]/.test(text) &&
+      /Public Sub Main\(\)/.test(text) &&
+      text.indexOf('TbRun.Out "CASE A.One: "') > 0 &&
+      text.indexOf('TbRun.Out "CASE A.One: "') < text.indexOf('TbRun.Out "CASE A.Two: "'),
+    text,
+  );
+  const got = exeOutcomes(["built", "CASE A.One: ", "CASE A.Two: 1 of 1 checks failed: x: expected 1, got 2"]);
+  check(
+    "a case's line with nothing after its name passed, and one with a report failed with it, its colons kept",
+    got.size === 2 &&
+      got.get("A.One").kind === "pass" &&
+      got.get("A.Two").kind === "fail" &&
+      got.get("A.Two").detail === "1 of 1 checks failed: x: expected 1, got 2",
+    JSON.stringify([...got]),
+  );
+}
 
 {
   // The compiler counts a lone CR as a line end (BETA 1010), so a compile case
@@ -290,6 +356,7 @@ for (const pkg of sections) {
   const has = projects.includes(pkg);
   if (PENDING.has(pkg)) {
     if (has) problems.push(`${pkg} has a test project: remove it from PENDING in scripts/check_package_tests.mjs`);
+    problems.push(...checkCompileOnly(pkg).map((p) => `${pkg}: ${p}`));
     continue;
   }
   if (!has) {
@@ -335,6 +402,11 @@ function checkPackage(pkg) {
   const compileProject = projectCases(compileSources(ROOT, pkg));
   out.push(...compileProject.problems.map((p) => `${COMPILE_DIR}/: ${p}`));
   if (compileProject.tests.length) out.push(`${COMPILE_DIR}/ holds a [TestCase]: it holds compile cases only`);
+  const exeFiles = exeSources(ROOT, pkg);
+  const exeProject = projectCases(exeFiles);
+  out.push(...exeProject.problems.map((p) => `${EXE_DIR}/: ${p}`), ...malformedCases(exeFiles, exeProject.tests));
+  if (exeProject.compiles.length) out.push(`${EXE_DIR}/ holds a compile case: they go in ${COMPILE_DIR}/`);
+  const allTests = [...tests, ...exeProject.tests];
   const compiles = [...own, ...compileProject.compiles];
   for (const c of compileProject.compiles)
     if (own.some((x) => x.name === c.name)) out.push(`two compile cases are named ${c.name}`);
@@ -358,7 +430,7 @@ function checkPackage(pkg) {
     )
       out.push(`${EXPECT_JSON}: arches is a non-empty list of win32 and win64, or absent for both`);
   }
-  const caseNames = new Set([...tests.map((t) => `${t.fixture}.${t.name}`), ...compiles.map((c) => c.name)]);
+  const caseNames = new Set([...allTests.map((t) => `${t.fixture}.${t.name}`), ...compiles.map((c) => c.name)]);
   for (const name of Object.keys(expect.cases ?? {})) {
     if (!caseNames.has(name)) out.push(`${EXPECT_JSON} names ${name}, which is not a case`);
     try {
@@ -383,6 +455,7 @@ function checkPackage(pkg) {
     const { callouts, markers, problems: regionProblems } = markersOf(text);
     out.push(...regionProblems.map((p) => `${rel} ${p}`));
     for (const c of callouts) {
+      if (c.kind !== "NOTE" && c.kind !== "WARNING") continue;
       if (!c.marked)
         out.push(
           `${rel} line ${c.line}: the ${c.kind} has no <!-- test: ... --> marker on the line above, nor a region around it`,
@@ -391,12 +464,10 @@ function checkPackage(pkg) {
     for (const mk of markers) {
       const where = `${rel} line ${mk.line}`;
       if (!mk.items.length) out.push(`${where}: the marker names nothing`);
-      for (const item of mk.items) {
-        if (item.bad)
-          out.push(
-            `${where}: the marker's item "${item.bad}" is not Fixture.Sub, compile <Name>, probe <id> or none -- <reason>`,
-          );
-        else if (item.case && !tests.some((t) => `${t.fixture}.${t.name}` === item.case))
+      // A bad item, and one that names something outside the project, are
+      // check_callout_evidence.mjs's to report.
+      for (const item of mk.items.filter((i) => PACKAGE_KINDS.has(kindOf(i)))) {
+        if (item.case && !allTests.some((t) => `${t.fixture}.${t.name}` === item.case))
           out.push(`${where}: no [TestCase] ${item.case}`);
         else if (item.compile && !compiles.some((x) => x.name === item.compile))
           out.push(`${where}: no compile case ${item.compile}`);
@@ -408,6 +479,29 @@ function checkPackage(pkg) {
     }
   }
   for (const name of caseNames) if (!named.has(name)) out.push(`the case ${name} is named by no marker of the section`);
+  return out;
+}
+
+// A package with no test project, which does not compile: its compile/ alone says so, each case
+// named by a marker and each marker naming a case, and a marker names nothing else of a project.
+function checkCompileOnly(pkg) {
+  const out = [];
+  const { tests, compiles, problems: bad } = projectCases(compileSources(ROOT, pkg));
+  out.push(...bad.map((p) => `${COMPILE_DIR}/: ${p}`));
+  if (tests.length) out.push(`${COMPILE_DIR}/ holds a [TestCase]: it holds compile cases only`);
+  const named = new Set();
+  for (const rel of sectionPages(pkg)) {
+    for (const mk of markersOf(readFileSync(path.join(SECTIONS, pkg, rel), "utf8")).markers) {
+      const where = `${rel} line ${mk.line}`;
+      for (const item of mk.items.filter((i) => PACKAGE_KINDS.has(kindOf(i)))) {
+        if (!item.compile)
+          out.push(`${where}: the package has no test project, so a marker names no [TestCase] or probe`);
+        else if (!compiles.some((c) => c.name === item.compile)) out.push(`${where}: no compile case ${item.compile}`);
+        else named.add(item.compile);
+      }
+    }
+  }
+  for (const c of compiles) if (!named.has(c.name)) out.push(`the case ${c.name} is named by no marker of the section`);
   return out;
 }
 

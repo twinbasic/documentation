@@ -1,0 +1,72 @@
+' ProbeOF: the scenario 11e of the TBMANLIB_Dialog probe: OpenFile with an empty path.
+'
+' The call opens a File Explorer window on the current folder, in an explorer.exe that COM starts.
+' That process is outside the job the exe runs in, so it outlives the run and leaves the broker's
+' desktop in use. So the scenario ends it: FindWindowW looks at this desktop and no other, and the
+' process is ended only if it started after the call, which no process of the user's did.
+
+Module ProbeOF
+
+    Private Declare PtrSafe Function FindWindowW Lib "user32" (ByVal lpClassName As LongPtr, ByVal lpWindowName As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetWindowTextW Lib "user32" (ByVal hWnd As LongPtr, ByVal lpString As LongPtr, ByVal nMaxCount As Long) As Long
+    Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hWnd As LongPtr, ByRef lpdwProcessId As Long) As Long
+    Private Declare PtrSafe Sub GetSystemTimeAsFileTime Lib "kernel32" (ByRef lpSystemTimeAsFileTime As LongLong)
+    Private Declare PtrSafe Function OpenProcess Lib "kernel32" (ByVal dwDesiredAccess As Long, ByVal bInheritHandle As Long, ByVal dwProcessId As Long) As LongPtr
+    Private Declare PtrSafe Function GetProcessTimes Lib "kernel32" (ByVal hProcess As LongPtr, ByRef lpCreationTime As LongLong, ByRef lpExitTime As LongLong, ByRef lpKernelTime As LongLong, ByRef lpUserTime As LongLong) As Long
+    Private Declare PtrSafe Function TerminateProcess Lib "kernel32" (ByVal hProcess As LongPtr, ByVal uExitCode As Long) As Long
+    Private Declare PtrSafe Function WaitForSingleObject Lib "kernel32" (ByVal hHandle As LongPtr, ByVal dwMilliseconds As Long) As Long
+    Private Declare PtrSafe Function CloseHandle Lib "kernel32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+
+    Private Const PROCESS_TERMINATE As Long = &H1
+    Private Const PROCESS_QUERY_LIMITED_INFORMATION As Long = &H1000
+    Private Const SYNCHRONIZE As Long = &H100000
+
+    Public Sub S11e()
+        Say "== 11e OpenFile with an empty path"
+        Dim called As LongLong
+        GetSystemTimeAsFileTime called
+        Dim d As New cDialog
+        Dim r As Variant    ' OpenFile returns LongPtr in 1.1.0.0, which a Long does not take in a 64-bit build
+        r = d.OpenFile("")
+        Say "  OpenFile("""") = " & r
+
+        ' A new window is titled File Explorer, and takes the folder's name or its whole path, as the
+        ' user's Folder Options say, once it has opened the folder.
+        Dim folder As String = Mid$(CurDir$(), InStrRev(CurDir$(), "\") + 1)
+        Dim window As LongPtr, title As String, i As Long
+        For i = 1 To 150
+            window = FindWindowW(StrPtr("CabinetWClass"), 0)
+            If window <> 0 Then title = TextOf(window)
+            If title = folder Or title = CurDir$() Then Exit For
+            Sleep 100
+        Next
+        If window = 0 Then
+            Say "  no File Explorer window on this desktop"
+            Exit Sub
+        End If
+        Say "  a File Explorer window on this desktop, titled " & title
+        Say "  the current folder is named " & folder
+
+        Dim pid As Long
+        GetWindowThreadProcessId window, pid
+        Dim process As LongPtr = OpenProcess(PROCESS_TERMINATE Or PROCESS_QUERY_LIMITED_INFORMATION Or SYNCHRONIZE, 0, pid)
+        Dim created As LongLong, exited As LongLong, kernel As LongLong, user As LongLong
+        If process = 0 Or GetProcessTimes(process, created, exited, kernel, user) = 0 Then
+            Say "  could not look at the window's process: left alone"
+        ElseIf created < called Then
+            Say "  the window's process started before the call: left alone"
+        Else
+            TerminateProcess process, 0
+            WaitForSingleObject process, 5000
+            Say "  the window's process started after the call, and is ended"
+        End If
+        If process <> 0 Then CloseHandle process
+    End Sub
+
+    Private Function TextOf(ByVal window As LongPtr) As String
+        Dim buffer As String = String$(260, vbNullChar)
+        Return Left$(buffer, GetWindowTextW(window, StrPtr(buffer), 260))
+    End Function
+
+End Module

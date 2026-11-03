@@ -64,16 +64,16 @@ When both *helpfile* and *context* are supplied, the user can press F1 to view t
 | [6 (`&H6`)](tb:Errors#6), *Overflow* | *xpos* or *ypos* is outside the range of a **Long** |
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *helpfile* is given without *context* |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *helpfile* is **Null**, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *xpos* or *ypos* is outside -32,768 to 32,767 after rounding, and inside the range of a **Long**, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*; twinBASIC raises none.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *helpfile* is given without *context*, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *context* is given without *helpfile*, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 <!-- /errors -->

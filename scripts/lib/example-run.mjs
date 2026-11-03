@@ -12,7 +12,16 @@
 //
 // The probes for all of it are in example-batches.mjs's `runProbes`.
 
-import { HIDDEN_MARKER, RUN_MARKER, partOf } from "./tb-fences.mjs";
+import {
+  ARCH_KEY,
+  ARCHES,
+  CONCAT_KEY,
+  HIDDEN_MARKER,
+  PROBE_MARKER,
+  RUN_MARKER,
+  archesOf,
+  partOf,
+} from "./tb-fences.mjs";
 import { logicalLines } from "./twin-api.mjs";
 
 /** The generated module, Sub and file that call every run sample. */
@@ -61,6 +70,19 @@ export function runFenceProblem(content) {
  * null when it may (or does not ask to). The fence has its slot already.
  */
 export function runRefusal(fence) {
+  if (fence.keys?.has(ARCH_KEY)) {
+    if (!fence.flags?.has(RUN_MARKER)) {
+      return {
+        message: `${ARCH_KEY}= names the architectures a \`${RUN_MARKER}\` sample is run in`,
+        detail: "a sample that is only compiled is compiled the same for either target",
+      };
+    }
+    if (fence.keys.has("projname") || fence.keys.has(CONCAT_KEY)) {
+      return {
+        message: `${ARCH_KEY}= is for a sample that is run on its own, not a member of a projname= or ${CONCAT_KEY}= group`,
+      };
+    }
+  }
   if (!fence.flags?.has(RUN_MARKER)) return null;
   if (fence.flags.has(HIDDEN_MARKER)) {
     return {
@@ -82,6 +104,52 @@ export function runRefusal(fence) {
   }
   const problem = runFenceProblem(fence.content);
   return problem ? { message: `a \`${RUN_MARKER}\` sample ${problem}` } : null;
+}
+
+/**
+ * Whether a fence marked `probe` is one, as a finding's message and detail, or
+ * null. A probe is a sample of its own that the reader never sees, so it is not
+ * `hidden` context too, and it has the `id=` a marker names it by.
+ */
+export function probeRefusal(fence) {
+  if (!fence.flags?.has(PROBE_MARKER)) return null;
+  if (fence.flags.has(HIDDEN_MARKER)) {
+    return {
+      message: `\`${PROBE_MARKER}\` and \`${HIDDEN_MARKER}\` contradict each other`,
+      detail: "a probe is a sample of its own; hidden context only travels with the page's samples",
+    };
+  }
+  if (!fence.keys?.has("id")) {
+    return {
+      message: `a \`${PROBE_MARKER}\` has an id=`,
+      detail: "the marker beside the statement it checks names it: <!-- test: sample <id> -->",
+    };
+  }
+  return null;
+}
+
+/**
+ * The run list split by architecture: what is run in win32, and a copy of each
+ * run sample that asks for win64 (`arch=`), `<id>@win64`, a sample of its own
+ * that is batched apart and built into projects of that target. The hidden
+ * context and the staged files of those samples' pages are copied with them.
+ * A run sample that names win64 alone is left out of the win32 list; the rest
+ * of the list, a group's members that are not run included, stays in it.
+ *
+ * @returns {{win32: object[], win64: object[]}}  each copy carries `arch` and
+ *   `baseId`, the id of the fence it copies
+ */
+export function splitArches(list) {
+  const [win32, win64] = ARCHES;
+  const asks = (f) => isRunFence(f) && archesOf(f).includes(win64);
+  const pages = new Set(list.filter(asks).map((f) => f.rel));
+  const travels = (f) => f.isResource || f.flags?.has(HIDDEN_MARKER);
+  return {
+    win32: list.filter((f) => !isRunFence(f) || archesOf(f).includes(win32)),
+    win64: list
+      .filter((f) => asks(f) || (travels(f) && pages.has(f.rel)))
+      .map((f) => ({ ...f, id: `${f.id}@${win64}`, baseId: f.id, arch: win64 })),
+  };
 }
 
 /**

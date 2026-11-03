@@ -333,10 +333,10 @@ Module LayoutTests
         Dim layout As cConsoleLayout = New cConsoleLayout(con)
         On Error Resume Next
         layout.CreateGrid 0, 2, "c"
-        Expect.AreEqual -2147467259, Err.Number, "Err.Number of CreateGrid with 0 columns"
+        Expect.AreEqual 9, Err.Number, "Err.Number of CreateGrid with 0 columns"
         Err.Clear
         layout.CreateGrid 2, 0, "c"
-        Expect.AreEqual -2147467259, Err.Number, "Err.Number of CreateGrid with 0 rows"
+        Expect.AreEqual 9, Err.Number, "Err.Number of CreateGrid with 0 rows"
         On Error GoTo 0
         Set layout = Nothing
         Set con = Nothing

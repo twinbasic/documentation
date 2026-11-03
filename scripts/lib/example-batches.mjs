@@ -21,6 +21,7 @@ import {
   CONCAT_KEY,
   HIDDEN_MARKER,
   MARKER,
+  PROBE_MARKER,
   RUN_MARKER,
   SLOTS,
   classify,
@@ -39,7 +40,9 @@ import {
   judgeOutput,
   parseRun,
   partitionRun,
+  probeRefusal,
   runRefusal,
+  splitArches,
 } from "./example-run.mjs";
 
 /** check_examples.mjs's defaults for `--jobs` and `--batch`, which the probes batch with. */
@@ -68,6 +71,8 @@ export const TEMPLATE_BASE = {
   "vb-private": "console",
   "cc-private": "packages",
   "wnc-private": "packages",
+  "wnc-form": "packages",
+  "activex-control": "console",
   "cef-private": "cef",
   implicit: "console",
   form: "console",
@@ -214,11 +219,17 @@ function unitKey(fence) {
   return fence.keys.get("projname") ? `@${fence.keys.get("projname")}` : `#${fence.id}`;
 }
 
+/** A sample that declares a [RunAfterBuild] Sub, of which a project may hold one (TB5114). */
+export const DECLARES_HOOK = /\[\s*RunAfterBuild\b/i;
+
 /**
  * `alone`, given a unit's fences, says whether the unit is to be built in a
  * project of its own with no template Main (`noMain` on the batch): a run that
  * builds passes one for a unit declaring its own `Sub Main`, because a build,
- * unlike a compile, fails on two.
+ * unlike a compile, fails on two. A unit that declares a [RunAfterBuild] Sub
+ * always gets a project of its own, with the template's Main: two of them in a
+ * batch are TB5114, and where a batch ends is no guard, since a new sample on
+ * any page moves it.
  */
 export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_JOBS, alone = null } = {}) {
   // A `hidden` fence is not a unit of its own: it is the PAGE's context, and
@@ -295,7 +306,7 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
       // written by hand, so there are never many.
       // A unit `alone` picks gets one too, built without the template's Main.
       const solo = !!alone?.(members);
-      if (key.startsWith("@") || solo) {
+      if (key.startsWith("@") || solo || members.some((f) => DECLARES_HOOK.test(f.content))) {
         const own = new Set(names);
         for (const rel of pages) for (const n of hiddenNamesFor(rel)) own.add(n);
         batches.push({
@@ -1179,6 +1190,18 @@ const INFO_PROBES = [
     (p) => p.flags.has(MARKER) && p.flags.has(HIDDEN_MARKER),
   ],
   ["another language is untouched", "js", (p) => p.lang === "js"],
+  [
+    `${PROBE_MARKER} implies ${MARKER}, and is not run unless it says so`,
+    `tb ${PROBE_MARKER} id=p`,
+    (p) => p.flags.has(MARKER) && p.flags.has(PROBE_MARKER) && !p.flags.has(RUN_MARKER) && !p.bad.length,
+  ],
+  [
+    "two architectures",
+    `tb ${RUN_MARKER} arch=win32,win64`,
+    (p) => p.keys.get("arch") === "win32,win64" && !p.bad.length,
+  ],
+  ["an unknown architecture is refused", `tb ${RUN_MARKER} arch=win65`, (p) => p.bad.length === 1],
+  ["an architecture named twice is refused", `tb ${RUN_MARKER} arch=win64,win64`, (p) => p.bad.length === 1],
 ];
 
 /**
@@ -1449,6 +1472,15 @@ export async function runProbes(say) {
   const soloShape = solo.map((b) => `${b.fences.map((f) => f.id)}${b.noMain ? "!" : ""}`).join(" ");
   if (soloShape !== "s2! s1,s3" && soloShape !== "s1,s3 s2!") {
     failures.push(`batching: a unit alone picks -> ${soloShape}, want s2 alone and marked`);
+  }
+  const hook = { content: "[RunAfterBuild]\nSub Hook()\nEnd Sub\n" };
+  const hooks = makeBatches([{ ...fake("h1"), ...hook }, { ...fake("h2"), ...hook }, fake("p1"), fake("p2")]);
+  const hookShape = hooks
+    .map((b) => `${b.fences.map((f) => f.id)}${b.noMain ? "!" : ""}`)
+    .sort()
+    .join(" ");
+  if (hookShape !== "h1 h2 p1,p2") {
+    failures.push(`batching: two samples with a [RunAfterBuild] -> ${hookShape}, want each alone, with Main`);
   }
   const soleGroup = makeBatches([fake("g1", "g"), fake("g2", "g")])[0];
   if (splitBatch(soleGroup) !== null) failures.push("split: a projname group was cut in half");
@@ -1947,6 +1979,18 @@ export async function runProbes(say) {
     ],
     ["a plain statement sample", rfence('Debug.Print InStr(1, "abc", "b")   \' 2\n'), false],
     ["a fence that is not run", rfence('MsgBox "hi"\n', { flags: [MARKER] }), false],
+    ["an arch= on a run sample", rfence("Debug.Print 1\n", { keys: [["arch", "win32,win64"]] }), false],
+    ["an arch= on a sample that is not run", rfence("Dim x\n", { flags: [MARKER], keys: [["arch", "win64"]] }), true],
+    [
+      "an arch= on a group's member",
+      rfence("Debug.Print 1\n", {
+        keys: [
+          ["arch", "win64"],
+          ["projname", "g"],
+        ],
+      }),
+      true,
+    ],
   ]) {
     expect(
       !!runRefusal(f) === refused,
@@ -1958,6 +2002,35 @@ export async function runProbes(say) {
       "check_run runs statement samples (slot=sub) only",
     "run refusal: a non-sub slot does not say what check_run runs",
   );
+  // A probe: a sample of its own with an id, never hidden context too.
+  for (const [name, f, refused] of [
+    ["a probe with an id", rfence("Dim x\n", { flags: [MARKER, PROBE_MARKER], keys: [["id", "p"]] }), false],
+    ["a probe with no id", rfence("Dim x\n", { flags: [MARKER, PROBE_MARKER] }), true],
+    ["a hidden probe", rfence("Dim x\n", { flags: [MARKER, PROBE_MARKER, HIDDEN_MARKER], keys: [["id", "p"]] }), true],
+    ["a sample that is no probe", rfence("Dim x\n", { flags: [MARKER] }), false],
+  ]) {
+    expect(
+      !!probeRefusal(f) === refused,
+      `probe refusal: ${name} -> ${probeRefusal(f)?.message ?? "accepted"}, want ${refused ? "refused" : "accepted"}`,
+    );
+  }
+  // The run list by architecture: a win64 copy of each sample that asks, with
+  // its page's hidden context; one that asks for win64 alone leaves win32.
+  {
+    const both = rfence("Debug.Print 1\n", { id: "A.md#1", keys: [["arch", "win32,win64"]] });
+    const only64 = { ...rfence("Debug.Print 2\n", { id: "A.md#2", keys: [["arch", "win64"]] }) };
+    const plain = { ...rfence("Debug.Print 3\n", { id: "B.md#1" }), rel: "B.md" };
+    const ctxA = { ...rfence("Dim c\n", { id: "A.md#3", flags: [MARKER, HIDDEN_MARKER] }), rel: "R.md" };
+    const ctxB = { ...rfence("Dim d\n", { id: "B.md#2", flags: [MARKER, HIDDEN_MARKER] }), rel: "B.md" };
+    const { win32, win64 } = splitArches([both, only64, plain, ctxA, ctxB]);
+    const ids = (list) => list.map((f) => f.id).join(",");
+    expect(
+      ids(win32) === "A.md#1,B.md#1,A.md#3,B.md#2" &&
+        ids(win64) === "A.md#1@win64,A.md#2@win64,A.md#3@win64" &&
+        win64.every((f) => f.arch === "win64" && f.baseId === f.id.replace("@win64", "")),
+      `architectures: win32 ${ids(win32)}, win64 ${ids(win64)}`,
+    );
+  }
 
   // What a fence says it prints, each line with its place on the page: the
   // fence opens at page line 10, so its first line is page line 11.
@@ -2285,6 +2358,12 @@ export async function runProbes(say) {
       !formStage.includes(standIn) &&
       consoleStage.filter((l) => l !== standIn).join("\n") === formStage.join("\n"),
     "templates: the form template's stage set is not the console's less `Public Form1 As Form`",
+  );
+  const packagesStage = declarationsOf(readTemplate("packages", "tbxStage.twin"));
+  const wncFormStage = declarationsOf(readTemplate("wnc-form", "tbxStage.twin"));
+  expect(
+    packagesStage.filter((l) => l !== standIn).join("\n") === wncFormStage.join("\n"),
+    "templates: the wnc-form template's stage set is not the packages template's less `Public Form1 As Form`",
   );
   const formClass = readTemplate("form", "Form1.twin");
   const formDesigner = JSON.parse(readTemplate("form", "Form1.tbform"));

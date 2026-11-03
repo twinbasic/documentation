@@ -10,6 +10,7 @@ index: static library
 
 Links compiled C code from `.obj`, `.lib` and `.a` files into the program, which calls its functions through **Declare** statements and needs no DLL beside it.
 
+<!-- test: static links-win32, static links-win64, static refused-win32, static refused-win64, static sqlite-win32, static sqlite-win64, static detours-win32, static detours-win64 -->
 > [!NOTE] BETA 1034
 > Static linking is experimental. It links code that needs nothing from the C runtime library beyond the few functions twinBASIC provides, and nothing from the C++ runtime. The SQLite amalgamation and SlimDetours link and work; most other C projects do not link without changes. [What can be linked](#what-can-be-linked) lists the limits.
 
@@ -22,7 +23,7 @@ A program uses a library in three steps:
 A package can carry the files and the statements, so that a project that references it needs neither; the [DetoursLib](../../tB/Packages/Contributed/DetoursLib/) package links SlimDetours this way.
 
 ## Syntax
-{: index="Import Library" }
+{: index="Import Library; TB5137" }
 
 **Import Library** "*path*" **As** *namespace* [ **Link** "*dependency*" [ **,** "*dependency*" ] ... ]
 
@@ -63,6 +64,8 @@ The parameters work as they do for a DLL function, and **AddressOf** passes a tw
 ### Calling conventions and names
 
 The default calling convention of a C function is `__cdecl`, so its **Declare** names **CDecl**. A **Declare** without a convention keyword is stdcall (see [Calling Conventions](API-Declarations#calling-conventions)); a 64-bit build has only one convention, and ignores the keyword.
+
+In a 32-bit build, a call through a **Declare** that names the wrong convention raises run-time error -353703419 (`&HEAEAEA05`), *Bad DLL definition. Stack corruption detected.* The call returns no value, the stack is put right, and [**On Error**](../../tB/Core/On-Error) can trap the error.
 
 In a 32-bit build, the C compiler decorates the names in the object file. It puts an underscore before the name of a `__cdecl` or `__stdcall` function, which a **Declare** leaves out: twinBASIC adds it. A `__stdcall` function's name also ends with `@` and the size of its arguments, each rounded up to 4 bytes, and that suffix goes into **Alias**. `int __stdcall add_std(int a, short b)` is `_add_std@8` in a 32-bit file and `add_std` in a 64-bit one:
 
@@ -105,9 +108,11 @@ Code links when every function it calls is in its own file or in one that its **
 - **Exception handling in a 32-bit build.** `__try` and `__except` need `__except_handler3`, which neither `"stdlib"` nor `"kernel32"` nor `"ntdll"` defines.
 - **Whole-program optimisation.** An object file compiled with `/GL` holds no machine code, and is compile error TB5059.
 
+<!-- test: bug static-seh-handler-not-run -->
 > [!WARNING] BETA 1034
 > In a 64-bit build, code that uses `__try` and `__except` links without an error, but its handler never runs: an exception that it should handle ends the program, in the IDE and in a built exe.
 
+<!-- test: bug import-library-import-lib-crash -->
 > [!WARNING] BETA 1034
 > An **Import Library** statement that names an import library crashes the compiler, in either architecture. An import library is a `.lib` that lists the functions of a DLL and holds no code, such as the Windows SDK's `user32.lib`. Name a Windows DLL in the **Link** list instead.
 

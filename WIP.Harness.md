@@ -707,6 +707,15 @@ Rules it follows:
   form loaded returns too: the IDE then prints `[DEBUGGER] Waiting for remaining forms to
   close...` after the sentinel, which `sentinelIndex` allows and `tbrun` prints (BETA
   1010). `check_twin_parsers` has fixtures for both.
+- **An unhandled error in plain code stops the run at the IDE's error panel**, which waits
+  for a person, so `captureRun` ends the wait once the panel is open and `tbrun` names the
+  error (exit 5). The page holds the panel's text in `activeDebuggingErrorHeader` and
+  `activeDebuggingError`; `clearDebuggingCallframe` resets `activeDebuggingFrameId` and not
+  the text, so a set frame is what says the panel is open (BETA 1034). Before this,
+  `tbrun` reported such a probe that printed nothing first as a build that "did not reach
+  [BUILD] Executing": the build, the probe's `Debug.Cls` and the stop all fell between two
+  polls, the console read as empty before and after, and the erased Executing line was
+  looked for only when the console changed. It is now looked for on every poll of the build.
 - **`tbrun --exe` exits 6 when the exe exited with a code other than 0**, when the event
   log records that it faulted, when it opened a box, or when it was still running at
   `--timeout` and was ended. A run that would exit 5 exits 5 first, since the
@@ -786,7 +795,9 @@ an `Integer` and `Err.Number` a `Long`. The tests here use `Assert.Strict`.
 **A compile-time defect is a compile case**: a line ending `' CASE <Name>: <codes>`,
 `: error` or `: none`, judged against the diagnostics of the compile (`judgeCompiles`). `error`
 is for a defect whose fix may choose its own diagnostic, so the case does not fail on a code it
-cannot predict. A project with compile errors runs none of its `[TestCase]`s.
+cannot predict. A project with compile errors runs none of its `[TestCase]`s. A comment
+`' CASE <Name>: package <code> <file>:<line>` names a row of an embedded package's sources, since
+a package that does not compile has no line of the project's to end in a comment.
 
 ### Measuring LLVM
 

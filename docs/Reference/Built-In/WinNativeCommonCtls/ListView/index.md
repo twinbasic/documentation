@@ -205,8 +205,63 @@ The [**ImageList**](../ImageList/) used for small icons in **lvwSmallIcon**, **l
 
 Whether item-label text has an opaque background. A member of [**ListTextBackgroundConstants**](#listtextbackgroundconstants). Default: **lvwTransparent**. Changing it repaints the list at once. The opaque background is [**BackColor**](#backcolor), the color the list is already drawn in, so the two settings look the same.
 
-> [!NOTE] BETA 1005
+<!-- test: sample listview-textbackground, sample listview-picture -->
+> [!NOTE] BETA 1034
 > **TextBackground** has no visible effect: the control has no **Picture** property, the background image an opaque text background would hide.
+
+```tb probe check_build projname=listview-textbackground project=wnc-form slot=file id=listview-picture
+Module ListViewPicture
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function PrintWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr, ByVal flags As Long) As Long
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal cx As Long, ByVal cy As Long) As LongPtr
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal h As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal h As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function GetBitmapBits Lib "gdi32" (ByVal hBitmap As LongPtr, ByVal count As Long, ByRef bits As Any) As Long
+
+    ' The pixels of a window, as a string that equals another only when every pixel does.
+    Public Function PictureOf(ByVal hWnd As LongPtr) As String
+        Const W As Long = 200, H As Long = 120
+        Dim screen As LongPtr = GetDC(0)
+        Dim memory As LongPtr = CreateCompatibleDC(screen)
+        Dim bitmap As LongPtr = CreateCompatibleBitmap(screen, W, H)
+        Dim old As LongPtr = SelectObject(memory, bitmap)
+        PrintWindow hWnd, memory, 1
+        SelectObject memory, old
+        Dim bits() As Byte
+        ReDim bits(W * H * 4 - 1)
+        GetBitmapBits bitmap, W * H * 4, bits(0)
+        DeleteObject bitmap
+        DeleteDC memory
+        ReleaseDC 0, screen
+        PictureOf = bits
+    End Function
+End Module
+```
+
+```tb probe check_run projname=listview-textbackground project=wnc-form id=listview-textbackground
+Load Form1
+Form1.Show
+With Form1.ListView1
+    .View = lvwList
+    .ListItems.Add , , "Alpha"
+    .ListItems.Add , , "Beta"
+    .Refresh
+    DoEvents
+    Dim plain As String = PictureOf(.hWnd)
+    .TextBackground = lvwOpaque
+    .Refresh
+    DoEvents
+    Debug.Print PictureOf(.hWnd) = plain   ' True
+    .BackColor = vbRed
+    .Refresh
+    DoEvents
+    Debug.Print PictureOf(.hWnd) = plain   ' False
+End With
+Unload Form1
+```
 
 ### View
 {: .no_toc }

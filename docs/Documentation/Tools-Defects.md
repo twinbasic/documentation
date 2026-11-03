@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Tools-Defects
 # Defect Reproducers
 {: .no_toc }
 
-Builds and verifies the reproducer projects for twinBASIC defects, runs VB6 code to compare what twinBASIC does with what VB6 does, and reads and patches the IDE's own JavaScript to test a fix for an IDE defect. The command-line conventions every tool shares are under [Command-line conventions](Tools#command-line-conventions).
+Builds and verifies the reproducer projects for twinBASIC defects, runs VB6 code to compare what twinBASIC does with what VB6 does, checks again on a new build every callout labelled with an older one, and reads and patches the IDE's own JavaScript to test a fix for an IDE defect. The command-line conventions every tool shares are under [Command-line conventions](Tools#command-line-conventions).
 
 * TOC goes here
 {:toc}
@@ -169,6 +169,41 @@ Measures the run-time errors each documented procedure raises, and writes each r
 `run` and `messages` need twinBASIC, found as `tbrun` finds it, VB6, found as [`vb6run.mjs`](#vb6run) finds it, and 64-bit Microsoft Access, so they are outside every gate and outside CI, and are run by a person when a new BETA is installed. `generate` and `write` need none of them.
 
 Exit codes: **0** `run`, `messages`: every runtime agrees with the data; `generate`, `write`: done; **1** `run`, `messages`: a runtime disagrees with the data; **2** a refused command line, data with a problem, a runtime that could not be run or a probe that ended early, or a crash.
+
+## recheck_callouts.mjs
+{: #recheck-callouts }
+
+    node scripts/recheck_callouts.mjs [--only <regex>] [--kinds <list>] [--ide <path>] [--plan] [--dry-run] [--report <file>] [--from <report>]
+
+Checks again, on a new twinBASIC build, every callout labelled `BETA <n>` with an older `<n>`. Each such callout names what checks it in a marker on the line above it ([`check_callout_evidence.mjs`](Tools-Toolchain-Tests#check-callout-evidence) has the grammar and is its gate). The tool runs what the markers name, each thing once however many callouts name it, moves the label of each callout whose evidence all holds to the new build, and lists the rest for a person. A generated Common Errors section's callouts follow their data file, `errors/<name>.yml`: when the data holds, its `beta:` moves and [`errors.mjs write`](#errors) writes the sections again.
+
+The build is the IDE's: `--ide`, else `TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop. The checks run one after another, through the tool that owns each, since runs at once give false failures under load:
+
+| Item | Run by | Holds when |
+|---|---|---|
+| `lane <suite>:<lane>` | `ide_test.mjs` or `addin_test.mjs`, once for each suite with every lane named | the lane passes |
+| `bug <slug>` | [`bug_repro.mjs verify`](#bug-repro); a lane reproducer is judged from the same lane run, by the tests it names | the bug still reproduces |
+| `sample <id>` | [`check_examples.mjs --json`](Tools-Samples#check-examples), over the pages that hold the samples | the sample has no finding in each architecture it runs in |
+| `errors <name>` | `errors.mjs run`, for 32-bit and 64-bit twinBASIC | every case raises what the data says |
+| `llvm <mode>` | `test/llvm/run.mjs --only <mode>` | the mode prints what `expect.json` says |
+| `static <mode>` | `test/static-linking/run.mjs --only <mode>` | the mode finds what `expect.json` says |
+| a package's cases | [`package_tests.mjs --json`](Tools-Samples#package-tests) | each case is as documented |
+| `none`, a package's `probe` | nobody | never: a person checks it |
+
+A callout is relabelled only when every item of its marker holds. Otherwise it is listed under the worst of its items: **changed** (the evidence no longer says what the callout says, as when a bug no longer reproduces: read the callout, then fix or remove it), **not checked** (a check could not be run or its report read), or **by hand**. Each tool's whole output is kept under `%TEMP%\recheck-callouts\<pid>\`, and the list names the file for each check that did not hold.
+
+| Option | Effect |
+|---|---|
+| `--plan` | Prints the callouts selected and the checks they need, and runs nothing. |
+| `--dry-run` | Runs the checks and changes no file. |
+| `--only <regex>` | Only the pages whose path under `docs/` matches. |
+| `--kinds <list>` | Runs only these kinds of check, comma-separated: `bug`, `lane`, `sample`, `errors`, `llvm`, `package`. A callout that needs another kind is not relabelled. |
+| `--report <file>` | Writes what was run and decided as JSON. |
+| `--from <file>` | Reads a report of an earlier run on the same build, and runs again only the checks that did not hold there. A result that surprises is run again alone before it is believed. |
+
+It needs a twinBASIC install, and a Professional or Ultimate licence when a callout names an `llvm` mode, so it is outside every gate and outside CI, and is run by a person when a new BETA is installed. A run over every callout takes hours, most of them in the reproducers and the package tests: `--kinds` and `--only` cut it into parts.
+
+Exit codes: **0** every selected callout and data file held and was relabelled, or `--plan`; **1** a callout or a data file is listed for a person; **2** a refused command line, no IDE, or a crash.
 
 ## ide_js.mjs
 {: #ide-js }

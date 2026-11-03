@@ -95,8 +95,28 @@ export const RUN_MARKER = "check_run";
  */
 export const HIDDEN_MARKER = "hidden";
 
+/**
+ * A sample the reader never sees: builder/render.mjs emits nothing for it, as it
+ * does for `hidden`, but it is a sample of its own, built (and with `check_run`
+ * run and judged) as any other is, where a hidden fence is context that only
+ * travels with the page's samples.
+ *
+ * It checks a statement the page makes in prose or in a callout, whose code
+ * would tell the reader nothing the statement does not: that a Declare of
+ * msvbvm60's GetMem4 works in a 64-bit build (`check_run arch=win32,win64`), or
+ * that a conversion draws no warning (`[EnforceErrors(TB0021)]` in a sample
+ * that must compile), say. It has an `id=`, and a marker names it beside the
+ * statement it checks (`<!-- test: sample <id> -->`, scripts/lib/test-markers.mjs),
+ * which check_callout_evidence.mjs requires: a check nobody can see, tied to
+ * nothing a reader can see, would be a check of nothing.
+ */
+export const PROBE_MARKER = "probe";
+
+/** The architectures a run sample may ask for with `arch=`; the first is the default. */
+export const ARCHES = ["win32", "win64"];
+
 /** Flags with no value. */
-const FLAGS = new Set([MARKER, RUN_MARKER, HIDDEN_MARKER]);
+const FLAGS = new Set([MARKER, RUN_MARKER, HIDDEN_MARKER, PROBE_MARKER]);
 
 /**
  * Keys that take a value.
@@ -116,7 +136,21 @@ const KEYS = new Set([
   "resource",
   "inert",
   "concat_group",
+  "arch",
 ]);
+
+/**
+ * `arch=win32,win64` builds and runs a run sample for each architecture it
+ * names, in a project of that target; without it a sample is built for win32
+ * only, as a new project is. A statement that a call works in a 64-bit build
+ * is checked by a sample with `arch=win32,win64`, or `arch=win64` alone when
+ * the 32-bit half says nothing. Only a run sample may ask: a sample that is
+ * only compiled is compiled the same for either target.
+ */
+export const ARCH_KEY = "arch";
+
+/** The architectures a fence is built for: its `arch=`, else the default. */
+export const archesOf = (fence) => fence.keys?.get(ARCH_KEY)?.split(",") ?? [ARCHES[0]];
 
 /**
  * `concat_group=<name>` joins fences into ONE compilation unit, in page order,
@@ -290,12 +324,19 @@ export function parseInfo(info) {
       bad.push(part);
       continue;
     }
+    if (key === ARCH_KEY) {
+      const arches = value.split(",");
+      if (!arches.every((a) => ARCHES.includes(a)) || new Set(arches).size !== arches.length) {
+        bad.push(part);
+        continue;
+      }
+    }
     keys.set(key, value);
   }
-  // These imply a build: a hidden fence that is not compiled is text nobody can
-  // read and nothing checks, and half a joined construct is not a unit anybody
-  // could have marked on its own.
-  if (flags.has(RUN_MARKER) || flags.has(HIDDEN_MARKER)) flags.add(MARKER);
+  // These imply a build: a hidden fence or a probe that is not compiled is text
+  // nobody can read and nothing checks, and half a joined construct is not a
+  // unit anybody could have marked on its own.
+  if (flags.has(RUN_MARKER) || flags.has(HIDDEN_MARKER) || flags.has(PROBE_MARKER)) flags.add(MARKER);
   if (keys.has(CONCAT_KEY)) flags.add(MARKER);
   return { lang, flags, keys, bad };
 }

@@ -45,7 +45,7 @@ Syntax: *path* **= GraphicsPath(** *points*(), *types*() [, *fillMode* ] **)**
 
 These forms create a path from existing point data: a [**PathData**](PathData), an array of [**TypedPoint**](Types/TypedPoint), or an array of **GpPointF** or **GpPoint** together with an array of [**PathPointType**](Types/PathPointType) of the same length.
 
-<!-- test: Br_PathTests.New_PathData_CreatesThePath, Br_PathTests.New_TypedPoints_CreatesThePath, Br_PathTests.New_PointsAndTypes_CreatesThePath, Br_PathTests.New_GpPointsAndTypes_CreatesThePath, Br_PathTests.GetPoints_EmptyPath_RaisesUnspecifiedError -->
+<!-- test: Br_PathTests.New_PathData_CreatesThePath, Br_PathTests.New_TypedPoints_CreatesThePath, Br_PathTests.New_PointsAndTypes_CreatesThePath, Br_PathTests.New_GpPointsAndTypes_CreatesThePath, Br_PathTests.GetPoints_EmptyPath_RaisesSubscriptOutOfRange -->
 > [!WARNING] 0.9.45.0
 > The forms that take point data do not create the path they are given. The call reports no error, and the path is empty: **PointCount** is 0, and a call of **GetPoints** on it raises an error. With an array of **GpPoint** the call records **OutOfMemory** in a 64-bit program and stops a 32-bit program with an access violation. Build the path with the **Add** methods instead.
 
@@ -640,9 +640,9 @@ Syntax: *path*.**GetPoints(** *points*() **)** **As GpStatus**
 *points*
 : *required* A dynamic array of **GpPointF** or **GpPoint**. The call sizes it to the number of points, with indexes 1 to **PointCount**, and fills it.
 
-<!-- test: Br_PathTests.GetPoints_EmptyPath_RaisesUnspecifiedError -->
+<!-- test: Br_PathTests.GetPoints_EmptyPath_RaisesSubscriptOutOfRange -->
 > [!NOTE] 0.9.45.0
-> On an empty path the call raises run-time error -2147467259, *Unspecified error*. Check **PointCount** first.
+> On an empty path the call raises run-time error 9, *Subscript out of range*. Check **PointCount** first.
 
 ### GetTypes
 {: .no_toc }
@@ -652,9 +652,9 @@ Syntax: *path*.**GetTypes(** *types*() **)** **As GpStatus**
 *types*
 : *required* A dynamic array of [**PathPointType**](Types/PathPointType). The call sizes it to the number of points, with indexes 1 to **PointCount**, and fills it.
 
-<!-- test: Br_PathTests.GetTypes_EmptyPath_RaisesUnspecifiedError -->
+<!-- test: Br_PathTests.GetTypes_EmptyPath_RaisesSubscriptOutOfRange -->
 > [!NOTE] 0.9.45.0
-> On an empty path the call raises run-time error -2147467259, *Unspecified error*. Check **PointCount** first.
+> On an empty path the call raises run-time error 9, *Subscript out of range*. Check **PointCount** first.
 
 <!-- test: Br_PathTests.GetPoints_ListsThePointsFromIndexOne -->
 ```tb check_build check_run

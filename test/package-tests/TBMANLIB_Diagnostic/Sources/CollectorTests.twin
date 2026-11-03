@@ -19,6 +19,31 @@ Module CollectorTests
         Expect.Done
     End Sub
 
+    ' The zone is TimeZoneStandIn's, so these two say the same in every month and on every machine.
+    [TestCase]
+    Public Sub LocaleCollector_InStandardTime_ReportsTheOffsetOfTheClock()
+        Expect.Begin
+        Expect.AreEqual "UTC+1", TimezoneItem(False), "Timezone item where the clock is at UTC+1, in standard time"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LocaleCollector_InSummerTime_ReportsTheOffsetOfTheClock()
+        Expect.Begin
+        Expect.AreEqual "UTC+2", TimezoneItem(True), "Timezone item where the clock is at UTC+2, in summer time"
+        Expect.Done
+    End Sub
+
+    Private Function TimezoneItem(ByVal Summer As Boolean) As String
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        TimeZoneStandIn.Start Summer
+        On Error Resume Next
+        Set r = Reports.CollectFrom(New LocaleCollector)
+        On Error GoTo 0
+        TimeZoneStandIn.Finish
+        Return Reports.ValueOf(r, "Timezone")
+    End Function
+
     ' ---- CPUInfoCollector
 
     [TestCase]
@@ -55,7 +80,7 @@ Module CollectorTests
         Next i
         Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
         Set r = Reports.CollectFrom(New NetworkInfoCollector)
-        Expect.AreEqual real, Reports.CountKeysLike(r, "Adapter #*"), "number of Adapter items in the full report, for " & real & " adapters that GetAdaptersInfo returns"
+        Expect.IsTrue Reports.CountKeysLike(r, "Adapter #*") = real, "the full report has an Adapter item for each adapter that GetAdaptersInfo returns"
         Expect.Done
     End Sub
 

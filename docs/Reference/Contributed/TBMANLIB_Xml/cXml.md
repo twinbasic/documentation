@@ -1422,7 +1422,7 @@ Close #f
 Debug.Print y.LoadFromFile(path)
 Kill path
 ' Output:
-' LoadFromFile failed: Unspecified error
+' LoadFromFile failed: Subscript out of range
 ' False
 ' True 0
 ' ISO-8859-1 233

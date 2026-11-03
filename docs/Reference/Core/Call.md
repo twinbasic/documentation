@@ -32,8 +32,22 @@ To pass a whole array to a procedure, use the array name followed by empty paren
 
 Enclosing a single argument in its own parentheses, as in `MyProc (x)`, makes it an expression: the procedure receives a copy, even for a **ByRef** parameter. See [Passing arguments ByRef and ByVal](Sub#passing-arguments-byref-and-byval).
 
-> [!WARNING] BETA 1010
-> With [LLVM](../../LLVM/Getting-Started), a call that passes an argument with `ByVal` for a `ByRef` parameter of a twinBASIC procedure, such as `Take ByVal 0&` for `Sub Take(ByRef h As Long)`, does not compile: the build prints an `[LLVM] codegen error`, and the procedure that contains the call does not run. Without LLVM the call passes a NULL pointer. VB6 refuses the call with the error *Type mismatch*. Pass a variable for the parameter instead.
+A call can pass an argument with `ByVal` for a `ByRef` parameter of a twinBASIC procedure. The procedure then receives the value as the parameter's address, so `ByVal 0&` passes a NULL pointer:
+
+```tb check_build projname=call-byval-null
+Public Function ArgumentAddress(ByRef h As Long) As LongPtr
+    ArgumentAddress = VarPtr(h)
+End Function
+```
+
+```tb check_build check_run projname=call-byval-null
+Dim n As Long
+Debug.Print ArgumentAddress(n) <> 0     ' True
+Debug.Print ArgumentAddress(ByVal 0&)   ' 0
+```
+
+> [!NOTE]
+> VB6 refuses `ByVal` on an argument for a `ByRef` parameter of a procedure written in Basic, with the error *Type mismatch*.
 
 ### Example
 

@@ -33,7 +33,6 @@ After **Show** returns, the **ListBox** scrolls horizontally when any item is wi
 <!-- test: ShowTests.Show_ItemAddedLaterIsNotMeasured, ShowTests.Show_AgainMeasuresTheNewItems -->
 > [!IMPORTANT] timeless
 > **Show** must be called after the **ListBox** has been populated. If items are added or removed after the call, the horizontal extent is not updated automatically. Call **Show** again on the same control to recalculate the extent for the updated item list.
-<!-- /test -->
 
 <!-- test: UnShowTests.Terminate_RemovesTheSubclass, UnShowTests.UnShow_RemovesTheSubclass -->
 > [!NOTE] timeless

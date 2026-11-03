@@ -13,6 +13,8 @@ test/package-tests/
       <Fixture>.twin       [TestFixture] modules of [TestCase] Subs
       RunAll.twin          generated: Sub Main runs every case
     expect.json            how each case fails on the documented version
+    compile/               optional: compile cases that expect an error
+    exe/                   optional: cases that run in a built exe, and a server.mjs for them
     probe/                 optional: a harness for what only a built program shows
 ```
 
@@ -66,9 +68,22 @@ End Module
   every other case. `package_tests.mjs` stages `compile/` with the package embedded and judges
   its cases with the rest; a marker names them as `compile <Name>`, as any compile case. It is
   not published: the published project is `Sources/` only, and compiles.
+- **A package that does not compile says so in compile cases too**: a comment
+  `' CASE <Name>: package TB5001 Libs/cThing.twin:21` passes when the compiler reports that code at
+  that line of a file under the package's `Sources/`. `win64 package ...` (or `win32`) runs the
+  case for that architecture alone, even one `arches` leaves out (TBMANLIB, in a 64-bit build). A
+  package with no test project (ArrayListLib, WinReg) has `compile/` and nothing else;
+  `package_tests.mjs` runs it by name, and `--all-packages` includes it.
 - **Resources** a case reads go in the package folder's `Resources/`, laid out as an exported
   project keeps them (`<TYPE>/<NAME>`, such as `BINARY/#101`). The runner stages them and the
   published project carries them, byte for byte.
+- **A claim the IDE's own process changes goes in the package folder's `exe/`**: `[TestCase]` Subs
+  written as any others, which `package_tests.mjs` builds and runs with `tbrun --exe`, in file
+  order in one process, and judges with the rest, under the same names in `expect.json` and in the
+  markers (GdiPlus: the IDE has already started GDI+). `Debug.Print` writes nothing there. A
+  `server.mjs` in the folder is started first, prints its port on its first line, and the exe finds
+  the port in `PACKAGE_TEST_PORT` (TBMANLIB: an HTTPS server whose certificate fails every check).
+  It is not published, and it needs no `RunAll`.
 - A claim that needs a dialog operated or a form shown goes in the package's `probe/` harness, as
   TBMANLIB_Dialog's and xCalendar's do.
 
@@ -96,6 +111,9 @@ A search that backtracks without end, such as `(a+)+b` on thirty `a`, gives up i
 
 An item is `Fixture.Sub`, `compile <Name>`, `probe <id>` (a scenario of `probe/`), or
 `none -- <reason>` for a callout no program can check (a statement about the IDE, a licence).
+A marker may also name what any page's marker can, such as `bug <slug>` for the reproducer of a
+twinBASIC defect behind a callout labelled `BETA <n>` (`scripts/lib/test-markers.mjs` has the
+grammar, and `scripts/check_callout_evidence.mjs` checks those items).
 `node scripts/check_package_tests.mjs`, in `test.bat`, fails when a callout has neither a marker
 nor a region around it, a region is not closed or opens inside another, an item names nothing, a
 case is named by no marker, a case does not start with `Expect.Begin` and end with `Expect.Done`,

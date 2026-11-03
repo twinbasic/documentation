@@ -52,7 +52,8 @@
 // test/harness.json missing or malformed -- 3 no output: the build produced none
 // in the console, or the probe ran and printed none after its last Debug.Cls -- 4 the
 // compiler crashed, or restarted twice, while compiling the project -- 5 the
-// probe ended before it returned, its output printed all the same -- 6 with
+// probe ended before it returned, or stopped at a run-time error it does not
+// handle, its output printed all the same -- 6 with
 // --exe, the exe exited with a code other than 0, the event log records that it
 // faulted, it opened a box, or it was still running at its limit; its
 // output, exit code, fault and boxes printed all the same -- 7 with --tests, a
@@ -257,8 +258,9 @@ Exit codes:
   3  no output: the console held none, or the probe printed none
      after its last Debug.Cls
   4  the compiler crashed, or restarted twice, while compiling the project
-  5  the probe ended before it returned (End, or an error that ended the run); what
-     it printed is printed all the same
+  5  the probe ended before it returned (End, or an error that ended the run), or
+     stopped at a run-time error it does not handle, which is named; what it
+     printed is printed all the same
   6  --exe: the exe exited with a code other than 0, the event log records that it
      faulted, it opened a box (closed by tbrun, as an unhandled error opens one), or it
      was still running at its limit and was ended; its output, exit code, fault and
@@ -717,6 +719,7 @@ if (values.json) {
         arch,
         lines: shown,
         returned,
+        stopped: capture.stopped,
         licence,
         llvmCache: leaseReport(llvmLease),
         exeRun,
@@ -739,6 +742,13 @@ if (values.json) {
   }
   // Only under --keep, where the pid is still alive and therefore actionable.
   if (values.keep && ideRun?.pid) for (const l of keptIdeLines(ideRun.pid)) console.log(l);
+}
+// An error the probe does not handle stops it at the IDE's error panel, which waits for a
+// person, so the probe never returns; the panel's text says why (captureRun).
+if (capture.stopped && returned !== true) {
+  const s = capture.stopped;
+  const where = s.file ? `, in ${s.file}${s.line === null ? "" : ` at line ${s.line}`}` : "";
+  die(5, `tbrun: the probe stopped at a run-time error it does not handle${where}: ${s.header}: ${s.error}`);
 }
 if (returned === false) {
   die(

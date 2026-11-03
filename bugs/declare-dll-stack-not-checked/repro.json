@@ -1,0 +1,15 @@
+{
+  "mode": "run",
+  "arch": "win32",
+  "exe": true,
+  "expect": {
+    "exit": 5,
+    "output": [
+      "^add\\(2, 3\\): error -353703419, Bad DLL definition\\.  Stack corruption detected\\.$",
+      "^returned from CallStatic$",
+      "^labs\\(-7\\) = 7$",
+      "^--- exe: exit -1073741819 \\(0xC0000005\\)$"
+    ],
+    "absent": ["^returned from CallDll$", "^labs\\(-7\\): error"]
+  }
+}

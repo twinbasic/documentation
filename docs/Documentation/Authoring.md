@@ -496,6 +496,9 @@ generated `Sub`. These keys override it when it guesses wrong:
 | `check_build` | Compile this sample. |
 | `check_run` | Compile it, build it and run it, then compare what it prints with what the page says it prints, as described below. Only a statement sample (`slot=sub`) can be run. A sample that raises an error, does not return, or prints something else is a finding. A sample that calls `MsgBox` or `InputBox`, or contains an `End` statement, is refused without being built. |
 | `hidden` | Context for the page's other samples that the reader never sees. Implies `check_build`. See below. |
+| `probe` | A sample of its own that the reader never sees, which checks a statement the page makes. Implies `check_build`; add `check_run` to run it. It needs an `id=`. See below. |
+| `id=<name>` | A name for the sample that stays when the page changes, which a [marker](#a-callout-names-what-checks-it) names it by. |
+| `arch=win32,win64` | Run a `check_run` sample in a 32-bit and in a 64-bit project, or with `arch=win64` in a 64-bit one only. Without it a sample runs in a 32-bit project. Not for a member of a `projname` or `concat_group` group. |
 | `slot=file` / `slot=module` / `slot=sub` / `slot=class` / `slot=method` | What to generate around it, when the inference is wrong. `class` and `method` are the same two shapes inside a `Class` rather than a `Module`, for code-behind. The report names the slot it used. |
 | `inherits=<class>` | The sample is code-behind *of* something --- `inherits=Form`, `inherits=MDIForm`. The wrapper becomes a `Class` that inherits it, so `Me.Caption` resolves against the real type. |
 | `project=<name>` | Which template project to build into. The default follows the page: a page under `Reference/Built-In/` gets the one that references every package. `project=form` is for a `check_run` sample that needs a real form, to draw on or to read a property of: the project has an empty `Form1`, and the checker unloads every form a sample leaves loaded. Every fence of a `projname` group names the same project. |
@@ -627,6 +630,39 @@ subject of a `With` that a leading-dot line depends on, or the `WithEvents` fiel
 event handler's name is built from. Hide what the reader brings from elsewhere: their own
 helper routines, the controls the form designer declares, and stand-ins for declarations
 that an external library provides.
+
+### A statement checked by a sample nobody sees
+
+A fence marked `probe` is rendered to nothing, as a `hidden` one is, but it is a sample of
+its own: it is compiled, and with `check_run` run, and judged like any other sample. It
+checks a statement the page makes in prose or in a callout, when the code that checks it
+would tell the reader nothing the statement does not. The FAQ says a `Declare` of
+msvbvm60's `GetMem4` works in a 64-bit build; a probe declares it and calls it in both
+architectures:
+
+````markdown
+<!-- test: sample msvbvm60-getmem4 -->
+A `Declare` of msvbvm60's `GetMem4` works in a 64-bit build too.
+<!-- /test -->
+
+```tb hidden slot=module
+Public Declare PtrSafe Sub GetMem4 Lib "msvbvm60" (ByVal Addr As LongPtr, RetVal As Long)
+```
+
+```tb probe check_run id=msvbvm60-getmem4 arch=win32,win64
+Dim l As Long, r As Long
+l = 7
+GetMem4 VarPtr(l), r
+Debug.Print r      ' 7
+```
+````
+
+A probe has an `id=`, and the marker around the statement names it, as
+[A callout names what checks it](#a-callout-names-what-checks-it) describes: `test.bat`
+fails on a probe no marker names, since a check nobody can see, tied to nothing a reader
+can see, checks nothing. A probe that must not compile takes `expect-error=` as any sample
+does, and one that must compile can turn a warning into an error with `[EnforceErrors]`,
+so that the warning, if it is drawn, fails the probe.
 
 ### One construct across several fences
 
@@ -898,19 +934,43 @@ Use one callout per concern, and only for genuine notes: plain "why this is usef
 A callout that is true of one twinBASIC build, or of one version of a package, says so in its label: the rest of the `[!TYPE]` line. The page shows each item of the label as a tag after the callout's title.
 
 ```md
-> [!WARNING] BETA 1005
-> **DateAdd** with the "m", "q" or "yyyy" interval does not stop at the end of a shorter month.
+> [!WARNING] BETA 1034
+> Given a *rate* of -1, **NPV** returns NaN (not a number) and raises no error.
 ```
 
-- `BETA 1005` --- true of that build, the usual label of a defect.
+- `BETA 1034` --- true of that build, the usual label of a defect.
 - `since BETA 984` --- true from that build on.
 - `1.0.0.4` --- true of that version of the package whose section the page is in, written with all four parts.
-- `1.6.151.1, BETA 1005` --- both, separated by a comma.
+- `1.6.151.1, BETA 1034` --- both, separated by a comma.
 - `timeless` --- true of every build and every version: a fact of Windows or COM, behaviour the package exists to reproduce, such as the Scripting Runtime's for a replacement of it, or a design decision the package's sources state. It stands alone, and the page shows no tag for it.
 
 The text then starts with the fact itself, not with "In twinBASIC BETA 1005, ..." or "In version 1.0.0.4, ...". If only part of a callout depends on the build, split it into two callouts. In a contributed package's section every callout has a label: the section's version for what the package does, `BETA <n>` for a fact of twinBASIC alone, or `timeless`. The build fails on a callout there without one, on any other label, and on a package version other than the one the section documents, its landing page's `indexed_from`. So when a section moves to a new version of its package, each callout labelled with the old one is checked again before the build passes. [`twin-index analyze`](Tools-Build#twin-index) lists those callouts, and after a new twinBASIC build, the callouts labelled with an older one.
 
 A page states what the product does, never what the documentation's own checking could or could not do. "The samples harness cannot capture a console" is a fact about this repository's tools, not about the package, and has no place in a published page. A claim nobody has been able to check is written as the source supports it, or left out.
+
+### A callout names what checks it
+
+A callout labelled `BETA <n>` names, in an HTML comment on the line above it, the program that checks what it says, so that the claim can be checked again on the next build without anyone remembering how it was checked the first time:
+
+```md
+<!-- test: bug lset-variant-destination-types -->
+> [!WARNING] BETA 1034
+> A **Variant** *stringvar* that holds a **Boolean** is aligned within `-1` or `0` ...
+```
+
+The marker goes on the line directly above the callout, with no blank line between, and marks that callout alone. The same comment anywhere else opens a region, which `<!-- /test -->` closes: the paragraphs and callouts between them are what its items check. Regions do not nest. Each item, separated by commas, is one of:
+
+| Item | Names |
+|---|---|
+| `bug <slug>` | The reproducer of a twinBASIC defect, under `bugs/<slug>/` or `bugs/filed/<slug>/`. It holds while the defect reproduces. |
+| `lane <suite>:<lane>` | A lane of the IDE tests (`ide`) or of the add-in tests (`addin`). It holds while every test of the lane passes. |
+| `sample <id>` | The sample with that `id=` under `docs/`: a `check_run` sample, a [probe](#a-statement-checked-by-a-sample-nobody-sees), or one that is only compiled. It holds while `examples.bat` finds nothing wrong with it. |
+| `errors <name>` | The run-time error data `errors/<name>.yml`. |
+| `llvm <mode>` | A mode of the LLVM claims probe, `test/llvm/run.mjs`. |
+| `static <mode>` | A mode of the static linking claims probe, `test/static-linking/run.mjs`. |
+| `none -- <reason>` | Nothing a program can check. A person checks it again on each new build. |
+
+A contributed package's section names its own test cases too, as the next section says. The callouts of a generated Common Errors section need no marker: their data is what checks them. [`check_callout_evidence.mjs`](Tools-Toolchain-Tests#check-callout-evidence), in `test.bat`, fails a callout labelled `BETA <n>` with neither a marker nor a region around it, and an item that names nothing that exists. After a new build, [`recheck_callouts.mjs`](Tools-Defects#recheck-callouts) runs what each marker names, moves the label of each callout whose evidence still holds to the new build, and lists the rest to be read again.
 
 ### Callouts in a contributed package's section
 
@@ -919,7 +979,7 @@ Every `> [!NOTE]` and `> [!WARNING]` in a contributed package's section is backe
     <!-- test: FilesTests.Item_MissingName, FilesTests.Item_MissingIndex -->
     > [!NOTE]
 
-An item is a `Fixture.Sub` test case, `compile <Name>` for a compile case, `probe <id>` for a scenario of the package's `probe/` harness, or `none -- <reason>` for a callout no program can check. A case checks what is correct, so a defect of the package is a failing case.
+An item is a `Fixture.Sub` test case, `compile <Name>` for a compile case, `probe <id>` for a scenario of the package's `probe/` harness, or `none -- <reason>` for a callout no program can check. A marker there may also name an item of the table above, such as the reproducer of a defect of twinBASIC that a callout labelled `BETA <n>` describes. A case checks what is correct, so a defect of the package is a failing case.
 
 A callout is for a real difference or limit. A statement that only describes how the package works stays prose, and its cases are tied to it by a region: the same marker on a line of its own above the prose, and `<!-- /test -->` after it.
 

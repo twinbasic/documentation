@@ -3949,7 +3949,7 @@ Severity: high for a program built with LLVM that has such a loop: a wrong resul
 
 Not tried: `For Each`, and the generated code. Not understood: a `Double` loop variable with a `Long` step is wrong in the 64-bit build and right in the 32-bit one; a `Single` step is about 0 in the 64-bit build and 0.5000014 in place of 0.5 in the 32-bit one; and the cause of the 32-bit crash.
 
-<!-- Reproducer: bugs/llvm-for-step-constant/ (mode run with arch win64, llvm and exe: the DEBUG CONSOLE of the IDE run with LLVM has `CountSteps(3, flag) = 1` and `CountSteps(1, flag) = 1`, and tbrun --exe --llvm --arch win64 shows the exe exiting 1; expect is tbrun exit 6, those lines, and absent `CountSteps(3, flag) = 3` and `exit 3`); verified on BETA 1005 by `bug_repro.mjs verify`. Controls: `run --exe --arch win64` (no LLVM) prints 3, 7, 3 and the exe exits 3; `run --exe --llvm --arch win32` prints 1, 1, 3 and exits 1; an IDE run with LLVM (the probe without the exe) prints 1, 1, 3 in win64 and in win32. Pages: docs/LLVM/Getting-Started.md, "Language support", and docs/Reference/Core/For-Next.md carry the WARNING labelled BETA 1005; remove both when a fix is released. Found 2026-10-16 through TBMANLIB 1.0.0.29's cToolsStr.InsertSpan in a win64 LLVM exe; the cases in the additional context and the InsertSpan shape were run in the two narrowing sessions of that day (exe builds and, for the address table's last row and the bounds, IDE runs with LLVM) and are not in the reproducer. -->
+<!-- Reproducer: bugs/llvm-for-step-constant/ (mode run with arch win64, llvm and exe: the DEBUG CONSOLE of the IDE run with LLVM has `CountSteps(3, flag) = 1` and `CountSteps(1, flag) = 1`, and tbrun --exe --llvm --arch win64 shows the exe exiting 1; expect is tbrun exit 6, those lines, and absent `CountSteps(3, flag) = 3` and `exit 3`); verified on BETA 1005 by `bug_repro.mjs verify`. Controls: `run --exe --arch win64` (no LLVM) prints 3, 7, 3 and the exe exits 3; `run --exe --llvm --arch win32` prints 1, 1, 3 and exits 1; an IDE run with LLVM (the probe without the exe) prints 1, 1, 3 in win64 and in win32. Pages: docs/LLVM/Getting-Started.md, "Language support", and docs/Reference/Core/For-Next.md carry the WARNING labelled BETA 1005; remove both when a fix is released. Found 2026-10-16 through TBMANLIB 1.0.0.29's cToolsStr.InsertSpan in a win64 LLVM exe; the cases in the additional context and the InsertSpan shape were run in the two narrowing sessions of that day (exe builds and, for the address table's last row and the bounds, IDE runs with LLVM) and are not in the reproducer. BETA 1034 (test/llvm/run.mjs, key for-step-llvm, a caller with many locals): the loop runs once in every mode, with i ending at 26 (step 25) in a 32-bit exe and 21 (step 20) in a 64-bit exe, but at values from 28 to over 6,000,000 in IDE runs; the pages give 25 and 20 for an exe only. -->
 
 ---
 
@@ -6018,95 +6018,6 @@ A compile error on each of the five, as in VB6: the array is not a valid argumen
 BETA 1007 gives the same results. Severity: low. Few programs write it, but the number looks plausible for a small array, and the author finds out only when the buffer is larger.
 
 <!-- Reproducer: bugs/lenb-of-array-accepted/ (mode test: compile cases; expect lists the five FAIL and two PASS lines); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas lists VB6's error for each line). The numbers 40, 48, 4 (32-bit) and 48, 56, 8 (64-bit) come from a scratch run that is not kept. docs/Reference/Default/VBA/Strings/Len.md carries the callout for it; when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
-
----
-
-## A 64-bit build prints infinity and NaN as `inf` and `nan`, and `Format` adds the picture's decimals
-
-**Describe the bug**
-A `Double` or `Single` that holds infinity or NaN prints in VB6 as `1.#INF`, `-1.#INF`, `1.#QNAN` and `-1.#IND`, and `Format(x, "0.00")` gives `1.#INF` or `1.#R`. A 32-bit twinBASIC build prints exactly those. A 64-bit build prints the C runtime's text: `inf`, `-inf`, `nan` and `-nan(ind)`, and `Format(x, "0.00")` gives `inf.00` and `nan.00`. `CStr`, `Str`, concatenation and `Debug.Print` all give the same text. Arithmetic raises an error rather than make these values, so they come from memory, a COM component or a file; the reproducer copies their bytes into a variable. It was observed in IDE runs and in built exes.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `infinity-text-64-bit.twinproj` (attached as `infinity-text-64-bit.zip`). Its module `InfinityTextTests`, below, has one `[TestCase]` for each text, asserting what VB6 gives, and a control.
-2. Run the test cases as a 64-bit build (`tbrun --tests --arch win64`). The first eight fail, with the 64-bit text as `Actual`; the control passes. As a 32-bit build all nine pass.
-```vb
-[TestFixture]
-Module InfinityTextTests
-
-    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, ByRef Source As Any, ByVal Length As LongPtr)
-
-    Private Function DoubleFromBits(ByVal Bits As LongLong) As Double
-        Dim result As Double
-        CopyMemory result, Bits, 8
-        Return result
-    End Function
-
-    Private Function SingleFromBits(ByVal Bits As Long) As Single
-        Dim result As Single
-        CopyMemory result, Bits, 4
-        Return result
-    End Function
-
-    [TestCase]
-    Public Sub CStrOfInfinity_Is1HashINF()
-        Assert.Strict.AreEqual "1.#INF", CStr(DoubleFromBits(&H7FF0000000000000^))
-    End Sub
-
-    [TestCase]
-    Public Sub CStrOfNegativeInfinity_IsMinus1HashINF()
-        Assert.Strict.AreEqual "-1.#INF", CStr(DoubleFromBits(&HFFF0000000000000^))
-    End Sub
-
-    [TestCase]
-    Public Sub CStrOfNaN_Is1HashQNAN()
-        Assert.Strict.AreEqual "1.#QNAN", CStr(DoubleFromBits(&H7FF8000000000000^))
-    End Sub
-
-    [TestCase]
-    Public Sub CStrOfIndeterminate_IsMinus1HashIND()
-        Assert.Strict.AreEqual "-1.#IND", CStr(DoubleFromBits(&HFFF8000000000000^))
-    End Sub
-
-    [TestCase]
-    Public Sub ConcatenatedInfinity_Is1HashINF()
-        Assert.Strict.AreEqual "x=1.#INF", "x=" & DoubleFromBits(&H7FF0000000000000^)
-    End Sub
-
-    [TestCase]
-    Public Sub FormatOfInfinity_Is1HashINF()
-        Assert.Strict.AreEqual "1.#INF", Format(DoubleFromBits(&H7FF0000000000000^), "0.00")
-    End Sub
-
-    [TestCase]
-    Public Sub FormatOfNaNWithPicture_Is1HashR()
-        Assert.Strict.AreEqual "1.#R", Format(DoubleFromBits(&H7FF8000000000000^), "0.00")
-    End Sub
-
-    [TestCase]
-    Public Sub CStrOfSingleInfinity_Is1HashINF()
-        Assert.Strict.AreEqual "1.#INF", CStr(SingleFromBits(&H7F800000))
-    End Sub
-
-    [TestCase]
-    Public Sub CStrOfOrdinaryDouble_IsUnchanged()
-        Assert.Strict.AreEqual "1.5", CStr(1.5)
-    End Sub
-
-End Module
-```
-
-**Expected behavior**
-The same text in a 64-bit build as in a 32-bit one and in VB6: `1.#INF`, `-1.#INF`, `1.#QNAN`, `-1.#IND`, and `1.#INF` or `1.#R` from `Format` with a picture. The reproducer's `vb6/` project prints them (attached as `infinity-text-64-bit-vb6.zip`).
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
-
-**Additional context**
-BETA 1007 gives the same results. The reproducer's `repro.json` names the 64-bit build (`"arch": "win64"`). Severity: low. A program meets these values rarely, but one that tests or parses the text, or shows `Format(x, "0.00")` of one, behaves differently in the two builds.
-
-<!-- Reproducer: bugs/infinity-text-64-bit/ (mode test, arch win64: `tbrun --tests --arch win64` runs the nine cases; expect lists the eight FAIL and one PASS line); verify reproduces on BETA 1010 and on BETA 1007; VB6 side in vb6/ (Module1.bas). docs/Reference/Data-Types/Double.md carries the callout for it (the NOTE after the paragraph on infinity and NaN); when a fixed build is released, the callout goes. Found 2026-10-18 while writing the Data Types pages; owner-approved. -->
 
 ---
 
@@ -11511,4 +11422,231 @@ The reproducer behaves the same on BETA 1010. `Link "stdlib", "kernel32"` and `L
 Severity: medium. Code written to handle an error crashes the program instead, with nothing at build time to say so; the SQLite sample is compiled with `SQLITE_OMIT_SEH`, which leaves its handlers out.
 
 <!-- Reproducer: bugs/static-seh-handler-not-run/ (mode run, win64, exe; expect is tbrun exit 5, the probe not returning, with the IDE's NATIVE EXCEPTION line, the exe's exit 0xC0000094, and no "seh_div(6, 0) = -2" line; verify reproduces on BETA 1034 and BETA 1010). The control with Microsoft's linker was a scratch C program (sehmain.c, cl and link from VS 2022), not kept. The kernel32 and ntdll variants were compiled only (tbbuild), not run. docs/Features/Advanced/Static-Linking.md carries a WARNING (BETA 1034) for it under "What can be linked"; when a fixed build is released, the WARNING goes, and the page's list says whether exception handling works in a 64-bit build. Found 2026-11-02 rewriting that page. -->
+
+---
+
+## TB5079 for an unknown type puts its whole message inside the message for an unknown name
+
+**Describe the bug**
+Since BETA 1034, the error for a type name that does not exist reads *Unrecognized symbol 'Unrecognized datatype symbol 'NoSuchType''*. BETA 1033 reported *Unrecognized datatype symbol 'NoSuchType'*. The error for an unknown name in an expression is unchanged.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `tb5079-datatype-message-nested.twinproj` (attached as `tb5079-datatype-message-nested.zip`). Its one source file, `Startup.twin`:
+   ```
+   Module Startup
+
+       Public Sub Main()
+           Dim t As NoSuchType
+           Dim n As Long
+           n = NoSuchName
+       End Sub
+
+   End Module
+   ```
+2. See two errors in the DIAGNOSTICS panel:
+   ```
+   TB5079 Unrecognized symbol 'Unrecognized datatype symbol 'NoSuchType''
+   TB5079 Unrecognized symbol 'NoSuchName'
+   ```
+
+**Expected behavior**
+The first error reads `TB5079 Unrecognized datatype symbol 'NoSuchType'`, as in BETA 1033.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`locale/en-gb.lang` has `TB5079: "Unrecognized symbol '{0}'"`. Since BETA 1034 the compiler takes the text of a message from the language pack by its code, and for an unknown type it fills `{0}` with the whole English message rather than the name. The two kinds of TB5079 need two strings in the pack, or the unknown-type message its own code. The messages are the same in a win32 and a win64 build.
+
+Severity: low; the message is longer and repeats itself, but still names the type.
+
+<!-- Reproducer: bugs/tb5079-datatype-message-nested/ (mode compile; expect.output matches the nested message for the type and the plain one for the name, in tbbuild's report; verify reproduces on BETA 1034, and with --ide on BETA 1033 does not). docs/IDE/Code/Diagnostics.md carries a NOTE (BETA 1034) for it under "Common errors"; when a fixed build is released, the NOTE goes. Pages that quote the BETA 1033 text, *Unrecognized datatype symbol '...'*, are right again then: Features/Packages/Library symbols, tbIDE, IVBPrint, Report, IConnectionPoint, Generics, TBMANLIB. Found 2026-11-03 probing the messages for that section. -->
+
+---
+
+## In a 32-bit build, a Declare whose calling convention or parameters do not match the DLL function raises no error, and the procedure that called it ends with an access violation
+
+**Describe the bug**
+In a 32-bit build, a `Declare` of a DLL function that names the wrong calling convention, or the wrong number of parameters, raises no error. The call returns, the stack is left unbalanced, and the procedure that made the call ends with an access violation as it returns. In the IDE the access violation is in the compiler's process, which restarts. The same mistake in a `Declare` of a statically linked function, or in a call through a `Delegate`, raises -353703419, *Bad DLL definition.  Stack corruption detected.*, and the program goes on.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `declare-dll-stack-not-checked.twinproj` (attached as `declare-dll-stack-not-checked.zip`); its build is win32. `labs` in `msvcrt.dll` and `add` in `basic_32.obj` (`basic.c`, beside it in Miscellaneous) are both `__cdecl`, and both are declared without `CDecl`:
+   ```
+   Import Library "/Miscellaneous/basic_32.obj" As BASIC
+
+   Module Startup
+
+       Private Declare PtrSafe Function add Lib BASIC (ByVal a As Long, ByVal b As Long) As Long
+       Private Declare PtrSafe Function labs Lib "msvcrt" (ByVal x As Long) As Long
+
+       Private Sub Report(ByVal what As String, ByVal value As Long)
+           If Err.Number <> 0 Then
+               Debug.Print what & ": error " & Err.Number & ", " & Err.Description
+           Else
+               Debug.Print what & " = " & value
+           End If
+       End Sub
+
+       Private Sub CallStatic()
+           On Error Resume Next
+           Dim r As Long = add(2, 3)
+           Report "add(2, 3)", r
+       End Sub
+
+       Private Sub CallDll()
+           On Error Resume Next
+           Dim r As Long = labs(-7)
+           Report "labs(-7)", r
+       End Sub
+
+       Public Sub Main()
+           CallStatic
+           Debug.Print "returned from CallStatic"
+           CallDll
+           Debug.Print "returned from CallDll"
+       End Sub
+
+       [RunAfterBuild]
+       Private Sub Built()
+           Debug.Cls
+           Main
+       End Sub
+
+   End Module
+   ```
+2. Build it. The `[RunAfterBuild]` Sub runs `Main` in the IDE.
+3. See the DEBUG CONSOLE, which has no `returned from CallDll` line: `CallDll` ends with an access violation as it returns, and the compiler restarts:
+   ```
+   add(2, 3): error -353703419, Bad DLL definition.  Stack corruption detected.
+   returned from CallStatic
+   labs(-7) = 7
+   restarting from MEMORY [...]
+   ```
+4. Run the built exe. It ends with exit code -1073741819 (`0xC0000005`), and the Application event log records the exception at an address on the stack.
+
+**Expected behavior**
+The call of `labs` raises an error, as the call of `add` does, and the program goes on. VB6 raises error 49, *Bad DLL calling convention*, for the same `Declare` in its IDE and in a P-Code exe. The VB6 project, attached as `declare-dll-stack-not-checked-vb6.zip` and compiled to P-Code, prints:
+```
+labs(-7): error 49, Bad DLL calling convention
+returned from CallDll
+```
+Error 49 would suit the statically linked call too, which raises -353703419 (`&HEAEAEA05`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Other mismatches tried, each in a 32-bit IDE run and exe, raise no error either, and end the procedure that made the call with the same access violation: `MulDiv` of kernel32, which is `__stdcall`, declared `CDecl` (the right value, called 1000 times); `MulDiv` declared with a parameter too few (a wrong value, -1 for `MulDiv(6, 4)`) or one too many (the right value), after one call each. In the IDE the access violation either ends the compiler's process, which restarts, or is reported as `NATIVE EXCEPTION: ACCESS_VIOLATION` and turns on TRACE-MODE.
+
+A statically linked call is checked both ways: a `__stdcall` function of the object declared `CDecl` raises -353703419 as well. So is a call through a `Delegate`: a `Delegate Function OneArg (ByVal x As Long) As Long`, without `CDecl`, given the address of `labs` from `GetProcAddress` raises -353703419 when it is called, and the program goes on, in the IDE and in the exe; the same delegate declared `CDecl` returns 7. A 64-bit build has one calling convention, so neither `Declare` in the reproducer is a mismatch there, and both calls return their values.
+
+VB6's native code checks nothing either: the same VB6 project compiled to native code ends with an access violation in OLEAUT32. The check is made by VB6's IDE and its P-Code. The reproducer behaves the same on BETA 1010.
+
+Severity: medium. A wrong `Declare` is the programmer's mistake, but nothing points to it: the program crashes in the procedure that made the call, after the call has returned, and in the IDE the compiler goes down with it. A VB6 programmer expects error 49 at the call.
+
+<!-- Reproducer: bugs/declare-dll-stack-not-checked/ (mode run, win32, exe; expect is tbrun exit 5, the statically linked call's error line, labs(-7) = 7, no "returned from CallDll", and the exe's exit 0xC0000005; verify reproduces on BETA 1034 and with --ide on BETA 1010). Its vb6/ project is compiled to P-Code (CompilationType=-1), which prints error 49 and returns; compiled to native code it faults in OLEAUT32. The MulDiv cases, the stdcall-declared-CDecl static case and the delegate case were scratch probes, not kept. docs/Reference/Core/Declare.md and docs/Features/Advanced/API-Declarations.md carry a WARNING (BETA 1034) for it; when a fixed build is released, the WARNING goes and the pages say which error a mismatch raises. docs/Features/Advanced/Static-Linking.md states the statically linked call's error as prose. Found 2026-11-03 narrowing what tbrun had reported as a 32-bit run that never reached [BUILD] Executing: the run was stopped at the IDE's error panel for the statically linked call's error. -->
+
+---
+
+## A division by zero whose result is a `Single` raises no error, where VB6 raises error 11
+
+**Describe the bug**
+A division by zero whose result is stored in a declared `Single` raises no error: `s = one / zero`, where all three are declared `Single`, leaves `Err.Number` at 0 and `s` at `1.#INF`, and `zero / zero` leaves `s` at `-1.#IND`. VB6 raises error 11, *Division by zero*, and error 6, *Overflow*, for zero divided by zero. It does not depend on the operands: a `Double` or a `Long` divided by zero and stored in a `Single` raises nothing either, and neither does `/=`, nor a comparison of a `Single` quotient, `If one / zero > 0 Then`. The same division stored in a `Double` raises 11, as in VB6. Observed in IDE runs and in built exes, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `single-division-by-zero-no-error.twinproj` (attached as `single-division-by-zero-no-error.zip`). Its `Sub Main` runs each case under `On Error Resume Next`, for example:
+   ```
+   Dim one As Single = 1!
+   Dim zero As Single = 0!
+   Dim s As Single
+   Dim n As Long
+   On Error Resume Next
+   s = 5!: Err.Clear: s = one / zero: n = Err.Number: Debug.Print "s = Single / 0      Err=" & n & " s=" & s
+   ```
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   s = Single / 0      Err=0 s=1.#INF
+   s = 0! / 0!         Err=0 s=-1.#IND
+   s = Double / 0      Err=0 s=1.#INF
+   s = Long / 0        Err=0 s=1.#INF
+   s /= 0              Err=0 s=1.#INF
+   If Single / 0 > 0   Err=0
+   d = Single / 0      Err=11
+   d = Double / 0      Err=11
+   d = 0# / 0#         Err=6
+   ```
+
+**Expected behavior**
+Error 11 for every division by zero, and error 6 for zero divided by zero, whatever the result is stored in, as in VB6. The VB6 project (attached as `single-division-by-zero-no-error-vb6.zip`) prints `Err=11` on every line but the two that divide zero by zero, which print `Err=6`; it has `s = s / 0` where twinBASIC has `s /= 0`. 64-bit VBA raises the same errors.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+BETA 1010 gives the same results. Compiled with LLVM (the whole project), every line raises 11 or 6, as in VB6, and the `Single` keeps its old value. A 64-bit build prints the values as `inf` and `-nan(ind)`, as 64-bit VBA does.
+
+Possibly the same cause as #2476, *A `Single` that overflows raises no error, where VB6 raises error 6*: in both, a `Single` is left holding infinity where a `Double` raises the error. This one is a division by zero, error 11, and it happens with `Double` and `Long` operands too.
+
+What matches VB6: `\` and `Mod` by zero raise 11 into a `Single`; a `Variant` target raises 11; VB6 also leaves infinity in the `Single` after the error, so only the error is missing.
+
+Severity: a silent wrong result. A division by zero that reaches an error handler in VB6 leaves infinity or NaN in the `Single` in twinBASIC, and the program goes on with it.
+
+<!-- Reproducer: bugs/single-division-by-zero-no-error/ (mode run; expect is the four Single lines with Err=0, the comparison with Err=0, and the Double controls with 11 and 6); verify reproduces on BETA 1034, and run reproduces it with --ide on BETA 1010, with --arch win64, and in exes (tbrun --exe on a copy that prints with TbRun.Out, win32 and win64). --llvm raises every error. VB6 side in vb6/: `bug_repro.mjs vb6` prints Err=11 or Err=6 on every line. 64-bit VBA was run through scripts/lib/vba.mjs in a scratch module, not kept. docs/Reference/Core/Divide.md, docs/Reference/Data-Types/Single.md and docs/Reference/Operators.md carry it in the WARNING (BETA 1034) they share with single-overflow-no-error (#2476); when a fixed build is released, its part of each WARNING goes. Found 2026-11-03 in item 12 of the BETA 1034 relabel pass, narrowed in item 17. -->
+
+---
+
+## Assigning an object that a function returns to a `Variant` without `Set` stores the object when its default member cannot be read, where VB6 raises error 450 or 438
+
+**Describe the bug**
+An assignment of an object to a `Variant` without `Set` assigns the value of the object's default member. When the default member needs an argument, as a `Collection`'s `Item` does, VB6 raises error 450, *Wrong number of arguments or invalid property assignment*, and when the class has no default member, error 438, *Object doesn't support this property or method*; the `Variant` keeps its old value. twinBASIC raises an error when the object comes from a variable or from `New` of a twinBASIC class. When it comes from a function's result, from `New Collection` or from `CreateObject`, it raises no error and stores the object itself in the `Variant`, as `Set` would: after `v = NewCollection()`, where `NewCollection` returns a `Collection`, `TypeName(v)` is `Collection`. Observed in IDE runs and in built exes, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `let-object-result-stored.twinproj` (attached as `let-object-result-stored.zip`). Its `Sub Main` makes each assignment under `On Error Resume Next` and prints `Err.Number` and `TypeName(v)`, for example:
+   ```
+   v = Empty: Err.Clear: v = NewCollection(): Show "v = NewCollection()        ", Err.Number, v
+   ```
+   `NoDefault` is a class with no default member, `WithDefault` one whose default member, `Value`, returns 42, and `c` is a `Collection` variable.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   v = New Collection          Err=0 Collection
+   v = NewCollection()         Err=0 Collection
+   v = CreateObject(Dict)      Err=0 Dictionary
+   v = NewNoDefault()          Err=0 NoDefault
+   v = c (a Collection)        Err=-2147352561 Empty
+   v = New NoDefault           Err=438 Empty
+   v = NewWithDefault()        Err=0 Long
+   ```
+
+**Expected behavior**
+Error 450 for each `Collection` and the `Dictionary`, and error 438 for `NoDefault` however it is made, with the `Variant` left `Empty`, as in VB6. The VB6 project (attached as `let-object-result-stored-vb6.zip`) prints:
+```
+v = New Collection          Err=450 Empty
+v = NewCollection()         Err=450 Empty
+v = CreateObject(Dict)      Err=450 Empty
+v = NewNoDefault()          Err=438 Empty
+v = c (a Collection)        Err=450 Empty
+v = New NoDefault           Err=438 Empty
+v = NewWithDefault()        Err=0 Long
+```
+64-bit VBA raises 450 for `New Collection`, a function's `Collection`, a `Collection` variable and `CreateObject("Scripting.Dictionary")` as well.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+BETA 1010 gives the same results. What matches VB6: a default member that needs no argument is read from a function's result as from a variable (`v = NewWithDefault()` assigns the `Long` 42), and `New` of a twinBASIC class with no default member raises 438. The same assignment to a `Long` or a `String` (`l = c`), or to a `Variant` from a parenthesised variable (`v = (c)`), is refused at compile time with TB5092, *Missing argument 'Index'*, where VB6 refuses it with *Argument not optional*.
+
+Where the object is read but the error differs: a `Collection` in a variable raises -2147352561 (`&H8002000F`, `DISP_E_PARAMNOTOPTIONAL`), *Parameter not optional.*, where VB6 raises 450, and a `Scripting.Dictionary` in an `Object` variable -2147352562 (`DISP_E_BADPARAMCOUNT`). An element of a `Variant` array as the target, `va(0) = NewCollection()`, raises -2147352561 rather than storing the object; VB6 raises 450. `New` of a twinBASIC class whose default member needs an argument raises -2147352561, and the same object returned by a function is stored.
+
+Severity: a silent different result. A missing `Set` that VB6 reports at once goes unnoticed: the `Variant` holds the object, and code that used it as a value fails later, far from the mistake, or works by accident. The same assignment also behaves differently depending on whether the object comes from a variable or a function.
+
+<!-- Reproducer: bugs/let-object-result-stored/ (mode run; expect is the four stored-object lines, the New NoDefault 438 control and the NewWithDefault Long control; the v = c line is left out of expect, because its number is also latebound-hresult-mapping's kind of defect and may be fixed apart); verify reproduces on BETA 1034, and run reproduces it with --ide on BETA 1010, with --arch win64, and in an exe (tbrun --exe on a copy that prints with TbRun.Out). VB6 side in vb6/ (Module1.bas, NoDefault.cls, WithDefault.cls): `bug_repro.mjs vb6` prints the expected block. The compile-time cases, the array element, the Object variables and the class whose default member needs an argument come from scratch probes (twinBASIC with tbrun, VB6 with vb6run.mjs), not kept; 64-bit VBA was run through scripts/lib/vba.mjs in a scratch module, not kept. docs/Reference/Core/Let.md carries a WARNING (BETA 1034) for it; when a fixed build is released, the WARNING goes and the page states which error each case raises. Related: latebound-hresult-mapping (the number a failed late-bound call raises). Found 2026-11-03 in item 12 of the BETA 1034 relabel pass (#2482's object case was such an assignment), narrowed in item 17. -->
 

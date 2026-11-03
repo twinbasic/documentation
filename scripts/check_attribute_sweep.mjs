@@ -850,7 +850,7 @@ for (const [app, want] of [
       "Module, and to procedures, Declare statements and Enums in a Module",
       ["MODULE", "PROC_MODULE", "DECLARE", "ENUM"],
     ],
-    ["Function, Sub, Property Get in a Module", ["FUNC_MODULE", "SUB_MODULE", "PROPGET_MODULE"]],
+    ["Sub in a Module", ["SUB_MODULE"]],
     ["procedure in a Module", ["PROC_MODULE"]],
     ["Declare (API declaration), variable in a Class, procedure definitions", ["DECLARE", "VAR_CLASS", "PROC_ANY"]],
     [

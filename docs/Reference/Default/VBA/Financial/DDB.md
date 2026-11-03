@@ -45,13 +45,13 @@ Depreciation / *period* = ((*cost* - *salvage*) * *factor*) / *life*
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *factor* is not a number or a string that holds one<br>*factor* is **Null** |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *cost*, *salvage*, *life* or *period* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *life* is 0 or less, *period* is 0 or less or greater than *life*, *salvage* is less than 0, or *factor* is 0 or less (**Empty** and **True** included), VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *life* is greater than 0 and less than 1, VB6 and 64-bit VBA raise no error.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *factor* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*, instead.
 
 <!-- /errors -->

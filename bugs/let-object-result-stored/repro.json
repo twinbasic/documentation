@@ -1,0 +1,14 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^v = New Collection\\s+Err=0 Collection$",
+      "^v = NewCollection\\(\\)\\s+Err=0 Collection$",
+      "^v = CreateObject\\(Dict\\)\\s+Err=0 Dictionary$",
+      "^v = NewNoDefault\\(\\)\\s+Err=0 NoDefault$",
+      "^v = New NoDefault\\s+Err=438 Empty$",
+      "^v = NewWithDefault\\(\\)\\s+Err=0 Long$"
+    ]
+  }
+}

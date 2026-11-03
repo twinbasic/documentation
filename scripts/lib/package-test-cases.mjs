@@ -1,7 +1,8 @@
 // The package test projects' cases (test/package-tests/<Package>/), as scripts/package_tests.mjs
 // runs them and scripts/check_package_tests.mjs checks them: the RunAll module generated from a
-// project's [TestCase] Subs, what expect.json says a case does, how a result is judged against
-// it, and the markers that tie each callout of a section's pages to the cases behind it.
+// project's [TestCase] Subs, what expect.json says a case does, and how a result is judged
+// against it. The markers that tie each callout of a section's pages to the cases behind it are
+// read by scripts/lib/test-markers.mjs.
 // lib/package-tests.mjs puts a project together; test/package-tests/README.md describes it all.
 
 import { EXPECT_FILE, RUNALL_FILE } from "../../lib/package-tests.mjs";
@@ -63,6 +64,59 @@ export function runAllText({ pkg, version, tests, expect }) {
   }
   lines.push("        On Error GoTo 0", "        Expect.EndRun", "    End Sub", "", "End Module", "");
   return lines.join("\n");
+}
+
+/**
+ * The text of the module that runs the exe project's cases, written into the staged copy: a built
+ * exe starts at its Sub Main, and only TbRun.Out reaches the run from there. Each case prints a line
+ * that exeOutcomes reads. The [RunAfterBuild] Sub does nothing but tell tbrun the build has ended.
+ *
+ * @param {{fixture: string, name: string}[]} tests
+ */
+export function runExeText(tests) {
+  const lines = [
+    "Module RunExe",
+    "",
+    "    [RunAfterBuild]",
+    "    Public Sub Built()",
+    "        Debug.Cls",
+    '        Debug.Print "built"',
+    "    End Sub",
+    "",
+    "    Public Sub Main()",
+    '        Expect.StartRun ""',
+    "        On Error Resume Next",
+  ];
+  for (const t of tests) {
+    const name = caseName(t);
+    lines.push(
+      "        Expect.StartCase",
+      "        Err.Clear",
+      `        ${name}`,
+      `        TbRun.Out "${EXE_LINE}${name}: " & Expect.Outcome(Err.Number, Err.Description)`,
+    );
+  }
+  lines.push("        On Error GoTo 0", "    End Sub", "", "End Module", "");
+  return lines.join("\n");
+}
+
+const EXE_LINE = "CASE ";
+
+/**
+ * What the exe's lines say of its cases.
+ *
+ * @param {string[]} lines  what tbrun --exe read from TbRun.Out
+ * @returns {Map<string, {kind: "pass" | "fail", detail: string}>}
+ */
+export function exeOutcomes(lines) {
+  const out = new Map();
+  for (const line of lines) {
+    if (!line.startsWith(EXE_LINE)) continue;
+    const at = line.indexOf(":");
+    const detail = normaliseDetail(line.slice(at + 1));
+    out.set(line.slice(EXE_LINE.length, at), detail ? { kind: "fail", detail } : { kind: "pass", detail: "" });
+  }
+  return out;
 }
 
 // Why RunAll skips a case on one architecture, or "": one that never returns would stop the run,
@@ -151,82 +205,6 @@ export function expectFrom({ version, names, outcomes, previous }) {
  */
 export function archesOf(expect) {
   return Array.isArray(expect?.arches) ? ARCHES.filter((a) => expect.arches.includes(a)) : ARCHES;
-}
-
-// ---------------------------------------------------------------- markers
-
-// A callout: a blockquote line `> [!NOTE]` or `> [!WARNING]`, indented or not.
-const CALLOUT_RE = /^[ \t]*>[ \t]*\[!(NOTE|WARNING)\]/;
-// A marker, `<!-- test: <item>, <item> -->`, on a line of its own; and the end of a region.
-const MARKER_RE = /^[ \t]*<!--[ \t]*test:[ \t]*(.*?)[ \t]*-->[ \t]*$/;
-const END_RE = /^[ \t]*<!--[ \t]*\/test[ \t]*-->[ \t]*$/;
-const FENCE_RE = /^[ \t]*(`{3,}|~{3,})/;
-
-/**
- * The markers of a page, outside code fences. A marker on the line directly above a callout
- * marks that callout. Any other marker opens a region, which `<!-- /test -->` closes: the
- * paragraphs, lists, tables and samples between them state what the region's cases check.
- * Regions do not nest, and a callout inside one is marked by it.
- *
- * @returns {{callouts: {line: number, kind: string, marked: boolean}[],
- *            markers: {line: number, items: object[]}[], problems: string[]}}  `markers` holds
- *   every marker, a callout's and a region's alike; `items` parses one: { case: "Fixture.Sub" },
- *   { compile: "Name" }, { probe: "id" } or { none: "reason" }, and { bad: "text" } for one it
- *   cannot read. `problems` names a region not closed, a region opened inside another and a
- *   close with no region.
- */
-export function markersOf(text) {
-  const lines = text.split(/\r?\n/);
-  const callouts = [];
-  const markers = [];
-  const problems = [];
-  let fence = null;
-  let open = null; // the line of the region's marker
-  for (let i = 0; i < lines.length; i++) {
-    const f = FENCE_RE.exec(lines[i]);
-    if (f) {
-      if (!fence) fence = f[1][0];
-      else if (f[1][0] === fence) fence = null;
-      continue;
-    }
-    if (fence) continue;
-    const m = MARKER_RE.exec(lines[i]);
-    if (m) {
-      markers.push({ line: i + 1, items: parseMarker(m[1]) });
-      if (CALLOUT_RE.test(lines[i + 1] ?? "")) continue; // a callout's own marker
-      if (open !== null) problems.push(`line ${i + 1}: a region opens inside the region of line ${open}`);
-      open = i + 1;
-      continue;
-    }
-    if (END_RE.test(lines[i])) {
-      if (open === null) problems.push(`line ${i + 1}: <!-- /test --> closes no region`);
-      open = null;
-      continue;
-    }
-    const c = CALLOUT_RE.exec(lines[i]);
-    if (c) callouts.push({ line: i + 1, kind: c[1], marked: open !== null || MARKER_RE.test(lines[i - 1] ?? "") });
-  }
-  if (open !== null) problems.push(`line ${open}: the region is not closed with <!-- /test -->`);
-  return { callouts, markers, problems };
-}
-
-/** The items of a marker: Fixture.Sub, compile <Name>, probe <id>, none -- <reason>. */
-export function parseMarker(text) {
-  const none = /^none[ \t]*(?:--|:)?[ \t]*(.*)$/.exec(text);
-  if (none) return [none[1].trim() ? { none: none[1].trim() } : { bad: "none needs a reason" }];
-  return text
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((s) => {
-      let m = /^(\w+)\.(\w+)$/.exec(s);
-      if (m) return { case: s };
-      m = /^compile[ \t]+(\w+)$/.exec(s);
-      if (m) return { compile: m[1] };
-      m = /^probe[ \t]+([\w,.-]+)$/.exec(s);
-      if (m) return { probe: m[1] };
-      return { bad: s };
-    });
 }
 
 /**

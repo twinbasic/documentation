@@ -244,7 +244,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   (`scripts/lib/shot-change.mjs`), and the sheet shows the `--cleanup` command beside its
   `git checkout` one. On the BETA 1033 retake its dry run puts back none of the 329 modified
   pictures.
-- **Setups**: one IDE each --- `no-project` (menus, dialogs, panels), `help` (the add-in's eight,
+- **Setups**: one IDE each --- `no-project` (menus, dialogs, panels), `help` (the add-in's nine,
   `test/addin/helpdemo`), `project`, `sample`, the `settings` setups, `glyphs`, `global-search`
   (Sample 15 exported from the install, built into the lane's copy as an add-in, its own project
   opened; once a search settles, its results list is told through its own `notifyChangedItem`

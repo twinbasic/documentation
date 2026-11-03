@@ -1,0 +1,17 @@
+' A procedure that calls InternalGetReturnAddress: a 64-bit build cannot generate code for it,
+' with or without LLVM, and the project does not build (the NOTE on
+' docs/Reference/Default/VBA/HiddenModule/AddClassInstanceFlag.md). test/llvm/run.mjs builds it
+' for 64-bit and expects the codegen error; ../src/ shows the 32-bit results.
+Module Probe
+
+    Private Function Where() As LongPtr
+        Where = InternalGetReturnAddress()
+    End Function
+
+    [RunAfterBuild]
+    Public Sub Run()
+        Debug.Cls
+        Debug.Print "address nonzero: "; Where() <> 0
+    End Sub
+
+End Module

@@ -5,12 +5,20 @@
 Module RunAll
 
     Public Sub Main()
-        Expect.StartRun "TBMANLIB_Diagnostic 1.0.0.1: 123 test cases"
+        Expect.StartRun "TBMANLIB_Diagnostic 1.0.0.1: 125 test cases"
         On Error Resume Next
         Expect.StartCase
         Err.Clear
         CollectorTests.LocaleCollector_Items_ArePresent
         Expect.EndCase "CollectorTests.LocaleCollector_Items_ArePresent", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CollectorTests.LocaleCollector_InStandardTime_ReportsTheOffsetOfTheClock
+        Expect.EndCase "CollectorTests.LocaleCollector_InStandardTime_ReportsTheOffsetOfTheClock", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CollectorTests.LocaleCollector_InSummerTime_ReportsTheOffsetOfTheClock
+        Expect.EndCase "CollectorTests.LocaleCollector_InSummerTime_ReportsTheOffsetOfTheClock", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         CollectorTests.CPUInfoCollector_PageSize_HasNoDecimalSeparator

@@ -10,7 +10,7 @@
 # Calendar is not implemented in twinBASIC (TB0009), and the owner chose not to report
 # it, so its cases are twinBASIC-only and have no VB6 NOTE. In VB6 vbCalHijri succeeds
 # and stays: a VB6 case that sets it must set vbCalGreg again.
-beta: 1010
+beta: 1034
 pages:
   Reference/Default/VBA/DateTime/Calendar.md:
     rows:

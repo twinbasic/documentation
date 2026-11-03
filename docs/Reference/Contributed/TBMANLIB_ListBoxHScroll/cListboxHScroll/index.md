@@ -66,7 +66,6 @@ The scroll range is calculated from the widest item's pixel width measured with 
 <!-- test: ShowTests.Show_ControlWithoutWindowRaisesNoError -->
 > [!IMPORTANT] timeless
 > The control's **hWnd** must be valid (the form must be loaded and the control fully created) before calling **Show**. Calling **Show** before the control's window exists returns silently without installing any scrolling behavior.
-<!-- /test -->
 
 ### UnShow
 {: .no_toc }

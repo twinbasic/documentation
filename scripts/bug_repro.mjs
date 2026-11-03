@@ -122,6 +122,7 @@ import {
   withUsageError,
 } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
+import { laneBlocks, testMark } from "./lib/lane-report.mjs";
 import { keptIdeLines, killTree, launchOnDesktop, summaryLine, TARGETS } from "./lib/tb-ide.mjs";
 import {
   BETA_FILE,
@@ -157,6 +158,7 @@ import {
   reproZipFiles,
   runRepro,
 } from "./lib/vb6.mjs";
+import { SUITES } from "./lib/test-markers.mjs";
 import { fileEntry, zipFiles } from "./lib/zip.mjs";
 
 let tidy = null;
@@ -648,12 +650,9 @@ const EXPECT_KEYS = {
   test: ["exit", "output", "absent"],
 };
 
-// The suites a lane reproducer names, as "<suite>:<lane>": the runner, and the
-// lanes it has, by the name its --only matches and its report prints.
-const SUITES = {
-  ide: { tool: "scripts/ide_test.mjs", lanes: "test/ide/lanes.mjs" },
-  addin: { tool: "scripts/addin_test.mjs", lanes: "test/addin/lanes.mjs" },
-};
+// The suites a lane reproducer names, as "<suite>:<lane>" (SUITES: the runner, and
+// the file that lists its lanes), and the lanes each has, by the name its --only
+// matches and its report prints.
 const laneNames = {};
 for (const [suite, { lanes }] of Object.entries(SUITES)) {
   const list = (await import(pathToFileURL(path.join(REPO_ROOT, lanes)).href)).default;
@@ -1377,10 +1376,6 @@ function runProbeScript(repro) {
   });
 }
 
-// The spec reporter's marks for a test that passed and one that failed.
-const PASSED = "\u{2714}";
-const FAILED = "\u{2716}";
-
 /**
  * Runs the lanes that lane reproducers name, each suite's once through its own
  * runner, and judges each reproducer by its tests: it reproduces when every one
@@ -1422,14 +1417,7 @@ async function verifyLanes(slugs, repros) {
     const log = path.join(tmpdir(), "bugrepro", `verify-${suite}.log`);
     mkdirSync(path.dirname(log), { recursive: true });
     writeFileSync(log, r.out);
-    const lines = r.out.split(/\r?\n/);
-    // A lane's report is the block from its "--- <name> (<desktop>): ..." line to the next lane's.
-    const block = (lane) => {
-      const start = lines.findIndex((l) => l.startsWith(`--- ${lane} (`));
-      if (start < 0) return null;
-      const end = lines.findIndex((l, i) => i > start && l.startsWith("--- "));
-      return lines.slice(start, end < 0 ? lines.length : end);
-    };
+    const blocks = laneBlocks(r.out);
     // The runner's 2 is its harness failing, and 3 the registry or a work folder
     // not put back: either leaves no verdict to trust.
     const broken = r.code === null || r.code >= 2;
@@ -1437,7 +1425,7 @@ async function verifyLanes(slugs, repros) {
     for (const slug of mine) {
       const repro = repros.get(slug);
       const lane = repro.lane.split(":")[1];
-      const report = block(lane);
+      const report = blocks.get(lane)?.lines ?? null;
       const res = (status, detail) =>
         results.push({ slug, status, detail: status === "reproduces" ? detail : `${detail} (see ${log})` });
       if (broken) {
@@ -1448,14 +1436,7 @@ async function verifyLanes(slugs, repros) {
         res("harness", `${tool} printed no report for the lane ${lane}`);
         continue;
       }
-      const mark = (test) => {
-        const found = report
-          .map((l) => l.trimStart())
-          .filter((l) => l.startsWith(`${PASSED} ${test} (`) || l.startsWith(`${FAILED} ${test} (`));
-        if (!found.length) return null;
-        return found.some((l) => l.startsWith(FAILED)) ? "failed" : "passed";
-      };
-      const marks = repro.tests.map((test) => ({ test, mark: mark(test) }));
+      const marks = repro.tests.map((test) => ({ test, mark: testMark(report, test) }));
       const missing = marks.filter((m) => !m.mark);
       const failed = marks.filter((m) => m.mark === "failed");
       if (missing.length)

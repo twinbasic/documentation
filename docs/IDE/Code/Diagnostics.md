@@ -33,6 +33,7 @@ Each counter is also a switch. Click it to show or hide the problems of that kin
 The commands `tbProblems_ToggleShowErrors`, `tbProblems_ToggleShowWarnings`, `tbProblems_ToggleShowHints` and `tbProblems_ToggleShowInfos` flip the same switches. They have no keys by default.
 
 ## The list
+{: index="TB5000" }
 
 The list has one group for each file that has a problem to show. The group's header is the file's name, and pointing at it shows the path. Click the arrow at the left of the header, or double-click the header, to collapse or expand the group.
 
@@ -72,7 +73,8 @@ Right-click in the list for a menu of five items. The menu is in English whateve
 
 A copied row reads `{ERROR}` or `{WARNING}`, the path of the file, the position, and the code and message. **Copy All** and **Copy All Errors** begin with a line that names the IDE: `twinBASIC (` and the version, then `) compilation error report:`.
 
-> [!NOTE] BETA 1010
+<!-- test: bug diagnostics-copy-html -->
+> [!NOTE] BETA 1034
 > Each copied message contains the HTML tag `<span>TBnnnn</span>` around the code, and **Copy All** labels hints and information messages `{WARNING}`. Remove the tags from the pasted text by hand.
 
 ## In the code
@@ -86,7 +88,29 @@ A problem also shows in other places:
 - The tab of the file is tinted, and so is its row in the Project Explorer. The tint follows the worst problem in the file.
 - <kbd>Alt</kbd>+<kbd>F8</kbd> and <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F8</kbd> move through the problems of the current file; see [Navigating](Navigating#move-by-procedure-and-by-problem).
 
+## Common errors
+{: index="TB5001; TB5027; TB5079; TB5182" }
+
+Most errors are explained on the page of the statement, type or feature they concern, and a search for the code finds that page. These four come from code of every kind. Each is shown with the message it gives for an example.
+
+**TB5079**, *Unrecognized symbol 'Undefined1'*
+: Nothing the code can reach declares the name. It is misspelt, it is a variable that was never declared while [**Option Explicit**](../../Core/Option) is on, it is **Private** to another module, or it belongs to a package or library that the project does not reference. For a project imported from VB6, see [Why do I see a lot of errors saying my variables are unrecognized?](../../../FAQ#unrecognized-variables). For a type name, as in `Dim t As NoSuchType`, the message is *Unrecognized datatype symbol 'NoSuchType'*.
+
+**TB5001**, *cannot coerce datatype LongLong to Long. Explicitly call CLng() if necessary.*
+: A value has a type that twinBASIC does not convert to the type needed unless the code says so, such as a **LongLong** assigned to a **Long**. For an argument the message is *Validation of call to 'TakesLong' failed. Argument for 'n': cannot coerce type 'LongLong' to 'Long'*, which in a 64-bit build is also what a **LongPtr** passed for a **Long** parameter gives. Write the conversion out with **CLng** or another conversion function; see the conversions of [**LongLong**](../../Core/LongLong#conversions) and [**LongPtr**](../../Core/LongPtr#conversions).
+
+**TB5027**, *Unrecognized member 'NoSuchMember' on type '_Collection' [non-extensible object]*
+: The name after a dot is not a member of the type or module before it, or is a member that is **Private** to it. For a module the message is *[Other] does not contain 'Hidden', or it is inaccessible in this context*.
+
+**TB5182**, *Syntax error. No handler for this symbol*
+: A statement or an attribute where the language does not allow it. A line at the top level of a `.twin` file, outside a **Module** or **Class** block, is one case. An [attribute](../../Core/Attributes) written where it does not apply is another.
+
+<!-- test: bug tb5079-datatype-message-nested -->
+> [!NOTE] BETA 1034
+> For a type name, TB5079 reads *Unrecognized symbol 'Unrecognized datatype symbol 'NoSuchType''*: the message for a type is put inside the message for a name.
+
 ## See Also
 
 - [Navigating](Navigating) -- move from problem to problem in the editor
 - [IntelliSense](IntelliSense) -- hover shows a problem's message
+- [Compiler Warnings](../../../Features/Compiler-IDE/Compiler-Warnings) -- every warning, by its code

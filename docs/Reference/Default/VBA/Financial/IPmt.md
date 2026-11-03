@@ -35,8 +35,8 @@ The *rate* and *nper* arguments must be calculated by using payment periods expr
 
 For all arguments, cash paid out (such as deposits to savings) is represented by negative numbers; cash received (such as dividend checks) is represented by positive numbers.
 
-<!-- bug: financial-argument-checks -->
-> [!WARNING] BETA 1010
+<!-- test: bug financial-argument-checks, errors VBA.Financial -->
+> [!WARNING] BETA 1034
 > Given a *per* of 0 or less, or of *nper* + 1 or more, **IPmt** returns a value computed for that period, outside the annuity, and raises no error. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
 
 <!-- errors: generated from errors/VBA.Financial.yml by scripts/errors.mjs write; edit the data, not this section -->
@@ -48,13 +48,13 @@ For all arguments, cash paid out (such as deposits to savings) is represented by
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *fv* or *type* is a string that is not a number<br>*fv* or *type* is **Null** |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *rate*, *per*, *nper* or *pv* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *per* is 0 or less, or *nper* + 1 or more, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *nper* is 0 or less, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *fv* or *type* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*, instead.
 
 <!-- /errors -->

@@ -1,6 +1,6 @@
 ---
 title: xCalendar Package
-parent: Experimental Packages
+parent: Contributed Packages
 has_toc: false
 indexed_from: 1.0.17.0
 permalink: /tB/Packages/Contributed/xCalendar/
@@ -15,7 +15,7 @@ The **xCalendar** contributed package provides a calendar control: a grid of the
 
 The package has one public class, **xCalendar**, a user control that draws itself with GDI calls. The class has 27 properties, 10 methods and 12 events, and four enumerations belong to it. This section documents version 1.0.17.0, published under the MIT licence. The package describes itself as "Calendar MSCAL replacement (Experimental, 32-bit and 64-bit)", and its 32-bit and 64-bit builds behave the same.
 
-The package has defects: setting **Value** to a date in another month leaves the grid showing the old month, and the colour properties of the text have no effect. [Known problems in version 1.0.17.0](#known-problems-in-version-10170) lists them.
+The package has defects: setting **Value** to a date in another month leaves the grid showing the old month, and setting **FirstDay** leaves the dates of the grid in the old order. [Known problems in version 1.0.17.0](#known-problems-in-version-10170) lists them.
 
 ```tb check_build
 Private Sub Form_Load()
@@ -51,7 +51,7 @@ Debug.Print cal.Year
 ```
 
 <!-- test: compile ProjectNameIsNotAType, compile QualifiedClassNameIsAType -->
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > `Dim cal As xCalendar` fails with TB5139, *[xCalendar] is a project or library, not a datatype*.
 >
 > ```tb check_build expect-error=TB5139
@@ -67,7 +67,7 @@ Debug.Print d, m   ' 2 1
 ```
 
 <!-- test: compile BareShortLengthIsAmbiguous, compile BareLongLengthIsAmbiguous, compile QualifiedDayLengthMemberIsAccepted, compile QualifiedMonthLengthMemberIsAccepted -->
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > `ShortLength` and `LongLength` written alone fail with TB5073, *'ShortLength' is ambiguous*.
 >
 > ```tb check_build expect-error=TB5073
@@ -88,25 +88,23 @@ The two lists are scaled with the DPI of the display, by the [**DpiScale**](../.
 
 ### Title area
 
-<!-- test: LayoutTests.ShowTitle_OnlyDrawsTheTitleWhenItIsTrue, LayoutTests.MonthLength_LongShowsMoreOfTheMonthNameThanShort, LayoutTests.ShowTitleAndShowDateSelectors_BothFalse_RemoveTheTitleArea, LayoutTests.ShowTitle_False_KeepsTheTitleAreaWhileTheListsAreShown, LayoutTests.TitleMargin_RaisedBy10_MovesTheDayNamesDownBy20, SelectorTests.Lists_AreScaledWithTheDpiOfTheDisplay, SelectorTests.Lists_KeepTheirDistanceFromTheRightEdgeWhenTheControlIsResized, SelectorTests.YearList_HoldsTheYears1900To2100, SelectorTests.YearList_Choice_SelectsTheSameDayAndRaisesNewYear, SelectorTests.MonthList_HoldsTheNamesOfTheTwelveMonths, SelectorTests.MonthList_Choice_SelectsTheSameDayAndRaisesNewMonth, SelectorTests.ShowDateSelectors_SwitchesTheTwoListsOnAndOff -->
+<!-- test: LayoutTests.ShowTitle_OnlyDrawsTheTitleWhenItIsTrue, LayoutTests.MonthLength_LongShowsMoreOfTheMonthNameThanShort, LayoutTests.ShowTitleAndShowDateSelectors_BothFalse_RemoveTheTitleArea, LayoutTests.ShowTitle_False_KeepsTheTitleAreaWhileTheListsAreShown, LayoutTests.TitleMargin_RaisedBy10_MovesTheDayNamesDownBy20, SelectorTests.Lists_AreScaledWithTheDpiOfTheDisplay, SelectorTests.Lists_KeepTheirDistanceFromTheRightEdgeWhenTheControlIsResized, SelectorTests.YearList_HoldsTheYears1900To2100, SelectorTests.YearList_Choice_SelectsTheSameDayAndRaisesNewYear, SelectorTests.MonthList_HoldsTheNamesOfTheTwelveMonths, SelectorTests.MonthList_Choice_SelectsTheSameDayAndRaisesNewMonth, SelectorTests.ShowDateSelectors_SwitchesTheTwoListsOnAndOff, ColourTests.TitleFontColor_ColoursTheTitle, ColourTests.TitleFontColor_DefaultColoursTheTitle -->
 The title area is present when **ShowTitle** or **ShowDateSelectors** is **True**, and has no height when both are **False**. Its height is the height of one line of text in **TitleFont**, plus **TitleMargin** above and below. The control works the height out when it is created and when its size changes, and again when **TitleFont** is assigned with **Set** or **TitleMargin** or **ShowDateSelectors** is set. Its background is **BackColor**. It holds two things.
 
-- **The title** is the name of the shown month and the year, such as `October 2026`, in **TitleFont**, centred in the space to the left of the month list, or in the whole width of the control when the lists are not shown. A title wider than that space is cut off at both ends: see [Known problems](#known-problems-in-version-10170). **MonthLength** decides whether the month is written in full or as its first three letters. It is drawn only when **ShowTitle** is **True**. The month name comes from the [**MonthName**](../../../Modules/Strings/MonthName) function, so it is in the language of the system.
+- **The title** is the name of the shown month and the year, such as `October 2026`, in **TitleFont** and **TitleFontColor**, centred in the space to the left of the month list, or in the whole width of the control when the lists are not shown. A title wider than that space is cut off at both ends: see [Known problems](#known-problems-in-version-10170). **MonthLength** decides whether the month is written in full or as its first three letters. It is drawn only when **ShowTitle** is **True**. The month name comes from the [**MonthName**](../../../Modules/Strings/MonthName) function, so it is in the language of the system.
 - **The date selectors** are two drop-down lists at the right edge, drawn only when **ShowDateSelectors** is **True**. At 96 DPI the month list is 80 pixels wide and holds the names of the twelve months, and the year list is 50 pixels wide and holds the years 1900 to 2100. Both are 21 pixels high, placed so that a list of that height is centred in the height of the title area. The year list ends 5 pixels from the right edge of the control, and the month list ends 5 pixels before the year list. At 144 DPI each of these sizes is 1.5 times as large: the lists are 120 and 75 pixels wide, and the year list ends 8 pixels from the right edge. The height of a drop-down list is fixed by its font, so at 144 DPI each list is 28 pixels high, not the 31 that the control asks for, and sits 2 pixels above the centre of the title area. When the control is resized the lists keep their distance from the right edge, and the title is centred again in the space to their left. Choosing an entry changes the shown month or year, keeps the selected day of the month, and raises **NewMonth** or **NewYear**.
 <!-- /test -->
 
 ### Row of day names
 
-<!-- test: LayoutTests.ShowDays_False_RemovesTheRowOfDayNames, LayoutTests.DayLength_ALongerLengthShowsMoreOfTheDayNames, LayoutTests.DaysMargin_RaisedBy10_MovesTheGridDownBy20 -->
-The row is present when **ShowDays** is **True**. It has seven cells of the same width, filled with **DayBackColor**, each holding the name of a weekday centred, in **DayFont**. The first cell is the weekday that **FirstDay** names. **DayLength** decides whether a name is one letter, three letters or the whole name. The names come from the [**WeekdayName**](../../../Modules/Strings/WeekdayName) function, so they are in the language of the system. The height of the row is the height of the letter M in **DayFont**, plus **DaysMargin** above and below.
+<!-- test: LayoutTests.ShowDays_False_RemovesTheRowOfDayNames, LayoutTests.DayLength_ALongerLengthShowsMoreOfTheDayNames, LayoutTests.DaysMargin_RaisedBy10_MovesTheGridDownBy20, ColourTests.DayFontColor_ColoursTheDayNames -->
+The row is present when **ShowDays** is **True**. It has seven cells of the same width, filled with **DayBackColor**, each holding the name of a weekday centred, in **DayFont** and **DayFontColor**. The first cell is the weekday that **FirstDay** names. **DayLength** decides whether a name is one letter, three letters or the whole name. The names come from the [**WeekdayName**](../../../Modules/Strings/WeekdayName) function, so they are in the language of the system. The height of the row is the height of the letter M in **DayFont**, plus **DaysMargin** above and below.
 <!-- /test -->
 
 ### Grid of days
 
-<!-- test: GridTests.Grid_FirstCellIsTheLatestFirstDayOnOrBeforeTheMonthStart, GridTests.Grid_FirstCellFollowsFirstDay, GridTests.Grid_HasSixRowsOfSevenDays, ColourTests.SelectedCell_IsFilledWithAWarmGrey, ColourTests.SelectedCell_WithATimeOfDayThereIsNone, ColourTests.ShowVerticalGrid_False_RemovesTheVerticalLines, ColourTests.ShowHorizontalGrid_False_RemovesTheHorizontalLines, ColourTests.Frame_IsDrawnWhicheverLinesAreOn, ValueTests.Value_KeepsTheTimeOfDay, ValueTests.Value_WithTimeOfDayDoesNotChangeTheDate -->
-The grid has six rows of seven cells, 42 days in all, whatever the month. The first cell holds the latest date, on or before the first day of the shown month, that falls on the weekday **FirstDay** names. A month therefore starts in the first row, and the cells before its first day hold the last days of the month before. Each cell shows the day of the month at its top left corner, in **GridFont**. The cell of the selected date, **Value**, is filled with a fixed warm grey (`&H82868E`) and has a black line along its left and top edges.
-
-All the text of the control is drawn in the same near-black, whatever the colour properties say: the days of the month before and the month after are not grey, and the title is not in **TitleFontColor**. See [Known problems](#known-problems-in-version-10170).
+<!-- test: GridTests.Grid_FirstCellIsTheLatestFirstDayOnOrBeforeTheMonthStart, GridTests.Grid_FirstCellFollowsFirstDay, GridTests.Grid_HasSixRowsOfSevenDays, ColourTests.SelectedCell_IsFilledWithAWarmGrey, ColourTests.SelectedCell_WithATimeOfDayThereIsNone, ColourTests.ShowVerticalGrid_False_RemovesTheVerticalLines, ColourTests.ShowHorizontalGrid_False_RemovesTheHorizontalLines, ColourTests.Frame_IsDrawnWhicheverLinesAreOn, ValueTests.Value_KeepsTheTimeOfDay, ValueTests.Value_WithTimeOfDayDoesNotChangeTheDate, ColourTests.GridFontColor_ColoursTheDayNumbers, ColourTests.GridFont_DaysOfTheMonthsBeforeAndAfterAreGrey -->
+The grid has six rows of seven cells, 42 days in all, whatever the month. The first cell holds the latest date, on or before the first day of the shown month, that falls on the weekday **FirstDay** names. A month therefore starts in the first row, and the cells before its first day hold the last days of the month before. Each cell shows the day of the month at its top left corner, in **GridFont**. The days of the shown month are in **GridFontColor**, and the days of the month before and the month after in a fixed grey (`&HAAAAAA`). The cell of the selected date, **Value**, is filled with a fixed warm grey (`&H82868E`) and has a black line along its left and top edges.
 
 **ShowVerticalGrid** and **ShowHorizontalGrid** switch the lines between the cells on and off, and **GridCellEffect** and **GridLinesColor** decide how the lines look. A black frame of one pixel always surrounds the row of day names and the grid, whichever lines are on.
 
@@ -115,8 +113,8 @@ A cell is selected only when its date is equal to **Value**. A **Value** with a 
 
 ### Disabled state
 
-<!-- test: EnabledTests.Enabled_False_DisablesTheControlAndTheTwoLists, EnabledTests.Enabled_False_CodeCanStillChangeTheDate, EnabledTests.Enabled_False_DrawsTheRowOfDayNamesOnALightGrey, EnabledTests.Enabled_False_DrawsFlatGridLinesInDarkGrey, EnabledTests.Enabled_False_LeavesBackColorAsItIs, probe 1 -->
-When **Enabled** is set to **False** by the program, the two lists are disabled and drawn in grey, and the row of day names has the background `&HEEEEEE` in place of **DayBackColor**. A control that loads from a form with **Enabled** already **False** draws its lists as an enabled control does: see [Known problems](#known-problems-in-version-10170). With **Flat** lines, the grid lines are `&H5B5B5B` in place of **GridLinesColor**. **BackColor** is the same as for an enabled control, and the text keeps its colour.
+<!-- test: EnabledTests.Enabled_False_DisablesTheControlAndTheTwoLists, EnabledTests.Enabled_False_CodeCanStillChangeTheDate, EnabledTests.Enabled_False_DrawsTheRowOfDayNamesOnALightGrey, EnabledTests.Enabled_False_DrawsFlatGridLinesInDarkGrey, EnabledTests.Enabled_False_LeavesBackColorAsItIs, EnabledTests.Enabled_False_DrawsTheTitleInGrey, EnabledTests.Enabled_False_DrawsTheDayNamesAndNumbersInGrey, probe 1 -->
+When **Enabled** is set to **False** by the program, the two lists are disabled and drawn in grey, and the row of day names has the background `&HEEEEEE` in place of **DayBackColor**. A control that loads from a form with **Enabled** already **False** draws its lists as an enabled control does: see [Known problems](#known-problems-in-version-10170). With **Flat** lines, the grid lines are `&H5B5B5B` in place of **GridLinesColor**. The title is drawn in a light grey (`&HBCBCBC`) in place of **TitleFontColor**, and the day names and the days of the shown month in grey (`&H999999`) in place of **DayFontColor** and **GridFontColor**. **BackColor** is the same as for an enabled control.
 
 A disabled control does not receive the mouse or the keyboard from the user, and the focus cannot be given to it. Code can still change its date, for example with **NextDay** or **Value**.
 <!-- /test -->
@@ -177,11 +175,10 @@ Setting **Value**, **Day**, **Month** or **Year**, and calling the methods that 
 
 ## Known problems in version 1.0.17.0
 
-<!-- test: ColourTests.TitleFontColor_ColoursTheTitle, ColourTests.TitleFontColor_DefaultColoursTheTitle, ColourTests.DayFontColor_ColoursTheDayNames, ColourTests.GridFontColor_ColoursTheDayNumbers, ColourTests.GridFont_DaysOfTheMonthsBeforeAndAfterAreGrey, EnabledTests.Enabled_False_DrawsTheTitleInGrey, EnabledTests.Enabled_False_DrawsTheDayNamesAndNumbersInGrey, GridTests.Value_InAnotherMonth_PlacesTheGrid, GridTests.Value_InAnotherMonth_SelectsACell, GridTests.Value_InAnotherMonth_RefreshPlacesTheGrid, GridTests.Value_InAnotherMonth_NextMovePlacesTheGrid, GridTests.FirstDay_PlacesTheDatesOfTheGrid, GridTests.FirstDay_RefreshPlacesTheDatesOfTheGrid, GridTests.FirstDay_NextMovePlacesTheDatesOfTheGrid, GridTests.Press_NearTheRightEdge_SelectsTheLastColumn, GridTests.Press_NearTheBottomEdge_SelectsTheLastRow, ColourTests.GridLinesColor_Flat_RGBValueIsDrawnAsGiven, ColourTests.GridLinesColor_Flat_DefaultIsDrawnAsTheSystemColour, probe 1, SelectorTests.Year_Before1900_IsShownInTheYearList, SelectorTests.Year_After2100_IsShownInTheYearList, SelectorTests.Year_Outside1900To2100_RaisesNoErrorAndValueFollows, SelectorTests.Value_Outside1900To2100_RaisesNoErrorAndYearFollows -->
+<!-- test: GridTests.Value_InAnotherMonth_PlacesTheGrid, GridTests.Value_InAnotherMonth_SelectsACell, GridTests.Value_InAnotherMonth_RefreshPlacesTheGrid, GridTests.Value_InAnotherMonth_NextMovePlacesTheGrid, GridTests.FirstDay_PlacesTheDatesOfTheGrid, GridTests.FirstDay_RefreshPlacesTheDatesOfTheGrid, GridTests.FirstDay_NextMovePlacesTheDatesOfTheGrid, GridTests.Press_NearTheRightEdge_SelectsTheLastColumn, GridTests.Press_NearTheBottomEdge_SelectsTheLastRow, ColourTests.GridLinesColor_Flat_RGBValueIsDrawnAsGiven, ColourTests.GridLinesColor_Flat_DefaultIsDrawnAsTheSystemColour, probe 1, SelectorTests.Year_Before1900_IsShownInTheYearList, SelectorTests.Year_After2100_IsShownInTheYearList, SelectorTests.Year_Outside1900To2100_RaisesNoErrorAndValueFollows, SelectorTests.Value_Outside1900To2100_RaisesNoErrorAndYearFollows -->
 > [!WARNING] 1.0.17.0
 > The package gives a wrong result without an error in these cases.
 >
-> - **The colour properties of the text have no effect.** **DayFontColor**, **GridFontColor** and **TitleFontColor** are stored and returned, but the day names, the day numbers and the title are always drawn in the same near-black (`&H4`), and so are the days of the month before and the month after, which the control means to draw in grey. The disabled state has no effect on the text colour either.
 > - **Setting Value to a date in another month, or setting FirstDay, does not place the dates of the grid again.** After **Value** is set, the title and the two lists show the new month, but the grid still shows the dates of the month before, with no cell selected. After **FirstDay** is set, the day names move to the new order and the dates do not, so the names and the dates disagree. **Refresh** does not correct either. The dates are placed again when the selection is next moved, by a click on a cell, by **Today** or by one of the **Next** and **Previous** methods.
 > - **A press near the right edge or the bottom edge can select a date that the grid does not show.** In a control 255 pixels wide, a cell is 36.43 pixels, which the control takes as 36, and a press at 252 to 254 pixels from the left selects the date of a column after the last, the first date of the next row. In a control 292 pixels high, a press at 290 or 291 pixels from the top selects a date a row below the grid.
 > - **A flat grid is drawn near-black with the default GridLinesColor.** With **GridCellEffect** **Flat**, the default `&H80000010`, the system colour **vbButtonShadow**, is drawn as `&H10`, a near-black, and not as grey. A colour given as an RGB value, such as `RGB(255, 0, 0)`, is drawn as it is.
@@ -241,7 +238,7 @@ The control keeps the object that is assigned, not a copy of it. Assigning a fon
 ### DayFontColor
 {: .no_toc }
 
-The colour of the day names. **OLE_COLOR**. Default: black. The value is stored, and it has no effect on the colour of the text: see [Known problems](#known-problems-in-version-10170).
+The colour of the day names. **OLE_COLOR**. Default: black. A disabled control draws them in grey: see [Disabled state](#disabled-state).
 
 ### DayLength
 {: .no_toc }
@@ -288,7 +285,7 @@ The font of the day numbers in the grid. A **Font** object. Default: Arial, 8 po
 ### GridFontColor
 {: .no_toc }
 
-The colour of the day numbers. **OLE_COLOR**. Default: dark blue (`&HA00000`, blue 160). The value is stored, and it has no effect on the colour of the text: see [Known problems](#known-problems-in-version-10170).
+The colour of the numbers of the days of the shown month. **OLE_COLOR**. Default: dark blue (`&HA00000`, blue 160). The days of the month before and the month after are always grey, and a disabled control draws every day number in grey: see [Grid of days](#grid-of-days) and [Disabled state](#disabled-state).
 
 ### GridLinesColor
 {: .no_toc }
@@ -348,7 +345,7 @@ The font of the title. A **Font** object. Default: Arial, 16 points. The remarks
 ### TitleFontColor
 {: .no_toc }
 
-The colour of the title. **OLE_COLOR**. Default: orange (`&H80FF&`, red 255, green 128, blue 0). The value is stored, and it has no effect on the colour of the text: see [Known problems](#known-problems-in-version-10170).
+The colour of the title. **OLE_COLOR**. Default: orange (`&H80FF&`, red 255, green 128, blue 0). A disabled control draws the title in a light grey: see [Disabled state](#disabled-state).
 
 ### TitleMargin
 {: .no_toc }
@@ -399,10 +396,6 @@ Setting **Year** selects the same day and month in that year, shows the year, an
 A method is called as *object*.**Name**. None takes an argument or returns a value. The methods that move the selection show the month of the new date, update the two lists, and raise no event. They do not check that the new date is in the range of the year list, 1900 to 2100: past either end, **Value** and the title follow, and the year list is blank before 1900 and unchanged after 2100.
 <!-- /test -->
 
-<!-- test: MethodTests.NextMonth_FromJanuary31_SelectsTheLastDayOfFebruary, MethodTests.PreviousMonth_FromMarch31_SelectsTheLastDayOfFebruary, MethodTests.NextYear_FromFebruary29_SelectsFebruary28, MethodTests.PreviousYear_FromFebruary29_SelectsFebruary28 -->
-> [!WARNING] BETA 1010
-> [**DateAdd**](../../../Modules/DateTime/DateAdd) with the interval `"m"`, `"q"` or `"yyyy"` does not stop at the end of a shorter month: the date overflows into the next month. **NextMonth**, **PreviousMonth**, **NextYear** and **PreviousYear** call **DateAdd**, so **NextMonth** from January 31, 2026 selects March 3, 2026, **PreviousMonth** from March 31, 2026 selects March 3, 2026, and **NextYear** from February 29, 2024 selects March 1, 2025. VB6 gives the last day of the shorter month in every such case: February 28, 2026 for the first one.
-
 ### NextDay
 {: .no_toc }
 
@@ -414,7 +407,7 @@ Selects the day after the selected one.
 {: .no_toc }
 
 <!-- test: MethodTests.NextMonth_SelectsTheSameDayOneMonthAfter, MethodTests.NextMonth_FromJanuary31_SelectsTheLastDayOfFebruary, MethodTests.NextMonth_FromFebruary28_SelectsMarch28 -->
-Selects the same day one month after the selected one, or the last day of that month when it has no such day, so January 31 gives February 28 or 29. The change stays: **NextMonth** from February 28 gives March 28, not March 31. In BETA 1010 the result differs for the 29th to the 31st: see the warning at the start of this section.
+Selects the same day one month after the selected one, or the last day of that month when it has no such day, so January 31 gives February 28 or 29. The change stays: **NextMonth** from February 28 gives March 28, not March 31.
 <!-- /test -->
 
 ### NextWeek
@@ -428,7 +421,7 @@ Selects the day seven days after the selected one.
 {: .no_toc }
 
 <!-- test: MethodTests.NextYear_SelectsTheSameDayOneYearAfter, MethodTests.NextYear_FromFebruary29_SelectsFebruary28 -->
-Selects the same day one year after the selected one, or February 28 when the selected day is February 29 and the next year is not a leap year. In BETA 1010 the result differs for February 29: see the warning at the start of this section.
+Selects the same day one year after the selected one, or February 28 when the selected day is February 29 and the next year is not a leap year.
 <!-- /test -->
 
 ### PreviousDay
@@ -442,7 +435,7 @@ Selects the day before the selected one.
 {: .no_toc }
 
 <!-- test: MethodTests.PreviousMonth_SelectsTheSameDayOneMonthBefore, MethodTests.PreviousMonth_FromMarch31_SelectsTheLastDayOfFebruary -->
-Selects the same day one month before the selected one. The remarks for [**NextMonth**](#nextmonth) apply, and so does the warning at the start of this section.
+Selects the same day one month before the selected one. The remarks for [**NextMonth**](#nextmonth) apply.
 <!-- /test -->
 
 ### PreviousWeek
@@ -456,7 +449,7 @@ Selects the day seven days before the selected one.
 {: .no_toc }
 
 <!-- test: MethodTests.PreviousYear_SelectsTheSameDayOneYearBefore, MethodTests.PreviousYear_FromFebruary29_SelectsFebruary28 -->
-Selects the same day one year before the selected one. The remarks for [**NextYear**](#nextyear) apply, and so does the warning at the start of this section.
+Selects the same day one year before the selected one. The remarks for [**NextYear**](#nextyear) apply.
 <!-- /test -->
 
 ### Refresh

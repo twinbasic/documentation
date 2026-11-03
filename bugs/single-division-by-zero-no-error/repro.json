@@ -1,0 +1,15 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^s = Single / 0\\s+Err=0 s=1\\.#INF$",
+      "^s = 0! / 0!\\s+Err=0 s=-1\\.#IND$",
+      "^s = Double / 0\\s+Err=0 s=1\\.#INF$",
+      "^s = Long / 0\\s+Err=0 s=1\\.#INF$",
+      "^If Single / 0 > 0\\s+Err=0$",
+      "^d = Single / 0\\s+Err=11$",
+      "^d = 0# / 0#\\s+Err=6$"
+    ]
+  }
+}

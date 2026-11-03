@@ -12,15 +12,30 @@ Sub Main()
     LSet v = "abc"
     Print #9, "LSet, destination Null:    error " & Err.Number
 
-    v = New Collection
+    Set v = New Collection
     Err.Clear
     LSet v = "abc"
     Print #9, "LSet, destination Object:  error " & Err.Number
+
+    Set v = New Collection
+    Err.Clear
+    RSet v = "abc"
+    Print #9, "RSet, destination Object:  error " & Err.Number
 
     v = True
     Err.Clear
     RSet v = "ab"
     Print #9, "RSet, destination True:    [" & v & "] Len " & Len(v)
+
+    v = True
+    Err.Clear
+    LSet v = "ab"
+    Print #9, "LSet, destination True:    [" & v & "] Len " & Len(v)
+
+    v = False
+    Err.Clear
+    LSet v = "ab"
+    Print #9, "LSet, destination False:   [" & v & "] Len " & Len(v)
     Close #9
     Exit Sub
 Fail:

@@ -1,0 +1,37 @@
+' cHttpClient against a server whose certificate is expired, signed by no known authority and issued
+' for another name. server.mjs beside this file is that server, on 127.0.0.1: a case in the IDE has
+' no server to call, since the small server of the test project speaks plain HTTP.
+[TestFixture]
+Module HttpsTests
+
+    Private Function Url() As String
+        Return "https://127.0.0.1:" & Environ$("PACKAGE_TEST_PORT") & "/"
+    End Function
+
+    ' The control: without the package's options, Windows refuses this certificate.
+    [TestCase]
+    Public Sub WinHttpRequest_ByItself_RefusesTheCertificate()
+        Expect.Begin
+        Dim plain As Object = CreateObject("WinHttp.WinHttpRequest.5.1")
+        On Error Resume Next
+        plain.Open "GET", Url(), False
+        plain.Send
+        Dim number As Long = Err.Number
+        On Error GoTo 0
+        Expect.IsTrue number <> 0, "a WinHttpRequest with its own settings raises an error for the certificate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Send_ACertificateThatProvesNothing_IsRefused()
+        Expect.Begin
+        Dim H As New cHttpClient
+        On Error Resume Next
+        H.SendGet Url()
+        Dim text As String = H.ReturnText()
+        On Error GoTo 0
+        Expect.AreEqual "", text, "the body from a server whose certificate is expired, unknown and for another name"
+        Expect.Done
+    End Sub
+
+End Module

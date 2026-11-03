@@ -62,7 +62,8 @@ Its one button is **Continue Anyway**. The box does not appear when *Register DL
 
 ![The warning box the IDE shows as it opens a project that registers to HKEY_LOCAL_MACHINE while the IDE is not elevated, with one button.](Images/HKLM_Warning.png){:width="541" height="249"}
 
-> [!NOTE] BETA 1010
+<!-- test: bug hklm-warning-twice, lane ide:building-hklm -->
+> [!NOTE] BETA 1034
 > The warning opens twice each time you open the project, and also for a Standard EXE project that has *Register DLLs to HKLM* at **Yes**, although an EXE registers nothing. Choose **Continue Anyway** each time. To stop the box, set *Register DLLs to HKLM* or *Register DLL after build* to **No**.
 
 If you build anyway, the DLL is written and its registration fails:
@@ -88,7 +89,8 @@ For a DLL registered under `HKEY_LOCAL_MACHINE`, in an IDE that is not elevated,
 
 **Delete It And Continue** builds again and ignores the old build. The console prints `[BUILD] Starting...` again. **Cancel** stops there.
 
-> [!NOTE] BETA 1010
+<!-- test: bug clean-hklm-delete-builds, lane ide:building-hklm -->
+> [!NOTE] BETA 1034
 > The box that opens at **Clean** has the same buttons, but **Delete It And Continue** there builds a new DLL instead of deleting the old one: the console prints `[LINKER] SUCCESS` and a failed `[REGISTER]` line. Choose **Cancel** at **Clean**: the box does not clean.
 
 If the previous file is not a DLL any more, for example because something else replaced it, the deregistration fails with `-2147467259`, the IDE asks nothing and the build goes on. The new DLL is registered normally.

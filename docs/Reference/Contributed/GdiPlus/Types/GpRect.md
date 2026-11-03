@@ -290,8 +290,8 @@ Syntax: *rect*.**InflatedByPt**( *point* As **GpPoint** ) As **GpRect**
 
 Return a copy of the rectangle moved or inflated as [**Offset**](#offset-offsetpt) and [**Inflate**](#inflate-inflatept) do.
 
-<!-- test: none -- the linker rejects the program, and the compile-case runner sees only the diagnostics of the editor -->
-> [!NOTE] 0.9.45.0, BETA 1010
+<!-- test: bug udt-method-assign-me-codegen -->
+> [!NOTE] 0.9.45.0, BETA 1034
 > A program that names any of these four methods does not link: the linker reports a code generation error in the method. Copy the rectangle and call **Offset**, **OffsetPt**, **Inflate** or **InflatePt** on the copy.
 
 ```tb check_build check_run

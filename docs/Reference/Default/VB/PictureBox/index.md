@@ -103,6 +103,7 @@ When **True**, the control resizes itself to fit the assigned [**Picture**](#pic
 
 The background colour of the control's drawing surface, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Setting it erases everything drawn with the graphics methods and [**Print**](#print), as [**Cls**](#cls) does, even when the colour is the one already set. Unlike **Cls**, it leaves [**CurrentX**](#currentx) and [**CurrentY**](#currenty) as they are. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
+<!-- test: bug backcolor-resets-current-xy -->
 > [!WARNING] BETA 1034
 > When [**AutoRedraw**](#autoredraw) is **True**, setting a different **BackColor** also resets **CurrentX** and **CurrentY** to **0**.
 
@@ -370,6 +371,7 @@ A reference to the [**Form**](../Form) (or **UserControl**) that ultimately cont
 
 The picture displayed in the control's client area. **StdPicture**. **Default property.** Use **Set** to assign a new picture, **Nothing** to clear it. Assigning when [**AutoSize**](#autosize) is **True** resizes the control to fit.
 
+<!-- test: bug backcolor-resets-current-xy -->
 > [!WARNING] BETA 1034
 > When [**AutoRedraw**](#autoredraw) is **True**, setting **Picture** resets [**CurrentX**](#currentx) and [**CurrentY**](#currenty) to **0**.
 

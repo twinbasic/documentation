@@ -191,6 +191,13 @@ node scripts/check_book_coverage.mjs
 @rem no tree, no install, well under a second.
 node scripts/check_package_tests.mjs
 @if errorlevel 1 goto :fail
+@rem Every callout labelled BETA <n> names what checks it in a marker, which
+@rem scripts\recheck_callouts.mjs runs on a new build, and every marker under
+@rem docs\ names a reproducer, lane, sample, error data file or LLVM probe
+@rem mode that exists. Its probes run on inputs built in memory first.
+@rem Sources only: no tree, no install, a few seconds.
+node scripts/check_callout_evidence.mjs
+@if errorlevel 1 goto :fail
 @rem Every page's Common Errors section is what scripts\errors.mjs write makes of the
 @rem run-time error data under errors\, and the data is in order. Its probes
 @rem run on inputs built in memory first. Sources only: no twinBASIC, no VB6.

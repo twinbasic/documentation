@@ -3,6 +3,7 @@ title: Generics
 parent: Language Syntax
 nav_order: 5
 permalink: /Features/Language/Generics
+index: TB5124
 ---
 
 # Generics
@@ -164,6 +165,7 @@ The function **Caster** introduces three type variables within its scope:
    * Finally, also in the body, the **intermediate** is cast to the result type of **String**, and returned.
 
 ### Operators in a generic body
+{: index="TB5092" }
 
 The body of a generic procedure is compiled once for each type it is used with, as if it had been written out for that type. So the body can use an operator that works on every type it is called with:
 

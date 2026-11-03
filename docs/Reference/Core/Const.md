@@ -50,6 +50,7 @@ When the constant type is not explicitly declared by using **As** *type*, the co
 Constants declared in a **Sub**, **Function**, or **Property** procedure are local to that procedure. A constant declared outside a procedure is defined throughout the module in which it is declared. Constants can be used anywhere an expression is allowed.
 
 ## Array constants
+{: index="TB5002; TB5028; TB5050; TB5078; TB5109; TB5250" }
 
 *(twinBASIC)* A constant can also be a one-dimensional array, whose elements are given with [**Array**](../Modules/Information/Array):
 
@@ -78,10 +79,12 @@ Debug.Print UBound(Primes)      ' 4
 Debug.Print Total               ' 28
 ```
 
-> [!WARNING] BETA 1010
+<!-- test: bug single-array-const-overflow -->
+> [!WARNING] BETA 1034
 > A module-level **Single** array constant whose element is too large for a **Single**, such as `Const Big() As Single = Array(1E+39)`, compiles without an error, and the element holds infinity. An array constant declared after it whose element calls **Sqr**, **Timer** or **Rnd** is then compile error **TB5001**, although it is correct.
 
-> [!NOTE] BETA 1010
+<!-- test: bug array-const-after-procedure-not-found -->
+> [!NOTE] BETA 1034
 > In a module, an array constant declared after a procedure is compile error **TB5079**, *Unrecognized symbol*, in the procedures that follow it. The procedures before it see an empty array: reading an element raises error 9. Declare array constants above the module's first procedure.
 
 > [!NOTE]

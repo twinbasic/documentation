@@ -1,0 +1,77 @@
+{
+  "beta": 1034,
+  "modes": {
+    "links-win32": {
+      "ide": {
+        "add": "5",
+        "strings": "6",
+        "malloc": "45"
+      },
+      "exe": {
+        "add": "5",
+        "strings": "6",
+        "malloc": "45"
+      }
+    },
+    "links-win64": {
+      "ide": {
+        "add": "5",
+        "strings": "6",
+        "malloc": "45"
+      },
+      "exe": {
+        "add": "5",
+        "strings": "6",
+        "malloc": "45"
+      }
+    },
+    "refused-win32": {
+      "errors": [
+        "TB5058 linker error: unrecognized symbol '??_U@YAPAXI@Z'",
+        "TB5058 linker error: unrecognized symbol '??_V@YAXPAX@Z'",
+        "TB5058 linker error: unrecognized symbol '?_OptionsStorage@?1??__local_stdio_printf_options@@9@9'",
+        "TB5058 linker error: unrecognized symbol '___stdio_common_vsprintf'",
+        "TB5058 linker error: unrecognized symbol '_atoi'",
+        "TB5058 linker error: unrecognized symbol '_floor' (Link With \"api-ms-win-crt-math-l1-1-0\"?)",
+        "TB5058 linker error: unrecognized symbol '_qsort'",
+        "TB5058 linker error: unrecognized symbol '_sin' (Link With \"api-ms-win-crt-math-l1-1-0\"?)"
+      ]
+    },
+    "refused-win64": {
+      "errors": [
+        "TB5058 linker error: unrecognized symbol '??_U@YAPEAX_K@Z'",
+        "TB5058 linker error: unrecognized symbol '??_V@YAXPEAX@Z'",
+        "TB5058 linker error: unrecognized symbol '?_OptionsStorage@?1??__local_stdio_printf_options@@9@9'",
+        "TB5058 linker error: unrecognized symbol '__stdio_common_vsprintf'",
+        "TB5058 linker error: unrecognized symbol 'atoi'",
+        "TB5058 linker error: unrecognized symbol 'floor' (Link With \"api-ms-win-crt-math-l1-1-0\"?)",
+        "TB5058 linker error: unrecognized symbol 'qsort'",
+        "TB5058 linker error: unrecognized symbol 'sin' (Link With \"api-ms-win-crt-math-l1-1-0\"?)"
+      ]
+    },
+    "sqlite-win32": {
+      "exitCode": 0,
+      "boxes": [
+        "Read record: 1, Hello, World1!",
+        "Read record: 2, Hello, World2!",
+        "Read record: 3, Hello, World3!"
+      ]
+    },
+    "sqlite-win64": {
+      "exitCode": 0,
+      "boxes": [
+        "Read record: 1, Hello, World1!",
+        "Read record: 2, Hello, World2!",
+        "Read record: 3, Hello, World3!"
+      ]
+    },
+    "detours-win32": {
+      "ran": true,
+      "documented": true
+    },
+    "detours-win64": {
+      "ran": true,
+      "documented": true
+    }
+  }
+}

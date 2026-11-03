@@ -8,7 +8,7 @@
 # the probe module cannot declare, nor for AddCustomBinder Nothing and AddCustomBinderObject
 # with an object of Nothing, which crash (an access violation, 32-bit and 64-bit; the pages'
 # WARNINGs).
-beta: 1010
+beta: 1034
 pages:
   Reference/Default/VBA/TbExpressionService/Compile.md:
     harness: expression

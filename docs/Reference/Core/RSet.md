@@ -24,7 +24,21 @@ If *string* is longer than *stringvar*, **RSet** places only the leftmost charac
 
 **RSet** never changes the length of *stringvar*, so a *stringvar* of zero length stays empty. *stringvar* can be a variable-length string, a fixed-length string, or a **Variant** that holds a string. A *string* that is **Null** raises error 94.
 
-> [!WARNING] BETA 1010
+A **Variant** *stringvar* that holds a number, a date or a **Boolean** is aligned within the text of its value, which becomes its new value: one that holds **True** has the four characters of `True`. One that holds **Null** raises error 94.
+
+```tb check_run
+Dim v As Variant
+v = True
+RSet v = "ab"
+Debug.Print "[" & v & "]"   ' [  ab]
+```
+
+<!-- test: bug lset-variant-destination-types -->
+> [!NOTE] BETA 1034
+> A **Variant** *stringvar* that holds an object raises error 13, *Type mismatch*. VB6 raises error 450, *Wrong number of arguments or invalid property assignment*.
+
+<!-- test: bug lset-variant-array-element-noop -->
+> [!WARNING] BETA 1034
 > **RSet** on an element of a **Variant** that holds an array, such as `RSet v(1) = "zz"` with `v = Array("0123456789", "abcde")` or a **Variant** that was given its bounds with **ReDim**, changes nothing and raises no error. VB6 changes the element. An element of an array declared `Dim w(0 To 1) As Variant` works. To change an element of a **Variant** array, copy it to a **String** variable, use **RSet** on the variable and assign the variable back.
 
 > [!NOTE]

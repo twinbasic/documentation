@@ -1,0 +1,20 @@
+' What does not link: the rest of the C runtime, and C++ new and delete. Nothing here runs: run.mjs
+' reads the errors the compiler reports for it.
+#If Win64 Then
+    Import Library "/Miscellaneous/crtmore_64.obj" As CRTMORE Link "stdlib"
+    Import Library "/Miscellaneous/cppnew_64.obj" As CPPNEW Link "stdlib"
+#Else
+    Import Library "/Miscellaneous/crtmore_32.obj" As CRTMORE Link "stdlib"
+    Import Library "/Miscellaneous/cppnew_32.obj" As CPPNEW Link "stdlib"
+#End If
+
+Module Startup
+
+    Private Declare PtrSafe Function crt_atoi CDecl Lib CRTMORE (ByVal s As String) As Long
+    Private Declare PtrSafe Function cpp_new CDecl Lib CPPNEW (ByVal n As Long) As Long
+
+    Public Sub Main()
+        Debug.Print crt_atoi("1") + cpp_new(1)
+    End Sub
+
+End Module

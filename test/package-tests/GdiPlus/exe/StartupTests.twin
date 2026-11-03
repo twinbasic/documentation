@@ -1,0 +1,47 @@
+' GdiPlusUser in a program that has not started GDI+. The IDE's process has, so in a test case run
+' there a GDI+ object made with no GdiPlusUser works. These cases run in a built exe, in order, in
+' one process, and GDI+ stays started until the process ends, so the two that need it stopped come
+' first, and the second of them is the one that starts it.
+[TestFixture]
+Module StartupTests
+
+    [TestCase]
+    Public Sub Bitmap_NoGdiPlusUser_FailsWithStatus18()
+        Expect.Begin
+        Dim bmp As Bitmap = Bitmap(8!, 8!)
+        Expect.AreEqual CLng(GdiplusNotInitialized), CLng(bmp.LastResult), "status of a Bitmap made with no GdiPlusUser"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Bitmap_BeforeTheFirstUseOfADimAsNewUser_FailsWithStatus18()
+        Expect.Begin
+        Dim user As New GdiPlusUser
+        Dim before As Bitmap = Bitmap(8!, 8!)
+        Expect.AreEqual CLng(GdiplusNotInitialized), CLng(before.LastResult), "status of a Bitmap made before user is used"
+        Dim started As GpStatus = user.LastResult
+        Dim after As Bitmap = Bitmap(8!, 8!)
+        Expect.AreEqual CLng(Ok), CLng(after.LastResult), "status of a Bitmap made after user is first used"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Bitmap_GdiPlusUserFirst_IsCreated()
+        Expect.Begin
+        Dim user As GdiPlusUser = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(8!, 8!)
+        Expect.AreEqual CLng(Ok), CLng(bmp.LastResult), "status of a Bitmap made after a GdiPlusUser"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Bitmap_AfterSetOfAUser_IsCreated()
+        Expect.Begin
+        Dim user As GdiPlusUser
+        Set user = GdiPlusUser()
+        Dim bmp As Bitmap = Bitmap(8!, 8!)
+        Expect.AreEqual CLng(Ok), CLng(bmp.LastResult), "status of a Bitmap made after Set of a GdiPlusUser"
+        Expect.Done
+    End Sub
+
+End Module

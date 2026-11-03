@@ -38,10 +38,10 @@ When called with *number*, **Environ** returns the entire entry at that position
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *number* is less than 1 after rounding (**Empty** and **True** included), no entry has that position, or *envstring* is a zero-length string<br>*number* is greater than 32,767 |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *envstring* or *number* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *number* is less than 1 after rounding (**Empty** and **True** included), no entry has that position, or *envstring* is a zero-length string, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *number* is greater than 32,767, VB6 and 64-bit VBA raise error [6 (`&H6`)](tb:Errors#6), *Overflow*, instead.
 
 <!-- /errors -->

@@ -52,16 +52,16 @@ A new *pathname* can be specified without first retrieving all of the file names
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | **Dir** is called without *pathname* after it has returned a zero-length string<br>*pathname* names a file and ends in a backslash<br>a name in *pathname* is longer than 255 characters |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *pathname* is **Null**<br>*attributes* is **Null** |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When **Dir** is called without *pathname* after it has returned a zero-length string, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *pathname* names a file and ends in a backslash, VB6 and 64-bit VBA raise error [52 (`&H34`)](tb:Errors#52), *Bad file name or number*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When a name in *pathname* is longer than 255 characters, VB6 and 64-bit VBA raise error [53 (`&H35`)](tb:Errors#53), *File not found*, instead.
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When *pathname* is **Null**, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
 <!-- /errors -->

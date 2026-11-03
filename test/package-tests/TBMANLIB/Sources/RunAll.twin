@@ -53,8 +53,8 @@ Module RunAll
         Expect.EndCase "ArrayTests.SplitByteArray_SplitsAtAPositionWithAnOffset", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
-        ArrayTests.SplitByteArray_PositionZero_RaisesUnspecifiedError
-        Expect.EndCase "ArrayTests.SplitByteArray_PositionZero_RaisesUnspecifiedError", Err.Number, Err.Description
+        ArrayTests.SplitByteArray_PositionZero_RaisesSubscriptOutOfRange
+        Expect.EndCase "ArrayTests.SplitByteArray_PositionZero_RaisesSubscriptOutOfRange", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         ArrayTests.SplitByteArrayByKeyword_SplitsAtEachKeyword

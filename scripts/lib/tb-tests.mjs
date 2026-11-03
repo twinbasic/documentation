@@ -23,7 +23,12 @@
 //     `' CASE <Name>: error` or `' CASE <Name>: none`. It passes when the IDE
 //     reports each code named on that line; for `error`, any error on it (for a
 //     defect whose fix may choose its own diagnostic); for `none`, nothing at
-//     all on it.
+//     all on it. For a package that does not compile, a comment
+//     `' CASE <Name>: package TB5001 Libs/cThing.twin:21` names the row instead:
+//     a file under the package's Sources/ and a line, in any embedded package.
+//     `win32` or `win64` before `package` says the case holds for that
+//     architecture alone; scripts/package_tests.mjs runs it there, even one the
+//     package is not otherwise tested on.
 
 import { MODIFIERS } from "./twin-declarations.mjs";
 
@@ -35,6 +40,8 @@ const END_MODULE_RE = /^[ \t]*End[ \t]+Module\b/i;
 const SUB_RE = new RegExp(`^[ \\t]*(?:(?:${MODIFIERS})[ \\t]+)*(Sub|Function)[ \\t]+(\\w+)[ \\t]*(\\([^)]*\\))?`, "i");
 const COMMENT_RE = /^[ \t]*(?:'|Rem\b)/i;
 const CASE_RE = /'[ \t]*CASE[ \t]+(\w+)[ \t]*:[ \t]*(none|error|TB\d+(?:[ \t]*,[ \t]*TB\d+)*)[ \t]*$/i;
+const PACKAGE_CASE_RE =
+  /'[ \t]*CASE[ \t]+(\w+)[ \t]*:[ \t]*(?:(win32|win64)[ \t]+)?package[ \t]+(TB\d+)[ \t]+([\w./-]+):(\d+)[ \t]*$/i;
 // A diagnostic row as the IDE's PROBLEMS panel gives it to compileOutcome:
 // "{ERROR} /Project/Sources/Startup.twin [19,28]: TB5074 Cannot construct ...".
 const ROW_RE = /^\{(\w+)\}[ \t]+(\S+)[ \t]+\[(\d+),\d+\]:[ \t]+(TB\d+)/;
@@ -42,6 +49,8 @@ const ROW_RE = /^\{(\w+)\}[ \t]+(\S+)[ \t]+\[(\d+),\d+\]:[ \t]+(TB\d+)/;
 // A row's file as findCases names it: its path under the project's Sources/ folder, in lower case, or
 // null for a file elsewhere, such as a package's.
 const underSources = (row) => /^\/[^/]+\/Sources\/(.+)$/i.exec(row)?.[1].toLowerCase() ?? null;
+// The same under an embedded package's Sources/ folder.
+const underPackage = (row) => /\/Packages\/[^/]+\/Sources\/(.+)$/i.exec(row)?.[1].toLowerCase() ?? null;
 
 const isOn = (arg) => arg === undefined || !/^\s*False\s*$/i.test(arg);
 
@@ -51,10 +60,12 @@ const isOn = (arg) => arg === undefined || !/^\s*False\s*$/i.test(arg);
  * @param {{name: string, text: string}[]} files  the .twin files, each named by its path under Sources/, such as
  *   "Tests/Probe.twin"
  * @returns {{tests: {fixture: string, name: string, file: string, line: number}[],
- *            compiles: {name: string, file: string, line: number, codes: string[], anyError: boolean}[],
+ *            compiles: {name: string, file: string, line: number, codes: string[], anyError: boolean,
+ *                       inPackage?: boolean, arch?: string}[],
  *            problems: string[]}}
- *   `codes` is empty for `none` and for `error`, which sets `anyError`. `problems` names a [TestCase] the runner cannot
- *   call: one with parameters, a Function, or one outside a [TestFixture] module.
+ *   `codes` is empty for `none` and for `error`, which sets `anyError`. `inPackage` says `file` and `line` are a row of
+ *   an embedded package, and `arch` is the one architecture such a case holds for. `problems` names a [TestCase] the
+ *   runner cannot call: one with parameters, a Function, or one outside a [TestFixture] module.
  */
 export function findCases(files) {
   const tests = [];
@@ -72,6 +83,18 @@ export function findCases(files) {
         const what = marker[2].toLowerCase();
         const codes = what === "none" || what === "error" ? [] : what.split(",").map((c) => c.trim().toUpperCase());
         compiles.push({ name: marker[1], file, line, codes, anyError: what === "error" });
+      }
+      const pkg = PACKAGE_CASE_RE.exec(raw);
+      if (pkg) {
+        compiles.push({
+          name: pkg[1],
+          file: pkg[4],
+          line: Number(pkg[5]),
+          codes: [pkg[3].toUpperCase()],
+          anyError: false,
+          inPackage: true,
+          ...(pkg[2] ? { arch: pkg[2].toLowerCase() } : {}),
+        });
       }
       if (COMMENT_RE.test(raw) || !raw.trim()) return;
       let rest = raw;
@@ -109,8 +132,9 @@ export function findCases(files) {
  */
 export function judgeCompiles(compiles, rows) {
   const reported = rows.map((r) => ROW_RE.exec(r)).filter(Boolean);
-  return compiles.map(({ name, file, line, codes, anyError }) => {
-    const rowsHere = reported.filter((m) => Number(m[3]) === line && underSources(m[2]) === file.toLowerCase());
+  return compiles.map(({ name, file, line, codes, anyError, inPackage }) => {
+    const under = inPackage ? underPackage : underSources;
+    const rowsHere = reported.filter((m) => Number(m[3]) === line && under(m[2]) === file.toLowerCase());
     const here = rowsHere.map((m) => m[4].toUpperCase());
     const got = here.length ? [...new Set(here)].join(", ") : "none";
     const pass = anyError

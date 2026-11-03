@@ -36,7 +36,7 @@ A **Graphics** object is created with a package function of the same name as the
 
 A **Graphics** object does not own its target. The device context or window must stay valid for as long as the object exists. A **Graphics** object created for an image keeps a reference to the image, so the image is not released before the **Graphics** object.
 
-<!-- test: none -- GDI+ is already started in the process of the test runner, so an object made with no GdiPlusUser alive does not fail with status 18 there -->
+<!-- test: StartupTests.Bitmap_NoGdiPlusUser_FailsWithStatus18, StartupTests.Bitmap_GdiPlusUserFirst_IsCreated -->
 > [!NOTE] 0.9.45.0
 > The package needs a [**GdiPlusUser**](GdiPlusUser) object to be alive for as long as any GDI+ object exists. A program creates one before the first **Graphics** object and keeps it.
 
@@ -200,7 +200,7 @@ Sub Form_Resize()
 End Sub
 ```
 
-<!-- test: none -- GDI+ is already started in the process of the test runner, so a Graphics made before the first use of a Dim As New GdiPlusUser variable does not fail with status 18 there; it fails only in a program that has not started GDI+ yet -->
+<!-- test: StartupTests.Bitmap_BeforeTheFirstUseOfADimAsNewUser_FailsWithStatus18, StartupTests.Bitmap_AfterSetOfAUser_IsCreated -->
 > [!WARNING] 0.9.45.0
 > A **GdiPlusUser** declared with **Dim ... As New** is not created until the variable is first used, so the GDI+ objects that are created before that fail with **GdiplusNotInitialized** (18). Declare the variable and set it with `Set mGdiPlus = GdiPlusUser()` in the **Load** event, as above.
 

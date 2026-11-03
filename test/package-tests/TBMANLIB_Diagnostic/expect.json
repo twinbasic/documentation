@@ -1,13 +1,16 @@
 {
   "version": "1.0.0.1",
   "cases": {
+    "CollectorTests.LocaleCollector_InSummerTime_ReportsTheOffsetOfTheClock": {
+      "fails": "1 of 1 checks failed: Timezone item where the clock is at UTC+2, in summer time: expected \"UTC+2\", got \"UTC+1\""
+    },
     "CollectorTests.CPUInfoCollector_PageSize_HasNoDecimalSeparator": {
       "fails": "1 of 1 checks failed: Page Size item: expected \"4 KB\", got \"4. KB\""
     },
     "CollectorTests.NetworkInfoCollector_FullReport_ListsEveryAdapter": {
       "win32": "pass",
       "win64": {
-        "fails": "1 of 2 checks failed: number of Adapter items in the full report, for 8 adapters that GetAdaptersInfo returns: expected 8, got 1"
+        "fails": "1 of 2 checks failed: the full report has an Adapter item for each adapter that GetAdaptersInfo returns: expected True, got False"
       }
     },
     "DictionaryTests.New_CreatesAnEmptyDictionary": {

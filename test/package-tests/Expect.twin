@@ -78,22 +78,26 @@ Module Expect
         mReachedDone = False
     End Sub
 
-    ' What the case's call left: Done's report, or the error that ended it before Done.
-    Public Sub EndCase(ByVal Name As String, ByVal ErrNumber As Long, ByVal ErrDescription As String)
-        Dim outcome As String
+    ' What the case's call left: Done's report, or the error that ended it before Done. Nothing for a
+    ' case that passed.
+    Public Function Outcome(ByVal ErrNumber As Long, ByVal ErrDescription As String) As String
         If mReachedDone Then
-            outcome = mText
+            Outcome = mText
         ElseIf ErrNumber <> 0 Then
-            outcome = "run-time error " & ErrNumber & ": " & ErrDescription
+            Outcome = "run-time error " & ErrNumber & ": " & ErrDescription
         Else
-            outcome = "the case ended before Expect.Done"
+            Outcome = "the case ended before Expect.Done"
         End If
-        If Len(outcome) = 0 Then
+    End Function
+
+    Public Sub EndCase(ByVal Name As String, ByVal ErrNumber As Long, ByVal ErrDescription As String)
+        Dim report As String = Outcome(ErrNumber, ErrDescription)
+        If Len(report) = 0 Then
             mPassed = mPassed + 1
             Debug.Print "PASS " & Name
         Else
             mFailed = mFailed + 1
-            Debug.Print "FAIL " & Name & ": " & outcome
+            Debug.Print "FAIL " & Name & ": " & report
         End If
         Begin
     End Sub

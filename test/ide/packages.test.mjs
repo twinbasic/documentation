@@ -12,7 +12,7 @@
 // that nobody sees. OpenPackage puts the real hostAppObject back as it answers,
 // and every other read goes to the real HostReadFileDataBase64.
 //
-// Each test states what BETA 1010 does. If a test fails after an IDE update,
+// Each test states what BETA 1034 does. If a test fails after an IDE update,
 // the IDE has changed: update the matching entry in BUGS-TO-REPORT.md or bugs/filed/ and the
 // two Packages pages under docs/Features/Packages, and then this file.
 //
@@ -134,6 +134,31 @@ scenario("Import from file... in the Packages dialog", (lane) => {
     assert.ok(listed, "DocProbePkg is not in the Available Packages list");
     const referenced = await c.evaluate(REFERENCES_JS);
     assert.ok(!referenced.includes("DocProbePkg"), "the imported package is now ticked");
+  });
+
+  // The NOTE on docs/IDE/Projects/References-and-Packages.md, under Import from file.
+  test("the import puts a copy of the package under Packages, and Cancel leaves it there with the project not marked changed", async (t) => {
+    // A folder's children are not listed until it is opened, so the copy is looked for by its path.
+    const packages = () =>
+      c.evaluate(`["Packages/DocProbePkg", "Packages/DocProbePkg/Settings", "Packages/DocProbePkg/Sources"]
+        .filter((p) => !!fs.tree.resolvePath("twinbasic:/PackagesProbe/" + p))`);
+    const copied = await waitFor(c, async () => ((await packages()).includes("Packages/DocProbePkg") ? true : null), {
+      timeout: 10 * 1000,
+    });
+    t.diagnostic(`under Packages: ${JSON.stringify(await packages())}; changed: ${await c.evaluate("projectIsDirty")}`);
+    assert.ok(copied, "there is no DocProbePkg under Packages after the import");
+    await click(c, { css: "div", text: "Cancel" });
+    assert.ok(
+      await waitFor(c, async () => !(await c.evaluate(`!!${CONFIG_JS}`)), { timeout: 20 * 1000 }),
+      "Cancel did not close the Settings editor",
+    );
+    await new Promise((r) => setTimeout(r, 1000));
+    const after = await packages();
+    const startup = await c.evaluate(`!!fs.tree.resolvePath("twinbasic:/PackagesProbe/Sources/Startup.twin")`);
+    t.diagnostic(`after Cancel, under Packages: ${JSON.stringify(after)}; Sources/Startup.twin found: ${startup}`);
+    assert.ok(startup, "control: Sources/Startup.twin is not found after Cancel");
+    assert.ok(after.includes("Packages/DocProbePkg"), "Cancel removed the copy under Packages");
+    assert.equal(await c.evaluate("projectIsDirty"), false, "the project is marked changed");
   });
 });
 

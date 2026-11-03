@@ -144,6 +144,17 @@ summary line. That is the cue for a third. **Do not add `symbols:` to change how
 ranks or to add a keyword a page merely mentions**: the index is what the page documents,
 and a keyword such as `ElseIf` belongs on a page only when the page explains it.
 
+### Compiler codes in the site search
+
+**Every `TBnnnn` code a page explains has a search-index entry** (owner): `index` on the
+section that says best when the compiler reports it, `index_also` on a strong second page, as
+`docs/Documentation/Authoring.md` (*Index entries for the site search*) describes. A warning's
+entry is its own heading on Compiler Warnings. TB5001, TB5027, TB5079 and TB5182, which code
+of every kind gives, have theirs on the Diagnostics page's *Common errors* section, and a code
+that only a contributed package's page mentions gets none (owner). A new page that explains a
+code takes its entry, or takes it over from a weaker page; after `build.bat`,
+`node eval/site_search.mjs TBnnnn` shows where a search for it lands.
+
 ### Cross-section linking
 
 Relative links resolve against the **rendered URL** (the page's `permalink:`), not the file path. Pages that share a URL folder can use bare names (`[Y](Y)`); crossing folders needs `../` to climb out.
@@ -340,7 +351,7 @@ system remains a genuine consumer of the permalinks.
    - tbIDE → flat, one page per CoClass / Class under `docs/Reference/Built-In/tbIDE/<Class>.md`; nested enums fold onto their declaring class's page (no `Enumerations/` sub-folder).
    - WinNativeCommonCtls → single-file (`DTPicker`, `MonthView`, `ProgressBar`, `Slider`, `UpDown`) or folder-style (`ImageList/`, `ListView/`, `TreeView/`) when the control has sub-object companions. Module-level enums under `Enumerations/`; per-control nested enums fold onto the declaring control's page.
    - Pick `<Mod>` from VBA's grouping (Information, Interaction, Strings, FileSystem, DateTime, Math, Financial, Conversion, ...) and the existing folders under `Reference/<Package>/`.
-2. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
+2. **Flag tB deviations** with a `> [!NOTE]` callout (see next section). A callout labelled `BETA <n>` names what checks it in `<!-- test: ... -->` on the line above it: a reproducer, a lane, a sample's `id=` (a `probe` the reader never sees, when the check would mean nothing on the page), error data, an LLVM probe mode, or `none -- <reason>` ([Authoring](docs/Documentation/Authoring.md#a-callout-names-what-checks-it); WIP.md, rule 6).
 3. **Update the parent index** — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also add a bullet to `docs/Reference/Built-In.md` (or `Default.md`) and bump the count on `docs/Reference/Packages.md` and `docs/Reference/index.md`. `Packages.md` itself only links to those two landing pages -- it does not enumerate packages.
 4. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
 5. **Run the [site integrity check](WIP.md#site-integrity-check)** after the batch and before committing.

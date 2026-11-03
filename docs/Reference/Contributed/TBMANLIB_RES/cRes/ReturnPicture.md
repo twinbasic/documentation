@@ -18,7 +18,6 @@ Syntax: *object*.**ReturnPicture**() **As IPictureDisp**
 <!-- test: ReturnPictureTests.ReturnPicture_BeforeRead_RaisesError -->
 > [!IMPORTANT] timeless
 > [**Read**](Read) must be called before **ReturnPicture**. An instance on which **Read** has not been called holds no image data for **LoadPicture** to read.
-<!-- /test -->
 
 ### Example
 

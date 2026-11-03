@@ -45,7 +45,6 @@ The following **Base64Prefix** values are defined:
 <!-- test: ReturnBase64Tests.ReturnBase64_Msxml2DomDocument_IsCreatedAndEncodes -->
 > [!IMPORTANT] 1.0.0.4
 > **ReturnBase64** requires that MSXML2 is registered on the machine. It creates an `MSXML2.DOMDocument` COM object internally. This call will fail at run time on systems where MSXML2 is not available.
-<!-- /test -->
 
 <!-- test: ReturnBase64Tests.ReturnBase64_BeforeRead_RaisesError -->
 > [!NOTE] timeless

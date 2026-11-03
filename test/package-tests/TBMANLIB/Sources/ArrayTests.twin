@@ -180,13 +180,13 @@ Module ArrayTests
     End Sub
 
     [TestCase]
-    Public Sub SplitByteArray_PositionZero_RaisesUnspecifiedError()
+    Public Sub SplitByteArray_PositionZero_RaisesSubscriptOutOfRange()
         Expect.Begin
         Dim src() As Byte, parts As Variant
         src = Bytes("one,two")
         On Error Resume Next
         parts = ToolsArray.SplitByteArray(src, 0)
-        Expect.AreEqual -2147467259, Err.Number, "SplitByteArray with position 0 raises"
+        Expect.AreEqual 9, Err.Number, "SplitByteArray with position 0 raises"
         On Error GoTo 0
         Expect.Done
     End Sub

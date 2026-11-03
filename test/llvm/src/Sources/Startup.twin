@@ -1,0 +1,8 @@
+Module Startup
+
+    ' What the built exe runs; an IDE run gets the same lines from Claims.Built.
+    Public Sub Main()
+        Claims.Report
+    End Sub
+
+End Module

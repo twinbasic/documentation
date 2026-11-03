@@ -1,0 +1,15 @@
+' A real form with one control on it, ListView1, for a sample that is run and looks at
+' what a control of the WinNativeCommonCtls package draws. This is the `form` template's
+' Form1 on the `packages` template (see WIP.ExamplesBuild.md).
+'
+' Form1.tbform is its designer file, and the two name the same designer id.
+
+[Description("")]
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA01")]
+[PredeclaredId]
+Class Form1
+
+    Sub New()
+    End Sub
+
+End Class

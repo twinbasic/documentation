@@ -1,5 +1,5 @@
 # The VBA Math module. Format: WIP.Errors.md.
-beta: 1010
+beta: 1034
 pages:
   Reference/Default/VBA/Math/Abs.md:
     rows:
@@ -8,10 +8,8 @@ pages:
         cases:
           - { decl: Dim C As Currency, setup: C = -922337203685477.5807@ - 0.0001@, expr: Abs(C) }
           - { decl: Dim V As Variant, setup: V = -922337203685477.5807@ - 0.0001@, expr: Abs(V) }
-      - error: 0
-        when: "*number* is an **Integer** of -32,768 or a **Long** of -2,147,483,648 (twinBASIC returns a **Long** or a **Double**)"
-        vb6: 6
-        bug: abs-minimum-widens-type
+      - error: 6
+        when: "*number* is an **Integer** of -32,768 or a **Long** of -2,147,483,648"
         cases:
           - { decl: Dim I As Integer, setup: I = -32768, expr: Abs(I) }
           - { decl: Dim L As Long, setup: L = -2147483647 - 1, expr: Abs(L) }
@@ -40,15 +38,20 @@ pages:
       - error: 94
         when: "*number* is **Null**"
         cases: [Cos(Null)]
+      - error: 5
+        when: "the magnitude of *number* is 9,223,372,036,854,775,808 (2^63) or more"
+        cases:
+          - { decl: Dim X As Double, setup: X = 2 ^ 63, expr: Cos(X) }
+          - { decl: Dim X As Double, setup: X = -(2 ^ 63), expr: Cos(X) }
+          - Cos(1E+300)
       - error: 0
-        when: "the magnitude of *number* is 9,223,372,000,000,000,000 or more"
+        when: "the magnitude of *number* is 9,223,372,000,000,000,000 or more but less than 2^63"
         vb6: 5
         bug: trig-above-2-to-63
         cases:
           - Cos(9.223372E+18)
-          - { decl: Dim X As Double, setup: X = 2 ^ 63, expr: Cos(X) }
-          - { decl: Dim X As Double, setup: X = -(2 ^ 63), expr: Cos(X) }
-          - Cos(1E+300)
+          - { decl: Dim X As Double, setup: X = 2 ^ 63 - 1024, expr: Cos(X) }
+          - { decl: Dim X As Double, setup: X = -(2 ^ 63) + 1024, expr: Cos(X) }
     quiet:
       - Cos(Empty)
       - Cos(1E+18)
@@ -58,15 +61,20 @@ pages:
       - error: 94
         when: "*number* is **Null**"
         cases: [Sin(Null)]
+      - error: 5
+        when: "the magnitude of *number* is 9,223,372,036,854,775,808 (2^63) or more"
+        cases:
+          - { decl: Dim X As Double, setup: X = 2 ^ 63, expr: Sin(X) }
+          - { decl: Dim X As Double, setup: X = -(2 ^ 63), expr: Sin(X) }
+          - Sin(1E+300)
       - error: 0
-        when: "the magnitude of *number* is 9,223,372,000,000,000,000 or more"
+        when: "the magnitude of *number* is 9,223,372,000,000,000,000 or more but less than 2^63"
         vb6: 5
         bug: trig-above-2-to-63
         cases:
           - Sin(9.223372E+18)
-          - { decl: Dim X As Double, setup: X = 2 ^ 63, expr: Sin(X) }
-          - { decl: Dim X As Double, setup: X = -(2 ^ 63), expr: Sin(X) }
-          - Sin(1E+300)
+          - { decl: Dim X As Double, setup: X = 2 ^ 63 - 1024, expr: Sin(X) }
+          - { decl: Dim X As Double, setup: X = -(2 ^ 63) + 1024, expr: Sin(X) }
     quiet:
       - Sin(Empty)
       - Sin(1E+18)
@@ -176,6 +184,7 @@ pages:
           - Round(1.5, -1)
           - Round(1.5, -0.6)
           - Round(Empty, -1)
+          - Round(Null, -1)
           - { decl: Dim C As Currency, setup: C = 1.5, expr: 'Round(C, -1)' }
           - { decl: Dim D As Variant, setup: 'D = CDec("1.5")', expr: 'Round(D, -1)' }
       - error: 5
@@ -192,12 +201,6 @@ pages:
         cases:
           - Round(1.5, Null)
           - Round(Null, Null)
-      - error: 0
-        when: "*expression* is **Null** and *numdecimalplaces* is negative"
-        vb6: 5
-        bug: round-null-negative-digits
-        cases:
-          - Round(Null, -1)
     quiet:
       - Round(Null)
       - Round(Null, 23)

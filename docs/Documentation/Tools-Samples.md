@@ -80,6 +80,11 @@ The handler is reached only by an error the sample does not handle itself, so a 
 
 The run's console output is captured as [`tbrun.mjs`](Tools-Compiler#tbrun) captures it and split by the markers, so each line is charged to the sample that printed it. A sample that raises an error, does not return, or prints something other than the page says is a finding at the page line that states the value. A run sample is refused without being built if it is not `slot=sub`, is marked `expect-error`, calls `MsgBox` or `InputBox`, or contains an `End` statement: a message box waits for a click on a desktop nobody sees, and `End` ends every sample after it.
 
+**A run sample can name the architectures it is run in.** `arch=win32,win64` runs it in a 32-bit and in a 64-bit project, and `arch=win64` in a 64-bit one only; without it a sample runs in a 32-bit one, as a new project is built. The 64-bit run is a copy of the sample, reported under its id with `@win64` after it, and batched apart, with its page's `hidden` context and staged files, in projects whose build target is win64. A sample in a `projname` or `concat_group` group, and one that is not run, may not ask: a sample that is only compiled is compiled the same for either target.
+
+**A probe is a sample the reader never sees.** A fence marked `probe` is not rendered, as a `hidden` one is not, but it is a sample of its own, built (and with `check_run` run and judged) as any other is, where a `hidden` fence is context that only travels with the page's samples. It checks a statement the page makes in prose or in a callout, whose code would tell the reader nothing: that a `Declare` of msvbvm60's `GetMem4` works in a 64-bit build, or that a conversion draws no warning, with the warning made an error by `[EnforceErrors]` in a probe that must compile. A probe has an `id=`, and a [marker](Tools-Toolchain-Tests#check-callout-evidence) beside the statement names it, `<!-- test: sample <id> -->`; a probe no marker names fails `test.bat`. One marked `hidden` too, or with no `id=`, is refused.
+{: #probes }
+
     FAIL  docs/Reference/Default/VBA/Strings/InStr.md:77  (Reference/Default/VBA/Strings/InStr.md#3)
             prints "3", the page says "7"
 
@@ -124,7 +129,9 @@ For each package and architecture (both by default), the tool stages the project
 - **fixed** --- `expect.json` says it fails or never returns, and it passes: the page's callout and the entry go;
 - **changed** --- anything else: a claim of the page is no longer true, or the case is wrong.
 
-A compile case that expects an error is in the package folder's `compile/`, a second project of compile cases only, because a project with compile errors runs none of its test cases. The tool stages it with the package embedded as well and judges its cases with the others; it is not published.
+A compile case that expects an error is in the package folder's `compile/`, a second project of compile cases only, because a project with compile errors runs none of its test cases. The tool stages it with the package embedded as well and judges its cases with the others; it is not published. A package that does not compile has that folder and no project, and its cases name the rows the compiler reports in the package's own sources; the tool runs it like any other.
+
+A case that the IDE's own process would change is in the package folder's `exe/`, a third project, which the tool builds and runs with [`tbrun --exe`](Tools-Compiler#tbrun), every case in order in one process, and judges with the others. A `server.mjs` in that folder is started first, for the cases to call: it prints its port on its first line, and the exe reads the port from `PACKAGE_TEST_PORT`. This project is not published either.
 
 A case that never returns stops the compiler. The tool catches it, runs the cases after it again in a new IDE, and from then on, once `expect.json` says so, runs it alone with `--hang-timeout`. `--update` writes `expect.json` from the run, for the architectures run. The run also writes `RunAll.twin` again whenever the cases or `expect.json` change; [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests) fails while it is out of date.
 

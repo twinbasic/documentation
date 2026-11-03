@@ -69,7 +69,7 @@ See [Packages](../../Features/Packages/). [References and packages](Projects/Ref
 ### Build Type
 {: index_also="standard exe; create an ActiveX DLL; create ActiveX DLL" }
 
-The type of file the compiler creates: **Standard EXE**, **ActiveX DLL**, **ActiveX Control**, **Standard DLL** or **Package TWINPACK**. [Project Types](../../Features/Project-Configuration/Project-Types) describes the Standard DLL, and code can test the setting with the [`TWINBASIC_BUILD_TYPE`](../../Reference/Compiler-Constants#twinbasic_build_type) compiler constant. In the `Settings` file it is `project.buildType`.
+The type of file the compiler creates: **Standard EXE**, **ActiveX DLL**, **ActiveX Control**, **Standard DLL**, **Package TWINPACK** or **TypeLibrary TLB**. **TypeLibrary TLB**, experimental since BETA 1018, builds a type library, a `.tlb` file, from the interfaces, coclasses, enumerations, types, modules and classes the project declares. [Project Types](../../Features/Project-Configuration/Project-Types) describes the Standard DLL, and code can test the setting with the [`TWINBASIC_BUILD_TYPE`](../../Reference/Compiler-Constants#twinbasic_build_type) compiler constant. In the `Settings` file it is `project.buildType`.
 
 ### Build Output Path
 
@@ -144,7 +144,7 @@ The full path of the host EXE that the compiler creates for [Fusion](../../Featu
 
 ### Startup Object
 
-The form that the program shows when it starts, or **Sub Main**. When it is not set, the default is **Sub Main** for an EXE and **(none)** for a DLL. For a Standard EXE the list does not offer **(none)**. In the `Settings` file it is `project.startupObject`.
+The form that the program shows when it starts, or **Sub Main**. When it is not set, the default is **Sub Main** for an EXE and **(none)** for a DLL. For a Standard EXE the list does not offer **(none)**, and for a Package TWINPACK or a TypeLibrary TLB it offers nothing else. In the `Settings` file it is `project.startupObject`.
 
 ### Icon Form
 

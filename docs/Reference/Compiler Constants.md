@@ -60,7 +60,7 @@ Each value below is the one code sees unless a `#Const` redefines the constant. 
 ### `TWINBASIC_BUILD_TYPE`
 
 **Purpose:** Allows conditional compilation based on whether the project is an exe, dll, or ocx.\
-**Value:** A `String` that can be one of "Standard EXE", "Standard DLL", "ActiveX DLL", or "ActiveX Control", determined by the "Build Type" option in Project Settings.
+**Value:** A `String` that can be one of "Standard EXE", "Standard DLL", "ActiveX DLL", "ActiveX Control", "Package TWINPACK" or "TypeLibrary TLB", determined by the "Build Type" option in Project Settings.
 
 ## Usage
 
@@ -109,8 +109,8 @@ Or more simply, to decide whether to use `PtrSafe`, and then `DeclareWide` or ot
 > [!IMPORTANT]
 > Compiler constants are numbers, not `Boolean` values. `Win64` is 1 in a 64-bit build, and `Not 1` is -2, which counts as true, so `#If Not Win64 Then` is true in both 32-bit and 64-bit builds. To select 32-bit-only code, compare the constant with 0, as in `#If Win64 = 0 Then`, or put the code in the `#Else` branch of `#If Win64 Then`.
 
-<!-- bug: ifdef-function-call-is-zero -->
-> [!WARNING] BETA 1010
+<!-- test: bug ifdef-function-call-is-zero -->
+> [!WARNING] BETA 1034
 > A function call in an `#If`, `#ElseIf` or `#Const` expression is always 0, with no error or warning. `#If CBool(1) Then` and `#If Len("abc") = 3 Then` are both false, and `#If Not CBool(Win64) Then` is true in a 64-bit build. VB6 evaluates `CBool`, `CLng`, `Abs` and `Len` there.
 
 > [!NOTE]

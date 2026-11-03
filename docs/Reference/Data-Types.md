@@ -16,7 +16,7 @@ For the twinBASIC-specific additions to this set --- **LongLong**, **LongPtr**, 
 ---
 
 ## Quick reference
-{: index="type-declaration character; type character; type char; typedecl character; typedecl char" }
+{: index="type-declaration character; type character; type char; typedecl character; typedecl char" index_also="TB5028" }
 
 | Type | Suffix | Storage | Range |
 |------|--------|---------|-------|
@@ -46,7 +46,8 @@ Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" _
     (ByRef Destination As Any, ByRef Source As Any, ByVal Length As LongPtr)
 ```
 
-> [!NOTE] BETA 1010
+<!-- test: bug dim-as-any -->
+> [!NOTE] BETA 1034
 > A local variable, a **Static** variable, or a module or class field declared **As Any** compiles with no diagnostic; VB6 refuses each of them. The variable cannot be used: assigning to it is refused (TB5028), reading it into a **Variant** makes the build fail, and **TypeName** of it raises error 458 in a built program. Declare such a variable with a real type. A **Function**'s return type, a **Sub**'s parameter, a UDT field and an array **As Any** are refused (TB5079).
 
 ---

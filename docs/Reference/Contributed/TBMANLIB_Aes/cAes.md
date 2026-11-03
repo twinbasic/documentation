@@ -880,7 +880,7 @@ The method does not raise an error. When the conversion fails, it prints `SetGcm
 
 <!-- test: GcmTests.SetGcmAADFromString_EmptyTextRemovesTheData, GcmTests.SetGcmAADFromString_SetsTheBytesOfTheText -->
 > [!WARNING] 1.0.0.4
-> An empty string does not remove the additional data. The method fails for an empty string and keeps the data that was set before, and only the Debug Console shows the message `SetGcmAADFromString failed: Unspecified error`. The next GCM encryption then authenticates the old data. To remove the data, assign an array that was never sized to [**GcmAAD**](#gcmaad).
+> An empty string does not remove the additional data. The method fails for an empty string and keeps the data that was set before, and only the Debug Console shows the message `SetGcmAADFromString failed: Subscript out of range`. The next GCM encryption then authenticates the old data. To remove the data, assign an array that was never sized to [**GcmAAD**](#gcmaad).
 
 ```tb check_build check_run projname=aes-class
 Dim aes As New cAes
@@ -894,7 +894,7 @@ aad = aes.GcmAAD
 Debug.Print HexOf(aad)
 ' Output:
 ' 686561646572
-' SetGcmAADFromString failed: Unspecified error
+' SetGcmAADFromString failed: Subscript out of range
 ' 686561646572
 ```
 

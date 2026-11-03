@@ -261,8 +261,26 @@ Public Sub Convert()
 End Sub
 ```
 
-> [!NOTE] BETA 1010
+<!-- test: sample tb0019-other-enum-constant, sample tb0019-enforced -->
+> [!NOTE] BETA 1034
 > A member of another enumeration, written as a constant (`day = vbOK`), converts without a warning.
+
+```tb probe id=tb0019-enforced slot=module expect-error=TB0019
+[EnforceErrors(TB0019)]
+Public Sub ProbeOtherEnumVariable()
+    Dim answer As VbMsgBoxResult, day As VbDayOfWeek
+    answer = vbYes
+    day = answer
+End Sub
+```
+
+```tb probe id=tb0019-other-enum-constant slot=module
+[EnforceErrors(TB0018, TB0019, TB0021)]
+Public Sub ProbeOtherEnumConstant()
+    Dim day As VbDayOfWeek
+    day = vbOK
+End Sub
+```
 
 ### TB0020: Suspicious Interface Conversion
 {: index="TB0020" }
@@ -284,14 +302,61 @@ End Sub
 
 Reports an implicit conversion between an enumeration and a numeric type. It is at **IGNORE** by default.
 
-> [!NOTE] BETA 1010
+<!-- test: sample tb0021-not-drawn, sample tb0021-whole-number-and-long, sample tb0019-from-double, sample tb0018-to-integer -->
+> [!NOTE] BETA 1034
 > None of these conversions draws TB0021. A whole number assigned to a variable of an enumeration, or an enumeration value assigned to a **Long**, converts without a warning. A **Double**, **Single**, **Currency** or **Variant** assigned to a variable of an enumeration draws [TB0019](#tb0019-implicit-enumeration-conversion), and an enumeration value assigned to an **Integer**, **Byte** or **Single** draws [TB0018](#tb0018-implicit-narrowing-conversion).
+
+```tb probe id=tb0021-not-drawn slot=module
+[EnforceErrors(TB0021)]
+Public Sub ProbeNoTB0021()
+    Dim day As VbDayOfWeek, l As Long, i As Integer, b As Byte
+    Dim d As Double, s As Single, c As Currency, v As Variant
+    day = 3
+    l = day
+    d = 2: s = 2: c = 2: v = 2
+    day = d
+    day = s
+    day = c
+    day = v
+    i = day
+    b = day
+    s = day
+End Sub
+```
+
+```tb probe id=tb0021-whole-number-and-long slot=module
+[EnforceErrors(TB0018, TB0019, TB0021)]
+Public Sub ProbeWholeNumberAndLong()
+    Dim day As VbDayOfWeek, l As Long
+    day = 3
+    l = day
+End Sub
+```
+
+```tb probe id=tb0019-from-double slot=module expect-error=TB0019
+[EnforceErrors(TB0019)]
+Public Sub ProbeDoubleToEnum()
+    Dim day As VbDayOfWeek, d As Double
+    d = 2
+    day = d
+End Sub
+```
+
+```tb probe id=tb0018-to-integer slot=module expect-error=TB0018
+[EnforceErrors(TB0018)]
+Public Sub ProbeEnumToInteger()
+    Dim day As VbDayOfWeek, i As Integer
+    day = vbMonday
+    i = day
+End Sub
+```
 
 ### TB0022: Suspicious Assignment
 {: index="TB0022" }
 
 An array assigned to an array of another element type, *suspicious array assignment; subtypes do not match*.
 
+<!-- test: bug language-pack-semicolon-cut -->
 > [!NOTE] BETA 1034
 > The message reads only *Suspicious array assignment*: the IDE cuts the text that `en-gb.lang` gives it at its semicolon. See [Language packs](../../tB/IDE/Customising/#language-packs).
 
@@ -429,7 +494,7 @@ Debug.Print i
 ```
 
 ### TB0033: Duplicate Definition
-{: index="TB0033" }
+{: index="TB0033; TB5134" }
 
 Reports a duplicate definition as a warning: *Duplicate definition, consider changing the name to be unique*. A name declared twice in one module, procedure, **Enum** or **Type** is error TB5134 instead.
 
@@ -438,6 +503,7 @@ Reports a duplicate definition as a warning: *Duplicate definition, consider cha
 
 A **Declare** of a function from a legacy system DLL that twinBASIC calls in its modern replacement instead, such as `OleCreatePictureIndirect`, which `olepro32.dll` exported and `oleaut32.dll` now does: *Use of legacy DLL OLEPRO32.DLL has been redirected to OLEAUT32.DLL*. Up to BETA 1033 the compiler reported it as [TB0015](#tb0015-declare-redirected-to-twinbasic). The Compiler Warnings list shows it at **HINT** by default.
 
+<!-- test: bug tb0034-level-ignored, bug warning-message-names-blank -->
 > [!NOTE] BETA 1034
 > TB0034 is reported as a warning whatever its level: at **IGNORE**, **HINT** or **ERROR** in the Compiler Warnings list, and under **IgnoreWarnings** or **EnforceErrors**. Its message leaves out the two names: *Use of legacy DLL has been redirected to*.
 
@@ -452,6 +518,7 @@ Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" ( _
 
 A value whose type is known only at run time, an **Object** or a **Variant**, assigned or passed to a variable or parameter of a class or interface type: *Conversion from type Variant to type Font might fail at runtime. Use CType(Of Font)(expression) to avoid this message*. An item of a **Collection** is a **Variant**, and the result of a function declared **As Object** is an **Object**. When the value is not an object of that type, the conversion raises an error at run time, such as error 424, *Object required*, for a string. **CType(Of** _type_**)** makes the conversion explicit. A conversion from a known type that is not declared to support the target is [TB0020](#tb0020-suspicious-interface-conversion) instead. The Compiler Warnings list shows TB0035 at **WARNING** by default.
 
+<!-- test: bug tb0035-default-not-reported, bug warning-message-names-blank -->
 > [!NOTE] BETA 1034
 > In a project whose settings give TB0035 no level, as a new project's do, TB0035 is not reported, although the Compiler Warnings list shows it at **WARNING**. Name it in an **EnforceWarnings** attribute, as below, to have it reported. For a conversion from an **Object**, its message shows `{0}`, `{1}` and `{2}` in place of the two types and the conversion.
 

@@ -34,7 +34,7 @@ The argument list consists of pairs of conditions and values. Conditions are eva
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | the arguments are not in pairs: their number is odd |
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | an *expr* is a string that is not a **Boolean** or a number |
 
-> [!NOTE] BETA 1010
+> [!NOTE] BETA 1034
 > When the arguments are not in pairs: their number is odd, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
 <!-- /errors -->

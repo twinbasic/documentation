@@ -39,7 +39,7 @@ Exit codes: **0** every piece of every shipped theme loads; **1** at least one i
 
 Runs the add-in scenarios under `test/addin/`. Each scenario file is a `node:test` file and one **lane**, listed in `test/addin/lanes.mjs`; run it with [`addin-test.bat`](Tools#addin-testbat), because on its own a scenario skips itself. A lane runs in its own process, with its own slot from [`tbbroker`](Tools-Compiler#tbbroker) (a private desktop), work folder and private copy of the twinBASIC install, so a test add-in never loads into your own IDE and two lanes never share one. Each IDE's DevTools port is one Windows picks.
 
-A scenario builds the add-ins it tests into its copy, opens a project and operates the IDE: it clicks, presses keys, types, and reads the add-ins' tool windows, message boxes, notifications, the code editor and the Debug Console. The seventeen lanes take about two minutes together:
+A scenario builds the add-ins it tests into its copy, opens a project and operates the IDE: it clicks, presses keys, types, and reads the add-ins' tool windows, message boxes, notifications, the code editor and the Debug Console. The eighteen lanes take about two minutes together:
 
 - **Two sample lanes** operate the IDE's own sample add-ins, Sample 10 and Sample 15 (Global Search), end to end.
 - **Probe lanes** take what they need from `test/addin/probes/`. They check:
@@ -106,7 +106,7 @@ Exit codes: **0** the IDE was closed, and the registry is as it was found; **1**
 
 Takes the documentation's screenshots of the IDE, so that one run regenerates them after a new BETA. Each picture belongs to a *setup*, one IDE brought to a known state. A setup's IDE is started only when one of its pictures is selected. Run `build.bat` first: the help setup's pane pages come from the built site, `docs/_site`, served on `localhost`.
 
-- **help** builds the help add-in in `add-in/` into a private copy of the twinBASIC install and opens the demo project `test/addin/helpdemo`. It takes the eight pictures of the [Help Add-In](../../tB/IDE/AddIns/Help) page, `docs/IDE/AddIns/Images/Help_<Name>.png`.
+- **help** builds the help add-in in `add-in/` into a private copy of the twinBASIC install and opens the demo project `test/addin/helpdemo`. It takes the nine pictures of the [Help Add-In](../../tB/IDE/AddIns/Help) page, `docs/IDE/AddIns/Images/Help_<Name>.png`.
 - **no-project** starts the IDE with no project open: the menus under `docs/IDE/Menu/Images/`, and the dialogs that need no project --- New / Open Project and its tabs, the Manage Keyboard Shortcuts and Manage Panel Layouts dialogs, and the ones the FAQ shows.
 - **project** opens the demo project without the add-in, for the dialogs that need a project open: About, whose licence line needs the compiler, and IDE Options, whose font lists do.
 - **sample**, **settings** and **glyphs** open `test/shots/sample`, a small Standard EXE made for the pictures. They take the panels and the editor with a project, Project Settings (with the settings files of `test/shots/settings`), and the icons the pages show inline.

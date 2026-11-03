@@ -10,7 +10,7 @@
 // the IDE, so the test opens one from the page, with the IDE's own
 // showModalNotification, at the build's first progress event.
 //
-// Each test states what BETA 1010 does. If one fails after an IDE update, the
+// Each test states what BETA 1034 does. If one fails after an IDE update, the
 // IDE has changed: update the matching entry in BUGS-TO-REPORT.md or
 // bugs/filed/, and then this file.
 //
