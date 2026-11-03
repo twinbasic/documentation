@@ -368,7 +368,7 @@ for (const c of callouts) {
 const held = callouts.filter((c) => c.verdict === "holds");
 const heldData = [...errorFiles.keys()].filter((n) => checks.get(`errors ${n}`)?.status === "holds");
 
-if (!values["dry-run"]) {
+if (!values.dryRun) {
   const byFile = new Map();
   for (const c of held) {
     if (!byFile.has(c.rel)) byFile.set(c.rel, []);
@@ -398,7 +398,7 @@ if (!values["dry-run"]) {
 
 // ---------------------------------------------------------------- the report
 
-const verb = values["dry-run"] ? "would be relabelled" : "relabelled";
+const verb = values.dryRun ? "would be relabelled" : "relabelled";
 say(`\n${held.length} callout(s) and ${heldData.length} error data file(s) ${verb} to BETA ${BUILD}`);
 const HEADINGS = {
   changed: "changed: the evidence no longer says what the callout says; read it, then fix or remove the callout",
@@ -429,7 +429,7 @@ if (badData.length) {
 if (values.report) {
   writeFileSync(
     values.report,
-    `${JSON.stringify({ build: BUILD, dryRun: !!values["dry-run"], checks: Object.fromEntries(checks), callouts, errorData: Object.fromEntries([...errorFiles.keys()].map((n) => [n, checks.get(`errors ${n}`)])) }, null, 1)}\n`,
+    `${JSON.stringify({ build: BUILD, dryRun: !!values.dryRun, checks: Object.fromEntries(checks), callouts, errorData: Object.fromEntries([...errorFiles.keys()].map((n) => [n, checks.get(`errors ${n}`)])) }, null, 1)}\n`,
   );
   say(`\nreport: ${values.report}`);
 }
