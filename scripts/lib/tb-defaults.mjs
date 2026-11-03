@@ -1,10 +1,11 @@
 // The IDE with its default settings, whatever the user's own IDE saved.
 //
 // The IDE reads its per-user settings (options, panel layouts, keyboard groups, ...)
-// through `hostAppObject.GetIDESetting(key)`. IDE_FLAGS (tb-ide.mjs) stop it writing them,
-// and nothing stops it reading them: a font size the owner changed in their own IDE showed
-// in every IDE the tools started. So each IDE a tool starts is answered "no saved value" for
-// those keys, in the page only. The registry is never written. try-help-addin, which is the
+// through `hostAppObject.GetIDESetting(key)`. IDE_FLAGS (tb-ide.mjs) stop it writing most of
+// them, and nothing stops it reading them: a font size the owner changed in their own IDE
+// showed in every IDE the tools started. So each IDE a tool starts is answered "no saved value"
+// for those keys and has its saves of them dropped, in the page only. The registry is never
+// written. try-help-addin, which is the
 // user's own IDE in all but its project, keeps its settings (`userSettings` of launchIde).
 // WIP.Harness.md, "Default settings, whatever the user saved", says why it is built this way.
 //
@@ -49,8 +50,11 @@ export const BLANKED_KEYS = {
 
 // Runs in the page, in every document of the IDE's browser; only main.htm does anything.
 // `window.__tbDefaults` is the marker that it ran, and its `keys` the keys it answered
-// (never their values). Every function of the host object is bound to the real object: the
-// proxy of a WebView2 host object refuses to be called with another `this`.
+// (never their values). A key it answers is never saved either: IDE_FLAGS stop every save of
+// these keys but two, OBJECT_BROWSER's and NEWFRONTPAGE's, which test no flag (BETA 1034), so
+// that merely closing the New / Open Project dialog would write the user's registry. Every
+// function of the host object is bound to the real object: the proxy of a WebView2 host object
+// refuses to be called with another `this`.
 export function pageHook(answers) {
   if (!/main\.htm$/i.test(location.pathname)) return;
   const marker = { keys: [] };
@@ -61,6 +65,9 @@ export function pageHook(answers) {
       get(target, name) {
         const member = target[name];
         if (typeof member !== "function") return member;
+        if (name === "SaveIDESetting") {
+          return (...a) => (Object.hasOwn(answers, String(a[0])) ? Promise.resolve() : member.apply(target, a));
+        }
         if (name !== "GetIDESetting") return (...a) => member.apply(target, a);
         return (...a) => {
           const key = String(a[0]);

@@ -1209,12 +1209,19 @@ browser target, auto-attaches to every target with `waitForDebuggerOnStart`, add
 with `Page.addScriptToEvaluateOnNewDocument` and resumes it. The page is `about:blank` when attached, and
 never navigates twice. The script puts a setter on `window.hostAppObject`, which `main2.js` assigns, and
 wraps the host object: `GetIDESetting` answers `""` for the blanked keys and `"{}"` for `GENERAL` and
-`GENERAL2`, every other call goes through with `this` bound to the real object. The keys it left
-unanswered are the licence's, `LICENCEAGREEMENTV3`, `ALLOWERRORREPORTINGV3`, `PUBLISHER` and `NEWYEAR_*`.
+`GENERAL2`, `SaveIDESetting` of those keys does nothing, and every other call goes through with `this`
+bound to the real object. The keys it left unanswered are the licence's, `LICENCEAGREEMENTV3`,
+`ALLOWERRORREPORTINGV3`, `PUBLISHER` and `NEWYEAR_*`.
+The saves are dropped for two keys' sake. `main.js` tests `g_DontSaveIdeSettings`, which is what
+`--no-save-ide-settings` sets, before every save but those of `OBJECT_BROWSER`, `NEWFRONTPAGE` and
+`PUBLISHER`, so a tool's IDE wrote the first two to the user's registry on BETA 1034: `NEWFRONTPAGE` as
+soon as the New / Open Project dialog changed section or closed. `PUBLISHER` is written only when
+someone signs in on the Package Publishing panel.
 A new build can add a key, which is read from the user's registry until it is blanked: BETA 1023 added
 `OBJECT_BROWSER` (the Object Browser's view, filters, sorts and pane sizes) and BETA 1033 `NEWFRONTPAGE` (the
 New / Open Project dialog's section), both blanked since 2026-11-02. After a new BETA, list the keys the page passes
-to `GetIDESetting` (a search of the install's `ide/*.js` for the call) and compare them with `BLANKED_KEYS`.
+to `GetIDESetting` (a search of the install's `ide/*.js` for the call) and compare them with `BLANKED_KEYS`, and list
+the `SaveIDESetting` calls that do not test `g_DontSaveIdeSettings`.
 The recent lists are left alone: `test/ide/recent-projects-copies.test.mjs` needs the IDE's own, and
 `shoot_docs.mjs`'s `PAGE_DEFAULTS` empties them where a picture shows them.
 
