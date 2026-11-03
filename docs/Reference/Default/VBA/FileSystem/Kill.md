@@ -18,7 +18,7 @@ Syntax: **Kill** *pathname*
 
 **Kill** supports the use of multiple-character (`*`) and single-character (`?`) wildcards to specify multiple files.
 
-<!-- bug: kill-hidden-system-files -->
+<!-- test: bug kill-hidden-system-files, errors VBA.FileSystem -->
 > [!WARNING] BETA 1034
 > **Kill** deletes a hidden or a system file, whether *pathname* names it or a wildcard matches it, and raises no error. VB6 and 64-bit VBA never delete such a file: they raise error 53, *File not found*, when *pathname* matches only hidden or system files, and otherwise delete the other files a wildcard matches and leave these.
 

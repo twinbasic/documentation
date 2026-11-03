@@ -26,6 +26,7 @@ Use the **IsDate** function to determine whether *expression* can be converted t
 
 A **Date** holds a day number from -657,434 (January 1, 100) to 2,958,465 (December 31, 9999), with the time of day as its fraction.
 
+<!-- test: bug date-out-of-range-no-error, errors VBA.Conversion -->
 > [!WARNING] BETA 1034
 > **CDate** of a number outside that range raises no error: `CDate(2958466)`, `CDate(-657435)` and `CDate(1E+300)` each return a **Date** that holds the number, and **CStr**, **Format** and **Year** of it then raise error 5, *Invalid procedure call or argument*. VB6 raises error 6, *Overflow*. Compare a day number with -657,434 and 2,958,465 before converting it, or use [**CVDate**](CVDate), which raises error 13 for a number outside the range.
 

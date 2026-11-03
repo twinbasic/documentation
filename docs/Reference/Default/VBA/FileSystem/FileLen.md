@@ -21,7 +21,7 @@ If the specified file is open when the **FileLen** function is called, the value
 > [!NOTE]
 > Use the [LOF](LOF) function to obtain the length of an open file.
 
-<!-- bug: filesystem-argument-checks -->
+<!-- test: bug filesystem-argument-checks, errors VBA.FileSystem -->
 > [!WARNING] BETA 1034
 > Given a *pathname* with a wildcard (`*` or `?`) that matches a file or a folder, **FileLen** returns the length of the first match, which may be a hidden file, or a folder, whose length is 0, and raises no error. VB6 and 64-bit VBA raise error 52, *Bad file name or number*.
 

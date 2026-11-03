@@ -26,6 +26,7 @@ Each open file has a tab. The tab shows the file's icon, its name and a close bu
 - Drag a tab to move it. A mark on the left or the right half of the tab under the pointer shows where it will land.
 - Click the middle mouse button on a tab to close it.
 
+<!-- test: bug tab-tint-opened-later, lane ide:code-editor -->
 > [!NOTE] BETA 1034
 > A tab is tinted only when the compiler reports its file while the tab is open. A tab opened after that report stays untinted until the compiler checks the file again, for example after the next edit to it. The Project Explorer row is tinted either way.
 
@@ -188,6 +189,7 @@ Typing, deleting and most commands act at every cursor. One <kbd>Ctrl</kbd>+<kbd
 
 <kbd>Ctrl</kbd>+<kbd>D</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> match whole words in the current file, including words inside strings and comments. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> and **Select All Matches** (see [Finding](Finding#select-all-matches)) both give a cursor to each match.
 
+<!-- test: bug escape-keeps-cursors, lane ide:code-editor -->
 > [!NOTE] BETA 1034
 > <kbd>Esc</kbd> does not remove the extra cursors. Click in the text, or run any command that places the caret, to go back to one cursor.
 
@@ -259,6 +261,7 @@ Paste on a blank line, or with the caret at the end of the indent. Pasting at th
 
 **Rename Symbol** is on the right-click menu, which shows the key <kbd>F2</kbd> beside it. <kbd>F2</kbd> opens the [Object Browser](Object-Browser) instead, in the editor as everywhere else.
 
+<!-- test: lane ide:object-browser, lane ide:code-find -->
 > [!NOTE] BETA 1034
 > Rename Symbol does nothing: choosing it from the right-click menu opens no box and changes no name. To rename a name that is used in one file, use **Change All Occurrences**. For a name used in several files, use the [Find / Replace](Finding) panel with **Whole Word Only** and **Current Project**, and replace one match at a time, because **Replace All** does not work in project scope.
 
@@ -270,6 +273,7 @@ Paste on a blank line, or with the caret at the end of the indent. Pasting at th
 
 The formatter changes only the indent of each line. It trims the line and sets the indent to four spaces for each level, whatever **TAB Spaces Amount** is. It does not change the words, their case or the spacing inside the line. It adds a level after `Class`, `Module`, `Type`, `Enum`, `For`, `While`, `Do`, `With`, a block `If`, `#If`, `Sub`, `Function` and `Property`, and takes it away at the matching End. `ElseIf` and `Else` lines sit at the level of their `If`. A `Select Case` indents its `Case` lines one level and their bodies two. A continuation line is indented two levels deeper than its statement. The members of an interface get one level and no End.
 
+<!-- test: bug format-selection-continuation, lane ide:code-editor -->
 > [!WARNING] BETA 1034
 > **Format Selection** fails when the selection starts on a continuation line, which is a line after one that ends in ` _`. Nothing is formatted, and a box opens with the text *IDE startup failure*, followed by *JS Promise Rejection(1): Assignment to constant variable.* If the IDE was started by opening the project's `.twinproj` file, it then closes. With unsaved changes, it first asks whether to save them: choose **Save**, or **Cancel** to keep the IDE open. Save before you format, start the selection on the first line of the statement, or use **Format Document**.
 
@@ -306,6 +310,7 @@ A right-click in the editor moves the caret to the point, unless you click insid
 
 <kbd>Shift</kbd>+<kbd>F10</kbd> opens the same menu from the keyboard.
 
+<!-- test: bug shift-f10-menu-corner, lane ide:code-editor -->
 > [!NOTE] BETA 1034
 > <kbd>Shift</kbd>+<kbd>F10</kbd> opens the menu at the top-left corner of the IDE window, not at the caret. Right-click in the editor to open it at the pointer.
 

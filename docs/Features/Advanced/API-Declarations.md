@@ -99,6 +99,7 @@ End Class
 
 On a 32-bit build, a **ThisCall** implementation takes `this` in the ECX register and removes its own arguments from the stack, so native code calls it through the interface's vtable as it calls a C++ virtual method. An error raised in the implementation reaches the native caller as a failure **HRESULT**, as from any member without **[PreserveSig]**. Code compiled with LLVM does not pass the error on yet; see [Language support](../../LLVM/Getting-Started#language-support).
 
+<!-- test: bug preservesig-implements -->
 > [!NOTE] BETA 1034
 > A class cannot implement a member marked [**[PreserveSig]**](../../tB/Core/Attributes#preservesig): the compiler reports the implementation as unmatched. Interfaces of this kind often return a value directly rather than an **HRESULT**, and are declared with **[PreserveSig]** for that reason. For a member that returns a 4-byte value, such as a **Long** or a C `BOOL`, declare it in the interface the class implements as a **Sub** without **[PreserveSig]**, and return the value with [**Err.ReturnHResult**](../../tB/Modules/ErrObject/ReturnHResult). Native code that calls this member as `long __thiscall Count()` gets 3 as its return value:
 >
@@ -124,6 +125,7 @@ An ActiveX DLL's type library records a **ThisCall** or **FastCall** member as s
 
 A callback passed to an API must use the convention the API calls it with. Declare a [**Delegate**](../../tB/Core/Delegate) with that convention, use it as the parameter type, and give the target procedure the same keyword. [**AddressOf**](../../tB/Core/AddressOf) of a procedure with a different convention is accepted with a warning only (TB0026).
 
+<!-- test: bug fastcall-delegate-stdcall -->
 > [!NOTE] BETA 1034
 > On a 32-bit build, a call made from twinBASIC code *through* a **ThisCall** or **FastCall** delegate passes its arguments as stdcall does, and fails with *Bad DLL definition*. Calling the procedure directly works. **CDecl** delegates are not affected, and neither is a 64-bit build.
 

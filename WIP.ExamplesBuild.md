@@ -124,6 +124,8 @@ a fence at all.
 | `check_build` | compile this sample | --- |
 | `check_run` | compile it, build it and run it, and compare what it prints with what the fence says it prints (a trailing comment on a `Debug.Print` line, up to a ` -- ` that starts a note, or the comment lines under `' Output:`, taken whole). Statement samples (`slot=sub`) only; `MsgBox`, `InputBox` and `End` are refused. See the dispatcher design below | --- |
 | `hidden` | context for the page's samples, compiled with them and rendered to nothing. Implies `check_build` | --- |
+| `probe` | a sample of its own that is rendered to nothing: it checks a statement of the page (named by `<!-- test: sample <id> -->`, which `check_callout_evidence.mjs` requires). Implies `check_build`; with `check_run` it is run. Needs `id=`; refused with `hidden` | --- |
+| `arch=` | `win32`, `win64` or `win32,win64`: the architectures a `check_run` sample runs in. The win64 run is a copy, `<id>@win64`, batched apart with its page's hidden fences and built for win64 (`splitArches`). Refused on a sample not run and on a `projname` or `concat_group` member | `win32` |
 | `slot=` | `file`, `module`, `sub`, `class` or `method` --- what to generate around it | inferred |
 | `inherits=` | the class the sample is code-behind *of*; forces the Class row | --- |
 | `project=` | which template project to build into | inferred from the page's path |
@@ -553,6 +555,17 @@ was reported as raising it. The caller's handler is reached only by an error the
 not handle (`InStr(0, "abc", "a")` unhandled in a sample's body printed `[tbx-run] error 5
 Invalid procedure call or argument`, and the next sample ran), and `Resume tbxNext<n>`
 clears it before the next call.
+
+**`arch=` copies a run sample, it does not switch a batch.** A sample that names win64 is
+copied by `splitArches` (`lib/example-run.mjs`) into a sample of its own, `<id>@win64`, with
+the `hidden` fences and staged files of its page; the copies are batched by themselves, and
+`stageBatch` hands each batch's `arch` to `compileProject`, which sets the build box on every
+project (`setBuildTarget`), so a lane's IDE can open a win64 project after a win32 one. A copy is
+judged under its own id, and the summary counts it with its sample. The check that this is a
+64-bit run and not a relabelled 32-bit one: a `Declare` of msvbvm60's `rtcBeep`, which twinBASIC
+does not redirect, ran in the win32 copy and raised `-353703418 Unable to load DLL` in the win64
+one (BETA 1034). `--json` writes `ids.passed` and `ids.unrun`, which `recheck_callouts.mjs` judges
+a `sample` item by.
 
 ### `vb6run --docs`
 

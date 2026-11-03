@@ -40,6 +40,7 @@ The new files go into the folder that the Project Explorer has selected. The Pro
 
 <kbd>Enter</kbd> creates both files at once and opens the designer in a normal tab, not a preview tab. <kbd>Esc</kbd>, or an empty name, creates nothing. A name with a space is written in square brackets, such as `Class [My Form]`, both in the class and in the form's **Name** property. A Windows form, an MDI form and a report are bracketed for a punctuation mark too, such as the dot in `a.b`. A user control, a property page and a CustomControls form are bracketed for a space only.
 
+<!-- test: bug add-form-bad-name, lane ide:forms -->
 > [!NOTE] BETA 1034
 > The name box accepts a name that is not an identifier, such as `1bad`, and creates the files without a message. The class is then `Class 1bad`.
 
@@ -82,9 +83,11 @@ A file that the designer cannot use opens in one of three ways:
 - A file with a JSON error shows the notification *ERROR: bad JSON encountered when parsing tbform*.
 - A file without a `FormDesignerId` opens normally. The designer makes a new id for the session and does not write it to the file.
 
+<!-- test: bug readonly-designer-empty-tab -->
 > [!NOTE] BETA 1034
 > A read-only designer file still gets a tab, which is empty and selected. Close it.
 
+<!-- test: bug form-bad-json-empty-designer -->
 > [!NOTE] BETA 1034
 > A form file with a JSON error opens an empty designer with no controls, and PROPERTIES is empty. An edit there is refused, and <kbd>Ctrl</kbd>+<kbd>S</kbd> leaves the file as it was, so nothing is lost. Correct the JSON in a text editor outside the IDE, and open the form again.
 
@@ -110,6 +113,7 @@ From the code file, **View → Object Designer** and <kbd>Shift</kbd>+<kbd>F7</k
 
 Both switches find the partner file by replacing `.twin` or `.tbform` in the path. If the file has no partner, a notification says *Unable to switch form design mode: this document is not part of a form*.
 
+<!-- test: bug form-switch-twin-folder, lane ide:forms -->
 > [!NOTE] BETA 1034
 > A folder whose name contains `.twin`, such as `v1.twin.forms`, breaks the switch from the code to the designer, and the notification above appears. The switch from the designer to the code still works. Open the designer from the Project Explorer, or rename the folder.
 
@@ -177,9 +181,11 @@ With a designer focused, the **View** menu shows **Zoom In** and **Zoom Out** in
 ![frmMain in the designer at 50 %, drawn at half size with its grid hidden; the readout under it still gives 380 x 270.](Images/Designer_Zoom50.png){:width="197" height="173"}
 
 
+<!-- test: bug form-zoom-out-floor, lane ide:forms -->
 > [!NOTE] BETA 1034
 > **Zoom Out** stops at 50 %, although the box offers 25 %. Choose 25 % in the box.
 
+<!-- test: bug form-zoom-box-arrows-move -->
 > [!WARNING] BETA 1034
 > The arrow keys also move the selected controls while the zoom box has the focus. With a control selected, <kbd>Up</kbd> pressed twice there changes the zoom by two steps and moves the control up by two steps. The form is marked changed, each press is an undo step, and a save keeps the new position. Nothing on the screen says the control moved. Check the positions of the controls before you save.
 
@@ -193,6 +199,7 @@ The lock is stored under the control's name, so it follows a rename, and it cove
 
 ![A form with Show Outlines on, so that a dashed outline surrounds every control. The command button Command1 is selected and locked: a grey lock icon shows on it and its grabbers are grey. The other buttons are unlocked.](Images/Designer_Locked.png){:width="387" height="333"}
 
+<!-- test: bug form-lock-not-saved, lane ide:forms -->
 > [!WARNING] BETA 1034
 > Locking or unlocking controls does not mark the form changed. If you lock a control and close the tab, the IDE asks no question, and the lock is gone when you open the form again. The lock is saved only with the next real change. After you lock a control, make another change to the form, such as moving a control, before you save.
 
@@ -216,9 +223,11 @@ A designer tab shows the dot for unsaved changes as soon as the form changes. <k
 
 Every real change also writes an entry to the **HISTORY** panel, named for the form. Double-click it to open the form's designer. See [History](../Code/Navigating#history).
 
+<!-- test: bug history-form-line-undefined, lane ide:forms -->
 > [!NOTE] BETA 1034
 > The tooltip of a form's entry in **HISTORY** ends with `[line: undefined]`, because a form change has no line. Nothing is lost.
 
+<!-- test: bug form-escape-marks-changed, lane ide:forms -->
 > [!NOTE] BETA 1034
 > A designer can be marked changed with no edit. Click a control, press <kbd>Esc</kbd> to select the form, and then click another control or only move the pointer over the form: the tab gets the dot, and closing asks to save. It does not happen every time. Every control is where it was, so saving or discarding gives the same form. <kbd>Ctrl</kbd>+<kbd>Z</kbd> then steps through two empty steps before it reaches your last real change.
 

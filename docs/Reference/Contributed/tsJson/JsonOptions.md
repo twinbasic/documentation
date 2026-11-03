@@ -43,7 +43,6 @@ A property of an options object checks nothing when it is set. The value is used
 > ' Output:
 > ' 0|0|False||0|0
 > ```
-<!-- /test -->
 
 <!-- test: OptionsTests.New_Object_HasTheEmptyValueOfEachProperty, OptionsTests.New_Object_WritesNoLineBreaksButASpaceAfterEachColon, OptionsTests.New_Object_HasNoLimits -->
 > [!NOTE] BETA 1034

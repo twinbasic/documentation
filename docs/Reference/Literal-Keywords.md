@@ -30,9 +30,11 @@ vba_attribution: true
 
 Test for it with [**Is**](../tB/Core/Is), `Items Is Nothing`, or with twinBASIC's [**IsNot**](../tB/Core/IsNot), `Items IsNot Nothing`. Two more forms are twinBASIC's own: an initializer in a declaration, `Dim Items As Collection = Nothing`, needs no **Set**, and [**ByVal Nothing**](../Features/Language/Pointers#byval-nothing) passes a null pointer for a **ByRef** interface parameter.
 
+<!-- test: bug nothing-let-compiles -->
 > [!NOTE] BETA 1034
 > **Nothing** assigned without **Set** to a variable that is not an object or a **Variant**, such as `Count = Nothing` for a **Long**, and **Nothing** compared with `=` or `<>`, such as `If Obj = Nothing`, compile and raise error [91](tb:Errors#91) when they run. VB6 and 64-bit VBA refuse them when they compile, with *Invalid use of object*.
 
+<!-- test: bug nothing-let-variant-no-error -->
 > [!WARNING] BETA 1034
 > A **Variant** assigned **Nothing** without **Set**, `v = Nothing`, holds **Nothing**, as after `Set v = Nothing`, and no error is raised. VB6 and 64-bit VBA raise error [91](tb:Errors#91) and leave the **Variant** **Empty**.
 

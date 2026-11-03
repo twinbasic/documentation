@@ -122,13 +122,15 @@ The method must accept the whole argument list: six arguments for **Line**, eigh
 
 The plain call forms are not rewritten. `o.Line 99, 1, 2, 3, 4, 5` and `Call o.Line(99, 1, 2, 3, 4, 5)` pass their arguments through unchanged. A trailing comma is accepted after the second point of **Line** and after the point of **PSet**, but not after the radius of **Circle**, where it is error TB5075.
 
+<!-- test: bug graphics-method-lone-point-dropped -->
 > [!WARNING] BETA 1034
 > A call of **Scale** or **Line** with a single point in parentheses, such as `o.Scale (2, 3)`, `o.Scale(2, 3)` or `o.Line (2, 3)`, compiles and does nothing: the method is not called and no error is raised. VB6 reports a syntax error. Write the call with **Call**, or without parentheses: `Call o.Scale(2, 3)` or `o.Scale 2, 3`.
 
+<!-- test: sample scale-single-value -->
 > [!NOTE] BETA 1034
 > A call of **Scale** or **Line** with a single value in parentheses, such as `o.Scale(2)`, is error TB5212, because the compiler reads the graphics syntax from the method name. Write `Call o.Scale(2)` or `o.Scale 2`.
 >
-> ```tb check_build expect-error=TB5212 slot=file
+> ```tb check_build expect-error=TB5212 slot=file id=scale-single-value
 > Class ScalePlotter
 >     Public Sub Scale(Optional ByVal Flags As Long, Optional ByVal X1 As Single, Optional ByVal Y1 As Single, _
 >                      Optional ByVal X2 As Single, Optional ByVal Y2 As Single)
@@ -167,6 +169,7 @@ The built-in surfaces read *Color* as a **Long**. When *Color* is left out they 
 
 The line of a **Line** and the fill of **BF** use the same rule, as does the circle of **Circle** and the point of **PSet**.
 
+<!-- test: bug system-colour-extra-bytes-black -->
 > [!WARNING] BETA 1034
 > System colours are read wrongly. VB6 takes the system colour index from the low 16 bits of the value, so that `&H80010003` draws system colour 3 and `&H80FF000F` draws system colour 15. twinBASIC draws both black, without raising an error, because it reads the value as a system colour only when it lies between `&H80000000` and `&H8000001E`. Pass a system colour as one of the `vb` constants, such as `vbButtonFace`, or as `&H800000nn` with nothing in the second and third bytes.
 

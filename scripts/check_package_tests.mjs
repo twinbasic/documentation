@@ -10,7 +10,9 @@
 //
 // with `Fixture.Sub` for a [TestCase], `compile <Name>` for a compile case, `probe <id>` for a
 // scenario of the package's probe/ harness, or `none -- <reason>` for a callout no program can
-// check. This gate reads only the sources: the section's pages, the project's files and the
+// check. A marker may also name what any page's marker can (scripts/lib/test-markers.mjs), a
+// reproducer under bugs/ for a fact of twinBASIC, say: scripts/check_callout_evidence.mjs checks
+// those items. This gate reads only the sources: the section's pages, the project's files and the
 // template that names the package's version. It needs no twinBASIC install; running the cases is
 // scripts/package_tests.mjs.
 //
@@ -57,12 +59,11 @@ import {
   expectFrom,
   judge,
   malformedCases,
-  markersOf,
   outcomeOf,
-  parseMarker,
   projectCases,
   runAllText,
 } from "./lib/package-test-cases.mjs";
+import { kindOf, markersOf, PACKAGE_KINDS, parseMarker } from "./lib/test-markers.mjs";
 
 exitOnCrash();
 
@@ -383,6 +384,7 @@ function checkPackage(pkg) {
     const { callouts, markers, problems: regionProblems } = markersOf(text);
     out.push(...regionProblems.map((p) => `${rel} ${p}`));
     for (const c of callouts) {
+      if (c.kind !== "NOTE" && c.kind !== "WARNING") continue;
       if (!c.marked)
         out.push(
           `${rel} line ${c.line}: the ${c.kind} has no <!-- test: ... --> marker on the line above, nor a region around it`,
@@ -391,12 +393,10 @@ function checkPackage(pkg) {
     for (const mk of markers) {
       const where = `${rel} line ${mk.line}`;
       if (!mk.items.length) out.push(`${where}: the marker names nothing`);
-      for (const item of mk.items) {
-        if (item.bad)
-          out.push(
-            `${where}: the marker's item "${item.bad}" is not Fixture.Sub, compile <Name>, probe <id> or none -- <reason>`,
-          );
-        else if (item.case && !tests.some((t) => `${t.fixture}.${t.name}` === item.case))
+      // A bad item, and one that names something outside the project, are
+      // check_callout_evidence.mjs's to report.
+      for (const item of mk.items.filter((i) => PACKAGE_KINDS.has(kindOf(i)))) {
+        if (item.case && !tests.some((t) => `${t.fixture}.${t.name}` === item.case))
           out.push(`${where}: no [TestCase] ${item.case}`);
         else if (item.compile && !compiles.some((x) => x.name === item.compile))
           out.push(`${where}: no compile case ${item.compile}`);

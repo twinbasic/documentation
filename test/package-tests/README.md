@@ -96,6 +96,9 @@ A search that backtracks without end, such as `(a+)+b` on thirty `a`, gives up i
 
 An item is `Fixture.Sub`, `compile <Name>`, `probe <id>` (a scenario of `probe/`), or
 `none -- <reason>` for a callout no program can check (a statement about the IDE, a licence).
+A marker may also name what any page's marker can, such as `bug <slug>` for the reproducer of a
+twinBASIC defect behind a callout labelled `BETA <n>` (`scripts/lib/test-markers.mjs` has the
+grammar, and `scripts/check_callout_evidence.mjs` checks those items).
 `node scripts/check_package_tests.mjs`, in `test.bat`, fails when a callout has neither a marker
 nor a region around it, a region is not closed or opens inside another, an item names nothing, a
 case is named by no marker, a case does not start with `Expect.Begin` and end with `Expect.Done`,

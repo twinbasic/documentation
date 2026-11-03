@@ -422,11 +422,31 @@ A callout names its cases in an HTML comment on the line above it:
 
 The same comment anywhere else opens a region, which `<!-- /test -->` closes: it ties the paragraphs, lists, tables and samples between them, which describe how the package works, to the cases that check them. Regions do not nest, and a callout inside one is marked by it.
 
-Each item is a `Fixture.Sub` for a `[TestCase]`, `compile <Name>` for a compile case, `probe <id>` for a scenario of the package's `probe/` harness, or `none -- <reason>` for a callout no program can check. For a package with a test project, the gate fails when a callout has neither a marker nor a region around it, when a region is not closed or opens inside another, when an item names nothing that exists, when a case is named by no marker (a compile case of the package's `compile/` project included), when `compile/` holds a `[TestCase]`, when a `[TestCase]` does not start with `Expect.Begin` and end with `Expect.Done`, when `expect.json` is for another version than the section's `indexed_from` or names a case that does not exist, and when the generated `RunAll.twin` is out of date. A section with no test project yet is listed in the script's `PENDING` set; the gate fails on a name there with a project, and on a section neither there nor with one, so the list only shrinks.
+Each item is a `Fixture.Sub` for a `[TestCase]`, `compile <Name>` for a compile case, `probe <id>` for a scenario of the package's `probe/` harness, or `none -- <reason>` for a callout no program can check; an item any page's marker may hold, such as a reproducer under `bugs/`, is [`check_callout_evidence.mjs`](#check-callout-evidence)'s to check. For a package with a test project, the gate fails when a callout has neither a marker nor a region around it, when a region is not closed or opens inside another, when an item names nothing that exists, when a case is named by no marker (a compile case of the package's `compile/` project included), when `compile/` holds a `[TestCase]`, when a `[TestCase]` does not start with `Expect.Begin` and end with `Expect.Done`, when `expect.json` is for another version than the section's `indexed_from` or names a case that does not exist, and when the generated `RunAll.twin` is out of date. A section with no test project yet is listed in the script's `PENDING` set; the gate fails on a name there with a project, and on a section neither there nor with one, so the list only shrinks.
 
 Thirteen probes run first, on pages, sources and an `expect.json` built in memory: how a marker, a region and their items are read, the RunAll module, how `expect.json` is read and written, and how a case's result is judged.
 
 Exit codes: **0** every probe passed and every test project is in order, **1** a probe failed, or a section or test project is not in order, **2** the gate could not run: a refused command line, or a crash.
+
+## check_callout_evidence.mjs
+{: #check-callout-evidence }
+
+    node scripts/check_callout_evidence.mjs
+
+Verifies that every callout labelled `BETA <n>`, which states what that twinBASIC build does, names what checks it, so that [`recheck_callouts.mjs`](Tools-Defects#recheck-callouts) can check it again on a new build. It reads only the sources --- the pages, the reproducers under `bugs/`, the lane lists, the error data and the LLVM probe's results --- so it needs no install, no browser and no built tree, and takes a few seconds.
+
+A callout names its evidence in the same HTML comment a contributed package's callout names its cases in, on the line above it, or by a region around it ([`check_package_tests.mjs`](#check-package-tests) has the grammar):
+
+    <!-- test: bug lset-variant-destination-types, sample lset-boolean -->
+    > [!WARNING] BETA 1034
+
+Besides a contributed package's own cases, an item is `bug <slug>` for a reproducer under `bugs/` or `bugs/filed/`, `lane <suite>:<lane>` for a lane of `test/ide/lanes.mjs` (`ide`) or `test/addin/lanes.mjs` (`addin`), `sample <id>` for the one `tb` fence under `docs/` with that `id=`, built by [`examples.bat`](Tools#examplesbat), `errors <name>` for the run-time error data `errors/<name>.yml`, `llvm <mode>` for a mode of the LLVM claims probe, `test/llvm/run.mjs`, or `none -- <reason>` for a callout no program can check. The callouts of a generated Common Errors section need no marker: the data file the section's opening comment names is theirs.
+
+The gate fails when a callout labelled `BETA <n>` outside a generated section has neither a marker nor a region around it, when an item names nothing that exists, when a `sample` names a fence that is hidden context or an id two fences share, when a page outside a contributed package's section names a package's test case, when a region outside those sections is not closed or opens inside another, when a page still has the old `<!-- bug: <slug> -->` comment, and when a fence marked [`probe`](Tools-Samples#probes), which the reader never sees, is named by no marker.
+
+Fourteen probes run first, on pages, an index of what exists and tool reports built in memory: how a marker, a region, an errors section and their items are read, that a marker in a fence or in indented code is text, what an item that names nothing is, and, for `recheck_callouts.mjs`, how each tool's report is read, how a callout's verdict is taken from its items, and how its label is moved.
+
+Exit codes: **0** every probe passed and every labelled callout and marker is in order, **1** a probe failed, or a callout or marker is not in order, **2** the gate could not run: a refused command line, or a crash.
 
 ## check_errors.mjs
 {: #check-errors }

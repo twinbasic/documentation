@@ -30,11 +30,11 @@ The net present value calculation is based on future cash flows. If the first ca
 
 The **NPV** function is similar to the [**PV**](PV) function (present value) except that the **PV** function allows cash flows to begin either at the end or the beginning of a period. Unlike the variable **NPV** cash flow values, **PV** cash flows must be fixed throughout the investment.
 
-<!-- bug: financial-array-arguments -->
+<!-- test: bug financial-array-arguments -->
 > [!WARNING] BETA 1034
 > Given an array that has never been sized (`Dim A() As Double` with no **ReDim**, or one emptied by **Erase**), **NPV** ends the program with an access violation, in a 32-bit and a 64-bit build. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
 
-<!-- bug: financial-argument-checks -->
+<!-- test: bug financial-argument-checks, errors VBA.Financial -->
 > [!WARNING] BETA 1034
 > Given a *rate* of -1, **NPV** returns NaN (not a number) and raises no error. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
 

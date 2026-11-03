@@ -25,6 +25,7 @@ Syntax:
 
 Without an **On Error** statement, any run-time error that occurs is fatal; that is, an error message is displayed and execution stops.
 
+<!-- test: bug form-event-error-continues -->
 > [!NOTE] BETA 1034
 > In a built program, twinBASIC does not end the program after an unhandled error in an event procedure of a form, such as **Form_Load** or **Form_Activate**. It displays the error message, and once the message is closed the program goes on running: the form is shown and its later events run. VB6 ends the program. Until this is fixed, handle errors in a form's event procedures, and unload the form or end the program there when it cannot continue.
 

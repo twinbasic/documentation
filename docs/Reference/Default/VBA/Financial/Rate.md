@@ -35,7 +35,7 @@ For all arguments, cash paid out (such as deposits to savings) is represented by
 
 **Rate** is calculated by iteration. Starting with the value of *guess*, **Rate** cycles through the calculation until the result is accurate to within 0.00001 percent, and fails if it finds none in 20 tries. If it fails from the default of 10 percent, try a different value for *guess*.
 
-<!-- bug: rate-fails -->
+<!-- test: bug rate-fails, errors VBA.Financial -->
 > [!WARNING] BETA 1034
 > Given a lump sum (a *pmt* of 0) over an even number of periods, **Rate** can return a rate below -1 and raise no error: `Rate(2, 0, 100, -121)` and `Rate(4, 0, 100, -146.41)` return -2.1. VB6 returns 0.1.
 

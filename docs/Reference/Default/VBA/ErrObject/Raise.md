@@ -44,13 +44,15 @@ A *description* of an empty string gives an empty **Description** for every numb
 
 When the error is raised in a method of a class and the caller handles it, an empty **Description** reaches the caller as `Application-defined or object-defined error`. The other texts arrive unchanged.
 
+<!-- test: bug err-raise-defaults, sample err-raise-texts -->
 > [!WARNING] BETA 1034
 > **Raise** differs from VBA and VB6 in three ways, and none of them raises an error. Without *source*, VBA sets **Source** to the name of the project, and twinBASIC leaves it empty. Without *description*, VBA gives every number that has no built-in message the text `Application-defined or object-defined error`, from 1 up to 65535, and twinBASIC gives an empty string or one of the texts above. And an omitted argument keeps the value left by an earlier error in VBA, and is reset in twinBASIC. A program that relies on **Err.Source** being the project name, or on **Err.Description** being non-empty, has to pass those arguments.
 
+<!-- test: bug latebound-constant-raise-exception -->
 > [!NOTE] BETA 1034
 > An error that a class member raises with a constant *number*, such as `Err.Raise 380`, reaches a caller that called the member late-bound --- through an **Object** variable or [**CallByName**](../Interaction/CallByName) --- as error -2147352567 (`&H80020009`), *Exception occurred.*, not as 380. VB6 raises 380. The number arrives unchanged when the member passes it in a variable, as in `Err.Raise Number`, and in every early-bound call.
 
-<!-- bug: err-raise-hresult-mapping -->
+<!-- test: bug err-raise-hresult-mapping, errors VBA.ErrObject -->
 > [!NOTE] BETA 1034
 > **Raise** raises an **HRESULT** *number* as it is. VB6 and 64-bit VBA raise many **HRESULT**s as the VB error of the same meaning instead, including these:
 >
@@ -107,7 +109,7 @@ End Function
 
 This example raises errors without a source or a description, and prints what **Err** holds for each:
 
-```tb check_run
+```tb check_run id=err-raise-texts
 On Error Resume Next
 Err.Raise 5
 Debug.Print "[" & Err.Source & "] [" & Err.Description & "]"   ' [] [Invalid procedure call or argument]

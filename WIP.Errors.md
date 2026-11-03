@@ -512,7 +512,10 @@ What the probes must respect (BETA 1010; `errors.mjs` already does all of it):
 - **A case that crashes stops the probe, and every later case reports `none`** (`the probe
   stopped before it ended: exception 0xc0000005`), as a hang does. Explore one page per probe
   (a data file holding only that page), then one case per probe for a page that stops; a case
-  that crashes is a WARNING by hand, never a case.
+  that crashes is a WARNING by hand, never a case. A WARNING by hand names its reproducer in
+  `<!-- test: bug <slug> -->` on the line above it (and `errors <name>` when it cites the data's
+  rows too), as every callout labelled `BETA <n>` does (WIP.md, rule 6); the generated callouts
+  need none.
 - **The probe is one module**: a case cannot declare a class, an interface or a `Type`. A
   harness can hold a `Type`, an `Enum`, a `Declare` and procedures; a fact that needs a class
   (`GetNameFromDispID` on a twinBASIC class) is checked with `tbrun` on a tree of its own and

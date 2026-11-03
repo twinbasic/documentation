@@ -38,7 +38,7 @@ The *attributes* settings are:
 
 **SetAttr** sets the attributes of a file that is open, whatever mode it is open in, without an error.
 
-<!-- bug: setattr-open-file-no-error -->
+<!-- test: bug setattr-open-file-no-error, errors VBA.FileSystem -->
 > [!WARNING] BETA 1034
 > This differs from VB6 and 64-bit VBA, which raise run-time error 55 (*File already open*) for a file open for **Output**, **Append**, **Binary** or **Random**, and leave its attributes unchanged. They set them only for a file open for **Input**. So twinBASIC can make a file read-only while the program still has it open for writing.
 

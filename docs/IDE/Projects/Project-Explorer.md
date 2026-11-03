@@ -100,6 +100,7 @@ These keys work while the tree has the focus.
 
 The tree scrolls to keep the selected row in view. <kbd>Page Up</kbd>, <kbd>Page Down</kbd>, <kbd>Home</kbd> and <kbd>End</kbd> do not move the selection.
 
+<!-- test: bug tree-space-folder, bug tree-type-to-filter, bug tree-right-arrow-order, bug tree-ctrl-a-error, bug tree-down-hidden-settings -->
 > [!NOTE] BETA 1034
 > Several keys of the tree do not work as they should.
 >
@@ -147,6 +148,7 @@ The **Search** button, or the first letter you type with a row selected, opens a
 
 ![The Project Explorer in its object view, with the search bar open at the top right of the list and Util typed in it. Under MyProject the Modules group lists only Util, beside its file Util.twin, and the Classes and Forms groups list nothing. The VBA, VBRUN and VB packages below are drawn open, and every group shows its full count.](Images/ObjectView_Search.png){:width="267" height="478"}
 
+<!-- test: bug objectview-no-menu, bug objectview-rename-delete-alert, bug objectview-shift-double-click, bug objectview-search-prefix -->
 > [!NOTE] BETA 1034
 > The object view has some defects.
 >

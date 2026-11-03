@@ -21,6 +21,7 @@ import {
   CONCAT_KEY,
   HIDDEN_MARKER,
   MARKER,
+  PROBE_MARKER,
   RUN_MARKER,
   SLOTS,
   classify,
@@ -39,7 +40,9 @@ import {
   judgeOutput,
   parseRun,
   partitionRun,
+  probeRefusal,
   runRefusal,
+  splitArches,
 } from "./example-run.mjs";
 
 /** check_examples.mjs's defaults for `--jobs` and `--batch`, which the probes batch with. */
@@ -1179,6 +1182,18 @@ const INFO_PROBES = [
     (p) => p.flags.has(MARKER) && p.flags.has(HIDDEN_MARKER),
   ],
   ["another language is untouched", "js", (p) => p.lang === "js"],
+  [
+    `${PROBE_MARKER} implies ${MARKER}, and is not run unless it says so`,
+    `tb ${PROBE_MARKER} id=p`,
+    (p) => p.flags.has(MARKER) && p.flags.has(PROBE_MARKER) && !p.flags.has(RUN_MARKER) && !p.bad.length,
+  ],
+  [
+    "two architectures",
+    `tb ${RUN_MARKER} arch=win32,win64`,
+    (p) => p.keys.get("arch") === "win32,win64" && !p.bad.length,
+  ],
+  ["an unknown architecture is refused", `tb ${RUN_MARKER} arch=win65`, (p) => p.bad.length === 1],
+  ["an architecture named twice is refused", `tb ${RUN_MARKER} arch=win64,win64`, (p) => p.bad.length === 1],
 ];
 
 /**
@@ -1947,6 +1962,18 @@ export async function runProbes(say) {
     ],
     ["a plain statement sample", rfence('Debug.Print InStr(1, "abc", "b")   \' 2\n'), false],
     ["a fence that is not run", rfence('MsgBox "hi"\n', { flags: [MARKER] }), false],
+    ["an arch= on a run sample", rfence("Debug.Print 1\n", { keys: [["arch", "win32,win64"]] }), false],
+    ["an arch= on a sample that is not run", rfence("Dim x\n", { flags: [MARKER], keys: [["arch", "win64"]] }), true],
+    [
+      "an arch= on a group's member",
+      rfence("Debug.Print 1\n", {
+        keys: [
+          ["arch", "win64"],
+          ["projname", "g"],
+        ],
+      }),
+      true,
+    ],
   ]) {
     expect(
       !!runRefusal(f) === refused,
@@ -1958,6 +1985,35 @@ export async function runProbes(say) {
       "check_run runs statement samples (slot=sub) only",
     "run refusal: a non-sub slot does not say what check_run runs",
   );
+  // A probe: a sample of its own with an id, never hidden context too.
+  for (const [name, f, refused] of [
+    ["a probe with an id", rfence("Dim x\n", { flags: [MARKER, PROBE_MARKER], keys: [["id", "p"]] }), false],
+    ["a probe with no id", rfence("Dim x\n", { flags: [MARKER, PROBE_MARKER] }), true],
+    ["a hidden probe", rfence("Dim x\n", { flags: [MARKER, PROBE_MARKER, HIDDEN_MARKER], keys: [["id", "p"]] }), true],
+    ["a sample that is no probe", rfence("Dim x\n", { flags: [MARKER] }), false],
+  ]) {
+    expect(
+      !!probeRefusal(f) === refused,
+      `probe refusal: ${name} -> ${probeRefusal(f)?.message ?? "accepted"}, want ${refused ? "refused" : "accepted"}`,
+    );
+  }
+  // The run list by architecture: a win64 copy of each sample that asks, with
+  // its page's hidden context; one that asks for win64 alone leaves win32.
+  {
+    const both = rfence("Debug.Print 1\n", { id: "A.md#1", keys: [["arch", "win32,win64"]] });
+    const only64 = { ...rfence("Debug.Print 2\n", { id: "A.md#2", keys: [["arch", "win64"]] }) };
+    const plain = { ...rfence("Debug.Print 3\n", { id: "B.md#1" }), rel: "B.md" };
+    const ctxA = { ...rfence("Dim c\n", { id: "A.md#3", flags: [MARKER, HIDDEN_MARKER] }), rel: "R.md" };
+    const ctxB = { ...rfence("Dim d\n", { id: "B.md#2", flags: [MARKER, HIDDEN_MARKER] }), rel: "B.md" };
+    const { win32, win64 } = splitArches([both, only64, plain, ctxA, ctxB]);
+    const ids = (list) => list.map((f) => f.id).join(",");
+    expect(
+      ids(win32) === "A.md#1,B.md#1,A.md#3,B.md#2" &&
+        ids(win64) === "A.md#1@win64,A.md#2@win64,A.md#3@win64" &&
+        win64.every((f) => f.arch === "win64" && f.baseId === f.id.replace("@win64", "")),
+      `architectures: win32 ${ids(win32)}, win64 ${ids(win64)}`,
+    );
+  }
 
   // What a fence says it prints, each line with its place on the page: the
   // fence opens at page line 10, so its first line is page line 11.

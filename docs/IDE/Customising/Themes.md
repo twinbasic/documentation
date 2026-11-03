@@ -70,6 +70,7 @@ MenuBackColor:                  red;
 SymbolClassTextDecoration:      underline;
 ```
 
+<!-- test: bug theme-override-breaks-inheritance, lane ide:customising -->
 > [!WARNING] BETA 1034
 > A file named `Dark.theme` or `Light.theme` in `%APPDATA%\twinBASIC\themes` breaks the inheritance of every custom theme. The IDE ignores the file's contents, but still counts it, and so it never links the themes to their parents. Every custom theme, and **Classic (Light)** with them, is listed as `(undefined)` in place of **Light** or **Dark**. Choosing one gives the dark base with only that theme's own properties changed, and **Reload from disk** no longer applies the edits you make. No error is shown. To change one of the shipped themes, give your file another name and inherit from the shipped theme: `inherits: dark;`.
 

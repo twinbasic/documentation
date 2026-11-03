@@ -21,6 +21,7 @@ Syntax:
 *varname*
 : Name of the variable containing data to be written to disk.
 
+<!-- test: bug file-errors-unspecified -->
 > [!NOTE] BETA 1034
 > **Put** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*). It raises the same error for data longer than the record length of a **Random** file, where VB6 raises 59 (*Bad record length*).
 

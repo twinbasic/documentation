@@ -35,7 +35,7 @@ The *rate* and *nper* arguments must be calculated using payment periods express
 
 For all arguments, cash paid out (such as deposits to savings) is represented by negative numbers; cash received (such as dividend checks) is represented by positive numbers.
 
-<!-- bug: financial-argument-checks -->
+<!-- test: bug financial-argument-checks, errors VBA.Financial -->
 > [!WARNING] BETA 1034
 > Given a *per* of 0 or less, or of *nper* + 1 or more, **PPmt** returns a value computed for that period, outside the annuity, and raises no error. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
 

@@ -249,6 +249,13 @@ runs:
     - name: Verify the package test markers and projects (check_package_tests.mjs)
       shell: bash
       run: node scripts/check_package_tests.mjs
+    # Every callout labelled BETA <n> names what checks it in a marker, which
+    # scripts/recheck_callouts.mjs runs on a new build, and every marker under
+    # docs/ names a reproducer, lane, sample, error data file or LLVM probe mode
+    # that exists. Sources only: no browser, no built tree, no install.
+    - name: Verify the evidence markers of labelled callouts (check_callout_evidence.mjs)
+      shell: bash
+      run: node scripts/check_callout_evidence.mjs
     # Every page's Common Errors section is what scripts/errors.mjs write makes of the
     # run-time error data under errors/, and the data is in order. Sources
     # only: no twinBASIC, no VB6.

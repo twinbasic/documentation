@@ -73,6 +73,7 @@ Right-click in the list for a menu of five items. The menu is in English whateve
 
 A copied row reads `{ERROR}` or `{WARNING}`, the path of the file, the position, and the code and message. **Copy All** and **Copy All Errors** begin with a line that names the IDE: `twinBASIC (` and the version, then `) compilation error report:`.
 
+<!-- test: bug diagnostics-copy-html -->
 > [!NOTE] BETA 1034
 > Each copied message contains the HTML tag `<span>TBnnnn</span>` around the code, and **Copy All** labels hints and information messages `{WARNING}`. Remove the tags from the pasted text by hand.
 
@@ -104,6 +105,7 @@ Most errors are explained on the page of the statement, type or feature they con
 **TB5182**, *Syntax error. No handler for this symbol*
 : A statement or an attribute where the language does not allow it. A line at the top level of a `.twin` file, outside a **Module** or **Class** block, is one case. An [attribute](../../Core/Attributes) written where it does not apply is another.
 
+<!-- test: bug tb5079-datatype-message-nested -->
 > [!NOTE] BETA 1034
 > For a type name, TB5079 reads *Unrecognized symbol 'Unrecognized datatype symbol 'NoSuchType''*: the message for a type is put inside the message for a name.
 

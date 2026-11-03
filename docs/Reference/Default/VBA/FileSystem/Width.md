@@ -23,7 +23,7 @@ Syntax: **Width #** *FileNumber* **,** *Width*
 > [!NOTE]
 > VB6 and 64-bit VBA take a *Width* from 0 to 255 only, and raise error 5, *Invalid procedure call or argument*, for one above 255.
 
-<!-- bug: filesystem-argument-checks -->
+<!-- test: bug filesystem-argument-checks, errors VBA.FileSystem -->
 > [!WARNING] BETA 1034
 > A negative *Width* raises no error, and **Print #** then starts a new line before each item after the first. VB6 and 64-bit VBA raise error 5, *Invalid procedure call or argument*.
 

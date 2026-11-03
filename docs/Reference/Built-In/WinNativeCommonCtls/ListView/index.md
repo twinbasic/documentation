@@ -205,6 +205,7 @@ The [**ImageList**](../ImageList/) used for small icons in **lvwSmallIcon**, **l
 
 Whether item-label text has an opaque background. A member of [**ListTextBackgroundConstants**](#listtextbackgroundconstants). Default: **lvwTransparent**. Changing it repaints the list at once. The opaque background is [**BackColor**](#backcolor), the color the list is already drawn in, so the two settings look the same.
 
+<!-- test: none -- what the control draws: compare a list with lvwOpaque and with lvwTransparent by eye -->
 > [!NOTE] BETA 1034
 > **TextBackground** has no visible effect: the control has no **Picture** property, the background image an opaque text background would hide.
 

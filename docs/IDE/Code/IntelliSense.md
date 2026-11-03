@@ -53,6 +53,7 @@ What an accepted entry adds:
 
 <kbd>Esc</kbd>, <kbd>Left</kbd>, <kbd>Right</kbd> and <kbd>Backspace</kbd> close the list. <kbd>Left</kbd> also moves the caret, and <kbd>Backspace</kbd> also deletes. Scrolling the editor with the mouse wheel closes the list too.
 
+<!-- test: lane ide:code-editor -->
 > [!NOTE] BETA 1034
 > Typing `(` to accept a function from the list doubles the bracket: `Area` becomes `Area(()`. Accept the function with <kbd>Tab</kbd> or <kbd>Enter</kbd> instead. It gives `Area()` with the caret between the brackets, so type the arguments without the opening bracket.
 

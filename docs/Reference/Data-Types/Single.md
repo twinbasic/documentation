@@ -91,6 +91,7 @@ Debug.Print 0.1! + 0.2! = 0.3!      ' True
 Debug.Print 0.1 + 0.2 = 0.3         ' False
 ```
 
+<!-- test: bug single-overflow-no-error -->
 > [!WARNING] BETA 1034
 > An addition, subtraction, multiplication or division whose result is a declared **Single** raises no error when the result overflows: the **Single** holds infinity (`1.#INF`) instead. VB6 raises error 6, *Overflow*. Declare the variable **Double** where an overflow must be caught. Code compiled with LLVM has a similar defect for **Double**; see [Language support](../../LLVM/Getting-Started#language-support).
 

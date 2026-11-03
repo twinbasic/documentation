@@ -20,7 +20,7 @@ A direct wrapper over **IUnknown::QueryInterface**, as VB6's runtime function `_
 
 *IID* is read as the address of a **GUID**. A **String** is not converted: its text is not an interface ID, as `"{00000000-0000-0000-C000-000000000046}"` is not. A **GUID** variable passed itself, rather than its address, ends a 32-bit program with an access violation.
 
-<!-- bug: vbacastobj-no-type-mismatch -->
+<!-- test: bug vbacastobj-no-type-mismatch, errors VBA.HiddenModule -->
 > [!WARNING] BETA 1034
 > **vbaCastObj** raises no error when *Obj* does not have the interface, or when *IID* is a **String**: it returns **Nothing**.
 

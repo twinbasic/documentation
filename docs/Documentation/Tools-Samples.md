@@ -80,6 +80,11 @@ The handler is reached only by an error the sample does not handle itself, so a 
 
 The run's console output is captured as [`tbrun.mjs`](Tools-Compiler#tbrun) captures it and split by the markers, so each line is charged to the sample that printed it. A sample that raises an error, does not return, or prints something other than the page says is a finding at the page line that states the value. A run sample is refused without being built if it is not `slot=sub`, is marked `expect-error`, calls `MsgBox` or `InputBox`, or contains an `End` statement: a message box waits for a click on a desktop nobody sees, and `End` ends every sample after it.
 
+**A run sample can name the architectures it is run in.** `arch=win32,win64` runs it in a 32-bit and in a 64-bit project, and `arch=win64` in a 64-bit one only; without it a sample runs in a 32-bit one, as a new project is built. The 64-bit run is a copy of the sample, reported under its id with `@win64` after it, and batched apart, with its page's `hidden` context and staged files, in projects whose build target is win64. A sample in a `projname` or `concat_group` group, and one that is not run, may not ask: a sample that is only compiled is compiled the same for either target.
+
+**A probe is a sample the reader never sees.** A fence marked `probe` is not rendered, as a `hidden` one is not, but it is a sample of its own, built (and with `check_run` run and judged) as any other is, where a `hidden` fence is context that only travels with the page's samples. It checks a statement the page makes in prose or in a callout, whose code would tell the reader nothing: that a `Declare` of msvbvm60's `GetMem4` works in a 64-bit build, or that a conversion draws no warning, with the warning made an error by `[EnforceErrors]` in a probe that must compile. A probe has an `id=`, and a [marker](Tools-Toolchain-Tests#check-callout-evidence) beside the statement names it, `<!-- test: sample <id> -->`; a probe no marker names fails `test.bat`. One marked `hidden` too, or with no `id=`, is refused.
+{: #probes }
+
     FAIL  docs/Reference/Default/VBA/Strings/InStr.md:77  (Reference/Default/VBA/Strings/InStr.md#3)
             prints "3", the page says "7"
 

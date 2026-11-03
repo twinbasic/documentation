@@ -67,6 +67,7 @@ The new file goes into the selected folder, or into the folder of the selected f
 
 **Add Folder** and **Add Other File** are not moved to `Sources`: a file made with **Add Other File** while a file in `Resources/CUSTOM` is selected is made in `Resources/CUSTOM`.
 
+<!-- test: bug packages-resources-message, bug cut-paste-refused-folder, lane ide:projects -->
 > [!NOTE] BETA 1034
 > **Add Other File**, and **Paste**, in the `Packages` folder create nothing. The notification says *cannot create files inside the root resources folder*, which names the wrong folder. A file that was cut and then pasted there is deleted: see [Cut, copy and paste](Files-and-Folders#cut-copy-and-paste).
 
@@ -102,6 +103,7 @@ The `.twin` files are written as UTF-8 with Windows line endings. The `.bas` and
 
 A file with any extension but the three below is copied into the project unchanged. It goes into the selected folder, or the folder of the selected file, or `Sources` if nothing is selected. The IDE does not ask when a file of the same name is there already: the new file replaces it.
 
+<!-- test: bug import-over-open-file, lane ide:projects-import-crash -->
 > [!WARNING] BETA 1034
 > Importing a file with the name of a file already in the project crashes the compiler, whether or not the file is open. The Debug Console prints `NATIVE EXCEPTION: ACCESS_VIOLATION`, and the IDE restarts the compiler. When the file is open in a tab, the project then holds the imported text, but the tab keeps the old text. If you edit the tab and press <kbd>Ctrl</kbd>+<kbd>S</kbd>, the old text with your edit is saved over the import. Close the tab of a file before you import a file with its name.
 
@@ -115,6 +117,7 @@ The tree shows the project's folders and files but not its `Packages`, `Settings
 
 **Import** writes each ticked file at the same path in the current project, and makes the folders for it. A file already at that path is replaced with no question. If the import fails, a box says **Import failed. Please check the DEBUG CONSOLE for details of the errors that occurred.**
 
+<!-- test: bug import-project-overwrites, lane ide:projects-loss -->
 > [!WARNING] BETA 1034
 > Importing a project's files replaces a file of the same path without a question, and closes the tab open on it first. Unsaved changes in that tab are lost, and so is the saved copy of the file, because the import also saves the project. Do not tick a file whose path is already in your project.
 
@@ -124,6 +127,7 @@ This is for taking files from another project. To open a whole VB6 project as a 
 
 When every file of the command is done, the IDE saves the project, as if you had pressed <kbd>Ctrl</kbd>+<kbd>S</kbd>. For a project with no file yet, the **Save As** dialog opens instead. Cancelling it leaves the file imported and the project unsaved.
 
+<!-- test: bug import-file-saves, bug import-cancel-saves -->
 > [!NOTE] BETA 1034
 > An import saves the project, with the unsaved changes of every open editor, although you did not ask for a save. **Cancel** in the **Import from twinproj...** dialog does the same, and then the IDE restarts its compiler.
 ## Resources

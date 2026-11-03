@@ -64,9 +64,11 @@ Syntax: **DatePart** ( *interval*, *date* [, *firstdayofweek* [, *firstweekofyea
 
 The *firstdayofweek* argument affects calculations that use the "w" and "ww" interval symbols.
 
+<!-- test: bug datepart-firstdayofweek-out-of-range, errors VBA.DateTime -->
 > [!WARNING] BETA 1034
 > With the "w" or "ww" interval, **DatePart** raises no error for a *firstdayofweek* outside 0 to 7, and what it returns follows no rule: a negative value acts as if taken modulo 7, 8 acts as **vbSunday**, and a larger value matches no setting. `DatePart("w", #1/1/2000#, 255)` returns -2. VB6 raises error 5.
 
+<!-- test: bug datepart-week-year-100 -->
 > [!WARNING] BETA 1034
 > With the "ww" interval, **DatePart** goes wrong for a date in the first days of year 100 whose week belongs to year 99. With **vbFirstFullWeek** it never returns, and the program stops responding: `DatePart("ww", #1/1/100#, vbSunday, vbFirstFullWeek)` is one such call. With **vbFirstFourDays** it returns a wrong number: -98980 for January 1, 100. VB6 returns 52 for both.
 

@@ -28,6 +28,7 @@ The return type is **String**. The result depends on the type of *expression*:
 
 **CStr** is the internationally aware alternative to [**Str**](Str) for converting a number to a string. **CStr** recognizes different decimal separators properly, depending on the system's locale setting.
 
+<!-- test: bug negative-zero-text-win64 -->
 > [!WARNING] BETA 1034
 > A 64-bit build converts a negative zero of type **Single** or **Double** (a value that equals 0 and has its sign bit set) to `"-0"`. A 32-bit build and VB6 give `"0"`. The same happens when such a value is joined to a string with `&`.
 

@@ -98,10 +98,13 @@ import {
 } from "../lib/cli.mjs";
 import { mapLines } from "../lib/markdown.mjs";
 import {
+  ARCH_KEY,
+  ARCHES,
   CLASS_SLOTS,
   CONCAT_KEY,
   HIDDEN_MARKER,
   MARKER,
+  PROBE_MARKER,
   RUN_MARKER,
   SLOTS,
   classify,
@@ -144,7 +147,9 @@ import {
   judgeOutput,
   parseRun,
   partitionRun,
+  probeRefusal,
   runRefusal,
+  splitArches,
 } from "./lib/example-run.mjs";
 import { HarnessError, HARNESS_NAME, optionSeconds, readHarness, timeoutMs } from "./lib/harness-settings.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
@@ -400,8 +405,9 @@ function select(fences) {
       addFinding(
         fence,
         `unrecognised fence markup: ${fence.bad.join(" ")}`,
-        `known flags: ${MARKER}, ${RUN_MARKER}, ${HIDDEN_MARKER}; keys: slot=${SLOTS.join("|")}, ` +
-          `inherits=, project=, projname=, id=, expect-error=, resource=, inert=, ${CONCAT_KEY}=`,
+        `known flags: ${MARKER}, ${RUN_MARKER}, ${HIDDEN_MARKER}, ${PROBE_MARKER}; keys: slot=${SLOTS.join("|")}, ` +
+          `inherits=, project=, projname=, id=, expect-error=, resource=, inert=, ${CONCAT_KEY}=, ` +
+          `${ARCH_KEY}=${ARCHES.join("|")} or both, comma-separated`,
       );
       continue;
     }
@@ -494,8 +500,9 @@ function select(fences) {
       continue;
     }
     // A fence that asks to be RUN has to be one that can be: a statement
-    // sample, with nothing in it that waits for a person or ends the run.
-    const refusal = runRefusal(fence);
+    // sample, with nothing in it that waits for a person or ends the run. A
+    // probe has an id, and is not context.
+    const refusal = runRefusal(fence) ?? probeRefusal(fence);
     if (refusal) {
       addFinding(fence, refusal.message, refusal.detail);
       continue;
@@ -691,7 +698,8 @@ function stageBatch(batch, work) {
   // also packs a tree holding an embedded package, as a resource= fence staged
   // under Packages/ makes.
   packTree(proj, dir);
-  return { proj, dir, map, runs };
+  // A batch of win64 copies (splitArches) is built for that target, the rest for win32.
+  return { proj, dir, map, runs, arch: batch.arch ?? ARCHES[0] };
 }
 
 // ------------------------------------------------------------------- building
@@ -758,6 +766,7 @@ const timingBatch = (batch, staged) =>
     samples: batch.fences.length,
     runs: staged.runs.length,
     canary: !!batch.canary,
+    arch: staged.arch,
     llvm: LLVM,
     build: BUILD,
   });
@@ -775,6 +784,7 @@ async function buildCanary(batch, session, work) {
     project: staged.proj,
     ide: IDE,
     session,
+    arch: staged.arch,
     build: BUILD || !!run,
     llvm: LLVM,
     run,
@@ -807,6 +817,7 @@ async function buildStaged(staged, session) {
       project: staged.proj,
       ide: IDE,
       session,
+      arch: staged.arch,
       build: BUILD || !!run,
       llvm: LLVM,
       run,
@@ -1232,12 +1243,17 @@ async function main() {
           : []),
       ]
     : makeBatches(restList, { batchSize, jobs });
+  // A run sample that names win64 in `arch=` is also run as a copy of its own,
+  // `<id>@win64`, in projects built for that target (splitArches).
+  const { win32: runList32, win64: runList64 } = splitArches(runList);
   // A run that builds always keeps a unit with its own `Sub Main` apart, as above.
-  const runBatches = makeBatches(runList, {
-    batchSize,
-    jobs,
-    alone: (members) => members.some((f) => DECLARES_MAIN.test(f.content)),
-  }).map((b) => ({ ...b, run: true }));
+  const runBatchesOf = (list, extra) =>
+    makeBatches(list, {
+      batchSize,
+      jobs,
+      alone: (members) => members.some((f) => DECLARES_MAIN.test(f.content)),
+    }).map((b) => ({ ...b, run: true, ...extra }));
+  const runBatches = [...runBatchesOf(runList32, {}), ...runBatchesOf(runList64, { arch: ARCHES[1] })];
   const canaryBatches = exclusions.canaries.flatMap((c) => {
     const { run, rest } = partitionRun(c.fences);
     return [
@@ -1271,7 +1287,7 @@ async function main() {
       (staged ? `, ${staged} staged file(s)` : ""),
   );
 
-  const wantRun = exclusions.kept.filter(isRunFence).length;
+  const wantRun = [...runList32, ...runList64].filter(isRunFence).length;
   if (wantRun) {
     say(`  ${wantRun} sample(s) marked \`${RUN_MARKER}\` are built and run, in ${runBatches.length} project(s)`);
   }
@@ -1331,10 +1347,12 @@ async function main() {
 
   const passed = [];
   const canaryIds = new Set(exclusions.canaries.flatMap((c) => [...c.ids]));
-  for (const fence of selected) {
+  // The win64 copies are judged as samples of their own, by their own ids.
+  for (const fence of [...selected, ...runList64.filter(isRunFence)]) {
     if (fence.isResource) continue; // a staged file, not a sample
+    const baseId = fence.baseId ?? fence.id;
     // Not built, or judged as its canary's batches are.
-    if (exclusions.notBuilt.has(fence.id) || canaryIds.has(fence.id)) continue;
+    if (exclusions.notBuilt.has(baseId) || canaryIds.has(baseId)) continue;
     if (crashed.has(fence.id)) continue; // reported already, and never a pass
     const diags = (errorsById.get(fence.id) ?? []).filter((d) => d.severity === "ERROR");
 
@@ -1377,7 +1395,7 @@ async function main() {
     if (!diags.length) {
       if (!blamed.has(fence.id)) {
         passed.push(fence);
-        if (isRunFence(fence) && !exclusions.notRun.has(fence.id)) judgeRun(fence);
+        if (isRunFence(fence) && !exclusions.notRun.has(baseId)) judgeRun(fence);
       }
       continue;
     }
@@ -1397,6 +1415,9 @@ async function main() {
     });
   }
 
+  // The samples that passed, each win64 copy counted with its sample.
+  const passedSamples = passed.filter((f) => !f.baseId).length;
+
   // A row inside a package a template embeds is the package's (splitPackageFaults).
   const embeddedFolders = new Set([...embeddedOf.values()].flat().map((p) => p.folder));
   const { byPackage, own: ownFaults } = splitPackageFaults([...new Set(templateFaults)], embeddedFolders);
@@ -1414,7 +1435,7 @@ async function main() {
   if (MODE_PROPOSE) {
     const unmarked = passed.filter((f) => !f.marked);
     say(
-      `\n${passed.length} of ${samples.length} sample(s) compile; ` +
+      `\n${passedSamples} of ${samples.length} sample(s) compile; ` +
         `${unmarked.length} of them are not yet marked \`${MARKER}\``,
     );
     const byPage = new Map();
@@ -1451,21 +1472,24 @@ async function main() {
   // because a template that does not compile makes every sample in it fail.
   const real = findings.filter((f) => !f.advisory).length + (ownFaults.length ? 1 : 0);
   if (AS_JSON) {
-    console.log(JSON.stringify({ selected: samples.length, passed: passed.length, findings }, null, 2));
+    // `ids` names the samples that passed and the run samples that were not run, for
+    // a caller that judges samples by id (scripts/recheck_callouts.mjs).
+    const ids = { passed: passed.map((f) => f.id), unrun: [...unrunIds] };
+    console.log(JSON.stringify({ selected: samples.length, passed: passedSamples, findings, ids }, null, 2));
   } else {
     reportFindings();
     // The same grouping `--report` prints, from the run that just produced it:
     // a survey read page by page is 277 notes, and the question a survey is run
     // to answer is which of them share a cause.
     if (MODE_PROPOSE) {
-      summarise({ selected: samples.length, passed: passed.length, findings });
+      summarise({ selected: samples.length, passed: passedSamples, findings });
     }
     say(
       `\ncheck_examples: ${samples.length} sample(s), ` +
         (exclusions.notBuilt.size || exclusions.notRun.size
           ? `${exclusions.notBuilt.size} excluded from the build, ${exclusions.notRun.size} from the run, `
           : "") +
-        `${passed.length} compile, ` +
+        `${passedSamples} compile, ` +
         `${real} finding(s), ${secs}s` +
         (real ? "" : " -- clean"),
     );
@@ -1492,6 +1516,7 @@ async function main() {
 
 // What the run samples did, for the summary line.
 const runStats = { ran: 0, matched: 0, unrun: 0 };
+const unrunIds = new Set();
 const runNotes = [];
 
 /**
@@ -1505,10 +1530,12 @@ function judgeRun(fence) {
   if (!out) {
     // Compiled clean, but its project had errors elsewhere, so nothing in it was built.
     runStats.unrun++;
+    unrunIds.add(fence.id);
     return;
   }
   if (!out.began) {
     runStats.unrun++;
+    unrunIds.add(fence.id);
     runNotes.push(
       `  note: ${where(fence)} (${fence.id}) was not run: ` +
         (out.culprit ? `${where(out.culprit)} did not return` : "the run ended before it"),

@@ -16,7 +16,7 @@ Syntax: **FileDateTime(** *pathname* **)**
 *pathname*
 : *required* String expression that specifies a file name. The *pathname* may include the directory or folder, and the drive.
 
-<!-- bug: filesystem-argument-checks -->
+<!-- test: bug filesystem-argument-checks, errors VBA.FileSystem -->
 > [!WARNING] BETA 1034
 > Given a *pathname* with a wildcard (`*` or `?`) that matches a file or a folder, **FileDateTime** returns the date and time of the first match, which may be a hidden file or a folder, and raises no error. VB6 and 64-bit VBA raise error 52, *Bad file name or number*.
 

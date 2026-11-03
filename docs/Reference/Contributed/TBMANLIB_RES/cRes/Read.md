@@ -26,7 +26,6 @@ Syntax: *object*.**Read**( *id*, *Type* ) **As cRes**
 <!-- test: ReturnBytesTests.ReturnBytes_BeforeRead_HasNoElements, ReturnStringTests.ReturnString_BeforeRead_IsEmpty, ReturnHexTests.ReturnHex_BeforeRead_RaisesError, ReturnBase64Tests.ReturnBase64_BeforeRead_RaisesError, ReturnPictureTests.ReturnPicture_BeforeRead_RaisesError -->
 > [!IMPORTANT] timeless
 > **Read** must be called before any retrieval method. The resource data is not populated at construction time; a retrieval method called without a prior **Read** will operate on an empty byte array and may raise a runtime error.
-<!-- /test -->
 
 <!-- test: ReadTests.Read_NoMatchingResource_RaisesError, ReadTests.Read_IdOfAnotherType_RaisesError, ReadTests.Read_FileOnDisk_RaisesError -->
 > [!NOTE] 1.0.0.4

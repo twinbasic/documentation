@@ -21,10 +21,11 @@ Each call re-runs the expression against the current state of its bindings. If t
 
 A run-time error raised inside the expression --- division by zero, type mismatch, an invalid call into a bound object --- propagates out of **Evaluate** like any other run-time error.
 
-<!-- bug: expression-service-error-numbers -->
+<!-- test: bug expression-service-error-numbers, errors VBA.TbExpressionService -->
 > [!NOTE] BETA 1034
 > **Evaluate** raises -2147467259 for any error inside the expression: the error's own number and description are lost. `"1 / 0"` raises -2147467259, not 11, and a **Scripting.Dictionary**'s **Add** of a key it holds raises -2147467259, not 457.
 
+<!-- test: errors VBA.TbExpressionService -->
 > [!NOTE] BETA 1034
 > In a built program, the first error the expression service raises has the description *Automation error*, and every later one *Unspecified error*. In a run from the IDE, every one has the description *Automation error*. An error of a bound object's member has the description *Automation error* in both.
 

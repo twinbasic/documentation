@@ -53,6 +53,7 @@ Debug.Print Format$(DateAdd("yyyy", 1, #2/29/2024#), "yyyy-mm-dd") ' 2025-02-28
 
 **DateAdd** returns 28-Feb-95, not 31-Feb-95. If *date* is 31-Jan-96, it returns 29-Feb-96 because 1996 is a leap year. Subtracting a month, and adding or subtracting a quarter or a year, stops at the last day of the shorter month in the same way, as the last two lines show.
 
+<!-- test: bug dateadd-year-below-100, errors VBA.DateTime -->
 > [!WARNING] BETA 1034
 > **DateAdd** with the "yyyy", "q" or "m" interval raises no error when the result would be before January 1, 100, and returns a date in the 1900s or 2000s instead: `DateAdd("yyyy", -1, #1/1/100#)` returns January 1, 1999, and `DateAdd("m", -1, #1/1/100#)` returns December 1, 1999. VB6 raises error 5.
 

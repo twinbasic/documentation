@@ -17,7 +17,7 @@ Syntax: **Err**.**ReturnHResult** **=** *value*
 
 A calling procedure can then use [**LastHresult**](LastHresult) to read the positive HRESULT that was returned from the method. Set **ReturnHResult** only when needed, typically just before the method exit point, so that the intended HRESULT is the one that's actually returned.
 
-<!-- bug: err-helpfile-helpcontext-codegen -->
+<!-- test: bug err-helpfile-helpcontext-codegen -->
 > [!NOTE] BETA 1034
 > Assigning **ReturnHResult** in a procedure of a module, rather than in a method of a class, compiles, but the build fails with a code-generation error in that procedure.
 

@@ -345,7 +345,6 @@ Syntax: *object*.**HookEvents** [ = *value* ]
 <!-- test: FindReplaceTests.InitDialog_HookEventsSetAfterShow_NotRaised -->
 > [!IMPORTANT] timeless
 > **HookEvents** must be set to **True** before calling the corresponding `Show*` method. Setting it after the call has no effect on the current invocation.
-<!-- /test -->
 
 ### InitDir
 {: .no_toc }

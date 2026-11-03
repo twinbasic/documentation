@@ -25,7 +25,6 @@ Syntax: *object*.**UnShow**
 <!-- test: UnShowTests.Terminate_RemovesTheSubclass -->
 > [!IMPORTANT] timeless
 > The class destructor (`Class_Terminate`) calls the internal `RemoveListBoxSubclass` helper automatically, so **UnShow** need only be called explicitly when the subclass must be removed before the **cListboxHScroll** instance goes out of scope.
-<!-- /test -->
 
 ### Example
 

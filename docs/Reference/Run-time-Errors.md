@@ -32,10 +32,11 @@ Each number is given in decimal and in hexadecimal, as a 32-bit **Long**: 5 (`&H
 
 The message is the one that **Err.Description** gives for the error once it is raised. For the numbers from 1 to 65535, [**Error**](../tB/Modules/Conversion/Error)`(number)` gives the same text. For an HRESULT, **Error** gives *Application-defined or object-defined error*, as it does for any number without a message of its own, and the table shows both.
 
+<!-- test: bug err-raise-defaults, sample err-raise-texts -->
 > [!NOTE] BETA 1034
 > For a number from 1 to 65535 that has no message of its own, **Error** gives *Application-defined or object-defined error* in twinBASIC and VB6. After `Err.Raise` of such a number, **Err.Description** in VB6 is that same text; in twinBASIC it is empty for a number below 747, and for 747 and above it is the Windows system message of that number, such as *Page fault was a transition fault.* for 747.
 
-<!-- bug: err-raise-hresult-mapping -->
+<!-- test: bug err-raise-hresult-mapping -->
 > [!NOTE] BETA 1034
 > `Err.Raise` of an HRESULT that has a VB error of the same meaning, such as `&H80070057` (`E_INVALIDARG`), raises the HRESULT in twinBASIC. VB6 and 64-bit VBA raise the VB error instead, 5 for that one. [**Raise**](../tB/Modules/ErrObject/Raise) lists them.
 

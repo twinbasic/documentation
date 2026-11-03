@@ -57,21 +57,27 @@ Building with LLVM does not currently work on Windows 7; Windows 10 or 11 is rec
 
 The main feature not yet supported is passing an error up to the calling procedure. A fix is planned.
 
+<!-- test: bug llvm-error-not-passed-to-caller, bug llvm-unhandled-error-crash -->
 > [!WARNING] BETA 1034
 > An error that occurs in a procedure with no error handler is not passed to its caller when either of the two procedures is compiled with LLVM: the caller's own `On Error` statement does not catch it. A run in the IDE ends without a message. A built program stops as it does for an unhandled error when only the caller is compiled with LLVM. When the procedure that has no handler is compiled with LLVM, the program shows a box that names the procedure but no error, and then ends with an access violation. Without LLVM, and in VB6, the caller's handler catches the error.
 
+<!-- test: bug llvm-err-after-raise, bug llvm-error-not-passed-to-caller -->
 > [!NOTE] BETA 1034
 > An error handler in a procedure compiled with LLVM cannot read an error raised with [**Err.Raise**](../tB/Modules/ErrObject/Raise) in that procedure: **Err.Number** returns -353703423 (`&HEAEAEA01`), **Err.Source** is empty, and **Err.Description** is the generic "Application-defined or object-defined error". An error that a statement causes, such as a division by zero, is read correctly.
 
+<!-- test: bug llvm-double-overflow-no-error, llvm win32-llvm, llvm win64-llvm -->
 > [!WARNING] BETA 1034
 > An exponentiation (`^`) that overflows raises no error in code compiled with LLVM, and its result is 0, where the same code compiled without LLVM raises error 6, *Overflow*, as VB6 does. In a 32-bit build, a **Double** addition, subtraction or multiplication that overflows raises no error either, and its result is infinity (`1.#INF` or `-1.#INF`), unless the procedure is compiled for SSE2: with `+sse2`, or with the flag of an instruction set that includes it, `+sse3`, `+ssse3`, `+sse4.1`, `+sse4.2`, `+avx`, `+avx2`, `+fma`, `+aes` or `+sha`. [**FloatingPointErrorChecks(True)**](../tB/Core/Attributes#floatingpointerrorchecks) does not change this. A division that overflows and a division by zero raise their errors, and so do an addition, subtraction and multiplication in a 64-bit build or compiled for SSE2. After any of these errors, under `On Error Resume Next`, the variable that was to receive the result keeps its old value; without LLVM it holds infinity.
 
+<!-- test: bug gosub-llvm-exe-crash -->
 > [!WARNING] BETA 1034
 > A program built with LLVM ends with an access violation (0xC0000005) and no message box at the first [**GoSub**](../tB/Core/GoSub-Return) it runs, in a 32-bit and in a 64-bit build. A run in the IDE is not affected, and neither is a program built without LLVM. Replace the **GoSub** with a call to a **Private Sub**.
 
+<!-- test: bug llvm64-byval-to-byref-declare-crash -->
 > [!WARNING] BETA 1034
 > In a 64-bit build with LLVM, a call to a [**Declare**](../tB/Core/Declare)d procedure that passes `ByVal 0&` for its eighth parameter, declared `ByRef` with a 32-bit type such as **Long**, to give the procedure a NULL pointer, can end with an access violation (0xC0000005) and no message box, in the procedure. The eighth parameter of **WideCharToMultiByte** is one such case. Whether the call fails depends on what the stack held before it. The same override for the first to seventh parameters is right. Declare the parameter `ByVal ... As LongPtr` instead. It affects a built exe and a run in the IDE with LLVM turned on, and not a 32-bit build or a build without LLVM.
 
+<!-- test: bug llvm-for-step-constant, llvm win32-llvm, llvm win64-llvm -->
 > [!WARNING] BETA 1034
 > In a procedure that has a `ByVal` **Long** or **Single** parameter and, after it, a `ByRef` parameter declared `As Boolean` or `As Integer`, a [**For...Next**](../tB/Core/For-Next) loop whose **Step** is that `ByVal` parameter (or a variable set from it) runs with a wrong step, or with a wrong start or end when those are parameters too. The wrong value depends on where the caller's argument for the `ByRef` parameter is stored. In a built exe it is 20 in a 64-bit build and 25 in a 32-bit build when the argument is a local variable of the caller, and other values when it is a module-level variable or an array element; in a run in the IDE it varies more, up to millions. `For i = 1 To 7 Step x` with `x` equal to 3 and a local variable passed runs once, not three times. No error is raised, so the loop silently gives a wrong result. It affects a **Sub**, a **Function** and a class method, a built exe and a run in the IDE with LLVM turned on, in a 32-bit and in a 64-bit build, and not a build without LLVM. Whether a larger procedure shows it can depend on its other statements. A second parameter that is `ByRef ... As Long` (or **Byte**, **Single**, **Double**, **Currency**, **Date**, **String**, **Variant**, an Enum, a UDT, an array, an object or a pointer), `ByVal ... As Boolean`, a `ByRef ... As Boolean` placed before the step parameter, a step parameter of type **Integer**, **Double** or **Currency**, a `Do` loop, a loop with no **Step** and a loop with a literal **Step** are right. Declare the second parameter `ByVal`, or place it before the step parameter.
 
@@ -105,6 +111,7 @@ Public Sub DoNotOptimizeMe()
 End Sub
 ```
 
+<!-- test: bug llvm-plain-calls-llvm-from-main -->
 > [!WARNING] BETA 1034
 > A run in the IDE with LLVM turned on for the whole project under **Compiler Options (DEBUG)** ends with an access violation when a procedure marked `[CompilerOptions("")]` calls a procedure that is compiled with LLVM, and `Sub Main` reaches the marked procedure: it calls it, or calls a procedure that does. A marked procedure that `Sub Main` does not reach is not affected, and neither is a built program.
 

@@ -109,12 +109,15 @@ The **Import from file...** button under the lists opens the Windows **Open** di
 - On **Available COM References**, and on **Enabled Libraries**, it asks for a type library. The IDE copies the file into the project as `ImportedTypeLibraries/<file name>`, and adds it to the references at once, ticked.
 - On **Available Packages**, it asks for a `.twinpack` file. The package is added to the **Available Packages** list. [Importing a Package from a TWINPACK File](../../../Features/Packages/Importing-TWINPACK) gives the steps.
 
+<!-- test: bug import-package-unticked -->
 > [!NOTE] BETA 1034
 > A package imported with **Import from file...** is listed but not ticked, so the project does not use it. Tick it yourself after the import.
 
+<!-- test: lane ide:packages -->
 > [!NOTE] BETA 1034
 > **Import from file...** puts a copy of the package under the project's `Packages` folder. Closing the dialog with **Cancel** leaves the copy there, and the project is not marked as changed.
 
+<!-- test: bug imported-typelib-linked-package -->
 > [!NOTE] BETA 1034
 > A type library added with **Import from file...** is drawn on the **Enabled Libraries** list as `[LINKED-PACKAGE]`, and on **Available COM References** it is listed twice, once from the project and once from the registered library, both ticked. Clearing the tick of either row removes the reference.
 
@@ -124,6 +127,7 @@ Choosing an **Add** item for a Windows form without the **WinNativeForms** packa
 
 The reference is listed under the package's own name, `WinNativeForms` or `CustomControlsPackage`, until the compiler has answered, and then under the name of the library, such as `twinBASIC - VB Compatibility Package (Forms)`.
 
+<!-- test: bug package-needed-saves -->
 > [!NOTE] BETA 1034
 > In a project that has a file, the button also saves the project, although the box speaks only of restarting the compiler. A project with no file yet is not saved, and restarts from memory.
 
@@ -137,6 +141,7 @@ The foot of the dialog has, at the right, the number of settings changed, such a
 
 ![Project Settings on its General group, with a word added to its Project Description, and the box that its title bar's close button opened over it: WARNING: you made changes but haven't saved them. Close without saving?, with Yes, close and No, keep editing. The foot of the dialog behind it reads 2 changed, beside Apply Changes and Cancel.](Images/Settings_Close.png){:width="1202" height="838"}
 
+<!-- test: bug settings-references-close-no-question, lane ide:projects -->
 > [!WARNING] BETA 1034
 > The close button of the title bar does not ask when the only change is to the references. The dialog closes, the change is dropped, and nothing says so. The code that compares the settings leaves out the compiler warnings as well. Press **Apply Changes** before you close the dialog.
 
@@ -146,6 +151,7 @@ The `References` folder of the Project Explorer has one entry for each library t
 
 **Cut**, **Rename** and **Delete Permanently** are greyed out on the right-click menu for these entries.
 
+<!-- test: bug delete-reference-row -->
 > [!NOTE] BETA 1034
 > The <kbd>Delete</kbd> key removes a `References` entry from the tree, although its menu item is greyed out. The reference itself stays in the project. To remove a reference, untick it in the **Enabled Libraries** list.
 

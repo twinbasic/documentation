@@ -120,7 +120,87 @@ Currently, all basic controls have reimplementations in twinBASIC that support U
 
 Most projects do not use these reverse engineered internals, but some do: most commonly, for self-subclassing and callbacks inside Forms/Classes/UserControls; and also for multithreading and inline assembly. These routines have native support in twinBASIC without requiring internals hacks, so replacing these small parts of a few programs is very simple: `AddressOf` is supported on class members, so you can use regular subclassing and callback methods as you would if they were in a .bas module. `CreateThread` can be called without any special steps. And tB supports [statically linked](Features/Advanced/Static-Linking) .obj files allowing incorporation of code from other languages (still experimental, and only for code that needs nothing from the C runtime), inline assembly in the form of `Emit()`/`EmitAny()` to insert instructions, and further support is planned in the future.
 
+<!-- test: sample msvbvm60-redirects -->
 Additionally, twinBASIC redirects the most common msvbvm60.dll (also msvbvm50.dll/vbe6.dll/vbe7.dll) functions used as `Declare` statements by users, all of which also work in x64, if you add the `PtrSafe` keyword like any other DLL definition. The following functions currently have redirects: `VarPtr, GetMem1, GetMem2, GetMem4, GetMem8, PutMem1, PutMem2, PutMem4, PutMem8, __vbaObjSet, __vbaObjSetAddRef, __vbaObjAddRef, __vbaCastObj, __vbaCopyBytes, __vbaCopyBytesZero, __vbaRefVarAry`, and `__vbaAryMove`. You may continue to use these with `Declare` statements to support the particular signatures you prefer. Further, declares for olepro32.dll are redirected to identical functions in oleaut32.dll, as olepro32 was deprecated by NT4 and doesn't have a 64bit version.
+<!-- /test -->
+
+```tb hidden slot=module
+Public Declare PtrSafe Function ArrPtr Lib "msvbvm60" Alias "VarPtr" (Ptr() As Any) As LongPtr
+Public Declare PtrSafe Sub GetMem1 Lib "msvbvm60" (ByVal Addr As LongPtr, RetVal As Byte)
+Public Declare PtrSafe Sub GetMem2 Lib "msvbvm60" (ByVal Addr As LongPtr, RetVal As Integer)
+Public Declare PtrSafe Sub GetMem4 Lib "msvbvm60" (ByVal Addr As LongPtr, RetVal As Long)
+Public Declare PtrSafe Sub GetMem8 Lib "msvbvm60" (ByVal Addr As LongPtr, RetVal As Currency)
+Public Declare PtrSafe Sub PutMem1 Lib "msvbvm60" (ByVal Addr As LongPtr, ByVal NewVal As Byte)
+Public Declare PtrSafe Sub PutMem2 Lib "msvbvm60" (ByVal Addr As LongPtr, ByVal NewVal As Integer)
+Public Declare PtrSafe Sub PutMem4 Lib "msvbvm60" (ByVal Addr As LongPtr, ByVal NewVal As Long)
+Public Declare PtrSafe Sub PutMem8 Lib "msvbvm60" (ByVal Addr As LongPtr, ByVal NewVal As Currency)
+Public Declare PtrSafe Function ObjSet Lib "msvbvm60" Alias "__vbaObjSet" (Dst As Object, ByVal Src As LongPtr) As LongPtr
+Public Declare PtrSafe Function ObjSetAddRef Lib "msvbvm60" Alias "__vbaObjSetAddref" (Dst As Object, ByVal Src As LongPtr) As LongPtr
+Public Declare PtrSafe Sub ObjAddRef Lib "msvbvm60" Alias "__vbaObjAddref" (ByVal Obj As LongPtr)
+Public Declare PtrSafe Function CastObj Lib "msvbvm60" Alias "__vbaCastObj" (ByVal Obj As LongPtr, ByVal IID As LongPtr) As LongPtr
+Public Declare PtrSafe Sub CopyBytes Lib "msvbvm60" Alias "__vbaCopyBytes" (ByVal Length As Long, ByVal Dst As LongPtr, ByVal Src As LongPtr)
+Public Declare PtrSafe Sub CopyBytesZero Lib "msvbvm60" Alias "__vbaCopyBytesZero" (ByVal Length As Long, ByVal Dst As LongPtr, ByVal Src As LongPtr)
+Public Declare PtrSafe Function RefVarAry Lib "msvbvm60" Alias "__vbaRefVarAry" (V As Variant) As LongPtr
+Public Declare PtrSafe Sub AryMove Lib "msvbvm60" Alias "__vbaAryMove" (Dst() As Any, Src() As Any)
+Public Declare PtrSafe Sub GetMem4From50 Lib "msvbvm50" Alias "GetMem4" (ByVal Addr As LongPtr, RetVal As Long)
+Public Declare PtrSafe Sub GetMem4From6 Lib "vbe6" Alias "GetMem4" (ByVal Addr As LongPtr, RetVal As Long)
+Public Declare PtrSafe Sub GetMem4From7 Lib "vbe7" Alias "GetMem4" (ByVal Addr As LongPtr, RetVal As Long)
+Public Declare PtrSafe Function OleTranslateColor Lib "olepro32" (ByVal Clr As Long, ByVal Palette As LongPtr, ColorRef As Long) As Long
+```
+
+```tb probe check_run id=msvbvm60-redirects arch=win32,win64
+Dim b As Byte, i As Integer, l As Long, cy As Currency
+Dim r1 As Byte, r2 As Integer, r4 As Long, r8 As Currency
+PutMem1 VarPtr(b), 200
+GetMem1 VarPtr(b), r1
+Debug.Print r1                                        ' 200
+PutMem2 VarPtr(i), -2
+GetMem2 VarPtr(i), r2
+Debug.Print r2                                        ' -2
+PutMem4 VarPtr(l), 123456789
+GetMem4 VarPtr(l), r4
+Debug.Print r4                                        ' 123456789
+PutMem8 VarPtr(cy), 1234.5678@
+GetMem8 VarPtr(cy), r8
+Debug.Print r8                                        ' 1234.5678
+r4 = 0: GetMem4From50 VarPtr(l), r4
+Debug.Print r4                                        ' 123456789
+r4 = 0: GetMem4From6 VarPtr(l), r4
+Debug.Print r4                                        ' 123456789
+r4 = 0: GetMem4From7 VarPtr(l), r4
+Debug.Print r4                                        ' 123456789
+Dim a(2) As Long
+Debug.Print ArrPtr(a) <> 0                            ' True
+Dim col As New Collection, o As Object, o2 As Object
+ObjAddRef ObjPtr(col)
+ObjSet o, ObjPtr(col)
+Debug.Print o Is col                                  ' True
+ObjSetAddRef o2, ObjPtr(col)
+Debug.Print o2 Is col                                 ' True
+Dim iid(15) As Byte
+iid(8) = &HC0: iid(15) = &H46
+Debug.Print CastObj(ObjPtr(col), VarPtr(iid(0))) <> 0 ' True
+Dim s As Long, d As Long
+s = 7
+CopyBytes 4, VarPtr(d), VarPtr(s)
+Debug.Print d                                         ' 7
+s = 9
+CopyBytesZero 4, VarPtr(d), VarPtr(s)
+Debug.Print d & " " & s                               ' 9 0
+Dim v As Variant
+v = Array(1, 2)
+Debug.Print RefVarAry(v) <> 0                         ' True
+Dim x() As Long, y() As Long
+ReDim y(2)
+y(1) = 5
+AryMove x, y
+Debug.Print x(1)                                      ' 5
+Dim colour As Long
+Debug.Print OleTranslateColor(&HFF&, 0, colour) & " " & colour   ' 0 255
+On Error Resume Next
+Debug.Print UBound(y)
+Debug.Print Err.Number                                ' 9
+```
 
 Other than those special cases, it's exceedingly rare for projects to depend on reverse engineered internals. So the vast majority of projects run with zero modification. 
 
@@ -288,6 +368,7 @@ In a built ActiveX DLL, these lines have the same effect as the twinBASIC attrib
 
 <!-- Checked on BETA 1034 by test/ide/vb6-import.test.mjs (ide-test.bat --only vb6-import): it imports test/ide/probes/vb6-import with Import from VBP..., checks the converted files, then builds the project with project.dllRegisterAfterBuild false and reads the DLL's type library. The twinBASIC-attribute column: a class written with those attributes built into the same DLL gave the same help strings, dispatch IDs and flags (scratch probe, 2026-10-14). The WARNING below is the BUGS-TO-REPORT entry "Some VB6 attribute lines have no effect in a built type library". -->
 
+<!-- test: bug vb6-attribute-lines-no-effect, lane ide:vb6-import -->
 > [!WARNING] BETA 1034
 > Some `Attribute` lines have no effect, and nothing says so. `VB_HelpID` and `VB_VarHelpID` give no help context ID. `VB_VarMemberFlags` leaves a public field neither hidden nor nonbrowsable. `VB_MemberFlags = "200"` (the user-interface default) and `"14"` (the data-binding flags `bindable` and `displaybind`) set no flag. A component moved from VB6 loses these when it is built again. In a `.twin` file, `[Hidden]` on a public field does hide it.
 </details>

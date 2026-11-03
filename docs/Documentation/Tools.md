@@ -113,7 +113,7 @@ A local pass of [`check_a11y.mjs`](Tools-Site-Checks#check-a11y) does not predic
 
     test.bat
 
-The tests the toolchain has to pass. Thirty-one steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Thirty-two steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy) --- verifies the publish allowlist still refuses the types it should. Needs neither a browser nor a built tree.
 2. [`scripts/check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
@@ -138,14 +138,15 @@ The tests the toolchain has to pass. Thirty-one steps, each stopping the run if 
 21. [`scripts/check_page_baseline.mjs`](Tools-Toolchain-Tests#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
 22. [`scripts/check_book_coverage.mjs`](Tools-Toolchain-Tests#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
 23. [`scripts/check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests) --- verifies every NOTE and WARNING of a contributed package's section names the test cases behind it, and that each package test project is in order.
-24. [`scripts/check_errors.mjs`](Tools-Toolchain-Tests#check-errors) --- verifies every page's Common Errors section is what the run-time error data under `errors/` writes, and that the data is in order.
-25. [`scripts/check_symbol_index.mjs`](Tools-Toolchain-Tests#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-26. [`scripts/check_twin_parsers.mjs`](Tools-Toolchain-Tests#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
-27. [`scripts/check_attribute_sweep.mjs`](Tools-Toolchain-Tests#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
-28. [`scripts/check_cli.mjs`](Tools-Toolchain-Tests#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-29. [`scripts/check_pdf_shims_equiv.mjs`](Tools-Toolchain-Tests#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, have each of them in their shim's table of targets, and run.
-30. [`scripts/check_impexp_parity.mjs`](Tools-Toolchain-Tests#check-impexp-parity) --- verifies the editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI. It compares the twinBASIC edition too, when `IMPEXP_EXE` names its built exe.
-31. [`scripts/check_axe_patch_equiv.mjs`](Tools-Toolchain-Tests#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+24. [`scripts/check_callout_evidence.mjs`](Tools-Toolchain-Tests#check-callout-evidence) --- verifies every callout labelled with a twinBASIC build names what checks it, and that every marker names a reproducer, lane, sample, error data file or LLVM probe mode that exists.
+25. [`scripts/check_errors.mjs`](Tools-Toolchain-Tests#check-errors) --- verifies every page's Common Errors section is what the run-time error data under `errors/` writes, and that the data is in order.
+26. [`scripts/check_symbol_index.mjs`](Tools-Toolchain-Tests#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
+27. [`scripts/check_twin_parsers.mjs`](Tools-Toolchain-Tests#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
+28. [`scripts/check_attribute_sweep.mjs`](Tools-Toolchain-Tests#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
+29. [`scripts/check_cli.mjs`](Tools-Toolchain-Tests#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+30. [`scripts/check_pdf_shims_equiv.mjs`](Tools-Toolchain-Tests#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, have each of them in their shim's table of targets, and run.
+31. [`scripts/check_impexp_parity.mjs`](Tools-Toolchain-Tests#check-impexp-parity) --- verifies the editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI. It compares the twinBASIC edition too, when `IMPEXP_EXE` names its built exe.
+32. [`scripts/check_axe_patch_equiv.mjs`](Tools-Toolchain-Tests#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -172,6 +173,7 @@ POSIX:
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_book_coverage.mjs \
       && node scripts/check_package_tests.mjs \
+      && node scripts/check_callout_evidence.mjs \
       && node scripts/check_errors.mjs \
       && node scripts/check_symbol_index.mjs \
       && node scripts/check_twin_parsers.mjs \
@@ -183,9 +185,9 @@ POSIX:
 
 Exit codes: **0** every step passed; otherwise the code of the step that stopped the run, as that step's entry gives it.
 
-**All but five cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `indexer/` or `test/`, the site's scripts in `docs/assets/js/`, the help add-in's source in `add-in/`, a contributed package's section, a wrapper, or a workflow. Both CI workflows run every step unconditionally.
+**All but six cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `indexer/` or `test/`, the site's scripts in `docs/assets/js/`, the help add-in's source in `add-in/`, a contributed package's section, a callout labelled with a twinBASIC build or its marker, a wrapper, or a workflow. Both CI workflows run every step unconditionally.
 
-The five exceptions are [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions), [`check_errors.mjs`](Tools-Toolchain-Tests#check-errors), which compares the reference pages' Common Errors sections with their data, [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists), which reads this page, [`check_lint.mjs`](Tools-Toolchain-Tests#check-lint), which lints the site's scripts in `docs/assets/js/`, and [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests), which reads the callouts of the contributed packages' sections.
+The six exceptions are [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions), [`check_errors.mjs`](Tools-Toolchain-Tests#check-errors), which compares the reference pages' Common Errors sections with their data, [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists), which reads this page, [`check_lint.mjs`](Tools-Toolchain-Tests#check-lint), which lints the site's scripts in `docs/assets/js/`, [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests), which reads the callouts of the contributed packages' sections, and [`check_callout_evidence.mjs`](Tools-Toolchain-Tests#check-callout-evidence), which reads every labelled callout and every marker.
 
 `check_code_regions.mjs` has two halves. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes run against their own sources whatever the tree holds, and cover the *mirror* fault, where a rewrite silently stops firing; the sweep cannot see that one. After adding a page with an unusual code construct, run `test.bat` and read the built page too.
 

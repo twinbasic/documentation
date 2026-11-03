@@ -24,6 +24,7 @@ Syntax:
 *varname*
 : Valid variable name into which data is read.
 
+<!-- test: bug file-errors-unspecified -->
 > [!NOTE] BETA 1034
 > **Get** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
 

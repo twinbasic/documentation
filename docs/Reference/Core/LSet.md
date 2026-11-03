@@ -41,11 +41,13 @@ LSet v = "ab"
 Debug.Print "[" & v & "]"   ' [ab   ]
 ```
 
+<!-- test: bug lset-variant-destination-types -->
 > [!WARNING] BETA 1034
 > A **Variant** *stringvar* that holds a **Boolean** is aligned within `-1` or `0`, the text of its number, not within `True` or `False`: with `v = True`, `LSet v = "ab"` leaves `ab`, and with `v = False` it leaves `a`. VB6 leaves `ab  ` and `ab   `. **RSet** aligns within `True` and `False`. Assign the text to the **Variant** first, as `v = CStr(v)`.
 
 A **Variant** *stringvar* that holds an object raises error 450, *Wrong number of arguments or invalid property assignment*.
 
+<!-- test: bug lset-variant-array-element-noop -->
 > [!WARNING] BETA 1034
 > **LSet** on an element of a **Variant** that holds an array, such as `LSet v(0) = "zz"` with `v = Array("0123456789", "abcde")` or a **Variant** that was given its bounds with **ReDim**, changes nothing and raises no error. VB6 changes the element. An element of an array declared `Dim w(0 To 1) As Variant` works. To change an element of a **Variant** array, copy it to a **String** variable, use **LSet** on the variable and assign the variable back.
 

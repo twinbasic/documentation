@@ -69,7 +69,7 @@ To repeat a key, use the form `{key number}` --- for example, `"{LEFT 42}"` to p
 > [!NOTE]
 > **SendKeys** can't send keystrokes to applications that aren't running in Windows, and it cannot send the PRINT SCREEN key to any application: `{PRTSC}` sends the virtual key `VK_PRINT` (&H2A), not `VK_SNAPSHOT` (&H2C), as VB6 and 64-bit VBA do.
 
-<!-- bug: sendkeys-non-ascii -->
+<!-- test: bug sendkeys-non-ascii -->
 > [!WARNING] BETA 1034
 > A character that has no key on the keyboard layout sends the wrong key, and no error is raised. The string is first converted to the ANSI code page, so a character outside it becomes its nearest ANSI character (`Ā` becomes `A`, `☺` becomes `?`), and a character the layout has no key for is sent as the virtual key of its ANSI code (`é`, on a US layout, as &HE9, which types nothing or another character). VB6 and 64-bit VBA send such a character as the character itself, which types it in any window.
 

@@ -66,6 +66,7 @@ To calculate the number of days between *date1* and *date2*, use either Day of Y
 
 If *interval* is Week ("ww"), however, **DateDiff** returns the number of calendar weeks between the two dates. It counts the number of Sundays between *date1* and *date2*. **DateDiff** counts *date2* if it falls on a Sunday, but it doesn't count *date1*, even if it does fall on a Sunday.
 
+<!-- test: bug datepart-firstdayofweek-out-of-range, errors VBA.DateTime -->
 > [!WARNING] BETA 1034
 > With the "ww" interval, **DateDiff** raises no error for a *firstdayofweek* outside 0 to 7, and what it returns follows no rule: a negative value acts as if taken modulo 7, 8 to 13 act as **vbSunday**, and a larger value matches no setting. VB6 raises error 5.
 

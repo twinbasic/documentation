@@ -27,6 +27,7 @@ A **Date** is stored in 8 bytes as a **Double**. The integer part counts days fr
 
 A number or a date outside that range cannot be a **Date**, and an assignment, a conversion or an addition that would make one raises error 6, *Overflow*.
 
+<!-- test: bug date-out-of-range-no-error, errors VBA.Conversion -->
 > [!WARNING] BETA 1034
 > A **Date** outside the range is accepted with no error: `d = 2958466`, `CDate(-657435)`, `#12/31/9999# + 1` and an assignment of `1E+300` each store the number, and **CStr**, **Format** and **Year** of the value then raise error 5, *Invalid procedure call or argument*. VB6 raises error 6, *Overflow*, at the assignment. Compare a day number with -657,434 and 2,958,465 before assigning it to a **Date**.
 

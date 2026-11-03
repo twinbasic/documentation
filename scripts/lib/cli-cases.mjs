@@ -417,6 +417,7 @@ const HELP_TOOLS = {
   "scripts/check_axe_patch_equiv.mjs": null,
   "scripts/check_attribute_sweep.mjs": null,
   "scripts/check_book_coverage.mjs": null,
+  "scripts/check_callout_evidence.mjs": null,
   "scripts/check_ci_workflows.mjs": null,
   "scripts/check_errors.mjs": null,
   "scripts/check_cli.mjs": null,
@@ -448,6 +449,7 @@ const HELP_TOOLS = {
   "scripts/pick_a11y_sample.mjs": null,
   "scripts/probe_build_twice.mjs": null,
   "scripts/probe_theme_semicolon.mjs": null,
+  "scripts/recheck_callouts.mjs": null,
   "scripts/shot_review.mjs": null,
   "scripts/survey_tooling.mjs": null,
   "scripts/sweep_a11y.mjs": null,
@@ -505,6 +507,7 @@ const REFUSALS = {
   "scripts/check_axe_patch_equiv.mjs": ["patch"],
   "scripts/check_attribute_sweep.mjs": [null],
   "scripts/check_book_coverage.mjs": [null],
+  "scripts/check_callout_evidence.mjs": [null],
   "scripts/check_ci_workflows.mjs": [null],
   "scripts/check_cli.mjs": [null],
   "scripts/check_code_regions.mjs": [null],
@@ -535,6 +538,7 @@ const REFUSALS = {
   "scripts/pick_a11y_sample.mjs": ["sweep"],
   "scripts/probe_build_twice.mjs": ["ide"],
   "scripts/probe_theme_semicolon.mjs": ["ide"],
+  "scripts/recheck_callouts.mjs": ["only"],
   "scripts/survey_tooling.mjs": ["root"],
   "scripts/sweep_a11y.mjs": ["out"],
   "scripts/sweep_attributes.mjs": ["out"],
@@ -1040,6 +1044,11 @@ bad("eval/site_search.mjs", ["--n=1.5", "term"], NOT_COUNT("--n", 1.5) + "\n");
 bad("eval/site_search.mjs", ["--composition", "term"], "--composition takes no search terms\n");
 bad("eval/nav_hops.mjs", ["("], REGEX_REASON("<url-regex>", "("));
 bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"));
+bad(
+  "scripts/recheck_callouts.mjs",
+  ["--kinds", "bug,lanes"],
+  thenUsage("--kinds: lanes is not one of bug, lane, sample, errors, llvm, package", "scripts/recheck_callouts.mjs"),
+);
 
 // build_corpus empties its --dest before it writes, so it refuses one that is or
 // contains the repository root, the folder it runs from or --repo, checked in
