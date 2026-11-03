@@ -124,7 +124,7 @@ While this add-in is loaded, the keyboard shortcuts that other add-ins register 
 The text of **Window > Keyboard Shortcuts > Manage Keyboard Shortcuts**, and of **Manage Panel Layouts**, has no find of its own. While this add-in is loaded, these keys work there, as in Visual Studio:
 
 Ctrl+F
-: Opens a find box over the text, holding the selected text if it is on one line.
+: Opens a find box at the top right of the text, like the search bar of the **Project Explorer**, holding the selected text if it is on one line. Its close button closes it, as Esc does.
 
 Enter, F3
 : Selects the next match. **Shift+Enter** and **Shift+F3** select the one before. F3 and Shift+F3 also work after the find box is closed, with the last text searched for.
@@ -135,7 +135,7 @@ Ctrl+F3
 Esc
 : Closes the find box. The dialog stays open.
 
-The search goes round past the end, and ignores case. The text scrolls to show each match. The setting **Find in the shortcut editors** turns this off.
+The search goes round past the end, and ignores case. The text scrolls to show each match. A search that finds nothing draws a red ring inside the box where the text is typed, and leaves the selection where it was. The setting **Find in the shortcut editors** turns this off.
 
 ## Getting the add-in
 

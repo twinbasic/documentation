@@ -138,21 +138,30 @@ var open = function (area) {
     close(false);
     var host = area.parentNode;
     if (getComputedStyle(host).position === "static") host.style.position = "relative";
+    // The IDE's own search bar, as the Project Explorer and the Toolbox open it
+    // (styles.css): a strip hanging from the top right of the text area, with
+    // the entry and a close button.
     var bar = document.createElement("div");
-    bar.className = "tbDocsFindBar";
-    bar.style.cssText =
-      "position:absolute;top:4px;right:20px;z-index:10;display:flex;gap:4px;padding:3px;" +
-      "background:var(--themeGeneralPanelBackColor);border:var(--themePropertySheetValueBorderColor);" +
-      "box-shadow:0 2px 6px rgba(0,0,0,0.35)";
+    bar.className = "objListSearchBar tbDocsFindBar";
+    bar.style.zIndex = "10";
+    // No type attribute: a text box all the same, and out of reach of the
+    // dialog's own rule for input[type="text"] (configEditor.css), which would
+    // give it the dialog's text-box colours over the search bar's.
     var input = document.createElement("input");
-    input.type = "text";
+    input.className = "objListSearchEntry";
     input.placeholder = "Find";
     input.setAttribute("aria-label", "Find");
     input.value = state.query;
-    input.style.cssText =
-      "width:180px;font:inherit;color:var(--themeToolWindowBodyForeColor);" +
-      "background:var(--themeGeneralPanelBackColor);border:var(--themePropertySheetValueBorderColor);outline:none";
+    var shut = document.createElement("div");
+    shut.className = "codicon codicon-close objListSearchClose";
+    shut.title = "Close";
+    shut.setAttribute("role", "button");
+    shut.setAttribute("aria-label", "Close");
+    shut.onclick = function () {
+      close(true);
+    };
     bar.appendChild(input);
+    bar.appendChild(shut);
     host.appendChild(bar);
     state.bar = bar;
     state.input = input;
@@ -218,11 +227,14 @@ var down = function (e) {
 
 window.addEventListener("keydown", down, true);
 window.tbDocsTextFind = { down: down, bar: null, visible: visibleState };
+// A query with no match rings the entry in red, inside it, since the bar
+// around it is red already. Set on every run, so a newer script's rule
+// replaces an older one's.
 var style = document.getElementById("tbDocsFindStyle");
 if (!style) {
   style = document.createElement("style");
   style.id = "tbDocsFindStyle";
-  style.textContent = ".tbDocsFindBar input.tbDocsFindMissing{border-color:#c03030 !important}";
   document.head.appendChild(style);
 }
+style.textContent = ".tbDocsFindBar input.tbDocsFindMissing{box-shadow:inset 0 0 0 2px #c03030}";
 }
