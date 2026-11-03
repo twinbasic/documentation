@@ -158,7 +158,7 @@ Three kinds of type cannot be used:
 > [!NOTE] 1.0.0.0
 > The constructor stores each item with `=`, not with **Set**, so creating a tuple of an object type fails. For **Object**, which compiles, **New** raises run-time error 91, *Object variable or With block variable not set*, even when the item passed is **Nothing**. A class whose default member takes an argument, such as **Collection**, fails to compile, with TB5092 *Missing argument 'Index'* reported in the package's source.
 
-<!-- test: none -- the compiler crashes, so no program and no case can run; bugs/generic-array-type-argument-crash holds the reproducer -->
+<!-- test: bug generic-array-type-argument-crash -->
 > [!WARNING] BETA 1034
 > A tuple type with an array as a type argument, such as `TupleOf1(Of Long())`, crashes the compiler wherever it is written: in a declaration, a parameter, a function's result type or after **New**. The compiler restarts and crashes again, so nothing in the project compiles until the line is removed. The same happens with a generic class declared in a project's own code.
 

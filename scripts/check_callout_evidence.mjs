@@ -30,7 +30,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
-import { packageTestNames } from "../lib/package-tests.mjs";
+import { compileOnlyNames, packageTestNames } from "../lib/package-tests.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 import { createProbes } from "./lib/gate-probes.mjs";
 import { checkKey, packageCases, readVerify, relabelLine, sampleStatus, verdictOf } from "./lib/recheck.mjs";
@@ -281,6 +281,8 @@ const pages = await markdownFiles(DOCS_DIR);
 const fences = await collectFences(DOCS_DIR);
 const index = await evidenceIndex({ fences });
 const projects = new Set(packageTestNames(path.join(REPO_ROOT, "test", "package-tests")));
+// A package that does not compile has compile cases and no project; the package gate checks those.
+const compileOnly = new Set(compileOnlyNames(path.join(REPO_ROOT, "test", "package-tests")));
 const OLD_BUG = /^[ \t]*<!--[ \t]*bug:[ \t]*([a-z0-9-]+)[ \t]*-->[ \t]*$/m;
 
 const named = new Set();
@@ -320,7 +322,8 @@ for (const rel of pages) {
       if (kind === "sample") named.add(item.sample);
       if (PACKAGE_KINDS.has(kind)) {
         if (section === null) problems.push(`${where}: ${kind} items name a contributed package's test cases`);
-        else if (!packageGate) problems.push(`${where}: ${section} has no test project for a ${kind} item to name`);
+        else if (!packageGate && !(kind === "compile" && compileOnly.has(section)))
+          problems.push(`${where}: ${section} has no test project for a ${kind} item to name`);
         continue;
       }
       const problem = itemProblem(item, index);

@@ -96,6 +96,13 @@ package embedded and judges with the rest. The published project stays `Sources/
 compiles, so the author's Sub Main still runs every run-time case; the compile cases are the
 documentation's own re-check on each new build and version.
 
+"This package does not compile" is a claim of the same kind, and it is true of the package's own
+source, where no line can carry a comment of ours. So a compile case can name a row instead, with
+`package <code> <file>:<line>`, which pins the package's version as well as the build. ArrayListLib
+and WinReg stay in `PENDING` (no test project until a version compiles, owner) with `compile/`
+alone, which `check_package_tests.mjs` checks both ways: each case named by a marker, each marker
+naming a case. The published project, and so `Sources/`, stays out of it.
+
 ## Markers, and a gate that only tightens
 
 A callout names its cases in an HTML comment on the line above it. The marker lives with the

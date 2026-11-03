@@ -1,6 +1,9 @@
 ' TBMANLIB: what the compiler refuses. Each line ends in a comment ' CASE <Name>: <code>.
 Module CompileTests
 
+    ' A 64-bit build stops at the package's own source, so this is the one case run for win64.
+    ' CASE Win64_SubClassIsRefused: win64 package TB5001 Libs/SubClass/cSubClass.twin:21
+
     Public Sub RequestHeaders_AssignmentThroughTheDefaultMember()
         Dim Http As New cHttpClient
         Http.RequestHeaders("X-Key") = "1" ' CASE RequestHeadersDefaultMemberAssignment: TB5090

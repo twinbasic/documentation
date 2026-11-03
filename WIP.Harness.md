@@ -795,7 +795,9 @@ an `Integer` and `Err.Number` a `Long`. The tests here use `Assert.Strict`.
 **A compile-time defect is a compile case**: a line ending `' CASE <Name>: <codes>`,
 `: error` or `: none`, judged against the diagnostics of the compile (`judgeCompiles`). `error`
 is for a defect whose fix may choose its own diagnostic, so the case does not fail on a code it
-cannot predict. A project with compile errors runs none of its `[TestCase]`s.
+cannot predict. A project with compile errors runs none of its `[TestCase]`s. A comment
+`' CASE <Name>: package <code> <file>:<line>` names a row of an embedded package's sources, since
+a package that does not compile has no line of the project's to end in a comment.
 
 ### Measuring LLVM
 

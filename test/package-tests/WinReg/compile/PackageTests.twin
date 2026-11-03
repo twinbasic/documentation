@@ -1,0 +1,11 @@
+' WinReg: the rows the compiler reports in the package's own sources, in a project that uses nothing
+' of it. Each comment names one, ' CASE <Name>: package <code> <file>:<line>. The package has no test
+' project until a version of it compiles, so these cases are all there is.
+Module CompileTests
+
+    ' CASE WriteString_RegCreateKeyExCallIsRefused: package TB5001 RegCls.twin:165
+    ' CASE WriteDWORD_RegCreateKeyExCallIsRefused: package TB5001 RegCls.twin:192
+    ' CASE CreateKey_RegCreateKeyExCallIsRefused: package TB5001 RegCls.twin:288
+    ' CASE DeleteKeyEx_RegEnumKeyExCallIsRefused: package TB5001 RegCls.twin:313
+
+End Module

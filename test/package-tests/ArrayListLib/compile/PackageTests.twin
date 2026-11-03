@@ -1,0 +1,11 @@
+' ArrayListLib: the rows the compiler reports in the package's own sources, in a project that uses
+' nothing of it. Each comment names one, ' CASE <Name>: package <code> <file>:<line>. The package
+' has no test project until a version of it compiles, so these cases are all there is.
+Module CompileTests
+
+    ' CASE Reverse_VSwapCallIsRefused: package TB5001 ArrayList.twin:297
+    ' CASE QuickSort_FirstVSwapCallIsRefused: package TB5001 ArrayList.twin:585
+    ' CASE QuickSort_SecondVSwapCallIsRefused: package TB5001 ArrayList.twin:602
+    ' CASE MemMoveBSTR_LSetByValCallIsRefused: package TB5001 Modules/LibMemoryEx.twin:104
+
+End Module

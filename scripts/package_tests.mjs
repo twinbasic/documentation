@@ -29,7 +29,9 @@
 //
 // A compile case that expects an error is in the package folder's compile/, a project of compile
 // cases only, because the compiler runs no [TestCase] in a project with errors; it is staged with
-// the package embedded too, and its cases are judged with the rest.
+// the package embedded too, and its cases are judged with the rest. A package that does not compile
+// has that folder and no project: its cases name the rows of the package's own sources. A compile
+// case that names an architecture is run on that one, whatever expect.json's arches says.
 //
 // RunAll.twin, which the project's Sub Main runs, is generated from the cases and expect.json:
 // the run writes it again when it is out of date, and says so.
@@ -55,6 +57,7 @@ import {
 } from "../lib/cli.mjs";
 import {
   COMPILE_DIR,
+  compileOnlyNames,
   compileSources,
   RESOURCES_DIR,
   resourceFiles,
@@ -146,7 +149,7 @@ exitOnCrash();
 
 // The packages to run: those named, each matched to its folder without regard to case, or all
 // of them with --all-packages. Neither is refused, and so are both, before anything starts.
-const known = packageTestNames(ROOT);
+const known = [...packageTestNames(ROOT), ...compileOnlyNames(ROOT)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 const knownList = known.length ? known.join(", ") : "none";
 if (values.allPackages && positionals.length) die(2, `name packages or pass --all-packages, not both\n${USAGE}`);
 if (!values.allPackages && !positionals.length) {
@@ -185,15 +188,18 @@ async function runPackage(pkg) {
   if (expect.version && expect.version !== version) {
     say(`${pkg}: expect.json is for version ${expect.version}, the template for ${version}`);
   }
-  let files = testSources(ROOT, pkg);
+  const hasProject = existsSync(path.join(ROOT, pkg, "Sources"));
+  let files = hasProject ? testSources(ROOT, pkg) : [];
   const { tests, compiles, problems } = projectCases(files);
   const compileFiles = compileSources(ROOT, pkg);
   const compileProject = projectCases(compileFiles);
   problems.push(...compileProject.problems.map((p) => `${COMPILE_DIR}/: ${p}`));
   if (compileProject.tests.length) problems.push(`${COMPILE_DIR}/ holds a [TestCase]: it holds compile cases only`);
   if (problems.length) die(2, `${pkg}:\n${problems.map((p) => `  ${p}`).join("\n")}`);
-  refreshRunAll(pkg, version, tests, expect);
-  files = testSources(ROOT, pkg);
+  if (hasProject) {
+    refreshRunAll(pkg, version, tests, expect);
+    files = testSources(ROOT, pkg);
+  }
 
   const compileNames = compileProject.compiles.map((c) => c.name);
   const names = [...compiles.map((c) => c.name), ...compileNames, ...tests.map((t) => `${t.fixture}.${t.name}`)];
@@ -204,12 +210,17 @@ async function runPackage(pkg) {
   // A package tested on one architecture only (expect.json's arches) is run on that one.
   const arches = opts.arches.filter((a) => archesOf(expect).includes(a));
   if (arches.length < opts.arches.length) say(`  tested on ${archesOf(expect).join(", ")} only`);
-  for (const arch of arches) {
-    if (compileNames.length) {
+  // A compile case that names an architecture is for that one alone.
+  const pinned = new Map(compileProject.compiles.map((c) => [c.name, c.arch]));
+  const runsOn = (name, arch) => (pinned.get(name) ? pinned.get(name) === arch : arches.includes(arch));
+  for (const arch of opts.arches) {
+    const compileHere = compileNames.filter((n) => runsOn(n, arch));
+    if (compileHere.length) {
       const compileTree = stageTree(`${pkg}-${COMPILE_DIR}`, pkg, arch, template, compileFiles);
-      for (const r of tbrunCases(compileTree, arch, compileNames, opts.timeout))
+      for (const r of tbrunCases(compileTree, arch, compileHere, opts.timeout))
         outcomes.get(r.name)[arch] = outcomeOf(r);
     }
+    if (!hasProject || !arches.includes(arch)) continue;
     const tree = stageTree(pkg, pkg, arch, template, files, resourceFiles(ROOT, pkg));
     const own = names.filter((n) => !compileNames.includes(n));
     const hangs = own.filter((n) => expectationFor(expect, n, arch).kind === "hang");
@@ -244,7 +255,7 @@ async function runPackage(pkg) {
 
   const cases = [];
   for (const name of names) {
-    for (const arch of arches) {
+    for (const arch of opts.arches.filter((a) => runsOn(name, a))) {
       const expected = expectationFor(expect, name, arch);
       const got = outcomes.get(name)[arch] ?? { kind: "fail", detail: "no result" };
       const verdict = judge(expected, got);
@@ -264,7 +275,7 @@ async function runPackage(pkg) {
     const file = path.join(ROOT, pkg, EXPECT_JSON);
     writeFileSync(file, `${JSON.stringify(next, null, 2)}\n`, "utf8");
     say(`  wrote ${path.relative(REPO_ROOT, file).replaceAll(path.sep, "/")}`);
-    refreshRunAll(pkg, version, tests, next);
+    if (hasProject) refreshRunAll(pkg, version, tests, next);
   }
   return { package: pkg, version, cases };
 }

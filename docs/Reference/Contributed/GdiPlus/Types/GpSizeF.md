@@ -141,11 +141,11 @@ These change the size they are called on.
 > [!NOTE] 0.9.45.0
 > **Add** and **Sub** change the size they are called on. Before version 0.9.0.43 they returned the result and left the size alone. Use [**Sum**](#sum-diff) and [**Diff**](#sum-diff) to get a new size.
 
-<!-- test: none -- a twinBASIC defect, not the package's -->
+<!-- test: sample gpsizef-scale-one-value -->
 > [!NOTE] 0.9.45.0, BETA 1034
 > The compiler reads `s.Scale(2)` as the start of a `Scale` statement and reports a syntax error. Write `s.Scale 2` or `Call s.Scale(2)`. **Scale2**, **InvScale** and the other methods are not affected.
 >
-> ```tb check_build expect-error=TB5212
+> ```tb check_build expect-error=TB5212 id=gpsizef-scale-one-value
 > Dim s As GpSizeF = GpSizeF(3, 4)
 > s.Scale(2)
 > ```
