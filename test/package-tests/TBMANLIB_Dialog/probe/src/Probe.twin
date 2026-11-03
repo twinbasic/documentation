@@ -20,9 +20,9 @@
 '   9   ShowBrowseForFolder: typing a folder, InitialDir, NewDialogStyle
 '   9e  ShowBrowseForFolder with NewDialogStyle = False, left alone
 '   11  OpenFile on a nonexistent path
-'       (There is no OpenFile("") scenario: it returns 42 and opens a File Explorer window on the
-'       current directory, and the COM-started explorer.exe that shows it outlives the exe, with
-'       its window on the private desktop. Never call OpenFile on a path that exists, or on "".)
+'   11e OpenFile(""): its result and the File Explorer window it opens on the current folder. The
+'       COM-started explorer.exe that shows it outlives the exe, with its window on the private
+'       desktop, so the scenario ends it (ProbeOF.twin). Never call OpenFile on a path that exists.
 '   12 HideReadOnly = False and ReadOnly = True: the Open dialog's child windows
 '   12b the default Open dialog, for comparison
 '   12c HideReadOnly = False: click the Open button's arrow, which opens its drop-down
@@ -115,7 +115,7 @@ Module Probe
         Debug.Print "hook ran in the IDE; the dialogs run only in the exe"
     End Sub
 
-    Private Const ScenarioIds As String = ",13,1,2,3,4,5,6,6d,7,8,9,9e,11,12,12b,12c,14,15,16,17,18,x0,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,x16,y1,y2,y3,y4,c1,c2,c3,c4,c11,c12,c13,c14,c15,c16,c17,c21,c22,c23,c24,c25,c26,c27,c31,c32,c33,c34,c35,c41,c42,c43,c44,c45,c46,c47,c48,d0,d0b,d1,d2,d2b,d2c,d2t,d3,d4,d5,d10,d10b,d11,d11b,d11c,d12,d12d,d20,d20b,d21,d22,d22b,d23,d30,d31,d32,d33,d33b,d34,d34b,d40,"
+    Private Const ScenarioIds As String = ",13,1,2,3,4,5,6,6d,7,8,9,9e,11,11e,12,12b,12c,14,15,16,17,18,x0,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,x16,y1,y2,y3,y4,c1,c2,c3,c4,c11,c12,c13,c14,c15,c16,c17,c21,c22,c23,c24,c25,c26,c27,c31,c32,c33,c34,c35,c41,c42,c43,c44,c45,c46,c47,c48,d0,d0b,d1,d2,d2b,d2c,d2t,d3,d4,d5,d10,d10b,d11,d11b,d11c,d12,d12d,d20,d20b,d21,d22,d22b,d23,d30,d31,d32,d33,d33b,d34,d34b,d40,"
 
     Public Sub Main()
         Dim sel As String = "," & Replace(Environ$("PROBE"), " ", "") & ","
@@ -156,6 +156,7 @@ Module Probe
             Case "9": S9
             Case "9e": S9e
             Case "11": S11
+            Case "11e": ProbeOF.S11e
             Case "12": S12
             Case "12b": S12b
             Case "12c": S12c

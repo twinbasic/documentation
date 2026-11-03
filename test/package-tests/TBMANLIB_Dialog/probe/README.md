@@ -97,9 +97,12 @@ late.
 - `Probe.twin` declares the result of **OpenFile** in scenario 11 as a **Variant**: the method
   returns a **LongPtr** in 1.1.0.0, which a **Long** does not take in a 64-bit build.
 
-- Never call **OpenFile** or **SelectAndOpenFile** on a path that exists, or on `""`: it starts
-  a program. `OpenFile("")` opens a File Explorer window, and the COM-started `explorer.exe`
-  behind it outlives the exe, with its window on the private desktop where nobody can close
-  it; it has to be ended by its pid.
+- Never call **OpenFile** or **SelectAndOpenFile** on a path that exists: it starts a program.
+- `OpenFile("")` opens a File Explorer window, and the COM-started `explorer.exe` behind it is
+  outside the exe's job, so it outlives the exe, with its window on the private desktop where
+  nobody can close it. Scenario `11e`, run with `probe.mjs 11e` and `--arch win64 11e`, is the one
+  place that calls it. It ends that process by its pid, in `src/ProbeOF.twin`, once it has seen that
+  the process started after the call, and looks for the window with `FindWindowW`, which sees no
+  desktop but its own. So the user's desktop and shell are out of its reach.
 - Never run the exe on the user's desktop, or a dialog in the IDE: the probe's `[RunAfterBuild]`
   Sub only prints.
