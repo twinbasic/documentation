@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:troubleshooting-missing",
+  "tests": [
+    "with bin\\twinBASIC_win32.dll missing, a box titled shutdown names no file and gives no link"
+  ],
+  "steps": "1. In a copy of the install, rename bin\\twinBASIC_win32.dll.\n2. Start twinBASIC.exe. A box titled shutdown says Run-time error '-353703418' and Unable to load DLL, with no file named and no link.\n3. Press OK: the process ends.\nControl: with bin\\twinBASIC_win32.exe and its variants renamed, the box names that file and gives the link."
+}

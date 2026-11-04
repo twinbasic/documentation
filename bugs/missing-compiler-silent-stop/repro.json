@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:troubleshooting-missing",
+  "tests": [
+    "with the compiler variant the IDE starts missing, the page goes quiet after one host box: no retry, no line in the console, no message"
+  ],
+  "steps": "1. In a copy of the install, rename bin\\twinBASIC_win32_noDEP_LAA.exe, the variant the IDE starts for a project with Large Address Aware on.\n2. Start the IDE and open such a project. A box titled twinBASIC IDE names the file and says Please close the IDE, and restore any missing files.\n3. Press OK. Please wait... goes, no project opens, and the status bar reads UNAVAILABLE with four Not initialized lines for good. Nothing retries, and the page shows no message and no line in the DEBUG CONSOLE."
+}

@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:troubleshooting-missing",
+  "tests": [
+    "with bin\\twinBASIC_ide_win32.dll missing, the box names bin\\twinBASIC_win64.dll, which is there"
+  ],
+  "steps": "1. In a copy of the install, rename bin\\twinBASIC_ide_win32.dll.\n2. Start twinBASIC.exe. A box titled twinBASIC Compiler says ERROR: failed to load the twinBASIC DLL: and names bin\\twinBASIC_win64.dll, a file that is there.\n3. Press OK: the process ends.\nControl: with bin\\twinBASIC_win32.exe and its variants renamed, the box names that file."
+}

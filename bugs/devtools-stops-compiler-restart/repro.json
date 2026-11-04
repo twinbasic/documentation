@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:troubleshooting",
+  "tests": [
+    "with DevTools open, a compiler restart stops at a debugger statement in the IDE's code until DevTools closes"
+  ],
+  "steps": "1. Open a project, and open DevTools by a key bound to tbIdeDevTools_Show.\n2. Press Restart the compiler. The compiler is ended, the status bar reads UNAVAILABLE with four Disconnected lines, there is no Please wait... and no line in the DEBUG CONSOLE, and nothing moves.\n3. Close DevTools: the restart goes on, and the project is back about 3 s later.\nControl: Restart with DevTools closed."
+}

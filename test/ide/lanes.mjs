@@ -50,4 +50,6 @@ export default [
   { file: "object-browser.test.mjs" },
   { file: "language.test.mjs" },
   { file: "starting.test.mjs" },
+  { file: "troubleshooting.test.mjs" },
+  { file: "troubleshooting-missing.test.mjs" },
 ];

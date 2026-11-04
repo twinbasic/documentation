@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:troubleshooting",
+  "tests": [
+    "a compiler connection that cannot be made restarts the compiler every 5 s, and the crash-loop message never fires"
+  ],
+  "steps": "1. Start the IDE with --debug on its command line, which makes the compiler's connection impossible: the compiler starts with a console window, and the page never connects.\n2. Open a project. The status bar reads UNAVAILABLE, and a new compiler starts every 5 s with a restarting from FILE line each time, for as long as the IDE is open.\n3. The floating message Compiler crash loop detected never comes, and the IDE does not go to Safe Mode."
+}

@@ -363,8 +363,8 @@ const RESOURCES_JS = `(() => {
   return out;
 })()`;
 
-/** The helpers, bound to one lane. `k.c` is the open IDE's connection. */
-export function startingKit(lane) {
+/** The helpers, bound to one lane. `k.c` is the open IDE's connection. `probe` is the tree project() packs. */
+export function startingKit(lane, { probe = PROBE } = {}) {
   let c = null;
   let scriptId = null;
   let gen = 0;
@@ -474,13 +474,16 @@ export function startingKit(lane) {
       ),
     pageErrors: () => ev("window.__g.errors.splice(0)"),
 
-    /** Start an IDE with no project, and the guard in front of the hook. */
-    async startIde(cfg = {}) {
+    /**
+     * Start an IDE with no project, and the guard in front of the hook. `start` is what starts it,
+     * for an IDE that needs more on its command line than lane.openNoProject gives.
+     */
+    async startIde(cfg = {}, { start = () => lane.openNoProject() } = {}) {
       scriptId = null;
       // An IDE started just after another can show no page for a minute: ended, and started again once.
-      c = await lane.openNoProject().catch(async () => {
+      c = await start().catch(async () => {
         await lane.closeProject();
-        return lane.openNoProject();
+        return start();
       });
       await waitStartDialog(90 * 1000);
       await fresh(cfg);
@@ -498,12 +501,13 @@ export function startingKit(lane) {
       mkdirSync(dir, { recursive: true });
       return dir;
     },
-    /** A .twinproj packed from probes/starting, with these Settings over the probe's. */
-    project(name, settings = {}, folder = "files") {
+    /** A .twinproj packed from the probe, with these Settings over the probe's and these Sources added. */
+    project(name, settings = {}, folder = "files", sources = {}) {
       const tree = path.join(lane.work, "trees", `${name}-${++trees}`);
-      cpSync(PROBE, tree, { recursive: true });
+      cpSync(probe, tree, { recursive: true });
       const f = path.join(tree, "Settings");
       writeFileSync(f, J({ ...JSON.parse(readFileSync(f, "utf8")), ...settings }, null, "\t"));
+      for (const [rel, text] of Object.entries(sources)) writeFileSync(path.join(tree, "Sources", rel), text);
       const file = path.join(k.folder(folder), `${name}.twinproj`);
       packTree(file, tree);
       return file;

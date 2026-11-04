@@ -12059,3 +12059,287 @@ Severity: low. The box shows the difference and nothing is lost, but the control
 
 <!-- Reproducer: bugs/import-cancel-leaves-import-mode/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "after Cancel in New Project Options of Import from VBP..., the next template's box is drawn as an import: a Unicode row, and no Include Common Controls", "after that Cancel, a sample's box is drawn as an import too" and "Continue in that box gives a project with no WinNativeCommonCtls reference, the template's description and title in place of the name, and Unicode Common Control Notifications on; the project is otherwise normal", with four controls: the card and a sample in a fresh page, the box after that Continue, and Cancel in the picker; real clicks, and the picker answered in the page). No project and no zip. docs/IDE/Starting/New-Project.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 by shoot_docs, whose boxes for the ActiveX DLL card and for Sample 1 had the Unicode row and no Include Common Controls row. -->
 
+---
+
+## A failed Save As still moves the project to the new path
+
+**Describe the bug**
+When **File > Save Project As...** fails, the IDE shows its alert, and the project has moved all the same: the title bar and the project's path name the file that was not written, and a plain Save then goes there. While the cause lasts each Save fails with the same alert. Once it has gone the project is written to the new path, and the file the reader opened stays as it was. It was observed by reading the title bar, the page's path and the files on disk.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved project and type something in a source file.
+2. **File > Save Project As...**, and give a path in a folder that does not exist.
+3. The alert reads `save project failed, result code 2, GetLastErr: ERROR_PATH_NOT_FOUND`. The title bar now names the new file, which does not exist.
+4. Press Ctrl+S: the same alert, for the new path.
+5. Make the folder and press Ctrl+S: the project is written there, and the file that was opened is not touched.
+
+**Expected behavior**
+A Save As that fails leaves the project where it was: the title bar and the path keep the old file, and a plain Save goes there.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Save As over a read-only file does the same with `ERROR_ACCESS_DENIED`. A Save As back to the original puts it right. A Save As to a path that can be written is right.
+
+`_RootConnection.saveProjectAs` sets `projectFilePath` and calls `syncTitleBar` in its request's callback without looking at the result. The same callback calls `AddRecentsList`, so by the code the path that failed also goes in the recent list; the lane runs with `--no-update-recent-files`, so that part was not tried.
+
+Severity: low. There is an alert each time and nothing is lost, but a reader who does not look at the title bar is no longer saving the file they opened.
+
+<!-- Reproducer: bugs/failed-save-as-moves-project/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the tests "a failed Save As still moves the project: the title bar and the path name the new file, and a plain Save goes there" and "a failed Save As over a read-only file moves the project too, and Save As back to the original puts it right", with the control "control: Save As to a good path moves the project and writes the file"). No project and no zip. docs/IDE/Troubleshooting/Saving.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's N2). -->
+
+---
+
+## Close Project, Save: a save that fails drops the close
+
+**Describe the bug**
+**File > Close Project** on a changed project asks whether to save. When **Save** is pressed and the save fails, the alert opens, and the close is dropped: the project stays open and changed, the question is not asked again, and the reader must choose Close Project again. It was observed with the project's file read-only.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved project and type something in a source file.
+2. Make the `.twinproj` file read-only.
+3. **File > Close Project**, and press **Save** on the question.
+4. The alert reads `save project failed, result code 2, GetLastErr: ERROR_ACCESS_DENIED`.
+5. After OK the project is still open and marked changed, and nothing more happens.
+
+**Expected behavior**
+The IDE asks again, or says that the project was not closed, so that a reader who walked away from a close does not find the project still open with no word of why.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`closeProjectSafely` passes `closeProjectNow` to `askServerToSaveProject` as its callback, and that function shows the alert and calls no callback on a failure. With a file that can be written, the same steps save it and close the project.
+
+Severity: low. Nothing is lost: the file is unchanged and the edit is still in the editor.
+
+<!-- Reproducer: bugs/failed-save-drops-close/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "Close Project, Save, and a save that fails drops the close: the project stays open and changed, and the reader must close again", with the control "control: Close Project, Save, and a save that works closes the project"). No project and no zip. docs/IDE/Troubleshooting/Saving.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's D9). -->
+
+---
+
+## Start in Safe Mode never runs and never ends, and Stop does nothing
+
+**Describe the bug**
+With the build box on **safeMode**, **Start** prints two lines and goes no further: the program does not run and the IDE stays in run mode. **Stop** changes nothing. The second line waits for a background compilation that Safe Mode will never make. Only a restart of the compiler, or a switch of the box, ends it. It was observed by reading the DEBUG CONSOLE and the IDE's run state over 35 s.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project with a `Sub Main`.
+2. Choose **safeMode** in the build box, and press **OK** on the box that opens.
+3. Press **Start**. The DEBUG CONSOLE prints `Executing 'Main'...` and `WARNING: execution delayed; waiting for background compilation to finish`, and nothing more.
+4. Press **Stop**. Nothing changes, and the IDE stays in run mode.
+5. Press **Restart the compiler**: the run ends.
+
+**Expected behavior**
+**Start** is disabled in Safe Mode, or says that a program cannot run there. Failing that, **Stop** ends the wait.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Safe Mode's box says that the services are not started, and yet the status bar reads OPERATIONAL, since the IDE makes all four connections to the compiler. With the box on win32 the same project runs to its end. Saving still works during the wait.
+
+Severity: low. It is plain that nothing runs and nothing is lost, but the message points at a compile that will never come.
+
+<!-- Reproducer: bugs/safe-mode-start-never-runs/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "Start in Safe Mode never runs and never ends, and Stop does nothing; a restart ends it", with the control "control: Start with the box on win32 runs the program to its end"). No project and no zip. docs/IDE/Troubleshooting/Compiler-Services.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's N1). -->
+
+---
+
+## A linked package's missing file gives Restart a bare shutdown box and a wait of about 80 s
+
+**Describe the bug**
+A project references a linked package, and its `.twinpack` file has gone from `%APPDATA%\twinBASIC\packages`. **Restart the compiler** then opens a native box titled `shutdown` that says only `Run-time error '-2147467259'` and `Unspecified error`, naming neither the package nor the file. After **OK** the IDE shows *Please wait...* with no explanation for about 80 s before the compiler is back. Opening the same project shows the reference's error at once. It was observed with a package of the test's own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project that references a linked package, and type something in a source file.
+2. Delete the package's `.twinpack` from `%APPDATA%\twinBASIC\packages`.
+3. Press **Restart the compiler**. About a second later the box opens. The status bar reads LIMITED, and the page *Please wait... 5.0%*.
+4. Press **OK**. About 80 s later the status bar reads OPERATIONAL, the project is back with its edit, and the References view shows the package's row with `ERROR unable to load this reference`.
+
+**Expected behavior**
+The restart reaches that row without the wait, as opening the project does, or a message names the package whose file is missing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The box is opened by `twinBASIC.exe`. Left unanswered it holds the restart: 79 s on the status bar reads UNAVAILABLE and the page *Please wait... 0.0%*, and they stay so. During the wait the window's X asks about the unsaved changes, and **Cancel** there gives the reader the editor, so the text can be copied, but a save does not work until a compiler is back. With the file there, Restart brings the compiler back at once.
+
+This replaces an earlier draft which had the restart never coming back: that run had this box open on a private desktop, where nobody could see it.
+
+Severity: low. Nothing is lost once the box is answered, but the box and the wait say nothing of the cause.
+
+<!-- Reproducer: bugs/missing-linked-package-restart-box/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "a linked package's missing file: Restart opens a box titled shutdown that names neither the package nor the file, and the compiler is back about 80 s after OK, the edit kept", with the control "control: Restart with a linked package's file there brings the compiler back at once"; the package is test/ide/probes/packages/DocProbePkg, in the lane's private APPDATA). No project and no zip. docs/IDE/Troubleshooting/Compiler-Services.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's N4 and point 28). -->
+
+---
+
+## TRACE mode auto-activated by a native exception takes effect only at the next restart
+
+**Describe the bug**
+After a native exception the DEBUG CONSOLE says `[IDE] auto-activated TRACE-MODE in this session for extra debugging info on further native exceptions`, and the Help menu's item reads `Compiler services TRACE mode: Enabled`. The compiler that is running has not been told: a second exception in it prints the same one line, with no dump, and the dump comes only after the compiler has been restarted. Nothing says so. It was observed by raising the same access violation three times.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project with a Sub that calls `RtlMoveMemory` with two different bad addresses, such as 16 and 32. With 0 and 0 it does nothing.
+2. Run that Sub. The console prints one line, `0001 ... NATIVE EXCEPTION: ACCESS_VIOLATION ...`, and the two `[IDE]` lines. Help reads Enabled.
+3. Run it again. The console prints `0002 ... NATIVE EXCEPTION: ACCESS_VIOLATION ...`, and no dump.
+4. Press **Restart the compiler** and run it again. The exception's line is followed by a line per thread: `thread 000A: CompilerOrganizationParsingEnd`, `>>> thread 0008: RuntimeExpressionEvaluationExecutionStart, Crash`, and so on.
+
+**Expected behavior**
+The next exception after "auto-activated" prints the dump, or the line says that the mode starts at the next restart.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`event_output` sets `g_TraceMode` and restarts nothing, and the compiler is told the flag only in `RequestPreInitialize`, at its start. The numbering of the exceptions starts again with each compiler.
+
+Severity: low. It costs only the trace output of the exceptions in between.
+
+<!-- Reproducer: bugs/trace-auto-activate-needs-restart/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "a native exception auto-activates TRACE mode and Help says so, but a second exception in that compiler still prints no dump", with the control "control: after the next restart the same exception prints the dump, a line per thread"). No project and no zip. docs/IDE/Troubleshooting/Diagnostic-Tools.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's D3). -->
+
+---
+
+## With DevTools open, a compiler restart stops at a debugger statement in the IDE's code
+
+**Describe the bug**
+With DevTools open on the IDE's page, a restart of the compiler stops at a `debugger;` statement in the IDE's own code. The compiler has already been ended, so the status bar reads UNAVAILABLE with four `Disconnected` lines, with no *Please wait...* and no line in the DEBUG CONSOLE, and nothing moves. Closing DevTools lets it go on. It was observed by opening DevTools with a key bound to `tbIdeDevTools_Show`, and pressing **Restart the compiler**.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project, and open DevTools.
+2. Press **Restart the compiler**. Nothing moves; DevTools shows the page paused in `restartCompiler`.
+3. Close DevTools, or resume in it. The restart goes on, and the project is back about 3 s later.
+
+**Expected behavior**
+The restart goes on with DevTools open: a shipped build holds no `debugger;` statement in a path a reader can reach.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`restartCompiler` holds the statement just before `isRestarting=true`, so a crash of the compiler and a switch of the build box take the same path. The code has more such statements, in `saveProjectMetaState`'s `.meta` branch and in a dialog's close box. With DevTools closed, Restart brings the compiler back.
+
+Severity: low. Nothing is lost, and a person can press Resume, but a reader who is told to open DevTools to look into a problem meets it at once.
+
+<!-- Reproducer: bugs/devtools-stops-compiler-restart/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "with DevTools open, a compiler restart stops at a debugger statement in the IDE's code until DevTools closes", with the control "control: with DevTools closed, Restart brings the compiler back"; DevTools opens on the lane's private desktop, and the test fails if a new DevTools window shows on the user's). No project and no zip. docs/IDE/Troubleshooting/Diagnostic-Tools.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's N3). -->
+
+---
+
+## With bin\twinBASIC_ide_win32.dll missing, the box names bin\twinBASIC_win64.dll
+
+**Describe the bug**
+When `bin\twinBASIC_ide_win32.dll` is missing from an install, `twinBASIC.exe` opens a box that says it failed to load `bin\twinBASIC_win64.dll`, a file that is not the missing one and that is there. A reader who follows the box looks for the wrong file. It was observed in a copy of the install with the one file renamed.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In a copy of the install, rename `bin\twinBASIC_ide_win32.dll`.
+2. Start `twinBASIC.exe`. A box titled `twinBASIC Compiler` reads `ERROR: failed to load the twinBASIC DLL:`, `bin\twinBASIC_win64.dll`, `The file could not be found.  See https://twinbasic.com/missing` and `The application will now exit.`
+3. Press **OK**: the process ends.
+
+**Expected behavior**
+The box names `bin\twinBASIC_ide_win32.dll`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`twinBASIC.exe` holds the name `bin\twinBASIC_ide_win32.dll` and, in the box's text, a fixed `bin\twinBASIC_win64.dll`; its init call's box names `twinBASIC_win64` the same way. With `bin\twinBASIC_win32.exe` and its variants renamed, the box names that file.
+
+Severity: low. The box shows, and the link is right, but the file it names misleads.
+
+<!-- Reproducer: bugs/launcher-box-names-wrong-file/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting-missing$"` (test/ide/troubleshooting-missing.test.mjs), the test "with bin\\twinBASIC_ide_win32.dll missing, the box names bin\\twinBASIC_win64.dll, which is there", with the control "control: with bin\\twinBASIC_win32.exe and its variants missing, the box names the file and gives the link"; the file is renamed in the lane's own copy of the install). No project and no zip. docs/IDE/Troubleshooting/Missing-Files.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's D1). -->
+
+---
+
+## With bin\twinBASIC_win32.dll missing, a box titled shutdown names no file
+
+**Describe the bug**
+When `bin\twinBASIC_win32.dll` is missing from an install, `twinBASIC.exe` opens a box titled `shutdown` that reads `Run-time error '-353703418'` and `Unable to load DLL`. It names no file and gives no link, where the boxes for its two neighbours name the file and give `https://twinbasic.com/missing`. It was observed in a copy of the install with the one file renamed.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In a copy of the install, rename `bin\twinBASIC_win32.dll`.
+2. Start `twinBASIC.exe`. The box opens.
+3. Press **OK**: the process ends.
+
+**Expected behavior**
+A box like its neighbours': the file that is missing, and the link.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+With `bin\twinBASIC_win32.exe` and its variants renamed, the box names the file and gives the link.
+
+Severity: low. The box shows and nothing is lost, but it does not say what to restore.
+
+<!-- Reproducer: bugs/missing-dll-box-names-no-file/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting-missing$"` (test/ide/troubleshooting-missing.test.mjs), the test "with bin\\twinBASIC_win32.dll missing, a box titled shutdown names no file and gives no link", with the control "control: with bin\\twinBASIC_win32.exe and its variants missing, the box names the file and gives the link"; the file is renamed in the lane's own copy of the install). No project and no zip. docs/IDE/Troubleshooting/Missing-Files.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's N5). -->
+
+---
+
+## With the compiler variant the IDE starts missing, the page goes quiet after one host box
+
+**Describe the bug**
+When `bin\twinBASIC_win32_noDEP_LAA.exe` is missing, the IDE starts, and opening a project gives one box from the host, naming the file. After **OK** the page says nothing at all: *Please wait...* goes, no project opens, nothing retries, there is no line in the DEBUG CONSOLE and no message in the page, and the status bar reads UNAVAILABLE with four `Not initialized` lines for good. It was observed in a copy of the install with the one file renamed.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In a copy of the install, rename `bin\twinBASIC_win32_noDEP_LAA.exe`.
+2. Start the IDE and open a project with Large Address Aware on.
+3. A box titled `twinBASIC IDE` reads `ERROR: failed to load the twinBASIC EXE:`, the file, `The file could not be found.  See https://twinbasic.com/missing` and `Please close the IDE, and restore any missing files.`
+4. Press **OK**. The IDE is left with no project and no message.
+
+**Expected behavior**
+The page says that the compiler could not be started, and keeps saying it, since the one box is gone once it has been answered.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`createCompilerInstance` swallows exceptions and, when the host answers 0, only hides the progress box. The host's check at its own start looks for `twinBASIC_win32.exe` alone, so with only this variant gone the IDE starts.
+
+Severity: low. The box names the file, and nothing is lost, but a reader who has pressed **OK** has nothing left to read.
+
+<!-- Reproducer: bugs/missing-compiler-silent-stop/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting-missing$"` (test/ide/troubleshooting-missing.test.mjs), the test "with the compiler variant the IDE starts missing, the page goes quiet after one host box: no retry, no line in the console, no message"; the file is renamed in the lane's own copy of the install). No project and no zip. docs/IDE/Troubleshooting/Missing-Files.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's D5). -->
+
+---
+
+## A compiler connection that cannot be made restarts the compiler every 5 s, and the crash-loop message never fires
+
+**Describe the bug**
+When the page cannot make its connection to the compiler, the IDE starts a new compiler every 5 s for as long as it is open, each with a `restarting from FILE` line, and the crash-loop test that would stop it after a few tries is never reached. So there is no `Compiler crash loop detected` message, no Safe Mode and no other word, and the status bar stays on UNAVAILABLE. It was observed with `--debug` on the IDE's command line, which makes a connection impossible.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE with `--debug` on its command line. The compiler then starts with a console window, and the page never connects.
+2. Open a project.
+3. Watch the DEBUG CONSOLE: a `restarting from FILE` line every 5 s, for as long as the IDE is open.
+
+**Expected behavior**
+A connection that keeps failing counts towards the crash-loop test, so that the reader gets the message, or the IDE stops after a few tries and says why.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The root socket's `onerror` empties `autoRestartHistory` and calls `connectionStateChanged` 5 s later, so the list that the crash-loop test counts is empty each time it is read. `--debug` is a switch for the developers, and is only the way to reach this: by the code, a connection that fails for another reason takes the same path.
+
+Severity: low. Nothing is lost, but the loop runs for ever with nothing to say what is wrong.
+
+<!-- Reproducer: bugs/compiler-connection-retry-loop/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "a compiler connection that cannot be made restarts the compiler every 5 s, and the crash-loop message never fires", in an IDE of its own with --debug, ended by its pid). No project and no zip. docs/IDE/Troubleshooting/Compiler-Services.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's D4). -->
+
+

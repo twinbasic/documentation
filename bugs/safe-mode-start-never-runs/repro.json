@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:troubleshooting",
+  "tests": [
+    "Start in Safe Mode never runs and never ends, and Stop does nothing; a restart ends it"
+  ],
+  "steps": "1. Open a project with a Sub Main.\n2. Choose safeMode in the build box, and press OK on the box that opens.\n3. Press Start. The DEBUG CONSOLE prints Executing 'Main'... and WARNING: execution delayed; waiting for background compilation to finish, and nothing more; the IDE stays in run mode.\n4. Press Stop: nothing changes.\n5. Restart the compiler: the run ends.\nControl: Start with the box on win32 runs the program to its end."
+}
