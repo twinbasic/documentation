@@ -67,4 +67,3 @@ A file count is the number of files of the sample's own, not counting the packag
 
 - [New Project](New-Project) -- the dialog, and **New Project Options**
 - [Add Ins](../AddIns/) -- the add-in samples, 10 to 16
-- [Tutorials](../../../Tutorials/) -- the tutorials that start from a sample

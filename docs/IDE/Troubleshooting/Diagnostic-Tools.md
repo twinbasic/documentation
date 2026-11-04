@@ -178,4 +178,3 @@ Two messages come from the compiler and not from the IDE.
 - [Compiler services](Compiler-Services) -- crashes, restarts and Safe Mode
 - [Breakpoints and stepping](../Debugging/Breakpoints-and-Stepping) -- the run-time error panel
 - [Keyboard shortcuts](../Customising/Keyboard-Shortcuts) -- binding a key to a command
-- [FAQ](../../../FAQ#bug-reporting) -- how to report a bug
