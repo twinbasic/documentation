@@ -29,9 +29,10 @@ import { connect } from "./tb-cdp.mjs";
 // answer: JSON.parse fails inside a try and the variable keeps its default, parseJson gives
 // undefined, an empty targetArchitectureMemory reads as "unknown", and the Object Browser
 // (OBJECT_BROWSER, BETA 1023) and the New / Open Project dialog's section (NEWFRONTPAGE, BETA
-// 1033) test the length first and keep their defaults. Not here, and
-// answered from the registry: the licence's keys, LICENCEAGREEMENTV3, ALLOWERRORREPORTINGV3,
-// PUBLISHER and NEWYEAR_*, which are not settings of how the IDE looks.
+// 1033) test the length first and keep their defaults. ALLOWERRORREPORTINGV3 is answered no: with
+// the user's yes, each native exception of a tool's IDE, which many a reproducer provokes, would post
+// a report to the developers (postError). Not here, and answered from the registry: the licence's
+// keys, LICENCEAGREEMENTV3, PUBLISHER and NEWYEAR_*, which are not settings of how the IDE looks.
 export const BLANKED_KEYS = {
   GENERAL: "{}",
   GENERAL2: "{}",
@@ -46,6 +47,7 @@ export const BLANKED_KEYS = {
   targetArchitectureMemory: "",
   OBJECT_BROWSER: "",
   NEWFRONTPAGE: "",
+  ALLOWERRORREPORTINGV3: "DISAGREED_TOOLS",
 };
 
 // Runs in the page, in every document of the IDE's browser; only main.htm does anything.
@@ -54,11 +56,21 @@ export const BLANKED_KEYS = {
 // these keys but two, OBJECT_BROWSER's and NEWFRONTPAGE's, which test no flag (BETA 1034), so
 // that merely closing the New / Open Project dialog would write the user's registry. Every
 // function of the host object is bound to the real object: the proxy of a WebView2 host object
-// refuses to be called with another `this`.
+// refuses to be called with another `this`. A request for the error-report address is answered
+// here and counted in `reports`, never sent, whatever g_ErrorReporting says: a page that turns
+// reporting on (the question's YES) stays a page of a tool.
 export function pageHook(answers) {
   if (!/main\.htm$/i.test(location.pathname)) return;
-  const marker = { keys: [] };
+  const marker = { keys: [], reports: 0 };
   window.__tbDefaults = marker;
+  const send = window.fetch;
+  window.fetch = function (resource, ...rest) {
+    if (!/\/\/(www\.)?twinbasic\.com\/notify\b/i.test(String(resource?.url ?? resource))) {
+      return send.call(this, resource, ...rest);
+    }
+    marker.reports++;
+    return Promise.resolve(new Response("{}", { status: 200 }));
+  };
   let real;
   const wrap = (host) =>
     new Proxy(host, {

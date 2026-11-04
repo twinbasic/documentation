@@ -1211,7 +1211,13 @@ never navigates twice. The script puts a setter on `window.hostAppObject`, which
 wraps the host object: `GetIDESetting` answers `""` for the blanked keys and `"{}"` for `GENERAL` and
 `GENERAL2`, `SaveIDESetting` of those keys does nothing, and every other call goes through with `this`
 bound to the real object. The keys it left unanswered are the licence's, `LICENCEAGREEMENTV3`,
-`ALLOWERRORREPORTINGV3`, `PUBLISHER` and `NEWYEAR_*`.
+`PUBLISHER` and `NEWYEAR_*`.
+**No error report leaves a tool's IDE.** The IDE posts one to `https://twinbasic.com/notify` for each
+native exception and page error when `ALLOWERRORREPORTINGV3` says `AGREED_`, and a reproducer that crashes
+the compiler is such an exception, so a machine whose owner agreed reported its test crashes (until
+2026-11-04). The hook answers that key `DISAGREED_TOOLS`, and `window.fetch` answers a request for that
+address itself and counts it in `__tbDefaults.reports`, in case a page turns reporting on.
+`test/ide-folders.test.mjs` tests both with a stand-in `fetch`, which is why it never sends anything.
 The saves are dropped for two keys' sake. `main.js` tests `g_DontSaveIdeSettings`, which is what
 `--no-save-ide-settings` sets, before every save but those of `OBJECT_BROWSER`, `NEWFRONTPAGE` and
 `PUBLISHER`, so a tool's IDE wrote the first two to the user's registry on BETA 1034: `NEWFRONTPAGE` as

@@ -6,7 +6,8 @@
 // the IDE is already gone when shutdownIde looks at its folders, as it is after waitForExit.
 //
 // It also tests checkDefaults (scripts/lib/tb-defaults.mjs), which an IDE's start-up runs, on a
-// fake page.
+// fake page, and pageHook, which runs in that page: what it answers, what it drops, and that no
+// error report leaves a tool's IDE. Those use a stand-in fetch, so that a failure here sends nothing.
 //
 // Runs with a bare `node --test test/ide-folders.test.mjs`: no tree, no IDE.
 
@@ -17,7 +18,69 @@ import path from "node:path";
 import { after, before, describe, test } from "node:test";
 import { shutdownIde, shutdownIdeAsync } from "../scripts/lib/tb-ide.mjs";
 import { removeTreeAsync } from "../scripts/lib/tb-ide-copy.mjs";
-import { checkDefaults } from "../scripts/lib/tb-defaults.mjs";
+import { BLANKED_KEYS, checkDefaults, pageHook } from "../scripts/lib/tb-defaults.mjs";
+
+describe("the defaults hook in a page", () => {
+  const saved = { location: globalThis.location, window: globalThis.window, fetch: globalThis.fetch };
+  let sent;
+  let stored;
+
+  before(() => {
+    sent = [];
+    stored = [];
+    Object.defineProperty(globalThis, "location", { configurable: true, value: { pathname: "/ide/main.htm" } });
+    globalThis.window = globalThis;
+    globalThis.fetch = async (url) => {
+      sent.push(String(url?.url ?? url));
+      return new Response("sent");
+    };
+    pageHook(BLANKED_KEYS);
+    globalThis.hostAppObject = {
+      GetIDESetting: async (key) => `real ${key}`,
+      SaveIDESetting: (key) => stored.push(key),
+    };
+  });
+
+  after(() => {
+    delete globalThis.hostAppObject;
+    delete globalThis.__tbDefaults;
+    Object.defineProperty(globalThis, "location", { configurable: true, value: saved.location });
+    globalThis.window = saved.window;
+    globalThis.fetch = saved.fetch;
+  });
+
+  test("a tool's IDE answers no to error reporting, not the user's yes", async () => {
+    assert.match(await globalThis.hostAppObject.GetIDESetting("ALLOWERRORREPORTINGV3"), /^DISAGREED_/);
+  });
+
+  test("an error report is counted and never sent, in any spelling of the address", async () => {
+    for (const url of [
+      "https://twinbasic.com/notify",
+      "https://www.twinbasic.com/notify",
+      "HTTPS://TWINBASIC.COM/NOTIFY",
+      new Request("https://twinbasic.com/notify", { method: "POST" }),
+    ]) {
+      assert.equal((await fetch(url, { method: "POST", body: "{}" })).status, 200);
+    }
+    assert.deepEqual(sent, []);
+    assert.equal(window.__tbDefaults.reports, 4);
+  });
+
+  test("control: any other request goes through, another page of the same site included", async () => {
+    await fetch("https://twinbasic.com/preorder.html");
+    await fetch("https://example.com/notify");
+    assert.deepEqual(sent, ["https://twinbasic.com/preorder.html", "https://example.com/notify"]);
+    assert.equal(window.__tbDefaults.reports, 4);
+  });
+
+  test("a key it answers is not saved, and any other is", () => {
+    const host = globalThis.hostAppObject;
+    host.SaveIDESetting("ALLOWERRORREPORTINGV3", "AGREED_01-JAN-2026");
+    host.SaveIDESetting("NEWFRONTPAGE", "{}");
+    host.SaveIDESetting("PUBLISHER", "x");
+    assert.deepEqual(stored, ["PUBLISHER"]);
+  });
+});
 
 describe("the folders an IDE leaves", () => {
   // Windows process ids are multiples of four, so this is never a process, and
