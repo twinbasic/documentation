@@ -144,7 +144,7 @@ The full path of the host EXE that the compiler creates for [Fusion](../../Featu
 
 ### Startup Object
 
-The form that the program shows when it starts, or **Sub Main**. When it is not set, the default is **Sub Main** for an EXE and **(none)** for a DLL. For a Standard EXE the list does not offer **(none)**, and for a Package TWINPACK or a TypeLibrary TLB it offers nothing else. In the `Settings` file it is `project.startupObject`.
+The form that the program shows when it starts, or **Sub Main**. When it is not set, the list shows **Sub Main** for an EXE and **(none)** for a DLL, but **Start** [looks for `Main`](Debugging/Running#what-start-runs) in both. For a Standard EXE the list does not offer **(none)**, and for a Package TWINPACK or a TypeLibrary TLB it offers nothing else. In the `Settings` file it is `project.startupObject`.
 
 ### Icon Form
 
