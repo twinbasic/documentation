@@ -358,7 +358,7 @@ for the save before committing.
    ```
 
 2. Choose **File → New Project**, then **Import from folder...** (see [New
-   Project](../../tB/IDE/Project/New#import-from-folder)).
+   Project](../../tB/IDE/Starting/New-Project#import-from-folder)).
 3. In the *Browse For Folder* dialog, choose the clone's `src` folder. The project opens
    unsaved, with no file behind it yet.
 4. Save it with <kbd>Ctrl</kbd>+<kbd>S</kbd>. The project has no file, so **Save Project**

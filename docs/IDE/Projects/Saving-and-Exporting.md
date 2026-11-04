@@ -8,9 +8,9 @@ index:
   - save a project
   - save as
   - close a project
-  - recent projects
   - export project
   - unsaved project
+index_also: recent projects
 ---
 
 # Saving and exporting
@@ -86,8 +86,8 @@ The state is kept in the registry, in a value for each project path, under `Proj
 
 ## Open a project
 
-- **File → New Project...** (<kbd>Ctrl</kbd>+<kbd>N</kbd>) and **File → Open Recent...** open the **New / Open Project** dialog, which has the sections **New**, **Samples** and **Recent**. **Open Recent...** starts on the **Recent** section. A **Recent (VB6)** section shows too when the machine has a VB6 history. [New Project](../Project/New) describes the dialog.
-- **File → Open Project...** (<kbd>Ctrl</kbd>+<kbd>O</kbd>) opens the Windows **Open** dialog. A `.vbp` file is imported as a VB6 project; the result is unsaved. The import keeps the `Attribute` lines of the VB6 files as they are, and the [FAQ](../../../FAQ#vb6-import) says what becomes of each file and each line. A project opened with **Import from folder...** is unsaved as well.
+- **File → New Project...** (<kbd>Ctrl</kbd>+<kbd>N</kbd>) and **File → Open Recent...** open the **New / Open Project** dialog, which has the sections **New**, **Samples** and **Recent**. **Open Recent...** starts on the **Recent** section. A **Recent (VB6)** section shows too when the machine has a VB6 history. [New Project](../Starting/New-Project) describes the dialog.
+- **File → Open Project...** (<kbd>Ctrl</kbd>+<kbd>O</kbd>) opens the Windows **Open** dialog. A `.vbp` file is imported as a VB6 project; the result is unsaved. [Importing a VB6 project](../Starting/Importing-VB6) says what becomes of each file and setting, and the [FAQ](../../../FAQ#vb6-import) what becomes of each `Attribute` line. A project opened with **Import from folder...** is unsaved as well.
 
 The project that is open is closed before the new one loads, and the question above comes at that point. In the **New / Open Project** dialog, it comes when you press **Open**, not before.
 
@@ -95,7 +95,7 @@ The project that is open is closed before the new one loads, and the question ab
 
 The **Recent** tab lists the full paths of the projects you opened last, the newest first. A double-click, or **Open**, opens one and moves it to the top. The **X** at the end of a row, titled **Remove from this list**, removes the entry at once, with no question. **Save Project As** adds the new path to the top. The list holds 21 entries and is kept in the registry with the IDE's settings.
 
-A project whose file is gone shows the box **Failed to load the project (error code ERROR_FILE_NOT_FOUND)**, with the path and the question **Do you want to remove it from the list of recently opened projects?** The **New / Open Project** dialog has closed by then. The buttons are **Remove It** and **Keep It**. **Keep It** moves the entry to the top. Either way the IDE is left with no project open, because the previous one was closed first. A damaged file opens a native Windows message box instead.
+A project whose file is gone shows the box **Failed to load the project (error code ERROR_FILE_NOT_FOUND)**, with the path and the question **Do you want to remove it from the list of recently opened projects?** The **New / Open Project** dialog has closed by then. The buttons are **Remove It** and **Keep It**. **Keep It** leaves the entry on the list, at the top. Either way the IDE is left with no project open, because the previous one was closed first. [Opening projects](../Starting/Opening-Projects#when-a-project-will-not-open) lists the error codes, and says what a damaged file shows instead.
 
 ![The box Failed to load the project (error code ERROR_FILE_NOT_FOUND), with the path C:\Projects\Inventory\Inventory.twinproj, the question Do you want to remove it from the list of recently opened projects?, and the buttons Remove It and Keep It.](Images/Failed_To_Load.png){:width="530" height="173"}
 
@@ -149,7 +149,7 @@ The `Packages` folder holds the compiler packages as well. For a project with th
 
 A `.twinproj` file that the IDE saved does not hold the compiler packages, and the `export` command of the tB executable does not write them. A package the project embeds is different: one added from TWINSERV or from a TWINPACK file is embedded by default (see [Linked Packages](../../../Features/Packages/Linked)), is part of the saved `.twinproj`, and has a folder under `Packages` too.
 
-**Delete the compiler packages' folders before packing the export back into a project.** The IDE's own way to pack it is **Import from folder...** in the [New Project](../Project/New#import-from-folder) dialog, which opens the project unsaved; the first save asks for a file name. The [import/export script](../../../Features/Packages/Import-Export-Tool#usage)'s `import` packs it as well. Both pack every folder under `Packages` into the project, so the compiler packages become a copy inside it. Rebuilt by **Import from folder** with them, the project was 4,222,833 bytes, against 4,207 bytes without them and 2,956 bytes for the project as the IDE saved it. Both rebuilt projects open with no errors, and the script's project is the same 4.2 MB.
+**Delete the compiler packages' folders before packing the export back into a project.** The IDE's own way to pack it is **Import from folder...** in the [New Project](../Starting/New-Project#import-from-folder) dialog, which opens the project unsaved; the first save asks for a file name. The [import/export script](../../../Features/Packages/Import-Export-Tool#usage)'s `import` packs it as well. Both pack every folder under `Packages` into the project, so the compiler packages become a copy inside it. Rebuilt by **Import from folder** with them, the project was 4,222,833 bytes, against 4,207 bytes without them and 2,956 bytes for the project as the IDE saved it. Both rebuilt projects open with no errors, and the script's project is the same 4.2 MB.
 
 The compiler does not use that copy. A function added to the copy of **VBA**, in `Packages\VBA\Sources\Math.twin`, is an unrecognized symbol (TB5079) to the code that calls it. But every later export writes the copy back into `Packages`: the added function is there again after each save, and the Debug Console reports `[EXPORT] COMPLETED (139 folders, 954 files)`, where the original project's export reported `(72 folders, 479 files)`. So after an IDE update, the export still holds the package source of the IDE that first exported the project, while the project compiles against the packages of the IDE in use.
 
@@ -168,6 +168,6 @@ The `export` command of the tB executable and of the import/export script delete
 - [Project Explorer](Project-Explorer) -- the tree of the project's files
 - [Files and folders](Files-and-Folders) -- the commands that change files, and **Export...** for a few files
 - [Project Settings](../Project-Settings#export) -- Export Path, Export After Save and Export Verbose
-- [New Project](../Project/New) -- the dialog that opens or imports a project
+- [Starting a project](../Starting/) -- the dialog that opens or imports a project, and every way of opening one
 - [File menu](../Reference/Menu/File) -- the commands of the menu
 - [Import/Export Tool](../../../Features/Packages/Import-Export-Tool) -- keeping a project in Git as plain-text files

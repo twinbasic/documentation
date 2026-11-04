@@ -133,7 +133,7 @@ The mode applies to the code editor and to the entry box of the Debug Console. <
 : Default on. When you open a project, the editors that were open when you closed it come back, in their order, with the same tab selected, each cursor where it was and each folded section still folded. The watches and the Debug Console history come back whatever this option says. The option applies when a project is opened, not when the compiler restarts.
 
 **Focus The 'Recent' Tab On IDE Startup**
-: Default off. The dialog that opens when the IDE starts opens on its **Recent** tab.
+: Default off. The dialog that opens when the IDE starts opens on its **Recent** section, until the dialog has been closed once. Every closing saves the section the dialog was on, and from then on the dialog opens on that section, whatever this option says. [New Project](../Starting/New-Project#the-section-is-remembered) describes it.
 
 **Ask Before Delete Files**
 : Default on. Deleting files in the Project Explorer shows a confirmation box first. With the option off, the files are deleted without a question.

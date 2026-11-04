@@ -14,7 +14,7 @@ In this tutorial you will create a Standard EXE project, place a button on a for
 
 ## Create the project
 
-Open twinBASIC and choose **File → New Project → Standard EXE**. The IDE creates a new project with one form, `Form1`, already open in the designer.
+Open twinBASIC. When it starts with no project, the **New / Open Project** dialog opens by itself after the splash. If a project is open, choose **File → New Project...** (<kbd>Ctrl</kbd>+<kbd>N</kbd>) to open it. Select the **Standard EXE** card and press **Open**, or double-click the card, and then press **Continue** in the **New Project Options** box that follows. The IDE creates a new project with one form, `Form1`, already open in the designer. The project is not saved yet: its title bar reads `Unsaved.twinproj`, and the first save asks for a file name. [New Project](../tB/IDE/Starting/New-Project) describes the dialog.
 
 <!-- screenshot: New Project dialog with Standard EXE selected -->
 

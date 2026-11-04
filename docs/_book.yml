@@ -262,10 +262,10 @@ parts:
     landing_page: /tB/IDE
     outline_closed: true
     chapters:
-      - title: New Project
-        page: /tB/IDE/Project/New
-        no_outline_entry: true
-        no_heading_shift: true
+      - title: Starting a project
+        landing_page: /tB/IDE/Starting/
+        page: /tB/IDE/Starting/
+        landing_is_target: true
         outline_closed: true
       - title: Projects and files
         landing_page: /tB/IDE/Projects/
@@ -702,7 +702,6 @@ left_out:
       - /tB/IDE/Reference/StatusBar
       - /tB/IDE/Reference
       - /tB/IDE/Project/Webpage
-      - /tB/IDE/Project/Splash
       - /tB/IDE/AddIns/GlobalSearch
       - /tB/IDE/Reference/Menu/File
       - /tB/IDE/Reference/Menu/Edit

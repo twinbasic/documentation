@@ -212,7 +212,7 @@ End Module
 5
 ```
 
-The New Project dialog has two larger [samples](../../tB/IDE/Project/New#samples): **Static Library Example (SQLITE3)**, which links SQLite, and **Static Library Example (libdeflate)**, which links the libdeflate compression library from `.a` files.
+The New Project dialog has two larger [samples](../../tB/IDE/Starting/Samples): **Static Library Example (SQLITE3)**, which links SQLite, and **Static Library Example (libdeflate)**, which links the libdeflate compression library from `.a` files.
 
 ## See Also
 

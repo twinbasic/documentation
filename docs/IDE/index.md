@@ -15,3 +15,5 @@ The debugging panels --- [**Call Stack**](IDE/Debugging/Inspecting#call-stack), 
 The panels you use while writing code --- [**Diagnostics**](IDE/Code/Diagnostics), [**Outline**](IDE/Code/Navigating#outline), [**Open Editors**](IDE/Code/Navigating#open-editors), [**History**](IDE/Code/Navigating#history) and [**Find / Replace**](IDE/Code/Finding) --- are described, with the editor, in [**Writing code**](IDE/Code/).
 
 The [**form designer**](IDE/Forms/) and the [**report designer**](IDE/Reports/) open when a form or report file is opened from the Project Explorer. Third-party and community [**addins**](IDE/AddIns/) extend the IDE with additional commands and tool windows.
+
+The first start, the **New / Open Project** dialog, every way of opening a project, the import of a VB6 project and the sample projects are described in [**Starting a project**](IDE/Starting/).

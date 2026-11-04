@@ -121,7 +121,7 @@ The tree shows the project's folders and files but not its `Packages`, `Settings
 > [!WARNING] BETA 1034
 > Importing a project's files replaces a file of the same path without a question, and closes the tab open on it first. Unsaved changes in that tab are lost, and so is the saved copy of the file, because the import also saves the project. Do not tick a file whose path is already in your project.
 
-This is for taking files from another project. To open a whole VB6 project as a new twinBASIC project, use **File → Open Project...** on its `.vbp`, or the **Import from VBP...** and **Import from folder...** tiles of the [New Project](../Project/New) dialog. The [FAQ](../../../FAQ#vb6-import) describes the VB6 import. A package is added as a package in [Project Settings](References-and-Packages#available-packages), not here.
+This is for taking files from another project. To open a whole VB6 project as a new twinBASIC project, use **File → Open Project...** on its `.vbp`, or the **Import from VBP...** card of the [New Project](../Starting/New-Project) dialog. [Importing a VB6 project](../Starting/Importing-VB6) describes the import. The **Import from folder...** card opens the folder of a twinBASIC project, such as an export, not a VB6 one. A package is added as a package in [Project Settings](References-and-Packages#available-packages), not here.
 
 ### The project is saved
 

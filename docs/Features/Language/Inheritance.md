@@ -203,7 +203,7 @@ Rover says: WOOF!
 Misty says: meow
 ```
 
-The classes come from Sample 23, which also has an `AnimalWatcher` class that handles the `Spoke` event, and a longer demonstration routine. To open it, choose **File → New Project**, then the **Samples** section, and pick the card **OOP Inheritance Example (Animals)**, the last one. The [New Project](../../tB/IDE/Project/New#samples) page lists every sample.
+The classes come from Sample 23, which also has an `AnimalWatcher` class that handles the `Spoke` event, and a longer demonstration routine. To open it, choose **File → New Project**, then the **Samples** section, and pick the card **OOP Inheritance Example (Animals)**, the last one. The [Samples](../../tB/IDE/Starting/Samples) page lists every sample.
 
 ## Constructors in Derived Classes
 {: index="TB5103" index_also="TB5073" }
