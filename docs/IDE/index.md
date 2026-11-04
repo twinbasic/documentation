@@ -17,3 +17,5 @@ The panels you use while writing code --- [**Diagnostics**](IDE/Code/Diagnostics
 The [**form designer**](IDE/Forms/) and the [**report designer**](IDE/Reports/) open when a form or report file is opened from the Project Explorer. Third-party and community [**addins**](IDE/AddIns/) extend the IDE with additional commands and tool windows.
 
 The first start, the **New / Open Project** dialog, every way of opening a project, the import of a VB6 project and the sample projects are described in [**Starting a project**](IDE/Starting/).
+
+What the IDE shows when the compiler's services fail, when a save cannot write, when a file of the install is missing, and the tools for finding out why, are described in [**When something goes wrong**](IDE/Troubleshooting/).

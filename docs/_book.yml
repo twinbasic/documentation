@@ -307,6 +307,11 @@ parts:
         page: /tB/IDE/Customising/
         landing_is_target: true
         outline_closed: true
+      - title: When something goes wrong
+        landing_page: /tB/IDE/Troubleshooting/
+        page: /tB/IDE/Troubleshooting/
+        landing_is_target: true
+        outline_closed: true
       - title: Add Ins
         page: /tB/IDE/AddIns/
         no_descent: true

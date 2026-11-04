@@ -26,9 +26,15 @@ Asks whether the IDE may send anonymous error reports to twinBASIC Ltd. The dial
 
 ## Help & Support (Discord Server)...
 
+Opens `https://discord.gg/UaW9GgKKuE`, the twinBASIC Discord server, in your default browser. The Discord icon in the [status bar](../StatusBar#links) does the same. The command has no key. See [Reporting a problem](../../Troubleshooting/#reporting-a-problem).
+
 ## Help & Support (GitHub repository)...
 
+Opens `https://github.com/twinbasic/twinbasic`, the repository's front page, in your default browser. It is not the form for a new issue. The GitHub icon in the status bar does the same. The command has no key.
+
 ## Twitter (News Feed)...
+
+Opens `https://twitter.com/waynephillipsea`, the news feed, in your default browser. The Twitter icon in the status bar does the same. The command has no key.
 
 ## Purchase A Licence...
 
@@ -40,4 +46,8 @@ Opens the dialog that takes a licence key. It works with no project, and has no 
 
 ## Buy us a Coffee! (Ko-Fi)...
 
+Opens `https://ko-fi.com/twinbasic` in your default browser. The Ko-fi icon in the status bar does the same. The command has no key.
+
 ## Compiler services TRACE mode: Disabled
+
+Switches TRACE mode and restarts the compiler. The item reads **Compiler services TRACE mode: Enabled**, with a tick, while the mode is on. It is a diagnostic for the developers of twinBASIC, it is not saved, and the IDE starts with it off. A native exception in your program also turns it on. The command has no key. See [TRACE mode](../../Troubleshooting/Diagnostic-Tools#trace-mode).

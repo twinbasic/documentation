@@ -30,11 +30,11 @@ What happens next depends on how the IDE was started:
 
 The dialog makes a project from a template or a sample, imports one, or opens a recent project. A project made from a template or a sample, or imported, is new and has no file on disk until you save it. See [What a new project is](New-Project#what-a-new-project-is).
 
-The compiler starts only when a project loads. Until then the status bar reads **tB Services: UNAVAILABLE** and **tB Licence: NOT READY**, and the editor's language features have nothing to work on. [The empty IDE](First-Launch#the-empty-ide) says what works without a project.
+The compiler starts only when a project loads. Until then the [status bar](../Reference/StatusBar) reads **tB Services: UNAVAILABLE** and **tB Licence: NOT READY**, and the editor's language features have nothing to work on. [The empty IDE](First-Launch#the-empty-ide) says what works without a project.
 
 ## See Also
 
 - [Projects and files](../Projects/) -- the Project Explorer, adding files, saving and exporting
 - [Project Settings](../Project-Settings) -- the settings of a project
 - [Customising the IDE](../Customising/) -- the options for the start-up dialog and the other IDE settings
-- [Status Bar](../Reference/StatusBar) -- the services and licence boxes
+- [When something goes wrong](../Troubleshooting/) -- the compiler, a save or the install failing

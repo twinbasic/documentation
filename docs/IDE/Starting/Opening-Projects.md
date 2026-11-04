@@ -64,7 +64,7 @@ Each start of the IDE writes the `.twinproj` entry and the **New** menu entry ag
 ## What happens as a project loads
 
 1. **The build configuration box is set.** The IDE sets the box to the choice it remembers for the project's path, **win32** or **win64**, before the project loads. A path it has never seen leaves the box as it is. [Build configuration](../Building/Build-Configuration#where-the-choice-is-kept) describes it.
-2. **The progress indicator shows.** The IDE adds the path to [**Recent**](New-Project#recent), at the start of the load, and asks the compiler to load the project. When the project has loaded, it connects to the compiler, clears the *changed* mark and starts the compiler's services. The status bar changes to **tB Services: OPERATIONAL**, and the licence box shows the edition.
+2. **The progress indicator shows.** The IDE adds the path to [**Recent**](New-Project#recent), at the start of the load, and asks the compiler to load the project. When the project has loaded, it connects to the compiler, clears the *changed* mark and starts the compiler's services. The status bar changes to **tB Services: OPERATIONAL**, and the licence box shows the edition. If it does not, see [Compiler services](../Troubleshooting/Compiler-Services#the-services-badge).
 3. **The project may load a second time.** See [The DEP and large-address reload](#the-dep-and-large-address-reload).
 4. **The IDE restores the project's state:** the open editors, the expanded folders and the other things listed under [What the IDE remembers](#what-the-ide-remembers-of-a-project).
 5. **A reference that cannot load opens Project Settings.** About two seconds after the load, the IDE opens [**Project Settings**](../Project-Settings#library-references) by itself, on **Library References**, with the rows that did not load flagged. It shows no message and writes nothing to the Debug Console.
@@ -114,7 +114,7 @@ The code names the cause:
 | `ERROR_BAD_FILE_FORMAT` | a `.twin` file, an empty file, a text file, or a project file whose first bytes are wrong |
 | `MISMATCHED LAA OR DEP AWARENESS` | a project whose settings still disagree with the compiler after the reload; see the [note above](#the-dep-and-large-address-reload) |
 
-Any other failure shows `ERROR_GENERIC`, or `ERROR_UNKNOWN` with a number. The box leaves no project open, and writes nothing to the Debug Console. The path was added to **Recent** when the load began, so the question is accurate. **Remove It** takes the path off the list, and **Keep It** leaves it there.
+Any other failure shows `ERROR_GENERIC`, or `ERROR_UNKNOWN` with a number. The box leaves no project open, and writes nothing to the Debug Console. [When something goes wrong](../Troubleshooting/) covers the failures that come after a project has loaded: the compiler's services, saving and the install. The path was added to **Recent** when the load began, so the question is accurate. **Remove It** takes the path off the list, and **Keep It** leaves it there.
 
 ### A damaged project
 

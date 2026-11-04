@@ -75,7 +75,7 @@ With no project loaded, every panel is empty, and no compiler is connected. The 
 
 ![The status bar with no project open: a red tB Services: UNAVAILABLE badge and a red tB Licence: NOT READY badge at the left, then the links to Ko-fi, Discord, Twitter and GitHub.](../Images/StatusBar.png){:width="661" height="27"}
 
-The services badge reads **tB Services: UNAVAILABLE**, and the licence badge reads **tB Licence: NOT READY**. Both change when a project has loaded and the compiler has answered. [Status Bar](../Reference/StatusBar) describes the badges and their other states.
+The services badge reads **tB Services: UNAVAILABLE**, and the licence badge reads **tB Licence: NOT READY**. Both change when a project has loaded and the compiler has answered. [Status Bar](../Reference/StatusBar) describes the badges and their other states. If they do not change once a project is open, see [Compiler services](../Troubleshooting/Compiler-Services#the-services-badge).
 
 Without a project, most of the **File** menu is greyed out. **New Project...**, **Open Project...**, **Open Recent...** and **Exit** work, and so do the licence commands of the **Help** menu.
 
@@ -92,7 +92,7 @@ The licence box is the second badge of the status bar. When a project has loaded
 | **ULTIMATE EDITION** | An Ultimate licence. |
 | **COMMUNITY EDITION** | Any other answer, which includes no key and an invalid key. The badge is a warning, not a tick. |
 
-The box's tooltip repeats its text. Clicking the box opens [**Enter Licence Key**](#enter-licence-key), but only once a project is loaded. The edition belongs to the compiler's answer, not to the IDE, so it stays **tB Licence: NOT READY** until a project loads.
+If the licence does not come out as you expect, see [The licence](../Troubleshooting/Missing-Files#the-licence). The box's tooltip repeats its text. Clicking the box opens [**Enter Licence Key**](#enter-licence-key), but only once a project is loaded. The edition belongs to the compiler's answer, not to the IDE, so it stays **tB Licence: NOT READY** until a project loads.
 
 When the compiler reports that a licence has expired or has been revoked, a box titled **Licence Problem!** says so, and gives the address `sales@twinbasic.com` to write to. The licence box keeps its earlier text.
 
@@ -132,3 +132,4 @@ The IDE asks for no account and no sign-in at any start. The only sign-in in the
 - [Customising the IDE](../Customising/) -- the IDE Options, and where the IDE keeps its settings
 - [Help menu](../Reference/Menu/Help) -- the licence and error reporting commands
 - [Status Bar](../Reference/StatusBar) -- the services and licence badges
+- [When something goes wrong](../Troubleshooting/) -- a box at start-up about missing files, the WebView2 runtime, the licence

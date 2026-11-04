@@ -344,7 +344,7 @@ Two things protect your work:
 - Closing a project that has unsaved changes asks **You've made changes to this project. Save now?**
 - A restart of the compiler starts from the project in memory, so unsaved edits survive it.
 
-If the IDE reports that it timed out, or failed, while it synchronised, saved or verified the open documents, it tells you to make backups of your recently edited documents by hand. Copy the text of the files you changed into another file or program before you go on.
+If the IDE reports that it timed out, or failed, while it synchronised the open documents, reloaded the project from memory or saved the open documents, it tells you to make backups of your recently edited documents by hand. Copy the text of the files you changed into another file or program before you go on. [When the compiler does not answer](../Troubleshooting/Compiler-Services#when-the-compiler-does-not-answer) lists the boxes.
 
 ## See Also
 

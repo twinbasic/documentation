@@ -12,6 +12,10 @@ written. Owner decisions:
 
 The section is not bound to its current structure. The existing pages are raw material.
 
+Where the work stands, what is next and what is open is in the kit, `TODO.md` in
+`.claude/tooling-review-scratch/ide-docs/` (gitignored), under *RESUME HERE*: read it before anything
+else. The kit also holds each chapter's fact sheet and its briefs.
+
 ## What "book-ready" means for a page
 
 - No heading without text under it, no TODO, and no list of labels copied off a screenshot.
@@ -39,7 +43,7 @@ children. Second person ("you") is allowed here, as in tutorials.
 | 7 | Building | `/tB/IDE/Building` | Toolbar's Build configuration, Menu/File's Build and Clean, Package Publishing, links to LLVM and Project-Types |
 | 8 | Customising the IDE | `/tB/IDE/Customising/` + children (**written**) | IDE Options (all of them), themes and custom `.theme` files, panel layouts, keyboard shortcuts, language (from Menu/Window and Menu/Tools) |
 | 9 | Add-ins | `/tB/IDE/AddIns/` | AddIns/* as they are, Community given content |
-| 10 | When something goes wrong | `/tB/IDE/Troubleshooting` | Status Bar's service states, Restart the compiler, TRACE mode, error reporting |
+| 10 | When something goes wrong | `/tB/IDE/Troubleshooting/` + children (**written**) | Status Bar's service states, Restart the compiler, TRACE mode, error reporting |
 
 **Part B, Reference.** Written impersonally. One page per menu, plus the Toolbar, the Status Bar
 and the keyboard shortcuts, under `/tB/IDE/Reference/…`. Each entry gives the item, its

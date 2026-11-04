@@ -44,9 +44,7 @@ These make a project changed:
 
 The IDE gives the compiler 10 seconds to save the open documents. If it does not answer, a box says that the IDE timed out while trying to save them, and advises you to make backups of your documents by hand. The compiler then has 20 seconds to write the project file. If it does not answer, a box says that the IDE timed out while trying to save the project, and that the compiler restarts and you should try again. Choose **OK** to restart it.
 
-If the compiler can write no file, an alert says **save project failed**, with a result code and the Windows error, such as `ERROR_ACCESS_DENIED` or `ERROR_DISK_FULL`, and asks you to check that the path is writable. The project stays open, changed, with its dot. Nothing is lost.
-
-The compiler can also ask the IDE for another path: a box, **Failed to save the project.  Check the project file path and adjust if necessary.**, holds the project's path in a text box, and offers **Try Again**, which saves to the path in the box and keeps it as the project's path, and **Cancel**.
+If the compiler can write no file, an alert says **save project failed**, with a result code and the Windows error, such as `ERROR_ACCESS_DENIED` or `ERROR_DISK_FULL`, and asks you to check that the path is writable. The alert is the only sign of the failure: the IDE writes nothing to the console. The project stays open, changed, with its dot, and the file is as it was. Nothing is lost. [Saving](../Troubleshooting/Saving#a-save-that-fails) lists the causes and what to do, and describes two failures that leave the IDE in an odd state.
 
 ### Other commands that save
 
@@ -58,7 +56,7 @@ Some commands save the project besides **Save Project**: **Save Project As** sav
 
 ## Save Project As
 
-**File → Save Project As...** opens the Windows **Save As** dialog, with the project's name proposed. The project's file becomes the one you choose, and the IDE saves the project there. The old file stays as it was. The new path goes to the top of the [recent list](#recent-projects), and the title bar shows the new name. The folder of the new file becomes `${SourcePath}`, for the settings that use it. The command has no key.
+**File → Save Project As...** opens the Windows **Save As** dialog, with the project's name proposed. The project's file becomes the one you choose, and the IDE saves the project there. The old file stays as it was. The new path goes to the top of the [recent list](#recent-projects), and the title bar shows the new name. The folder of the new file becomes `${SourcePath}`, for the settings that use it. The command has no key. If the save fails, see [A failed Save As](../Troubleshooting/Saving#a-failed-save-as).
 
 ## A project with no file
 
@@ -82,7 +80,7 @@ The state is kept in the registry, in a value for each project path, under `Proj
 - **Discard Changes** closes it and leaves the file on disk as it was.
 - **Cancel** keeps the project open.
 
-**File → Exit** (<kbd>Alt</kbd>+<kbd>F4</kbd>), and the close button of the window, ask the same question. If the save fails, the alert described above appears and the project stays open. Closing ends the compiler process of the project. **Close Project** has no key.
+**File → Exit** (<kbd>Alt</kbd>+<kbd>F4</kbd>), and the close button of the window, ask the same question. If the save fails, the alert described above appears and the project stays open; see [A failed Close](../Troubleshooting/Saving#a-failed-close). Closing ends the compiler process of the project. **Close Project** has no key.
 
 ## Open a project
 

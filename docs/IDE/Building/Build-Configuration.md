@@ -7,10 +7,10 @@ permalink: /tB/IDE/Building/Build-Configuration
 index:
   - win32
   - win64
-  - safe mode
   - 32-bit
   - 64-bit
   - target architecture
+index_also: safe mode
 ---
 
 # Build configuration
