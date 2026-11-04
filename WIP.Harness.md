@@ -303,7 +303,7 @@ front of the compiler.
 exit code 1 if the project has errors:
 
 ```sh
-node scripts/tbbuild.mjs C:/probe/AttributeExplore.twinproj
+node scripts/tbbuild.mjs "$TEMP/probe/AttributeExplore.twinproj"
 ```
 
 It finds the IDE itself --- the newest `twinBASIC_IDE_BETA_<n>` on

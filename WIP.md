@@ -129,7 +129,7 @@ path contains a username.
 node scripts/impexp.mjs export <some>.twinproj <out-dir>   # a project's or package's sources
 node scripts/census_attributes.mjs --out census.md   # every attribute, by enclosing construct
 node scripts/sweep_attributes.mjs --out sweep.md --dump-results sweep.json   # every attribute at every site, 8 to 16 min
-node scripts/tbbuild.mjs C:/probe/Thing.twinproj     # does it compile
+node scripts/tbbuild.mjs "$TEMP/probe/Thing.twinproj"   # does it compile
 node scripts/tbrun.mjs <exported-source-dir>         # what does it print
 ```
 
@@ -738,6 +738,7 @@ they are.
 
 ## Don'ts
 
+- **Nothing writes outside the cloned repository and the temp folder** (owner). A tool, a test, a probe, a fixture and a session keep their files in this checkout (`.claude/`, which git ignores, for what is not committed) or under `%TEMP%`: never at a drive's root (`C:\probe`, `C:\tbshots`), on the Desktop, in the user's profile or in another checkout. A path that a picture or a page must show is a virtual one, rewritten at the capture, not a real folder. Reading is not writing: an install on the Desktop, the Windows folder, VB6 and the installed fonts stay readable. The one exception is `tbbroker`, installed in `%LOCALAPPDATA%\tbbroker` because every checkout shares it ([WIP.Broker.md](WIP.Broker.md)). The registry has its own rule: a run leaves it as it found it ([WIP.Harness.md](WIP.Harness.md#what-a-run-leaves-in-the-registry-and-putting-it-back)).
 - Don't commit `.claude/` or `CLAUDE.md` — both gitignored. (`WIP.md` is committed; `CLAUDE.md` is just a local `@WIP.md` import shim.)
 - Don't touch `_site/` or `_site-offline/` (build outputs, gitignored).
 - **Don't walk `docs/` for its markdown with a private `readdir`.** Call `markdownFiles` from [lib/markdown-files.mjs](lib/markdown-files.mjs), which never enters the build's output trees. A walk that does enter them crashes whenever a running `serve.bat` rewrites `_serve`; see [The code-region gate](WIP.Build.md#the-code-region-gate). Any other walk of `docs/` decides what is an output tree with the same module's `isOutputTree`, as `check_tree_fresh.mjs` does, rather than a list of its own.
