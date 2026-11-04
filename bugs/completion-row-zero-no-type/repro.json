@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:completion-row-zero",
+  "tests": ["the row with lazy index 0 is never asked for, and shows no type"],
+  "steps": "1. Make a new project with a module Things that declares six Public variables As Long.\n2. In a procedure of another module, type Things. so that the completion list opens.\n3. Five rows read variable Long, and one reads only variable. Closing the list and typing the dot again changes nothing."
+}

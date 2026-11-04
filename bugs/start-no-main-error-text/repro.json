@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:samples",
+  "tests": ["Start with no Main writes a compile error that gives no reason"],
+  "steps": "1. Make a new Standard EXE project, and replace its module with:\n    Module Startup\n        Public Sub Greet(ByVal name As String)\n            Debug.Print name\n        End Sub\n    End Module\n2. Press F5. The DEBUG CONSOLE shows Executing 'Main'..., then (compile error: Main). BETA 1033 wrote (compile error: Unrecognized symbol 'Main')."
+}

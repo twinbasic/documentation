@@ -12342,4 +12342,139 @@ Severity: low. Nothing is lost, but the loop runs for ever with nothing to say w
 
 <!-- Reproducer: bugs/compiler-connection-retry-loop/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "a compiler connection that cannot be made restarts the compiler every 5 s, and the crash-loop message never fires", in an IDE of its own with --debug, ended by its pid). No project and no zip. docs/IDE/Troubleshooting/Compiler-Services.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's D4). -->
 
+---
 
+## Start in a project with no Main writes "(compile error: Main)", which gives no reason
+
+**Describe the bug**
+Since BETA 1034, **Start** in a project whose startup object is `Sub Main` and which has no procedure called `Main` writes `(compile error: Main)` to the DEBUG CONSOLE. BETA 1033 wrote `(compile error: Unrecognized symbol 'Main')`. The line now names the symbol and leaves out what is wrong with it.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Make a new Standard EXE project, and replace its module with:
+   ```
+   Module Startup
+       Public Sub Greet(ByVal name As String)
+           Debug.Print name
+       End Sub
+   End Module
+   ```
+2. Press F5.
+3. See the DEBUG CONSOLE:
+   ```
+   Executing 'Main'...
+   (compile error: Main)
+   [DEBUGGER] global variables have been cleared
+   ```
+
+**Expected behavior**
+The second line reads `(compile error: Unrecognized symbol 'Main')`, as in BETA 1033.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+F6's messages did not change: a procedure with a required argument still gives `(compile error: Too few arguments, expected 1 in call to 'Greet')` on both builds, and a method of a class still gives `Unrecognized member`. The change may share its cause with the nested TB5079 message of BETA 1034, since both are the same message; that is a guess from the text, not something this reproducer shows.
+
+Severity: low. Nothing is lost, but a reader who has not met the message cannot tell what it means.
+
+<!-- Reproducer: bugs/start-no-main-error-text/ (mode lane: asserted by `ide-test.bat --only "^samples$"` (test/ide/samples.test.mjs), the test "Start with no Main writes a compile error that gives no reason", with the control "F6 on a procedure it cannot call says why"; BETA 1033 gives the old text, tried with p2 and p3 of the session's kit). docs/IDE/Debugging/Running.md carries the NOTE, under What Start runs. -->
+
+---
+
+## A DLL project that names no startup object shows Default: (none), but Start runs Main
+
+**Describe the bug**
+When `project.startupObject` is not in a project's `Settings` file, Project Settings shows **Default: (none)** for an ActiveX DLL, but **Start** does what **Sub Main** does: it looks for `Main`, does not find it, and writes a compile error. Only a `Settings` file that says `(none)` gives `[DEBUGGER] No startup object set`. The ActiveX DLL, ActiveX Control and Standard DLL templates and the samples of those kinds leave the key out, so this is what **Start** does in a new project of any of them.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Make a new project from the **ActiveX DLL** template.
+2. Open Project Settings. **Startup Object** shows **Default: (none)**. Close it.
+3. Press F5.
+4. See the DEBUG CONSOLE:
+   ```
+   Executing 'Main'...
+   (compile error: Main)
+   [DEBUGGER] global variables have been cleared
+   ```
+5. Choose **(none)** for **Startup Object**, save, and press F5 again. The DEBUG CONSOLE shows `[DEBUGGER] No startup object set`.
+
+**Expected behavior**
+A project with no startup object in its `Settings` file behaves as the default Project Settings shows, so step 4 gives the line of step 5.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The same on BETA 1033, where step 4's second line is `(compile error: Unrecognized symbol 'Main')`. The IDE's table of defaults gives `(none)` for every build type but Standard EXE, and the setting's description says the same, so it looks as though the compiler defaults to `Main` whatever the build type and the IDE does not send the default it shows. Seen on Samples 3, 4, 5, 7, 9 and 10, each with no key.
+
+Severity: low. Nothing runs either way; the reader gets an error about a procedure the project type does not need.
+
+<!-- Reproducer: bugs/dll-startup-default-runs-main/ (mode lane: asserted by `ide-test.bat --only "^samples$"` (test/ide/samples.test.mjs), the test "a DLL whose Settings names no startup object shows (none) in Project Settings, and Start runs Main", with the control "a DLL whose Settings says (none) writes that it has no startup object"). docs/IDE/Debugging/Running.md carries the NOTE, under What Start runs. -->
+
+---
+
+## The completion list never asks for the type of the row with lazy index 0
+
+**Describe the bug**
+In the completion list, one row never gets its type. A variable on that row shows `variable` with nothing after it, and a function shows no text at all, while every other row shows its type. Which row it is depends on the compile, and it stays the same when the list is closed and opened again, or when the selection moves to the row.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Make a new project with this module:
+   ```
+   Module Things
+       Public Alpha As Long
+       Public Bravo As Long
+       Public Charlie As Long
+       Public Delta As Long
+       Public Echo As Long
+       Public Foxtrot As Long
+   End Module
+   ```
+2. In a procedure of another module, type `Things.` so that the list opens.
+3. See that five rows read `variable Long`, and that one reads only `variable`.
+
+**Expected behavior**
+Every row shows its type.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The same on BETA 1033. The list gets each row's type by asking for it, by the row's lazy index, as the row is first drawn. The page tests that index for truth before it asks, and the indexes count from 0, so the row whose index is 0 is never asked for. The compiler itself is right: `textDocument/lazyCompletion` for that row returns its type, as the reproducer's control shows. So the test should be that the row has an index, not that the index is true. The row's `uri` and `line` come in the same answer, so that row has no location either. The indexes do not follow the list's order, which is why the row seems to move, and it goes unnoticed when it is out of sight or is a kind of name with no type.
+
+Severity: low. One row lacks its type, and nothing else.
+
+<!-- Reproducer: bugs/completion-row-zero-no-type/ (mode lane: asserted by `ide-test.bat --only "^completion-row-zero$"` (test/ide/completion-row-zero.test.mjs), the test "the row with lazy index 0 is never asked for, and shows no type", with the controls "every other row of the list shows its type" and "asked for that row, the compiler gives its type"). docs/IDE/Code/IntelliSense.md carries the NOTE, under The completion list. scripts/shoot_docs.mjs asks for the row itself (`askForRowZero`, the picture e2a65dfe): take that out when this entry is retired. -->
+
+---
+
+## Sample 22: the Uninstall button of TBSERVICE001 registers the event log of TBSERVICE002
+
+**Describe the bug**
+In Sample 22, *Windows Service Complex Example*, the event log of the second service is registered by the wrong button. `btnInstall001_Click` installs TBSERVICE001 and registers its event log. `btnInstall002_Click` installs TBSERVICE002 and registers none. `btnUninstall001_Click` uninstalls TBSERVICE001 and then calls `RegisterEventLog("Application\TBSERVICE002")`, so the line looks as if it belongs in `btnInstall002_Click`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open Sample 22.
+2. Open `Sources/FORMS/MainForm.twin`.
+3. Read `btnInstall001_Click`, `btnInstall002_Click` and `btnUninstall001_Click`.
+
+**Expected behavior**
+`btnInstall002_Click` registers the event log of TBSERVICE002, as `btnInstall001_Click` does for TBSERVICE001, and `btnUninstall001_Click` registers nothing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Read from the sample's source only. It has not been run, because that needs the sample's services installed on the machine with administrator rights, so what the Event Viewer shows for TBSERVICE002 is not known.
+
+Severity: low. It is a sample, but a reader copies a sample's pattern.
+
+<!-- Reproducer: bugs/sample22-event-log-wrong-button/ (mode lane: asserted by `ide-test.bat --only "^samples$"` (test/ide/samples.test.mjs), the test "Sample 22's Uninstall button of service 1 registers the event log of service 2", which reads the sample in the install). No page carries a callout (owner). -->

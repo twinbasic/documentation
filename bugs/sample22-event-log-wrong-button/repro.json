@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:samples",
+  "tests": ["Sample 22's Uninstall button of service 1 registers the event log of service 2"],
+  "steps": "1. Open Sample 22.\n2. Open Sources/FORMS/MainForm.twin.\n3. btnUninstall001_Click calls RegisterEventLog(\"Application\\TBSERVICE002\"), and btnInstall002_Click calls nothing of the kind."
+}

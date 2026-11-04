@@ -882,9 +882,10 @@ Taken on BETA 1010, in both themes where the theme shows.
   then renames the user in the page.
 - **`f48a7254`** starts at the question's left edge: the row being ticked shows an animated
   spinner no two captures hold alike. **`e2a65dfe`**: the completion list is the IDE's own
-  (`.debugConsoleEntryIntellisenseBox`), shows types as `...` until the compiler gives them
-  (now and then never: the dot is retyped), and is placed by the list the name before the dot
-  opened unless that is closed first. It is 500 px wide (its CSS); `triggerIntellisense`
+  (`.debugConsoleEntryIntellisenseBox`), shows types as `...` until the compiler gives them,
+  never asks for the row with lazy index 0 (`bugs/completion-row-zero-no-type`: the shot asks for
+  it, and retyping the dot would not help, since the indexes stay), and is placed by the list the
+  name before the dot opened unless that is closed first. It is 500 px wide (its CSS); `triggerIntellisense`
   places it at the text cursor's box as drawn at the time, which is at the dot or, now and then,
   already after it (the picture 1198 px wide against 1184): the shot moves it to where the
   cursor's box stood at the dot (owner).

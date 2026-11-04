@@ -52,4 +52,6 @@ export default [
   { file: "starting.test.mjs" },
   { file: "troubleshooting.test.mjs" },
   { file: "troubleshooting-missing.test.mjs" },
+  { file: "samples.test.mjs" },
+  { file: "completion-row-zero.test.mjs" },
 ];

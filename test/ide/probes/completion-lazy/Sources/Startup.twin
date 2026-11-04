@@ -1,0 +1,16 @@
+' The project test/ide/completion-row-zero.test.mjs opens. Each variable of Things
+' has a row in the completion list, which asks the compiler for the row's type.
+Module Things
+    Public Alpha As Long
+    Public Bravo As Long
+    Public Charlie As Long
+    Public Delta As Long
+    Public Echo As Long
+    Public Foxtrot As Long
+End Module
+
+Module Startup
+    Public Sub Main()
+
+    End Sub
+End Module

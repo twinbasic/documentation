@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:samples",
+  "tests": ["a DLL whose Settings names no startup object shows (none) in Project Settings, and Start runs Main"],
+  "steps": "1. Make a new project from the ActiveX DLL template.\n2. Open Project Settings. Startup Object shows Default: (none). Close it.\n3. Press F5. The DEBUG CONSOLE shows Executing 'Main'..., then a compile error.\n4. Choose (none) for Startup Object, save, and press F5. The DEBUG CONSOLE shows [DEBUGGER] No startup object set."
+}

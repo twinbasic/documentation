@@ -1,0 +1,7 @@
+' The project test/ide/samples.test.mjs opens with its startup object set in
+' several ways. It has no procedure called Main.
+Module Startup
+    Public Sub Greet(ByVal name As String)
+        Debug.Print name
+    End Sub
+End Module

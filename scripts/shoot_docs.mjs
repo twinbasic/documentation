@@ -12387,9 +12387,11 @@ const packageServerShots = [
         was = { text: await editorText(c), counts: await diagCounts(c) };
         await setCursor(c, 4, 1);
         await typeText(c, "        fmt");
-        // The list shows each member's type as "...", or a variable's or a function's kind with
-        // no type after it, until the compiler has given it, which it now and then never does
-        // for a list: the dot is typed again then.
+        // The list shows each member's type as "..." until the compiler has given it. It asks for
+        // the rows it draws by their lazy index, and its test of that index is false for 0, so
+        // the row with index 0 is never asked for and keeps a variable's or a function's kind with
+        // no type after it, in every list of this compile (bugs/completion-row-zero-no-type).
+        // `askForRowZero` asks, and keeps the compiler's answer as the list keeps one.
         const listed = (resolved) =>
           c.evaluate(`(() => {
   const b = [...document.querySelectorAll(${JSON.stringify(COMPLETIONS)})].find((b) => b.getBoundingClientRect().width);
@@ -12411,20 +12413,30 @@ const packageServerShots = [
             await waitFor(c, async () => !(await boxShown()), { timeout: 2000, interval: 100 });
           }
         };
-        let shown = false;
-        for (let i = 0; i < 3 && !shown; i++) {
-          if (i) {
-            await pressKey(c, "Escape");
-            await pressKey(c, "Backspace");
-          }
-          await noList();
-          await typeText(c, ".");
-          if (!(await waitFor(c, () => listed(false), { timeout: 30000, interval: 200 }))) {
-            throw new Error("typing fmt. opened no completion list of the package's members");
-          }
-          shown = await waitFor(c, () => listed(true), { timeout: 10000, interval: 200 });
+        const askForRowZero = () =>
+          c.evaluate(
+            `new Promise((done) => {
+  const list = debugConsoleEntryIntellisenseList;
+  const x = list.dataNodesDATA.findIndex((o) => o.i === 0 && !o.gotData);
+  if (x < 0) return done(false);
+  lspSocket.request("textDocument/lazyCompletion", { lazyRequestId: list.lazyRequestId, requests: [{ x, i: 0 }] }, (e) => {
+    for (const { x: row, ...answer } of e.results ?? []) {
+      Object.assign(list.dataNodesDATA[row], answer, { gotData: true });
+      list.notifyChangedItem(row);
+    }
+    list.repaint();
+    done(true);
+  });
+})`,
+            { awaitPromise: true },
+          );
+        await noList();
+        await typeText(c, ".");
+        if (!(await waitFor(c, () => listed(false), { timeout: 30000, interval: 200 }))) {
+          throw new Error("typing fmt. opened no completion list of the package's members");
         }
-        if (!shown) {
+        await askForRowZero();
+        if (!(await waitFor(c, () => listed(true), { timeout: 10000, interval: 200 }))) {
           const rows = await c.evaluate(`[...document.querySelectorAll(${JSON.stringify(COMPLETIONS)})]
   .filter((b) => b.getBoundingClientRect().width)
   .flatMap((b) => [...b.querySelectorAll(".listitem")].map((r) => r.innerText.replace(/\\s+/g, " ").trim()))
