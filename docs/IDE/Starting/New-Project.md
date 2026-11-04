@@ -137,6 +137,10 @@ A few more things about the rows:
 
 **Cancel** closes the box, the progress indicator and the project. Nothing is opened, and the IDE is left with no project, because the one that was open was closed before the box appeared.
 
+<!-- test: bug import-cancel-leaves-import-mode -->
+> [!NOTE] BETA 1034
+> After **Cancel** in this box for an imported `.vbp`, the next template or sample shows the box with an import's rows: **Unicode Common Control Notifications** is there, and **Include Common Controls** is not. **Continue** then makes a project with no reference to WinNativeCommonCtls, with [*Unicode Control Notifications*](../Project-Settings#unicode-control-notifications) on, and with the description and the application title left as they were, `New project` for a template, in place of the project's name. The box is right again after that **Continue**, and in a new IDE. Cancelling the Windows picker of **Import from VBP...** does not do this. In a project made this way, add the package under [Available Packages](../Projects/References-and-Packages#available-packages), and set the [*Project Description*](../Project-Settings#project-description) and the [*Application Title*](../Project-Settings#application-title).
+
 ![The box for a .vbp import: the project's name from the .vbp, DPI Awareness set to NONE, the row for Unicode notifications, and no row for the common controls.](Images/Options_VBP.png){:width="529" height="279"}
 
 ![The box for the ActiveX DLL template, with its row for HKEY_LOCAL_MACHINE unticked.](Images/Options_ActiveX.png){:width="503" height="245"}

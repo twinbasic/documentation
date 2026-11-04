@@ -477,7 +477,11 @@ export function startingKit(lane) {
     /** Start an IDE with no project, and the guard in front of the hook. */
     async startIde(cfg = {}) {
       scriptId = null;
-      c = await lane.openNoProject();
+      // An IDE started just after another can show no page for a minute: ended, and started again once.
+      c = await lane.openNoProject().catch(async () => {
+        await lane.closeProject();
+        return lane.openNoProject();
+      });
       await waitStartDialog(90 * 1000);
       await fresh(cfg);
     },
@@ -584,6 +588,13 @@ export function startingKit(lane) {
       await sleep(250);
     },
     nameBox: () => ev(`${nameBox}.value`),
+    /** The rows of New Project Options, by the first line of each. */
+    optionRows: () =>
+      ev(
+        `[...document.querySelectorAll(".modalDialogContainer .IDEoption")].filter((e) => e.getBoundingClientRect().width).map((e) => e.innerText.split("\\n")[0].trim())`,
+      ),
+    /** Whether the page holds New Project Options in its import form. */
+    importMode: () => ev("g_IsLoadingVBP"),
     /** The name box of New Project Options selected. */
     selectName: () => ev(`(() => { const i = ${nameBox}; i.focus(); i.select(); })()`),
     async typeName(name) {

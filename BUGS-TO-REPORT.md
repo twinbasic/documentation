@@ -12026,3 +12026,36 @@ Severity: cosmetic.
 
 <!-- Reproducer: bugs/front-page-search-one-mark/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "two search words in one line of a row lose the first mark", with the control "control: search words in different lines of a row are each marked"). No project and no zip. No page carries a callout. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D18). -->
 
+---
+
+## Cancel in New Project Options of an import leaves the next project's box drawn as an import
+
+**Describe the bug**
+After **Import from VBP...**, **Cancel** in New Project Options leaves the IDE in its import state. The next template's or sample's New Project Options is drawn as an import's, with a *Unicode Common Control Notifications* row and no *Include Common Controls* row, and **Continue** there makes a different project from the one the same card makes: it has no WinNativeCommonCtls reference, its description and title are the template's text and not the name typed in the box, and `runtime.useUnicodeCommonControlNotifications` is set. Nothing says so. It was observed with real clicks, comparing the box's rows and the new project's Settings, key by key, with the same card in a fresh IDE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE. **File > New Project...**, double-click **Import from VBP...**, choose any `.vbp`.
+2. Press **Cancel** in New Project Options.
+3. **File > New Project...**, double-click **Standard EXE**. The box lists *Project Name*, *Option Explicit ON*, *Visual Styles*, *DPI Awareness* and *Unicode Common Control Notifications*. The same for **Samples**, **HelloWorld**.
+4. Type `CardName` as the Project Name, and press **Continue**.
+5. In Project Settings the project's description and title read `New project`, and its references have no WinNativeCommonCtls.
+
+**Expected behavior**
+The box lists *Include Common Controls* and no *Unicode Common Control Notifications* row, as the same card does in a fresh IDE, and **Continue** gives the project it gives there: the WinNativeCommonCtls reference, and `CardName` as the description and the title.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`loadProjectVBP` sets `g_IsLoadingVBP`, and the only clear is inside the **Continue** callback that `showNewProjectOptions` is given. The box's **Cancel** runs `hideModalDialog`, `hideModalProgressIndicator`, `closeProjectNow` and `root.webSocket = undefined`, and `closeProjectNow` does not clear it. So the state holds through any number of Cancels, until a **Continue** in any box, and the next box after that is right.
+
+Compared key by key with the same card in a fresh IDE, the project differs in `project.appTitle`, `project.description`, `project.references` (the WinNativeCommonCtls reference is missing), `runtime.useUnicodeCommonControlNotifications` (set to true, and absent from the other) and, as for any project, `project.id`. The project is otherwise normal: it opens with the template's sources, tB Services reads OPERATIONAL, and it is not marked changed.
+
+**Cancel** in the import's own Windows picker does not do it: the flag stays false, because `loadProjectVBP` has not run, and the next box is right.
+
+Severity: low. The box shows the difference and nothing is lost, but the controls of WinNativeCommonCtls are missing from the new project, and the name typed is not its title.
+
+<!-- Reproducer: bugs/import-cancel-leaves-import-mode/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "after Cancel in New Project Options of Import from VBP..., the next template's box is drawn as an import: a Unicode row, and no Include Common Controls", "after that Cancel, a sample's box is drawn as an import too" and "Continue in that box gives a project with no WinNativeCommonCtls reference, the template's description and title in place of the name, and Unicode Common Control Notifications on; the project is otherwise normal", with four controls: the card and a sample in a fresh page, the box after that Continue, and Cancel in the picker; real clicks, and the picker answered in the page). No project and no zip. docs/IDE/Starting/New-Project.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 by shoot_docs, whose boxes for the ActiveX DLL card and for Sample 1 had the Unicode row and no Include Common Controls row. -->
+

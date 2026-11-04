@@ -1,5 +1,5 @@
 // Starting a project: the New / Open Project dialog, opening projects and importing a VB6 project,
-// tested against thirteen entries in BUGS-TO-REPORT.md:
+// tested against fourteen entries in BUGS-TO-REPORT.md:
 //
 //   "The next project opened after a DEP / LAA reload and New Project Options takes the earlier
 //   project's whole Settings, silently" (bugs/open-takes-earlier-settings)
@@ -23,6 +23,8 @@
 //   "A Recent path holding # shows cut in two" (bugs/recent-path-hash-cut)
 //   "New / Open Project search rows show the internal path" (bugs/front-page-search-internal-paths)
 //   "Two search words in one line of a row lose the first mark" (bugs/front-page-search-one-mark)
+//   "Cancel in New Project Options of an import leaves the next project's box drawn as an import"
+//   (bugs/import-cancel-leaves-import-mode)
 //
 // Three IDEs, one after the other. The first has every test but three, each from a page of its own
 // (fresh in starting-kit.mjs reloads the page, so its variables start again and no project is open).
@@ -585,13 +587,17 @@ scenario("Starting a project", (lane) => {
 
   // ------------------------------------------------------------- the flags
 
+  // The saves of these keys since the last look. Every page start also saves WEBPANEL_SETTINGS,
+  // at no fixed moment.
+  const savesOf = async (...keys) => (await k.saves()).filter((s) => keys.includes(s[0]));
+
   test("with --no-save-ide-settings, closing the New / Open Project dialog calls SaveIDESetting for NEWFRONTPAGE all the same", async () => {
     await k.fresh();
     assert.equal(await k.c.evaluate("g_DontSaveIdeSettings"), true);
     await k.saves();
     await k.button("Cancel");
     await sleep(300);
-    assert.deepEqual(await k.saves(), [["NEWFRONTPAGE", '{"section":"new"}']]);
+    assert.deepEqual(await savesOf("NEWFRONTPAGE"), [["NEWFRONTPAGE", '{"section":"new"}']]);
   });
 
   test("with --no-save-ide-settings, a change in the Object Browser calls SaveIDESetting for OBJECT_BROWSER all the same", async () => {
@@ -605,7 +611,7 @@ scenario("Starting a project", (lane) => {
     );
     await clickAt(k.c, p.x, p.y);
     await sleep(500);
-    assert.deepEqual([...new Set((await k.saves()).map((s) => s[0]))], ["OBJECT_BROWSER"]);
+    assert.ok((await savesOf("OBJECT_BROWSER")).length > 0, "no save of OBJECT_BROWSER");
   });
 
   test("with --no-save-ide-settings, saving the publisher's details calls SaveIDESetting for PUBLISHER all the same", async () => {
@@ -618,7 +624,7 @@ scenario("Starting a project", (lane) => {
       })()`,
       { awaitPromise: true },
     );
-    assert.deepEqual(await k.saves(), [["PUBLISHER", "(value not kept)"]]);
+    assert.deepEqual(await savesOf("PUBLISHER"), [["PUBLISHER", "(value not kept)"]]);
   });
 
   test("control: with --no-save-ide-settings, a build target chosen for a saved project is not saved", async () => {
@@ -628,7 +634,7 @@ scenario("Starting a project", (lane) => {
     await k.c.evaluate(`(() => { buildConfigSelector.value = "win64"; buildConfigSelector.onchange(); })()`);
     await sleep(800);
     await k.waitReady();
-    assert.deepEqual(await k.saves(), []);
+    assert.deepEqual(await savesOf("targetArchitectureMemory"), []);
   });
 
   test("--no-save-ide-settings is read only after the first-run questions: the licence answers are saved with it on the command line", async () => {
@@ -642,7 +648,7 @@ scenario("Starting a project", (lane) => {
     await waitFor(k.c, async () => (await k.modals()).some((t) => t.includes("Automatic Error Reporting")), {
       timeout: 10 * 1000,
     });
-    const saved = await k.saves();
+    const saved = await savesOf("LICENCEAGREEMENTV3", "ALLOWERRORREPORTINGV3");
     assert.deepEqual(
       saved.map((s) => s[0]),
       ["LICENCEAGREEMENTV3", "ALLOWERRORREPORTINGV3"],
@@ -705,6 +711,140 @@ scenario("Starting a project", (lane) => {
   test("control: search words in different lines of a row are each marked", async () => {
     const rows = await search("standard console");
     assert.deepEqual(rows[0].slice(0, 2), ["<<Standard>> EXE", "(<<Console>> App)"]);
+  });
+
+  // ------------------------------------------------------------- import-cancel-leaves-import-mode
+
+  const INCLUDE = "Include Common Controls";
+  const UNICODE = /Unicode/;
+  const COMMON_CTLS = "{D63CB78D-9F5B-42FE-B94C-A545F2B2BFC3}";
+  const ids = (st) => st["project.references"].map((r) => r.id);
+  let plainCard = null;
+
+  // New, and a double-click on a card: the box's rows, with the box left open.
+  const boxFor = async (card, sectionName = null) => {
+    await k.cmd("tbProject_New");
+    await k.waitStartDialog(8000);
+    if (sectionName) {
+      await k.section(sectionName);
+      await sleep(250);
+    }
+    await k.dblItem(card);
+    await k.waitOptions();
+    return k.optionRows();
+  };
+  // The state the defect leaves: Import from VBP... on a project, Cancel in New Project Options.
+  const importCancelled = async () => {
+    await k.noProject();
+    await k.setAnswer("OpenProjectVBP", k.vbp("import-cancel"));
+    const rows = await boxFor(/^Import from VBP/);
+    assert.ok(
+      rows.some((x) => UNICODE.test(x)),
+      J(rows),
+    );
+    await k.button("Cancel");
+    await sleep(800);
+  };
+  const assertCardBox = (rows) => {
+    assert.ok(rows.includes(INCLUDE), J(rows));
+    assert.ok(!rows.some((x) => UNICODE.test(x)), J(rows));
+  };
+  const assertImportBox = (rows) => {
+    assert.ok(!rows.includes(INCLUDE), J(rows));
+    assert.ok(
+      rows.some((x) => UNICODE.test(x)),
+      J(rows),
+    );
+  };
+
+  test("control: in a fresh page the Standard EXE card's box has Include Common Controls and no Unicode row, and Continue gives a project with the package, and the name as its description and title", async () => {
+    await k.noProject();
+    assert.equal(await k.importMode(), false);
+    assertCardBox(await boxFor(/^Standard EXE$/));
+    await k.typeName("CardName");
+    await k.button("Continue");
+    await sleep(400);
+    await k.waitReady();
+    plainCard = await k.settings();
+    assert.ok(ids(plainCard).includes(COMMON_CTLS));
+    assert.equal(plainCard["project.description"], "CardName");
+    assert.equal(plainCard["project.appTitle"], "CardName");
+    assert.equal(plainCard["runtime.useUnicodeCommonControlNotifications"], undefined);
+  });
+
+  test("control: in a fresh page Sample 1's box has Include Common Controls and no Unicode row", async () => {
+    await k.noProject();
+    assertCardBox(await boxFor(/HelloWorld/, "Samples"));
+  });
+
+  test("after Cancel in New Project Options of Import from VBP..., the next template's box is drawn as an import: a Unicode row, and no Include Common Controls", async () => {
+    await importCancelled();
+    assert.equal(await k.importMode(), true);
+    assert.equal((await k.state()).loaded, false);
+    assertImportBox(await boxFor(/^Standard EXE$/));
+    await k.button("Cancel");
+    await sleep(800);
+    assert.equal(await k.importMode(), true, "a Cancel of that box cleared it");
+  });
+
+  test("after that Cancel, a sample's box is drawn as an import too", async () => {
+    assertImportBox(await boxFor(/HelloWorld/, "Samples"));
+    await k.button("Cancel");
+    await sleep(800);
+  });
+
+  test("Continue in that box gives a project with no WinNativeCommonCtls reference, the template's description and title in place of the name, and Unicode Common Control Notifications on; the project is otherwise normal", async () => {
+    await boxFor(/^Standard EXE$/);
+    await k.typeName("CardName");
+    await k.button("Continue");
+    await sleep(400);
+    await k.waitReady();
+    const st = await k.settings();
+    assert.equal(st["project.name"], "CardName");
+    assert.ok(!ids(st).includes(COMMON_CTLS), J(ids(st)));
+    assert.deepEqual(
+      ids(st),
+      ids(plainCard).filter((id) => id !== COMMON_CTLS),
+    );
+    assert.equal(st["project.description"], "New project");
+    assert.equal(st["project.appTitle"], "New project");
+    assert.equal(st["runtime.useUnicodeCommonControlNotifications"], true);
+    // Every other key is as the same card makes it in a fresh page; the id is new for each project.
+    const differs = [...new Set([...Object.keys(st), ...Object.keys(plainCard)])].filter(
+      (key) => J(st[key]) !== J(plainCard[key]),
+    );
+    assert.deepEqual(differs.sort(), [
+      "project.appTitle",
+      "project.description",
+      "project.id",
+      "project.references",
+      "runtime.useUnicodeCommonControlNotifications",
+    ]);
+    const s = await k.state();
+    assert.equal(s.title, "Unsaved.twinproj");
+    assert.equal(s.dirty, false);
+    assert.equal(s.services, "OPERATIONAL");
+    assert.deepEqual(s.root, ["cardname"]);
+    assert.deepEqual((await k.sources()).sort(), ["Form1.tbform", "Form1.twin"]);
+  });
+
+  test("control: that Continue clears it, and the next box is right again", async () => {
+    assert.equal(await k.importMode(), false);
+    await k.close();
+    assertCardBox(await boxFor(/^Standard EXE$/));
+  });
+
+  test("control: Cancel in the import's own picker leaves the next box right", async () => {
+    await k.noProject();
+    await k.setAnswer("OpenProjectVBP", "");
+    await k.cmd("tbProject_New");
+    await k.waitStartDialog(8000);
+    await k.events();
+    await k.dblItem(/^Import from VBP/);
+    await sleep(1500);
+    assert.ok((await k.events()).includes("dialog OpenProjectVBP"));
+    assert.equal(await k.importMode(), false);
+    assertCardBox(await boxFor(/^Standard EXE$/));
   });
 
   // ------------------------------------------------------------- N3, an IDE of its own

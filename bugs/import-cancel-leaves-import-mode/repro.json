@@ -1,0 +1,10 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "after Cancel in New Project Options of Import from VBP..., the next template's box is drawn as an import: a Unicode row, and no Include Common Controls",
+    "after that Cancel, a sample's box is drawn as an import too",
+    "Continue in that box gives a project with no WinNativeCommonCtls reference, the template's description and title in place of the name, and Unicode Common Control Notifications on; the project is otherwise normal"
+  ],
+  "steps": "1. File > New Project..., Import from VBP..., any .vbp. Press Cancel in New Project Options.\n2. File > New Project..., double-click Standard EXE. The box has a Unicode Common Control Notifications row and no Include Common Controls row. The same for a sample.\n3. Type a name and press Continue. The project has no WinNativeCommonCtls reference, its description and title are New project, not the name, and runtime.useUnicodeCommonControlNotifications is true.\n4. The next box is right again.\nControls: the same card in a fresh IDE; Cancel in the import's own picker leaves the next box right."
+}
