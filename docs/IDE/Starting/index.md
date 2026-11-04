@@ -35,6 +35,6 @@ The compiler starts only when a project loads. Until then the status bar reads *
 ## See Also
 
 - [Projects and files](../Projects/) -- the Project Explorer, adding files, saving and exporting
-- [Project Settings](../Project-Settings) -- the settings of a project, including those the **New Project Options** box sets
+- [Project Settings](../Project-Settings) -- the settings of a project
 - [Customising the IDE](../Customising/) -- the options for the start-up dialog and the other IDE settings
 - [Status Bar](../Reference/StatusBar) -- the services and licence boxes
