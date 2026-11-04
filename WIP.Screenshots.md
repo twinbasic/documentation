@@ -143,6 +143,38 @@ Measured:
   its file is left as it is** (`nearly`: one size, no channel more than 16 levels apart, at most
   0.5% of the pixels apart), reported `unchanged but for a capture's noise`, with a `.noise`
   picture under `--diffs`. The same test decides that a light picture is the dark one.
+- **A picture's two themes say the same.** A shot's passes show one state in two colours, so
+  a picture whose text differs is a wrong state, not the theme, and fails as one of another size
+  does, naming the words on each side, and is not kept (`runJob`, with or without `--svg`). A
+  size alone misses it: Options_ActiveX once showed an import's rows at the dark picture's size.
+  `TEXT_IN_CLIP` reads the page, not the SVG, as each capture is chosen, since the same text wraps
+  and is cut short differently in each theme: each block of text inside the clip, across the shadow
+  roots, with the text boxes' values and each closed select's choice. A line shows where part
+  of it is inside the clip and inside its ancestors' clipping boxes and is on top there, and a
+  block counts all its text once any line of it shows, so a line of code the clip cuts off
+  reads the same in both. A block is `whole` when a line of it shows its full height and half
+  its width, or 40 px of it, and otherwise `cut`. `themeTextDifference`
+  (`scripts/lib/shot-policy.mjs`) ignores white space and refuses only what one side has `whole`
+  and the other shows none of, since Light lays a window out a few pixels differently and a row at
+  the clip's edge shows more in one theme (Paused_Line's `price: 3`, Editor_Panel's `25`). A
+  composite's layer is not read; its parts are, as they are captured. A shot whose words must
+  differ says so in `themeWords`, naming them: First_Run_Options and Menu_Tools_IDEOptions show the
+  theme's own name (`SHOWS_ITS_THEME`). A window taken once has no pair.
+- **The tool's folder is virtual in a picture** (owner). Nothing writes at a drive's root, so
+  `PACKAGE_ROOT` is `TOOL_ROOT`, `.claude\tbshots` in the checkout, and every picture shows it as
+  `SHOWN_ROOT`, `C:\tbshots`, a folder that does not exist (`scripts/lib/shot-root.mjs`).
+  `Lane`'s `onAttach` installs the rewrite before a project loads, and `capture` again, for a
+  page that has reloaded: the DOM's text setters and the page's `TEXTtoHTML`, whose `&#92;` no pattern
+  would find, rewrite what they are given at once, because the console measures a row in the
+  task that writes it and a path 40 characters longer leaves it a line too tall; a
+  MutationObserver on each root takes the rest. A text box's value is rewritten just before each
+  capture and SVG and put back after, so that the page never reads the shown name back and acts on
+  it. A part that starts with a dot may have no slash before it, because Markdown, which draws
+  the import log, reads `\.` as an escape. A capture fails when the real folder is in the page's
+  text, its text boxes, the SVG or a window's texts: what cannot be rewritten is fixed, and the guard
+  is not relaxed. `startTidy` sweeps the folder's `ProjectState` entries; `asTempFolder` allows
+  exactly this one folder outside the temp folder, so two checkouts' shoot_docs runs at once
+  would refuse each other's.
 - **The reference is the picture at `HEAD`, then the file** (owner; `pictureFate` in
   `scripts/lib/shot-revision.mjs`). Compared with the file alone, a picture drifted from
   `HEAD` over the runs of one retake, each step within noise of the file before it, and a run
@@ -507,8 +539,8 @@ Six setups, their fixtures under `test/shots/building/`, copied from the Buildin
 minute (so that a second build finds its file in use), `ax` is ShotActiveX, an ActiveX DLL whose
 class has GUIDs of its own (`B01D...B001` to `B003`, not the lanes', so that a lane and a shot run
 at once never share a registration), and `pkg` is MyPackage, a PRIVATE package. Each project is
-staged in a folder of the tool's own on `PACKAGE_ROOT` named for its setup (`C:\tbshots\Building`
-and so on), with the templates' build path, so that a console line names no user; the setup's
+staged in a folder of the tool's own on `PACKAGE_ROOT` named for its setup (shown as
+`C:\tbshots\Building` and so on), with the templates' build path, so that a console line names no user; the setup's
 `end` removes the folder once its IDE has ended. Its 14 pictures
 are under `docs/IDE/Building/Images/`.
 
@@ -605,8 +637,7 @@ setup, which the setup's `end` removes. Its 14 pictures are under `docs/IDE/Star
   read whole: damage inside that entry is an endless loop of the box. It is opened from the
   tool's own Recent list and closed unsaved, and the take fails if the file changed.
 - **Nothing of a project reaches the registry.** These setups add `AddRecentsList` and
-  `SaveProjectMetaState` to `PAGE_DEFAULTS`' blocked calls: the tidy removes `ProjectState` only
-  under the temp folder, and these projects are on `PACKAGE_ROOT`.
+  `SaveProjectMetaState` to `PAGE_DEFAULTS`' blocked calls.
 
 ## Special IDE states
 
@@ -727,7 +758,7 @@ setup, which the setup's `end` removes. Its 14 pictures are under `docs/IDE/Star
 - **`Toolbar_4`**: setup `designer`, the sample run with Start (`context.codeExecuting`) and
   stopped after.
 - **`8d74d820`** (setup `package`) and **Fusion's `569099635`** (setup `fusion`): the paths the
-  console names are on `PACKAGE_ROOT`, `\tbshots` at the root of the temp folder's drive
+  console names are on `PACKAGE_ROOT`, shown as `C:\tbshots`
   (`Lane.open`'s `buildPath`; the fixture's `project.fusionBuildPath` in the staged copy),
   removed at the end unless it was there before.
 - **A Fusion host needs a Fusion reference that holds an ActiveX control.** `settings-fusion`'s
@@ -799,7 +830,7 @@ Taken on BETA 1010.
 
 - **`16833fae`** (setup `import`): the sample open, and `test/shots/vbp` (ImportDemo: a form,
   a module, `..\Shared\modShared.bas` for `{PARENT-FOLDER}`) staged with CRLF on
-  `PACKAGE_ROOT\Projects` (the path the dialog shows, `C:\tbshots\Projects\ImportDemo\ImportDemo.vbp`),
+  `PACKAGE_ROOT\Projects` (the dialog shows it as `C:\tbshots\Projects\ImportDemo\ImportDemo.vbp`),
   with a `.res` the tool writes (`scripts/lib/res-file.mjs`: three icons and the fixture's
   manifest). The IDE's Open dialog is native, so the take calls `importFileByPath` with the
   file, what the IDE calls with the file chosen; the form's two files are ticked with real

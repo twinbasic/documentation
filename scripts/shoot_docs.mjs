@@ -117,7 +117,9 @@
 //     its light theme (builder/theme-pictures.mjs). A light picture with the dark one's
 //     pixels is not kept. Light lays the window out a few pixels differently, so a light
 //     picture can be a few pixels off the dark one's size; the page shows each at its own
-//     (SIZE_SLACK). A label's pill follows the theme (lib/shot-annotate.mjs).
+//     (SIZE_SLACK). A label's pill follows the theme (lib/shot-annotate.mjs). The two pictures say
+//     the same: text one shows whole and the other shows none of fails the picture
+//     (TEXT_IN_CLIP, themeTextDifference).
 //   * What the user's machine would put into a picture is kept out of the IDE's
 //     page, in the page only (the no-project and project setups): the IDE's
 //     options are set to their defaults, the saved panel layouts and keyboard
@@ -163,7 +165,7 @@ import { hoverText, mouseAway, pointOf, restMouse } from "../test/addin/hover.mj
 import { frameEval, frameOf, serveLoopback } from "../test/addin/pages.mjs";
 import { launchBrowser } from "./lib/browser.mjs";
 import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "./lib/shot-annotate.mjs";
-import { composite, uncomposite } from "./lib/shot-composite.mjs";
+import { COMPOSITE_ID, composite, uncomposite } from "./lib/shot-composite.mjs";
 import { decodePng, encodePng, pngSize } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
 import { inRects, pngsNear, withinNoise } from "./lib/shot-change.mjs";
@@ -172,12 +174,22 @@ import { applyPicture, applySvg, dropPicture, restorePictures, svgOf } from "./l
 import { freezePage, showFrozen } from "./lib/shot-freeze.mjs";
 import { FIRST_RUN, guardSource, SETTLED, settingsHash } from "./lib/shot-first-run.mjs";
 import {
+  holdsRoot,
+  rootBoxesBackJs,
+  rootBoxesJs,
+  rootPattern,
+  rootTextJs,
+  SHOWN_ROOT,
+  TOOL_ROOT,
+} from "./lib/shot-root.mjs";
+import {
   bundleFollowsSvg,
   cleanupResets,
   decidePicture,
   pngRule,
   SVG_FAITHFUL,
   svgFollowsPng,
+  themeTextDifference,
 } from "./lib/shot-policy.mjs";
 import { MANIFEST, openManifest, svgDecision } from "./lib/shot-manifest.mjs";
 import { reviewPicture, reviewSvg } from "./lib/shot-queue.mjs";
@@ -700,6 +712,81 @@ const VISIBLE_TEXT = `(() => {
   return out.join("\\n");
 })()`;
 
+// The text a picture of `clip` shows, read from the page as it is captured, for the check that
+// its two themes say the same (themeTextDifference): each block of text, in the document's order,
+// across every shadow root, the text boxes' values and each closed select's choice among them. A
+// line of text shows where part of it is inside the clip and inside every box of its ancestors
+// that clips it, and is on top there: a dialog hides what is behind it, a list's rows that scrolled
+// away are clipped, and the copies of rows a list keeps out of sight lie under the ones it shows.
+// A block counts all its text once any line of it shows, so a line a picture's edge cuts off, and
+// text an ellipsis shortens, read the same in both themes. It is `whole` when a line of it shows
+// its full height and half its width, or 40 px of it, and else `cut`: a row at the clip's edge,
+// which a theme that lays it out a few pixels further on shows less of. Null for a composite's
+// layer, whose parts were read as they were captured. The annotation layer is the tool's own, and
+// takes no hits, so it is not read.
+const TEXT_IN_CLIP = (clip) => `(() => {
+  if (document.getElementById(${JSON.stringify(COMPOSITE_ID)})) return null;
+  const c = ${JSON.stringify(clip ?? null)} ?? { x: scrollX, y: scrollY, width: innerWidth, height: innerHeight };
+  const x0 = c.x - scrollX, y0 = c.y - scrollY, x1 = x0 + c.width, y1 = y0 + c.height;
+  const boxes = new Map();
+  const clipBox = (e) => {
+    if (!e) return { left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity };
+    if (boxes.has(e)) return boxes.get(e);
+    let box = clipBox(e.parentElement ?? e.getRootNode().host ?? null);
+    const s = getComputedStyle(e);
+    if (s.overflowX !== "visible" || s.overflowY !== "visible") {
+      const r = e.getBoundingClientRect();
+      box = { left: Math.max(box.left, r.left), top: Math.max(box.top, r.top), right: Math.min(box.right, r.right), bottom: Math.min(box.bottom, r.bottom) };
+    }
+    boxes.set(e, box);
+    return box;
+  };
+  const shown = (e, r) => {
+    const b = clipBox(e);
+    const left = Math.max(r.left, x0, b.left), right = Math.min(r.right, x1, b.right);
+    const top = Math.max(r.top, y0, b.top), bottom = Math.min(r.bottom, y1, b.bottom);
+    if (right <= left || bottom <= top) return 0;
+    const hit = e.getRootNode().elementFromPoint((left + right) / 2, (top + bottom) / 2);
+    if (!hit || !(hit === e || e.contains(hit) || hit.contains(e))) return 0;
+    return bottom - top >= r.height - 1 && right - left >= Math.min(r.width / 2, 40) ? 2 : 1;
+  };
+  const blockOf = (e) => {
+    for (let a = e; a; a = a.parentElement) if (!/^(inline$|contents)/.test(getComputedStyle(a).display)) return a;
+    return e;
+  };
+  const blocks = new Map();
+  const entry = (key) => {
+    if (!blocks.has(key)) blocks.set(key, { text: "", shown: 0 });
+    return blocks.get(key);
+  };
+  const range = document.createRange();
+  const SKIP = /^(STYLE|SCRIPT|NOSCRIPT|OPTION|TITLE|TEMPLATE|TEXTAREA)$/;
+  const read = (root) => {
+    const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const e = n.parentElement;
+      if (!e || !/\\S/.test(n.data) || SKIP.test(e.tagName) || getComputedStyle(e).visibility !== "visible") continue;
+      const b = entry(blockOf(e));
+      b.text += n.data;
+      if (b.shown === 2) continue;
+      range.selectNodeContents(n);
+      for (const r of range.getClientRects()) b.shown = Math.max(b.shown, shown(e, r));
+    }
+    for (const e of root.querySelectorAll("input, textarea, select")) {
+      const r = e.getBoundingClientRect();
+      if (/^(checkbox|radio|hidden|button|submit)$/.test(e.type) || r.width < 4 || r.height < 4) continue;
+      if (getComputedStyle(e).visibility !== "visible") continue;
+      const b = entry(e);
+      b.text = e.tagName === "SELECT" ? (e.options[e.selectedIndex]?.text ?? "") : e.value;
+      b.shown = shown(e, r);
+    }
+    for (const e of root.querySelectorAll("*")) if (e.shadowRoot) read(e.shadowRoot);
+  };
+  read(document);
+  const all = [...blocks.values()].filter((b) => b.text);
+  return { whole: all.filter((b) => b.shown === 2).map((b) => b.text), cut: all.filter((b) => b.shown === 1).map((b) => b.text) };
+})()`;
+
 // `expression` evaluated in the document of a frame: `frame` is the origin of a child frame
 // of `conn`'s page, or the connection to a frame of another site, which is a target of its
 // own (the detached help window's page is a string, and its frame is on another site).
@@ -766,6 +853,7 @@ const newShotState = (name) => ({
   ignore: null,
   editedOriginal: null,
   svg: null,
+  text: { whole: [], cut: [] },
 });
 
 // A line of output, prefixed with the setup it is from (they run at once).
@@ -856,6 +944,21 @@ function refuseUserName(text, name, what) {
   throw new Error(`${what} for ${name} shows the Windows user name: ${JSON.stringify(around)}`);
 }
 
+// The tool's real folder, which every picture shows as SHOWN_ROOT (lib/shot-root.mjs).
+const ROOT_PATTERN = rootPattern(TOOL_ROOT);
+const showRootText = (conn) => conn.evaluate(rootTextJs(TOOL_ROOT, SHOWN_ROOT));
+const showRootBoxes = (conn) => conn.evaluate(rootBoxesJs(TOOL_ROOT, SHOWN_ROOT));
+
+// Fails the picture `name` when `text` holds the real folder: what could not be rewritten is
+// fixed where it is, and this is never relaxed.
+function refuseRoot(text, name, what) {
+  if (!holdsRoot(text, ROOT_PATTERN)) return;
+  const at = text.search(ROOT_PATTERN);
+  throw new Error(
+    `${what} for ${name} shows ${TOOL_ROOT}, not ${SHOWN_ROOT}: ${JSON.stringify(text.slice(Math.max(0, at - 40), at + TOOL_ROOT.length + 40))}`,
+  );
+}
+
 // A capture of `clip` (CSS pixels, on whole device pixels) from `conn`, refused
 // when the page's visible text holds the user name: before the first capture, and
 // again, with the SVG when there is one, when a capture is chosen. The page can draw
@@ -870,6 +973,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
   refuseUserName(await textOf(conn, frame), name, "the page");
   if (away) await away();
   await quiet(conn);
+  await showRootText(conn);
   try {
     if (keep) await cutoutOn(conn, keep, solid);
     else await frames(conn);
@@ -902,12 +1006,20 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     // wide) is captured a device pixel short of it (168), and an SVG of the whole clip
     // would show the half of an edge the PNG cuts off.
     const picked = async (png) => {
-      refuseUserName(await textOf(conn, frame), name, "the page as captured");
+      const text = await textOf(conn, frame);
+      refuseUserName(text, name, "the page as captured");
+      refuseRoot(text, name, "the page as captured");
+      const read = await conn.evaluate(TEXT_IN_CLIP(clip));
+      conn.shot.text.whole.push(...(read?.whole ?? []));
+      conn.shot.text.cut.push(...(read?.cut ?? []));
+      if (frame) conn.shot.text.whole.push(await inFrame(conn, frame, "document.body.innerText"));
       if (values.svg) {
         const [width, height] = pngSize(png);
         const size = { width: width / SCALE, height: height / SCALE };
+        await showRootBoxes(conn);
         conn.shot.svg = await svgOfPage(conn, clip && { ...clip, ...size }, { background: !keep });
         if (holdsUserName(conn.shot.svg.svg, USER)) throw new Error(`the SVG of ${name} holds the Windows user name`);
+        refuseRoot(conn.shot.svg.svg, name, "the SVG");
       }
       return png;
     };
@@ -920,6 +1032,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     let agreed = null;
     let gap = 0;
     for (let i = 0; ; i++) {
+      await showRootBoxes(conn);
       const { data } = await conn.send("Page.captureScreenshot", params);
       const png = Buffer.from(data, "base64");
       const equal = wants.find((w) => same(w, png, masks));
@@ -943,6 +1056,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     if (agreed) return await picked(agreed);
     throw new Error(`the page for ${name} kept changing: no two captures in a row were equal`);
   } finally {
+    await conn.evaluate(rootBoxesBackJs);
     if (keep) await cutoutOff(conn);
   }
 }
@@ -1102,6 +1216,9 @@ async function resetUi(c) {
 const THEMES = ["dark", "light"];
 const THEME_COMMAND = { dark: "tbTheme_SwitchToDarkMode", light: "tbTheme_SwitchToLightMode" };
 const THEME_NAME = { dark: "dark", light: "Light" };
+// A shot's `themeWords`: the words its two themes must differ by, for themeTextDifference. A shot
+// that shows the list of colour themes shows the theme it is taken in.
+const SHOWS_ITS_THEME = { dark: ["Dark"], light: ["Light"] };
 // The path of a picture in a theme: the dark one is the path the shot table gives.
 const themedOut = (out, theme) => (theme === "dark" ? out : out.replace(/\.png$/, ".light.png"));
 
@@ -2022,6 +2139,7 @@ const dialogShots = [
     // unavailable: load a project first>" in place of their lists.
     out: dialogOut("IDE/Menu", "Menu_Tools_IDEOptions"),
     setup: "project",
+    themeWords: SHOWS_ITS_THEME,
     take: ({ c }) =>
       inDialog(c, { command: "tbIde_ShowIDEOptions", title: "IDE Options", close: "Close" }, () =>
         dialogShot(c, "Menu_Tools_IDEOptions"),
@@ -2192,12 +2310,17 @@ async function nameCloseProject(c) {
   if (named !== "tbProject_Close") throw new Error(`the status bar names "${named}", not tbProject_Close`);
 }
 
-// The IDE's whole window at the size of a full-HD screen, as it opens with no project.
+// The IDE's whole window at the size of a full-HD screen, as it opens with no project. The
+// panels' pictures after it float each panel on its own, so a pass that follows theirs would show
+// the window without them: the shot puts the default layout back itself.
 const ideWindowShot = {
   out: "IDE/Images/IDE.png",
   setup: "no-project",
   take: ({ c }) =>
     atSize(c, 1920, 1032, async () => {
+      await resetUi(c);
+      await command(c, "tbPanels_SetActiveLayoutDefault");
+      await frames(c);
       await nameCloseProject(c);
       return capture(c, "IDE", snapOut({ x: 0, y: 0, width: 1920, height: 1032 }, 1920, 1032));
     }),
@@ -3668,6 +3791,10 @@ const settingsShot = (
       await noFlash(c);
       await nameUserAsUser(c);
       if (prepare) await prepare(c);
+      // the count's box has no height until the dialog has counted, which can be after it is still
+      if (unsteady?.includes(CHANGED_COUNT)) {
+        await waitFor(c, () => rectOf(c, CHANGED_COUNT.on.css), { timeout: 5000, interval: 100 });
+      }
       return dialogShot(c, out, (m) => clipOf(m, c), annotate, { unsteady });
     }),
 });
@@ -11160,6 +11287,7 @@ async function stableWindow(desktop, hwnd, name, file, flags = 2, { active = fal
   if (active) await activated(desktop, hwnd, name);
   for (let i = 0; i < 8; i++) {
     const info = await captureWindow(desktop, hwnd, file, { flags });
+    refuseRoot(info.texts.join("\n"), name, "the window");
     const named = info.texts.find((t) => t.toLowerCase().includes(USER.toLowerCase()));
     if (named !== undefined)
       throw new Error(`the window of ${name} shows the Windows user name in ${JSON.stringify(named)}`);
@@ -11537,13 +11665,13 @@ const memoryShot = panelShot("Memory_String", "MEMORY 1", [696, 120], {
 });
 
 // ---- package: the sample, a TWINPACK package, built (setup package), with its build path on a
-// folder of the tool's own at the root of the temp folder's drive, PACKAGE_ROOT: the DEBUG
-// CONSOLE names the file the build creates, and the lane's own build path is under the
+// folder of the tool's own in the checkout, PACKAGE_ROOT, which the page shows as SHOWN_ROOT: the
+// DEBUG CONSOLE names the file the build creates, and the lane's own build path is under the
 // user's profile. The folder is made by the IDE and removed at the end of the run, unless it
 // was there before it. The console's times are set in the page once the real ones are shown,
 // as the CodeLens pictures' are.
 
-const PACKAGE_ROOT = path.join(path.parse(tmpdir()).root, "tbshots");
+const PACKAGE_ROOT = TOOL_ROOT;
 const PACKAGE_BUILD_PATH = path.join(PACKAGE_ROOT, "Build", "${ProjectName}_${Architecture}.${FileExtension}");
 
 // Sets every line time of the DEBUG CONSOLE to CODELENS_TIME, and the time a CodeLens run took
@@ -12175,7 +12303,13 @@ const packageServerShots = [
           }
           shown = await waitFor(c, () => listed(true), { timeout: 10000, interval: 200 });
         }
-        if (!shown) throw new Error("the completion list never showed its members' types");
+        if (!shown) {
+          const rows = await c.evaluate(`[...document.querySelectorAll(${JSON.stringify(COMPLETIONS)})]
+  .filter((b) => b.getBoundingClientRect().width)
+  .flatMap((b) => [...b.querySelectorAll(".listitem")].map((r) => r.innerText.replace(/\\s+/g, " ").trim()))
+  .filter((t) => /(\\.\\.\\.|variable|returns)$/.test(t))`);
+          throw new Error(`the completion list never showed its members' types: ${JSON.stringify(rows)}`);
+        }
         await sleep(500);
         // The IDE places the list at its text cursor's box as drawn when the list is asked for,
         // and that is at the dot or, now and then, already after it, 7 pixels to the right
@@ -12395,8 +12529,8 @@ async function startPackageCheck(run) {
 // Add menu's Import imports a .vbp. The IDE's own Open dialog is a native window, so the take
 // calls what the IDE calls with the file chosen in it (importFileByPath); the IDE then loads the
 // project in a compiler of its own and shows the Import from twinproj dialog, its tree of what
-// it found. The project is staged on PACKAGE_ROOT, a folder of the tool's own at the root of
-// the temp folder's drive, since the dialog names the .vbp's path: with CRLF line ends, as VB6
+// it found. The project is staged on PACKAGE_ROOT, a folder of the tool's own, since the dialog
+// names the .vbp's path, which the page shows under SHOWN_ROOT: with CRLF line ends, as VB6
 // writes its files, a module in a folder beside the project's (Shared), which the IDE puts
 // under {PARENT-FOLDER}, and a resource file the tool writes (lib/res-file.mjs): three icons
 // and the manifest test/shots/vbp/manifest.xml.
@@ -13401,9 +13535,10 @@ const BANNER_MARGIN = 40;
 // same IDE Options, and reporting is never on, not for a moment. The theme is set at the first
 // dialog, as the IDE Options read it when they open. The options a first start has are the dark
 // theme's, so the Light pictures are that dialog with the theme switched by its own command.
-const firstRunShot = (name, answers) => ({
+const firstRunShot = (name, answers, themeWords = null) => ({
   out: ST_IMAGE(name),
   setup: "starting-first-run",
+  themeWords,
   async take({ c, guard }) {
     const theme = c.shot.out.endsWith(".light.png") ? "light" : "dark";
     await guardedPage(c, guard, FIRST_RUN);
@@ -13749,10 +13884,14 @@ async function leaveDamaged(c, file, cut) {
 const startingShots = [
   firstRunShot("Licence_Agreement", []),
   firstRunShot("Error_Reporting", [["I AGREE", "Automatic Error Reporting"]]),
-  firstRunShot("First_Run_Options", [
-    ["I AGREE", "Automatic Error Reporting"],
-    ["NO", "IDE Options"],
-  ]),
+  firstRunShot(
+    "First_Run_Options",
+    [
+      ["I AGREE", "Automatic Error Reporting"],
+      ["NO", "IDE Options"],
+    ],
+    SHOWS_ITS_THEME,
+  ),
   {
     // Help > Enter Licence Key... with no project: the box empty, and Cancel
     out: ST_IMAGE("Licence_Key"),
@@ -14176,7 +14315,7 @@ for (const name of existsSync(runs) ? readdirSync(runs) : []) {
 }
 const root = path.join(runs, String(process.pid));
 mkdirSync(root, { recursive: true });
-const tidy = startTidy({ prefixes: [root] });
+const tidy = startTidy({ prefixes: [root, PACKAGE_ROOT] });
 if (!tidy) die(2, "could not record the registry, so it could not be put back afterwards");
 // The SaveSetting application names of the add-ins a setup loads. What they have saved is
 // the user's (an installed copy of the add-in reads the same key): a run starts from none,
@@ -14437,6 +14576,7 @@ async function keepSvg(name, out, png, picture, kept, holds, window = false) {
   }
   const { svg, stats, misses, bundle } = picture;
   if (holdsUserName(svg, USER)) throw new Error(`the SVG of ${out} holds the Windows user name`);
+  refuseRoot(svg, out, "the SVG");
   // The bundle names the PNG as the file holds it: a capture within the noise of the file
   // leaves the file as it was, and that file is what replay.mjs compares with.
   if (bundlesRoot) writeBundle(bundlesRoot, out, bundle, holds ?? png, misses);
@@ -14551,6 +14691,12 @@ async function runJob(job) {
     show: false,
     browserArgs: BROWSER_ARGS,
     projectId: DOCS_PROJECT_ID,
+    // before the project loads, not at the first capture: the IDE and the shots measure what it
+    // draws, and the console's first lines are the load's
+    onAttach: async (c) => {
+      await waitFor(c, () => c.evaluate(`typeof TEXTtoHTML === "function"`), { timeout: 30000, interval: 20 });
+      await showRootText(c);
+    },
   });
   const state = newShotState(job.name);
   running.add(run);
@@ -14573,6 +14719,7 @@ async function runJob(job) {
     // taken in the dark pass only; a job of them has no light pass.
     // A run stopped (--events) takes no further picture, and switches no theme.
     const darks = new Map();
+    const darkTexts = new Map();
     const prepared = await setupState(run.c, ctx);
     for (const [theme, shots] of passes(job)) {
       if (!shots.length) continue;
@@ -14596,6 +14743,7 @@ async function runJob(job) {
         state.ignore = pngRule(entryOf(out)).rects;
         state.out = out;
         state.svg = null;
+        state.text = { whole: [], cut: [] };
         try {
           // a take returns the PNG's bytes, or { png, scale } for a picture not at SCALE
           const taken = await shot.take(ctx);
@@ -14606,7 +14754,19 @@ async function runJob(job) {
               `the shot ${window ? "took a program's window" : "is marked window: true"} and ${window ? "is not marked window: true" : "took no program's window"} in the table`,
             );
           const png = Buffer.isBuffer(taken) ? taken : taken.png;
-          if (theme === "dark") darks.set(shot.out, png);
+          if (theme === "dark") {
+            darks.set(shot.out, png);
+            darkTexts.set(shot.out, state.text);
+          } else if (darkTexts.has(shot.out)) {
+            // a shot's two themes show one state: other text is a wrong state, as another size is
+            const other = themeTextDifference(darkTexts.get(shot.out), state.text, shot.themeWords);
+            if (other) {
+              writeDiff(job.name, out, dark, png, { suffix: ".text", labels: { before: "DARK", after: "LIGHT" } });
+              throw new Error(
+                `the two themes say different things: only the dark picture has ${JSON.stringify(other.dark)}, only the light one ${JSON.stringify(other.light)}`,
+              );
+            }
+          }
           const { kept, holds } = keep(
             job.name,
             shot.out,

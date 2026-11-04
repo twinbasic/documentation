@@ -53,6 +53,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { TOOL_ROOT } from "./lib/shot-root.mjs";
 import * as R from "./lib/tb-registry.mjs";
 
 // A crash exits 2; the catch below passes on everything but a failed assertion.
@@ -360,6 +361,28 @@ try {
     /outside/,
     "the temp folder itself is not a sweepable prefix",
   );
+
+  // One folder outside the temp folder is swept, shoot_docs's, and no other: not one beside it,
+  // not its parent, and not a folder inside it.
+  const TOOL_PROJECT = `${TOOL_ROOT}\\Building\\project.twinproj`;
+  const TOOL_NEIGHBOUR = `${TOOL_ROOT}2\\Building\\project.twinproj`;
+  setValues(`${ROOT}\\ProjectState`, { [TOOL_PROJECT]: "{}", [TOOL_NEIGHBOUR]: "{}" });
+  R.restoreProjects({ root: ROOT, entries: [] }, { prefixes: [TOOL_ROOT] });
+  const toolState = R.ideLists({ root: ROOT }).projectState;
+  assert.ok(!toolState.includes(TOOL_PROJECT), "the allowed folder's entry is swept");
+  assert.ok(toolState.includes(TOOL_NEIGHBOUR), "and the neighbour's is not");
+  deleteValues(`${ROOT}\\ProjectState`, [TOOL_NEIGHBOUR]);
+  const memoryKey = `${ROOT}\\IDESettings`;
+  const targets = JSON.stringify({ [TOOL_PROJECT]: "win64", [TOOL_NEIGHBOUR]: "win32" });
+  setValues(memoryKey, { targetArchitectureMemory: targets });
+  assert.deepEqual(R.rememberedTargets([TOOL_ROOT], { root: ROOT }), [TOOL_PROJECT]);
+  assert.deepEqual(R.rememberedTargets([TOOL_ROOT.toUpperCase()], { root: ROOT }), [TOOL_PROJECT], "in any case");
+  deleteValues(memoryKey, ["targetArchitectureMemory"]);
+  for (const near of [`${TOOL_ROOT}2`, path.dirname(TOOL_ROOT), path.join(TOOL_ROOT, "Building")]) {
+    assert.throws(() => R.restoreProjects({ root: ROOT, entries: [] }, { prefixes: [near] }), /outside/, near);
+    assert.throws(() => R.rememberedTargets([near], { root: ROOT }), /outside/, near);
+  }
+
   assert.throws(
     () =>
       R.restoreKeys([

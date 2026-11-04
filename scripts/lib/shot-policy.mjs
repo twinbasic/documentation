@@ -18,6 +18,46 @@ import { pictureFate } from "./shot-revision.mjs";
 // was not in the state the dark picture shows.
 export const SIZE_SLACK = 32;
 
+const noSpace = (texts) => texts.join("").replace(/\s+/g, "");
+
+// The words of `a` that `b` does not hold, each as often as it is over.
+function wordsOver(a, b) {
+  const left = new Map();
+  for (const w of b) left.set(w, (left.get(w) ?? 0) + 1);
+  return a.filter((w) => {
+    const n = left.get(w) ?? 0;
+    if (n) left.set(w, n - 1);
+    return !n;
+  });
+}
+
+/**
+ * What the two themes of one picture say differently. The two passes of a shot show one state
+ * in two colours, so the text the page shows inside the picture's clip is the same; a difference
+ * is a wrong state, not the theme (Options_ActiveX's light picture once showed an import's
+ * rows, at the dark one's size). White space does not count, since the same text wraps
+ * differently in each theme. Each theme also lays the window out a few pixels differently, so
+ * a line at the edge of a clip shows more in one than in the other: only text one side shows
+ * whole and the other shows none of is a difference, and text a side shows cut by an edge
+ * answers for the other's but is never asked for.
+ *
+ * @param {{whole: string[], cut: string[]}} dark   the text the dark pass read, block by block:
+ *   `whole` the blocks with a line that shows in full, `cut` those an edge cuts
+ * @param {{whole: string[], cut: string[]}} light  the text the light pass read
+ * @param {{dark?: string[], light?: string[]} | null} [allow]  the words a shot says must differ
+ *   (the name of the theme in a list that shows it), each on its own side, and no others
+ * @returns {{dark: string[], light: string[]} | null}  the words only each side shows, or null
+ *   when they say the same
+ */
+export function themeTextDifference(dark, light, allow = null) {
+  const all = (side) => [...side.whole, ...side.cut];
+  if (noSpace(all(dark)) === noSpace(all(light))) return null;
+  const words = (texts) => texts.join(" ").split(/\s+/).filter(Boolean);
+  const left = wordsOver(words(dark.whole), words(all(light))).filter((w) => !allow?.dark?.includes(w));
+  const right = wordsOver(words(light.whole), words(all(dark))).filter((w) => !allow?.light?.includes(w));
+  return left.length || right.length ? { dark: left, light: right } : null;
+}
+
 // The most an SVG may differ from its PNG and still be written: the share of
 // its pixels (percent) more than 96 grey levels off the PNG's, a shift of one
 // pixel allowed. Past it something is drawn wrongly or not at all -- a part

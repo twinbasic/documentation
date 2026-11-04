@@ -85,7 +85,9 @@ import {
   SVG_FAITHFUL,
   svgFollowsPng,
   svgRule,
+  themeTextDifference,
 } from "../scripts/lib/shot-policy.mjs";
+import { holdsRoot, rootPattern, SHOWN_ROOT, showRoot, TOOL_ROOT } from "../scripts/lib/shot-root.mjs";
 import {
   earlierPngDecision,
   earlierSvgDecision,
@@ -3468,6 +3470,117 @@ describe("which pictures need a look (shot-queue.mjs)", () => {
         .why,
       "fringe",
     );
+  });
+});
+
+describe("the tool's folder as a picture shows it (shot-root.mjs)", () => {
+  const REAL = "D:\\Work\\docs.v2\\.claude\\tbshots";
+  const SHOWN = "C:\\tbshots";
+  const pattern = rootPattern(REAL);
+  const show = (text) => showRoot(text, pattern, SHOWN);
+
+  test("the real folder becomes the shown name, whatever follows it", () => {
+    assert.equal(show(`${REAL}\\Building\\project.twinproj`), "C:\\tbshots\\Building\\project.twinproj");
+    assert.equal(show(`File: ${REAL}\\a.vbp, and ${REAL}\\b.vbp`), "File: C:\\tbshots\\a.vbp, and C:\\tbshots\\b.vbp");
+    assert.equal(show(REAL), SHOWN);
+  });
+
+  test("in any case, with either slash, and with a doubled one", () => {
+    assert.equal(show("d:\\work\\DOCS.V2\\.CLAUDE\\TBSHOTS\\x"), "C:\\tbshots\\x");
+    assert.equal(show("D:/Work/docs.v2/.claude/tbshots/x"), "C:\\tbshots/x");
+    assert.equal(show("D:\\\\Work\\\\docs.v2\\\\.claude\\\\tbshots\\\\x"), "C:\\tbshots\\\\x");
+    assert.equal(show("D:/Work\\docs.v2/.claude\\tbshots"), SHOWN);
+  });
+
+  test("with no slash before a part that starts with a dot, as Markdown leaves it", () => {
+    assert.equal(show("File: D:\\Work\\docs.v2.claude\\tbshots\\Ledger.vbp"), "File: C:\\tbshots\\Ledger.vbp");
+    assert.equal(show("D:Work\\docs.v2\\.claude\\tbshots"), "D:Work\\docs.v2\\.claude\\tbshots");
+  });
+
+  test("a folder beside it, and text that only looks like it, stay as they are", () => {
+    for (const text of [`${REAL}2\\x`, `${REAL}-old\\x`, "D:\\Work\\docsXv2\\.claude\\tbshots", "C:\\tbshots\\x", ""]) {
+      assert.equal(show(text), text);
+    }
+  });
+
+  test("the same pattern works twice running, as a global one must", () => {
+    assert.equal(show(REAL), SHOWN);
+    assert.equal(show(REAL), SHOWN);
+    assert.equal(holdsRoot(REAL, pattern), true);
+    assert.equal(holdsRoot(REAL, pattern), true);
+  });
+
+  test("the guard finds the real folder, and not in an embedded image's bytes", () => {
+    assert.equal(holdsRoot(`<text>${REAL.toUpperCase()}\\x</text>`, pattern), true);
+    assert.equal(holdsRoot("<text>C:\\tbshots\\x</text>", pattern), false);
+    assert.equal(holdsRoot("data:image/png;base64,D+Work+docs/v2/tbshots==", rootPattern("D:/Work")), false);
+  });
+
+  test("the folder is in the checkout and the name shown is no real one", () => {
+    assert.equal(path.relative(REPO_ROOT, TOOL_ROOT), path.join(".claude", "tbshots"));
+    assert.equal(SHOWN_ROOT, SHOWN);
+  });
+});
+
+describe("what a picture's two themes say (themeTextDifference)", () => {
+  const OPTIONS = ["Project Name", "Option Explicit ON"];
+  // What a pass read: blocks that show whole, and blocks an edge of the clip cuts.
+  const read = (whole, cut = []) => ({ whole, cut });
+  const differ = (dark, light, allow) => themeTextDifference(read(dark), read(light), allow);
+
+  test("the same text is no difference", () => {
+    assert.equal(differ(OPTIONS, [...OPTIONS]), null);
+    assert.equal(differ([], []), null);
+  });
+
+  test("white space does not count, wherever a theme wraps the text", () => {
+    assert.equal(differ(["More components..."], ["More\ncomponents..."]), null);
+    assert.equal(differ(["More components..."], ["More compon ents. .."]), null);
+    assert.equal(differ(["Project", "Name"], ["Project Name"]), null);
+  });
+
+  test("the same blocks in another order are no difference", () => {
+    assert.equal(differ(["Alpha", "Beta"], ["Beta", "Alpha"]), null);
+  });
+
+  test("a real difference names the words on each side", () => {
+    const include = ["Include Common Controls", "(adds a reference to WinNativeCommonCtls)"];
+    const unicode = ["Unicode Common Control Notifications", "(affects manual WM_NOTIFY handling)"];
+    assert.deepEqual(differ([...OPTIONS, ...include], [...OPTIONS, ...unicode]), {
+      dark: ["Include", "Controls", "(adds", "a", "reference", "to", "WinNativeCommonCtls)"],
+      light: ["Unicode", "Control", "Notifications", "(affects", "manual", "WM_NOTIFY", "handling)"],
+    });
+  });
+
+  test("a word shown more often on one side counts", () => {
+    assert.deepEqual(differ(["Sub Sub"], ["Sub"]), { dark: ["Sub"], light: [] });
+  });
+
+  test("a line an edge cuts in one theme answers for the same line whole in the other", () => {
+    assert.equal(themeTextDifference(read(["24", "25"]), read(["24"], ["25"])), null);
+    assert.equal(themeTextDifference(read(["24"], ["25"]), read(["24", "25"])), null);
+  });
+
+  test("a line an edge cuts in one theme and the other does not show is no difference", () => {
+    assert.equal(themeTextDifference(read(["24"], ["25"]), read(["24"])), null);
+    assert.equal(themeTextDifference(read(["24"]), read(["24"], ["price: 3"])), null);
+  });
+
+  test("a line whole in one theme and not shown in the other is a difference", () => {
+    assert.deepEqual(themeTextDifference(read(["24", "25"], ["26"]), read(["24"], ["26"])), {
+      dark: ["25"],
+      light: [],
+    });
+  });
+
+  test("an allowance takes out the words it names, each on its own side, and no others", () => {
+    const allow = { dark: ["Dark"], light: ["Light"] };
+    assert.equal(differ(["Colour Theme", "Dark"], ["Colour Theme", "Light"], allow), null);
+    assert.deepEqual(differ(["Colour Theme", "Dark", "win32"], ["Colour Theme", "Light"], allow), {
+      dark: ["win32"],
+      light: [],
+    });
+    assert.deepEqual(differ(["Light"], ["Dark"], allow), { dark: ["Light"], light: ["Dark"] });
   });
 });
 
