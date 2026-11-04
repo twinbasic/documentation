@@ -71,7 +71,11 @@ No option, setting or command-line switch turns the splash off or shortens it. T
 
 ## The empty IDE
 
-With no project loaded, every panel is empty, and no compiler is connected. The status bar at the bottom of the window says so.
+With no project loaded, every panel is empty, and no compiler is connected.
+
+![The IDE with no project open, in its default layout, with every panel empty.](../Images/IDE.png){:width="1920" height="1032"}
+
+The status bar at the bottom of the window says so.
 
 ![The status bar with no project open: a red tB Services: UNAVAILABLE badge and a red tB Licence: NOT READY badge at the left, then the links to Ko-fi, Discord, Twitter and GitHub.](../Images/StatusBar.png){:width="661" height="27"}
 

@@ -8,9 +8,9 @@ permalink: /tB/IDE
 
 The twinBASIC IDE is one window that holds everything you need to write a program, run it, debug it and build it. This page goes round the window, then follows a project from start to finish, and says at each step which chapter explains it.
 
-![The twinBASIC IDE with no project open and every panel empty.](Images/IDE.png){:width="1920" height="1032"}
+![The IDE in its default layout with a form open in the designer, each part of the window labelled.](Images/IDE_Tour.png){:width="1280" height="880"}
 
-The picture shows the IDE with no project open, in its default layout. With no project there is no compiler, so the two red badges in the status bar are what you expect to see. They change once a project is open.
+The picture shows the IDE in its default layout, with a project open and one of its forms in the designer. With no project open, there is no compiler, so the panels are empty and the two badges in the status bar are red. They change once a project is open.
 
 ## Around the window
 

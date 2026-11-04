@@ -289,7 +289,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
   alone), `programs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
-  Chrome, not an IDE), `featuremap`, `code-chapter`, `debugging`, `forms-chapter`, `projects`, `projects-refs`,
+  Chrome, not an IDE), `featuremap`, `tour`, `code-chapter`, `debugging`, `forms-chapter`, `projects`, `projects-refs`,
   `projects-start`, the `building`, `starting` and `troubleshooting` setups, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`, with `closing` to read what only its page can say
   before the IDE ends, `end` to check or give back what it holds after, and `noPage` for a setup with
@@ -364,6 +364,17 @@ anchored to an element or code span; Problems is labelled Diagnostics, the panel
 scroll, advanced hover info, inline hints, folding always shown and the debugger's memory figures
 are switched on in the page only; the memory figures, which change from run to run, are fixed in
 the page once real ones are shown, as History's times are.
+
+## The tour
+
+`IDE/Images/IDE_Tour.png` (2560x1760, setup `tour`, fixture `test/shots/forms/` FormsDemo), the picture
+the IDE's landing page opens on, is the whole window in the default layout with `frmMain` in its
+designer, so that the Toolbox and Properties have something to show. Its status bar is in the picture,
+so the compiler is restarted on `licenceKey = ""` as in `community`, and the take fails on any other
+badge. A bar's label stands on the bar and a panel's in its own empty part; the Toolbox and Properties
+are full, so theirs stand on the ground round the form, each with an arrow. The anchors are read from
+the page, so that the labels follow the layout. `IDE/Images/IDE.png`, the window with no project, is
+now on First Launch.
 
 ## The "Writing code" chapter
 

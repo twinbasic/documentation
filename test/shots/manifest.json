@@ -5,7 +5,7 @@
       "build": 1034
     },
     "Features/Images/IDE-FeatureMap.light.png": {
-      "build": 1034
+      "build": 1033
     },
     "Features/Images/IDE-FeatureMap.png": {
       "build": 1033
@@ -60,6 +60,12 @@
       "build": 1033
     },
     "IDE/Images/IDE.light.png": {
+      "build": 1034
+    },
+    "IDE/Images/IDE_Tour.light.png": {
+      "build": 1034
+    },
+    "IDE/Images/IDE_Tour.png": {
       "build": 1034
     },
     "IDE/Images/Webpage.light.png": {

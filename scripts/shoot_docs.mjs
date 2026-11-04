@@ -59,6 +59,8 @@
 //   sample9     Sample 9 open: its WebView_Create handler, for the WebView2 tutorial
 //   featuremap  test/shots/featuremap, FeatureTour: the whole window with twelve of the IDE's
 //               features named, in a layout and with editor options set in the page only
+//   tour        test/shots/forms, FormsDemo: the whole window as the IDE's landing page shows
+//               it, a form in its designer and each part of the window named
 //   code-chapter  the same project with test/shots/codechapter staged onto it: the
 //               "Writing code" chapter's pictures of the editor (tabs, combo boxes, menus,
 //               IntelliSense, finding, bookmarks, Outline, DIAGNOSTICS) and the Edit and
@@ -1742,6 +1744,14 @@ async function prepareFormsChapter(run) {
   return ctx;
 }
 
+// ---- tour: FormsDemo again, for the one picture of the IDE's landing page. Its status bar is in
+// the picture, so the compiler starts on no licence key, as in community.
+async function prepareTour(run) {
+  const ctx = await prepareFormsChapter(run);
+  await communityCompiler(run);
+  return ctx;
+}
+
 // ---- projects: test/shots/projects, MyProject, for the pictures of the "Projects and files"
 // chapter (projectsShots): a form, a .bas module, a module and a class in a Helpers folder, a
 // manifest, and Resources/ICON/AppIcon.ico, the install's template icon under another name (a
@@ -1860,6 +1870,7 @@ const SETUPS = {
   designer: { start: startDesigner, prepare: prepareDesigner },
   forms: { start: (run) => startDesigner(run, { addin: false }), prepare: prepareWithDesigners },
   "forms-chapter": { start: startFormsChapter, prepare: prepareFormsChapter },
+  tour: { start: startFormsChapter, prepare: prepareTour },
   projects: { start: startProjects(), prepare: prepareSample },
   "projects-refs": { start: startProjects({ refs: true }), prepare: prepareProjectsRefs },
   "projects-start": { start: startNoProject, prepare: prepareNoProject },
@@ -2354,6 +2365,73 @@ const ideWindowShot = {
       await nameCloseProject(c);
       return capture(c, "IDE", snapOut({ x: 0, y: 0, width: 1920, height: 1032 }, 1920, 1032));
     }),
+};
+
+// The box of the docked panel headed `title`.
+const dockedBox = (c, title) =>
+  c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === ${JSON.stringify(title)});
+  const r = h?.closest(".toolWindowContainer").getBoundingClientRect();
+  return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+
+// The tour's picture: the window at work, in the default layout, with a form in its designer, so
+// that the Toolbox and Properties have something to show. A bar's label stands on the bar, and a
+// panel's in its own empty part; the Toolbox and Properties are full, so theirs stand on the
+// ground round the form, with an arrow.
+const tourShot = {
+  out: "IDE/Images/IDE_Tour.png",
+  setup: "tour",
+  async take({ c }) {
+    await formsDesigner(c);
+    try {
+      await communityBadge(c);
+      const titles = ["TOOLBOX", "EDITOR 1", "PROJECT EXPLORER", "PROPERTIES", "DEBUG CONSOLE", "DIAGNOSTICS"];
+      const [toolbox, editor, explorer, properties, console_, diagnostics] = await Promise.all(
+        titles.map((t) => dockedBox(c, t)),
+      );
+      const [stack, variables] = await Promise.all(["CALL STACK", "VARIABLES"].map((t) => dockedBox(c, t)));
+      const missing = [toolbox, editor, explorer, properties, console_, diagnostics, stack, variables].some((b) => !b);
+      if (missing) throw new Error("the default layout does not hold every panel");
+      const { width: W, height: H } = await c.evaluate(`({ width: innerWidth, height: innerHeight })`);
+      const bar = await c.evaluate(`(() => {
+  const r = rootStatusBar.getBoundingClientRect();
+  return { y: r.y, height: r.height };
+})()`);
+      const tools = await toolbarRect(c);
+      const menus = await c.evaluate(`(() => {
+  const r = rootMenuHelp.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+      const mid = (r) => r.y + r.height / 2;
+      const pill = (text, x, y, side = "right") => ({ type: "label", text, on: POINT(x, y), side, gap: 0 });
+      const arrow = (from, to) => ({ type: "arrow", from, to });
+      // the ground under the form, level with Properties' upper part
+      const low = editor.y + editor.height - 44;
+      const inPanel = (text, box) => pill(text, box.x + 16, box.y + box.height - 40);
+      const annotate = [
+        pill("Menu bar", menus.x + menus.width + 24, mid(menus)),
+        pill("Toolbar", W - 110, mid(tools)),
+        pill("Toolbox", editor.x + 34, low),
+        arrow(POINT(editor.x + 30, low), POINT(toolbox.x + toolbox.width - 6, low)),
+        pill("Editor", editor.x + editor.width / 2 - 30, low),
+        pill("Properties", editor.x + editor.width - 34, low, "left"),
+        arrow(POINT(editor.x + editor.width - 30, low), POINT(properties.x + 6, low)),
+        inPanel("Project Explorer", explorer),
+        inPanel("Debug Console", console_),
+        inPanel("Diagnostics", diagnostics),
+        inPanel("Call Stack", stack),
+        inPanel("Variables", variables),
+        pill("Status bar", W / 2, bar.y + bar.height / 2),
+      ];
+      await annotateOver(c, annotate);
+      const clip = snapOut({ x: 0, y: 0, width: W, height: H }, W, H);
+      return await capture(c, "IDE_Tour", clip, { unsteady: await groundUnsteady(c, clip, await layerBoxes(c)) });
+    } finally {
+      await unannotate(c);
+      await formsReset(c);
+    }
+  },
 };
 
 // The status bar at the width of its own contents, with the command named at its right.
@@ -14622,6 +14700,7 @@ const SHOTS = [
   ...codeShots,
   ...sample9Shots,
   featureMapShot,
+  tourShot,
   ...codeChapterShots,
   ...debuggingShots,
   newProjectOptionsShot,
@@ -14715,6 +14794,7 @@ const JOB_SECONDS = {
   code: 33,
   sample9: 11,
   featuremap: 39,
+  tour: 25,
   "code-chapter": 95,
   "code-chapter-2": 85,
   "code-chapter-3": 100,
