@@ -13,7 +13,7 @@ written. Owner decisions:
 The section is not bound to its current structure. The existing pages are raw material.
 
 Where the work stands, what is next and what is open is in the kit, `TODO.md` in
-`.claude/tooling-review-scratch/ide-docs/` (gitignored), under *RESUME HERE*: read it before anything
+`.claude/scratch/ide-docs/` (gitignored), under *RESUME HERE*: read it before anything
 else. The kit also holds each chapter's fact sheet and its briefs.
 
 ## What "book-ready" means for a page
@@ -137,13 +137,13 @@ for contributors.
 - **`shoot_docs.mjs` and WIP.Screenshots.md** hold the states the screenshots already set up,
   which are often the quickest way to reach a dialog. A new picture is a new shot there, taken
   in both themes; never make a picture by hand.
-- The kit `.claude/tooling-review-scratch/ide-docs/ide-driving-survey.md` (gitignored)
+- The kit `.claude/scratch/ide-docs/ide-driving-survey.md` (gitignored)
   maps the debugger, Settings and Export internals.
 
 ## Writing a chapter
 
 1. **Fact sheet.** A Sonnet agent reads `main.js` and the existing pages and writes
-   `.claude/tooling-review-scratch/ide-docs/<chapter>-facts.md`. Each item in it has its source,
+   `.claude/scratch/ide-docs/<chapter>-facts.md`. Each item in it has its source,
    a command id or a regex, and is marked *read* or *needs trying*.
 2. **Trying.** The *needs trying* items are tried in a lane IDE. Use an Opus agent, one at a
    time, recording the registry hashes before and after as for any harness run.

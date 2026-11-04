@@ -1286,7 +1286,7 @@ not: a restart saves a harness about a second against opening a new IDE.
     and puts context menus and hovers at the pointer's position times the zoom; the font
     options scale text but not icons or controls. Emulated device scaling (what a WebView2
     `ZoomFactor` does) was right throughout, so whole-IDE zoom needs that host call
-    upstream. The probe and pictures are in `.claude/tooling-review-scratch/zoom/`.
+    upstream. The probe and pictures are in `.claude/scratch/zoom/`.
 
 **Lookup:**
 
