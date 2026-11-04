@@ -34,6 +34,10 @@ The list holds the names that **start with** the word you have typed. The match 
 
 A row can show `...` for a moment in place of a type. The compiler sends the types a little after the names.
 
+<!-- test: bug completion-row-zero-no-type -->
+> [!NOTE] BETA 1034
+> One row of a list never gets its type: a variable shows `variable` with nothing after it, and a function shows no text. Which row depends on the compile, and opening the list again does not change it. The row can be out of sight, or a kind of name that has no type, so a list often looks complete.
+
 ### Choose an entry
 
 Press <kbd>Up</kbd> or <kbd>Down</kbd> to select a row. When the list opens, no row is selected.

@@ -59,7 +59,15 @@ What runs first is the project's [Startup Object](../Project-Settings#startup-ob
 - **A form.** The console shows `Executing '[frmMain].StartupShow()'...`, where `frmMain` is the form's name, then the output of the form. The run lasts until every form has closed, and the console shows `[DEBUGGER] Waiting for remaining forms to close...` meanwhile.
 - **(None)**, which an ActiveX DLL can have. **Start** is enabled, but it only writes `[DEBUGGER] No startup object set` to the console, and nothing runs.
 
-**Sub Main** with no procedure called `Main` in the project writes `(compile error: Main)` to the console, with no dialog. A project whose `Settings` file names no startup object does the same, whatever it builds. The templates for a DLL and a control name none, so **Start** on a new project of those kinds writes this error until the setting is chosen. [Runtime Command Line Args](../Project-Settings#runtime-command-line-args) sets the text that **Command$** returns in the run.
+**Sub Main** with no procedure called `Main` in the project writes a compile error to the console, with no dialog. [Runtime Command Line Args](../Project-Settings#runtime-command-line-args) sets the text that **Command$** returns in the run.
+
+<!-- test: bug start-no-main-error-text -->
+> [!NOTE] BETA 1034
+> The compile error reads `(compile error: Main)`, which does not say that the project has no procedure called `Main`.
+
+<!-- test: bug dll-startup-default-runs-main -->
+> [!NOTE] BETA 1034
+> A project whose `Settings` file names no startup object runs `Main` whatever it builds, although [Project Settings](../Project-Settings#startup-object) shows **Default: (none)** for a DLL. The templates for a DLL and a control name none, so **Start** on a new project of those kinds ends with this compile error. Choose **(none)** in the list to have **Start** say that there is nothing to run.
 
 Every run that ends writes `(time taken: <n>s)`, followed by `[DEBUGGER] global variables have been cleared`. A run that you stop at a pause writes `aborted` in place of the time.
 
