@@ -71,7 +71,10 @@
 //   starting-first-run  the three dialogs of a first start, in a page over a guard of its own
 //               (lib/shot-first-run.mjs); starting, starting-new and starting-boxes no project,
 //               then the "Starting a project" chapter's other pictures, with test/shots/starting
-//   programs    test/shots/programs, ShotPrograms, built in the IDE: each picture is the
+//   troubleshooting  test/shots/troubleshooting, the "When something goes wrong" chapter's pictures:
+//               a compiler restarted, killed and in Safe Mode, a native exception and TRACE mode;
+//               troubleshooting-box no page: a copy of the install with a file gone, and its box
+//   programs   test/shots/programs, ShotPrograms, built in the IDE: each picture is the
 //               window of the exe, started on a private desktop with a command line naming
 //               its form, taken with PrintWindow (lib/tb-ide.mjs's captureWindow), once,
 //               in no theme; the ListView's is of the project run from the IDE (F5)
@@ -145,7 +148,17 @@
 // not a page: the texts of the window and its child windows are searched instead,
 // and what the program draws itself is the fixture's own text (see programShot).
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+  writeSync,
+} from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import path from "node:path";
 import puppeteer from "puppeteer";
@@ -216,10 +229,12 @@ import {
   captureWindow,
   compilerPid,
   desktopWindows,
+  IDE_FLAGS,
   killTree,
   launchOnDesktop,
   leaseSlot,
   postWindowMessage,
+  readCrash,
   shutdownIde,
   sleep,
   waitForCompile,
@@ -1342,10 +1357,12 @@ window.HostGetRecentsList = (e) => {
 // A setup is one IDE: `start` which opens it and returns the connection,
 // `prepare` which brings it to a state the shots start from and returns their
 // context, and `port` when it needs a port chosen before it is bound (the help
-// add-in's detached window), which its slot then carries; `end`, when given, runs
-// once the IDE has ended, whatever happened, to check or give back what the setup
-// holds (a lease, the registry the Building setups' ActiveX builds wrote and
-// cleaned). `run` holds the lane,
+// add-in's detached window), which its slot then carries; `closing`, when given, runs
+// before the IDE ends, whatever happened, to check what only its page can say; `end`,
+// when given, runs once the IDE has ended, whatever happened, to check or give back
+// what the setup holds (a lease, the registry the Building setups' ActiveX builds wrote
+// and cleaned). `noPage` says that the setup has no page: its `start` returns a stand-in
+// for the connection, and its shots are `once`. `run` holds the lane,
 // its slot (tbbroker: the IDE's private desktop), the work folder and what the
 // setup has to put back.
 
@@ -1796,6 +1813,11 @@ async function prepareProjectsRefs(run) {
 
 async function prepareCommunity(run) {
   const ctx = await prepareProject(run);
+  await communityCompiler(run);
+  return ctx;
+}
+
+async function communityCompiler(run) {
   const { c } = run;
   if (
     !(await waitFor(c, () => c.evaluate("licenceIsSet === true && !!compilerLicence.innerText"), {
@@ -1814,7 +1836,6 @@ async function prepareCommunity(run) {
   });
   if (!community) throw new Error("the compiler started with no key, and the licence badge is not COMMUNITY EDITION");
   await clearUserFromConsole(c);
-  return ctx;
 }
 
 // A compiler's restart writes a line to the DEBUG CONSOLE that names the project's folder,
@@ -1865,6 +1886,13 @@ const SETUPS = {
   starting: { start: startStarting, prepare: prepareStarting, end: endBuilding },
   "starting-new": { start: startStarting, prepare: prepareStarting, end: endBuilding },
   "starting-boxes": { start: startStarting, prepare: prepareStarting, end: endBuilding },
+  troubleshooting: {
+    start: startTroubleshooting,
+    prepare: prepareTroubleshooting,
+    closing: closingTroubleshooting,
+    end: endBuilding,
+  },
+  "troubleshooting-box": { noPage: true, start: startMissingDll, prepare: prepareMissingDll, end: endMissingDll },
   customcontrols: { start: startCustomControls, prepare: prepareWithDesigners },
   code: { start: startCode, prepare: prepareSample },
   sample9: { start: startSample9, prepare: prepareSample },
@@ -1905,13 +1933,14 @@ const SETUPS = {
 // corners: the outline's corner is what fills the pixel the border's curve leaves.
 const OUTLINE = 1;
 // `before(c)` brings the IDE to the state the menu is shown in, after every menu is closed,
-// and `after(c)`, when given, takes it out of that state once the menu is closed. `out` is
-// the picture's path when it is not the Menu pages' folder.
+// and `after(c)`, when given, takes it out of that state once the menu is closed. `check(c)`,
+// when given, runs with the menu open and fails the picture by throwing. `out` is the picture's
+// path when it is not the Menu pages' folder.
 function menuShot(
   name,
   top,
   item = null,
-  { subOnly = false, setup = "no-project", before = null, after = null, out = null } = {},
+  { subOnly = false, setup = "no-project", before = null, after = null, check = null, out = null } = {},
 ) {
   return {
     out: out ?? `IDE/Menu/Images/${name}.png`,
@@ -1923,6 +1952,7 @@ function menuShot(
         const drop = await openMenu(c, top, { close: !before });
         const title = await rectOf(c, `#${TOP[top]}`);
         const sub = item ? await hoverItem(c, item) : null;
+        if (check) await check(c);
         let area;
         let keep;
         if (subOnly) {
@@ -7201,11 +7231,11 @@ async function fixConsoleThumb(c) {
 }
 
 // The floated console grown to show its `lines` lines, its times and scroll bar set, captured;
-// `fix` sets what else changes from run to run, in the page.
-async function consolePicture(c, name, lines, fix = null) {
+// `fix` sets what else changes from run to run, in the page; `times: false` leaves the times to it.
+async function consolePicture(c, name, lines, fix = null, { times = true } = {}) {
   await fitConsole(c, lines);
   if (fix) await fix();
-  await fixConsoleTimes(c);
+  if (times) await fixConsoleTimes(c);
   await fixConsoleThumb(c);
   await parkMouse(c);
   await frames(c);
@@ -11043,63 +11073,76 @@ const communityShot = {
 // restarted with the toolbar's button, and the page's first call of the three, fs.connect, is
 // held until the picture is taken: the IDE stays where its start-up is, the compiler up and the
 // other three not yet connected, and draws LIMITED itself. The call is then made as the IDE
-// made it, the other two follow, and the badge goes back to OPERATIONAL.
-const HOLD_FS_CONNECT = `(() => {
-  if (window.tbFsConnect) return;
-  const own = Object.prototype.hasOwnProperty.call(fs, "connect");
-  const connect = fs.connect;
-  window.tbFsConnect = { own, connect, held: null };
-  fs.connect = function (...args) {
-    window.tbFsConnect.held = () => connect.apply(fs, args);
+// made it, the other two follow, and the badge goes back to OPERATIONAL. Holding the second
+// call, lspSocket.connect, stops the start-up with FS connected (Services_Limited_Tooltip).
+const holdConnect = (socket) => `(() => {
+  if (window.tbHeldConnect) return;
+  const socket = ${socket};
+  const own = Object.prototype.hasOwnProperty.call(socket, "connect");
+  const connect = socket.connect;
+  window.tbHeldConnect = { socket, own, connect, held: null };
+  socket.connect = function (...args) {
+    window.tbHeldConnect.held = () => connect.apply(socket, args);
   };
 })()`;
-const RELEASE_FS_CONNECT = `(() => {
-  const h = window.tbFsConnect;
+const RELEASE_CONNECT = `(() => {
+  const h = window.tbHeldConnect;
   if (!h) return false;
-  delete window.tbFsConnect;
-  if (h.own) fs.connect = h.connect;
-  else delete fs.connect;
+  delete window.tbHeldConnect;
+  if (h.own) h.socket.connect = h.connect;
+  else delete h.socket.connect;
   if (h.held) h.held();
   return !!h.held;
 })()`;
 const servicesAre = (c, cls) => c.evaluate(`compilerStatusOuter.classList.contains(${JSON.stringify(cls)})`);
+
+// A restart with the toolbar's button, the page's call of `socket`.connect held: `shot()` once
+// that call has come and the page's expression `state` holds, then the call made and the badge
+// back on OPERATIONAL. `missing` says what never came.
+async function whileConnectHeld(c, socket, state, missing, shot) {
+  await resetUi(c);
+  if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 60000, interval: 250 }))) {
+    throw new Error("the services badge never said OPERATIONAL before the restart");
+  }
+  await c.evaluate(holdConnect(socket));
+  try {
+    await click(c, "restartIcon");
+    const held = await waitFor(c, () => c.evaluate(`!!window.tbHeldConnect?.held && (${state})`), {
+      timeout: 60000,
+      interval: 100,
+    });
+    if (!held) throw new Error(missing);
+    // The restart's line names the project's folder, under the user's, and the console's
+    // Clear does nothing until the compiler is connected: the name is replaced in the
+    // console's text, in the page only, as nameUserAsUser does in a dialog. The picture
+    // holds no name.
+    await nameUserAsUserIn(c, ".debugConsoleOuter");
+    return await shot();
+  } finally {
+    await c.evaluate(RELEASE_CONNECT);
+    if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 60000, interval: 250 }))) {
+      complain(c.shot.name, "the services badge did not go back to OPERATIONAL after the restart");
+    }
+    await clearUserFromConsole(c);
+  }
+}
+
 const limitedShot = {
   out: "IDE/Images/Services_Limited.png",
   setup: "community",
-  async take({ c }) {
-    await resetUi(c);
-    if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 60000, interval: 250 }))) {
-      throw new Error("the services badge never said OPERATIONAL before the restart");
-    }
-    await c.evaluate(HOLD_FS_CONNECT);
-    try {
-      await click(c, "restartIcon");
-      const held = await waitFor(
-        c,
-        () =>
-          c.evaluate(
-            `!!window.tbFsConnect?.held && compilerStatusOuter.classList.contains("servicesPARTIAL") && /LIMITED/.test(compilerStatus.innerText)`,
-          ),
-        { timeout: 60000, interval: 100 },
-      );
-      if (!held) throw new Error("the restarted compiler never asked for its FS connection, with the badge LIMITED");
-      // The restart's line names the project's folder, under the user's, and the console's
-      // Clear does nothing until the compiler is connected: the name is replaced in the
-      // console's text, in the page only, as nameUserAsUser does in a dialog. The picture
-      // is of the badge, which holds no name.
-      await nameUserAsUserIn(c, ".debugConsoleOuter");
-      say(c.shot.name, `  the badge's title: ${JSON.stringify(await c.evaluate("compilerStatusOuter.title"))}`);
-      return await capture(c, "Services_Limited", snapOut(await rectOf(c, "#compilerStatusOuter")), {
-        away: () => parkMouse(c),
-      });
-    } finally {
-      await c.evaluate(RELEASE_FS_CONNECT);
-      if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 60000, interval: 250 }))) {
-        complain(c.shot.name, "the services badge did not go back to OPERATIONAL after the restart");
-      }
-      await clearUserFromConsole(c);
-    }
-  },
+  take: ({ c }) =>
+    whileConnectHeld(
+      c,
+      "fs",
+      `compilerStatusOuter.classList.contains("servicesPARTIAL") && /LIMITED/.test(compilerStatus.innerText)`,
+      "the restarted compiler never asked for its FS connection, with the badge LIMITED",
+      async () => {
+        say(c.shot.name, `  the badge's title: ${JSON.stringify(await c.evaluate("compilerStatusOuter.title"))}`);
+        return capture(c, "Services_Limited", snapOut(await rectOf(c, "#compilerStatusOuter")), {
+          away: () => parkMouse(c),
+        });
+      },
+    ),
 };
 
 // Resolves once every CSS background image in the top dialog is decoded: the VIP Gold logos
@@ -13824,11 +13867,13 @@ function drawnPart(picture) {
 // The window of the box titled `title` alone, as Windows draws it, once the box shows; then OK, by
 // the message a button takes on a desktop that has no input. Not over the IDE: on a window the
 // size of the screen the box stands on the text of the IDE's progress box, and a picture of the
-// two would need this 96 DPI window stretched to the IDE's scale.
-async function boxPicture(run, title) {
+// two would need this 96 DPI window stretched to the IDE's scale. `check(box)`, when given, fails
+// the picture by throwing; the box then stays for the caller to close.
+async function boxPicture(run, title, check = null) {
   const desktop = run.lane.desktop;
   const box = await waitFor(run.c, () => compilerBox(desktop, title), { timeout: 40000, interval: 200 });
   if (!box) throw new Error(`the compiler showed no box titled ${title}`);
+  check?.(box);
   const file = path.join(run.work, "box.png");
   await activated(desktop, box.hwnd, title);
   await postWindowMessage(desktop, box.hwnd, WM_UPDATEUISTATE, HIDE_FOCUS_CUES, 0);
@@ -14040,6 +14085,481 @@ const startingShots = [
   },
 ];
 
+// ---- troubleshooting, troubleshooting-box: the "When something goes wrong" chapter.
+// test/shots/troubleshooting/Trouble, the lanes' test/ide/probes/troubleshooting under a name for a
+// picture: Sub Crash calls RtlMoveMemory with two bad addresses at line 10 of MainMod, the line the
+// page quotes. A crash, a kill and Safe Mode each leave the IDE where a later take would see them, so
+// each take that goes there comes back, and each theme's take reaches its state by itself.
+//
+// What these takes do on purpose and a tool's IDE never else does:
+//   * The compiler is killed by the pid the page names, its own lane's, and no other process. A kill
+//     leaves no NATIVE EXCEPTION line, so the lane's crash check does not count it.
+//   * Native_Exception makes one native exception. Lane.close counts the console's NATIVE EXCEPTION
+//     lines and throws, so the take asserts that there is exactly its own one and clears the console.
+//     That is the allowance, and all of it: any other exception stays in the console, and `closing`
+//     fails the setup on it.
+//   * A JavaScript alert cannot be captured and no picture wants one, so a take fails on one.
+//   * No report leaves: the defaults hook answers ALLOWERRORREPORTINGV3 no, so postError posts
+//     nothing, and CDP stops any request for the report's address, which fails the setup.
+
+const TS_IMAGE = (name) => `IDE/Troubleshooting/Images/${name}.png`;
+const TROUBLESHOOTING = path.join(REPO_ROOT, "test", "shots", "troubleshooting");
+const TROUBLE_FILE = "/Trouble/Sources/MainMod.twin";
+const SAFE_MODE_TEXT = "SafeMode is designed";
+const CRASH_LOOP_TEXT = "Compiler crash loop detected.";
+// how much of the toolbar and the status bar Safe_Mode_Bar shows: to the end of the build box's
+// group of buttons, and of the status bar's badges and links
+const SAFE_BAR_WIDTH = 474;
+
+async function startTroubleshooting(run) {
+  run.step = "open";
+  run.lane.includeProjects();
+  const dir = runFolder(run, "Troubleshooting");
+  say(run.name, `opening ${path.relative(REPO_ROOT, TROUBLESHOOTING)} in ${dir}`);
+  return run.lane.open(path.join(TROUBLESHOOTING, "Trouble"), { folder: dir, buildPath: BD_BUILD_PATH });
+}
+
+async function prepareTroubleshooting(run) {
+  const ctx = await prepareSample(run);
+  const { c } = run;
+  await c.evaluate(`window.__shotBlocked.add("AddRecentsList");
+window.__shotBlocked.add("SaveProjectMetaState")`);
+  run.reportsStopped = 0;
+  c.on((m) => {
+    if (m.method !== "Fetch.requestPaused") return;
+    run.reportsStopped++;
+    c.send("Fetch.failRequest", { requestId: m.params.requestId, errorReason: "BlockedByClient" }).catch(() => {});
+  });
+  await c.send("Fetch.enable", { patterns: [{ urlPattern: "*twinbasic.com/notify*" }] });
+  await openFile(c, TROUBLE_FILE, { line: 1, column: 1 });
+  await communityCompiler(run);
+  // what Native_Exception's float ends with, which moves Light's panels a device pixel: from the
+  // start, so that a picture does not depend on whether that take came before it
+  await defaultLayout(c);
+  await parkMouse(c);
+  return { ...ctx, run };
+}
+
+// With its IDE still up: what only the page can say about what the takes left behind.
+async function closingTroubleshooting(run) {
+  const { c } = run;
+  const crash = await readCrash(c);
+  const { reports, reporting } = await c.evaluate("({ reports: __tbDefaults.reports, reporting: g_ErrorReporting })");
+  say(
+    run.name,
+    `__tbDefaults.reports ${reports}; error reporting ${reporting ? "on" : "off"}; requests for the report's address stopped: ${run.reportsStopped}`,
+  );
+  if (run.reportsStopped) throw new Error(`${run.reportsStopped} requests for the error report's address went out`);
+  if (reporting || reports) throw new Error(`with reporting off no exception posts, and the hook answered ${reports}`);
+  if (crash) throw new Error(`the console holds ${crash.n} NATIVE EXCEPTION lines no take expected`);
+  if (c.dialogs.length) throw new Error(`a JavaScript dialog opened: ${JSON.stringify(c.dialogs)}`);
+}
+
+// A take of these setups fails on a JavaScript dialog: tb-ide.mjs accepts each and keeps it.
+const noAlert = (shot) => ({
+  ...shot,
+  async take(ctx) {
+    const taken = await shot.take(ctx);
+    if (ctx.c.dialogs.length) throw new Error(`a JavaScript dialog opened: ${JSON.stringify(ctx.c.dialogs)}`);
+    return taken;
+  },
+});
+
+// The licence badge, which every restart asks again: COMMUNITY EDITION, or the take fails.
+async function communityBadge(c) {
+  const shows = () => c.evaluate(`compilerLicence.innerText === "COMMUNITY EDITION"`);
+  if (!(await waitFor(c, shows, { timeout: 30000, interval: 100 }))) {
+    throw new Error(`the licence badge says ${JSON.stringify(await c.evaluate("compilerLicence.innerText"))}`);
+  }
+}
+
+// Ends the lane's compiler from outside, as a crash does; its pid.
+async function killCompiler(c) {
+  const pid = await compilerPid(c);
+  if (!(pid > 0)) throw new Error("the page names no compiler");
+  killTree(pid);
+  return pid;
+}
+
+// A compiler other than `pid` has the project, and nothing covers the IDE.
+async function compilerBack(c, pid) {
+  const replaced = async () => {
+    const now = await compilerPid(c);
+    return now && now !== pid;
+  };
+  if (!(await waitFor(c, replaced, { timeout: 30000, interval: 50 }))) throw new Error("no new compiler started");
+  await projectReady(c);
+}
+
+// The floating boxes, as their X closes them.
+const closeFloats = (c) =>
+  c.evaluate(`for (const n of [3, 2, 1]) {
+  if (document.getElementById("msgBoxInner" + n).style.display !== "none") window["msgBox" + n + "Close"]();
+}`);
+const floatTexts = (c) =>
+  c.evaluate(`[1, 2, 3].map((n) => document.getElementById("msgBoxInner" + n))
+  .filter((e) => e.style.display !== "none" && e.getBoundingClientRect().height)
+  .map((e) => e.innerText.trim())`);
+
+// Out of Safe Mode, with the box's OK and Ctrl+F2, about eleven seconds: win32, the project
+// compiled, an empty console, no floating box. What each take that goes there ends with.
+async function leaveSafeMode(c) {
+  if (await modalHolding(c, SAFE_MODE_TEXT)) await closeModal(c, "OK");
+  await closeFloats(c);
+  if ((await configValue(c)) === "nocompile") {
+    await pressKey(c, "F2", { ctrl: true });
+    await configSettled(c, "win32");
+  }
+  await projectReady(c);
+  await resetUi(c);
+  await communityBadge(c);
+  await clearConsole(c);
+}
+
+// TRACE mode on or off by Help's command, which restarts the compiler.
+async function setTrace(c, on) {
+  if ((await c.evaluate("g_TraceMode")) === on) return;
+  const pid = await compilerPid(c);
+  await command(c, "tbHelp_ToggleCompilerTraceMode");
+  await compilerBack(c, pid);
+  if ((await c.evaluate("g_TraceMode")) !== on) throw new Error(`TRACE mode did not go ${on ? "on" : "off"}`);
+  await communityBadge(c);
+  await clearConsole(c);
+}
+
+// The console's lines and what a native exception writes, as the page quotes them.
+const NATIVE_TIME = "11:42:08.716";
+const NATIVE_RED_TIME = "11:42:08.800";
+const NATIVE_YELLOW_TIME = "11:42:08.814";
+const NATIVE_ADDRESS = "[$773D8C3B:ntdll.dll+00088C3B]";
+// wide enough for the red line, on one row with its time, and high enough for its three rows: a
+// console grown row by row goes on growing until its list has drawn, a different height each time
+const NATIVE_CONSOLE = { width: 1060, height: 124 };
+const NATIVE_LINE =
+  /^0001 \d\d:\d\d:\d\d\.\d{3} NATIVE EXCEPTION: ACCESS_VIOLATION \/MainMod\.twin; MainMod\.Crash LINE 000010 \[\$[0-9A-F]{8}:ntdll\.dll\+[0-9A-F]{8}\]$/m;
+// from the console's list, which draws only the rows that show
+const consoleLinesOf = (c, cls) =>
+  c.evaluate(
+    `debugConsoleContent.dataNodes.filter((l) => l.includes(${JSON.stringify(cls)})).map((l) => l.replace(/<[^>]*>/g, ""))`,
+  );
+
+// The time and the address of the line, which differ from run to run and from boot to boot, set to
+// the page's once the real ones show, in the page only, and the console's own times of the three
+// lines to as far after it as the IDE writes them.
+const fixNativeLine = (c) =>
+  c.evaluate(`(() => {
+  const outer = document.querySelector(".debugConsoleOuter");
+  const walk = document.createTreeWalker(outer, NodeFilter.SHOW_TEXT);
+  let done = 0;
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (!n.nodeValue.includes("NATIVE EXCEPTION")) continue;
+    n.nodeValue = n.nodeValue
+      .replace(/^(\\d{4} )\\d\\d:\\d\\d:\\d\\d\\.\\d{3}/, "$1" + ${JSON.stringify(NATIVE_TIME)})
+      .replace(/\\[\\$[0-9A-F]{8}:ntdll\\.dll\\+[0-9A-F]{8}\\]/, () => ${JSON.stringify(NATIVE_ADDRESS)});
+    done++;
+  }
+  for (const e of outer.querySelectorAll(".debugConsoleOutputTextALERT .ts")) e.textContent = ${JSON.stringify(NATIVE_RED_TIME)};
+  for (const e of outer.querySelectorAll(".debugConsoleOutputTextYELLOW .ts")) e.textContent = ${JSON.stringify(NATIVE_YELLOW_TIME)};
+  return done;
+})()`);
+
+// Three messages the IDE gives, the middle one too long for a floating box's one line.
+const FLOAT_MESSAGES = [
+  "Invalid licence key.  Please try again.",
+  "Backend compiler seems to be busy.  Check there isn't a modal dialog box open behind the IDE window.",
+  "Compiler crash loop detected.  Restarting in SAFE mode.",
+];
+
+const troubleshootingShots = [
+  noAlert({
+    // a restart held at the page's LSP connection: FS connected, the two after it not, the
+    // tooltip the badge's own title in a replica, as Services_Limited holds the call before it
+    out: TS_IMAGE("Services_Limited_Tooltip"),
+    setup: "troubleshooting",
+    take: ({ c }) =>
+      whileConnectHeld(
+        c,
+        "lspSocket",
+        `compilerStatusOuter.classList.contains("servicesPARTIAL") && /^FS: OPERATIONAL$/m.test(compilerStatusOuter.title)`,
+        "the restarted compiler never asked for its LSP connection, with the badge LIMITED and FS OPERATIONAL",
+        async () => {
+          const title = await c.evaluate("compilerStatusOuter.title");
+          say(c.shot.name, `  the badge's title: ${JSON.stringify(title)}`);
+          if (/^(LSP|DEBUGGER): OPERATIONAL$/m.test(title)) throw new Error(`the title is ${JSON.stringify(title)}`);
+          await communityBadge(c);
+          const { rect } = await tooltipOn(c, "#compilerStatusOuter");
+          try {
+            // the licence badge whole, which the tooltip stands over part of; the line of the
+            // console above the tooltip left out
+            const bar = union(await rectOf(c, "#compilerStatusOuter"), await rectOf(c, "#compilerLicenceOuter"));
+            const all = grow(union(bar, rect), 8);
+            const top = rect.y - 3;
+            const clip = snapOut({ ...all, y: top, height: all.y + all.height - top });
+            return await capture(c, "Services_Limited_Tooltip", clip, { away: () => parkMouse(c) });
+          } finally {
+            await tooltipOff(c);
+          }
+        },
+      ),
+  }),
+  noAlert({
+    // a restart held at the page's FS connection, the first of the three, which holds the box;
+    // with enough of the editor and the panels round it to show that it covers them
+    out: TS_IMAGE("Please_Wait"),
+    setup: "troubleshooting",
+    take: ({ c }) =>
+      whileConnectHeld(
+        c,
+        "fs",
+        `[...document.querySelectorAll(".modalDialogContainer")].some((m) => m.getBoundingClientRect().width && m.innerText.includes("Please wait"))`,
+        "the restart showed no Please wait box",
+        async () => {
+          await dialogStill(c);
+          const box = await modalHolding(c, "Please wait");
+          say(c.shot.name, `  the box reads ${JSON.stringify(await c.evaluate(`${TOP_MODAL}.innerText`))}`);
+          const editor = await dockedRect(c, "EDITOR 1");
+          if (!editor) throw new Error("the page has no EDITOR 1 panel");
+          const clip = snapOut({ ...grow(box, 190), x: editor.x, width: editor.width });
+          return capture(c, "Please_Wait", clip, { away: () => parkMouse(c) });
+        },
+      ),
+  }),
+  noAlert({
+    // three kills after a restart by the button, whose own close is the count's first entry: the
+    // floating message and the Safe Mode box together; OK, and back to win32
+    out: TS_IMAGE("Crash_Loop"),
+    setup: "troubleshooting",
+    async take({ c, run }) {
+      await resetUi(c);
+      await closeFloats(c);
+      await run.lane.restartCompiler();
+      await projectReady(c);
+      await clearConsole(c);
+      try {
+        for (let n = 0; n < 2; n++) await compilerBack(c, await killCompiler(c));
+        await killCompiler(c);
+        const shown = async () =>
+          (await modalHolding(c, SAFE_MODE_TEXT)) && (await floatTexts(c)).some((t) => t.startsWith(CRASH_LOOP_TEXT));
+        if (!(await waitFor(c, shown, { timeout: 60000, interval: 100 }))) {
+          throw new Error(`no crash loop: ${JSON.stringify(await floatTexts(c))}`);
+        }
+        await dialogStill(c, { ms: 500 });
+        await communityBadge(c);
+        await fixConsoleTimes(c);
+        return await capture(c, "Crash_Loop", WINDOW(), { away: () => parkMouse(c) });
+      } finally {
+        await leaveSafeMode(c);
+      }
+    },
+  }),
+  noAlert({
+    // the box set to safeMode, OK, and the badge OPERATIONAL: the left of the toolbar over the left
+    // of the status bar, since a whole window would shrink both on the page; back to win32
+    out: TS_IMAGE("Safe_Mode_Bar"),
+    setup: "troubleshooting",
+    async take({ c }) {
+      await resetUi(c);
+      await clearConsole(c);
+      try {
+        await c.evaluate(`buildConfigSelector.value = "nocompile"; buildConfigSelector.onchange(); 0`);
+        if (!(await waitFor(c, () => modalHolding(c, SAFE_MODE_TEXT), { timeout: 90000, interval: 250 }))) {
+          throw new Error("safeMode showed no box");
+        }
+        await dialogStill(c, { ms: 500 });
+        await closeModal(c, "OK");
+        await configSettled(c, "nocompile");
+        if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 30000, interval: 100 }))) {
+          throw new Error("the services badge does not say OPERATIONAL in Safe Mode");
+        }
+        await communityBadge(c);
+        // the parts are not the picture: capture keeps the first two captures that agree
+        const { reference, prefer, ignore } = c.shot;
+        Object.assign(c.shot, { reference: null, prefer: null, ignore: null });
+        const made = [];
+        try {
+          for (const [part, bar] of [
+            ["toolbar", await toolbarRect(c)],
+            ["status", await rectOf(c, "#rootStatusBar")],
+          ]) {
+            const clip = snapOut({ x: 0, y: bar.y, width: SAFE_BAR_WIDTH, height: bar.height });
+            const png = await capture(c, `Safe_Mode_Bar-${part}`, clip, { away: () => parkMouse(c) });
+            made.push({ png, clip });
+          }
+        } finally {
+          Object.assign(c.shot, { reference, prefer, ignore });
+        }
+        try {
+          const { box } = await composite(c, made, [], { gap: 8, margin: 0 });
+          return await capture(c, "Safe_Mode_Bar", snapOut(box), { away: () => parkMouse(c) });
+        } finally {
+          await uncomposite(c);
+        }
+      } finally {
+        await leaveSafeMode(c);
+      }
+    },
+  }),
+  noAlert({
+    // Sub Crash run as a line of the console runs it, TRACE mode off: the red line and the two
+    // yellow ones, which only the first exception with it off writes; then TRACE mode off again
+    out: TS_IMAGE("Native_Exception"),
+    setup: "troubleshooting",
+    async take({ c }) {
+      await resetUi(c);
+      await setTrace(c, false);
+      await floatPanel(c, "DEBUG CONSOLE", NATIVE_CONSOLE);
+      try {
+        await clearConsole(c);
+        await c.evaluate(`debugSocket.request("evaluate", { expression: "Crash", context: "repl" }, () => {}); 0`);
+        const written = async () => (await consoleLinesOf(c, "debugConsoleOutputTextYELLOW")).length >= 2;
+        if (!(await waitFor(c, written, { timeout: 15000, interval: 100 }))) {
+          throw new Error(`the yellow lines did not show: ${JSON.stringify(await consoleText(c))}`);
+        }
+        await waitFor(c, async () => !(await c.evaluate("!!context.codeExecuting.value")), { timeout: 10000 });
+        const [red, yellow] = [
+          await consoleLinesOf(c, "debugConsoleOutputTextALERT"),
+          await consoleLinesOf(c, "debugConsoleOutputTextYELLOW"),
+        ];
+        say(c.shot.name, `  the console's lines: ${JSON.stringify({ red, yellow })}`);
+        if (red.length !== 1 || !NATIVE_LINE.test(red[0].replace(/^\d\d:\d\d:\d\d\.\d{3}/, ""))) {
+          throw new Error(`the red line is ${JSON.stringify(red)}`);
+        }
+        if (yellow.length !== 2) throw new Error(`the yellow lines are ${JSON.stringify(yellow)}`);
+        if ((await readCrash(c))?.n !== 1) throw new Error("the console has another NATIVE EXCEPTION");
+        // The list keeps each row's height from when it first measured it, in whatever width the
+        // console had then, and fitConsole would grow a console whose rows are too tall by an
+        // amount that differs from run to run. A resize makes the page call this: the rows
+        // measured in this width, one line each. The list's last row, of X's, is its measure.
+        await c.evaluate("debugConsoleOutput.contentDiv.recalcCachedItemHeights(); debugConsoleContent.repaint()");
+        const rowsShow = () =>
+          c.evaluate(`(() => {
+  const p = document.querySelector(${JSON.stringify(panelSel("DEBUG CONSOLE"))});
+  const box = p.querySelector(".listItems").getBoundingClientRect();
+  const rows = [...p.querySelectorAll(".listItems .listitem")].filter((e) => !e.textContent.includes("XXXXXXXX")).map((e) => e.getBoundingClientRect()).filter((r) => r.height);
+  return rows.length === 3 && rows.every((r) => r.height < 24 && r.top >= box.top && r.bottom <= box.bottom);
+})()`);
+        if (!(await waitFor(c, rowsShow, { timeout: 5000, interval: 50 }))) {
+          throw new Error("the console did not draw its three rows, one line each");
+        }
+        const fix = async () => {
+          if (!(await fixNativeLine(c))) throw new Error("the line was not found to set its time");
+        };
+        return await consolePicture(c, "Native_Exception", 3, fix, { times: false });
+      } finally {
+        await clearConsole(c);
+        await unfloatPanel(c, "DEBUG CONSOLE");
+        await defaultLayout(c);
+        await setTrace(c, false);
+      }
+    },
+  }),
+  noAlert(
+    menuShot("Menu_Help_Trace", "Help", null, {
+      setup: "troubleshooting",
+      out: TS_IMAGE("Menu_Help_Trace"),
+      before: (c) => setTrace(c, true),
+      after: (c) => setTrace(c, false),
+      async check(c) {
+        const item = await c.evaluate(`(() => {
+  const e = [...document.querySelectorAll("#contextMenu .contextMenuItem")].find((x) => x.textContent.includes("TRACE mode"));
+  return e ? { text: e.innerText.trim(), tick: !!e.querySelector(".codicon-check") } : null;
+})()`);
+        if (!item?.tick || item.text !== "Compiler services TRACE mode: Enabled") {
+          throw new Error(`the TRACE item is ${JSON.stringify(item)}`);
+        }
+      },
+    }),
+  ),
+  noAlert({
+    // three boxes the IDE gives, and a real click on the middle one, with the status bar under them
+    out: TS_IMAGE("Floating_Boxes"),
+    setup: "troubleshooting",
+    async take({ c }) {
+      await resetUi(c);
+      await closeFloats(c);
+      try {
+        await c.evaluate(`${FLOAT_MESSAGES.map((m) => `msgBox(${JSON.stringify(m)});`).join(" ")} 0`);
+        const boxes = await Promise.all([3, 2, 1].map((n) => rectOf(c, `#msgBoxInner${n}`)));
+        if (!(boxes[0].y < boxes[1].y && boxes[1].y < boxes[2].y))
+          throw new Error("the boxes are not stacked in order");
+        if (!(await c.evaluate("msgBox2text.innerText")).startsWith("Backend")) {
+          throw new Error("the middle box is not the long message");
+        }
+        const text = await rectOf(c, "#msgBox2text");
+        await clickAt(c, text.x + 20, text.y + text.height / 2);
+        const open = () => c.evaluate(`msgBox2Extra.style.display === "block"`);
+        if (!(await waitFor(c, open, { timeout: 5000, interval: 50 }))) throw new Error("the click opened no box");
+        await communityBadge(c);
+        await parkMouse(c);
+        await frames(c);
+        const top = await rectOf(c, "#msgBoxInner3");
+        const left = Math.min(top.x, (await rectOf(c, "#msgBoxInner2")).x);
+        const clip = snapOut({
+          x: left - 12,
+          y: top.y - 12,
+          width: IDE_SIZE.width - left + 12,
+          height: IDE_SIZE.height - top.y + 12,
+        });
+        return await capture(c, "Floating_Boxes", clip, { away: () => parkMouse(c) });
+      } finally {
+        await closeFloats(c);
+      }
+    },
+  }),
+  {
+    // the box of a copy of the install with its IDE DLL renamed, alone, once: there is no page.
+    // It names another file, which is there; OK ends the process.
+    out: TS_IMAGE("Missing_DLL_Box"),
+    setup: "troubleshooting-box",
+    once: true,
+    window: true,
+    async take({ run }) {
+      try {
+        return await boxPicture(run, "twinBASIC Compiler", (box) => {
+          const text = box.kids.map((k) => k.title ?? "").join("\n");
+          if (!text.includes(MISSING_DLL_TEXT)) throw new Error(`the box says ${JSON.stringify(text)}`);
+        });
+      } finally {
+        await waitFor(run.c, () => run.exited, { timeout: 10000, interval: 100 });
+        if (!run.exited) killTree(run.process.pid);
+      }
+    },
+  },
+];
+
+const MISSING_DLL_TEXT =
+  "ERROR: failed to load the twinBASIC DLL:\r\n    bin\\twinBASIC_win64.dll\r\n\r\nThe file could not be found.  See https://twinbasic.com/missing \r\n\r\nThe application will now exit.";
+
+// The lane's own copy of the install with bin\twinBASIC_ide_win32.dll renamed, started as from its
+// icon. There is no page to attach to: launchIde would wait a minute for one.
+async function startMissingDll(run) {
+  run.step = "open";
+  const exe = run.lane.copy();
+  const dll = path.join(path.dirname(exe), "bin", "twinBASIC_ide_win32.dll");
+  renameSync(dll, `${dll}.gone`);
+  say(run.name, "starting a copy of the install with bin\\twinBASIC_ide_win32.dll renamed");
+  run.process = await launchOnDesktop({
+    exe,
+    desktop: run.lane.desktop,
+    env: { ...process.env, APPDATA: run.lane.appdataDir(), TB_ADDIN_TEST: "1" },
+    args: IDE_FLAGS,
+  });
+  run.process.exited.then(() => {
+    run.exited = true;
+  });
+  return { dialogs: [] };
+}
+
+async function prepareMissingDll(run) {
+  run.step = "shoot";
+  return { c: run.c, run };
+}
+
+// The process, if it outlived the box, ended by its pid.
+async function endMissingDll(run) {
+  if (run.process && !run.exited) killTree(run.process.pid);
+}
+
 // ---------------------------------------------------------------- the table of shots
 
 // Each shot is a picture: `out` its path under the output folder, `setup` the IDE
@@ -14096,6 +14616,7 @@ const SHOTS = [
   ...projectsShots,
   ...buildingShots,
   ...startingShots,
+  ...troubleshootingShots,
   ...customControlsShots,
   ...customControlsCodeShots,
   ...codeShots,
@@ -14186,6 +14707,8 @@ const JOB_SECONDS = {
   starting: 60,
   "starting-new": 60,
   "starting-boxes": 40,
+  troubleshooting: 150,
+  "troubleshooting-box": 15,
   customcontrols: 54,
   "customcontrols-2": 53,
   "customcontrols-3": 35,
@@ -14720,7 +15243,7 @@ async function runJob(job) {
     // A run stopped (--events) takes no further picture, and switches no theme.
     const darks = new Map();
     const darkTexts = new Map();
-    const prepared = await setupState(run.c, ctx);
+    const prepared = setup.noPage ? null : await setupState(run.c, ctx);
     for (const [theme, shots] of passes(job)) {
       if (!shots.length) continue;
       if (theme !== "dark" && !stopping) {
@@ -14805,6 +15328,15 @@ async function runJob(job) {
       run.step === "shoot";
     failed = Math.max(failed, own ? 1 : 2);
     event("job", { job: job.name, state: "failed", error: e.message });
+  }
+  // what a setup reads from its IDE before that ends
+  if (setup.closing && run.c) {
+    try {
+      await setup.closing(run);
+    } catch (e) {
+      complain(job.name, e.message);
+      failed = Math.max(failed, 1);
+    }
   }
   await endRun(run);
   // what a setup checks or gives back once its IDE has ended

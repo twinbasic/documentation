@@ -48,7 +48,7 @@ When a compiler starts, the badge goes through UNAVAILABLE and LIMITED to OPERAT
 
 The badge cannot be clicked.
 
-<!-- SHOT trouble-services-limited: the badge on LIMITED with the tooltip open, FS OPERATIONAL, LSP and DEBUGGER not yet, to show which line is missing -->
+![The services badge on LIMITED with its tooltip open above it: COMPILER and FS read OPERATIONAL, and LSP and DEBUGGER read Disconnected.](Images/Services_Limited_Tooltip.png){:width="350" height="104"}
 
 ## A crash
 
@@ -85,7 +85,7 @@ The IDE asks no question before it restarts the compiler, whichever way you caus
 
 The IDE ends the old compiler by force, and does not ask it to close. A box titled **Please wait...**, with a percentage bar, covers the IDE until the new compiler has the project. It lasts about a second for a small project, and about eleven seconds after a switch of the build configuration box.
 
-<!-- SHOT trouble-please-wait: the Please wait... box with its percentage bar, during a restart from the toolbar -->
+![The Please wait... box with its percentage bar, in front of the editor, during a restart.](Images/Please_Wait.png){:width="878" height="454"}
 
 The licence is asked again after a restart, so the licence box reads **tB Licence: NOT READY** for a moment and then the edition.
 
@@ -129,7 +129,7 @@ The build configuration box then reads **safeMode**. A **Please wait...** box fo
 
 The count starts with one entry whenever a project opens, whenever you press **Restart the compiler**, and whenever you change the build configuration box. So **three crashes within 60 seconds of opening a project, of a restart or of a switch of the build box** are enough; after a longer calm, four are needed. Pressing the button over and over does not cause the loop by itself.
 
-<!-- SHOT trouble-crash-loop: the floating message "Compiler crash loop detected.  Restarting in SAFE mode." above the status bar with the Safe Mode box in front, both showing together -->
+![The IDE in a crash loop: the Safe Mode box in front, the floating message above the status bar, the build configuration box on safeMode, and one restart line for each crash in the DEBUG CONSOLE.](Images/Crash_Loop.png){:width="1280" height="880"}
 
 The floating message stays for a minute. Safe Mode gives you access to the project's files, so that you can copy them out or fix them.
 
@@ -161,7 +161,7 @@ To leave Safe Mode, choose **win32** or **win64** in the build configuration box
 > [!NOTE] BETA 1034
 > **Start** in Safe Mode never runs the program and never ends. The console prints `Executing 'Main'...` and `WARNING: execution delayed; waiting for background compilation to finish`, then nothing more; the IDE stays in the running state and **Stop** does nothing. Restart the compiler, or choose **win32** or **win64** in the build configuration box, to end it. To run the program, leave Safe Mode first.
 
-<!-- SHOT trouble-safe-mode-bar: the status bar and the toolbar with the box on safeMode, after OK, to show the green OPERATIONAL badge beside it -->
+![The left end of the toolbar with the build configuration box on safeMode, above the left end of the status bar with the services badge on OPERATIONAL.](Images/Safe_Mode_Bar.png){:width="474" height="70"}
 
 ## When the compiler does not answer
 

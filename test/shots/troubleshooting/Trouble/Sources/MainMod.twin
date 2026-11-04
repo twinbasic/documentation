@@ -1,0 +1,12 @@
+Module MainMod
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByVal d As LongPtr, ByVal s As LongPtr, ByVal n As LongPtr)
+
+    Public Sub Main()
+        Debug.Print "ran to the end"
+    End Sub
+
+    ' An access violation in the compiler's process. RtlMoveMemory does nothing when the two addresses are the same.
+    Public Sub Crash()
+        CopyMemory 16, 32, 4
+    End Sub
+End Module

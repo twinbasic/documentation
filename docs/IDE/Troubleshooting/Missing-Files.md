@@ -48,7 +48,7 @@ The compiler is not one file. It is a set of executables, `twinBASIC_win32.exe` 
 > [!NOTE] BETA 1034
 > When the compiler variant that the IDE starts is missing, the IDE shows the box once and then goes quiet. After **OK**, the IDE has no project, tries nothing more, and writes nothing to the console. The badge reads UNAVAILABLE, with four **Not initialized** lines, for good. Restore the file, and start the IDE again.
 
-<!-- SHOT trouble-missing-dll-box: the native box of a missing twinBASIC_ide_win32.dll, one theme only -->
+![The native box titled twinBASIC Compiler that a missing DLL brings, with its one OK button.](Images/Missing_DLL_Box.png){:width="304" height="211"}
 
 ## The WebView2 runtime
 

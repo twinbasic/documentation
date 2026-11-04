@@ -184,6 +184,51 @@
     "IDE/Starting/Images/Title_Unsaved.png": {
       "build": 1034
     },
+    "IDE/Troubleshooting/Images/Crash_Loop.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Crash_Loop.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Floating_Boxes.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Floating_Boxes.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Menu_Help_Trace.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Menu_Help_Trace.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Missing_DLL_Box.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Native_Exception.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Native_Exception.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Please_Wait.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Please_Wait.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Safe_Mode_Bar.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Safe_Mode_Bar.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Services_Limited_Tooltip.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Services_Limited_Tooltip.png": {
+      "build": 1034
+    },
     "Miscellaneous/Images/0e24eb5c-c9af-49a9-a908-03968b211554.light.png": {
       "build": 1034
     },

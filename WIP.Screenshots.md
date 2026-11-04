@@ -290,8 +290,10 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   alone), `programs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
   Chrome, not an IDE), `featuremap`, `code-chapter`, `debugging`, `forms-chapter`, `projects`, `projects-refs`,
-  `projects-start`, the `building` and `starting` setups, `customcontrols`, `code` and `sample9` (all described
-  below). A setup is `{name, start, prepare}`.
+  `projects-start`, the `building`, `starting` and `troubleshooting` setups, `customcontrols`, `code` and `sample9` (all described
+  below). A setup is `{name, start, prepare}`, with `closing` to read what only its page can say
+  before the IDE ends, `end` to check or give back what it holds after, and `noPage` for a setup with
+  no IDE page, whose `start` returns a stand-in for the connection and whose shots are `once`.
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
 - **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE in a slot of its own from
@@ -639,6 +641,64 @@ setup, which the setup's `end` removes. Its 14 pictures are under `docs/IDE/Star
 - **Nothing of a project reaches the registry.** These setups add `AddRecentsList` and
   `SaveProjectMetaState` to `PAGE_DEFAULTS`' blocked calls.
 
+## The "When something goes wrong" chapter
+
+Two setups, the fixture `test/shots/troubleshooting/Trouble`, the lanes' `test/ide/probes/troubleshooting`
+under another name: `Sub Crash` calls `RtlMoveMemory` with two bad addresses at line 10 of `MainMod`, the
+line the page quotes. Its 8 pictures are under `docs/IDE/Troubleshooting/Images/`.
+
+- **`troubleshooting`**: one IDE, the project in a folder of the tool's own on `PACKAGE_ROOT`, its
+  compiler restarted on `licenceKey = ""` as in `community` (`communityCompiler`), and
+  `AddRecentsList` and `SaveProjectMetaState` blocked as in `starting`. Every take that shows the
+  status bar fails on any licence badge but COMMUNITY EDITION, after its restarts too (`communityBadge`).
+  It calls `defaultLayout` once as it prepares, because `Native_Exception`'s float ends with that
+  call and the call moves Light's panels a device pixel: without it a picture came out one way
+  alone and another after that take.
+- **`Services_Limited_Tooltip`, `Please_Wait`**: `whileConnectHeld`, which `Services_Limited` also
+  uses, restarts with the button and holds one of the page's three `connect` calls. The tooltip's
+  picture holds `lspSocket.connect`, so that FS reads OPERATIONAL and LSP and DEBUGGER Disconnected
+  (LSP reads Connecting only once the call is made), and it shows the badge's own `title` in the
+  replica. Its clip takes in the licence badge whole, which the tooltip stands over, and stops 3 CSS
+  px above the tooltip, since a line of the console is cut there. `Please_Wait` holds `fs.connect`:
+  the box stays at 10.0%, no missing package and no native box needed, and the clip is the editor's
+  width and 190 CSS px above and below the box.
+- **`Crash_Loop`** (the whole window): a restart by the button starts the count again with its one
+  entry, then three kills, each by the pid in `g_CurrentCompilerProcessId` (`killTree`), the first
+  two waiting for the project to be back. The take then has the float and the box together, its
+  console's times set in the page, and ends on the box's OK and Ctrl+F2, about eleven seconds
+  (`leaveSafeMode`). Start is never pressed in Safe Mode.
+- **`Safe_Mode_Bar`** is a composite as `Title_Unsaved` is, the left 474 CSS px of the toolbar over the
+  left 474 of the status bar: in a whole window the box and the badge are at opposite ends and shrink
+  with the page. The box is set in the page, OK is pressed, and each theme's take comes back to win32.
+- **`Native_Exception`**: `Crash` run as a line of the console runs it, the console floated 1060 CSS
+  px wide so that each line is one row. `debugConsoleContent` keeps a row's height from when it was
+  first measured, in whatever width the console had, and draws only the rows that show, so the lines
+  are read from its `dataNodes` and the take calls `recalcCachedItemHeights`, as a resize does, and
+  waits for three rows of one line each. The time and the address differ from run to run and from
+  boot to boot, and are set in the page to the page's values (`fixNativeLine`). The two yellow lines
+  come only from the first exception with `g_TraceMode` off, and it then stays on: the take fails
+  unless there are one red line and two yellow ones, and ends with TRACE mode off by Help's
+  command, with the restart that brings.
+- **Lane.close and the exception.** `Lane.close` counts the console's `NATIVE EXCEPTION` lines and
+  throws; a kill writes none. `Native_Exception` asserts that its own one is the only one and
+  clears the console, and that is the whole allowance: any other exception stays in the console, and
+  `closing` fails the setup on it, since `endRun` only prints what `Lane.close` throws.
+- **`Menu_Help_Trace`**: `menuShot` with `Menu_Help`'s clip, TRACE mode switched by `before` and back
+  by `after`, each with its restart; its `check` fails the picture unless the item reads Enabled with
+  its `codicon-check`.
+- **`Floating_Boxes`**: three messages the IDE gives, sent by `msgBox` in the take. The middle
+  one, `msgBox2` (`msgBox1` is the newest, at the bottom), is the IDE's *Backend compiler seems to be
+  busy* message, the only one here long enough for a click to change what shows; it gets a real
+  click. The boxes last 60 s, so the take closes them with their own close calls.
+- **`closing`** prints `__tbDefaults.reports`. The defaults hook answers `ALLOWERRORREPORTINGV3` no, so
+  `postError` returns at once and the exceptions explain 0: anything else fails the setup, as does
+  a request for the report's address, which CDP's `Fetch` stops and counts, and a JavaScript dialog.
+  A take fails on a dialog too (`noAlert`): an alert cannot be captured.
+- **`troubleshooting-box`** (`noPage`): the lane's copy with `bin\twinBASIC_ide_win32.dll` renamed,
+  `launchOnDesktop` with `IDE_FLAGS`, and `boxPicture` of `starting-boxes`, `once`, `window`. The take
+  fails unless the box's text is the one the page describes; it names `bin\twinBASIC_win64.dll`,
+  which is there. OK ends the process, and one that outlives the box is ended by its pid.
+
 ## Special IDE states
 
 - **`Services_Unavailable`**: the badge in the `no-project` setup. With no project the badge's
@@ -668,7 +728,7 @@ setup, which the setup's `end` removes. Its 14 pictures are under `docs/IDE/Star
   the IDE starts another. `Network.setBlockedURLs` does not stop a WebSocket, and throttling the
   page's CPU (`Emulation.setCPUThrottlingRate` 40) holds LIMITED but makes every evaluation time
   out. The shot holds the page's `fs.connect` call of a restart (the toolbar's button) until the
-  capture and then makes it as the IDE did. The restart's DEBUG CONSOLE line names the project's
+  capture and then makes it as the IDE did (`whileConnectHeld`). The restart's DEBUG CONSOLE line names the project's
   folder, under the user's, and Clear does nothing until the compiler is connected, so
   `nameUserAsUserIn(c, ".debugConsoleOuter")` replaces the name there in the page; the console
   is cleared with its button once the compiler is back.

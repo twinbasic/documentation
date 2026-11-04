@@ -52,7 +52,7 @@ A *native exception* is a crash inside the compiler process, for example an acce
 
 The program ends with no panel and no box. The compiler stays up, so the badge does not move, and the next run needs no restart. The line names the module and the procedure. The first native exception while TRACE mode is off also writes two yellow lines that begin `[IDE]`; see [TRACE mode](#trace-mode). When [error reporting](#automatic-error-reporting) is on, the IDE sends this line to twinBASIC Ltd.
 
-<!-- SHOT trouble-native-exception: the DEBUG CONSOLE after a native exception, the red NATIVE EXCEPTION line and the two yellow [IDE] lines -->
+![The DEBUG CONSOLE after a native exception: the NATIVE EXCEPTION line in red, and two yellow lines under it.](Images/Native_Exception.png){:width="1060" height="124"}
 
 ## TRACE mode
 
@@ -82,7 +82,7 @@ The first native exception of a session switches the mode on by itself. The cons
 
 ![The Help menu with the TRACE mode item reading Disabled at its foot.](../Menu/Images/Menu_Help.png){:width="269" height="294"}
 
-<!-- SHOT trouble-trace-enabled: the Help menu with the TRACE mode item reading Enabled, with its tick -->
+![The Help menu with the TRACE mode item reading Enabled, with a tick, at its foot.](Images/Menu_Help_Trace.png){:width="265" height="294"}
 
 ## DevTools
 
@@ -105,7 +105,7 @@ The IDE says that something went wrong, and that nothing is blocked, in a messag
 - **Click** a box, and its whole text shows. A **Copy to clipboard** button appears; it puts the text on the clipboard and leaves the box open.
 - The **X** of a box closes it.
 
-<!-- SHOT trouble-floating-boxes: three floating message boxes above the status bar, the middle one clicked so that its full text and Copy to clipboard show -->
+![Three floating message boxes stacked above the status bar, the middle one clicked, so that its whole text and Copy to clipboard show.](Images/Floating_Boxes.png){:width="542" height="276"}
 
 The messages that mean a failure include **Compiler crash loop detected.  Restarting in SAFE mode.**, **Invalid licence key.  Please try again.**, **Licence key invalid.** and `ERROR: LoadProject failed.  Error code ERROR_...`, which a project import raises.
 
