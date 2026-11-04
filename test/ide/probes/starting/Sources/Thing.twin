@@ -1,0 +1,13 @@
+Class Thing
+
+    Public Value As Long
+
+    Public Function Name_Of_Thing() As String
+        Return "the fourth of the four sources of the probe"
+    End Function
+
+    Public Sub Add(ByVal x As Long)
+        Value = Value + x
+    End Sub
+
+End Class

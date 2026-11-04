@@ -1,0 +1,10 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "Up and Down do nothing in the search box, which has the focus when the dialog opens",
+    "no key reaches the rail: Tab and the arrows leave the section as it was",
+    "in Recent, Tab sends the focus out of the dialog, and the keyboard does nothing until a click"
+  ],
+  "steps": "1. File > New Project...: press Down, and the selection stays on Standard EXE.\n2. Press Tab and the arrows: the section stays New.\n3. File > Open Recent...: press Tab twice, and the focus is on a panel header behind the dialog.\n4. Down, Up, Enter and Esc do nothing until a click in the dialog.\nControl: Tab, then the arrows, move the selected item in New."
+}

@@ -11650,3 +11650,379 @@ Severity: a silent different result. A missing `Set` that VB6 reports at once go
 
 <!-- Reproducer: bugs/let-object-result-stored/ (mode run; expect is the four stored-object lines, the New NoDefault 438 control and the NewWithDefault Long control; the v = c line is left out of expect, because its number is also latebound-hresult-mapping's kind of defect and may be fixed apart); verify reproduces on BETA 1034, and run reproduces it with --ide on BETA 1010, with --arch win64, and in an exe (tbrun --exe on a copy that prints with TbRun.Out). VB6 side in vb6/ (Module1.bas, NoDefault.cls, WithDefault.cls): `bug_repro.mjs vb6` prints the expected block. The compile-time cases, the array element, the Object variables and the class whose default member needs an argument come from scratch probes (twinBASIC with tbrun, VB6 with vb6run.mjs), not kept; 64-bit VBA was run through scripts/lib/vba.mjs in a scratch module, not kept. docs/Reference/Core/Let.md carries a WARNING (BETA 1034) for it; when a fixed build is released, the WARNING goes and the page states which error each case raises. Related: latebound-hresult-mapping (the number a failed late-bound call raises). Found 2026-11-03 in item 12 of the BETA 1034 relabel pass (#2482's object case was such an assignment), narrowed in item 17. -->
 
+---
+
+## The next project opened after a DEP / LAA reload and New Project Options takes the earlier project's whole Settings, silently
+
+**Describe the bug**
+After an open that reloaded the project for its DEP / LAA settings, and then **Continue** in New Project Options, the next project opened in that IDE, of any kind, loads with the whole `Settings` of the project New Project Options made. Its sources and resources are its own. The tree's root shows the earlier name and nothing says so: no message, no Debug Console line, the project is not marked changed, and the title bar shows the opened file's name. **Ctrl+S** then writes those Settings into the file, the project's name, id, startup object, build path and references, so a saved project that was never edited loses its own. It was observed in an IDE with an `APPDATA` of its own, comparing the Settings the IDE holds and the file on disk, key by key.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Have three saved projects: `Old.twinproj`, with *Large Address Aware (LAA)* set to **No** in Project Settings, and `Newer.twinproj` and `Target.twinproj`, with it set to **Yes**.
+2. Start the IDE, cancel the New / Open Project dialog, and open `Old.twinproj`. The IDE starts with LAA on, so the project is loaded twice, which shows only as the progress box starting again.
+3. Open `Newer.twinproj`, which puts the IDE back to LAA on.
+4. **File > New Project...**, double-click **Standard EXE**, type `Zzz` as the Project Name, press **Continue**.
+5. **File > Open Project...**, `Target.twinproj`. The title bar reads `Target.twinproj`, with no bullet, and nothing is asked. The Project Explorer's root is `Zzz`, and Project Settings shows the name `Zzz`, the title `Zzz`, startup object `Form1` and the new project's references and id.
+6. Press **Ctrl+S**. The file on disk now has all of those in place of its own.
+
+With a VB6 import the steps are shorter: open `Old.twinproj`, close it, **File > New Project...**, **Import from VBP...**, **Continue**, close it with **Discard Changes**, open `Target.twinproj`.
+
+**Expected behavior**
+A project opens with the Settings in its file. The Settings from New Project Options belong to the project that dialog made, and to the one load it starts.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Two page variables make it, and the build box plays no part. `g_LastMassagedSettings` is set by every **Continue** of New Project Options. `g_UseLastMassagedSettings` is set by every DEP / LAA reload. The IDE clears the pair only when it uses it, and it uses it at the next project load of any kind, when both are set and no dialog is showing, by answering the compiler's massage request with the whole earlier Settings. So the reload has to come first, and nothing may use up the pair before the open. Step 3 matters: with the IDE left at LAA off, a new project reloads, and that reload uses the pair. An import sets the flags itself, so its steps need no second project.
+
+The opened project can be anything: a saved `.twinproj` with LAA on or off, a `.vbp` from Recent (VB6) or from a row of Recent, or **Import from folder...**. Key by key, 18 keys of `Settings` came from the earlier project and none from the opened one, among them `project.name`, `project.appTitle`, `project.id`, `project.startupObject`, `project.buildPath`, `project.references`, `project.description`, `project.largeAddressAware`, the version numbers and `project.warnings`. Which saved projects set the flag: any that differs from the IDE's current DEP / LAA. A project made by **New** has LAA on, because **Continue** turns it on, so it does not at a start.
+
+What comes out right: New Project Options alone, with no reload before it; a reload alone; a new project made while the IDE runs with LAA off (its own reload uses the pair); the open after the one that took the Settings (the pair is used once); another `.vbp` by the card (the dialog takes precedence). Closing without a save leaves the file as it was.
+
+Severity: high. A wrong project configuration with nothing shown, and the next save replaces the project's own Settings, its id included, with another project's.
+
+<!-- Reproducer: bugs/open-takes-earlier-settings/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "after a DEP / LAA reload and then New Project Options, the next project opened takes the earlier project's whole Settings, silently, and Ctrl+S writes them into its file" and "the same steps by an import: a project with LAA off, Import from VBP..., then any project, and closing without a save leaves its file as it was", with four controls; the projects are packed from test/ide/probes/starting into the lane's work folder). No project and no zip. docs/IDE/Starting/Opening-Projects.md carries a WARNING (BETA 1034) for it; when a fixed build is released, that WARNING goes. Related: laa-mismatch-after-new-project, the same two variables in the other order. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's N2). -->
+
+---
+
+## A recovered project is not marked changed, and Save overwrites the damaged file with what was recovered
+
+**Describe the bug**
+A `.twinproj` whose structure is damaged opens after the compiler's box *bad file format*: *WARNING: failed to deserialize file system. Some files might be lost or truncated.* The project that opens holds only what was read, and is not marked changed. **Ctrl+S** writes it over the damaged file at once, with no question; so do **Add > Import...** and a change in Project Settings that restarts the compiler, with nothing pressed that says Save. What the file still held is gone, and no backup is left beside it. Damage anywhere in the `Sources` tree loses every source, so a project cut after five of its six files opens with none. Damage before the first entry opens as `RECOVERED_PROJECT`, with new Settings. It was observed on copies of a throwaway project saved once by the IDE, comparing the file before and after each step.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Copy a saved project with several sources, and cut the copy in the middle of its second source (any cut, wrong length or wrong kind in the `Sources` tree does it).
+2. **File > Open Project...**, the copy. Press **OK** on *bad file format*.
+3. The project opens under the file's name, not marked changed. Its Settings are kept, and it has no sources.
+4. Press **Ctrl+S**. Nothing is asked, and the file is overwritten: it now holds no sources at all.
+
+Instead of step 4, on a project cut after its sources (`Sources` whole, a resource cut): **Add > Import...**, any text file. The file is overwritten without its resources. Or on the first copy: Project Settings, untick a reference, **Apply Changes**: the file is overwritten as the compiler restarts.
+
+**Expected behavior**
+The damaged file stays as it is until the user chooses to replace it: a recovered project should be marked changed and saved with Save As, or Save should ask first, or a backup of the damaged file should be left beside it. The box should say what was lost.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Closing the project leaves the file as it was, and **Save Project As** to a new name keeps it too: that is the one save that does. Building, running, changing the build box and Restart Compiler leave it as well. After an edit, **Save** in the close question overwrites it. In all 19 kinds of damage tried, opening and closing left the file byte for byte unchanged.
+
+What each damage keeps: a cut in the root's header or at the first entry gives `RECOVERED_PROJECT`, no sources, and new Settings of 114 bytes, the box shows twice because those Settings have LAA off, and **Ctrl+S** leaves a file of 366 bytes. A cut just after `Settings`, or at any file or subfolder of `Sources`, keeps the Settings and no source, even the sources read whole before the cut. A cut in `Resources` keeps every source and loses the resources. A byte flipped inside a source's text shows no box at all, and that source is silently changed. Damage inside the `Settings` entry is the entry *A project damaged inside its Settings shows the bad file format box again after every OK*.
+
+Severity: high. Data is lost: the warning is shown, but it does not say that a save will replace the file, and the save needs no answer.
+
+<!-- Reproducer: bugs/recovered-project-save-overwrites/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "a project cut inside its Sources tree opens with every source gone and is not marked changed, and Ctrl+S overwrites the damaged file with no question", "a project cut at its first entry opens as RECOVERED_PROJECT, and Ctrl+S overwrites the file with that empty project", "Add > Import... in a project cut after its sources overwrites the damaged file, with nothing pressed that says Save" and "a change in Project Settings that restarts the compiler overwrites the damaged file, with nothing pressed that says Save", with a control; every damaged file is a copy, in the lane's work folder, of a project the lane's IDE saved, from test/ide/probes/starting). No project and no zip. docs/IDE/Starting/Opening-Projects.md carries a WARNING (BETA 1034) for it; when a fixed build is released, that WARNING goes. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's N1). -->
+
+---
+
+## A resource whose type is a string imports with an empty name, and the build then ends in an access violation
+
+**Describe the bug**
+Importing a VB6 project whose `.res` holds a resource with a string type (`CUSTOM`, `MYDATA`), with a numeric or a string id, gives a file with an **empty name** in `Resources\<type>`: however many such resources the type has, the Project Explorer shows one blank row, and the IDE reads it as 0 bytes. The import log says `0 ERRORS/WARNINGS`. A save keeps each one's bytes under an empty name. A build then ends in `NATIVE EXCEPTION: ACCESS_VIOLATION` in `twinBASIC_win32.dll`, and no exe is written. It was observed by importing a `.vbp` through the card, reading the tree and the saved file, and building a Standard EXE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Make a Standard EXE `.vbp` with one module and a `.res` compiled from `101 CUSTOM "data.bin"`, and two more resources of the type `CUSTOM`.
+2. **File > New Project...**, **Import from VBP...**, the `.vbp`, **Continue**.
+3. Under `Resources\CUSTOM` the Project Explorer shows one row with no name. `__IMPORT_LOG.md` says `IMPORT FINISHED WITH 0 ERRORS/WARNINGS`.
+4. Save the project, and press Build. The console prints `NATIVE EXCEPTION: ACCESS_VIOLATION {no-basic-code}`, and no exe is written.
+
+**Expected behavior**
+Each resource keeps its id as a file name, as one of a numeric type does (`RCDATA\#201`, `RCDATA\RCNAMED`, `#300\#301`), and the project builds. A project packed by hand with `Resources\CUSTOM\#101`, `CUSTOM\NAMEDRES` and `MYDATA\#401` builds, and the exe holds CUSTOM / 101, CUSTOM / NAMEDRES and MYDATA / 401 with their bytes, so the importer's name is the whole defect.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+It is the type's being a string, not the id and not the word `CUSTOM`: `RT_RCDATA` and a numeric type that is not a standard one are right, with either kind of id. The tree's map for the type has one key, `""`, which is why three resources show as one row. The saved file holds all three, each with its bytes, and a second save after a reopen keeps them. One resource of that shape is enough for the crash. The build's crash turns TRACE-MODE on for the session, the compiler restarts from the file, and the project stays open and unharmed. A build before the first save only asks to save.
+
+Severity: high. The import reports no problem, what the IDE shows is not what the file holds, and the project cannot be built.
+
+<!-- Reproducer: bugs/res-string-type-empty-name/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "a .res resource whose type is a string imports with an empty name, one blank 0-byte row for all of them, and a Standard EXE then ends its build in ACCESS_VIOLATION with no exe", with a control of numeric types that builds, in an IDE of their own, because the crash leaves TRACE-MODE on; the .vbp, .bas and .res are written into the lane's work folder by test/ide/starting-kit.mjs, and the build writes there). impexp refuses to unpack such a project, which the test asserts. No project and no zip. docs/IDE/Starting/Importing-VB6.md carries a WARNING (BETA 1034) for it; when a fixed build is released, that WARNING goes. Deleting or renaming the blank row was not tried. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's N3). -->
+
+---
+
+## After New Project Options, the first open of a saved project with LAA off fails with MISMATCHED LAA OR DEP AWARENESS
+
+**Describe the bug**
+With New Project Options used first and no DEP / LAA reload yet, opening a saved project with *Large Address Aware (LAA)* off fails: *Failed to load the project (error code MISMATCHED LAA OR DEP AWARENESS)*, with **Remove It** and **Keep It**, and no project is open. The file is unchanged, and opening it a second time works. Nothing about the project is wrong, and **Remove It** would take it off Recent. It was observed in an IDE with an `APPDATA` of its own, recording the loads the page starts.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE. **File > New Project...**, **Standard EXE**, **Continue**.
+2. **File > Close Project**.
+3. **File > Open Project...**, a saved project with *Large Address Aware (LAA)* set to **No** in Project Settings.
+4. The box above shows, and tB Services reads UNAVAILABLE. Press **Keep It**.
+5. Open the same project again: it opens.
+
+**Expected behavior**
+The project opens at the first try, as it does when New Project Options has not been used: it is reloaded for its DEP / LAA settings, and that is all.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The same two variables as the entry *The next project opened after a DEP / LAA reload and New Project Options takes the earlier project's whole Settings, silently*, in the other order. The dialog leaves `g_LastMassagedSettings` set, forced to LAA on. The open's own reload sets `g_UseLastMassagedSettings`, and so it sends the earlier Settings, LAA on, to an IDE now running LAA off. That second mismatch is the box. The pair is used up by it, which is why a second open works. The same file with no dialog before it opens at once.
+
+Severity: low. It cannot be missed and loses nothing, but the message blames the project, and its first answer removes it from Recent.
+
+<!-- Reproducer: bugs/laa-mismatch-after-new-project/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "with New Project Options first and no reload yet, opening a saved project with LAA off fails with MISMATCHED LAA OR DEP AWARENESS, and a second open works"; its control is "control: a reload alone, with no New Project Options, opens a project with LAA off and leaves the next project its own Settings"; the project is packed from test/ide/probes/starting into the lane's work folder). No project and no zip. docs/IDE/Starting/Opening-Projects.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Remove It was not clicked. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's N4). -->
+
+---
+
+## A project damaged inside its Settings shows the bad file format box again after every OK
+
+**Describe the bug**
+Opening a `.twinproj` that is cut, or has a wrong length, inside its `Settings` entry shows the compiler's box *bad file format*: *WARNING: failed to deserialize file system. Some files might be lost or truncated.* After **OK** the box comes back, and it goes on coming back. Behind it the page shows *Please wait...* with no close box, the UI is locked, and no project opens. There is no way out on the page: a person has to end the IDE. It was observed in an IDE on a private desktop, pressing **OK** on each box.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Copy a saved project, and cut the copy in the middle of its `Settings` entry.
+2. **File > Open Project...**, the copy.
+3. Press **OK** on *bad file format*. The box comes back about two seconds later.
+4. Go on pressing **OK**. It does not end.
+
+**Expected behavior**
+The box once, then either the failure box the IDE shows for any other file it cannot read (*Failed to load the project*, with **Remove It** and **Keep It**), or a recovered project as for damage elsewhere in the file.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+40 boxes in 88 s were counted, with the page's *Compiler crash loop detected. Restarting in SAFE mode.* logged about every fifth one, and it was still going. `#appOverlay` stays up, `lockUICount` is 1, and the file is unchanged. A cut just after `Settings` opens with the Settings kept and no sources, and a cut before `Settings` opens as `RECOVERED_PROJECT`. Whether the window's close box works during the loop was not tried: nothing was tried from outside the page.
+
+Severity: medium. Nothing is lost, but the IDE has to be ended from outside.
+
+<!-- Reproducer: bugs/damaged-settings-box-loop/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "a project damaged inside its Settings entry shows the bad file format box again after every OK", which counts six boxes, then ends the IDE by its pid, in an IDE of its own, with a timeout of its own; the damaged file is a copy, in the lane's work folder, of a project the lane's IDE saved). No project and no zip. docs/IDE/Starting/Opening-Projects.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's follow-up, point 4; D20). -->
+
+---
+
+## In the New / Open Project dialog, Enter on a button Tab highlighted also opens the selected item
+
+**Describe the bug**
+In the New / Open Project dialog **Tab** moves a highlight over **Browse...**, **Open** and **Cancel** without moving the focus, and **Enter** then presses that button **and** opens the selected item. **Open** runs twice. **Browse...** shows the picker and opens the item. **Cancel** closes the dialog and opens the item: with a saved project open, it closes that project with no question and shows New Project Options, so a person who chose Cancel by keyboard is left without the project. **Enter** on a focused card has a defect of its own: it opens the selected card, not the focused one. It was observed with real keys, recording each call of the page's open.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved project and change nothing.
+2. **File > New Project...**. The focus is in the search box and **Standard EXE** is selected.
+3. Press **Tab** four times. The highlight is on **Cancel**.
+4. Press **Enter**. The project closes, nothing is asked, and New Project Options opens for Standard EXE.
+5. Press **Cancel** there. The IDE is empty, and tB Services reads UNAVAILABLE.
+
+For the card: click **ActiveX DLL**, click in the search box, press **Tab** (the focus is on the **Standard EXE** card), press **Enter**. ActiveX DLL opens.
+
+**Expected behavior**
+**Enter** does what the highlighted button does and nothing else, as a click on it does: **Cancel** keeps the project, as a click on it and **Esc** both do. **Enter** on a focused card opens that card.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+With three **Tab** presses the highlight is on **Open**, and **Enter** calls the open twice: two `closeProjectSafely`, two loads. A real run ended in one project with one options dialog, with no harm. Unsaved edits are not lost: with a changed project the question *You've made changes to this project. Save now?* comes first, and its **Cancel** keeps everything. The same in Samples, and with no project open. **Space** on a focused card selects it, and **Enter** then opens that card.
+
+Severity: medium. Nothing unsaved is lost and the file is as it was, but Cancel closes the open project.
+
+<!-- Reproducer: bugs/new-project-enter-acts-twice/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "with the highlight moved to Open by Tab, Enter runs the open twice", "with the highlight moved to Browse... by Tab, Enter opens the picker and the selected item", "with the highlight moved to Cancel by Tab, Enter closes a saved project with no question and opens the selected card" and "Enter on a focused card opens the selected card, not the focused one", with a control, with real keys). No project and no zip. docs/IDE/Starting/New-Project.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D13). -->
+
+---
+
+## Import from VBP... and Import from folder... close the open project before their picker opens
+
+**Describe the bug**
+In the New / Open Project dialog the cards **Import from VBP...** and **Import from folder...** close the open project first and show their picker afterwards. Cancelling the picker leaves no project and no dialog: the person changed their mind, and the project is gone from the window, with tB Services UNAVAILABLE. It was observed with real clicks, the picker answered with Cancel, recording the order of the calls.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved project.
+2. **File > New Project...**, double-click **Import from VBP...** (or **Import from folder...**).
+3. The project closes, and then the picker opens. Press Cancel in it.
+4. There is no project and no dialog, and tB Services reads UNAVAILABLE.
+
+**Expected behavior**
+The project stays open until a file has been chosen, as with **File > Open Project...** and **Browse...**: cancelling either leaves the project open.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Nothing unsaved is lost: with unsaved edits the question comes first, and its **Cancel** keeps the project (the dialog is gone); after **Discard Changes** and a cancelled picker nothing is left, as the person chose.
+
+Severity: low. The person sees the project go and reopens it.
+
+<!-- Reproducer: bugs/import-card-closes-project-first/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "Import from VBP... closes the open project before its picker opens, and cancelling the picker leaves no project and no dialog" and "Import from folder... closes the open project before its picker opens, and cancelling the picker leaves no project and no dialog", with the control "control: File > Open Project... cancelled, and Browse... cancelled, keep the project"; real clicks, and the pickers answered in the page). No project and no zip. docs/IDE/Starting/New-Project.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D4). -->
+
+---
+
+## The Project Name box filters keys, not text, so a pasted name keeps a space or a dot
+
+**Describe the bug**
+The **Project Name** box of New Project Options takes out of what is typed the characters a project name cannot hold, key by key: a space, a dot, a leading underscore. Text that arrives any other way is not filtered, so a pasted `My Project.x` stands, and becomes `project.name`, `project.description`, `project.appTitle` and the project's root folder. It compiles and builds with no diagnostic, and the exe is named `My Project.x_win32.exe`. It was observed by typing with real keys, and by inserting text as a paste does.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. **File > New Project...**, double-click **Standard EXE**.
+2. In **Project Name**, type `My Project.x_1`. The box reads `MyProjectx_1`.
+3. Select the text and paste `My Project.x`. The box reads `My Project.x`.
+4. Press **Continue**. The project's root folder is `My Project.x`.
+
+**Expected behavior**
+The same filter for text that is pasted as for text that is typed, or a refusal at **Continue**.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+A leading digit is allowed when typed (`9name` stands). `_lead` typed gives `lead`. The project compiled, saved, and built `Build\My Project.x_win32.exe` with no diagnostic shown. No ActiveX build was tried, where the name is also the type library's.
+
+Severity: low. Nothing is lost.
+
+<!-- Reproducer: bugs/project-name-paste-unfiltered/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "a name pasted into Project Name keeps its space and its dot, and becomes the project's name, title and root folder; it builds with no diagnostic", with the control "control: the Project Name box takes out of typed text what a project name cannot hold"; the paste is CDP's Input.insertText, so the clipboard is not touched, and the build writes into the lane's work folder). No project and no zip. docs/IDE/Starting/New-Project.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D7). -->
+
+---
+
+## The New / Open Project dialog has keyboard dead ends
+
+**Describe the bug**
+Three places of the New / Open Project dialog do not answer the keyboard. **Up** and **Down** do nothing in the search box, which has the focus when the dialog opens, so the arrows do not move the selection until the focus has left it. No key reaches the rail, so the section cannot be changed without the mouse. In **Recent**, **Tab** sends the focus to the page's body and then behind the dialog, to a panel header, and from there **Esc**, **Enter** and the arrows all do nothing: the keyboard is lost until a click. It was observed with real keys, reading the focus and the selection after each.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. **File > New Project...**. Press **Down**: the selection stays on **Standard EXE**.
+2. Press **Tab**, and any of **Down**, **Left**, **Up**, **Right** and **Tab**: the section stays **New**.
+3. **File > Open Recent...**. Press **Tab** twice. The focus is on a panel header behind the dialog.
+4. Press **Down**, **Up**, **Enter** or **Esc**. Nothing happens, and the dialog stays. Click in the dialog: the arrows work again.
+
+**Expected behavior**
+**Up** and **Down** move the selection from the search box, as they do in a list with a search box above it. A key reaches the rail. **Tab** stays inside the dialog while it is modal, in **Recent** as in **New**.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+**Tab**, then the arrows, **Enter**, is the way that works with the keyboard alone, in **New** and **Samples** only. In **Recent** the search box is the only focusable element. Typing text and pressing **Esc** also takes the focus out of the box, to the dialog, where the arrows work and wrap.
+
+Severity: low. Nothing is lost, but the dialog cannot be used with the keyboard alone.
+
+<!-- Reproducer: bugs/new-project-keyboard-dead-ends/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "Up and Down do nothing in the search box, which has the focus when the dialog opens", "no key reaches the rail: Tab and the arrows leave the section as it was" and "in Recent, Tab sends the focus out of the dialog, and the keyboard does nothing until a click", with the control "control: Tab, then the arrows, move the selected item in New"; real keys, and the recent list answered in the page). No project and no zip. docs/IDE/Starting/New-Project.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D19). -->
+
+---
+
+## --no-save-ide-settings does not guard three settings, and is read after the first-run questions
+
+**Describe the bug**
+`--no-save-ide-settings` stops most saves of the IDE's settings, each behind `g_DontSaveIdeSettings`, but three are not behind it: `NEWFRONTPAGE` (closing the New / Open Project dialog), `OBJECT_BROWSER` (a change in the Object Browser) and `PUBLISHER` (the Package Publishing sign-in). All three reach the registry whatever the flag says. The flag is also read only when `parseCommandLine` runs, after the first-run questions and IDE Options, so a first run writes `LICENCEAGREEMENTV3`, `ALLOWERRORREPORTINGV3` and `GENERAL`, and every page start writes `ACTIVE_PANEL_LAYOUT_NAME`, `WEBPANEL_SETTINGS` and `GENERAL2`, with the flag on the command line. It was observed through a proxy in front of the host object, which recorded each `SaveIDESetting` call and dropped it, so nothing reached the registry.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE with `--no-save-ide-settings`, with no project.
+2. In the page, wrap `hostAppObject.SaveIDESetting` so that it records its calls.
+3. Press **Cancel** in the New / Open Project dialog. `SaveIDESetting("NEWFRONTPAGE", '{"section":"new"}')` is called, though `g_DontSaveIdeSettings` is true.
+4. Open a project, and change the Object Browser's view: `SaveIDESetting("OBJECT_BROWSER", ...)` is called.
+5. For the order: a first run (no `GENERAL`, `LICENCEAGREEMENTV3` or `ALLOWERRORREPORTINGV3` saved) shows the licence agreement with `g_DontSaveIdeSettings` still false, and **I AGREE** saves `LICENCEAGREEMENTV3` and `ALLOWERRORREPORTINGV3`.
+
+**Expected behavior**
+No save of a setting under the flag, as it says, and the flag read before anything can save. A tool that starts an IDE with it counts on leaving the user's settings alone.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The saves the flag does guard, once `parseCommandLine` has run: `LICENCEAGREEMENTV3`, `ALLOWERRORREPORTINGV3`, `GENERAL`, `GENERAL2`, `LAYOUT`, `LAYOUTv2`, `ACTIVE_PANEL_LAYOUT_NAME`, `WEBPANEL_SETTINGS`, `CUSTOM_PANEL_LAYOUTS`, `CUSTOM_KEYBOARD_SHORTCUT_GROUPS`, `ACTIVE_KEYBOARD_SHORTCUT_GROUPS`, `FORMS_windowsPalette`, `targetArchitectureMemory`, `LicenceKey` and `NEWYEAR_JAN2026_1`. `--no-update-recent-files` has the same gap: **X** on a Recent row calls `RemoveRecentsList`, which that flag does not test.
+
+Severity: low. A person who passes the flag finds three settings changed, and a test harness has to drop those saves itself.
+
+<!-- Reproducer: bugs/no-save-flag-unguarded-saves/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "with --no-save-ide-settings, closing the New / Open Project dialog calls SaveIDESetting for NEWFRONTPAGE all the same", "with --no-save-ide-settings, a change in the Object Browser calls SaveIDESetting for OBJECT_BROWSER all the same", "with --no-save-ide-settings, saving the publisher's details calls SaveIDESetting for PUBLISHER all the same" and "--no-save-ide-settings is read only after the first-run questions: the licence answers are saved with it on the command line", with a control of a guarded key; the guard in test/ide/starting-kit.mjs stands in front of the defaults hook and records and drops every call, so nothing reaches the registry). No project and no zip. No page carries a callout: this is a report for the developers. scripts/lib/tb-defaults.mjs drops the saves of NEWFRONTPAGE and OBJECT_BROWSER for every tool's IDE because of it. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's section 1i). -->
+
+---
+
+## A Recent path with a # shows cut in two
+
+**Describe the bug**
+A row of **Recent** in the New / Open Project dialog shows a path holding `#` in two pieces, cut at the `#`, which is not shown: `C:\dev\C#\app.twinproj` reads `C:\dev\C` over `\app.twinproj`. The row opens the whole path. It was observed with the recent list answered in the page.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project saved at a path with a `#` in it, such as `C:\dev\C#\app.twinproj`, and close it.
+2. **File > Open Recent...**. The row reads `C:\dev\C`, and under it `\app.twinproj`.
+
+**Expected behavior**
+The whole path, as a row of any other path shows. The `#` separates a template folder's name from its second line (`_Standard EXE#(Console App)`), and it means nothing in a project's path.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+**Open** on the row opens the whole path. A search for `c#` finds the row, with nothing marked.
+
+Severity: cosmetic.
+
+<!-- Reproducer: bugs/recent-path-hash-cut/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "a Recent path with a # shows cut in two, at the #, and opens from the whole path", with the control "control: a Recent path with no # shows whole"; the recent list is answered in the page, so no path of the user's is read). No project and no zip. No page carries a callout. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D16). -->
+
+---
+
+## New / Open Project search rows show the internal path
+
+**Describe the bug**
+In the New / Open Project dialog, a search row of one of the IDE's own items shows the internal path the dialog keeps for it, as a line under the name: `$\Sample 10.    twinBASIC IDE Addin` for a sample, with the folder's spaces, and `$` alone for **Import from VBP...**. The `$` can be searched: `$` as a search lists 34 rows. It was observed with real keys.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. **File > New Project...**, and type `sample 10` in the search box. The row's second line reads `$\Sample 10.    twinBASIC IDE Addin`.
+2. Search for `vbp`. The row's second line reads `$`.
+3. Search for `$`. 34 rows are listed.
+
+**Expected behavior**
+No such line for an item with no path a person can use, or the section's name, and no match on the internal prefix.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+A row of a Recent project shows its real path.
+
+Severity: cosmetic.
+
+<!-- Reproducer: bugs/front-page-search-internal-paths/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "search rows of the IDE's own items show the internal path, and $ alone for an import card", with the control "control: a search row of a Recent project shows its path, marked"). No project and no zip. No page carries a callout. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D17). -->
+
+---
+
+## Two search words in one line of a row lose the first mark
+
+**Describe the bug**
+The New / Open Project dialog's search marks the words it found in each line of a row, and when two words are in the same line, only the last is marked. For `standard console`, the row **Standard EXE (Console App)** has its path line marked only at `Console`, though `Standard` is in that line too. It was observed by reading the marks of each row.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. **File > New Project...**, and type `standard console` in the search box.
+2. The row's first line marks `Standard`, its second marks `Console`, and its path line, `$\_Standard EXE#(Console App)`, marks `Console` and not `Standard`.
+
+**Expected behavior**
+Every word found is marked, in each line that holds it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Each line is marked separately, so words in different lines are each marked. A single word is marked wherever it is.
+
+Severity: cosmetic.
+
+<!-- Reproducer: bugs/front-page-search-one-mark/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "two search words in one line of a row lose the first mark", with the control "control: search words in different lines of a row are each marked"). No project and no zip. No page carries a callout. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D18). -->
+

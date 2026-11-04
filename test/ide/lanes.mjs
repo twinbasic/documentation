@@ -49,4 +49,5 @@ export default [
   { file: "zoom.test.mjs" },
   { file: "object-browser.test.mjs" },
   { file: "language.test.mjs" },
+  { file: "starting.test.mjs" },
 ];

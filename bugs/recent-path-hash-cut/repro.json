@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "a Recent path with a # shows cut in two, at the #, and opens from the whole path"
+  ],
+  "steps": "1. Have C:\\dev\\C#\\app.twinproj in the recent list.\n2. File > Open Recent...: the row reads C:\\dev\\C over \\app.twinproj.\n3. Open on the row opens the whole path.\nControl: a path with no # shows whole."
+}

@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "with New Project Options first and no reload yet, opening a saved project with LAA off fails with MISMATCHED LAA OR DEP AWARENESS, and a second open works"
+  ],
+  "steps": "1. Start the IDE. File > New Project..., Standard EXE, Continue.\n2. File > Close Project.\n3. File > Open Project..., a saved project with Large Address Aware (LAA) set to No.\n4. The box reads Failed to load the project (error code MISMATCHED LAA OR DEP AWARENESS), with Remove It and Keep It, and no project is open. Press Keep It.\n5. Open the same project again: it opens.\nControl: the same project, with no New Project Options before it, opens at once."
+}

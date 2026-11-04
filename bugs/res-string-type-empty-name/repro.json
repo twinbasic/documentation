@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "a .res resource whose type is a string imports with an empty name, one blank 0-byte row for all of them, and a Standard EXE then ends its build in ACCESS_VIOLATION with no exe"
+  ],
+  "steps": "1. Make a Standard EXE .vbp with a .res that holds three resources of the type CUSTOM.\n2. File > New Project..., Import from VBP..., the .vbp, Continue.\n3. Resources\\CUSTOM shows one row with no name, which reads as 0 bytes, and the import log says 0 ERRORS/WARNINGS.\n4. Save the project: it holds all three, each under an empty name.\n5. Build: NATIVE EXCEPTION: ACCESS_VIOLATION, and no exe.\nControl: resources of numeric types keep their ids, and the project builds."
+}
