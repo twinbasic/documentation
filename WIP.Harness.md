@@ -1217,6 +1217,13 @@ The saves are dropped for two keys' sake. `main.js` tests `g_DontSaveIdeSettings
 `PUBLISHER`, so a tool's IDE wrote the first two to the user's registry on BETA 1034: `NEWFRONTPAGE` as
 soon as the New / Open Project dialog changed section or closed. `PUBLISHER` is written only when
 someone signs in on the Package Publishing panel.
+**The flag does not cover a first run.** The page reads it in `parseCommandLine`, after the first-run
+questions, so while the licence agreement, the error-reporting question and the first-run IDE Options
+are up, `g_DontSaveIdeSettings` is false and `LICENCEAGREEMENTV3`, `ALLOWERRORREPORTINGV3` and `GENERAL` are
+written (`bugs/no-save-flag-unguarded-saves`). A tool's IDE is not a first run, because the hook answers
+`GENERAL` and the machine's registry holds both answers. A test or a shot that makes one answers those keys
+`""` from a proxy in front of the hook, in from the document's start, and that proxy blocks every
+`SaveIDESetting` (`test/ide/starting-kit.mjs`).
 A new build can add a key, which is read from the user's registry until it is blanked: BETA 1023 added
 `OBJECT_BROWSER` (the Object Browser's view, filters, sorts and pane sizes) and BETA 1033 `NEWFRONTPAGE` (the
 New / Open Project dialog's section), both blanked since 2026-11-02. After a new BETA, list the keys the page passes
