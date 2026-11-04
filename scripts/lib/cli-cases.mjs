@@ -813,6 +813,8 @@ bad(
   bad(tool, ["survey", "extra"], thenUsage("unexpected argument: extra", tool));
   bad(tool, ["survey", "--map", "x.json"], thenUsage("--map does not apply to survey", tool));
   bad(tool, ["check", "--out", "x.js"], thenUsage("--out does not apply to check", tool));
+  bad(tool, ["survey", "--check"], thenUsage("--check does not apply to survey", tool));
+  bad(tool, ["keymap", "--check", "--update"], thenUsage("keymap takes one of --check and --update", tool));
   bad(tool, ["shape", "fix.js", "--copy-to", "x"], thenUsage("--copy-to does not apply to shape", tool));
   bad(tool, ["patch", "fix.js"], thenUsage("patch needs one of --out <file> and --copy-to <dir>", tool));
   bad(

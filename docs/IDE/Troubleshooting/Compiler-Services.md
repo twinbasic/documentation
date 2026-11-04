@@ -207,4 +207,3 @@ If the IDE starts a compiler and cannot connect to it, the **COMPILER** line of 
 - [Running](../Debugging/Running#restarting-the-compiler) -- what a restart does to a running program
 - [Diagnostic tools](Diagnostic-Tools) -- the console lines, TRACE mode and DevTools
 - [Saving](Saving) -- a save that fails, and the edits that nothing recovers
-- [Status Bar](../Reference/StatusBar) -- the other boxes

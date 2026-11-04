@@ -1,39 +1,34 @@
 ---
 title: Global Search
 parent: Add Ins
-nav_order: 1
+nav_order: 2
 permalink: /tB/IDE/AddIns/GlobalSearch
 ---
 
-## Global Search
+# Global Search
 
-This AddIn is supplied with the twinBASIC IDE.
+Searches a project's files from a tool window of its own. The add-in ships with the IDE, in the install's `addins\win32` and `addins\win64` folders, so there is nothing to install.
 
-Latest Release
-: v1.0.0.0
-
-Developer
-: twinBASIC
-
-The global search add in will contain a [Toolbar](../Reference/Toolbar) item.
+The add-in adds one button to the [toolbar](../Reference/Toolbar), which opens the window.
 
 ![A single toolbar button labelled Global Search.](Images/Toolbar_GlobalSearch.png){:width="102" height="35"}
 
-![The Global Search tool window before a search: an empty search box with a magnifier icon, and four clear checkboxes labelled In packages, Match case, Whole word and Exclude comments.](Images/GlobalSearch.png){:width="352" height="124"}
+Type a search term, such as `Button1`, into the text box, and the add-in lists the matches. The four boxes under it set what it searches and how:
 
-Options
+![The Global Search tool window before a search, with an empty search box and four clear checkboxes.](Images/GlobalSearch.png){:width="352" height="124"}
 
-- In packages
-- Match case
-- Whole word
-- Exclude comments
+**In packages**
+: Searches the project's packages as well.
 
-Type a search term, such as Button1, into the text box, and the add-in lists the matches.
+**Match case**
+: Takes upper and lower case as different.
 
-![The Global Search window after searching for Button1 with In packages ticked, in the add-in's own project. Each result is a card giving the file name, its size in bytes, its path, a match count and the matching line of code with Button1 highlighted, followed by its line and column position. Two cards are listed, both for Constants.twin in the packages, each with one match, vbDefaultButton1 at line 128, column 18.](Images/GlobalSearch_2.png){:width="352" height="389"}
+**Whole word**
+: Matches whole words only.
 
-## Download
+**Exclude comments**
+: Leaves out matches inside comments.
 
-This add-in is bundled with twinBASIC. You can download it from [https://github.com/twinbasic/twinbasic/releases][tB]
+Each result is a card that gives the file's name, its size in bytes and its path, the number of matches in it, and each matching line with its line and column.
 
-[tB]: https://github.com/twinbasic/twinbasic/releases
+![The Global Search window after a search for Button1, with In packages ticked and two result cards.](Images/GlobalSearch_2.png){:width="352" height="389"}

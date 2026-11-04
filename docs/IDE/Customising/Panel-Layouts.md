@@ -41,7 +41,7 @@ The first ten saved layouts have commands that switch to them: `tbPanels_SetActi
 ### The built-in layouts
 
 **Default Built-in Layout**
-: The toolbar sits at the top. The Toolbox and the Editor are on the left of the middle. The Debug Console and Problems, and Call Stack and Variables, are on the right of the middle. The Project Explorer and Properties are in a column on the far side.
+: The toolbar sits at the top. Under it, the Toolbox and the Editor sit side by side, above a row that holds the Debug Console, Diagnostics, Call Stack and Variables. The Project Explorer and Properties are in a column on the right.
 
 **Full Screen Editor Layout**
 : Docks only the toolbar, the Toolbox, the Editor and Properties, and the Editor takes most of the room. The other panels are removed from the window. A panel you open with its show command comes back as a floating panel, and the layout in use becomes **Custom Layout (Unsaved)**.

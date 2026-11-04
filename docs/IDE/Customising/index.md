@@ -28,7 +28,7 @@ Each part of the IDE that can be zoomed has a setting of its own. <kbd>Ctrl</kbd
 
 **The form designer.** The zoom box in the toolbar scales the form you are designing, from 25% to 400%, and **View → Zoom In** and **View → Zoom Out** step through it. The zoom is not saved. See [Zoom](../Forms/Designer#zoom) in the form designer's chapter.
 
-**The Webpage pane.** Its own zoom list scales the page it shows, from 50% to 150%. It starts at 70%, and keeps the zoom you choose. See [Webpage](../Project/Webpage).
+**The Webpage pane.** Its own zoom list scales the page it shows, from 50% to 150%. It starts at 70%, and keeps the zoom you choose. See [Webpage](../Reference/Webpage).
 
 ## Where the IDE keeps its settings
 

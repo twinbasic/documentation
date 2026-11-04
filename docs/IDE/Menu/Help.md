@@ -14,7 +14,9 @@ redirect_from:
 
 ## About twinBASIC...
 
-![The About twinBASIC dialog. Beneath the twinBASIC logo it gives the version of the IDE and the copyright as 2026 twinBASIC Ltd, followed by an italic paragraph thanking the community and a SPECIAL THANKS line marked coming soon. A VIP Gold Supporters band heads a grid of four sponsor logos and two empty See your logo here placeholders. Below that, ten third-party open-source libraries are listed against the licence file each one ships --- Monaco, Codicon, LLVM, LodePNG, Spectrum, Grapick, ChartJS, jQuery, VbQRCodegen and LZ4 --- above a green band naming the licence edition, and a Close button.](Images/Menu_Help_About.png){:width="501" height="880"}
+Opens a box that gives the version of the IDE, the copyright, the VIP Gold supporters, the third-party libraries that the IDE uses, and the edition your licence has. Each library is listed with its licence file, in the `ide\licences\` folder of the install. Click a supporter's logo to open that supporter's website in your default browser; for a supporter who has given no website, a floating message says so. **Close**, <kbd>Enter</kbd> and <kbd>Esc</kbd> close the box. It works with no project, and has no key.
+
+![The About twinBASIC box, with the twinBASIC logo at the top, a band of supporters' logos in the middle, a list of libraries below it, and a green band above the Close button.](Images/Menu_Help_About.png){:width="501" height="880"}
 
 ## Licence Agreement...
 

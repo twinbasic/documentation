@@ -2,7 +2,7 @@
 title: Status Bar
 parent: IDE Reference
 grand_parent: IDE
-# nav_order: 2
+nav_order: 13
 permalink: /tB/IDE/Reference/StatusBar
 redirect_from:
   - /tB/IDE/Project/StatusBar

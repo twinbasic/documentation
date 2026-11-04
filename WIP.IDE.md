@@ -1,7 +1,7 @@
 # The IDE section — finishing it
 
-The IDE section (`docs/IDE/`, `/tB/IDE`) is being rewritten so that every page is fit for
-the book. The goal is that `docs/_book.yml` holds no IDE entry under `left_out:`. This file
+The IDE section (`docs/IDE/`, `/tB/IDE`) has been rewritten so that every page is fit for
+the book, and `docs/_book.yml` holds no IDE entry under `left_out:`: keep it so. This file
 covers the structure, the conventions, where each fact comes from, and how a chapter is
 written. Owner decisions:
 
@@ -42,17 +42,16 @@ children. Second person ("you") is allowed here, as in tutorials.
 | 6 | Running and debugging | `/tB/IDE/Debugging` + children | Menu/Debug's run-time error walkthrough and Debugger Options, Menu/Run, Debug Console, Variables, Watches, Call Stack, Memory, `Features/Compiler-IDE/Debugging` |
 | 7 | Building | `/tB/IDE/Building` | Toolbar's Build configuration, Menu/File's Build and Clean, Package Publishing, links to LLVM and Project-Types |
 | 8 | Customising the IDE | `/tB/IDE/Customising/` + children (**written**) | IDE Options (all of them), themes and custom `.theme` files, panel layouts, keyboard shortcuts, language (from Menu/Window and Menu/Tools) |
-| 9 | Add-ins | `/tB/IDE/AddIns/` | AddIns/* as they are, Community given content |
+| 9 | Add-ins | `/tB/IDE/AddIns/` | AddIns/* (no community add-in is listed yet) |
 | 10 | When something goes wrong | `/tB/IDE/Troubleshooting/` + children (**written**) | Status Bar's service states, Restart the compiler, TRACE mode, error reporting |
 
 **Part B, Reference.** Written impersonally. One page per menu, plus the Toolbar, the Status Bar
 and the keyboard shortcuts, under `/tB/IDE/Reference/…`. Each entry gives the item, its
 shortcut, one or two sentences, and a link to the chapter that explains it.
 
-- The keymap is shown as a table, not the JSON dump `Menu/Window.md` holds. The table can be
-  generated from `main.js` if keeping it by hand proves error-prone. Decide that when the page is
-  written.
-- Webpage and the other panes that are not in a chapter get a reference entry.
+- The keymap is a table on its own page, `Reference/Keyboard-Shortcuts.md`, generated from
+  `main.js` by `ide_js.mjs keymap`: never edit its rows by hand.
+- Webpage, the one pane that is not in a chapter, has a page of its own here.
 
 **Moving pages.** When a page moves, its old permalink goes into `redirect_from:`, and every
 inbound link is changed to the new canonical URL. The 61 inbound links are in
