@@ -258,7 +258,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   alone), `programs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
   Chrome, not an IDE), `featuremap`, `code-chapter`, `debugging`, `forms-chapter`, `projects`, `projects-refs`,
-  `projects-start`, `customcontrols`, `code` and `sample9` (all described
+  `projects-start`, the `building` and `starting` setups, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`.
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
@@ -556,6 +556,57 @@ are under `docs/IDE/Building/Images/`.
   (`ExamplePublisher`) and a session id in the page and cancels the box; Publish_Result is the
   IDE's own `showModalNotification` with the success text. The pane floats at the bottom left, out
   from behind the boxes.
+
+## The "Starting a project" chapter
+
+Four setups, their fixtures under `test/shots/starting/`: `Throwaway` is the Starting lanes'
+`test/ide/probes/starting`, `Ledger` (a form, a module and a class, no manifest) and `Missing` (a
+`.vbp` naming `Gone.bas`) come from the trial's cases C, G and K. The `.vbp` fixtures are staged
+with CRLF, and every project is in a folder of the tool's own on `PACKAGE_ROOT`, named for its
+setup, which the setup's `end` removes. Its 14 pictures are under `docs/IDE/Starting/Images/`.
+
+- **`starting-first-run`**: the licence agreement, the reporting question and the first-run IDE
+  Options. The IDE reads `--no-save-ide-settings` in `parseCommandLine`, after those dialogs, so
+  they run over the guard of `scripts/lib/shot-first-run.mjs`, in from the document's start
+  (`Page.addScriptToEvaluateOnNewDocument`, then `Page.reload`), in front of the defaults hook:
+  it answers the three first-run keys, and records and blocks every `SaveIDESetting` and every
+  other call that writes or ends the IDE. A second proxy under the hook records any of those
+  that reached it. The setup's `end` prints the record, and fails on an entry in `through` or on a
+  changed hash of `IDESettings` (`settingsHash`, `reg query` read in memory, nothing written).
+- **The guard's answers follow a real call to the host.** The page reads its theme files by host
+  calls made before it asks for `GENERAL`, and the host answers in order, so a first start draws
+  its dialogs in the theme. An answer made in the page alone overtakes those reads:
+  `buildThemeData` finds no theme, and the dialogs have no frame and no background.
+- **Each take makes a first start and ends with a page past it** (`SETTLED`: agreed, reporting
+  off), however it goes, so that no first-run page runs on. The reporting question is answered
+  **NO**: it leads to the same IDE Options, and `g_ErrorReporting` is never set.
+- **Light**: a first start is always in the dark theme, so the Light picture is that dialog with
+  the theme switched by its own command at the agreement, which is why the IDE Options read
+  Light. The clip is the dialog and 40 CSS px of the banner round it.
+- **`starting`**: Enter Licence Key, the search, Recent (VB6) and the three New Project Options
+  boxes, each cancelled, so that no ActiveX project is ever made; the shot checks the licence box
+  is empty. The picker `OpenProjectVBP` is answered from `__shotAnswers`, VB6's list from
+  `__shotVb6Recents` (`PAGE_DEFAULTS`). A box's clip starts at the next whole CSS pixel: it can
+  start half a pixel into the progress box behind it.
+- **`starting-new`**: a new Standard EXE and an import, each made again by its take, since a take
+  leaves the project changed. Its compiler starts on `licenceKey = ""` in the page, as in
+  `community`, and the take fails on any badge but COMMUNITY EDITION. `FormDesignerId` is a new
+  GUID in each new project and the log's first line holds the time, so each is set in the page
+  once the real one shows (`fixDesignerId`, `fixImportTime`). `Title_Unsaved` is a composite of two
+  crops of `#rootMenuText`.
+- **`starting-boxes`**: the compiler's two native boxes, `once: true`, `window: true`, found by
+  `compilerBox` and closed with `BM_CLICK`. Each is a window alone. Over a maximized IDE the box
+  stands on the text of the progress box, and it is unaware of the display's scaling, so PrintWindow
+  draws it at 96 DPI in the corner of a bitmap of its scaled size, black round it (`drawnPart`),
+  where the IDE's window is 1.5x. It is made the active window, and sent `WM_UPDATEUISTATE` to hide
+  its focus cues, which came and went from run to run.
+- **`Damaged_Box`**: `Throwaway` packed, its `Settings` entry moved to the front (impexp writes it
+  last, the IDE first) and the file cut in the middle of its last source, so that `Settings` is
+  read whole: damage inside that entry is an endless loop of the box. It is opened from the
+  tool's own Recent list and closed unsaved, and the take fails if the file changed.
+- **Nothing of a project reaches the registry.** These setups add `AddRecentsList` and
+  `SaveProjectMetaState` to `PAGE_DEFAULTS`' blocked calls: the tidy removes `ProjectState` only
+  under the temp folder, and these projects are on `PACKAGE_ROOT`.
 
 ## Special IDE states
 

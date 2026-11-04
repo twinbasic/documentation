@@ -35,7 +35,7 @@ The IDE shows nothing else: no sign-in, no tip of the day and no list of what is
 
 The dialog is titled **twinBASIC Licence Agreement**. It holds the agreement between you and TWINBASIC LTD as a scrolling text in English. It has two buttons, **I AGREE** and **QUIT**. **I AGREE** records the date of your agreement and goes on. **QUIT**, <kbd>Esc</kbd>, which is bound to **QUIT**, and closing the IDE's window all end the IDE. The dialog has no close box of its own.
 
-<!-- SHOT starting-licence-agreement: the licence agreement dialog as a first start shows it, over the banner, the text at its top, I AGREE and QUIT -->
+![The licence agreement dialog in front of the twinBASIC banner, the start of the agreement in a scrolling box, and the two buttons under it.](Images/Licence_Agreement.png){:width="617" height="683"}
 
 **Help → Licence Agreement...** shows the same text at any time, with one **Close** button, and under the text the line the IDE stored when you agreed: `AGREED_` and the date. A build whose agreement text changes asks the question again.
 
@@ -43,7 +43,7 @@ The dialog is titled **twinBASIC Licence Agreement**. It holds the agreement bet
 
 The dialog is titled **twinBASIC Automatic Error Reporting**. It asks whether the IDE may send anonymous error reports to twinBASIC Ltd, and says that no source code or personal data is included. Its buttons are **YES** and **NO**. <kbd>Esc</kbd> is **NO**, and the dialog has no close box.
 
-<!-- SHOT starting-error-reporting: the Automatic Error Reporting question over the banner, YES and NO -->
+![The error reporting question in front of the twinBASIC banner, with its two buttons.](Images/Error_Reporting.png){:width="578" height="263"}
 
 The question turns reporting off the moment it opens. **YES** turns it on. **NO**, <kbd>Esc</kbd> and closing the IDE while the question is open all leave it off. **Help → Automatic IDE Error Reporting...** asks the same question again, so opening it switches reporting off until you press **YES**, whatever the setting was before.
 
@@ -53,7 +53,7 @@ When reporting is on, the IDE sends a report each time its own code fails with a
 
 On the very first start the **IDE Options** dialog opens by itself, over the banner. It has a **Save Changes** button and no **Close** button. Two parts of it cannot work yet, because no compiler runs: its **Change Licence...** button is hidden, and the font lists are empty, with a grey line, `<font list unavailable: load a project first>`, in their place. Choose the options you want, or none, and press **Save Changes**; the start continues.
 
-<!-- SHOT starting-first-run-options: the IDE Options dialog as a first start opens it, over the banner, Save Changes enabled, no Close button, a font list showing its grey line -->
+![The IDE Options dialog in front of the twinBASIC banner, with the grey line in place of each font list and one button at its bottom right.](Images/First_Run_Options.png){:width="1082" height="880"}
 
 <kbd>Esc</kbd> and the dialog's close box also end it, and the IDE goes on with the default options. The IDE has already saved the defaults when the dialog opens, so the next start is not a first start. [IDE Options](../Customising/IDE-Options) describes every option.
 
@@ -108,7 +108,7 @@ The dialog is titled *twinBASIC*, and the line above its text box reads **Enter 
 
 The dialog advises you to copy and paste the key from your confirmation email, and warns that an invalid key applies the COMMUNITY licence. Its buttons are **Purchase a licence**, **OK** and **Cancel**. <kbd>Enter</kbd> in the text box does what **OK** does.
 
-<!-- SHOT starting-licence-key: the Enter Licence Key dialog, opened from Help with no project loaded, the text box empty, with Purchase a licence, OK and Cancel -->
+![The Enter Licence Key dialog with its text box empty, its advice under the box, and its three buttons.](Images/Licence_Key.png){:width="500" height="214"}
 
 A key has 32 characters once the IDE has trimmed it. What happens next depends on whether a project is loaded:
 

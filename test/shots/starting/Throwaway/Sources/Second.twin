@@ -1,0 +1,15 @@
+Module Second
+
+    Public Function Twice(ByVal x As Long) As Long
+        Return x * 2
+    End Function
+
+    Public Function Name_Of_Second() As String
+        Return "the second of the four sources of the probe"
+    End Function
+
+    Public Function Thrice(ByVal x As Long) As Long
+        Return x * 3
+    End Function
+
+End Module

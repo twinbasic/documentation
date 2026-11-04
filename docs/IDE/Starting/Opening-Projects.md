@@ -120,7 +120,7 @@ Any other failure shows `ERROR_GENERIC`, or `ERROR_UNKNOWN` with a number. The b
 
 A file whose first bytes are right and whose body is damaged gets no failure box. The compiler shows a native Windows box instead, titled *bad file format*. It reads *WARNING: failed to deserialize file system.  Some files might be lost or truncated.* and has one **OK**. The IDE's window shows *Please wait...* until you answer it, and the box shows twice when the project also reloads for its flags.
 
-<!-- SHOT starting-damaged-box: the native bad file format box over the IDE showing Please wait..., from opening a damaged copy of a throwaway project -->
+![The Windows box titled bad file format, with its warning and one button.](Images/Damaged_Box.png){:width="406" height="141"}
 
 The project then opens with what the compiler could read. It is not marked as changed, and its title is the file's name. What is kept depends on where the damage is:
 

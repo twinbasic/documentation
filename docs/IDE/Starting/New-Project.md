@@ -61,7 +61,7 @@ The search box looks in every section at once. A word matches an item when it is
 - With no match, the dialog reads **No results found.** and **Open** is greyed out.
 - Clearing the box brings the section back. A click on a section in the rail clears the box.
 
-<!-- SHOT starting-search-results: the search box with "standard" typed in the dialog opened on New: results grouped under New (and Samples if any), the matches marked, the path lines under the rows -->
+![The dialog with a word typed in its search box: rows under the heading of one section, the matching text marked in each, and the path of each row on the line under its name.](Images/Search_Results.png){:width="970" height="728"}
 
 ## Keys
 
@@ -137,11 +137,11 @@ A few more things about the rows:
 
 **Cancel** closes the box, the progress indicator and the project. Nothing is opened, and the IDE is left with no project, because the one that was open was closed before the box appeared.
 
-<!-- SHOT starting-options-vbp: New Project Options as a .vbp import shows it: Project Name, Option Explicit ON, Unicode Common Control Notifications, DPI Awareness NONE, and no Include Common Controls row -->
+![The box for a .vbp import: the project's name from the .vbp, DPI Awareness set to NONE, the row for Unicode notifications, and no row for the common controls.](Images/Options_VBP.png){:width="529" height="279"}
 
-<!-- SHOT starting-options-activex: New Project Options for the ActiveX DLL template, with the Register to HKEY_LOCAL_MACHINE row unticked -->
+![The box for the ActiveX DLL template, with its row for HKEY_LOCAL_MACHINE unticked.](Images/Options_ActiveX.png){:width="503" height="245"}
 
-<!-- SHOT starting-options-sample: New Project Options for Sample 1, HelloWorld: the project name HelloWorldProject, Option Explicit ON, Visual Styles, Include Common Controls and DPI Awareness -->
+![The box for the HelloWorld sample, with the sample's own project name.](Images/Options_Sample.png){:width="529" height="279"}
 
 ## What a new project is
 
@@ -151,7 +151,7 @@ A project made from a card is new and **unsaved**. It exists in memory, and no f
 - **File → Save Project** (<kbd>Ctrl</kbd>+<kbd>S</kbd>) opens the Windows **Save As** dialog first, with the project's name proposed. **Save Project As...** does the same at any time. The project goes into **Recent** when you save it. See [A project with no file](../Projects/Saving-and-Exporting#a-project-with-no-file).
 - The build configuration box keeps the value it has. A `.vbp` import sets it to **win32**.
 
-<!-- SHOT starting-title-unsaved: the IDE's title bar for a new Standard EXE project, `Unsaved.twinproj`, and again after one edit, with the dot in front -->
+![The title bar of a new project, and under it the same title bar after one edit, with a dot in front of the name.](Images/Title_Unsaved.png){:width="687" height="42"}
 
 What opens depends on the template, and on the IDE Option [**Restore Editors State When Opening Project**](../Customising/IDE-Options#project-explorer-tabs-and-start-up). The option is on by default. Each template carries a list of the files to open and the folders to expand. With the option off, no editor opens, and the folders expand as the template says.
 
@@ -164,7 +164,7 @@ What opens depends on the template, and on the IDE Option [**Restore Editors Sta
 
 The [Hello World tutorial](../../../Tutorials/Hello-World) starts from this state: **Standard EXE**, **Continue**, and `Form1` in the designer.
 
-<!-- SHOT starting-new-project: a project just made from Standard EXE: the Form1 designer in front, the Project Explorer expanded, the status bar OPERATIONAL with COMMUNITY EDITION -->
+![The IDE with a project just made from the Standard EXE card: the designer of Form1 in front, Form1's two files in the Project Explorer, and the status bar along the bottom.](Images/New_Standard_EXE.png){:width="1280" height="880"}
 
 ## Recent
 
@@ -186,7 +186,7 @@ A path that holds a `#` is shown cut in two, as a name with a sub-text: `C:\dev\
 
 **Open** on a row loads the `.vbp` by the route described under [Importing a VB6 project](Importing-VB6#the-routes), which shows no **New Project Options** box.
 
-<!-- SHOT starting-recent-vb6: the dialog opened on Recent (VB6) with two made-up .vbp paths listed, the rail showing the section with a count of 2 -->
+![The Recent (VB6) section listing two .vbp files, with no X on either row, and the section's count of 2 in the rail.](Images/Recent_VB6.png){:width="970" height="728"}
 
 ## Samples
 

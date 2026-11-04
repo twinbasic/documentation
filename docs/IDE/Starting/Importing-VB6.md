@@ -99,7 +99,7 @@ A `.res` file named by `ResFile32=` is imported as the project's resources, and 
 The project gets a file `Sources\__IMPORT_LOG.md`. It lists what the importer did, one line for each file and setting. A few lines, as they read:
 
 ```text
-added project.reference 'stdole'
+added project.reference 'OLE Automation'
 imported module 'Module1.bas'
 imported class 'Class1.cls'
 imported usercontrol 'UserControl1.ctl'
@@ -110,13 +110,13 @@ imported form 'Form1.frm'
 
 The lines for the settings come first, and the forms are logged last, whatever their line in the `.vbp`. The log ends with `IMPORT FINISHED WITH n ERRORS/WARNINGS` and the advice *Please check the DIAGNOSTICS PANEL*. After the import, the one tab that is open is a preview of this file.
 
-<!-- SHOT starting-import-log: the preview tab of __IMPORT_LOG.md after an import, with the title bar showing the dot and Unsaved.twinproj -->
+![The IDE after an import: the log in a preview tab, the imported files in the Project Explorer, and a dot in front of the name in the title bar.](Images/Import_Log.png){:width="1280" height="880"}
 
 ## A file that is missing
 
 If the `.vbp` names a module, form, class, user control or resource file that is not there, the compiler opens a native Windows box. Its title is *Error reading file.*, its text is the name of the file, and it has one **OK**. Meanwhile the IDE shows *Migrating VBP to twinproj format...* and <kbd>Esc</kbd> does nothing, so the IDE seems to hang. If the box is not in front, look for it in the taskbar. After **OK** the import goes on. The log then holds a line such as `importing module 'Gone.bas' FAILED; unable to open or read the file`, or `import resource file 'Gone.res' FAILED`, and ends with `IMPORT FINISHED WITH 1 ERRORS/WARNINGS`.
 
-<!-- SHOT starting-missing-file-box: the Error reading file box over the IDE showing Migrating VBP to twinproj format... -->
+![The Windows box for a missing file, its title cut off by the width of the box, with the file's name and one button.](Images/Missing_File_Box.png){:width="134" height="127"}
 
 ## After the import
 

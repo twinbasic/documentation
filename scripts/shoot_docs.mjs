@@ -68,6 +68,9 @@
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
+//   starting-first-run  the three dialogs of a first start, in a page over a guard of its own
+//               (lib/shot-first-run.mjs); starting, starting-new and starting-boxes no project,
+//               then the "Starting a project" chapter's other pictures, with test/shots/starting
 //   programs    test/shots/programs, ShotPrograms, built in the IDE: each picture is the
 //               window of the exe, started on a private desktop with a command line naming
 //               its form, taken with PrintWindow (lib/tb-ide.mjs's captureWindow), once,
@@ -167,6 +170,7 @@ import { inRects, pngsNear, withinNoise } from "./lib/shot-change.mjs";
 import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
 import { applyPicture, applySvg, dropPicture, restorePictures, svgOf } from "./lib/shot-apply.mjs";
 import { freezePage, showFrozen } from "./lib/shot-freeze.mjs";
+import { FIRST_RUN, guardSource, SETTLED, settingsHash } from "./lib/shot-first-run.mjs";
 import {
   bundleFollowsSvg,
   cleanupResets,
@@ -215,6 +219,7 @@ import { holdsUserName, judgeSvg } from "./svgshot/keep.mjs";
 import { stageProject, unpackProject } from "./lib/tb-project.mjs";
 import { holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { guard, presentKeys, press, serverRequests } from "../test/ide/building-kit.mjs";
+import { layout } from "../test/ide/starting-kit.mjs";
 import { checkHarness } from "./lib/harness-settings.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
@@ -1156,16 +1161,20 @@ async function fixPageSize(c) {
 // IDE save its place in the registry). The language is left as the IDE runs it, and so are
 // the options the schema does not list. Returns what differed from the defaults.
 const PAGE_DEFAULTS = `(() => {
-  const blocked = new Set(["RemoveRecentsList"]);
+  const blocked = (window.__shotBlocked = new Set(["RemoveRecentsList"]));
   // The New / Open Project dialog (BETA 1033's) reads the recent list from the host object
   // itself, and remembers the section it was left on as the setting NEWFRONTPAGE: the list is
   // the tool's own (window.__shotRecents, setRecents), the section is never read or saved.
+  // VB6's list is __shotVb6Recents, and a native picker a shot goes through is answered from __shotAnswers.
   window.__shotRecents = [];
+  window.__shotVb6Recents = "";
+  window.__shotAnswers = {};
   const FRONT_PAGE = "NEWFRONTPAGE";
   hostAppObject = new Proxy(hostAppObject, {
     get(target, key) {
       if (blocked.has(key)) return async () => undefined;
       if (key === "GetRecentsList") return async () => window.__shotRecents.join("?");
+      if (Object.hasOwn(window.__shotAnswers, key)) return async () => window.__shotAnswers[key];
       const member = Reflect.get(target, key);
       if (key === "GetIDESetting" || key === "SaveIDESetting") {
         return (...a) => (String(a[0]) === FRONT_PAGE ? Promise.resolve("") : member(...a));
@@ -1191,7 +1200,7 @@ const PAGE_DEFAULTS = `(() => {
   activePanelLayoutName = "<DEFAULT>";
   customKeyboardShortcutGroups = {};
   activeKeyboardShortcutGroupNames = "";
-  window.HostGetVB6RecentProjects = (done) => done("");
+  window.HostGetVB6RecentProjects = (done) => done(window.__shotVb6Recents);
   window.HostGetRecentsList = (e) => {
     e.classList.add("frontPageListViewLIST");
     listviewFromArray(e, [], () => {});
@@ -1735,6 +1744,10 @@ const SETUPS = {
     prepare: prepareBuildingPkg,
     end: endBuilding,
   },
+  "starting-first-run": { start: startFirstRun, prepare: prepareFirstRun, end: endFirstRun },
+  starting: { start: startStarting, prepare: prepareStarting, end: endBuilding },
+  "starting-new": { start: startStarting, prepare: prepareStarting, end: endBuilding },
+  "starting-boxes": { start: startStarting, prepare: prepareStarting, end: endBuilding },
   customcontrols: { start: startCustomControls, prepare: prepareWithDesigners },
   code: { start: startCode, prepare: prepareSample },
   sample9: { start: startSample9, prepare: prepareSample },
@@ -13280,6 +13293,614 @@ function helpPlaces() {
   };
 }
 
+// ---------------------------------------------------------------- the "Starting a project" chapter
+
+// The chapter's pictures are under docs/IDE/Starting/Images. Its fixtures are test/shots/starting:
+// Ledger (a .vbp with a form, a module and a class, and no manifest) and Missing (a .vbp naming a
+// file that is not there) are staged with CRLF line ends, as VB6 writes its files, and Throwaway
+// (the Starting lanes' project) is packed and cut; each in a folder of the tool's own on
+// PACKAGE_ROOT, so that no path names the user. Nothing there is ever saved over: the page's call
+// that keeps a project's state in the registry is one these setups make do nothing, as they do
+// the call that adds to the recent list, and the lists are the tool's own.
+const ST_IMAGE = (name) => `IDE/Starting/Images/${name}.png`;
+const STARTING = path.join(REPO_ROOT, "test", "shots", "starting");
+
+// ---- starting-first-run: the three dialogs of a first start. Their page runs over the guard of
+// lib/shot-first-run.mjs, which says why the flags and the hook do not protect the registry here.
+// Each take makes a page of a first start, and leaves it for a page past those dialogs (SETTLED)
+// however it goes, so that no such page runs on. The setup's `end` fails on any call that got past
+// the guard, and on any change to the IDE's settings key.
+
+async function startFirstRun(run) {
+  run.settingsBefore = settingsHash();
+  run.guard = { blocked: {}, through: [], script: null, gen: 0 };
+  return startNoProject(run);
+}
+
+// What the page's guard has recorded, added to the setup's record and emptied in the page.
+async function readGuard(c, guard) {
+  const read = `(() => {
+  const g = window.__shotGuard;
+  if (!g) return "null";
+  const seen = JSON.stringify({ blocked: g.blocked, through: g.through });
+  g.blocked = {};
+  g.through = [];
+  return seen;
+})()`;
+  const seen = JSON.parse(await c.evaluate(read));
+  if (!seen) return;
+  for (const [k, n] of Object.entries(seen.blocked)) guard.blocked[k] = (guard.blocked[k] ?? 0) + n;
+  guard.through.push(...seen.through);
+  if (seen.through.length) throw new Error(`a call got past the guard: ${seen.through.join(", ")}`);
+}
+
+// The page again, from its document's start, over the guard, reading `settings`: the guard in
+// front of the hook before anything else happens, or the page is left alone.
+async function guardedPage(c, guard, settings) {
+  await readGuard(c, guard);
+  await c.send("Page.enable");
+  if (guard.script) await c.send("Page.removeScriptToEvaluateOnNewDocument", { identifier: guard.script });
+  const gen = ++guard.gen;
+  const { identifier } = await c.send("Page.addScriptToEvaluateOnNewDocument", { source: guardSource(settings, gen) });
+  guard.script = identifier;
+  await c.send("Page.reload", {});
+  const up = () =>
+    c
+      .evaluate(`window.__shotGuard?.gen === ${gen} && window.__shotGuard.hook && window.__shotGuard.inFront`)
+      .catch(() => false);
+  if (!(await waitFor(c, up, { timeout: 30000, interval: 50 }))) {
+    throw new Error("the page has no guard in front of the defaults hook");
+  }
+}
+
+// A page past the first start's dialogs, reporting off, no dialog open.
+async function settledPage(c, guard) {
+  await guardedPage(c, guard, SETTLED);
+  if (!(await waitModal(c, "New / Open", { timeout: 60000 }))) throw new Error("the IDE showed no New / Open dialog");
+  if (await c.evaluate("g_ErrorReporting")) throw new Error("error reporting is on");
+  await closeModal(c, "Cancel");
+  await readGuard(c, guard);
+}
+
+async function prepareFirstRun(run) {
+  const { c, guard } = run;
+  run.step = "shoot";
+  await fixPageSize(c);
+  if (!(await waitModal(c, "New / Open", { timeout: 60000 }))) throw new Error("the IDE showed no New / Open dialog");
+  await settledPage(c, guard);
+  await ensureTheme(c, "dark");
+  await parkMouse(c);
+  return { c, guard };
+}
+
+// The record of the guard, once the IDE has ended, and the key it protects.
+async function endFirstRun(run) {
+  const { blocked, through } = run.guard;
+  const stopped = Object.entries(blocked).map(([k, n]) => `${k} x${n}`);
+  say(run.name, `the guard blocked ${stopped.join(", ") || "nothing"}; through it: ${through.join(", ") || "nothing"}`);
+  const after = settingsHash();
+  if (after !== run.settingsBefore) throw new Error("the IDE's settings key changed while the first-run pages ran");
+  say(run.name, `the IDE's settings key is as it was found (${after})`);
+  if (through.length) throw new Error(`a call got past the guard: ${through.join(", ")}`);
+}
+
+// The dialog titled `title`, over the banner the page shows until its start is over.
+async function firstRunDialog(c, title) {
+  const shown = await waitModal(c, title, { timeout: 30000 });
+  if (!shown) throw new Error(`the first start showed no dialog titled ${title}`);
+  if (!(await c.evaluate(`document.getElementById("root").classList.contains("invisible")`))) {
+    throw new Error(`the dialog ${title} is not over the banner`);
+  }
+}
+
+// How much of the banner shows round a first start's dialog.
+const BANNER_MARGIN = 40;
+
+// A first start up to the dialog `title`: `answers` the buttons pressed to get there, each with
+// the title of the dialog it leads to. NO, not YES, on the reporting question: it leads to the
+// same IDE Options, and reporting is never on, not for a moment. The theme is set at the first
+// dialog, as the IDE Options read it when they open. The options a first start has are the dark
+// theme's, so the Light pictures are that dialog with the theme switched by its own command.
+const firstRunShot = (name, answers) => ({
+  out: ST_IMAGE(name),
+  setup: "starting-first-run",
+  async take({ c, guard }) {
+    const theme = c.shot.out.endsWith(".light.png") ? "light" : "dark";
+    await guardedPage(c, guard, FIRST_RUN);
+    try {
+      await firstRunDialog(c, "Licence Agreement");
+      const themed = `!!getComputedStyle(document.documentElement).getPropertyValue("--themeGeneralPanelBackColor")`;
+      if (!(await c.evaluate(themed))) throw new Error("the first start's page has no theme");
+      await ensureTheme(c, theme);
+      for (const [caption, next] of answers) {
+        await clickInModal(c, caption, ".msgBoxButton");
+        await firstRunDialog(c, next);
+      }
+      await dialogStill(c);
+      if (await c.evaluate("g_ErrorReporting")) throw new Error("error reporting is on");
+      return await dialogShot(c, name, (m) => grow(m, BANNER_MARGIN));
+    } finally {
+      await settledPage(c, guard);
+    }
+  },
+});
+
+// ---- starting, starting-new, starting-boxes: an IDE with no project, its Recent lists the tool's
+// own. The licence key is emptied in the page only, as in the community setup, so that a compiler
+// these setups start answers COMMUNITY EDITION and the dialog that takes a key has nothing near it.
+
+async function startStarting(run) {
+  mkdirSync(runFolder(run, run.name), { recursive: true });
+  return startNoProject(run);
+}
+
+async function prepareStarting(run) {
+  const ctx = await prepareNoProject(run);
+  await run.c.evaluate(`licenceKey = "";
+currentDPI = window.devicePixelRatio;
+window.__shotBlocked.add("AddRecentsList");
+window.__shotBlocked.add("SaveProjectMetaState")`);
+  return { ...ctx, run };
+}
+
+// A .vbp fixture in the setup's folder, its files with VB6's line ends: the .vbp's path.
+function stageVb6(run, name) {
+  const dir = path.join(run.buildingDir, name);
+  mkdirSync(dir, { recursive: true });
+  for (const f of readdirSync(path.join(STARTING, name))) {
+    const text = readFileSync(path.join(STARTING, name, f), "utf8");
+    writeFileSync(path.join(dir, f), text.replace(/\r?\n/g, "\r\n"));
+  }
+  return path.join(dir, `${name}.vbp`);
+}
+
+// A real double-click at a point of the page.
+async function doubleClickAt(c, { x, y }) {
+  await mouseMove(c, x, y);
+  for (const clickCount of [1, 2]) {
+    for (const type of ["mousePressed", "mouseReleased"]) {
+      await c.send("Input.dispatchMouseEvent", {
+        type,
+        x,
+        y,
+        button: "left",
+        buttons: type === "mousePressed" ? 1 : 0,
+        clickCount,
+      });
+    }
+  }
+}
+
+// The middle of the card of the New / Open Project dialog whose item's name starts with `name`.
+const cardCentre = (c, name) =>
+  c.evaluate(`(() => {
+  const e = [...document.querySelectorAll("#fp2root .fp2-card")].find((x) => x.getBoundingClientRect().width && x.fp2Item?.name.startsWith(${JSON.stringify(name)}));
+  if (!e) return null;
+  e.scrollIntoView({ block: "nearest" });
+  const r = e.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+
+// File > New Project..., and a double-click on the card `name`. `section`: the rail's section it
+// is in, when that is not New.
+async function openCard(c, name, section = null) {
+  await command(c, "tbProject_New");
+  if (!(await waitModal(c, "New / Open", { timeout: 10000 }))) throw new Error("New Project opened no dialog");
+  await dialogStill(c);
+  if (section) await dialogSection(c, section);
+  const card = await cardCentre(c, name);
+  if (!card) throw new Error(`the dialog has no card ${name}`);
+  await doubleClickAt(c, card);
+}
+
+async function waitOptions(c) {
+  if (!(await waitModal(c, "New Project Options", { timeout: 60000 }))) {
+    throw new Error("the card did not show the New Project Options dialog");
+  }
+  await dialogStill(c);
+}
+
+// The card Import from VBP..., the native picker answered in the page with the fixture `name`.
+async function importCard(c, run, name) {
+  await c.evaluate(`window.__shotAnswers.OpenProjectVBP = ${JSON.stringify(stageVb6(run, name))}`);
+  await openCard(c, "Import from VBP");
+}
+
+// The log's first line says when the import started: a time of the tool's own, set in the page
+// once the real one shows, or no two pictures would be alike.
+async function fixImportTime(c) {
+  const set = `(() => {
+  const time = /\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d:\\d\\d/;
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (n.data.includes("Started:") && time.test(n.data)) {
+      n.data = n.data.replace(time, "02-11-26 09:30:00");
+      return true;
+    }
+  }
+  return false;
+})()`;
+  if (!(await waitFor(c, () => c.evaluate(set), { timeout: 10000, interval: 100 }))) {
+    throw new Error("the import log's first line did not show");
+  }
+}
+
+// PROPERTIES shows the form's FormDesignerId, which is a new GUID in each new project: an id of
+// the tool's own, set in the page once the real one shows, or no two pictures would be alike.
+async function fixDesignerId(c) {
+  const set = `(() => {
+  const guid = /\\{[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}\\}/i;
+  const own = "{D0C5D0C5-3DAD-4000-8000-00000000D0C5}";
+  let done = 0;
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (guid.test(n.data)) {
+      n.data = n.data.replace(guid, own);
+      done++;
+    }
+  }
+  for (const i of document.querySelectorAll("input")) {
+    if (guid.test(i.value)) {
+      i.value = i.value.replace(guid, own);
+      done++;
+    }
+  }
+  return done;
+})()`;
+  if (!(await waitFor(c, () => c.evaluate(set), { timeout: 10000, interval: 100 }))) {
+    throw new Error("PROPERTIES shows no FormDesignerId");
+  }
+}
+
+// The title bar's text, a little of the bar round it, as a part of a composite.
+async function titlePart(c, name) {
+  await parkMouse(c);
+  await frames(c);
+  const text = await rectOf(c, "#rootMenuText");
+  if (!text) throw new Error("the page has no title bar text");
+  const clip = snapOut({ x: text.x - 8, y: text.y, width: text.width + 16, height: text.height });
+  return { png: await capture(c, name, clip, { away: () => parkMouse(c) }), clip };
+}
+
+// An import's Cancel leaves the page's g_IsLoadingVBP set (BETA 1034: only the box's Continue
+// clears it), and every later New Project Options is then drawn as an import's until a Continue.
+// A shot sets its own state and relies on no other: the card shows what it shows in a fresh page.
+const forgetImport = (c) => c.evaluate("g_IsLoadingVBP = false");
+
+// New Project Options reached by `open`, and Cancel, which leaves the IDE with no project: no
+// project is made, and an ActiveX one is never built or registered.
+const optionsShot = (name, open) => ({
+  out: ST_IMAGE(name),
+  setup: "starting",
+  async take({ c, run }) {
+    await resetUi(c);
+    try {
+      await open(c, run);
+      await waitOptions(c);
+      // the Project Name is selected: its caret at the end of the name
+      await c.evaluate(`(() => {
+  const i = [...document.querySelectorAll(".modalDialogContainer")].pop().querySelector("input[type=text], input:not([type])");
+  if (i) i.setSelectionRange(i.value.length, i.value.length);
+})()`);
+      // the box is centred, so it can start half a CSS pixel into the progress box behind it
+      const left = (m) => ({ ...m, x: Math.ceil(m.x), width: m.x + m.width - Math.ceil(m.x) });
+      return await dialogShot(c, name, left);
+    } finally {
+      await cancelOptions(c);
+    }
+  },
+});
+
+// Cancel on New Project Options, and what that leaves put right.
+async function cancelOptions(c) {
+  await closeModal(c, "Cancel");
+  await c.evaluate(`delete window.__shotAnswers.OpenProjectVBP`);
+  await forgetImport(c);
+  const gone = async () => !(await modals(c)).length && !(await c.evaluate("context.projectLoaded.value"));
+  if (!(await waitFor(c, gone, { timeout: 15000, interval: 100 }))) throw new Error("Cancel left a project open");
+  await sleep(1000);
+}
+
+// The project open and the IDE idle, and still so a second later.
+async function projectReady(c) {
+  const ready = `(() => { try {
+  return Object.keys(fs.tree.rootFolder.entries).length > 0 && context.projectLoaded.value && licenceIsSet === true
+    && !(lockUICount > 0) && /OPERATIONAL/.test(compilerStatusOuter.innerText);
+} catch { return false; } })()`;
+  let since = null;
+  for (const until = Date.now() + 90000; Date.now() < until; await sleep(100)) {
+    if ((await c.evaluate(ready)) && !(await modals(c)).length) {
+      since ??= Date.now();
+      if (Date.now() - since >= 1000) return;
+    } else since = null;
+  }
+  throw new Error("no project became ready");
+}
+
+// Back to no project: Close Project, and Discard Changes if it asks. Nothing is saved.
+async function closeUnsaved(c) {
+  await resetUi(c);
+  if (!(await c.evaluate("context.projectLoaded.value"))) return;
+  await command(c, "tbProject_Close");
+  if (await waitFor(c, () => modalHolding(c, "Save now"), { timeout: 1500, interval: 100 })) {
+    await clickInModal(c, "Discard Changes", ".msgBoxButton");
+  }
+  const gone = async () => !(await modals(c)).length && !(await c.evaluate("context.projectLoaded.value"));
+  if (!(await waitFor(c, gone, { timeout: 15000, interval: 100 }))) throw new Error("the project did not close");
+  await sleep(1000);
+}
+
+// A new project from the Standard EXE card, as a person makes one: no file, and nothing changed.
+async function newStandardExe(c) {
+  await closeUnsaved(c);
+  await openCard(c, "Standard EXE");
+  await waitOptions(c);
+  await closeModal(c, "Continue");
+  await projectReady(c);
+  if ((await c.evaluate("compilerLicence.innerText")) !== "COMMUNITY EDITION") {
+    throw new Error("the new project's compiler does not say COMMUNITY EDITION");
+  }
+  await clearUserFromConsole(c);
+  await parkMouse(c);
+  await frames(c);
+}
+
+// The whole window.
+const WINDOW = () => snapOut({ x: 0, y: 0, ...IDE_SIZE });
+
+const VB6_RECENTS = ["C:\\Old\\Thing.vbp", "C:\\Old\\Other.VBP"];
+
+// The compiler's own box titled `title` on `desktop`, with its child windows, or null. The
+// compiler's MessageBox is no part of the page.
+async function compilerBox(desktop, title) {
+  const list = await desktopWindows(desktop, { children: true });
+  const at = list.findIndex((w) => w.class === "#32770" && w.visible && w.title === title);
+  if (at < 0) return null;
+  const kids = [];
+  for (let j = at + 1; j < list.length && list[j].depth === 1; j++) kids.push(list[j]);
+  return { ...list[at], kids };
+}
+
+const BM_CLICK = 0xf5;
+// WM_UPDATEUISTATE, UIS_SET with UISF_HIDEFOCUS: the box's button drew its dotted focus rectangle
+// in some runs and not in others, and a box opened with the mouse draws none.
+const WM_UPDATEUISTATE = 0x128;
+const HIDE_FOCUS_CUES = 0x10001;
+
+// The part of a capture of a DPI-unaware window that it drew. The compiler's boxes are unaware of
+// the display's scaling: PrintWindow draws one at 96 DPI in the top left corner of a bitmap the
+// size it has on the screen, and black where its invisible resize borders are, so the capture's
+// frame, which is in the display's pixels, does not fit it. Its first row of pixels is its border.
+function drawnPart(picture) {
+  const { width, height, rgba } = picture;
+  const lit = (x, y) => {
+    const i = (y * width + x) * 4;
+    return rgba[i + 3] && rgba[i] + rgba[i + 1] + rgba[i + 2];
+  };
+  let left = 0;
+  while (left < width && !lit(left, 1)) left++;
+  let right = left;
+  while (right < width && lit(right, 1)) right++;
+  let bottom = 0;
+  while (bottom < height && lit(left, bottom)) bottom++;
+  return crop(picture, [left, 0, right, bottom]);
+}
+
+// The window of the box titled `title` alone, as Windows draws it, once the box shows; then OK, by
+// the message a button takes on a desktop that has no input. Not over the IDE: on a window the
+// size of the screen the box stands on the text of the IDE's progress box, and a picture of the
+// two would need this 96 DPI window stretched to the IDE's scale.
+async function boxPicture(run, title) {
+  const desktop = run.lane.desktop;
+  const box = await waitFor(run.c, () => compilerBox(desktop, title), { timeout: 40000, interval: 200 });
+  if (!box) throw new Error(`the compiler showed no box titled ${title}`);
+  const file = path.join(run.work, "box.png");
+  await activated(desktop, box.hwnd, title);
+  await postWindowMessage(desktop, box.hwnd, WM_UPDATEUISTATE, HIDE_FOCUS_CUES, 0);
+  const { info, picture } = await stableWindow(desktop, box.hwnd, title, file, 2, { active: true });
+  await postWindowMessage(desktop, box.kids.find((k) => k.class === "Button").hwnd, BM_CLICK, 0, 0);
+  return besideEachOther([{ picture: drawnPart(picture), dpi: info.dpi }]);
+}
+
+// Throwaway, packed into the setup's folder and cut in the middle of its last source: past the
+// Settings entry, so that the box shows once and goes. Large Address Aware on, as a new project
+// has it, so that it does not load twice. The bytes it holds, for the check that it is never saved.
+function damagedProject(run) {
+  const dir = path.join(run.buildingDir, "Throwaway");
+  mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, "Throwaway.twinproj");
+  stageProject({
+    src: path.join(STARTING, "Throwaway"),
+    stage: path.join(run.work, "throwaway"),
+    project: file,
+    settings: {
+      "project.name": "Throwaway",
+      "project.appTitle": "Throwaway",
+      "project.description": "Throwaway",
+      "project.largeAddressAware": true,
+      "project.id": DOCS_PROJECT_ID,
+    },
+  });
+  // impexp writes Settings last and the IDE first: first, so that the cut leaves it whole
+  const bytes = readFileSync(file);
+  const packed = layout(bytes);
+  const settings = packed.find((e) => e.full === "Settings");
+  const body = packed[1].start;
+  const moved = Buffer.concat([
+    bytes.subarray(0, body),
+    bytes.subarray(settings.start, settings.end),
+    bytes.subarray(body, settings.start),
+    bytes.subarray(settings.end),
+  ]);
+  const source = layout(moved).findLast((e) => e.file && e.full.startsWith("Sources/"));
+  const cut = moved.subarray(0, source.contentAt + Math.floor(source.len / 2));
+  writeFileSync(file, cut);
+  return { file, cut };
+}
+
+// Close Project on what the compiler recovered: nothing changed, so nothing is saved, and the
+// cut copy holds the bytes it was given.
+async function leaveDamaged(c, file, cut) {
+  await projectReady(c);
+  await closeUnsaved(c);
+  if (!readFileSync(file).equals(cut)) throw new Error("the cut copy of Throwaway changed");
+}
+
+const startingShots = [
+  firstRunShot("Licence_Agreement", []),
+  firstRunShot("Error_Reporting", [["I AGREE", "Automatic Error Reporting"]]),
+  firstRunShot("First_Run_Options", [
+    ["I AGREE", "Automatic Error Reporting"],
+    ["NO", "IDE Options"],
+  ]),
+  {
+    // Help > Enter Licence Key... with no project: the box empty, and Cancel
+    out: ST_IMAGE("Licence_Key"),
+    setup: "starting",
+    take: ({ c }) =>
+      inDialog(c, { command: "tbHelp_EnterLicenceKey", title: "twinBASIC", close: "Cancel" }, async () => {
+        const typed = `[...document.querySelectorAll(".modalDialogContainer input")].map((i) => i.value).join("")`;
+        if (await c.evaluate(typed)) throw new Error("the licence key's box is not empty");
+        return dialogShot(c, "Licence_Key");
+      }),
+  },
+  {
+    // the dialog on New, "standard" typed into its search box with real keys
+    out: ST_IMAGE("Search_Results"),
+    setup: "starting",
+    take: ({ c }) =>
+      inNewProject(c, async () => {
+        const box = await rectOf(c, "#fp2root .fp2-search");
+        await clickAt(c, box.x + box.width / 2, box.y + box.height / 2);
+        await typeText(c, "standard");
+        const shown = () => c.evaluate(`document.querySelectorAll("#fp2root .fp2-group .fp2-rowPath").length`);
+        if (!(await waitFor(c, shown, { timeout: 5000, interval: 50 })))
+          throw new Error("the search listed no results");
+        await dialogStill(c);
+        return dialogShot(c, "Search_Results");
+      }),
+  },
+  {
+    // the rail's Recent (VB6), two made-up paths answered in the page; VB6's key is not read
+    out: ST_IMAGE("Recent_VB6"),
+    setup: "starting",
+    async take({ c }) {
+      await c.evaluate(`window.__shotVb6Recents = ${JSON.stringify(VB6_RECENTS.join("?"))}`);
+      try {
+        return await inNewProject(c, async () => {
+          await dialogSection(c, "Recent (VB6)");
+          return dialogShot(c, "Recent_VB6");
+        });
+      } finally {
+        await c.evaluate(`window.__shotVb6Recents = ""`);
+      }
+    },
+  },
+  optionsShot("Options_ActiveX", (c) => openCard(c, "ActiveX DLL")),
+  optionsShot("Options_Sample", (c) => openCard(c, "Sample 1.", "Samples")),
+  optionsShot("Options_VBP", (c, run) => importCard(c, run, "Ledger")),
+  {
+    // a project just made from the Standard EXE card: the designer of Form1 in front
+    out: ST_IMAGE("New_Standard_EXE"),
+    setup: "starting-new",
+    async take({ c }) {
+      await newStandardExe(c);
+      await fixDesignerId(c);
+      return capture(c, "New_Standard_EXE", WINDOW(), { away: () => parkMouse(c) });
+    },
+  },
+  {
+    // the title bar of a new project, and of the same project after one edit, one over the other
+    out: ST_IMAGE("Title_Unsaved"),
+    setup: "starting-new",
+    async take({ c }) {
+      await newStandardExe(c);
+      // the parts are not the picture: capture keeps the first two captures that agree
+      const { reference, prefer, ignore } = c.shot;
+      Object.assign(c.shot, { reference: null, prefer: null, ignore: null });
+      const made = [];
+      try {
+        made.push(await titlePart(c, "Title_Unsaved-new"));
+        const root = await c.evaluate("Object.keys(fs.tree.rootFolder.entries)[0]");
+        await openFile(c, `/${root}/Sources/Form1.twin`, { line: 1, column: 1 });
+        await typeText(c, "' x\n");
+        if (!(await waitFor(c, () => c.evaluate("projectIsDirty"), { timeout: 5000, interval: 50 }))) {
+          throw new Error("the edit did not mark the project as changed");
+        }
+        made.push(await titlePart(c, "Title_Unsaved-changed"));
+      } finally {
+        Object.assign(c.shot, { reference, prefer, ignore });
+      }
+      try {
+        const { box } = await composite(c, made, [], { gap: 8, margin: 0 });
+        return await capture(c, "Title_Unsaved", snapOut(box), { away: () => parkMouse(c) });
+      } finally {
+        await uncomposite(c);
+      }
+    },
+  },
+  {
+    // Continue after an import: the log in its preview tab, and the title bar's dot
+    out: ST_IMAGE("Import_Log"),
+    setup: "starting-new",
+    async take({ c, run }) {
+      await closeUnsaved(c);
+      await importCard(c, run, "Ledger");
+      await waitOptions(c);
+      await closeModal(c, "Continue");
+      await c.evaluate(`delete window.__shotAnswers.OpenProjectVBP`);
+      await projectReady(c);
+      if (!(await c.evaluate("projectIsDirty"))) throw new Error("the import is not marked as changed");
+      await clearUserFromConsole(c);
+      await fixImportTime(c);
+      await parkMouse(c);
+      return capture(c, "Import_Log", WINDOW(), { away: () => parkMouse(c) });
+    },
+  },
+  {
+    // the compiler's box for a file the .vbp names and the disk lacks; OK, and Cancel
+    out: ST_IMAGE("Missing_File_Box"),
+    setup: "starting-boxes",
+    once: true,
+    window: true,
+    async take({ c, run }) {
+      await resetUi(c);
+      await importCard(c, run, "Missing");
+      try {
+        return await boxPicture(run, "Error reading file.");
+      } finally {
+        await waitOptions(c);
+        await cancelOptions(c);
+      }
+    },
+  },
+  {
+    // the compiler's box for a project cut in two, opened from Recent; OK, and Close Project:
+    // the cut copy is never saved
+    out: ST_IMAGE("Damaged_Box"),
+    setup: "starting-boxes",
+    once: true,
+    window: true,
+    async take({ c, run }) {
+      await closeUnsaved(c);
+      const { file, cut } = damagedProject(run);
+      await setRecents(c, [file]);
+      try {
+        await command(c, "tbProject_OpenRecent");
+        if (!(await waitModal(c, "New / Open", { timeout: 10000 }))) throw new Error("Open Recent opened no dialog");
+        await dialogStill(c);
+        const row = await recentRow(c, file);
+        if (!row) throw new Error("the Recent tab does not list the project");
+        await doubleClickAt(c, row);
+        return await boxPicture(run, "bad file format");
+      } finally {
+        await setRecents(c, []);
+        await leaveDamaged(c, file, cut);
+      }
+    },
+  },
+];
+
 // ---------------------------------------------------------------- the table of shots
 
 // Each shot is a picture: `out` its path under the output folder, `setup` the IDE
@@ -13335,6 +13956,7 @@ const SHOTS = [
   ...formsChapterShots,
   ...projectsShots,
   ...buildingShots,
+  ...startingShots,
   ...customControlsShots,
   ...customControlsCodeShots,
   ...codeShots,
@@ -13421,6 +14043,10 @@ const JOB_SECONDS = {
   "building-hklm": 40,
   "building-llvm": 20,
   "building-pkg": 30,
+  "starting-first-run": 40,
+  starting: 60,
+  "starting-new": 60,
+  "starting-boxes": 40,
   customcontrols: 54,
   "customcontrols-2": 53,
   "customcontrols-3": 35,

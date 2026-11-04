@@ -103,6 +103,84 @@
         }
       }
     },
+    "IDE/Starting/Images/Damaged_Box.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Error_Reporting.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Error_Reporting.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/First_Run_Options.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/First_Run_Options.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Import_Log.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Import_Log.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Licence_Agreement.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Licence_Agreement.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Licence_Key.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Licence_Key.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Missing_File_Box.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/New_Standard_EXE.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/New_Standard_EXE.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Options_ActiveX.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Options_ActiveX.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Options_Sample.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Options_Sample.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Options_VBP.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Options_VBP.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Recent_VB6.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Recent_VB6.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Search_Results.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Search_Results.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Title_Unsaved.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Title_Unsaved.png": {
+      "build": 1034
+    },
     "Miscellaneous/Images/0e24eb5c-c9af-49a9-a908-03968b211554.light.png": {
       "build": 1034
     },

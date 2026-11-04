@@ -1,0 +1,15 @@
+Module MainMod
+
+    Public Sub Main()
+        Debug.Print Second.Twice(21)
+    End Sub
+
+    Public Function Name_Of_Main() As String
+        Return "the first of the four sources of the probe"
+    End Function
+
+    Public Function Square(ByVal x As Long) As Long
+        Return x * x
+    End Function
+
+End Module
