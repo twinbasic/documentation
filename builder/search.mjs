@@ -166,9 +166,16 @@ export function deriveSearchEntries(pages, site) {
 function attachIndexMarks(page, held, pageEntry) {
   const where = page.srcRel ?? page.destPath;
   const add = (entry, field, value, label) => {
-    const terms = parseIndexTerms(value, `${where}: ${label}`);
+    const terms = parseIndexTermsWritten(value, `${where}: ${label}`);
     const seen = new Map((entry[field] ?? []).map((t) => [t.toLowerCase(), t]));
-    for (const t of terms) if (!seen.has(t.toLowerCase())) seen.set(t.toLowerCase(), t);
+    for (const { written, forms } of terms) {
+      for (const t of forms) {
+        if (!seen.has(t.toLowerCase())) seen.set(t.toLowerCase(), t);
+        // Bookkeeping for checkIndexTerms' message only, and only for a term
+        // that was written with brackets: it is no part of the output.
+        if (written !== t) (entry.indexWritten ??= {})[t.toLowerCase()] ??= written;
+      }
+    }
     if (seen.size) entry[field] = [...seen.values()];
   };
   const fm = page.frontmatter ?? {};
@@ -200,15 +207,88 @@ const INDEX_FIELDS = ["index", "index_also"];
 // separated by `;` (a heading attribute, which can only hold a string).
 // Whitespace inside a term is collapsed. Anything else is a mistake the
 // author should hear about, not a mark to drop.
+//
+// A term may hold bracket groups, which stand for optional and alternative
+// words and are expanded here, before anything else sees the term (see
+// expandIndexTerm): `hide [a|the] panel` is `hide panel`, `hide a panel` and
+// `hide the panel`. This returns the expanded terms, as if written out.
 export function parseIndexTerms(value, where) {
+  return parseIndexTermsWritten(value, where).flatMap((t) => t.forms);
+}
+
+// The same, as `{ written, forms }` for each term: the term as the author
+// wrote it (white space collapsed), and what it expands to.
+export function parseIndexTermsWritten(value, where) {
   const items = typeof value === "string" ? [value] : Array.isArray(value) ? value : null;
   if (!items || items.some((v) => typeof v !== "string")) {
-    throw new Error(`${where}: expected a term or a list of terms, got ${JSON.stringify(value)}`);
+    const nested = Array.isArray(value) && value.some(Array.isArray);
+    throw new Error(
+      `${where}: expected a term or a list of terms, got ${JSON.stringify(value)}` +
+        (nested ? " (YAML reads a term that starts with [ as a list: put it in quotes)" : ""),
+    );
   }
   return items
     .flatMap((v) => v.split(";"))
     .map((t) => t.replace(/\s+/g, " ").trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((written) => ({ written, forms: expandIndexTerm(written, where) }));
+}
+
+const MAX_INDEX_GROUPS = 2;
+
+// A term with its bracket groups expanded. A group is `[a]` (the word is
+// optional) or `[a|b]` (none, `a` or `b`): one or more whole words between
+// spaces, so `customi[s|z]e` is refused. Two groups at most, no group inside a
+// group, no empty group or alternative, and at least one word outside the
+// groups. The forms keep the order written, once each regardless of case, with
+// the spaces collapsed. A term with no bracket is its own only form.
+export function expandIndexTerm(written, where) {
+  if (!/[[\]]/.test(written)) return [written];
+  const fail = (why) => {
+    throw new Error(`${where}: search index term "${written}": ${why}`);
+  };
+  const parts = [];
+  let text = "";
+  let groups = 0;
+  let outside = "";
+  for (let i = 0; i < written.length; ) {
+    const c = written[i];
+    if (c === "]") fail('"]" with no "[" before it');
+    if (c !== "[") {
+      text += c;
+      i++;
+      continue;
+    }
+    const close = written.indexOf("]", i + 1);
+    if (close < 0) fail('"[" is never closed');
+    const inner = written.slice(i + 1, close);
+    if (inner.includes("[")) fail("a group inside a group");
+    if (i > 0 && !/\s/.test(written[i - 1])) fail("a group must start at a word: put a space before the [");
+    if (close + 1 < written.length && !/\s/.test(written[close + 1])) {
+      fail("a group must end at a word: put a space after the ]");
+    }
+    const alts = inner.split("|").map((a) => a.replace(/\s+/g, " ").trim());
+    if (alts.length === 1 && !alts[0]) fail("an empty group");
+    if (alts.some((a) => !a)) fail("an empty alternative");
+    if (++groups > MAX_INDEX_GROUPS) fail(`more than ${MAX_INDEX_GROUPS} groups`);
+    parts.push(text, ["", ...alts]);
+    outside += text;
+    text = "";
+    i = close + 1;
+  }
+  parts.push(text);
+  outside += text;
+  if (!outside.trim()) fail("no word outside the groups");
+  let forms = [""];
+  for (const part of parts) {
+    forms = Array.isArray(part) ? forms.flatMap((f) => part.map((o) => f + o)) : forms.map((f) => f + part);
+  }
+  const seen = new Map();
+  for (const f of forms) {
+    const t = f.replace(/\s+/g, " ").trim();
+    if (!seen.has(t.toLowerCase())) seen.set(t.toLowerCase(), t);
+  }
+  return [...seen.values()];
 }
 
 // A term is the main index entry of one place only, as in a book's index:
@@ -223,7 +303,10 @@ export function checkIndexTerms(entries) {
     for (const t of e.index ?? []) {
       const key = t.toLowerCase().replace(/[\s-]+/g, " ");
       if (!claims.has(key)) claims.set(key, []);
-      claims.get(key).push(e.relUrl);
+      // A term that was written with brackets says so, so that the author can
+      // find it in the page: the claim is on its expanded form.
+      const written = e.indexWritten?.[t.toLowerCase()];
+      claims.get(key).push(written ? `${e.relUrl} (written "${written}")` : e.relUrl);
     }
   }
   const dup = [...claims].filter(([, urls]) => urls.length > 1);

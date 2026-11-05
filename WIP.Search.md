@@ -94,6 +94,20 @@ page for words it doesn't contain. So authors mark index entries by hand
   don't (stems), but `type char` doesn't match `type character`, and
   `register a dll` doesn't match `register dll`: each spelling a reader types
   is its own term.
+- A term may be written with bracket groups: `hide [a|the] panel` is `hide
+  panel`, `hide a panel` and `hide the panel`. This is authoring shorthand only:
+  `parseIndexTerms` (`search.mjs`) writes the terms out before anything else
+  sees them, so the entries, `phraseKey`, `indexTermKey`, the client and the
+  replica are as if the terms were written out by hand, and **each spelling a
+  reader types is still its own term**. Whole words only (`customi[s|z]e` is
+  refused), two groups at most, no nesting, no empty group or alternative, a
+  word outside the groups; each fails the build, naming the page and the term
+  as written. `checkIndexTerms` compares each expanded form, and says which term
+  it was written as (`indexWritten`, kept on the entry for that message only and
+  not in the output). In front matter a term that starts with a bracket must be
+  quoted: unquoted, YAML reads it as a list and the page fails to parse. The
+  heading attribute (`{: index="hide [a|the] panel" }`) and the code guard leave
+  brackets and the pipe alone.
 - A bold label on an IDE page needs no mark: its page gets an entry for it
   ([Term entries](#term-entries)). A mark is for the reader's own words, not
   for a label, and a label that is a main term gets no entry of its own.

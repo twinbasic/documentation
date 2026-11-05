@@ -336,6 +336,7 @@ const handlers = {
       relUrl: e.relUrl,
       index: e.index,
       index_also: e.index_also,
+      indexWritten: e.indexWritten,
       labels: e.labels,
     }));
 

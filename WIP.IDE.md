@@ -91,8 +91,9 @@ for contributors.
 
 - **UI names** in bold, as the IDE spells them: **Project Explorer**, **Break On All Errors**.
   The search reads this bold (`WIP.Search.md`, "Term entries"): a label that is not bold
-  is not found. A run-in sentence in bold ends in a full stop, and is then not taken for a
-  label.
+  is not found. A run-in sentence in bold ends in a full stop: as a definition term or at the
+  start of a list item it still gets its search entry and deep link, but its text is not
+  taken as a label term.
 - **Menu paths** in bold with an arrow: **File → Export Project**.
 - **Keys**: `<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>`, with key names in mixed case and no
   spaces around the `+`. Every key is written by name: `<kbd>Enter</kbd>`, `<kbd>F5</kbd>`,
