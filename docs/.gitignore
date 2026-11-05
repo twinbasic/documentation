@@ -1,10 +1,6 @@
 _site/
-_site-offline/
-_site-pdf/
+_site-*/
 _serve/
 _pdf/
 *.af~lock~
 _bak
-_site-basepath/
-_site-basepath-offline/
-_site-basepath-pdf/
