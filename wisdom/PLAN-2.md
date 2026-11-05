@@ -106,11 +106,12 @@ top_reactions:
 ```
 data/threads/
   {channel_name}.md                          text channel (one file per channel)
-  {forum_channel_name}/
-    {thread_id}--{slugified-title}.md        forum thread (one file per thread)
+  {channel_name}/
+    {thread_id}--{slugified-title}.md        thread (one file per thread)
+    {channel_id}-{YYYY-MM}--{channel}-{YYYY-MM}.md   a month of a text channel
 ```
 
-Forum threads nest under a subdirectory named after the parent forum channel. Text channels produce a single `.md` at the root of `data/threads/`.
+Threads nest under a subdirectory named after their parent channel, forum or text. Text and announcement channels produce a single `.md` at the root of `data/threads/`, and one file per calendar month beside their threads, unless `process.unmined_channels` in `config.jsonc` names them. A month has the frontmatter of a thread, so Phase 3 treats it as one; the single file is not read by Phase 3.
 
 The `--` separator makes the ID and slug visually distinct without conflicting with slug hyphens. The ID prefix guarantees uniqueness even when two threads share similar titles after slugification.
 
@@ -155,7 +156,7 @@ Code blocks in Discord messages (backtick-fenced, with or without a language hin
 
 Process applies only light, mechanical filtering — not relevance filtering (Phase 3's job):
 
-- **System messages** — skip messages whose `type` is not 0 (DEFAULT) or 19 (REPLY). Type 19 messages are Discord's "reply to a specific message" — they carry real user content and the `message_reference` that the renderer uses for reply threading. Types to skip include joins (7), pins (18), thread-created markers (21), etc.
+- **System messages** — skip messages whose `type` is not 0 (DEFAULT) or 19 (REPLY). Type 19 messages are Discord's "reply to a specific message" — they carry real user content and the `message_reference` that the renderer uses for reply threading. Types to skip include joins (7), thread-created markers (18), etc. A thread started from a text channel's message opens with a type 21 stub, because that message is in the parent channel; the stub's `referenced_message` is kept in its place, so the thread keeps its opening post.
 - **Empty threads** — skip threads with zero non-system messages after the starter. For text channels, skip if zero non-system messages total.
 - **Bot-only** — skip threads (or text channels) where every message author has `bot: true`.
 

@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadConfig } from "../config.mjs";
 import { snowflakeToTimestamp } from "../discord/api.mjs";
 import { slugify } from "./slugify.mjs";
 import { filterMessages, shouldSkipThread } from "./filter.mjs";
@@ -95,6 +96,7 @@ export async function runProcess(flags) {
   }
 
   // Process text channels
+  const unmined = new Set(loadConfig(flags).process?.unmined_channels || []);
   const channelsDir = join(inDir, "channels");
   if (existsSync(channelsDir)) {
     const channelFiles = readdirSync(channelsDir)
@@ -123,15 +125,15 @@ export async function runProcess(flags) {
       }
 
       const outPath = join(outDir, `${channel.name}.md`);
+      const filtered = filterMessages(raw.messages || []);
+      const months = unmined.has(channel.name) ? [] : channelMonths(channel, filtered, outDir);
 
-      if (!flags.force && existsSync(outPath)) {
-        if (statSync(outPath).mtimeMs >= statSync(inPath).mtimeMs) {
-          upToDate++;
-          continue;
-        }
+      const current = (p) => existsSync(p) && statSync(p).mtimeMs >= statSync(inPath).mtimeMs;
+      if (!flags.force && [outPath, ...months.map((m) => m.path)].every(current)) {
+        upToDate++;
+        continue;
       }
 
-      const filtered = filterMessages(raw.messages || []);
       if (!filtered.length) {
         skipped++;
         continue;
@@ -148,10 +150,39 @@ export async function runProcess(flags) {
       mkdirSync(outDir, { recursive: true });
       writeFileSync(outPath, output);
       processed++;
+
+      for (const month of months) {
+        const monthFm = buildFrontmatter(month.thread, month.messages, tagMap, channelMap);
+        const monthBody = renderMessages(month.messages, members, filtered);
+        mkdirSync(dirname(month.path), { recursive: true });
+        writeFileSync(month.path, serializeFrontmatter(monthFm) + "\n\n" + monthBody);
+        processed++;
+      }
     }
   }
 
   process.stderr.write(`[wisdom] Process done — ${processed} written, ${skipped} skipped, ${upToDate} up-to-date\n`);
+}
+
+// A text channel as the extract step reads it: one file per calendar month, in
+// the channel's folder and shaped like a thread, so that its watermark, its
+// state and its merge are a thread's.
+function channelMonths(channel, messages, outDir) {
+  const byMonth = new Map();
+  for (const m of messages) {
+    const month = m.timestamp.slice(0, 7);
+    if (!byMonth.has(month)) byMonth.set(month, []);
+    byMonth.get(month).push(m);
+  }
+  return [...byMonth].map(([month, kept]) => {
+    const id = `${channel.id}-${month}`;
+    const name = `#${channel.name} ${month}`;
+    return {
+      path: join(outDir, channel.name, `${id}--${slugify(name)}.md`),
+      thread: { id, name, parent_id: channel.id, thread_metadata: { create_timestamp: kept[0].timestamp } },
+      messages: kept,
+    };
+  });
 }
 
 function buildLookups(channels) {

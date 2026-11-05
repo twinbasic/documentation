@@ -11,18 +11,26 @@
     ],
     // Channel IDs to exclude by exact match.
     "exclude_ids": [],
-    // Channel types to include: "text" (type 0) and/or "forum" (type 15).
-    "include_types": ["text", "forum"]
+    // Channel types to include: "text" (type 0), "announcement" (type 5) and/or "forum" (type 15).
+    "include_types": ["text", "announcement", "forum"]
   },
 
   "threads": {
-    // Skip threads with fewer messages than this.
-    "min_message_count": 1
+    // Skip threads with fewer messages than this. Discord's count leaves out a thread's
+    // first message, so a forum post nobody answered counts 0, and 1 would skip it.
+    "min_message_count": 0
   },
 
   "export": {
     // Parallel channel/thread fetches (Discord recommends <= 5).
     "concurrency": 3
+  },
+
+  "process": {
+    // Text channels left out of the monthly files the extract step reads. Their one-file
+    // dump is still written, and their threads are still read. A month of #general is
+    // several hundred KB, so taking it off this list costs far more than any other channel.
+    "unmined_channels": ["general", "off-topic", "docs", "rules"]
   },
 
   // Tool-imposed rate and session limits, per token type.

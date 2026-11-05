@@ -1,5 +1,7 @@
-export function renderMessages(messages, members) {
-  const msgMap = new Map(messages.map((m) => [m.id, m]));
+// `context` is where a reply's parent is looked up: a month of a text channel
+// passes the whole channel, since a reply can answer an earlier month.
+export function renderMessages(messages, members, context = messages) {
+  const msgMap = new Map(context.map((m) => [m.id, m]));
   const blocks = [];
 
   for (const msg of messages) {

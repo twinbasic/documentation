@@ -174,7 +174,7 @@ async function runExport(flags) {
         "Delete it: it only lists the targets that refused access, so that they are tried last.",
       );
 
-  // Fetch targets: text channels + forum threads
+  // Fetch targets: text and announcement channels, and every thread
   // Previously denied targets sort to the end
   const targets = [
     ...textChannels.map((c) => ({ kind: "channel", id: c.id, obj: c, name: c.name })),
