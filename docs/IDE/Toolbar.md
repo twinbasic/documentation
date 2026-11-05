@@ -2,7 +2,7 @@
 title: Toolbar
 parent: IDE Reference
 grand_parent: IDE
-nav_order: 12
+nav_order: 13
 permalink: /tB/IDE/Reference/Toolbar
 redirect_from:
   - /tB/IDE/Project/Toolbar

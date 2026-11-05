@@ -58,7 +58,7 @@ A project with *Register DLLs to HKLM* at **Yes** registers its DLL under `HKEY_
 
 **WARNING: This project registers itself to the HKEY_LOCAL_MACHINE registry hive which requires ADMIN permissions. The twinBASIC IDE is not currently running elevated, and so the registration of the DLL will fail during the build process. For the build to be successful, please restart the twinBASIC IDE using the 'Run As Administrator' Windows option.**
 
-Its one button is **Continue Anyway**. The box does not appear when *Register DLL after build* is **No**. An IDE that runs as an administrator shows **ADMIN** in its title area and does not open it.
+Its one button is **Continue Anyway**. The box does not appear when *Register DLL after build* is **No**. An IDE that runs as an administrator shows [**ADMIN**](../Reference/TitleBar#the-admin-badge) in its title area and does not open it.
 
 ![The warning box the IDE shows as it opens a project that registers to HKEY_LOCAL_MACHINE while the IDE is not elevated, with one button.](Images/HKLM_Warning.png){:width="541" height="249"}
 

@@ -14,7 +14,7 @@ The picture shows the IDE in its default layout, with a project open and one of 
 
 ## Around the window
 
-**The menu bar** runs along the top, in the title bar. The [menu reference](IDE/Reference/Menu) lists every command with its key.
+**The menu bar** runs along the top, in the title bar. The [menu reference](IDE/Reference/Menu) lists every command with its key. The same bar holds the project's name and the window's buttons, and an orange **ADMIN** appears there when the IDE runs with administrator rights; see [Title Bar](IDE/Reference/TitleBar).
 
 **The toolbar** is under it. It has the buttons for saving and finding, the buttons that start, pause, stop and step a program, the build configuration box that chooses 32-bit or 64-bit, and the buttons that arrange the controls on a form. See [Toolbar](IDE/Reference/Toolbar).
 

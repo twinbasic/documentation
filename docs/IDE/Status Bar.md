@@ -2,7 +2,7 @@
 title: Status Bar
 parent: IDE Reference
 grand_parent: IDE
-nav_order: 13
+nav_order: 14
 permalink: /tB/IDE/Reference/StatusBar
 redirect_from:
   - /tB/IDE/Project/StatusBar
@@ -83,7 +83,7 @@ The region left of the memory box names the command a click would trigger --- th
 
 The name goes when the pointer leaves the icon or the menu item. It stays only when the item goes away under the pointer: a menu that closes on a click or on <kbd>Esc</kbd> leaves the name of the last item it showed, until the pointer enters another item that has a command.
 
-These are the same identifiers the keyboard shortcut map is keyed by --- see [Window](Menu/Window) for the full list and the keys bound to each one.
+These are the same identifiers the keyboard shortcut map is keyed by --- see [Keyboard Shortcuts](Keyboard-Shortcuts) for the list and the keys bound to each one.
 
 ## See Also
 
