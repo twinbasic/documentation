@@ -175,7 +175,7 @@ Changing any of these options restarts the compiler. The three **LLVM -** option
 : Default on. Keeps the LLVM cache process running after the IDE closes.
 
 **Show Hidden Members**
-: Default off. Shows members marked `[Hidden]` in tooltips, hovers and the other information the editor shows about code. It is not the same switch as the Project Settings **Intellisense: Show Hidden Members** and **Debugger: Show Hidden Members**.
+: Default off. Shows what a COM type library marks as hidden, in two places. The completion lists that offer a type, such as those after `As`, `Implements` and `Inherits`, also offer the library's hidden types, such as `IUnknown`, `IFont` and `IPicture` of OLE Automation. The [Variables](../Debugging/Inspecting#variables) panel and the [watches](../Debugging/Inspecting#watches) also list a hidden property of an object, such as `_NewEnum` of a `Scripting.Drives` object. The lists after a dot, hovers and signature help do not change. The option has no effect on `[Hidden]` in twinBASIC source: a member or class marked that way appears in those lists and panels with the option off.
 
 **Use new Handles/Implements syntax**
 : Default off. When you choose an event of a **WithEvents** variable in the editor's procedure combo box, the handler that the editor inserts has a **Handles** clause. With the option off, the handler is `Private Sub src_Changed(ByVal n As Long)`. With it on, it is `Private Sub src_Changed(ByVal n As Long) Handles src.Changed`. The name of the procedure is the same in both.
