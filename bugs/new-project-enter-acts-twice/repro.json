@@ -1,0 +1,11 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "with the highlight moved to Open by Tab, Enter runs the open twice",
+    "with the highlight moved to Browse... by Tab, Enter opens the picker and the selected item",
+    "with the highlight moved to Cancel by Tab, Enter closes a saved project with no question and opens the selected card",
+    "Enter on a focused card opens the selected card, not the focused one"
+  ],
+  "steps": "1. Open a saved project and change nothing.\n2. File > New Project...\n3. Press Tab four times: the highlight is on Cancel.\n4. Press Enter: the project closes with no question, and New Project Options opens for the selected card.\nWith Tab pressed three times the highlight is on Open, and Enter runs the open twice; with two, on Browse..., and Enter shows the picker and opens the item.\nFor the card: click ActiveX DLL, click in the search box, press Tab (the focus is on Standard EXE), press Enter: ActiveX DLL opens.\nControl: Esc, and a click on Cancel, keep the project."
+}

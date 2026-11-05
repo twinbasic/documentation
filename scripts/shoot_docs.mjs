@@ -59,6 +59,8 @@
 //   sample9     Sample 9 open: its WebView_Create handler, for the WebView2 tutorial
 //   featuremap  test/shots/featuremap, FeatureTour: the whole window with twelve of the IDE's
 //               features named, in a layout and with editor options set in the page only
+//   tour        test/shots/forms, FormsDemo: the whole window as the IDE's landing page shows
+//               it, a form in its designer and each part of the window named
 //   code-chapter  the same project with test/shots/codechapter staged onto it: the
 //               "Writing code" chapter's pictures of the editor (tabs, combo boxes, menus,
 //               IntelliSense, finding, bookmarks, Outline, DIAGNOSTICS) and the Edit and
@@ -68,7 +70,13 @@
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
-//   programs    test/shots/programs, ShotPrograms, built in the IDE: each picture is the
+//   starting-first-run  the three dialogs of a first start, in a page over a guard of its own
+//               (lib/shot-first-run.mjs); starting, starting-new and starting-boxes no project,
+//               then the "Starting a project" chapter's other pictures, with test/shots/starting
+//   troubleshooting  test/shots/troubleshooting, the "When something goes wrong" chapter's pictures:
+//               a compiler restarted, killed and in Safe Mode, a native exception and TRACE mode;
+//               troubleshooting-box no page: a copy of the install with a file gone, and its box
+//   programs   test/shots/programs, ShotPrograms, built in the IDE: each picture is the
 //               window of the exe, started on a private desktop with a command line naming
 //               its form, taken with PrintWindow (lib/tb-ide.mjs's captureWindow), once,
 //               in no theme; the ListView's is of the project run from the IDE (F5)
@@ -114,7 +122,9 @@
 //     its light theme (builder/theme-pictures.mjs). A light picture with the dark one's
 //     pixels is not kept. Light lays the window out a few pixels differently, so a light
 //     picture can be a few pixels off the dark one's size; the page shows each at its own
-//     (SIZE_SLACK). A label's pill follows the theme (lib/shot-annotate.mjs).
+//     (SIZE_SLACK). A label's pill follows the theme (lib/shot-annotate.mjs). The two pictures say
+//     the same: text one shows whole and the other shows none of fails the picture
+//     (TEXT_IN_CLIP, themeTextDifference).
 //   * What the user's machine would put into a picture is kept out of the IDE's
 //     page, in the page only (the no-project and project setups): the IDE's
 //     options are set to their defaults, the saved panel layouts and keyboard
@@ -140,7 +150,17 @@
 // not a page: the texts of the window and its child windows are searched instead,
 // and what the program draws itself is the fixture's own text (see programShot).
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+  writeSync,
+} from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import path from "node:path";
 import puppeteer from "puppeteer";
@@ -160,13 +180,23 @@ import { hoverText, mouseAway, pointOf, restMouse } from "../test/addin/hover.mj
 import { frameEval, frameOf, serveLoopback } from "../test/addin/pages.mjs";
 import { launchBrowser } from "./lib/browser.mjs";
 import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "./lib/shot-annotate.mjs";
-import { composite, uncomposite } from "./lib/shot-composite.mjs";
+import { COMPOSITE_ID, composite, uncomposite } from "./lib/shot-composite.mjs";
 import { decodePng, encodePng, pngSize } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
 import { inRects, pngsNear, withinNoise } from "./lib/shot-change.mjs";
 import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
 import { applyPicture, applySvg, dropPicture, restorePictures, svgOf } from "./lib/shot-apply.mjs";
 import { freezePage, showFrozen } from "./lib/shot-freeze.mjs";
+import { FIRST_RUN, guardSource, SETTLED, settingsHash } from "./lib/shot-first-run.mjs";
+import {
+  holdsRoot,
+  rootBoxesBackJs,
+  rootBoxesJs,
+  rootPattern,
+  rootTextJs,
+  SHOWN_ROOT,
+  TOOL_ROOT,
+} from "./lib/shot-root.mjs";
 import {
   bundleFollowsSvg,
   cleanupResets,
@@ -174,6 +204,7 @@ import {
   pngRule,
   SVG_FAITHFUL,
   svgFollowsPng,
+  themeTextDifference,
 } from "./lib/shot-policy.mjs";
 import { MANIFEST, openManifest, svgDecision } from "./lib/shot-manifest.mjs";
 import { reviewPicture, reviewSvg } from "./lib/shot-queue.mjs";
@@ -200,10 +231,12 @@ import {
   captureWindow,
   compilerPid,
   desktopWindows,
+  IDE_FLAGS,
   killTree,
   launchOnDesktop,
   leaseSlot,
   postWindowMessage,
+  readCrash,
   shutdownIde,
   sleep,
   waitForCompile,
@@ -215,6 +248,7 @@ import { holdsUserName, judgeSvg } from "./svgshot/keep.mjs";
 import { stageProject, unpackProject } from "./lib/tb-project.mjs";
 import { holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { guard, presentKeys, press, serverRequests } from "../test/ide/building-kit.mjs";
+import { layout } from "../test/ide/starting-kit.mjs";
 import { checkHarness } from "./lib/harness-settings.mjs";
 import { buildNumber, findIde, unsupportedIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
@@ -695,6 +729,81 @@ const VISIBLE_TEXT = `(() => {
   return out.join("\\n");
 })()`;
 
+// The text a picture of `clip` shows, read from the page as it is captured, for the check that
+// its two themes say the same (themeTextDifference): each block of text, in the document's order,
+// across every shadow root, the text boxes' values and each closed select's choice among them. A
+// line of text shows where part of it is inside the clip and inside every box of its ancestors
+// that clips it, and is on top there: a dialog hides what is behind it, a list's rows that scrolled
+// away are clipped, and the copies of rows a list keeps out of sight lie under the ones it shows.
+// A block counts all its text once any line of it shows, so a line a picture's edge cuts off, and
+// text an ellipsis shortens, read the same in both themes. It is `whole` when a line of it shows
+// its full height and half its width, or 40 px of it, and else `cut`: a row at the clip's edge,
+// which a theme that lays it out a few pixels further on shows less of. Null for a composite's
+// layer, whose parts were read as they were captured. The annotation layer is the tool's own, and
+// takes no hits, so it is not read.
+const TEXT_IN_CLIP = (clip) => `(() => {
+  if (document.getElementById(${JSON.stringify(COMPOSITE_ID)})) return null;
+  const c = ${JSON.stringify(clip ?? null)} ?? { x: scrollX, y: scrollY, width: innerWidth, height: innerHeight };
+  const x0 = c.x - scrollX, y0 = c.y - scrollY, x1 = x0 + c.width, y1 = y0 + c.height;
+  const boxes = new Map();
+  const clipBox = (e) => {
+    if (!e) return { left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity };
+    if (boxes.has(e)) return boxes.get(e);
+    let box = clipBox(e.parentElement ?? e.getRootNode().host ?? null);
+    const s = getComputedStyle(e);
+    if (s.overflowX !== "visible" || s.overflowY !== "visible") {
+      const r = e.getBoundingClientRect();
+      box = { left: Math.max(box.left, r.left), top: Math.max(box.top, r.top), right: Math.min(box.right, r.right), bottom: Math.min(box.bottom, r.bottom) };
+    }
+    boxes.set(e, box);
+    return box;
+  };
+  const shown = (e, r) => {
+    const b = clipBox(e);
+    const left = Math.max(r.left, x0, b.left), right = Math.min(r.right, x1, b.right);
+    const top = Math.max(r.top, y0, b.top), bottom = Math.min(r.bottom, y1, b.bottom);
+    if (right <= left || bottom <= top) return 0;
+    const hit = e.getRootNode().elementFromPoint((left + right) / 2, (top + bottom) / 2);
+    if (!hit || !(hit === e || e.contains(hit) || hit.contains(e))) return 0;
+    return bottom - top >= r.height - 1 && right - left >= Math.min(r.width / 2, 40) ? 2 : 1;
+  };
+  const blockOf = (e) => {
+    for (let a = e; a; a = a.parentElement) if (!/^(inline$|contents)/.test(getComputedStyle(a).display)) return a;
+    return e;
+  };
+  const blocks = new Map();
+  const entry = (key) => {
+    if (!blocks.has(key)) blocks.set(key, { text: "", shown: 0 });
+    return blocks.get(key);
+  };
+  const range = document.createRange();
+  const SKIP = /^(STYLE|SCRIPT|NOSCRIPT|OPTION|TITLE|TEMPLATE|TEXTAREA)$/;
+  const read = (root) => {
+    const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const e = n.parentElement;
+      if (!e || !/\\S/.test(n.data) || SKIP.test(e.tagName) || getComputedStyle(e).visibility !== "visible") continue;
+      const b = entry(blockOf(e));
+      b.text += n.data;
+      if (b.shown === 2) continue;
+      range.selectNodeContents(n);
+      for (const r of range.getClientRects()) b.shown = Math.max(b.shown, shown(e, r));
+    }
+    for (const e of root.querySelectorAll("input, textarea, select")) {
+      const r = e.getBoundingClientRect();
+      if (/^(checkbox|radio|hidden|button|submit)$/.test(e.type) || r.width < 4 || r.height < 4) continue;
+      if (getComputedStyle(e).visibility !== "visible") continue;
+      const b = entry(e);
+      b.text = e.tagName === "SELECT" ? (e.options[e.selectedIndex]?.text ?? "") : e.value;
+      b.shown = shown(e, r);
+    }
+    for (const e of root.querySelectorAll("*")) if (e.shadowRoot) read(e.shadowRoot);
+  };
+  read(document);
+  const all = [...blocks.values()].filter((b) => b.text);
+  return { whole: all.filter((b) => b.shown === 2).map((b) => b.text), cut: all.filter((b) => b.shown === 1).map((b) => b.text) };
+})()`;
+
 // `expression` evaluated in the document of a frame: `frame` is the origin of a child frame
 // of `conn`'s page, or the connection to a frame of another site, which is a target of its
 // own (the detached help window's page is a string, and its frame is on another site).
@@ -761,6 +870,7 @@ const newShotState = (name) => ({
   ignore: null,
   editedOriginal: null,
   svg: null,
+  text: { whole: [], cut: [] },
 });
 
 // A line of output, prefixed with the setup it is from (they run at once).
@@ -851,6 +961,21 @@ function refuseUserName(text, name, what) {
   throw new Error(`${what} for ${name} shows the Windows user name: ${JSON.stringify(around)}`);
 }
 
+// The tool's real folder, which every picture shows as SHOWN_ROOT (lib/shot-root.mjs).
+const ROOT_PATTERN = rootPattern(TOOL_ROOT);
+const showRootText = (conn) => conn.evaluate(rootTextJs(TOOL_ROOT, SHOWN_ROOT));
+const showRootBoxes = (conn) => conn.evaluate(rootBoxesJs(TOOL_ROOT, SHOWN_ROOT));
+
+// Fails the picture `name` when `text` holds the real folder: what could not be rewritten is
+// fixed where it is, and this is never relaxed.
+function refuseRoot(text, name, what) {
+  if (!holdsRoot(text, ROOT_PATTERN)) return;
+  const at = text.search(ROOT_PATTERN);
+  throw new Error(
+    `${what} for ${name} shows ${TOOL_ROOT}, not ${SHOWN_ROOT}: ${JSON.stringify(text.slice(Math.max(0, at - 40), at + TOOL_ROOT.length + 40))}`,
+  );
+}
+
 // A capture of `clip` (CSS pixels, on whole device pixels) from `conn`, refused
 // when the page's visible text holds the user name: before the first capture, and
 // again, with the SVG when there is one, when a capture is chosen. The page can draw
@@ -865,6 +990,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
   refuseUserName(await textOf(conn, frame), name, "the page");
   if (away) await away();
   await quiet(conn);
+  await showRootText(conn);
   try {
     if (keep) await cutoutOn(conn, keep, solid);
     else await frames(conn);
@@ -897,12 +1023,20 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     // wide) is captured a device pixel short of it (168), and an SVG of the whole clip
     // would show the half of an edge the PNG cuts off.
     const picked = async (png) => {
-      refuseUserName(await textOf(conn, frame), name, "the page as captured");
+      const text = await textOf(conn, frame);
+      refuseUserName(text, name, "the page as captured");
+      refuseRoot(text, name, "the page as captured");
+      const read = await conn.evaluate(TEXT_IN_CLIP(clip));
+      conn.shot.text.whole.push(...(read?.whole ?? []));
+      conn.shot.text.cut.push(...(read?.cut ?? []));
+      if (frame) conn.shot.text.whole.push(await inFrame(conn, frame, "document.body.innerText"));
       if (values.svg) {
         const [width, height] = pngSize(png);
         const size = { width: width / SCALE, height: height / SCALE };
+        await showRootBoxes(conn);
         conn.shot.svg = await svgOfPage(conn, clip && { ...clip, ...size }, { background: !keep });
         if (holdsUserName(conn.shot.svg.svg, USER)) throw new Error(`the SVG of ${name} holds the Windows user name`);
+        refuseRoot(conn.shot.svg.svg, name, "the SVG");
       }
       return png;
     };
@@ -915,6 +1049,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     let agreed = null;
     let gap = 0;
     for (let i = 0; ; i++) {
+      await showRootBoxes(conn);
       const { data } = await conn.send("Page.captureScreenshot", params);
       const png = Buffer.from(data, "base64");
       const equal = wants.find((w) => same(w, png, masks));
@@ -938,6 +1073,7 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     if (agreed) return await picked(agreed);
     throw new Error(`the page for ${name} kept changing: no two captures in a row were equal`);
   } finally {
+    await conn.evaluate(rootBoxesBackJs);
     if (keep) await cutoutOff(conn);
   }
 }
@@ -1097,6 +1233,9 @@ async function resetUi(c) {
 const THEMES = ["dark", "light"];
 const THEME_COMMAND = { dark: "tbTheme_SwitchToDarkMode", light: "tbTheme_SwitchToLightMode" };
 const THEME_NAME = { dark: "dark", light: "Light" };
+// A shot's `themeWords`: the words its two themes must differ by, for themeTextDifference. A shot
+// that shows the list of colour themes shows the theme it is taken in.
+const SHOWS_ITS_THEME = { dark: ["Dark"], light: ["Light"] };
 // The path of a picture in a theme: the dark one is the path the shot table gives.
 const themedOut = (out, theme) => (theme === "dark" ? out : out.replace(/\.png$/, ".light.png"));
 
@@ -1156,16 +1295,20 @@ async function fixPageSize(c) {
 // IDE save its place in the registry). The language is left as the IDE runs it, and so are
 // the options the schema does not list. Returns what differed from the defaults.
 const PAGE_DEFAULTS = `(() => {
-  const blocked = new Set(["RemoveRecentsList"]);
+  const blocked = (window.__shotBlocked = new Set(["RemoveRecentsList"]));
   // The New / Open Project dialog (BETA 1033's) reads the recent list from the host object
   // itself, and remembers the section it was left on as the setting NEWFRONTPAGE: the list is
   // the tool's own (window.__shotRecents, setRecents), the section is never read or saved.
+  // VB6's list is __shotVb6Recents, and a native picker a shot goes through is answered from __shotAnswers.
   window.__shotRecents = [];
+  window.__shotVb6Recents = "";
+  window.__shotAnswers = {};
   const FRONT_PAGE = "NEWFRONTPAGE";
   hostAppObject = new Proxy(hostAppObject, {
     get(target, key) {
       if (blocked.has(key)) return async () => undefined;
       if (key === "GetRecentsList") return async () => window.__shotRecents.join("?");
+      if (Object.hasOwn(window.__shotAnswers, key)) return async () => window.__shotAnswers[key];
       const member = Reflect.get(target, key);
       if (key === "GetIDESetting" || key === "SaveIDESetting") {
         return (...a) => (String(a[0]) === FRONT_PAGE ? Promise.resolve("") : member(...a));
@@ -1191,7 +1334,7 @@ const PAGE_DEFAULTS = `(() => {
   activePanelLayoutName = "<DEFAULT>";
   customKeyboardShortcutGroups = {};
   activeKeyboardShortcutGroupNames = "";
-  window.HostGetVB6RecentProjects = (done) => done("");
+  window.HostGetVB6RecentProjects = (done) => done(window.__shotVb6Recents);
   window.HostGetRecentsList = (e) => {
     e.classList.add("frontPageListViewLIST");
     listviewFromArray(e, [], () => {});
@@ -1216,10 +1359,12 @@ window.HostGetRecentsList = (e) => {
 // A setup is one IDE: `start` which opens it and returns the connection,
 // `prepare` which brings it to a state the shots start from and returns their
 // context, and `port` when it needs a port chosen before it is bound (the help
-// add-in's detached window), which its slot then carries; `end`, when given, runs
-// once the IDE has ended, whatever happened, to check or give back what the setup
-// holds (a lease, the registry the Building setups' ActiveX builds wrote and
-// cleaned). `run` holds the lane,
+// add-in's detached window), which its slot then carries; `closing`, when given, runs
+// before the IDE ends, whatever happened, to check what only its page can say; `end`,
+// when given, runs once the IDE has ended, whatever happened, to check or give back
+// what the setup holds (a lease, the registry the Building setups' ActiveX builds wrote
+// and cleaned). `noPage` says that the setup has no page: its `start` returns a stand-in
+// for the connection, and its shots are `once`. `run` holds the lane,
 // its slot (tbbroker: the IDE's private desktop), the work folder and what the
 // setup has to put back.
 
@@ -1599,6 +1744,14 @@ async function prepareFormsChapter(run) {
   return ctx;
 }
 
+// ---- tour: FormsDemo again, for the one picture of the IDE's landing page. Its status bar is in
+// the picture, so the compiler starts on no licence key, as in community.
+async function prepareTour(run) {
+  const ctx = await prepareFormsChapter(run);
+  await communityCompiler(run);
+  return ctx;
+}
+
 // ---- projects: test/shots/projects, MyProject, for the pictures of the "Projects and files"
 // chapter (projectsShots): a form, a .bas module, a module and a class in a Helpers folder, a
 // manifest, and Resources/ICON/AppIcon.ico, the install's template icon under another name (a
@@ -1670,6 +1823,11 @@ async function prepareProjectsRefs(run) {
 
 async function prepareCommunity(run) {
   const ctx = await prepareProject(run);
+  await communityCompiler(run);
+  return ctx;
+}
+
+async function communityCompiler(run) {
   const { c } = run;
   if (
     !(await waitFor(c, () => c.evaluate("licenceIsSet === true && !!compilerLicence.innerText"), {
@@ -1688,7 +1846,6 @@ async function prepareCommunity(run) {
   });
   if (!community) throw new Error("the compiler started with no key, and the licence badge is not COMMUNITY EDITION");
   await clearUserFromConsole(c);
-  return ctx;
 }
 
 // A compiler's restart writes a line to the DEBUG CONSOLE that names the project's folder,
@@ -1713,6 +1870,7 @@ const SETUPS = {
   designer: { start: startDesigner, prepare: prepareDesigner },
   forms: { start: (run) => startDesigner(run, { addin: false }), prepare: prepareWithDesigners },
   "forms-chapter": { start: startFormsChapter, prepare: prepareFormsChapter },
+  tour: { start: startFormsChapter, prepare: prepareTour },
   projects: { start: startProjects(), prepare: prepareSample },
   "projects-refs": { start: startProjects({ refs: true }), prepare: prepareProjectsRefs },
   "projects-start": { start: startNoProject, prepare: prepareNoProject },
@@ -1735,6 +1893,17 @@ const SETUPS = {
     prepare: prepareBuildingPkg,
     end: endBuilding,
   },
+  "starting-first-run": { start: startFirstRun, prepare: prepareFirstRun, end: endFirstRun },
+  starting: { start: startStarting, prepare: prepareStarting, end: endBuilding },
+  "starting-new": { start: startStarting, prepare: prepareStarting, end: endBuilding },
+  "starting-boxes": { start: startStarting, prepare: prepareStarting, end: endBuilding },
+  troubleshooting: {
+    start: startTroubleshooting,
+    prepare: prepareTroubleshooting,
+    closing: closingTroubleshooting,
+    end: endBuilding,
+  },
+  "troubleshooting-box": { noPage: true, start: startMissingDll, prepare: prepareMissingDll, end: endMissingDll },
   customcontrols: { start: startCustomControls, prepare: prepareWithDesigners },
   code: { start: startCode, prepare: prepareSample },
   sample9: { start: startSample9, prepare: prepareSample },
@@ -1775,13 +1944,14 @@ const SETUPS = {
 // corners: the outline's corner is what fills the pixel the border's curve leaves.
 const OUTLINE = 1;
 // `before(c)` brings the IDE to the state the menu is shown in, after every menu is closed,
-// and `after(c)`, when given, takes it out of that state once the menu is closed. `out` is
-// the picture's path when it is not the Menu pages' folder.
+// and `after(c)`, when given, takes it out of that state once the menu is closed. `check(c)`,
+// when given, runs with the menu open and fails the picture by throwing. `out` is the picture's
+// path when it is not the Menu pages' folder.
 function menuShot(
   name,
   top,
   item = null,
-  { subOnly = false, setup = "no-project", before = null, after = null, out = null } = {},
+  { subOnly = false, setup = "no-project", before = null, after = null, check = null, out = null } = {},
 ) {
   return {
     out: out ?? `IDE/Menu/Images/${name}.png`,
@@ -1793,6 +1963,7 @@ function menuShot(
         const drop = await openMenu(c, top, { close: !before });
         const title = await rectOf(c, `#${TOP[top]}`);
         const sub = item ? await hoverItem(c, item) : null;
+        if (check) await check(c);
         let area;
         let keep;
         if (subOnly) {
@@ -2009,6 +2180,7 @@ const dialogShots = [
     // unavailable: load a project first>" in place of their lists.
     out: dialogOut("IDE/Menu", "Menu_Tools_IDEOptions"),
     setup: "project",
+    themeWords: SHOWS_ITS_THEME,
     take: ({ c }) =>
       inDialog(c, { command: "tbIde_ShowIDEOptions", title: "IDE Options", close: "Close" }, () =>
         dialogShot(c, "Menu_Tools_IDEOptions"),
@@ -2179,15 +2351,87 @@ async function nameCloseProject(c) {
   if (named !== "tbProject_Close") throw new Error(`the status bar names "${named}", not tbProject_Close`);
 }
 
-// The IDE's whole window at the size of a full-HD screen, as it opens with no project.
+// The IDE's whole window at the size of a full-HD screen, as it opens with no project. The
+// panels' pictures after it float each panel on its own, so a pass that follows theirs would show
+// the window without them: the shot puts the default layout back itself.
 const ideWindowShot = {
   out: "IDE/Images/IDE.png",
   setup: "no-project",
   take: ({ c }) =>
     atSize(c, 1920, 1032, async () => {
+      await resetUi(c);
+      await command(c, "tbPanels_SetActiveLayoutDefault");
+      await frames(c);
       await nameCloseProject(c);
       return capture(c, "IDE", snapOut({ x: 0, y: 0, width: 1920, height: 1032 }, 1920, 1032));
     }),
+};
+
+// The box of the docked panel headed `title`.
+const dockedBox = (c, title) =>
+  c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === ${JSON.stringify(title)});
+  const r = h?.closest(".toolWindowContainer").getBoundingClientRect();
+  return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+
+// The tour's picture: the window at work, in the default layout, with a form in its designer, so
+// that the Toolbox and Properties have something to show. A bar's label stands on the bar, and a
+// panel's in its own empty part; the Toolbox and Properties are full, so theirs stand on the
+// ground round the form, with an arrow.
+const tourShot = {
+  out: "IDE/Images/IDE_Tour.png",
+  setup: "tour",
+  async take({ c }) {
+    await formsDesigner(c);
+    try {
+      await communityBadge(c);
+      const titles = ["TOOLBOX", "EDITOR 1", "PROJECT EXPLORER", "PROPERTIES", "DEBUG CONSOLE", "DIAGNOSTICS"];
+      const [toolbox, editor, explorer, properties, console_, diagnostics] = await Promise.all(
+        titles.map((t) => dockedBox(c, t)),
+      );
+      const [stack, variables] = await Promise.all(["CALL STACK", "VARIABLES"].map((t) => dockedBox(c, t)));
+      const missing = [toolbox, editor, explorer, properties, console_, diagnostics, stack, variables].some((b) => !b);
+      if (missing) throw new Error("the default layout does not hold every panel");
+      const { width: W, height: H } = await c.evaluate(`({ width: innerWidth, height: innerHeight })`);
+      const bar = await c.evaluate(`(() => {
+  const r = rootStatusBar.getBoundingClientRect();
+  return { y: r.y, height: r.height };
+})()`);
+      const tools = await toolbarRect(c);
+      const menus = await c.evaluate(`(() => {
+  const r = rootMenuHelp.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+      const mid = (r) => r.y + r.height / 2;
+      const pill = (text, x, y, side = "right") => ({ type: "label", text, on: POINT(x, y), side, gap: 0 });
+      const arrow = (from, to) => ({ type: "arrow", from, to });
+      // the ground under the form, level with Properties' upper part
+      const low = editor.y + editor.height - 44;
+      const inPanel = (text, box) => pill(text, box.x + 16, box.y + box.height - 40);
+      const annotate = [
+        pill("Menu bar", menus.x + menus.width + 24, mid(menus)),
+        pill("Toolbar", W - 110, mid(tools)),
+        pill("Toolbox", editor.x + 34, low),
+        arrow(POINT(editor.x + 30, low), POINT(toolbox.x + toolbox.width - 6, low)),
+        pill("Editor", editor.x + editor.width / 2 - 30, low),
+        pill("Properties", editor.x + editor.width - 34, low, "left"),
+        arrow(POINT(editor.x + editor.width - 30, low), POINT(properties.x + 6, low)),
+        inPanel("Project Explorer", explorer),
+        inPanel("Debug Console", console_),
+        inPanel("Diagnostics", diagnostics),
+        inPanel("Call Stack", stack),
+        inPanel("Variables", variables),
+        pill("Status bar", W / 2, bar.y + bar.height / 2),
+      ];
+      await annotateOver(c, annotate);
+      const clip = snapOut({ x: 0, y: 0, width: W, height: H }, W, H);
+      return await capture(c, "IDE_Tour", clip, { unsteady: await groundUnsteady(c, clip, await layerBoxes(c)) });
+    } finally {
+      await unannotate(c);
+      await formsReset(c);
+    }
+  },
 };
 
 // The status bar at the width of its own contents, with the command named at its right.
@@ -3655,6 +3899,10 @@ const settingsShot = (
       await noFlash(c);
       await nameUserAsUser(c);
       if (prepare) await prepare(c);
+      // the count's box has no height until the dialog has counted, which can be after it is still
+      if (unsteady?.includes(CHANGED_COUNT)) {
+        await waitFor(c, () => rectOf(c, CHANGED_COUNT.on.css), { timeout: 5000, interval: 100 });
+      }
       return dialogShot(c, out, (m) => clipOf(m, c), annotate, { unsteady });
     }),
 });
@@ -7061,11 +7309,11 @@ async function fixConsoleThumb(c) {
 }
 
 // The floated console grown to show its `lines` lines, its times and scroll bar set, captured;
-// `fix` sets what else changes from run to run, in the page.
-async function consolePicture(c, name, lines, fix = null) {
+// `fix` sets what else changes from run to run, in the page; `times: false` leaves the times to it.
+async function consolePicture(c, name, lines, fix = null, { times = true } = {}) {
   await fitConsole(c, lines);
   if (fix) await fix();
-  await fixConsoleTimes(c);
+  if (times) await fixConsoleTimes(c);
   await fixConsoleThumb(c);
   await parkMouse(c);
   await frames(c);
@@ -10903,63 +11151,76 @@ const communityShot = {
 // restarted with the toolbar's button, and the page's first call of the three, fs.connect, is
 // held until the picture is taken: the IDE stays where its start-up is, the compiler up and the
 // other three not yet connected, and draws LIMITED itself. The call is then made as the IDE
-// made it, the other two follow, and the badge goes back to OPERATIONAL.
-const HOLD_FS_CONNECT = `(() => {
-  if (window.tbFsConnect) return;
-  const own = Object.prototype.hasOwnProperty.call(fs, "connect");
-  const connect = fs.connect;
-  window.tbFsConnect = { own, connect, held: null };
-  fs.connect = function (...args) {
-    window.tbFsConnect.held = () => connect.apply(fs, args);
+// made it, the other two follow, and the badge goes back to OPERATIONAL. Holding the second
+// call, lspSocket.connect, stops the start-up with FS connected (Services_Limited_Tooltip).
+const holdConnect = (socket) => `(() => {
+  if (window.tbHeldConnect) return;
+  const socket = ${socket};
+  const own = Object.prototype.hasOwnProperty.call(socket, "connect");
+  const connect = socket.connect;
+  window.tbHeldConnect = { socket, own, connect, held: null };
+  socket.connect = function (...args) {
+    window.tbHeldConnect.held = () => connect.apply(socket, args);
   };
 })()`;
-const RELEASE_FS_CONNECT = `(() => {
-  const h = window.tbFsConnect;
+const RELEASE_CONNECT = `(() => {
+  const h = window.tbHeldConnect;
   if (!h) return false;
-  delete window.tbFsConnect;
-  if (h.own) fs.connect = h.connect;
-  else delete fs.connect;
+  delete window.tbHeldConnect;
+  if (h.own) h.socket.connect = h.connect;
+  else delete h.socket.connect;
   if (h.held) h.held();
   return !!h.held;
 })()`;
 const servicesAre = (c, cls) => c.evaluate(`compilerStatusOuter.classList.contains(${JSON.stringify(cls)})`);
+
+// A restart with the toolbar's button, the page's call of `socket`.connect held: `shot()` once
+// that call has come and the page's expression `state` holds, then the call made and the badge
+// back on OPERATIONAL. `missing` says what never came.
+async function whileConnectHeld(c, socket, state, missing, shot) {
+  await resetUi(c);
+  if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 60000, interval: 250 }))) {
+    throw new Error("the services badge never said OPERATIONAL before the restart");
+  }
+  await c.evaluate(holdConnect(socket));
+  try {
+    await click(c, "restartIcon");
+    const held = await waitFor(c, () => c.evaluate(`!!window.tbHeldConnect?.held && (${state})`), {
+      timeout: 60000,
+      interval: 100,
+    });
+    if (!held) throw new Error(missing);
+    // The restart's line names the project's folder, under the user's, and the console's
+    // Clear does nothing until the compiler is connected: the name is replaced in the
+    // console's text, in the page only, as nameUserAsUser does in a dialog. The picture
+    // holds no name.
+    await nameUserAsUserIn(c, ".debugConsoleOuter");
+    return await shot();
+  } finally {
+    await c.evaluate(RELEASE_CONNECT);
+    if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 60000, interval: 250 }))) {
+      complain(c.shot.name, "the services badge did not go back to OPERATIONAL after the restart");
+    }
+    await clearUserFromConsole(c);
+  }
+}
+
 const limitedShot = {
   out: "IDE/Images/Services_Limited.png",
   setup: "community",
-  async take({ c }) {
-    await resetUi(c);
-    if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 60000, interval: 250 }))) {
-      throw new Error("the services badge never said OPERATIONAL before the restart");
-    }
-    await c.evaluate(HOLD_FS_CONNECT);
-    try {
-      await click(c, "restartIcon");
-      const held = await waitFor(
-        c,
-        () =>
-          c.evaluate(
-            `!!window.tbFsConnect?.held && compilerStatusOuter.classList.contains("servicesPARTIAL") && /LIMITED/.test(compilerStatus.innerText)`,
-          ),
-        { timeout: 60000, interval: 100 },
-      );
-      if (!held) throw new Error("the restarted compiler never asked for its FS connection, with the badge LIMITED");
-      // The restart's line names the project's folder, under the user's, and the console's
-      // Clear does nothing until the compiler is connected: the name is replaced in the
-      // console's text, in the page only, as nameUserAsUser does in a dialog. The picture
-      // is of the badge, which holds no name.
-      await nameUserAsUserIn(c, ".debugConsoleOuter");
-      say(c.shot.name, `  the badge's title: ${JSON.stringify(await c.evaluate("compilerStatusOuter.title"))}`);
-      return await capture(c, "Services_Limited", snapOut(await rectOf(c, "#compilerStatusOuter")), {
-        away: () => parkMouse(c),
-      });
-    } finally {
-      await c.evaluate(RELEASE_FS_CONNECT);
-      if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 60000, interval: 250 }))) {
-        complain(c.shot.name, "the services badge did not go back to OPERATIONAL after the restart");
-      }
-      await clearUserFromConsole(c);
-    }
-  },
+  take: ({ c }) =>
+    whileConnectHeld(
+      c,
+      "fs",
+      `compilerStatusOuter.classList.contains("servicesPARTIAL") && /LIMITED/.test(compilerStatus.innerText)`,
+      "the restarted compiler never asked for its FS connection, with the badge LIMITED",
+      async () => {
+        say(c.shot.name, `  the badge's title: ${JSON.stringify(await c.evaluate("compilerStatusOuter.title"))}`);
+        return capture(c, "Services_Limited", snapOut(await rectOf(c, "#compilerStatusOuter")), {
+          away: () => parkMouse(c),
+        });
+      },
+    ),
 };
 
 // Resolves once every CSS background image in the top dialog is decoded: the VIP Gold logos
@@ -11147,6 +11408,7 @@ async function stableWindow(desktop, hwnd, name, file, flags = 2, { active = fal
   if (active) await activated(desktop, hwnd, name);
   for (let i = 0; i < 8; i++) {
     const info = await captureWindow(desktop, hwnd, file, { flags });
+    refuseRoot(info.texts.join("\n"), name, "the window");
     const named = info.texts.find((t) => t.toLowerCase().includes(USER.toLowerCase()));
     if (named !== undefined)
       throw new Error(`the window of ${name} shows the Windows user name in ${JSON.stringify(named)}`);
@@ -11524,13 +11786,13 @@ const memoryShot = panelShot("Memory_String", "MEMORY 1", [696, 120], {
 });
 
 // ---- package: the sample, a TWINPACK package, built (setup package), with its build path on a
-// folder of the tool's own at the root of the temp folder's drive, PACKAGE_ROOT: the DEBUG
-// CONSOLE names the file the build creates, and the lane's own build path is under the
+// folder of the tool's own in the checkout, PACKAGE_ROOT, which the page shows as SHOWN_ROOT: the
+// DEBUG CONSOLE names the file the build creates, and the lane's own build path is under the
 // user's profile. The folder is made by the IDE and removed at the end of the run, unless it
 // was there before it. The console's times are set in the page once the real ones are shown,
 // as the CodeLens pictures' are.
 
-const PACKAGE_ROOT = path.join(path.parse(tmpdir()).root, "tbshots");
+const PACKAGE_ROOT = TOOL_ROOT;
 const PACKAGE_BUILD_PATH = path.join(PACKAGE_ROOT, "Build", "${ProjectName}_${Architecture}.${FileExtension}");
 
 // Sets every line time of the DEBUG CONSOLE to CODELENS_TIME, and the time a CodeLens run took
@@ -12125,9 +12387,11 @@ const packageServerShots = [
         was = { text: await editorText(c), counts: await diagCounts(c) };
         await setCursor(c, 4, 1);
         await typeText(c, "        fmt");
-        // The list shows each member's type as "...", or a variable's or a function's kind with
-        // no type after it, until the compiler has given it, which it now and then never does
-        // for a list: the dot is typed again then.
+        // The list shows each member's type as "..." until the compiler has given it. It asks for
+        // the rows it draws by their lazy index, and its test of that index is false for 0, so
+        // the row with index 0 is never asked for and keeps a variable's or a function's kind with
+        // no type after it, in every list of this compile (bugs/completion-row-zero-no-type).
+        // `askForRowZero` asks, and keeps the compiler's answer as the list keeps one.
         const listed = (resolved) =>
           c.evaluate(`(() => {
   const b = [...document.querySelectorAll(${JSON.stringify(COMPLETIONS)})].find((b) => b.getBoundingClientRect().width);
@@ -12149,20 +12413,36 @@ const packageServerShots = [
             await waitFor(c, async () => !(await boxShown()), { timeout: 2000, interval: 100 });
           }
         };
-        let shown = false;
-        for (let i = 0; i < 3 && !shown; i++) {
-          if (i) {
-            await pressKey(c, "Escape");
-            await pressKey(c, "Backspace");
-          }
-          await noList();
-          await typeText(c, ".");
-          if (!(await waitFor(c, () => listed(false), { timeout: 30000, interval: 200 }))) {
-            throw new Error("typing fmt. opened no completion list of the package's members");
-          }
-          shown = await waitFor(c, () => listed(true), { timeout: 10000, interval: 200 });
+        const askForRowZero = () =>
+          c.evaluate(
+            `new Promise((done) => {
+  const list = debugConsoleEntryIntellisenseList;
+  const x = list.dataNodesDATA.findIndex((o) => o.i === 0 && !o.gotData);
+  if (x < 0) return done(false);
+  lspSocket.request("textDocument/lazyCompletion", { lazyRequestId: list.lazyRequestId, requests: [{ x, i: 0 }] }, (e) => {
+    for (const { x: row, ...answer } of e.results ?? []) {
+      Object.assign(list.dataNodesDATA[row], answer, { gotData: true });
+      list.notifyChangedItem(row);
+    }
+    list.repaint();
+    done(true);
+  });
+})`,
+            { awaitPromise: true },
+          );
+        await noList();
+        await typeText(c, ".");
+        if (!(await waitFor(c, () => listed(false), { timeout: 30000, interval: 200 }))) {
+          throw new Error("typing fmt. opened no completion list of the package's members");
         }
-        if (!shown) throw new Error("the completion list never showed its members' types");
+        await askForRowZero();
+        if (!(await waitFor(c, () => listed(true), { timeout: 10000, interval: 200 }))) {
+          const rows = await c.evaluate(`[...document.querySelectorAll(${JSON.stringify(COMPLETIONS)})]
+  .filter((b) => b.getBoundingClientRect().width)
+  .flatMap((b) => [...b.querySelectorAll(".listitem")].map((r) => r.innerText.replace(/\\s+/g, " ").trim()))
+  .filter((t) => /(\\.\\.\\.|variable|returns)$/.test(t))`);
+          throw new Error(`the completion list never showed its members' types: ${JSON.stringify(rows)}`);
+        }
         await sleep(500);
         // The IDE places the list at its text cursor's box as drawn when the list is asked for,
         // and that is at the dot or, now and then, already after it, 7 pixels to the right
@@ -12382,8 +12662,8 @@ async function startPackageCheck(run) {
 // Add menu's Import imports a .vbp. The IDE's own Open dialog is a native window, so the take
 // calls what the IDE calls with the file chosen in it (importFileByPath); the IDE then loads the
 // project in a compiler of its own and shows the Import from twinproj dialog, its tree of what
-// it found. The project is staged on PACKAGE_ROOT, a folder of the tool's own at the root of
-// the temp folder's drive, since the dialog names the .vbp's path: with CRLF line ends, as VB6
+// it found. The project is staged on PACKAGE_ROOT, a folder of the tool's own, since the dialog
+// names the .vbp's path, which the page shows under SHOWN_ROOT: with CRLF line ends, as VB6
 // writes its files, a module in a folder beside the project's (Shared), which the IDE puts
 // under {PARENT-FOLDER}, and a resource file the tool writes (lib/res-file.mjs): three icons
 // and the manifest test/shots/vbp/manifest.xml.
@@ -13280,6 +13560,1096 @@ function helpPlaces() {
   };
 }
 
+// ---------------------------------------------------------------- the "Starting a project" chapter
+
+// The chapter's pictures are under docs/IDE/Starting/Images. Its fixtures are test/shots/starting:
+// Ledger (a .vbp with a form, a module and a class, and no manifest) and Missing (a .vbp naming a
+// file that is not there) are staged with CRLF line ends, as VB6 writes its files, and Throwaway
+// (the Starting lanes' project) is packed and cut; each in a folder of the tool's own on
+// PACKAGE_ROOT, so that no path names the user. Nothing there is ever saved over: the page's call
+// that keeps a project's state in the registry is one these setups make do nothing, as they do
+// the call that adds to the recent list, and the lists are the tool's own.
+const ST_IMAGE = (name) => `IDE/Starting/Images/${name}.png`;
+const STARTING = path.join(REPO_ROOT, "test", "shots", "starting");
+
+// ---- starting-first-run: the three dialogs of a first start. Their page runs over the guard of
+// lib/shot-first-run.mjs, which says why the flags and the hook do not protect the registry here.
+// Each take makes a page of a first start, and leaves it for a page past those dialogs (SETTLED)
+// however it goes, so that no such page runs on. The setup's `end` fails on any call that got past
+// the guard, and on any change to the IDE's settings key.
+
+async function startFirstRun(run) {
+  run.settingsBefore = settingsHash();
+  run.guard = { blocked: {}, through: [], script: null, gen: 0 };
+  return startNoProject(run);
+}
+
+// What the page's guard has recorded, added to the setup's record and emptied in the page.
+async function readGuard(c, guard) {
+  const read = `(() => {
+  const g = window.__shotGuard;
+  if (!g) return "null";
+  const seen = JSON.stringify({ blocked: g.blocked, through: g.through });
+  g.blocked = {};
+  g.through = [];
+  return seen;
+})()`;
+  const seen = JSON.parse(await c.evaluate(read));
+  if (!seen) return;
+  for (const [k, n] of Object.entries(seen.blocked)) guard.blocked[k] = (guard.blocked[k] ?? 0) + n;
+  guard.through.push(...seen.through);
+  if (seen.through.length) throw new Error(`a call got past the guard: ${seen.through.join(", ")}`);
+}
+
+// The page again, from its document's start, over the guard, reading `settings`: the guard in
+// front of the hook before anything else happens, or the page is left alone.
+async function guardedPage(c, guard, settings) {
+  await readGuard(c, guard);
+  await c.send("Page.enable");
+  if (guard.script) await c.send("Page.removeScriptToEvaluateOnNewDocument", { identifier: guard.script });
+  const gen = ++guard.gen;
+  const { identifier } = await c.send("Page.addScriptToEvaluateOnNewDocument", { source: guardSource(settings, gen) });
+  guard.script = identifier;
+  await c.send("Page.reload", {});
+  const up = () =>
+    c
+      .evaluate(`window.__shotGuard?.gen === ${gen} && window.__shotGuard.hook && window.__shotGuard.inFront`)
+      .catch(() => false);
+  if (!(await waitFor(c, up, { timeout: 30000, interval: 50 }))) {
+    throw new Error("the page has no guard in front of the defaults hook");
+  }
+}
+
+// A page past the first start's dialogs, reporting off, no dialog open.
+async function settledPage(c, guard) {
+  await guardedPage(c, guard, SETTLED);
+  if (!(await waitModal(c, "New / Open", { timeout: 60000 }))) throw new Error("the IDE showed no New / Open dialog");
+  if (await c.evaluate("g_ErrorReporting")) throw new Error("error reporting is on");
+  await closeModal(c, "Cancel");
+  await readGuard(c, guard);
+}
+
+async function prepareFirstRun(run) {
+  const { c, guard } = run;
+  run.step = "shoot";
+  await fixPageSize(c);
+  if (!(await waitModal(c, "New / Open", { timeout: 60000 }))) throw new Error("the IDE showed no New / Open dialog");
+  await settledPage(c, guard);
+  await ensureTheme(c, "dark");
+  await parkMouse(c);
+  return { c, guard };
+}
+
+// The record of the guard, once the IDE has ended, and the key it protects.
+async function endFirstRun(run) {
+  const { blocked, through } = run.guard;
+  const stopped = Object.entries(blocked).map(([k, n]) => `${k} x${n}`);
+  say(run.name, `the guard blocked ${stopped.join(", ") || "nothing"}; through it: ${through.join(", ") || "nothing"}`);
+  const after = settingsHash();
+  if (after !== run.settingsBefore) throw new Error("the IDE's settings key changed while the first-run pages ran");
+  say(run.name, `the IDE's settings key is as it was found (${after})`);
+  if (through.length) throw new Error(`a call got past the guard: ${through.join(", ")}`);
+}
+
+// The dialog titled `title`, over the banner the page shows until its start is over.
+async function firstRunDialog(c, title) {
+  const shown = await waitModal(c, title, { timeout: 30000 });
+  if (!shown) throw new Error(`the first start showed no dialog titled ${title}`);
+  if (!(await c.evaluate(`document.getElementById("root").classList.contains("invisible")`))) {
+    throw new Error(`the dialog ${title} is not over the banner`);
+  }
+}
+
+// How much of the banner shows round a first start's dialog.
+const BANNER_MARGIN = 40;
+
+// A first start up to the dialog `title`: `answers` the buttons pressed to get there, each with
+// the title of the dialog it leads to. NO, not YES, on the reporting question: it leads to the
+// same IDE Options, and reporting is never on, not for a moment. The theme is set at the first
+// dialog, as the IDE Options read it when they open. The options a first start has are the dark
+// theme's, so the Light pictures are that dialog with the theme switched by its own command.
+const firstRunShot = (name, answers, themeWords = null) => ({
+  out: ST_IMAGE(name),
+  setup: "starting-first-run",
+  themeWords,
+  async take({ c, guard }) {
+    const theme = c.shot.out.endsWith(".light.png") ? "light" : "dark";
+    await guardedPage(c, guard, FIRST_RUN);
+    try {
+      await firstRunDialog(c, "Licence Agreement");
+      const themed = `!!getComputedStyle(document.documentElement).getPropertyValue("--themeGeneralPanelBackColor")`;
+      if (!(await c.evaluate(themed))) throw new Error("the first start's page has no theme");
+      await ensureTheme(c, theme);
+      for (const [caption, next] of answers) {
+        await clickInModal(c, caption, ".msgBoxButton");
+        await firstRunDialog(c, next);
+      }
+      await dialogStill(c);
+      if (await c.evaluate("g_ErrorReporting")) throw new Error("error reporting is on");
+      return await dialogShot(c, name, (m) => grow(m, BANNER_MARGIN));
+    } finally {
+      await settledPage(c, guard);
+    }
+  },
+});
+
+// ---- starting, starting-new, starting-boxes: an IDE with no project, its Recent lists the tool's
+// own. The licence key is emptied in the page only, as in the community setup, so that a compiler
+// these setups start answers COMMUNITY EDITION and the dialog that takes a key has nothing near it.
+
+async function startStarting(run) {
+  mkdirSync(runFolder(run, run.name), { recursive: true });
+  return startNoProject(run);
+}
+
+async function prepareStarting(run) {
+  const ctx = await prepareNoProject(run);
+  await run.c.evaluate(`licenceKey = "";
+currentDPI = window.devicePixelRatio;
+window.__shotBlocked.add("AddRecentsList");
+window.__shotBlocked.add("SaveProjectMetaState")`);
+  return { ...ctx, run };
+}
+
+// A .vbp fixture in the setup's folder, its files with VB6's line ends: the .vbp's path.
+function stageVb6(run, name) {
+  const dir = path.join(run.buildingDir, name);
+  mkdirSync(dir, { recursive: true });
+  for (const f of readdirSync(path.join(STARTING, name))) {
+    const text = readFileSync(path.join(STARTING, name, f), "utf8");
+    writeFileSync(path.join(dir, f), text.replace(/\r?\n/g, "\r\n"));
+  }
+  return path.join(dir, `${name}.vbp`);
+}
+
+// A real double-click at a point of the page.
+async function doubleClickAt(c, { x, y }) {
+  await mouseMove(c, x, y);
+  for (const clickCount of [1, 2]) {
+    for (const type of ["mousePressed", "mouseReleased"]) {
+      await c.send("Input.dispatchMouseEvent", {
+        type,
+        x,
+        y,
+        button: "left",
+        buttons: type === "mousePressed" ? 1 : 0,
+        clickCount,
+      });
+    }
+  }
+}
+
+// The middle of the card of the New / Open Project dialog whose item's name starts with `name`.
+const cardCentre = (c, name) =>
+  c.evaluate(`(() => {
+  const e = [...document.querySelectorAll("#fp2root .fp2-card")].find((x) => x.getBoundingClientRect().width && x.fp2Item?.name.startsWith(${JSON.stringify(name)}));
+  if (!e) return null;
+  e.scrollIntoView({ block: "nearest" });
+  const r = e.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+
+// File > New Project..., and a double-click on the card `name`. `section`: the rail's section it
+// is in, when that is not New.
+async function openCard(c, name, section = null) {
+  await command(c, "tbProject_New");
+  if (!(await waitModal(c, "New / Open", { timeout: 10000 }))) throw new Error("New Project opened no dialog");
+  await dialogStill(c);
+  if (section) await dialogSection(c, section);
+  const card = await cardCentre(c, name);
+  if (!card) throw new Error(`the dialog has no card ${name}`);
+  await doubleClickAt(c, card);
+}
+
+async function waitOptions(c) {
+  if (!(await waitModal(c, "New Project Options", { timeout: 60000 }))) {
+    throw new Error("the card did not show the New Project Options dialog");
+  }
+  await dialogStill(c);
+}
+
+// The card Import from VBP..., the native picker answered in the page with the fixture `name`.
+async function importCard(c, run, name) {
+  await c.evaluate(`window.__shotAnswers.OpenProjectVBP = ${JSON.stringify(stageVb6(run, name))}`);
+  await openCard(c, "Import from VBP");
+}
+
+// The log's first line says when the import started: a time of the tool's own, set in the page
+// once the real one shows, or no two pictures would be alike.
+async function fixImportTime(c) {
+  const set = `(() => {
+  const time = /\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d:\\d\\d/;
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (n.data.includes("Started:") && time.test(n.data)) {
+      n.data = n.data.replace(time, "02-11-26 09:30:00");
+      return true;
+    }
+  }
+  return false;
+})()`;
+  if (!(await waitFor(c, () => c.evaluate(set), { timeout: 10000, interval: 100 }))) {
+    throw new Error("the import log's first line did not show");
+  }
+}
+
+// PROPERTIES shows the form's FormDesignerId, which is a new GUID in each new project: an id of
+// the tool's own, set in the page once the real one shows, or no two pictures would be alike.
+async function fixDesignerId(c) {
+  const set = `(() => {
+  const guid = /\\{[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}\\}/i;
+  const own = "{D0C5D0C5-3DAD-4000-8000-00000000D0C5}";
+  let done = 0;
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (guid.test(n.data)) {
+      n.data = n.data.replace(guid, own);
+      done++;
+    }
+  }
+  for (const i of document.querySelectorAll("input")) {
+    if (guid.test(i.value)) {
+      i.value = i.value.replace(guid, own);
+      done++;
+    }
+  }
+  return done;
+})()`;
+  if (!(await waitFor(c, () => c.evaluate(set), { timeout: 10000, interval: 100 }))) {
+    throw new Error("PROPERTIES shows no FormDesignerId");
+  }
+}
+
+// The title bar's text, a little of the bar round it, as a part of a composite.
+async function titlePart(c, name) {
+  await parkMouse(c);
+  await frames(c);
+  const text = await rectOf(c, "#rootMenuText");
+  if (!text) throw new Error("the page has no title bar text");
+  const clip = snapOut({ x: text.x - 8, y: text.y, width: text.width + 16, height: text.height });
+  return { png: await capture(c, name, clip, { away: () => parkMouse(c) }), clip };
+}
+
+// An import's Cancel leaves the page's g_IsLoadingVBP set (BETA 1034: only the box's Continue
+// clears it), and every later New Project Options is then drawn as an import's until a Continue.
+// A shot sets its own state and relies on no other: the card shows what it shows in a fresh page.
+const forgetImport = (c) => c.evaluate("g_IsLoadingVBP = false");
+
+// New Project Options reached by `open`, and Cancel, which leaves the IDE with no project: no
+// project is made, and an ActiveX one is never built or registered.
+const optionsShot = (name, open) => ({
+  out: ST_IMAGE(name),
+  setup: "starting",
+  async take({ c, run }) {
+    await resetUi(c);
+    try {
+      await open(c, run);
+      await waitOptions(c);
+      // the Project Name is selected: its caret at the end of the name
+      await c.evaluate(`(() => {
+  const i = [...document.querySelectorAll(".modalDialogContainer")].pop().querySelector("input[type=text], input:not([type])");
+  if (i) i.setSelectionRange(i.value.length, i.value.length);
+})()`);
+      // the box is centred, so it can start half a CSS pixel into the progress box behind it
+      const left = (m) => ({ ...m, x: Math.ceil(m.x), width: m.x + m.width - Math.ceil(m.x) });
+      return await dialogShot(c, name, left);
+    } finally {
+      await cancelOptions(c);
+    }
+  },
+});
+
+// Cancel on New Project Options, and what that leaves put right.
+async function cancelOptions(c) {
+  await closeModal(c, "Cancel");
+  await c.evaluate(`delete window.__shotAnswers.OpenProjectVBP`);
+  await forgetImport(c);
+  const gone = async () => !(await modals(c)).length && !(await c.evaluate("context.projectLoaded.value"));
+  if (!(await waitFor(c, gone, { timeout: 15000, interval: 100 }))) throw new Error("Cancel left a project open");
+  await sleep(1000);
+}
+
+// The project open and the IDE idle, and still so a second later.
+async function projectReady(c) {
+  const ready = `(() => { try {
+  return Object.keys(fs.tree.rootFolder.entries).length > 0 && context.projectLoaded.value && licenceIsSet === true
+    && !(lockUICount > 0) && /OPERATIONAL/.test(compilerStatusOuter.innerText);
+} catch { return false; } })()`;
+  let since = null;
+  for (const until = Date.now() + 90000; Date.now() < until; await sleep(100)) {
+    if ((await c.evaluate(ready)) && !(await modals(c)).length) {
+      since ??= Date.now();
+      if (Date.now() - since >= 1000) return;
+    } else since = null;
+  }
+  throw new Error("no project became ready");
+}
+
+// Back to no project: Close Project, and Discard Changes if it asks. Nothing is saved.
+async function closeUnsaved(c) {
+  await resetUi(c);
+  if (!(await c.evaluate("context.projectLoaded.value"))) return;
+  await command(c, "tbProject_Close");
+  if (await waitFor(c, () => modalHolding(c, "Save now"), { timeout: 1500, interval: 100 })) {
+    await clickInModal(c, "Discard Changes", ".msgBoxButton");
+  }
+  const gone = async () => !(await modals(c)).length && !(await c.evaluate("context.projectLoaded.value"));
+  if (!(await waitFor(c, gone, { timeout: 15000, interval: 100 }))) throw new Error("the project did not close");
+  await sleep(1000);
+}
+
+// A new project from the Standard EXE card, as a person makes one: no file, and nothing changed.
+async function newStandardExe(c) {
+  await closeUnsaved(c);
+  await openCard(c, "Standard EXE");
+  await waitOptions(c);
+  await closeModal(c, "Continue");
+  await projectReady(c);
+  if ((await c.evaluate("compilerLicence.innerText")) !== "COMMUNITY EDITION") {
+    throw new Error("the new project's compiler does not say COMMUNITY EDITION");
+  }
+  await clearUserFromConsole(c);
+  await parkMouse(c);
+  await frames(c);
+}
+
+// The whole window.
+const WINDOW = () => snapOut({ x: 0, y: 0, ...IDE_SIZE });
+
+const VB6_RECENTS = ["C:\\Old\\Thing.vbp", "C:\\Old\\Other.VBP"];
+
+// The compiler's own box titled `title` on `desktop`, with its child windows, or null. The
+// compiler's MessageBox is no part of the page.
+async function compilerBox(desktop, title) {
+  const list = await desktopWindows(desktop, { children: true });
+  const at = list.findIndex((w) => w.class === "#32770" && w.visible && w.title === title);
+  if (at < 0) return null;
+  const kids = [];
+  for (let j = at + 1; j < list.length && list[j].depth === 1; j++) kids.push(list[j]);
+  return { ...list[at], kids };
+}
+
+const BM_CLICK = 0xf5;
+// WM_UPDATEUISTATE, UIS_SET with UISF_HIDEFOCUS: the box's button drew its dotted focus rectangle
+// in some runs and not in others, and a box opened with the mouse draws none.
+const WM_UPDATEUISTATE = 0x128;
+const HIDE_FOCUS_CUES = 0x10001;
+
+// The part of a capture of a DPI-unaware window that it drew. The compiler's boxes are unaware of
+// the display's scaling: PrintWindow draws one at 96 DPI in the top left corner of a bitmap the
+// size it has on the screen, and black where its invisible resize borders are, so the capture's
+// frame, which is in the display's pixels, does not fit it. Its first row of pixels is its border.
+function drawnPart(picture) {
+  const { width, height, rgba } = picture;
+  const lit = (x, y) => {
+    const i = (y * width + x) * 4;
+    return rgba[i + 3] && rgba[i] + rgba[i + 1] + rgba[i + 2];
+  };
+  let left = 0;
+  while (left < width && !lit(left, 1)) left++;
+  let right = left;
+  while (right < width && lit(right, 1)) right++;
+  let bottom = 0;
+  while (bottom < height && lit(left, bottom)) bottom++;
+  return crop(picture, [left, 0, right, bottom]);
+}
+
+// The window of the box titled `title` alone, as Windows draws it, once the box shows; then OK, by
+// the message a button takes on a desktop that has no input. Not over the IDE: on a window the
+// size of the screen the box stands on the text of the IDE's progress box, and a picture of the
+// two would need this 96 DPI window stretched to the IDE's scale. `check(box)`, when given, fails
+// the picture by throwing; the box then stays for the caller to close.
+async function boxPicture(run, title, check = null) {
+  const desktop = run.lane.desktop;
+  const box = await waitFor(run.c, () => compilerBox(desktop, title), { timeout: 40000, interval: 200 });
+  if (!box) throw new Error(`the compiler showed no box titled ${title}`);
+  check?.(box);
+  const file = path.join(run.work, "box.png");
+  await activated(desktop, box.hwnd, title);
+  await postWindowMessage(desktop, box.hwnd, WM_UPDATEUISTATE, HIDE_FOCUS_CUES, 0);
+  const { info, picture } = await stableWindow(desktop, box.hwnd, title, file, 2, { active: true });
+  await postWindowMessage(desktop, box.kids.find((k) => k.class === "Button").hwnd, BM_CLICK, 0, 0);
+  return besideEachOther([{ picture: drawnPart(picture), dpi: info.dpi }]);
+}
+
+// Throwaway, packed into the setup's folder and cut in the middle of its last source: past the
+// Settings entry, so that the box shows once and goes. Large Address Aware on, as a new project
+// has it, so that it does not load twice. The bytes it holds, for the check that it is never saved.
+function damagedProject(run) {
+  const dir = path.join(run.buildingDir, "Throwaway");
+  mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, "Throwaway.twinproj");
+  stageProject({
+    src: path.join(STARTING, "Throwaway"),
+    stage: path.join(run.work, "throwaway"),
+    project: file,
+    settings: {
+      "project.name": "Throwaway",
+      "project.appTitle": "Throwaway",
+      "project.description": "Throwaway",
+      "project.largeAddressAware": true,
+      "project.id": DOCS_PROJECT_ID,
+    },
+  });
+  // impexp writes Settings last and the IDE first: first, so that the cut leaves it whole
+  const bytes = readFileSync(file);
+  const packed = layout(bytes);
+  const settings = packed.find((e) => e.full === "Settings");
+  const body = packed[1].start;
+  const moved = Buffer.concat([
+    bytes.subarray(0, body),
+    bytes.subarray(settings.start, settings.end),
+    bytes.subarray(body, settings.start),
+    bytes.subarray(settings.end),
+  ]);
+  const source = layout(moved).findLast((e) => e.file && e.full.startsWith("Sources/"));
+  const cut = moved.subarray(0, source.contentAt + Math.floor(source.len / 2));
+  writeFileSync(file, cut);
+  return { file, cut };
+}
+
+// Close Project on what the compiler recovered: nothing changed, so nothing is saved, and the
+// cut copy holds the bytes it was given.
+async function leaveDamaged(c, file, cut) {
+  await projectReady(c);
+  await closeUnsaved(c);
+  if (!readFileSync(file).equals(cut)) throw new Error("the cut copy of Throwaway changed");
+}
+
+const startingShots = [
+  firstRunShot("Licence_Agreement", []),
+  firstRunShot("Error_Reporting", [["I AGREE", "Automatic Error Reporting"]]),
+  firstRunShot(
+    "First_Run_Options",
+    [
+      ["I AGREE", "Automatic Error Reporting"],
+      ["NO", "IDE Options"],
+    ],
+    SHOWS_ITS_THEME,
+  ),
+  {
+    // Help > Enter Licence Key... with no project: the box empty, and Cancel
+    out: ST_IMAGE("Licence_Key"),
+    setup: "starting",
+    take: ({ c }) =>
+      inDialog(c, { command: "tbHelp_EnterLicenceKey", title: "twinBASIC", close: "Cancel" }, async () => {
+        const typed = `[...document.querySelectorAll(".modalDialogContainer input")].map((i) => i.value).join("")`;
+        if (await c.evaluate(typed)) throw new Error("the licence key's box is not empty");
+        return dialogShot(c, "Licence_Key");
+      }),
+  },
+  {
+    // the dialog on New, "standard" typed into its search box with real keys
+    out: ST_IMAGE("Search_Results"),
+    setup: "starting",
+    take: ({ c }) =>
+      inNewProject(c, async () => {
+        const box = await rectOf(c, "#fp2root .fp2-search");
+        await clickAt(c, box.x + box.width / 2, box.y + box.height / 2);
+        await typeText(c, "standard");
+        const shown = () => c.evaluate(`document.querySelectorAll("#fp2root .fp2-group .fp2-rowPath").length`);
+        if (!(await waitFor(c, shown, { timeout: 5000, interval: 50 })))
+          throw new Error("the search listed no results");
+        await dialogStill(c);
+        return dialogShot(c, "Search_Results");
+      }),
+  },
+  {
+    // the rail's Recent (VB6), two made-up paths answered in the page; VB6's key is not read
+    out: ST_IMAGE("Recent_VB6"),
+    setup: "starting",
+    async take({ c }) {
+      await c.evaluate(`window.__shotVb6Recents = ${JSON.stringify(VB6_RECENTS.join("?"))}`);
+      try {
+        return await inNewProject(c, async () => {
+          await dialogSection(c, "Recent (VB6)");
+          return dialogShot(c, "Recent_VB6");
+        });
+      } finally {
+        await c.evaluate(`window.__shotVb6Recents = ""`);
+      }
+    },
+  },
+  optionsShot("Options_ActiveX", (c) => openCard(c, "ActiveX DLL")),
+  optionsShot("Options_Sample", (c) => openCard(c, "Sample 1.", "Samples")),
+  optionsShot("Options_VBP", (c, run) => importCard(c, run, "Ledger")),
+  {
+    // a project just made from the Standard EXE card: the designer of Form1 in front
+    out: ST_IMAGE("New_Standard_EXE"),
+    setup: "starting-new",
+    async take({ c }) {
+      await newStandardExe(c);
+      await fixDesignerId(c);
+      return capture(c, "New_Standard_EXE", WINDOW(), { away: () => parkMouse(c) });
+    },
+  },
+  {
+    // the title bar of a new project, and of the same project after one edit, one over the other
+    out: ST_IMAGE("Title_Unsaved"),
+    setup: "starting-new",
+    async take({ c }) {
+      await newStandardExe(c);
+      // the parts are not the picture: capture keeps the first two captures that agree
+      const { reference, prefer, ignore } = c.shot;
+      Object.assign(c.shot, { reference: null, prefer: null, ignore: null });
+      const made = [];
+      try {
+        made.push(await titlePart(c, "Title_Unsaved-new"));
+        const root = await c.evaluate("Object.keys(fs.tree.rootFolder.entries)[0]");
+        await openFile(c, `/${root}/Sources/Form1.twin`, { line: 1, column: 1 });
+        await typeText(c, "' x\n");
+        if (!(await waitFor(c, () => c.evaluate("projectIsDirty"), { timeout: 5000, interval: 50 }))) {
+          throw new Error("the edit did not mark the project as changed");
+        }
+        made.push(await titlePart(c, "Title_Unsaved-changed"));
+      } finally {
+        Object.assign(c.shot, { reference, prefer, ignore });
+      }
+      try {
+        const { box } = await composite(c, made, [], { gap: 8, margin: 0 });
+        return await capture(c, "Title_Unsaved", snapOut(box), { away: () => parkMouse(c) });
+      } finally {
+        await uncomposite(c);
+      }
+    },
+  },
+  {
+    // Continue after an import: the log in its preview tab, and the title bar's dot
+    out: ST_IMAGE("Import_Log"),
+    setup: "starting-new",
+    async take({ c, run }) {
+      await closeUnsaved(c);
+      await importCard(c, run, "Ledger");
+      await waitOptions(c);
+      await closeModal(c, "Continue");
+      await c.evaluate(`delete window.__shotAnswers.OpenProjectVBP`);
+      await projectReady(c);
+      if (!(await c.evaluate("projectIsDirty"))) throw new Error("the import is not marked as changed");
+      await clearUserFromConsole(c);
+      await fixImportTime(c);
+      await parkMouse(c);
+      return capture(c, "Import_Log", WINDOW(), { away: () => parkMouse(c) });
+    },
+  },
+  {
+    // the compiler's box for a file the .vbp names and the disk lacks; OK, and Cancel
+    out: ST_IMAGE("Missing_File_Box"),
+    setup: "starting-boxes",
+    once: true,
+    window: true,
+    async take({ c, run }) {
+      await resetUi(c);
+      await importCard(c, run, "Missing");
+      try {
+        return await boxPicture(run, "Error reading file.");
+      } finally {
+        await waitOptions(c);
+        await cancelOptions(c);
+      }
+    },
+  },
+  {
+    // the compiler's box for a project cut in two, opened from Recent; OK, and Close Project:
+    // the cut copy is never saved
+    out: ST_IMAGE("Damaged_Box"),
+    setup: "starting-boxes",
+    once: true,
+    window: true,
+    async take({ c, run }) {
+      await closeUnsaved(c);
+      const { file, cut } = damagedProject(run);
+      await setRecents(c, [file]);
+      try {
+        await command(c, "tbProject_OpenRecent");
+        if (!(await waitModal(c, "New / Open", { timeout: 10000 }))) throw new Error("Open Recent opened no dialog");
+        await dialogStill(c);
+        const row = await recentRow(c, file);
+        if (!row) throw new Error("the Recent tab does not list the project");
+        await doubleClickAt(c, row);
+        return await boxPicture(run, "bad file format");
+      } finally {
+        await setRecents(c, []);
+        await leaveDamaged(c, file, cut);
+      }
+    },
+  },
+];
+
+// ---- troubleshooting, troubleshooting-box: the "When something goes wrong" chapter.
+// test/shots/troubleshooting/Trouble, the lanes' test/ide/probes/troubleshooting under a name for a
+// picture: Sub Crash calls RtlMoveMemory with two bad addresses at line 10 of MainMod, the line the
+// page quotes. A crash, a kill and Safe Mode each leave the IDE where a later take would see them, so
+// each take that goes there comes back, and each theme's take reaches its state by itself.
+//
+// What these takes do on purpose and a tool's IDE never else does:
+//   * The compiler is killed by the pid the page names, its own lane's, and no other process. A kill
+//     leaves no NATIVE EXCEPTION line, so the lane's crash check does not count it.
+//   * Native_Exception makes one native exception. Lane.close counts the console's NATIVE EXCEPTION
+//     lines and throws, so the take asserts that there is exactly its own one and clears the console.
+//     That is the allowance, and all of it: any other exception stays in the console, and `closing`
+//     fails the setup on it.
+//   * A JavaScript alert cannot be captured and no picture wants one, so a take fails on one.
+//   * No report leaves: the defaults hook answers ALLOWERRORREPORTINGV3 no, so postError posts
+//     nothing, and CDP stops any request for the report's address, which fails the setup.
+
+const TS_IMAGE = (name) => `IDE/Troubleshooting/Images/${name}.png`;
+const TROUBLESHOOTING = path.join(REPO_ROOT, "test", "shots", "troubleshooting");
+const TROUBLE_FILE = "/Trouble/Sources/MainMod.twin";
+const SAFE_MODE_TEXT = "SafeMode is designed";
+const CRASH_LOOP_TEXT = "Compiler crash loop detected.";
+// how much of the toolbar and the status bar Safe_Mode_Bar shows: to the end of the build box's
+// group of buttons, and of the status bar's badges and links
+const SAFE_BAR_WIDTH = 474;
+
+async function startTroubleshooting(run) {
+  run.step = "open";
+  run.lane.includeProjects();
+  const dir = runFolder(run, "Troubleshooting");
+  say(run.name, `opening ${path.relative(REPO_ROOT, TROUBLESHOOTING)} in ${dir}`);
+  return run.lane.open(path.join(TROUBLESHOOTING, "Trouble"), { folder: dir, buildPath: BD_BUILD_PATH });
+}
+
+async function prepareTroubleshooting(run) {
+  const ctx = await prepareSample(run);
+  const { c } = run;
+  await c.evaluate(`window.__shotBlocked.add("AddRecentsList");
+window.__shotBlocked.add("SaveProjectMetaState")`);
+  run.reportsStopped = 0;
+  c.on((m) => {
+    if (m.method !== "Fetch.requestPaused") return;
+    run.reportsStopped++;
+    c.send("Fetch.failRequest", { requestId: m.params.requestId, errorReason: "BlockedByClient" }).catch(() => {});
+  });
+  await c.send("Fetch.enable", { patterns: [{ urlPattern: "*twinbasic.com/notify*" }] });
+  await openFile(c, TROUBLE_FILE, { line: 1, column: 1 });
+  await communityCompiler(run);
+  // what Native_Exception's float ends with, which moves Light's panels a device pixel: from the
+  // start, so that a picture does not depend on whether that take came before it
+  await defaultLayout(c);
+  await parkMouse(c);
+  return { ...ctx, run };
+}
+
+// With its IDE still up: what only the page can say about what the takes left behind.
+async function closingTroubleshooting(run) {
+  const { c } = run;
+  const crash = await readCrash(c);
+  const { reports, reporting } = await c.evaluate("({ reports: __tbDefaults.reports, reporting: g_ErrorReporting })");
+  say(
+    run.name,
+    `__tbDefaults.reports ${reports}; error reporting ${reporting ? "on" : "off"}; requests for the report's address stopped: ${run.reportsStopped}`,
+  );
+  if (run.reportsStopped) throw new Error(`${run.reportsStopped} requests for the error report's address went out`);
+  if (reporting || reports) throw new Error(`with reporting off no exception posts, and the hook answered ${reports}`);
+  if (crash) throw new Error(`the console holds ${crash.n} NATIVE EXCEPTION lines no take expected`);
+  if (c.dialogs.length) throw new Error(`a JavaScript dialog opened: ${JSON.stringify(c.dialogs)}`);
+}
+
+// A take of these setups fails on a JavaScript dialog: tb-ide.mjs accepts each and keeps it.
+const noAlert = (shot) => ({
+  ...shot,
+  async take(ctx) {
+    const taken = await shot.take(ctx);
+    if (ctx.c.dialogs.length) throw new Error(`a JavaScript dialog opened: ${JSON.stringify(ctx.c.dialogs)}`);
+    return taken;
+  },
+});
+
+// The licence badge, which every restart asks again: COMMUNITY EDITION, or the take fails.
+async function communityBadge(c) {
+  const shows = () => c.evaluate(`compilerLicence.innerText === "COMMUNITY EDITION"`);
+  if (!(await waitFor(c, shows, { timeout: 30000, interval: 100 }))) {
+    throw new Error(`the licence badge says ${JSON.stringify(await c.evaluate("compilerLicence.innerText"))}`);
+  }
+}
+
+// Ends the lane's compiler from outside, as a crash does; its pid.
+async function killCompiler(c) {
+  const pid = await compilerPid(c);
+  if (!(pid > 0)) throw new Error("the page names no compiler");
+  killTree(pid);
+  return pid;
+}
+
+// A compiler other than `pid` has the project, and nothing covers the IDE.
+async function compilerBack(c, pid) {
+  const replaced = async () => {
+    const now = await compilerPid(c);
+    return now && now !== pid;
+  };
+  if (!(await waitFor(c, replaced, { timeout: 30000, interval: 50 }))) throw new Error("no new compiler started");
+  await projectReady(c);
+}
+
+// The floating boxes, as their X closes them.
+const closeFloats = (c) =>
+  c.evaluate(`for (const n of [3, 2, 1]) {
+  if (document.getElementById("msgBoxInner" + n).style.display !== "none") window["msgBox" + n + "Close"]();
+}`);
+const floatTexts = (c) =>
+  c.evaluate(`[1, 2, 3].map((n) => document.getElementById("msgBoxInner" + n))
+  .filter((e) => e.style.display !== "none" && e.getBoundingClientRect().height)
+  .map((e) => e.innerText.trim())`);
+
+// Out of Safe Mode, with the box's OK and Ctrl+F2, about eleven seconds: win32, the project
+// compiled, an empty console, no floating box. What each take that goes there ends with.
+async function leaveSafeMode(c) {
+  if (await modalHolding(c, SAFE_MODE_TEXT)) await closeModal(c, "OK");
+  await closeFloats(c);
+  if ((await configValue(c)) === "nocompile") {
+    await pressKey(c, "F2", { ctrl: true });
+    await configSettled(c, "win32");
+  }
+  await projectReady(c);
+  await resetUi(c);
+  await communityBadge(c);
+  await clearConsole(c);
+}
+
+// TRACE mode on or off by Help's command, which restarts the compiler.
+async function setTrace(c, on) {
+  if ((await c.evaluate("g_TraceMode")) === on) return;
+  const pid = await compilerPid(c);
+  await command(c, "tbHelp_ToggleCompilerTraceMode");
+  await compilerBack(c, pid);
+  if ((await c.evaluate("g_TraceMode")) !== on) throw new Error(`TRACE mode did not go ${on ? "on" : "off"}`);
+  await communityBadge(c);
+  await clearConsole(c);
+}
+
+// The console's lines and what a native exception writes, as the page quotes them.
+const NATIVE_TIME = "11:42:08.716";
+const NATIVE_RED_TIME = "11:42:08.800";
+const NATIVE_YELLOW_TIME = "11:42:08.814";
+const NATIVE_ADDRESS = "[$773D8C3B:ntdll.dll+00088C3B]";
+// wide enough for the red line, on one row with its time, and high enough for its three rows: a
+// console grown row by row goes on growing until its list has drawn, a different height each time
+const NATIVE_CONSOLE = { width: 1060, height: 124 };
+const NATIVE_LINE =
+  /^0001 \d\d:\d\d:\d\d\.\d{3} NATIVE EXCEPTION: ACCESS_VIOLATION \/MainMod\.twin; MainMod\.Crash LINE 000010 \[\$[0-9A-F]{8}:ntdll\.dll\+[0-9A-F]{8}\]$/m;
+// from the console's list, which draws only the rows that show
+const consoleLinesOf = (c, cls) =>
+  c.evaluate(
+    `debugConsoleContent.dataNodes.filter((l) => l.includes(${JSON.stringify(cls)})).map((l) => l.replace(/<[^>]*>/g, ""))`,
+  );
+
+// The time and the address of the line, which differ from run to run and from boot to boot, set to
+// the page's once the real ones show, in the page only, and the console's own times of the three
+// lines to as far after it as the IDE writes them.
+const fixNativeLine = (c) =>
+  c.evaluate(`(() => {
+  const outer = document.querySelector(".debugConsoleOuter");
+  const walk = document.createTreeWalker(outer, NodeFilter.SHOW_TEXT);
+  let done = 0;
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (!n.nodeValue.includes("NATIVE EXCEPTION")) continue;
+    n.nodeValue = n.nodeValue
+      .replace(/^(\\d{4} )\\d\\d:\\d\\d:\\d\\d\\.\\d{3}/, "$1" + ${JSON.stringify(NATIVE_TIME)})
+      .replace(/\\[\\$[0-9A-F]{8}:ntdll\\.dll\\+[0-9A-F]{8}\\]/, () => ${JSON.stringify(NATIVE_ADDRESS)});
+    done++;
+  }
+  for (const e of outer.querySelectorAll(".debugConsoleOutputTextALERT .ts")) e.textContent = ${JSON.stringify(NATIVE_RED_TIME)};
+  for (const e of outer.querySelectorAll(".debugConsoleOutputTextYELLOW .ts")) e.textContent = ${JSON.stringify(NATIVE_YELLOW_TIME)};
+  return done;
+})()`);
+
+// Three messages the IDE gives, the middle one too long for a floating box's one line.
+const FLOAT_MESSAGES = [
+  "Invalid licence key.  Please try again.",
+  "Backend compiler seems to be busy.  Check there isn't a modal dialog box open behind the IDE window.",
+  "Compiler crash loop detected.  Restarting in SAFE mode.",
+];
+
+const troubleshootingShots = [
+  noAlert({
+    // a restart held at the page's LSP connection: FS connected, the two after it not, the
+    // tooltip the badge's own title in a replica, as Services_Limited holds the call before it
+    out: TS_IMAGE("Services_Limited_Tooltip"),
+    setup: "troubleshooting",
+    take: ({ c }) =>
+      whileConnectHeld(
+        c,
+        "lspSocket",
+        `compilerStatusOuter.classList.contains("servicesPARTIAL") && /^FS: OPERATIONAL$/m.test(compilerStatusOuter.title)`,
+        "the restarted compiler never asked for its LSP connection, with the badge LIMITED and FS OPERATIONAL",
+        async () => {
+          const title = await c.evaluate("compilerStatusOuter.title");
+          say(c.shot.name, `  the badge's title: ${JSON.stringify(title)}`);
+          if (/^(LSP|DEBUGGER): OPERATIONAL$/m.test(title)) throw new Error(`the title is ${JSON.stringify(title)}`);
+          await communityBadge(c);
+          const { rect } = await tooltipOn(c, "#compilerStatusOuter");
+          try {
+            // the licence badge whole, which the tooltip stands over part of; the line of the
+            // console above the tooltip left out
+            const bar = union(await rectOf(c, "#compilerStatusOuter"), await rectOf(c, "#compilerLicenceOuter"));
+            const all = grow(union(bar, rect), 8);
+            const top = rect.y - 3;
+            const clip = snapOut({ ...all, y: top, height: all.y + all.height - top });
+            return await capture(c, "Services_Limited_Tooltip", clip, { away: () => parkMouse(c) });
+          } finally {
+            await tooltipOff(c);
+          }
+        },
+      ),
+  }),
+  noAlert({
+    // a restart held at the page's FS connection, the first of the three, which holds the box;
+    // with enough of the editor and the panels round it to show that it covers them
+    out: TS_IMAGE("Please_Wait"),
+    setup: "troubleshooting",
+    take: ({ c }) =>
+      whileConnectHeld(
+        c,
+        "fs",
+        `[...document.querySelectorAll(".modalDialogContainer")].some((m) => m.getBoundingClientRect().width && m.innerText.includes("Please wait"))`,
+        "the restart showed no Please wait box",
+        async () => {
+          await dialogStill(c);
+          const box = await modalHolding(c, "Please wait");
+          say(c.shot.name, `  the box reads ${JSON.stringify(await c.evaluate(`${TOP_MODAL}.innerText`))}`);
+          const editor = await dockedRect(c, "EDITOR 1");
+          if (!editor) throw new Error("the page has no EDITOR 1 panel");
+          const clip = snapOut({ ...grow(box, 190), x: editor.x, width: editor.width });
+          return capture(c, "Please_Wait", clip, { away: () => parkMouse(c) });
+        },
+      ),
+  }),
+  noAlert({
+    // three kills after a restart by the button, whose own close is the count's first entry: the
+    // floating message and the Safe Mode box together; OK, and back to win32
+    out: TS_IMAGE("Crash_Loop"),
+    setup: "troubleshooting",
+    async take({ c, run }) {
+      await resetUi(c);
+      await closeFloats(c);
+      await run.lane.restartCompiler();
+      await projectReady(c);
+      await clearConsole(c);
+      try {
+        for (let n = 0; n < 2; n++) await compilerBack(c, await killCompiler(c));
+        await killCompiler(c);
+        const shown = async () =>
+          (await modalHolding(c, SAFE_MODE_TEXT)) && (await floatTexts(c)).some((t) => t.startsWith(CRASH_LOOP_TEXT));
+        if (!(await waitFor(c, shown, { timeout: 60000, interval: 100 }))) {
+          throw new Error(`no crash loop: ${JSON.stringify(await floatTexts(c))}`);
+        }
+        await dialogStill(c, { ms: 500 });
+        await communityBadge(c);
+        await fixConsoleTimes(c);
+        return await capture(c, "Crash_Loop", WINDOW(), { away: () => parkMouse(c) });
+      } finally {
+        await leaveSafeMode(c);
+      }
+    },
+  }),
+  noAlert({
+    // the box set to safeMode, OK, and the badge OPERATIONAL: the left of the toolbar over the left
+    // of the status bar, since a whole window would shrink both on the page; back to win32
+    out: TS_IMAGE("Safe_Mode_Bar"),
+    setup: "troubleshooting",
+    async take({ c }) {
+      await resetUi(c);
+      await clearConsole(c);
+      try {
+        await c.evaluate(`buildConfigSelector.value = "nocompile"; buildConfigSelector.onchange(); 0`);
+        if (!(await waitFor(c, () => modalHolding(c, SAFE_MODE_TEXT), { timeout: 90000, interval: 250 }))) {
+          throw new Error("safeMode showed no box");
+        }
+        await dialogStill(c, { ms: 500 });
+        await closeModal(c, "OK");
+        await configSettled(c, "nocompile");
+        if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 30000, interval: 100 }))) {
+          throw new Error("the services badge does not say OPERATIONAL in Safe Mode");
+        }
+        await communityBadge(c);
+        // the parts are not the picture: capture keeps the first two captures that agree
+        const { reference, prefer, ignore } = c.shot;
+        Object.assign(c.shot, { reference: null, prefer: null, ignore: null });
+        const made = [];
+        try {
+          for (const [part, bar] of [
+            ["toolbar", await toolbarRect(c)],
+            ["status", await rectOf(c, "#rootStatusBar")],
+          ]) {
+            const clip = snapOut({ x: 0, y: bar.y, width: SAFE_BAR_WIDTH, height: bar.height });
+            const png = await capture(c, `Safe_Mode_Bar-${part}`, clip, { away: () => parkMouse(c) });
+            made.push({ png, clip });
+          }
+        } finally {
+          Object.assign(c.shot, { reference, prefer, ignore });
+        }
+        try {
+          const { box } = await composite(c, made, [], { gap: 8, margin: 0 });
+          return await capture(c, "Safe_Mode_Bar", snapOut(box), { away: () => parkMouse(c) });
+        } finally {
+          await uncomposite(c);
+        }
+      } finally {
+        await leaveSafeMode(c);
+      }
+    },
+  }),
+  noAlert({
+    // Sub Crash run as a line of the console runs it, TRACE mode off: the red line and the two
+    // yellow ones, which only the first exception with it off writes; then TRACE mode off again
+    out: TS_IMAGE("Native_Exception"),
+    setup: "troubleshooting",
+    async take({ c }) {
+      await resetUi(c);
+      await setTrace(c, false);
+      await floatPanel(c, "DEBUG CONSOLE", NATIVE_CONSOLE);
+      try {
+        await clearConsole(c);
+        await c.evaluate(`debugSocket.request("evaluate", { expression: "Crash", context: "repl" }, () => {}); 0`);
+        const written = async () => (await consoleLinesOf(c, "debugConsoleOutputTextYELLOW")).length >= 2;
+        if (!(await waitFor(c, written, { timeout: 15000, interval: 100 }))) {
+          throw new Error(`the yellow lines did not show: ${JSON.stringify(await consoleText(c))}`);
+        }
+        await waitFor(c, async () => !(await c.evaluate("!!context.codeExecuting.value")), { timeout: 10000 });
+        const [red, yellow] = [
+          await consoleLinesOf(c, "debugConsoleOutputTextALERT"),
+          await consoleLinesOf(c, "debugConsoleOutputTextYELLOW"),
+        ];
+        say(c.shot.name, `  the console's lines: ${JSON.stringify({ red, yellow })}`);
+        if (red.length !== 1 || !NATIVE_LINE.test(red[0].replace(/^\d\d:\d\d:\d\d\.\d{3}/, ""))) {
+          throw new Error(`the red line is ${JSON.stringify(red)}`);
+        }
+        if (yellow.length !== 2) throw new Error(`the yellow lines are ${JSON.stringify(yellow)}`);
+        if ((await readCrash(c))?.n !== 1) throw new Error("the console has another NATIVE EXCEPTION");
+        // The list keeps each row's height from when it first measured it, in whatever width the
+        // console had then, and fitConsole would grow a console whose rows are too tall by an
+        // amount that differs from run to run. A resize makes the page call this: the rows
+        // measured in this width, one line each. The list's last row, of X's, is its measure.
+        await c.evaluate("debugConsoleOutput.contentDiv.recalcCachedItemHeights(); debugConsoleContent.repaint()");
+        const rowsShow = () =>
+          c.evaluate(`(() => {
+  const p = document.querySelector(${JSON.stringify(panelSel("DEBUG CONSOLE"))});
+  const box = p.querySelector(".listItems").getBoundingClientRect();
+  const rows = [...p.querySelectorAll(".listItems .listitem")].filter((e) => !e.textContent.includes("XXXXXXXX")).map((e) => e.getBoundingClientRect()).filter((r) => r.height);
+  return rows.length === 3 && rows.every((r) => r.height < 24 && r.top >= box.top && r.bottom <= box.bottom);
+})()`);
+        if (!(await waitFor(c, rowsShow, { timeout: 5000, interval: 50 }))) {
+          throw new Error("the console did not draw its three rows, one line each");
+        }
+        const fix = async () => {
+          if (!(await fixNativeLine(c))) throw new Error("the line was not found to set its time");
+        };
+        return await consolePicture(c, "Native_Exception", 3, fix, { times: false });
+      } finally {
+        await clearConsole(c);
+        await unfloatPanel(c, "DEBUG CONSOLE");
+        await defaultLayout(c);
+        await setTrace(c, false);
+      }
+    },
+  }),
+  noAlert(
+    menuShot("Menu_Help_Trace", "Help", null, {
+      setup: "troubleshooting",
+      out: TS_IMAGE("Menu_Help_Trace"),
+      before: (c) => setTrace(c, true),
+      after: (c) => setTrace(c, false),
+      async check(c) {
+        const item = await c.evaluate(`(() => {
+  const e = [...document.querySelectorAll("#contextMenu .contextMenuItem")].find((x) => x.textContent.includes("TRACE mode"));
+  return e ? { text: e.innerText.trim(), tick: !!e.querySelector(".codicon-check") } : null;
+})()`);
+        if (!item?.tick || item.text !== "Compiler services TRACE mode: Enabled") {
+          throw new Error(`the TRACE item is ${JSON.stringify(item)}`);
+        }
+      },
+    }),
+  ),
+  noAlert({
+    // three boxes the IDE gives, and a real click on the middle one, with the status bar under them
+    out: TS_IMAGE("Floating_Boxes"),
+    setup: "troubleshooting",
+    async take({ c }) {
+      await resetUi(c);
+      await closeFloats(c);
+      try {
+        await c.evaluate(`${FLOAT_MESSAGES.map((m) => `msgBox(${JSON.stringify(m)});`).join(" ")} 0`);
+        const boxes = await Promise.all([3, 2, 1].map((n) => rectOf(c, `#msgBoxInner${n}`)));
+        if (!(boxes[0].y < boxes[1].y && boxes[1].y < boxes[2].y))
+          throw new Error("the boxes are not stacked in order");
+        if (!(await c.evaluate("msgBox2text.innerText")).startsWith("Backend")) {
+          throw new Error("the middle box is not the long message");
+        }
+        const text = await rectOf(c, "#msgBox2text");
+        await clickAt(c, text.x + 20, text.y + text.height / 2);
+        const open = () => c.evaluate(`msgBox2Extra.style.display === "block"`);
+        if (!(await waitFor(c, open, { timeout: 5000, interval: 50 }))) throw new Error("the click opened no box");
+        await communityBadge(c);
+        await parkMouse(c);
+        await frames(c);
+        const top = await rectOf(c, "#msgBoxInner3");
+        const left = Math.min(top.x, (await rectOf(c, "#msgBoxInner2")).x);
+        const clip = snapOut({
+          x: left - 12,
+          y: top.y - 12,
+          width: IDE_SIZE.width - left + 12,
+          height: IDE_SIZE.height - top.y + 12,
+        });
+        return await capture(c, "Floating_Boxes", clip, { away: () => parkMouse(c) });
+      } finally {
+        await closeFloats(c);
+      }
+    },
+  }),
+  {
+    // the box of a copy of the install with its IDE DLL renamed, alone, once: there is no page.
+    // It names another file, which is there; OK ends the process.
+    out: TS_IMAGE("Missing_DLL_Box"),
+    setup: "troubleshooting-box",
+    once: true,
+    window: true,
+    async take({ run }) {
+      try {
+        return await boxPicture(run, "twinBASIC Compiler", (box) => {
+          const text = box.kids.map((k) => k.title ?? "").join("\n");
+          if (!text.includes(MISSING_DLL_TEXT)) throw new Error(`the box says ${JSON.stringify(text)}`);
+        });
+      } finally {
+        await waitFor(run.c, () => run.exited, { timeout: 10000, interval: 100 });
+        if (!run.exited) killTree(run.process.pid);
+      }
+    },
+  },
+];
+
+const MISSING_DLL_TEXT =
+  "ERROR: failed to load the twinBASIC DLL:\r\n    bin\\twinBASIC_win64.dll\r\n\r\nThe file could not be found.  See https://twinbasic.com/missing \r\n\r\nThe application will now exit.";
+
+// The lane's own copy of the install with bin\twinBASIC_ide_win32.dll renamed, started as from its
+// icon. There is no page to attach to: launchIde would wait a minute for one.
+async function startMissingDll(run) {
+  run.step = "open";
+  const exe = run.lane.copy();
+  const dll = path.join(path.dirname(exe), "bin", "twinBASIC_ide_win32.dll");
+  renameSync(dll, `${dll}.gone`);
+  say(run.name, "starting a copy of the install with bin\\twinBASIC_ide_win32.dll renamed");
+  run.process = await launchOnDesktop({
+    exe,
+    desktop: run.lane.desktop,
+    env: { ...process.env, APPDATA: run.lane.appdataDir(), TB_ADDIN_TEST: "1" },
+    args: IDE_FLAGS,
+  });
+  run.process.exited.then(() => {
+    run.exited = true;
+  });
+  return { dialogs: [] };
+}
+
+async function prepareMissingDll(run) {
+  run.step = "shoot";
+  return { c: run.c, run };
+}
+
+// The process, if it outlived the box, ended by its pid.
+async function endMissingDll(run) {
+  if (run.process && !run.exited) killTree(run.process.pid);
+}
+
 // ---------------------------------------------------------------- the table of shots
 
 // Each shot is a picture: `out` its path under the output folder, `setup` the IDE
@@ -13335,11 +14705,14 @@ const SHOTS = [
   ...formsChapterShots,
   ...projectsShots,
   ...buildingShots,
+  ...startingShots,
+  ...troubleshootingShots,
   ...customControlsShots,
   ...customControlsCodeShots,
   ...codeShots,
   ...sample9Shots,
   featureMapShot,
+  tourShot,
   ...codeChapterShots,
   ...debuggingShots,
   newProjectOptionsShot,
@@ -13421,12 +14794,19 @@ const JOB_SECONDS = {
   "building-hklm": 40,
   "building-llvm": 20,
   "building-pkg": 30,
+  "starting-first-run": 40,
+  starting: 60,
+  "starting-new": 60,
+  "starting-boxes": 40,
+  troubleshooting: 150,
+  "troubleshooting-box": 15,
   customcontrols: 54,
   "customcontrols-2": 53,
   "customcontrols-3": 35,
   code: 33,
   sample9: 11,
   featuremap: 39,
+  tour: 25,
   "code-chapter": 95,
   "code-chapter-2": 85,
   "code-chapter-3": 100,
@@ -13550,7 +14930,7 @@ for (const name of existsSync(runs) ? readdirSync(runs) : []) {
 }
 const root = path.join(runs, String(process.pid));
 mkdirSync(root, { recursive: true });
-const tidy = startTidy({ prefixes: [root] });
+const tidy = startTidy({ prefixes: [root, PACKAGE_ROOT] });
 if (!tidy) die(2, "could not record the registry, so it could not be put back afterwards");
 // The SaveSetting application names of the add-ins a setup loads. What they have saved is
 // the user's (an installed copy of the add-in reads the same key): a run starts from none,
@@ -13811,6 +15191,7 @@ async function keepSvg(name, out, png, picture, kept, holds, window = false) {
   }
   const { svg, stats, misses, bundle } = picture;
   if (holdsUserName(svg, USER)) throw new Error(`the SVG of ${out} holds the Windows user name`);
+  refuseRoot(svg, out, "the SVG");
   // The bundle names the PNG as the file holds it: a capture within the noise of the file
   // leaves the file as it was, and that file is what replay.mjs compares with.
   if (bundlesRoot) writeBundle(bundlesRoot, out, bundle, holds ?? png, misses);
@@ -13925,6 +15306,12 @@ async function runJob(job) {
     show: false,
     browserArgs: BROWSER_ARGS,
     projectId: DOCS_PROJECT_ID,
+    // before the project loads, not at the first capture: the IDE and the shots measure what it
+    // draws, and the console's first lines are the load's
+    onAttach: async (c) => {
+      await waitFor(c, () => c.evaluate(`typeof TEXTtoHTML === "function"`), { timeout: 30000, interval: 20 });
+      await showRootText(c);
+    },
   });
   const state = newShotState(job.name);
   running.add(run);
@@ -13947,7 +15334,8 @@ async function runJob(job) {
     // taken in the dark pass only; a job of them has no light pass.
     // A run stopped (--events) takes no further picture, and switches no theme.
     const darks = new Map();
-    const prepared = await setupState(run.c, ctx);
+    const darkTexts = new Map();
+    const prepared = setup.noPage ? null : await setupState(run.c, ctx);
     for (const [theme, shots] of passes(job)) {
       if (!shots.length) continue;
       if (theme !== "dark" && !stopping) {
@@ -13970,6 +15358,7 @@ async function runJob(job) {
         state.ignore = pngRule(entryOf(out)).rects;
         state.out = out;
         state.svg = null;
+        state.text = { whole: [], cut: [] };
         try {
           // a take returns the PNG's bytes, or { png, scale } for a picture not at SCALE
           const taken = await shot.take(ctx);
@@ -13980,7 +15369,19 @@ async function runJob(job) {
               `the shot ${window ? "took a program's window" : "is marked window: true"} and ${window ? "is not marked window: true" : "took no program's window"} in the table`,
             );
           const png = Buffer.isBuffer(taken) ? taken : taken.png;
-          if (theme === "dark") darks.set(shot.out, png);
+          if (theme === "dark") {
+            darks.set(shot.out, png);
+            darkTexts.set(shot.out, state.text);
+          } else if (darkTexts.has(shot.out)) {
+            // a shot's two themes show one state: other text is a wrong state, as another size is
+            const other = themeTextDifference(darkTexts.get(shot.out), state.text, shot.themeWords);
+            if (other) {
+              writeDiff(job.name, out, dark, png, { suffix: ".text", labels: { before: "DARK", after: "LIGHT" } });
+              throw new Error(
+                `the two themes say different things: only the dark picture has ${JSON.stringify(other.dark)}, only the light one ${JSON.stringify(other.light)}`,
+              );
+            }
+          }
           const { kept, holds } = keep(
             job.name,
             shot.out,
@@ -14019,6 +15420,15 @@ async function runJob(job) {
       run.step === "shoot";
     failed = Math.max(failed, own ? 1 : 2);
     event("job", { job: job.name, state: "failed", error: e.message });
+  }
+  // what a setup reads from its IDE before that ends
+  if (setup.closing && run.c) {
+    try {
+      await setup.closing(run);
+    } catch (e) {
+      complain(job.name, e.message);
+      failed = Math.max(failed, 1);
+    }
   }
   await endRun(run);
   // what a setup checks or gives back once its IDE has ended

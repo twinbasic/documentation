@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:troubleshooting",
+  "tests": [
+    "a failed Save As still moves the project: the title bar and the path name the new file, and a plain Save goes there",
+    "a failed Save As over a read-only file moves the project too, and Save As back to the original puts it right"
+  ],
+  "steps": "1. Open a saved project and type something in a source file.\n2. File > Save Project As..., and give a path in a folder that does not exist.\n3. An alert says save project failed, ERROR_PATH_NOT_FOUND. The title bar now names the new file, which does not exist.\n4. Ctrl+S: the same alert, for the new path.\n5. Make the folder and press Ctrl+S: the project is written there, and the file that was opened stays as it was.\nThe same comes from Save As over a read-only file, with ERROR_ACCESS_DENIED. Save As back to the original puts it right.\nControl: Save As to a good path writes the file and moves the project."
+}

@@ -101,6 +101,8 @@ export class Lane {
    * @param {string} [o.projectId]  the project.id every project the lane opens is given;
    *   by default laneProjectId's for its slot, which differs from run to run. shoot_docs
    *   gives one id for all, since a picture can show it
+   * @param {((c: object) => Promise<void>) | null} [o.onAttach]  called with each IDE's
+   *   connection as the lane attaches to it, before the project has loaded
    */
   constructor({
     name,
@@ -113,8 +115,9 @@ export class Lane {
     page = null,
     userSettings = false,
     projectId = null,
+    onAttach = null,
   }) {
-    Object.assign(this, { name, slot, desktop, work, ide, show, browserArgs, page, userSettings, projectId });
+    Object.assign(this, { name, slot, desktop, work, ide, show, browserArgs, page, userSettings, projectId, onAttach });
     this.port = null; // the open IDE's DevTools port
     this.lease = null; // the slot, as launchIde takes it (leased())
     this.exe = null; // the lane's copy of the install, made on first use
@@ -313,6 +316,7 @@ export class Lane {
     Object.assign(this, { src, project, port: this.run.port });
     this.c = await attachIde(this.port);
     if (!this.c) throw new Error(`lane ${this.name}: the IDE never exposed a debug port`);
+    await this.onAttach?.(this.c);
     if (page) await fixPageSize(this.c, page);
     this.checkCompile(await waitForCompile(this.c, { project, timeout }), src);
     // Checked against whatever APPDATA the IDE was given: `env` can name another.
@@ -349,6 +353,7 @@ export class Lane {
     Object.assign(this, { src: null, project: null, port: this.run.port });
     this.c = await attachIde(this.port);
     if (!this.c) throw new Error(`lane ${this.name}: the IDE never exposed a debug port`);
+    await this.onAttach?.(this.c);
     if (page) await fixPageSize(this.c, page);
     return this.c;
   }

@@ -28,7 +28,7 @@ Each part of the IDE that can be zoomed has a setting of its own. <kbd>Ctrl</kbd
 
 **The form designer.** The zoom box in the toolbar scales the form you are designing, from 25% to 400%, and **View → Zoom In** and **View → Zoom Out** step through it. The zoom is not saved. See [Zoom](../Forms/Designer#zoom) in the form designer's chapter.
 
-**The Webpage pane.** Its own zoom list scales the page it shows, from 50% to 150%. It starts at 70%, and keeps the zoom you choose. See [Webpage](../Project/Webpage).
+**The Webpage pane.** Its own zoom list scales the page it shows, from 50% to 150%. It starts at 70%, and keeps the zoom you choose. See [Webpage](../Reference/Webpage).
 
 ## Where the IDE keeps its settings
 
@@ -52,7 +52,21 @@ Each setting is one text value under the key. These values hold the settings thi
 | `CUSTOM_KEYBOARD_SHORTCUT_GROUPS` | Your [keyboard shortcut groups](Keyboard-Shortcuts). |
 | `ACTIVE_KEYBOARD_SHORTCUT_GROUPS` | The names of the shortcut groups that are switched on. |
 
-The same key also holds the licence, the publisher name and other values that are not customising.
+The same key holds values that belong to other parts of the IDE:
+
+| Value | Holds |
+|---|---|
+| `LICENCEAGREEMENTV3` | The date you accepted the [licence agreement](../Starting/First-Launch#the-licence-agreement). |
+| `ALLOWERRORREPORTINGV3` | Your answer to the [error reporting question](../Starting/First-Launch#the-error-reporting-question), with its date. |
+| `LicenceKey` | The [licence key](../Starting/First-Launch#enter-licence-key), as plain text. |
+| `PUBLISHER` | The sign-in of [Package Publishing](../Building/Package-Publishing). |
+| `targetArchitectureMemory` | For each project path, the [build configuration](../Building/Build-Configuration#where-the-choice-is-kept) the project was last used with. |
+| `NEWFRONTPAGE` | The section that the [New / Open Project dialog](../Starting/New-Project#the-section-is-remembered) was last closed on. |
+| `OBJECT_BROWSER` | The view of the [Object Browser](../Code/Object-Browser). |
+
+Beside `IDESettings`, the key `twinBASIC_IDE` has three subkeys. `RecentlyOpened` holds the 21 paths of the [**Recent**](../Starting/New-Project#recent) section. `ProjectState` holds one value for each project path, which is [what the IDE remembers of the project](../Starting/Opening-Projects#what-the-ide-remembers-of-a-project). `Window` holds the position, size and state of the IDE's window.
+
+The association of `.twinproj` files with the IDE is per user as well. It is under `HKEY_CURRENT_USER\Software\Classes`, and [The file association](../Starting/Opening-Projects#the-file-association) describes it.
 
 The folder `%APPDATA%\twinBASIC` holds the files you add yourself, and it survives deleting an old IDE folder. The IDE creates these folders in it at start-up:
 

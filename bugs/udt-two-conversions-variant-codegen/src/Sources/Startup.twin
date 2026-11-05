@@ -1,0 +1,27 @@
+' A UDT with two Type_Conversion overloads, neither As Variant, converted to a Variant.
+' Debug.Print c, v = c and CVar(c) each compile with no diagnostic and are a codegen error
+' when the procedure is built: "compilation (codegen) error detected in 'Startup.Mainrootmain'".
+' Passing c to a ByVal Variant parameter is TB5001, as it should be.
+' Fine: one conversion; an overload As Variant among them, which is then the one used;
+' a String or a Long target (s = c, n = c, "x" & c, CStr(c), CLng(c)).
+Module Startup
+
+    Public Type Two
+        X As Long
+
+        Private Function Type_Conversion() As String
+            Return "Two " & CStr(Me.X)
+        End Function
+
+        Private Function Type_Conversion() As Long
+            Return Me.X
+        End Function
+    End Type
+
+    Public Sub Main()
+        Dim c As Two
+        c.X = 7
+        Debug.Print c
+    End Sub
+
+End Module

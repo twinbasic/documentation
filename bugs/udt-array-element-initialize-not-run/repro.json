@@ -1,0 +1,29 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests\\.Variable_BothRun$",
+      "^PASS RegressionTests\\.Variable_SeesInitialize$",
+      "^PASS RegressionTests\\.ModuleVariable_SeesInitialize$",
+      "^PASS RegressionTests\\.ClassField_SeesInitialize$",
+      "^PASS RegressionTests\\.FixedArray_TerminateRunsForEachElement$",
+      "^PASS RegressionTests\\.DynamicArray_TerminateRunsForEachElement$",
+      "^PASS RegressionTests\\.Erase_TerminateRunsForEachElement$",
+      "^FAIL RegressionTests\\.FixedArray_InitializeRunsForEachElement: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.FixedArray_ElementSeesInitialize: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.DynamicArray_InitializeRunsForEachElement: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.DynamicArray_ElementSeesInitialize: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.ReDimPreserve_NewElementSeesInitialize: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.ModuleArray_ElementSeesInitialize: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.StaticArray_ElementSeesInitialize: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.ClassArray_ElementSeesInitialize: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.UdtMember_SeesInitialize: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.ArrayOfUdtMember_SeesInitialize: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.ArrayInUdt_ElementSeesInitialize: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.ArrayInUdt_TerminateRunsForEachElement: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.ReDim_TerminateRunsForDiscardedElements: .*Actual: 0 \\[Long\\]",
+      "^FAIL RegressionTests\\.ReDimPreserve_TerminateRunsForDroppedElements: .*Actual: 0 \\[Long\\]"
+    ]
+  }
+}

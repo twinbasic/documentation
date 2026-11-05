@@ -255,17 +255,13 @@ parts:
 
   - title: The twinBASIC IDE
     subtitle: Starting, configuring, building, and debugging a project
-    # Only the IDE pages with prose of their own. The rest of the section
-    # is in left_out at the end of this file; move a page from there to
-    # here once it explains something. Links to the pages left out open
-    # the website.
     landing_page: /tB/IDE
     outline_closed: true
     chapters:
-      - title: New Project
-        page: /tB/IDE/Project/New
-        no_outline_entry: true
-        no_heading_shift: true
+      - title: Starting a project
+        landing_page: /tB/IDE/Starting/
+        page: /tB/IDE/Starting/
+        landing_is_target: true
         outline_closed: true
       - title: Projects and files
         landing_page: /tB/IDE/Projects/
@@ -307,8 +303,16 @@ parts:
         page: /tB/IDE/Customising/
         landing_is_target: true
         outline_closed: true
+      - title: When something goes wrong
+        landing_page: /tB/IDE/Troubleshooting/
+        page: /tB/IDE/Troubleshooting/
+        landing_is_target: true
+        outline_closed: true
       - title: Add Ins
-        page: /tB/IDE/AddIns/
+        pages:
+          - /tB/IDE/AddIns/
+          - /tB/IDE/AddIns/GlobalSearch
+          - /tB/IDE/AddIns/Community
         no_descent: true
         no_outline_entry: true
         no_heading_shift: true
@@ -319,8 +323,9 @@ parts:
         no_heading_shift: true
         outline_closed: true
       - title: IDE Reference
-        pages:
-          - /tB/IDE/Reference/Toolbar
+        landing_page: /tB/IDE/Reference
+        page: /tB/IDE/Reference
+        landing_is_target: true
         outline_closed: true
 
   - title: The Core Language
@@ -687,29 +692,3 @@ left_out:
       - /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
       - /tB/Packages/Contributed/TBMANLIB_Xml/
       - /tB/Packages/Contributed/WinReg/
-
-  - reason: IDE pages that are still screenshots and the labels they show, or headings with nothing under them
-    no_descent: true
-    pages:
-      - /tB/IDE/AddIns/Community
-      - /tB/IDE/Reference/Menu
-      - /tB/IDE/Reference/Menu/AddIns
-      - /tB/IDE/Reference/Menu/Help
-
-  - reason: IDE pages that are complete but too short, or too much a list, to earn space in print yet
-    no_descent: true
-    pages:
-      - /tB/IDE/Reference/StatusBar
-      - /tB/IDE/Reference
-      - /tB/IDE/Project/Webpage
-      - /tB/IDE/Project/Splash
-      - /tB/IDE/AddIns/GlobalSearch
-      - /tB/IDE/Reference/Menu/File
-      - /tB/IDE/Reference/Menu/Edit
-      - /tB/IDE/Reference/Menu/Project
-      - /tB/IDE/Reference/Menu/Format
-      - /tB/IDE/Reference/Menu/Run
-      - /tB/IDE/Reference/Menu/Debug
-      - /tB/IDE/Reference/Menu/View
-      - /tB/IDE/Reference/Menu/Tools
-      - /tB/IDE/Reference/Menu/Window     # ~800 lines of shortcut JSON that would print unfolded

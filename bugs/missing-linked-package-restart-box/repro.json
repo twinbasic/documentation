@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:troubleshooting",
+  "tests": [
+    "a linked package's missing file: Restart opens a box titled shutdown that names neither the package nor the file, and the compiler is back about 80 s after OK, the edit kept"
+  ],
+  "steps": "1. Open a project that references a linked package, its .twinpack in %APPDATA%\\twinBASIC\\packages, and type something in a source file.\n2. Delete the .twinpack.\n3. Press Restart the compiler. About a second later a native box opens, titled shutdown, with the text Run-time error '-2147467259' and Unspecified error, and one button, OK. The status bar reads LIMITED and the page Please wait... 5.0%.\n4. Press OK. Nothing explains the wait. About 80 s later the status bar reads OPERATIONAL, the project is back with the edit, and the References view shows the package's row with ERROR unable to load this reference.\nControl: Restart with the file there brings the compiler back at once."
+}

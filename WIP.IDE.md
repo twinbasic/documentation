@@ -1,7 +1,7 @@
 # The IDE section — finishing it
 
-The IDE section (`docs/IDE/`, `/tB/IDE`) is being rewritten so that every page is fit for
-the book. The goal is that `docs/_book.yml` holds no IDE entry under `left_out:`. This file
+The IDE section (`docs/IDE/`, `/tB/IDE`) has been rewritten so that every page is fit for
+the book, and `docs/_book.yml` holds no IDE entry under `left_out:`: keep it so. This file
 covers the structure, the conventions, where each fact comes from, and how a chapter is
 written. Owner decisions:
 
@@ -11,6 +11,10 @@ written. Owner decisions:
 - `docs/IDE/_Images/*.af` deleted.
 
 The section is not bound to its current structure. The existing pages are raw material.
+
+Where the work stands, what is next and what is open is in the kit, `TODO.md` in
+`.claude/scratch/ide-docs/` (gitignored), under *RESUME HERE*: read it before anything
+else. The kit also holds each chapter's fact sheet and its briefs.
 
 ## What "book-ready" means for a page
 
@@ -30,7 +34,7 @@ children. Second person ("you") is allowed here, as in tutorials.
 | # | Chapter | Permalink | Takes in |
 |---|---|---|---|
 | 1 | A tour of the IDE (landing page) | `/tB/IDE` | `index.md` |
-| 2 | Starting a project | `/tB/IDE/Starting` | New Project, Splash Screen, FAQ's first-launch and VBP-import parts |
+| 2 | Starting a project | `/tB/IDE/Starting/` + children (**written**) | New Project, Splash Screen, FAQ's first-launch and VBP-import parts |
 | 3 | Projects and files | `/tB/IDE/Projects` | Project Explorer (file and object views, Add, context menu; no resource editors: images preview, the rest open as text), references and packages (links to Features/Packages), Export Project (from Menu/File) |
 | 3a | Project Settings (reference) | `/tB/IDE/Project-Settings` | `Project Settings.md`, kept whole; **its anchors stay**, as 19 links use them |
 | 4 | Writing code | `/tB/IDE/Code` + children | Editor, Find/Replace, Outline, Open Editors, History, Diagnostics, `Features/Compiler-IDE/CodeLens` |
@@ -38,17 +42,16 @@ children. Second person ("you") is allowed here, as in tutorials.
 | 6 | Running and debugging | `/tB/IDE/Debugging` + children | Menu/Debug's run-time error walkthrough and Debugger Options, Menu/Run, Debug Console, Variables, Watches, Call Stack, Memory, `Features/Compiler-IDE/Debugging` |
 | 7 | Building | `/tB/IDE/Building` | Toolbar's Build configuration, Menu/File's Build and Clean, Package Publishing, links to LLVM and Project-Types |
 | 8 | Customising the IDE | `/tB/IDE/Customising/` + children (**written**) | IDE Options (all of them), themes and custom `.theme` files, panel layouts, keyboard shortcuts, language (from Menu/Window and Menu/Tools) |
-| 9 | Add-ins | `/tB/IDE/AddIns/` | AddIns/* as they are, Community given content |
-| 10 | When something goes wrong | `/tB/IDE/Troubleshooting` | Status Bar's service states, Restart the compiler, TRACE mode, error reporting |
+| 9 | Add-ins | `/tB/IDE/AddIns/` | AddIns/* (no community add-in is listed yet) |
+| 10 | When something goes wrong | `/tB/IDE/Troubleshooting/` + children (**written**) | Status Bar's service states, Restart the compiler, TRACE mode, error reporting |
 
 **Part B, Reference.** Written impersonally. One page per menu, plus the Toolbar, the Status Bar
 and the keyboard shortcuts, under `/tB/IDE/Reference/…`. Each entry gives the item, its
 shortcut, one or two sentences, and a link to the chapter that explains it.
 
-- The keymap is shown as a table, not the JSON dump `Menu/Window.md` holds. The table can be
-  generated from `main.js` if keeping it by hand proves error-prone. Decide that when the page is
-  written.
-- Webpage and the other panes that are not in a chapter get a reference entry.
+- The keymap is a table on its own page, `Reference/Keyboard-Shortcuts.md`, generated from
+  `main.js` by `ide_js.mjs keymap`: never edit its rows by hand.
+- Webpage, the one pane that is not in a chapter, has a page of its own here.
 
 **Moving pages.** When a page moves, its old permalink goes into `redirect_from:`, and every
 inbound link is changed to the new canonical URL. The 61 inbound links are in
@@ -134,13 +137,13 @@ for contributors.
 - **`shoot_docs.mjs` and WIP.Screenshots.md** hold the states the screenshots already set up,
   which are often the quickest way to reach a dialog. A new picture is a new shot there, taken
   in both themes; never make a picture by hand.
-- The kit `.claude/tooling-review-scratch/ide-docs/ide-driving-survey.md` (gitignored)
+- The kit `.claude/scratch/ide-docs/ide-driving-survey.md` (gitignored)
   maps the debugger, Settings and Export internals.
 
 ## Writing a chapter
 
 1. **Fact sheet.** A Sonnet agent reads `main.js` and the existing pages and writes
-   `.claude/tooling-review-scratch/ide-docs/<chapter>-facts.md`. Each item in it has its source,
+   `.claude/scratch/ide-docs/<chapter>-facts.md`. Each item in it has its source,
    a command id or a regex, and is marked *read* or *needs trying*.
 2. **Trying.** The *needs trying* items are tried in a lane IDE. Use an Opus agent, one at a
    time, recording the registry hashes before and after as for any harness run.

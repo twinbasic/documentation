@@ -101,7 +101,7 @@ Exit codes: **0** the command finished, or a dry run did; **2** a refused comman
 
 ### Phase 1 --- Export
 
-Fetches messages from Discord channels and forum threads.
+Fetches messages from Discord channels and threads.
 
 ```
 node wisdom/wisdom.mjs export
@@ -134,7 +134,7 @@ Converts raw JSON into structured Markdown with YAML frontmatter.
 node wisdom/wisdom.mjs process
 ```
 
-Outputs one `.md` file per forum thread under `wisdom/data/threads/<channel-name>/`, plus one per text channel. Each file has frontmatter (thread ID, channel, tags, reaction counts, `has_answer` flag) and a rendered message body with timestamps and author names.
+Outputs one `.md` file per thread under `wisdom/data/threads/<channel-name>/`, plus one per text or announcement channel. A channel is also written month by month into its folder, each month shaped as a thread, and those months are what Phase 3 reads; `process.unmined_channels` in `config.jsonc` names the channels left out of that. Each file has frontmatter (thread ID, channel, tags, reaction counts, `has_answer` flag) and a rendered message body with timestamps and author names.
 
 | Flag | Effect |
 |------|--------|
@@ -228,9 +228,9 @@ It also defines `runConcurrent(items, concurrency, fn)`, a worker pool. If any w
 
 ### Phase 1 control flow
 
-1. **Discover** (`discord/discover.mjs`): fetch the channel list from `/guilds/{id}/channels`, filter by type (text/forum) and exclude patterns. For forums, paginate `/channels/{id}/threads/archived/public` and (bot-only) `/guilds/{id}/threads/active`, deduplicate, and filter by `min_message_count`.
+1. **Discover** (`discord/discover.mjs`): fetch the channel list from `/guilds/{id}/channels`, filter by type (text, announcement, forum) and exclude patterns. Any of those channels can hold threads, so for each one paginate `/channels/{id}/threads/archived/public`, add its threads from (bot-only) `/guilds/{id}/threads/active`, deduplicate, and filter by `min_message_count`. Discord's count leaves out a thread's first message, so the default of 0 keeps a forum post nobody answered.
 2. **Fetch members** (`discord/discover.mjs`): paginate `/guilds/{id}/members`. A user token, or a bot the endpoint refuses, gets an empty map, and messages then show authors by global name rather than server nickname. Write `guild.json` and `members.json`.
-3. **Build target list**: merge text channels and forum threads. Targets that returned 403 before (tracked in `denied.json`) sort to the end.
+3. **Build target list**: merge the text and announcement channels and the threads. Targets that returned 403 before (tracked in `denied.json`) sort to the end.
 4. **Fetch messages** (`discord/messages.mjs`): run targets through `runConcurrent`. For each target:
    - Skip it without a request if its output file exists, its snowflake is recorded, and the `last_message_id` discovery reported is no newer.
    - Otherwise call `fetchMessages(client, channelId, afterSnowflake)`:
@@ -252,12 +252,12 @@ Every file the export writes goes to a `.tmp` file first and is then renamed ove
    - Skip if `--channel` filter does not match `thread.parent_id`.
    - Skip if `--since` and thread creation date is before the cutoff.
    - Skip if output `.md` exists and its mtime >= input mtime (unless `--force`).
-   - `filterMessages()` (`filter.mjs`): keep only type 0 (DEFAULT) and type 19 (REPLY).
+   - `filterMessages()` (`filter.mjs`): keep only type 0 (DEFAULT) and type 19 (REPLY), and put the message a type 21 (THREAD_STARTER_MESSAGE) stub refers to in the stub's place, since that message is in the parent channel and not in the thread.
    - `shouldSkipThread()`: drop threads with one or fewer messages or all-bot authors.
    - `buildFrontmatter()` (`frontmatter.mjs`): thread_id, title, channel, tags, created/archived timestamps, message_count, last_message_id (highest snowflake --- the Phase 3 watermark), reply_count, reaction aggregates, has_answer flag.
    - `renderMessages()` (`render.mjs`): each message becomes `**Author** _timestamp_` + content + attachments + reactions. A reply gets a header with a truncated quote of the parent.
    - Write `threads/<channel-name>/<thread_id>--<slug>.md`.
-4. Iterate `raw/channels/*.json` --- same pipeline with simpler frontmatter (channel_id, title, message_count). One output file per text channel.
+4. Iterate `raw/channels/*.json` --- same pipeline with simpler frontmatter (channel_id, title, message_count). One output file per text channel, and, unless `process.unmined_channels` names the channel, one per calendar month under `<channel-name>/`, with the frontmatter of a thread whose ID is `<channel-id>-<YYYY-MM>`. A reply's parent is looked up in the whole channel, so a reply to an earlier month keeps its quote.
 
 ### Phase 3 control flow
 
@@ -289,7 +289,7 @@ Phase 3 has three stages: prep (Node.js), workflow (Claude agents), merge (Node.
 
    **Stage 2 --- Draft.** One Sonnet agent per group, only if Stage 1 produced findings above the confidence threshold. The agent resolves each finding to a documentation file through `page-index.json`, reads the target page(s), and returns `{ additions: [...] }` via structured output. Each addition has: `thread_path`, `target_page` (repo-relative path or "UNMAPPED"), `section` (after-remarks/example/see-also/new-section), `draft` (exact Markdown to insert), `confidence`, `date_earliest`, `date_latest`, `reviewer_note`.
 
-3. **Assemble**: flatten all additions, take thread IDs from the file paths, and return `{ additions: [...] }`.
+3. **Assemble**: flatten all additions, take thread IDs from the file paths, and return `{ additions: [...], read: [...] }`, where `read` lists the threads whose agents finished.
 
 #### Merge
 
@@ -306,7 +306,7 @@ Phase 3 has three stages: prep (Node.js), workflow (Claude agents), merge (Node.
    - UNMAPPED sections sort before mapped sections.
    - Atomic write: back up the existing `staging.md` as `staging.md.bak`, write to `.tmp`, rename.
 
-3. **Advance state**: for each thread that contributed additions, `recordEmission()` stores its current watermark values and the `(target_page, section, finding_ids)` tuples in the emission log. Then `extract-state.json` is written atomically.
+3. **Advance state**: for each thread in `read` or contributing additions, `recordEmission()` stores its current watermark values and the `(target_page, section, finding_ids)` tuples in the emission log. A thread that gave no additions is recorded as well, or every later run would read it again; one whose agent died is in neither list, so the next run reads it. Then `extract-state.json` is written atomically.
 
 ### staging.md format
 

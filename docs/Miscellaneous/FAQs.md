@@ -330,22 +330,19 @@ Every executable and DLL of the IDE is signed with TWINBASIC LTD's code-signing 
 <details>
 <summary markdown=span id="vb6-import"><b>How do I import my VB6 project into twinBASIC?</b></summary>
 
-The easiest way is through the import wizard. When you first start the twinBASIC IDE, you're presented with the New / Open Project dialog --- its **New** section has an **Import from VBP...** card:
+The easiest way is through the import wizard. When the twinBASIC IDE starts with no project, it shows the New / Open Project dialog after its splash --- its **New** section has an **Import from VBP...** card. **File → Open Project...** on the `.vbp` file imports it the same way, and a `.vbp` from the dialog's **Recent (VB6)** section is imported as well, without the options box:
 
 ![The New / Open Project dialog on its New section, showing a grid of project template cards from Standard EXE to Import from folder, with a red arrow pointing up at the icon of the Import from VBP card.](Images/7e1cb69c-6db3-4f3f-aea1-c1fae25938a2.png){:width="970" height="728"}
 
-You can import individual files, from VB projects of any type, through the Import option on the Add menu, under Project or by right clicking the desired folder in the Project Explorer pane:
+You can import individual files, from VB projects of any type, through the **Import...** item of the Add menu, under Project or by right clicking the desired folder in the Project Explorer pane:
 
 ![The Project Explorer context menu opened on a project's Sources folder, with the Add submenu expanded beside it. A red arrow points at Add, and a second arrow points at Import, which is ringed among the Add Folder, Add Windows Form and Add Resource entries.](Images/2b32ab8c-fabc-4f42-9e6b-06e85574eaf4.png){:width="754" height="626"}
 
-> [!NOTE]
-> You can select .bas/.cls files individually, but to import Forms, UserControls, Property Pages, and Resource Files you must currently select the .vbp file they're associated with. You'll then be shown a list of files you can import (with their new twinBASIC extensions .tbform/.twin and so on --- make sure to import both, e.g. for Form1.frm you'll see Form1.frm.tbform and Form1.frm.twin:
+You can select `.bas` and `.cls` files individually, but to import forms, user controls, property pages and resource files you must select the `.vbp` file they belong to. The IDE then lists the files it can import, with their new twinBASIC extensions, and you tick both files of a form, `Form1.frm.tbform` and `Form1.frm.twin`.
 
-![The Import from twinproj dialog: a tick-box tree of everything found in ImportDemo.vbp, with the Resources branch expanded over its ICON and MANIFEST folders and a Sources branch below, where a module from a folder beside the project's sits in a PARENT-FOLDER branch. Form1.frm.tbform and Form1.frm.twin are both ticked.](Images/16833fae-4bd7-418f-bb16-691a611a5b01.png){:width="469" height="401"}
+[Importing a VB6 project](tB/IDE/Starting/Importing-VB6) describes the routes, the settings and files that the import converts and those it leaves, the import log, a missing file's box, and the tree of single files. A `.vbp` imported from **Recent (VB6)** or the command line gets the importer's own settings, with **Option Explicit** off.
 
-Importing a .vbp also carries over its [startup object](tB/IDE/Project-Settings#startup-object) and its [icon form](tB/IDE/Project-Settings#icon-form). A VB6 project that was linked as a console program --- its `LinkSwitches` line contains `/SUBSYSTEM:CONSOLE`, written in capitals --- becomes a [console application](tB/IDE/Project-Settings#is-console-application). No other linker switch is carried over.
-
-**What happens to the `Attribute` lines.** The import keeps every `Attribute` line as VB6 wrote it, and turns none of them into a twinBASIC attribute such as `[Description]`. twinBASIC reads the lines itself when it compiles. **Import from VBP...** and **File → Open Project...** both import a project this way:
+**What happens to the `Attribute` lines.** The import keeps every `Attribute` line as VB6 wrote it, and turns none of them into a twinBASIC attribute such as `[Description]`. twinBASIC reads the lines itself when it compiles. An imported project's files are treated like this:
 
 - A `.bas` or `.cls` file is imported unchanged, because twinBASIC compiles these files as they are.
 - A `.frm`, `.ctl` or `.pag` file becomes two files. The designer file (`.tbform`, `.tbcontrol` or `.tbppage`) holds the properties from the file's `Begin` block. The `.twin` file holds a **Class** with the module's code, its `Attribute` lines included. The import puts the attributes `[FormDesignerId]`, `[ClassId]`, `[InterfaceId]` and `[EventInterfaceId]` in front of the class, with new GUIDs, and `[COMControl]` in front of a UserControl. None of them comes from an `Attribute` line: a form keeps its `Attribute VB_PredeclaredId = True` line and gets no `[PredeclaredId]`.
@@ -378,7 +375,7 @@ In a built ActiveX DLL, these lines have the same effect as the twinBASIC attrib
 
 ![The DIAGNOSTICS panel reporting five errors under frmMain.twin, each reading TB5079 Unrecognized symbol for hr or hMenu with its line and column. The first is expanded to show its Jump to issue and Help links.](Images/e409ea37-96ad-44c5-8017-3699ef04b53d.png){:width="347" height="193"}
 
-While use is strongly recommended and considered a best practice, twinBASIC **does not** require `Option Explicit`. If you're seeing these errors, you may have overlooked a new feature of twinBASIC: automatically enabling `Option Explicit` project-wide. When you import a VB6 project, or create a new one, a small dialog pops up:
+While use is strongly recommended and considered a best practice, twinBASIC **does not** require `Option Explicit`. If you're seeing these errors, you may have overlooked a new feature of twinBASIC: automatically enabling `Option Explicit` project-wide. When you import a VB6 project with **Import from VBP...** or **File → Open Project...**, or create a new project from a template or a sample, a small dialog pops up (see [New Project Options](tB/IDE/Starting/New-Project#new-project-options)). A `.vbp` that opens from **Recent (VB6)** shows no dialog, and its project has **Option Explicit** off.
 
 ![The twinBASIC New Project Options dialog: a Project Name box above ticked boxes for Option Explicit ON at project scope, Visual Styles and Include Common Controls, and a DPI Awareness dropdown set to SYSTEM_DPI_AWARE.](Images/05306a72-4ff6-427d-8970-969ef0c582e6.png){:width="529" height="279"}
 

@@ -18,7 +18,7 @@ Point at **Window → Theme**. The submenu lists the themes, and a tick marks th
 
 ![The Window menu with Theme highlighted and its submenu open to the right, listing Aurora (Dark), Classic (Light), a ticked Dark, High Contrast Dark (Dark), High Contrast Light (Light) and Light, with Reload from disk below a separator.](../Menu/Images/Menu_Window_Theme.png){:width="361" height="288"}
 
-You can also click the icon with the tooltip **Change IDE Theme** in the menu bar. It opens the same list.
+You can also click the icon with the tooltip **Change IDE Theme** in the toolbar. It opens the same list.
 
 The IDE ships with these themes:
 

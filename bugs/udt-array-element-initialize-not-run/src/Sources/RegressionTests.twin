@@ -1,0 +1,186 @@
+' Regression tests: each [TestCase] asserts the correct result. The controls (a variable, a
+' module variable, a class field, Type_Terminate for the elements of an array when the array
+' goes) pass. Where the UDT is an element of an array, or a member of another UDT,
+' Type_Initialize does not run, and where ReDim discards elements Type_Terminate does not:
+' those cases fail, in a 32-bit and a 64-bit build.
+[TestFixture]
+Module RegressionTests
+
+    Private Sub Reset()
+        Inits = 0
+        Terms = 0
+    End Sub
+
+    ' --- what the counted cases declare: none of them reads an element ---
+
+    Private Sub DeclareVariable()
+        Dim c As Counted
+    End Sub
+
+    Private Sub DeclareFixedArray()
+        Dim t(2) As Counted
+    End Sub
+
+    Private Sub DeclareDynamicArray()
+        Dim t() As Counted
+        ReDim t(2)
+    End Sub
+
+    Private Sub DeclareArrayHolder()
+        Dim h As ArrayHolder
+    End Sub
+
+    Private Function StaticElement() As Long
+        Static t(2) As Counted
+        Return t(1).X
+    End Function
+
+    ' --- controls: these pass ---
+
+    [TestCase]
+    Public Sub Variable_BothRun()
+        Reset
+        DeclareVariable
+        Assert.Strict.AreEqual 1&, Inits
+        Assert.Strict.AreEqual 1&, Terms
+    End Sub
+
+    [TestCase]
+    Public Sub Variable_SeesInitialize()
+        Dim c As Counted
+        Assert.Strict.AreEqual 42&, c.X
+    End Sub
+
+    [TestCase]
+    Public Sub ModuleVariable_SeesInitialize()
+        Assert.Strict.AreEqual 42&, ModuleVariable.X
+    End Sub
+
+    [TestCase]
+    Public Sub ClassField_SeesInitialize()
+        Dim o As New Fields
+        Assert.Strict.AreEqual 42&, o.u.X
+    End Sub
+
+    [TestCase]
+    Public Sub FixedArray_TerminateRunsForEachElement()
+        Reset
+        DeclareFixedArray
+        Assert.Strict.AreEqual 3&, Terms
+    End Sub
+
+    [TestCase]
+    Public Sub DynamicArray_TerminateRunsForEachElement()
+        Reset
+        DeclareDynamicArray
+        Assert.Strict.AreEqual 3&, Terms
+    End Sub
+
+    [TestCase]
+    Public Sub Erase_TerminateRunsForEachElement()
+        Dim t() As Counted
+        ReDim t(2)
+        Reset
+        Erase t
+        Assert.Strict.AreEqual 3&, Terms
+    End Sub
+
+    ' --- Type_Initialize does not run: these fail ---
+
+    [TestCase]
+    Public Sub FixedArray_InitializeRunsForEachElement()
+        Reset
+        DeclareFixedArray
+        Assert.Strict.AreEqual 3&, Inits
+    End Sub
+
+    [TestCase]
+    Public Sub FixedArray_ElementSeesInitialize()
+        Dim t(2) As Counted
+        Assert.Strict.AreEqual 42&, t(1).X
+    End Sub
+
+    [TestCase]
+    Public Sub DynamicArray_InitializeRunsForEachElement()
+        Reset
+        DeclareDynamicArray
+        Assert.Strict.AreEqual 3&, Inits
+    End Sub
+
+    [TestCase]
+    Public Sub DynamicArray_ElementSeesInitialize()
+        Dim t() As Counted
+        ReDim t(2)
+        Assert.Strict.AreEqual 42&, t(1).X
+    End Sub
+
+    [TestCase]
+    Public Sub ReDimPreserve_NewElementSeesInitialize()
+        Dim t() As Counted
+        ReDim t(0)
+        ReDim Preserve t(2)
+        Assert.Strict.AreEqual 42&, t(2).X
+    End Sub
+
+    [TestCase]
+    Public Sub ModuleArray_ElementSeesInitialize()
+        Assert.Strict.AreEqual 42&, ModuleArray(1).X
+    End Sub
+
+    [TestCase]
+    Public Sub StaticArray_ElementSeesInitialize()
+        Assert.Strict.AreEqual 42&, StaticElement()
+    End Sub
+
+    [TestCase]
+    Public Sub ClassArray_ElementSeesInitialize()
+        Dim o As New Fields
+        Assert.Strict.AreEqual 42&, o.Element()
+    End Sub
+
+    [TestCase]
+    Public Sub UdtMember_SeesInitialize()
+        Dim h As Holder
+        Assert.Strict.AreEqual 42&, h.u.X
+    End Sub
+
+    [TestCase]
+    Public Sub ArrayOfUdtMember_SeesInitialize()
+        Dim t(2) As Holder
+        Assert.Strict.AreEqual 42&, t(1).u.X
+    End Sub
+
+    [TestCase]
+    Public Sub ArrayInUdt_ElementSeesInitialize()
+        Dim h As ArrayHolder
+        Assert.Strict.AreEqual 42&, h.a(1).X
+    End Sub
+
+    ' --- Type_Terminate does not run: these fail ---
+
+    [TestCase]
+    Public Sub ArrayInUdt_TerminateRunsForEachElement()
+        Reset
+        DeclareArrayHolder
+        Assert.Strict.AreEqual 3&, Terms
+    End Sub
+
+    [TestCase]
+    Public Sub ReDim_TerminateRunsForDiscardedElements()
+        Dim t() As Counted
+        ReDim t(2)
+        Reset
+        ReDim t(1)
+        Assert.Strict.AreEqual 3&, Terms
+    End Sub
+
+    [TestCase]
+    Public Sub ReDimPreserve_TerminateRunsForDroppedElements()
+        Dim t() As Counted
+        ReDim t(3)
+        Reset
+        ReDim Preserve t(1)
+        Assert.Strict.AreEqual 2&, Terms
+    End Sub
+
+End Module

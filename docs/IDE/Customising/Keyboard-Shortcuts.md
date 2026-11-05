@@ -15,7 +15,7 @@ Every IDE command can have keys, and you can change them. You write your changes
 
 The keys come from a stack of groups, merged in order:
 
-1. The built-in group, **Default Built-in Keyboard Shortcuts**, is always first. It is always on and you cannot switch it off. It binds 228 commands with 265 keys.
+1. The built-in group, **Default Built-in Keyboard Shortcuts**, is always first. It is always on and you cannot switch it off. [Keyboard shortcuts](../Reference/Keyboard-Shortcuts), in the reference, lists its commands and keys.
 2. After it come the groups you create, in the order you created them, but only the ones that are switched on.
 
 A later group changes what the groups before it say. So you never switch between whole sets of shortcuts. You leave the built-in group on, and add a group that holds only your differences. A group can replace the keys of a command, add keys to it, or remove its keys.
@@ -59,7 +59,7 @@ Text that is not valid JSON turns red. The IDE ignores a group whose text is not
 
 ## The text of a group
 
-A group is a JSON object. Each key names a command, and each value is a list of key strings. The commands are named in the default group, which is listed on the [Window menu](../Reference/Menu/Window#keyboard-shortcuts) page and is the place to look up the name of a command.
+A group is a JSON object. Each key names a command, and each value is a list of key strings. The commands are named in the default group, which is listed in the [reference](../Reference/Keyboard-Shortcuts) and is the place to look up the name of a command.
 
 | Entry | Meaning |
 |---|---|
@@ -120,7 +120,8 @@ When a command fails, the Debug Console prints `command failed:` and the command
 
 ## See Also
 
-- [Window menu](../Reference/Menu/Window#keyboard-shortcuts) -- the **Keyboard Shortcuts** entry, and the list of the default shortcuts
+- [Keyboard shortcuts reference](../Reference/Keyboard-Shortcuts) -- every command the default group binds, with its keys
+- [Window menu](../Reference/Menu/Window#keyboard-shortcuts) -- the **Keyboard Shortcuts** entry
 - [Panel layouts](Panel-Layouts) -- the commands that switch layouts
 - [Themes](Themes) -- the commands that switch themes
 - [Customising the IDE](.) -- where the settings are kept

@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, mkdirSync, writeFileSync, existsSync, unlinkSync, statSync } from "node:fs";
-import { join, dirname, sep } from "node:path";
+import { basename, join, dirname, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildSitemap, buildPackageSummary, buildPageIndex } from "./sitemap.mjs";
 import { loadState, saveState, isThreadChanged, recordEmission } from "./state.mjs";
@@ -46,7 +46,7 @@ export async function runExtract(flags) {
 
   const subdirs = readdirSync(threadsDir, { withFileTypes: true });
   for (const entry of subdirs) {
-    if (entry.isFile() && entry.name.endsWith(".md")) continue; // text channel dump
+    if (entry.isFile() && entry.name.endsWith(".md")) continue; // a whole text channel: its months are read instead
     if (!entry.isDirectory()) continue;
 
     const channelName = entry.name;
@@ -286,10 +286,12 @@ export async function runMerge(flags) {
   }
 
   let allAdditions = [];
+  const read = [];
   for (const file of files) {
     const data = JSON.parse(readFileSync(join(outDir, file), "utf-8"));
     const additions = Array.isArray(data) ? data : data.additions || [];
     allAdditions = allAdditions.concat(additions);
+    read.push(...(data.read || []));
   }
 
   process.stderr.write(
@@ -310,18 +312,18 @@ export async function runMerge(flags) {
   const state = loadState(outDir);
   const stats = graftAdditions(outDir, allAdditions, state);
 
-  // Update state with the per-thread emissions
-  const threadIds = new Set();
+  // Update state with the per-thread emissions.  A thread read with nothing to
+  // add is recorded as well, or every later run would read it again.
+  const threadIds = new Set(read.map((path) => basename(path).split("--")[0]));
   for (const add of allAdditions) {
     for (const tid of add.finding_ids || []) threadIds.add(tid);
   }
   const threadMeta = findThreadMetadata(threadsDir, threadIds);
 
   // Group additions by thread_id
-  const emissionsByThread = new Map();
+  const emissionsByThread = new Map([...threadIds].map((tid) => [tid, []]));
   for (const add of allAdditions) {
     for (const tid of add.finding_ids || []) {
-      if (!emissionsByThread.has(tid)) emissionsByThread.set(tid, []);
       emissionsByThread.get(tid).push({
         target_page: add.target_page,
         section: add.section,

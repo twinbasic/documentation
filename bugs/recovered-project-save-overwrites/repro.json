@@ -1,0 +1,11 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "a project cut inside its Sources tree opens with every source gone and is not marked changed, and Ctrl+S overwrites the damaged file with no question",
+    "a project cut at its first entry opens as RECOVERED_PROJECT, and Ctrl+S overwrites the file with that empty project",
+    "Add > Import... in a project cut after its sources overwrites the damaged file, with nothing pressed that says Save",
+    "a change in Project Settings that restarts the compiler overwrites the damaged file, with nothing pressed that says Save"
+  ],
+  "steps": "1. Copy a saved project with several sources, and cut the copy in the middle of its second source.\n2. File > Open Project..., the copy; OK on the box *bad file format*.\n3. The project opens under the file's name, not marked changed, with its Settings and no source.\n4. Ctrl+S: nothing is asked, and the file is overwritten with no source.\nThe same with Add > Import... of any file, on a project cut after its sources, and with a reference unticked in Project Settings and Apply Changes.\nControl: closing leaves the damaged file as it was, and Save Project As to a new name keeps it too."
+}

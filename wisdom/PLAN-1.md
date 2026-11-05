@@ -49,18 +49,20 @@ Token is read from the `DISCORD_TOKEN` environment variable, with a fallback to 
 
 ```
 Guild
-├── Text channels (type 0)    regular discussion, announcements
-├── Forum channels (type 15)  Q&A, support, show & tell
+├── Text channels (type 0)          regular discussion
+├── Announcement channels (type 5)  releases
+├── Forum channels (type 15)        Q&A, support, show & tell
+│   (each of the three can hold threads)
 │   ├── Active threads
 │   └── Archived threads (paginated)
-└── Voice, stage, categories  skipped
+└── Voice, stage, categories        skipped
 ```
 
-**Step 1 — Channel list.** `GET /guilds/{guild_id}/channels` returns all channels in the server. Keep text channels (type 0) and forum channels (type 15); skip everything else. Channel objects are preserved in full — in particular, forum channels carry an `available_tags` array that Phase 2 needs to resolve thread tag IDs to display names.
+**Step 1 — Channel list.** `GET /guilds/{guild_id}/channels` returns all channels in the server. Keep text channels (type 0), announcement channels (type 5) and forum channels (type 15); skip everything else. Channel objects are preserved in full — in particular, forum channels carry an `available_tags` array that Phase 2 needs to resolve thread tag IDs to display names.
 
-**Step 2 — Active threads.** `GET /guilds/{guild_id}/threads/active` returns all currently open threads across the entire guild. Filter to threads whose `parent_id` is one of the forum channels from Step 1. This endpoint is bot-only; user tokens receive a 403, which the tool handles by skipping active thread discovery and logging a warning.
+**Step 2 — Active threads.** `GET /guilds/{guild_id}/threads/active` returns all currently open threads across the entire guild. Filter to threads whose `parent_id` is one of the channels from Step 1. This endpoint is bot-only; user tokens receive a 403, which the tool handles by skipping active thread discovery and logging a warning.
 
-**Step 3 — Archived threads.** `GET /channels/{channel_id}/threads/archived/public?limit=100` paginates archived threads per forum channel. Paginate using the `has_more` flag and the `before` query parameter (ISO 8601 timestamp of the last thread's `archive_timestamp`, URL-encoded). Forum channels that return 403 (restricted access) are skipped with a warning.
+**Step 3 — Archived threads.** `GET /channels/{channel_id}/threads/archived/public?limit=100` paginates archived threads per channel. Paginate using the `has_more` flag and the `before` query parameter (ISO 8601 timestamp of the last thread's `archive_timestamp`, URL-encoded). Channels that return 403 (restricted access) are skipped with a warning.
 
 **Step 4 — Message fetch.** For each thread (and each in-scope text channel), fetch messages via `GET /channels/{channel_id}/messages?limit=100&before={snowflake}`, paginating until the response is empty or the incremental cutoff is reached.
 
@@ -154,11 +156,11 @@ data/raw/
       "log-.*"
     ],
     "exclude_ids": [],
-    "include_types": ["text", "forum"]
+    "include_types": ["text", "announcement", "forum"]
   },
 
   "threads": {
-    "min_message_count": 1
+    "min_message_count": 0
   },
 
   "export": {
@@ -186,9 +188,9 @@ data/raw/
 
 **`channels.exclude_ids`** — a fallback for channels whose names are ambiguous or that lack a useful name pattern. Matched by exact Snowflake ID string.
 
-**`channels.include_types`** — limit discovery to `"text"` (type 0) and/or `"forum"` (type 15) channels. Both are included by default; remove `"text"` to skip regular text channels entirely if the server's knowledge is concentrated in forum threads.
+**`channels.include_types`** — limit discovery to `"text"` (type 0), `"announcement"` (type 5) and/or `"forum"` (type 15) channels. All three are included by default; remove `"text"` to skip regular text channels entirely if the server's knowledge is concentrated in forum threads.
 
-**`threads.min_message_count`** — threads with fewer messages than this threshold are not fetched. Default: 1 (skips only empty/deleted threads with zero messages).
+**`threads.min_message_count`** — threads with fewer messages than this threshold are not fetched. Default: 0, which fetches every thread. Discord's count leaves out a thread's first message, so a forum post nobody answered counts 0 and a threshold of 1 would skip it. Phase 2 decides what such a post is worth; the raw export holds it either way.
 
 **`export.concurrency`** — default parallel fetch count, overridable at runtime via `--concurrency`.
 
@@ -208,7 +210,7 @@ The config is loaded at startup and merged with any CLI flags; explicit CLI flag
 node wisdom/wisdom.mjs export [options]
 
   --guild <id>          Guild (server) ID  [required, or DISCORD_GUILD_ID env var]
-  --channel <id>        Restrict to this channel ID (repeatable; default: all text + forum channels)
+  --channel <id>        Restrict to this channel ID (repeatable; default: all text, announcement and forum channels)
   --since <date>        Fetch only content after this ISO 8601 date (overrides manifest)
   --force               Ignore manifest; re-fetch complete history
   --out <dir>           Output directory  [default: wisdom/data/raw]

@@ -303,7 +303,7 @@ front of the compiler.
 exit code 1 if the project has errors:
 
 ```sh
-node scripts/tbbuild.mjs C:/probe/AttributeExplore.twinproj
+node scripts/tbbuild.mjs "$TEMP/probe/AttributeExplore.twinproj"
 ```
 
 It finds the IDE itself --- the newest `twinBASIC_IDE_BETA_<n>` on
@@ -1209,12 +1209,32 @@ browser target, auto-attaches to every target with `waitForDebuggerOnStart`, add
 with `Page.addScriptToEvaluateOnNewDocument` and resumes it. The page is `about:blank` when attached, and
 never navigates twice. The script puts a setter on `window.hostAppObject`, which `main2.js` assigns, and
 wraps the host object: `GetIDESetting` answers `""` for the blanked keys and `"{}"` for `GENERAL` and
-`GENERAL2`, every other call goes through with `this` bound to the real object. The keys it left
-unanswered are the licence's, `LICENCEAGREEMENTV3`, `ALLOWERRORREPORTINGV3`, `PUBLISHER` and `NEWYEAR_*`.
+`GENERAL2`, `SaveIDESetting` of those keys does nothing, and every other call goes through with `this`
+bound to the real object. The keys it left unanswered are the licence's, `LICENCEAGREEMENTV3`,
+`PUBLISHER` and `NEWYEAR_*`.
+**No error report leaves a tool's IDE.** The IDE posts one to `https://twinbasic.com/notify` for each
+native exception and page error when `ALLOWERRORREPORTINGV3` says `AGREED_`, and a reproducer that crashes
+the compiler is such an exception, so a machine whose owner agreed reported its test crashes (until
+2026-11-04). The hook answers that key `DISAGREED_TOOLS`, and `window.fetch` answers a request for that
+address itself and counts it in `__tbDefaults.reports`, in case a page turns reporting on.
+`test/ide-folders.test.mjs` tests both with a stand-in `fetch`, which is why it never sends anything.
+The saves are dropped for two keys' sake. `main.js` tests `g_DontSaveIdeSettings`, which is what
+`--no-save-ide-settings` sets, before every save but those of `OBJECT_BROWSER`, `NEWFRONTPAGE` and
+`PUBLISHER`, so a tool's IDE wrote the first two to the user's registry on BETA 1034: `NEWFRONTPAGE` as
+soon as the New / Open Project dialog changed section or closed. `PUBLISHER` is written only when
+someone signs in on the Package Publishing panel.
+**The flag does not cover a first run.** The page reads it in `parseCommandLine`, after the first-run
+questions, so while the licence agreement, the error-reporting question and the first-run IDE Options
+are up, `g_DontSaveIdeSettings` is false and `LICENCEAGREEMENTV3`, `ALLOWERRORREPORTINGV3` and `GENERAL` are
+written (`bugs/no-save-flag-unguarded-saves`). A tool's IDE is not a first run, because the hook answers
+`GENERAL` and the machine's registry holds both answers. A test or a shot that makes one answers those keys
+`""` from a proxy in front of the hook, in from the document's start, and that proxy blocks every
+`SaveIDESetting` (`test/ide/starting-kit.mjs`).
 A new build can add a key, which is read from the user's registry until it is blanked: BETA 1023 added
 `OBJECT_BROWSER` (the Object Browser's view, filters, sorts and pane sizes) and BETA 1033 `NEWFRONTPAGE` (the
 New / Open Project dialog's section), both blanked since 2026-11-02. After a new BETA, list the keys the page passes
-to `GetIDESetting` (a search of the install's `ide/*.js` for the call) and compare them with `BLANKED_KEYS`.
+to `GetIDESetting` (a search of the install's `ide/*.js` for the call) and compare them with `BLANKED_KEYS`, and list
+the `SaveIDESetting` calls that do not test `g_DontSaveIdeSettings`.
 The recent lists are left alone: `test/ide/recent-projects-copies.test.mjs` needs the IDE's own, and
 `shoot_docs.mjs`'s `PAGE_DEFAULTS` empties them where a picture shows them.
 

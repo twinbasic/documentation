@@ -104,7 +104,7 @@ twinBASIC extends classic VBA's **Type** in several ways. UDTs remain stack-allo
 
 <!-- test: bug udt-array-element-method-call-crash -->
 > [!WARNING] BETA 1034
-> A member procedure called on an element of an array of the UDT, such as `a(1).Sum` or `a(1).Diff(a(2))`, ends the program with an access violation, in 32-bit and 64-bit builds. This holds for local, static, module-level, dynamic and parameter arrays, and in a **With** block. A variable of the type, a UDT member of another UDT, and an element of an array declared inside a UDT are not affected. Copy the element to a variable first.
+> A member procedure called on an element of an array of the UDT, such as `a(1).Sum` or `a(1).Diff(a(2))`, ends the program with an access violation, in 32-bit and 64-bit builds. So does a **Type_Conversion** of an element, explicit or implicit, as in `CStr(a(1))`, `s = a(1)` or `Debug.Print a(1)`. This holds for local, static, module-level, dynamic and parameter arrays, and in a **With** block. A variable of the type, a UDT member of another UDT, and an element of an array declared inside a UDT are not affected, nor is **Type_Assignment** on an element, as in `a(1) = 5`. Copy the element to a variable first.
 
 <!-- test: bug udt-method-assign-me-codegen -->
 > [!NOTE] BETA 1034
@@ -127,6 +127,14 @@ twinBASIC extends classic VBA's **Type** in several ways. UDTs remain stack-allo
 | `Type_Assignment` | Assignment operator --- `=` assigns *RHS* to a variable of the type. The signature is `Sub Type_Assignment(ByVal RHS As ...)`, and several overloads with different *RHS* types may coexist. |
 | `Type_Conversion` | Conversion operator --- produces a value of another type from the UDT. The signature is `Function Type_Conversion() As ...`, and several overloads with different return types may coexist. |
 | `Type_DebugView` | Debugger display --- returns a **String** shown in the IDE's variable inspector. |
+
+<!-- test: bug udt-array-element-initialize-not-run -->
+> [!WARNING] BETA 1034
+> **Type_Initialize** does not run for an element of an array of the UDT, or for a UDT that is a member of another UDT. **Type_Terminate** still runs for each of them, on a value that was never initialized, and no error is raised. A variable of the type and a class field of the type are not affected. **ReDim** and **ReDim Preserve** discard elements without running **Type_Terminate**, and an array declared inside a UDT runs neither procedure. Write **Type_Terminate** to do nothing when the members are all zero.
+
+<!-- test: bug udt-two-conversions-variant-codegen -->
+> [!NOTE] BETA 1034
+> A UDT with two or more **Type_Conversion** overloads, none of them `As Variant`, cannot be converted to a **Variant**. `Debug.Print c`, `v = c` and `CVar(c)` are a code generation error that fails the build, and an argument for a `ByVal` **Variant** parameter is error TB5001. A conversion to **String** or **Long**, as in `s = c`, is not affected. Name the target type, as in `CStr(c)`, or add an overload `As Variant`, which a conversion to **Variant** then uses.
 
 **API declarations inside a UDT.** A [**Declare**](Declare) statement inside a **Type** body works as a regular module-level declaration, except that when its first parameter is named `Me` and is the same type as the UDT, calls on a variable of that type pass the variable as the first argument implicitly:
 

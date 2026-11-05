@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "search rows of the IDE's own items show the internal path, and $ alone for an import card"
+  ],
+  "steps": "1. File > New Project..., and type sample 10 in the search box: the row's grey line starts $\\Sample 10.\n2. Search for vbp: the row's grey line reads $.\n3. Search for $: 34 rows are listed.\nControl: a row of a Recent project shows its path."
+}

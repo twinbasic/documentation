@@ -143,6 +143,38 @@ Measured:
   its file is left as it is** (`nearly`: one size, no channel more than 16 levels apart, at most
   0.5% of the pixels apart), reported `unchanged but for a capture's noise`, with a `.noise`
   picture under `--diffs`. The same test decides that a light picture is the dark one.
+- **A picture's two themes say the same.** A shot's passes show one state in two colours, so
+  a picture whose text differs is a wrong state, not the theme, and fails as one of another size
+  does, naming the words on each side, and is not kept (`runJob`, with or without `--svg`). A
+  size alone misses it: Options_ActiveX once showed an import's rows at the dark picture's size.
+  `TEXT_IN_CLIP` reads the page, not the SVG, as each capture is chosen, since the same text wraps
+  and is cut short differently in each theme: each block of text inside the clip, across the shadow
+  roots, with the text boxes' values and each closed select's choice. A line shows where part
+  of it is inside the clip and inside its ancestors' clipping boxes and is on top there, and a
+  block counts all its text once any line of it shows, so a line of code the clip cuts off
+  reads the same in both. A block is `whole` when a line of it shows its full height and half
+  its width, or 40 px of it, and otherwise `cut`. `themeTextDifference`
+  (`scripts/lib/shot-policy.mjs`) ignores white space and refuses only what one side has `whole`
+  and the other shows none of, since Light lays a window out a few pixels differently and a row at
+  the clip's edge shows more in one theme (Paused_Line's `price: 3`, Editor_Panel's `25`). A
+  composite's layer is not read; its parts are, as they are captured. A shot whose words must
+  differ says so in `themeWords`, naming them: First_Run_Options and Menu_Tools_IDEOptions show the
+  theme's own name (`SHOWS_ITS_THEME`). A window taken once has no pair.
+- **The tool's folder is virtual in a picture** (owner). Nothing writes at a drive's root, so
+  `PACKAGE_ROOT` is `TOOL_ROOT`, `.claude\tbshots` in the checkout, and every picture shows it as
+  `SHOWN_ROOT`, `C:\tbshots`, a folder that does not exist (`scripts/lib/shot-root.mjs`).
+  `Lane`'s `onAttach` installs the rewrite before a project loads, and `capture` again, for a
+  page that has reloaded: the DOM's text setters and the page's `TEXTtoHTML`, whose `&#92;` no pattern
+  would find, rewrite what they are given at once, because the console measures a row in the
+  task that writes it and a path 40 characters longer leaves it a line too tall; a
+  MutationObserver on each root takes the rest. A text box's value is rewritten just before each
+  capture and SVG and put back after, so that the page never reads the shown name back and acts on
+  it. A part that starts with a dot may have no slash before it, because Markdown, which draws
+  the import log, reads `\.` as an escape. A capture fails when the real folder is in the page's
+  text, its text boxes, the SVG or a window's texts: what cannot be rewritten is fixed, and the guard
+  is not relaxed. `startTidy` sweeps the folder's `ProjectState` entries; `asTempFolder` allows
+  exactly this one folder outside the temp folder, so two checkouts' shoot_docs runs at once
+  would refuse each other's.
 - **The reference is the picture at `HEAD`, then the file** (owner; `pictureFate` in
   `scripts/lib/shot-revision.mjs`). Compared with the file alone, a picture drifted from
   `HEAD` over the runs of one retake, each step within noise of the file before it, and a run
@@ -257,9 +289,11 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
   alone), `programs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
-  Chrome, not an IDE), `featuremap`, `code-chapter`, `debugging`, `forms-chapter`, `projects`, `projects-refs`,
-  `projects-start`, `customcontrols`, `code` and `sample9` (all described
-  below). A setup is `{name, start, prepare}`.
+  Chrome, not an IDE), `featuremap`, `tour`, `code-chapter`, `debugging`, `forms-chapter`, `projects`, `projects-refs`,
+  `projects-start`, the `building`, `starting` and `troubleshooting` setups, `customcontrols`, `code` and `sample9` (all described
+  below). A setup is `{name, start, prepare}`, with `closing` to read what only its page can say
+  before the IDE ends, `end` to check or give back what it holds after, and `noPage` for a setup with
+  no IDE page, whose `start` returns a stand-in for the connection and whose shots are `once`.
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
 - **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE in a slot of its own from
@@ -309,7 +343,9 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
 ## Standing rules for what a picture shows (owner)
 
 - **A state is reproduced as the IDE reaches it, never by editing what it draws.** The tool
-  inspects the IDE's page first to see how a state can be reached.
+  inspects the IDE's page first to see how a state can be reached. An image taken from the files
+  under `ide/`, such as a badge's, counts as reached the way the IDE reaches it; what the page's
+  DOM holds must be captured.
 - **A picture of a running program comes from a program written to illustrate what the picture
   depicts, run while the picture is taken.** A running program's window is taken once, as the
   program draws it.
@@ -330,6 +366,17 @@ anchored to an element or code span; Problems is labelled Diagnostics, the panel
 scroll, advanced hover info, inline hints, folding always shown and the debugger's memory figures
 are switched on in the page only; the memory figures, which change from run to run, are fixed in
 the page once real ones are shown, as History's times are.
+
+## The tour
+
+`IDE/Images/IDE_Tour.png` (2560x1760, setup `tour`, fixture `test/shots/forms/` FormsDemo), the picture
+the IDE's landing page opens on, is the whole window in the default layout with `frmMain` in its
+designer, so that the Toolbox and Properties have something to show. Its status bar is in the picture,
+so the compiler is restarted on `licenceKey = ""` as in `community`, and the take fails on any other
+badge. A bar's label stands on the bar and a panel's in its own empty part; the Toolbox and Properties
+are full, so theirs stand on the ground round the form, each with an arrow. The anchors are read from
+the page, so that the labels follow the layout. `IDE/Images/IDE.png`, the window with no project, is
+now on First Launch.
 
 ## The "Writing code" chapter
 
@@ -507,8 +554,8 @@ Six setups, their fixtures under `test/shots/building/`, copied from the Buildin
 minute (so that a second build finds its file in use), `ax` is ShotActiveX, an ActiveX DLL whose
 class has GUIDs of its own (`B01D...B001` to `B003`, not the lanes', so that a lane and a shot run
 at once never share a registration), and `pkg` is MyPackage, a PRIVATE package. Each project is
-staged in a folder of the tool's own on `PACKAGE_ROOT` named for its setup (`C:\tbshots\Building`
-and so on), with the templates' build path, so that a console line names no user; the setup's
+staged in a folder of the tool's own on `PACKAGE_ROOT` named for its setup (shown as
+`C:\tbshots\Building` and so on), with the templates' build path, so that a console line names no user; the setup's
 `end` removes the folder once its IDE has ended. Its 14 pictures
 are under `docs/IDE/Building/Images/`.
 
@@ -557,6 +604,114 @@ are under `docs/IDE/Building/Images/`.
   IDE's own `showModalNotification` with the success text. The pane floats at the bottom left, out
   from behind the boxes.
 
+## The "Starting a project" chapter
+
+Four setups, their fixtures under `test/shots/starting/`: `Throwaway` is the Starting lanes'
+`test/ide/probes/starting`, `Ledger` (a form, a module and a class, no manifest) and `Missing` (a
+`.vbp` naming `Gone.bas`) come from the trial's cases C, G and K. The `.vbp` fixtures are staged
+with CRLF, and every project is in a folder of the tool's own on `PACKAGE_ROOT`, named for its
+setup, which the setup's `end` removes. Its 14 pictures are under `docs/IDE/Starting/Images/`.
+
+- **`starting-first-run`**: the licence agreement, the reporting question and the first-run IDE
+  Options. The IDE reads `--no-save-ide-settings` in `parseCommandLine`, after those dialogs, so
+  they run over the guard of `scripts/lib/shot-first-run.mjs`, in from the document's start
+  (`Page.addScriptToEvaluateOnNewDocument`, then `Page.reload`), in front of the defaults hook:
+  it answers the three first-run keys, and records and blocks every `SaveIDESetting` and every
+  other call that writes or ends the IDE. A second proxy under the hook records any of those
+  that reached it. The setup's `end` prints the record, and fails on an entry in `through` or on a
+  changed hash of `IDESettings` (`settingsHash`, `reg query` read in memory, nothing written).
+- **The guard's answers follow a real call to the host.** The page reads its theme files by host
+  calls made before it asks for `GENERAL`, and the host answers in order, so a first start draws
+  its dialogs in the theme. An answer made in the page alone overtakes those reads:
+  `buildThemeData` finds no theme, and the dialogs have no frame and no background.
+- **Each take makes a first start and ends with a page past it** (`SETTLED`: agreed, reporting
+  off), however it goes, so that no first-run page runs on. The reporting question is answered
+  **NO**: it leads to the same IDE Options, and `g_ErrorReporting` is never set.
+- **Light**: a first start is always in the dark theme, so the Light picture is that dialog with
+  the theme switched by its own command at the agreement, which is why the IDE Options read
+  Light. The clip is the dialog and 40 CSS px of the banner round it.
+- **`starting`**: Enter Licence Key, the search, Recent (VB6) and the three New Project Options
+  boxes, each cancelled, so that no ActiveX project is ever made; the shot checks the licence box
+  is empty. The picker `OpenProjectVBP` is answered from `__shotAnswers`, VB6's list from
+  `__shotVb6Recents` (`PAGE_DEFAULTS`). A box's clip starts at the next whole CSS pixel: it can
+  start half a pixel into the progress box behind it.
+- **`starting-new`**: a new Standard EXE and an import, each made again by its take, since a take
+  leaves the project changed. Its compiler starts on `licenceKey = ""` in the page, as in
+  `community`, and the take fails on any badge but COMMUNITY EDITION. `FormDesignerId` is a new
+  GUID in each new project and the log's first line holds the time, so each is set in the page
+  once the real one shows (`fixDesignerId`, `fixImportTime`). `Title_Unsaved` is a composite of two
+  crops of `#rootMenuText`.
+- **`starting-boxes`**: the compiler's two native boxes, `once: true`, `window: true`, found by
+  `compilerBox` and closed with `BM_CLICK`. Each is a window alone. Over a maximized IDE the box
+  stands on the text of the progress box, and it is unaware of the display's scaling, so PrintWindow
+  draws it at 96 DPI in the corner of a bitmap of its scaled size, black round it (`drawnPart`),
+  where the IDE's window is 1.5x. It is made the active window, and sent `WM_UPDATEUISTATE` to hide
+  its focus cues, which came and went from run to run.
+- **`Damaged_Box`**: `Throwaway` packed, its `Settings` entry moved to the front (impexp writes it
+  last, the IDE first) and the file cut in the middle of its last source, so that `Settings` is
+  read whole: damage inside that entry is an endless loop of the box. It is opened from the
+  tool's own Recent list and closed unsaved, and the take fails if the file changed.
+- **Nothing of a project reaches the registry.** These setups add `AddRecentsList` and
+  `SaveProjectMetaState` to `PAGE_DEFAULTS`' blocked calls.
+
+## The "When something goes wrong" chapter
+
+Two setups, the fixture `test/shots/troubleshooting/Trouble`, the lanes' `test/ide/probes/troubleshooting`
+under another name: `Sub Crash` calls `RtlMoveMemory` with two bad addresses at line 10 of `MainMod`, the
+line the page quotes. Its 8 pictures are under `docs/IDE/Troubleshooting/Images/`.
+
+- **`troubleshooting`**: one IDE, the project in a folder of the tool's own on `PACKAGE_ROOT`, its
+  compiler restarted on `licenceKey = ""` as in `community` (`communityCompiler`), and
+  `AddRecentsList` and `SaveProjectMetaState` blocked as in `starting`. Every take that shows the
+  status bar fails on any licence badge but COMMUNITY EDITION, after its restarts too (`communityBadge`).
+  It calls `defaultLayout` once as it prepares, because `Native_Exception`'s float ends with that
+  call and the call moves Light's panels a device pixel: without it a picture came out one way
+  alone and another after that take.
+- **`Services_Limited_Tooltip`, `Please_Wait`**: `whileConnectHeld`, which `Services_Limited` also
+  uses, restarts with the button and holds one of the page's three `connect` calls. The tooltip's
+  picture holds `lspSocket.connect`, so that FS reads OPERATIONAL and LSP and DEBUGGER Disconnected
+  (LSP reads Connecting only once the call is made), and it shows the badge's own `title` in the
+  replica. Its clip takes in the licence badge whole, which the tooltip stands over, and stops 3 CSS
+  px above the tooltip, since a line of the console is cut there. `Please_Wait` holds `fs.connect`:
+  the box stays at 10.0%, no missing package and no native box needed, and the clip is the editor's
+  width and 190 CSS px above and below the box.
+- **`Crash_Loop`** (the whole window): a restart by the button starts the count again with its one
+  entry, then three kills, each by the pid in `g_CurrentCompilerProcessId` (`killTree`), the first
+  two waiting for the project to be back. The take then has the float and the box together, its
+  console's times set in the page, and ends on the box's OK and Ctrl+F2, about eleven seconds
+  (`leaveSafeMode`). Start is never pressed in Safe Mode.
+- **`Safe_Mode_Bar`** is a composite as `Title_Unsaved` is, the left 474 CSS px of the toolbar over the
+  left 474 of the status bar: in a whole window the box and the badge are at opposite ends and shrink
+  with the page. The box is set in the page, OK is pressed, and each theme's take comes back to win32.
+- **`Native_Exception`**: `Crash` run as a line of the console runs it, the console floated 1060 CSS
+  px wide so that each line is one row. `debugConsoleContent` keeps a row's height from when it was
+  first measured, in whatever width the console had, and draws only the rows that show, so the lines
+  are read from its `dataNodes` and the take calls `recalcCachedItemHeights`, as a resize does, and
+  waits for three rows of one line each. The time and the address differ from run to run and from
+  boot to boot, and are set in the page to the page's values (`fixNativeLine`). The two yellow lines
+  come only from the first exception with `g_TraceMode` off, and it then stays on: the take fails
+  unless there are one red line and two yellow ones, and ends with TRACE mode off by Help's
+  command, with the restart that brings.
+- **Lane.close and the exception.** `Lane.close` counts the console's `NATIVE EXCEPTION` lines and
+  throws; a kill writes none. `Native_Exception` asserts that its own one is the only one and
+  clears the console, and that is the whole allowance: any other exception stays in the console, and
+  `closing` fails the setup on it, since `endRun` only prints what `Lane.close` throws.
+- **`Menu_Help_Trace`**: `menuShot` with `Menu_Help`'s clip, TRACE mode switched by `before` and back
+  by `after`, each with its restart; its `check` fails the picture unless the item reads Enabled with
+  its `codicon-check`.
+- **`Floating_Boxes`**: three messages the IDE gives, sent by `msgBox` in the take. The middle
+  one, `msgBox2` (`msgBox1` is the newest, at the bottom), is the IDE's *Backend compiler seems to be
+  busy* message, the only one here long enough for a click to change what shows; it gets a real
+  click. The boxes last 60 s, so the take closes them with their own close calls.
+- **`closing`** prints `__tbDefaults.reports`. The defaults hook answers `ALLOWERRORREPORTINGV3` no, so
+  `postError` returns at once and the exceptions explain 0: anything else fails the setup, as does
+  a request for the report's address, which CDP's `Fetch` stops and counts, and a JavaScript dialog.
+  A take fails on a dialog too (`noAlert`): an alert cannot be captured.
+- **`troubleshooting-box`** (`noPage`): the lane's copy with `bin\twinBASIC_ide_win32.dll` renamed,
+  `launchOnDesktop` with `IDE_FLAGS`, and `boxPicture` of `starting-boxes`, `once`, `window`. The take
+  fails unless the box's text is the one the page describes; it names `bin\twinBASIC_win64.dll`,
+  which is there. OK ends the process, and one that outlives the box is ended by its pid.
+
 ## Special IDE states
 
 - **`Services_Unavailable`**: the badge in the `no-project` setup. With no project the badge's
@@ -586,7 +741,7 @@ are under `docs/IDE/Building/Images/`.
   the IDE starts another. `Network.setBlockedURLs` does not stop a WebSocket, and throttling the
   page's CPU (`Emulation.setCPUThrottlingRate` 40) holds LIMITED but makes every evaluation time
   out. The shot holds the page's `fs.connect` call of a restart (the toolbar's button) until the
-  capture and then makes it as the IDE did. The restart's DEBUG CONSOLE line names the project's
+  capture and then makes it as the IDE did (`whileConnectHeld`). The restart's DEBUG CONSOLE line names the project's
   folder, under the user's, and Clear does nothing until the compiler is connected, so
   `nameUserAsUserIn(c, ".debugConsoleOuter")` replaces the name there in the page; the console
   is cleared with its button once the compiler is back.
@@ -676,7 +831,7 @@ are under `docs/IDE/Building/Images/`.
 - **`Toolbar_4`**: setup `designer`, the sample run with Start (`context.codeExecuting`) and
   stopped after.
 - **`8d74d820`** (setup `package`) and **Fusion's `569099635`** (setup `fusion`): the paths the
-  console names are on `PACKAGE_ROOT`, `\tbshots` at the root of the temp folder's drive
+  console names are on `PACKAGE_ROOT`, shown as `C:\tbshots`
   (`Lane.open`'s `buildPath`; the fixture's `project.fusionBuildPath` in the staged copy),
   removed at the end unless it was there before.
 - **A Fusion host needs a Fusion reference that holds an ActiveX control.** `settings-fusion`'s
@@ -729,9 +884,10 @@ Taken on BETA 1010, in both themes where the theme shows.
   then renames the user in the page.
 - **`f48a7254`** starts at the question's left edge: the row being ticked shows an animated
   spinner no two captures hold alike. **`e2a65dfe`**: the completion list is the IDE's own
-  (`.debugConsoleEntryIntellisenseBox`), shows types as `...` until the compiler gives them
-  (now and then never: the dot is retyped), and is placed by the list the name before the dot
-  opened unless that is closed first. It is 500 px wide (its CSS); `triggerIntellisense`
+  (`.debugConsoleEntryIntellisenseBox`), shows types as `...` until the compiler gives them,
+  never asks for the row with lazy index 0 (`bugs/completion-row-zero-no-type`: the shot asks for
+  it, and retyping the dot would not help, since the indexes stay), and is placed by the list the
+  name before the dot opened unless that is closed first. It is 500 px wide (its CSS); `triggerIntellisense`
   places it at the text cursor's box as drawn at the time, which is at the dot or, now and then,
   already after it (the picture 1198 px wide against 1184): the shot moves it to where the
   cursor's box stood at the dot (owner).
@@ -748,7 +904,7 @@ Taken on BETA 1010.
 
 - **`16833fae`** (setup `import`): the sample open, and `test/shots/vbp` (ImportDemo: a form,
   a module, `..\Shared\modShared.bas` for `{PARENT-FOLDER}`) staged with CRLF on
-  `PACKAGE_ROOT\Projects` (the path the dialog shows, `C:\tbshots\Projects\ImportDemo\ImportDemo.vbp`),
+  `PACKAGE_ROOT\Projects` (the dialog shows it as `C:\tbshots\Projects\ImportDemo\ImportDemo.vbp`),
   with a `.res` the tool writes (`scripts/lib/res-file.mjs`: three icons and the fixture's
   manifest). The IDE's Open dialog is native, so the take calls `importFileByPath` with the
   file, what the IDE calls with the file chosen; the form's two files are ticked with real

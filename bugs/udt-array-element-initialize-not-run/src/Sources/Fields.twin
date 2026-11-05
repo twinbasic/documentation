@@ -1,0 +1,9 @@
+' A class holding the UDT: its field runs Type_Initialize, the elements of its array do not.
+Class Fields
+    Public u As Counted
+    Private a(2) As Counted
+
+    Public Function Element() As Long
+        Return a(1).X
+    End Function
+End Class

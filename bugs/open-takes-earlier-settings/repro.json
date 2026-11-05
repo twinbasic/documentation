@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "after a DEP / LAA reload and then New Project Options, the next project opened takes the earlier project's whole Settings, silently, and Ctrl+S writes them into its file",
+    "the same steps by an import: a project with LAA off, Import from VBP..., then any project, and closing without a save leaves its file as it was"
+  ],
+  "steps": "1. Have three saved projects: Old.twinproj with Large Address Aware (LAA) set to No, and Newer.twinproj and Target.twinproj with it set to Yes.\n2. Start the IDE and open Old.twinproj: it loads twice, for its LAA.\n3. Open Newer.twinproj.\n4. File > New Project..., Standard EXE, type Zzz as the name, Continue.\n5. Open Target.twinproj: its title bar is its own, with no bullet, nothing is asked, and the IDE holds the Settings of Zzz.\n6. Ctrl+S writes them into Target.twinproj.\nBy an import: open Old.twinproj, close it, Import from VBP..., Continue, close it with Discard Changes, open Target.twinproj.\nControls: New Project Options alone, a reload alone, a new project made while the IDE runs with LAA off, and the open after the one that took the Settings each leave a project its own Settings."
+}

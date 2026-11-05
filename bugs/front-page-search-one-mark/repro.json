@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "two search words in one line of a row lose the first mark"
+  ],
+  "steps": "1. File > New Project..., and type standard console in the search box.\n2. The row's grey line, $\\_Standard EXE#(Console App), marks Console and not Standard.\nControl: words in different lines of a row are each marked."
+}

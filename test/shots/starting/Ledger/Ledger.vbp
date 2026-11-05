@@ -1,0 +1,11 @@
+Type=Exe
+Reference=*\G{00020430-0000-0000-C000-000000000046}#2.0#0#C:\Windows\SysWOW64\stdole2.tlb#OLE Automation
+Form=Form1.frm
+Module=Module1; Module1.bas
+Class=Class1; Class1.cls
+Startup="Form1"
+IconForm="Form1"
+ExeName32="Ledger.exe"
+Name="Ledger"
+CompilationType=0
+OptimizationType=0

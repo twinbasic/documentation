@@ -578,6 +578,111 @@ export function patchUnits(parsed, fix, map) {
   return { text, edits, skipped };
 }
 
+// ---- the built-in keyboard shortcuts ----
+
+const KEY_NAMES = {
+  ARROWUP: "Up",
+  ARROWDOWN: "Down",
+  ARROWLEFT: "Left",
+  ARROWRIGHT: "Right",
+  ESCAPE: "Esc",
+  ENTER: "Enter",
+  SPACE: "Space",
+  TAB: "Tab",
+  BACKSPACE: "Backspace",
+  DELETE: "Delete",
+  INSERT: "Insert",
+  HOME: "Home",
+  END: "End",
+  PAGEUP: "Page Up",
+  PAGEDOWN: "Page Down",
+  CANCEL: "Break",
+  CONTROL: "Ctrl",
+  SHIFT: "Shift",
+  ALT: "Alt",
+};
+// Written as entities, because in a page's markdown these would otherwise mean something.
+const KEY_ENTITIES = { "\\": "&#92;", "*": "&#42;", "&": "&amp;", "|": "&#124;" };
+const kbd = (name) => `<kbd>${KEY_ENTITIES[name] ?? name}</kbd>`;
+
+/**
+ * The built-in group of keyboard shortcuts, `{ command: [key string, ...] }` in the build's
+ * order, read from the syntax tree: `var builtInKeyboardShortcutGroups={"<DEFAULT>":{data:{...}}}`.
+ */
+export function builtInKeymap(parsed) {
+  const prop = (object, name) =>
+    object?.type === "ObjectExpression"
+      ? object.properties.find((p) => (p.key.name ?? p.key.value) === name)?.value
+      : undefined;
+  for (const node of parsed.ast.body) {
+    if (node.type !== "VariableDeclaration") continue;
+    const decl = node.declarations.find((d) => d.id.name === "builtInKeyboardShortcutGroups");
+    const data = prop(prop(decl?.init, "<DEFAULT>"), "data");
+    if (!data) continue;
+    return Object.fromEntries(
+      data.properties.map((p) => [p.key.name ?? p.key.value, p.value.elements.map((e) => e.value)]),
+    );
+  }
+  throw new Error("main.js has no built-in keyboard shortcut group");
+}
+
+/**
+ * A key string as a page writes it: `{ keys, release }`, where `keys` is the key with its
+ * modifiers in <kbd>, and `release` says the string has no {KEYDOWN}, so that it runs when the
+ * key is released. `{ALLEXCEPT}...` has no such form, and the page says what it is in words.
+ */
+export function keyLabel(string) {
+  if (string.startsWith("{ALLEXCEPT}"))
+    return { keys: "every key its `{ALLEXCEPT}` list does not name", release: true };
+  let rest = string;
+  const has = (token) => {
+    if (!rest.startsWith(token)) return false;
+    rest = rest.slice(token.length);
+    return true;
+  };
+  const down = has("{KEYDOWN}");
+  has("{KEYDOWNREPEAT}");
+  const modifiers = [];
+  if (has("{CTRL}")) modifiers.push("Ctrl");
+  if (has("{SHIFT}")) modifiers.push("Shift");
+  if (has("{ALT}")) modifiers.push("Alt");
+  return { keys: [...modifiers, KEY_NAMES[rest] ?? rest].map(kbd).join("+"), release: !down };
+}
+
+/** The table of the Keyboard Shortcuts reference page, one row for each command, by name. */
+export function keymapTable(map) {
+  const rows = Object.keys(map)
+    .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
+    .map((command) => {
+      const labels = map[command].map(keyLabel);
+      const list = (release) =>
+        labels
+          .filter((l) => l.release === release)
+          .map((l) => l.keys)
+          .join(", ");
+      const cell = [list(false), list(true) && `${list(true)}, on release`].filter(Boolean).join("; ");
+      return `| \`${command}\` | ${cell || "none"} |`;
+    });
+  return ["| Command | Keys |", "|---|---|", ...rows].join("\n");
+}
+
+/**
+ * `page` with its keymap table, from the `| Command | Keys |` line to the last row, replaced by
+ * `table`, in the page's own line endings. The table of a page is `.current`.
+ */
+export function pageKeymap(page, table) {
+  const eol = page.includes("\r\n") ? "\r\n" : "\n";
+  const lines = page.split(eol);
+  const start = lines.indexOf("| Command | Keys |");
+  if (start < 0) throw new Error("the page has no | Command | Keys | table");
+  let end = start;
+  while (lines[end + 1]?.startsWith("|")) end++;
+  return {
+    current: lines.slice(start, end + 1).join("\n"),
+    text: [...lines.slice(0, start), ...table.split("\n"), ...lines.slice(end + 1)].join(eol),
+  };
+}
+
 // ---- the fix shape ----
 
 /** A unified diff of two texts' lines, `context` lines around each change; "" when they are equal. */

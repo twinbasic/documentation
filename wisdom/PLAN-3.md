@@ -318,7 +318,7 @@ New findings merge into the existing `staging.md` without disturbing pending rev
 
 - `last_message_id` and `message_count` are read from each thread's frontmatter (emitted by Phase 2) and compared against the file's current values. A thread is **included** for re-extraction iff either field differs from the stored value, or the thread isn't in `processedThreads` at all.
 - `emitted` records the `(target_page, section)` pairs this thread has previously contributed to `staging.md`. The merge step uses this to detect "previously-emitted finding that's no longer in `staging.md`" and emit the `[REFINED?]` marker described above.
-- State is updated only on **successful merge**. A workflow failure mid-pipeline leaves state untouched, so the next run retries the same threads.
+- State is updated only on **successful merge**. A workflow failure mid-pipeline leaves state untouched, so the next run retries the same threads. The merge records every thread the workflow returns in `read`, whether or not it gave an addition; a group whose agent died is not in `read`, so the next run reads it again.
 
 ### Why `last_message_id`, not filesystem mtime
 

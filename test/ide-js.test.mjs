@@ -18,13 +18,17 @@ import { after, before, describe, test } from "node:test";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
   bindings,
+  builtInKeymap,
   checkUnit,
   coverage,
   FixError,
   fixShapes,
+  keyLabel,
+  keymapTable,
   lineDiff,
   NameError,
   namedUnits,
+  pageKeymap,
   parse,
   patchUnits,
   renamedUnitText,
@@ -289,6 +293,56 @@ describe("the fix shape", () => {
       s.diff.split("\n").filter((l) => /^[-+]/.test(l)),
       ["-    let joined = text + len;", "+    let joined = text + len + 1;"],
     );
+  });
+});
+
+describe("the built-in keyboard shortcuts", () => {
+  const MAIN =
+    'var other={};var builtInKeyboardShortcutGroups={"<DEFAULT>":{caption:"{%Default}",data:{' +
+    'tbB_Two:["{KEYDOWN}{KEYDOWNREPEAT}{CTRL}{SHIFT}ARROWLEFT","{KEYDOWN}{SHIFT}{ALT}F8"],' +
+    'tbA_One:["F2","{KEYDOWN}{CTRL}{"],tbD_Text:["&","\\\\","*"],tbC_None:[],' +
+    'tbE_All:["{ALLEXCEPT}ARROWUP|&"]}}};var ideCommands={};\n';
+
+  test("the group is read in the build's order, with no key too", () => {
+    const map = builtInKeymap(parse(MAIN));
+    assert.deepEqual(Object.keys(map), ["tbB_Two", "tbA_One", "tbD_Text", "tbC_None", "tbE_All"]);
+    assert.deepEqual(map.tbA_One, ["F2", "{KEYDOWN}{CTRL}{"]);
+    assert.deepEqual(map.tbD_Text, ["&", "\\", "*"]);
+    assert.deepEqual(map.tbC_None, []);
+    assert.throws(() => builtInKeymap(parse("var other={};\n")), /no built-in keyboard shortcut group/);
+  });
+
+  test("a key string is written by name, its modifiers in the pages' order", () => {
+    assert.deepEqual(keyLabel("{KEYDOWN}{KEYDOWNREPEAT}{CTRL}{SHIFT}ARROWLEFT"), {
+      keys: "<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Left</kbd>",
+      release: false,
+    });
+    assert.deepEqual(keyLabel("{KEYDOWN}{CTRL}{"), { keys: "<kbd>Ctrl</kbd>+<kbd>{</kbd>", release: false });
+    assert.deepEqual(keyLabel("CONTROL"), { keys: "<kbd>Ctrl</kbd>", release: true });
+    assert.deepEqual(keyLabel("{KEYDOWN}CANCEL").keys, "<kbd>Break</kbd>");
+    assert.deepEqual(keyLabel("{KEYDOWN}\\").keys, "<kbd>&#92;</kbd>");
+  });
+
+  test("the table has one row for each command, by name, and says what is odd in words", () => {
+    assert.deepEqual(keymapTable(builtInKeymap(parse(MAIN))).split("\n"), [
+      "| Command | Keys |",
+      "|---|---|",
+      "| `tbA_One` | <kbd>Ctrl</kbd>+<kbd>{</kbd>; <kbd>F2</kbd>, on release |",
+      "| `tbB_Two` | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Left</kbd>, <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F8</kbd> |",
+      "| `tbC_None` | none |",
+      "| `tbD_Text` | <kbd>&amp;</kbd>, <kbd>&#92;</kbd>, <kbd>&#42;</kbd>, on release |",
+      "| `tbE_All` | every key its `{ALLEXCEPT}` list does not name, on release |",
+    ]);
+  });
+
+  test("a page keeps everything round its table, in its own line endings", () => {
+    for (const eol of ["\n", "\r\n"]) {
+      const page = ["# Keys", "", "| Command | Keys |", "|---|---|", "| `old` | x |", "", "## See Also", ""].join(eol);
+      const { current, text } = pageKeymap(page, "| Command | Keys |\n|---|---|\n| `new` | y |");
+      assert.equal(current, "| Command | Keys |\n|---|---|\n| `old` | x |");
+      assert.equal(text, page.replace("`old` | x", "`new` | y"));
+    }
+    assert.throws(() => pageKeymap("# no table\n", ""), /has no \| Command \| Keys \| table/);
   });
 });
 

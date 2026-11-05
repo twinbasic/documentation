@@ -1,0 +1,18 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^FAIL LateBoundTests\\.LateBound_FriendFunction_Raises438: ",
+      "^FAIL LateBoundTests\\.LateBound_FriendProperty_Raises438: ",
+      "^FAIL LateBoundTests\\.LateBound_FriendVariable_Raises438: ",
+      "^FAIL LateBoundTests\\.CallByName_FriendFunction_Raises438: ",
+      "^FAIL Package_FriendFunctionFromTheProject: ",
+      "^FAIL Package_FriendVariableFromTheProject: ",
+      "^PASS LateBoundTests\\.Control_CallByName_PrivateFunction_Raises438$",
+      "^PASS LateBoundTests\\.Control_CallByName_PublicFunction_Works$",
+      "^PASS LateBoundTests\\.Control_EarlyBound_Friend_Works$",
+      "^PASS LateBoundTests\\.Control_ThroughImplements_FriendRaises97$"
+    ]
+  }
+}

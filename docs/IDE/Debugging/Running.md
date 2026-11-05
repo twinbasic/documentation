@@ -59,7 +59,15 @@ What runs first is the project's [Startup Object](../Project-Settings#startup-ob
 - **A form.** The console shows `Executing '[frmMain].StartupShow()'...`, where `frmMain` is the form's name, then the output of the form. The run lasts until every form has closed, and the console shows `[DEBUGGER] Waiting for remaining forms to close...` meanwhile.
 - **(None)**, which an ActiveX DLL can have. **Start** is enabled, but it only writes `[DEBUGGER] No startup object set` to the console, and nothing runs.
 
-**Sub Main** with no procedure called `Main` in the project writes `(compile error: Unrecognized symbol 'Main')` to the console, with no dialog. [Runtime Command Line Args](../Project-Settings#runtime-command-line-args) sets the text that **Command$** returns in the run.
+**Sub Main** with no procedure called `Main` in the project writes a compile error to the console, with no dialog. [Runtime Command Line Args](../Project-Settings#runtime-command-line-args) sets the text that **Command$** returns in the run.
+
+<!-- test: bug start-no-main-error-text -->
+> [!NOTE] BETA 1034
+> The compile error reads `(compile error: Main)`, which does not say that the project has no procedure called `Main`.
+
+<!-- test: bug dll-startup-default-runs-main -->
+> [!NOTE] BETA 1034
+> A project whose `Settings` file names no startup object runs `Main` whatever it builds, although [Project Settings](../Project-Settings#startup-object) shows **Default: (none)** for a DLL. The templates for a DLL and a control name none, so **Start** on a new project of those kinds ends with this compile error. Choose **(none)** in the list to have **Start** say that there is nothing to run.
 
 Every run that ends writes `(time taken: <n>s)`, followed by `[DEBUGGER] global variables have been cleared`. A run that you stop at a pause writes `aborted` in place of the time.
 
@@ -67,12 +75,14 @@ Every run that ends writes `(time taken: <n>s)`, followed by `[DEBUGGER] global 
 
 Start shows no dialog for a compile error, and it opens no panel. The [DIAGNOSTICS](../Code/Diagnostics) panel lists the errors. What the console and the editor show depends on where the error is.
 
-- **In a procedure that `Main` calls.** The console shows `[LINKER] compilation (codegen) error detected in 'Startup.Main' at line #42`, where 42 is the line of the call. The editor opens `Main`'s module and stops at its `Sub` line with the error panel, titled **ERROR OCCURRED**. Nothing in `Main` has run.
-- **In `Main` itself.** No panel opens. The console shows `[LINKER] compilation (codegen) error detected in '{temp_component}.{temp_procedure}' at line #1`, then `(compile error: codegen error; check for compilation errors)`, and the program is idle again.
+- **In a procedure that `Main` calls, an error of syntax**, such as `a = = 1`. The console shows `[LINKER] compilation (codegen) error detected in 'Startup.Main' at line #42`, where 42 is the line of the call. The editor opens `Main`'s module and stops at its `Sub` line with the error panel, titled **ERROR OCCURRED**. Nothing in `Main` has run.
+- **In a procedure that runs, an error of name or member**, such as a name that does not exist (`a = NoSuchThing`) or a member of a `Long`. This holds for a procedure that `Main` calls, a method of a class, and `Form_Load` of the start form. The panel is titled **ERROR OCCURRED** and its description reads `COMPILATION ERROR DETECTED.  CHECK THE DIAGNOSTICS AT LINE #<n>`, where *n* is the line of the error. The editor opens the file of the failing procedure and stops at its `Sub` line. The caller has run up to the call, so what it printed before the call is in the console. The console shows `[LINKER] compilation (codegen) error detected in 'Startup.Helper' at line #1`.
+- **In `Main` itself**, or in a module-level `Const` that `Main` uses. No panel opens. The console shows `[LINKER] compilation (codegen) error detected in '{temp_component}.{temp_procedure}' at line #1`, then `(compile error: codegen error; check for compilation errors)`, and the program is idle again.
+- **In a procedure that nothing calls.** The program runs and ends as usual. The error is in the DIAGNOSTICS panel only.
 
 <!-- test: bug compile-error-reported-as-codegen -->
 > [!NOTE] BETA 1034
-> The panel for a compile error gives the description `COMPILATION (CODEGEN) ERROR AT LINE #42.  PLEASE REPORT THIS ERROR TO https://git.io/JMh6S`, and the line it names is the line of the call, not the line of the error. A compile error in your code is not a defect to report. Read the real error in the DIAGNOSTICS panel and fix it.
+> The panel for a syntax error in a procedure that `Main` calls gives the description `COMPILATION (CODEGEN) ERROR AT LINE #42.  PLEASE REPORT THIS ERROR TO https://git.io/JMh6S`, and the line it names is the line of the call, not the line of the error. A compile error in your code is not a defect to report. Read the real error in the DIAGNOSTICS panel and fix it.
 
 ## Run Or Preview
 
@@ -137,7 +147,7 @@ The next <kbd>F5</kbd> starts a new run of the edited code. At the panel that a 
 
 ## Restarting the compiler
 
-**Restart the compiler** starts a new compiler process and loads the project into it from the IDE's memory, so unsaved edits survive. The console writes `restarting from MEMORY [<path>]`. The IDE clears the Call Stack, the Variables panel, the Memory panel and the list of running processes. It keeps the breakpoints, including those you set since you last saved, and the watches. After a restart, <kbd>F5</kbd> stops again at the same breakpoint, the watches have values again, and a watch that was expanded is still expanded.
+**Restart the compiler** starts a new compiler process and loads the project into it from the IDE's memory, so unsaved edits survive. The console writes `restarting from MEMORY [<path>]`. The IDE clears the Call Stack, the Variables panel, the Memory panel and the list of running processes. It keeps the breakpoints, including those you set since you last saved, and the watches. After a restart, <kbd>F5</kbd> stops again at the same breakpoint, the watches have values again, and a watch that was expanded is still expanded. [Compiler services](../Troubleshooting/Compiler-Services#restart-the-compiler) lists everything a restart keeps and loses, and the ways to cause one.
 
 Closing a project that has unsaved changes asks **You've made changes to this project.  Save now?** and offers **Save**, **Discard Changes** and **Cancel**. Setting or clearing a breakpoint counts as a change. A project with nothing changed closes with no prompt, and the console is cleared.
 

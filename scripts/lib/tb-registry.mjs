@@ -88,6 +88,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { TOOL_ROOT } from "./shot-root.mjs";
 import { findIde } from "./tb-install.mjs";
 
 export const IDE_SETTINGS_KEY = "Software\\VB and VBA Program Settings\\twinBASIC_IDE";
@@ -475,11 +476,14 @@ function deepEnough(key) {
 // A folder prefix has to end in a separator, or tbrun's %TEMP%\tbrun\9346 would
 // also claim %TEMP%\tbrun\93460. And it has to be inside the temp folder, which
 // is the only place the harness creates projects.
+// One folder outside it is allowed, exactly that one: shoot_docs.mjs keeps projects a picture
+// names in TOOL_ROOT (shot-root.mjs), in the checkout.
 function asTempFolder(p) {
   const r = path.resolve(p);
   const tmp = path.resolve(tmpdir());
   const rel = path.relative(tmp, r);
-  if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) {
+  const allowed = r.toLowerCase() === path.resolve(TOOL_ROOT).toLowerCase();
+  if (!allowed && (!rel || rel.startsWith("..") || path.isAbsolute(rel))) {
     throw new Error(`refusing to sweep project entries outside ${tmp}: "${r}"`);
   }
   return r.endsWith(path.sep) ? r : r + path.sep;

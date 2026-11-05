@@ -1,0 +1,201 @@
+' Regression tests for the report, as compile cases: each line that ends in a
+' comment  ' CASE <Name>: <expected>  must give that diagnostic on that line (a
+' code, "error" for any error, or "none"). tbrun --tests checks them.
+' Every line below is legal, so each is "none". A case that fails is the bug: after a
+' Delegate, the compiler no longer knows Friend, ReadOnly, WithEvents, Implements or
+' Inherits, until a procedure, a Declare or an Event has been read.
+
+Interface IThing Extends stdole.IUnknown
+    Sub Foo()
+End Interface
+
+Class BaseClass
+    Public Sub Foo()
+    End Sub
+End Class
+
+Class Thrower
+    Public Event Done()
+End Class
+
+' --- the report on Discord, as it was written
+Class MyClass
+    Private Delegate Function TestDelegate () As Long
+
+    Friend Sub Test()  ' CASE Reported_FriendSub: none
+    End Sub
+
+End Class
+
+' --- the words the Delegate affects
+Class AfterFriendFunction
+    Private Delegate Function D() As Long
+    Friend Function F() As Long  ' CASE After_FriendFunction: none
+    End Function
+End Class
+Class AfterFriendProperty
+    Private Delegate Function D() As Long
+    Friend Property Get P() As Long  ' CASE After_FriendProperty: none
+    End Property
+End Class
+Class AfterFriendVariable
+    Private Delegate Function D() As Long
+    Friend V As Long  ' CASE After_FriendVariable: none
+End Class
+Class AfterReadOnly
+    Private Delegate Function D() As Long
+    Private ReadOnly R As Long = 1  ' CASE After_PrivateReadOnly: none
+End Class
+Class AfterWithEvents
+    Private Delegate Function D() As Long
+    Private WithEvents W As Thrower  ' CASE After_PrivateWithEvents: none
+End Class
+Class AfterImplements
+    Private Delegate Function D() As Long
+    Implements IThing  ' CASE After_Implements: none
+    Private Sub Foo() Implements IThing.Foo
+    End Sub
+End Class
+Class AfterInherits
+    Private Delegate Function D() As Long
+    Inherits BaseClass  ' CASE After_Inherits: none
+End Class
+Module AfterInModule
+    Private Delegate Function D() As Long
+    Private ReadOnly R As Long = 1  ' CASE After_ReadOnlyInModule: none
+End Module
+
+' --- any form of Delegate does it
+Class DelegateSub
+    Private Delegate Sub D()
+    Friend Sub S()  ' CASE Delegate_Sub: none
+    End Sub
+End Class
+Class DelegateCDecl
+    Private Delegate Function D CDecl (ByVal A As Long) As Long
+    Friend Sub S()  ' CASE Delegate_CDecl: none
+    End Sub
+End Class
+Module DelegatePublicInModule
+    Public Delegate Function D() As Long
+    Public ReadOnly R As Long = 1  ' CASE Delegate_PublicInModule: none
+End Module
+
+' --- between the two, these leave it as it is
+Class StillAfterVariable
+    Private Delegate Function D() As Long
+    Private X As Long
+    Friend Sub S()  ' CASE Still_AfterVariable: none
+    End Sub
+End Class
+Class StillAfterConst
+    Private Delegate Function D() As Long
+    Private Const C As Long = 1
+    Friend Sub S()  ' CASE Still_AfterConst: none
+    End Sub
+End Class
+Class StillAfterType
+    Private Delegate Function D() As Long
+    Private Type T
+        A As Long
+    End Type
+    Friend Sub S()  ' CASE Still_AfterType: none
+    End Sub
+End Class
+Class StillAfterEnum
+    Private Delegate Function D() As Long
+    Private Enum E
+        A
+    End Enum
+    Friend Sub S()  ' CASE Still_AfterEnum: none
+    End Sub
+End Class
+Class StillAfterDelegate
+    Private Delegate Function D() As Long
+    Private Delegate Sub E()
+    Friend Sub S()  ' CASE Still_AfterSecondDelegate: none
+    End Sub
+End Class
+Class StillWithAttribute
+    Private Delegate Function D() As Long
+    [Description("x")]
+    Friend Sub S()  ' CASE Still_WithAttribute: none
+    End Sub
+End Class
+
+' --- controls: these do not fail
+Class ClearedBySub
+    Private Delegate Function D() As Long
+    Private Sub First()
+    End Sub
+    Friend Sub S()  ' CASE Cleared_BySub: none
+    End Sub
+    Private ReadOnly R As Long = 1  ' CASE Cleared_StaysCleared: none
+End Class
+Class ClearedByDeclare
+    Private Delegate Function D() As Long
+    Private Declare PtrSafe Function GetTickCount Lib "kernel32" () As Long
+    Friend Sub S()  ' CASE Cleared_ByDeclare: none
+    End Sub
+End Class
+Class ClearedByEvent
+    Private Delegate Function D() As Long
+    Public Event Done()
+    Friend Sub S()  ' CASE Cleared_ByEvent: none
+    End Sub
+End Class
+Class ClearedByFirstFriend
+    Private Delegate Function D() As Long
+    Public Sub First()
+    End Sub
+    Friend Sub Second()  ' CASE Cleared_SecondMember: none
+    End Sub
+End Class
+Class FriendBeforeDelegate
+    Friend Sub S(ByVal Callback As D)  ' CASE Control_FriendBeforeDelegate: none
+    End Sub
+    Private ReadOnly R As Long = 1  ' CASE Control_ReadOnlyBeforeDelegate: none
+    Private Delegate Function D() As Long
+End Class
+Class NoDelegate
+    Private X As Long
+    Friend Sub S()  ' CASE Control_FriendAfterVariable: none
+    End Sub
+End Class
+Class NoDelegateImplements
+    Private X As Long
+    Implements IThing  ' CASE Control_ImplementsAfterVariable: none
+    Private Sub Foo() Implements IThing.Foo
+    End Sub
+End Class
+Class NoDelegateInherits
+    Private X As Long
+    Inherits BaseClass  ' CASE Control_InheritsAfterVariable: none
+End Class
+Class NoDelegateWithEvents
+    Private X As Long
+    Private WithEvents W As Thrower  ' CASE Control_WithEventsAfterVariable: none
+End Class
+Class NoDelegateReadOnly
+    Private X As Long
+    Private ReadOnly R As Long = 1  ' CASE Control_ReadOnlyAfterVariable: none
+End Class
+Class NotAffected
+    Private Delegate Function D() As Long
+    Protected Sub S()  ' CASE Control_ProtectedAfterDelegate: none
+    End Sub
+End Class
+Class NotAffectedStatic
+    Private Delegate Function D() As Long
+    Static Sub S()  ' CASE Control_StaticAfterDelegate: none
+    End Sub
+End Class
+
+' --- the next class starts clean: a Delegate in a Module of the same file
+Module DelegatesHere
+    Public Delegate Function Callback(ByVal X As Long) As Long
+End Module
+Class AfterTheModule
+    Friend Sub S(ByVal C As Callback)  ' CASE Control_NextBlockInTheFile: none
+    End Sub
+End Class

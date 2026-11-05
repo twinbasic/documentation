@@ -1,11 +1,12 @@
 const TYPE_TEXT = 0;
+const TYPE_ANNOUNCEMENT = 5;
 const TYPE_FORUM = 15;
-const TYPE_MAP = { text: TYPE_TEXT, forum: TYPE_FORUM };
+const TYPE_MAP = { text: TYPE_TEXT, announcement: TYPE_ANNOUNCEMENT, forum: TYPE_FORUM };
 
 function shouldInclude(channel, config, explicitIds) {
   if (explicitIds?.length) return explicitIds.includes(channel.id);
 
-  const allowed = (config.channels.include_types || ["text", "forum"]).map((t) => TYPE_MAP[t]);
+  const allowed = (config.channels.include_types || ["text", "announcement", "forum"]).map((t) => TYPE_MAP[t]);
   if (!allowed.includes(channel.type)) return false;
   if (config.channels.exclude_ids?.includes(channel.id)) return false;
 
@@ -21,16 +22,18 @@ export async function discoverChannels(client, config, explicitIds) {
   // Step 1 — full channel list (kept unfiltered for guild.json / Phase 2 tag resolution)
   const allChannels = await client.request(`/guilds/${guildId}/channels`);
   const included = allChannels.filter((c) => shouldInclude(c, config, explicitIds));
-  const textChannels = included.filter((c) => c.type === TYPE_TEXT);
+  const textChannels = included.filter((c) => c.type === TYPE_TEXT || c.type === TYPE_ANNOUNCEMENT);
   const forumChannels = included.filter((c) => c.type === TYPE_FORUM);
   process.stderr.write(`[wisdom] Channels: ${textChannels.length} text, ${forumChannels.length} forum\n`);
 
-  // Step 2 — active threads (guild-wide endpoint; bot-only, skipped for user tokens)
-  const forumIds = new Set(forumChannels.map((c) => c.id));
+  // Step 2 — active threads (guild-wide endpoint; bot-only, skipped for user tokens).
+  // Any of these channels can hold threads, not only a forum.
+  const parents = [...textChannels, ...forumChannels];
+  const parentIds = new Set(parents.map((c) => c.id));
   let activeThreads = [];
   try {
     const activeData = await client.request(`/guilds/${guildId}/threads/active`);
-    activeThreads = (activeData.threads || []).filter((t) => forumIds.has(t.parent_id));
+    activeThreads = (activeData.threads || []).filter((t) => parentIds.has(t.parent_id));
     process.stderr.write(`[wisdom] Active threads: ${activeThreads.length}\n`);
   } catch (err) {
     if (/403/.test(err.message)) {
@@ -40,13 +43,13 @@ export async function discoverChannels(client, config, explicitIds) {
     }
   }
 
-  // Step 3 — archived threads (per forum channel, paginated)
+  // Step 3 — archived threads (per channel, paginated)
   const archivedThreads = [];
-  for (const forum of forumChannels) {
+  for (const parent of parents) {
     try {
       let before = null;
       while (true) {
-        let path = `/channels/${forum.id}/threads/archived/public?limit=100`;
+        let path = `/channels/${parent.id}/threads/archived/public?limit=100`;
         if (before) path += `&before=${encodeURIComponent(before)}`;
         const data = await client.request(path);
         const batch = data.threads || [];
@@ -57,7 +60,7 @@ export async function discoverChannels(client, config, explicitIds) {
       }
     } catch (err) {
       if (/403/.test(err.message)) {
-        process.stderr.write(`[wisdom] No access to #${forum.name}; skipping\n`);
+        process.stderr.write(`[wisdom] No access to #${parent.name}; skipping\n`);
       } else {
         throw err;
       }
@@ -75,7 +78,7 @@ export async function discoverChannels(client, config, explicitIds) {
   }
 
   // Filter by minimum message count
-  const minCount = config.threads?.min_message_count ?? 2;
+  const minCount = config.threads?.min_message_count ?? 0;
   const filtered = threads.filter((t) => (t.message_count ?? 0) >= minCount);
   const skipped = threads.length - filtered.length;
   if (skipped) {

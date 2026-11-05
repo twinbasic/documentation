@@ -68,6 +68,7 @@ Public MyVar, YourVar, ThisVar As Integer
 
 - [**Dim** statement](Dim)
 - [**Private** statement](Private)
+- [**Friend** statement](Friend)
 - [**Static** statement](Static)
 - [**Option** statement](Option)
 - [**ReDim** statement](ReDim)

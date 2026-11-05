@@ -1,0 +1,11 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "with --no-save-ide-settings, closing the New / Open Project dialog calls SaveIDESetting for NEWFRONTPAGE all the same",
+    "with --no-save-ide-settings, a change in the Object Browser calls SaveIDESetting for OBJECT_BROWSER all the same",
+    "with --no-save-ide-settings, saving the publisher's details calls SaveIDESetting for PUBLISHER all the same",
+    "--no-save-ide-settings is read only after the first-run questions: the licence answers are saved with it on the command line"
+  ],
+  "steps": "With --no-save-ide-settings on the command line, and a proxy in front of the host object that records each SaveIDESetting call and drops it:\n1. Cancel in the New / Open Project dialog calls SaveIDESetting for NEWFRONTPAGE.\n2. A change of view in the Object Browser calls it for OBJECT_BROWSER.\n3. savePublisherInfo calls it for PUBLISHER.\n4. On a first run g_DontSaveIdeSettings is still false at the licence agreement, and I AGREE calls it for LICENCEAGREEMENTV3 and ALLOWERRORREPORTINGV3.\nControl: a build target chosen for a saved project is not saved."
+}

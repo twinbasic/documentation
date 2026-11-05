@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:troubleshooting",
+  "tests": [
+    "Close Project, Save, and a save that fails drops the close: the project stays open and changed, and the reader must close again"
+  ],
+  "steps": "1. Open a saved project and type something in a source file.\n2. Make the .twinproj read-only.\n3. File > Close Project, and press Save on the question.\n4. An alert says save project failed, ERROR_ACCESS_DENIED. After OK the project is still open and marked changed, and nothing has asked what to do about the close.\nControl: the same with a file that can be written saves it and closes the project."
+}

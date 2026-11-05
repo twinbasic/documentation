@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "a project damaged inside its Settings entry shows the bad file format box again after every OK"
+  ],
+  "steps": "1. Copy a saved project, and cut the copy in the middle of its Settings entry.\n2. File > Open Project..., the copy.\n3. OK on the box *bad file format*: the box comes back.\n4. It goes on coming back, with Please wait... on the page and no project. The test counts six boxes, then ends the IDE by its pid."
+}

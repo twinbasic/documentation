@@ -21,16 +21,20 @@ import { die, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "..
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
   buildOf,
+  builtInKeymap,
   checkUnit,
   coverage,
   emptyMap,
   FixError,
   fileView,
   fixShapes,
+  keymapTable,
+  lineDiff,
   load,
   mainJsOf,
   NameError,
   namedUnits,
+  pageKeymap,
   parse,
   patchUnits,
   scopes,
@@ -44,8 +48,9 @@ import { findIde } from "./lib/tb-install.mjs";
 exitOnCrash();
 
 const DEFAULT_MAP = path.join(REPO_ROOT, "scripts", "ide-js", "names.json");
+const KEYMAP_PAGE = path.join(REPO_ROOT, "docs", "IDE", "Reference", "Keyboard-Shortcuts.md");
 
-const USAGE = `usage: node scripts/ide_js.mjs <command> [arguments] [--ide <install>] [--map <names.json>] [--out <file>] [--copy-to <dir>] [--all] [--json] [-h, --help]
+const USAGE = `usage: node scripts/ide_js.mjs <command> [arguments] [--ide <install>] [--map <names.json>] [--out <file>] [--copy-to <dir>] [--all] [--json] [--check] [--update] [-h, --help]
 
 Reads, names and patches the twinBASIC IDE's minified ide/main.js. A unit is a
 top-level function ("debugOutputPartial") or a method of a top-level class
@@ -75,6 +80,9 @@ Commands:
                             its twinBASIC.exe; --out <file> writes main.js only
   shape <fix.js>            the fix shape: each unit of the fix as the build has
                             it and as fixed, a diff in our names, as markdown
+  keymap                    --ide's built-in keyboard shortcuts, as the table of
+                            docs/IDE/Reference/Keyboard-Shortcuts.md; --check
+                            compares the page with it, --update writes it there
 
 Options:
   --ide <install>   the install: its twinBASIC.exe, its folder or a main.js
@@ -86,6 +94,8 @@ Options:
   --copy-to <dir>   patch: the folder for the patched copy, under the temp folder
   --all             view: the whole file
   --json            survey, units, check: one JSON object
+  --check           keymap: compare the page's table with the build
+  --update          keymap: write the build's table into the page
   -h, --help        print this text and exit
 
 Exit codes:
@@ -93,7 +103,7 @@ Exit codes:
   1  a finding: check, a name is lost; survey, a byte the token list does not
      account for; patch, shape, a fix that does not apply to the build (a unit
      it names is missing, a name in it is one of the build's minified names, or
-     the patched unit is not the fix)
+     the patched unit is not the fix); keymap --check, the page differs
   2  a refused command line, an install or a file that cannot be read, a main.js
      or fix that does not parse, a name the map may not take, a refused --out or
      --copy-to, or a crash`;
@@ -111,6 +121,7 @@ const COMMANDS = {
   view: [0, Infinity, ["ide", "map", "out", "all"]],
   patch: [1, 1, ["ide", "map", "out", "copyTo"]],
   shape: [1, 1, ["ide", "map"]],
+  keymap: [0, 0, ["ide", "check", "update"]],
 };
 const COMMAND_ARGS = {
   units: "another install",
@@ -132,6 +143,8 @@ const { values, positionals } = withUsageError(
         "copy-to": { type: "string" },
         all: { type: "boolean", default: false },
         json: { type: "boolean", default: false },
+        check: { type: "boolean", default: false },
+        update: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
       },
       positionals: { min: 0, max: Infinity },
@@ -150,7 +163,7 @@ const [command, ...args] = positionals;
 if (!command) die(2, USAGE);
 if (!(command in COMMANDS)) refuse(`unknown command: ${command}`);
 const [min, max, applies] = COMMANDS[command];
-for (const key of ["ide", "map", "out", "copyTo", "all", "json"]) {
+for (const key of ["ide", "map", "out", "copyTo", "all", "json", "check", "update"]) {
   const given = values[key] !== undefined && values[key] !== false;
   if (given && !applies.includes(key)) refuse(`${FLAG(key)} does not apply to ${command}`);
 }
@@ -160,6 +173,7 @@ const most = command === "view" && values.all ? 0 : max;
 if (args.length < fewest) refuse(`${command} needs ${COMMAND_ARGS[command]}`);
 if (args.length > most) refuse(`unexpected argument: ${args[most]}`);
 if (command === "view" && values.all && !values.out) refuse("view --all needs --out <file>");
+if (values.check && values.update) refuse("keymap takes one of --check and --update");
 if (command === "patch" && !values.out === !values.copyTo)
   refuse("patch needs one of --out <file> and --copy-to <dir>");
 if (command === "name") {
@@ -365,6 +379,27 @@ if (command === "view") {
   if (values.out) writeOut(values.out, out);
   else process.stdout.write(out);
   process.exit(0);
+}
+
+if (command === "keymap") {
+  const { parsed, build } = loadInstall(values.ide);
+  const table = keymapTable(builtInKeymap(parsed));
+  if (!values.check && !values.update) {
+    console.log(table);
+    process.exit(0);
+  }
+  const page = readFileSync(KEYMAP_PAGE, "utf8");
+  const { current, text } = pageKeymap(page, table);
+  const name = path.relative(REPO_ROOT, KEYMAP_PAGE);
+  if (values.update) {
+    writeFileSync(KEYMAP_PAGE, text);
+    console.log(`${name}: ${current === table ? "unchanged" : `written from ${build ?? "the build"}`}`);
+    process.exit(0);
+  }
+  const diff = lineDiff(current, table, { context: 0 });
+  if (diff) console.log(diff);
+  console.log(`${name}: ${diff ? `differs from ${build ?? "the build"}` : `the same as ${build ?? "the build"}`}`);
+  process.exit(diff ? 1 : 0);
 }
 
 // patch and shape

@@ -19,10 +19,10 @@ The commands from **Close Project** to **Clean** work on the open project, and a
 ## Open and close
 
 **New Project...** (<kbd>Ctrl</kbd>+<kbd>N</kbd>) and **Open Recent...**
-: Open the **New / Open Project** dialog, on its **New** section and on its **Recent** section. Nothing is closed until you press **Open** in it. See [New Project](../../Project/New) and [Open a project](../../Projects/Saving-and-Exporting#open-a-project).
+: Open the **New / Open Project** dialog, on its **New** section and on its **Recent** section. Nothing is closed until you press **Open** in it. See [New Project](../../Starting/New-Project) and [Opening projects](../../Starting/Opening-Projects).
 
 **Open Project...** (<kbd>Ctrl</kbd>+<kbd>O</kbd>)
-: Opens a project file, or a `.vbp` file, which is imported as a new project. See [Open a project](../../Projects/Saving-and-Exporting#open-a-project).
+: Opens a project file, or a `.vbp` file, which is imported as a new project. See [Opening projects](../../Starting/Opening-Projects) and [Importing a VB6 project](../../Starting/Importing-VB6).
 
 **Close Project**
 : Closes the project, after a question if it has unsaved changes. It has no key. See [Close Project and Exit](../../Projects/Saving-and-Exporting#close-project-and-exit).

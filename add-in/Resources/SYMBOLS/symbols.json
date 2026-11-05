@@ -150,6 +150,7 @@
     {"name":"Next","package":null,"container":null,"kind":"keyword","url":"/tB/Core/For-Each-Next"},
     {"name":"For","package":null,"container":null,"kind":"statement","url":"/tB/Core/For-Next"},
     {"name":"Next","package":null,"container":null,"kind":"keyword","url":"/tB/Core/For-Next"},
+    {"name":"Friend","package":null,"container":null,"kind":"statement","url":"/tB/Core/Friend"},
     {"name":"Function","package":null,"container":null,"kind":"statement","url":"/tB/Core/Function"},
     {"name":"Get","package":null,"container":null,"kind":"statement","url":"/tB/Core/Get"},
     {"name":"GoSub","package":null,"container":null,"kind":"statement","url":"/tB/Core/GoSub-Return"},

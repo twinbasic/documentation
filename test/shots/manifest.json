@@ -4,11 +4,83 @@
     "Features/Images/017bd6f8-4b35-43a9-b6be-84cba69daf64.png": {
       "build": 1034
     },
+    "Features/Images/021f6cbf-acce-445d-ade7-3fcad0af4927.png": {
+      "png": {
+        "decision": {
+          "keep": "old",
+          "capture": "33a0dda9fbda139fd18f2b454f8b416ee912a88b"
+        }
+      }
+    },
+    "Features/Images/0aeb25f6-d864-4ebb-a9f5-bbd7b5d242e8.png": {
+      "build": 1034
+    },
+    "Features/Images/3fa1cf2b-0af5-44ae-ae6a-3c0662f51f57.png": {
+      "build": 1034
+    },
+    "Features/Images/4829696d-788b-40ee-bebd-5afa44477460.png": {
+      "build": 1034
+    },
+    "Features/Images/4ad9c774-b31d-47d3-9963-6d99ac4f37bb.png": {
+      "build": 1034
+    },
+    "Features/Images/599a66ad-31d5-449f-bbf5-00963fe9aa2a.png": {
+      "build": 1034
+    },
+    "Features/Images/5fc60b7b-4f54-445c-8504-451019b7ec55.png": {
+      "build": 1034
+    },
+    "Features/Images/80185a8d-2952-415f-bc02-ec3ddea89568.png": {
+      "build": 1034
+    },
+    "Features/Images/85f25aa2-abc8-4d42-8510-078f8ee4a324.png": {
+      "build": 1034
+    },
     "Features/Images/IDE-FeatureMap.light.png": {
       "build": 1034
     },
     "Features/Images/IDE-FeatureMap.png": {
-      "build": 1033
+      "build": 1034,
+      "png": {
+        "decision": {
+          "keep": "new",
+          "capture": "b97ebc39f181ff0e324866981c3f4f04d9c06c37"
+        }
+      },
+      "svg": {
+        "decision": {
+          "accept": true,
+          "svg": "2850d9c97829c24d7f71c0f0b320353c17426c64",
+          "png": "b97ebc39f181ff0e324866981c3f4f04d9c06c37"
+        }
+      }
+    },
+    "Features/Images/bc9f3756-a14b-4ee7-b819-6822497b640a.png": {
+      "build": 1034,
+      "png": {
+        "decision": {
+          "keep": "new",
+          "capture": "161946ecc38fc464182ab17fc30189f8b1716999"
+        }
+      }
+    },
+    "Features/Images/fddbffa9-2b71-47f5-b925-e67fc66b9e5c.png": {
+      "build": 1034
+    },
+    "Features/Packages/Images/6ad7a172-0e1b-4276-ac89-042681552507.light.png": {
+      "build": 1034
+    },
+    "Features/Packages/Images/6ad7a172-0e1b-4276-ac89-042681552507.png": {
+      "build": 1034
+    },
+    "Features/Packages/Images/e35d5955-9e70-4d6e-abd7-748558da75ba.png": {
+      "build": 1034
+    },
+    "Features/Packages/Images/e749e10f-e361-4f15-a977-d756fcb3b5dd.light.png": {
+      "build": 1034
+    },
+    "Features/Packages/Images/e749e10f-e361-4f15-a977-d756fcb3b5dd.png": {
+      "build": 1034
     },
     "Features/Packages/Images/f66fb240-dcb7-46ee-896d-78c3789a7876.png": {
       "svg": {
@@ -21,13 +93,31 @@
       "build": 1034
     },
     "IDE/AddIns/Images/Help_Hover.light.png": {
-      "build": 1034
+      "build": 1034,
+      "png": {
+        "decision": {
+          "keep": "old",
+          "capture": "0dc7ba0425596b9219e294b051a42602e4930543"
+        }
+      }
     },
     "IDE/AddIns/Images/Help_Window.light.png": {
       "build": 1033
     },
     "IDE/AddIns/Images/Help_Window.png": {
       "build": 1033
+    },
+    "IDE/Code/Images/Diagnostics_Menu.light.png": {
+      "build": 1034
+    },
+    "IDE/Code/Images/Diagnostics_Menu.png": {
+      "build": 1034
+    },
+    "IDE/Code/Images/Diagnostics_Rows.light.png": {
+      "build": 1034
+    },
+    "IDE/Code/Images/Diagnostics_Rows.png": {
+      "build": 1034
     },
     "IDE/Code/Images/Find_Project.light.png": {
       "build": 1033,
@@ -53,11 +143,80 @@
         }
       }
     },
+    "IDE/Debugging/Images/CallStack_Frames.light.png": {
+      "build": 1034
+    },
+    "IDE/Debugging/Images/CallStack_Frames.png": {
+      "build": 1034
+    },
+    "IDE/Debugging/Images/Error_Panel.light.png": {
+      "build": 1034
+    },
+    "IDE/Debugging/Images/Error_Panel.png": {
+      "build": 1034
+    },
+    "IDE/Debugging/Images/Paused_Line.light.png": {
+      "build": 1034
+    },
+    "IDE/Debugging/Images/Paused_Line.png": {
+      "build": 1034
+    },
+    "IDE/Debugging/Images/Paused_Panels.light.png": {
+      "build": 1034
+    },
+    "IDE/Debugging/Images/Paused_Panels.png": {
+      "build": 1034
+    },
+    "IDE/Forms/Images/Designer_GridOptions.png": {
+      "build": 1034
+    },
     "IDE/Forms/Images/Designer_Locked.light.png": {
       "build": 1033
     },
     "IDE/Forms/Images/Designer_TabIndex.png": {
       "build": 1033
+    },
+    "IDE/Forms/Images/Preview_Window.png": {
+      "build": 1034
+    },
+    "IDE/Images/CallStack.light.png": {
+      "build": 1034
+    },
+    "IDE/Images/CallStack.png": {
+      "build": 1034
+    },
+    "IDE/Images/IDE.light.png": {
+      "build": 1034
+    },
+    "IDE/Images/IDE_Tour.light.png": {
+      "build": 1034
+    },
+    "IDE/Images/IDE_Tour.png": {
+      "build": 1034
+    },
+    "IDE/Images/New_Project.light.png": {
+      "build": 1034
+    },
+    "IDE/Images/New_Project.png": {
+      "build": 1034
+    },
+    "IDE/Images/New_Project_Recent_1.light.png": {
+      "build": 1034
+    },
+    "IDE/Images/New_Project_Recent_1.png": {
+      "build": 1034
+    },
+    "IDE/Images/New_Project_Recent_2.light.png": {
+      "build": 1034
+    },
+    "IDE/Images/New_Project_Recent_2.png": {
+      "build": 1034
+    },
+    "IDE/Images/New_Project_Samples.light.png": {
+      "build": 1034
+    },
+    "IDE/Images/New_Project_Samples.png": {
+      "build": 1034
     },
     "IDE/Images/Webpage.light.png": {
       "build": 1033
@@ -83,6 +242,12 @@
         }
       }
     },
+    "IDE/Menu/Images/Menu_Help_About.light.png": {
+      "build": 1034
+    },
+    "IDE/Menu/Images/Menu_Help_About.png": {
+      "build": 1034
+    },
     "IDE/Projects/Images/Settings_Close.light.png": {
       "build": 1033,
       "svg": {
@@ -103,14 +268,170 @@
         }
       }
     },
+    "IDE/Projects/Images/Title_Changed.light.png": {
+      "build": 1034
+    },
+    "IDE/Projects/Images/Title_Changed.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Damaged_Box.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Error_Reporting.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Error_Reporting.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/First_Run_Options.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/First_Run_Options.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Import_Log.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Import_Log.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Licence_Agreement.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Licence_Agreement.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Licence_Key.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Licence_Key.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Missing_File_Box.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/New_Standard_EXE.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/New_Standard_EXE.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Options_ActiveX.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Options_ActiveX.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Options_Sample.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Options_Sample.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Options_VBP.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Options_VBP.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Recent_VB6.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Recent_VB6.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Search_Results.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Search_Results.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Title_Unsaved.light.png": {
+      "build": 1034
+    },
+    "IDE/Starting/Images/Title_Unsaved.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Crash_Loop.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Crash_Loop.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Floating_Boxes.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Floating_Boxes.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Menu_Help_Trace.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Menu_Help_Trace.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Missing_DLL_Box.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Native_Exception.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Native_Exception.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Please_Wait.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Please_Wait.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Safe_Mode_Bar.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Safe_Mode_Bar.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Services_Limited_Tooltip.light.png": {
+      "build": 1034
+    },
+    "IDE/Troubleshooting/Images/Services_Limited_Tooltip.png": {
+      "build": 1034
+    },
     "Miscellaneous/Images/0e24eb5c-c9af-49a9-a908-03968b211554.light.png": {
       "build": 1034
     },
     "Miscellaneous/Images/0e24eb5c-c9af-49a9-a908-03968b211554.png": {
       "build": 1034
     },
+    "Miscellaneous/Images/2a1c71fd-f81c-4bd3-b61a-0f2979e8961f.png": {
+      "build": 1034
+    },
+    "Miscellaneous/Images/71ddde83-a091-47e3-b5b8-681954b0639d.light.png": {
+      "build": 1034
+    },
+    "Miscellaneous/Images/71ddde83-a091-47e3-b5b8-681954b0639d.png": {
+      "build": 1034
+    },
+    "Miscellaneous/Images/7e1cb69c-6db3-4f3f-aea1-c1fae25938a2.light.png": {
+      "build": 1034
+    },
+    "Miscellaneous/Images/7e1cb69c-6db3-4f3f-aea1-c1fae25938a2.png": {
+      "build": 1034
+    },
     "Miscellaneous/Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png": {
-      "build": 1033
+      "build": 1034
+    },
+    "Tutorials/CustomControls/Images/ccSampleProject.light.png": {
+      "build": 1034
+    },
+    "Tutorials/CustomControls/Images/ccSampleProject.png": {
+      "build": 1034
+    },
+    "Tutorials/WebView2/Images/tbWebView2Sample0.light.png": {
+      "build": 1034
+    },
+    "Tutorials/WebView2/Images/tbWebView2Sample0.png": {
+      "build": 1034
     }
   }
 }

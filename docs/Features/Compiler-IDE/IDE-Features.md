@@ -49,7 +49,7 @@ On the Form Designer, control with `Visible = False` are faded to visually indic
 
 ### New Code-Based Project Explorer
 
-A new code structure based Project Explorer:
+The Project Explorer has a code structure based view, beside the classic file view. [The two views](../../tB/IDE/Projects/Project-Explorer#the-two-views) describes them.
 
 ![The Project Explorer in code-based view, grouping the project into Modules, Forms, Interfaces and User Defined Types, each item beside the file it comes from, above the collapsed VBA, VBRUN and VB packages](../Images/9a5c50d5-a9f8-44a7-96f7-ae84548bd7ef.png){:width="423" height="526"}
 
@@ -59,7 +59,7 @@ The classic file-based view is still used by default, you can activate the new v
 
 ## View Forms and Packages as JSON
 
-Project forms and packages are stored as JSON format data, and you can view this by right-click in Project Explorer and selecting **View As JSON**. This is particularly interesting for packages as it exposes the entire code in a more parseable format.
+Project forms and packages are stored as JSON, and **View As JSON** in the Project Explorer shows that text. For a package, this exposes its code in a form that a program can read. [View as JSON and Markdown preview](../../tB/IDE/Projects/Files-and-Folders#view-as-json-and-markdown-preview) describes the command.
 
 ![The Project Explorer with the Packages folder open, and the right-click menu of CustomControlsPackage with View As JSON highlighted](../Images/22660f54-ff5d-4b21-93d3-39715f1f35ed.png){:width="486" height="409"}
 

@@ -1,0 +1,15 @@
+Module Third
+
+    Public Function Half(ByVal x As Long) As Long
+        Return x \ 2
+    End Function
+
+    Public Function Name_Of_Third() As String
+        Return "the third of the four sources of the probe"
+    End Function
+
+    Public Function Third_Of(ByVal x As Long) As Long
+        Return x \ 3
+    End Function
+
+End Module

@@ -53,5 +53,5 @@ A project holds these top-level folders. The Project Explorer draws all but `Set
 - [Project Settings](../Project-Settings) -- the settings of the project, with a section for each
 - [Writing code](../Code/) -- the editor that opens the code files
 - [Designing forms](../Forms/) -- the designer that opens the form files
-- [New Project](../Project/New) -- making a project from a template, a sample or a folder
+- [Starting a project](../Starting/) -- making a project from a template, a sample or a folder, and opening one
 - [Package Management](../../../Features/Packages/) -- the language side of packages

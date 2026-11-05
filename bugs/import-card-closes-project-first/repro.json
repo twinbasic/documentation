@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "Import from VBP... closes the open project before its picker opens, and cancelling the picker leaves no project and no dialog",
+    "Import from folder... closes the open project before its picker opens, and cancelling the picker leaves no project and no dialog"
+  ],
+  "steps": "1. Open a saved project.\n2. File > New Project..., double-click Import from VBP... (or Import from folder...).\n3. The project closes, then the picker opens. Press Cancel in it.\n4. There is no project and no dialog, and tB Services reads UNAVAILABLE.\nControl: File > Open Project... cancelled, and Browse... cancelled, keep the project."
+}

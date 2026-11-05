@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:troubleshooting",
+  "tests": [
+    "a native exception auto-activates TRACE mode and Help says so, but a second exception in that compiler still prints no dump"
+  ],
+  "steps": "1. Open a project with a Sub that calls RtlMoveMemory with two different bad addresses, such as 16 and 32 (0 and 0 does nothing).\n2. Run that Sub. The DEBUG CONSOLE prints one NATIVE EXCEPTION line and says [IDE] auto-activated TRACE-MODE in this session for extra debugging info on further native exceptions. The Help menu's item reads Compiler services TRACE mode: Enabled.\n3. Run it again: the same one line, numbered 0002, and no dump.\n4. Press Restart the compiler and run it again: the exception line is followed by a line per thread.\nControl: step 4."
+}

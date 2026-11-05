@@ -9,7 +9,7 @@ permalink: /tB/Core/Protected
 Declares a class member (variable, procedure, or property) that is accessible from inside the declaring class and from classes that derive from it via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop), but not from outside callers.
 
 > [!NOTE]
-> The **Protected** access modifier is a twinBASIC extension over classic VBA, which has only **Public**, **Private**, and **Friend**. **Protected** is meaningful only inside an [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop) hierarchy; in a class without inheritance, it behaves like [**Private**](Private).
+> The **Protected** access modifier is a twinBASIC extension over classic VBA, which has only **Public**, **Private**, and [**Friend**](Friend). **Protected** is meaningful only inside an [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop) hierarchy; in a class without inheritance, it behaves like [**Private**](Private).
 
 Syntax:
 
@@ -76,5 +76,6 @@ End Class
 
 - [**Public** statement](Public)
 - [**Private** statement](Private)
+- [**Friend** statement](Friend)
 - [**Class** statement](Class)
 - [Inheritance](../../Features/Language/Inheritance)

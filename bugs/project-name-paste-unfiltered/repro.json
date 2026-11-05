@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:starting",
+  "tests": [
+    "a name pasted into Project Name keeps its space and its dot, and becomes the project's name, title and root folder; it builds with no diagnostic"
+  ],
+  "steps": "1. File > New Project..., double-click Standard EXE.\n2. In Project Name, type My Project.x_1: the box reads MyProjectx_1.\n3. Select the text and paste My Project.x: the box reads My Project.x.\n4. Continue: the project's name, title and root folder are My Project.x, and it builds Build\\My Project.x_win32.exe with no diagnostic.\nControl: typed text is filtered."
+}

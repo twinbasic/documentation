@@ -3653,7 +3653,7 @@ Not tried: a `Property Let` or a method of a class with such a parameter, an `Op
 ## Calling a method or a property of a UDT on an element of an array of that UDT ends in an access violation
 
 **Describe the bug**
-A method or property declared inside a `Type` (a twinBASIC extension), called on an element of an array of that type (`a(1).Sum`, `a(1).Bump`), ends in an access violation: `NATIVE EXCEPTION: ACCESS_VIOLATION` in the IDE run, error -2147467259 in a `[TestCase]`, and 0xC0000005 in a built exe. It happens for a local, static, module-level, dynamic and parameter array, in 32-bit and 64-bit builds, whatever the UDT's size (one byte included) and even when the method does not touch `Me`. The same call on a scalar variable, on a UDT member of another UDT, or on an element of an array declared inside a UDT works. In a build with LLVM the call does not fail, but gives wrong results. Observed with the reproducer's regression tests (`tbrun --tests`), `tbrun` and `tbrun --exe`. Found while documenting the GdiPlus package, where `types(1).CloseSubpath` on the `PathPointType` array that `GraphicsPath.GetTypes` returns, and `pts(1).Diff(pts(2))` on `GpPointF`, end this way.
+A method or property declared inside a `Type` (a twinBASIC extension), called on an element of an array of that type (`a(1).Sum`, `a(1).Bump`), ends in an access violation: `NATIVE EXCEPTION: ACCESS_VIOLATION` in the IDE run, error -2147467259 in a `[TestCase]`, and 0xC0000005 in a built exe. It happens for a local, static, module-level, dynamic and parameter array, in 32-bit and 64-bit builds, whatever the UDT's size (one byte included) and even when the method does not touch `Me`. A `Type_Conversion` procedure, which the compiler calls for you, ends the same way, whether the conversion is explicit (`CStr(a(1))`) or implicit (`s = a(1)`, `Debug.Print a(1)`, an argument for a `String` parameter). The same call on a scalar variable, on a UDT member of another UDT, or on an element of an array declared inside a UDT works. In a build with LLVM the call does not fail, but gives wrong results. Observed with the reproducer's regression tests (`tbrun --tests`), `tbrun` and `tbrun --exe`. Found while documenting the GdiPlus package, where `types(1).CloseSubpath` on the `PathPointType` array that `GraphicsPath.GetTypes` returns, and `pts(1).Diff(pts(2))` on `GpPointF`, end this way.
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -3664,25 +3664,130 @@ Steps to reproduce the behavior:
    Debug.Print "a(1).Sum = " & a(1).Sum
    ```
 2. Run it (F5). `Sub Main` stops with `NATIVE EXCEPTION: ACCESS_VIOLATION` at the line of `a(1).Sum`.
-3. Run its test cases (`node scripts/tbrun.mjs <exported-source-dir> --tests`; BETA 1005 has no way to run them in the IDE): 12 of the 18 fail with `(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)`.
+3. Run its test cases (`node scripts/tbrun.mjs <exported-source-dir> --tests`; BETA 1005 has no way to run them in the IDE): 20 of the 32 fail with `(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)`.
 
 **Expected behavior**
-`a(1).Sum` returns 5, as `p.Sum` does for a scalar `Pair` variable `p`, and `a(1).Bump` increments `a(1).X`. UDT methods are a twinBASIC extension (VB6 has no methods in a `Type`), so there is no VB6 behaviour to compare with.
+`a(1).Sum` returns 5, as `p.Sum` does for a scalar `Pair` variable `p`, and `a(1).Bump` increments `a(1).X`. `CStr(a(1))` calls the `Type_Conversion` of the element, as `CStr(c)` does for a variable. UDT methods are a twinBASIC extension (VB6 has no methods in a `Type`), so there is no VB6 behaviour to compare with.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
+ - twinBASIC compiler version: BETA 1034
 
 **Additional context**
-Each of these fails: a property, a `Sub`, a `Function` that ignores `Me`, and a `Function` that takes a UDT argument (`a(1).Diff(a(2))`); a lower bound of 0 or 1; a variable index; the element as a `With` object; a static array; a dynamic array; a module-level array; and an array parameter (`b(1).Sum` in a procedure that takes `ByRef b() As Pair`); a UDT of one `Byte`. These work: a scalar variable; a UDT member of a UDT (`h.One.Sum`); an element of an array declared inside a UDT (`h.Many(1).Sum`); an element copied to a variable first; and the element's plain fields (`a(1).X`). A UDT passed `ByVal` from an array element is a different defect, with an entry of its own (`udt-array-element-byval-argument-stack`): it needs no method, and the fault comes after the call returns.
+Each of these fails: a property, a `Sub`, a `Function` that ignores `Me`, and a `Function` that takes a UDT argument (`a(1).Diff(a(2))`); a `Type_Conversion`, as `CStr(a(1))`, `s = a(1)`, `Debug.Print a(1)` and as an argument for a `ByVal String` parameter; a lower bound of 0 or 1; a variable index; the element as a `With` object; a static array; a dynamic array; a module-level array; and an array parameter (`b(1).Sum` in a procedure that takes `ByRef b() As Pair`); a UDT of one `Byte`. These work: a scalar variable; a UDT member of a UDT (`h.One.Sum`); an element of an array declared inside a UDT (`h.Many(1).Sum`); an element copied to a variable first; the element's plain fields (`a(1).X`); and a `Type_Assignment`, which an element gets right (`a(1) = 5`). A UDT passed `ByVal` from an array element is a different defect, with an entry of its own (`udt-array-element-byval-argument-stack`): it needs no method, and the fault comes after the call returns.
 
 With LLVM (`tbrun --llvm`): the property of an element of a 32-bit build returns garbage (`17820977` for a UDT holding 5 and 0), and in a 64-bit build returns the right value; in both builds `a(1).Bump` runs but leaves `a(1).X` unchanged, as if it worked on a copy. A scalar variable is right in both. LLVM also cannot compile a method called on an element of an array inside a UDT (`h.A(1).Bump`: "a feature used in your code is not yet supported").
 
 Severity: high for any program that keeps UDTs with methods in an array, which a loop over points or rectangles does: it ends at the first call, with no hint why. Copying the element to a variable first (`e = a(i)`, `e.Sum`) avoids it, for a method that does not change the element.
 
-Not tried: a generic UDT (member procedures are not supported on generic UDTs), a UDT with `Type_Assignment`, an array of arrays, an array of UDTs held in a `Variant`, the call through `Declare` members, and the generated code.
+Not tried: a generic UDT (member procedures are not supported on generic UDTs), an array of arrays, an array of UDTs held in a `Variant`, the call through `Declare` members, and the generated code.
 
-<!-- Reproducer: bugs/udt-array-element-method-call-crash/ (mode test: `tbrun --tests` runs the 18 [TestCase]s of RegressionTests; expect lists the six PASS controls and the twelve FAIL lines with the access violation, 32-bit); verified on BETA 1005 by `bug_repro.mjs verify`, and the same twelve fail with `run --arch win64`. The LLVM and exe results are from scratch probes (p4/p7: scenarios of a Sub per case with a Select Case on a Const), not kept. Pages: docs/Reference/Core/Type.md (after "Member procedures") and docs/Features/Language/UDTs.md (end of "Procedures, Constructors, Destructors, and Operators") carry a WARNING labelled BETA 1005; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus (GpPointF, GpRect, PathPointType); GdiPlus's own landing page should say the same in its section on those types, and the samples that call members on array elements copy the element first. -->
+<!-- Reproducer: bugs/udt-array-element-method-call-crash/ (mode test: `tbrun --tests` runs the 32 [TestCase]s of RegressionTests; expect lists the twelve PASS controls and the twenty FAIL lines with the access violation, 32-bit); verified on BETA 1034 by `bug_repro.mjs verify`, and the same twenty fail with `tbrun --tests --arch win64`. The LLVM results are from scratch probes (p4/p7: scenarios of a Sub per case with a Select Case on a Const), not kept; the exe results for a conversion are from .claude/scratch/udt-conv/gen3.mjs (0xC0000005, 32-bit and 64-bit). Pages: docs/Reference/Core/Type.md (after "Member procedures") and docs/Features/Language/UDTs.md (end of "Procedures, Constructors, Destructors, and Operators") carry a WARNING labelled BETA 1034; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus (GpPointF, GpRect, PathPointType); GdiPlus's own landing page should say the same in its section on those types, and the samples that call members on array elements copy the element first. -->
+
+---
+
+## `Type_Initialize` does not run for the elements of a UDT array or for a UDT member of a UDT, though `Type_Terminate` does
+
+**Describe the bug**
+`Type_Initialize` of a UDT (a twinBASIC extension) runs for a variable, a module-level variable and a class field of the type. It does not run for an element of an array of the type, nor for a UDT that is a member of another UDT, and `Type_Terminate` still runs for each of those, on a value that was never initialized: `Dim t(2) As Counted` runs `Type_Initialize` 0 times and `Type_Terminate` 3 times, with no error. `ReDim` and `ReDim Preserve` also discard elements without running `Type_Terminate`, and an array declared inside a UDT runs neither procedure. Observed with the reproducer's regression tests (`tbrun --tests`) and with the same counts in an IDE run and a built exe (`tbrun --exe`), in 32-bit and 64-bit builds.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-array-element-initialize-not-run.twinproj` (attached as `udt-array-element-initialize-not-run.zip`). Its module `Startup` declares the UDT `Counted`, whose `Type_Initialize` counts its calls and sets `X` to 42, and whose `Type_Terminate` counts its calls. Its `Sub Main` is, in short:
+   ```
+   Private Sub Declared()
+       Dim t(2) As Counted
+   End Sub
+
+   Private Sub Read()
+       Dim t(2) As Counted
+       Debug.Print "t(1).X = " & CStr(t(1).X)
+   End Sub
+
+   Public Sub Main()
+       Inits = 0
+       Terms = 0
+       Declared
+       Debug.Print "Type_Initialize ran " & CStr(Inits) & " times, Type_Terminate " & CStr(Terms) & " times"
+       Read
+   End Sub
+   ```
+2. Run it (F5). It prints:
+   ```
+   Type_Initialize ran 0 times, Type_Terminate 3 times
+   t(1).X = 0
+   ```
+3. Run its test cases (`node scripts/tbrun.mjs <exported-source-dir> --tests`): 14 of the 21 fail, each with `Actual: 0 [Long]`.
+
+**Expected behavior**
+`Type_Initialize` and `Type_Terminate` run in pairs, as they do for a variable: `Dim c As Counted` runs each once. So `Dim t(2) As Counted` runs each 3 times and `t(1).X` is 42, `ReDim Preserve` runs `Type_Initialize` for each new element, `ReDim` and `ReDim Preserve` run `Type_Terminate` for each element they discard, and a UDT inside a UDT is initialized and terminated with the UDT that holds it. UDT lifecycle procedures are a twinBASIC extension, so there is no VB6 behaviour to compare with.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`Type_Initialize` does not run for: an element of a local fixed-size array, of a dynamic array after `ReDim`, of a module-level array, of a `Static` array and of a `Private` array field of a class; an element added by `ReDim Preserve`; a UDT member of a UDT (`h.u`), an element of an array of such a UDT (`t(1).u`), and an element of an array declared inside a UDT (`h.a(1)`). `Type_Terminate` does not run for: an element discarded by `ReDim` or dropped by `ReDim Preserve`, and an element of an array declared inside a UDT. These work: `Type_Initialize` and `Type_Terminate` for a local variable and a class field (`Public u As Counted`), `Type_Initialize` for a module-level variable, and `Type_Terminate` for each element when an array goes out of scope and on `Erase`.
+
+When counting these, keep the reads apart: a procedure that reads a field of an element of a dynamic array (`n = t(1).X`) or of a class field (`n = o.u.X`) runs one more `Type_Initialize` and `Type_Terminate`, on an address that is neither the element's nor the field's, which looks like a hidden temporary of the type. A read of an element of a fixed-size array does not. The reproducer reads and counts in different procedures for this reason.
+
+The array and UDT-member counts are the same with LLVM (`tbrun --llvm`).
+
+Severity: high for a UDT that owns something, which is what the two procedures are for: `Type_Terminate` runs on a handle or pointer that `Type_Initialize` never set, and a resource held by an element `ReDim` discards is leaked. Nothing reports either. A `Type_Terminate` that does nothing when the members are all zero avoids the first: they are zero when it runs on a value `Type_Initialize` did not run for.
+
+Not tried: an array held in a `Variant`, an array passed `ByVal` or returned from a function, `Array(Of T)`, a generic UDT, and the generated code.
+
+<!-- Reproducer: bugs/udt-array-element-initialize-not-run/ (mode test: `tbrun --tests` runs the 21 [TestCase]s of RegressionTests; expect lists the seven PASS controls and the fourteen FAIL lines, 32-bit); verified on BETA 1034 by `bug_repro.mjs verify`, and the same fourteen fail with `tbrun --tests --arch win64`. The exe and LLVM counts and the trace of the hidden temporary are from .claude/scratch/udt-conv/ (gen4.mjs, probes5/trace). Pages: docs/Reference/Core/Type.md (under the table of "Lifecycle and operator hooks") and docs/Features/Language/UDTs.md (end of "Procedures, Constructors, Destructors, and Operators") carry a WARNING labelled BETA 1034; remove it when a fix is released. Found 2026-11-05 while checking a Wisdom draft on Type_Conversion. -->
+
+---
+
+## A UDT with two `Type_Conversion` overloads and none `As Variant` fails code generation when it is converted to a `Variant`
+
+**Describe the bug**
+A UDT with two or more `Type_Conversion` overloads, none of them `As Variant`, compiles with no diagnostic when it is converted to a `Variant`, and the build then fails: `[LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #24`, `[LINKER] FAILED due to compilation errors`, and an IDE run does not start. `Debug.Print c`, `v = c` and `CVar(c)` each do this. The same conversion passed to a `ByVal` `Variant` parameter is reported properly, as TB5001. Observed with `tbbuild --build` and `tbrun`, in 32-bit and 64-bit builds.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-two-conversions-variant-codegen.twinproj` (attached as `udt-two-conversions-variant-codegen.zip`). Its module `Startup` is:
+   ```
+   Public Type Two
+       X As Long
+
+       Private Function Type_Conversion() As String
+           Return "Two " & CStr(Me.X)
+       End Function
+
+       Private Function Type_Conversion() As Long
+           Return Me.X
+       End Function
+   End Type
+
+   Public Sub Main()
+       Dim c As Two
+       c.X = 7
+       Debug.Print c
+   End Sub
+   ```
+2. Compile the project: no diagnostic. Run it (F5) or build it.
+3. The build fails with the two `[LINKER]` lines above.
+
+**Expected behavior**
+A diagnostic in the editor at `Debug.Print c`, as a `ByVal` `Variant` parameter gets: `TB5001 Validation of call to 'TakeV' failed. Argument for 'v': cannot coerce type 'Two' to 'Variant'`. A conversion with more than one candidate and nothing to choose between them is an error in the source, not a failure of the code generator. UDT conversions are a twinBASIC extension, so there is no VB6 behaviour to compare with.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+These fail the same way: `v = c` for a `Variant` `v`, `CVar(c)`, and overloads `As Long` and `As Double`, or three overloads, `As String`, `As Long` and `As Double`. These work: one overload (`Debug.Print c` with one `As Long`, and `v = c` and a `ByVal` `Variant` parameter with one `As String`); one of two overloads `As Variant`, which they then use (`As String` and `As Variant` for all three, `As Long` and `As Variant` for `Debug.Print c`); and a `String` or a `Long` target with no `Variant` overload (`s = c`, `n = c`, `"x" & c`, `CStr(c)`, `CLng(c)`). An element of an array of the UDT does not get this far when the target is named (`CStr(a(1))`), because of the entry above on calling a method on an element, which is a separate defect; `Debug.Print a(1)` gives this code generation error.
+
+The same with LLVM (`tbrun --llvm`). Raised on Discord on 2026-10-21 in "What defines "enhanced-UDT types" -vs- other "normal" UDTs?", with a proper error named there as the preferred result.
+
+Severity: low. The build fails, so it cannot be missed, and it loses nothing, but the message names no cause, and the source line it gives is the one thing to go on. An overload `As Variant`, or naming the target (`CStr(c)`), avoids it.
+
+Not tried: a `Type_Assignment` beside the overloads, a `Variant` target inside a generic procedure, overloads of an object or a UDT type, and the generated code.
+
+<!-- Reproducer: bugs/udt-two-conversions-variant-codegen/ (mode build: tbbuild --build exits 5 and the output names the codegen error in 'Startup.Mainrootmain'); verified on BETA 1034 by `bug_repro.mjs verify`, and the same with `tbbuild --build --arch win64`. The variants are from .claude/scratch/udt-conv/ (gen3.mjs, gen6.mjs). Page: docs/Reference/Core/Type.md (under the table of "Lifecycle and operator hooks") carries a NOTE labelled BETA 1034; remove it when a fix is released. Found 2026-11-05 while checking a Wisdom draft on Type_Conversion. -->
 
 ---
 
@@ -11650,3 +11755,973 @@ Severity: a silent different result. A missing `Set` that VB6 reports at once go
 
 <!-- Reproducer: bugs/let-object-result-stored/ (mode run; expect is the four stored-object lines, the New NoDefault 438 control and the NewWithDefault Long control; the v = c line is left out of expect, because its number is also latebound-hresult-mapping's kind of defect and may be fixed apart); verify reproduces on BETA 1034, and run reproduces it with --ide on BETA 1010, with --arch win64, and in an exe (tbrun --exe on a copy that prints with TbRun.Out). VB6 side in vb6/ (Module1.bas, NoDefault.cls, WithDefault.cls): `bug_repro.mjs vb6` prints the expected block. The compile-time cases, the array element, the Object variables and the class whose default member needs an argument come from scratch probes (twinBASIC with tbrun, VB6 with vb6run.mjs), not kept; 64-bit VBA was run through scripts/lib/vba.mjs in a scratch module, not kept. docs/Reference/Core/Let.md carries a WARNING (BETA 1034) for it; when a fixed build is released, the WARNING goes and the page states which error each case raises. Related: latebound-hresult-mapping (the number a failed late-bound call raises). Found 2026-11-03 in item 12 of the BETA 1034 relabel pass (#2482's object case was such an assignment), narrowed in item 17. -->
 
+---
+
+## The next project opened after a DEP / LAA reload and New Project Options takes the earlier project's whole Settings, silently
+
+**Describe the bug**
+After an open that reloaded the project for its DEP / LAA settings, and then **Continue** in New Project Options, the next project opened in that IDE, of any kind, loads with the whole `Settings` of the project New Project Options made. Its sources and resources are its own. The tree's root shows the earlier name and nothing says so: no message, no Debug Console line, the project is not marked changed, and the title bar shows the opened file's name. **Ctrl+S** then writes those Settings into the file, the project's name, id, startup object, build path and references, so a saved project that was never edited loses its own. It was observed in an IDE with an `APPDATA` of its own, comparing the Settings the IDE holds and the file on disk, key by key.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Have three saved projects: `Old.twinproj`, with *Large Address Aware (LAA)* set to **No** in Project Settings, and `Newer.twinproj` and `Target.twinproj`, with it set to **Yes**.
+2. Start the IDE, cancel the New / Open Project dialog, and open `Old.twinproj`. The IDE starts with LAA on, so the project is loaded twice, which shows only as the progress box starting again.
+3. Open `Newer.twinproj`, which puts the IDE back to LAA on.
+4. **File > New Project...**, double-click **Standard EXE**, type `Zzz` as the Project Name, press **Continue**.
+5. **File > Open Project...**, `Target.twinproj`. The title bar reads `Target.twinproj`, with no bullet, and nothing is asked. The Project Explorer's root is `Zzz`, and Project Settings shows the name `Zzz`, the title `Zzz`, startup object `Form1` and the new project's references and id.
+6. Press **Ctrl+S**. The file on disk now has all of those in place of its own.
+
+With a VB6 import the steps are shorter: open `Old.twinproj`, close it, **File > New Project...**, **Import from VBP...**, **Continue**, close it with **Discard Changes**, open `Target.twinproj`.
+
+**Expected behavior**
+A project opens with the Settings in its file. The Settings from New Project Options belong to the project that dialog made, and to the one load it starts.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Two page variables make it, and the build box plays no part. `g_LastMassagedSettings` is set by every **Continue** of New Project Options. `g_UseLastMassagedSettings` is set by every DEP / LAA reload. The IDE clears the pair only when it uses it, and it uses it at the next project load of any kind, when both are set and no dialog is showing, by answering the compiler's massage request with the whole earlier Settings. So the reload has to come first, and nothing may use up the pair before the open. Step 3 matters: with the IDE left at LAA off, a new project reloads, and that reload uses the pair. An import sets the flags itself, so its steps need no second project.
+
+The opened project can be anything: a saved `.twinproj` with LAA on or off, a `.vbp` from Recent (VB6) or from a row of Recent, or **Import from folder...**. Key by key, 18 keys of `Settings` came from the earlier project and none from the opened one, among them `project.name`, `project.appTitle`, `project.id`, `project.startupObject`, `project.buildPath`, `project.references`, `project.description`, `project.largeAddressAware`, the version numbers and `project.warnings`. Which saved projects set the flag: any that differs from the IDE's current DEP / LAA. A project made by **New** has LAA on, because **Continue** turns it on, so it does not at a start.
+
+What comes out right: New Project Options alone, with no reload before it; a reload alone; a new project made while the IDE runs with LAA off (its own reload uses the pair); the open after the one that took the Settings (the pair is used once); another `.vbp` by the card (the dialog takes precedence). Closing without a save leaves the file as it was.
+
+Severity: high. A wrong project configuration with nothing shown, and the next save replaces the project's own Settings, its id included, with another project's.
+
+<!-- Reproducer: bugs/open-takes-earlier-settings/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "after a DEP / LAA reload and then New Project Options, the next project opened takes the earlier project's whole Settings, silently, and Ctrl+S writes them into its file" and "the same steps by an import: a project with LAA off, Import from VBP..., then any project, and closing without a save leaves its file as it was", with four controls; the projects are packed from test/ide/probes/starting into the lane's work folder). No project and no zip. docs/IDE/Starting/Opening-Projects.md carries a WARNING (BETA 1034) for it; when a fixed build is released, that WARNING goes. Related: laa-mismatch-after-new-project, the same two variables in the other order. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's N2). -->
+
+---
+
+## A recovered project is not marked changed, and Save overwrites the damaged file with what was recovered
+
+**Describe the bug**
+A `.twinproj` whose structure is damaged opens after the compiler's box *bad file format*: *WARNING: failed to deserialize file system. Some files might be lost or truncated.* The project that opens holds only what was read, and is not marked changed. **Ctrl+S** writes it over the damaged file at once, with no question; so do **Add > Import...** and a change in Project Settings that restarts the compiler, with nothing pressed that says Save. What the file still held is gone, and no backup is left beside it. Damage anywhere in the `Sources` tree loses every source, so a project cut after five of its six files opens with none. Damage before the first entry opens as `RECOVERED_PROJECT`, with new Settings. It was observed on copies of a throwaway project saved once by the IDE, comparing the file before and after each step.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Copy a saved project with several sources, and cut the copy in the middle of its second source (any cut, wrong length or wrong kind in the `Sources` tree does it).
+2. **File > Open Project...**, the copy. Press **OK** on *bad file format*.
+3. The project opens under the file's name, not marked changed. Its Settings are kept, and it has no sources.
+4. Press **Ctrl+S**. Nothing is asked, and the file is overwritten: it now holds no sources at all.
+
+Instead of step 4, on a project cut after its sources (`Sources` whole, a resource cut): **Add > Import...**, any text file. The file is overwritten without its resources. Or on the first copy: Project Settings, untick a reference, **Apply Changes**: the file is overwritten as the compiler restarts.
+
+**Expected behavior**
+The damaged file stays as it is until the user chooses to replace it: a recovered project should be marked changed and saved with Save As, or Save should ask first, or a backup of the damaged file should be left beside it. The box should say what was lost.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Closing the project leaves the file as it was, and **Save Project As** to a new name keeps it too: that is the one save that does. Building, running, changing the build box and Restart Compiler leave it as well. After an edit, **Save** in the close question overwrites it. In all 19 kinds of damage tried, opening and closing left the file byte for byte unchanged.
+
+What each damage keeps: a cut in the root's header or at the first entry gives `RECOVERED_PROJECT`, no sources, and new Settings of 114 bytes, the box shows twice because those Settings have LAA off, and **Ctrl+S** leaves a file of 366 bytes. A cut just after `Settings`, or at any file or subfolder of `Sources`, keeps the Settings and no source, even the sources read whole before the cut. A cut in `Resources` keeps every source and loses the resources. A byte flipped inside a source's text shows no box at all, and that source is silently changed. Damage inside the `Settings` entry is the entry *A project damaged inside its Settings shows the bad file format box again after every OK*.
+
+Severity: high. Data is lost: the warning is shown, but it does not say that a save will replace the file, and the save needs no answer.
+
+<!-- Reproducer: bugs/recovered-project-save-overwrites/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "a project cut inside its Sources tree opens with every source gone and is not marked changed, and Ctrl+S overwrites the damaged file with no question", "a project cut at its first entry opens as RECOVERED_PROJECT, and Ctrl+S overwrites the file with that empty project", "Add > Import... in a project cut after its sources overwrites the damaged file, with nothing pressed that says Save" and "a change in Project Settings that restarts the compiler overwrites the damaged file, with nothing pressed that says Save", with a control; every damaged file is a copy, in the lane's work folder, of a project the lane's IDE saved, from test/ide/probes/starting). No project and no zip. docs/IDE/Starting/Opening-Projects.md carries a WARNING (BETA 1034) for it; when a fixed build is released, that WARNING goes. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's N1). -->
+
+---
+
+## A resource whose type is a string imports with an empty name, and the build then ends in an access violation
+
+**Describe the bug**
+Importing a VB6 project whose `.res` holds a resource with a string type (`CUSTOM`, `MYDATA`), with a numeric or a string id, gives a file with an **empty name** in `Resources\<type>`: however many such resources the type has, the Project Explorer shows one blank row, and the IDE reads it as 0 bytes. The import log says `0 ERRORS/WARNINGS`. A save keeps each one's bytes under an empty name. A build then ends in `NATIVE EXCEPTION: ACCESS_VIOLATION` in `twinBASIC_win32.dll`, and no exe is written. It was observed by importing a `.vbp` through the card, reading the tree and the saved file, and building a Standard EXE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Make a Standard EXE `.vbp` with one module and a `.res` compiled from `101 CUSTOM "data.bin"`, and two more resources of the type `CUSTOM`.
+2. **File > New Project...**, **Import from VBP...**, the `.vbp`, **Continue**.
+3. Under `Resources\CUSTOM` the Project Explorer shows one row with no name. `__IMPORT_LOG.md` says `IMPORT FINISHED WITH 0 ERRORS/WARNINGS`.
+4. Save the project, and press Build. The console prints `NATIVE EXCEPTION: ACCESS_VIOLATION {no-basic-code}`, and no exe is written.
+
+**Expected behavior**
+Each resource keeps its id as a file name, as one of a numeric type does (`RCDATA\#201`, `RCDATA\RCNAMED`, `#300\#301`), and the project builds. A project packed by hand with `Resources\CUSTOM\#101`, `CUSTOM\NAMEDRES` and `MYDATA\#401` builds, and the exe holds CUSTOM / 101, CUSTOM / NAMEDRES and MYDATA / 401 with their bytes, so the importer's name is the whole defect.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+It is the type's being a string, not the id and not the word `CUSTOM`: `RT_RCDATA` and a numeric type that is not a standard one are right, with either kind of id. The tree's map for the type has one key, `""`, which is why three resources show as one row. The saved file holds all three, each with its bytes, and a second save after a reopen keeps them. One resource of that shape is enough for the crash. The build's crash turns TRACE-MODE on for the session, the compiler restarts from the file, and the project stays open and unharmed. A build before the first save only asks to save.
+
+Severity: high. The import reports no problem, what the IDE shows is not what the file holds, and the project cannot be built.
+
+<!-- Reproducer: bugs/res-string-type-empty-name/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "a .res resource whose type is a string imports with an empty name, one blank 0-byte row for all of them, and a Standard EXE then ends its build in ACCESS_VIOLATION with no exe", with a control of numeric types that builds, in an IDE of their own, because the crash leaves TRACE-MODE on; the .vbp, .bas and .res are written into the lane's work folder by test/ide/starting-kit.mjs, and the build writes there). impexp refuses to unpack such a project, which the test asserts. No project and no zip. docs/IDE/Starting/Importing-VB6.md carries a WARNING (BETA 1034) for it; when a fixed build is released, that WARNING goes. Deleting or renaming the blank row was not tried. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's N3). -->
+
+---
+
+## After New Project Options, the first open of a saved project with LAA off fails with MISMATCHED LAA OR DEP AWARENESS
+
+**Describe the bug**
+With New Project Options used first and no DEP / LAA reload yet, opening a saved project with *Large Address Aware (LAA)* off fails: *Failed to load the project (error code MISMATCHED LAA OR DEP AWARENESS)*, with **Remove It** and **Keep It**, and no project is open. The file is unchanged, and opening it a second time works. Nothing about the project is wrong, and **Remove It** would take it off Recent. It was observed in an IDE with an `APPDATA` of its own, recording the loads the page starts.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE. **File > New Project...**, **Standard EXE**, **Continue**.
+2. **File > Close Project**.
+3. **File > Open Project...**, a saved project with *Large Address Aware (LAA)* set to **No** in Project Settings.
+4. The box above shows, and tB Services reads UNAVAILABLE. Press **Keep It**.
+5. Open the same project again: it opens.
+
+**Expected behavior**
+The project opens at the first try, as it does when New Project Options has not been used: it is reloaded for its DEP / LAA settings, and that is all.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The same two variables as the entry *The next project opened after a DEP / LAA reload and New Project Options takes the earlier project's whole Settings, silently*, in the other order. The dialog leaves `g_LastMassagedSettings` set, forced to LAA on. The open's own reload sets `g_UseLastMassagedSettings`, and so it sends the earlier Settings, LAA on, to an IDE now running LAA off. That second mismatch is the box. The pair is used up by it, which is why a second open works. The same file with no dialog before it opens at once.
+
+Severity: low. It cannot be missed and loses nothing, but the message blames the project, and its first answer removes it from Recent.
+
+<!-- Reproducer: bugs/laa-mismatch-after-new-project/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "with New Project Options first and no reload yet, opening a saved project with LAA off fails with MISMATCHED LAA OR DEP AWARENESS, and a second open works"; its control is "control: a reload alone, with no New Project Options, opens a project with LAA off and leaves the next project its own Settings"; the project is packed from test/ide/probes/starting into the lane's work folder). No project and no zip. docs/IDE/Starting/Opening-Projects.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Remove It was not clicked. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's N4). -->
+
+---
+
+## A project damaged inside its Settings shows the bad file format box again after every OK
+
+**Describe the bug**
+Opening a `.twinproj` that is cut, or has a wrong length, inside its `Settings` entry shows the compiler's box *bad file format*: *WARNING: failed to deserialize file system. Some files might be lost or truncated.* After **OK** the box comes back, and it goes on coming back. Behind it the page shows *Please wait...* with no close box, the UI is locked, and no project opens. There is no way out on the page: a person has to end the IDE. It was observed in an IDE on a private desktop, pressing **OK** on each box.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Copy a saved project, and cut the copy in the middle of its `Settings` entry.
+2. **File > Open Project...**, the copy.
+3. Press **OK** on *bad file format*. The box comes back about two seconds later.
+4. Go on pressing **OK**. It does not end.
+
+**Expected behavior**
+The box once, then either the failure box the IDE shows for any other file it cannot read (*Failed to load the project*, with **Remove It** and **Keep It**), or a recovered project as for damage elsewhere in the file.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+40 boxes in 88 s were counted, with the page's *Compiler crash loop detected. Restarting in SAFE mode.* logged about every fifth one, and it was still going. `#appOverlay` stays up, `lockUICount` is 1, and the file is unchanged. A cut just after `Settings` opens with the Settings kept and no sources, and a cut before `Settings` opens as `RECOVERED_PROJECT`. Whether the window's close box works during the loop was not tried: nothing was tried from outside the page.
+
+Severity: medium. Nothing is lost, but the IDE has to be ended from outside.
+
+<!-- Reproducer: bugs/damaged-settings-box-loop/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "a project damaged inside its Settings entry shows the bad file format box again after every OK", which counts six boxes, then ends the IDE by its pid, in an IDE of its own, with a timeout of its own; the damaged file is a copy, in the lane's work folder, of a project the lane's IDE saved). No project and no zip. docs/IDE/Starting/Opening-Projects.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's follow-up, point 4; D20). -->
+
+---
+
+## In the New / Open Project dialog, Enter on a button Tab highlighted also opens the selected item
+
+**Describe the bug**
+In the New / Open Project dialog **Tab** moves a highlight over **Browse...**, **Open** and **Cancel** without moving the focus, and **Enter** then presses that button **and** opens the selected item. **Open** runs twice. **Browse...** shows the picker and opens the item. **Cancel** closes the dialog and opens the item: with a saved project open, it closes that project with no question and shows New Project Options, so a person who chose Cancel by keyboard is left without the project. **Enter** on a focused card has a defect of its own: it opens the selected card, not the focused one. It was observed with real keys, recording each call of the page's open.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved project and change nothing.
+2. **File > New Project...**. The focus is in the search box and **Standard EXE** is selected.
+3. Press **Tab** four times. The highlight is on **Cancel**.
+4. Press **Enter**. The project closes, nothing is asked, and New Project Options opens for Standard EXE.
+5. Press **Cancel** there. The IDE is empty, and tB Services reads UNAVAILABLE.
+
+For the card: click **ActiveX DLL**, click in the search box, press **Tab** (the focus is on the **Standard EXE** card), press **Enter**. ActiveX DLL opens.
+
+**Expected behavior**
+**Enter** does what the highlighted button does and nothing else, as a click on it does: **Cancel** keeps the project, as a click on it and **Esc** both do. **Enter** on a focused card opens that card.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+With three **Tab** presses the highlight is on **Open**, and **Enter** calls the open twice: two `closeProjectSafely`, two loads. A real run ended in one project with one options dialog, with no harm. Unsaved edits are not lost: with a changed project the question *You've made changes to this project. Save now?* comes first, and its **Cancel** keeps everything. The same in Samples, and with no project open. **Space** on a focused card selects it, and **Enter** then opens that card.
+
+Severity: medium. Nothing unsaved is lost and the file is as it was, but Cancel closes the open project.
+
+<!-- Reproducer: bugs/new-project-enter-acts-twice/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "with the highlight moved to Open by Tab, Enter runs the open twice", "with the highlight moved to Browse... by Tab, Enter opens the picker and the selected item", "with the highlight moved to Cancel by Tab, Enter closes a saved project with no question and opens the selected card" and "Enter on a focused card opens the selected card, not the focused one", with a control, with real keys). No project and no zip. docs/IDE/Starting/New-Project.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D13). -->
+
+---
+
+## Import from VBP... and Import from folder... close the open project before their picker opens
+
+**Describe the bug**
+In the New / Open Project dialog the cards **Import from VBP...** and **Import from folder...** close the open project first and show their picker afterwards. Cancelling the picker leaves no project and no dialog: the person changed their mind, and the project is gone from the window, with tB Services UNAVAILABLE. It was observed with real clicks, the picker answered with Cancel, recording the order of the calls.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved project.
+2. **File > New Project...**, double-click **Import from VBP...** (or **Import from folder...**).
+3. The project closes, and then the picker opens. Press Cancel in it.
+4. There is no project and no dialog, and tB Services reads UNAVAILABLE.
+
+**Expected behavior**
+The project stays open until a file has been chosen, as with **File > Open Project...** and **Browse...**: cancelling either leaves the project open.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Nothing unsaved is lost: with unsaved edits the question comes first, and its **Cancel** keeps the project (the dialog is gone); after **Discard Changes** and a cancelled picker nothing is left, as the person chose.
+
+Severity: low. The person sees the project go and reopens it.
+
+<!-- Reproducer: bugs/import-card-closes-project-first/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "Import from VBP... closes the open project before its picker opens, and cancelling the picker leaves no project and no dialog" and "Import from folder... closes the open project before its picker opens, and cancelling the picker leaves no project and no dialog", with the control "control: File > Open Project... cancelled, and Browse... cancelled, keep the project"; real clicks, and the pickers answered in the page). No project and no zip. docs/IDE/Starting/New-Project.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D4). -->
+
+---
+
+## The Project Name box filters keys, not text, so a pasted name keeps a space or a dot
+
+**Describe the bug**
+The **Project Name** box of New Project Options takes out of what is typed the characters a project name cannot hold, key by key: a space, a dot, a leading underscore. Text that arrives any other way is not filtered, so a pasted `My Project.x` stands, and becomes `project.name`, `project.description`, `project.appTitle` and the project's root folder. It compiles and builds with no diagnostic, and the exe is named `My Project.x_win32.exe`. It was observed by typing with real keys, and by inserting text as a paste does.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. **File > New Project...**, double-click **Standard EXE**.
+2. In **Project Name**, type `My Project.x_1`. The box reads `MyProjectx_1`.
+3. Select the text and paste `My Project.x`. The box reads `My Project.x`.
+4. Press **Continue**. The project's root folder is `My Project.x`.
+
+**Expected behavior**
+The same filter for text that is pasted as for text that is typed, or a refusal at **Continue**.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+A leading digit is allowed when typed (`9name` stands). `_lead` typed gives `lead`. The project compiled, saved, and built `Build\My Project.x_win32.exe` with no diagnostic shown. No ActiveX build was tried, where the name is also the type library's.
+
+Severity: low. Nothing is lost.
+
+<!-- Reproducer: bugs/project-name-paste-unfiltered/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "a name pasted into Project Name keeps its space and its dot, and becomes the project's name, title and root folder; it builds with no diagnostic", with the control "control: the Project Name box takes out of typed text what a project name cannot hold"; the paste is CDP's Input.insertText, so the clipboard is not touched, and the build writes into the lane's work folder). No project and no zip. docs/IDE/Starting/New-Project.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D7). -->
+
+---
+
+## The New / Open Project dialog has keyboard dead ends
+
+**Describe the bug**
+Three places of the New / Open Project dialog do not answer the keyboard. **Up** and **Down** do nothing in the search box, which has the focus when the dialog opens, so the arrows do not move the selection until the focus has left it. No key reaches the rail, so the section cannot be changed without the mouse. In **Recent**, **Tab** sends the focus to the page's body and then behind the dialog, to a panel header, and from there **Esc**, **Enter** and the arrows all do nothing: the keyboard is lost until a click. It was observed with real keys, reading the focus and the selection after each.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. **File > New Project...**. Press **Down**: the selection stays on **Standard EXE**.
+2. Press **Tab**, and any of **Down**, **Left**, **Up**, **Right** and **Tab**: the section stays **New**.
+3. **File > Open Recent...**. Press **Tab** twice. The focus is on a panel header behind the dialog.
+4. Press **Down**, **Up**, **Enter** or **Esc**. Nothing happens, and the dialog stays. Click in the dialog: the arrows work again.
+
+**Expected behavior**
+**Up** and **Down** move the selection from the search box, as they do in a list with a search box above it. A key reaches the rail. **Tab** stays inside the dialog while it is modal, in **Recent** as in **New**.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+**Tab**, then the arrows, **Enter**, is the way that works with the keyboard alone, in **New** and **Samples** only. In **Recent** the search box is the only focusable element. Typing text and pressing **Esc** also takes the focus out of the box, to the dialog, where the arrows work and wrap.
+
+Severity: low. Nothing is lost, but the dialog cannot be used with the keyboard alone.
+
+<!-- Reproducer: bugs/new-project-keyboard-dead-ends/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "Up and Down do nothing in the search box, which has the focus when the dialog opens", "no key reaches the rail: Tab and the arrows leave the section as it was" and "in Recent, Tab sends the focus out of the dialog, and the keyboard does nothing until a click", with the control "control: Tab, then the arrows, move the selected item in New"; real keys, and the recent list answered in the page). No project and no zip. docs/IDE/Starting/New-Project.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D19). -->
+
+---
+
+## --no-save-ide-settings does not guard three settings, and is read after the first-run questions
+
+**Describe the bug**
+`--no-save-ide-settings` stops most saves of the IDE's settings, each behind `g_DontSaveIdeSettings`, but three are not behind it: `NEWFRONTPAGE` (closing the New / Open Project dialog), `OBJECT_BROWSER` (a change in the Object Browser) and `PUBLISHER` (the Package Publishing sign-in). All three reach the registry whatever the flag says. The flag is also read only when `parseCommandLine` runs, after the first-run questions and IDE Options, so a first run writes `LICENCEAGREEMENTV3`, `ALLOWERRORREPORTINGV3` and `GENERAL`, and every page start writes `ACTIVE_PANEL_LAYOUT_NAME`, `WEBPANEL_SETTINGS` and `GENERAL2`, with the flag on the command line. It was observed through a proxy in front of the host object, which recorded each `SaveIDESetting` call and dropped it, so nothing reached the registry.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE with `--no-save-ide-settings`, with no project.
+2. In the page, wrap `hostAppObject.SaveIDESetting` so that it records its calls.
+3. Press **Cancel** in the New / Open Project dialog. `SaveIDESetting("NEWFRONTPAGE", '{"section":"new"}')` is called, though `g_DontSaveIdeSettings` is true.
+4. Open a project, and change the Object Browser's view: `SaveIDESetting("OBJECT_BROWSER", ...)` is called.
+5. For the order: a first run (no `GENERAL`, `LICENCEAGREEMENTV3` or `ALLOWERRORREPORTINGV3` saved) shows the licence agreement with `g_DontSaveIdeSettings` still false, and **I AGREE** saves `LICENCEAGREEMENTV3` and `ALLOWERRORREPORTINGV3`.
+
+**Expected behavior**
+No save of a setting under the flag, as it says, and the flag read before anything can save. A tool that starts an IDE with it counts on leaving the user's settings alone.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The saves the flag does guard, once `parseCommandLine` has run: `LICENCEAGREEMENTV3`, `ALLOWERRORREPORTINGV3`, `GENERAL`, `GENERAL2`, `LAYOUT`, `LAYOUTv2`, `ACTIVE_PANEL_LAYOUT_NAME`, `WEBPANEL_SETTINGS`, `CUSTOM_PANEL_LAYOUTS`, `CUSTOM_KEYBOARD_SHORTCUT_GROUPS`, `ACTIVE_KEYBOARD_SHORTCUT_GROUPS`, `FORMS_windowsPalette`, `targetArchitectureMemory`, `LicenceKey` and `NEWYEAR_JAN2026_1`. `--no-update-recent-files` has the same gap: **X** on a Recent row calls `RemoveRecentsList`, which that flag does not test.
+
+Severity: low. A person who passes the flag finds three settings changed, and a test harness has to drop those saves itself.
+
+<!-- Reproducer: bugs/no-save-flag-unguarded-saves/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "with --no-save-ide-settings, closing the New / Open Project dialog calls SaveIDESetting for NEWFRONTPAGE all the same", "with --no-save-ide-settings, a change in the Object Browser calls SaveIDESetting for OBJECT_BROWSER all the same", "with --no-save-ide-settings, saving the publisher's details calls SaveIDESetting for PUBLISHER all the same" and "--no-save-ide-settings is read only after the first-run questions: the licence answers are saved with it on the command line", with a control of a guarded key; the guard in test/ide/starting-kit.mjs stands in front of the defaults hook and records and drops every call, so nothing reaches the registry). No project and no zip. No page carries a callout: this is a report for the developers. scripts/lib/tb-defaults.mjs drops the saves of NEWFRONTPAGE and OBJECT_BROWSER for every tool's IDE because of it. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's section 1i). -->
+
+---
+
+## A Recent path with a # shows cut in two
+
+**Describe the bug**
+A row of **Recent** in the New / Open Project dialog shows a path holding `#` in two pieces, cut at the `#`, which is not shown: `C:\dev\C#\app.twinproj` reads `C:\dev\C` over `\app.twinproj`. The row opens the whole path. It was observed with the recent list answered in the page.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project saved at a path with a `#` in it, such as `C:\dev\C#\app.twinproj`, and close it.
+2. **File > Open Recent...**. The row reads `C:\dev\C`, and under it `\app.twinproj`.
+
+**Expected behavior**
+The whole path, as a row of any other path shows. The `#` separates a template folder's name from its second line (`_Standard EXE#(Console App)`), and it means nothing in a project's path.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+**Open** on the row opens the whole path. A search for `c#` finds the row, with nothing marked.
+
+Severity: cosmetic.
+
+<!-- Reproducer: bugs/recent-path-hash-cut/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "a Recent path with a # shows cut in two, at the #, and opens from the whole path", with the control "control: a Recent path with no # shows whole"; the recent list is answered in the page, so no path of the user's is read). No project and no zip. No page carries a callout. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D16). -->
+
+---
+
+## New / Open Project search rows show the internal path
+
+**Describe the bug**
+In the New / Open Project dialog, a search row of one of the IDE's own items shows the internal path the dialog keeps for it, as a line under the name: `$\Sample 10.    twinBASIC IDE Addin` for a sample, with the folder's spaces, and `$` alone for **Import from VBP...**. The `$` can be searched: `$` as a search lists 34 rows. It was observed with real keys.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. **File > New Project...**, and type `sample 10` in the search box. The row's second line reads `$\Sample 10.    twinBASIC IDE Addin`.
+2. Search for `vbp`. The row's second line reads `$`.
+3. Search for `$`. 34 rows are listed.
+
+**Expected behavior**
+No such line for an item with no path a person can use, or the section's name, and no match on the internal prefix.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+A row of a Recent project shows its real path.
+
+Severity: cosmetic.
+
+<!-- Reproducer: bugs/front-page-search-internal-paths/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "search rows of the IDE's own items show the internal path, and $ alone for an import card", with the control "control: a search row of a Recent project shows its path, marked"). No project and no zip. No page carries a callout. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D17). -->
+
+---
+
+## Two search words in one line of a row lose the first mark
+
+**Describe the bug**
+The New / Open Project dialog's search marks the words it found in each line of a row, and when two words are in the same line, only the last is marked. For `standard console`, the row **Standard EXE (Console App)** has its path line marked only at `Console`, though `Standard` is in that line too. It was observed by reading the marks of each row.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. **File > New Project...**, and type `standard console` in the search box.
+2. The row's first line marks `Standard`, its second marks `Console`, and its path line, `$\_Standard EXE#(Console App)`, marks `Console` and not `Standard`.
+
+**Expected behavior**
+Every word found is marked, in each line that holds it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Each line is marked separately, so words in different lines are each marked. A single word is marked wherever it is.
+
+Severity: cosmetic.
+
+<!-- Reproducer: bugs/front-page-search-one-mark/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the test "two search words in one line of a row lose the first mark", with the control "control: search words in different lines of a row are each marked"). No project and no zip. No page carries a callout. Found 2026-11-04 in the trials for the Starting pages (their fact sheet's D18). -->
+
+---
+
+## Cancel in New Project Options of an import leaves the next project's box drawn as an import
+
+**Describe the bug**
+After **Import from VBP...**, **Cancel** in New Project Options leaves the IDE in its import state. The next template's or sample's New Project Options is drawn as an import's, with a *Unicode Common Control Notifications* row and no *Include Common Controls* row, and **Continue** there makes a different project from the one the same card makes: it has no WinNativeCommonCtls reference, its description and title are the template's text and not the name typed in the box, and `runtime.useUnicodeCommonControlNotifications` is set. Nothing says so. It was observed with real clicks, comparing the box's rows and the new project's Settings, key by key, with the same card in a fresh IDE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE. **File > New Project...**, double-click **Import from VBP...**, choose any `.vbp`.
+2. Press **Cancel** in New Project Options.
+3. **File > New Project...**, double-click **Standard EXE**. The box lists *Project Name*, *Option Explicit ON*, *Visual Styles*, *DPI Awareness* and *Unicode Common Control Notifications*. The same for **Samples**, **HelloWorld**.
+4. Type `CardName` as the Project Name, and press **Continue**.
+5. In Project Settings the project's description and title read `New project`, and its references have no WinNativeCommonCtls.
+
+**Expected behavior**
+The box lists *Include Common Controls* and no *Unicode Common Control Notifications* row, as the same card does in a fresh IDE, and **Continue** gives the project it gives there: the WinNativeCommonCtls reference, and `CardName` as the description and the title.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`loadProjectVBP` sets `g_IsLoadingVBP`, and the only clear is inside the **Continue** callback that `showNewProjectOptions` is given. The box's **Cancel** runs `hideModalDialog`, `hideModalProgressIndicator`, `closeProjectNow` and `root.webSocket = undefined`, and `closeProjectNow` does not clear it. So the state holds through any number of Cancels, until a **Continue** in any box, and the next box after that is right.
+
+Compared key by key with the same card in a fresh IDE, the project differs in `project.appTitle`, `project.description`, `project.references` (the WinNativeCommonCtls reference is missing), `runtime.useUnicodeCommonControlNotifications` (set to true, and absent from the other) and, as for any project, `project.id`. The project is otherwise normal: it opens with the template's sources, tB Services reads OPERATIONAL, and it is not marked changed.
+
+**Cancel** in the import's own Windows picker does not do it: the flag stays false, because `loadProjectVBP` has not run, and the next box is right.
+
+Severity: low. The box shows the difference and nothing is lost, but the controls of WinNativeCommonCtls are missing from the new project, and the name typed is not its title.
+
+<!-- Reproducer: bugs/import-cancel-leaves-import-mode/ (mode lane: asserted by `ide-test.bat --only "^starting$"` (test/ide/starting.test.mjs), the tests "after Cancel in New Project Options of Import from VBP..., the next template's box is drawn as an import: a Unicode row, and no Include Common Controls", "after that Cancel, a sample's box is drawn as an import too" and "Continue in that box gives a project with no WinNativeCommonCtls reference, the template's description and title in place of the name, and Unicode Common Control Notifications on; the project is otherwise normal", with four controls: the card and a sample in a fresh page, the box after that Continue, and Cancel in the picker; real clicks, and the picker answered in the page). No project and no zip. docs/IDE/Starting/New-Project.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 by shoot_docs, whose boxes for the ActiveX DLL card and for Sample 1 had the Unicode row and no Include Common Controls row. -->
+
+---
+
+## A failed Save As still moves the project to the new path
+
+**Describe the bug**
+When **File > Save Project As...** fails, the IDE shows its alert, and the project has moved all the same: the title bar and the project's path name the file that was not written, and a plain Save then goes there. While the cause lasts each Save fails with the same alert. Once it has gone the project is written to the new path, and the file the reader opened stays as it was. It was observed by reading the title bar, the page's path and the files on disk.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved project and type something in a source file.
+2. **File > Save Project As...**, and give a path in a folder that does not exist.
+3. The alert reads `save project failed, result code 2, GetLastErr: ERROR_PATH_NOT_FOUND`. The title bar now names the new file, which does not exist.
+4. Press Ctrl+S: the same alert, for the new path.
+5. Make the folder and press Ctrl+S: the project is written there, and the file that was opened is not touched.
+
+**Expected behavior**
+A Save As that fails leaves the project where it was: the title bar and the path keep the old file, and a plain Save goes there.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Save As over a read-only file does the same with `ERROR_ACCESS_DENIED`. A Save As back to the original puts it right. A Save As to a path that can be written is right.
+
+`_RootConnection.saveProjectAs` sets `projectFilePath` and calls `syncTitleBar` in its request's callback without looking at the result. The same callback calls `AddRecentsList`, so by the code the path that failed also goes in the recent list; the lane runs with `--no-update-recent-files`, so that part was not tried.
+
+Severity: low. There is an alert each time and nothing is lost, but a reader who does not look at the title bar is no longer saving the file they opened.
+
+<!-- Reproducer: bugs/failed-save-as-moves-project/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the tests "a failed Save As still moves the project: the title bar and the path name the new file, and a plain Save goes there" and "a failed Save As over a read-only file moves the project too, and Save As back to the original puts it right", with the control "control: Save As to a good path moves the project and writes the file"). No project and no zip. docs/IDE/Troubleshooting/Saving.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's N2). -->
+
+---
+
+## Close Project, Save: a save that fails drops the close
+
+**Describe the bug**
+**File > Close Project** on a changed project asks whether to save. When **Save** is pressed and the save fails, the alert opens, and the close is dropped: the project stays open and changed, the question is not asked again, and the reader must choose Close Project again. It was observed with the project's file read-only.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a saved project and type something in a source file.
+2. Make the `.twinproj` file read-only.
+3. **File > Close Project**, and press **Save** on the question.
+4. The alert reads `save project failed, result code 2, GetLastErr: ERROR_ACCESS_DENIED`.
+5. After OK the project is still open and marked changed, and nothing more happens.
+
+**Expected behavior**
+The IDE asks again, or says that the project was not closed, so that a reader who walked away from a close does not find the project still open with no word of why.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`closeProjectSafely` passes `closeProjectNow` to `askServerToSaveProject` as its callback, and that function shows the alert and calls no callback on a failure. With a file that can be written, the same steps save it and close the project.
+
+Severity: low. Nothing is lost: the file is unchanged and the edit is still in the editor.
+
+<!-- Reproducer: bugs/failed-save-drops-close/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "Close Project, Save, and a save that fails drops the close: the project stays open and changed, and the reader must close again", with the control "control: Close Project, Save, and a save that works closes the project"). No project and no zip. docs/IDE/Troubleshooting/Saving.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's D9). -->
+
+---
+
+## Start in Safe Mode never runs and never ends, and Stop does nothing
+
+**Describe the bug**
+With the build box on **safeMode**, **Start** prints two lines and goes no further: the program does not run and the IDE stays in run mode. **Stop** changes nothing. The second line waits for a background compilation that Safe Mode will never make. Only a restart of the compiler, or a switch of the box, ends it. It was observed by reading the DEBUG CONSOLE and the IDE's run state over 35 s.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project with a `Sub Main`.
+2. Choose **safeMode** in the build box, and press **OK** on the box that opens.
+3. Press **Start**. The DEBUG CONSOLE prints `Executing 'Main'...` and `WARNING: execution delayed; waiting for background compilation to finish`, and nothing more.
+4. Press **Stop**. Nothing changes, and the IDE stays in run mode.
+5. Press **Restart the compiler**: the run ends.
+
+**Expected behavior**
+**Start** is disabled in Safe Mode, or says that a program cannot run there. Failing that, **Stop** ends the wait.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Safe Mode's box says that the services are not started, and yet the status bar reads OPERATIONAL, since the IDE makes all four connections to the compiler. With the box on win32 the same project runs to its end. Saving still works during the wait.
+
+Severity: low. It is plain that nothing runs and nothing is lost, but the message points at a compile that will never come.
+
+<!-- Reproducer: bugs/safe-mode-start-never-runs/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "Start in Safe Mode never runs and never ends, and Stop does nothing; a restart ends it", with the control "control: Start with the box on win32 runs the program to its end"). No project and no zip. docs/IDE/Troubleshooting/Compiler-Services.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's N1). -->
+
+---
+
+## A linked package's missing file gives Restart a bare shutdown box and a wait of about 80 s
+
+**Describe the bug**
+A project references a linked package, and its `.twinpack` file has gone from `%APPDATA%\twinBASIC\packages`. **Restart the compiler** then opens a native box titled `shutdown` that says only `Run-time error '-2147467259'` and `Unspecified error`, naming neither the package nor the file. After **OK** the IDE shows *Please wait...* with no explanation for about 80 s before the compiler is back. Opening the same project shows the reference's error at once. It was observed with a package of the test's own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project that references a linked package, and type something in a source file.
+2. Delete the package's `.twinpack` from `%APPDATA%\twinBASIC\packages`.
+3. Press **Restart the compiler**. About a second later the box opens. The status bar reads LIMITED, and the page *Please wait... 5.0%*.
+4. Press **OK**. About 80 s later the status bar reads OPERATIONAL, the project is back with its edit, and the References view shows the package's row with `ERROR unable to load this reference`.
+
+**Expected behavior**
+The restart reaches that row without the wait, as opening the project does, or a message names the package whose file is missing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The box is opened by `twinBASIC.exe`. Left unanswered it holds the restart: 79 s on the status bar reads UNAVAILABLE and the page *Please wait... 0.0%*, and they stay so. During the wait the window's X asks about the unsaved changes, and **Cancel** there gives the reader the editor, so the text can be copied, but a save does not work until a compiler is back. With the file there, Restart brings the compiler back at once.
+
+This replaces an earlier draft which had the restart never coming back: that run had this box open on a private desktop, where nobody could see it.
+
+Severity: low. Nothing is lost once the box is answered, but the box and the wait say nothing of the cause.
+
+<!-- Reproducer: bugs/missing-linked-package-restart-box/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "a linked package's missing file: Restart opens a box titled shutdown that names neither the package nor the file, and the compiler is back about 80 s after OK, the edit kept", with the control "control: Restart with a linked package's file there brings the compiler back at once"; the package is test/ide/probes/packages/DocProbePkg, in the lane's private APPDATA). No project and no zip. docs/IDE/Troubleshooting/Compiler-Services.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's N4 and point 28). -->
+
+---
+
+## TRACE mode auto-activated by a native exception takes effect only at the next restart
+
+**Describe the bug**
+After a native exception the DEBUG CONSOLE says `[IDE] auto-activated TRACE-MODE in this session for extra debugging info on further native exceptions`, and the Help menu's item reads `Compiler services TRACE mode: Enabled`. The compiler that is running has not been told: a second exception in it prints the same one line, with no dump, and the dump comes only after the compiler has been restarted. Nothing says so. It was observed by raising the same access violation three times.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project with a Sub that calls `RtlMoveMemory` with two different bad addresses, such as 16 and 32. With 0 and 0 it does nothing.
+2. Run that Sub. The console prints one line, `0001 ... NATIVE EXCEPTION: ACCESS_VIOLATION ...`, and the two `[IDE]` lines. Help reads Enabled.
+3. Run it again. The console prints `0002 ... NATIVE EXCEPTION: ACCESS_VIOLATION ...`, and no dump.
+4. Press **Restart the compiler** and run it again. The exception's line is followed by a line per thread: `thread 000A: CompilerOrganizationParsingEnd`, `>>> thread 0008: RuntimeExpressionEvaluationExecutionStart, Crash`, and so on.
+
+**Expected behavior**
+The next exception after "auto-activated" prints the dump, or the line says that the mode starts at the next restart.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`event_output` sets `g_TraceMode` and restarts nothing, and the compiler is told the flag only in `RequestPreInitialize`, at its start. The numbering of the exceptions starts again with each compiler.
+
+Severity: low. It costs only the trace output of the exceptions in between.
+
+<!-- Reproducer: bugs/trace-auto-activate-needs-restart/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "a native exception auto-activates TRACE mode and Help says so, but a second exception in that compiler still prints no dump", with the control "control: after the next restart the same exception prints the dump, a line per thread"). No project and no zip. docs/IDE/Troubleshooting/Diagnostic-Tools.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's D3). -->
+
+---
+
+## With DevTools open, a compiler restart stops at a debugger statement in the IDE's code
+
+**Describe the bug**
+With DevTools open on the IDE's page, a restart of the compiler stops at a `debugger;` statement in the IDE's own code. The compiler has already been ended, so the status bar reads UNAVAILABLE with four `Disconnected` lines, with no *Please wait...* and no line in the DEBUG CONSOLE, and nothing moves. Closing DevTools lets it go on. It was observed by opening DevTools with a key bound to `tbIdeDevTools_Show`, and pressing **Restart the compiler**.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project, and open DevTools.
+2. Press **Restart the compiler**. Nothing moves; DevTools shows the page paused in `restartCompiler`.
+3. Close DevTools, or resume in it. The restart goes on, and the project is back about 3 s later.
+
+**Expected behavior**
+The restart goes on with DevTools open: a shipped build holds no `debugger;` statement in a path a reader can reach.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`restartCompiler` holds the statement just before `isRestarting=true`, so a crash of the compiler and a switch of the build box take the same path. The code has more such statements, in `saveProjectMetaState`'s `.meta` branch and in a dialog's close box. With DevTools closed, Restart brings the compiler back.
+
+Severity: low. Nothing is lost, and a person can press Resume, but a reader who is told to open DevTools to look into a problem meets it at once.
+
+<!-- Reproducer: bugs/devtools-stops-compiler-restart/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "with DevTools open, a compiler restart stops at a debugger statement in the IDE's code until DevTools closes", with the control "control: with DevTools closed, Restart brings the compiler back"; DevTools opens on the lane's private desktop, and the test fails if a new DevTools window shows on the user's). No project and no zip. docs/IDE/Troubleshooting/Diagnostic-Tools.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's N3). -->
+
+---
+
+## With bin\twinBASIC_ide_win32.dll missing, the box names bin\twinBASIC_win64.dll
+
+**Describe the bug**
+When `bin\twinBASIC_ide_win32.dll` is missing from an install, `twinBASIC.exe` opens a box that says it failed to load `bin\twinBASIC_win64.dll`, a file that is not the missing one and that is there. A reader who follows the box looks for the wrong file. It was observed in a copy of the install with the one file renamed.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In a copy of the install, rename `bin\twinBASIC_ide_win32.dll`.
+2. Start `twinBASIC.exe`. A box titled `twinBASIC Compiler` reads `ERROR: failed to load the twinBASIC DLL:`, `bin\twinBASIC_win64.dll`, `The file could not be found.  See https://twinbasic.com/missing` and `The application will now exit.`
+3. Press **OK**: the process ends.
+
+**Expected behavior**
+The box names `bin\twinBASIC_ide_win32.dll`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`twinBASIC.exe` holds the name `bin\twinBASIC_ide_win32.dll` and, in the box's text, a fixed `bin\twinBASIC_win64.dll`; its init call's box names `twinBASIC_win64` the same way. With `bin\twinBASIC_win32.exe` and its variants renamed, the box names that file.
+
+Severity: low. The box shows, and the link is right, but the file it names misleads.
+
+<!-- Reproducer: bugs/launcher-box-names-wrong-file/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting-missing$"` (test/ide/troubleshooting-missing.test.mjs), the test "with bin\\twinBASIC_ide_win32.dll missing, the box names bin\\twinBASIC_win64.dll, which is there", with the control "control: with bin\\twinBASIC_win32.exe and its variants missing, the box names the file and gives the link"; the file is renamed in the lane's own copy of the install). No project and no zip. docs/IDE/Troubleshooting/Missing-Files.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's D1). -->
+
+---
+
+## With bin\twinBASIC_win32.dll missing, a box titled shutdown names no file
+
+**Describe the bug**
+When `bin\twinBASIC_win32.dll` is missing from an install, `twinBASIC.exe` opens a box titled `shutdown` that reads `Run-time error '-353703418'` and `Unable to load DLL`. It names no file and gives no link, where the boxes for its two neighbours name the file and give `https://twinbasic.com/missing`. It was observed in a copy of the install with the one file renamed.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In a copy of the install, rename `bin\twinBASIC_win32.dll`.
+2. Start `twinBASIC.exe`. The box opens.
+3. Press **OK**: the process ends.
+
+**Expected behavior**
+A box like its neighbours': the file that is missing, and the link.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+With `bin\twinBASIC_win32.exe` and its variants renamed, the box names the file and gives the link.
+
+Severity: low. The box shows and nothing is lost, but it does not say what to restore.
+
+<!-- Reproducer: bugs/missing-dll-box-names-no-file/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting-missing$"` (test/ide/troubleshooting-missing.test.mjs), the test "with bin\\twinBASIC_win32.dll missing, a box titled shutdown names no file and gives no link", with the control "control: with bin\\twinBASIC_win32.exe and its variants missing, the box names the file and gives the link"; the file is renamed in the lane's own copy of the install). No project and no zip. docs/IDE/Troubleshooting/Missing-Files.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's N5). -->
+
+---
+
+## With the compiler variant the IDE starts missing, the page goes quiet after one host box
+
+**Describe the bug**
+When `bin\twinBASIC_win32_noDEP_LAA.exe` is missing, the IDE starts, and opening a project gives one box from the host, naming the file. After **OK** the page says nothing at all: *Please wait...* goes, no project opens, nothing retries, there is no line in the DEBUG CONSOLE and no message in the page, and the status bar reads UNAVAILABLE with four `Not initialized` lines for good. It was observed in a copy of the install with the one file renamed.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In a copy of the install, rename `bin\twinBASIC_win32_noDEP_LAA.exe`.
+2. Start the IDE and open a project with Large Address Aware on.
+3. A box titled `twinBASIC IDE` reads `ERROR: failed to load the twinBASIC EXE:`, the file, `The file could not be found.  See https://twinbasic.com/missing` and `Please close the IDE, and restore any missing files.`
+4. Press **OK**. The IDE is left with no project and no message.
+
+**Expected behavior**
+The page says that the compiler could not be started, and keeps saying it, since the one box is gone once it has been answered.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`createCompilerInstance` swallows exceptions and, when the host answers 0, only hides the progress box. The host's check at its own start looks for `twinBASIC_win32.exe` alone, so with only this variant gone the IDE starts.
+
+Severity: low. The box names the file, and nothing is lost, but a reader who has pressed **OK** has nothing left to read.
+
+<!-- Reproducer: bugs/missing-compiler-silent-stop/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting-missing$"` (test/ide/troubleshooting-missing.test.mjs), the test "with the compiler variant the IDE starts missing, the page goes quiet after one host box: no retry, no line in the console, no message"; the file is renamed in the lane's own copy of the install). No project and no zip. docs/IDE/Troubleshooting/Missing-Files.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's D5). -->
+
+---
+
+## A compiler connection that cannot be made restarts the compiler every 5 s, and the crash-loop message never fires
+
+**Describe the bug**
+When the page cannot make its connection to the compiler, the IDE starts a new compiler every 5 s for as long as it is open, each with a `restarting from FILE` line, and the crash-loop test that would stop it after a few tries is never reached. So there is no `Compiler crash loop detected` message, no Safe Mode and no other word, and the status bar stays on UNAVAILABLE. It was observed with `--debug` on the IDE's command line, which makes a connection impossible.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE with `--debug` on its command line. The compiler then starts with a console window, and the page never connects.
+2. Open a project.
+3. Watch the DEBUG CONSOLE: a `restarting from FILE` line every 5 s, for as long as the IDE is open.
+
+**Expected behavior**
+A connection that keeps failing counts towards the crash-loop test, so that the reader gets the message, or the IDE stops after a few tries and says why.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The root socket's `onerror` empties `autoRestartHistory` and calls `connectionStateChanged` 5 s later, so the list that the crash-loop test counts is empty each time it is read. `--debug` is a switch for the developers, and is only the way to reach this: by the code, a connection that fails for another reason takes the same path.
+
+Severity: low. Nothing is lost, but the loop runs for ever with nothing to say what is wrong.
+
+<!-- Reproducer: bugs/compiler-connection-retry-loop/ (mode lane: asserted by `ide-test.bat --only "^troubleshooting$"` (test/ide/troubleshooting.test.mjs), the test "a compiler connection that cannot be made restarts the compiler every 5 s, and the crash-loop message never fires", in an IDE of its own with --debug, ended by its pid). No project and no zip. docs/IDE/Troubleshooting/Compiler-Services.md carries a NOTE (BETA 1034) for it; when a fixed build is released, that NOTE goes. Found 2026-11-04 in the trials for the Troubleshooting pages (their fact sheet's D4). -->
+
+---
+
+## Start in a project with no Main writes "(compile error: Main)", which gives no reason
+
+**Describe the bug**
+Since BETA 1034, **Start** in a project whose startup object is `Sub Main` and which has no procedure called `Main` writes `(compile error: Main)` to the DEBUG CONSOLE. BETA 1033 wrote `(compile error: Unrecognized symbol 'Main')`. The line now names the symbol and leaves out what is wrong with it.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Make a new Standard EXE project, and replace its module with:
+   ```
+   Module Startup
+       Public Sub Greet(ByVal name As String)
+           Debug.Print name
+       End Sub
+   End Module
+   ```
+2. Press F5.
+3. See the DEBUG CONSOLE:
+   ```
+   Executing 'Main'...
+   (compile error: Main)
+   [DEBUGGER] global variables have been cleared
+   ```
+
+**Expected behavior**
+The second line reads `(compile error: Unrecognized symbol 'Main')`, as in BETA 1033.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+F6's messages did not change: a procedure with a required argument still gives `(compile error: Too few arguments, expected 1 in call to 'Greet')` on both builds, and a method of a class still gives `Unrecognized member`. The change may share its cause with the nested TB5079 message of BETA 1034, since both are the same message; that is a guess from the text, not something this reproducer shows.
+
+Severity: low. Nothing is lost, but a reader who has not met the message cannot tell what it means.
+
+<!-- Reproducer: bugs/start-no-main-error-text/ (mode lane: asserted by `ide-test.bat --only "^samples$"` (test/ide/samples.test.mjs), the test "Start with no Main writes a compile error that gives no reason", with the control "F6 on a procedure it cannot call says why"; BETA 1033 gives the old text, tried with p2 and p3 of the session's kit). docs/IDE/Debugging/Running.md carries the NOTE, under What Start runs. -->
+
+---
+
+## A DLL project that names no startup object shows Default: (none), but Start runs Main
+
+**Describe the bug**
+When `project.startupObject` is not in a project's `Settings` file, Project Settings shows **Default: (none)** for an ActiveX DLL, but **Start** does what **Sub Main** does: it looks for `Main`, does not find it, and writes a compile error. Only a `Settings` file that says `(none)` gives `[DEBUGGER] No startup object set`. The ActiveX DLL, ActiveX Control and Standard DLL templates and the samples of those kinds leave the key out, so this is what **Start** does in a new project of any of them.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Make a new project from the **ActiveX DLL** template.
+2. Open Project Settings. **Startup Object** shows **Default: (none)**. Close it.
+3. Press F5.
+4. See the DEBUG CONSOLE:
+   ```
+   Executing 'Main'...
+   (compile error: Main)
+   [DEBUGGER] global variables have been cleared
+   ```
+5. Choose **(none)** for **Startup Object**, save, and press F5 again. The DEBUG CONSOLE shows `[DEBUGGER] No startup object set`.
+
+**Expected behavior**
+A project with no startup object in its `Settings` file behaves as the default Project Settings shows, so step 4 gives the line of step 5.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The same on BETA 1033, where step 4's second line is `(compile error: Unrecognized symbol 'Main')`. The IDE's table of defaults gives `(none)` for every build type but Standard EXE, and the setting's description says the same, so it looks as though the compiler defaults to `Main` whatever the build type and the IDE does not send the default it shows. Seen on Samples 3, 4, 5, 7, 9 and 10, each with no key.
+
+Severity: low. Nothing runs either way; the reader gets an error about a procedure the project type does not need.
+
+<!-- Reproducer: bugs/dll-startup-default-runs-main/ (mode lane: asserted by `ide-test.bat --only "^samples$"` (test/ide/samples.test.mjs), the test "a DLL whose Settings names no startup object shows (none) in Project Settings, and Start runs Main", with the control "a DLL whose Settings says (none) writes that it has no startup object"). docs/IDE/Debugging/Running.md carries the NOTE, under What Start runs. -->
+
+---
+
+## The completion list never asks for the type of the row with lazy index 0
+
+**Describe the bug**
+In the completion list, one row never gets its type. A variable on that row shows `variable` with nothing after it, and a function shows no text at all, while every other row shows its type. Which row it is depends on the compile, and it stays the same when the list is closed and opened again, or when the selection moves to the row.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Make a new project with this module:
+   ```
+   Module Things
+       Public Alpha As Long
+       Public Bravo As Long
+       Public Charlie As Long
+       Public Delta As Long
+       Public Echo As Long
+       Public Foxtrot As Long
+   End Module
+   ```
+2. In a procedure of another module, type `Things.` so that the list opens.
+3. See that five rows read `variable Long`, and that one reads only `variable`.
+
+**Expected behavior**
+Every row shows its type.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The same on BETA 1033. The list gets each row's type by asking for it, by the row's lazy index, as the row is first drawn. The page tests that index for truth before it asks, and the indexes count from 0, so the row whose index is 0 is never asked for. The compiler itself is right: `textDocument/lazyCompletion` for that row returns its type, as the reproducer's control shows. So the test should be that the row has an index, not that the index is true. The row's `uri` and `line` come in the same answer, so that row has no location either. The indexes do not follow the list's order, which is why the row seems to move, and it goes unnoticed when it is out of sight or is a kind of name with no type.
+
+Severity: low. One row lacks its type, and nothing else.
+
+<!-- Reproducer: bugs/completion-row-zero-no-type/ (mode lane: asserted by `ide-test.bat --only "^completion-row-zero$"` (test/ide/completion-row-zero.test.mjs), the test "the row with lazy index 0 is never asked for, and shows no type", with the controls "every other row of the list shows its type" and "asked for that row, the compiler gives its type"). docs/IDE/Code/IntelliSense.md carries the NOTE, under The completion list. scripts/shoot_docs.mjs asks for the row itself (`askForRowZero`, the picture e2a65dfe): take that out when this entry is retired. -->
+
+---
+
+## Sample 22: the Uninstall button of TBSERVICE001 registers the event log of TBSERVICE002
+
+**Describe the bug**
+In Sample 22, *Windows Service Complex Example*, the event log of the second service is registered by the wrong button. `btnInstall001_Click` installs TBSERVICE001 and registers its event log. `btnInstall002_Click` installs TBSERVICE002 and registers none. `btnUninstall001_Click` uninstalls TBSERVICE001 and then calls `RegisterEventLog("Application\TBSERVICE002")`, so the line looks as if it belongs in `btnInstall002_Click`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open Sample 22.
+2. Open `Sources/FORMS/MainForm.twin`.
+3. Read `btnInstall001_Click`, `btnInstall002_Click` and `btnUninstall001_Click`.
+
+**Expected behavior**
+`btnInstall002_Click` registers the event log of TBSERVICE002, as `btnInstall001_Click` does for TBSERVICE001, and `btnUninstall001_Click` registers nothing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Read from the sample's source only. It has not been run, because that needs the sample's services installed on the machine with administrator rights, so what the Event Viewer shows for TBSERVICE002 is not known.
+
+Severity: low. It is a sample, but a reader copies a sample's pattern.
+
+<!-- Reproducer: bugs/sample22-event-log-wrong-button/ (mode lane: asserted by `ide-test.bat --only "^samples$"` (test/ide/samples.test.mjs), the test "Sample 22's Uninstall button of service 1 registers the event log of service 2", which reads the sample in the install). No page carries a callout (owner). -->
+
+---
+
+## A Friend member answers a late-bound call, from outside the project too
+
+**Describe the bug**
+A `Friend` member is meant for the project that declares it, and the type library leaves it out. But the `IDispatch` that the compiler writes for a class finds `Friend` members. So a late-bound call to one works, through an `Object` or a `Variant` variable or `CallByName`, and it works for code in another project that holds the object. VB6 raises error 438, *Object doesn't support this property or method*. A `Private` member raises 438 in both.
+
+A project that references a package can also use the `Friend` members of the package's classes, early-bound and late-bound.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `friend-late-bound.twinproj`. `Widget` has a `Friend Function GetValue`, and `FriendLib`, a package of the project, has a class `Locked` with a `Friend Function FriendFn`.
+2. Run:
+
+   ```vb
+   Dim O As Object = New Widget
+   Debug.Print O.GetValue()
+   Debug.Print CallByName(O, "GetValue", VbMethod)
+   ```
+3. See `7` twice, where 438 is expected.
+4. See that `L.FriendFn()` in the module `FromTheProject`, on a `Locked` from the package, compiles.
+
+What decides it:
+- A `Friend` Function, Property and variable are each found. A `Private` member raises 438, and a `Public` one works.
+- The IDE, a built exe, win32 and win64 give the same results.
+- From another project: an ActiveX DLL with a `[DllExport]` function that returns a class as `Object`, called from a second project through a `Declare`. Late-bound, the second project called a `Friend` Function and a `Friend` Property, and wrote and read a `Friend` variable. A `Private` variable raised 438, and the DLL's type library lists none of those `Friend` members.
+- Not affected, and the same as VB6: a `Friend` Function with no arguments, called through a class that implements the class, raises error 97. Other signatures have a defect of their own in a 32-bit build, in the entry on the stack below.
+
+**Expected behavior**
+Error 438 for each late-bound call, as VB6 gives, and a compile error for a `Friend` member of a package's class used from the project that references the package.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+#2409 asks for `Friend` members of a package to be hidden from IntelliSense. This entry is about the calls themselves.
+
+Severity: low to medium. Code that works does not stop working, but `Friend` does not keep a member private to the project, and a client of an ActiveX DLL can reach members that the type library does not show.
+
+<!-- Reproducer: bugs/friend-late-bound/ (mode test; vb6/ is the VB6 side, `bug_repro.mjs vb6 friend-late-bound`: early-bound works, late-bound and CallByName raise 438, through Implements raises 97). The call from another project was run once in a scratch copy, not kept. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md (two NOTEs). docs/Reference/COM-Interfaces/IDispatch.md says that a Friend member is found, with a sample that prints True for it: that changes too. The Sub, Function and Property pages used to say a Friend procedure cannot be late bound, VBA-Docs' text; that sentence came off them when the page for Friend was written, and can go back once this is fixed. What the type library holds, for the Friend page, was read with TLI from an ActiveX DLL built with project.dllRegisterAfterBuild false: Friend procedures and variables are left out; a Friend Enum, Type and Event are listed; a Private Type or Enum is listed when a Public member uses it. -->
+
+---
+
+## TB65535 gives Internal Error - Bad Error Info Locale Data in place of the missing member's name
+
+**Describe the bug**
+When a class leaves out a member of a class or interface it implements, TB65535 no longer says which. BETA 1033 reports *Missing implementation of member Function F() As Long*, and BETA 1034 reports *Internal Error - Bad Error Info Locale Data*. The error is still in the right place, on the name after `Implements`. Only its text is lost, and it was the text that named the member.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `missing-implementation-message.twinproj`:
+
+   ```vb
+   Class Base
+       Public Function F() As Long
+       End Function
+   End Class
+
+   Class Partial
+       Implements Base
+   End Class
+   ```
+2. See TB65535 on `Base` in `Implements Base`, with the text *Internal Error - Bad Error Info Locale Data*.
+
+What decides it:
+- BETA 1010 and BETA 1033 give the *Missing implementation of member* text, in the same harness, on the same project.
+- A `Public` Function and a `Public` variable give it, with one error for each missing member, so a variable gives two: its Get and its Let.
+
+**Expected behavior**
+*Missing implementation of member Function F() As Long*, as on BETA 1033.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+BETA 1034 takes the text of each error from the language pack, and the message has to be filled in with the member's name, which may be how it was lost. That is a guess from outside the compiler.
+
+Severity: low. The build stops where it should, but a class with several members has to be read by hand to find the missing one.
+
+<!-- Reproducer: bugs/missing-implementation-message/ (mode compile, expects TB65535 and the text). No page carries a callout: docs/Reference/Attributes.md quotes the message in a comment only. -->
+
+---
+
+## A Friend procedure called through a class that implements its class damages the stack in a 32-bit build
+
+**Describe the bug**
+A class that implements another class need not provide its `Friend` procedures (#750). A call to one, through a variable of the implemented class, is meant to raise error 97, *Can not call friend function on object which is not an instance of defining class*. In a 32-bit build, the code that raises it removes one stack slot besides `Me`, whatever the procedure takes. So only a procedure that takes exactly one slot works. Any other leaves the stack wrong: a built exe ends with an access violation, or stops with an error box after the error was handled, and a run in the IDE does not return.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `implements-friend-stub-stack.twinproj`, or use this, built as win32:
+
+   ```vb
+   Class Target
+       Public Function Pub() As Long
+       End Function
+       Friend Function F(ByVal X As Long) As Long
+       End Function
+   End Class
+
+   Class Impl
+       Implements Target
+       Private Function Target_Pub() As Long
+       End Function
+   End Class
+
+   Module Startup
+       Public Sub Main()
+           Dim T As Target
+           Set T = New Impl
+           On Error Resume Next
+           Dim L As Long
+           L = T.F(5)
+           Debug.Print Err.Number
+       End Sub
+   End Module
+   ```
+2. Build and run the exe. It ends with an access violation (0xC0000005), and the line after the call never runs.
+
+What decides it, on win32:
+- One stack slot, and error 97 is raised and caught: a `Sub` with one `ByVal Long` or one `ByRef Long`, a `Function` with no arguments (Long, or String), a `Property Get`, a `Property Let` with one `Long`. A function's return value counts as one slot, which is why a `Function` with no arguments works and one with an argument does not.
+- Two slots or more, and the run does not return (*no answer from the compiler*, in the compiler's test mode) or the exe ends with an access violation: a `Sub` with two `Long`, a `Sub` with one `ByVal Currency`, a `Function` with one `Long` argument.
+- No slot, a `Sub` with no arguments: in an IDE run neither handler catches the error, and it stops the run in the caller. In an exe the handler runs and `Err.Number` is 97, but when the procedure returns the program stops with a box, *Run-time error '97'*, and its caller never resumes.
+- win64: every one of these raises 97 and is caught, in the IDE (20 of 20 cases: ten signatures, each under `On Error Resume Next` and under `On Error GoTo`).
+- VB6: the six shapes in its project (no arguments, one `Long`, two `Long`, one `Currency`, and a `Function` with none and with one) each raise 97, it is caught, and the program goes on (`bug_repro.mjs vb6`).
+
+**Expected behavior**
+Error 97, caught by the caller's handler, whatever the signature, as win64 and VB6 do.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Inferred from the pattern above and not read from the generated code: one stub, with a fixed `ret 8`, stands in for every `Friend` procedure that an implementing class leaves out. It would have to remove what each procedure takes.
+
+Severity: high. The program ends with an access violation for a call whose whole purpose is to raise an error that it can handle, and unsaved data is lost.
+
+<!-- Reproducer: bugs/implements-friend-stub-stack/ (mode test; the case that does not return is last, because a run stops there). The exe's results were run once in a scratch copy, not kept: `tbrun --exe` on the three shapes gave 0xC0000005 for the two-argument Sub and for the Function with an argument, and the box for the Sub with no arguments. Found when the sample on the Friend page, which had a Sub with a ByVal Currency argument, did not return under check_examples; the sample now has a Long. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md, docs/Reference/Core/Implements.md. -->
