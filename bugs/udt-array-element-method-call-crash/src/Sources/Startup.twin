@@ -38,6 +38,31 @@ Module Startup
         Many(1 To 3) As Pair
     End Type
 
+    ' A conversion is a member procedure the compiler calls for you.
+    Public Type Converts
+        X As Long
+
+        Private Function Type_Conversion() As String
+            Return "C" & CStr(Me.X)
+        End Function
+    End Type
+
+    Public Type ConvertsHolder
+        One As Converts
+        Many(1 To 3) As Converts
+    End Type
+
+    ' Type_Assignment on an element works: the element's address reaches it.
+    Public Type Assigns
+        X As Long
+
+        Private Sub Type_Assignment(ByVal RHS As Long)
+            Me.X = RHS
+        End Sub
+    End Type
+
+    Public ModuleConverts(1 To 3) As Converts
+
     Public ModuleLevel(1 To 3) As Pair
 
     Public Sub Main()

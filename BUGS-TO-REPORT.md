@@ -3653,7 +3653,7 @@ Not tried: a `Property Let` or a method of a class with such a parameter, an `Op
 ## Calling a method or a property of a UDT on an element of an array of that UDT ends in an access violation
 
 **Describe the bug**
-A method or property declared inside a `Type` (a twinBASIC extension), called on an element of an array of that type (`a(1).Sum`, `a(1).Bump`), ends in an access violation: `NATIVE EXCEPTION: ACCESS_VIOLATION` in the IDE run, error -2147467259 in a `[TestCase]`, and 0xC0000005 in a built exe. It happens for a local, static, module-level, dynamic and parameter array, in 32-bit and 64-bit builds, whatever the UDT's size (one byte included) and even when the method does not touch `Me`. The same call on a scalar variable, on a UDT member of another UDT, or on an element of an array declared inside a UDT works. In a build with LLVM the call does not fail, but gives wrong results. Observed with the reproducer's regression tests (`tbrun --tests`), `tbrun` and `tbrun --exe`. Found while documenting the GdiPlus package, where `types(1).CloseSubpath` on the `PathPointType` array that `GraphicsPath.GetTypes` returns, and `pts(1).Diff(pts(2))` on `GpPointF`, end this way.
+A method or property declared inside a `Type` (a twinBASIC extension), called on an element of an array of that type (`a(1).Sum`, `a(1).Bump`), ends in an access violation: `NATIVE EXCEPTION: ACCESS_VIOLATION` in the IDE run, error -2147467259 in a `[TestCase]`, and 0xC0000005 in a built exe. It happens for a local, static, module-level, dynamic and parameter array, in 32-bit and 64-bit builds, whatever the UDT's size (one byte included) and even when the method does not touch `Me`. A `Type_Conversion` procedure, which the compiler calls for you, ends the same way, whether the conversion is explicit (`CStr(a(1))`) or implicit (`s = a(1)`, `Debug.Print a(1)`, an argument for a `String` parameter). The same call on a scalar variable, on a UDT member of another UDT, or on an element of an array declared inside a UDT works. In a build with LLVM the call does not fail, but gives wrong results. Observed with the reproducer's regression tests (`tbrun --tests`), `tbrun` and `tbrun --exe`. Found while documenting the GdiPlus package, where `types(1).CloseSubpath` on the `PathPointType` array that `GraphicsPath.GetTypes` returns, and `pts(1).Diff(pts(2))` on `GpPointF`, end this way.
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -3664,25 +3664,130 @@ Steps to reproduce the behavior:
    Debug.Print "a(1).Sum = " & a(1).Sum
    ```
 2. Run it (F5). `Sub Main` stops with `NATIVE EXCEPTION: ACCESS_VIOLATION` at the line of `a(1).Sum`.
-3. Run its test cases (`node scripts/tbrun.mjs <exported-source-dir> --tests`; BETA 1005 has no way to run them in the IDE): 12 of the 18 fail with `(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)`.
+3. Run its test cases (`node scripts/tbrun.mjs <exported-source-dir> --tests`; BETA 1005 has no way to run them in the IDE): 20 of the 32 fail with `(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)`.
 
 **Expected behavior**
-`a(1).Sum` returns 5, as `p.Sum` does for a scalar `Pair` variable `p`, and `a(1).Bump` increments `a(1).X`. UDT methods are a twinBASIC extension (VB6 has no methods in a `Type`), so there is no VB6 behaviour to compare with.
+`a(1).Sum` returns 5, as `p.Sum` does for a scalar `Pair` variable `p`, and `a(1).Bump` increments `a(1).X`. `CStr(a(1))` calls the `Type_Conversion` of the element, as `CStr(c)` does for a variable. UDT methods are a twinBASIC extension (VB6 has no methods in a `Type`), so there is no VB6 behaviour to compare with.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
+ - twinBASIC compiler version: BETA 1034
 
 **Additional context**
-Each of these fails: a property, a `Sub`, a `Function` that ignores `Me`, and a `Function` that takes a UDT argument (`a(1).Diff(a(2))`); a lower bound of 0 or 1; a variable index; the element as a `With` object; a static array; a dynamic array; a module-level array; and an array parameter (`b(1).Sum` in a procedure that takes `ByRef b() As Pair`); a UDT of one `Byte`. These work: a scalar variable; a UDT member of a UDT (`h.One.Sum`); an element of an array declared inside a UDT (`h.Many(1).Sum`); an element copied to a variable first; and the element's plain fields (`a(1).X`). A UDT passed `ByVal` from an array element is a different defect, with an entry of its own (`udt-array-element-byval-argument-stack`): it needs no method, and the fault comes after the call returns.
+Each of these fails: a property, a `Sub`, a `Function` that ignores `Me`, and a `Function` that takes a UDT argument (`a(1).Diff(a(2))`); a `Type_Conversion`, as `CStr(a(1))`, `s = a(1)`, `Debug.Print a(1)` and as an argument for a `ByVal String` parameter; a lower bound of 0 or 1; a variable index; the element as a `With` object; a static array; a dynamic array; a module-level array; and an array parameter (`b(1).Sum` in a procedure that takes `ByRef b() As Pair`); a UDT of one `Byte`. These work: a scalar variable; a UDT member of a UDT (`h.One.Sum`); an element of an array declared inside a UDT (`h.Many(1).Sum`); an element copied to a variable first; the element's plain fields (`a(1).X`); and a `Type_Assignment`, which an element gets right (`a(1) = 5`). A UDT passed `ByVal` from an array element is a different defect, with an entry of its own (`udt-array-element-byval-argument-stack`): it needs no method, and the fault comes after the call returns.
 
 With LLVM (`tbrun --llvm`): the property of an element of a 32-bit build returns garbage (`17820977` for a UDT holding 5 and 0), and in a 64-bit build returns the right value; in both builds `a(1).Bump` runs but leaves `a(1).X` unchanged, as if it worked on a copy. A scalar variable is right in both. LLVM also cannot compile a method called on an element of an array inside a UDT (`h.A(1).Bump`: "a feature used in your code is not yet supported").
 
 Severity: high for any program that keeps UDTs with methods in an array, which a loop over points or rectangles does: it ends at the first call, with no hint why. Copying the element to a variable first (`e = a(i)`, `e.Sum`) avoids it, for a method that does not change the element.
 
-Not tried: a generic UDT (member procedures are not supported on generic UDTs), a UDT with `Type_Assignment`, an array of arrays, an array of UDTs held in a `Variant`, the call through `Declare` members, and the generated code.
+Not tried: a generic UDT (member procedures are not supported on generic UDTs), an array of arrays, an array of UDTs held in a `Variant`, the call through `Declare` members, and the generated code.
 
-<!-- Reproducer: bugs/udt-array-element-method-call-crash/ (mode test: `tbrun --tests` runs the 18 [TestCase]s of RegressionTests; expect lists the six PASS controls and the twelve FAIL lines with the access violation, 32-bit); verified on BETA 1005 by `bug_repro.mjs verify`, and the same twelve fail with `run --arch win64`. The LLVM and exe results are from scratch probes (p4/p7: scenarios of a Sub per case with a Select Case on a Const), not kept. Pages: docs/Reference/Core/Type.md (after "Member procedures") and docs/Features/Language/UDTs.md (end of "Procedures, Constructors, Destructors, and Operators") carry a WARNING labelled BETA 1005; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus (GpPointF, GpRect, PathPointType); GdiPlus's own landing page should say the same in its section on those types, and the samples that call members on array elements copy the element first. -->
+<!-- Reproducer: bugs/udt-array-element-method-call-crash/ (mode test: `tbrun --tests` runs the 32 [TestCase]s of RegressionTests; expect lists the twelve PASS controls and the twenty FAIL lines with the access violation, 32-bit); verified on BETA 1034 by `bug_repro.mjs verify`, and the same twenty fail with `tbrun --tests --arch win64`. The LLVM results are from scratch probes (p4/p7: scenarios of a Sub per case with a Select Case on a Const), not kept; the exe results for a conversion are from .claude/scratch/udt-conv/gen3.mjs (0xC0000005, 32-bit and 64-bit). Pages: docs/Reference/Core/Type.md (after "Member procedures") and docs/Features/Language/UDTs.md (end of "Procedures, Constructors, Destructors, and Operators") carry a WARNING labelled BETA 1034; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus (GpPointF, GpRect, PathPointType); GdiPlus's own landing page should say the same in its section on those types, and the samples that call members on array elements copy the element first. -->
+
+---
+
+## `Type_Initialize` does not run for the elements of a UDT array or for a UDT member of a UDT, though `Type_Terminate` does
+
+**Describe the bug**
+`Type_Initialize` of a UDT (a twinBASIC extension) runs for a variable, a module-level variable and a class field of the type. It does not run for an element of an array of the type, nor for a UDT that is a member of another UDT, and `Type_Terminate` still runs for each of those, on a value that was never initialized: `Dim t(2) As Counted` runs `Type_Initialize` 0 times and `Type_Terminate` 3 times, with no error. `ReDim` and `ReDim Preserve` also discard elements without running `Type_Terminate`, and an array declared inside a UDT runs neither procedure. Observed with the reproducer's regression tests (`tbrun --tests`) and with the same counts in an IDE run and a built exe (`tbrun --exe`), in 32-bit and 64-bit builds.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-array-element-initialize-not-run.twinproj` (attached as `udt-array-element-initialize-not-run.zip`). Its module `Startup` declares the UDT `Counted`, whose `Type_Initialize` counts its calls and sets `X` to 42, and whose `Type_Terminate` counts its calls. Its `Sub Main` is, in short:
+   ```
+   Private Sub Declared()
+       Dim t(2) As Counted
+   End Sub
+
+   Private Sub Read()
+       Dim t(2) As Counted
+       Debug.Print "t(1).X = " & CStr(t(1).X)
+   End Sub
+
+   Public Sub Main()
+       Inits = 0
+       Terms = 0
+       Declared
+       Debug.Print "Type_Initialize ran " & CStr(Inits) & " times, Type_Terminate " & CStr(Terms) & " times"
+       Read
+   End Sub
+   ```
+2. Run it (F5). It prints:
+   ```
+   Type_Initialize ran 0 times, Type_Terminate 3 times
+   t(1).X = 0
+   ```
+3. Run its test cases (`node scripts/tbrun.mjs <exported-source-dir> --tests`): 14 of the 21 fail, each with `Actual: 0 [Long]`.
+
+**Expected behavior**
+`Type_Initialize` and `Type_Terminate` run in pairs, as they do for a variable: `Dim c As Counted` runs each once. So `Dim t(2) As Counted` runs each 3 times and `t(1).X` is 42, `ReDim Preserve` runs `Type_Initialize` for each new element, `ReDim` and `ReDim Preserve` run `Type_Terminate` for each element they discard, and a UDT inside a UDT is initialized and terminated with the UDT that holds it. UDT lifecycle procedures are a twinBASIC extension, so there is no VB6 behaviour to compare with.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`Type_Initialize` does not run for: an element of a local fixed-size array, of a dynamic array after `ReDim`, of a module-level array, of a `Static` array and of a `Private` array field of a class; an element added by `ReDim Preserve`; a UDT member of a UDT (`h.u`), an element of an array of such a UDT (`t(1).u`), and an element of an array declared inside a UDT (`h.a(1)`). `Type_Terminate` does not run for: an element discarded by `ReDim` or dropped by `ReDim Preserve`, and an element of an array declared inside a UDT. These work: `Type_Initialize` and `Type_Terminate` for a local variable and a class field (`Public u As Counted`), `Type_Initialize` for a module-level variable, and `Type_Terminate` for each element when an array goes out of scope and on `Erase`.
+
+When counting these, keep the reads apart: a procedure that reads a field of an element of a dynamic array (`n = t(1).X`) or of a class field (`n = o.u.X`) runs one more `Type_Initialize` and `Type_Terminate`, on an address that is neither the element's nor the field's, which looks like a hidden temporary of the type. A read of an element of a fixed-size array does not. The reproducer reads and counts in different procedures for this reason.
+
+The array and UDT-member counts are the same with LLVM (`tbrun --llvm`).
+
+Severity: high for a UDT that owns something, which is what the two procedures are for: `Type_Terminate` runs on a handle or pointer that `Type_Initialize` never set, and a resource held by an element `ReDim` discards is leaked. Nothing reports either. A `Type_Terminate` that does nothing when the members are all zero avoids the first: they are zero when it runs on a value `Type_Initialize` did not run for.
+
+Not tried: an array held in a `Variant`, an array passed `ByVal` or returned from a function, `Array(Of T)`, a generic UDT, and the generated code.
+
+<!-- Reproducer: bugs/udt-array-element-initialize-not-run/ (mode test: `tbrun --tests` runs the 21 [TestCase]s of RegressionTests; expect lists the seven PASS controls and the fourteen FAIL lines, 32-bit); verified on BETA 1034 by `bug_repro.mjs verify`, and the same fourteen fail with `tbrun --tests --arch win64`. The exe and LLVM counts and the trace of the hidden temporary are from .claude/scratch/udt-conv/ (gen4.mjs, probes5/trace). Pages: docs/Reference/Core/Type.md (under the table of "Lifecycle and operator hooks") and docs/Features/Language/UDTs.md (end of "Procedures, Constructors, Destructors, and Operators") carry a WARNING labelled BETA 1034; remove it when a fix is released. Found 2026-11-05 while checking a Wisdom draft on Type_Conversion. -->
+
+---
+
+## A UDT with two `Type_Conversion` overloads and none `As Variant` fails code generation when it is converted to a `Variant`
+
+**Describe the bug**
+A UDT with two or more `Type_Conversion` overloads, none of them `As Variant`, compiles with no diagnostic when it is converted to a `Variant`, and the build then fails: `[LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #24`, `[LINKER] FAILED due to compilation errors`, and an IDE run does not start. `Debug.Print c`, `v = c` and `CVar(c)` each do this. The same conversion passed to a `ByVal` `Variant` parameter is reported properly, as TB5001. Observed with `tbbuild --build` and `tbrun`, in 32-bit and 64-bit builds.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-two-conversions-variant-codegen.twinproj` (attached as `udt-two-conversions-variant-codegen.zip`). Its module `Startup` is:
+   ```
+   Public Type Two
+       X As Long
+
+       Private Function Type_Conversion() As String
+           Return "Two " & CStr(Me.X)
+       End Function
+
+       Private Function Type_Conversion() As Long
+           Return Me.X
+       End Function
+   End Type
+
+   Public Sub Main()
+       Dim c As Two
+       c.X = 7
+       Debug.Print c
+   End Sub
+   ```
+2. Compile the project: no diagnostic. Run it (F5) or build it.
+3. The build fails with the two `[LINKER]` lines above.
+
+**Expected behavior**
+A diagnostic in the editor at `Debug.Print c`, as a `ByVal` `Variant` parameter gets: `TB5001 Validation of call to 'TakeV' failed. Argument for 'v': cannot coerce type 'Two' to 'Variant'`. A conversion with more than one candidate and nothing to choose between them is an error in the source, not a failure of the code generator. UDT conversions are a twinBASIC extension, so there is no VB6 behaviour to compare with.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+These fail the same way: `v = c` for a `Variant` `v`, `CVar(c)`, and overloads `As Long` and `As Double`, or three overloads, `As String`, `As Long` and `As Double`. These work: one overload (`Debug.Print c` with one `As Long`, and `v = c` and a `ByVal` `Variant` parameter with one `As String`); one of two overloads `As Variant`, which they then use (`As String` and `As Variant` for all three, `As Long` and `As Variant` for `Debug.Print c`); and a `String` or a `Long` target with no `Variant` overload (`s = c`, `n = c`, `"x" & c`, `CStr(c)`, `CLng(c)`). An element of an array of the UDT does not get this far when the target is named (`CStr(a(1))`), because of the entry above on calling a method on an element, which is a separate defect; `Debug.Print a(1)` gives this code generation error.
+
+The same with LLVM (`tbrun --llvm`). Raised on Discord on 2026-10-21 in "What defines "enhanced-UDT types" -vs- other "normal" UDTs?", with a proper error named there as the preferred result.
+
+Severity: low. The build fails, so it cannot be missed, and it loses nothing, but the message names no cause, and the source line it gives is the one thing to go on. An overload `As Variant`, or naming the target (`CStr(c)`), avoids it.
+
+Not tried: a `Type_Assignment` beside the overloads, a `Variant` target inside a generic procedure, overloads of an object or a UDT type, and the generated code.
+
+<!-- Reproducer: bugs/udt-two-conversions-variant-codegen/ (mode build: tbbuild --build exits 5 and the output names the codegen error in 'Startup.Mainrootmain'); verified on BETA 1034 by `bug_repro.mjs verify`, and the same with `tbbuild --build --arch win64`. The variants are from .claude/scratch/udt-conv/ (gen3.mjs, gen6.mjs). Page: docs/Reference/Core/Type.md (under the table of "Lifecycle and operator hooks") carries a NOTE labelled BETA 1034; remove it when a fix is released. Found 2026-11-05 while checking a Wisdom draft on Type_Conversion. -->
 
 ---
 

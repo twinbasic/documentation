@@ -1,0 +1,54 @@
+' A UDT whose Type_Initialize and Type_Terminate count their calls, and the places
+' RegressionTests declares it. Type_Initialize also sets X, so a UDT it did not run
+' for shows X = 0.
+'
+' A procedure that reads a field of an element of a dynamic array, or of a class
+' field, runs one more Initialize and Terminate, on another address, so no procedure
+' here both reads a UDT and is counted.
+Module Startup
+
+    Public Inits As Long
+    Public Terms As Long
+
+    Public Type Counted
+        X As Long
+
+        Private Sub Type_Initialize()
+            Inits = Inits + 1
+            Me.X = 42
+        End Sub
+
+        Private Sub Type_Terminate()
+            Terms = Terms + 1
+        End Sub
+    End Type
+
+    Public Type Holder
+        u As Counted
+    End Type
+
+    Public Type ArrayHolder
+        a(2) As Counted
+    End Type
+
+    Public ModuleVariable As Counted
+    Public ModuleArray(2) As Counted
+
+    Private Sub Declared()
+        Dim t(2) As Counted
+    End Sub
+
+    Private Sub Read()
+        Dim t(2) As Counted
+        Debug.Print "t(1).X = " & CStr(t(1).X)
+    End Sub
+
+    Public Sub Main()
+        Inits = 0
+        Terms = 0
+        Declared
+        Debug.Print "Type_Initialize ran " & CStr(Inits) & " times, Type_Terminate " & CStr(Terms) & " times"
+        Read
+    End Sub
+
+End Module

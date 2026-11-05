@@ -9665,18 +9665,6 @@ _Reviewer note: The thread says Wayne confirmed unions as a post-1.0 feature; ke
 
 ## docs/Reference/Core/Type.md · after-remarks
 
-<!-- test: bug udt-array-element-type-conversion-crash -->
-> [!WARNING] BETA UNKNOWN
-> Printing an element of a UDT array whose type defines **Type_Conversion**, as in `Dim t(0) As UUID: Debug.Print t(0)`, ends the program with an access violation. Convert the element explicitly, or copy it to a variable first.
-
-_Source threads: 1562115575633809418 · confidence: medium_
-_Date range: 2026-10-20_
-_Reviewer note: Build number not given in the thread; fill in the actual build before use, and reproduce first. Thread also claims ByVal enhanced UDTs lacked String/Object/array members; unverified and omitted. The 'test:' marker name is a placeholder._
-
----
-
-## docs/Reference/Core/Type.md · after-remarks
-
 > [!NOTE]
 > Copying an array of a **Type** deep-copies each element. Members that hold live references -- **String**, **Variant**, object and array members -- are copied correctly, so the copy and the original do not share them.
 

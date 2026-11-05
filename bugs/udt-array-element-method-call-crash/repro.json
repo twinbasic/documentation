@@ -9,6 +9,12 @@
       "^PASS RegressionTests\\.ArrayInUdtField_Element_PropertyGet$",
       "^PASS RegressionTests\\.ElementCopiedFirst_PropertyGet$",
       "^PASS RegressionTests\\.Element_Field$",
+      "^PASS RegressionTests\\.Scalar_ExplicitConversion$",
+      "^PASS RegressionTests\\.Scalar_ImplicitConversion$",
+      "^PASS RegressionTests\\.UdtField_Conversion$",
+      "^PASS RegressionTests\\.ArrayInUdtField_Element_Conversion$",
+      "^PASS RegressionTests\\.ElementCopiedFirst_Conversion$",
+      "^PASS RegressionTests\\.Element_TypeAssignment$",
       "^FAIL RegressionTests\\.LocalArray_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
       "^FAIL RegressionTests\\.LocalArray_Element_Sub: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
       "^FAIL RegressionTests\\.LocalArray_Element_FunctionThatIgnoresMe: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
@@ -20,7 +26,15 @@
       "^FAIL RegressionTests\\.DynamicArray_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
       "^FAIL RegressionTests\\.ModuleLevelArray_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
       "^FAIL RegressionTests\\.ArrayParameter_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
-      "^FAIL RegressionTests\\.OneByteUdt_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$"
+      "^FAIL RegressionTests\\.OneByteUdt_Element_PropertyGet: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.LocalArray_Element_ExplicitConversion: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.LocalArray_Element_ImplicitConversion: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.LocalArray_Element_ConvertedByDebugPrint: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.LocalArray_Element_ConvertedForAnArgument: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.StaticArray_Element_Conversion: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.DynamicArray_Element_Conversion: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.ModuleLevelArray_Element_Conversion: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$",
+      "^FAIL RegressionTests\\.ArrayParameter_Element_Conversion: \\(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION\\)$"
     ]
   }
 }

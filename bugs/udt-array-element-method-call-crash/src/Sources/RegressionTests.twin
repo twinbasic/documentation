@@ -150,4 +150,120 @@ Module RegressionTests
         Assert.Strict.AreEqual True, f(1).IsClosed
     End Sub
 
+    ' --- Type_Conversion and Type_Assignment: the controls pass ---
+
+    [TestCase]
+    Public Sub Scalar_ExplicitConversion()
+        Dim c As Converts
+        c.X = 5
+        Assert.Strict.AreEqual "C5", CStr(c)
+    End Sub
+
+    [TestCase]
+    Public Sub Scalar_ImplicitConversion()
+        Dim c As Converts
+        c.X = 5
+        Dim s As String
+        s = c
+        Assert.Strict.AreEqual "C5", s
+    End Sub
+
+    [TestCase]
+    Public Sub UdtField_Conversion()
+        Dim h As ConvertsHolder
+        h.One.X = 5
+        Assert.Strict.AreEqual "C5", CStr(h.One)
+    End Sub
+
+    [TestCase]
+    Public Sub ArrayInUdtField_Element_Conversion()
+        Dim h As ConvertsHolder
+        h.Many(1).X = 5
+        Assert.Strict.AreEqual "C5", CStr(h.Many(1))
+    End Sub
+
+    [TestCase]
+    Public Sub ElementCopiedFirst_Conversion()
+        Dim a(1 To 3) As Converts
+        a(1).X = 5
+        Dim e As Converts
+        e = a(1)
+        Assert.Strict.AreEqual "C5", CStr(e)
+    End Sub
+
+    [TestCase]
+    Public Sub Element_TypeAssignment()
+        Dim a(1 To 3) As Assigns
+        a(1) = 5
+        Assert.Strict.AreEqual 5&, a(1).X
+    End Sub
+
+    ' --- Type_Conversion on an element: these fail ---
+
+    [TestCase]
+    Public Sub LocalArray_Element_ExplicitConversion()
+        Dim a(1 To 3) As Converts
+        a(1).X = 5
+        Assert.Strict.AreEqual "C5", CStr(a(1))
+    End Sub
+
+    [TestCase]
+    Public Sub LocalArray_Element_ImplicitConversion()
+        Dim a(1 To 3) As Converts
+        a(1).X = 5
+        Dim s As String
+        s = a(1)
+        Assert.Strict.AreEqual "C5", s
+    End Sub
+
+    [TestCase]
+    Public Sub LocalArray_Element_ConvertedByDebugPrint()
+        Dim a(1 To 3) As Converts
+        a(1).X = 5
+        Debug.Print a(1)
+    End Sub
+
+    [TestCase]
+    Public Sub LocalArray_Element_ConvertedForAnArgument()
+        Dim a(1 To 3) As Converts
+        a(1).X = 5
+        Assert.Strict.AreEqual "C5", Same(a(1))
+    End Sub
+
+    Private Function Same(ByVal s As String) As String
+        Same = s
+    End Function
+
+    [TestCase]
+    Public Sub StaticArray_Element_Conversion()
+        Static a(1 To 3) As Converts
+        a(1).X = 5
+        Assert.Strict.AreEqual "C5", CStr(a(1))
+    End Sub
+
+    [TestCase]
+    Public Sub DynamicArray_Element_Conversion()
+        Dim a() As Converts
+        ReDim a(1 To 3)
+        a(1).X = 5
+        Assert.Strict.AreEqual "C5", CStr(a(1))
+    End Sub
+
+    [TestCase]
+    Public Sub ModuleLevelArray_Element_Conversion()
+        ModuleConverts(1).X = 5
+        Assert.Strict.AreEqual "C5", CStr(ModuleConverts(1))
+    End Sub
+
+    [TestCase]
+    Public Sub ArrayParameter_Element_Conversion()
+        Dim a(1 To 3) As Converts
+        a(1).X = 5
+        Assert.Strict.AreEqual "C5", TextOfFirst(a)
+    End Sub
+
+    Private Function TextOfFirst(ByRef b() As Converts) As String
+        TextOfFirst = CStr(b(1))
+    End Function
+
 End Module
