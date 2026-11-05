@@ -179,6 +179,8 @@ Changing any of these options restarts the compiler. The three **LLVM -** option
 
 ## Window and status bar
 
+No option hides the status bar. See [Status Bar](../Reference/StatusBar).
+
 **Show memory and resource usage**
 : Default off. Adds a block of figures at the right-hand end of the status bar, after the social icons, for example `174.5MB in use | 96 ui objects | 16 gdi objects`. The figures are the memory in use, in megabytes, and the numbers of USER objects and GDI objects. Until the first figures arrive, the block reads `?MB in use | ? ui objects | ? gdi objects`. The block shows once a project has loaded, and it is hidden again when the project closes. The Debug Console prints a critical error when the limit of GDI handles is exceeded, and advises you to restart the compiler. A change restarts the compiler.
 

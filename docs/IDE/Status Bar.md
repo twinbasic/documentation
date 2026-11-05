@@ -16,6 +16,8 @@ With no project open, no compiler is connected: the services badge reads **UNAVA
 
 The Status Bar runs along the bottom of the IDE window. From left to right it holds the [services badge](#services), the [licence badge](#licence), the [links](#links) to community resources, a [**PROCESS** box](#other-boxes) for each program that your program started, the [progress bar](#other-boxes), the [command name](#status), the [memory box](#other-boxes) and the [line and column box](#other-boxes). The progress bar, the memory box and the line and column box show only in some states.
 
+The status bar cannot be hidden. It is not a panel, so no panel layout removes it, **Full Screen Editor Layout** included, and no option or command hides it. The one option that changes it is **Show memory and resource usage**, which adds the [memory box](#other-boxes).
+
 ## Services
 
 ![A red status bar badge with a warning triangle, reading tB Services: UNAVAILABLE.](Images/Services_Unavailable.png){:width="175" height="24"}
