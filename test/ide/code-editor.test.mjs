@@ -1,4 +1,4 @@
-// The code editor and the panels used while writing code, tested against seven entries in
+// The code editor and the panels used while writing code, tested against eight entries in
 // BUGS-TO-REPORT.md:
 //
 //   "Format Selection from a continuation line fails with *IDE startup failure*, and closes an IDE
@@ -14,6 +14,8 @@
 //   warnings or errors" (bugs/tab-tint-opened-later)
 //   "Shift+F10 opens the code editor's context menu at the top-left corner of the IDE window, not
 //   at the caret" (bugs/shift-f10-menu-corner)
+//   "Clicking the greyed-out Undo or Redo button with no file open prints an IDE internal error"
+//   (bugs/toolbar-undo-no-context-internal-error)
 //
 // The project in probes/code-editor has two files: Editing.twin, whose Subs Continued and Plain
 // are left unindented for Format Selection, and Helpers.twin, with the function Twice and two
@@ -34,8 +36,9 @@
 // the Windows clipboard, so that and the host's copyClipboardIDE request are replaced by recorders
 // first. Nothing here reaches SaveSetting, so lanes.mjs names no settings for this lane.
 //
-// The tests share the lane's IDE in order. Each test states what BETA 1034 does; the tests named
-// "control" pass whether or not the defects are fixed. If another fails after an IDE update, the
+// The tests share the lane's IDE in order, but for the last two, which need an IDE in which no file
+// has been opened, as start() never leaves one, and so start their own. Each test states what BETA
+// 1034 does; the tests named "control" pass whether or not the defects are fixed. If another fails after an IDE update, the
 // IDE has changed: update the entry in BUGS-TO-REPORT.md, or its report in bugs/filed/, the
 // callout on the page of docs/IDE/Code/ that carries it, and then this file.
 //
@@ -47,8 +50,10 @@ import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { sleep } from "../../scripts/lib/tb-ide.mjs";
+import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
 import {
   answerMessageBox,
+  click,
   clickAt,
   editorState,
   messageBoxes,
@@ -528,5 +533,51 @@ scenario("the code editor and its panels", (lane) => {
       "Format Selection changed the lines",
     );
     c.dialogs.length = 0;
+  });
+
+  const INTERNAL_ERROR =
+    /IDE internal error: Uncaught TypeError: Cannot read properties of undefined \(reading 'defaultContext'\)/;
+  const greyed = (id) =>
+    c.evaluate(`document.getElementById(${JSON.stringify(id)}).classList.contains("disabledCommand")`);
+
+  // What a click on a toolbar button leaves in the DEBUG CONSOLE.
+  async function printedByClicking(id) {
+    const mark = await consoleMark(c);
+    await click(c, id);
+    await sleep(500);
+    return (await linesSince(c, mark)).filter(Boolean);
+  }
+
+  test("a click on the greyed-out Undo or Redo button, before any file has been opened, prints an IDE internal error", async (t) => {
+    c.dialogs.length = 0;
+    await lane.closeProject();
+    // A folder of its own: at the path the lane has used, the IDE would restore the open file.
+    c = await lane.open(PROJECT, { folder: path.join(lane.work, "no-file") });
+    await c.evaluate(GUARD_JS);
+    for (const id of ["undoIcon", "redoIcon"]) {
+      assert.ok(await greyed(id), `${id} is not greyed out`);
+      const printed = await printedByClicking(id);
+      t.diagnostic(`${id}: ${JSON.stringify(printed)}`);
+      assert.ok(
+        printed.some((l) => INTERNAL_ERROR.test(l)),
+        `${id} printed no IDE internal error`,
+      );
+    }
+  });
+
+  // Still no file opened in this IDE. Comment Selection is bound to one command, Undo to a list of
+  // two, and Undo is the same greyed-out button again once its first command has applied.
+  test("control: a greyed-out button bound to one command prints no internal error, and neither does Undo once a file has been opened and closed", async (t) => {
+    assert.ok(await greyed("commentIcon"), "Comment Selection is not greyed out");
+    const comment = await printedByClicking("commentIcon");
+    t.diagnostic(`Comment Selection: ${JSON.stringify(comment)}`);
+    assert.ok(!comment.some((l) => INTERNAL_ERROR.test(l)), "Comment Selection printed an IDE internal error");
+    await openFile(c, EDITING, { line: MAIN, column: 1 });
+    assert.equal(await greyed("undoIcon"), false, "Undo is greyed out with a file open");
+    await c.evaluate(`executeIdeCommand("tbEditor_CloseTab")`);
+    assert.ok(await waitFor(c, () => greyed("undoIcon")), "Undo did not go grey when the file closed");
+    const undo = await printedByClicking("undoIcon");
+    t.diagnostic(`Undo: ${JSON.stringify(undo)}`);
+    assert.ok(!undo.some((l) => INTERNAL_ERROR.test(l)), "Undo printed an IDE internal error");
   });
 });

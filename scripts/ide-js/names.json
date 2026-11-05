@@ -430,6 +430,61 @@
           "refs": 2
         }
       }
+    },
+    "bindIconToIdeCommand": {
+      "namedOn": "BETA 1034",
+      "shape": "4354f8d025fd428e",
+      "names": {
+        "0#0": {
+          "name": "button",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 12
+        },
+        "0#1": {
+          "name": "command",
+          "was": "t",
+          "def": "Parameter",
+          "kind": "param1",
+          "refs": 6
+        },
+        "0#2": {
+          "name": "noClick",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param2",
+          "refs": 1
+        },
+        "0#3": {
+          "name": "keys",
+          "was": "n",
+          "def": "Variable",
+          "kind": "let",
+          "refs": 3
+        },
+        "0/0#0": {
+          "name": "enterEvent",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 0
+        },
+        "0/1#0": {
+          "name": "leaveEvent",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 0
+        },
+        "0/3/0#0": {
+          "name": "pressEvent",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 2
+        }
+      }
     }
   }
 }

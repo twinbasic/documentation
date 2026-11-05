@@ -238,6 +238,72 @@ So it takes at least one existing entry and at least one slot with nothing in it
 
 ---
 
+## Clicking the greyed-out Undo or Redo button with no file open prints an IDE internal error
+
+**Describe the bug**
+In an IDE in which no file has been opened yet, a click on the greyed-out **Undo** or **Redo** button of the toolbar prints a red `IDE internal error` line in the DEBUG CONSOLE, one for each click. Nothing else happens: the IDE stays open, no box opens and the project is not touched. It was observed by clicking the buttons with real mouse events in an IDE started with an `APPDATA` of its own, and reading the DEBUG CONSOLE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE and open any project, or cancel the New / Open Project dialog. Open no file. A project the IDE remembers with a file open restores that file, so use one that had none open.
+2. Click **Undo** or **Redo** on the toolbar. Both are greyed out.
+3. See the red line in the DEBUG CONSOLE: `IDE internal error: Uncaught TypeError: Cannot read properties of undefined (reading 'defaultContext'), 1, 880316, TypeError: Cannot read properties of undefined (reading 'defaultContext')`. Each further click prints another.
+
+**Expected behavior**
+A greyed-out button does nothing, as the greyed-out **Comment Selection** button does in the same state, and as **Undo** does once a file has been opened and closed.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The cause, read from `ide\main.js`: **Undo** and **Redo** are the only two buttons that `bindIconToIdeCommand` binds to a list of commands (`tbEditor_Undo` and `tbFormDesigner_Undo`, `tbEditor_Redo` and `tbFormDesigner_Redo`). `registerContextBindings` sets a button's `contextAwareBoundCommand` to the first command of its list whose context applies, and never clears it. Until one has applied the property is not set, so the button's `onmousedown` handler passes the list itself to `executeIdeCommand`, which finds nothing in `ideCommands` for it and throws at `.defaultContext`. The `disabled` attribute a greyed-out button has stops nothing, because the button is a `div`.
+
+The error is thrown synchronously, so it reaches `window.onerror` in `ide\main2.js`, which prints the line and calls `postError`. It does not reach `window.onunhandledrejection`, the handler that can close the IDE, so the IDE stays open whether or not it was started with a project. As read from the code and not observed, `postError` does nothing while error reporting is off, and while it is on it sends each error to `https://twinbasic.com/notify`, so every such click would add an error report.
+
+What reproduces it: with no project open, with a project open and no file opened, and, for **Undo**, with the focus in the DEBUG CONSOLE's entry box, where it stays greyed out.
+
+What does not reproduce it:
+
+| what was tried | result |
+|---|---|
+| **Undo** with a file open and the code editor focused | no line |
+| **Undo** after a file has been opened and closed, greyed out again | no line: `contextAwareBoundCommand` still names `tbEditor_Undo`, whose context does not apply, so `executeIdeCommand` returns |
+| **Undo** in an IDE that restored an open file as the project opened, greyed out with the focus elsewhere | no line, for the same reason |
+| the greyed-out **Comment Selection** button, bound to one command, with no file opened | no line |
+| <kbd>Ctrl</kbd>+<kbd>Z</kbd> with no file opened | no line |
+
+Severity: low. Nothing is lost and the IDE goes on working, but a red internal error in the console reads as a failure, and with error reporting on each click would send a report.
+
+**Fix shape**
+
+`bindIconToIdeCommand` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`button`, `command`, `noClick`, `keys`, `enterEvent`, `leaveEvent`, `pressEvent`); the build calls them `e`, `t`, `o`, `n`, `e`, `e`, `o`.
+
+```diff
+@@ -18,10 +18,9 @@
+     button.onmousedown = (pressEvent) => {
+       pressEvent.preventDefault();
+       if (pressEvent.button === 0) {
+-        executeIdeCommand(
+-          button.contextAwareBoundCommand ? button.contextAwareBoundCommand : command,
+-          true,
+-        );
++        const target = button.contextAwareBoundCommand ? button.contextAwareBoundCommand : command;
++        // A list means that no command of the list has applied yet.
++        if (!Array.isArray(target)) executeIdeCommand(target, true);
+       }
+     };
+   }
+```
+
+A button bound to a list now runs a command only once one of its commands has applied, which is when `contextAwareBoundCommand` holds an id. Until then the target is still the list, there is no command to run, and the press does nothing, which is what a greyed-out button should do. A button bound to one command, and a list button that has a command, go on to `executeIdeCommand` as before, and its check of the context stops them while they are greyed out.
+
+Tested on a copy of BETA 1034 with this change (5 edits in `main.js`, every other byte the same): the entry's test fails because **Undo** prints nothing, its control and the lane's other 16 tests pass, **Redo** prints nothing either with no project and with one, and with a file open the two enabled buttons still step an edit back and forward.
+
+<!-- Reproducer: bugs/toolbar-undo-no-context-internal-error/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "a click on the greyed-out Undo or Redo button, before any file has been opened, prints an IDE internal error", which passes on BETA 1034; the control "control: a greyed-out button bound to one command prints no internal error, and neither does Undo once a file has been opened and closed" passes too). No project and no zip. No page carries a callout for it, by the owner's decision, and none is due when it is fixed. The no-project, entry-box, restored-file and Ctrl+Z results are from trials, not the lane. The restored-file row needs the first IDE to have run past the five-second save of the project state; ended sooner, the second IDE restores nothing and the line prints. Found 2026-11-05 settling the toolbar's questions for docs/IDE/Toolbar.md. Fix: bugs/toolbar-undo-no-context-internal-error/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/toolbar-undo-no-context-internal-error/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only code-editor` tests it (the entry's test then fails, which is the fix working). -->
+
+---
+
 ## `--buildAndExit32` writes nothing, exits 0 on a project with errors, and hangs on a failing build
 
 *DEFERRED until after v1*
