@@ -50,6 +50,8 @@ These statements are built into the language itself. They are understood by the 
 
 * [For Each...Next](../tB/Core/For-Each-Next) -- repeats a group of statements for each element in an array or collection
 
+* [Friend](../tB/Core/Friend) -- makes a member of a class available to the whole project, and keeps it out of the class's public interface
+
 * [Function](../tB/Core/Function) -- declares the name, arguments, and code that form the body of a **Function** procedure
 
 * [Get](../tB/Core/Get) -- reads data from an open disk file into a variable

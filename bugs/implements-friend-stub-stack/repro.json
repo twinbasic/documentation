@@ -1,0 +1,16 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS FriendThroughImplements\\.Control_SubOneLong_Raises97$",
+      "^PASS FriendThroughImplements\\.Control_SubOneByRef_Raises97$",
+      "^PASS FriendThroughImplements\\.Control_FunctionNoArguments_Raises97$",
+      "^PASS FriendThroughImplements\\.Control_FunctionReturnsString_Raises97$",
+      "^PASS FriendThroughImplements\\.Control_PropertyGet_Raises97$",
+      "^PASS FriendThroughImplements\\.Control_PropertyLet_Raises97$",
+      "^FAIL FriendThroughImplements\\.SubNoArguments_ErrorIsCaught: \\(runtime error 97",
+      "^FAIL FriendThroughImplements\\.FunctionOneArgument_ErrorIsCaught: no answer"
+    ]
+  }
+}

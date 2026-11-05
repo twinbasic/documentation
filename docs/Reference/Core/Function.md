@@ -30,7 +30,7 @@ Syntax:
 **Private**
 : *optional* Indicates that the **Function** procedure is accessible only to other procedures in the module where it is declared.
 
-**Friend**
+**[Friend](Friend)**
 : *optional* Used only in a class module. Indicates that the **Function** procedure is visible throughout the project, but not visible to a controller of an instance of an object.
 
 **[Protected](Protected)**
@@ -113,7 +113,7 @@ If not explicitly specified by using **Public**, **Private**, or **Friend**, **F
 
 If **Static** isn't used, the value of local variables is not preserved between calls.
 
-The **Friend** keyword can only be used in class modules. However, **Friend** procedures can be accessed by procedures in any module of a project. A **Friend** procedure does not appear in the type library of its parent class, nor can a **Friend** procedure be late bound.
+The **Friend** keyword can only be used in class modules. However, **Friend** procedures can be accessed by procedures in any module of a project. A **Friend** procedure does not appear in the type library of its parent class.
 
 **Function** procedures can be recursive; that is, they can call themselves to perform a given task. However, recursion can lead to stack overflow. The **Static** keyword usually isn't used with recursive **Function** procedures.
 

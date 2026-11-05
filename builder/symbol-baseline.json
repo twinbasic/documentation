@@ -121,6 +121,7 @@
     "/tB/Core/Exponent",
     "/tB/Core/For-Each-Next",
     "/tB/Core/For-Next",
+    "/tB/Core/Friend",
     "/tB/Core/Function",
     "/tB/Core/Get",
     "/tB/Core/GoSub-Return",

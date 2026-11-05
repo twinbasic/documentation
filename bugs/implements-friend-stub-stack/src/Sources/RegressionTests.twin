@@ -1,0 +1,128 @@
+' A class that Implements another class need not provide its Friend procedures. A call to one
+' through a variable of the implemented class raises error 97, from a stub the compiler writes.
+' In a 32-bit build the stub removes one stack slot besides Me, whatever the procedure takes, so
+' each case below that does not take exactly one slot leaves the stack wrong. Each asserts what
+' is correct: error 97, caught here. A case that fails is the bug.
+'
+' Run with tbrun --tests. The last case does not return, which stops the run, so it stays last
+' and its neighbours are not tried: bugs/implements-friend-stub-stack/vb6 has all of them.
+' With --arch win64 every case passes.
+
+Class Target
+    Public Function Pub() As Long
+    End Function
+
+    Friend Sub SubNoArguments()
+    End Sub
+    Friend Sub SubOneLong(ByVal X As Long)
+    End Sub
+    Friend Sub SubOneByRef(ByRef X As Long)
+    End Sub
+    Friend Function FunctionNoArguments() As Long
+    End Function
+    Friend Function FunctionReturnsString() As String
+    End Function
+    Friend Property Get PropertyGet() As Long
+    End Property
+    Friend Property Let PropertyLet(ByVal V As Long)
+    End Property
+    Friend Function FunctionOneArgument(ByVal X As Long) As Long
+    End Function
+End Class
+
+Class Impl
+    Implements Target
+    Private Function Target_Pub() As Long
+    End Function
+End Class
+
+[TestFixture]
+Module FriendThroughImplements
+
+    [TestCase]
+    Public Sub Control_SubOneLong_Raises97()
+        Dim T As Target = New Impl
+        On Error Resume Next
+        T.SubOneLong 5
+        Dim N As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 97, N
+    End Sub
+
+    [TestCase]
+    Public Sub Control_SubOneByRef_Raises97()
+        Dim T As Target = New Impl
+        Dim L As Long
+        On Error Resume Next
+        T.SubOneByRef L
+        Dim N As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 97, N
+    End Sub
+
+    [TestCase]
+    Public Sub Control_FunctionNoArguments_Raises97()
+        Dim T As Target = New Impl
+        Dim L As Long
+        On Error Resume Next
+        L = T.FunctionNoArguments()
+        Dim N As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 97, N
+    End Sub
+
+    [TestCase]
+    Public Sub Control_FunctionReturnsString_Raises97()
+        Dim T As Target = New Impl
+        Dim S As String
+        On Error Resume Next
+        S = T.FunctionReturnsString()
+        Dim N As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 97, N
+    End Sub
+
+    [TestCase]
+    Public Sub Control_PropertyGet_Raises97()
+        Dim T As Target = New Impl
+        Dim L As Long
+        On Error Resume Next
+        L = T.PropertyGet
+        Dim N As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 97, N
+    End Sub
+
+    [TestCase]
+    Public Sub Control_PropertyLet_Raises97()
+        Dim T As Target = New Impl
+        On Error Resume Next
+        T.PropertyLet = 5
+        Dim N As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 97, N
+    End Sub
+
+    [TestCase]
+    Public Sub SubNoArguments_ErrorIsCaught()
+        Dim T As Target = New Impl
+        On Error Resume Next
+        T.SubNoArguments
+        Dim N As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 97, N
+    End Sub
+
+    ' Leave this one last: it does not return.
+    [TestCase]
+    Public Sub FunctionOneArgument_ErrorIsCaught()
+        Dim T As Target = New Impl
+        Dim L As Long
+        On Error Resume Next
+        L = T.FunctionOneArgument(5)
+        Dim N As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 97, N
+    End Sub
+
+End Module

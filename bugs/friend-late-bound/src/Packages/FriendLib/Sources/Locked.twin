@@ -1,0 +1,11 @@
+' Friend members in a package. A project that references the package is another project,
+' as an ActiveX DLL's client would be, so these should not be reachable from it.
+Public Class Locked
+
+    Friend Function FriendFn() As Long
+        Return 7
+    End Function
+
+    Friend Field As Long
+
+End Class

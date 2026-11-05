@@ -1,0 +1,133 @@
+' The issue's regression tests. A Friend member is for the project that declares it. In VB6
+' the code below is what bugs/friend-late-bound/vb6/ runs: a late-bound call to a Friend
+' member raises error 438, as a call to a Private one does. A [TestCase] that fails is the
+' bug; a line ending in  ' CASE <Name>: <expected>  is judged against the compile, and
+' "error" there means a call from the project into the package's Friend member should
+' not compile.
+
+Class Widget
+    Friend Field As Long
+    Private mValue As Long
+
+    Friend Function GetValue() As Long
+        Return 7
+    End Function
+
+    Friend Property Get Prop() As Long
+        Prop = mValue
+    End Property
+
+    Friend Property Let Prop(ByVal V As Long)
+        mValue = V
+    End Property
+
+    Public Function PubValue() As Long
+        Return 8
+    End Function
+
+    Private Function PrivValue() As Long
+        Return 9
+    End Function
+End Class
+
+Class Impl
+    Implements Widget
+    Private Function Widget_PubValue() As Long
+        Return 80
+    End Function
+    Private Property Get Widget_Field() As Long
+    End Property
+    Private Property Let Widget_Field(ByVal RHS As Long)
+    End Property
+End Class
+
+[TestFixture]
+Module LateBoundTests
+
+    Private Function ErrorOf(ByVal O As Object, ByVal Name As String) As Long
+        On Error Resume Next
+        Dim V As Variant
+        V = CallByName(O, Name, VbMethod)
+        ErrorOf = Err.Number
+    End Function
+
+    [TestCase]
+    Public Sub LateBound_FriendFunction_Raises438()
+        Dim O As Object = New Widget
+        Dim V As Variant
+        On Error Resume Next
+        V = O.GetValue()
+        Dim Number As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 438, Number
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_FriendProperty_Raises438()
+        Dim O As Object = New Widget
+        Dim V As Variant
+        On Error Resume Next
+        V = O.Prop
+        Dim Number As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 438, Number
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_FriendVariable_Raises438()
+        Dim O As Object = New Widget
+        Dim V As Variant
+        On Error Resume Next
+        V = O.Field
+        Dim Number As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 438, Number
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_FriendFunction_Raises438()
+        Assert.Strict.AreEqual 438, ErrorOf(New Widget, "GetValue")
+    End Sub
+
+    [TestCase]
+    Public Sub Control_CallByName_PrivateFunction_Raises438()
+        Assert.Strict.AreEqual 438, ErrorOf(New Widget, "PrivValue")
+    End Sub
+
+    [TestCase]
+    Public Sub Control_CallByName_PublicFunction_Works()
+        Assert.Strict.AreEqual 0, ErrorOf(New Widget, "PubValue")
+    End Sub
+
+    [TestCase]
+    Public Sub Control_EarlyBound_Friend_Works()
+        Dim W As New Widget
+        Assert.Strict.AreEqual 7, W.GetValue()
+    End Sub
+
+    [TestCase]
+    Public Sub Control_ThroughImplements_FriendRaises97()
+        Dim W As Widget = New Impl
+        Dim V As Long
+        On Error Resume Next
+        V = W.GetValue()
+        Dim Number As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 97, Number
+    End Sub
+
+End Module
+
+Module FromTheProject
+
+    Public Function CallsThePackage() As Long
+        Dim L As New Locked
+        CallsThePackage = L.FriendFn()  ' CASE Package_FriendFunctionFromTheProject: error
+    End Function
+
+    Public Sub WritesThePackage()
+        Dim L As New Locked
+        L.Field = 1  ' CASE Package_FriendVariableFromTheProject: error
+    End Sub
+
+End Module

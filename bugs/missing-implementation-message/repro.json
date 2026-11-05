@@ -1,0 +1,8 @@
+{
+  "mode": "compile",
+  "expect": {
+    "exit": 1,
+    "diagnostics": ["TB65535"],
+    "output": ["TB65535 Internal Error - Bad Error Info Locale Data"]
+  }
+}

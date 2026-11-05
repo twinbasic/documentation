@@ -38,6 +38,10 @@ After the declaration, *name* may be used wherever a type is allowed: to declare
 
 A delegate value is normally produced by **AddressOf**, which yields a delegate-typed reference to a regular procedure with a matching signature. A procedure that does not match causes only a warning, TB0026 *Mismatched delegate type*, and the program still builds; its arguments then arrive in a form it does not expect. See [Passing a function as an argument](../../Features/Language/Delegates#callbacks) for what that looks like and how to make it an error. For backwards compatibility, a delegate variable can also be assigned a plain **LongPtr** address obtained by other means --- the value passes through unchecked. A delegate variable is called like a function: `result = myDelegate(arg1, arg2)`.
 
+<!-- test: bug delegate-next-keyword -->
+> [!NOTE] BETA 1034
+> After a **Delegate** statement, the next [**Friend**](Friend), **ReadOnly**, **WithEvents**, [**Implements**](Implements) or **Inherits** in the same class or module is refused with TB5182, *Syntax error. No handler for this symbol*. A procedure, a [**Declare**](Declare) or an [**Event**](Event) ends the effect; a blank line, a variable, a **Const**, a **Type**, an **Enum**, an attribute or another **Delegate** does not. Put the **Delegate** after those statements, at the end of the class if necessary: a delegate type can be used before its declaration. A **Delegate** in a **Module** does not affect a class that follows it in the same file.
+
 ### Example
 
 A basic delegate, declared, assigned, and called:

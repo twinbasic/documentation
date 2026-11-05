@@ -12478,3 +12478,194 @@ Read from the sample's source only. It has not been run, because that needs the 
 Severity: low. It is a sample, but a reader copies a sample's pattern.
 
 <!-- Reproducer: bugs/sample22-event-log-wrong-button/ (mode lane: asserted by `ide-test.bat --only "^samples$"` (test/ide/samples.test.mjs), the test "Sample 22's Uninstall button of service 1 registers the event log of service 2", which reads the sample in the install). No page carries a callout (owner). -->
+
+---
+
+## After a Delegate, the next Friend, ReadOnly, WithEvents, Implements or Inherits is a syntax error
+
+**Describe the bug**
+After a `Delegate` statement, the compiler no longer recognises five words. The next `Friend`, `Implements` or `Inherits` gives TB5182, *Syntax error. No handler for this symbol*, on the word, and the next `ReadOnly` or `WithEvents` gives it on the name that follows. The code is correct: the same line compiles when it is placed before the `Delegate`.
+
+Issue #2001 reports the `ReadOnly` half of this. This entry adds the other four words and what ends the effect.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Create a new project and add this class, or open `delegate-next-keyword.twinproj`, which also has every case below:
+
+   ```vb
+   Class MyClass
+       Private Delegate Function TestDelegate () As Long
+
+       Friend Sub Test()
+       End Sub
+   End Class
+   ```
+2. See TB5182 on `Friend`.
+3. Replace `Friend` with `Public` or `Private`. The error goes away.
+
+What decides it, each a compile case of the project:
+- The words affected: `Friend` (on a Sub, a Function, a Property or a variable), `ReadOnly`, `WithEvents`, `Implements`, `Inherits`. In a Module, `ReadOnly`.
+- Not affected, directly after a `Delegate`: `Public`, `Private`, `Dim`, `Const`, `Static`, `Protected`, `Overridable`, `Sub`, `Function`, `Property`, `Declare`, `Event`, `Type`, `Enum`.
+- Every form of `Delegate` does it: `Function` or `Sub`, `Public` or `Private`, with arguments or a calling convention, in a Class or a Module.
+- A blank line, a comment, a variable, a `Const`, a `Type`, an `Enum`, an attribute or a second `Delegate` between the two leave the error in place.
+- A procedure, a `Declare` or an `Event` between the two ends the effect. `Friend` after `Friend` does not fail a second time either, once the first has given its error.
+- Each word compiles after a variable, a `Const` or a `Sub` when there is no `Delegate`, and before a `Delegate`. A class may use a delegate type declared lower down.
+- The next block of the file is not affected: a Class after a Module that ends in a `Delegate` compiles.
+
+**Expected behavior**
+No diagnostic. `Delegate` declarations have no effect on the lines after them.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034, and BETA 1007; #2001 saw the `ReadOnly` half on BETA 644
+
+**Additional context**
+What a `Sub`, a `Declare` and an `Event` share, and a `Delegate` lacks, is not known from outside the compiler. `Friend` is not a reserved word (`Dim Friend As Long` compiles), so the fault may be in how the parser decides that such a word is a keyword.
+
+A way round it: put the `Delegate` after these statements, at the end of the class if necessary.
+
+Severity: low to medium. Nothing is miscompiled, but a correct line is refused with a message that does not point at the `Delegate`, and the reader has no reason to look there.
+
+<!-- Reproducer: bugs/delegate-next-keyword/ (mode test: 33 compile cases, 18 of which fail with TB5182 on the correct line; the Cleared_ and Control_ cases pass). Reported on Discord by VanGoghGaming with the sample above. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md, docs/Reference/Core/Delegate.md, docs/Features/Advanced/Classes-and-Modules.md (ReadOnly Variables), docs/IDE/Code/Diagnostics.md (TB5182). -->
+
+---
+
+## A Friend member answers a late-bound call, from outside the project too
+
+**Describe the bug**
+A `Friend` member is meant for the project that declares it, and the type library leaves it out. But the `IDispatch` that the compiler writes for a class finds `Friend` members. So a late-bound call to one works, through an `Object` or a `Variant` variable or `CallByName`, and it works for code in another project that holds the object. VB6 raises error 438, *Object doesn't support this property or method*. A `Private` member raises 438 in both.
+
+A project that references a package can also use the `Friend` members of the package's classes, early-bound and late-bound.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `friend-late-bound.twinproj`. `Widget` has a `Friend Function GetValue`, and `FriendLib`, a package of the project, has a class `Locked` with a `Friend Function FriendFn`.
+2. Run:
+
+   ```vb
+   Dim O As Object = New Widget
+   Debug.Print O.GetValue()
+   Debug.Print CallByName(O, "GetValue", VbMethod)
+   ```
+3. See `7` twice, where 438 is expected.
+4. See that `L.FriendFn()` in the module `FromTheProject`, on a `Locked` from the package, compiles.
+
+What decides it:
+- A `Friend` Function, Property and variable are each found. A `Private` member raises 438, and a `Public` one works.
+- The IDE, a built exe, win32 and win64 give the same results.
+- From another project: an ActiveX DLL with a `[DllExport]` function that returns a class as `Object`, called from a second project through a `Declare`. Late-bound, the second project called a `Friend` Function and a `Friend` Property, and wrote and read a `Friend` variable. A `Private` variable raised 438, and the DLL's type library lists none of those `Friend` members.
+- Not affected, and the same as VB6: a `Friend` Function with no arguments, called through a class that implements the class, raises error 97. Other signatures have a defect of their own in a 32-bit build, in the entry on the stack below.
+
+**Expected behavior**
+Error 438 for each late-bound call, as VB6 gives, and a compile error for a `Friend` member of a package's class used from the project that references the package.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+#2409 asks for `Friend` members of a package to be hidden from IntelliSense. This entry is about the calls themselves.
+
+Severity: low to medium. Code that works does not stop working, but `Friend` does not keep a member private to the project, and a client of an ActiveX DLL can reach members that the type library does not show.
+
+<!-- Reproducer: bugs/friend-late-bound/ (mode test; vb6/ is the VB6 side, `bug_repro.mjs vb6 friend-late-bound`: early-bound works, late-bound and CallByName raise 438, through Implements raises 97). The call from another project was run once in a scratch copy, not kept. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md (two NOTEs). docs/Reference/COM-Interfaces/IDispatch.md says that a Friend member is found, with a sample that prints True for it: that changes too. The Sub, Function and Property pages used to say a Friend procedure cannot be late bound, VBA-Docs' text; that sentence came off them when the page for Friend was written, and can go back once this is fixed. What the type library holds, for the Friend page, was read with TLI from an ActiveX DLL built with project.dllRegisterAfterBuild false: Friend procedures and variables are left out; a Friend Enum, Type and Event are listed; a Private Type or Enum is listed when a Public member uses it. -->
+
+---
+
+## TB65535 gives Internal Error - Bad Error Info Locale Data in place of the missing member's name
+
+**Describe the bug**
+When a class leaves out a member of a class or interface it implements, TB65535 no longer says which. BETA 1033 reports *Missing implementation of member Function F() As Long*, and BETA 1034 reports *Internal Error - Bad Error Info Locale Data*. The error is still in the right place, on the name after `Implements`. Only its text is lost, and it was the text that named the member.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `missing-implementation-message.twinproj`:
+
+   ```vb
+   Class Base
+       Public Function F() As Long
+       End Function
+   End Class
+
+   Class Partial
+       Implements Base
+   End Class
+   ```
+2. See TB65535 on `Base` in `Implements Base`, with the text *Internal Error - Bad Error Info Locale Data*.
+
+What decides it:
+- BETA 1010 and BETA 1033 give the *Missing implementation of member* text, in the same harness, on the same project.
+- A `Public` Function and a `Public` variable give it, with one error for each missing member, so a variable gives two: its Get and its Let.
+
+**Expected behavior**
+*Missing implementation of member Function F() As Long*, as on BETA 1033.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+BETA 1034 takes the text of each error from the language pack, and the message has to be filled in with the member's name, which may be how it was lost. That is a guess from outside the compiler.
+
+Severity: low. The build stops where it should, but a class with several members has to be read by hand to find the missing one.
+
+<!-- Reproducer: bugs/missing-implementation-message/ (mode compile, expects TB65535 and the text). No page carries a callout: docs/Reference/Attributes.md quotes the message in a comment only. -->
+
+---
+
+## A Friend procedure called through a class that implements its class damages the stack in a 32-bit build
+
+**Describe the bug**
+A class that implements another class need not provide its `Friend` procedures (#750). A call to one, through a variable of the implemented class, is meant to raise error 97, *Can not call friend function on object which is not an instance of defining class*. In a 32-bit build, the code that raises it removes one stack slot besides `Me`, whatever the procedure takes. So only a procedure that takes exactly one slot works. Any other leaves the stack wrong: a built exe ends with an access violation, or stops with an error box after the error was handled, and a run in the IDE does not return.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `implements-friend-stub-stack.twinproj`, or use this, built as win32:
+
+   ```vb
+   Class Target
+       Public Function Pub() As Long
+       End Function
+       Friend Function F(ByVal X As Long) As Long
+       End Function
+   End Class
+
+   Class Impl
+       Implements Target
+       Private Function Target_Pub() As Long
+       End Function
+   End Class
+
+   Module Startup
+       Public Sub Main()
+           Dim T As Target
+           Set T = New Impl
+           On Error Resume Next
+           Dim L As Long
+           L = T.F(5)
+           Debug.Print Err.Number
+       End Sub
+   End Module
+   ```
+2. Build and run the exe. It ends with an access violation (0xC0000005), and the line after the call never runs.
+
+What decides it, on win32:
+- One stack slot, and error 97 is raised and caught: a `Sub` with one `ByVal Long` or one `ByRef Long`, a `Function` with no arguments (Long, or String), a `Property Get`, a `Property Let` with one `Long`. A function's return value counts as one slot, which is why a `Function` with no arguments works and one with an argument does not.
+- Two slots or more, and the run does not return (*no answer from the compiler*, in the compiler's test mode) or the exe ends with an access violation: a `Sub` with two `Long`, a `Sub` with one `ByVal Currency`, a `Function` with one `Long` argument.
+- No slot, a `Sub` with no arguments: in an IDE run neither handler catches the error, and it stops the run in the caller. In an exe the handler runs and `Err.Number` is 97, but when the procedure returns the program stops with a box, *Run-time error '97'*, and its caller never resumes.
+- win64: every one of these raises 97 and is caught, in the IDE (20 of 20 cases: ten signatures, each under `On Error Resume Next` and under `On Error GoTo`).
+- VB6: the six shapes in its project (no arguments, one `Long`, two `Long`, one `Currency`, and a `Function` with none and with one) each raise 97, it is caught, and the program goes on (`bug_repro.mjs vb6`).
+
+**Expected behavior**
+Error 97, caught by the caller's handler, whatever the signature, as win64 and VB6 do.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Inferred from the pattern above and not read from the generated code: one stub, with a fixed `ret 8`, stands in for every `Friend` procedure that an implementing class leaves out. It would have to remove what each procedure takes.
+
+Severity: high. The program ends with an access violation for a call whose whole purpose is to raise an error that it can handle, and unsaved data is lost.
+
+<!-- Reproducer: bugs/implements-friend-stub-stack/ (mode test; the case that does not return is last, because a run stops there). The exe's results were run once in a scratch copy, not kept: `tbrun --exe` on the three shapes gave 0xC0000005 for the two-argument Sub and for the Function with an argument, and the box for the Sub with no arguments. Found when the sample on the Friend page, which had a Sub with a ByVal Currency argument, did not return under check_examples; the sample now has a Long. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md, docs/Reference/Core/Implements.md. -->
