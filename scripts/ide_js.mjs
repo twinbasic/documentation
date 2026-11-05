@@ -21,14 +21,16 @@ import { die, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "..
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
   buildOf,
+  builtInCommandIds,
   builtInKeymap,
   checkUnit,
+  commandTextProblems,
   coverage,
   emptyMap,
   FixError,
   fileView,
   fixShapes,
-  keymapTable,
+  keymapTables,
   lineDiff,
   load,
   mainJsOf,
@@ -49,6 +51,7 @@ exitOnCrash();
 
 const DEFAULT_MAP = path.join(REPO_ROOT, "scripts", "ide-js", "names.json");
 const KEYMAP_PAGE = path.join(REPO_ROOT, "docs", "IDE", "Reference", "Keyboard-Shortcuts.md");
+const COMMAND_TEXT = path.join(REPO_ROOT, "scripts", "ide-js", "command-text.json");
 
 const USAGE = `usage: node scripts/ide_js.mjs <command> [arguments] [--ide <install>] [--map <names.json>] [--out <file>] [--copy-to <dir>] [--all] [--json] [--check] [--update] [-h, --help]
 
@@ -80,9 +83,14 @@ Commands:
                             its twinBASIC.exe; --out <file> writes main.js only
   shape <fix.js>            the fix shape: each unit of the fix as the build has
                             it and as fixed, a diff in our names, as markdown
-  keymap                    --ide's built-in keyboard shortcuts, as the table of
-                            docs/IDE/Reference/Keyboard-Shortcuts.md; --check
-                            compares the page with it, --update writes it there
+  keymap                    --ide's commands, as the two tables of
+                            docs/IDE/Reference/Keyboard-Shortcuts.md (those with a
+                            default key, and those with none), each with its
+                            description from scripts/ide-js/command-text.json;
+                            --check compares the page with them and also fails
+                            for a command with no description, or a description
+                            for a command the build lacks; --update writes the
+                            page
 
 Options:
   --ide <install>   the install: its twinBASIC.exe, its folder or a main.js
@@ -94,8 +102,8 @@ Options:
   --copy-to <dir>   patch: the folder for the patched copy, under the temp folder
   --all             view: the whole file
   --json            survey, units, check: one JSON object
-  --check           keymap: compare the page's table with the build
-  --update          keymap: write the build's table into the page
+  --check           keymap: compare the page's tables and the descriptions with the build
+  --update          keymap: write the build's tables into the page
   -h, --help        print this text and exit
 
 Exit codes:
@@ -103,7 +111,8 @@ Exit codes:
   1  a finding: check, a name is lost; survey, a byte the token list does not
      account for; patch, shape, a fix that does not apply to the build (a unit
      it names is missing, a name in it is one of the build's minified names, or
-     the patched unit is not the fix); keymap --check, the page differs
+     the patched unit is not the fix); keymap --check, the page differs, or a
+     command has no description, or a description has no command
   2  a refused command line, an install or a file that cannot be read, a main.js
      or fix that does not parse, a name the map may not take, a refused --out or
      --copy-to, or a crash`;
@@ -383,23 +392,38 @@ if (command === "view") {
 
 if (command === "keymap") {
   const { parsed, build } = loadInstall(values.ide);
-  const table = keymapTable(builtInKeymap(parsed));
+  const keys = builtInKeymap(parsed);
+  const ids = [...new Set([...builtInCommandIds(parsed), ...Object.keys(keys)])];
+  const text = JSON.parse(readFileSync(COMMAND_TEXT, "utf8"));
+  const tables = keymapTables(keys, ids, text);
   if (!values.check && !values.update) {
-    console.log(table);
+    console.log(`${tables.keyed}
+
+${tables.unkeyed}`);
     process.exit(0);
   }
+  // A command with no description in the data file is a gap to fill; a description for a
+  // command the build lacks is a leftover to remove.
+  const { missing, extra } = commandTextProblems(ids, text);
+  const dataName = path.relative(REPO_ROOT, COMMAND_TEXT);
+  if (missing.length)
+    console.log(
+      `${dataName}: no entry for ${missing.length} commands of ${build ?? "the build"}: ${missing.join(", ")}`,
+    );
+  if (extra.length)
+    console.log(`${dataName}: ${extra.length} entries for commands ${build ?? "the build"} lacks: ${extra.join(", ")}`);
   const page = readFileSync(KEYMAP_PAGE, "utf8");
-  const { current, text } = pageKeymap(page, table);
+  const { current, expected, text: updated } = pageKeymap(page, tables);
   const name = path.relative(REPO_ROOT, KEYMAP_PAGE);
   if (values.update) {
-    writeFileSync(KEYMAP_PAGE, text);
-    console.log(`${name}: ${current === table ? "unchanged" : `written from ${build ?? "the build"}`}`);
+    writeFileSync(KEYMAP_PAGE, updated);
+    console.log(`${name}: ${current === expected ? "unchanged" : `written from ${build ?? "the build"}`}`);
     process.exit(0);
   }
-  const diff = lineDiff(current, table, { context: 0 });
+  const diff = lineDiff(current, expected, { context: 0 });
   if (diff) console.log(diff);
   console.log(`${name}: ${diff ? `differs from ${build ?? "the build"}` : `the same as ${build ?? "the build"}`}`);
-  process.exit(diff ? 1 : 0);
+  process.exit(diff || missing.length || extra.length ? 1 : 0);
 }
 
 // patch and shape

@@ -59,7 +59,7 @@ Text that is not valid JSON turns red. The IDE ignores a group whose text is not
 
 ## The text of a group
 
-A group is a JSON object. Each key names a command, and each value is a list of key strings. The commands are named in the default group, which is listed in the [reference](../Reference/Keyboard-Shortcuts) and is the place to look up the name of a command.
+A group is a JSON object. Each key names a command, and each value is a list of key strings. Any command of the IDE can be named, whether or not the default group gives it a key. The [reference](../Reference/Keyboard-Shortcuts) lists every command with a line on what it does: the commands that have a default key in one table, and [those that have none](../Reference/Keyboard-Shortcuts#commands-with-no-default-key) in another. It is the place to look up the name of a command.
 
 | Entry | Meaning |
 |---|---|
