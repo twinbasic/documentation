@@ -641,8 +641,8 @@ Landed.
 
 **Carried forward.** `buildPackageSummary` and `buildPageIndex` in
 `wisdom/extract/sitemap.mjs` take a page's parts through one `packageParts(path)`, which drops
-`docs/Reference/` and then a `Default/` or `Built-In/`, so a page is grouped by its package
-folder's name, and the Assert package is `TwinBasicAssertions` (see Open questions).
+`docs/Reference/` and then a `Default/` or `Built-In/`. A page is grouped by the name its
+package's landing page gives (`packageNames`), so the folder `TwinBasicAssertions` is `Assert`.
 
 *The link checker, the gates' scaffolding, the browser tools and the repository root:
 C42–C46.*
@@ -1705,14 +1705,7 @@ decides otherwise:
 - whether `test.bat` without Python fails or skips `check_impexp_parity.mjs` loudly: C70,
   decision (b)'s open question, which the owner settled on 2026-09-25: it skips, loudly;
 - whether the pre-commit hook should also run the dash check, which A6-3 assumed: the owner
-  approved a hook that runs Biome only (C08), so it stays out unless the owner asks for it;
-- what Wisdom's extract should call the Assert package: its reference folder is
-  `docs/Reference/Built-In/TwinBasicAssertions/`, while the package's title, nav parent and
-  permalinks say `Assert`. Since C41c `package-summary.txt` groups it as
-  `TwinBasicAssertions` and `page-index.json` keys it `TwinBasicAssertions/<title>`; the last
-  summary written (2026-06-04, before `58a5e1c` reached it) said `Assert`, the name a thread
-  on Discord would use. Kept at the owner's request, to be picked up later; no commit is
-  named yet.
+  approved a hook that runs Biome only (C08), so it stays out unless the owner asks for it.
 
 The two questions this plan started with are settled: the two link checkers (decision 5), and
 the survey script, which is committed.
