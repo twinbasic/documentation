@@ -29,9 +29,11 @@
 // an agent finished, so that the merge moves the watermark of those alone: a
 // group whose agent died is read again by the next run.
 //
-// Each agent is an Explore agent: it needs only to read, what it reads is public
-// chat, and it starts without this repository's CLAUDE.md, whose size would
-// otherwise be paid once per agent.
+// Each agent is an Explore agent: it starts without this repository's CLAUDE.md,
+// whose size would otherwise be paid once per agent, and it has no Write or Edit
+// tool.  It does have Bash, so it stays read-only by its instructions, not by any
+// restriction, while what it reads is public chat.  Run a batch with the working
+// tree clean, and read `git status` afterwards.
 
 export const meta = {
   name: 'wisdom-extract',
