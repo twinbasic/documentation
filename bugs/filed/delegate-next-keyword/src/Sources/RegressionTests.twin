@@ -60,10 +60,6 @@ Class AfterInherits
     Private Delegate Function D() As Long
     Inherits BaseClass  ' CASE After_Inherits: none
 End Class
-Module AfterInModule
-    Private Delegate Function D() As Long
-    Private ReadOnly R As Long = 1  ' CASE After_ReadOnlyInModule: none
-End Module
 
 ' --- any form of Delegate does it
 Class DelegateSub
@@ -76,10 +72,6 @@ Class DelegateCDecl
     Friend Sub S()  ' CASE Delegate_CDecl: none
     End Sub
 End Class
-Module DelegatePublicInModule
-    Public Delegate Function D() As Long
-    Public ReadOnly R As Long = 1  ' CASE Delegate_PublicInModule: none
-End Module
 
 ' --- between the two, these leave it as it is
 Class StillAfterVariable

@@ -23,7 +23,7 @@ Steps to reproduce the behavior:
 3. Replace `Friend` with `Public` or `Private`. The error goes away.
 
 What decides it, each a compile case of the project:
-- The words affected: `Friend` (on a Sub, a Function, a Property or a variable), `ReadOnly`, `WithEvents`, `Implements`, `Inherits`. In a Module, `ReadOnly`.
+- The words affected: `Friend` (on a Sub, a Function, a Property or a variable), `ReadOnly`, `WithEvents`, `Implements`, `Inherits`.
 - Not affected, directly after a `Delegate`: `Public`, `Private`, `Dim`, `Const`, `Static`, `Protected`, `Overridable`, `Sub`, `Function`, `Property`, `Declare`, `Event`, `Type`, `Enum`.
 - Every form of `Delegate` does it: `Function` or `Sub`, `Public` or `Private`, with arguments or a calling convention, in a Class or a Module.
 - A blank line, a comment, a variable, a `Const`, a `Type`, an `Enum`, an attribute or a second `Delegate` between the two leave the error in place.
@@ -45,4 +45,4 @@ A way round it: put the `Delegate` after these statements, at the end of the cla
 
 Severity: low to medium. Nothing is miscompiled, but a correct line is refused with a message that does not point at the `Delegate`, and the reader has no reason to look there.
 
-<!-- Reproducer: bugs/delegate-next-keyword/ (mode test: 33 compile cases, 18 of which fail with TB5182 on the correct line; the Cleared_ and Control_ cases pass). Reported on Discord by VanGoghGaming with the sample above. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md, docs/Reference/Core/Delegate.md, docs/Features/Advanced/Classes-and-Modules.md (ReadOnly Variables), docs/IDE/Code/Diagnostics.md (TB5182). -->
+<!-- Reproducer: bugs/delegate-next-keyword/ (mode test: 31 compile cases, 16 of which fail with TB5182 on the correct line; two cases of the first attached zip put `ReadOnly` in a Module, where it is not valid and draws TB5182 with no Delegate near it, as Wayne said on #2001, and they are gone; the Cleared_ and Control_ cases pass). Reported on Discord by VanGoghGaming with the sample above. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md, docs/Reference/Core/Delegate.md, docs/Features/Advanced/Classes-and-Modules.md (ReadOnly Variables), docs/IDE/Code/Diagnostics.md (TB5182). -->
