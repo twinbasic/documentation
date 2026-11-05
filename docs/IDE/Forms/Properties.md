@@ -112,6 +112,10 @@ Some properties change others when you set them:
 
 Pointing at a property's value shows a short description of the property as a tooltip. The compiler supplies the text for some properties only. For example, the description of **Left** reads *Adjusts the left position of this control, in pixels, relative to the container*. **Top**, **Width**, **Height**, **Enabled**, **ToolTipText** and **TabIndex** have one too. **Caption**, **Style**, **BackColor** and **Index** have none.
 
+<!-- test: bug properties-description-footer-hidden, lane ide:forms -->
+> [!NOTE] BETA 1034
+> The tooltip is the only place the description shows. The IDE also writes it to a line for the foot of the pane when a property's box takes the focus, but that line is out of sight, so the foot of the pane stays empty.
+
 ## Events
 
 The **EVENTS** tab lists the events of a control that you can handle. It works with exactly one control selected. With two controls or the form selected, the tab is empty.

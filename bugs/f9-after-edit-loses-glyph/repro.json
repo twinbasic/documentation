@@ -1,0 +1,10 @@
+{
+  "mode": "lane",
+  "lane": "ide:breakpoints",
+  "tests": [
+    "a breakpoint set before the compiler has answered an edit loses its glyph when the answer arrives, the run still stops there, and the next edit brings the glyph back",
+    "the next breakpoint set in that file removes the one that lost its glyph",
+    "a breakpoint cleared before the compiler has answered an edit gets its glyph back, though the run does not stop there, and the next edit takes the glyph away"
+  ],
+  "steps": "1. Open a project and put the caret in a comment at the end of a statement's line.\n2. Press a letter key and F9 almost together, within a few tens of milliseconds, so that F9 comes before the compiler's answer to the keystroke.\n3. The red glyph appears and vanishes. Press F5: the program stops on that line anyway.\n4. Stop. Press F9 on another line of the same file and press F5: the program stops only on the second line."
+}

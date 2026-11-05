@@ -304,6 +304,300 @@ Tested on a copy of BETA 1034 with this change (5 edits in `main.js`, every othe
 
 ---
 
+## A breakpoint set just after an edit loses its glyph, and the next breakpoint set in that file removes it
+
+**Describe the bug**
+When F9 is pressed after an edit but before the compiler has answered that edit, the breakpoint's red glyph appears and then disappears when the answer arrives. The window is the time the answer takes, 20 to 45 ms here. The compiler still has the breakpoint, so the run stops there with no glyph showing. The next breakpoint set in the same file then removes it: the IDE sends the file's whole breakpoint list, read from the glyphs, and the lost one is not in it. The same answer undoes an F9 that clears a breakpoint: the glyph comes back, and the run does not stop there. It was observed by recording the `textDocument/didChangeV2` messages the IDE sends and their answers, by reading the margin's decorations, and by running the program.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project you can run, with a line of code that has a comment at its end, such as `Debug.Print "two" ' a note`.
+2. Put the caret in that comment. Press a letter key and F9 almost together, so that F9 comes a few tens of milliseconds after the letter and before the compiler's answer to the keystroke. By hand this takes a few tries; a script that types the character and sends F9 straight after it hits the window every time.
+3. See the glyph appear and vanish. Press F5: the program stops on that line anyway.
+4. Stop the program. Without typing anything, press F9 on another line of the same file (the timing does not matter now) and press F5.
+5. See the program stop only on the second line: the first breakpoint is gone.
+
+**Expected behavior**
+A breakpoint set with F9 keeps its glyph and stays set until it is removed, whenever the key is pressed, as it does when F9 comes after the answer. An answer to a change that was sent before the breakpoint was set should not replace the IDE's breakpoint list.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The cause, read from `ide\main.js`: the answer to a `didChangeV2` that carries text goes to `parseDocumentDecorations`, which discards every breakpoint decoration, draws the answer's `breakpoints` list instead and sets `cachedBreakpointLines` to it. Its only staleness check is the document version, and that check cannot fail here: `sendDocumentChangeToServer` passes the version the file has when the answer arrives, and `toggleBreakpointAtLine` does not change the version in any case. The breakpoint change itself is sent at once, because each change clears `pendingChangeConfirmation` before sending, so the compiler receives it after it has answered the text change with the old list. In one try, with times in ms:
+
+```
+1532.0  send    the edit, with its text
+1539.2  F9      the glyph is drawn
+1548.6  send    the breakpoint change, list [8]
+1557.6  answer  to the edit, list []: parseDocumentDecorations erases the glyph
+1567.4  answer  to the breakpoint change
+```
+
+Whichever comes next decides what happens. The next text change puts things right: its answer holds the compiler's list, so a lost glyph comes back and a glyph that came back goes away. The next F9 in the file, with no edit first, does the opposite: it sends the list read from the glyphs, and the compiler drops what the glyphs lost.
+
+The answer to `textDocument/getDecorations`, which the IDE asks for when a file is opened or switched to, goes through the same function with no check, and an F9 before that answer loses its glyph in the same way.
+
+A typed character with F9 sent straight after it lost the glyph in 16 of 16 tries.
+
+What does not reproduce it:
+
+| what was tried | result |
+|---|---|
+| F9 after the edit's answer has arrived | the glyph stays, a second breakpoint leaves it set, and the run stops on both |
+| F9 with no edit before it (BETA 1005) | the same |
+| F9 200 ms or more after a one-character edit (BETA 1005) | the same |
+| a module of 3,000 functions added to the project, to slow the compile (BETA 1005) | no wider a window: the answer still took 25 to 35 ms |
+
+The line does not matter: on BETA 1005 it was lost on `ReDim`, `.Name = name` and `count = count + 1` when each was first, and each was kept when set second. Also on BETA 1005 and BETA 997.
+
+Severity: a breakpoint silently lost, or silently present with no glyph. A person rarely presses F9 inside the window, but a tool or an add-in that edits code and then sets a breakpoint does every time.
+
+**Fix shape**
+
+`toggleBreakpointAtLine` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`line`, `model`, `foundIndex`, `index`, `removed`, `versionInfo`, `decoration`); the build calls them `e`, `t`, `o`, `n`, `i`, `r`, `i`.
+
+```diff
+@@ -33,5 +33,9 @@
+     );
+   }
+   var versionInfo = { versionId: editor.getModel().getVersionId() };
++  // Counted here, before the change is sent: an answer that arrives from now on, until the
++  // compiler has this change, holds a list that is out of date.
++  var fileNode = openEditors.selectedEditorNode.fileNode;
++  fileNode.breakpointChanges = (fileNode.breakpointChanges || 0) + 1;
+   model.ourChangeContentHandler(versionInfo, true, true);
+ }
+```
+
+`sendDocumentChangeToServer` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`editorNode`, `change`, `onAnswer`, `answer`, `queued`); the build calls them `e`, `t`, `o`, `n`, `t`.
+
+```diff
+@@ -5,6 +5,11 @@
+     editorNode.fileNode.queuedChange = change;
+   } else {
+     editorNode.fileNode.pendingChangeConfirmation = true;
++    // The compiler answers this change with the breakpoints it has been sent up to now.
++    if (change.contentChanges === null) {
++      editorNode.fileNode.breakpointChangesSent = editorNode.fileNode.breakpointChanges;
++    }
++    const breakpointChangesAnswered = editorNode.fileNode.breakpointChangesSent;
+     lspSocket.request("textDocument/didChangeV2", change, (answer) => {
+       if (onAnswer) {
+         onAnswer();
+@@ -18,7 +23,12 @@
+       } else {
+         if (change.contentChanges !== null) {
+           nextScopeUpdateIsAnEdit = true;
+-          parseDocumentDecorations(editorNode, answer.result, editorNode.fileNode.ideVersionId);
++          parseDocumentDecorations(
++            editorNode,
++            answer.result,
++            editorNode.fileNode.ideVersionId,
++            breakpointChangesAnswered,
++          );
+         }
+       }
+     });
+```
+
+`getSemanticTokensForCurrentFile` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`editorNode`, `uri`, `answer`); the build calls them `e`, `t`, `o`.
+
+```diff
+@@ -10,11 +10,12 @@
+     "getSemanticTokensForCurrentFile: " + uri + " [v" + editorNode.fileNode.ideVersionId + "]",
+   );
+   awaitingDocumentDecorations = true;
++  const breakpointChangesAnswered = editorNode.fileNode.breakpointChangesSent;
+   lspSocket.request(
+     "textDocument/getDecorations",
+     { textDocument: { uri: uri, version: editorNode.fileNode.ideVersionId } },
+     (answer) => {
+-      parseDocumentDecorations(editorNode, answer.result, 0);
++      parseDocumentDecorations(editorNode, answer.result, 0, breakpointChangesAnswered);
+       traceOutputLine("getSemanticTokensForCurrentFile... " + uri + " [done]");
+     },
+   );
+```
+
+`parseDocumentDecorations` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`editorNode`, `decorations`, `versionId`, `tokensTime`, `separatorDecorations`, `separators`, `separatorsTime`, `codeLenses`, `breakpoints`, `breakpointLines`, `action`, `separator`, `lens`, `breakpoint`); the build calls them `e`, `t`, `o`, `n`, `i`, `r`, `a`, `s`, `l`, `d`, `c`, `e`, `e`, `e`.
+
+```diff
+@@ -1,4 +1,4 @@
+-function parseDocumentDecorations(editorNode, decorations, versionId) {
++function parseDocumentDecorations(editorNode, decorations, versionId, breakpointChangesAnswered) {
+   if (!monaco) return;
+   traceOutputLine("parseDocumentDecorations: " + editorNode.fileNode.getFullPath());
+   if (!decorations) return;
+@@ -36,7 +36,13 @@
+     );
+   });
+   addCodeLensFinalize();
+-  const breakpoints = decorations.breakpoints;
++  // A list made before the page's last breakpoint change is out of date: the page's stands.
++  const breakpoints =
++    breakpointChangesAnswered === editorNode.fileNode.breakpointChanges
++      ? decorations.breakpoints
++      : currentBreakpointDecorations.map((id) => ({
++          line: editorNode.monacoModelInstance.getDecorationRange(id).startLineNumber,
++        }));
+   clearCurrentEditorBreakpoints();
+   currentBreakpointDecorations = [];
+   var breakpointLines = [];
+```
+
+`toggleBreakpointAtLine` counts each change as it is made, and `sendDocumentChangeToServer` records how many of them the compiler has been sent. Each request remembers that number when it goes out, and `parseDocumentDecorations` takes the answer's list only when the number is the count of changes the page has made. Otherwise the list is older than the page's last change, so the page's own list stands. It is drawn again and goes into `cachedBreakpointLines`, so nothing else in the function changes. A later answer, made once the compiler has the change, is taken as before. The change is counted in `toggleBreakpointAtLine` and not at the send, because the send is on a timer that took up to 30 ms here, and an answer can arrive in that time.
+
+Tested on a copy of BETA 1034 with this change (14 edits in `main.js`, every other byte the same): the entry's three tests fail because the margin is right, and the lane's other 9 tests pass. With the answer held back, both breakpoints keep their glyphs and the run stops on both, and a cleared breakpoint stays cleared. A typed character with F9 straight after it kept the glyph in 10 of 10 tries, where the install kept it in 0 of 10. A glyph still moves with the text, and a breakpoint survives a repeated `getDecorations`.
+
+<!-- Reproducer: bugs/f9-after-edit-loses-glyph/ (mode lane: asserted by `ide-test.bat --only breakpoints` (test/ide/breakpoints.test.mjs), the three tests named in repro.json, which pass on BETA 1034; the control "control: a breakpoint set once the compiler has answered an edit keeps its glyph, and the next one leaves it set" passes too). No project and no zip. The tests do not race the window: HOLD_ANSWER_JS keeps the compiler's own answer to a typed character in the page, a real F9 is pressed, the compiler answers that, and the held answer is delivered, so it is as old as an answer in the window always is. docs/IDE/Debugging/Breakpoints-and-Stepping.md carries the WARNING at the end of *Set and clear a breakpoint*; when this is fixed, the callout goes. The harness's own guard is `waitForEditAnswer` in scripts/lib/tb-operate.mjs. The 16 of 16, the 10 of 10, the 20 to 45 ms and the trace are from trials on BETA 1034, not the lane; the getDecorations result is from one trial with that answer held back. Found 2026-10-11 shooting the debugging chapter. Fix: bugs/f9-after-edit-loses-glyph/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/f9-after-edit-loses-glyph/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only breakpoints` tests it (the entry's three tests then fail, which is the fix working). -->
+
+---
+
+## A save right after F9 writes the breakpoints as they were before that F9
+
+**Describe the bug**
+When Ctrl+S reaches the IDE before the timer that sends F9's change has fired, the project is saved with the breakpoints as they were before that F9. Nothing shows at first: the margin and the next run are right, because the compiler gets the change just after the save. The saved project is wrong, though, so after **Restart the compiler** a breakpoint that was removed is back and stops the run, and one that was set is gone. It was observed by recording the messages the IDE sends and their answers, restarting the compiler, reading the margin and running the program.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project you can run and a code file. Put the caret on a statement with no breakpoint.
+2. Press F9, F9 and Ctrl+S as nearly together as you can. The save has to come within about 10 ms of the second F9, so by hand it takes many tries; a script that sends the keys with no wait does it in most tries.
+3. See no breakpoint in the margin. Press F5: the program runs past the line.
+4. Click **Restart the compiler** on the toolbar.
+5. See the breakpoint back in the margin. Press F5: the program stops on the line.
+
+**Expected behavior**
+The save holds the breakpoints the IDE shows when the key is pressed, so that restarting the compiler changes nothing, as it does when the two keys are further apart.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The cause, read from `ide\main.js`: `ourChangeContentHandler` sends a breakpoint change from a `setTimeout(..., 0)`, which took up to 30 ms to fire here. `tbProject_SaveAllChanges` with no changed document reaches `askServerToSaveProject` at once, in the key's own handler, so `RequestSaveProject` can leave on the file-system socket before the change leaves on `lspSocket`. The compiler saves its old list. The save's answer then empties `g_SessionFilesystemTransactions`, which by then holds the change's `TransactionChangedBreakpoints`, so a restart does not send the change again either. In one try, with times in ms:
+
+```
+5494.8  send    the first F9's change, list [8]
+5495.2  answer  to it
+5504.4  save    RequestSaveProject
+5510.2  send    the second F9's change, list []
+5510.6  answer  to it
+5515.7  saved   the transactions are emptied
+```
+
+The saved file itself holds the old list: 2,544 bytes in such a try, and 2,540 when the removed breakpoint was not saved.
+
+This has a different cause from "A breakpoint set just after an edit loses its glyph, and the next breakpoint set in that file removes it". No edit is involved and `parseDocumentDecorations` is not called: the save goes out before the change, where in that entry an answer comes back after it.
+
+F9, F9 and Ctrl+S sent as key events, with the wait between the last F9 and Ctrl+S that the table gives:
+
+| wait | breakpoint back after the restart |
+|---|---|
+| none | 20 of 25 tries |
+| 10 ms | 0 of 6 |
+| 20 ms | 0 of 6 |
+| 30 ms | 0 of 6 |
+| 50 ms | 0 of 3 |
+| 200 ms | 0 of 3 |
+| 1 s | 0 of 3 |
+
+In every try whose order was recorded, the breakpoint came back when the save went out between the two changes, and not when it went out after both. When it went out before both, the saved list had no breakpoint, which is right by luck.
+
+What does not reproduce it:
+
+| what was tried | result |
+|---|---|
+| one F9 that sets a breakpoint, then Ctrl+S, as key events with no wait | right in 4 of 4 tries: the Ctrl key's own event gives the timer time. With the F9 and the save in one task of the page, the breakpoint is lost |
+| one F9 that clears a breakpoint, then Ctrl+S, as key events with no wait | right in 4 of 4 tries, for the same reason. With the two in one task, the breakpoint comes back |
+| a wait for the compiler's answer to F9, then Ctrl+S | right |
+
+Severity: low in practice, since the keys must be almost together. The result is silent, though: the project on disk differs from what the IDE showed when it was saved.
+
+**Fix shape**
+
+`serverSaveDirtyDocuments` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`done`, `errorCount`, `pending`, `lastProgress`, `oneDone`, `editorNode`, `watchdog`, `message`, `tabIndex`, `error`, `elapsed`, `timeoutMessage`); the build calls them `e`, `t`, `o`, `n`, `i`, `r`, `a`, `s`, `e`, `o`, `e`, `t`.
+
+```diff
+@@ -10,7 +10,9 @@
+         clearInterval(watchdog);
+         watchdog = 0;
+       }
+-      if (done) done();
++      // On a timer of its own: a breakpoint change made just before the save is waiting on a
++      // timer to be sent, so this one runs after it.
++      if (done) setTimeout(done, 0);
+     }
+   };
+   for (let tabIndex = 0; tabIndex < codePanelTabs.childNodes.length; tabIndex++) {
+```
+
+`serverSaveDirtyDocuments` runs before the save on both routes, Ctrl+S and the question on closing a project. Calling its callback from a timer puts `askServerToSaveProject` behind every timer already waiting, so the breakpoint change is sent first and its transaction is in the list before the save is asked for. The two messages still go on different sockets. The compiler took them in that order in every try below; a fix that also waits for the change's answer would not depend on that.
+
+Tested on a copy of BETA 1034 with this change (1 edit in `main.js`, every other byte the same): the entry's two tests fail because the restart shows the right list, and the lane's other 10 tests pass. With F9 and the save in one task the saved list was right in 10 of 10 tries, five each way. F9, F9 and Ctrl+S with no wait brought the breakpoint back in 0 of 10 tries, where the install brought it back in 7 of 10.
+
+<!-- Reproducer: bugs/save-overtakes-breakpoint-change/ (mode lane: asserted by `ide-test.bat --only breakpoints` (test/ide/breakpoints.test.mjs), the two tests named in repro.json, which pass on BETA 1034; the control "control: a breakpoint cleared once the compiler has answered it, and then saved, stays cleared across a restart" passes too). No project and no zip. The tests do not race the timer: they run tbDebug_ToggleBreakpoint and tbProject_SaveAllChanges, the commands F9 and Ctrl+S run, in one task of the page, where a timer cannot fire between them, so the save always goes first. docs/IDE/Debugging/Breakpoints-and-Stepping.md carries the WARNING under *Where breakpoints are kept*; when this is fixed, the callout goes. The table's tries are from trials on BETA 1034 (.claude/scratch/ide-docs/try-f9/), not the lane; test/ide/breakpoints.test.mjs noted the same thing on BETA 1005 as "now and then". Fix: bugs/save-overtakes-breakpoint-change/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/save-overtakes-breakpoint-change/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only breakpoints` tests it (the entry's two tests then fail, which is the fix working). -->
+
+---
+
+## PROPERTIES shows no description line: the text goes to a footer left behind in the form designer, out of sight
+
+**Describe the bug**
+When a box in PROPERTIES takes the focus, the IDE writes the property's description into a line meant for the foot of the pane (the element `proprtiesBoxFooter`, spelt so). The line never shows. It holds the text, but it was left behind in the form designer when the property list moved to the PROPERTIES panel, and it lies out of sight to the right of the designer. So the description shows only as the value's tooltip. It was observed by reading the element and the boxes of its ancestors in the page of an IDE with a form open, and by asking the page what it has at points of the element's box.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project with a form and open the form in the designer.
+2. Select a control and click in the **Left** box of PROPERTIES.
+3. See nothing at the foot of the pane. Point at the value: its tooltip reads *Adjusts the left position of this control, in pixels, relative to the container*.
+4. In the page, see that `document.querySelector(".proprtiesBoxFooter").innerText` holds that same text.
+
+**Expected behavior**
+The description shows in the line at the foot of PROPERTIES while the box has the focus, which is what `propertyOnGotFocus` writes it there for.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The cause, read from `ide\main.js` and `ide\formDesigner.css`: in the designer's template `.proprtiesBoxFooter` is a child of `.propertiesBox`, beside `.propertiesBoxInner`. When a designer is activated, its `activated` handler moves `.propertiesBoxInner` into the PROPERTIES panel (`propertiesDockablePanel._this.sectionHeader.sectionRoot`) and leaves the footer where it was. `.propertiesBox` is then 0 px wide, at the right edge of the designer. The footer's rule (`position: absolute; width: 100%; bottom: 0`) sizes it against `.formDesignerContainer`, so in a page 1600 by 1000 its box is 1098 by 60 at (1263, 674): it starts at the designer's right edge, where `.codePanelMainInner`, with `overflow: hidden`, clips all of it.
+
+The IDE writes the line for every property that has a description. **Left**, **Top**, **Width**, **Height**, **Enabled**, **ToolTipText** and **TabIndex** have one. **Caption**, **Style**, **BackColor** and **Index** have none, and the line is then empty, as it should be.
+
+Severity: low. Nothing is lost, because the tooltip has the same text, but a part of the pane has never been seen.
+
+**Fix shape**
+
+`propertyOnGotFocus` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`globals`, `valueCell`, `propertyName`); the build calls them `e`, `t`, `o`.
+
+```diff
+@@ -1,5 +1,15 @@
+ function propertyOnGotFocus(globals, valueCell, propertyName) {
+   globals.propertyValueEditor = 1;
++  // The list went to the PROPERTIES panel, and the line stayed in the designer's empty box.
++  const line = globals.proprtiesBoxFooter;
++  if (line.parentNode !== globals.propertiesBoxInner) {
++    globals.propertiesBoxInner.appendChild(line);
++    line.style.position = "sticky";
++    line.style.zIndex = 1112; // above the list's sticky headers
++    line.style.boxSizing = "border-box";
++    line.style.color = "var(--themeSectionHeaderTextColor)";
++    line.style.backgroundColor = "var(--themePanelHeaderBackColor)";
++  }
+   globals.proprtiesBoxFooter.innerText = valueCell.title;
+   if (globals.proprtiesBoxFooter.innerHTML)
+     globals.proprtiesBoxFooter.innerHTML = globals.infoIcon + globals.proprtiesBoxFooter.innerHTML;
+```
+
+The first box to take the focus moves the line into `.propertiesBoxInner`, which is the list's scrolling box and is in the panel, and makes it stick to that box's foot. The move is made here rather than in the `activated` handler because that handler is not a function of its own in `main.js`; a fix in the source would more simply move the line with the list. The rule in `formDesigner.css` gives the line white text on a translucent strip, which the list's rows would show through, so the colours become the panel header's, and the z-index puts it above the list's sticky headers.
+
+Tested on a copy of BETA 1034 with this change (1 edit in `main.js`, every other byte the same): the entry's test fails because the line can be seen, and the lane's other 38 tests pass. Pictures of the pane show the text on two lines, in full, in the dark and the light theme.
+
+<!-- Reproducer: bugs/properties-description-footer-hidden/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "a focused PROPERTIES box puts its description in the description line, which is left out of sight behind the designer", which passes on BETA 1034; the control "control: the tooltip of a PROPERTIES value holds the property's description" passes too). No project and no zip. The test clicks the Left box of Command1 and tests what the page has at nine points of the line's box that are in the window. docs/IDE/Forms/Properties.md carries the NOTE under *Descriptions*; when this is fixed, the callout goes and the section describes the line. Found 2026-10-12 with the forms chapter's trials (forms-facts section 10e). Fix: bugs/properties-description-footer-hidden/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/properties-description-footer-hidden/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only forms` tests it (the entry's test then fails, which is the fix working). -->
+
+---
+
 ## `--buildAndExit32` writes nothing, exits 0 on a project with errors, and hangs on a failing build
 
 *DEFERRED until after v1*

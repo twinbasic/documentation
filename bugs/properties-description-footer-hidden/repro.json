@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "a focused PROPERTIES box puts its description in the description line, which is left out of sight behind the designer"
+  ],
+  "steps": "1. Open a project with a form and open the form in the designer.\n2. Select a control and click in the Left box of PROPERTIES.\n3. Nothing appears at the foot of the pane. The description shows only as the tooltip of the value.\n4. In the page, document.querySelector('.proprtiesBoxFooter').innerText holds the description, and the element's box lies to the right of the designer, where it is clipped."
+}
