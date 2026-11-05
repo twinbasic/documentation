@@ -20,5 +20,7 @@
       "^PASS Control_ImplementsAfterVariable$",
       "^PASS Control_ProtectedAfterDelegate$"
     ]
-  }
+  },
+  "issue": 2001,
+  "existing": true
 }
