@@ -18,7 +18,15 @@ import { describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
-import { checkIndexTerms, deriveSearchEntries, joinSymbolsToEntries, renderEntryString } from "../builder/search.mjs";
+import os from "node:os";
+import {
+  checkIndexTerms,
+  deriveSearchEntries,
+  joinSymbolsToEntries,
+  renderEntryString,
+  settleLabels,
+  writeSearchDataFromChunks,
+} from "../builder/search.mjs";
 import { createMarkdownIt } from "../builder/render.mjs";
 import {
   decodeTokenEntities,
@@ -1534,7 +1542,7 @@ describe("kind-word guard: online client, eval replica", () => {
     );
     assert.match(
       onlineSrc,
-      /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(function\(r\) \{ return namesTheThing\(r, name\); \}\)\) \{\s*var again = allWords\(true\);\s*if \(again\.length > 0\) results = again;/,
+      /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(function\(r\) \{ return !isTermEntry\(docs\[r\.ref\]\) && namesTheThing\(r, name\); \}\)\) \{\s*var again = allWords\(true\);\s*if \(again\.length > 0\) results = again;/,
       "just-the-docs.js doesn't fall back as the replica does",
     );
     assert.match(
@@ -1544,7 +1552,7 @@ describe("kind-word guard: online client, eval replica", () => {
     );
     assert.match(
       evalSrc,
-      /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(\(r\) => namesTheThing\(lunr, r, name\)\)\) \{\s*const again = allWords\(true\);\s*if \(again\.length\) results = again;/,
+      /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(\(r\) => !isTermEntry\(docs\[r\.ref\]\) && namesTheThing\(lunr, r, name\)\)\) \{\s*const again = allWords\(true\);\s*if \(again\.length\) results = again;/,
       "the replica doesn't fall back",
     );
   });
@@ -1567,6 +1575,192 @@ describe("kind-word guard: online client, eval replica", () => {
     // The Mid section holds both words and is titled Mid, so the word stays
     // required, and the statement page, which never says "function", stays out.
     assert.deepEqual(urls("Mid function"), ["/Strings/Mid#mid"]);
+  });
+});
+
+describe("kind-word guard: an entry of a label never names the thing", () => {
+  const lunr = loadLunr(path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js"));
+  const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
+  const evalSrc = read("eval/site_search.mjs");
+  const fn = (src, label) => {
+    const m = src.match(/function isTermEntry\([^)]*\) \{[\s\S]*?\r?\n\}/);
+    assert.ok(m, `${label} has no isTermEntry()`);
+    return m[0];
+  };
+
+  test("both tell a label's entry alike", () => {
+    const online = new Function(`${fn(onlineSrc, "just-the-docs.js")}\nreturn isTermEntry;`)();
+    const replica = new Function(`${fn(evalSrc, "eval/site_search.mjs")}\nreturn isTermEntry;`)();
+    for (const [relUrl, expected] of [
+      ["/tB/IDE/Menu/Edit#term:continue", true],
+      ["/tB/IDE/Menu/Edit#continue", false],
+      ["/tB/Core/Continue", false],
+      ["/tB/IDE/X#term-entries", false],
+    ]) {
+      assert.equal(online({ relUrl }), expected, `just-the-docs.js: ${relUrl}`);
+      assert.equal(replica({ relUrl }), expected, `eval/site_search.mjs: ${relUrl}`);
+    }
+  });
+
+  test("a label named like the thing does not cancel the fallback for `Continue statement`", () => {
+    // biome-ignore format: a table, one entry per line
+    const docs = {
+      0: { doc: "Continue", title: "Continue", content: "The Continue statement skips to the next iteration.", names: "Continue", primary: "Continue", relUrl: "/Core/Continue" },
+      1: { doc: "Menu", title: "Continue", content: "Resumes a program that is paused. Continue statement.", relUrl: "/IDE/Menu#term:continue" },
+    };
+    for (let k = 2; k < 100; k++)
+      docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
+    const urls = (q) => search({ lunr, index: buildIndex(lunr, docs), docs }, q).map((r) => docs[r.ref].relUrl);
+    assert.equal(urls("Continue statement")[0], "/Core/Continue");
+  });
+});
+
+describe("question-lead guard: online client, eval replica", () => {
+  const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
+  const evalSrc = read("eval/site_search.mjs");
+  const lead = (src, label) => {
+    const m = src.match(/(?:var|const) QUESTION_LEAD = (\/.*\/[a-z]*);/);
+    assert.ok(m, `${label} has no QUESTION_LEAD`);
+    return new Function(`return ${m[1]};`)();
+  };
+
+  test("both spell the expression alike", () => {
+    assert.equal(String(lead(onlineSrc, "just-the-docs.js")), String(lead(evalSrc, "eval/site_search.mjs")));
+  });
+
+  test("a leading question is dropped, and nothing else", () => {
+    const re = lead(onlineSrc, "just-the-docs.js");
+    for (const [typed, expected] of [
+      ["how do I close a panel", "close a panel"],
+      ["How to build", "build"],
+      ["how can you x", "x"],
+      ["  how should we y", "y"],
+      ["how to", "how to"],
+      ["how", "how"],
+      ["however to x", "however to x"],
+      ["show how to x", "show how to x"],
+    ]) {
+      assert.equal(typed.replace(re, ""), expected, typed);
+    }
+  });
+
+  test("both drop the lead before they tokenize", () => {
+    assert.match(onlineSrc, /function doSearch\(input\) \{\s*input = input\.replace\(QUESTION_LEAD, ''\);/);
+    assert.match(
+      evalSrc,
+      /export function search\(\{ lunr, index, docs \}, typed\) \{\s*const input = typed\.replace\(QUESTION_LEAD, ""\);/,
+    );
+  });
+});
+
+describe("term entries: a label is an entry of its own", () => {
+  const menu =
+    `<h1 id="menu">Menu</h1><h2 id="m">Menu</h2>` +
+    `<dl><dt id="term:undo-redo"><strong>Undo</strong> (<kbd>Ctrl</kbd>+<kbd>Z</kbd>) and <strong>Redo</strong></dt>` +
+    `<dd><p>Step back.</p></dd></dl>`;
+  const cfg = site({ heading_level: 3, term_entries: ["/tB/IDE"] });
+  const ide = (content, extra = {}) => page({ title: "Menu", content, permalink: "/tB/IDE/Menu/", ...extra });
+
+  test("a definition term gets an entry right after its section, and the section keeps its text", () => {
+    const entries = deriveSearchEntries([ide(menu)], cfg);
+    const at = entries.findIndex((e) => e.relUrl === "/tB/IDE/Menu/#term:undo-redo");
+    assert.ok(at > 0, "no term entry");
+    const term = entries[at];
+    assert.equal(term.title, "Undo and Redo");
+    assert.match(term.content, /Ctrl\+Z/);
+    assert.match(term.content, /Step back/);
+    assert.equal(entries[at - 1].relUrl, "/tB/IDE/Menu/#m");
+    assert.match(entries[at - 1].content, /Step back/);
+  });
+
+  test("a definition term with no term id (a page outside the prefixes) gets none", () => {
+    // The ids are the render's (termAnchorPlugin, which test/render.test.mjs
+    // tests for the prefixes): the search entries follow the ids.
+    const plain = menu.replace(' id="term:undo-redo"', "");
+    const entries = deriveSearchEntries([ide(plain)], cfg);
+    assert.ok(!entries.some((e) => e.relUrl.includes("#term:")));
+  });
+
+  test("a list item and a table row take their label, a nested list stays inside its item", () => {
+    const content =
+      `<h1 id="menu">Menu</h1><h2 id="m">Menu</h2>` +
+      `<ul><li id="term:process"><p><strong>PROCESS</strong> boxes</p><ul><li>inner text</li></ul></li><li>plain</li></ul>` +
+      `<table><tbody><tr id="term:show-grid-lines"><td><strong>Show Grid Lines</strong></td><td>Draws dots.</td></tr></tbody></table>`;
+    const entries = deriveSearchEntries([ide(content)], cfg);
+    const li = entries.find((e) => e.relUrl.endsWith("#term:process"));
+    assert.equal(li.title, "PROCESS");
+    assert.match(li.content, /inner text/);
+    assert.doesNotMatch(li.content, /plain/);
+    const tr = entries.find((e) => e.relUrl.endsWith("#term:show-grid-lines"));
+    assert.equal(tr.title, "Show Grid Lines");
+    assert.match(tr.content, /Draws dots/);
+  });
+});
+
+describe("settleLabels: what the bold labels come to", () => {
+  const e = (title, relUrl, extra = {}) => ({ title, doc: "Page", relUrl, content: "", ...extra });
+
+  test("a label with no home becomes a secondary term, and no entry keeps `labels`", () => {
+    const out = settleLabels([e("Section", "/p#s", { labels: ["Copy Path", "Section"] })]);
+    assert.deepEqual(out[0].index_also, ["Copy Path"]);
+    assert.ok(!("labels" in out[0]));
+  });
+
+  test("a label a heading, a page title, a hand mark or a term entry answers is dropped", () => {
+    const out = settleLabels([
+      e("Find What", "/p#find-what"),
+      e("Other", "/p#o", { doc: "Status Bar" }),
+      e("Marked", "/p#m", { index: ["debug console"] }),
+      e("Marked also", "/p#ma", { index_also: ["call stack"] }),
+      e("Holder", "/p#h", { labels: ["find what", "Status Bar", "Debug Console", "Call Stack", "Menu Item"] }),
+      e("Menu Item", "/p#term:menu-item"),
+    ]);
+    assert.deepEqual(out.find((x) => x.title === "Holder").index_also, undefined);
+    const again = settleLabels([
+      e("Holder", "/p#h", { labels: ["Menu Item", "New Thing"] }),
+      e("Menu Item", "/p#term:menu-item"),
+    ]);
+    assert.deepEqual(again[0].index_also, ["New Thing"]);
+  });
+
+  test("a term entry titled with a main term goes; one titled with a secondary term stays", () => {
+    const out = settleLabels([
+      e("Section", "/p#s", { index: ["add reference"], index_also: ["dark mode"] }),
+      e("Add Reference", "/p#term:add-reference"),
+      e("Dark Mode", "/p#term:dark-mode"),
+    ]);
+    assert.deepEqual(
+      out.map((x) => x.title),
+      ["Section", "Dark Mode"],
+    );
+  });
+
+  test("the entries come back numbered without a gap, and unchanged when there is nothing to settle", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tbdocs-settle-"));
+    try {
+      const chunk = [
+        { ...e("A", "/p#a"), i: 0, index: ["add reference"] },
+        { ...e("Add Reference", "/p#term:add-reference"), i: 1 },
+        { ...e("B", "/p#b"), i: 2, labels: ["New Thing"] },
+      ];
+      const { json, entries } = await writeSearchDataFromChunks([chunk], dir, []);
+      assert.equal(entries, 2);
+      assert.doesNotMatch(json, /labels/);
+      assert.deepEqual(Object.keys(JSON.parse(json)), ["0", "1"]);
+      const plain = [
+        { ...e("A", "/p#a"), i: 0 },
+        { ...e("B", "/p#b"), i: 1 },
+      ];
+      const before = plain.map(renderEntryString).join(",");
+      const after = await writeSearchDataFromChunks([plain.map((x) => ({ ...x }))], dir, []);
+      assert.equal(after.json, `{${before}\n}\n`);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("the worker sends the labels to the main thread", () => {
+    assert.match(read("builder/cpu-worker.mjs"), /labels: e\.labels,/);
   });
 });
 

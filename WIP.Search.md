@@ -14,21 +14,23 @@ Everything needed to continue is in this file and in `eval/`.
 **Where it stands.** The design below is in place. No decision is open. The
 candidates for further work are under "Next"; the user picks.
 
-**The eval** (`node eval/search_quality.mjs`, ground truth `intent-5`,
-10,327 queries): 98.2% at rank 1, 99.1% in the top 10.
+**The eval** (`node eval/search_quality.mjs`, ground truth `intent-6`,
+11,505 queries): 96.9% at rank 1, 98.6% in the top 10.
 
 | category | hit@1 | n | what it types |
 |---|---|---|---|
-| bare names | 99.7% | 2,884 | `PaintPicture`, judged by reader intent (tiers) |
-| qualified names | 100% | 5,108 | `Printer.Fonts` |
-| name and kind | 91.1% | 1,785 | `MaxHeight property` |
-| prose | 97.2% | 108 | hand-picked (`late binding`, `immediate window`, `ByVal`) |
-| page titles | 97.2% | 142 | `Return Syntax` |
-| page plus section | 96.7% | 300 | `DTPicker Properties` |
+| bare names | 99.1% | 2,915 | `PaintPicture`, judged by reader intent (tiers) |
+| qualified names | 99.2% | 5,159 | `Printer.Fonts` |
+| name and kind | 89.1% | 1,815 | `MaxHeight property` |
+| prose | 89.8% | 108 | hand-picked (`late binding`, `immediate window`, `ByVal`) |
+| page titles | 95.1% | 223 | `Return Syntax` |
+| page plus section | 96.9% | 908 | `DTPicker Properties` |
+| labels | 90.2% | 377 | `Copy Path`, an IDE label typed whole ([Term entries](#term-entries)) |
 
-No bare name is out of tier order, and every prose query's `behind` page is
+Six bare names are out of tier order, and every prose query's `behind` page is
 within the top 3 (22 of 22). Compare categories, not totals, across ground
-truths: the name-and-kind set lowers the overall hit@1 (99.7% without it).
+truths: the name-and-kind set lowers the overall hit@1. The "Known misses"
+below were counted on `intent-5` and are older than these figures.
 
 **Known misses (185 at rank 1)**, each recorded where it was diagnosed:
 - 158 name-and-kind queries, mostly properties; not diagnosed yet
@@ -51,25 +53,21 @@ truths: the name-and-kind set lowers the overall hit@1 (99.7% without it).
 1. **The 158 name-and-kind misses.** Diagnose them as the whole-title probes
    were: group by cause, measure a knob, ship only what makes nothing worse.
    93 aren't in the top 50 at all.
-2. **Question-shaped queries.** `how do I register a com dll` misses the
-   index entry: the all-words pass requires `how`, `do` and `I`, and only the
-   FAQ holds them all. A fix touches the all-words pass, so it needs the
-   spaced and kinds probes as well as the eval.
-3. **The cost of one-letter words.** `a p` takes about 250 ms and a single
+2. **The cost of one-letter words.** `a p` takes about 250 ms and a single
    letter 80–110 ms, lunr's own work. Cheaper means changing the query, and
    so the ranking, for instance not completing a one-letter word
    ([lunr patches](#lunr-patches)).
-4. **More content and index entries**, under the rules below. Open:
+3. **More content and index entries**, under the rules below. Open:
    `COM interop` (no clear target) and three content gaps: subclassing,
    IntelliSense and conditional breakpoints (first find out whether the IDE
    has the last two). See
    [Known misses and limits](#known-misses-and-limits).
-5. **An extra word hides a page.** `memory window`, `history panel`,
+4. **An extra word hides a page.** `memory window`, `history panel`,
    `registry access`: the all-words pass finds a few pages holding both
    words and doesn't fall back, so the page named by the other word never
    shows. Entries fixed 20 such queries, but the cause is the pass itself,
-   as in item 2; a fix there needs the spaced and kinds probes.
-6. **Operator-shaped page titles.** `Input #` and `Mid =` miss rank 1
+   as the question-shaped queries were; a fix there needs the spaced and kinds probes.
+5. **Operator-shaped page titles.** `Input #` and `Mid =` miss rank 1
    because the query trims its non-word character. Exact names already spell
    such characters as word characters (`#If`); whether a whole title can too
    needs the title set and the spaced probe.
@@ -96,6 +94,9 @@ page for words it doesn't contain. So authors mark index entries by hand
   don't (stems), but `type char` doesn't match `type character`, and
   `register a dll` doesn't match `register dll`: each spelling a reader types
   is its own term.
+- A bold label on an IDE page needs no mark: its page gets an entry for it
+  ([Term entries](#term-entries)). A mark is for the reader's own words, not
+  for a label, and a label that is a main term gets no entry of its own.
 - A term whose stem is a bare name's reorders that name (`declaration` and
   `Declare`). A secondary entry can overtake a page that ranks first only on
   its own text, so that page takes a main entry for the term too. A one-word
@@ -1183,6 +1184,91 @@ The boosts sit in the client beside every other boost, not in
   in `content` brought that to 10 MB, and one field for both levels to 5 MB,
   with identical results. Hence one field, with the secondary level encoded
   as one more `_`.
+
+### Term entries
+
+**Why.** An IDE page names its controls in bold, and a reader types the name.
+Before term entries a title word beat the label: an entry with one query word
+in its heading outranked the entry that held the whole label in its text
+(`Copy Path` found Diagnostics' `Copy Problems` first, `Select All` found
+Finding's `Select All Matches`). `title` has boost 200 and `content` 2, and
+nothing rewards adjacent words. Of the 866 bold labels in `docs/IDE` that are
+not symbol names, the page that defines or shows the label was first for 30.9%
+and in the top 3 for 52.2%. A label is not only a definition term: of the 505
+in a defining position, 268 are definition terms, 148 lead a list item and 181
+a table row (some are more than one); 572 are in prose only.
+
+**What the build does** (`search.term_entries` in `docs/_config.yml`, the
+permalink prefixes; today `/tB/IDE`).
+- `termAnchorPlugin` (`render.mjs`) gives an id `term:<slug>` to a definition
+  term, to a list item that leads with bold and to a table row whose first
+  cell leads with bold (one word only in capitals; a title ending in `.`, `:`,
+  `?` or `!` is a run-in sentence). A colon is never in a heading's id
+  (`kramdownSlug` drops it), so a term can never take a heading's id.
+- `termSections` (`search.mjs`) makes an entry of each such block, titled with
+  the label (bold spans joined by and/or/commas, keys in brackets left out), at
+  `<page>#term:<slug>`, right after the section that holds it. **The section
+  keeps its text**: entries are added and none changes, so nothing loses a
+  word. The id is also the deep link: `:target` is that element.
+- `boldLabels` / `settleLabels` make every other bold span of two to four words
+  a secondary index term of the entry that holds it, unless a heading, a page
+  title, a term entry or a hand mark already answers it (without that rule 13
+  page titles lost rank 1). A term entry titled with a main term is dropped:
+  the hand mark says where the term goes. `cpu-worker.mjs` must pass `labels`
+  to the main thread, and nothing fails when it does not.
+- The client: a term entry never counts as naming the thing in the kind-word
+  test (`isTermEntry()`; required, or `Continue statement` goes from 1 to
+  none), and a leading `how do I`, `how to` and the like is dropped
+  (`QUESTION_LEAD`).
+- The generated Keyboard Shortcuts tables put each command in `code`, not bold,
+  and make no entry: 523 rows, none.
+- `symbols.json` is unchanged (`headingsOf()` reads `<hN` only), and the book
+  prefixes every ` id="`.
+
+**Measured** (BETA tree at 3f5e0aaa, online tree only; the lab's tools are in
+`.claude/scratch/ide-docs/search-lab`, not in the repository):
+
+| | entries | raw | gzip |
+|---|---|---|---|
+| before | 12,251 | 50.94 MB | 11.05 MB |
+| with term entries and label terms | 12,766 | 51.95 MB | |
+
+| (866 labels / 373 wordings / 80 held-out) | labels @1 / @3 | wordings @1 / @3 / none | held-out @1 / @3 |
+|---|---|---|---|
+| before | 30.9% / 52.2% | 124 / 209 / 86 | 19 / 42 |
+| term entries, label terms, question lead | 63.4% / 78.4% | 125 / 215 / 79 | 20 / 45 |
+
+`eval/search_quality.mjs` against a baseline made from the same tree: nine
+queries worse, one better, none of them a label. The three OLE queries
+(`DTPicker.OLEStartDrag`, `MonthView.OLEStartDrag` 2 to 22, `TreeView.OLEDragOver` 21
+to 22) are a tie between a heading naming six members and 20 controls' single
+`OLEStartDrag` (719.1 against 716.9); new entries move the average title
+length and the tie flips, and any change to the entry count can do it again.
+`For statement` 9 to 10, `#Else directive` 2 to 3 and `WebView2 control` 4 to 5 are the same
+kind of shift. `call stack`, `watches` and `DPI awareness` lost a place to a label
+and are the hand marks' to fix (held, owner).
+
+**Rejected**, so that nobody tries them again:
+
+| option | why not |
+|---|---|
+| Label terms alone, no term entries | no deep link; `DPI awareness` and `Library Symbols` lost rank 1 |
+| Term entries for `<dt>` only | misses list items and table rows (`PROCESS`, `Sort Lines Ascending`) |
+| Phrase re-rank in the client | 439 queries worse, 412 lost rank 1 (`Default property` 1 to 31) |
+| Hand marks for every label | 866 labels, someone must remember each new one |
+| A label's words in `title` | BM25 discounts a long title; the term entry does it without the cost |
+| Moving the text out of the section | 0.4 MB smaller, and 4 more wordings find nothing (the trap under "Placing a section") |
+| Weighing term entries less (document boost) | labels @1 63.5 to 58.7 at 0.7 |
+| Whole-title lift for headings only | labels @1 62.2 to 59.5 |
+| Synonym table | finds more, ranks no higher, one more hand-kept list |
+| Articles left out of index keys | touches `phraseKey` in two copies, undoes a documented rule |
+| Filler words optional in the all-words pass | +1 wording for a wider change to the pass |
+| `#:~:text=` links in place of ids | more client code; a failed fragment lands at the top |
+
+A hand mark fixes the spelling it names and little else: an unlisted wording is
+right first about a third of the time. The labels are fixed by mechanism and
+that figure generalises; the wordings are not. A term's id follows its label, so
+`term:` URLs are outside the Permanent Links promise.
 
 ### Index entry decisions
 

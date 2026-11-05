@@ -171,6 +171,12 @@ function boostWholeTitles(lunr, results, docs, baseTokens, keys) {
   return boosted ? results.sort((a, b) => b.score - a.score) : results;
 }
 
+// Matches just-the-docs.js: an entry of a label (builder/search.mjs's
+// termSections), which never counts as naming a language element.
+function isTermEntry(doc) {
+  return doc.relUrl.indexOf("#term:") !== -1;
+}
+
 // Matches just-the-docs.js's namesTheThing(): a result matched the name in
 // `exact` or `primary`, or every word of it in `title`.
 function namesTheThing(lunr, result, name) {
@@ -187,7 +193,12 @@ function namesTheThing(lunr, result, name) {
 // one docs object.
 const titleKeys = new WeakMap();
 
-export function search({ lunr, index, docs }, input) {
+// Matches just-the-docs.js: the words a question leads with. Only these, at the
+// start, and only when something follows.
+const QUESTION_LEAD = /^\s*how\s+(?:(?:do|can|should|would)\s+(?:i|you|we)|to)\s+(?=\S)/i;
+
+export function search({ lunr, index, docs }, typed) {
+  const input = typed.replace(QUESTION_LEAD, "");
   // Patched, matching just-the-docs.js: trim each token as the index's own
   // pipeline did (lunr.trimmer), so `Date$` finds `date`, and drop tokens
   // left empty. That includes tokens made only of asterisks, which would
@@ -300,7 +311,7 @@ export function search({ lunr, index, docs }, input) {
   let results = [];
   if (baseTokens.length >= 2) {
     results = allWords(false);
-    if (name && words.length > 1 && !results.some((r) => namesTheThing(lunr, r, name))) {
+    if (name && words.length > 1 && !results.some((r) => !isTermEntry(docs[r.ref]) && namesTheThing(lunr, r, name))) {
       const again = allWords(true);
       if (again.length) results = again;
     }

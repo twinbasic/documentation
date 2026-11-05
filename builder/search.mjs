@@ -63,9 +63,10 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot, symbols)
     );
   }
 
-  const allEntries = searchChunks.flat();
+  const flat = searchChunks.flat();
+  checkIndexTerms(flat);
+  const allEntries = settleLabels(flat);
   for (let idx = 0; idx < allEntries.length; idx++) allEntries[idx].i = idx;
-  checkIndexTerms(allEntries);
   if (symbols?.length) joinSymbolsToEntries(allEntries, symbols);
   const body = allEntries.map(renderEntryString).join(",");
   const json = `{` + body + `\n}\n`;
@@ -93,6 +94,7 @@ export function deriveSearchEntries(pages, site) {
   // entry-per-heading split described above.
   const foldHeadings = site.config.search?.fold_headings ?? [];
   const foldSet = new Set(foldHeadings.map((h) => String(h).trim().toLowerCase()));
+  const termPrefixes = site.config.search?.term_entries ?? [];
   const entries = [];
   let i = 0;
 
@@ -125,6 +127,10 @@ export function deriveSearchEntries(pages, site) {
         relUrl: sec.url,
         sourcePage: page,
       };
+      if (termPrefixes.some((p) => page.permalink.startsWith(p))) {
+        const labels = boldLabels(sec.body);
+        if (labels.length) e.labels = labels;
+      }
       entries.push(e);
       held.push({ entry: e, ids: sec.ids });
       if (sec.isTitle && !pageEntry) pageEntry = e;
@@ -230,6 +236,122 @@ export function checkIndexTerms(entries) {
   }
 }
 
+// The id prefix of a term anchor (termAnchorPlugin in render.mjs). The page's
+// search code and eval/site_search.mjs spell it out: isTermEntry().
+export const TERM_ID_PREFIX = "term:";
+
+const TERM_ANCHOR = new RegExp(`<(dt|li|tr) id="(${TERM_ID_PREFIX}[^"]*)"[^>]*>`, "g");
+const KEYS_IN_BRACKETS = /\s*\([^()]*<kbd>[^()]*\)/g;
+const LABEL_JOIN = /^(?:\s*,\s*and\s+|\s*,\s*|\s+and\s+|\s+or\s+)/;
+
+// The end of the block that starts inside body at from: the end of the close
+// tag that matches the open tag there, nested blocks counted.
+function blockEnd(body, from, tag) {
+  const re = new RegExp(`<${tag}\\b|</${tag}>`, "g");
+  re.lastIndex = from;
+  let depth = 0;
+  for (let m = re.exec(body); m; m = re.exec(body)) {
+    depth += m[0].startsWith("</") ? -1 : 1;
+    if (depth === 0) return m.index + m[0].length;
+  }
+  return body.length;
+}
+
+// A term's title, from the HTML of its dt, li or first cell: the bold spans it
+// leads with and the words that join them, keys left out: "Undo and Redo", from
+// <strong>Undo</strong> (<kbd>Ctrl</kbd>+<kbd>Z</kbd>) and <strong>Redo</strong>.
+function termTitle(html) {
+  const s = html.replace(KEYS_IN_BRACKETS, "");
+  let rest = s.replace(/^\s*(?:<p>)?/, "");
+  let lead = "";
+  while (rest.startsWith("<strong>")) {
+    const end = rest.indexOf("</strong>");
+    if (end < 0) break;
+    lead += rest.slice(0, end + "</strong>".length);
+    rest = rest.slice(end + "</strong>".length);
+    const join = LABEL_JOIN.exec(rest);
+    if (!join || !rest.slice(join[0].length).startsWith("<strong>")) break;
+    lead += join[0];
+    rest = rest.slice(join[0].length);
+  }
+  return stripHtml(lead || s)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// The blocks of a section's HTML that carry a term id, as sections of their own.
+function termSections(body, permalink) {
+  const terms = [];
+  for (const m of body.matchAll(TERM_ANCHOR)) {
+    const [open, tag, id] = m;
+    let end;
+    let head;
+    if (tag === "dt") {
+      const dtEnd = body.indexOf("</dt>", m.index);
+      head = body.slice(m.index + open.length, dtEnd);
+      end = blockEnd(body, body.indexOf("<dd", dtEnd), "dd");
+    } else if (tag === "li") {
+      end = blockEnd(body, m.index, "li");
+      head = body.slice(m.index + open.length, end);
+    } else {
+      end = blockEnd(body, m.index, "tr");
+      head = /<td[^>]*>([\s\S]*?)<\/td>/.exec(body.slice(m.index, end))?.[1] ?? "";
+    }
+    const title = termTitle(head);
+    if (title)
+      terms.push({ title, body: body.slice(m.index, end), url: `${permalink}#${id}`, ids: [id], isTitle: false });
+  }
+  return terms;
+}
+
+// The bold spans of a section's HTML that read as labels of two to four words:
+// the last step of a menu path, without a trailing ellipsis or colon. Four is
+// the longest run of words a query tries against the index terms. A span ending
+// in a full stop is a run-in sentence, not a name.
+function boldLabels(html) {
+  const labels = new Set();
+  for (const m of html.matchAll(/<strong>([\s\S]*?)<\/strong>/g)) {
+    const t = stripHtml(m[1])
+      .split("→")
+      .pop()
+      .replace(/(?:\.\.\.|…|:)\s*$/, "")
+      .trim();
+    const words = t.split(/\s+/).length;
+    if (words >= 2 && words <= 4 && /[a-z]/i.test(t) && !/[.!?]$/.test(t)) labels.add(t);
+  }
+  return [...labels];
+}
+
+// What the automatic terms come to once every entry is known. A hand mark says
+// where a term goes, so a term entry titled with a main term goes. A label
+// becomes a secondary index term of the entry that holds it, unless a heading, a
+// page title, a term entry or a hand mark already answers it. Returns the
+// entries kept, each without its labels.
+export function settleLabels(entries) {
+  const key = (s) =>
+    stripHtml(String(s))
+      .toLowerCase()
+      .replace(/&[a-z]+;/g, " ")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
+  const isTerm = (e) => e.relUrl.includes(`#${TERM_ID_PREFIX}`);
+  const mains = new Set(entries.flatMap((e) => (e.index ?? []).map(key)));
+  const kept = entries.filter((e) => !(isTerm(e) && mains.has(key(e.title))));
+  const answered = new Set(mains);
+  for (const e of kept) {
+    answered.add(key(e.title));
+    answered.add(key(e.doc));
+    for (const t of e.index_also ?? []) answered.add(key(t));
+    if (isTerm(e)) for (const l of e.labels ?? []) answered.add(key(l));
+  }
+  for (const e of kept) {
+    const labels = (e.labels ?? []).filter((l) => !answered.has(key(l)));
+    if (labels.length) e.index_also = [...new Set([...(e.index_also ?? []), ...labels])];
+    delete e.labels;
+  }
+  return kept;
+}
+
 // Returns the heading-split sections plus the prose-before-first-heading
 // (`parts[0]`) and a `titleFound` flag indicating whether the title-
 // prefix entry should be suppressed.
@@ -317,7 +439,10 @@ function extractSections(page, pageTitle, headingLevel, foldSet = new Set()) {
     sections.push({ title: sectionTitle, body, url, ids, isTitle });
   }
 
-  return { sections, titleFound, prefixContent };
+  // A section keeps its whole text: a term entry adds to the index and takes
+  // nothing from it (WIP.Search.md, "Term entries").
+  const withTerms = sections.flatMap((sec) => [sec, ...termSections(sec.body, page.permalink)]);
+  return { sections: withTerms, titleFound, prefixContent };
 }
 
 // URL key for the symbol join: strips a trailing `/index` or

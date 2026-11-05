@@ -89,6 +89,58 @@ describe("kramdownEllipsisPlugin", () => {
   });
 });
 
+// termAnchorPlugin: the ids the search's term entries hang on. Only a page
+// under one of the config's term_entries prefixes gets them.
+describe("termAnchorPlugin", () => {
+  const withTerms = createMarkdownIt({
+    highlighter: null,
+    linkTables: null,
+    baseurl: "",
+    staticFiles: new Set(),
+    termPrefixes: ["/tB/IDE"],
+  });
+  const without = createMarkdownIt({ highlighter: null, linkTables: null, baseurl: "", staticFiles: new Set() });
+  const html = (src, permalink = "/tB/IDE/X", m = withTerms) => m.render(src, { page: { permalink } });
+  const ids = (out) => [...out.matchAll(/ id="(term:[^"]*)"/g)].map((m) => m[1]);
+
+  const yes = [
+    ["a definition term of two bold labels", "**Copy Name** and **Copy Path**\n: Text.\n", "term:copy-name-copy-path"],
+    ["a definition term with keys", "**Undo** (<kbd>Ctrl</kbd>+<kbd>Z</kbd>)\n: Text.\n", "term:undo"],
+    ["a list item that leads with bold", "- **PROCESS** boxes --- text\n", "term:process"],
+    ["a table row", "| H | H |\n|---|---|\n| **Show Grid Lines** | x |\n", "term:show-grid-lines"],
+    ["a one-word row in capitals", "| H | H |\n|---|---|\n| **OPERATIONAL** | x |\n", "term:operational"],
+  ];
+  for (const [name, src, id] of yes) {
+    test(`${name} gets ${id}`, () => assert.deepEqual(ids(html(src)), [id]));
+  }
+
+  const no = [
+    ["a list item with bold in the middle", "- text **bold** text\n"],
+    ["a run-in sentence in bold", "- **The code.** More.\n"],
+    ["a one-word row in mixed case", "| H | H |\n|---|---|\n| **ImageList** | x |\n"],
+    ["a bold header row", "| **Name** | **Does** |\n|---|---|\n| plain | x |\n"],
+  ];
+  for (const [name, src] of no) {
+    test(`${name} gets none`, () => assert.deepEqual(ids(html(src)), []));
+  }
+
+  test("two terms alike get distinct ids", () => {
+    assert.deepEqual(ids(html("**Cut**\n: One.\n\n**Cut**\n: Two.\n")), ["term:cut", "term:cut-1"]);
+  });
+
+  test("a term never takes a heading's id", () => {
+    const out = html("## Rename\n\n**Rename**\n: Text.\n");
+    assert.match(out, /<h2 id="rename"/);
+    assert.deepEqual(ids(out), ["term:rename"]);
+  });
+
+  test("a page outside the prefixes, or a site without any, gets none", () => {
+    const src = "**Copy**\n: Text.\n";
+    assert.deepEqual(ids(html(src, "/tB/Core/X")), []);
+    assert.deepEqual(ids(html(src, "/tB/IDE/X", without)), []);
+  });
+});
+
 // The offline tree's URL rewrite (builder/offline-rewrite.mjs): a link to a
 // file the offline tree holds becomes page-relative; one to a file only the
 // website holds becomes the website's absolute URL; one to neither is a miss.

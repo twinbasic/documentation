@@ -26,7 +26,9 @@ lists the pages that count as its answer in `expected`, and may list in
 `behind` the pages a reader should find right behind it (within the top
 three). Two multi-word sets are derived from the build as well: every
 page's own title, and `<page title> <section title>` for section titles
-such as `Properties` that many pages share. See
+such as `Properties` that many pages share, and every IDE label of two or
+more words (the `label` category: the entries titled with a bold label, typed
+whole, which must find the page that holds it). See
 [WIP.Search.md](../WIP.Search.md) for the design and
 [eval/search_baseline.json](search_baseline.json) for today's numbers.
 
