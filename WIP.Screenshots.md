@@ -343,7 +343,9 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
 ## Standing rules for what a picture shows (owner)
 
 - **A state is reproduced as the IDE reaches it, never by editing what it draws.** The tool
-  inspects the IDE's page first to see how a state can be reached.
+  inspects the IDE's page first to see how a state can be reached. An image taken from the files
+  under `ide/`, such as a badge's, counts as reached the way the IDE reaches it; what the page's
+  DOM holds must be captured.
 - **A picture of a running program comes from a program written to illustrate what the picture
   depicts, run while the picture is taken.** A running program's window is taken once, as the
   program draws it.
