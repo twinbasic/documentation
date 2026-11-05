@@ -2140,6 +2140,622 @@ _Reviewer note: UNMAPPED. Package: Core, no symbol. No existing page covers touc
 
 ---
 
+## UNMAPPED · new-section
+
+> [!NOTE]
+>
+> External tools and AI agents that edit twinBASIC source or `.twin` project files directly must write them as UTF-8 text. The default write tool of some agents uses an encoding that twinBASIC cannot read correctly. Whether a byte-order mark is required is unconfirmed. Importing and building are interactive IDE operations, so an agent cannot detect a failed build and the build is normally started by hand.
+
+_Source threads: 1478865333245837444-2026-09 · confidence: low_
+_Date range: 2026-09-11 to 2026-09-20_
+_Reviewer note: Package tbIDE, symbol none. Not an addin-SDK topic; better placed on a project-file format or IDE workflow page. BOM requirement is unconfirmed by the source (user unsure). The remark about planned command-line builds was omitted because it is a roadmap statement._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> In a COM add-in, a ribbon `getImage` callback that returns the result of **LoadPicture** applied to **LoadResData** (for PNG or BMP data) as an **IPictureDisp** displays its icons in Excel 2013 and later, but not in 64-bit Excel 2010. This is an unresolved defect, possibly in Office itself. Splitting the expression into separate statements and checking that the resulting **StdPicture** is valid helps to isolate the cause.
+
+_Source threads: 1408374498268414043 · confidence: low_
+_Date range: 2025-08-22 to 2026-10-12_
+_Reviewer note: Package VBA, symbol LoadPicture. No LoadPicture page exists in the index; triage placement (possibly a COM add-in or Global.LoadPicture page). Thread says it began in tb848, still present in TB1005; unresolved and unconfirmed (Wayne could not reproduce)._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> The IDE is built as a web page rather than from native Windows controls. Long lists, such as the editor and the Debug Console, are virtual lists that render only the visible rows, because rendering every element would slow the IDE down. As a result, keyboard selection (for example <kbd>Shift</kbd>+<kbd>Up</kbd> in the Debug Console) can continue into the adjacent panel.
+
+_Source threads: 1550544438290554941 · confidence: high_
+_Date range: 2026-09-18_
+_Reviewer note: Package Core, no symbol. Suggested placement: docs/IDE/index.md or the Debug Console page under docs/IDE/Debugging._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> The editor has been reported to remove a space on an unrelated line, away from the text being edited. One case turned an `Attribute` line with a trailing comment into a syntax error, because the space before the comment was lost. Reports link this to malformed definitions, such as a **Property Get** without parentheses, that were pasted or imported earlier. If a line changes unexpectedly, check the file for such definitions.
+
+_Source threads: 1535419475837591582 · confidence: low_
+_Date range: 2026-08-07 to 2026-08-09_
+_Reviewer note: Package Core, no symbol. Unresolved, intermittent report; the cause is unconfirmed, so consider holding back. Suggested placement: docs/IDE/Troubleshooting/index.md._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> When the Windows taskbar is set to auto-hide, a maximised twinBASIC IDE window does not reveal it when the mouse moves to the screen edge. Enabling the IDE setting **IDE: Show real OS titlebar** and restarting the IDE fixes this, because the IDE then behaves like a normal window instead of a borderless window with a drawn titlebar. The setting affects only the look and behaviour of the IDE, not compiled applications.
+
+_Source threads: 1560548683731308624 · confidence: high_
+_Date range: 2026-10-16_
+_Reviewer note: Package Core, no symbol: IDE setting. Find a suitable IDE settings page; none was resolved._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> To block inline on a WinRT asynchronous operation, a completion handler that calls **SetEvent** can wake a **MsgWaitForMultipleObjects** wait. The handler must also answer `IAgileObject`, because WinRT sometimes runs the operation synchronously and posts no message; without agility the thread deadlocks. The handler should report itself as agile only when it is used for the event wait. In regular callback mode it must not be agile, or it crashes when called from another thread.
+>
+> **CoWaitForMultipleHandles** and **CoWaitForMultipleObjects**, including with `COWAIT_DISPATCH_CALLS`, did not wake the thread on completion and produced the system "application is busy" dialog. **MsgWaitForMultipleObjects** was the only API that worked.
+
+_Source threads: 1565317933645832373 · confidence: medium_
+_Date range: 2026-11-03 to 2026-11-04_
+_Reviewer note: Package Core, symbols MsgWaitForMultipleObjects / CoWaitForMultipleHandles / WinRT async interop (no matching page in the index). Triage placement; user-reported experience, not verified._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> Importing `mswinsck.ocx` (the Winsock control) into a project has been reported to cause a runtime error each time **Project Settings** is opened, with errors in the Debug Console and an empty COM references list. Unregistering the OCX or removing it from the enabled libraries did not help in the reported case; only running a fresh copy of twinBASIC restored the page.
+
+_Source threads: 1566511728747876472 · confidence: low_
+_Date range: 2026-11-01_
+_Reviewer note: Package Core, no symbol. Candidate placement: docs/IDE/Project Settings.md or docs/IDE/Troubleshooting/index.md. Single unconfirmed report, no maintainer response; may be a defect that has since been fixed._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> An executable that supplies only a single small icon (for example one 64x64, 16-colour image) can look oversized or framed in modern app switchers. Supplying the full range of icon sizes, including a 256x256 PNG, lets Windows render a natural large icon.
+
+_Source threads: 1564969798088134656 · confidence: low_
+_Date range: 2026-10-28 to 2026-11-02_
+_Reviewer note: Package Core, no symbol. Originally observed on the twinBASIC IDE exe in a Parallels VM; the general tip about app icon resources may fit the project icon documentation. Not maintainer-confirmed. Dropped the App.Path hidden-module finding because Path.md already states the IDE behaviour and the ordinal-based declare is an unsupported internal detail._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> Building very large strings by repeated concatenation is slow. Algorithms that grow strings to millions of characters in a hot loop run much faster when rewritten to work on arrays of `Long` values.
+
+_Source threads: 927641929905209405-2022-11 · confidence: low_
+_Date range: 2022-11-09_
+_Reviewer note: Package: Core, no symbol. Single anecdote (Advent of Code 2015 Day 10: 6 s with Long arrays vs hours with strings), from 2022-11; may no longer hold. Needs placement (e.g. a performance page) and verification._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> Forms from the WinNativeForms package and controls from the CustomControls package cannot be mixed. CustomControls are not usable on a WinNativeForms form, and the reverse is not supported either.
+
+_Source threads: 927641929905209405-2022-02 · confidence: high_
+_Date range: 2022-02-17 to 2022-02-18_
+_Reviewer note: Package: WinNativeForms, no symbol. Source said CustomControls on WinNativeForms was planned (not the reverse), as of Feb 2022; verify current status before publishing. Candidate placement: docs/IDE/Forms/Designer.md or the WinNativeForms package page._
+
+---
+
+## UNMAPPED · new-section
+
+> [!NOTE]
+> When text read through ADO or ODBC arrives corrupted, the cause is often the driver configuration rather than twinBASIC string handling. Some drivers return character columns as narrow bytes unless told to report them as wide characters. For the Informix ODBC driver, setting `REPORTCHARCOLASWIDECHARCOL=1` in the ODBC configuration makes character columns arrive as wide-character (Unicode) data. Check the driver's Unicode settings first when such text is garbled.
+
+_Source threads: 927641929905209405-2025-07 · confidence: medium_
+_Date range: 2025-06-30 to 2025-07-01_
+_Reviewer note: UNMAPPED: package VBA, no symbol. Driver-specific (Informix) ADO/ODBC tip; place on an ADODB/database page if one exists, or the StrConv page near the UTF-8 note._
+
+---
+
+## UNMAPPED · new-section
+
+> [!NOTE]
+> Building a shell context menu for several files through `IShellItemArray.BindToHandler` (with `BHID_SFUIObject` and `IID_IContextMenu`) works reliably only when all items are in the same folder. With items from different folders the call can fail with error 80004005 (automation error), and the result varies between Windows versions and machines. Separately, `IContextMenu.QueryContextMenu` can hang indefinitely for some file types (for example VOB and TTF), even for a single file.
+>
+> `SHCreateDefaultContextMenu` with a `DEFCONTEXTMENU` structure against the desktop folder works for multiple folders, but it loads no shell extensions.
+
+To show the full context menu, including shell extensions, for items in several folders, select the items inside a shell view that spans all the folders, such as a Shell Library or search folder containing them, and then request the menu for that selection. Match items by their full-path property rather than by display name, so that same-named files in other folders are not matched. Call `InvokeCommand` only when `TrackPopupMenu` returned a nonzero command; invoking it with no selection crashes on release. A custom `IShellFolder` implementation is a possible alternative.
+
+_Source threads: 1384432623706968206 · confidence: medium_
+_Date range: 2025-06-17 to 2025-06-18_
+_Reviewer note: UNMAPPED: package Core, symbol IShellItemArray.BindToHandler (no page exists; likely a WinDevLib/Windows-API topic, not Core). Merges two findings. Behaviour varies by Windows version; reported on IDE build 806 win64._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> The editor does not complete block statements (`If`, `For`, `Select Case` and similar) automatically when the statement starts on a continuation line of a line-continuation (`_`) construct.
+
+_Source threads: 927641929905209405-2026-08 · confidence: low_
+_Date range: 2026-08-19_
+_Reviewer note: UNMAPPED: package Core, no symbol; IDE editor behaviour, needs an IDE editor page. Unknown whether this matches VB6; verify in the IDE before publishing. Note: finding on the terminate-on-link-failure dialog was dropped because docs/IDE/Building/Build-and-Clean.md already covers it._
+
+---
+
+## UNMAPPED · example
+
+With a reference to the WinHTTP library added, `WinHttpRequest` can download a file asynchronously and report progress through its events.
+
+```tb
+Private WithEvents m_oDownload As WinHttpRequest
+
+Private Sub StartDownload(ByVal Url As String)
+    Set m_oDownload = New WinHttpRequest
+    m_oDownload.Open "GET", Url, True    ' Async
+    m_oDownload.Send
+End Sub
+
+Private Sub m_oDownload_OnResponseStart(ByVal Status As Long, ByVal ContentType As String)
+    ' The response headers are available; Content-Length can be read
+    ' with GetResponseHeader.
+End Sub
+
+Private Sub m_oDownload_OnResponseDataAvailable(Data() As Byte)
+    ' Called for each received chunk.
+End Sub
+
+Private Sub m_oDownload_OnResponseFinished()
+    ' The download is complete.
+End Sub
+
+Private Sub m_oDownload_OnError(ByVal ErrorNumber As Long, ByVal ErrorDescription As String)
+    ' The request failed.
+End Sub
+```
+
+_Source threads: 1029063722846658655 · confidence: low_
+_Date range: 2022-10-10 to 2022-10-11_
+_Reviewer note: UNMAPPED: package WinHttpRequest, symbol WinHttpRequest (no page in index). Source thread is from beta 145: event handlers failed to compile ('incompatible signature ... must return HRESULT') and win32 downloads were very slow while win64 was fast. Verify the example compiles and the event signatures against the current build before publishing._
+
+---
+
+## UNMAPPED · new-section
+
+WinRT APIs, including XAML, can be used from twinBASIC directly as native code, with no .NET Framework and no wrapper or bridge. XAML controls such as text boxes, and their bindings, can be created in code, for example in `Form_Load`, or XAML text can be loaded directly. WinRT is available on Windows only.
+
+_Source threads: 1416685158156730399 · confidence: medium_
+_Date range: 2025-09-14_
+_Reviewer note: Package: Core, symbol: none. Based on a community sample; verify and find a suitable page (for example a features or FAQ page)._
+
+---
+
+## UNMAPPED · new-section
+
+> [!NOTE]
+> Opening a file type with a twinBASIC program needs only a file association in the registry. A shell extension handler is not required for that.
+
+A context-menu handler project (the first shell extension project type) ships with a `.reg` file. To restrict the handler to one file type, replace the `*` in that file with the file type. The handler receives the file name when it initializes, so it can inspect the file contents and vary its behavior.
+
+_Source threads: 1220474102515503174-2024-10 · confidence: medium_
+_Date range: 2024-10-11_
+_Reviewer note: Package Core, no symbol. No existing page found for shell extension projects; triage placement (shell extension / project types docs). Verify .reg behavior against the project template._
+
+---
+
+## UNMAPPED · new-section
+
+> [!NOTE]
+> The Community edition of twinBASIC is free and carries no restriction on commercial use.
+
+The time between major versions, from version 1 onwards, is expected to be about 18 months. Any perpetual licences, if offered, would include bug-fix updates within their scope, plus access to betas of the next major release.
+
+_Source threads: 1220474102515503174-2024-06 · confidence: high_
+_Date range: 2024-06-17 to 2024-06-25_
+_Reviewer note: Package Core, no symbol. Licensing/editions statement; the 18-month and perpetual-licence points are forward-looking plans stated by Wayne and may be outdated; verify before publishing. Triage placement (editions/licensing or FAQ page)._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> Background twinBASIC EXE processes can stay running after the IDE and the programs under development are closed. They keep the old version folder locked, so a third-party updater such as TBLOADER cannot replace it. End all of them in Task Manager before updating over an existing installation. Ending them also discards the compiler's code cache, so the first 64-bit build afterwards takes longer.
+
+_Source threads: 1556815494034489394 · confidence: high_
+_Date range: 2026-10-05 to 2026-10-06_
+_Reviewer note: Package Core, no symbol. Installation/updating topic; no obvious page found, triage placement._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> When a registered twinBASIC ActiveX DLL cannot be added as a COM reference in another host, such as a .NET project in Visual Studio, check that the DLL's bitness matches the bitness of the referencing application. Referencing the same DLL from another host, for example Office, helps to isolate the cause.
+
+_Source threads: 1524431049214394418 · confidence: low_
+_Date range: 2026-07-08 to 2026-07-10_
+_Reviewer note: Package Core, no symbol. Thread unresolved; the bitness cause is only a suggestion. Consider dropping._
+
+---
+
+## UNMAPPED · new-section
+
+### ActiveX controls fail with "instance creation failed"
+
+On a machine without VB6 installed, licensed OCX controls (for example the StatusBar from MSComctlLib or the CommonDialog from MSComDlg) can register and appear in the toolbox, yet fail to instantiate in the IDE with "instance creation failed". The usual cause is a missing design-time license.
+
+To fix this:
+
+1. Find the license file for the control (a `.srg` file) in the `OS\SYSTEM` folder of the VB6 or Visual Studio 6 installation media. The file is usually named after the OCX, but not always; `MSFLXGRD.OCX`, for example, uses `VSDBFLEX.SRG`.
+2. Add the line `Windows Registry Editor Version 5.00` and a blank line at the top of the file, and save it with a `.reg` extension.
+3. Import the `.reg` file into the registry.
+4. Make sure the OCX itself is registered with `regsvr32`. A 32-bit OCX belongs in the `SysWOW64` folder on 64-bit Windows.
+
+_Source threads: 1564725968499900636 · confidence: high_
+_Date range: 2026-10-27 to 2026-10-28_
+_Reviewer note: UNMAPPED: package Core, symbol null (ActiveX/OCX licensing). Suggest placing in docs/Miscellaneous/FAQs.md or an ActiveX controls feature page; triage placement._
+
+---
+
+## UNMAPPED · new-section
+
+> [!NOTE]
+> The Windows Forms controls package is named **WinNativeForms**. It is built into the compiler, so it needs no separate download or manual update. Sample projects reference it, or the CustomControls package, as a built-in package.
+
+The form designer converts SVG images to EMF using Inkscape, which must be installed separately. The designer also offers an **Align Controls To Grid** option with configurable grid width and height, and can lock and unlock controls.
+
+_Source threads: 927834661298798602-2022-02 · confidence: medium_
+_Date range: 2022-02-04 to 2022-02-24_
+_Reviewer note: Package WinNativeCommonCtls (no symbol) plus Core form designer finding (no symbol). Source: v0.14.19, v0.14.20, v0.14.33. Package was renamed several times; verify current name, since the index lists WinNativeCommonCtls. Candidate target for the first part: docs/Reference/Built-In/WinNativeCommonCtls/index.md; the designer part needs a designer/IDE page._
+
+---
+
+## UNMAPPED · new-section
+
+> [!NOTE]
+> Objects, strings and interfaces are reference-counted, as in COM and VB6, and there is no cycle collector. Two objects that hold references to each other are never freed once the last outside reference is gone. Break such a cycle by hand, for example with a cleanup method that clears the back-reference before the owner is released.
+>
+> Handles to external resources (files, kernel or GDI handles) are best wrapped in a class whose destructor releases the handle. Memory allocated manually, with **AllocMem**, **HeapAlloc** or a block returned by a Windows API, is never freed automatically and must be released explicitly.
+
+_Source threads: 1565126681415520426 · confidence: medium_
+_Date range: 2026-10-28_
+_Reviewer note: UNMAPPED: package Core, no symbol (reference counting / memory leaks). No obvious Core index page; consider the Set statement page or a language-features page on object lifetime. Verify against compiler behaviour._
+
+---
+
+## UNMAPPED · new-section
+
+> [!NOTE]
+> Partial compilation is not supported. Support for external project files such as **.vbp** is planned.
+
+_Source threads: 1566536995113668708 · confidence: high_
+_Date range: 2026-11-01 to 2026-11-02_
+_Reviewer note: UNMAPPED: package Core, no symbol (roadmap: partial compilation, .vbp support). Maintainer said partial compilation moved from v1.0 to v1.1. Likely belongs in a roadmap/limitations page, if any; may be unsuitable for the reference docs._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> The project References list offers two options per COM reference: overriding the library's name, and referencing a type library without automatically wrapping its ActiveX controls. Using an **Ax** control data type automatically refers to the extended wrapper type, as VBx does.
+
+_Source threads: 927834661298798602-2022-12 · confidence: high_
+_Date range: 2022-12-16_
+_Reviewer note: Package Core, no symbol. Belongs on a project References / COM references IDE page; from BETA 207-208. Needs triage._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> **TypeOf** applied to a **Variant** handles a **Variant** that holds a non-object value correctly, rather than assuming an object reference.
+
+_Source threads: 927834661298798602-2023-02 · confidence: medium_
+_Date range: 2023-02-16_
+_Reviewer note: UNMAPPED: package Core, symbol TypeOf. No TypeOf page found under docs/Reference/Core; the reviewer should find the right place (perhaps Is.md or the operators page). Source: BETA 251 fix. Wording is vague about the exact result; verify._
+
+---
+
+## UNMAPPED · new-section
+
+Calls to `[_HiddenModule]` expose several functions redirected from MSVBVM60: `GetMem1`, `GetMem2`, `GetMem3`, `GetMem4`, `PutMem1`, `PutMem2`, `PutMem4`, `PutMem8`, `vbaObjSetAddref`, `vbaObjSet`, `vbaCopyBytes` and `vbaCopyBytesZero`. `CreateGUID` wraps `CoCreateGuid` and can be used from the debug console. `PictureToByteArray` is also available.
+
+A **Declare** that targets MSVBVM50.dll or MSVBVM60.dll is redirected to an internal implementation, and a **Declare** of a legacy DLL such as OLEPRO32.DLL is redirected to its modern replacement with a warning.
+
+_Source threads: 927834661298798602-2023-05 · confidence: high_
+_Date range: 2023-04-15 to 2023-06-27_
+_Reviewer note: Package Core, symbols _HiddenModule and MSVBVM50/60 redirection; no page found. Candidate: docs/Features/Advanced/API-Declarations.md. The OLEPRO32 redirect is already in Compiler-Warnings.md. Verify member list against the .twin source._
+
+---
+
+## UNMAPPED · new-section
+
+> [!NOTE]
+> A parameter cannot be declared **Optional** if it is an array or a user-defined type. Both cases are compile errors, as in VBx. Passing a user-defined type of the wrong type to a procedure is also a compile error.
+
+`Len(var)` and `LenB(var)` can be used in the bound expressions of a fixed-size array. **Array** can be used as a UDT member name, and **Line** can be used as a variable name without conflicting with the **Line** statement.
+
+_Source threads: 927834661298798602-2023-04 · confidence: high_
+_Date range: 2023-04-16 to 2023-05-26_
+_Reviewer note: Package Core, no symbol; language compatibility notes. Candidate: docs/Features/Language pages. TB0014 inline ByVal already documented in Compiler-Warnings.md. Verify against the compiler._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> The project setting **Project: Build Stack Reserve Size** sets the stack reserve size written to the PE header of the built executable. The debugger's main thread uses a 4 MB stack reservation.
+
+_Source threads: 927834661298798602-2023-07 · confidence: high_
+_Date range: 2023-07-06_
+_Reviewer note: Package Core, no symbol. Belongs on a project-settings page. Source build: BETA 348._
+
+---
+
+## UNMAPPED · after-remarks
+
+The `${IdePath}` variable can be used in the **Project: Build Output Path** setting. It expands to the folder of the running IDE. Addin project templates default to `${IdePath}\addins\${Architecture}\`.
+
+_Source threads: 927834661298798602-2023-08 · confidence: high_
+_Date range: 2023-08-18_
+_Reviewer note: Package Core, no symbol. Belongs on the project-settings or build-variables page. Source build: BETA 379. Verify the meaning of IdePath._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> **Opacity** and **TransparencyKey** on a windowed control require a project target OS of 6.2 (Windows 8) or later, and take effect only in a compiled executable, not when the project runs in the IDE.
+
+_Source threads: 927834661298798602-2024-05 · confidence: high_
+_Date range: 2024-05-25_
+_Reviewer note: Package VB, symbol Opacity. The per-control pages (e.g. docs/Reference/Default/VB/CheckBox/index.md, #opacity and #transparencykey) say only 'Windows 8 or later'; the compiled-only limitation could be added to each or to a shared page._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> Opening a VB6 project (`.vbp`) switches the IDE to the 32-bit (win32) architecture. The IDE remembers the target architecture of each project between sessions, so no separate option for starting in 64-bit mode is needed.
+
+_Source threads: 927834661298798602-2025-01 · confidence: high_
+_Date range: 2025-01-06 to 2025-01-14_
+_Reviewer note: Package Core, no symbol. Sources BETA 637 and 646. Candidate placement: VBP import page or docs/IDE/Customising/index.md near targetArchitectureMemory. Triage placement._
+
+---
+
+## UNMAPPED · new-section
+
+The IDE option **Show mini-toolbar in the form designer (for in-place editing)** is on by default. The commands `tbFormDesigner_TurnInPlaceEditingToolbarOn`, `tbFormDesigner_TurnInPlaceEditingToolbarOff` and `tbFormDesigner_ToggleInPlaceEditingToolbar` control it and can be assigned to keyboard shortcuts. The option **Single line of code panel tabs** keeps code panel tabs on one row.
+
+_Source threads: 927834661298798602-2025-02 · confidence: high_
+_Date range: 2025-02-15 to 2025-02-19_
+_Reviewer note: Package tbIDE, symbol none. Triage placement in the IDE settings / form designer docs. From BETA 683 and 686._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> twinBASIC embeds the licence key of a licensed ActiveX control only when the control's type library sets the `TYPEFLAG_FLICENSED` flag. Many controls do not set it correctly, and for those the key may not be embedded.
+
+_Source threads: 927834661298798602-2025-03 · confidence: medium_
+_Date range: 2025-03-28 to 2025-03-30_
+_Reviewer note: Package Core, no symbol. Suggested placement: the ActiveX/COM references documentation. From BETA 725 and 729, which added extra handling; verify current behaviour before publishing. The trace options finding (BETA 726) was dropped because docs/IDE/Project Settings.md already lists both options, and the For / For Each inline declaration findings because both pages already document the `As type` form._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> The theme properties **CodeFoldingVisible** and **CodeMinimapVisible** are deprecated. The IDE commands `tbEditor_ToggleCodeFoldingVisibility` and `tbEditor_ToggleMiniMapVisibility` replace them, and are also in the ellipsis menu of the EDITOR panel. The command `tbEditor_ToggleShowLineNumbers` toggles line numbers. `tbEditor_FoldProcedures` and `tbEditor_UnfoldProcedures` fold and unfold all procedures (Ctrl+Alt+Left and Ctrl+Alt+Right). Themes can also style named operators with the **SymbolNamedOperator** properties **Color**, **FontStyle**, **FontWeight** and **TextDecoration**.
+
+_Source threads: 927834661298798602-2025-06 · confidence: high_
+_Date range: 2025-06-09 to 2025-06-26_
+_Reviewer note: Package tbIDE, symbol Themes. Source: BETAs 799, 813, 820. No theme or IDE-commands page found; check exact property names (SymbolNamedOperator* prefix) against the theme schema. Place on an IDE themes or commands page._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> The compiler leaves unused global variables, including static module variables, out of the built executable.
+
+_Source threads: 927834661298798602-2025-12 · confidence: high_
+_Date range: 2025-12-07 to 2025-12-08_
+_Reviewer note: Package Core, no symbol (BETA 917). Candidate placement: a build or optimisation page. Dropped as already-fixed past defects: ArrayBoundsChecks fixes (914, 917), CustomControls breakage (909-934), Printer.Font, App.Path and Clipboard.GetFormat fixes (already documented as current behaviour), and Alias syntax (page already covers it)._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> The designer property sheet accepts color values in the VB6 hexadecimal format, such as `&H12345678&`.
+
+_Source threads: 927834661298798602-2026-01 · confidence: high_
+_Date range: 2026-01-30_
+_Reviewer note: Package Core, no symbol. IDE form designer feature (BETA 965); find a page under docs/IDE for the designer or property sheet._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> Opening a form designer while the project is running with runtime forms open resets the running project so that the designer can open.
+
+_Source threads: 927834661298798602-2026-03 · confidence: high_
+_Date range: 2026-03-14_
+_Reviewer note: Package Core, no symbol. IDE designer behaviour (BETA 974); find a page under docs/IDE. Also unmapped: block comments may be preceded by extra spacing (BETA 980, Core, no symbol); root Form/MDIForm/UserControl classes use full inheritance instead of Implements-Via (BETA 951, Core, no symbol)._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> A union nested in a structure must be replaced by a stand-in that keeps both size and alignment. On a 64-bit build, in the structure `{int a; union {struct {int b; void *c;}; void *d;}; int e;}`, the union is aligned to 8 and starts at offset 8 rather than 4, occupies 16 bytes, and 4 bytes of trailing padding follow the structure. A plain **Byte** array stand-in with the wrong size or alignment gives a wrong layout.
+
+> [!NOTE]
+> WinDevLib APIs that take a `LARGE_INTEGER`, such as `GetFileSizeEx`, expect that type. Code that passes a **LongLong** variable compiles without a diagnostic but crashes at run time. Declare the variable as `LARGE_INTEGER` and use its `.QuadPart` member.
+
+_Source threads: 1125359845936205844 · confidence: high_
+_Date range: 2025-03-09 to 2025-11-19_
+_Reviewer note: Package WinDevLib, no symbol; no page in index. Merged the union-alignment and LARGE_INTEGER findings; the alignment note may fit better on the UDT enhancements page (Features/Language/UDTs.md) under packing rules. WinDevLib 8.8.504 fixes omitted._
+
+---
+
+## UNMAPPED · new-section
+
+> [!NOTE]
+> Adding `WINDEVLIB_LITE = 1` under **Project Settings** > **Conditional compilation arguments** excludes the API and common-control definitions, miscellaneous definitions and PROPERTYKEYs, which shortens IntelliSense load time in the IDE. Project-level compiler constants are not passed through to packages, so others such as `WDL_NO_DIRECTX` or `WDL_QUALIFY` (which requires a `WinDevLib.` prefix) take effect only in a custom .twinpack built from the GitHub twinproj with the constant defined.
+
+> [!NOTE]
+> If two packages, such as WinDevLib and WinRT, define the same type, the package earlier in the **References** resolve order wins, and the other needs a package prefix. Reorder with the arrows in **References**. Updating a package removes and re-adds it, which moves it to the end of the resolve order. Each package's `changelog.md`, including BREAKING CHANGE notes, is visible under `Packages\<name>` in the project explorer.
+
+_Source threads: 1125359845936205844 · confidence: medium_
+_Date range: 2023-07-03 to 2025-12-29_
+_Reviewer note: Package WinDevLib, no symbol; no package index page found. Merged the LITE/conditional-constant and package-order findings. The LITE speed figures and 'rarely needed' remark omitted. Restoring an old version from GitHub history into %APPDATA%\Roaming\twinBASIC\packages was also mentioned and not drafted._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> **TaskDialog** accepts common-button flags beyond the documented ones: `TDCBF_ABORT_BUTTON` (&H10000), `TDCBF_IGNORE_BUTTON` (&H20000), `TDCBF_TRYAGAIN_BUTTON` (&H40000), `TDCBF_CONTINUE_BUTTON` (&H80000) and `TDCBF_HELP_BUTTON` (&H100000, decimal 1048576). The dialog returns `TD_ABORT`, `TD_IGNORE`, `TD_TRYAGAIN` or `TD_CONTINUE` for the first four. The Help button raises the Help event and does not close the dialog.
+
+> [!NOTE]
+> Structures such as `TASKDIALOG_BUTTON` are packed differently in 64-bit VBA, so VBA64 code needs a separate alternate declaration of each.
+
+_Source threads: 1156840378213867620 · confidence: medium_
+_Date range: 2024-01-17_
+_Reviewer note: UNMAPPED. Package VBA, symbol TASKDIALOG_COMMON_BUTTON_FLAGS; no such page exists in the docs (TaskDialog appears only in Miscellaneous/FAQs.md). Likely belongs with a TaskDialog or cTaskDialog page if one is added. Constants come from a community class, verify against Win32 headers._
+
+---
+
+## UNMAPPED · example
+
+When the host executable has no version 6 common controls entry in its manifest, a call to `TaskDialogIndirect` or `TaskDialog` can still use the visual-styles version of comctl32. The caller activates a version 6 activation context with the SxS Activation Context API for the duration of the call, then deactivates it. This applies to hosts such as 32-bit Excel, or to a standard DLL or Control Panel applet written in twinBASIC. A manifest remains the preferred approach where the project controls it.
+
+_Source threads: 1156840378213867620 · confidence: medium_
+_Date range: 2024-06-15_
+_Reviewer note: UNMAPPED. Package Core, no symbol. Possible home is Features/Advanced/API-Declarations.md or a comctl32 manifest topic. An example needs CreateActCtx/ActivateActCtx declarations, which the thread did not supply._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> **IExtractImage** does not appear to work for `.ico` files on Windows 10 and later. Use **IShellItemImageFactory** to obtain the image of an icon file.
+
+_Source threads: 1437514645354315888 · confidence: low_
+_Date range: 2026-03-08_
+_Reviewer note: Package WinDevLib, symbol IExtractImage. No page found in the index; triage placement. Low confidence ("apparently" in the thread)._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> The Background Intelligent Transfer Service (BITS) interfaces, such as **IBackgroundCopyJob**, are usable only with a recent Windows Development Library. Older versions of the package define some BITS interfaces incorrectly, so code that wraps BITS for non-blocking downloads and uploads with progress events needs the current package.
+
+_Source threads: 1525878462471077888 · confidence: medium_
+_Date range: 2026-07-12_
+_Reviewer note: Package WinDevLib, symbol IBackgroundCopyJob. No page found. Thread states WinDevLib v9.3.709 or later is required because of a bugfix and API standards change to a couple of BITS interfaces; build/version deliberately omitted from the draft._
+
+---
+
+## UNMAPPED · example
+
+The WinRT **WebViewControl** can show local web content without a web server. **NavigateToLocalStreamUri** loads the HTML, CSS and JavaScript from a folder of the application, for example a `HtmlContent` folder.
+
+The site files can also be stored compressed (for example with the `MAXIMUM_XPRESS_HUFF` algorithm, which makes them three to four times smaller). In that case a custom implementation of **IAsyncOperationIInputStream** serves as the resolver: it decompresses each file when the control asks for it. The page can pass JSON data back to the main form.
+
+_Source threads: 1528775724826230804 · confidence: medium_
+_Date range: 2026-07-20 to 2026-07-27_
+_Reviewer note: Package WinRT, symbol WebViewControl.NavigateToLocalStreamUri. No page found; no code in the finding, so prose only. Verify against the demo source._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> A project that uses the tbRegExp package does not currently compile with LLVM. The build reports many errors of the form "LLVM compilation error in 'StaticRegex.AppendStr': a feature used in your code is not yet supported with the LLVM compiler", and the resulting program can crash. Build such a project without LLVM.
+
+_Source threads: 1535364685556088993 · confidence: low_
+_Date range: 2026-10-22 to 2026-10-23_
+_Reviewer note: Package tbRegExp, symbol StaticRegex.AppendStr. No page found. Known-defect callout; the thread did not give a build number. Verify whether still reproducible._
+
+---
+
+## UNMAPPED · example
+
+The ReadTypelib tool, which requires WinDevLib, reads the type library of an ActiveX control or DLL and prints a set of attributes. Apply these attributes to the classes in a `.twin` file to make them binary compatible with the original component. The tool also prints the library ID, which is to be entered as the **Project ID** in Project Settings.
+
+_Source threads: 1560715630460805261 · confidence: medium_
+_Date range: 2026-10-16_
+_Reviewer note: Package Core, no symbol. Likely belongs on an ActiveX / binary compatibility page; triage placement._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> XAML hosted in a twinBASIC window has the following known quirks:
+>
+> - **Icons.** A `PathIcon` takes a XAML geometry string in its `Data` property. For example, `Data="M12 2 2 22h20Z"` draws a triangle. SVG path data also works when it uses only static path commands. An `Image` control can load an SVG through `SvgImageSource`.
+> - **Flyouts and scrolling.** A `ComboBox` or `Flyout` drop-down stays open when the enclosing `ScrollViewer` scrolls. This is a known XAML issue. To work around it, handle the `ScrollViewer` `ViewChanging` event and set `IsOpen = False` on each popup returned by `VisualTreeHelper.GetOpenPopupsForXamlRoot`.
+> - **Blurry text.** XAML text can look slightly blurry when the project runs from the IDE at a display scaling above 100%. The compiled EXE, whose manifest declares per-monitor DPI awareness, renders crisply. Test with the built EXE before diagnosing a font problem. A global `Style` with `TargetType="Border"` has also been reported to blur content after appearance animations; removing it fixed the problem.
+> - **Dragging a borderless window.** Sending `WM_NCLBUTTONDOWN` with `HTCAPTION` through `SendMessage` from a XAML pointer handler does not move the window. Handle `PointerMoved` and move the host window with `SetWindowPos` instead.
+
+_Source threads: 1566461365072433272 · confidence: medium_
+_Date range: 2026-11-03 to 2026-11-04_
+_Reviewer note: UNMAPPED: package WinRT, no symbol (XAML Island tips, merged from four findings; the blur and dragging items were low confidence and are user-reported). Verify before publishing._
+
+---
+
+## UNMAPPED · example
+
+The `DxcCreateInstance` entry point can be called by loading the library at run time and using the `DxcCreateInstanceProc` delegate:
+
+```tb
+Dim hDXC As LongPtr = LoadLibrary("dxcompiler.dll")
+Dim pfnCreate As DxcCreateInstanceProc = GetProcAddress(hDXC, "DxcCreateInstance")
+' Call pfnCreate with the required CLSID and arguments
+```
+
+_Source threads: 1566461365072433272 · confidence: medium_
+_Date range: 2026-11-04_
+_Reviewer note: UNMAPPED: package WinDevLib, symbol DxcCreateInstance. The thread says the declaration was not yet updated in WinDevLib; verify against the current package source, since a direct declaration may now exist and make this workaround unnecessary._
+
+---
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> WinRT collections cannot be created natively from twinBASIC. No API creates a new typed **IVector**, because the C++ helper used for this cannot be exported. A workaround is to instantiate an unrelated class with a property that returns an empty vector, and use that vector. Map types such as **IMap** can be used directly, because the **PropertySet** class is activatable.
+
+_Source threads: 1397669015777968289-2025-07 · confidence: low_
+_Date range: 2025-07-23_
+_Reviewer note: Package Core, topic WinRT interop; no matching page found in the index. Verify against WinRT/WinDevLib docs before placing._
+
+---
+
+## UNMAPPED · new-section
+
+To find failures in a trace log, replace every occurrence of `HRESULT:=S_OK` with a placeholder such as `HRESULT_SOK`, then search for `HRESULT:=`. The remaining matches are calls that returned a value other than S_OK.
+
+_Source threads: 1164973320157012129-2024-10 · confidence: high_
+_Date range: 2024-10-23_
+_Reviewer note: UNMAPPED: package Core, no symbol. Belongs on a page about trace logging or debugging, if one exists._
+
+---
+
 ## docs/Features/64bit.md · after-remarks [DUPLICATE? -- see also thread 1083431012417155154, 1448280876780752936, 1417830539024662548, 1437514645354315888]
 
 > [!NOTE]
@@ -2154,12 +2770,18 @@ _Reviewer note: Verify whether the silent-fail behavior has since been improved 
 
 ## docs/Features/64bit.md · after-remarks [DUPLICATE? -- see also thread 1160439577429954620, 1448280876780752936, 1417830539024662548, 1437514645354315888]
 
-> [!NOTE]
-> The Windows Recovery Environment (WinRE) does not include the WoW64 compatibility subsystem, so 32-bit executables will not run there. A 64-bit twinBASIC build is required for utilities that must operate outside a full Windows installation.
+## When 64-bit is Required
 
-_Source threads: 1083431012417155154 · confidence: low_
-_Date range: 2023-03-17_
-_Reviewer note: Sourced from a single Discord post; verify that WinRE genuinely lacks WoW64 before publishing. The claim is plausible but has not been cross-checked against Microsoft documentation._
+Some functionality is only reachable from a 64-bit process:
+
+- A 64-bit Office installation registers only 64-bit shell extensions. A 32-bit application therefore cannot read or edit Office document properties through the Windows property system, and cannot load Office preview handlers.
+- The Windows Recovery Environment does not provide WoW64, so only 64-bit executables run there.
+
+A **win64** build restores this functionality for applications that depend on shell integration.
+
+_Source threads: 1083431012417155154 · confidence: medium_
+_Date range: 2023-03-09 to 2023-03-17_
+_Reviewer note: Source: Discord thread, fafalone comments dated March 2023. Claims about Office shell extension registration and WinRE come from the thread, not verified against Microsoft docs. Finding had no symbol; Core package index not in the page index, so 64bit.md chosen as the best fit. The vbNullPtr finding was dropped because docs/Features/Language/Pointers.md already covers it. The Direct2D legacy-mode and issue #2107 findings (low confidence, no symbol) were dropped as too unverified and unmappable; reviewer may want to triage them manually._
 
 ---
 
@@ -2207,6 +2829,24 @@ _Reviewer note: Placed after the WinDevLib paragraph on the 64-bit page because 
 
 ---
 
+## docs/Features/64bit.md · after-remarks
+
+> [!NOTE]
+> Code that must also run in 64-bit VBA (VBA7) needs care with callbacks. In VBA64, the addresses of the procedures in a standard module are not valid until some procedure of that module has been called from VBA code. A callback or window procedure in a `.bas` module can crash when an external DLL calls it before that happens. To avoid this, add an empty `Public Sub` to the same module as the callbacks and call it first, for example from `Class_Initialize`, before any call that hands the callback address to the system.
+>
+> ```tb
+> ' In the module that holds the callbacks and window procedures
+> Public Sub InitModule()
+>     ' Intentionally empty. Calling it makes the module's procedure addresses valid in VBA64.
+> End Sub
+> ```
+
+_Source threads: 1156840378213867620 · confidence: medium_
+_Date range: 2023-09-28 to 2025-12-02_
+_Reviewer note: Finding is about VBA64 behaviour, not twinBASIC; VBA package page was a poor fit so 64bit.md was chosen. Verify placement and that this belongs in the twinBASIC docs._
+
+---
+
 ## docs/Features/Advanced/API-Declarations.md · after-remarks [DUPLICATE? -- see also thread 1086977208171634708]
 
 > [!NOTE]
@@ -2237,6 +2877,36 @@ _Reviewer note: Insert after the DeclareWide section or as a closing note within
 _Source threads: 1125359845936205844 · confidence: medium_
 _Date range: 2023-12-18 to 2026-09-02_
 _Reviewer note: There is no Core/DeclareWide page, so this targets the page that documents DeclareWide. Insert directly after the DeclareWide WARNING callout. The last sentence is an inference from a WinDevLib bug report about PostMessageA; verify the wording. The thread's remark about the built-in hidden-module declarations is omitted because docs/Reference/Attributes.md already shows that form._
+
+---
+
+## docs/Features/Advanced/API-Declarations.md · after-remarks
+
+> [!NOTE]
+> A **Declare** cannot take a UDT **ByVal**. For an API that expects a structure by value, branch on the bitness. On 64-bit builds the ABI passes large structures by pointer, so declare the parameter **ByRef**. On 32-bit builds, expand the structure into its members as separate **ByVal** parameters (for a 4x4 matrix of **Single**, sixteen **Single** parameters), or pad with **ByVal Long** parameters to the same stack size.
+>
+> ```tb
+> #If Win64 Then
+> Private Declare PtrSafe Sub DrawMatrix Lib "mylib" (ByRef m As Matrix4x4)
+> #Else
+> Private Declare Sub DrawMatrix Lib "mylib" (ByVal m11 As Single, ByVal m12 As Single, ByVal m13 As Single, ByVal m14 As Single, ByVal m21 As Single, ByVal m22 As Single, ByVal m23 As Single, ByVal m24 As Single, ByVal m31 As Single, ByVal m32 As Single, ByVal m33 As Single, ByVal m34 As Single, ByVal m41 As Single, ByVal m42 As Single, ByVal m43 As Single, ByVal m44 As Single)
+> #End If
+> ```
+
+_Source threads: 1352268312117252126 · confidence: medium_
+_Date range: 2025-06-13_
+_Reviewer note: Medium confidence; the ByRef-on-64-bit claim applies only to structures larger than 8 bytes (small structs pass in registers). Verify before publishing; symbol was null so placed on API-Declarations._
+
+---
+
+## docs/Features/Advanced/API-Declarations.md · after-remarks
+
+> [!NOTE]
+> On a 32-bit build, a **FastCall** declaration whose first parameter is 64 bits wide, such as a **LongLong**, can fail with an access violation. The 32-bit fastcall convention passes only 32-bit values in ECX and EDX, so a 64-bit argument has to be split across registers, and twinBASIC does not do this. **Double** and **Currency** parameters are probably affected in the same way. The same declaration with **Long** or **Integer** parameters works.
+
+_Source threads: 1555560444473774171 · confidence: low_
+_Date range: 2026-10-02_
+_Reviewer note: Cause is a suspicion in the thread, not confirmed by a maintainer; verify against current build before publishing. Insert after the RtlUlongByteSwap FastCall example. Original symbol: Declare FastCall (Core)._
 
 ---
 
@@ -3160,6 +3830,17 @@ _Reviewer note: Not compiled here: needs a WinDevLib project to reproduce, so th
 
 ---
 
+## docs/Features/Language/Overloading.md · after-remarks
+
+> [!NOTE]
+> In overload resolution, **Nothing** is an exact match for a parameter of any interface type, so a call that passes **Nothing** does not become ambiguous between overloads that take different interfaces only because of the argument.
+
+_Source threads: 927834661298798602-2024-05 · confidence: high_
+_Date range: 2024-05-12_
+_Reviewer note: From BETA 536. Wording on ambiguity is inferred; verify against compiler behaviour with two interface-typed overloads._
+
+---
+
 ## docs/Features/Packages/Creating a TWINPACK package.md · after-remarks
 
 > [!NOTE]
@@ -3231,6 +3912,51 @@ _Reviewer note: Merged from two threads (v1.0 external source files, dated 2026-
 _Source threads: 1524049386953375946 · confidence: medium_
 _Date range: 2026-07-07 to 2026-07-22_
 _Reviewer note: The rest of the finding (using the tools to keep a project in git) is already covered on this page, including the .gitignore section. Only the self-test caveat is new. The page index has no Features pages, so the target was found by reading nearby files. Confirm the sample.twinpack requirement against scripts/impexp.mjs before publishing; the finding is medium confidence and the page may want a different wording if the file is meant to ship with the repository._
+
+---
+
+## docs/Features/Packages/Import-export tool.md · after-remarks
+
+> [!NOTE]
+> A failed `--buildAndExit32` or `--buildAndExit64` compile writes no error or log file. The IDE window stays open and is the only sign of the failure. A script that must use these switches can treat a missing output `.exe` or `.dll` as a failed build, and then end the `twinBASIC.exe` process itself.
+
+_Source threads: 1478865333245837444-2026-06 · confidence: high_
+_Date range: 2026-06-25_
+_Reviewer note: Page already says the switches are unsuitable for unattended checks; only the no-error-file detail and the missing-output workaround are new. The workaround is a community suggestion and is not verified. The maintainer also said full command-line compilation is planned after LLVM support; this was left out as forward-looking. Resolved by reading nearby pages: no Core/--buildAndExit32 key in the index._
+
+---
+
+## docs/Features/Packages/Import-export tool.md · new-section
+
+## Working with AI tools
+{: #working-with-ai-tools }
+
+A `.twinproj` is one binary file, which an AI assistant cannot read or edit directly. Export the project to a folder of text files, point the assistant at that folder, and pack the folder back into a project file afterwards to review and test the result.
+
+Tell the assistant that the tool exists, with the command lines from [Usage](#usage), so that it can run the export and import itself. The Node.js, Python and twinBASIC editions all work for this; the twinBASIC edition needs no interpreter.
+
+A script that wraps the tool can make the cycle safer:
+
+1. **Export script.** Check that the IDE is not running, and exit with a warning if it is, so that the IDE does not save over the packed result. Copy the `.twinproj` into a backup subfolder. Then run `export --overwrite` into a subfolder of its own, such as `ImportExport`.
+2. **Edit.** The assistant changes the text files in that subfolder.
+3. **Pack script.** Run `import --overwrite` to rebuild the `.twinproj`, then open it in the IDE to review the changes and test.
+
+Keep the exported folder for the project's files alone, as described in [What both programs do](#what-both-programs-do), and [check the result](#checking-the-result) of each command rather than assuming it worked.
+
+_Source threads: 1478865333245837444-2026-10 · confidence: medium_
+_Date range: 2026-10-14 to 2026-10-15_
+_Reviewer note: Finding came from the ai-talk thread of Oct 2026. The thread's mention of the native twinBASIC edition is already on the page. The step 'check the IDE is not running' is the user's own workflow, not documented IDE behaviour; verify the claim about the IDE saving over the packed result. The page index had no mapping for ImportExportTool, so the page was found by search._
+
+---
+
+## docs/Features/Packages/Import-export tool.md · after-remarks
+
+> [!NOTE]
+> `--self-test` is a developer option. It looks for the file `indexer/sample.twinpack` from the twinBASIC source repository, which is not shipped to users, so the test cannot run from an installed copy.
+
+_Source threads: 1519120323864432850 · confidence: high_
+_Date range: 2026-06-23 to 2026-06-24_
+_Reviewer note: Maintainer plans to embed the sample in the tool; the note may become obsolete._
 
 ---
 
@@ -3342,6 +4068,36 @@ _Reviewer note: Findings were tagged package Core with no symbol, so the page wa
 
 ---
 
+## docs/Features/Packages/Linked Packages.md · after-remarks
+
+> [!NOTE]
+> Linked packages are designed for the `%APPDATA%\twinBASIC\packages` folder. If a project does not pick up changes made to a linked package, check that the package's build output goes to that folder rather than a custom path, then save, run a clean build and refresh the compiler. Restarting the compiler may reload the package from memory only; reopening the project through **File > Open Recent**, even when it is already open, reloads it from file. Importing a package file whose version equals the online version does not list it for selection.
+
+_Source threads: 1563249111380262922 · confidence: medium_
+_Date range: 2026-10-24 to 2026-10-25_
+_Reviewer note: Based on user and maintainer reports in the thread; verify the exact refresh steps in the IDE._
+
+---
+
+## docs/Features/Packages/Linked Packages.md · new-section
+
+## Packages that depend on other packages
+
+One package can depend on another. A package that implements interfaces from a base package, for example, needs that base package to be present in the consuming project.
+
+> [!NOTE]
+> Dependencies between packages have limits.
+> - Some dependent packages work only when the base package is **Linked** rather than **Embedded**.
+> - An embedded dependency can still conflict when the consuming project also references a package that one of its own packages uses.
+> - Linked packages carry no version information, so any change to a base package should remain backwards compatible.
+> - When the base package changes, the dependent package must be updated and republished, so that its reference to the base package is refreshed.
+
+_Source threads: 1397669015777968289-2025-07 · confidence: medium_
+_Date range: 2025-07-23_
+_Reviewer note: Source: twinpack-dev thread, July 2025 (build not stated in finding). Verify against current behaviour; the claim that linked packages have no version support may conflict with the version shown in the local/TWINSERV prompt described earlier on this page._
+
+---
+
 ## docs/Features/Packages/TWINPACK file format.md · after-remarks [DUPLICATE? -- see also thread 1368264887448371372]
 
 > [!NOTE]
@@ -3412,6 +4168,27 @@ _Reviewer note: Confirm the exact settings path in the IDE where the notificatio
 
 ---
 
+## docs/Features/Packages/Updating a package.md · after-remarks
+
+A package author can automate the copy. In the package's own project, a `Public Sub` with the [`[RunAfterBuild]`](../../tB/Core/Attributes#runafterbuild) attribute copies the build output into `%APPDATA%\twinBASIC\packages`, so each build replaces the shared file. Other projects pick up the new build after the compiler restarts.
+
+```tb
+[RunAfterBuild]
+Public Sub PublishToLinkedFolder()
+    ' Copy the built .twinpack into the linked packages folder.
+    FileCopy App.LastBuildPath, Environ$("APPDATA") & "\twinBASIC\packages\MyPackage.twinpack"
+End Sub
+```
+
+> [!NOTE]
+> [**App.LastBuildPath**](../../tB/Packages/AppGlobalClassObject/_App/LastBuildPath) is not filled in for a package project, so the file name in the destination path has to be written out in the code. Leaving the architecture out of the output file name helps, since it does not apply to a package. **RunAfterBuild** is meant for package authors: it cannot download or update a third-party package from the package server.
+
+_Source threads: 1554941508921073855 · confidence: medium_
+_Date range: 2026-09-30 to 2026-10-01_
+_Reviewer note: Example code is a sketch: the source thread did not give code. Verify that FileCopy from a RunAfterBuild Sub works as shown and that the source path (the build output, since LastBuildPath is empty) is right. Check the attribute link target. Source thread dated 2026-09-30 to 2026-10-01._
+
+---
+
 ## docs/Features/Packages/index.md · after-remarks [DUPLICATE? -- see also thread 1359918618573275286, 1503959771949301922]
 
 > [!NOTE]
@@ -3453,6 +4230,28 @@ _Date range: 2026-05-13 to 2026-05-18_
 _Source threads: 1536079009673257010 · confidence: medium_
 _Date range: 2026-08-10_
 _Reviewer note: The existing page says a referencing project imports the whole package into its file system; the added text is about the compiled output, not the project file. Confirm with the compiler team that unused package symbols are always excluded from the executable, and that this holds for every package type._
+
+---
+
+## docs/Features/Packages/index.md · after-remarks
+
+> [!NOTE]
+> A referencing project treats the imported package as part of its own source code, so scope restrictions inside a package have limited effect. **Friend** members of the package's classes appear in the project's IntelliSense, and the source stays readable. The restrictions apply fully only when the package contents are compiled into an ActiveX DLL or a control. To hide internals and source from consumers, build the component as an ActiveX DLL and reference that instead.
+
+_Source threads: 1516861763042279534 · confidence: high_
+_Date range: 2026-06-17 to 2026-10-01_
+_Reviewer note: Partly overlaps Friend.md, which already says a package's Friend members are usable; this adds the ActiveX DLL workaround and the IntelliSense point._
+
+---
+
+## docs/Features/Packages/index.md · after-remarks
+
+> [!NOTE]
+> twinBASIC has no language-level namespaces. The symbols of every referenced package share a single global namespace, so a very large package (such as a complete Windows API declaration package) adds all of its names to IntelliSense and can collide with names from other packages. For the same reason, splitting a large package into several smaller ones is difficult when the parts overlap. To limit the clutter, group related members as static members of a nested class, and use a **With** block to shorten repeated access.
+
+_Source threads: 1397669015777968289-2025-12 · confidence: low_
+_Date range: 2025-12-23 to 2025-12-24_
+_Reviewer note: No Core package page exists, so placed on the Packages index. The existing page says packages are grouped 'into their own namespace', which may conflict with this note; verify the wording against current behaviour (see Library Symbols page). Namespaces reportedly planned after v1 per second-hand relay of Wayne's remarks; not stated in the draft. Thread source is December 2025._
 
 ---
 
@@ -3615,6 +4414,17 @@ When the applet's dialog uses ComCtl6-style controls but is loaded by a host pro
 _Source threads: 1220612763873972314 · confidence: medium_
 _Date range: 2024-03-22_
 _Reviewer note: This is a Features page, not a Reference page. Verify that the Standard DLL section of Project-Types.md is the right home, or whether a dedicated .cpl tutorial page would be more appropriate. The ComCtl6 activation context pattern applies generally but is described here in the .cpl context._
+
+---
+
+## docs/Features/Project-Configuration/Project-Types.md · after-remarks
+
+> [!NOTE]
+> A **Standard EXE** project does not generate a type library. Only project types that expose COM-visible types, such as ActiveX DLL and ActiveX Control projects, produce one.
+
+_Source threads: 927834661298798602-2023-02 · confidence: high_
+_Date range: 2023-02-07_
+_Reviewer note: Core/Standard EXE unmapped; Project-Types.md chosen as nearest page. Source: BETA 244 only says no type library is generated for Standard EXE; the second sentence is inferred and should be verified or removed. Page may need a dedicated Standard EXE heading for placement._
 
 ---
 
@@ -3962,6 +4772,75 @@ _Reviewer note: The thread says an updated package lands at the end of the resol
 
 ---
 
+## docs/IDE/Project Settings.md · after-remarks
+
+With **Native Subsystem** set to **Yes**, the linker reports any DLL import that does not come from NTOSKRNL, [**UseGetLastError**](../Reference/Attributes#usegetlasterror) defaults to **False**, and the built file gets the extension **.sys**.
+
+_Source threads: 927834661298798602-2022-07 · confidence: high_
+_Date range: 2022-07-23 to 2022-07-27_
+_Reviewer note: From BETA 82-86. Also mentioned: 'Runtime Binding Of DLL Declares (ADVANCED)', which binds DLL declares through the import address table; check whether that setting is documented and add it. Insert after the Native Subsystem paragraph; verify the Attributes link anchor._
+
+---
+
+## docs/IDE/Project Settings.md · after-remarks
+
+> [!NOTE]
+> In a native-subsystem (kernel-mode) build, standard assignments of the **String** type do not call **SysAllocString** or **SysFreeString**. String literals can therefore be used in kernel-mode code.
+
+_Source threads: 927834661298798602-2022-08 · confidence: high_
+_Date range: 2022-08-23_
+_Reviewer note: From BETA 97. Insert under the Native Subsystem heading (around line 104). Verify the scope of 'standard assignments' against the compiler; non-assignment operations may still allocate._
+
+---
+
+## docs/IDE/Project Settings.md · after-remarks
+
+The IDE Add menu includes **Add Resource: Visual Styles Manifest** and **Add Resource: String Table**. Global find can search inside referenced packages and offers **Match case** and **Match whole word only** options. An experimental **View as JSON** command for packages gives an outline for generating documentation.
+
+_Source threads: 927834661298798602-2023-05 · confidence: high_
+_Date range: 2023-05-19 to 2023-05-30_
+_Reviewer note: IDE feature notes with no clear target page; placement is a guess. Register DLL after build and description variables are already documented in Project Settings.md. CDecl on internal procedures and console window visibility are already covered or unplaced: CDecl is in Features/Advanced/API-Declarations.md; console-window finding (medium confidence) not drafted._
+
+---
+
+## docs/IDE/Project Settings.md · after-remarks
+
+> [!TIP]
+> An ActiveX control that runs in a host which caches type library information, such as a UserForm that stores it in an `.EXD` file, should have its type library version raised for each release, so that the host refreshes the cached copy. Setting the auto-increment option to **Major** or **Minor** does this on every build. The ActiveX Control sample project has auto-increment enabled.
+
+_Source threads: 927834661298798602-2024-03 · confidence: high_
+_Date range: 2024-03-12_
+_Reviewer note: Intended for the TypeLib version section (typelib-auto-increment). From BETA 469. The sample's exact auto-increment value should be verified._
+
+---
+
+## docs/IDE/Project Settings.md · after-remarks
+
+> [!NOTE]
+> When a VBP project is imported and the VBP stores an executable name (`ExeName32`), the import uses it for the build path, which becomes `${SourcePath}\` followed by that name, with no `Build` folder. `App.Path` in the imported project is the folder that holds the VBP.
+
+> [!NOTE]
+> The build reports an error in the DEBUG CONSOLE when the project's manifest file holds a `processorArchitecture` value that does not match the build target, because an executable with such a manifest would fail to start.
+
+_Source threads: 927834661298798602-2024-04 · confidence: high_
+_Date range: 2024-04-15 to 2024-04-25_
+_Reviewer note: BETA 517/521 (VBP import) and BETA 505 (manifest check). Placement after Build Output Path; the manifest note may belong near the manifest setting. Verify against the compiler._
+
+---
+
+## docs/IDE/Project Settings.md · after-remarks
+
+> [!NOTE]
+> **Trace Procedure Arguments** logs only arguments of simple types such as **Byte**, **Integer**, **Long**, **String** and **Variant**. Arrays and user-defined types are not logged. The return value of a function in a standard module is logged only when it is a **Variant** or **Decimal**. Entries named `{inline_execution}.{temp_evaluation_proc}` come from the evaluation of constant expressions and are normal.
+>
+> Every flag slows the program, and some produce very large logs. When hunting a crash, tick them all. If the program dies from a native exception, the log ends abruptly, and the last entry shows where the crash happened. The trace log covers all referenced packages as well as the project itself.
+
+_Source threads: 1215336829385973820-2024-03 · confidence: high_
+_Date range: 2024-03-07 to 2025-01-03_
+_Reviewer note: Check against the compiler source. The page lists eleven flags; the thread described seven. The ${SESSIONID} finding is already stated on the page and was dropped._
+
+---
+
 ## docs/IDE/Toolbar.md · after-remarks
 
 > [!NOTE]
@@ -4256,6 +5135,31 @@ _Reviewer note: Place at the end of the 'How do I install twinBASIC?' FAQ entry,
 
 ---
 
+## docs/Miscellaneous/FAQs.md · after-remarks
+
+<details markdown="block">
+<summary markdown=span id="back-to-vb6"><b>Can a twinBASIC project be saved back to VB6 files?</b></summary>
+
+Only in part. Code kept in `.bas` and `.cls` files can be shared with VB6, at the cost of the new language features and Unicode support. The `.frm` and `.ctl` formats cannot hold the many form and control properties and attributes that are specific to twinBASIC, so a form cannot be taken back to VB6, and migration from VB6 is in practice one-way. The `.twinproj` file is packed JSON, so scripts can unpack and repack it for editing with external tools.
+
+</details>
+
+_Source threads: 1537389045099921470 · confidence: medium_
+_Date range: 2026-08-13 to 2026-08-14_
+_Reviewer note: Match the FAQ's existing details markup and choose a fitting position; verify the .twinproj JSON claim._
+
+---
+
+## docs/Miscellaneous/FAQs.md · after-remarks
+
+twinBASIC cannot replace the VBA editor inside Office. As an alternative, a twinBASIC program can reference an Office application's object model (Excel, Access and so on) and automate it from outside; such a program can still show a full application window of its own when needed.
+
+_Source threads: 1120445096865828865 · confidence: medium_
+_Date range: 2023-06-19 to 2026-10-20_
+_Reviewer note: Place in the addins FAQ entry, after the paragraph on creating addins for VBA. Thread says only a proof of concept existed for hooking into the Office editor; verify the current status with the maintainer._
+
+---
+
 ## docs/Reference/Assert/index.md · after-remarks
 
 > [!NOTE]
@@ -4377,11 +5281,11 @@ _Reviewer note: This addition should be inserted into the TypeHint section (arou
 ## docs/Reference/Attributes.md · after-remarks [DUPLICATE? -- see also thread 1120535095279886416, 1172641655631908884, 1202939463630594079, 1212815197501395054, 1218599950359855186, 1230934350959345735, 1252891072774803487, 1333587859474747413, 1079642242429489262, 1082767362253668474, 1083119492789448824, 1103494252811526164, 1113738858408988713, 1135126325783449711, 1146837274357678203, 1165150931554418698, 1167815153253892156, 1169508594341916712, 1173257226610290699, 1179991719551442975, 1206670811172306954, 1358081642052190318, 1398715673508843731, 1396063342417674291, 1421815804172701708, 1432054854016045096, 1432054854016045096, 1291780674772275220, 1357558567447695391, 1382015106380075078, 1387416025892393042, 1414587677574959165, 1431348682271363182, 1455320119239643390, 1459605334502150206, 1462420288280068323, 1491119090306256906, 1125359845936205844, 1106637635818094733, 1222086643737956494, 1292578507674746951, 1427261753544409168]
 
 > [!NOTE]
-> Applying `[OleAutomation(False)]` to an `Interface` declaration causes `RegisterTypeLib()` to skip registering that interface in the Windows registry. This only affects ActiveX DLL output that is registered; in a Standard EXE project the attribute has no observable effect. twinBASIC defaults interfaces to `[OleAutomation(True)]`, which differs from traditional MIDL/MKTYPLIB compilers that default to `False`. When defining COM interfaces intended for vtable binding only (not via `IDispatch`), `[OleAutomation(False)]` keeps the type library entry without registering the interface.
+> **[OleAutomation]** sets the `TYPEFLAG_FOLEAUTOMATION` flag in the type library. The flag matters only when the type library is registered with `RegisterTypeLib`, which skips interfaces that lack it. It therefore affects ActiveX DLLs and has no effect in a Standard EXE. Unlike MIDL and mktyplib, where the default is **False**, twinBASIC defaults to **True**.
 
 _Source threads: 1352268312117252126 · confidence: high_
 _Date range: 2025-06-05_
-_Reviewer note: Insert after the existing OleAutomation section body (line ~461 in Attributes.md). The section currently states only that the attribute 'Controls whether this attribute is applied in the typelibrary' and 'is set to True by default' -- this note adds the RegisterTypeLib and ActiveX DLL context._
+_Reviewer note: Intended for the OleAutomation section of Attributes.md; the page index has no entry for it. The default (True) statement already exists on the page; consider trimming._
 
 ---
 
@@ -4777,11 +5681,14 @@ _Reviewer note: This draft is a description body for the sparse [COMControl] ent
 
 ## docs/Reference/Attributes.md · after-remarks [DUPLICATE? -- see also thread 1120535095279886416, 1172641655631908884, 1202939463630594079, 1212815197501395054, 1218599950359855186, 1230934350959345735, 1252891072774803487, 1333587859474747413, 1352268312117252126, 1079642242429489262, 1082767362253668474, 1083119492789448824, 1103494252811526164, 1113738858408988713, 1135126325783449711, 1146837274357678203, 1165150931554418698, 1167815153253892156, 1169508594341916712, 1173257226610290699, 1179991719551442975, 1206670811172306954, 1358081642052190318, 1398715673508843731, 1396063342417674291, 1421815804172701708, 1432054854016045096, 1432054854016045096, 1291780674772275220, 1357558567447695391, 1382015106380075078, 1387416025892393042, 1414587677574959165, 1431348682271363182, 1455320119239643390, 1459605334502150206, 1462420288280068323, 1491119090306256906, 1106637635818094733, 1222086643737956494, 1292578507674746951, 1427261753544409168]
 
-Setting the attribute to **False** avoids the cost of capturing the last-error value after every call, so it suits APIs for which the last error is not meaningful. WinDevLib applies `[UseGetLastError(False)]` to its declarations for this reason.
+> [!NOTE]
+> The instance behind an **[AppObject]** class is created when one of its members is first used, not at program start-up, and **Class_Initialize** runs at that point. A project can contain several **[AppObject]** classes. This suits global function-pointer variables that are filled in at run time, such as those obtained through `wglGetProcAddress`, which returns valid pointers only once an OpenGL context exists.
+>
+> If a global variable with the same name is declared elsewhere, the bare name binds to that variable first and the **[AppObject]** member is ignored, so the value stays 0.
 
-_Source threads: 1125359845936205844 · confidence: low_
-_Date range: 2026-05-16_
-_Reviewer note: Insert at the end of the UseGetLastError entry. Based on a single remark in the thread; the size of the performance gain is not measured._
+_Source threads: 1125359845936205844 · confidence: high_
+_Date range: 2026-01-09_
+_Reviewer note: Placed under the AppObject section. Verify lazy initialisation and name-shadowing order against the compiler._
 
 ---
 
@@ -4979,17 +5886,12 @@ _Reviewer note: Based on a feature request open on 2026-08-27; probe the current
 
 ## docs/Reference/Attributes.md · after-remarks
 
-A referenced twinBASIC package behaves like source code added to the referencing project, not like a compiled boundary. Scope takes hard effect only where the package contents end up in an ActiveX DLL or control. Two consequences apply when a package tries to hide its internals:
-
-- **Friend** members of package classes appear in IntelliSense in the referencing project.
-- The public members of a **Private** class or standard module are still exposed to the referencing project, but must be qualified with the class or module name to be called.
-
 > [!NOTE]
-> **MustBeQualified** on a module is meant to hide its members unless they are qualified with the module name, but it was reported not to work reliably at the time of writing, and a bug report was filed. A class with a predeclared instance is an alternative to a standard module. When internals must be fully hidden, ship them as an ActiveX DLL and reference that from twinBASIC.
+> **[Restricted]** on a **Friend** member of a class hides it from the IntelliSense of a project that references the package, where **[NonBrowsable]** and **[Hidden]** do not. The member is hidden only for objects created explicitly (`Dim c As MyClass: Set c = New MyClass`). A variable declared with auto-instancing (`Dim c As New MyClass`) still shows it.
 
-_Source threads: 1516861763042279534 · confidence: medium_
-_Date range: 2026-06-17 to 2026-09-22_
-_Reviewer note: Existing MustBeQualified section says 'Applicable to: procedure' and has no description, while the thread discusses it on a module (and the Assert package tags members). Verify applicability against the .twin sources and by probe, and confirm the reported bug before keeping the 'unreliable' note. Whether [NonBrowsable] hides Friend members in a package was unconfirmed and is omitted. Insert after the MustBeQualified heading's applicability line._
+_Source threads: 1516861763042279534 · confidence: low_
+_Date range: 2026-06-18 to 2026-09-30_
+_Reviewer note: Based on user experiments in Discord; verify in the IDE. Thread also reports [MustBeQualified] on a module broken in June 2026 with an open bug; not included._
 
 ---
 
@@ -5019,6 +5921,175 @@ _Reviewer note: The Attributes page lists AppObject as applicable to CoClass onl
 
 ---
 
+## docs/Reference/Attributes.md · example
+
+On a **Declare** or constant in a standard module, **[ComExport]** places the entry in a module (`TKIND_MODULE`) of the ActiveX DLL's type library. When the **Declare** has an alias or an ordinal, the declared name is exported and the alias becomes the entry point. User-defined types used by an exported **Declare** are exported as well.
+
+**[ComExport]** cannot export regular code, but a **Declare** can point at the project's own DLL, whose function is exported with [**DllExport**](#dllexport):
+
+```tb
+' Module A
+[ComExport]
+Public Declare PtrSafe Function FooBar Lib "mydll.dll" () As Long
+
+' Module B
+[DllExport]
+Public Function FooBar() As Long
+    FooBar = 42
+End Function
+```
+
+> [!NOTE]
+> VBA and VB6 resolve the **Lib** file when the type library is loaded. A bare file name that the search path cannot resolve produces *File not found*; use a full path or place the DLL in the system folder. An empty **Lib** string does not work from VBA.
+
+_Source threads: 1352268312117252126 · confidence: high_
+_Date range: 2025-06-05 to 2025-06-10_
+_Reviewer note: Page currently says the effect of ComExport is not established (HTML comment); verify against a built DLL. Place after the ComExport section._
+
+---
+
+## docs/Reference/Attributes.md · example
+
+The attribute suits code ported from C or C++ in which integer arithmetic is expected to wrap silently, such as hash and checksum routines. Combined with the native [**<<**](Core/LeftShift) and [**>>**](Core/RightShift) operators in place of helper functions that emulate rotation and wrapping addition, bit-twiddling code such as an MD5 implementation runs many times faster than a direct port of VB6-style helper code.
+
+```tb
+[IntegerOverflowChecks(False)]
+Private Function RotateLeft(ByVal value As Long, ByVal count As Long) As Long
+    RotateLeft = (value << count) Or ((value >> (32 - count)) And ((1& << count) - 1))
+End Function
+```
+
+> [!NOTE]
+> The attribute applies to a whole class, module or procedure. It cannot be applied to a single variable or expression.
+
+_Source threads: 927641929905209405-2022-10 · confidence: high_
+_Date range: 2022-10-18 to 2022-10-19_
+_Reviewer note: Both findings come from BETA 152 discussion. Page already documents the attribute itself, so only the porting/performance example is added. The RotateLeft sample was composed by the drafter, not taken from the thread; verify it compiles and that >> is arithmetic vs logical (RightShift page) before accepting, since a sign-extended >> would need masking. The thread's timings (62s vs 266s vs 447s for MD5, about 9x) are omitted as anecdotal._
+
+---
+
+## docs/Reference/Attributes.md · example
+
+Both checks can be switched off for a whole module with one attribute line. Skipping the checks speeds up tight array loops such as hashing routines and prime sieves, with typical gains of about 40% to 60% on hashing code. The compiler generates unoptimized code, so removing the per-access checks is a worthwhile source-level tuning step.
+
+```tb
+[ArrayBoundsChecks(False), IntegerOverflowChecks(False)]
+Module Sieve
+    Public Function CountPrimes(ByVal Limit As Long) As Long
+        Dim IsComposite() As Boolean
+        ReDim IsComposite(0 To Limit)
+        Dim i As Long, j As Long, n As Long
+        For i = 2 To Limit
+            If Not IsComposite(i) Then
+                n += 1
+                For j = i * 2 To Limit Step i
+                    IsComposite(j) = True
+                Next j
+            End If
+        Next i
+        Return n
+    End Function
+End Module
+```
+
+> [!NOTE]
+> With the checks off, an out-of-range index reads or writes memory outside the array instead of raising a run-time error. Disable the checks only in code whose indexes are known to be valid.
+
+_Source threads: 927641929905209405-2022-11 · confidence: high_
+_Date range: 2022-11-03 to 2023-02-17_
+_Reviewer note: Source: BETA 168 (ArrayBoundsChecks added). Benchmarks: MD5 +58%, SHA-1 +52%, SHA-2 +46%; sieve 593 to 993 passes (x64) with both attributes. Verify the example compiles and the out-of-range note against actual behaviour. Figures were measured before the LLVM backend, so the speedup may have changed. Compiler codegen clarification (naive, debug-grade code by design) merged here only as a brief remark._
+
+---
+
+## docs/Reference/Attributes.md · after-remarks
+
+> [!NOTE]
+> A procedure compiled with LLVM through **CompilerOptions** may be a **Sub** or a **Function**. Returning a value is good practice but is not required.
+
+> [!NOTE]
+> A report exists that `[CompilerOptions("+llvm,+optimize,+optimizesize")]` takes effect when the project runs in the IDE but not in the compiled .exe, in BETA 983. This is unconfirmed. When benchmarking LLVM-compiled code, test the built executable as well as the IDE run.
+
+_Source threads: 1134349410319470642-2025-04 · confidence: medium_
+_Date range: 2025-04-22 to 2026-08-24_
+_Reviewer note: Second callout comes from an unanswered report (BETA 983, low confidence); verify before publishing or drop. The first claim is a community answer (fafalone); the Getting-Started example already uses a Sub (FullyOptimizeMe) without stating it. Page index has no Core/CompilerOptions key; the Attributes.md CompilerOptions section was chosen._
+
+---
+
+## docs/Reference/Attributes.md · after-remarks
+
+> [!NOTE]
+> To keep the CLSID of an exposed class identical from build to build, set [ClassId](#classid), [InterfaceId](#interfaceid) and [EventInterfaceId](#eventinterfaceid) explicitly on the class. The attributes are written above the `Public Class` line in a `.twin` file. Classic `.cls` files (including those migrated from a VB6 project) cannot carry these attributes, because there is no class block in a `.twin` file for them to attach to; the GUIDs of such classes are generated anew by each build.
+>
+> For binary compatibility of an ActiveX DLL, the project UUID should also be set to the same value as the type library UUID.
+
+_Source threads: 1560558005039136818 · confidence: high_
+_Date range: 2026-10-16_
+_Reviewer note: Placed after the ClassId section. The thread also mentions EnumId not showing its uuid in OLE viewer and flipped enum member order (maintainer said he would fix both); omitted as cosmetic/known defects with no build named. Verify project UUID setting name against the project settings docs._
+
+---
+
+## docs/Reference/Attributes.md · after-remarks
+
+The attribute accepts an optional string literal giving a friendly name to use for the variable when it is serialized. The **Serialize** and [**CustomDesigner**](#customdesigner) attributes propagate through [**Implements ... Via**](Implements).
+
+_Source threads: 927834661298798602-2022-02 · confidence: high_
+_Date range: 2022-02-04 to 2022-02-06_
+_Reviewer note: Source: v0.14.1 and v0.14.6. The exact argument syntax (position relative to the Bool) must be verified against the compiler. DefaultDesignerEvent is already documented on this page. Insert in the Serialize section._
+
+---
+
+## docs/Reference/Attributes.md · after-remarks
+
+In a generic procedure, **CompileIf** can select the implementation by a constant expression that is evaluated at compile time, such as one that tests the type argument with the generic forms **VarType(Of** *T* **)** and **IsObject(Of** *T* **)**. **Variant** is not allowed as a generic type argument.
+
+_Source threads: 927834661298798602-2022-01 · confidence: high_
+_Date range: 2022-01-10_
+_Reviewer note: From v0.13.70 (CompileIf, VarType(Of x)), v0.13.71 (IsObject(Of x), Variant disallowed as generic specifier). Needs verification against the compiler and ideally a tested code example; these generic forms may not be documented elsewhere._
+
+---
+
+## docs/Reference/Attributes.md · after-remarks
+
+> [!NOTE]
+> Each procedure marked **DllExport** must have a unique name within the project. Two exported procedures with the same name make the build fail.
+
+_Source threads: 927834661298798602-2022-09 · confidence: high_
+_Date range: 2022-09-15_
+_Reviewer note: From BETA 121. Verify whether uniqueness applies to the procedure name or the export name; insert after the DllExport examples, before the TB5163 paragraph or after it._
+
+---
+
+## docs/Reference/Attributes.md · after-remarks
+
+A parameter can carry several **TypeHint** attributes, which combines the members of more than one enum in the Intellisense list.
+
+_Source threads: 927834661298798602-2023-05 · confidence: high_
+_Date range: 2023-05-12_
+_Reviewer note: Source BETA 298. Original finding said 'multiple datatypes'; verify whether this means repeated attributes or a list argument against the .twin source, and adjust the wording and add an example._
+
+---
+
+## docs/Reference/Attributes.md · after-remarks
+
+A space is expected after each comma that combines attributes in the same square braces, as in `[Attribute1, Attribute2(param)]`. [Auto Prettify](../../IDE/Code/Editor#auto-prettify) adds the space when it is missing. It also removes spaces inside an attribute, so `[ Description ("Foo Bar") ]` becomes `[Description("Foo Bar")]`.
+
+_Source threads: 927834661298798602-2024-02 · confidence: high_
+_Date range: 2024-02-06 to 2024-02-25_
+_Reviewer note: From BETA 438 (spaces removed inside attributes) and BETA 454 (space after comma added). Verify the relative link to IDE/Code/Editor resolves from the Attributes page. Other findings in this batch (EnableTrackingPrevention, TB0015, TB0017, DefaultMember on Slider/DTPicker/MonthView/UpDown, IDE options and commands, crash-loop SAFE mode) are already documented and were dropped. The DIAGNOSTICS panel rename, HINT/INFORMATION levels, hover TB code and compiler trace-mode were not checked in detail against IDE/Code/Diagnostics.md._
+
+---
+
+## docs/Reference/Attributes.md · after-remarks
+
+> [!NOTE]
+> The predeclared instance of a class has a higher resolution priority than other global symbols. When a global symbol has the same name as the class, the name refers to the predeclared instance.
+
+_Source threads: 927834661298798602-2025-03 · confidence: high_
+_Date range: 2025-03-20_
+_Reviewer note: From BETA 716. Place in the PredeclaredID section. Verify against the .twin source._
+
+---
+
 ## docs/Reference/CEF/index.md · after-remarks
 
 > [!NOTE]
@@ -5042,6 +6113,19 @@ The project's **Target OS** setting controls the minimum OS version recorded in 
 _Source threads: 1389961632846843988 · confidence: high_
 _Date range: 2025-07-04 to 2025-07-06_
 _Reviewer note: Verify whether a Target OS compiler constant has been added since BETA 844 (July 2025). The page uses a non-standard format (## headings without frontmatter sections) --- match the existing style when inserting._
+
+---
+
+## docs/Reference/Compiler Constants.md · after-remarks
+
+### `TWINBASIC_TARGETOS_MAJOR` and `TWINBASIC_TARGETOS_MINOR`
+
+**Purpose:** Allows conditional compilation based on the target operating system version of the root project.\
+**Value:** Two `Long` values holding the major and minor parts of the *Target OS* setting in Project Settings.
+
+_Source threads: 927834661298798602-2025-07 · confidence: high_
+_Date range: 2025-07-10_
+_Reviewer note: From BETA 855. Verify exact value semantics (e.g. 5/1 for Windows XP) against the compiler; the finding mapped to #If, but Compiler Constants.md is the page listing the predefined constants. Place after the TWINBASIC_BUILD_TYPE entry._
 
 ---
 
@@ -5143,6 +6227,28 @@ _Reviewer note: Single-source claim from a Discord show-and-tell; the author cor
 
 ---
 
+## docs/Reference/Core/AddressOf.md · after-remarks
+
+> [!NOTE]
+> **AddressOf** on a class, form, or user-control member accepts a **Function** as well as a **Sub**, provided the function returns an integral type.
+
+_Source threads: 927834661298798602-2022-09 · confidence: high_
+_Date range: 2022-09-16_
+_Reviewer note: From BETA 122. Place in the 'Class, form, and user-control members' bullet area; verify exact definition of 'integral type' against the compiler._
+
+---
+
+## docs/Reference/Core/AddressOf.md · after-remarks
+
+> [!NOTE]
+> The value **AddressOf** produces has a [**Delegate**](Delegate) type rather than a plain **LongPtr**, which lets the compiler check it against the destination type. It converts to **LongPtr** implicitly, so existing code that stores it in a **LongPtr** or passes it to a **Declare** parameter is unaffected. A class-member **AddressOf** target may return **Single**, **Double** or **Date**, and **CDecl** targets in 32-bit builds receive a correct stub.
+
+_Source threads: 927834661298798602-2024-09 · confidence: high_
+_Date range: 2024-09-29 to 2024-09-30_
+_Reviewer note: From BETA 616/617. Existing page says only 'bit-compatible with LongPtr' and does not state the delegate result type; verify wording against the compiler. Delegate syntax and TB0026 are already documented._
+
+---
+
 ## docs/Reference/Core/Alias.md · after-remarks [DUPLICATE? -- see also thread 1459159860875624595]
 
 > [!NOTE]
@@ -5177,14 +6283,12 @@ _Reviewer note: Single unconfirmed report of a compiler defect. Consider moving 
 
 ## docs/Reference/Core/Alias.md · after-remarks
 
-> [!IMPORTANT]
-> In some recent BETA builds, an **Alias** whose target is another **Alias** crashes the program at startup when a function returns it. Any code that refers to such a function is enough, even if the function is never called. For example, with `Public Alias D2D_COLOR_F As D3DCOLORVALUE` and `Public Alias D2D1_COLOR_F As D2D_COLOR_F`, code that uses a function returning `D2D1_COLOR_F` crashes at startup. As a workaround, make each alias refer directly to a real **Type** or intrinsic type, so that no alias has another alias as its target.
-
-An alias of a pointer type is not supported. A **ByRef** parameter that is an array of an alias type also had a bug in some builds around January 2026.
+> [!NOTE]
+> Known defect: a program crashes at start-up when any code refers to a function whose return type is an alias of another alias (for example, `Public Alias D2D1_COLOR_F As D2D_COLOR_F` where `D2D_COLOR_F` is itself an alias of a **Type**), even if the function is never called. Until this is fixed, alias the underlying type directly so that each alias is a single level.
 
 _Source threads: 1125359845936205844 · confidence: medium_
 _Date range: 2026-01-13 to 2026-09-14_
-_Reviewer note: The page states that an Alias may target another Alias, so this is a compiler bug that may be fixed in a later BETA; check the current build and remove or date the note accordingly. The thread also says WinDevLib's alias use needs BETA 923 or newer. The pointer-type and array-parameter remarks are from single reports and are unverified._
+_Reviewer note: Bug reported September 2026 in the thread; build number not stated. Contradicts the statement in Alias-Types.md that aliases of aliases can be created; confirm whether still reproducible before publishing._
 
 ---
 
@@ -5883,16 +6987,12 @@ _Date range: 2026-07-24_
 
 ## docs/Reference/Core/Declare.md · after-remarks
 
-> [!IMPORTANT]
-> Since BETA 896, a **Declare** statement can take a user-defined type (UDT) by value. When a parameter is declared as a UDT, the argument must be a variable of that UDT. Passing a value of another type, such as a **LongLong** where a `LARGE_INTEGER` is expected, can crash at run time, and Diagnostics does not warn about it. Declare the variable with the UDT type instead, or pass the member that has the right type, for example `li.QuadPart`.
+> [!NOTE]
+> When a **Declare** takes a COM object pointer, such as `__vbaObjSetAddref`, declaring the parameter as a strong interface type adds a **QueryInterface**, an **AddRef** and a **Release** to each call. Declaring it **As Any** avoids that cost, but an **As Any** declaration cannot be overloaded with other typed declarations. The `vba*` helper functions are built in and need not be declared.
 
-Code written before a declaration changed to a by-value UDT needs review. In particular, check calls that used `VarPtr` for an argument that is now passed by value, and calls that placed `ByVal` before `vbNullPtr` for a final UDT parameter, such as the `lpOverlapped As OVERLAPPED` parameter of **ReadFile**.
-
-A UDT parameter cannot be **Optional**. To make it optional, declare the API again locally with the parameter as `Optional ByVal lpOverlapped As LongPtr`.
-
-_Source threads: 1125359845936205844 · confidence: medium_
-_Date range: 2025-11-18 to 2025-11-22_
-_Reviewer note: Verify the crash with a LongLong argument and the claim that an Optional UDT parameter is not supported against the compiler. Consider moving the first paragraph to the 'Support for Passing User-Defined Types ByVal' section of docs/Features/Advanced/API-Declarations.md._
+_Source threads: 1125359845936205844 · confidence: low_
+_Date range: 2026-09-02_
+_Reviewer note: Low confidence, single remark in thread; verify the extra reference-counting behaviour._
 
 ---
 
@@ -5934,6 +7034,55 @@ _Reviewer note: Verify against the compiler that ByVal Nothing is legal for a By
 _Source threads: 1546564453514874930 · confidence: low_
 _Date range: 2026-09-07_
 _Reviewer note: Advice comes from one community member. WinDevLib is a third-party package, not shipped with twinBASIC. 64bit.md and Windows-API.md already link to it, so this may be redundant on the Declare page; consider dropping it or moving it to the VB6 migration material instead._
+
+---
+
+## docs/Reference/Core/Declare.md · after-remarks
+
+> [!NOTE]
+>
+> A DLL that exports its functions with the cdecl convention and undecorated names (no leading underscore and no `@N` suffix), as recent builds of pdfium.dll do, can be called directly by adding **CDecl** to the **Declare** statement. No intermediate stdcall wrapper DLL is needed.
+>
+> ```tb inert=skeleton
+> Declare PtrSafe Sub FPDF_InitLibrary CDecl Lib "pdfium.dll" ()
+> ```
+
+_Source threads: 1478865333245837444-2026-09 · confidence: medium_
+_Date range: 2026-09-29_
+_Reviewer note: Page already documents the CDecl callconv; this adds only the cdecl/undecorated-export use case. Verify the pdfium export name and signature in the example, and that the DLL is cdecl on both 32-bit and 64-bit builds._
+
+---
+
+## docs/Reference/Core/Declare.md · after-remarks
+
+> [!NOTE]
+> Two **Declare** statements for the same DLL procedure are not ambiguous when both name the same entry point and their parameter types match exactly; the compiler accepts them, as VBx does. Otherwise the compiler reports warning TB0010, *Duplicate DLL declaration detected*.
+
+_Source threads: 927834661298798602-2022-10 · confidence: high_
+_Date range: 2022-10-19 to 2022-10-31_
+_Reviewer note: From BETA 163/164. Wording of when TB0010 fires is inferred from the release notes; verify against the compiler source. Consider adding TB0010 to the diagnostics list._
+
+---
+
+## docs/Reference/Core/Declare.md · after-remarks
+
+> [!NOTE]
+> A DLL **Declare** can be written as a **Property Get**, **Property Let** or **Property Set**, as well as a **Sub** or **Function**. The [ConstantFoldable](Attributes#constantfoldable) attribute is accepted on a DLL **Declare** too.
+
+_Source threads: 927834661298798602-2023-11 · confidence: medium_
+_Date range: 2023-11-01_
+_Reviewer note: From BETA 416 (introduced for the VBA package). Verify Property Declare support against the compiler; Declare.md did not mention it._
+
+---
+
+## docs/Reference/Core/Declare.md · after-remarks
+
+> [!NOTE]
+> Out-only parameters are zero-filled by the generated code, as in VBx, so a procedure that never assigns one returns zero, an empty string or **Nothing** rather than stale data. Code should still assign every out-only parameter explicitly rather than rely on this.
+
+_Source threads: 927834661298798602-2025-10 · confidence: high_
+_Date range: 2025-10-15_
+_Reviewer note: Finding has symbol null and is general to codegen, not specific to Declare; Declare.md is a tentative target. Verify against the compiler which parameter kinds (Declare, interface members, [Out]) are zero-filled. Source: BETA 893._
 
 ---
 
@@ -6203,6 +7352,28 @@ _Date range: 2026-02-05 to 2026-02-08_
 
 ---
 
+## docs/Reference/Core/Dim.md · after-remarks
+
+> [!NOTE]
+> The bounds of a fixed-length array must be constant expressions. A non-constant value in a bound is a compile-time error. **Len** and **LenB** calls are allowed in bound expressions.
+
+_Source threads: 927834661298798602-2023-09 · confidence: high_
+_Date range: 2023-09-06 to 2023-09-20_
+_Reviewer note: Source builds: BETA 393 (error added), following build (Len/LenB allowed). Verify against the compiler._
+
+---
+
+## docs/Reference/Core/Dim.md · after-remarks
+
+> [!NOTE]
+> When no **As** clause is given but an initializer is, the variable takes the type of the initializer rather than **Variant**. `Dim A = 5&` is the same as `Dim A As Long = 5`.
+
+_Source threads: 927834661298798602-2026-03 · confidence: high_
+_Date range: 2026-03-26_
+_Reviewer note: From BETA 978. Conflicts with the existing sentence that a variable with no type is Variant by default; that sentence may need a qualifier. Verify against the compiler._
+
+---
+
 ## docs/Reference/Core/Divide.md · after-remarks
 
 > [!NOTE]
@@ -6338,13 +7509,24 @@ _Date range: 2025-06-19_
 
 ---
 
+## docs/Reference/Core/Enum.md · after-remarks
+
+> [!NOTE]
+> The underlying type of an **Enum** is always **Long**. An **Enum** cannot be declared with a 16-bit (**Integer**) base type. When porting a definition from another language that uses a 16-bit enumeration (for example a C enum declared as `ushort`), declare it as an ordinary **Long**-based **Enum** instead. Tools that convert headers or metadata automatically need to map small-integer enumerations to **Long** in the same way.
+
+_Source threads: 1397669015777968289-2025-12 · confidence: medium_
+_Date range: 2025-12-24_
+
+---
+
 ## docs/Reference/Core/Event.md · after-remarks
 
 > [!NOTE]
-> In twinBASIC before BETA 717, events declared with `As Object` parameters in an ActiveX DLL were emitted into the type library as `IDispatch**` instead of retaining `Object` semantics. VB6 clients consuming such a DLL raised "Function or interface marked as restricted, or the function uses an Automation type not supported in Visual Basic". The fix landed in BETA 717. A secondary regression in BETA 717 caused `As IUnknown` event parameters to appear as `As 0` / `As Unknown` in VB6 object browsers; that regression was corrected in BETA 718.
+> In an ActiveX DLL, an event parameter declared **As Object** is written to the type library as **IDispatch**, and one declared **As IUnknown** as **IUnknown**. Both match what Visual Basic 6 produces, so a VB6 client can handle the event with the same parameter type.
 
 _Source threads: 1352268312117252126 · confidence: high_
 _Date range: 2025-03-20 to 2025-03-21_
+_Reviewer note: Source: fixed in BETA 717 (Object -> IDispatch) and BETA 718 (IUnknown regression). Build numbers deliberately omitted per rules. Verify against a built ActiveX DLL typelib._
 
 ---
 
@@ -6368,6 +7550,17 @@ _Reviewer note: The Discord thread dates from January 2023. Verify whether named
 _Source threads: 1189197083534708818 · confidence: medium_
 _Date range: 2023-12-26_
 _Reviewer note: The bug was reported in BETA 423 and expected to be fixed soon after. Confirm the fix version before publishing, or consider omitting this note if it is no longer relevant to any supported release._
+
+---
+
+## docs/Reference/Core/Exponent.md · after-remarks
+
+> [!NOTE]
+> In source code, the **^** operator should be surrounded by spaces. Writing `2^2` without spaces is rejected with *Expected operator between the operands*; write `2 ^ 2` instead. The likely cause is that `^` is also the **LongLong** type-declaration character, in the same way that `&` is for **Long**, so `1^1` is read as a typed literal rather than an exponentiation.
+
+_Source threads: 1262807077609406676-2025-07 · confidence: medium_
+_Date range: 2025-07-18_
+_Reviewer note: Explanation is a community theory (VBA7 LongLong type-declaration character); verify against the parser before publishing, and check whether the error text is accurate for current builds._
 
 ---
 
@@ -6432,6 +7625,17 @@ _Date range: 2024-07-10_
 
 _Source threads: 1478776593890410558 · confidence: high_
 _Date range: 2026-03-04_
+
+---
+
+## docs/Reference/Core/For-Each-Next.md · after-remarks
+
+> [!NOTE]
+> Using the literal **Nothing**, **Null** or **Empty** as *group* is a compile error. A variable that holds one of these values at run time is not caught by the compiler.
+
+_Source threads: 927834661298798602-2025-12 · confidence: high_
+_Date range: 2025-12-05_
+_Reviewer note: From BETA 909. The second sentence (run-time variables) is inferred from the word 'literals' in the release note; verify. The same note says generic procedures inside a UDT now give a compile error instead of crashing the compiler; not drafted._
 
 ---
 
@@ -6537,6 +7741,17 @@ _Date range: 2025-04-20_
 
 ---
 
+## docs/Reference/Core/Function.md · after-remarks
+
+> [!NOTE]
+> The compiler does not inline procedures, and there is no keyword to hint that a procedure should be inlined. Where call overhead matters, small helper procedures have to be inlined by hand.
+
+_Source threads: 1555243415174774865 · confidence: high_
+_Date range: 2026-10-01_
+_Reviewer note: Stated by Wayne Phillips in Oct 2026 build; inlining is planned. Applies to Sub and Function generally; consider a better home than Function.md._
+
+---
+
 ## docs/Reference/Core/Get.md · after-remarks
 
 > [!NOTE]
@@ -6567,6 +7782,17 @@ _Date range: 2025-01-03 to 2025-01-06_
 _Source threads: 1457034604769706168 · confidence: medium_
 _Date range: 2026-01-04_
 _Reviewer note: The existing page carries a [!TIP] recommending separate callable procedures. This note is compatible but subtly contradicts the tip's implied framing. Verify the performance claim against twinBASIC compiler output or a maintainer statement before publishing._
+
+---
+
+## docs/Reference/Core/GoSub-Return.md · after-remarks
+
+> [!NOTE]
+> A **Return** with no preceding **GoSub** is reported as warning [TB0027](../../Features/Compiler-IDE/Compiler-Warnings#tb0027-return-without-gosub), not as a compile error, so a project that contains one still compiles. The statement raises a run-time error only if it executes without an active **GoSub**.
+
+_Source threads: 927834661298798602-2025-01 · confidence: high_
+_Date range: 2025-01-06 to 2025-01-10_
+_Reviewer note: Sources BETA 637 and 643. Verify the relative link path and the run-time behaviour (error raised on execution) against the compiler source before publishing._
 
 ---
 
@@ -6782,6 +8008,28 @@ _Date range: 2026-03-03_
 
 ---
 
+## docs/Reference/Core/Implements.md · after-remarks
+
+> [!NOTE]
+> When a class inherits members through **Implements-Via**, an API **Declare** statement of the same name in the class shadows the inherited member. **Implements-Via** can be combined with members that have default argument values, and with dispinterface-based controls.
+
+_Source threads: 927834661298798602-2022-12 · confidence: high_
+_Date range: 2022-12-05 to 2022-12-14_
+_Reviewer note: Based on BETA 200, 203 and 205. Verify wording of the shadowing rule against the compiler; the Implements page does not otherwise cover Implements-Via._
+
+---
+
+## docs/Reference/Core/Implements.md · after-remarks
+
+> [!NOTE]
+> A method marked with the [`Restricted`](../../Features/Language/Interfaces-CoClasses) attribute in an interface need not be implemented by the implementing class. The slot for that method in the class's vtable is left NULL, as in classic VB, so calling the method through the interface on such an implementer fails.
+
+_Source threads: 927834661298798602-2025-07 · confidence: high_
+_Date range: 2025-07-10_
+_Reviewer note: From BETA 854. Existing paragraph says all Public procedures must be implemented; this adds an exception. Verify the link target for the Restricted attribute and the exact failure mode of calling the NULL slot._
+
+---
+
 ## docs/Reference/Core/Input.md · after-remarks
 
 > [!NOTE]
@@ -6875,6 +8123,33 @@ _Date range: 2025-07-08_
 
 ---
 
+## docs/Reference/Core/Interface.md · after-remarks
+
+An interface declared as `Interface XYZ Extends Nothing` inherits from no base interface, not even the built-in **IUnknown**. This form allows a project to supply its own unrestricted definition of **IUnknown**.
+
+```tb
+Interface IUnknown Extends Nothing
+    ' own QueryInterface / AddRef / Release prototypes
+End Interface
+```
+
+_Source threads: 927834661298798602-2022-09 · confidence: high_
+_Date range: 2022-09-30_
+_Reviewer note: From BETA 132. Example is illustrative only; verify it compiles, and consider adding Nothing to the *baseinterface* syntax description. The same BETA also added the IDE setting 'IDE: Use new Handles/Implements syntax' (not covered here; no matching page found)._
+
+---
+
+## docs/Reference/Core/Interface.md · after-remarks
+
+> [!NOTE]
+> The **Any** data type is allowed for the parameters of interface members, as it is for a **Declare** statement.
+
+_Source threads: 927834661298798602-2022-08 · confidence: high_
+_Date range: 2022-08-23_
+_Reviewer note: From BETA 97. Verify against the .twin source that Any is accepted for parameters only and not for return values. Place before the Example section (around line 54)._
+
+---
+
 ## docs/Reference/Core/LSet.md · after-remarks [DUPLICATE? -- see also thread 1111237398291021934]
 
 > [!NOTE]
@@ -6915,6 +8190,17 @@ _Reviewer note: The same note could appear on the RightShift page (docs/Referenc
 _Source threads: 1431883663796207707 · confidence: medium_
 _Date range: 2025-10-26 to 2026-02-05_
 _Reviewer note: Verify against the current twinBASIC build whether this bug has been fixed. The thread spans late 2025 to early 2026._
+
+---
+
+## docs/Reference/Core/Module.md · after-remarks
+
+> [!NOTE]
+> A user-defined type with the same name as a **Module** produces a compiler warning rather than an error, as in VB6.
+
+_Source threads: 927834661298798602-2026-05 · confidence: high_
+_Date range: 2026-05-13_
+_Reviewer note: From BETA 981. Page not read in detail; verify placement and whether a specific TB warning number applies._
 
 ---
 
@@ -7258,6 +8544,17 @@ _Reviewer note: Confirm that twinBASIC's out-of-the-box default is Binary (not T
 
 ---
 
+## docs/Reference/Core/Option.md · after-remarks
+
+> [!NOTE]
+> With **Option Explicit** off, a type suffix character on an implicitly declared local variable is honoured. `x%` creates an **Integer** and `s$` creates a **String**, rather than a **Variant**.
+
+_Source threads: 927834661298798602-2025-02 · confidence: high_
+_Date range: 2025-02-16 to 2025-02-27_
+_Reviewer note: From BETA 685. Verify against the compiler and check the placement within Option.md (Explicit section). Findings also mention Error$ as a local variable name and a form procedure named Default, which were not drafted._
+
+---
+
 ## docs/Reference/Core/OrElse.md · after-remarks
 
 > [!NOTE]
@@ -7377,18 +8674,28 @@ _Reviewer note: The source is a maintainer's statement about the roadmap, not a 
 
 ## docs/Reference/Core/Property.md · example
 
-A generic **Property Get** and **Property Let** pair can read and write memory at an address without a call to **CopyMemory**. With a pair named `Deref(Of T)` that takes the address as a **LongPtr**, the following statements read a **Double** stored 8 bytes into a **Variant**, and change the subtype of a **Variant** by overwriting its first two bytes:
+Generic procedures can read and write memory at a pointer without **CopyMemory**. A generic property pairs with a helper that assigns through a by-reference parameter:
 
-```tb
-Dim d As Double = Deref(Of Double)(VarPtr(Var) + 8)
+```tb inert=external
+Public Property Get Deref(Of T)(ByVal Ptr As LongPtr) As T
+    DerefPtrGet(Of T, T)(Ptr, Deref)
+End Property
+
+Private Sub DerefPtrGet(Of T, T)(Ptr As T, Value As T)
+    Value = Ptr
+End Sub
+```
+
+A matching **Property Let** assigns `Ptr = Value`. Usage, to change the payload and type tag of a **Variant**:
+
+```tb inert=external
+Deref(Of Double)(VarPtr(Var) + 8) = 1.5
 Deref(Of Integer)(VarPtr(Var)) = vbInteger
 ```
 
-In preliminary tests the pair worked for any type, including user-defined types.
-
 _Source threads: 1125359845936205844 · confidence: low_
 _Date range: 2026-08-31_
-_Reviewer note: The thread's helper implementation (a Private Sub DerefPtrGet(Of T, T) called from the property) was garbled in the extract and is deliberately not reproduced. Do not publish until a working Deref definition has been written and compiled; the claim about UDTs was 'preliminary' and untested more widely. The two-argument form and declaration syntax need checking against the Property page's generic rules._
+_Reviewer note: Reported only as working in preliminary tests; the original code is reconstructed from a prose summary (including the odd DerefPtrGet(Of T, T) signature) and must be compiled and verified before publishing._
 
 ---
 
@@ -7421,6 +8728,17 @@ _Reviewer note: Verify whether this limitation has been resolved in a release af
 
 _Source threads: 1497886847886426285 · confidence: high_
 _Date range: 2026-04-26 to 2026-05-11_
+
+---
+
+## docs/Reference/Core/Put.md · after-remarks
+
+> [!NOTE]
+> **Put** can write variable-length strings longer than 65534 characters.
+
+_Source threads: 927834661298798602-2026-05 · confidence: high_
+_Date range: 2026-05-11_
+_Reviewer note: From BETA 980._
 
 ---
 
@@ -7516,6 +8834,43 @@ _Reviewer note: Maintainer said the lock on VarPtr() and on fixed arrays may be 
 
 ---
 
+## docs/Reference/Core/ReDim.md · after-remarks
+
+> [!NOTE]
+> The target of **ReDim** must be an array or a **Variant**. Using **ReDim** on a name that was not declared with **Dim** (or similar) creates an array variable implicitly and raises warning TB0016 (implicit array variable creation). The warning can be switched off in the project settings.
+
+_Source threads: 927834661298798602-2023-07 · confidence: high_
+_Date range: 2023-07-06 to 2023-09-13_
+_Reviewer note: Source builds: BETA 349 (warning added), BETA 391 (ability to disable fixed). Verify warning text and setting name._
+
+---
+
+## docs/Reference/Core/ReDim.md · after-remarks
+
+> [!NOTE]
+> A fixed-size array member of a user-defined type, such as the `fgd(0 To 0)` member that models a variable-length trailing array in a C structure, cannot be resized with **ReDim**; the compiler reports that the array has already been dimensioned. Options:
+>
+> - Declare a private copy of the type with a fixed array large enough for the data.
+> - To read data received from an API, mark the procedure with [**[ArrayBoundsChecks(False)]**](../Attributes#arrayboundschecks) and index past the declared bound through `With CType(Of FILEGROUPDESCRIPTORW)(pointer)`.
+> - Build the structure on the heap.
+
+_Source threads: 1125359845936205844 · confidence: high_
+_Date range: 2025-03-09 to 2026-11-03_
+_Reviewer note: Source thread says builds before 1036 silently ignored this ReDim; build omitted from the draft by rule. Verify the error message and link anchor._
+
+---
+
+## docs/Reference/Core/ReDim.md · after-remarks
+
+> [!NOTE]
+> **ReDim** cannot be applied to a fixed-size array that is a member of a user-defined type. The compiler reports an error. Only dynamic arrays can be resized.
+
+_Source threads: 927834661298798602-2026-11 · confidence: high_
+_Date range: 2026-11-01 to 2026-11-03_
+_Reviewer note: From a build newer than the build of record. Verify the exact diagnostic code against the compiler and add it to the Common Errors data (errors/Core.yml). Other items in the finding (Break On All Errors split into project and package settings, DialogTickForeColor, Recents History Maximum Count, smooth console scrolling, MultiFrame on UserControl, Library References AUTO-FIX) were not drafted: Project Settings.md describes a single Break On All Errors setting and may need updating by someone who can confirm the current IDE._
+
+---
+
 ## docs/Reference/Core/Return.md · after-remarks [DUPLICATE? -- see also thread 1101035893130809435]
 
 > [!NOTE]
@@ -7535,6 +8890,17 @@ _Reviewer note: The Discord explanation attributes this to backward-compatibilit
 _Source threads: 1101035893130809435 · confidence: medium_
 _Date range: 2023-04-27_
 _Reviewer note: The existing page already explains the two Return forms. This addition highlights the practical benefit of using Return to avoid updating exit statements when switching procedure type. Verify that bare Return inside a Sub (not a GoSub context) is valid in twinBASIC before accepting._
+
+---
+
+## docs/Reference/Core/Return.md · after-remarks
+
+> [!NOTE]
+> A bare **Return** also exits a [**Sub**](Sub), for consistency with the **Return** *expression* form in a [**Function**](Function). This works only when the same procedure does not use the legacy [**GoSub**](GoSub-Return) statement, because there a bare **Return** is the companion of **GoSub**.
+
+_Source threads: 927834661298798602-2026-01 · confidence: high_
+_Date range: 2026-01-20_
+_Reviewer note: Introduced in BETA 956. Conflicts with the existing intro text and the Sub example on this page, which say there is no bare-Return procedure-exit form; those passages need revising. Verify against the compiler._
 
 ---
 
@@ -7575,6 +8941,28 @@ _Date range: 2024-03-09_
 
 _Source threads: 1363075747111239751 · confidence: high_
 _Date range: 2025-04-19 to 2025-04-25_
+
+---
+
+## docs/Reference/Core/Select-Case.md · after-remarks
+
+> [!NOTE]
+> Each **Case** value is implicitly converted to the type of the controlling expression before the comparison is made.
+
+_Source threads: 927834661298798602-2025-02 · confidence: high_
+_Date range: 2025-02-22 to 2025-02-28_
+_Reviewer note: From BETA 693. Verify wording against the existing Select-Case.md remarks, which may already describe comparison semantics._
+
+---
+
+## docs/Reference/Core/Select-Case.md · after-remarks
+
+> [!NOTE]
+> **Const**, **Dim**, **ReDim**, **Static** and **Rem** statements may appear between the **Select Case** line and the first **Case** clause. Such declarations are not part of any **Case** branch.
+
+_Source threads: 927834661298798602-2025-04 · confidence: high_
+_Date range: 2025-04-21_
+_Reviewer note: From BETA 742. Verify against compiler behaviour, in particular scope of declarations placed before the first Case._
 
 ---
 
@@ -7666,6 +9054,17 @@ _Reviewer note: Behavior observed in a Variant array context; verify whether thi
 
 _Source threads: 1113586767321374730 · confidence: high_
 _Date range: 2023-05-31_
+
+---
+
+## docs/Reference/Core/Set.md · after-remarks
+
+> [!NOTE]
+> Assigning a non-object value with **Set** is a compile-time error.
+
+_Source threads: 927834661298798602-2022-02 · confidence: high_
+_Date range: 2022-02-06 to 2022-02-23_
+_Reviewer note: Source: v0.14.6. Check whether Set.md already states this. Other findings in the batch (fixed-length String constants v0.14.8, ByVal/ByRef Optional auto-correction v0.14.15, statement keywords needing trailing whitespace v0.14.32, stricter generic Of validation) were not drafted: no symbol and no clear target page; Const.md currently lists String as allowed._
 
 ---
 
@@ -8230,32 +9629,24 @@ _Reviewer note: The StrRef helper function is referenced but not shown -- verify
 
 ## docs/Reference/Core/Type.md · example
 
-**Emulating a union.** A UDT can hold one real storage field and expose other views of it through **Property Get** and **Property Let** procedures. Programs that call an API still see the exact byte layout of the storage field. The following type stores a 64-bit value and provides its high half as a property:
+A **Type** can contain **Property Get** and **Property Let** procedures, which allows a union to be simulated. The type keeps one real member, and the other "arms" of the union are properties that read and write the same bytes. Inside the type, members are reached with the `Me.` prefix. External APIs see only the bytes of the real member.
 
-```tb
-Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, ByRef Source As Any, ByVal Length As LongPtr)
+```tb check_build
+Type LARGE_INT
+    QuadPart As LongLong
 
-Type LargeInt
-    QuadPart As LongLong    ' The real storage.
-
-    Public Property Get HighPart() As Long
-        CopyMemory HighPart, ByVal VarPtr(Me.QuadPart) + 4, 4
-    End Property
-
-    Public Property Let HighPart(ByVal Value As Long)
-        CopyMemory ByVal VarPtr(Me.QuadPart) + 4, Value, 4
+    Property Get LowPart() As Long
+        Return CType(Of Long)(VarPtr(Me.QuadPart))
     End Property
 End Type
 ```
 
-Inside the procedures of a **Type**, its members must be accessed with the `Me.` prefix. A **Type** can also define several `Type_Assignment` overloads to customize assignment from values of other types, and can declare methods such as `Sub SwapBytes()`.
-
 > [!NOTE]
-> **VarPtr** is valid only for the real storage field. `VarPtr(x.HighPart)` does not point into the structure. Nested types are not suitable for this technique.
+> **VarPtr** is only meaningful for the real member, not for the simulated arms.
 
-_Source threads: 1125359845936205844 · confidence: medium_
+_Source threads: 1125359845936205844 · confidence: high_
 _Date range: 2025-12-09 to 2026-09-02_
-_Reviewer note: The code sample was written from the thread's description (which uses CType(Of ...)(VarPtr(...)) and CopyMemory on Me members) and has not been compiled. Compile it, then mark it check_build. Insert after the twinBASIC enhancements examples._
+_Reviewer note: Example code is a sketch derived from the thread description (CType(Of ...)(VarPtr(...)) pattern); needs compile verification, particularly whether CType(Of Long)(ptr) dereferences as written. Source also mentions Private Sub Type_Assignment overloads, not drafted._
 
 ---
 
@@ -8269,6 +9660,29 @@ When a byte array stands in for a union, the array must reproduce the size and a
 _Source threads: 1125359845936205844 · confidence: high_
 _Date range: 2023-12-16 to 2025-03-09_
 _Reviewer note: The thread says Wayne confirmed unions as a post-1.0 feature; keep or drop the last sentence depending on whether that plan is still current._
+
+---
+
+## docs/Reference/Core/Type.md · after-remarks
+
+<!-- test: bug udt-array-element-type-conversion-crash -->
+> [!WARNING] BETA UNKNOWN
+> Printing an element of a UDT array whose type defines **Type_Conversion**, as in `Dim t(0) As UUID: Debug.Print t(0)`, ends the program with an access violation. Convert the element explicitly, or copy it to a variable first.
+
+_Source threads: 1562115575633809418 · confidence: medium_
+_Date range: 2026-10-20_
+_Reviewer note: Build number not given in the thread; fill in the actual build before use, and reproduce first. Thread also claims ByVal enhanced UDTs lacked String/Object/array members; unverified and omitted. The 'test:' marker name is a placeholder._
+
+---
+
+## docs/Reference/Core/Type.md · after-remarks
+
+> [!NOTE]
+> Copying an array of a **Type** deep-copies each element. Members that hold live references -- **String**, **Variant**, object and array members -- are copied correctly, so the copy and the original do not share them.
+
+_Source threads: 927834661298798602-2023-03 · confidence: high_
+_Date range: 2023-03-06_
+_Reviewer note: From BETA 264. Verify against compiler behaviour; 'do not share' wording for object members should be checked (object references are normally AddRef'd, not cloned)._
 
 ---
 
@@ -16362,6 +17776,16 @@ _Reviewer note: Draws on a single Discord thread; the WinRT XAML Island claim an
 
 ---
 
+## docs/Reference/Default/VBRUN/DataObject/index.md · after-remarks
+
+**GetIDataObject** returns the underlying raw `IDataObject` interface of the **DataObject**, for passing to APIs that need the native COM object. It is a twinBASIC extension with no equivalent in VB6.
+
+_Source threads: 927834661298798602-2025-03 · confidence: high_
+_Date range: 2025-03-19_
+_Reviewer note: From BETA 715. No GetIDataObject page exists yet; check the signature and return type in the .twin source, then add a member page and a Members list entry._
+
+---
+
 ## docs/Reference/Default/VB/MDIForm/index.md · new-section
 
 ## Aligned controls and creation order
@@ -16379,6 +17803,17 @@ _Reviewer note: The finding is about VB6-style Align on MDI forms, but the page 
 
 ---
 
+## docs/Reference/Default/VB/MDIForm/index.md · after-remarks
+
+> [!NOTE]
+> Unlike in VB6, an MDIForm accepts any kind of control, and docking is optional. A control that is not docked appears on top of the MDI children. Debug sessions always run with target OS 5.1, so [**Opacity**](../CheckBox/#opacity) and [**TransparencyKey**](../CheckBox/#transparencykey) on an MDI child take effect only in a compiled build with a project target OS of 6.0 or later. At target OS 6.0 or later an MDI child always has a thick border, whatever its **BorderStyle**.
+
+_Source threads: 927834661298798602-2024-05 · confidence: high_
+_Date range: 2024-05-17_
+_Reviewer note: From BETA 537 notes. The 'at most one MDI form' limit is already on the page. Verify the target OS thresholds (6.0 here vs 6.2 for windowed controls) against current behaviour._
+
+---
+
 ## docs/Reference/Default/VB/UserControl/index.md · after-remarks
 
 > [!NOTE]
@@ -16387,6 +17822,185 @@ _Reviewer note: The finding is about VB6-style Align on MDI forms, but the page 
 _Source threads: 1522813729308414115 · confidence: medium_
 _Date range: 2026-07-04_
 _Reviewer note: Conflicts with the existing text on this page, which says to omit PropertyName for a generic notification. Verify on the current build and, if the behaviour is confirmed, also change that sentence. May already be fixed in a later BETA._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> The designer property sheet can display and edit public properties of a **UserControl** that are typed **Currency**, **Decimal** or **Variant**, in addition to the other basic data types.
+
+_Source threads: 1554789621320130622 · confidence: high_
+_Date range: 2026-09-30 to 2026-10-16_
+_Reviewer note: Introduced in BETA 1007 (earlier builds showed Decimal properties blank and locked). Package was CustomControls in the finding; page resolved via UserControl._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · example
+
+To link a single property to a page, so that the Properties pane shows a "..." button that opens it (the equivalent of VB6's *Use this Page in Property Browser*), add the page to **PropertyPages** and place the [**PropertyPage**](../../../Core/Attributes#propertypage) attribute above the property.
+
+```tb
+[PropertyPage("GeneralPage")]
+Public Property Get Caption() As String
+    ' ...
+End Property
+```
+
+_Source threads: 1557167423596007424 · confidence: high_
+_Date range: 2026-10-06 to 2026-10-16_
+_Reviewer note: Fix landed in BETA 1008; earlier builds ignored the attribute. Verify attribute syntax and placement against source; insert after the existing sentence about the PropertyPage attribute in the PropertyPages section._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> Known issue: a windowed **UserControl** that is a tab stop may not raise [**EnterFocus**](#enterfocus) or [**GotFocus**](#gotfocus) when the user tabs into it, unlike in VB6. [**LostFocus**](#lostfocus) and **Validate** may also not be raised reliably. **Validate** is raised only when focus moves to a control whose **CausesValidation** is **True**.
+
+_Source threads: 1557233083961581640 · confidence: medium_
+_Date range: 2026-10-07 to 2026-10-14_
+_Reviewer note: No fix was confirmed in the thread (October 2026 reports); check current behaviour and name the affected build if still reproducible, or drop. The PictureBox.AutoRedraw finding was dropped: low confidence, not reproducible, reporter blamed own code._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> Events of an imported ActiveX **UserControl** that carry OLE pixel or HiMetric arguments deliver those arguments in twips, as in VB6. **ReadProperties** is raised even when the property bag is empty, provided the control is not new.
+
+_Source threads: 927834661298798602-2022-12 · confidence: high_
+_Date range: 2022-12-03 to 2022-12-15_
+_Reviewer note: From BETA 196 and 207. Verify the empty-bag ReadProperties behaviour against the existing lifecycle table (InitProperties versus ReadProperties)._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> The **Resize** event does not fire in response to the window-size message (`WM_SIZE`). This matches the behaviour of VB6. Code that relies on **Resize** being raised every time the underlying window receives a size message may therefore behave differently from what is expected.
+
+_Source threads: 927834661298798602-2023-02 · confidence: high_
+_Date range: 2023-02-28_
+_Reviewer note: Source: BETA 257 (KB Q187740). Placed after the Resize event syntax (### Resize). Verify against runtime behaviour._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> **KeyDown** is raised for the arrow keys as well as for other keys.
+
+_Source threads: 927834661298798602-2023-03 · confidence: high_
+_Date range: 2023-03-13_
+_Reviewer note: From BETA 269. Insert after the KeyDown syntax line._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> The implicit **WithEvents** fields created for the controls contained in a form or user control cannot be bound directly. The contained controls are reachable only through the implicit property getter of the form or user control, as in VB6.
+
+_Source threads: 927834661298798602-2023-09 · confidence: high_
+_Date range: 2023-09-21_
+_Reviewer note: Source build: BETA 396. Applies equally to VB/Form; consider mirroring there. Verify wording against .twin source._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · example
+
+The [**Description**](../../../Attributes#description) attribute on a component accepts the placeholders `${ProjectName}` and `${ComponentName}`. Using both gives each control a distinctive description, which helps a user find the control in a host application's list of controls. The ActiveX Control project template does this on its example control.
+
+```tb
+[Description("${ProjectName}.${ComponentName}")]
+Class MyControl
+    ' ...
+End Class
+```
+
+_Source threads: 927834661298798602-2024-03 · confidence: high_
+_Date range: 2024-03-02_
+_Reviewer note: From BETA 459. Verify relative link to Attributes.md#description and that the class-level attribute placement shown matches the template._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> Calls to [**PropertyChanged**](#propertychanged) made while the host is raising certain events, such as [**ReadProperties**](#readproperties), are ignored. Loading a property bag therefore does not mark the control as dirty. Errors raised inside the built-in events are handled in the same way as in VB6.
+
+_Source threads: 927834661298798602-2024-03 · confidence: high_
+_Date range: 2024-03-12 to 2024-03-25_
+_Reviewer note: From BETA 469 (PropertyChanged ignored), BETA 479 (builtin event error handling), BETA 476 (Terminate firing more than once, not included). Verify which events besides ReadProperties ignore PropertyChanged._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> The **UserControl** class is extensible, so code can refer to a control placed on the user control through it, as in `Me.UserControl.myControl`.
+
+_Source threads: 927834661298798602-2024-04 · confidence: high_
+_Date range: 2024-04-19_
+_Reviewer note: From BETA 515._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> A field declared in a **UserControl** shadows a member of the same name in the base class. Constructors (**Sub New**) are not listed in IntelliSense.
+
+_Source threads: 927834661298798602-2024-08 · confidence: medium_
+_Date range: 2024-08-06_
+_Reviewer note: From BETA 589. Medium confidence: the Core finding (symbol 'Sub New') has no dedicated page, so UserControl was chosen; verify the shadowing behaviour against the .twin source and decide whether the IntelliSense remark belongs elsewhere._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> The **Resize** event does not fire before **InitProperties** or **ReadProperties** has run for the instance.
+
+_Source threads: 927834661298798602-2025-06 · confidence: medium_
+_Date range: 2025-06-16 to 2025-06-17_
+_Reviewer note: Source: BETA 802. Other items in the finding (real main-thread debugging, WithEvents no longer using EnumConnections) are implementation details and were omitted. Check that the Resize event section does not already say this._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> Unless a description attribute overrides it, a **UserControl** carries the type-information documentation string `ProjectName.ComponentName`, as in VB6 and VBA. A control built by twinBASIC as an ActiveX control uses COM aggregation internally, which improves behaviour in hosts such as MS Forms.
+
+The standard property pages **StandardFont**, **StandardColor** and **StandardPicture** are available in 64-bit builds and can be named in [**PropertyPages**](#propertypages) or in the [**PropertyPage**](../../../Attributes#propertypage) attribute. **StandardColor** shows its colours in a [**ListBox**](../ListBox) of style **vbListBoxColorSwatch**.
+
+_Source threads: 927834661298798602-2025-09 · confidence: high_
+_Date range: 2025-09-30_
+_Reviewer note: From BETA 874. Verify that the standard pages are nameable via PropertyPages/PropertyPage and that the docstring default applies to all UserControls. The PropertyPage attribute and vbListBoxColorSwatch are already documented, so the draft covers only the rest._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> When a project that contains a **UserControl** is compiled to an ActiveX OCX, the control's ActiveX interfaces do not expose the methods that the **UserControl** base class itself provides. This matches the behavior of classic VB6 controls. Only the members the control declares are visible to other hosts.
+
+_Source threads: 927834661298798602-2025-12 · confidence: high_
+_Date range: 2025-12-16_
+_Reviewer note: From BETA 933 (also BETA 932: controls that expose events work in other hosts when compiled to OCX). Verify wording against the .twin source._
+
+---
+
+## docs/Reference/Default/VB/UserControl/index.md · after-remarks
+
+> [!NOTE]
+> In an ActiveX **UserControl** hosted in Microsoft Access, iterating the host's controls with a typed variable (`For Each c As Access.Control`) has been reported to fail with a "no such interface" error. Declaring the loop variable as **Object** works. The **Show** event fires after the Access form's **Open** event.
+
+_Source threads: 1164973320157012129-2024-10 · confidence: low_
+_Date range: 2024-10-23_
+_Reviewer note: Single unconfirmed report; a maintainer called the behaviour odd. Verify before publishing. Place near the Show event section._
 
 ---
 
@@ -16409,6 +18023,31 @@ _Reviewer note: Place at the end of the 'AutoRedraw and the persistent image' se
 _Source threads: 1540274884670918676 · confidence: low_
 _Date range: 2026-08-21_
 _Reviewer note: Low confidence: the cause (internal WM_PAINT handling) is a participant's guess, and no maintainer confirmation is recorded. Verify with a small Direct2D sample and consider placing the note under the AutoRedraw section instead. The Print symptom is reported as related and is unverified._
+
+---
+
+## docs/Reference/Default/VB/PictureBox/index.md · after-remarks
+
+> [!NOTE]
+> Passing the **Image** of one **PictureBox** as the source of [**PaintPicture**](#paintpicture) on another can leave the destination completely black, where VB6 paints it correctly. This is a known defect. Two workarounds exist:
+>
+> - Pass the source control's [**Picture**](#picture) property instead of **Image**.
+> - Set the source control's [**AutoRedraw**](#autoredraw) to **False**. When **AutoRedraw** is also assigned in code such as **Form_Load**, make this assignment after it, otherwise it is overridden.
+
+_Source threads: 1495344809282633859 · confidence: high_
+_Date range: 2026-04-19 to 2026-11-01_
+_Reviewer note: Thread reports the defect fixed in a build newer than the build of record; the draft is written as a known defect without a build, so verify whether it still applies and drop or reword if fixed. Placed after the Image property section; adjust insertion point as needed._
+
+---
+
+## docs/Reference/Default/VB/PictureBox/index.md · after-remarks
+
+> [!NOTE]
+> For a **PictureBox** (and a **UserControl**), **ScaleWidth** and **ScaleHeight** report the drawable area, excluding any border.
+
+_Source threads: 927834661298798602-2022-12 · confidence: medium_
+_Date range: 2022-12-28 to 2022-12-31_
+_Reviewer note: From BETA 217. Could also be mirrored on the UserControl page (docs/Reference/Default/VB/UserControl/index.md). Remaining BETA 214/216 graphics items were too vague to draft._
 
 ---
 
@@ -16454,6 +18093,17 @@ _Reviewer note: Insert under the DownPicture heading. The snippet is untested; c
 
 ---
 
+## docs/Reference/Default/VB/CommandButton/index.md · after-remarks
+
+> [!NOTE]
+> A button whose **Default** or **Cancel** is **True** is triggered by **Enter** or **Esc** even when the focused control is not a native twinBASIC control, such as an ActiveX control.
+
+_Source threads: 927834661298798602-2025-01 · confidence: medium_
+_Date range: 2025-01-23_
+_Reviewer note: Insert in the Cancel and Default section. Sources BETA 670 and 671. Verify against runtime behaviour._
+
+---
+
 ## docs/Reference/Default/VBA/ErrObject/Raise.md · after-remarks
 
 > [!NOTE]
@@ -16473,6 +18123,17 @@ _Reviewer note: Check the relative link to On-Error (page path is docs/Reference
 _Source threads: 1529471888227832050 · confidence: medium_
 _Date range: 2026-07-22_
 _Reviewer note: Finding had package VB and no symbol; it is about the designer, not a specific control. VB package index used as fallback; the IDE tbForm page (docs/IDE/tbForm.md) or a designer page may be a better home. Reviewer to decide placement._
+
+---
+
+## docs/Reference/Default/VB/index.md · after-remarks
+
+> [!NOTE]
+> The **Global**, **App**, **Screen** and **Clipboard** classes are defined in the **WinNativeForms** package. The **VB** qualifier exposes the types of that package, so they are written as `VB.Global`, `VB.App`, `VB.Screen` and `VB.Clipboard`.
+
+_Source threads: 927834661298798602-2022-11 · confidence: high_
+_Date range: 2022-11-04_
+_Reviewer note: From BETA 166. Verify that the qualified forms (e.g. VB.App) resolve as written. Place after the Non-Controls list._
 
 ---
 
@@ -16572,6 +18233,182 @@ _Reviewer note: Based on one user's working pattern (fafalone) using WinDevLib i
 _Source threads: 1460777854714515728 · confidence: medium_
 _Date range: 2026-01-14_
 _Reviewer note: The finding names 'Form.ScaledWidth', which is not a property on the Form page; the draft assumes ScaleWidth/ScaleHeight (or a similar Scale* member) was meant. Intended for the ScaleWidth section of the Form page (or the Drawing surface paragraph). The claim about overload resolution refusing implicit Double-to-Single narrowing rests on one thread and should be verified with a probe. Check the relative CSng link resolves (path assumed docs/Reference/Default/VBA/Conversion/CSng.md, permalink /tB/Modules/Conversion/CSng)._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · new-section
+
+## Docking order
+
+When several controls are docked or aligned on a form, the order in which they are laid out follows the order in which the controls were created, not the VB6 rule that gives top- and bottom-aligned controls priority over left- and right-aligned ones. The two can therefore produce different layouts, for example when a form with docked toolbars and rulers is imported from VB6.
+
+To obtain the intended layout, change the creation order. In the designer, select the docked controls, cut them, paste them back, and then set their **Dock** properties in the order they should be laid out. Cutting and pasting in the VB6 designer before importing the form has the same effect.
+
+> [!NOTE]
+> Hiding docked controls on an MDI form may not refresh the layout correctly.
+
+_Source threads: 1456653292271833253 · confidence: high_
+_Date range: 2026-01-02 to 2026-10-15_
+_Reviewer note: Merged the Dock-order workaround and the Align priority gotcha (threads 1456653292271833253 and 1512037273149898783). Wayne says VBx Align matching is planned, so verify current behaviour. The MDI refresh remark is a reported bug, may be fixed. Form page has no Dock/Align section; place near Controls and validation._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+> [!NOTE]
+> A handler is connected to the **Load** event only when it uses the legacy name `Form_Load` or carries a `Handles` clause. A name built from the form's own name, such as `Form1_Load`, is an ordinary procedure and is never raised by the event. The default new-form template uses the `Handles` form:
+>
+> ```tb
+> Private Sub Form_Load() Handles Form.Load
+>     ' initialisation here
+> End Sub
+> ```
+
+_Source threads: 927641929905209405-2023-04 · confidence: high_
+_Date range: 2023-04-26_
+_Reviewer note: Insert under the Load event heading. Check that the Form_Load / Handles Form.Load claim holds for current builds. Finding came from the April 2023 feedback thread._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+> [!NOTE]
+> While a debugging session shuts down, the IDE shows a "waiting for remaining forms to close" status message. This is normal progress text, not an error, and appears even when the exit works. If the application genuinely fails to exit, or the Start/Continue, Break and Stop buttons stay unresponsive, that indicates a bug. Choosing **Restart Compiler** in the IDE clears that state.
+
+_Source threads: 927641929905209405-2025-05 · confidence: medium_
+_Date range: 2025-05-01 to 2025-05-02_
+_Reviewer note: One user linked the stuck state to a form's DefaultInstance; not stated in the draft. Verify the exact IDE message wording and the Restart Compiler command name._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+> [!NOTE]
+> As in VBx, **Picture** accepts a plain assignment as well as **Set**. `Form1.Picture = LoadPicture("back.png")` works the same as `Set Form1.Picture = LoadPicture("back.png")`. The **Picture** property of [**PictureBox**](../PictureBox), [**Image**](../Image) and [**Menu**](../Menu) behaves the same way.
+
+_Source threads: 927834661298798602-2022-10 · confidence: high_
+_Date range: 2022-10-01_
+_Reviewer note: From BETA 133 (October 2022 releases). Insert after the Picture section (around line 414). Verify against the .twin source that Menu.Picture exists and that the Let form applies to all four._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+> [!NOTE]
+> Accessing a control object on a form that is not yet loaded loads the form, as in VB6.
+
+_Source threads: 927834661298798602-2023-05 · confidence: high_
+_Date range: 2023-05-19 to 2023-05-20_
+_Reviewer note: Placed near the Controls member. Source BETA 308. The PopUpMenu part (menus from other forms accepted, BETA 309) was not drafted; add to the PopUpMenu entry if confirmed._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+Control arrays can grow and shrink at run time. **Load** and **Unload** add and remove elements of a control array, and **Controls.Add** creates a control from a class name such as `"VB.TreeView"`. ActiveX and UserControl controls work in runtime control arrays. Some properties may not be copied to a newly created element.
+
+_Source threads: 927834661298798602-2023-06 · confidence: high_
+_Date range: 2023-06-08 to 2023-06-16_
+_Reviewer note: Sources BETA 326, 334, 335. Controls page currently says Controls is read-only and elements are added only by the runtime, which may conflict with Controls.Add; verify against the .twin source._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+> [!NOTE]
+> **PopUpMenu** performs a **DoEvents** before it returns, so the **Click** event of the chosen menu item is raised before the pop-up menu is destroyed.
+
+_Source threads: 927834661298798602-2024-03 · confidence: high_
+_Date range: 2024-03-25_
+_Reviewer note: From BETA 478. Intended for the PopUpMenu member section._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+> [!NOTE]
+> **TextWidth** and **TextHeight** treat a lone `vbCr` and a lone `vbLf` as line breaks, as well as `vbCrLf`. Each line feed adds a line, so two consecutive line feeds count as two lines.
+
+> [!NOTE]
+> A form with an empty [**Caption**](#caption) and [**ControlBox**](#controlbox) set to **False** shows no title bar, as in VB6.
+
+_Source threads: 927834661298798602-2024-04 · confidence: high_
+_Date range: 2024-04-12 to 2024-04-17_
+_Reviewer note: BETA 502/503 (TextWidth/TextHeight), BETA 510 (title bar). Best placed under the TextHeight and ControlBox entries respectively; split if the reviewer prefers. BETA 506 also made Moveable match VBx behaviour, not drafted._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+> [!NOTE]
+> A control added at run time with **Controls.Add** receives the same default width and height that the designer gives a control of that type, unless code sets them. Its **Visible** property starts as **False**, so code must set **Visible** to **True** before the control appears.
+
+_Source threads: 927834661298798602-2024-09 · confidence: high_
+_Date range: 2024-09-05 to 2024-09-27_
+_Reviewer note: From BETA 595/602 (runtime-added control sizing and Visible default); BETA 615 Activate/Deactivate VB6 parity was not drafted because the existing Activate/Deactivate event text already describes it. Form MinWidth/MaxWidth twips and PictureDpiScaling default/Image findings dropped as already documented. The Controls section currently says the collection is read-only to user code yet the TextBox page uses Controls.Add; verify. Also BETA 596 states runtime Form.Width/Height cover the whole window area; the existing Height text says 'outer height' so no addition._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+A form imported from a VB6 project defaults **StartUpPosition** to **vbStartupWindowsDefault**, as in VB6. Controls pasted into the form designer keep their original names when no existing control has the same name.
+
+_Source threads: 927834661298798602-2025-01 · confidence: medium_
+_Date range: 2025-01-15 to 2025-01-20_
+_Reviewer note: Insert in the StartUpPosition section. Sources BETA 661 and 649. Constant is spelled vbStartupWindowsDefault in the finding but the page uses vbStartUp* naming (StartUpPositionConstants); verify the exact member name._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+Setting **WindowState** inside the **Form_Load** event takes effect, so a form can be loaded already maximised or minimised.
+
+_Source threads: 927834661298798602-2025-03 · confidence: high_
+_Date range: 2025-03-19_
+_Reviewer note: From BETA 715. Place under the WindowState heading, after the existing description._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+> [!NOTE]
+> Menu controls in the **Controls** collection are ordered the same way as they appear on screen.
+
+_Source threads: 927834661298798602-2025-05 · confidence: medium_
+_Date range: 2025-05-17_
+_Reviewer note: From BETA 774. Insert in the Controls section, after the first sentence/code example. Verify exact ordering semantics (e.g. nested submenus) in the source._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+**Cls** does not raise the [**Paint**](#paint) event.
+
+_Source threads: 927834661298798602-2026-05 · confidence: high_
+_Date range: 2026-05-13_
+_Reviewer note: From BETA 981. Insert under the Cls heading._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+> [!NOTE]
+> As in VB6, referring to a control of the form, or passing `Me` to another procedure, inside the **Unload** event reloads the form. This can make the unload very slow or end in a crash. Avoid touching the controls in **Unload**.
+
+_Source threads: 1215336829385973820-2025-05 · confidence: medium_
+_Date range: 2025-05-06 to 2026-09-25_
+_Reviewer note: Place after the Unload event description (around line 1070). Medium confidence; verify the reload behaviour. The thread also noted that removing items from a Collection runs Class_Terminate on contained objects, which was not added here. Imported-VB6 DataFormat crash finding dropped as a fixed defect._
+
+---
+
+## docs/Reference/Default/VB/Form/index.md · after-remarks
+
+> [!NOTE]
+> Referencing any control of the form from inside **Unload** reloads the form, as in VB6. Avoid touching controls in this event.
+
+_Source threads: 1215336829385973820-2026-09 · confidence: low_
+_Date range: 2026-09-25_
+_Reviewer note: Single user report; verify against actual behaviour. Place under the Unload event section (the Terminate section already says controls are inaccessible after destruction)._
 
 ---
 
@@ -16680,6 +18517,57 @@ _Reviewer note: Place at the end of the Language support subsection. It may over
 
 ---
 
+## docs/LLVM/Getting-Started.md · after-remarks
+
+> [!NOTE]
+> A project that runs normally without LLVM can end with a native ACCESS_VIOLATION at the start of `Main` once LLVM compilation is turned on, with no breakpoint reached. Clearing the LLVM cache and restarting the compiler does not help in the reported case. The cause appears to depend on a particular combination of packages and code. To locate it, reduce the project to a minimal case by adding packages and modules back one at a time. With a Personal Edition licence, LLVM applies only to the built-in packages, which can change which code is affected.
+
+_Source threads: 1552799141695070337 · confidence: low_
+_Date range: 2026-09-24_
+_Reviewer note: Unresolved report seen in BETA 984 (worked in 983); 64-bit EXE. Verify before publishing; place with the other LLVM access-violation callouts._
+
+---
+
+## docs/LLVM/Getting-Started.md · after-remarks
+
+> [!NOTE]
+> Hovering over the name of a procedure compiled with LLVM shows the assembly code that LLVM generated for it. twinBASIC compiles on demand, so the procedure must have run once first, for example by calling it from the Debug Console with `?Test`. Until then the hover text says that the code is not ready. Declaring parameters `ByVal` gives simpler assembly. The first use of LLVM in a session loads the LLVM DLL and reports that in the Debug Console.
+
+> [!NOTE]
+> LLVM compiles only procedures in standard modules (a `Module ... End Module` block in a `.twin` file, or a `.bas` file). For a procedure in a class or a form, the Debug Console reports that only standard module procedures are supported.
+
+_Source threads: 1134349410319470642-2025-01 · confidence: high_
+_Date range: 2023-07-28 to 2025-01-17_
+_Reviewer note: Standard-module-only restriction and hover-assembly behaviour come from a 2023-2025 thread; verify they still hold, since the page says all other language features work. Thread also says LLVM rejects String/Variant/Object/class types (2023); omitted because it conflicts with current page._
+
+---
+
+## docs/LLVM/Getting-Started.md · after-remarks
+
+> [!NOTE]
+> The program does not check the CPU at startup, so a build that uses a CPU feature flag cannot detect a missing feature by itself. The `IsProcessorFeaturePresent` function of `kernel32` reports many instruction sets, but it can give wrong answers. The more reliable test is to execute an instruction of the set and detect whether it fails.
+
+_Source threads: 1134349410319470642-2023-09 · confidence: low_
+_Date range: 2023-09-03 to 2024-06-15_
+_Reviewer note: Low confidence, from community comments rather than the team. Symbol IsProcessorFeaturePresent is a Windows API with no page in the docs; consider dropping or placing after the CPU-feature IMPORTANT note._
+
+---
+
+## docs/LLVM/Getting-Started.md · after-remarks
+
+> [!NOTE]
+> LLVM helps most with algorithmic code, such as cryptography and image or audio processing. Typical application code spends most of its time in API calls, which LLVM cannot speed up, although the output is often smaller than that of the native compiler.
+>
+> The CPU feature options help only when LLVM can find math to run in parallel, so ticking them all gives no benefit in general. In one test, sorting two million strings ran more than twice as fast with **LLVM: Generate optimized code**, while the CPU feature options made no difference and loop unrolling made it slightly slower.
+
+To use a CPU feature safely, keep the project-wide options to **Enable LLVM Compilation**, **LLVM: Generate optimized code** and **LLVM: Optimize for smaller filesize**. Put the specialized math code in procedures that carry the CPU feature flags in an attribute (or in a separate DLL), and call those procedures only after a run-time check shows that the CPU has the feature. Older and cheaper CPUs lack features such as AVX, and the program fails on them if code uses a feature without such a check.
+
+_Source threads: 1562640596726976512 · confidence: high_
+_Date range: 2026-10-22_
+_Reviewer note: Merges two findings. The page already warns that a missing CPU feature crashes the program; the new content is the algorithmic-code guidance and the per-procedure attribute plus run-time check pattern. Verify the placement near the CPU feature and attribute sections. The thread mentions a planned dropdown for CPU generations, omitted as it is future work._
+
+---
+
 ## docs/Reference/Default/VBA/Information/IsArray.md · after-remarks
 
 > [!NOTE]
@@ -16757,6 +18645,22 @@ _Reviewer note: A single user's suggestion, not confirmed in the thread. Compile
 
 ---
 
+## docs/Reference/Default/VBA/Information/Array.md · after-remarks
+
+twinBASIC also provides a generic form, **Array(Of** *T* **)**, which returns a typed array rather than a **Variant**. The element type is inferred in most cases, so it can initialize a typed array directly:
+
+```tb
+Dim A() As Long = Array(1, 2, 3)
+```
+
+An array can be initialized from another array in a declaration (`Dim AnArray() = otherArray`). Fixed-length arrays can be copied by assignment, provided the source and destination have exactly the same bounds and element type.
+
+_Source threads: 927834661298798602-2024-08 · confidence: high_
+_Date range: 2024-08-05_
+_Reviewer note: From BETA 587. Verify the Array(Of T) syntax, inference rules and the Dim initializer form against the .twin source; the example is unchecked. Also from BETA 588: a field initializer on a class- or module-scoped array gives a compiler error._
+
+---
+
 ## docs/Reference/Default/VBA/Math/Log.md · after-remarks
 
 > [!NOTE]
@@ -16776,6 +18680,17 @@ _Reviewer note: Verify the exact function names and the Available Packages listi
 _Source threads: 1553387824261243030 · confidence: medium_
 _Date range: 2026-09-26 to 2026-09-28_
 _Reviewer note: Third-party class; check that the repository still exists and that the ID argument and event name are as described before publishing. The existing page already says the function waits for the user; the note adds the workaround only._
+
+---
+
+## docs/Reference/Default/VBA/Interaction/MsgBox.md · after-remarks
+
+> [!NOTE]
+> The message box takes the active form as its parent window. A *prompt* longer than the dialog can hold is truncated, as in VBx. **InputBox** follows the same rules.
+
+_Source threads: 927834661298798602-2022-10 · confidence: high_
+_Date range: 2022-10-07 to 2022-10-11_
+_Reviewer note: From BETA 141 (ActiveForm hwnd as parent) and BETA 146 (truncation of large text). Page already mentions an approximate 1024-character limit; check for overlap and verify truncation behaviour._
 
 ---
 
@@ -16815,6 +18730,17 @@ Only the pointers are exchanged, not the **SAFEARRAY** structures, which can dif
 _Source threads: 1464634730321543168 · confidence: medium_
 _Date range: 2026-01-27 to 2026-08-31_
 _Reviewer note: Reported by one user as production code; the generic-Sub syntax and the ByVal-pointer-to-ByRef-LongPtr behaviour should be checked with tbrun. Candidate alternative home: docs/Features/Language/Pointers.md. The thread notes VB6 rejects this with a type mismatch; that comparison was left out._
+
+---
+
+## docs/Reference/Default/VBA/Information/VarPtr.md · after-remarks
+
+> [!NOTE]
+> **VarPtr** may be called as a statement, with its result discarded.
+
+_Source threads: 927834661298798602-2022-12 · confidence: high_
+_Date range: 2022-12-31_
+_Reviewer note: From BETA 218._
 
 ---
 
@@ -16892,6 +18818,17 @@ _Reviewer note: The code sample has not been compiled. Confirm with check_build 
 
 ---
 
+## docs/Reference/Default/VBA/Information/StrPtr.md · after-remarks
+
+> [!NOTE]
+> Do not pass **StrPtr** to an API that keeps the pointer after the call returns, or that takes ownership of the buffer and frees it later. The buffer belongs to the **String** variable, so it is released or changed when that variable is. For such APIs, allocate a separate buffer with **CoTaskMemAlloc**, copy the characters into it, and hand that buffer over.
+
+_Source threads: 1437514645354315888 · confidence: medium_
+_Date range: 2025-11-28_
+_Reviewer note: Source finding was a 64-bit port of an INamespaceWalk wrapper; verify wording against the thread. Mapped via bare key StrPtr._
+
+---
+
 ## docs/Reference/Default/VBA/Collection/index.md · after-remarks
 
 > [!NOTE]
@@ -16925,6 +18862,17 @@ _Reviewer note: The maintainer said the NewEnum position needs correcting, so th
 
 ---
 
+## docs/Reference/Default/VBA/Collection/index.md · after-remarks
+
+> [!NOTE]
+> **Collection** is not a generic type. It holds **Variant** items of any type. Typed list, dictionary, or stack classes must come from a package or be written in the project.
+
+_Source threads: 1397669015777968289-2025-07 · confidence: medium_
+_Date range: 2025-07-23_
+_Reviewer note: Could also link to the Generics contributed package (docs/Reference/Contributed/Generics/index.md) as a see-also._
+
+---
+
 ## docs/Reference/Default/VBA/HiddenModule/GetMemPtr.md · after-remarks
 
 > [!WARNING]
@@ -16939,17 +18887,37 @@ _Reviewer note: Finding was filed under package VBA with no symbol, which resolv
 ## docs/Reference/Default/VBA/Strings/StrConv.md · after-remarks
 
 > [!NOTE]
-> **StrConv** returns a **Variant**, and twinBASIC has no **StrConv$** form that returns a **String**. When the result is passed to an overloaded procedure that accepts both **String** and **LongPtr**, the compiler can report that it could not disambiguate the call, because a **Variant** converts to either type. Wrap the result in **CStr** or `CType(Of String)` to remove the ambiguity:
->
-> ```tb
-> SHSimpleIDListFromPath CStr(StrConv(sPath, vbUnicode))
-> ```
->
-> In tests with a **Variant** that holds a string, `StrPtr` of the variable, of `CType(Of String)(v)` and of `CStr(v)` all gave the same pointer, so neither wrapper copies the string data in that case.
+> **StrConv** returns a **Variant**. Passing the result directly to an overloaded procedure that accepts both **String** and **LongPtr** fails with a "could not disambiguate the function call" error. Wrap the call in [**CStr**](../Conversion/CStr) or [**CType(Of String)**](../Conversion/CType) to select the **String** overload. Both conversions yield the same string pointer as the **Variant**, so neither makes an extra copy.
 
 _Source threads: 1125359845936205844 · confidence: medium_
 _Date range: 2025-11-20_
-_Reviewer note: The page's opening sentence says StrConv 'Returns a String', which conflicts with the thread's statement that it returns a Variant; verify the declared return type in the VBA package source. The code sample was not compiled. The note about no extra copy rests on a user's pointer test and may be dropped if it cannot be confirmed._
+_Reviewer note: Check relative link paths for CStr and CType. The no-extra-copy claim comes from a pointer comparison in the thread._
+
+---
+
+## docs/Reference/Default/VBA/Strings/StrConv.md · after-remarks
+
+> [!NOTE]
+> A twinBASIC **String** always holds UTF-16 text, two bytes per character. UTF-8 data placed directly into a **String**, for example text read from a database field, displays incorrectly. Convert such data with `StrConv(value, vbFromUTF8)` before use, and use `vbUTF8` for the reverse direction. Assigning a **String** to a **Byte** array copies the bytes unchanged and performs no encoding conversion. When text appears garbled, dumping the bytes with **Hex$** after each step shows where the encoding goes wrong.
+>
+> ```tb
+> Dim data As String = StrConv(rs.Fields("txt").Value, vbFromUTF8)
+> ```
+
+_Source threads: 927641929905209405-2025-06 · confidence: high_
+_Date range: 2025-06-30_
+_Reviewer note: Page's vbFromUTF8 row says input is a Byte array; the thread says a UTF-8 string or byte array works. Verify the String-input case. Code example uses an ADO recordset and is not buildable standalone._
+
+---
+
+## docs/Reference/Default/VBA/Strings/StrConv.md · after-remarks
+
+> [!NOTE]
+> Besides **Byte** arrays, an **Integer** array can be assigned to a **String**, and a **String** can be assigned to an **Integer** array. Each array element holds one UTF-16 code unit of the string.
+
+_Source threads: 927834661298798602-2025-06 · confidence: medium_
+_Date range: 2025-06-25_
+_Reviewer note: Source: BETA 818. Verify against the compiler that the Integer-array conversion is direct assignment (not through StrConv itself) and that each element is one UTF-16 code unit; consider moving to the String type page._
 
 ---
 
@@ -17005,21 +18973,25 @@ _Reviewer note: Insert in the 'Picture data' section, after the existing NOTE ab
 ## docs/Reference/Default/VBA/ErrObject/LastHresult.md · after-remarks
 
 > [!NOTE]
-> A COM interface method declared as a **Sub**, or as a **Function** without the `[PreserveSig]` attribute, is reported to raise no run-time error in some cases when its **HRESULT** is a failure code, and an output variable then stays **Nothing**. An example is `&H8007000E` (out of memory) from a shell call. To see the failure, turn on error deferral around the call and read **LastHresult** afterwards:
+> A COM method declared without `[PreserveSig]` does not always make a failure visible. The runtime error is raised only when error handling allows it, and an output parameter simply stays `Nothing` when the call fails. To see the failure, wrap the call in `On Error Resume Next`, read **LastHresult** immediately afterwards, and then restore normal handling with `On Error GoTo 0`.
 >
 > ```tb
 > On Error Resume Next
-> Set item = factory.GetShellItem()
-> Dim hr As Long
-> hr = Err.LastHresult
+> factory.GetShellItem(GetIID(Of IShellItem), item)
+> Dim hr As Long = Err.LastHresult
 > On Error GoTo 0
+> If hr < 0 Then Debug.Print "Failed: "; Hex$(hr)
 > ```
 >
-> An error handler has a cost. If the interface declaration can be changed, declare the method with `[PreserveSig]` as a **Function** that returns **HRESULT**, and test the returned value directly. With `[PreserveSig]`, release an object variable before passing it again as the output argument.
+> This approach is slow when repeated many times. For hot paths, redeclare the method with `[PreserveSig]` returning **HRESULT** in a `.twin` file of the project and test the returned value directly.
 
-_Source threads: 1384721515542479049 · confidence: medium_
-_Date range: 2026-09-04_
-_Reviewer note: Single user's claim, not confirmed by a maintainer, and it conflicts with the existing page text, which says negative HRESULT values raise a run-time error. Needs verification with a probe (tbrun) before publishing; the fenced sample inside the callout is not marked check_build._
+Some COM methods return a positive value on success (for example, a value derived from the largest command id). Test such results with `hr >= 0` rather than `hr = S_OK`.
+
+To read an HRESULT after a call, use **LastHresult**. [**ReturnHResult**](ReturnHResult) is write-only and sets the HRESULT returned by the current method.
+
+_Source threads: 1384721515542479049 · confidence: high_
+_Date range: 2026-09-04 to 2026-11-04_
+_Reviewer note: Merges two VBA findings (ReturnHResult vs LastHResult, non-PreserveSig silent failures). Verify the example compiles. Page already says ReturnHResult is write-only; the draft only adds the contrast._
 
 ---
 
@@ -17046,6 +19018,17 @@ _Reviewer note: Machine-specific environment issue rather than twinBASIC behavio
 _Source threads: 1543764426350665809 · confidence: high_
 _Date range: 2026-08-31_
 _Reviewer note: Insert after the paragraph that says Erase frees the memory used by dynamic arrays. Based on a user test (200,000 calls, each with a ~10 MB local array, no Erase, no out-of-memory); not a maintainer statement._
+
+---
+
+## docs/Reference/Core/Erase.md · after-remarks
+
+> [!NOTE]
+> Applying **Erase** to the array that a function returns is not a compile error. The compiler raises warning [TB0031](../../Features/Compiler-IDE/Compiler-Warnings#tb0031-suspicious-use-of-erase), *Suspicious Use of Erase*, because the function returns a copy of its array and the statement therefore erases nothing that remains.
+
+_Source threads: 927834661298798602-2025-12 · confidence: high_
+_Date range: 2025-12-16_
+_Reviewer note: From BETA 934. Verify the anchor of the TB0031 heading in Compiler-Warnings.md._
 
 ---
 
@@ -17113,6 +19096,26 @@ _Reviewer note: Second note conflicts in tone with tbIDE/index.md, which says th
 
 ---
 
+## docs/Reference/Built-In/tbIDE/ToolWindow.md · after-remarks
+
+## Building the DOM
+
+- The root element of the pane is a `div`, so do not add a `body` tag.
+- Style sheets are not supported through the DOM; apply inline styles to individual nodes, or use [**ApplyCss**](#applycss).
+- DOM property names are JavaScript properties and are case sensitive: use `innerHTML`, not `innerHtml`.
+- Event handlers attach with `AddEventListener`, and the callback can read the event's arguments.
+- Unless styled otherwise, the pane inherits only the background and foreground colours of the active IDE theme (light or dark).
+- twinBASIC has no multiline string literals; store long HTML in a resource.
+
+> [!NOTE]
+> For a `"chartjs"` element, create the chart empty first and populate it afterwards. The constructor-style examples on the Chart.js website, which pass all data and options at once, are not supported. Set `chart.config.type`, push entries into `chart.data.labels` and `chart.data.datasets(0).data`, then call `chart.update()`.
+
+_Source threads: 1139853883129217094-2023-08 · confidence: high_
+_Date range: 2023-08-16 to 2023-08-18_
+_Reviewer note: ApplyCss mention is an addition by the drafter, as the page documents ApplyCss (thread said CSS was not yet supported). Verify the chart.update call form against Sample 11._
+
+---
+
 ## docs/Features/Packages/Library symbols.md · new-section
 
 ## Name clashes between libraries
@@ -17130,5 +19133,1422 @@ Leave the older reference enabled if the project still uses other members from i
 _Source threads: 1535367982866505778 · confidence: medium_
 _Date range: 2026-08-11 to 2026-08-12_
 _Reviewer note: Reorder arrows and their hover behaviour come from a single Discord answer (apparently from an assistant-generated reply quoted in the thread); verify in the IDE. Page is about library symbols, not reference order, so the new section may fit better elsewhere or the page intro may need a cross-reference. No Core-package page covers this; the finding was filed under Core._
+
+---
+
+## docs/Reference/Built-In/tbIDE/index.md · after-remarks
+
+Each addin runs in its own dedicated thread inside the compiler's background process, not in the IDE process. An addin cannot be unloaded while the compiler runs; restarting the compiler is the only way to unload it. Holding **Shift** while opening a project, or while restarting the compiler (including with the toolbar's restart button), prevents addins from loading. The **Clean** button (trash-can icon) deletes the addin's DLL from the addins folder.
+
+_Source threads: 1139853883129217094-2023-08 · confidence: high_
+_Date range: 2023-08-12 to 2023-08-18_
+_Reviewer note: Source: addins thread, Aug 2023 (restart button and Shift behaviour; build-path default came from BETA 379). Build path and restart behaviour already covered on page; verify Shift and Clean-button behaviour against the current IDE._
+
+---
+
+## docs/Reference/Built-In/tbIDE/index.md · after-remarks
+
+An addin can also be rebuilt without closing the IDE:
+
+1. Save the changes.
+2. Hold **Shift** and click **Restart compiler**. The IDE restarts without loading addins, which releases the DLL.
+3. Build the addin.
+4. Click **Restart compiler** again, without Shift, to load the new build.
+
+> [!NOTE]
+> If the console prints `SHIFT KEY DETECTED: DISABLED LOADING OF ADDINS` after the unshifted restart, the IDE has a stuck Shift state. Press and release Shift once on its own, then restart the compiler again.
+
+_Source threads: 1139853883129217094-2024-04 · confidence: high_
+_Date range: 2024-04-19_
+_Reviewer note: Add at the end of the 'Rebuilding an addin the IDE has loaded' section. Existing text says the IDE must be closed; this offers an alternative, so check the two do not read as contradictory._
+
+---
+
+## docs/Reference/Built-In/tbIDE/index.md · after-remarks
+
+To show a table with several columns (for example 75% and 25% widths) in a `"listview"` element, wrap each column's content in a `div` inside every `addItem()` call and set the column widths with CSS on those divs. Samples 15 and 16 show more elaborate layouts: a global search and a TODO manager with inline editor widgets.
+
+_Source threads: 1139853883129217094-2023-09 · confidence: medium_
+_Date range: 2023-09-23_
+_Reviewer note: Place after the "listview" custom-widget bullet in Tool-window DOM tags. Sample 16 is not in the existing samples table; verify its name before linking. Finding symbol was ListView (addin widget), not the WinNativeCommonCtls ListView control._
+
+---
+
+## docs/Reference/Built-In/tbIDE/index.md · after-remarks
+
+> [!NOTE]
+> An addin does not have to be written in twinBASIC. A C or C++ addin needs no shim: every interface it requires is declared in the addin package and only has to be converted to its C++ equivalent.
+
+_Source threads: 1139853883129217094-2026-04 · confidence: high_
+_Date range: 2026-04-14_
+_Reviewer note: Place in 'Building and loading an addin'. Based on a single remark; verify against a working C++ addin._
+
+---
+
+## docs/Reference/Built-In/tbIDE/index.md · after-remarks
+
+> [!NOTE]
+> The addin API has no way to register a custom CodeLens provider. The samples cover tool windows and editor widgets only.
+
+_Source threads: 1139853883129217094-2026-10 · confidence: high_
+_Date range: 2026-10-27_
+_Reviewer note: Feature request filed as twinbasic issue 2551. Place near 'Where the samples live'._
+
+---
+
+## docs/Reference/Built-In/tbIDE/Host.md · after-remarks
+
+> [!NOTE]
+> The addin runs in the compiler process, which is separate from the IDE process, so a Windows form shown by an addin does not behave like a child window of the IDE. Such a form must be shown modally, set to **TopMost**, or given the IDE as its owner window by using [**IDEWindowHandle**](#idewindowhandle). Where possible, prefer an HTML [**ToolWindow**](ToolWindow), which does not have this restriction.
+
+> [!NOTE]
+> [**OnProjectLoaded**](#onprojectloaded) is synchronized between addins, so several addins can set up their toolbar buttons and menus in it without interfering with one another.
+
+_Source threads: 1139853883129217094-2023-08 · confidence: high_
+_Date range: 2023-08-12 to 2023-08-16_
+_Reviewer note: Windows-form guidance is from the tB team's comments in the thread; verify the owner-hwnd approach against current behaviour._
+
+---
+
+## docs/Reference/Built-In/tbIDE/Host.md · after-remarks
+
+> [!NOTE]
+> **ActiveEditors** holds only the editors that are visible; an editor in a background tab is not active. As the IDE supports a single active editor, `Host.ActiveEditors(0)` is always the editor currently in front, so two calls made at different times can return different editors.
+
+_Source threads: 1139853883129217094-2023-10 · confidence: high_
+_Date range: 2023-10-23_
+_Reviewer note: Partly overlaps the existing ActiveEditors paragraph; the new point is that only visible editors are included and that index 0 can change between calls. Keyboard-shortcut findings (Add syntax, modifier order, JS key names) were dropped as already covered by KeyboardShortcuts.md; the planned Add overload with a command ID (Mar 2024) was dropped because it is not current behaviour._
+
+---
+
+## docs/Reference/Built-In/tbIDE/Host.md · after-remarks
+
+> [!NOTE]
+> An addin is built against a particular revision of the IDE API, and the IDE loads it only when the running IDE is at least that new. An addin that uses a member added in a later revision does not load in an older IDE. Members of this kind include the [**Project**](Project) identification properties (**BaseFolderPath**, **ProjectID**, **BuildType**, the version numbers and so on), [**Themes.ActiveThemeName**](Themes#activethemename) and the [**OnChangedTheme**](#onchangedtheme) event.
+
+_Source threads: 927834661298798602-2024-04 · confidence: high_
+_Date range: 2024-04-14 to 2024-04-15_
+_Reviewer note: Source: BETA 504 (CurrentProject properties, addins compiled in 504+ need 504+) and BETA 505 (ActiveThemeName, OnChangedTheme, need 505+). Build numbers omitted per style rule; verify the loading rule._
+
+---
+
+## docs/Reference/Built-In/tbIDE/DebugConsole.md · after-remarks
+
+> [!NOTE]
+> Clicking an addin's toolbar button takes keyboard focus away from the code pane, unlike the IDE's built-in buttons, so **SendKeys** from an addin does not reach the editor. Call [**SetFocus**](#setfocus) here, or [**Editor.SetFocus**](Editor#setfocus) on the active editor, before sending keystrokes.
+
+_Source threads: 1139853883129217094-2023-08 · confidence: high_
+_Date range: 2023-08-12 to 2023-08-13_
+_Reviewer note: Thread's original workaround was sending {TAB} four times; build 374 introduced the SetFocus methods._
+
+---
+
+## docs/Reference/Built-In/tbIDE/DebugConsole.md · after-remarks
+
+> [!NOTE]
+> The DEBUG CONSOLE keeps an unlimited history of output lines. An auto-scroll toggle button in the pane controls whether the view follows new output.
+
+_Source threads: 927834661298798602-2023-08 · confidence: high_
+_Date range: 2023-08-02 to 2023-08-25_
+_Reviewer note: Source builds: BETA 383 (limit removed, toggle). The Paste As Comment (Ctrl-Alt-V) shortcut and the F5 'no startup object' message are IDE features and have no obvious page._
+
+---
+
+## docs/Reference/Built-In/tbIDE/Editors.md · after-remarks
+
+> [!NOTE]
+> The collection holds only editors that are visible on screen; editors in inactive tabs cannot be reached. The collection is zero-based.
+
+_Source threads: 1139853883129217094-2023-08 · confidence: high_
+_Date range: 2023-08-13_
+_Reviewer note: Partly overlaps existing text about one active editor at a time._
+
+---
+
+## docs/Reference/Built-In/tbIDE/CodeEditor.md · after-remarks
+
+> [!NOTE]
+> Line breaks in [**Text**](#text) and [**SelectedText**](#selectedtext) are CRLF (a bare LF is accepted on assignment), so use `vbCrLf` when searching the text with **Replace** or **InStr**.
+
+> [!NOTE]
+> Most Monaco command IDs passed to [**ExecuteMonacoCommand**](#executemonacocommand) are specific to Visual Studio Code and have no effect in the twinBASIC IDE. Examples that work include `"actions.find"` and `"editor.foldLevel2"`.
+
+_Source threads: 1139853883129217094-2023-08 · confidence: high_
+_Date range: 2023-08-13_
+_Reviewer note: The 90% figure from the thread was omitted as an estimate; verify the working command examples._
+
+---
+
+## docs/Reference/Built-In/tbIDE/CodeEditor.md · after-remarks
+
+> [!NOTE]
+> Known defects: **SetSelectionInfo** has been reported to occasionally select to the end of the file instead of the requested range. Separately, inserting a block-comment terminator `*/` followed on the same line by more text can make the code prettifier delete characters one at a time, because it allows only one space after `*/` and removes spaces off by one.
+
+_Source threads: 1139853883129217094-2023-10 · confidence: medium_
+_Date range: 2023-10-05 to 2024-04-20_
+_Reviewer note: Both defects were unresolved in the thread; verify they still reproduce before publishing. Source build not stated in the finding. Place under the SetSelectionInfo method._
+
+---
+
+## docs/Reference/Default/VBA/HiddenModule/Emit.md · after-remarks
+
+**Emit** can also place the x86 `CPUID` instruction in a **Naked** procedure, which allows a program to query the processor and list the instruction-set extensions it supports.
+
+_Source threads: 1478865333245837444-2026-09 · confidence: low_
+_Date range: 2026-09-22_
+_Reviewer note: Based on a user report that an AI-generated CPUID function worked first time; no code was shown. Consider adding a verified example. Source build unknown (ai-talk 2026-09 thread)._
+
+---
+
+## docs/Reference/Default/VBA/HiddenModule/Emit.md · after-remarks
+
+> [!NOTE]
+> The bytes of one instruction, and any [**StackOffset**](StackOffset) operand that belongs to it, must be written on the same physical line, joined with a colon. A line break between **Emit** statements causes the compiler to insert a 2-byte NOP between them, which corrupts the instruction and typically crashes the program. Marking the procedure `[Debuggable(False)]` also suppresses the NOPs, but is not required when the statements share one line.
+>
+> `StackOffset` yields a 4-byte **Long**, so it must be passed through [**EmitAny**](EmitAny), not **Emit**.
+
+```tb
+Emit(&HF2, &H0F, &H11, &H84, &H24): EmitAny(StackOffset(MyDouble))
+```
+
+In a **Naked** procedure the compiler generates nothing: no stack frame, no register save or restore, and no return instruction. The procedure must emit its own `ret` (`&HC3` on x64; `Emit(&HC2, StackArgsSize)` for x86 stdcall).
+
+The compiler does not generate x64 unwind information (pdata) for procedures. Emitted code therefore cannot take part in structured exception handling (SEH); no unwind codes are needed otherwise.
+
+_Source threads: 1284827586513342536-2025-10 · confidence: high_
+_Date range: 2024-09-17 to 2025-10-11_
+_Reviewer note: Merges the one-line/NOP gotcha, Naked no-ret note and pdata note. Verify the [Debuggable(False)] claim and the x86 ret encoding against the compiler. Source builds: StackOffset on parameters fixed in BETA 886 (not stated in draft)._
+
+---
+
+## docs/Reference/Default/VBA/HiddenModule/Emit.md · example
+
+A naked **NtCurrentTeb** that returns the address of the Thread Environment Block, which is held in `gs:[0x30]` on x64 and `fs:[0x18]` on x86.
+
+```tb
+Public Function NtCurrentTeb CDecl Naked() As LongPtr
+    #If Win64 Then
+        Emit(&H65, &H48, &H8B, &H04, &H25, &H30, &H00, &H00, &H00) ' mov rax, gs:[0x30]
+        Emit(&HC3)                                                  ' ret
+    #Else
+        Emit(&H64, &HA1, &H18, &H00, &H00, &H00)                    ' mov eax, fs:[0x18]
+        Emit(&HC3)                                                  ' ret
+    #End If
+End Function
+```
+
+> [!TIP]
+> Opcodes produced by online assemblers or AI tools can be wrong (an offset of `gs:0x38` instead of `0x30` crashed), so verify the result against a known value. Compiling C with `cl /c /Gw /Gy /GS- /O2 /FAc file.c` produces a `.cod` listing with the opcodes next to the assembly.
+
+_Source threads: 1284827586513342536-2025-04 · confidence: medium_
+_Date range: 2025-04-28_
+_Reviewer note: Example reconstructed from the thread's description; verify it compiles and returns the same value as RtlGetCurrentPeb-based checks._
+
+---
+
+## docs/Reference/Default/VBA/HiddenModule/Emit.md · after-remarks
+
+A **Naked** procedure has no compiler-generated prologue or epilogue, so its body must handle argument access and the return itself, and must end with its own `ret`. Use `#If Win64` to supply a separate byte sequence for each platform.
+
+- On Win64, the first arguments arrive in `rcx`, `rdx` and `r8`, and the result is returned in `rax`.
+- On Win32 with the default stdcall convention, arguments are read from the stack at `[esp+4]`, `[esp+8]` and so on. The procedure must pop them with `ret N` (for two 4-byte arguments, `ret 8`, bytes `C2 08 00`).
+- With **CDecl**, the caller removes the arguments, so a plain `ret` (`C3`) is used.
+- Callee-saved registers such as `edi` and `rdi` must be preserved with `push` and `pop` if the code uses them.
+
+A naked procedure may need `[IgnoreWarnings(TB0025)]` to suppress the compiler warning.
+
+```tb
+Public Function AddPtr Naked(ByVal a As LongPtr, ByVal b As LongPtr) As LongPtr
+    #If Win64 Then
+        Emit(&H48, &H8D, &H04, &H11)       ' lea     rax, [rcx+rdx]
+        Emit(&HC3)                         ' ret
+    #Else
+        Emit(&H8B, &H44, &H24, &H04)       ' mov     eax, [esp+4]
+        Emit(&H03, &H44, &H24, &H08)       ' add     eax, [esp+8]
+        Emit(&HC2, &H08, &H00)             ' ret     8
+    #End If
+End Function
+```
+
+_Source threads: 1284827586513342536-2026-03 · confidence: high_
+_Date range: 2026-03-07 to 2026-03-28_
+_Reviewer note: Example bytes were composed by the drafter from standard x86/x64 encodings, not taken from the thread; assemble and run to verify. Confirm the TB0025 warning applies and the attribute syntax._
+
+---
+
+## docs/Reference/COM-Interfaces/IUnknown.md · after-remarks
+
+> [!NOTE]
+> **stdole.IUnknown** is restricted and not extensible, so `obj.QueryInterface ...` fails to compile with *Unrecognized member QueryInterface on type IUnknown*. Calling it is also unnecessary, because assigning with **Set** to a variable of another interface type performs the **QueryInterface** call.
+>
+> To avoid a run-time error when the object might not support the interface, test first with **TypeOf**:
+>
+> ```tb
+> If TypeOf ICM Is IContextMenu3 Then Set ICM3 = ICM
+> ```
+>
+> Alternatively, use `On Error Resume Next` and check `Err.Number` after the **Set**. `Err.LastHResult` is not suitable for this, because it is meant for non-error HRESULTs.
+>
+> When an explicit call is required, use an unrestricted declaration such as **IUnknownUnrestricted** from the OLEGuids package, or declare one:
+>
+> ```tb
+> [InterfaceId("00000000-0000-0000-C000-000000000046")]
+> [OleAutomation(False)]
+> Interface IUnknownUnrestricted Extends Nothing
+>     [PreserveSig] Function QueryInterface(ByRef riid As GUID, ByRef ppvObject As LongPtr) As Long
+>     [PreserveSig] Function AddRef() As Long
+>     [PreserveSig] Function Release() As Long
+> End Interface
+> ```
+
+_Source threads: 1352268312117252126 · confidence: high_
+_Date range: 2025-06-05_
+_Reviewer note: Page already mentions IUnknownUnrestricted at line ~112; check for overlap and verify the interface declaration compiles (method signatures were abbreviated in the thread)._
+
+---
+
+## docs/Features/Language/Interfaces-CoClasses.md · after-remarks
+
+> [!NOTE]
+> When an interface is translated from IDL, a `[propput]` member becomes **Property Let** and a `[propputref]` member becomes **Property Set**. Assigning to a **Property Set** member requires the **Set** keyword, and using **Set** on a **Property Let** member is an error. The difference matters for objects with a default member, such as ADODB.Connection, where **Let** and **Set** give different results. For object-typed properties, **Property Set** is the safer choice.
+
+_Source threads: 1352268312117252126 · confidence: medium_
+_Date range: 2025-06-11 to 2025-06-12_
+_Reviewer note: Medium confidence, from user testing; verify. Symbol 'Property Set' did not resolve in the page index, so the nearest interface page was chosen._
+
+---
+
+## docs/Features/Language/Interfaces-CoClasses.md · after-remarks
+
+> [!NOTE]
+> In an interface defined in twinBASIC, a `ByRef` parameter is treated as in/out, not as out-only. When an implementation (such as an operating-system object) writes a new object into the parameter without releasing the previous value, the earlier reference leaks. This happens, for example, when the same object variable is reused as the output argument in a loop such as `Do While pEnum.Next(1, item) = S_OK`. The runtime clears and releases the incoming value only when a type library marks the parameter as out. To avoid the leak, set the variable to `Nothing` at the end of each loop iteration.
+
+A method declared without `[PreserveSig]` raises a run-time error for a negative HRESULT, whereas the same method declared in a classic type library as returning `Long` silently returns the value. Failures that are normal for some callers (for example, `IContextMenu.GetCommandString` for separator items) therefore appear as errors, such as error 5, in twinBASIC. Use `On Error Resume Next`, or redeclare the method with `[PreserveSig]` in your own `.twin` file. Pointer-sized parameters, such as a reserved pointer or `UINT_PTR` id, are declared `ByVal LongPtr`:
+
+```tb
+[PreserveSig] Function GetCommandString(ByVal idCmd As LongPtr, ByVal uType As GetCommandStringFlags, ByVal pwReserved As LongPtr, pszName As Any, ByVal cchMax As Long) As HRESULT
+```
+
+_Source threads: 1384721515542479049 · confidence: high_
+_Date range: 2026-09-04 to 2026-11-03_
+_Reviewer note: Merges two Core findings (ByRef leak, PreserveSig/GetCommandString). Maintainer said Collection.Item handling is not yet replicated; omitted. Verify placement after the PreserveSig bullet or Defining Interfaces section._
+
+---
+
+## docs/IDE/Troubleshooting/Compiler-Services.md · after-remarks
+
+> [!NOTE]
+> A crash loop can occur on a project that opens normally on other machines, and maintainers have not always been able to reproduce it. Restarting Windows has cleared it in some reports, although it can return intermittently. Low available memory on the machine may play a part, as Windows does not always recover well after memory use has come close to the limit.
+
+_Source threads: 1553053207368827041 · confidence: medium_
+_Date range: 2026-09-25 to 2026-09-29_
+_Reviewer note: Anecdotal workaround from a user thread (observed in BETA 985; a separate project-specific variant was fixed in BETA 992). Insert after the crash loop / Safe Mode message paragraphs (around line 134)._
+
+---
+
+## docs/IDE/Troubleshooting/Compiler-Services.md · after-remarks
+
+> [!NOTE]
+> The IDE itself runs as JavaScript in a webview, while IntelliSense and compilation run in a separate compiler process. An access violation, or a drop into trace mode, while editing a very large project is therefore usually a compiler-process problem and not a sign that the IDE is leaking memory. Not every access violation is a memory leak.
+
+_Source threads: 1565126681415520426 · confidence: medium_
+_Date range: 2026-10-29_
+_Reviewer note: Thread also reports Find/Replace (many Replace All operations) as a suspected leak source; unconfirmed, so omitted. Verify placement on the page._
+
+---
+
+## docs/Reference/Default/VB/ComboBox/index.md · after-remarks
+
+> [!NOTE]
+> The mouse wheel is delivered to the control that has focus, not to the control under the pointer. A focused **ComboBox** therefore changes its selection on wheel movement even when the pointer is outside it.
+
+_Source threads: 1547956310828654702 · confidence: low_
+_Date range: 2026-09-11_
+_Reviewer note: Behaviour reported in forum thread; no maintainer confirmation that it is intended. Check against current behaviour. Could sit near the WheelScrollEvent / Scroll description._
+
+---
+
+## docs/Reference/Default/VB/ComboBox/index.md · after-remarks
+
+Assigning to **List** keeps the current [**ListIndex**](#listindex) and the item's [**ItemData**](#itemdata), and does not raise the [**Click**](#click) event.
+
+_Source threads: 927834661298798602-2026-05 · confidence: medium_
+_Date range: 2026-03-26 to 2026-05-13_
+_Reviewer note: From BETA 979-981. Insert under the List heading. The wording on the replace-then-reinsert behaviour and Sorted should be verified against the control; check anchors._
+
+---
+
+## docs/Reference/Default/VB/CheckBox/index.md · after-remarks
+
+> [!NOTE]
+> Assigning to **Value** from inside the control's own [**Click**](#click) handler raises **Click** again, which causes infinite recursion. The same happens when the assignment is reached from `Form_Load` through such a handler. The recursion ends in a `STACK_OVERFLOW` exception in the Debug Console, which generally indicates infinite recursion. Guard against re-entry, for example with a module-level flag, or assign only when the new value differs from the current one.
+
+```tb
+Private mBusy As Boolean
+
+Private Sub Check1_Click()
+    If mBusy Then Exit Sub
+    mBusy = True
+    Check1.Value = vbUnchecked   ' would otherwise re-enter Check1_Click
+    mBusy = False
+End Sub
+```
+
+_Source threads: 1557461357714997259 · confidence: high_
+_Date range: 2026-10-07_
+_Reviewer note: From the BETA 998 thread. Inserted after the Value description; the existing Value text already says a differing assignment raises Click._
+
+---
+
+## docs/Reference/Default/VB/CheckBox/index.md · after-remarks
+
+> [!NOTE]
+> **DockOrder** is never incremented automatically when controls are docked. When a VB6 project (VBP) is imported, the property is set to 0 for controls aligned to the top or bottom and to 1 for controls aligned to the left or right, to emulate the VB6 **Align** behaviour. When docked controls appear in the wrong order, particularly external controls or controls on an MDI form, assign distinct **DockOrder** values explicitly.
+
+_Source threads: 1560689995466022962 · confidence: high_
+_Date range: 2026-10-16 to 2026-10-20_
+_Reviewer note: Applies to every docked VB control; no DockOrder-specific symbol page exists, so it is attached to the CheckBox DockOrder entry. Consider placing it on a shared page. A tie-ordering bug was fixed in BETA 1012. Verify the VBP import values against source._
+
+---
+
+## docs/Reference/Data-Types/Byte.md · after-remarks
+
+> [!NOTE]
+> Comparing a **Byte** with **True** follows VB6: `b = True` is **True** when `b` is 255, because **True** is reduced to a **Byte** (255) before the comparison. Any other **Byte** value is not equal to **True**. Avoid such comparisons; test the value with `If b Then` or `CBool(b)` instead.
+
+_Source threads: 1561388718869192806 · confidence: high_
+_Date range: 2026-10-18 to 2026-10-19_
+_Reviewer note: Behaviour fixed in BETA 1014. The thread notes the rule for unsigned types may be revisited when other unsigned types are added._
+
+---
+
+## docs/Reference/Built-In/WebView2/index.md · after-remarks
+
+> [!NOTE]
+> A program that uses WebView2 can crash soon after the WebView2 window appears when it is built with LLVM, because error propagation is not yet supported by the LLVM compiler. Turn LLVM off for such projects.
+
+_Source threads: 1562875281503424653 · confidence: high_
+_Date range: 2026-10-22_
+_Reviewer note: Maintainer said 'very likely' the cause; verify against the LLVM docs limitations list._
+
+---
+
+## docs/Features/Language/Generics.md · after-remarks
+
+> [!NOTE]
+> A generic procedure defined in a package cannot be called from the debugger. Diagnostic TB5115, *Cannot call generic procedure X here. Generics cannot be accessed from the debugger.*, reports the attempt.
+
+_Source threads: 1563136971101048952 · confidence: medium_
+_Date range: 2026-10-26_
+_Reviewer note: Maintainer said support is planned; check whether the page already covers debugger limits._
+
+---
+
+## docs/Reference/Default/VBA/Interaction/DoEvents.md · after-remarks
+
+> [!NOTE]
+> **DoEvents** performs a **PeekMessage** call with `PM_NOREMOVE`, followed by a blocking **GetMessage** call. This matches the VBx implementation, and ActiveX controls may rely on hooks into the **GetMessage** path, so the behavior is fixed.
+>
+> Under some conditions the blocking **GetMessage** call causes trouble. On Windows 10, with a XAML Island active, calling **DoEvents** in a loop that waits on WinRT asynchronous operations can crash the program (`STATUS_STOWED_EXCEPTION`, 0xc000027b, in `Windows.UI.Xaml.dll`) when the user clicks in the XAML control during the wait. The crash occurs both in the IDE and in compiled executables. Windows 11 is not affected. The cause is re-entrancy: the blocked **GetMessage** call lets further XAML pointer messages queue up and be processed in nested layers.
+>
+> A hand-written loop that calls **PeekMessage** with `PM_REMOVE`, then **TranslateMessage** and **DispatchMessage**, avoids the **GetMessage** path and proved more stable in this scenario, but it remains fragile. For example, adding a **Sleep** call inside the loop still crashed. Such a loop also loses the ActiveX-related handling that **DoEvents** provides, such as menu accelerators and `KeyPreview`. If a manual loop is used, keep it tight and use it only for short bursts. Completion handlers or timer polling are safer than waiting inline.
+
+_Source threads: 1565317933645832373 · confidence: high_
+_Date range: 2026-10-29 to 2026-11-04_
+_Reviewer note: Behavior reported by users and a maintainer in a Discord thread; not verified against source. Check the wording on the crash conditions._
+
+---
+
+## docs/Reference/Default/VBA/Interaction/DoEvents.md · after-remarks
+
+> [!NOTE]
+> The parser never treats `DoEvents:` as a line label, as in VB6. A statement can therefore follow **DoEvents** on the same line after the colon.
+
+_Source threads: 927834661298798602-2024-03 · confidence: high_
+_Date range: 2024-03-25_
+_Reviewer note: From BETA 478._
+
+---
+
+## docs/IDE/Debugging/Debug-Console.md · after-remarks
+
+### Diagnose a crash with no output
+
+When the compiler or IDE restarts after a crash and the console shows nothing, the trace log may still show what happened just before it. Tick all the trace flags except the buffered option, including the one for Windows messages, and set **Trace Output** to a path that includes the session id, or to `${DEBUG}` to send the log to this console. The log can be large, and when the crash is abrupt the main file simply ends at the point of failure. The raw log can also be given to an LLM for analysis.
+
+_Source threads: 1565317933645832373 · confidence: medium_
+_Date range: 2026-10-29_
+_Reviewer note: Check flag names against the Trace Flags list in Project Settings. Placed after the trace logger section, before 'Separate one run from the next' or just before See Also._
+
+---
+
+## docs/IDE/Debugging/Debug-Console.md · after-remarks
+
+> [!NOTE]
+> Smooth scrolling in the Debug Console is off by default. When it is switched on, a console that holds even a single line can make the IDE pause for several seconds on some machines when changing tabs, opening settings or searching. Clicking the **Clear** button to empty the console removes the delay, as does turning smooth scrolling off again.
+
+_Source threads: 1565749140904878212 · confidence: high_
+_Date range: 2026-10-30 to 2026-11-03_
+_Reviewer note: Finding came from reports against BETA 998 and a default fixed in a build newer than the build of record. Verify the name and location of the smooth-scrolling setting in the IDE options._
+
+---
+
+## docs/IDE/Debugging/Debug-Console.md · new-section
+
+### Find where a compiled program crashes
+
+When a compiled executable crashes hard, the most informative part of the trace log is where it ends. The log stops abruptly at the point where the native exception occurred. Running the program again and checking that the log ends at exactly the same place confirms that the crash is deterministic.
+
+> [!NOTE]
+> A crash that happens only in the compiled executable, and not when the project runs in the IDE, points to a defect in the build (linker) rather than in the program's own code. A stripped-down project that contains only the offending form is the most useful repro to report.
+
+To find the control responsible when a form crashes as it loads, remove controls from the form one at a time, including the children of containers such as a **Frame**, until the crash stops. The designer's JSON view of a control lists every property in text form, which makes unusual values easy to spot when compared with a freshly created control. Replacing the control with a new one set up the same way is a workable fix.
+
+_Source threads: 1215336829385973820-2025-01 · confidence: high_
+_Date range: 2025-01-03 to 2025-01-08_
+_Reviewer note: Merges the Core trace-log example and the VB Form bisect workaround. Target placed in Debug-Console.md (The trace logger section, before See Also) because Core/Form findings have no direct reference page match; Form page could alternatively host the bisect paragraph. Source thread builds around the 2025-01 releases._
+
+---
+
+## docs/Reference/Default/VB/Label/index.md · after-remarks
+
+> [!NOTE]
+> In the form designer, position and size values given in twips are snapped to whole-pixel multiples (15 twips at 96 DPI). Typing `2300` into **Left** and pressing Enter stores `2295`. VB6 kept the typed value but rounded it to the nearest pixel at run time. The same snapping applies to [**Top**](#top), [**Width**](#width) and [**Height**](#height), and with a pixel **ScaleMode** the stored value may also differ from the typed one.
+
+_Source threads: 1563526778868342955 · confidence: low_
+_Date range: 2026-10-24_
+_Reviewer note: Applies to all controls (Core/Label.Left finding); placed on Label Left as the closest mapped page. Not confirmed by a maintainer as intended; the fractional pixel-mode results (318.02778, 316.0463) may be a bug. Verify before publishing._
+
+---
+
+## docs/Reference/Default/VB/Label/index.md · after-remarks
+
+> [!NOTE]
+> **DataSource** on a control can also be set directly to an **ADODB.Recordset**, as in VB6, in addition to a [**Data**](../Data/) control.
+
+_Source threads: 927834661298798602-2026-05 · confidence: high_
+_Date range: 2026-05-29_
+_Reviewer note: From BETA 983. Applies to data-bound controls generally; Label is only the nearest mapped page (see the DataSource section near line 205). Existing text says DataSource is set with Set to a Data control. Verify and consider placing on other bound controls._
+
+---
+
+## docs/Reference/Default/VB/Label/index.md · after-remarks
+
+> [!NOTE]
+> When the **BorderCustomOptions** values are changed at run time, the change does not show until the code calls [**Refresh**](#refresh). Custom borders are available on forms as well as in reports.
+
+_Source threads: 1262806955248975913-2024-07 · confidence: high_
+_Date range: 2024-07-18_
+_Reviewer note: Source: BETA 577 thread. Placed after the Border styles code sample; Refresh requirement may have been fixed in later builds -- verify._
+
+---
+
+## docs/Reference/Default/VBA/HiddenModule/StackOffset.md · example
+
+**StackOffset** accepts local variables, by-reference parameters, and the function's own name (to write the return value). The result is a 4-byte value, so it is emitted with [**EmitAny**](EmitAny), on the same physical line as the instruction bytes it completes.
+
+The following reads the Win64 return register XMM0 into a local **Double** (`movsd [rsp+offset], xmm0`). The `&H84, &H24` form selects a 32-bit displacement, matching the 4-byte offset.
+
+```tb
+#If Win64 Then
+    Dim t As Double
+    Emit(&HF2, &H0F, &H11, &H84, &H24): EmitAny(StackOffset(t))
+#End If
+```
+
+Writing the return value of a naked function:
+
+```tb
+Emit(&H89, &H84, &H24): EmitAny(StackOffset(InlineInterlockedIncrement))
+```
+
+> [!NOTE]
+> When single-stepping in the debugger, XMM0 may be overwritten as execution breaks, so test such code without stepping.
+
+_Source threads: 1284827586513342536-2025-10 · confidence: high_
+_Date range: 2025-10-03 to 2025-10-11_
+_Reviewer note: Merges the XMM0 example and the parameter/return-variable note. StackOffset on parameters was fixed in BETA 886 (earlier builds required copying to a local). Verify the encodings._
+
+---
+
+## docs/Reference/Default/VBA/Conversion/CType.md · after-remarks
+
+> [!NOTE]
+> To split a value into its low and high words, a **CType** cast to a UDT with two **Integer** members is likely faster than calling an **Emit**-based helper, because the helper pays function-call overhead. In a subclass or hook procedure, declaring the `lParam` parameter itself as a UDT passed by reference (for example **MSG** or **MINMAXINFO**) avoids a copy; `VarPtr(lParam)` gives the raw value when it is passed on. Reading the words through a UDT does not sign-extend them, matching the C `WORD` macros; an arithmetic LoWord with sign extension gives different results for values above `&H7FFF`.
+
+_Source threads: 1284827586513342536-2025-03 · confidence: medium_
+_Date range: 2025-03-17 to 2025-03-18_
+_Reviewer note: Performance claim is from a team member's remark, not measured; verify._
+
+---
+
+## docs/Reference/Default/VBA/Conversion/CType.md · after-remarks
+
+> [!NOTE]
+> Assigning a **Variant** that holds a UDT to a variable of that UDT type, as in `udtX = SomeCollection.Item(i)`, is accepted by VB6 but is not supported: the compiler reports "Unable to convert type Variant to type <UDT>". Neither **LSet** nor `CType(Of UDT)(variant)` works around this. Code that stores UDTs in **Variant**-returning collections needs to be restructured when migrating.
+
+> [!NOTE]
+> When **CType** is used to overlay a UDT on a pointer, such as a `SAFEARRAY` structure over the array pointer of a **Variant** in a 64-bit build, the UDT must match the 64-bit layout (`cDims` and `fFeatures` as **Integer**, `cbElements` and `cLocks` as **Long**, `pvData` as **LongPtr**, followed by the bounds). **CType** must be applied to the pointer to the `SAFEARRAY`, not to the **Variant** itself. A mismatch typically ends in an access violation.
+
+_Source threads: 1563213741968068848 · confidence: high_
+_Date range: 2026-10-20 to 2026-10-23_
+_Reviewer note: Merged two CType findings from different threads (second from 1562047647680962590, low confidence; verify the SAFEARRAY layout and whether the 8-byte padding before pvData is needed). The first is a known unsupported feature; confirm still current._
+
+---
+
+## docs/Reference/Default/VBA/Conversion/CType.md · after-remarks
+
+> [!NOTE]
+> When *type* is a user-defined type that defines a **Type_Assignment** procedure, **CType** does not call that procedure. It treats *value* as a pointer, exactly as in the pointer-to-UDT cast described above.
+
+_Source threads: 927834661298798602-2025-12 · confidence: high_
+_Date range: 2025-12-29_
+_Reviewer note: From BETA 948. Verify against compiler behaviour for non-pointer values passed to such a UDT._
+
+---
+
+## docs/Reference/Default/VBA/HiddenModule/Eval.md · after-remarks
+
+> [!NOTE]
+> **Eval** is a lightweight engine that interprets the expression at run time, without generating machine code. It is not built on the main twinBASIC parser, so minor differences from source-code behaviour are possible, and it favours simplicity over speed. It adds roughly 130 KB to a built program.
+>
+> The rules follow Microsoft Access expressions: [**Iif**](../Interaction/IIf) evaluates only the branch that is chosen, and single quotes may delimit string literals, which is convenient when the expression is itself written inside a twinBASIC string. Numeric literals may use scientific notation, with either `E` or `D` as the exponent character (`3.95E-02`, `4.4D-02`). Risky functions such as **CreateObject**, **GetObject** and **Shell** are not available.
+
+> [!NOTE]
+> **Eval** evaluates expressions only. Statements such as **Let** and **Set**, and assignment in general, are not supported. The expression also cannot see the program's global or `Public` variables. To read program state or cause side effects, expose an object to a [**TbExpressionService**](../TbExpressionService/) with [**AddCustomBinderObject**](../TbExpressionService/AddCustomBinderObject) and call its methods from the expression; a method that returns **Empty** serves as a statement.
+
+_Source threads: 1262807077609406676-2024-07 · confidence: high_
+_Date range: 2024-07-16 to 2025-07-18_
+_Reviewer note: Merged from the 2024-07 clarification and gotcha findings, plus the 2025-07 exponent-notation finding (scientific notation support began in BETA 866 with D exponent; operator-whitespace fix in BETA 864). A user claimed Eval still throws for forms like 3&3 or 3^3 without spaces; that was left out as unverified. Verify the Iif link path and the 130KB figure._
+
+---
+
+## docs/Reference/Default/VBA/HiddenModule/Eval.md · after-remarks
+
+**Eval** accepts numeric literals written in exponent form, such as `1E5`. A multiplication symbol need not be followed by whitespace or another terminator.
+
+_Source threads: 927834661298798602-2025-07 · confidence: medium_
+_Date range: 2025-07-17 to 2025-07-18_
+_Reviewer note: From BETA 864/866. Page now describes the TbExpressionService-based implementation; verify exponent-form literals still parse and add an Eval("1E5") example if confirmed._
+
+---
+
+## docs/Reference/Default/VBA/TbExpressionService/Bind.md · example
+
+This implementation exposes named values held in a **Collection**. The engine calls **Bind** once per unrecognised symbol during compilation, and the returned expression reads the value each time it is evaluated, so the data can change and the compiled expression can be evaluated again without recompiling.
+
+```tb
+Private Class VariableExpression
+    Implements ITbExpression
+
+    Public Values As Collection
+    Public Name As String
+
+    Private Function Evaluate() As Variant Implements ITbExpression.Evaluate
+        Return Values(Name)
+    End Function
+End Class
+
+Implements ITbCustomBinder
+
+Public Values As New Collection
+
+Private Function Bind(ByVal Symbol As String, ByVal ArgCount As Long) As ITbExpression _
+        Implements ITbCustomBinder.Bind
+    Dim Expr As New VariableExpression
+    Set Expr.Values = Values
+    Expr.Name = Symbol
+    Return Expr
+End Function
+```
+
+Register the binder together with the standard library binder by calling [**AddStdLibraryBinder**](AddStdLibraryBinder) and [**AddCustomBinder**](AddCustomBinder) with the class instance. Assignment is outside the scope of the expression service and has to be handled separately.
+
+_Source threads: 1262807077609406676-2025-07 · confidence: high_
+_Date range: 2025-07-05_
+_Reviewer note: Code is an illustrative sketch (nested class syntax, Collection key lookup) and has not been compiled; verify against the real ITbExpression/ITbCustomBinder signatures before publishing. Original thread noted the standard library binder has no keywords other than operators and exposes roughly the whole VBA-namespace function library._
+
+---
+
+## docs/Reference/Default/VB/MultiFrame/index.md · after-remarks
+
+> [!NOTE]
+> Anchors cannot make two side-by-side controls share a form's width in proportion. Anchoring both controls to the left and right edges makes them overlap as the form grows, because an anchor keeps a fixed distance from an edge and cannot express a percentage width or a position relative to another control. To resize such controls proportionally, put them in the frames of a **MultiFrame**, anchor the **MultiFrame** itself, and anchor each control inside its own frame. Handling the form's **Resize** event is the manual alternative.
+
+_Source threads: 927641929905209405-2025-04 · confidence: high_
+_Date range: 2025-04-28_
+
+---
+
+## docs/Reference/Default/VB/MultiFrame/index.md · after-remarks
+
+> [!NOTE]
+> **MultiFrame** is experimental. Its behavior and members may change in future releases.
+
+_Source threads: 927834661298798602-2025-04 · confidence: high_
+_Date range: 2025-04-28_
+_Reviewer note: From BETA 751 (control added as highly experimental). Existing page already documents the control in detail; only the experimental caveat is new._
+
+---
+
+## docs/IDE/Customising/Keyboard-Shortcuts.md · after-remarks
+
+- <kbd>F4</kbd> hides the panels around the editor and shows them again on a second press, which gives more room on a small screen.
+
+_Source threads: 927641929905209405-2023-08 · confidence: high_
+_Date range: 2023-08-20 to 2023-08-22_
+_Reviewer note: Verify the F4 behaviour and fit the entry to the table or list format of that page; the page had no existing F4 entry. The intellisense manual-mode part of the finding is already covered in IDE-Options.md and was dropped._
+
+---
+
+## docs/IDE/Customising/Keyboard-Shortcuts.md · after-remarks
+
+To bind a key to **Build**, use the command `tbBuild_Start`. Hovering over an item in the IDE shows the name of its command at the bottom right of the IDE window.
+
+```json
+{
+	"tbBuild_Start": ["{KEYDOWN}{CTRL}{SHIFT}K"]
+}
+```
+
+_Source threads: 1567332675134693376 · confidence: medium_
+_Date range: 2026-11-04_
+_Reviewer note: Placed after the group-text table and example in 'The text of a group'. Command name tbBuild_Start is not in the reference page's default list; verify it exists and that the chosen example key is free. Thread date looks odd (2026-11)._
+
+---
+
+## docs/IDE/Starting/Importing-VB6.md · after-remarks
+
+> [!NOTE]
+> VBA classes from an application such as Excel can be brought in by exporting the VBA project to files, for example with the Rubberduck add-in's **Export Active Project** command. Edit each exported class file in a text editor so that its `Creatable` attribute is `True`, then add the files to the project with **Project** > **Add files**.
+
+_Source threads: 927641929905209405-2023-07 · confidence: low_
+_Date range: 2023-07-04_
+_Reviewer note: Low confidence, single user report; verify the attribute name in exported class headers and the menu path. Package Core, no symbol._
+
+---
+
+## docs/Features/index.md · after-remarks
+
+> [!NOTE]
+> twinBASIC runs unchanged on Windows ARM machines through the operating system's x86 emulation. VB6 and VBA also run under emulation, though not every program works flawlessly.
+
+_Source threads: 927641929905209405-2025-04 · confidence: high_
+_Date range: 2025-04-29_
+_Reviewer note: Page placement is a guess (no Core package page exists in the index); reviewer should choose a better home, such as a platform-support section. Package Core, symbol null._
+
+---
+
+## docs/IDE/Code/Diagnostics.md · after-remarks
+
+> [!NOTE]
+> The panel names a file but has no command to show it in the Project Explorer. When a problem comes from a file that is not recognised, such as a class that belongs to a linked package, choose **Jump to issue** and point at the tab of the file that opens. The tooltip of the tab shows the full path of the file. In the dark theme the tooltip text is grey on a pale background and is hard to read.
+>
+> A problem inside an installed package is a defect of that package, and the package author is the one to contact. Editing an installed package locally is possible but not advisable.
+
+_Source threads: 927641929905209405-2026-10 · confidence: high_
+_Date range: 2026-10-13_
+_Reviewer note: From a thread on beta 993/feedback 2026-10. Verify the tab tooltip shows the full path and the dark-theme contrast remark is still true. The maintainer's remark about an AttributeCreatable error being a fixed compiler bug was omitted as build-specific._
+
+---
+
+## docs/IDE/Troubleshooting/Saving.md · after-remarks
+
+> [!NOTE]
+> Source pasted from an AI tool or another editor can fail to save when its text encoding differs from the one twinBASIC expects. twinBASIC source files are best kept as UTF-8 without a byte order mark. When the IDE reports that it cannot save a class after code was pasted in, check the encoding of the pasted text first. A script that preserves the encoding is a safe way to let an external tool edit `.twin` files.
+
+_Source threads: 927641929905209405-2026-10 · confidence: medium_
+_Date range: 2026-10-14_
+_Reviewer note: From a report on beta 1005; the cause is a user's belief, not confirmed by a maintainer, and the failure may be a genuine IDE bug. Verify the UTF-8 without BOM expectation against the source before publishing._
+
+---
+
+## docs/IDE/AddIns/Help.md · after-remarks
+
+> [!NOTE]
+> The help also covers the documentation of the contributed and experimental packages. Both kinds have pages at the same address paths, and only their place in the sidebar differs. A package page that does not state a package version at its top describes the first release of the package, and may be out of date. After a new version of a package is published to TWINSERV, its page is refreshed within about a day, partly by hand. A package moves from the experimental list to the contributed list when its tests pass.
+
+_Source threads: 927641929905209405-2026-10 · confidence: medium_
+_Date range: 2026-10-12 to 2026-10-14_
+_Reviewer note: Based on forum statements, not source. Verify that F1 in the Help add-in actually reaches the contributed and experimental package pages, and the refresh timing. The ListBox finding (more than 32,767 items) was dropped: low confidence, a single unconfirmed user report, and the ListBox page already addresses items beyond index 32768._
+
+---
+
+## docs/IDE/Debugging/Breakpoints-and-Stepping.md · after-remarks
+
+> [!NOTE]
+> Some built-in packages use `On Error Resume Next` internally, for example to probe a property late-bound. With **Break On All Errors** on, such an error stops the program inside the package, although the project's own code is correct. Two settings exist for this reason: **Break On All Errors (this project)**, which most projects need alone, and **Break On All Errors (in packages)**, which also stops on errors handled inside packages. The `[Debuggable(False)]` attribute on a procedure does not stop **Break On All Errors** from breaking in it.
+
+_Source threads: 1520349031325368410 · confidence: high_
+_Date range: 2026-06-27 to 2026-11-01_
+_Reviewer note: Page currently describes a single Break On All Errors item/setting; verify the exact names and Settings keys of the two settings in the IDE and update Project Settings and Debug menu pages accordingly._
+
+---
+
+## docs/IDE/Projects/References-and-Packages.md · after-remarks
+
+> [!NOTE]
+> When a type name exists in more than one enabled library, the library higher in the list wins. Errors that look like a missing reference when common controls are used can come from this. Moving the **twinBASIC - Common Controls Compatibility Package** below the **Microsoft Windows Common Controls** references gives those references the higher priority and clears the errors.
+
+_Source threads: 1430228617060941834 · confidence: medium_
+_Date range: 2025-10-21_
+_Reviewer note: Place at the end of the Priority section. Verify the exact reference names in the Enabled Libraries list._
+
+---
+
+## docs/IDE/Projects/References-and-Packages.md · after-remarks
+
+> [!NOTE]
+> A package of user controls, such as VBCCR, must come before **WinNativeForms** in the list of references. With the packages in the other order, the controls of the package are not resolved correctly. Drag the package above **WinNativeForms** in the **Enabled Libraries** list.
+
+_Source threads: 927834661298798602-2023-01 · confidence: high_
+_Date range: 2023-01-11_
+_Reviewer note: From BETA 228. The exact failure when the order is wrong is not stated in the source thread; verify the symptom wording against the compiler before publishing. Place after the paragraph on priority order (around line 65)._
+
+---
+
+## docs/IDE/Projects/Saving-and-Exporting.md · after-remarks
+
+> [!NOTE]
+> For use with source control, turn on [Export After Save](../Project-Settings#export-after-save) to keep an exported copy of the project in a folder. **Import from folder...** on the start screen turns such a folder back into a project.
+
+> [!NOTE]
+> With some controls on a form, such as CodeJock controls, the export can fail because the folder `Source\Packages\WinNativeCommonCtls\Packages` cannot be deleted, as if it were locked. Deleting that folder by hand before each export works around it.
+
+_Source threads: 1302320508800602153 · confidence: medium_
+_Date range: 2024-11-02 to 2026-08-27_
+_Reviewer note: The locked-folder defect was reported on Beta 983 and may be fixed; the first note may duplicate existing Export After Save text. Verify before publishing._
+
+---
+
+## docs/IDE/Code/Editor.md · after-remarks
+
+> [!NOTE]
+> A `#Region ... #End Region` block only organizes text in the editor. It is not part of the code hierarchy, so it adds no level to a qualified name: a region in `Class1` does not make a name such as `Class1.RegionName`. A region can hold anything, from several classes or modules to part of one procedure.
+
+_Source threads: 1553503418352533584 · confidence: medium_
+_Date range: 2026-10-08_
+_Reviewer note: Place after the code folding paragraph that mentions #Region. Dropped findings: ${Bitness} (already in Project Settings and Build-Configuration), IDE zoom keys (already in IDE/Customising/index.md and Editor.md; the keybind-list limitation is not added), LSet overflow truncation (LuSet page already states truncation; the thread's doubt is not borne out)._
+
+---
+
+## docs/IDE/Code/Editor.md · after-remarks
+
+> [!NOTE]
+> The editor provides the commands `tbEditor_ReindentSelection` and `tbEditor_ReindentDocument`, which re-indent the selected lines or the whole document, and which also appear as menu entries. Re-indenting does not yet work correctly for **Interface** blocks, so check the result in a document that contains one. The **Show Indent Guides** setting of the code editor, and the command `tbEditor_ToggleShowIndentGuides`, control the indent guides.
+
+_Source threads: 927834661298798602-2025-10 · confidence: high_
+_Date range: 2025-10-13 to 2025-10-15_
+_Reviewer note: Placement is a judgement call (no existing page mentions reindent); verify command names and menu location in the IDE. Source: BETA 891 and 894. Check the Editor page for the right section._
+
+---
+
+## docs/IDE/Customising/Themes.md · after-remarks
+
+> [!NOTE]
+> A theme cannot turn off the anti-aliasing (font smoothing) of the IDE's text. The IDE runs on Chromium, which does not support the `-webkit-font-smoothing` CSS property. To get crisp, unsmoothed text, choose a pixel font.
+
+_Source threads: 1220474102515503174-2025-07 · confidence: high_
+_Date range: 2025-07-01_
+_Reviewer note: Same thread also says custom themes are applied only at IDE start-up; the page says a choice applies at once and no restart is needed, so that part was omitted pending verification (it may apply only to edits of theme files)._
+
+---
+
+## docs/IDE/Customising/Themes.md · after-remarks
+
+> [!NOTE]
+> A theme changes only the look of the IDE. Forms and controls in a built application keep the standard Windows look.
+>
+> The properties of a theme are a fixed list. The IDE does not expose general CSS classes or selectors, so that a theme cannot clash with the internals of a later IDE version. A theme file has no variables and cannot merge with another file, other than through `inherits:`.
+>
+> Every icon in the toolbox can be replaced by giving a Base64-encoded image as a CSS data URI in the matching `Toolbox` property.
+
+_Source threads: 1327967285230440528-2025-07 · confidence: high_
+_Date range: 2025-07-01 to 2025-12-25_
+_Reviewer note: Verify the data-URI toolbox icon claim against the shipped Dark.theme Toolbox properties. Findings about reading theme files only at start-up, the lowercase extension, inherits and bracket colouring were dropped because the page already covers them (the page says Reload from disk applies edits, which conflicts with the thread's start-up-only claim). The 'tab colours are not themable' claim was dropped because the page lists Tab properties._
+
+---
+
+## docs/IDE/Customising/index.md · after-remarks
+
+> [!NOTE]
+> The IDE does not detect the language of the operating system. It starts in British English and changes language only when a pack is chosen under **Window → Language**. An IDE that shows another language has had that setting changed, or did not come from the official [GitHub releases page](https://github.com/twinbasic/twinbasic/releases).
+
+_Source threads: 1515735457076482110 · confidence: high_
+_Date range: 2026-06-14_
+_Reviewer note: Inserts after the 'The default is British English...' paragraph. Source says the default is 'English'; the page names it British English._
+
+---
+
+## docs/Reference/Default/VBA/Information/IsMissing.md · after-remarks
+
+> [!NOTE]
+> A missing argument is represented as a **Variant** of type `VT_ERROR` whose error code is `DISP_E_PARAMNOTFOUND` (`&H80020004`, or -2147352572 as a signed 32-bit value). This is a 32-bit value in both 32-bit and 64-bit builds, because the size of the data in a **Variant** depends on its `VT_` type and not on the size of **LongPtr**. Code that inspects the raw data in a 64-bit build must read it as a signed 32-bit value; reading it as 64 bits gives a different number, such as 2147614724.
+
+> [!NOTE]
+> Called on a **ParamArray** argument that received no values, **IsMissing** returns **True**, and the array has a lower bound of 0 and an upper bound of -1. **IsMissing** therefore reports only whether an array was allocated, and cannot be used to tell whether a **ParamArray** was populated. Test the array bounds instead.
+
+_Source threads: 1561736617402704003 · confidence: high_
+_Date range: 2026-10-19 to 2026-10-20_
+_Reviewer note: Second note conflicts with the existing page text, which says IsMissing on a ParamArray always returns False. The thread reports True for an empty ParamArray; verify against current behaviour and reconcile the existing paragraph._
+
+---
+
+## docs/Features/Language/UDTs.md · after-remarks
+
+**Type_Terminate** runs when a variable of the UDT goes out of scope, in the manner of a C++ destructor. It is intended for releasing resources that are not managed by twinBASIC, for example freeing an `HSTRING` with `WindowsFreeString`. Despite the added procedures, these UDTs remain stack-allocated value types.
+
+Several **Type_Assignment** and **Type_Conversion** overloads can be defined side by side and are distinguished by type. A **Type_Conversion** runs only when the UDT is coerced to its return type (for example by **CStr** or **CLng**), not when the UDT is passed **ByVal**.
+
+> [!NOTE]
+> `CType(Of UDT)(pointer)` reinterprets existing memory and does not create a new stack variable, so it does not run **Type_Terminate**. It does run **Type_Conversion**.
+
+> [!NOTE]
+> When a UDT defines both **Type_Assignment** and **Type_Conversion**, assigning one variable to another of the same UDT type may be routed through the **String** conversion in both directions instead of copying the value directly. Using **Debug.Print** on such a UDT can produce a code generation error unless the conversion returns **Variant**.
+
+_Source threads: 1562047647680962590 · confidence: medium_
+_Date range: 2026-10-20 to 2026-10-25_
+_Reviewer note: Second note is low confidence (single user report; maintainer said he would look). Thread also reported ByVal UDTs with String/Object members or arrays unsupported, Debug.Print of an array element crashing, and Type_Terminate not always firing; omitted as unverified and possibly fixed. Verify against current builds. Existing page already has a warning for array-element method calls.
+_
+
+---
+
+## docs/Reference/Default/VBA/Information/TranslateColor.md · after-remarks
+
+> [!NOTE]
+> **TranslateColor** is the twinBASIC equivalent of the Windows `OleTranslateColor` API function. Code that declares and calls `OleTranslateColor` directly can call **TranslateColor** instead.
+
+_Source threads: 927834661298798602-2022-02 · confidence: high_
+_Date range: 2022-02-04_
+_Reviewer note: Source: v0.14.1._
+
+---
+
+## docs/Reference/Core/Public.md · after-remarks
+
+> [!NOTE]
+> In a class module, a **Public** variable may be declared **ReadOnly**, as in `Public ReadOnly Field As Long`. See [**Friend**](Friend) for the same modifier on project-wide variables.
+
+_Source threads: 927834661298798602-2022-02 · confidence: high_
+_Date range: 2022-02-04_
+_Reviewer note: Source: v0.14.1. Verify the ReadOnly semantics against the compiler; the draft deliberately avoids stating them._
+
+---
+
+## docs/Reference/Default/VB/Global/index.md · after-remarks
+
+> [!NOTE]
+> *FileName* may also be a **Byte** array holding the contents of a picture file, so a picture can be loaded from memory without a file on disk. The *Size* and *ColorDepth* arguments are honored in that case too.
+
+_Source threads: 927834661298798602-2022-02 · confidence: high_
+_Date range: 2022-02-09 to 2022-02-19_
+_Reviewer note: Source: v0.14.17 and v0.14.25 to v0.14.27. Insert after the LoadPicture example. The App/Clipboard not-creatable point is already stated on the App page. Syntax block may need updating for the first argument type._
+
+---
+
+## docs/Reference/Default/VBRUN/PropertyBag/index.md · after-remarks
+
+> [!NOTE]
+> **PropertyBag** follows the VB6 implementation. The `PropertyBag_VB5` interface is also supported. When data is serialized to JSON, a **Byte** array is encoded as Base64 text.
+
+_Source threads: 927834661298798602-2022-02 · confidence: high_
+_Date range: 2022-02-18 to 2022-02-22_
+_Reviewer note: Source: v0.14.25, v0.14.30, v0.14.31. The Base64 point came from a JSON serialization change and may not relate to PropertyBag itself; verify against the .twin source._
+
+---
+
+## docs/Reference/Default/VBA/Debug.md · after-remarks
+
+> [!NOTE]
+> An embedded NULL character (`vbNullChar`) in a string is written to the Debug Console as a space, as in the VBx Immediate window.
+
+_Source threads: 927834661298798602-2022-02 · confidence: high_
+_Date range: 2022-02-07 to 2022-02-13_
+_Reviewer note: Source: v0.14.13. Insert after the paragraph on number formatting in Debug.Print. The test-failure dirty-boolean finding (v0.14.8) was not placed; it belongs on a testing page._
+
+---
+
+## docs/Reference/Core/Friend.md · after-remarks
+
+> [!NOTE]
+> Qualified type names are resolved without considering **Private** types.
+
+_Source threads: 927834661298798602-2022-02 · confidence: high_
+_Date range: 2022-02-09 to 2022-02-24_
+_Reviewer note: Source: v0.14.34. The Friend-via-Implements runtime error is already covered in Friend.md (error 97). The private-type resolution sentence may belong on a different page; UDT finalization order independence (v0.14.10, v0.14.32) was not drafted._
+
+---
+
+## docs/IDE/Code/IntelliSense.md · after-remarks
+
+> [!NOTE]
+> If garbage characters appear between procedures in the code editor, they come from CodeLens. Turning off **Show CodeLens Run Procedure** removes them.
+
+_Source threads: 1566787385713500360 · confidence: medium_
+_Date range: 2026-11-02_
+_Reviewer note: Workaround for what looks like a defect (string data read from a wrong pointer); the build is not stated in the thread. Consider a defect-style callout once reproduced._
+
+---
+
+## docs/Reference/Core/ParamArray.md · after-remarks
+
+> [!NOTE]
+> In a **Declare** statement for a **CDecl** function that takes a variable argument list (`va_list` style), the parameter is written `ParamArray ... () As Any`. In this form the keyword **ByRef** or **ByVal** must be given explicitly, unlike a **ParamArray** in an ordinary procedure. See [va_list Arguments](../../Features/Advanced/API-Declarations#va_list-arguments).
+>
+> A **ParamArray** parameter can also be used in a procedure that is forwarded with **Implements ... Via**.
+
+_Source threads: 927834661298798602-2022-01 · confidence: high_
+_Date range: 2022-01-18 to 2022-01-19_
+_Reviewer note: From v0.13.73, v0.13.79 and v0.13.81. Conflicts mildly with the page's statement that ParamArray cannot be combined with ByVal/ByRef; verify the exact syntax (ByRef ParamArray vs ParamArray ByRef) in the compiler. The Implements-Via sentence should be checked too._
+
+---
+
+## docs/Reference/Core/ParamArray.md · after-remarks
+
+> [!NOTE]
+> A **ParamArray** parameter can receive a C `va_list` in a procedure declared with the `__stdcall` calling convention. This applies to callbacks and APIs that take a `va_list`.
+
+_Source threads: 927834661298798602-2025-06 · confidence: medium_
+_Date range: 2025-06-08_
+_Reviewer note: Source: BETA 797. Thread text is terse; verify exact semantics and syntax against the .twin source or a test before publishing._
+
+---
+
+## docs/Reference/Core/WithEvents.md · after-remarks
+
+> [!NOTE]
+> A **WithEvents** field can be declared as an array, such as `Private WithEvents MyGroup() As Class1`. A [**Handles**](Handles) clause can name an element of the array. A custom control uses this to pass on change notifications from a group of child objects.
+
+_Source threads: 927834661298798602-2022-01 · confidence: high_
+_Date range: 2022-01-20 to 2022-01-21_
+_Reviewer note: CONFLICT: the page currently states 'It cannot be an array.' Source is v0.13.84/0.13.87 release notes; verify against current compiler, then replace that bullet and drop this note if confirmed._
+
+---
+
+## docs/Reference/Default/VBA/index.md · after-remarks
+
+> [!NOTE]
+> The functions of the **Conversion**, **Strings**, **Information**, **DateTime** and **Math** modules raise the same run-time errors as VB and VBA. The error text is in English only.
+
+_Source threads: 927834661298798602-2022-01 · confidence: high_
+_Date range: 2022-01-06 to 2022-01-09_
+_Reviewer note: From v0.13.63-0.13.67. Module names should be checked against the page's module list; the 'English only' limit may have changed since 2022._
+
+---
+
+## docs/Features/Compiler-IDE/Package-Server.md · after-remarks
+
+> [!NOTE]
+> The package server rejects a package whose project ID matches a package already published by a different publisher. Once a file has been added to a package, it is locked. A Private package is visible only to its author.
+
+_Source threads: 927834661298798602-2022-01 · confidence: high_
+_Date range: 2022-01-13 to 2022-01-22_
+_Reviewer note: From v0.13.72-0.13.87. Private-package visibility is already stated on the page; the other two points are new. Verify the 'files are locked' meaning against current behaviour._
+
+---
+
+## docs/Reference/Default/VBRUN/Constants/ScaleModeConstants.md · after-remarks
+
+> [!NOTE]
+> **vbPixels** uses raw, unscaled device pixels, as in VB6. Code that needs pixels scaled by the system DPI factor must use **vbScaledPixels** instead.
+
+_Source threads: 927834661298798602-2022-12 · confidence: high_
+_Date range: 2022-12-13_
+_Reviewer note: From BETA 202 (vbPixels became raw pixels; old DPI-scaled behaviour moved to vbScaledPixels). Table already describes both constants; the note adds the migration hint._
+
+---
+
+## docs/Reference/Default/VBA/Interaction/SendKeys.md · after-remarks
+
+> [!NOTE]
+> **SendKeys** is currently implemented through the `WScript.Shell` COM component. It works only where that component is available.
+
+_Source threads: 927834661298798602-2023-04 · confidence: high_
+_Date range: 2023-04-06_
+_Reviewer note: Source BETA 291 (described as a temporary implementation). Verify it still holds in the current runtime._
+
+---
+
+## docs/Reference/Default/VB/Timer/index.md · after-remarks
+
+> [!NOTE]
+> As in a compiled VB6 program, **Timer** events can still fire while a **MsgBox** or **InputBox** is displayed. Only the VB6 IDE suppresses them.
+
+_Source threads: 927834661298798602-2023-06 · confidence: high_
+_Date range: 2023-06-12 to 2023-06-14_
+_Reviewer note: Source BETA 330 introduced suppression and BETA 333 reverted the MsgBox part. InputBox behaviour is not confirmed by the revert; verify, and consider removing InputBox._
+
+---
+
+## docs/Reference/Default/VB/Data/index.md · after-remarks
+
+> [!NOTE]
+> The **Data** control is experimental. **DatabaseTypeConstants.vbUseACE** selects the Access ACE engine instead of JET.
+
+_Source threads: 927834661298798602-2023-06 · confidence: high_
+_Date range: 2023-06-21 to 2023-06-23_
+_Reviewer note: Page already documents DataField/DataSource binding; only the experimental status and vbUseACE are new. Check that vbUseACE is not already documented._
+
+---
+
+## docs/Reference/Default/VBA/Strings/Len.md · after-remarks
+
+> [!NOTE]
+> In twinBASIC, **Len** and **LenB** also accept a type name through the **Of** keyword: `Len(Of `*datatype*`)` and `LenB(Of `*datatype*`)`. This returns the size of the type without needing a variable instance.
+
+```tb
+Private Type PointAPI
+    X As Long
+    Y As Long
+End Type
+
+Dim size As Long = LenB(Of PointAPI)   ' 8
+```
+
+_Source threads: 927834661298798602-2023-07 · confidence: high_
+_Date range: 2023-07-10_
+_Reviewer note: Source build: BETA 351. Verify the example output (8) and that Len(Of ...) syntax matches the compiler; Len.md syntax block may also need the Of form._
+
+---
+
+## docs/Reference/Default/VB/App/index.md · after-remarks
+
+> [!NOTE]
+> **LastBuildPath** is meaningful only inside the IDE. In a compiled executable it does not raise an error; it returns an empty string.
+
+_Source threads: 927834661298798602-2023-08 · confidence: high_
+_Date range: 2023-08-12_
+_Reviewer note: Source build: BETA 373. Existing LastBuildPath entry only mentions the empty case before a first IDE build._
+
+---
+
+## docs/Reference/Default/VB/App/index.md · after-remarks
+
+> [!NOTE]
+> In a built executable the hidden root window has the class name `ThunderRT6Main`, as in the VB6 runtime. Code that finds the program's windows by class name can rely on that name.
+
+_Source threads: 927834661298798602-2024-04 · confidence: high_
+_Date range: 2024-04-25_
+_Reviewer note: From BETA 522 (previously ThunderMain). Finding's symbol was App; confirm the page is the right home._
+
+---
+
+## docs/Reference/Default/VB/App/index.md · after-remarks
+
+> [!NOTE]
+> When **ProductName** is not set in the project settings, the compiled version information falls back to [**Title**](#title), as in VB6. The version information read through the **App** properties in a compiled program is returned in full, not truncated.
+
+_Source threads: 927834661298798602-2025-01 · confidence: high_
+_Date range: 2025-01-14_
+_Reviewer note: Source BETA 647. Target could instead be docs/Reference/Built-In/AppGlobalClassObject/_App/ProductName.md; verify which page is canonical and check the existing ProductName entry for overlap._
+
+---
+
+## docs/Reference/Default/VB/App/index.md · after-remarks
+
+> [!NOTE]
+> Members of the classic VB6 **App** object that twinBASIC does not implement are still present on the object, but carry the `[Unimplemented]` attribute. Code that refers to such a member therefore compiles and is flagged as unimplemented, rather than failing as an undefined name.
+
+_Source threads: 927834661298798602-2025-05 · confidence: high_
+_Date range: 2025-05-12_
+_Reviewer note: From BETA 767. Verify how [Unimplemented] members behave at compile and run time (warning vs error) against the source. Suggested placement: after the introductory paragraph following the first code example._
+
+---
+
+## docs/Reference/Built-In/WinNativeCommonCtls/TreeView/index.md · after-remarks
+
+> [!NOTE]
+> Node keys of **TreeView** (and **ListView**) are compared in binary mode, matching the native Windows controls, so keys that differ only in letter case are distinct.
+
+_Source threads: 927834661298798602-2023-07 · confidence: medium_
+_Date range: 2023-07-11_
+_Reviewer note: Source build: BETA 352. Medium confidence; verify case-sensitivity behaviour against the .twin source._
+
+---
+
+## docs/Reference/Built-In/WinNativeCommonCtls/TreeView/index.md · after-remarks
+
+> [!NOTE]
+> The **MouseDown**, **MouseMove**, **MouseUp**, **KeyDown** and **KeyUp** events pass their arguments **ByRef**, as the Microsoft common controls do. A handler declared with **ByVal** parameters for these events needs updating to match.
+
+_Source threads: 927834661298798602-2024-06 · confidence: high_
+_Date range: 2024-06-21_
+_Reviewer note: From BETA 563 (breaking change). Verify the exact event signatures against the .twin source; the page's Events section only says 'Inherited'. The same note is drafted for ListView._
+
+---
+
+## docs/Reference/Built-In/AppGlobalClassObject/index.md · after-remarks
+
+The package is separate from the [VB](../Default/VB/) package. A project that references **AppGlobalClassObject** alone gets the global `App` object (`App.Path`, `App.EXEName` and the rest) without the forms, controls and other classes of the VB package.
+
+_Source threads: 927834661298798602-2024-04 · confidence: high_
+_Date range: 2024-04-02_
+_Reviewer note: From BETA 489; the package is listed in the UI as 'twinBASIC - App object global class'. Verify the relative link to the VB package._
+
+---
+
+## docs/Reference/Built-In/WinNativeCommonCtls/ListView/index.md · after-remarks
+
+> [!NOTE]
+> Clicking in the empty area of the control, outside the items, keeps the selected item selected and raises [**Click**](#click).
+
+_Source threads: 927834661298798602-2024-04 · confidence: high_
+_Date range: 2024-04-18_
+_Reviewer note: From BETA 514. Could instead go under the Click event entry._
+
+---
+
+## docs/Reference/Built-In/WinNativeCommonCtls/ListView/index.md · after-remarks
+
+> [!NOTE]
+> The **MouseDown**, **MouseMove**, **MouseUp**, **KeyDown** and **KeyUp** events pass their arguments **ByRef**, as the Microsoft common controls do. A handler declared with **ByVal** parameters for these events needs updating to match.
+
+_Source threads: 927834661298798602-2024-06 · confidence: high_
+_Date range: 2024-06-21_
+_Reviewer note: From BETA 563 (breaking change). Verify the exact event signatures against the .twin source._
+
+---
+
+## docs/IDE/Forms/Controls.md · after-remarks
+
+> [!NOTE]
+> In the form designer, resizing a container does not move the controls anchored inside it. Hold <kbd>Shift</kbd> while dragging the resize handles to have the anchored controls reposition. The designer ignores the operating system's text scale factor; it reads the value once when the IDE starts.
+
+_Source threads: 927834661298798602-2024-05 · confidence: high_
+_Date range: 2024-05-07_
+_Reviewer note: Package Core, no symbol. Placement in Controls.md is a guess; verify the best designer page and the Shift behaviour._
+
+---
+
+## docs/Reference/Built-In/WinNativeCommonCtls/ImageList/index.md · after-remarks
+
+> [!NOTE]
+> **ImageList** supports PNG images with transparency, and a **ListView** or **TreeView** can use it as its source of icons. **LoadPicture** can load 32-bit bitmaps.
+
+_Source threads: 927834661298798602-2024-05 · confidence: high_
+_Date range: 2024-05-24 to 2024-05-25_
+_Reviewer note: The page's Mask color section discusses only MaskColor and icons; verify PNG alpha handling relative to UseMaskColor._
+
+---
+
+## docs/Reference/Default/VBA/HiddenModule/vbaCastObj.md · after-remarks
+
+> [!NOTE]
+> A program that declares `__vbaCastObj` as an import from `MSVBVM60.DLL` calls this implementation instead of the DLL.
+
+_Source threads: 927834661298798602-2025-01 · confidence: medium_
+_Date range: 2025-01-15_
+_Reviewer note: Source BETA 648. Verify against .twin source that the redirect applies to Declare statements for the exact name __vbaCastObj._
+
+---
+
+## docs/Reference/Default/VBA/Interaction/RaiseEventByName.md · after-remarks
+
+> [!NOTE]
+> When more than one handler is registered for the event, **RaiseEventByName** invokes every one of them, not only the first.
+
+_Source threads: 927834661298798602-2025-03 · confidence: high_
+_Date range: 2025-03-19_
+_Reviewer note: From BETA 715. Verify against the .twin source; the page's Returns text mentions only the last ByRef value, which is consistent with all handlers running._
+
+---
+
+## docs/Reference/Default/VB/FileListBox/index.md · after-remarks
+
+> [!NOTE]
+> The **FileListBox**, **DirListBox** and **DriveListBox** controls each create a window with their own VB6-compatible class name, rather than a generic list box or combo box class. Code that locates these controls by window class can rely on the VB6 names. The **Frame** control does not take keyboard focus.
+
+_Source threads: 927834661298798602-2025-04 · confidence: high_
+_Date range: 2025-04-14 to 2025-04-15_
+_Reviewer note: From BETA 737 and 740. Verify the exact class names (e.g. ThunderRT6FileListBox) against the runtime before naming them; consider placing the Frame focus sentence on the Frame page. Other findings (MousePointerConstants, PathWithBackslash, UseTabStops, Menu shortcuts) are already documented on their pages and were dropped._
+
+---
+
+## docs/Reference/Default/VB/Screen/index.md · after-remarks
+
+> [!NOTE]
+> **MousePointer** is reset to **vbDefault** at the start of each new debug session, so a cursor left set by a previous run does not carry over.
+
+_Source threads: 927834661298798602-2025-06 · confidence: medium_
+_Date range: 2025-06-26_
+_Reviewer note: Source: BETA 820. Verify the reset value is vbDefault._
+
+---
+
+## docs/Reference/Core/Close.md · after-remarks
+
+> [!NOTE]
+> `Close #0` does nothing and raises no error, as in classic VB.
+
+_Source threads: 927834661298798602-2025-07 · confidence: high_
+_Date range: 2025-07-11 to 2025-07-17_
+_Reviewer note: From BETA 856. The same finding also mentions Attribute VB_Name syntax errors being warnings and Randomize not being allowed as a label; these have no clear page and were not drafted._
+
+---
+
+## docs/Reference/Default/VBA/Information/UBound.md · after-remarks
+
+> [!NOTE]
+> Passing a class type, rather than an array, to **UBound** (or [**LBound**](LBound)) is a compile-time error.
+
+_Source threads: 927834661298798602-2025-07 · confidence: medium_
+_Date range: 2025-07-01_
+_Reviewer note: From BETA 831. Verify against the compiler; the assignment-to-class-element runtime error part of the finding was not drafted as it has no clear target page._
+
+---
+
+## docs/Reference/Default/VBA/Information/UBound.md · after-remarks
+
+> [!NOTE]
+> The compiler checks that the *arrayname* argument of **UBound** is, or could possibly be, an array. An argument of any other type, such as a **Long**, is a compile-time error instead of a run-time one. The same check applies to [**LBound**](LBound).
+
+_Source threads: 927834661298798602-2024-12 · confidence: high_
+_Date range: 2024-12-29_
+_Reviewer note: From BETA 628. Verify the exact error code and whether Variant arguments are exempt. A similar note may also be wanted on LBound.md._
+
+---
+
+## docs/IDE/Projects/Adding-Files.md · after-remarks
+
+> [!NOTE]
+> A folder under `Resources/STRING` that holds no `.json` files is an ordinary folder. Only a folder that contains `.json` files is treated as a string table.
+
+_Source threads: 927834661298798602-2025-12 · confidence: medium_
+_Date range: 2025-12-19_
+_Reviewer note: From BETA 940. Place under the String Table section. Verify exact rule against source._
+
+---
+
+## docs/Features/Compiler-IDE/Compiler-Warnings.md · after-remarks
+
+A parameter whose name begins with an underscore is never reported by this warning, which gives a way to mark a parameter as intentionally unused.
+
+```tb check_build slot=module
+[EnforceWarnings(TB0025)]
+Public Sub Greet(name As String, _title As String)
+    Debug.Print "Hello, " & name
+End Sub
+```
+
+_Source threads: 927834661298798602-2026-01 · confidence: high_
+_Date range: 2026-01-30_
+_Reviewer note: Insert in the TB0025 section after the existing example. From BETA 965. TB0032 finding dropped: already documented._
+
+---
+
+## docs/Reference/Default/VB/Report/index.md · after-remarks
+
+> [!NOTE]
+> The report designer has known limitations. Grouping and group sections are not supported. The `CanGrow` properties are not supported. [**Pages**](#pages) does not yet report the real page count and outputs `999` in all reports, so the `%P` placeholder and `Report.Pages` expressions show `999`. The preview window has no printer icon.
+
+_Source threads: 1262806955248975913-2024-07 · confidence: high_
+_Date range: 2024-07-16_
+_Reviewer note: Source: report designer BETA 574 limitations as of July 2024. The page already says Pages is initialised to 999 and revised down, and that paper size is locked to A4; this contradicts the thread (Pages stays 999). Verify against current builds, and consider reconciling the Pages property text. Printer-icon claim may conflict with the Print button described in the toolbar section._
+
+---
+
+## docs/IDE/Troubleshooting/Missing-Files.md · after-remarks
+
+> [!NOTE]
+> The IDE needs the WebView2 runtime to be allowed to run, not only to be installed. A firewall or antivirus rule that blocks `msedgewebview2` makes the IDE report errors. Removing the block restores normal operation.
+
+_Source threads: 1262806955248975913-2025-09 · confidence: medium_
+_Date range: 2025-09-04 to 2026-08-01_
+_Reviewer note: Insert after the paragraph in the 'The WebView2 runtime' section. Report was anecdotal; verify the exact symptoms._
+
+---
+
+## docs/IDE/Debugging/Running.md · after-remarks
+
+> [!NOTE]
+> When `Form_Load` seems to run before the code in **Sub Main**, a procedure that **Sub Main** calls usually touches a form. Setting a property of a form, or calling one of its methods, loads the form and runs its `Form_Load` at that point. The console line `Executing 'Main'...` confirms that **Sub Main** is the startup object. If the line is missing, check the [Startup Object](../Project-Settings#startup-object) setting, save, restart the compiler and check it again.
+
+_Source threads: 1262806955248975913-2026-02 · confidence: medium_
+_Date range: 2026-02-23_
+_Reviewer note: Place after the paragraph about Sub Main with no Main procedure in 'What Start runs'. The Startup Object bug (Sub Main versus the compiler default Sub Main) was reported once; confirm it is still present before keeping the last sentence. The thread's remark that the #reports channel is for the Reports designer is not documentation content._
+
+---
+
+## docs/Reference/Default/VBA/ErrObject/ReturnHResult.md · example
+
+A common use is an `Implements` method that must report `E_NOTIMPL` without raising a run-time error, such as `IServiceProvider.QueryService` on a site object:
+
+```tb
+Private Function IServiceProvider_QueryService(guidService As UUID, riid As UUID, ppvObject As LongPtr) As Long
+    If IsEqualIID(riid, IID_IOleWindow) Then
+        ' return the form's own IOleWindow
+    Else
+        Err.ReturnHResult = E_NOTIMPL
+    End If
+End Function
+```
+
+Passing such an object to `IObjectWithSite.SetSite` lets a shell `IContextMenu` verb (for example Share) work outside Explorer. The site must answer `IOleWindow` queries; twinBASIC forms already implement `IOleWindow`.
+
+_Source threads: 1384721515542479049 · confidence: medium_
+_Date range: 2026-03-22 to 2026-03-24_
+_Reviewer note: Example is illustrative and uses a hypothetical IsEqualIID helper; verify against WinDevLib signatures. The Share/WinRT DataTransferManager example and the 'UUID does not contain GuidString' regression (reported ~build 975) were not drafted: no suitable page (WinRT package page unmapped, UUID unmapped); consider a separate triage._
+
+---
+
+## docs/Reference/Default/VB/TextBox/index.md · after-remarks
+
+> [!NOTE]
+> In a project imported from VB6, a text box that carries a custom **DataFormat** (for example, a **fmtCustom** format with no **DataSource** or **DataField**) can make a compiled executable crash when the containing form loads, before **Form_Load** runs. The IDE run is unaffected. If this occurs, replace the text box with a new one that has no **DataFormat**. In VB6, **DataFormat** also needs a separate DLL shipped to clients, otherwise form loading fails with obscure errors; twinBASIC keeps an internal replica of **StdDataFormat** so that no such DLL is needed.
+
+_Source threads: 1215336829385973820-2025-01 · confidence: high_
+_Date range: 2025-01-07 to 2025-01-08_
+_Reviewer note: Insert under the DataFormat heading, after the existing 'not currently implemented' note. The crash was a build bug reported fixed in the 2025-01-08 release (missing from release notes); older builds only. Verify the StdDataFormat internal-replica claim against source._
+
+---
+
+## docs/Reference/Default/VBA/HiddenModule/SetThreadGlobalErrorTrap.md · example
+
+The callback receives an [**ErrorContext**](../../VBRUN/ErrorContext/) object. When its **State** is `OnErrorGoto0`, the error was unhandled. The callback reports the error and sets **State** to tell the runtime what to do next; `OnErrorEnd` ends the program and `OnErrorResumeNext` continues with the next statement.
+
+```tb
+Private Sub GlobalErrorTrap(ByVal ErrEx As ErrorContext)
+    If ErrEx.State = OnErrorStatus.OnErrorGoto0 Then
+        Dim frame As ErrorStackFrame
+        Debug.Print "Error " & ErrEx.Number & ": " & ErrEx.Description
+        For Each frame In ErrEx.Callstack
+            Debug.Print frame.ProjectName & "." & frame.ModuleName & "." & frame.ProcedureName
+        Next
+    End If
+    ErrEx.State = OnErrorStatus.OnErrorEnd
+End Sub
+
+Private Sub Main()
+    SetThreadGlobalErrorTrap AddressOf GlobalErrorTrap
+    ' ... application code ...
+End Sub
+```
+
+_Source threads: 1164973320157012129-2023-10 · confidence: high_
+_Date range: 2023-10-20 to 2024-05-13_
+_Reviewer note: Verify the iteration over Callstack (ErrorCallstack / ErrorStackFrame) and the Sub vs Function signature against the .twin source. A 2024-05 thread reports OnErrorRetry re-executing the failing line in the VBA/VB6 vbWatchdog; it is unconfirmed for twinBASIC, so it is not in the draft._
+
+---
+
+## docs/Reference/Default/VBA/HiddenModule/SetThreadGlobalErrorTrap.md · after-remarks
+
+No project reference is needed to use the trap.
+
+The trap is registered per thread, so each thread that needs it must call **SetThreadGlobalErrorTrap** itself. Only unhandled errors reach the callback; errors caught by a local handler do not.
+
+> [!NOTE]
+> While the callback runs, the trap is disabled for that thread. An error raised inside the callback is not trapped. In the IDE it stops at a breakpoint; in a built executable it shows the ordinary unhandled-error message box, with no indication that it came from the trap.
+
+> [!NOTE]
+> Procedure names in [**Callstack**](../../VBRUN/ErrorContext/#callstack) frames are available in built executables only when the project setting *Compilation: Include Procedure Name Symbols In Built Executables* is set to **Yes**.
+
+The trap is useful in ActiveX controls for locating unhandled errors raised inside the twinBASIC ActiveX runtime, for example during shutdown, so that they can be included in bug reports.
+
+> [!NOTE]
+> There are reports that the trap does not take effect inside an ActiveX control, whether registered from an event handler or from a thread created with **CreateThread**. The errors remain unhandled and the shutdown dialog appears. This is a known defect that has not been confirmed as fixed.
+
+_Source threads: 1164973320157012129-2023-10 · confidence: high_
+_Date range: 2023-10-20 to 2026-09-09_
+_Reviewer note: ActiveX non-activation reports span 2024-10 to 2026-09 (medium confidence); check whether it has since been fixed. Check the setting name in the project settings UI._
 
 ---
