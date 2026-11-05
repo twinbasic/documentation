@@ -10,6 +10,8 @@ index:
   - build log
   - launch exe
   - locked by
+  - make exe
+  - compile to exe
 ---
 
 # Build and Clean

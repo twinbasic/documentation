@@ -3,6 +3,8 @@ title: AutoComplete
 parent: AutoCompleteLib Package
 permalink: /tB/Packages/Contributed/AutoCompleteLib/AutoComplete
 has_toc: false
+index:
+  - autocomplete
 ---
 
 # AutoComplete class

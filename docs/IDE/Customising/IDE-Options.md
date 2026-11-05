@@ -5,6 +5,12 @@ grand_parent: IDE
 nav_order: 1
 permalink: /tB/IDE/Customising/IDE-Options
 has_toc: false
+index:
+  - preferences
+  - ide settings
+  - ide preferences
+  - options dialog
+  - tools options
 ---
 
 # IDE Options
@@ -197,6 +203,7 @@ Some IDE settings are saved with the options but have their own commands.
 - The panel layout and the Panel Features switches are described in [Panel layouts](Panel-Layouts).
 
 ### The code editor's menu
+{: index="hide line numbers; hide minimap" }
 
 The **...** icon in the header of the editor panel opens a menu of options. The first eleven items are IDE options, and each is saved at once. A combo item lists its values.
 
@@ -216,7 +223,7 @@ The **...** icon in the header of the editor panel opens a menu of options. The 
 : Shown by default.
 
 **Show Line Numbers**
-: Shown by default.
+: Turns the line numbers on and off; a tick marks them as shown. Shown by default.
 
 **Code Hints Always Visible**
 : The same option as **Always show IDE Inline Code Hints**.
@@ -225,7 +232,7 @@ The **...** icon in the header of the editor panel opens a menu of options. The 
 : The same option as **Sticky scrolling in code editor**.
 
 **Show MiniMap**
-: Shown by default.
+: Turns the minimap on and off. Shown by default.
 
 **Show Advanced Info On Hover**
 : The same option as **Show Advanced Info On Hover** in the dialog. A change restarts the compiler.

@@ -15,20 +15,20 @@ Everything needed to continue is in this file and in `eval/`.
 candidates for further work are under "Next"; the user picks.
 
 **The eval** (`node eval/search_quality.mjs`, ground truth `intent-6`,
-11,505 queries): 96.9% at rank 1, 98.6% in the top 10.
+11,714 queries): 97.4% at rank 1, 99.1% in the top 10.
 
 | category | hit@1 | n | what it types |
 |---|---|---|---|
 | bare names | 99.1% | 2,915 | `PaintPicture`, judged by reader intent (tiers) |
 | qualified names | 99.2% | 5,159 | `Printer.Fonts` |
 | name and kind | 92.0% | 1,815 | `MaxHeight property` |
-| prose | 89.8% | 108 | hand-picked (`late binding`, `immediate window`, `ByVal`) |
+| prose | 97.2% | 318 | hand-picked (`late binding`, `immediate window`, `ByVal`) |
 | page titles | 95.1% | 223 | `Return Syntax` |
-| page plus section | 96.9% | 908 | `DTPicker Properties` |
-| labels | 90.2% | 377 | `Copy Path`, an IDE label typed whole ([Term entries](#term-entries)) |
+| page plus section | 96.8% | 908 | `DTPicker Properties` |
+| labels | 89.6% | 376 | `Copy Path`, an IDE label typed whole ([Term entries](#term-entries)) |
 
 Six bare names are out of tier order, and every prose query's `behind` page is
-within the top 3 (22 of 22). Compare categories, not totals, across ground
+within the top 3 (42 of 42). Compare categories, not totals, across ground
 truths: the name-and-kind set lowers the overall hit@1. The "Known misses"
 below were counted on `intent-5` and are older than these figures.
 
@@ -739,7 +739,7 @@ a changed ranking. Each set below names the label it counts under.
   the replica, so the eval and `probes/kinds.mjs` build the set from the list
   the replica searches with.
 - **Prose** (`intent-2` for its two expectation changes): the hand-picked
-  queries in `eval/search_prose_queries.json` (108), each with a
+  queries in `eval/search_prose_queries.json` (318), each with a
   maintainer-judged expected page, matched by path only. The expectations for
   `64-bit compilation`, `Fusion`, `symbol index` and `array bounds checks` are
   right, so a miss on them is a ranking problem. A query may name
@@ -1271,8 +1271,9 @@ to 22) are a tie between a heading naming six members and 20 controls' single
 `OLEStartDrag` (719.1 against 716.9); new entries move the average title
 length and the tie flips, and any change to the entry count can do it again.
 `For statement` 9 to 10, `#Else directive` 2 to 3 and `WebView2 control` 4 to 5 are the same
-kind of shift. `call stack`, `watches` and `DPI awareness` lost a place to a label
-and are the hand marks' to fix (held, owner).
+kind of shift. `watches` and `DPI awareness` lost a place to a label and have a hand
+mark each. `call stack` lost two and has none (owner): `Inspecting#call-stack` is third,
+behind the Debugging page's **CALL STACK** row and a Breakpoints term.
 
 **Rejected**, so that nobody tries them again:
 

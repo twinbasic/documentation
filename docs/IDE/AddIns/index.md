@@ -2,6 +2,11 @@
 title: Add Ins
 parent: IDE
 permalink: /tB/IDE/AddIns/
+index:
+  - install an addin
+  - install add-in
+  - install an add-in
+  - ide plugin
 ---
 
 # Add Ins

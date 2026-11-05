@@ -6,7 +6,11 @@ nav_order: 5
 permalink: /tB/IDE/Code/Diagnostics
 redirect_from:
   - /tB/IDE/Project/Diagnostics
-index: diagnostics window
+index:
+  - diagnostics window
+  - error list
+  - errors window
+  - compile errors
 ---
 
 # Diagnostics
@@ -42,6 +46,7 @@ Under a header, each row is one problem. A row shows an icon for its kind, the c
 ![The DIAGNOSTICS panel with its counts of 1 error, 4 warnings, 1 hint and 1 information message, and with Hints and Information switched on. The rows are grouped under three files, Helpers.twin, Inventory.twin and MainModule.twin. Each row shows its icon, its code such as TB0012 or TB5079, its message and its position. The error's row, TB5079 Unrecognized symbol 'Undefined1', is selected, with Jump to issue and Help under it.](Images/Diagnostics_Rows.png){:width="560" height="360"}
 
 ### Go to a problem
+{: index="go to error; jump to error" }
 
 Click a row to select it. Two buttons appear under the row:
 

@@ -5,6 +5,12 @@ grand_parent: IDE
 nav_order: 4
 permalink: /tB/IDE/Customising/Keyboard-Shortcuts
 has_toc: false
+index:
+  - rebind a key
+  - key bindings
+  - keybindings
+  - change keyboard shortcut
+  - remap a key
 ---
 
 # Keyboard shortcuts

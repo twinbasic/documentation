@@ -11,6 +11,7 @@ index:
   - file view
   - object view
   - toggle file view
+  - project window
 ---
 
 # Project Explorer

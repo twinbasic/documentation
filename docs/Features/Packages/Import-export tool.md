@@ -199,7 +199,7 @@ if errorlevel 6 (
 ```
 
 ## Keeping a project in Git
-{: #keeping-a-project-in-git }
+{: #keeping-a-project-in-git index_also="source control; version control" }
 
 The usual reason to export is version control. The exported folder is plain text that Git can
 diff and merge, where a `.twinproj` is one binary file. The steps below use the tB executable
@@ -257,7 +257,7 @@ The steps, in order:
    exits `0`, so the second line is what catches it.
 
 ## Keeping a project in Git from the IDE
-{: #keeping-a-project-in-git-from-the-ide }
+{: #keeping-a-project-in-git-from-the-ide index="source control; version control" }
 
 The IDE can export the project by itself every time it is saved, into a folder that Git
 tracks, so the repository is ready to commit after every save. Two project settings set this

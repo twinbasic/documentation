@@ -5,6 +5,8 @@ parent: IDE
 permalink: /tB/IDE/Project-Settings
 redirect_from:
   - /tB/IDE/Project/Settings
+index:
+  - project properties
 ---
 
 # Project Settings
@@ -50,7 +52,7 @@ A GUID that identifies the project. The **↻** button beside it, with the toolt
 When set to **Yes**, the type library that the build produces takes the [Project ID](#project-id) as its ID. When set to **No**, the build generates a unique ID for it. It is **No** by default. In the `Settings` file it is `project.useProjectIdForTypeLibraryId`.
 
 ## Library References
-{: index="add reference" }
+{: index_also="add [a] reference" }
 
 The type libraries and packages that the compiler uses for this project. In the `Settings` file it is `project.references`.
 
@@ -143,21 +145,24 @@ The full path of the host EXE that the compiler creates for [Fusion](../../Featu
 ## Startup
 
 ### Startup Object
+{: index="startup form; start up form" }
 
 The form that the program shows when it starts, or **Sub Main**. When it is not set, the list shows **Default: Sub Main** for an EXE and **Default: (none)** for a DLL. [What Start runs](Debugging/Running#what-start-runs) says what **Start** does then. For a Standard EXE the list does not offer **(none)**, and for a Package TWINPACK or a TypeLibrary TLB it offers nothing else. In the `Settings` file it is `project.startupObject`.
 
 ### Icon Form
+{: index="application icon; exe icon" }
 
-The form whose icon becomes the program's icon. The list holds the project's forms, and the default is **(none)**. The build copies the form's icon into the file's icon resources, as entry `#1` of the `RT_GROUP_ICON` group, which is the icon Windows usually shows for the program. In the `Settings` file it is `project.iconForm`.
+The form whose icon becomes the program's icon. The list holds the project's forms, and the default is **(none)**. The build copies the form's icon into the file's icon resources, as entry `#1` of the `RT_GROUP_ICON` group, which is the icon Windows usually shows for the program. When no form is chosen, or the project has no forms, the program takes the first file, in alphabetical order, of the `ICON` folder under the project's Resources folder. When both are present, the form's icon takes precedence, as entry `#1`. See [How do I set my own icon for my program?](../../FAQ#app-icon). In the `Settings` file it is `project.iconForm`.
 
 ### Force Dpi Awareness At Startup
-{: #dpi-awareness index="high DPI" }
+{: #dpi-awareness index="high DPI; DPI awareness" }
 
 How the program sets its DPI awareness as it starts: **NONE**, **SYSTEM_DPI_AWARE** or **PER_MONITOR_DPI_AWARE**. The default is **PER_MONITOR_DPI_AWARE**. The last two make the program call the `SetProcessDpiAwareness` API, where Windows has it. **NONE** turns DPI awareness off; it is also the choice for a program that sets its DPI awareness itself, in a manifest. In the `Settings` file it is `project.forceDpiAwarenessAtStartup`.
 
 ## Compiler
 
 ### Conditional Compilation Args
+{: index="conditional compilation arguments" }
 
 Conditional compilation constants for the whole project, as `name=value` pairs separated by colons: `foo=42:bar=-42`. Each value must be between -32768 and 32767. These are the project-wide constants that [**#If**](../Core/Topic-Preprocessor) can test; **#Const** defines a constant for its own module only. A new project does not set it. In the `Settings` file it is `project.conditionalCompilationArguments`.
 

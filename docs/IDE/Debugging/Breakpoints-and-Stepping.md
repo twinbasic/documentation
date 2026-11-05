@@ -19,6 +19,7 @@ A breakpoint pauses the program on a line you choose. Once it is paused, the ste
 ## Breakpoints
 
 ### Set and clear a breakpoint
+{: index="add a breakpoint; remove a breakpoint; set a breakpoint; clear breakpoints" }
 
 Click in the margin of the code editor beside a line, or put the caret in the line and press <kbd>F9</kbd> (**Debug → Toggle Breakpoint**). Either one sets the breakpoint at once, or clears it if the line has one. Nothing is asked, and no line is selected first. A breakpoint belongs to a code editor: a form designer has no margin, and <kbd>F9</kbd> does nothing there.
 
@@ -38,6 +39,7 @@ To clear every breakpoint of the project, choose **Debug → Clear All Breakpoin
 On the line that has the arrow, a click without dragging toggles a breakpoint too. A press that lasts longer than a fifth of a second starts a drag of the arrow instead; see [Set Next Statement](#set-next-statement).
 
 ### What a breakpoint does
+{: index="run to cursor" }
 
 A breakpoint is a line number and nothing else. There are no conditions, no hit counts, no log points and no disabled breakpoints, and there is no list of breakpoints: the margin of an open file is the only place that shows them. There is also no Run to Cursor command. <kbd>F6</kbd> runs the procedure at the caret, which [Running](Running#run-or-preview) describes.
 

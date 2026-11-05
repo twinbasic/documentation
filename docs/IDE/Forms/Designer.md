@@ -204,6 +204,7 @@ The lock is stored under the control's name, so it follows a rename, and it cove
 > Locking or unlocking controls does not mark the form changed. If you lock a control and close the tab, the IDE asks no question, and the lock is gone when you open the form again. The lock is saved only with the next real change. After you lock a control, make another change to the form, such as moving a control, before you save.
 
 ## Tab order
+{: index="tab index" }
 
 Holding <kbd>Ctrl</kbd> while the designer has the focus shows a yellow circle at the top right of every control whose **TabStop** is **True**, holding the control's **TabIndex**. A control that takes no focus, such as a **Label** or a **Frame**, has no circle, and neither has a control on a CustomControls form. The circles disappear when you release the key. <kbd>Ctrl</kbd> is also the key that adds a control to the selection, so a <kbd>Ctrl</kbd>+click makes them flash.
 

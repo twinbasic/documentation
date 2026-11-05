@@ -55,6 +55,7 @@ Opens `https://ko-fi.com/twinbasic` in your default browser. The Ko-fi icon in t
 Switches TRACE mode and restarts the compiler. The item reads **Compiler services TRACE mode: Enabled**, with a tick, while the mode is on. It is a diagnostic for the developers of twinBASIC, it is not saved, and the IDE starts with it off. A native exception in your program also turns it on. The command has no key. See [TRACE mode](../../Troubleshooting/Diagnostic-Tools#trace-mode).
 
 ## Updating the IDE
+{: index="check for updates; update the ide; update twinbasic; upgrade; latest version; download the ide" }
 
 The IDE does not update itself, and no menu item, notice or badge offers a new build. The IDE Option [**Check referenced packages are up-to-date**](../../Customising/IDE-Options#project-explorer-tabs-and-start-up) checks a project's packages, not the IDE.
 

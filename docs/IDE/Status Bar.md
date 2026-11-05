@@ -6,6 +6,9 @@ nav_order: 14
 permalink: /tB/IDE/Reference/StatusBar
 redirect_from:
   - /tB/IDE/Project/StatusBar
+index:
+  - hide status bar
+  - turn off status bar
 ---
 
 # Status Bar

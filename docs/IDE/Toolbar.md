@@ -103,6 +103,7 @@ These buttons act on the form designer. The [Format menu](Menu/Format) holds mos
 : Opens the window of the [Global Search](../AddIns/GlobalSearch) add-in, which adds this button. Other add-ins can add buttons of their own here.
 
 ## Customising the toolbar
+{: index="customize toolbar; customise toolbar; add toolbar button" }
 
 The toolbar's buttons cannot be customised: no command or option adds, removes or moves a button. Only an add-in can add one, with [**AddButton**](../../Packages/tbIDE/Toolbar#addbutton).
 

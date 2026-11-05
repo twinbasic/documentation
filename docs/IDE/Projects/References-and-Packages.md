@@ -28,6 +28,7 @@ The lists are the **Library References** section of [Project Settings](../Projec
 - A reference that cannot be loaded opens it by itself, about a second after the project has loaded. See [A reference that fails](#a-reference-that-fails).
 
 ## The three tabs
+{: index="add [a] reference" }
 
 Three tabs above the list choose which list shows. The tab chosen is underlined in blue, and each tab has a tooltip that says what it lists.
 
@@ -42,6 +43,7 @@ Each list has more columns than fit in the dialog: scroll it sideways to see the
 To use a library, tick it in one of the two lists of available libraries. To stop using one, untick it in any list. **Apply Changes** puts the change into effect.
 
 ## The Enabled Libraries list
+{: index="remove a reference" }
 
 ![The Project Settings dialog as Project, References opens it, with the filter box holding project.references and only Library References in the rail. The Enabled Libraries tab lists four ticked libraries in order of priority, each with a drag handle, with columns for the library symbol and the version.](../Images/ProjectSettings_LibraryReferences.png){:width="1202" height="838"}
 
@@ -81,6 +83,7 @@ A reference that the compiler cannot load shows **ERROR unable to load this refe
 Tick a library to add it to the project. The reference is added to `project.references` at once, with `autoCtlExt` set to true, and **Apply Changes** becomes available.
 
 ## Available Packages
+{: index="add [a] package; install a package" }
 
 The tab lists the public packages of TWINSERV. After you sign in, it lists your private packages too. A yellow button under the list, at the right, **↪ LOGIN to see any PRIVATE packages you've made**, opens the sign-in form, with tabs to log in and to register, and the box **Remember password on this device**. After you sign in, choose the tab again to refresh the list.
 

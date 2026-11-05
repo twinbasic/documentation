@@ -165,6 +165,7 @@ If **Find What** is not in the `/pattern/flags` form, a box says **Invalid forma
 > The **Invalid RegExp:** box leaves out the reason. It shows the words and nothing after them.
 
 ## Search the whole project
+{: index="find in files; search all files; search in project; replace in project; replace in all files" }
 
 **Find In Project** has no dialog and no list of results of its own. It opens the **Find / Replace** panel with **Current Project** ticked, and you go through the matches with **Find Next**.
 

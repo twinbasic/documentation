@@ -17,6 +17,7 @@ index:
 A build writes one file, and the project's *Build Type* decides what kind. This page describes where the file goes and what it is called, how to open its folder, how the version numbers change, and the other file a build can write.
 
 ## The build output path
+{: index="where is the exe; exe location; output folder" }
 
 The [*Build Output Path*](../Project-Settings#build-output-path) setting is the full path of the file. It can use variables, and [Project Settings](../Project-Settings#build-output-path) lists them. A new project sets it to
 

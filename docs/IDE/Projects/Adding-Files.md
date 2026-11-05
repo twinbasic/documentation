@@ -18,6 +18,7 @@ index:
 The **Add** menu makes new files and folders in the project, imports files from disk, and adds the three kinds of resource that the IDE has templates for. This page describes the menu, how a new file is named and placed, what each template holds, how **Import** works, and how resources are managed.
 
 ## The Add menu
+{: index="add [a] file" }
 
 The **Add** menu opens in three ways, and the three lists are the same.
 
@@ -96,6 +97,7 @@ A `.bas` module holds `Attribute VB_Name = "MyModule"` and a comment line. A `.c
 The `.twin` files are written as UTF-8 with Windows line endings. The `.bas` and `.cls` files are written in the ANSI code page of Windows, and so can hold only the characters of that code page. **Add Other File** creates an empty file.
 
 ## Import
+{: index="add existing file; import bas file" }
 
 **Import...** opens the Windows **Open** dialog. It accepts several files at once. What the IDE does with each file depends on its extension.
 

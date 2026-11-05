@@ -6,7 +6,11 @@ nav_order: 4
 permalink: /tB/IDE/Debugging/Debug-Console
 redirect_from:
   - /tB/IDE/Project/DebugConsole
-index: immediate window
+index:
+  - immediate window
+  - output window
+index_also:
+  - evaluate [an] expression
 ---
 
 # Debug Console

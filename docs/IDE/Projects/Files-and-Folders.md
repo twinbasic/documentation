@@ -146,6 +146,7 @@ The first lines of the tab are a comment that gives the `URI:` of the file and t
 **View As Markdown Preview** is available for a `.md` file. It opens the formatted text in a read-only tab titled `MD: 'Notes.md':`, which is a copy as it was when you chose the command.
 
 ## Delete
+{: index="remove [a] file; remove file from project" }
 
 Select the rows, and press <kbd>Delete</kbd> or choose **Delete Permanently**. The IDE removes the rows from the project. Nothing goes to the Recycle Bin, because the files never existed on disk. The tabs open on a deleted file, or on a file in a deleted folder, are closed.
 

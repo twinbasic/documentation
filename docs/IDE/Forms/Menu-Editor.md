@@ -19,6 +19,7 @@ The bar is on a Windows form, an MDI form and a user control. A CustomControls f
 ![The Form Menu bar above a form: the menu File, then a text box holding &Edit for a new menu, then the + menu button.](Images/MenuEditor_Bar.png){:width="381" height="80"}
 
 ## Add a menu
+{: index="create a menu" }
 
 1. Click **+ menu** in the bar. A text box opens in the bar, holding the name of the new control, such as `Menu1`, with all of it selected.
 2. Type the caption. <kbd>Enter</kbd> commits it, and <kbd>Esc</kbd> restores the old text. Clicking elsewhere commits it.

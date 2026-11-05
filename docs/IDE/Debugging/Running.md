@@ -15,6 +15,7 @@ index:
 Start runs the project inside the compiler, Break pauses it, and End stops it. This page describes what Start runs, the second way to run code (<kbd>F6</kbd>), the boxes the status bar shows for programs your program starts, and everything that ends a run.
 
 ## Start, Break and End
+{: index="run the program; run project; run my program; start debugging; stop the program; stop debugging; pause [the] program" }
 
 Three commands control a run. Each is in the **Run** menu and has a button in the [toolbar](../Reference/Toolbar).
 
@@ -85,6 +86,7 @@ Start shows no dialog for a compile error, and it opens no panel. The [DIAGNOSTI
 > The panel for a syntax error in a procedure that `Main` calls gives the description `COMPILATION (CODEGEN) ERROR AT LINE #42.  PLEASE REPORT THIS ERROR TO https://git.io/JMh6S`, and the line it names is the line of the call, not the line of the error. A compile error in your code is not a defect to report. Read the real error in the DIAGNOSTICS panel and fix it.
 
 ## Run Or Preview
+{: index="run one procedure; run a sub; run a function" index_also="run a procedure" }
 
 <kbd>F6</kbd> runs one procedure without starting the whole project, or previews a form. It has no menu item and no toolbar button. It works when a code editor or a form designer is active, and what it does depends on where the caret is.
 

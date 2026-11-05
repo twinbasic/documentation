@@ -6,6 +6,13 @@ nav_order: 2
 permalink: /tB/IDE/Customising/Themes
 has_toc: false
 index_also: dark mode
+index:
+  - change colours
+  - change colors
+  - syntax highlighting
+  - syntax colors
+  - editor colors
+  - code colours
 ---
 
 # Themes

@@ -12,6 +12,8 @@ index:
   - colour picker
   - EVENTS tab
   - twips
+  - properties window
+  - properties panel
 ---
 
 # Properties
