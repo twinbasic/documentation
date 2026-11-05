@@ -1516,12 +1516,14 @@ describe("kind-word guard: online client, eval replica", () => {
     const replica = new Function(`${fn(evalSrc, "eval/site_search.mjs")}\nreturn namesTheThing;`)();
     const cases = [
       ["MaxHeight", { maxheight: { content: {} }, properti: { content: {} } }, false],
-      ["MaxHeight", { maxheight: { title: {} } }, true],
+      ["MaxHeight", { maxheight: { title: {} } }, false],
+      ["MaxHeight", { maxheight: { title: {}, page: {} } }, true],
       ["MaxHeight", { maxheight_: { primary: {} } }, true],
       ["Continue", { continu_: { exact: {} } }, true],
-      ["Date$", { date: { title: {} } }, true],
+      ["Date$", { date: { title: {}, page: {} } }, true],
       ["Do...Loop", { do: { title: {} }, loop: { content: {} } }, false],
-      ["Do...Loop", { do: { title: {} }, loop: { title: {} } }, true],
+      ["Do...Loop", { do: { title: {} }, loop: { title: {} } }, false],
+      ["Do...Loop", { do: { title: {}, page: {} }, loop: { title: {}, page: {} } }, true],
     ];
     for (const [name, metadata, expected] of cases) {
       const result = { ref: "0", score: 1, matchData: { metadata } };
@@ -1575,6 +1577,22 @@ describe("kind-word guard: online client, eval replica", () => {
     // The Mid section holds both words and is titled Mid, so the word stays
     // required, and the statement page, which never says "function", stays out.
     assert.deepEqual(urls("Mid function"), ["/Strings/Mid#mid"]);
+  });
+
+  test("a section merely headed with the name, saying the kind word, does not cancel the fallback", () => {
+    // biome-ignore format: a table, one entry per line
+    const docs = {
+      0: { doc: "ComboBox", title: "AddItem", content: "Adds an item to the list.", names: "AddItem", relUrl: "/VB/ComboBox#additem" },
+      1: { doc: "DiagnosticResult", title: "AddItem", content: "This method adds a message to the result.", relUrl: "/Contrib/DiagnosticResult#additem" },
+      2: { doc: "Report", title: "Coordinate units", content: "The AddItem method is not used here.", relUrl: "/Report#units" },
+    };
+    for (let k = 3; k < 200; k++)
+      docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
+    const urls = (q) => search({ lunr, index: buildIndex(lunr, docs), docs }, q).map((r) => docs[r.ref].relUrl);
+    // Only the member of the contributed package says "method" and is headed
+    // AddItem, but its page is not AddItem's: the fallback still runs and the
+    // entry that names AddItem in `names` comes out first.
+    assert.equal(urls("AddItem method")[0], "/VB/ComboBox#additem");
   });
 });
 

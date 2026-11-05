@@ -239,7 +239,9 @@ section that only mentioned it.** Four changes, measured in
   the ordinary query.
 - *Kind words optional, when nothing else names the thing.* For a query
   naming one thing, if no entry the all-words pass found has that name in
-  its title or as its exact name (`namesTheThing()`), the pass runs again
+  its title (on a page titled with it too, so that a member page of a
+  contributed package, headed with the name, does not count) or as its
+  exact name (`namesTheThing()`), the pass runs again
   with the kind words optional: they still score, but aren't required. A
   member's section rarely says "property" or "event", so `MaxHeight
   property` found only pages mentioning both words, and never the

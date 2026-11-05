@@ -21,7 +21,7 @@ candidates for further work are under "Next"; the user picks.
 |---|---|---|---|
 | bare names | 99.1% | 2,915 | `PaintPicture`, judged by reader intent (tiers) |
 | qualified names | 99.2% | 5,159 | `Printer.Fonts` |
-| name and kind | 89.1% | 1,815 | `MaxHeight property` |
+| name and kind | 92.0% | 1,815 | `MaxHeight property` |
 | prose | 89.8% | 108 | hand-picked (`late binding`, `immediate window`, `ByVal`) |
 | page titles | 95.1% | 223 | `Return Syntax` |
 | page plus section | 96.9% | 908 | `DTPicker Properties` |
@@ -952,7 +952,8 @@ requires the kind word and a member's section rarely says "property",
 "method" or "event" (`Continue`'s page never says "statement").
 
 `namesTheThing()` tells whether a result matched the name: in `exact` or
-`primary`, or every word of it in `title`. For a query naming one thing in
+`primary`, or every word of it in `title` of an entry whose `page` matched too
+(the thing's own page). For a query naming one thing in
 two or more words, if no entry the all-words pass found matched the name, the
 pass runs again with the kind words not required (they still score).
 
@@ -961,6 +962,17 @@ out: `Mid function` finds a section of the Mid page, titled `Mid`; with the
 word optional, the `Mid =` statement page, which never says "function", comes
 in on its exact name. The exact-name test alone fell back there, since a
 section carries no names, so the title counts as well.
+
+**A section merely headed with the name does not name the thing.** A contributed
+package's member page (`TBMANLIB_Diagnostic`'s `AddItem`, `cDialog`'s `ReadOnly`) is
+headed with the name, says the kind word, and has no `names` join, so it passed
+the title test, was found by the kind-required pass and cancelled the fallback:
+`AddItem method` put it first and never reached ComboBox's `AddItem`, which does
+not say "method". 42 queries that were first in an older baseline lost rank 1 so.
+The title now counts only when the page is titled with the name too (`Mid`'s
+section is on the Mid page; the member page is on `DiagnosticResult`'s). Measured
+on one index: name and kind 89.1% to 92.0% (1,669 to 1,724 of 1,874 in the
+probe), 65 queries better and none worse; the eval 63 better, 0 worse.
 
 **Measured, and rejected** (name-and-kind hit@1 over every symbol written as
 its name and kind):

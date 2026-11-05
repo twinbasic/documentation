@@ -289,7 +289,11 @@ function accumulateSetUnions() {
 }
 
 // Patched: whether a result matched the name a query names (see
-// doSearch()): in `exact` or `primary`, or every word of it in `title`.
+// doSearch()): in `exact` or `primary`, or every word of it in `title` of an
+// entry whose page is titled with it too (the thing's own page). A section
+// merely headed with the name, as a contributed package's member page is, does
+// not name the thing a reader means: `AddItem method` is ComboBox's, and an
+// `AddItem` section that says "method" must not cancel the fallback that finds it.
 function namesTheThing(result, name) {
   var metadata = result.matchData.metadata;
   var terms = Object.keys(metadata);
@@ -300,7 +304,7 @@ function namesTheThing(result, name) {
     return lunr.stemmer(lunr.trimmer(token)).toString();
   }).filter(Boolean);
   return keys.length > 0 && keys.every(function(key) {
-    return metadata[key] && metadata[key].title;
+    return metadata[key] && metadata[key].title && metadata[key].page;
   });
 }
 
