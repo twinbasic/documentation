@@ -134,6 +134,15 @@ bundles**, a replay with `--recheck` of those with a bundle: option 2 on demand.
 picture's page of verdicts when the session has one, else a plain page: the baseline's picture,
 the file, its SVG, why it has none, and Retake and Replay, previous and next in this page's order.
 
+**The images no shot takes** (owner, 2026-11-06) are on the page too, in a group *No automated
+capture*, before the collapsed *With an SVG*: every image under docs (`imagesUnder`) that is not a
+shot's PNG, SVG or light picture. They are there to look at: a card has no selection, and the plain
+page has no run, no chip of a build, no size, and shows the file at its own size (a shot is 2x and
+is shown at half), the baseline's copy only when it differs. Left out (`NOT_LISTED`, owner): what a
+script makes, a diagram's SVG beside its DOT, the build's Gantt chart and a video's poster frame,
+and the favicon. The file routes and the plain page take any image type; a review's actions still
+take only a PNG or an SVG (`isDocsPath`).
+
 ### Detail
 
 One picture: previous and next (in the order of the overview, within the filter it was opened

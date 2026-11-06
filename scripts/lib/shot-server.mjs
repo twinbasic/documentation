@@ -21,9 +21,10 @@
 // git's status), while no run runs and the baseline is HEAD; it closes the session, and the
 // server then serves the next one, whose baseline is the new commit.
 
-import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import path from "node:path";
+import { isOutputTree } from "../../lib/markdown-files.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { createSseChannel } from "../../lib/sse.mjs";
 import { readBundle } from "../svgshot/bundle.mjs";
@@ -61,7 +62,17 @@ import { kindOf, runOf, startRun } from "./shot-runs.mjs";
 import { commandOf, optionOf, parseSession, readEvents, runPaths, sessionPaths } from "./shot-session.mjs";
 import { readReviewed, readStrength, readVerdicts } from "./shot-stage.mjs";
 
-const TYPES = { ".png": "image/png", ".svg": "image/svg+xml" };
+const TYPES = {
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".bmp": "image/bmp",
+  ".ico": "image/x-icon",
+};
+const isImage = (name) => Object.hasOwn(TYPES, path.extname(name).toLowerCase());
 
 // How long the table of shots (shoot_docs.mjs --list) is used before it is read again: it changes
 // only with the tool's code.
@@ -89,10 +100,26 @@ function closedSessionPictures(root) {
   return reviewPictures(runs).pictures;
 }
 
-// A picture's or an SVG's path under docs/, as a URL gives it: forward slashes, no empty or
-// parent segment.
-const isDocsPath = (p) =>
-  /^[^\\]+\.(png|svg)$/i.test(p) && !p.startsWith("/") && !p.split("/").some((s) => s === "" || s === "..");
+// A path under docs/ as a URL gives it: forward slashes, no empty or parent segment.
+const isDocsFile = (p) => !p.includes("\\") && !p.startsWith("/") && !p.split("/").some((s) => s === "" || s === "..");
+// A picture's or an SVG's path, which a review can act on, and any image's, which it can only show.
+const isDocsPath = (p) => /\.(png|svg)$/i.test(p) && isDocsFile(p);
+const isDocsImage = (p) => isImage(p) && isDocsFile(p);
+
+// Every image under `root`, the build's output trees left out, as its path under it.
+function imagesUnder(root) {
+  const found = [];
+  const walk = (dir, rel) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (!rel && isOutputTree(e.name)) continue;
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(path.join(dir, e.name), r);
+      else if (e.isFile() && isImage(e.name)) found.push(r);
+    }
+  };
+  walk(root, "");
+  return found;
+}
 
 const readIf = (file) => (existsSync(file) && statSync(file).isFile() ? readFileSync(file) : null);
 
@@ -309,7 +336,7 @@ export function createReviewServer({
       });
   }
   async function everyPicture() {
-    return allPictures({ shots: await table(), exists, entry, verdicts: verdictsOf() });
+    return allPictures({ shots: await table(), exists, entry, verdicts: verdictsOf(), images: imagesUnder(docsRoot) });
   }
   async function allPage() {
     let all = null;
@@ -330,8 +357,9 @@ export function createReviewServer({
     });
   }
   // The page of a picture no run of this session reported, from the page of every picture: the
-  // baseline's picture against the file, its SVG, why it has none, and its runs. Null when the
-  // table does not name it.
+  // baseline's picture against the file, its SVG, why it has none, and its runs. An image no shot
+  // takes is shown at its own size, not at half as a 2x shot is, and the baseline's copy only when
+  // it differs. Null when the page of every picture does not list it.
   async function plainPage(out) {
     let all;
     try {
@@ -342,15 +370,17 @@ export function createReviewServer({
     const place = neighbours(all.pictures, out);
     if (place.index < 0) return null;
     const p = all.pictures[place.index];
-    const file = (src, bytes) => (bytes ? { src, size: pngSize(bytes) } : null);
+    const file = (src, bytes) => (bytes ? { src, size: p.uncaptured ? null : pngSize(bytes) } : null);
+    const atBaseline = revision.bytes(out);
+    const now = readIf(path.join(docsRoot, out));
     return plainHtml({
       p,
       place: { index: place.index, total: all.pictures.length },
       prev: place.prev,
       next: place.next,
       files: {
-        head: file(hrefs.head(out), revision.bytes(out)),
-        docs: file(hrefs.docs(out), readIf(path.join(docsRoot, out))),
+        head: p.uncaptured && atBaseline?.equals(now) ? null : file(hrefs.head(out), atBaseline),
+        docs: file(hrefs.docs(out), now),
         svg: p.svg ? { src: hrefs.docs(svgOf(out)), size: null } : null,
       },
       entry: entry(out),
@@ -1089,12 +1119,12 @@ export function createReviewServer({
     if (url.pathname === hrefs.events) return sse.handle(req, res);
     if (first === "picture") {
       const out = rest.join("/");
-      if (!isDocsPath(out)) return notFound(res, `${out} is not a picture`);
-      // a picture of the session has its page of verdicts; any other the table names, a plain one
+      if (!isDocsImage(out)) return notFound(res, `${out} is not a picture`);
+      // a picture of the session has its page of verdicts; any other image under docs, a plain one
       const html = detail(out, filter);
       if (html) return page(req, res, html);
       return plainPage(out).then((plain) =>
-        plain ? page(req, res, plain) : notFound(res, `${out} is not a picture of this session or of the table`),
+        plain ? page(req, res, plain) : notFound(res, `${out} is not a picture of this session or under docs`),
       );
     }
     if (first === "log") {
@@ -1120,7 +1150,7 @@ export function createReviewServer({
       const [kind, ...more] = rest;
       if (kind === "head" || kind === "docs") {
         const out = more.join("/");
-        if (!isDocsPath(out)) return notFound(res);
+        if (!isDocsImage(out)) return notFound(res);
         return sendFile(req, res, out, kind === "head" ? revision.bytes(out) : readIf(path.join(docsRoot, out)));
       }
       const n = Number(more[0]);

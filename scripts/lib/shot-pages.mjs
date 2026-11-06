@@ -44,7 +44,7 @@ export const hrefs = {
   log: (n) => `/log/${n}`,
   /** The session's runs, and the forms that start one. */
   runs: "/runs",
-  /** Every picture shoot_docs.mjs takes, as the working tree has it, whatever any session did. */
+  /** Every picture under docs, as the working tree has it, whatever any session did. */
   all: "/all",
   /** What a commit of the session takes, and its message. */
   commitPage: "/commit",
@@ -970,9 +970,13 @@ ${p.outside === "deleted" ? "" : actionsHtml(runButtons(p.out, busy, { replay: f
 const whereText = (where) =>
   where ? `run ${where.run} of ${where.session ? `session ${esc(where.session)}` : "this session"}` : "";
 
+// What the page of every picture says of an image no shot takes.
+const NOT_TAKEN = "No tool takes this image: it is replaced by hand, so no run can retake or judge it.";
+
 // The chips of a picture of the page of every picture (shot-review.mjs's allPictures), `entry`
 // its entry in the manifest, `bundled` whether the bundle cache has a bundle of it (null: no cache).
 function everyChips(p, entry, bundled) {
+  if (p.uncaptured) return chipHtml("no automated capture", "", NOT_TAKEN);
   const chips = [];
   if (!p.png) chips.push(chipHtml("no PNG under docs", "fail", "the table names it, and docs has no such file"));
   else if (p.window) chips.push(chipHtml("PNG only: a program's window", "", p.reason?.text ?? ""));
@@ -999,7 +1003,7 @@ const reasonHtml = (p) =>
     : `<p class="meta">${esc(p.reason.text)}${p.reason.where ? ` (${whereText(p.reason.where)})` : ""}</p>`;
 
 /**
- * The page of every picture shoot_docs.mjs takes (shot-review.mjs's allPictures): `groups` its
+ * The page of every picture under docs (shot-review.mjs's allPictures): `groups` its
  * groups, `error` why the table could not be read, or null; `baseline` the session's;
  * `bundled(out)` whether the bundle cache has a bundle of a picture (null: no cache); `entry(out)`
  * a picture's entry in the manifest, or null; `busy` what keeps a run from starting, or null;
@@ -1019,15 +1023,17 @@ export function allHtml({
   // (a bundle file is decompressed): asked once each, for those only
   const asked = new Map();
   const bundledIf = (p) => {
-    if (!p.png || p.svg || p.window) return null;
+    if (!p.png || p.svg || p.window || p.uncaptured) return null;
     if (!asked.has(p.out)) asked.set(p.out, bundledAt(p.out));
     return asked.get(p.out);
   };
   const card = (p) => {
     const link = hrefs.picture(p.out);
+    const pick = p.uncaptured
+      ? ""
+      : `<label class="pick"><input type="checkbox" data-pick="${esc(p.out)}" aria-label="Select ${esc(p.out)} for a run"> select</label>\n`;
     return `<article class="card" id="${anchor(p.out)}">
-<label class="pick"><input type="checkbox" data-pick="${esc(p.out)}" aria-label="Select ${esc(p.out)} for a run"> select</label>
-${p.png ? `<a href="${link}"><img src="${hrefs.docs(p.out)}" loading="lazy" alt="${esc(p.out)}"></a>` : ""}<h3><a href="${link}">${esc(p.out)}</a></h3>
+${pick}${p.png ? `<a href="${link}"><img src="${hrefs.docs(p.out)}" loading="lazy" alt="${esc(p.out)}"></a>` : ""}<h3><a href="${link}">${esc(p.out)}</a></h3>
 <p class="chips">${everyChips(p, entry(p.out), bundledIf(p))}</p>
 ${reasonHtml(p)}
 </article>`;
@@ -1036,8 +1042,11 @@ ${reasonHtml(p)}
     const cards = `<div class="cards" data-group="${g.key}">
 ${g.pictures.map(card).join("\n")}
 </div>`;
-    const pickAll = `<label class="pickgroup"><input type="checkbox" data-pick-group="${g.key}" aria-label="Select every picture in ${esc(g.title)} for a run"> select all</label>`;
-    const heading = `${esc(g.title)} (${g.pictures.length}) ${pickAll}`;
+    const pickAll =
+      g.key === "uncaptured"
+        ? ""
+        : ` <label class="pickgroup"><input type="checkbox" data-pick-group="${g.key}" aria-label="Select every picture in ${esc(g.title)} for a run"> select all</label>`;
+    const heading = `${esc(g.title)} (${g.pictures.length})${pickAll}`;
     // the SVGs of the pictures with no SVG judged again from their bundles: a replay with --recheck
     const replayable = g.key === "nosvg" ? g.pictures.filter((p) => bundledIf(p) !== false).map((p) => p.out) : [];
     const replay = replayable.length
@@ -1068,7 +1077,7 @@ ${replay}${cards}`;
     generator: REVIEW_GENERATOR,
     title: "Every picture",
     head: HEAD,
-    intro: `Every picture <code>shoot_docs.mjs</code> takes, as the working tree has it now, whatever any session did: its PNG and SVG under docs, the build the manifest records and its allowances, and, for one with no SVG, why, from the newest verdict of this session or an archived one that says. The session's baseline is ${esc(baseline.short)}.`,
+    intro: `Every picture under docs, as the working tree has it now, whatever any session did. For each one <code>shoot_docs.mjs</code> or a browser retake takes: its PNG and SVG, the build the manifest records and its allowances, and, for one with no SVG, why, from the newest verdict of this session or an archived one that says. The images no tool takes are listed too, to look at. The session's baseline is ${esc(baseline.short)}.`,
     summary: shown.map((g) => [g.title, g.pictures.length]),
     contents: shown.map((g) => `<li><a href="#g-${g.key}">${esc(g.title)}</a> (${g.pictures.length})</li>`).join("\n"),
     body: `${topNav("all")}
@@ -1095,7 +1104,12 @@ export function plainHtml({ p, place, prev, next, files, entry = null, baseline,
   }<span class="where">${place.index + 1} of ${place.total} · All pictures</span>${
     next ? `<a rel="next" href="${hrefs.picture(next.out)}">Next (j, →)</a>` : ""
   }</nav>`;
-  const body = `${pager}
+  const body = p.uncaptured
+    ? `${pager}
+<p class="meta">${everyChips(p)}</p>
+<p class="notice">${esc(NOT_TAKEN)}</p>
+<div class="trio">${figs.join("\n")}</div>`
+    : `${pager}
 <p class="meta">${esc(sizeText(files.docs?.size ?? files.head?.size ?? null))}; ${everyChips(p, entry, bundled)}</p>
 ${reasonHtml(p)}
 <p class="notice">No run of this session reported this picture: it is shown as the working tree has it, with no verdict to override. A retake of it, or a replay of its SVG, through this tool judges it.</p>
@@ -1105,7 +1119,7 @@ ${actionsHtml(runButtons(p.out, busy, { replay: p.png && !p.window, bundled }))}
     generator: REVIEW_GENERATOR,
     title: p.out,
     head: HEAD,
-    intro: "A picture of the table of shots, as the working tree has it.",
+    intro: `${p.uncaptured ? "An image no tool takes" : "A picture of the table of shots"}, as the working tree has it.`,
     body,
   }).replace("<body>", `<body data-out="${esc(p.out)}">`);
 }
