@@ -6,10 +6,13 @@
 /**
  * The private words of the document, and of each open shadow root in it, replaced by their
  * stand-ins (private-words.mjs): each text node (a <select>'s options among them), each text
- * box's value and each attribute but those that load something. An <img> whose alternative
- * text, address, link or hover card holds a word shows `avatar` instead: it is a picture of the
- * person, which no text search reaches. Run again it masks only what the page has drawn since.
- * Returns how much it changed: {text, value, attribute, avatar}.
+ * box's value and each attribute but those that load something: a `src` of any element, since a
+ * custom element's (GitHub's include-fragment) fetches again when it changes. An <img> whose
+ * alternative text, address, link or hover card holds a word shows `avatar` instead: it is a
+ * picture of the person, which no text search reaches. Run again it masks only what the page has
+ * drawn since. An attribute a page's parser took and setAttribute refuses stays as it is, which
+ * scrubBundle's reach makes no matter, and no picture draws. Returns how much it changed,
+ * {text, value, attribute, avatar}, and `where`, the first few places, for the panel's log.
  */
 export function maskPage({ list, avatar }) {
   const state = (window.__svgshot ??= { undo: [] });
@@ -27,7 +30,10 @@ export function maskPage({ list, avatar }) {
     }
     return out;
   };
-  const count = { text: 0, value: 0, attribute: 0, avatar: 0 };
+  const count = { text: 0, value: 0, attribute: 0, avatar: 0, where: [] };
+  const note = (what) => {
+    if (count.where.length < 6) count.where.push(what);
+  };
   const noText = new Set(["SCRIPT", "STYLE"]);
   const loads = new Set(["SCRIPT", "LINK", "BASE", "IFRAME", "SOURCE"]);
   const roots = [document];
@@ -43,6 +49,7 @@ export function maskPage({ list, avatar }) {
         if (n.data === now) n.data = was;
       });
       count.text++;
+      note(`text in ${n.parentElement?.localName}`);
     }
     // The pictures first: the words round one are in attributes that are masked next.
     for (const img of root.querySelectorAll("img")) {
@@ -69,15 +76,21 @@ export function maskPage({ list, avatar }) {
         for (const s of sources.toReversed()) parent.prepend(s);
       });
       count.avatar++;
+      note("a picture");
     }
     for (const e of root.querySelectorAll("*")) {
       if (loads.has(e.tagName)) continue;
       for (const { name, value } of [...e.attributes]) {
-        if (name === "style" || (e.tagName === "IMG" && (name === "src" || name === "srcset")) || !holds(value))
+        if (name === "style" || name === "src" || name === "srcset" || !holds(value)) continue;
+        try {
+          e.setAttribute(name, clean(value));
+        } catch {
+          note(`${name} of ${e.localName} refused`);
           continue;
-        e.setAttribute(name, clean(value));
+        }
         state.undo.push(() => e.setAttribute(name, value));
         count.attribute++;
+        note(`${name} of ${e.localName}`);
       }
       if ((e.tagName === "INPUT" || e.tagName === "TEXTAREA") && e.value && holds(e.value)) {
         const was = e.value;
@@ -86,6 +99,7 @@ export function maskPage({ list, avatar }) {
           e.value = was;
         });
         count.value++;
+        note(`the value of ${e.localName}`);
       }
     }
   }

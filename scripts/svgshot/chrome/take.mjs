@@ -5,7 +5,7 @@
 
 import { annotate, resolveAnchors, unannotate } from "../annotate.mjs";
 import { collectBundle, QUIET_CSS } from "../capture.mjs";
-import { drawnWords, heldWords, scrubBundle } from "../private-words.mjs";
+import { drawnStrings, drawnWords, heldPaths, heldWords, maskText, scrubBundle } from "../private-words.mjs";
 import { attachDebugger } from "./conn.mjs";
 import {
   imagesIn,
@@ -252,7 +252,15 @@ export async function takePicture({ tabId, out, area, themes, list, marks = [], 
     const arg = { list, avatar: AVATAR };
     const counts = [await inPage(conn, maskPage, arg)];
     for (const world of worlds) counts.push(await inWorld(conn, world, maskPage, arg));
-    return counts.reduce((sum, c) => sum + c.text + c.value + c.attribute + c.avatar, 0);
+    const sum = counts.reduce((n, c) => n + c.text + c.value + c.attribute + c.avatar, 0);
+    if (sum)
+      log(
+        `masked ${sum}: ${counts
+          .flatMap((c) => c.where)
+          .slice(0, 6)
+          .join(", ")}`,
+      );
+    return sum;
   };
   const pick = async (hint) => {
     log(hint);
@@ -268,7 +276,9 @@ export async function takePicture({ tabId, out, area, themes, list, marks = [], 
     await conn.send("Page.enable");
     await barIsUp(conn);
     const [seen, was] = [await inPage(conn, windowSize), await chrome.tabs.getZoom(tabId)];
+    log(`window ${seen.width} by ${seen.height} at ${seen.dpr}x, tab zoom ${was}`);
     const plan = layoutPlan({ ...seen, zoom: was, pageWidth });
+    log(`emulating ${JSON.stringify(plan.metrics)}`);
     after.push(async () => {
       await conn.send("Emulation.clearDeviceMetricsOverride");
       await chrome.tabs.setZoom(tabId, was);
@@ -287,7 +297,8 @@ export async function takePicture({ tabId, out, area, themes, list, marks = [], 
     await inPage(conn, settled);
     log(await conn.evaluate("location.href"));
     log(`display at ${Math.round(plan.display * 100)}%, tab zoom ${(plan.zoom * 100).toFixed(1)}%`);
-    log(`masked ${await mask()} places`);
+    log(`frames of this process: ${worlds.length}`);
+    if (!(await mask())) log("masked 0 places");
 
     // Where the picture is, in document CSS px.
     let clip = await inPage(conn, shownArea);
@@ -321,6 +332,7 @@ export async function takePicture({ tabId, out, area, themes, list, marks = [], 
       });
       await inPage(conn, pageTheme, { theme });
       await inPage(conn, settled);
+      log(`${theme}: theme set, reading images`);
       const missed = await freezeImages(conn, clip);
       if (missed) log(`${theme}: ${missed} image${missed > 1 ? "s" : ""} could not be read, and the SVG lacks them`);
       // A page can draw a word again at any moment: a capture counts only when the mask
@@ -329,22 +341,32 @@ export async function takePicture({ tabId, out, area, themes, list, marks = [], 
       for (let i = 0; i < 4 && !png; i++) {
         await mask();
         await inPage(conn, settled);
+        log(`${theme}: capturing ${JSON.stringify(clip)}`);
         const shot = await capturePng(conn, clip, plan.display);
         if (!(await mask())) png = shot;
       }
       if (!png) throw new Error(`the page keeps drawing a private word while the ${theme} picture is taken`);
       const [width, height] = pngSizeOf(png);
       const view = { ...clip, width: width / SCALE, height: height / SCALE };
+      log(`${theme}: reading the page`);
       const bundle = await collectBundle(conn, view);
+      log(`${theme}: ${bundle.snapshot.strings.length} strings, checking them`);
       const shown = await inPage(conn, windowSize);
       const box = bundle.snapshot.documents[0].layout.bounds[0];
       if (Math.abs(box[2] - shown.width) > 1 || Math.abs(shown.dpr - SCALE) > 0.01)
         throw new Error(`the page is laid out ${box[2]} wide in a window ${shown.width} wide, at ${shown.dpr}x`);
       const held = drawnWords(bundle, finds);
-      if (held.length) throw new Error(`the ${theme} picture shows a private word: ${held.join(", ")}`);
+      if (held.length) {
+        const shows = drawnStrings(bundle).filter((s) => heldWords(s, finds).length);
+        for (const s of shows.slice(0, 5)) log(`  shown: ${maskText(s, list).slice(0, 120)}`);
+        throw new Error(`the ${theme} picture shows a private word: ${held.join(", ")}`);
+      }
       const clean = scrubBundle(bundle, list);
       const left = heldWords(JSON.stringify(clean), finds);
-      if (left.length) throw new Error(`the ${theme} bundle still holds a private word: ${left.join(", ")}`);
+      if (left.length) {
+        for (const at of heldPaths(clean, finds)) log(`  held at ${at}`);
+        throw new Error(`the ${theme} bundle still holds a private word: ${left.join(", ")}`);
+      }
       pictures.push({ theme, png, bundle: clean });
       log(`${theme}: ${width}x${height} px`);
     }
@@ -368,15 +390,30 @@ export async function captureBlob(capture) {
   return new Response(stream, { headers: { "content-type": "application/gzip" } }).blob();
 }
 
+// A picture's name in a flat folder, as shot-apply.mjs's slugOf makes it.
+const slug = (out) => out.replace(/[\\/]/g, "__").replace(/\.png$/i, "");
+
 /** The file a capture of `out` is saved as, under the browser's download folder. */
-export const captureName = (out) => `svgshot/${out.replace(/[\\/]/g, "__").replace(/\.png$/i, "")}.capture.json.gz`;
+export const captureName = (out) => `svgshot/${slug(out)}.capture.json.gz`;
+
+/** The file the log of a take of `out` is saved as, beside the capture. */
+export const logName = (out) => `svgshot/${slug(out)}.log.txt`;
+
+/** Saves the text `lines`, its private words masked, as the log of a take of `out`. */
+export function saveLog(out, lines, list) {
+  const text = lines.map((line) => maskText(line, list)).join("\n");
+  return saveBlob(new Blob([`${text}\n`], { type: "text/plain" }), logName(out));
+}
 
 /** Saves `capture` to the browser's download folder, and resolves to the download's id. */
-export async function saveCapture(capture) {
-  const url = URL.createObjectURL(await captureBlob(capture));
+export const saveCapture = async (capture) => saveBlob(await captureBlob(capture), captureName(capture.out));
+
+// Saves `blob` as `filename` under the browser's download folder, in place of any file of that name.
+async function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
   const id = await chrome.downloads.download({
     url,
-    filename: captureName(capture.out),
+    filename,
     conflictAction: "overwrite",
     saveAs: false,
   });

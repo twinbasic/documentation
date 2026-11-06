@@ -232,7 +232,7 @@ try {
     if (top) await captureWindow(slot.desktop, top.hwnd, values.window);
   }
   if (drag) {
-    await until("the drag's start", async () => (await logged()).includes("masked"));
+    await until("the drag's start", async () => (await logged()).includes("Drag over the picture"));
     await pause(300);
     const [x0, y0, x1, y1] = drag;
     const mid = [(x0 + x1) / 2, (y0 + y1) / 2];
@@ -271,18 +271,17 @@ try {
     { timeout: 120000 },
   );
   console.log(log.trimEnd());
-  if (log.includes("saved under")) {
-    const folder = path.join(downloads, "svgshot");
-    await until("the file's arrival", async () => readdirSync(folder).some((f) => f.endsWith(".capture.json.gz")));
-    mkdirSync(values.captureDir, { recursive: true });
-    for (const f of readdirSync(folder)) {
-      cpSync(path.join(folder, f), path.join(values.captureDir, f));
-      console.log(`${path.join(values.captureDir, f)}`);
-    }
-    exitCode = 0;
-  } else exitCode = 1;
-  // The panel leaves its busy state once the page is put back.
+  // The panel leaves its busy state once the page is put back and the log is saved, as it is
+  // whether the take worked or not, and the folder then holds all it saved.
   await until("the panel's end", () => panel.evaluate(`document.getElementById("cancel").hidden`));
+  const folder = path.join(downloads, "svgshot");
+  await until("the log's arrival", async () => readdirSync(folder).some((f) => f.endsWith(".log.txt")));
+  mkdirSync(values.captureDir, { recursive: true });
+  for (const f of readdirSync(folder)) {
+    cpSync(path.join(folder, f), path.join(values.captureDir, f));
+    console.log(`${path.join(values.captureDir, f)}`);
+  }
+  exitCode = log.includes("saved under") ? 0 : 1;
   const after = await page.evaluate(asFound);
   if (after !== before) {
     const [a, b] = [JSON.parse(before), JSON.parse(after)];

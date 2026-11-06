@@ -78,6 +78,29 @@ export function drawnStrings({ snapshot }) {
 export const drawnWords = (bundle, words) => heldWords(drawnStrings(bundle).join("\n"), words);
 
 /**
+ * Where in `value` (a bundle, or a part of one) a word of `words` stands, as paths, the first
+ * `most` of them, for the panel's log. A member's name counts: scrubBundle leaves those as they are.
+ */
+export function heldPaths(value, words, most = 5) {
+  const found = [];
+  const visit = (v, at) => {
+    if (found.length >= most) return;
+    if (typeof v === "string") {
+      if (heldWords(v, words).length) found.push(at);
+    } else if (Array.isArray(v)) {
+      for (const [k, item] of v.entries()) visit(item, `${at}[${k}]`);
+    } else if (v && typeof v === "object") {
+      for (const [k, item] of Object.entries(v)) {
+        if (heldWords(k, words).length && found.length < most) found.push(`a name in ${at}`);
+        visit(item, `${at}.${k}`);
+      }
+    }
+  };
+  visit(value, "bundle");
+  return found;
+}
+
+/**
  * `value` (a bundle, or a part of one) with the private words of every string in it replaced,
  * but for the members named in `skip`: what a mask cannot reach and no picture draws, such as a
  * link's address and a <meta> of the page, is then not kept either. A font's bytes are skipped:

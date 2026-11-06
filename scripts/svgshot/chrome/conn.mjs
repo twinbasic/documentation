@@ -16,7 +16,10 @@ export async function attachDebugger(tabId) {
       // A member that is undefined is left out, as JSON leaves it out on a socket.
       chrome.debugger
         .sendCommand(target, method, JSON.parse(JSON.stringify(params)))
-        .then((result) => res(result ?? {}), rej)
+        .then(
+          (result) => res(result ?? {}),
+          (e) => rej(new Error(`${method}: ${e.message ?? e}`)),
+        )
         .finally(() => clearTimeout(timer));
     });
   const evaluate = async (expression, { awaitPromise = false, timeout } = {}) => {

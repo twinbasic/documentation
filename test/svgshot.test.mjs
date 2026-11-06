@@ -64,6 +64,7 @@ import {
   captureBlob,
   captureName,
   layoutPlan,
+  logName,
   markPrimitives,
   pngSizeOf,
   unionWithin,
@@ -74,6 +75,7 @@ import { privateEntries, privateWords } from "../scripts/svgshot/private-list.mj
 import {
   drawnStrings,
   drawnWords,
+  heldPaths,
   heldWords,
   holdsUserName,
   maskText,
@@ -4305,6 +4307,7 @@ describe("the Chrome extension, with no Chrome", () => {
     const blob = await captureBlob(capture);
     assert.deepEqual(JSON.parse(gunzipSync(Buffer.from(await blob.arrayBuffer())).toString("utf8")), capture);
     assert.equal(captureName(capture.out), "svgshot/Documentation__Images__x.capture.json.gz");
+    assert.equal(logName(capture.out), "svgshot/Documentation__Images__x.log.txt");
   });
 
   test("talks to a tab as lib/tb-cdp.mjs talks to the IDE", async () => {
@@ -4331,7 +4334,7 @@ describe("the Chrome extension, with no Chrome", () => {
       assert.deepEqual(sent[1], ["Page.enable", { a: 1 }]);
       assert.equal(await conn.evaluate("1"), 7);
       assert.deepEqual(sent[2][1], { expression: "1", returnByValue: true, awaitPromise: false });
-      await assert.rejects(conn.send("Page.fail"), /no such thing/);
+      await assert.rejects(conn.send("Page.fail"), /^Error: Page\.fail: no such thing$/);
       answers["Runtime.evaluate"] = { exceptionDetails: { exception: { description: "ReferenceError: x" } } };
       await assert.rejects(conn.evaluate("x"), /ReferenceError: x/);
       await conn.detach();
@@ -4582,6 +4585,17 @@ describe("the private words", () => {
     assert.deepEqual(drawnWords(bundle, ["pat@a", "kim"]), ["pat@a"]);
     // The address of a link is no text a picture draws, and is scrubbed all the same.
     assert.deepEqual(drawnWords(bundle, ["http"]), []);
+  });
+
+  test("are found by the path they stand at, a member's name among them, for the panel's log", () => {
+    const bundle = { strings: ["clean", "by pat"], docs: [{ pat: 1 }, { a: { b: "PAT" } }] };
+    assert.deepEqual(heldPaths(bundle, ["pat"]), [
+      "bundle.strings[1]",
+      "a name in bundle.docs[0]",
+      "bundle.docs[1].a.b",
+    ]);
+    assert.deepEqual(heldPaths(bundle, ["pat"], 1), ["bundle.strings[1]"]);
+    assert.deepEqual(heldPaths(bundle, ["kim"]), []);
   });
 
   test("leave nothing in a bundle but what is no text", () => {

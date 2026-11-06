@@ -198,7 +198,7 @@ To take a picture:
 
 Take each of the six with **Whole viewport**, with what it shows in the window. [`chromeshot.mjs`](#chromeshot) trims the capture to the picture, so a retake is aligned as the last one was, however the page was scrolled. A rectangle dragged by hand comes out a little different each time.
 
-Chrome shows a bar saying that the extension is debugging the browser, for as long as a capture takes. Leave it, and keep the tab showing. The page is put back as it was afterwards, and the file goes to the `svgshot` folder of your downloads as `<name>.capture.json.gz`, where [`chromeshot.mjs`](#chromeshot) reads it. A browser set to ask where to save each file asks for this one too.
+Chrome shows a bar saying that the extension is debugging the browser, for as long as a capture takes. Leave it, and keep the tab showing. The page is put back as it was afterwards, and the file goes to the `svgshot` folder of your downloads as `<name>.capture.json.gz`, where [`chromeshot.mjs`](#chromeshot) reads it. A browser set to ask where to save each file asks for this one too. Each take, whether it worked or not, also saves `<name>.log.txt` there, with the time of each step, what was masked and any failure with its stack, its private words masked. A failed take saves no capture and leaves an earlier one as it was, so look at the file's time.
 
 The capture does the following to the page:
 

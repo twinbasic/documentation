@@ -3,13 +3,17 @@
 // popup; it is also a page, which can hand the browser a Blob to save, as a service worker cannot.
 
 import { wordList } from "../private-words.mjs";
-import { saveCapture, takePicture } from "./take.mjs";
+import { logName, saveCapture, saveLog, takePicture } from "./take.mjs";
 import { PAGE_WIDTH, SHOTS } from "./shots.mjs";
 
 const $ = (id) => document.getElementById(id);
 const OTHER = "other";
 
+// What a take did, with the time of each step, for the log file saved beside its capture.
+let lines = [];
+
 function log(line) {
+  lines.push(`${new Date().toISOString().slice(11, 23)} ${line}`);
   $("log").textContent += `${line}\n`;
   $("log").scrollTop = $("log").scrollHeight;
 }
@@ -67,6 +71,7 @@ async function take(area, list) {
   running = new AbortController();
   setBusy(true);
   $("log").textContent = "";
+  lines = [navigator.userAgent, `svgshot ${chrome.runtime.getManifest().version}, ${list.length} private words`];
   log(`${out}: ${area === "drag" ? "drag over the page" : "the whole window"}`);
   try {
     const capture = await takePicture({
@@ -90,7 +95,14 @@ async function take(area, list) {
     $("preview").hidden = false;
   } catch (e) {
     log(`FAILED: ${e.message}`);
+    if (e.stack) lines.push(e.stack);
   } finally {
+    try {
+      await saveLog(out, lines, list);
+      log(`log: ${logName(out)}`);
+    } catch (e) {
+      log(`the log was not saved: ${e.message}`);
+    }
     running = null;
     setBusy(false);
   }
