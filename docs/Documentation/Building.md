@@ -234,7 +234,7 @@ It covers all three trees:
 - `_site-offline/`, the `file://`-browsable mirror. It also carries `--forbid 'https://docs.twinbasic.com'`, so a live-site link is flagged, except the links the rewrite writes to the few files only the website holds, such as the help add-in's download.
 - `_site-pdf/book.html`, informational, listing as `OUT OF BOOK` every link that leaves the book for the website.
 
-Every tree is also checked for HTML well-formedness, duplicate `id`s, anchor resolution, accessibility hints and remote `<img src>`. The online tree adds sitemap, search-index and canonical-URL integrity. The same check runs in CI on every pull request and every push to `staging`.
+Every tree is also checked for HTML well-formedness, duplicate `id`s, anchor resolution, accessibility hints and remote `<img src>`. The online tree adds sitemap, search-index and canonical-URL integrity. The same check runs in CI on every pull request and every run of the deploy workflow.
 
 A failing check does not abort the build, since a broken link still produces a site worth looking at. It sets exit code 1 instead, for link failures, integrity failures or both. The summary lines say which.
 
@@ -414,12 +414,12 @@ Whichever you choose, edit the `.dot`, run `build.bat` to regenerate the `.svg`,
 
 ## What CI runs that a local build does not
 
-**Pull requests target `staging`.** It is the repository's default branch and the one the deploy workflow publishes from; documentation changes do not land on `main`.
+**Pull requests target `main`.** It is the repository's default branch and its production branch. A pull request comes from a branch of your own fork, under any name you like.
 
 Two workflows cover the repository:
 
-- `.github/workflows/checks.yml` runs on every pull request into `staging` or `main`. It builds and checks, with no deploy rights. It has no `paths:` filter, so a pull request touching only `builder/` or `scripts/` is checked too.
-- `.github/workflows/tbdocs-gh-pages.yml` runs on every push to `staging` and on manual dispatch. It runs the same gates, renders the PDF book and publishes `docs/_site/` to Pages. A manual dispatch also cuts a GitHub release with the offline site copy and the book attached.
+- `.github/workflows/checks.yml` runs on every pull request into `main`, and into a branch named `staging` on a fork. It builds and checks, with no deploy rights. It has no `paths:` filter, so a pull request touching only `builder/` or `scripts/` is checked too.
+- `.github/workflows/tbdocs-gh-pages.yml` runs on manual dispatch, and on a push to a branch named `staging`. It runs the same gates, renders the PDF book and publishes `docs/_site/` to Pages. A manual dispatch also cuts a GitHub release with the offline site copy and the book attached. `twinbasic/documentation` has no `staging` branch, so a merge into `main` publishes nothing until the workflow is run by hand. A fork with a `staging` branch and Pages turned on publishes its own copy on each push to it.
 
 Both run every local gate but one, in the same relative order: all of `test.bat`'s, and all of `check.bat`'s except its freshness check. The rest of this section is where a clean local run can still come back red.
 
@@ -466,13 +466,13 @@ Self-hosting the body face fixes the *text* at 17px everywhere but does not reti
 
 3. Click **compare across forks**.
 
-4. Select your repository and branch to merge from, and set the base branch to **`staging`**, the branch the deploy workflow publishes from and the pull-request checks run against.
+4. Select your repository and branch to merge from, and leave the base branch at **`main`**, the production branch and the one the pull-request checks run against.
 
-   ![GitHub's Compare changes page, with the compare across forks link marked, and below it the head repository and compare branch selectors](Images/compare-changes.png){:width="926" height="170"}
+   ![GitHub's Comparing changes page, with the compare across forks link marked, and below it the base and head repository and branch selectors, base main](Images/compare-changes.png){:width="1240" height="189"}
 
 5. Create the pull request. If it adds or changes a twinBASIC code sample, paste the `examples.bat` summary line into the description, as [Checking that a sample compiles](Authoring#checking-that-a-sample-compiles) describes --- no CI workflow compiles the samples.
 
-   ![The comparison after choosing the fork and branch, reporting Able to merge, with the green Create pull request button marked](Images/create-pull-request.png){:width="1857" height="470"}
+   ![The comparison after choosing the fork and branch, reporting Able to merge, with the green Create pull request button marked](Images/create-pull-request.png){:width="1209" height="272"}
 
    A maintainer will merge the pull request. You may mention an outstanding request on the [#docs][hash-docs] channel; the [#github-docs][hash-github-docs] channel posts automated notifications of pull requests. A maintainer normally gets a Discord notification of a new pull request, and merges it or comments with a request for changes.
 
@@ -480,17 +480,17 @@ Self-hosting the body face fixes the *text* at 17px everywhere but does not reti
 
 6. Review, then merge the pull request or comment with required changes.
 
-   ![A pull request reporting no conflicts with the base branch, with the green Merge pull request button marked](Images/merge-pull-request.png){:width="1371" height="416"}
+   ![A pull request reporting no conflicts with the base branch, with the green Merge pull request button marked](Images/merge-pull-request.png){:width="864" height="326"}
 
-   ![The merge form's commit message, extended description and commit email fields, with the green Confirm merge button marked](Images/confirm-merge.png){:width="1374" height="704"}
+   ![The merge form's commit message, extended description and commit email fields, with the green Confirm merge button marked](Images/confirm-merge.png){:width="864" height="469"}
 
 7. Select the **Build & deploy docs** action.
 
-   ![The repository's Actions tab, and the workflow list in the left sidebar where the deploy workflow is chosen](Images/choose-workflow.png){:width="552" height="191"}
+   ![The repository's Actions tab, and the workflow list in the left sidebar where the deploy workflow is chosen](Images/choose-workflow.png){:width="645" height="241"}
 
-8. Manually run the build and deployment workflow if a release snapshot is needed. Pushes to `staging` deploy to Pages automatically; only the manual run also publishes a GitHub release. See [Publishing a release](#publishing-a-release).
+8. Run the build and deployment workflow by hand, which is what publishes the site: a merge into `main` does not. Each manual run also publishes a GitHub release. See [Publishing a release](#publishing-a-release).
 
-   ![The Run workflow dropdown open on its branch selector, with the green Run workflow button that starts the manual deployment](Images/run-workflow.png){:width="368" height="231"}
+   ![The Run workflow dropdown open on its branch selector, with the green Run workflow button that starts the manual deployment](Images/run-workflow.png){:width="376" height="329"}
 
 
 ### Publishing a release
