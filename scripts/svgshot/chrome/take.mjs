@@ -218,7 +218,7 @@ async function drawMarks(conn, marks, { pick, log }) {
   const primitives = [];
   for (const mark of marks) {
     const found = await resolveAnchors(conn, { on: mark.on }).catch((e) => {
-      log(`mark ${mark.n}: ${e.message}`);
+      log(`mark ${mark.n}: ${e.message.split("\n")[0].replace(/^Error: /, "")}`);
       return null;
     });
     let box = found?.on;

@@ -17,7 +17,8 @@ export const PAGE_WIDTH = 1280;
 
 const button = (text) => ({ css: "button", text });
 const POPOVER = "#__primerPortalRoot__";
-const MERGE_BOX = { css: "[data-testid=mergebox-border-container]" };
+// The merge box with the line under it, Still in progress?, as the old pictures show it.
+const MERGE_BOX = { css: "[data-testid=mergebox-partial]" };
 // The green tile left of the merge box, held whole: the badge stands over its right edge.
 const MERGE_TILE = { css: "[data-testid=mergebox-partial] svg.octicon-git-merge" };
 const MERGE_TRIM = { of: [MERGE_BOX, MERGE_TILE], pad: { left: 16 } };
@@ -30,39 +31,47 @@ export const SHOTS = [
     name: "compare-changes",
     out: `${FOLDER}/compare-changes.png`,
     shows:
-      "Compare changes: the compare across forks link, base repository twinbasic/documentation with base staging, " +
-      "and the head repository and compare branch selectors.",
+      "On the repository's Compare page, press compare across forks, so that all four selectors show, and set " +
+      "base to staging. The yellow banner shows under them, with its Create pull request greyed.",
     marks: [
       { n: 3, on: button("compare across forks"), side: "right", what: "the compare across forks link" },
       { n: 4, on: { css: ".range-editor" }, what: "the repository and branch selectors" },
     ],
-    trim: { of: [{ css: ".Subhead" }, { css: ".range-editor" }] },
+    trim: { of: [{ css: ".Subhead" }, { css: ".range-editor" }, { css: ".flash" }] },
   },
   {
     name: "create-pull-request",
     out: `${FOLDER}/create-pull-request.png`,
-    shows: "The comparison after choosing the fork and branch: base staging, Able to merge, Create pull request.",
+    shows:
+      "Base staging, with your fork and a branch that has no pull request yet (GitHub then shows View pull " +
+      "request instead): Able to merge, the blue Discuss and review banner and the green Create pull request. " +
+      "Do not press it: the form stays closed.",
     marks: [{ n: 5, on: button("Create pull request"), what: "the Create pull request button" }],
-    trim: { of: [{ css: ".range-editor" }, button("Create pull request")] },
+    trim: { of: [{ css: ".Subhead" }, { css: ".range-editor" }, { css: ".js-compare-pr .flash" }] },
   },
   {
     name: "merge-pull-request",
     out: `${FOLDER}/merge-pull-request.png`,
-    shows: "An open pull request's merge box: No conflicts with base branch, Merge pull request.",
+    shows:
+      "An open pull request, scrolled to its merge box: No conflicts with base branch and the green Merge pull " +
+      "request, its drop-down closed. Do not merge.",
     marks: [{ n: "6a", on: button("Merge pull request"), what: "the Merge pull request button" }],
     trim: MERGE_TRIM,
   },
   {
     name: "confirm-merge",
     out: `${FOLDER}/confirm-merge.png`,
-    shows: "The merge form: commit message, extended description, Commit email, Confirm merge. Do not press it.",
+    shows:
+      "Press Merge pull request once: Commit message, Extended description, Commit email and the green Confirm " +
+      "merge show. Do not press Confirm merge.",
     marks: [{ n: "6b", on: button("Confirm merge"), what: "the Confirm merge button" }],
     trim: MERGE_TRIM,
   },
   {
     name: "choose-workflow",
     out: `${FOLDER}/choose-workflow.png`,
-    shows: "The Actions tab with the sidebar entry Build & deploy docs.",
+    shows:
+      "The Actions tab of twinbasic/documentation, not of a fork: the tab bar and the sidebar entry Build & deploy docs.",
     marks: [
       { n: "a", on: ACTIONS_TAB, side: "below", what: "the Actions tab" },
       { n: "b", on: WORKFLOW, side: "right", what: "the Build & deploy docs entry" },
@@ -72,7 +81,9 @@ export const SHOTS = [
   {
     name: "run-workflow",
     out: `${FOLDER}/run-workflow.png`,
-    shows: "The Run workflow drop-down open on branch staging. Do not press Run unless a release is wanted.",
+    shows:
+      "On the Build & deploy docs page, press Run workflow: the drop-down opens, on branch staging. Do not press " +
+      "the green button inside it unless a release is wanted.",
     marks: [
       {
         n: "a",
