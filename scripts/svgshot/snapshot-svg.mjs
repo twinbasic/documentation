@@ -2412,18 +2412,21 @@ export function renderSvg(
   // the padding, its top 2px above the box's middle rounded down
   // (ThemePainterDefault::SetupMenuListArrow, NativeThemeBase::PaintMenuList);
   // fitted against Chromium's own arrow by scripts/svgshot/bench.mjs's page.
+  // With appearance: none there is no internal padding and no arrow: the page draws its own,
+  // as GitHub's Select does (LayoutThemeDefault::PopupInternalPaddingStart returns 0).
   function paintSelect(l, bw) {
     const st = l.style;
     const b = l.bounds;
     const out = [];
     const right = b.x + b.w - Math.floor(bw[1].width);
-    const arrowBox = 16;
+    const native = st.appearance !== "none";
+    const arrowBox = native ? 16 : 0;
     const label = selectLabel(l.node);
     if (label) {
       const key = fontKey(st);
       const m = env.metrics(key);
       const e = l.exact ?? b;
-      const x = e.x + bw[3].width + px(st["padding-left"]) + 4;
+      const x = e.x + bw[3].width + px(st["padding-left"]) + (native ? 4 : 0);
       const end = e.x + e.w - bw[1].width - px(st["padding-right"]) - arrowBox;
       const last = st["text-align-last"] ?? "auto";
       const align = last === "auto" ? (st["text-align"] ?? "start") : last;
@@ -2440,6 +2443,7 @@ export function renderSvg(
       );
       out.push(`<g clip-path="url(#${id})">${textRun(st, label, tx, top + m.ascent, w)}</g>`);
     }
+    if (!native) return out;
     const cx = right - arrowBox / 2;
     const top = b.y + Math.floor(b.h / 2) - 2;
     out.push(

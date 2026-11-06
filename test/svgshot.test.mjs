@@ -1866,6 +1866,89 @@ describe("bundles", () => {
   });
 });
 
+describe("a closed <select>", () => {
+  // A <select> 200 by 20 at 10, 10, padded 12 px at each side, that reads "Shown", the browser's
+  // own or, with `appearance: none`, one whose page draws its arrow, as GitHub's does.
+  const NAMES = [
+    "display",
+    "visibility",
+    "color",
+    "font-family",
+    "font-size",
+    "font-weight",
+    "font-style",
+    "text-align",
+    "padding-left",
+    "padding-right",
+    "appearance",
+  ];
+  function page(appearance) {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = (a, pad) =>
+      ["block", "visible", "rgb(0, 0, 0)", "Arial", "13px", "400", "normal", "start", pad, pad, a].map(s);
+    const names = ["#document", "HTML", "BODY", "SELECT", "OPTION", "#text"];
+    const plain = style("auto", "0px");
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2, 3, 4],
+            nodeType: [9, 1, 1, 1, 1, 3],
+            nodeName: names.map(s),
+            nodeValue: names.map((n) => (n === "#text" ? s("Shown") : -1)),
+            backendNodeId: names.map((_, i) => 100 + i),
+            attributes: names.map(() => []),
+            optionSelected: { index: [4] },
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [plain, plain, style(appearance, "12px")],
+            bounds: [
+              [0, 0, 400, 100],
+              [0, 0, 400, 100],
+              [10, 10, 200, 20],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, NAMES);
+  }
+  const draw = (appearance) =>
+    renderSvg(page(appearance), {
+      clip: { x: 0, y: 0, w: 400, h: 100 },
+      metrics: () => ({ ascent: 12, height: 15, line: 17 }),
+      textWidth: () => 34,
+    }).svg;
+  const clip = (svg) => svg.match(/<clipPath id="[^"]+"><rect ([^/]+)\/><\/clipPath>/)?.[1] ?? "";
+
+  test("of the browser's own has its padding, and its chevron in a box at the end", () => {
+    const svg = draw("auto");
+    assert.match(svg, /<text class="t\d+" x="26" /);
+    // The text is cut where the arrow's box begins: 10 + 200 - 12 - 16.
+    assert.match(clip(svg), /x="26" y="10" width="156" height="20"/);
+    // The chevron is centred in the 16 px box at the padding box's right edge, whatever the padding.
+    assert.match(svg, /<path d="M198 18L202 22L206 18" fill="none"/);
+  });
+
+  test("with appearance none has neither: the page lays its arrow over the padding", () => {
+    const svg = draw("none");
+    assert.match(svg, /<text class="t\d+" x="22" /);
+    assert.match(clip(svg), /x="22" y="10" width="176" height="20"/);
+    assert.doesNotMatch(svg, /fill="none"/);
+  });
+});
+
 describe("selectLabel", () => {
   const text = (value) => ({ type: 3, value, children: [] });
   const el = (name, children, attrs = {}) => ({ type: 1, name, attrs, children });

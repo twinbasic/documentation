@@ -35,8 +35,8 @@ export const SHOTS = [
     name: "compare-changes",
     out: `${FOLDER}/compare-changes.png`,
     shows:
-      "On the repository's Compare page, press compare across forks, so that all four selectors show, and set " +
-      "base to staging. The yellow banner of the plain Compare page does not show here.",
+      "On the repository's Compare page, press compare across forks, so that all four selectors show, with base " +
+      "main. The yellow banner of the plain Compare page does not show here.",
     marks: [
       { n: 3, on: button("compare across forks"), side: "above", what: "the compare across forks link" },
       { n: 4, on: { css: ".range-editor" }, what: "the repository and branch selectors" },
@@ -47,7 +47,7 @@ export const SHOTS = [
     name: "create-pull-request",
     out: `${FOLDER}/create-pull-request.png`,
     shows:
-      "Base staging, with your fork and a branch that has no pull request yet (GitHub then shows View pull " +
+      "Base main, with your fork and a branch that has no pull request yet (GitHub then shows View pull " +
       "request instead): Able to merge, the blue Discuss and review banner and the green Create pull request. " +
       "Do not press it: the form stays closed.",
     marks: [{ n: 5, on: button("Create pull request"), what: "the Create pull request button" }],
@@ -87,8 +87,8 @@ export const SHOTS = [
     name: "run-workflow",
     out: `${FOLDER}/run-workflow.png`,
     shows:
-      "On the Build & deploy docs page, press Run workflow: the drop-down opens, on branch staging. Do not press " +
-      "the green button inside it unless a release is wanted.",
+      "On the Build & deploy docs page of twinbasic/documentation, press Run workflow: the drop-down opens, on " +
+      "branch main. Do not press the green button inside it unless a release is wanted.",
     marks: [
       {
         n: "a",
