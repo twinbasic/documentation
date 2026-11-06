@@ -1,17 +1,13 @@
-// What the tools that draw a picture's SVG again from its bundle have in common:
-// replay.mjs, which writes the SVGs beside their PNGs, and sheet.mjs, which writes a
-// sheet of them to look at. Finding the pictures and their bundles, drawing one again
-// and judging it (keep.mjs, against lib/shot-policy.mjs's bar), writing what the judge made
-// into a folder, and running the pictures in processes of their own. The sheets' pages are
-// in sheets.mjs.
+// What the tools that draw a picture's SVG again from its bundle use, replay.mjs above all:
+// drawing one again and judging it (keep.mjs, against lib/shot-policy.mjs's bar), writing what
+// the judge made into a folder, and running the pictures in processes of their own.
 //
 // Nothing here writes under docs/: each writer is given its folder.
 
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import path from "node:path";
-import { isOutputTree } from "../../lib/markdown-files.mjs";
 import { LAUNCH_ARGS, launchBrowser } from "../lib/browser.mjs";
 import { readRecords, sendStop, writeRecord } from "../lib/record-lines.mjs";
 import { BUNDLE_VERSION, drawBundle, pngHash, readBundle, renderBundle } from "./bundle.mjs";
@@ -33,41 +29,18 @@ export const judgedFiles = (out) => {
 };
 
 /**
- * Every PNG under `docsRoot`, the build's output trees left out, as its path under
- * it with forward slashes, sorted, each with whether an SVG of the same name is
- * beside it: [{out, svg}].
- */
-export function listPictures(docsRoot) {
-  const found = [];
-  const walk = (dir, rel) => {
-    for (const e of readdirSync(dir, { withFileTypes: true })) {
-      if (!rel && isOutputTree(e.name)) continue;
-      const r = rel ? `${rel}/${e.name}` : e.name;
-      if (e.isDirectory()) walk(path.join(dir, e.name), r);
-      else if (e.isFile() && /\.png$/i.test(e.name)) found.push(r);
-    }
-  };
-  walk(docsRoot, "");
-  return found
-    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
-    .map((out) => ({ out, svg: existsSync(path.join(docsRoot, out.replace(/\.png$/i, ".svg"))) }));
-}
-
-/**
  * Draws the SVG of the picture `out` (its path under `docsRoot`) again from its
  * bundle under `bundlesRoot`, with the converter as it is now. Returns
  * {retake, detail} when it cannot be drawn faithfully to its PNG -- `retake` the
- * reason in the tool's own words, `detail` text from the bundle that a console
- * may show and a sheet must not -- else {png, svg, stats, notes}.
+ * reason in the tool's own words, `detail` text from the bundle for a console alone
+ * -- else {png, svg, stats, notes}.
  *
  * A PNG that is not the one the bundle was taken with, or a question the bundle has
  * no answer for, is a retake; with `stale`, the SVG is drawn all the same and the
  * reason is one of its `notes`. An SVG that holds `user` (the Windows user name, or a
- * list of the words no published picture may show: private-list.mjs) throws, unless
- * `checkUserName` is false: only sheet.mjs passes that, whose sheet is for its owner
- * alone and is never written where git would take it (outputRefusal).
+ * list of the words no published picture may show: private-list.mjs) throws.
  */
-export async function redraw({ bundlesRoot, docsRoot, out, user, stale = false, checkUserName = true }) {
+export async function redraw({ bundlesRoot, docsRoot, out, user, stale = false }) {
   const bundle = readBundle(bundlesRoot, out);
   const ready = readyToDraw(bundle, docsRoot, out, stale);
   if (ready.retake) return ready;
@@ -78,7 +51,7 @@ export async function redraw({ bundlesRoot, docsRoot, out, user, stale = false, 
     if (!stale) return missed;
     notes.push(missed.retake);
   }
-  if (checkUserName && heldWords(svg, [user].flat()).length) throw new Error("the SVG holds the Windows user name");
+  if (heldWords(svg, [user].flat()).length) throw new Error("the SVG holds the Windows user name");
   return { png, svg, stats, notes };
 }
 
