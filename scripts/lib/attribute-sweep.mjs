@@ -349,7 +349,41 @@ export function formDependence(agg) {
  */
 export function targetsOf(app) {
   if (!app) return [];
-  let t = parseTargets(app);
+  // Phrasings parseTargets reads wrongly or not at all, because they name a
+  // site the probe generator has no skeleton for. `own` takes the phrase out of
+  // what parseTargets reads (it would read "a Sub prototype in an Interface" as
+  // every prototype); without it the phrase is read as before and the targets
+  // are added to what it gives. Each starts with a word no parseTargets rule
+  // anchors on, or is anchored to the phrase, so a sentence after a full stop
+  // is not taken for one.
+  // biome-ignore format: a table, one entry per line
+  const SWEEP_PHRASES = [
+    [/^const(ant)?s?\b[^.]*\bclass\b/i, ["CONST_CLASS"], false],
+    [/^generic\s+sub\b/i, ["SUB_GENERIC"], true],
+    [/^a\s+sub\s+in\s+a\s+class\b/i, ["SUB_CLASS"], true],
+    [/^a\s+sub\s+prototype\s+in\s+an\s+interface\b/i, ["SUB_INTERFACE"], true],
+    [/^a\s+property\s+get\s+in\s+a\s+class\b/i, ["PROPGET_CLASS"], true],
+    [/^member\s+of\s+a\s+type\b/i, ["TYPE_FIELD"], true],
+  ];
+  const extra = [];
+  const own = [];
+  for (const phrase of app.split(/,|\band\b/)) {
+    const p = phrase.trim();
+    for (const [re, targets, takes] of SWEEP_PHRASES) {
+      if (!re.test(p)) continue;
+      for (const x of targets) if (!extra.includes(x)) extra.push(x);
+      if (takes) own.push(phrase);
+      break;
+    }
+  }
+  if (own.length) {
+    app = app
+      .split(/,|\band\b/)
+      .filter((p) => !own.includes(p))
+      .join(",");
+  }
+  const t0 = parseTargets(app);
+  let t = [...t0, ...extra.filter((x) => !t0.includes(x))];
   if (/implements\b.*\bvia\b/i.test(app)) t = [...t.filter((x) => x !== "IMPLEMENTS"), "IMPLEMENTS_VIA"];
   // A "procedure" with no place named in ITS OWN phrase means every procedure --
   // "Class, Module, procedure" says so, though the words Class and Module appear
