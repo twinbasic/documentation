@@ -18,8 +18,12 @@ export const PAGE_WIDTH = 1280;
 const button = (text) => ({ css: "button", text });
 const POPOVER = "#__primerPortalRoot__";
 const MERGE_BOX = { css: "[data-testid=mergebox-border-container]" };
+// The green tile left of the merge box, held whole: the badge stands over its right edge.
+const MERGE_TILE = { css: "[data-testid=mergebox-partial] svg.octicon-git-merge" };
+const MERGE_TRIM = { of: [MERGE_BOX, MERGE_TILE], pad: { left: 16 } };
 const ACTIONS_TAB = { css: "a", text: "Actions" };
 const WORKFLOW = { css: "a", text: "Build & deploy docs" };
+const NEXT_WORKFLOW = { css: "a", text: "Run Checks" };
 
 export const SHOTS = [
   {
@@ -46,14 +50,14 @@ export const SHOTS = [
     out: `${FOLDER}/merge-pull-request.png`,
     shows: "An open pull request's merge box: No conflicts with base branch, Merge pull request.",
     marks: [{ n: "6a", on: button("Merge pull request"), what: "the Merge pull request button" }],
-    trim: { of: [MERGE_BOX] },
+    trim: MERGE_TRIM,
   },
   {
     name: "confirm-merge",
     out: `${FOLDER}/confirm-merge.png`,
     shows: "The merge form: commit message, extended description, Commit email, Confirm merge. Do not press it.",
     marks: [{ n: "6b", on: button("Confirm merge"), what: "the Confirm merge button" }],
-    trim: { of: [MERGE_BOX] },
+    trim: MERGE_TRIM,
   },
   {
     name: "choose-workflow",
@@ -63,7 +67,7 @@ export const SHOTS = [
       { n: "a", on: ACTIONS_TAB, side: "below", what: "the Actions tab" },
       { n: "b", on: WORKFLOW, side: "right", what: "the Build & deploy docs entry" },
     ],
-    trim: { of: [ACTIONS_TAB, WORKFLOW] },
+    trim: { of: [ACTIONS_TAB, WORKFLOW, NEXT_WORKFLOW], pad: { top: 4 } },
   },
   {
     name: "run-workflow",

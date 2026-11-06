@@ -81,11 +81,13 @@ export function findElement(doc, { css, text }) {
 /**
  * The area to trim the capture `bundle` to, as a bundle's view ({x, y, w, h}, whole document CSS
  * px): the box round each anchor of `trim.of` and round `marked`, the marks drawn ({x, y, width,
- * height}, or null), `trim.pad` CSS px larger on each side, inside what the capture holds.
+ * height}, or null), larger on each side by `trim.pad`, CSS px for all four or {top, right, bottom,
+ * left} with PAD for a side not named, inside what the capture holds.
  * Throws when an anchor finds nothing, or when the box runs past what the capture holds, naming
  * which: the picture's area was not in the window.
  */
 export function trimArea(bundle, { of, pad = PAD }, marked = null) {
+  const room = (side) => (typeof pad === "number" ? pad : (pad[side] ?? PAD));
   const doc = decodeSnapshot(bundle.snapshot, bundle.styles);
   const boxes = of.map((anchor) => {
     const node = findElement(doc, anchor);
@@ -108,10 +110,10 @@ export function trimArea(bundle, { of, pad = PAD }, marked = null) {
     const [by, side] = past[0];
     throw new Error(`the picture's area runs ${Math.ceil(by)} px past the ${side} of the window: scroll to it`);
   }
-  const left = Math.max(Math.ceil(view.x), Math.floor(x0 - pad));
-  const top = Math.max(Math.ceil(view.y), Math.floor(y0 - pad));
-  const right = Math.min(Math.floor(view.x + view.w), Math.ceil(x1 + pad));
-  const bottom = Math.min(Math.floor(view.y + view.h), Math.ceil(y1 + pad));
+  const left = Math.max(Math.ceil(view.x), Math.floor(x0 - room("left")));
+  const top = Math.max(Math.ceil(view.y), Math.floor(y0 - room("top")));
+  const right = Math.min(Math.floor(view.x + view.w), Math.ceil(x1 + room("right")));
+  const bottom = Math.min(Math.floor(view.y + view.h), Math.ceil(y1 + room("bottom")));
   return { x: left, y: top, w: right - left, h: bottom - top };
 }
 

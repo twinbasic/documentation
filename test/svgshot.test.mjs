@@ -67,6 +67,7 @@ import {
   markPrimitives,
   pngSizeOf,
   unionWithin,
+  wholeBox,
 } from "../scripts/svgshot/chrome/take.mjs";
 import { findElement, matches, trimArea, trimPicture } from "../scripts/svgshot/trim.mjs";
 import { privateEntries, privateWords } from "../scripts/svgshot/private-list.mjs";
@@ -1187,6 +1188,8 @@ describe("bundles", () => {
     assert.deepEqual(trimArea(bundle, { of: [shown], pad: 0 }), { x: 10, y: 10, w: 200, h: 20 });
     // The padding stops at what the capture holds.
     assert.deepEqual(trimArea(bundle, { of: [shown], pad: 30 }), { x: 0, y: 0, w: 240, h: 60 });
+    // A side can have room of its own, and the others keep theirs.
+    assert.deepEqual(trimArea(bundle, { of: [shown], pad: { left: 1, top: 2 } }), { x: 9, y: 8, w: 209, h: 30 });
     // The marks count, and may be at half a pixel.
     const marked = { x: 300.5, y: 40, width: 20, height: 22.5 };
     assert.deepEqual(trimArea(bundle, { of: [shown], pad: 0 }, marked), { x: 10, y: 10, w: 311, h: 53 });
@@ -4353,6 +4356,16 @@ describe("the Chrome extension, with no Chrome", () => {
       width: 990,
       height: 780,
     });
+  });
+
+  test("puts a mark on whole CSS px, as the page snaps the element it stands for", () => {
+    assert.deepEqual(wholeBox({ x: 10.25, y: 195.25, width: 121.75, height: 32.5 }), {
+      x: 10,
+      y: 195,
+      width: 122,
+      height: 33,
+    });
+    assert.deepEqual(wholeBox({ x: 4, y: 8, width: 15, height: 16 }), { x: 4, y: 8, width: 15, height: 16 });
   });
 
   test("rings what is small and boxes what is tall, whose ring would be a great ellipse", () => {

@@ -195,6 +195,16 @@ async function capturePng(conn, clip, display) {
 // round a panel a ring is a great ellipse over all that is near it.
 const TALLEST_RING = 48;
 
+/**
+ * A box on whole CSS px, as Chromium snaps the element it stands for: a mark drawn at a fraction
+ * of a pixel falls half a device pixel from where the PNG has it, which a mark's white halo on a
+ * dark ground makes enough to fail a small picture's SVG.
+ */
+export function wholeBox({ x, y, width, height }) {
+  const [left, top] = [Math.round(x), Math.round(y)];
+  return { x: left, y: top, width: Math.round(x + width) - left, height: Math.round(y + height) - top };
+}
+
 // The primitives of a shot's mark at `on`, whose box is `box`: a ring round it, or a box round
 // a tall one, and its label in a badge beside it.
 export const markPrimitives = (mark, on, box) => [
@@ -207,8 +217,7 @@ export const markPrimitives = (mark, on, box) => [
 async function drawMarks(conn, marks, { pick, log }) {
   const primitives = [];
   for (const mark of marks) {
-    let on = mark.on;
-    const found = await resolveAnchors(conn, { on }).catch((e) => {
+    const found = await resolveAnchors(conn, { on: mark.on }).catch((e) => {
       log(`mark ${mark.n}: ${e.message}`);
       return null;
     });
@@ -219,9 +228,9 @@ async function drawMarks(conn, marks, { pick, log }) {
         log(`mark ${mark.n} left out`);
         continue;
       }
-      on = { rect: box };
     }
-    primitives.push(...markPrimitives(mark, on, box));
+    box = wholeBox(box);
+    primitives.push(...markPrimitives(mark, { rect: box }, box));
   }
   return primitives.length ? (await annotate(conn, primitives)).box : null;
 }

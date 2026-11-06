@@ -1645,7 +1645,14 @@ and a click takes the whole drop-down, whose ring, round to half its height, was
 over everything: a mark on anything over 48 px tall is now a box. Two buttons say **Run
 workflow**, the first in the DOM the one in `#__primerPortalRoot__`. GitHub's class names are
 hashed, so an anchor uses `data-testid`, `data-component`, an id or `[class*=...]`. All the
-table's anchors find their elements in those captures. A badge on the left of a link covers the
+table's anchors find their elements in those captures. **A mark is drawn on whole CSS px**
+(`wholeBox`). `run-workflow`'s button stands at y = 195.25, and in the owner's Chrome the PNG
+drew its ring on device pixels while the SVG drew it half a device pixel away: a white halo on
+a dark ground, 0.292% of that small picture strongly off, and 0% with the bundle's marks moved
+to device pixels. Chrome for Testing 148 does not show this: a test page with marks at a
+quarter of a pixel was 0% strongly off either way, so `chrome_try` cannot catch it. A trim's `pad`
+can name a side, and two anchors are there for what stood cut at a picture's edge: the merge
+box's green tile and the next workflow. A badge on the left of a link covers the
 word before it, and each mark has a `side`.
 
 **The result**, a page drawn again from the bundle against its screenshot:

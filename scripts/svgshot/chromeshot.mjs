@@ -142,6 +142,7 @@ const say = (out, line) => console.log(`${out}: ${line}`);
 // and the table gives the picture a trim.
 function trimCapture(capture) {
   const trim = SHOTS.find((s) => s.out === capture.out)?.trim;
+  if (trim && capture.area !== "viewport") say(capture.out, "not trimmed: this capture is a dragged rectangle");
   if (values.noTrim || capture.area !== "viewport" || !trim) return capture;
   const area = trimArea(capture.pictures[0].bundle, trim, capture.marked);
   const pictures = capture.pictures.map((p) => trimPicture(p, area));
