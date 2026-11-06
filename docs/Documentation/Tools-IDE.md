@@ -196,27 +196,31 @@ To take a picture:
 3. Choose the picture, or **Another picture** and its path under `docs`. The panel says what each of the six must show.
 4. Press **Whole viewport**, which takes what the window shows, or **Drag a rectangle**, then drag over the page. A click takes the box of the element under it, and Esc or **Cancel** gives up.
 
+Take each of the six with **Whole viewport**, with what it shows in the window. [`chromeshot.mjs`](#chromeshot) trims the capture to the picture, so a retake is aligned as the last one was, however the page was scrolled. A rectangle dragged by hand comes out a little different each time.
+
 Chrome shows a bar saying that the extension is debugging the browser, for as long as a capture takes. Leave it, and keep the tab showing. The page is put back as it was afterwards, and the file goes to the `svgshot` folder of your downloads as `<name>.capture.json.gz`, where [`chromeshot.mjs`](#chromeshot) reads it. A browser set to ask where to save each file asks for this one too.
 
 The capture does the following to the page:
 
-- It lays the page out at 1x and draws it at 2x, as the IDE's pictures are. On a display scaled above 100% the tab's zoom changes for the capture, so the page is smaller for a moment. **Page width** lays the page out at that width in CSS pixels. A width that does not fit the tab is cut off on screen, so that **Drag a rectangle** cannot reach the part cut off, and **Whole viewport** still takes it.
+- It lays the page out at 1x and draws it at 2x, as the IDE's pictures are. On a display scaled above 100% the tab's zoom changes for the capture, so the page is smaller for a moment. **Page width** lays the page out at that width in CSS pixels, and the six are laid out at 1280 unless it says otherwise, so that each retake has one layout. Without it the page keeps the width the tab gives it. A width that does not fit the tab is cut off on screen, so that **Drag a rectangle** cannot reach the part cut off, and **Whole viewport** still takes it.
 - It replaces each private word in the page by its stand-in, in text, in text boxes, in a list's choices and in attributes, and shows a grey head in place of a picture whose address, alternative text, link or hover card holds one. The PNG and the bundle are therefore both of the masked page. Words the page draws again during the capture are masked again, and a capture they get into is taken again.
 - It sets the theme with the `prefers-color-scheme` preference, and on GitHub with the attributes that hold the account's own theme.
-- It draws the marks of the six pictures, rings and badges in the style of the other pictures, which go into both the PNG and the SVG. Where the page has nothing that a mark's table entry finds, the page asks you to click what the mark points at. **Draw the markings** turns them off.
+- It draws the marks of the six pictures, in the style of the other pictures, which go into both the PNG and the SVG: a badge beside a ring, or beside a box round something tall. Where the page has nothing that a mark's table entry finds, the page asks you to click what the mark points at. **Draw the markings** turns them off.
 
 The mask finds text. It does not find text inside a picture or a `<canvas>`, or in a frame of another site, so look at the preview the panel shows before you publish a capture.
 
 ## chromeshot.mjs
 {: #chromeshot }
 
-    node scripts/svgshot/chromeshot.mjs <capture | folder>... [--out <dir>] [--bundles <dir>] [--diffs <dir>] [--words <file>]
+    node scripts/svgshot/chromeshot.mjs <capture | folder>... [--out <dir>] [--bundles <dir>] [--diffs <dir>] [--words <file>] [--no-trim]
 
 Turns what the [Chrome extension](#svgshot-extension) saved into a picture. A folder stands for every capture in it. For each capture it writes `X.png`, and `X.light.png` when both themes were taken, as [`shoot_docs.mjs`](#shoot-docs) writes a capture: one within a capture's noise of the picture is not written, and a light picture with the dark one's pixels is not kept. It draws each SVG from its bundle, writes it beside its PNG when it is close enough to it, and keeps the bundle in the bundle folder, so that [`replay.mjs`](#replay) draws the SVG again after a change to the converter. The line for each PNG gives the `{:width height}` for the page that shows it.
 
+A capture of the whole window, of one of the six, is cut down first. `scripts/svgshot/chrome/shots.mjs` names, for each picture, the elements it holds, by the same kind of anchor its marks use. The tool finds them in the page as the capture recorded it, takes the box round them and the marks, leaves 8 CSS pixels round that, and cuts both themes to it. The capture keeps the whole window, so a change to that table trims the same capture again, with no new picture. A picture whose area was not all in the window is refused, with the side to scroll to. A rectangle dragged by hand is left as it is, and `--no-trim` keeps the whole window.
+
 A capture holds what the page held, so it stays out of the repository. The tool refuses one under `docs`, or where git would take it. It also refuses a capture of a bundle format the converter does not read, and one that shows the Windows user name, git's `user.name` or `user.email`, or a word of `scripts/svgshot/private.json`. Every capture is checked before any file is written, and [`replay.mjs`](#replay) makes the same check of each SVG it draws.
 
-`--out` is the folder the pictures are in, `docs` by default. `--bundles` is the bundle folder, `.svgshot-bundles` by default, refused under `docs` and where git would take it. `--diffs` names a folder for each SVG's render, the picture drawn again as a PNG, and its difference picture, and the line for each SVG then says how far the render is from the screenshot by the rule for two captures. That rule allows no shift of a pixel for the edge of a glyph, so a faithful SVG does not meet it. `--words` names another list of private words.
+`--out` is the folder the pictures are in, `docs` by default. `--bundles` is the bundle folder, `.svgshot-bundles` by default, refused under `docs` and where git would take it. `--diffs` names a folder for each SVG's render, the picture drawn again as a PNG, and its difference picture, and the line for each SVG then says how far the render is from the screenshot by the rule for two captures. That rule allows no shift of a pixel for the edge of a glyph, so a faithful SVG does not meet it. `--words` names another list of private words, and `--no-trim` keeps the whole window of a capture.
 
 The tool needs Python with fontTools, as `--svg` does.
 

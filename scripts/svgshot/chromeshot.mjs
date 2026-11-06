@@ -22,10 +22,12 @@ import { judgeSvg } from "./keep.mjs";
 import { PRIVATE_FILE, privateWords } from "./private-list.mjs";
 import { drawnWords, heldWords } from "./private-words.mjs";
 import { inBrowser, staleBundle, writeJudged } from "./redraw.mjs";
+import { SHOTS } from "./chrome/shots.mjs";
+import { trimArea, trimPicture } from "./trim.mjs";
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/svgshot/chromeshot.mjs <capture | folder>... [--out <dir>] [--bundles <dir>] [--diffs <dir>] [--words <file>] [-h, --help]
+const USAGE = `usage: node scripts/svgshot/chromeshot.mjs <capture | folder>... [--out <dir>] [--bundles <dir>] [--diffs <dir>] [--words <file>] [--no-trim] [-h, --help]
 
 Turns each file the Chrome extension saved (<name>.capture.json.gz, in the svgshot
 folder of the browser's downloads) into its picture: writes X.png, and X.light.png
@@ -34,6 +36,11 @@ capture's noise of the picture is not written), draws each SVG from its bundle,
 writes it beside its PNG when no more than the bar's share of its pixels are far
 off, and keeps the bundle in the bundle cache for replay.mjs. Takes no picture;
 needs Python with fontTools, as --svg does. A folder stands for every capture in it.
+
+A capture of the whole window, of a picture the panel's table gives a trim
+(chrome/shots.mjs), is cut down first to the box round the elements the table names
+and the marks, found in the capture, so that each retake is aligned alike. A picture
+whose area was not in the window is refused. A dragged rectangle is left as it is.
 
 A capture is refused when it is under docs or where git would take it, is of a
 format the converter does not read, or shows a word no published picture may show:
@@ -48,6 +55,7 @@ scripts/svgshot/private.json. Nothing of a refused capture is written.
                    <name>.svg-diff.png, and say how far the render is from the
                    screenshot by the rule for two captures
   --words <file>   the list of private words (default scripts/svgshot/private.json)
+  --no-trim        keep the whole window
   -h, --help       print this text and exit
 
 Exit codes:
@@ -62,6 +70,7 @@ const { values, positionals } = withUsageError(() =>
       bundles: { type: "string" },
       diffs: { type: "string" },
       words: { type: "string" },
+      "no-trim": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
     positionals: { min: 1 },
@@ -128,6 +137,17 @@ try {
 }
 
 const say = (out, line) => console.log(`${out}: ${line}`);
+
+// The capture cut down to its picture's area, both themes alike, when it is of the whole window
+// and the table gives the picture a trim.
+function trimCapture(capture) {
+  const trim = SHOTS.find((s) => s.out === capture.out)?.trim;
+  if (values.noTrim || capture.area !== "viewport" || !trim) return capture;
+  const area = trimArea(capture.pictures[0].bundle, trim, capture.marked);
+  const pictures = capture.pictures.map((p) => trimPicture(p, area));
+  say(capture.out, `trimmed to ${area.w}x${area.h} CSS px at ${area.x},${area.y} from the window`);
+  return { ...capture, pictures };
+}
 
 // Why the capture cannot be published: {why}, else each picture with its SVG, drawn from the
 // bundle as a later replay.mjs draws it, and its path under the output folder.
@@ -223,7 +243,13 @@ async function writeCapture({ file, drawn }, browser) {
 let failed = 0;
 const ready = [];
 for (const file of files) {
-  const { why, drawn } = await drawCapture(readCapture(file));
+  let why;
+  let drawn;
+  try {
+    ({ why, drawn } = await drawCapture(trimCapture(readCapture(file))));
+  } catch (e) {
+    why = e.message;
+  }
   if (why) {
     failed++;
     console.error(`${file}: refused, nothing written: ${why}`);

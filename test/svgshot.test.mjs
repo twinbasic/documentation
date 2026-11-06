@@ -59,7 +59,16 @@ import {
 import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
 import { attachDebugger } from "../scripts/svgshot/chrome/conn.mjs";
 import { SHOTS } from "../scripts/svgshot/chrome/shots.mjs";
-import { AVATAR, captureBlob, captureName, layoutPlan, pngSizeOf } from "../scripts/svgshot/chrome/take.mjs";
+import {
+  AVATAR,
+  captureBlob,
+  captureName,
+  layoutPlan,
+  markPrimitives,
+  pngSizeOf,
+  unionWithin,
+} from "../scripts/svgshot/chrome/take.mjs";
+import { findElement, matches, trimArea, trimPicture } from "../scripts/svgshot/trim.mjs";
 import { privateEntries, privateWords } from "../scripts/svgshot/private-list.mjs";
 import {
   drawnStrings,
@@ -1168,6 +1177,42 @@ describe("bundles", () => {
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  test("is trimmed to a picture's area, found in the capture, whole CSS px inside what it holds", async () => {
+    const bundle = bundleOf(measured);
+    // The list's box is 10,10 200x20 in a view of 0,0 400x100.
+    const shown = { css: "select", text: "Shown" };
+    assert.deepEqual(trimArea(bundle, { of: [shown] }), { x: 2, y: 2, w: 216, h: 36 });
+    assert.deepEqual(trimArea(bundle, { of: [shown], pad: 0 }), { x: 10, y: 10, w: 200, h: 20 });
+    // The padding stops at what the capture holds.
+    assert.deepEqual(trimArea(bundle, { of: [shown], pad: 30 }), { x: 0, y: 0, w: 240, h: 60 });
+    // The marks count, and may be at half a pixel.
+    const marked = { x: 300.5, y: 40, width: 20, height: 22.5 };
+    assert.deepEqual(trimArea(bundle, { of: [shown], pad: 0 }, marked), { x: 10, y: 10, w: 311, h: 53 });
+    assert.throws(() => trimArea(bundle, { of: [{ css: "button" }] }), /has no element \{"css":"button"\}/);
+    // An area that was not in the window asks for a scroll, and says which way.
+    const low = structuredClone(bundle);
+    low.view = { x: 0, y: 0, w: 400, h: 25 };
+    assert.throws(() => trimArea(low, { of: [shown] }), /runs 5 px past the bottom of the window/);
+
+    const [width, height] = [800, 200];
+    const rgba = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++) rgba.set([x % 256, y % 256, (x >> 8) * 40, 255], (y * width + x) * 4);
+    const picture = { theme: "dark", png: encodePng({ width, height, rgba }).toString("base64"), bundle };
+    const area = trimArea(bundle, { of: [shown] });
+    const trimmed = trimPicture(picture, area);
+    const image = decodePng(Buffer.from(trimmed.png, "base64"));
+    assert.deepEqual([image.width, image.height], [432, 72]);
+    // Each pixel is the one it was, at 2 device px to the CSS px.
+    assert.deepEqual([...image.rgba.subarray(0, 4)], [4, 4, 0, 255]);
+    assert.deepEqual([...image.rgba.subarray((71 * 432 + 431) * 4)], [435 % 256, 75, 40, 255]);
+    assert.deepEqual(trimmed.bundle.view, area);
+    // The SVG is what a capture of that area draws: its text, in that view.
+    const { svg } = await renderBundle(trimmed.bundle);
+    assert.match(svg, />Shown<\/text>/);
+    assert.match(svg, /\swidth="216" height="36" viewBox="2 2 216 36"/);
   });
 
   test("goes through chromeshot.mjs, which refuses what shows a private word before it writes", async () => {
@@ -4293,6 +4338,72 @@ describe("the Chrome extension, with no Chrome", () => {
     }
   });
 
+  test("keeps a clip inside the window, since Chrome draws one left of the page at half size", () => {
+    const window = { x: 0, y: 700, width: 1000, height: 800 };
+    const area = { x: 10, y: 720, width: 300, height: 100 };
+    assert.deepEqual(unionWithin(area, { x: -15, y: 690, width: 40, height: 40.5 }, window), {
+      x: 0,
+      y: 700,
+      width: 310,
+      height: 120,
+    });
+    assert.deepEqual(unionWithin(area, { x: 950, y: 1490, width: 100, height: 100 }, window), {
+      x: 10,
+      y: 720,
+      width: 990,
+      height: 780,
+    });
+  });
+
+  test("rings what is small and boxes what is tall, whose ring would be a great ellipse", () => {
+    const mark = { n: "a" };
+    const types = (height) => markPrimitives(mark, { css: "x" }, { height }).map((p) => p.type);
+    assert.deepEqual(types(32), ["ring", "badge"]);
+    assert.deepEqual(types(48), ["ring", "badge"]);
+    assert.deepEqual(types(270), ["box", "badge"]);
+    assert.equal(markPrimitives({ n: "a", side: "right" }, { css: "x" }, { height: 9 })[1].side, "right");
+  });
+
+  test("finds an anchor as the page does, in the part of CSS the table uses", () => {
+    const element = (name, attrs, parent = null) => ({ type: 1, name, attrs, parent, layouts: [], children: [] });
+    const root = element("DIV", { id: "__primerPortalRoot__" });
+    const card = element("DIV", { class: "Overlay__e1QdMe big", "data-component": "PH_Actions" }, root);
+    const button = element("BUTTON", { "data-testid": "go" }, card);
+    assert.equal(matches(button, "button"), true);
+    assert.equal(matches(button, "a, button"), true);
+    assert.equal(matches(button, "a"), false);
+    assert.equal(matches(card, ".big"), true);
+    assert.equal(matches(card, ".bi"), false);
+    assert.equal(matches(card, "div.big"), true);
+    assert.equal(matches(card, "[class*=Overlay]"), true);
+    assert.equal(matches(card, "[class^=Overlay]"), true);
+    assert.equal(matches(card, "[class^=big]"), false);
+    assert.equal(matches(button, "[data-testid=go]"), true);
+    assert.equal(matches(button, '[data-testid="go"]'), true);
+    assert.equal(matches(button, "[data-testid]"), true);
+    assert.equal(matches(button, "[data-testid=stop]"), false);
+    // Descendants, through what lies between; and an ancestor that is not there.
+    assert.equal(matches(button, "#__primerPortalRoot__ button"), true);
+    assert.equal(matches(button, "[data-component=PH_Actions] button"), true);
+    assert.equal(matches(button, "#other button"), false);
+    assert.throws(() => matches(button, "a > b"), /cannot read: >/);
+
+    const shown = (name, text, w = 10) => {
+      const n = element(name, {});
+      n.children = [{ type: 3, value: text, children: [] }];
+      n.layouts = [{ bounds: { x: 0, y: 0, w, h: 10 } }];
+      return n;
+    };
+    const [hidden, prefix, exact] = [shown("A", " Actions ", 0), shown("A", "Actions and more"), shown("A", "Actions")];
+    const doc = { nodes: [hidden, prefix, exact] };
+    // Text as annotate.mjs compares it: an element with no box is passed over, and the
+    // whole text beats the start of a longer one.
+    assert.equal(findElement(doc, { css: "a", text: "Actions" }), exact);
+    assert.equal(findElement(doc, { css: "a", text: "Actions and" }), prefix);
+    assert.equal(findElement(doc, { css: "a" }), prefix);
+    assert.equal(findElement(doc, { css: "a", text: "Nothing" }), null);
+  });
+
   test("names each of the six pictures, with marks that say what to point at", () => {
     assert.deepEqual(
       SHOTS.map((s) => s.name),
@@ -4309,11 +4420,99 @@ describe("the Chrome extension, with no Chrome", () => {
       assert.ok(fs.existsSync(path.join(REPO_ROOT, "docs", shot.out)), shot.out);
       assert.ok(shot.marks.length);
       for (const mark of shot.marks) assert.ok(mark.what && mark.on && mark.n !== undefined);
+      // Every anchor a trim names is one the tool can read.
+      assert.ok(shot.trim.of.length);
+      for (const { css } of shot.trim.of)
+        assert.equal(typeof matches({ type: 1, name: "A", attrs: {} }, css), "boolean");
     }
   });
 
   test("shows a person a picture of no one", () => {
     assert.match(decodeURIComponent(AVATAR), /^data:image\/svg\+xml,<svg /);
+  });
+});
+
+describe("a clip of one axis, and of a disc", () => {
+  const NAMES = [
+    "display",
+    "visibility",
+    "overflow-x",
+    "overflow-y",
+    "background-color",
+    ...["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`),
+  ];
+  // A box of 100 by 100 at 10,10 that clips, with a child of its size and a ground.
+  function page(overflowX, overflowY, radius) {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = (ox, oy, ground, r) => ["block", "visible", ox, oy, ground, r, r, r, r].map(s);
+    const plain = style("visible", "visible", "rgba(0, 0, 0, 0)", "0px");
+    const names = ["#document", "HTML", "BODY", "DIV", "P"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2, 3],
+            nodeType: [9, 1, 1, 1, 1],
+            nodeName: names.map(s),
+            nodeValue: names.map(() => -1),
+            attributes: names.map(() => []),
+          },
+          layout: {
+            nodeIndex: [1, 2, 3, 4],
+            styles: [
+              plain,
+              plain,
+              style(overflowX, overflowY, "rgba(0, 0, 0, 0)", radius),
+              style("visible", "visible", "rgb(9, 9, 9)", "0px"),
+            ],
+            bounds: [
+              [0, 0, 200, 200],
+              [0, 0, 200, 200],
+              [10, 10, 100, 100],
+              [10, 10, 100, 100],
+            ],
+            text: [-1, -1, -1, -1],
+            paintOrders: [0, 1, 2, 3],
+            offsetRects: [[], [], [], []],
+            clientRects: [[], [], [], []],
+            scrollRects: [[], [], [], []],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, NAMES);
+  }
+  const draw = (doc) =>
+    renderSvg(doc, { clip: { x: 0, y: 0, w: 200, h: 200 }, metrics: () => ({ ascent: 12, height: 15, line: 15 }) }).svg;
+
+  test("a clip of one axis takes the picture's span on the other, not an unbounded one", () => {
+    const svg = draw(page("visible", "clip", "0px"));
+    assert.match(svg, /<clipPath id="[^"]*"><rect x="0" y="10" width="200" height="100"\/>/);
+    assert.doesNotMatch(svg, /1000000000/);
+  });
+
+  test("a box too thin to see and with no radius is no disc, whose clip would have no path", () => {
+    const thin = page("hidden", "hidden", "0px");
+    thin.layouts[2].bounds.h = 0;
+    assert.doesNotMatch(draw(thin), /d="null"/);
+  });
+
+  test("a disc cuts what it clips to its shape, and a smaller radius leaves it square", () => {
+    const clips = (radius) => (draw(page("hidden", "hidden", radius)).match(/<clipPath /g) ?? []).length;
+    assert.equal(clips("0px"), 1);
+    assert.equal(clips("8px"), 1);
+    assert.doesNotMatch(draw(page("hidden", "hidden", "0px")), /d="null"/);
+    const disc = draw(page("hidden", "hidden", "50px"));
+    assert.equal((disc.match(/<clipPath /g) ?? []).length, 2);
+    assert.match(disc, /<clipPath id="[^"]*"><path d="M60 10[^"]*A50 50 0 0 1/);
   });
 });
 

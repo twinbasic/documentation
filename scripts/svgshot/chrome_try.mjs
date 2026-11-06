@@ -154,7 +154,6 @@ try {
     () => page.evaluate('location.href !== "about:blank" && document.readyState === "complete"'),
     { timeout: 60000 },
   );
-  if (scroll) await page.evaluate(`scrollTo(0, ${scroll})`);
 
   // The side panel opens on a person's gesture: a real click, in a page of the extension,
   // stands for the toolbar button, which no tool can press.
@@ -209,6 +208,13 @@ try {
     await pause(300);
     return size === was;
   });
+  // Scrolled last, and at once, past the page's own smooth scrolling. A page too short to
+  // scroll that far is a test of nothing, and is not taken for one.
+  if (scroll) {
+    await page.evaluate(`scrollTo({ top: ${scroll}, behavior: "instant" })`);
+    const at = await page.evaluate("scrollY");
+    if (at !== scroll) throw new Error(`the page scrolled to ${at}, not ${scroll}`);
+  }
   const before = await page.evaluate(asFound);
   await panel.evaluate(`(() => {
     const $ = (id) => document.getElementById(id);

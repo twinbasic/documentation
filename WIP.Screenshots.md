@@ -1307,6 +1307,21 @@ selection handles).
 came out square, the corners 0.073% of a picture strongly off, and 0% cut. The IDE has no
 such image, and a replay of its bundles changed none.
 
+**A clip of one axis** (`span` in `renderSvg`, 2026-11-06). `overflow-y: clip` beside `overflow-x:
+visible` clips one axis, which no other overflow can, and the IDE has none. The converter's
+clip was as wide as `INF` on the open axis, and Chromium draws nothing through a `<rect>` two
+billion px wide, so all of GitHub's merge box under it went, with no word in `stats`: 3.98% of
+`merge-pull-request.light` strongly off, and 0% with that axis given the picture's own span.
+
+**A disc that clips** (`round` in `clipForDescendants`, 2026-11-06): Chromium cuts what a box
+clips to its rounded corners, and a round icon's ground came out square. Every radius was tried
+first: on the 575 bundles it changed 120 SVGs, 7 closer, 2 further by 0.001%, 110 the same, the
+mean share off 0.1302% to 0.1301%, and it would have lapsed the review of tB-Blue, whose SVG's
+bytes it changed with its pixels the same. So only a box whose corners meet at the middle of
+each side is cut, a disc or a pill, and clips of those add up; a smaller radius stays square.
+A replay of the 575 then changes none, and `bench/overflow-clip.html` holds both this and the
+clip of one axis.
+
 **An `<embed>` of an image is drawn as an `<img>`** (`embeddedImage`): Chromium stretches the
 image to the element's box, as for an `<img>` (checked in headless Chromium: a 10 by 10 PNG in a
 100 by 60 `<embed>` filled it), and an ICO draws in an SVG `<image>`. The resource preview shows
@@ -1481,7 +1496,7 @@ coordinates, which the picture's `viewBox` is in.
 
 **The bench** (`node scripts/svgshot/bench.mjs`, outside every gate, needs Edge and fontTools)
 draws the pages under `scripts/svgshot/bench/` (scrollbars, a scrollbar in a cut-out, native scrollbars, drop-down lists,
-native text fields, checkboxes and radio buttons, list markers, a search field's clear button, underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
+native text fields, checkboxes and radio buttons, list markers, a search field's clear button, underlines, focus rings, clips of one axis and of a disc, frames, a web font split by range, inline SVG, a scrolled page with an
 annotation layer, SVG in frames), served from `127.0.0.1` with the site's fonts under `/fonts/`
 (a `file:` page cannot `fetch` its font bytes), with the converter
 and compares them with the browser's own picture: in Edge, whose Chromium is the IDE's WebView2's
@@ -1570,7 +1585,9 @@ so the emulated scale is 2/zoom, and a clip is in the emulated size's units, not
 The override's `scale` is left out: Chrome keeps the view its emulated size and enlarges the page
 inside it, which cuts off the right and the bottom (the window, captured on a private desktop,
 showed it). So on a display at 150% the page takes two thirds of the tab during a capture, in its
-top left corner, and shows whole. A real mouse maps right: `chrome_try --os-drag` posts Windows'
+top left corner, and shows whole. A clip that starts left of the page comes back with the page
+drawn at half its size and the rest black: a badge past the left edge did that to
+`choose-workflow`, so a drag's clip stays inside the window (`unionWithin`). A real mouse maps right: `chrome_try --os-drag` posts Windows'
 own mouse messages to Chrome's window, and 600 by 300 device pixels at 150% came out a clip of
 600 by 300 CSS pixels at the right place.
 
@@ -1609,17 +1626,47 @@ another address is not embedded: the judge sees it missing, and GitHub's six pic
 whatever the preference says. `quietPage` is a constructed style sheet, because the page's
 Content-Security-Policy can refuse a `<style>` a script adds.
 
-**The result**, a page drawn again from the bundle against its screenshot, on
-`github.com/twinbasic/documentation` and its `/compare` page, logged out, with the owner's public
-login in the file list masked in 14 places:
+**A picture is trimmed from the whole window** (owner, 2026-11-06). A rectangle dragged by hand
+comes out a little different at every retake, and a set of pictures should line up, so a shot of
+the table is taken with **Whole viewport** and `chromeshot.mjs` cuts it down (`trim.mjs`). The
+area is the box round the anchors of the shot's `trim` and the marks drawn (`capture.marked`), with
+8 CSS px round it, as `shoot_docs` leaves round its marks, in document coordinates, so that a
+scroll changes nothing. The area is worked out from the capture and not in the page, so that a
+change to the table trims the same file again, which is also why `trim.mjs` has its own small CSS
+matcher: tag, class, id, `[a]`, `[a=v]`, `^=`, `*=` and descendants, what the anchors use. The
+six are laid out at `PAGE_WIDTH`, 1280, so that the window's width does not change the layout.
+Cutting costs nothing: `encodePng` wrote `confirm-merge` in 53 KB against Chrome's 64 KB. A cut area
+is on whole CSS px, so it is free of the steps of a clip's size at 150%.
 
-| Display | Picture | Dark, pixels off (strongly) | Light |
-|---|---|---|---|
-| 100% | whole window, 2180 by 1698 | 0.165% (0%) | |
-| 150% | whole window, 2166 by 1701 | 0.167% (0%) | 0.077% (0%) |
-| 125% | whole window, scrolled 700 px | 0.166% (0%) | 0.076% (0%) |
-| 150% | `compare-changes`, dragged, with its marks | 0.177% (0%) | 0.042% (0%) |
-| 150% | a rectangle dragged with Windows' own mouse | 0.096% (0%) | 0.035% (0%) |
+**What the first signed-in captures showed** (2026-11-06), none of which a logged-out page has.
+A capture holds the page's whole DOM, so the anchors could be read from it. `run-workflow`'s
+top button is a `BUTTON` and no `summary`; the mark found nothing, the owner was asked to click,
+and a click takes the whole drop-down, whose ring, round to half its height, was a great ellipse
+over everything: a mark on anything over 48 px tall is now a box. Two buttons say **Run
+workflow**, the first in the DOM the one in `#__primerPortalRoot__`. GitHub's class names are
+hashed, so an anchor uses `data-testid`, `data-component`, an id or `[class*=...]`. All the
+table's anchors find their elements in those captures. A badge on the left of a link covers the
+word before it, and each mark has a `side`.
+
+**The result**, a page drawn again from the bundle against its screenshot:
+
+| Page | Display | Picture | Dark, pixels off (strongly) | Light |
+|---|---|---|---|---|
+| public | 100% | whole window, 2180 by 1698 | 0.165% (0%) | |
+| public | 150% | whole window, 2166 by 1701 | 0.167% (0%) | 0.077% (0%) |
+| public | 150% | whole window, scrolled 700 px | 0.128% (0%) | 0.034% (0%) |
+| public | 150% | `compare-changes`, dragged, with its marks | 0.177% (0%) | 0.042% (0%) |
+| public | 150% | a rectangle dragged with Windows' own mouse | 0.096% (0%) | 0.035% (0%) |
+| signed in | 150% | `compare-changes` | 0.103% (0%) | 0.030% (0%) |
+| signed in | 150% | `create-pull-request` | 0.095% (0%) | 0.032% (0%) |
+| signed in | 150% | `merge-pull-request`, 1159 px down the page | 0.153% (0%) | 0.043% (0%) |
+| signed in | 150% | `run-workflow` | 0.335% (0.110%) | 0.180% (0%) |
+
+Two trims of one `compare-changes` came out the same to the byte, PNG and SVG, in both themes.
+That page is too short to scroll, so they show the area repeats. That a scroll leaves it alone
+rests on the area being in document coordinates and on the scrolled rows above; no pair of
+trims of one scrolled page has been compared. `chrome_try --scroll` refuses a page that did not
+scroll, since a `scrollTo` made before the tab shows does nothing, and is scrolled last for that.
 
 The bar is 0.25% strongly off, and each is well inside it. Drawn again as a PNG and held to the
 noise rule for two captures, the render does not pass: 2.9% of its pixels are over 16 levels off,
@@ -1627,12 +1674,17 @@ which is 0% once the SVG judge's shift of one pixel is allowed, so it is the edg
 with the IDE's pictures; that rule is for two captures of one state. `replay.mjs` draws the SVGs
 again byte for byte from the cached bundle, with the files removed.
 
-**Not tested, since a session has neither:** the owner's branded Chrome, which ignores
-`--load-extension` since Chrome 137 and so cannot be driven by `chrome_try`, and any signed-in
-page. The marks' anchors in `chrome/shots.mjs` other than `compare-changes`' are read from the
-public pages' markup or from memory; one that finds nothing asks the owner to click the target,
-so a wrong anchor costs a click. Marks use `ring` and `badge`; the old pictures' arrows are not
-copied.
+**Not tested by a session:** the trim of a signed-in capture from end to end, since those of
+2026-11-06 were dragged; the anchors are tested on their DOM, and the trim on public pages.
+`chrome_try` cannot drive the owner's branded Chrome, which ignores `--load-extension` since
+Chrome 137, and signs in to nothing. An anchor that finds nothing asks the owner to click the
+target, so a wrong one costs a click. Marks use `ring`, `box` and `badge`; the old pictures'
+arrows are not copied.
+
+**A second address.** `confirm-merge`'s Commit email list holds every address of the account,
+and only the selected one is drawn. `chromeshot.mjs` counts each option as shown, so an address
+`private.json` does not list refuses the capture, though neither its PNG nor its SVG shows it.
+That is kept strict: it costs a line in the list, and that address is in the capture file.
 
 **After the six are taken** (the owner's): the page's `{:width height}`, which `chromeshot.mjs`
 prints, the alt text of each picture against what it now shows, and any other mention of `main`

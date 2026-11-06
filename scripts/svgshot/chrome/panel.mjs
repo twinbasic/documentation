@@ -4,7 +4,7 @@
 
 import { wordList } from "../private-words.mjs";
 import { saveCapture, takePicture } from "./take.mjs";
-import { SHOTS } from "./shots.mjs";
+import { PAGE_WIDTH, SHOTS } from "./shots.mjs";
 
 const $ = (id) => document.getElementById(id);
 const OTHER = "other";
@@ -32,9 +32,10 @@ const shotOf = () => SHOTS.find((s) => s.name === $("shot").value) ?? null;
 
 function showShot() {
   const shot = shotOf();
-  $("shows").textContent = shot?.shows ?? "";
+  $("shows").textContent = shot ? `${shot.shows} Take the whole viewport: chromeshot.mjs trims it to the picture.` : "";
   $("path").hidden = !!shot;
   $("marked").hidden = !shot;
+  $("width").placeholder = shot ? String(PAGE_WIDTH) : "as the tab is";
   try {
     localStorage.setItem("shot", $("shot").value);
   } catch {
@@ -75,7 +76,7 @@ async function take(area, list) {
       themes,
       list,
       marks: shot && $("marks").checked ? shot.marks : [],
-      pageWidth: width > 0 ? width : null,
+      pageWidth: width > 0 ? width : shot ? PAGE_WIDTH : null,
       log,
       signal: running.signal,
     });

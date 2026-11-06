@@ -73,12 +73,16 @@ export function pngSizeOf(base64) {
   return [view.getUint32(16), view.getUint32(20)];
 }
 
-// The smallest box of whole CSS px that holds both.
-function union(a, b) {
-  const x = Math.floor(Math.min(a.x, b.x));
-  const y = Math.floor(Math.min(a.y, b.y));
-  const right = Math.ceil(Math.max(a.x + a.width, b.x + b.width));
-  const bottom = Math.ceil(Math.max(a.y + a.height, b.y + b.height));
+/**
+ * The smallest box of whole CSS px that holds `a` and `b`, cut to `within`, what the window
+ * shows: a mark can stand past the page's edge, and a clip that starts left of the page comes
+ * back with the page drawn at half its size.
+ */
+export function unionWithin(a, b, within) {
+  const x = Math.max(within.x, Math.floor(Math.min(a.x, b.x)));
+  const y = Math.max(within.y, Math.floor(Math.min(a.y, b.y)));
+  const right = Math.min(within.x + within.width, Math.ceil(Math.max(a.x + a.width, b.x + b.width)));
+  const bottom = Math.min(within.y + within.height, Math.ceil(Math.max(a.y + a.height, b.y + b.height)));
   return { x, y, width: right - x, height: bottom - y };
 }
 
@@ -187,9 +191,14 @@ async function capturePng(conn, clip, display) {
   return last;
 }
 
-// The primitives of a shot's mark at `on`: a ring round it and its label in a badge beside it.
-const markPrimitives = (mark, on) => [
-  { type: "ring", on },
+// How tall a mark's target can be and still take a ring, whose ends are round to half its height:
+// round a panel a ring is a great ellipse over all that is near it.
+const TALLEST_RING = 48;
+
+// The primitives of a shot's mark at `on`, whose box is `box`: a ring round it, or a box round
+// a tall one, and its label in a badge beside it.
+export const markPrimitives = (mark, on, box) => [
+  { type: box.height > TALLEST_RING ? "box" : "ring", on },
   { type: "badge", n: mark.n, on, side: mark.side ?? "left" },
 ];
 
@@ -203,15 +212,16 @@ async function drawMarks(conn, marks, { pick, log }) {
       log(`mark ${mark.n}: ${e.message}`);
       return null;
     });
-    if (!found) {
-      const rect = await pick(`Mark ${mark.n}: click or drag over ${mark.what}. Esc leaves it out.`);
-      if (!rect) {
+    let box = found?.on;
+    if (!box) {
+      box = await pick(`Mark ${mark.n}: click or drag over ${mark.what}. Esc leaves it out.`);
+      if (!box) {
         log(`mark ${mark.n} left out`);
         continue;
       }
-      on = { rect };
+      on = { rect: box };
     }
-    primitives.push(...markPrimitives(mark, on));
+    primitives.push(...markPrimitives(mark, on, box));
   }
   return primitives.length ? (await annotate(conn, primitives)).box : null;
 }
@@ -278,12 +288,16 @@ export async function takePicture({ tabId, out, area, themes, list, marks = [], 
       const { x, y } = await inPage(conn, scrolled);
       clip = { ...rect, x: rect.x + x, y: rect.y + y };
     }
+    // The marks, in document CSS px: a drag's picture grows to hold them, and chromeshot.mjs's
+    // trim of the whole window does.
+    let marked = null;
     if (marks.length) {
       const box = await drawMarks(conn, marks, { pick, log });
       after.push(() => unannotate(conn));
-      if (box && area === "drag") {
+      if (box) {
         const { x, y } = await inPage(conn, scrolled);
-        clip = union(clip, { ...box, x: box.x + x, y: box.y + y });
+        marked = { ...box, x: box.x + x, y: box.y + y };
+        if (area === "drag") clip = unionWithin(clip, marked, await inPage(conn, shownArea));
       }
     }
     // Nothing the pointer rests on shows its hover look from here on.
@@ -326,7 +340,7 @@ export async function takePicture({ tabId, out, area, themes, list, marks = [], 
       log(`${theme}: ${width}x${height} px`);
     }
     const url = await conn.evaluate("location.href");
-    return { format: 1, out, url: scrubBundle(url, list), taken: new Date().toISOString(), pictures };
+    return { format: 1, out, area, marked, url: scrubBundle(url, list), taken: new Date().toISOString(), pictures };
   } finally {
     for (const step of after.toReversed()) {
       try {
