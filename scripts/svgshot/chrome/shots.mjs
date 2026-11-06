@@ -25,6 +25,10 @@ const MERGE_TRIM = { of: [MERGE_BOX, MERGE_TILE], pad: { left: 16 } };
 const ACTIONS_TAB = { css: "a", text: "Actions" };
 const WORKFLOW = { css: "a", text: "Build & deploy docs" };
 const NEXT_WORKFLOW = { css: "a", text: "Run Checks" };
+// The right end of the line of the run count, held whole with that line, which it stands on.
+const RUNS_LINE = button("Auto-refresh");
+// The button right of Run workflow, held whole: a trim to the marks alone would cut it in two.
+const PAGE_MENU = { css: "[data-component=PH_Actions] [data-component=IconButton]" };
 
 export const SHOTS = [
   {
@@ -32,12 +36,12 @@ export const SHOTS = [
     out: `${FOLDER}/compare-changes.png`,
     shows:
       "On the repository's Compare page, press compare across forks, so that all four selectors show, and set " +
-      "base to staging. The yellow banner shows under them, with its Create pull request greyed.",
+      "base to staging. The yellow banner of the plain Compare page does not show here.",
     marks: [
-      { n: 3, on: button("compare across forks"), side: "right", what: "the compare across forks link" },
+      { n: 3, on: button("compare across forks"), side: "above", what: "the compare across forks link" },
       { n: 4, on: { css: ".range-editor" }, what: "the repository and branch selectors" },
     ],
-    trim: { of: [{ css: ".Subhead" }, { css: ".range-editor" }, { css: ".flash" }] },
+    trim: { of: [{ css: ".Subhead" }, { css: ".range-editor" }] },
   },
   {
     name: "create-pull-request",
@@ -74,9 +78,10 @@ export const SHOTS = [
       "The Actions tab of twinbasic/documentation, not of a fork: the tab bar and the sidebar entry Build & deploy docs.",
     marks: [
       { n: "a", on: ACTIONS_TAB, side: "below", what: "the Actions tab" },
-      { n: "b", on: WORKFLOW, side: "right", what: "the Build & deploy docs entry" },
+      // Above and not right of the entry, where the badge would stand over its pin.
+      { n: "b", on: WORKFLOW, side: "above", what: "the Build & deploy docs entry" },
     ],
-    trim: { of: [ACTIONS_TAB, WORKFLOW, NEXT_WORKFLOW], pad: { top: 4 } },
+    trim: { of: [ACTIONS_TAB, WORKFLOW, NEXT_WORKFLOW, RUNS_LINE], pad: { top: 4 } },
   },
   {
     name: "run-workflow",
@@ -98,7 +103,11 @@ export const SHOTS = [
       },
     ],
     trim: {
-      of: [{ css: "[data-component=PH_Actions] button", text: "Run workflow" }, { css: `${POPOVER} [class*=Overlay]` }],
+      of: [
+        { css: "[data-component=PH_Actions] button", text: "Run workflow" },
+        { css: `${POPOVER} [class*=Overlay]` },
+        PAGE_MENU,
+      ],
     },
   },
 ];

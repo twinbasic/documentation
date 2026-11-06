@@ -677,6 +677,86 @@ describe("a search field's clear button", () => {
   });
 });
 
+describe("a text field whose own text is transparent", () => {
+  // An <input> 100 by 17 at 10, 10 with a placeholder, its own text transparent, as GitHub's search
+  // box has it and a code editor's field does; `value` what it holds.
+  const NAMES = [
+    "display",
+    "visibility",
+    "color",
+    "font-family",
+    "font-size",
+    "font-weight",
+    "font-style",
+    "text-align",
+    "-webkit-text-fill-color",
+  ];
+  const CLEAR = "rgba(0, 0, 0, 0)";
+  function page(value) {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = ["block", "visible", CLEAR, "Arial", "13px", "400", "normal", "start", CLEAR].map(s);
+    const names = ["#document", "HTML", "BODY", "INPUT"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2],
+            nodeType: [9, 1, 1, 1],
+            nodeName: names.map(s),
+            nodeValue: names.map(() => -1),
+            backendNodeId: [1, 2, 3, 4],
+            attributes: [[], [], [], [s("placeholder"), s("Search runs")]],
+            inputValue: { index: value ? [3] : [], value: value ? [s(value)] : [] },
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [style, style, style],
+            bounds: [
+              [0, 0, 200, 100],
+              [0, 0, 200, 100],
+              [10, 10, 100, 17],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, NAMES);
+  }
+  const CLIP = { x: 0, y: 0, w: 200, h: 100 };
+  const draw = (value) =>
+    renderSvg(page(value), {
+      clip: CLIP,
+      metrics: () => ({ ascent: 12, height: 15, line: 17 }),
+      textWidth: () => 70,
+      placeholderColor: "rgb(145, 152, 161)",
+    }).svg;
+
+  test("leaves the placeholder, which has a colour of its own, drawn and measured", () => {
+    assert.match(draw(""), />Search runs<\/text>/);
+    assert.match(draw(""), /fill:rgb\(145, 152, 161\)/);
+    assert.deepEqual(
+      textNeeds(page(""), CLIP, {}).runs.map(([, text]) => text),
+      ["Search runs"],
+    );
+  });
+
+  test("does not draw the value: an editor lays its own text under it", () => {
+    assert.doesNotMatch(draw("360 x"), />360 x<\/text>/);
+    assert.doesNotMatch(draw("360 x"), />Search runs<\/text>/);
+    assert.deepEqual(textNeeds(page("360 x"), CLIP, {}).runs, []);
+  });
+});
+
 describe("a text field's selection", () => {
   test("selectedParts splits each line at the selection, a tab expanded from the line's start", () => {
     assert.deepEqual(selectedParts("360", false, "8", 0, 3), [{ before: "", selected: "360", after: "" }]);

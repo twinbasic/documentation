@@ -659,9 +659,11 @@ const selectionIn = (selection, node) =>
 function shownControlText(l) {
   const st = l.style;
   if (st.visibility !== "visible" || l.bounds.w < 4 || l.bounds.h < 4) return null;
-  // A transparent text is there for the caret: an editor lays its own text under it.
-  if (transparent(st.color) || transparent(st["-webkit-text-fill-color"])) return null;
-  return controlText(l.node);
+  // A transparent value is there for the caret: an editor lays its own text under it. A
+  // placeholder has a colour of its own, and GitHub's search box shows one in a field like that.
+  const shown = controlText(l.node);
+  if (shown?.placeholder) return shown;
+  return transparent(st.color) || transparent(st["-webkit-text-fill-color"]) ? null : shown;
 }
 
 /**
