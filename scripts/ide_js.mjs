@@ -30,7 +30,7 @@ import {
   FixError,
   fileView,
   fixShapes,
-  keymapTables,
+  keymapSections,
   lineDiff,
   load,
   mainJsOf,
@@ -83,10 +83,11 @@ Commands:
                             its twinBASIC.exe; --out <file> writes main.js only
   shape <fix.js>            the fix shape: each unit of the fix as the build has
                             it and as fixed, a diff in our names, as markdown
-  keymap                    --ide's commands, as the two tables of
-                            docs/IDE/Reference/Keyboard-Shortcuts.md (those with a
-                            default key, and those with none), each with its
-                            description from scripts/ide-js/command-text.json;
+  keymap                    --ide's commands, as the sections of
+                            docs/IDE/Reference/Keyboard-Shortcuts.md, a table for
+                            each prefix of a command's name, each command with
+                            its keys and its description from
+                            scripts/ide-js/command-text.json;
                             --check compares the page with them and also fails
                             for a command with no description, or a description
                             for a command the build lacks; --update writes the
@@ -102,8 +103,8 @@ Options:
   --copy-to <dir>   patch: the folder for the patched copy, under the temp folder
   --all             view: the whole file
   --json            survey, units, check: one JSON object
-  --check           keymap: compare the page's tables and the descriptions with the build
-  --update          keymap: write the build's tables into the page
+  --check           keymap: compare the page's sections and the descriptions with the build
+  --update          keymap: write the build's sections into the page
   -h, --help        print this text and exit
 
 Exit codes:
@@ -395,11 +396,9 @@ if (command === "keymap") {
   const keys = builtInKeymap(parsed);
   const ids = [...new Set([...builtInCommandIds(parsed), ...Object.keys(keys)])];
   const text = JSON.parse(readFileSync(COMMAND_TEXT, "utf8"));
-  const tables = keymapTables(keys, ids, text);
+  const sections = keymapSections(keys, ids, text);
   if (!values.check && !values.update) {
-    console.log(`${tables.keyed}
-
-${tables.unkeyed}`);
+    console.log(sections);
     process.exit(0);
   }
   // A command with no description in the data file is a gap to fill; a description for a
@@ -413,7 +412,7 @@ ${tables.unkeyed}`);
   if (extra.length)
     console.log(`${dataName}: ${extra.length} entries for commands ${build ?? "the build"} lacks: ${extra.join(", ")}`);
   const page = readFileSync(KEYMAP_PAGE, "utf8");
-  const { current, expected, text: updated } = pageKeymap(page, tables);
+  const { current, expected, text: updated } = pageKeymap(page, sections);
   const name = path.relative(REPO_ROOT, KEYMAP_PAGE);
   if (values.update) {
     writeFileSync(KEYMAP_PAGE, updated);

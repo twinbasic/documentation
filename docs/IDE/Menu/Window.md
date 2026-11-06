@@ -45,7 +45,7 @@ Switches groups of keyboard shortcuts on and off. See [Keyboard shortcuts](../..
 
 Opens a dialog that lists the built-in group, which is read-only, and the groups that have been created, and shows each as JSON text. See [Manage keyboard shortcuts](../../Customising/Keyboard-Shortcuts#manage-keyboard-shortcuts) and [The text of a group](../../Customising/Keyboard-Shortcuts#the-text-of-a-group).
 
-[Keyboard shortcuts](../Keyboard-Shortcuts) lists the built-in group as a table.
+[Keyboard shortcuts](../Keyboard-Shortcuts) lists the built-in group in tables.
 
 ## Theme
 {: index_also="dark mode" }

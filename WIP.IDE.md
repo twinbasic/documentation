@@ -49,8 +49,11 @@ children. Second person ("you") is allowed here, as in tutorials.
 and the keyboard shortcuts, under `/tB/IDE/Reference/…`. Each entry gives the item, its
 shortcut, one or two sentences, and a link to the chapter that explains it.
 
-- The keymap is a table on its own page, `Reference/Keyboard-Shortcuts.md`, generated from
-  `main.js` by `ide_js.mjs keymap`: never edit its rows by hand.
+- The keymap is a page of its own, `Reference/Keyboard-Shortcuts.md`, one table for each prefix
+  of a command's name, generated from `main.js` by `ide_js.mjs keymap`: never edit a section
+  before its See Also by hand, and put prose above the first `## `. A section's heading is the
+  prefix in code, with no title in words, because a heading such as `Call Stack` would be a title
+  match against the pages that explain the panel (WIP.Search.md).
 - Webpage, the one pane that is not in a chapter, has a page of its own here.
 
 **Moving pages.** When a page moves, its old permalink goes into `redirect_from:`, and every
