@@ -96,6 +96,10 @@ A `#Warning` directive reports its text as warning TB0005, as a reminder in the 
 Debug.Print "testing"
 ```
 
+<!-- test: bug warning-directive-text-cut -->
+> [!NOTE] BETA 1034
+> The text of a `#Warning` or `#Error` directive stops at its first `|`: `#Warning "before|after"` reports only `"before`.
+
 ### TB0006: Record Length Is Ignored in Binary Mode
 {: index="TB0006" }
 

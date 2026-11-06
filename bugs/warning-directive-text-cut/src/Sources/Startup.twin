@@ -1,0 +1,9 @@
+#Warning "before|after"
+#Warning "no bar in this text"
+
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+End Module

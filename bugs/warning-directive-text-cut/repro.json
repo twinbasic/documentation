@@ -1,0 +1,11 @@
+{
+  "mode": "compile",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "\\[1,\\d+\\]: TB0005 #Warning directive: \\W*before(?!\\|)",
+      "\\[2,\\d+\\]: TB0005 #Warning directive: \\W*no bar in this text"
+    ],
+    "absent": ["TB0005 #Warning directive: \\W*before\\|after"]
+  }
+}

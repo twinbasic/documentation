@@ -598,6 +598,37 @@ Tested on a copy of BETA 1034 with this change (1 edit in `main.js`, every other
 
 ---
 
+## `#Warning` and `#Error` cut their text at a vertical bar
+
+**Describe the bug**
+The text of a `#Warning` or `#Error` directive stops at its first `|`. `#Warning "before|after"` reports TB0005 with the text `"before`, with no closing quote, and nothing shows that the rest is gone. BETA 1033 reports the whole text.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `warning-directive-text-cut.twinproj` (attached as `warning-directive-text-cut.zip`). `Startup.twin` begins:
+   ```
+   #Warning "before|after"
+   #Warning "no bar in this text"
+   ```
+2. Open the DIAGNOSTICS panel.
+3. See `TB0005 #Warning directive: "before` for line 1, and `TB0005 #Warning directive: "no bar in this text"` for line 2.
+
+**Expected behavior**
+The whole text, as BETA 1033 reports it: `TB0005 #Warning directive: "before|after"`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`#Error "before|after"` gives `TB5228 #Error directive: "before` in the same way, where BETA 1033 gives the whole text.
+
+Severity: low. Part of a message the programmer wrote is lost, with no sign of it.
+
+<!-- Reproducer: bugs/warning-directive-text-cut/ (mode compile: the two TB0005 lines on BETA 1034; `bug_repro compile --ide` on BETA 1033 gives the whole text, so the `absent` pattern fails there). The #Error half was a scratch project, .claude/scratch/attr-sweep/queue-work/trees/error-pipe, not kept in the reproducer: an error stops the compile, and the reproducer's two warnings need it to finish. docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0005. -->
+
+---
+
 ## `--buildAndExit32` writes nothing, exits 0 on a project with errors, and hangs on a failing build
 
 *DEFERRED until after v1*
