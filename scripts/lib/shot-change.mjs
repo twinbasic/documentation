@@ -1,7 +1,7 @@
 // How two versions of a screenshot differ, as numbers and as a picture: the rule that
 // shoot_docs.mjs uses to tell a new capture from the file on disk only by a capture's
-// noise (withinNoise), and the comparison that svgshot/sheet.mjs --against shows for a
-// picture and the same file at a git revision (compareImages, changeMap).
+// noise (withinNoise), and the map the screenshot review tool shows for a picture and the
+// same file at the session's baseline (changeMap).
 //
 // Images are what png.mjs's decodePng returns: {width, height, rgba}.
 
@@ -187,58 +187,6 @@ export function changeRegions(strength, options) {
     }
   }
   return regions.sort((a, b) => b.core - a.core || b.pixels - a.pixels || a.y0 - b.y0 || a.x0 - b.x0);
-}
-
-/**
- * Compares two images aligned at the top left, over the area they share; a pixel only
- * one of them has counts as changed beyond noise. Returns
- * {sameSize, old: [w, h], new: [w, h], canvas: [w, h], common: [w, h], total, differing,
- * beyond, faint, pctBeyond, pctDiffering, levels, noiseOnly}: `total` the pixels of the larger
- * canvas, `differing` those that differ at all, `beyond` those that differ by more
- * than `levels` or exist in one picture only, `faint` those that differ by 1 to
- * `levels`, the two percentages of `total` (not rounded), and `noiseOnly` whether
- * the pictures are of one size and within the noise rule `rule` (withinNoise's, a picture's
- * pngRule; `levels` is its levels, NOISE_LEVELS by default), identical ones included. The
- * rule's rectangles are left out of `noiseOnly` only.
- */
-export function compareImages(A, B, rule = {}) {
-  const levels = rule.levels ?? NOISE_LEVELS;
-  const cw = Math.min(A.width, B.width);
-  const ch = Math.min(A.height, B.height);
-  const w = Math.max(A.width, B.width);
-  const h = Math.max(A.height, B.height);
-  const total = w * h;
-  let differing = 0;
-  let beyond = 0;
-  let faint = 0;
-  for (let y = 0; y < ch; y++) {
-    for (let x = 0; x < cw; x++) {
-      const d = pixelDiff(A, (y * A.width + x) * 4, B, (y * B.width + x) * 4);
-      if (!d) continue;
-      differing++;
-      if (d > levels) beyond++;
-      else faint++;
-    }
-  }
-  const only = total - cw * ch;
-  differing += only;
-  beyond += only;
-  const sameSize = A.width === B.width && A.height === B.height;
-  return {
-    sameSize,
-    old: [A.width, A.height],
-    new: [B.width, B.height],
-    canvas: [w, h],
-    common: [cw, ch],
-    total,
-    differing,
-    beyond,
-    faint,
-    pctBeyond: (beyond / total) * 100,
-    pctDiffering: (differing / total) * 100,
-    levels,
-    noiseOnly: sameSize && withinNoise(A, B, rule),
-  };
 }
 
 // A pixel over white, as [r, g, b].

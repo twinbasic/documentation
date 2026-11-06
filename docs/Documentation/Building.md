@@ -533,7 +533,7 @@ Each picture is a *shot* in the tool's table: the file it writes, the IDE it is 
 
 A new picture of the IDE is a new shot. `node scripts/shoot_docs.mjs --help` lists the options, and [shoot_docs.mjs](Tools-IDE#shoot-docs) describes how the tool keeps pictures the same from one run to the next and keeps your own settings and name out of them.
 
-A picture the tool does not take, such as the GitHub pages under [Deploying to docs.twinbasic.com](#deploying-to-docstwinbasiccom), is a PNG file in the `Images` folder beside its page. The file an image editor saved it from, if you keep one, goes in the `_Images` folder beside that, which is not published.
+A picture the tool does not take, such as the GitHub pages under [Deploying to docs.twinbasic.com](#deploying-to-docstwinbasiccom), is a PNG file in the `Images` folder beside its page.
 
 [docs-pr]: https://github.com/twinbasic/documentation/compare
 [docs-repo]: https://github.com/twinbasic/documentation

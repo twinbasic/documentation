@@ -5,6 +5,7 @@
 // and verdicts (shot-stage.mjs), and git's status (shot-revision.mjs), and passes in what else
 // the model needs to know, such as whether a file is under docs/.
 
+import { THUMB_DIR_REL } from "../../builder/vendor-assets.mjs";
 import { svgOf } from "./shot-apply.mjs";
 import { SVG_FAITHFUL } from "./shot-policy.mjs";
 import { WINDOW_WHY } from "./shot-stage.mjs";
@@ -301,7 +302,8 @@ export function appliedVerdict(v, done) {
 // The page of every picture (WIP.ShotReview.md, All pictures) shows the pictures as the working
 // tree has them, whatever any session did: every picture shoot_docs.mjs's table names
 // (shoot_docs.mjs --list), each with its PNG and SVG as they are under docs/, its build and
-// allowances from the manifest, and for one with no SVG, why, from the newest verdict that says.
+// allowances from the manifest, and for one with no SVG, why, from the newest verdict that says;
+// and every other image under docs/, which no run can take.
 
 /** The groups of the page of every picture, in its order: [key, heading]. */
 export const ALL_GROUPS = [
@@ -309,8 +311,18 @@ export const ALL_GROUPS = [
   ["nosvg", "No SVG"],
   ["missing", "Not under docs"],
   ["overridden", "With an allowance or a review's decision"],
+  ["uncaptured", "No automated capture"],
   ["svg", "With an SVG"],
 ];
+
+// The images that are no pictures of the documentation to look at: what a script makes (a
+// diagram's SVG, beside its DOT source; the build's Gantt chart; a video's poster frame) and the
+// favicon, which never changes.
+const NOT_LISTED = new Set(["assets/images/gantt.svg", "favicon.png"]);
+const notListed = (out, exists) =>
+  NOT_LISTED.has(out) ||
+  out.startsWith(`${THUMB_DIR_REL}/`) ||
+  (/\.svg$/i.test(out) && exists(out.replace(/\.svg$/i, ".dot")));
 
 /** The light picture of a dark one's path. */
 const lightOf = (out) => out.replace(/\.png$/i, ".light.png");
@@ -346,16 +358,18 @@ export function noSvgReason(svg) {
  * pixels, and the page shows the dark one in both themes). `exists(path)` says whether a file is
  * under docs/, `entry(out)` a picture's entry in the manifest, or null, and `verdicts(out)` the
  * SVG verdicts any session gave it, newest first, [{svg, where}], `where` {session, run} (the
- * session's id, null for the one being served).
+ * session's id, null for the one being served). `images` is every image file under docs/: each
+ * that no shot takes is listed too, as `uncaptured`, unless a script makes it (NOT_LISTED).
  *
  * Returns {pictures, groups}: each picture {out, setup, window, once, png, svg, bothThemes,
- * build, reason, group}, `png` and `svg` whether each file is under docs/, `bothThemes` that the
- * dark picture is shown in both themes, `build` the manifest's, and `reason` for a picture with
- * no SVG {why, text, where}: the table's for a program's window, else the newest verdict's that
- * says (noSvgReason), with where it is from, else {why: "unknown"}. `groups` is ALL_GROUPS with
- * each one's pictures, [{key, title, pictures}]; the No SVG group is ordered by reason, then path.
+ * build, reason, group, uncaptured}, `png` and `svg` whether each file is under docs/,
+ * `bothThemes` that the dark picture is shown in both themes, `build` the manifest's, and `reason`
+ * for a picture of the table with no SVG {why, text, where}: the table's for a program's window,
+ * else the newest verdict's that says (noSvgReason), with where it is from, else {why: "unknown"}.
+ * `groups` is ALL_GROUPS with each one's pictures, [{key, title, pictures}]; the No SVG group is
+ * ordered by reason, then path.
  */
-export function allPictures({ shots, exists, entry = () => null, verdicts = () => [] }) {
+export function allPictures({ shots, exists, entry = () => null, verdicts = () => [], images = [] }) {
   const pictures = [];
   for (const shot of shots) {
     const light = lightOf(shot.out);
@@ -373,6 +387,7 @@ export function allPictures({ shots, exists, entry = () => null, verdicts = () =
         build: e?.build ?? null,
         reason: null,
         group: null,
+        uncaptured: false,
       };
       if (!p.svg) {
         if (p.window) p.reason = { ...noSvgReason({ window: true }), where: null };
@@ -386,6 +401,23 @@ export function allPictures({ shots, exists, entry = () => null, verdicts = () =
       p.group = !p.png ? "missing" : !p.svg ? (p.window ? "windows" : "nosvg") : isOverridden(e) ? "overridden" : "svg";
       pictures.push(p);
     }
+  }
+  const taken = new Set(shots.flatMap((shot) => [shot.out, lightOf(shot.out)]).flatMap((out) => [out, svgOf(out)]));
+  for (const out of images) {
+    if (taken.has(out) || notListed(out, exists)) continue;
+    pictures.push({
+      out,
+      setup: null,
+      window: false,
+      once: false,
+      png: true,
+      svg: false,
+      bothThemes: false,
+      build: null,
+      reason: null,
+      group: "uncaptured",
+      uncaptured: true,
+    });
   }
   pictures.sort((a, b) => (a.out < b.out ? -1 : a.out > b.out ? 1 : 0));
   const groups = ALL_GROUPS.map(([key, title]) => ({ key, title, pictures: pictures.filter((p) => p.group === key) }));

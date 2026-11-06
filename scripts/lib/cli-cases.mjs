@@ -11,7 +11,6 @@
 // A new tool goes into HELP_TOOLS and REFUSALS; building the list throws if
 // the two disagree.
 
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 
@@ -459,7 +458,6 @@ const HELP_TOOLS = {
   "scripts/svgshot/chromeshot.mjs": null,
   "scripts/svgshot/pixels.mjs": null,
   "scripts/svgshot/replay.mjs": null,
-  "scripts/svgshot/sheet.mjs": null,
   "scripts/tbbuild.mjs": null,
   "scripts/tbrun.mjs": null,
   "scripts/vb6run.mjs": null,
@@ -549,7 +547,6 @@ const REFUSALS = {
   "scripts/svgshot/chromeshot.mjs": ["out"],
   "scripts/svgshot/pixels.mjs": ["beside"],
   "scripts/svgshot/replay.mjs": ["bundles"],
-  "scripts/svgshot/sheet.mjs": ["out"],
   "scripts/tbbuild.mjs": ["ide"],
   "scripts/tbrun.mjs": ["ide"],
   "scripts/vb6run.mjs": ["vb6"],
@@ -1185,33 +1182,6 @@ bad(
   bad(tool, ["draft", "--check"], "--check does not apply to draft\n");
   bad(tool, ["analyze", "--check"], "--check does not apply to analyze\n");
   bad(tool, ["analyze", "--out", "x.json"], "--out does not apply to analyze\n");
-}
-// sheet.mjs needs --out, reads its values, then refuses a folder under docs or one git
-// would take: the sheet can hold the Windows user name. Each is refused before it
-// lists a picture or starts a browser.
-{
-  const tool = "scripts/svgshot/sheet.mjs";
-  bad(tool, [], "sheet: --out is required: the folder for the sheet\n");
-  bad(tool, ["--only", "x"], "sheet: --out is required: the folder for the sheet\n");
-  bad(tool, ["--out", "x", "--jobs", "0"], "--jobs expects a whole number from 1 to 32, got: 0\n");
-  bad(tool, ["--out", "x", "--only", "("], REGEX_REASON("--only", "("));
-  const refused = (why) =>
-    new RegExp(`^${literal("sheet: --out must not be under docs nor where git would take it: ")}.+${why}\\n$`);
-  bad(tool, [`--out=${path.join(REPO_ROOT, "docs", "sheet")}`], refused("is under .+"));
-  bad(tool, [`--out=${path.join(REPO_ROOT, "scripts", "sheet")}`], refused("at a path git does not ignore"));
-  // --against is a sheet of its own: it excludes the options of the other, and a revision the
-  // repository of the docs folder does not have is refused before anything is written.
-  const into = `--out=${path.join(tmpdir(), "sheet-cli-case")}`;
-  bad(tool, [into, "--against", "HEAD", "--all"], "--against and --all cannot be given together\n");
-  bad(tool, [into, "--against", "HEAD", "--jobs", "2"], "--against and --jobs cannot be given together\n");
-  bad(tool, [into, "--against", "HEAD", "--bundles", "x"], "--against and --bundles cannot be given together\n");
-  bad(tool, [into, "--against"], "--against needs a value\n");
-  bad(
-    tool,
-    [into, "--against", "no-such-revision-x"],
-    new RegExp(`^${literal("sheet: no revision no-such-revision-x in the git repository of ")}.+\\n$`),
-  );
-  bad(tool, [into, "--against=--output=x"], `sheet: not a revision: "--output=x"\n`);
 }
 for (const made of BAD_VALUES) {
   CASES.push(made);
