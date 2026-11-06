@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "svgshot",
+  "description": "Takes a page the way shoot_docs.mjs --svg takes the twinBASIC IDE's: a PNG and the bundle its SVG is drawn from.",
+  "version": "1.0",
+  "minimum_chrome_version": "116",
+  "permissions": ["debugger", "downloads", "sidePanel"],
+  "action": { "default_title": "svgshot" },
+  "side_panel": { "default_path": "chrome/panel.html" },
+  "background": { "service_worker": "chrome/background.mjs", "type": "module" }
+}

@@ -25,7 +25,9 @@
 // process writes among its lines, which runShards reads. And what becomes of a picture and
 // its SVG: lib/shot-policy.mjs's decisions, with a picture's allowances and a review's
 // decisions, and lib/shot-apply.mjs's writing of them, in a scratch folder and a scratch
-// repository. And lib/shot-manifest.mjs, the manifest those come from: its text, what it
+// repository. And the Chrome extension, without a Chrome: that what it loads can be loaded
+// there, its connection, how it lays a page out at 1x, its file, its list of private words,
+// and chromeshot.mjs's refusals. And lib/shot-manifest.mjs, the manifest those come from: its text, what it
 // refuses, and its saving. And a run's stage (lib/shot-stage.mjs), the strength map and its
 // regions (lib/shot-change.mjs) and which pictures need a look (lib/shot-queue.mjs). The
 // screenshot review tool's own modules are tested in test/shot-review.test.mjs.
@@ -33,12 +35,13 @@
 // Runs with a bare `node --test test/svgshot.test.mjs`: no tree, no build.
 
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import { describe, test } from "node:test";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
   BUNDLE_VERSION,
@@ -54,6 +57,19 @@ import {
   writeBundle,
 } from "../scripts/svgshot/bundle.mjs";
 import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
+import { attachDebugger } from "../scripts/svgshot/chrome/conn.mjs";
+import { SHOTS } from "../scripts/svgshot/chrome/shots.mjs";
+import { AVATAR, captureBlob, captureName, layoutPlan, pngSizeOf } from "../scripts/svgshot/chrome/take.mjs";
+import { privateEntries, privateWords } from "../scripts/svgshot/private-list.mjs";
+import {
+  drawnStrings,
+  drawnWords,
+  heldWords,
+  holdsUserName,
+  maskText,
+  scrubBundle,
+  wordList,
+} from "../scripts/svgshot/private-words.mjs";
 import { cssUrls, rewriteCssUrls } from "../scripts/lib/shot-freeze.mjs";
 import { decodePng, encodePng, pngSize } from "../scripts/lib/png.mjs";
 import { onStop, parseRecord, readRecords, recordLine, sendStop, STOP_LINE } from "../scripts/lib/record-lines.mjs";
@@ -787,14 +803,14 @@ describe("outlines", () => {
     "outline-offset",
     ...["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`),
   ];
-  function page(style, width, radius = "0px", offset = "0px") {
+  function page(style, width, radius = "0px", offset = "0px", image = null) {
     const strings = [];
     const s = (v) => {
       const i = strings.indexOf(v);
       return i >= 0 ? i : strings.push(v) - 1;
     };
     const plain = ["block", "visible", "none", "0px", "rgb(0, 0, 0)", "0px", "0px", "0px", "0px", "0px"].map(s);
-    const names = ["#document", "HTML", "BODY", "DIV"];
+    const names = ["#document", "HTML", "BODY", image ? "IMG" : "DIV"];
     const snapshot = {
       strings,
       documents: [
@@ -807,6 +823,7 @@ describe("outlines", () => {
             nodeName: names.map(s),
             nodeValue: names.map(() => -1),
             attributes: names.map(() => []),
+            currentSourceURL: image ? { index: [3], value: [s(image)] } : undefined,
           },
           layout: {
             nodeIndex: [1, 2, 3],
@@ -831,6 +848,21 @@ describe("outlines", () => {
   }
   const draw = (doc) =>
     renderSvg(doc, { clip: { x: 0, y: 0, w: 200, h: 100 }, metrics: () => ({ ascent: 12, height: 15, line: 15 }) }).svg;
+
+  test("an image is cut to its box's rounded corners, a page's round avatar", () => {
+    const png = encodePng({ width: 1, height: 1, rgba: new Uint8Array(4).fill(255) }).toString("base64");
+    const image = `data:image/png;base64,${png}`;
+    const round = draw(page("none", "0px", "10px", "0px", image));
+    const id =
+      /<g clip-path="url\(#([^)]*)\)"><use href="#[^"]*" transform="translate\(10 10\) scale\(100 20\)"\/><\/g>/.exec(
+        round,
+      );
+    assert.ok(id, round);
+    assert.match(round, new RegExp(`<clipPath id="${id[1]}"><path d="M`));
+    const square = draw(page("none", "0px", "0px", "0px", image));
+    assert.match(square, /<use href="#[^"]*" transform="translate\(10 10\) scale\(100 20\)"\/>/);
+    assert.doesNotMatch(square, /<clipPath/);
+  });
 
   test("a solid one with square corners is one stroked rectangle round the box", () => {
     assert.match(
@@ -1138,6 +1170,54 @@ describe("bundles", () => {
     }
   });
 
+  test("goes through chromeshot.mjs, which refuses what shows a private word before it writes", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "chromeshot-test-"));
+    try {
+      const png = encodePng({ width: 4, height: 2, rgba: new Uint8Array(32).fill(255) }).toString("base64");
+      const capture = (over = {}) => ({
+        format: 1,
+        out: "Images/x.png",
+        pictures: [{ theme: "dark", png, bundle: { ...bundleOf(measured), ...over } }],
+      });
+      const out = path.join(root, "out");
+      const write = (name, what) => {
+        const file = path.join(root, name);
+        fs.writeFileSync(file, gzipSync(JSON.stringify(what)));
+        return file;
+      };
+      const words = path.join(root, "words.json");
+      fs.writeFileSync(words, JSON.stringify({ words: [{ find: "shown", show: "seen" }] }));
+      const run = (...args) => {
+        const tool = path.join(REPO_ROOT, "scripts", "svgshot", "chromeshot.mjs");
+        const bundles = path.join(root, "bundles");
+        return spawnSync(process.execPath, [tool, ...args, "--out", out, "--bundles", bundles, "--words", words], {
+          encoding: "utf8",
+        });
+      };
+      fs.mkdirSync(out);
+      // The page's text is "Shown": in any case, a private word, and nothing is written.
+      const shown = run(write("shown.capture.json.gz", capture()));
+      assert.equal(shown.status, 1);
+      assert.match(shown.stderr, /refused, nothing written: Images\/x\.png: its page shows shown/);
+      assert.deepEqual(fs.readdirSync(out), []);
+      // A format the converter does not read is refused too, whatever it holds.
+      const old = run(write("old.capture.json.gz", capture({ version: BUNDLE_VERSION - 1 })));
+      assert.equal(old.status, 1);
+      assert.match(old.stderr, /a bundle of format 2, and the converter reads 3/);
+      // What is no capture, and a capture lying where pictures are, are no captures to read.
+      assert.equal(run(write("none.capture.json.gz", { format: 2 })).status, 2);
+      fs.writeFileSync(path.join(root, "bad.gz"), "not gzip");
+      assert.equal(run(path.join(root, "bad.gz")).status, 2);
+      const inside = path.join(out, "a.capture.json.gz");
+      fs.writeFileSync(inside, gzipSync(JSON.stringify(capture())));
+      const under = run(inside);
+      assert.equal(under.status, 2);
+      assert.match(under.stderr, /a capture holds what the page held/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("is drawn again by redraw, which checks for the user name unless told not to", async () => {
     // redraw wants every style the converter reads: the rest are given as absent.
     const short = bundleOf(measured);
@@ -1164,6 +1244,7 @@ describe("bundles", () => {
       // The page's text holds "Shown": as a user name, it fails the picture, unless the
       // caller (sheet.mjs alone) turns the check off.
       await assert.rejects(redraw({ ...args, user: "SHOWN" }), /holds the Windows user name/);
+      await assert.rejects(redraw({ ...args, user: ["nobody", "SHOWN"] }), /holds the Windows user name/);
       assert.equal((await redraw({ ...args, user: "SHOWN", checkUserName: false })).svg, drawn.svg);
       // A PNG that is not the bundle's is a retake, or with `stale` a note on a drawing.
       fs.writeFileSync(path.join(docsRoot, "Images/x.png"), Buffer.from("another picture"));
@@ -4088,5 +4169,244 @@ describe("the screenshot manifest (shot-manifest.mjs)", () => {
   test("the repository's own manifest reads", () => {
     const m = openManifest();
     assert.equal(m.text(), fs.readFileSync(m.file, "utf8").replace(/\r\n/g, "\n"));
+  });
+});
+
+describe("the Chrome extension, with no Chrome", () => {
+  const FOLDER = path.join(REPO_ROOT, "scripts", "svgshot");
+
+  // The module files `file` imports, by the import statements at the start of a line.
+  const importsOf = (file) => {
+    const text = fs.readFileSync(file, "utf8");
+    const named = [...text.matchAll(/^(?:import|export) [^;]*? from "([^"]+)";$/gm)].map((m) => m[1]);
+    const closing = [...text.matchAll(/^\} from "([^"]+)";$/gm)].map((m) => m[1]);
+    return [...named, ...closing];
+  };
+
+  // Every module an extension page or its worker loads, from what the manifest and the panel name.
+  function loaded() {
+    const manifest = JSON.parse(fs.readFileSync(path.join(FOLDER, "manifest.json"), "utf8"));
+    const panel = path.join(FOLDER, manifest.side_panel.default_path);
+    const page = fs.readFileSync(panel, "utf8");
+    const scripts = [...page.matchAll(/<script [^>]*src="([^"]+)"/g)].map((m) => path.join(path.dirname(panel), m[1]));
+    const seen = new Map();
+    const queue = [path.join(FOLDER, manifest.background.service_worker), ...scripts];
+    while (queue.length) {
+      const file = queue.pop();
+      if (seen.has(file)) continue;
+      const names = importsOf(file);
+      seen.set(file, names);
+      for (const name of names) if (name.startsWith(".")) queue.push(path.resolve(path.dirname(file), name));
+    }
+    return seen;
+  }
+
+  test("what it loads needs no Node, and is inside its folder", () => {
+    const modules = loaded();
+    assert.ok(modules.has(path.join(FOLDER, "capture.mjs")), "the extension runs capture.mjs itself");
+    assert.ok(modules.has(path.join(FOLDER, "annotate.mjs")));
+    for (const [file, names] of modules) {
+      for (const name of names) {
+        assert.ok(name.startsWith("."), `${file} imports ${name}, which no extension page can`);
+        const target = path.resolve(path.dirname(file), name);
+        assert.ok(target.startsWith(FOLDER + path.sep), `${file} imports ${name}, outside the extension's folder`);
+      }
+    }
+  });
+
+  test("its folder holds what the manifest names, and nothing Chrome refuses", () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(FOLDER, "manifest.json"), "utf8"));
+    assert.equal(manifest.manifest_version, 3);
+    assert.deepEqual([...manifest.permissions].sort(), ["debugger", "downloads", "sidePanel"]);
+    assert.equal(manifest.host_permissions, undefined);
+    for (const file of [manifest.background.service_worker, manifest.side_panel.default_path])
+      assert.ok(fs.existsSync(path.join(FOLDER, file)), file);
+    // Chrome will not load a folder with a name of its own at the top that starts with _.
+    assert.deepEqual(
+      fs.readdirSync(FOLDER).filter((n) => n.startsWith("_")),
+      [],
+    );
+  });
+
+  test("lays a page out at 1x and draws it at 2x, on a display of any scale", () => {
+    const at = (dpr, zoom, width = 1200, height = 900, pageWidth = null) =>
+      layoutPlan({ dpr, zoom, width, height, pageWidth });
+    assert.deepEqual(at(1, 1), {
+      display: 1,
+      zoom: 1,
+      metrics: { width: 1200, height: 900, deviceScaleFactor: 2, mobile: false },
+    });
+    // At 150% the zoom brings the layout to 1x, and the emulated size is in the zoomed px.
+    assert.deepEqual(at(1.5, 1), {
+      display: 1.5,
+      zoom: 2 / 3,
+      metrics: { width: 800, height: 600, deviceScaleFactor: 3, mobile: false },
+    });
+    assert.equal(at(1.25, 1).zoom, 0.8);
+    assert.equal(at(1.25, 1).metrics.deviceScaleFactor, 2.5);
+    // The tab's own zoom is no part of the display's scale, and is replaced.
+    assert.equal(at(1.1, 1.1).display, 1);
+    assert.equal(at(1.1, 1.1).zoom, 1);
+    assert.equal(at(1.5, 1, 900, 600, 1280).metrics.width, 853);
+  });
+
+  test("reads a capture's size from its PNG, and saves a capture as chromeshot.mjs reads it", async () => {
+    const png = encodePng({ width: 7, height: 5, rgba: new Uint8Array(140) });
+    assert.deepEqual(pngSizeOf(png.toString("base64")), [7, 5]);
+    const capture = { format: 1, out: "Documentation/Images/x.png", pictures: [] };
+    const blob = await captureBlob(capture);
+    assert.deepEqual(JSON.parse(gunzipSync(Buffer.from(await blob.arrayBuffer())).toString("utf8")), capture);
+    assert.equal(captureName(capture.out), "svgshot/Documentation__Images__x.capture.json.gz");
+  });
+
+  test("talks to a tab as lib/tb-cdp.mjs talks to the IDE", async () => {
+    const sent = [];
+    const answers = { "Runtime.evaluate": { result: { value: 7 } }, "Page.enable": undefined };
+    const detached = [];
+    const was = globalThis.chrome;
+    globalThis.chrome = {
+      debugger: {
+        attach: async (target, version) => sent.push(["attach", target, version]),
+        detach: async (target) => detached.push(target),
+        sendCommand: async (_target, method, params) => {
+          sent.push([method, params]);
+          if (method === "Page.fail") throw new Error("no such thing");
+          return answers[method];
+        },
+      },
+    };
+    try {
+      const conn = await attachDebugger(5);
+      assert.deepEqual(sent[0], ["attach", { tabId: 5 }, "1.3"]);
+      // A member that is undefined is left out, as on a socket; an answer of nothing is an empty one.
+      assert.deepEqual(await conn.send("Page.enable", { contextId: undefined, a: 1 }), {});
+      assert.deepEqual(sent[1], ["Page.enable", { a: 1 }]);
+      assert.equal(await conn.evaluate("1"), 7);
+      assert.deepEqual(sent[2][1], { expression: "1", returnByValue: true, awaitPromise: false });
+      await assert.rejects(conn.send("Page.fail"), /no such thing/);
+      answers["Runtime.evaluate"] = { exceptionDetails: { exception: { description: "ReferenceError: x" } } };
+      await assert.rejects(conn.evaluate("x"), /ReferenceError: x/);
+      await conn.detach();
+      assert.deepEqual(detached, [{ tabId: 5 }]);
+    } finally {
+      globalThis.chrome = was;
+    }
+  });
+
+  test("names each of the six pictures, with marks that say what to point at", () => {
+    assert.deepEqual(
+      SHOTS.map((s) => s.name),
+      [
+        "compare-changes",
+        "create-pull-request",
+        "merge-pull-request",
+        "confirm-merge",
+        "choose-workflow",
+        "run-workflow",
+      ],
+    );
+    for (const shot of SHOTS) {
+      assert.ok(fs.existsSync(path.join(REPO_ROOT, "docs", shot.out)), shot.out);
+      assert.ok(shot.marks.length);
+      for (const mark of shot.marks) assert.ok(mark.what && mark.on && mark.n !== undefined);
+    }
+  });
+
+  test("shows a person a picture of no one", () => {
+    assert.match(decodeURIComponent(AVATAR), /^data:image\/svg\+xml,<svg /);
+  });
+});
+
+describe("the private words", () => {
+  const list = wordList([
+    { find: "pat", show: "someone" },
+    { find: "pat@example.org", show: "someone@users.noreply.github.com" },
+  ]);
+
+  test("are masked longest first, in any case, and every time", () => {
+    assert.deepEqual(
+      list.map((w) => w.find),
+      ["pat@example.org", "pat"],
+    );
+    assert.equal(maskText("Pat <PAT@Example.org>", list), "someone <someone@users.noreply.github.com>");
+    assert.equal(maskText("pat pat", list), "someone someone");
+    assert.equal(maskText("nothing here", list), "nothing here");
+    assert.equal(maskText("anything", []), "anything");
+  });
+
+  test("are refused with no stand-in, or a stand-in that shows a word", () => {
+    assert.throws(() => wordList("pat"), /is not a list/);
+    assert.throws(() => wordList([{ show: "x" }]), /has no `find`/);
+    assert.throws(() => wordList([{ find: "  ", show: "x" }]), /has no `find`/);
+    assert.throws(() => wordList([{ find: "pat" }]), /has no `show`/);
+    assert.throws(() => wordList([{ find: "pat", show: "pattern" }]), /holds pat/);
+  });
+
+  test("are found in any case, and not in what is base64", () => {
+    assert.deepEqual(heldWords("by PAT, on the page", ["pat", "kim"]), ["pat"]);
+    assert.deepEqual(heldWords('href="data:image/png;base64,cGF0pat+AAA=" x', ["pat"]), []);
+    assert.equal(holdsUserName("a Pat", "pat"), true);
+  });
+
+  test("count as shown where a picture can draw them, and only there", () => {
+    const strings = ["#document", "OPTION", "#text", "pat@a", "HTML", "http://x/pat", "typed pat", "text pat"];
+    const bundle = {
+      snapshot: {
+        strings,
+        documents: [
+          {
+            layout: { text: [-1, 7] },
+            nodes: {
+              parentIndex: [-1, 0, 1],
+              nodeName: [4, 1, 2],
+              nodeValue: [-1, -1, 3],
+              inputValue: { index: [1], value: [6] },
+            },
+          },
+        ],
+      },
+    };
+    assert.deepEqual(drawnStrings(bundle).sort(), ["pat@a", "text pat", "typed pat"]);
+    assert.deepEqual(drawnWords(bundle, ["pat@a", "kim"]), ["pat@a"]);
+    // The address of a link is no text a picture draws, and is scrubbed all the same.
+    assert.deepEqual(drawnWords(bundle, ["http"]), []);
+  });
+
+  test("leave nothing in a bundle but what is no text", () => {
+    const bundle = {
+      strings: ["by pat", "plain"],
+      numbers: [1, -1, null, true],
+      docs: [{ page: { allRuns: [["k", "Pat"]] }, fontFiles: { a: "pat in a font's bytes" } }],
+    };
+    assert.deepEqual(scrubBundle(bundle, list), {
+      strings: ["by someone", "plain"],
+      numbers: [1, -1, null, true],
+      docs: [{ page: { allRuns: [["k", "someone"]] }, fontFiles: { a: "pat in a font's bytes" } }],
+    });
+  });
+
+  test("are the Windows user, what git says and what the list says", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "private-test-"));
+    try {
+      const file = path.join(dir, "private.json");
+      const git = ([, key]) =>
+        key === "user.email" ? { status: 0, stdout: "pat@example.org\n" } : { status: 1, stdout: "" };
+      // No list is no failure: a checkout need not have one.
+      assert.deepEqual(privateEntries(file), []);
+      assert.deepEqual(privateWords({ file, user: "pat", git }), ["pat", "pat@example.org"]);
+      fs.writeFileSync(file, JSON.stringify({ words: [{ find: "kim", show: "someone" }] }));
+      assert.deepEqual(privateWords({ file, user: "pat", git }), ["pat", "kim", "pat@example.org"]);
+      fs.writeFileSync(file, "{");
+      assert.throws(() => privateWords({ file, user: "pat", git }), /private\.json/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("the example list reads, and the real one is ignored", () => {
+    const example = path.join(REPO_ROOT, "scripts", "svgshot", "private.example.json");
+    assert.equal(privateEntries(example).length, 3);
+    const ignored = spawnSync("git", ["check-ignore", "-q", "scripts/svgshot/private.json"], { cwd: REPO_ROOT });
+    assert.equal(ignored.status, 0);
   });
 });

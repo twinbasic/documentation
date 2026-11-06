@@ -455,6 +455,8 @@ const HELP_TOOLS = {
   "scripts/sweep_a11y.mjs": null,
   "scripts/sweep_attributes.mjs": null,
   "scripts/svgshot/bench.mjs": null,
+  "scripts/svgshot/chrome_try.mjs": null,
+  "scripts/svgshot/chromeshot.mjs": null,
   "scripts/svgshot/pixels.mjs": null,
   "scripts/svgshot/replay.mjs": null,
   "scripts/svgshot/sheet.mjs": null,
@@ -543,6 +545,8 @@ const REFUSALS = {
   "scripts/sweep_a11y.mjs": ["out"],
   "scripts/sweep_attributes.mjs": ["out"],
   "scripts/svgshot/bench.mjs": ["out"],
+  "scripts/svgshot/chrome_try.mjs": ["url"],
+  "scripts/svgshot/chromeshot.mjs": ["out"],
   "scripts/svgshot/pixels.mjs": ["beside"],
   "scripts/svgshot/replay.mjs": ["bundles"],
   "scripts/svgshot/sheet.mjs": ["out"],
@@ -904,6 +908,29 @@ bad("scripts/shoot_docs.mjs", ["--jobs=17"], "--jobs expects a whole number from
   bad("scripts/shoot_docs.mjs", ["--cleanup", "--events"], "--cleanup and --events cannot be given together\n");
   bad("scripts/svgshot/replay.mjs", ["--stage", underDocs], `replay: --stage: ${underDocs} is under ${docs}\n`);
   bad("scripts/svgshot/replay.mjs", ["--stage", "s", "--diffs", "d"], "--stage and --diffs cannot be given together\n");
+  // A capture holds what the page held: the cache it goes to is never under docs.
+  bad(
+    "scripts/svgshot/chromeshot.mjs",
+    ["x.gz", "--bundles", underDocs],
+    `chromeshot: --bundles: ${underDocs} is under ${docs}\n`,
+  );
+  bad("scripts/svgshot/chromeshot.mjs", ["x.gz"], "chromeshot: no such capture: x.gz\n");
+  bad("scripts/svgshot/chrome_try.mjs", ["--capture-dir", "d"], "chrome_try: --url names the page to take\n");
+  bad(
+    "scripts/svgshot/chrome_try.mjs",
+    ["--url", "http://x"],
+    "chrome_try: --capture-dir names where the capture goes\n",
+  );
+  bad(
+    "scripts/svgshot/chrome_try.mjs",
+    ["--url", "http://x", "--capture-dir", "d", "--drag", "1,2"],
+    "chrome_try: --drag takes four numbers\n",
+  );
+  bad(
+    "scripts/svgshot/chrome_try.mjs",
+    ["--url", "http://x", "--capture-dir", "d", "--mask", "a"],
+    "chrome_try: --mask takes find=show, not a\n",
+  );
   // The screenshot review tool: a run is a retake or a replay, and its options are for one.
   bad("scripts/shot_review.mjs", ["--port", "0"], "--port expects a whole number from 1 to 65535, got: 0\n");
   bad(

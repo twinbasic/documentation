@@ -122,7 +122,7 @@ Every IDE is set up as a lane of [`addin_test.mjs`](#addin-test) is, with a priv
 
 The pictures are repeatable. The IDE lays its page out at 100% whatever the display's scaling, the page has a fixed size of 1280 by 880 CSS pixels at 2x, and animations and the text caret are switched off. The IDE's options, panel layouts and keyboard shortcut groups are set to their defaults in the page only, and the recent-project lists are replaced there, so no picture shows your own choices or projects. Nothing is saved: the IDE is started with `--no-save-ide-settings` and `--no-update-recent-files`. A picture that shows the Debug Console has its line times set to fixed values.
 
-Menus are cut out, transparent around the menu; dialogs are taken whole. A running program's window is taken once, not in two themes, at the display's scaling. Arrows, rings and numbered badges are drawn by the tool (`scripts/lib/shot-annotate.mjs`), anchored to the element they point at, so a retake after a new BETA puts them where the element now is.
+Menus are cut out, transparent around the menu; dialogs are taken whole. A running program's window is taken once, not in two themes, at the display's scaling. Arrows, rings and numbered badges are drawn by the tool (`scripts/svgshot/annotate.mjs`), anchored to the element they point at, so a retake after a new BETA puts them where the element now is.
 
 A picture is written only when it differs by more than the noise two captures of an unchanged screen show. The tool captures the page again and again, with no pause, until one capture is the picture as git has it at `HEAD` or the file already there, or two in a row are the same. When those two differ from both, it goes on capturing, further and further apart, for up to 5.5 seconds, and keeps the picture a capture equals, else the last two captures that agreed: some pictures are drawn in more than one version from one capture to the next, and some states take a moment to settle.
 
@@ -159,7 +159,7 @@ Exit codes: **0** every picture was written or was unchanged (with `--cleanup`, 
 
     node scripts/svgshot/replay.mjs [--only <regex>] [--bundles <dir>] [--out <dir>] [--diffs <dir> | --stage <dir>] [--events] [--recheck] [--jobs N]
 
-Draws each picture's SVG again, with the SVG converter as it is now, from the bundle that [`shoot_docs.mjs --svg`](#shoot-docs) saved when it took the picture. It starts no IDE and takes no picture, so a change to the converter under `scripts/svgshot/` is tried on every picture in about 20 seconds.
+Draws each picture's SVG again, with the SVG converter as it is now, from the bundle that [`shoot_docs.mjs --svg`](#shoot-docs) or [`chromeshot.mjs`](#chromeshot) saved with the picture. It starts no IDE and takes no picture, so a change to the converter under `scripts/svgshot/` is tried on every picture in about 20 seconds.
 
 Each SVG is compared with its PNG and written, left unchanged or removed as `shoot_docs.mjs` does. An SVG that comes out the same as the file already there is not compared again, so a replay with the converter unchanged reports every picture `unchanged`. A picture whose entry in `test/shots/manifest.json` names its SVG is compared again all the same, and judged by that entry as `shoot_docs.mjs` judges it.
 
@@ -177,7 +177,61 @@ The list ends with the `shoot_docs.mjs --svg --only` command that takes those pi
 
 The tool needs Python with fontTools, as `--svg` does, for a cut that is not kept yet.
 
-Exit codes: **0** every picture was drawn again; **1** a picture needs a retake, could not be drawn, or its SVG holds the Windows user name; **2** the tool could not run: a refused command line, no bundle folder, no browser, or a crash.
+Exit codes: **0** every picture was drawn again; **1** a picture needs a retake, could not be drawn, or its SVG holds a word no published picture may show (the Windows user name, git's `user.name` or `user.email`, or a word of `scripts/svgshot/private.json`); **2** the tool could not run: a refused command line, no bundle folder, no browser, or a crash.
+
+## The svgshot Chrome extension
+{: #svgshot-extension }
+
+Takes a page in your own Chrome the way [`shoot_docs.mjs --svg`](#shoot-docs) takes the IDE's page: a PNG, and the bundle its SVG is drawn from, in a dark and a light picture. It is for a page that needs your own sign-in, which no tool can open: the six GitHub pictures of [Deploying to docs.twinbasic.com](Building#deploying-to-docstwinbasiccom).
+
+The extension is the folder `scripts/svgshot`. To set it up:
+
+1. Copy `scripts/svgshot/private.example.json` to `scripts/svgshot/private.json`, which git ignores, and list the words no picture may show, each with what to show in its place: your e-mail address, your name, your GitHub login, and anything else that holds your Windows user name.
+2. In Chrome, open `chrome://extensions`, turn on **Developer mode**, press **Load unpacked** and choose `scripts/svgshot`.
+
+To take a picture:
+
+1. Open the page and put it in the state the picture shows.
+2. Press the extension's toolbar button. The side panel opens, and stays open while you work in the page.
+3. Choose the picture, or **Another picture** and its path under `docs`. The panel says what each of the six must show.
+4. Press **Whole viewport**, which takes what the window shows, or **Drag a rectangle**, then drag over the page. A click takes the box of the element under it, and Esc or **Cancel** gives up.
+
+Chrome shows a bar saying that the extension is debugging the browser, for as long as a capture takes. Leave it, and keep the tab showing. The page is put back as it was afterwards, and the file goes to the `svgshot` folder of your downloads as `<name>.capture.json.gz`, where [`chromeshot.mjs`](#chromeshot) reads it. A browser set to ask where to save each file asks for this one too.
+
+The capture does the following to the page:
+
+- It lays the page out at 1x and draws it at 2x, as the IDE's pictures are. On a display scaled above 100% the tab's zoom changes for the capture, so the page is smaller for a moment. **Page width** lays the page out at that width in CSS pixels. A width that does not fit the tab is cut off on screen, so that **Drag a rectangle** cannot reach the part cut off, and **Whole viewport** still takes it.
+- It replaces each private word in the page by its stand-in, in text, in text boxes, in a list's choices and in attributes, and shows a grey head in place of a picture whose address, alternative text, link or hover card holds one. The PNG and the bundle are therefore both of the masked page. Words the page draws again during the capture are masked again, and a capture they get into is taken again.
+- It sets the theme with the `prefers-color-scheme` preference, and on GitHub with the attributes that hold the account's own theme.
+- It draws the marks of the six pictures, rings and badges in the style of the other pictures, which go into both the PNG and the SVG. Where the page has nothing that a mark's table entry finds, the page asks you to click what the mark points at. **Draw the markings** turns them off.
+
+The mask finds text. It does not find text inside a picture or a `<canvas>`, or in a frame of another site, so look at the preview the panel shows before you publish a capture.
+
+## chromeshot.mjs
+{: #chromeshot }
+
+    node scripts/svgshot/chromeshot.mjs <capture | folder>... [--out <dir>] [--bundles <dir>] [--diffs <dir>] [--words <file>]
+
+Turns what the [Chrome extension](#svgshot-extension) saved into a picture. A folder stands for every capture in it. For each capture it writes `X.png`, and `X.light.png` when both themes were taken, as [`shoot_docs.mjs`](#shoot-docs) writes a capture: one within a capture's noise of the picture is not written, and a light picture with the dark one's pixels is not kept. It draws each SVG from its bundle, writes it beside its PNG when it is close enough to it, and keeps the bundle in the bundle folder, so that [`replay.mjs`](#replay) draws the SVG again after a change to the converter. The line for each PNG gives the `{:width height}` for the page that shows it.
+
+A capture holds what the page held, so it stays out of the repository. The tool refuses one under `docs`, or where git would take it. It also refuses a capture of a bundle format the converter does not read, and one that shows the Windows user name, git's `user.name` or `user.email`, or a word of `scripts/svgshot/private.json`. Every capture is checked before any file is written, and [`replay.mjs`](#replay) makes the same check of each SVG it draws.
+
+`--out` is the folder the pictures are in, `docs` by default. `--bundles` is the bundle folder, `.svgshot-bundles` by default, refused under `docs` and where git would take it. `--diffs` names a folder for each SVG's render, the picture drawn again as a PNG, and its difference picture, and the line for each SVG then says how far the render is from the screenshot by the rule for two captures. That rule allows no shift of a pixel for the edge of a glyph, so a faithful SVG does not meet it. `--words` names another list of private words.
+
+The tool needs Python with fontTools, as `--svg` does.
+
+Exit codes: **0** every capture was written, or left the pictures as they are; **1** a capture was refused or could not be drawn; **2** the tool could not run: a refused command line, or a capture that cannot be read.
+
+## chrome_try.mjs
+{: #chrome-try }
+
+    node scripts/svgshot/chrome_try.mjs --url <address> --capture-dir <dir> [--out <path> | --shot <name>] [--drag x,y,x,y | --os-drag x,y,x,y] [--scroll N] [--width N] [--scale N] [--mask find=show]... [--window <png>]
+
+Takes a public page through the [Chrome extension](#svgshot-extension) with no person there, which shows that the extension still loads and works after a change to it or to `scripts/svgshot/capture.mjs`. It loads a copy of the extension into Puppeteer's Chrome for Testing, on a private desktop, with a fresh profile, so it is signed in to nothing, and it presses the side panel's buttons as a person would. It saves the capture into `--capture-dir`, for [`chromeshot.mjs`](#chromeshot) with `--out` set to a folder of your own, and then checks that the page is as it found it. It needs the network and `tbbroker`, and is outside every gate.
+
+`--url` is the page, and `--out` the picture's path under `docs`, or `--shot` the name of one of the six pictures, with its marks. It presses **Whole viewport** unless `--drag` gives a rectangle to drag over, in the window's CSS pixels, or `--os-drag` gives one in the device pixels of the Chrome window's client area, sent as Windows' own mouse messages, the path a person's mouse takes. `--scroll` scrolls the page down first, and `--width` fills in **Page width**. `--scale` is the display's scale, 1 by default, so that `--scale 1.5` tries a display at 150%. `--mask` adds a private word and its stand-in, and may be given again. `--window` writes a picture of the Chrome window during the capture.
+
+Exit codes: **0** the capture was saved and the page is as it was found; **1** the panel reported a failure, or the page was not put back; **2** the tool could not run.
 
 ## sheet.mjs
 {: #svg-sheet }

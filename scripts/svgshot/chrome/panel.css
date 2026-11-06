@@ -1,0 +1,59 @@
+:root {
+  color-scheme: light dark;
+  font: 13px/18px system-ui, sans-serif;
+}
+body {
+  margin: 12px;
+}
+h1 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+label,
+legend {
+  display: block;
+  margin: 8px 0 4px;
+}
+select,
+input[type="text"],
+input[type="number"] {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px;
+}
+fieldset {
+  margin: 12px 0;
+  padding: 4px 8px;
+}
+#shows {
+  min-height: 3em;
+  margin: 8px 0;
+}
+.take {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 8px;
+}
+button {
+  flex: 1 1 auto;
+  padding: 6px 10px;
+  font: inherit;
+}
+.wrong {
+  color: #e5252a;
+}
+#log {
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+#preview {
+  display: block;
+  max-width: 100%;
+  border: 1px solid #8b949e;
+}
+#preview[hidden] {
+  display: none;
+}

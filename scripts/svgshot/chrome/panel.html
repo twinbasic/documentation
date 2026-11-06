@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>svgshot</title>
+    <link rel="stylesheet" href="panel.css" />
+    <script type="module" src="panel.mjs"></script>
+  </head>
+  <body>
+    <h1>svgshot</h1>
+    <label for="shot">Picture</label>
+    <select id="shot"></select>
+    <input id="path" type="text" placeholder="Documentation/Images/name.png" aria-label="Path under docs/" hidden />
+    <p id="shows"></p>
+
+    <fieldset>
+      <legend>Themes</legend>
+      <label><input id="dark" type="checkbox" checked /> Dark, as X.png</label>
+      <label><input id="light" type="checkbox" checked /> Light, as X.light.png</label>
+    </fieldset>
+
+    <label for="width">Page width in CSS pixels</label>
+    <input id="width" type="number" min="320" placeholder="as the tab is" />
+    <label id="marked"><input id="marks" type="checkbox" checked /> Draw the markings</label>
+
+    <p class="take">
+      <button id="viewport" type="button" disabled>Whole viewport</button>
+      <button id="drag" type="button" disabled>Drag a rectangle</button>
+      <button id="cancel" type="button" hidden>Cancel</button>
+    </p>
+    <p id="words"></p>
+    <pre id="log" aria-live="polite"></pre>
+    <img id="preview" alt="The dark picture as taken" hidden />
+  </body>
+</html>

@@ -18,7 +18,8 @@ Ten images under `docs/`, each for a stated reason:
 
 - **The six GitHub walkthrough pictures** of `Documentation/Building.md` (compare-changes,
   create-pull-request, merge-pull-request, confirm-merge, choose-workflow, run-workflow): the
-  owner's to retake by hand, with a signed-in account (owner); no agent touches them
+  owner's to take with the Chrome extension, signed in (owner, 2026-11-05;
+  [Pictures from a signed-in Chrome](#pictures-from-a-signed-in-chrome)); no agent touches them
   or their prose. They show base `main` and the old workflow name, and confirm-merge an e-mail
   address, until then.
 - **`packPublishPackage1`**: `packagePublisherPublish` opens the sign-in form when no publisher
@@ -1040,7 +1041,7 @@ the PNG was just captured from, and the build shows it in place of the PNG
 
 **How a picture is drawn** (`scripts/svgshot/`):
 
-- `capture.mjs`'s `svgOfPage` reads, while the page is as captured: a DOM snapshot (layout, text
+- `capture.mjs`'s `collectBundle` reads, while the page is as captured: a DOM snapshot (layout, text
   fragments, computed styles, paint order); then, from a measuring layer added after it, each
   font's ascent and the fonts Chromium drew each run with (`CSS.getPlatformFontsForNode`); the
   canvases' pixels, the web fonts' bytes, the annotation layer as XML; and the styles of each
@@ -1302,6 +1303,10 @@ come out with other bytes. A rounded box keeps its background under its borders:
 edge is antialiased at any scale, and the clip left a seam there at 2x (the designer's round
 selection handles).
 
+**An image is cut to its box's rounded corners** (`paintBox`, 2026-11-06): a page's round avatars
+came out square, the corners 0.073% of a picture strongly off, and 0% cut. The IDE has no
+such image, and a replay of its bundles changed none.
+
 **An `<embed>` of an image is drawn as an `<img>`** (`embeddedImage`): Chromium stretches the
 image to the element's box, as for an `<img>` (checked in headless Chromium: a 10 by 10 PNG in a
 100 by 60 `<embed>` filled it), and an ICO draws in an SVG `<image>`. The resource preview shows
@@ -1516,6 +1521,122 @@ border, doubled (the IDE has none); text is set on its exact baseline, where Chr
 the baseline to a whole CSS pixel (a device pixel off at most; an underline uses the rounded
 one). A canvas is a raster (the editor's minimap is drawn with
 `putImageData`). The run reports each under "not drawn".
+
+## Pictures from a signed-in Chrome
+
+The six GitHub pictures need the owner's account, so no agent can take them, and pictures
+taken by hand are PNGs that cannot be drawn again. The owner's decision (2026-11-05): a Chrome
+extension that does what `shoot_docs.mjs --svg` does in the IDE's WebView, so that a capture can
+be replayed later. How to use it is in
+[Tools-IDE](docs/Documentation/Tools-IDE.md#svgshot-extension); only the owner signs in, and no
+session opens a pull request, posts anything on GitHub or uses the owner's account.
+
+**The folder `scripts/svgshot/` is the extension** (`manifest.json` there; its own files in
+`chrome/`). An unpacked extension loads nothing from outside its root, and a build step that
+copied the modules would be a second copy to go stale, so the capture code is one set of files,
+and the two callers differ in their `conn`: `lib/tb-cdp.mjs`'s socket, and `chrome/conn.mjs`'s
+`chrome.debugger.sendCommand`. That took five moves, none of which changes what the IDE's run
+does: `BUNDLE_VERSION` and `trimSnapshot` to `snapshot-trim.mjs`, `webRulesFor` and
+`parseUnicodeRange` to `font-rules.mjs`, `svgOfPage` to `bundle.mjs`, the SHA-1 of a web font
+to the platform's `crypto.subtle`, `shot-annotate.mjs` to `svgshot/annotate.mjs`, and
+`compactImage` and `pngSize`, which need zlib, to `useImageTools`, which `bundle.mjs` calls.
+Nothing in the extension draws. `test/svgshot.test.mjs` follows the imports from the manifest and
+fails on a Node module or a path outside the folder.
+
+**A side panel, not a popup**: it stays open while the page is set up, and a click in the page
+does not close it. It is also a page: a service worker has no `URL.createObjectURL`, and a
+`data:` URL over 2 MB does not reach `chrome.downloads`. Permissions are `debugger`, `downloads`
+and `sidePanel`, with no host permission and no `tabs`; a capture works on those alone.
+
+**What the capture needs of the browser, checked on 2026-11-06** in Chrome for Testing 148 through
+`chrome.debugger`, logged out, on `github.com/twinbasic/documentation`: every one of
+`DOMSnapshot.captureSnapshot`, `DOM.*`, `CSS.getPlatformFontsForNode`, `Page.getResourceTree`,
+`Page.getResourceContent`, `Page.getLayoutMetrics`, `Page.createIsolatedWorld`,
+`Page.captureScreenshot`, `Emulation.setDeviceMetricsOverride`, `Emulation.setEmulatedMedia`,
+`Runtime.evaluate` and `Runtime.callFunctionOn` answers, at display scales 1, 1.25 and 1.5. All 29
+of GitHub's style sheets are readable (`crossorigin`), and its page has no web font file to fetch
+(`document.fonts` holds one face, with no `url()`).
+
+**The display's scale is the one thing that differs from the IDE.** The IDE gets
+`--force-device-scale-factor=1`; the owner's Chrome cannot, and the dev box is at 144 DPI. At
+150% a snapshot's boxes are 1.5 times the CSS pixels, whatever the emulated scale says (a page
+1280 wide, boxes 1920 wide), so the converter would draw everything that much too large, the
+fault Help_Window had. A tab's zoom of 1 over the display's scale brings the layout back to 1x
+(`bounds` equals `innerWidth`). It changes what the override means, each of these checked:
+an emulated width w is w/zoom CSS pixels, `devicePixelRatio` is the emulated scale times the zoom,
+so the emulated scale is 2/zoom, and a clip is in the emulated size's units, not in CSS pixels.
+`take.mjs`'s `layoutPlan` does this, and each capture checks the first layout box against
+`innerWidth` and refuses a page not at 1x. The zoom is per tab, and goes back after the capture.
+The override's `scale` is left out: Chrome keeps the view its emulated size and enlarges the page
+inside it, which cuts off the right and the bottom (the window, captured on a private desktop,
+showed it). So on a display at 150% the page takes two thirds of the tab during a capture, in its
+top left corner, and shows whole. A real mouse maps right: `chrome_try --os-drag` posts Windows'
+own mouse messages to Chrome's window, and 600 by 300 device pixels at 150% came out a clip of
+600 by 300 CSS pixels at the right place.
+
+**Masking** (decided here, 2026-11-06). A black box would show that something was hidden, and a
+crop would limit what a picture can show, so a private word is replaced in the page by a stand-in
+before the capture, and the PNG and the SVG are of the same masked page. The list is
+`scripts/svgshot/private.json`, in the extension's folder, so that the panel can read it, and
+ignored by git; `private.example.json` shows its form. `maskPage` replaces text nodes (a
+`<select>`'s options among them), text box values and attributes in every shadow root and in each
+frame of the same process, and shows a grey head for an `<img>` whose alternative text, address,
+link or hover card holds a word: `confirm-merge`'s e-mail address needs no `noreply` choice and no
+crop. It is undone afterwards. A page can draw a word again, as React does, so `maskPage` runs again
+just before and just after each PNG, and a capture is taken again when the second pass finds
+anything, four times at most. Then come two checks and a scrub: `drawnWords` refuses a capture
+whose layout text, field values or option text still holds a word (a `::before` of
+`content: attr(...)`, which no mask reaches, is in the layout's text); `scrubBundle` replaces the
+words in every string of the bundle, so that a link's address and a `<meta>` are not kept either;
+and a search of the bundle's JSON, base64 left out, must find none. `chromeshot.mjs` then asks the
+same of a wider list, with the Windows user name and git's `user.name` and `user.email`
+(`private-list.mjs`), of the bundle and of the SVG, before it writes anything, whether or not the
+SVG is written: the PNG shows what it was drawn from. `replay.mjs` asks it of each SVG.
+
+**What the mask cannot do:** text in a raster or a canvas, and a frame of another process, which
+is not in the snapshot. No OCR reads a PNG, so the owner looks at the preview. A bundle holds the
+rest of the page, ids and all: it stays in the gitignored cache, and `chromeshot.mjs` refuses to
+read a capture under `docs/` or from where git would take it.
+
+**Images.** The converter draws only a `data:` image, which is all the IDE has, so `take.mjs` reads
+each `<img>` in the clip with `Page.getResourceContent`, which no Content-Security-Policy or CORS
+header can refuse, and shows it as a `data:` URL for the capture. A font goes the same way when
+the page's own fetch of it is refused (`capture.mjs`'s `fontBytes`). A CSS `background-image` of
+another address is not embedded: the judge sees it missing, and GitHub's six pictures have none.
+
+**A theme** is `Emulation.setEmulatedMedia`, and on GitHub the attributes `data-color-mode`,
+`data-light-theme` and `data-dark-theme`, since the account's own setting can name one theme
+whatever the preference says. `quietPage` is a constructed style sheet, because the page's
+Content-Security-Policy can refuse a `<style>` a script adds.
+
+**The result**, a page drawn again from the bundle against its screenshot, on
+`github.com/twinbasic/documentation` and its `/compare` page, logged out, with the owner's public
+login in the file list masked in 14 places:
+
+| Display | Picture | Dark, pixels off (strongly) | Light |
+|---|---|---|---|
+| 100% | whole window, 2180 by 1698 | 0.165% (0%) | |
+| 150% | whole window, 2166 by 1701 | 0.167% (0%) | 0.077% (0%) |
+| 125% | whole window, scrolled 700 px | 0.166% (0%) | 0.076% (0%) |
+| 150% | `compare-changes`, dragged, with its marks | 0.177% (0%) | 0.042% (0%) |
+| 150% | a rectangle dragged with Windows' own mouse | 0.096% (0%) | 0.035% (0%) |
+
+The bar is 0.25% strongly off, and each is well inside it. Drawn again as a PNG and held to the
+noise rule for two captures, the render does not pass: 2.9% of its pixels are over 16 levels off,
+which is 0% once the SVG judge's shift of one pixel is allowed, so it is the edges of glyphs, as
+with the IDE's pictures; that rule is for two captures of one state. `replay.mjs` draws the SVGs
+again byte for byte from the cached bundle, with the files removed.
+
+**Not tested, since a session has neither:** the owner's branded Chrome, which ignores
+`--load-extension` since Chrome 137 and so cannot be driven by `chrome_try`, and any signed-in
+page. The marks' anchors in `chrome/shots.mjs` other than `compare-changes`' are read from the
+public pages' markup or from memory; one that finds nothing asks the owner to click the target,
+so a wrong anchor costs a click. Marks use `ring` and `badge`; the old pictures' arrows are not
+copied.
+
+**After the six are taken** (the owner's): the page's `{:width height}`, which `chromeshot.mjs`
+prints, the alt text of each picture against what it now shows, and any other mention of `main`
+as the base branch.
 
 **Open, the owner's:**
 - The SVGs are to be checked in browsers other than Chromium's, with an online tool; leave
