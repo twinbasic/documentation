@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Clips of one axis and of rounded corners</title>
+<!--
+  Two clips GitHub's merge box has and the IDE does not. overflow-y: clip beside
+  overflow-x: visible clips one axis and leaves the other unbounded, so that the
+  converter's clip must not be as wide as "unbounded" is (nothing is drawn through a
+  rectangle 2e9 px wide); what stands past the unclipped sides shows, and what
+  stands past the clipped ones does not. A box that clips and is a disc or a pill
+  cuts its children to its shape, inside its borders: a round ground for an icon. A
+  smaller radius is drawn square, as the converter does, so the card is here to
+  show what that costs.
+-->
+<style>
+body { margin: 0; background: #fff; color: #222; font: 13px "Segoe UI", sans-serif; }
+.axis { position: absolute; left: 40px; top: 30px; width: 200px; height: 80px; overflow-x: visible; overflow-y: clip;
+  background: #e8eef7; }
+.axis .tall { position: absolute; left: 20px; top: -20px; width: 40px; height: 120px; background: #1f883d; }
+.axis .wide { position: absolute; left: -20px; top: 30px; width: 240px; height: 20px; background: #0969da; }
+.round { position: absolute; top: 30px; overflow: hidden; }
+.disc { left: 300px; width: 64px; height: 64px; border-radius: 50%; }
+.disc div { width: 100%; height: 100%; background: #1f883d; }
+.card { left: 400px; width: 160px; height: 80px; border-radius: 12px; border: 2px solid #1a7f37; }
+.card div { height: 40px; background: #f6f8fa; border-bottom: 1px solid #d1d9e0; }
+.nest { left: 600px; width: 100px; height: 100px; border-radius: 16px; background: #0969da; }
+.nest .in { position: static; margin: 12px; height: 76px; border-radius: 50%; overflow: hidden; background: #fff; }
+.nest .in div { height: 100%; background: #cf222e; }
+</style>
+<div class="axis"><div class="tall"></div><div class="wide"></div></div>
+<div class="round disc"><div></div></div>
+<div class="round card"><div></div></div>
+<div class="round nest"><div class="in"><div></div></div></div>
+</html>

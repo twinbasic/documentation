@@ -36,6 +36,11 @@
       "pct96": 0,
       "tile": 0.017
     },
+    "overflow-clip": {
+      "pct32": 0.031,
+      "pct96": 0.007,
+      "tile": 0.063
+    },
     "scrollbars": {
       "pct32": 0.027,
       "pct96": 0,
