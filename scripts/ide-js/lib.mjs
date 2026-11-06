@@ -685,56 +685,69 @@ export function commandTextProblems(ids, text) {
   };
 }
 
+/** The prefix of a command's name, its underscore included; "" for a name with no underscore. */
+const commandPrefix = (id) => id.slice(0, id.indexOf("_") + 1);
+
+// A section's heading shows the prefix, so `.command-prefix` gives it no width in a row. It stays
+// in the text for the browser's find, the site's search, a double-click and a screen reader.
+const commandCell = (id, prefix) =>
+  prefix ? `<code><span class="command-prefix">${prefix}</span>${id.slice(prefix.length)}</code>` : `\`${id}\``;
+
+const keysCell = (strings = []) => {
+  const labels = strings.map(keyLabel);
+  const list = (release) =>
+    labels
+      .filter((l) => l.release === release)
+      .map((l) => l.keys)
+      .join(", ");
+  return [list(false), list(true) && `${list(true)}, on release`].filter(Boolean).join("; ");
+};
+
 /**
- * The two tables of the Keyboard Shortcuts reference page, as `{ keyed, unkeyed }`: the commands
- * with a default key (the command, its keys, what it does), and the others (the command, what it
- * does), each with one row for each command, by name. A command is on the second table when the
- * build lists it in `ideCommands` (`ids`) and the group gives it no key. `text` is the data file.
+ * The sections of the Keyboard Shortcuts reference page, as markdown: one for each prefix of a
+ * command's name, by name, each a heading and a table with one row for each command, by name, and
+ * last the commands with no prefix. A table has the Keys column when any command of its section
+ * has a key. A command is on the page when the group or the build's `ideCommands` (`ids`) lists it.
+ * `text` is the data file.
  */
-export function keymapTables(map, ids, text = {}) {
-  const all = [...new Set([...ids, ...Object.keys(map)])].sort(byName);
-  const keyed = [];
-  const unkeyed = [];
-  for (const command of all) {
-    const description = cellText(text[command]);
-    const labels = (map[command] ?? []).map(keyLabel);
-    if (!labels.length) {
-      unkeyed.push(`| \`${command}\` | ${description} |`);
-      continue;
-    }
-    const list = (release) =>
-      labels
-        .filter((l) => l.release === release)
-        .map((l) => l.keys)
-        .join(", ");
-    const cell = [list(false), list(true) && `${list(true)}, on release`].filter(Boolean).join("; ");
-    keyed.push(`| \`${command}\` | ${cell} | ${description} |`);
+export function keymapSections(map, ids, text = {}) {
+  const groups = new Map();
+  for (const command of [...new Set([...ids, ...Object.keys(map)])].sort(byName)) {
+    const prefix = commandPrefix(command);
+    if (!groups.has(prefix)) groups.set(prefix, []);
+    groups.get(prefix).push(command);
   }
-  return {
-    keyed: ["| Command | Keys | What it does |", "|---|---|---|", ...keyed].join("\n"),
-    unkeyed: ["| Command | What it does |", "|---|---|", ...unkeyed].join("\n"),
+  const prefixes = [...groups.keys()].filter(Boolean).sort(byName);
+  if (groups.has("")) prefixes.push("");
+  const section = (prefix) => {
+    const commands = groups.get(prefix);
+    const hasKeys = commands.some((command) => map[command]?.length);
+    const header = hasKeys
+      ? ["| Command | Keys | What it does |", "|---|---|---|"]
+      : ["| Command | What it does |", "|---|---|"];
+    const rows = commands.map((command) => {
+      const keys = hasKeys ? ` ${keysCell(map[command])} |` : "";
+      return `| ${commandCell(command, prefix)} |${keys} ${cellText(text[command])} |`;
+    });
+    return [`## ${prefix ? `\`${prefix}\`` : "Commands with no prefix"}`, "", ...header, ...rows].join("\n");
   };
+  return prefixes.map(section).join("\n\n");
 }
 
 /**
- * `page` with its two keymap tables, each from its header line to its last row, replaced by
- * those of `tables` (`keymapTables`'), in the page's own line endings. `.current` is the tables
- * the page has and `.expected` those it was given, each the two tables with a blank line between.
+ * `page` with `sections` (`keymapSections`') in place of its own, in the page's own line endings.
+ * Every section of the page before its See Also is generated: nothing written by hand goes there.
+ * `.current` is the sections the page has and `.expected` those it was given.
  */
-export function pageKeymap(page, tables) {
+export function pageKeymap(page, sections) {
   const eol = page.includes("\r\n") ? "\r\n" : "\n";
-  let lines = page.split(eol);
-  const current = [];
-  for (const key of ["keyed", "unkeyed"]) {
-    const header = tables[key].split("\n")[0];
-    const start = lines.indexOf(header);
-    if (start < 0) throw new Error(`the page has no ${header} table`);
-    let end = start;
-    while (lines[end + 1]?.startsWith("|")) end++;
-    current.push(lines.slice(start, end + 1).join("\n"));
-    lines = [...lines.slice(0, start), ...tables[key].split("\n"), ...lines.slice(end + 1)];
-  }
-  return { current: current.join("\n\n"), expected: `${tables.keyed}\n\n${tables.unkeyed}`, text: lines.join(eol) };
+  const lines = page.split(eol);
+  const end = lines.indexOf("## See Also");
+  if (end < 0) throw new Error("the page has no See Also");
+  const start = lines.findIndex((line) => line.startsWith("## "));
+  const current = lines.slice(start, end).join("\n").trimEnd();
+  const text = [...lines.slice(0, start), ...sections.split("\n"), "", ...lines.slice(end)].join(eol);
+  return { current, expected: sections, text };
 }
 
 // ---- the fix shape ----

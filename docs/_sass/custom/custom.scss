@@ -969,3 +969,20 @@ div.highlight:focus-visible,
     content: " \2192" / "";
   }
 }
+
+// A command's name on the Keyboard Shortcuts page. The heading above the table shows the prefix,
+// so here it takes no width. It stays in the text, at no size and not hidden, so that the browser's
+// find, the site's search, a double-click and a screen reader all get the whole name.
+.command-prefix {
+  font-size: 0;
+}
+
+// That page's contents list: a line of its own for each of its 37 short headings would fill more
+// than a screen before the first table.
+.command-index #markdown-toc {
+  columns: 12rem;
+
+  li {
+    break-inside: avoid;
+  }
+}

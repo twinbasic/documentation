@@ -65,7 +65,7 @@ Text that is not valid JSON turns red. The IDE ignores a group whose text is not
 
 ## The text of a group
 
-A group is a JSON object. Each key names a command, and each value is a list of key strings. Any command of the IDE can be named, whether or not the default group gives it a key. The [reference](../Reference/Keyboard-Shortcuts) lists every command with a line on what it does: the commands that have a default key in one table, and [those that have none](../Reference/Keyboard-Shortcuts#commands-with-no-default-key) in another. It is the place to look up the name of a command.
+A group is a JSON object. Each key names a command, and each value is a list of key strings. Any command of the IDE can be named, whether or not the default group gives it a key. The [reference](../Reference/Keyboard-Shortcuts) lists every command with its default keys and a line on what it does, in one table for each prefix of a command's name. It is the place to look up the name of a command.
 
 | Entry | Meaning |
 |---|---|
@@ -126,7 +126,7 @@ When a command fails, the Debug Console prints `command failed:` and the command
 
 ## See Also
 
-- [Keyboard shortcuts reference](../Reference/Keyboard-Shortcuts) -- every command the default group binds, with its keys
+- [Keyboard shortcuts reference](../Reference/Keyboard-Shortcuts) -- every command of the IDE, with its default keys
 - [Window menu](../Reference/Menu/Window#keyboard-shortcuts) -- the **Keyboard Shortcuts** entry
 - [Panel layouts](Panel-Layouts) -- the commands that switch layouts
 - [Themes](Themes) -- the commands that switch themes

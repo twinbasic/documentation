@@ -766,3 +766,6 @@ blockquote {
 .markdown-alert-caution      .markdown-alert-title { color: #cf222e; }
 .markdown-alert-tip          { border-left-color: #1a7f37; }
 .markdown-alert-tip          .markdown-alert-title { color: #1a7f37; }
+
+/* A command's name on the Keyboard Shortcuts page: custom.scss says why. */
+.command-prefix { font-size: 0; }
