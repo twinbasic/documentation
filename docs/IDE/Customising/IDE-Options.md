@@ -5,6 +5,12 @@ grand_parent: IDE
 nav_order: 1
 permalink: /tB/IDE/Customising/IDE-Options
 has_toc: false
+index:
+  - preferences
+  - ide settings
+  - ide preferences
+  - options dialog
+  - tools options
 ---
 
 # IDE Options
@@ -169,7 +175,7 @@ Changing any of these options restarts the compiler. The three **LLVM -** option
 : Default on. Keeps the LLVM cache process running after the IDE closes.
 
 **Show Hidden Members**
-: Default off. Shows members marked `[Hidden]` in tooltips, hovers and the other information the editor shows about code. It is not the same switch as the Project Settings **Intellisense: Show Hidden Members** and **Debugger: Show Hidden Members**.
+: Default off. Shows what a COM type library marks as hidden, in two places. The completion lists that offer a type, such as those after `As`, `Implements` and `Inherits`, also offer the library's hidden types, such as `IUnknown`, `IFont` and `IPicture` of OLE Automation. The [Variables](../Debugging/Inspecting#variables) panel and the [watches](../Debugging/Inspecting#watches) also list a hidden property of an object, such as `_NewEnum` of a `Scripting.Drives` object. The lists after a dot, hovers and signature help do not change. The option has no effect on `[Hidden]` in twinBASIC source: a member or class marked that way appears in those lists and panels with the option off.
 
 **Use new Handles/Implements syntax**
 : Default off. When you choose an event of a **WithEvents** variable in the editor's procedure combo box, the handler that the editor inserts has a **Handles** clause. With the option off, the handler is `Private Sub src_Changed(ByVal n As Long)`. With it on, it is `Private Sub src_Changed(ByVal n As Long) Handles src.Changed`. The name of the procedure is the same in both.
@@ -178,6 +184,8 @@ Changing any of these options restarts the compiler. The three **LLVM -** option
 : Default on. After each build, tells Windows Explorer to refresh its cache of icons. Without the refresh, Explorer can go on showing a program's old icon after a build that changed it.
 
 ## Window and status bar
+
+No option hides the status bar. See [Status Bar](../Reference/StatusBar).
 
 **Show memory and resource usage**
 : Default off. Adds a block of figures at the right-hand end of the status bar, after the social icons, for example `174.5MB in use | 96 ui objects | 16 gdi objects`. The figures are the memory in use, in megabytes, and the numbers of USER objects and GDI objects. Until the first figures arrive, the block reads `?MB in use | ? ui objects | ? gdi objects`. The block shows once a project has loaded, and it is hidden again when the project closes. The Debug Console prints a critical error when the limit of GDI handles is exceeded, and advises you to restart the compiler. A change restarts the compiler.
@@ -195,6 +203,7 @@ Some IDE settings are saved with the options but have their own commands.
 - The panel layout and the Panel Features switches are described in [Panel layouts](Panel-Layouts).
 
 ### The code editor's menu
+{: index="hide line numbers; hide minimap" }
 
 The **...** icon in the header of the editor panel opens a menu of options. The first eleven items are IDE options, and each is saved at once. A combo item lists its values.
 
@@ -214,7 +223,7 @@ The **...** icon in the header of the editor panel opens a menu of options. The 
 : Shown by default.
 
 **Show Line Numbers**
-: Shown by default.
+: Turns the line numbers on and off; a tick marks them as shown. Shown by default.
 
 **Code Hints Always Visible**
 : The same option as **Always show IDE Inline Code Hints**.
@@ -223,7 +232,7 @@ The **...** icon in the header of the editor panel opens a menu of options. The 
 : The same option as **Sticky scrolling in code editor**.
 
 **Show MiniMap**
-: Shown by default.
+: Turns the minimap on and off. Shown by default.
 
 **Show Advanced Info On Hover**
 : The same option as **Show Advanced Info On Hover** in the dialog. A change restarts the compiler.

@@ -1,0 +1,27 @@
+' [DebugOnly] on Class_Initialize. An IDE run is right: stamp 7. The built exe stops at the read of
+' x.Stamp with error 91 in a box, 32-bit and 64-bit, although New has given x an object. Without the
+' attribute the exe prints nothing and exits 0, and with [DebugOnly(False)] too.
+Class C
+    Public Stamp As Long
+
+    [DebugOnly]
+    Private Sub Class_Initialize()
+        Stamp = 7
+    End Sub
+End Class
+
+Module Startup
+
+    Public Sub Main()
+        Dim x As C
+        Set x = New C
+        Debug.Print "stamp " & x.Stamp
+    End Sub
+
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Main
+    End Sub
+
+End Module

@@ -6,16 +6,7 @@
 import { decideSvg, svgRule } from "../lib/shot-policy.mjs";
 import { diffSvg, svgClip } from "./diff.mjs";
 
-/**
- * Whether `svg` holds `user` (the Windows user name), ignoring case. The search
- * skips base64 payloads (fonts, images), in which four given letters turn up by
- * chance often enough to fail runs.
- */
-export const holdsUserName = (svg, user) =>
-  svg
-    .replace(/;base64,[A-Za-z0-9+/=]+/g, ";base64,")
-    .toLowerCase()
-    .includes(user.toLowerCase());
+export { holdsUserName } from "./private-words.mjs";
 
 /**
  * `svg` against the PNG it was taken with, in a page of `browser`:

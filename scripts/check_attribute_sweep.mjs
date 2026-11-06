@@ -191,7 +191,7 @@ check(
 // A site in no family is one no `Applicable to:` phrase can cover, so accepting it is
 // always reported as undocumented. That is right for these and a decision for a new
 // site, which is what this list is for.
-const NO_FAMILY = ["TYPE_FIELD", "TYPE_FIELD_LINE", "CONST_CLASS", "VAR_LOCAL", "INHERITS"];
+const NO_FAMILY = ["VAR_LOCAL", "INHERITS"];
 check(
   "families: the sites in no family are the ones decided",
   same(
@@ -580,6 +580,13 @@ for (const [app, want] of [
   ["Interface in a Library", ["LIBRARY_INTERFACE"]],
   ["Library", []],
   ["variables in a Class", ["VAR_CLASS"]],
+  ["Const in a Module or a Class", ["CONST", "CONST_CLASS"]],
+  [
+    "Function in a Module, Property Get in a Module. The compiler rejects it on a method in a Class.",
+    ["FUNC_MODULE", "PROPGET_MODULE"],
+  ],
+  ["a Sub in a Class, a Property Get in a Class, member of a Type (UDT)", ["SUB_CLASS", "PROPGET_CLASS", "TYPE_FIELD"]],
+  ["a Sub prototype in an Interface, generic Sub", ["SUB_INTERFACE", "SUB_GENERIC"]],
   ["Class, CoClass", ["CLASS", "COCLASS"]],
   [null, []],
   ["", []],
@@ -794,7 +801,7 @@ for (const [app, want] of [
     ["Type (UDT)", ["TYPE"]],
     ["Method in an Interface, API Declarations.", ["PROC_INTERFACE", "DECLARE"]],
     ["Function, Sub", ["FUNC_MODULE", "SUB_MODULE"]],
-    ["Declare (API declaration), Module", ["DECLARE", "MODULE"]],
+    ["Declare (API declaration), Module, Class", ["DECLARE", "MODULE", "CLASS"]],
     ["procedure, Declare (API declaration)", ["DECLARE", "PROC_ANY"]],
     ["Module", ["MODULE"]],
     ["an Implements statement in a Class", ["IMPLEMENTS"]],
@@ -806,8 +813,24 @@ for (const [app, want] of [
     ["Interface, Class", ["INTERFACE", "CLASS"]],
     ["procedure in a Class, procedure prototype in an Interface", ["PROC_CLASS", "PROC_INTERFACE"]],
     [
-      "Class, CoClass, Const, Declare (API declaration), Event declaration in a Class, variable in a Class, Interface, Module, procedure, Type (UDT)",
-      ["CLASS", "COCLASS", "CONST", "DECLARE", "EVENT_CLASS", "VAR_CLASS", "INTERFACE", "MODULE", "TYPE", "PROC_ANY"],
+      "Class, CoClass, Const in a Module or a Class, Declare (API declaration), Enum, Event declaration in a Class, variable in a Class, variable in a Module, Interface, Module, procedure, procedure parameter, Type (UDT), member of a Type (UDT)",
+      [
+        "CLASS",
+        "COCLASS",
+        "CONST",
+        "DECLARE",
+        "ENUM",
+        "EVENT_CLASS",
+        "VAR_CLASS",
+        "VAR_MODULE",
+        "INTERFACE",
+        "MODULE",
+        "PARAM",
+        "TYPE",
+        "CONST_CLASS",
+        "TYPE_FIELD",
+        "PROC_ANY",
+      ],
     ],
     [
       "procedure in an Interface, procedure in a Class, Event declaration in a Class",
@@ -835,17 +858,24 @@ for (const [app, want] of [
       ["DECLARE", "VAR_MODULE", "VAR_CLASS", "PROC_ANY"],
     ],
     [
-      "Declare (API declaration), Const, variable in a Module, variable in a Class, Event declaration in a Class, procedure definitions",
-      ["DECLARE", "CONST", "VAR_MODULE", "VAR_CLASS", "EVENT_CLASS", "PROC_ANY"],
+      "Declare (API declaration), Const in a Module or a Class, variable in a Module, variable in a Class, Event declaration in a Class, procedure definitions",
+      ["DECLARE", "CONST", "VAR_MODULE", "VAR_CLASS", "EVENT_CLASS", "CONST_CLASS", "PROC_ANY"],
     ],
     [
       "Function in a Module, Property Get in a Module. The compiler rejects it on a method in a Class.",
       ["FUNC_MODULE", "PROPGET_MODULE"],
     ],
     ["Module, Class, procedure in a Class or Module", ["MODULE", "CLASS", "PROC_CLASS", "PROC_MODULE"]],
-    ["Sub, Declare Sub", ["SUB_MODULE", "DECLARE_SUB"]],
+    [
+      "Sub, generic Sub, a Sub in a Class (Friend included), a Sub prototype in an Interface, Declare Sub",
+      ["SUB_MODULE", "DECLARE_SUB", "SUB_GENERIC", "SUB_CLASS", "SUB_INTERFACE"],
+    ],
+    ["variables in a Class, a Property Get in a Class", ["VAR_CLASS", "PROPGET_CLASS"]],
     ["Declare (API declaration), Delegate", ["DECLARE", "DELEGATE"]],
-    ["Class, Interface, Module, procedure", ["CLASS", "INTERFACE", "MODULE", "PROC_ANY"]],
+    [
+      "Class, Interface, Module, Declare, Event declaration in a Class, procedure",
+      ["CLASS", "INTERFACE", "MODULE", "DECLARE", "EVENT_CLASS", "PROC_ANY"],
+    ],
     [
       "Module, and to procedures, Declare statements and Enums in a Module",
       ["MODULE", "PROC_MODULE", "DECLARE", "ENUM"],
@@ -858,8 +888,21 @@ for (const [app, want] of [
       ["VAR_CLASS", "PROC_CLASS", "EVENT_CLASS", "PROC_INTERFACE"],
     ],
     [
-      "Interface, Class, procedure in a Class, variable in a Class, Event declaration in a Class, procedure prototype in an Interface",
-      ["INTERFACE", "CLASS", "PROC_CLASS", "VAR_CLASS", "EVENT_CLASS", "PROC_INTERFACE"],
+      "Interface, Class, Module, procedure in a Class or Module, Declare (API declaration), Const in a Module or a Class, variable in a Class, variable in a Module, Event declaration in a Class, procedure prototype in an Interface",
+      [
+        "INTERFACE",
+        "CLASS",
+        "MODULE",
+        "PROC_CLASS",
+        "PROC_MODULE",
+        "DECLARE",
+        "CONST",
+        "VAR_CLASS",
+        "VAR_MODULE",
+        "EVENT_CLASS",
+        "PROC_INTERFACE",
+        "CONST_CLASS",
+      ],
     ],
   ];
   const wrong = LINES.filter(([app, want]) => !same(targetsOf(app), want)).map(

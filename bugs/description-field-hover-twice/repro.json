@@ -1,0 +1,10 @@
+{
+  "mode": "lane",
+  "lane": "ide:hover-description",
+  "tests": [
+    "a Type field with [Description] on its line shows the text twice",
+    "a Type field with [Description] on the line above shows the text twice",
+    "a variable of a Class shows the text twice"
+  ],
+  "steps": "1. Open description-field-hover-twice.twinproj.\n2. Rest the pointer on A in the line p.A = 1 of Sub Main. The popup ends same linesame line.\n3. Do the same on B in p.B = 2 and on Count in Holder.Use: own lineown line and a class variablea class variable.\n4. Do the same on Limit and Total: a constant and a module variable, once each."
+}

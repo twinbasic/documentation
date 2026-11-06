@@ -78,6 +78,7 @@ Hold the pointer over a row to see its tooltip: the name, as a dotted path from 
 ![The VARIABLES panel with the row of subtotal highlighted under the pointer, and its tooltip below it: the name subtotal, then Type Variant [Double], Value 360 and Pointer with an address, and a copy icon at the lower right.](Images/Variables_Tooltip.png){:width="429" height="335"}
 
 ## Watches
+{: index="watches" }
 
 A watch is an expression that the IDE evaluates at every stop. The **WATCHES** panel is not in the default layout, so open it from **View → WATCHES**, or add a watch, which opens it. [Saving a layout](../Customising/Panel-Layouts) keeps it open.
 

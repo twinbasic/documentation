@@ -24,7 +24,7 @@ Multiple attributes can be specified in the same square braces, separated by com
 
 ---
 
-The available attributes are listed below in alphabetic order. Not every attribute applies to every language element. The applicability of each attribute is given below its syntax. An attribute written where it does not apply is a compile error, depending on the place either TB5155, *This attribute is not supported in this context*, or TB5182, *Syntax error. No handler for this symbol*.
+The available attributes are listed below in alphabetic order. Not every attribute applies to every language element. The applicability of each attribute is given below its syntax. Many attributes are refused where they do not apply, with either TB5155, *This attribute is not supported in this context*, or TB5182, *Syntax error. No handler for this symbol*. The compiler accepts others there and ignores them, so a build with no error does not show that an attribute does anything at that place. The `Applicable to:` line lists where an attribute has its effect.
 * TOC
 {:toc}
 ---
@@ -42,6 +42,10 @@ The twinBASIC packages use it to add members to an interface without breaking co
 
 On a **Public** procedure of a **Class**, it does the same for a class that [**Implements**](Implements) that class: the member may be left out, where otherwise the build fails with TB65535, *Missing implementation of member ...*. On a property it covers only the accessor it is written on, so a **Property Get** and its **Property Let** each need it.
 
+<!-- test: bug missing-implementation-message -->
+> [!NOTE] BETA 1034
+> The message of TB65535 reads *Internal Error - Bad Error Info Locale Data*, and does not name the missing member. The error is on the name after **Implements**.
+
 <!-- Applicability from the package census, BETA 1005: 71 uses in tbIDE and VB,
      every one a Sub prototype inside an Interface. The effect described above is read
      from that usage, not from a specification.
@@ -51,7 +55,14 @@ On a **Public** procedure of a **Class**, it does the same for a class that [**I
      OptionalOne()" without it; the same for a Function, an object-returning
      Function and each property accessor separately (marking the Get alone still
      reports the Let). A Friend Sub and an Event are never required, with or
-     without it. No trace in the type library. -->
+     without it. No trace in the type library.
+     BETA 1034 (tbbuild, the type library, a run, completion, the Object Browser's
+     data): accepted on a Declare in a Class and an Event in a Class, bare, True
+     and False, with no change: an Event is never required of a class that
+     Implements its class, and a Declare in a Class is always Private (TB5227
+     for a Public one). Left off the line above. The error for a missing
+     member reads "Internal Error - Bad Error Info Locale Data" on BETA 1034,
+     not the text quoted above. -->
 
 ## AppObject  (optional Bool)
 {: #appobject }
@@ -70,9 +81,16 @@ On a **Class**, the members of the class can be called by their bare names anywh
      (appobject, cancreate, predeclid) against 0x2 without it; in a Standard EXE
      an [AppObject] class's GlobalOne() resolves unqualified, the control class's
      GlobalC() is TB5079; tbrun: two bare calls of a counting method print 1, 2,
-     and `New AO_Cls` then prints 1. Also accepted on an Interface and a Private Class, where
-     the bare names resolve as well (an Interface has no object behind it); on a
-     generic Class they do not. Left off the line above. -->
+     and `New AO_Cls` then prints 1. Also accepted on a Private Class, where
+     the bare names resolve as well; on a generic Class they do not.
+     Interface (BETA 1034, tbrun --exe, win32 and win64, tbbuild, the IDE's
+     completion): without the attribute Ping and ISite are TB5079; with
+     [AppObject] or (True) they compile, and with (False) they do not.
+     TypeName(ISite) is ISite and its ObjPtr is stable. A member with
+     [RedirectToStaticImplementation] runs that procedure; any other Sub
+     returns and any Function gives its type's default, with no error, in an
+     IDE run and an exe. No type library flag in either bitness. Left off the
+     line above. -->
 
 For more details, see [this VBA documentation page](https://learn.microsoft.com/en-us/openspecs/microsoft_general_purpose_programming_languages/ms-vbal/189fb41b-cc3a-4999-a6d2-ba89f72d2870).
 
@@ -84,6 +102,16 @@ Syntax: **[ArrayBoundsChecks** [ **( True** \| **False )** ] **]**
 Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
 Disables or enables array element access bounds checking within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **ArrayBoundsChecks(False)** turns the check off. **ArrayBoundsChecks(True)** turns it back on where the project setting [**Disable Array Bounds Checks**](../IDE/Project-Settings#disable-array-bounds-checks) has turned it off for the whole project.
+
+<!-- BETA 1034 (tbrun --exe, win32 and win64, with the project's setting off and
+     on; tbbuild; the type library; the IDE's hover, completion and Object
+     Browser data): accepted on an Interface, on each form of Declare and on an
+     Event, bare, (True) and (False), with no change to any line of the report or
+     to the exe's code but data addresses. A body that trips the check was placed
+     in the implementing class, in a module procedure named by
+     [RedirectToStaticImplementation], after the Declare or Event, in a caller, in
+     a raiser and in a handler. The attribute on a procedure, a Module and a
+     Class in the same project does change the report. Left off. -->
 
 ## BindOnlyIfNoArguments  (optional Bool)
 {: #bindonlyifnoarguments index_also="TB5030" }
@@ -101,8 +129,13 @@ A **Declare** takes the attribute as a procedure does, and a **Declare** named `
 <!-- BETA 1005 (tbrun): a Declare named Right binds a call with arguments
      without the attribute, and VBA's Right with it; (False) binds the Declare.
      A module or class variable named Left: Left(0, 2) is TB5030 without it and
-     calls VBA's Left with it. On a Const and an Event it is accepted and
-     changes nothing. -->
+     calls VBA's Left with it.
+     BETA 1034 (tbbuild; tbrun and --exe; hover, definition, completion,
+     decorations and Object Browser; type library of an ActiveX DLL): on a Const
+     (Public, Private, in a Class) and an Event it is accepted and changes
+     nothing, bare, (True) or (False), for a name of a built-in procedure, for
+     Left and for any other name. The controls, a variable and a Function named
+     Left, move on every surface. Left off. -->
 
 ## BindOnlyIfStringSuffix  (optional Bool)
 {: #bindonlyifstringsuffix }
@@ -110,6 +143,14 @@ A **Declare** takes the attribute as a procedure does, and a **Declare** named `
 Syntax: **[BindOnlyIfStringSuffix** [ **( True** \| **False )** ] **]**
 
 Applicable to: [procedure](../Gloss#procedure)
+
+<!-- BETA 1034 (tbbuild; tbrun and --exe; hover, definition, completion,
+     decorations and Object Browser; type library): no effect could be shown at
+     a procedure, in nine shapes, with or without a [Name$] beside it and with or
+     without a symbol of that name further out, so the sites where it is accepted
+     and not listed (each Declare, an Event) are not settled. VBA.Conversion's
+     Error, the only use in the packages, is a DeclareWide PtrSafe, and Error(5)
+     with no suffix binds it. What the attribute does is not known. -->
 
 ## ClassId  (String)
 {: #classid }
@@ -119,6 +160,15 @@ Syntax: **[ClassId("** 00000000-0000-0000-0000-000000000000 **")]**
 Applicable to:  [**Class**](Class)
 
 Assigns a COM CLSID to a class. For details, [see this COM documentation page](https://learn.microsoft.com/en-us/windows/win32/com/com-class-objects-and-clsids).
+
+<!-- Interface (BETA 1034): alone, the type library (win32, win64), a run, New and
+     the IDE's surfaces are unchanged. Beside [CustomControl] or [WindowsControl]
+     the toolbox entry's clsid is the GUID, and a form saved with that clsid holds
+     the control at run time (Controls.Count 1); with no [ClassId] the form's
+     clsid is out of date and Controls.Count is 0, for a Class as well. An
+     Interface has a class identifier only as a toolbox entry, so the attribute
+     does something there only beside one of those two. Left off the line
+     above. -->
 
 ## ClassInterface
 {: #classinterface }
@@ -189,7 +239,16 @@ On a **Class**, it marks the class as an ActiveX control (the `control` flag of 
      attribute for this class. Hosts may cache this information, and so it needs
      to be a stable ID, especially between bitnesses." and the same for
      [ EventInterfaceId() ]; (False) draws neither. On an Interface no type
-     library flag changes. -->
+     library flag changes.
+     CoClass (BETA 1034, ActiveX DLL dumped with tlbdump2, win32 and win64):
+     bare and (True) turn a member's IHelper* or IUnk* into vt9 (IDispatch) on a
+     Function, a parameter, a Property and a field, with or without [CoClassId];
+     (False) changes nothing. No CoClass is in the library, with the attribute or
+     without. tbrun --exe over Scripting.Dictionary's CLSID, both bitnesses:
+     without the attribute New gives a Dictionary; with it Set New is
+     -2147467262 (No such interface supported) and As New is 91 at the first
+     call. No toolbox entry, no TB0013. What the attribute does there is not the
+     effect described above. Left off the line above. -->
 
 ## COMCreatable  (optional Bool)
 {: #comcreatable index_also="TB5121; TB5135" }
@@ -199,6 +258,9 @@ Syntax: **[COMCreatable** [ **( True** \| **False )** ] **]**
 Applicable to:  [**Class**](Class), [**CoClass**](CoClass)
 
 Indicates whether the class can be created through COM. It does not govern [**New**](New) inside the project: a `[COMCreatable(False)]` class is created with **New** as usual. A COM-creatable class needs a constructor that takes no arguments, so a class whose only `Sub New` has required arguments fails with TB5135 --- *error generating implicit default constructor ... (for COM exposure)* --- unless it is marked `[COMCreatable(False)]`, is **Private**, or has a constructor without arguments as well. The first two fixes leave the class with no constructor that takes no arguments, so it still cannot be declared [**As New**](New): that fails with TB5121. See [Parameterized Class Constructors](../../Features/Advanced/Classes-and-Modules#parameterized-class-constructors).
+
+<!-- Interface (BETA 1034, each form): the type library (win32, win64), a run, New
+     and the IDE's surfaces are as without it. Left off the line above. -->
 
 ## ComExport  (optional Bool)
 {: #comexport }
@@ -252,21 +314,40 @@ Applicable to: [**Interface**](Interface)
 
 Specifies that an interface is an import from an external COM library, for instance, the Windows shell.
 
+<!-- BETA 1034: no effect found at any site, the documented Interface included
+     (a plain one, one that extends stdole.IUnknown, and a Private one that a
+     Public class implements and a public member names): the type library (win32,
+     win64), diagnostics, a run over a real COM object (a failing HRESULT, a class
+     implementing the interface), the IDE's surfaces. On a Class also a generic
+     and a Private one, an Inherits base, a class of an embedded package, and
+     [ClassId] of a real class, which New still makes as the class itself. The
+     shipped packages use it on 84 Classes (every VB control) and 8 Private
+     Interfaces; TBMANLIB_Dialog on 7 Interfaces. What it does is not known, and
+     the text above is the page's, unchanged. Left off the line above. -->
+
 ## CompileIf  (Bool)
 {: #compileif }
 
 Syntax: **[CompileIf(** condition **)]**
 
-Applicable to: [**Declare** (API declaration)](Declare), [**Const**](Const), variable in a [**Module**](Module), variable in a [**Class**](Class), [**Event**](Event) declaration in a [**Class**](Class), [procedure definitions](../Gloss#procedure)
+Applicable to: [**Declare** (API declaration)](Declare), [**Const**](Const) in a [**Module**](Module) or a [**Class**](Class), variable in a [**Module**](Module), variable in a [**Class**](Class), [**Event**](Event) declaration in a [**Class**](Class), [procedure definitions](../Gloss#procedure)
 
 Controls the conditional compilation of a procedure definition. Has no default value.
 
 It controls a **Declare**, a **Const**, a variable or an **Event** in the same way: with a **False** condition the declaration is left out, so a use of its name is an error, such as TB5079, *Unrecognized symbol*.
 
+The condition can read a **Const** of the same class or module, so two declarations of one name can each carry a condition and only one of them is compiled.
+
 <!-- BETA 1005 (tbbuild): [CompileIf(False)] on a Declare (every form, also in
      a Class), a Const, a module variable (initialised, Private), a WithEvents
      variable and an Event: a use is TB5079 "Unrecognized symbol", TB5113 at a
-     RaiseEvent, TB5027 for o.Member; (True) and no attribute find it. -->
+     RaiseEvent, TB5027 for o.Member; (True) and no attribute find it.
+     BETA 1034 (tbbuild, tbrun and --exe, win32 and win64; hover, definition and
+     Object Browser): on a Private Const in a Class, (False) and (0) make a use
+     TB5079 and (True) and (1) find it, as on a Const in a Module; two Consts of
+     one name chosen by [CompileIf(Flag)] and [CompileIf(Not Flag)] compile, and
+     without the attribute are TB5134. Win64 in a condition is TB5124, error in
+     CompileIf expression. -->
 
 ## CompilerOptions  (String)
 {: #compileroptions }
@@ -282,6 +363,14 @@ Sets the LLVM compiler options for one procedure, in place of the **Compiler Opt
 - **+optimizesize** - optimize this procedure for small code size, potentially at the expense of slower speed of the procedure
 - **+** and the name of a CPU instruction set, such as **+avx2** - lets LLVM use that instruction set in this procedure. The program then does not run on a CPU without it. [Per-procedure LLVM options](../../LLVM/Getting-Started#per-procedure-llvm-options) lists the instruction sets.
 
+<!-- BETA 1034 (tbrun --exe and --llvm, win32 and win64; tbbuild; the type
+     library; the IDE's hover, completion and Object Browser data): accepted on
+     an Event, with no value, "+optimize", "probe", "+llvm" and "", in a project
+     with and without LLVM, with no effect: the next member, the procedure that
+     raises it and a handler stay compiled as the project sets them, and the
+     exe's code is the same. A marked procedure in the same project does move.
+     Left off. -->
+
 ## ConstantFoldable  (optional Bool)
 {: #constantfoldable }
 
@@ -293,7 +382,7 @@ Specify this attribute for functions that, when called with non-variable input, 
 
 The restriction to modules is not an oversight. Folding a call to a method would require constant propagation through object state, and a notion of a constant object for the propagation to terminate on. twinBASIC's object model is dynamic enough to make both hard, so the compiler rejects the attribute there rather than folding a subset of cases that would be difficult to describe.
 
-Calls are folded only when **Constant Function Folding** is set to **Yes** in [Project Settings](../IDE/Project-Settings#constant-function-folding). A **Property Get** in a module folds as a function does. On a **Sub** the attribute is accepted and has no effect.
+Calls are folded only when **Constant Function Folding** is set to **Yes** in [Project Settings](../IDE/Project-Settings#constant-function-folding). A **Property Get** in a module folds as a function does. On a **Sub** or a **Declare Sub** the attribute is accepted and has no effect.
 
 <!-- test: bug constantfoldable-declare-crash -->
 > [!WARNING] BETA 1034
@@ -306,7 +395,16 @@ Calls are folded only when **Constant Function Folding** is set to **Yes** in [P
      generic Function and a Declare Sub run every time. The crash: tbbuild
      --build exit 5, ACCESS_VIOLATION, for a Declare Function with
      [ConstantFoldable] or [ConstantFoldableNumericsOnly] called as
-     DSleepFn(5, 0); a variable argument or the setting off builds. -->
+     DSleepFn(5, 0); a variable argument or the setting off builds.
+     BETA 1034 (tbrun --exe, win32 and win64, folding on and off; tbbuild; the
+     IDE's hover, completion and Object Browser data; a Module is not in a type
+     library): on a Sub in a Module, Private, Static and generic, with no
+     argument and with a constant, each call runs, and the code is the same with
+     and without the attribute. On Declare Sub likewise. On Declare Function,
+     Private Declare, Declare PtrSafe and DeclareWide, bare or (True), folding
+     on, a call with constant or no arguments still ends the build with exit 5,
+     ACCESS_VIOLATION; (False), folding off, a variable argument or no call
+     leaves the code as it is. Left off. -->
 <!-- Bug: constantfoldable-declare-crash in BUGS-TO-REPORT.md. -->
 
 ## ConstantFoldableNumericsOnly  (optional Bool)
@@ -321,7 +419,10 @@ A limited case of [constant foldable attribute](#constantfoldable), which applie
 <!-- BETA 1005: a [ConstantFoldableNumericsOnly] Function called with a String
      literal, FnNStr("abc"), also ran 0 times of 3 in the exe with folding on, so
      the numeric restriction was not seen to apply. Not judged a defect yet: what
-     the compiler counts as numeric is not known. -->
+     the compiler counts as numeric is not known.
+     BETA 1034: as for [ConstantFoldable], on every Sub and Declare Sub site no
+     call is left out and the code is the same; the four Declare Function sites
+     still end the build with exit 5 when folding is on. Left off. -->
 
 ## CustomControl  (String)
 {: #customcontrol }
@@ -329,6 +430,16 @@ A limited case of [constant foldable attribute](#constantfoldable), which applie
 Syntax: **[CustomControl("** image file name **")]**
 
 Applicable to: [**Class**](Class)
+
+<!-- Interface (BETA 1034, the IDE's toolbox data, the designer, Save, an IDE
+     run): a path that exists gives a toolbox entry like a Class's, listed on a
+     CustomControls form (10 tools against 9); a double-click places ISite1 and
+     Save writes it with _className ISite; the form opens modally and closes as
+     it does without the attribute. Nothing draws it, since no class implements
+     ICustomControl. A path that names no file ("probe") gives an entry with no
+     isWindowsControl and no package, which no designer lists. The type library,
+     a run with no form and the other IDE surfaces are unchanged. The Interface
+     half works: left off the line above. -->
 
 ## CustomDesigner  (String)
 {: #customdesigner }
@@ -373,20 +484,43 @@ When false, turns off breakpoints and stepping for the method, class or module. 
 
 <!-- BETA 1005 (tbrun): Stop in a method of a [Debuggable(False)] Class (also
      Private and generic) is passed over; without it the run breaks there. On an
-     Interface it is accepted and a Stop in an implementing class still breaks. -->
+     Interface it is accepted and a Stop in an implementing class still breaks.
+     BETA 1034 (the IDE's debugger, win32 and win64: 29 Stop statements, 29
+     breakpoints and 37 steps into, in order; tbrun --exe; tbbuild; the type
+     library; hover, completion and Object Browser data): on an Interface, a
+     prototype, the seven Declare forms and an Event, (False), bare and (True)
+     change nothing, and the exe's code is the same; a class that implements the
+     interface, a procedure that calls the Declare and a handler of the Event can
+     still be stepped through and stop at a breakpoint. (False) on a procedure,
+     a Module and a Class in the same project removes its three Stops, its three
+     breakpoints and its steps. Left off. -->
 
 ## DebugOnly  (optional Bool)
 {: #debugonly index="TB5162" }
 
 Syntax: **[DebugOnly** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Sub**](Sub), [**Declare Sub**](Declare)
+Applicable to: [**Sub**](Sub), generic [**Sub**](Sub), a [**Sub**](Sub) in a [**Class**](Class) (**Friend** included), a [**Sub**](Sub) prototype in an [**Interface**](Interface), [**Declare Sub**](Declare)
 
-Excludes calls to this procedure from the Build. They are only available when running from the IDE, i.e. debugging. On a **Declare Sub** the same holds for calls to the API procedure.
+Excludes calls to this procedure from the Build. They are only available when running from the IDE, i.e. debugging. On a **Declare Sub** the same holds for calls to the API procedure. The arguments of a call that is left out are not evaluated.
+
+In a **Class**, and through an **Interface**, the same holds for an early-bound call. The procedure stays in the class, so a late-bound call, through an **Object** or **Variant** variable or with **CallByName**, runs in the Build too.
+
+<!-- test: bug debugonly-class-initialize-exe -->
+> [!WARNING] BETA 1034
+> On **Class_Initialize** the attribute breaks the Build: a program that creates the class stops with error 91, *Object variable or With block variable not set*, or ends with an access violation. A run from the IDE is right. Written as `[DebugOnly(False)]` it changes nothing.
 
 <!-- BETA 1005 (tbrun and --exe): a [DebugOnly] Declare Sub Sleep(150) sleeps in
      the IDE run and not in the built exe; without it or with (False) both sleep.
-     On an Event it is accepted and the handler still runs in the exe. -->
+     BETA 1034 (tbrun and --exe, win32 and win64; type library): an early-bound
+     call of a marked Sub in a Class (a bare call, p.Probe, Me.Probe and a With
+     block), a Friend Sub, a generic Sub and a call through a marked Interface
+     prototype run in the IDE and are gone from the exe, with their arguments;
+     (False) is as without the attribute. A late-bound call through Object or
+     Variant and CallByName still run. The member stays in the type library, and
+     the class's implementation of a marked prototype is left in place. On an
+     Event it is accepted and changes nothing: RaiseEvent, its argument and the
+     handler run in the exe, in each form. -->
 
 The attribute is accepted on a **Sub** in a **Module**, a **Class** or an **Interface**, and on a **Declare Sub**. On a **Function**, a **Property** or a **Declare Function** it is error **TB5162**, *[DebugOnly] is only allowed on Sub procedures*.
 
@@ -465,24 +599,42 @@ On a prototype in an **Interface**, the member gets the dispatch ID 0, so it is 
 <!-- BETA 1005: DISPID 0 in the type library on Sub, Function, object Function
      and Property Get prototypes; with `Dim x As IDef = New ImplDef`, x(3) calls
      IDef.Item, and the same on an interface without it raises 438. Also accepted
-     on an Event, which gets DISPID 0 in the class's event interface: left off. -->
+     on an Event, which gets DISPID 0 in the class's event interface: left off.
+     BETA 1034: on one marked Event the attribute does that and nothing else:
+     the class gets no default member (v = o is 438) and the event still reaches
+     its handler. Two marked Events in one class both get DISPID 0, and
+     RaiseEvent of the second runs the first's handler, win32 and win64, IDE and
+     exe; an ActiveX DLL then fails at "[TYPELIB] failed to finalize typelibrary
+     interface". Left off. -->
 
 ## Description  (String) 
 {: #description }
 
 Syntax: **[Description("** arbitrary text **")]**
 
-Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Const**](Const), [**Declare** (API declaration)](Declare), [**Event**](Event) declaration in a [**Class**](Class), variable in a [**Class**](Class), [**Interface**](Interface), [**Module**](Module), [procedure](../Gloss#procedure), [**Type** (UDT)](Type)
+Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Const**](Const) in a [**Module**](Module) or a [**Class**](Class), [**Declare** (API declaration)](Declare), [**Enum**](Enum), [**Event**](Event) declaration in a [**Class**](Class), variable in a [**Class**](Class), variable in a [**Module**](Module), [**Interface**](Interface), [**Module**](Module), [procedure](../Gloss#procedure), [procedure](../Gloss#procedure) parameter, [**Type** (UDT)](Type), member of a [**Type** (UDT)](Type)
 
-Provides a description in information popups in the IDE, and is exported as a `helpstring` attribute in the type library (if applicable). The type library holds one for each public procedure, property, event and variable of a class, and for each prototype of an interface; an **Enum**, a **Type**, a **Type** member and a parameter get none.
+Provides a description in information popups in the IDE, and is exported as a `helpstring` attribute in the type library (if applicable). The type library holds one for each public procedure, property, event and variable of a class, and for each prototype of an interface. A **Const**, an **Enum**, a variable of a module, a **Type** member and a parameter get none there: their text shows in the popup, and in the Object Browser for a **Const**, an **Enum** and a variable of a module.
+
+The text of a parameter shows when the pointer rests on the parameter's name in the body of the procedure. A parameter of a **Declare** or of an **Interface** prototype has no body, so nothing shows its text.
+
+<!-- test: bug description-field-hover-twice -->
+> [!NOTE] BETA 1034
+> The popup of a member of a **Type**, and of a variable of a **Class**, shows the text twice, run together: *one lineone line*.
 
 <!-- BETA 1005, ActiveX DLL dumped with TLI: helpstrings written on class
      procedures, properties, events, public variables and interface prototypes.
      For an Enum, a Type, its fields and parameters the text is nowhere in the DLL.
-     The compiler also accepts the attribute on an Enum, a Type member and a
-     parameter; whether the IDE shows it there is not established, so they are
-     left off the line above. A description on a Property Let or Set is stored on
-     that accessor; a tool asking GetDocumentation by member id gets the Get's. -->
+     A description on a Property Let or Set is stored on
+     that accessor; a tool asking GetDocumentation by member id gets the Get's.
+     BETA 1034: on an Enum (an empty one too), a Const in a Class and a variable
+     in a Module, public or Private, the text is in the hover at the declaration
+     or a use and in the Object Browser's data; on a Type member and a parameter
+     in the hover only, a parameter's where the body uses it. Signature help
+     shows a procedure's text and no parameter's. Nothing shows the text of a
+     parameter of a Declare or a prototype. None of these reaches the type
+     library or the DLL's bytes. Completion items carry no description at any
+     site. The hover of a Type member shows the text twice, run together. -->
 
 The value is a **String** whose content is Markdown. The IDE renders it when it displays the popup, so headings, code spans and fenced code blocks all work. The attribute takes a single string literal, so a description running to several lines is assembled with `& vbCrLf & _` continuations, one source line per line of Markdown.
 
@@ -576,12 +728,28 @@ Syntax: **[DLLStackCheck** [ **( True** \| **False)** ] **]**
 
 Applicable to: [**Declare** (API declaration)](Declare), [**Delegate**](Delegate)
 
-Gives minor codegen size reduction on 32-bit API calls on the Intel platform. Has no effect on other platforms. On a **Delegate** it changes the code generated for calls through the delegate in the same way; the calls give the same results.
+Switches the stack check that follows a call in a 32-bit build. A 64-bit build has no check, with or without the attribute.
 
-<!-- BETA 1005, win32 exe sizes: 300 calls through a Delegate, 57344 bytes
-     without it or bare, 47616 with (False); a Declare in a Class takes it as a
-     module Declare does (93184 with (False) against 83968). On a procedure that
-     makes the calls, the size does not change. -->
+A call through a **Delegate** is checked by default. When the delegate's signature has left the stack wrong, the call raises error -353703419, *Bad DLL definition. Stack corruption detected.* `[DLLStackCheck(False)]` removes the check, which makes the code smaller; the program may then end with an access violation. Written bare or with **True**, the attribute changes nothing.
+
+<!-- test: bug declare-dll-stack-not-checked -->
+> [!WARNING] BETA 1034
+> On a **Declare** the attribute works the other way round. A call of a **Declare** is not checked by default, so a wrong signature can end the program with an access violation. `[DLLStackCheck(False)]` adds the check, which makes the code larger, and a wrong signature then raises the same error. Written bare or with **True**, it changes nothing. VB6 raises error 49, *Bad DLL calling convention*, in its IDE and in a P-Code exe.
+
+<!-- BETA 1034 (tbrun --exe, win32 and win64; tbbuild; the type library of an
+     ActiveX DLL; the IDE's hover, completion and Object Browser data), the two
+     sites: a Declare and a Delegate each with a signature that leaves the stack
+     wrong: with no attribute, bare or (True) the Declare raises nothing and the
+     Delegate raises -353703419; with (False) the Declare raises it and the
+     Delegate does not. win32 exe, 300 good calls: Declare 43008 bytes, 47616
+     with (False); Delegate 40448, 35840 with (False). win64: the same code for
+     every form. A Declare in a Class takes it as a module Declare does (BETA
+     1005). The 21 other sites, each procedure making a bad Declare call and a
+     bad Delegate call: no line and no byte of code changes for any form, in a
+     Sub, Function, Property, Static, generic, Friend, Class_Initialize, the next
+     member after an Event and a handler, the implementing class under a
+     prototype, and a module procedure named by [RedirectToStaticImplementation]
+     on a prototype. Those sites are left off. -->
 
 ## DualInterface
 {: #dualinterface }
@@ -603,18 +771,37 @@ See [**LibraryId**](#libraryid) for what a generated **Library** module looks li
 
 Syntax: **[EnforceErrors** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
 
-Applicable to: [**Class**](Class), [**Interface**](Interface), [**Module**](Module), [procedure](../Gloss#procedure)
+Applicable to: [**Class**](Class), [**Interface**](Interface), [**Module**](Module), [**Declare**](Declare), [**Event**](Event) declaration in a [**Class**](Class), [procedure](../Gloss#procedure)
 
 Reports the named warnings as errors within the class, interface, module or procedure the attribute is applied to. The codes are written bare, as for [IgnoreWarnings](#ignorewarnings). With `[EnforceErrors(TB0009)]` on a procedure, a call to a procedure marked [Unimplemented](#unimplemented) is an error where it would otherwise be warning TB0009. Written bare it is accepted and has no effect. With **True** or **False** in place of a code it is error TB5169, *Expected an error code in the format of TBxxxx*.
+
+On a **Declare** or an **Event** it covers the warnings of the declaration itself, such as TB0003 for a parameter with no type. A warning at a call of the **Declare** is not covered.
+
+<!-- BETA 1034 (tbbuild, win32 and win64): with TB0003 and TB0030, on each form
+     of Declare, also in a Class, and with TB0003 on an Event, the marked line's
+     diagnostic is an ERROR and the unmarked line under it is not. Also TB0015.
+     Written bare it changes nothing. A call of a marked Declare is not covered:
+     [Unimplemented, EnforceErrors(TB0009)] leaves TB0009 at the call a WARNING.
+     TB0029 and TB0034 do not follow it, at any level. The program, the language
+     answers and the type library do not change. -->
 
 ## EnforceWarnings  (Warning code list)
 {: #enforcewarnings index_also="TB5169" }
 
 Syntax: **[EnforceWarnings** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
 
-Applicable to: [**Class**](Class), [**Interface**](Interface), [**Module**](Module), [procedure](../Gloss#procedure)
+Applicable to: [**Class**](Class), [**Interface**](Interface), [**Module**](Module), [**Declare**](Declare), [**Event**](Event) declaration in a [**Class**](Class), [procedure](../Gloss#procedure)
 
 Takes warning codes written bare, as [IgnoreWarnings](#ignorewarnings) does. A warning it names is reported as a warning, also one the compiler does not report by default: with `[EnforceWarnings(TB0018)]`, assigning a **Long** to an **Integer** gives warning TB0018, *implicit narrowing conversion*, which is otherwise not reported. With **True** or **False** in place of a code the attribute is TB5169, *Expected an error code in the format of TBxxxx*.
+
+On a **Declare** or an **Event** it covers the warnings of the declaration itself. Written bare it has no effect.
+
+<!-- BETA 1034 (tbbuild, win32 and win64, with the two codes at IGNORE in
+     Project Settings): with TB0003 and TB0030, on each form of Declare, also in
+     a Class, and with TB0003 on an Event, the marked line is reported as a
+     WARNING and the unmarked line under it is not reported. TB0030 is a HINT by
+     default, so it becomes a WARNING. Written bare it changes nothing. The
+     program, the language answers and the type library do not change. -->
 
 ## Enumerator
 {: #enumerator }
@@ -643,7 +830,12 @@ This replaces VB6's hidden `VB_UserMemId = -4` procedure attribute, which twinBA
      support for the services collection", which is where the wording above
      comes from. Not probed: the member must return stdole.IUnknown or a
      Variant, so the generic skeleton would test the return type rather than
-     the applicability. -->
+     the applicability.
+     BETA 1034: accepted on an Event, which gets DISPID -4 in the class's event
+     interface and nothing else: For Each over the object is still 438, and the
+     event reaches its handler. Two marked Events in a class share the DISPID,
+     as DefaultMember's do: the second runs the first's handler, and an ActiveX
+     DLL fails at its type library. Left off. -->
 
 ## EnumId  (String)
 {: #enumid }
@@ -667,7 +859,12 @@ A host may cache the IID, so a generated one that changes between builds or betw
 
 <!-- Applicability from the package census, BETA 1005: 19 uses in tbIDE, CEF,
      WinNamedPipesLib, WinNativeCommonCtls and VB, all on a Class.
-     This entry stated no applicability at all until then. -->
+     This entry stated no applicability at all until then.
+     Interface (BETA 1034): accepted, where nothing reads it, so a text that is
+     no GUID passes too. An Interface cannot hold an Event (TB5182), and on a
+     class that implements it FindConnectionPoint for that GUID is 0x80040200, as
+     without the attribute. On a Class with an Event such a text is TB5102.
+     Left off the line above. -->
 
 ## EventsUseDispInterface  (optional Bool)
 {: #eventsusedispinterface }
@@ -680,7 +877,14 @@ Makes the event interface generated for the class a dispinterface, so events are
 
 <!-- Applicability from the package census, BETA 1005: 88 uses in VB,
      WinNativeCommonCtls and CEF, every one on a Class and every one bare.
-     This entry stated no applicability at all until then. -->
+     This entry stated no applicability at all until then.
+     BETA 1034: on a plain Class the event interface is a dispinterface and
+     events arrive at IDispatch::Invoke with or without the attribute (type
+     library dump; a hand-made sink on the connection point, IDE run and exe,
+     win32 and win64; (True) and (False) the same), so its effect could not be
+     shown, even at the documented site. On an Interface, which cannot hold an
+     Event, every surface is as without it. The text above is unchanged. Left
+     off the line above. -->
 
 ## Flags  (optional Bool)
 {: #flags }
@@ -706,6 +910,16 @@ Syntax: **[FloatingPointErrorChecks** [ **( True** \| **False)** ] **]**
 Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
 Disables or enables floating point error checks within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **FloatingPointErrorChecks(False)** turns the checks off. **FloatingPointErrorChecks(True)** turns them back on where the project setting [**Disable FPU Error Checks**](../IDE/Project-Settings#disable-fpu-error-checks) has turned them off for the whole project.
+
+<!-- BETA 1034 (tbrun --exe, win32 and win64, with the project's setting off and
+     on; tbbuild; the type library; the IDE's hover, completion and Object
+     Browser data): accepted on an Interface, on each form of Declare and on an
+     Event, bare, (True) and (False), with no change to any line of the report or
+     to the exe's code but data addresses. A body that trips the check was placed
+     in the implementing class, in a module procedure named by
+     [RedirectToStaticImplementation], after the Declare or Event, in a caller, in
+     a raiser and in a handler. The attribute on a procedure, a Module and a
+     Class in the same project does change the report. Left off. -->
 
 ## FormDesignerId  (String)
 {: #formdesignerid }
@@ -759,12 +973,24 @@ Syntax: **[IdeButton("** caption **")]**
 
 Applicable to: [procedure](../Gloss#procedure) definition in a module.
 
+<!-- BETA 1034 (and BETA 1007 for the CodeLens request): with the caption on a
+     Sub, a Function, a Private Sub, a Sub with an argument, a Static Sub, a
+     Property Get and a generic Sub in a Module, the CodeLens bar stays "run" with
+     the procedure's name and pressing it runs the procedure as usual; with
+     CodeLens run bars off there is no bar, with the attribute or without it.
+     The caption is in no part of the editor's decorations, in no message of the
+     compiler to the page and in no text of the page outside the code editor. The
+     compiler knows the name (any argument but one String is TB5163). So no
+     effect could be shown even at the documented site, and the Declare forms,
+     where it is accepted and not listed, are not settled. The text of the
+     section is unchanged. -->
+
 ## IgnoreWarnings  (Warning code list)
 {: #ignorewarnings }
 
 Syntax: **[IgnoreWarnings** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
 
-Applicable to: [**Class**](Class), [**Interface**](Interface), [**Module**](Module), [procedure](../Gloss#procedure)
+Applicable to: [**Class**](Class), [**Interface**](Interface), [**Module**](Module), [**Declare**](Declare), [**Event**](Event) declaration in a [**Class**](Class), [procedure](../Gloss#procedure)
 
 Suppresses the named warnings within the class, interface, module or procedure the attribute is applied to. The codes are written bare, exactly as the compiler prints them, and are **not** quoted:
 
@@ -774,6 +1000,16 @@ Module MD5
     ' ...
 End Module
 ```
+
+On a **Declare** or an **Event** it covers the warnings of the declaration itself, such as TB0003 for a parameter with no type, and TB0030 for an **Alias** that repeats the name. A warning at a call of the **Declare** is not covered. Written bare, or with a code the declaration does not draw, it has no effect.
+
+<!-- BETA 1034 (tbbuild, win32 and win64): with TB0003 and TB0030, also TB0015,
+     on each form of Declare, also in a Class, and with TB0003 on an Event, the
+     marked line loses the diagnostic and the unmarked line under it keeps it.
+     A call is not covered: [Unimplemented, IgnoreWarnings(TB0009)] leaves TB0009
+     at the call. TB0029 and TB0034 do not follow it. Bare and (TB0001), a code
+     the declaration does not draw, change nothing. The program, the language
+     answers and the type library do not change. -->
 
 <!-- Applicability two ways, BETA 1005: the package census has 113 uses in VB,
      CEF and WinNativeCommonCtls, on a Sub (109), a Class (2), a Module (1)
@@ -835,6 +1071,16 @@ Syntax: **[IntegerOverflowChecks** [ **( True** \| **False )** ] **]**
 Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
 Disables or enables integer overflow checks within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **IntegerOverflowChecks(False)** turns the checks off. **IntegerOverflowChecks(True)** turns them back on where the project setting [**Disable Overflow Checks**](../IDE/Project-Settings#disable-overflow-checks) has turned them off for the whole project.
+
+<!-- BETA 1034 (tbrun --exe, win32 and win64, with the project's setting off and
+     on; tbbuild; the type library; the IDE's hover, completion and Object
+     Browser data): accepted on an Interface, on each form of Declare and on an
+     Event, bare, (True) and (False), with no change to any line of the report or
+     to the exe's code but data addresses. A body that trips the check was placed
+     in the implementing class, in a module procedure named by
+     [RedirectToStaticImplementation], after the Declare or Event, in a caller, in
+     a raiser and in a handler. The attribute on a procedure, a Module and a
+     Class in the same project does change the report. Left off. -->
 
 Dividing the most negative **Integer**, **Long** or **LongLong** by -1 with [**\\**](IntegerDivide) or [**Mod**](Mod) raises error 6 whatever this attribute or the project setting says.
 
@@ -954,7 +1200,13 @@ This is distinct from [Hidden](#hidden), which reaches the same member as well a
      affects is not established.
      Type library (BETA 1005, ActiveX DLL dumped with TLI): FUNCFLAG_FNONBROWSABLE
      (0x400) on class procedures, properties (both accessors), events and
-     interface prototypes; a public class variable's Get/Put pair stays 0x0. -->
+     interface prototypes; a public class variable's Get/Put pair stays 0x0.
+     BETA 1034: accepted on a Declare and a Const in a Class, both always Private
+     there. Type library, run, hover, completion, Object Browser and a form's
+     PROPERTIES are identical, bare, True and False. Left off. At a documented
+     site, on a custom control: on a Property Get the row stays under
+     PROPERTIES and the designer's data has no __nonbrowsable_ key; on a
+     variable the row goes. -->
 
 ## OleAutomation  (optional Bool)
 {: #oleautomation }
@@ -970,7 +1222,10 @@ It changes only an interface that extends **IUnknown**. An interface that extend
 <!-- BETA 1005, TLI: `Interface X Extends stdole.IUnknown` has TYPEFLAGS 0x180
      (nonextensible, oleautomation), 0x80 with [OleAutomation(False)]; on
      `Extends stdole.IDispatch` no change. Accepted on a Class, where nothing
-     changes: a class's interfaces are dual. -->
+     changes: a class's interfaces are dual.
+     BETA 1034 (type library win32 and win64, a run, the IDE's surfaces): also
+     accepted on a generic Class and a Private Class, bare, True and False, with
+     no change; those two are not in the library, with or without it. Left off. -->
 
 ## PackingAlignment  (Integer)
 {: #packingalignment index="packing alignment" }
@@ -1051,22 +1306,33 @@ End Enum
 
 Syntax: **[PredeclaredId** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Class**](Class)
+Applicable to: [**Class**](Class), [**CoClass**](CoClass)
 
 When set, a global instance of the class is created when the application starts.
 
 This attribute is equivalent to the `VB_PredeclaredId` attribute in VBx .cls files.
 
+On a **CoClass**, the name of the coclass stands for one instance, created through COM at its first use and apart from any made with [**New**](New). The coclass needs a `[Default]` interface: without one a use of its name is TB5044, *Unable to determine default interface of coclass*. The [App](../Packages/AppGlobalClassObject/) object is declared this way, its members marked with [RedirectToStaticImplementation](#redirecttostaticimplementation), which run with no instance at all. Unlike [AppObject](#appobject), the attribute does not make the members global names: they are written with the name in front.
+
 <!-- test: lane ide:vb6-import -->
 > [!NOTE] BETA 1034
-> In an ActiveX build, the class is marked `appobject` in the type library as well as `predeclid`, which is what [AppObject](#appobject) gives it, so a client that references the library treats the members of the class as global names.
+> In an ActiveX build, a **Class** is marked `appobject` in the type library as well as `predeclid`, which is what [AppObject](#appobject) gives it, so a client that references the library treats the members of the class as global names.
 
 <!-- BETA 1005 and 1010, ActiveX DLL dumped with TLI: [PredeclaredId] and [AppObject]
      on a Class both give coclass TYPEFLAGS 0xB (appobject, cancreate,
      predeclid); found independently by the vb6-import lane's type library
-     check. The compiler also accepts the attribute on an Interface (the name
-     becomes an object expression with no class behind it) and a CoClass
-     (needs a [Default] Interface line, else TB5044): left off. -->
+     check.
+     CoClass (BETA 1034, tbrun --exe, win32 and win64): CDict over
+     Scripting.Dictionary's CLSID gives one instance, counts 1 then 2, TypeName
+     Dictionary, New apart; with no real class behind it -2147221164 (Class not
+     registered); with no [Default] TB5044; (False) is TB5079. A member with
+     [RedirectToStaticImplementation] runs that procedure, with or without
+     [COMCreatable(False)] or [CoClassId]. No CoClass is in the type library.
+     Interface (same build): ISite.Ping compiles, a bare Ping is TB5079, and a
+     member without [RedirectToStaticImplementation] does nothing and raises no
+     error, a Function giving its type's default. Neither changes the type
+     library. The Interface half does something else than a CoClass's: left off
+     the line above. -->
 
 ## PreserveSig  (optional Bool)
 {: #preservesig }
@@ -1115,7 +1381,7 @@ Public Property Let Caption(ByVal Value As String)
 End Property
 ```
 
-A property takes the page from its first accessor in the source, normally the **Property Get**, whichever kind of accessor that is. Written on a later accessor, the attribute has no effect, though its name is still checked; when two accessors name different pages, the control reports the first one's. On a **Sub**, a **Function** or a **Public** variable of the control, the control reports the page for that member's DISPID in the same way. In a class that is not a **UserControl**, or on an **Interface** member, the compiler accepts the attribute and it has no effect. The legacy line `Attribute Caption.VB_ProcData.VB_Invoke_Property = "CaptionPage"` inside the **Property Get** means the same. The argument must be a **String**: `[PropertyPage]` with no argument, or with a **Boolean** or a number, is TB5163, *Expected a single String argument*. On a procedure, a name that matches no property page in the project is error TB5259, *Failed to find named PropertyPage '...' for procedure '...'*. That includes an empty string and a name that differs only in case. A variable's name is not checked.
+A property takes the page from its first accessor in the source, normally the **Property Get**, whichever kind of accessor that is. Written on a later accessor, the attribute has no effect, though its name is still checked; when two accessors name different pages, the control reports the first one's. On a **Sub**, a **Function** or a **Public** variable of the control, the control reports the page for that member's DISPID in the same way. In a class that is not a **UserControl** the compiler accepts the attribute and it has no effect. On an **Interface** prototype the control reports no page, but the name is checked, as on a procedure. The legacy line `Attribute Caption.VB_ProcData.VB_Invoke_Property = "CaptionPage"` inside the **Property Get** means the same. The argument must be a **String**: `[PropertyPage]` with no argument, or with a **Boolean** or a number, is TB5163, *Expected a single String argument*. On a procedure, a name that matches no property page in the project is error TB5259, *Failed to find named PropertyPage '...' for procedure '...'*. That includes an empty string and a name that differs only in case. A variable's name is not checked.
 
 <!-- test: sample propertypage-semicolon, sample propertypage-legacy-semicolon, sample propertypage-legacy-unknown -->
 > [!NOTE] BETA 1034
@@ -1195,7 +1461,14 @@ The pages the control offers as a whole are listed in its [**PropertyPages**](..
      E_NOTIMPL. A Public variable, a Sub and a Function of the control map to the
      page; an Interface member ([DispId(5000)], implemented by the control) gives
      E_NOTIMPL; a plain creatable Class in the OCX has no IPerPropertyBrowsing
-     (E_NOINTERFACE). Every answer the same on both builds and both architectures. -->
+     (E_NOINTERFACE). Every answer the same on both builds and both architectures.
+     BETA 1034, an ActiveX Control called without registration: on a prototype
+     implemented by the control, MapPropertyToPage for its DISPID is E_NOTIMPL
+     with and without the attribute, and a name that matches no page is TB5259
+     (a Sub, a Function, an object Function and a Property Get prototype). On a
+     Declare, a Const and an Event in the control: no diagnostic for a bad name,
+     no change to the type library, hover or the Object Browser, and E_NOTIMPL
+     for the event's DISPID. Those three are left off the line above. -->
 
 ## RedirectToStaticImplementation  (String)
 {: #redirecttostaticimplementation }
@@ -1232,18 +1505,31 @@ End Interface
 
 Syntax: **[Restricted** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Interface**](Interface), [**Class**](Class), [procedure in a **Class**](../Gloss#procedure), variable in a [**Class**](Class), [**Event**](Event) declaration in a [**Class**](Class), [procedure](../Gloss#procedure) prototype in an [**Interface**](Interface)
+Applicable to: [**Interface**](Interface), [**Class**](Class), [**Module**](Module), [procedure in a **Class** or **Module**](../Gloss#procedure), [**Declare** (API declaration)](Declare), [**Const**](Const) in a [**Module**](Module) or a [**Class**](Class), variable in a [**Class**](Class), variable in a [**Module**](Module), [**Event**](Event) declaration in a [**Class**](Class), [procedure](../Gloss#procedure) prototype in an [**Interface**](Interface)
 
 Restricts the interface methods from being called in most contexts.
 
 This is attribute has the same function as the [**restricted** MIDL attribute][MIDL restricted]. On a **Class**, it marks the class and the interface it exposes through COM as restricted in the type library. On a single member, it marks that member; on a property, only the accessor it is written on.
 
+A **Module** and its members do not reach a type library. There the attribute hides the name in the IDE and changes nothing else: the code still compiles and runs. A procedure or a **Declare** leaves the IntelliSense lists and the Object Browser, a **Const** or a variable leaves the IntelliSense lists only, and a **Module** leaves the Object Browser only. A **Declare** or a **Const** in a **Class** leaves the lists of the code inside the class.
+
 <!-- BETA 1005, ActiveX DLL dumped with TLI: on a Class, coclass TYPEFLAGS
      0x202 (cancreate, restricted) against 0x2 and _X 0x12D0 against 0x10D0; on
      members FUNCFLAG_FRESTRICTED (0x1) on the accessor that carries it only (a
-     public variable marks both of its entries). The compiler also accepts it on
-     a Module, a CoClass and every Module member, none of which reaches a type
-     library: left off. -->
+     public variable marks both of its entries).
+     BETA 1034, A/B with every form: on a Module, the Object Browser's data has
+     isRestricted and no row for the module, its members still listed. On a Sub,
+     Function, Property Get or Declare of a Module, public or Private, Static
+     or generic, gone from "Module." and blank-line completion, the Object
+     Browser's data flagged and no row. On a Const or a variable, gone from
+     completion, no flag, row kept. On a Declare or a Const in a Class, gone from
+     the blank-line list inside it. Hover, signature help, diagnostics and the
+     run unchanged, IDE and exe; (False) changes nothing. Bare and (True) are the
+     same in every cell. Accepted on a CoClass to no effect: a CoClass does not
+     reach the type library, with or without [CoClassId] and [COMCreatable], and
+     its Object Browser entry has no flag. Left off. A marked member of a class
+     stays in the "obj." list, unlike a marked member of a module, though the
+     Object Browser drops it. -->
 
 [MIDL restricted]: https://learn.microsoft.com/en-us/windows/win32/midl/restricted
 
@@ -1357,16 +1643,49 @@ Compare [RunAfterBuild](#runafterbuild), which runs in the IDE at build time rat
 
 Syntax: **[Serialize** [ **( True** \| **False )** ] **]**
 
-Applicable to: variables in a [**Class**](Class)
+Applicable to: variables in a [**Class**](Class), a [**Property Get**](Property) in a [**Class**](Class)
+
+Decides whether a member of a control class is stored with the form. A **Public** variable and a property with a **Public** **Property Get** are listed under PROPERTIES by default. `[Serialize(False)]` on the variable, or on the property's **Property Get**, takes it off the list, and a variable marked so is not restored when the form loads. Written on a **Property Let** or a **Property Set** it has no effect.
+
+<!-- BETA 1034, a custom control on a form: [Serialize(False)] on a Public
+     variable or a Property Get takes it out of the designer's data and
+     PROPERTIES, whatever the property's Let carries; on a Property Let or Set
+     (written first too) it does nothing, and the bare and True forms change
+     nothing. A variable marked False keeps its default at run time
+     (RuntimeUISrzDeserialize restored 13 in B, bare and True, and 0 in False).
+     The value of a property in the form's data is not restored at run time even
+     without the attribute, so a run cannot show a property cell. Accepted on
+     every other member of a Class (a Const, a Friend Sub, a Sub, a Function,
+     an Event, Class_Initialize) and on an Interface prototype to no effect: A/B
+     identical on the type library, run, hover, completion, Object Browser and
+     PROPERTIES. A UserControl was not read. [Serialize(True, "name")] on a
+     Private variable (the packages' idiom) was seen on one variable only and is
+     not described above. -->
 
 ## SetDllDirectory  (optional Bool)
 {: #setdlldirectory }
 
 Syntax: **[SetDllDirectory** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Declare** (API declaration)](Declare), [**Module**](Module)
+Applicable to: [**Declare** (API declaration)](Declare), [**Module**](Module), [**Class**](Class)
 
-Allows an explicitly loaded DLL to load its own dependencies from it's load path. Also has the effect of allowing searching the app path for the DLLs in the base app's declare statements. It can be used per-declare or within a module.
+Allows an explicitly loaded DLL to load its own dependencies from its load path. It can be used per-declare, or on a module or a class, where it applies to every **Declare** inside it.
+
+It also lets a **Declare** that names its DLL without a path find the DLL in the current directory, which the search otherwise leaves out. An exe started from its own folder has the app path as its current directory. So has a 32-bit run in the IDE; a 64-bit run in the IDE has the IDE's folder.
+
+<!-- BETA 1034 (tbrun --exe, win32 and win64; tbbuild; the type library of an
+     ActiveX DLL; the IDE's hover and completion). A Declare naming a DLL by its
+     full path, whose import of a second DLL is found only in that DLL's folder,
+     raises -353703418 (Unable to load DLL) without the attribute and returns
+     with it, on a Declare, a Module, a Class, a Private Class and a generic
+     Class, IDE and exe. (False) is the same code as none. On an Interface the
+     attribute is accepted to no effect: a Declare in the implementing class and
+     in a redirect body still raises. A bare-named Declare, with the current
+     directory set away from App.Path: marked, it finds a DLL in the current
+     directory and, in an IDE run, not one in App.Path; unmarked, the reverse in
+     an exe, and neither in an IDE run, which searches the build folder through
+     SetDllDirectory. A 32-bit IDE run's current directory is App.Path, a 64-bit
+     one's the install folder. Left off the line above for the Interface. -->
 
 ## SimplerByVals  (optional Bool)
 {: #simplerbyvals }
@@ -1375,7 +1694,20 @@ Syntax: **[SimplerByVals** [ **( True** \| **False )** ] **]**
 
 Applicable to: [procedures](../Gloss#procedure) and [**Declare**](Declare) statements in a [**Module**](Module)
 
+On a **Declare**, the attribute passes a `ByVal` object without the **AddRef** that the caller otherwise makes: a native callee finds a reference count of 1, not 2.
+
 On a procedure in a **Class** or an **Interface**, and on a **Declare** in a class, the attribute is error **TB5182**, *Syntax error. No handler for this symbol*.
+
+<!-- BETA 1034 (tbrun --exe, win32 and win64; tbbuild; the IDE's hover,
+     completion and Object Browser data): bare or (True) on a Declare or
+     DeclareWide makes a native callee find a reference count of 1 on a ByVal
+     object, not 2, and the code is smaller; (False) is the same code as none.
+     On a Delegate, bare, (True) and (False) change no line and no byte of code,
+     for Long, Double, String, Variant, Object and two sizes of UDT passed
+     ByVal, through a twinBASIC target and through a native one: accepted to no
+     effect, left off. What the attribute does on a procedure is not known:
+     no printed line moved, and the code of the procedures was not separated
+     from that of the Declares. -->
 
 ## Source
 {: #source }
@@ -1429,6 +1761,15 @@ Syntax: **[TestCase** [ **( True** \| **False )** ] **]**
 
 Applicable to: [procedure](../Gloss#procedure) definition in a module.
 
+<!-- BETA 1034: on a Sub in a Module, with or without [TestFixture], bare and
+     (True) take away the CodeLens run bar, and (False) keeps it. evaluate with
+     isTest answers alike for a marked and an unmarked Sub, and the compiler
+     sends the page no list of tests. On a Declare and on the procedures,
+     properties, Event and prototypes of a Class or an Interface, and on
+     Class_Initialize, it is accepted and changes nothing: no bar, no diagnostic,
+     the same run in the IDE and the exe, win32 and win64, the same type
+     library. Left off. -->
+
 ## TestFixture  (optional Bool)
 {: #testfixture }
 
@@ -1445,6 +1786,16 @@ Applicable to: [procedure](../Gloss#procedure) parameters
 
 Allows populating Intellisense with an enum for types other than **Long**.
 
+<!-- BETA 1034: on a parameter, completion lists the enum. Accepted on every
+     procedure, Declare, Event and prototype, with no effect: A/B identical on
+     completion at each call, hover, type library, Object Browser, run and
+     diagnostics, for each site and a twin of it with a parameter, the argument
+     an enum and, where accepted, True, False, a string and a number; the same
+     on a property in a form's PROPERTIES and the debugger's Variables. On a
+     procedure that returns no value its argument is not checked; on one that
+     returns a value it must name a type. The packages' 12 uses on a Property
+     Get show nothing either. Left off. -->
+
 ## Unimplemented  (optional Bool)
 {: #unimplemented }
 
@@ -1460,7 +1811,12 @@ On a **Declare** the warning, TB0009, comes at each call in the same way. On a *
      at calls of a Declare Function, Declare Sub, DeclareWide and a Declare in a
      Class; for a Public class variable at x = o.VU and o.VU = 4 from another
      module only. Accepted, and no diagnostic at any use, on a Const, a module
-     variable, a Private or WithEvents class variable and an Event. -->
+     variable, a Private or WithEvents class variable and an Event.
+     BETA 1034 (tbbuild; tbrun and --exe; hover, definition, completion,
+     decorations and Object Browser; type library): as above, also with
+     [EnforceErrors(TB0009)] and [EnforceWarnings(TB0009)] on the code that uses
+     them, at a read inside and outside the module, and at a handler of a
+     package's [Unimplemented] Event (VB.Data's Resize). Left off. -->
 
 ## UseGetLastError  (optional Bool)
 {: #usegetlasterror }
@@ -1516,7 +1872,14 @@ Compare [CustomControl](#customcontrol), which takes one image path and no size 
      WinNativeCommonCtls and CEF, are on a Class and all pass a String; not
      one uses the bare form. The ??
      substitution is read from those paths and the icon files beside them, not
-     from a specification. -->
+     from a specification.
+     Interface (BETA 1034, the IDE's toolbox data, the designer, Save, tbrun
+     --exe win32 and win64): a path gives a tool as on a Class, placed and saved
+     with _className ISite; beside [ClassId] a form holds it at run time,
+     Controls.Count 1, TypeName ISite, with no window of its own. "no_designer"
+     gives no entry. A path that names no file gives an entry with no
+     isWindowsControl, which no designer lists. A member of the placed control
+     was not run. The Interface half works: left off the line above. -->
 
 ## WithDispatchForwarding
 {: #withdispatchforwarding }

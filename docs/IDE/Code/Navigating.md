@@ -22,6 +22,7 @@ index:
 This page covers the commands that take the caret somewhere else in the code, and the three panels that list where you can go: Outline, Open Editors and History. The three combo boxes above the code are another way to move, described under [Editor](Editor#the-navigation-combo-boxes).
 
 ## Go To Definition
+{: index="goto definition; jump to definition" }
 
 **Go To Definition** takes the caret to where the name under it is declared. Put the caret on the name and press <kbd>F12</kbd> or <kbd>Shift</kbd>+<kbd>F2</kbd>, or choose **Go To Definition** from the right-click menu or **Definition** from the **View** menu.
 
@@ -45,6 +46,7 @@ Where the caret lands:
 <kbd>Ctrl</kbd>+click does not follow a name, and the editor has no Peek Definition.
 
 ## Last Position
+{: index="navigate back; previous location; previous position; jump back" }
 
 **Last Position** takes the caret back to where it was before. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F2</kbd>, choose **Last Position** from the **View** menu or the right-click menu, or press the "back" button of the mouse while the pointer is over the editor. It puts the caret at the start of the line.
 
@@ -56,6 +58,7 @@ The editor remembers 20 positions, and each use takes one off, newest first, so 
 Moving the caret alone records nothing. The positions are not saved with the project.
 
 ## Bookmarks
+{: index="add [a] bookmark; set [a] bookmark" }
 
 A bookmark marks a line so that you can return to it. A bookmarked line shows a light-blue box with a black border in the margin.
 
@@ -76,12 +79,14 @@ The five commands are on the right-click menu of the editor. Next Bookmark has n
 A bookmark moves with its line when you insert or delete lines above it. The project keeps its bookmarks when you close and reopen it.
 
 ## Go to a line
+{: index="jump to line" }
 
 **Edit → Go To Line/Column...** opens a small box over the editor. Click the **Ln**, **Col** field in the status bar to open the same box. The box tells you how many lines the file has. Type a line number, or `line:column`, such as `12:5`, and press <kbd>Enter</kbd>. Text that is not a position, or a line number beyond the end, leaves the box as it was.
 
 The command has no key. <kbd>Ctrl</kbd>+<kbd>G</kbd> is the key of the Debug Console.
 
 ## Move by procedure and by problem
+{: index="next problem; next error; previous error; jump to next error" }
 
 | Command | Key | What it does |
 |---|---|---|

@@ -126,7 +126,7 @@ The four `Html*` classes are the addin's view into the DOM inside a tool window.
 ### Singletons
 
 - [**DebugConsole**](DebugConsole) -- the DEBUG CONSOLE pane. [**PrintText**](DebugConsole#printtext), [**Clear**](DebugConsole#clear), [**SetFocus**](DebugConsole#setfocus).
-- [**KeyboardShortcuts**](KeyboardShortcuts) -- IDE-wide keyboard shortcuts. [**Add**](KeyboardShortcuts#add).
+- [**KeyboardShortcuts**](KeyboardShortcuts) -- IDE-wide keyboard shortcuts. [**Add**](KeyboardShortcuts#add). The IDE's own commands and their keys are listed in the IDE reference, under [Keyboard Shortcuts](../../../tB/IDE/Reference/Keyboard-Shortcuts).
 - [**Themes**](Themes) -- the IDE's active theme. [**ActiveThemeName**](Themes#activethemename), [**ActiveThemeNameGroup**](Themes#activethemenamegroup).
 
 ## Dynamic DOM property resolution

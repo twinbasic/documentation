@@ -2,7 +2,7 @@
 title: Toolbar
 parent: IDE Reference
 grand_parent: IDE
-nav_order: 12
+nav_order: 13
 permalink: /tB/IDE/Reference/Toolbar
 redirect_from:
   - /tB/IDE/Project/Toolbar
@@ -101,6 +101,13 @@ These buttons act on the form designer. The [Format menu](Menu/Format) holds mos
 
 **Global Search**
 : Opens the window of the [Global Search](../AddIns/GlobalSearch) add-in, which adds this button. Other add-ins can add buttons of their own here.
+
+## Customising the toolbar
+{: index="customize toolbar; customise toolbar; add toolbar button" }
+
+The toolbar's buttons cannot be customised: no command or option adds, removes or moves a button. Only an add-in can add one, with [**AddButton**](../../Packages/tbIDE/Toolbar#addbutton).
+
+The toolbar itself is a panel. The **Close this panel** button at its right-hand end hides it, and it stays hidden until **View → TOOLBAR** brings it back as a floating panel. The grip icon at its left-hand end moves it, as it moves any docked panel, and **Window → Panel Layouts → Default Built-in Layout** puts it back under the menu bar. See [Panel layouts](../Customising/Panel-Layouts).
 
 ## Build configuration
 

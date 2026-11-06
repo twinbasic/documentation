@@ -19,6 +19,7 @@ A breakpoint pauses the program on a line you choose. Once it is paused, the ste
 ## Breakpoints
 
 ### Set and clear a breakpoint
+{: index="add a breakpoint; remove a breakpoint; set a breakpoint; clear breakpoints" }
 
 Click in the margin of the code editor beside a line, or put the caret in the line and press <kbd>F9</kbd> (**Debug → Toggle Breakpoint**). Either one sets the breakpoint at once, or clears it if the line has one. Nothing is asked, and no line is selected first. A breakpoint belongs to a code editor: a form designer has no margin, and <kbd>F9</kbd> does nothing there.
 
@@ -37,7 +38,12 @@ To clear every breakpoint of the project, choose **Debug → Clear All Breakpoin
 
 On the line that has the arrow, a click without dragging toggles a breakpoint too. A press that lasts longer than a fifth of a second starts a drag of the arrow instead; see [Set Next Statement](#set-next-statement).
 
+<!-- test: bug f9-after-edit-loses-glyph, lane ide:breakpoints -->
+> [!WARNING] BETA 1034
+> <kbd>F9</kbd> pressed within a few tens of milliseconds after an edit can come before the compiler's answer to the edit, and that answer then puts the margin back as it was. A new breakpoint loses its red dot, but the program still stops on the line, and the next breakpoint set in that file removes it. A cleared breakpoint gets its dot back, but the program does not stop on the line. The next edit puts the margin right. Wait a moment after typing before you press <kbd>F9</kbd>.
+
 ### What a breakpoint does
+{: index="run to cursor" }
 
 A breakpoint is a line number and nothing else. There are no conditions, no hit counts, no log points and no disabled breakpoints, and there is no list of breakpoints: the margin of an open file is the only place that shows them. There is also no Run to Cursor command. <kbd>F6</kbd> runs the procedure at the caret, which [Running](Running#run-or-preview) describes.
 
@@ -50,6 +56,10 @@ When a stop is in a file that is not open, the IDE opens the file. With **Single
 ### Where breakpoints are kept
 
 The compiler keeps the breakpoints of each file. A breakpoint survives **Restart the compiler**, whether or not you saved the project, because the IDE sends its list to the new compiler. A breakpoint is not part of the source: **Export Project** writes no trace of one. Setting or clearing one marks the project as changed, so closing the project asks to save it.
+
+<!-- test: bug save-overtakes-breakpoint-change, lane ide:breakpoints -->
+> [!WARNING] BETA 1034
+> <kbd>Ctrl</kbd>+<kbd>S</kbd> pressed less than about 10 ms after <kbd>F9</kbd> can save the breakpoints as they were before that <kbd>F9</kbd>. The margin and the next run are right, but after **Restart the compiler** a breakpoint you cleared is back and stops the program, and one you set is gone. To put it right, set or clear the breakpoint again and save.
 
 The **Allow Breakpoints (Debuggable)** item of **Debug → Debugger Options** turns breakpoints off for the whole project. While it is off, you can still set breakpoints and the margin shows them, but none stops the program. Turn it on, and they stop it again from the next run. [Debuggable](../Project-Settings#debuggable) describes the project setting, and the [**Debuggable**](../../Core/Attributes#debuggable) attribute changes it for one module, class or procedure.
 

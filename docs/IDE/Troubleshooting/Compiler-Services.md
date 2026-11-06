@@ -164,6 +164,7 @@ To leave Safe Mode, choose **win32** or **win64** in the build configuration box
 ![The left end of the toolbar with the build configuration box on safeMode, above the left end of the status bar with the services badge on OPERATIONAL.](Images/Safe_Mode_Bar.png){:width="474" height="70"}
 
 ## When the compiler does not answer
+{: index="ide freezes; ide hangs; ide not responding" }
 
 The IDE has no watch on the compiler and no state for a compiler that is not responding. Its only protection is a time limit around some operations. Each time-out opens a box with one **OK** button.
 

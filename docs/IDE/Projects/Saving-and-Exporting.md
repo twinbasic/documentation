@@ -102,6 +102,7 @@ A project whose file is gone shows the box **Failed to load the project (error c
 **Project → Open Project Folder...** opens the folder of the `.twinproj` file in Windows Explorer. **Project → Open Build Output Folder...** opens the folder of the file that the [Build Output Path](../Project-Settings#build-output-path) names. The command does not create the folder. With no build output path set, it gives the same notification as for a project with no file. [Open Build Output Folder](../Building/Build-Output#open-build-output-folder) says when it still gives it after the project is saved.
 
 ## Export Project
+{: index_also="source control; version control" }
 
 Writes the open project out to a folder as separate files, instead of the single `.twinproj` file. The folder gets the project's `Settings` file, its `Sources`, `Resources` and other folders, and a `Packages` folder with the full source of every package the project references. For a small project that uses the **VB** package, the export held 477 files: two of the project's own, and 475 under `Packages`. <kbd>Ctrl</kbd>+<kbd>E</kbd> runs the same command.
 

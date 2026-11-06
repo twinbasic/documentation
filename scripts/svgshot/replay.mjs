@@ -14,7 +14,6 @@
 // shoot_docs.mjs command that takes them again.
 
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { userInfo } from "node:os";
 import path from "node:path";
 import {
   exitOnCrash,
@@ -35,6 +34,7 @@ import { reviewSvg } from "../lib/shot-queue.mjs";
 import { stageFolders, stageRefusal, stageSvg, svgVerdict, writeVerdict } from "../lib/shot-stage.mjs";
 import { onStop, writeRecord } from "../lib/record-lines.mjs";
 import { judgeSvg } from "./keep.mjs";
+import { privateWords } from "./private-list.mjs";
 import {
   defaultJobs,
   inBrowser,
@@ -92,8 +92,9 @@ command that takes them again.
 Exit codes:
   0  every picture was drawn again: written, unchanged, or left as a PNG; a run
      stopped (--events) exits as for the pictures it drew
-  1  a picture needs a retake, could not be drawn, or its SVG holds the Windows
-     user name
+  1  a picture needs a retake, could not be drawn, or its SVG holds a word no
+     published picture may show: the Windows user name, git's user.name and
+     user.email, or a word of scripts/svgshot/private.json
   2  the tool could not run: a refused command line, no bundle cache, no browser,
      or a crash`;
 
@@ -164,7 +165,7 @@ if (!existsSync(bundlesRoot)) {
   console.error(`replay: no bundle cache at ${bundlesRoot}; shoot_docs.mjs --svg writes it`);
   process.exit(2);
 }
-const USER = userInfo().username;
+const WORDS = privateWords();
 // The fonts' cuts are kept beside the bundles: a picture drawn again mostly cuts what it did.
 useSubsetCache(path.join(bundlesRoot, "subsets"));
 
@@ -182,7 +183,7 @@ const report = (out, part) => {
 };
 async function replay(out, browser) {
   const svgFile = path.join(outRoot, svgOf(out));
-  const drawn = await redraw({ bundlesRoot, docsRoot: outRoot, out, user: USER });
+  const drawn = await redraw({ bundlesRoot, docsRoot: outRoot, out, user: WORDS });
   if (drawn.retake) {
     const why = retakeText(drawn);
     retakes.push({ out, why });

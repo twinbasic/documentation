@@ -1,4 +1,4 @@
-// The form and report designers, tested against eighteen entries in BUGS-TO-REPORT.md:
+// The form and report designers, tested against nineteen entries in BUGS-TO-REPORT.md:
 //
 //   "Horizontal and Vertical Spacing move the controls with no undo step and without marking the
 //   form changed" (bugs/form-spacing-not-recorded)
@@ -32,6 +32,8 @@
 //   opened" (bugs/readonly-designer-empty-tab)
 //   "A form file with bad JSON opens an empty designer that takes no edit"
 //   (bugs/form-bad-json-empty-designer)
+//   "PROPERTIES shows no description line: the text goes to a footer left behind in the form
+//   designer, out of sight" (bugs/properties-description-footer-hidden)
 //
 // The lane opens three projects, one after the other. probes/forms has frmMain (Label1, Text1,
 // Command1, Check1, Frame1 holding Text2, and the control array Command2(0) and Command2(1)), two
@@ -166,6 +168,26 @@ const PROP_BOX_JS = (name) => `(() => {
   e.scrollIntoView({ block: "center" });
   const r = e.getBoundingClientRect();
   return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`;
+const PROP_TOOLTIP_JS = (name) => `(() => {
+  const n = [...document.querySelectorAll(".propertyName")].find((e) => e.getBoundingClientRect().height && e.textContent.trim() === ${J(name)});
+  return n && n.nextElementSibling ? n.nextElementSibling.title : null;
+})()`;
+const LEFT_DESCRIPTION = "Adjusts the left position of this control, in pixels, relative to the container";
+// The description line of the active designer: its text, and whether any point of it can be seen,
+// by what the page has at each of nine points of its box that are inside the window.
+const DESCRIPTION_LINE_JS = `(() => {
+  const line = ${G}.proprtiesBoxFooter;
+  const r = line.getBoundingClientRect();
+  let shown = false;
+  for (const fx of [0.02, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 0.98]) {
+    const x = r.left + r.width * fx;
+    const y = r.top + r.height / 2;
+    if (x < 0 || x >= innerWidth || y < 0 || y >= innerHeight) continue;
+    const at = document.elementFromPoint(x, y);
+    if (at && line.contains(at)) shown = true;
+  }
+  return { text: line.innerText.trim(), shown, box: [r.left, r.top, r.width, r.height].map(Math.round) };
 })()`;
 const TOOLS_JS = (scope) => `[...document.querySelectorAll(${J(`${scope} .toolboxItemOuter`)})]
   .filter((e) => e.getBoundingClientRect().width).map((e) => {
@@ -804,6 +826,29 @@ scenario("designing forms and reports", (lane) => {
   });
 
   // ---------------------------------------------------------------- Alt+arrow (bugs/form-alt-arrow-menu)
+
+  // ---------------------------------------------------------------- bugs/properties-description-footer-hidden
+
+  // The value's tooltip holds the description, so the control and the test below name the same text.
+  test("control: the tooltip of a PROPERTIES value holds the property's description", async () => {
+    await select("Command1");
+    assert.equal(await c.evaluate(PROP_TOOLTIP_JS("Left")), LEFT_DESCRIPTION);
+  });
+
+  test("a focused PROPERTIES box puts its description in the description line, which is left out of sight behind the designer", async (t) => {
+    const r = await c.evaluate(PROP_BOX_JS("Left"));
+    assert.ok(r, "PROPERTIES has no row Left");
+    await clickAt(r.x, r.y);
+    assert.ok(
+      await waitFor(c, () => c.evaluate(`document.activeElement.tagName === "INPUT"`)),
+      "the box took no focus",
+    );
+    const line = await c.evaluate(DESCRIPTION_LINE_JS);
+    t.diagnostic(JSON.stringify(line));
+    assert.equal(line.text, LEFT_DESCRIPTION, "the description line does not hold the description");
+    assert.equal(line.shown, false, "the description line can be seen");
+    await pressKey(c, "Escape");
+  });
 
   test("control: Alt+Left aligns the selected controls' left edges", async () => {
     await fresh();

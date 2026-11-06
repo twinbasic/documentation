@@ -1,0 +1,9 @@
+' An ActiveX DLL, with project.dllRegisterAfterBuild false, so that a build registers nothing. Two
+' events of one class have [DefaultMember], which gives each the dispatch ID 0. The project compiles
+' with no diagnostic, and its build stops at the type library. With the mark on one event it builds.
+Public Class TwoEvents
+    [DefaultMember]
+    Public Event One(ByVal n As Long)
+    [DefaultMember]
+    Public Event Two(ByVal n As Long)
+End Class

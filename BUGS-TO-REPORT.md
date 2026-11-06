@@ -238,6 +238,397 @@ So it takes at least one existing entry and at least one slot with nothing in it
 
 ---
 
+## Clicking the greyed-out Undo or Redo button with no file open prints an IDE internal error
+
+**Describe the bug**
+In an IDE in which no file has been opened yet, a click on the greyed-out **Undo** or **Redo** button of the toolbar prints a red `IDE internal error` line in the DEBUG CONSOLE, one for each click. Nothing else happens: the IDE stays open, no box opens and the project is not touched. It was observed by clicking the buttons with real mouse events in an IDE started with an `APPDATA` of its own, and reading the DEBUG CONSOLE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE and open any project, or cancel the New / Open Project dialog. Open no file. A project the IDE remembers with a file open restores that file, so use one that had none open.
+2. Click **Undo** or **Redo** on the toolbar. Both are greyed out.
+3. See the red line in the DEBUG CONSOLE: `IDE internal error: Uncaught TypeError: Cannot read properties of undefined (reading 'defaultContext'), 1, 880316, TypeError: Cannot read properties of undefined (reading 'defaultContext')`. Each further click prints another.
+
+**Expected behavior**
+A greyed-out button does nothing, as the greyed-out **Comment Selection** button does in the same state, and as **Undo** does once a file has been opened and closed.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The cause, read from `ide\main.js`: **Undo** and **Redo** are the only two buttons that `bindIconToIdeCommand` binds to a list of commands (`tbEditor_Undo` and `tbFormDesigner_Undo`, `tbEditor_Redo` and `tbFormDesigner_Redo`). `registerContextBindings` sets a button's `contextAwareBoundCommand` to the first command of its list whose context applies, and never clears it. Until one has applied the property is not set, so the button's `onmousedown` handler passes the list itself to `executeIdeCommand`, which finds nothing in `ideCommands` for it and throws at `.defaultContext`. The `disabled` attribute a greyed-out button has stops nothing, because the button is a `div`.
+
+The error is thrown synchronously, so it reaches `window.onerror` in `ide\main2.js`, which prints the line and calls `postError`. It does not reach `window.onunhandledrejection`, the handler that can close the IDE, so the IDE stays open whether or not it was started with a project. As read from the code and not observed, `postError` does nothing while error reporting is off, and while it is on it sends each error to `https://twinbasic.com/notify`, so every such click would add an error report.
+
+What reproduces it: with no project open, with a project open and no file opened, and, for **Undo**, with the focus in the DEBUG CONSOLE's entry box, where it stays greyed out.
+
+What does not reproduce it:
+
+| what was tried | result |
+|---|---|
+| **Undo** with a file open and the code editor focused | no line |
+| **Undo** after a file has been opened and closed, greyed out again | no line: `contextAwareBoundCommand` still names `tbEditor_Undo`, whose context does not apply, so `executeIdeCommand` returns |
+| **Undo** in an IDE that restored an open file as the project opened, greyed out with the focus elsewhere | no line, for the same reason |
+| the greyed-out **Comment Selection** button, bound to one command, with no file opened | no line |
+| <kbd>Ctrl</kbd>+<kbd>Z</kbd> with no file opened | no line |
+
+Severity: low. Nothing is lost and the IDE goes on working, but a red internal error in the console reads as a failure, and with error reporting on each click would send a report.
+
+**Fix shape**
+
+`bindIconToIdeCommand` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`button`, `command`, `noClick`, `keys`, `enterEvent`, `leaveEvent`, `pressEvent`); the build calls them `e`, `t`, `o`, `n`, `e`, `e`, `o`.
+
+```diff
+@@ -18,10 +18,9 @@
+     button.onmousedown = (pressEvent) => {
+       pressEvent.preventDefault();
+       if (pressEvent.button === 0) {
+-        executeIdeCommand(
+-          button.contextAwareBoundCommand ? button.contextAwareBoundCommand : command,
+-          true,
+-        );
++        const target = button.contextAwareBoundCommand ? button.contextAwareBoundCommand : command;
++        // A list means that no command of the list has applied yet.
++        if (!Array.isArray(target)) executeIdeCommand(target, true);
+       }
+     };
+   }
+```
+
+A button bound to a list now runs a command only once one of its commands has applied, which is when `contextAwareBoundCommand` holds an id. Until then the target is still the list, there is no command to run, and the press does nothing, which is what a greyed-out button should do. A button bound to one command, and a list button that has a command, go on to `executeIdeCommand` as before, and its check of the context stops them while they are greyed out.
+
+Tested on a copy of BETA 1034 with this change (5 edits in `main.js`, every other byte the same): the entry's test fails because **Undo** prints nothing, its control and the lane's other 16 tests pass, **Redo** prints nothing either with no project and with one, and with a file open the two enabled buttons still step an edit back and forward.
+
+<!-- Reproducer: bugs/toolbar-undo-no-context-internal-error/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "a click on the greyed-out Undo or Redo button, before any file has been opened, prints an IDE internal error", which passes on BETA 1034; the control "control: a greyed-out button bound to one command prints no internal error, and neither does Undo once a file has been opened and closed" passes too). No project and no zip. No page carries a callout for it, by the owner's decision, and none is due when it is fixed. The no-project, entry-box, restored-file and Ctrl+Z results are from trials, not the lane. The restored-file row needs the first IDE to have run past the five-second save of the project state; ended sooner, the second IDE restores nothing and the line prints. Found 2026-11-05 settling the toolbar's questions for docs/IDE/Toolbar.md. Fix: bugs/toolbar-undo-no-context-internal-error/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/toolbar-undo-no-context-internal-error/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only code-editor` tests it (the entry's test then fails, which is the fix working). -->
+
+---
+
+## A breakpoint set just after an edit loses its glyph, and the next breakpoint set in that file removes it
+
+**Describe the bug**
+When F9 is pressed after an edit but before the compiler has answered that edit, the breakpoint's red glyph appears and then disappears when the answer arrives. The window is the time the answer takes, 20 to 45 ms here. The compiler still has the breakpoint, so the run stops there with no glyph showing. The next breakpoint set in the same file then removes it: the IDE sends the file's whole breakpoint list, read from the glyphs, and the lost one is not in it. The same answer undoes an F9 that clears a breakpoint: the glyph comes back, and the run does not stop there. It was observed by recording the `textDocument/didChangeV2` messages the IDE sends and their answers, by reading the margin's decorations, and by running the program.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project you can run, with a line of code that has a comment at its end, such as `Debug.Print "two" ' a note`.
+2. Put the caret in that comment. Press a letter key and F9 almost together, so that F9 comes a few tens of milliseconds after the letter and before the compiler's answer to the keystroke. By hand this takes a few tries; a script that types the character and sends F9 straight after it hits the window every time.
+3. See the glyph appear and vanish. Press F5: the program stops on that line anyway.
+4. Stop the program. Without typing anything, press F9 on another line of the same file (the timing does not matter now) and press F5.
+5. See the program stop only on the second line: the first breakpoint is gone.
+
+**Expected behavior**
+A breakpoint set with F9 keeps its glyph and stays set until it is removed, whenever the key is pressed, as it does when F9 comes after the answer. An answer to a change that was sent before the breakpoint was set should not replace the IDE's breakpoint list.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The cause, read from `ide\main.js`: the answer to a `didChangeV2` that carries text goes to `parseDocumentDecorations`, which discards every breakpoint decoration, draws the answer's `breakpoints` list instead and sets `cachedBreakpointLines` to it. Its only staleness check is the document version, and that check cannot fail here: `sendDocumentChangeToServer` passes the version the file has when the answer arrives, and `toggleBreakpointAtLine` does not change the version in any case. The breakpoint change itself is sent at once, because each change clears `pendingChangeConfirmation` before sending, so the compiler receives it after it has answered the text change with the old list. In one try, with times in ms:
+
+```
+1532.0  send    the edit, with its text
+1539.2  F9      the glyph is drawn
+1548.6  send    the breakpoint change, list [8]
+1557.6  answer  to the edit, list []: parseDocumentDecorations erases the glyph
+1567.4  answer  to the breakpoint change
+```
+
+Whichever comes next decides what happens. The next text change puts things right: its answer holds the compiler's list, so a lost glyph comes back and a glyph that came back goes away. The next F9 in the file, with no edit first, does the opposite: it sends the list read from the glyphs, and the compiler drops what the glyphs lost.
+
+The answer to `textDocument/getDecorations`, which the IDE asks for when a file is opened or switched to, goes through the same function with no check, and an F9 before that answer loses its glyph in the same way.
+
+A typed character with F9 sent straight after it lost the glyph in 16 of 16 tries.
+
+What does not reproduce it:
+
+| what was tried | result |
+|---|---|
+| F9 after the edit's answer has arrived | the glyph stays, a second breakpoint leaves it set, and the run stops on both |
+| F9 with no edit before it (BETA 1005) | the same |
+| F9 200 ms or more after a one-character edit (BETA 1005) | the same |
+| a module of 3,000 functions added to the project, to slow the compile (BETA 1005) | no wider a window: the answer still took 25 to 35 ms |
+
+The line does not matter: on BETA 1005 it was lost on `ReDim`, `.Name = name` and `count = count + 1` when each was first, and each was kept when set second. Also on BETA 1005 and BETA 997.
+
+Severity: a breakpoint silently lost, or silently present with no glyph. A person rarely presses F9 inside the window, but a tool or an add-in that edits code and then sets a breakpoint does every time.
+
+**Fix shape**
+
+`toggleBreakpointAtLine` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`line`, `model`, `foundIndex`, `index`, `removed`, `versionInfo`, `decoration`); the build calls them `e`, `t`, `o`, `n`, `i`, `r`, `i`.
+
+```diff
+@@ -33,5 +33,9 @@
+     );
+   }
+   var versionInfo = { versionId: editor.getModel().getVersionId() };
++  // Counted here, before the change is sent: an answer that arrives from now on, until the
++  // compiler has this change, holds a list that is out of date.
++  var fileNode = openEditors.selectedEditorNode.fileNode;
++  fileNode.breakpointChanges = (fileNode.breakpointChanges || 0) + 1;
+   model.ourChangeContentHandler(versionInfo, true, true);
+ }
+```
+
+`sendDocumentChangeToServer` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`editorNode`, `change`, `onAnswer`, `answer`, `queued`); the build calls them `e`, `t`, `o`, `n`, `t`.
+
+```diff
+@@ -5,6 +5,11 @@
+     editorNode.fileNode.queuedChange = change;
+   } else {
+     editorNode.fileNode.pendingChangeConfirmation = true;
++    // The compiler answers this change with the breakpoints it has been sent up to now.
++    if (change.contentChanges === null) {
++      editorNode.fileNode.breakpointChangesSent = editorNode.fileNode.breakpointChanges;
++    }
++    const breakpointChangesAnswered = editorNode.fileNode.breakpointChangesSent;
+     lspSocket.request("textDocument/didChangeV2", change, (answer) => {
+       if (onAnswer) {
+         onAnswer();
+@@ -18,7 +23,12 @@
+       } else {
+         if (change.contentChanges !== null) {
+           nextScopeUpdateIsAnEdit = true;
+-          parseDocumentDecorations(editorNode, answer.result, editorNode.fileNode.ideVersionId);
++          parseDocumentDecorations(
++            editorNode,
++            answer.result,
++            editorNode.fileNode.ideVersionId,
++            breakpointChangesAnswered,
++          );
+         }
+       }
+     });
+```
+
+`getSemanticTokensForCurrentFile` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`editorNode`, `uri`, `answer`); the build calls them `e`, `t`, `o`.
+
+```diff
+@@ -10,11 +10,12 @@
+     "getSemanticTokensForCurrentFile: " + uri + " [v" + editorNode.fileNode.ideVersionId + "]",
+   );
+   awaitingDocumentDecorations = true;
++  const breakpointChangesAnswered = editorNode.fileNode.breakpointChangesSent;
+   lspSocket.request(
+     "textDocument/getDecorations",
+     { textDocument: { uri: uri, version: editorNode.fileNode.ideVersionId } },
+     (answer) => {
+-      parseDocumentDecorations(editorNode, answer.result, 0);
++      parseDocumentDecorations(editorNode, answer.result, 0, breakpointChangesAnswered);
+       traceOutputLine("getSemanticTokensForCurrentFile... " + uri + " [done]");
+     },
+   );
+```
+
+`parseDocumentDecorations` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`editorNode`, `decorations`, `versionId`, `tokensTime`, `separatorDecorations`, `separators`, `separatorsTime`, `codeLenses`, `breakpoints`, `breakpointLines`, `action`, `separator`, `lens`, `breakpoint`); the build calls them `e`, `t`, `o`, `n`, `i`, `r`, `a`, `s`, `l`, `d`, `c`, `e`, `e`, `e`.
+
+```diff
+@@ -1,4 +1,4 @@
+-function parseDocumentDecorations(editorNode, decorations, versionId) {
++function parseDocumentDecorations(editorNode, decorations, versionId, breakpointChangesAnswered) {
+   if (!monaco) return;
+   traceOutputLine("parseDocumentDecorations: " + editorNode.fileNode.getFullPath());
+   if (!decorations) return;
+@@ -36,7 +36,13 @@
+     );
+   });
+   addCodeLensFinalize();
+-  const breakpoints = decorations.breakpoints;
++  // A list made before the page's last breakpoint change is out of date: the page's stands.
++  const breakpoints =
++    breakpointChangesAnswered === editorNode.fileNode.breakpointChanges
++      ? decorations.breakpoints
++      : currentBreakpointDecorations.map((id) => ({
++          line: editorNode.monacoModelInstance.getDecorationRange(id).startLineNumber,
++        }));
+   clearCurrentEditorBreakpoints();
+   currentBreakpointDecorations = [];
+   var breakpointLines = [];
+```
+
+`toggleBreakpointAtLine` counts each change as it is made, and `sendDocumentChangeToServer` records how many of them the compiler has been sent. Each request remembers that number when it goes out, and `parseDocumentDecorations` takes the answer's list only when the number is the count of changes the page has made. Otherwise the list is older than the page's last change, so the page's own list stands. It is drawn again and goes into `cachedBreakpointLines`, so nothing else in the function changes. A later answer, made once the compiler has the change, is taken as before. The change is counted in `toggleBreakpointAtLine` and not at the send, because the send is on a timer that took up to 30 ms here, and an answer can arrive in that time.
+
+Tested on a copy of BETA 1034 with this change (14 edits in `main.js`, every other byte the same): the entry's three tests fail because the margin is right, and the lane's other 9 tests pass. With the answer held back, both breakpoints keep their glyphs and the run stops on both, and a cleared breakpoint stays cleared. A typed character with F9 straight after it kept the glyph in 10 of 10 tries, where the install kept it in 0 of 10. A glyph still moves with the text, and a breakpoint survives a repeated `getDecorations`.
+
+<!-- Reproducer: bugs/f9-after-edit-loses-glyph/ (mode lane: asserted by `ide-test.bat --only breakpoints` (test/ide/breakpoints.test.mjs), the three tests named in repro.json, which pass on BETA 1034; the control "control: a breakpoint set once the compiler has answered an edit keeps its glyph, and the next one leaves it set" passes too). No project and no zip. The tests do not race the window: HOLD_ANSWER_JS keeps the compiler's own answer to a typed character in the page, a real F9 is pressed, the compiler answers that, and the held answer is delivered, so it is as old as an answer in the window always is. docs/IDE/Debugging/Breakpoints-and-Stepping.md carries the WARNING at the end of *Set and clear a breakpoint*; when this is fixed, the callout goes. The harness's own guard is `waitForEditAnswer` in scripts/lib/tb-operate.mjs. The 16 of 16, the 10 of 10, the 20 to 45 ms and the trace are from trials on BETA 1034, not the lane; the getDecorations result is from one trial with that answer held back. Found 2026-10-11 shooting the debugging chapter. Fix: bugs/f9-after-edit-loses-glyph/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/f9-after-edit-loses-glyph/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only breakpoints` tests it (the entry's three tests then fail, which is the fix working). -->
+
+---
+
+## A save right after F9 writes the breakpoints as they were before that F9
+
+**Describe the bug**
+When Ctrl+S reaches the IDE before the timer that sends F9's change has fired, the project is saved with the breakpoints as they were before that F9. Nothing shows at first: the margin and the next run are right, because the compiler gets the change just after the save. The saved project is wrong, though, so after **Restart the compiler** a breakpoint that was removed is back and stops the run, and one that was set is gone. It was observed by recording the messages the IDE sends and their answers, restarting the compiler, reading the margin and running the program.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project you can run and a code file. Put the caret on a statement with no breakpoint.
+2. Press F9, F9 and Ctrl+S as nearly together as you can. The save has to come within about 10 ms of the second F9, so by hand it takes many tries; a script that sends the keys with no wait does it in most tries.
+3. See no breakpoint in the margin. Press F5: the program runs past the line.
+4. Click **Restart the compiler** on the toolbar.
+5. See the breakpoint back in the margin. Press F5: the program stops on the line.
+
+**Expected behavior**
+The save holds the breakpoints the IDE shows when the key is pressed, so that restarting the compiler changes nothing, as it does when the two keys are further apart.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The cause, read from `ide\main.js`: `ourChangeContentHandler` sends a breakpoint change from a `setTimeout(..., 0)`, which took up to 30 ms to fire here. `tbProject_SaveAllChanges` with no changed document reaches `askServerToSaveProject` at once, in the key's own handler, so `RequestSaveProject` can leave on the file-system socket before the change leaves on `lspSocket`. The compiler saves its old list. The save's answer then empties `g_SessionFilesystemTransactions`, which by then holds the change's `TransactionChangedBreakpoints`, so a restart does not send the change again either. In one try, with times in ms:
+
+```
+5494.8  send    the first F9's change, list [8]
+5495.2  answer  to it
+5504.4  save    RequestSaveProject
+5510.2  send    the second F9's change, list []
+5510.6  answer  to it
+5515.7  saved   the transactions are emptied
+```
+
+The saved file itself holds the old list: 2,544 bytes in such a try, and 2,540 when the removed breakpoint was not saved.
+
+This has a different cause from "A breakpoint set just after an edit loses its glyph, and the next breakpoint set in that file removes it". No edit is involved and `parseDocumentDecorations` is not called: the save goes out before the change, where in that entry an answer comes back after it.
+
+F9, F9 and Ctrl+S sent as key events, with the wait between the last F9 and Ctrl+S that the table gives:
+
+| wait | breakpoint back after the restart |
+|---|---|
+| none | 20 of 25 tries |
+| 10 ms | 0 of 6 |
+| 20 ms | 0 of 6 |
+| 30 ms | 0 of 6 |
+| 50 ms | 0 of 3 |
+| 200 ms | 0 of 3 |
+| 1 s | 0 of 3 |
+
+In every try whose order was recorded, the breakpoint came back when the save went out between the two changes, and not when it went out after both. When it went out before both, the saved list had no breakpoint, which is right by luck.
+
+What does not reproduce it:
+
+| what was tried | result |
+|---|---|
+| one F9 that sets a breakpoint, then Ctrl+S, as key events with no wait | right in 4 of 4 tries: the Ctrl key's own event gives the timer time. With the F9 and the save in one task of the page, the breakpoint is lost |
+| one F9 that clears a breakpoint, then Ctrl+S, as key events with no wait | right in 4 of 4 tries, for the same reason. With the two in one task, the breakpoint comes back |
+| a wait for the compiler's answer to F9, then Ctrl+S | right |
+
+Severity: low in practice, since the keys must be almost together. The result is silent, though: the project on disk differs from what the IDE showed when it was saved.
+
+**Fix shape**
+
+`serverSaveDirtyDocuments` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`done`, `errorCount`, `pending`, `lastProgress`, `oneDone`, `editorNode`, `watchdog`, `message`, `tabIndex`, `error`, `elapsed`, `timeoutMessage`); the build calls them `e`, `t`, `o`, `n`, `i`, `r`, `a`, `s`, `e`, `o`, `e`, `t`.
+
+```diff
+@@ -10,7 +10,9 @@
+         clearInterval(watchdog);
+         watchdog = 0;
+       }
+-      if (done) done();
++      // On a timer of its own: a breakpoint change made just before the save is waiting on a
++      // timer to be sent, so this one runs after it.
++      if (done) setTimeout(done, 0);
+     }
+   };
+   for (let tabIndex = 0; tabIndex < codePanelTabs.childNodes.length; tabIndex++) {
+```
+
+`serverSaveDirtyDocuments` runs before the save on both routes, Ctrl+S and the question on closing a project. Calling its callback from a timer puts `askServerToSaveProject` behind every timer already waiting, so the breakpoint change is sent first and its transaction is in the list before the save is asked for. The two messages still go on different sockets. The compiler took them in that order in every try below; a fix that also waits for the change's answer would not depend on that.
+
+Tested on a copy of BETA 1034 with this change (1 edit in `main.js`, every other byte the same): the entry's two tests fail because the restart shows the right list, and the lane's other 10 tests pass. With F9 and the save in one task the saved list was right in 10 of 10 tries, five each way. F9, F9 and Ctrl+S with no wait brought the breakpoint back in 0 of 10 tries, where the install brought it back in 7 of 10.
+
+<!-- Reproducer: bugs/save-overtakes-breakpoint-change/ (mode lane: asserted by `ide-test.bat --only breakpoints` (test/ide/breakpoints.test.mjs), the two tests named in repro.json, which pass on BETA 1034; the control "control: a breakpoint cleared once the compiler has answered it, and then saved, stays cleared across a restart" passes too). No project and no zip. The tests do not race the timer: they run tbDebug_ToggleBreakpoint and tbProject_SaveAllChanges, the commands F9 and Ctrl+S run, in one task of the page, where a timer cannot fire between them, so the save always goes first. docs/IDE/Debugging/Breakpoints-and-Stepping.md carries the WARNING under *Where breakpoints are kept*; when this is fixed, the callout goes. The table's tries are from trials on BETA 1034 (.claude/scratch/ide-docs/try-f9/), not the lane; test/ide/breakpoints.test.mjs noted the same thing on BETA 1005 as "now and then". Fix: bugs/save-overtakes-breakpoint-change/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/save-overtakes-breakpoint-change/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only breakpoints` tests it (the entry's two tests then fail, which is the fix working). -->
+
+---
+
+## PROPERTIES shows no description line: the text goes to a footer left behind in the form designer, out of sight
+
+**Describe the bug**
+When a box in PROPERTIES takes the focus, the IDE writes the property's description into a line meant for the foot of the pane (the element `proprtiesBoxFooter`, spelt so). The line never shows. It holds the text, but it was left behind in the form designer when the property list moved to the PROPERTIES panel, and it lies out of sight to the right of the designer. So the description shows only as the value's tooltip. It was observed by reading the element and the boxes of its ancestors in the page of an IDE with a form open, and by asking the page what it has at points of the element's box.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project with a form and open the form in the designer.
+2. Select a control and click in the **Left** box of PROPERTIES.
+3. See nothing at the foot of the pane. Point at the value: its tooltip reads *Adjusts the left position of this control, in pixels, relative to the container*.
+4. In the page, see that `document.querySelector(".proprtiesBoxFooter").innerText` holds that same text.
+
+**Expected behavior**
+The description shows in the line at the foot of PROPERTIES while the box has the focus, which is what `propertyOnGotFocus` writes it there for.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The cause, read from `ide\main.js` and `ide\formDesigner.css`: in the designer's template `.proprtiesBoxFooter` is a child of `.propertiesBox`, beside `.propertiesBoxInner`. When a designer is activated, its `activated` handler moves `.propertiesBoxInner` into the PROPERTIES panel (`propertiesDockablePanel._this.sectionHeader.sectionRoot`) and leaves the footer where it was. `.propertiesBox` is then 0 px wide, at the right edge of the designer. The footer's rule (`position: absolute; width: 100%; bottom: 0`) sizes it against `.formDesignerContainer`, so in a page 1600 by 1000 its box is 1098 by 60 at (1263, 674): it starts at the designer's right edge, where `.codePanelMainInner`, with `overflow: hidden`, clips all of it.
+
+The IDE writes the line for every property that has a description. **Left**, **Top**, **Width**, **Height**, **Enabled**, **ToolTipText** and **TabIndex** have one. **Caption**, **Style**, **BackColor** and **Index** have none, and the line is then empty, as it should be.
+
+Severity: low. Nothing is lost, because the tooltip has the same text, but a part of the pane has never been seen.
+
+**Fix shape**
+
+`propertyOnGotFocus` in `ide/main.js`, BETA 1034, in a readable form. The local names are ours, not twinBASIC's (`globals`, `valueCell`, `propertyName`); the build calls them `e`, `t`, `o`.
+
+```diff
+@@ -1,5 +1,15 @@
+ function propertyOnGotFocus(globals, valueCell, propertyName) {
+   globals.propertyValueEditor = 1;
++  // The list went to the PROPERTIES panel, and the line stayed in the designer's empty box.
++  const line = globals.proprtiesBoxFooter;
++  if (line.parentNode !== globals.propertiesBoxInner) {
++    globals.propertiesBoxInner.appendChild(line);
++    line.style.position = "sticky";
++    line.style.zIndex = 1112; // above the list's sticky headers
++    line.style.boxSizing = "border-box";
++    line.style.color = "var(--themeSectionHeaderTextColor)";
++    line.style.backgroundColor = "var(--themePanelHeaderBackColor)";
++  }
+   globals.proprtiesBoxFooter.innerText = valueCell.title;
+   if (globals.proprtiesBoxFooter.innerHTML)
+     globals.proprtiesBoxFooter.innerHTML = globals.infoIcon + globals.proprtiesBoxFooter.innerHTML;
+```
+
+The first box to take the focus moves the line into `.propertiesBoxInner`, which is the list's scrolling box and is in the panel, and makes it stick to that box's foot. The move is made here rather than in the `activated` handler because that handler is not a function of its own in `main.js`; a fix in the source would more simply move the line with the list. The rule in `formDesigner.css` gives the line white text on a translucent strip, which the list's rows would show through, so the colours become the panel header's, and the z-index puts it above the list's sticky headers.
+
+Tested on a copy of BETA 1034 with this change (1 edit in `main.js`, every other byte the same): the entry's test fails because the line can be seen, and the lane's other 38 tests pass. Pictures of the pane show the text on two lines, in full, in the dark and the light theme.
+
+<!-- Reproducer: bugs/properties-description-footer-hidden/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "a focused PROPERTIES box puts its description in the description line, which is left out of sight behind the designer", which passes on BETA 1034; the control "control: the tooltip of a PROPERTIES value holds the property's description" passes too). No project and no zip. The test clicks the Left box of Command1 and tests what the page has at nine points of the line's box that are in the window. docs/IDE/Forms/Properties.md carries the NOTE under *Descriptions*; when this is fixed, the callout goes and the section describes the line. Found 2026-10-12 with the forms chapter's trials (forms-facts section 10e). Fix: bugs/properties-description-footer-hidden/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/properties-description-footer-hidden/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only forms` tests it (the entry's test then fails, which is the fix working). -->
+
+---
+
+## `#Warning` and `#Error` cut their text at a vertical bar
+
+**Describe the bug**
+The text of a `#Warning` or `#Error` directive stops at its first `|`. `#Warning "before|after"` reports TB0005 with the text `"before`, with no closing quote, and nothing shows that the rest is gone. BETA 1033 reports the whole text.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `warning-directive-text-cut.twinproj` (attached as `warning-directive-text-cut.zip`). `Startup.twin` begins:
+   ```
+   #Warning "before|after"
+   #Warning "no bar in this text"
+   ```
+2. Open the DIAGNOSTICS panel.
+3. See `TB0005 #Warning directive: "before` for line 1, and `TB0005 #Warning directive: "no bar in this text"` for line 2.
+
+**Expected behavior**
+The whole text, as BETA 1033 reports it: `TB0005 #Warning directive: "before|after"`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+`#Error "before|after"` gives `TB5228 #Error directive: "before` in the same way, where BETA 1033 gives the whole text.
+
+Severity: low. Part of a message the programmer wrote is lost, with no sign of it.
+
+<!-- Reproducer: bugs/warning-directive-text-cut/ (mode compile: the two TB0005 lines on BETA 1034; `bug_repro compile --ide` on BETA 1033 gives the whole text, so the `absent` pattern fails there). The #Error half was a scratch project, .claude/scratch/attr-sweep/queue-work/trees/error-pipe, not kept in the reproducer: an error stops the compile, and the reproducer's two warnings need it to finish. docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0005. -->
+
+---
+
 ## `--buildAndExit32` writes nothing, exits 0 on a project with errors, and hangs on a failing build
 
 *DEFERRED until after v1*
@@ -1349,16 +1740,18 @@ A compile error on each `As New` of an `Interface`, TB5074 as for `New` on one: 
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
+ - twinBASIC compiler version: BETA 1034
 
 **Additional context**
 VB6 has no comparison: a VB6 project cannot declare an `Interface`, and the interfaces of the type libraries it references are hidden from it, as #2486 said.
 
-The object `As New` builds is the one #2486 described: `TypeName` gives the interface's name, `ObjPtr` is not 0, `ErrorContext.Number` reads 0, and an inherited member ends the run with `NATIVE EXCEPTION: ACCESS_VIOLATION` (step 3, checked in a run on BETA 1005).
+The object `As New` builds is the one #2486 described: `TypeName` gives the interface's name, `ObjPtr` is not 0, `ErrorContext.Number` reads 0, and an inherited member ends the run with `NATIVE EXCEPTION: ACCESS_VIOLATION` (step 3, checked in a run on BETA 1005). On BETA 1034 step 3 gives the same in an IDE run and in a built exe, 32-bit and 64-bit, and the exe ends with exit code 0xC0000005.
+
+The interface needs no attribute. For an `Interface ISite` with a `Sub Ping` and a `Function Num`, `Dim o As New ISite` compiles, `o Is Nothing` is `False`, `o.Ping` returns with nothing run and `o.Num()` returns 0, in an IDE run and in a built exe, 32-bit and 64-bit, while `Set o = New ISite` gets TB5074 and TB5032, *Set-expression must result in an object type*.
 
 Severity: low in practice, since few programs write `As New` on an interface, but the compile-time check #2486 added does not cover it, and the result is a silent wrong value or a crash.
 
-<!-- Reproducer: bugs/dim-as-new-interface/ (mode test: `tbrun --tests` judges the compile cases; expect lists the six PASS and five FAIL lines); verified on BETA 1005 by `bug_repro.mjs verify`. Step 3 was run with tbrun on 1005 in a scratch tree that is not kept (local, module-level and class-field As New, and the access violation on the inherited member). Follow-up to #2486 ("New on an Interface compiles, and a call on the object returns a default value, or ends in an access violation for an inherited member"), closed as fixed. No documentation page states it: docs/Reference/Core/New.md describes As New on classes only. -->
+<!-- Reproducer: bugs/dim-as-new-interface/ (mode test: `tbrun --tests` judges the compile cases; expect lists the six PASS and five FAIL lines); verified on BETA 1005 and on BETA 1034 by `bug_repro.mjs verify`. Step 3 was run with tbrun on 1005 and with tbrun --exe on 1034, and the ISite case on 1034, in scratch trees that are not kept (local, module-level and class-field As New, and the access violation on the inherited member). Follow-up to #2486 ("New on an Interface compiles, and a call on the object returns a default value, or ends in an access violation for an inherited member"), closed as fixed. docs/Reference/Core/New.md carries a WARNING (BETA 1034) for it; when a fixed build is released, the WARNING goes. -->
 
 ---
 
@@ -11578,7 +11971,7 @@ In a 32-bit build, a `Declare` of a DLL function that names the wrong calling co
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `declare-dll-stack-not-checked.twinproj` (attached as `declare-dll-stack-not-checked.zip`); its build is win32. `labs` in `msvcrt.dll` and `add` in `basic_32.obj` (`basic.c`, beside it in Miscellaneous) are both `__cdecl`, and both are declared without `CDecl`:
+1. Open `declare-dll-stack-not-checked.twinproj` (attached as `declare-dll-stack-not-checked.zip`); its build is win32. `labs` and `abs` in `msvcrt.dll` and `add` in `basic_32.obj` (`basic.c`, beside it in Miscellaneous) are all `__cdecl`, and all three are declared without `CDecl`. `abs`, as `cAbs`, is also marked `[DLLStackCheck(False)]`:
    ```
    Import Library "/Miscellaneous/basic_32.obj" As BASIC
 
@@ -11586,6 +11979,9 @@ Steps to reproduce the behavior:
 
        Private Declare PtrSafe Function add Lib BASIC (ByVal a As Long, ByVal b As Long) As Long
        Private Declare PtrSafe Function labs Lib "msvcrt" (ByVal x As Long) As Long
+
+       [DLLStackCheck(False)]
+       Private Declare PtrSafe Function cAbs Lib "msvcrt" Alias "abs" (ByVal x As Long) As Long
 
        Private Sub Report(ByVal what As String, ByVal value As Long)
            If Err.Number <> 0 Then
@@ -11601,6 +11997,12 @@ Steps to reproduce the behavior:
            Report "add(2, 3)", r
        End Sub
 
+       Private Sub CallMarked()
+           On Error Resume Next
+           Dim r As Long = cAbs(-7)
+           Report "cAbs(-7)", r
+       End Sub
+
        Private Sub CallDll()
            On Error Resume Next
            Dim r As Long = labs(-7)
@@ -11610,6 +12012,8 @@ Steps to reproduce the behavior:
        Public Sub Main()
            CallStatic
            Debug.Print "returned from CallStatic"
+           CallMarked
+           Debug.Print "returned from CallMarked"
            CallDll
            Debug.Print "returned from CallDll"
        End Sub
@@ -11627,6 +12031,8 @@ Steps to reproduce the behavior:
    ```
    add(2, 3): error -353703419, Bad DLL definition.  Stack corruption detected.
    returned from CallStatic
+   cAbs(-7): error -353703419, Bad DLL definition.  Stack corruption detected.
+   returned from CallMarked
    labs(-7) = 7
    restarting from MEMORY [...]
    ```
@@ -11649,11 +12055,13 @@ Other mismatches tried, each in a 32-bit IDE run and exe, raise no error either,
 
 A statically linked call is checked both ways: a `__stdcall` function of the object declared `CDecl` raises -353703419 as well. So is a call through a `Delegate`: a `Delegate Function OneArg (ByVal x As Long) As Long`, without `CDecl`, given the address of `labs` from `GetProcAddress` raises -353703419 when it is called, and the program goes on, in the IDE and in the exe; the same delegate declared `CDecl` returns 7. A 64-bit build has one calling convention, so neither `Declare` in the reproducer is a mismatch there, and both calls return their values.
 
+`[DLLStackCheck(False)]` on a `Declare` adds the check a `Declare` lacks, which is the opposite of what its name says. In the reproducer `cAbs` raises -353703419 and the program goes on, while `labs`, the same mistake unmarked, ends it. Each form was also tried on a `Declare` that states one parameter for `GetCurrentThreadId`, which takes none, and on a `Delegate` with the same signature, in a 32-bit IDE run and exe, each in a project of its own. On the `Declare`, `(False)` raises -353703419 and the program goes on, and no attribute, `[DLLStackCheck]` and `[DLLStackCheck(True)]` raise nothing and end with an access violation. On the `Delegate` it is the other way round: `(False)` raises nothing and ends with an access violation, and the other three raise -353703419. The attribute changes the code to match: a 32-bit exe with 300 calls is 43008 bytes for the `Declare` and 47616 with `(False)`, and 40448 bytes for the `Delegate` and 35840 with `(False)`; `[DLLStackCheck]` and `[DLLStackCheck(True)]` give the size with no attribute. A 64-bit build has no check: the same exes are 57344 and 46080 bytes with every form, and the same wrong signatures raise nothing and return. The marked `Declare` behaves the same on BETA 1010 and BETA 1033.
+
 VB6's native code checks nothing either: the same VB6 project compiled to native code ends with an access violation in OLEAUT32. The check is made by VB6's IDE and its P-Code. The reproducer behaves the same on BETA 1010.
 
 Severity: medium. A wrong `Declare` is the programmer's mistake, but nothing points to it: the program crashes in the procedure that made the call, after the call has returned, and in the IDE the compiler goes down with it. A VB6 programmer expects error 49 at the call.
 
-<!-- Reproducer: bugs/declare-dll-stack-not-checked/ (mode run, win32, exe; expect is tbrun exit 5, the statically linked call's error line, labs(-7) = 7, no "returned from CallDll", and the exe's exit 0xC0000005; verify reproduces on BETA 1034 and with --ide on BETA 1010). Its vb6/ project is compiled to P-Code (CompilationType=-1), which prints error 49 and returns; compiled to native code it faults in OLEAUT32. The MulDiv cases, the stdcall-declared-CDecl static case and the delegate case were scratch probes, not kept. docs/Reference/Core/Declare.md and docs/Features/Advanced/API-Declarations.md carry a WARNING (BETA 1034) for it; when a fixed build is released, the WARNING goes and the pages say which error a mismatch raises. docs/Features/Advanced/Static-Linking.md states the statically linked call's error as prose. Found 2026-11-03 narrowing what tbrun had reported as a 32-bit run that never reached [BUILD] Executing: the run was stopped at the IDE's error panel for the statically linked call's error. -->
+<!-- Reproducer: bugs/declare-dll-stack-not-checked/ (mode run, win32, exe; expect is tbrun exit 5, the statically linked call's error line, the error line of cAbs, the marked Declare, labs(-7) = 7, no "returned from CallDll", and the exe's exit 0xC0000005; verify reproduces on BETA 1034 and with --ide on BETA 1010). Its vb6/ project is compiled to P-Code (CompilationType=-1), which prints error 49 and returns; compiled to native code it faults in OLEAUT32. The MulDiv cases, the stdcall-declared-CDecl static case, the delegate case and the eight forms of [DLLStackCheck] on a Declare and a Delegate, by arch, were scratch probes, not kept; a Delegate marked (False) ends the program, so it cannot share the reproducer. docs/Reference/Core/Declare.md, docs/Features/Advanced/API-Declarations.md and docs/Reference/Attributes.md (under DLLStackCheck) carry a WARNING (BETA 1034) for it; when a fixed build is released, the WARNING goes and the pages say which error a mismatch raises and what the attribute does. docs/Features/Advanced/Static-Linking.md states the statically linked call's error as prose. Found 2026-11-03 narrowing what tbrun had reported as a 32-bit run that never reached [BUILD] Executing: the run was stopped at the IDE's error panel for the statically linked call's error. -->
 
 ---
 
@@ -12661,11 +13069,17 @@ What decides it:
  - twinBASIC compiler version: BETA 1034
 
 **Additional context**
-BETA 1034 takes the text of each error from the language pack, and the message has to be filled in with the member's name, which may be how it was lost. That is a guess from outside the compiler.
+The cause, read from the compiler `twinBASIC_win32.dll` of BETA 1034 (the function at RVA 0x12C790): the function that makes a diagnostic's text takes the code as a 16-bit value, looks up the code's template in one of two tables, and accepts only the codes 0 to 37 and 5000 to 5259. For any other code it returns the text *Internal Error - Bad Error Info Locale Data*, which BETA 1033's compiler does not hold. `twinBASIC_win64.dll` has the same three limits. This error's code is `ERROR_MissingImplementation = -1` in the compiler's list of diagnostic codes, which is 65535 as a 16-bit value, so it never reaches a table. The text *Missing implementation of member* is still in the DLL.
+
+It is the only code affected. Of the 292 codes in that list, which is current as of BETA 1007, it is the only one outside those ranges, and the codes added since, TB0034 to TB0037, are inside them. The logs of the compiles behind this entry hold the text of 37 codes, and this is the only one with the fallback text.
+
+The language pack cannot mend it. On a private copy of the install, a row `TB65535:` in `locale/en-gb.lang`, with `{0}` or without, changes nothing, nor do rows keyed `TB-1`, `TB0000` and `ERROR_MissingImplementation`, while a new row `TB5074: "PROBE5074 [{0}]"` changes TB5074's message to `PROBE5074 [Cannot construct 'IFoo': expected a class type.]`. So the check has to admit 65535, or this error has to get a code inside the ranges.
+
+This is a different fault from *TB5079 for an unknown type puts its whole message inside the message for an unknown name*, which came with the same new function. There the code passes the check, and the pack's row for it wraps the whole message the compiler passes as `{0}`.
 
 Severity: low. The build stops where it should, but a class with several members has to be read by hand to find the missing one.
 
-<!-- Reproducer: bugs/missing-implementation-message/ (mode compile, expects TB65535 and the text). No page carries a callout: docs/Reference/Attributes.md quotes the message in a comment only. -->
+<!-- Reproducer: bugs/missing-implementation-message/ (mode compile, expects TB65535 and the text). docs/Reference/Attributes.md carries a NOTE (BETA 1034) under AllowUnpopulatedVtableEntry, whose text quotes the BETA 1033 message; when a fixed build is released, the NOTE goes. The bytes of the function were read by hand from what the install ships, in a scratch script; the pack rows were tried on a copy from makeIdeCopy under the temp folder, with the install on the Desktop only read. -->
 
 ---
 
@@ -12725,3 +13139,288 @@ Inferred from the pattern above and not read from the generated code: one stub, 
 Severity: high. The program ends with an access violation for a call whose whole purpose is to raise an error that it can handle, and unsaved data is lost.
 
 <!-- Reproducer: bugs/implements-friend-stub-stack/ (mode test; the case that does not return is last, because a run stops there). The exe's results were run once in a scratch copy, not kept: `tbrun --exe` on the three shapes gave 0xC0000005 for the two-argument Sub and for the Function with an argument, and the box for the Sub with no arguments. Found when the sample on the Friend page, which had a Sub with a ByVal Currency argument, did not return under check_examples; the sample now has a Long. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md, docs/Reference/Core/Implements.md. -->
+
+---
+
+## Two members of a class with one dispatch ID compile with no diagnostic, and an ActiveX DLL then stops at its type library with a message that names neither member
+
+**Describe the bug**
+Two members of one class that have the same dispatch ID, given by `[DefaultMember]`, `[Enumerator]` or `[DispId]`, compile with no diagnostic. An ActiveX DLL with such a class does not build: after a compile that reported nothing, the build stops at the type library, and its message names the class's interface, not the two members or the reason. Observed with `tbbuild --build`, which exits 5.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `two-members-one-dispid-typelib.twinproj` (attached as `two-members-one-dispid-typelib.zip`). It is an ActiveX DLL whose Settings turn off registering it after a build, and its one source file, `Startup.twin`, is:
+   ```
+   Public Class TwoEvents
+       [DefaultMember]
+       Public Event One(ByVal n As Long)
+       [DefaultMember]
+       Public Event Two(ByVal n As Long)
+   End Class
+   ```
+2. See the DIAGNOSTICS panel, which is empty.
+3. Build it. The DEBUG CONSOLE shows:
+   ```
+   [BUILD] Starting...
+   [TYPELIB] failed to finalize typelibrary interface '__TwoEvents'
+   [TYPELIB] failed to set coclass source/event inheritence on 'TwoEvents'.
+   [LINKER] FAILED to create type library
+   [BUILD] failed
+   ```
+
+What decides it, each built as an ActiveX DLL:
+- Stops at the type library, with no diagnostic: two events with `[DefaultMember]`, with `[Enumerator]` or with `[DispId(5)]`, and two `Function`s with any of the three, where the message names `_TwoFunctions`.
+- Builds: no mark, the mark on one member (an event or a `Function`), and `[DefaultMember]` on one event with `[Enumerator]` on the other.
+
+**Expected behavior**
+A compile error on the second member, which names both members and says that they have the same dispatch ID, in every kind of project, so that the mistake is marked in the code. At the least, a build message that says so.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+In a Standard EXE such a class builds and runs. With `[DefaultMember]` or `[Enumerator]` on both events, `RaiseEvent` of the second runs the handler of the first, with the second's argument: `One:1 One:2` in place of `One:1 Two:2`, in the IDE and in the exe, 32-bit and 64-bit. That is not reported here as a defect, because VB6 does the same: a class with `Attribute One.VB_UserMemId = 0` on the first of two events and the same on the second compiles and prints `One:1 One:2` (the attached VB6 project, `two-members-one-dispid-typelib-vb6.zip`). With the ID 5 VB6 prints the same, where twinBASIC with `[DispId(5)]` on both events runs each event's own handler. VB6 also compiles two `Function`s with the ID 0, and calls the first as the default member.
+
+What VB6 does for such a class in an ActiveX DLL was not tried, because VB6 registers a DLL when it makes one.
+
+The build stops in the same way on BETA 1010 and BETA 1033.
+
+Severity: low. The class is the programmer's mistake, but nothing marks it in the code, and the message does not say which members to change.
+
+<!-- Reproducer: bugs/two-members-one-dispid-typelib/ (mode build; expect is tbbuild exit 5 and the log's last line, the one tbbuild writes to stderr; Settings have no project.startupObject, because an ActiveX DLL has no Sub Main and with the key its build stops at the missing Main instead). vb6/ is the run's VB6 side, `bug_repro.mjs vb6`: a Standard EXE, never an ActiveX DLL. The two lists under "What decides it", the run in the IDE and the exe, and VB6's cases with the ID 5 and with two Functions were scratch probes, not kept. No page carries a callout: docs/Reference/Attributes.md lists no Event under DefaultMember or Enumerator, and says what the run does in its comments there. Found 2026-11-06 by the attribute pass as a defect of two marks on events; VB6 then showed that the run is what VB6 does, which left the build. -->
+
+---
+
+## `[DebugOnly]` on `Class_Initialize` makes a built exe fail with error 91 or an access violation; an IDE run is right
+
+**Describe the bug**
+With `[DebugOnly]` or `[DebugOnly(True)]` on a class's `Class_Initialize`, a program that creates the class runs correctly from the IDE and fails as a built exe, 32-bit and 64-bit, with no diagnostic. The exe stops with error 91, *Object variable or With block variable not set*, at the first read of a field after `New`, or ends with an access violation. In a 32-bit exe the procedure that makes the object can run twice first. Observed with `tbrun --exe`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `debugonly-class-initialize-exe.twinproj` (attached as `debugonly-class-initialize-exe.zip`). Its one source file, `Startup.twin`, is:
+   ```
+   Class C
+       Public Stamp As Long
+
+       [DebugOnly]
+       Private Sub Class_Initialize()
+           Stamp = 7
+       End Sub
+   End Class
+
+   Module Startup
+
+       Public Sub Main()
+           Dim x As C
+           Set x = New C
+           Debug.Print "stamp " & x.Stamp
+       End Sub
+
+       [RunAfterBuild]
+       Private Sub Built()
+           Debug.Cls
+           Main
+       End Sub
+
+   End Module
+   ```
+2. Build it. The `[RunAfterBuild]` Sub runs `Main` in the IDE, and the DEBUG CONSOLE shows `stamp 7`.
+3. Run the built exe. It opens a box at the line that reads `x.Stamp`:
+   ```
+   Run-time error '91'
+
+   Object variable or With block variable not set
+   ```
+
+What decides it, each in a built exe. The IDE run is right in every case:
+- `Set x = New C`, then a read of a field: error 91 in a box, 32-bit and 64-bit, with `[DebugOnly]` and with `[DebugOnly(True)]`.
+- An empty `Class_Initialize`, then `Set x = New C` and no read: in a 32-bit exe the procedure that holds the line runs through twice, and the program then ends with an access violation (0xC0000005). In a 64-bit exe it runs through once, and the program ends with an access violation at address 0.
+- `Dim x As New C`, then a read of a field: an access violation, in a 32-bit exe after the procedure has started a second time.
+- `[DebugOnly(False)]`, or no attribute: right, 32-bit and 64-bit.
+- `[DebugOnly]` on `Class_Terminate`, with `Class_Initialize` unmarked: right, 32-bit and 64-bit.
+
+**Expected behavior**
+`[DebugOnly]` excludes calls of the procedure from a build, so in the exe `Class_Initialize` does not run and `New` gives an object: `x.Stamp` reads 0, and the program goes on. If the attribute is not meant for `Class_Initialize`, a compile error, as TB5162 is on a `Function`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The reproducer gives the same results on BETA 1010 and BETA 1033. VB6 has no comparison: it has no such attribute.
+
+Severity: high. The program works in the IDE and fails only once it is built, with an error that does not point to the attribute, and unsaved data is lost.
+
+<!-- Reproducer: bugs/debugonly-class-initialize-exe/ (mode run, exe; expect is tbrun exit 6, `stamp 7` from the IDE run and the exe's box). The other cases under "What decides it" were run with tbrun --exe, as win32 and as win64, in scratch trees that are not kept. docs/Reference/Attributes.md carries a WARNING (BETA 1034) under DebugOnly; when a fixed build is released, the WARNING goes. -->
+
+---
+
+## A `Const` that is not an array takes arguments: they are dropped without being evaluated, where VB6 refuses the line
+
+**Describe the bug**
+Parentheses after a constant that is not an array compile, with no diagnostic. The line uses the constant's value, and the arguments are dropped without being evaluated, so a function called in them never runs. A constant with the name of a function hides it, so `Left("abcd", 2)` gives the constant's value where it reads as a call. VB6 refuses each such line. Observed in an IDE run and in a built exe, 32-bit and 64-bit.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `const-takes-arguments.twinproj` (attached as `const-takes-arguments.zip`). Its module `Startup` starts:
+   ```
+   Private Const K As Long = 5
+   Private Const S As String = "abc"
+   Private Const Left As Long = 1
+
+   Private Calls As Long
+
+   Private Function Effect() As Long
+       Calls = Calls + 1
+       Effect = 1
+   End Function
+   ```
+   and its `Main` prints `K(1, 2)`, `S(1)`, `Left("abcd", 2)` and `K(Effect())`.
+2. Build it. The `[RunAfterBuild]` Sub runs `Main` in the IDE, and the DEBUG CONSOLE shows:
+   ```
+   K(1, 2) = 5
+   S(1) = abc
+   Left("abcd", 2) = 1
+   K(Effect()) = 5, calls of Effect: 0
+   ```
+3. Run the built exe. It exits with 50, which is `K(Effect())` times 10, plus the number of calls of `Effect`.
+
+What decides it:
+- Compile with no diagnostic: `K()`, `K(1)`, `K(1, 2)`, `K(a:=1)`; a `String`, `Double` or `Variant` constant; a `Public` one, with or without the module's name; a `Const` inside a procedure.
+- Refused: arguments on a `Long` or `String` variable, TB5030, *Unexpected call arguments*; on an `Enum` member, TB5070, *Enumeration value cannot accept arguments*; too many on an array constant, TB5050, *bad constant array accessor*; `K(NoSuchName)`, TB5079, so the arguments are bound before they are dropped; `K(1) = 3`, TB5086.
+
+**Expected behavior**
+A compile error on each such line, as for a variable or an `Enum` member. VB6's build stops at each of `K(1, 2)`, `K(1)`, `K()`, `S(1)`, `K(Effect())` and `Left("abcd", 2)` with *Expected array*, each checked in a build of its own. The attached VB6 project, `const-takes-arguments-vb6.zip`, builds the same constants without parentheses, and lists those lines as comments with the message.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The reproducer gives the same results on BETA 1010 and BETA 1033.
+
+Severity: medium. Code that VB6 refuses compiles and gives a wrong value with no error, and a function call in the arguments is silently left out.
+
+<!-- Reproducer: bugs/const-takes-arguments/ (mode run, exe: expect is the four lines and the exe's exit 50, which tbrun reports as exit 6; a fixed compiler refuses the project, and verify then says it no longer reproduces). vb6/ builds the constants without parentheses, because VB6 refuses the lines themselves; those messages are from scripts/vb6run.mjs, one module for each line. The two lists under "What decides it" were one compile in a scratch tree, not kept. docs/Reference/Core/Const.md carries a WARNING (BETA 1034) for it; when a fixed build is released, the WARNING goes. -->
+
+---
+
+## Hover on a `Type` field or a class variable shows its `[Description]` twice
+
+**Describe the bug**
+The popup shown when the pointer rests on a member of a `Type`, or on a variable of a `Class`, holds the text of its `[Description]` twice, run together: `same linesame line`. The compiler's answer to `textDocument/hover` already holds it twice. Observed in the popup and in that answer.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `description-field-hover-twice.twinproj` (attached as `description-field-hover-twice.zip`). Its one source file, `Startup.twin`, is:
+   ```
+   Module Startup
+
+       Public Type Pair
+           [Description("same line")] A As Long
+           [Description("own line")]
+           B As Long
+       End Type
+
+       [Description("a constant")]
+       Public Const Limit As Long = 1
+
+       [Description("a module variable")]
+       Public Total As Long
+
+       Public Sub Main()
+           Dim p As Pair
+           Dim x As Long
+           p.A = 1
+           p.B = 2
+           x = Limit
+           Total = 3
+       End Sub
+
+   End Module
+
+   Public Class Holder
+
+       [Description("a class variable")]
+       Public Count As Long
+
+       Public Sub Use()
+           Count = 1
+       End Sub
+
+   End Class
+   ```
+2. Rest the pointer on `A` in `p.A = 1`. The popup ends `same linesame line`.
+3. Do the same on `B` in `p.B = 2` and on `Count` in `Holder.Use`. They end `own lineown line` and `a class variablea class variable`.
+4. Do the same on `Limit` and `Total`. They end `a constant` and `a module variable`, once each.
+
+**Expected behavior**
+The text once, as for a `Const`, a variable of a `Module`, a procedure, a parameter and a `Type` itself.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+The hover calls each of the doubled members a *field*. It makes no difference whether `[Description]` is on the member's line or the line above it, or whether the `Type` is in a `Module` or a `Class`. A member with no `[Description]` shows no text. The same on BETA 1033.
+
+Severity: low; the text can still be read.
+
+<!-- Reproducer: bugs/description-field-hover-twice/ (mode lane: ide:hover-description, test/ide/hover-description.test.mjs on test/ide/probes/hover-description, whose source is the project's; the test reads the compiler's answer for each case and the popup for the first). A hover needs the IDE, so tbrun cannot ask for it. docs/Reference/Attributes.md carries a NOTE (BETA 1034) under Description; when a fixed build is released, the NOTE goes. Found by the attribute pass for a Type field; the class variable, and the Type in a Class, were found narrowing it. -->
+
+---
+
+## TB0029 is reported as a warning in a 64-bit build whatever level Project Settings or an attribute gives it
+
+**Describe the bug**
+In a 64-bit build, TB0029, the warning for a `Declare` with no `PtrSafe`, is always reported as a warning. The level the Compiler Warnings list of Project Settings gives it is not applied: at **IGNORE**, **HINT**, **INFO** or **ERROR** it is still a warning, and `[IgnoreWarnings(TB0029)]` and `[EnforceErrors(TB0029)]` change nothing, on a module or on the `Declare`. TB0030 follows each of these. In a new project the list shows TB0029 at **IGNORE**.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `tb0029-level-ignored.twinproj` (attached as `tb0029-level-ignored.zip`), and set the build to win64. Its Settings put TB0029 at **IGNORE**, and its one source file, `Startup.twin`, is:
+   ```
+   Module Startup
+       Private Declare Function GetTickCount Lib "kernel32" () As Long
+
+       Public Sub Main()
+       End Sub
+   End Module
+
+   [IgnoreWarnings(TB0029)]
+   Module ByAttribute
+       Private Declare Function GetVersion Lib "kernel32" () As Long
+   End Module
+
+   [IgnoreWarnings(TB0030)]
+   Module Control
+       Private Declare PtrSafe Function GetACP Lib "kernel32" Alias "GetACP" () As Long
+   End Module
+
+   Module Unmarked
+       Private Declare PtrSafe Function GetOEMCP Lib "kernel32" Alias "GetOEMCP" () As Long
+   End Module
+   ```
+2. See two warnings, one for each `Declare` with no `PtrSafe`, and a hint for the `Alias` in `Unmarked`. `Control` has none:
+   ```
+   TB0029 Declare needs PtrSafe attribute on this build configuration for VBA7 compatibility [Declare PtrSafe Sub/Function]   [5,5]
+   TB0029 Declare needs PtrSafe attribute on this build configuration for VBA7 compatibility [Declare PtrSafe Sub/Function]   [13,5]
+   TB0030 Declare Alias not required as it is identical to the declared Name   [22,68]
+   ```
+
+**Expected behavior**
+TB0029 follows its level, as TB0030 does: not reported at **IGNORE**, a hint at **HINT**, an error at **ERROR**. In a new project, whose list shows TB0029 at **IGNORE**, it is not reported.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034
+
+**Additional context**
+Also tried, each with the same result, a warning: no entry for TB0029 in the project's lists; TB0029 at **HINT**, **INFO**, **ERROR** and **WARNING** in Project Settings; `[IgnoreWarnings(TB0029)]`, `[EnforceErrors(TB0029)]` and `[EnforceWarnings(TB0029)]` on the module; `[IgnoreWarnings(TB0029)]` and `[EnforceErrors(TB0029)]` on the `Declare`. TB0030, in the same projects, took each of those levels. A 32-bit build reports neither `Declare`.
+
+The same on BETA 1010 and BETA 1033, with no level, at **IGNORE** and at **ERROR** in Project Settings, and under `[IgnoreWarnings(TB0029)]` on the module; BETA 1033 also under `[EnforceErrors(TB0029)]`.
+
+Severity: low; the warning cannot be turned off, so a project with 64-bit builds and older `Declare` statements always shows it, once for each statement.
+
+<!-- Reproducer: bugs/tb0029-level-ignored/ (mode compile, arch win64; expect.output matches the two TB0029 WARNING rows and the TB0030 HINT, and expect.absent the TB0030 row that IgnoreWarnings removes). An entry of its own, and not part of "TB0034 is reported as a warning whatever level Project Settings or an attribute gives it", though the pattern is the same: that title names TB0034 and titles do not change; TB0034 has had its code only since BETA 1034, and TB0029 ignores its level on BETA 1010 and 1033 too, so the two are not one change; and TB0029 needs a 64-bit build, which that reproducer's expect does not ask for. upstream/twinbasic-diagnostic-ids.h notes that TB0029 replaced the error TB5129, which may be why no level reaches it; that is a guess. docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0029, and names TB0029 under Adjusting Warnings; when a fixed build is released, the NOTE goes, and so does that name. Found 2026-11-06 by the attribute pass. -->

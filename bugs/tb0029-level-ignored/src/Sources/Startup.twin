@@ -1,0 +1,23 @@
+' A Declare with no PtrSafe, compiled as win64. The Settings put TB0029 at IGNORE, and the second
+' module asks for the same in an attribute. Each Declare is still a WARNING. TB0030 is the control:
+' IgnoreWarnings turns it off in the third module, and the fourth, with no attribute, shows it as a hint.
+Module Startup
+    Private Declare Function GetTickCount Lib "kernel32" () As Long
+
+    Public Sub Main()
+    End Sub
+End Module
+
+[IgnoreWarnings(TB0029)]
+Module ByAttribute
+    Private Declare Function GetVersion Lib "kernel32" () As Long
+End Module
+
+[IgnoreWarnings(TB0030)]
+Module Control
+    Private Declare PtrSafe Function GetACP Lib "kernel32" Alias "GetACP" () As Long
+End Module
+
+Module Unmarked
+    Private Declare PtrSafe Function GetOEMCP Lib "kernel32" Alias "GetOEMCP" () As Long
+End Module

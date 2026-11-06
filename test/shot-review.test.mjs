@@ -46,6 +46,7 @@ import {
   readEvents,
   runPaths,
   sessionPaths,
+  STAGED_TOOLS,
 } from "../scripts/lib/shot-session.mjs";
 import {
   allPictures,
@@ -64,7 +65,7 @@ import {
 import { allHtml, chipsOf, detailHtml, encodePath, hrefs, loupesHtml, plainHtml } from "../scripts/lib/shot-pages.mjs";
 import { pngRule, svgRule } from "../scripts/lib/shot-policy.mjs";
 import { againstOf, createApplier } from "../scripts/lib/shot-verdicts.mjs";
-import { kindOf, onlyOf, runOf } from "../scripts/lib/shot-runs.mjs";
+import { browserTable, kindOf, onlyOf, runArgs, runOf } from "../scripts/lib/shot-runs.mjs";
 import { createReviewServer } from "../scripts/lib/shot-server.mjs";
 import { openRevision } from "../scripts/lib/shot-revision.mjs";
 
@@ -205,8 +206,8 @@ describe("the screenshot review's session (shot-session.mjs)", () => {
       `node scripts/shoot_docs.mjs --cleanup --against ${h}`,
     );
     assert.deepEqual(
-      ["shoot_docs", "replay", "cleanup"].map((tool) => kindOf({ tool })),
-      ["retake", "replay", "cleanup"],
+      ["shoot_docs", "replay", "cleanup", "chromeshot"].map((tool) => kindOf({ tool })),
+      ["retake", "replay", "cleanup", "browser"],
     );
     for (const [request, refusal] of [
       [{ kind: "rm" }, /no such kind of run: rm/],
@@ -221,6 +222,101 @@ describe("the screenshot review's session (shot-session.mjs)", () => {
       [{ kind: "retake", pictures: [] }, /no picture was given/],
     ])
       assert.throws(() => runOf(request, base), refusal);
+  });
+});
+
+describe("a browser retake of the screenshot review", () => {
+  const base = { hash: "c".repeat(40) };
+  const RUN = "Documentation/Images/run-workflow.png";
+  const MERGE = "Documentation/Images/merge-pull-request.light.png";
+
+  test("is what a retake of a browser's picture is, whichever page asks for it", () => {
+    // The light picture stands for its shot, and each shot is taken once.
+    const run = runOf({ kind: "retake", pictures: [RUN, RUN.replace(".png", ".light.png"), MERGE] }, base);
+    assert.equal(run.tool, "chromeshot");
+    assert.deepEqual(run.args.slice(2), ["--against", base.hash]);
+    const only = new RegExp(run.args[1]);
+    assert.deepEqual(
+      [RUN, "Documentation/Images/merge-pull-request.png", "Documentation/Images/confirm-merge.png"].map((p) =>
+        only.test(p),
+      ),
+      [true, true, false],
+    );
+    // What the runs page's retake form sends with it is the IDE's, and goes with the IDE.
+    assert.equal(
+      runOf({ kind: "retake", pictures: [RUN], ide: "C:/tb/twinBASIC.exe", jobs: "2" }, base).tool,
+      "chromeshot",
+    );
+    // Where it works comes from the tool's own options.
+    const placed = runOf({ kind: "browser", only: "run-workflow" }, base, {
+      captures: "D:/c",
+      extension: "D:/e",
+      noOpen: true,
+    });
+    assert.deepEqual(placed.args, [
+      "--take",
+      "run-workflow",
+      "--against",
+      base.hash,
+      "--captures",
+      "D:/c",
+      "--extension",
+      "D:/e",
+      "--no-open",
+    ]);
+    assert.deepEqual(runOf({ kind: "browser" }, base).args.slice(0, 2), ["--take", "."]);
+    // An IDE's picture is the IDE's, and the two do not share a run.
+    assert.equal(runOf({ kind: "retake", pictures: ["IDE/Images/Menu_File.png"] }, base).tool, "shoot_docs");
+    assert.throws(
+      () => runOf({ kind: "retake", pictures: [RUN, "IDE/Images/Menu_File.png"] }, base),
+      /runs of their own/,
+    );
+    assert.throws(() => runOf({ kind: "browser", only: "(" }, base), /--take expects a regular expression/);
+  });
+
+  test("is staged, its stage and events given as a retake's are", () => {
+    assert.ok(STAGED_TOOLS.has("chromeshot"));
+    assert.deepEqual(runArgs("chromeshot", ["--take", "x"], "S"), ["--take", "x", "--stage", "S", "--events"]);
+    assert.equal(
+      commandOf({ tool: "chromeshot", args: ["--take", "x"] }),
+      "node scripts/svgshot/chromeshot.mjs --take x",
+    );
+  });
+
+  test("says which picture it waits for, why the last capture was refused, and when it is done", () => {
+    const start = [
+      {
+        type: "run",
+        svg: true,
+        build: null,
+        captures: "D:/c",
+        extension: { folder: "D:/e", step: "press reload" },
+        jobs: [{ name: "run-workflow", pictures: [RUN] }],
+      },
+      { type: "job", job: "run-workflow", state: "started" },
+      { type: "await", job: "run-workflow", out: RUN, url: "https://x/y", shows: "Open it." },
+    ];
+    const waiting = runFacts("chromeshot", start);
+    assert.deepEqual(waiting.awaiting, { job: "run-workflow", out: RUN, url: "https://x/y", shows: "Open it." });
+    assert.equal(waiting.refused, null);
+    assert.deepEqual(waiting.extension, { folder: "D:/e", step: "press reload" });
+    assert.equal(waiting.captures, "D:/c");
+    assert.ok(waiting.svg);
+    const refused = [...start, { type: "refused", job: "run-workflow", out: RUN, error: "no marks" }];
+    assert.equal(runFacts("chromeshot", refused).refused, "no marks");
+    // A later wait starts clean, and a job ended waits for nothing.
+    const next = [...refused, { type: "await", job: "b", out: "b.png", url: "u", shows: "s" }];
+    assert.equal(runFacts("chromeshot", next).refused, null);
+    const done = [...refused, { type: "job", job: "run-workflow", state: "done" }];
+    assert.equal(runFacts("chromeshot", done).awaiting, null);
+    assert.equal(runFacts("chromeshot", [...start, { type: "summary", stopped: true }]).awaiting, null);
+  });
+
+  test("lists its pictures in the table of every picture, as a setup of their own", () => {
+    const table = browserTable();
+    assert.equal(table.length, 6);
+    assert.ok(table.every((s) => s.setup === "browser" && !s.once && !s.window));
+    assert.ok(table.some((s) => s.out === RUN));
   });
 });
 
@@ -1304,6 +1400,87 @@ onStop(process.stdin, () => {
       await new Promise((r) => setTimeout(r, 20));
     }
   };
+
+  test("runs a browser retake, and its page says what to do in the browser", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-"));
+    const docs = path.join(root, "docs");
+    fs.mkdirSync(docs);
+    const script = path.join(root, "fake-take.mjs");
+    const OUT = "Documentation/Images/run-workflow.png";
+    const record = (value) => `console.log(${JSON.stringify(`@@shot-event ${JSON.stringify(value)}`)});`;
+    fs.writeFileSync(
+      script,
+      [
+        `import { writeFileSync } from "node:fs";`,
+        `writeFileSync(${JSON.stringify(path.join(root, "args.json"))}, JSON.stringify(process.argv.slice(2)));`,
+        record({
+          type: "run",
+          svg: true,
+          build: null,
+          captures: "D:/captures",
+          extension: { folder: "D:/ext", step: "press reload on svgshot" },
+          jobs: [{ name: "run-workflow", setup: "browser", pictures: [OUT] }],
+        }),
+        record({ type: "job", job: "run-workflow", state: "started" }),
+        record({
+          type: "await",
+          job: "run-workflow",
+          out: OUT,
+          url: "https://example.com/page",
+          shows: "Press <Run>.",
+        }),
+        record({ type: "refused", job: "run-workflow", out: OUT, error: "it has no marks" }),
+        // A person's take takes a while: until the tool stops it.
+        `process.stdin.on("data", () => process.exit(0)); setTimeout(() => {}, 60000);`,
+      ].join("\n"),
+    );
+    const revision = stubRevision("a", {});
+    const app = createReviewServer({
+      session: openSession(root, () => ({ hash: revision.hash, short: revision.short, build: 1500 })),
+      revision,
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+      docsRoot: docs,
+      command: { script },
+      browser: { captures: "D:/captures", noOpen: true },
+    });
+    try {
+      const base = `http://127.0.0.1:${await app.listen(0)}`;
+      // The retake button of the picture's page: a retake, of a picture a browser takes.
+      const started = await fetch(base + hrefs.startRun, {
+        method: "POST",
+        headers: { origin: base, "content-type": "application/json" },
+        body: JSON.stringify({ kind: "retake", pictures: [OUT] }),
+      });
+      assert.equal(started.status, 200, await started.clone().text());
+      const page = async () => (await fetch(base + hrefs.runs)).text();
+      const until = async (pattern) => {
+        for (let k = 0; k < 100; k++) {
+          const text = await page();
+          if (pattern.test(text)) return text;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        throw new Error(`the runs page never said ${pattern}`);
+      };
+      const text = await until(/Its last capture was refused: it has no marks/);
+      assert.match(text, /Run 1: Browser retake, running/);
+      assert.match(text, /Take <code>run-workflow<\/code> in the browser/);
+      assert.match(text, /Press &lt;Run&gt;\./);
+      assert.match(text, /href="https:\/\/example\.com\/page"/);
+      assert.match(text, /press reload on svgshot/);
+      assert.match(text, /D:\/captures/);
+      const args = JSON.parse(fs.readFileSync(path.join(root, "args.json"), "utf8"));
+      assert.equal(args[0], "--take");
+      assert.ok(args.includes("--no-open") && args.includes("D:/captures") && args.includes("--events"));
+      // Stopping it leaves no instruction behind.
+      await Promise.all(app.live().map((h) => (h.stop(), h.exited)));
+      const ended = await until(/Run 1: Browser retake, (?:stopped|ended)/);
+      assert.doesNotMatch(ended, /in the browser<\/h4>/);
+    } finally {
+      for (const h of app.live()) h.kill();
+      await app.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
 
   test("follows a run as it reports, serves its pages and files to the loopback host only, and reads the run back", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-"));

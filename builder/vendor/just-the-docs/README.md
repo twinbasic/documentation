@@ -239,7 +239,9 @@ section that only mentioned it.** Four changes, measured in
   the ordinary query.
 - *Kind words optional, when nothing else names the thing.* For a query
   naming one thing, if no entry the all-words pass found has that name in
-  its title or as its exact name (`namesTheThing()`), the pass runs again
+  its title (on a page titled with it too, so that a member page of a
+  contributed package, headed with the name, does not count) or as its
+  exact name (`namesTheThing()`), the pass runs again
   with the kind words optional: they still score, but aren't required. A
   member's section rarely says "property" or "event", so `MaxHeight
   property` found only pages mentioning both words, and never the
@@ -387,6 +389,20 @@ the results are sorted again. It adds no field and no index term; each
 entry's two keys are computed on its first appearance in a result and
 kept in `searchLoaded()`'s `titleKeys`. See
 [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Whole titles". It sits outside `initSearch()`, so `offline.mjs` needs no change.
+
+**An entry of a label cancelled the kind-word fallback.** `isTermEntry()`
+tells an entry made for a label (its URL holds `#term:`, see
+[`builder/search.mjs`](../../search.mjs)'s `termSections`) from a section.
+`doSearch()` does not let one count as naming the thing a query names, so an
+IDE command called `Continue` does not stop `Continue statement` from
+falling back to the optional kind word. `eval/site_search.mjs` has the same
+function. See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Term entries".
+
+**A question's leading words were required.** `QUESTION_LEAD` drops a leading
+`how do I`, `how can you`, `how to` and the like from the query before it is
+tokenized, only when something follows, so `how do I close a panel` is
+`close a panel`. A lookahead, not a lookbehind (the smart dot split's reason).
+`eval/site_search.mjs` has the same expression.
 
 **The index was fetched and built synchronously on every page load, even
 for readers who never opened search.** `initSearch()` now only defines *how*

@@ -27,7 +27,7 @@ Private Sub ToggleDebugMode()
 End Sub
 ```
 
-The shortcut fires when the key is released, wherever the focus is in the IDE's window --- in the code editor, in the DEBUG CONSOLE, or on nothing at all --- except while a dialog or the rename box is open. If the IDE has a command of its own on the same key, that command runs as well: F1, for one, also expands or collapses the signature help while it is showing. Shift+F12 has no command in the IDE's default keymap.
+The shortcut fires when the key is released, wherever the focus is in the IDE's window --- in the code editor, in the DEBUG CONSOLE, or on nothing at all --- except while a dialog or the rename box is open. If the IDE has a command of its own on the same key, that command runs as well: F1, for one, also expands or collapses the signature help while it is showing. Shift+F12 has no command in the IDE's default keymap. [Keyboard Shortcuts](../../../tB/IDE/Reference/Keyboard-Shortcuts) lists every command of the IDE, with what it does and its default keys, so check there before choosing a key.
 
 <!-- test: bug addin-shortcut-ctrl-alt, lane addin:keys-help -->
 > [!NOTE] BETA 1034

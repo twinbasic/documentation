@@ -16,7 +16,7 @@ import { LAUNCH_ARGS, launchBrowser } from "../lib/browser.mjs";
 import { readRecords, sendStop, writeRecord } from "../lib/record-lines.mjs";
 import { BUNDLE_VERSION, drawBundle, pngHash, readBundle, renderBundle } from "./bundle.mjs";
 import { MISSABLE_STYLES, SNAPSHOT_STYLES } from "./capture.mjs";
-import { holdsUserName } from "./keep.mjs";
+import { heldWords } from "./private-words.mjs";
 import { slugOf } from "../lib/shot-apply.mjs";
 
 /** A picture's theme from its path under docs/: "light" for X.light.png, else "dark". */
@@ -62,9 +62,10 @@ export function listPictures(docsRoot) {
  *
  * A PNG that is not the one the bundle was taken with, or a question the bundle has
  * no answer for, is a retake; with `stale`, the SVG is drawn all the same and the
- * reason is one of its `notes`. An SVG that holds `user` (the Windows user name)
- * throws, unless `checkUserName` is false: only sheet.mjs passes that, whose sheet is
- * for its owner alone and is never written where git would take it (outputRefusal).
+ * reason is one of its `notes`. An SVG that holds `user` (the Windows user name, or a
+ * list of the words no published picture may show: private-list.mjs) throws, unless
+ * `checkUserName` is false: only sheet.mjs passes that, whose sheet is for its owner
+ * alone and is never written where git would take it (outputRefusal).
  */
 export async function redraw({ bundlesRoot, docsRoot, out, user, stale = false, checkUserName = true }) {
   const bundle = readBundle(bundlesRoot, out);
@@ -77,7 +78,7 @@ export async function redraw({ bundlesRoot, docsRoot, out, user, stale = false, 
     if (!stale) return missed;
     notes.push(missed.retake);
   }
-  if (checkUserName && holdsUserName(svg, user)) throw new Error("the SVG holds the Windows user name");
+  if (checkUserName && heldWords(svg, [user].flat()).length) throw new Error("the SVG holds the Windows user name");
   return { png, svg, stats, notes };
 }
 

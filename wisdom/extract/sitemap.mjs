@@ -27,12 +27,27 @@ function packageParts(path) {
   return path.replace(/^docs\/Reference\/(?:(?:Default|Built-In)\/)?/, "").split("/");
 }
 
+// A package goes by the name its landing page gives it, which is also its nav
+// parent, its URL and what a thread on Discord says.  The folder is only where it
+// is kept, and one differs: TwinBasicAssertions holds the Assert package.
+function packageNames(sitemap) {
+  const names = new Map();
+  for (const entry of sitemap) {
+    const parts = packageParts(entry.path);
+    if (parts.length === 2 && parts[1] === "index.md" && entry.title.endsWith(" Package")) {
+      names.set(parts[0], entry.title.slice(0, -" Package".length));
+    }
+  }
+  return names;
+}
+
 export function buildPackageSummary(sitemap) {
+  const names = packageNames(sitemap);
   const groups = {};
   for (const entry of sitemap) {
     const parts = packageParts(entry.path);
     if (parts.length < 2) continue;
-    const pkg = parts[0];
+    const pkg = names.get(parts[0]) ?? parts[0];
     const isModule = (pkg === "VBA" || pkg === "VBRUN") && parts.length > 2;
     const group = isModule ? `${pkg} > ${parts[1]}` : pkg;
     if (!groups[group]) groups[group] = new Set();
@@ -48,10 +63,12 @@ export function buildPackageSummary(sitemap) {
 
 // Flat { "Package/Title" → path, "Title" → path (if unambiguous) } for agent-side resolution.
 export function buildPageIndex(sitemap) {
+  const names = packageNames(sitemap);
   const index = {};
   const titleCount = {};
   for (const entry of sitemap) {
-    const pkg = packageParts(entry.path)[0];
+    const folder = packageParts(entry.path)[0];
+    const pkg = names.get(folder) ?? folder;
     index[`${pkg}/${entry.title}`] = entry.path;
     titleCount[entry.title] = (titleCount[entry.title] || 0) + 1;
   }

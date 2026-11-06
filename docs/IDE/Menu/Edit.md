@@ -14,7 +14,15 @@ The Edit menu holds the commands that change and search text. [Writing code](../
 
 ![The Edit menu open while the code editor has the focus, with no command greyed out. Its groups run from Undo and Redo through the clipboard commands, with Paste As Comment between Paste and Delete, then Find, Replace and Find In Project, the indent and format commands, the Quick Find group, the fold and unfold commands, and finally Go To Line/Column and four Transform To case commands. Most entries show a keyboard shortcut at the right.](Images/Menu_Edit.png){:width="298" height="771"}
 
-The picture shows the menu while the code editor has the focus. The commands act on the code editor, so which ones are available depends on what has the focus. With nothing in focus, **Paste As Comment** is missing and every command is greyed out. While the form designer has the focus, **Paste As Comment** is missing and the text commands, from **Cut** and **Copy** to the **Transform To** items, are greyed out.
+The picture shows the menu while the code editor has the focus. Most commands act on the code editor, so which ones are available depends on what has the focus.
+
+Seven items are two commands each: **Undo**, **Redo**, **Cut**, **Copy**, **Paste**, **Delete** and **Select All**. One command is for the code editor and one is for the [form designer](../../Forms/Controls), and the menu shows the one that fits. While the code editor has the focus, they edit text. While the form designer, or the **PROPERTIES** pane, has the focus, they work on controls:
+
+- **Undo**, **Redo**, **Paste** and **Select All** are available while a form is open in the designer.
+- **Cut**, **Copy** and **Delete** are available only while at least one control is selected. The form alone does not count as a selected control.
+- A key pressed in the **PROPERTIES** pane does not run them, because the key goes to the property box. The menu item does.
+
+When none of the code editor, the designer and the **PROPERTIES** pane has the focus, these seven items are greyed out. **Paste As Comment** is missing whenever the code editor does not have the focus. Every other item of the menu, from **Find...** to the **Transform To** items, is a code editor command: it is greyed out while the form designer has the focus, and with nothing in focus. The one exception is **Find In Project...**, which is available whenever a project is loaded.
 
 ## Undo and the clipboard
 
@@ -26,6 +34,12 @@ The picture shows the menu while the code editor has the focus. The commands act
 
 **Paste As Comment** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>)
 : Pastes the clipboard text with `' ` before each line that is not blank.
+
+**Delete** (<kbd>Delete</kbd>)
+: In the code editor, deletes the selected text, or the character after the caret when nothing is selected. In the form designer, deletes the selected controls, and the controls inside any container among them. It is greyed out when no control is selected. See [Copy, cut, paste and delete](../../Forms/Controls#copy-cut-paste-and-delete).
+
+**Select All** (<kbd>Ctrl</kbd>+<kbd>A</kbd>)
+: In the code editor, selects the whole file. In the form designer, selects every control on the form, including those inside containers, but not the form itself. See [Select controls](../../Forms/Controls#select-controls).
 
 ## Find and replace
 

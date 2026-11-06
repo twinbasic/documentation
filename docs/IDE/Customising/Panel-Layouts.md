@@ -21,6 +21,7 @@ A layout keeps two things:
 The IDE also keeps the arrangement you are using now, and brings it back the next time it starts. Every change you make to the panels updates it.
 
 ## Choose a layout
+{: index="reset [the] layout; reset panels; reset window layout; restore default layout" }
 
 Point at **Window → Panel Layouts**. The submenu lists, in this order:
 
@@ -273,10 +274,11 @@ The two built-in layouts, as text:
 </details>
 
 ## Show, hide and focus a panel
+{: index="close [a] panel; hide [a] panel" index_also="restore [a] closed panel; reopen [a] closed panel; restore panel; panel missing; missing panel; panel disappeared; lost panel; toolbar missing" }
 
 Every panel has three commands: `tb<Panel>_ShowPanel`, `tb<Panel>_HidePanel` and `tb<Panel>_FocusPanel`, where `<Panel>` is the panel's name, as in `tbDebugConsole_ShowPanel`. Two have default keys: <kbd>Ctrl</kbd>+<kbd>G</kbd> focuses the Debug Console, and <kbd>Ctrl</kbd>+<kbd>L</kbd> focuses Call Stack. You can give the others keys under [Keyboard shortcuts](Keyboard-Shortcuts).
 
-A panel that you show, and that is in no layout in use, comes up floating, 300 pixels wide and 500 high, at 100 pixels from the left and 100 from the top.
+A panel that you show, and that is in no layout in use, comes up floating at 100 pixels from the left and 100 from the top. It is 300 pixels wide and 500 high, with three exceptions: `TOOLBAR` is 300 wide and as high as its buttons need once they wrap, `FIND REPLACE` is 600 wide and as high as its contents, and `MEMORY 1` is 1200 wide and 600 high.
 
 ## Panel Features
 

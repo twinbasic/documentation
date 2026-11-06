@@ -29,7 +29,7 @@ import { listIdes } from "./lib/tb-install.mjs";
 import { MANIFEST, openManifest, parseManifest } from "./lib/shot-manifest.mjs";
 import { changedBetween, changedPictures, openRevision, revisionOf } from "./lib/shot-revision.mjs";
 import { BUNDLE_CACHE } from "./svgshot/bundle.mjs";
-import { listShots, runOf } from "./lib/shot-runs.mjs";
+import { browserTable, listShots, runOf } from "./lib/shot-runs.mjs";
 import { createReviewServer } from "./lib/shot-server.mjs";
 import {
   acquireLock,
@@ -43,7 +43,7 @@ import {
 
 const DEFAULT_PORT = 4180;
 
-const USAGE = `usage: node scripts/shot_review.mjs [--port N] [--retake <regex> | --replay <regex>] [--jobs N] [--ide <twinBASIC.exe>]
+const USAGE = `usage: node scripts/shot_review.mjs [--port N] [--retake <regex> | --replay <regex> | --browser <regex>] [--jobs N] [--ide <twinBASIC.exe>] [--captures <dir>] [--extension <dir>] [--no-open]
        node scripts/shot_review.mjs --archived <id> [--port N]
        node scripts/shot_review.mjs -h, --help
 
@@ -74,13 +74,25 @@ new commit.
                     (default ${DEFAULT_PORT})
   --retake <regex>  start a run of shoot_docs.mjs --svg --only <regex>
   --replay <regex>  start a run of svgshot/replay.mjs --only <regex>
+  --browser <regex> start a run of svgshot/chromeshot.mjs --take <regex>: the
+                    pictures a person takes in their own signed-in browser
+  --captures <dir>  a browser retake's folder of captures (default svgshot in
+                    Windows' Downloads folder)
+  --extension <dir> a browser retake's folder for the extension, which Chrome loads
+  --no-open         a browser retake opens no page in the browser
   --jobs N          the run's --jobs
   --ide <exe>       the retake's --ide
   --archived <id>   open an archived session instead, read-only, beside the
                     open one (give it another --port)
   -h, --help        print this text and exit
 
-A retake is scripts/shoot_docs.mjs and a replay scripts/svgshot/replay.mjs,
+A retake of a picture taken in a browser is a browser retake, whichever page asked
+for it: the tool brings the extension up to date, opens the picture's page in the
+default browser, says on its runs page what to set up, and takes in the capture
+when the browser saves it. A capture it refuses is said why, and waited for again.
+
+A retake is scripts/shoot_docs.mjs, a replay scripts/svgshot/replay.mjs and a
+browser retake scripts/svgshot/chromeshot.mjs --take,
 each run with --stage, a folder of the session, and --events; a retake and a
 clean-up are compared with the session's baseline (--against). A clean-up
 (scripts/shoot_docs.mjs --cleanup) is not staged: it writes under docs
@@ -102,6 +114,10 @@ const { values } = withUsageError(() =>
       port: { type: "string" },
       retake: { type: "string" },
       replay: { type: "string" },
+      browser: { type: "string" },
+      captures: { type: "string" },
+      extension: { type: "string" },
+      "no-open": { type: "boolean", default: false },
       jobs: { type: "string" },
       ide: { type: "string" },
       archived: { type: "string" },
@@ -111,13 +127,15 @@ const { values } = withUsageError(() =>
   }),
 );
 if (values.help) printHelpAndExit(USAGE);
-withUsageError(() => refuseTogether(values, ["retake", "replay"]));
-for (const other of ["retake", "replay", "jobs", "ide"])
+withUsageError(() => refuseTogether(values, ["retake", "replay", "browser"]));
+for (const other of ["retake", "replay", "browser", "jobs", "ide", "captures", "extension", "no-open"])
   withUsageError(() => refuseTogether(values, ["archived", other]));
 const port = withUsageError(() =>
   numberOption(values.port ?? String(DEFAULT_PORT), { option: "--port", integer: true, min: 1, max: 65535 }),
 );
-for (const option of ["retake", "replay"])
+// Where a browser retake works, for the runs the pages start and the one --browser starts.
+const browser = { captures: values.captures, extension: values.extension, noOpen: values.noOpen };
+for (const option of ["retake", "replay", "browser"])
   if (values[option] !== undefined) withUsageError(() => regexOption(values[option], { option: `--${option}` }));
 if (values.jobs !== undefined)
   withUsageError(() => numberOption(values.jobs, { option: "--jobs", integer: true, min: 1, max: 16 }));
@@ -156,7 +174,7 @@ if (values.archived !== undefined) {
       manifest: () => openManifest(),
       bundlesRoot: BUNDLE_CACHE,
       archived: () => listArchived(REVIEW_ROOT),
-      shots: () => listShots(),
+      shots: async () => [...(await listShots()), ...browserTable()],
       readOnly: true,
     });
   } catch (e) {
@@ -200,7 +218,8 @@ if (values.archived !== undefined) {
       return { session, revision: openRevision(DOCS_DIR, commit.hash), archive };
     },
     archived: () => listArchived(REVIEW_ROOT),
-    shots: () => listShots(),
+    shots: async () => [...(await listShots()), ...browserTable()],
+    browser,
   });
   const applied = app.applyPending();
   if (applied) console.log(`applied ${applied} verdicts the session's runs had reported and were not applied`);
@@ -216,11 +235,13 @@ console.log(
   `screenshot review: http://127.0.0.1:${listening}/ (${values.archived === undefined ? "the session" : `the archived session ${values.archived}, read-only,`} of ${session.data.baseline.short}, ${session.data.runs.length} runs)`,
 );
 
-for (const kind of ["retake", "replay"]) {
+for (const kind of ["retake", "replay", "browser"]) {
   if (values[kind] === undefined) continue;
-  const { run } = app.start(
-    runOf({ kind, only: values[kind], jobs: values.jobs, ide: values.ide }, session.data.baseline),
-  );
+  const request =
+    kind === "browser"
+      ? { kind, only: values[kind] }
+      : { kind, only: values[kind], jobs: values.jobs, ide: values.ide };
+  const { run } = app.start(runOf(request, session.data.baseline, browser));
   console.log(`run ${run.n} started: a ${kind} of ${values[kind]}`);
 }
 

@@ -1,0 +1,35 @@
+Module Startup
+
+    Public Type Pair
+        [Description("same line")] A As Long
+        [Description("own line")]
+        B As Long
+    End Type
+
+    [Description("a constant")]
+    Public Const Limit As Long = 1
+
+    [Description("a module variable")]
+    Public Total As Long
+
+    Public Sub Main()
+        Dim p As Pair
+        Dim x As Long
+        p.A = 1
+        p.B = 2
+        x = Limit
+        Total = 3
+    End Sub
+
+End Module
+
+Public Class Holder
+
+    [Description("a class variable")]
+    Public Count As Long
+
+    Public Sub Use()
+        Count = 1
+    End Sub
+
+End Class

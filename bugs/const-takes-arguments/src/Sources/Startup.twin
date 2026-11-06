@@ -1,0 +1,41 @@
+' A Const that is not an array, followed by parentheses. Every line below compiles and uses the
+' constant's value, and the arguments are dropped: Effect is never called. VB6 refuses each of them
+' with "Expected array". On a variable the compiler refuses the same line with TB5030, and on an
+' Enum member with TB5070.
+' Left is the constant here, so Left("abcd", 2) is 1 and not "ab".
+' The exe exits with K(Effect()) * 10 + the number of calls of Effect: 50 is what it does now.
+Module Startup
+
+    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+    Private Const K As Long = 5
+    Private Const S As String = "abc"
+    Private Const Left As Long = 1
+
+    Private Calls As Long
+
+    Private Function Effect() As Long
+        Calls = Calls + 1
+        Effect = 1
+    End Function
+
+    Public Sub Main()
+        Dim FromEffect As Long
+        FromEffect = K(Effect())
+        If App.IsInIDE Then
+            Debug.Print "K(1, 2) = " & K(1, 2)
+            Debug.Print "S(1) = " & S(1)
+            Debug.Print "Left(""abcd"", 2) = " & Left("abcd", 2)
+            Debug.Print "K(Effect()) = " & FromEffect & ", calls of Effect: " & Calls
+        Else
+            ExitProcess FromEffect * 10 + Calls
+        End If
+    End Sub
+
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Main
+    End Sub
+
+End Module

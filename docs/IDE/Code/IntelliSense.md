@@ -10,6 +10,10 @@ index:
   - completion list
   - signature help
   - code hints
+  - code completion
+  - auto complete
+index_also:
+  - autocomplete
 ---
 
 # IntelliSense
@@ -21,6 +25,7 @@ The compiler supplies all of them. The editor asks it as you type and shows the 
 [IDE Options](../Customising/IDE-Options) holds the settings: the **Intellisense mode** option decides when the completion list opens by itself, and a few options switch the hover popup, the first line of documentation in signature help and the inline hints. [Intellisense modes](../Customising/IDE-Options#intellisense-modes) lists the three modes.
 
 ## The completion list
+{: index="auto list members; list members" }
 
 The completion list is a list of the names that fit at the caret. It opens under the caret, as you type or when you ask for it with <kbd>Ctrl</kbd>+<kbd>Space</kbd>. <kbd>Ctrl</kbd>+<kbd>Space</kbd> opens it in every mode. If only one name fits, the editor accepts it at once without showing the list.
 
@@ -64,6 +69,7 @@ What an accepted entry adds:
 The Debug Console has the same list in its entry box. See [Debug Console](../Debugging/Debug-Console).
 
 ## Signature help
+{: index="parameter hints; parameter info" index_also="quick info" }
 
 Signature help is a box above the line that shows the parameters of the procedure you are calling. It opens when you type `(` after a procedure's name, after each `,`, and on a space after a procedure called without brackets, such as `MsgBox `. In the MANUAL mode only <kbd>Ctrl</kbd>+<kbd>Space</kbd> opens it.
 
@@ -80,6 +86,7 @@ Under the signature is the first line of the procedure's documentation. For a pr
 <kbd>Esc</kbd>, <kbd>Up</kbd>, <kbd>Down</kbd> and <kbd>Backspace</kbd> close the box. Typing `)` over the closing bracket that the editor added with `(` leaves the box open, and so does <kbd>Enter</kbd>.
 
 ## Hover
+{: index="quick info; data tips" }
 
 Rest the pointer on a word for a second and a popup shows what the compiler knows about it. The popup stays open when you move the pointer onto it. **Show Information When Hovering** turns it off.
 
@@ -109,6 +116,7 @@ The compiler sends a short note for some lines, and the editor draws it after th
 The notes are hidden. They show while you hold <kbd>Ctrl</kbd> with the focus in the code, and hide again when you let go. With **Always show IDE Inline Code Hints** on, they stay on screen. The command `tbEditor_ToggleShowCodeHints` switches them on and off without a key.
 
 ## CodeLens
+{: index="run a procedure" }
 
 A CodeLens bar above a procedure runs the procedure from the editor, without starting the whole program. The procedure has full access to your code: it can use constants, call other functions both intrinsic and user-defined, call APIs, and print to the Debug Console.
 

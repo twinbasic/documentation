@@ -21,6 +21,7 @@ This page describes how to put controls on a form and work with them: drawing, s
 Most commands of the designer need the designer to have the focus. When the **PROPERTIES** pane has the focus, a key goes to the property box you are in, so <kbd>Delete</kbd>, the arrow keys, <kbd>Ctrl</kbd>+<kbd>A</kbd> and <kbd>Ctrl</kbd>+<kbd>C</kbd> do not touch the controls. A click on a menu item or a toolbar button works whichever pane has the focus.
 
 ## Draw a control
+{: index="add [a] control; place a control" }
 
 1. Click a tool in the [Toolbox](Toolbox). The pointer over the designer becomes a cross.
 2. Click or drag on the form, or on a container.
@@ -151,6 +152,7 @@ The pencil opens a text box over a Label, CommandButton, TextBox, Frame, CheckBo
 The option in [IDE Options](../Customising/IDE-Options#form-designer-and-toolbox) turns the toolbar off for good. The command `tbFormDesigner_ToggleInPlaceEditingToolbar` hides or shows it for the session only.
 
 ## Open an event handler
+{: index="add [an] event handler; event procedure" }
 
 Double-click a control, or the form, with the pointer tool. The code editor opens the control's default event handler, or the last event in the control's event list when the compiler names no default. If the handler exists, the editor goes to it. If not, the editor inserts an empty handler with the caret in its body. A menu item in the form's menu bar opens its `Click` handler the same way. A control with no events does nothing.
 

@@ -288,7 +288,17 @@ function buildTitleQueries(docs) {
     add(titles, t, url);
   }
 
-  const sections = entries.filter((d) => String(d.relUrl ?? "").includes("#") && /^\w+$/.test(d.title ?? ""));
+  // A label's entry (builder/search.mjs's termSections) is no section: its
+  // title is the label, and the label set below measures it.
+  const sections = entries.filter(
+    (d) => String(d.relUrl ?? "").includes("#") && !String(d.relUrl).includes("#term:") && /^\w+$/.test(d.title ?? ""),
+  );
+  const labels = new Map();
+  for (const d of entries) {
+    if (!String(d.relUrl ?? "").includes("#term:")) continue;
+    const t = decodeEntities(String(d.title ?? "")).trim();
+    if (t.split(/\s+/).length >= 2) add(labels, t, pathOnly(d.relUrl));
+  }
   const pagesPerTitle = new Map();
   for (const d of sections) pagesPerTitle.set(d.title, (pagesPerTitle.get(d.title) ?? 0) + 1);
   const pageSections = new Map();
@@ -305,7 +315,11 @@ function buildTitleQueries(docs) {
       expected: [...expected],
       pathOnlyMatch,
     }));
-  return [...toQueries(titles, "title", true), ...toQueries(pageSections, "section", false)];
+  return [
+    ...toQueries(titles, "title", true),
+    ...toQueries(pageSections, "section", false),
+    ...toQueries(labels, "label", true),
+  ];
 }
 
 // The kinds the name-and-kind set types: the client's kind words, less
@@ -570,6 +584,7 @@ function printTable(result) {
     ["prose", "prose"],
     ["page title", "title"],
     ["page plus section", "section"],
+    ["label", "label"],
   ]) {
     console.log(label.padEnd(labelWidth) + " | " + line(result.byCategory[key]));
   }
@@ -628,8 +643,9 @@ function printFailures(perQuery, n) {
 // (`conditional compilation` expects the #If/#Const page, `symbol index`
 // accepts Permanent-Links too); intent-3 lets a section of a symbol's page
 // count for that symbol; intent-4 adds the page-title and page-plus-section
-// sets; intent-5 the name-and-kind set.
-const GROUND_TRUTH = "intent-5";
+// sets; intent-5 the name-and-kind set; intent-6 the label set (the IDE's
+// labels of two or more words, typed whole).
+const GROUND_TRUTH = "intent-6";
 
 const CATEGORY_CODE = {
   "symbol-bare": "b",
@@ -638,8 +654,10 @@ const CATEGORY_CODE = {
   prose: "p",
   title: "t",
   section: "s",
+  label: "l",
 };
 const CATEGORY_NAME = {
+  l: "label",
   b: "symbol-bare",
   q: "symbol-qualified",
   k: "symbol-kind",
@@ -786,7 +804,7 @@ function main() {
   console.log(
     `Evaluating ${queries.length} queries ` +
       `(${count("symbol-bare")} bare, ${count("symbol-qualified")} qualified, ${count("symbol-kind")} name and kind, ${count("prose")} prose, ` +
-      `${count("title")} page titles, ${count("section")} page plus section) against ${opts.site}\n`,
+      `${count("title")} page titles, ${count("section")} page plus section, ${count("label")} labels) against ${opts.site}\n`,
   );
 
   const evalResult = evaluate(ctx, queries);
@@ -803,6 +821,7 @@ function main() {
       prose: summarize(evalResult.perQuery, (r) => r.category === "prose"),
       title: summarize(evalResult.perQuery, (r) => r.category === "title"),
       section: summarize(evalResult.perQuery, (r) => r.category === "section"),
+      label: summarize(evalResult.perQuery, (r) => r.category === "label"),
     },
     byKind: {
       type: summarize(evalResult.perQuery, (r) => r.kindGroup === "type"),

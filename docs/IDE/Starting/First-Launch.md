@@ -103,6 +103,7 @@ When the compiler reports that a licence has expired or has been revoked, a box 
 A Personal licence does not build from the command line. With `--buildAndExit32` or `--buildAndExit64`, the IDE shows the box *Sorry, twinBASIC Personal Edition does not support command line builds. Upgrade to Professional Edition to access this feature.*
 
 ### Enter Licence Key
+{: index="license key; activate licence; activate license; activate twinbasic" }
 
 The dialog is titled *twinBASIC*, and the line above its text box reads **Enter Licence Key:**. It has three ways in:
 

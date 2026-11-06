@@ -18,8 +18,18 @@ import { describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
-import { checkIndexTerms, deriveSearchEntries, joinSymbolsToEntries, renderEntryString } from "../builder/search.mjs";
+import os from "node:os";
+import {
+  checkIndexTerms,
+  deriveSearchEntries,
+  joinSymbolsToEntries,
+  parseIndexTerms,
+  renderEntryString,
+  settleLabels,
+  writeSearchDataFromChunks,
+} from "../builder/search.mjs";
 import { createMarkdownIt } from "../builder/render.mjs";
+import { parseFrontmatter } from "../lib/frontmatter.mjs";
 import {
   decodeTokenEntities,
   entryFor,
@@ -1012,6 +1022,153 @@ describe("index marks: one main entry per term", () => {
   });
 });
 
+// The shorthand for optional and alternative words in a term (`hide [a|the]
+// panel`): authoring only. The output is what the expanded terms, written out,
+// give; nothing after parseIndexTerms knows brackets.
+describe("index terms: bracket groups", () => {
+  const forms = (t) => parseIndexTerms(t, "p.md");
+
+  test("a group is optional words, in the order written", () => {
+    assert.deepEqual(forms("hide [a] panel"), ["hide panel", "hide a panel"]);
+    assert.deepEqual(forms("hide [a|the] panel"), ["hide panel", "hide a panel", "hide the panel"]);
+    assert.deepEqual(forms("[the] debugger"), ["debugger", "the debugger"]);
+    assert.deepEqual(forms("close panel [now]"), ["close panel", "close panel now"]);
+    assert.deepEqual(forms("open [the|a new] panel"), ["open panel", "open the panel", "open a new panel"]);
+  });
+
+  test("two groups give every combination, and spaces never double", () => {
+    const all = forms("[a|the] [new] panel");
+    assert.deepEqual(all, ["panel", "new panel", "a panel", "a new panel", "the panel", "the new panel"]);
+    assert.ok(all.every((t) => t === t.trim() && !t.includes("  ")));
+  });
+
+  test("forms that coincide are one term, ignoring case", () => {
+    assert.deepEqual(forms("[a|A] panel"), ["panel", "a panel"]);
+    assert.deepEqual(forms("hide [a|a] panel"), ["hide panel", "hide a panel"]);
+  });
+
+  test("a list, `;` and a term with no bracket work as they did", () => {
+    assert.deepEqual(forms(["late binding", "hide [a] panel"]), ["late binding", "hide panel", "hide a panel"]);
+    assert.deepEqual(forms("x [y]; late  binding"), ["x", "x y", "late binding"]);
+    assert.deepEqual(forms("Array(s)"), ["Array(s)"]);
+  });
+
+  const refused = [
+    ["customi[s|z]e", /group must start at a word/],
+    ["[a]b panel", /group must end at a word/],
+    ["a [b|c]d", /group must end at a word/],
+    ["[a] [b] [c] panel", /more than 2 groups/],
+    ["hide [a|] panel", /empty alternative/],
+    ["hide [|a] panel", /empty alternative/],
+    ["hide [] panel", /empty group/],
+    ["hide [a panel", /never closed/],
+    ["hide a] panel", /no "\[" before it/],
+    ["hide [a [b]] panel", /inside a group/],
+    ["hide [a]] panel", /group must end at a word/],
+    ["[a|the]", /no word outside the groups/],
+  ];
+  for (const [term, why] of refused) {
+    test(`${term} fails the build, naming the page and the term as written`, () => {
+      assert.throws(
+        () => forms(term),
+        (e) => why.test(e.message) && e.message.startsWith("p.md: ") && e.message.includes(`"${term}"`),
+      );
+    });
+  }
+
+  test("a term that begins with a bracket is read as a list by YAML: it fails, and quoted it works", () => {
+    assert.throws(() => parseFrontmatter("---\nindex: [the] debugger\n---\nbody\n"), /bad indentation/);
+    assert.throws(() => parseFrontmatter("---\nindex:\n  - [the] debugger\n---\nbody\n"), /bad indentation/);
+    assert.deepEqual(parseFrontmatter('---\nindex: "[the] debugger"\n---\n').data.index, "[the] debugger");
+    assert.deepEqual(parseFrontmatter("---\nindex:\n  - hide [a] panel\n---\n").data.index, ["hide [a] panel"]);
+    // A term that is only a group parses, as a list of the word:
+    assert.throws(() => forms([["the"], "debugger"]), /put it in quotes/);
+  });
+
+  test("the heading attribute keeps brackets and the pipe through the parser", () => {
+    const md = createMarkdownIt({ highlighter: null, linkTables: null, baseurl: "", staticFiles: new Set() });
+    const env = { page: { permalink: "/x", srcRel: "x.md" } };
+    md.render('## Show\n{: index="hide [a|the] panel; [the] debugger" }\n\ntext\n', env);
+    assert.deepEqual(env.searchIndexMarks, [{ id: "show", index: "hide [a|the] panel; [the] debugger" }]);
+  });
+
+  test("a term written with brackets and the same terms written out give the same entries", () => {
+    const content = '<h1 id="widget">Widget</h1><p>Intro.</p><h2 id="panels">Panels</h2><p>Text.</p>';
+    const cfg = site({ heading_level: 3 });
+    const make = (fm, marks) => [page({ title: "Widget", content, frontmatter: fm, marks })];
+    const short = deriveSearchEntries(
+      make({ index: "[the] debugger", index_also: ["hide [a|the] panel", "x"] }, [
+        { id: "panels", index: "open [a] panel; close [a|the] panel", index_also: "a [b] c" },
+      ]),
+      cfg,
+    );
+    const long = deriveSearchEntries(
+      make(
+        {
+          index: ["debugger", "the debugger"],
+          index_also: ["hide panel", "hide a panel", "hide the panel", "x"],
+        },
+        [
+          {
+            id: "panels",
+            index: "open panel; open a panel; close panel; close a panel; close the panel",
+            index_also: "a c; a b c",
+          },
+        ],
+      ),
+      cfg,
+    );
+    const bare = (es) => es.map(({ indexWritten, ...rest }) => ({ ...rest, sourcePage: undefined }));
+    assert.deepEqual(bare(short), bare(long));
+    assert.equal(short.map(renderEntryString).join(","), long.map(renderEntryString).join(","));
+    assert.ok(short.some((e) => e.indexWritten));
+    assert.ok(
+      long.every((e) => e.indexWritten === undefined),
+      "an entry with no bracket carries no bookkeeping",
+    );
+  });
+
+  test("the one-main-entry rule applies to each expanded form, and names the term as written", () => {
+    const cfg = site({ heading_level: 3 });
+    const a = deriveSearchEntries(
+      [
+        page({
+          title: "A",
+          content: '<h1 id="a">A</h1><p>.</p>',
+          permalink: "/A/",
+          frontmatter: { index: "hide [a] panel" },
+        }),
+      ],
+      cfg,
+    );
+    const b = deriveSearchEntries(
+      [
+        page({
+          title: "B",
+          content: '<h1 id="b">B</h1><p>.</p>',
+          permalink: "/B/",
+          frontmatter: { index: "hide a panel" },
+        }),
+      ],
+      cfg,
+    );
+    assert.throws(() => checkIndexTerms([...a, ...b]), /"hide a panel": \/A\/ \(written "hide \[a\] panel"\), \/B\//);
+    // A secondary entry elsewhere is still fine:
+    const c = deriveSearchEntries(
+      [
+        page({
+          title: "C",
+          content: '<h1 id="c">C</h1><p>.</p>',
+          permalink: "/C/",
+          frontmatter: { index_also: "hide [a] panel" },
+        }),
+      ],
+      cfg,
+    );
+    checkIndexTerms([...a, ...c]);
+  });
+});
+
 describe("index marks: render.mjs lifts them off headings", () => {
   const md = createMarkdownIt({
     highlighter: null,
@@ -1508,12 +1665,14 @@ describe("kind-word guard: online client, eval replica", () => {
     const replica = new Function(`${fn(evalSrc, "eval/site_search.mjs")}\nreturn namesTheThing;`)();
     const cases = [
       ["MaxHeight", { maxheight: { content: {} }, properti: { content: {} } }, false],
-      ["MaxHeight", { maxheight: { title: {} } }, true],
+      ["MaxHeight", { maxheight: { title: {} } }, false],
+      ["MaxHeight", { maxheight: { title: {}, page: {} } }, true],
       ["MaxHeight", { maxheight_: { primary: {} } }, true],
       ["Continue", { continu_: { exact: {} } }, true],
-      ["Date$", { date: { title: {} } }, true],
+      ["Date$", { date: { title: {}, page: {} } }, true],
       ["Do...Loop", { do: { title: {} }, loop: { content: {} } }, false],
-      ["Do...Loop", { do: { title: {} }, loop: { title: {} } }, true],
+      ["Do...Loop", { do: { title: {} }, loop: { title: {} } }, false],
+      ["Do...Loop", { do: { title: {}, page: {} }, loop: { title: {}, page: {} } }, true],
     ];
     for (const [name, metadata, expected] of cases) {
       const result = { ref: "0", score: 1, matchData: { metadata } };
@@ -1534,7 +1693,7 @@ describe("kind-word guard: online client, eval replica", () => {
     );
     assert.match(
       onlineSrc,
-      /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(function\(r\) \{ return namesTheThing\(r, name\); \}\)\) \{\s*var again = allWords\(true\);\s*if \(again\.length > 0\) results = again;/,
+      /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(function\(r\) \{ return !isTermEntry\(docs\[r\.ref\]\) && namesTheThing\(r, name\); \}\)\) \{\s*var again = allWords\(true\);\s*if \(again\.length > 0\) results = again;/,
       "just-the-docs.js doesn't fall back as the replica does",
     );
     assert.match(
@@ -1544,7 +1703,7 @@ describe("kind-word guard: online client, eval replica", () => {
     );
     assert.match(
       evalSrc,
-      /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(\(r\) => namesTheThing\(lunr, r, name\)\)\) \{\s*const again = allWords\(true\);\s*if \(again\.length\) results = again;/,
+      /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(\(r\) => !isTermEntry\(docs\[r\.ref\]\) && namesTheThing\(lunr, r, name\)\)\) \{\s*const again = allWords\(true\);\s*if \(again\.length\) results = again;/,
       "the replica doesn't fall back",
     );
   });
@@ -1567,6 +1726,208 @@ describe("kind-word guard: online client, eval replica", () => {
     // The Mid section holds both words and is titled Mid, so the word stays
     // required, and the statement page, which never says "function", stays out.
     assert.deepEqual(urls("Mid function"), ["/Strings/Mid#mid"]);
+  });
+
+  test("a section merely headed with the name, saying the kind word, does not cancel the fallback", () => {
+    // biome-ignore format: a table, one entry per line
+    const docs = {
+      0: { doc: "ComboBox", title: "AddItem", content: "Adds an item to the list.", names: "AddItem", relUrl: "/VB/ComboBox#additem" },
+      1: { doc: "DiagnosticResult", title: "AddItem", content: "This method adds a message to the result.", relUrl: "/Contrib/DiagnosticResult#additem" },
+      2: { doc: "Report", title: "Coordinate units", content: "The AddItem method is not used here.", relUrl: "/Report#units" },
+    };
+    for (let k = 3; k < 200; k++)
+      docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
+    const urls = (q) => search({ lunr, index: buildIndex(lunr, docs), docs }, q).map((r) => docs[r.ref].relUrl);
+    // Only the member of the contributed package says "method" and is headed
+    // AddItem, but its page is not AddItem's: the fallback still runs and the
+    // entry that names AddItem in `names` comes out first.
+    assert.equal(urls("AddItem method")[0], "/VB/ComboBox#additem");
+  });
+});
+
+describe("kind-word guard: an entry of a label never names the thing", () => {
+  const lunr = loadLunr(path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js"));
+  const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
+  const evalSrc = read("eval/site_search.mjs");
+  const fn = (src, label) => {
+    const m = src.match(/function isTermEntry\([^)]*\) \{[\s\S]*?\r?\n\}/);
+    assert.ok(m, `${label} has no isTermEntry()`);
+    return m[0];
+  };
+
+  test("both tell a label's entry alike", () => {
+    const online = new Function(`${fn(onlineSrc, "just-the-docs.js")}\nreturn isTermEntry;`)();
+    const replica = new Function(`${fn(evalSrc, "eval/site_search.mjs")}\nreturn isTermEntry;`)();
+    for (const [relUrl, expected] of [
+      ["/tB/IDE/Menu/Edit#term:continue", true],
+      ["/tB/IDE/Menu/Edit#continue", false],
+      ["/tB/Core/Continue", false],
+      ["/tB/IDE/X#term-entries", false],
+    ]) {
+      assert.equal(online({ relUrl }), expected, `just-the-docs.js: ${relUrl}`);
+      assert.equal(replica({ relUrl }), expected, `eval/site_search.mjs: ${relUrl}`);
+    }
+  });
+
+  test("a label named like the thing does not cancel the fallback for `Continue statement`", () => {
+    // biome-ignore format: a table, one entry per line
+    const docs = {
+      0: { doc: "Continue", title: "Continue", content: "The Continue statement skips to the next iteration.", names: "Continue", primary: "Continue", relUrl: "/Core/Continue" },
+      1: { doc: "Menu", title: "Continue", content: "Resumes a program that is paused. Continue statement.", relUrl: "/IDE/Menu#term:continue" },
+    };
+    for (let k = 2; k < 100; k++)
+      docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
+    const urls = (q) => search({ lunr, index: buildIndex(lunr, docs), docs }, q).map((r) => docs[r.ref].relUrl);
+    assert.equal(urls("Continue statement")[0], "/Core/Continue");
+  });
+});
+
+describe("question-lead guard: online client, eval replica", () => {
+  const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
+  const evalSrc = read("eval/site_search.mjs");
+  const lead = (src, label) => {
+    const m = src.match(/(?:var|const) QUESTION_LEAD = (\/.*\/[a-z]*);/);
+    assert.ok(m, `${label} has no QUESTION_LEAD`);
+    return new Function(`return ${m[1]};`)();
+  };
+
+  test("both spell the expression alike", () => {
+    assert.equal(String(lead(onlineSrc, "just-the-docs.js")), String(lead(evalSrc, "eval/site_search.mjs")));
+  });
+
+  test("a leading question is dropped, and nothing else", () => {
+    const re = lead(onlineSrc, "just-the-docs.js");
+    for (const [typed, expected] of [
+      ["how do I close a panel", "close a panel"],
+      ["How to build", "build"],
+      ["how can you x", "x"],
+      ["  how should we y", "y"],
+      ["how to", "how to"],
+      ["how", "how"],
+      ["however to x", "however to x"],
+      ["show how to x", "show how to x"],
+    ]) {
+      assert.equal(typed.replace(re, ""), expected, typed);
+    }
+  });
+
+  test("both drop the lead before they tokenize", () => {
+    assert.match(onlineSrc, /function doSearch\(input\) \{\s*input = input\.replace\(QUESTION_LEAD, ''\);/);
+    assert.match(
+      evalSrc,
+      /export function search\(\{ lunr, index, docs \}, typed\) \{\s*const input = typed\.replace\(QUESTION_LEAD, ""\);/,
+    );
+  });
+});
+
+describe("term entries: a label is an entry of its own", () => {
+  const menu =
+    `<h1 id="menu">Menu</h1><h2 id="m">Menu</h2>` +
+    `<dl><dt id="term:undo-redo"><strong>Undo</strong> (<kbd>Ctrl</kbd>+<kbd>Z</kbd>) and <strong>Redo</strong></dt>` +
+    `<dd><p>Step back.</p></dd></dl>`;
+  const cfg = site({ heading_level: 3, term_entries: ["/tB/IDE"] });
+  const ide = (content, extra = {}) => page({ title: "Menu", content, permalink: "/tB/IDE/Menu/", ...extra });
+
+  test("a definition term gets an entry right after its section, and the section keeps its text", () => {
+    const entries = deriveSearchEntries([ide(menu)], cfg);
+    const at = entries.findIndex((e) => e.relUrl === "/tB/IDE/Menu/#term:undo-redo");
+    assert.ok(at > 0, "no term entry");
+    const term = entries[at];
+    assert.equal(term.title, "Undo and Redo");
+    assert.match(term.content, /Ctrl\+Z/);
+    assert.match(term.content, /Step back/);
+    assert.equal(entries[at - 1].relUrl, "/tB/IDE/Menu/#m");
+    assert.match(entries[at - 1].content, /Step back/);
+  });
+
+  test("a definition term with no term id (a page outside the prefixes) gets none", () => {
+    // The ids are the render's (termAnchorPlugin, which test/render.test.mjs
+    // tests for the prefixes): the search entries follow the ids.
+    const plain = menu.replace(' id="term:undo-redo"', "");
+    const entries = deriveSearchEntries([ide(plain)], cfg);
+    assert.ok(!entries.some((e) => e.relUrl.includes("#term:")));
+  });
+
+  test("a list item and a table row take their label, a nested list stays inside its item", () => {
+    const content =
+      `<h1 id="menu">Menu</h1><h2 id="m">Menu</h2>` +
+      `<ul><li id="term:process"><p><strong>PROCESS</strong> boxes</p><ul><li>inner text</li></ul></li><li>plain</li></ul>` +
+      `<table><tbody><tr id="term:show-grid-lines"><td><strong>Show Grid Lines</strong></td><td>Draws dots.</td></tr></tbody></table>`;
+    const entries = deriveSearchEntries([ide(content)], cfg);
+    const li = entries.find((e) => e.relUrl.endsWith("#term:process"));
+    assert.equal(li.title, "PROCESS");
+    assert.match(li.content, /inner text/);
+    assert.doesNotMatch(li.content, /plain/);
+    const tr = entries.find((e) => e.relUrl.endsWith("#term:show-grid-lines"));
+    assert.equal(tr.title, "Show Grid Lines");
+    assert.match(tr.content, /Draws dots/);
+  });
+});
+
+describe("settleLabels: what the bold labels come to", () => {
+  const e = (title, relUrl, extra = {}) => ({ title, doc: "Page", relUrl, content: "", ...extra });
+
+  test("a label with no home becomes a secondary term, and no entry keeps `labels`", () => {
+    const out = settleLabels([e("Section", "/p#s", { labels: ["Copy Path", "Section"] })]);
+    assert.deepEqual(out[0].index_also, ["Copy Path"]);
+    assert.ok(!("labels" in out[0]));
+  });
+
+  test("a label a heading, a page title, a hand mark or a term entry answers is dropped", () => {
+    const out = settleLabels([
+      e("Find What", "/p#find-what"),
+      e("Other", "/p#o", { doc: "Status Bar" }),
+      e("Marked", "/p#m", { index: ["debug console"] }),
+      e("Marked also", "/p#ma", { index_also: ["call stack"] }),
+      e("Holder", "/p#h", { labels: ["find what", "Status Bar", "Debug Console", "Call Stack", "Menu Item"] }),
+      e("Menu Item", "/p#term:menu-item"),
+    ]);
+    assert.deepEqual(out.find((x) => x.title === "Holder").index_also, undefined);
+    const again = settleLabels([
+      e("Holder", "/p#h", { labels: ["Menu Item", "New Thing"] }),
+      e("Menu Item", "/p#term:menu-item"),
+    ]);
+    assert.deepEqual(again[0].index_also, ["New Thing"]);
+  });
+
+  test("a term entry titled with a main term goes; one titled with a secondary term stays", () => {
+    const out = settleLabels([
+      e("Section", "/p#s", { index: ["add reference"], index_also: ["dark mode"] }),
+      e("Add Reference", "/p#term:add-reference"),
+      e("Dark Mode", "/p#term:dark-mode"),
+    ]);
+    assert.deepEqual(
+      out.map((x) => x.title),
+      ["Section", "Dark Mode"],
+    );
+  });
+
+  test("the entries come back numbered without a gap, and unchanged when there is nothing to settle", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tbdocs-settle-"));
+    try {
+      const chunk = [
+        { ...e("A", "/p#a"), i: 0, index: ["add reference"] },
+        { ...e("Add Reference", "/p#term:add-reference"), i: 1 },
+        { ...e("B", "/p#b"), i: 2, labels: ["New Thing"] },
+      ];
+      const { json, entries } = await writeSearchDataFromChunks([chunk], dir, []);
+      assert.equal(entries, 2);
+      assert.doesNotMatch(json, /labels/);
+      assert.deepEqual(Object.keys(JSON.parse(json)), ["0", "1"]);
+      const plain = [
+        { ...e("A", "/p#a"), i: 0 },
+        { ...e("B", "/p#b"), i: 1 },
+      ];
+      const before = plain.map(renderEntryString).join(",");
+      const after = await writeSearchDataFromChunks([plain.map((x) => ({ ...x }))], dir, []);
+      assert.equal(after.json, `{${before}\n}\n`);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("the worker sends the labels to the main thread", () => {
+    assert.match(read("builder/cpu-worker.mjs"), /labels: e\.labels,/);
   });
 });
 

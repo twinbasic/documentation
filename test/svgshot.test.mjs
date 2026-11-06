@@ -25,7 +25,9 @@
 // process writes among its lines, which runShards reads. And what becomes of a picture and
 // its SVG: lib/shot-policy.mjs's decisions, with a picture's allowances and a review's
 // decisions, and lib/shot-apply.mjs's writing of them, in a scratch folder and a scratch
-// repository. And lib/shot-manifest.mjs, the manifest those come from: its text, what it
+// repository. And the Chrome extension, without a Chrome: that what it loads can be loaded
+// there, its connection, how it lays a page out at 1x, its file, its list of private words,
+// and chromeshot.mjs's refusals. And lib/shot-manifest.mjs, the manifest those come from: its text, what it
 // refuses, and its saving. And a run's stage (lib/shot-stage.mjs), the strength map and its
 // regions (lib/shot-change.mjs) and which pictures need a look (lib/shot-queue.mjs). The
 // screenshot review tool's own modules are tested in test/shot-review.test.mjs.
@@ -33,12 +35,13 @@
 // Runs with a bare `node --test test/svgshot.test.mjs`: no tree, no build.
 
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import { describe, test } from "node:test";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
   BUNDLE_VERSION,
@@ -54,11 +57,45 @@ import {
   writeBundle,
 } from "../scripts/svgshot/bundle.mjs";
 import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
+import { attachDebugger } from "../scripts/svgshot/chrome/conn.mjs";
+import { browserShot, SHOTS } from "../scripts/svgshot/chrome/shots.mjs";
+import {
+  captureWatcher,
+  extensionStep,
+  installExtension,
+  takeRefusal,
+  tellPanel,
+} from "../scripts/svgshot/chrome-take.mjs";
+import { extensionFiles, extensionModules } from "../scripts/svgshot/extension-files.mjs";
+import {
+  AVATAR,
+  captureBlob,
+  captureName,
+  layoutPlan,
+  logName,
+  markPrimitives,
+  pngSizeOf,
+  unionWithin,
+  wholeBox,
+} from "../scripts/svgshot/chrome/take.mjs";
+import { findElement, matches, trimArea, trimPicture } from "../scripts/svgshot/trim.mjs";
+import { privateEntries, privateWords } from "../scripts/svgshot/private-list.mjs";
+import {
+  drawnStrings,
+  drawnWords,
+  heldPaths,
+  heldWords,
+  holdsUserName,
+  maskText,
+  scrubBundle,
+  wordList,
+} from "../scripts/svgshot/private-words.mjs";
 import { cssUrls, rewriteCssUrls } from "../scripts/lib/shot-freeze.mjs";
 import { decodePng, encodePng, pngSize } from "../scripts/lib/png.mjs";
 import { onStop, parseRecord, readRecords, recordLine, sendStop, STOP_LINE } from "../scripts/lib/record-lines.mjs";
 import {
   readStrength,
+  readVerdict,
   readVerdicts,
   stagedFiles,
   stageRefusal,
@@ -649,6 +686,86 @@ describe("a search field's clear button", () => {
   });
 });
 
+describe("a text field whose own text is transparent", () => {
+  // An <input> 100 by 17 at 10, 10 with a placeholder, its own text transparent, as GitHub's search
+  // box has it and a code editor's field does; `value` what it holds.
+  const NAMES = [
+    "display",
+    "visibility",
+    "color",
+    "font-family",
+    "font-size",
+    "font-weight",
+    "font-style",
+    "text-align",
+    "-webkit-text-fill-color",
+  ];
+  const CLEAR = "rgba(0, 0, 0, 0)";
+  function page(value) {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = ["block", "visible", CLEAR, "Arial", "13px", "400", "normal", "start", CLEAR].map(s);
+    const names = ["#document", "HTML", "BODY", "INPUT"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2],
+            nodeType: [9, 1, 1, 1],
+            nodeName: names.map(s),
+            nodeValue: names.map(() => -1),
+            backendNodeId: [1, 2, 3, 4],
+            attributes: [[], [], [], [s("placeholder"), s("Search runs")]],
+            inputValue: { index: value ? [3] : [], value: value ? [s(value)] : [] },
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [style, style, style],
+            bounds: [
+              [0, 0, 200, 100],
+              [0, 0, 200, 100],
+              [10, 10, 100, 17],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, NAMES);
+  }
+  const CLIP = { x: 0, y: 0, w: 200, h: 100 };
+  const draw = (value) =>
+    renderSvg(page(value), {
+      clip: CLIP,
+      metrics: () => ({ ascent: 12, height: 15, line: 17 }),
+      textWidth: () => 70,
+      placeholderColor: "rgb(145, 152, 161)",
+    }).svg;
+
+  test("leaves the placeholder, which has a colour of its own, drawn and measured", () => {
+    assert.match(draw(""), />Search runs<\/text>/);
+    assert.match(draw(""), /fill:rgb\(145, 152, 161\)/);
+    assert.deepEqual(
+      textNeeds(page(""), CLIP, {}).runs.map(([, text]) => text),
+      ["Search runs"],
+    );
+  });
+
+  test("does not draw the value: an editor lays its own text under it", () => {
+    assert.doesNotMatch(draw("360 x"), />360 x<\/text>/);
+    assert.doesNotMatch(draw("360 x"), />Search runs<\/text>/);
+    assert.deepEqual(textNeeds(page("360 x"), CLIP, {}).runs, []);
+  });
+});
+
 describe("a text field's selection", () => {
   test("selectedParts splits each line at the selection, a tab expanded from the line's start", () => {
     assert.deepEqual(selectedParts("360", false, "8", 0, 3), [{ before: "", selected: "360", after: "" }]);
@@ -787,14 +904,14 @@ describe("outlines", () => {
     "outline-offset",
     ...["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`),
   ];
-  function page(style, width, radius = "0px", offset = "0px") {
+  function page(style, width, radius = "0px", offset = "0px", image = null) {
     const strings = [];
     const s = (v) => {
       const i = strings.indexOf(v);
       return i >= 0 ? i : strings.push(v) - 1;
     };
     const plain = ["block", "visible", "none", "0px", "rgb(0, 0, 0)", "0px", "0px", "0px", "0px", "0px"].map(s);
-    const names = ["#document", "HTML", "BODY", "DIV"];
+    const names = ["#document", "HTML", "BODY", image ? "IMG" : "DIV"];
     const snapshot = {
       strings,
       documents: [
@@ -807,6 +924,7 @@ describe("outlines", () => {
             nodeName: names.map(s),
             nodeValue: names.map(() => -1),
             attributes: names.map(() => []),
+            currentSourceURL: image ? { index: [3], value: [s(image)] } : undefined,
           },
           layout: {
             nodeIndex: [1, 2, 3],
@@ -831,6 +949,21 @@ describe("outlines", () => {
   }
   const draw = (doc) =>
     renderSvg(doc, { clip: { x: 0, y: 0, w: 200, h: 100 }, metrics: () => ({ ascent: 12, height: 15, line: 15 }) }).svg;
+
+  test("an image is cut to its box's rounded corners, a page's round avatar", () => {
+    const png = encodePng({ width: 1, height: 1, rgba: new Uint8Array(4).fill(255) }).toString("base64");
+    const image = `data:image/png;base64,${png}`;
+    const round = draw(page("none", "0px", "10px", "0px", image));
+    const id =
+      /<g clip-path="url\(#([^)]*)\)"><use href="#[^"]*" transform="translate\(10 10\) scale\(100 20\)"\/><\/g>/.exec(
+        round,
+      );
+    assert.ok(id, round);
+    assert.match(round, new RegExp(`<clipPath id="${id[1]}"><path d="M`));
+    const square = draw(page("none", "0px", "0px", "0px", image));
+    assert.match(square, /<use href="#[^"]*" transform="translate\(10 10\) scale\(100 20\)"\/>/);
+    assert.doesNotMatch(square, /<clipPath/);
+  });
 
   test("a solid one with square corners is one stroked rectangle round the box", () => {
     assert.match(
@@ -1138,6 +1271,259 @@ describe("bundles", () => {
     }
   });
 
+  test("is trimmed to a picture's area, found in the capture, whole CSS px inside what it holds", async () => {
+    const bundle = bundleOf(measured);
+    // The list's box is 10,10 200x20 in a view of 0,0 400x100.
+    const shown = { css: "select", text: "Shown" };
+    assert.deepEqual(trimArea(bundle, { of: [shown] }), { x: 2, y: 2, w: 216, h: 36 });
+    assert.deepEqual(trimArea(bundle, { of: [shown], pad: 0 }), { x: 10, y: 10, w: 200, h: 20 });
+    // The padding stops at what the capture holds.
+    assert.deepEqual(trimArea(bundle, { of: [shown], pad: 30 }), { x: 0, y: 0, w: 240, h: 60 });
+    // A side can have room of its own, and the others keep theirs.
+    assert.deepEqual(trimArea(bundle, { of: [shown], pad: { left: 1, top: 2 } }), { x: 9, y: 8, w: 209, h: 30 });
+    // The marks count, and may be at half a pixel.
+    const marked = { x: 300.5, y: 40, width: 20, height: 22.5 };
+    assert.deepEqual(trimArea(bundle, { of: [shown], pad: 0 }, marked), { x: 10, y: 10, w: 311, h: 53 });
+    assert.throws(() => trimArea(bundle, { of: [{ css: "button" }] }), /has no element \{"css":"button"\}/);
+    // An area that was not in the window asks for a scroll, and says which way.
+    const low = structuredClone(bundle);
+    low.view = { x: 0, y: 0, w: 400, h: 25 };
+    assert.throws(() => trimArea(low, { of: [shown] }), /runs 5 px past the bottom of the window/);
+
+    const [width, height] = [800, 200];
+    const rgba = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++) rgba.set([x % 256, y % 256, (x >> 8) * 40, 255], (y * width + x) * 4);
+    const picture = { theme: "dark", png: encodePng({ width, height, rgba }).toString("base64"), bundle };
+    const area = trimArea(bundle, { of: [shown] });
+    const trimmed = trimPicture(picture, area);
+    const image = decodePng(Buffer.from(trimmed.png, "base64"));
+    assert.deepEqual([image.width, image.height], [432, 72]);
+    // Each pixel is the one it was, at 2 device px to the CSS px.
+    assert.deepEqual([...image.rgba.subarray(0, 4)], [4, 4, 0, 255]);
+    assert.deepEqual([...image.rgba.subarray((71 * 432 + 431) * 4)], [435 % 256, 75, 40, 255]);
+    assert.deepEqual(trimmed.bundle.view, area);
+    // The SVG is what a capture of that area draws: its text, in that view.
+    const { svg } = await renderBundle(trimmed.bundle);
+    assert.match(svg, />Shown<\/text>/);
+    assert.match(svg, /\swidth="216" height="36" viewBox="2 2 216 36"/);
+  });
+
+  describe("taken in a person's browser, by chromeshot.mjs --take", () => {
+    const TOOL = path.join(REPO_ROOT, "scripts", "svgshot", "chromeshot.mjs");
+    const OUT = "Documentation/Images/compare-changes.png";
+    // A window as the extension takes it: 400 by 100 at 2x, its <select> the two elements the
+    // table trims compare-changes to, and the mark on it.
+    function window(themes, over = {}) {
+      const paint = (v) =>
+        encodePng({ width: 800, height: 200, rgba: new Uint8Array(640000).fill(v) }).toString("base64");
+      const bundle = structuredClone(bundleOf(measured));
+      const doc = bundle.snapshot.documents[0];
+      const { strings } = bundle.snapshot;
+      strings.push("class", "Subhead range-editor");
+      doc.nodes.attributes[3] = [strings.length - 2, strings.length - 1];
+      return {
+        format: 1,
+        out: OUT,
+        area: "viewport",
+        marked: { x: 10, y: 10, width: 200, height: 20 },
+        url: "https://github.com/twinbasic/documentation/compare",
+        pictures: themes.map((theme) => ({ theme, png: paint(theme === "dark" ? 40 : 250), bundle })),
+        ...over,
+      };
+    }
+    // Starts a take in the folder `root`, with a person's part left to the test: {say(what),
+    // until(type), child, ended}: `until` resolves to the first event of `type` not yet read.
+    function start(root, pattern) {
+      const captures = path.join(root, "captures");
+      const extension = path.join(root, "extension");
+      fs.mkdirSync(captures, { recursive: true });
+      fs.mkdirSync(path.join(root, "out"), { recursive: true });
+      const words = path.join(root, "words.json");
+      fs.writeFileSync(words, JSON.stringify({ words: [] }));
+      const child = spawn(
+        process.execPath,
+        [
+          TOOL,
+          "--take",
+          pattern,
+          "--no-open",
+          "--events",
+          ...["--captures", captures, "--extension", extension],
+          ...["--stage", path.join(root, "stage")],
+          ...["--out", path.join(root, "out"), "--bundles", path.join(root, "bundles"), "--words", words],
+        ],
+        { stdio: ["pipe", "pipe", "pipe"] },
+      );
+      const events = [];
+      const waiting = [];
+      let log = "";
+      const check = () => {
+        for (const w of [...waiting]) {
+          const k = events.findIndex((e) => e.type === w.type);
+          if (k < 0) continue;
+          waiting.splice(waiting.indexOf(w), 1);
+          w.resolve(events.splice(k, 1)[0]);
+        }
+      };
+      readRecords(child.stdout, ["shot-event"], {
+        onRecord: (_, value) => {
+          events.push(value);
+          check();
+        },
+        onLine: (line) => {
+          log += line + "\n";
+        },
+      });
+      child.stderr.on("data", (d) => {
+        log += d;
+      });
+      const ended = new Promise((resolve) => child.on("close", resolve));
+      return {
+        child,
+        ended,
+        log: () => log,
+        // As a browser saves a download: under another name, then renamed.
+        say(what) {
+          const file = path.join(captures, "compare-changes.capture.json.gz");
+          fs.writeFileSync(file + ".part", gzipSync(JSON.stringify(what)));
+          fs.renameSync(file + ".part", file);
+        },
+        until: (type) =>
+          new Promise((resolve) => {
+            waiting.push({ type, resolve });
+            check();
+          }),
+      };
+    }
+
+    test("refuses a capture it cannot use, waits for the next, and stages what it takes", {
+      timeout: 120000,
+    }, async () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "chromeshot-take-"));
+      const take = start(root, "compare-changes");
+      try {
+        const run = await take.until("run");
+        assert.equal(run.tool, "chromeshot");
+        assert.deepEqual(run.jobs[0].pictures, [OUT, OUT.replace(".png", ".light.png")]);
+        // The extension is in its folder, and its panel is told which picture is next.
+        const waits = await take.until("await");
+        assert.equal(
+          waits.url,
+          "https://github.com/twinbasic/documentation/compare/main...twinbasic:documentation:main",
+        );
+        assert.ok(fs.existsSync(path.join(root, "extension", "manifest.json")));
+        const next = JSON.parse(fs.readFileSync(path.join(root, "extension", "next.json"), "utf8"));
+        assert.deepEqual(next, { shot: "compare-changes" });
+        // Each mistake is said, and the picture is waited for again.
+        take.say(window(["dark", "light"], { area: "drag" }));
+        assert.match((await take.until("refused")).error, /a dragged rectangle/);
+        take.say(window(["light"]));
+        assert.match((await take.until("refused")).error, /only the light theme/);
+        take.say(window(["dark", "light"], { marked: null }));
+        assert.match((await take.until("refused")).error, /no marks/);
+        take.say(window(["dark", "light"], { url: "https://github.com/contributor/twinBASIC-docs/compare" }));
+        assert.match((await take.until("refused")).error, /another repository/);
+        take.say(window(["dark", "light"]));
+        const pictures = [await take.until("picture"), await take.until("picture")];
+        assert.deepEqual(pictures.map((p) => p.out).sort(), [OUT.replace(".png", ".light.png"), OUT]);
+        assert.ok(pictures.every((p) => p.state === "new" && p.build === null));
+        assert.equal((await take.until("svg")).out, OUT);
+        assert.equal((await take.until("job")).state, "started");
+        assert.equal((await take.until("job")).state, "done");
+        assert.equal((await take.until("summary")).taken, 1);
+        assert.equal(await take.ended, 0, take.log());
+        // With --stage, the capture is in the stage, trimmed, and nothing is under the pictures' folder.
+        assert.deepEqual(fs.readdirSync(path.join(root, "out")), []);
+        const staged = decodePng(fs.readFileSync(stagedFiles(path.join(root, "stage"), OUT).capture));
+        assert.deepEqual([staged.width, staged.height], [432, 72]);
+        assert.equal(readVerdict(path.join(root, "stage"), OUT).png.state, "new");
+        assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, "extension", "next.json"), "utf8")), {
+          shot: null,
+        });
+      } finally {
+        take.child.kill();
+        await take.ended;
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    test("stops at a line on its stdin, and says which pictures it did not take", { timeout: 60000 }, async () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "chromeshot-take-"));
+      const take = start(root, "merge-pull-request|run-workflow");
+      try {
+        await take.until("await");
+        sendStop(take.child);
+        await take.until("stopping");
+        const skipped = [
+          await take.until("skipped"),
+          await take.until("skipped"),
+          await take.until("skipped"),
+          await take.until("skipped"),
+        ];
+        assert.deepEqual(
+          skipped.map((e) => e.job),
+          ["merge-pull-request", "merge-pull-request", "run-workflow", "run-workflow"],
+        );
+        const summary = await take.until("summary");
+        assert.deepEqual([summary.taken, summary.stopped], [0, true]);
+        assert.equal(await take.ended, 0, take.log());
+      } finally {
+        take.child.kill();
+        await take.ended;
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    });
+  });
+
+  test("goes through chromeshot.mjs, which refuses what shows a private word before it writes", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "chromeshot-test-"));
+    try {
+      const png = encodePng({ width: 4, height: 2, rgba: new Uint8Array(32).fill(255) }).toString("base64");
+      const capture = (over = {}) => ({
+        format: 1,
+        out: "Images/x.png",
+        pictures: [{ theme: "dark", png, bundle: { ...bundleOf(measured), ...over } }],
+      });
+      const out = path.join(root, "out");
+      const write = (name, what) => {
+        const file = path.join(root, name);
+        fs.writeFileSync(file, gzipSync(JSON.stringify(what)));
+        return file;
+      };
+      const words = path.join(root, "words.json");
+      fs.writeFileSync(words, JSON.stringify({ words: [{ find: "shown", show: "seen" }] }));
+      const run = (...args) => {
+        const tool = path.join(REPO_ROOT, "scripts", "svgshot", "chromeshot.mjs");
+        const bundles = path.join(root, "bundles");
+        return spawnSync(process.execPath, [tool, ...args, "--out", out, "--bundles", bundles, "--words", words], {
+          encoding: "utf8",
+        });
+      };
+      fs.mkdirSync(out);
+      // The page's text is "Shown": in any case, a private word, and nothing is written.
+      const shown = run(write("shown.capture.json.gz", capture()));
+      assert.equal(shown.status, 1);
+      assert.match(shown.stderr, /refused, nothing written: Images\/x\.png: its page shows shown/);
+      assert.deepEqual(fs.readdirSync(out), []);
+      // A format the converter does not read is refused too, whatever it holds.
+      const old = run(write("old.capture.json.gz", capture({ version: BUNDLE_VERSION - 1 })));
+      assert.equal(old.status, 1);
+      assert.match(old.stderr, /a bundle of format 2, and the converter reads 3/);
+      // What is no capture, and a capture lying where pictures are, are no captures to read.
+      assert.equal(run(write("none.capture.json.gz", { format: 2 })).status, 2);
+      fs.writeFileSync(path.join(root, "bad.gz"), "not gzip");
+      assert.equal(run(path.join(root, "bad.gz")).status, 2);
+      const inside = path.join(out, "a.capture.json.gz");
+      fs.writeFileSync(inside, gzipSync(JSON.stringify(capture())));
+      const under = run(inside);
+      assert.equal(under.status, 2);
+      assert.match(under.stderr, /a capture holds what the page held/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("is drawn again by redraw, which checks for the user name unless told not to", async () => {
     // redraw wants every style the converter reads: the rest are given as absent.
     const short = bundleOf(measured);
@@ -1164,6 +1550,7 @@ describe("bundles", () => {
       // The page's text holds "Shown": as a user name, it fails the picture, unless the
       // caller (sheet.mjs alone) turns the check off.
       await assert.rejects(redraw({ ...args, user: "SHOWN" }), /holds the Windows user name/);
+      await assert.rejects(redraw({ ...args, user: ["nobody", "SHOWN"] }), /holds the Windows user name/);
       assert.equal((await redraw({ ...args, user: "SHOWN", checkUserName: false })).svg, drawn.svg);
       // A PNG that is not the bundle's is a retake, or with `stale` a note on a drawing.
       fs.writeFileSync(path.join(docsRoot, "Images/x.png"), Buffer.from("another picture"));
@@ -1652,6 +2039,89 @@ describe("bundles", () => {
     // Every node stays, the option's text with it.
     assert.equal(corner.documents[0].nodes.parentIndex.length, 6);
     assert.ok(corner.strings.includes("Shown"));
+  });
+});
+
+describe("a closed <select>", () => {
+  // A <select> 200 by 20 at 10, 10, padded 12 px at each side, that reads "Shown", the browser's
+  // own or, with `appearance: none`, one whose page draws its arrow, as GitHub's does.
+  const NAMES = [
+    "display",
+    "visibility",
+    "color",
+    "font-family",
+    "font-size",
+    "font-weight",
+    "font-style",
+    "text-align",
+    "padding-left",
+    "padding-right",
+    "appearance",
+  ];
+  function page(appearance) {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = (a, pad) =>
+      ["block", "visible", "rgb(0, 0, 0)", "Arial", "13px", "400", "normal", "start", pad, pad, a].map(s);
+    const names = ["#document", "HTML", "BODY", "SELECT", "OPTION", "#text"];
+    const plain = style("auto", "0px");
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2, 3, 4],
+            nodeType: [9, 1, 1, 1, 1, 3],
+            nodeName: names.map(s),
+            nodeValue: names.map((n) => (n === "#text" ? s("Shown") : -1)),
+            backendNodeId: names.map((_, i) => 100 + i),
+            attributes: names.map(() => []),
+            optionSelected: { index: [4] },
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [plain, plain, style(appearance, "12px")],
+            bounds: [
+              [0, 0, 400, 100],
+              [0, 0, 400, 100],
+              [10, 10, 200, 20],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, NAMES);
+  }
+  const draw = (appearance) =>
+    renderSvg(page(appearance), {
+      clip: { x: 0, y: 0, w: 400, h: 100 },
+      metrics: () => ({ ascent: 12, height: 15, line: 17 }),
+      textWidth: () => 34,
+    }).svg;
+  const clip = (svg) => svg.match(/<clipPath id="[^"]+"><rect ([^/]+)\/><\/clipPath>/)?.[1] ?? "";
+
+  test("of the browser's own has its padding, and its chevron in a box at the end", () => {
+    const svg = draw("auto");
+    assert.match(svg, /<text class="t\d+" x="26" /);
+    // The text is cut where the arrow's box begins: 10 + 200 - 12 - 16.
+    assert.match(clip(svg), /x="26" y="10" width="156" height="20"/);
+    // The chevron is centred in the 16 px box at the padding box's right edge, whatever the padding.
+    assert.match(svg, /<path d="M198 18L202 22L206 18" fill="none"/);
+  });
+
+  test("with appearance none has neither: the page lays its arrow over the padding", () => {
+    const svg = draw("none");
+    assert.match(svg, /<text class="t\d+" x="22" /);
+    assert.match(clip(svg), /x="22" y="10" width="176" height="20"/);
+    assert.doesNotMatch(svg, /fill="none"/);
   });
 });
 
@@ -4088,5 +4558,532 @@ describe("the screenshot manifest (shot-manifest.mjs)", () => {
   test("the repository's own manifest reads", () => {
     const m = openManifest();
     assert.equal(m.text(), fs.readFileSync(m.file, "utf8").replace(/\r\n/g, "\n"));
+  });
+});
+
+describe("the Chrome extension, with no Chrome", () => {
+  const FOLDER = path.join(REPO_ROOT, "scripts", "svgshot");
+
+  test("what it loads needs no Node, and is inside its folder", () => {
+    const modules = extensionModules(FOLDER);
+    assert.ok(modules.has(path.join(FOLDER, "capture.mjs")), "the extension runs capture.mjs itself");
+    assert.ok(modules.has(path.join(FOLDER, "annotate.mjs")));
+    for (const [file, names] of modules) {
+      for (const name of names) {
+        assert.ok(name.startsWith("."), `${file} imports ${name}, which no extension page can`);
+        const target = path.resolve(path.dirname(file), name);
+        assert.ok(target.startsWith(FOLDER + path.sep), `${file} imports ${name}, outside the extension's folder`);
+      }
+    }
+  });
+
+  // A small extension in the folder `dir`: what it loads, and one module of the converter's that it does not.
+  function fakeExtension(dir) {
+    const write = (name, text) => {
+      fs.mkdirSync(path.dirname(path.join(dir, name)), { recursive: true });
+      fs.writeFileSync(path.join(dir, name), text);
+    };
+    write(
+      "manifest.json",
+      JSON.stringify({
+        name: "svgshot",
+        side_panel: { default_path: "chrome/panel.html" },
+        background: { service_worker: "chrome/background.mjs" },
+      }),
+    );
+    write(
+      "chrome/panel.html",
+      '<link rel="stylesheet" href="panel.css" /><script type="module" src="panel.mjs"></script>',
+    );
+    write("chrome/panel.css", "body {}");
+    write("chrome/panel.mjs", 'import { a } from "../shared.mjs";\nconsole.log(a);\n');
+    write("chrome/background.mjs", "");
+    write("shared.mjs", "export const a = 1;\n");
+    write("chromeshot.mjs", "// Node only\n");
+    write("private.json", '{"words":[]}');
+  }
+
+  test("finds what Chrome needs by following its manifest", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "extension-test-"));
+    try {
+      fakeExtension(dir);
+      assert.deepEqual(extensionFiles(dir), [
+        "chrome/background.mjs",
+        "chrome/panel.css",
+        "chrome/panel.html",
+        "chrome/panel.mjs",
+        "manifest.json",
+        "shared.mjs",
+      ]);
+      // The real one: its pages' modules and its style sheet, and none of the converter's Node tools.
+      const real = extensionFiles(FOLDER);
+      for (const file of ["manifest.json", "chrome/panel.css", "chrome/panel.mjs", "capture.mjs", "chrome/shots.mjs"])
+        assert.ok(real.includes(file), file);
+      assert.ok(!real.includes("chromeshot.mjs"));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("is kept up to date in a folder of its own, and leaves alone what is not it", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "extension-test-"));
+    try {
+      const source = path.join(root, "source");
+      const target = path.join(root, "target");
+      fakeExtension(source);
+      const first = installExtension(target, { source });
+      assert.equal(first.first, true);
+      assert.match(extensionStep(first), /Load unpacked and choose .*target/);
+      assert.ok(first.changed.includes("private.json"));
+      assert.ok(!fs.existsSync(path.join(target, "chromeshot.mjs")));
+      // Nothing to do a second time, and so nothing to ask of the person.
+      const again = installExtension(target, { source });
+      assert.deepEqual([again.changed, again.first], [[], false]);
+      assert.equal(extensionStep(again), null);
+      // What changed is copied, what went is removed, and the panel's note stays.
+      fs.writeFileSync(path.join(target, "chrome", "panel.mjs"), "stale");
+      fs.writeFileSync(path.join(target, "chrome", "gone.mjs"), "old");
+      tellPanel(target, "run-workflow");
+      const fixed = installExtension(target, { source });
+      assert.deepEqual(fixed.changed.sort(), ["chrome/gone.mjs", "chrome/panel.mjs"]);
+      assert.match(extensionStep(fixed), /press reload/);
+      assert.ok(!fs.existsSync(path.join(target, "chrome", "gone.mjs")));
+      assert.deepEqual(JSON.parse(fs.readFileSync(path.join(target, "next.json"), "utf8")), { shot: "run-workflow" });
+      // A checkout with no word list leaves the one that is there.
+      fs.rmSync(path.join(source, "private.json"));
+      installExtension(target, { source });
+      assert.ok(fs.existsSync(path.join(target, "private.json")));
+      // A folder that holds anything else is not written to, and nothing in it is deleted.
+      const other = path.join(root, "other");
+      fs.mkdirSync(other);
+      fs.writeFileSync(path.join(other, "mine.txt"), "keep");
+      assert.throws(() => installExtension(other, { source }), /not the extension/);
+      assert.deepEqual(fs.readdirSync(other), ["mine.txt"]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("notices a capture saved from now on, and not one that was there", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "capture-watch-"));
+    try {
+      const name = (n) => path.join(dir, `${n}.capture.json.gz`);
+      fs.writeFileSync(name("old"), "x");
+      fs.writeFileSync(path.join(dir, "old.log.txt"), "not a capture");
+      const watcher = captureWatcher(dir);
+      const stop = new AbortController();
+      const waiting = watcher.next(stop.signal);
+      fs.writeFileSync(name("new"), "x");
+      assert.equal(await waiting, name("new"));
+      // The same name saved again is a new capture.
+      const later = watcher.next(stop.signal);
+      fs.utimesSync(name("new"), new Date(), new Date(Date.now() + 5000));
+      assert.equal(await later, name("new"));
+      const none = watcher.next(stop.signal);
+      stop.abort();
+      assert.equal(await none, null);
+      // A folder the browser has yet to make is no fault.
+      const nowhere = new AbortController();
+      nowhere.abort();
+      assert.equal(await captureWatcher(path.join(dir, "not-yet")).next(nowhere.signal), null);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("what a take is refused for: what a look at the picture finds late", () => {
+    const shot = { url: "https://github.com/twinbasic/documentation/pulls" };
+    const good = {
+      area: "viewport",
+      marked: { x: 0, y: 0, width: 1, height: 1 },
+      url: "https://github.com/twinbasic/documentation/pull/263",
+      pictures: [{ theme: "dark" }, { theme: "light" }],
+    };
+    assert.equal(takeRefusal(good, shot), null);
+    assert.match(takeRefusal({ ...good, area: "drag" }, shot), /dragged rectangle/);
+    assert.match(takeRefusal({ ...good, marked: null }, shot), /no marks/);
+    assert.match(takeRefusal({ ...good, pictures: [{ theme: "light" }] }, shot), /only the light theme/);
+    assert.match(takeRefusal({ ...good, url: "https://github.com/someone/fork/pull/1" }, shot), /another repository/);
+    // A name that only starts the same is another repository.
+    const close = { ...good, url: "https://github.com/twinbasic/documentation2/pull/1" };
+    assert.match(takeRefusal(close, shot), /another repository/);
+  });
+
+  test("names the page each picture is taken on, under the repository", () => {
+    for (const shot of SHOTS) assert.match(shot.url, /^https:\/\/github\.com\/twinbasic\/documentation\//, shot.name);
+    assert.equal(browserShot("Documentation/Images/run-workflow.light.png")?.name, "run-workflow");
+    assert.equal(browserShot("IDE/Images/x.png"), null);
+  });
+
+  test("its folder holds what the manifest names, and nothing Chrome refuses", () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(FOLDER, "manifest.json"), "utf8"));
+    assert.equal(manifest.manifest_version, 3);
+    assert.deepEqual([...manifest.permissions].sort(), ["debugger", "downloads", "sidePanel"]);
+    assert.equal(manifest.host_permissions, undefined);
+    for (const file of [manifest.background.service_worker, manifest.side_panel.default_path])
+      assert.ok(fs.existsSync(path.join(FOLDER, file)), file);
+    // Chrome will not load a folder with a name of its own at the top that starts with _.
+    assert.deepEqual(
+      fs.readdirSync(FOLDER).filter((n) => n.startsWith("_")),
+      [],
+    );
+  });
+
+  test("lays a page out at 1x and draws it at 2x, on a display of any scale", () => {
+    const at = (dpr, zoom, width = 1200, height = 900, pageWidth = null) =>
+      layoutPlan({ dpr, zoom, width, height, pageWidth });
+    assert.deepEqual(at(1, 1), {
+      display: 1,
+      zoom: 1,
+      metrics: { width: 1200, height: 900, deviceScaleFactor: 2, mobile: false },
+    });
+    // At 150% the zoom brings the layout to 1x, and the emulated size is in the zoomed px.
+    assert.deepEqual(at(1.5, 1), {
+      display: 1.5,
+      zoom: 2 / 3,
+      metrics: { width: 800, height: 600, deviceScaleFactor: 3, mobile: false },
+    });
+    assert.equal(at(1.25, 1).zoom, 0.8);
+    assert.equal(at(1.25, 1).metrics.deviceScaleFactor, 2.5);
+    // The tab's own zoom is no part of the display's scale, and is replaced.
+    assert.equal(at(1.1, 1.1).display, 1);
+    assert.equal(at(1.1, 1.1).zoom, 1);
+    assert.equal(at(1.5, 1, 900, 600, 1280).metrics.width, 853);
+  });
+
+  test("reads a capture's size from its PNG, and saves a capture as chromeshot.mjs reads it", async () => {
+    const png = encodePng({ width: 7, height: 5, rgba: new Uint8Array(140) });
+    assert.deepEqual(pngSizeOf(png.toString("base64")), [7, 5]);
+    const capture = { format: 1, out: "Documentation/Images/x.png", pictures: [] };
+    const blob = await captureBlob(capture);
+    assert.deepEqual(JSON.parse(gunzipSync(Buffer.from(await blob.arrayBuffer())).toString("utf8")), capture);
+    assert.equal(captureName(capture.out), "svgshot/Documentation__Images__x.capture.json.gz");
+    assert.equal(logName(capture.out), "svgshot/Documentation__Images__x.log.txt");
+  });
+
+  test("talks to a tab as lib/tb-cdp.mjs talks to the IDE", async () => {
+    const sent = [];
+    const answers = { "Runtime.evaluate": { result: { value: 7 } }, "Page.enable": undefined };
+    const detached = [];
+    const was = globalThis.chrome;
+    globalThis.chrome = {
+      debugger: {
+        attach: async (target, version) => sent.push(["attach", target, version]),
+        detach: async (target) => detached.push(target),
+        sendCommand: async (_target, method, params) => {
+          sent.push([method, params]);
+          if (method === "Page.fail") throw new Error("no such thing");
+          return answers[method];
+        },
+      },
+    };
+    try {
+      const conn = await attachDebugger(5);
+      assert.deepEqual(sent[0], ["attach", { tabId: 5 }, "1.3"]);
+      // A member that is undefined is left out, as on a socket; an answer of nothing is an empty one.
+      assert.deepEqual(await conn.send("Page.enable", { contextId: undefined, a: 1 }), {});
+      assert.deepEqual(sent[1], ["Page.enable", { a: 1 }]);
+      assert.equal(await conn.evaluate("1"), 7);
+      assert.deepEqual(sent[2][1], { expression: "1", returnByValue: true, awaitPromise: false });
+      await assert.rejects(conn.send("Page.fail"), /^Error: Page\.fail: no such thing$/);
+      answers["Runtime.evaluate"] = { exceptionDetails: { exception: { description: "ReferenceError: x" } } };
+      await assert.rejects(conn.evaluate("x"), /ReferenceError: x/);
+      await conn.detach();
+      assert.deepEqual(detached, [{ tabId: 5 }]);
+    } finally {
+      globalThis.chrome = was;
+    }
+  });
+
+  test("keeps a clip inside the window, since Chrome draws one left of the page at half size", () => {
+    const window = { x: 0, y: 700, width: 1000, height: 800 };
+    const area = { x: 10, y: 720, width: 300, height: 100 };
+    assert.deepEqual(unionWithin(area, { x: -15, y: 690, width: 40, height: 40.5 }, window), {
+      x: 0,
+      y: 700,
+      width: 310,
+      height: 120,
+    });
+    assert.deepEqual(unionWithin(area, { x: 950, y: 1490, width: 100, height: 100 }, window), {
+      x: 10,
+      y: 720,
+      width: 990,
+      height: 780,
+    });
+  });
+
+  test("puts a mark on whole CSS px, as the page snaps the element it stands for", () => {
+    assert.deepEqual(wholeBox({ x: 10.25, y: 195.25, width: 121.75, height: 32.5 }), {
+      x: 10,
+      y: 195,
+      width: 122,
+      height: 33,
+    });
+    assert.deepEqual(wholeBox({ x: 4, y: 8, width: 15, height: 16 }), { x: 4, y: 8, width: 15, height: 16 });
+  });
+
+  test("rings what is small and boxes what is tall, whose ring would be a great ellipse", () => {
+    const mark = { n: "a" };
+    const types = (height) => markPrimitives(mark, { css: "x" }, { height }).map((p) => p.type);
+    assert.deepEqual(types(32), ["ring", "badge"]);
+    assert.deepEqual(types(48), ["ring", "badge"]);
+    assert.deepEqual(types(270), ["box", "badge"]);
+    assert.equal(markPrimitives({ n: "a", side: "right" }, { css: "x" }, { height: 9 })[1].side, "right");
+  });
+
+  test("finds an anchor as the page does, in the part of CSS the table uses", () => {
+    const element = (name, attrs, parent = null) => ({ type: 1, name, attrs, parent, layouts: [], children: [] });
+    const root = element("DIV", { id: "__primerPortalRoot__" });
+    const card = element("DIV", { class: "Overlay__e1QdMe big", "data-component": "PH_Actions" }, root);
+    const button = element("BUTTON", { "data-testid": "go" }, card);
+    assert.equal(matches(button, "button"), true);
+    assert.equal(matches(button, "a, button"), true);
+    assert.equal(matches(button, "a"), false);
+    assert.equal(matches(card, ".big"), true);
+    assert.equal(matches(card, ".bi"), false);
+    assert.equal(matches(card, "div.big"), true);
+    assert.equal(matches(card, "[class*=Overlay]"), true);
+    assert.equal(matches(card, "[class^=Overlay]"), true);
+    assert.equal(matches(card, "[class^=big]"), false);
+    assert.equal(matches(button, "[data-testid=go]"), true);
+    assert.equal(matches(button, '[data-testid="go"]'), true);
+    assert.equal(matches(button, "[data-testid]"), true);
+    assert.equal(matches(button, "[data-testid=stop]"), false);
+    // Descendants, through what lies between; and an ancestor that is not there.
+    assert.equal(matches(button, "#__primerPortalRoot__ button"), true);
+    assert.equal(matches(button, "[data-component=PH_Actions] button"), true);
+    assert.equal(matches(button, "#other button"), false);
+    assert.throws(() => matches(button, "a > b"), /cannot read: >/);
+
+    const shown = (name, text, w = 10) => {
+      const n = element(name, {});
+      n.children = [{ type: 3, value: text, children: [] }];
+      n.layouts = [{ bounds: { x: 0, y: 0, w, h: 10 } }];
+      return n;
+    };
+    const [hidden, prefix, exact] = [shown("A", " Actions ", 0), shown("A", "Actions and more"), shown("A", "Actions")];
+    const doc = { nodes: [hidden, prefix, exact] };
+    // Text as annotate.mjs compares it: an element with no box is passed over, and the
+    // whole text beats the start of a longer one.
+    assert.equal(findElement(doc, { css: "a", text: "Actions" }), exact);
+    assert.equal(findElement(doc, { css: "a", text: "Actions and" }), prefix);
+    assert.equal(findElement(doc, { css: "a" }), prefix);
+    assert.equal(findElement(doc, { css: "a", text: "Nothing" }), null);
+  });
+
+  test("names each of the six pictures, with marks that say what to point at", () => {
+    assert.deepEqual(
+      SHOTS.map((s) => s.name),
+      [
+        "compare-changes",
+        "create-pull-request",
+        "merge-pull-request",
+        "confirm-merge",
+        "choose-workflow",
+        "run-workflow",
+      ],
+    );
+    for (const shot of SHOTS) {
+      assert.ok(fs.existsSync(path.join(REPO_ROOT, "docs", shot.out)), shot.out);
+      assert.ok(shot.marks.length);
+      for (const mark of shot.marks) assert.ok(mark.what && mark.on && mark.n !== undefined);
+      // Every anchor a trim names is one the tool can read.
+      assert.ok(shot.trim.of.length);
+      for (const { css } of shot.trim.of)
+        assert.equal(typeof matches({ type: 1, name: "A", attrs: {} }, css), "boolean");
+    }
+  });
+
+  test("shows a person a picture of no one", () => {
+    assert.match(decodeURIComponent(AVATAR), /^data:image\/svg\+xml,<svg /);
+  });
+});
+
+describe("a clip of one axis, and of a disc", () => {
+  const NAMES = [
+    "display",
+    "visibility",
+    "overflow-x",
+    "overflow-y",
+    "background-color",
+    ...["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`),
+  ];
+  // A box of 100 by 100 at 10,10 that clips, with a child of its size and a ground.
+  function page(overflowX, overflowY, radius) {
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = (ox, oy, ground, r) => ["block", "visible", ox, oy, ground, r, r, r, r].map(s);
+    const plain = style("visible", "visible", "rgba(0, 0, 0, 0)", "0px");
+    const names = ["#document", "HTML", "BODY", "DIV", "P"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2, 3],
+            nodeType: [9, 1, 1, 1, 1],
+            nodeName: names.map(s),
+            nodeValue: names.map(() => -1),
+            attributes: names.map(() => []),
+          },
+          layout: {
+            nodeIndex: [1, 2, 3, 4],
+            styles: [
+              plain,
+              plain,
+              style(overflowX, overflowY, "rgba(0, 0, 0, 0)", radius),
+              style("visible", "visible", "rgb(9, 9, 9)", "0px"),
+            ],
+            bounds: [
+              [0, 0, 200, 200],
+              [0, 0, 200, 200],
+              [10, 10, 100, 100],
+              [10, 10, 100, 100],
+            ],
+            text: [-1, -1, -1, -1],
+            paintOrders: [0, 1, 2, 3],
+            offsetRects: [[], [], [], []],
+            clientRects: [[], [], [], []],
+            scrollRects: [[], [], [], []],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, NAMES);
+  }
+  const draw = (doc) =>
+    renderSvg(doc, { clip: { x: 0, y: 0, w: 200, h: 200 }, metrics: () => ({ ascent: 12, height: 15, line: 15 }) }).svg;
+
+  test("a clip of one axis takes the picture's span on the other, not an unbounded one", () => {
+    const svg = draw(page("visible", "clip", "0px"));
+    assert.match(svg, /<clipPath id="[^"]*"><rect x="0" y="10" width="200" height="100"\/>/);
+    assert.doesNotMatch(svg, /1000000000/);
+  });
+
+  test("a box too thin to see and with no radius is no disc, whose clip would have no path", () => {
+    const thin = page("hidden", "hidden", "0px");
+    thin.layouts[2].bounds.h = 0;
+    assert.doesNotMatch(draw(thin), /d="null"/);
+  });
+
+  test("a disc cuts what it clips to its shape, and a smaller radius leaves it square", () => {
+    const clips = (radius) => (draw(page("hidden", "hidden", radius)).match(/<clipPath /g) ?? []).length;
+    assert.equal(clips("0px"), 1);
+    assert.equal(clips("8px"), 1);
+    assert.doesNotMatch(draw(page("hidden", "hidden", "0px")), /d="null"/);
+    const disc = draw(page("hidden", "hidden", "50px"));
+    assert.equal((disc.match(/<clipPath /g) ?? []).length, 2);
+    assert.match(disc, /<clipPath id="[^"]*"><path d="M60 10[^"]*A50 50 0 0 1/);
+  });
+});
+
+describe("the private words", () => {
+  const list = wordList([
+    { find: "pat", show: "someone" },
+    { find: "pat@example.org", show: "someone@users.noreply.github.com" },
+  ]);
+
+  test("are masked longest first, in any case, and every time", () => {
+    assert.deepEqual(
+      list.map((w) => w.find),
+      ["pat@example.org", "pat"],
+    );
+    assert.equal(maskText("Pat <PAT@Example.org>", list), "someone <someone@users.noreply.github.com>");
+    assert.equal(maskText("pat pat", list), "someone someone");
+    assert.equal(maskText("nothing here", list), "nothing here");
+    assert.equal(maskText("anything", []), "anything");
+  });
+
+  test("are refused with no stand-in, or a stand-in that shows a word", () => {
+    assert.throws(() => wordList("pat"), /is not a list/);
+    assert.throws(() => wordList([{ show: "x" }]), /has no `find`/);
+    assert.throws(() => wordList([{ find: "  ", show: "x" }]), /has no `find`/);
+    assert.throws(() => wordList([{ find: "pat" }]), /has no `show`/);
+    assert.throws(() => wordList([{ find: "pat", show: "pattern" }]), /holds pat/);
+  });
+
+  test("are found in any case, and not in what is base64", () => {
+    assert.deepEqual(heldWords("by PAT, on the page", ["pat", "kim"]), ["pat"]);
+    assert.deepEqual(heldWords('href="data:image/png;base64,cGF0pat+AAA=" x', ["pat"]), []);
+    assert.equal(holdsUserName("a Pat", "pat"), true);
+  });
+
+  test("count as shown where a picture can draw them, and only there", () => {
+    const strings = ["#document", "OPTION", "#text", "pat@a", "HTML", "http://x/pat", "typed pat", "text pat"];
+    const bundle = {
+      snapshot: {
+        strings,
+        documents: [
+          {
+            layout: { text: [-1, 7] },
+            nodes: {
+              parentIndex: [-1, 0, 1],
+              nodeName: [4, 1, 2],
+              nodeValue: [-1, -1, 3],
+              inputValue: { index: [1], value: [6] },
+            },
+          },
+        ],
+      },
+    };
+    assert.deepEqual(drawnStrings(bundle).sort(), ["pat@a", "text pat", "typed pat"]);
+    assert.deepEqual(drawnWords(bundle, ["pat@a", "kim"]), ["pat@a"]);
+    // The address of a link is no text a picture draws, and is scrubbed all the same.
+    assert.deepEqual(drawnWords(bundle, ["http"]), []);
+  });
+
+  test("are found by the path they stand at, a member's name among them, for the panel's log", () => {
+    const bundle = { strings: ["clean", "by pat"], docs: [{ pat: 1 }, { a: { b: "PAT" } }] };
+    assert.deepEqual(heldPaths(bundle, ["pat"]), [
+      "bundle.strings[1]",
+      "a name in bundle.docs[0]",
+      "bundle.docs[1].a.b",
+    ]);
+    assert.deepEqual(heldPaths(bundle, ["pat"], 1), ["bundle.strings[1]"]);
+    assert.deepEqual(heldPaths(bundle, ["kim"]), []);
+  });
+
+  test("leave nothing in a bundle but what is no text", () => {
+    const bundle = {
+      strings: ["by pat", "plain"],
+      numbers: [1, -1, null, true],
+      docs: [{ page: { allRuns: [["k", "Pat"]] }, fontFiles: { a: "pat in a font's bytes" } }],
+    };
+    assert.deepEqual(scrubBundle(bundle, list), {
+      strings: ["by someone", "plain"],
+      numbers: [1, -1, null, true],
+      docs: [{ page: { allRuns: [["k", "someone"]] }, fontFiles: { a: "pat in a font's bytes" } }],
+    });
+  });
+
+  test("are the Windows user, what git says and what the list says", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "private-test-"));
+    try {
+      const file = path.join(dir, "private.json");
+      const git = ([, key]) =>
+        key === "user.email" ? { status: 0, stdout: "pat@example.org\n" } : { status: 1, stdout: "" };
+      // No list is no failure: a checkout need not have one.
+      assert.deepEqual(privateEntries(file), []);
+      assert.deepEqual(privateWords({ file, user: "pat", git }), ["pat", "pat@example.org"]);
+      fs.writeFileSync(file, JSON.stringify({ words: [{ find: "kim", show: "someone" }] }));
+      assert.deepEqual(privateWords({ file, user: "pat", git }), ["pat", "kim", "pat@example.org"]);
+      fs.writeFileSync(file, "{");
+      assert.throws(() => privateWords({ file, user: "pat", git }), /private\.json/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("the example list reads, and the real one is ignored", () => {
+    const example = path.join(REPO_ROOT, "scripts", "svgshot", "private.example.json");
+    assert.equal(privateEntries(example).length, 3);
+    const ignored = spawnSync("git", ["check-ignore", "-q", "scripts/svgshot/private.json"], { cwd: REPO_ROOT });
+    assert.equal(ignored.status, 0);
   });
 });

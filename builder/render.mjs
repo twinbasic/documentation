@@ -19,6 +19,7 @@ import { blockRegions, maskCode } from "../lib/markdown.mjs";
 import { initHighlighter } from "./highlight.mjs";
 import { countPlugin, expandDownloadPlaceholders, findSurvivingPlaceholder } from "./counts.mjs";
 import { replaceOutsideCode } from "./code-guard.mjs";
+import { TERM_ID_PREFIX } from "./search.mjs";
 import { splitFragment } from "./url.mjs";
 import { escapeMarkup, escapeMarkupAndQuotes, escapeRegExp } from "./escape.mjs";
 import { inlineDiagram } from "./inline-diagram.mjs";
@@ -43,7 +44,13 @@ export async function renderPhase(pages, site, staticFiles = []) {
     const linkTables = buildLinkTables(pages);
     const baseurl = String(site.config.baseurl || "");
     const staticFileSet = new Set(staticFiles.map((s) => s.srcRel));
-    md = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles: staticFileSet });
+    md = createMarkdownIt({
+      highlighter,
+      linkTables,
+      baseurl,
+      staticFiles: staticFileSet,
+      termPrefixes: site.config.search?.term_entries ?? [],
+    });
     site.markdown = md;
   }
 
@@ -471,6 +478,7 @@ export function createMarkdownIt(ctx) {
   configureFootnotes(md);
   md.use(headerIdPlugin);
   md.use(searchIndexMarksPlugin);
+  md.use(termAnchorPlugin, ctx);
   md.use(headingLevelNormalizePlugin);
   md.use(tocPlugin);
   md.use(relativeLinksPlugin, ctx);
@@ -1432,6 +1440,60 @@ function searchIndexMarksPlugin(md) {
       for (const c of t.children ?? []) if (c.attrs) misplaced(c);
     }
   });
+}
+
+// Anchors for the search's term entries (WIP.Search.md, "Term entries"). On a
+// page under one of ctx.termPrefixes (search.term_entries in _config.yml), a
+// definition term, a list item that leads with bold and a table row whose first
+// cell leads with bold each get an id: term: and the slug of the bold text. A
+// colon is never in a heading's id, since kramdownSlug drops it, so a term can
+// never take a heading's id, and adding one moves no heading.
+function termAnchorPlugin(md, ctx) {
+  const prefixes = ctx.termPrefixes ?? [];
+  md.core.ruler.after("header-id", "term-anchors", (state) => {
+    const permalink = state.env?.page?.permalink ?? "";
+    if (!prefixes.some((p) => permalink.startsWith(p))) return;
+    const toks = state.tokens;
+    const used = new Map();
+    for (let i = 0; i < toks.length; i++) {
+      const t = toks[i];
+      const inline = termInline(toks, i);
+      if (inline?.type !== "inline") continue;
+      const kids = inline.children ?? [];
+      const first = kids.find((c) => c.type !== "text" || c.content !== "");
+      if (t.type !== "dt_open" && first?.type !== "strong_open") continue;
+      const text = boldText(kids) || (t.type === "dt_open" ? headingText(kids).trim() : "");
+      if (!/[A-Za-z]/.test(text) || /[.:?!]$/.test(text)) continue;
+      // A one-word table row names a control or a type more often than a label.
+      if (t.type === "tr_open" && !text.includes(" ") && text !== text.toUpperCase()) continue;
+      t.attrSet("id", uniqueSlug(TERM_ID_PREFIX + kramdownSlug(text).slice(0, 60), used));
+    }
+  });
+}
+
+// The inline token that opens the block at toks[i], if it is a block a term can
+// start: dt, then its text; a list item, then its paragraph; a body row, then
+// its first cell. A header row's cells are th_open, so it never matches.
+function termInline(toks, i) {
+  const t = toks[i];
+  if (t.type === "dt_open") return toks[i + 1];
+  if (t.type === "list_item_open" && toks[i + 1]?.type === "paragraph_open") return toks[i + 2];
+  if (t.type === "tr_open" && toks[i + 1]?.type === "td_open") return toks[i + 2];
+  return null;
+}
+
+// The text of an inline token's bold spans, a space between them.
+function boldText(children) {
+  let out = "";
+  let depth = 0;
+  for (const c of children) {
+    if (c.type === "strong_open") depth++;
+    else if (c.type === "strong_close") {
+      depth--;
+      out += " ";
+    } else if (depth && (c.type === "text" || c.type === "code_inline")) out += c.content;
+  }
+  return out.replace(/\s+/g, " ").trim();
 }
 
 function headingText(children) {

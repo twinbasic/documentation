@@ -1,0 +1,8 @@
+{
+  "mode": "run",
+  "exe": true,
+  "expect": {
+    "exit": 6,
+    "output": ["^stamp 7$", "^--- exe: a box, closed: .*91"]
+  }
+}

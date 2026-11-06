@@ -1,0 +1,151 @@
+// The side panel: which picture, then Whole viewport or Drag a rectangle. A side panel stays open
+// while the person sets the page up, and a click in the page does not close it, as it would a
+// popup; it is also a page, which can hand the browser a Blob to save, as a service worker cannot.
+
+import { wordList } from "../private-words.mjs";
+import { logName, saveCapture, saveLog, takePicture } from "./take.mjs";
+import { PAGE_WIDTH, SHOTS } from "./shots.mjs";
+
+const $ = (id) => document.getElementById(id);
+const OTHER = "other";
+
+// What a take did, with the time of each step, for the log file saved beside its capture.
+let lines = [];
+
+function log(line) {
+  lines.push(`${new Date().toISOString().slice(11, 23)} ${line}`);
+  $("log").textContent += `${line}\n`;
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+// The private words, from scripts/svgshot/private.json, which is inside the extension's folder
+// and which git ignores. No capture is taken without them.
+async function loadWords() {
+  try {
+    const response = await fetch(chrome.runtime.getURL("private.json"));
+    return wordList((await response.json()).words);
+  } catch (e) {
+    $("words").textContent =
+      `No private words: ${e.message}. Copy private.example.json to private.json and fill it in.`;
+    $("words").classList.add("wrong");
+    return null;
+  }
+}
+
+const shotOf = () => SHOTS.find((s) => s.name === $("shot").value) ?? null;
+
+function showShot() {
+  const shot = shotOf();
+  $("shows").textContent = shot ? `${shot.shows} Take the whole viewport: chromeshot.mjs trims it to the picture.` : "";
+  $("path").hidden = !!shot;
+  $("marked").hidden = !shot;
+  $("width").placeholder = shot ? String(PAGE_WIDTH) : "as the tab is";
+  try {
+    localStorage.setItem("shot", $("shot").value);
+  } catch {
+    // The choice is only a convenience.
+  }
+}
+
+function setBusy(busy) {
+  for (const id of ["viewport", "drag", "shot", "path", "width"]) $(id).disabled = busy;
+  $("cancel").hidden = !busy;
+}
+
+let running = null;
+
+// The picture a run of chromeshot.mjs --take waits for, in the folder it keeps the extension in, is
+// chosen here, so that a capture is not saved under the last picture's name. A panel loaded from
+// the checkout finds no such file.
+let told = null;
+async function followRun() {
+  if (running) return;
+  try {
+    const { shot } = await (await fetch(chrome.runtime.getURL("next.json"), { cache: "no-store" })).json();
+    if (shot === told) return;
+    told = shot;
+    if (shot && SHOTS.some((s) => s.name === shot)) {
+      $("shot").value = shot;
+      showShot();
+    }
+  } catch {
+    // No run has told it anything.
+  }
+}
+
+async function take(area, list) {
+  const shot = shotOf();
+  const out = shot?.out ?? $("path").value.trim().replace(/\\/g, "/");
+  if (!/^[^/].*\.png$/i.test(out)) {
+    log("Name the picture: its path under docs/, ending in .png");
+    return;
+  }
+  const themes = ["dark", "light"].filter((t) => $(t).checked);
+  if (!themes.length) {
+    log("Choose a theme");
+    return;
+  }
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const width = Number($("width").value);
+  running = new AbortController();
+  setBusy(true);
+  $("log").textContent = "";
+  lines = [navigator.userAgent, `svgshot ${chrome.runtime.getManifest().version}, ${list.length} private words`];
+  log(`${out}: ${area === "drag" ? "drag over the page" : "the whole window"}`);
+  try {
+    const capture = await takePicture({
+      tabId: tab.id,
+      out,
+      area,
+      themes,
+      list,
+      marks: shot && $("marks").checked ? shot.marks : [],
+      pageWidth: width > 0 ? width : shot ? PAGE_WIDTH : null,
+      log,
+      signal: running.signal,
+    });
+    if (!capture) {
+      log("cancelled");
+      return;
+    }
+    await saveCapture(capture);
+    log("saved under the download folder, in svgshot");
+    $("preview").src = `data:image/png;base64,${capture.pictures[0].png}`;
+    $("preview").hidden = false;
+  } catch (e) {
+    log(`FAILED: ${e.message}`);
+    if (e.stack) lines.push(e.stack);
+  } finally {
+    try {
+      await saveLog(out, lines, list);
+      log(`log: ${logName(out)}`);
+    } catch (e) {
+      log(`the log was not saved: ${e.message}`);
+    }
+    running = null;
+    setBusy(false);
+  }
+}
+
+for (const shot of SHOTS) $("shot").add(new Option(shot.name, shot.name));
+$("shot").add(new Option("Another picture", OTHER));
+try {
+  const kept = localStorage.getItem("shot");
+  if (kept) $("shot").value = kept;
+} catch {
+  // As in showShot.
+}
+$("shot").addEventListener("change", showShot);
+showShot();
+setInterval(followRun, 2000);
+followRun();
+
+const list = await loadWords();
+if (list) {
+  $("words").textContent = `${list.length} private word${list.length === 1 ? "" : "s"} masked.`;
+  $("viewport").disabled = false;
+  $("drag").disabled = false;
+  $("viewport").addEventListener("click", () => take("viewport", list));
+  $("drag").addEventListener("click", () => take("drag", list));
+  $("cancel").addEventListener("click", () => running?.abort());
+}

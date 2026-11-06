@@ -57,6 +57,7 @@ The IDE keeps no log file of its own, and it shows no crash dialog. What it has 
 The IDE has no **Report this** button and no report file. To report a problem with twinBASIC, open an issue on [the twinBASIC repository on GitHub](https://github.com/twinbasic/twinbasic/issues), or write in the `#bugs` channel of the Discord server. The [FAQ](../../../FAQ#bug-reporting) says what to include. The GitHub icon in the status bar and **Help → Help & Support (GitHub repository)...** open the repository's front page, not the form for a new issue.
 
 ## What the IDE does not provide
+{: index_also="ide freezes; ide hangs; ide not responding" }
 
 So that you do not look for them:
 
@@ -66,6 +67,7 @@ So that you do not look for them:
 - A way to start the IDE in a safe state. Safe Mode is an entry of the build configuration box, and it applies to a project that is open.
 - A watchdog on the compiler. The IDE has no state for a compiler that is not responding, and no way to cancel a long operation other than the compiler's own **Stop** and a restart.
 - A key for **Restart the compiler**, for TRACE mode or for DevTools, and a menu item or a button for DevTools.
+- A command that finds the references or usages of a name. The editor has no **Find All References** and no **Go to References**. See [The command palette](../Code/Editor#the-command-palette).
 - A click on the services badge. Only the licence badge, the links, the **PROCESS** boxes and the line and column box respond to a click.
 
 ## See Also

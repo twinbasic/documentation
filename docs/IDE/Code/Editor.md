@@ -59,6 +59,7 @@ Right-click a tab for a menu of four items:
 The tab menu is in English whatever the [language of the IDE](../Customising/#the-language-of-the-ide) is.
 
 ### Reopen a closed tab
+{: index="restore [a] closed tab" }
 
 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> reopens the file you closed last. Press it again for the one before. The IDE remembers every file you closed since it started, with no limit, and forgets them when it closes. A file you open in any other way leaves the list.
 
@@ -139,6 +140,7 @@ The commands in this part work on the line the caret is on, or on every line of 
 <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes and <kbd>Ctrl</kbd>+<kbd>Y</kbd> redoes. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> does nothing. Each press undoes or redoes one step.
 
 ### Comments
+{: index="comment out; uncomment" }
 
 | Command | Key | What it does |
 |---|---|---|
@@ -148,10 +150,12 @@ The commands in this part work on the line the caret is on, or on every line of 
 | Toggle block comment | <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>A</kbd> | Wraps the selection in `/* ... */`, from the start of its first line to the end of its last. The compiler accepts the result as a comment. |
 
 ### Indent and outdent
+{: index="unindent; indent lines; tab size; tab width; indent size; increase indent; decrease indent" }
 
 <kbd>Ctrl</kbd>+<kbd>]</kbd> indents the selected lines by one level, and <kbd>Ctrl</kbd>+<kbd>[</kbd> outdents them. The toolbar buttons are **Indent Block** and **Outdent Block**. <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> do the same, except that <kbd>Tab</kbd> accepts an entry while the [completion list](IntelliSense#the-completion-list) is open. The width of a level is **TAB Spaces Amount** in [IDE Options](../Customising/IDE-Options).
 
 ### Lines
+{: index="duplicate [a] line; convert tabs to spaces" }
 
 | Command | Key |
 |---|---|
@@ -161,7 +165,7 @@ The commands in this part work on the line the caret is on, or on every line of 
 | Delete the word to the left | <kbd>Ctrl</kbd>+<kbd>Backspace</kbd> |
 | Delete the word to the right | <kbd>Ctrl</kbd>+<kbd>Delete</kbd> |
 | Move the lines up or down | <kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Alt</kbd>+<kbd>Down</kbd> |
-| Copy the lines up or down | <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>Down</kbd> |
+| Copy (duplicate) the lines up or down | <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>Down</kbd> |
 | Grow the selection | <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>Right</kbd> |
 | Shrink the selection | <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>Left</kbd> |
 | Select the whole line | <kbd>Ctrl</kbd>+<kbd>L</kbd> |
@@ -174,6 +178,7 @@ Four commands have no key and no menu item. Give them a key under [Keyboard shor
 - `tbEditor_ConvertIndentationToSpaces` and `tbEditor_ConvertIndentationToTabs` change the indentation of the file.
 
 ### Several cursors at once
+{: index="multiple cursors; multi cursor; multicursor; multiple carets; column selection; box selection; block selection; rectangular selection" }
 
 Typing, deleting and most commands act at every cursor. One <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the change at all of them.
 
@@ -194,10 +199,12 @@ Typing, deleting and most commands act at every cursor. One <kbd>Ctrl</kbd>+<kbd
 > <kbd>Esc</kbd> does not remove the extra cursors. Click in the text, or run any command that places the caret, to go back to one cursor.
 
 ### Change case
+{: index="lower case; upper case" }
 
 **Edit → Transform To Uppercase**, **Transform To Lowercase**, **Transform To Titlecase** and **Transform To Snakecase** change the case of the selection. They have no keys. Their names are in English whatever the IDE language is.
 
 ### Folding
+{: index="collapse code; collapse [a] procedure; collapse all; expand all; collapse region; fold region" }
 
 The fold arrows in the margin fold and unfold a block. **Show Code Folding** in [IDE Options](../Customising/IDE-Options) decides when the arrows show. The compiler decides the ranges. They include each procedure and each `#Region ... #End Region` block.
 
@@ -212,6 +219,7 @@ The fold arrows in the margin fold and unfold a block. **Show Code Folding** in 
 **Fold Procedures** folds every `Sub`, `Function` and `Property` in the file except the one the caret is in. A caret on a blank line between two procedures counts as being in the one above. **Fold All** folds every range, including the `Module` block that wraps a module file, so only its first line stays visible. The editor keeps the folded ranges when you close and reopen the project, as [IDE Options](../Customising/IDE-Options) describes for **Restore Editors State When Opening Project**.
 
 ### Word wrap and zoom
+{: index="wrap lines; line wrap; text wrap" }
 
 <kbd>Alt</kbd>+<kbd>Z</kbd> turns word wrap on and off for the editor. The setting is not saved: the next time the IDE starts, word wrap is off. `tbEditor_TurnWordWrapOn` and `tbEditor_TurnWordWrapOff` set it directly.
 
@@ -258,6 +266,7 @@ Paste on a blank line, or with the caret at the end of the indent. Pasting at th
 - **It removes spaces.** Spaces and tabs after the caret are deleted.
 
 ## Rename Symbol and Change All Occurrences
+{: index="rename [a] variable; refactor" }
 
 **Rename Symbol** is on the right-click menu, which shows the key <kbd>F2</kbd> beside it. <kbd>F2</kbd> opens the [Object Browser](Object-Browser) instead, in the editor as everywhere else.
 
@@ -268,6 +277,7 @@ Paste on a blank line, or with the caret at the end of the indent. Pasting at th
 **Change All Occurrences**, on the right-click menu only, gives a cursor to every occurrence of the word under the caret in the file. Type the new name to replace them all. The match is on text, not on meaning: the word is also changed inside strings and comments. A longer name that contains the word, such as `totalPrice` for `total`, is not changed. One <kbd>Ctrl</kbd>+<kbd>Z</kbd> restores all of them. Other files are not touched.
 
 ## Format the code
+{: index="reformat code" }
 
 **Edit → Format Document** and **Format Selection** re-indent the code. They have no keys; <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> does nothing.
 
@@ -278,6 +288,7 @@ The formatter changes only the indent of each line. It trims the line and sets t
 > **Format Selection** fails when the selection starts on a continuation line, which is a line after one that ends in ` _`. Nothing is formatted, and a box opens with the text *IDE startup failure*, followed by *JS Promise Rejection(1): Assignment to constant variable.* If the IDE was started by opening the project's `.twinproj` file, it then closes. With unsaved changes, it first asks whether to save them: choose **Save**, or **Cancel** to keep the IDE open. Save before you format, start the selection on the first line of the statement, or use **Format Document**.
 
 ## Auto Prettify
+{: index="auto format" }
 
 The Project Setting **Auto Prettify Source Code** corrects the case of words and the spacing as you write. It is on by default. The **...** menu of the editor has the same setting as **Auto Prettify Code**. It belongs to the project, not to you. [Project Settings](../Project-Settings#auto-prettify-source-code) describes it.
 
@@ -315,6 +326,7 @@ A right-click in the editor moves the caret to the point, unless you click insid
 > <kbd>Shift</kbd>+<kbd>F10</kbd> opens the menu at the top-left corner of the IDE window, not at the caret. Right-click in the editor to open it at the pointer.
 
 ## The command palette
+{: index="find references; find usages" }
 
 **Monaco Command Palette**, on the right-click menu, opens a list of the editor's actions, with a box to type in. It has no key. The IDE's editor is built on Monaco, and the palette is Monaco's own. It lists 124 actions in alphabetical order, among them many that have no key and no menu item in the IDE. Type to narrow the list, and press <kbd>Enter</kbd> to run the action. <kbd>Esc</kbd> closes the palette and returns to the code.
 
@@ -327,7 +339,7 @@ These actions work from the palette:
 - **Fold Recursively**
 - **Join Lines**; one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it
 
-The palette also lists **Rename Symbol** (see [above](#rename-symbol-and-change-all-occurrences)), **Format Document** and **Show Hover**. It has no **Go to References**, **Peek Definition** or **Quick Fix**: the IDE offers no way to find all references, and the editor has no quick fixes.
+The palette also lists **Rename Symbol** (see [above](#rename-symbol-and-change-all-occurrences)), **Format Document** and **Show Hover**. It has no **Go to References**, **Peek Definition** or **Quick Fix**: the IDE offers no way to find all references or usages of a name, and the editor has no quick fixes.
 
 The key beside an action in the palette is the key Monaco gives it. It is not always a key that works in the IDE. The IDE stops every key press with <kbd>Ctrl</kbd> held from reaching the editor, apart from the commands it binds itself. So a palette action that shows a key with <kbd>Ctrl</kbd> does not respond to that key. The Monaco keys <kbd>F1</kbd>, <kbd>F8</kbd>, <kbd>Shift</kbd>+<kbd>F8</kbd> and <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> do nothing. <kbd>F1</kbd> does not open the palette, so open it from the menu.
 

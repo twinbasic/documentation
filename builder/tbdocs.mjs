@@ -575,6 +575,7 @@ const TASKS = {
         vendoredVideos: state.site.vendoredVideos,
         vendoredImages: state.site.vendoredImages,
         counts: state.site.counts,
+        termPrefixes: state.site.config.search?.term_entries ?? [],
       });
       // The downloads' sizes, for the placeholders the pre-render rewrites expand
       // ({{tbdocs:size:...}}, {{tbdocs:packageTestRows}}). The help add-in's project is named

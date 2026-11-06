@@ -9,7 +9,6 @@
       "^FAIL After_PrivateWithEvents: .*TB5182",
       "^FAIL After_Implements: .*TB5182",
       "^FAIL After_Inherits: .*TB5182",
-      "^FAIL After_ReadOnlyInModule: .*TB5182",
       "^FAIL Still_AfterVariable: .*TB5182",
       "^FAIL Still_AfterSecondDelegate: .*TB5182",
       "^PASS Cleared_BySub$",

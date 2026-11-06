@@ -18,7 +18,7 @@ The IDE lets you change its fonts and behaviour, its colours, the arrangement of
 Zoom and the language of the IDE are described below, on this page.
 
 ## Zoom
-{: index="zoom; IDE zoom" }
+{: index="zoom; IDE zoom; change [the] font size; make text bigger; mouse wheel zoom; zoom with ctrl scroll" }
 
 Each part of the IDE that can be zoomed has a setting of its own. <kbd>Ctrl</kbd> with the mouse wheel zooms none of them.
 
@@ -80,6 +80,7 @@ The folder `%APPDATA%\twinBASIC` holds the files you add yourself, and it surviv
 The [FAQ](../../../FAQ#ide-data-storage) lists the other folders the IDE uses.
 
 ## The language of the IDE
+{: index="change language; ide language; interface language" }
 
 Choose the language of the menus and dialogs under **Window → Language**. The submenu lists every language pack, and a tick marks the one in use.
 

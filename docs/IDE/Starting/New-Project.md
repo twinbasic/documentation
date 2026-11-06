@@ -12,6 +12,8 @@ index:
   - open project dialog
   - recent projects
   - custom template
+index_also:
+  - create [a] project
 ---
 
 # New Project

@@ -232,7 +232,7 @@ Do **not** jump from `#` straight to `###`. An h1 followed directly by an h3 is 
 
 The repair re-levels the whole page. The plugin raises **every** heading of level 3 or deeper until each sits exactly one level below its parent: `#` / `###` renders as h1 / h2, and `#` / `###` / `#####` renders as h1 / h2 / h3. Only the h1 chapters are left as they are.
 
-**Only `#`, `##` and `###` headings get an entry of their own in the site search.** The search index cuts each page at its h1, h2 and h3 headings and gives each piece one entry, titled with its heading. A `####` or deeper heading gets no entry: its text joins the nearest heading above it. So does a heading with a generic name, such as **Example** or **See Also**, at any level. The list is `search.fold_headings` in `docs/_config.yml`. The index is built from the rendered page, so it sees the levels after the repair.
+**Only `#`, `##` and `###` headings get an entry of their own in the site search.** The search index cuts each page at its h1, h2 and h3 headings and gives each piece one entry, titled with its heading. A `####` or deeper heading gets no entry: its text joins the nearest heading above it. So does a heading with a generic name, such as **Example** or **See Also**, at any level. The list is `search.fold_headings` in `docs/_config.yml`. The index is built from the rendered page, so it sees the levels after the repair. The one exception is the IDE section, where a label gets an entry too: see [Index entries for the site search](#index-entries-for-the-site-search).
 
 ### Editing a page that still uses the old style
 
@@ -313,6 +313,10 @@ A section takes them on its heading, with terms separated by `;`, on the line di
 **`index`** is the main entry: the page a reader searching for the term wants first. **`index_also`** is a strong second answer that ranks right behind it --- `/Reference/Compiler-Constants` takes `index_also: conditional compilation`. A term has one main entry across the site; the build stops, naming every page that claims it, if two do. Any number of pages may take it as `index_also`.
 
 A term matches a search that names all of it, alone or among other words: *late binding* and *late binding in VBA* find the entry, *binding* on its own does not. Capitals, hyphens and word endings do not matter. The entries never appear on the page. The build fails on `index` written on anything but a heading.
+
+**A term may hold optional and alternative words in square brackets**, so that the spellings a reader types need not be written out one by one. `hide [a] panel` stands for `hide panel` and `hide a panel`, and `hide [a|the] panel` for `hide panel`, `hide a panel` and `hide the panel`. A group is whole words between spaces, never part of a word (`customi[s|z]e` is refused), a term has at most two groups, and every alternative must have a word in it. The build writes out the terms before it uses them, so each spelling is still its own term, and the rule of one main entry per term applies to each of them. In front matter, quote a term that starts with a bracket (`index: "[the] debugger"`), since YAML reads an unquoted one as a list.
+
+**On an IDE page, a bold label finds itself.** A page under `IDE/` gets a search entry for each definition term, each list item that starts with bold, and each table row whose first cell starts with bold and has two or more words or is all capitals, and a result links to that item on the page. Any other bold name of two to four words on such a page can be searched for as a whole. So a menu item written as the others are needs no index entry. An index entry there is for the reader's own words, and a label that is a main index entry gets no entry of its own, since the index entry says where it goes.
 
 Mark a term only where the page's own words cannot find it, and name the page a reader wants for that term. Few entries are in use; before adding one, search for the term on a built site and see where it lands.
 

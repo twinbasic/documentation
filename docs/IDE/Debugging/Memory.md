@@ -10,6 +10,8 @@ index:
   - memory window
   - memory panel
   - hex view, of memory
+  - hex dump
+  - memory viewer
 ---
 
 # Memory

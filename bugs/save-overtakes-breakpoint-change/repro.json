@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:breakpoints",
+  "tests": [
+    "F9 that clears a breakpoint, with Ctrl+S before its change is sent, saves the breakpoint: the margin is empty and the run does not stop, and after a restart it is back and stops the run",
+    "F9 that sets a breakpoint, with Ctrl+S before its change is sent, does not save it: after a restart it is gone"
+  ],
+  "steps": "1. Open a project and a code file, and put the caret on a statement with no breakpoint.\n2. Press F9, F9 and Ctrl+S as close together as possible.\n3. The margin shows no breakpoint, and F5 runs past the line.\n4. Click Restart the compiler. The breakpoint is back in the margin, and F5 stops on the line."
+}

@@ -78,12 +78,20 @@
 // pointer are the exceptions: the caller passes their markup as `overlays`,
 // painted last.
 
-import { compactImage } from "../lib/compact-image.mjs";
-import { pngSize } from "../lib/png.mjs";
 import { bakeable, bakeMarkup, colourSteps, filterSteps, stepPrimitive, stepsOpacity } from "./colour-filter.mjs";
-import { FACES_MARK } from "./fonts.mjs";
 import { gradientSvg, parseGradient } from "./gradient.mjs";
-import { esc, num, px, rgba, splitTop } from "./util.mjs";
+import { esc, FACES_MARK, num, px, rgba, splitTop } from "./util.mjs";
+
+// What drawing an embedded image takes: compactImage (lib/compact-image.mjs) and pngSize
+// (lib/png.mjs), which need Node's zlib. They come from bundle.mjs and not from an import,
+// because the Chrome extension (chrome/) loads this module for what capture.mjs reads from
+// it, and draws nothing.
+let compactImage;
+let pngSize;
+/** Gives the converter what drawing an embedded image takes: {compactImage, pngSize}. */
+export function useImageTools(tools) {
+  ({ compactImage, pngSize } = tools);
+}
 
 const INF = { x: -1e9, y: -1e9, w: 2e9, h: 2e9 };
 
@@ -651,9 +659,11 @@ const selectionIn = (selection, node) =>
 function shownControlText(l) {
   const st = l.style;
   if (st.visibility !== "visible" || l.bounds.w < 4 || l.bounds.h < 4) return null;
-  // A transparent text is there for the caret: an editor lays its own text under it.
-  if (transparent(st.color) || transparent(st["-webkit-text-fill-color"])) return null;
-  return controlText(l.node);
+  // A transparent value is there for the caret: an editor lays its own text under it. A
+  // placeholder has a colour of its own, and GitHub's search box shows one in a field like that.
+  const shown = controlText(l.node);
+  if (shown?.placeholder) return shown;
+  return transparent(st.color) || transparent(st["-webkit-text-fill-color"]) ? null : shown;
 }
 
 /**
@@ -1655,7 +1665,15 @@ export function renderSvg(
         y: st["overflow-y"] === "visible" ? INF.y : pad.y,
         h: st["overflow-y"] === "visible" ? INF.h : pad.h,
       };
+      // Chromium cuts what a box with rounded corners clips to those corners, inside its
+      // borders. A disc or a pill is drawn so, a round icon's ground; a smaller radius is not:
+      // on the 120 pictures of the IDE it reaches it moved none past 0.001% of its pixels.
+      const round = [...(c.round ?? [])];
+      const inner = innerRadii(radii(st, b.w, b.h), bw);
+      const disc = pad.h > 0 && inner.every(([rx, ry]) => rx > 0 && ry * 2 >= pad.h - 0.5);
+      if (disc && st["overflow-x"] !== "visible" && st["overflow-y"] !== "visible") round.push(rrectPath(pad, inner));
       c = intersect(c, r);
+      if (round.length) c = { ...c, round };
     }
     descClip.set(n, c);
     return c;
@@ -1940,7 +1958,13 @@ export function renderSvg(
     const image = l.node.name === "IMG" ? l.node.src : embeddedImage(l.node);
     if (image) {
       const id = imageDef(image);
-      out.push(`<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"/>`);
+      const use = `<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"/>`;
+      // Chromium cuts a replaced element to its rounded corners: a page's round avatars.
+      if (r.some(([a, c]) => a > 0 && c > 0)) {
+        const d = rrectPath(b, r);
+        const clip = def(`r${d}`, (cid) => `<clipPath id="${cid}"><path d="${d}"/></clipPath>`);
+        out.push(`<g clip-path="url(#${clip})">${use}</g>`);
+      } else out.push(use);
       stats.images++;
     }
     if (l.node.name === "svg") out.push(...paintInlineSvg(l, bw));
@@ -2388,18 +2412,21 @@ export function renderSvg(
   // the padding, its top 2px above the box's middle rounded down
   // (ThemePainterDefault::SetupMenuListArrow, NativeThemeBase::PaintMenuList);
   // fitted against Chromium's own arrow by scripts/svgshot/bench.mjs's page.
+  // With appearance: none there is no internal padding and no arrow: the page draws its own,
+  // as GitHub's Select does (LayoutThemeDefault::PopupInternalPaddingStart returns 0).
   function paintSelect(l, bw) {
     const st = l.style;
     const b = l.bounds;
     const out = [];
     const right = b.x + b.w - Math.floor(bw[1].width);
-    const arrowBox = 16;
+    const native = st.appearance !== "none";
+    const arrowBox = native ? 16 : 0;
     const label = selectLabel(l.node);
     if (label) {
       const key = fontKey(st);
       const m = env.metrics(key);
       const e = l.exact ?? b;
-      const x = e.x + bw[3].width + px(st["padding-left"]) + 4;
+      const x = e.x + bw[3].width + px(st["padding-left"]) + (native ? 4 : 0);
       const end = e.x + e.w - bw[1].width - px(st["padding-right"]) - arrowBox;
       const last = st["text-align-last"] ?? "auto";
       const align = last === "auto" ? (st["text-align"] ?? "start") : last;
@@ -2416,6 +2443,7 @@ export function renderSvg(
       );
       out.push(`<g clip-path="url(#${id})">${textRun(st, label, tx, top + m.ascent, w)}</g>`);
     }
+    if (!native) return out;
     const cx = right - arrowBox / 2;
     const top = b.y + Math.floor(b.h / 2) - 2;
     out.push(
@@ -3054,10 +3082,23 @@ export function renderSvg(
       const want = chained.want;
       content = chained.content;
       if (c !== INF && (c.x > view.x || c.y > view.y || c.x + c.w < view.x + view.w || c.y + c.h < view.y + view.h)) {
+        // A box that clips on one axis only (overflow-y: clip beside overflow-x: visible) leaves
+        // the other unbounded, and Chromium draws nothing through a clip two billion px wide:
+        // that axis takes the picture's own span.
+        const span = {
+          x: c.w < INF.w ? c.x : view.x,
+          w: c.w < INF.w ? c.w : view.w,
+          y: c.h < INF.h ? c.y : view.y,
+          h: c.h < INF.h ? c.h : view.h,
+        };
         const id = def(
-          `c${c.x}|${c.y}|${c.w}|${c.h}`,
-          (id) => `<clipPath id="${id}"><rect ${rectAttrs(c)}/></clipPath>`,
+          `c${span.x}|${span.y}|${span.w}|${span.h}`,
+          (id) => `<clipPath id="${id}"><rect ${rectAttrs(span)}/></clipPath>`,
         );
+        want.push({ key: `c${id}`, open: `<g clip-path="url(#${id})">` });
+      }
+      for (const d of c.round ?? []) {
+        const id = def(`rc${d}`, (id) => `<clipPath id="${id}"><path d="${d}"/></clipPath>`);
         want.push({ key: `c${id}`, open: `<g clip-path="url(#${id})">` });
       }
       let same = 0;

@@ -289,7 +289,11 @@ function accumulateSetUnions() {
 }
 
 // Patched: whether a result matched the name a query names (see
-// doSearch()): in `exact` or `primary`, or every word of it in `title`.
+// doSearch()): in `exact` or `primary`, or every word of it in `title` of an
+// entry whose page is titled with it too (the thing's own page). A section
+// merely headed with the name, as a contributed package's member page is, does
+// not name the thing a reader means: `AddItem method` is ComboBox's, and an
+// `AddItem` section that says "method" must not cancel the fallback that finds it.
 function namesTheThing(result, name) {
   var metadata = result.matchData.metadata;
   var terms = Object.keys(metadata);
@@ -300,8 +304,15 @@ function namesTheThing(result, name) {
     return lunr.stemmer(lunr.trimmer(token)).toString();
   }).filter(Boolean);
   return keys.length > 0 && keys.every(function(key) {
-    return metadata[key] && metadata[key].title;
+    return metadata[key] && metadata[key].title && metadata[key].page;
   });
+}
+
+// Patched: an entry of a label (builder/search.mjs's termSections), which never
+// counts as naming a language element: an IDE command named Continue must not
+// cancel the kind-word fallback for `Continue statement`.
+function isTermEntry(doc) {
+  return doc.relUrl.indexOf('#term:') !== -1;
 }
 
 // Patched: a hand-marked index term as the `index` field holds it -- its
@@ -359,6 +370,11 @@ function boostWholeTitles(results, docs, baseTokens, keys) {
 // which nobody types. A query naming one thing plus its kind -- `With
 // statement`, `AddressOf operator` -- is treated as naming that thing.
 var KIND_WORDS = ['operator', 'statement', 'attribute', 'keyword', 'directive', 'class', 'method', 'property', 'module', 'function', 'constant', 'enum', 'object', 'member', 'sub', 'package', 'interface', 'control', 'event', 'type', 'field'];
+
+// Patched: the words a question leads with, dropped from a query so that the
+// all-words pass does not require them. Only these, at the start, and only when
+// something follows. A lookahead, not a lookbehind: see the smart dot split.
+var QUESTION_LEAD = /^\s*how\s+(?:(?:do|can|should|would)\s+(?:i|you|we)|to)\s+(?=\S)/i;
 
 function searchLoaded(loadIndex) {
   // Patched: index/docs start out unloaded (step 5C) -- loadIndex() (from
@@ -495,6 +511,7 @@ function searchLoaded(loadIndex) {
   // index being loaded first. Everything below is unchanged from upstream
   // (plus the asterisk guard and smart dot split patches, both pre-existing).
   function doSearch(input) {
+    input = input.replace(QUESTION_LEAD, '');
 
     // Patched: trim each token as the index's own pipeline did
     // (lunr.trimmer), so `Date$` finds `date`, and drop tokens left empty.
@@ -658,7 +675,7 @@ function searchLoaded(loadIndex) {
     var results = [];
     if (baseTokens.length >= 2) {
       results = allWords(false);
-      if (name && words.length > 1 && !results.some(function(r) { return namesTheThing(r, name); })) {
+      if (name && words.length > 1 && !results.some(function(r) { return !isTermEntry(docs[r.ref]) && namesTheThing(r, name); })) {
         var again = allWords(true);
         if (again.length > 0) results = again;
       }

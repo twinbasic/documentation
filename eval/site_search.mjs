@@ -171,8 +171,18 @@ function boostWholeTitles(lunr, results, docs, baseTokens, keys) {
   return boosted ? results.sort((a, b) => b.score - a.score) : results;
 }
 
+// Matches just-the-docs.js: an entry of a label (builder/search.mjs's
+// termSections), which never counts as naming a language element.
+function isTermEntry(doc) {
+  return doc.relUrl.indexOf("#term:") !== -1;
+}
+
 // Matches just-the-docs.js's namesTheThing(): a result matched the name in
-// `exact` or `primary`, or every word of it in `title`.
+// `exact` or `primary`, or every word of it in `title` of an entry whose page
+// is titled with it too (the thing's own page). A section merely headed with
+// the name, as a contributed package's member page is, does not name the thing
+// a reader means: `AddItem method` is ComboBox's, and an `AddItem` section that
+// says "method" must not cancel the fallback that finds it.
 function namesTheThing(lunr, result, name) {
   const metadata = result.matchData.metadata;
   if (Object.values(metadata).some((m) => m.exact || m.primary)) return true;
@@ -180,14 +190,19 @@ function namesTheThing(lunr, result, name) {
     .tokenizer(name)
     .map((t) => lunr.stemmer(lunr.trimmer(t)).toString())
     .filter(Boolean);
-  return keys.length > 0 && keys.every((k) => metadata[k] && metadata[k].title);
+  return keys.length > 0 && keys.every((k) => metadata[k] && metadata[k].title && metadata[k].page);
 }
 
 // The whole-title keys, per docs object, as the client keeps them for its
 // one docs object.
 const titleKeys = new WeakMap();
 
-export function search({ lunr, index, docs }, input) {
+// Matches just-the-docs.js: the words a question leads with. Only these, at the
+// start, and only when something follows.
+const QUESTION_LEAD = /^\s*how\s+(?:(?:do|can|should|would)\s+(?:i|you|we)|to)\s+(?=\S)/i;
+
+export function search({ lunr, index, docs }, typed) {
+  const input = typed.replace(QUESTION_LEAD, "");
   // Patched, matching just-the-docs.js: trim each token as the index's own
   // pipeline did (lunr.trimmer), so `Date$` finds `date`, and drop tokens
   // left empty. That includes tokens made only of asterisks, which would
@@ -300,7 +315,7 @@ export function search({ lunr, index, docs }, input) {
   let results = [];
   if (baseTokens.length >= 2) {
     results = allWords(false);
-    if (name && words.length > 1 && !results.some((r) => namesTheThing(lunr, r, name))) {
+    if (name && words.length > 1 && !results.some((r) => !isTermEntry(docs[r.ref]) && namesTheThing(lunr, r, name))) {
       const again = allWords(true);
       if (again.length) results = again;
     }

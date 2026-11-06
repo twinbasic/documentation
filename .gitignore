@@ -47,6 +47,10 @@ indexer/.packages/
 # is drawn from, for scripts/svgshot/replay.mjs. Bundles hold the Windows user name.
 /.svgshot-bundles/
 
+# The words the Chrome extension masks and no published picture may show, which its panel
+# reads from inside its own folder (scripts/svgshot/private-list.mjs).
+/scripts/svgshot/private.json
+
 # scripts/shot_review.mjs: the screenshot review's session and its runs' stages
 # (scripts/lib/shot-session.mjs), which hold the Windows user name.
 /.shot-review/

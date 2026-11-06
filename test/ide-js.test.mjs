@@ -18,13 +18,15 @@ import { after, before, describe, test } from "node:test";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
   bindings,
+  builtInCommandIds,
   builtInKeymap,
   checkUnit,
   coverage,
   FixError,
   fixShapes,
   keyLabel,
-  keymapTable,
+  commandTextProblems,
+  keymapTables,
   lineDiff,
   NameError,
   namedUnits,
@@ -301,7 +303,7 @@ describe("the built-in keyboard shortcuts", () => {
     'var other={};var builtInKeyboardShortcutGroups={"<DEFAULT>":{caption:"{%Default}",data:{' +
     'tbB_Two:["{KEYDOWN}{KEYDOWNREPEAT}{CTRL}{SHIFT}ARROWLEFT","{KEYDOWN}{SHIFT}{ALT}F8"],' +
     'tbA_One:["F2","{KEYDOWN}{CTRL}{"],tbD_Text:["&","\\\\","*"],tbC_None:[],' +
-    'tbE_All:["{ALLEXCEPT}ARROWUP|&"]}}};var ideCommands={};\n';
+    'tbE_All:["{ALLEXCEPT}ARROWUP|&"]}}};var ideCommands={tbA_One:{internalAction:()=>{}},tbF_Free:{internalAction:()=>{}},tbC_None:{},tbB_Two:{}};\n';
 
   test("the group is read in the build's order, with no key too", () => {
     const map = builtInKeymap(parse(MAIN));
@@ -323,26 +325,87 @@ describe("the built-in keyboard shortcuts", () => {
     assert.deepEqual(keyLabel("{KEYDOWN}\\").keys, "<kbd>&#92;</kbd>");
   });
 
-  test("the table has one row for each command, by name, and says what is odd in words", () => {
-    assert.deepEqual(keymapTable(builtInKeymap(parse(MAIN))).split("\n"), [
-      "| Command | Keys |",
-      "|---|---|",
-      "| `tbA_One` | <kbd>Ctrl</kbd>+<kbd>{</kbd>; <kbd>F2</kbd>, on release |",
-      "| `tbB_Two` | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Left</kbd>, <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F8</kbd> |",
-      "| `tbC_None` | none |",
-      "| `tbD_Text` | <kbd>&amp;</kbd>, <kbd>&#92;</kbd>, <kbd>&#42;</kbd>, on release |",
-      "| `tbE_All` | every key its `{ALLEXCEPT}` list does not name, on release |",
+  test("the build's command ids are read in its order", () => {
+    assert.deepEqual(builtInCommandIds(parse(MAIN)), ["tbA_One", "tbF_Free", "tbC_None", "tbB_Two"]);
+    assert.throws(() => builtInCommandIds(parse("var other={};\n")), /no ideCommands/);
+  });
+
+  const TEXT = { tbA_One: "Does one.", tbB_Two: "Does two | with a bar\nand a break.", tbF_Free: "Does free." };
+  const tables = () => {
+    const map = builtInKeymap(parse(MAIN));
+    return keymapTables(map, builtInCommandIds(parse(MAIN)), TEXT);
+  };
+
+  test("a command with a key is on the first table, by name, and says what is odd in words", () => {
+    assert.deepEqual(tables().keyed.split("\n"), [
+      "| Command | Keys | What it does |",
+      "|---|---|---|",
+      "| `tbA_One` | <kbd>Ctrl</kbd>+<kbd>{</kbd>; <kbd>F2</kbd>, on release | Does one. |",
+      "| `tbB_Two` | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Left</kbd>, <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F8</kbd> | Does two &#124; with a bar and a break. |",
+      "| `tbD_Text` | <kbd>&amp;</kbd>, <kbd>&#92;</kbd>, <kbd>&#42;</kbd>, on release |  |",
+      "| `tbE_All` | every key its `{ALLEXCEPT}` list does not name, on release |  |",
     ]);
   });
 
-  test("a page keeps everything round its table, in its own line endings", () => {
+  test("a command with no key is on the second table, listed in the group or not, with an empty cell for no text", () => {
+    assert.deepEqual(tables().unkeyed.split("\n"), [
+      "| Command | What it does |",
+      "|---|---|",
+      "| `tbC_None` |  |",
+      "| `tbF_Free` | Does free. |",
+    ]);
+  });
+
+  test("every command is on exactly one table", () => {
+    const rows = (table) =>
+      table
+        .split("\n")
+        .slice(2)
+        .map((r) => r.split(" | ")[0].slice(3, -1));
+    const { keyed, unkeyed } = tables();
+    const all = [...rows(keyed), ...rows(unkeyed)];
+    assert.deepEqual([...all].sort(), ["tbA_One", "tbB_Two", "tbC_None", "tbD_Text", "tbE_All", "tbF_Free"]);
+  });
+
+  test("a command with no description, or a description with no command, is named", () => {
+    const ids = ["tbA_One", "tbB_Two", "tbZ_New", "tbY_New"];
+    assert.deepEqual(commandTextProblems(ids, { tbA_One: "x", tbB_Two: "", tbOld: "y" }), {
+      missing: ["tbY_New", "tbZ_New"],
+      extra: ["tbOld"],
+    });
+    assert.deepEqual(commandTextProblems(["tbA_One"], { tbA_One: "x" }), { missing: [], extra: [] });
+  });
+
+  test("a page keeps everything round its tables, in its own line endings", () => {
+    const t1 = "| Command | Keys | What it does |\n|---|---|---|\n| `new` | y | z |";
+    const t2 = "| Command | What it does |\n|---|---|\n| `other` | w |";
     for (const eol of ["\n", "\r\n"]) {
-      const page = ["# Keys", "", "| Command | Keys |", "|---|---|", "| `old` | x |", "", "## See Also", ""].join(eol);
-      const { current, text } = pageKeymap(page, "| Command | Keys |\n|---|---|\n| `new` | y |");
-      assert.equal(current, "| Command | Keys |\n|---|---|\n| `old` | x |");
-      assert.equal(text, page.replace("`old` | x", "`new` | y"));
+      const page = [
+        "# Keys",
+        "",
+        "| Command | Keys | What it does |",
+        "|---|---|---|",
+        "| `old` | x | v |",
+        "",
+        "## None",
+        "",
+        "| Command | What it does |",
+        "|---|---|",
+        "| `gone` | u |",
+        "",
+        "## See Also",
+        "",
+      ].join(eol);
+      const r = pageKeymap(page, { keyed: t1, unkeyed: t2 });
+      assert.equal(r.expected, t1 + "\n\n" + t2);
+      assert.equal(r.current.split("\n\n").length, 2);
+      assert.equal(r.text, page.replace("`old` | x | v", "`new` | y | z").replace("`gone` | u", "`other` | w"));
+      assert.equal(pageKeymap(r.text, { keyed: t1, unkeyed: t2 }).current, r.expected);
     }
-    assert.throws(() => pageKeymap("# no table\n", ""), /has no \| Command \| Keys \| table/);
+    assert.throws(
+      () => pageKeymap("# no table\n", { keyed: t1, unkeyed: t2 }),
+      /has no \| Command \| Keys \| What it does \| table/,
+    );
   });
 });
 
@@ -391,6 +454,25 @@ describe("the command line", () => {
     const other = path.join(root, "other.js");
     writeFileSync(other, ONE_PARAM);
     assert.equal(run("check", "--ide", other, "--map", map).code, 1);
+  });
+
+  test("keymap --check names the commands that have no description, and the descriptions that have no command", () => {
+    const keys = path.join(root, "twinBASIC_IDE_BETA_3");
+    mkdirSync(path.join(keys, "ide"), { recursive: true });
+    writeFileSync(
+      path.join(keys, "ide", "main.js"),
+      'var builtInKeyboardShortcutGroups={"<DEFAULT>":{data:{tbQ_Keyed:["F2"]}}};var ideCommands={tbQ_Keyed:{},tbQ_Free:{}};\n',
+    );
+    writeFileSync(path.join(keys, "ide", "build.js"), "var tbVersionInfo = 'twinBASIC IDE BETA 3';");
+    writeFileSync(path.join(keys, "twinBASIC.exe"), "");
+    const shown = run("keymap", "--ide", keys);
+    assert.equal(shown.code, 0, shown.stderr);
+    assert.ok(shown.stdout.includes("| `tbQ_Keyed` | <kbd>F2</kbd>, on release |  |"));
+    assert.ok(shown.stdout.includes("| `tbQ_Free` |  |"));
+    const r = run("keymap", "--check", "--ide", keys);
+    assert.equal(r.code, 1);
+    assert.match(r.stdout, /no entry for 2 commands of BETA 3: tbQ_Free, tbQ_Keyed\n/);
+    assert.match(r.stdout, /entries for commands BETA 3 lacks: tbBuild_Clean, /);
   });
 
   test("patch writes a main.js under the temp folder, and nothing into the repository", () => {

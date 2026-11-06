@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-editor",
+  "tests": [
+    "a click on the greyed-out Undo or Redo button, before any file has been opened, prints an IDE internal error"
+  ],
+  "steps": "1. Start the IDE and open any project, or cancel the New / Open Project dialog. Open no file.\n2. Click the greyed-out Undo or Redo button on the toolbar.\n3. The DEBUG CONSOLE prints a red line: IDE internal error: Uncaught TypeError: Cannot read properties of undefined (reading 'defaultContext'), and it prints another for each further click."
+}

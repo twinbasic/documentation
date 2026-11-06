@@ -1,7 +1,8 @@
 // An SVG picture of a clip of a live page, over a CDP connection: what
-// shoot_docs.mjs --svg writes beside each PNG. collectBundle reads what the
-// converter needs from the page into a bundle, data alone; bundle.mjs's
-// renderBundle draws the SVG from it, and replay.mjs draws it again later.
+// shoot_docs.mjs --svg writes beside each PNG, and what the Chrome extension
+// (chrome/) saves. collectBundle reads what the converter needs from the page into
+// a bundle, data alone; bundle.mjs's renderBundle draws the SVG from it, and
+// replay.mjs draws it again later.
 //
 // Everything is read from the page as it stands when the PNG has just been
 // captured, in this order:
@@ -32,9 +33,7 @@
 // a style rule and a canvas mean what their own document says. A frame of
 // another process is not reached: it has a DevTools target of its own.
 
-import { createHash } from "node:crypto";
-import { BUNDLE_VERSION, renderBundle, trimSnapshot } from "./bundle.mjs";
-import { webRulesFor } from "./fonts.mjs";
+import { webRulesFor } from "./font-rules.mjs";
 import {
   decodeSnapshot,
   frameGeometry,
@@ -49,6 +48,15 @@ import {
   viewportScroller,
   viewportStyleSources,
 } from "./snapshot-svg.mjs";
+import { BUNDLE_VERSION, trimSnapshot } from "./snapshot-trim.mjs";
+
+// The SHA-1 of `text`, in hex, as the crypto the platform gives: this module runs in Node and
+// in the Chrome extension (chrome/), so it and all it imports use no Node module, which
+// test/svgshot.test.mjs checks.
+async function sha1(text) {
+  const hash = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(text));
+  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 // The computed styles the converter reads.
 export const SNAPSHOT_STYLES = [
@@ -119,6 +127,11 @@ const PART_STYLES = [
   ...["width", "height", "min-width", "min-height", "max-width", "max-height"],
   ...["top", "right", "bottom", "left"].map((s) => `margin-${s}`),
 ];
+
+/** What keeps a page still while it is taken: no animation, no transition, no caret. */
+export const QUIET_CSS =
+  "*,*::before,*::after{animation:none !important;transition:none !important;caret-color:transparent !important;scroll-behavior:auto !important}" +
+  ".monaco-editor .cursors-layer{visibility:hidden !important}";
 
 const MEASURE_ID = "tbSvgMeasure";
 const OVERLAYS = ["svg#tbShotAnnotation", "#tbShotPointer svg"];
@@ -956,17 +969,6 @@ async function webFontData(url) {
   });
 }
 
-/**
- * The SVG picture of `clip` ({x, y, width, height} CSS px; null for the whole
- * viewport) of the page `conn` is attached to. `background` is false for a
- * cut-out. Returns {svg, stats, misses, bundle}: the picture drawn from the
- * bundle read from the page (bundle.mjs), and the bundle.
- */
-export async function svgOfPage(conn, clip, options = {}) {
-  const bundle = await collectBundle(conn, clip, options);
-  return { ...(await renderBundle(bundle)), bundle };
-}
-
 /** Everything the converter reads from the page for `clip`, as data (bundle.mjs). */
 export async function collectBundle(conn, clip, { background = true } = {}) {
   const snapshot = await conn.send(
@@ -1170,6 +1172,16 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
     // family split into files by unicode-range, those whose range holds a character of
     // the run. Their bytes are read once per connection and origin.
     const origin = new URL(doc.url).origin;
+    // A file's bytes as a data: URL, or null: read by the document, else from what it has
+    // loaded, since a page's Content-Security-Policy can refuse its own fetch of its font.
+    const fontBytes = async (url) => {
+      try {
+        return await run(context, `(${webFontData})(${JSON.stringify(url)})`, true);
+      } catch {
+        const got = await conn.send("Page.getResourceContent", { frameId: doc.frameId, url }).catch(() => null);
+        return got?.base64Encoded ? `data:font/woff2;base64,${got.content}` : null;
+      }
+    };
     const custom = new Map();
     for (const [id, used] of platform) {
       if (!used.some((f) => f.isCustomFont)) continue;
@@ -1181,9 +1193,9 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
       for (const file of texts.flatMap((text) => webRulesFor(rules[key] ?? [], text))) {
         const cached = `${origin}|${file.url}`;
         if (conn.svgWebFonts.has(cached)) continue;
-        const data = await run(context, `(${webFontData})(${JSON.stringify(file.url)})`, true);
+        const data = await fontBytes(file.url);
         // Named by its bytes, so that one font the page and a frame both use is one face of the picture.
-        conn.svgWebFonts.set(cached, data && { family: createHash("sha1").update(data).digest("hex"), data });
+        conn.svgWebFonts.set(cached, data && { family: await sha1(data), data });
       }
     }
     // What the bundle keeps of them: for each font key, the rules some run of it was drawn

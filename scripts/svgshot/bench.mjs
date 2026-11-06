@@ -1,6 +1,6 @@
 // The converter's test pages. Each page under scripts/svgshot/bench/ is opened
 // in a browser, taken as a PNG at device scale 2 as shoot_docs takes the IDE,
-// and drawn as an SVG by capture.mjs's svgOfPage; diff.mjs compares the two.
+// and drawn as an SVG by bundle.mjs's svgOfPage; diff.mjs compares the two.
 // So a change that draws a replicated part or a text decoration wrongly -- a
 // scrollbar, a drop-down list, a native text field, a checkbox or radio button (disabled ones over
 // two grounds), a list marker painted as a shape, a search field's clear button, an underline, a focus ring, a frame, a web font
@@ -38,7 +38,7 @@ import { exitOnCrash, parseCli, printHelpAndExit, regexOption, withUsageError } 
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { LAUNCH_ARGS, withBrowser } from "../lib/browser.mjs";
 import { decodePng } from "../lib/png.mjs";
-import { svgOfPage } from "./capture.mjs";
+import { svgOfPage } from "./bundle.mjs";
 import { diffSvg } from "./diff.mjs";
 import { AUTO_THUMB } from "./snapshot-svg.mjs";
 

@@ -2,10 +2,13 @@
 title: Status Bar
 parent: IDE Reference
 grand_parent: IDE
-nav_order: 13
+nav_order: 14
 permalink: /tB/IDE/Reference/StatusBar
 redirect_from:
   - /tB/IDE/Project/StatusBar
+index:
+  - hide status bar
+  - turn off status bar
 ---
 
 # Status Bar
@@ -15,6 +18,8 @@ redirect_from:
 With no project open, no compiler is connected: the services badge reads **UNAVAILABLE** and the licence badge reads **tB Licence: NOT READY**. Both change once a project has loaded and the compiler has answered.
 
 The Status Bar runs along the bottom of the IDE window. From left to right it holds the [services badge](#services), the [licence badge](#licence), the [links](#links) to community resources, a [**PROCESS** box](#other-boxes) for each program that your program started, the [progress bar](#other-boxes), the [command name](#status), the [memory box](#other-boxes) and the [line and column box](#other-boxes). The progress bar, the memory box and the line and column box show only in some states.
+
+The status bar cannot be hidden. It is not a panel, so no panel layout removes it, **Full Screen Editor Layout** included, and no option or command hides it. The one option that changes it is **Show memory and resource usage**, which adds the [memory box](#other-boxes).
 
 ## Services
 
@@ -83,7 +88,7 @@ The region left of the memory box names the command a click would trigger --- th
 
 The name goes when the pointer leaves the icon or the menu item. It stays only when the item goes away under the pointer: a menu that closes on a click or on <kbd>Esc</kbd> leaves the name of the last item it showed, until the pointer enters another item that has a command.
 
-These are the same identifiers the keyboard shortcut map is keyed by --- see [Window](Menu/Window) for the full list and the keys bound to each one.
+These are the same identifiers the keyboard shortcut map is keyed by --- see [Keyboard Shortcuts](Keyboard-Shortcuts) for the list and the keys bound to each one.
 
 ## See Also
 

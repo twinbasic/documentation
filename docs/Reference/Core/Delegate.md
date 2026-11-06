@@ -40,7 +40,7 @@ A delegate value is normally produced by **AddressOf**, which yields a delegate-
 
 <!-- test: bug delegate-next-keyword -->
 > [!NOTE] BETA 1034
-> After a **Delegate** statement, the next [**Friend**](Friend), **ReadOnly**, **WithEvents**, [**Implements**](Implements) or **Inherits** in the same class or module is refused with TB5182, *Syntax error. No handler for this symbol*. A procedure, a [**Declare**](Declare) or an [**Event**](Event) ends the effect; a blank line, a variable, a **Const**, a **Type**, an **Enum**, an attribute or another **Delegate** does not. Put the **Delegate** after those statements, at the end of the class if necessary: a delegate type can be used before its declaration. A **Delegate** in a **Module** does not affect a class that follows it in the same file.
+> After a **Delegate** statement, the next [**Friend**](Friend), **ReadOnly**, **WithEvents**, [**Implements**](Implements) or **Inherits** in the same class is refused with TB5182, *Syntax error. No handler for this symbol*. A procedure, a [**Declare**](Declare) or an [**Event**](Event) ends the effect; a blank line, a variable, a **Const**, a **Type**, an **Enum**, an attribute or another **Delegate** does not. Put the **Delegate** after those statements, at the end of the class if necessary: a delegate type can be used before its declaration. A **Delegate** in a **Module** does not affect a class that follows it in the same file.
 
 ### Example
 

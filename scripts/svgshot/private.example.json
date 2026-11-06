@@ -1,0 +1,7 @@
+{
+  "words": [
+    { "find": "you@example.org", "show": "contributor@users.noreply.github.com" },
+    { "find": "Your Name", "show": "A Contributor" },
+    { "find": "your-github-login", "show": "contributor" }
+  ]
+}

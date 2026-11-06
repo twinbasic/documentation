@@ -430,6 +430,405 @@
           "refs": 2
         }
       }
+    },
+    "bindIconToIdeCommand": {
+      "namedOn": "BETA 1034",
+      "shape": "4354f8d025fd428e",
+      "names": {
+        "0#0": {
+          "name": "button",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 12
+        },
+        "0#1": {
+          "name": "command",
+          "was": "t",
+          "def": "Parameter",
+          "kind": "param1",
+          "refs": 6
+        },
+        "0#2": {
+          "name": "noClick",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param2",
+          "refs": 1
+        },
+        "0#3": {
+          "name": "keys",
+          "was": "n",
+          "def": "Variable",
+          "kind": "let",
+          "refs": 3
+        },
+        "0/0#0": {
+          "name": "enterEvent",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 0
+        },
+        "0/1#0": {
+          "name": "leaveEvent",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 0
+        },
+        "0/3/0#0": {
+          "name": "pressEvent",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 2
+        }
+      }
+    },
+    "toggleBreakpointAtLine": {
+      "namedOn": "BETA 1034",
+      "shape": "a8c904f3bb2ed769",
+      "names": {
+        "0#0": {
+          "name": "line",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 5
+        },
+        "0#1": {
+          "name": "model",
+          "was": "t",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 3
+        },
+        "0#2": {
+          "name": "foundIndex",
+          "was": "o",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 4
+        },
+        "0#3": {
+          "name": "index",
+          "was": "n",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 3
+        },
+        "0#4": {
+          "name": "removed",
+          "was": "i",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0#5": {
+          "name": "versionInfo",
+          "was": "r",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0/1#0": {
+          "name": "decoration",
+          "was": "i",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 1
+        }
+      }
+    },
+    "sendDocumentChangeToServer": {
+      "namedOn": "BETA 1034",
+      "shape": "b766f01cbd123c73",
+      "names": {
+        "0#0": {
+          "name": "editorNode",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 11
+        },
+        "0#1": {
+          "name": "change",
+          "was": "t",
+          "def": "Parameter",
+          "kind": "param1",
+          "refs": 3
+        },
+        "0#2": {
+          "name": "onAnswer",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param2",
+          "refs": 2
+        },
+        "0/1/0#0": {
+          "name": "answer",
+          "was": "n",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 1
+        },
+        "0/1/0/1#0": {
+          "name": "queued",
+          "was": "t",
+          "def": "Variable",
+          "kind": "let",
+          "refs": 2
+        }
+      }
+    },
+    "getSemanticTokensForCurrentFile": {
+      "namedOn": "BETA 1034",
+      "shape": "70d7f71a100106a9",
+      "names": {
+        "0#0": {
+          "name": "editorNode",
+          "was": "e",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 8
+        },
+        "0#1": {
+          "name": "uri",
+          "was": "t",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 4
+        },
+        "0/0#0": {
+          "name": "answer",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 1
+        }
+      }
+    },
+    "propertyOnGotFocus": {
+      "namedOn": "BETA 1034",
+      "shape": "f8b68229b9ac5ef2",
+      "names": {
+        "0#0": {
+          "name": "globals",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 7
+        },
+        "0#1": {
+          "name": "valueCell",
+          "was": "t",
+          "def": "Parameter",
+          "kind": "param1",
+          "refs": 1
+        },
+        "0#2": {
+          "name": "propertyName",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param2",
+          "refs": 1
+        }
+      }
+    },
+    "serverSaveDirtyDocuments": {
+      "namedOn": "BETA 1034",
+      "shape": "2771b4406de4f175",
+      "names": {
+        "0#0": {
+          "name": "done",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 2
+        },
+        "0#1": {
+          "name": "errorCount",
+          "was": "t",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 4
+        },
+        "0#2": {
+          "name": "pending",
+          "was": "o",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 7
+        },
+        "0#3": {
+          "name": "lastProgress",
+          "was": "n",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 3
+        },
+        "0#4": {
+          "name": "oneDone",
+          "was": "i",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 5
+        },
+        "0#5": {
+          "name": "editorNode",
+          "was": "r",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 7
+        },
+        "0#6": {
+          "name": "watchdog",
+          "was": "a",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 10
+        },
+        "0#7": {
+          "name": "message",
+          "was": "s",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0/1#0": {
+          "name": "tabIndex",
+          "was": "e",
+          "def": "Variable",
+          "kind": "let",
+          "refs": 5
+        },
+        "0/1/0/1#0": {
+          "name": "error",
+          "was": "o",
+          "def": "CatchClause",
+          "kind": "",
+          "refs": 0
+        },
+        "0/2#0": {
+          "name": "elapsed",
+          "was": "e",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        },
+        "0/2#1": {
+          "name": "timeoutMessage",
+          "was": "t",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        }
+      }
+    },
+    "parseDocumentDecorations": {
+      "namedOn": "BETA 1034",
+      "shape": "020e0b390b047515",
+      "names": {
+        "0#0": {
+          "name": "editorNode",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 5
+        },
+        "0#1": {
+          "name": "decorations",
+          "was": "t",
+          "def": "Parameter",
+          "kind": "param1",
+          "refs": 9
+        },
+        "0#2": {
+          "name": "versionId",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param2",
+          "refs": 2
+        },
+        "0#3": {
+          "name": "tokensTime",
+          "was": "n",
+          "def": "Variable",
+          "kind": "let",
+          "refs": 1
+        },
+        "0#4": {
+          "name": "separatorDecorations",
+          "was": "i",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 3
+        },
+        "0#5": {
+          "name": "separators",
+          "was": "r",
+          "def": "Variable",
+          "kind": "const",
+          "refs": 2
+        },
+        "0#6": {
+          "name": "separatorsTime",
+          "was": "a",
+          "def": "Variable",
+          "kind": "let",
+          "refs": 1
+        },
+        "0#7": {
+          "name": "codeLenses",
+          "was": "s",
+          "def": "Variable",
+          "kind": "const",
+          "refs": 2
+        },
+        "0#8": {
+          "name": "breakpoints",
+          "was": "l",
+          "def": "Variable",
+          "kind": "const",
+          "refs": 2
+        },
+        "0#9": {
+          "name": "breakpointLines",
+          "was": "d",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 3
+        },
+        "0#10": {
+          "name": "action",
+          "was": "c",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 3
+        },
+        "0/1#0": {
+          "name": "separator",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 2
+        },
+        "0/2#0": {
+          "name": "lens",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 5
+        },
+        "0/3#0": {
+          "name": "breakpoint",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 3
+        }
+      }
     }
   }
 }

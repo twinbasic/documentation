@@ -263,6 +263,14 @@ export const FAMILIES = {
   // "constants in a Module": a Const in a Class is a different target, so
   // accepting it is reported as undocumented rather than absorbed.
   CONST: ["CONST", "CONST_PRIVATE"],
+  // The phrases below name a site parseTargets has no rule for; the sweep reads
+  // them in its own `targetsOf` (attribute-sweep.mjs).
+  CONST_CLASS: ["CONST_CLASS"],
+  SUB_GENERIC: ["SUB_GENERIC"],
+  SUB_CLASS: ["PROC_CLASS", "SUB_FRIEND_CLASS"],
+  SUB_INTERFACE: ["PROC_INTERFACE"],
+  PROPGET_CLASS: ["PROPGET_CLASS"],
+  TYPE_FIELD: ["TYPE_FIELD", "TYPE_FIELD_LINE"],
   VAR_CLASS: ["VAR_CLASS", "VAR_CLASS_PRIVATE", "VAR_CLASS_WITHEVENTS"],
   VAR_MODULE: ["VAR_MODULE", "VAR_MODULE_PRIVATE", "VAR_MODULE_INIT"],
   PARAM: ["PARAM", "PARAM_DECLARE", "PARAM_INTERFACE", "PARAM_OPTIONAL", "PARAM_PARAMARRAY"],

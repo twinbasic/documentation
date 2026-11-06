@@ -649,38 +649,92 @@ export function keyLabel(string) {
   return { keys: [...modifiers, KEY_NAMES[rest] ?? rest].map(kbd).join("+"), release: !down };
 }
 
-/** The table of the Keyboard Shortcuts reference page, one row for each command, by name. */
-export function keymapTable(map) {
-  const rows = Object.keys(map)
-    .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
-    .map((command) => {
-      const labels = map[command].map(keyLabel);
-      const list = (release) =>
-        labels
-          .filter((l) => l.release === release)
-          .map((l) => l.keys)
-          .join(", ");
-      const cell = [list(false), list(true) && `${list(true)}, on release`].filter(Boolean).join("; ");
-      return `| \`${command}\` | ${cell || "none"} |`;
-    });
-  return ["| Command | Keys |", "|---|---|", ...rows].join("\n");
+/**
+ * The ids of the build's commands, `ideCommands`' keys in the build's order, read from the
+ * syntax tree: `var ideCommands={tbX:{...},...}`.
+ */
+export function builtInCommandIds(parsed) {
+  for (const node of parsed.ast.body) {
+    if (node.type !== "VariableDeclaration") continue;
+    const decl = node.declarations.find((d) => d.id.name === "ideCommands");
+    if (decl?.init?.type === "ObjectExpression") return decl.init.properties.map((p) => p.key.name ?? p.key.value);
+  }
+  throw new Error("main.js has no ideCommands");
+}
+
+const byName = (a, b) => a.localeCompare(b, "en", { sensitivity: "base" });
+// One line of a table cell: a pipe or a line break would end the cell or the row.
+const cellText = (s) =>
+  String(s ?? "")
+    .replace(/\|/g, "&#124;")
+    .replace(/\s*[\r\n]+\s*/g, " ")
+    .trim();
+
+/**
+ * What `text` (the data file, `{ id: description }`) lacks and has too much of, against the
+ * build's command ids: `{ missing, extra }`, each in name order. An id with an empty description
+ * has an entry; one with none is missing.
+ */
+export function commandTextProblems(ids, text) {
+  const have = new Set(ids);
+  return {
+    missing: ids.filter((id) => !Object.hasOwn(text, id)).sort(byName),
+    extra: Object.keys(text)
+      .filter((id) => !have.has(id))
+      .sort(byName),
+  };
 }
 
 /**
- * `page` with its keymap table, from the `| Command | Keys |` line to the last row, replaced by
- * `table`, in the page's own line endings. The table of a page is `.current`.
+ * The two tables of the Keyboard Shortcuts reference page, as `{ keyed, unkeyed }`: the commands
+ * with a default key (the command, its keys, what it does), and the others (the command, what it
+ * does), each with one row for each command, by name. A command is on the second table when the
+ * build lists it in `ideCommands` (`ids`) and the group gives it no key. `text` is the data file.
  */
-export function pageKeymap(page, table) {
-  const eol = page.includes("\r\n") ? "\r\n" : "\n";
-  const lines = page.split(eol);
-  const start = lines.indexOf("| Command | Keys |");
-  if (start < 0) throw new Error("the page has no | Command | Keys | table");
-  let end = start;
-  while (lines[end + 1]?.startsWith("|")) end++;
+export function keymapTables(map, ids, text = {}) {
+  const all = [...new Set([...ids, ...Object.keys(map)])].sort(byName);
+  const keyed = [];
+  const unkeyed = [];
+  for (const command of all) {
+    const description = cellText(text[command]);
+    const labels = (map[command] ?? []).map(keyLabel);
+    if (!labels.length) {
+      unkeyed.push(`| \`${command}\` | ${description} |`);
+      continue;
+    }
+    const list = (release) =>
+      labels
+        .filter((l) => l.release === release)
+        .map((l) => l.keys)
+        .join(", ");
+    const cell = [list(false), list(true) && `${list(true)}, on release`].filter(Boolean).join("; ");
+    keyed.push(`| \`${command}\` | ${cell} | ${description} |`);
+  }
   return {
-    current: lines.slice(start, end + 1).join("\n"),
-    text: [...lines.slice(0, start), ...table.split("\n"), ...lines.slice(end + 1)].join(eol),
+    keyed: ["| Command | Keys | What it does |", "|---|---|---|", ...keyed].join("\n"),
+    unkeyed: ["| Command | What it does |", "|---|---|", ...unkeyed].join("\n"),
   };
+}
+
+/**
+ * `page` with its two keymap tables, each from its header line to its last row, replaced by
+ * those of `tables` (`keymapTables`'), in the page's own line endings. `.current` is the tables
+ * the page has and `.expected` those it was given, each the two tables with a blank line between.
+ */
+export function pageKeymap(page, tables) {
+  const eol = page.includes("\r\n") ? "\r\n" : "\n";
+  let lines = page.split(eol);
+  const current = [];
+  for (const key of ["keyed", "unkeyed"]) {
+    const header = tables[key].split("\n")[0];
+    const start = lines.indexOf(header);
+    if (start < 0) throw new Error(`the page has no ${header} table`);
+    let end = start;
+    while (lines[end + 1]?.startsWith("|")) end++;
+    current.push(lines.slice(start, end + 1).join("\n"));
+    lines = [...lines.slice(0, start), ...tables[key].split("\n"), ...lines.slice(end + 1)];
+  }
+  return { current: current.join("\n\n"), expected: `${tables.keyed}\n\n${tables.unkeyed}`, text: lines.join(eol) };
 }
 
 // ---- the fix shape ----

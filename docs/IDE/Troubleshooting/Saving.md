@@ -56,7 +56,7 @@ The same alert comes from **Save Project As** and from the saves that other comm
 A save that gets no answer from the compiler ends in a time-out box instead of the alert, after 10 or after 20 seconds. [When the compiler does not answer](Compiler-Services#when-the-compiler-does-not-answer) lists the boxes.
 
 ## No autosave and no recovery
-{: #no-autosave-and-no-recovery }
+{: #no-autosave-and-no-recovery index="auto save; backup project; recover unsaved changes" }
 
 The IDE does not save by itself, and it keeps no backup of your edits and no recovery file. If the IDE ends, whether by a crash, by a power failure or because you ended it in the Task Manager, the edits since your last save are gone. The IDE offers nothing when you open the project again. [Save often](../Code/Editor#save-often) says it for the editor.
 

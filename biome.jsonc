@@ -83,6 +83,11 @@
       "javascript": { "globals": ["Paged"] }
     },
     {
+      // The Chrome extension's own files, which run with its API.
+      "includes": ["scripts/svgshot/chrome/**"],
+      "javascript": { "globals": ["chrome"] }
+    },
+    {
       // ES5-style scripts that ship to readers as written.
       // A trailing comma after a call's last argument is ES2017.
       "includes": ["docs/assets/js/*.js"],

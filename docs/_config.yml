@@ -137,6 +137,10 @@ package_tests:
 search:
   heading_level: 3
   fold_headings: [See Also, Example, Examples, Remarks, Parameters, Return value, Syntax, Notes]
+  # Permalink prefixes whose pages get a search entry for each label: a definition
+  # term, and a list item or table row that leads with bold. See WIP.Search.md,
+  # "Term entries".
+  term_entries: [/tB/IDE]
 
 exclude:
   # Underscore-prefixed entries AT THE SOURCE ROOT -- _config.yml,

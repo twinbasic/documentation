@@ -11,7 +11,7 @@ has_toc: false
 
 # Menu
 
-The menu bar runs along the top of the IDE window, in the title bar. Each menu has a page here, and each entry says what the item does, gives its key, and links to the chapter that explains it.
+The menu bar runs along the top of the IDE window, in the [title bar](TitleBar). Each menu has a page here, and each entry says what the item does, gives its key, and links to the chapter that explains it.
 
 ![The twinBASIC menu bar, with the window's buttons at the right-hand end.](Images/Menu.png){:width="611" height="25"}
 

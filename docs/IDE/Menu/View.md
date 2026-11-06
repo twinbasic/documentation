@@ -42,6 +42,7 @@ While the code editor has the focus, the menu shows **Increase Font Size** (<kbd
 While the form designer has the focus, the menu shows **Zoom In** and **Zoom Out**, which scale the form designer.
 
 ## Panels
+{: index="restore [a] closed panel; reopen [a] closed panel; restore panel; panel missing; missing panel; panel disappeared; lost panel; toolbar missing" }
 
 The last seventeen items show a panel. A panel that is in no layout in use comes up floating. See [Show, hide and focus a panel](../../Customising/Panel-Layouts#show-hide-and-focus-a-panel).
 

@@ -57,6 +57,7 @@ The magnifier in the title bar opens a search box under it. Typing a printable c
 > A **floating** Toolbox lists every tool when a report is open, 24 controls and **More components**, where the docked Toolbox lists seven. A tool that a report does not allow is refused when you use it, so nothing is lost. Dock the Toolbox, or choose only the seven tools that a report allows.
 
 ## Add ActiveX controls and components
+{: index="add [an] ocx; components dialog" }
 
 The Toolbox has no list of components to pick from and no way to remove a control. ActiveX controls reach it as **COM references** of the project:
 

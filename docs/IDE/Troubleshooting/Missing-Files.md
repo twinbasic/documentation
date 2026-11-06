@@ -88,6 +88,7 @@ An error code of 552 does not mean an outage. It means that the session is not s
 The IDE keeps the browser's cache and storage in four folders under `%LOCALAPPDATA%`: `twinBASIC`, `twinBASIC_Admin`, `twinBASIC_WebPanel` and `twinBASIC_WebPanel_Admin`, each with a subfolder `v0`. Some may not exist. They are not a log. The IDE keeps no project and no setting in them; those are in the registry and in the project's file. You can delete them with the IDE closed, and the IDE makes them again. The [FAQ](../../../FAQ#ide-data-storage) lists them with the IDE's other folders.
 
 ## Where the IDE keeps its settings
+{: index="reset settings; reset ide; where are settings stored" }
 
 [Customising the IDE](../Customising/#where-the-ide-keeps-its-settings) lists the registry values and the folders in `%APPDATA%\twinBASIC`. Deleting a value puts back what it held:
 

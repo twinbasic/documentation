@@ -54,4 +54,5 @@ export default [
   { file: "troubleshooting-missing.test.mjs" },
   { file: "samples.test.mjs" },
   { file: "completion-row-zero.test.mjs" },
+  { file: "hover-description.test.mjs" },
 ];
