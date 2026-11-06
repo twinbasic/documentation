@@ -81,7 +81,7 @@ The rest of this file is the maintenance guide for updating existing pages or ad
   > **Two rules come from this package.** First, **never widen an `exclude:` entry in
   > `_config.yml` to a bare underscore prefix.** The twinBASIC interface is named `_App`
   > (the COM hidden-interface convention), so a blanket `**/_*/**` would drop all 37
-  > pages under `_App/`. The exclude is scoped to `**/_Images/**` (plus `**/*.af`).
+  > pages under `_App/`. The underscore entries match at the source root only.
   > Second, a UTF-8 BOM in front of a page's `---` hides its frontmatter: `discover`
   > would file the page as a *static file* and serve the raw markdown. Editors on
   > Windows add a BOM unasked. `lib/frontmatter.mjs` strips a leading BOM before parsing.

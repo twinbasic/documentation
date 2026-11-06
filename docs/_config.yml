@@ -93,8 +93,8 @@ offline_exclude:
 # what may reach a published tree, enforced unconditionally inside the
 # build; see WIP.Build.md's "The publish allowlist". What belongs here is the
 # noise a contributor should not have to see refused: source files that
-# sit beside the pages they produce (.scss, .dot, .af) and the build's
-# own output trees.
+# sit beside the pages they produce (.scss, .dot) and the build's own
+# output trees.
 #
 # Patterns that start with * must be quoted so YAML does not interpret them
 # as alias references.
@@ -145,27 +145,16 @@ search:
 exclude:
   # Underscore-prefixed entries AT THE SOURCE ROOT -- _config.yml,
   # _book.yml, _sass, and every build-output tree (_site*, _serve*, _pdf).
+  #
+  # At the root only, never a blanket `**/_*/**`. That rule silently swallows
+  # every page under Reference/Built-In/AppGlobalClassObject/_App/ -- 37 of
+  # them -- because the twinBASIC interface really is named `_App`, after the
+  # COM hidden-interface convention, and the folder is named for it, and
+  # underscore-prefixed pages such as
+  # Reference/Built-In/CustomControls/Framework/_CustomControlContext.md.
+  # Nothing reports the loss: excluded files are not missing files.
   - _*
   - _*/**
-  # Affinity sources, kept beside the pages they illustrate. Only the
-  # exported .png under the sibling Images/ folder is published.
-  #
-  # Scoped to _Images rather than the `**/_*/**` this used to be. That
-  # blanket rule silently swallowed every page under
-  # Reference/Built-In/AppGlobalClassObject/_App/ -- 37 of them -- because
-  # the twinBASIC interface really is named `_App`, after the COM
-  # hidden-interface convention, and the folder is named for it. Nothing
-  # reported the loss: excluded files are not missing files.
-  #
-  # Note the rule matches a _Images *directory*, so it does not touch
-  # underscore-prefixed *pages* such as
-  # Reference/Built-In/CustomControls/Framework/_CustomControlContext.md,
-  # which are published and always have been.
-  - "**/_Images/**"
-  # Defensive, now that the underscore rule no longer covers them: the
-  # Affinity sources are the only thing _Images holds, and a stray one
-  # filed anywhere else must not ship either.
-  - "**/*.af"
   # Defensive: caches and unrelated trees that should never be in docs/.
   - "**/.git/**"
   - "**/node_modules/**"
