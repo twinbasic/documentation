@@ -78,12 +78,20 @@
 // pointer are the exceptions: the caller passes their markup as `overlays`,
 // painted last.
 
-import { compactImage } from "../lib/compact-image.mjs";
-import { pngSize } from "../lib/png.mjs";
 import { bakeable, bakeMarkup, colourSteps, filterSteps, stepPrimitive, stepsOpacity } from "./colour-filter.mjs";
-import { FACES_MARK } from "./fonts.mjs";
 import { gradientSvg, parseGradient } from "./gradient.mjs";
-import { esc, num, px, rgba, splitTop } from "./util.mjs";
+import { esc, FACES_MARK, num, px, rgba, splitTop } from "./util.mjs";
+
+// What drawing an embedded image takes: compactImage (lib/compact-image.mjs) and pngSize
+// (lib/png.mjs), which need Node's zlib. They come from bundle.mjs and not from an import,
+// because the Chrome extension (chrome/) loads this module for what capture.mjs reads from
+// it, and draws nothing.
+let compactImage;
+let pngSize;
+/** Gives the converter what drawing an embedded image takes: {compactImage, pngSize}. */
+export function useImageTools(tools) {
+  ({ compactImage, pngSize } = tools);
+}
 
 const INF = { x: -1e9, y: -1e9, w: 2e9, h: 2e9 };
 
@@ -1940,7 +1948,13 @@ export function renderSvg(
     const image = l.node.name === "IMG" ? l.node.src : embeddedImage(l.node);
     if (image) {
       const id = imageDef(image);
-      out.push(`<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"/>`);
+      const use = `<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"/>`;
+      // Chromium cuts a replaced element to its rounded corners: a page's round avatars.
+      if (r.some(([a, c]) => a > 0 && c > 0)) {
+        const d = rrectPath(b, r);
+        const clip = def(`r${d}`, (cid) => `<clipPath id="${cid}"><path d="${d}"/></clipPath>`);
+        out.push(`<g clip-path="url(#${clip})">${use}</g>`);
+      } else out.push(use);
       stats.images++;
     }
     if (l.node.name === "svg") out.push(...paintInlineSvg(l, bw));

@@ -10,9 +10,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { withBrowser } from "../lib/browser.mjs";
+import { compactImage } from "../lib/compact-image.mjs";
+import { pngSize } from "../lib/png.mjs";
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../../lib/cli.mjs";
 import { PictureFonts, withFaces } from "./fonts.mjs";
-import { decodeSnapshot, renderSvg, textNeeds } from "./snapshot-svg.mjs";
+import { decodeSnapshot, renderSvg, textNeeds, useImageTools } from "./snapshot-svg.mjs";
+
+useImageTools({ compactImage, pngSize });
 
 exitOnCrash();
 

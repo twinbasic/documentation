@@ -15,7 +15,7 @@
 //
 // Each part is a capture of the page at 2x (`png`) of the rectangle `clip` (CSS pixels), with
 // the boxes of the anchors it holds, resolved while it was showing (resolveAnchors in
-// lib/shot-annotate.mjs). The parts are laid out in a layer over the whole page, in the same
+// svgshot/annotate.mjs). The parts are laid out in a layer over the whole page, in the same
 // page, as <img> elements drawn one to one, on the IDE's background in its theme: by columns, left to
 // right, each column's parts one under another, `gap` apart, `margin` round them all. `align`
 // moves the columns up or down so that the centre of the anchor `from` is `dy` from that of
@@ -25,7 +25,7 @@
 // other part of the page; the annotation layer is over it.
 
 import { pngSize } from "./png.mjs";
-import { annotate, unannotate } from "./shot-annotate.mjs";
+import { annotate, unannotate } from "../svgshot/annotate.mjs";
 
 export const COMPOSITE_ID = "tbShotComposite";
 

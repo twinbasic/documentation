@@ -1,5 +1,8 @@
 // Small helpers the converter's modules share.
 
+/** Where renderSvg leaves the picture's @font-face rules to be filled in. */
+export const FACES_MARK = "/*@font-face*/";
+
 /** A number as short SVG text: three decimals at most, no negative zero. */
 export function num(v) {
   const r = Math.round(v * 1000) / 1000;

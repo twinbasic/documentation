@@ -122,7 +122,7 @@
 //     its light theme (builder/theme-pictures.mjs). A light picture with the dark one's
 //     pixels is not kept. Light lays the window out a few pixels differently, so a light
 //     picture can be a few pixels off the dark one's size; the page shows each at its own
-//     (SIZE_SLACK). A label's pill follows the theme (lib/shot-annotate.mjs). The two pictures say
+//     (SIZE_SLACK). A label's pill follows the theme (svgshot/annotate.mjs). The two pictures say
 //     the same: text one shows whole and the other shows none of fails the picture
 //     (TEXT_IN_CLIP, themeTextDifference).
 //   * What the user's machine would put into a picture is kept out of the IDE's
@@ -139,7 +139,7 @@
 // the IDE draws them, and the rest of the page, background included, is
 // transparent. A dialog is captured opaque, as a clip of the dialog's box. The open
 // list of a native select is an OS window, which no capture holds: it is drawn
-// in the page as a replica (lib/shot-annotate.mjs's `list`).
+// in the page as a replica (svgshot/annotate.mjs's `list`).
 //
 // The Windows user name must never be in a published picture. Before a picture
 // is kept, the visible text of the page it was taken from (the document, every
@@ -179,7 +179,7 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { hoverText, mouseAway, pointOf, restMouse } from "../test/addin/hover.mjs";
 import { frameEval, frameOf, serveLoopback } from "../test/addin/pages.mjs";
 import { launchBrowser } from "./lib/browser.mjs";
-import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "./lib/shot-annotate.mjs";
+import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "./svgshot/annotate.mjs";
 import { COMPOSITE_ID, composite, uncomposite } from "./lib/shot-composite.mjs";
 import { decodePng, encodePng, pngSize } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
@@ -241,8 +241,8 @@ import {
   sleep,
   waitForCompile,
 } from "./lib/tb-ide.mjs";
-import { BUNDLE_CACHE, writeBundle } from "./svgshot/bundle.mjs";
-import { svgOfPage } from "./svgshot/capture.mjs";
+import { BUNDLE_CACHE, svgOfPage, writeBundle } from "./svgshot/bundle.mjs";
+import { QUIET_CSS } from "./svgshot/capture.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
 import { holdsUserName, judgeSvg } from "./svgshot/keep.mjs";
 import { stageProject, unpackProject } from "./lib/tb-project.mjs";
@@ -683,10 +683,6 @@ const snapOut = (r, vw = IDE_SIZE.width, vh = IDE_SIZE.height) => {
 
 // ---------------------------------------------------------------- capturing
 
-const QUIET_CSS =
-  "*,*::before,*::after{animation:none !important;transition:none !important;caret-color:transparent !important;scroll-behavior:auto !important}" +
-  ".monaco-editor .cursors-layer{visibility:hidden !important}";
-
 // Gives the document and every shadow root in it the quiet style sheet, once each.
 const quiet = (conn) =>
   conn.evaluate(`(() => {
@@ -924,7 +920,7 @@ function same(a, b, rects) {
 
 // Where in a capture of `clip` the page draws differently from frame to frame of its own accord,
 // which no comparison of captures counts: a shot's `unsteady` regions, each `{on, pad}`, an
-// annotation anchor (lib/shot-annotate.mjs) and how far round its box, in CSS pixels (1 by
+// annotation anchor (svgshot/annotate.mjs) and how far round its box, in CSS pixels (1 by
 // default, an edge's anti-aliasing), as device-pixel rects of the capture. A clip is in the
 // document's coordinates; a capture of the whole window, in the window's.
 async function unsteadyRects(conn, clip, unsteady) {
@@ -2045,7 +2041,7 @@ async function dialogStill(c, { ms = 250, timeout = 5000, root = TOP_MODAL, what
 }
 
 // The top dialog's box, opaque (its shadow falls outside), or `clipOf(box)` of it.
-// `annotate`, a shot's list of primitives (lib/shot-annotate.mjs), is drawn over
+// `annotate`, a shot's list of primitives (svgshot/annotate.mjs), is drawn over
 // the page for the capture and taken off again however that goes; the clip grows to
 // hold what it drew.
 async function dialogShot(c, name, clipOf = (m) => m, annotate = null, { unsteady = null } = {}) {
@@ -2094,7 +2090,7 @@ const inNewProject = (c, run) => inDialog(c, { command: "tbProject_New", title: 
 
 const dialogOut = (dir, name) => `${dir}/Images/${name}.png`;
 
-// `annotate`: the primitives drawn over the picture (lib/shot-annotate.mjs). `recents`: the
+// `annotate`: the primitives drawn over the picture (svgshot/annotate.mjs). `recents`: the
 // recent list, set before the dialog opens, since it reads the list as it opens, and emptied
 // again afterwards.
 const newProjectShot = (
@@ -2601,7 +2597,7 @@ const panelShot = (
 // A panel with annotations: the panel (and the menu `open` shows, if any) on a plain ground
 // of the colour of its own body, the annotations drawn over, and the clip as large as they
 // need. Labels sit on the ground at the panel's left; the primitives are those of
-// lib/shot-annotate.mjs. With none, it is the panel and its menu on that ground; `away:
+// svgshot/annotate.mjs. With none, it is the panel and its menu on that ground; `away:
 // false` leaves the mouse where `open` put it, for a menu item's hover look.
 function annotatedPanelShot(
   name,
@@ -3219,7 +3215,7 @@ async function inFindReplace(c, fn) {
   }
 }
 
-// A capture of `area` with `prims` drawn over it (a select's list among them: lib/shot-annotate.mjs's
+// A capture of `area` with `prims` drawn over it (a select's list among them: svgshot/annotate.mjs's
 // `list`), the clip as large as what they drew and `margin` more round it all, and `below`
 // more at its foot.
 async function listClip(c, name, area, prims, { margin = 6, below = 0 } = {}) {
