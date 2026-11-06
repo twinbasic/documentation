@@ -1,0 +1,14 @@
+{
+  "mode": "run",
+  "exe": true,
+  "expect": {
+    "exit": 6,
+    "output": [
+      "^K\\(1, 2\\) = 5$",
+      "^S\\(1\\) = abc$",
+      "^Left\\(\"abcd\", 2\\) = 1$",
+      "^K\\(Effect\\(\\)\\) = 5, calls of Effect: 0$",
+      "^--- exe: exit 50$"
+    ]
+  }
+}

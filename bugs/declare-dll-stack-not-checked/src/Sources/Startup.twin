@@ -5,12 +5,17 @@
 ' The call of add raises -353703419, "Bad DLL definition.  Stack corruption detected.", which
 ' the handler reports, and the program goes on. The call of labs raises nothing and returns 7,
 ' and CallDll then ends with an access violation as it returns, in the IDE and in the exe.
+' abs in msvcrt.dll is __cdecl too. Its Declare is marked [DLLStackCheck(False)], which gives the
+' call the check that a Declare otherwise lacks: it raises -353703419, and the program goes on.
 Import Library "/Miscellaneous/basic_32.obj" As BASIC
 
 Module Startup
 
     Private Declare PtrSafe Function add Lib BASIC (ByVal a As Long, ByVal b As Long) As Long
     Private Declare PtrSafe Function labs Lib "msvcrt" (ByVal x As Long) As Long
+
+    [DLLStackCheck(False)]
+    Private Declare PtrSafe Function cAbs Lib "msvcrt" Alias "abs" (ByVal x As Long) As Long
 
     Private Sub Report(ByVal what As String, ByVal value As Long)
         If Err.Number <> 0 Then
@@ -26,6 +31,12 @@ Module Startup
         Report "add(2, 3)", r
     End Sub
 
+    Private Sub CallMarked()
+        On Error Resume Next
+        Dim r As Long = cAbs(-7)
+        Report "cAbs(-7)", r
+    End Sub
+
     Private Sub CallDll()
         On Error Resume Next
         Dim r As Long = labs(-7)
@@ -35,6 +46,8 @@ Module Startup
     Public Sub Main()
         CallStatic
         Debug.Print "returned from CallStatic"
+        CallMarked
+        Debug.Print "returned from CallMarked"
         CallDll
         Debug.Print "returned from CallDll"
     End Sub

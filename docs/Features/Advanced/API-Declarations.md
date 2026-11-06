@@ -41,7 +41,7 @@ In a 32-bit build, a call of a [statically linked](Static-Linking) function, and
 
 <!-- test: bug declare-dll-stack-not-checked -->
 > [!WARNING] BETA 1034
-> In a 32-bit build, a call of a DLL function through a **Declare** whose convention or number of parameters is wrong raises no error. The call returns, with a wrong value when a parameter is missing, and the procedure that made the call ends with an access violation as it returns. In an IDE run the access violation is in the compiler's process, which restarts. VB6 raises error 49, *Bad DLL calling convention*, at the call, in its IDE and in a P-Code exe; a VB6 exe compiled to native code checks nothing either.
+> In a 32-bit build, a call of a DLL function through a **Declare** whose convention or number of parameters is wrong raises no error. The call returns, with a wrong value when a parameter is missing, and the procedure that made the call ends with an access violation as it returns. In an IDE run the access violation is in the compiler's process, which restarts. VB6 raises error 49, *Bad DLL calling convention*, at the call, in its IDE and in a P-Code exe; a VB6 exe compiled to native code checks nothing either. [**[DLLStackCheck(False)]**](../../tB/Core/Attributes#dllstackcheck) on the **Declare** turns the check on, and a wrong convention then raises error -353703419.
 
 A 64-bit build has only one calling convention. There, all four keywords are accepted and have no effect.
 

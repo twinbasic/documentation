@@ -49,6 +49,10 @@ When the constant type is not explicitly declared by using **As** *type*, the co
 
 Constants declared in a **Sub**, **Function**, or **Property** procedure are local to that procedure. A constant declared outside a procedure is defined throughout the module in which it is declared. Constants can be used anywhere an expression is allowed.
 
+<!-- test: bug const-takes-arguments -->
+> [!WARNING] BETA 1034
+> Parentheses after a constant that is not an [array constant](#array-constants) compile, where they should not. `K(1, 2)` gives the value of `K`, and the arguments are dropped without being evaluated, so a function called in them does not run. A constant with the name of a function hides it: with `Private Const Left As Long = 1`, `Left("abcd", 2)` is 1. VB6 refuses each of these lines with *Expected array*.
+
 ## Array constants
 {: index="TB5002; TB5028; TB5050; TB5078; TB5109; TB5250" }
 

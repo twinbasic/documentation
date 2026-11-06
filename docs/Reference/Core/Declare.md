@@ -120,7 +120,7 @@ Declare Sub Second Lib "MyLib" ()
 
 <!-- test: bug declare-dll-stack-not-checked -->
 > [!WARNING] BETA 1034
-> In a 32-bit build, a call of a DLL procedure whose **Declare** names the wrong calling convention, or the wrong number of parameters, raises no error. The call returns, with a wrong value when a parameter is missing, and the procedure that made the call ends with an access violation as it returns; in an IDE run the compiler's process ends with it and restarts. VB6 raises error 49, *Bad DLL calling convention*, at the call in its IDE and in a P-Code exe. A call of a statically linked function raises an error instead; see [Calling Conventions](../../Features/Advanced/API-Declarations#calling-conventions).
+> In a 32-bit build, a call of a DLL procedure whose **Declare** names the wrong calling convention, or the wrong number of parameters, raises no error. The call returns, with a wrong value when a parameter is missing, and the procedure that made the call ends with an access violation as it returns; in an IDE run the compiler's process ends with it and restarts. VB6 raises error 49, *Bad DLL calling convention*, at the call in its IDE and in a P-Code exe. A call of a statically linked function raises an error instead; see [Calling Conventions](../../Features/Advanced/API-Declarations#calling-conventions). [**[DLLStackCheck(False)]**](Attributes#dllstackcheck) on the **Declare** turns the same check on for its calls.
 
 ### Example
 

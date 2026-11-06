@@ -11,7 +11,7 @@ twinBASIC reports a warning, as the code is written, for a common bad practice o
 
 ## Adjusting Warnings
 
-Each warning has a level: **WARNING**, **HINT**, **INFO**, **IGNORE** or **ERROR**. A warning at **IGNORE** is not reported, and one at **ERROR** is reported as an error, so the project does not build. In a new project the Compiler Warnings list of Project Settings shows TB0015, TB0030 and TB0034 at **HINT**, TB0018 to TB0021, TB0024, TB0025 and TB0029 at **IGNORE**, and every other warning at **WARNING**. The compiler reports TB0034 and TB0035 at other levels: see [TB0034](#tb0034-legacy-dll-redirected) and [TB0035](#tb0035-late-bound-conversion).
+Each warning has a level: **WARNING**, **HINT**, **INFO**, **IGNORE** or **ERROR**. A warning at **IGNORE** is not reported, and one at **ERROR** is reported as an error, so the project does not build. In a new project the Compiler Warnings list of Project Settings shows TB0015, TB0030 and TB0034 at **HINT**, TB0018 to TB0021, TB0024, TB0025 and TB0029 at **IGNORE**, and every other warning at **WARNING**. The compiler reports TB0029, TB0034 and TB0035 at other levels: see [TB0029](#tb0029-missing-ptrsafe), [TB0034](#tb0034-legacy-dll-redirected) and [TB0035](#tb0035-late-bound-conversion).
 
 The levels for the whole project are in the **Compiler Warnings** group of [Project Settings](../../tB/IDE/Project-Settings#compiler-warnings). Each row of its list has a drop-down for the level, then the code and the text of the warning. The **Filter warnings...** box above the list narrows it to the rows whose code or text holds the words typed:
 
@@ -447,7 +447,11 @@ Reports a control on a form that has the name of a method or property of the for
 ### TB0029: Missing PtrSafe
 {: index="TB0029" }
 
-A **Declare** statement without **PtrSafe**, which 64-bit VBA 7 requires, *Declare needs PtrSafe attribute on this build configuration for VBA7 compatibility*. It is reported only in a 64-bit build, and is at **IGNORE** by default.
+A **Declare** statement without **PtrSafe**, which 64-bit VBA 7 requires, *Declare needs PtrSafe attribute on this build configuration for VBA7 compatibility*. It is reported only in a 64-bit build. The Compiler Warnings list shows it at **IGNORE** by default.
+
+<!-- test: bug tb0029-level-ignored -->
+> [!NOTE] BETA 1034
+> TB0029 is reported as a warning whatever its level: at **IGNORE**, **HINT**, **INFO** or **ERROR** in the Compiler Warnings list, and under **IgnoreWarnings** or **EnforceErrors** on a module or on the **Declare**. Adding **PtrSafe** to the **Declare** removes it.
 
 ```tb check_build slot=file
 [EnforceWarnings(TB0029)]
@@ -604,6 +608,10 @@ End Sub
      its Project Settings code sets TB0015, TB0030 and TB0034 to HINT.
      TB0015: a Declare of msvbvm60's GetMem4 is a HINT, and follows IGNORE and ERROR.
        BETA 1033 reported it as TB0015 too, and the olepro32 Declare as TB0015, a WARNING.
+     TB0029: a Declare with no PtrSafe, win64: a WARNING with no level, at IGNORE, HINT,
+       INFO, ERROR and WARNING, and under IgnoreWarnings, EnforceErrors and EnforceWarnings
+       on the Module or the Declare, where TB0030 takes each level; the same on BETA 1033
+       and 1010 (bugs/tb0029-level-ignored).
      TB0034: the olepro32 Declare, a WARNING at IGNORE, HINT and ERROR and under
        IgnoreWarnings and EnforceErrors, win32 and win64 (bugs/tb0034-level-ignored);
        the message's {0} and {1} are empty (bugs/warning-message-names-blank).
