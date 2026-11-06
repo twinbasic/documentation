@@ -20,8 +20,8 @@ Ten images under `docs/`, each for a stated reason:
   create-pull-request, merge-pull-request, confirm-merge, choose-workflow, run-workflow): the
   owner's to take with the Chrome extension, signed in (owner, 2026-11-05;
   [Pictures from a signed-in Chrome](#pictures-from-a-signed-in-chrome)); no agent touches them
-  or their prose. They show base `main` and the old workflow name, and confirm-merge an e-mail
-  address, until then.
+  or their prose. Retaken on 2026-11-06, with base `main`, the merge's target, the workflow's
+  present name, and no e-mail address in confirm-merge.
 - **`packPublishPackage1`**: `packagePublisherPublish` opens the sign-in form when no publisher
   is signed in, before the confirmation box, and a package is never actually published, so the
   old file stays. **`packPublishComplete1`** is the result of a real publish, so it stays too.
