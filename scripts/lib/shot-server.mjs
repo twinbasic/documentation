@@ -117,7 +117,8 @@ const TAIL_LINES = 8;
  * under docs/; null: every picture is taken to differ), `changed()` the pictures that differ
  * from the baseline ([{out, status}], changedPictures'), `ides` the installs a retake can be run
  * on, newest first ([{build, exe}], listIdes'), `onLine(run, line)` called for each line of a run
- * meant for a person, and `command` the probes' stand-in for the tools a run starts (startRun).
+ * meant for a person, `browser` where a browser retake works ({captures, extension, noOpen},
+ * runOf's), and `command` the probes' stand-in for the tools a run starts (startRun).
  * `repoRoot` is a folder of the git working tree the session's files are committed in;
  * `onCommit({hash, short, message})` closes the session once its files are committed, and
  * returns the next one, {session, revision, archive}, `archive` the closed one's id in the
@@ -144,6 +145,7 @@ export function createReviewServer({
   changedBetween = null,
   changed = () => [],
   ides = [],
+  browser = {},
   onLine,
   command,
   repoRoot = REPO_ROOT,
@@ -409,7 +411,8 @@ export function createReviewServer({
       r.verdicts.set(e.out, v);
       enqueue(() => applyArrival(record.n, e.out, part));
     }
-    if (e.out) sse.send("update", { outs: [e.out] });
+    if (e.type === "await" || e.type === "refused") sse.send("update", { outs: [e.out], runs: true });
+    else if (e.out) sse.send("update", { outs: [e.out] });
     else sse.send("update", { outs: e.type === "run" || e.type === "summary" ? listedOf(r) : [], runs: true });
   };
   const onExit = (record) =>
@@ -451,7 +454,7 @@ export function createReviewServer({
       if (!found) throw new Error(`no install of BETA ${body.ide} was found`);
       ide = found.exe;
     }
-    return start(runOf({ ...body, ide }, session.data.baseline));
+    return start(runOf({ ...body, ide }, session.data.baseline, browser));
   }
   // Stop asks a run to stop (its own stop: its IDEs end and the registry is put back); kill ends
   // its process, and is offered only once a stop has been asked for.
@@ -536,6 +539,10 @@ export function createReviewServer({
       retakes: r.facts.retakes.size,
       listed: r.facts.listed.length,
       jobs,
+      awaiting: r.live ? r.facts.awaiting : null,
+      refused: r.live ? r.facts.refused : null,
+      extension: r.live ? r.facts.extension : null,
+      captures: r.facts.captures,
     };
   };
   // The pictures a run failed on: a failure reported, its job failed before reaching it, or a
@@ -644,6 +651,10 @@ export function createReviewServer({
       if (r.live) return null;
       if (r.record.tool === "replay") {
         const pictures = [...new Set([...failedOf(r), ...r.facts.retakes.keys()])].sort();
+        return pictures.length ? { pictures, svg: true, ide: null, missing: null } : null;
+      }
+      if (r.record.tool === "chromeshot") {
+        const pictures = failedOf(r);
         return pictures.length ? { pictures, svg: true, ide: null, missing: null } : null;
       }
       if (r.record.tool !== "shoot_docs" || r.record.args.includes("--dry-run")) return null;

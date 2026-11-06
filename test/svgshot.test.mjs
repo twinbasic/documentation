@@ -35,7 +35,7 @@
 // Runs with a bare `node --test test/svgshot.test.mjs`: no tree, no build.
 
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -58,7 +58,15 @@ import {
 } from "../scripts/svgshot/bundle.mjs";
 import { SNAPSHOT_STYLES, webFontFiles } from "../scripts/svgshot/capture.mjs";
 import { attachDebugger } from "../scripts/svgshot/chrome/conn.mjs";
-import { SHOTS } from "../scripts/svgshot/chrome/shots.mjs";
+import { browserShot, SHOTS } from "../scripts/svgshot/chrome/shots.mjs";
+import {
+  captureWatcher,
+  extensionStep,
+  installExtension,
+  takeRefusal,
+  tellPanel,
+} from "../scripts/svgshot/chrome-take.mjs";
+import { extensionFiles, extensionModules } from "../scripts/svgshot/extension-files.mjs";
 import {
   AVATAR,
   captureBlob,
@@ -87,6 +95,7 @@ import { decodePng, encodePng, pngSize } from "../scripts/lib/png.mjs";
 import { onStop, parseRecord, readRecords, recordLine, sendStop, STOP_LINE } from "../scripts/lib/record-lines.mjs";
 import {
   readStrength,
+  readVerdict,
   readVerdicts,
   stagedFiles,
   stageRefusal,
@@ -1298,6 +1307,173 @@ describe("bundles", () => {
     const { svg } = await renderBundle(trimmed.bundle);
     assert.match(svg, />Shown<\/text>/);
     assert.match(svg, /\swidth="216" height="36" viewBox="2 2 216 36"/);
+  });
+
+  describe("taken in a person's browser, by chromeshot.mjs --take", () => {
+    const TOOL = path.join(REPO_ROOT, "scripts", "svgshot", "chromeshot.mjs");
+    const OUT = "Documentation/Images/compare-changes.png";
+    // A window as the extension takes it: 400 by 100 at 2x, its <select> the two elements the
+    // table trims compare-changes to, and the mark on it.
+    function window(themes, over = {}) {
+      const paint = (v) =>
+        encodePng({ width: 800, height: 200, rgba: new Uint8Array(640000).fill(v) }).toString("base64");
+      const bundle = structuredClone(bundleOf(measured));
+      const doc = bundle.snapshot.documents[0];
+      const { strings } = bundle.snapshot;
+      strings.push("class", "Subhead range-editor");
+      doc.nodes.attributes[3] = [strings.length - 2, strings.length - 1];
+      return {
+        format: 1,
+        out: OUT,
+        area: "viewport",
+        marked: { x: 10, y: 10, width: 200, height: 20 },
+        url: "https://github.com/twinbasic/documentation/compare",
+        pictures: themes.map((theme) => ({ theme, png: paint(theme === "dark" ? 40 : 250), bundle })),
+        ...over,
+      };
+    }
+    // Starts a take in the folder `root`, with a person's part left to the test: {say(what),
+    // until(type), child, ended}: `until` resolves to the first event of `type` not yet read.
+    function start(root, pattern) {
+      const captures = path.join(root, "captures");
+      const extension = path.join(root, "extension");
+      fs.mkdirSync(captures, { recursive: true });
+      fs.mkdirSync(path.join(root, "out"), { recursive: true });
+      const words = path.join(root, "words.json");
+      fs.writeFileSync(words, JSON.stringify({ words: [] }));
+      const child = spawn(
+        process.execPath,
+        [
+          TOOL,
+          "--take",
+          pattern,
+          "--no-open",
+          "--events",
+          ...["--captures", captures, "--extension", extension],
+          ...["--stage", path.join(root, "stage")],
+          ...["--out", path.join(root, "out"), "--bundles", path.join(root, "bundles"), "--words", words],
+        ],
+        { stdio: ["pipe", "pipe", "pipe"] },
+      );
+      const events = [];
+      const waiting = [];
+      let log = "";
+      const check = () => {
+        for (const w of [...waiting]) {
+          const k = events.findIndex((e) => e.type === w.type);
+          if (k < 0) continue;
+          waiting.splice(waiting.indexOf(w), 1);
+          w.resolve(events.splice(k, 1)[0]);
+        }
+      };
+      readRecords(child.stdout, ["shot-event"], {
+        onRecord: (_, value) => {
+          events.push(value);
+          check();
+        },
+        onLine: (line) => {
+          log += line + "\n";
+        },
+      });
+      child.stderr.on("data", (d) => {
+        log += d;
+      });
+      const ended = new Promise((resolve) => child.on("close", resolve));
+      return {
+        child,
+        ended,
+        log: () => log,
+        // As a browser saves a download: under another name, then renamed.
+        say(what) {
+          const file = path.join(captures, "compare-changes.capture.json.gz");
+          fs.writeFileSync(file + ".part", gzipSync(JSON.stringify(what)));
+          fs.renameSync(file + ".part", file);
+        },
+        until: (type) =>
+          new Promise((resolve) => {
+            waiting.push({ type, resolve });
+            check();
+          }),
+      };
+    }
+
+    test("refuses a capture it cannot use, waits for the next, and stages what it takes", {
+      timeout: 120000,
+    }, async () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "chromeshot-take-"));
+      const take = start(root, "compare-changes");
+      try {
+        const run = await take.until("run");
+        assert.equal(run.tool, "chromeshot");
+        assert.deepEqual(run.jobs[0].pictures, [OUT, OUT.replace(".png", ".light.png")]);
+        // The extension is in its folder, and its panel is told which picture is next.
+        const waits = await take.until("await");
+        assert.equal(
+          waits.url,
+          "https://github.com/twinbasic/documentation/compare/main...twinbasic:documentation:main",
+        );
+        assert.ok(fs.existsSync(path.join(root, "extension", "manifest.json")));
+        const next = JSON.parse(fs.readFileSync(path.join(root, "extension", "next.json"), "utf8"));
+        assert.deepEqual(next, { shot: "compare-changes" });
+        // Each mistake is said, and the picture is waited for again.
+        take.say(window(["dark", "light"], { area: "drag" }));
+        assert.match((await take.until("refused")).error, /a dragged rectangle/);
+        take.say(window(["light"]));
+        assert.match((await take.until("refused")).error, /only the light theme/);
+        take.say(window(["dark", "light"], { marked: null }));
+        assert.match((await take.until("refused")).error, /no marks/);
+        take.say(window(["dark", "light"], { url: "https://github.com/contributor/twinBASIC-docs/compare" }));
+        assert.match((await take.until("refused")).error, /another repository/);
+        take.say(window(["dark", "light"]));
+        const pictures = [await take.until("picture"), await take.until("picture")];
+        assert.deepEqual(pictures.map((p) => p.out).sort(), [OUT.replace(".png", ".light.png"), OUT]);
+        assert.ok(pictures.every((p) => p.state === "new" && p.build === null));
+        assert.equal((await take.until("svg")).out, OUT);
+        assert.equal((await take.until("job")).state, "started");
+        assert.equal((await take.until("job")).state, "done");
+        assert.equal((await take.until("summary")).taken, 1);
+        assert.equal(await take.ended, 0, take.log());
+        // With --stage, the capture is in the stage, trimmed, and nothing is under the pictures' folder.
+        assert.deepEqual(fs.readdirSync(path.join(root, "out")), []);
+        const staged = decodePng(fs.readFileSync(stagedFiles(path.join(root, "stage"), OUT).capture));
+        assert.deepEqual([staged.width, staged.height], [432, 72]);
+        assert.equal(readVerdict(path.join(root, "stage"), OUT).png.state, "new");
+        assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, "extension", "next.json"), "utf8")), {
+          shot: null,
+        });
+      } finally {
+        take.child.kill();
+        await take.ended;
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    test("stops at a line on its stdin, and says which pictures it did not take", { timeout: 60000 }, async () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "chromeshot-take-"));
+      const take = start(root, "merge-pull-request|run-workflow");
+      try {
+        await take.until("await");
+        sendStop(take.child);
+        await take.until("stopping");
+        const skipped = [
+          await take.until("skipped"),
+          await take.until("skipped"),
+          await take.until("skipped"),
+          await take.until("skipped"),
+        ];
+        assert.deepEqual(
+          skipped.map((e) => e.job),
+          ["merge-pull-request", "merge-pull-request", "run-workflow", "run-workflow"],
+        );
+        const summary = await take.until("summary");
+        assert.deepEqual([summary.taken, summary.stopped], [0, true]);
+        assert.equal(await take.ended, 0, take.log());
+      } finally {
+        take.child.kill();
+        await take.ended;
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    });
   });
 
   test("goes through chromeshot.mjs, which refuses what shows a private word before it writes", async () => {
@@ -4388,34 +4564,8 @@ describe("the screenshot manifest (shot-manifest.mjs)", () => {
 describe("the Chrome extension, with no Chrome", () => {
   const FOLDER = path.join(REPO_ROOT, "scripts", "svgshot");
 
-  // The module files `file` imports, by the import statements at the start of a line.
-  const importsOf = (file) => {
-    const text = fs.readFileSync(file, "utf8");
-    const named = [...text.matchAll(/^(?:import|export) [^;]*? from "([^"]+)";$/gm)].map((m) => m[1]);
-    const closing = [...text.matchAll(/^\} from "([^"]+)";$/gm)].map((m) => m[1]);
-    return [...named, ...closing];
-  };
-
-  // Every module an extension page or its worker loads, from what the manifest and the panel name.
-  function loaded() {
-    const manifest = JSON.parse(fs.readFileSync(path.join(FOLDER, "manifest.json"), "utf8"));
-    const panel = path.join(FOLDER, manifest.side_panel.default_path);
-    const page = fs.readFileSync(panel, "utf8");
-    const scripts = [...page.matchAll(/<script [^>]*src="([^"]+)"/g)].map((m) => path.join(path.dirname(panel), m[1]));
-    const seen = new Map();
-    const queue = [path.join(FOLDER, manifest.background.service_worker), ...scripts];
-    while (queue.length) {
-      const file = queue.pop();
-      if (seen.has(file)) continue;
-      const names = importsOf(file);
-      seen.set(file, names);
-      for (const name of names) if (name.startsWith(".")) queue.push(path.resolve(path.dirname(file), name));
-    }
-    return seen;
-  }
-
   test("what it loads needs no Node, and is inside its folder", () => {
-    const modules = loaded();
+    const modules = extensionModules(FOLDER);
     assert.ok(modules.has(path.join(FOLDER, "capture.mjs")), "the extension runs capture.mjs itself");
     assert.ok(modules.has(path.join(FOLDER, "annotate.mjs")));
     for (const [file, names] of modules) {
@@ -4425,6 +4575,144 @@ describe("the Chrome extension, with no Chrome", () => {
         assert.ok(target.startsWith(FOLDER + path.sep), `${file} imports ${name}, outside the extension's folder`);
       }
     }
+  });
+
+  // A small extension in the folder `dir`: what it loads, and one module of the converter's that it does not.
+  function fakeExtension(dir) {
+    const write = (name, text) => {
+      fs.mkdirSync(path.dirname(path.join(dir, name)), { recursive: true });
+      fs.writeFileSync(path.join(dir, name), text);
+    };
+    write(
+      "manifest.json",
+      JSON.stringify({
+        name: "svgshot",
+        side_panel: { default_path: "chrome/panel.html" },
+        background: { service_worker: "chrome/background.mjs" },
+      }),
+    );
+    write(
+      "chrome/panel.html",
+      '<link rel="stylesheet" href="panel.css" /><script type="module" src="panel.mjs"></script>',
+    );
+    write("chrome/panel.css", "body {}");
+    write("chrome/panel.mjs", 'import { a } from "../shared.mjs";\nconsole.log(a);\n');
+    write("chrome/background.mjs", "");
+    write("shared.mjs", "export const a = 1;\n");
+    write("chromeshot.mjs", "// Node only\n");
+    write("private.json", '{"words":[]}');
+  }
+
+  test("finds what Chrome needs by following its manifest", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "extension-test-"));
+    try {
+      fakeExtension(dir);
+      assert.deepEqual(extensionFiles(dir), [
+        "chrome/background.mjs",
+        "chrome/panel.css",
+        "chrome/panel.html",
+        "chrome/panel.mjs",
+        "manifest.json",
+        "shared.mjs",
+      ]);
+      // The real one: its pages' modules and its style sheet, and none of the converter's Node tools.
+      const real = extensionFiles(FOLDER);
+      for (const file of ["manifest.json", "chrome/panel.css", "chrome/panel.mjs", "capture.mjs", "chrome/shots.mjs"])
+        assert.ok(real.includes(file), file);
+      assert.ok(!real.includes("chromeshot.mjs"));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("is kept up to date in a folder of its own, and leaves alone what is not it", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "extension-test-"));
+    try {
+      const source = path.join(root, "source");
+      const target = path.join(root, "target");
+      fakeExtension(source);
+      const first = installExtension(target, { source });
+      assert.equal(first.first, true);
+      assert.match(extensionStep(first), /Load unpacked and choose .*target/);
+      assert.ok(first.changed.includes("private.json"));
+      assert.ok(!fs.existsSync(path.join(target, "chromeshot.mjs")));
+      // Nothing to do a second time, and so nothing to ask of the person.
+      const again = installExtension(target, { source });
+      assert.deepEqual([again.changed, again.first], [[], false]);
+      assert.equal(extensionStep(again), null);
+      // What changed is copied, what went is removed, and the panel's note stays.
+      fs.writeFileSync(path.join(target, "chrome", "panel.mjs"), "stale");
+      fs.writeFileSync(path.join(target, "chrome", "gone.mjs"), "old");
+      tellPanel(target, "run-workflow");
+      const fixed = installExtension(target, { source });
+      assert.deepEqual(fixed.changed.sort(), ["chrome/gone.mjs", "chrome/panel.mjs"]);
+      assert.match(extensionStep(fixed), /press reload/);
+      assert.ok(!fs.existsSync(path.join(target, "chrome", "gone.mjs")));
+      assert.deepEqual(JSON.parse(fs.readFileSync(path.join(target, "next.json"), "utf8")), { shot: "run-workflow" });
+      // A checkout with no word list leaves the one that is there.
+      fs.rmSync(path.join(source, "private.json"));
+      installExtension(target, { source });
+      assert.ok(fs.existsSync(path.join(target, "private.json")));
+      // A folder that holds anything else is not written to, and nothing in it is deleted.
+      const other = path.join(root, "other");
+      fs.mkdirSync(other);
+      fs.writeFileSync(path.join(other, "mine.txt"), "keep");
+      assert.throws(() => installExtension(other, { source }), /not the extension/);
+      assert.deepEqual(fs.readdirSync(other), ["mine.txt"]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("notices a capture saved from now on, and not one that was there", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "capture-watch-"));
+    try {
+      const name = (n) => path.join(dir, `${n}.capture.json.gz`);
+      fs.writeFileSync(name("old"), "x");
+      fs.writeFileSync(path.join(dir, "old.log.txt"), "not a capture");
+      const watcher = captureWatcher(dir);
+      const stop = new AbortController();
+      const waiting = watcher.next(stop.signal);
+      fs.writeFileSync(name("new"), "x");
+      assert.equal(await waiting, name("new"));
+      // The same name saved again is a new capture.
+      const later = watcher.next(stop.signal);
+      fs.utimesSync(name("new"), new Date(), new Date(Date.now() + 5000));
+      assert.equal(await later, name("new"));
+      const none = watcher.next(stop.signal);
+      stop.abort();
+      assert.equal(await none, null);
+      // A folder the browser has yet to make is no fault.
+      const nowhere = new AbortController();
+      nowhere.abort();
+      assert.equal(await captureWatcher(path.join(dir, "not-yet")).next(nowhere.signal), null);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("what a take is refused for: what a look at the picture finds late", () => {
+    const shot = { url: "https://github.com/twinbasic/documentation/pulls" };
+    const good = {
+      area: "viewport",
+      marked: { x: 0, y: 0, width: 1, height: 1 },
+      url: "https://github.com/twinbasic/documentation/pull/263",
+      pictures: [{ theme: "dark" }, { theme: "light" }],
+    };
+    assert.equal(takeRefusal(good, shot), null);
+    assert.match(takeRefusal({ ...good, area: "drag" }, shot), /dragged rectangle/);
+    assert.match(takeRefusal({ ...good, marked: null }, shot), /no marks/);
+    assert.match(takeRefusal({ ...good, pictures: [{ theme: "light" }] }, shot), /only the light theme/);
+    assert.match(takeRefusal({ ...good, url: "https://github.com/someone/fork/pull/1" }, shot), /another repository/);
+    // A name that only starts the same is another repository.
+    const close = { ...good, url: "https://github.com/twinbasic/documentation2/pull/1" };
+    assert.match(takeRefusal(close, shot), /another repository/);
+  });
+
+  test("names the page each picture is taken on, under the repository", () => {
+    for (const shot of SHOTS) assert.match(shot.url, /^https:\/\/github\.com\/twinbasic\/documentation\//, shot.name);
+    assert.equal(browserShot("Documentation/Images/run-workflow.light.png")?.name, "run-workflow");
+    assert.equal(browserShot("IDE/Images/x.png"), null);
   });
 
   test("its folder holds what the manifest names, and nothing Chrome refuses", () => {

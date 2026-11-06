@@ -63,6 +63,9 @@ Two decisions are made by fixed thresholds, and neither threshold holds for ever
 - **The tool commits**, with a default message that can be edited and a button that puts the
   default back.
 - **One session at a time.**
+- **A picture only a person can take is retaken from the tool too** (owner, 2026-11-06): it brings
+  the extension up to date on disk, opens the page in the default browser, says what to set up, and
+  takes in the result the person saves. See [Runs](#runs).
 - **No code is duplicated between the tool and the command-line tools** (owner): what they
   share is moved into modules both call. See [Factoring](#factoring).
 - **The server listens on a fixed port, 4180, with `--port`** to choose another (owner,
@@ -344,6 +347,18 @@ process: `shoot_docs.mjs` is a script with effects at the top level (the registr
 **Stop** is a line on the child's stdin: the child takes no further shot, finishes the one in
 hand, ends its IDEs and puts the registry back, as at its normal end. Killing it would skip
 that, so the tool offers a kill only after a stop has not ended it, with that warning.
+
+**A browser retake is `chromeshot.mjs --take`**, a run like the others, with `--stage` and
+`--events`, so that the tool and the command line reach the same result, and a capture goes
+through what `shoot_docs.mjs` does with one: `decidePicture`, `reviewPicture`, the stage, the
+verdicts. `runOf` makes any retake of a picture of `chrome/shots.mjs` one, so every Retake button
+works unchanged; a retake of those and of the IDE's together is refused, being two tools. It
+differs in waiting for a person. Its `run` event has `setup: "browser"` jobs, `await` says what it
+waits for and `refused` why a capture was no good, which `runFacts` keeps for the runs page, and
+a refusal is no failure: the picture is waited for again. Stop ends the wait at once. A refusal
+names what a look at the picture finds late: one theme (which the site then shows in both), no
+marks, a dragged rectangle, or another repository, whose crop does not show it. Its verdicts
+carry `build: null`, a picture of a browser being of no build of the IDE.
 
 ## Factoring
 

@@ -45,16 +45,18 @@ export const SESSION_FORMAT = 1;
 /**
  * The tools a session runs, by the name a run records, as their paths from the repository's
  * root. A clean-up is shoot_docs.mjs --cleanup, whose args name --cleanup: it writes under
- * docs/ itself, and has no stage and no events.
+ * docs/ itself, and has no stage and no events. A browser retake is chromeshot.mjs --take, which
+ * waits for the person who takes the pictures.
  */
 export const RUN_TOOLS = {
   shoot_docs: "scripts/shoot_docs.mjs",
   replay: "scripts/svgshot/replay.mjs",
   cleanup: "scripts/shoot_docs.mjs",
+  chromeshot: "scripts/svgshot/chromeshot.mjs",
 };
 
 /** The tools whose runs are staged (--stage and --events), the review tool applying their verdicts. */
-export const STAGED_TOOLS = new Set(["shoot_docs", "replay"]);
+export const STAGED_TOOLS = new Set(["shoot_docs", "replay", "chromeshot"]);
 
 /** The value of the option `option` (`--only`) in a run's args, or null. */
 export function optionOf(run, option) {

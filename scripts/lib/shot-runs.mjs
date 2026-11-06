@@ -1,5 +1,5 @@
-// A run of the screenshot review tool (WIP.ShotReview.md, Runs): shoot_docs.mjs or replay.mjs
-// as a child process, never their code in the tool's process, given the run's stage
+// A run of the screenshot review tool (WIP.ShotReview.md, Runs): shoot_docs.mjs, replay.mjs or
+// chromeshot.mjs --take as a child process, never their code in the tool's process, given the run's stage
 // (--stage) and asked for its events (--events). Its events are kept in the run's events
 // file as they arrive and its other lines in its log, so that a session opened again finds
 // them (shot-session.mjs). A run is stopped by a line on its stdin (record-lines.mjs), which
@@ -13,6 +13,7 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { numberOption, regexOption } from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
+import { browserShot, SHOTS } from "../svgshot/chrome/shots.mjs";
 import { readRecords, sendStop } from "./record-lines.mjs";
 import { appendEvent, RUN_TOOLS, runPaths, STAGED_TOOLS } from "./shot-session.mjs";
 
@@ -52,6 +53,12 @@ export function listShots({ command } = {}) {
 }
 
 /**
+ * The table of the pictures taken in a person's browser (chrome/shots.mjs), in the form of
+ * listShots', beside the table of the IDE's.
+ */
+export const browserTable = () => SHOTS.map(({ out }) => ({ out, setup: "browser", once: false, window: false }));
+
+/**
  * The arguments a run of `tool` is started with, after the script: its own `args`, then, for a
  * staged tool, the stage and --events.
  */
@@ -60,6 +67,7 @@ export const runArgs = (tool, args, stage) => (STAGED_TOOLS.has(tool) ? [...args
 /** The kinds of run the review tool starts: [kind, what it is called]. */
 export const RUN_KINDS = [
   ["retake", "Retake"],
+  ["browser", "Browser retake"],
   ["replay", "Replay"],
   ["cleanup", "Clean-up"],
 ];
@@ -71,6 +79,33 @@ export const onlyOf = (pictures) =>
 // A field of a request left empty: undefined, null or blank.
 const empty = (v) => v === undefined || v === null || (typeof v === "string" && v.trim() === "");
 
+// The run of chromeshot.mjs --take a request asks for: the pictures `pictures`, of the panel's
+// table, else those `only` matches, else all of them. `browser` is {captures, extension, noOpen}.
+function browserRun({ only, pictures }, baseline, { captures, extension, noOpen } = {}) {
+  let pattern = ".";
+  if (pictures !== undefined) {
+    const shots = pictures.map(browserShot);
+    if (shots.includes(null))
+      throw new Error("a browser retake and a retake in the IDE are runs of their own: choose one or the other");
+    pattern = onlyOf([...new Set(shots.map((s) => s.out))]);
+  } else if (!empty(only)) {
+    regexOption(String(only), { option: "--take" });
+    pattern = String(only);
+  }
+  return {
+    tool: "chromeshot",
+    args: [
+      "--take",
+      pattern,
+      "--against",
+      baseline.hash,
+      ...(empty(captures) ? [] : ["--captures", captures]),
+      ...(empty(extension) ? [] : ["--extension", extension]),
+      ...(noOpen ? ["--no-open"] : []),
+    ],
+  };
+}
+
 /**
  * The run a request asks for, as {tool, args}, args as the command line gives them (startRun
  * adds the stage): `kind` "retake" (shoot_docs.mjs, compared with the session's `baseline`,
@@ -78,10 +113,18 @@ const empty = (v) => v === undefined || v === null || (typeof v === "string" && 
  * baseline, `dryRun` for the list of what it would put back); the pictures `only`, a pattern, or
  * `pictures`, their paths under docs/, or neither for every picture; `svg` a retake's --svg (on
  * unless false), `jobs` its or a replay's --jobs, `ide` a retake's twinBASIC.exe, and `recheck`
- * a replay's. Throws, with a message for a person, on a request that is not one.
+ * a replay's. A retake of pictures taken in a browser is "browser", whatever asked for it, since
+ * the IDE cannot take them (`browser`, as browserRun has it, says where). Throws, with a message
+ * for a person, on a request that is not one.
  */
-export function runOf({ kind, only, pictures, svg = true, jobs, ide, recheck = false, dryRun = false }, baseline) {
+export function runOf(
+  { kind, only, pictures, svg = true, jobs, ide, recheck = false, dryRun = false },
+  baseline,
+  browser = {},
+) {
   if (!RUN_KINDS.some(([k]) => k === kind)) throw new Error(`no such kind of run: ${kind}`);
+  const ofBrowser = kind === "retake" && Array.isArray(pictures) && pictures.some(browserShot);
+  if (kind === "browser" || ofBrowser) return browserRun({ only, pictures }, baseline, browser);
   const refuse = (what, ok) => {
     if (!ok) throw new Error(`a ${RUN_KINDS.find(([k]) => k === kind)[1].toLowerCase()} takes no ${what}`);
   };
@@ -115,7 +158,8 @@ export function runOf({ kind, only, pictures, svg = true, jobs, ide, recheck = f
 }
 
 /** The kind of the run `run` (a session's record), as RUN_KINDS names it. */
-export const kindOf = (run) => (run.tool === "shoot_docs" ? "retake" : run.tool);
+export const kindOf = (run) =>
+  run.tool === "shoot_docs" ? "retake" : run.tool === "chromeshot" ? "browser" : run.tool;
 
 /**
  * Starts a run of `tool` with `args` in `session` (openSession): adds it to the session and

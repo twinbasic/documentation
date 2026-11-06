@@ -12,6 +12,7 @@ import { allowancesOf, anchor, chipHtml, esc, pageHtml, sizeText } from "./shot-
 import { FILTERS, GROUPS, isWindow } from "./shot-review.mjs";
 import { pngRule, svgRule } from "./shot-policy.mjs";
 import { SURVIVES } from "./shot-queue.mjs";
+import { browserShot } from "../svgshot/chrome/shots.mjs";
 import { RUN_KINDS } from "./shot-runs.mjs";
 
 /** The generator the tool's pages name in their <meta>. */
@@ -547,10 +548,15 @@ const NO_BUNDLE =
  */
 const runButtons = (out, busy, { replay = true, bundled = null } = {}) => [
   actionButton(
-    "Retake this picture",
+    browserShot(out) ? "Retake in the browser" : "Retake this picture",
     hrefs.startRun,
     { kind: "retake", pictures: [out] },
-    { disabled: busyText(busy) },
+    {
+      disabled: busyText(busy),
+      ...(browserShot(out)
+        ? { title: "open its page in the default browser, and wait for the capture you take there" }
+        : {}),
+    },
   ),
   ...(replay
     ? [
@@ -639,6 +645,19 @@ const runState = (r) => {
 const KIND_TEXT = Object.fromEntries(RUN_KINDS);
 const runTitle = (r) => `${KIND_TEXT[r.kind] ?? r.kind}${r.dryRun ? ", a dry run" : ""}`;
 
+// What a browser retake that is running asks of the person taking the pictures.
+function awaitHtml(r) {
+  if (!r.awaiting) return "";
+  const { job, url, shows } = r.awaiting;
+  return `<section class="await">
+<h4>Take <code>${esc(job)}</code> in the browser</h4>
+${r.extension?.step ? `<p class="notice">${esc(r.extension.step)}</p>` : ""}
+<p>${esc(shows)}</p>
+<p>On the page that opened (<a href="${esc(url)}" target="_blank" rel="noopener">open it again</a>), set this up, then press <strong>Whole viewport</strong> in svgshot's panel, with both themes and the markings ticked. The capture is picked up from <code>${esc(r.captures ?? "")}</code>.</p>
+${r.refused ? `<p class="fail">Its last capture was refused: ${esc(r.refused)}. Take it again.</p>` : ""}
+</section>`;
+}
+
 /** Stop for a run that is running, and once it has been asked to stop, Kill. */
 function stopButtons(r) {
   if (!r.live || r.kind === "cleanup") return [];
@@ -648,7 +667,12 @@ function stopButtons(r) {
         "Stop",
         hrefs.runAct(r.n),
         { action: "stop" },
-        { title: "finish the picture in hand, end the IDEs and put the registry back" },
+        {
+          title:
+            r.kind === "browser"
+              ? "stop waiting: the pictures not taken stay as they are"
+              : "finish the picture in hand, end the IDEs and put the registry back",
+        },
       ),
     ];
   return [
@@ -1444,7 +1468,7 @@ function runArticle(r, { newestCleanup, busy }) {
 <h3>Run ${r.n}: ${esc(runTitle(r))}, ${esc(runState(r))}</h3>
 <p class="meta">${esc(times.join("; "))}</p>
 <p>The same as <code>${esc(r.command)}</code> (<a href="${hrefs.log(r.n)}">the whole log</a>)</p>
-${progressHtml(r)}${note}${buttons.length ? actionsHtml(buttons) : ""}${r.log?.length ? `<pre class="log">${esc(r.log.join("\n"))}</pre>` : ""}
+${awaitHtml(r)}${progressHtml(r)}${note}${buttons.length ? actionsHtml(buttons) : ""}${r.log?.length ? `<pre class="log">${esc(r.log.join("\n"))}</pre>` : ""}
 </article>`;
 }
 
@@ -1488,6 +1512,13 @@ ${fields.join("\n")}
       ],
       "Start the retake",
       `<code>shoot_docs.mjs</code>: takes the pictures again in IDEs on private desktops, each compared with the baseline, ${esc(baseline.short)}.`,
+    ),
+    form(
+      "browser",
+      "Browser retake",
+      [onlyField],
+      "Start the browser retake",
+      `<code>chromeshot.mjs --take</code>: the pictures only your own signed-in browser can take. Brings the extension up to date, opens each picture's page in the default browser, and takes in the capture you save there, each compared with the baseline, ${esc(baseline.short ?? "")}.`,
     ),
     form(
       "replay",

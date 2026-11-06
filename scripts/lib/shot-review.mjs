@@ -34,7 +34,7 @@ export const FILTERS = [
 
 /**
  * What the events of a run of `tool` ("shoot_docs" or "replay") say: {listed, svg, build, jobs,
- * failed, skipped, retakes, stopping, summary}. `listed` the pictures the run is to take or
+ * failed, skipped, retakes, stopping, summary, awaiting, refused, extension, captures}. `listed` the pictures the run is to take or
  * draw, in its order; `svg` whether it gives each an SVG verdict (a replay's are SVG verdicts
  * only); `build` the IDE's build a retake ran on, or null; `jobs` a Map from a job's name to {pictures, state, error}, state "waiting",
  * "started", "done" or "failed" (a job that failed is then reported done, and stays failed),
@@ -54,6 +54,12 @@ export function runFacts(tool, events) {
     retakes: new Map(),
     stopping: false,
     summary: null,
+    // a browser retake's: the picture it waits for a person to take, {job, out, url, shows}, why
+    // their last capture was refused, what to do about the extension, and where captures land
+    awaiting: null,
+    refused: null,
+    extension: null,
+    captures: null,
   };
   for (const e of events) {
     if (e.type === "run") {
@@ -61,6 +67,8 @@ export function runFacts(tool, events) {
       else {
         facts.svg = !!e.svg;
         facts.build = e.build ?? null;
+        facts.extension = e.extension ?? null;
+        facts.captures = e.captures ?? null;
         facts.listed = (e.jobs ?? []).flatMap((j) => j.pictures);
         for (const j of e.jobs ?? []) {
           facts.jobs.set(j.name, { pictures: j.pictures.length, state: "waiting", error: null });
@@ -71,11 +79,19 @@ export function runFacts(tool, events) {
       const job = facts.jobs.get(e.job);
       if (job.state !== "failed") job.state = e.state;
       if (e.state === "failed") job.error = e.error ?? null;
-    } else if (e.type === "failed") facts.failed.set(e.out, e.error);
+      if (e.state !== "started" && facts.awaiting?.job === e.job) facts.awaiting = null;
+    } else if (e.type === "await") {
+      facts.awaiting = { job: e.job, out: e.out, url: e.url, shows: e.shows };
+      facts.refused = null;
+    } else if (e.type === "refused") facts.refused = e.error;
+    else if (e.type === "failed") facts.failed.set(e.out, e.error);
     else if (e.type === "skipped") facts.skipped.add(e.out);
     else if (e.type === "retake") facts.retakes.set(e.out, e.why);
     else if (e.type === "stopping") facts.stopping = true;
-    else if (e.type === "summary") facts.summary = e;
+    else if (e.type === "summary") {
+      facts.summary = e;
+      facts.awaiting = null;
+    }
   }
   return facts;
 }

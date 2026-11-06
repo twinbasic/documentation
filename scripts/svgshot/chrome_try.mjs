@@ -20,7 +20,7 @@ import { captureWindow, desktopWindows, launchOnDesktop, leaseSlot, postWindowMe
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/svgshot/chrome_try.mjs --url <address> --capture-dir <dir> [--out <path> | --shot <name>] [--drag x,y,x,y | --os-drag x,y,x,y] [--scroll N] [--width N] [--scale N] [--mask find=show]... [--window <png>] [-h, --help]
+const USAGE = `usage: node scripts/svgshot/chrome_try.mjs --url <address> --capture-dir <dir> [--out <path> | --shot <name>] [--follow <name>] [--drag x,y,x,y | --os-drag x,y,x,y] [--scroll N] [--width N] [--scale N] [--mask find=show]... [--window <png>] [-h, --help]
 
 Loads the Chrome extension unpacked into a Chrome of its own, on a private desktop
 with a fresh profile, opens <address>, presses the side panel's Whole viewport
@@ -32,6 +32,8 @@ nothing; a page that needs a sign-in shows what it shows anyone.
   --capture-dir <dir> where the capture file goes, for chromeshot.mjs
   --out <path>        the picture's path under docs/ (default try/page.png)
   --shot <name>       take one of the panel's pictures, with its markings
+  --follow <name>     first tell the panel that picture is next, as chromeshot.mjs
+                      --take does, and fail unless it chooses it
   --drag x,y,x,y      drag from the first point to the second, in window CSS px
   --os-drag x,y,x,y   the same with Windows' own mouse messages, posted to Chrome's
                       window, in its client area's device pixels: what a person's
@@ -56,6 +58,7 @@ const { values } = withUsageError(() =>
       "capture-dir": { type: "string" },
       out: { type: "string" },
       shot: { type: "string" },
+      follow: { type: "string" },
       drag: { type: "string" },
       "os-drag": { type: "string" },
       scroll: { type: "string" },
@@ -214,6 +217,13 @@ try {
     await page.evaluate(`scrollTo({ top: ${scroll}, behavior: "instant" })`);
     const at = await page.evaluate("scrollY");
     if (at !== scroll) throw new Error(`the page scrolled to ${at}, not ${scroll}`);
+  }
+  if (values.follow) {
+    writeFileSync(path.join(extension, "next.json"), JSON.stringify({ shot: values.follow }));
+    await until(`the panel to choose ${values.follow}`, async () => {
+      await pause(300);
+      return (await panel.evaluate(`document.getElementById("shot").value`)) === values.follow;
+    });
   }
   const before = await page.evaluate(asFound);
   await panel.evaluate(`(() => {

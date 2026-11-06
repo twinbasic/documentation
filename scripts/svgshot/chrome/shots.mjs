@@ -1,6 +1,7 @@
 // The six pictures of "Deploying to docs.twinbasic.com" in docs/Documentation/Building.md: what
 // each must show, its markings, and the area chromeshot.mjs trims a capture of the whole window
-// to (trim.mjs). A mark is {n, on, side?, what}: `n` the badge's text, `on` an anchor of annotate.mjs,
+// to (trim.mjs), and `url`, the page chromeshot.mjs --take opens for it. A mark is {n, on, side?,
+// what}: `n` the badge's text, `on` an anchor of annotate.mjs,
 // `side` where its badge goes, left by default, and `what` what it points at, which the panel
 // asks to be clicked when GitHub's page has no such thing. A trim is {of, pad?}: the anchors whose
 // boxes the picture holds, besides its marks. Only the owner, signed in, takes these
@@ -11,6 +12,7 @@
 // a data-component, or the start of a class name.
 
 const FOLDER = "Documentation/Images";
+const REPOSITORY = "https://github.com/twinbasic/documentation";
 
 /** The width the six are laid out at, in CSS px, so that each retake is the same layout. */
 export const PAGE_WIDTH = 1280;
@@ -33,6 +35,7 @@ const PAGE_MENU = { css: "[data-component=PH_Actions] [data-component=IconButton
 export const SHOTS = [
   {
     name: "compare-changes",
+    url: `${REPOSITORY}/compare/main...twinbasic:documentation:main`,
     out: `${FOLDER}/compare-changes.png`,
     shows:
       "On the repository's Compare page, press compare across forks, so that all four selectors show, with base " +
@@ -45,6 +48,7 @@ export const SHOTS = [
   },
   {
     name: "create-pull-request",
+    url: `${REPOSITORY}/compare`,
     out: `${FOLDER}/create-pull-request.png`,
     shows:
       "Base main, with your fork and a branch that has no pull request yet (GitHub then shows View pull " +
@@ -55,6 +59,7 @@ export const SHOTS = [
   },
   {
     name: "merge-pull-request",
+    url: `${REPOSITORY}/pulls`,
     out: `${FOLDER}/merge-pull-request.png`,
     shows:
       "An open pull request, scrolled to its merge box: No conflicts with base branch and the green Merge pull " +
@@ -64,6 +69,7 @@ export const SHOTS = [
   },
   {
     name: "confirm-merge",
+    url: `${REPOSITORY}/pulls`,
     out: `${FOLDER}/confirm-merge.png`,
     shows:
       "Press Merge pull request once: Commit message, Extended description, Commit email and the green Confirm " +
@@ -73,6 +79,7 @@ export const SHOTS = [
   },
   {
     name: "choose-workflow",
+    url: `${REPOSITORY}/actions`,
     out: `${FOLDER}/choose-workflow.png`,
     shows:
       "The Actions tab of twinbasic/documentation, not of a fork: the tab bar and the sidebar entry Build & deploy docs.",
@@ -85,6 +92,7 @@ export const SHOTS = [
   },
   {
     name: "run-workflow",
+    url: `${REPOSITORY}/actions/workflows/tbdocs-gh-pages.yml`,
     out: `${FOLDER}/run-workflow.png`,
     shows:
       "On the Build & deploy docs page of twinbasic/documentation, press Run workflow: the drop-down opens, on " +
@@ -111,3 +119,6 @@ export const SHOTS = [
     },
   },
 ];
+
+/** The shot of the table that takes the picture `out`, its dark or its light one, or null. */
+export const browserShot = (out) => SHOTS.find((s) => s.out === out.replace(/\.light\.png$/i, ".png")) ?? null;

@@ -1638,6 +1638,25 @@ six are laid out at `PAGE_WIDTH`, 1280, so that the window's width does not chan
 Cutting costs nothing: `encodePng` wrote `confirm-merge` in 53 KB against Chrome's 64 KB. A cut area
 is on whole CSS px, so it is free of the steps of a clip's size at 150%.
 
+**A take is driven from the tools** (owner, 2026-11-06). `chromeshot.mjs --take`, which
+`shot_review.mjs` runs ([WIP.ShotReview.md, Runs](WIP.ShotReview.md#runs)), does what a person did
+by hand round the capture, and nothing of the capture: only the person signed in takes it.
+`chrome-take.mjs` keeps the extension in `%LOCALAPPDATA%\svgshot\extension`, a folder of its own,
+so that Chrome's unpacked copy does not go when a worktree does and any checkout can bring it up
+to date. What is copied is followed from the manifest (`extension-files.mjs`, which the test of
+what the extension loads shares), as `scripts/svgshot` also holds the converter's Node tools.
+The word list goes with it, and stays when a checkout has none. A folder that is not the
+extension is refused, since files are removed from it. Each shot has its `url` in the table, and
+the page is opened with `rundll32 url.dll,FileProtocolHandler`, which is what `start` does with no
+shell to parse the address. A capture is noticed by the download folder's mtimes, from the
+user's known folder for downloads, read from the registry since the owner's is on D:; the
+browser saves under another name and renames, so a capture that shows is whole. The extension
+keeps the permissions it had: it reports through the download folder, needing no host
+permission for a local server. For the same reason the run tells the panel which picture is next
+in `next.json`, in the extension's own folder, which the panel reads every two seconds; a panel
+loaded from a checkout finds no such file. `chrome_try.mjs --follow` is what shows that this
+works in a real panel.
+
 **What the first signed-in captures showed** (2026-11-06), none of which a logged-out page has.
 A capture holds the page's whole DOM, so the anchors could be read from it. `run-workflow`'s
 top button is a `BUTTON` and no `summary`; the mark found nothing, the owner was asked to click,

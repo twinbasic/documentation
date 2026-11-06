@@ -54,6 +54,25 @@ function setBusy(busy) {
 
 let running = null;
 
+// The picture a run of chromeshot.mjs --take waits for, in the folder it keeps the extension in, is
+// chosen here, so that a capture is not saved under the last picture's name. A panel loaded from
+// the checkout finds no such file.
+let told = null;
+async function followRun() {
+  if (running) return;
+  try {
+    const { shot } = await (await fetch(chrome.runtime.getURL("next.json"), { cache: "no-store" })).json();
+    if (shot === told) return;
+    told = shot;
+    if (shot && SHOTS.some((s) => s.name === shot)) {
+      $("shot").value = shot;
+      showShot();
+    }
+  } catch {
+    // No run has told it anything.
+  }
+}
+
 async function take(area, list) {
   const shot = shotOf();
   const out = shot?.out ?? $("path").value.trim().replace(/\\/g, "/");
@@ -118,6 +137,8 @@ try {
 }
 $("shot").addEventListener("change", showShot);
 showShot();
+setInterval(followRun, 2000);
+followRun();
 
 const list = await loadWords();
 if (list) {
