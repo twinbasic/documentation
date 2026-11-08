@@ -52,9 +52,8 @@ An animation is an animated `.webp`, a fraction of the size of the same `.gif`. 
 
 **A file you do not want published does not belong under `docs/`,** unless a
 pattern in `_config.yml`'s `exclude:` covers it. These are excluded at any depth:
-`.scss` stylesheets, `.dot` diagram sources, and the Affinity `.af` screenshot
-sources under `_Images/`. So is everything underscore-prefixed at the root of
-`docs/` --- `_config.yml` and `_book.yml`, the `_sass/` tree, and the build's
+`.scss` stylesheets and `.dot` diagram sources. So is everything underscore-prefixed
+at the root of `docs/` --- `_config.yml` and `_book.yml`, the `_sass/` tree, and the build's
 output trees (`_site/`, `_site-offline/`, `_serve/`, `_pdf/` and their
 variants). Keep scratch notes, editor backups and working documents outside the
 tree.

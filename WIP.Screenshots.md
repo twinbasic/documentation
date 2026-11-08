@@ -273,9 +273,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   Added and deleted PNGs, one beyond noise, and one whose SVG alone changed are left alone.
   `--dry-run` lists; the IDE options (`--ide`, `--jobs`, `--svg`, `--bundles`, `--diffs`,
   `--against-disk`) are refused with it. One noise rule: the capture's `nearly`, `--cleanup`
-  and `sheet.mjs --against`'s within-noise section all call `withinNoise`
-  (`scripts/lib/shot-change.mjs`), and the sheet shows the `--cleanup` command beside its
-  `git checkout` one. On the BETA 1033 retake its dry run puts back none of the 329 modified
+  and the review tool all call `withinNoise` (`scripts/lib/shot-change.mjs`). On the BETA 1033 retake its dry run puts back none of the 329 modified
   pictures.
 - **Setups**: one IDE each --- `no-project` (menus, dialogs, panels), `help` (the add-in's nine,
   `test/addin/helpdemo`), `project`, `sample`, the `settings` setups, `glyphs`, `global-search`
@@ -1147,33 +1145,6 @@ the PNG was just captured from, and the build shows it in place of the PNG
   which is what the filter's own merge paints. One SVG serves screen and book, since the
   bake is exact. Blurred shadows stay bitmaps in
   the PDF, which loses nothing.
-- **The sheet of the pictures with no SVG** (owner): `scripts/svgshot/sheet.mjs --out <dir>`
-  writes `index.html` and a `pictures/` folder, openable from `file://`: each PNG with no SVG
-  beside it (`--all`: every PNG) that has a bundle is drawn again and judged as replay does,
-  worst first, PNG, render and difference map side by side; then the ones with no bundle as
-  thumbnails. A bundle whose PNG has changed is drawn anyway, with a note (`redraw`'s `stale`).
-  The sheet is for the owner alone, so it is drawn with `checkUserName: false` and may show the
-  user name (owner); `outputRefusal` keeps it out of `docs/` and out of any path git does not
-  ignore, and an existing folder must hold an earlier sheet. What it shares with replay is
-  `scripts/svgshot/redraw.mjs` (`redraw`, `writeJudged`, `runShards`/`inBrowser`, the
-  `judgedFiles` names: `<slug>.svg-diff.png` and `<slug>.svg` as `--diffs` names them); its pages are
-  `scripts/svgshot/sheets.mjs`, made of the pieces in `scripts/lib/shot-views.mjs`.
-  `shoot_docs.mjs --diffs` is to call `sheetHtml` over its diffs folder in a later commit.
-  A sheet of the pictures with no SVG takes seconds; `--all`, over some 550 pictures, about a
-  minute.
-- **The sheet of changes against a revision** (owner): `sheet.mjs --out <dir> --against <rev>`
-  reviews what a screenshot run rewrote: each PNG under `--docs` that git (run in that folder,
-  so its repository answers) reports changed against the revision, working tree against commit,
-  untracked PNGs added, as old / new / difference map (`scripts/lib/shot-change.mjs`; sizes that
-  differ are compared aligned at the top left, the map shows the larger). Order: changed, most
-  changed first (share of pixels more than 16 levels off); then the pictures within the noise
-  rule (`withinNoise`, the rule `shoot_docs.mjs` moved there: 16 levels, 0.5% of the pixels),
-  which shoot_docs never writes over a file, so they are most likely rewritten in error (owner),
-  with one `git checkout <rev> -- <paths>` and the `shoot_docs.mjs --cleanup` command, which the
-  page only shows; then added, then deleted. The revision's pictures are read in one `git
-  cat-file --batch` (`readRevisionFiles`, `scripts/lib/shot-revision.mjs`). PNG
-  against PNG, no browser: 337 pictures in about 30 s. On the BETA 1033 retake none was within
-  noise.
 - **The bar** (`SVG_FAITHFUL` in `scripts/lib/shot-policy.mjs`): an SVG with more than 0.25% of its pixels 96
   grey levels or more off is not written, and an older one is removed. Anything not drawn falls
   to it. A picture's entry in `test/shots/manifest.json` can move it, to any level and share,

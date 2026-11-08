@@ -876,6 +876,7 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
         ["nosvg", ["IDE/Images/B.png", "IDE/Images/A.light.png", "IDE/Images/B.light.png", C]],
         ["missing", ["IDE/Images/Gone.png"]],
         ["overridden", [E]],
+        ["uncaptured", []],
         ["svg", [A]],
       ],
     );
@@ -901,6 +902,89 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
       why: "none",
       text: "its shot draws no SVG of it",
     });
+  });
+
+  test("an image no shot takes is listed, unless a script makes it or it is the favicon", () => {
+    const hand = ["Features/Hand.png", "Tutorials/Hand.webp"];
+    const images = [
+      A,
+      "IDE/Images/A.light.png",
+      "IDE/Images/A.svg",
+      "IDE/Images/A.light.svg",
+      ...hand,
+      "Tutorials/Diagram.svg",
+      "assets/images/gantt.svg",
+      "assets/thumbnails/yt-x.jpg",
+      "favicon.png",
+    ];
+    const files = new Set([...images, "Tutorials/Diagram.dot"]);
+    const { pictures, groups } = allPictures({
+      shots: [{ out: A, setup: "s", once: false, window: false }],
+      exists: (p) => files.has(p),
+      images,
+    });
+    assert.deepEqual(
+      groups.find((g) => g.key === "uncaptured").pictures.map((p) => p.out),
+      hand,
+    );
+    assert.deepEqual(
+      pictures.filter((p) => p.uncaptured).map((p) => p.out),
+      hand,
+    );
+    assert.deepEqual(
+      pictures.find((p) => p.out === hand[1]),
+      {
+        out: hand[1],
+        setup: null,
+        window: false,
+        once: false,
+        png: true,
+        svg: false,
+        bothThemes: false,
+        build: null,
+        reason: null,
+        group: "uncaptured",
+        uncaptured: true,
+      },
+    );
+    // one with an SVG of its own that no shot takes is listed as well, and neither is a diagram
+    assert.deepEqual(
+      allPictures({ shots: [], exists: () => false, images: ["Hand.svg"] }).pictures.map((p) => p.out),
+      ["Hand.svg"],
+    );
+  });
+
+  test("an image no shot takes can be looked at, and offers nothing a run would do", () => {
+    const p = {
+      out: "Features/Hand.webp",
+      setup: null,
+      window: false,
+      once: false,
+      png: true,
+      svg: false,
+      bothThemes: false,
+      build: null,
+      reason: null,
+      group: "uncaptured",
+      uncaptured: true,
+    };
+    const all = allHtml({
+      groups: [{ key: "uncaptured", title: "No automated capture", pictures: [p] }],
+      baseline: { short: "abc" },
+    });
+    assert.match(all, /No automated capture \(1\)/);
+    assert.match(all, /no automated capture<\/span>/);
+    assert.ok(all.includes(`src="${hrefs.docs(p.out)}"`));
+    assert.doesNotMatch(all, /<input[^>]*data-pick/);
+    const plain = plainHtml({
+      p,
+      place: { index: 0, total: 1 },
+      files: { head: null, docs: { src: hrefs.docs(p.out), size: null }, svg: null },
+      baseline: { short: "abc" },
+    });
+    assert.match(plain, /No tool takes this image/);
+    assert.doesNotMatch(plain, /Retake|Replay|size unknown|HEAD \(abc\)/);
+    assert.ok(plain.includes(`<img src="${hrefs.docs(p.out)}" alt="The file">`));
   });
 
   test("the page of every picture says why each has no SVG, offers their replay, and a picture's plain page its runs", () => {
@@ -1700,7 +1784,14 @@ onStop(process.stdin, () => {
     fs.writeFileSync(path.join(docs, C), flat(false));
     fs.writeFileSync(path.join(docs, A), flat(false));
     fs.writeFileSync(path.join(docs, "IDE/Images/A.svg"), "<svg/>");
-    const revision = stubRevision("a", { [C]: flat(false) });
+    // images no shot takes: one to look at, a poster frame and the favicon
+    const HAND = "Features/Hand.webp";
+    fs.mkdirSync(path.join(docs, "Features"), { recursive: true });
+    fs.mkdirSync(path.join(docs, "assets/thumbnails"), { recursive: true });
+    fs.writeFileSync(path.join(docs, HAND), "RIFF");
+    fs.writeFileSync(path.join(docs, "assets/thumbnails/yt-x.jpg"), "jpeg");
+    fs.writeFileSync(path.join(docs, "favicon.png"), flat(false));
+    const revision = stubRevision("a", { [C]: flat(false), [HAND]: Buffer.from("RIFF") });
     const base = () => ({ hash: revision.hash, short: revision.short, build: 1500 });
     // a closed session whose replay refused C's SVG
     const closed = openSession(archiveRoot(root, "abc1234"), base);
@@ -1744,6 +1835,22 @@ onStop(process.stdin, () => {
       assert.match(text, /<body data-out="IDE\/Images\/C\.png">/);
       assert.match(text, /No run of this session reported this picture/);
       assert.equal((await fetch(at + hrefs.picture("IDE/Images/Nope.png"))).status, 404);
+      // an image no shot takes is listed and shown, alone when the baseline has the same bytes; a
+      // poster frame and the favicon are not listed; and no action reaches it
+      assert.match(all, /No automated capture \(1\)/);
+      assert.doesNotMatch(all, /yt-x\.jpg|favicon/);
+      const hand = await (await fetch(at + hrefs.picture(HAND))).text();
+      assert.match(hand, /No tool takes this image/);
+      assert.doesNotMatch(hand, /HEAD \(/);
+      const file = await fetch(at + hrefs.docs(HAND));
+      assert.equal(file.headers.get("content-type").split(";")[0], "image/webp");
+      assert.equal((await fetch(at + hrefs.picture("assets/thumbnails/yt-x.jpg"))).status, 404);
+      const acted = await fetch(at + hrefs.act(HAND), {
+        method: "POST",
+        headers: { origin: at, "content-type": "application/json" },
+        body: "{}",
+      });
+      assert.equal(acted.status, 404);
       // the overview links to the page
       assert.match(await (await fetch(`${at}/`)).text(), /<a href="\/all">All pictures<\/a>/);
       // a table that cannot be read is said so, on a server that has none yet
