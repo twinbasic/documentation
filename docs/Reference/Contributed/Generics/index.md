@@ -101,7 +101,7 @@ End Module
 ```
 
 <!-- test: compile NewWithoutDeclaration -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > **New** with a generic class from a package compiles only when some declaration in the project or the package names the same class with the same type arguments. A variable declared with the tuple's type is such a declaration. Without one, `Dim t As Any = New TupleOf2(Of String, Long)("a", 2)` fails with TB5074, *Could not bind to parameterized constructor of class 'TupleOf2'*, and so does **New** assigned to an **Object** or **Variant** variable or passed as an argument. A generic class declared in the project's own code is not affected. Assign the tuple to a variable of its own type first; that variable can then be assigned to an **Object** or **Variant** variable, through which the items are read late-bound:
 >
 > ```tb check_build check_run

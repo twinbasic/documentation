@@ -51,7 +51,7 @@ Debug.Print cal.Year
 ```
 
 <!-- test: compile ProjectNameIsNotAType, compile QualifiedClassNameIsAType -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > `Dim cal As xCalendar` fails with TB5139, *[xCalendar] is a project or library, not a datatype*.
 >
 > ```tb check_build expect-error=TB5139
@@ -67,7 +67,7 @@ Debug.Print d, m   ' 2 1
 ```
 
 <!-- test: compile BareShortLengthIsAmbiguous, compile BareLongLengthIsAmbiguous, compile QualifiedDayLengthMemberIsAccepted, compile QualifiedMonthLengthMemberIsAccepted -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > `ShortLength` and `LongLength` written alone fail with TB5073, *'ShortLength' is ambiguous*.
 >
 > ```tb check_build expect-error=TB5073
