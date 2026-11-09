@@ -64,7 +64,7 @@ A command with no default key runs from a menu, a button or another command. Any
 | <code><span class="command-prefix">tbDebug_</span>StepOut</code> | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F8</kbd>, <kbd>Shift</kbd>+<kbd>F11</kbd> | At a breakpoint, runs on until the current procedure ends and stops in its caller. |
 | <code><span class="command-prefix">tbDebug_</span>StepOver</code> | <kbd>Shift</kbd>+<kbd>F8</kbd>, <kbd>F10</kbd> | At a breakpoint, runs the current statement and stops at the next, without entering any procedure it calls. |
 | <code><span class="command-prefix">tbDebug_</span>Stop</code> |  | Ends the running program. |
-| <code><span class="command-prefix">tbDebug_</span>ToggleBreakOnAllErrors</code> |  | Turns the project's Break On All Errors setting on or off. |
+| <code><span class="command-prefix">tbDebug_</span>ToggleBreakOnAllErrors</code> |  | Turns the project's Break On All Errors (this project) setting on or off. |
 | <code><span class="command-prefix">tbDebug_</span>ToggleBreakOnAllErrorsInPackages</code> |  | Turns the project's Break On All Errors (inside packages) setting on or off. |
 | <code><span class="command-prefix">tbDebug_</span>ToggleBreakpoint</code> | <kbd>F9</kbd> | Sets a breakpoint on the cursor's line, or removes the one that is there. |
 | <code><span class="command-prefix">tbDebug_</span>ToggleDebuggable</code> |  | Turns the project's Allow Breakpoints (Debuggable) setting on or off. |
