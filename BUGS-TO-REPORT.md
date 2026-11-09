@@ -1504,38 +1504,52 @@ Severity: low. No difference in a running program was looked for. Builds are not
 
 ---
 
-## Reading `Parent` of the file system's root folder crashes the compiler
+## Reading `Parent` of the file system's root folder raises error &H80004005 instead of returning `Nothing`
 
 **Describe the bug**
-In an IDE add-in, reading `Parent` of the virtual file system's root folder, `Host.FileSystem.RootFolder.Parent`, crashes the compiler, and the add-in with it. The read itself crashes, before the value is used: `Dim o As Object = Host.FileSystem.RootFolder.Parent`, `Dim f As Folder = Host.FileSystem.RootFolder.Parent`, `Host.FileSystem.RootFolder.Parent Is Nothing` and `TypeName(Host.FileSystem.RootFolder.Parent)` all crash, and the line the add-in printed just before the read is the last one printed. The IDE restarts the compiler, which loads the add-in and crashes again, 3 or 4 times in a run.
+In an IDE add-in, reading `Parent` of the virtual file system's root folder, `Host.FileSystem.RootFolder.Parent`, raises error -2147467259 (`&H80004005`, `E_FAIL`), *Automation error*, and the variable it was read into stays `Nothing`. The root has no parent, so the read should return `Nothing` with no error. In an event handler with no error handler, the error ends the handler without a message, so an add-in that walks up the tree with `Parent` until `Is Nothing` stops silently at the root. Up to BETA 1034 the same read crashed the compiler.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `rootfolder-parent-crash.twinproj` (attached as `rootfolder-parent-crash.zip`). It is an add-in whose `Host_OnProjectLoaded` is:
+1. Open `rootfolder-parent-error.twinproj` (attached as `rootfolder-parent-error.zip`). It is an add-in whose `Host_OnProjectLoaded` is:
    ```
    Private Sub Host_OnProjectLoaded()
        Host.DebugConsole.PrintText "before Parent"
+       On Error Resume Next
        Dim o As Object = Host.FileSystem.RootFolder.Parent
-       Host.DebugConsole.PrintText "after Parent"
+       Dim n As Long = Err.Number
+       Dim d As String = Err.Description
+       On Error GoTo 0
+       Host.DebugConsole.PrintText "Err " & n & " " & d
+       Host.DebugConsole.PrintText "Is Nothing = " & (o Is Nothing)
    End Sub
    ```
-2. Build it (win32). The add-in crashes the compiler every time it loads, so use an IDE whose add-ins you can restore. Copy `Build\RootfolderParentCrash_win32.dll` into `%APPDATA%\twinBASIC\addins\win32\` and restart the IDE.
-3. Open any project. The DEBUG CONSOLE prints `before Parent`, and the compiler crashes. `after Parent` is never printed.
-4. To get the IDE working again, close it and delete `RootfolderParentCrash_win32.dll` from `%APPDATA%\twinBASIC\addins\win32\`.
+2. Build it (win32). Copy `Build\RootfolderParentError_win32.dll` into `%APPDATA%\twinBASIC\addins\win32\` and restart the IDE.
+3. Open a project, then a second one (BETA 1042 empties the DEBUG CONSOLE a second time as the first project opens, which erases the lines; see the entry *The DEBUG CONSOLE is emptied twice as the first project opens*). The DEBUG CONSOLE prints:
+   ```
+   before Parent
+   Err -2147467259 Automation error
+   Is Nothing = True
+   ```
+4. Close the IDE and delete `RootfolderParentError_win32.dll` from `%APPDATA%\twinBASIC\addins\win32\`.
 
 **Expected behavior**
-`Parent` of the root is `Nothing`, as for the root of any object model, so step 3 prints `before Parent` and `after Parent`. At worst the read raises an error that the add-in can handle, and does not take the compiler down.
+`Parent` of the root is `Nothing`, as for the root of any object model, with no error: step 3 prints `Err 0`.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
+ - twinBASIC compiler version: BETA 1042
 
 **Additional context**
-What did not reproduce it: `Host.CurrentProject.RootFolder.Parent`, the parent of the project's folder, reads fine, and its `Path` is `twinbasic:/`, the file system's root. An add-in that reads neither does not crash.
+The same error is raised by each form of the read: into an `Object` or a `Folder`, in `Host.FileSystem.RootFolder.Parent Is Nothing` and in `TypeName(Host.FileSystem.RootFolder.Parent)`. Without `On Error`, each ends the event handler at the read, as an unhandled `Err.Raise 5` in the same handler does.
 
-Severity: crash. The crash is in the read, so no `On Error` handler helps, and an add-in that walks up the tree with `Parent` until `Is Nothing` crashes the compiler on every start, until its DLL is removed. The workaround is to stop at the folder whose `Path` is `twinbasic:/` without reading its `Parent`.
+What did not reproduce it: `Host.CurrentProject.RootFolder.Parent`, the parent of the project's folder, reads with no error, and its `Path` is `twinbasic:/`, the file system's root. An add-in that reads neither prints all its lines.
 
-<!-- Reproducer: bugs/rootfolder-parent-crash/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only parent` (test/addin/parent.test.mjs, cases a to e; case f is the control that does not crash; the ParentProbe add-in is test/addin/probes/parent), which passes while the bug is there. The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Stated in docs/Reference/Built-In/tbIDE/FileSystemItem.md, the WARNING under "Parent", and in WIP.HelpAddin.md (P21): when fixed, the WARNING goes and the page states what Parent of the root is, with no mention of the defect; update the lane's tests (parent.test.mjs, which then assert the fixed behaviour) and P21. -->
+On BETA 1034 (and 1010) the read crashed the compiler, under `On Error Resume Next` too, and each compiler the IDE restarted loaded the add-in and crashed again. BETA 1042 fixes the crash; this entry is what is left.
+
+Severity: low. The error can be handled, and the workaround is to stop at the folder whose `Path` is `twinbasic:/` without reading its `Parent`.
+
+<!-- Reproducer: bugs/rootfolder-parent-error/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only parent` (test/addin/parent.test.mjs, cases a to e and g; f is the control that reads, r the control for an unhandled error; the ParentProbe add-in is test/addin/probes/parent), which passes while the bug is there. On BETA 1042 the lane must be run on a copy of the install patched with bugs/console-cleared-at-open/fix.js (`--ide <copy>`), because the console defect erases the add-in's lines; on the plain install its cases fail for want of lines. The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Retitled 2026-11-09, when BETA 1042 turned the crash (the entry was "Reading `Parent` of the file system's root folder crashes the compiler", slug rootfolder-parent-crash) into this error; the lane on BETA 1034 still showed the crash, case g included. Stated in docs/Reference/Built-In/tbIDE/FileSystemItem.md, the NOTE under "Parent", and in WIP.HelpAddin.md (P21): when fixed, the NOTE goes and the page states what Parent of the root is, with no mention of the defect; update the lane's tests (parent.test.mjs, which then assert the fixed behaviour) and P21. -->
 
 ---
 

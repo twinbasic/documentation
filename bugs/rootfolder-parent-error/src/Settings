@@ -1,12 +1,12 @@
 {
 	"configuration.inherits": "Defaults",
-	"project.appTitle": "RootfolderParentCrash",
+	"project.appTitle": "RootfolderParentError",
 	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
 	"project.buildType": "Standard DLL",
-	"project.description": "Reproduces: Reading `Parent` of the file system's root folder crashes the compiler",
+	"project.description": "Reproduces: Reading `Parent` of the file system's root folder raises error &H80004005 instead of returning `Nothing`",
 	"project.exportPathIsV2": true,
 	"project.id": "{5C0D1E8A-6B3F-4A92-9E47-2F81D6A0C3B5}",
-	"project.name": "RootfolderParentCrash",
+	"project.name": "RootfolderParentError",
 	"project.optionExplicit": true,
 	"project.references": [
 		{

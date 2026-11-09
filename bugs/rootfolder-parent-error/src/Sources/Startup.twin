@@ -1,0 +1,36 @@
+' An add-in. Once a project is open, it reads the Parent of the virtual file
+' system's root folder (twinbasic:/) into an Object, under On Error Resume Next,
+' and prints the error the read raised and whether the variable is Nothing.
+' BETA 1042 prints "Err -2147467259 Automation error" and "Is Nothing = True";
+' Nothing with no error is correct. Up to BETA 1034 the read crashed the
+' compiler, so the IDE restarted it, which loaded the add-in and crashed again.
+Module Startup
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New ReproAddin(Host)
+    End Function
+End Module
+
+Private Class ReproAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "RootFolder Parent repro"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        Host.DebugConsole.PrintText "before Parent"
+        On Error Resume Next
+        Dim o As Object = Host.FileSystem.RootFolder.Parent
+        Dim n As Long = Err.Number
+        Dim d As String = Err.Description
+        On Error GoTo 0
+        Host.DebugConsole.PrintText "Err " & n & " " & d
+        Host.DebugConsole.PrintText "Is Nothing = " & (o Is Nothing)
+    End Sub
+End Class
