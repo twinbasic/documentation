@@ -836,6 +836,138 @@
           "refs": 3
         }
       }
+    },
+    "createListView": {
+      "namedOn": "BETA 1042",
+      "shape": "34976dd6071f8d61",
+      "names": {
+        "0#0": {
+          "name": "container",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 1
+        },
+        "0#1": {
+          "name": "list",
+          "was": "t",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 62
+        },
+        "0/0#0": {
+          "name": "htmlRow",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 1
+        },
+        "0/1#0": {
+          "name": "heightRow",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 4
+        },
+        "0/1#1": {
+          "name": "element",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param1",
+          "refs": 1
+        },
+        "0/1#2": {
+          "name": "width",
+          "was": "n",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 3
+        },
+        "0/1#3": {
+          "name": "height",
+          "was": "i",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 3
+        },
+        "0/2#0": {
+          "name": "itemRow",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 1
+        },
+        "0/3#0": {
+          "name": "dataRow",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 1
+        },
+        "0/4#0": {
+          "name": "updatedRow",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 4
+        },
+        "0/4#1": {
+          "name": "newHtml",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param1",
+          "refs": 2
+        },
+        "0/5#0": {
+          "name": "addedHtml",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 2
+        },
+        "0/5#1": {
+          "name": "addedData",
+          "was": "o",
+          "def": "Parameter",
+          "kind": "param1",
+          "refs": 2
+        },
+        "0/5#2": {
+          "name": "addedRow",
+          "was": "n",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 6
+        },
+        "0/6#0": {
+          "name": "use",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 5
+        },
+        "0/7#0": {
+          "name": "removedRow",
+          "was": "e",
+          "def": "Parameter",
+          "kind": "param0",
+          "refs": 5
+        },
+        "0/7#1": {
+          "name": "visible",
+          "was": "o",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 3
+        },
+        "0/7#2": {
+          "name": "lastVisible",
+          "was": "n",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 2
+        }
+      }
     }
   }
 }

@@ -13428,3 +13428,55 @@ This is not the `Friend` entry above: there a `Friend` member is found by name a
 Severity: medium. A `Private` method is the one a class's author means nobody else to call. Any code that holds the object, in another project included, can call it by a number it can guess from the order of the declarations.
 
 <!-- Reproducer: bugs/private-member-by-dispid/ (mode test; vb6/ is the VB6 side, which calls IDispatch::Invoke through DispCallFunc, since VB6 has no CallByDispId). The call from another project was run in a scratch copy on BETA 1042, not kept. Found by the agent that checked whether Friend's late binding is a defect, 2026-11-05, on BETA 1034; checked again on BETA 1042. Pages with a callout that goes when this is fixed: docs/Reference/COM-Interfaces/IDispatch.md (a NOTE under the members the compiler's IDispatch finds). -->
+
+---
+
+## The DEBUG CONSOLE is emptied twice as the first project opens, so output written in between, an add-in's included, is lost
+
+**Describe the bug**
+Opening a project empties the DEBUG CONSOLE, as it should. On BETA 1042, the first project opened after the IDE starts empties it a second time, a moment later, as the project's saved console options are applied. Whatever was written between the two is lost: an add-in's `Host.DebugConsole.PrintText` output as the project loads, and any other line written then. A project opened after the first is not affected.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Use an add-in that prints a line with `Host.DebugConsole.PrintText` as its project loads.
+2. Start the IDE and open a project.
+3. The line shows for a moment, and then the console is empty.
+4. Open another project in the same IDE. Its line stays.
+
+What decides it, in a lane test that starts the IDE with no project, records every emptying of the console's list, and has `clearDebugConsole` write a line just after it runs:
+- The first project's open empties the list twice: once by `clearDebugConsole`, and once more after it, which erases the line written just after the first.
+- A second project's open empties the list once, by `clearDebugConsole`, and the line written after it stays.
+- After the first open, toggling **Show Timestamps** twice erases nothing.
+- In BETA 1034 the list does not take this path: its cached-heights flag starts out `true`.
+- Two of our add-in tests that read what an add-in prints as its project loads failed on BETA 1042 for this reason alone; with the fix below, both pass.
+
+**Expected behavior**
+The console is emptied once, as the project opens, and what is written after that stays.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+The console's list is made by `createListView`, which leaves its `useCachedItemHeights` unset. `setUseCachedItemHeights`, new with the **Smoother Scrolling** option, empties the list whenever the value it is given differs from the one the list holds. The first `resyncDebugPanelOptions`, as a project's console options are applied, gives it `false`, which differs from unset, so the list is emptied. After that the value is `false`, and nothing is emptied again until the option is changed.
+
+**Fix shape**
+
+`createListView` in `ide/main.js`, BETA 1042, in a readable form. The local names are ours, not twinBASIC's (`container`, `list`, `htmlRow`, `heightRow`, `element`, `width`, `height`, `itemRow`, `dataRow`, `updatedRow`, `newHtml`, `addedHtml`, `addedData`, `addedRow`, `use`, `removedRow`, `visible`, `lastVisible`); the build calls them `e`, `t`, `e`, `e`, `o`, `n`, `i`, `e`, `e`, `e`, `o`, `e`, `o`, `n`, `e`, `e`, `o`, `n`.
+
+```diff
+@@ -7,6 +7,7 @@
+   list.dataNodesCachedHeight = [];
+   list.dataNodesCachedWidth = [];
+   list.totalCachedItemsHeight = 0;
++  list.useCachedItemHeights = false;
+   list.onAsyncGetItemHTML = (htmlRow) => list.dataNodes[htmlRow];
+   list.onAsyncGetItemHeight = (heightRow, element) => {
+     var width = list.cachedClientWidth;
+```
+
+The list starts with the flag `false`, the value **Smoother Scrolling** has when it is off, so the first `setUseCachedItemHeights(false)` finds nothing to change and returns without emptying the list. Every list that `createListView` makes already reads an unset flag as `false`, so nothing else changes.
+
+On a patched copy of the BETA 1042 install, the lane's test of the second emptying fails, its two controls pass, and both add-in tests pass.
+
+<!-- Reproducer: bugs/console-cleared-at-open/ (mode lane: asserted by `ide-test.bat --only console-cleared` (test/ide/console-cleared.test.mjs), the test named in repro.json, which passes on BETA 1042; its two controls pass on 1042 and on a patched copy. No project and no zip. The add-in tests are addin:keys-help ("the add-in loads and registers its shortcuts, lowercased") and addin:parent ("case none: the control that reads nothing"), both failing on 1042 and passing on the patched copy. Found 2026-11-09 by the BETA 1042 recheck, when those two lanes failed with their controls. Pages with a callout that goes when this is fixed: docs/IDE/Debugging/Debug-Console.md, docs/Reference/Built-In/tbIDE/DebugConsole.md (PrintText). Fix: bugs/console-cleared-at-open/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/console-cleared-at-open/fix.js` on BETA 1042. -->

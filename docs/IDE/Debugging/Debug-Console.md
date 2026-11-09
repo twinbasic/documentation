@@ -21,6 +21,10 @@ The **DEBUG CONSOLE** panel is a scrolling log of what a run writes, and an inpu
 
 The panel is docked at the bottom of the default layout. <kbd>Ctrl</kbd>+<kbd>G</kbd> shows it, and moves the keyboard focus to the input row.
 
+<!-- test: bug console-cleared-at-open -->
+> [!WARNING] BETA 1042
+> The first project opened after the IDE starts empties the console twice: once as the project opens, as it should, and again a moment later, as the project's console options are applied. What was written in between is lost, the lines an add-in prints as the project loads among them. A project opened after the first one is not affected.
+
 ## What the console shows
 
 **Debug.Print**

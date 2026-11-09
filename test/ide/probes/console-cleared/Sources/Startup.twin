@@ -1,0 +1,8 @@
+' A project to open in an IDE that has already written to its DEBUG CONSOLE
+' (test/ide/console-cleared.test.mjs). Nothing in it runs.
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+End Module

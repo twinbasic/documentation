@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:console-cleared",
+  "tests": [
+    "the first project to open empties the console twice, and the second erases what followed the first"
+  ],
+  "steps": "1. Load an add-in that prints a line with Host.DebugConsole.PrintText when its project loads, or watch the compiler's own lines as a project opens.\n2. Start the IDE and open a project.\n3. The DEBUG CONSOLE shows the lines for a moment, then is empty.\n4. Open another project in the same IDE: its lines stay."
+}
