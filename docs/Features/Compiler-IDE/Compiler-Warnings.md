@@ -509,11 +509,11 @@ Reports a duplicate definition as a warning: *Duplicate definition, consider cha
 ### TB0034: Legacy DLL Redirected
 {: index="TB0034" }
 
-A **Declare** of a function from a legacy system DLL that twinBASIC calls in its modern replacement instead, such as `OleCreatePictureIndirect`, which `olepro32.dll` exported and `oleaut32.dll` now does: *Use of legacy DLL OLEPRO32.DLL has been redirected to OLEAUT32.DLL*. Up to BETA 1033 the compiler reported it as [TB0015](#tb0015-declare-redirected-to-twinbasic). The Compiler Warnings list shows it at **HINT** by default.
+A **Declare** of a function from a legacy system DLL that twinBASIC calls in its modern replacement instead, such as `OleCreatePictureIndirect`, which `olepro32.dll` exported and `oleaut32.dll` now does: *Use of legacy DLL olepro32 has been redirected to oleaut32*. Up to BETA 1033 the compiler reported it as [TB0015](#tb0015-declare-redirected-to-twinbasic).
 
-<!-- test: bug tb0034-level-ignored, bug warning-message-names-blank -->
-> [!NOTE] BETA 1034
-> TB0034 is reported as a warning whatever its level: at **IGNORE**, **HINT** or **ERROR** in the Compiler Warnings list, and under **IgnoreWarnings** or **EnforceErrors**. Its message leaves out the two names: *Use of legacy DLL has been redirected to*.
+<!-- test: sample tb0034-enforced -->
+The Compiler Warnings list shows it at **HINT** by default, and its level there applies as any other warning's does, as do **IgnoreWarnings** and **EnforceErrors**.
+<!-- /test -->
 
 ```tb check_build slot=module
 Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" ( _
@@ -521,14 +521,23 @@ Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" ( _
     ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
 ```
 
+```tb probe id=tb0034-enforced slot=file expect-error=TB0034
+[EnforceErrors(TB0034)]
+Module ProbeLegacyDll
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" ( _
+        ByRef PicDesc As Any, ByRef RefIID As Any, _
+        ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
+End Module
+```
+
 ### TB0035: Late-Bound Conversion
 {: index="TB0035" }
 
 A value whose type is known only at run time, an **Object** or a **Variant**, assigned or passed to a variable or parameter of a class or interface type: *Conversion from type Variant to type Font might fail at runtime. Use CType(Of Font)(expression) to avoid this message*. An item of a **Collection** is a **Variant**, and the result of a function declared **As Object** is an **Object**. When the value is not an object of that type, the conversion raises an error at run time, such as error 424, *Object required*, for a string. **CType(Of** _type_**)** makes the conversion explicit. A conversion from a known type that is not declared to support the target is [TB0020](#tb0020-suspicious-interface-conversion) instead. The Compiler Warnings list shows TB0035 at **WARNING** by default.
 
-<!-- test: bug tb0035-default-not-reported, bug warning-message-names-blank -->
-> [!NOTE] BETA 1034
-> In a project whose settings give TB0035 no level, as a new project's do, TB0035 is not reported, although the Compiler Warnings list shows it at **WARNING**. Name it in an **EnforceWarnings** attribute, as below, to have it reported. For a conversion from an **Object**, its message shows `{0}`, `{1}` and `{2}` in place of the two types and the conversion.
+<!-- test: bug tb0035-default-not-reported -->
+> [!NOTE] BETA 1042
+> In a project whose settings give TB0035 no level, as a new project's do, TB0035 is not reported, although the Compiler Warnings list shows it at **WARNING**. Name it in an **EnforceWarnings** attribute, as below, to have it reported.
 
 ```tb check_build slot=module
 [EnforceWarnings(TB0035)]
@@ -616,14 +625,16 @@ End Sub
        INFO, ERROR and WARNING, and under IgnoreWarnings, EnforceErrors and EnforceWarnings
        on the Module or the Declare, where TB0030 takes each level; the same on BETA 1033
        and 1010 (bugs/tb0029-level-ignored).
-     TB0034: the olepro32 Declare, a WARNING at IGNORE, HINT and ERROR and under
-       IgnoreWarnings and EnforceErrors, win32 and win64 (bugs/tb0034-level-ignored);
-       the message's {0} and {1} are empty (bugs/warning-message-names-blank).
+     TB0034: the olepro32 Declare. On BETA 1034 a WARNING at IGNORE, HINT and ERROR and
+       under IgnoreWarnings and EnforceErrors, with the message's {0} and {1} empty; on
+       BETA 1042 nothing at IGNORE or under IgnoreWarnings, an error under EnforceErrors
+       (the probe tb0034-enforced), a HINT by default, and the message names the Lib as
+       written and oleaut32 (the two reproducers, retired 2026-11-09).
      TB0035: not reported with no level (bugs/tb0035-default-not-reported); reported
        when named in project.warnings.warnings or EnforceWarnings. Drawn by an Object
        or a Variant to StdFont, a project class or interface, Set and Dim ... =, a
        function As Object, an Object argument, a Collection item, o.Font late bound;
-       {0} {1} {2} left for every Object source. StdFont to StdPicture, IUnknown to
+       {0} {1} {2} left for every Object source on BETA 1034, filled in on 1042. StdFont to StdPicture, IUnknown to
        StdFont, class to interface and back are TB0020. Run time: a String item to
        StdFont raises 424.
      TB0036: c = 3 on a class with no default member (BETA 1033: TB0022); StdFont,
