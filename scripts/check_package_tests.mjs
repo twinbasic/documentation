@@ -28,7 +28,8 @@
 //   * RunAll.twin is what scripts/package_tests.mjs would write;
 //   * the project does not carry its own copy of Expect.twin.
 // A section listed in PENDING has no test project yet and is not checked; one listed there that
-// has one, or one not listed that has none, fails the gate, so the list only shrinks.
+// has one, or one not listed that has none, fails the gate. A package joins it only when the newest
+// version of it does not compile on the newest BETA (WIP.md), and its compile/ folder then says so.
 //
 // Probes of the gate's own reading (markers, RunAll, expect.json, verdicts) run first, on inputs
 // built here, so the gate means the same against a tree with no test project at all.
@@ -95,10 +96,10 @@ if (
 )
   printHelpAndExit(USAGE);
 
-// The contributed sections that have no test project yet. Each package's project removes it
-// from here; the gate fails on a name here with a project, and on a section neither here nor
-// with one.
-const PENDING = new Set(["ArrayListLib", "WinReg"]);
+// The contributed sections that have no test project, because the package does not compile on the
+// newest BETA (Generics since BETA 1042). A project of a version that compiles removes it from
+// here; the gate fails on a name here with a project, and on a section neither here nor with one.
+const PENDING = new Set(["ArrayListLib", "WinReg", "Generics"]);
 
 const DOCS = path.join(REPO_ROOT, "docs");
 const SECTIONS = path.join(DOCS, "Reference", "Contributed");

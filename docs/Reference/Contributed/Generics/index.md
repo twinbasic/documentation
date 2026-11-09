@@ -1,6 +1,6 @@
 ---
 title: Generics Package
-parent: Contributed Packages
+parent: Experimental Packages
 has_toc: false
 exclude_from_docs:
   - HelloWorldModule
@@ -17,14 +17,16 @@ The **Generics** contributed package provides seven tuple classes, **TupleOf1** 
 
 A tuple lets a function return several values at once, without a user-defined type declared for the purpose or **ByRef** parameters for the results. Each class is a [generic class](../../../../Features/Language/Generics): **TupleOf2(Of Long, String)** holds a **Long** and a **String**, and its **Item1** and **Item2** properties return them with those types. The classes follow .NET's **System.Tuple** classes, and their source comments are taken from .NET's, under the MIT licence. This section documents version 1.0.0.0, published under the MIT licence.
 
-<!-- test: ItemTests.TupleOf3_ReturnsItemsInOrder -->
+<!-- test: compile PspCallbackA_DelegateHasNoReturnType, compile PspCallbackW_DelegateHasNoReturnType, compile PspCallback_DelegateHasNoReturnType, compile EnumerateMetafileProc_DelegateHasNoReturnType, compile InspectHSTRINGCallback_DelegateHasNoReturnType, compile InspectHSTRINGCallback2_DelegateHasNoReturnType -->
+> [!NOTE] 1.0.0.0, BETA 1042
+> The package does not compile, so a project that references it does not build. It embeds the **WinDevLib** package, version 8.9.518.0, through **WinDevLibImpl**, and six of WinDevLib's [**Delegate**](../../../Core/Delegate) declarations are a **Function** with no **As** clause. twinBASIC reports each with TB0003, *Datatype has not been explicitly declared so will default to Variant*, and WinDevLib's own settings make TB0003 an error.
+
 ```tb check_build check_run
 Dim t As TupleOf3(Of String, Long, Date) = New TupleOf3(Of String, Long, Date)("Ada", 36, #12/10/1815#)
 Debug.Print t.Item1        ' Ada
 Debug.Print t.Item2        ' 36
 Debug.Print Year(t.Item3)  ' 1815
 ```
-<!-- /test -->
 
 ## Syntax
 
@@ -47,9 +49,7 @@ Debug.Print Year(t.Item3)  ' 1815
 *k*
 : The number of an item, 1 to *n*.
 
-<!-- test: ItemTests.TupleOf1_ReturnsItem, ItemTests.TupleOf2_ReturnsItemsInOrder, ItemTests.TupleOf3_ReturnsItemsInOrder, ItemTests.TupleOf5_ReturnsItemsInOrder, ItemTests.TupleOf6_ReturnsItemsInOrder, ItemTests.TupleOf7_ReturnsItemsInOrder -->
 **Item***k* returns the *k*th item, of type *Tk*. The properties are read-only: an item is set only when the tuple is created, and nothing changes it afterwards. The classes have no other members.
-<!-- /test -->
 
 | Class | Type parameters | Properties |
 |:------|:----------------|:-----------|
@@ -73,7 +73,6 @@ Set size = New TupleOf2(Of Long, Long)(640, 480)
 Debug.Print size.Item1 * size.Item2  ' 307200
 ```
 
-<!-- test: TupleTests.Function_ReturnsTuple -->
 A function that returns a tuple declares the tuple's type as its return type:
 
 ```tb check_build slot=file
@@ -100,7 +99,6 @@ Module GenericsMinMaxDemo
     End Sub
 End Module
 ```
-<!-- /test -->
 
 <!-- test: compile NewWithoutDeclaration -->
 > [!NOTE] BETA 1034
@@ -113,7 +111,7 @@ End Module
 > Debug.Print o.Item1; o.Item2  ' width 640
 > ```
 
-<!-- test: TupleTests.New_KeepsACopyOfEachItem, TupleTests.New_ConversionOfAByteVariable, compile ByteVariableForLongItem -->
+<!-- test: compile ByteVariableForLongItem -->
 The constructor's parameters are declared without **ByVal**, so they are **ByRef**. A variable passed for an item must have the item's type exactly: a **Byte** variable passed for a **Long** item fails with TB5001, *cannot coerce type 'Byte' to [ByRef] 'Long'*. A literal or any other expression is converted as usual, so wrap such a variable in a conversion function. The tuple keeps a copy of each value, and a later change to the variable does not change the tuple:
 
 ```tb check_build check_run
@@ -126,7 +124,6 @@ Debug.Print t.Item1  ' 200
 
 ## Reading the items
 
-<!-- test: ItemTests.Items_KeepTheirDeclaredTypes, TupleTests.Variable_NotAssignedIsNothing, TupleTests.Is_TwoTuplesWithEqualItemsAreTwoObjects, TupleTests.TypeName_IsTheClassWithoutItsTypeArguments, TupleTests.LateBound_ReadsItemsThroughObject -->
 Each item is read through its **Item** property, which returns it with the type it was declared with. An **Object** or **Variant** variable that holds a tuple reads the items late-bound, through the same names. A tuple is an object, so it is assigned with [**Set**](../../../Core/Set), and a variable that has not been assigned one is **Nothing**. Two tuples with equal items are still two objects: [**Is**](../../../Core/Is) compares the objects themselves, so the items are compared one by one. [**TypeName**](../../../Modules/Information/TypeName) returns the class's name without its type arguments:
 
 ```tb check_build check_run
@@ -136,15 +133,12 @@ Debug.Print TypeName(a)                              ' TupleOf2
 Debug.Print a Is b                                   ' False
 Debug.Print a.Item1 = b.Item1 And a.Item2 = b.Item2  ' True
 ```
-<!-- /test -->
 
 Unlike .NET's tuples, the classes have no method that compares two tuples or converts one to a string.
 
 ## Types of the items
 
-<!-- test: ItemTests.Items_KeepTheirDeclaredTypes, ItemTests.Items_LongPtr, ItemTests.Items_DateKeepsTimeOfDay -->
 An item can have any numeric type, **String**, **Boolean**, **Date**, **Currency** or **LongPtr**.
-<!-- /test -->
 
 <!-- test: compile VariantTypeArgument -->
 Three kinds of type cannot be used:
@@ -154,12 +148,11 @@ Three kinds of type cannot be used:
 - **Arrays**, such as **Long()**.
 <!-- /test -->
 
-<!-- test: ObjectItemTests.New_ObjectItemHoldsAnObject, ObjectItemTests.New_ObjectItemHoldsNothing -->
 > [!NOTE] 1.0.0.0
 > The constructor stores each item with `=`, not with **Set**, so creating a tuple of an object type fails. For **Object**, which compiles, **New** raises run-time error 91, *Object variable or With block variable not set*, even when the item passed is **Nothing**. A class whose default member takes an argument, such as **Collection**, fails to compile, with TB5092 *Missing argument 'Index'* reported in the package's source.
 
 <!-- test: bug generic-array-type-argument-crash -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A tuple type with an array as a type argument, such as `TupleOf1(Of Long())`, crashes the compiler wherever it is written: in a declaration, a parameter, a function's result type or after **New**. The compiler restarts and crashes again, so nothing in the project compiles until the line is removed. The same happens with a generic class declared in a project's own code.
 
 ## TupleOf4
@@ -173,7 +166,3 @@ Three kinds of type cannot be used:
 - [Generics](../../../../Features/Language/Generics) -- generic classes, procedures and types in twinBASIC
 - [Parameterized class constructors](../../../../Features/Advanced/Classes-and-Modules#parameterized-class-constructors) -- the **Sub New** that each tuple class declares
 - [New](../../../Core/New) operator -- creates an object, passing arguments to its constructor
-
-## Test cases
-
-The notes and warnings of this section are checked by the test cases in [Generics-tests.twinproj](Generics-tests.twinproj), a twinBASIC project. It uses Generics as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.
