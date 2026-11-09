@@ -57,7 +57,7 @@ Right-click a tab for a menu of five items:
 **Close All**
 : Closes every tab, and asks about each file that has unsaved changes.
 
-![The right-click menu of the tab Helpers.twin, open under the tab, with the items Close, Close other tabs, Close tabs to the right, Close Saved and Close All.](Images/Tab_Menu.png){:width="500" height="142"}
+![The right-click menu of the tab Helpers.twin, open under the tab, with the items Close, Close other tabs, Close tabs to the right, Close Saved and Close All.](Images/Tab_Menu.png){:width="547" height="165"}
 
 The tab menu is in English whatever the [language of the IDE](../Customising/#the-language-of-the-ide) is.
 

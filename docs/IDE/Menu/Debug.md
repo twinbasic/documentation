@@ -40,9 +40,9 @@ The Debug menu holds the commands for stepping through a paused program, for wat
 
 ## Debugger Options
 
-![The Debug menu with no project open, its other entries greyed out, Debugger Options highlighted and its submenu open to the right, holding three entries: Break On All Errors (this project) and Break On All Errors (inside packages), both unticked, and Allow Breakpoints (Debuggable), ticked.](Images/Menu_Debug_DebuggerOptions.png){:width="535" height="285"}
+![The Debug menu with no project open, its other entries greyed out, Debugger Options highlighted and its submenu open to the right, holding three entries: Break On All Errors (this project) and Break On All Errors (inside packages), both unticked, and Allow Breakpoints (Debuggable), ticked.](Images/Menu_Debug_DebuggerOptions.png){:width="556" height="308"}
 
-![A close-up of that submenu on its own: no tick against the two Break On All Errors entries, and a tick against Allow Breakpoints (Debuggable).](Images/Menu_Debug_DebuggerOptions_2.png){:width="252" height="56"}
+![A close-up of that submenu on its own: no tick against the two Break On All Errors entries, and a tick against Allow Breakpoints (Debuggable).](Images/Menu_Debug_DebuggerOptions_2.png){:width="274" height="79"}
 
 **Break On All Errors (this project)**
 : Turns the project setting [Break On All Errors](../../Project-Settings#break-on-all-errors) on and off. It is off by default. When it is on, the program stops at an error that an `On Error` statement would handle, in the project's own code. See [Break On All Errors and Debuggable](../../Debugging/Breakpoints-and-Stepping#break-on-all-errors-and-debuggable).

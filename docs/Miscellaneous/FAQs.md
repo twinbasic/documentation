@@ -276,7 +276,7 @@ Please direct all negative emotions to your overactive anti-virus vendor :)
 
 tB does not require a full installation process, you need only extract the ZIP file. Download the latest version from the [Releases page](https://github.com/twinbasic/twinbasic/releases), named `twinBASIC_IDE_BETA_xxx.zip` (where xxx is a version number; click on 'Assets' to expand the file list if it's not already visible).
 
-![The expanded Assets list of a GitHub release: the release's twinBASIC_IDE_BETA zip file with the start of its SHA-256, its size and its age, above the two automatic source code archives.](Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png){:width="891" height="183"}
+![The expanded Assets list of a GitHub release: the release's twinBASIC_IDE_BETA zip file with the start of its SHA-256, its size and its age, above the two automatic source code archives.](Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png){:width="876" height="183"}
 
 Download the zip and extract it to an **empty** folder. Do not simply overwrite a previous version; either delete everything in the folder or use a different one. Odd errors have been known to occur otherwise.  It will run from this folder; some settings will be placed in AppData.
 
