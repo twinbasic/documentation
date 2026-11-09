@@ -64,7 +64,16 @@ import {
   verdictOfEvent,
   wroteOf,
 } from "../scripts/lib/shot-review.mjs";
-import { allHtml, chipsOf, detailHtml, encodePath, hrefs, loupesHtml, plainHtml } from "../scripts/lib/shot-pages.mjs";
+import {
+  allHtml,
+  chipsOf,
+  detailHtml,
+  encodePath,
+  hrefs,
+  loupesHtml,
+  outsideHtml,
+  plainHtml,
+} from "../scripts/lib/shot-pages.mjs";
 import { pngRule, svgRule } from "../scripts/lib/shot-policy.mjs";
 import { againstOf, createApplier } from "../scripts/lib/shot-verdicts.mjs";
 import { browserTable, kindOf, onlyOf, runArgs, runOf } from "../scripts/lib/shot-runs.mjs";
@@ -553,6 +562,59 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     );
     assert.match(chipsOf(at(E)), /kept from outside the runs: PNG modified, SVG added/);
     assert.match(chipsOf(at(A)), /changed outside the runs: SVG modified/);
+  });
+
+  test("a picture changed outside the runs is compared side by side, by a swipe, by blinking and by a map", () => {
+    const baseline = { short: "abcd1234" };
+    const pager = { filter: "all", place: { index: 0, total: 1 }, prev: null, next: null };
+    const svg = {
+      head: { src: "/file/head/x.svg", size: [800, 600] },
+      docs: { src: "/file/docs/x.svg", size: [800, 600] },
+    };
+    const modes = (html) => [...html.matchAll(/data-set="(\w+)"/g)].map((m) => m[1]);
+    // an SVG changed alone: its two versions compared, the map drawn by the page; the PNG shown once
+    const svgOnly = outsideHtml({
+      p: { out: A, outside: "SVG modified", outsideParts: ["svg"], outsideKept: false },
+      ...pager,
+      files: {
+        head: { src: "/file/head/x.png", size: [800, 600] },
+        docs: { src: "/file/docs/x.png", size: [800, 600] },
+        svg,
+      },
+      map: "/map/outside/x.png",
+      baseline,
+    });
+    assert.equal(svgOnly.match(/class="compare"/g).length, 1);
+    assert.deepEqual(modes(svgOnly), ["side", "swipe", "blink", "map"]);
+    assert.match(
+      svgOnly,
+      /<canvas class="diffmap" data-a="\/file\/head\/x.svg" data-b="\/file\/docs\/x.svg" width="800" height="600"/,
+    );
+    assert.match(svgOnly, /The PNG, as HEAD has it/);
+    // a PNG changed: compared with HEAD's, the map the server's
+    const pngToo = outsideHtml({
+      p: { out: A, outside: "modified", outsideParts: ["png", "svg"], outsideKept: false },
+      ...pager,
+      files: {
+        head: { src: "/file/head/x.png", size: [800, 600] },
+        docs: { src: "/file/docs/x.png", size: [800, 600] },
+        svg,
+      },
+      map: "/map/outside/x.png",
+      baseline,
+    });
+    assert.equal(pngToo.match(/class="compare"/g).length, 2);
+    assert.match(pngToo, /<div class="view mapview"><figure><span class="pic"><img src="\/map\/outside\/x.png"/);
+    // an SVG with no version at HEAD: nothing to compare it with
+    const added = outsideHtml({
+      p: { out: A, outside: "SVG added", outsideParts: ["svg"], outsideKept: false },
+      ...pager,
+      files: { head: null, docs: { src: "/file/docs/x.png", size: [800, 600] }, svg: { ...svg, head: null } },
+      map: null,
+      baseline,
+    });
+    assert.doesNotMatch(added, /class="compare"/);
+    assert.match(added, /HEAD has no SVG/);
   });
 
   test("a commit waits for every file changed outside the runs to be kept or put back, and takes the kept ones", () => {

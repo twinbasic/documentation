@@ -159,14 +159,58 @@ const REVIEW_SCRIPT = `<script>
     if (c.checked) list.push(c.dataset.pick);
     setPicked(list);
   });
-  let blink = null;
-  const setMode = (c, m) => {
+  // Each comparison of the page (.compare, compareHtml) has its own mode and its own blink.
+  const blinks = new Map();
+  const setMode = (c, m, remember = true) => {
     c.dataset.mode = m;
     for (const b of c.querySelectorAll("[data-set]")) b.setAttribute("aria-pressed", String(b.dataset.set === m));
-    clearInterval(blink);
-    if (m === "blink") { const s = c.querySelector(".blink .stack"); blink = setInterval(() => s.classList.toggle("old"), 600); }
-    try { sessionStorage.setItem("shot-review-mode", m); } catch {}
+    clearInterval(blinks.get(c));
+    blinks.delete(c);
+    if (m === "blink") { const s = c.querySelector(".blink .stack"); blinks.set(c, setInterval(() => s.classList.toggle("old"), 600)); }
+    if (m === "map") for (const k of c.querySelectorAll("canvas.diffmap")) drawDiff(k);
+    if (remember) try { sessionStorage.setItem("shot-review-mode", m); } catch {}
   };
+  // A difference map the page draws (canvas.diffmap): its two pictures (data-a, data-b, two SVGs
+  // the server cannot draw) each drawn at the canvas's size, the picture's device pixels, and
+  // compared pixel by pixel as changeMap compares two PNGs: the same pixel dimmed grey, a
+  // difference yellow at 1 level shading to red at 128 or more, cyan where only the first has
+  // anything and magenta where only the second does. Drawn once, when its mode is first shown.
+  const loadImage = (src) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("could not load " + src));
+    img.src = src;
+  });
+  const pixelsOf = (img, w, h) => {
+    const k = document.createElement("canvas");
+    k.width = w; k.height = h;
+    const g = k.getContext("2d");
+    g.drawImage(img, 0, 0, w, h);
+    return g.getImageData(0, 0, w, h).data;
+  };
+  async function drawDiff(k) {
+    if (k.dataset.drawn) return;
+    k.dataset.drawn = "1";
+    const w = k.width, h = k.height;
+    try {
+      const [a, b] = await Promise.all([loadImage(k.dataset.a), loadImage(k.dataset.b)]);
+      const pa = pixelsOf(a, w, h), pb = pixelsOf(b, w, h);
+      const g = k.getContext("2d");
+      const out = g.createImageData(w, h);
+      const o = out.data;
+      for (let i = 0; i < pa.length; i += 4) {
+        const inA = pa[i + 3] > 0, inB = pb[i + 3] > 0;
+        let d = 0;
+        for (let c = 0; c < 4; c++) d = Math.max(d, Math.abs(pa[i + c] - pb[i + c]));
+        if (inA !== inB) o.set(inA ? [0, 220, 220, 255] : [220, 0, 220, 255], i);
+        else if (d === 0) { const v = 40 + ((pb[i] + pb[i + 1] + pb[i + 2]) / 3) * 0.25; o.set([v, v, v, 255], i); }
+        else { const t = Math.min(d, 128) / 128; o.set([255, Math.round(255 * (1 - t)), 0, 255], i); }
+      }
+      g.putImageData(out, 0, 0);
+    } catch (e) {
+      k.replaceWith(Object.assign(document.createElement("p"), { className: "meta", textContent: e.message }));
+    }
+  }
   // The zoom of a group of figures (.zoomable, zoomedTrio): a click on a picture opens the panel
   // after the group on that place, each picture drawn at its device size (an SVG rasterised
   // there, as the judge compares it) and enlarged without smoothing, the colour of its pixel at
@@ -264,14 +308,16 @@ const REVIEW_SCRIPT = `<script>
   };
   const init = () => {
     initZoom();
-    const c = document.querySelector(".compare");
-    if (!c) return;
+    for (const t of blinks.values()) clearInterval(t);
+    blinks.clear();
     let m = null;
     try { m = sessionStorage.getItem("shot-review-mode"); } catch {}
-    if (m && c.querySelector('[data-set="' + m + '"]')) setMode(c, m);
-    for (const b of c.querySelectorAll("[data-set]")) b.onclick = () => setMode(c, b.dataset.set);
-    const r = c.querySelector(".swipe input");
-    if (r) r.oninput = () => c.style.setProperty("--x", r.value + "%");
+    for (const c of document.querySelectorAll(".compare")) {
+      if (m && c.querySelector('[data-set="' + m + '"]')) setMode(c, m, false);
+      for (const b of c.querySelectorAll("[data-set]")) b.onclick = () => setMode(c, b.dataset.set);
+      const r = c.querySelector(".swipe input");
+      if (r) r.oninput = () => c.style.setProperty("--x", r.value + "%");
+    }
   };
   const refresh = async () => {
     const res = await fetch(location.href, { cache: "no-store" });
@@ -841,6 +887,49 @@ const picHtml = (src, size, alt, overlay = "") => {
 const figureHtml = (src, size, caption, overlay = "") =>
   `<figure>${picHtml(src, size, caption, overlay)}<figcaption>${esc(caption)}</figcaption></figure>`;
 
+// What a map drawn in the browser says of its colours, as changeMap draws a PNG's.
+const MAP_COLOURS =
+  "yellow: 1 level, shading to red at 128 or more; cyan: only in the first, magenta: only in the second";
+
+/**
+ * A comparison of two pictures with its modes, side by side, a swipe, blinking and a difference
+ * map, as the page's script drives each `.compare` of a page (REVIEW_SCRIPT). `side` the figures
+ * shown side by side (figureHtml's); `before` {src, size, label} the picture compared with, or
+ * null for side by side alone; `after` {src, alt, the}: the picture, its alt text and how a
+ * sentence names it ("the new capture"); `map` the difference map, or null: {src, size, caption,
+ * overlay} for one the server draws, or {a, b, size, caption} for one the page's script draws
+ * from the two pictures `a` and `b` at their device size `size` (two SVGs, which the server
+ * cannot draw).
+ */
+function compareHtml({ side, before, after, map = null }) {
+  const stack = (cls) =>
+    before
+      ? `<div class="view ${cls}"><span class="stack"><img src="${before.src}" alt="${esc(before.label)}"${before.size ? ` width="${Math.round(before.size[0] / 2)}"` : ""}><img class="top" src="${after.src}" alt="${esc(after.alt)}"></span>${cls === "swipe" ? `<input type="range" min="0" max="100" value="50" aria-label="Where ${esc(after.the)} starts">` : ""}<p class="meta">${esc(before.label)} ${cls === "swipe" ? `on the left, ${esc(after.the)} on the right` : `and ${esc(after.the)}, in turn`}</p></div>`
+      : "";
+  let mapView = "";
+  if (map?.src) mapView = figureHtml(map.src, map.size, map.caption, map.overlay ?? "");
+  else if (map?.a) {
+    const [w, h] = map.size ?? [0, 0];
+    mapView = `<figure><span class="pic"><canvas class="diffmap" data-a="${esc(map.a)}" data-b="${esc(map.b)}" width="${w}" height="${h}" style="width:${Math.round(w / 2)}px;max-width:100%;height:auto"></canvas></span><figcaption>${esc(map.caption)}</figcaption></figure>`;
+  }
+  return `<section class="compare" data-mode="side">
+<div class="modes">${[
+    ["side", "Side by side"],
+    ["swipe", "Swipe"],
+    ["blink", "Blink"],
+    ["map", "Difference map"],
+  ]
+    .filter(([m]) => before || m === "side")
+    .filter(([m]) => mapView || m !== "map")
+    .map(([m, label]) => `<button type="button" data-set="${m}" aria-pressed="${m === "side"}">${label}</button>`)
+    .join("")}</div>
+<div class="view side trio">${side.join("\n")}</div>
+${stack("swipe")}
+${stack("blink")}
+${mapView ? `<div class="view mapview">${mapView}</div>` : ""}
+</section>`;
+}
+
 /**
  * Figures that zoom on a click (`figs`, figureHtml's, of pictures `size` device px), and the panel
  * that shows the same place of each, enlarged without smoothing. The page's script draws each
@@ -946,23 +1035,40 @@ const HOLDS = {
 export function outsideSectionHtml(p, svg, baseline) {
   const act = hrefs.act(p.out);
   const names = p.outsideParts.map((part) => (part === "png" ? "its PNG" : "its SVG")).join(" and ");
-  const figs = [];
+  let svgView = "";
   if (p.outsideParts.includes("svg")) {
-    figs.push(
-      svg?.head
-        ? figureHtml(svg.head.src, svg.head.size, `SVG at HEAD (${baseline.short})`)
-        : `<figure><p class="meta">HEAD has no SVG</p></figure>`,
-    );
-    figs.push(
-      svg?.docs
-        ? figureHtml(svg.docs.src, svg.docs.size, "The SVG file")
-        : `<figure><p class="meta">No SVG file</p></figure>`,
-    );
+    const headLabel = `SVG at HEAD (${baseline.short})`;
+    if (svg?.head && svg?.docs)
+      svgView = compareHtml({
+        side: [
+          figureHtml(svg.head.src, svg.head.size, headLabel),
+          figureHtml(svg.docs.src, svg.docs.size, "The SVG file"),
+        ],
+        before: { src: svg.head.src, size: svg.head.size, label: headLabel },
+        after: { src: svg.docs.src, alt: "The SVG file", the: "the SVG file" },
+        map: svg.head.size
+          ? {
+              a: svg.head.src,
+              b: svg.docs.src,
+              size: svg.head.size,
+              caption: `Difference of the SVG file against HEAD's, drawn at the picture's device size (${MAP_COLOURS})`,
+            }
+          : null,
+      });
+    else
+      svgView = `<div class="trio">${[
+        svg?.head
+          ? figureHtml(svg.head.src, svg.head.size, headLabel)
+          : `<figure><p class="meta">HEAD has no SVG</p></figure>`,
+        svg?.docs
+          ? figureHtml(svg.docs.src, svg.docs.size, "The SVG file")
+          : `<figure><p class="meta">No SVG file</p></figure>`,
+      ].join("\n")}</div>`;
   }
   return `<section class="outside">
 <h2>Changed outside the session's runs</h2>
 <p>No run of this session wrote ${names}: ${esc(p.outside)} against the baseline, ${esc(baseline.short)} (a run from a terminal, or an edit). ${p.outsideKept ? "A review kept it as it is, and the commit takes it." : "The commit takes nothing of this picture until it is kept as it is or put back."}</p>
-${figs.length ? `<div class="trio">${figs.join("\n")}</div>` : ""}
+${svgView}
 ${actionsHtml([
   actionButton("Keep it as it is", act, { action: "keep-outside" }, { pressed: p.outsideKept }),
   actionButton(
@@ -984,23 +1090,35 @@ ${actionsHtml([
  */
 export function outsideHtml({ p, filter, place, prev, next, files, map, baseline, busy = null }) {
   const size = files.docs?.size ?? files.head?.size ?? null;
+  const headLabel = `HEAD (${baseline.short})`;
   const figs = [];
-  if (files.head) figs.push(figureHtml(files.head.src, files.head.size, `HEAD (${baseline.short})`));
+  if (files.head) figs.push(figureHtml(files.head.src, files.head.size, headLabel));
   if (files.docs) figs.push(figureHtml(files.docs.src, files.docs.size, "The file"));
-  if (map)
-    figs.push(
-      figureHtml(
-        map,
-        size,
-        "Difference (yellow: 1 grey level, shading to red at 128 or more; cyan and magenta: only in one)",
-      ),
-    );
+  // the PNG compared with HEAD's when it changed; one that did not is shown once, beside its SVG's comparison
+  const pngChanged = !p.outsideParts?.length || p.outsideParts.includes("png");
+  const pngView = !pngChanged
+    ? `<div class="trio">${files.docs ? figureHtml(files.docs.src, files.docs.size, "The PNG, as HEAD has it") : ""}</div>`
+    : files.head && files.docs
+      ? compareHtml({
+          side: figs,
+          before: { src: files.head.src, size: files.head.size, label: headLabel },
+          after: { src: files.docs.src, alt: "The file", the: "the file" },
+          map: map
+            ? {
+                src: map,
+                size,
+                caption:
+                  "Difference (yellow: 1 grey level, shading to red at 128 or more; cyan and magenta: only in one)",
+              }
+            : null,
+        })
+      : `<div class="trio">${figs.join("\n")}</div>`;
   const body = `${pagerHtml({ p, filter, place, prev, next })}
 <p class="meta">${esc(sizeText(size))}; ${chipsOf(p)}</p>
 <p class="notice">No run of this session reported this picture. It has no verdict to override; a retake of it through this tool judges it.</p>
 ${outsideSectionHtml(p, files.svg, baseline)}
 ${p.outside === "deleted" ? "" : actionsHtml(runButtons(p.out, busy, { replay: false }))}
-<div class="trio">${figs.join("\n")}</div>`;
+${pngView}`;
   return pageHtml({
     generator: REVIEW_GENERATOR,
     title: p.out,
@@ -1254,27 +1372,19 @@ export function detailHtml({
     if (files.reference && png?.against !== "revision")
       side.push(figureHtml(files.reference.src, files.reference.size, AGAINST[png.against] ?? "judged against"));
     side.push(figureHtml(files.capture.src, files.capture.size, `New capture, run ${png.run}`));
-    const stack = (cls) =>
-      before
-        ? `<div class="view ${cls}"><span class="stack"><img src="${before.src}" alt="${esc(beforeLabel)}"${before.size ? ` width="${Math.round(before.size[0] / 2)}"` : ""}><img class="top" src="${files.capture.src}" alt="New capture"></span>${cls === "swipe" ? `<input type="range" min="0" max="100" value="50" aria-label="Where the new capture starts">` : ""}<p class="meta">${esc(beforeLabel)} ${cls === "swipe" ? "on the left, the new capture on the right" : "and the new capture, in turn"}</p></div>`
-        : "";
-    const overlay = overlayOf(png.regions, rules.png.rects, size);
-    compare = `<section class="compare" data-mode="side">
-<div class="modes">${[
-      ["side", "Side by side"],
-      ["swipe", "Swipe"],
-      ["blink", "Blink"],
-      ["map", "Difference map"],
-    ]
-      .filter(([m]) => before || m === "side")
-      .filter(([m]) => maps.png || m !== "map")
-      .map(([m, label]) => `<button type="button" data-set="${m}" aria-pressed="${m === "side"}">${label}</button>`)
-      .join("")}</div>
-<div class="view side trio">${side.join("\n")}</div>
-${stack("swipe")}
-${stack("blink")}
-${maps.png ? `<div class="view mapview">${figureHtml(maps.png, size, `Difference against ${beforeLabel} (yellow: 1 grey level, shading to red at 128 or more); boxes: the regions of change, dashed where nothing survives the erosion`, overlay)}</div>` : ""}
-</section>`;
+    compare = compareHtml({
+      side,
+      before: before ? { src: before.src, size: before.size, label: beforeLabel } : null,
+      after: { src: files.capture.src, alt: "New capture", the: "the new capture" },
+      map: maps.png
+        ? {
+            src: maps.png,
+            size,
+            caption: `Difference against ${beforeLabel} (yellow: 1 grey level, shading to red at 128 or more); boxes: the regions of change, dashed where nothing survives the erosion`,
+            overlay: overlayOf(png.regions, rules.png.rects, size),
+          }
+        : null,
+    });
   } else if (files.head)
     compare = `<div class="trio">${figureHtml(files.head.src, files.head.size, `HEAD (${baseline.short})`)}</div>`;
 
