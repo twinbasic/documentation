@@ -60,19 +60,6 @@
 			"versionMajor": 0,
 			"versionMinor": 0,
 			"versionRevision": 24
-		},
-		{
-			"autoCtlExt": true,
-			"id": "{7E1D4A52-8B36-4C7F-A2D1-6F3E90B1C477}",
-			"licence": "MIT",
-			"name": "[IMPORTED] FriendLib",
-			"path32": "/Packages/FriendLib",
-			"path64": "/Packages/FriendLib",
-			"symbolId": "FriendLib",
-			"versionBuild": "0",
-			"versionMajor": "1",
-			"versionMinor": "0",
-			"versionRevision": "0"
 		}
 	],
 	"project.settingsVersion": 1,

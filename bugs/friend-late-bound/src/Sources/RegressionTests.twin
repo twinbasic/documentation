@@ -1,9 +1,7 @@
 ' The issue's regression tests. A Friend member is for the project that declares it. In VB6
 ' the code below is what bugs/friend-late-bound/vb6/ runs: a late-bound call to a Friend
-' member raises error 438, as a call to a Private one does. A [TestCase] that fails is the
-' bug; a line ending in  ' CASE <Name>: <expected>  is judged against the compile, and
-' "error" there means a call from the project into the package's Friend member should
-' not compile.
+' member raises error 438, as a call to a Private one does, and 64-bit VBA does the same.
+' A [TestCase] that fails is the bug.
 
 Class Widget
     Friend Field As Long
@@ -114,20 +112,6 @@ Module LateBoundTests
         Dim Number As Long = Err.Number
         On Error GoTo 0
         Assert.Strict.AreEqual 97, Number
-    End Sub
-
-End Module
-
-Module FromTheProject
-
-    Public Function CallsThePackage() As Long
-        Dim L As New Locked
-        CallsThePackage = L.FriendFn()  ' CASE Package_FriendFunctionFromTheProject: error
-    End Function
-
-    Public Sub WritesThePackage()
-        Dim L As New Locked
-        L.Field = 1  ' CASE Package_FriendVariableFromTheProject: error
     End Sub
 
 End Module

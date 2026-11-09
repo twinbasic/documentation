@@ -244,11 +244,15 @@ Every class gets an **IDispatch** implementation from the compiler, so an object
 
 The members it finds:
 
-- **Public** and **Friend** methods, properties and fields. A **Private** member is not found: **GetIDsOfNames** fails with `DISP_E_UNKNOWNNAME`.
+- **Public** and **Friend** methods, properties and fields. A **Private** member is not found by name: **GetIDsOfNames** fails with `DISP_E_UNKNOWNNAME`.
 - Names matched without regard to case.
 - A property's **Property Get**, **Property Let** and **Property Set** share one identifier.
 - A method can be called with `DISPATCH_PROPERTYGET`, and a property read with `DISPATCH_METHOD`. A write needs `DISPATCH_PROPERTYPUT` or `DISPATCH_PROPERTYPUTREF` and a member that has a **Property Let** or **Property Set**; a call with flags 0 fails, as does a write to a **Property Get** with no setter, with `DISP_E_MEMBERNOTFOUND`.
 - An **Optional** parameter can be left out, and a named argument is matched to a parameter by name.
+
+<!-- test: bug private-member-by-dispid -->
+> [!NOTE] BETA 1042
+> A **Private** method can still be called by its identifier. The class numbers its methods from `&H60030000` in the order they are declared, **Private** ones included, and **Invoke** or [**CallByDispId**](../../tB/Modules/Interaction/CallByDispId) with the number of a **Private** method runs it, from another project too. A **Private** method with a [**DispId**](../../tB/Core/Attributes#dispid) attribute is reached by that number. A **Private** variable and a **Protected** member are not. VB6 numbers its **Private** methods too, but its **Invoke** returns `DISP_E_MEMBERNOTFOUND` for them.
 
 A bad call to a member is reported like this:
 

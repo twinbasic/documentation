@@ -17,13 +17,11 @@ In a procedure declaration, **Friend** takes the place of **Public**, **Private*
 
 Every module and class of the project can use a **Friend** member, through a variable of the class's own type. The class does not publish it: the type library of an ActiveX DLL lists no **Friend** procedure or variable. Use **Friend** for what the classes of a project need from one another, and that a client of the class should not call.
 
-<!-- test: bug friend-late-bound -->
-> [!NOTE] BETA 1042
-> A **Friend** member also answers late-bound calls, through an **Object** or **Variant** variable and through [**CallByName**](../Modules/Interaction/CallByName), because the compiler's [**IDispatch**](../../Reference/COM-Interfaces/IDispatch#classes-written-in-twinbasic) finds it. This holds for an object passed to another project too, so that project can call its **Friend** procedures and read and write its **Friend** variables. VB6 raises error [438](tb:Errors#438), as twinBASIC does for a **Private** member. Do not rely on **Friend** to keep a member away from code outside the project.
+A project that references a package can use the **Friend** members of the package's classes, as it can its own.
 
 <!-- test: bug friend-late-bound -->
 > [!NOTE] BETA 1042
-> A project that references a package can use the **Friend** members of the package's classes, as if they were **Public**.
+> A **Friend** member also answers late-bound calls, through an **Object** or **Variant** variable and through [**CallByName**](../Modules/Interaction/CallByName), because the compiler's [**IDispatch**](../../Reference/COM-Interfaces/IDispatch#classes-written-in-twinbasic) finds it. This holds for an object passed to another project too, so that project can call its **Friend** procedures and read and write its **Friend** variables. VB6 and 64-bit VBA raise error [438](tb:Errors#438), as twinBASIC does for a **Private** member. Do not rely on **Friend** to keep a member away from code outside the project.
 
 ## Where it can be used
 

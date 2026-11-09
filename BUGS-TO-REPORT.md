@@ -12998,13 +12998,11 @@ Severity: low. It is a sample, but a reader copies a sample's pattern.
 ## A Friend member answers a late-bound call, from outside the project too
 
 **Describe the bug**
-A `Friend` member is meant for the project that declares it, and the type library leaves it out. But the `IDispatch` that the compiler writes for a class finds `Friend` members. So a late-bound call to one works, through an `Object` or a `Variant` variable or `CallByName`, and it works for code in another project that holds the object. VB6 raises error 438, *Object doesn't support this property or method*. A `Private` member raises 438 in both.
-
-A project that references a package can also use the `Friend` members of the package's classes, early-bound and late-bound.
+A `Friend` member is meant for the project that declares it, and the type library leaves it out. But the `IDispatch` that the compiler writes for a class finds `Friend` members. So a late-bound call to one works, through an `Object` or a `Variant` variable or `CallByName`, and it works for code in another project that holds the object. VB6 and 64-bit VBA raise error 438, *Object doesn't support this property or method*. A `Private` member raises 438 in all three.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `friend-late-bound.twinproj`. `Widget` has a `Friend Function GetValue`, and `FriendLib`, a package of the project, has a class `Locked` with a `Friend Function FriendFn`.
+1. Open `friend-late-bound.twinproj`. `Widget` has a `Friend Function GetValue`.
 2. Run:
 
    ```vb
@@ -13013,27 +13011,29 @@ Steps to reproduce the behavior:
    Debug.Print CallByName(O, "GetValue", VbMethod)
    ```
 3. See `7` twice, where 438 is expected.
-4. See that `L.FriendFn()` in the module `FromTheProject`, on a `Locked` from the package, compiles.
 
 What decides it:
 - A `Friend` Function, Property and variable are each found. A `Private` member raises 438, and a `Public` one works.
 - The IDE, a built exe, win32 and win64 give the same results.
 - From another project: an ActiveX DLL with a `[DllExport]` function that returns a class as `Object`, called from a second project through a `Declare`. Late-bound, the second project called a `Friend` Function and a `Friend` Property, and wrote and read a `Friend` variable. A `Private` variable raised 438, and the DLL's type library lists none of those `Friend` members.
+- The class's run-time type information lists them. The `ITypeInfo` that `IDispatch::GetTypeInfo` returns lists `Friend` functions and variables beside the `Public` ones, and its `GetIDsOfNames` finds them, while a `Private` or `Protected` member is not found. A `[DispId]` on a `Friend` member is honoured as on a `Public` one. Only the type library written to the DLL leaves `Friend` out.
+- VB6 (`bug_repro.mjs vb6`): early-bound works; late-bound, a `Friend` Function, Property Get and Let, and `CallByName` each raise 438.
+- 64-bit VBA (Access, VBA 7.01): the same class gives 438 for a `Friend` Function, Property Get and Let, Sub and `CallByName`, through `Object` and through `Variant`, and works for a `Public` one.
 - Not affected, and the same as VB6: a `Friend` Function with no arguments, called through a class that implements the class, raises error 97. Other signatures have a defect of their own in a 32-bit build, in the entry on the stack below.
 
 **Expected behavior**
-Error 438 for each late-bound call, as VB6 gives, and a compile error for a `Friend` member of a package's class used from the project that references the package.
+Error 438 for each late-bound call, as VB6 and VBA give.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 1034 and BETA 1042
 
 **Additional context**
-#2409 asks for `Friend` members of a package to be hidden from IntelliSense. This entry is about the calls themselves.
+In the Discord `general` channel on 30 September 2026, asked why `Friend` methods can be inspected through `IDispatch`, Wayne wrote that he vaguely remembered a vtable entry for them that raises an error, to match VB6, and that the dispatcher was likely exposing that. The behaviour above does not fit a stub that raises an error: on the class that declares the member, the late-bound call runs the member's own code and returns its value. Error 97 comes only through a class that implements the class.
 
 Severity: low to medium. Code that works does not stop working, but `Friend` does not keep a member private to the project, and a client of an ActiveX DLL can reach members that the type library does not show.
 
-<!-- Reproducer: bugs/friend-late-bound/ (mode test; vb6/ is the VB6 side, `bug_repro.mjs vb6 friend-late-bound`: early-bound works, late-bound and CallByName raise 438, through Implements raises 97). The call from another project was run in a scratch copy, on BETA 1034 and again on BETA 1042 with the same results, not kept. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md (two NOTEs). docs/Reference/COM-Interfaces/IDispatch.md says that a Friend member is found, with a sample that prints True for it: that changes too. The Sub, Function and Property pages used to say a Friend procedure cannot be late bound, VBA-Docs' text; that sentence came off them when the page for Friend was written, and can go back once this is fixed. What the type library holds, for the Friend page, was read with TLI from an ActiveX DLL built with project.dllRegisterAfterBuild false: Friend procedures and variables are left out; a Friend Enum, Type and Event are listed; a Private Type or Enum is listed when a Public member uses it. -->
+<!-- Reproducer: bugs/friend-late-bound/ (mode test; vb6/ is the VB6 side, `bug_repro.mjs vb6 friend-late-bound`: early-bound works, late-bound and CallByName raise 438, through Implements raises 97). The call from another project was run in a scratch copy, on BETA 1034 and again on BETA 1042 with the same results, not kept; so was the ITypeInfo probe, on BETA 1042 in win32 and win64. The VBA results were run once on 2026-11-05 in 64-bit Access with scripts/lib/vba.mjs, not kept. The package half of this entry was taken out on 2026-11-09 (owner): VB6 has no packages, a package is compiled into the project as source, and #2409 is about its Friend members in IntelliSense; the question of what Friend should mean for a package went to Wayne as a question, not a defect. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md (one NOTE). docs/Reference/COM-Interfaces/IDispatch.md says that a Friend member is found, with a sample that prints True for it: that changes too. The Sub, Function and Property pages used to say a Friend procedure cannot be late bound, VBA-Docs' text; that sentence came off them when the page for Friend was written, and can go back once this is fixed. What the type library holds, for the Friend page, was read with TLI from an ActiveX DLL built with project.dllRegisterAfterBuild false: Friend procedures and variables are left out; a Friend Enum, Type and Event are listed; a Private Type or Enum is listed when a Public member uses it. -->
 
 ---
 
@@ -13378,3 +13378,53 @@ The same on BETA 1010 and BETA 1033, with no level, at **IGNORE** and at **ERROR
 Severity: low; the warning cannot be turned off, so a project with 64-bit builds and older `Declare` statements always shows it, once for each statement.
 
 <!-- Reproducer: bugs/tb0029-level-ignored/ (mode compile, arch win64; expect.output matches the two TB0029 WARNING rows and the TB0030 HINT, and expect.absent the TB0030 row that IgnoreWarnings removes). An entry of its own, and not part of "TB0034 is reported as a warning whatever level Project Settings or an attribute gives it", though the pattern is the same: that title names TB0034 and titles do not change; TB0034 has had its code only since BETA 1034, and TB0029 ignores its level on BETA 1010 and 1033 too, so the two are not one change; and TB0029 needs a 64-bit build, which that reproducer's expect does not ask for. upstream/twinbasic-diagnostic-ids.h notes that TB0029 replaced the error TB5129, which may be why no level reaches it; that is a guess. docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0029, and names TB0029 under Adjusting Warnings; when a fixed build is released, the NOTE goes, and so does that name. Found 2026-11-06 by the attribute pass. -->
+
+---
+
+## A Private method of a class can be called by its dispid, from another project too
+
+**Describe the bug**
+A late-bound call by name never finds a `Private` method: `CallByName` and a call through an `Object` raise error 438, and `GetIDsOfNames` fails. But a call by the method's dispid runs it. A class numbers its methods from `&H60030000` in the order they are declared, `Private` ones included, so the number is easy to guess, and `CallByDispId` or `IDispatch::Invoke` with that number calls the `Private` method and returns its value. A `[DispId]` on a `Private` method gives it a number that works the same way. In VB6, `Invoke` on the dispid of a `Private` method returns `DISP_E_MEMBERNOTFOUND`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `private-member-by-dispid.twinproj`, or use:
+
+   ```vb
+   Class Widget
+       Public Function PubFn() As Long
+           Return 1
+       End Function
+       Private Function PrivFn() As Long
+           Return 2
+       End Function
+   End Class
+   ```
+2. Run:
+
+   ```vb
+   Dim O As Object = New Widget
+   Debug.Print CallByDispId(O, &H60030001, VbMethod)
+   ```
+3. See `2`, the value `PrivFn` returns, where 438 is expected.
+
+What decides it:
+- `Private` Function, Sub and a `Private` method with `[DispId(78)]` each run by their number. `CallByName(O, "PrivFn", VbMethod)` raises 438.
+- Not affected: a `Private` variable (`&H40030001` with `VbGet` raises 438), and a `Protected` method or variable, by its number or by a `[DispId]`.
+- The IDE, win32 and win64 give the same results.
+- From another project: an ActiveX DLL with a `[DllExport]` function that returns a class as `Object`, called from a second project through a `Declare`. `CallByDispId` with the dispid of the DLL's `Private Function`, which returns 42, returned 42, and the `Private Sub` after it ran with no error. By name the same function raised 438.
+- VB6 (`bug_repro.mjs vb6`): a class with `PubFn`, a `Private PrivFn`, a `Friend FrFn` and `PubFn2`, in that order. `IDispatch::Invoke`, called through `DispCallFunc`, runs `PubFn` at `&H60030000` and `PubFn2` at `&H60030003`, and returns `DISP_E_MEMBERNOTFOUND` (`&H80020003`) for `&H60030001` and `&H60030002`. VB6 also gives its `Private` and `Friend` methods numbers, but `Invoke` does not call them.
+
+**Expected behavior**
+Error 438 for a `Private` method by its dispid, as for a `Private` variable and a `Protected` member, and as VB6's `Invoke` refuses it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034 and BETA 1042
+
+**Additional context**
+This is not the `Friend` entry above: there a `Friend` member is found by name as well. Here the name check works, and the number check does not.
+
+Severity: medium. A `Private` method is the one a class's author means nobody else to call. Any code that holds the object, in another project included, can call it by a number it can guess from the order of the declarations.
+
+<!-- Reproducer: bugs/private-member-by-dispid/ (mode test; vb6/ is the VB6 side, which calls IDispatch::Invoke through DispCallFunc, since VB6 has no CallByDispId). The call from another project was run in a scratch copy on BETA 1042, not kept. Found by the agent that checked whether Friend's late binding is a defect, 2026-11-05, on BETA 1034; checked again on BETA 1042. Pages with a callout that goes when this is fixed: docs/Reference/COM-Interfaces/IDispatch.md (a NOTE under the members the compiler's IDispatch finds). -->
