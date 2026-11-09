@@ -3,8 +3,8 @@
   "about": "Our names for minified locals of the IDE's main.js, keyed by unit and scope path (scripts/ide_js.mjs). These are our names, not the twinBASIC source's.",
   "units": {
     "debugOutputPartial": {
-      "namedOn": "BETA 1007",
-      "shape": "ea9f1277c4c9df1b",
+      "namedOn": "BETA 1042",
+      "shape": "60e3ab0958d8209c",
       "names": {
         "0#0": {
           "name": "text",
@@ -36,14 +36,14 @@
         },
         "0#4": {
           "name": "endsLine",
-          "was": "r",
+          "was": "i",
           "def": "Variable",
           "kind": "var",
           "refs": 5
         },
         "0#5": {
           "name": "addedHTML",
-          "was": "i",
+          "was": "r",
           "def": "Variable",
           "kind": "var",
           "refs": 2
@@ -57,7 +57,7 @@
         },
         "0/2#0": {
           "name": "stampHTML",
-          "was": "i",
+          "was": "r",
           "def": "Variable",
           "kind": "let",
           "refs": 4
@@ -65,7 +65,7 @@
       }
     },
     "TEXTtoHTML": {
-      "namedOn": "BETA 1007",
+      "namedOn": "BETA 1042",
       "shape": "ec9b42ee6730cbed",
       "names": {
         "0#0": {
@@ -78,22 +78,22 @@
       }
     },
     "designer_PropertyPage": {
-      "namedOn": "BETA 1007",
-      "shape": "8adba2241a344d25",
+      "namedOn": "BETA 1042",
+      "shape": "22546a225101ead6",
       "names": {
         "0/0#0": {
           "name": "container",
           "was": "e",
           "def": "Parameter",
           "kind": "param0",
-          "refs": 1
+          "refs": 5
         },
         "0/0#4": {
-          "name": "placeholder",
-          "was": "r",
+          "name": "dispId",
+          "was": "i",
           "def": "Variable",
           "kind": "var",
-          "refs": 4
+          "refs": 2
         },
         "0/1#0": {
           "name": "element",
@@ -107,12 +107,19 @@
           "was": "t",
           "def": "Parameter",
           "kind": "param1",
-          "refs": 4
+          "refs": 5
+        },
+        "0/0#5": {
+          "name": "input",
+          "was": "r",
+          "def": "Variable",
+          "kind": "var",
+          "refs": 10
         }
       }
     },
     "showModalDialog": {
-      "namedOn": "BETA 1034",
+      "namedOn": "BETA 1042",
       "shape": "a5d811b2364e1882",
       "names": {
         "0#0": {
@@ -363,7 +370,7 @@
       }
     },
     "applyLanguagePack": {
-      "namedOn": "BETA 1034",
+      "namedOn": "BETA 1042",
       "shape": "22e73f2f6b3e21b1",
       "names": {
         "0#0": {
@@ -432,7 +439,7 @@
       }
     },
     "bindIconToIdeCommand": {
-      "namedOn": "BETA 1034",
+      "namedOn": "BETA 1042",
       "shape": "4354f8d025fd428e",
       "names": {
         "0#0": {
@@ -487,7 +494,7 @@
       }
     },
     "toggleBreakpointAtLine": {
-      "namedOn": "BETA 1034",
+      "namedOn": "BETA 1042",
       "shape": "a8c904f3bb2ed769",
       "names": {
         "0#0": {
@@ -542,7 +549,7 @@
       }
     },
     "sendDocumentChangeToServer": {
-      "namedOn": "BETA 1034",
+      "namedOn": "BETA 1042",
       "shape": "b766f01cbd123c73",
       "names": {
         "0#0": {
@@ -583,7 +590,7 @@
       }
     },
     "getSemanticTokensForCurrentFile": {
-      "namedOn": "BETA 1034",
+      "namedOn": "BETA 1042",
       "shape": "70d7f71a100106a9",
       "names": {
         "0#0": {
@@ -610,7 +617,7 @@
       }
     },
     "propertyOnGotFocus": {
-      "namedOn": "BETA 1034",
+      "namedOn": "BETA 1042",
       "shape": "f8b68229b9ac5ef2",
       "names": {
         "0#0": {
@@ -637,7 +644,7 @@
       }
     },
     "serverSaveDirtyDocuments": {
-      "namedOn": "BETA 1034",
+      "namedOn": "BETA 1042",
       "shape": "2771b4406de4f175",
       "names": {
         "0#0": {
@@ -727,8 +734,8 @@
       }
     },
     "parseDocumentDecorations": {
-      "namedOn": "BETA 1034",
-      "shape": "020e0b390b047515",
+      "namedOn": "BETA 1042",
+      "shape": "ab0da7309dcffdfb",
       "names": {
         "0#0": {
           "name": "editorNode",
@@ -742,7 +749,7 @@
           "was": "t",
           "def": "Parameter",
           "kind": "param1",
-          "refs": 9
+          "refs": 11
         },
         "0#2": {
           "name": "versionId",
