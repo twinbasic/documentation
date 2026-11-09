@@ -36,7 +36,7 @@ Sometimes you may want to open a .twinproj that refers to a linked package you d
 
 ![The standard missing reference message: the LINKED-PACKAGE row of OLE Guid and interface definitions on the Enabled Libraries tab, with a yellow ERROR unable to load this reference box and a FIX link](Images/f66fb240-dcb7-46ee-896d-78c3789a7876.png){:width="544" height="63"}
 
-And it's handled in the same way. **Uncheck the reference** -- "Fix" is not currently implemented. Then, go to the Available Packages tab and select the package-- and as described above, uncheck Embed to convert to a linked package.
+Choose **AUTO-FIX** on that row. If the package is on the TWINSERV package server, the IDE downloads its newest version into your local packages folder, links the reference to it and restarts the compiler; see [References and packages](../../tB/IDE/Projects/References-and-Packages) for the details. If the server does not have the package, **uncheck the reference**, then go to the Available Packages tab and select the package --- and as described above, uncheck Embed to convert it to a linked package.
 
 ## Manual management
 

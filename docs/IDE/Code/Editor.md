@@ -40,13 +40,16 @@ Choose the close button, press <kbd>Ctrl</kbd>+<kbd>W</kbd> or <kbd>Ctrl</kbd>+<
 
 After you close the active tab, the editor selects the tab you used before it, not its neighbour.
 
-Right-click a tab for a menu of four items:
+Right-click a tab for a menu of five items:
 
 **Close**
 : Closes the tab you clicked.
 
-**Close Others**
+**Close other tabs**
 : Closes every tab except the one you clicked. It asks about each file that has unsaved changes, one after another. **Cancel** keeps that file only; the next file is still asked about.
+
+**Close tabs to the right**
+: Closes every tab after the one you clicked. The tabs whose files have no unsaved changes close at once. The files with changes are named together in one box: **Save** saves and closes them all, **Discard Changes** closes them all without saving, and **Cancel** leaves them all open.
 
 **Close Saved**
 : Closes every tab whose file has no unsaved changes, and asks nothing. The files with changes stay open.
@@ -54,7 +57,7 @@ Right-click a tab for a menu of four items:
 **Close All**
 : Closes every tab, and asks about each file that has unsaved changes.
 
-![The right-click menu of the tab Helpers.twin, open under the tab, with the items Close, Close Others, Close Saved and Close All.](Images/Tab_Menu.png){:width="500" height="142"}
+![The right-click menu of the tab Helpers.twin, open under the tab, with the items Close, Close other tabs, Close tabs to the right, Close Saved and Close All.](Images/Tab_Menu.png){:width="500" height="142"}
 
 The tab menu is in English whatever the [language of the IDE](../Customising/#the-language-of-the-ide) is.
 

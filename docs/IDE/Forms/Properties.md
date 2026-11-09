@@ -26,7 +26,7 @@ Each open designer has a property sheet of its own, and the pane shows the one o
 
 ![The PROPERTIES pane with Command1 selected. Under its title bar are the PROPERTIES and EVENTS tabs, then the object drop-down showing Command1 and CommandButton, then the list of properties under the category headers DESIGN, APPEARANCE and DRAWING. Labels with arrows on the left name the tabs, the drop-down and a category header.](Images/Properties_Control.png){:width="573" height="520"}
 
-From the top, the pane holds the **PROPERTIES** and **EVENTS** tabs, the object drop-down and the list of properties. The magnifier in the title bar searches the list.
+From the top, the pane holds the **PROPERTIES** and **EVENTS** tabs, the object drop-down and the list of properties. In the title bar, the magnifier searches the list and the **Az** button sorts it alphabetically.
 
 ## Choose what to edit
 
@@ -40,7 +40,9 @@ With several controls selected, the list merges their properties. A property tha
 
 ## Find a property
 
-The list is grouped by category, not alphabetically, and there is no alphabetical view. The groups are **DESIGN**, **BINDINGS**, **DATA**, **APPEARANCE**, **DRAWING**, **BEHAVIOUR**, **MOUSE**, **WINDOW**, **HELP**, **KEYBOARD**, **SCALE**, **LAYOUT**, **GENERAL** and **DDE**. A property the IDE does not know goes into **GENERAL**. Within a group the order is not strictly alphabetical: **Name** comes first under **DESIGN**, and **Caption** or **Text** comes before **ToolTipText**. The **Index** property is not listed for a form, a user control, a property page or a report.
+By default the list is grouped by category. The groups are **DESIGN**, **BINDINGS**, **DATA**, **APPEARANCE**, **DRAWING**, **BEHAVIOUR**, **MOUSE**, **WINDOW**, **HELP**, **KEYBOARD**, **SCALE**, **LAYOUT**, **GENERAL** and **DDE**. A property the IDE does not know goes into **GENERAL**. Within a group the order is not strictly alphabetical: **Name** comes first under **DESIGN**, and **Caption** or **Text** comes before **ToolTipText**. The **Index** property is not listed for a form, a user control, a property page or a report.
+
+The **Az** button in the title bar, **Alphabetic Sort Order**, lists the properties by name instead, with no category headers. **Name** still comes first, and the order ignores case. The button is highlighted while it is on. The choice applies to every designer, and the IDE keeps it for the next session.
 
 The magnifier opens a search box. The text is a list of parts of property names, separated by commas, and a property matches when its name contains any of them, in either case. The search looks at names, not at values.
 

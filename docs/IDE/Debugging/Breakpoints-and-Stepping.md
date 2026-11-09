@@ -111,10 +111,13 @@ The jump works inside the paused procedure only. A blank line, a line of another
 
 ## Break On All Errors and Debuggable
 
-The two items of **Debug → Debugger Options** turn project settings on and off. Each writes its setting into the project's `Settings` file. A change to **Allow Breakpoints (Debuggable)** marks the project as changed, applies from the next run, and needs no restart of the compiler.
+The three items of **Debug → Debugger Options** turn project settings on and off. Each writes its setting into the project's `Settings` file. A change to **Allow Breakpoints (Debuggable)** marks the project as changed, applies from the next run, and needs no restart of the compiler.
 
-**Break On All Errors**
-: Off by default. Then an error that is raised while `On Error Resume Next` or `On Error GoTo` is in effect goes to that handler, as usual. When it is on, the program stops at the failing line even there, with the same error panel as [an error that nothing handles](#when-a-run-time-error-stops-the-program). **Ignore (Resume Next)** then skips the line. Under `On Error Resume Next`, `Err.Number` still holds the error afterwards, so code that checks it sees the error. <kbd>F5</kbd> runs the failing line again, and the program stops on it again. Under `On Error GoTo`, the handler never runs. The project setting is [Break On All Errors](../Project-Settings#break-on-all-errors).
+**Break On All Errors (this project)**
+: Off by default. Then an error that is raised while `On Error Resume Next` or `On Error GoTo` is in effect goes to that handler, as usual. When it is on, the program stops at the failing line even there, with the same error panel as [an error that nothing handles](#when-a-run-time-error-stops-the-program). **Ignore (Resume Next)** then skips the line. Under `On Error Resume Next`, `Err.Number` still holds the error afterwards, so code that checks it sees the error. <kbd>F5</kbd> runs the failing line again, and the program stops on it again. Under `On Error GoTo`, the handler never runs. It applies to errors raised in the project's own code only. The project setting is [Break On All Errors](../Project-Settings#break-on-all-errors).
+
+**Break On All Errors (inside packages)**
+: Off by default. It does the same for errors raised in the code of the packages that the project references. The project setting is [Break On All Errors (packages)](../Project-Settings#break-on-all-errors-packages).
 
 **Allow Breakpoints (Debuggable)**
 : On by default; the item shows its tick when the setting is absent from the `Settings` file. See [Where breakpoints are kept](#where-breakpoints-are-kept) and [Debuggable](../Project-Settings#debuggable).

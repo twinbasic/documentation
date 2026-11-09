@@ -44,6 +44,8 @@ export const BLANKED_KEYS = {
   ACTIVE_KEYBOARD_SHORTCUT_GROUPS: "",
   WEBPANEL_SETTINGS: "",
   FORMS_windowsPalette: "",
+  // The Properties panel's Az toggle (BETA 1042); "" reads as off, the panel's own default.
+  FORMS_propertiesAlphabetic: "",
   targetArchitectureMemory: "",
   OBJECT_BROWSER: "",
   NEWFRONTPAGE: "",

@@ -72,9 +72,11 @@ A library's *symbol* is the name its components are qualified with in code. It i
 
 ### A reference that fails
 
-A reference that the compiler cannot load shows **ERROR unable to load this reference** and a **FIX** link. About a second after the project loads, the dialog opens by itself to show it. It opened again after an **Apply Changes** that restarted the compiler. **FIX** does nothing but say that the feature is not implemented yet, and that you should remove the reference and add it again from **Available COM References**. A library listed twice shows **ERROR duplicate reference** on both rows.
+A reference that the compiler cannot load shows **ERROR unable to load this reference** and an **AUTO-FIX** link. About a second after the project loads, the dialog opens by itself to show it. It opened again after an **Apply Changes** that restarted the compiler.
 
-![The Enabled Libraries tab of Project Settings, each row with a drag handle at its left. The Microsoft Scripting Runtime row shows its two arrows at the right of its name, and its symbol Scripting is struck through with the override SR under it. The last row, Charts Library, has a yellow band reading ERROR unable to load this reference with a FIX link.](Images/References_Detail.png){:width="1202" height="446"}
+**AUTO-FIX** repairs a reference to a package, embedded or linked. If the package is in your local packages folder, the reference becomes a link to it, and the compiler restarts. If it is not, the IDE downloads the newest version of the package from TWINSERV, saves it in the local packages folder, removes any copy the project embeds, links the reference to the saved package and restarts the compiler. A package that TWINSERV does not have gives *Unable to find package on the TWINSERV package server*. For any other reference, **AUTO-FIX** only says that the feature is not implemented yet, and that you should remove the reference and add it again from **Available COM References**. A library listed twice shows **ERROR duplicate reference** on both rows.
+
+![The Enabled Libraries tab of Project Settings, each row with a drag handle at its left. The Microsoft Scripting Runtime row shows its two arrows at the right of its name, and its symbol Scripting is struck through with the override SR under it. The last row, Charts Library, has a yellow band reading ERROR unable to load this reference with an AUTO-FIX link.](Images/References_Detail.png){:width="1202" height="446"}
 
 ## Available COM References
 

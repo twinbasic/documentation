@@ -17,7 +17,7 @@ index_also:
 
 The **DEBUG CONSOLE** panel is a scrolling log of what a run writes, and an input row that runs one line of code at a time.
 
-![The Debug Console pane with its three header buttons outlined at the top right. Labels above the pane, with arrows, name the first two buttons Auto Scroll and Clear Debug Console. The Options menu of the third button is open below it, offering Invert Output Direction and a ticked Show Timestamps, and a label at its right, also with an arrow, names it Options. The input row is outlined along the bottom edge, and a label with an arrow names it Input.](../Images/DebugConsole.png){:width="915" height="326"}
+![The Debug Console pane with its three header buttons outlined at the top right. Labels above the pane, with arrows, name the first two buttons Auto Scroll and Clear Debug Console. The Options menu of the third button is open below it, offering Invert Output Direction, a ticked Show Timestamps and Smoother Scrolling, and a label at its right, also with an arrow, names it Options. The input row is outlined along the bottom edge, and a label with an arrow names it Input.](../Images/DebugConsole.png){:width="915" height="326"}
 
 The panel is docked at the bottom of the default layout. <kbd>Ctrl</kbd>+<kbd>G</kbd> shows it, and moves the keyboard focus to the input row.
 
@@ -61,7 +61,7 @@ The ![Clear Debug Console button](../Images/DebugConsole_Clear.png){:width="17" 
 
 ### Options
 
-The ![Options button, three dots](../Images/DebugConsole_Options.png){:width="17" height="17"} button opens a menu of two items, each with a tick when it is on.
+The ![Options button, three dots](../Images/DebugConsole_Options.png){:width="17" height="17"} button opens a menu of three items, each with a tick when it is on.
 
 **Invert Output Direction**
 : Off by default. Puts the newest line at the top.
@@ -69,7 +69,10 @@ The ![Options button, three dots](../Images/DebugConsole_Options.png){:width="17
 **Show Timestamps**
 : On by default. It only hides the times: every line keeps its time, and **Copy All (With Timestamps)** still includes it.
 
-The IDE saves both settings with the project.
+**Smoother Scrolling**
+: Off by default. When it is on, the console measures the height of each line as the line is written, and scrolls by those heights, which keeps the scrolling smooth when lines differ in height. Turning it on or off empties the console.
+
+The IDE saves the three settings with the project.
 
 ## The input row
 

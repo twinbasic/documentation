@@ -25,7 +25,7 @@ Choose **Tools → IDE Options...**. The command has no default key.
 
 ![The IDE Options dialog at its default settings, on All, at the top of its list. The rail at the left holds a Filter box and the groups Appearance, Code Editor, Compiler, Project Explorer, Intellisense/Hover, Designer/Toolbox and General, each with its number of options. The Appearance group holds Colour Theme set to Dark, IDE Font Size 13px, IDE Font Segoe UI, and Show real OS titlebar and Single row of code panel tabs, both No. The Code Editor group follows with TAB Spaces Amount 4, Code Editor Font Size 13px, an empty Code Editor Font, Use Font Ligatures No and Show Code Editor Combo Selectors above. Each row has a grey description under its name, except Colour Theme. Change Licence sits at the bottom left, with a greyed-out Save Changes and a Close button at the right.](../Menu/Images/Menu_Tools_IDEOptions.png){:width="1002" height="838"}
 
-The dialog is titled **twinBASIC IDE Options**, and it works as the [Project Settings](../Project-Settings) dialog does. The rail at its left lists seven groups, each with its number of options: **Appearance**, **Code Editor**, **Compiler**, **Project Explorer**, **Intellisense/Hover**, **Designer/Toolbox** and **General**, 32 options in all. **All**, at the top of the rail, shows every group under its title, in one list that scrolls, and clicking a group shows only its options. Typing in the **(Filter)** box above them shows only the options that contain every word typed, in their name, their description or their values: `llvm` leaves the three options of **Compiler**. <kbd>Esc</kbd> in the filter box closes the dialog. The sections below group the options by what they change, and name each option as the dialog does.
+The dialog is titled **twinBASIC IDE Options**, and it works as the [Project Settings](../Project-Settings) dialog does. The rail at its left lists seven groups, each with its number of options: **Appearance**, **Code Editor**, **Compiler**, **Project Explorer**, **Intellisense/Hover**, **Designer/Toolbox** and **General**, 33 options in all. **All**, at the top of the rail, shows every group under its title, in one list that scrolls, and clicking a group shows only its options. Typing in the **(Filter)** box above them shows only the options that contain every word typed, in their name, their description or their values: `llvm` leaves the three options of **Compiler**. <kbd>Esc</kbd> in the filter box closes the dialog. The sections below group the options by what they change, and name each option as the dialog does.
 
 Each row has the option's name at the left, with a description under it for every option but **Colour Theme**, and its control at the right. Rows are one of four kinds:
 
@@ -140,6 +140,9 @@ The mode applies to the code editor and to the entry box of the Debug Console. <
 
 **Focus The 'Recent' Tab On IDE Startup**
 : Default off. The dialog that opens when the IDE starts opens on its **Recent** section, until the dialog has been closed once. Every closing saves the section the dialog was on, and from then on the dialog opens on that section, whatever this option says. [New Project](../Starting/New-Project#the-section-is-remembered) describes it.
+
+**Recents History Maximum Count**
+: Default 50, and no less than 0. The most projects that the IDE keeps in the list of the **Recent** section. Once the list is longer, the IDE shortens it to this many. The option is in the **General** group of the dialog.
 
 **Ask Before Delete Files**
 : Default on. Deleting files in the Project Explorer shows a confirmation box first. With the option off, the files are deleted without a question.
