@@ -117,10 +117,11 @@ function owes(run, v) {
 }
 
 /**
- * The SVG states that change the file: written or removed. "unchanged" and "not written"
- * leave it as it is.
+ * The SVG states that change the file: written, removed, or put back as the baseline has it
+ * ("restored": an SVG that draws the same pixels as the baseline's, keep.mjs's sameSvgAs).
+ * "unchanged" and "not written" leave it as it is.
  */
-export const SVG_CHANGES = new Set(["new", "updated", "removed"]);
+export const SVG_CHANGES = new Set(["new", "updated", "removed", "restored"]);
 
 /** A picture's two files, as a part of a verdict names them. */
 export const PARTS = ["png", "svg"];
@@ -178,6 +179,8 @@ export function groupOf(p, exists) {
     case "once":
       return exists(p.out) ? "deleted" : "unchanged";
   }
+  // an SVG put back as the baseline has it, the same picture to the pixel: no change to look at
+  if (p.svg?.state === "restored") return "noise";
   return SVG_CHANGES.has(p.svg?.state) ? "changed" : "unchanged";
 }
 

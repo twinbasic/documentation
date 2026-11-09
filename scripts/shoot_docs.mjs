@@ -185,7 +185,7 @@ import { decodePng, encodePng, pngSize } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
 import { inRects, pngsNear, withinNoise } from "./lib/shot-change.mjs";
 import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
-import { applyPicture, applySvg, dropPicture, restorePictures, svgOf } from "./lib/shot-apply.mjs";
+import { applyPicture, applySvg, dropPicture, restorePictures, restoreSvg, svgOf } from "./lib/shot-apply.mjs";
 import { freezePage, showFrozen } from "./lib/shot-freeze.mjs";
 import { FIRST_RUN, guardSource, SETTLED, settingsHash } from "./lib/shot-first-run.mjs";
 import {
@@ -206,7 +206,7 @@ import {
   svgFollowsPng,
   themeTextDifference,
 } from "./lib/shot-policy.mjs";
-import { MANIFEST, openManifest, svgDecision } from "./lib/shot-manifest.mjs";
+import { hashOf, MANIFEST, openManifest, svgDecision } from "./lib/shot-manifest.mjs";
 import { reviewPicture, reviewSvg } from "./lib/shot-queue.mjs";
 import {
   pngVerdict,
@@ -244,7 +244,7 @@ import {
 import { BUNDLE_CACHE, svgOfPage, writeBundle } from "./svgshot/bundle.mjs";
 import { QUIET_CSS } from "./svgshot/capture.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
-import { holdsUserName, judgeSvg } from "./svgshot/keep.mjs";
+import { holdsUserName, judgeSvg, sameSvgAs, sameWhy } from "./svgshot/keep.mjs";
 import { stageProject, unpackProject } from "./lib/tb-project.mjs";
 import { holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { guard, presentKeys, press, serverRequests } from "../test/ide/building-kit.mjs";
@@ -15160,6 +15160,32 @@ async function keepSvg(name, out, png, picture, kept, holds, window = false) {
   if (stale)
     say(name, `${svgOut}: judged though its PNG stays (its cached bundle cannot draw it again: ${stale.retake})`);
   let staysWhy = null;
+  // The baseline's SVG, which an SVG the same picture as it, to the pixel, goes back to
+  // (keep.mjs's sameSvgAs); and what a run says of one found so.
+  const baseText = revision?.bytes(svgOut)?.toString("utf8") ?? null;
+  const reportSame = (same, fileText, judged = {}) => {
+    const why = sameWhy(same, AGAINST);
+    const state = same === "baseline" ? restoreSvg(outRoot, revision, svgOut, { dryRun }) : "unchanged";
+    say(name, `${svgOut}: ${state} (${why})`);
+    report(
+      svgVerdict({
+        ...judged,
+        state,
+        why,
+        same:
+          same === "baseline" ? { as: "baseline", baseline: revision.hash } : { as: "file", file: hashOf(fileText) },
+      }),
+    );
+  };
+  if (!follows && !byPng && svgOnDisk && baseText !== null) {
+    // the file's SVG stays with its PNG, but when it is the baseline's picture its bytes go back
+    const fileText = readFileSync(file, "utf8");
+    svgBrowser ??= launchBrowser();
+    if ((await sameSvgAs(await svgBrowser, { file: fileText, baseline: baseText })) === "baseline") {
+      reportSame("baseline", fileText);
+      return;
+    }
+  }
   if (!follows) {
     staysWhy = byPng ?? "its PNG is not written";
     // the same SVG as the file's: its bundle goes into the cache all the same (bundleFollowsSvg);
@@ -15220,6 +15246,13 @@ async function keepSvg(name, out, png, picture, kept, holds, window = false) {
   svgResults.push({ out: svgOut, bytes, png: png.length, faithful, ...diff.stats });
   if (!faithful) {
     drop(`${measures}${how}`, judged);
+    return;
+  }
+  // the same picture as the baseline's SVG or the file's, to the pixel: those bytes stay
+  const fileText = existsSync(file) ? readFileSync(file, "utf8") : null;
+  const same = await sameSvgAs(await svgBrowser, { svg, file: fileText, baseline: baseText });
+  if (same) {
+    reportSame(same, fileText, judged);
     return;
   }
   const state = applySvg(outRoot, svgOut, svg, { dryRun });

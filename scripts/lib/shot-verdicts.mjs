@@ -36,12 +36,13 @@ import {
   heldOf,
   heldPictures,
   holdPicture,
+  restoreSvg,
   setHeldPart,
   svgOf,
   unholdPicture,
 } from "./shot-apply.mjs";
 import { pngsNear } from "./shot-change.mjs";
-import { svgDecision } from "./shot-manifest.mjs";
+import { hashOf, svgDecision } from "./shot-manifest.mjs";
 import { bundleFollowsSvg, decidePicture, decideSvg, svgFollowsPng } from "./shot-policy.mjs";
 import { reviewPicture, reviewSvg } from "./shot-queue.mjs";
 import { restoreFromRevision } from "./shot-revision.mjs";
@@ -219,6 +220,22 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
         fate === "write" ? "updated" : fate === "remove" ? "removed" : "unchanged",
         "its PNG is the baseline's",
       );
+    }
+    // the run found its SVG the same picture as the baseline's or the file's, to the pixel
+    // (keep.mjs's sameSvgAs): applied while that still holds; else judged as any other
+    if (staged.same) {
+      const rev = revision();
+      const svgFile = svgOf(out);
+      if (staged.same.as === "baseline" && staged.same.baseline === rev.hash && rev.bytes(svgFile))
+        return { ...staged, state: restoreSvg(docsRoot, rev, svgFile), look: null };
+      const found = held?.svgText ?? readIf(path.join(docsRoot, svgFile))?.toString("utf8") ?? null;
+      if (staged.same.as === "file" && found !== null && hashOf(found) === staged.same.file)
+        return { ...staged, state: "unchanged", look: null };
+      if (!staged.svg)
+        return stays(
+          "unchanged",
+          `${staged.why ?? "the same picture"}, but not as the session's baseline and file are now: draw it again`,
+        );
     }
     const stage = stageOf(n);
     // a review that accepted this SVG against this capture writes it, though its PNG stays

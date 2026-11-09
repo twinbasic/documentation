@@ -122,6 +122,8 @@ import {
   themeTextDifference,
 } from "../scripts/lib/shot-policy.mjs";
 import { holdsRoot, rootPattern, SHOWN_ROOT, showRoot, TOOL_ROOT } from "../scripts/lib/shot-root.mjs";
+import { launchBrowser } from "../scripts/lib/browser.mjs";
+import { sameSvgAs, sameWhy } from "../scripts/svgshot/keep.mjs";
 import {
   earlierPngDecision,
   earlierSvgDecision,
@@ -229,6 +231,47 @@ import {
   viewportScroller,
   viewportStyleSources,
 } from "../scripts/svgshot/snapshot-svg.mjs";
+
+describe("an SVG the same picture as one already there (keep.mjs's sameSvgAs)", () => {
+  const svg = (fill, { order = false, crlf = false } = {}) => {
+    const rect = order
+      ? `<rect fill="${fill}" height="6" width="6" y="2" x="2"/>`
+      : `<rect x="2" y="2" width="6" height="6" fill="${fill}"/>`;
+    const text = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">${rect}</svg>\n`;
+    return crlf ? text.replace(/\n/g, "\r\n") : text;
+  };
+  const base = svg("red");
+  const reordered = svg("red", { order: true });
+  const other = svg("blue");
+
+  test("draws both and compares their pixels: bytes no one sees do not count, a colour does", async (t) => {
+    const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] });
+    t.after(() => browser.close());
+    // the file a terminal changed; the drawn SVG draws as the baseline's: the baseline's bytes go back
+    assert.equal(await sameSvgAs(browser, { svg: reordered, file: other, baseline: base }), "baseline");
+    // the file is the baseline's, and the drawn SVG differs from it in bytes only: the file stays
+    assert.equal(await sameSvgAs(browser, { svg: reordered, file: base, baseline: base }), "file");
+    // a colour changed: neither
+    assert.equal(await sameSvgAs(browser, { svg: other, file: base, baseline: base }), null);
+    // asked of the file alone (an SVG that stays with its PNG)
+    assert.equal(await sameSvgAs(browser, { file: reordered, baseline: base }), "baseline");
+    assert.equal(await sameSvgAs(browser, { file: other, baseline: base }), null);
+  });
+
+  test("answers from the texts alone when they say enough: nothing is drawn", async () => {
+    const browser = {
+      newPage: () => {
+        throw new Error("drew a picture");
+      },
+    };
+    // line endings do not count
+    assert.equal(await sameSvgAs(browser, { svg: base, file: svg("red", { crlf: true }), baseline: base }), null);
+    assert.equal(await sameSvgAs(browser, { svg: other, file: null, baseline: null }), null);
+    assert.equal(await sameSvgAs(browser, { file: base, baseline: base }), null);
+    assert.equal(sameWhy("baseline", "HEAD"), "draws the same pixels as HEAD's");
+    assert.equal(sameWhy("file", "HEAD"), "draws the same pixels as the file's");
+  });
+});
 
 describe("naturalSize", () => {
   const png = (bytes) => `data:image/png;base64,${Buffer.from(bytes).toString("base64")}`;

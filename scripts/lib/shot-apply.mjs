@@ -113,6 +113,23 @@ export function applySvg(outRoot, svgOut, svg, { dryRun = false } = {}) {
   return "removed";
 }
 
+/**
+ * Puts the SVG `svgOut` back as `revision` (openRevision) has it, through git, as a checkout
+ * writes it: an SVG that draws the same pixels as the revision's (keep.mjs's sameSvgAs).
+ * "restored", or "unchanged" when the file holds the revision's text already (line endings
+ * aside). With `dryRun` nothing is written, and the state is what would be. Throws when the
+ * revision has no such SVG.
+ */
+export function restoreSvg(outRoot, revision, svgOut, { dryRun = false } = {}) {
+  const atRevision = revision.bytes(svgOut);
+  if (!atRevision) throw new Error(`${revision.short} has no ${svgOut}`);
+  const file = path.join(outRoot, svgOut);
+  const lf = (bytes) => bytes.toString("utf8").replace(/\r\n/g, "\n");
+  if (existsSync(file) && lf(readFileSync(file)) === lf(atRevision)) return "unchanged";
+  if (!dryRun) restoreFromRevision(outRoot, revision.hash, [svgOut]);
+  return "restored";
+}
+
 // ---- what a picture held before a verdict was applied --------------------------------
 //
 // The screenshot review tool applies a run's verdicts as they arrive, and a review may then

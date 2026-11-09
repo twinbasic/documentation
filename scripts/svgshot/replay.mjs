@@ -27,13 +27,14 @@ import {
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { BUNDLE_CACHE, listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
-import { applySvg, svgOf } from "../lib/shot-apply.mjs";
-import { MANIFEST, openManifest } from "../lib/shot-manifest.mjs";
+import { applySvg, restoreSvg, svgOf } from "../lib/shot-apply.mjs";
+import { hashOf, MANIFEST, openManifest } from "../lib/shot-manifest.mjs";
+import { openRevision } from "../lib/shot-revision.mjs";
 import { SVG_FAITHFUL } from "../lib/shot-policy.mjs";
 import { reviewSvg } from "../lib/shot-queue.mjs";
 import { stageFolders, stageRefusal, stageSvg, svgVerdict, writeVerdict } from "../lib/shot-stage.mjs";
 import { onStop, writeRecord } from "../lib/record-lines.mjs";
-import { judgeSvg } from "./keep.mjs";
+import { judgeSvg, sameSvgAs, sameWhy } from "./keep.mjs";
 import { privateWords } from "./private-list.mjs";
 import {
   defaultJobs,
@@ -49,13 +50,15 @@ import {
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/svgshot/replay.mjs [--only <regex>] [--bundles <dir>] [--out <dir>] [--diffs <dir> | --stage <dir>] [--events] [--recheck] [--jobs N] [-h, --help]
+const USAGE = `usage: node scripts/svgshot/replay.mjs [--only <regex>] [--bundles <dir>] [--out <dir>] [--diffs <dir> | --stage <dir>] [--events] [--recheck] [--against <rev>] [--jobs N] [-h, --help]
 
 Draws each picture's SVG again from the bundle shoot_docs.mjs --svg saved when it
 took the picture, with the converter as it is now, and writes it beside its PNG
 as shoot_docs.mjs does: written when no more than ${SVG_FAITHFUL}% of its pixels
 are far off the PNG's and its bytes differ from the file's, else not written and
-an older one removed. Takes no picture and starts no IDE; needs Python with
+an older one removed. An SVG that draws the same pixels as the revision's
+SVG (--against) puts the revision's bytes back, and one that draws the same
+pixels as the file's leaves the file as it is. Takes no picture and starts no IDE; needs Python with
 fontTools, as --svg does.
 
 A picture's entry in test/shots/manifest.json changes its bar, and a review's
@@ -73,6 +76,9 @@ command that takes them again.
   --bundles <dir>  the bundle cache (default .svgshot-bundles in the repository)
   --out <dir>      the folder the pictures are in (default docs)
   --diffs <dir>    write each SVG's difference map there, as <name>.svg-diff.png
+  --against <rev>  the git revision whose SVG a drawn SVG is compared with
+                   first (default HEAD); git runs in the --out folder, and a
+                   folder outside a git working tree compares with the file only
   --recheck        compare every SVG with its PNG, also one that is the same
                    bytes as the file (which the bar passed when it was written)
   --stage <dir>    write nothing under the output folder: put each SVG drawn
@@ -106,6 +112,7 @@ const { values } = withUsageError(() =>
       out: { type: "string" },
       diffs: { type: "string" },
       recheck: { type: "boolean", default: false },
+      against: { type: "string" },
       stage: { type: "string" },
       events: { type: "boolean", default: false },
       jobs: { type: "string" },
@@ -127,6 +134,18 @@ const jobs = withUsageError(() =>
 );
 const bundlesRoot = path.resolve(values.bundles ?? BUNDLE_CACHE);
 const outRoot = path.resolve(values.out ?? path.join(REPO_ROOT, "docs"));
+// The revision whose SVG a drawn SVG is compared with first (keep.mjs's sameSvgAs): none for a
+// folder outside a git working tree, unless --against names one.
+const AGAINST = values.against ?? "HEAD";
+let revision = null;
+try {
+  revision = openRevision(outRoot, AGAINST);
+} catch (e) {
+  if (values.against !== undefined) {
+    console.error(`replay: --against: ${e.message}`);
+    process.exit(2);
+  }
+}
 // A child process the parent started (below) has its share of the pictures in this
 // variable, "k/n" (redraw.mjs runShards).
 const SHARD_ENV = "SVGSHOT_REPLAY_SHARD";
@@ -194,6 +213,28 @@ async function replay(out, browser) {
   }
   const { png, svg, stats } = drawn;
   const entry = manifest?.entry(out) ?? null;
+  // The same picture as the revision's SVG, or the file's, to the pixel: the bytes there stay
+  // (the revision's put back), whatever they differ in.
+  const fileText = existsSync(svgFile) ? readFileSync(svgFile, "utf8") : null;
+  const baseText = revision?.bytes(svgOf(out))?.toString("utf8") ?? null;
+  const same = await sameSvgAs(browser, { svg, file: fileText, baseline: baseText });
+  if (same) {
+    const why = sameWhy(same, AGAINST);
+    const state =
+      same === "baseline" ? restoreSvg(outRoot, revision, svgOf(out), { dryRun: !!stageRoot }) : "unchanged";
+    say(out, `${state} (${why})`);
+    counts[state] = (counts[state] ?? 0) + 1;
+    report(
+      out,
+      svgVerdict({
+        state,
+        why,
+        same:
+          same === "baseline" ? { as: "baseline", baseline: revision.hash } : { as: "file", file: hashOf(fileText) },
+      }),
+    );
+    return;
+  }
   // The same bytes as the file, beside the PNG its bundle was taken with: the bar passed this
   // SVG against that PNG when it was written, and would again. Most of a replay is this. A
   // picture whose entry names its SVG is judged again: its bar or its decision may have changed.

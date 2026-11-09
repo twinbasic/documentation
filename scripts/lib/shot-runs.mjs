@@ -109,7 +109,7 @@ function browserRun({ only, pictures }, baseline, { captures, extension, noOpen 
 /**
  * The run a request asks for, as {tool, args}, args as the command line gives them (startRun
  * adds the stage): `kind` "retake" (shoot_docs.mjs, compared with the session's `baseline`,
- * {hash}), "replay" (svgshot/replay.mjs) or "cleanup" (shoot_docs.mjs --cleanup against the
+ * {hash}), "replay" (svgshot/replay.mjs, its SVGs compared with the baseline's first) or "cleanup" (shoot_docs.mjs --cleanup against the
  * baseline, `dryRun` for the list of what it would put back); the pictures `only`, a pattern, or
  * `pictures`, their paths under docs/, or neither for every picture; `svg` a retake's --svg (on
  * unless false), `jobs` its or a replay's --jobs, `ide` a retake's twinBASIC.exe, and `recheck`
@@ -153,7 +153,8 @@ export function runOf(
       tool: "shoot_docs",
       args: [...(svg ? ["--svg"] : []), ...onlyArgs, ...against, ...jobArgs, ...(empty(ide) ? [] : ["--ide", ide])],
     };
-  if (kind === "replay") return { tool: "replay", args: [...onlyArgs, ...(recheck ? ["--recheck"] : []), ...jobArgs] };
+  if (kind === "replay")
+    return { tool: "replay", args: [...onlyArgs, ...(recheck ? ["--recheck"] : []), ...against, ...jobArgs] };
   return { tool: "cleanup", args: ["--cleanup", ...(dryRun ? ["--dry-run"] : []), ...onlyArgs, ...against] };
 }
 

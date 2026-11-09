@@ -3,10 +3,59 @@
 // enough is decideSvg's (lib/shot-policy.mjs), and the SVG is written by applySvg
 // (lib/shot-apply.mjs).
 
+import { decodePng } from "../lib/png.mjs";
 import { decideSvg, svgRule } from "../lib/shot-policy.mjs";
-import { diffSvg, svgClip } from "./diff.mjs";
+import { diffSvg, renderSvg, svgClip } from "./diff.mjs";
 
 export { holdsUserName } from "./private-words.mjs";
+
+const lf = (text) => (text === null || text === undefined ? null : text.replace(/\r\n/g, "\n"));
+
+/**
+ * Which SVG already there an SVG is the same picture as (owner, 2026-11-09): one that draws the
+ * same pixels, exactly, as diffSvg draws it (an <img> at the device scale, in a page of
+ * `browser`). An SVG can change in bytes no one sees (the order of its attributes, the cut of a
+ * font), and such a change is not kept. The baseline's SVG is asked first, then the file's, as
+ * a capture is compared with the revision's picture first, then the file (pictureFate):
+ *
+ *   "baseline"  `baseline` (the revision's SVG) differs from the file, and the SVG draws as it
+ *               does: the file is to hold the baseline's bytes
+ *   "file"      the SVG differs from the file and draws as it does: the file stays
+ *   null        neither: the SVG is judged as before
+ *
+ * `svg` is the SVG drawn (null asks of the file itself, for an SVG that stays with its PNG),
+ * `file` the file's text and `baseline` the revision's, each null when there is none. Line
+ * endings do not count. Nothing is drawn when the texts already answer.
+ */
+export async function sameSvgAs(browser, { svg = null, file, baseline }) {
+  const [f, b] = [lf(file), lf(baseline)];
+  const d = lf(svg) ?? f;
+  if (d === null) return null;
+  const askBaseline = b !== null && f !== b;
+  const askFile = svg !== null && f !== null && d !== f;
+  if (!askBaseline && !askFile) return null;
+  const page = await browser.newPage();
+  try {
+    const drawn = new Map();
+    const pixels = async (text) => {
+      if (!drawn.has(text)) drawn.set(text, decodePng((await renderSvg(page, text)).render));
+      return drawn.get(text);
+    };
+    const same = async (x, y) => {
+      if (x === y) return true;
+      const [p, q] = [await pixels(x), await pixels(y)];
+      return p.width === q.width && p.height === q.height && Buffer.from(p.rgba).equals(Buffer.from(q.rgba));
+    };
+    if (askBaseline && (await same(d, b))) return "baseline";
+    if (askFile && (await same(d, f))) return "file";
+    return null;
+  } finally {
+    await page.close();
+  }
+}
+
+/** What a run says of an SVG that sameSvgAs found the same as `as` ("baseline" or "file"), `rev` the baseline's name. */
+export const sameWhy = (as, rev) => `draws the same pixels as ${as === "baseline" ? `${rev}'s` : "the file's"}`;
 
 /**
  * `svg` against the PNG it was taken with, in a page of `browser`:

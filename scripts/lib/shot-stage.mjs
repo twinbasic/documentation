@@ -156,7 +156,11 @@ export const WINDOW_WHY = "a program's window, which Windows draws: there is no 
  * decideSvg's and `review` reviewSvg's, null for an SVG not judged; `stats` diffSvg's
  * shares (pct8, pct32, pct96); `measures` the line a person reads; `diffs` the difference
  * pictures written; and the files staged (stageSvg), or null. `window` marks a picture of
- * program windows (`window: true`), of which no SVG is drawn (WINDOW_WHY).
+ * program windows (`window: true`), of which no SVG is drawn (WINDOW_WHY). `same` says the SVG
+ * drawn is the same picture as one already there (keep.mjs's sameSvgAs): {as: "baseline",
+ * baseline} the revision's, by its hash, whose bytes the file is to hold (state "restored"), or
+ * {as: "file", file} the file's, by the hash of its text (shot-manifest.mjs's hashOf), which
+ * stays; the review tool applies it only while that is still so.
  */
 export function svgVerdict({
   state,
@@ -168,11 +172,13 @@ export function svgVerdict({
   diffs = [],
   staged = null,
   window = false,
+  same = null,
 }) {
   return {
     state,
     why,
     ...(window ? { window: true } : {}),
+    ...(same ? { same } : {}),
     faithful: verdict?.faithful ?? null,
     by: verdict?.by ?? null,
     share: verdict?.share ?? null,

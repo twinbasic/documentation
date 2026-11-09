@@ -701,6 +701,19 @@ checkout's is 58 MB that a retake rewrites.
 
 Order: 2 and 3, then 4, then (c), then 1.
 
+**An SVG that draws the same pixels is the same picture** (owner, 2026-11-09): keep.mjs's
+`sameSvgAs`, which `shoot_docs.mjs --svg` and `replay.mjs` ask before an SVG is written, draws
+the SVG as diffSvg does (`renderSvg`, an `<img>` at the device scale) beside the baseline's
+(`--against`, which the tool now passes to a replay too) and then the file's, and compares them
+exactly, with no tolerance (a tolerance would bring back the threshold this tool exists for).
+The same as the baseline's: its bytes go back (`restoreSvg`, through git), state `restored`, which
+the review counts as the session's write and groups as Only noise. The same as the file's: it
+stays. A staged verdict says so (`same`: `{as: "baseline", baseline}` or `{as: "file", file}`, the
+hash of the file's text), and the applier honours it only while that still holds. Measured on the
+BETA 1042 retake's 108 SVGs changed outside the runs: 47 of the files drew as HEAD's; a replay
+from the bundles the tool's retake had cached put back 101 (they drew HEAD's SVGs), and left 7
+for a review.
+
 ## Open
 
 Nothing: the questions open after step 5 (the port, pictures changed outside the session,

@@ -191,7 +191,7 @@ describe("the screenshot review's session (shot-session.mjs)", () => {
     assert.deepEqual(runOf({ kind: "retake", svg: false }, base), { tool: "shoot_docs", args: ["--against", h] });
     assert.deepEqual(runOf({ kind: "replay", only: " ", recheck: true }, base), {
       tool: "replay",
-      args: ["--recheck"],
+      args: ["--recheck", "--against", h],
     });
     const pictures = ["IDE/Images/A.png", "IDE/Images/A (1).light.png"];
     const cleanup = runOf({ kind: "cleanup", dryRun: true, pictures }, base);
@@ -1192,7 +1192,7 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     assert.deepEqual(JSON.parse(replay[1].replace(/&quot;/g, '"')), { kind: "replay", pictures: [C], recheck: true });
     assert.deepEqual(runOf({ kind: "replay", pictures: [C], recheck: true }, { hash: "a".repeat(40) }), {
       tool: "replay",
-      args: ["--only", onlyOf([C]), "--recheck"],
+      args: ["--only", onlyOf([C]), "--recheck", "--against", "a".repeat(40)],
     });
     // with no bundle, no replay, and the card says so
     const none = allHtml({
@@ -1293,6 +1293,73 @@ describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => 
       fs.readdirSync(path.dirname(file)).filter((f) => f.endsWith(".tmp")),
       [],
     );
+  });
+
+  test("an SVG a run found the same picture as the baseline's goes back to its bytes, one the same as the file's stays, while that still holds", (t) => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-same-"));
+    t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
+    const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] }).toString();
+    try {
+      git("init", "-q");
+    } catch {
+      t.skip("no git");
+      return;
+    }
+    for (const [k, v] of [
+      ["core.autocrlf", "false"],
+      ["user.name", "t"],
+      ["user.email", "t@t"],
+      ["commit.gpgsign", "false"],
+    ])
+      git("config", k, v);
+    const docs = path.join(repo, "docs");
+    const SVG = A.replace(/\.png$/, ".svg");
+    const at = (out) => path.join(docs, out);
+    fs.mkdirSync(path.dirname(at(A)), { recursive: true });
+    fs.writeFileSync(at(A), OLD);
+    fs.writeFileSync(at(SVG), "<svg>baseline</svg>");
+    git("add", ".");
+    git("commit", "-q", "-m", "x");
+    // a terminal rewrote the SVG in bytes no one sees
+    fs.writeFileSync(at(SVG), "<svg>same picture, other bytes</svg>");
+    const revision = openRevision(docs, "HEAD");
+    const session = openSession(path.join(repo, ".review"), () => ({
+      hash: revision.hash,
+      short: revision.short,
+      build: 1010,
+    }));
+    const applier = createApplier({
+      session,
+      docsRoot: docs,
+      bundlesRoot: null,
+      revision: () => revision,
+      manifest: () => openManifest(path.join(repo, "manifest.json")),
+    });
+    const replayOf = (same) => {
+      const n = session.addRun({ tool: "replay", args: [] }).n;
+      writeVerdict(runPaths(session.root, n).stage, A, "svg", svgVerdict({ state: "restored", why: "the same", same }));
+      return n;
+    };
+    // as the file is: it stays
+    const kept = replayOf({ as: "file", file: hashOf("<svg>same picture, other bytes</svg>") });
+    assert.equal(applier.arrive(kept, A, "svg"), true);
+    assert.equal(applier.reviewed(kept, A).svg.state, "unchanged");
+    assert.equal(fs.readFileSync(at(SVG), "utf8"), "<svg>same picture, other bytes</svg>");
+    // the same picture as another baseline's: not applied, and it says why
+    const elsewhere = replayOf({ as: "baseline", baseline: "f".repeat(40) });
+    assert.equal(applier.arrive(elsewhere, A, "svg"), true);
+    assert.deepEqual(
+      [applier.reviewed(elsewhere, A).svg.state, fs.readFileSync(at(SVG), "utf8")],
+      ["unchanged", "<svg>same picture, other bytes</svg>"],
+    );
+    assert.match(applier.reviewed(elsewhere, A).svg.why, /draw it again/);
+    // the same picture as this baseline's: its bytes go back, and the session wrote the file
+    const back = replayOf({ as: "baseline", baseline: revision.hash });
+    assert.equal(applier.arrive(back, A, "svg"), true);
+    assert.equal(applier.reviewed(back, A).svg.state, "restored");
+    assert.equal(fs.readFileSync(at(SVG), "utf8"), "<svg>baseline</svg>");
+    assert.deepEqual(wroteOf(applier.reviewed(back, A)), { png: false, svg: true });
+    assert.equal(git("status", "--porcelain", "--", "docs"), "");
   });
 
   test("puts back a picture changed outside the runs, and judges the run that found the change again, against the baseline", (t) => {
