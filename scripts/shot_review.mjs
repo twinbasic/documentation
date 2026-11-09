@@ -204,7 +204,7 @@ if (values.archived !== undefined) {
     baselineOf: (rev) => baselineAt(revisionOf(DOCS_DIR, rev)),
     revisionAt: (hash) => openRevision(DOCS_DIR, hash),
     changedBetween: (a, b) => changedBetween(DOCS_DIR, a, b),
-    changed: () => changedPictures(DOCS_DIR, session.data.baseline.hash).pictures,
+    changed: () => changedPictures(DOCS_DIR, session.data.baseline.hash, undefined, { svgs: true }).pictures,
     ides: listIdes(),
     onLine: (run, line) => console.log(`run ${run.n}: ${line}`),
     // The commit closes the session: archived with its lock, and the next one held and made with

@@ -71,7 +71,13 @@ Two decisions are made by fixed thresholds, and neither threshold holds for ever
   2026-10-31), so that a page's and a picture's address can be kept; not a port from `tbbroker`.
 - **The overview also lists the pictures under `docs/` that differ from the baseline but that
   no run of the session reported** (a retake from a terminal, an edit), as a group of their own
-  (owner, 2026-10-31): HEAD's picture against the file, with no verdict to override.
+  (owner, 2026-10-31): HEAD's picture against the file, with no verdict to override. **Since
+  2026-11-09 (owner), by file and by content**: a picture's PNG or SVG that differs from the
+  baseline and that no layer of the session wrote is changed outside the runs, *whether a run
+  reported the picture or not* (a run that found a terminal's SVG and left it as it was does not
+  make it the session's), and an SVG that changed with its PNG unchanged is listed too. Each has
+  **Keep it as it is** (recorded against its bytes) and **Put back the baseline's**, and the commit
+  waits until each is one or the other: see [One way to take pictures](#one-way-to-take-pictures).
 - **When HEAD moves under an open session** (a commit made outside the tool), the session keeps
   its baseline and the overview warns, as step 5 does; and the overview offers to **move the
   session to the new HEAD on demand** (owner, 2026-10-31). Moving makes the new HEAD the
@@ -211,8 +217,11 @@ form for a new run:
 ### Commit
 
 What the session changed, counted: PNGs updated by the tool's verdict, kept at `HEAD` against
-it, taken against it; SVGs written (by allowance among them) and removed; the manifest. Other
-changes in the working tree are listed as left out. The message is one line by default
+it, taken against it; SVGs written (by allowance among them) and removed; pictures kept from
+outside the runs; the manifest. Other changes in the working tree are listed as left out. **A
+picture changed outside the runs that no review has kept or put back holds the commit back**
+(owner, 2026-11-09; `undecidedRefusal`): the page lists it, and Commit is disabled with the reason,
+so that once the tool has committed, no picture under `docs/` differs from HEAD. The message is one line by default
 ("Screenshots retaken on BETA 1501: 39 pictures changed, 3 kept at HEAD by review; 35 SVGs
 written (2 by allowance), 1 removed"), can be edited, and **Back to the default message** is
 enabled once it differs. **Commit** commits the session's own files and nothing else, named
@@ -458,7 +467,7 @@ What step 6 added:
 | The noise rule over files | `pngsNear(a, b, rule)` in `shot-change.mjs`, `shoot_docs.mjs`'s `nearly` |
 | The manifest's setter | `setPart(out, part, key, value)` on `openManifest`'s object: a decision or an allowance set, or removed with `undefined`, checked as `parseManifest` checks an entry |
 | The actions | POSTs of JSON to `/api/picture/<out>` (`hrefs.act`), `{action}`: `png` (`keep` "old", "new" or null), `svg` (`accept` true, false or null), `allowance` (`png` and `svg`, each `{levels, share, ignore}`, empty for the default), `rule` (the picture's decisions removed: "Back to the tool's verdicts"), `judge`; and `/api/baseline` (`hrefs.moveBaseline`). Each changes the manifest, then `rejudge`s from the run the verdict is about. A POST is refused unless its Origin is the server's own and its body JSON, since a page of any origin can send a form to the loopback address. The detail page's PNG and SVG rows have the choices, an Allowances form (a rectangle is drawn by dragging on the picture, in device pixels) and Judge again; the page's script sends them and says "applying..." or the error beside the buttons |
-| Changed outside the runs | the server's `changed()` (`changedPictures` against the baseline, read at most once a second); `reviewPictures(runs, {outside})` puts those no run reported in the group `outside`, between Only noise and Unchanged; `outsideHtml` compares HEAD's picture with the file, its map `/map/outside/<out>` drawn by `changeMap` |
+| Changed outside the runs | the server's `changed()` (`changedPictures(..., {svgs: true})` against the baseline, read at most once a second: each picture whose PNG or SVG differs, `{out, status, parts}`, an SVG counted when its PNG is under docs or among the changed, `pictureChanges`); `reviewPictures(runs, {outside, outsideKept})` marks each file no layer wrote (`wroteOf`: a PNG written, put back or removed takes its SVG with it; an SVG written or removed) as `outsideParts`, whether a run reported the picture or not, in the group `outside`, between Only noise and Unchanged; `outsideHtml` (no run reported it) compares HEAD's picture with the file, its map `/map/outside/<out>` drawn by `changeMap`, and `detailHtml` takes `outside` for one a run reported; both show `outsideSectionHtml`, the SVG at HEAD and the file's, with **Keep it as it is** (`{action: "keep-outside"}`: `session.keepOutside(out, {png, svg})`, the files' hashes, `"absent"` for one removed, in `session.json`'s `outside`; it holds while the files hold those bytes, the server's `outsideKept`) and **Put back the baseline's** (`{action: "put-back"}`: the applier's `putBack(out, parts)`, which writes the baseline's file (an SVG through `git restore`) or removes it, gives the first layer on the picture the baseline's file as what it found (`setHeldPart`), and applies every layer again from there) |
 | Moving to HEAD | `session.moveBaseline(baseline)` (`moved: {at, from}`); the server's `head()` and `revisionAt(hash)`; HEAD is read again at most once a second, so the notice follows a commit made while the tool is open. Each verdict as applied records the baseline it was judged against (`baseline`, a run's `--against` on arrival), and `reviewPictures(runs, {baseline, stale})` gives one judged against the revision of another baseline the look `baseline` until it is judged again, when `stale(out, hash)` says the picture differs between that commit and the baseline: the server's `changedBetween(a, b)`, one `git diff --name-only` per pair of commits, kept (a move to a commit that changed only code left 543 of 559 verdicts needing a look under the old rule, and 0 under this one). A move changes no file, so it is undone by moving back: `moved` records `fromHash`, and the overview's notice offers **Move back to `<from>`** (`{action: "back"}`, the server's `baselineOf(rev)`) |
 | A retake's revision | `shot_review.mjs --retake` passes `--against <baseline>`, so that a run judges against the session's baseline whatever HEAD is (`againstOf(run)`) |
 
@@ -663,6 +672,34 @@ script name the helper that raised it. That is how the `Close_Question` crash wa
 tab the IDE is still loading or saving shows a spinner in place of its close icon (the button's
 class is `progressSpinnerIcon`, `ide/main.js`), and `closeTabs` now waits for the icon with a
 MutationObserver (`tabCloseIcon`).
+
+## One way to take pictures
+
+Owner, 2026-11-09, after the BETA 1042 retake: a retake from a terminal was not a run of the
+session, its 111 SVGs redrawn with their PNGs unchanged never showed in the tool, and the tool's
+commit left them behind. Four rules, so that nobody has to remember how the tools came to be:
+
+1. **Every screenshot run is a run of the session**: `shoot_docs.mjs`, `replay.mjs`,
+   `chromeshot.mjs --take` and `--cleanup`, typed in a terminal or started from the tool. A
+   terminal run hands itself to the tool when the tool is open for the checkout, and otherwise
+   opens the session itself (owner: open it itself, not refuse), runs the code the tool runs and
+   records the run. There is no mode that writes under `docs/` outside a session.
+2. **The tool shows every picture file that differs from the baseline**, PNG and SVG, light
+   pictures included: each is explained by what a layer of the session wrote, or shown as changed
+   outside the runs with Keep and Put back. Done (2026-11-09).
+3. **After a commit from the tool, no picture under `docs/` differs from HEAD**: the commit takes
+   what a review kept, and waits for every picture changed outside the runs to be kept or put
+   back. Done (2026-11-09).
+4. **When a picture's size changes, the tool updates its pages' `{:width height}`** in the same
+   commit (owner: make the edits), and a build check fails a shot whose declared size is not its
+   pixels' half.
+
+And (c), owner: **a checkout's bundle cache is filled from the main checkout's** on first use
+(`git rev-parse --git-common-dir`), so that a new worktree does not redraw every SVG whose bundle
+it lacks. The cache is never committed: a bundle can hold the Windows user name, and the main
+checkout's is 58 MB that a retake rewrites.
+
+Order: 2 and 3, then 4, then (c), then 1.
 
 ## Open
 

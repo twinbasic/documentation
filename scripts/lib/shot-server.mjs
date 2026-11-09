@@ -56,6 +56,7 @@ import {
   neighbours,
   reviewPictures,
   runFacts,
+  undecidedRefusal,
   verdictOfEvent,
 } from "./shot-review.mjs";
 import { kindOf, runOf, startRun } from "./shot-runs.mjs";
@@ -141,8 +142,9 @@ const TAIL_LINES = 8;
  * `baselineOf(rev)` the baseline the commit `rev` would make, as `head()` does for HEAD, which
  * the move back to the earlier baseline takes, `revisionAt(hash)` a revision as openRevision
  * gives it, `changedBetween(a, b)` the pictures that differ between two commits (a Set of paths
- * under docs/; null: every picture is taken to differ), `changed()` the pictures that differ
- * from the baseline ([{out, status}], changedPictures'), `ides` the installs a retake can be run
+ * under docs/; null: every picture is taken to differ), `changed()` the pictures whose PNG or
+ * SVG differs from the baseline ([{out, status, parts}], changedPictures' with `svgs`; one with
+ * no `parts` is its PNG's), `ides` the installs a retake can be run
  * on, newest first ([{build, exe}], listIdes'), `onLine(run, line)` called for each line of a run
  * meant for a person, `browser` where a browser retake works ({captures, extension, noOpen},
  * runOf's), and `command` the probes' stand-in for the tools a run starts (startRun).
@@ -253,6 +255,29 @@ export function createReviewServer({
     }
     return measures.get(key);
   };
+  // ---- files changed outside the session's runs ----
+  // A file's hash as a review keeps it (shot-session.mjs's keepOutside): a PNG's bytes, an SVG's
+  // text with its line endings as LF, "absent" for a file that is not there. Kept by the file's
+  // time and size, since the model asks on every page.
+  const hashes = new Map();
+  const partFile = (out, part) => path.join(docsRoot, part === "png" ? out : svgOf(out));
+  function fileHash(out, part) {
+    const file = partFile(out, part);
+    let stat = null;
+    try {
+      stat = statSync(file);
+    } catch {}
+    if (!stat?.isFile()) return "absent";
+    const key = `${file}\u0000${stat.mtimeMs}\u0000${stat.size}`;
+    if (!hashes.has(key)) hashes.set(key, hashOf(part === "png" ? readFileSync(file) : readFileSync(file, "utf8")));
+    return hashes.get(key);
+  }
+  // Whether a review kept the files `parts` of `out` as they are now.
+  const outsideKept = (out, parts) => {
+    const kept = session.data.outside?.[out];
+    return !!kept && parts.every((part) => kept[part] === fileHash(out, part));
+  };
+
   // A run's verdicts as the pages show them: each part as it was applied (shot-verdicts.mjs),
   // judged again after a review, else as the run reported it.
   const shownVerdict = (n, out, v) => appliedVerdict(v, applier.reviewed(n, out));
@@ -266,7 +291,7 @@ export function createReviewServer({
         facts: r.facts,
         verdicts: shownVerdicts(r),
       })),
-      { exists, measure, outside: outside(), baseline: session.data.baseline.hash, stale },
+      { exists, measure, outside: outside(), baseline: session.data.baseline.hash, stale, outsideKept },
     );
   // Whether the picture `out` differs between the commit `hash` and the baseline: a verdict
   // judged against that commit's picture then needs a look. One git diff per pair of commits,
@@ -731,13 +756,24 @@ export function createReviewServer({
     if (filter === "look") session.setPlace(out);
     const file = (src, bytes) => (bytes ? { src, size: pngSize(bytes) } : null);
     const pager = { filter, place: { index: place.index, total: list.length }, prev: place.prev, next: place.next };
-    if (p.outside) {
+    // the SVG as the baseline has it and as the file is, for a review of an SVG changed outside the runs
+    const svgFiles = () => {
+      const s = svgOf(out);
+      const png = readIf(path.join(docsRoot, out)) ?? revision.bytes(out);
+      const size = png ? pngSize(png) : null;
+      return {
+        head: revision.bytes(s) ? { src: hrefs.head(s), size } : null,
+        docs: exists(s) ? { src: hrefs.docs(s), size } : null,
+      };
+    };
+    const outside = p.outside ? { parts: p.outsideParts, kept: p.outsideKept, svg: svgFiles() } : null;
+    if (p.outside && !p.png && !p.svg) {
       const atHead = revision.bytes(out);
       const now = readIf(path.join(docsRoot, out));
       return outsideHtml({
         p,
         ...pager,
-        files: { head: file(hrefs.head(out), atHead), docs: file(hrefs.docs(out), now) },
+        files: { head: file(hrefs.head(out), atHead), docs: file(hrefs.docs(out), now), svg: outside.svg },
         map: atHead && now ? hrefs.outsideMap(out) : null,
         baseline: session.data.baseline,
         busy: busyRun(),
@@ -779,6 +815,7 @@ export function createReviewServer({
       error: applier.errors.get(out) ?? null,
       busy: busyRun(),
       bundled: bundlesRoot ? !!readBundle(bundlesRoot, out) : null,
+      outside,
     });
   }
 
@@ -804,10 +841,31 @@ export function createReviewServer({
     for (let k = 0; k < flat.length; k += 4) rects.push(flat.slice(k, k + 4));
     return rects.length ? rects : undefined;
   };
+  // A review of the files of `out` changed outside the session's runs: kept as they are (the
+  // session records their bytes; a later change sends them back), or put back as the baseline
+  // has them (the applier, which judges the picture's layers again from there).
+  function actOutside(p, action) {
+    if (!p?.outside) throw new Error(`${p?.out ?? "the picture"} has no file changed outside the session's runs`);
+    if (action === "keep") {
+      const kept = Object.fromEntries(p.outsideParts.map((part) => [part, fileHash(p.out, part)]));
+      session.keepOutside(p.out, kept);
+      return;
+    }
+    applier.putBack(p.out, p.outsideParts);
+    session.keepOutside(p.out, null);
+    changedSeen = { at: 0, value: [] };
+    maps.clear();
+    measures.clear();
+    const error = applier.errors.get(p.out);
+    if (error) throw new Error(`not put back: ${error}`);
+  }
+
   function act(out, body) {
     refuseWhileCleaning();
     const p = model().pictures.find((q) => q.out === out);
-    if (!p || p.outside) throw new Error(`${out} has no verdict of this session to act on`);
+    if (body.action === "keep-outside" || body.action === "put-back")
+      return actOutside(p, body.action === "keep-outside" ? "keep" : "put-back");
+    if (!p || (p.outside && !p.png && !p.svg)) throw new Error(`${out} has no verdict of this session to act on`);
     const m = manifest();
     let from;
     switch (body.action) {
@@ -952,6 +1010,8 @@ export function createReviewServer({
     if (refused) throw new Error(refused);
     const { plan, error } = commitState();
     if (error) throw new Error(`git could not be read: ${error}`);
+    const undecided = undecidedRefusal(plan);
+    if (undecided) throw new Error(undecided);
     const paths = plan.files.map((f) => f.path);
     if (!paths.length) throw new Error("the session has changed nothing to commit");
     const asked = Array.isArray(body.files) ? [...body.files].sort() : null;
@@ -996,7 +1056,7 @@ export function createReviewServer({
       ...state,
       committing: committing ? { message: committing.message, at: committing.at } : null,
       baseline: session.data.baseline,
-      refusal: commitRefusal(),
+      refusal: commitRefusal() ?? undecidedRefusal(state.plan),
       headNow: headNow()?.short ?? null,
       canMove: !!revisionAt,
       lastCommit,

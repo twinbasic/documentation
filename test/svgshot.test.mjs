@@ -2913,6 +2913,29 @@ describe("changes against a git revision", () => {
       () => changedPictures("/x", "main", () => ({ status: 128, stdout: "" })),
       /not in a git working tree/,
     );
+    // with svgs: a picture whose SVG changed is listed, its PNG the same or not; an SVG with no
+    // picture beside it (a diagram's) is not
+    const withSvg = (args) => {
+      if (args[0] === "diff")
+        return { status: 0, stdout: "M\0a.png\0M\0a.svg\0M\0b.light.svg\0D\0c.png\0D\0c.svg\0M\0dot/d.svg\0" };
+      if (args[0] === "ls-files") return { status: 0, stdout: "e.svg\0_site/f.svg\0" };
+      return git(args);
+    };
+    const there = new Set(["b.light.png", "e.png", "_site/f.png"]);
+    assert.deepEqual(
+      changedPictures("/some/docs", "main", withSvg, { svgs: true, isPicture: (out) => there.has(out) }).pictures,
+      [
+        { out: "a.png", status: "modified", parts: { png: "modified", svg: "modified" } },
+        { out: "b.light.png", status: "SVG modified", parts: { png: null, svg: "modified" } },
+        { out: "c.png", status: "deleted", parts: { png: "deleted", svg: "deleted" } },
+        { out: "e.png", status: "SVG added", parts: { png: null, svg: "added" } },
+      ],
+    );
+    // without svgs, the PNGs alone, as --cleanup takes them
+    assert.deepEqual(
+      changedPictures("/some/docs", "main", withSvg).pictures.map((p) => p.out),
+      ["a.png", "c.png"],
+    );
   });
 
   test("a picture's allowance widens the noise rule, as --cleanup judges two PNGs", () => {

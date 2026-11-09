@@ -580,7 +580,12 @@ const actionsHtml = (buttons) =>
  */
 export function chipsOf(p, entry = null) {
   const chips = [];
-  if (p.outside) chips.push(chipHtml(`changed outside the runs: ${p.outside}`, "change"));
+  if (p.outside)
+    chips.push(
+      p.outsideKept
+        ? chipHtml(`kept from outside the runs: ${p.outside}`, "review", "a review kept it as it is")
+        : chipHtml(`changed outside the runs: ${p.outside}`, "change", "keep it or put it back before the commit"),
+    );
   if (p.progress) chips.push(chipHtml("in progress", "progress"));
   if (p.failed) chips.push(chipHtml("failed", "fail", p.failed.error));
   if (p.retake) chips.push(chipHtml("needs a retake", "fail", p.retake.why));
@@ -933,9 +938,49 @@ const HOLDS = {
 };
 
 /**
- * The page of a picture changed outside the session's runs (reviewPictures' `outside`): the
- * baseline's picture against the file, and no verdict. `files` {head, docs}, each {src, size}
- * or null; `map` the difference map's address, or null; the rest as detailHtml's.
+ * What a picture's page says of its files changed outside the session's runs (reviewPictures'
+ * `outsideParts`), with Keep and Put back: an SVG among them shown as the baseline has it and as
+ * the file is (`svg` {head, docs}, each {src} or null). Nothing of the picture is committed until
+ * one of the two is chosen (WIP.ShotReview.md, Commit).
+ */
+export function outsideSectionHtml(p, svg, baseline) {
+  const act = hrefs.act(p.out);
+  const names = p.outsideParts.map((part) => (part === "png" ? "its PNG" : "its SVG")).join(" and ");
+  const figs = [];
+  if (p.outsideParts.includes("svg")) {
+    figs.push(
+      svg?.head
+        ? figureHtml(svg.head.src, svg.head.size, `SVG at HEAD (${baseline.short})`)
+        : `<figure><p class="meta">HEAD has no SVG</p></figure>`,
+    );
+    figs.push(
+      svg?.docs
+        ? figureHtml(svg.docs.src, svg.docs.size, "The SVG file")
+        : `<figure><p class="meta">No SVG file</p></figure>`,
+    );
+  }
+  return `<section class="outside">
+<h2>Changed outside the session's runs</h2>
+<p>No run of this session wrote ${names}: ${esc(p.outside)} against the baseline, ${esc(baseline.short)} (a run from a terminal, or an edit). ${p.outsideKept ? "A review kept it as it is, and the commit takes it." : "The commit takes nothing of this picture until it is kept as it is or put back."}</p>
+${figs.length ? `<div class="trio">${figs.join("\n")}</div>` : ""}
+${actionsHtml([
+  actionButton("Keep it as it is", act, { action: "keep-outside" }, { pressed: p.outsideKept }),
+  actionButton(
+    "Put back the baseline's",
+    act,
+    { action: "put-back" },
+    { confirm: `Put ${names} back as ${baseline.short} has ${p.outsideParts.length > 1 ? "them" : "it"}?` },
+  ),
+])}
+</section>`;
+}
+
+/**
+ * The page of a picture changed outside the session's runs that no run reported
+ * (reviewPictures' `outside`): the baseline's picture against the file, and no verdict.
+ * `files` {head, docs, svg}, `head` and `docs` each {src, size} or null, `svg` as
+ * outsideSectionHtml takes it; `map` the difference map's address, or null; the rest as
+ * detailHtml's.
  */
 export function outsideHtml({ p, filter, place, prev, next, files, map, baseline, busy = null }) {
   const size = files.docs?.size ?? files.head?.size ?? null;
@@ -952,7 +997,8 @@ export function outsideHtml({ p, filter, place, prev, next, files, map, baseline
     );
   const body = `${pagerHtml({ p, filter, place, prev, next })}
 <p class="meta">${esc(sizeText(size))}; ${chipsOf(p)}</p>
-<p class="notice">No run of this session reported this picture: its file is ${esc(p.outside)} against the baseline, ${esc(baseline.short)} (a retake from a terminal, or an edit). It has no verdict to override; a retake of it through this tool judges it.</p>
+<p class="notice">No run of this session reported this picture. It has no verdict to override; a retake of it through this tool judges it.</p>
+${outsideSectionHtml(p, files.svg, baseline)}
 ${p.outside === "deleted" ? "" : actionsHtml(runButtons(p.out, busy, { replay: false }))}
 <div class="trio">${figs.join("\n")}</div>`;
   return pageHtml({
@@ -1188,6 +1234,7 @@ export function detailHtml({
   error = null,
   busy = null,
   bundled = null,
+  outside = null,
 }) {
   const groupTitle = (GROUPS.find(([k]) => k === p.group) ?? [null, p.group])[1];
   const nav = pagerHtml({ p, filter, place, prev, next });
@@ -1360,6 +1407,7 @@ ${actionsHtml(runButtons(p.out, busy, { bundled, replay: !isWindow(p) }))}
   const body = `${nav}
 <p class="meta">${theme} theme, ${esc(sizeText(size))}; ${chipsOf(p, entry)}</p>
 ${notes.map((n) => `<p class="notice">${n}</p>`).join("\n")}
+${outside ? outsideSectionHtml(p, outside.svg, baseline) : ""}
 ${compare}
 ${pngRow}
 ${svgRow}
@@ -1615,6 +1663,10 @@ export function commitHtml({
   else if (headNow) notices.push(headNotice(headNow, baseline, canMove));
   else if (refusal) notices.push(esc(refusal));
   const sections = [];
+  if (plan?.undecided?.length)
+    sections.push(`<h2>Changed outside the session's runs (${plan.undecided.length})</h2>
+<p class="notice">No run of this session wrote these files, and no review has kept them or put them back. The commit takes nothing of these pictures, and waits until each is decided on its page.</p>
+<ul class="left">${plan.undecided.map((out) => `<li><a href="${hrefs.picture(out)}"><code>${esc(out)}</code></a></li>`).join("")}</ul>`);
   if (error) sections.push(`<p class="notice">git could not be read: ${esc(error)}</p>`);
   // (no plan: an archived session, whose commit holds what it changed)
   else if (plan && !plan.files.length) sections.push("<p>The session has changed nothing to commit.</p>");
@@ -1631,6 +1683,7 @@ export function commitHtml({
       ["Light pictures removed", c.dropped],
       ["SVGs written", `${c.svgWritten}${by.length ? ` (${by.join(", ")})` : ""}`],
       ["SVGs removed", c.svgRemoved],
+      ["Pictures kept from outside the runs", c.outsideKept ?? 0],
       ["The manifest", c.manifest ? "changed" : "unchanged"],
     ];
     const fileRow = (f) =>
@@ -1658,7 +1711,7 @@ ${plan.files.map(fileRow).join("\n")}
     const shown = plan.leftOut.slice(0, LEFT_OUT_SHOWN);
     const more = plan.leftOut.length - shown.length;
     sections.push(`<h2>Left out (${plan.leftOut.length})</h2>
-<p>The working tree's other changes, which the commit does not take: pictures changed outside the session's runs among them.</p>
+<p>The working tree's other changes, which the commit does not take.</p>
 <ul class="left">${shown.map((c) => `<li><code>${esc(c.path)}</code> ${esc(c.status)}</li>`).join("")}${more ? `<li>and ${more} more</li>` : ""}</ul>`);
   }
   if (archived.length)

@@ -177,6 +177,27 @@ export function holdPicture(dir, outRoot, out, bundlesRoot, build) {
 }
 
 /**
+ * Replaces one file of what `dir` keeps of the picture `out` (holdPicture): `part` "png" or
+ * "svg", `bytes` what the picture held, or null when it held no such file. Used when a file
+ * changed outside the session's runs is put back as the baseline has it: the layer that found
+ * it then finds the baseline's. Returns false, and changes nothing, when `dir` keeps nothing of
+ * the picture.
+ */
+export function setHeldPart(dir, out, part, bytes) {
+  const f = heldFiles(dir, out);
+  if (!existsSync(f.record)) return false;
+  const record = JSON.parse(readFileSync(f.record, "utf8"));
+  const to = part === "png" ? f.png : f.svg;
+  if (bytes) {
+    mkdirSync(path.dirname(to), { recursive: true });
+    writeFileSync(to, bytes);
+  } else rmSync(to, { force: true });
+  record[part] = !!bytes;
+  writeFileSync(f.record, `${JSON.stringify(record)}\n`);
+  return true;
+}
+
+/**
  * Puts the picture `out` under `outRoot` back as `dir` keeps it (holdPicture): its PNG, its
  * SVG and its bundle, each removed when it was not there. Returns the build kept, or
  * undefined when `dir` keeps nothing of the picture and nothing was done.

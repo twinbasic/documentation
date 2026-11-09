@@ -60,7 +60,9 @@ import {
   noSvgReason,
   reviewPictures,
   runFacts,
+  undecidedRefusal,
   verdictOfEvent,
+  wroteOf,
 } from "../scripts/lib/shot-review.mjs";
 import { allHtml, chipsOf, detailHtml, encodePath, hrefs, loupesHtml, plainHtml } from "../scripts/lib/shot-pages.mjs";
 import { pngRule, svgRule } from "../scripts/lib/shot-policy.mjs";
@@ -474,12 +476,16 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
       }),
     ];
     const outside = [
-      { out: A, status: "modified" },
+      { out: B, status: "modified" },
       { out: C, status: "added" },
     ];
     const { pictures } = reviewPictures(runs, { outside, baseline: "new" });
     const at = (out) => pictures.find((p) => p.out === out);
-    assert.deepEqual([at(C).group, at(C).outside, at(A).outside], ["outside", "added", null]);
+    // C no run reported; B's PNG a run wrote, so the change is the session's
+    assert.deepEqual(
+      [at(C).group, at(C).outside, at(C).outsideParts, at(B).outside],
+      ["outside", "added", ["png"], null],
+    );
     assert.deepEqual([at(A).group, at(A).png.look.why], ["look", "baseline"]);
     assert.deepEqual([at(B).group, at(B).png.look], ["changed", undefined]);
     assert.equal(reviewPictures(runs, { baseline: "old" }).pictures.find((p) => p.out === A).group, "noise");
@@ -487,6 +493,109 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     const kept = reviewPictures(runs, { baseline: "new", stale: (out, hash) => !(out === A && hash === "old") });
     assert.deepEqual([kept.pictures.find((p) => p.out === A).group], ["noise"]);
     assert.match(chipsOf(at(C)), /changed outside the runs: added/);
+  });
+
+  test("a file no layer of the session wrote is changed outside the runs, whether a run reported its picture or not", () => {
+    const F = "IDE/Images/F.png";
+    // what a layer decides: a PNG written, put back or removed takes its SVG with it
+    assert.deepEqual(
+      ["updated", "new", "restored", "dark", "once", "noise", "unchanged", "failed"].map(
+        (state) => wroteOf({ png: { state } }).png,
+      ),
+      [true, true, true, true, true, false, false, false],
+    );
+    assert.deepEqual(wroteOf({ png: { state: "updated" }, svg: { state: "unchanged" } }), { png: true, svg: true });
+    assert.deepEqual(wroteOf({ png: { state: "noise" }, svg: { state: "unchanged" } }), { png: false, svg: false });
+    assert.deepEqual(wroteOf({ svg: { state: "removed" } }), { png: false, svg: true });
+    const runs = [
+      run(1, "shoot_docs", false, [jobs(A, B, C, D, E)], {
+        // the PNG and its SVG stayed: whatever they hold is what the run found
+        [A]: { png: { state: "noise" }, svg: { state: "unchanged", why: "its PNG is not written" } },
+        // the PNG stayed, and the run wrote the SVG (its bundle could not draw it again)
+        [B]: { png: { state: "unchanged" }, svg: { state: "updated" } },
+        // the PNG written, its SVG the same as the file's: the session judged both
+        [C]: { png: { state: "updated" }, svg: { state: "unchanged" } },
+        // the PNG put back as the baseline has it, with its SVG
+        [D]: { png: { state: "restored" }, svg: { state: "updated" } },
+        [E]: { png: { state: "unchanged" }, svg: { state: "unchanged" } },
+      }),
+      // a later run that leaves A as it is does not make its files the session's
+      run(2, "shoot_docs", false, [jobs(A)], { [A]: { png: { state: "unchanged" }, svg: { state: "unchanged" } } }),
+    ];
+    const outside = [
+      { out: A, status: "SVG modified", parts: { png: null, svg: "modified" } },
+      { out: B, status: "SVG modified", parts: { png: null, svg: "modified" } },
+      { out: C, status: "modified", parts: { png: "modified", svg: "modified" } },
+      { out: D, status: "SVG modified", parts: { png: null, svg: "modified" } },
+      { out: E, status: "modified", parts: { png: "modified", svg: "added" } },
+      { out: F, status: "SVG added", parts: { png: null, svg: "added" } },
+    ];
+    const kept = { [E]: ["png", "svg"] };
+    const { pictures, groups } = reviewPictures(runs, {
+      outside,
+      outsideKept: (out, parts) => JSON.stringify(kept[out]) === JSON.stringify(parts),
+    });
+    const at = (out) => pictures.find((p) => p.out === out);
+    assert.deepEqual(
+      [A, B, C, D, E, F].map((out) => [at(out).outside, at(out).outsideParts, at(out).outsideKept]),
+      [
+        ["SVG modified", ["svg"], false],
+        [null, [], false],
+        [null, [], false],
+        [null, [], false],
+        ["PNG modified, SVG added", ["png", "svg"], true],
+        ["SVG added", ["svg"], false],
+      ],
+    );
+    assert.deepEqual(
+      groups.find((g) => g.key === "outside").pictures.map((p) => p.out),
+      [A, E, F],
+    );
+    assert.match(chipsOf(at(E)), /kept from outside the runs: PNG modified, SVG added/);
+    assert.match(chipsOf(at(A)), /changed outside the runs: SVG modified/);
+  });
+
+  test("a commit waits for every file changed outside the runs to be kept or put back, and takes the kept ones", () => {
+    const pictures = [
+      {
+        out: A,
+        png: { state: "noise" },
+        svg: { state: "unchanged" },
+        outside: "SVG modified",
+        outsideParts: ["svg"],
+        outsideKept: false,
+      },
+      { out: B, png: null, svg: null, outside: "modified", outsideParts: ["png"], outsideKept: true },
+      {
+        out: C,
+        png: { state: "updated", by: "rule", build: 1501 },
+        svg: { state: "updated" },
+        outside: null,
+        outsideParts: [],
+      },
+    ];
+    const changes = [A.replace(/\.png$/, ".svg"), B, C, C.replace(/\.png$/, ".svg")].map((out) => ({
+      path: `docs/${out}`,
+      status: "modified",
+    }));
+    const plan = commitPlan({ pictures, changes, docsPrefix: "docs/", manifestPath: "m.json" });
+    assert.deepEqual(plan.undecided, [A]);
+    assert.deepEqual(
+      plan.files.map((f) => [f.path, f.why]),
+      [
+        [`docs/${B}`, "changed outside the runs, kept by review"],
+        [`docs/${C}`, "changed by the tool's verdict"],
+        [`docs/${C.replace(/\.png$/, ".svg")}`, "written"],
+      ],
+    );
+    assert.deepEqual(
+      plan.leftOut.map((c) => c.path),
+      [`docs/${A.replace(/\.png$/, ".svg")}`],
+    );
+    assert.equal(plan.counts.outsideKept, 1);
+    assert.match(undecidedRefusal(plan), /1 picture changed outside the session's runs needs Keep or Put back first/);
+    assert.equal(undecidedRefusal({ ...plan, undecided: [] }), null);
+    assert.match(commitMessage(plan), /1 kept from outside the runs/);
   });
 
   test("a picture's allowances are chips, with the rule each makes as their tooltip", () => {
@@ -657,8 +766,11 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
       svgByAllowance: 1,
       svgByReview: 1,
       svgRemoved: 2,
+      outsideKept: 0,
       manifest: true,
     });
+    // F, changed outside the runs and not decided, holds the commit back
+    assert.deepEqual(plan.undecided, [`${I}F.png`]);
     assert.equal(plan.build, 1502);
     assert.equal(
       commitMessage(plan),
@@ -1119,6 +1231,64 @@ describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => 
       fs.readdirSync(path.dirname(file)).filter((f) => f.endsWith(".tmp")),
       [],
     );
+  });
+
+  test("puts back a picture changed outside the runs, and judges the run that found the change again, against the baseline", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-putback-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const docs = path.join(root, "docs");
+    const at = (out) => path.join(docs, out);
+    const SVG = A.replace(/\.png$/, ".svg");
+    fs.mkdirSync(path.dirname(at(A)), { recursive: true });
+    // a run from a terminal left NEW and an SVG; the baseline has OLD and no SVG
+    fs.writeFileSync(at(A), NEW);
+    fs.writeFileSync(at(SVG), "<svg>from a terminal</svg>");
+    const base = "a".repeat(40);
+    const session = openSession(root, () => ({ hash: base, short: "aaaaaaaa", build: 1010 }));
+    const revision = {
+      hash: base,
+      short: "aaaaaaaa",
+      bytes: (out) => (out === A ? OLD : null),
+      read: (outs) => new Map(outs.map((out) => [out, out === A ? OLD : null])),
+    };
+    const applier = createApplier({
+      session,
+      docsRoot: docs,
+      bundlesRoot: null,
+      revision: () => revision,
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+    });
+    session.addRun({ tool: "shoot_docs", args: ["--against", base] });
+    const stage = runPaths(root, 1).stage;
+    // the session's run captures NEW: the file is the capture, so it stays
+    const fate = {
+      state: "unchanged",
+      write: null,
+      against: "disk",
+      size: { w: 40, h: 30 },
+      dark: null,
+      by: "rule",
+      earlier: null,
+    };
+    writeVerdict(
+      stage,
+      A,
+      "png",
+      pngVerdict({ decision: fate, review: null, build: 1501, staged: stageCapture(stage, A, NEW, QUIET) }),
+    );
+    assert.equal(applier.arrive(1, A, "png"), true);
+    assert.equal(applier.reviewed(1, A).png.state, "unchanged");
+    assert.deepEqual(wroteOf(applier.reviewed(1, A)), { png: false, svg: false });
+
+    applier.putBack(A, ["png", "svg"]);
+    assert.equal(applier.errors.has(A), false);
+    // the run found the baseline's picture, and its capture is now a change it wrote
+    assert.deepEqual(applier.heldPng(1, A), OLD);
+    assert.equal(applier.reviewed(1, A).png.state, "updated");
+    assert.deepEqual(wroteOf(applier.reviewed(1, A)), { png: true, svg: true });
+    assert.deepEqual(fs.readFileSync(at(A)), NEW);
+    // the baseline has no SVG: the one from the terminal is gone
+    assert.equal(fs.existsSync(at(SVG)), false);
   });
 
   test("undoes a run: each picture it changed put back, a later run's layer judged again on it, and its number not given again", (t) => {
@@ -1978,6 +2148,17 @@ onStop(process.stdin, () => {
       assert.match(overview.text, /Move the session to bbbbbbbb/);
       assert.match((await get(`/picture/${Z}`)).text, /No run of this session reported this picture/);
       assert.equal((await get(hrefs.outsideMap(Z))).status, 200);
+      // Z kept as it is: recorded against its bytes, and its page says the commit takes it
+      assert.match((await get(`/picture/${Z}`)).text, /The commit takes nothing of this picture until/);
+      assert.deepEqual(await post(hrefs.act(Z), { action: "keep-outside" }), [200, { ok: true }]);
+      assert.deepEqual([pic(Z).outsideKept, Object.keys(app.session().data.outside)], [true, [Z]]);
+      assert.match((await get(`/picture/${Z}`)).text, /A review kept it as it is, and the commit takes it/);
+      // then put back as the baseline has it: the record goes
+      assert.deepEqual(await post(hrefs.act(Z), { action: "put-back" }), [200, { ok: true }]);
+      assert.ok(fs.readFileSync(path.join(docs, Z)).equals(head));
+      assert.deepEqual(app.session().data.outside, {});
+      // A has no file changed outside the runs to keep
+      assert.equal((await post(hrefs.act(A), { action: "keep-outside" }))[0], 400);
 
       // a POST from another origin, or not of JSON, changes nothing
       assert.equal(

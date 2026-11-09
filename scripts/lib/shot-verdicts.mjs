@@ -26,15 +26,25 @@
 // inputs. What was applied is in the stage's review/ (shot-stage.mjs), which the server shows in
 // place of the run's own verdicts.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { copyBundle, readBundle } from "../svgshot/bundle.mjs";
 import { staleBundle } from "../svgshot/redraw.mjs";
-import { applyPicture, applySvg, heldOf, heldPictures, holdPicture, svgOf, unholdPicture } from "./shot-apply.mjs";
+import {
+  applyPicture,
+  applySvg,
+  heldOf,
+  heldPictures,
+  holdPicture,
+  setHeldPart,
+  svgOf,
+  unholdPicture,
+} from "./shot-apply.mjs";
 import { pngsNear } from "./shot-change.mjs";
 import { svgDecision } from "./shot-manifest.mjs";
 import { bundleFollowsSvg, decidePicture, decideSvg, svgFollowsPng } from "./shot-policy.mjs";
 import { reviewPicture, reviewSvg } from "./shot-queue.mjs";
+import { restoreFromRevision } from "./shot-revision.mjs";
 import { optionOf, runPaths } from "./shot-session.mjs";
 import {
   pngVerdict,
@@ -71,6 +81,9 @@ export const againstOf = (run) => optionOf(run, "--against");
  *                          runs' order: the session opened again after the tool stopped
  *                          between a verdict and its application. Returns how many
  *   rejudge(out, from)     applies again every layer of `out` from the run `from` on
+ *   putBack(out, parts)    puts the files `parts` of `out` ("png", "svg"), changed outside the
+ *                          session's runs, back as the baseline has them, and applies every
+ *                          layer of `out` again from there
  *   undo(n)                undoes the run `n`'s layers, as if it had not run: each picture it
  *                          held put back as its layer found it, and the later layers applied
  *                          again from there. Returns {outs, later, failed}: the pictures it
@@ -350,6 +363,37 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
     }
   }
 
+  // Puts the files `parts` ("png", "svg") of `out`, changed outside the session's runs, back as
+  // the baseline has them (an SVG through git, as a checkout writes it), and a file the baseline
+  // lacks removed. When a run of the session has a layer on the picture, the first layer is given
+  // the baseline's file as what it found, and every layer is applied again from there, judged with
+  // it: what the runs decided is then decided against the baseline, not against the change.
+  function putBack(out, parts) {
+    const rev = revision();
+    const fileOf = (part) => (part === "png" ? out : svgOf(out));
+    const first = layersOf(out, -Infinity, false)[0];
+    const m = manifest();
+    try {
+      for (const part of parts) {
+        const file = fileOf(part);
+        const atRevision = rev.bytes(file);
+        if (!atRevision) rmSync(path.join(docsRoot, file), { force: true });
+        else if (part === "svg") restoreFromRevision(docsRoot, rev.hash, [file]);
+        else writeFileSync(path.join(docsRoot, file), atRevision);
+        if (first !== undefined) setHeldPart(heldDir(first), out, part, atRevision);
+      }
+      if (first !== undefined) {
+        unhold(first, out, m);
+        reapply(out, layersOf(out, first, true), m);
+      }
+      m.save();
+      errors.delete(out);
+    } catch (e) {
+      m.save();
+      errors.set(out, e.message);
+    }
+  }
+
   // Undoes the run `n`'s layers: each picture it held put back as the layer found it, and the
   // later runs' layers on it applied again from there. The dark pictures go first, since a
   // light one is judged against its dark one as the layer finds it.
@@ -379,6 +423,7 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
     arrive,
     pending,
     rejudge,
+    putBack,
     undo,
     reviewed,
     heldPng: (n, out) => heldOf(heldDir(n), out)?.pngBytes ?? null,
