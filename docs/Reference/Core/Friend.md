@@ -18,16 +18,12 @@ In a procedure declaration, **Friend** takes the place of **Public**, **Private*
 Every module and class of the project can use a **Friend** member, through a variable of the class's own type. The class does not publish it: the type library of an ActiveX DLL lists no **Friend** procedure or variable. Use **Friend** for what the classes of a project need from one another, and that a client of the class should not call.
 
 <!-- test: bug friend-late-bound -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A **Friend** member also answers late-bound calls, through an **Object** or **Variant** variable and through [**CallByName**](../Modules/Interaction/CallByName), because the compiler's [**IDispatch**](../../Reference/COM-Interfaces/IDispatch#classes-written-in-twinbasic) finds it. This holds for an object passed to another project too, so that project can call its **Friend** procedures and read and write its **Friend** variables. VB6 raises error [438](tb:Errors#438), as twinBASIC does for a **Private** member. Do not rely on **Friend** to keep a member away from code outside the project.
 
 <!-- test: bug friend-late-bound -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A project that references a package can use the **Friend** members of the package's classes, as if they were **Public**.
-
-<!-- test: bug delegate-next-keyword -->
-> [!NOTE] BETA 1034
-> The first **Friend** after a [**Delegate**](Delegate) statement is refused with TB5182, *Syntax error. No handler for this symbol*, even though nothing is wrong with it. Move the **Delegate** to the end of the class. The [**Delegate**](Delegate) page says what else this affects.
 
 ## Where it can be used
 
@@ -57,7 +53,7 @@ In VB6, a **Private** **Type** or **Enum** can be a parameter or the return type
 A class that [**Implements**](Implements) another class does not have to provide its **Friend** procedures. Calling one through a variable of the implemented class, on an object of the implementing class, raises error [97](tb:Errors#97), *Can not call friend function on object which is not an instance of defining class*, as it does in VB6. A **Friend** variable is different: the implementing class must provide it, as a **Property Get** and a **Property Let**.
 
 <!-- test: bug implements-friend-stub-stack -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > In a 32-bit build, that call damages the stack unless the procedure's arguments and return value take exactly one stack slot besides **Me**. It raises error 97 correctly from a **Sub** with one argument of 4 bytes or less, from a **Function** or **Property Get** with no arguments, and from a **Property Let** with one such value. Any other signature, such as `Function F(ByVal X As Long) As Long`, a **Sub** with two arguments or a **Sub** with a **ByVal Currency** argument, ends an exe with an access violation before a handler runs, and a run in the IDE does not return. A **Sub** with no arguments raises an error 97 that **On Error** does not keep: in an exe the handler runs, and then the program stops with an error box when the procedure returns. A 64-bit build is not affected. Do not call a **Friend** procedure on an object that may be of an implementing class.
 
 A class that [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop) another class inherits its **Friend** members, and they stay available to the whole project. A **Friend Overridable** procedure is overridden in the usual way.

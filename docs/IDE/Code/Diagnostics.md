@@ -110,10 +110,6 @@ Most errors are explained on the page of the statement, type or feature they con
 **TB5182**, *Syntax error. No handler for this symbol*
 : A statement or an attribute where the language does not allow it. A line at the top level of a `.twin` file, outside a **Module** or **Class** block, is one case. An [attribute](../../Core/Attributes) written where it does not apply is another.
 
-<!-- test: bug delegate-next-keyword -->
-> [!NOTE] BETA 1034
-> The error can also appear on a correct line: the next **Friend**, **ReadOnly**, **WithEvents**, **Implements** or **Inherits** after a [**Delegate**](../../Core/Delegate) statement gives it. Move the **Delegate** after that line.
-
 <!-- test: bug tb5079-datatype-message-nested -->
 > [!NOTE] BETA 1034
 > For a type name, TB5079 reads *Unrecognized symbol 'Unrecognized datatype symbol 'NoSuchType''*: the message for a type is put inside the message for a name.

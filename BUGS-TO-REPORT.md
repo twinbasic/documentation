@@ -703,8 +703,9 @@ Steps to reproduce the behavior:
 2. See two errors:
    ```
    TB5004 unable to match this implementation to its interface member. The expected signature was: Private Function IProbeD_F() As Long
-   TB65535 Missing implementation of member Function F() As Long
+   TB5260 Missing implementation of member Function F() As Long
    ```
+   The second is TB5260 since BETA 1042; BETA 1034 and earlier give TB65535.
 
 What was tried and does not help, each on its own:
 - the VB6-style name without the method-level `Implements IProbeD.F` clause gives `TB5018 unable to match this handler to its event member`, an event-handler message for an interface member, with the same expected signature;
@@ -717,12 +718,12 @@ The implementation is accepted, as it is without the attribute. If `[PreserveSig
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
+ - twinBASIC compiler version: BETA 1010, and BETA 1042
 
 **Additional context**
 Severity: an interface the language lets you declare cannot be implemented at all, and the diagnostic asks for the signature that is already written.
 
-<!-- Reproducer: bugs/preservesig-implements/ (mode compile, expects TB5004 and TB65535). Found by scripts/check_examples.mjs over Reference/Core/Interface.md, whose example declared IFoo with a [PreserveSig] member and then showed a class implementing it; the example no longer puts [PreserveSig] on a member it implements, and its description of the attribute says why. Also stated in docs/Reference/COM-Interfaces/IEnumVARIANT.md (the Err.ReturnHResult paragraph) and in a NOTE in docs/Features/Advanced/API-Declarations.md, "ThisCall in interfaces", whose Sub + Err.ReturnHResult workaround goes with it when fixed. -->
+<!-- Reproducer: bugs/preservesig-implements/ (mode compile, expects TB5004 and TB5260, which was TB65535 before BETA 1042). Found by scripts/check_examples.mjs over Reference/Core/Interface.md, whose example declared IFoo with a [PreserveSig] member and then showed a class implementing it; the example no longer puts [PreserveSig] on a member it implements, and its description of the attribute says why. Also stated in docs/Reference/COM-Interfaces/IEnumVARIANT.md (the Err.ReturnHResult paragraph) and in a NOTE in docs/Features/Advanced/API-Declarations.md, "ThisCall in interfaces", whose Sub + Err.ReturnHResult workaround goes with it when fixed. -->
 
 ---
 
@@ -13025,61 +13026,14 @@ Error 438 for each late-bound call, as VB6 gives, and a compile error for a `Fri
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1034
+ - twinBASIC compiler version: BETA 1034 and BETA 1042
 
 **Additional context**
 #2409 asks for `Friend` members of a package to be hidden from IntelliSense. This entry is about the calls themselves.
 
 Severity: low to medium. Code that works does not stop working, but `Friend` does not keep a member private to the project, and a client of an ActiveX DLL can reach members that the type library does not show.
 
-<!-- Reproducer: bugs/friend-late-bound/ (mode test; vb6/ is the VB6 side, `bug_repro.mjs vb6 friend-late-bound`: early-bound works, late-bound and CallByName raise 438, through Implements raises 97). The call from another project was run once in a scratch copy, not kept. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md (two NOTEs). docs/Reference/COM-Interfaces/IDispatch.md says that a Friend member is found, with a sample that prints True for it: that changes too. The Sub, Function and Property pages used to say a Friend procedure cannot be late bound, VBA-Docs' text; that sentence came off them when the page for Friend was written, and can go back once this is fixed. What the type library holds, for the Friend page, was read with TLI from an ActiveX DLL built with project.dllRegisterAfterBuild false: Friend procedures and variables are left out; a Friend Enum, Type and Event are listed; a Private Type or Enum is listed when a Public member uses it. -->
-
----
-
-## TB65535 gives Internal Error - Bad Error Info Locale Data in place of the missing member's name
-
-**Describe the bug**
-When a class leaves out a member of a class or interface it implements, TB65535 no longer says which. BETA 1033 reports *Missing implementation of member Function F() As Long*, and BETA 1034 reports *Internal Error - Bad Error Info Locale Data*. The error is still in the right place, on the name after `Implements`. Only its text is lost, and it was the text that named the member.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `missing-implementation-message.twinproj`:
-
-   ```vb
-   Class Base
-       Public Function F() As Long
-       End Function
-   End Class
-
-   Class Partial
-       Implements Base
-   End Class
-   ```
-2. See TB65535 on `Base` in `Implements Base`, with the text *Internal Error - Bad Error Info Locale Data*.
-
-What decides it:
-- BETA 1010 and BETA 1033 give the *Missing implementation of member* text, in the same harness, on the same project.
-- A `Public` Function and a `Public` variable give it, with one error for each missing member, so a variable gives two: its Get and its Let.
-
-**Expected behavior**
-*Missing implementation of member Function F() As Long*, as on BETA 1033.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1034
-
-**Additional context**
-The cause, read from the compiler `twinBASIC_win32.dll` of BETA 1034 (the function at RVA 0x12C790): the function that makes a diagnostic's text takes the code as a 16-bit value, looks up the code's template in one of two tables, and accepts only the codes 0 to 37 and 5000 to 5259. For any other code it returns the text *Internal Error - Bad Error Info Locale Data*, which BETA 1033's compiler does not hold. `twinBASIC_win64.dll` has the same three limits. This error's code is `ERROR_MissingImplementation = -1` in the compiler's list of diagnostic codes, which is 65535 as a 16-bit value, so it never reaches a table. The text *Missing implementation of member* is still in the DLL.
-
-It is the only code affected. Of the 292 codes in that list, which is current as of BETA 1007, it is the only one outside those ranges, and the codes added since, TB0034 to TB0037, are inside them. The logs of the compiles behind this entry hold the text of 37 codes, and this is the only one with the fallback text.
-
-The language pack cannot mend it. On a private copy of the install, a row `TB65535:` in `locale/en-gb.lang`, with `{0}` or without, changes nothing, nor do rows keyed `TB-1`, `TB0000` and `ERROR_MissingImplementation`, while a new row `TB5074: "PROBE5074 [{0}]"` changes TB5074's message to `PROBE5074 [Cannot construct 'IFoo': expected a class type.]`. So the check has to admit 65535, or this error has to get a code inside the ranges.
-
-This is a different fault from *TB5079 for an unknown type puts its whole message inside the message for an unknown name*, which came with the same new function. There the code passes the check, and the pack's row for it wraps the whole message the compiler passes as `{0}`.
-
-Severity: low. The build stops where it should, but a class with several members has to be read by hand to find the missing one.
-
-<!-- Reproducer: bugs/missing-implementation-message/ (mode compile, expects TB65535 and the text). docs/Reference/Attributes.md carries a NOTE (BETA 1034) under AllowUnpopulatedVtableEntry, whose text quotes the BETA 1033 message; when a fixed build is released, the NOTE goes. The bytes of the function were read by hand from what the install ships, in a scratch script; the pack rows were tried on a copy from makeIdeCopy under the temp folder, with the install on the Desktop only read. -->
+<!-- Reproducer: bugs/friend-late-bound/ (mode test; vb6/ is the VB6 side, `bug_repro.mjs vb6 friend-late-bound`: early-bound works, late-bound and CallByName raise 438, through Implements raises 97). The call from another project was run in a scratch copy, on BETA 1034 and again on BETA 1042 with the same results, not kept. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md (two NOTEs). docs/Reference/COM-Interfaces/IDispatch.md says that a Friend member is found, with a sample that prints True for it: that changes too. The Sub, Function and Property pages used to say a Friend procedure cannot be late bound, VBA-Docs' text; that sentence came off them when the page for Friend was written, and can go back once this is fixed. What the type library holds, for the Friend page, was read with TLI from an ActiveX DLL built with project.dllRegisterAfterBuild false: Friend procedures and variables are left out; a Friend Enum, Type and Event are listed; a Private Type or Enum is listed when a Public member uses it. -->
 
 ---
 
@@ -13131,14 +13085,14 @@ Error 97, caught by the caller's handler, whatever the signature, as win64 and V
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1034
+ - twinBASIC compiler version: BETA 1034 and BETA 1042
 
 **Additional context**
 Inferred from the pattern above and not read from the generated code: one stub, with a fixed `ret 8`, stands in for every `Friend` procedure that an implementing class leaves out. It would have to remove what each procedure takes.
 
 Severity: high. The program ends with an access violation for a call whose whole purpose is to raise an error that it can handle, and unsaved data is lost.
 
-<!-- Reproducer: bugs/implements-friend-stub-stack/ (mode test; the case that does not return is last, because a run stops there). The exe's results were run once in a scratch copy, not kept: `tbrun --exe` on the three shapes gave 0xC0000005 for the two-argument Sub and for the Function with an argument, and the box for the Sub with no arguments. Found when the sample on the Friend page, which had a Sub with a ByVal Currency argument, did not return under check_examples; the sample now has a Long. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md, docs/Reference/Core/Implements.md. -->
+<!-- Reproducer: bugs/implements-friend-stub-stack/ (mode test; the case that does not return is last, because a run stops there). The exe's results were run in a scratch copy, on BETA 1034 and again on BETA 1042 with the same results, not kept: `tbrun --exe` on the three shapes gave 0xC0000005 for the two-argument Sub and for the Function with an argument, and the box for the Sub with no arguments. Found when the sample on the Friend page, which had a Sub with a ByVal Currency argument, did not return under check_examples; the sample now has a Long. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md, docs/Reference/Core/Implements.md. -->
 
 ---
 

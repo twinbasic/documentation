@@ -30,7 +30,7 @@ The available attributes are listed below in alphabetic order. Not every attribu
 ---
 
 ## AllowUnpopulatedVtableEntry
-{: #allowunpopulatedvtableentry index="TB65535" }
+{: #allowunpopulatedvtableentry index="TB5260" }
 
 Syntax: **[AllowUnpopulatedVtableEntry]**
 
@@ -40,11 +40,7 @@ Marks a prototype that a class implementing the interface is not obliged to supp
 
 The twinBASIC packages use it to add members to an interface without breaking code written against an earlier revision of it. `ItbHostEventsV2` extends `ItbHostEventsV1` and adds one such prototype; `ItbHostEventsV3` extends that and adds another. An addin that implements only the **V1** members still satisfies **V3**.
 
-On a **Public** procedure of a **Class**, it does the same for a class that [**Implements**](Implements) that class: the member may be left out, where otherwise the build fails with TB65535, *Missing implementation of member ...*. On a property it covers only the accessor it is written on, so a **Property Get** and its **Property Let** each need it.
-
-<!-- test: bug missing-implementation-message -->
-> [!NOTE] BETA 1034
-> The message of TB65535 reads *Internal Error - Bad Error Info Locale Data*, and does not name the missing member. The error is on the name after **Implements**.
+On a **Public** procedure of a **Class**, it does the same for a class that [**Implements**](Implements) that class: the member may be left out, where otherwise the build fails with TB5260, *Missing implementation of member ...*, on the name after **Implements**. On a property it covers only the accessor it is written on, so a **Property Get** and its **Property Let** each need it.
 
 <!-- Applicability from the package census, BETA 1005: 71 uses in tbIDE and VB,
      every one a Sub prototype inside an Interface. The effect described above is read
