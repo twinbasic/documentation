@@ -1297,6 +1297,10 @@ const PAGE_DEFAULTS = `(() => {
   // the tool's own (window.__shotRecents, setRecents), the section is never read or saved.
   // VB6's list is __shotVb6Recents, and a native picker a shot goes through is answered from __shotAnswers.
   window.__shotRecents = [];
+  // Since BETA 1042 the dialog reads the list through ReadFileDataBase64("GetRecentsList"),
+  // which the defaults hook (scripts/lib/tb-defaults.mjs), the outer wrapper of the host
+  // object, answers from __tbRecents before this proxy sees the call: setRecents sets both.
+  window.__tbRecents = "";
   window.__shotVb6Recents = "";
   window.__shotAnswers = {};
   const FRONT_PAGE = "NEWFRONTPAGE";
@@ -1345,6 +1349,7 @@ const PAGE_DEFAULTS = `(() => {
 // projects' paths, each shown as both its name and its path.
 const setRecents = (c, paths) =>
   c.evaluate(`window.__shotRecents = ${JSON.stringify(paths)};
+window.__tbRecents = ${JSON.stringify(paths.join("?"))};
 window.HostGetRecentsList = (e) => {
   e.classList.add("frontPageListViewLIST");
   listviewFromArray(e, ${JSON.stringify(paths.map((p) => ({ name: p, projectPath: p })))}, () => {});
