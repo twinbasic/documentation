@@ -13,7 +13,7 @@ Declares a function-pointer type --- a named signature that variables, parameter
 > The **Delegate** statement is a twinBASIC extension. In classic VBA, function pointers are untyped **LongPtr** values produced by **AddressOf** and called indirectly through custom mechanisms (`DispCallFunc`, `CallWindowProc` shims, etc.).
 
 Syntax:
-- > { **Public** \| **Private** } **Delegate Function** *name* [ *callconv* ] **(** [ *arglist* ] **)** **As** *type*
+- > { **Public** \| **Private** } **Delegate Function** *name* [ *callconv* ] **(** [ *arglist* ] **)** [ **As** *type* ]
 - > { **Public** \| **Private** } **Delegate Sub** *name* [ *callconv* ] **(** [ *arglist* ] **)**
 
 **Public**
@@ -31,8 +31,17 @@ Syntax:
 *arglist*
 : *optional* Parameter signature, written exactly as for a [**Sub**](Sub) or [**Function**](Function) --- comma-separated `[ ByVal | ByRef ] [ Optional ] *varname* [ As *type* ]` parts.
 
+<!-- test: sample delegate-tb0003 -->
 *type*
-: Return type of a **Function** delegate's signature.
+: *optional* Return type of a **Function** delegate's signature. Without **As** *type* the return type is **Variant**, and the compiler reports [TB0003](../../Features/Compiler-IDE/Compiler-Warnings#tb0003-implicit-variant-data-type), as it does for a [**Function**](Function).
+<!-- /test -->
+
+```tb probe id=delegate-tb0003 slot=file expect-error=TB0003
+[EnforceErrors(TB0003)]
+Module ProbeDelegateWithoutAs
+    Private Delegate Function NoReturnType (ByVal A As Long)
+End Module
+```
 
 After the declaration, *name* may be used wherever a type is allowed: to declare variables and parameters of function-pointer type, as the type of a member of a [**Type**](Type) (UDT), or as a parameter type in a [**Declare**](Declare) statement or an [**Interface**](Interface) member.
 
