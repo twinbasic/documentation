@@ -74,7 +74,7 @@ The search box looks in every section at once. A word matches an item when it is
 - With a card focused, <kbd>Tab</kbd>, <kbd>Left</kbd> and <kbd>Right</kbd> do not move the focus. They move a highlight through **Browse...**, **Open** and **Cancel**.
 
 <!-- test: bug new-project-keyboard-dead-ends -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > <kbd>Up</kbd> and <kbd>Down</kbd> do nothing while the search box has the focus, which it has when the dialog opens, and no key reaches the sections of the rail. In **Recent**, the search box is the only element that can take the focus: <kbd>Tab</kbd> moves it to the page behind the dialog, a second <kbd>Tab</kbd> to a panel behind that, and then <kbd>Esc</kbd>, <kbd>Enter</kbd> and the arrow keys do nothing until you click. To use the arrow keys in **New** or **Samples**, press <kbd>Tab</kbd> once, or click blank space in the dialog. Choose a section with the mouse, and in **Recent** double-click the row.
 
 <!-- test: bug new-project-enter-acts-twice -->
