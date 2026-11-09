@@ -80,6 +80,26 @@ export function pageHook(answers) {
         if (name === "SaveIDESetting") {
           return (...a) => (Object.hasOwn(answers, String(a[0])) ? Promise.resolve() : member.apply(target, a));
         }
+        // Since BETA 1042 the recent-projects list goes through ReadFileDataBase64 with a name in
+        // place of a file: "GetRecentsList" reads it, "AddRecentsList:<path>" and
+        // "RemoveRecentsList:<path>" write the user's registry, the second with no flag guarding
+        // it. The list read is the page's own `window.__tbRecents` ("?"-separated), or none, so no
+        // path of the user's reaches a tool's page; the writes do nothing.
+        if (name === "ReadFileDataBase64") {
+          return (...a) => {
+            const file = String(a[0]);
+            if (file === "GetRecentsList") {
+              marker.keys.push(file);
+              return Promise.resolve(typeof window.__tbRecents === "string" ? window.__tbRecents : "");
+            }
+            const write = /^(AddRecentsList|RemoveRecentsList):/.exec(file);
+            if (write) {
+              marker.keys.push(write[1]);
+              return Promise.resolve("");
+            }
+            return member.apply(target, a);
+          };
+        }
         if (name !== "GetIDESetting") return (...a) => member.apply(target, a);
         return (...a) => {
           const key = String(a[0]);
