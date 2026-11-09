@@ -42,10 +42,10 @@ For all arguments, cash paid out (such as deposits to savings) is represented by
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *pv* or *type* is a string that is not a number, or an error value<br>*pv* or *type* is **Null** |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *rate*, *nper* or *pmt* is **Null** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *rate* is -1 and *nper* is less than 0, VB6 raises error [11 (`&HB`)](tb:Errors#11), *Division by zero*, instead; 64-bit VBA raises error [6 (`&H6`)](tb:Errors#6), *Overflow*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *pv* or *type* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*, instead.
 
 <!-- /errors -->

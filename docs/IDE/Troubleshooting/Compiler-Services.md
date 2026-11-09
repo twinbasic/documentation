@@ -112,7 +112,7 @@ The IDE replays everything you did in this session into the new compiler, so the
 | The add-ins' toolbar buttons, menu items and key bindings | The IDE removes them and loads the add-ins again when the project has loaded. A docked add-in window stays where it is and reads **(currently unavailable)** until its add-in fills it again. A detached window gets a message to close. The add-in's own `Class_Terminate` does not run. |
 
 <!-- test: bug restart-reverses-file-order -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > Each restart reverses the order of the project's files inside the compiler, and so does each switch of the build configuration box. **Save** writes that order into the project's file. The code of a built executable follows it, so two builds of an unchanged project can place their code differently. A second restart puts the order back. To compare two builds, make them with no restart, switch or save between them.
 
 A restart of a project with a linked package whose file is gone behaves differently; see [A linked package's missing file](#a-linked-packages-missing-file).
@@ -158,7 +158,7 @@ It has one **OK** button and does not close by itself. Another dialog that opens
 To leave Safe Mode, choose **win32** or **win64** in the build configuration box. That restarts the compiler, and the counters come back when the project has compiled again. The choice of **safeMode** is not remembered for the project. [Build configuration](../Building/Build-Configuration#safe-mode) describes the box.
 
 <!-- test: bug safe-mode-start-never-runs -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > **Start** in Safe Mode never runs the program and never ends. The console prints `Executing 'Main'...` and `WARNING: execution delayed; waiting for background compilation to finish`, then nothing more; the IDE stays in the running state and **Stop** does nothing. Restart the compiler, or choose **win32** or **win64** in the build configuration box, to end it. To run the program, leave Safe Mode first.
 
 ![The left end of the toolbar with the build configuration box on safeMode, above the left end of the status bar with the services badge on OPERATIONAL.](Images/Safe_Mode_Bar.png){:width="474" height="70"}
@@ -188,7 +188,7 @@ A project can reference a [linked package](../../../Features/Packages/Linked), a
 **Restart the compiler** with the file gone shows a native Windows box about a second after you press the button. It is titled **shutdown** and reads `Run-time error '-2147467259'` and `Unspecified error`, with one **OK**. Behind it the badge reads LIMITED, and **Please wait...** reads 5.0%.
 
 <!-- test: bug missing-linked-package-restart-box -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > The box that a restart shows when a linked package's file is missing names neither the package nor the file, and the restart takes about 80 seconds after **OK**. If you leave the box open, the badge reads UNAVAILABLE after about 80 seconds and **Please wait...** stays at 0.0%. Choose **OK** and wait: the compiler comes back with the project loaded and your unsaved edits kept. Put the package's file back, or remove the reference, before the next restart.
 
 While you wait, you can still get at the text of the editors: close the IDE's window, which removes **Please wait...**, and choose **Cancel** in the question about the unsaved changes. The IDE is usable again and you can copy the text out. Saving does not work in that state; the time-out boxes above come after 10 and 20 seconds, and the file is not changed.
@@ -199,7 +199,7 @@ While you wait, you can still get at the text of the editors: close the IDE's wi
 If the IDE starts a compiler and cannot connect to it, the **COMPILER** line of the badge's tooltip reads **Error occured**, and the badge reads UNAVAILABLE.
 
 <!-- test: bug compiler-connection-retry-loop -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A compiler whose **COMPILER** connection cannot be made is started again every 5 seconds, and each start writes `restarting from FILE` to the console. The crash loop never counts these restarts, so the IDE does not switch to Safe Mode and does not say anything. Close the IDE's window and start it again. If the project does not load the second time either, report the problem.
 
 ## See Also

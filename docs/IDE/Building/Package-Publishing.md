@@ -75,11 +75,11 @@ The IDE saves the publisher name. It saves the password only when **Remember pas
 The password is stored in the IDE's settings in the registry with a simple obfuscation, which is not encryption. Anyone who can read your registry can recover it. Leave the box unticked on a machine that others use.
 
 <!-- test: bug publisher-password-tilde, lane ide:building -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A remembered password that contains `~` comes back wrong: the form is filled in with a different password, and the login fails. Do not tick **Remember password on this device** for such a password, and type it each time.
 
 <!-- test: bug publisher-name-apostrophe, lane ide:building -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A saved publisher name that contains a single quote, such as `O'Brien`, is cut at the quote in the pre-filled form (**USERNAME** shows `O`). A remembered password with a quote is cut in the same way. Type the whole name and password into the boxes.
 
 ## Publishing
@@ -108,7 +108,7 @@ The confirmation reads **IMPORTANT: Please check the following information befor
 | Anything else | **[PUBLISH] FAILED.  Server returned HTTPS code** and the number. |
 
 <!-- test: bug publish-failure-ok-typeerror, lane ide:building -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > After you press **OK** in a box that says **[PUBLISH] FAILED.  Server returned HTTPS code**, the IDE raises a script error (`t is not a function`) that only the IDE's developer tools show. Nothing else changes, and the failure is as the box said: check the number, then publish again.
 
 The IDE has no command that removes or overwrites a published package. A version that has been uploaded stays on TWINSERV, and the next upload needs a higher version.

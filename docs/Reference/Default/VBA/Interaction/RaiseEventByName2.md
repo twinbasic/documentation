@@ -27,11 +27,11 @@ Returns a **Variant**. The returned value is the value left in the last `ByRef` 
 If *procname* doesn't match any event declared on *object*, or the supplied arity doesn't match the event declaration, a run-time error occurs.
 
 <!-- test: bug raiseeventbyname-no-events-crash -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > An *object* that declares no events, such as a **Collection**, ends the program with an access violation, with no error to handle. Unsaved data is lost.
 
 <!-- test: bug raiseeventbyname-no-events-crash -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > An event that no handler is attached to raises error -2147467259 (`&H80004005`), *Unspecified error*. The **RaiseEvent** statement raises nothing for it.
 
 <!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->

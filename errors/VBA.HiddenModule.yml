@@ -11,7 +11,7 @@
 # Eval's row of errors raised while evaluating is bugs/expression-service-error-numbers (its
 # other -2147467259 rows are in no entry), and the crashes
 # bugs/nothing-argument-crashes.
-beta: 1034
+beta: 1042
 pages:
   Reference/Default/VBA/HiddenModule/AddClassInstanceFlag.md:
     rows:

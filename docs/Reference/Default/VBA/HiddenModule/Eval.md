@@ -18,19 +18,19 @@ A fresh [**TbExpressionService**](../TbExpressionService/) is built for every ca
 For repeated evaluation of the same source, or for expressions that need to see application objects, construct the service explicitly and reuse a compiled [**ITbExpression**](../TbExpressionService/#itbexpression-interface).
 
 <!-- test: bug expression-service-dangling-tokens, errors VBA.HiddenModule -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > Some malformed expressions are not refused: the part that cannot be read is left out, and no error is raised. `Eval("2 +")`, `Eval("2 Mod")`, `Eval("(2")` and `Eval("2)")` each return 2.
 
 <!-- test: bug expression-service-error-numbers, errors VBA.HiddenModule -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > **Eval** raises -2147467259 for any error inside the expression: the error's own number and description are lost. `Eval("1 / 0")` raises -2147467259, not 11.
 
 <!-- test: errors VBA.HiddenModule -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > **Eval** also raises -2147467259 for an expression whose value is an **Error** value, such as `Eval("CVErr(5)")`, and for **Len** of **Null**, which outside an expression returns **Null**.
 
 <!-- test: errors VBA.HiddenModule -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > In a built program, the first error the expression service raises has the description *Automation error*, and every later one *Unspecified error*. In a run from the IDE, every one has the description *Automation error*.
 
 <!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->

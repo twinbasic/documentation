@@ -27,11 +27,11 @@ Compilation is the relatively expensive step; evaluation reuses the compiled for
 An expression that compiles can still fail when it is evaluated: `"1 / 0"` compiles, and [**Evaluate**](Evaluate) raises the error.
 
 <!-- test: bug expression-service-dangling-tokens, errors VBA.TbExpressionService -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > Some malformed expressions are not refused: the part that cannot be read is left out, and no error is raised. `"2 +"`, `"2 Mod"`, `"(2"` and `"2)"` each compile to an expression whose value is 2.
 
 <!-- test: errors VBA.TbExpressionService -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > In a built program, the first error the expression service raises has the description *Automation error*, and every later one *Unspecified error*. In a run from the IDE, every one has the description *Automation error*.
 
 <!-- errors: generated from errors/VBA.TbExpressionService.yml by scripts/errors.mjs write; edit the data, not this section -->

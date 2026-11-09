@@ -39,7 +39,7 @@ To clear every breakpoint of the project, choose **Debug → Clear All Breakpoin
 On the line that has the arrow, a click without dragging toggles a breakpoint too. A press that lasts longer than a fifth of a second starts a drag of the arrow instead; see [Set Next Statement](#set-next-statement).
 
 <!-- test: bug f9-after-edit-loses-glyph, lane ide:breakpoints -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > <kbd>F9</kbd> pressed within a few tens of milliseconds after an edit can come before the compiler's answer to the edit, and that answer then puts the margin back as it was. A new breakpoint loses its red dot, but the program still stops on the line, and the next breakpoint set in that file removes it. A cleared breakpoint gets its dot back, but the program does not stop on the line. The next edit puts the margin right. Wait a moment after typing before you press <kbd>F9</kbd>.
 
 ### What a breakpoint does
@@ -58,7 +58,7 @@ When a stop is in a file that is not open, the IDE opens the file. With **Single
 The compiler keeps the breakpoints of each file. A breakpoint survives **Restart the compiler**, whether or not you saved the project, because the IDE sends its list to the new compiler. A breakpoint is not part of the source: **Export Project** writes no trace of one. Setting or clearing one marks the project as changed, so closing the project asks to save it.
 
 <!-- test: bug save-overtakes-breakpoint-change, lane ide:breakpoints -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > <kbd>Ctrl</kbd>+<kbd>S</kbd> pressed less than about 10 ms after <kbd>F9</kbd> can save the breakpoints as they were before that <kbd>F9</kbd>. The margin and the next run are right, but after **Restart the compiler** a breakpoint you cleared is back and stops the program, and one you set is gone. To put it right, set or clear the breakpoint again and save.
 
 The **Allow Breakpoints (Debuggable)** item of **Debug → Debugger Options** turns breakpoints off for the whole project. While it is off, you can still set breakpoints and the margin shows them, but none stops the program. Turn it on, and they stop it again from the next run. [Debuggable](../Project-Settings#debuggable) describes the project setting, and the [**Debuggable**](../../Core/Attributes#debuggable) attribute changes it for one module, class or procedure.
@@ -98,7 +98,7 @@ A procedure in another file opens in the editor when you step into it, as a prev
 At the `End Sub` of a procedure whose local variables hold objects, a step goes into a frame named `{class_final_destruction}` and then into the `Class_Terminate` procedures of those objects. A step off the `End Sub` of the `Click` procedure of a form lets the program run on, and the form waits for input again.
 
 <!-- test: bug step-out-after-breakpoint, lane ide:debugging -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > Once the program has stopped at a breakpoint, no step stops in a caller of the procedure it stopped in. Step Out, <kbd>F8</kbd> at the `End Sub` and Step Over all run the caller on until the next breakpoint or the end of the program. Steps inside the procedure, and into the procedures it calls and back out to it, work. To stop in the caller, put a breakpoint there, or stop on the line of the call and step into the procedure.
 
 ## Set Next Statement
@@ -180,7 +180,7 @@ Running any line in the console removes the error panel. The failing line stays 
 - **Search Online** opens a Google search in the default browser. The search text is `twinBASIC VB6`, the header and the description of the error.
 
 <!-- test: bug search-online-unencoded -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > **Search Online** puts the error text into the address as it is, without encoding it. An `&` in the description ends the search text at that point, so the search loses the rest, and a `"` ends the address. Copy the description from the panel and search for it in your browser instead.
 
 ### Stepping on through the rest of the loop
@@ -197,7 +197,7 @@ To run on to the end instead, correct the value and press <kbd>F5</kbd>, or pres
 Edit and Continue is not supported at the error panel either: when you change the code, the console writes `[EDIT & CONTINUE] not yet supported.  Aborting.`. After you change the failing line, <kbd>F5</kbd> starts a new run that runs the changed line.
 
 <!-- test: bug edit-at-error-panel-runs-on, lane ide:debugging -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > An edit at the error panel does not abort the program, although the console says `Aborting`. The rest of the failing procedure is skipped, and the code after its call runs: its output appears in the console, and the run then ends. At a breakpoint the same edit does abort the program. Do not edit the code while the error panel is showing. End the run first, as the **Stop** warning under [Traps](#traps) describes, and then edit.
 
 ### Traps
@@ -205,11 +205,11 @@ Edit and Continue is not supported at the error panel either: when you change th
 - **The panel disappears, and Ignore with it.** Running a line in the Debug Console, or clicking another procedure in the Call Stack, removes the panel. <kbd>F5</kbd> brings it back only by running the failing line again. Set Next Statement onto the next line, then <kbd>F5</kbd>, does what **Ignore (Resume Next)** would have done.
 
 <!-- test: bug step-key-leaves-step-pending, lane ide:debugger -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A step key pressed on the failing line leaves a step waiting. After <kbd>F8</kbd> on the failing line, **Ignore (Resume Next)** stops again on the next line instead of going on, and the next <kbd>F5</kbd> is used up as well. Press <kbd>F5</kbd> to go on, or use Set Next Statement as above instead of a step key.
 
 <!-- test: bug stop-at-error-ends-procedure, lane ide:debugger, lane ide:assert -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > **Stop** at an error ends only the procedure that failed. The procedure that called it goes on from its next line: if `Sub Main` called `FillTable`, the rest of `Sub Main` still runs. The panel's **Stop**, the toolbar's **Stop** and **Run → End** all do this. At a failed `Debug.Assert`, **Stop** ends only the check, and the test goes on past it as if the check had passed. To end the whole run, first move the arrow to a later line with <kbd>Ctrl</kbd>+<kbd>F9</kbd>, then press **Stop**. Away from an error --- at a breakpoint, after a step, or after Set Next Statement --- **Stop** ends the run.
 
 ## See Also

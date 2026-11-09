@@ -67,7 +67,7 @@ To calculate the number of days between *date1* and *date2*, use either Day of Y
 If *interval* is Week ("ww"), however, **DateDiff** returns the number of calendar weeks between the two dates. It counts the number of Sundays between *date1* and *date2*. **DateDiff** counts *date2* if it falls on a Sunday, but it doesn't count *date1*, even if it does fall on a Sunday.
 
 <!-- test: bug datepart-firstdayofweek-out-of-range, errors VBA.DateTime -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > With the "ww" interval, **DateDiff** raises no error for a *firstdayofweek* outside 0 to 7, and what it returns follows no rule: a negative value acts as if taken modulo 7, 8 to 13 act as **vbSunday**, and a larger value matches no setting. VB6 raises error 5.
 
 If *date1* refers to a later point in time than *date2*, the function returns a negative number. The *firstdayofweek* argument affects calculations that use the "w" and "ww" interval symbols.
@@ -88,10 +88,10 @@ If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *date1* or *date2* is a string that is not a date |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *interval*, *firstdayofweek* or *firstweekofyear* is **Null** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *interval* is "ww" and *firstdayofweek* is outside 0 to 7, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *date1* or *date2* is a number outside the range of dates, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
 <!-- /errors -->

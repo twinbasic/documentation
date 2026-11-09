@@ -41,14 +41,14 @@ The same alert comes from **Save Project As** and from the saves that other comm
 ### A failed Close
 
 <!-- test: bug failed-save-drops-close -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When you choose **Save** in the question that **Close Project** asks, and the save fails, the alert opens and the close is dropped. The project stays open and changed. Fix the cause, and choose **Close Project** again. The same holds for **Exit** and for the close box of the window.
 
 ### A failed Save As
 {: #a-failed-save-as }
 
 <!-- test: bug failed-save-as-moves-project -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A **Save Project As** whose save fails still makes the new path the project's path. After the alert, the title bar names the new file, which does not exist, and a plain **Save** goes to that path. While the folder is missing, **Save** fails again; once the folder exists, **Save** writes the project there and leaves the original file as it was. To save to the original again, use **Save Project As...** with its path. Check the title bar after any alert about a save.
 
 ### When the compiler does not answer

@@ -47,7 +47,7 @@ On MacOS, the default drive name is "HD" and portions of the pathname are separa
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *path* names no folder that exists, which includes a file, a drive that does not exist, a zero-length string, and a name with a wildcard or a character a name cannot hold |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *path* is **Null** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *path* names no folder that exists, which includes a file, a drive that does not exist, a zero-length string, and a name with a wildcard or a character a name cannot hold, VB6 and 64-bit VBA raise error [76 (`&H4C`)](tb:Errors#76), *Path not found*, instead.
 
 <!-- /errors -->

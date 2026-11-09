@@ -54,7 +54,7 @@ Debug.Print Format$(DateAdd("yyyy", 1, #2/29/2024#), "yyyy-mm-dd") ' 2025-02-28
 **DateAdd** returns 28-Feb-95, not 31-Feb-95. If *date* is 31-Jan-96, it returns 29-Feb-96 because 1996 is a leap year. Subtracting a month, and adding or subtracting a quarter or a year, stops at the last day of the shorter month in the same way, as the last two lines show.
 
 <!-- test: bug dateadd-year-below-100, errors VBA.DateTime -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > **DateAdd** with the "yyyy", "q" or "m" interval raises no error when the result would be before January 1, 100, and returns a date in the 1900s or 2000s instead: `DateAdd("yyyy", -1, #1/1/100#)` returns January 1, 1999, and `DateAdd("m", -1, #1/1/100#)` returns December 1, 1999. VB6 raises error 5.
 
 If *number* isn't a **Long** value, it is rounded to the nearest whole number before being evaluated.
@@ -73,10 +73,10 @@ If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *date* is a string that is not a date |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *interval* or *number* is **Null** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When the result with an *interval* of "yyyy", "q" or "m" would be before January 1, 100, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *date* is a number outside the range of dates, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
 <!-- /errors -->

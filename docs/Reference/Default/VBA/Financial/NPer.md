@@ -41,19 +41,19 @@ For all arguments, cash paid out (such as deposits to savings) is represented by
 | [13 (`&HD`)](tb:Errors#13), *Type mismatch* | *fv* or *type* is a string that is not a number<br>*fv* or *type* is **Null** |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *rate*, *pmt* or *pv* is **Null** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *rate* and *pmt* are of opposite signs, as in a loan or a savings plan, and a number of periods exists, VB6 and 64-bit VBA raise no error.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When no number of periods exists, as when *pmt* does not cover the interest, or *rate* is -1 and *pmt* is greater than 0, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *pmt* is 0 and *rate* is not 0, or *rate* is -1 and *pmt* is less than 0, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *rate* and *pmt* are both 0, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *fv* or *type* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*, instead.
 
 <!-- /errors -->

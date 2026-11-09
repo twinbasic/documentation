@@ -110,7 +110,7 @@ Or more simply, to decide whether to use `PtrSafe`, and then `DeclareWide` or ot
 > Compiler constants are numbers, not `Boolean` values. `Win64` is 1 in a 64-bit build, and `Not 1` is -2, which counts as true, so `#If Not Win64 Then` is true in both 32-bit and 64-bit builds. To select 32-bit-only code, compare the constant with 0, as in `#If Win64 = 0 Then`, or put the code in the `#Else` branch of `#If Win64 Then`.
 
 <!-- test: bug ifdef-function-call-is-zero -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A function call in an `#If`, `#ElseIf` or `#Const` expression is always 0, with no error or warning. `#If CBool(1) Then` and `#If Len("abc") = 3 Then` are both false, and `#If Not CBool(Win64) Then` is true in a 64-bit build. VB6 evaluates `CBool`, `CLng`, `Abs` and `Len` there.
 
 > [!NOTE]

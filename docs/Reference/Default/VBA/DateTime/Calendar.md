@@ -24,7 +24,7 @@ Syntax: **Calendar** [ **=** *calendartype* ]
 The **Calendar** property can only be set programmatically. The setting of **Calendar** affects the string returned by the [**Date$**](Date#date-1) property when the calendar is set to Hijri.
 
 <!-- test: errors VBA.DateTime -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > twinBASIC has not implemented **Calendar** yet. The compiler warns TB0009 at each use, **Calendar** always reads as **vbCalGreg**, and setting it raises an error, **vbCalGreg** included.
 
 <!-- errors: generated from errors/VBA.DateTime.yml by scripts/errors.mjs write; edit the data, not this section -->

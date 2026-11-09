@@ -145,7 +145,7 @@ Debug.Print Value                   ' 0
 ```
 
 <!-- test: bug llvm-double-overflow-no-error, llvm win32-llvm, llvm win64-llvm -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > An exponentiation (`^`) that overflows raises no error in code compiled with LLVM, and its result is 0. In a 32-bit build compiled with LLVM, and not for SSE2, a **Double** addition, subtraction or multiplication that overflows raises no error either, and its result is infinity. Code compiled without LLVM raises error 6, as VB6 does. See [Language support](../../LLVM/Getting-Started#language-support).
 
 ## Example

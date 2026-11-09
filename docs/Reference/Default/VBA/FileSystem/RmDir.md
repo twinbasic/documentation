@@ -26,10 +26,10 @@ Syntax: **RmDir** *path*
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | no folder has the name *path*, which includes a file, a zero-length string, and a name with a wildcard or a character a name cannot hold<br>the folder holds a file or a folder, or it is the current directory |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *path* is **Null** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When no folder has the name *path*, which includes a file, a zero-length string, and a name with a wildcard or a character a name cannot hold, VB6 and 64-bit VBA raise error [76 (`&H4C`)](tb:Errors#76), *Path not found*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When the folder holds a file or a folder, or it is the current directory, VB6 and 64-bit VBA raise error [75 (`&H4B`)](tb:Errors#75), *Path/File access error*, instead.
 
 <!-- /errors -->

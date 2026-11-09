@@ -97,7 +97,7 @@ Debug.Print "testing"
 ```
 
 <!-- test: bug warning-directive-text-cut -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > The text of a `#Warning` or `#Error` directive stops at its first `|`: `#Warning "before|after"` reports only `"before`.
 
 ### TB0006: Record Length Is Ignored in Binary Mode
@@ -266,7 +266,7 @@ End Sub
 ```
 
 <!-- test: sample tb0019-other-enum-constant, sample tb0019-enforced -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A member of another enumeration, written as a constant (`day = vbOK`), converts without a warning.
 
 ```tb probe id=tb0019-enforced slot=module expect-error=TB0019
@@ -307,7 +307,7 @@ End Sub
 Reports an implicit conversion between an enumeration and a numeric type. It is at **IGNORE** by default.
 
 <!-- test: sample tb0021-not-drawn, sample tb0021-whole-number-and-long, sample tb0019-from-double, sample tb0018-to-integer -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > None of these conversions draws TB0021. A whole number assigned to a variable of an enumeration, or an enumeration value assigned to a **Long**, converts without a warning. A **Double**, **Single**, **Currency** or **Variant** assigned to a variable of an enumeration draws [TB0019](#tb0019-implicit-enumeration-conversion), and an enumeration value assigned to an **Integer**, **Byte** or **Single** draws [TB0018](#tb0018-implicit-narrowing-conversion).
 
 ```tb probe id=tb0021-not-drawn slot=module
@@ -361,7 +361,7 @@ End Sub
 An array assigned to an array of another element type, *suspicious array assignment; subtypes do not match*.
 
 <!-- test: bug language-pack-semicolon-cut -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > The message reads only *Suspicious array assignment*: the IDE cuts the text that `en-gb.lang` gives it at its semicolon. See [Language packs](../../tB/IDE/Customising/#language-packs).
 
 ```tb check_build
@@ -454,7 +454,7 @@ Reports a control on a form that has the name of a method or property of the for
 A **Declare** statement without **PtrSafe**, which 64-bit VBA 7 requires, *Declare needs PtrSafe attribute on this build configuration for VBA7 compatibility*. It is reported only in a 64-bit build. The Compiler Warnings list shows it at **IGNORE** by default.
 
 <!-- test: bug tb0029-level-ignored -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > TB0029 is reported as a warning whatever its level: at **IGNORE**, **HINT**, **INFO** or **ERROR** in the Compiler Warnings list, and under **IgnoreWarnings** or **EnforceErrors** on a module or on the **Declare**. Adding **PtrSafe** to the **Declare** removes it.
 
 ```tb check_build slot=file

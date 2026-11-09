@@ -41,7 +41,7 @@ Debug.Print V               ' Arial
 ```
 
 <!-- test: bug let-object-result-stored -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > An object whose default member needs an argument, such as a **Collection** or a **Scripting.Dictionary**, assigned to a **Variant** without **Set**, is stored in the **Variant** with no error when it comes from a function, from `New Collection` or from **CreateObject**; so is an object of a class with no default member that a function returns. VB6 raises error 450, *Wrong number of arguments or invalid property assignment*, or error 438, and leaves the **Variant** as it was. The same object in a variable raises -2147352561, *Parameter not optional.*, where VB6 raises 450. Use **Set** to assign an object.
 
 ### Example
