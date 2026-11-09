@@ -1,0 +1,49 @@
+' The issue's regression tests. A call through a variable declared As stdole.IDispatch is compiled
+' as a late-bound call by name (bugs/stdole-idispatch-late-bound), so GetTypeInfoCount on an object
+' with no member of that name raises error 438. For a Collection, BETA 1042 ends the program with an
+' access violation instead, under On Error Resume Next; BETA 1034 raised 438, as it still does for an
+' object of a twinBASIC class. Each case asserts what is correct; a case that fails is the bug.
+
+Class Widget
+    Public Hits As Long
+    Public Sub Hello()
+        Hits += 1
+    End Sub
+End Class
+
+[TestFixture]
+Module StdoleDispatchTests
+
+    [TestCase]
+    Public Sub Collection_GetTypeInfoCount_RaisesAnErrorAndDoesNotCrash()
+        Dim c As New Collection
+        Dim d As stdole.IDispatch = c
+        Dim count As Long = -1
+        On Error Resume Next
+        d.GetTypeInfoCount count
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 438, n
+    End Sub
+
+    [TestCase]
+    Public Sub Control_TwinBasicClass_GetTypeInfoCount_Raises438()
+        Dim w As New Widget
+        Dim d As stdole.IDispatch = w
+        Dim count As Long = -1
+        On Error Resume Next
+        d.GetTypeInfoCount count
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 438, n
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Collection_ThroughObject_CountWorks()
+        Dim c As New Collection
+        c.Add 1
+        Dim o As Object = c
+        Assert.Strict.AreEqual 1, CLng(o.Count)
+    End Sub
+
+End Module

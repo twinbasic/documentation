@@ -151,7 +151,7 @@ Module DispatchTests
     End Sub
 
     [TestCase]
-    Public Sub Invoke_MemberErrorWithoutExcepinfoIsRaisedAsItIs()
+    Public Sub Invoke_MemberErrorWithoutExcepinfoRaisesDispEException()
         Expect.Begin
         Dim d As IDispatchUnrestricted = New Calculator
         Dim iid As OLECLSID
@@ -163,7 +163,8 @@ Module DispatchTests
         Dim errNum As Long = Err.Number
         Dim errText As String = Err.Description
         On Error GoTo 0
-        Expect.AreEqual 5, errNum, "Err.Number of Invoke of a member that raises error 5, with lpexcepinfo 0"
+        ' VB6's IDispatch::Invoke also returns DISP_E_EXCEPTION here, with no EXCEPINFO to fill.
+        Expect.AreEqual DISP_E_EXCEPTION, errNum, "Err.Number of Invoke of a member that raises error 5, with lpexcepinfo 0"
         Expect.AreEqual "boom", errText, "Err.Description of Invoke of a member that raises error 5, with lpexcepinfo 0"
         Expect.Done
     End Sub
@@ -212,7 +213,9 @@ Module DispatchTests
     [TestCase]
     Public Sub StdoleIDispatch_CallIsLateBoundAndDoesNotReachTheMethods()
         Expect.Begin
-        Dim c As New Collection
+        ' A twinBASIC class: a Collection here ends the run with an access violation on BETA 1042, a
+        ' twinBASIC defect apart from the package (bugs/stdole-idispatch-collection-crash).
+        Dim c As New Calculator
         Dim d As IDispatch = c
         Dim count As Long = -1
         On Error Resume Next

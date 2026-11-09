@@ -13391,3 +13391,94 @@ The list starts with the flag `false`, the value **Smoother Scrolling** has when
 On a patched copy of the BETA 1042 install, the lane's test of the second emptying fails, its two controls pass, and both add-in tests pass.
 
 <!-- Reproducer: bugs/console-cleared-at-open/ (mode lane: asserted by `ide-test.bat --only console-cleared` (test/ide/console-cleared.test.mjs), the test named in repro.json, which passes on BETA 1042; its two controls pass on 1042 and on a patched copy. No project and no zip. The add-in tests are addin:keys-help ("the add-in loads and registers its shortcuts, lowercased") and addin:parent ("case none: the control that reads nothing"), both failing on 1042 and passing on the patched copy. Found 2026-11-09 by the BETA 1042 recheck, when those two lanes failed with their controls. Pages with a callout that goes when this is fixed: docs/IDE/Debugging/Debug-Console.md, docs/Reference/Built-In/tbIDE/DebugConsole.md (PrintText). Fix: bugs/console-cleared-at-open/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/console-cleared-at-open/fix.js` on BETA 1042. -->
+
+---
+
+## A call of a `stdole.IDispatch` method on a Collection ends the program with an access violation
+
+**Describe the bug**
+A call of one of the four `IDispatch` methods through a variable declared `As stdole.IDispatch` is a late-bound call by name (the entry *Calling a method of `stdole.IDispatch` is a late-bound call by name and fails with error 438* above). For an object of a twinBASIC class it raises error 438. When the object is a `Collection`, BETA 1042 ends the program with an access violation instead, and `On Error Resume Next` does not catch it. BETA 1034 raised 438 for both.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `stdole-idispatch-collection-crash.twinproj` (attached as `stdole-idispatch-collection-crash.zip`). Its `RegressionTests.twin` holds the regression tests below, one `[TestCase]` per behaviour, each asserting the correct result.
+2. Or run:
+
+   ```vb
+   Dim c As New Collection
+   Dim d As stdole.IDispatch = c
+   Dim count As Long = -1
+   On Error Resume Next
+   d.GetTypeInfoCount count
+   Debug.Print Err.Number
+   ```
+3. See the program end with an access violation, where `438` is expected.
+
+The regression tests (the first fails on BETA 1042, the two controls pass):
+
+```vb
+Class Widget
+    Public Hits As Long
+    Public Sub Hello()
+        Hits += 1
+    End Sub
+End Class
+
+[TestFixture]
+Module StdoleDispatchTests
+
+    [TestCase]
+    Public Sub Collection_GetTypeInfoCount_RaisesAnErrorAndDoesNotCrash()
+        Dim c As New Collection
+        Dim d As stdole.IDispatch = c
+        Dim count As Long = -1
+        On Error Resume Next
+        d.GetTypeInfoCount count
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 438, n
+    End Sub
+
+    [TestCase]
+    Public Sub Control_TwinBasicClass_GetTypeInfoCount_Raises438()
+        Dim w As New Widget
+        Dim d As stdole.IDispatch = w
+        Dim count As Long = -1
+        On Error Resume Next
+        d.GetTypeInfoCount count
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 438, n
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Collection_ThroughObject_CountWorks()
+        Dim c As New Collection
+        c.Add 1
+        Dim o As Object = c
+        Assert.Strict.AreEqual 1, CLng(o.Count)
+    End Sub
+
+End Module
+```
+
+What decides it:
+- The object: a `Collection` crashes, an object of a twinBASIC class raises 438.
+- Not the run: a run in the IDE, the test mode and a built exe each crash, in a 32-bit and a 64-bit build.
+- Not the late-bound call itself: through an `As Object` variable, the same `Collection` answers `Count`.
+
+**Expected behavior**
+Error 438, which `On Error` can handle, as for an object of a twinBASIC class and as BETA 1034 gave. Better, the call goes through the interface, as the entry above asks, and returns what the `Collection`'s own `IDispatch` answers.
+
+VB6 does not accept a variable declared `As IDispatch` (the entry above).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+Severity: high. An access violation that `On Error` cannot catch ends the program and loses its unsaved data, where the program asked for an error it could handle.
+
+Checked on BETA 1034, which raises 438 for the `Collection` too, so the crash is new in a build after 1034.
+
+<!-- Reproducer: bugs/stdole-idispatch-collection-crash/ (mode test: the first case fails with an access violation, the two controls pass, on BETA 1042). Found 2026-11-09 by the BETA 1042 recheck, when the OLEGuids test case StdoleIDispatch_CallIsLateBoundAndDoesNotReachTheMethods, which used a Collection, crashed; that case now uses the project's Calculator class. The exe was checked in a scratch copy, not kept. Pages with a callout that goes when this is fixed: docs/Reference/COM-Interfaces/IDispatch.md (a WARNING in "The stdole declaration"). When the entry above is fixed as well, that section changes as its comment says. -->

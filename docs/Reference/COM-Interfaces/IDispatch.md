@@ -303,6 +303,10 @@ An implementation has these constraints:
 
 A variable declared **As stdole.IDispatch** does not reach the four methods. A call through it is compiled as a late-bound call by name, the same as a call through an **Object** variable: `d.GetTypeInfoCount n` compiles with any arguments, and raises error 438 (*Object doesn't support this property or method*) when it runs, because the object has no member of that name. A member the object does have, such as `d.Answer`, is called as it would be through **Object**. Use a project's own declaration, as above.
 
+<!-- test: bug stdole-idispatch-collection-crash -->
+> [!WARNING] BETA 1042
+> When the object is a **Collection**, a call to one of the four methods through an **As stdole.IDispatch** variable ends the program with an access violation, in a run in the IDE and in a built exe, 32-bit and 64-bit. **On Error** does not catch it. An object of a twinBASIC class raises error 438, as above. VB6 does not accept the declaration.
+
 ## COMExtensible
 
 The [**[COMExtensible]**](../../tB/Core/Attributes#comextensible) attribute on an interface declares that the object behind it may accept members that its declaration does not list. It is the flag that the **tbIDE** package sets on its DOM classes, such as [**HtmlElementProperties**](../../tB/Packages/tbIDE/HtmlElementProperties), whose implementation lives in the IDE. Setting it on a project's own interface changes nothing for a class that implements it: the class's **IDispatch** still finds only the class's own public members, and `DISP_E_UNKNOWNNAME` for any other name. To accept names that nothing declares, use a **NotDispatchable** class that implements **IDispatch**, as in the example below.

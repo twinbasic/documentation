@@ -90,8 +90,8 @@ Calls the member with the dispatch identifier *DispId*. *riid* is reserved and h
 
 The package declares no `EXCEPINFO` type, and the **stdole** type cannot be used: some of its members are of unsigned types, which twinBASIC does not support, as VB6 does not, so a variable of it does not compile (TB5106). A project that wants the details declares a structure of the same layout with signed members, as the [IDispatch](../../../../Reference/COM-Interfaces/IDispatch) page does.
 
-<!-- test: DispatchTests.Invoke_MemberErrorWithoutExcepinfoIsRaisedAsItIs, DispatchTests.Invoke_MemberErrorWithExcepinfoRaisesDispEException -->
-A member that raises an error is reported in one of two ways. With *lpexcepinfo* set to 0, the member's own error is raised: an `Err.Raise 5, , "boom"` in the member raises error 5 with the description *boom*. With *lpexcepinfo* the address of a structure, the call raises error -2147352567, which is `DISP_E_EXCEPTION` (`&H80020009`), and the structure holds the error: *scode* is the Windows code of the member's error (`&H800A0005` for error 5), and *bstrSource* and *bstrDescription* are its source and description.
+<!-- test: DispatchTests.Invoke_MemberErrorWithoutExcepinfoRaisesDispEException, DispatchTests.Invoke_MemberErrorWithExcepinfoRaisesDispEException -->
+A member that raises an error makes the call raise error -2147352567, which is `DISP_E_EXCEPTION` (`&H80020009`), with the member's description: an `Err.Raise 5, , "boom"` in the member raises -2147352567 with the description *boom*. With *lpexcepinfo* the address of a structure, the structure also holds the error: *scode* is the Windows code of the member's error (`&H800A0005` for error 5), and *bstrSource* and *bstrDescription* are its source and description. With *lpexcepinfo* set to 0 there is no structure to fill, and the call raises the same error, as a VB6 object's **Invoke** returns `DISP_E_EXCEPTION` then too.
 <!-- /test -->
 
 <!-- test: DispatchTests.Invoke_UnknownIdentifierRaisesError438 -->
