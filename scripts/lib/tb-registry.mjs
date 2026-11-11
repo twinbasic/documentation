@@ -476,16 +476,25 @@ function deepEnough(key) {
 // A folder prefix has to end in a separator, or tbrun's %TEMP%\tbrun\9346 would
 // also claim %TEMP%\tbrun\93460. And it has to be inside the temp folder, which
 // is the only place the harness creates projects.
-// One folder outside it is allowed, exactly that one: shoot_docs.mjs keeps projects a picture
-// names in TOOL_ROOT (shot-root.mjs), in the checkout.
+// One kind of folder outside it is allowed: shoot_docs.mjs keeps projects a picture
+// names in TOOL_ROOT (shot-root.mjs), `.claude\tbshots` in the checkout. Any checkout's
+// counts, not only this one's: a dead run's record from another worktree, or one that
+// spelt this checkout by a subst drive, names its own, and the next run to start alone
+// sweeps it. The name is the test, since a worktree that is gone has nothing else left.
+const TOOL_TAIL = path.join(path.basename(path.dirname(TOOL_ROOT)), path.basename(TOOL_ROOT)).toLowerCase();
+
+function sweepable(r) {
+  const rel = path.relative(path.resolve(tmpdir()), r);
+  if (rel && !rel.startsWith("..") && !path.isAbsolute(rel)) return true;
+  return r
+    .toLowerCase()
+    .replace(/[\\/]+$/, "")
+    .endsWith(path.sep + TOOL_TAIL);
+}
+
 function asTempFolder(p) {
   const r = path.resolve(p);
-  const tmp = path.resolve(tmpdir());
-  const rel = path.relative(tmp, r);
-  const allowed = r.toLowerCase() === path.resolve(TOOL_ROOT).toLowerCase();
-  if (!allowed && (!rel || rel.startsWith("..") || path.isAbsolute(rel))) {
-    throw new Error(`refusing to sweep project entries outside ${tmp}: "${r}"`);
-  }
+  if (!sweepable(r)) throw new Error(`refusing to sweep project entries outside ${path.resolve(tmpdir())}: "${r}"`);
   return r.endsWith(path.sep) ? r : r + path.sep;
 }
 
@@ -571,7 +580,13 @@ export function startTidy({
       const others = readRecords(dir);
       const alone = !others.some((r) => r.live);
       if (alone) {
-        const dead = [...new Set(others.flatMap((r) => r.prefixes ?? []))];
+        // A folder this run would refuse is left out with a note, not thrown on: a throw here
+        // would keep the dead records, and every later run would meet them again.
+        const dead = [...new Set(others.flatMap((r) => r.prefixes ?? []))].filter((p) => {
+          if (sweepable(path.resolve(p))) return true;
+          console.error(`note: a dead run's folder is outside the temp folder and is not swept: "${p}"`);
+          return false;
+        });
         if (dead.length) restoreProjects({ root, entries: [] }, { prefixes: dead });
         for (const r of others) rmSync(r.file, { force: true });
       }
