@@ -980,10 +980,16 @@ export function createReviewServer({
     maps.clear();
     measures.clear();
   }
-  function moveToHead() {
+  // HEAD read now, not as kept (headSeen): `head` may answer with a promise (shot-git-worker.mjs),
+  // which was once taken for the baseline and failed with "Cannot read properties of undefined".
+  async function moveToHead() {
     refuseWhileCleaning();
-    const h = head();
+    let h = null;
+    try {
+      h = await head();
+    } catch {}
     if (!h || !revisionAt) throw new Error("HEAD cannot be read");
+    refuseWhileCleaning();
     moveTo(h);
   }
   // Back to the baseline the last move left: its commit by hash (a session moved before the hash
@@ -1166,7 +1172,7 @@ export function createReviewServer({
     try {
       if (url.pathname === hrefs.moveBaseline) {
         if (body.action === "back") moveBack();
-        else moveToHead();
+        else await moveToHead();
         sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
         return sendJson(res, 200, { ok: true, baseline: session.data.baseline });
       }

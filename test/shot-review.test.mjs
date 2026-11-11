@@ -2382,6 +2382,47 @@ if (cleanupArgs.includes("--cleanup")) {
 }
 `;
 
+  test("moves to HEAD read in another thread, as the tool reads it, and says so when HEAD cannot be read", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-move-"));
+    const docs = path.join(root, "docs");
+    fs.mkdirSync(docs, { recursive: true });
+    let headNow = async () => ({ hash: "b".repeat(40), short: "bbbbbbbb", build: 1501 });
+    const app = createReviewServer({
+      session: openSession(root, () => ({ hash: "a".repeat(40), short: "aaaaaaaa", build: 1500 })),
+      revision: stubRevision("a", {}),
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+      docsRoot: docs,
+      // as shot-git-worker.mjs answers: a promise
+      head: () => headNow(),
+      revisionAt: (hash) => stubRevision(hash[0], {}),
+      changedBetween: () => new Set(),
+      changed: async () => [],
+    });
+    try {
+      const port = await app.listen(0);
+      const base = `http://127.0.0.1:${port}`;
+      const move = async () => {
+        const res = await fetch(base + hrefs.moveBaseline, {
+          method: "POST",
+          headers: { origin: base, "content-type": "application/json" },
+          body: JSON.stringify({ action: "move" }),
+        });
+        return [res.status, await res.json()];
+      };
+      const [status, moved] = await move();
+      assert.equal(status, 200, JSON.stringify(moved));
+      assert.equal(app.session().data.baseline.short, "bbbbbbbb");
+      headNow = async () => {
+        throw new Error("git failed");
+      };
+      assert.deepEqual(await move(), [400, { error: "HEAD cannot be read" }]);
+      assert.equal(app.session().data.baseline.short, "bbbbbbbb");
+    } finally {
+      await app.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("starts, stops and lists runs from its runs page, one at a time, and holds a review's actions while a clean-up runs", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-runs-"));
     const docs = path.join(root, "docs");
