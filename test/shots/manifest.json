@@ -36,6 +36,24 @@
     "Features/Images/4fc2bf99-2bec-4943-837d-21038d791574.png": {
       "build": 1042
     },
+    "Features/Images/569099635-bc9553a6-fcce-487d-a478-dbee557f33b1.light.png": {
+      "build": 1042,
+      "png": {
+        "decision": {
+          "keep": "new",
+          "capture": "3e9851941c56a2a9639daf5ed8bb2e2891a80bd0"
+        }
+      }
+    },
+    "Features/Images/569099635-bc9553a6-fcce-487d-a478-dbee557f33b1.png": {
+      "build": 1042,
+      "png": {
+        "decision": {
+          "keep": "new",
+          "capture": "c94e5e1d10e58b88e36973a35d69a4f2b2ea2f52"
+        }
+      }
+    },
     "Features/Images/599a66ad-31d5-449f-bbf5-00963fe9aa2a.png": {
       "build": 1034
     },
@@ -55,15 +73,15 @@
       "build": 1042,
       "png": {
         "decision": {
-          "keep": "old",
+          "keep": "new",
           "capture": "dc3fc70fec73ba9bde16742d2f1be4aa9dc5f5e2"
         }
       },
       "svg": {
         "decision": {
           "accept": true,
-          "svg": "2850d9c97829c24d7f71c0f0b320353c17426c64",
-          "png": "b97ebc39f181ff0e324866981c3f4f04d9c06c37"
+          "svg": "0ec5193b81efcf1b46dce5bee895a2466c2a2109",
+          "png": "dc3fc70fec73ba9bde16742d2f1be4aa9dc5f5e2"
         }
       }
     },
@@ -122,6 +140,7 @@
       "build": 1042
     },
     "Features/Packages/Images/f66fb240-dcb7-46ee-896d-78c3789a7876.png": {
+      "build": 1042,
       "svg": {
         "ignore": [
           [315, 62, 347, 98]
@@ -249,7 +268,13 @@
       "build": 1042
     },
     "IDE/Forms/Images/Designer_GridOptions.png": {
-      "build": 1034
+      "build": 1034,
+      "png": {
+        "decision": {
+          "keep": "old",
+          "capture": "e70554caf636bcd8d48fb06b41fd2094dd7752af"
+        }
+      }
     },
     "IDE/Forms/Images/Designer_Locked.light.png": {
       "build": 1042
@@ -590,7 +615,13 @@
       "build": 1042
     },
     "Miscellaneous/Images/94490c87-fafe-4d5b-ae39-d3cedba1c21d.png": {
-      "build": 1042
+      "build": 1042,
+      "png": {
+        "decision": {
+          "keep": "new",
+          "capture": "28a2ea1ae9c830f06dfbcbca5c5b8380cd79984f"
+        }
+      }
     },
     "Miscellaneous/Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png": {
       "build": 1042
