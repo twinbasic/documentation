@@ -379,19 +379,68 @@ const REVIEW_SCRIPT = `<script>
   // six connections to the server at most and a stream holds one for as long as it is open.
   // The page that holds the lock holds the stream and passes each update to the others; when
   // it goes, the lock passes to another page. (A shared worker would be simpler, but in some
-  // browsers one cannot reach the server.)
-  const live = () => {
-    const open = (pass) => {
-      const es = new EventSource(${JSON.stringify(hrefs.events)});
+  // browsers one cannot reach the server.) Only a page that is shown holds it: one in a tab
+  // behind others, which the browser may freeze, gave it up to none and no page followed the
+  // runs (owner, 2026-11-11); a page shown again is fetched again, since it may have missed some.
+  // A stream the browser gave up on is opened again, and one back after the server was away
+  // fetches every page, since what was sent meanwhile is lost.
+  const ALL = JSON.stringify({ outs: [], runs: true });
+  const stream = (pass) => {
+    let es = null;
+    let lost = false;
+    let stopped = false;
+    const connect = () => {
+      es = new EventSource(${JSON.stringify(hrefs.events)});
       es.addEventListener("update", (e) => {
         update(e.data);
         pass?.(e.data);
       });
+      es.onopen = () => {
+        if (!lost) return;
+        lost = false;
+        update(ALL);
+        pass?.(ALL);
+      };
+      es.onerror = () => {
+        lost = true;
+        if (es.readyState === EventSource.CLOSED) setTimeout(() => stopped || connect(), 2000);
+      };
     };
-    if (!navigator.locks || typeof BroadcastChannel !== "function") return open();
+    connect();
+    return () => {
+      stopped = true;
+      es.close();
+    };
+  };
+  const live = () => {
+    if (!navigator.locks || typeof BroadcastChannel !== "function") return stream();
     const channel = new BroadcastChannel("shot-review-events");
     channel.onmessage = (e) => update(e.data);
-    navigator.locks.request("shot-review-events", () => new Promise(() => open((d) => channel.postMessage(d))));
+    let held = null;
+    const take = () => {
+      if (held || document.visibilityState !== "visible") return;
+      const mine = { stop: null };
+      held = mine;
+      navigator.locks.request("shot-review-events", () => new Promise((done) => {
+        if (held !== mine) return done();
+        const stop = stream((d) => channel.postMessage(d));
+        mine.stop = () => {
+          stop();
+          done();
+        };
+      }));
+    };
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        take();
+        update(ALL);
+      } else {
+        const mine = held;
+        held = null;
+        mine?.stop?.();
+      }
+    });
+    take();
   };
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea, select")) return;

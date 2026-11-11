@@ -581,6 +581,18 @@ and the run's end shown 4 s after it ended (9 s before; a minute in the earlier 
 is each verdict's arrival, which keeps what the picture held (`holdPicture`): its bundle is
 recompressed with brotli at quality 9, about 0.1 s a picture, in the server's thread.
 
+**Only a page that is shown holds the event stream** (owner, 2026-11-11). With the server answering
+at once, the owner's runs page still did not follow a retake, reloaded or not: the page holding
+the Web Lock, and with it the one stream, was a tab behind others that Chrome had frozen, so it
+passed nothing on, and every other page, a reloaded one too, waited for the lock behind it.
+Closing the other tabs brought the updates back. Now a page takes the lock only while
+`document.visibilityState` is "visible", gives it up when hidden, and fetches itself once when
+shown again; a stream the browser has closed is opened again 2 s later, and one that comes back
+after the server was away fetches every page. Checked in a browser on port 4190: a page made
+hidden released the lock, nobody held it while every page was hidden, and a page shown again took
+it and fetched itself; a replay's count rose on the shown page to its end; after the server was
+stopped and started again, the page fetched itself and followed the next run.
+
 Nothing of the plan is left. The two small things left after step 9 are fixed:
 
 - **The manifest keeps its line endings.** `openManifest().save` wrote LF, so a manifest checked
