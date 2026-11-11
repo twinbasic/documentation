@@ -20,6 +20,18 @@ import { appendEvent, RUN_TOOLS, runPaths, STAGED_TOOLS } from "./shot-session.m
 /** The kind of record a run writes its events as (--events). */
 export const EVENT_KIND = "shot-event";
 
+/** The variable a run of a session is started with, its number: the tool runs as it is asked. */
+export const SESSION_RUN = "SHOT_SESSION_RUN";
+
+/** The kind of record that ends what a terminal following a run is sent: {exit}, the run's code. */
+export const EXIT_KIND = "shot-exit";
+
+/** Where the open review tool says it listens, beside the session: {pid, port}. */
+export const TERMINAL_RUN_PATH = "/api/terminal-run";
+
+/** The address a terminal follows run `n` at. */
+export const followPath = (n) => `/api/run/${n}/follow`;
+
 /**
  * The table of shots, as `shoot_docs.mjs --list` prints it: a promise of [{out, setup, once,
  * window}]. It runs as a child, hidden as a run is (startRun), and starts no IDE; `command` is
@@ -158,6 +170,41 @@ export function runOf(
   return { tool: "cleanup", args: ["--cleanup", ...(dryRun ? ["--dry-run"] : []), ...onlyArgs, ...against] };
 }
 
+// The options a run of the session is not given from a terminal, and why: the session gives the
+// first two, and the others would write elsewhere than the session's own folders and cache.
+const SESSION_OWNS = [
+  ["--stage", "the session gives a run its stage"],
+  ["--events", "the session reads a run's events"],
+  ["--diffs", "a run of the session keeps its difference maps in its stage"],
+  ["--bundles", "a run of the session keeps its bundles in the session's cache, .svgshot-bundles"],
+  ["--out", "a run of the session writes under docs"],
+  ["--against-disk", "a run of the session is compared with the session's baseline"],
+];
+
+/**
+ * The run a terminal asks for, as {tool, args} for startRun: `tool` the name a run records
+ * (RUN_TOOLS; shoot_docs.mjs --cleanup is "cleanup") and `args` the command line as typed, which is
+ * kept but for --against, added as the session's `baseline` ({hash, short}) when it is not given.
+ * Throws, with a message for a person, on an option the session gives or forbids, and on an
+ * --against that names another revision than the baseline.
+ */
+export function terminalRunOf(tool, args, baseline) {
+  if (!RUN_TOOLS[tool]) throw new Error(`no such tool: ${tool}`);
+  if (!Array.isArray(args) || args.some((a) => typeof a !== "string"))
+    throw new Error("the command line is not a list of strings");
+  const named = (a, option) => a === option || a.startsWith(`${option}=`);
+  for (const [option, why] of SESSION_OWNS)
+    if (args.some((a) => named(a, option))) throw new Error(`${option} is not for a run of the session: ${why}`);
+  const k = args.findIndex((a) => named(a, "--against"));
+  if (k < 0) return { tool, args: [...args, "--against", baseline.hash] };
+  const rev = args[k].includes("=") ? args[k].slice(args[k].indexOf("=") + 1) : args[k + 1];
+  if (rev !== baseline.hash && rev !== baseline.short)
+    throw new Error(
+      `--against ${rev}: a run of the session is compared with the session's baseline, ${baseline.short}; leave --against out`,
+    );
+  return { tool, args };
+}
+
 /** The kind of the run `run` (a session's record), as RUN_KINDS names it. */
 export const kindOf = (run) =>
   run.tool === "shoot_docs" ? "retake" : run.tool === "chromeshot" ? "browser" : run.tool;
@@ -165,7 +212,7 @@ export const kindOf = (run) =>
 /**
  * Starts a run of `tool` with `args` in `session` (openSession): adds it to the session and
  * spawns the tool from the repository's root. `onEvent(run, value)` is called for each event,
- * `onLine(run, line)` for each other line, stdout and stderr alike, and `onExit(run)` once
+ * `onLine(run, line, stream)` for each other line, `stream` "stdout" or "stderr", and `onExit(run)` once
  * it has ended and the session records how. `command` stands in for the script's path in the
  * probes: {node, script}. Returns {run, stop(), kill(), exited}: `stop` asks the run to stop,
  * `kill` ends its process (which skips putting the registry back), `exited` a promise of
@@ -188,8 +235,11 @@ export function startRun(
   // Never detached there: that is DETACHED_PROCESS, no console at all, and each of those
   // programs then opens a console window on the user's desktop. Elsewhere, a process group of
   // its own.
+  // SESSION_RUN tells the tool it is a run of the session, so that it runs as it is asked and does
+  // not hand itself to a session again (shot-front.mjs).
   const child = spawn(node, [script, ...runArgs(tool, args, files.stage)], {
     cwd: REPO_ROOT,
+    env: { ...process.env, [SESSION_RUN]: String(run.n) },
     stdio: ["pipe", "pipe", "pipe"],
     windowsHide: true,
     detached: process.platform !== "win32",
@@ -197,9 +247,9 @@ export function startRun(
   // A stop sent as the run ends meets a closed pipe.
   child.stdin.on("error", () => {});
   let stopped = false;
-  const line = (text) => {
+  const line = (text, stream = "stdout") => {
     appendFileSync(files.log, `${text}\n`);
-    onLine(run, text);
+    onLine(run, text, stream);
   };
   readRecords(child.stdout, [EVENT_KIND], {
     onRecord: (_, value) => {
@@ -213,11 +263,11 @@ export function startRun(
         line(`the review tool could not take the event ${JSON.stringify(value.type)}: ${e.stack ?? e}`);
       }
     },
-    onLine: line,
+    onLine: (text) => line(text, "stdout"),
   });
-  readRecords(child.stderr, [], { onRecord: () => {}, onLine: line });
+  readRecords(child.stderr, [], { onRecord: () => {}, onLine: (text) => line(text, "stderr") });
   const exited = new Promise((resolve) => {
-    child.on("error", (e) => line(`the run could not start: ${e.message}`));
+    child.on("error", (e) => line(`the run could not start: ${e.message}`, "stderr"));
     child.on("close", (code) => {
       session.endRun(run.n, { exit: code, stopped });
       onExit(run);

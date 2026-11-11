@@ -56,13 +56,13 @@ import {
   isOverridden,
   neighbours,
   reviewPictures,
-  runFacts,
   undecidedRefusal,
-  verdictOfEvent,
 } from "./shot-review.mjs";
-import { kindOf, runOf, startRun } from "./shot-runs.mjs";
-import { commandOf, optionOf, parseSession, readEvents, runPaths, sessionPaths } from "./shot-session.mjs";
-import { readReviewed, readStrength, readVerdicts } from "./shot-stage.mjs";
+import { recordLine } from "./record-lines.mjs";
+import { createRunHost, readRun } from "./shot-host.mjs";
+import { EXIT_KIND, followPath, kindOf, runOf, TERMINAL_RUN_PATH, terminalRunOf } from "./shot-runs.mjs";
+import { commandOf, optionOf, parseSession, runPaths, sessionPaths } from "./shot-session.mjs";
+import { readReviewed, readStrength } from "./shot-stage.mjs";
 
 const TYPES = {
   ".png": "image/png",
@@ -79,15 +79,6 @@ const isImage = (name) => Object.hasOwn(TYPES, path.extname(name).toLowerCase())
 // How long the table of shots (shoot_docs.mjs --list) is used before it is read again: it changes
 // only with the tool's code.
 const SHOTS_FRESH = 30000;
-
-// What a run of the session under `root` left, `record` its record in the session: its events,
-// what they say (runFacts) and its verdicts, {out => {png, svg}}, as its stage holds them.
-function readRun(root, record) {
-  const files = runPaths(root, record.n);
-  const events = readEvents(files.events);
-  const verdicts = new Map(readVerdicts(files.stage).map((v) => [v.out, { png: v.png, svg: v.svg }]));
-  return { events, facts: runFacts(record.tool, events), verdicts };
-}
 
 // The pictures of a closed session under `root`, as its overview showed them: each run's
 // verdicts as the review applied them (appliedVerdict, readReviewed).
@@ -260,14 +251,43 @@ export function createReviewServer({
   // The pictures changed outside the session's runs: read again at most once a second (kept).
   const changedSeen = kept(changed, [], gitChanged);
   const outside = () => changedSeen();
-  // run n -> {record, live, handle, events, facts, verdicts}
-  const runs = new Map();
-  const loadRuns = () => {
-    runs.clear();
-    for (const record of session.data.runs)
-      runs.set(record.n, { record, live: false, handle: null, ...readRun(session.root, record) });
+  // The session's runs, started, recorded and applied as a terminal's run is (shot-host.mjs): run
+  // n -> {record, live, handle, stopAsked, events, facts, verdicts}. What the host reports reaches
+  // the pages, and a terminal that follows a run (followRun).
+  const host = createRunHost({
+    session: () => session,
+    applier: () => applier,
+    command,
+    onApplied: (out) => sse.send("update", { outs: [out] }),
+    onEvent: (record, e) => {
+      const r = runs.get(record.n);
+      if (e.type === "await" || e.type === "refused") sse.send("update", { outs: [e.out], runs: true });
+      else if (e.out) sse.send("update", { outs: [e.out] });
+      else sse.send("update", { outs: e.type === "run" || e.type === "summary" ? listedOf(r) : [], runs: true });
+    },
+    onLine: (record, text, stream) => {
+      onLine?.(record, text, stream);
+      for (const res of followers.get(record.n) ?? []) res.write(`${text}\n`);
+    },
+    onExit: (record) => {
+      const r = runs.get(record.n);
+      if (record.tool === "cleanup") {
+        // what it put back is no longer changed: every page that shows a picture may differ
+        changedSeen.again();
+        sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
+      } else sse.send("update", { outs: listedOf(r), runs: true });
+      endFollowers(record.n);
+    },
+  });
+  const runs = host.runs;
+  // The terminals that follow a run they handed to the tool (shot-front.mjs): n -> Set of responses,
+  // each sent the run's lines as they come and, once its verdicts are applied, its exit.
+  const followers = new Map();
+  const endFollowers = (n) => {
+    const exit = session.run(n)?.exit ?? null;
+    for (const res of followers.get(n) ?? []) res.end(`${recordLine(EXIT_KIND, { exit })}\n`);
+    followers.delete(n);
   };
-  loadRuns();
   const stageFile = (n, rel) => path.join(runPaths(session.root, n).stage, rel);
   const exists = (rel) => existsSync(path.join(docsRoot, rel));
   const entry = (out) => manifest().entry(out);
@@ -454,90 +474,31 @@ export function createReviewServer({
 
   // ---- runs ----
   const listedOf = (r) => r.facts.listed;
-  // A run's verdicts are applied in order, one in each turn of the event loop, so that the
-  // server answers between them: a replay reports several pictures a second, each taking 0.1 s
-  // or more to apply (its bundle copied into the cache), and applied as their events were read
-  // they held every request up for as long as the replay ran. A run that has exited stays live
-  // until its verdicts are applied, so that nothing that waits for a run's end (a new run, a
-  // commit, Remove) meets one half applied. close() applies what is left at once, then `shut`
-  // stops the queue.
-  const queue = [];
-  let draining = false;
-  let shut = false;
-  const enqueue = (job) => {
-    queue.push(job);
-    if (draining) return;
-    draining = true;
-    setImmediate(drain);
-  };
-  function drain() {
-    const job = shut ? null : queue.shift();
-    if (!job) {
-      draining = false;
-      return;
-    }
-    try {
-      job();
-    } finally {
-      setImmediate(drain);
-    }
-  }
-  // applied as it arrives: the stage holds the verdict by the time its event is written; one
-  // that could not be read is tried again a moment later. A run removed meanwhile is not.
-  const applyArrival = (n, out, part) => {
-    if (!runs.has(n)) return;
-    if (applier.arrive(n, out, part)) sse.send("update", { outs: [out] });
-    else if (applier.errors.has(out))
-      setTimeout(() => {
-        if (!shut && runs.has(n) && applier.arrive(n, out, part)) sse.send("update", { outs: [out] });
-      }, 500);
-  };
-  const onEvent = (record, e) => {
-    const r = runs.get(record.n);
-    r.events.push(e);
-    r.facts = runFacts(record.tool, r.events);
-    if (e.type === "picture" || e.type === "svg") {
-      const [part, value] = verdictOfEvent(e);
-      const v = r.verdicts.get(e.out) ?? { png: null, svg: null };
-      v[part] = value;
-      r.verdicts.set(e.out, v);
-      enqueue(() => applyArrival(record.n, e.out, part));
-    }
-    if (e.type === "await" || e.type === "refused") sse.send("update", { outs: [e.out], runs: true });
-    else if (e.out) sse.send("update", { outs: [e.out] });
-    else sse.send("update", { outs: e.type === "run" || e.type === "summary" ? listedOf(r) : [], runs: true });
-  };
-  const onExit = (record) =>
-    enqueue(() => {
-      const r = runs.get(record.n);
-      if (!r) return;
-      r.live = false;
-      r.handle = null;
-      if (record.tool === "cleanup") {
-        // what it put back is no longer changed: every page that shows a picture may differ
-        changedSeen.again();
-        sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
-      } else sse.send("update", { outs: listedOf(r), runs: true });
-    });
-  const liveRuns = () => [...runs.values()].filter((r) => r.live);
+  const liveRuns = host.liveRuns;
   function start({ tool, args }) {
     refuseWhileCommitting();
-    const busy = liveRuns()[0];
-    if (busy) throw new Error(`run ${busy.record.n} is running: a new run starts once it has ended`);
-    const handle = startRun(session, { tool, args }, { onEvent, onExit, onLine, command });
-    runs.set(handle.run.n, {
-      record: handle.run,
-      live: true,
-      handle,
-      stopAsked: false,
-      events: [],
-      facts: runFacts(tool, []),
-      verdicts: new Map(),
-    });
+    const handle = host.start({ tool, args });
     sse.send("update", { outs: [], runs: true });
     return handle;
   }
-  const live = () => liveRuns().map((r) => r.handle);
+  const live = host.live;
+  // A run a terminal hands to the tool (shot-front.mjs): its command line as typed, the session's
+  // baseline added as its --against.
+  const startTerminal = ({ tool, args }) => start(terminalRunOf(tool, args, session.data.baseline));
+  // A terminal that follows run n: sent the run's log so far, then its lines as they come, and its
+  // exit once its verdicts are applied; at once for a run that has ended.
+  function followRun(n, res) {
+    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+    const log = readIf(runPaths(session.root, n).log);
+    if (log) res.write(log);
+    if (!runs.get(n)?.live) {
+      res.end(`${recordLine(EXIT_KIND, { exit: session.run(n)?.exit ?? null })}\n`);
+      return;
+    }
+    if (!followers.has(n)) followers.set(n, new Set());
+    followers.get(n).add(res);
+    res.on("close", () => followers.get(n)?.delete(res));
+  }
   // A run the runs page asks for: its IDE named by its build, which is looked up among the installs.
   function startRequest(body) {
     let ide;
@@ -1110,7 +1071,7 @@ export function createReviewServer({
       session = next.session;
       revision = next.revision;
       applier = createApplier({ session, docsRoot, bundlesRoot, revision: () => revision, manifest });
-      loadRuns();
+      host.load();
       headSeen.again();
       changedSeen.again();
       maps.clear();
@@ -1221,6 +1182,10 @@ export function createReviewServer({
         const { run } = startRequest(body);
         return sendJson(res, 200, { ok: true, run: run.n });
       }
+      if (url.pathname === TERMINAL_RUN_PATH) {
+        const { run } = startTerminal(body);
+        return sendJson(res, 200, { ok: true, run: run.n, follow: followPath(run.n) });
+      }
       if (segs[0] === "api" && segs[1] === "run" && segs.length === 3 && runs.has(Number(segs[2]))) {
         const done = runAction(Number(segs[2]), body.action);
         return sendJson(res, 200, { ok: true, ...done });
@@ -1265,6 +1230,11 @@ export function createReviewServer({
       return plainPage(out).then((plain) =>
         plain ? page(req, res, plain) : notFound(res, `${out} is not a picture of this session or under docs`),
       );
+    }
+    if (first === "api" && rest[0] === "run" && rest[2] === "follow" && rest.length === 3) {
+      const n = Number(rest[1]);
+      if (!runs.has(n)) return notFound(res);
+      return followRun(n, res);
     }
     if (first === "log") {
       const n = Number(rest[0]);
@@ -1354,8 +1324,8 @@ export function createReviewServer({
     applyPending: () => applier.pending(),
     close() {
       // what the runs reported is applied before the server stops, at once
-      while (queue.length) queue.shift()();
-      shut = true;
+      host.close();
+      for (const n of [...followers.keys()]) endFollowers(n);
       sse.close();
       const closed = new Promise((resolve) => server.close(() => resolve()));
       server.closeAllConnections();
