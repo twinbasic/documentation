@@ -27,6 +27,21 @@ Use a separate **As** *type* clause for each variable being defined. For a **Var
 
 The **ReDim** statement is used to size or resize a dynamic array that has already been formally declared by using a [**Private**](Private), [**Public**](Public), or [**Dim**](Dim) statement with empty parentheses (without dimension subscripts).
 
+An array declared with its subscripts has a fixed size, and **ReDim** cannot change it. **ReDim** of such an array is compile error TB5118, *array has already been dimensioned*, whether it is a local array, an array at module level, or an array member of a user-defined type:
+
+```tb check_build slot=module expect-error=TB5118
+Private Type Holder
+    Values(1 To 3) As Long
+End Type
+
+Sub Grow()
+    Dim h As Holder
+    ReDim h.Values(5)   ' TB5118: Values was declared with its subscripts
+End Sub
+```
+
+A user-defined type that needs an array it can resize declares the member with empty parentheses, `Values() As Long`, and **ReDim** then works on `h.Values`.
+
 Use the **ReDim** statement repeatedly to change the number of elements and dimensions in an array. However, an array declared with one data type cannot later be changed to another data type by **ReDim**, unless the array is contained in a **Variant**. If the array is contained in a **Variant**, the type of the elements can be changed by using an **As** *type* clause, unless the **Preserve** keyword is used, in which case no changes of data type are permitted.
 
 **ReDim** also works on a **Variant** that holds a value other than an array, or nothing at all: the value is discarded and the **Variant** then holds the new array.
