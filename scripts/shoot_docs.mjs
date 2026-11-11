@@ -1373,6 +1373,16 @@ const demoLines = () => readFileSync(DEMO_SOURCE, "utf8").split("\n");
 
 // ---- help
 
+// Whether the help add-in's pane holds the last thing its BuildPane makes: the hidden
+// #helpTextFind with textfind.js in it (add-in/Sources/HelpAddIn.twin). Host_OnProjectLoaded
+// prints its loaded line just after BuildPane returns.
+const helpPaneBuilt = (c) =>
+  c.evaluate(`(() => {
+  const w = typeof toolWindowsById === "undefined" ? null : toolWindowsById[${JSON.stringify(PANE)}];
+  const find = w?.bodyElement?.getRootNode().querySelector("#helpTextFind");
+  return !!find && find.innerHTML.length > 0;
+})()`);
+
 async function startHelp(run) {
   const { lane, slot, work } = run;
   const files = createStaticHandler(SITE);
@@ -1407,10 +1417,15 @@ async function prepareHelp(run) {
   const { c, origin } = run;
   run.step = "shoot";
   const addinLines = (mark) => linesSince(c, mark, { prefix: "[tbDocsHelp] " });
-  if (
-    !(await waitFor(c, async () => (await addinLines(null)).some((l) => l.startsWith("loaded")), { timeout: 30000 }))
-  ) {
-    throw new Error("the add-in never printed its loaded line");
+  // The add-in has loaded once it has printed its loaded line, or, since that line can be
+  // gone, once its pane holds what it builds last, a few statements before the line.
+  // On BETA 1042 the DEBUG CONSOLE is emptied a second time as the first project opens,
+  // after the add-in has printed (BUGS-TO-REPORT.md, console-cleared-at-open).
+  const loaded = async () => (await addinLines(null)).some((l) => l.startsWith("loaded")) || (await helpPaneBuilt(c));
+  if (!(await waitFor(c, loaded, { timeout: 30000 }))) {
+    throw new Error(
+      `the add-in neither printed its loaded line nor built its pane: ${JSON.stringify(await addinLines(null))}`,
+    );
   }
   await openFile(c, DEMO_FILE, { line: 1, column: 1 });
   run.defaults = JSON.parse(await c.evaluate(PAGE_DEFAULTS));
