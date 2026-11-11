@@ -97,17 +97,19 @@ A property becomes a CSS variable on the IDE's page, named `--theme` followed by
 
 One property is read by the IDE itself and not by CSS: `CodeBracketPairColorization: 1` colours matching pairs of brackets in the code. The shipped themes set it to 0.
 
-The shipped files `Dark.theme` and `Light.theme` define the same properties, about 500 of them, and are the list of properties you can set. They start with a comment that tells you not to modify them, so copy a property's name from them and put it in your own file. The names group by their first word:
+The shipped files `Dark.theme` and `Light.theme` define the same properties, about 550 of them, and are the list of properties you can set; `Light.theme` has one more, `DialogNavBarBackColor`. They start with a comment that tells you not to modify them, so copy a property's name from them and put it in your own file. The names group by their first word:
 
 - `Symbol`, 188 properties: the colour, font style, font weight and text decoration of each kind of code.
+- `Dialog`, 47: the dialogs. `DialogTickForeColor`, for example, is the colour of the ticks in the tree of the [**Import from twinproj...**](../Projects/Adding-Files#projects-and-packages) dialog.
 - `Toolbox`, 33.
 - `Panel` and `Status`, 25 each.
 - `Designer`, 19.
 - `Icon`, 16.
-- `Dialog` and `Tab`, 15 each.
-- `Code` and `Property`, 13 each.
+- `Tab`, 15.
+- `Property`, 14.
+- `Code`, 13.
 
-Smaller groups follow, such as `Context`, `General`, `Diagnostics`, `Debug`, `Dock`, `FrontPage` and `Menu`. The names within each shipped file are in alphabetical order.
+Smaller groups follow, such as `Diagnostics`, `Context`, `FrontPage`, `General`, `Modal`, `Dock`, `Debug` and `Menu`. The names within each shipped file are roughly, not strictly, in alphabetical order, so search the file for a name rather than looking for it by its place.
 
 Each of the 47 kinds of code has four `Symbol` properties: its name between `Symbol` and `Color`, `FontStyle`, `FontWeight` or `TextDecoration`. `SymbolClassTextDecoration` in the example above is the text decoration of the kind *Class*.
 
