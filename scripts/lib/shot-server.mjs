@@ -234,7 +234,8 @@ export function createReviewServer({
   readOnly = false,
 }) {
   const newestIde = ides[0]?.build ?? null;
-  const sse = createSseChannel();
+  // a ping every 5 s, by which a page tells a stream that runs from one that has stopped (shot-pages.mjs)
+  const sse = createSseChannel({ ping: 5000 });
   let revision = initialRevision;
   let applier = createApplier({ session, docsRoot, bundlesRoot, revision: () => revision, manifest });
   // The commit that closed the session before this one, as the pages say so: {hash, short,

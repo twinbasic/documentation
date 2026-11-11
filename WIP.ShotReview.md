@@ -593,6 +593,21 @@ hidden released the lock, nobody held it while every page was hidden, and a page
 it and fetched itself; a replay's count rose on the shown page to its end; after the server was
 stopped and started again, the page fetched itself and followed the next run.
 
+**Each page says whether it follows the runs** (owner, 2026-11-11), so that a stream that stopped
+is not taken for the tool's fault. The server sends a `ping` event every 5 s (`createSseChannel`'s
+`ping` in `lib/sse.mjs`, off for the builder's live reload), which the page holding the stream
+passes on with the updates (`{kind: "update" | "ping" | "away"}` over the BroadcastChannel). A chip
+at the foot of every page (`#live`) says **live**; **the server does not answer: connecting
+again** while the stream is down; **the server has sent nothing for N s: it may be busy** on the
+page that holds a stream that stays open and silent; and, on a shown page that has heard nothing for
+15 s while another holds the stream, **no updates for N s: another tab of this tool held the
+connection to the server and passed nothing on (a tab the browser froze?); this page has taken it
+over**: it takes the lock with `steal: true`, the page it took it from closes its stream when it
+runs again, and the chip says so for 20 s before **live**. Checked in a browser on port 4190: a
+request that took the lock and never let go was found after 18 s and lost the lock to the page,
+which then followed a replay to its end; with the server stopped the chip said so within 4 s, and
+**live** again once it was back.
+
 Nothing of the plan is left. The two small things left after step 9 are fixed:
 
 - **The manifest keeps its line endings.** `openManifest().save` wrote LF, so a manifest checked

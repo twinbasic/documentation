@@ -92,6 +92,7 @@ section.muted{opacity:.55}
 .actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}.actions button,form.allow button{font:inherit;padding:3px 12px}
 .actions button[aria-pressed=true]{font-weight:700;outline:2px solid var(--link)}
 .status{color:var(--mut);font-size:13px}.status.err{color:var(--bar)}
+#live{position:fixed;right:12px;bottom:10px;z-index:30;margin:0;background:var(--bg);max-width:min(560px,calc(100vw - 24px))}#live.ok{color:var(--mut)}
 form.allow fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 10px;padding:6px 10px}
 form.allow label{display:inline-block;margin:2px 14px 2px 0}form.allow input[type=number]{width:6em}
 form.allow textarea{width:100%;max-width:600px;font:12px var(--mono,monospace)}
@@ -343,6 +344,7 @@ const REVIEW_SCRIPT = `<script>
     draws();
     showPicked();
     defaults();
+    showLive();
     scrollTo(0, y);
   };
   // The page fetches itself 400 ms after an update, and once in 400 ms at most while updates
@@ -385,53 +387,112 @@ const REVIEW_SCRIPT = `<script>
   // A stream the browser gave up on is opened again, and one back after the server was away
   // fetches every page, since what was sent meanwhile is lost.
   const ALL = JSON.stringify({ outs: [], runs: true });
+  // What the page says of its updates, in a chip at the foot of the window (#live): live, or why
+  // not. The server sends a ping every 5 s (createSseChannel's ping), which the page holding the
+  // stream passes on as it passes updates, so that a page shown knows when it last heard from the
+  // server: one that has heard nothing for 15 s says why, and when another tab holds the stream and
+  // passes nothing on (a tab the browser froze), takes it over (owner, 2026-11-11).
+  const QUIET = 15000;
+  let heard = Date.now();
+  let holding = false;
+  let keepUntil = 0;
+  let liveState = { text: "connecting to the server", kind: "" };
+  const showLive = () => {
+    let chip = document.getElementById("live");
+    if (!chip) {
+      chip = document.createElement("span");
+      chip.id = "live";
+      document.body.append(chip);
+    }
+    chip.className = "chip " + liveState.kind;
+    chip.textContent = liveState.text;
+  };
+  const setLive = (text, kind = "") => {
+    liveState = { text, kind };
+    showLive();
+  };
+  const hear = () => {
+    heard = Date.now();
+    if (Date.now() > keepUntil && liveState.text !== "live") setLive("live", "ok");
+  };
+  const serverAway = () => {
+    heard = Date.now();
+    setLive("the server does not answer: connecting again", "fail");
+  };
+  // A message from the page that holds the stream: {kind: "update", data}, "ping" or "away".
+  const told = (m) => {
+    if (m.kind === "away") return serverAway();
+    hear();
+    if (m.kind === "update") update(m.data);
+  };
   const stream = (pass) => {
     let es = null;
     let lost = false;
     let stopped = false;
+    const tell = (m) => {
+      told(m);
+      pass?.(m);
+    };
     const connect = () => {
       es = new EventSource(${JSON.stringify(hrefs.events)});
-      es.addEventListener("update", (e) => {
-        update(e.data);
-        pass?.(e.data);
-      });
+      es.addEventListener("update", (e) => tell({ kind: "update", data: e.data }));
+      es.addEventListener("ping", () => tell({ kind: "ping" }));
       es.onopen = () => {
+        tell({ kind: "ping" });
         if (!lost) return;
         lost = false;
-        update(ALL);
-        pass?.(ALL);
+        tell({ kind: "update", data: ALL });
       };
       es.onerror = () => {
         lost = true;
+        tell({ kind: "away" });
         if (es.readyState === EventSource.CLOSED) setTimeout(() => stopped || connect(), 2000);
       };
     };
+    holding = true;
     connect();
     return () => {
       stopped = true;
+      holding = false;
       es.close();
     };
   };
   const live = () => {
-    if (!navigator.locks || typeof BroadcastChannel !== "function") return stream();
+    showLive();
+    if (!navigator.locks || typeof BroadcastChannel !== "function") {
+      stream();
+      return;
+    }
     const channel = new BroadcastChannel("shot-review-events");
-    channel.onmessage = (e) => update(e.data);
+    channel.onmessage = (e) => told(e.data);
     let held = null;
-    const take = () => {
-      if (held || document.visibilityState !== "visible") return;
+    const ask = (options) => {
       const mine = { stop: null };
       held = mine;
-      navigator.locks.request("shot-review-events", () => new Promise((done) => {
-        if (held !== mine) return done();
-        const stop = stream((d) => channel.postMessage(d));
-        mine.stop = () => {
-          stop();
-          done();
-        };
-      }));
+      navigator.locks
+        .request("shot-review-events", options, () => new Promise((done) => {
+          if (held !== mine) return done();
+          const stop = stream((m) => channel.postMessage(m));
+          mine.stop = () => {
+            stop();
+            done();
+          };
+        }))
+        .catch(() => {
+          // taken over by another page, which heard nothing from this one
+          mine.stop?.();
+          if (held !== mine) return;
+          held = null;
+          take();
+        });
+    };
+    const take = () => {
+      if (held || document.visibilityState !== "visible") return;
+      ask({});
     };
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
+        heard = Date.now();
         take();
         update(ALL);
       } else {
@@ -441,6 +502,18 @@ const REVIEW_SCRIPT = `<script>
       }
     });
     take();
+    setInterval(() => {
+      if (document.visibilityState !== "visible" || Date.now() - heard < QUIET) return;
+      const quiet = Math.round((Date.now() - heard) / 1000);
+      if (holding) return setLive("the server has sent nothing for " + quiet + " s: it may be busy", "fail");
+      setLive(
+        "no updates for " + quiet + " s: another tab of this tool held the connection to the server and passed nothing on (a tab the browser froze?); this page has taken it over",
+        "look",
+      );
+      heard = Date.now();
+      keepUntil = Date.now() + 20000;
+      ask({ steal: true });
+    }, 5000);
   };
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea, select")) return;

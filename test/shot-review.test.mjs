@@ -1960,8 +1960,13 @@ onStop(process.stdin, () => {
       assert.deepEqual([held.status, (await held.arrayBuffer()).byteLength], [304, 0]);
       const other = await fetch(base + hrefs.head(A), { headers: { "if-none-match": '"0"' } });
       assert.deepEqual([other.status, Buffer.from(await other.arrayBuffer())], [200, head]);
-      // the pages' one event stream is held by the page that holds the lock
-      assert.match(html, /navigator\.locks\.request\("shot-review-events"/);
+      // the pages' one event stream is held by the page that holds the lock, only while it is shown,
+      // and taken over by a shown page that has heard nothing, not even the server's ping, for 15 s
+      assert.match(html, /navigator\.locks\s*\.request\("shot-review-events"/);
+      assert.match(html, /if \(held \|\| document\.visibilityState !== "visible"\) return;/);
+      assert.match(html, /es\.addEventListener\("ping"/);
+      assert.match(html, /ask\(\{ steal: true \}\)/);
+      assert.match(html, /another tab of this tool held the connection to the server and passed nothing on/);
       const map = await get(hrefs.map(1, "png", A));
       assert.deepEqual([map.status, decodePng(map.body).height], [200, 30]);
       assert.equal((await get(hrefs.map(1, "svg", A))).status, 200);
@@ -2776,5 +2781,37 @@ describe("what the screenshot review reads from git while it serves its pages (k
     } finally {
       await git.close();
     }
+  });
+});
+
+describe("the event channel's ping (lib/sse.mjs)", () => {
+  test("sends a ping event as often as asked, and none when not asked", async () => {
+    const { createServer } = await import("node:http");
+    const { createSseChannel } = await import("../lib/sse.mjs");
+    const read = async (channel, ms) => {
+      const server = createServer((req, res) => channel.handle(req, res));
+      await new Promise((r) => server.listen(0, "127.0.0.1", r));
+      const ac = new AbortController();
+      const res = await fetch(`http://127.0.0.1:${server.address().port}/`, { signal: ac.signal });
+      let text = "";
+      const reader = res.body.getReader();
+      const until = Date.now() + ms;
+      const decoder = new TextDecoder();
+      while (Date.now() < until) {
+        const next = await Promise.race([
+          reader.read(),
+          new Promise((r) => setTimeout(() => r(null), until - Date.now())),
+        ]);
+        if (!next || next.done) break;
+        text += decoder.decode(next.value);
+      }
+      ac.abort();
+      channel.close();
+      await new Promise((r) => server.close(r));
+      return text;
+    };
+    const pinged = await read(createSseChannel({ ping: 40 }), 150);
+    assert.ok((pinged.match(/event: ping\ndata: \{\}\n\n/g) ?? []).length >= 2, JSON.stringify(pinged));
+    assert.doesNotMatch(await read(createSseChannel(), 150), /event: ping/);
   });
 });
