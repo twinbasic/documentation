@@ -25,10 +25,10 @@ import {
 } from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { onStop, writeRecord } from "../lib/record-lines.mjs";
-import { applyPicture, applySvg, svgOf } from "../lib/shot-apply.mjs";
+import { applyPicture, applySvg, restoreSvg, svgOf } from "../lib/shot-apply.mjs";
 import { decodePng } from "../lib/png.mjs";
 import { NOISE_LEVELS, pngsNear, shareOff, strengthOf } from "../lib/shot-change.mjs";
-import { MANIFEST, openManifest, svgDecision } from "../lib/shot-manifest.mjs";
+import { hashOf, MANIFEST, openManifest, svgDecision } from "../lib/shot-manifest.mjs";
 import { bundleFollowsSvg, decidePicture, svgFollowsPng } from "../lib/shot-policy.mjs";
 import { reviewPicture, reviewSvg } from "../lib/shot-queue.mjs";
 import { openRevision, outputRefusal } from "../lib/shot-revision.mjs";
@@ -53,7 +53,7 @@ import {
   tellPanel,
 } from "./chrome-take.mjs";
 import { useSubsetCache } from "./fonts.mjs";
-import { judgeSvg } from "./keep.mjs";
+import { judgeSvg, sameSvgAs, sameWhy } from "./keep.mjs";
 import { PRIVATE_FILE, privateWords } from "./private-list.mjs";
 import { drawnWords, heldWords } from "./private-words.mjs";
 import { inBrowser, staleBundle, writeJudged } from "./redraw.mjs";
@@ -315,7 +315,33 @@ async function keepSvg(job, p, fate, holds, browser) {
     }
   }
   let staysWhy = null;
-  if (!svgFollowsPng({ written, svgOnDisk, accepted, stale })) {
+  // The baseline's SVG, which an SVG the same picture as it, to the pixel, goes back to
+  // (keep.mjs's sameSvgAs), as shoot_docs.mjs's keepSvg has it; and what a run says of one found so.
+  const baseText = revision?.bytes(svgOut)?.toString("utf8") ?? null;
+  const reportSame = (same, fileText, judged = {}) => {
+    const why = sameWhy(same, AGAINST);
+    const state = same === "baseline" ? restoreSvg(outRoot, revision, svgOut, { dryRun }) : "unchanged";
+    say(svgOut, `${state} (${why})`);
+    report(
+      svgVerdict({
+        ...judged,
+        state,
+        why,
+        same:
+          same === "baseline" ? { as: "baseline", baseline: revision.hash } : { as: "file", file: hashOf(fileText) },
+      }),
+    );
+  };
+  const follows = svgFollowsPng({ written, svgOnDisk, accepted, stale });
+  if (!follows && svgOnDisk && baseText !== null) {
+    // the file's SVG stays with its PNG, but when it is the baseline's picture its bytes go back
+    const fileText = readFileSync(file, "utf8");
+    if ((await sameSvgAs(browser, { file: fileText, baseline: baseText })) === "baseline") {
+      reportSame("baseline", fileText);
+      return;
+    }
+  }
+  if (!follows) {
     staysWhy = "its PNG is not written";
     const same = !stageRoot && bundleFollowsSvg({ svg: p.svg, svgOnDisk: readFileSync(file, "utf8") });
     if (same) writeBundle(bundlesRoot, p.out, p.bundle, holds, p.misses);
@@ -348,6 +374,16 @@ async function keepSvg(job, p, fate, holds, browser) {
     // what stays with its PNG needs no look until a review takes the capture
     report(svgVerdict({ state: "unchanged", why: staysWhy, ...judged, review: { ...judged.review, look: null } }));
     return;
+  }
+  if (faithful) {
+    // the same picture as the baseline's SVG or the file's, to the pixel: those bytes stay
+    const fileText = svgOnDisk ? readFileSync(file, "utf8") : null;
+    const same = await sameSvgAs(browser, { svg: p.svg, file: fileText, baseline: baseText });
+    if (same) {
+      svgCounts.written++;
+      reportSame(same, fileText, judged);
+      return;
+    }
   }
   const state = applySvg(outRoot, svgOut, faithful ? p.svg : null, { dryRun });
   svgCounts[faithful ? "written" : "left"]++;

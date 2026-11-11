@@ -748,7 +748,7 @@ checkout's is 58 MB that a retake rewrites.
 Order: 2 and 3, then 4, then (c), then 1.
 
 **An SVG that draws the same pixels is the same picture** (owner, 2026-11-09): keep.mjs's
-`sameSvgAs`, which `shoot_docs.mjs --svg` and `replay.mjs` ask before an SVG is written, draws
+`sameSvgAs`, which `shoot_docs.mjs --svg`, `replay.mjs` and `chromeshot.mjs` ask before an SVG is written, draws
 the SVG as diffSvg does (`renderSvg`, an `<img>` at the device scale) beside the baseline's
 (`--against`, which the tool now passes to a replay too) and then the file's, and compares them
 exactly, with no tolerance (a tolerance would bring back the threshold this tool exists for).
