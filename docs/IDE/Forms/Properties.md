@@ -90,7 +90,8 @@ The text box beside the swatch holds the colour as `&H` and hexadecimal digits f
 
 Right-click a value to open a menu with:
 
-- **Copy**, which puts the value on the clipboard as JSON, and **Paste**, which is live when the clipboard holds a value of a compatible type.
+- **Copy**, which puts the value's text on the clipboard as it is shown, with no quotes added: the selected part when some of the text in the value's box is selected, or else all of it. A value chosen from a drop-down list is copied as the text the list shows, and a **True** or **False** value as `True` or `False`. A value that is an object or a list is copied as JSON.
+- **Paste**, which is live when the clipboard holds a value of a compatible type. While the value's text box has the focus, it inserts the clipboard's text at the caret, in place of any selected text. Otherwise it sets the property to the clipboard's value.
 - **Copy** *value* **To...**, a submenu that lists every control on the form with a property of the same name and type, as `Control.Property`, or `{ no matches }`. Choosing an entry copies the value to that control.
 - **SYSTEM COLORS**, for a colour property: a submenu of the thirty system colour constants, from **vbScrollBars** to **vbMenuBarFlat**.
 
