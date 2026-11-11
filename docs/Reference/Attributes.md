@@ -1742,7 +1742,7 @@ Binds the member to one of the compiler's own internal implementations, selected
 > [!IMPORTANT]
 > This attribute exists for the packages that ship with twinBASIC. The numbers are not a vocabulary a project can choose from: each names one behaviour already built into the compiler, and nothing says what an unlisted number does.
 
-The numbers the VB package uses, should you meet one while reading its source: `(1)` and `(2)` on the `GlobalLoad` and `GlobalUnload` declares, `(3)` on a generic `Item` property, `(4)` on `IdleMessageLoopBreakpoint`, and `(254)` on **Form**'s `Show`, where a comment in the source says it "prevents ClassBeforeFirstMemberAccessFunc for this member".
+The numbers the VB package uses, should you meet one while reading its source: `(1)` and `(2)` on the `GlobalLoad` and `GlobalUnload` declares, `(3)` on a generic `Item` property, `(4)` on `IdleMessageLoopBreakpoint`, `(253)` on the **Left**, **Top**, **Width** and **Height** properties of the controls, forms, user controls, property pages and reports, and `(254)` on **Form**'s `Show`, where a comment in the source says it "prevents ClassBeforeFirstMemberAccessFunc for this member".
 
 <!-- This entry gave the syntax as an optional Bool and stated no
      applicability. Every one of the 6 uses in the BETA 1005 census passes an
